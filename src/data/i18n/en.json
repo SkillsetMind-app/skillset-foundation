@@ -399,7 +399,7 @@
       "title": "Three steps from your method to a published program.",
       "step1Title": "Set up your studio",
       "step1Desc": "Open a Teacher Studio account, accept the Teacher Terms, and connect Stripe Express.",
-      "step1Activation": "Open a Teacher Studio account and accept the Teacher Terms. Where required, get your professional verification approved, then complete the one-time US${amount} activation (while activation is required). Then connect Stripe Express and start building.",
+      "step1Activation": "Open a Teacher Studio account and accept the Teacher Terms. Connect Stripe Express and start building. Where required, get your professional verification approved, then complete the one-time US${amount} activation (while activation is required) when you publish your first course.",
       "step2Title": "Build and publish",
       "step2Desc": "Build your modules and lessons in Course Builder. Set your price, complete the launch checks, and publish when ready.",
       "step3Title": "Reach people anywhere",
@@ -1664,7 +1664,7 @@
     "page": {
       "eyebrow": "Teacher Studio",
       "title": "Build, ship, get paid.",
-      "description": "While activation is required, drafting opens after your one-time activation, and professional verification, where required, must be approved before you can pay. Publishing always needs verification (where required) and passing the launch checks."
+      "description": "Drafting is open from the start. While activation is required, your first publish needs the one-time activation, and professional verification, where required, must be approved before you can pay. Publishing always needs verification (where required) and passing the launch checks."
     },
     "dashboard": {
       "welcomeBackNamed": "Welcome back, {name}.",
@@ -1769,10 +1769,6 @@
       "grossSales": "Gross sales",
       "platformFee": "Platform fee est.",
       "stripeFee": "Stripe fee est.",
-      "activateEyebrow": "Activate your creator account",
-      "activateTitle": "Pay the one-time activation fee to start selling.",
-      "activateBody": "Activation is charged once and unlocks course creation, publishing and payouts. After it clears you finish Stripe onboarding here, and buyers pay your Stripe account directly — SkillsetMind never holds your money.",
-      "activateCta": "Activate my account",
       "connectContinue": "Continue payout setup",
       "connectStart": "Set up payouts",
       "connectTitle": "Complete Stripe onboarding before selling paid courses.",
@@ -2076,17 +2072,7 @@
     "activationGate": {
       "verificationTitle": "Complete your professional verification",
       "verificationBody": "Your professional details must be approved before you can pay for activation. Submit or review your details. If they are already under review, wait for the decision before paying.",
-      "verificationAction": "View professional verification",
-      "title": "Activate your storefront",
-      "fee": "A one-time ${amount} activation fee unlocks the creator studio. It is charged once per creator account, never per course.",
-      "plan": "Your Free plan stays $0 per month. The activation fee opens the studio; your plan sets the commission per sale.",
-      "pay": "Pay ${amount} and unlock the studio",
-      "leave": "Not now — leave the studio",
-      "checking": "Checking your activation",
-      "checkingBody": "Confirming your access before opening the creator studio.",
-      "errorTitle": "We could not confirm your access",
-      "errorBody": "Try again to check your activation. You will not be charged by retrying.",
-      "retry": "Try again"
+      "verificationAction": "View professional verification"
     },
     "sales": {
       "loading": "Loading your sales...",
@@ -2851,7 +2837,7 @@
       "mo_billed": "/mo, billed",
       "yearly_2": " yearly",
       "plus_a_one_time": "Plus a one-time ",
-      "fee_to_activate_your_storefront_paid": " activation fee that unlocks the creator studio, charged once per creator account, never per course. Free still has no monthly cost.",
+      "fee_to_activate_your_storefront_paid": " activation fee, paid when you publish your first course, charged once per creator account, never per course. Free still has no monthly cost.",
       "the_math_on_a_100_usd": "The math, on a $100 USD sale",
       "same_gross_different_net": "Same gross, different net.",
       "a_learner_pays": "A learner pays ",
@@ -2906,8 +2892,8 @@
       "buyers_are_charged_on_your_own": "Buyers are charged on your own Stripe account — no platform hold on your money. Start on the Free plan (no monthly fee) at 10% commission; upgrade to drop it to 5%, 3%, or 2%.",
       "see_all_four_plans": "See all four plans",
       "creator_path": "Creator path",
-      "start_as_a_creator_publish_after": "Activate your studio once (while activation is required), then draft and publish.",
-      "creators_can_draft_courses_immediately_professional": "Once your one-time activation is complete (and your professional verification is approved, where required), you can draft courses in the studio. Deterministic launch checks then protect marketplace quality without making every course wait for manual approval.",
+      "start_as_a_creator_publish_after": "Draft first, then activate once (while activation is required) to publish.",
+      "creators_can_draft_courses_immediately_professional": "Drafting courses in the studio is open before any payment. Publishing needs your one-time activation and your professional verification approved (where required). Deterministic launch checks then protect marketplace quality without making every course wait for manual approval.",
       "create_account": "Create account",
       "draft_then_publish": "Draft, then publish when your launch checks pass.",
       "creators_can_draft_after_verification": "Drafting courses in the studio is open. Publishing needs your professional verification approved (where required), and deterministic launch checks then protect marketplace quality without making every course wait for manual approval."
@@ -3132,7 +3118,7 @@
       "full_plan_comparison_sample_breakdowns_and": "Full plan comparison and sample breakdowns are on the",
       "pricing_page": "pricing page",
       "activation_fee": "One-time activation fee",
-      "activation_fee_detail": "A one-time activation fee of US${amount} unlocks the creator studio: drafting courses, uploading video, creating coupons, connecting a custom domain, and publishing. It is charged only while SkillsetMind requires activation, and only when you complete the activation checkout yourself in the studio, never automatically; once per creator account, never per course. Where professional verification is required, it must be approved before you can pay. It is not a subscription.",
+      "activation_fee_detail": "A one-time activation fee of US${amount} is paid when you publish your first course. Drafting courses, uploading video and connecting Stripe come first and do not need it; publishing, coupons, manual course access and a custom domain do. It is charged only while SkillsetMind requires activation, and only when you complete the activation checkout yourself in the studio, never automatically; once per creator account, never per course. Where professional verification is required, it must be approved before you can pay. It is not a subscription.",
       "payout_countries": "Payout countries",
       "payout_countries_detail": "Payouts go to your own Stripe account in a country where SkillsetMind supports Stripe payouts: currently the United States, Canada, the United Kingdom, Switzerland, the European Union, Liechtenstein and Norway. Latin America, including Brazil, is planned for later. Availability depends on Stripe and may change."
     },
@@ -3183,7 +3169,7 @@
         "items": {
           "0": {
             "q": "Can creators upload courses themselves?",
-            "a": "Yes, without a manual review of each course. While SkillsetMind requires studio activation, a creator completes the one-time activation checkout before drafting, uploading or publishing, and where professional verification is required it must be approved before they can pay. Once the studio is active, a product that passes the launch checks is published directly by its creator; paid products also need a Stripe account that can accept charges before checkout opens."
+            "a": "Yes, without a manual review of each course. A creator can draft, upload and connect Stripe first. While SkillsetMind requires studio activation, the one-time activation checkout is completed before the first course is published, and where professional verification is required it must be approved before they can pay. A product that passes the launch checks is then published directly by its creator; paid products also need a Stripe account that can accept charges before checkout opens."
           },
           "1": {
             "q": "How should I choose course categories?",
@@ -5340,11 +5326,12 @@
     "teacherTerms": {
       "title": "Teacher Terms",
       "description": "The terms that govern teaching and payouts on SkillsetMind.",
+      "effectiveDate": "September 27, 2026",
       "text1": "These Teacher Terms apply in addition to the <terms>Terms of Service</terms> when you publish or sell courses on SkillsetMind (\"educator,\" \"you\"). If these terms conflict with the Terms of Service, these terms control for your educator activity.",
       "text2": "They exist to protect three parties at once: your students, your work, and the trust of the marketplace. Our public commitments to you are written in <promise>The Promise</promise>.",
       "text3": "You are an independent professional, not an employee, agent, or partner of SkillsetMind. You decide what to teach, how to price it (within the platform's supported options), and how to run your courses. SkillsetMind provides the technology, checkout, and marketplace — it does not supervise your professional practice.",
       "text4": "You must be at least 18 years old. Any credentials, licenses, degrees, or professional experience you present on your profile or in your course pages must be truthful and current. Misrepresenting qualifications — especially regulated or clinical ones — is grounds for immediate removal.",
-      "text5": "To sell on SkillsetMind you must be able to open and keep your own Stripe account in a country where SkillsetMind supports Stripe payouts: currently the United States, Canada, the United Kingdom, Switzerland, the European Union, Liechtenstein and Norway. Latin America, including Brazil, is planned for later. Availability depends on Stripe and may change. If Stripe cannot verify you or pay out to you in your country, you cannot sell courses on SkillsetMind.",
+      "text5": "To sell on SkillsetMind you must be able to open and keep your own Stripe account in a country where SkillsetMind supports Stripe payouts: currently the United States, Canada, the United Kingdom, Switzerland, the European Union, Liechtenstein and Norway. Latin America, including Brazil, is planned for later. Availability depends on Stripe and may change. If Stripe cannot verify you or pay out to you in your country, you cannot sell courses on SkillsetMind. You can connect Stripe in the studio before paying the activation fee, so you can check this first.",
       "text6": "You retain full ownership of the intellectual property in the content you create. By publishing on SkillsetMind you grant us a non-exclusive, worldwide license to host, encode, display, and deliver your content to your enrolled students, and to use your course title, description, cover image, and public profile to promote your course on and off the platform. This license ends for a course when you remove it, except for students already enrolled, who keep the access they paid for.",
       "text7": "There is no exclusivity. You may sell the same or similar content anywhere else.",
       "text8": "You are solely responsible for the accuracy, originality, legality, and student safety of everything you publish — videos, materials, community posts, and live sessions. You must own or have the rights to everything in your course, including music, images, and excerpts.",
@@ -5361,10 +5348,10 @@
       "text19": "<strong>Commission</strong> — SkillsetMind charges a platform fee on each sale according to your subscription plan, as shown on the <pricing>pricing page</pricing> at the time of sale. Stripe deducts it from the charge automatically; we do not invoice you for it separately.",
       "text20": "<strong>Payouts</strong> — paid by Stripe from your own account balance to your bank. Checkout can be presented in 30 currencies; the currency your balance settles and pays out in is set by Stripe on your connected account, and a conversion may apply when the two differ. The payout schedule is the one on your connected Stripe account and is controlled by Stripe; SkillsetMind adds no clearance period on top of it, because SkillsetMind holds nothing. Stripe applies its own settlement and payout timing, which depends on your country and payment method, and imposes a waiting period on a new connected account's first payout — typically 7 to 14 days, and longer in some countries; Stripe sets the schedule — that SkillsetMind cannot waive. The absence of a SkillsetMind hold does not shorten Stripe's own timeline. You must complete Stripe's identity verification to receive payouts.",
       "text21": "<strong>Refunds, chargebacks and negative balances</strong> — as merchant of record you bear the refunds, disputes (chargebacks) and Stripe dispute fees on your sales. Stripe debits student refunds within the {days}-day window, and any dispute, from your Stripe balance. Our platform fee on a refunded sale is returned to you with the refund; it is not returned when a sale is lost to a dispute. SkillsetMind cannot reverse a dispute on your behalf. If refunds, disputes or fees leave your Stripe balance negative, Stripe may debit your bank account to cover it, and SkillsetMind may pause your sales or payouts until the balance is settled. Repeated abnormal chargeback rates may lead to review of your account.",
-      "text22": "<strong>What it is</strong> — a one-time activation fee of US${amount} that unlocks the creator studio: drafting courses, uploading video, creating coupons, connecting a custom domain, and publishing. It is charged once per creator account, never per course, and it is not a subscription. SkillsetMind charges it on its own Stripe account; it is not a sale on yours.",
-      "text23": "<strong>When it is charged</strong> — only when you complete the activation checkout yourself in the studio, and only while SkillsetMind requires activation. Where professional verification is required, it must be approved before you can pay. SkillsetMind never charges the fee automatically.",
+      "text22": "<strong>What it is</strong> — a one-time activation fee of US${amount} that unlocks publishing and the tools that sell a published course: coupons, manual course access and a custom domain. Drafting courses, uploading video and connecting Stripe do not require it. It is charged once per creator account, never per course, and it is not a subscription. SkillsetMind charges it on its own Stripe account; it is not a sale on yours.",
+      "text23": "<strong>When it is charged</strong> — when you publish your first course, only if you complete the activation checkout yourself in the studio, and only while SkillsetMind requires activation. Where professional verification is required, it must be approved before you can pay. SkillsetMind never charges the fee automatically.",
       "text24": "<strong>Invitations and waivers</strong> — an invitation may waive the fee. A waiver granted after you have already paid does not refund the fee you paid.",
-      "text25": "<strong>Refunds</strong> — we refund the activation fee if it was charged twice or in error, if your professional verification is rejected, if Stripe payouts are not available in your country, or if you ask within 7 days of payment and have not published a course. Otherwise it is non-refundable. To ask, email <support>support@skillsetmind.com</support>. A refunded fee closes the creator studio again until the fee is paid again or waived.",
+      "text25": "<strong>Refunds</strong> — we refund the activation fee if it was charged twice or in error, if your professional verification is rejected, if Stripe payouts are not available in your country, or if you ask within 7 days of payment and have not published a course. Otherwise it is non-refundable. To ask, email <support>support@skillsetmind.com</support>. A refunded fee closes your storefront and blocks publishing again until the fee is paid again or waived.",
       "text26": "You are responsible for your own taxes on your earnings, including income tax and any VAT/GST or local obligations that apply to you as an independent professional. SkillsetMind and Stripe may issue tax forms or collect tax information where the law requires.",
       "text27": "Your course pages, testimonials, and promotions must be truthful. Do not guarantee clinical outcomes, cures, or income results. Testimonials must be genuine and may not imply results that are not typical.",
       "text28": "We may pause or remove a course, or suspend an educator account, for violation of these terms, with notice and a chance to fix the issue where the violation is fixable. Fraud, credential misrepresentation, or student-safety issues may lead to immediate removal.",

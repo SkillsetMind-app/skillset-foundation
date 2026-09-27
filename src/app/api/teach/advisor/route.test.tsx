@@ -109,7 +109,7 @@ async function rpcAnswers(name: string, args?: TurnArgs): Promise<Result> {
     return { data: args?.p_conversation_id ?? "conv-1", error: null };
   }
   return {
-    data: name === "is_teacher" ? true : name === "creator_activation_blocked" ? false : null,
+    data: name === "is_teacher" ? true : null,
     error: null,
   };
 }
@@ -170,7 +170,7 @@ describe("advisor route guards", () => {
     expect(mocks.askKimi).not.toHaveBeenCalled();
   });
 
-  it("authenticates, authorizes and checks activation before throttling", async () => {
+  it("authenticates and authorizes before throttling", async () => {
     mocks.runRateLimit.mockResolvedValue({
       data: null,
       error: { message: "RATE_LIMIT exceeded" },
@@ -183,8 +183,8 @@ describe("advisor route guards", () => {
     expect(mocks.getUser.mock.invocationCallOrder[0]).toBeLessThan(
       mocks.rpc.mock.invocationCallOrder[0],
     );
-    expect(mocks.rpc.mock.calls).toEqual([["is_teacher"], ["creator_activation_blocked"]]);
-    expect(mocks.rpc.mock.invocationCallOrder[1]).toBeLessThan(
+    expect(mocks.rpc.mock.calls).toEqual([["is_teacher"]]);
+    expect(mocks.rpc.mock.invocationCallOrder[0]).toBeLessThan(
       mocks.runRateLimit.mock.invocationCallOrder[0],
     );
     expect(mocks.askKimi).not.toHaveBeenCalled();
@@ -303,75 +303,18 @@ describe("advisor route guards", () => {
   });
 });
 
+// The studio is open before the one-time activation fee (charged at the first
+// Publish), and the advisor is part of it: no activation lookup here.
 describe("advisor route activation", () => {
-  it.each([
-    ["blocked", { data: true, error: null }, 402],
-    ["RPC error", { data: false, error: { message: "private database detail" } }, 503],
-    ["null", { data: null, error: null }, 503],
-    ["missing", { error: null }, 503],
-    ["string false", { data: "false", error: null }, 503],
-    ["zero", { data: 0, error: null }, 503],
-  ])("refuses %s activation before quota, context, inference or persistence", async (_label, result, status) => {
-    mocks.rpc.mockResolvedValueOnce({ data: true, error: null }).mockResolvedValueOnce(result);
+  it("answers an unpaid creator without consulting the activation verdict", async () => {
+    mocks.askKimi.mockResolvedValue("Here is one concrete next step.");
 
     const response = await ask();
 
-    expect(response.status).toBe(status);
-    expect(await response.json()).toEqual(status === 402 ? {
-      error: "Pay the one-time activation fee to activate your creator account.",
-      code: "activation_required",
-    } : { error: "Could not verify creator activation. Please try again." });
-    expect(mocks.runRateLimit).not.toHaveBeenCalled();
-    expect(mocks.buildTeacherContext).not.toHaveBeenCalled();
-    expect(mocks.retrieveKnowledge).not.toHaveBeenCalled();
-    expect(mocks.askKimi).not.toHaveBeenCalled();
-    expect(mocks.from).not.toHaveBeenCalled();
-    expect(mocks.rpc).not.toHaveBeenCalledWith("save_advisor_turn", expect.anything());
-  });
-
-  it("fails closed without exposing a rejected activation lookup", async () => {
-    mocks.rpc.mockResolvedValueOnce({ data: true, error: null })
-      .mockRejectedValueOnce(new Error("private transport detail"));
-
-    const response = await ask();
-
-    expect(response.status).toBe(503);
-    expect(await response.json()).toEqual({ error: "Could not verify creator activation. Please try again." });
-    expect(mocks.runRateLimit).not.toHaveBeenCalled();
-    expect(mocks.buildTeacherContext).not.toHaveBeenCalled();
-    expect(mocks.retrieveKnowledge).not.toHaveBeenCalled();
-    expect(mocks.askKimi).not.toHaveBeenCalled();
-    expect(mocks.from).not.toHaveBeenCalled();
-    expect(mocks.rpc).not.toHaveBeenCalledWith("save_advisor_turn", expect.anything());
-  });
-
-  it("waits for the shared verdict and accepts false without reimplementing its exceptions", async () => {
-    let release!: (result: Result) => void;
-    mocks.rpc.mockResolvedValueOnce({ data: true, error: null })
-      .mockImplementationOnce(() => new Promise<Result>((resolve) => { release = resolve; }));
-
-    const pending = ask();
-    try {
-      await vi.waitFor(() => expect(mocks.rpc).toHaveBeenCalledWith("creator_activation_blocked"));
-      expect(mocks.runRateLimit).not.toHaveBeenCalled();
-      expect(mocks.buildTeacherContext).not.toHaveBeenCalled();
-      expect(mocks.retrieveKnowledge).not.toHaveBeenCalled();
-      expect(mocks.askKimi).not.toHaveBeenCalled();
-      expect(mocks.from).not.toHaveBeenCalled();
-      expect(mocks.rpc).not.toHaveBeenCalledWith("save_advisor_turn", expect.anything());
-    } finally {
-      release({ data: false, error: null });
-    }
-
-    expect((await pending).status).toBe(200);
-    // The two verdicts, then the turn itself going through its quota RPC.
-    expect(mocks.rpc.mock.calls.map(([name]) => name)).toEqual([
-      "is_teacher",
-      "creator_activation_blocked",
-      "save_advisor_turn",
-    ]);
+    expect(response.status).toBe(200);
+    expect(mocks.rpc).not.toHaveBeenCalledWith("creator_activation_blocked");
+    expect(mocks.rpc.mock.calls.map(([name]) => name)).toEqual(["is_teacher", "save_advisor_turn"]);
     expect(mocks.runRateLimit).toHaveBeenCalledTimes(2);
-    expect(mocks.askKimi).toHaveBeenCalledTimes(1);
   });
 });
 

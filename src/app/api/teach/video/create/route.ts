@@ -1,11 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { createBunnyVideo, signBunnyAssetPath, signBunnyUpload } from "@/lib/bunny/server";
-import {
-  assertCreatorActivated,
-  enforceRateLimit,
-  paymentErrorResponse,
-} from "@/lib/payments/server/auth";
+import { enforceRateLimit, paymentErrorResponse } from "@/lib/payments/server/auth";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 // POST /api/teach/video/create — the course owner asks the server to create a
@@ -60,15 +56,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "You do not own this course." }, { status: 403 });
   }
 
-  // Same gate as the courses trigger. The trigger already stops an unpaid
-  // creator from owning a course at all, so this only bites the creators who
-  // owned courses before the flag flip — exactly the population that could
-  // otherwise keep burning Bunny storage without ever paying.
-  try {
-    await assertCreatorActivated();
-  } catch (error) {
-    return paymentErrorResponse(error);
-  }
+  // No activation check: uploading video is part of building the course, and
+  // the one-time fee is charged at the first Publish. What bounds an unpaid
+  // creator today is the hourly throttle above and the per-file size cap.
+  // TODO(Patrick): decide a hosting limit for creators who have not paid the
+  // activation fee yet (e.g. a number of videos or total minutes/GB per
+  // account) so the studio does not become free video hosting. No number is
+  // set on purpose; once decided, enforce it here with
+  // creator_activation_blocked() and return 402 activation_required.
 
   try {
     const videoId = await createBunnyVideo(title);

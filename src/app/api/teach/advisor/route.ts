@@ -4,7 +4,6 @@ import { buildAssistantKnowledge } from "@/lib/assistant/knowledge";
 import { KimiConfigError, KimiError, askKimi, type KimiMessage } from "@/lib/assistant/kimi";
 import { formatKnowledge, retrieveKnowledge } from "@/lib/assistant/retrieve";
 import { buildTeacherContext } from "@/lib/assistant/teacher-context";
-import { assertCreatorActivated, PaymentError } from "@/lib/payments/server/auth";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import { runRateLimit } from "@/lib/supabase/rate-limit";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -212,20 +211,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Teacher access is required." }, { status: 403 });
   }
 
-  // Reuse the studio's predicate, including flag-off, admin, paid and waiver
-  // exceptions. An unavailable verdict must not spend quota or send data to AI.
-  try {
-    await assertCreatorActivated();
-  } catch (error) {
-    if (error instanceof PaymentError) {
-      return NextResponse.json({ error: error.message, code: error.code }, { status: error.status });
-    }
-    return NextResponse.json(
-      { error: "Could not verify creator activation. Please try again." },
-      { status: 503 },
-    );
-  }
-
+  // No activation check: the advisor is part of building a course, which is
+  // open before the one-time fee (charged at the first Publish). The two-window
+  // throttle below is what bounds inference spend for every teacher.
   // Two-window throttle on a reasoning-model-backed endpoint: an hourly burst
   // cap (30/h) blunts scripted abuse, and a daily cap (120/day) bounds sustained
   // economic abuse. Both use the shared enforce_rate_limit SECURITY DEFINER RPC.

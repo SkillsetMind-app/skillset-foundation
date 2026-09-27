@@ -69,10 +69,11 @@ export function validateProfessionalEvidence(input: SubmitCreatorVerificationInp
 }
 
 /**
- * The activation gate speaks through exceptions. The courses trigger raises
- * "Pay the one-time activation fee before creating or publishing courses." and
- * assertCreatorActivated throws a 402 carrying a similar sentence — so every
- * screen that can trip the gate catches a message it has to recognise.
+ * The activation gate speaks through exceptions. publish_teacher_course and
+ * the courses trigger raise "Pay the one-time activation fee before publishing
+ * your first course." and assertCreatorActivated throws a 402 carrying a
+ * similar sentence — so every screen that can trip the gate catches a message
+ * it has to recognise.
  *
  * Recognising it is the whole point: a creator who sees "Please try again"
  * retries forever, because retrying is not what unblocks them. The sentence
