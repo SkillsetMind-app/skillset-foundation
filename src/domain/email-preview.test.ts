@@ -16,6 +16,11 @@ test("email preview uses deployed artwork and resolves invitation placeholders",
     assert.ok(!page.includes("{{ .RedirectTo | urlquery }}"), "unresolved invitation redirect");
     assert.ok(page.includes("%2Finvitations%2F81000000"));
     assert.ok(page.includes('<meta charset="utf-8">'));
+    // Every Supabase variable in every template needs a sample value.
+    assert.ok(!/\{\{\s*\./.test(page.replace(/<dd><code>[^<]*<\/code><\/dd>/g, "")), "unresolved template variable");
+    assert.ok(page.includes("old-address@example.com to new-address@example.com"));
+    assert.ok(page.includes("Confirm your email change for SkillsetMind"));
+    assert.ok(!page.includes("Confirm your new email for SkillsetMind"), "stale email change subject");
     for (const file of ["confirmation.html", "magic_link.html"]) {
       const template = readFileSync(join("supabase/templates", file), "utf8");
       assert.ok(template.includes("Your access changes only after you accept the invitation."));

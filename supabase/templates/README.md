@@ -13,7 +13,10 @@ then re-paste.
 3. **Reset password** tab:
    - Subject: `Reset your SkillsetMind password`
    - Body: paste the full contents of `recovery.html`
-4. Save. Takes effect immediately for new emails (no deploy needed).
+4. **Change email address** tab:
+   - Subject: `Confirm your email change for SkillsetMind`
+   - Body: paste the full contents of `email_change.html`
+5. Save. Takes effect immediately for new emails (no deploy needed).
 
 Keep every `{{ . }}` placeholder exactly as written — Supabase substitutes them
 at send time.
@@ -21,8 +24,9 @@ at send time.
 ## Why recovery.html and confirmation.html do NOT use `{{ .ConfirmationURL }}`
 
 `recovery.html` and, since 2026-09-02, `confirmation.html` deliberately build
-their own link with `{{ .TokenHash }}` pointing at `/auth/confirm` (invite and
-email change still use `{{ .ConfirmationURL }}`). Magic Link now does too. Reason:
+their own link with `{{ .TokenHash }}` pointing at `/auth/confirm` (invite
+still uses `{{ .ConfirmationURL }}`). Magic Link and Change email address now do
+too. Reason:
 
 `{{ .ConfirmationURL }}` routes through Supabase's `/auth/v1/verify`, which
 hands the app a PKCE `?code=`. Exchanging that code requires a `code_verifier`
@@ -114,3 +118,14 @@ hop 2: 200 /reset-password   (reset form rendered, no expiry error)
 Worth re-running after any change to the recovery flow. The check that matters
 is the cold client: opening the link in the *same* browser that requested it
 would have passed even while the bug was live.
+
+## Change email address — secure email change
+
+With **Secure email change** on (Authentication → Providers → Email), GoTrue
+sends the Change email address template to both the current and the new
+address, and the change completes only after both links are opened. Each copy
+gets its own `{{ .TokenHash }}` (current or new), and `verifyOtp` with
+`type: "email_change"` looks the hash up in either column, so the same link
+works for both. `{{ .TokenHashNew }}` is not a template variable — it exists
+only in the Send Email hook payload. The first of the two links verifies
+without returning a session; `/auth/confirm` then simply forwards to `next`.

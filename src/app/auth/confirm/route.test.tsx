@@ -94,6 +94,37 @@ describe("/auth/confirm", () => {
     expect(template).not.toContain("{{ .ConfirmationURL }}");
   });
 
+  // Secure email change mails the current AND the new address, each with its
+  // own {{ .TokenHash }}; one link shape must carry both through verifyOtp.
+  it("keeps the email change email on the cross-device token route", () => {
+    const template = readFileSync("supabase/templates/email_change.html", "utf8");
+    expect(template).toContain("/auth/confirm?token_hash={{ .TokenHash }}");
+    expect(template).toContain("&amp;type=email_change");
+    expect(template).toContain("&amp;next=/account%3Ftab%3Dsecurity");
+    expect(template).not.toContain("{{ .ConfirmationURL }}");
+  });
+
+  it("verifies an email change token and returns to account security", async () => {
+    const response = await get("?token_hash=abc&type=email_change&next=%2Faccount%3Ftab%3Dsecurity");
+    expect(mocks.verifyOtp).toHaveBeenCalledWith({ type: "email_change", token_hash: "abc" });
+    expect(mocks.exchangeCodeForSession).not.toHaveBeenCalled();
+    expect(response.headers.get("location")).toBe(`${ORIGIN}/account?tab=security`);
+    expect(response.cookies.get(PASSWORD_RECOVERY_COOKIE)).toBeUndefined();
+  });
+
+  // The first of the two secure-change links succeeds without a session.
+  it("forwards the first of two email change confirmations without a session", async () => {
+    mocks.verifyOtp.mockResolvedValue({ data: { user: null, session: null }, error: null });
+    const response = await get("?token_hash=abc&type=email_change&next=%2Faccount%3Ftab%3Dsecurity");
+    expect(response.headers.get("location")).toBe(`${ORIGIN}/account?tab=security`);
+  });
+
+  it("sends a failed email change token to login with the reason", async () => {
+    mocks.verifyOtp.mockResolvedValue({ error: { message: "bad token" } });
+    const response = await get("?token_hash=abc&type=email_change&next=%2Faccount%3Ftab%3Dsecurity");
+    expect(response.headers.get("location")).toBe(`${ORIGIN}/login?error=confirm&returnTo=%2Faccount%3Ftab%3Dsecurity`);
+  });
+
   it("preserves the signup course and offer from the email on a fresh device", async () => {
     const next = "/welcome?returnTo=%2Fcourses%2Fcourse-1%3Foffer%3Doffer-1";
     const redirectTo = `${ORIGIN}/auth/confirm?next=${encodeURIComponent(next)}`;
