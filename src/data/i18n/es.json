@@ -95,6 +95,7 @@
     "send": "Enviar mensaje",
     "notReady": "Estamos preparando el asesor. Estará disponible en breve.",
     "tooManyMessages": "Has enviado muchos mensajes. Espera un momento y vuelve a intentarlo.",
+    "activationRequired": "El asesor del estudio se abre cuando activas tu tienda. Preparar cursos, subir videos y conectar Stripe no lo necesitan.",
     "sessionExpired": "Tu sesión ha caducado. Actualiza la página e inicia sesión de nuevo.",
     "somethingWrong": "Algo salió mal. Vuelve a intentarlo.",
     "unreachable": "No se pudo contactar con el asesor. Revisa tu conexión y vuelve a intentarlo.",
@@ -399,7 +400,7 @@
       "title": "Tres pasos de tu método a un programa publicado.",
       "step1Title": "Monta tu estudio",
       "step1Desc": "Abre tu cuenta en el estudio del profesor, acepta las Condiciones para educadores y conecta Stripe Express.",
-      "step1Activation": "Abre tu cuenta en el estudio del profesor y acepta las Condiciones para educadores. Cuando se requiere, obtén la aprobación de tu verificación profesional y luego completa la activación única de US${amount} (mientras se exija la activación). Después conecta Stripe Express y empieza a crear.",
+      "step1Activation": "Abre tu cuenta en el estudio del profesor y acepta las Condiciones para educadores. Conecta Stripe Express y empieza a crear. Cuando se requiere, obtén la aprobación de tu verificación profesional y luego completa la activación única de US${amount} (mientras se exija la activación) al publicar tu primer curso.",
       "step2Title": "Crea y publica",
       "step2Desc": "Organiza tus módulos y lecciones en el constructor de cursos. Define el precio, completa las verificaciones de lanzamiento y publica cuando esté listo.",
       "step3Title": "Llega a gente en cualquier lugar",
@@ -1664,7 +1665,7 @@
     "page": {
       "eyebrow": "Estudio del Profesor",
       "title": "Crea, publica, cobra.",
-      "description": "Mientras se exija la activación, la preparación de cursos se abre después de tu activación única, y la verificación profesional, cuando se requiere, debe estar aprobada antes de que puedas pagar. Para publicar siempre necesitas la verificación (cuando se requiere) y superar los controles de lanzamiento."
+      "description": "La preparación de cursos está abierta desde el principio. Mientras se exija la activación, tu primera publicación necesita la activación única, y la verificación profesional, cuando se requiere, debe estar aprobada antes de que puedas pagar. Para publicar siempre necesitas la verificación (cuando se requiere) y superar los controles de lanzamiento."
     },
     "dashboard": {
       "welcomeBackNamed": "Hola de nuevo, {name}.",
@@ -1769,10 +1770,6 @@
       "grossSales": "Ventas brutas",
       "platformFee": "Comisión de la plataforma (est.)",
       "stripeFee": "Comisión de Stripe (est.)",
-      "activateEyebrow": "Activa tu cuenta de creador",
-      "activateTitle": "Paga la tarifa única de activación para empezar a vender.",
-      "activateBody": "La activación se cobra una sola vez y desbloquea la creación de cursos, la publicación y los pagos. Cuando se acredita, terminas aquí la configuración de Stripe, y los compradores pagan directamente a tu cuenta de Stripe: SkillsetMind nunca retiene tu dinero.",
-      "activateCta": "Activar mi cuenta",
       "connectContinue": "Continuar la configuración de pagos",
       "connectStart": "Configurar los pagos",
       "connectTitle": "Completa la configuración de Stripe antes de vender cursos de pago.",
@@ -2076,17 +2073,7 @@
     "activationGate": {
       "verificationTitle": "Completa tu verificación profesional",
       "verificationBody": "Tus datos profesionales deben aprobarse antes de pagar la activación. Envía o revisa tus datos. Si ya están en revisión, espera la decisión antes de pagar.",
-      "verificationAction": "Ver verificación profesional",
-      "title": "Activa tu escaparate",
-      "fee": "Una tarifa única de activación de ${amount} desbloquea el estudio del creador. Se cobra una sola vez por cuenta de creador, nunca por curso.",
-      "plan": "Tu plan Free sigue costando $0 al mes. La activación abre el estudio; tu plan determina la comisión por venta.",
-      "pay": "Pagar ${amount} y desbloquear el estudio",
-      "leave": "Ahora no — salir del estudio",
-      "checking": "Verificando tu activación",
-      "checkingBody": "Confirmando tu acceso antes de abrir el estudio del creador.",
-      "errorTitle": "No pudimos confirmar tu acceso",
-      "errorBody": "Inténtalo de nuevo para verificar tu activación. Reintentar no genera ningún cobro.",
-      "retry": "Intentar de nuevo"
+      "verificationAction": "Ver verificación profesional"
     },
     "sales": {
       "loading": "Cargando tus ventas...",
@@ -2851,7 +2838,7 @@
       "mo_billed": "/mes, con un cobro de",
       "yearly_2": " al año",
       "plus_a_one_time": "Más una tarifa única de ",
-      "fee_to_activate_your_storefront_paid": " de activación que desbloquea el estudio del creador; se cobra una sola vez por cuenta de creador, nunca por curso. Free sigue sin tener costo mensual.",
+      "fee_to_activate_your_storefront_paid": " de activación, que se paga al publicar tu primer curso; se cobra una sola vez por cuenta de creador, nunca por curso. Free sigue sin tener costo mensual.",
       "the_math_on_a_100_usd": "Las cuentas de una venta de $100 USD",
       "same_gross_different_net": "Mismo bruto, distinto neto.",
       "a_learner_pays": "Un alumno paga ",
@@ -2906,8 +2893,8 @@
       "buyers_are_charged_on_your_own": "Los compradores pagan en tu propia cuenta de Stripe: la plataforma no retiene tu dinero. Empieza en el plan Free (sin mensualidad) con una comisión del 10% y mejora tu plan para reducirla al 5%, 3% o 2%.",
       "see_all_four_plans": "Ver los cuatro planes",
       "creator_path": "El camino del creador",
-      "start_as_a_creator_publish_after": "Activa tu estudio una vez (mientras se exija la activación); después, prepara y publica.",
-      "creators_can_draft_courses_immediately_professional": "Cuando completas la activación única (y tu verificación profesional está aprobada, cuando se exige), puedes preparar cursos en el estudio. Después, los controles de lanzamiento con reglas definidas protegen la calidad del catálogo sin que cada curso tenga que esperar una aprobación manual.",
+      "start_as_a_creator_publish_after": "Primero prepara; después activa una vez (mientras se exija la activación) para publicar.",
+      "creators_can_draft_courses_immediately_professional": "La preparación de cursos en el estudio está abierta antes de cualquier pago. Para publicar necesitas la activación única y tu verificación profesional aprobada (cuando se exige). Después, los controles de lanzamiento con reglas definidas protegen la calidad del catálogo sin que cada curso tenga que esperar una aprobación manual.",
       "create_account": "Crear cuenta",
       "draft_then_publish": "Prepara y publica cuando tu curso supere los controles de lanzamiento.",
       "creators_can_draft_after_verification": "La preparación de cursos en el estudio está abierta. Para publicar necesitas tu verificación profesional aprobada (cuando se requiere); después, los controles de lanzamiento con reglas definidas protegen la calidad del catálogo sin que cada curso tenga que esperar una aprobación manual."
@@ -3132,7 +3119,7 @@
       "full_plan_comparison_sample_breakdowns_and": "La comparación completa de planes y los ejemplos de desglose están en la",
       "pricing_page": "página de precios",
       "activation_fee": "Tarifa única de activación",
-      "activation_fee_detail": "Una tarifa única de activación de US${amount} desbloquea el estudio del creador: crear borradores de cursos, subir videos, crear cupones, conectar un dominio propio y publicar. Solo se cobra mientras SkillsetMind exija la activación, y solo cuando completas tú mismo el pago de activación en el estudio, nunca automáticamente; una sola vez por cuenta de creador, nunca por curso. Cuando se exige la verificación profesional, debe estar aprobada antes de que puedas pagar. No es una suscripción.",
+      "activation_fee_detail": "Una tarifa única de activación de US${amount} se paga al publicar tu primer curso. Preparar cursos, subir videos y conectar Stripe vienen antes y no la necesitan; publicar, crear cupones, dar acceso manual a cursos y conectar un dominio propio sí. Solo se cobra mientras SkillsetMind exija la activación, y solo cuando completas tú mismo el pago de activación en el estudio, nunca automáticamente; una sola vez por cuenta de creador, nunca por curso. Cuando se exige la verificación profesional, debe estar aprobada antes de que puedas pagar. No es una suscripción.",
       "payout_countries": "Países con transferencias",
       "payout_countries_detail": "Las transferencias llegan a tu propia cuenta de Stripe en un país donde SkillsetMind admite transferencias de Stripe: actualmente Estados Unidos, Canadá, el Reino Unido, Suiza, la Unión Europea, Liechtenstein y Noruega. América Latina, incluido Brasil, está prevista más adelante. La disponibilidad depende de Stripe y puede cambiar."
     },
@@ -3183,7 +3170,7 @@
         "items": {
           "0": {
             "q": "¿Los creadores pueden subir sus propios cursos?",
-            "a": "Sí, sin una revisión manual de cada curso. Mientras SkillsetMind exija la activación del estudio, el creador completa el pago único de activación antes de preparar, subir o publicar, y, cuando se exige verificación profesional, esta debe estar aprobada antes de que pueda pagar. Con el estudio activo, el propio creador publica directamente el producto que supera los controles de lanzamiento; los productos de pago necesitan además una cuenta de Stripe que pueda aceptar cobros antes de que se abra el pago."
+            "a": "Sí, sin una revisión manual de cada curso. El creador puede preparar, subir y conectar Stripe primero. Mientras SkillsetMind exija la activación del estudio, el pago único de activación se completa antes de publicar el primer curso, y, cuando se exige verificación profesional, esta debe estar aprobada antes de que pueda pagar. Después, el propio creador publica directamente el producto que supera los controles de lanzamiento; los productos de pago necesitan además una cuenta de Stripe que pueda aceptar cobros antes de que se abra el pago."
           },
           "1": {
             "q": "¿Cómo debo elegir las categorías del curso?",
@@ -5340,11 +5327,12 @@
     "teacherTerms": {
       "title": "Condiciones para educadores",
       "description": "Las condiciones que rigen la enseñanza y las transferencias a educadores en SkillsetMind.",
+      "effectiveDate": "27 de septiembre de 2026",
       "text1": "Estas Condiciones para educadores se aplican además de las <terms>Condiciones de servicio</terms> cuando publicas o vendes cursos en SkillsetMind (\"educador\", \"tú\"). Si estas condiciones entran en conflicto con las Condiciones de servicio, estas condiciones prevalecen para tu actividad como educador.",
       "text2": "Existen para proteger a tres partes a la vez: tus estudiantes, tu trabajo y la confianza en el mercado. Nuestros compromisos públicos contigo están recogidos en <promise>La promesa</promise>.",
       "text3": "Eres un profesional independiente, no un empleado, agente ni socio de SkillsetMind. Tú decides qué enseñar, qué precio fijar (dentro de las opciones admitidas por la plataforma) y cómo gestionar tus cursos. SkillsetMind proporciona la tecnología, el proceso de pago y el mercado — no supervisa tu práctica profesional.",
       "text4": "Debes tener al menos 18 años. Las credenciales, licencias, títulos o experiencia profesional que presentes en tu perfil o en las páginas de tus cursos deben ser veraces y estar actualizados. Falsear cualificaciones — especialmente las reguladas o clínicas — es motivo de retirada inmediata.",
-      "text5": "Para vender en SkillsetMind debes poder abrir y mantener tu propia cuenta de Stripe en un país donde SkillsetMind admita transferencias de Stripe: actualmente Estados Unidos, Canadá, el Reino Unido, Suiza, la Unión Europea, Liechtenstein y Noruega. América Latina, incluido Brasil, está prevista más adelante. La disponibilidad depende de Stripe y puede cambiar. Si Stripe no puede verificarte o hacerte transferencias en tu país, no puedes vender cursos en SkillsetMind.",
+      "text5": "Para vender en SkillsetMind debes poder abrir y mantener tu propia cuenta de Stripe en un país donde SkillsetMind admita transferencias de Stripe: actualmente Estados Unidos, Canadá, el Reino Unido, Suiza, la Unión Europea, Liechtenstein y Noruega. América Latina, incluido Brasil, está prevista más adelante. La disponibilidad depende de Stripe y puede cambiar. Si Stripe no puede verificarte o hacerte transferencias en tu país, no puedes vender cursos en SkillsetMind. Puedes conectar Stripe en el estudio antes de pagar la tarifa de activación, para comprobarlo primero.",
       "text6": "Conservas la plena titularidad de la propiedad intelectual del contenido que creas. Al publicar en SkillsetMind nos concedes una licencia no exclusiva y mundial para alojar, codificar, mostrar y proporcionar tu contenido a tus estudiantes inscritos, y para utilizar el título, la descripción y la imagen de portada de tu curso y tu perfil público para promocionar tu curso dentro y fuera de la plataforma. Esta licencia finaliza para un curso cuando lo retiras, excepto para los estudiantes ya inscritos, que conservan el acceso por el que pagaron.",
       "text7": "No existe exclusividad. Puedes vender el mismo contenido o uno similar en cualquier otro lugar.",
       "text8": "Eres el único responsable de la exactitud, originalidad, legalidad y seguridad de los estudiantes en relación con todo lo que publicas — videos, materiales, publicaciones en comunidades y sesiones en vivo. Debes ser titular o disponer de los derechos de todo lo incluido en tu curso, como música, imágenes y fragmentos.",
@@ -5361,10 +5349,10 @@
       "text19": "<strong>Comisión</strong> — SkillsetMind cobra una comisión de plataforma por cada venta según tu plan de suscripción, tal como se muestra en la <pricing>página de precios</pricing> en el momento de la venta. Stripe la descuenta del cargo automáticamente; no te la facturamos por separado.",
       "text20": "<strong>Transferencias</strong> — Stripe las realiza desde el saldo de tu propia cuenta a tu banco. El proceso de pago puede presentarse en 30 monedas; Stripe establece en tu cuenta conectada la moneda en la que se liquida tu saldo y se transfiere a tu banco, y puede aplicarse una conversión cuando ambas difieran. El calendario de transferencias es el de tu cuenta conectada de Stripe y está controlado por Stripe; SkillsetMind no añade ningún período de retención adicional porque no retiene nada. Stripe aplica sus propios plazos de liquidación y transferencias, que dependen de tu país y método de pago, e impone un período de espera para la primera transferencia de una cuenta conectada nueva — normalmente de 7 a 14 días, y más en algunos países; el calendario lo fija Stripe — que SkillsetMind no puede dispensar. La ausencia de una retención por parte de SkillsetMind no acorta los plazos propios de Stripe. Debes completar la verificación de identidad de Stripe para recibir transferencias.",
       "text21": "<strong>Reembolsos, contracargos y saldos negativos</strong> — como comerciante registrado, asumes los reembolsos, las disputas (contracargos) y las comisiones por disputa de Stripe de tus ventas. Stripe carga en tu saldo de Stripe los reembolsos de estudiantes dentro del plazo de {days} días y cualquier disputa. Nuestra comisión de plataforma sobre una venta reembolsada se te devuelve junto con el reembolso; no se devuelve cuando una venta se pierde en una disputa. SkillsetMind no puede revertir una disputa en tu nombre. Si los reembolsos, las disputas o las comisiones dejan tu saldo de Stripe en negativo, Stripe puede cargar el importe en tu cuenta bancaria para cubrirlo, y SkillsetMind puede pausar tus ventas o tus transferencias hasta que el saldo quede saldado. Las tasas anormales de contracargos que se repitan pueden dar lugar a una revisión de tu cuenta.",
-      "text22": "<strong>Qué es</strong> — una tarifa única de activación de US${amount} que desbloquea el estudio del creador: crear borradores de cursos, subir videos, crear cupones, conectar un dominio propio y publicar. Se cobra una sola vez por cuenta de creador, nunca por curso, y no es una suscripción. SkillsetMind la cobra en su propia cuenta de Stripe; no es una venta en la tuya.",
-      "text23": "<strong>Cuándo se cobra</strong> — solo cuando completas tú mismo el pago de activación en el estudio, y solo mientras SkillsetMind exija la activación. Cuando se exige la verificación profesional, debe estar aprobada antes de que puedas pagar. SkillsetMind nunca cobra la tarifa automáticamente.",
+      "text22": "<strong>Qué es</strong> — una tarifa única de activación de US${amount} que desbloquea la publicación y las herramientas para vender un curso publicado: cupones, acceso manual a cursos y dominio propio. Preparar cursos, subir videos y conectar Stripe no la requieren. Se cobra una sola vez por cuenta de creador, nunca por curso, y no es una suscripción. SkillsetMind la cobra en su propia cuenta de Stripe; no es una venta en la tuya.",
+      "text23": "<strong>Cuándo se cobra</strong> — al publicar tu primer curso, solo si completas tú mismo el pago de activación en el estudio, y solo mientras SkillsetMind exija la activación. Cuando se exige la verificación profesional, debe estar aprobada antes de que puedas pagar. SkillsetMind nunca cobra la tarifa automáticamente.",
       "text24": "<strong>Invitaciones y exenciones</strong> — una invitación puede eximirte de la tarifa. Una exención concedida después de que ya hayas pagado no da derecho al reembolso de la tarifa pagada.",
-      "text25": "<strong>Reembolsos</strong> — reembolsamos la tarifa de activación si se cobró dos veces o por error, si se rechaza tu verificación profesional, si las transferencias de Stripe no están disponibles en tu país, o si lo pides dentro de los 7 días siguientes al pago y no has publicado ningún curso. En los demás casos no es reembolsable. Para pedirlo, escribe a <support>support@skillsetmind.com</support>. Una tarifa reembolsada vuelve a cerrar el estudio del creador hasta que la tarifa se pague de nuevo o se exima.",
+      "text25": "<strong>Reembolsos</strong> — reembolsamos la tarifa de activación si se cobró dos veces o por error, si se rechaza tu verificación profesional, si las transferencias de Stripe no están disponibles en tu país, o si lo pides dentro de los 7 días siguientes al pago y no has publicado ningún curso. En los demás casos no es reembolsable. Para pedirlo, escribe a <support>support@skillsetmind.com</support>. Una tarifa reembolsada vuelve a cerrar tu tienda y a bloquear la publicación hasta que la tarifa se pague de nuevo o se exima.",
       "text26": "Eres responsable de tus propios impuestos sobre tus ingresos, incluido el impuesto sobre la renta y cualquier IVA/GST u obligación local que te sea aplicable como profesional independiente. SkillsetMind y Stripe pueden emitir formularios fiscales o recopilar información fiscal cuando la ley lo exija.",
       "text27": "Las páginas de tus cursos, los testimonios y las promociones deben ser veraces. No garantices resultados clínicos, curas ni resultados de ingresos. Los testimonios deben ser auténticos y no pueden dar a entender resultados que no sean habituales.",
       "text28": "Podemos pausar o retirar un curso, o suspender una cuenta de educador, por incumplir estas condiciones, con aviso y una oportunidad de corregir el problema cuando el incumplimiento sea subsanable. El fraude, la falsedad en las credenciales o los problemas de seguridad de los estudiantes pueden dar lugar a una retirada inmediata.",

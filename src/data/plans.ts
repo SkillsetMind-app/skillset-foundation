@@ -11,10 +11,12 @@
  * still applies its own settlement and payout timing on the creator's
  * connected account, which the platform does not control and cannot waive.
  *
- * Separately from the tiers, a creator pays a ONE-TIME activation fee before
- * publishing their first course. It does not recur and it is not a subscription:
- * the Free plan still costs nothing per month and still takes 10% per sale. The
- * gate is enforced in SQL (public.publish_teacher_course) and switched by the
+ * Separately from the tiers, a creator pays a ONE-TIME activation fee when
+ * publishing their first course. Drafting, uploading video and connecting
+ * Stripe come before it and do not need it. It does not recur and it is not a
+ * subscription: the Free plan still costs nothing per month and still takes 10%
+ * per sale. The gate is enforced in SQL (public.publish_teacher_course, backed
+ * by the courses trigger on the move to 'published') and switched by the
  * `require_activation_fee` row in platform_settings, not by this file.
  *
  * If the user upgrades or downgrades, sales BEFORE the change keep the
@@ -165,8 +167,9 @@ export function planByStripePriceId(priceId: string): Plan | undefined {
 }
 
 /**
- * One-time storefront activation fee, in USD. Charged once per creator, before
- * their first publish. Not a subscription, not per-course, never charged again.
+ * One-time storefront activation fee, in USD. Charged once per creator, when
+ * they publish their first course — the studio itself is open before it. Not a
+ * subscription, not per-course, never charged again.
  */
 export const activationFeeUsd = 25;
 

@@ -1,13 +1,13 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { createHmac } from "node:crypto";
 
-const mocks = vi.hoisted(() => ({ createVideo: vi.fn(), course: vi.fn() }));
+const mocks = vi.hoisted(() => ({ createVideo: vi.fn(), course: vi.fn(), assertActivated: vi.fn() }));
 vi.mock("@/lib/supabase/server", () => ({ createSupabaseServerClient: async () => ({
   auth: { getUser: async () => ({ data: { user: { id: "real-owner" } }, error: null }) },
   from: () => { const query = { select: () => query, eq: () => query, maybeSingle: mocks.course }; return query; },
 }) }));
 vi.mock("@/lib/payments/server/auth", () => ({
-  assertCreatorActivated: vi.fn(), enforceRateLimit: vi.fn(), paymentErrorResponse: vi.fn(),
+  assertCreatorActivated: mocks.assertActivated, enforceRateLimit: vi.fn(), paymentErrorResponse: vi.fn(),
 }));
 vi.mock("@/lib/bunny/server", async (importOriginal) => ({
   ...await importOriginal<typeof import("@/lib/bunny/server")>(), createBunnyVideo: mocks.createVideo,
@@ -40,4 +40,16 @@ it("never creates or binds a video for a course the caller does not own", async 
     method: "POST", body: JSON.stringify({ courseId: "foreign-course" }),
   }))).status).toBe(403);
   expect(mocks.createVideo).not.toHaveBeenCalled();
+});
+
+// Uploading is part of building the course; the one-time activation fee is
+// charged at the first Publish, so an unpaid owner still gets an upload.
+it("creates the upload for an owner who has not paid the activation fee", async () => {
+  mocks.assertActivated.mockRejectedValue(new Error("activation_required"));
+  const response = await POST(new Request("http://localhost/api/teach/video/create", {
+    method: "POST", body: JSON.stringify({ courseId: "course-1", title: "Lesson" }),
+  }));
+  expect(response.status).toBe(200);
+  expect(mocks.assertActivated).not.toHaveBeenCalled();
+  expect(mocks.createVideo).toHaveBeenCalledTimes(1);
 });
