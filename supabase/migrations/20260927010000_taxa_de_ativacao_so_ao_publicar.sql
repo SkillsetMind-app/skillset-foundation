@@ -9,8 +9,10 @@
 --
 -- O que muda no banco:
 --
--- 1. enforce_creator_activation() só recusa a passagem para 'published' feita
---    pelo próprio dono. Rascunho, edição e edição de curso já publicado passam.
+-- 1. enforce_creator_activation() só recusa a escrita do próprio dono em curso
+--    cujo status resultante é 'published': publicar, e também editar um curso
+--    já publicado quando a ativação foi revogada (estorno ou chargeback limpam
+--    activation_fee_paid_at). Rascunho e edição de rascunho passam.
 --    publish_teacher_course (20260915010000) continua sendo a porta de verdade
 --    e recusa antes com a mesma frase; o gatilho fica como segunda tranca para
 --    qualquer caminho que escreva status sem passar pela RPC.
@@ -33,13 +35,13 @@ security definer
 set search_path to 'public', 'pg_temp'
 as $$
 begin
-  -- Only the creator publishing their OWN course is gated. Drafting, editing
-  -- and saving an already-published course pass. A student-triggered counter
-  -- update or a service-role webhook has a different (or null) uid and passes.
+  -- Only the creator writing their OWN public course is gated: publishing it,
+  -- or editing it after the activation was revoked. Drafts pass. A
+  -- student-triggered counter update or a service-role webhook has a
+  -- different (or null) uid and passes.
   if new.owner_id is not null
      and new.owner_id = (select auth.uid())::text
      and new.status = 'published'
-     and (tg_op = 'INSERT' or old.status is distinct from 'published')
      and public.creator_activation_blocked(new.owner_id) then
     -- Wording is load-bearing: the builder matches on "activation fee" to
     -- show the checkout link. Same sentence as publish_teacher_course.

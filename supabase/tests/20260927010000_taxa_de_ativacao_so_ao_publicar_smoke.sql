@@ -112,6 +112,32 @@ select pg_temp.check_gate('trigger alone refuses the unpaid owner publishing',
     'Pay the one-time activation fee before publishing your first course.'));
 select set_config('skillset.trusted_write', 'off', true);
 
+-- Ativação revogada (estorno limpa activation_fee_paid_at): o dono não edita
+-- mais o curso que ficou publicado.
+select pg_temp.act_as(null, 'service_role');
+select set_config('skillset.trusted_write', 'on', true);
+update public.courses set status = 'published' where id = current_setting('smoke.course_1', true);
+select set_config('skillset.trusted_write', 'off', true);
+select pg_temp.act_as(pg_temp.uid(1), 'authenticated');
+set local role authenticated;
+select pg_temp.check_gate('revoked creator cannot edit a course that stayed published',
+  pg_temp.refused(format($q$select public.update_teacher_course_builder(%L, %L::jsonb)$q$,
+    current_setting('smoke.course_1', true),
+    jsonb_build_object('title', 'Publish only 1 edited',
+      'summary', 'Curso usado só por este smoke da taxa ao publicar.',
+      'categories', jsonb_build_array('smoke'),
+      'paymentType', 'free', 'priceAmountMinor', 0, 'currency', 'USD',
+      'modules', jsonb_build_array(jsonb_build_object('id', 'm1', 'title', 'Modulo',
+        'lessons', jsonb_build_array(jsonb_build_object('id', 'po-l1-1', 'title', 'Aula',
+          'description', 'Aula', 'type', 'text', 'contentText', 'Conteudo da aula para o smoke.',
+          'externalUrl', 'https://example.invalid/aula')))))::text),
+    'Pay the one-time activation fee before publishing your first course.'));
+reset role;
+select pg_temp.act_as(null, 'service_role');
+select set_config('skillset.trusted_write', 'on', true);
+update public.courses set status = 'draft' where id = current_setting('smoke.course_1', true);
+select set_config('skillset.trusted_write', 'off', true);
+
 -- Quem pagou publica.
 select pg_temp.act_as(pg_temp.uid(2), 'authenticated');
 set local role authenticated;
@@ -124,7 +150,7 @@ select pg_temp.act_as(null, 'service_role');
 select pg_temp.check_gate('only the paid course is published',
   (select status from public.courses where id = current_setting('smoke.course_1', true)) <> 'published'
   and (select status from public.courses where id = current_setting('smoke.course_2', true)) = 'published');
-select pg_temp.check_gate('every case ran', (select count(*) = 9 from publish_only_checks));
+select pg_temp.check_gate('every case ran', (select count(*) = 10 from publish_only_checks));
 
 select name, passed from publish_only_checks order by name;
 do $$

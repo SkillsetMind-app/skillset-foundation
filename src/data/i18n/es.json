@@ -95,6 +95,7 @@
     "send": "Enviar mensaje",
     "notReady": "Estamos preparando el asesor. Estará disponible en breve.",
     "tooManyMessages": "Has enviado muchos mensajes. Espera un momento y vuelve a intentarlo.",
+    "activationRequired": "El asesor del estudio se abre cuando activas tu tienda. Preparar cursos, subir videos y conectar Stripe no lo necesitan.",
     "sessionExpired": "Tu sesión ha caducado. Actualiza la página e inicia sesión de nuevo.",
     "somethingWrong": "Algo salió mal. Vuelve a intentarlo.",
     "unreachable": "No se pudo contactar con el asesor. Revisa tu conexión y vuelve a intentarlo.",

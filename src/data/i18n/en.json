@@ -95,6 +95,7 @@
     "send": "Send message",
     "notReady": "The advisor is being set up and will be available shortly.",
     "tooManyMessages": "You've sent a lot of messages. Please wait a moment and try again.",
+    "activationRequired": "The studio advisor opens after you activate your storefront. Drafting, uploading and connecting Stripe don't need it.",
     "sessionExpired": "Your session expired. Refresh the page and sign in again.",
     "somethingWrong": "Something went wrong. Please try again.",
     "unreachable": "Couldn't reach the advisor. Check your connection and try again.",
