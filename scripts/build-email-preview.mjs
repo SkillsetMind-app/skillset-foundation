@@ -17,7 +17,7 @@ const SHEET = [
   { file: "confirmation.html", tab: "Confirm sign up", subject: "Welcome to SkillsetMind — confirm your email", variable: "{{ .TokenHash }}", note: "Signup, including operational invitations to new accounts." },
   { file: "magic_link.html", tab: "Magic link or OTP", subject: "Your SkillsetMind sign-in link", variable: "{{ .TokenHash }}", note: "Passwordless sign-in, including operational invitations to confirmed accounts." },
   { file: "invite.html", tab: "Invite user", subject: "You're invited to SkillsetMind", variable: "{{ .ConfirmationURL }}", note: "Supabase native invitations; not the operational invitation flow." },
-  { file: "email_change.html", tab: "Change email address", subject: "Confirm your new email for SkillsetMind", variable: "{{ .ConfirmationURL }}", note: "Confirms the new address, not the old one." },
+  { file: "email_change.html", tab: "Change email address", subject: "Confirm your email change for SkillsetMind", variable: "{{ .TokenHash }}", note: "type=email_change. With secure email change on, sent to both the current and the new address, each with its own token hash." },
   { file: "reauthentication.html", tab: "Reauthentication", subject: "Your SkillsetMind verification code", variable: "{{ .Token }}", note: "A 6-digit code, not a link." },
 ];
 
@@ -29,6 +29,8 @@ const SAMPLE = [
   [/\{\{ \.TokenHash \}\}/g, "pkce_a41f9c6b2e7d"],
   [/\{\{ \.ConfirmationURL \}\}/g, "https://www.skillsetmind.com/auth/confirm?token_hash=pkce_a41f9c6b2e7d&amp;type=signup"],
   [/\{\{ \.Token \}\}/g, "418302"],
+  [/\{\{ \.Email \}\}/g, "old-address@example.com"],
+  [/\{\{ \.NewEmail \}\}/g, "new-address@example.com"],
 ];
 
 const cards = SHEET.map((entry) => {
