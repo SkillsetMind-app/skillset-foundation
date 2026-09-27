@@ -3114,7 +3114,7 @@ export function CourseBuilderStudio() {
                       }}
                       className="flex min-h-11 min-w-0 flex-1 items-center gap-3 rounded-none"
                     >
-                      {/* Recorte redondo da capa vertical 2:3. */}
+                      {/* Recorte da capa vertical 2:3. */}
                       <span className="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-none border border-[var(--color-line)] bg-white text-[var(--color-ink-soft)]">
                         {coverUrl ? (
                           // eslint-disable-next-line @next/next/no-img-element -- module cover is an arbitrary CourseAsset URL
