@@ -63,7 +63,9 @@ export function BrandPortrait({
   initialIndex,
 }: BrandPortraitProps) {
   // Without a server draw the server leaves the slot empty; with one, the
-  // client's first draw of the page load adopts it, so hydration agrees.
+  // client's first draw of the page load adopts it, so hydration agrees. On a
+  // page that seeds, seed every portrait (or put the seeded one first): an
+  // unseeded one that draws earlier would win the page's single draw.
   const index = useSyncExternalStore(
     subscribe,
     () => getDrawnIndex(initialIndex),
