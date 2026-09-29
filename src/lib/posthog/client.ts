@@ -1,8 +1,21 @@
-import posthog from "posthog-js";
+import type { PostHog } from "posthog-js";
 
 import { getStoredCookieConsent } from "@/lib/consent/cookie-consent";
 
+// posthog-js is ~95 kB gz and captures nothing before an explicit Accept, so
+// it is not in the page bundle: it is imported on demand, and only once the
+// visitor has accepted. Calls made while it loads are queued in order.
 let initialized = false;
+let instance: PostHog | null = null;
+const queue: Array<(ph: PostHog) => void> = [];
+// Identity set before PostHog started (signed in, not yet accepted), replayed
+// on start so events after an Accept stay attached to the signed-in user.
+let pendingIdentity: { distinctId: string; properties?: Record<string, unknown> } | null = null;
+
+function withPostHog(fn: (ph: PostHog) => void): void {
+  if (instance) fn(instance);
+  else queue.push(fn);
+}
 
 export function initPostHog(): void {
   if (typeof window === "undefined") return;
@@ -18,28 +31,43 @@ export function initPostHog(): void {
     return;
   }
 
-  posthog.init(key, {
-    api_host: host,
-    person_profiles: "identified_only",
-    capture_pageview: false, // we capture manually on route change (App Router)
-    capture_pageleave: true,
-    autocapture: true,
-    // GDPR/ePrivacy prior-consent: capture NOTHING until the visitor explicitly
-    // accepts. A first-time (null) or rejected visitor starts opted-out, so no
-    // analytics, autocapture, session recording, or exception capture fires before
-    // consent. applyAnalyticsConsent(true) opts in once they click Accept.
-    opt_out_capturing_by_default: getStoredCookieConsent() !== "accepted",
-    capture_exceptions: true,
-    session_recording: {
-      maskAllInputs: true,
-      maskTextSelector: '[data-sensitive="true"]',
-    },
-    loaded: (ph) => {
-      if (process.env.NODE_ENV === "development") ph.debug(false);
-    },
-  });
+  // GDPR/ePrivacy prior-consent: capture NOTHING until the visitor explicitly
+  // accepts. A first-time (null) or rejected visitor never loads PostHog at
+  // all; applyAnalyticsConsent(true) starts it once they click Accept.
+  if (getStoredCookieConsent() !== "accepted") return;
 
   initialized = true;
+  void import("posthog-js").then(
+    ({ default: posthog }) => {
+      posthog.init(key, {
+        api_host: host,
+        person_profiles: "identified_only",
+        capture_pageview: false, // we capture manually on route change (App Router)
+        capture_pageleave: true,
+        autocapture: true,
+        // Still re-checked at load time: a Reject in the meantime wins.
+        opt_out_capturing_by_default: getStoredCookieConsent() !== "accepted",
+        capture_exceptions: true,
+        session_recording: {
+          maskAllInputs: true,
+          maskTextSelector: '[data-sensitive="true"]',
+        },
+        loaded: (ph) => {
+          if (process.env.NODE_ENV === "development") ph.debug(false);
+        },
+      });
+      if (pendingIdentity) {
+        posthog.identify(pendingIdentity.distinctId, pendingIdentity.properties);
+        pendingIdentity = null;
+      }
+      instance = posthog;
+      for (const fn of queue.splice(0)) fn(posthog);
+    },
+    () => {
+      // Blocked or offline: analytics is best-effort, drop what was queued.
+      queue.length = 0;
+    },
+  );
 }
 
 /**
@@ -48,13 +76,17 @@ export function initPostHog(): void {
  */
 export function applyAnalyticsConsent(granted: boolean): void {
   if (typeof window === "undefined") return;
+  // The decision is already stored, so an Accept starts PostHog here.
+  if (granted) initPostHog();
   if (!initialized) return;
 
-  if (granted) {
-    posthog.opt_in_capturing();
-  } else {
-    posthog.opt_out_capturing();
-  }
+  withPostHog((ph) => {
+    if (granted) {
+      ph.opt_in_capturing();
+    } else {
+      ph.opt_out_capturing();
+    }
+  });
 }
 
 /**
@@ -75,7 +107,7 @@ export function captureEvent(
   // initPostHog is idempotent (and a no-op without a key).
   initPostHog();
   if (!initialized) return false;
-  posthog.capture(name, properties);
+  withPostHog((ph) => ph.capture(name, properties));
   return true;
 }
 
@@ -90,7 +122,7 @@ export function captureException(
   if (typeof window === "undefined") return;
   if (!initialized) return;
   const normalized = error instanceof Error ? error : new Error(String(error));
-  posthog.captureException(normalized, context);
+  withPostHog((ph) => ph.captureException(normalized, context));
 }
 
 export function identifyUser(
@@ -98,14 +130,17 @@ export function identifyUser(
   properties?: Record<string, unknown>,
 ): void {
   if (typeof window === "undefined") return;
-  if (!initialized) return;
-  posthog.identify(distinctId, properties);
+  if (!initialized) {
+    pendingIdentity = { distinctId, properties };
+    return;
+  }
+  withPostHog((ph) => ph.identify(distinctId, properties));
 }
 
 export function resetUser(): void {
   if (typeof window === "undefined") return;
+  pendingIdentity = null;
   if (!initialized) return;
-  posthog.reset();
+  withPostHog((ph) => ph.reset());
 }
 
-export { posthog };
