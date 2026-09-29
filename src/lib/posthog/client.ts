@@ -86,7 +86,9 @@ export function applyAnalyticsConsent(granted: boolean): void {
 
   withPostHog((ph) => {
     if (granted) {
-      ph.opt_in_capturing();
+      // Queued while PostHog loads: a Reject since then must win, so never
+      // opt in (nor send $opt_in) unless consent is still "accepted".
+      if (getStoredCookieConsent() === "accepted") ph.opt_in_capturing();
     } else {
       ph.opt_out_capturing();
     }

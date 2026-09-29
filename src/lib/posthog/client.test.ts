@@ -108,3 +108,16 @@ it("stops queueing when PostHog fails to start", async () => {
   expect(client.captureEvent("course_viewed", { course_id: "course-2" })).toBe(false);
   expect(posthog.capture).not.toHaveBeenCalled();
 });
+
+it("a Reject while PostHog is still loading wins over the queued Accept", async () => {
+  const client = await freshClient();
+  window.localStorage.setItem(CONSENT_KEY, "accepted");
+  client.applyAnalyticsConsent(true);
+  window.localStorage.setItem(CONSENT_KEY, "rejected");
+  client.applyAnalyticsConsent(false);
+  await vi.dynamicImportSettled();
+
+  expect(posthog.init.mock.calls[0][1]).toMatchObject({ opt_out_capturing_by_default: true });
+  expect(posthog.opt_in_capturing).not.toHaveBeenCalled();
+  expect(posthog.opt_out_capturing).toHaveBeenCalledTimes(1);
+});
