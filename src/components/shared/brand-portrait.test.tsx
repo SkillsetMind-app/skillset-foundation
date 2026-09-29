@@ -271,4 +271,31 @@ describe("BrandPortrait rotate (homepage hero)", () => {
     const panel = container.querySelector('[data-testid="panel"]') as HTMLElement;
     expect(visible(hero)).toBe(faceOf(sources(panel)[0]));
   });
+
+  it("with a server draw, the face is in the HTML and hydration keeps it", async () => {
+    // Fresh module: no draw yet on this "page load".
+    vi.resetModules();
+    const fresh = await import("@/components/shared/brand-portrait");
+    const html = renderToString(
+      <fresh.BrandPortrait rotate imageClassName="hero" sizes="100vw" priority initialIndex={6} />,
+    );
+    expect(html).toContain(encodeURIComponent(BRAND_PORTRAITS[6]));
+
+    vi.useFakeTimers();
+    const { container } = render(
+      <>
+        <div data-testid="hero">
+          <fresh.BrandPortrait rotate imageClassName="hero" sizes="100vw" priority initialIndex={6} />
+        </div>
+        <div data-testid="panel">
+          <fresh.BrandPortrait imageClassName="panel" sizes="60vw" />
+        </div>
+      </>,
+    );
+    const hero = container.querySelector('[data-testid="hero"]') as HTMLElement;
+    const panel = container.querySelector('[data-testid="panel"]') as HTMLElement;
+    // The page's single draw is the server's: every portrait shows it.
+    expect(visible(hero)).toBe(BRAND_PORTRAITS[6]);
+    expect(faceOf(sources(panel)[0])).toBe(BRAND_PORTRAITS[6]);
+  });
 });

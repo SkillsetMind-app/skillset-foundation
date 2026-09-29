@@ -3,20 +3,9 @@
 import Image from "next/image";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 
-// The ten faces the brand shows. Shared by the marketing hero and the sign-in
-// panel so the two surfaces can never drift apart.
-export const BRAND_PORTRAITS = [
-  "/brand/hero/01_blonde_expert_green_macbook.png",
-  "/brand/hero/02_white_male_tobacco_knit.png",
-  "/brand/hero/03_black_female_terracotta_seated.png",
-  "/brand/hero/04_black_male_burgundy_polo.png",
-  "/brand/hero/05_indian_female_aubergine_notebook.png",
-  "/brand/hero/06_middle_eastern_male_petrol_notebook.png",
-  "/brand/hero/07_east_asian_female_offwhite_tablet.png",
-  "/brand/hero/08_east_asian_male_camel_blazer.png",
-  "/brand/hero/09_brazilian_latina_emerald_blouse.png",
-  "/brand/hero/10_brazilian_latino_burgundy_knit.png",
-] as const;
+import { BRAND_PORTRAITS, drawPortraitIndex } from "@/data/brand-portraits";
+
+export { BRAND_PORTRAITS };
 
 /** How long each face stays on screen before the next one fades in. */
 export const PORTRAIT_INTERVAL_MS = 7_000;
@@ -34,6 +23,13 @@ type BrandPortraitProps = {
    * the sign-in panel holds still; only the homepage hero rotates.
    */
   rotate?: boolean;
+  /**
+   * The face the server already drew for this request. With it the server
+   * renders the image (and its preload) into the HTML, so the LCP image starts
+   * downloading before any JavaScript runs instead of after hydration. Only for
+   * dynamically rendered pages: a cached page would pin every visitor to one face.
+   */
+  initialIndex?: number;
 };
 
 // One draw per page load, shared by every BrandPortrait on the page: a visitor
@@ -41,31 +37,38 @@ type BrandPortraitProps = {
 // fresh load draws again.
 let drawnIndex: number | null = null;
 const subscribe = () => () => {};
-function getDrawnIndex() {
+function getDrawnIndex(seed?: number) {
   if (drawnIndex === null) {
-    drawnIndex = Math.floor(Math.random() * BRAND_PORTRAITS.length);
+    drawnIndex = seed ?? drawPortraitIndex();
   }
   return drawnIndex;
 }
-const getServerIndex = () => null;
 
 /**
  * The brand portrait: one face drawn at random per visit, shared by every
  * BrandPortrait on the page. With `rotate` (the homepage hero) it keeps
  * crossfading through the other faces; without it (sign-in) it holds still.
  *
- * Static rendering has no per-visitor randomness, so the server leaves the
- * slot empty and the client fills it right after hydration — one download, no
- * swap, and nothing for hydration to disagree about. The first face is the
- * LCP candidate either way (`priority`, same `sizes`).
+ * Static rendering has no per-visitor randomness, so by default the server
+ * leaves the slot empty and the client fills it right after hydration — one
+ * download, no swap, and nothing for hydration to disagree about. A dynamic
+ * page can pass `initialIndex` so the server renders the face itself. The
+ * first face is the LCP candidate either way (`priority`, same `sizes`).
  */
 export function BrandPortrait({
   imageClassName,
   sizes,
   priority = false,
   rotate = false,
+  initialIndex,
 }: BrandPortraitProps) {
-  const index = useSyncExternalStore(subscribe, getDrawnIndex, getServerIndex);
+  // Without a server draw the server leaves the slot empty; with one, the
+  // client's first draw of the page load adopts it, so hydration agrees.
+  const index = useSyncExternalStore(
+    subscribe,
+    () => getDrawnIndex(initialIndex),
+    () => initialIndex ?? null,
+  );
 
   if (index === null) {
     return null;

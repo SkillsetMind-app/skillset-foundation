@@ -14,6 +14,13 @@ type LogoWordmarkProps = {
   className?: string;
 };
 
+// Largest box the CSS below draws each asset in: the lockup is at most h-10
+// (40px tall, 5:1 → 200px wide), the mark at most size-12 (48px). Without
+// `sizes`, next/image picks from the intrinsic width (1600/512) and a phone
+// downloaded the 3840px and 1080px renditions of a logo shown ~200px wide.
+const FULL_SIZES = "200px";
+const MARK_SIZES = "48px";
+
 function fullSizeClass(nav: boolean, compact: boolean): string {
   if (nav) return "h-8";
   if (compact) return "h-9";
@@ -44,6 +51,7 @@ export function LogoWordmark({
           alt=""
           width={brand.logoMarkSize.width}
           height={brand.logoMarkSize.height}
+          sizes={MARK_SIZES}
           priority
           className={`logo-wordmark__asset logo-wordmark__asset--light ${markSizeClass(nav, compact)} w-auto object-contain`}
         />
@@ -52,6 +60,7 @@ export function LogoWordmark({
           alt=""
           width={brand.logoMarkSize.width}
           height={brand.logoMarkSize.height}
+          sizes={MARK_SIZES}
           priority
           className={`logo-wordmark__asset logo-wordmark__asset--dark ${markSizeClass(nav, compact)} w-auto object-contain`}
         />
@@ -65,6 +74,7 @@ export function LogoWordmark({
           alt=""
           width={brand.logoFullLightSize.width}
           height={brand.logoFullLightSize.height}
+          sizes={FULL_SIZES}
           priority
           className={`logo-wordmark__asset logo-wordmark__asset--light ${fullSizeClass(nav, compact)} w-auto object-contain`}
         />
@@ -73,6 +83,7 @@ export function LogoWordmark({
           alt=""
           width={brand.logoFullDarkSize.width}
           height={brand.logoFullDarkSize.height}
+          sizes={FULL_SIZES}
           priority
           className={`logo-wordmark__asset logo-wordmark__asset--dark ${fullSizeClass(nav, compact)} w-auto object-contain`}
         />
