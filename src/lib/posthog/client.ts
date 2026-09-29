@@ -6,6 +6,7 @@ import { getStoredCookieConsent } from "@/lib/consent/cookie-consent";
 // it is not in the page bundle: it is imported on demand, and only once the
 // visitor has accepted. Calls made while it loads are queued in order.
 let initialized = false;
+let failed = false;
 let instance: PostHog | null = null;
 const queue: Array<(ph: PostHog) => void> = [];
 // Identity set before PostHog started (signed in, not yet accepted), replayed
@@ -14,7 +15,14 @@ let pendingIdentity: { distinctId: string; properties?: Record<string, unknown> 
 
 function withPostHog(fn: (ph: PostHog) => void): void {
   if (instance) fn(instance);
-  else queue.push(fn);
+  else if (!failed) queue.push(fn);
+}
+
+// Blocked, offline or a stale deploy: analytics is best-effort, so drop what
+// was queued and stop queueing for the rest of the page.
+function giveUp(): void {
+  failed = true;
+  queue.length = 0;
 }
 
 export function initPostHog(): void {
@@ -37,8 +45,8 @@ export function initPostHog(): void {
   if (getStoredCookieConsent() !== "accepted") return;
 
   initialized = true;
-  void import("posthog-js").then(
-    ({ default: posthog }) => {
+  void import("posthog-js")
+    .then(({ default: posthog }) => {
       posthog.init(key, {
         api_host: host,
         person_profiles: "identified_only",
@@ -62,12 +70,8 @@ export function initPostHog(): void {
       }
       instance = posthog;
       for (const fn of queue.splice(0)) fn(posthog);
-    },
-    () => {
-      // Blocked or offline: analytics is best-effort, drop what was queued.
-      queue.length = 0;
-    },
-  );
+    })
+    .catch(giveUp);
 }
 
 /**
@@ -106,7 +110,7 @@ export function captureEvent(
   // full page load hit an uninitialized client and was silently dropped.
   // initPostHog is idempotent (and a no-op without a key).
   initPostHog();
-  if (!initialized) return false;
+  if (!initialized || failed) return false;
   withPostHog((ph) => ph.capture(name, properties));
   return true;
 }

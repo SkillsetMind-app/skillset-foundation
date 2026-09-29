@@ -94,3 +94,17 @@ it("a Reject before PostHog was ever started loads nothing", async () => {
   expect(posthog.init).not.toHaveBeenCalled();
   expect(posthog.opt_out_capturing).not.toHaveBeenCalled();
 });
+
+it("stops queueing when PostHog fails to start", async () => {
+  window.localStorage.setItem(CONSENT_KEY, "accepted");
+  posthog.init.mockImplementationOnce(() => {
+    throw new Error("blocked");
+  });
+  const client = await freshClient();
+
+  expect(client.captureEvent("course_viewed", { course_id: "course-1" })).toBe(true);
+  await vi.dynamicImportSettled();
+  await Promise.resolve();
+  expect(client.captureEvent("course_viewed", { course_id: "course-2" })).toBe(false);
+  expect(posthog.capture).not.toHaveBeenCalled();
+});
