@@ -2,17 +2,29 @@
 
 import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 import type { TeacherCourseProductFormat } from "@/domain/teacher-course";
 
 // Each screen is its own chunk: the course list no longer downloads the whole
 // course editor (and vice versa).
-const loadEditor = () => import("@/components/teacher/course-builder-studio");
-const loadList = () => import("@/components/teacher/teacher-course-studio");
+type EditorModule = typeof import("@/components/teacher/course-builder-studio");
+type ListModule = typeof import("@/components/teacher/teacher-course-studio");
 
-const CourseBuilderStudio = dynamic(() => loadEditor().then((m) => m.CourseBuilderStudio));
-const TeacherCourseStudio = dynamic(() => loadList().then((m) => m.TeacherCourseStudio));
+// Modules already downloaded. React.lazy suspends on its first render even when
+// the chunk is cached, which would flash the page's Suspense fallback between
+// the auth spinner and the screen; a module that is already here renders
+// directly instead.
+let editorModule: EditorModule | null = null;
+let listModule: ListModule | null = null;
+
+const loadEditor = () =>
+  import("@/components/teacher/course-builder-studio").then((m) => (editorModule = m));
+const loadList = () =>
+  import("@/components/teacher/teacher-course-studio").then((m) => (listModule = m));
+
+const DynamicEditor = dynamic(() => loadEditor().then((m) => m.CourseBuilderStudio));
+const DynamicList = dynamic(() => loadList().then((m) => m.TeacherCourseStudio));
 
 // The hub only renders once ProtectedSurface has resolved the session, on the
 // client. Start fetching the screen this URL needs as soon as this module is
@@ -36,6 +48,10 @@ export function TeacherBuilderHub() {
   const courseId = searchParams.get("courseId");
   const newCourseRequested = searchParams.get("newCourse") === "1";
   const initialFormat = parseProductFormat(searchParams.get("format"));
+  // Chosen once per mount: swapping the dynamic wrapper for the direct
+  // component later would remount the screen and drop its state.
+  const [CourseBuilderStudio] = useState(() => editorModule?.CourseBuilderStudio ?? DynamicEditor);
+  const [TeacherCourseStudio] = useState(() => listModule?.TeacherCourseStudio ?? DynamicList);
 
   // Once this screen is up, fetch the other one while idle, so moving between
   // the list and the editor stays as instant as when both were in one bundle.
