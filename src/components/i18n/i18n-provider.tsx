@@ -86,6 +86,7 @@ export function I18nProvider({
       if (next === requested.current) {
         return;
       }
+      const previous = requested.current;
       requested.current = next;
 
       const persist = () => {
@@ -111,11 +112,10 @@ export function I18nProvider({
         return;
       }
       loadDictionary(next).then(apply, () => {
-        // Chunk failed to load (offline, stale deploy): keep the choice and let
-        // a full reload bring the dictionary with the page.
-        if (requested.current !== next) return;
-        persist();
-        window.location.reload();
+        // Chunk failed to load (offline, stale deploy): stay on the current
+        // language rather than reload and lose what the person was typing.
+        // Picking it again retries.
+        if (requested.current === next) requested.current = previous;
       });
     },
     [router],
