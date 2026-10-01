@@ -1,11 +1,16 @@
 import { BrandPortrait } from "@/components/shared/brand-portrait";
 import { HeroCtas } from "@/components/site/hero-ctas";
+import { drawPortraitIndex } from "@/data/brand-portraits";
 import { getServerTranslation } from "@/lib/i18n/server";
 
 // Server component: só texto traduzido, nada de estado. O que tem estado é a
 // ilha HeroCtas, que continua cliente.
 export async function MarketingHero() {
   const { t } = await getServerTranslation();
+  // O rosto é sorteado aqui (a home é dinâmica: cookies/headers no layout), e
+  // não depois da hidratação: a imagem do LCP vai no HTML com preload e começa
+  // a baixar antes de qualquer JavaScript.
+  const firstPortrait = drawPortraitIndex();
   // Nada de margem negativa: o cabeçalho virou barra fixa com faixa própria,
   // então o hero só começa embaixo dela. O encaixe por -mt-24/-mt-32 dependia
   // da altura exata do cabeçalho flutuante e quebrava quando ela mudava.
@@ -26,6 +31,7 @@ export async function MarketingHero() {
               imageClassName="hero-portrait-image object-cover object-[78%_center] sm:object-[74%_center] md:object-[68%_center] lg:object-[center_top]"
               sizes="100vw"
               priority
+              initialIndex={firstPortrait}
             />
           </div>
         </div>

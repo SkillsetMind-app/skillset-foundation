@@ -4,6 +4,10 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
+import {
+  TurnstileWidget,
+  isCaptchaEnabled,
+} from "@/components/auth/turnstile-widget";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import type { UserGoal } from "@/domain/user-profile";
 import {
@@ -117,6 +121,11 @@ export function OnboardingChoice() {
   const [emailVerified, setEmailVerified] = useState(false);
   const [verificationMessage, setVerificationMessage] = useState("");
   const [isSendingVerification, setIsSendingVerification] = useState(false);
+  // The verification resend is CAPTCHA-guarded like sign-up. Same widget as the
+  // auth forms: with no site key it renders nothing and the token stays "".
+  const [captchaToken, setCaptchaToken] = useState("");
+  const [captchaResetSignal, setCaptchaResetSignal] = useState(0);
+  const captchaPending = isCaptchaEnabled && !captchaToken;
   const [error, setError] = useState("");
   const [isBootstrapping, setIsBootstrapping] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -252,11 +261,13 @@ export function OnboardingChoice() {
     setIsSendingVerification(true);
 
     try {
-      await sendSkillsetEmailVerification();
+      await sendSkillsetEmailVerification(captchaToken || undefined);
       setVerificationMessage(t("onboarding.verificationSent"));
     } catch {
       setError(t("onboarding.verificationSendError"));
     } finally {
+      // Turnstile tokens are single-use — refresh for the next attempt.
+      if (isCaptchaEnabled) setCaptchaResetSignal((n) => n + 1);
       setIsSendingVerification(false);
     }
   }
@@ -400,10 +411,18 @@ export function OnboardingChoice() {
           </div>
           {!emailVerified ? (
             <div className="mt-4 flex flex-wrap gap-2">
+              {isCaptchaEnabled ? (
+                <div className="basis-full">
+                  <TurnstileWidget
+                    onToken={setCaptchaToken}
+                    resetSignal={captchaResetSignal}
+                  />
+                </div>
+              ) : null}
               <button
                 type="button"
                 onClick={handleSendVerification}
-                disabled={isSendingVerification}
+                disabled={isSendingVerification || captchaPending}
                 className="button-outline px-4 py-2 text-xs disabled:opacity-60"
               >
                 {t("onboarding.sendVerification")}
@@ -547,10 +566,18 @@ export function OnboardingChoice() {
                 </div>
                 {!emailVerified ? (
                   <div className="mt-4 flex flex-wrap gap-2">
+                    {isCaptchaEnabled ? (
+                      <div className="basis-full">
+                        <TurnstileWidget
+                          onToken={setCaptchaToken}
+                          resetSignal={captchaResetSignal}
+                        />
+                      </div>
+                    ) : null}
                     <button
                       type="button"
                       onClick={handleSendVerification}
-                      disabled={isSendingVerification}
+                      disabled={isSendingVerification || captchaPending}
                       className="button-outline px-4 py-2 text-xs disabled:opacity-60"
                     >
                       {t("onboarding.sendVerification")}
