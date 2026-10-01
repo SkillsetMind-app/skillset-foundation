@@ -375,14 +375,14 @@
   },
   "home": {
     "metadata": {
-      "title": "Course platform for coaches, facilitators & mentors",
-      "description": "For coaches, facilitators and mentors who already teach live and want to sell their method as a course with a paid community, with no monthly fee. Buyers pay your own Stripe account directly, so we never hold your money."
+      "title": "Course platform for psychologists & personal-development professionals",
+      "description": "For psychologists and personal-development professionals who already teach live and want to sell their method as a course with a paid community, with no monthly fee. Buyers pay your own Stripe account directly, so we never hold your money."
     },
     "hero": {
-      "eyebrow": "For coaches, facilitators & mentors",
+      "eyebrow": "For psychologists & personal-development professionals",
       "title1": "Your knowledge changes lives.",
       "title2": "Now turn it into a course.",
-      "sub": "For coaches, facilitators and mentors who already teach live and want to sell their method as a course with a paid community, with no monthly fee. We run the checkout and the classroom — your buyers pay your own Stripe account, so we never hold a cent of your money. You teach.",
+      "sub": "For psychologists and personal-development professionals who already teach live and want to sell their method as a course with a paid community, with no monthly fee. We run the checkout and the classroom — your buyers pay your own Stripe account, so we never hold a cent of your money. You teach.",
       "trust1Title": "Verified",
       "trust1Desc": "Where required, professionals are verified before they can publish, and courses that break marketplace standards can be paused or removed.",
       "trust2Title": "Global",
@@ -449,7 +449,7 @@
       "readFull": "Read the full Promise"
     },
     "creators": {
-      "eyebrow": "For coaches, facilitators & mentors",
+      "eyebrow": "For psychologists & personal-development professionals",
       "title": "Teach beyond the limits of your live sessions.",
       "ctaStart": "Start teaching",
       "ctaPromise": "Read the Creator Promise",

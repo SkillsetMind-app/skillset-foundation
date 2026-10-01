@@ -1,5 +1,5 @@
-// Public www copy: no earnings claims on /pricing, no psychologist framing on
-// the home/footer/for-creators, and the one-time fee plus payout countries
+// Public www copy: no earnings claims on /pricing, psychologists named on the
+// home only (decision of 2026-09-25; the footer and /for-creators still do not), and the one-time fee plus payout countries
 // disclosed on /for-creators and /fees-and-payouts exactly as the teacher terms
 // state them (legalPages.teacherTerms.text5 and text22-23).
 import { cleanup, render } from "@testing-library/react";
@@ -74,10 +74,10 @@ describe("public pricing makes no earnings claims", () => {
 });
 
 describe("www positioning", () => {
-  it.each(dictionaries)("the %s home, footer and /for-creators copy speaks to coaches, facilitators and mentors", (_locale, dict) => {
-    expect(JSON.stringify([dict.home, dict.footer, dict.publicPages.creators])).not.toMatch(/psycholog|psicólog/i);
+  it.each(dictionaries)("the %s home, footer and /for-creators copy names its audience", (_locale, dict) => {
+    expect(JSON.stringify([dict.footer, dict.publicPages.creators])).not.toMatch(/psycholog|psicólog/i);
     expect(dict.home.hero.sub).toMatch(
-      /^(For coaches, facilitators and mentors who already teach live|Para coaches, facilitadores y mentores que ya enseñan en vivo)/,
+      /^(For psychologists and personal-development professionals who already teach live|Para psicólogos y profesionales del desarrollo personal que ya enseñan en vivo)/,
     );
   });
 });
@@ -119,7 +119,6 @@ describe("creator fee disclosure", () => {
 describe("public copy guard: home, /pricing, /fees-and-payouts, /for-creators, /help", () => {
   const falseClaims: ReadonlyArray<readonly [string, RegExp]> = [
     ["an earnings claim", incomeClaims],
-    ["psychologist framing", /psycholog|psicólog/i],
     [
       "publishing or selling immediately",
       /publish[^.]{0,100}immediately|immediately[^.]{0,20}(publish|sell)|publica[^.]{0,100}de inmediato|de inmediato[^.]{0,20}(publica|vend)/i,
@@ -141,6 +140,10 @@ describe("public copy guard: home, /pricing, /fees-and-payouts, /for-creators, /
       expect(text, `${where} carries ${claim}`).not.toMatch(pattern);
     }
   }
+
+  // Since 2026-09-25 the home names psychologists as part of its audience (a
+  // decision of the owner). Every other public entry page still does not.
+  const psychologistFraming = /psycholog|psicólog/i;
 
   const wrap = (locale: string, node: ReactNode) => <I18nProvider initialLocale={locale as "en" | "es"}>{node}</I18nProvider>;
 
@@ -173,17 +176,21 @@ describe("public copy guard: home, /pricing, /fees-and-payouts, /for-creators, /
     state.fee = fee;
     const { container } = render(wrap(locale, await Page()));
     const meta = await metadata();
-    expectNoFalseClaim(`${locale} ${path}`, `${container.textContent} ${String(meta.title)} ${String(meta.description)}`);
+    const text = `${container.textContent} ${String(meta.title)} ${String(meta.description)}`;
+    expectNoFalseClaim(`${locale} ${path}`, text);
+    if (path !== "home") expect(text, `${locale} ${path} carries psychologist framing`).not.toMatch(psychologistFraming);
   });
 
   it.each(dictionaries)("the %s copy behind those pages (nav, home, plans, fees, creators, help) carries no false claim", (locale, dict) => {
     const p = dict.publicPages;
     expectNoFalseClaim(`${locale} dictionary`, JSON.stringify([dict.nav, dict.home, dict.footer, p.pricing, p.plans, p.fees, p.creators, p.help, p.helpFaq]));
+    expect(JSON.stringify([dict.nav, dict.footer, p.pricing, p.plans, p.fees, p.creators, p.help, p.helpFaq])).not.toMatch(psychologistFraming);
   });
 
   it("the English sources shared with the assistant carry no false claim", () => {
     expectNoFalseClaim("help-faq.ts", JSON.stringify(helpFaqCategories));
     expectNoFalseClaim("plans.ts", JSON.stringify(plans));
+    expect(JSON.stringify([helpFaqCategories, plans])).not.toMatch(psychologistFraming);
   });
 
   // The fee sentence tracks isActivationFeeConfigured(), exactly like /pricing.
