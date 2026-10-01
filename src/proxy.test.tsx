@@ -549,6 +549,37 @@ describe("revoked session", () => {
     expect(response.cookies.get("audit-session")).toMatchObject({ value: "", maxAge: 0 });
   });
 
+  it("keeps the anti-cache headers when a refresh is followed by a sign-out", async () => {
+    vi.resetModules();
+    mocks.getSupabaseClientConfig.mockReturnValue({
+      url: "https://project.example.test",
+      anonKey: "public-test-fixture",
+    });
+    mocks.createServerClient.mockImplementation((_url: string, _key: string, options: { cookies: CookieMethodsServer }) => {
+      // @supabase/ssr >= 0.12.6 passes the headers only on the first setAll.
+      const getUser = async () => {
+        await options.cookies.setAll!(
+          [{ name: "audit-session", value: "renewed-fixture", options: { path: "/" } }],
+          { "Cache-Control": "private, no-cache, no-store, must-revalidate, max-age=0", Expires: "0", Pragma: "no-cache" },
+        );
+        return { data: { user: { id: "user-fixture" } }, error: null };
+      };
+      const signOut = async () => {
+        await options.cookies.setAll!([cleared], {});
+        return { error: null };
+      };
+      const rpc = async () => ({ data: false, error: null });
+      return { auth: { getUser, signOut }, rpc };
+    });
+    const { proxy } = await import("@/proxy");
+    const response = await proxy(request("/api/learn/progress", "POST"));
+
+    expect(response.status).toBe(200);
+    expect(response.cookies.get("audit-session")).toMatchObject({ value: "", maxAge: 0 });
+    expect(response.headers.get("cache-control")).toContain("no-store");
+    expect(response.headers.get("pragma")).toBe("no-cache");
+  });
+
   it.each([
     { data: true, error: null },
     { data: null, error: null },

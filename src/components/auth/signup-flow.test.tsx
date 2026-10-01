@@ -126,6 +126,7 @@ describe("SignupForm: o olhinho e a porta de confirmacao", () => {
       expect(mocks.resendSignupConfirmation).toHaveBeenCalledWith(
         "patrick@example.com",
         "/loading?next=welcome&path=student",
+        undefined,
       ),
     );
     expect(await screen.findByText("auth.signup.confirmResent")).toBeInTheDocument();

@@ -1,3 +1,7 @@
+> **OBSOLETO.** Este documento descreve a arquitetura da era Firebase e é mantido apenas como histórico.
+> A stack atual é Next.js na Vercel + Supabase (Postgres, Auth, Storage). Não siga caminhos, comandos ou
+> serviços citados aqui; consulte `AGENTS.md` e `.mex/context/setup.md`.
+
 # Skillset Platform Master Prompt for External AI
 
 Last updated: 2026-04-25

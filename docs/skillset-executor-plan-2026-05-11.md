@@ -4,7 +4,7 @@
 
 **Arquitetura:** Next.js 16 + Firebase (Auth/Firestore/Storage/Functions) + Stripe Connect Express. Branch de trabalho `fase-6-organize` (build/lint/test verdes) → integrar em `main`.
 
-**Dependências:** Firebase CLI autenticado (projeto `skillsetusaofficial`), Stripe LIVE account `acct_1TUqjLPvg1vJW0Ij`.
+**Dependências:** Firebase CLI autenticado (projeto `skillsetusaofficial`), Stripe LIVE account `acct_… (conta da plataforma)`.
 
 ---
 
@@ -13,7 +13,7 @@
 - `git`: branch `fase-6-organize`, 31 commits à frente de `main`, 94 arquivos, +5801/-761. Working tree limpo. **NÃO mergeado, NÃO deployado.**
 - `npm run build`: passa (71 rotas). `npm run lint`: passa. `npm test`: passa (11 arquivos, 33 testes). `functions build`: passa.
 - **Segurança:** nenhum secret commitado no repo. `.gitignore` cobre `.env*`. `git grep` de padrões de chave em fonte rastreada = limpo. OK.
-- **Stripe:** conta LIVE "SKILLSET USA" `acct_1TUqjLPvg1vJW0Ij` — `charges_enabled`, `payouts_enabled`, `transfers: active`, **Connect já habilitado**, webhook LIVE já configurado na URL da Function com os 4 eventos certos. Stack de código está consistentemente em **TEST mode** (pk/sk/whsec de teste) — correto e seguro para a fase pré-QA.
+- **Stripe:** conta LIVE "SKILLSET USA" `acct_… (conta da plataforma)` — `charges_enabled`, `payouts_enabled`, `transfers: active`, **Connect já habilitado**, webhook LIVE já configurado na URL da Function com os 4 eventos certos. Stack de código está consistentemente em **TEST mode** (pk/sk/whsec de teste) — correto e seguro para a fase pré-QA.
 
 ## Defeitos reais encontrados
 

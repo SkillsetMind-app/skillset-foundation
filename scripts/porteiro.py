@@ -564,7 +564,10 @@ def _ultimo(caminho: str) -> str:
 
 
 def eh_de_risco(caminho: str) -> bool:
-    return _ultimo(caminho) in LOCKFILES or any(fnmatch.fnmatch(caminho, g) for g in CAMINHOS_DE_RISCO)
+    # fnmatch.fnmatch diferencia caixa no Linux (o CI) e não no Windows: sem o
+    # lower(), src/lib/OAuth.ts ou Supabase/x.sql saíam do corte num diff grande.
+    c = caminho.lower()
+    return _ultimo(c) in LOCKFILES or any(fnmatch.fnmatchcase(c, g) for g in CAMINHOS_DE_RISCO)
 
 
 def eh_asset(caminho: str) -> bool:

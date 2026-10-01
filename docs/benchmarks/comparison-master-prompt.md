@@ -1,3 +1,7 @@
+> **OBSOLETO.** Este documento descreve a arquitetura da era Firebase e é mantido apenas como histórico.
+> A stack atual é Next.js na Vercel + Supabase (Postgres, Auth, Storage). Não siga caminhos, comandos ou
+> serviços citados aqui; consulte `AGENTS.md` e `.mex/context/setup.md`.
+
 # Master Prompt — Cakto → SkillsetUSA Competitive Design Comparison
 
 > **What this is:** a ready-to-paste prompt for the session that already has the SkillsetUSA project context. It drives a structured comparison between **Cakto** (a Brazilian checkout/infoproduct platform we captured as a benchmark) and **SkillsetUSA** (`skillset-foundation`), to produce prioritized, buildable improvement recommendations.
