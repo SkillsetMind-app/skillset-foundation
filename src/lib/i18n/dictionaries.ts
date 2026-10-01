@@ -1,44 +1,25 @@
-// Dictionary registry + translator. Pure module (no server/client APIs) so both
-// sides can resolve strings. English is the source-of-truth shape and the
-// fallback for any key a translation is missing.
+// Dictionary registry with every shipped locale loaded statically. For server
+// code, tests, and the few client screens that search across all languages on
+// purpose (the course marketplace and the help center). Anything that renders
+// on every page imports ./translate instead, so the other locales stay out of
+// the shared client bundle.
 
-import enDict from "@/data/i18n/en.json";
 import esDict from "@/data/i18n/es.json";
 
 import { DEFAULT_LOCALE, type Locale } from "./config";
+import { englishDictionary, registerDictionary, translate, type Dictionary } from "./translate";
 
-export type Dictionary = typeof enDict;
+export { translate, type Dictionary };
 
 const dictionaries: Record<Locale, Dictionary> = {
-  en: enDict,
+  en: englishDictionary,
   // Both shipped dictionaries must contain the same keys.
   es: esDict,
 };
 
+// Already in memory here, so the client provider need not fetch it again.
+registerDictionary("es", esDict);
+
 export function getDictionary(locale: Locale): Dictionary {
   return dictionaries[locale] ?? dictionaries[DEFAULT_LOCALE];
-}
-
-function resolvePath(source: unknown, key: string): unknown {
-  return key.split(".").reduce<unknown>((acc, part) => {
-    if (acc && typeof acc === "object" && part in (acc as Record<string, unknown>)) {
-      return (acc as Record<string, unknown>)[part];
-    }
-    return undefined;
-  }, source);
-}
-
-/**
- * Resolve a dot-path key against a dictionary. Falls back to English when the
- * key is missing/untranslated, then to the key itself so a typo is visible
- * rather than rendering an empty string.
- */
-export function translate(dict: Dictionary, key: string): string {
-  const value = resolvePath(dict, key);
-  if (typeof value === "string") {
-    return value;
-  }
-
-  const fallback = resolvePath(dictionaries[DEFAULT_LOCALE], key);
-  return typeof fallback === "string" ? fallback : key;
 }
