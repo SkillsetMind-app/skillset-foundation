@@ -77,6 +77,7 @@ describe("LoginForm: e-mail nunca confirmado", () => {
       expect(mocks.resendSignupConfirmation).toHaveBeenCalledWith(
         "patrick@example.com",
         "/loading?next=welcome",
+        undefined,
       ),
     );
   });

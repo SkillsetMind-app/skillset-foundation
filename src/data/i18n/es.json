@@ -1487,7 +1487,7 @@
       "step3Title": "Gana certificados y únete a la comunidad",
       "step3Body": "Termina un curso para desbloquear su certificado y entra al espacio de comunidad de los cursos que tienen uno.",
       "step4Title": "Gestiona tu cuenta",
-      "step4Body": "Tu plan, notificaciones y perfil viven en Cuenta. Si algo no se ve bien, el soporte está a un clic.",
+      "step4Body": "Tu plan, notificaciones y perfil viven en Cuenta.",
       "skipTour": "Omitir el tour",
       "skip": "Omitir",
       "back": "Atrás",
@@ -4252,7 +4252,12 @@
       "setup": "Configurar autenticador",
       "codeRequired": "Introduce el código de 6 dígitos de tu aplicación de autenticación.",
       "enabled": "La autenticación de dos factores está activada. Tu cuenta está protegida.",
-      "disabled": "Autenticación de dos factores desactivada."
+      "disabled": "Autenticación de dos factores desactivada.",
+      "dialogTitle": "Configurar la autenticación de dos factores",
+      "step2Scan": "Escanea este código QR con la aplicación.",
+      "qrAlt": "Código QR para añadir esta cuenta a tu aplicación de autenticación",
+      "manualHint": "¿No puedes escanearlo? Escribe esta clave en la aplicación.",
+      "onDevice": "¿Lo configuras en este teléfono?"
     }
   },
   "professionalBadge": {

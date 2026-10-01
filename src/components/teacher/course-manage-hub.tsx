@@ -87,7 +87,7 @@ const roadmapSections = [
 type SectionId = (typeof manageSections)[number]["id"] | (typeof roadmapSections)[number]["id"];
 
 const hubMenuItemClass =
-  "flex min-h-11 items-center rounded-[6px] px-3 text-sm font-semibold text-[var(--color-ink)] hover:bg-[var(--color-surface-soft)]";
+  "flex min-h-11 items-center rounded-none px-3 text-sm font-semibold text-[var(--color-ink)] hover:bg-[var(--color-surface-soft)]";
 
 // Cada linha do checklist so DESCREVIA a pendencia ("Add at least one module")
 // e nao levava a lugar nenhum: a pessoa lia o que faltava e tinha de caçar
@@ -223,7 +223,7 @@ function MarketplaceHighlightPanel({
       title={t("creatorPanel.hub.highlight.title")}
       description={t("creatorPanel.hub.highlight.description")}
     >
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-[10px] border fine-rule bg-white px-4 py-3">
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-none border fine-rule bg-white px-4 py-3">
         <div>
           <p className="text-sm font-semibold text-[var(--color-ink)]">
             {featured ? t("creatorPanel.hub.highlight.on") : t("creatorPanel.hub.highlight.off")}
@@ -380,7 +380,7 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
 
   if (!courseLoaded) {
     return (
-      <section className="rounded-[14px] border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)]">
+      <section className="rounded-none border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)]">
         <p className="text-sm text-[var(--color-ink-soft)]">{t("creatorPanel.hub.loading")}</p>
       </section>
     );
@@ -390,7 +390,7 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
   // treated the same as a non-owner instead of bypassing the guard.
   if (!course || !user || !isOwner) {
     return (
-      <section className="rounded-[14px] border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)]">
+      <section className="rounded-none border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)]">
         <h2 className="text-lg font-semibold text-[var(--color-ink)]">
           {t("creatorPanel.hub.notFound.title")}
         </h2>
@@ -448,7 +448,7 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
         </Link>
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex min-w-0 items-center gap-4">
-            <div className="relative aspect-video w-28 shrink-0 overflow-hidden rounded-[6px] border fine-rule bg-[var(--color-surface-soft)]">
+            <div className="relative aspect-video w-28 shrink-0 overflow-hidden rounded-none border fine-rule bg-[var(--color-surface-soft)]">
               {course.coverImageUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
@@ -486,7 +486,7 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
                 aria-label={t("creatorPanel.hub.header.switchCourse")}
                 value={course.id}
                 onChange={(event) => router.push(`/teach/courses/${event.target.value}/manage`)}
-                className="min-h-11 rounded-[6px] border fine-rule bg-white px-3 py-2 text-xs font-semibold text-[var(--color-ink)]"
+                className="min-h-11 rounded-none border fine-rule bg-white px-3 py-2 text-xs font-semibold text-[var(--color-ink)]"
               >
                 <option value={course.id}>{course.title}</option>
                 {switchableCourses.map((candidate) => (
@@ -524,7 +524,7 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
                 type="button"
                 role="menuitem"
                 onClick={() => setConfirmingDelete(true)}
-                className="flex min-h-11 w-full items-center rounded-[6px] border-t border-[var(--color-line)] px-3 text-left text-sm font-semibold text-[var(--color-danger-fg)] hover:bg-[var(--color-danger-soft)]"
+                className="flex min-h-11 w-full items-center rounded-none border-t border-[var(--color-line)] px-3 text-left text-sm font-semibold text-[var(--color-danger-fg)] hover:bg-[var(--color-danger-soft)]"
               >
                 {t("creatorPanel.hub.header.deleteCourse")}
               </button>
@@ -567,7 +567,7 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
         <nav
           ref={menuRef}
           aria-label={t("creatorPanel.hub.nav.label")}
-          className="relative min-w-0 border-b border-[var(--color-line)] bg-white pb-2 lg:rounded-[8px] lg:border lg:p-2"
+          className="relative min-w-0 border-b border-[var(--color-line)] bg-white pb-2 lg:rounded-none lg:border lg:p-2"
         >
           <p className="hidden px-2 pb-2 pt-1 text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--color-ink-muted)] lg:block">
             {t("creatorPanel.hub.nav.manage")}
@@ -598,7 +598,7 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
                 ref={section === item.id ? activeSectionRef : undefined}
                 type="button"
                 onClick={() => setSection(item.id)}
-                className={`min-h-11 shrink-0 whitespace-nowrap rounded-[6px] border-b-2 px-3 py-2 text-left text-sm font-semibold transition lg:w-full lg:border-b-0 lg:border-l-2 ${
+                className={`min-h-11 shrink-0 whitespace-nowrap rounded-none border-b-2 px-3 py-2 text-left text-sm font-semibold transition lg:w-full lg:border-b-0 lg:border-l-2 ${
                   section === item.id
                     ? "border-[var(--color-primary)] bg-[var(--color-surface-soft)] text-[var(--color-primary)]"
                     : "border-transparent text-[var(--color-ink-soft)] hover:bg-[var(--color-surface-hover)]"
@@ -618,7 +618,7 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
                 ref={section === item.id ? activeSectionRef : undefined}
                 type="button"
                 onClick={() => setSection(item.id)}
-                className={`rounded-[8px] px-3 py-2 text-left text-sm font-semibold transition ${
+                className={`rounded-none px-3 py-2 text-left text-sm font-semibold transition ${
                   section === item.id
                     ? "bg-[var(--color-surface-soft)] text-[var(--color-primary)]"
                     : "text-[var(--color-ink-muted)] hover:bg-[var(--color-surface-hover)]"
@@ -646,10 +646,10 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
               title={t("creatorPanel.hub.checklist.title")}
               description={t(`creatorPanel.hub.status.${course.status}`)}
             >
-              <div className="mt-4 h-2 overflow-hidden rounded-full bg-[var(--color-surface-hover)]">
+              <div className="mt-4 h-2 overflow-hidden rounded-none bg-[var(--color-surface-hover)]">
                 <div
                   data-testid="publish-readiness-bar"
-                  className="h-full rounded-full bg-[var(--color-primary)] transition-all"
+                  className="h-full rounded-none bg-[var(--color-primary)] transition-all"
                   style={{ width: `${readiness.percent}%` }}
                 />
               </div>
@@ -671,13 +671,13 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
                     <li
                       key={item.id}
                       data-readiness-item={item.id}
-                      className={`flex items-start gap-3 rounded-[10px] px-3 py-2 ${
+                      className={`flex items-start gap-3 rounded-none px-3 py-2 ${
                         item.done ? "bg-[var(--color-success-soft)]" : ""
                       }`}
                     >
                       <span
                         aria-hidden
-                        className={`mt-0.5 inline-flex size-5 shrink-0 items-center justify-center rounded-full text-[11px] font-bold ${
+                        className={`mt-0.5 inline-flex size-5 shrink-0 items-center justify-center rounded-none text-[11px] font-bold ${
                           item.done
                             ? "bg-[var(--color-primary)] text-[var(--color-on-primary)]"
                             : "border fine-rule bg-white text-[var(--color-ink-muted)]"
@@ -729,7 +729,7 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
                 }}
               />
               {course.reviewNote ? (
-                <div className="mt-4 rounded-[10px] border border-[rgba(178,34,52,0.18)] bg-white px-4 py-3">
+                <div className="mt-4 rounded-none border border-[rgba(178,34,52,0.18)] bg-white px-4 py-3">
                   <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--color-accent-fg)]">
                     {t("creatorPanel.hub.checklist.reviewNote")}
                   </p>
@@ -938,7 +938,7 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
                   {course.modules.map((courseModule, index) => (
                     <li
                       key={courseModule.id}
-                      className="rounded-[10px] border fine-rule bg-white px-4 py-3"
+                      className="rounded-none border fine-rule bg-white px-4 py-3"
                     >
                       <p className="text-sm font-semibold text-[var(--color-ink)]">
                         {index + 1}. {courseModule.title}
@@ -1084,7 +1084,7 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
                   <Link
                     key={tool.href}
                     href={tool.href}
-                    className="rounded-[8px] border fine-rule bg-white px-4 py-3 hover:bg-[var(--color-surface-soft)]"
+                    className="rounded-none border fine-rule bg-white px-4 py-3 hover:bg-[var(--color-surface-soft)]"
                   >
                     <strong className="block text-sm text-[var(--color-ink)]">{tool.label}</strong>
                     <span className="mt-1 block text-xs leading-5 text-[var(--color-ink-soft)]">

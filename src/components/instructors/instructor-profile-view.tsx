@@ -80,7 +80,7 @@ export function InstructorProfileView({ uid }: { uid: string }) {
 
   if (hasProfileError || !profile) {
     return (
-      <section className="rounded-[18px] border border-dashed border-[rgba(26,54,93,0.18)] bg-[var(--color-surface-soft)] p-10 text-center">
+      <section className="rounded-none border border-dashed border-[rgba(26,54,93,0.18)] bg-[var(--color-surface-soft)] p-10 text-center">
         <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
           {t("publicPages.profile.profile_unavailable")}
         </p>
@@ -219,7 +219,7 @@ export function InstructorProfileView({ uid }: { uid: string }) {
               {profile.credentials.map((credential, index) => (
                 <li
                   key={`${profile.uid}-credential-${index}`}
-                  className="rounded-[12px] border fine-rule bg-[var(--color-surface-soft)] px-4 py-3 text-sm leading-6 text-[var(--color-ink-soft)]"
+                  className="rounded-none border fine-rule bg-[var(--color-surface-soft)] px-4 py-3 text-sm leading-6 text-[var(--color-ink-soft)]"
                 >
                   {credential}
                 </li>
@@ -253,7 +253,7 @@ export function InstructorProfileView({ uid }: { uid: string }) {
         </div>
 
         {coursesError ? (
-          <p className="mt-6 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
+          <p className="mt-6 rounded-none border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
             {t("publicPages.profile.courses_error")}
           </p>
         ) : null}
@@ -261,7 +261,7 @@ export function InstructorProfileView({ uid }: { uid: string }) {
         {areCoursesLoading ? (
           <InstructorCourseSkeleton />
         ) : courses.length === 0 ? (
-          <div className="mt-6 rounded-[18px] border border-dashed border-[var(--color-line-strong)] bg-[var(--color-surface-soft)] p-8 text-center">
+          <div className="mt-6 rounded-none border border-dashed border-[var(--color-line-strong)] bg-[var(--color-surface-soft)] p-8 text-center">
             <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
               {t("publicPages.profile.no_public_courses_yet")}
             </p>
@@ -355,13 +355,13 @@ function InstructorProfileSkeleton() {
       <p role="status" className="sr-only">
         {t("publicPages.profile.loading_instructor_profile")}
       </p>
-      <div className="rounded-[22px] border border-[var(--color-line)] bg-white p-8 shadow-[var(--shadow-soft)]">
+      <div className="rounded-none border border-[var(--color-line)] bg-white p-8 shadow-[var(--shadow-soft)]">
         <div className="flex animate-pulse flex-col gap-5 sm:flex-row sm:items-center">
           <div className="size-20 rounded-full bg-[var(--color-surface-strong)]" />
           <div className="grid flex-1 gap-3">
-            <div className="h-4 w-28 rounded bg-[var(--color-surface-strong)]" />
-            <div className="h-10 w-3/4 rounded bg-[var(--color-surface-strong)]" />
-            <div className="h-4 w-1/2 rounded bg-[var(--color-surface-strong)]" />
+            <div className="h-4 w-28 rounded-none bg-[var(--color-surface-strong)]" />
+            <div className="h-10 w-3/4 rounded-none bg-[var(--color-surface-strong)]" />
+            <div className="h-4 w-1/2 rounded-none bg-[var(--color-surface-strong)]" />
           </div>
         </div>
       </div>
@@ -375,7 +375,7 @@ function InstructorCourseSkeleton() {
       {[0, 1, 2].map((item) => (
         <div
           key={item}
-          className="surface-card min-h-80 animate-pulse rounded-[18px]"
+          className="surface-card min-h-80 animate-pulse rounded-none"
         />
       ))}
     </div>

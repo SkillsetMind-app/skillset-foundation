@@ -4,6 +4,10 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
+import {
+  TurnstileWidget,
+  isCaptchaEnabled,
+} from "@/components/auth/turnstile-widget";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import type { UserGoal } from "@/domain/user-profile";
 import {
@@ -117,6 +121,11 @@ export function OnboardingChoice() {
   const [emailVerified, setEmailVerified] = useState(false);
   const [verificationMessage, setVerificationMessage] = useState("");
   const [isSendingVerification, setIsSendingVerification] = useState(false);
+  // The verification resend is CAPTCHA-guarded like sign-up. Same widget as the
+  // auth forms: with no site key it renders nothing and the token stays "".
+  const [captchaToken, setCaptchaToken] = useState("");
+  const [captchaResetSignal, setCaptchaResetSignal] = useState(0);
+  const captchaPending = isCaptchaEnabled && !captchaToken;
   const [error, setError] = useState("");
   const [isBootstrapping, setIsBootstrapping] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -252,11 +261,13 @@ export function OnboardingChoice() {
     setIsSendingVerification(true);
 
     try {
-      await sendSkillsetEmailVerification();
+      await sendSkillsetEmailVerification(captchaToken || undefined);
       setVerificationMessage(t("onboarding.verificationSent"));
     } catch {
       setError(t("onboarding.verificationSendError"));
     } finally {
+      // Turnstile tokens are single-use — refresh for the next attempt.
+      if (isCaptchaEnabled) setCaptchaResetSignal((n) => n + 1);
       setIsSendingVerification(false);
     }
   }
@@ -364,7 +375,7 @@ export function OnboardingChoice() {
 
   if (isBootstrapping) {
     return (
-      <div className="mt-6 rounded-[12px] border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-5 text-sm font-semibold text-[var(--color-ink-soft)]">
+      <div className="mt-6 rounded-none border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-5 text-sm font-semibold text-[var(--color-ink-soft)]">
         {t("onboarding.preparing")}
       </div>
     );
@@ -373,14 +384,14 @@ export function OnboardingChoice() {
   if (streamlinedTeacherActivation) {
     return (
       <div className="mt-6 grid gap-5">
-        <div className="rounded-[12px] border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
+        <div className="rounded-none border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
           <p className="font-semibold text-[var(--color-ink)]">
             {t("onboarding.streamlinedTitle")}
           </p>
           <p className="mt-1">{t("onboarding.streamlinedDesc")}</p>
         </div>
 
-        <div className="rounded-[12px] border border-[var(--color-line)] bg-white p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
+        <div className="rounded-none border border-[var(--color-line)] bg-white p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
           <div className="flex items-start justify-between gap-4">
             <div>
               <p className="font-semibold text-[var(--color-ink)]">
@@ -389,7 +400,7 @@ export function OnboardingChoice() {
               <p className="mt-1">{t("onboarding.emailVerificationDesc")}</p>
             </div>
             <span
-              className={`shrink-0 rounded-[8px] px-2 py-1 text-[10px] font-bold uppercase tracking-[0.14em] ${
+              className={`shrink-0 rounded-none px-2 py-1 text-[10px] font-bold uppercase tracking-[0.14em] ${
                 emailVerified
                   ? "bg-[rgba(26,54,93,0.08)] text-[var(--color-primary)]"
                   : "bg-[rgba(178,34,52,0.08)] text-[var(--color-accent-fg)]"
@@ -400,10 +411,18 @@ export function OnboardingChoice() {
           </div>
           {!emailVerified ? (
             <div className="mt-4 flex flex-wrap gap-2">
+              {isCaptchaEnabled ? (
+                <div className="basis-full">
+                  <TurnstileWidget
+                    onToken={setCaptchaToken}
+                    resetSignal={captchaResetSignal}
+                  />
+                </div>
+              ) : null}
               <button
                 type="button"
                 onClick={handleSendVerification}
-                disabled={isSendingVerification}
+                disabled={isSendingVerification || captchaPending}
                 className="button-outline px-4 py-2 text-xs disabled:opacity-60"
               >
                 {t("onboarding.sendVerification")}
@@ -425,7 +444,7 @@ export function OnboardingChoice() {
           ) : null}
         </div>
 
-        <label className="flex gap-3 rounded-[12px] border border-[var(--color-line)] bg-white p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
+        <label className="flex gap-3 rounded-none border border-[var(--color-line)] bg-white p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
           <input
             type="checkbox"
             checked={teacherTermsAccepted}
@@ -446,7 +465,7 @@ export function OnboardingChoice() {
         </label>
 
         {error ? (
-          <p className="rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
+          <p className="rounded-none border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
             {error}
           </p>
         ) : null}
@@ -491,9 +510,9 @@ export function OnboardingChoice() {
           </span>
           <span className="text-[var(--color-ink-soft)]">{stepCounter}</span>
         </div>
-        <div className="h-1 overflow-hidden rounded-full bg-[var(--color-surface-soft)]">
+        <div className="h-1 overflow-hidden rounded-none bg-[var(--color-surface-soft)]">
           <div
-            className="h-full rounded-full bg-[var(--color-primary)] transition-[width] duration-300"
+            className="h-full rounded-none bg-[var(--color-primary)] transition-[width] duration-300"
             style={{ width: `${((step + 1) / stepLabels.length) * 100}%` }}
           />
         </div>
@@ -509,7 +528,7 @@ export function OnboardingChoice() {
                 key={path.titleKey}
                 type="button"
                 onClick={() => setSelectedPath(path)}
-                className={`rounded-[12px] border p-4 text-left transition-colors ${
+                className={`rounded-none border p-4 text-left transition-colors ${
                   isSelected
                     ? "border-[var(--color-primary)] bg-[rgba(24,58,94,0.08)]"
                     : "border-[var(--color-line)] bg-[var(--color-surface-soft)] hover:border-[var(--color-primary-light)]"
@@ -527,7 +546,7 @@ export function OnboardingChoice() {
 
           {selectedPathIncludesTeacher ? (
             <div className="grid gap-3">
-              <div className="rounded-[12px] border border-[var(--color-line)] bg-white p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
+              <div className="rounded-none border border-[var(--color-line)] bg-white p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <p className="font-semibold text-[var(--color-ink)]">
@@ -536,7 +555,7 @@ export function OnboardingChoice() {
                     <p className="mt-1">{t("onboarding.emailVerificationDesc")}</p>
                   </div>
                   <span
-                    className={`shrink-0 rounded-[8px] px-2 py-1 text-[10px] font-bold uppercase tracking-[0.14em] ${
+                    className={`shrink-0 rounded-none px-2 py-1 text-[10px] font-bold uppercase tracking-[0.14em] ${
                       emailVerified
                         ? "bg-[rgba(26,54,93,0.08)] text-[var(--color-primary)]"
                         : "bg-[rgba(178,34,52,0.08)] text-[var(--color-accent-fg)]"
@@ -547,10 +566,18 @@ export function OnboardingChoice() {
                 </div>
                 {!emailVerified ? (
                   <div className="mt-4 flex flex-wrap gap-2">
+                    {isCaptchaEnabled ? (
+                      <div className="basis-full">
+                        <TurnstileWidget
+                          onToken={setCaptchaToken}
+                          resetSignal={captchaResetSignal}
+                        />
+                      </div>
+                    ) : null}
                     <button
                       type="button"
                       onClick={handleSendVerification}
-                      disabled={isSendingVerification}
+                      disabled={isSendingVerification || captchaPending}
                       className="button-outline px-4 py-2 text-xs disabled:opacity-60"
                     >
                       {t("onboarding.sendVerification")}
@@ -572,7 +599,7 @@ export function OnboardingChoice() {
                 ) : null}
               </div>
 
-              <label className="flex gap-3 rounded-[12px] border border-[var(--color-line)] bg-white p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
+              <label className="flex gap-3 rounded-none border border-[var(--color-line)] bg-white p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
                 <input
                   type="checkbox"
                   checked={teacherTermsAccepted}
@@ -606,13 +633,13 @@ export function OnboardingChoice() {
                 value={displayName}
                 onChange={(event) => setDisplayName(event.target.value)}
                 placeholder={t("onboarding.publicNamePlaceholder")}
-                className="rounded-[10px] border border-[var(--color-line)] bg-white px-3.5 py-2.5 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
+                className="rounded-none border border-[var(--color-line)] bg-white px-3.5 py-2.5 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
               />
             </label>
 
             <label className="grid gap-1.5 text-sm font-semibold text-[var(--color-ink)]">
               {t("onboarding.username")}
-              <div className="flex overflow-hidden rounded-[10px] border border-[var(--color-line)] bg-white focus-within:border-[var(--color-primary-light)]">
+              <div className="flex overflow-hidden rounded-none border border-[var(--color-line)] bg-white focus-within:border-[var(--color-primary-light)]">
                 <span className="grid place-items-center border-r border-[var(--color-line)] px-3 text-sm font-semibold text-[var(--color-ink-soft)]">
                   @
                 </span>
@@ -635,7 +662,7 @@ export function OnboardingChoice() {
               onChange={(event) => setBio(event.target.value)}
               placeholder={t("onboarding.bioPlaceholder")}
               rows={3}
-              className="resize-none rounded-[10px] border border-[var(--color-line)] bg-white px-3.5 py-2.5 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
+              className="resize-none rounded-none border border-[var(--color-line)] bg-white px-3.5 py-2.5 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
             />
             <span className="text-xs font-normal text-[var(--color-ink-soft)]">
               {t("onboarding.bioCount").replace("{count}", String(bio.trim().length))}
@@ -647,7 +674,7 @@ export function OnboardingChoice() {
             <select
               value={timezone}
               onChange={(event) => setTimezone(event.target.value)}
-              className="rounded-[10px] border border-[var(--color-line)] bg-white px-3.5 py-2.5 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
+              className="rounded-none border border-[var(--color-line)] bg-white px-3.5 py-2.5 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
             >
               {safeTimezoneOptions.map((option) => (
                 <option key={option} value={option}>
@@ -669,7 +696,7 @@ export function OnboardingChoice() {
                 key={goal.value}
                 type="button"
                 onClick={() => toggleGoal(goal.value)}
-                className={`rounded-[12px] border p-3 text-left transition-colors ${
+                className={`rounded-none border p-3 text-left transition-colors ${
                   isSelected
                     ? "border-[var(--color-primary)] bg-[rgba(24,58,94,0.08)]"
                     : "border-[var(--color-line)] bg-white hover:border-[var(--color-primary-light)]"
@@ -688,7 +715,7 @@ export function OnboardingChoice() {
       ) : null}
 
       {error ? (
-        <p className="rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
+        <p className="rounded-none border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
           {error}
         </p>
       ) : null}

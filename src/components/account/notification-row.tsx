@@ -13,8 +13,7 @@ import {
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import type { AppNotification, NotificationType } from "@/domain/notification";
-import { DEFAULT_LOCALE } from "@/lib/i18n/config";
-import { getDictionary, translate } from "@/lib/i18n/dictionaries";
+import { englishDictionary, translate } from "@/lib/i18n/translate";
 
 const typeIcons: Record<NotificationType, typeof Bell> = {
   community_comment: MessageCircle,
@@ -43,7 +42,7 @@ const unreadChipByType: Record<NotificationType, string> = {
 
 // English dictionary as the default translator: callers that pass nothing keep
 // the same strings as before, the classroom passes its own `t` and locale.
-const englishT = (key: string) => translate(getDictionary(DEFAULT_LOCALE), key);
+const englishT = (key: string) => translate(englishDictionary, key);
 
 // Relative time from a notification's server-written creation time. Coarse on
 // purpose — the inbox is glanceable, not an audit log.
@@ -93,7 +92,7 @@ export function NotificationRow({
   return (
     <div className="flex items-start gap-3 px-3 py-3">
       <span
-        className={`mt-0.5 grid size-9 shrink-0 place-items-center rounded-full ${
+        className={`mt-0.5 grid size-9 shrink-0 place-items-center rounded-none ${
           notification.read
             ? "bg-[var(--color-surface-soft)] text-[var(--color-ink-soft)]"
             : unreadChipByType[notification.type]

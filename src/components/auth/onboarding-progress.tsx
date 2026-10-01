@@ -23,7 +23,7 @@ export function OnboardingProgress({
           <span
             key={questionNumber}
             className={[
-              "h-2 rounded-full transition-all duration-[280ms]",
+              "h-2 rounded-none transition-all duration-[280ms]",
               isActive
                 ? "w-6 bg-[var(--color-accent)]"
                 : isPast

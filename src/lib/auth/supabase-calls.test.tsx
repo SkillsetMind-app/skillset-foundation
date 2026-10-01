@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   changeSkillsetPassword,
   resendSignupConfirmation,
+  sendSkillsetEmailVerification,
   signInWithGoogle,
 } from "@/lib/auth/supabase-auth";
 
@@ -32,6 +33,46 @@ vi.mock("@/lib/auth/pwned-password", () => ({
 type OAuthCall = { options: { redirectTo: string } };
 type PasswordCall = { options?: { captchaToken: string } };
 type UpdateCall = { password: string };
+type ResendCall = {
+  type: string;
+  email: string;
+  options: { emailRedirectTo: string; captchaToken?: string };
+};
+
+// With Attack Protection on, GoTrue refuses a resend that carries no token,
+// so "resend the link" dead-ended exactly where people were already stuck.
+describe("confirmation resends under CAPTCHA protection", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.auth.resend.mockResolvedValue({ error: null });
+    mocks.auth.getUser.mockResolvedValue({
+      data: { user: { email: "learner@example.com" } },
+    });
+  });
+
+  it("resendSignupConfirmation forwards the captcha token", async () => {
+    await resendSignupConfirmation("learner@example.test", "/welcome", "cf-1");
+    const [call] = mocks.auth.resend.mock.calls[0] as [ResendCall];
+    expect(call.options.captchaToken).toBe("cf-1");
+    expect(new URL(call.options.emailRedirectTo).pathname).toBe("/auth/confirm");
+  });
+
+  it("sendSkillsetEmailVerification forwards the captcha token", async () => {
+    await sendSkillsetEmailVerification("cf-2");
+    const [call] = mocks.auth.resend.mock.calls[0] as [ResendCall];
+    expect(call.type).toBe("signup");
+    expect(call.email).toBe("learner@example.com");
+    expect(call.options.captchaToken).toBe("cf-2");
+  });
+
+  it("sends no token when there is no captcha in play", async () => {
+    await resendSignupConfirmation("learner@example.test");
+    await sendSkillsetEmailVerification();
+    for (const [call] of mocks.auth.resend.mock.calls as [ResendCall][]) {
+      expect(call.options.captchaToken).toBeUndefined();
+    }
+  });
+});
 
 describe("resendSignupConfirmation destination", () => {
   beforeEach(() => {
