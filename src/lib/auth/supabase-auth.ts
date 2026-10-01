@@ -363,7 +363,9 @@ export async function completePasswordRecovery(
   }
 }
 
-export async function sendSkillsetEmailVerification(): Promise<void> {
+export async function sendSkillsetEmailVerification(
+  captchaToken?: string,
+): Promise<void> {
   const supabase = getSupabaseBrowserClient();
   const {
     data: { user },
@@ -376,7 +378,11 @@ export async function sendSkillsetEmailVerification(): Promise<void> {
   const { error } = await supabase.auth.resend({
     type: "signup",
     email: user.email,
-    options: { emailRedirectTo: authCallbackUrl("/auth/confirm") },
+    options: {
+      emailRedirectTo: authCallbackUrl("/auth/confirm"),
+      // Resend is CAPTCHA-guarded like sign-up; undefined when Turnstile is off.
+      captchaToken: captchaToken || undefined,
+    },
   });
 
   if (error) {
@@ -844,6 +850,7 @@ export function isEmailNotConfirmedError(error: unknown): boolean {
 export async function resendSignupConfirmation(
   email: string,
   confirmNext: string = "/welcome",
+  captchaToken?: string,
 ): Promise<void> {
   const supabase = getSupabaseBrowserClient();
   const { error } = await supabase.auth.resend({
@@ -853,6 +860,7 @@ export async function resendSignupConfirmation(
       emailRedirectTo: authCallbackUrl(
         `/auth/confirm?next=${encodeURIComponent(confirmNext)}`,
       ),
+      captchaToken: captchaToken || undefined,
     },
   });
   if (error) {
