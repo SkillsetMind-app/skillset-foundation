@@ -5,7 +5,9 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 
@@ -16,7 +18,14 @@ import {
   LOCALE_HTML_LANG,
   type Locale,
 } from "@/lib/i18n/config";
-import { getDictionary, translate } from "@/lib/i18n/dictionaries";
+import {
+  englishDictionary,
+  getLoadedDictionary,
+  loadDictionary,
+  registerDictionary,
+  translate,
+  type Dictionary,
+} from "@/lib/i18n/translate";
 
 type I18nContextValue = {
   locale: Locale;
@@ -29,43 +38,93 @@ const I18nContext = createContext<I18nContextValue | null>(null);
 /**
  * Holds the active locale for client components. `initialLocale` comes from the
  * server (cookie read in the root layout), so the first client render matches
- * SSR — no hydration mismatch. Changing the locale persists the cookie, syncs
- * <html lang>, and refreshes the route so server components (e.g. the footer)
- * re-render in the new language too.
+ * SSR — no hydration mismatch. For a non-English locale the layout also sends
+ * `initialDictionary`, because only English is in the client bundle. Changing
+ * the locale persists the cookie, syncs <html lang>, and refreshes the route so
+ * server components (e.g. the footer) re-render in the new language too.
  */
 export function I18nProvider({
   initialLocale,
+  initialDictionary,
   children,
 }: {
   initialLocale: Locale;
+  initialDictionary?: Dictionary;
   children: React.ReactNode;
 }) {
   const router = useRouter();
-  const [locale, setLocaleState] = useState<Locale>(initialLocale);
+  const [state, setState] = useState<{ locale: Locale; dict: Dictionary }>(() => {
+    if (initialDictionary) {
+      registerDictionary(initialLocale, initialDictionary);
+    }
+    return {
+      locale: initialLocale,
+      dict: getLoadedDictionary(initialLocale) ?? englishDictionary,
+    };
+  });
+  const { locale, dict } = state;
+  // Last locale asked for, so a slow chunk cannot override a later choice.
+  const requested = useRef(locale);
+
+  // Only reachable without a server-sent dictionary (never in the app): fetch
+  // it rather than staying on the English fallback.
+  useEffect(() => {
+    if (getLoadedDictionary(locale)) {
+      return;
+    }
+    let live = true;
+    void loadDictionary(locale).then((loaded) => {
+      if (live) setState((current) => (current.locale === locale ? { locale, dict: loaded } : current));
+    });
+    return () => {
+      live = false;
+    };
+  }, [locale]);
 
   const setLocale = useCallback(
     (next: Locale) => {
-      if (next === locale) {
+      if (next === requested.current) {
         return;
       }
-      setLocaleState(next);
+      const previous = requested.current;
+      requested.current = next;
 
-      if (typeof document !== "undefined") {
-        document.cookie = `${LOCALE_COOKIE}=${next}; path=/; max-age=${LOCALE_COOKIE_MAX_AGE}; samesite=lax`;
-        document.documentElement.lang = LOCALE_HTML_LANG[next];
+      const persist = () => {
+        if (typeof document !== "undefined") {
+          document.cookie = `${LOCALE_COOKIE}=${next}; path=/; max-age=${LOCALE_COOKIE_MAX_AGE}; samesite=lax`;
+          document.documentElement.lang = LOCALE_HTML_LANG[next];
+        }
+      };
+      const apply = (nextDict: Dictionary) => {
+        if (requested.current !== next) {
+          return;
+        }
+        setState({ locale: next, dict: nextDict });
+        persist();
+        // Re-render server components with the new cookie. Client state already
+        // updated above, so client + server converge on the same locale.
+        router.refresh();
+      };
+
+      const ready = getLoadedDictionary(next);
+      if (ready) {
+        apply(ready);
+        return;
       }
-
-      // Re-render server components with the new cookie. Client state already
-      // updated above, so client + server converge on the same locale.
-      router.refresh();
+      loadDictionary(next).then(apply, () => {
+        // Chunk failed to load (offline, stale deploy): stay on the current
+        // language rather than reload and lose what the person was typing.
+        // Picking it again retries.
+        if (requested.current === next) requested.current = previous;
+      });
     },
-    [locale, router],
+    [router],
   );
 
-  const value = useMemo<I18nContextValue>(() => {
-    const dict = getDictionary(locale);
-    return { locale, setLocale, t: (key: string) => translate(dict, key) };
-  }, [locale, setLocale]);
+  const value = useMemo<I18nContextValue>(
+    () => ({ locale, setLocale, t: (key: string) => translate(dict, key) }),
+    [locale, dict, setLocale],
+  );
 
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;
 }
@@ -81,10 +140,9 @@ export function useTranslation(): I18nContextValue {
     return ctx;
   }
 
-  const dict = getDictionary(DEFAULT_LOCALE);
   return {
     locale: DEFAULT_LOCALE,
     setLocale: () => {},
-    t: (key: string) => translate(dict, key),
+    t: (key: string) => translate(englishDictionary, key),
   };
 }

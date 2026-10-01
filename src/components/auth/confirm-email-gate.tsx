@@ -3,6 +3,10 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
+import {
+  TurnstileWidget,
+  isCaptchaEnabled,
+} from "@/components/auth/turnstile-widget";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { getAuthRoute, getLoadingRoute, getSafeReturnTo, type AuthPathIntent } from "@/lib/auth/routing";
 import {
@@ -40,6 +44,12 @@ export function ConfirmEmailGate({
   const [isSending, setIsSending] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<{ cause: unknown } | null>(null);
+  // The resend is CAPTCHA-guarded like sign-up, and the form's token was
+  // already spent creating the account, so this gate needs its own widget.
+  // Renders nothing (token stays "") when no site key is set.
+  const [captchaToken, setCaptchaToken] = useState("");
+  const [captchaResetSignal, setCaptchaResetSignal] = useState(0);
+  const captchaPending = isCaptchaEnabled && !captchaToken;
 
   useEffect(() => {
     if (cooldown <= 0) {
@@ -50,7 +60,7 @@ export function ConfirmEmailGate({
   }, [cooldown]);
 
   async function handleResend() {
-    if (isSending || cooldown > 0) {
+    if (isSending || cooldown > 0 || captchaPending) {
       return;
     }
     setIsSending(true);
@@ -58,12 +68,18 @@ export function ConfirmEmailGate({
     setSent(false);
     try {
       const safeReturnTo = getSafeReturnTo(new URLSearchParams({ returnTo: returnTo ?? "" }));
-      await resendSignupConfirmation(email, getLoadingRoute("welcome", intent, safeReturnTo));
+      await resendSignupConfirmation(
+        email,
+        getLoadingRoute("welcome", intent, safeReturnTo),
+        captchaToken || undefined,
+      );
       setSent(true);
       setCooldown(RESEND_COOLDOWN_SECONDS);
     } catch (caughtError) {
       setError({ cause: caughtError });
     } finally {
+      // Turnstile tokens are single-use — refresh for the next attempt.
+      if (isCaptchaEnabled) setCaptchaResetSignal((n) => n + 1);
       setIsSending(false);
     }
   }
@@ -82,11 +98,13 @@ export function ConfirmEmailGate({
         {t("auth.signup.confirmBody")}
       </p>
 
+      <TurnstileWidget onToken={setCaptchaToken} resetSignal={captchaResetSignal} />
+
       <div className="flex flex-wrap items-center gap-2">
         <button
           type="button"
           onClick={() => void handleResend()}
-          disabled={isSending || cooldown > 0}
+          disabled={isSending || cooldown > 0 || captchaPending}
           className="rounded-[10px] bg-[var(--color-primary)] px-4 py-2.5 text-sm font-semibold text-[var(--color-base)] disabled:opacity-60"
         >
           {cooldown > 0
