@@ -62,7 +62,7 @@ function oneLine(value: string): string {
 }
 
 const PARAGRAPH = "font-family:'Segoe UI',Helvetica,Arial,sans-serif;font-size:15px;line-height:1.6;color:#102a43;max-width:560px;";
-const BUTTON = "display:inline-block;padding:12px 28px;background-color:#102a43;color:#ffffff;text-decoration:none;border-radius:8px;font-weight:bold;";
+const BUTTON = "display:inline-block;padding:12px 28px;background-color:#102a43;color:#ffffff;text-decoration:none;border-radius:0;font-weight:bold;";
 
 /** Subject, HTML and plain-text parts. The course title is creator input: escaped in HTML. */
 export function buildPurchaseAccessEmail({ email, courseTitle, courseUrl, locale }: PurchaseAccessEmail) {

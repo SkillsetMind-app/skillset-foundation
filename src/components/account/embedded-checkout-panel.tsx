@@ -53,7 +53,7 @@ function BillingUnavailableNotice({
 }) {
   const { t } = useTranslation();
   return (
-    <div className="rounded-[14px] border border-dashed border-[var(--color-line-strong)] bg-[var(--color-surface-soft)] p-6 text-sm leading-7 text-[var(--color-ink)]">
+    <div className="rounded-none border border-dashed border-[var(--color-line-strong)] bg-[var(--color-surface-soft)] p-6 text-sm leading-7 text-[var(--color-ink)]">
       <p className="font-semibold text-[var(--color-ink)]">{title}</p>
       <p className="mt-2 text-[var(--color-ink-soft)]">{detail}</p>
       {children}
@@ -176,7 +176,7 @@ export function EmbeddedCheckoutPanel({
 
   return (
     <div className="grid gap-5 lg:grid-cols-[1fr_360px]">
-      <div className="overflow-hidden rounded-[14px] border fine-rule bg-white shadow-[var(--shadow-soft)]">
+      <div className="overflow-hidden rounded-none border fine-rule bg-white shadow-[var(--shadow-soft)]">
         {error ? (
           <div role="alert" className="p-6 text-sm text-[var(--color-accent-fg)]">
             <p className="font-semibold">{t("activationCheckout.errorTitle")}</p>
@@ -204,7 +204,7 @@ export function EmbeddedCheckoutPanel({
         )}
       </div>
 
-      <aside className="h-fit rounded-[14px] border fine-rule bg-white p-5 shadow-[var(--shadow-soft)]">
+      <aside className="h-fit rounded-none border fine-rule bg-white p-5 shadow-[var(--shadow-soft)]">
         <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
           {t("billingCheckout.subscribing")}
         </p>
@@ -214,7 +214,7 @@ export function EmbeddedCheckoutPanel({
         <p className="mt-2 text-sm text-[var(--color-ink-soft)]">
           {t(`publicPages.plans.${plan.id}.tagline`)}
         </p>
-        <div className="mt-4 rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-4">
+        <div className="mt-4 rounded-none border fine-rule bg-[var(--color-surface-soft)] p-4">
           <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--color-ink-soft)]">
             {t(isYearly ? "billingCheckout.yearly" : "billingCheckout.monthly")}
           </p>

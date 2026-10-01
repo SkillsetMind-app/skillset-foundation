@@ -41,7 +41,7 @@ export function StudioStorefrontCard({
 
       <Card className="mt-4" padding="md">
         <div className="flex flex-wrap items-start gap-4">
-          <span className="grid size-10 shrink-0 place-items-center rounded-[8px] border border-[var(--color-line)] text-[var(--color-primary)]">
+          <span className="grid size-10 shrink-0 place-items-center rounded-none border border-[var(--color-line)] text-[var(--color-primary)]">
             <Store aria-hidden="true" size={18} strokeWidth={1.8} />
           </span>
           <div className="min-w-0 flex-1">

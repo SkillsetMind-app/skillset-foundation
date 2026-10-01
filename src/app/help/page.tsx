@@ -35,7 +35,7 @@ export default async function HelpPage() {
 
       <HelpCenter categories={helpFaqCategories} />
 
-      <div className="mt-12 rounded-[18px] border fine-rule bg-[var(--color-surface-soft)] p-7 text-center sm:p-9">
+      <div className="mt-12 rounded-none border fine-rule bg-[var(--color-surface-soft)] p-7 text-center sm:p-9">
         <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
           {t("publicPages.help.still_stuck")}
         </p>

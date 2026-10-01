@@ -322,7 +322,7 @@ export function CreatorOpsHub() {
             <Link
               key={link.href}
               href={link.href}
-              className="rounded-full border border-[var(--color-line)] px-3 py-1.5 text-xs font-medium text-[var(--color-ink)] hover:border-[var(--color-primary)]"
+              className="rounded-none border border-[var(--color-line)] px-3 py-1.5 text-xs font-medium text-[var(--color-ink)] hover:border-[var(--color-primary)]"
             >
               {link.label}
             </Link>

@@ -95,7 +95,7 @@ export default async function ContactPage() {
         {contactRoutes.map((route) => (
           <div
             key={route.label}
-            className="flex flex-col rounded-[14px] border fine-rule bg-white p-5 shadow-[var(--shadow-soft)]"
+            className="flex flex-col rounded-none border fine-rule bg-white p-5 shadow-[var(--shadow-soft)]"
           >
             <p className="text-xs uppercase tracking-[0.2em] text-[var(--color-accent-fg)]">
               {route.label}

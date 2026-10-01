@@ -93,7 +93,7 @@ function matchesProgress(student: CourseStudent, filter: ProgressFilter): boolea
 }
 
 function selectClasses() {
-  return "min-h-11 rounded-[8px] border border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2 text-sm font-semibold text-[var(--color-ink)]";
+  return "min-h-11 rounded-none border border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2 text-sm font-semibold text-[var(--color-ink)]";
 }
 
 /**
@@ -156,7 +156,7 @@ function MessageComposer({
         value={body}
         onChange={(event) => setBody(event.target.value)}
         rows={3}
-        className="w-full rounded-[8px] border border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-ink)]"
+        className="w-full rounded-none border border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-ink)]"
         placeholder={t("courseRoster.messagePlaceholder")}
       />
       {error ? (
@@ -293,7 +293,7 @@ export function CourseStudentRosterView({
         ].map((stat) => (
           <div
             key={t(stat.label)}
-            className="rounded-[10px] border border-[var(--color-line)] bg-[var(--color-surface)] px-4 py-3"
+            className="rounded-none border border-[var(--color-line)] bg-[var(--color-surface)] px-4 py-3"
           >
             <dt className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--color-ink-muted)]">
               {t(stat.label)}
@@ -315,7 +315,7 @@ export function CourseStudentRosterView({
           value={search}
           onChange={(event) => setSearch(event.target.value)}
           placeholder={t("courseRoster.searchPlaceholder")}
-          className="min-h-11 min-w-0 flex-1 rounded-[8px] border border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-ink)]"
+          className="min-h-11 min-w-0 flex-1 rounded-none border border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-ink)]"
         />
         <label htmlFor="roster-progress" className="sr-only">
           {t("courseRoster.progressFilter")}
