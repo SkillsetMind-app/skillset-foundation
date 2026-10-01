@@ -34,13 +34,17 @@ describe("brand logo", () => {
 
   it("keeps the theme on <html> when the platform provider unmounts", () => {
     window.localStorage.setItem("skillset_theme", "dark");
-    const { unmount } = render(<ThemeProvider><span /></ThemeProvider>);
-    expect(document.documentElement.dataset.theme).toBe("dark");
+    try {
+      const { unmount } = render(<ThemeProvider><span /></ThemeProvider>);
+      expect(document.documentElement.dataset.theme).toBe("dark");
 
-    // Leaving the platform for a public page unmounts the provider. Dropping
-    // the attribute there flipped the page, and its logo, to the light palette.
-    unmount();
-    expect(document.documentElement.dataset.theme).toBe("dark");
-    window.localStorage.removeItem("skillset_theme");
+      // Leaving the platform for a public page unmounts the provider. Dropping
+      // the attribute there flipped the page, and its logo, to the light palette.
+      unmount();
+      expect(document.documentElement.dataset.theme).toBe("dark");
+    } finally {
+      window.localStorage.removeItem("skillset_theme");
+      delete document.documentElement.dataset.theme;
+    }
   });
 });
