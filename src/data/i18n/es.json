@@ -4252,7 +4252,12 @@
       "setup": "Configurar autenticador",
       "codeRequired": "Introduce el código de 6 dígitos de tu aplicación de autenticación.",
       "enabled": "La autenticación de dos factores está activada. Tu cuenta está protegida.",
-      "disabled": "Autenticación de dos factores desactivada."
+      "disabled": "Autenticación de dos factores desactivada.",
+      "dialogTitle": "Configurar la autenticación de dos factores",
+      "step2Scan": "Escanea este código QR con la aplicación.",
+      "qrAlt": "Código QR para añadir esta cuenta a tu aplicación de autenticación",
+      "manualHint": "¿No puedes escanearlo? Escribe esta clave en la aplicación.",
+      "onDevice": "¿Lo configuras en este teléfono?"
     }
   },
   "professionalBadge": {

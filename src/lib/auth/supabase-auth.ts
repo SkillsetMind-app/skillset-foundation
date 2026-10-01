@@ -748,6 +748,7 @@ export async function startTotpEnrollment(): Promise<{
   secret: TotpSecret;
   secretKey: string;
   otpauthUrl: string;
+  qrCode: string | null;
 }> {
   const supabase = getSupabaseBrowserClient();
   const {
@@ -780,7 +781,19 @@ export async function startTotpEnrollment(): Promise<{
     secret: { factorId: data.id },
     secretKey: data.totp.secret,
     otpauthUrl: data.totp.uri,
+    qrCode: safeQrDataUri(data.totp.qr_code),
   };
+}
+
+/**
+ * O Supabase devolve o QR como SVG num data URI. Ele só é desenhado via
+ * `<img src>`, onde um SVG não executa script; ainda assim só um data URI de
+ * SVG passa — qualquer outra coisa vira null e a tela fica com a chave manual.
+ */
+export function safeQrDataUri(value: unknown): string | null {
+  return typeof value === "string" && value.startsWith("data:image/svg+xml")
+    ? value
+    : null;
 }
 
 export async function finishTotpEnrollment(
