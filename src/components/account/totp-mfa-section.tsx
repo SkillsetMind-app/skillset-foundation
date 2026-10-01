@@ -289,7 +289,7 @@ export function TotpMfaSection({ emailVerified }: { emailVerified: boolean }) {
       )}
 
       {setup && !isEnrolled ? (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-[rgba(7,9,13,0.55)] p-4 sm:p-6">
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-[rgba(7,9,13,0.55)] sm:p-6">
           <div
             ref={dialogRef}
             tabIndex={-1}
