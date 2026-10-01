@@ -4252,7 +4252,12 @@
       "setup": "Set up authenticator",
       "codeRequired": "Enter the 6-digit code from your authenticator app.",
       "enabled": "Two-factor authentication is on. Your account is protected.",
-      "disabled": "Two-factor authentication turned off."
+      "disabled": "Two-factor authentication turned off.",
+      "dialogTitle": "Set up two-factor authentication",
+      "step2Scan": "Scan this QR code with the app.",
+      "qrAlt": "QR code to add this account to your authenticator app",
+      "manualHint": "Can’t scan it? Type this key into the app instead.",
+      "onDevice": "Setting up on this phone?"
     }
   },
   "professionalBadge": {

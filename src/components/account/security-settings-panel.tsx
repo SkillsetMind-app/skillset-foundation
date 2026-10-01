@@ -36,9 +36,9 @@ export function SecuritySettingsPanel() {
   const [error, setError] = useState<
     { key: string } | { cause: unknown } | null
   >(null);
-  // Both password actions below go through GoTrue endpoints that CAPTCHA
-  // protection guards (a password sign-in to re-authenticate, and the reset
-  // email). Same widget as the login form: with no site key it renders nothing
+  // The password actions below and the verification resend go through GoTrue
+  // endpoints that CAPTCHA protection guards (a password sign-in to
+  // re-authenticate, the reset email, and the confirmation resend). Same widget as the login form: with no site key it renders nothing
   // and the token stays "", so with CAPTCHA off nothing here changes; with it
   // on, the token rides along instead of the calls dead-ending on "captcha
   // protection: request disallowed" with no widget in sight.
@@ -64,11 +64,12 @@ export function SecuritySettingsPanel() {
     setMessage("");
 
     try {
-      await sendSkillsetEmailVerification();
+      await sendSkillsetEmailVerification(captchaToken || undefined);
       setMessage("accountSecurity.verification.sent");
     } catch {
       setError({ key: "accountSecurity.verification.sendError" });
     } finally {
+      if (isCaptchaEnabled) setCaptchaResetSignal((n) => n + 1);
       setIsBusy(false);
     }
   }
@@ -216,7 +217,7 @@ export function SecuritySettingsPanel() {
             <button
               type="button"
               onClick={handleSendVerification}
-              disabled={isBusy || emailVerified}
+              disabled={isBusy || emailVerified || captchaPending}
               className="button-outline px-3.5 py-2 text-xs disabled:opacity-60"
             >
               {t("accountSecurity.verification.send")}
