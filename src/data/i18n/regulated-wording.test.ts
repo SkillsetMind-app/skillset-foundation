@@ -16,11 +16,10 @@ import { describe, expect, it } from "vitest";
 // teaches. Psychology as a SUBJECT is fine and deliberately absent from this
 // list; see the comment at the top of src/domain/teacher-course.ts.
 //
-// "Psychologist" / "psicólogo" were on this list until 2026-08-29. Since
-// 2026-09-15 the marketing copy no longer names them as the audience (coaches,
-// facilitators and mentors instead; see src/app/public-copy-claims.test.tsx),
-// but they stay off this list because the verification form still offers
-// "Psychologist" as a profession to verify. The words that describe DELIVERING
+// "Psychologist" / "psicólogo" are not on this list: they get their own,
+// narrower check below (PSYCHOLOGIST), because the home names them as the
+// audience by decision and the verification form offers "Psychologist" as a
+// profession to verify. The words that describe DELIVERING
 // care — therapist, psychotherapy, counselor — stay blocked, because those
 // claim the service, not the reader.
 const REGULATED_AUDIENCE = [
@@ -34,6 +33,21 @@ const REGULATED_AUDIENCE = [
 ];
 
 const LOCALES = ["en", "es"];
+
+// "Psychologist" as the audience is blocked everywhere except ONE decision
+// (2026-09-25): the home may name "psychologists and personal-development
+// professionals" as its public, always in that exact pairing, never alone.
+// The verification form keeps offering "Psychologist" as a profession to
+// verify, which names the seller's credential, not the audience.
+const PSYCHOLOGIST = /psychologists?\b|psic[oó]log[oa]s?\b/i;
+const HOME_AUDIENCE = /psychologists (?:&|and) personal-development professionals|psicólogos y profesionales del desarrollo personal/gi;
+const PSYCHOLOGIST_ALLOWED_PATHS = ["professionalBadge.professions.psychologist"];
+
+function psychologistOutsideException(path: string, text: string): boolean {
+  if (PSYCHOLOGIST_ALLOWED_PATHS.includes(path)) return false;
+  const rest = path.startsWith("home.") ? text.replace(HOME_AUDIENCE, "") : text;
+  return PSYCHOLOGIST.test(rest);
+}
 
 // The legal pages name the regulated service in order to DENY it: the terms say
 // courses are "not psychotherapy" and the teacher terms forbid creating a
@@ -65,6 +79,7 @@ describe("interface copy names no regulated audience", () => {
       .flatMap(([path, text]) => {
       const lower = text.toLowerCase();
       const found = REGULATED_AUDIENCE.filter((term) => lower.includes(term));
+      if (psychologistOutsideException(path, text)) found.push("psychologist");
       return found.length ? [`${path}: ${found.join(", ")} — "${text.slice(0, 90)}"`] : [];
     });
 
@@ -72,6 +87,16 @@ describe("interface copy names no regulated audience", () => {
       offenders,
       `These strings address a licensed audience. Say coaches, facilitators, mentors or personal-development experts instead:\n  ${offenders.join("\n  ")}`,
     ).toEqual([]);
+  });
+
+  it("allows psychologists only in the home pairing and the verification form", () => {
+    expect(psychologistOutsideException("home.hero.eyebrow", "For psychologists & personal-development professionals")).toBe(false);
+    expect(psychologistOutsideException("home.hero.sub", "Para psicólogos y profesionales del desarrollo personal que ya enseñan")).toBe(false);
+    expect(psychologistOutsideException("professionalBadge.professions.psychologist", "Psychologist")).toBe(false);
+    expect(psychologistOutsideException("home.hero.eyebrow", "For psychologists")).toBe(true);
+    expect(psychologistOutsideException("home.hero.sub", "For psychologists & personal-development professionals, and for psychologists")).toBe(true);
+    expect(psychologistOutsideException("pricing.title", "For psychologists & personal-development professionals")).toBe(true);
+    expect(psychologistOutsideException("help.faq", "Para psicólogas")).toBe(true);
   });
 
   it.each([
