@@ -197,9 +197,6 @@ export function isActivationFeeConfigured(): boolean {
  */
 export const ACTIVATION_FEE_CHECKOUT_PURPOSE = "skillset_activation_fee";
 
-/** Default plan for any account without an active subscription. */
-export const defaultPlanId: PlanId = "free";
-
 export function planById(id: PlanId): Plan {
   const plan = plans.find((candidate) => candidate.id === id);
   if (!plan) {

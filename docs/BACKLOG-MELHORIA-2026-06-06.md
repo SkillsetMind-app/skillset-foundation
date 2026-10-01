@@ -671,7 +671,7 @@ Depois do deploy, rodei um review adversarial de 4 lentes sobre a **integração
 
 ### ✅ RESOLVIDO — `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` configurada (onboarding embedded ligado, 2026-06-08)
 
-A causa #2 (config) deixou de ser deferida. O fundador forneceu a publishable key **Live** (`pk_live_51TU…`).
+A causa #2 (config) deixou de ser deferida. O fundador forneceu a publishable key **Live** (`pk_live_…`).
 
 - **Diagnóstico definitivo antes de pedir:** varri os `.env*` (incl. gitignored), arquivos gitignored, shell env e config do Firebase hosting — a key **não existia em lugar nenhum** e **não é derivável** (a Stripe não expõe a própria publishable key por API; é só Dashboard; a secret vive como Firebase Functions secret e não deriva a publishable). Por isso foi necessário o fundador pegá-la.
 - **Wiring:** `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_live_…` escrita em `.env.production` (**versionado** — segue o padrão do repo, onde as outras client keys públicas já vivem: `NEXT_PUBLIC_FIREBASE_API_KEY`, `NEXT_PUBLIC_POSTHOG_KEY`) **e** `.env.local` (gitignored, espelho de dev local). Publishable key é **pública por design** (vai no bundle pra todo visitante; a Stripe diz que pode commitar) — mesma natureza da Firebase web API key já versionada aqui.
@@ -691,7 +691,7 @@ Com a publishable key ligada, o onboarding embedded subiu — e revelou o **erro
 
 **O que significa:** o produto **Stripe Connect** (marketplace/plataforma) **não foi ativado** na conta Stripe por trás da `sk_live`. Toda chamada `stripe.accounts.create({ type: "express" })` (`createFreshConnectedAccount`, index.ts:734) é recusada porque a conta ainda **não é uma plataforma Connect registrada**. Por isso **embedded E hospedado falham idênticos** — os dois criam conta por baixo — e é a **causa raiz dos sintomas de "conta órfã"** investigados antes: nunca houve plataforma Connect; o self-heal tentava recriar, e recriar também dá 400.
 
-**Não é bug de código.** É **ação de Dashboard** que só o fundador (dono da conta) pode executar: ativar Connect em **https://dashboard.stripe.com/connect** (modo Live, mesma conta da `pk_live_…51TUqjL…`), escolher **Platform/marketplace** e preencher o **perfil da plataforma**. O tipo de chave é irrelevante — mesmo a `sk_live` completa falha igual enquanto Connect estiver off (a `rk_` restrita **não** foi pedida nem precisava).
+**Não é bug de código.** É **ação de Dashboard** que só o fundador (dono da conta) pode executar: ativar Connect em **https://dashboard.stripe.com/connect** (modo Live, mesma conta da `pk_live_…`), escolher **Platform/marketplace** e preencher o **perfil da plataforma**. O tipo de chave é irrelevante — mesmo a `sk_live` completa falha igual enquanto Connect estiver off (a `rk_` restrita **não** foi pedida nem precisava).
 
 ### ✅ Degradação honesta enquanto o Connect não é ativado (deployado)
 
@@ -713,20 +713,20 @@ Hoje o professor via uma **tela vermelha em loop** dizendo "configurações de p
 
 Antes de mandar o fundador mexer no Dashboard, eliminei a hipótese de **mismatch de chave** (secret de uma conta, publishable de outra) com evidência de servidor — não só a console do cliente.
 
-1. **Logs vivos** (`firebase functions:log`) confirmaram o 400 server-side e revelaram um professor (`XTULkebL…`) com conta conectada **stale** `acct_1TXZ5ELvcVZVv0Z3`, o self-heal disparando "recreating once", e o recreate (`accounts.create`) batendo no mesmo 400.
+1. **Logs vivos** (`firebase functions:log`) confirmaram o 400 server-side e revelaram um professor (`XTULkebL…`) com conta conectada **stale** `acct_… (conta conectada)`, o self-heal disparando "recreating once", e o recreate (`accounts.create`) batendo no mesmo 400.
 2. **Probe temporário** `diagConnectTmp` (onRequest **read-only**, token-gated, retorna só id da conta + prefixo de 12 chars — **nunca** o secret). Deployado, chamado via HTTPS, e **deletado** logo após (função removida do Firebase; arquivo `__diag-connect.ts` **não-commitado**; árvore limpa em `ea2ff0a`).
 
 Resultado (HTTP 200):
 
 | Campo | Valor | Conclusão |
 |-------|-------|-----------|
-| `platformAccountId` | `acct_1TUqjLPvg1vJW0Ij` | **mesma** conta da `pk_live_51TUqjLPvg1vJW0Ij…` → **sem mismatch** |
-| `keyPrefix` (secret) | `sk_live_51TU…` | secret e publishable do **mesmo** Stripe |
-| `businessName` / `country` / `email` | **SKILLSET USA** / **US** / `coursesauops@gmail.com` | conta-plataforma exata a logar |
+| `platformAccountId` | `acct_… (conta da plataforma)` | **mesma** conta da `pk_live_…` → **sem mismatch** |
+| `keyPrefix` (secret) | `sk_live_…` | secret e publishable do **mesmo** Stripe |
+| `businessName` / `country` / `email` | **SKILLSET USA** / **US** / `(e-mail operacional)` | conta-plataforma exata a logar |
 | `chargesEnabled` / `payoutsEnabled` | **true / true** | plataforma ativa (billing/assinatura OK) |
 | `accounts.create` | recusa **"signed up for Connect"** | **Connect não finalizado** |
 | `connectedAccountCount` | **0** | nenhuma conta conectada funcional |
 
-**Veredito:** não é chave errada, não é mismatch, não é a `rk_` restrita. É **exclusivamente** a ativação do Connect na conta `acct_1TUqjLPvg1vJW0Ij` (SKILLSET USA). Detalhe lateral: o secret vinha com whitespace/newline à frente (`keyKind:"unknown"` mas `keyPrefix:"sk_live_51TU"`) — já neutralizado pelo `sanitizeStripeSecret`, sem impacto.
+**Veredito:** não é chave errada, não é mismatch, não é a `rk_` restrita. É **exclusivamente** a ativação do Connect na conta `acct_… (conta da plataforma)` (SKILLSET USA). Detalhe lateral: o secret vinha com whitespace/newline à frente (`keyKind:"unknown"` mas `keyPrefix:"sk_live_…"`) — já neutralizado pelo `sanitizeStripeSecret`, sem impacto.
 
-A conta órfã `acct_1TXZ5E…` é resíduo de um estado anterior (versão de chave/modo diferente — o secret está na **versão 4**). O **self-heal recria essa conta automaticamente** no platform vivo assim que o Connect ligar → **zero limpeza manual**.
+A conta órfã `acct_… (conta conectada)` é resíduo de um estado anterior (versão de chave/modo diferente — o secret está na **versão 4**). O **self-heal recria essa conta automaticamente** no platform vivo assim que o Connect ligar → **zero limpeza manual**.

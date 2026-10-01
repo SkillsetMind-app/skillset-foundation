@@ -36,11 +36,6 @@ import { getSafeExternalUrl, getSafeMediaUrl } from "@/domain/external-url";
 export const courseLandingTemplates = ["classic", "bold"] as const;
 export type CourseLandingTemplate = (typeof courseLandingTemplates)[number];
 
-export const courseLandingTemplateLabels: Record<CourseLandingTemplate, string> = {
-  classic: "Classic",
-  bold: "Bold",
-};
-
 export type CourseLandingBlock =
   | { kind: "hero"; heading: string; subheading: string; imageUrl: string | null }
   | { kind: "about"; heading: string; body: string; imageUrl: string | null }
@@ -61,16 +56,6 @@ export const courseLandingBlockKinds: ReadonlyArray<CourseLandingBlockKind> = [
   "faq",
   "cta",
 ];
-
-export const courseLandingBlockLabels: Record<CourseLandingBlockKind, string> = {
-  hero: "Headline",
-  about: "About you",
-  method: "Your method",
-  steps: "Step by step",
-  testimonials: "What people say",
-  faq: "Questions",
-  cta: "Call to action",
-};
 
 /**
  * Caps. Sized so a full page of every block type stays comfortably under a few

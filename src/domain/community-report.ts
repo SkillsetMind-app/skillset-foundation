@@ -34,10 +34,3 @@ export const communityReportReasonLabels: Record<CommunityReportReason, string> 
   off_topic: "Off-topic or low quality",
   other: "Other trust issue",
 };
-
-export const communityReportStatusLabels: Record<CommunityReportStatus, string> = {
-  open: "Open",
-  reviewed: "Reviewed",
-  resolved: "Resolved",
-  dismissed: "Dismissed",
-};

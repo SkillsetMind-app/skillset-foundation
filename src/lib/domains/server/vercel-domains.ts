@@ -43,10 +43,6 @@ export function vercelDomainsConfig(): VercelDomainsConfig | null {
   return { apiCredential, projectId, teamId };
 }
 
-export function isVercelDomainsConfigured(): boolean {
-  return vercelDomainsConfig() !== null;
-}
-
 /**
  * What the caller gets back. `status` is already translated into our own
  * vocabulary so that no route has to know how Vercel words things.

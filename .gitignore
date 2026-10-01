@@ -64,6 +64,8 @@ next-env.d.ts
 /.claude/logs/
 /.claude/mission-control/
 /.claude/sessions/
+/.claude/PAYWALL-LESSON-CONTENT-MIGRATION-PLAN.md
+/.claude/improvement-triage.md
 /logs/
 
 # graphify knowledge graph (local tooling output)
@@ -74,3 +76,7 @@ supabase/schema/parts/
 
 # Supabase CLI link state (holds the project ref and pooler URL)
 supabase/.temp/
+
+# Python
+__pycache__/
+*.pyc

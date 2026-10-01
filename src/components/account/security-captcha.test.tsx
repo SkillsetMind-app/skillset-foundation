@@ -12,15 +12,18 @@ import { SecuritySettingsPanel } from "@/components/account/security-settings-pa
 const mocks = vi.hoisted(() => {
   const fn = vi.fn;
   return {
-    calls: { changeSkillsetPassword: fn(), resetPassword: fn() },
+    calls: {
+      changeSkillsetPassword: fn(),
+      resetPassword: fn(),
+      sendSkillsetEmailVerification: fn(),
+    },
     resetSignals: [] as number[],
+    user: { email: "learner@example.com", emailVerified: true },
   };
 });
 
 vi.mock("@/components/auth/auth-provider", () => ({
-  useAuth: () => ({
-    user: { email: "learner@example.com", emailVerified: true },
-  }),
+  useAuth: () => ({ user: mocks.user }),
 }));
 
 vi.mock("@/components/account/totp-mfa-section", () => ({
@@ -68,9 +71,11 @@ describe("SecuritySettingsPanel with CAPTCHA protection on", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.resetSignals = [];
+    mocks.user = { email: "learner@example.com", emailVerified: true };
     Element.prototype.scrollIntoView = vi.fn();
     mocks.calls.changeSkillsetPassword.mockResolvedValue(undefined);
     mocks.calls.resetPassword.mockResolvedValue(undefined);
+    mocks.calls.sendSkillsetEmailVerification.mockResolvedValue(undefined);
   });
 
   afterEach(cleanup);
@@ -102,6 +107,20 @@ describe("SecuritySettingsPanel with CAPTCHA protection on", () => {
     await screen.findByRole("status");
     expect(mocks.calls.resetPassword).toHaveBeenCalledWith(
       "learner@example.com",
+      "cf-0",
+    );
+  });
+
+  it("resends the verification email with the captcha token", async () => {
+    mocks.user = { email: "learner@example.com", emailVerified: false };
+    render(<SecuritySettingsPanel />);
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Send email" }),
+    );
+
+    await screen.findByRole("status");
+    expect(mocks.calls.sendSkillsetEmailVerification).toHaveBeenCalledWith(
       "cf-0",
     );
   });

@@ -430,6 +430,14 @@ class CadeiaDeReservaTest(unittest.TestCase):
                         "scripts/setup-stripe-billing.mjs", "scripts/json.py"):
             self.assertTrue(porteiro.eh_de_risco(caminho), caminho)
 
+    def test_F3_caminho_de_risco_nao_depende_de_caixa(self):
+        # No Linux do CI, fnmatch diferencia caixa: OAuth.ts não casava *auth*.
+        for caminho in ("src/lib/OAuthCallback.ts", "Supabase/migrations/x.sql", "SRC/APP/API/x/route.ts",
+                        "src/Proxy.ts", "Scripts/deploy.sh", ".github/Workflows/ci.yml", "apps/web/Package-Lock.json"):
+            self.assertTrue(porteiro.eh_de_risco(caminho), caminho)
+        for caminho in ("src/components/Button.tsx", "docs/README.md"):
+            self.assertFalse(porteiro.eh_de_risco(caminho), caminho)
+
     # ---- Round 3: quoted paths (major 1) ---------------------------------
     @unittest.skipUnless(shutil.which("git"), "git not installed")
     def test_G_cabecalho_entre_aspas_do_git_de_verdade(self):

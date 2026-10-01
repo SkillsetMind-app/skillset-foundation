@@ -49,25 +49,6 @@ export type CourseEventRsvp = {
   updatedAt?: unknown;
 };
 
-export const courseEventTypeLabels: Record<CourseEventType, string> = {
-  live_class: "Live class",
-  mentorship: "Mentorship",
-  office_hours: "Office hours",
-  webinar: "Webinar or masterclass",
-  deadline: "Deadline",
-};
-
-export const courseEventStatusLabels: Record<CourseEventStatus, string> = {
-  scheduled: "Scheduled",
-  completed: "Completed",
-  cancelled: "Cancelled",
-};
-
-export const courseEventRsvpStatusLabels: Record<CourseEventRsvpStatus, string> = {
-  attending: "Going",
-  not_attending: "Not going",
-};
-
 export function isValidExternalEventUrl(value: string): boolean {
   try {
     const url = new URL(value);
