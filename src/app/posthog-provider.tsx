@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, type ReactNode } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
-import { initPostHog, posthog } from "@/lib/posthog/client";
+import { captureEvent, initPostHog } from "@/lib/posthog/client";
 
 export function PostHogProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
@@ -27,7 +27,7 @@ function PostHogPageviewTracker() {
     if (!pathname) return;
     const search = searchParams?.toString();
     const url = search ? `${pathname}?${search}` : pathname;
-    posthog.capture("$pageview", { $current_url: url });
+    captureEvent("$pageview", { $current_url: url });
   }, [pathname, searchParams]);
 
   return null;
