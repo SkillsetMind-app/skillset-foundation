@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 
 import { captureException } from "@/lib/posthog/client";
 import { DEFAULT_LOCALE, LOCALE_COOKIE, LOCALE_HTML_LANG, normalizeLocale } from "@/lib/i18n/config";
-import { getDictionary, translate } from "@/lib/i18n/dictionaries";
+import { englishDictionary, getLoadedDictionary, loadDictionary, translate } from "@/lib/i18n/translate";
 
 const subscribe = () => () => {};
 const serverLocale = () => DEFAULT_LOCALE;
@@ -52,7 +52,17 @@ export default function GlobalError({
   // Root provider may have crashed. Read the existing preference without relying
   // on its context; server snapshot keeps initial hydration consistent.
   const locale = useSyncExternalStore(subscribe, crashLocale, serverLocale);
-  const t = (key: string) => translate(getDictionary(locale), key);
+  // Usually already in memory (the provider registered it before the crash);
+  // otherwise fetch it, English meanwhile, so the shared bundle stays English-only.
+  const [fetched, setFetched] = useState<{ locale: string; dict: typeof englishDictionary } | null>(null);
+  const dict = getLoadedDictionary(locale) ?? (fetched?.locale === locale ? fetched.dict : englishDictionary);
+  const t = (key: string) => translate(dict, key);
+  useEffect(() => {
+    if (getLoadedDictionary(locale)) return;
+    let live = true;
+    loadDictionary(locale).then((loaded) => { if (live) setFetched({ locale, dict: loaded }); }, () => {});
+    return () => { live = false; };
+  }, [locale]);
   useEffect(() => {
     captureException(error, { boundary: "global", digest: error.digest });
   }, [error]);
@@ -109,7 +119,7 @@ export default function GlobalError({
                 padding: "10px 18px",
                 fontSize: 14,
                 fontWeight: 600,
-                borderRadius: 10,
+                borderRadius: 0,
                 border: "none",
                 background: "var(--ge-danger)",
                 color: "var(--ge-on-danger)",
@@ -125,7 +135,7 @@ export default function GlobalError({
                 padding: "10px 18px",
                 fontSize: 14,
                 fontWeight: 600,
-                borderRadius: 10,
+                borderRadius: 0,
                 border: "1px solid var(--ge-line)",
                 color: "var(--ge-ink)",
                 textDecoration: "none",

@@ -35,7 +35,7 @@ export default async function TeacherBuilderPreviewPage({
       <MemberAreaShell brand={brand} theme={theme}>
         <Suspense
           fallback={
-            <section className="rounded-[14px] border border-[var(--ma-line)] bg-[var(--ma-surface)] p-6">
+            <section className="rounded-none border border-[var(--ma-line)] bg-[var(--ma-surface)] p-6">
               <p className="text-sm text-[var(--ma-ink-soft)]">
                 {t("creatorEditor.preview.serverLoading")}
               </p>

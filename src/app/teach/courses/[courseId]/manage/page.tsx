@@ -27,7 +27,7 @@ export default async function CourseManagePage({
       <PlatformShell title={t("creatorPanel.hub.header.eyebrow")} hideHeader>
         <Suspense
           fallback={
-            <section className="rounded-[14px] border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)]">
+            <section className="rounded-none border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)]">
               <p className="text-sm text-[var(--color-ink-soft)]">
                 {t("teacherRouteResidual.manageLoading")}
               </p>

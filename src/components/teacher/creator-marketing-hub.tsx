@@ -268,7 +268,7 @@ export function CreatorMarketingHub() {
                 padding="md"
                 className="grid content-start gap-3"
               >
-                <span className="grid size-10 place-items-center rounded-[7px] border border-[var(--color-line)] bg-[var(--color-surface-soft)] text-[var(--color-primary)]">
+                <span className="grid size-10 place-items-center rounded-none border border-[var(--color-line)] bg-[var(--color-surface-soft)] text-[var(--color-primary)]">
                   <Icon aria-hidden="true" size={18} strokeWidth={1.8} />
                 </span>
                 <div>

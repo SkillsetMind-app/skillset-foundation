@@ -55,7 +55,7 @@ export function PasswordStrengthChecklist({ password }: { password: string }) {
   const requirements = getPasswordRequirementState(password);
 
   return (
-    <div className="rounded-[10px] border border-[var(--color-line)] bg-[var(--color-surface-soft)] px-3.5 py-3">
+    <div className="rounded-none border border-[var(--color-line)] bg-[var(--color-surface-soft)] px-3.5 py-3">
       <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--color-ink-soft)]">
         {t("authFlow.passwordRules.title")}
       </p>

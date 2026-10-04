@@ -363,7 +363,9 @@ export async function completePasswordRecovery(
   }
 }
 
-export async function sendSkillsetEmailVerification(): Promise<void> {
+export async function sendSkillsetEmailVerification(
+  captchaToken?: string,
+): Promise<void> {
   const supabase = getSupabaseBrowserClient();
   const {
     data: { user },
@@ -376,7 +378,11 @@ export async function sendSkillsetEmailVerification(): Promise<void> {
   const { error } = await supabase.auth.resend({
     type: "signup",
     email: user.email,
-    options: { emailRedirectTo: authCallbackUrl("/auth/confirm") },
+    options: {
+      emailRedirectTo: authCallbackUrl("/auth/confirm"),
+      // Resend is CAPTCHA-guarded like sign-up; undefined when Turnstile is off.
+      captchaToken: captchaToken || undefined,
+    },
   });
 
   if (error) {
@@ -742,6 +748,7 @@ export async function startTotpEnrollment(): Promise<{
   secret: TotpSecret;
   secretKey: string;
   otpauthUrl: string;
+  qrCode: string | null;
 }> {
   const supabase = getSupabaseBrowserClient();
   const {
@@ -774,7 +781,19 @@ export async function startTotpEnrollment(): Promise<{
     secret: { factorId: data.id },
     secretKey: data.totp.secret,
     otpauthUrl: data.totp.uri,
+    qrCode: safeQrDataUri(data.totp.qr_code),
   };
+}
+
+/**
+ * O Supabase devolve o QR como SVG num data URI. Ele só é desenhado via
+ * `<img src>`, onde um SVG não executa script; ainda assim só um data URI de
+ * SVG passa — qualquer outra coisa vira null e a tela fica com a chave manual.
+ */
+export function safeQrDataUri(value: unknown): string | null {
+  return typeof value === "string" && value.startsWith("data:image/svg+xml")
+    ? value
+    : null;
 }
 
 export async function finishTotpEnrollment(
@@ -844,6 +863,7 @@ export function isEmailNotConfirmedError(error: unknown): boolean {
 export async function resendSignupConfirmation(
   email: string,
   confirmNext: string = "/welcome",
+  captchaToken?: string,
 ): Promise<void> {
   const supabase = getSupabaseBrowserClient();
   const { error } = await supabase.auth.resend({
@@ -853,6 +873,7 @@ export async function resendSignupConfirmation(
       emailRedirectTo: authCallbackUrl(
         `/auth/confirm?next=${encodeURIComponent(confirmNext)}`,
       ),
+      captchaToken: captchaToken || undefined,
     },
   });
   if (error) {

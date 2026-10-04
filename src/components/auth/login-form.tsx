@@ -237,7 +237,7 @@ export function LoginForm() {
   if (mfaError) {
     return (
       <form className="mt-5 grid gap-3.5" onSubmit={handleSubmit}>
-        <div className="rounded-[12px] border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-3">
+        <div className="rounded-none border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-3">
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
             {t("auth.mfaTitle")}
           </p>
@@ -264,7 +264,7 @@ export function LoginForm() {
           <p
             role="alert"
             aria-live="assertive"
-            className="rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]"
+            className="rounded-none border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]"
           >
             {errorMessage}
           </p>
@@ -361,7 +361,7 @@ export function LoginForm() {
         <p
           role="alert"
           aria-live="assertive"
-          className="rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]"
+          className="rounded-none border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]"
         >
           {errorMessage}
         </p>

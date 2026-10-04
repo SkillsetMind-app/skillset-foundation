@@ -731,7 +731,7 @@ export function StorefrontSettingsPanel() {
                     key={course.id}
                     className="flex flex-wrap items-center gap-3 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2.5"
                   >
-                    <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-[var(--color-surface-soft)] text-xs font-semibold text-[var(--color-ink-soft)]">
+                    <span className="grid h-6 w-6 shrink-0 place-items-center rounded-none bg-[var(--color-surface-soft)] text-xs font-semibold text-[var(--color-ink-soft)]">
                       {index + 1}
                     </span>
                     <span className="min-w-0 flex-1 basis-[calc(100%_-_2.25rem)] truncate text-sm font-semibold text-[var(--color-ink)] sm:basis-0">

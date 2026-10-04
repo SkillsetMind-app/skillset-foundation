@@ -62,7 +62,7 @@ export function CourseReviewsSection({
   return (
     <section
       id="reviews"
-      className="mt-8 scroll-mt-24 rounded-[16px] border border-[var(--color-line)] bg-white p-5 shadow-[var(--shadow-soft)]"
+      className="mt-8 scroll-mt-24 rounded-none border border-[var(--color-line)] bg-white p-5 shadow-[var(--shadow-soft)]"
     >
       <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">{t("publicCourses.reviewsTitle")}</p>
       <div className="mt-4 flex flex-wrap items-center gap-3">
@@ -81,7 +81,7 @@ export function CourseReviewsSection({
         {reviews.map((review) => (
           <article
             key={review.id}
-            className="rounded-[12px] border fine-rule bg-[var(--color-surface-soft)] p-4"
+            className="rounded-none border fine-rule bg-[var(--color-surface-soft)] p-4"
           >
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="text-sm font-semibold text-[var(--color-ink)]">
@@ -149,7 +149,7 @@ export function CourseInstructorCard({
   const name = profile.displayName || t("publicCourses.instructorFallback");
 
   return (
-    <div className="rounded-[12px] border fine-rule bg-[var(--color-surface-soft)] p-4">
+    <div className="rounded-none border fine-rule bg-[var(--color-surface-soft)] p-4">
       <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">{t("publicCourses.yourInstructor")}</p>
       <div className="mt-3 flex items-center gap-3">
         <UserAvatar name={name} photoURL={profile.photoURL} size="sm" />

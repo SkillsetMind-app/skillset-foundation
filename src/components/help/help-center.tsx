@@ -70,7 +70,7 @@ export function HelpCenter({ categories }: HelpCenterProps) {
 
   return (
     <>
-      <div className="mt-8 flex w-full items-center gap-3 rounded-[12px] border fine-rule bg-white p-3 shadow-[var(--shadow-soft)]">
+      <div className="mt-8 flex w-full items-center gap-3 rounded-none border fine-rule bg-white p-3 shadow-[var(--shadow-soft)]">
         <Search
           aria-hidden="true"
           size={16}
@@ -95,7 +95,7 @@ export function HelpCenter({ categories }: HelpCenterProps) {
             <a
               key={category.id}
               href={`#${category.id}`}
-              className="rounded-full border fine-rule bg-white px-3.5 py-1.5 text-xs font-semibold text-[var(--color-ink-soft)] transition-colors hover:bg-[var(--color-surface-soft)] hover:text-[var(--color-primary)]"
+              className="rounded-none border fine-rule bg-white px-3.5 py-1.5 text-xs font-semibold text-[var(--color-ink-soft)] transition-colors hover:bg-[var(--color-surface-soft)] hover:text-[var(--color-primary)]"
             >
               {category.label}
             </a>
@@ -123,7 +123,7 @@ export function HelpCenter({ categories }: HelpCenterProps) {
                   <article
                     key={item.key}
                     id={item.id}
-                    className={`rounded-[16px] border fine-rule bg-white p-5 shadow-[var(--shadow-soft)] ${item.id ? "scroll-mt-28" : ""}`}
+                    className={`rounded-none border fine-rule bg-white p-5 shadow-[var(--shadow-soft)] ${item.id ? "scroll-mt-28" : ""}`}
                   >
                     <h3 className="text-lg font-bold text-[var(--color-ink)]">
                       {item.q}
@@ -138,7 +138,7 @@ export function HelpCenter({ categories }: HelpCenterProps) {
           ))}
         </div>
       ) : (
-        <div className="mt-10 rounded-[16px] border fine-rule bg-white p-8 text-center shadow-[var(--shadow-soft)]">
+        <div className="mt-10 rounded-none border fine-rule bg-white p-8 text-center shadow-[var(--shadow-soft)]">
           <p className="text-sm font-semibold text-[var(--color-ink)]">
             {t("publicPages.helpSearch.no_results").replace("{query}", () => query.trim())}
           </p>

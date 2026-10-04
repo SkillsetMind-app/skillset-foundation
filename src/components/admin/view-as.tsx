@@ -33,7 +33,7 @@ export function ViewAsSwitcher() {
   }
 
   return (
-    <div className="rounded-[14px] border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)]">
+    <div className="rounded-none border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)]">
       <h3 className="text-base font-semibold text-[var(--color-ink)]">
         {t(`${copy}.preview.title`)}
       </h3>
@@ -47,7 +47,7 @@ export function ViewAsSwitcher() {
             type="button"
             onClick={() => setViewAsRole(entry.role)}
             aria-pressed={viewAsRole === entry.role}
-            className={`min-h-11 rounded-[10px] px-4 py-2 text-sm font-bold transition ${
+            className={`min-h-11 rounded-none px-4 py-2 text-sm font-bold transition ${
               viewAsRole === entry.role
                 ? "bg-[var(--color-primary)] text-[var(--color-on-primary)]"
                 : "border border-[var(--color-line)] text-[var(--color-ink-soft)]"
@@ -60,7 +60,7 @@ export function ViewAsSwitcher() {
           <button
             type="button"
             onClick={() => setViewAsRole(null)}
-            className="min-h-11 rounded-[10px] border border-[var(--color-line)] px-4 py-2 text-sm font-bold text-[var(--color-ink)]"
+            className="min-h-11 rounded-none border border-[var(--color-line)] px-4 py-2 text-sm font-bold text-[var(--color-ink)]"
           >
             {t(`${copy}.preview.back`)}
           </button>
@@ -98,7 +98,7 @@ export function ViewAsBanner() {
       <button
         type="button"
         onClick={() => setViewAsRole(null)}
-        className="min-h-11 rounded-[8px] bg-white/15 px-3 py-1 text-xs font-bold underline-offset-2 hover:underline"
+        className="min-h-11 rounded-none bg-white/15 px-3 py-1 text-xs font-bold underline-offset-2 hover:underline"
       >
         {t(`${copy}.preview.exit`)}
       </button>

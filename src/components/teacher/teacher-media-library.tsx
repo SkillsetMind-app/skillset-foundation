@@ -111,7 +111,7 @@ export function TeacherMediaLibrary() {
             title={t("teacherMedia.title")}
             description={t("teacherMedia.description")}
           />
-          <p className="mt-3 max-w-2xl rounded-[10px] border fine-rule bg-[var(--color-surface-soft)] px-4 py-3 text-sm font-semibold leading-6 text-[var(--color-ink)]">
+          <p className="mt-3 max-w-2xl rounded-none border fine-rule bg-[var(--color-surface-soft)] px-4 py-3 text-sm font-semibold leading-6 text-[var(--color-ink)]">
             {t("teacherMedia.videosInBuilder")}
             {selectedCourse ? (
               <>
@@ -148,7 +148,7 @@ export function TeacherMediaLibrary() {
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder={t("teacherMedia.searchPlaceholder")}
-                className="rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
+                className="rounded-none border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
               />
             )}
           </Field>
@@ -159,7 +159,7 @@ export function TeacherMediaLibrary() {
                 {...a11y}
                 value={kindFilter}
                 onChange={(event) => setKindFilter(event.target.value as CourseAssetKind | "all")}
-                className="rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
+                className="rounded-none border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
               >
                 {assetKindFilters.map((kind) => (
                   <option key={kind} value={kind}>
@@ -176,7 +176,7 @@ export function TeacherMediaLibrary() {
                 {...a11y}
                 value={selectedCourseId}
                 onChange={(event) => setSelectedCourseId(event.target.value)}
-                className="rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
+                className="rounded-none border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
               >
                 {courses.map((course) => (
                   <option key={course.id} value={course.id}>
@@ -197,7 +197,7 @@ export function TeacherMediaLibrary() {
 
       <div className="mt-6 grid gap-3">
         {isLoadingCourses ? (
-          <p className="rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
+          <p className="rounded-none border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
             {t("teacherMedia.loading")}
           </p>
         ) : courses.length === 0 ? (
@@ -236,9 +236,9 @@ export function TeacherMediaLibrary() {
           filteredAssets.map((asset) => (
             <article
               key={asset.id}
-              className="grid gap-4 rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-4 md:grid-cols-[80px_1fr_auto]"
+              className="grid gap-4 rounded-none border fine-rule bg-[var(--color-surface-soft)] p-4 md:grid-cols-[80px_1fr_auto]"
             >
-              <div className="grid h-20 w-20 place-items-center overflow-hidden rounded-[10px] border border-[var(--color-line)] bg-white text-xs font-semibold uppercase tracking-[0.12em] text-[var(--color-primary)]">
+              <div className="grid h-20 w-20 place-items-center overflow-hidden rounded-none border border-[var(--color-line)] bg-white text-xs font-semibold uppercase tracking-[0.12em] text-[var(--color-primary)]">
                 {asset.downloadUrl && asset.contentType.startsWith("image/") ? (
                   // Capas e thumbnails vivem no bucket público, então a URL já
                   // está na linha. Sem a miniatura, três capas chamadas
@@ -262,11 +262,11 @@ export function TeacherMediaLibrary() {
                 </p>
               </div>
               <div className="flex flex-wrap items-start gap-2 md:justify-end">
-                <span className="rounded-[8px] bg-white px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--color-primary)]">
+                <span className="rounded-none bg-white px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--color-primary)]">
                   {t(asset.isPreview ? "teacherMedia.preview" : "teacherMedia.private")}
                 </span>
                 {asset.lessonId ? (
-                  <span className="rounded-[8px] bg-white px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--color-ink-soft)]">
+                  <span className="rounded-none bg-white px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--color-ink-soft)]">
                     {t("teacherMedia.lessonAsset")}
                   </span>
                 ) : null}

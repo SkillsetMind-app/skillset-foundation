@@ -19,7 +19,7 @@ export default async function LoadingCourse() {
   const { t } = await getServerTranslation();
   return (
     <div className="flex min-h-screen items-start justify-center bg-[#0a0d12] px-4 py-16">
-      <section className="w-full max-w-3xl rounded-[14px] border border-[rgba(255,255,255,0.08)] bg-[#141923] p-6">
+      <section className="w-full max-w-3xl rounded-none border border-[rgba(255,255,255,0.08)] bg-[#141923] p-6">
         <p className="text-sm text-[#9aa6b6]">{t("learnWave2.courseLoading.title")}</p>
       </section>
     </div>

@@ -52,19 +52,19 @@ function MarketplaceSkeleton() {
           {[80, 110, 96, 88, 120].map((width, index) => (
             <div
               key={index}
-              className="h-9 animate-pulse rounded-[10px] bg-[var(--color-surface-strong)]"
+              className="h-9 animate-pulse rounded-none bg-[var(--color-surface-strong)]"
               style={{ width }}
             />
           ))}
         </div>
         <div className="grid gap-3">
           <div className="grid gap-2">
-            <div className="h-3 w-12 animate-pulse rounded bg-[var(--color-surface-strong)]" />
-            <div className="h-11 animate-pulse rounded-[10px] bg-[var(--color-surface-soft)]" />
+            <div className="h-3 w-12 animate-pulse rounded-none bg-[var(--color-surface-strong)]" />
+            <div className="h-11 animate-pulse rounded-none bg-[var(--color-surface-soft)]" />
           </div>
           <div className="grid gap-2">
-            <div className="h-3 w-10 animate-pulse rounded bg-[var(--color-surface-strong)]" />
-            <div className="h-11 animate-pulse rounded-[10px] bg-[var(--color-surface-soft)]" />
+            <div className="h-3 w-10 animate-pulse rounded-none bg-[var(--color-surface-strong)]" />
+            <div className="h-11 animate-pulse rounded-none bg-[var(--color-surface-soft)]" />
           </div>
         </div>
       </div>
@@ -76,10 +76,10 @@ function MarketplaceSkeleton() {
           >
             <div className="marketplace-card__media bg-[var(--color-surface-strong)]" />
             <div className="space-y-3 p-5">
-              <div className="h-3 w-24 rounded bg-[var(--color-surface-strong)]" />
-              <div className="h-6 w-3/4 rounded bg-[var(--color-surface-strong)]" />
-              <div className="h-16 rounded bg-[var(--color-surface-soft)]" />
-              <div className="h-8 w-1/3 rounded bg-[var(--color-surface-soft)]" />
+              <div className="h-3 w-24 rounded-none bg-[var(--color-surface-strong)]" />
+              <div className="h-6 w-3/4 rounded-none bg-[var(--color-surface-strong)]" />
+              <div className="h-16 rounded-none bg-[var(--color-surface-soft)]" />
+              <div className="h-8 w-1/3 rounded-none bg-[var(--color-surface-soft)]" />
             </div>
           </div>
         ))}

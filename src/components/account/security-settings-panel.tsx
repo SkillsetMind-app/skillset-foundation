@@ -36,9 +36,9 @@ export function SecuritySettingsPanel() {
   const [error, setError] = useState<
     { key: string } | { cause: unknown } | null
   >(null);
-  // Both password actions below go through GoTrue endpoints that CAPTCHA
-  // protection guards (a password sign-in to re-authenticate, and the reset
-  // email). Same widget as the login form: with no site key it renders nothing
+  // The password actions below and the verification resend go through GoTrue
+  // endpoints that CAPTCHA protection guards (a password sign-in to
+  // re-authenticate, the reset email, and the confirmation resend). Same widget as the login form: with no site key it renders nothing
   // and the token stays "", so with CAPTCHA off nothing here changes; with it
   // on, the token rides along instead of the calls dead-ending on "captcha
   // protection: request disallowed" with no widget in sight.
@@ -64,11 +64,12 @@ export function SecuritySettingsPanel() {
     setMessage("");
 
     try {
-      await sendSkillsetEmailVerification();
+      await sendSkillsetEmailVerification(captchaToken || undefined);
       setMessage("accountSecurity.verification.sent");
     } catch {
       setError({ key: "accountSecurity.verification.sendError" });
     } finally {
+      if (isCaptchaEnabled) setCaptchaResetSignal((n) => n + 1);
       setIsBusy(false);
     }
   }
@@ -190,7 +191,7 @@ export function SecuritySettingsPanel() {
       </p>
 
       <div className="mt-6 grid gap-4 lg:grid-cols-2">
-        <div className="rounded-[14px] border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-4">
+        <div className="rounded-none border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-4">
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="font-semibold text-[var(--color-ink)]">
@@ -201,7 +202,7 @@ export function SecuritySettingsPanel() {
               </p>
             </div>
             <span
-              className={`rounded-[8px] px-2 py-1 text-[10px] font-bold uppercase tracking-[0.14em] ${
+              className={`rounded-none px-2 py-1 text-[10px] font-bold uppercase tracking-[0.14em] ${
                 emailVerified
                   ? "bg-white text-[var(--color-primary)]"
                   : "bg-[rgba(178,34,52,0.08)] text-[var(--color-accent-fg)]"
@@ -216,7 +217,7 @@ export function SecuritySettingsPanel() {
             <button
               type="button"
               onClick={handleSendVerification}
-              disabled={isBusy || emailVerified}
+              disabled={isBusy || emailVerified || captchaPending}
               className="button-outline px-3.5 py-2 text-xs disabled:opacity-60"
             >
               {t("accountSecurity.verification.send")}
@@ -232,7 +233,7 @@ export function SecuritySettingsPanel() {
           </div>
         </div>
 
-        <div className="rounded-[14px] border border-[var(--color-line)] bg-white p-4">
+        <div className="rounded-none border border-[var(--color-line)] bg-white p-4">
           <p className="font-semibold text-[var(--color-ink)]">
             {t("accountSecurity.email.title")}
           </p>
@@ -250,7 +251,7 @@ export function SecuritySettingsPanel() {
               placeholder={t("accountSecurity.email.placeholder")}
               aria-label={t("accountSecurity.email.label")}
               autoComplete="email"
-              className="rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--color-primary-light)]"
+              className="rounded-none border border-[var(--color-line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--color-primary-light)]"
             />
             <button
               type="button"
@@ -263,7 +264,7 @@ export function SecuritySettingsPanel() {
           </div>
         </div>
 
-        <div className="rounded-[14px] border border-[var(--color-line)] bg-white p-4">
+        <div className="rounded-none border border-[var(--color-line)] bg-white p-4">
           <p className="font-semibold text-[var(--color-ink)]">
             {t("accountSecurity.password.title")}
           </p>
@@ -278,7 +279,7 @@ export function SecuritySettingsPanel() {
               placeholder={t("accountSecurity.password.current")}
               aria-label={t("accountSecurity.password.current")}
               autoComplete="current-password"
-              className="rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--color-primary-light)]"
+              className="rounded-none border border-[var(--color-line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--color-primary-light)]"
             />
             <input
               type="password"
@@ -287,7 +288,7 @@ export function SecuritySettingsPanel() {
               placeholder={t("accountSecurity.password.next")}
               aria-label={t("accountSecurity.password.next")}
               autoComplete="new-password"
-              className="rounded-[10px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--color-primary-light)]"
+              className="rounded-none border border-[var(--color-line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--color-primary-light)]"
             />
             {nextPassword ? (
               <PasswordStrengthChecklist password={nextPassword} />
@@ -336,7 +337,7 @@ export function SecuritySettingsPanel() {
           ref={revealFeedback}
           role="alert"
           aria-live="assertive"
-          className="mt-4 rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]"
+          className="mt-4 rounded-none border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]"
         >
           {"key" in error ? t(error.key) : getAuthErrorMessage(error.cause, t)}
         </p>

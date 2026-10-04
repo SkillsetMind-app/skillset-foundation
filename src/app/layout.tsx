@@ -10,7 +10,8 @@ import { ConsoleSignature } from "@/components/shared/console-signature";
 import { CookieConsent } from "@/components/site/cookie-consent";
 import { PostHogProvider } from "@/app/posthog-provider";
 import { brand } from "@/data/brand";
-import { LOCALE_HTML_LANG } from "@/lib/i18n/config";
+import { DEFAULT_LOCALE, LOCALE_HTML_LANG } from "@/lib/i18n/config";
+import { getDictionary } from "@/lib/i18n/dictionaries";
 import { getServerLocale, getServerTranslation } from "@/lib/i18n/server";
 import { SITE_URL } from "@/lib/seo/page-metadata";
 import "./globals.css";
@@ -84,7 +85,12 @@ export default async function RootLayout({
       <body className="min-h-full bg-[var(--color-base)] text-[var(--color-ink)] antialiased">
         <ConsoleSignature />
         <PostHogProvider>
-          <I18nProvider initialLocale={locale}>
+          <I18nProvider
+            initialLocale={locale}
+            // Only English is in the client bundle; any other locale rides along
+            // with the page so the first render (and hydration) is already in it.
+            initialDictionary={locale === DEFAULT_LOCALE ? undefined : getDictionary(locale)}
+          >
             <AuthProvider><LessonUploadProvider>{children}</LessonUploadProvider></AuthProvider>
             <CookieConsent />
           </I18nProvider>
