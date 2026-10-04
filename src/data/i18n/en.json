@@ -3691,6 +3691,7 @@
         "verification": "Professional verification must be approved before publishing.",
         "payouts": "Finish Stripe payout onboarding before publishing a paid course — open the Payouts panel in your studio.",
         "payment": "Set a valid payment model before publishing.",
+        "lessonContent": "Add a video, text or file to every lesson before publishing.",
         "publish": "We could not publish this course. Please try again."
       },
       "success": {

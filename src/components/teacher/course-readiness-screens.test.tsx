@@ -341,6 +341,24 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     expect(publishTeacherCourse).toHaveBeenCalledTimes(operation === "publish" ? 1 : 0);
   });
 
+  // A studio with stale assets can let Publish through; the server refusal for
+  // an empty lesson must read as the same "every lesson" rule, not "try again".
+  it("maps the server empty-lesson refusal to the lesson content message", async () => {
+    vi.mocked(subscribeToTeacherCourse).mockImplementationOnce((_id, emit) => {
+      emit({ ...mocks.course, paymentType: "free", priceAmountMinor: 0, modules: [{ id: "m1", title: "Start here", lessons: [{ id: "l1", title: "Welcome", description: "", type: "text", contentText: "Read this first." }] }] });
+      return () => {};
+    });
+    vi.mocked(publishTeacherCourse).mockRejectedValueOnce(
+      new Error("Every lesson needs a video, text or a file before publishing."),
+    );
+    renderBuilder("review");
+    await screen.findByRole("heading", { name: mocks.course.title });
+    fireEvent.click(screen.getByRole("button", { name: "Publish product" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Add a video, text or file to every lesson before publishing.");
+    fireEvent.click(screen.getByRole("button", { name: "Switch language" }));
+    expect(screen.getByRole("alert")).toHaveTextContent("Añade un video, texto o archivo a cada lección antes de publicar.");
+  });
+
   it("translates a completed save without repeating it", async () => {
     renderBuilder();
     await screen.findByRole("heading", { name: mocks.course.title });

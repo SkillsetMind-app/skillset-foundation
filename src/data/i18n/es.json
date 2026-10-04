@@ -3691,6 +3691,7 @@
         "verification": "La verificación profesional debe estar aprobada antes de publicar.",
         "payouts": "Completa la configuración de cobros de Stripe antes de publicar un curso de pago. Abre el panel Cobros en tu estudio.",
         "payment": "Define un modelo de pago válido antes de publicar.",
+        "lessonContent": "Añade un video, texto o archivo a cada lección antes de publicar.",
         "publish": "No pudimos publicar este curso. Inténtalo de nuevo."
       },
       "success": {
