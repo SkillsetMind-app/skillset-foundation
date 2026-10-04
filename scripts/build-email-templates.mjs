@@ -53,9 +53,17 @@ const RECOVERY_URL =
 const SIGNUP_URL =
   "{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&amp;type=signup&amp;redirect_to={{ .RedirectTo | urlquery }}";
 const MAGIC_LINK_URL = "{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&amp;type=email&amp;next=/loading%3Fnext%3Droute&amp;redirect_to={{ .RedirectTo | urlquery }}";
-// Invite and email change still go through {{ .ConfirmationURL }}:
-// each would need its own verifyOtp type, and none of them is on the path
-// that was failing. One change, one proof.
+// Email change uses the same stateless route with type=email_change. With
+// secure email change on, GoTrue sends this template twice — to the current
+// and to the new address — and fills {{ .TokenHash }} with the right hash for
+// each recipient (email_change_token_current / email_change_token_new), so one
+// link shape serves both. {{ .TokenHashNew }} is not a template variable; it
+// only exists in the Send Email hook payload. No redirect_to: the app always
+// requests the change with a bare /auth/confirm, so a fixed `next` is enough.
+const EMAIL_CHANGE_URL =
+  "{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&amp;type=email_change&amp;next=/account%3Ftab%3Dsecurity";
+// Invite still goes through {{ .ConfirmationURL }}: it would need its own
+// verifyOtp type, and it is not on the path that was failing.
 const CONFIRMATION_URL = "{{ .ConfirmationURL }}";
 
 function button(href, label) {
@@ -203,13 +211,16 @@ const TEMPLATES = [
     file: "email_change.html",
     slug: "Change email address",
     dashboardTab: "Change email address",
-    subject: "Confirm your new email for SkillsetMind",
-    preheader: "Confirm the new email address on your SkillsetMind account.",
-    title: "Confirm your new email.",
+    subject: "Confirm your email change for SkillsetMind",
+    preheader: "Confirm the email address change on your SkillsetMind account.",
+    title: "Confirm your email change.",
+    // Sent to the current AND the new address when secure email change is on,
+    // so the copy names both instead of assuming which inbox this is.
     intro:
-      "We received a request to change the email address on your SkillsetMind account to this one. Click below to confirm the change. If you didn't ask for this, ignore this email.",
-    main: button(CONFIRMATION_URL, "Confirm new email"),
-    footer: "This link confirms the new address only. Your old address stays active until you do.",
+      "We received a request to change the email address on your SkillsetMind account from {{ .Email }} to {{ .NewEmail }}. Click below to confirm the change. If you didn't ask for this, don't click the link and contact us.",
+    main: button(EMAIL_CHANGE_URL, "Confirm email change"),
+    footer:
+      "If we also emailed your other address, confirm there too. Your current address stays active until the change is confirmed.",
   },
   {
     file: "reauthentication.html",
