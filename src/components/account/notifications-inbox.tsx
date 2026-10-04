@@ -110,7 +110,7 @@ export function NotificationsInbox() {
         <div className="flex items-center gap-2">
           <Link
             href="/account?tab=notifications"
-            className="rounded-[10px] border border-[var(--color-line)] px-3 py-2 text-xs font-semibold text-[var(--color-primary)] transition hover:bg-[var(--color-surface-soft)]"
+            className="rounded-none border border-[var(--color-line)] px-3 py-2 text-xs font-semibold text-[var(--color-primary)] transition hover:bg-[var(--color-surface-soft)]"
           >
             {t("accountNotifications.preferences")}
           </Link>
@@ -118,7 +118,7 @@ export function NotificationsInbox() {
             <button
               type="button"
               onClick={handleMarkAll}
-              className="inline-flex items-center gap-1.5 rounded-[10px] bg-[var(--color-primary)] px-3 py-2 text-xs font-semibold text-[var(--color-on-primary)] transition hover:opacity-90"
+              className="inline-flex items-center gap-1.5 rounded-none bg-[var(--color-primary)] px-3 py-2 text-xs font-semibold text-[var(--color-on-primary)] transition hover:opacity-90"
             >
               <CheckCheck aria-hidden="true" size={14} strokeWidth={2} />
               {t("accountNotifications.markAll")}
@@ -127,7 +127,7 @@ export function NotificationsInbox() {
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-[16px] border border-[var(--color-line)] bg-white shadow-[var(--shadow-soft)]">
+      <div className="overflow-hidden rounded-none border border-[var(--color-line)] bg-white shadow-[var(--shadow-soft)]">
         <HorizontalTabs
           tabs={notificationTabs}
           activeValue={filter}

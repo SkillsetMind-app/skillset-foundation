@@ -20,7 +20,7 @@ export function UploadProgressNote({
   return (
     <div
       role="status"
-      className="rounded-[10px] border fine-rule bg-white p-3"
+      className="rounded-none border fine-rule bg-white p-3"
     >
       <div className="flex items-center justify-between gap-3 text-xs font-semibold text-[var(--color-primary)]">
         <span>{t(`courseMedia.upload.${done ? "complete" : percent === null ? "sending" : "uploading"}`)}</span>
@@ -32,9 +32,9 @@ export function UploadProgressNote({
       </div>
       {percent !== null ? (
         <>
-          <div className="mt-2 h-2 overflow-hidden rounded-full bg-[var(--color-surface-soft)]">
+          <div className="mt-2 h-2 overflow-hidden rounded-none bg-[var(--color-surface-soft)]">
             <div
-              className="h-full rounded-full bg-[var(--color-primary)] transition-[width] duration-200"
+              className="h-full rounded-none bg-[var(--color-primary)] transition-[width] duration-200"
               style={{ width: `${percent}%` }}
             />
           </div>

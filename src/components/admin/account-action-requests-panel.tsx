@@ -71,7 +71,7 @@ export function AccountActionRequestsPanel() {
   }
 
   return (
-    <section className="rounded-[14px] border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
+    <section className="rounded-none border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
       <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
         {t(`${copy}.eyebrow`)}
       </p>
@@ -91,12 +91,12 @@ export function AccountActionRequestsPanel() {
             {t(`${copy}.loading`)}
           </p>
         ) : requests.length === 0 ? (
-          loadError ? null : <div className="rounded-[14px] border border-dashed border-[var(--color-line-strong)] bg-[var(--color-surface-soft)] p-5 text-sm leading-7 text-[var(--color-ink-soft)]">{t(`${copy}.empty`)}</div>
+          loadError ? null : <div className="rounded-none border border-dashed border-[var(--color-line-strong)] bg-[var(--color-surface-soft)] p-5 text-sm leading-7 text-[var(--color-ink-soft)]">{t(`${copy}.empty`)}</div>
         ) : (
           requests.map((request) => (
             <article
               key={request.id}
-              className="rounded-[14px] border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-4"
+              className="rounded-none border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-4"
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">

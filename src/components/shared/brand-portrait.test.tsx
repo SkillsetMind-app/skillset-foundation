@@ -1,4 +1,5 @@
 import { act, cleanup, render } from "@testing-library/react";
+import { hydrateRoot } from "react-dom/client";
 import { renderToString } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ImageConfigContext } from "next/dist/shared/lib/image-config-context.shared-runtime";
@@ -270,5 +271,42 @@ describe("BrandPortrait rotate (homepage hero)", () => {
     const hero = container.querySelector('[data-testid="hero"]') as HTMLElement;
     const panel = container.querySelector('[data-testid="panel"]') as HTMLElement;
     expect(visible(hero)).toBe(faceOf(sources(panel)[0]));
+  });
+
+  it("with a server draw, the face is in the HTML and hydration keeps it", async () => {
+    // Fresh module: no draw yet on this "page load".
+    vi.resetModules();
+    const fresh = await import("@/components/shared/brand-portrait");
+    const tree = (
+      <>
+        <div data-testid="hero">
+          <fresh.BrandPortrait rotate imageClassName="hero" sizes="100vw" priority initialIndex={6} />
+        </div>
+        <div data-testid="panel">
+          <fresh.BrandPortrait imageClassName="panel" sizes="60vw" />
+        </div>
+      </>
+    );
+    const html = renderToString(tree);
+    expect(html).toContain(encodeURIComponent(BRAND_PORTRAITS[6]));
+
+    // Hydrate that exact HTML: React must not report a mismatch, and the page's
+    // single draw is the server's, so every portrait shows it.
+    const container = document.createElement("div");
+    container.innerHTML = html;
+    document.body.appendChild(container);
+    const recoverable = vi.fn();
+    vi.useFakeTimers();
+    let root: ReturnType<typeof hydrateRoot> | undefined;
+    act(() => {
+      root = hydrateRoot(container, tree, { onRecoverableError: recoverable });
+    });
+    expect(recoverable).not.toHaveBeenCalled();
+    const hero = container.querySelector('[data-testid="hero"]') as HTMLElement;
+    const panel = container.querySelector('[data-testid="panel"]') as HTMLElement;
+    expect(visible(hero)).toBe(BRAND_PORTRAITS[6]);
+    expect(faceOf(sources(panel)[0])).toBe(BRAND_PORTRAITS[6]);
+    act(() => root?.unmount());
+    container.remove();
   });
 });

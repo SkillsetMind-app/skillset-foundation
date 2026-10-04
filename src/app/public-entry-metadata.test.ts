@@ -14,13 +14,12 @@ vi.mock("@/lib/i18n/server", () => ({
 
 describe("public entry metadata follows the selected language", () => {
   it.each([
-    ["en", "Course platform for coaches, facilitators & mentors | SkillsetMind", "For coaches, facilitators and mentors who already teach live"],
-    ["es", "Plataforma de cursos para coaches, facilitadores y mentores | SkillsetMind", "Para coaches, facilitadores y mentores que ya enseñan en vivo"],
+    ["en", "Course platform for psychologists & personal-development professionals | SkillsetMind", "For psychologists and personal-development professionals who already teach live"],
+    ["es", "Plataforma de cursos para psicólogos y profesionales del desarrollo personal | SkillsetMind", "Para psicólogos y profesionales del desarrollo personal que ya enseñan en vivo"],
   ] as const)("translates the home title and sharing cards in %s", async (locale, title, descriptionStart) => {
     state.locale = locale;
     const metadata = await homeMetadata();
     expect(metadata.title).toBe(title);
-    expect(`${metadata.title} ${metadata.description}`).not.toMatch(/psycholog|psicólog/i);
     expect(metadata.description).toMatch(new RegExp(`^${descriptionStart}`));
     expect(metadata.openGraph).toMatchObject({ title, description: metadata.description });
     expect(metadata.twitter).toMatchObject({ title, description: metadata.description });

@@ -199,7 +199,7 @@ export function SaleList() {
           id="sales-period"
           value={period}
           onChange={(event) => setPeriod(event.target.value as Period)}
-          className="min-h-11 rounded-[8px] border border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2 text-sm font-semibold text-[var(--color-ink)]"
+          className="min-h-11 rounded-none border border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2 text-sm font-semibold text-[var(--color-ink)]"
         >
           {PERIODS.map((option) => (
             <option key={option} value={option}>
@@ -219,7 +219,7 @@ export function SaleList() {
           value={search}
           onChange={(event) => setSearch(event.target.value)}
           placeholder={t(`${copy}.searchPlaceholder`)}
-          className="min-h-11 min-w-[12rem] flex-1 rounded-[8px] border border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-ink)]"
+          className="min-h-11 min-w-[12rem] flex-1 rounded-none border border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-ink)]"
         />
         <label htmlFor="sales-status" className="sr-only">
           {t(`${copy}.statusLabel`)}
@@ -228,7 +228,7 @@ export function SaleList() {
           id="sales-status"
           value={status}
           onChange={(event) => setStatus(event.target.value as StatusFilter)}
-          className="min-h-11 rounded-[8px] border border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2 text-sm font-semibold text-[var(--color-ink)]"
+          className="min-h-11 rounded-none border border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2 text-sm font-semibold text-[var(--color-ink)]"
         >
           {STATUS_FILTERS.map((option) => (
             <option key={option} value={option}>
@@ -258,7 +258,7 @@ export function SaleList() {
           {visibleOrders.map((order) => (
             <li
               key={order.id}
-              className="flex flex-wrap items-center justify-between gap-4 rounded-[12px] border border-[var(--color-line)] bg-white p-4 shadow-[var(--shadow-soft)] transition-colors hover:border-[var(--color-primary-light)]"
+              className="flex flex-wrap items-center justify-between gap-4 rounded-none border border-[var(--color-line)] bg-white p-4 shadow-[var(--shadow-soft)] transition-colors hover:border-[var(--color-primary-light)]"
             >
               <div className="min-w-0">
                 <Link

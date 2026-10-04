@@ -190,11 +190,11 @@ export function LearnDashboard() {
           {[0, 1, 2].map((item) => (
             <div
               key={item}
-              className="h-56 animate-pulse rounded-[14px] border border-[var(--color-line)] bg-white shadow-[var(--shadow-soft)]"
+              className="h-56 animate-pulse rounded-none border border-[var(--color-line)] bg-white shadow-[var(--shadow-soft)]"
             />
           ))}
         </div>
-        <div className="h-44 animate-pulse rounded-[14px] bg-[var(--color-surface-soft)]" />
+        <div className="h-44 animate-pulse rounded-none bg-[var(--color-surface-soft)]" />
       </div>
     );
   }
@@ -203,8 +203,8 @@ export function LearnDashboard() {
     return (
       <div className="grid gap-8">
         {greeting}
-        <div className="rounded-[14px] border border-[rgba(178,34,52,0.2)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
-          <p className="rounded-[10px] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
+        <div className="rounded-none border border-[rgba(178,34,52,0.2)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
+          <p className="rounded-none bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
             {t("learn.dashboard.loadError")}
           </p>
           <div className="mt-4 flex flex-wrap gap-3">
@@ -226,7 +226,7 @@ export function LearnDashboard() {
         {user ? <WelcomeTour key={user.uid} userId={user.uid} firstName={firstName} /> : null}
         {greeting}
         <div className="grid gap-5 xl:grid-cols-[1.1fr_0.9fr]">
-          <div className="rounded-[14px] border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
+          <div className="rounded-none border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
             <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
               {t("learn.dashboard.myLearning")}
             </p>
@@ -364,9 +364,9 @@ export function LearnDashboard() {
                 <li key={enrollment.id}>
                   <Link
                     href={href}
-                    className="group block rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-3 transition hover:-translate-y-0.5 hover:bg-[var(--color-surface-hover)] hover:shadow-[var(--shadow-soft)]"
+                    className="group block rounded-none border fine-rule bg-[var(--color-surface-soft)] p-3 transition hover:-translate-y-0.5 hover:bg-[var(--color-surface-hover)] hover:shadow-[var(--shadow-soft)]"
                   >
-                    <div className="relative aspect-[16/10] overflow-hidden rounded-[10px]">
+                    <div className="relative aspect-[16/10] overflow-hidden rounded-none">
                       <Image
                         src={enrollment.courseImage || FALLBACK_COVER}
                         alt=""
@@ -424,7 +424,7 @@ export function LearnDashboard() {
             <ul className="mt-3 grid gap-3">
               {nextEvents.map((event) => (
                 <li key={event.id} className="flex flex-wrap items-center gap-3">
-                  <span className="grid size-9 shrink-0 place-items-center rounded-full bg-[rgba(178,34,52,0.1)] text-[var(--color-accent-fg)]">
+                  <span className="grid size-9 shrink-0 place-items-center rounded-none bg-[rgba(178,34,52,0.1)] text-[var(--color-accent-fg)]">
                     <Radio aria-hidden="true" size={16} strokeWidth={1.8} />
                   </span>
                   <div className="min-w-0 flex-1">
@@ -487,7 +487,7 @@ export function LearnDashboard() {
                   {notification.link ? (
                     <Link
                       href={notification.link}
-                      className="block rounded-[10px] transition hover:bg-[var(--color-surface-soft)]"
+                      className="block rounded-none transition hover:bg-[var(--color-surface-soft)]"
                     >
                       <NotificationRow notification={notification} />
                     </Link>
@@ -516,7 +516,7 @@ export function LearnDashboard() {
             <div
               role="tablist"
               aria-label={t("learn.dashboard.filterLabel")}
-              className="flex items-center gap-1 rounded-[10px] border fine-rule bg-[var(--color-surface-soft)] p-1"
+              className="flex items-center gap-1 rounded-none border fine-rule bg-[var(--color-surface-soft)] p-1"
             >
               {(["in_progress", "completed"] as const).map((value) => (
                 <button
@@ -525,7 +525,7 @@ export function LearnDashboard() {
                   role="tab"
                   aria-selected={courseFilter === value}
                   onClick={() => setCourseFilter(value)}
-                  className={`min-h-11 rounded-[8px] px-4 text-xs font-semibold transition ${
+                  className={`min-h-11 rounded-none px-4 text-xs font-semibold transition ${
                     courseFilter === value
                       ? "bg-white text-[var(--color-primary)] shadow-[var(--shadow-soft)]"
                       : "text-[var(--color-ink-soft)] hover:text-[var(--color-primary)]"
@@ -547,7 +547,7 @@ export function LearnDashboard() {
           </div>
         </div>
         {visibleEnrollments.length === 0 ? (
-          <p className="mt-5 rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
+          <p className="mt-5 rounded-none border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
             {t("learn.dashboard.noEnrollmentsMatch")}
           </p>
         ) : (
@@ -562,8 +562,8 @@ export function LearnDashboard() {
 
               return (
                 <li key={enrollment.id}>
-                  <article className="flex h-full flex-col rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-3">
-                    <div className="relative aspect-[16/10] overflow-hidden rounded-[10px]">
+                  <article className="flex h-full flex-col rounded-none border fine-rule bg-[var(--color-surface-soft)] p-3">
+                    <div className="relative aspect-[16/10] overflow-hidden rounded-none">
                       <Image
                         // Same fallback the write path uses (lib/data/enrollments.ts).
                         // Legacy rows predate it, and an empty src throws in next/image,
@@ -590,9 +590,9 @@ export function LearnDashboard() {
                       </p>
                       <StatusChip status={enrollment.status} />
                     </div>
-                    <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[rgba(26,54,93,0.12)]">
+                    <div className="mt-2 h-1.5 overflow-hidden rounded-none bg-[rgba(26,54,93,0.12)]">
                       <div
-                        className="h-full rounded-full bg-[var(--color-accent)]"
+                        className="h-full rounded-none bg-[var(--color-accent)]"
                         style={{ width: `${percent}%` }}
                       />
                     </div>

@@ -99,7 +99,7 @@ export function AssistantPanel() {
   return (
     <section
       aria-label={t("publicPages.assistant.skillsetmind_assistant")}
-      className="mb-10 rounded-[18px] border fine-rule bg-[var(--color-surface-soft)] p-5 sm:p-7"
+      className="mb-10 rounded-none border fine-rule bg-[var(--color-surface-soft)] p-5 sm:p-7"
     >
       <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
         <Sparkles className="h-4 w-4" aria-hidden="true" />
@@ -111,7 +111,7 @@ export function AssistantPanel() {
         className="mt-4 max-h-80 space-y-3 overflow-y-auto"
         aria-live="polite"
       >
-        <p className="rounded-[12px] bg-white px-3 py-2.5 text-sm leading-6 text-[var(--color-ink-soft)]">
+        <p className="rounded-none bg-white px-3 py-2.5 text-sm leading-6 text-[var(--color-ink-soft)]">
           {t("publicPages.assistant.greeting")}
         </p>
 
@@ -122,7 +122,7 @@ export function AssistantPanel() {
                 key={suggestion}
                 type="button"
                 onClick={() => void send(t(suggestion))}
-                className="rounded-[10px] border border-[var(--color-line)] bg-white px-3 py-2 text-left text-xs font-medium text-[var(--color-primary)] transition-colors hover:bg-[var(--color-surface-strong)]"
+                className="rounded-none border border-[var(--color-line)] bg-white px-3 py-2 text-left text-xs font-medium text-[var(--color-primary)] transition-colors hover:bg-[var(--color-surface-strong)]"
               >
                 {t(suggestion)}
               </button>
@@ -137,7 +137,7 @@ export function AssistantPanel() {
           >
             <p
               className={[
-                "max-w-[85%] whitespace-pre-wrap rounded-[12px] px-3 py-2 text-sm leading-6",
+                "max-w-[85%] whitespace-pre-wrap rounded-none px-3 py-2 text-sm leading-6",
                 message.role === "user"
                   ? "bg-[var(--color-primary)] text-[var(--color-base)]"
                   : "border border-[var(--color-line)] bg-white text-[var(--color-ink)]",
@@ -155,7 +155,7 @@ export function AssistantPanel() {
         ) : null}
 
         {notice ? (
-          <p className="rounded-[10px] border border-[var(--color-line)] bg-white px-3 py-2 text-xs leading-5 text-[var(--color-ink-soft)]">
+          <p className="rounded-none border border-[var(--color-line)] bg-white px-3 py-2 text-xs leading-5 text-[var(--color-ink-soft)]">
             {t(Object.hasOwn(NOTICE_KEYS, notice) ? NOTICE_KEYS[notice] : notice)}
           </p>
         ) : null}
@@ -181,7 +181,7 @@ export function AssistantPanel() {
           type="submit"
           disabled={isSending || input.trim().length === 0}
           aria-label={t("publicPages.assistant.send_message")}
-          className="button-solid flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] p-0 disabled:opacity-50"
+          className="button-solid flex h-10 w-10 shrink-0 items-center justify-center rounded-none p-0 disabled:opacity-50"
         >
           <Send className="h-4 w-4" aria-hidden="true" />
         </button>

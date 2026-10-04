@@ -69,14 +69,14 @@ export function VideoWatermark({
   const watermarkText = `${viewerLabel} · ${timestampLabel} · ${brandName}`;
 
   return (
-    <div className="relative overflow-hidden rounded-[10px] bg-[var(--color-primary)]">
+    <div className="relative overflow-hidden rounded-none bg-[var(--color-primary)]">
       {children}
       {/* pointer-events-none so the overlay never steals a click from the
           player controls underneath — including the iframe ones. */}
       <div className="pointer-events-none absolute inset-0">
         <div
           data-watermark-corner={corner}
-          className={`absolute max-w-[70%] rounded-[6px] bg-[rgba(15,39,68,0.38)] px-2 py-0.5 text-[10px] font-medium tracking-[0.04em] text-white/70 backdrop-blur-[2px] ${watermarkCorners[corner]}`}
+          className={`absolute max-w-[70%] rounded-none bg-[rgba(15,39,68,0.38)] px-2 py-0.5 text-[10px] font-medium tracking-[0.04em] text-white/70 backdrop-blur-[2px] ${watermarkCorners[corner]}`}
         >
           {watermarkText}
         </div>

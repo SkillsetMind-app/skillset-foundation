@@ -102,7 +102,7 @@ export function TeacherCommunityInbox({ courseId }: { courseId: string }) {
 
   if (!course || !user) {
     return (
-      <section className="rounded-[14px] border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)]">
+      <section className="rounded-none border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)]">
         <p className="text-sm text-[var(--color-ink-soft)]">
           {t(error || "teacherCommunity.notFound")}
         </p>
@@ -138,7 +138,7 @@ export function TeacherCommunityInbox({ courseId }: { courseId: string }) {
       </header>
 
       {error ? (
-        <p className="rounded-[10px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
+        <p className="rounded-none border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
           {t(error)}
         </p>
       ) : null}
@@ -147,13 +147,13 @@ export function TeacherCommunityInbox({ courseId }: { courseId: string }) {
         <section aria-labelledby="waiting-heading" className="grid gap-3">
           <h2 id="waiting-heading" className="text-lg font-semibold text-[var(--color-ink)]">
             {t("teacherCommunity.waitingTitle")}
-            <span className="ml-2 inline-flex min-w-7 items-center justify-center rounded-full bg-[var(--color-primary)] px-2 text-xs font-bold text-[var(--color-base)]">
+            <span className="ml-2 inline-flex min-w-7 items-center justify-center rounded-none bg-[var(--color-primary)] px-2 text-xs font-bold text-[var(--color-base)]">
               {number(queue.length)}
             </span>
           </h2>
 
           {queue.length === 0 ? (
-            <p className="rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
+            <p className="rounded-none border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
               {t("teacherCommunity.empty")}
             </p>
           ) : (
@@ -172,7 +172,7 @@ export function TeacherCommunityInbox({ courseId }: { courseId: string }) {
         </section>
 
         <aside className="grid gap-3">
-          <section className="rounded-[14px] border border-[var(--color-line)] bg-white p-4 shadow-[var(--shadow-soft)]">
+          <section className="rounded-none border border-[var(--color-line)] bg-white p-4 shadow-[var(--shadow-soft)]">
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
               {t("teacherCommunity.week")}
             </p>
@@ -249,7 +249,7 @@ function WaitingCard({
   return (
     <article
       aria-label={post.title ?? post.body.slice(0, 60)}
-      className="rounded-[14px] border border-[var(--color-line)] bg-white p-4 shadow-[var(--shadow-soft)]"
+      className="rounded-none border border-[var(--color-line)] bg-white p-4 shadow-[var(--shadow-soft)]"
     >
       <h3 className="text-base font-bold leading-6 text-[var(--color-ink)]">
         {post.title ?? post.body}
@@ -375,7 +375,7 @@ function UpdateComposer({
     <form
       onSubmit={handleSubmit}
       aria-label={t("teacherCommunity.newUpdate")}
-      className="grid w-full gap-2 rounded-[14px] border border-[var(--color-primary)] bg-white p-4 shadow-[var(--shadow-soft)] lg:max-w-[560px]"
+      className="grid w-full gap-2 rounded-none border border-[var(--color-primary)] bg-white p-4 shadow-[var(--shadow-soft)] lg:max-w-[560px]"
     >
       <label className="grid gap-1 text-sm">
         <span className="sr-only">{t("teacherCommunity.yourUpdate")}</span>

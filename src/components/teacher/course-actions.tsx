@@ -97,7 +97,7 @@ export function CourseActionsMenu({
           }
           setOpen((current) => !current);
         }}
-        className="grid min-h-11 min-w-11 place-items-center rounded-[7px] border border-[var(--color-line-strong)] bg-white text-[var(--color-primary)] transition-colors hover:bg-[var(--color-surface-soft)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]"
+        className="grid min-h-11 min-w-11 place-items-center rounded-none border border-[var(--color-line-strong)] bg-white text-[var(--color-primary)] transition-colors hover:bg-[var(--color-surface-soft)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]"
       >
         <Icon aria-hidden="true" size={19} strokeWidth={2} />
       </button>
@@ -114,7 +114,7 @@ export function CourseActionsMenu({
             triggerRef.current?.focus();
           }}
           style={menuLeftPx === null ? undefined : { left: menuLeftPx }}
-          className={`absolute top-[calc(100%+8px)] z-40 w-56 rounded-[8px] border border-[var(--color-line)] bg-white p-1.5 shadow-[var(--shadow-strong)] ${menuLeftPx === null ? "right-0" : ""}`}
+          className={`absolute top-[calc(100%+8px)] z-40 w-56 rounded-none border border-[var(--color-line)] bg-white p-1.5 shadow-[var(--shadow-strong)] ${menuLeftPx === null ? "right-0" : ""}`}
         >
           {children}
         </div>
@@ -205,7 +205,7 @@ export function DeleteOrArchiveCourseDialog({
         role="dialog"
         aria-modal="true"
         aria-label={t("creatorPanel.products.delete.aria").replace("{title}", () => courseTitle)}
-        className="modal-panel modal-panel-scroll w-full max-w-md rounded-[16px] border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-strong)] outline-none"
+        className="modal-panel modal-panel-scroll w-full max-w-md rounded-none border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-strong)] outline-none"
       >
         <p className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--color-danger-fg)]">
           {t(`${prefix}.eyebrow`)}

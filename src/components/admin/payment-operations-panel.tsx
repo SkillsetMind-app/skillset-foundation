@@ -105,7 +105,7 @@ export function PaymentOperationsPanel() {
   );
 
   return (
-    <section className="rounded-[14px] border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
+    <section className="rounded-none border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
@@ -120,7 +120,7 @@ export function PaymentOperationsPanel() {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <ExportTableButton filename="skillset-orders" rows={exportRows} disabled={isLoading || error} />
-          <span className="rounded-[8px] bg-[var(--color-surface-soft)] px-3 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-primary)]">
+          <span className="rounded-none bg-[var(--color-surface-soft)] px-3 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-primary)]">
             {t(`${copy}.adminOnly`)}
           </span>
         </div>
@@ -138,7 +138,7 @@ export function PaymentOperationsPanel() {
         ].map(([label, value]) => (
           <div
             key={label}
-            className="rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-4"
+            className="rounded-none border fine-rule bg-[var(--color-surface-soft)] p-4"
           >
             <p className="text-xs uppercase tracking-[0.18em] text-[var(--color-ink-soft)]">
               {label}
@@ -158,12 +158,12 @@ export function PaymentOperationsPanel() {
         {isLoading ? (
           <p role="status" className="text-sm text-[var(--color-ink-soft)]">{t(`${copy}.loading`)}</p>
         ) : orders.length === 0 ? (
-          error ? null : <p className="rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">{t(`${copy}.empty`)}</p>
+          error ? null : <p className="rounded-none border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">{t(`${copy}.empty`)}</p>
         ) : (
           orders.map((order) => (
             <article
               key={order.id}
-              className="rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-4"
+              className="rounded-none border fine-rule bg-[var(--color-surface-soft)] p-4"
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">
@@ -172,7 +172,7 @@ export function PaymentOperationsPanel() {
                     {order.courseTitle}
                   </h4>
                 </div>
-                <span className="rounded-[8px] bg-white px-3 py-1 text-sm font-bold text-[var(--color-primary)]">
+                <span className="rounded-none bg-white px-3 py-1 text-sm font-bold text-[var(--color-primary)]">
                   {formatMoney(order.amountMinor, order.currency, locale)}
                 </span>
               </div>

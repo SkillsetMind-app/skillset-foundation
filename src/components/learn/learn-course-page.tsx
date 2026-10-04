@@ -45,7 +45,7 @@ export async function LearnCoursePage({
               // Members tokens, not platform ones: this fallback paints inside
               // the themed shell, and a white card on the dark bg reads as a
               // flash of the wrong product.
-              <section className="rounded-[14px] border border-[var(--ma-line)] bg-[var(--ma-surface)] p-6">
+              <section className="rounded-none border border-[var(--ma-line)] bg-[var(--ma-surface)] p-6">
                 <p className="text-sm text-[var(--ma-ink-soft)]">
                   {t("learnWave2.workspace.suspense")}
                 </p>

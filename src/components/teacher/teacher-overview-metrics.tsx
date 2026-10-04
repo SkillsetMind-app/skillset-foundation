@@ -200,7 +200,7 @@ export function TeacherOverviewMetrics() {
             {card.label}
           </p>
           {isLoading ? (
-            <div className="mt-3 h-8 w-24 animate-pulse rounded bg-[var(--color-surface-strong)]" />
+            <div className="mt-3 h-8 w-24 animate-pulse rounded-none bg-[var(--color-surface-strong)]" />
           ) : (
             <p className="mt-2 text-4xl font-bold tracking-[-0.04em] text-[var(--color-primary)]">
               {card.value}
