@@ -76,7 +76,13 @@ export async function POST(request: Request) {
     try {
       await enforceRateLimit(`teach_video_create_unpaid_${auth.user.id}`, UNPAID_DAILY_VIDEOS, 24 * 60 * 60 * 1000);
     } catch (error) {
-      return paymentErrorResponse(error);
+      // Over the cap, paying the fee lifts it: answer like the activation gate
+      // (402), which the uploader already shows as "pay the activation fee".
+      if ((error as { status?: unknown }).status !== 429) return paymentErrorResponse(error);
+      return NextResponse.json(
+        { error: "Pay the one-time activation fee to keep uploading video today.", code: "activation_required" },
+        { status: 402 },
+      );
     }
   }
 

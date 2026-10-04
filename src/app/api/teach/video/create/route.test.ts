@@ -74,9 +74,11 @@ it("puts an unpaid owner under the daily video cap", async () => {
 it("stops an unpaid owner over the daily cap before any Bunny video exists", async () => {
   mocks.blocked.mockResolvedValue({ data: true, error: null });
   mocks.rateLimit.mockImplementation(async (key: string) => {
-    if (key.startsWith("teach_video_create_unpaid_")) throw new Error("RATE_LIMIT");
+    if (key.startsWith("teach_video_create_unpaid_")) throw Object.assign(new Error("Too many"), { status: 429 });
   });
-  expect((await create()).status).toBe(429);
+  const response = await create();
+  expect(response.status).toBe(402);
+  expect(await response.json()).toMatchObject({ code: "activation_required" });
   expect(mocks.createVideo).not.toHaveBeenCalled();
 });
 
