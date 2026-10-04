@@ -21,7 +21,7 @@ type Message = { role: "user" | "assistant"; content: string };
 type HistoryStatus = "idle" | "loading" | "ready";
 
 type Notice = { text: string } | {
-  key: "notReady" | "tooManyMessages" | "sessionExpired" | "somethingWrong" | "unreachable";
+  key: "notReady" | "tooManyMessages" | "activationRequired" | "sessionExpired" | "somethingWrong" | "unreachable";
 };
 const AdvisorHeaderContext = createContext<RefCallback<HTMLDivElement> | null>(null);
 const HEADER_QUERY = "(min-width: 768px)";
@@ -236,6 +236,10 @@ export function AdvisorSidebar({ children }: { children?: ReactNode } = {}) {
         ]);
       } else if (res.status === 503) {
         setNotice(data.reply != null ? { text: data.reply } : { key: "notReady" });
+      } else if (res.status === 402) {
+        // The advisor spends paid inference, so it stays behind the one-time
+        // activation even though drafting and uploads no longer do.
+        setNotice({ key: "activationRequired" });
       } else if (res.status === 429) {
         setNotice({ key: "tooManyMessages" });
       } else if (res.status === 401) {

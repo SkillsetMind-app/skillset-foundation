@@ -113,9 +113,9 @@ describe("POST /api/payments/connect/account-link", () => {
     expect(mocks.createFreshConnectedAccount).not.toHaveBeenCalled();
   });
 
-  // Same gate as the courses trigger: an unpaid creator cannot mint a payout
-  // account. 402, not 400 — the client uses the status to open the fee checkout.
-  it("refuses an unactivated creator with 402", async () => {
+  // Connecting Stripe comes before the one-time activation fee, which is
+  // charged at the first Publish: an unpaid creator must get through.
+  it("lets a creator who has not paid the activation fee connect Stripe", async () => {
     mocks.assertCreatorActivated.mockRejectedValue(
       new PaymentError(
         "Pay the one-time activation fee to activate your creator account.",
@@ -123,13 +123,13 @@ describe("POST /api/payments/connect/account-link", () => {
         "activation_required",
       ),
     );
+    mocks.getUserRow.mockResolvedValue({ ...TEACHER, stripe_connected_account_id: null });
 
-    const response = await POST(req());
-    const body = await response.json();
+    const response = await POST(req({ country: "ch" }));
 
-    expect(response.status).toBe(402);
-    expect(body.code).toBe("activation_required");
-    expect(mocks.createFreshConnectedAccount).not.toHaveBeenCalled();
+    expect(response.status).toBe(200);
+    expect(mocks.assertCreatorActivated).not.toHaveBeenCalled();
+    expect(mocks.createFreshConnectedAccount).toHaveBeenCalled();
   });
 
   it("mints the account in the chosen country when none is stored", async () => {

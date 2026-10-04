@@ -1,14 +1,10 @@
 import type { ReactNode } from "react";
 
-import { ActivationGate } from "@/components/teacher/activation-gate";
+import { StudioAdvisorFrame } from "@/components/teacher/studio-advisor-frame";
 
-// Wraps every /teach route so the persistent studio advisor and the activation
-// wall are available across the teacher panel. Activation comes first: neither
-// the studio nor its advisor mounts until the shared verdict permits access.
+// Wraps every /teach route so the persistent studio advisor is available
+// across the teacher panel. The studio is open before the activation fee; the
+// fee is asked for when the creator publishes their first course.
 export default function TeachLayout({ children }: { children: ReactNode }) {
-  return (
-    <ActivationGate>
-      {children}
-    </ActivationGate>
-  );
+  return <StudioAdvisorFrame>{children}</StudioAdvisorFrame>;
 }

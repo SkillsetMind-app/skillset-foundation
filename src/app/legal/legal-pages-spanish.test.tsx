@@ -43,6 +43,11 @@ function legalDictionary(locale: Locale) {
   return legal!;
 }
 
+function effectiveDate(locale: Locale, key: string) {
+  const legal = legalDictionary(locale);
+  return key === "teacherTerms" ? legal.teacherTerms.effectiveDate : legal.common.effectiveDate;
+}
+
 function interpolate(value: string) {
   return value
     .replaceAll("{days}", () => String(refundWindowDays))
@@ -68,7 +73,7 @@ describe("legal document translation from the request cookie", () => {
       const blocks = Array.from({ length: texts }, (_, index) => document[`text${index + 1}`]);
       const view = render(await Page());
       const main = screen.getByRole("main");
-      const effective = dictionary.common.effectiveLabel.replace("{date}", () => dictionary.common.effectiveDate);
+      const effective = dictionary.common.effectiveLabel.replace("{date}", () => effectiveDate(locale, key));
 
       expect(within(main).getByRole("heading", { level: 1 })).toHaveTextContent(locale === "es" ? title : englishReference[key].title);
       expect(within(main).getByRole("heading", { level: 1 })).toHaveClass("page-title");
@@ -98,11 +103,12 @@ describe("legal document translation from the request cookie", () => {
   });
 
   it.each(pages)("$key defaults to English for absent or unsupported cookies", async ({ Page, key }) => {
+    const effective = key === "teacherTerms" ? "Effective October 4, 2026" : "Effective September 24, 2026";
     for (const cookie of [undefined, "pt-BR", "invalid"]) {
       request.locale = cookie;
       const view = render(await Page());
       expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(englishReference[key].title);
-      expect(screen.getByText("Effective September 24, 2026")).toBeInTheDocument();
+      expect(screen.getByText(effective)).toBeInTheDocument();
       view.unmount();
     }
   });
@@ -201,12 +207,18 @@ describe("legal document translation from the request cookie", () => {
     expect(JSON.stringify(helpFaqCategories)).not.toMatch(brazilPayout);
   });
 
+  // Teacher Terms carry their own date: a Teacher Terms change re-prompts only
+  // creators, without re-dating the Terms and Privacy everyone accepted.
   it("shows the effective date that the stored legal versions record", () => {
-    for (const version of [currentTermsVersion, currentPrivacyVersion, currentTeacherTermsVersion]) {
+    for (const [version, key] of [
+      [currentTermsVersion, "terms"],
+      [currentPrivacyVersion, "privacy"],
+      [currentTeacherTermsVersion, "teacherTerms"],
+    ] as const) {
       for (const locale of ["en", "es"] as const) {
         const formatted = new Intl.DateTimeFormat(locale === "en" ? "en-US" : "es", { dateStyle: "long", timeZone: "UTC" })
           .format(new Date(`${version}T00:00:00Z`));
-        expect(formatted, `${locale} ${version}`).toBe(legalDictionary(locale).common.effectiveDate);
+        expect(formatted, `${locale} ${version}`).toBe(effectiveDate(locale, key));
       }
     }
   });

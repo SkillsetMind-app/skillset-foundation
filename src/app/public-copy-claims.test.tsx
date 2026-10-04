@@ -99,9 +99,9 @@ describe("creator fee disclosure", () => {
     for (const text of expected[locale]) expect(container.textContent).toContain(text);
   });
 
-  // Production gates /teach behind the fee (ActivationGate), so the page must
-  // not promise drafting before it, nor sell the Free plan as "start free".
-  it.each(["en", "es"])("%s /for-creators never promises drafting before activation or a free start", async (locale) => {
+  // Drafting is open before the fee, but "immediately" and "start free" still
+  // oversell: publishing needs the fee, and the Free plan is not a free start.
+  it.each(["en", "es"])("%s /for-creators never promises immediate drafting or a free start", async (locale) => {
     state.locale = locale;
     const { container } = render(await CreatorsPage());
     const { description } = await creatorsMetadata();
@@ -113,9 +113,9 @@ describe("creator fee disclosure", () => {
 });
 
 // One guard over every public entry page. Production truth it defends:
-// /teach sits behind ActivationGate, so nobody drafts before the one-time fee;
-// where verification is required it is approved before paying; publishing
-// then passes launch checks; the Free plan has no monthly fee and takes 10%.
+// drafting is open, the one-time fee is paid at the first publish; where
+// verification is required it is approved before paying; publishing then
+// passes launch checks; the Free plan has no monthly fee and takes 10%.
 describe("public copy guard: home, /pricing, /fees-and-payouts, /for-creators, /help", () => {
   const falseClaims: ReadonlyArray<readonly [string, RegExp]> = [
     ["an earnings claim", incomeClaims],
@@ -209,9 +209,9 @@ describe("public copy guard: home, /pricing, /fees-and-payouts, /for-creators, /
   });
 });
 
-// Production order: free signup, then professional verification where required,
-// then the one-time activation while it is required, then drafting, then
-// publishing after launch checks. Verification is not universal.
+// Production order: free signup, drafting and Stripe; professional verification
+// where required; then the one-time activation, while it is required, at the
+// first publish, after launch checks. Verification is not universal.
 describe("creator path order and conditions", () => {
   const whereRequired = /where required|cuando se requiere/i;
   const whileActivation = /while activation is required|mientras se exija la activación/i;
@@ -256,17 +256,21 @@ describe("creator path order and conditions", () => {
     expect(answer).not.toMatch(/Approved creators/);
   });
 
-  it.each(dictionaries)("the %s /teach description puts verification before paying and activation before drafting", (_locale, dict) => {
+  it.each(dictionaries)("the %s /teach description puts verification before paying and the activation at the first publish", (_locale, dict) => {
     expect(dict.teach.page.description).toMatch(/before you can pay|antes de que puedas pagar/);
+    expect(dict.teach.page.description).toMatch(/^(Drafting is open from the start\.|La preparación de cursos está abierta desde el principio\.)/);
+    expect(dict.teach.page.description).toMatch(/your first publish|tu primera publicación/);
     expect(dict.teach.page.description).not.toMatch(/while SkillsetMind verifies|mientras SkillsetMind verifica/i);
   });
 
-  // Connect Stripe answers 402 until the activation is paid (assertCreatorActivated).
-  it.each(["en", "es"])("%s home step 1 (fee configured) puts the activation before Stripe Express", async (locale) => {
+  // Connecting Stripe is open before the activation, which is paid at the
+  // first publish, so step 1 names Stripe first and ties the fee to publishing.
+  it.each(["en", "es"])("%s home step 1 (fee configured) puts Stripe Express before the activation at the first publish", async (locale) => {
     state.locale = locale;
     const text = String(render(await HowItWorksStrip()).container.textContent);
     expect(text).toContain("US$25");
-    expect(text.indexOf("US$25")).toBeLessThan(text.indexOf("Stripe Express"));
+    expect(text.indexOf("Stripe Express")).toBeLessThan(text.indexOf("US$25"));
+    expect(text).toMatch(/when you publish your first course|al publicar tu primer curso/);
   });
 
   it.each([

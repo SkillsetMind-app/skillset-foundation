@@ -61,6 +61,12 @@ describe("creator activation predicate", () => {
         "migrations",
         "20260810030000_creator_activation_gate_earlier.sql",
       ),
+      join(
+        process.cwd(),
+        "supabase",
+        "migrations",
+        "20260927010000_taxa_de_ativacao_so_ao_publicar.sql",
+      ),
       join(SRC, "lib", "payments", "server", "auth.ts"),
       join(SRC, "lib", "data", "course-assets.ts"),
     ];

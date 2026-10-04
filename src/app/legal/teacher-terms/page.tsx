@@ -35,7 +35,7 @@ export default async function TeacherTermsPage() {
     <LegalArticle
       kicker={t("legalPages.common.kicker")}
       title={t("legalPages.teacherTerms.title")}
-      effectiveDate={t("legalPages.common.effectiveDate")}
+      effectiveDate={t("legalPages.teacherTerms.effectiveDate")}
       effectiveLabel={t("legalPages.common.effectiveLabel")}
       intro={
         <>

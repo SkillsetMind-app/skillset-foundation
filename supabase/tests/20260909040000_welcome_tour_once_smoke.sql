@@ -60,16 +60,16 @@ RESET ROLE;
 SELECT pg_temp.tour_actor('99999999-9999-4999-8999-999999999992');
 SET LOCAL ROLE authenticated;
 UPDATE public.users SET onboarding_completed = true, roles = '["teacher"]' WHERE uid = auth.uid()::text;
-SELECT pg_temp.check_tour(NOT public.claim_welcome_tour('99999999-9999-4999-8999-999999999992', 'teacher'), 'unpaid creator consumed the tour behind the activation wall');
-SELECT pg_temp.check_tour((SELECT welcome_tour_seen_at IS NULL FROM public.users WHERE uid = auth.uid()::text), 'ineligible claim marked the tour as seen');
+-- Since 20260927010000 the studio is open before the activation fee (the fee
+-- is charged at publish), so an unpaid creator gets the first tour too.
+SELECT pg_temp.check_tour(public.claim_welcome_tour('99999999-9999-4999-8999-999999999992', 'teacher'), 'unpaid creator cannot see the first studio tour');
+SELECT pg_temp.check_tour(NOT public.claim_welcome_tour('99999999-9999-4999-8999-999999999992', 'student'), 'creator receives a second tour in the learner workspace');
 RESET ROLE;
 SELECT set_config('skillset.trusted_write', 'on', true);
 UPDATE public.users SET activation_fee_paid_at = now() WHERE uid = '99999999-9999-4999-8999-999999999992';
 SELECT set_config('skillset.trusted_write', 'off', true);
 SET LOCAL ROLE authenticated;
-SELECT pg_temp.check_tour(public.claim_welcome_tour('99999999-9999-4999-8999-999999999992', 'teacher'), 'activated creator cannot see first tour');
-SELECT pg_temp.check_tour(NOT public.claim_welcome_tour('99999999-9999-4999-8999-999999999992', 'student'), 'activated creator receives a second tour in the learner workspace');
-SELECT pg_temp.check_tour(NOT public.claim_welcome_tour('99999999-9999-4999-8999-999999999992', 'teacher'), 'creator tour repeated');
+SELECT pg_temp.check_tour(NOT public.claim_welcome_tour('99999999-9999-4999-8999-999999999992', 'teacher'), 'paying the activation fee repeated the creator tour');
 RESET ROLE;
 
 SELECT pg_temp.tour_actor(null);

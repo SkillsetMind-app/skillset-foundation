@@ -24,7 +24,6 @@ import {
 } from "@/domain/creator-ops";
 import type { PayoutLedgerEntry } from "@/domain/payout-ledger";
 import type { UserProfile } from "@/domain/user-profile";
-import { fetchCreatorActivationBlocked } from "@/lib/data/creator-verification";
 import { subscribeToTeacherPayoutLedger } from "@/lib/data/payout-ledger";
 import { subscribeToUserProfile } from "@/lib/data/user-profiles";
 import { toDate } from "@/lib/format-date";
@@ -64,26 +63,7 @@ export function TeacherWalletPanel() {
   // verifiable or usable — so the panel must not present one as "Connected".
   const [platformPayoutsUnavailable, setPlatformPayoutsUnavailable] =
     useState(false);
-  const [activationBlocked, setActivationBlocked] = useState(false);
   const autoRefreshedRef = useRef(false);
-
-  // Best-effort: if the RPC is unreachable we fall back to "not blocked", which
-  // shows the normal onboarding. The server-side gate is the one that actually
-  // enforces payment, so a failed read here can only cost a clearer message,
-  // never open the paywall.
-  useEffect(() => {
-    let active = true;
-    fetchCreatorActivationBlocked()
-      .then((blocked) => {
-        if (active) {
-          setActivationBlocked(blocked);
-        }
-      })
-      .catch(() => {});
-    return () => {
-      active = false;
-    };
-  }, []);
 
   useEffect(() => {
     if (!user) {
@@ -206,14 +186,6 @@ export function TeacherWalletPanel() {
         ? t("teach.earnings.unavailable")
         : "—";
   const connected = Boolean(profile?.stripeConnectedAccountId);
-  // The Connect routes now answer 402 activation_required for an unpaid
-  // creator, so mounting the embedded onboarding widget would just fail with
-  // no explanation. Swap it for the activation call to action instead —
-  // /account/payments is where a new creator lands first, so this doubles as
-  // the earliest discoverable entry point to /teach/activate.
-  // (activationBlocked comes straight from creator_activation_blocked() above —
-  // same predicate as the courses trigger, so the admin exemption and the paid
-  // check can't drift out of sync with a second copy written here.)
   // A panel must never claim "Ready" while the platform itself can't run
   // Connect — stale profile flags don't outrank the live platform signal.
   const ready =
@@ -437,28 +409,7 @@ export function TeacherWalletPanel() {
         />
       </div>
 
-      {ready || !activationBlocked ? null : (
-        <section id="stripe-connect" className="scroll-mt-24 rounded-none border border-[var(--color-line)] bg-white p-5 shadow-[var(--shadow-soft)]">
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
-            {t("teach.earnings.activateEyebrow")}
-          </p>
-          <h3 className="display-title mt-2 text-2xl text-[var(--color-primary)]">
-            {t("teach.earnings.activateTitle")}
-          </h3>
-          <p className="mt-2 max-w-3xl text-sm leading-7 text-[var(--color-ink-soft)]">
-            {t("teach.earnings.activateBody")}
-          </p>
-          <Link
-            href="/teach/activate"
-            className="button-solid mt-5 inline-flex px-4 py-2.5 text-sm"
-          >
-            {t("teach.earnings.activateCta")}
-            <ArrowRight aria-hidden="true" size={14} strokeWidth={2} />
-          </Link>
-        </section>
-      )}
-
-      {ready || activationBlocked ? null : (
+      {ready ? null : (
         <section id="stripe-connect" className="scroll-mt-24 rounded-none border border-[var(--color-line)] bg-white p-5 shadow-[var(--shadow-soft)]">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>

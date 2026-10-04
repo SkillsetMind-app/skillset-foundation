@@ -36,8 +36,8 @@ function buildAcceptClient(rows: Array<{ uid: string }>) {
 }
 
 const legalWrites = [
-  ["acceptUserTerms", () => acceptUserTerms("u-1", false), "terms_version"],
-  ["acceptTeacherTerms", () => acceptTeacherTerms("u-1"), "teacher_terms_version"],
+  ["acceptUserTerms", () => acceptUserTerms("u-1", false), "terms_version", "2026-09-24"],
+  ["acceptTeacherTerms", () => acceptTeacherTerms("u-1"), "teacher_terms_version", "2026-10-04"],
 ] as const;
 
 describe("legal acceptance writes must land on a row", () => {
@@ -51,13 +51,13 @@ describe("legal acceptance writes must land on a row", () => {
     await expect(accept()).rejects.toThrow("no profile row was updated");
   });
 
-  it.each(legalWrites)("%s resolves when its own row is updated", async (_name, accept, versionColumn) => {
+  it.each(legalWrites)("%s resolves when its own row is updated", async (_name, accept, versionColumn, version) => {
     const { client, calls } = buildAcceptClient([{ uid: "u-1" }]);
     supabaseMocks.getSupabaseBrowserClient.mockReturnValue(client);
 
     await expect(accept()).resolves.toBeUndefined();
     expect(calls.columns).toBe("uid");
-    expect(calls.payload).toHaveProperty(versionColumn, "2026-09-24");
+    expect(calls.payload).toHaveProperty(versionColumn, version);
   });
 });
 
