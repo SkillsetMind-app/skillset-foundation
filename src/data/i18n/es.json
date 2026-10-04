@@ -376,14 +376,14 @@
   },
   "home": {
     "metadata": {
-      "title": "Plataforma de cursos para coaches, facilitadores y mentores",
-      "description": "Para coaches, facilitadores y mentores que ya enseñan en vivo y quieren vender su método como un curso con comunidad de pago, sin mensualidad. Los compradores pagan directamente a tu propia cuenta de Stripe, así que nunca retenemos tu dinero."
+      "title": "Plataforma de cursos para psicólogos y profesionales del desarrollo personal",
+      "description": "Para psicólogos y profesionales del desarrollo personal que ya enseñan en vivo y quieren vender su método como un curso con comunidad de pago, sin mensualidad. Los compradores pagan directamente a tu propia cuenta de Stripe, así que nunca retenemos tu dinero."
     },
     "hero": {
-      "eyebrow": "Para coaches, facilitadores y mentores",
+      "eyebrow": "Para psicólogos y profesionales del desarrollo personal",
       "title1": "Tu conocimiento cambia vidas.",
       "title2": "Ahora conviértelo en un curso.",
-      "sub": "Para coaches, facilitadores y mentores que ya enseñan en vivo y quieren vender su método como un curso con comunidad de pago, sin mensualidad. Nosotros manejamos el checkout y el aula — tus compradores pagan directo a tu cuenta de Stripe, así que nunca retenemos tu dinero. Tú enseñas.",
+      "sub": "Para psicólogos y profesionales del desarrollo personal que ya enseñan en vivo y quieren vender su método como un curso con comunidad de pago, sin mensualidad. Nosotros manejamos el checkout y el aula — tus compradores pagan directo a tu cuenta de Stripe, así que nunca retenemos tu dinero. Tú enseñas.",
       "trust1Title": "Verificado",
       "trust1Desc": "Cuando se requiere, los profesionales se verifican antes de publicar, y los cursos que incumplan las normas del catálogo pueden pausarse o retirarse.",
       "trust2Title": "Global",
@@ -450,7 +450,7 @@
       "readFull": "Lee la Promesa completa"
     },
     "creators": {
-      "eyebrow": "Para coaches, facilitadores y mentores",
+      "eyebrow": "Para psicólogos y profesionales del desarrollo personal",
       "title": "Enseña más allá de los límites de tus sesiones en vivo.",
       "ctaStart": "Empieza a enseñar",
       "ctaPromise": "Lee la Promesa al Creador",
@@ -1488,7 +1488,7 @@
       "step3Title": "Gana certificados y únete a la comunidad",
       "step3Body": "Termina un curso para desbloquear su certificado y entra al espacio de comunidad de los cursos que tienen uno.",
       "step4Title": "Gestiona tu cuenta",
-      "step4Body": "Tu plan, notificaciones y perfil viven en Cuenta. Si algo no se ve bien, el soporte está a un clic.",
+      "step4Body": "Tu plan, notificaciones y perfil viven en Cuenta.",
       "skipTour": "Omitir el tour",
       "skip": "Omitir",
       "back": "Atrás",
@@ -3678,6 +3678,7 @@
         "verification": "La verificación profesional debe estar aprobada antes de publicar.",
         "payouts": "Completa la configuración de cobros de Stripe antes de publicar un curso de pago. Abre el panel Cobros en tu estudio.",
         "payment": "Define un modelo de pago válido antes de publicar.",
+        "lessonContent": "Añade un video, texto o archivo a cada lección antes de publicar.",
         "publish": "No pudimos publicar este curso. Inténtalo de nuevo."
       },
       "success": {
@@ -4239,7 +4240,12 @@
       "setup": "Configurar autenticador",
       "codeRequired": "Introduce el código de 6 dígitos de tu aplicación de autenticación.",
       "enabled": "La autenticación de dos factores está activada. Tu cuenta está protegida.",
-      "disabled": "Autenticación de dos factores desactivada."
+      "disabled": "Autenticación de dos factores desactivada.",
+      "dialogTitle": "Configurar la autenticación de dos factores",
+      "step2Scan": "Escanea este código QR con la aplicación.",
+      "qrAlt": "Código QR para añadir esta cuenta a tu aplicación de autenticación",
+      "manualHint": "¿No puedes escanearlo? Escribe esta clave en la aplicación.",
+      "onDevice": "¿Lo configuras en este teléfono?"
     }
   },
   "professionalBadge": {
@@ -5327,7 +5333,7 @@
     "teacherTerms": {
       "title": "Condiciones para educadores",
       "description": "Las condiciones que rigen la enseñanza y las transferencias a educadores en SkillsetMind.",
-      "effectiveDate": "27 de septiembre de 2026",
+      "effectiveDate": "4 de octubre de 2026",
       "text1": "Estas Condiciones para educadores se aplican además de las <terms>Condiciones de servicio</terms> cuando publicas o vendes cursos en SkillsetMind (\"educador\", \"tú\"). Si estas condiciones entran en conflicto con las Condiciones de servicio, estas condiciones prevalecen para tu actividad como educador.",
       "text2": "Existen para proteger a tres partes a la vez: tus estudiantes, tu trabajo y la confianza en el mercado. Nuestros compromisos públicos contigo están recogidos en <promise>La promesa</promise>.",
       "text3": "Eres un profesional independiente, no un empleado, agente ni socio de SkillsetMind. Tú decides qué enseñar, qué precio fijar (dentro de las opciones admitidas por la plataforma) y cómo gestionar tus cursos. SkillsetMind proporciona la tecnología, el proceso de pago y el mercado — no supervisa tu práctica profesional.",

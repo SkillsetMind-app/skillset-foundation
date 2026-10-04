@@ -65,12 +65,12 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     return () => mediaQuery.removeEventListener("change", handleChange);
   }, []);
 
+  // No cleanup on purpose. Leaving the platform for a public page unmounts this
+  // provider; deleting data-theme there flipped the page to the light palette
+  // (navy logo included) while the stored choice was still dark. The attribute
+  // always mirrors the stored choice, which layout.tsx's init script set first.
   useEffect(() => {
     document.documentElement.dataset.theme = resolvedTheme;
-
-    return () => {
-      delete document.documentElement.dataset.theme;
-    };
   }, [resolvedTheme]);
 
   function setMode(nextMode: ThemeMode) {

@@ -152,13 +152,13 @@ export function CourseUnlockModal({
         aria-label={t("learn.paths.close")}
         onClick={onClose}
       />
-      <div className="modal-panel relative z-[75] flex w-full max-w-lg flex-col overflow-hidden bg-white shadow-[0_30px_80px_rgba(15,39,68,0.32)] sm:rounded-[8px]">
+      <div className="modal-panel relative z-[75] flex w-full max-w-lg flex-col overflow-hidden bg-white shadow-[0_30px_80px_rgba(15,39,68,0.32)] sm:rounded-none">
         <div className="relative aspect-[16/9] w-full overflow-hidden">
           <CourseCover course={course} sizes="(min-width: 640px) 512px, 100vw" />
           <button
             type="button"
             onClick={onClose}
-            className="absolute right-3 top-3 grid size-9 place-items-center rounded-full bg-[rgba(15,39,68,0.62)] text-white transition hover:bg-[#102a43] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+            className="absolute right-3 top-3 grid size-9 place-items-center rounded-none bg-[rgba(15,39,68,0.62)] text-white transition hover:bg-[#102a43] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
             aria-label={t("learn.paths.close")}
           >
             <X aria-hidden="true" size={18} strokeWidth={1.8} />
@@ -179,7 +179,7 @@ export function CourseUnlockModal({
             {course.summary}
           </p>
 
-          <p className="mt-4 flex items-start gap-2 rounded-[10px] bg-[var(--color-surface-soft)] px-3 py-2.5 text-xs leading-6 text-[var(--color-ink-soft)]">
+          <p className="mt-4 flex items-start gap-2 rounded-none bg-[var(--color-surface-soft)] px-3 py-2.5 text-xs leading-6 text-[var(--color-ink-soft)]">
             <Lock aria-hidden="true" size={14} className="mt-1 shrink-0" />
             <span>{note ?? t("learn.paths.unlockNote")}</span>
           </p>

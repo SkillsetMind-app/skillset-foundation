@@ -12,6 +12,10 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
 
+// Video objects an unpaid creator can create per day (lessons for a course
+// built over a few sittings). Paid creators keep only the hourly throttle.
+const UNPAID_DAILY_VIDEOS = 20;
+
 export async function POST(request: Request) {
   const supabase = await createSupabaseServerClient();
 
@@ -56,14 +60,25 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "You do not own this course." }, { status: 403 });
   }
 
-  // No activation check: uploading video is part of building the course, and
-  // the one-time fee is charged at the first Publish. What bounds an unpaid
-  // creator today is the hourly throttle above and the per-file size cap.
-  // TODO(Patrick): decide a hosting limit for creators who have not paid the
-  // activation fee yet (e.g. a number of videos or total minutes/GB per
-  // account) so the studio does not become free video hosting. No number is
-  // set on purpose; once decided, enforce it here with
-  // creator_activation_blocked() and return 402 activation_required.
+  // No activation wall: uploading video is part of building the course, and
+  // the one-time fee is charged at the first Publish. An unpaid creator gets a
+  // daily cap on top of the hourly throttle, so the studio does not become free
+  // video hosting before Publish.
+  // ponytail: UNPAID_DAILY_VIDEOS per 24h. The 24h window outlives
+  // purge_stale_rate_limits (it only drops rows idle for 2 days); a longer
+  // window would not. A total per-account cap means counting course_assets —
+  // add it if the daily cap gets abused.
+  const { data: blocked, error: blockedError } = await supabase.rpc("creator_activation_blocked");
+  if (blockedError || typeof blocked !== "boolean") {
+    return NextResponse.json({ error: "Activation status unavailable." }, { status: 500 });
+  }
+  if (blocked) {
+    try {
+      await enforceRateLimit(`teach_video_create_unpaid_${auth.user.id}`, UNPAID_DAILY_VIDEOS, 24 * 60 * 60 * 1000);
+    } catch (error) {
+      return paymentErrorResponse(error);
+    }
+  }
 
   try {
     const videoId = await createBunnyVideo(title);

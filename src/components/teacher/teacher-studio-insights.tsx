@@ -225,7 +225,7 @@ export function TeacherStudioInsights() {
 
 function RichEmptyLine({ title, detail }: { title: string; detail: string }) {
   return (
-    <div className="rounded-[12px] border border-dashed border-[var(--color-line-strong)] bg-[var(--color-surface-soft)] p-4">
+    <div className="rounded-none border border-dashed border-[var(--color-line-strong)] bg-[var(--color-surface-soft)] p-4">
       <p className="text-sm font-semibold text-[var(--color-ink)]">{title}</p>
       <p className="mt-1 text-xs leading-5 text-[var(--color-ink-soft)]">{detail}</p>
     </div>

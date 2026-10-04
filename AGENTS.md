@@ -97,6 +97,14 @@ document.documentElement.scrollWidth > document.documentElement.clientWidth  // 
   experts. `src/data/i18n/regulated-wording.test.ts` fails the build if one
   comes back.
 
+  **One exception, decided by the owner on 2026-09-25:** the home page may
+  name "psychologists and personal-development professionals" ("psicólogos y
+  profesionales del desarrollo personal") as its audience — in that exact
+  pairing, only on the home (`home.*` keys), never psychologists alone and
+  never on any other page. "Therapist", "psychotherapy" and "counselor" stay
+  blocked everywhere. The test above enforces the exception narrowly; widening
+  it needs a new owner decision, not a test edit.
+
   The disclaimers on `/legal/terms` and `/legal/teacher-terms`, and the
   guardrail in `src/lib/assistant/knowledge.ts`, say "not therapy" and "no
   therapist-client relationship" **on purpose**. Those sentences deny the

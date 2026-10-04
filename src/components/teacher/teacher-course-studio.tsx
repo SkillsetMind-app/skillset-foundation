@@ -89,7 +89,7 @@ function ProductActionsMenu({
   const { t } = useTranslation();
   const courseTitle = course.title || t("creatorPanel.untitledProduct");
   const itemClass =
-    "flex min-h-11 items-center rounded-[6px] px-3 text-sm font-semibold text-[var(--color-ink)] hover:bg-[var(--color-surface-soft)]";
+    "flex min-h-11 items-center rounded-none px-3 text-sm font-semibold text-[var(--color-ink)] hover:bg-[var(--color-surface-soft)]";
 
   return (
     <CourseActionsMenu courseTitle={courseTitle} icon={MoreHorizontal}>
@@ -114,7 +114,7 @@ function ProductActionsMenu({
         type="button"
         role="menuitem"
         onClick={onRequestDelete}
-        className="flex min-h-11 w-full items-center rounded-[6px] border-t border-[var(--color-line)] px-3 text-left text-sm font-semibold text-[var(--color-danger-fg)] hover:bg-[var(--color-danger-soft)]"
+        className="flex min-h-11 w-full items-center rounded-none border-t border-[var(--color-line)] px-3 text-left text-sm font-semibold text-[var(--color-danger-fg)] hover:bg-[var(--color-danger-soft)]"
       >
         {t("creatorPanel.products.actions.delete")}
       </button>
@@ -177,7 +177,7 @@ export function TeacherCourseStudio({
     return user ? (
       <CreateCourseStart ownerId={user.uid} initialFormat={initialFormat} />
     ) : (
-      <p className="rounded-[8px] border border-[var(--color-line)] bg-white p-4 text-sm text-[var(--color-ink-soft)]">
+      <p className="rounded-none border border-[var(--color-line)] bg-white p-4 text-sm text-[var(--color-ink-soft)]">
         {t("creatorPanel.products.signIn")}
       </p>
     );
@@ -216,7 +216,7 @@ export function TeacherCourseStudio({
       {errorKey ? (
         <p
           role="alert"
-          className="rounded-[8px] border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]"
+          className="rounded-none border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]"
         >
           {t(errorKey)}
         </p>
@@ -269,7 +269,7 @@ export function TeacherCourseStudio({
                     : "/teach/builder",
                 )
               }
-              className="min-h-11 rounded-[7px] border border-[var(--color-line-strong)] bg-white px-3 text-sm font-semibold normal-case tracking-normal text-[var(--color-ink)] outline-none focus:border-[var(--color-primary-light)] focus:ring-2 focus:ring-[rgba(66,102,145,0.18)]"
+              className="min-h-11 rounded-none border border-[var(--color-line-strong)] bg-white px-3 text-sm font-semibold normal-case tracking-normal text-[var(--color-ink)] outline-none focus:border-[var(--color-primary-light)] focus:ring-2 focus:ring-[rgba(66,102,145,0.18)]"
             >
               <option value="products">{t("creatorPanel.products.eyebrow")}</option>
               <option value="communities">{t("platform.nav.communities")}</option>
@@ -281,7 +281,7 @@ export function TeacherCourseStudio({
               aria-label={t("creatorPanel.products.statusAria")}
               value={statusFilter}
               onChange={(event) => setStatusFilter(event.target.value as ProductFilter)}
-              className="min-h-11 rounded-[7px] border border-[var(--color-line-strong)] bg-white px-3 text-sm font-semibold normal-case tracking-normal text-[var(--color-ink)] outline-none focus:border-[var(--color-primary-light)] focus:ring-2 focus:ring-[rgba(66,102,145,0.18)]"
+              className="min-h-11 rounded-none border border-[var(--color-line-strong)] bg-white px-3 text-sm font-semibold normal-case tracking-normal text-[var(--color-ink)] outline-none focus:border-[var(--color-primary-light)] focus:ring-2 focus:ring-[rgba(66,102,145,0.18)]"
             >
               {productFilters.map((filter) => (
                 <option key={filter.id} value={filter.id}>
@@ -306,7 +306,7 @@ export function TeacherCourseStudio({
             (productView === "communities" &&
               !courses.some((course) => course.communityEnabled)) ? (
             <div className="grid place-items-center border-y border-dashed border-[var(--color-line-strong)] px-5 py-14 text-center">
-              <span className="grid size-11 place-items-center rounded-[8px] border border-[var(--color-line)] bg-white text-[var(--color-primary)]">
+              <span className="grid size-11 place-items-center rounded-none border border-[var(--color-line)] bg-white text-[var(--color-primary)]">
                 <BookOpen aria-hidden="true" size={20} strokeWidth={1.8} />
               </span>
               <h3 className="mt-4 text-lg font-semibold text-[var(--color-ink)]">
@@ -366,7 +366,7 @@ export function TeacherCourseStudio({
                   >
                     <td className="block pb-4 lg:table-cell lg:px-4 lg:py-4">
                       <div className="flex min-w-0 items-center gap-3">
-                        <div className="grid aspect-video w-24 shrink-0 place-items-center overflow-hidden rounded-[6px] border border-[var(--color-line)] bg-[var(--color-surface-soft)] text-[var(--color-primary)]">
+                        <div className="grid aspect-video w-24 shrink-0 place-items-center overflow-hidden rounded-none border border-[var(--color-line)] bg-[var(--color-surface-soft)] text-[var(--color-primary)]">
                           {course.coverImageUrl ? (
                             // eslint-disable-next-line @next/next/no-img-element
                             <img
@@ -450,7 +450,7 @@ export function TeacherCourseStudio({
 
       <nav
         aria-label={t("creatorPanel.products.shortcuts.label")}
-        className="grid overflow-hidden rounded-[8px] border border-[var(--color-line)] sm:grid-cols-2 xl:grid-cols-4"
+        className="grid overflow-hidden rounded-none border border-[var(--color-line)] sm:grid-cols-2 xl:grid-cols-4"
       >
         {workspaceShortcuts.map((item) => {
           const Icon = item.icon;
@@ -461,7 +461,7 @@ export function TeacherCourseStudio({
               href={item.href}
               className="group flex min-h-28 items-start gap-3 border-b border-[var(--color-line)] bg-white p-4 last:border-b-0 hover:bg-[var(--color-surface-soft)] sm:[&:nth-last-child(-n+2)]:border-b-0 xl:border-b-0 xl:border-r xl:last:border-r-0"
             >
-              <span className="grid size-9 shrink-0 place-items-center rounded-[7px] border border-[var(--color-line)] text-[var(--color-primary)]">
+              <span className="grid size-9 shrink-0 place-items-center rounded-none border border-[var(--color-line)] text-[var(--color-primary)]">
                 <Icon aria-hidden="true" size={17} strokeWidth={1.8} />
               </span>
               <span className="min-w-0">

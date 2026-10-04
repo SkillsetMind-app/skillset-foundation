@@ -108,7 +108,7 @@ export default async function CourseDetailPage({
               {/* A capa que o cartão do marketplace já mostra. Sem capa, nada:
                   não se inventa arte. */}
               {published.coverImageUrl ? (
-                <div className="relative mb-8 aspect-[16/9] overflow-hidden rounded-[20px] shadow-[var(--shadow-soft)] lg:max-w-3xl">
+                <div className="relative mb-8 aspect-[16/9] overflow-hidden rounded-none shadow-[var(--shadow-soft)] lg:max-w-3xl">
                   <Image
                     src={published.coverImageUrl}
                     alt={published.title}
@@ -140,7 +140,7 @@ export default async function CourseDetailPage({
 
           <Suspense
             fallback={
-              <section className="rounded-[18px] border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)]">
+              <section className="rounded-none border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)]">
                 <p className="text-sm text-[var(--color-ink-soft)]">
                   {t("publicCourses.loadingCourse")}
                 </p>
@@ -186,7 +186,7 @@ export default async function CourseDetailPage({
       <main id="conteudo" className="mx-auto w-full max-w-7xl px-6 py-10 sm:px-8 sm:py-14">
         <div className="grid gap-8 lg:grid-cols-[1.15fr_0.85fr]">
           <section id="overview" className="scroll-mt-24">
-            <div className="relative mb-8 aspect-[16/9] overflow-hidden rounded-[20px] shadow-[var(--shadow-soft)]">
+            <div className="relative mb-8 aspect-[16/9] overflow-hidden rounded-none shadow-[var(--shadow-soft)]">
               <Image
                 src={course.image}
                 alt={course.title}
@@ -212,9 +212,9 @@ export default async function CourseDetailPage({
               {course.outcomes.map((item) => (
                 <div
                   key={item}
-                  className="flex items-start gap-3 rounded-[14px] border fine-rule bg-white p-4"
+                  className="flex items-start gap-3 rounded-none border fine-rule bg-white p-4"
                 >
-                  <span className="grid size-7 shrink-0 place-items-center rounded-[8px] bg-[var(--color-surface-soft)] text-[var(--color-primary)]">
+                  <span className="grid size-7 shrink-0 place-items-center rounded-none bg-[var(--color-surface-soft)] text-[var(--color-primary)]">
                     <Target aria-hidden="true" size={14} strokeWidth={2.2} />
                   </span>
                   <p className="text-sm font-semibold leading-6 text-[var(--color-ink)]">
@@ -256,7 +256,7 @@ export default async function CourseDetailPage({
                 room. */}
             <section
               id="free-preview"
-              className="mt-10 scroll-mt-24 rounded-[14px] border fine-rule bg-[var(--color-surface-soft)] p-5 sm:p-6"
+              className="mt-10 scroll-mt-24 rounded-none border fine-rule bg-[var(--color-surface-soft)] p-5 sm:p-6"
             >
               <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">{t("publicCourses.preview")}</p>
               <h2 className="display-title mt-3 text-3xl text-[var(--color-ink)]">
@@ -267,7 +267,7 @@ export default async function CourseDetailPage({
                   previewLessons.map((lesson) => (
                     <div
                       key={lesson.id}
-                      className="flex items-center justify-between gap-3 rounded-[10px] bg-white px-4 py-3 text-sm"
+                      className="flex items-center justify-between gap-3 rounded-none bg-white px-4 py-3 text-sm"
                     >
                       <div>
                         <p className="font-semibold text-[var(--color-ink)]">
@@ -277,7 +277,7 @@ export default async function CourseDetailPage({
                           {lesson.moduleTitle}
                         </p>
                       </div>
-                      <span className="shrink-0 rounded-[8px] bg-[var(--color-surface-soft)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-primary)]">
+                      <span className="shrink-0 rounded-none bg-[var(--color-surface-soft)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-primary)]">
                         {lesson.duration}
                       </span>
                     </div>
@@ -294,7 +294,7 @@ export default async function CourseDetailPage({
               <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">{t("publicCourses.structure")}</p>
               <div className="mt-5 grid gap-4">
                 {course.modules.map((module) => (
-                  <div key={module.id} className="rounded-[12px] border fine-rule bg-[var(--color-surface-soft)] p-4">
+                  <div key={module.id} className="rounded-none border fine-rule bg-[var(--color-surface-soft)] p-4">
                     <h3 className="text-sm font-semibold text-[var(--color-ink)]">
                       {module.title}
                     </h3>
@@ -305,7 +305,7 @@ export default async function CourseDetailPage({
                       {module.lessons.map((lesson) => (
                         <div
                           key={lesson.id}
-                          className="flex items-center justify-between gap-3 rounded-[10px] bg-white px-3 py-2 text-xs text-[var(--color-ink-soft)]"
+                          className="flex items-center justify-between gap-3 rounded-none bg-white px-3 py-2 text-xs text-[var(--color-ink-soft)]"
                         >
                           <span className="font-semibold text-[var(--color-ink)]">
                             {lesson.title}
@@ -322,7 +322,7 @@ export default async function CourseDetailPage({
               </div>
             </section>
           </section>
-          <aside id="enroll-card" className="h-fit scroll-mt-24 self-start rounded-[18px] border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)] lg:sticky lg:top-24">
+          <aside id="enroll-card" className="h-fit scroll-mt-24 self-start rounded-none border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)] lg:sticky lg:top-24">
             {/* Price hero: the priceLabel used to be a single line in a
                 six-row <dl> alongside Category and Level — buyers had to
                 scan past four neutral rows to find what it costs. Now it
@@ -370,7 +370,7 @@ export default async function CourseDetailPage({
           scrolls them straight to the enroll card. Hidden on lg+ where
           the aside is already sticky in the side column. */}
       <div className="pointer-events-none fixed inset-x-0 bottom-0 z-40 px-3 pb-3 lg:hidden">
-        <div className="pointer-events-auto flex items-center gap-3 rounded-[14px] border border-[var(--color-line)] bg-[var(--color-surface)]/95 px-4 py-3 shadow-[0_-6px_30px_rgba(15,39,68,0.18)] backdrop-blur supports-[backdrop-filter]:bg-[var(--color-surface)]/85">
+        <div className="pointer-events-auto flex items-center gap-3 rounded-none border border-[var(--color-line)] bg-[var(--color-surface)]/95 px-4 py-3 shadow-[0_-6px_30px_rgba(15,39,68,0.18)] backdrop-blur supports-[backdrop-filter]:bg-[var(--color-surface)]/85">
           <div className="min-w-0 flex-1">
             <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">{t("publicCourses.access")}</p>
             <p className="display-title truncate text-xl leading-none text-[var(--color-primary)]">

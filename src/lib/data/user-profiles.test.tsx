@@ -37,7 +37,7 @@ function buildAcceptClient(rows: Array<{ uid: string }>) {
 
 const legalWrites = [
   ["acceptUserTerms", () => acceptUserTerms("u-1", false), "terms_version", "2026-09-24"],
-  ["acceptTeacherTerms", () => acceptTeacherTerms("u-1"), "teacher_terms_version", "2026-09-27"],
+  ["acceptTeacherTerms", () => acceptTeacherTerms("u-1"), "teacher_terms_version", "2026-10-04"],
 ] as const;
 
 describe("legal acceptance writes must land on a row", () => {

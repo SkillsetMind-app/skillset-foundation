@@ -109,7 +109,7 @@ export default async function PromisePage() {
           {promises.map((promise) => (
             <article
               key={promise.number}
-              className="rounded-[18px] border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)] sm:p-8"
+              className="rounded-none border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)] sm:p-8"
             >
               <div className="grid gap-5 lg:grid-cols-[120px_1fr]">
                 <p className="display-title text-7xl leading-none text-[var(--color-accent-soft)]">
@@ -122,7 +122,7 @@ export default async function PromisePage() {
                   <p className="mt-4 text-sm leading-8 text-[var(--color-ink-soft)]">
                     {promise.body}
                   </p>
-                  <div className="mt-5 rounded-[14px] border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-4">
+                  <div className="mt-5 rounded-none border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-4">
                     <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
                       {t("publicPages.promise.what_this_means_in_practice")}
                     </p>
@@ -137,7 +137,7 @@ export default async function PromisePage() {
         </section>
 
         <section className="mx-auto w-full max-w-5xl px-6 pb-16 sm:px-8">
-          <div className="rounded-[18px] border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-6 shadow-[var(--shadow-soft)] sm:p-8">
+          <div className="rounded-none border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-6 shadow-[var(--shadow-soft)] sm:p-8">
             <p className="text-sm leading-7 text-[var(--color-ink-soft)]">
               {t("publicPages.promise.these_are_not_aspirations_they_are")}
             </p>

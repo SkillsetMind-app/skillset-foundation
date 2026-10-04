@@ -112,7 +112,7 @@ export function ActivationCheckoutPanel() {
 
   if (!publishableKey) {
     return (
-      <div className="rounded-[14px] border border-dashed border-[var(--color-line-strong)] bg-[var(--color-surface-soft)] p-6 text-sm leading-7 text-[var(--color-ink)]">
+      <div className="rounded-none border border-dashed border-[var(--color-line-strong)] bg-[var(--color-surface-soft)] p-6 text-sm leading-7 text-[var(--color-ink)]">
         <p className="font-semibold">{t("activationCheckout.unavailableTitle")}</p>
         <p className="mt-2 text-[var(--color-ink-soft)]">
           {t("activationCheckout.unavailableBody")}

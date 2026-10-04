@@ -183,7 +183,7 @@ export function RoleManager() {
   ];
 
   return (
-    <section className="min-w-0 rounded-[14px] border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)]">
+    <section className="min-w-0 rounded-none border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)]">
       {accountTarget ? <AccountControlDialog key={accountTarget.uid} uid={accountTarget.uid} label={accountTarget.email || personLabel(accountTarget)} onClose={() => setAccountTarget(null)} /> : null}
       <div className="flex flex-wrap items-center gap-2">
         {tabs.map((entry) => (
@@ -195,7 +195,7 @@ export function RoleManager() {
               if (entry.id === "invitations") setInvitationsOpened(true);
             }}
             aria-pressed={tab === entry.id}
-            className={`min-h-11 rounded-[10px] px-4 py-2 text-sm font-bold transition ${
+            className={`min-h-11 rounded-none px-4 py-2 text-sm font-bold transition ${
               tab === entry.id
                 ? "bg-[var(--color-primary)] text-[var(--color-on-primary)]"
                 : "border border-[var(--color-line)] text-[var(--color-ink-soft)]"
@@ -229,7 +229,7 @@ export function RoleManager() {
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder={t(`${copy}.searchPlaceholder`)}
-              className="min-h-11 w-full rounded-[10px] border border-[var(--color-line)] px-4 py-2.5 text-sm font-normal"
+              className="min-h-11 w-full rounded-none border border-[var(--color-line)] px-4 py-2.5 text-sm font-normal"
             />}
           </Field>
 
@@ -244,7 +244,7 @@ export function RoleManager() {
               {users.map((user) => (
                 <li
                   key={user.uid}
-                  className="rounded-[12px] border border-[var(--color-line)] p-4"
+                  className="rounded-none border border-[var(--color-line)] p-4"
                 >
                   <div className="flex flex-wrap items-baseline justify-between gap-2">
                     <p className="min-w-0 break-words text-sm font-bold text-[var(--color-ink)]">

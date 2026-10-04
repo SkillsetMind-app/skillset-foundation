@@ -53,10 +53,10 @@ describe("barra lateral: moldura so no item selecionado", () => {
 describe("barra lateral: barra de rolagem visivel sobre o navy", () => {
   const scroller = ".platform-sidebar .platform-sidebar-nav";
 
-  it("o polegar e branco translucido, fino e arredondado, com trilho transparente", () => {
+  it("o polegar e branco translucido, fino e de canto reto, com trilho transparente", () => {
     const thumb = declarations(`${scroller}::-webkit-scrollbar-thumb`);
     expect(thumb["background-color"]).toBe("rgba(255, 255, 255, 0.35)");
-    expect(thumb["border-radius"]).toBe("999px");
+    expect(thumb["border-radius"]).toBe("0");
     // A barra global poe 2px de borda transparente: numa barra de 6px
     // sobraria 2px de polegar.
     expect(thumb["border"]).toBe("0");

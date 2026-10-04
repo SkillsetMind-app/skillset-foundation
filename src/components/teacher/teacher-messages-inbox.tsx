@@ -74,7 +74,7 @@ export function TeacherMessagesInbox() {
 
   if (threads.length === 0) {
     return (
-      <section className="rounded-[16px] border fine-rule bg-white px-6 py-10 text-center">
+      <section className="rounded-none border fine-rule bg-white px-6 py-10 text-center">
         <Inbox
           aria-hidden="true"
           className="mx-auto text-[var(--color-ink-muted)]"
@@ -105,7 +105,7 @@ export function TeacherMessagesInbox() {
               key={thread.key}
               type="button"
               onClick={() => setSelectedKey(thread.key)}
-              className={`rounded-[12px] border px-4 py-3 text-left transition ${
+              className={`rounded-none border px-4 py-3 text-left transition ${
                 isActive
                   ? "border-[var(--color-primary)] bg-[rgba(44,82,130,0.06)]"
                   : "fine-rule bg-white hover:border-[var(--color-primary)]"
@@ -129,7 +129,7 @@ export function TeacherMessagesInbox() {
       </nav>
 
       {selectedThread ? (
-        <section className="rounded-[16px] border fine-rule bg-white p-5">
+        <section className="rounded-none border fine-rule bg-white p-5">
           <div className="border-b fine-rule pb-3">
             <h3 className="text-base font-semibold text-[var(--color-primary)]">
               {selectedThread.studentName}
@@ -145,7 +145,7 @@ export function TeacherMessagesInbox() {
               return (
                 <li
                   key={message.id}
-                  className={`max-w-[85%] rounded-[12px] px-4 py-3 ${
+                  className={`max-w-[85%] rounded-none px-4 py-3 ${
                     isMine
                       ? "justify-self-end bg-[rgba(44,82,130,0.08)]"
                       : "justify-self-start bg-[var(--color-surface-soft)]"
@@ -170,12 +170,12 @@ export function TeacherMessagesInbox() {
               disabled={isSending}
               maxLength={COURSE_MESSAGE_MAX_CHARS}
               rows={3}
-              className="min-h-20 rounded-[12px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm leading-6 text-[var(--color-ink)] outline-none transition focus:border-[var(--color-primary)]"
+              className="min-h-20 rounded-none border border-[var(--color-line)] bg-white px-4 py-3 text-sm leading-6 text-[var(--color-ink)] outline-none transition focus:border-[var(--color-primary)]"
               aria-label={t("teacherMessages.replyTo").replace("{name}", () => selectedThread.studentName)}
               placeholder={t("teacherMessages.replyTo").replace("{name}", () => selectedThread.studentName)}
             />
             {notice ? (
-              <p className="rounded-[10px] bg-[var(--color-surface-soft)] px-3 py-2 text-xs font-semibold leading-5 text-[var(--color-primary)]">
+              <p className="rounded-none bg-[var(--color-surface-soft)] px-3 py-2 text-xs font-semibold leading-5 text-[var(--color-primary)]">
                 {t(notice)}
               </p>
             ) : null}

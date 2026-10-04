@@ -52,14 +52,14 @@ export async function PromisePreviewBand() {
                 down, public" instead of standing as abstract decoration. Tokens
                 only (no hardcoded white) so it adapts to dark mode. Tighter
                 padding under lg keeps it on the phone too. */}
-            <div className="relative overflow-hidden rounded-[18px] border border-[var(--color-line-strong)] bg-[var(--color-surface)] shadow-[var(--shadow-soft)]">
+            <div className="relative overflow-hidden rounded-none border border-[var(--color-line-strong)] bg-[var(--color-surface)] shadow-[var(--shadow-soft)]">
               <div
                 aria-hidden="true"
                 className="absolute inset-x-0 top-0 h-1 bg-[var(--color-accent)]"
               />
               <div
                 aria-hidden="true"
-                className="pointer-events-none absolute -right-12 -top-12 size-44 rounded-full opacity-70"
+                className="pointer-events-none absolute -right-12 -top-12 size-44 rounded-none opacity-70"
                 style={{
                   background:
                     "radial-gradient(circle, var(--color-line) 0%, transparent 70%)",
@@ -68,7 +68,7 @@ export async function PromisePreviewBand() {
               <div className="relative p-5 sm:p-7">
                 <div className="flex items-center justify-between">
                   <span
-                    className="grid size-10 place-items-center rounded-[10px] bg-[var(--color-surface-soft)] text-[var(--color-accent-fg)]"
+                    className="grid size-10 place-items-center rounded-none bg-[var(--color-surface-soft)] text-[var(--color-accent-fg)]"
                     aria-hidden="true"
                   >
                     <ScrollText size={20} strokeWidth={1.7} />
@@ -111,7 +111,7 @@ export async function PromisePreviewBand() {
                       <BrandName />
                     </p>
                   </div>
-                  <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--color-line)] bg-[var(--color-surface-soft)] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--color-ink-soft)]">
+                  <span className="inline-flex items-center gap-1.5 rounded-none border border-[var(--color-line)] bg-[var(--color-surface-soft)] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--color-ink-soft)]">
                     <BadgeCheck
                       size={13}
                       strokeWidth={2}

@@ -17,7 +17,7 @@ export default async function TeachActivatePage() {
       <PlatformShell title={t("activationCheckout.pageTitle")} compact>
         <Suspense
           fallback={
-            <div className="rounded-[14px] border fine-rule bg-white p-8 text-sm text-[var(--color-ink-soft)] shadow-[var(--shadow-soft)]">
+            <div className="rounded-none border fine-rule bg-white p-8 text-sm text-[var(--color-ink-soft)] shadow-[var(--shadow-soft)]">
               {t("activationCheckout.preparing")}
             </div>
           }

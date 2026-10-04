@@ -108,7 +108,7 @@ function AccessPanel({
   return (
     <main className="page-shell min-h-screen">
       <section className="mx-auto flex min-h-screen w-full max-w-3xl items-center px-5 py-12 sm:px-8">
-        <div className="w-full rounded-[18px] border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)] sm:p-8">
+        <div className="w-full rounded-none border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)] sm:p-8">
           <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
             {eyebrow}
           </p>
