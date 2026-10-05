@@ -32,7 +32,6 @@ import { activationFeeUsd } from "@/data/plans";
 import type { CourseReadinessAccount } from "@/domain/course-readiness";
 import type { Order } from "@/domain/order";
 import type { TeacherCourse } from "@/domain/teacher-course";
-import { fetchCreatorActivationBlocked } from "@/lib/data/creator-verification";
 import { subscribeToTeacherOrders } from "@/lib/data/orders";
 import { subscribeToTeacherCourses } from "@/lib/data/teacher-courses";
 import { logSubscriptionError } from "@/lib/data/subscription-error";
@@ -48,26 +47,10 @@ export function TeacherStudioDashboard() {
   const [courses, setCourses] = useState<TeacherCourse[]>([]);
   const [coursesLoaded, setCoursesLoaded] = useState(false);
   const [orders, setOrders] = useState<Order[]>([]);
-  const [activationBlocked, setActivationBlocked] = useState(false);
   const firstName = user?.displayName?.trim().split(/\s+/)[0] ?? "";
-
-  // A taxa unica de ativacao: o MESMO predicado que o servidor aplica no
-  // publish (ja conta isencao de admin e pagamento). O perfil sozinho nao diz
-  // se a taxa e exigida. Leitura: falha aberta, sem aviso de taxa.
-  useEffect(() => {
-    if (!user) {
-      return;
-    }
-    let active = true;
-    fetchCreatorActivationBlocked()
-      .then((blocked) => {
-        if (active) setActivationBlocked(blocked);
-      })
-      .catch(() => undefined);
-    return () => {
-      active = false;
-    };
-  }, [user]);
+  // A taxa unica de ativacao vem do mesmo hook (o MESMO predicado que o
+  // servidor aplica no publish, falha aberta): uma leitura so por visita.
+  const activationBlocked = account.activationBlocked ?? false;
 
   useEffect(() => {
     if (!user) {
