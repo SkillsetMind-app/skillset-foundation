@@ -1216,7 +1216,6 @@
   "learn": {
     "classroom": {
       "workspace": {
-        "loading": "Cargando el espacio del curso...",
         "enrollmentError": "No pudimos confirmar tu inscripción en este curso.",
         "progressLoadError": "No pudimos cargar el progreso de las lecciones de este curso.",
         "assetsError": "No pudimos cargar los archivos de las lecciones de este curso.",
@@ -4956,8 +4955,6 @@
       "notSelectedDetail": "Abre Mi aprendizaje desde una tarjeta de matrícula o vuelve al catálogo.",
       "disconnected": "El acceso a los cursos no está conectado.",
       "disconnectedDetail": "No se pueden cargar tus cursos en este momento. Actualiza la página o contacta con soporte si el problema continúa.",
-      "loading": "Cargando el espacio del curso...",
-      "loadingDetail": "Estamos confirmando tu matrícula y cargando el curso publicado por el profesor.",
       "unavailable": "Curso no disponible.",
       "delayed": "Ya casi está: la matrícula está tardando más de lo habitual.",
       "delayedDetail": "Tu pago se ha procesado y está seguro. Mantén esta página abierta: el curso se abrirá automáticamente cuando se confirme tu matrícula. Si no ocurre nada en unos minutos, contacta con soporte con tu comprobante de pago.",
@@ -4971,8 +4968,7 @@
       "missingDetail": "La matrícula existe, pero el registro del curso no está disponible o tiene acceso restringido.",
       "eyebrow": "Acceso al curso",
       "back": "Volver a Mi aprendizaje",
-      "marketplace": "Abrir catálogo",
-      "suspense": "Cargando el curso..."
+      "marketplace": "Abrir catálogo"
     },
     "enrollmentStatus": {
       "active": "activa",

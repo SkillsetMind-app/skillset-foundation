@@ -1216,7 +1216,6 @@
   "learn": {
     "classroom": {
       "workspace": {
-        "loading": "Loading course workspace...",
         "enrollmentError": "We could not confirm your enrollment for this course.",
         "progressLoadError": "We could not load lesson progress for this course.",
         "assetsError": "We could not load lesson assets for this course.",
@@ -4956,8 +4955,6 @@
       "notSelectedDetail": "Open My Learning from an enrollment card or return to the marketplace.",
       "disconnected": "Creator course access is not connected.",
       "disconnectedDetail": "Your enrolled courses cannot load right now. Refresh the page, or contact support if the problem continues.",
-      "loading": "Loading course workspace...",
-      "loadingDetail": "We are confirming enrollment and loading the teacher-published course.",
       "unavailable": "Course unavailable.",
       "delayed": "Almost there — enrollment is taking longer than usual.",
       "delayedDetail": "Your payment went through and is safe. Keep this page open: it opens automatically the moment your enrollment is confirmed. If nothing happens in a few minutes, contact support with your payment receipt.",
@@ -4971,8 +4968,7 @@
       "missingDetail": "The enrollment exists, but the course record is unavailable or restricted.",
       "eyebrow": "Creator course access",
       "back": "Back to My Learning",
-      "marketplace": "Open marketplace",
-      "suspense": "Loading creator course..."
+      "marketplace": "Open marketplace"
     },
     "enrollmentStatus": {
       "active": "active",

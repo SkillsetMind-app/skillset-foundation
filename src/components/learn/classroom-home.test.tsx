@@ -234,9 +234,9 @@ describe("sala de aula com matricula real", () => {
       return vi.fn();
     });
     render(<I18nProvider initialLocale="en"><ChangeLanguage /><EnrolledCourseWorkspace course={course} /></I18nProvider>);
-    expect(screen.getByRole("status")).toHaveTextContent("Loading course workspace...");
+    expect(screen.getByRole("status")).toHaveTextContent("Loading course...");
     fireEvent.click(screen.getByRole("button", { name: "Change language" }));
-    expect(screen.getByRole("status")).toHaveTextContent("Cargando el espacio del curso...");
+    expect(screen.getByRole("status")).toHaveTextContent("Cargando curso...");
     act(() => fail(new Error("private enrollment detail")));
     expect(screen.getByText("No pudimos confirmar tu inscripción en este curso.")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Abrir página del curso" })).toHaveAttribute("href", "/courses/demo-course");
@@ -244,6 +244,30 @@ describe("sala de aula com matricula real", () => {
     expect(screen.getByText("We could not confirm your enrollment for this course.")).toBeInTheDocument();
     expect(subscribeToEnrollment).toHaveBeenCalledTimes(1);
     expect(recordLessonProgress).not.toHaveBeenCalled();
+  });
+
+  it("whitelabel: the enrollment error does not link to our public course page", () => {
+    mocks.searchParams = new URLSearchParams();
+    vi.mocked(subscribeToEnrollment).mockImplementationOnce((_uid, _slug, _next, onError) => {
+      onError(new Error("down"));
+      return vi.fn();
+    });
+    render(<EnrolledCourseWorkspace course={course} whitelabel />);
+    expect(screen.getByText("We could not confirm your enrollment for this course.")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Open course page" })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Back to my learning" })).toHaveAttribute("href", "/learn");
+  });
+
+  it("with the enrollment handed down by the parent, the classroom opens without fetching it again", () => {
+    mocks.searchParams = new URLSearchParams("lesson=l1");
+    mocks.completed = [];
+    render(<EnrolledCourseWorkspace course={course} enrollment={{
+      id: "enr-1", userId: "student-1", courseId: "course-1", courseSlug: "demo-course",
+      courseTitle: "Demo course", courseCategory: "Leadership", courseImage: "",
+      status: "active", source: "admin", progressPercent: 0, lastLessonId: null,
+    }} />);
+    expect(screen.getByText("One")).toBeInTheDocument();
+    expect(mocks.enrollmentSubscriptions).toBe(0);
   });
 
   it("localizes course resource loading, kind, count and empty state with the existing asset contract", () => {

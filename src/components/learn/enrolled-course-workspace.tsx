@@ -17,6 +17,7 @@ import {
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { BunnyVideoPlayer } from "@/components/courses/bunny-video-player";
+import { ClassroomLoading } from "@/components/learn/classroom-loading";
 import { ClassroomTabs, type ClassroomTabItem } from "@/components/learn/classroom-tabs";
 import { CommunityFeed, type CommunityFeedLesson } from "@/components/learn/community-feed";
 import { CourseMessagesPanel } from "@/components/learn/course-messages-panel";
@@ -132,6 +133,9 @@ type EnrolledCourseWorkspaceProps = {
   tab?: ClassroomTab;
   /** Um post da comunidade aberto na gaveta (.../community/q/<post>). */
   openPostId?: string | null;
+  /** A matrícula que o pai (CreatorCourseWorkspace) já assina. Sem ela a sala
+   *  buscava a mesma linha de novo, atrás de mais uma tela de espera. */
+  enrollment?: Enrollment;
 };
 
 export function EnrolledCourseWorkspace({
@@ -142,6 +146,7 @@ export function EnrolledCourseWorkspace({
   whitelabel = false,
   tab = "lesson",
   openPostId = null,
+  enrollment: parentEnrollment,
 }: EnrolledCourseWorkspaceProps) {
   const { t } = useTranslation();
   const { user } = useAuth();
@@ -152,8 +157,10 @@ export function EnrolledCourseWorkspace({
   const cameFromCheckout = searchParams?.get("checkout") === "success";
   const [checkoutGraceExpired, setCheckoutGraceExpired] = useState(false);
   const [enrollmentRecheck, setEnrollmentRecheck] = useState(0);
-  const [enrollment, setEnrollment] = useState<Enrollment | null>(null);
-  const [isLoading, setIsLoading] = useState(!previewMode);
+  const [ownEnrollment, setEnrollment] = useState<Enrollment | null>(null);
+  const enrollment = parentEnrollment ?? ownEnrollment;
+  const hasParentEnrollment = Boolean(parentEnrollment);
+  const [isLoading, setIsLoading] = useState(!previewMode && !hasParentEnrollment);
   const [progressState, setProgressState] = useState<{
     key: string | null;
     lessonIds: string[];
@@ -362,7 +369,7 @@ export function EnrolledCourseWorkspace({
   }, [cameFromCheckout, checkoutGraceExpired, enrollment, previewMode]);
 
   useEffect(() => {
-    if (previewMode) {
+    if (previewMode || hasParentEnrollment) {
       return;
     }
 
@@ -385,7 +392,7 @@ export function EnrolledCourseWorkspace({
         setIsLoading(false);
       },
     );
-  }, [course.slug, enrollmentRecheck, previewMode, user]);
+  }, [course.slug, enrollmentRecheck, hasParentEnrollment, previewMode, user]);
 
   useEffect(() => {
     if (previewMode || !enrollmentId) {
@@ -690,32 +697,9 @@ export function EnrolledCourseWorkspace({
   }, [selectedLessonId, course.id, course.modules, previewMode]);
 
   if (isLoading) {
-    // Skeleton mirrors the classroom shape (hero band, then player + lesson
-    // strip) so nothing shifts when the enrollment resolves. Neutral surface
-    // tokens only, because the real shell is theme-driven per course.
-    return (
-      <section
-        aria-busy="true"
-        aria-live="polite"
-        className="grid gap-4 rounded-none border border-[var(--color-line)] bg-white p-4 shadow-[var(--shadow-soft)] sm:p-6"
-      >
-        <p className="sr-only" role="status">
-          {t("learn.classroom.workspace.loading")}
-        </p>
-        <div className="h-32 animate-pulse rounded-none bg-[var(--color-surface-strong)]" />
-        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
-          <div className="aspect-video animate-pulse rounded-none bg-[var(--color-surface-strong)]" />
-          <div className="grid gap-3">
-            {[0, 1, 2, 3].map((item) => (
-              <div
-                key={item}
-                className="h-16 animate-pulse rounded-none bg-[var(--color-surface-soft)]"
-              />
-            ))}
-          </div>
-        </div>
-      </section>
-    );
+    // The classroom's one loading state, the same the route file and the
+    // creator workspace paint, so a student never sees the wait change look.
+    return <ClassroomLoading label={t("learnWave2.courseLoading.title")} />;
   }
 
   if (error) {
@@ -728,12 +712,15 @@ export function EnrolledCourseWorkspace({
           <Link href="/learn" className="button-solid px-4 py-2.5 text-sm">
             {t("learn.classroom.workspace.backToLearning")}
           </Link>
-          <Link
-            href={`/courses/${course.slug}`}
-            className="button-outline px-4 py-2.5 text-sm"
-          >
-            {t("learn.classroom.workspace.openCourse")}
-          </Link>
+          {/* Whitelabel: our public course page is not a way out. */}
+          {whitelabel ? null : (
+            <Link
+              href={`/courses/${course.slug}`}
+              className="button-outline px-4 py-2.5 text-sm"
+            >
+              {t("learn.classroom.workspace.openCourse")}
+            </Link>
+          )}
         </div>
       </section>
     );

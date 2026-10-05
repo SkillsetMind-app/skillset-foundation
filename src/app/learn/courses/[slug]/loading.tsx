@@ -1,3 +1,4 @@
+import { ClassroomLoading } from "@/components/learn/classroom-loading";
 import { getServerTranslation } from "@/lib/i18n/server";
 /**
  * Stripe's success_url lands here, and the page awaits two Supabase queries
@@ -10,18 +11,16 @@ import { getServerTranslation } from "@/lib/i18n/server";
  * the shell would show the SkillsetMind mark and then blink it away — the
  * exact flash the page's server-side brand lookup exists to prevent.
  *
- * Colours are hardcoded dark literals, not --ma-* tokens: nothing above this
- * file carries data-members-theme yet, so the tokens would resolve to nothing
- * and the skeleton would paint light before flipping dark a beat later. The
- * literals are the same values as the dark palette in globals.css.
+ * The course theme is not known yet either, so this is the classroom's one
+ * loading state in neutral platform colours (it used to be hard-coded dark,
+ * while courses default to light). The same component paints every later wait
+ * inside the shell, so the student sees one loading screen, not four.
  */
 export default async function LoadingCourse() {
   const { t } = await getServerTranslation();
   return (
-    <div className="flex min-h-screen items-start justify-center bg-[#0a0d12] px-4 py-16">
-      <section className="w-full max-w-3xl rounded-none border border-[rgba(255,255,255,0.08)] bg-[#141923] p-6">
-        <p className="text-sm text-[#9aa6b6]">{t("learnWave2.courseLoading.title")}</p>
-      </section>
+    <div className="mx-auto w-full max-w-[1280px] px-4 py-6 sm:px-6 lg:px-8">
+      <ClassroomLoading label={t("learnWave2.courseLoading.title")} />
     </div>
   );
 }
