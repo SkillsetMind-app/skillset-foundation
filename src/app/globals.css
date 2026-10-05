@@ -5709,6 +5709,7 @@ body:has([aria-label="Course categories"])
     border-inline-width: 0;
   }
 
+  .member-classroom[data-members-theme] > .member-classroom-head,
   .member-classroom[data-members-theme] > .member-preview-banner,
   .member-classroom[data-members-theme] > .member-classroom-layout,
   .member-classroom[data-members-theme] > .member-module-deck,
