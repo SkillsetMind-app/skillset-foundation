@@ -23,10 +23,15 @@ test("email preview uses deployed artwork and resolves invitation placeholders",
     assert.ok(!page.includes("Confirm your new email for SkillsetMind"), "stale email change subject");
     for (const file of ["confirmation.html", "magic_link.html"]) {
       const template = readFileSync(join("supabase/templates", file), "utf8");
-      assert.ok(template.includes("Your access changes only after you accept the invitation."));
       assert.ok(template.includes("{{ .RedirectTo | urlquery }}"));
       assert.ok(template.includes('alt="SkillsetMind"'));
     }
+    const magicLink = readFileSync(join("supabase/templates", "magic_link.html"), "utf8");
+    assert.ok(magicLink.includes("Your access changes only after you accept the invitation."));
+    // Every new account gets the signup confirmation, and almost none were
+    // invited: telling all of them "you'll review your invitation next" confused them.
+    const confirmation = readFileSync(join("supabase/templates", "confirmation.html"), "utf8");
+    assert.ok(!/invitation/i.test(confirmation), "signup confirmation talks about an invitation");
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

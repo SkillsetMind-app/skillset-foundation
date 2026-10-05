@@ -28,6 +28,7 @@ import {
   currentTeacherTermsVersion,
   currentTermsVersion,
 } from "@/lib/legal/versions";
+import { captureFirstTouch } from "@/lib/attribution/first-touch";
 import { previewRoles, ViewAsBanner } from "@/components/admin/view-as";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { isRole, type Role } from "@/lib/permissions";
@@ -80,6 +81,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     return listenToAuthState(setSession);
+  }, []);
+
+  // Mounted on every page, once per full load: the landing's utm_*/referrer,
+  // held for the signup form (see lib/attribution/first-touch).
+  useEffect(() => {
+    captureFirstTouch();
   }, []);
 
   // PostHog identity binding — keeps analytics session attached to the

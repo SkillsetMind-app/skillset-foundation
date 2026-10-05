@@ -120,7 +120,15 @@ function wait(ms: number) {
 // audience → Instagram) because that data drives review, personalization,
 // and outreach; students answer the minimum (interest + discovery source).
 // Follow-ups past the required core are skippable, so friction stays low.
-function getVisibleQuestions(answers: OnboardingAnswers): QuestionDefinition[] {
+//
+// `pathKnown`: o papel ja foi escolhido no cadastro (?path=) ou salvo antes —
+// perguntar "como vai usar" de novo era a mesma pergunta duas vezes seguidas.
+// Decidido uma vez ao carregar, nunca a partir da resposta dada aqui: senao a
+// pergunta sumiria da lista no instante em que fosse respondida.
+function getVisibleQuestions(
+  answers: OnboardingAnswers,
+  pathKnown = false,
+): QuestionDefinition[] {
   const isTeacher = answers.path === "teacher";
 
   // "profile" (nome + telefone) vem ANTES de tudo, para os dois caminhos: e o
@@ -137,6 +145,7 @@ function getVisibleQuestions(answers: OnboardingAnswers): QuestionDefinition[] {
           ? [{ id: "monthlyRevenue" as const, required: false }]
           : []),
         { id: "audienceSize", required: false },
+        { id: "sourceOfDiscovery", required: false },
         { id: "instagramHandle", required: false },
       ]
     : [
@@ -146,7 +155,9 @@ function getVisibleQuestions(answers: OnboardingAnswers): QuestionDefinition[] {
         { id: "sourceOfDiscovery", required: false },
       ];
 
-  return ids.map((question, index) => ({ ...question, number: index + 1 }));
+  return ids
+    .filter((question) => !(pathKnown && question.id === "path"))
+    .map((question, index) => ({ ...question, number: index + 1 }));
 }
 
 function isAnswered(question: QuestionDefinition, answers: OnboardingAnswers) {
@@ -234,6 +245,7 @@ export function OnboardingWizard() {
     ...(pathIntent ? { path: pathIntent } : {}),
   }));
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [pathKnown, setPathKnown] = useState(false);
   // O passo de perfil: nome vem pre-preenchido do cadastro; telefone e novo.
   const [profileName, setProfileName] = useState("");
   const [profilePhone, setProfilePhone] = useState("");
@@ -242,7 +254,10 @@ export function OnboardingWizard() {
   const [isComplete, setIsComplete] = useState(false);
   const [error, setError] = useState("");
 
-  const questions = useMemo(() => getVisibleQuestions(answers), [answers]);
+  const questions = useMemo(
+    () => getVisibleQuestions(answers, pathKnown),
+    [answers, pathKnown],
+  );
   const activeQuestion = questions[Math.min(currentIndex, questions.length - 1)];
 
   function optionLabel(value: string) {
@@ -275,8 +290,10 @@ export function OnboardingWizard() {
             ? { path: pathIntent }
             : {}),
         };
-        const nextQuestions = getVisibleQuestions(savedAnswers);
+        const knownPath = Boolean(savedAnswers.path);
+        const nextQuestions = getVisibleQuestions(savedAnswers, knownPath);
 
+        setPathKnown(knownPath);
         setAnswers(savedAnswers);
         setProfileName(profile?.displayName ?? user.displayName ?? "");
         setProfilePhone(profile?.phoneNumber ?? "");
@@ -356,7 +373,7 @@ export function OnboardingWizard() {
   }
 
   function advance(nextAnswers = answers) {
-    const nextQuestions = getVisibleQuestions(nextAnswers);
+    const nextQuestions = getVisibleQuestions(nextAnswers, pathKnown);
     setCurrentIndex((index) => Math.min(index + 1, nextQuestions.length - 1));
   }
 

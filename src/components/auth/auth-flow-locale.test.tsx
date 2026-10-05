@@ -192,6 +192,8 @@ describe("auth flow follows the selected language without resetting state", () =
     expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuetext", "Step 2 of 2");
     expect(screen.getAllByDisplayValue("UnchangedPassword42!")).toHaveLength(2);
     expect(mocks.signUpWithEmail).toHaveBeenCalledTimes(1);
+    // The account remembers the language it was created in.
+    expect(mocks.signUpWithEmail.mock.calls[0][0]).toMatchObject({ locale: "es" });
     fireEvent.click(screen.getByRole("button", { name: "Back" }));
     expect(screen.getByDisplayValue("Alex Rivera")).toBeInTheDocument();
     expect(screen.getByDisplayValue("alex@example.test")).toBeInTheDocument();

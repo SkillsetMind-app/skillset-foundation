@@ -33,6 +33,8 @@ export type EmailPasswordCredentials = {
 
 export type SignupInput = EmailPasswordCredentials & {
   displayName: string;
+  /** UI language at signup, kept in the account metadata. */
+  locale?: string;
 };
 
 /**

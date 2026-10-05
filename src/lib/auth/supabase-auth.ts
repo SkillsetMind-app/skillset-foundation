@@ -9,6 +9,7 @@ import type {
   SkillsetUser,
 } from "@/domain/auth";
 import type { UserProfile } from "@/domain/user-profile";
+import { getFirstTouch } from "@/lib/attribution/first-touch";
 import { assertPasswordNotBreached } from "@/lib/auth/pwned-password";
 import { getUserProfile, upsertUserProfile } from "@/lib/data/user-profiles";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
@@ -227,7 +228,7 @@ export type SignupResult = {
 };
 
 export async function signUpWithEmail(
-  { displayName, email, password }: SignupInput,
+  { displayName, email, password, locale }: SignupInput,
   captchaToken?: string,
   // Where the confirmation link lands. Defaults to onboarding; a signup that
   // started from a deep link (a course page) passes /welcome with the returnTo
@@ -247,9 +248,13 @@ export async function signUpWithEmail(
     email,
     password,
     options: {
-      data: trimmedName
-        ? { display_name: trimmedName, name: trimmedName }
-        : undefined,
+      // user_metadata (jsonb, no migration): the name the profile trigger
+      // reads, plus the UI language and where the visitor first came from.
+      data: {
+        ...getFirstTouch(),
+        ...(locale ? { locale } : {}),
+        ...(trimmedName ? { display_name: trimmedName, name: trimmedName } : {}),
+      },
       emailRedirectTo: authCallbackUrl(
         `/auth/confirm?next=${encodeURIComponent(confirmNext)}`,
       ),
