@@ -131,6 +131,69 @@ export function subscribeToPublishedTeacherCourses(
   };
 }
 
+// The student dashboard's projection: enough to name a course, draw its cover
+// and price its unlock popup — never `*`. `modules` (the outline the resume
+// card walks) is asked for only on the student's own courses.
+const dashboardCourseColumns =
+  "id, owner_id, title, title_key, summary, category, status, lesson_count, cover_image_url, price_amount_minor, currency";
+
+// ponytail: slim select cast to the full row. rowToTeacherCourse leaves every
+// column not selected as undefined (all optional) and `modules` as [].
+function slimRowsToTeacherCourses(rows: unknown[] | null): TeacherCourse[] {
+  return (rows ?? [])
+    .map((row) => rowToTeacherCourse(row as CourseRow))
+    .sort((left, right) => left.title.localeCompare(right.title));
+}
+
+/**
+ * The student's own courses, by id, in one read. No status filter on purpose:
+ * RLS (`courses_select_enrolled`) already lets an enrolled student read a
+ * course that is no longer published, so a purchase whose course was
+ * unpublished, or that sits beyond any catalog page, still gets its name and
+ * resume point.
+ */
+export async function fetchCoursesByIds(ids: string[]): Promise<TeacherCourse[]> {
+  if (ids.length === 0) return [];
+  const { data, error } = await getSupabaseBrowserClient()
+    .from(coursesTable)
+    .select(`${dashboardCourseColumns}, modules`)
+    .in("id", ids);
+  if (error) throw error;
+  return slimRowsToTeacherCourses(data);
+}
+
+/**
+ * Published courses the dashboard rows may offer: the steps of curated paths
+ * and the rest of each instructor the student already bought from. One shot,
+ * slim columns — not the whole marketplace streamed on every course edit.
+ */
+export async function fetchPublishedCoursesForRows(
+  ids: string[],
+  ownerIds: string[],
+): Promise<TeacherCourse[]> {
+  const supabase = getSupabaseBrowserClient();
+  const published = (column: "id" | "owner_id", values: string[]) =>
+    supabase
+      .from(coursesTable)
+      .select(dashboardCourseColumns)
+      .eq("status", "published")
+      .in(column, values)
+      .limit(200);
+  // Two `.in()` reads rather than one `.or()` string: PostgREST's `or` is a
+  // string grammar, and these filters never need to be built by hand.
+  const results = await Promise.all([
+    ids.length > 0 ? published("id", ids) : null,
+    ownerIds.length > 0 ? published("owner_id", ownerIds) : null,
+  ]);
+  const byId = new Map<string, unknown>();
+  for (const result of results) {
+    if (!result) continue;
+    if (result.error) throw result.error;
+    for (const row of result.data ?? []) byId.set(row.id, row);
+  }
+  return slimRowsToTeacherCourses(Array.from(byId.values()));
+}
+
 export function subscribeToPublishedTeacherCoursesByOwner(
   ownerId: string,
   callback: (courses: TeacherCourse[]) => void,

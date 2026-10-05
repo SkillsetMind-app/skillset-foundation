@@ -30,16 +30,25 @@ import { subscribeToCourseEvents } from "@/lib/data/course-events";
 import { subscribeToUserEnrollments } from "@/lib/data/enrollments";
 import { subscribeToNotifications } from "@/lib/data/notifications";
 import {
-  subscribeToPublishedTeacherCourses,
+  fetchCoursesByIds,
   teacherCourseToLearningCourse,
 } from "@/lib/data/published-courses";
 import { logSubscriptionError } from "@/lib/data/subscription-error";
+import {
+  automaticRefundProgressCap,
+  automaticRefundWindowDays,
+  isRefundableEnrollmentSource,
+} from "@/lib/payments/rules";
 
-const weekMillis = 7 * 24 * 60 * 60 * 1000;
+const dayMillis = 24 * 60 * 60 * 1000;
+const weekMillis = 7 * dayMillis;
 // O que o painel destaca no topo: as tres aulas mais recentes para retomar,
 // as tres proximas lives e as tres ultimas novidades. O resto fica na grade
 // "My courses", no sino e na agenda.
 const TOP_ITEMS = 3;
+// Busca e filtro de "My courses" so aparecem acima disto: com poucos cursos
+// eles so empurram os cartoes para baixo.
+const COURSE_CONTROLS_AFTER = 6;
 
 type CourseFilter = "in_progress" | "completed";
 
@@ -55,12 +64,13 @@ export function LearnDashboard() {
   const [hasError, setHasError] = useState(false);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [eventBuckets, setEventBuckets] = useState<Record<string, CourseEvent[]>>({});
-  // Cursos REAIS publicados. Sem isto o painel só enxergava os 6 cursos de
+  // Os cursos REAIS da pessoa. Sem isto o painel só enxergava os 6 cursos de
   // demonstração de `catalog.ts`, e uma matrícula real nunca carrega slug de
   // demonstração — `enrollments.ts:115` e o webhook do Stripe gravam o id do
   // curso em `course_slug`. Resultado: `getCourseBySlug` devolvia undefined para
   // 100% das compras reais e o cartão caía no texto de espaço reservado
   // ("Private modules"), justamente na primeira tela depois de pagar.
+  // Buscados por id (não o catálogo inteiro) e repassados às fileiras de baixo.
   const [realCourses, setRealCourses] = useState<TeacherCourse[]>([]);
   const firstName = user?.displayName?.trim().split(/\s+/)[0] ?? "";
 
@@ -83,12 +93,35 @@ export function LearnDashboard() {
     return real ? teacherCourseToLearningCourse(real) : undefined;
   };
 
+  // Antes: os 200 primeiros cursos publicados, inteiros, rebaixados a cada
+  // alteração em qualquer curso da plataforma — e um curso despublicado ou fora
+  // desses 200 nunca aparecia. Agora só os cursos da pessoa, por id; a chave
+  // ignora a re-emissão das matrículas a cada aula salva.
+  const enrolledCourseKey = Array.from(
+    new Set(enrollments.map((enrollment) => enrollment.courseId).filter(Boolean)),
+  )
+    .sort()
+    .join(",");
+
   useEffect(() => {
-    // Falha aqui não pode derrubar o painel: sem os cursos reais o cartão volta
-    // ao texto genérico, que é ruim, mas melhor que uma tela de erro sobre uma
-    // compra que existe.
-    return subscribeToPublishedTeacherCourses(setRealCourses, () => undefined);
-  }, []);
+    if (!enrolledCourseKey) {
+      return;
+    }
+    let cancelled = false;
+    fetchCoursesByIds(enrolledCourseKey.split(","))
+      .then((courses) => {
+        if (!cancelled) {
+          setRealCourses(courses);
+        }
+      })
+      // Falha aqui não pode derrubar o painel: sem os cursos reais o cartão
+      // volta ao texto genérico, que é ruim, mas melhor que uma tela de erro
+      // sobre uma compra que existe.
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [enrolledCourseKey]);
 
   useEffect(() => {
     if (!user) {
@@ -167,6 +200,24 @@ export function LearnDashboard() {
       }));
   }, [eventBuckets]);
 
+  // O aviso de reembolso aparecia em toda visita. Agora so enquanto serve:
+  // ha uma compra paga ainda dentro das regras do reembolso automatico. A
+  // matricula paga nasce no webhook, entao createdAt ~ data do pagamento; o
+  // servidor confere de novo no pedido.
+  const hasRefundablePurchase = useMemo(() => {
+    // Same wall-clock read as above: display-only, staleness is harmless.
+    // eslint-disable-next-line react-hooks/purity
+    const now = Date.now();
+    return enrollments.some(
+      (enrollment) =>
+        isRefundableEnrollmentSource(enrollment.source)
+        && canOpenEnrollment(enrollment.status)
+        && enrollment.progressPercent < automaticRefundProgressCap
+        && now - Date.parse(String(enrollment.createdAt ?? ""))
+          <= automaticRefundWindowDays * dayMillis,
+    );
+  }, [enrollments]);
+
   const greeting = (
     <h1 className="display-title text-3xl leading-tight text-[var(--color-primary)] sm:text-4xl">
       {firstName
@@ -242,7 +293,7 @@ export function LearnDashboard() {
               </Link>
             </div>
           </div>
-          <LearningPathsRows enrollments={enrollments} />
+          <LearningPathsRows enrollments={enrollments} enrolledCourses={realCourses} />
         </div>
       </div>
     );
@@ -269,6 +320,23 @@ export function LearnDashboard() {
       : null,
   ].filter(Boolean);
 
+  // Um destino so por curso, nos dois lugares em que ele aparece: a area de
+  // membros, ja na aula de retomar — direto na aula, nao na capa (?lesson= e
+  // o endereco da aula na sala). Antes "My courses" abria a capa.
+  const courseLink = (enrollment: Enrollment) => {
+    const course = resolveCourse(enrollment);
+    const resume = course
+      ? getResumeCourseLesson(course, enrollment.lastLessonId)
+      : null;
+    const base = `/learn/courses/${course ? enrollment.courseSlug : enrollment.courseId}`;
+
+    return {
+      course,
+      resume,
+      href: resume ? `${base}?lesson=${encodeURIComponent(resume.lesson.id)}` : base,
+    };
+  };
+
   // "Continue watching": o mais recente primeiro, como numa fila de video.
   // updatedAt e ISO vindo do Postgres, entao a comparacao de texto ordena por
   // data; matriculas sem carimbo empatam e caem para o progresso.
@@ -281,44 +349,45 @@ export function LearnDashboard() {
     )
     .slice(0, TOP_ITEMS)
     .map((enrollment) => {
-      const course = resolveCourse(enrollment);
-      const resume = course
-        ? getResumeCourseLesson(course, enrollment.lastLessonId)
-        : null;
-      const remainingMinutes =
-        course && resume ? getRemainingMinutesFrom(course, resume.lesson.id) : null;
-      const base = `/learn/courses/${course ? enrollment.courseSlug : enrollment.courseId}`;
+      const { course, resume, href } = courseLink(enrollment);
 
       return {
         enrollment,
         resume,
-        remainingMinutes,
-        // Direto na aula, nao na capa: ?lesson= ja e o endereco da aula na
-        // sala (item 4).
-        href: resume ? `${base}?lesson=${encodeURIComponent(resume.lesson.id)}` : base,
+        remainingMinutes:
+          course && resume ? getRemainingMinutesFrom(course, resume.lesson.id) : null,
+        href,
       };
     });
+  // Com ate TOP_ITEMS cursos, "My courses" logo abaixo ja mostra cada um, com
+  // o mesmo destino: a fila de retomar so repetiria os mesmos cartoes. Ela
+  // volta quando ha mais cursos do que cabem nela.
+  const showContinue = continueItems.length > 0 && enrollments.length > TOP_ITEMS;
 
   const latestNotifications = notifications.slice(0, TOP_ITEMS);
   const nextEvents = upcomingEvents.slice(0, TOP_ITEMS);
 
+  const showCourseControls = enrollments.length > COURSE_CONTROLS_AFTER;
   const normalizedEnrollmentQuery = enrollmentQuery.toLowerCase().trim();
   // "In progress" reune tudo que nao esta concluido, inclusive uma matricula
   // estornada ou expirada: o chip diz o status, e sumir com ela deixaria a
-  // pessoa sem saber por que o curso travou.
-  const visibleEnrollments = enrollments
-    .filter((enrollment) =>
-      courseFilter === "completed"
-        ? enrollment.status === "completed"
-        : enrollment.status !== "completed",
-    )
-    .filter((enrollment) =>
-      normalizedEnrollmentQuery
-        ? `${enrollment.courseTitle} ${enrollment.courseCategory} ${enrollment.status}`
-            .toLowerCase()
-            .includes(normalizedEnrollmentQuery)
-        : true,
-    );
+  // pessoa sem saber por que o curso travou. Sem os controles na tela, nada e
+  // filtrado: o concluido aparece junto, em vez de sumir atras de uma aba.
+  const visibleEnrollments = !showCourseControls
+    ? enrollments
+    : enrollments
+        .filter((enrollment) =>
+          courseFilter === "completed"
+            ? enrollment.status === "completed"
+            : enrollment.status !== "completed",
+        )
+        .filter((enrollment) =>
+          normalizedEnrollmentQuery
+            ? `${enrollment.courseTitle} ${enrollment.courseCategory} ${enrollment.status}`
+                .toLowerCase()
+                .includes(normalizedEnrollmentQuery)
+            : true,
+        );
 
   return (
     <div className="grid gap-8">
@@ -335,7 +404,7 @@ export function LearnDashboard() {
         </Link>
       </header>
 
-      {continueItems.length > 0 ? (
+      {showContinue ? (
         <section aria-labelledby="continue-watching-title">
           <h2
             id="continue-watching-title"
@@ -405,22 +474,20 @@ export function LearnDashboard() {
         </section>
       ) : null}
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <section
-          aria-labelledby="upcoming-lives-title"
-          className="dash-card dash-card--strong p-4 sm:p-5"
-        >
-          <h2
-            id="upcoming-lives-title"
-            className="text-lg font-semibold text-[var(--color-primary)]"
+      {/* Sem live marcada a coluna gastava meia linha dizendo isso; agora
+          some, e "What's new" ocupa a largura toda. */}
+      <div className={nextEvents.length > 0 ? "grid gap-6 lg:grid-cols-2" : "grid gap-6"}>
+        {nextEvents.length > 0 ? (
+          <section
+            aria-labelledby="upcoming-lives-title"
+            className="dash-card dash-card--strong p-4 sm:p-5"
           >
-            {t("learn.dashboard.upcomingLives")}
-          </h2>
-          {nextEvents.length === 0 ? (
-            <p className="mt-3 text-sm leading-6 text-[var(--color-ink-soft)]">
-              {t("learn.dashboard.noUpcomingLives")}
-            </p>
-          ) : (
+            <h2
+              id="upcoming-lives-title"
+              className="text-lg font-semibold text-[var(--color-primary)]"
+            >
+              {t("learn.dashboard.upcomingLives")}
+            </h2>
             <ul className="mt-3 grid gap-3">
               {nextEvents.map((event) => (
                 <li key={event.id} className="flex flex-wrap items-center gap-3">
@@ -455,8 +522,8 @@ export function LearnDashboard() {
                 </li>
               ))}
             </ul>
-          )}
-        </section>
+          </section>
+        ) : null}
 
         <section
           aria-labelledby="whats-new-title"
@@ -512,39 +579,41 @@ export function LearnDashboard() {
           >
             {t("learn.dashboard.myCourses")}
           </h2>
-          <div className="flex flex-wrap items-center gap-3">
-            <div
-              role="tablist"
-              aria-label={t("learn.dashboard.filterLabel")}
-              className="flex items-center gap-1 rounded-none border fine-rule bg-[var(--color-surface-soft)] p-1"
-            >
-              {(["in_progress", "completed"] as const).map((value) => (
-                <button
-                  key={value}
-                  type="button"
-                  role="tab"
-                  aria-selected={courseFilter === value}
-                  onClick={() => setCourseFilter(value)}
-                  className={`min-h-11 rounded-none px-4 text-xs font-semibold transition ${
-                    courseFilter === value
-                      ? "bg-white text-[var(--color-primary)] shadow-[var(--shadow-soft)]"
-                      : "text-[var(--color-ink-soft)] hover:text-[var(--color-primary)]"
-                  }`}
-                >
-                  {t(
-                    value === "completed"
-                      ? "learn.dashboard.filterCompleted"
-                      : "learn.dashboard.filterInProgress",
-                  )}
-                </button>
-              ))}
+          {showCourseControls ? (
+            <div className="flex flex-wrap items-center gap-3">
+              <div
+                role="tablist"
+                aria-label={t("learn.dashboard.filterLabel")}
+                className="flex items-center gap-1 rounded-none border fine-rule bg-[var(--color-surface-soft)] p-1"
+              >
+                {(["in_progress", "completed"] as const).map((value) => (
+                  <button
+                    key={value}
+                    type="button"
+                    role="tab"
+                    aria-selected={courseFilter === value}
+                    onClick={() => setCourseFilter(value)}
+                    className={`min-h-11 rounded-none px-4 text-xs font-semibold transition ${
+                      courseFilter === value
+                        ? "bg-white text-[var(--color-primary)] shadow-[var(--shadow-soft)]"
+                        : "text-[var(--color-ink-soft)] hover:text-[var(--color-primary)]"
+                    }`}
+                  >
+                    {t(
+                      value === "completed"
+                        ? "learn.dashboard.filterCompleted"
+                        : "learn.dashboard.filterInProgress",
+                    )}
+                  </button>
+                ))}
+              </div>
+              <ListingSearchBar
+                value={enrollmentQuery}
+                onChange={setEnrollmentQuery}
+                placeholder={t("learn.dashboard.searchEnrollments")}
+              />
             </div>
-            <ListingSearchBar
-              value={enrollmentQuery}
-              onChange={setEnrollmentQuery}
-              placeholder={t("learn.dashboard.searchEnrollments")}
-            />
-          </div>
+          ) : null}
         </div>
         {visibleEnrollments.length === 0 ? (
           <p className="mt-5 rounded-none border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
@@ -553,10 +622,6 @@ export function LearnDashboard() {
         ) : (
           <ul className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {visibleEnrollments.map((enrollment) => {
-              const course = resolveCourse(enrollment);
-              const workspaceHref = `/learn/courses/${
-                course ? enrollment.courseSlug : enrollment.courseId
-              }`;
               const canOpenWorkspace = canOpenEnrollment(enrollment.status);
               const percent = clampPercent(enrollment.progressPercent);
 
@@ -599,7 +664,7 @@ export function LearnDashboard() {
                     <div className="mt-auto pt-3">
                       {canOpenWorkspace ? (
                         <Link
-                          href={workspaceHref}
+                          href={courseLink(enrollment).href}
                           className="button-solid w-full px-4 text-sm"
                         >
                           {t("learn.dashboard.openWorkspace")}
@@ -621,20 +686,23 @@ export function LearnDashboard() {
         )}
         {/* O "Request refund" saiu do cartao: dividia a linha com "Open" e
             aparecia toda vez que a pessoa vinha estudar. O pedido ja existe
-            em Billing → Purchases, junto do recibo da compra. */}
-        <p className="mt-5 text-xs leading-5 text-[var(--color-ink-soft)]">
-          {t("learn.dashboard.refundsMoved")}{" "}
-          <Link
-            href="/account/billing?tab=purchases"
-            className="font-semibold text-[var(--color-primary)] hover:underline"
-          >
-            {t("learn.dashboard.refundsMovedLink")}
-          </Link>
-          .
-        </p>
+            em Billing → Purchases, junto do recibo da compra — e o aviso so
+            aparece enquanto ha uma compra que ainda pode ser reembolsada. */}
+        {hasRefundablePurchase ? (
+          <p className="mt-5 text-xs leading-5 text-[var(--color-ink-soft)]">
+            {t("learn.dashboard.refundsMoved")}{" "}
+            <Link
+              href="/account/billing?tab=purchases"
+              className="font-semibold text-[var(--color-primary)] hover:underline"
+            >
+              {t("learn.dashboard.refundsMovedLink")}
+            </Link>
+            .
+          </p>
+        ) : null}
       </section>
 
-      <LearningPathsRows enrollments={enrollments} />
+      <LearningPathsRows enrollments={enrollments} enrolledCourses={realCourses} />
     </div>
   );
 }
