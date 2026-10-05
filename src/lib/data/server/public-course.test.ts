@@ -12,7 +12,7 @@ vi.mock("@/lib/supabase/server", () => ({
   },
 }));
 
-const { getCourseRefAccess } = await import("@/lib/data/server/public-course");
+const { getCourseRefAccess, listPublishedCourses } = await import("@/lib/data/server/public-course");
 
 type Row = { id: string; title_key: string | null; status: string; owner_id: string };
 
@@ -166,5 +166,28 @@ describe("getCourseRefAccess", () => {
     expect(await getCourseRefAccess("meu-curso")).toBe("unknown");
     server.fail = true;
     expect(await getCourseRefAccess("meu-curso")).toBe("unknown");
+  });
+});
+
+describe("listPublishedCourses", () => {
+  // A loja já escondia os cursos internos de teste; o sitemap e a home leem
+  // daqui e precisam da MESMA regra, senão o buscador indexa o que a loja esconde.
+  it("deixa de fora os cursos internos de teste, pelo mesmo predicado da loja", async () => {
+    const base = { summary: null, category: null, cover_image_url: null, lesson_count: 2, slug: null, status: "published", updated_at: null };
+    const rows = [
+      { ...base, id: "c-real", title: "Deep Focus Systems", title_key: "deep-focus-systems" },
+      { ...base, id: "smoke-ci-course", title: "Smoke checkout", title_key: "smoke-checkout" },
+      { ...base, id: "c-qa", title: "[QA] Curso de teste interno", title_key: "qa-curso-de-teste-interno" },
+    ];
+    server.fail = false;
+    server.client = {
+      from: () => ({
+        select: () => ({
+          eq: () => ({ order: () => ({ limit: async () => ({ data: rows, error: null }) }) }),
+        }),
+      }),
+    };
+
+    expect((await listPublishedCourses()).map((course) => course.urlSlug)).toEqual(["deep-focus-systems"]);
   });
 });

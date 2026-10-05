@@ -1,7 +1,8 @@
 import { cleanup, render, screen, within } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import Home from "@/app/page";
+import type { PublicCourseSummary } from "@/lib/data/server/public-course";
 
 vi.mock("@/components/auth/auth-provider", () => ({
   useAuth: () => ({
@@ -11,6 +12,21 @@ vi.mock("@/components/auth/auth-provider", () => ({
     signOut: vi.fn(),
   }),
 }));
+
+// Cursos reais publicados, já sem os internos de teste (é o contrato de
+// listPublishedCourses). Começa com um: a home cheia é o caso comum.
+const realCourse: PublicCourseSummary = {
+  id: "c-1",
+  urlSlug: "deep-focus-systems",
+  title: "Deep Focus Systems",
+  summary: null,
+  category: null,
+  coverImageUrl: null,
+  lessonCount: 3,
+  updatedAt: null,
+};
+const state = vi.hoisted(() => ({ courses: [] as unknown[] }));
+vi.mock("@/lib/data/server/public-course", () => ({ listPublishedCourses: async () => state.courses }));
 
 // O rodapé e as cinco seções de marketing são server components assíncronos:
 // resolvem o idioma via next/headers e não renderizam neste teste síncrono de
@@ -24,20 +40,21 @@ vi.mock("@/components/site/capabilities-grid", () => ({ CapabilitiesGrid: () => 
 vi.mock("@/components/site/promise-preview-band", () => ({ PromisePreviewBand: () => null }));
 vi.mock("@/components/site/for-creators-band", () => ({ ForCreatorsBand: () => null }));
 
-afterEach(() => {
-  cleanup();
+beforeEach(() => {
+  state.courses = [realCourse];
 });
+afterEach(cleanup);
+
+const headerLinks = () =>
+  within(screen.getByRole("navigation", { name: "Primary navigation" }))
+    .getAllByRole("link")
+    .map((link) => link.textContent?.trim());
 
 describe("marketing home", () => {
-  it("lists the header in the order the sections appear", () => {
-    render(<Home />);
+  it("lists the header in the order the sections appear", async () => {
+    render(await Home());
 
-    const nav = screen.getByRole("navigation", { name: "Primary navigation" });
-    expect(
-      within(nav)
-        .getAllByRole("link")
-        .map((link) => link.textContent?.trim()),
-    ).toEqual([
+    expect(headerLinks()).toEqual([
       "How it works",
       "Courses",
       "The promise",
@@ -46,10 +63,22 @@ describe("marketing home", () => {
     ]);
   });
 
+  // Loja vazia: a faixa "Cursos de especialistas verificados" dizia "o
+  // marketplace abre em breve" no meio da home. Sem curso real, some a seção
+  // inteira — e o item do menu que rolaria até ela.
+  it("drops the courses band and its header link while no real course is published", async () => {
+    state.courses = [];
+    const { container } = render(await Home());
+
+    expect(container.querySelector("#courses")).toBeNull();
+    expect(headerLinks()).not.toContain("Courses");
+    expect(screen.queryByText(/opens soon/i)).not.toBeInTheDocument();
+  });
+
   // Acessibilidade basica: um landmark <main> por pagina, alvo do "Skip to
   // content" que abre a barra.
-  it("tem exatamente um <main id=\"conteudo\">, alvo do pular para o conteudo", () => {
-    const { container } = render(<Home />);
+  it("tem exatamente um <main id=\"conteudo\">, alvo do pular para o conteudo", async () => {
+    const { container } = render(await Home());
 
     const mains = container.querySelectorAll("main");
     expect(mains).toHaveLength(1);

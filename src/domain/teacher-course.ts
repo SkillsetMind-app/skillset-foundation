@@ -367,6 +367,16 @@ export function isCoursePubliclySellable(status: string | null | undefined): boo
   return status === "published";
 }
 
+// Internal test courses stay published so the real pipelines can be exercised
+// end to end, and stay reachable by direct URL — but they never surface in the
+// store, the homepage, instructor pages or the sitemap. Two conventions mark
+// them: live-checkout smoke tests use a `smoke-` id, and access-matrix QA
+// courses carry a "[QA]" title prefix. Plain module (no "use client") so the
+// server-side sitemap and the client store share this one predicate.
+export function isInternalSmokeCourse(course: Pick<TeacherCourse, "id" | "title">): boolean {
+  return course.id.startsWith("smoke-") || course.title.startsWith("[QA]");
+}
+
 // `teacherCanDeleteCourse` morreu aqui: quem decide entre apagar e arquivar
 // nao e mais o status, e sim ter ou nao comprador — pergunta que so o banco
 // responde, dentro de `delete_or_archive_own_course`.

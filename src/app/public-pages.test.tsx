@@ -61,16 +61,12 @@ describe("títulos do site público", () => {
 });
 
 describe("página 404", () => {
-  it("manda para o catálogo, não para a vitrine interna /platform", () => {
+  // A loja ainda pode estar vazia: o 404 manda para a home, nunca para um
+  // catálogo sem curso nem para a vitrine interna /platform.
+  it("manda para a home, não para um catálogo vazio nem para /platform", () => {
     render(<NotFound />);
 
-    expect(screen.getByRole("link", { name: "Browse courses" })).toHaveAttribute(
-      "href",
-      "/courses",
-    );
-    expect(
-      screen.getAllByRole("link").some((link) => link.getAttribute("href") === "/platform"),
-    ).toBe(false);
+    expect(screen.getAllByRole("link").map((link) => link.getAttribute("href"))).toEqual(["/"]);
   });
 });
 

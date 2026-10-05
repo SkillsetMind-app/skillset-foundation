@@ -24,14 +24,9 @@ export default function NotFound() {
           >
             {t("publicPages.notFound.home")}
           </Link>
-          {/* Era "Open platform overview" → /platform, uma vitrine interna.
-              Quem cai num 404 quer conteúdo: o catálogo. */}
-          <Link
-            href="/courses"
-            className="button-outline px-4 py-2.5 text-sm"
-          >
-            {t("publicPages.notFound.courses")}
-          </Link>
+          {/* Havia um segundo botão para /courses (antes, /platform). Com a
+              loja ainda vazia ele levava a um catálogo sem curso; a home é o
+              único caminho até haver o que mostrar. */}
         </div>
       </div>
     </main>

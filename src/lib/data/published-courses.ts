@@ -4,6 +4,7 @@ import type { DripStrategy } from "@/domain/drip-policy";
 import { DEFAULT_PLATFORM_FEE_BPS } from "@/lib/payments/rules";
 import type { TeacherCourse, TeacherCourseModule, TeacherCourseStatus, TeacherCoursePaymentType, MembersTheme } from "@/domain/teacher-course";
 import {
+  isInternalSmokeCourse,
   normalizeLearningOutcomes,
   normalizeMembersText,
   normalizeMembersTheme,
@@ -20,13 +21,8 @@ const coursesTable = "courses";
 
 type CourseRow = Database["public"]["Tables"]["courses"]["Row"];
 
-// Internal live-checkout smoke-test courses (priced at $1, used to verify the
-// real Stripe pipeline end to end) are published under a deliberate `smoke-`
-// id prefix. They must stay reachable by direct URL, but never surface in
-// browse or instructor storefront lists.
-export function isInternalSmokeCourse(course: Pick<TeacherCourse, "id">): boolean {
-  return course.id.startsWith("smoke-");
-}
+// Lives in the domain module so the server-side sitemap can share it.
+export { isInternalSmokeCourse };
 
 // Public course URLs use `title_key` — the unique, unaccented, hyphenated key
 // Postgres already derives from the title (public.course_title_key) on create

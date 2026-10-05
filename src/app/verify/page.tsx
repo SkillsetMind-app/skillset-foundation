@@ -3,6 +3,17 @@ import { Suspense } from "react";
 import { CertificateVerificationPanel } from "@/components/certificates/certificate-verification-panel";
 import { SiteNav } from "@/components/site/site-nav";
 import { getServerTranslation } from "@/lib/i18n/server";
+import { buildPageMetadata } from "@/lib/seo/page-metadata";
+
+// Sem isto a aba herdava o título genérico do layout raiz ("Coaching…").
+export async function generateMetadata() {
+  const { t } = await getServerTranslation();
+  return buildPageMetadata({
+    title: t("learnWave2.verification.metaTitle"),
+    description: t("learnWave2.verification.metaDescription"),
+    path: "/verify",
+  });
+}
 
 export default async function VerifyPage() {
   const { t } = await getServerTranslation();

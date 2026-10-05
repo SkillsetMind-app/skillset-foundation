@@ -377,7 +377,7 @@
   "home": {
     "metadata": {
       "title": "Course platform for psychologists & personal-development professionals",
-      "description": "For psychologists and personal-development professionals who already teach live and want to sell their method as a course with a paid community, with no monthly fee. Buyers pay your own Stripe account directly, so we never hold your money."
+      "description": "For psychologists and personal-development professionals who already teach live: sell your course and paid community, no monthly fee. Buyers pay your Stripe."
     },
     "hero": {
       "eyebrow": "For psychologists & personal-development professionals",
@@ -411,9 +411,7 @@
       "title": "Courses by verified experts, ready to learn.",
       "sub": "Every course is built by an independent professional, verified by SkillsetMind where required.",
       "browseAll": "Browse all courses",
-      "viewCourse": "View course",
-      "emptyTitle": "Marketplace opens soon — be one of the first teachers.",
-      "emptyCta": "See how publishing works"
+      "viewCourse": "View course"
     },
     "capabilities": {
       "kicker": "Built into SkillsetMind",
@@ -3253,9 +3251,8 @@
     "notFound": {
       "eyebrow": "Not found",
       "title": "This page could not be found.",
-      "body": "Use the links below to keep exploring SkillsetMind.",
-      "home": "Go home",
-      "courses": "Browse courses"
+      "body": "Head back home to keep exploring SkillsetMind.",
+      "home": "Go home"
     }
   },
   "authFlow": {
@@ -5163,7 +5160,9 @@
       "print": "Print / Save as PDF",
       "back": "Back to homepage",
       "explore": "Explore courses",
-      "pageLoading": "Loading verification..."
+      "pageLoading": "Loading verification...",
+      "metaTitle": "Verify a certificate",
+      "metaDescription": "Enter a verification code to confirm a certificate was issued by SkillsetMind. Shows course-level data only, never private learner records."
     },
     "agenda": {
       "eyebrow": "Live sessions",

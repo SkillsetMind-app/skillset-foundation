@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { generateMetadata as homeMetadata } from "@/app/page";
 import { generateMetadata as recoveryMetadata } from "@/app/forgot-password/page";
+import { generateMetadata as verifyMetadata } from "@/app/verify/page";
 import { getDictionary, translate } from "@/lib/i18n/dictionaries";
 import type { Locale } from "@/lib/i18n/config";
 
@@ -24,6 +25,21 @@ describe("public entry metadata follows the selected language", () => {
     expect(metadata.openGraph).toMatchObject({ title, description: metadata.description });
     expect(metadata.twitter).toMatchObject({ title, description: metadata.description });
     expect(metadata.alternates?.canonical).toBe("https://www.skillsetmind.com/");
+    // Search engines cut snippets near 160 characters.
+    expect(String(metadata.description).length).toBeLessThanOrEqual(160);
+  });
+
+  // /verify had no metadata of its own and showed the stale root
+  // "Coaching, Personal Development…" title.
+  it.each([
+    ["en", "Verify a certificate | SkillsetMind"],
+    ["es", "Verificar un certificado | SkillsetMind"],
+  ] as const)("gives certificate verification its own %s title and canonical", async (locale, title) => {
+    state.locale = locale;
+    const metadata = await verifyMetadata();
+    expect(metadata.title).toBe(title);
+    expect(String(metadata.description).length).toBeLessThanOrEqual(160);
+    expect(metadata.alternates?.canonical).toBe("https://www.skillsetmind.com/verify");
   });
 
   it.each([

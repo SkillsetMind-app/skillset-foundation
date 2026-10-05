@@ -12,6 +12,7 @@ import {
   courseUrlSlug,
   fetchCoursesByIds,
   fetchPublishedCoursesForRows,
+  isInternalSmokeCourse,
   rowToTeacherCourse,
   subscribeToViewableTeacherCourse,
   teacherCourseToLearningCourse,
@@ -85,6 +86,16 @@ describe("courseUrlSlug", () => {
       .toBe("clinical-performance");
     expect(courseUrlSlug({ id: "course-abc123", titleKey: undefined }))
       .toBe("course-abc123");
+  });
+});
+
+describe("isInternalSmokeCourse", () => {
+  // The store, the homepage band, instructor pages and the sitemap all hide
+  // internal test courses through this one predicate.
+  it("hides smoke-checkout ids and [QA]-titled courses, nothing else", () => {
+    expect(isInternalSmokeCourse({ id: "smoke-ci-course", title: "Smoke" })).toBe(true);
+    expect(isInternalSmokeCourse({ id: "c-qa", title: "[QA] Curso de teste interno" })).toBe(true);
+    expect(isInternalSmokeCourse({ id: "c-1", title: "QA for Coaches" })).toBe(false);
   });
 });
 

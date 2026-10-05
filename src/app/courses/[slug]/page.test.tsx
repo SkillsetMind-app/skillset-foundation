@@ -124,4 +124,26 @@ describe("página do curso de criador", () => {
   });
 });
 
+describe("indexação da página de curso", () => {
+  const metadataFor = (slug: string) => generateMetadata({ params: Promise.resolve({ slug }) });
+
+  it("curso real publicado é indexável", async () => {
+    mocks.getPublicCourseByRef.mockResolvedValue(published);
+    expect((await metadataFor("deep-focus-systems")).robots).toMatchObject({ index: true });
+  });
+
+  // Amostra do catálogo de demonstração: ninguém compra, mas a página mostra
+  // preço e "Inscrever-se". Fica no ar (decisão do dono), fora do índice.
+  it("amostra do catálogo de demonstração não é indexada", async () => {
+    expect((await metadataFor("leadership-development")).robots).toMatchObject({ index: false });
+  });
+
+  // Curso interno de teste: segue abrindo pelo link direto, como a loja já
+  // previa, mas não pode continuar no índice depois de sair do sitemap.
+  it("curso interno de teste não é indexado", async () => {
+    mocks.getPublicCourseByRef.mockResolvedValue({ ...published, title: "[QA] Curso de teste interno" });
+    expect((await metadataFor("qa-curso-de-teste-interno")).robots).toMatchObject({ index: false });
+  });
+});
+
 vi.mock("@/lib/i18n/server", () => ({ getServerTranslation: async () => ({ locale: "es", t: (key: string) => translate(getDictionary("es"), key) }) }));

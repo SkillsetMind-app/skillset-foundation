@@ -1,5 +1,6 @@
 import { isAuthSessionMissingError } from "@supabase/supabase-js";
 
+import { isInternalSmokeCourse } from "@/domain/teacher-course";
 import { hasPermission, isRole, type Role } from "@/lib/permissions";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -201,7 +202,10 @@ export async function getCourseRefAccess(ref: string): Promise<CourseRefAccess> 
   }
 }
 
-/** Cursos publicados para o sitemap. */
+/**
+ * Cursos reais publicados — para o sitemap e para a home. Os internos de teste
+ * saem pelo MESMO predicado que a loja usa; a página deles segue no ar.
+ */
 export async function listPublishedCourses(): Promise<PublicCourseSummary[]> {
   try {
     const supabase = await createSupabaseServerClient();
@@ -213,7 +217,9 @@ export async function listPublishedCourses(): Promise<PublicCourseSummary[]> {
       .order("updated_at", { ascending: false })
       .limit(1000);
 
-    return (data ?? []).map((row) => toSummary(row as CourseRow));
+    return (data ?? [])
+      .map((row) => toSummary(row as CourseRow))
+      .filter((course) => !isInternalSmokeCourse(course));
   } catch {
     return [];
   }
