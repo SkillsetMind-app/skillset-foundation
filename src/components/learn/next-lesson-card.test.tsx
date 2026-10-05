@@ -156,8 +156,10 @@ describe("a sala de aula usa o cartao em vez de trocar em silencio", () => {
       source.indexOf("function playNextUp"),
     );
 
-    expect(handler).toContain("setNextUp(nextInOrder)");
-    expect(handler).not.toContain("selectLesson(nextInOrder.id)");
+    // O comportamento renderizado (inclusive a falha ao salvar) esta em
+    // conclusao-e-avanco.test.tsx; aqui so o formato do handler do video.
+    expect(handler).toContain("setNextUp(next)");
+    expect(handler).not.toContain("selectLesson(");
   });
 
   it("quem aceita ganha autoplay so naquela aula", () => {

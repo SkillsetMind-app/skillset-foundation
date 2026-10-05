@@ -4566,7 +4566,16 @@ body:has([aria-label="Course categories"])
 }
 
 .member-playlist__status--button {
+  position: relative;
   cursor: pointer;
+}
+
+/* O quadrado tem 28px; o alvo de toque, 44px (28 + 2 x 8). Cabe na linha
+   (min-height 44px) e no gap de 8px até o título, sem cobrir o botão da aula. */
+.member-playlist__status--button::after {
+  content: "";
+  position: absolute;
+  inset: -8px;
 }
 
 .member-playlist__status--button:hover {

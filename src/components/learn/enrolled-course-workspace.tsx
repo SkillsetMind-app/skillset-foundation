@@ -277,6 +277,10 @@ export function EnrolledCourseWorkspace({
     ready: false,
   });
   const [error, setError] = useState("");
+  // Erro de uma AÇÃO (concluir/desfazer aula): aviso dentro do player, a sala
+  // fica. `error` acima é de carga e troca a sala inteira pelo cartão de erro —
+  // uma falha momentânea ao salvar tirava o aluno da aula.
+  const [actionError, setActionError] = useState("");
   // A matrícula falsa do preview PRECISA de identidade estável.
   //
   // POR QUE ISTO EXISTE
@@ -942,24 +946,26 @@ export function EnrolledCourseWorkspace({
       thumbnailUrlByLessonId.set(lesson.id, `https://i.ytimg.com/vi/${embed.videoId}/hqdefault.jpg`);
     }
   }
-  async function toggleLessonCompletion(lessonId: string, completed: boolean) {
+  // Devolve se a gravação deu certo: quem avança para a próxima aula depende
+  // disso (ver completeAndFindNext).
+  async function toggleLessonCompletion(lessonId: string, completed: boolean): Promise<boolean> {
     if (previewMode) {
-      setError("creatorEditor.preview.readOnly");
-      return;
+      setActionError("creatorEditor.preview.readOnly");
+      return false;
     }
 
     if (!user || !workspaceEnrollment) {
-      return;
+      return false;
     }
 
     const unlockState = lessonUnlockStateById.get(lessonId);
 
     if (unlockState && !unlockState.unlocked) {
-      setError("learn.classroom.workspace.lessonLockedError");
-      return;
+      setActionError("learn.classroom.workspace.lessonLockedError");
+      return false;
     }
 
-    setError("");
+    setActionError("");
     setActiveLessonId(lessonId);
 
     try {
@@ -997,8 +1003,10 @@ export function EnrolledCourseWorkspace({
           lessons_completed: result.completedLessonCount,
         });
       }
+      return true;
     } catch {
-      setError("learn.classroom.workspace.progressSaveError");
+      setActionError("learn.classroom.workspace.progressSaveError");
+      return false;
     } finally {
       setActiveLessonId(null);
     }
@@ -1008,21 +1016,29 @@ export function EnrolledCourseWorkspace({
   // next one. That single write also fixes "resume where you left off" — the
   // mount-time fallback already opens getNextCourseLesson (first incomplete),
   // it just never had anything to resume from while completion was manual.
-  async function handleLessonEnded() {
+  //
+  // Conclui a aula atual (se falta) e devolve a próxima, só se ela abriu.
+  async function completeAndFindNext(): Promise<Lesson | null> {
     // Preview writes are hard-blocked upstream; calling through would only
     // surface "Preview mode is read-only" at the end of every clip.
     if (previewMode || !selectedLesson) {
-      return;
+      return null;
     }
 
     const endedLessonId = selectedLesson.id;
 
-    if (!completedLessonIds.includes(endedLessonId)) {
-      await toggleLessonCompletion(endedLessonId, false);
+    if (
+      !completedLessonIds.includes(endedLessonId)
+      && !(await toggleLessonCompletion(endedLessonId, false))
+    ) {
+      // Não salvou: nada avança. Antes a próxima era proposta mesmo assim e,
+      // num curso sequencial, abria trancada e o servidor negava o vídeo. O
+      // aviso de erro já está no player.
+      return null;
     }
 
     if (!nextInOrder) {
-      return;
+      return null;
     }
 
     // Recomputed with the lesson we just finished, otherwise a sequential-drip
@@ -1040,10 +1056,15 @@ export function EnrolledCourseWorkspace({
       new Date(clockNow),
     );
 
-    if (nextUnlockState.unlocked) {
+    return nextUnlockState.unlocked ? nextInOrder : null;
+  }
+
+  async function handleLessonEnded() {
+    const next = await completeAndFindNext();
+    if (next) {
       // Não troca em silêncio: o cartão "Próxima aula" sobre o vídeo conta 5 s
       // com "Assistir agora" e "Cancelar". Sem ação, a próxima começa a tocar.
-      setNextUp(nextInOrder);
+      setNextUp(next);
     }
   }
 
@@ -1056,6 +1077,15 @@ export function EnrolledCourseWorkspace({
     setNextUp(null);
     setAutoplayLessonId(nextUp.id);
     selectLesson(nextUp.id);
+  }
+
+  // O botão sob a aula é um pedido explícito: vai direto para a próxima, sem a
+  // contagem de 5 s (ela é para o fim do vídeo, quando ninguém clicou nada).
+  async function completeAndGoNext() {
+    const next = await completeAndFindNext();
+    if (next) {
+      selectLesson(next.id);
+    }
   }
 
   // A capa é a página inicial do curso — primeira visita (sem aula no endereço
@@ -1181,9 +1211,9 @@ export function EnrolledCourseWorkspace({
       {tab === "lesson" ? (
       <div className="member-classroom-layout">
         <section id="member-lesson-player" className="member-classroom-player">
-        {error ? (
-          <p className="mb-5 rounded-none border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
-            {t(error)}
+        {actionError ? (
+          <p role="alert" className="mb-5 rounded-none border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
+            {t(actionError)}
           </p>
         ) : null}
         {selectedLesson && resolvedSelectedLesson ? (
@@ -1249,10 +1279,23 @@ export function EnrolledCourseWorkspace({
                   and advancing is a single intent, and it gives every backend
                   the same auto-advance semantics even where the player never
                   reports "ended". Un-marking still lives on the lesson cards
-                  in the curriculum strip. */}
+                  in the curriculum strip.
+                  Last lesson done: the action is the certificate, not a
+                  "Completed" button that does nothing. */}
+              {!previewMode
+                && certificateHref
+                && !nextInOrder
+                && completedLessonIds.includes(selectedLesson.id) ? (
+                <Link
+                  href={certificateHref}
+                  className="button-solid flex-1 px-4 py-2.5 text-sm sm:flex-none"
+                >
+                  {t("learn.classroom.workspace.certificate")}
+                </Link>
+              ) : (
               <button
                 type="button"
-                onClick={handleLessonEnded}
+                onClick={completeAndGoNext}
                 disabled={
                   previewMode
                   || Boolean(
@@ -1260,6 +1303,7 @@ export function EnrolledCourseWorkspace({
                       && !selectedLessonUnlockState.unlocked,
                   )
                   || activeLessonId === selectedLesson.id
+                  || (!nextInOrder && completedLessonIds.includes(selectedLesson.id))
                 }
                 className="button-solid flex-1 px-4 py-2.5 text-sm disabled:opacity-60 sm:flex-none"
               >
@@ -1278,6 +1322,7 @@ export function EnrolledCourseWorkspace({
                           ? t("learn.classroom.workspace.completeAndNext")
                           : t("learn.classroom.workspace.complete")}
               </button>
+              )}
             </div>
           </nav>
         ) : null}

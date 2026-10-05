@@ -343,7 +343,10 @@ describe("sala de aula com matricula real", () => {
     mocks.searchParams = new URLSearchParams("lesson=l2");
     mocks.completed = ["l1", "l2"];
     render(<I18nProvider initialLocale="es"><EnrolledCourseWorkspace course={course} /></I18nProvider>);
-    expect(screen.getByRole("link", { name: "Obtener certificado" })).toHaveAttribute("href", "/learn/credentials");
+    // Na barra de abas e, na ultima aula concluida, no botao sob a aula.
+    const links = screen.getAllByRole("link", { name: "Obtener certificado" });
+    expect(links).toHaveLength(2);
+    for (const link of links) expect(link).toHaveAttribute("href", "/learn/credentials");
     expect(recordLessonProgress).not.toHaveBeenCalled();
   });
 

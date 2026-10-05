@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
 import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -146,6 +149,26 @@ describe("CoursePlaylist", () => {
       screen.queryByRole("button", { name: /Mark "Setup" incomplete/ }),
     ).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /^Mark complete/ })).not.toBeInTheDocument();
+  });
+
+  // O check que desfaz media 28px: alvo pequeno demais para o dedo. jsdom nao
+  // faz layout, entao a prova e a folha (o padrao de members-area-hero.test).
+  it("o check que desfaz tem alvo de toque de 44px", () => {
+    renderPlaylist({ onUncomplete: vi.fn() });
+    expect(screen.getByRole("button", { name: 'Mark "Welcome" incomplete' })).toHaveClass(
+      "member-playlist__status--button",
+    );
+
+    const css = readFileSync(join(process.cwd(), "src/app/globals.css"), "utf8");
+    const rule = (selector: string) => {
+      const start = css.indexOf(`\n${selector} {`);
+      expect(start, `${selector} nao esta em globals.css`).toBeGreaterThan(-1);
+      return css.slice(start, css.indexOf("\n}", start));
+    };
+    const size = Number(/\swidth:\s*(\d+)px/.exec(rule(".member-playlist__status"))?.[1]);
+    const inset = Number(/inset:\s*-(\d+)px/.exec(rule(".member-playlist__status--button::after"))?.[1]);
+    expect(rule(".member-playlist__status--button")).toMatch(/position:\s*relative/);
+    expect(size + 2 * inset).toBeGreaterThanOrEqual(44);
   });
 
   it("sem onUncomplete (preview do professor) o check e so um icone", () => {
