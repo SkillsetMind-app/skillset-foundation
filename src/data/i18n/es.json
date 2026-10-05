@@ -1462,7 +1462,8 @@
       "back": "Mis cursos",
       "backToLesson": "Lección",
       "progress": "{completed} de {total} lecciones · {percent}%",
-      "certificate": "Ver certificado"
+      "start": "Empezar la lección 1",
+      "continue": "Continuar: {title}"
     },
     "paths": {
       "eyebrow": "Ruta de aprendizaje",

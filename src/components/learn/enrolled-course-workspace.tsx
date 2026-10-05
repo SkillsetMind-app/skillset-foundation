@@ -1173,6 +1173,19 @@ export function EnrolledCourseWorkspace({
           certificateHref={previewMode ? null : certificateHref}
           backHref={backHref}
           backTo={inClassroomTab ? "lesson" : "courses"}
+          // A aula que a sala abriria (a do endereco, senao a primeira nao
+          // concluida): o mesmo calculo de selectedLesson, sem leitura nova.
+          primaryAction={
+            selectedLesson
+              ? {
+                  href: classroomTabHref(basePath, "lesson", selectedLesson.id),
+                  label:
+                    completedLessonIds.length === 0 && selectedLesson.id === allLessons[0]?.id
+                      ? t("learn.membersHero.start")
+                      : t("learn.membersHero.continue").replace("{title}", () => selectedLesson.title),
+                }
+              : null
+          }
         />
       ) : (
         <header className="member-classroom-head">
@@ -1634,6 +1647,7 @@ function MembersAreaHeroBand({
   certificateHref,
   backHref,
   backTo,
+  primaryAction,
 }: {
   course: Course;
   coverAsset?: CourseAsset;
@@ -1642,6 +1656,7 @@ function MembersAreaHeroBand({
   totalCount: number | null;
   certificateHref: string | null;
   backHref: string;
+  primaryAction: { href: string; label: string } | null;
   /** Voltar sobe um nivel: da aba About, para a aula; da aula, para /learn. */
   backTo: "courses" | "lesson";
 }) {
@@ -1702,6 +1717,7 @@ function MembersAreaHeroBand({
       certificateHref={certificateHref}
       backHref={backHref}
       backTo={backTo}
+      primaryAction={primaryAction}
     />
   );
 }
