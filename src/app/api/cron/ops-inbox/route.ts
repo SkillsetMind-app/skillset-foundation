@@ -15,8 +15,9 @@ import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 // runs:
 //   - alert when at least one item arrived in the last 70 min: runs are hourly,
 //     so each item alerts once (twice only if it lands in the 10 min of slack
-//     before a run). A run more than 10 min late can miss an item's "new"
-//     alert; it still shows in the daily reminder;
+//     before a run). A run more than 10 min late can miss an item's own "new"
+//     alert, so every "new" alert also carries the open totals, and the daily
+//     reminder lists everything still open;
 //   - otherwise, one reminder a day at 12:00 UTC while anything is still open.
 //
 // Only ids and timestamps are read, and only counts, the oldest age and at
@@ -110,8 +111,11 @@ export async function GET(request: Request) {
     return NextResponse.json({ ok: true, ...result, alerted: false });
   }
 
-  const shown = reason === "new" ? fresh : total;
-  const lead = reason === "new" ? `${shown.tickets} new support ticket(s)` : `Still open: ${shown.tickets} support ticket(s)`;
+  const list = (count: Record<Kind, number>) =>
+    `${count.tickets} support ticket(s), ${count.reports} report(s), ${count.verifications} verification(s), ${count.privacy} privacy request(s)`;
+  // A "new" alert also carries the open totals: an item whose own "new" alert
+  // was lost to a late or skipped run still shows up in the next one.
+  const countsLine = reason === "new" ? `New: ${list(fresh)}. Open in total: ${list(total)}.` : `Still open: ${list(total)} waiting.`;
   // Newest first, uuids only: an id that is not a uuid is dropped, never sent.
   const ids = (kind: Kind) =>
     [...open[kind]].sort((a, b) => (b.at || 0) - (a.at || 0)).map((item) => item.id).filter((id) => UUID.test(id))
@@ -121,7 +125,7 @@ export async function GET(request: Request) {
     : await sendOpsAlert({
       event: "ops.inbox.new",
       severity: "warn",
-      summary: `${lead}, ${shown.reports} report(s), ${shown.verifications} verification(s), ${shown.privacy} privacy request(s) waiting. Oldest open: ${oldestHours ?? "?"} h. Open /ops.`,
+      summary: `${countsLine} Oldest open: ${oldestHours ?? "?"} h. Open /ops.`,
       context: {
         reason,
         oldest_hours: oldestHours,

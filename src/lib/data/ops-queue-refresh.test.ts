@@ -144,14 +144,39 @@ describe("admin support queue order", () => {
   });
 });
 
+type Row = Record<string, unknown>;
+
+// A tiny stand-in for one PostgREST table: applies in(), order() and limit()
+// the way the database would, so a query that asks for the wrong rows gets them.
+function tableQuery(rows: Row[]) {
+  let result = [...rows];
+  let cap = Infinity;
+  const query = {
+    select: () => query,
+    in: (column: string, values: unknown[]) => {
+      result = result.filter((row) => values.includes(row[column]));
+      return query;
+    },
+    order: (column: string, options: { ascending: boolean }) => {
+      result.sort((a, b) => String(a[column]).localeCompare(String(b[column])) * (options.ascending ? 1 : -1));
+      return query;
+    },
+    limit: (count: number) => {
+      cap = count;
+      return query;
+    },
+    then: (resolve: (value: { data: Row[]; error: null }) => unknown) =>
+      Promise.resolve({ data: result.slice(0, cap), error: null }).then(resolve),
+  };
+  return query;
+}
+
 // Mirrors realtime-js: one channel per topic, and a second identical
 // postgres_changes binding on that channel is dropped (only logged).
-function sharedTopicClient(rows: Record<string, unknown>[]) {
+function sharedTopicClient(rows: Row[]) {
   const topics = new Map<string, Array<() => void>>();
-  const read = vi.fn(async () => ({ data: rows, error: null }));
-  const query = { select: () => query, order: () => query, limit: read };
   mocks.client = {
-    from: () => query,
+    from: () => tableQuery(rows),
     channel: (topic: string) => {
       const listeners = topics.get(topic) ?? [];
       topics.set(topic, listeners);
@@ -166,7 +191,7 @@ function sharedTopicClient(rows: Record<string, unknown>[]) {
     },
     removeChannel: vi.fn(),
   };
-  return { read, notifyAll: () => topics.forEach((listeners) => listeners.forEach((listener) => listener())) };
+  return { notifyAll: () => topics.forEach((listeners) => listeners.forEach((listener) => listener())) };
 }
 
 describe("account action requests realtime", () => {
@@ -177,7 +202,10 @@ describe("account action requests realtime", () => {
     const badge = vi.fn();
     const panel = vi.fn();
     const stops = [subscribeToAccountActionRequests(badge, vi.fn()), subscribeToAccountActionRequests(panel, vi.fn())];
-    await vi.waitFor(() => expect(client.read).toHaveBeenCalledTimes(2));
+    await vi.waitFor(() => {
+      expect(badge).toHaveBeenCalledTimes(1);
+      expect(panel).toHaveBeenCalledTimes(1);
+    });
 
     client.notifyAll();
 
@@ -186,5 +214,27 @@ describe("account action requests realtime", () => {
       expect(panel).toHaveBeenCalledTimes(2);
     });
     stops.forEach((stop) => stop());
+  });
+
+  it("never loses an open request behind newer closed ones, and lists open ones oldest first", async () => {
+    // 60 closed requests, all newer than the oldest open one: a plain
+    // "50 newest" read would drop exactly the request closest to day 30.
+    const closed = Array.from({ length: 60 }, (_, index) => ({
+      id: `closed-${index}`, status: index % 2 ? "completed" : "rejected", type: "data_export", requested_by: "learner-test",
+      requested_at: `2026-09-${String(10 + (index % 18)).padStart(2, "0")}T10:00:00Z`,
+    }));
+    sharedTopicClient([
+      ...closed,
+      { id: "pending-new", status: "pending", type: "data_export", requested_by: "learner-test", requested_at: "2026-09-20T10:00:00Z" },
+      { id: "processing-old", status: "processing", type: "account_deletion", requested_by: "learner-test", requested_at: "2026-08-20T10:00:00Z" },
+    ]);
+    const next = vi.fn();
+    const stop = subscribeToAccountActionRequests(next, vi.fn());
+
+    await vi.waitFor(() => expect(next).toHaveBeenCalledTimes(1));
+    const ids = next.mock.calls[0][0].map((request: { id: string }) => request.id);
+    expect(ids.slice(0, 2)).toEqual(["processing-old", "pending-new"]);
+    expect(ids.filter((id: string) => id.startsWith("closed-"))).toHaveLength(50);
+    stop();
   });
 });

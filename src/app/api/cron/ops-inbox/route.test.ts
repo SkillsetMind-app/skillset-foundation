@@ -153,7 +153,10 @@ describe("ops inbox cron", () => {
     expect(sentBody()).toMatchObject({
       event: "ops.inbox.new",
       severity: "warn",
-      summary: "1 new support ticket(s), 0 report(s), 0 verification(s), 0 privacy request(s) waiting. Oldest open: 30 h. Open /ops.",
+      // The open totals ride along, so an item whose own "new" alert was lost
+      // to a late or skipped run is still visible here.
+      summary: "New: 1 support ticket(s), 0 report(s), 0 verification(s), 0 privacy request(s). "
+        + "Open in total: 2 support ticket(s), 1 report(s), 0 verification(s), 0 privacy request(s). Oldest open: 30 h. Open /ops.",
       context: {
         reason: "new", oldest_hours: 30, tickets_new: 1, tickets_open: 2, reports_open: 1,
         ticket_ids: "11111111-1111-4111-8111-111111111111,44444444-4444-4444-8444-444444444444",
@@ -212,7 +215,8 @@ describe("ops inbox cron", () => {
     expect(mocks.fetch).toHaveBeenCalledTimes(1);
     expect(mocks.fetch.mock.calls[0][1].body as string).not.toContain(PERSONAL[0]);
     expect(sentBody().summary).toBe(
-      "0 new support ticket(s), 0 report(s), 0 verification(s), 1 privacy request(s) waiting. Oldest open: 0 h. Open /ops.",
+      "New: 0 support ticket(s), 0 report(s), 0 verification(s), 1 privacy request(s). "
+        + "Open in total: 0 support ticket(s), 0 report(s), 0 verification(s), 1 privacy request(s). Oldest open: 0 h. Open /ops.",
     );
     expect(sentBody().context).toMatchObject({
       reason: "new", privacy_new: 1, privacy_open: 1, privacy_ids: "66666666-6666-4666-8666-666666666666",

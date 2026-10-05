@@ -570,7 +570,7 @@
           "title": "Vista previa de la plataforma",
           "description": "Ve la plataforma como estudiante o instructor; tu propio acceso no cambia.",
           "back": "Volver a administrador",
-          "banner": "Vista previa como {role}. Tu acceso de administrador no cambia.",
+          "banner": "Vista previa como {role}. Todo lo que hagas aquí es real y se hace con tu cuenta de administrador.",
           "exit": "Salir de la vista previa"
         },
         "permissions": {

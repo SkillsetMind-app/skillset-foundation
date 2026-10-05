@@ -79,8 +79,8 @@ export function useOpsQueueCounts(): OpsQueueCounts {
       (rows) => rows.filter((ticket) => ticket.status !== "resolved").length);
     watch(canReadReports, "openReports", subscribeToCommunityReports,
       (rows) => rows.filter((report) => report.status === "open").length);
-    // ponytail: counted within the panel's latest-50 read; more than 50 open
-    // requests at once would undercount — page the read if that ever happens.
+    // The read returns every open request (only closed history is capped), so
+    // this count is complete.
     watch(canReadPrivacy, "openPrivacyRequests", subscribeToAccountActionRequests,
       (rows) => rows.filter((request) => request.status === "pending" || request.status === "processing").length);
 

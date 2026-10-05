@@ -117,17 +117,18 @@ describe("stripe attention cron", () => {
     expect(mocks.fetch).not.toHaveBeenCalled();
   });
 
-  // An event enters the view 15 min after its claim and runs are hourly, so the
-  // window on claimed_at is one run plus that lag: each event alerts once.
-  it("does not alert again for an event the previous hourly run already reported", async () => {
-    // Claimed 06:37, in the view since 06:52: the 07:07 run already alerted.
-    stuckFor(1.5);
+  // A stuck paid-but-no-access payment must never wait for the daily reminder:
+  // the wide window repeats the alert on purpose so a late or skipped hourly
+  // run cannot swallow it.
+  it("still alerts when the previous hourly run was skipped", async () => {
+    // Claimed 06:07, in the view since 06:22; the 07:07 run never happened.
+    stuckFor(2);
 
     const response = await call(`Bearer ${CRON_TOKEN}`);
 
     expect(response.status).toBe(200);
-    expect(await response.json()).toMatchObject({ count: 1, alerted: false });
-    expect(mocks.fetch).not.toHaveBeenCalled();
+    expect(await response.json()).toMatchObject({ count: 1, alerted: true });
+    expect(sentBody().context).toMatchObject({ reason: "new" });
   });
 
   it("still alerts for an event that entered the view after the previous run", async () => {

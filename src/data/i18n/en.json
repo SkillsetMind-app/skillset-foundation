@@ -570,7 +570,7 @@
           "title": "Preview the product",
           "description": "See the platform as a learner or an instructor; your own access is untouched.",
           "back": "Back to admin",
-          "banner": "Previewing as {role}. Your admin access is unchanged.",
+          "banner": "Previewing as {role}. Anything you do here is real and runs as your admin account.",
           "exit": "Exit preview"
         },
         "permissions": {
