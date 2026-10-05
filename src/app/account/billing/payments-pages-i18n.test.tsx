@@ -8,7 +8,7 @@ import TeachActivatePage from "@/app/teach/activate/page";
 import TeachActivateReturnPage from "@/app/teach/activate/return/page";
 import { LOCALE_COOKIE } from "@/lib/i18n/config";
 
-const mocks = vi.hoisted(() => ({ locale: "es", guard: vi.fn(), checkout: vi.fn() }));
+const mocks = vi.hoisted(() => ({ locale: "es", guard: vi.fn(), checkout: vi.fn(), activation: vi.fn() }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: () => {} }) }));
 vi.mock("next/headers", () => ({
   cookies: async () => ({ get: (name: string) => name === LOCALE_COOKIE ? { value: mocks.locale } : undefined }),
@@ -25,7 +25,9 @@ vi.mock("@/components/platform/platform-shell", () => ({
 vi.mock("@/components/account/embedded-checkout-panel", () => ({
   EmbeddedCheckoutPanel: (props: unknown) => { mocks.checkout(props); return <div>Checkout fixture</div>; },
 }));
-vi.mock("@/components/teacher/activation-checkout-panel", () => ({ ActivationCheckoutPanel: () => <div>Activation fixture</div> }));
+vi.mock("@/components/teacher/activation-checkout-panel", () => ({
+  ActivationCheckoutPanel: (props: unknown) => { mocks.activation(props); return <div>Activation fixture</div>; },
+}));
 beforeEach(() => vi.clearAllMocks());
 afterEach(cleanup);
 
@@ -72,4 +74,28 @@ it.each(["en", "es"] as const)("localizes activation pages on the server and pre
   expect(screen.getByRole("heading", { name: locale === "es" ? "Estamos confirmando tu pago." : "We're confirming your payment." })).toBeInTheDocument();
   expect(screen.getByRole("link", { name: locale === "es" ? "Volver al estudio de cursos" : "Back to course studio" })).toHaveAttribute("href", "/teach/builder");
   expect(screen.getByRole("link", { name: locale === "es" ? "Contactar con soporte" : "Contact support" })).toHaveAttribute("href", "/support");
+});
+
+// Paying used to drop the creator on the course list. The course id rides the
+// checkout and the return page sends them back to that course's Publish tab.
+it("carries the course being published through activation and back", async () => {
+  mocks.locale = "en";
+  const courseId = "0b5c2f4e-8a1d-4c3b-9e7f-1a2b3c4d5e6f";
+  const view = render(await TeachActivatePage({ searchParams: Promise.resolve({ courseId }) }));
+  expect(mocks.activation).toHaveBeenCalledWith({ courseId });
+  view.unmount();
+  render(await TeachActivateReturnPage({ searchParams: Promise.resolve({ session_id: "cs_fixture", courseId }) }));
+  expect(screen.getByRole("link", { name: "Back to course studio" })).toHaveAttribute("href", `/teach/builder?courseId=${courseId}&tab=review`);
+});
+
+it.each([
+  ["a non-UUID", "../admin"],
+  ["a repeated parameter", ["0b5c2f4e-8a1d-4c3b-9e7f-1a2b3c4d5e6f", "x"]],
+])("ignores %s course id on the activation pages", async (_name, courseId) => {
+  mocks.locale = "en";
+  const view = render(await TeachActivatePage({ searchParams: Promise.resolve({ courseId }) }));
+  expect(mocks.activation).toHaveBeenCalledWith({ courseId: null });
+  view.unmount();
+  render(await TeachActivateReturnPage({ searchParams: Promise.resolve({ courseId }) }));
+  expect(screen.getByRole("link", { name: "Back to course studio" })).toHaveAttribute("href", "/teach/builder");
 });

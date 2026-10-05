@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ProtectedSurface } from "@/components/auth/protected-surface";
 import { PlatformShell } from "@/components/platform/platform-shell";
 import { getServerTranslation } from "@/lib/i18n/server";
+import { uuidPattern } from "@/lib/operations/http";
 import { privatePageMetadata } from "@/lib/seo/private-page-metadata";
 
 export async function generateMetadata() {
@@ -15,8 +16,13 @@ export async function generateMetadata() {
  * gate reads that column, so reporting success from a return URL a creator can
  * type by hand would be a lie the database might not agree with.
  */
-export default async function TeachActivateReturnPage() {
+export default async function TeachActivateReturnPage({
+  searchParams,
+}: { searchParams?: Promise<Record<string, string | string[] | undefined>> } = {}) {
   const { t } = await getServerTranslation();
+  // The checkout route only puts a UUID here, but the URL can be typed by hand.
+  const requested = (await searchParams)?.courseId;
+  const courseId = typeof requested === "string" && uuidPattern.test(requested) ? requested : null;
   return (
     <ProtectedSurface permissions={["teacherStudio.access"]}>
       <PlatformShell title={t("activationCheckout.returnTitle")} compact>
@@ -31,7 +37,10 @@ export default async function TeachActivateReturnPage() {
             {t("activationCheckout.returnBody")}
           </p>
           <div className="mt-5 flex flex-wrap gap-3">
-            <Link href="/teach/builder" className="button-solid px-4 py-2.5 text-sm">
+            <Link
+              href={courseId ? `/teach/builder?courseId=${courseId}&tab=review` : "/teach/builder"}
+              className="button-solid px-4 py-2.5 text-sm"
+            >
               {t("activationCheckout.backToCourseStudio")}
             </Link>
             <Link href="/support" className="button-outline px-4 py-2.5 text-sm">

@@ -36,8 +36,12 @@ function getStripePromise(locale: Locale): Promise<Stripe | null> | null {
  * who cannot publish at all, so a dead end would be the worst possible place
  * to strand one.
  */
-export function ActivationCheckoutPanel() {
+export function ActivationCheckoutPanel({ courseId = null }: { courseId?: string | null } = {}) {
   const { t, locale } = useTranslation();
+  // Validated by the page; the way out goes back to the course being published.
+  const studioHref = courseId
+    ? `/teach/builder?courseId=${encodeURIComponent(courseId)}&tab=review`
+    : "/teach/builder";
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [error, setError] = useState<{
     key: string;
@@ -73,7 +77,7 @@ export function ActivationCheckoutPanel() {
       });
 
       try {
-        const result = await createActivationCheckoutClientSecret();
+        const result = await createActivationCheckoutClientSecret(courseId);
         if (!cancelled) setClientSecret(result.clientSecret);
       } catch (cause) {
         if (!cancelled) {
@@ -108,7 +112,7 @@ export function ActivationCheckoutPanel() {
     return () => {
       cancelled = true;
     };
-  }, [stripeLoader]);
+  }, [stripeLoader, courseId]);
 
   if (!publishableKey) {
     return (
@@ -118,7 +122,7 @@ export function ActivationCheckoutPanel() {
           {t("activationCheckout.unavailableBody")}
         </p>
         <div className="mt-5 flex flex-wrap gap-3">
-          <Link href="/teach/builder" className={buttonClasses()}>
+          <Link href={studioHref} className={buttonClasses()}>
             {t("activationCheckout.backToStudio")}
           </Link>
           <Link href="/support" className={buttonClasses({ variant: "outline" })}>
@@ -145,7 +149,7 @@ export function ActivationCheckoutPanel() {
                 : t(`activationCheckout.error.${error.key}`)}
             </p>
             {error.status ? <p className="mt-2 text-xs">{t("activationCheckout.reference")} HTTP {error.status}</p> : null}
-            <Link href={error.verificationRequired ? "/teach/verification" : "/teach/builder"} className={buttonClasses({ variant: "outline" }, "mt-4")}>
+            <Link href={error.verificationRequired ? "/teach/verification" : studioHref} className={buttonClasses({ variant: "outline" }, "mt-4")}>
               {error.verificationRequired
                 ? t("creatorPanel.activationGate.verificationAction")
                 : t("activationCheckout.backToStudio")}

@@ -99,6 +99,14 @@ function createAdmin(input: {
   };
 }
 
+function activationRequest(body?: unknown) {
+  return new Request("https://skillset.test/api/payments/activation/checkout", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: body === undefined ? "{}" : JSON.stringify(body),
+  });
+}
+
 function profile(overrides: Record<string, unknown> = {}) {
   return {
     uid: "teacher-1",
@@ -157,7 +165,7 @@ describe("storefront activation checkout", () => {
   it("does not charge while the platform activation gate is off", async () => {
     mocks.getAdmin.mockReturnValue(createAdmin({ activationRequired: false }));
 
-    const response = await POST();
+    const response = await POST(activationRequest());
 
     expect(response.status).toBe(409);
     expect(await response.json()).toEqual({
@@ -169,7 +177,7 @@ describe("storefront activation checkout", () => {
 
   it("does not charge an explicitly waived creator", async () => {
     mocks.waiver.mockResolvedValue({ data: true, error: null });
-    const response = await POST();
+    const response = await POST(activationRequest());
     expect(response.status).toBe(409);
     expect(await response.json()).toMatchObject({ code: "activation_not_required" });
     expect(mocks.waiver).toHaveBeenCalledWith("has_creator_activation_waiver");
@@ -182,7 +190,7 @@ describe("storefront activation checkout", () => {
       metadata: { uid: "teacher-1", purpose: "skillset_activation_fee" },
     }] });
     mocks.waiver.mockResolvedValueOnce({ data: false, error: null }).mockResolvedValue({ data: true, error: null });
-    const response = await POST();
+    const response = await POST(activationRequest());
     expect(response.status).toBe(409);
     expect(mocks.expireSession).toHaveBeenCalledWith("cs_activation");
     expect(await response.json()).not.toHaveProperty("clientSecret");
@@ -190,7 +198,7 @@ describe("storefront activation checkout", () => {
 
   it("never reveals a newly created session if waiver verification fails", async () => {
     mocks.waiver.mockResolvedValueOnce({ data: false, error: null }).mockResolvedValue({ data: null, error: { message: "unavailable" } });
-    const response = await POST();
+    const response = await POST(activationRequest());
     expect(response.status).toBe(503);
     expect(mocks.expireSession).toHaveBeenCalledWith("cs_activation");
     expect(await response.json()).not.toHaveProperty("clientSecret");
@@ -199,7 +207,7 @@ describe("storefront activation checkout", () => {
   it("does not return a session when cancellation cannot be confirmed", async () => {
     mocks.waiver.mockResolvedValueOnce({ data: false, error: null }).mockResolvedValue({ data: true, error: null });
     mocks.expireSession.mockRejectedValue(new Error("private provider diagnostic"));
-    const response = await POST();
+    const response = await POST(activationRequest());
     expect(response.status).toBe(503);
     expect(await response.json()).toEqual({ error: "Could not safely finish checkout. Please try again." });
   });
@@ -209,7 +217,7 @@ describe("storefront activation checkout", () => {
     { data: null, error: null },
   ])("fails closed before charging when waiver lookup is inconclusive: %j", async result => {
     mocks.waiver.mockResolvedValue(result);
-    const response = await POST();
+    const response = await POST(activationRequest());
     expect(response.status).toBe(503);
     expect(mocks.getStripe).not.toHaveBeenCalled();
   });
@@ -221,7 +229,7 @@ describe("storefront activation checkout", () => {
   it("opens checkout when the gate was flipped as a jsonb string", async () => {
     mocks.getAdmin.mockReturnValue(createAdmin({ activationRequired: "true" }));
 
-    const response = await POST();
+    const response = await POST(activationRequest());
 
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({
@@ -237,7 +245,7 @@ describe("storefront activation checkout", () => {
   // This test keeps it that way: opening either surface here would be the
   // first step to a free storefront.
   it("never exposes a discount surface on the activation charge", async () => {
-    const response = await POST();
+    const response = await POST(activationRequest());
 
     expect(response.status).toBe(200);
     const [params, options] = mocks.createSession.mock.calls[0];
@@ -251,12 +259,12 @@ describe("storefront activation checkout", () => {
 
   it("rejects non-creators and creators still awaiting verification", async () => {
     mocks.getUserRow.mockResolvedValueOnce(profile({ roles: ["student"] }));
-    expect((await POST()).status).toBe(403);
+    expect((await POST(activationRequest())).status).toBe(403);
 
     mocks.getUserRow.mockResolvedValueOnce(
       profile({ creator_verification_status: "pending" }),
     );
-    expect((await POST()).status).toBe(403);
+    expect((await POST(activationRequest())).status).toBe(403);
     expect(mocks.getStripe).not.toHaveBeenCalled();
   });
 
@@ -264,7 +272,7 @@ describe("storefront activation checkout", () => {
     mocks.getAdmin.mockReturnValue(createAdmin({ verificationRequired: false }));
     mocks.getUserRow.mockResolvedValue(profile({ creator_verification_status: status }));
 
-    const response = await POST();
+    const response = await POST(activationRequest());
 
     expect(response.status).toBe(200);
     expect(mocks.createSession).toHaveBeenCalledOnce();
@@ -278,7 +286,7 @@ describe("storefront activation checkout", () => {
       profile({ activation_fee_paid_at: "2026-07-31T12:00:00.000Z" }),
     );
 
-    const response = await POST();
+    const response = await POST(activationRequest());
 
     expect(response.status).toBe(409);
     expect(mocks.getCustomer).not.toHaveBeenCalled();
@@ -296,7 +304,7 @@ describe("storefront activation checkout", () => {
       }],
     });
 
-    const response = await POST();
+    const response = await POST(activationRequest());
 
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({
@@ -320,7 +328,7 @@ describe("storefront activation checkout", () => {
       }],
     });
 
-    const response = await POST();
+    const response = await POST(activationRequest());
 
     expect(response.status).toBe(409);
     expect(admin.userUpdates).toEqual([
@@ -347,7 +355,7 @@ describe("storefront activation checkout", () => {
       data: [{ id: "pi_activation", status: "succeeded" }],
     });
 
-    const response = await POST();
+    const response = await POST(activationRequest());
 
     expect(response.status).toBe(409);
     expect(admin.userUpdates).toEqual([
@@ -368,7 +376,7 @@ describe("storefront activation checkout", () => {
     mocks.retrievePaymentIntent.mockResolvedValue(activationIntent({ refunded: outcome === "refunded", disputed: outcome === "lost" }));
     mocks.listDisputes.mockResolvedValue({ data: [{ status: "lost" }] });
 
-    const response = await POST();
+    const response = await POST(activationRequest());
 
     expect(response.status).toBe(200);
     expect(admin.userUpdates).toEqual([]);
@@ -384,7 +392,7 @@ describe("storefront activation checkout", () => {
     }));
     mocks.listDisputes.mockResolvedValue({ data: [{ status: "won" }] });
 
-    const response = await POST();
+    const response = await POST(activationRequest());
 
     expect(response.status).toBe(409);
     expect(admin.userUpdates).toHaveLength(1);
@@ -398,7 +406,7 @@ describe("storefront activation checkout", () => {
     mocks.retrievePaymentIntent.mockResolvedValue(activationIntent({ disputed: true }));
     mocks.listDisputes.mockResolvedValue({ data: [{ status: "under_review" }] });
 
-    const response = await POST();
+    const response = await POST(activationRequest());
 
     expect(response.status).toBe(409);
     expect(admin.userUpdates).toEqual([]);
@@ -412,7 +420,7 @@ describe("storefront activation checkout", () => {
     mocks.retrievePaymentIntent.mockRejectedValueOnce(new Error("Stripe temporarily unavailable"));
     const errorLog = vi.spyOn(console, "error").mockImplementation(() => undefined);
     try {
-      const response = await POST();
+      const response = await POST(activationRequest());
       expect(response.status).toBe(500);
       expect(admin.userUpdates).toEqual([]);
       expect(mocks.createSession).not.toHaveBeenCalled();
@@ -431,7 +439,7 @@ describe("storefront activation checkout", () => {
       activationIntent({ payment_intent: id, refunded: id === "pi_refunded" }, { id }),
     );
 
-    const response = await POST();
+    const response = await POST(activationRequest());
 
     expect(response.status).toBe(409);
     expect(admin.userUpdates).toHaveLength(1);
@@ -453,7 +461,7 @@ describe("storefront activation checkout", () => {
     }));
     const errorLog = vi.spyOn(console, "error").mockImplementation(() => undefined);
     try {
-      const response = await POST();
+      const response = await POST(activationRequest());
       expect(response.status).toBe(500);
       expect(admin.userUpdates).toEqual([]);
       expect(mocks.createSession).not.toHaveBeenCalled();
@@ -465,15 +473,15 @@ describe("storefront activation checkout", () => {
   it("opens the activation checkout in the visitor's language", async () => {
     mocks.getLocale.mockResolvedValue("es");
 
-    const response = await POST();
+    const response = await POST(activationRequest());
 
     expect(response.status).toBe(200);
     expect(mocks.createSession.mock.calls[0][0]).toMatchObject({ locale: "es" });
   });
 
   it("creates one session with a stable creator-and-price idempotency key", async () => {
-    const first = await POST();
-    const second = await POST();
+    const first = await POST(activationRequest());
+    const second = await POST(activationRequest());
 
     expect(first.status).toBe(200);
     expect(second.status).toBe(200);
@@ -496,12 +504,47 @@ describe("storefront activation checkout", () => {
         }],
       });
 
-    await POST();
-    await POST();
+    await POST(activationRequest());
+    await POST(activationRequest());
 
     const firstKey = mocks.createSession.mock.calls[0][1].idempotencyKey;
     const retryKey = mocks.createSession.mock.calls[1][1].idempotencyKey;
     expect(retryKey).not.toBe(firstKey);
     expect(retryKey).toContain("cs_expired");
+  });
+
+  // Paying used to drop the creator on the course list: the return URL did not
+  // say which course they were publishing.
+  it("returns the creator to the course they were publishing", async () => {
+    const courseId = "0b5c2f4e-8a1d-4c3b-9e7f-1a2b3c4d5e6f";
+
+    const response = await POST(activationRequest({ courseId }));
+
+    expect(response.status).toBe(200);
+    expect(mocks.createSession.mock.calls[0][0].return_url).toBe(
+      `https://skillset.test/teach/activate/return?session_id={CHECKOUT_SESSION_ID}&courseId=${courseId}`,
+    );
+  });
+
+  it.each([
+    ["a non-UUID", "../../admin"],
+    ["a query fragment", "x&next=https://evil.example"],
+    ["a number", 42],
+  ])("drops %s course id instead of steering the return URL with it", async (_name, courseId) => {
+    const response = await POST(activationRequest({ courseId }));
+
+    expect(response.status).toBe(200);
+    expect(mocks.createSession.mock.calls[0][0].return_url).toBe(
+      "https://skillset.test/teach/activate/return?session_id={CHECKOUT_SESSION_ID}",
+    );
+  });
+
+  it("still opens checkout when the body is not JSON", async () => {
+    const response = await POST(new Request("https://skillset.test/api/payments/activation/checkout", {
+      method: "POST",
+      body: "not json",
+    }));
+
+    expect(response.status).toBe(200);
   });
 });

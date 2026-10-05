@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { I18nProvider, useTranslation } from "@/components/i18n/i18n-provider";
@@ -9,6 +9,7 @@ import type { CourseAsset } from "@/domain/course-asset";
 import type { TeacherCourse } from "@/domain/teacher-course";
 import { publishTeacherCourse, subscribeToTeacherCourse, updateTeacherCourseBuilder } from "@/lib/data/teacher-courses";
 import { subscribeToCourseAssets, uploadCourseAsset } from "@/lib/data/course-assets";
+import { track } from "@/lib/posthog/events";
 
 const mocks = vi.hoisted(() => {
   // Fusivel: um laco de render nao estoura o timeout do vitest, come memoria
@@ -96,7 +97,9 @@ vi.mock("@/lib/data/user-profiles", () => ({
 
 vi.mock("@/lib/data/creator-verification", () => ({
   fetchRequireCreatorVerification: () => Promise.resolve(false),
+  fetchCreatorActivationBlocked: () => Promise.resolve(activation.blocked),
 }));
+const activation = vi.hoisted(() => ({ blocked: false }));
 
 vi.mock("@/lib/data/course-assets", () => ({
   fetchCourseAssets: () => Promise.resolve([]),
@@ -336,7 +339,7 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     await screen.findByRole("link", { name: "Activate storefront" });
     fireEvent.click(screen.getByRole("button", { name: "Switch language" }));
     expect(screen.getByRole("alert")).toHaveTextContent("Activa tu tienda para habilitar la publicación: una tarifa única de activación, que se cobra una sola vez por cuenta de creador, nunca por curso.");
-    expect(screen.getByRole("link", { name: "Activar tienda" })).toHaveAttribute("href", "/teach/activate");
+    expect(screen.getByRole("link", { name: "Activar tienda" })).toHaveAttribute("href", "/teach/activate?courseId=course-1");
     expect(updateTeacherCourseBuilder).toHaveBeenCalledOnce();
     expect(publishTeacherCourse).toHaveBeenCalledTimes(operation === "publish" ? 1 : 0);
   });
@@ -1155,5 +1158,109 @@ describe("Painel: o que falta para publicar vem primeiro e cada linha leva a alg
     const pending = card.querySelector('[data-readiness-item="lesson"]');
     expect(done?.className).toContain("bg-[var(--color-success-soft)]");
     expect(pending?.className).not.toContain("bg-[var(--color-success-soft)]");
+  });
+});
+
+// A taxa de ativacao so aparecia como erro do banco DEPOIS do clique em Publish,
+// o item de payouts nao levava a lugar nenhum e o sucesso nao dava o link para
+// divulgar. Agora tudo isso aparece na aba Publish, antes e depois do clique.
+describe("publicar sem surpresa", () => {
+  const readyFreeCourse: TeacherCourse = {
+    ...mocks.course,
+    paymentType: "free",
+    priceAmountMinor: 0,
+    modules: [{ id: "m1", title: "Start here", lessons: [{ id: "l1", title: "Welcome", description: "", type: "text", contentText: "Read this first." }] }],
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.resetSubscriptionCounts();
+    vi.mocked(subscribeToTeacherCourse).mockImplementationOnce((_id, emit) => {
+      emit(readyFreeCourse);
+      return () => {};
+    });
+  });
+
+  afterEach(() => {
+    cleanup();
+    activation.blocked = false;
+    mocks.searchParams.delete("section");
+    mocks.searchParams.delete("tab");
+    vi.restoreAllMocks();
+  });
+
+  it("lists the one-time activation and sends Activate and publish to checkout with this course", async () => {
+    activation.blocked = true;
+    const blocked = vi.spyOn(track, "coursePublishBlocked");
+    renderBuilder("review");
+    const button = await screen.findByRole("button", { name: "Activate and publish" });
+    expect(screen.getAllByText("Activation — US$25, one time").length).toBeGreaterThan(0);
+    expect(button).toBeEnabled();
+
+    fireEvent.click(button);
+    await waitFor(() => expect(mocks.router.push).toHaveBeenCalledWith("/teach/activate?courseId=course-1"));
+    expect(updateTeacherCourseBuilder).toHaveBeenCalledOnce();
+    expect(publishTeacherCourse).not.toHaveBeenCalled();
+    expect(blocked).toHaveBeenCalledWith({ course_id: "course-1", reason: "activation" });
+
+    fireEvent.click(screen.getByRole("button", { name: "Switch language" }));
+    expect(screen.getByRole("button", { name: "Activar y publicar" })).toBeInTheDocument();
+    expect(screen.getAllByText("Activación — US$25, pago único").length).toBeGreaterThan(0);
+  });
+
+  it("keeps Publish product for a creator who does not owe the fee", async () => {
+    renderBuilder("review");
+    expect(await screen.findByRole("button", { name: "Publish product" })).toBeEnabled();
+    expect(screen.queryByText("Activation — US$25, one time")).toBeNull();
+  });
+
+  it("Manage: the activation row leads to checkout for this course", async () => {
+    activation.blocked = true;
+    const { container } = render(<CourseManageHub courseId="course-1" />);
+    await screen.findByText("Publish checklist");
+    const row = await waitFor(() => {
+      const found = container.querySelector<HTMLElement>('[data-readiness-item="activation"]');
+      if (!found) throw new Error("activation row missing");
+      return found;
+    });
+    expect(within(row).getByRole("link")).toHaveAttribute("href", "/teach/activate?courseId=course-1");
+  });
+
+  it("shows the product link to share right after publishing", async () => {
+    vi.mocked(publishTeacherCourse).mockResolvedValueOnce(undefined as never);
+    renderBuilder("review");
+    fireEvent.click(await screen.findByRole("button", { name: "Publish product" }));
+    expect(await screen.findByText("Course published. Its product page is now live.")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Open Product page" })).toHaveAttribute("href", "https://www.skillsetmind.com/courses/course-1");
+    expect(screen.getByRole("button", { name: "Copy Product page link" })).toBeInTheDocument();
+  });
+
+  it("links the payouts error to Stripe setup and records why publishing was blocked", async () => {
+    const blocked = vi.spyOn(track, "coursePublishBlocked");
+    vi.mocked(publishTeacherCourse).mockRejectedValueOnce(new Error("Finish Stripe payout onboarding before publishing a paid course."));
+    renderBuilder("review");
+    fireEvent.click(await screen.findByRole("button", { name: "Publish product" }));
+    const alert = await screen.findByRole("alert");
+    expect(within(alert).getByRole("link", { name: "Finish payout onboarding" })).toHaveAttribute("href", "/account/payments#stripe-connect");
+    expect(blocked).toHaveBeenCalledWith({ course_id: "course-1", reason: "payouts" });
+  });
+});
+
+describe("item de payouts no construtor", () => {
+  afterEach(() => {
+    cleanup();
+    mocks.searchParams.delete("tab");
+    vi.restoreAllMocks();
+  });
+
+  it("links the pending Stripe payouts item to the payouts setup, like Manage", async () => {
+    vi.mocked(subscribeToTeacherCourse).mockImplementationOnce((_id, emit) => {
+      emit({ ...mocks.course, priceAmountMinor: 12000 });
+      return () => {};
+    });
+    renderBuilder("review");
+    await screen.findByRole("heading", { name: mocks.course.title });
+    const item = screen.getAllByText("Stripe payouts")[0].closest("li")!;
+    expect(within(item).getByRole("link", { name: "Finish payout onboarding" })).toHaveAttribute("href", "/account/payments#stripe-connect");
   });
 });

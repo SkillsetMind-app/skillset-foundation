@@ -146,4 +146,19 @@ describe("ActivationCheckoutPanel", () => {
     expect(mocks.checkoutProvider).toHaveBeenCalledWith({ clientSecret });
     expect(screen.queryByRole("link", { name: "Back to studio" })).toBeNull();
   });
+
+  it("asks checkout to return to the course being published and keeps the way back to it", async () => {
+    mocks.fetch.mockResolvedValue(new Response(JSON.stringify({ error: "Down" }), { status: 500 }));
+    render(
+      <I18nProvider initialLocale="en">
+        <ActivationCheckoutPanel courseId="0b5c2f4e-8a1d-4c3b-9e7f-1a2b3c4d5e6f" />
+      </I18nProvider>,
+    );
+    expect(await screen.findByRole("link", { name: "Back to studio" })).toHaveAttribute(
+      "href",
+      "/teach/builder?courseId=0b5c2f4e-8a1d-4c3b-9e7f-1a2b3c4d5e6f&tab=review",
+    );
+    const init = mocks.fetch.mock.calls[0][1] as RequestInit;
+    expect(JSON.parse(init.body as string)).toEqual({ courseId: "0b5c2f4e-8a1d-4c3b-9e7f-1a2b3c4d5e6f" });
+  });
 });

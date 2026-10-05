@@ -64,6 +64,7 @@ vi.mock("@/lib/data/user-profiles", () => ({
 
 vi.mock("@/lib/data/creator-verification", () => ({
   fetchRequireCreatorVerification: () => Promise.resolve(false),
+  fetchCreatorActivationBlocked: () => Promise.resolve(false),
 }));
 
 vi.mock("@/lib/data/course-assets", () => ({

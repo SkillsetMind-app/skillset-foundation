@@ -190,7 +190,7 @@ export function getCourseAssetUploadErrorMessage(
     const localErrors: Record<string, string> = {
       "Unsupported file type or file too large.": "invalidFile",
       "Cover image URL is not on an allowed media host.": "coverHost",
-      "Pay the one-time activation fee before uploading course video.": "activation",
+      "Pay the one-time activation fee to keep uploading video today.": "activation",
     };
     const key = Object.hasOwn(localErrors, message.trim())
       ? localErrors[message.trim()]

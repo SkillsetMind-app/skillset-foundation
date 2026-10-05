@@ -254,12 +254,12 @@ export async function uploadLessonVideoToBunny(
   }
 
   if (createRes.status === 402) {
-    // The route's activation guard. Carry the gate's own wording out of here
-    // instead of "bunny-create-failed:402" — every caller matches on the
-    // wording, and a status code in an error string is not something a
-    // creator can act on.
+    // The route's daily cap for unpaid creators (video/create answers 402 only
+    // over it). Carry the route's own wording out of here instead of
+    // "bunny-create-failed:402" — every caller matches on the wording, and a
+    // status code in an error string is not something a creator can act on.
     throw new Error(
-      "Pay the one-time activation fee before uploading course video.",
+      "Pay the one-time activation fee to keep uploading video today.",
     );
   }
   if (!createRes.ok) {
