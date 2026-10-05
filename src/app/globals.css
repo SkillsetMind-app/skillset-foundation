@@ -5527,10 +5527,11 @@ body:has([aria-label="Course categories"])
 
 /* A regra de .member-playlist__lesson-meta acima empata em especificidade com
    a da linha atual e vem depois: sem esta, a duração da aula atual pintava
-   --ma-ink-soft sobre o vermelho (1.04:1 claro, 2.7:1 escuro). Branco a 85%
-   sobre --ma-accent dá 5.2:1. */
+   --ma-ink-soft sobre o vermelho (1.04:1 claro, 2.7:1 escuro). Mesma tinta do
+   título da linha: --ma-on-accent (branco sobre o vermelho padrão, 6.6:1; tinta
+   escura quando a cor do professor é clara). */
 .member-classroom[data-members-theme] .member-playlist__lesson.is-current .member-playlist__lesson-meta {
-  color: rgba(255, 255, 255, 0.85);
+  color: var(--ma-on-accent);
 }
 
 .member-classroom[data-members-theme] .member-classroom-head__progress {
