@@ -8,6 +8,7 @@ import {
   getOpsNavItem,
   type PlatformNavCount,
 } from "@/data/site";
+import { subscribeToAccountActionRequests } from "@/lib/data/account-actions";
 import { subscribeToCommunityReports } from "@/lib/data/community-posts";
 import { subscribeToVerificationQueue } from "@/lib/data/creator-verification";
 import { subscribeToAdminSupportTickets } from "@/lib/data/support-tickets";
@@ -16,6 +17,8 @@ export type OpsQueueCounts = {
   pendingVerifications: PlatformNavCount;
   openTickets: PlatformNavCount;
   openReports: PlatformNavCount;
+  /** Deletion/export requests still pending or processing (30-day clock). */
+  openPrivacyRequests: PlatformNavCount;
 };
 
 // One owner in OpsDashboard supplies both navigation surfaces. Each queue has
@@ -25,7 +28,8 @@ export function useOpsQueueCounts(): OpsQueueCounts {
   const canReadVerification = canAccessPlatformNavItem(user, getOpsNavItem("verification"));
   const canReadSupport = canAccessPlatformNavItem(user, getOpsNavItem("support"));
   const canReadReports = canAccessPlatformNavItem(user, getOpsNavItem("community"));
-  const scope = `${user?.uid ?? ""}:${canReadVerification}:${canReadSupport}:${canReadReports}`;
+  const canReadPrivacy = canAccessPlatformNavItem(user, getOpsNavItem("users"));
+  const scope = `${user?.uid ?? ""}:${canReadVerification}:${canReadSupport}:${canReadReports}:${canReadPrivacy}`;
   const [snapshot, setSnapshot] = useState<{
     scope: string;
     values: Partial<OpsQueueCounts>;
@@ -75,12 +79,16 @@ export function useOpsQueueCounts(): OpsQueueCounts {
       (rows) => rows.filter((ticket) => ticket.status !== "resolved").length);
     watch(canReadReports, "openReports", subscribeToCommunityReports,
       (rows) => rows.filter((report) => report.status === "open").length);
+    // The read returns every open request (only closed history is capped), so
+    // this count is complete.
+    watch(canReadPrivacy, "openPrivacyRequests", subscribeToAccountActionRequests,
+      (rows) => rows.filter((request) => request.status === "pending" || request.status === "processing").length);
 
     return () => {
       active = false;
       stops.forEach((stop) => stop());
     };
-  }, [scope, canReadVerification, canReadSupport, canReadReports]);
+  }, [scope, canReadVerification, canReadSupport, canReadReports, canReadPrivacy]);
 
   // Role/account changes cannot briefly expose an earlier session's counts.
   const counts = snapshot.scope === scope ? snapshot.values : {};
@@ -89,5 +97,6 @@ export function useOpsQueueCounts(): OpsQueueCounts {
     pendingVerifications: canReadVerification ? counts.pendingVerifications ?? "loading" : "unavailable",
     openTickets: canReadSupport ? counts.openTickets ?? "loading" : "unavailable",
     openReports: canReadReports ? counts.openReports ?? "loading" : "unavailable",
+    openPrivacyRequests: canReadPrivacy ? counts.openPrivacyRequests ?? "loading" : "unavailable",
   };
 }

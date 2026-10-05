@@ -6,7 +6,7 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { RoleManager } from "@/components/admin/role-manager";
 import { I18nProvider, useTranslation } from "@/components/i18n/i18n-provider";
@@ -32,6 +32,11 @@ function ChangeLanguage() {
 function translatedRoster() {
   return <I18nProvider initialLocale="en"><ChangeLanguage /><RoleManager /></I18nProvider>;
 }
+
+// Admin changes ask first; the existing cases answer "OK".
+beforeEach(() => {
+  vi.spyOn(window, "confirm").mockReturnValue(true);
+});
 
 afterEach(() => {
   cleanup();
@@ -115,6 +120,55 @@ describe("RoleManager", () => {
       "student",
       "support",
     ]);
+  });
+
+  it("asks before granting admin and writes nothing when the operator cancels", async () => {
+    vi.mocked(window.confirm).mockReturnValue(false);
+    mocks.listPlatformUsers.mockResolvedValue(roster(["student"]));
+    render(translatedRoster());
+
+    fireEvent.click(await screen.findByLabelText("Admin"));
+
+    expect(window.confirm).toHaveBeenCalledExactlyOnceWith(expect.stringContaining("Make Test Person an administrator?"));
+    expect(mocks.setUserRoles).not.toHaveBeenCalled();
+    expect(screen.getByLabelText("Admin")).not.toBeChecked();
+  });
+
+  it("grants admin only after the operator confirms", async () => {
+    mocks.listPlatformUsers.mockResolvedValue(roster(["student"]));
+    mocks.setUserRoles.mockResolvedValue(["student", "admin"]);
+    render(translatedRoster());
+
+    fireEvent.click(await screen.findByLabelText("Admin"));
+
+    expect(window.confirm).toHaveBeenCalledTimes(1);
+    expect(mocks.setUserRoles).toHaveBeenCalledWith("u-1", ["student", "admin"]);
+    expect(await screen.findByLabelText("Admin")).toBeChecked();
+  });
+
+  it("asks before removing admin, in the operator's language", async () => {
+    vi.mocked(window.confirm).mockReturnValue(false);
+    mocks.listPlatformUsers.mockResolvedValue(roster(["admin"]));
+    render(translatedRoster());
+    await screen.findByLabelText("Admin");
+    fireEvent.click(screen.getByRole("button", { name: "Change language" }));
+
+    fireEvent.click(screen.getByLabelText("Administrador"));
+
+    expect(window.confirm).toHaveBeenCalledExactlyOnceWith(expect.stringContaining("¿Quitar el acceso de administrador a Test Person?"));
+    expect(mocks.setUserRoles).not.toHaveBeenCalled();
+    expect(screen.getByLabelText("Administrador")).toBeChecked();
+  });
+
+  it("does not ask for levels below admin", async () => {
+    mocks.listPlatformUsers.mockResolvedValue(roster(["student"]));
+    mocks.setUserRoles.mockResolvedValue(["student", "teacher"]);
+    render(translatedRoster());
+
+    fireEvent.click(await screen.findByLabelText("Instructor"));
+
+    expect(window.confirm).not.toHaveBeenCalled();
+    expect(mocks.setUserRoles).toHaveBeenCalledWith("u-1", ["student", "teacher"]);
   });
 
   it("shows the database's own sentence when it refuses a change", async () => {

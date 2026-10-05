@@ -15,6 +15,7 @@ import {
 import { toDate } from "@/lib/format-date";
 
 const resolutionActions: AccountActionResolution[] = ["processing", "completed", "rejected"];
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 function formatTimestamp(value: AccountActionRequest["requestedAt"], locale: string, pending: string) {
   const date = toDate(value);
@@ -38,6 +39,8 @@ export function AccountActionRequestsPanel() {
   const [activeRequestId, setActiveRequestId] = useState<string | null>(null);
   const [error, setError] = useState(false);
   const [loadError, setLoadError] = useState(false);
+  // ponytail: read once per mount; a day counter does not need to tick live.
+  const [now] = useState(() => Date.now());
 
   useEffect(() => {
     return subscribeToAccountActionRequests(
@@ -93,7 +96,13 @@ export function AccountActionRequestsPanel() {
         ) : requests.length === 0 ? (
           loadError ? null : <div className="rounded-none border border-dashed border-[var(--color-line-strong)] bg-[var(--color-surface-soft)] p-5 text-sm leading-7 text-[var(--color-ink-soft)]">{t(`${copy}.empty`)}</div>
         ) : (
-          requests.map((request) => (
+          requests.map((request) => {
+            const requested = toDate(request.requestedAt);
+            // Day 1 is the day it arrived. Deletion/export answers are owed within 30 days.
+            const day = requested && (request.status === "pending" || request.status === "processing")
+              ? Math.max(1, Math.floor((now - requested.getTime()) / DAY_MS) + 1)
+              : null;
+            return (
             <article
               key={request.id}
               className="rounded-none border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-4"
@@ -113,6 +122,11 @@ export function AccountActionRequestsPanel() {
               <p className="mt-3 break-words text-xs leading-5 text-[var(--color-ink-soft)]">
                 {t(`${copy}.requested`)} {formatTimestamp(request.requestedAt, locale, t(`${copy}.pendingTimestamp`))} - {t(`${copy}.requestId`)} {request.id}
               </p>
+              {day ? (
+                <p className={`mt-1 text-xs font-semibold ${day > 30 ? "text-[var(--color-danger-fg)]" : "text-[var(--color-ink)]"}`}>
+                  {t(`${copy}.deadline`).replace("{day}", String(day))}
+                </p>
+              ) : null}
               {request.resolvedAt ? (
                 <p className="mt-1 break-words text-xs leading-5 text-[var(--color-ink-soft)]">
                   {t(`${copy}.actioned`)} {formatTimestamp(request.resolvedAt, locale, t(`${copy}.pendingTimestamp`))}
@@ -135,7 +149,8 @@ export function AccountActionRequestsPanel() {
                 ))}
               </div>
             </article>
-          ))
+            );
+          })
         )}
       </div>
     </section>

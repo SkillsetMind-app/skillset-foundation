@@ -148,6 +148,13 @@ export function RoleManager() {
   }, [search, load]);
 
   async function applyLevel(user: PlatformUser, level: Level, next: boolean) {
+    // Admin is the one level that can hand out every other level: never on a
+    // stray click. Same confirm the activation waiver uses.
+    if (level.id === "admin") {
+      const confirmation = t(`${copy}.${next ? "confirmAdminGrant" : "confirmAdminRemove"}`)
+        .replace("{person}", () => personLabel(user));
+      if (!window.confirm(confirmation)) return;
+    }
     const nextRoles = toggleLevel(user.roles, level, next);
     setSavingUid(user.uid);
     setError(null);

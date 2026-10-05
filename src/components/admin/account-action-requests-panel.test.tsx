@@ -21,6 +21,24 @@ beforeEach(() => { vi.clearAllMocks(); mocks.user = { uid: "admin-$$-$&" }; mock
 afterEach(cleanup);
 
 describe("account request presentation and canonical actions", () => {
+  it("shows how far an open request is into its 30-day window, and nothing once it is closed", () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(Date.parse("2026-09-15T08:00:00.000Z"));
+    try {
+      render(panel());
+      deliver([
+        request,
+        { ...request, id: "closed-a", status: "completed" },
+        { ...request, id: "undated-a", status: "processing", requestedAt: null },
+      ]);
+      expect(screen.getAllByText("Day 11 of 30")).toHaveLength(1);
+      language();
+      expect(screen.getAllByText("Día 11 de 30")).toHaveLength(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("translates request type, timestamps and actor without rewriting identities", () => {
     render(panel());
     deliver([{ ...request, status: "processing", resolvedBy: "actor-$$-$&", resolvedAt: "invalid-date" }, { ...request, id: "delete-a", type: "account_deletion", requestedAt: null, status: "rejected" }]);

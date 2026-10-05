@@ -28,7 +28,7 @@ import {
   currentTeacherTermsVersion,
   currentTermsVersion,
 } from "@/lib/legal/versions";
-import { ViewAsBanner } from "@/components/admin/view-as";
+import { previewRoles, ViewAsBanner } from "@/components/admin/view-as";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { isRole, type Role } from "@/lib/permissions";
 import { identifyUser, resetUser } from "@/lib/posthog/client";
@@ -124,7 +124,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!isRealAdmin || !viewAsRole || !session.user) {
       return session;
     }
-    return { ...session, user: { ...session.user, roles: [viewAsRole] } };
+    return { ...session, user: { ...session.user, roles: previewRoles(viewAsRole) } };
   }, [session, isRealAdmin, viewAsRole]);
 
   return (

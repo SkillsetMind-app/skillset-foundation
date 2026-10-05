@@ -531,6 +531,8 @@
         "yes": "sí",
         "no": "no",
         "searchLabel": "Buscar a una persona",
+        "confirmAdminGrant": "¿Convertir a {person} en administrador? Los administradores pueden cambiar el acceso de cualquier persona, emitir reembolsos y ver todas las cuentas.",
+        "confirmAdminRemove": "¿Quitar el acceso de administrador a {person}?",
         "searchPlaceholder": "Nombre o correo electrónico",
         "loading": "Cargando la lista de personas…",
         "empty": "Nadie coincide con esta búsqueda.",
@@ -568,7 +570,7 @@
           "title": "Vista previa de la plataforma",
           "description": "Ve la plataforma como estudiante o instructor; tu propio acceso no cambia.",
           "back": "Volver a administrador",
-          "banner": "Vista previa como {role}. Tu acceso de administrador no cambia.",
+          "banner": "Vista previa como {role}. Todo lo que hagas aquí es real y se hace con tu cuenta de administrador.",
           "exit": "Salir de la vista previa"
         },
         "permissions": {
@@ -961,6 +963,7 @@
         "user": "Usuario",
         "requested": "Solicitada",
         "requestId": "ID de solicitud",
+        "deadline": "Día {day} de 30",
         "actioned": "Gestionada",
         "by": "por",
         "types": {

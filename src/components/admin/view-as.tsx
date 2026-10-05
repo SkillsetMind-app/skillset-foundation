@@ -17,12 +17,20 @@ import type { Role } from "@/lib/permissions";
  * Every write is still gated server-side, which knows nothing about this.
  */
 
-const PREVIEWABLE: ReadonlyArray<{ role: Role; level: string }> = [
-  { role: "student", level: "student" },
-  { role: "teacher", level: "teacher" },
-  { role: "support", level: "staff" },
+// `role` is what is stored; `roles` is what the interface then sees. Staff are
+// granted support + moderator + ops together (staff invitations, the Team
+// level in RoleManager), so the Team preview must carry all three.
+const PREVIEWABLE: ReadonlyArray<{ role: Role; level: string; roles: readonly Role[] }> = [
+  { role: "student", level: "student", roles: ["student"] },
+  { role: "teacher", level: "teacher", roles: ["teacher"] },
+  { role: "support", level: "staff", roles: ["support", "moderator", "ops"] },
 ];
 const copy = "platform.ops.accessPanel";
+
+/** The role set a stored preview stands for. Still only ever narrows an admin. */
+export function previewRoles(role: Role): Role[] {
+  return [...(PREVIEWABLE.find((entry) => entry.role === role)?.roles ?? [role])];
+}
 
 export function ViewAsSwitcher() {
   const { t } = useTranslation();

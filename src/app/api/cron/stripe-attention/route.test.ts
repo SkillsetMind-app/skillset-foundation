@@ -117,6 +117,31 @@ describe("stripe attention cron", () => {
     expect(mocks.fetch).not.toHaveBeenCalled();
   });
 
+  // A stuck paid-but-no-access payment must never wait for the daily reminder:
+  // the wide window repeats the alert on purpose so a late or skipped hourly
+  // run cannot swallow it.
+  it("still alerts when the previous hourly run was skipped", async () => {
+    // Claimed 06:07, in the view since 06:22; the 07:07 run never happened.
+    stuckFor(2);
+
+    const response = await call(`Bearer ${CRON_TOKEN}`);
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ count: 1, alerted: true });
+    expect(sentBody().context).toMatchObject({ reason: "new" });
+  });
+
+  it("still alerts for an event that entered the view after the previous run", async () => {
+    // Claimed 72 min ago = in the view for 57 min: the 07:07 run could not see it.
+    stuckFor(1.2);
+
+    const response = await call(`Bearer ${CRON_TOKEN}`);
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ count: 1, alerted: true });
+    expect(sentBody().context).toMatchObject({ reason: "new" });
+  });
+
   it("reminds once a day while something is still stuck", async () => {
     vi.setSystemTime(Date.parse("2026-09-15T12:07:00Z"));
     stuckFor(30, 5);

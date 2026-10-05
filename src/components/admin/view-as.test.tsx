@@ -127,6 +127,17 @@ describe("view-as preview", () => {
     expect(window.sessionStorage.getItem("skillsetmind.viewAs")).toBeNull();
   });
 
+  it("previews Team with every role a real staff member holds", () => {
+    // Accepting a staff invitation grants support + moderator + ops together;
+    // support alone does not even open /ops, so the preview showed nothing.
+    renderWith(["admin"]);
+
+    fireEvent.click(screen.getByRole("button", { name: "Team" }));
+
+    expect(screen.getByTestId("roles").textContent).toBe("support,moderator,ops");
+    expect(screen.getByTestId("viewAs")).toHaveTextContent("support");
+  });
+
   it.each([
     ["student", "Learner", "Estudiante"],
     ["teacher", "Instructor", "Instructor"],
@@ -136,11 +147,12 @@ describe("view-as preview", () => {
     fireEvent.click(screen.getByRole("button", { name: english }));
     const subscriptions = mocks.listenToAuthState.mock.calls.length;
     expect(screen.getByTestId("roles")).toHaveTextContent(role);
-    expect(screen.getByRole("status")).toHaveTextContent(`Previewing as ${english}. Your admin access is unchanged.`);
+    // Writes during a preview are real and run as the admin: the banner says so.
+    expect(screen.getByRole("status")).toHaveTextContent(`Previewing as ${english}. Anything you do here is real and runs as your admin account.`);
     fireEvent.click(screen.getByRole("button", { name: "Change language" }));
     expect(screen.getByRole("heading", { name: "Vista previa de la plataforma" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: spanish })).toHaveAttribute("aria-pressed", "true");
-    expect(screen.getByRole("status")).toHaveTextContent(`Vista previa como ${spanish}. Tu acceso de administrador no cambia.`);
+    expect(screen.getByRole("status")).toHaveTextContent(`Vista previa como ${spanish}. Todo lo que hagas aquí es real y se hace con tu cuenta de administrador.`);
     expect(screen.getByTestId("roles")).toHaveTextContent(role);
     expect(window.sessionStorage.getItem("skillsetmind.viewAs")).toBe(role);
     expect(mocks.listenToAuthState).toHaveBeenCalledTimes(subscriptions);

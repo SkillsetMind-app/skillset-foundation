@@ -8,6 +8,9 @@ export type AccountActionStatus = "pending" | "processing" | "completed" | "reje
 
 export type AccountActionResolution = Exclude<AccountActionStatus, "pending">;
 
+const openStatuses: AccountActionStatus[] = ["pending", "processing"];
+const closedStatuses: AccountActionStatus[] = ["completed", "rejected"];
+
 // Postgres timestamptz comes back as an ISO string, not a Firestore Timestamp.
 export type AccountActionRequest = {
   id: string;
@@ -22,6 +25,10 @@ export type AccountActionRequest = {
 };
 
 const accountActionRequestsTable = "account_action_requests";
+// realtime-js returns the SAME channel for a repeated topic and drops a second
+// identical postgres_changes binding, so the Ops badge and the panel would
+// silently share one listener (and one teardown). One topic per subscription.
+let subscriptionSeq = 0;
 
 type AccountActionRequestRow =
   Database["public"]["Tables"]["account_action_requests"]["Row"];
@@ -76,18 +83,31 @@ export function subscribeToAccountActionRequests(
   const supabase = getSupabaseBrowserClient();
 
   const load = async () => {
-    const { data, error } = await supabase
-      .from(accountActionRequestsTable)
-      .select("*")
-      .order("requested_at", { ascending: false })
-      .limit(50);
+    // Every open request (the ones on the 30-day clock), oldest first, then
+    // the 50 most recently closed as history. A single "50 newest of any
+    // status" read let newer closed requests push the oldest open one — the
+    // one closest to day 30 — out of the list and the Ops badge.
+    const [open, closed] = await Promise.all([
+      supabase
+        .from(accountActionRequestsTable)
+        .select("*")
+        .in("status", openStatuses)
+        .order("requested_at", { ascending: true }),
+      supabase
+        .from(accountActionRequestsTable)
+        .select("*")
+        .in("status", closedStatuses)
+        .order("requested_at", { ascending: false })
+        .limit(50),
+    ]);
 
+    const error = open.error ?? closed.error;
     if (error) {
       onError(error instanceof Error ? error : new Error(String(error)));
       return;
     }
 
-    callback((data ?? []).map(rowToRequest));
+    callback([...(open.data ?? []), ...(closed.data ?? [])].map(rowToRequest));
   };
 
   void load();
@@ -96,7 +116,7 @@ export function subscribeToAccountActionRequests(
   // table and re-run the query on any change.
   // ponytail: table-wide change fan-in; fine for the admin-only account queue.
   const channel = supabase
-    .channel("account_action_requests:queue")
+    .channel(`account_action_requests:queue:${++subscriptionSeq}`)
     .on(
       "postgres_changes",
       { event: "*", schema: "public", table: accountActionRequestsTable },

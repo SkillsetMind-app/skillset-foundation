@@ -40,14 +40,19 @@ const verification = (createdHours: number, updatedHours: number, id = "33333333
   id, status: "pending", created_at: ago(createdHours), updated_at: ago(updatedHours),
   profession: PERSONAL[8], registration_id: PERSONAL[9], note: PERSONAL[10],
 });
+const privacy = (hours: number, id = "66666666-6666-4666-8666-666666666666") => ({
+  id, status: "pending", type: "account_deletion", requested_by: "user-test", email: PERSONAL[0],
+  requested_at: ago(hours), updated_at: ago(hours),
+});
 
 type Result = { data: unknown[] | null; error: { message: string } | null };
 let tables: Record<string, Result>;
-function rows(next: { tickets?: unknown[]; reports?: unknown[]; verifications?: unknown[] }) {
+function rows(next: { tickets?: unknown[]; reports?: unknown[]; verifications?: unknown[]; privacy?: unknown[] }) {
   tables = {
     support_tickets: { data: next.tickets ?? [], error: null },
     community_reports: { data: next.reports ?? [], error: null },
     creator_verification_cases: { data: next.verifications ?? [], error: null },
+    account_action_requests: { data: next.privacy ?? [], error: null },
   };
 }
 
@@ -109,7 +114,7 @@ describe("ops inbox cron", () => {
 
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({
-      ok: true, open: { tickets: 0, reports: 0, verifications: 0 }, alerted: false,
+      ok: true, open: { tickets: 0, reports: 0, verifications: 0, privacy: 0 }, alerted: false,
     });
     expect(mocks.fetch).not.toHaveBeenCalled();
   });
@@ -121,11 +126,13 @@ describe("ops inbox cron", () => {
       ["support_tickets", "id, created_at"],
       ["community_reports", "id, created_at"],
       ["creator_verification_cases", "id, updated_at"],
+      ["account_action_requests", "id, requested_at"],
     ]);
     expect(mocks.in.mock.calls).toEqual([
       ["support_tickets", "status", ["open", "in_review"]],
       ["community_reports", "status", ["open"]],
       ["creator_verification_cases", "status", ["pending"]],
+      ["account_action_requests", "status", ["pending", "processing"]],
     ]);
   });
 
@@ -146,7 +153,10 @@ describe("ops inbox cron", () => {
     expect(sentBody()).toMatchObject({
       event: "ops.inbox.new",
       severity: "warn",
-      summary: "1 new support ticket(s), 0 report(s), 0 verification(s) waiting. Oldest open: 30 h. Open /ops.",
+      // The open totals ride along, so an item whose own "new" alert was lost
+      // to a late or skipped run is still visible here.
+      summary: "New: 1 support ticket(s), 0 report(s), 0 verification(s), 0 privacy request(s). "
+        + "Open in total: 2 support ticket(s), 1 report(s), 0 verification(s), 0 privacy request(s). Oldest open: 30 h. Open /ops.",
       context: {
         reason: "new", oldest_hours: 30, tickets_new: 1, tickets_open: 2, reports_open: 1,
         ticket_ids: "11111111-1111-4111-8111-111111111111,44444444-4444-4444-8444-444444444444",
@@ -181,8 +191,36 @@ describe("ops inbox cron", () => {
     expect(mocks.fetch).toHaveBeenCalledTimes(1);
     expect(sentBody().context).toMatchObject({ reason: "daily", tickets_open: 1, verifications_open: 1 });
     expect(sentBody().summary).toBe(
-      "Still open: 1 support ticket(s), 0 report(s), 1 verification(s) waiting. Oldest open: 30 h. Open /ops.",
+      "Still open: 1 support ticket(s), 0 report(s), 1 verification(s), 0 privacy request(s) waiting. Oldest open: 30 h. Open /ops.",
     );
+  });
+
+  it("does not alert again for an item the previous hourly run already reported", async () => {
+    // 08:07 run; the 07:07 run saw this ticket at 30 min old and alerted then.
+    rows({ tickets: [ticket(1.5)] });
+
+    const response = await authed();
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ ok: true, alerted: false, new: { tickets: 0 } });
+    expect(mocks.fetch).not.toHaveBeenCalled();
+  });
+
+  it("alerts for a fresh privacy request (deletion/export) without its email", async () => {
+    rows({ privacy: [privacy(0.5)] });
+
+    const response = await authed();
+
+    expect(response.status).toBe(200);
+    expect(mocks.fetch).toHaveBeenCalledTimes(1);
+    expect(mocks.fetch.mock.calls[0][1].body as string).not.toContain(PERSONAL[0]);
+    expect(sentBody().summary).toBe(
+      "New: 0 support ticket(s), 0 report(s), 0 verification(s), 1 privacy request(s). "
+        + "Open in total: 0 support ticket(s), 0 report(s), 0 verification(s), 1 privacy request(s). Oldest open: 0 h. Open /ops.",
+    );
+    expect(sentBody().context).toMatchObject({
+      reason: "new", privacy_new: 1, privacy_open: 1, privacy_ids: "66666666-6666-4666-8666-666666666666",
+    });
   });
 
   it("counts a resubmitted verification as new (old created_at, fresh updated_at)", async () => {

@@ -16,8 +16,9 @@ import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 // Anti-spam, with no state between runs:
 //   - alert when at least one event entered the list in the last 2 hours
 //     (an event enters 15 min after its claim, see the view). Runs are hourly,
-//     so a new stuck event is reported on 1-2 runs; 2 h instead of 1 h keeps a
-//     late or skipped GitHub run from losing it;
+//     so a new stuck event is reported on 2-3 runs. That repeat is on purpose:
+//     a stuck paid-but-no-access payment must never be lost to a late or
+//     skipped GitHub run and wait for the daily reminder;
 //   - otherwise, one reminder a day at 12:00 UTC while the list is not empty.
 // Everything else stays silent. The alert carries the count and the oldest
 // age only: no event id, no email, no amount.

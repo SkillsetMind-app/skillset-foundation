@@ -10,6 +10,7 @@ import {
 } from "@/lib/payments/server/auth";
 import { toStripeAmount } from "@/lib/payments/currencies";
 import { getStripeClient } from "@/lib/payments/server/stripe";
+import { isSameOrigin } from "@/lib/security/request-origin";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 
 // Admin refund (ported from Firebase issueAdminRefund). requireAdminUserId()
@@ -21,6 +22,10 @@ import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 
 export async function POST(request: Request) {
   try {
+    // Same guard as operations/invitations, on top of the proxy's.
+    if (!isSameOrigin(request)) {
+      throw new PaymentError("Cross-site request refused.", 403);
+    }
     const callerId = await requireAdminUserId();
     const body = (await request.json().catch(() => ({}))) as {
       orderId?: string;
