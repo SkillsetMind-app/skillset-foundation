@@ -77,11 +77,10 @@ export function subscribeToUserSupportTickets(
       return;
     }
 
-    callback(
-      (data ?? [])
-        .map(rowToSupportTicket)
-        .sort((left, right) => left.subject.localeCompare(right.subject)),
-    );
+    // Latest activity first: a fresh reply or status change rises to the top.
+    const activity = (ticket: SupportTicket) =>
+      (toDate(ticket.updatedAt) ?? toDate(ticket.createdAt))?.getTime() ?? 0;
+    callback((data ?? []).map(rowToSupportTicket).sort((left, right) => activity(right) - activity(left)));
   };
 
   void load();
