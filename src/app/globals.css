@@ -5516,6 +5516,14 @@ body:has([aria-label="Course categories"])
   color: var(--ma-on-accent);
 }
 
+/* A regra de .member-playlist__lesson-meta acima empata em especificidade com
+   a da linha atual e vem depois: sem esta, a duração da aula atual pintava
+   --ma-ink-soft sobre o vermelho (1.04:1 claro, 2.7:1 escuro). Branco a 85%
+   sobre --ma-accent dá 5.2:1. */
+.member-classroom[data-members-theme] .member-playlist__lesson.is-current .member-playlist__lesson-meta {
+  color: rgba(255, 255, 255, 0.85);
+}
+
 .member-classroom[data-members-theme] .member-classroom-head__progress {
   background: var(--ma-line);
 }
@@ -7994,14 +8002,17 @@ button:hover > .dash-card,
 /* ── A barra de abas da sala (reanálise item 9) ─────────────────────────────
    Substitui a faixa "Lesson tools", cujos botões só rolavam a página. Cada aba
    é um link de verdade (endereço próprio, entra no histórico). No celular a
-   barra rola na horizontal em vez de quebrar em duas linhas. ─────────────── */
+   barra rola na horizontal em vez de quebrar em duas linhas.
+   Cores do CURSO (--ma-*), não da plataforma: a barra só existe dentro de
+   .member-classroom[data-members-theme], e o --color-ink da plataforma dava
+   ~1.3:1 na aba ativa de um curso escuro. ─────────────────────────────────── */
 @layer components {
   .member-classroom-tabs {
     display: flex;
     align-items: center;
     gap: 2px;
     margin: 0 0 18px;
-    border-bottom: 1px solid var(--color-line);
+    border-bottom: 1px solid var(--ma-line);
     overflow-x: auto;
     scrollbar-width: none;
   }
@@ -8018,7 +8029,7 @@ button:hover > .dash-card,
     padding: 0 14px;
     margin-bottom: -1px;
     border-bottom: 2px solid transparent;
-    color: var(--color-ink-soft);
+    color: var(--ma-ink-soft);
     font-size: 13px;
     font-weight: 600;
     white-space: nowrap;
@@ -8026,12 +8037,12 @@ button:hover > .dash-card,
   }
 
   .member-classroom-tabs > a:hover {
-    color: var(--color-ink);
+    color: var(--ma-ink);
   }
 
   .member-classroom-tabs > a[aria-current="page"] {
-    color: var(--color-ink);
-    border-bottom-color: var(--color-accent-fg);
+    color: var(--ma-ink);
+    border-bottom-color: var(--ma-accent-ink);
   }
 
   .member-classroom-tabs__count {
@@ -8040,15 +8051,15 @@ button:hover > .dash-card,
     min-height: 18px;
     padding: 0 7px;
     border-radius: 0;
-    background: var(--color-surface-soft);
-    color: var(--color-ink-muted);
+    background: var(--ma-surface-2);
+    color: var(--ma-ink-soft);
     font-size: 11px;
     font-weight: 700;
   }
 
   .member-classroom-tabs > .member-classroom-tabs__action {
     margin-left: auto;
-    color: var(--color-accent-fg);
+    color: var(--ma-accent-ink);
   }
 }
 
