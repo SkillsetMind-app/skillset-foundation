@@ -86,4 +86,19 @@ describe("MemberAreaShell", () => {
 
     expect(root()?.style.getPropertyValue("--ma-accent")).toBe("");
   });
+
+  it("pairs the teacher accent with a text colour that reads on it", () => {
+    const { container } = render(
+      <MemberAreaShell brand={{ name: "Atelier", accentColor: "#f5c518" }}>
+        <p>Lesson</p>
+      </MemberAreaShell>,
+    );
+
+    const style = container.querySelector<HTMLElement>("[data-members-theme]")?.style;
+
+    // Branco fixo em cima desse amarelo dava 1,6:1.
+    expect(style?.getPropertyValue("--ma-on-accent")).toBe("#0a0d12");
+    // O hover nao pode voltar ao vermelho da plataforma com tinta escura em cima.
+    expect(style?.getPropertyValue("--ma-accent-hover")).toBe("#f5c518");
+  });
 });

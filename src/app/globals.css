@@ -5513,7 +5513,7 @@ body:has([aria-label="Course categories"])
 }
 
 .member-classroom[data-members-theme] .member-playlist__lesson.is-current .member-playlist__lesson-title {
-  color: #fff;
+  color: var(--ma-on-accent);
 }
 
 .member-classroom[data-members-theme] .member-classroom-head__progress {
@@ -5633,7 +5633,7 @@ body:has([aria-label="Course categories"])
 .member-classroom[data-members-theme] .member-lesson-card--active .member-lesson-card__status {
   border-color: var(--ma-accent);
   background: var(--ma-accent);
-  color: #ffffff;
+  color: var(--ma-on-accent);
 }
 
 .member-classroom[data-members-theme] .member-lesson-card--done .member-lesson-card__status {
@@ -5676,7 +5676,7 @@ body:has([aria-label="Course categories"])
 .member-classroom[data-members-theme] .button-accent {
   border-color: var(--ma-accent);
   background: var(--ma-accent);
-  color: #ffffff !important;
+  color: var(--ma-on-accent) !important;
   box-shadow: 0 12px 26px rgba(178, 34, 52, 0.3);
 }
 
@@ -5704,8 +5704,12 @@ body:has([aria-label="Course categories"])
 @media (max-width: 767.98px) {
   .member-classroom[data-members-theme] {
     border-radius: 0;
+    /* The shell drops its side gutter below md (member-area-shell.tsx): the
+       classroom touches the screen edges, so these borders would too. */
+    border-inline-width: 0;
   }
 
+  .member-classroom[data-members-theme] > .member-classroom-head,
   .member-classroom[data-members-theme] > .member-preview-banner,
   .member-classroom[data-members-theme] > .member-classroom-layout,
   .member-classroom[data-members-theme] > .member-module-deck,
@@ -5730,6 +5734,19 @@ body:has([aria-label="Course categories"])
 
   .member-classroom[data-members-theme] .member-classroom-player {
     padding: 16px;
+  }
+
+  /* Phone: the lesson video runs edge to edge. Stacked side insets left it
+     ~280px wide on a 375px screen. The dock pulls out through the layout
+     margin (14px), the player border (1px) and its padding (16px) above; the
+     text around the video keeps those 31px. The dock, not the stage, takes
+     the margin: in the mini player the stage sits in a fixed bar. */
+  .member-classroom[data-members-theme] .member-video-dock {
+    margin-inline: -31px;
+  }
+
+  .member-classroom[data-members-theme] .member-video-stage {
+    border-inline-width: 0;
   }
 }
 
@@ -6979,6 +6996,11 @@ button:hover > .dash-card,
   /* theme-independent */
   --ma-accent: #b22234;
   --ma-accent-hover: #9e1f2f;
+  /* Text on an --ma-accent FILL. White reads 6.6:1 on the platform red. It
+     lives next to --ma-accent so any [data-members-theme] resets the pair
+     together; MemberAreaShell sets both from a teacher accent, picking white
+     or dark ink by the accent's WCAG luminance. */
+  --ma-on-accent: #ffffff;
   --ma-success: #27a06a;
   /* White on --ma-success is 3.32:1. --ma-success has to stay light enough to
      work as TEXT on member surfaces (see .member-lesson-card__meta), so the
@@ -7168,7 +7190,7 @@ button:hover > .dash-card,
   padding: 0 20px;
   border-radius: 0;
   background: var(--ma-accent);
-  color: #fff;
+  color: var(--ma-on-accent);
   font-size: 14px;
   font-weight: 700;
   text-decoration: none;

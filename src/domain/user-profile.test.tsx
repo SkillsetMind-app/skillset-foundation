@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { isStorefrontHexColor } from "@/domain/user-profile";
+import { isStorefrontHexColor, readableTextOnAccent } from "@/domain/user-profile";
 
 // A teacher picks this colour and it gets inlined into a CSS custom property.
 // Two of the three call sites are render-time (member-area-shell, instructor-
@@ -35,5 +35,21 @@ describe("isStorefrontHexColor", () => {
     expect(isStorefrontHexColor("red")).toBe(false);
     expect(isStorefrontHexColor("")).toBe(false);
     expect(isStorefrontHexColor(" #aabbcc")).toBe(false);
+  });
+});
+
+// O acento do professor vira FUNDO de botao com texto por cima. Branco fixo
+// em cima de um amarelo (#f5c518) dava 1,6:1. O texto sai do contraste WCAG
+// do proprio acento: branco ou tinta escura, o que ler melhor.
+describe("readableTextOnAccent", () => {
+  it("keeps white on the platform red and on black", () => {
+    expect(readableTextOnAccent("#b22234")).toBe("#ffffff");
+    expect(readableTextOnAccent("#000000")).toBe("#ffffff");
+  });
+
+  it("switches to dark ink on light accents", () => {
+    expect(readableTextOnAccent("#f5c518")).toBe("#0a0d12");
+    expect(readableTextOnAccent("#ffffff")).toBe("#0a0d12");
+    expect(readableTextOnAccent("#FFFFFF")).toBe("#0a0d12");
   });
 });

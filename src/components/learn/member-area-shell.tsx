@@ -7,7 +7,7 @@ import { NotificationBell } from "@/components/platform/notification-bell";
 import { LogoWordmark } from "@/components/shared/logo-wordmark";
 import { AdvisorHeaderSlot } from "@/components/teacher/advisor-sidebar";
 import type { MembersTheme } from "@/domain/teacher-course";
-import { isStorefrontHexColor } from "@/domain/user-profile";
+import { isStorefrontHexColor, readableTextOnAccent } from "@/domain/user-profile";
 import { ThemeProvider } from "@/lib/theme/theme-provider";
 
 /**
@@ -60,7 +60,14 @@ export function MemberAreaShell({
         className="flex min-h-screen flex-col bg-[var(--ma-bg)] text-[var(--ma-ink)]"
         style={
           accentColor
-            ? ({ "--ma-accent": accentColor } as CSSProperties)
+            ? ({
+                "--ma-accent": accentColor,
+                // The accent is a FILL under text: the text colour comes from
+                // the accent itself, and hover keeps the accent instead of
+                // falling back to the platform red under that text.
+                "--ma-accent-hover": accentColor,
+                "--ma-on-accent": readableTextOnAccent(accentColor),
+              } as CSSProperties)
             : undefined
         }
       >
@@ -107,7 +114,10 @@ export function MemberAreaShell({
             {brand ? null : <NotificationBell />}
           </div>
         </header>
-        <main className="mx-auto w-full max-w-[1280px] flex-1 px-4 py-6 sm:px-6 lg:px-8">
+        {/* No side gutter below md: on a phone the classroom runs edge to edge
+            so the lesson video can too (globals.css, .member-video-dock). The
+            cards inside keep their own padding for text. */}
+        <main className="mx-auto w-full max-w-[1280px] flex-1 py-6 md:px-6 lg:px-8">
           {children}
         </main>
       </div>

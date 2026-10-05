@@ -96,6 +96,32 @@ export function isStorefrontHexColor(value: string): boolean {
   return /^#[0-9a-fA-F]{6}$/.test(value);
 }
 
+/** Same dark ink the members theme already pairs with its green fill. */
+const accentDarkInk = "#0a0d12";
+
+function relativeLuminance(hex: string): number {
+  const [r, g, b] = [1, 3, 5].map((start) => {
+    const channel = parseInt(hex.slice(start, start + 2), 16) / 255;
+    return channel <= 0.04045
+      ? channel / 12.92
+      : ((channel + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+/**
+ * Text colour for a teacher's accent used as a FILL (buttons, the current
+ * lesson): white or dark ink, whichever has the higher WCAG contrast against
+ * it. Forced white on a yellow accent read 1.6:1. Expects a value that already
+ * passed `isStorefrontHexColor`.
+ */
+export function readableTextOnAccent(hex: string): "#ffffff" | typeof accentDarkInk {
+  const accent = relativeLuminance(hex) + 0.05;
+  const onWhite = 1.05 / accent;
+  const onInk = accent / (relativeLuminance(accentDarkInk) + 0.05);
+  return onWhite >= onInk ? "#ffffff" : accentDarkInk;
+}
+
 export type StorefrontBranding = {
   accentColor?: string | null;
   logoUrl?: string | null;
