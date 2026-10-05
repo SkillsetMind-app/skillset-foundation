@@ -28,9 +28,11 @@ import { StudioStorefrontCard } from "@/components/teacher/studio-storefront-car
 import { TeacherStudioInsights } from "@/components/teacher/teacher-studio-insights";
 import { TeacherWelcomeTour } from "@/components/teacher/teacher-welcome-tour";
 import { usePublishGates } from "@/components/teacher/use-publish-gates";
+import { activationFeeUsd } from "@/data/plans";
 import type { CourseReadinessAccount } from "@/domain/course-readiness";
 import type { Order } from "@/domain/order";
 import type { TeacherCourse } from "@/domain/teacher-course";
+import { fetchCreatorActivationBlocked } from "@/lib/data/creator-verification";
 import { subscribeToTeacherOrders } from "@/lib/data/orders";
 import { subscribeToTeacherCourses } from "@/lib/data/teacher-courses";
 import { logSubscriptionError } from "@/lib/data/subscription-error";
@@ -42,11 +44,30 @@ export function TeacherStudioDashboard() {
   const { t } = useTranslation();
   // As mesmas travas que o construtor e o Manage leem: payouts, e verificacao
   // so quando a plataforma exige.
-  const { account } = usePublishGates(user);
+  const { account, loaded: gatesLoaded, verificationStatus } = usePublishGates(user);
   const [courses, setCourses] = useState<TeacherCourse[]>([]);
   const [coursesLoaded, setCoursesLoaded] = useState(false);
   const [orders, setOrders] = useState<Order[]>([]);
+  const [activationBlocked, setActivationBlocked] = useState(false);
   const firstName = user?.displayName?.trim().split(/\s+/)[0] ?? "";
+
+  // A taxa unica de ativacao: o MESMO predicado que o servidor aplica no
+  // publish (ja conta isencao de admin e pagamento). O perfil sozinho nao diz
+  // se a taxa e exigida. Leitura: falha aberta, sem aviso de taxa.
+  useEffect(() => {
+    if (!user) {
+      return;
+    }
+    let active = true;
+    fetchCreatorActivationBlocked()
+      .then((blocked) => {
+        if (active) setActivationBlocked(blocked);
+      })
+      .catch(() => undefined);
+    return () => {
+      active = false;
+    };
+  }, [user]);
 
   useEffect(() => {
     if (!user) {
@@ -84,7 +105,11 @@ export function TeacherStudioDashboard() {
   const launched = courses.some(
     (course) => course.status === "published" || course.status === "inactive"
   );
-  const payoutsPending = courses.some(sellsPaid) && !account.payoutsReady;
+  // Arquivado tambem e "inactive": saiu da venda e nao cobra Stripe.
+  const needsStripe = courses.some(
+    (course) => course.status !== "inactive" && sellsPaid(course)
+  );
+  const payoutsPending = needsStripe && !account.payoutsReady;
 
   return (
     <div className="grid gap-8">
@@ -121,8 +146,11 @@ export function TeacherStudioDashboard() {
 
       <StudioNextSteps
         courses={courses}
-        coursesLoaded={coursesLoaded}
+        ready={coursesLoaded && gatesLoaded}
         account={account}
+        verificationStatus={verificationStatus}
+        needsStripe={needsStripe}
+        activationBlocked={activationBlocked}
         launched={launched}
       />
 
@@ -162,13 +190,21 @@ export function TeacherStudioDashboard() {
 
 function StudioNextSteps({
   courses,
-  coursesLoaded,
+  ready,
   account,
+  verificationStatus,
+  needsStripe,
+  activationBlocked,
   launched,
 }: {
   courses: TeacherCourse[];
-  coursesLoaded: boolean;
+  // Cursos e travas carregados. Antes disso a lista ainda pode ganhar um passo
+  // (verificacao exigida) e a porcentagem pularia: contagem e % ficam neutras.
+  ready: boolean;
   account: CourseReadinessAccount;
+  verificationStatus: string;
+  needsStripe: boolean;
+  activationBlocked: boolean;
   launched: boolean;
 }) {
   const { t } = useTranslation();
@@ -184,7 +220,7 @@ function StudioNextSteps({
       done: courses.length > 0,
       action: t("creatorPanel.createProduct"),
     },
-    ...(courses.some(sellsPaid)
+    ...(needsStripe
       ? [
           {
             label: t("platform.banner.connectPayoutsCta"),
@@ -204,18 +240,37 @@ function StudioNextSteps({
             detail: t("creatorEditor.readiness.items.verification.hint"),
             href: "/teach/verification",
             done: account.verificationApproved,
-            action: t("creatorPanel.home.steps.verifyAction"),
+            // Em analise nao se "comeca" de novo; pedido de ajuste ou recusa
+            // se resolve editando a solicitacao.
+            action: t(
+              verificationStatus === "pending"
+                ? "professionalBadge.inReview"
+                : verificationStatus === "needs_changes" || verificationStatus === "rejected"
+                  ? "professionalBadge.edit"
+                  : "creatorPanel.home.steps.verifyAction"
+            ),
           },
         ]
       : []),
     {
       label: t("creatorPanel.home.steps.publish"),
-      detail: t("creatorPanel.home.steps.publishDetail"),
+      // Com a taxa exigida e nao paga, o servidor recusa o publish sem ela: a
+      // Home avisa antes, com o mesmo "Activate and publish" do construtor.
+      detail: activationBlocked
+        ? t("creatorPanel.home.steps.publishActivateDetail").replace(
+            "{amount}",
+            () => String(activationFeeUsd)
+          )
+        : t("creatorPanel.home.steps.publishDetail"),
       href: courses[0]
         ? `/teach/builder?courseId=${encodeURIComponent(courses[0].id)}&tab=review`
         : "/teach/builder?newCourse=1&format=course",
       done: launched,
-      action: t("creatorPanel.home.steps.publishAction"),
+      action: t(
+        activationBlocked
+          ? "creatorPanel.home.steps.publishActivateAction"
+          : "creatorPanel.home.steps.publishAction"
+      ),
     },
   ];
   const completeCount = steps.filter((step) => step.done).length;
@@ -243,12 +298,14 @@ function StudioNextSteps({
             </div>
             <div className="text-right">
               <p className="text-2xl font-semibold tabular-nums text-[var(--color-primary)]">
-                {coursesLoaded ? `${progress}%` : "-"}
+                {ready ? `${progress}%` : "-"}
               </p>
               <p className="text-xs text-[var(--color-ink-muted)]">
-                {t("creatorPanel.home.nextSteps.progress")
-                  .replace("{done}", () => String(completeCount))
-                  .replace("{total}", () => String(steps.length))}
+                {ready
+                  ? t("creatorPanel.home.nextSteps.progress")
+                      .replace("{done}", () => String(completeCount))
+                      .replace("{total}", () => String(steps.length))
+                  : "-"}
               </p>
             </div>
           </div>
@@ -256,7 +313,7 @@ function StudioNextSteps({
           <div className="mt-4 h-1.5 overflow-hidden rounded-none bg-[var(--color-surface-strong)]">
             <div
               className="h-full rounded-none bg-[var(--color-primary)] transition-[width]"
-              style={{ width: coursesLoaded ? `${progress}%` : "0%" }}
+              style={{ width: ready ? `${progress}%` : "0%" }}
             />
           </div>
 

@@ -9,6 +9,10 @@ const { mockUser, state, data } = vi.hoisted(() => {
     orders: [] as unknown[],
     profile: { creatorVerificationStatus: "none" } as Record<string, unknown>,
     requireVerification: false,
+    // Quando definido, substitui a resposta do ajuste de verificacao (para
+    // segurar a leitura e ver o estado "carregando").
+    verificationFlag: null as Promise<boolean> | null,
+    activationBlocked: false,
   };
 
   return {
@@ -62,7 +66,9 @@ vi.mock("@/lib/data/orders", () => ({
 }));
 
 vi.mock("@/lib/data/creator-verification", () => ({
-  fetchRequireCreatorVerification: () => Promise.resolve(state.requireVerification),
+  fetchRequireCreatorVerification: () =>
+    state.verificationFlag ?? Promise.resolve(state.requireVerification),
+  fetchCreatorActivationBlocked: () => Promise.resolve(state.activationBlocked),
 }));
 
 vi.mock("@/lib/data/enrollments", () => ({
@@ -121,6 +127,8 @@ beforeEach(() => {
   state.orders = [];
   state.profile = { creatorVerificationStatus: "none" };
   state.requireVerification = false;
+  state.verificationFlag = null;
+  state.activationBlocked = false;
   vi.clearAllMocks();
 });
 
@@ -254,6 +262,85 @@ describe("Inicio do professor: os passos sao as travas reais do publish", () => 
       expect(screen.getByText("3 of 3 complete")).toBeInTheDocument();
     });
     expect(screen.getByText("100%")).toBeInTheDocument();
+  });
+
+  // Com a taxa exigida e nao paga, a Home mandava "Review and publish" e o
+  // servidor recusava com "Pay the one-time activation fee...".
+  it("taxa de ativacao pendente: o publish avisa a taxa unica e diz 'Activate and publish'", async () => {
+    state.courses = [course({})];
+    state.profile = { stripeConnectChargesEnabled: true, stripeConnectPayoutsEnabled: true };
+    state.activationBlocked = true;
+
+    render(<TeacherStudioDashboard />);
+
+    expect(
+      await within(recommended()).findByRole("link", { name: /Activate and publish/ }),
+    ).toHaveAttribute("href", "/teach/builder?courseId=c1&tab=review");
+    expect(within(recommended()).getByText(/one-time US\$25 activation fee/)).toBeInTheDocument();
+  });
+
+  it("taxa paga ou nao exigida: publish sem aviso de taxa", async () => {
+    state.courses = [course({})];
+    state.profile = { stripeConnectChargesEnabled: true, stripeConnectPayoutsEnabled: true };
+
+    render(<TeacherStudioDashboard />);
+
+    expect(
+      await within(recommended()).findByRole("link", { name: /Review and publish/ }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/activation fee/)).toBeNull();
+  });
+
+  it("curso pago arquivado nao pede Stripe nem vira alerta urgente", async () => {
+    // Arquivar e status "inactive": o curso saiu da venda.
+    state.courses = [course({ status: "inactive" })];
+
+    render(<TeacherStudioDashboard />);
+
+    expect(await stepLabels()).toEqual(["Create a product", "Publish your product"]);
+    expect(
+      await screen.findByRole("heading", { name: "What needs your attention today." }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Finish your Stripe setup")).toBeNull();
+  });
+
+  it("enquanto as travas carregam, contagem e porcentagem ficam neutras", async () => {
+    let resolveFlag: (value: boolean) => void = () => undefined;
+    state.verificationFlag = new Promise<boolean>((resolve) => {
+      resolveFlag = resolve;
+    });
+    state.courses = [course({ paymentType: "free", priceAmountMinor: 0 })];
+
+    render(<TeacherStudioDashboard />);
+
+    const section = (await screen.findByRole("list", { name: "Creator next steps" })).closest(
+      "section",
+    ) as HTMLElement;
+    // Sem o ajuste de verificacao, "1 of 2" e "50%" mudariam para "1 of 3".
+    expect(within(section).queryByText(/of \d complete/)).toBeNull();
+    expect(within(section).queryByText(/%$/)).toBeNull();
+
+    resolveFlag(true);
+
+    expect(await within(section).findByText("1 of 3 complete")).toBeInTheDocument();
+    expect(within(section).getByText("33%")).toBeInTheDocument();
+  });
+
+  it.each([
+    ["none", "Start verification"],
+    ["pending", "In review"],
+    ["needs_changes", "Edit application"],
+    ["rejected", "Edit application"],
+  ])("verificacao '%s': o botao diz '%s'", async (status, action) => {
+    state.requireVerification = true;
+    state.courses = [course({ paymentType: "free", priceAmountMinor: 0 })];
+    state.profile = { creatorVerificationStatus: status };
+
+    render(<TeacherStudioDashboard />);
+
+    expect(
+      await within(recommended()).findByRole("link", { name: new RegExp(action) }),
+    ).toHaveAttribute("href", "/teach/verification");
   });
 });
 

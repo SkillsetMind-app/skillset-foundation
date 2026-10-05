@@ -2520,7 +2520,9 @@
         "verifyAction": "Iniciar verificación",
         "publish": "Publica tu producto",
         "publishDetail": "Completa la lista de publicación y ábrelo en tu tienda.",
-        "publishAction": "Revisar y publicar"
+        "publishAction": "Revisar y publicar",
+        "publishActivateDetail": "Publicar incluye la tarifa única de activación de US${amount}, cobrada una vez por cuenta, nunca por curso.",
+        "publishActivateAction": "Activar y publicar"
       },
       "products": {
         "title": "Productos en tu espacio",

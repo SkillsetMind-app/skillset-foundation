@@ -12,11 +12,17 @@ import { subscribeToUserProfile } from "@/lib/data/user-profiles";
 export function usePublishGates(user: { uid: string } | null | undefined): {
   account: CourseReadinessAccount;
   planId: PlanId;
+  // As duas leituras responderam (com dado ou erro). Antes disso `account`
+  // traz os valores falsos iniciais, e quem conta passos pisca.
+  loaded: boolean;
+  verificationStatus: string;
 } {
   const [payoutsReady, setPayoutsReady] = useState(false);
   const [verificationStatus, setVerificationStatus] = useState("none");
   const [requireVerification, setRequireVerification] = useState(false);
   const [planId, setPlanId] = useState<PlanId>("free");
+  const [profileLoaded, setProfileLoaded] = useState(false);
+  const [flagLoaded, setFlagLoaded] = useState(false);
   const uid = user?.uid;
 
   useEffect(() => {
@@ -31,8 +37,12 @@ export function usePublishGates(user: { uid: string } | null | undefined): {
         );
         setVerificationStatus(profile?.creatorVerificationStatus ?? "none");
         setPlanId(profile?.currentPlanId ?? "free");
+        setProfileLoaded(true);
       },
-      () => setPayoutsReady(false),
+      () => {
+        setPayoutsReady(false);
+        setProfileLoaded(true);
+      },
     );
   }, [uid]);
 
@@ -44,7 +54,12 @@ export function usePublishGates(user: { uid: string } | null | undefined): {
           setRequireVerification(value);
         }
       })
-      .catch(() => undefined);
+      .catch(() => undefined)
+      .finally(() => {
+        if (active) {
+          setFlagLoaded(true);
+        }
+      });
     return () => {
       active = false;
     };
@@ -57,5 +72,7 @@ export function usePublishGates(user: { uid: string } | null | undefined): {
       verificationApproved: verificationStatus === "approved",
     },
     planId,
+    loaded: profileLoaded && flagLoaded,
+    verificationStatus,
   };
 }
