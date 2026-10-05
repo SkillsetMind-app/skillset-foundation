@@ -3565,7 +3565,7 @@
       "tabs": {
         "lesson": "Lección",
         "materials": "Materiales",
-        "lives": "En vivo",
+        "lives": "Sesiones en vivo",
         "community": "Comunidad",
         "messages": "Mensajes",
         "review": "Reseña",
@@ -5166,7 +5166,8 @@
       "join": "Unirse ahora",
       "open": "Abrir enlace de la sesión",
       "soon": "Enlace disponible pronto",
-      "communityDescription": "Un espacio del curso para anuncios, preguntas, recursos y conversaciones entre estudiantes."
+      "communityDescription": "Un espacio del curso para anuncios, preguntas, recursos y conversaciones entre estudiantes.",
+      "empty": "No hay sesiones en vivo programadas por ahora."
     },
     "leaderboard": {
       "loadError": "No pudimos cargar la clasificación.",

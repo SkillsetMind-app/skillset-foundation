@@ -683,6 +683,33 @@ export function EnrolledCourseWorkspace({
     return subscription;
   }, [course.id, enrollmentId]);
 
+  // As sessões ao vivo do curso. A assinatura morava dentro da aba, que
+  // aparecia sempre e, sem sessão marcada, abria uma página vazia. Aqui em
+  // cima ela decide se a aba existe. "Agora" é amostrado quando a lista chega
+  // (o render tem de ser puro).
+  const [liveState, setLiveState] = useState<{ events: CourseEvent[]; now: number }>({
+    events: [],
+    now: 0,
+  });
+  // Só com matrícula: sem ela a sala não abre, e não há o que assinar.
+  useEffect(() => {
+    if (previewMode || !enrollmentId) {
+      return;
+    }
+
+    return subscribeToCourseEvents(
+      course.id,
+      (events) => setLiveState({ events, now: Date.now() }),
+      // A agenda é acessória: com erro, fica vazia, sem aviso na sala.
+      () => setLiveState({ events: [], now: Date.now() }),
+    );
+  }, [course.id, enrollmentId, previewMode]);
+  // Ficam à vista até 2h depois do início: dá para entrar numa live que já
+  // começou.
+  const upcomingEvents = liveState.events.filter(
+    (event) => Date.parse(event.startsAt) > liveState.now - 2 * 60 * 60 * 1000,
+  );
+
   // LESSON_STARTED — fires when the learner navigates to a lesson card.
   // Preview mode (teacher impersonating learner view) is excluded so the
   // funnel doesn't get polluted by author QA sessions.
@@ -1120,7 +1147,9 @@ export function EnrolledCourseWorkspace({
     ...(enableFirestoreAssets
       ? [{ id: "materials" as const, label: t("creatorEditor.preview.tabs.materials"), count: courseLevelAssets.length }]
       : []),
-    ...(previewMode ? [] : [{ id: "lives" as const, label: t("creatorEditor.preview.tabs.lives") }]),
+    ...(!previewMode && (upcomingEvents.length > 0 || tab === "lives")
+      ? [{ id: "lives" as const, label: t("creatorEditor.preview.tabs.lives") }]
+      : []),
     ...(communityEnabled
       ? [{ id: "community" as const, label: t("creatorEditor.preview.tabs.community"), count: openQuestionCount }]
       : []),
@@ -1416,7 +1445,9 @@ export function EnrolledCourseWorkspace({
         />
       ) : null}
 
-      {tab === "lives" && !previewMode ? <CourseEventsAgenda courseId={course.id} /> : null}
+      {tab === "lives" && !previewMode ? (
+        <CourseEventsAgenda upcoming={upcomingEvents} now={liveState.now} />
+      ) : null}
 
       {tab === "community" && communityEnabled ? (
         <CourseCommunitySection
@@ -1457,36 +1488,17 @@ export function EnrolledCourseWorkspace({
 
 // Upcoming live sessions for THIS course, right where the student studies.
 // Events are keyed by course.id in course_events.course_slug (the convention
-// teacher-event-studio writes). Renders nothing when the course has no
-// scheduled events, so lesson-only courses stay uncluttered.
-function CourseEventsAgenda({ courseId }: { courseId: string }) {
+// teacher-event-studio writes). The workspace subscribes and only lists the tab
+// when there is a session; opened by its address with none, it says so.
+function CourseEventsAgenda({ upcoming, now }: { upcoming: CourseEvent[]; now: number }) {
   const { t, locale } = useTranslation();
-  const [events, setEvents] = useState<CourseEvent[]>([]);
-  // "Now" is sampled when the event list loads (render must stay pure), so
-  // live-now state refreshes on every realtime change to the course's events.
-  const [now, setNow] = useState(0);
-
-  useEffect(() => {
-    return subscribeToCourseEvents(
-      courseId,
-      (nextEvents) => {
-        setEvents(nextEvents);
-        setNow(Date.now());
-      },
-      // Agenda is additive: on error just leave it empty instead of surfacing
-      // a banner inside the classroom.
-      () => setEvents([]),
-    );
-  }, [courseId]);
-
-  // Keep sessions visible for 2h after start so a student can still join a
-  // live that already began.
-  const upcoming = events.filter(
-    (event) => Date.parse(event.startsAt) > now - 2 * 60 * 60 * 1000,
-  );
 
   if (upcoming.length === 0) {
-    return null;
+    return (
+      <section className="member-resource-panel">
+        <p className="text-sm text-[var(--color-ink-soft)]">{t("learnWave2.agenda.empty")}</p>
+      </section>
+    );
   }
 
   return (

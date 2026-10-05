@@ -178,6 +178,23 @@ const course = {
   ],
 } as unknown as Course;
 
+function liveEvent(startsAt: string) {
+  return {
+    id: "event-1",
+    courseId: "course-1",
+    courseSlug: "demo-course",
+    courseTitle: "Demo course",
+    ownerId: "teacher-1",
+    title: "Live Q&A",
+    description: "",
+    type: "live_class" as const,
+    status: "scheduled" as const,
+    startsAt,
+    externalUrl: "https://meet.example.com/live",
+    recordingAssetId: null,
+  };
+}
+
 function ChangeLanguage() {
   const { locale, setLocale } = useTranslation();
   return <button onClick={() => setLocale(locale === "en" ? "es" : "en")}>Change language</button>;
@@ -415,9 +432,13 @@ describe("sala de aula com matricula real", () => {
       communityEnabled: true,
       modules: course.modules.map((module) => ({ ...module, lessons: module.lessons.map((lesson) => lesson.id === "l1" ? { ...lesson, title: authoredTitle } : lesson) })),
     };
+    vi.mocked(subscribeToCourseEvents).mockImplementationOnce((_courseId, onData) => {
+      onData([liveEvent(new Date(Date.now() + 60 * 60 * 1000).toISOString())]);
+      return () => undefined;
+    });
     render(<I18nProvider initialLocale="es"><EnrolledCourseWorkspace course={localizedCourse} enableFirestoreAssets /></I18nProvider>);
     const tabs = screen.getByRole("navigation", { name: "Secciones del curso" });
-    for (const [tab, label] of [["lesson", "Lección"], ["materials", "Materiales"], ["lives", "En vivo"], ["community", "Comunidad"], ["messages", "Mensajes"], ["review", "Reseña"], ["about", "Acerca del curso"]]) {
+    for (const [tab, label] of [["lesson", "Lección"], ["materials", "Materiales"], ["lives", "Sesiones en vivo"], ["community", "Comunidad"], ["messages", "Mensajes"], ["review", "Reseña"], ["about", "Acerca del curso"]]) {
       expect(within(tabs).getByRole("link", { name: label })).toHaveAttribute("href", `/learn/courses/demo-course${tab === "lesson" ? "" : `/${tab}`}?lesson=l2`);
     }
     expect(screen.getByRole("button", { name: `Lección anterior: ${authoredTitle}` })).toBeInTheDocument();
@@ -718,6 +739,47 @@ describe("abas da sala com endereco proprio", () => {
     renderClassroom("lesson=l2", [], "review");
     expect(screen.getByTestId("review-panel")).toBeInTheDocument();
     expect(screen.queryByTestId("messages-panel")).toBeNull();
+  });
+
+  // A aba ao vivo existia sempre e, sem sessao marcada, abria uma pagina vazia.
+  it("sem sessao ao vivo marcada, a aba 'Live sessions' nao aparece", () => {
+    vi.mocked(subscribeToCourseEvents).mockImplementationOnce((_courseId, onData) => {
+      onData([liveEvent(new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString())]);
+      return () => undefined;
+    });
+    renderClassroom("lesson=l2");
+
+    const tabs = screen.getByRole("navigation", { name: "Course sections" });
+    expect(within(tabs).queryByRole("link", { name: /live/i })).toBeNull();
+  });
+
+  it("com sessao marcada, a aba se chama 'Live sessions' e mostra a sessao", () => {
+    vi.mocked(subscribeToCourseEvents).mockImplementation((_courseId, onData) => {
+      onData([liveEvent(new Date(Date.now() + 60 * 60 * 1000).toISOString())]);
+      return () => undefined;
+    });
+    try {
+      const { unmount } = renderClassroom("lesson=l2");
+      const tabs = screen.getByRole("navigation", { name: "Course sections" });
+      expect(within(tabs).getByRole("link", { name: "Live sessions" })).toHaveAttribute(
+        "href",
+        "/learn/courses/demo-course/lives?lesson=l2",
+      );
+      unmount();
+
+      renderClassroom("lesson=l2", [], "lives");
+      expect(screen.getByText("Live Q&A")).toBeInTheDocument();
+    } finally {
+      vi.mocked(subscribeToCourseEvents).mockImplementation(() => vi.fn());
+    }
+  });
+
+  it("a aba ao vivo aberta pelo endereco, sem sessao, diz que nao ha nenhuma", () => {
+    renderClassroom("lesson=l2", [], "lives");
+
+    const tabs = screen.getByRole("navigation", { name: "Course sections" });
+    expect(within(tabs).getByRole("link", { name: "Live sessions" })).toHaveAttribute("aria-current", "page");
+    expect(screen.getByText("No live sessions are scheduled right now.")).toBeInTheDocument();
   });
 
   it("a aba About e a capa inteira, mesmo para quem ja tem progresso", () => {

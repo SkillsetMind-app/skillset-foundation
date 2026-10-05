@@ -3565,7 +3565,7 @@
       "tabs": {
         "lesson": "Lesson",
         "materials": "Materials",
-        "lives": "Lives",
+        "lives": "Live sessions",
         "community": "Community",
         "messages": "Messages",
         "review": "Review",
@@ -5166,7 +5166,8 @@
       "join": "Join now",
       "open": "Open session link",
       "soon": "Link available soon",
-      "communityDescription": "A course-linked space for announcements, questions, resources, and cohort discussion."
+      "communityDescription": "A course-linked space for announcements, questions, resources, and cohort discussion.",
+      "empty": "No live sessions are scheduled right now."
     },
     "leaderboard": {
       "loadError": "We could not load the leaderboard.",
