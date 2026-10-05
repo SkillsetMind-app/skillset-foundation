@@ -18,8 +18,11 @@ create temp table progress_checks (name text, passed boolean);
 grant insert, select on progress_checks to authenticated;
 create function pg_temp.check_progress(p_name text, p_ok boolean) returns void
 language sql as $$ insert into progress_checks values (p_name, coalesce(p_ok, false)); $$;
+-- O número vai no COMEÇO: o código do certificado usa os 18 primeiros
+-- caracteres da matrícula mais o milissegundo, e dentro de uma transação o
+-- milissegundo é o mesmo. Com o número no fim, dois alunos colidiam.
 create function pg_temp.uid(n int) returns uuid language sql immutable as $$
-  select ('91005010-0000-4000-8000-' || lpad(n::text, 12, '0'))::uuid;
+  select (lpad(n::text, 8, '0') || '-1005-4010-8000-000000000000')::uuid;
 $$;
 create function pg_temp.enr(n int, p_course text) returns text language sql immutable as $$
   select pg_temp.uid(n)::text || '__smoke-prog-' || p_course;
@@ -51,7 +54,7 @@ language sql immutable as $$
        from unnest(ids) with ordinality u(x, o))));
 $$;
 
--- 1 dono, 2 aluno, 3 aluno do curso de 200 aulas.
+-- 1 dono, 2 aluno, 3 aluno do curso de 200 aulas e do curso que encolhe.
 select pg_temp.act_as(null, 'service_role');
 select set_config('skillset.trusted_write', 'on', true);
 insert into auth.users(id, aud, role, email, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
@@ -78,7 +81,7 @@ insert into public.enrollments(id, user_id, course_id, course_slug, course_title
   course_image, status, source)
 select pg_temp.enr(e.n, e.course), pg_temp.uid(e.n)::text, 'smoke-prog-' || e.course,
   'smoke-prog-' || e.course, 'Smoke progress', 'smoke', '', 'active', 'admin'
-from (values (2, 'seq'), (2, 'custom'), (2, 'cert'), (2, 'shrink'), (3, 'big')) e(n, course);
+from (values (2, 'seq'), (2, 'custom'), (2, 'cert'), (3, 'shrink'), (3, 'big')) e(n, course);
 
 -- 2. Drip: aula fechada não é concluída.
 select pg_temp.act_as(pg_temp.uid(2), 'authenticated');
@@ -138,10 +141,13 @@ select pg_temp.check_progress('certificate: lesson a of the certificate course i
   (public.record_lesson_progress(pg_temp.enr(2, 'cert'), 'cert-a', true) ->> 'progressPercent')::int = 50);
 select pg_temp.check_progress('certificate: the certificate course is completed',
   public.record_lesson_progress(pg_temp.enr(2, 'cert'), 'cert-b', true) @> '{"status": "completed"}');
+reset role;
+select pg_temp.act_as(pg_temp.uid(3), 'authenticated');
+set local role authenticated;
 select pg_temp.check_progress('certificate: lessons a and b of the shrinking course are marked',
-  (public.record_lesson_progress(pg_temp.enr(2, 'shrink'), 'shrink-a', true) ->> 'progressPercent')::int = 33);
+  (public.record_lesson_progress(pg_temp.enr(3, 'shrink'), 'shrink-a', true) ->> 'progressPercent')::int = 33);
 select pg_temp.check_progress('certificate: the shrinking course is at 67%',
-  (public.record_lesson_progress(pg_temp.enr(2, 'shrink'), 'shrink-b', true) ->> 'progressPercent')::int = 67);
+  (public.record_lesson_progress(pg_temp.enr(3, 'shrink'), 'shrink-b', true) ->> 'progressPercent')::int = 67);
 reset role;
 -- O professor acrescenta uma aula a um e remove uma do outro.
 select pg_temp.act_as(null, 'service_role');
@@ -154,14 +160,17 @@ select pg_temp.check_progress('certificate: the stored status is stale on purpos
   (select status = 'completed' and progress_percent = 100
      from public.enrollments where id = pg_temp.enr(2, 'cert'))
   and (select status = 'active' and progress_percent = 67
-     from public.enrollments where id = pg_temp.enr(2, 'shrink')));
+     from public.enrollments where id = pg_temp.enr(3, 'shrink')));
+select pg_temp.act_as(pg_temp.uid(3), 'authenticated');
+set local role authenticated;
+select pg_temp.check_progress('certificate: a removed lesson no longer holds back issuance',
+  public.issue_skillset_certificate(pg_temp.enr(3, 'shrink'), 'Smoke Learner') = pg_temp.enr(3, 'shrink'));
+reset role;
 select pg_temp.act_as(pg_temp.uid(2), 'authenticated');
 set local role authenticated;
 select pg_temp.check_progress('certificate: a lesson added after completion blocks issuance',
   pg_temp.refused($q$select public.issue_skillset_certificate(pg_temp.enr(2, 'cert'), 'Smoke Learner')$q$,
     'Complete the course%'));
-select pg_temp.check_progress('certificate: a removed lesson no longer holds back issuance',
-  public.issue_skillset_certificate(pg_temp.enr(2, 'shrink'), 'Smoke Learner') = pg_temp.enr(2, 'shrink'));
 select pg_temp.check_progress('certificate: the new lesson is marked',
   public.record_lesson_progress(pg_temp.enr(2, 'cert'), 'cert-c', true) @> '{"status": "completed"}');
 select pg_temp.check_progress('certificate: issued once every current lesson is done',
@@ -169,7 +178,7 @@ select pg_temp.check_progress('certificate: issued once every current lesson is 
 reset role;
 select pg_temp.check_progress('certificate: both certificates exist as issued',
   (select count(*) = 2 from public.certificates
-    where id in (pg_temp.enr(2, 'cert'), pg_temp.enr(2, 'shrink')) and status = 'issued'));
+    where id in (pg_temp.enr(2, 'cert'), pg_temp.enr(3, 'shrink')) and status = 'issued'));
 
 -- 5. Mensagem do professor: link da aba de mensagens do curso.
 select pg_temp.act_as(pg_temp.uid(1), 'authenticated');
