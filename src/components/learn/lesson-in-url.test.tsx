@@ -246,12 +246,16 @@ describe("aviso do player sem video segue o conteudo, nao o tipo", () => {
     ],
   } as unknown as Course;
 
-  it("aula tipo video so com texto mostra o aviso de leitura", () => {
+  // Antes: uma caixa de video vazia de 260-520px dizendo "leia as notas
+  // abaixo". Aula de leitura nao tem caixa de video; o texto vem logo.
+  it("aula so com texto nao tem caixa de video vazia", () => {
     mocks.searchParams = new URLSearchParams("lesson=l1");
     render(<EnrolledCourseWorkspace course={semVideo} previewMode />);
 
     expect(playerHeading()).toBe("Leitura");
-    expect(playerNotice()).toBe("Text-first lesson");
+    expect(playerNotice()).toBeUndefined();
+    expect(document.querySelector("#member-lesson-player .member-video-stage")).toBeNull();
+    expect(screen.getByText("leia isto")).toBeInTheDocument();
   });
 
   it("aula sem video e sem texto continua com o aviso de midia", () => {

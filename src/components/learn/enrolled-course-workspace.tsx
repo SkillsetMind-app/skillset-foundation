@@ -2003,6 +2003,16 @@ function LessonContentPanel({
   // antigo continua valendo.
   const isTextFirstLesson =
     lesson.type === "text" || Boolean(lesson.contentText?.trim());
+  // Aula de leitura pronta: sem caixa de vídeo nenhuma. Antes ficava ali uma
+  // caixa vazia de 260-520px dizendo "leia as notas abaixo", com os
+  // comentários entre ela e as notas. Agora o texto vem logo, e depois os
+  // comentários. (Trancada ou carregando, a caixa segue com o aviso dela.)
+  const textOnly =
+    !locked
+    && !hasPlayableVideo
+    && !lessonContentPending
+    && !isLoadingAssets
+    && isTextFirstLesson;
   // No preview do professor não se guarda posição: ele não é o aluno.
   // Memoizado porque a referência é objeto: uma nova a cada render reabriria
   // a aula (e o evento "abriu" do funil) a cada quadro.
@@ -2010,6 +2020,49 @@ function LessonContentPanel({
     () =>
       previewMode ? null : lessonPositionRef(viewerId, enrollmentId, lesson.id),
     [enrollmentId, lesson.id, previewMode, viewerId],
+  );
+
+  const lessonBody = (
+      <div id="member-lesson-content" className="member-lesson-body">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="text-sm font-semibold text-[var(--color-ink)]">
+            {t("learn.classroom.lesson.content")}
+          </p>
+          {lesson.isPreview ? (
+            <span className="rounded-none border border-[rgba(178,34,52,0.18)] bg-[rgba(178,34,52,0.05)] px-3 py-1 text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--color-accent-fg)]">
+              {t("learn.classroom.lesson.freePreview")}
+            </span>
+          ) : null}
+        </div>
+        {!locked && lesson.description ? (
+          <p className="mt-3 text-sm leading-7 text-[var(--color-ink)]">
+            {lesson.description}
+          </p>
+        ) : null}
+        {!locked && lessonContentPending ? (
+          <p className="mt-3 text-sm leading-7 text-[var(--color-ink-soft)]">
+            {t("learn.classroom.lesson.loading")}
+          </p>
+        ) : null}
+        {!locked && lesson.contentText ? (
+          <div className="mt-4 whitespace-pre-line rounded-none border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-4 text-sm leading-7 text-[var(--color-ink-soft)]">
+            {linkify(lesson.contentText)}
+          </div>
+        ) : null}
+        {!locked && safeLessonExternalUrl && !trustedEmbed ? (
+          <a
+            href={safeLessonExternalUrl}
+            target="_blank"
+            rel="noreferrer noopener"
+            className="button-outline mt-4 inline-flex px-4 py-2.5 text-sm"
+          >
+            {t("learn.classroom.lesson.openResource")}
+          </a>
+        ) : null}
+        {!locked && enableFirestoreAssets ? (
+          <LessonAssetList assets={supportingAssets} isLoading={isLoadingAssets} />
+        ) : null}
+      </div>
   );
 
   return (
@@ -2033,6 +2086,7 @@ function LessonContentPanel({
         ) : null}
       </div>
 
+      {textOnly ? null : (
       <VideoDock title={lesson.title} enabled={hasPlayableVideo} closeLabel={t("learn.classroom.lesson.closeMiniPlayer")}>
       <div className="member-video-stage relative">
         {nextUp && onPlayNextUp && onCancelNextUp ? (
@@ -2098,16 +2152,13 @@ function LessonContentPanel({
         ) : (
           <div className="member-video-empty">
             <PlayCircle size={34} aria-hidden />
-            <h5>{t(isTextFirstLesson ? "learn.classroom.lesson.textFirst" : "learn.classroom.lesson.mediaMissing")}</h5>
-            <p>
-              {isTextFirstLesson
-                ? t("learn.classroom.lesson.textDetails")
-                : t("learn.classroom.lesson.mediaDetails")}
-            </p>
+            <h5>{t("learn.classroom.lesson.mediaMissing")}</h5>
+            <p>{t("learn.classroom.lesson.mediaDetails")}</p>
           </div>
         )}
       </div>
       </VideoDock>
+      )}
 
       <LessonInfo
         lesson={lesson}
@@ -2118,49 +2169,12 @@ function LessonContentPanel({
         unlocksAt={unlockState?.unlocksAt ?? null}
       />
 
+      {textOnly ? lessonBody : null}
+
       {/* Aula trancada: sem comentarios. */}
       {!locked ? lessonComments : null}
 
-      <div id="member-lesson-content" className="member-lesson-body">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="text-sm font-semibold text-[var(--color-ink)]">
-            {t("learn.classroom.lesson.content")}
-          </p>
-          {lesson.isPreview ? (
-            <span className="rounded-none border border-[rgba(178,34,52,0.18)] bg-[rgba(178,34,52,0.05)] px-3 py-1 text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--color-accent-fg)]">
-              {t("learn.classroom.lesson.freePreview")}
-            </span>
-          ) : null}
-        </div>
-        {!locked && lesson.description ? (
-          <p className="mt-3 text-sm leading-7 text-[var(--color-ink)]">
-            {lesson.description}
-          </p>
-        ) : null}
-        {!locked && lessonContentPending ? (
-          <p className="mt-3 text-sm leading-7 text-[var(--color-ink-soft)]">
-            {t("learn.classroom.lesson.loading")}
-          </p>
-        ) : null}
-        {!locked && lesson.contentText ? (
-          <div className="mt-4 whitespace-pre-line rounded-none border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-4 text-sm leading-7 text-[var(--color-ink-soft)]">
-            {linkify(lesson.contentText)}
-          </div>
-        ) : null}
-        {!locked && safeLessonExternalUrl && !trustedEmbed ? (
-          <a
-            href={safeLessonExternalUrl}
-            target="_blank"
-            rel="noreferrer noopener"
-            className="button-outline mt-4 inline-flex px-4 py-2.5 text-sm"
-          >
-            {t("learn.classroom.lesson.openResource")}
-          </a>
-        ) : null}
-        {!locked && enableFirestoreAssets ? (
-          <LessonAssetList assets={supportingAssets} isLoading={isLoadingAssets} />
-        ) : null}
-      </div>
+      {textOnly ? null : lessonBody}
     </div>
   );
 }

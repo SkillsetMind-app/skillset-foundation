@@ -308,11 +308,12 @@ describe("comentarios da aula sob o player", () => {
     expect(within(region).queryByText("Found it, thanks!")).toBeNull();
     expect(within(region).queryByRole("button", { name: /reply|clap|👏/i })).toBeNull();
 
-    // Posicao: depois de "Informacoes da aula", antes do corpo da aula.
+    // Posicao: depois de "Informacoes da aula". Aula de texto (esta): o corpo
+    // vem antes dos comentarios — sem video, o que se le e o texto.
     const info = screen.getByRole("button", { name: "Lesson information" });
     const body = document.getElementById("member-lesson-content") as HTMLElement;
     expect(info.compareDocumentPosition(region) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(region.compareDocumentPosition(body) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(body.compareDocumentPosition(region) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     // O contador da aba Community nao muda: uma leitura, a de sempre.
     expect(countOpenCommunityQuestions).toHaveBeenCalledExactlyOnceWith("course-1");
     expect(recordLessonProgress).not.toHaveBeenCalled();

@@ -426,6 +426,15 @@ describe("sala de aula com matricula real", () => {
     expect(recordLessonProgress).not.toHaveBeenCalled();
   });
 
+  it("aula de texto: sem caixa de video, e o texto vem antes dos comentarios", () => {
+    renderClassroom("lesson=l1");
+
+    expect(document.querySelector("#member-lesson-player .member-video-stage")).toBeNull();
+    const body = screen.getByText("One");
+    const comments = screen.getByRole("region", { name: "Lesson comments" });
+    expect(body.compareDocumentPosition(comments) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
   it("primeira visita (sem ?lesson=, sem progresso): a capa inteira, sem cabecalho curto", () => {
     renderClassroom("");
 
