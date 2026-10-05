@@ -433,16 +433,16 @@ export function teacherCourseToLearningCourse(course: TeacherCourse): Course {
       id: module.id,
       title: module.title,
       coverAssetId: module.coverAssetId ?? null,
-      summary:
-        module.summary
-        || `${module.lessons.length} lesson${module.lessons.length === 1 ? "" : "s"}`,
+      // Sem descricao, nada: "N lessons" so repetia a contagem da playlist.
+      summary: module.summary || "",
       lessons: module.lessons.map((lesson) => ({
         id: lesson.id,
         title: lesson.title,
         type: lesson.type,
+        // Sem duracao real, nada: "Self-paced" em toda linha nao informava.
         duration: lesson.durationMinutes
           ? `${lesson.durationMinutes} min`
-          : "Self-paced",
+          : "",
         isPreview: lesson.id === course.freePreviewLessonId,
         description: lesson.description,
         contentText: lesson.contentText ?? null,

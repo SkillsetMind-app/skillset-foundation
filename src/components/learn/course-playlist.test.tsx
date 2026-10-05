@@ -171,6 +171,15 @@ describe("CoursePlaylist", () => {
     expect(size + 2 * inset).toBeGreaterThanOrEqual(44);
   });
 
+  it("aula sem duracao: a linha nao comeca com separador solto", () => {
+    renderPlaylist({
+      modules: [{ ...modules[0], lessons: modules[0].lessons.map((lesson) => ({ ...lesson, duration: "" })) }],
+    });
+
+    const welcome = screen.getByRole("button", { name: /Welcome/ });
+    expect(welcome.querySelector(".member-playlist__lesson-meta")?.textContent).toBe("Completed");
+  });
+
   it("sem onUncomplete (preview do professor) o check e so um icone", () => {
     renderPlaylist({ onUncomplete: undefined });
 

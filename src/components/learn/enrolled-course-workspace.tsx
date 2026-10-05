@@ -903,6 +903,14 @@ export function EnrolledCourseWorkspace({
   const selectedLessonNumber = selectedLesson
     ? allLessons.findIndex((lesson) => lesson.id === selectedLesson.id) + 1
     : 0;
+  const showModulePosters = course.modules.some((module) =>
+    getSafeMediaUrl(getModuleCoverAsset(module, moduleCoverAssets)?.downloadUrl),
+  );
+  const moduleSummary = selectedModule?.summary?.trim() ? (
+    <p className="mt-3 whitespace-pre-wrap text-sm text-[var(--ma-ink-soft)] [overflow-wrap:anywhere]">
+      {selectedModule.summary}
+    </p>
+  ) : null;
   // Sequential navigation. selectedLessonNumber is already the 1-based position
   // in the flattened curriculum, so the neighbours are just its edges. Locked
   // lessons stay reachable, exactly like clicking one in the sidebar strip: the
@@ -1313,7 +1321,9 @@ export function EnrolledCourseWorkspace({
               <button
                 type="button"
                 onClick={() => setLessonListOpen(true)}
-                className="button-outline flex-1 px-4 py-2.5 text-sm sm:flex-none"
+                // A partir de 1181px a playlist ja esta ao lado do video (o
+                // layout vira uma coluna em max-width: 1180px).
+                className="button-outline flex-1 px-4 py-2.5 text-sm sm:flex-none min-[1181px]:hidden"
               >
                 {t("creatorEditor.preview.allLessons").replace("{count}", () => String(totalLessonCount))}
               </button>
@@ -1375,7 +1385,9 @@ export function EnrolledCourseWorkspace({
             destacada), nem "links do workspace" (a única saída é "← My courses"
             no topo; a página de vendas não pertence à sala). */}
         <aside className="member-classroom-sidebar min-w-0">
-          {course.modules.length > 0 ? (
+          {/* Sem arte de modulo os posters eram so numero + titulo: os mesmos
+              grupos da playlist logo abaixo. A descricao do modulo fica. */}
+          {showModulePosters ? (
             <nav className="min-w-0 max-w-full" aria-label={t("learn.classroom.curriculum.modules")}>
               <h2 className="mb-2 text-sm font-semibold text-[var(--ma-ink)]">
                 {t("learn.classroom.curriculum.modules")}
@@ -1412,13 +1424,9 @@ export function EnrolledCourseWorkspace({
                   );
                 })}
               </ol>
-              {selectedModule?.summary?.trim() ? (
-                <p className="mt-3 whitespace-pre-wrap text-sm text-[var(--ma-ink-soft)] [overflow-wrap:anywhere]">
-                  {selectedModule.summary}
-                </p>
-              ) : null}
+              {moduleSummary}
             </nav>
-          ) : null}
+          ) : moduleSummary}
           <CoursePlaylist
             thumbnailUrlByLessonId={thumbnailUrlByLessonId}
             modules={course.modules}
@@ -1827,8 +1835,11 @@ function LessonInfo({
   const [open, setOpen] = useState(false);
   const rows: Array<[string, string]> = [
     [t("learn.classroom.lessonInfo.type"), t(lessonTypeLabels[lesson.type])],
-    [t("learn.classroom.lessonInfo.duration"), lesson.duration],
   ];
+  // Mesmo criterio do relogio no cabecalho: so duracao de verdade.
+  if (/\d/.test(lesson.duration)) {
+    rows.push([t("learn.classroom.lessonInfo.duration"), lesson.duration]);
+  }
   if (moduleTitle) {
     rows.push([t("learn.classroom.lessonInfo.module"), moduleTitle]);
   }

@@ -498,9 +498,11 @@ describe("sala de aula com matricula real", () => {
     const { rerender } = render(<I18nProvider initialLocale="en">
       <EnrolledCourseWorkspace course={withPosters} enableFirestoreAssets />
     </I18nProvider>);
+    // Sem capa ainda (assinatura sem resposta), nao ha faixa de posters.
+    expect(screen.queryByRole("navigation", { name: "Modules" })).toBeNull();
+    act(() => emit(assets));
     const rail = screen.getByRole("navigation", { name: "Modules" });
     expect(rail.closest("aside")).toHaveClass("member-classroom-sidebar");
-    act(() => emit(assets));
     const firstPoster = within(rail).getByRole("button", { name: "Open module: Module one" });
     expect(firstPoster).toHaveClass("w-[120px]", "sm:w-[160px]");
     expect(firstPoster).toHaveAttribute("aria-current", "true");
@@ -519,8 +521,9 @@ describe("sala de aula com matricula real", () => {
       modules: withPosters.modules.map((module) => ({ ...module, coverAssetId: "tracker" })),
     }} enableFirestoreAssets /></I18nProvider>);
     expect(firstPoster.querySelector("img")).toHaveAttribute("src", "/new.png");
+    // Sem arte de modulo, a faixa so repetiria os grupos da playlist: some.
     act(() => emit([]));
-    expect(rail.querySelector("img")).toBeNull();
+    expect(screen.queryByRole("navigation", { name: "Modules" })).toBeNull();
     act(() => emit(assets));
     expect(subscribeToCourseAssets).toHaveBeenCalledTimes(1);
     expect(getProtectedCourseAssetObjectUrl).not.toHaveBeenCalled();
@@ -534,6 +537,11 @@ describe("sala de aula com matricula real", () => {
     mocks.searchParams = new URLSearchParams("lesson=l1&campaign=literal");
     mocks.pathname = "/learn/courses/demo-course";
     mocks.completed = ["l1"];
+    let emit!: (assets: CourseAsset[]) => void;
+    vi.mocked(subscribeToCourseAssets).mockImplementationOnce((_id, callback) => {
+      emit = callback;
+      return Object.assign(vi.fn(), { reload: vi.fn(async () => undefined) });
+    });
     const withModules: Course = { ...course, dripStrategy: "sequential_progress", modules: [
       { ...course.modules[0], summary: "First module description" },
       { id: "m2", title: "Module $$2 $&", summary: "Second module description", lessons: [
@@ -541,7 +549,13 @@ describe("sala de aula com matricula real", () => {
       ] },
       { id: "m3", title: "Empty module", summary: "", lessons: [] },
     ] };
-    const { rerender } = render(<I18nProvider initialLocale="en"><EnrolledCourseWorkspace course={withModules} /></I18nProvider>);
+    const { rerender } = render(<I18nProvider initialLocale="en"><EnrolledCourseWorkspace course={withModules} enableFirestoreAssets /></I18nProvider>);
+    // Os posters so aparecem quando algum modulo tem arte.
+    act(() => emit([{
+      id: "cover-m1", courseId: course.id, ownerId: "teacher-1", lessonId: null, moduleId: "m1",
+      kind: "module_cover", fileName: "m1.png", contentType: "image/png", size: 1,
+      storagePath: "courses/course-1/assets/m1.png", downloadUrl: "/m1.png", isPreview: false,
+    }]));
     const rail = screen.getByRole("navigation", { name: "Modules" });
     expect(rail.closest("aside")).toHaveClass("min-w-0");
     expect(within(rail).getByRole("list")).toHaveClass("overflow-x-scroll", "[scrollbar-width:auto]");
@@ -564,8 +578,28 @@ describe("sala de aula com matricula real", () => {
     expect(recordLessonProgress).not.toHaveBeenCalled();
     rerender(<I18nProvider initialLocale="en"><EnrolledCourseWorkspace course={{ ...withModules,
       modules: withModules.modules.map((module) => ({ ...module, summary: "  " })),
-    }} /></I18nProvider>);
+    }} enableFirestoreAssets /></I18nProvider>);
     expect(rail.querySelector("p")).toBeNull();
+  });
+
+  it("sem arte de modulo: sem faixa de posters, mas a descricao do modulo atual fica", () => {
+    mocks.searchParams = new URLSearchParams("lesson=l1");
+    mocks.completed = [];
+    render(<EnrolledCourseWorkspace course={{ ...course, modules: [
+      { ...course.modules[0], summary: "What this module covers" },
+    ] }} />);
+
+    expect(screen.queryByRole("navigation", { name: "Modules" })).toBeNull();
+    expect(screen.getByText("What this module covers")).toBeInTheDocument();
+  });
+
+  // jsdom nao aplica media query: a prova e a classe que esconde o botao a
+  // partir de 1181px, onde a playlist ja esta ao lado do video (o layout vira
+  // uma coluna em max-width: 1180px).
+  it("'All lessons' some onde a lista ja esta visivel ao lado do video", () => {
+    renderClassroom("lesson=l1");
+
+    expect(screen.getByRole("button", { name: "All lessons (2)" })).toHaveClass("min-[1181px]:hidden");
   });
 
   it("does not subscribe to module covers or show posters without an enrollment", () => {
