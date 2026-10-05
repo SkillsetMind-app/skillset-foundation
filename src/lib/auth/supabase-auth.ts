@@ -395,13 +395,24 @@ export async function sendSkillsetEmailVerification(
   }
 }
 
-export async function refreshCurrentUserEmailVerification(): Promise<boolean> {
+export async function refreshCurrentUserEmailVerification(
+  // When given, only a session for THIS address counts — a confirmed session
+  // of another account signed in elsewhere is not this email being confirmed.
+  expectedEmail?: string,
+): Promise<boolean> {
   const supabase = getSupabaseBrowserClient();
   // getUser() validates against the server, returning the freshest
   // email_confirmed_at rather than the possibly-stale cached session.
   const { data, error } = await supabase.auth.getUser();
 
   if (error || !data.user) {
+    return false;
+  }
+
+  if (
+    expectedEmail !== undefined
+    && data.user.email?.trim().toLowerCase() !== expectedEmail.trim().toLowerCase()
+  ) {
     return false;
   }
 

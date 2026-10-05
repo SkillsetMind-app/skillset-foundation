@@ -1,14 +1,19 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { getAuthErrorMessage, signUpWithEmail } from "@/lib/auth/supabase-auth";
+import {
+  getAuthErrorMessage,
+  refreshCurrentUserEmailVerification,
+  signUpWithEmail,
+} from "@/lib/auth/supabase-auth";
 
 const mocks = vi.hoisted(() => ({
   signUp: vi.fn(),
+  getUser: vi.fn(),
   firstTouch: null as Record<string, string> | null,
 }));
 
 vi.mock("@/lib/supabase/client", () => ({
-  getSupabaseBrowserClient: () => ({ auth: { signUp: mocks.signUp } }),
+  getSupabaseBrowserClient: () => ({ auth: { signUp: mocks.signUp, getUser: mocks.getUser } }),
 }));
 vi.mock("@/lib/auth/pwned-password", () => ({ assertPasswordNotBreached: vi.fn() }));
 vi.mock("@/lib/data/user-profiles", () => ({ getUserProfile: vi.fn().mockResolvedValue(null) }));
@@ -45,6 +50,34 @@ describe("signUpWithEmail metadata", () => {
     mocks.firstTouch = null;
 
     expect(await signUpMetadata()).toEqual({ display_name: "Ana Souza", name: "Ana Souza", locale: "es" });
+  });
+});
+
+// The confirm-your-email screen polls this. A confirmed session for ANOTHER
+// account (signed in in another tab) must not count as "this email confirmed".
+describe("refreshCurrentUserEmailVerification", () => {
+  function sessionFor(email: string, confirmed = true) {
+    mocks.getUser.mockResolvedValueOnce({
+      data: { user: { email, email_confirmed_at: confirmed ? "2026-10-05T00:00:00Z" : null } },
+      error: null,
+    });
+  }
+
+  it("matches the expected email case-insensitively", async () => {
+    sessionFor("Ana@Example.test");
+    expect(await refreshCurrentUserEmailVerification("ana@example.TEST")).toBe(true);
+  });
+
+  it("ignores a confirmed session that belongs to someone else", async () => {
+    sessionFor("other@example.test");
+    expect(await refreshCurrentUserEmailVerification("ana@example.test")).toBe(false);
+  });
+
+  it("without an expected email, keeps answering for whoever is signed in", async () => {
+    sessionFor("other@example.test");
+    expect(await refreshCurrentUserEmailVerification()).toBe(true);
+    sessionFor("other@example.test", false);
+    expect(await refreshCurrentUserEmailVerification()).toBe(false);
   });
 });
 

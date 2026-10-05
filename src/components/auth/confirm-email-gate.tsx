@@ -62,7 +62,8 @@ export function ConfirmEmailGate({
 
   // Confirmou em outra aba (o link do e-mail abre ao lado)? Esta aba nao
   // ficava sabendo e esperava para sempre. Olha de novo a cada poucos segundos
-  // e quando a aba volta ao foco — nunca escondida, nunca depois de sair.
+  // e quando a aba volta ao foco — nunca escondida, nunca depois de sair. So
+  // conta a sessao DESTE e-mail: outra conta logada ao lado nao puxa esta aba.
   // Navegacao completa, nao router: o provider de sessao desta aba ainda acha
   // que ninguem entrou, e so recarregando ele le o cookie novo.
   // ponytail: outro APARELHO (celular) nao deixa sessao nesta aba, entao isto
@@ -75,7 +76,7 @@ export function ConfirmEmailGate({
         return;
       }
       try {
-        if ((await refreshCurrentUserEmailVerification()) && !done) {
+        if ((await refreshCurrentUserEmailVerification(email)) && !done) {
           done = true;
           window.location.assign(confirmedRoute);
         }
@@ -94,7 +95,7 @@ export function ConfirmEmailGate({
       window.removeEventListener("focus", onWake);
       document.removeEventListener("visibilitychange", onWake);
     };
-  }, [confirmedRoute]);
+  }, [confirmedRoute, email]);
 
   useEffect(() => {
     if (cooldown <= 0) {

@@ -124,7 +124,8 @@ function wait(ms: number) {
 // `pathKnown`: o papel ja foi escolhido no cadastro (?path=) ou salvo antes —
 // perguntar "como vai usar" de novo era a mesma pergunta duas vezes seguidas.
 // Decidido uma vez ao carregar, nunca a partir da resposta dada aqui: senao a
-// pergunta sumiria da lista no instante em que fosse respondida.
+// pergunta sumiria da lista no instante em que fosse respondida. "Voltar" ate
+// ela a traz de volta (goBack).
 function getVisibleQuestions(
   answers: OnboardingAnswers,
   pathKnown = false,
@@ -322,7 +323,7 @@ export function OnboardingWizard() {
       }
 
       if (event.key === "Escape") {
-        setCurrentIndex((index) => Math.max(index - 1, 0));
+        goBack();
       }
 
       if (event.key === "Enter") {
@@ -370,6 +371,20 @@ export function OnboardingWizard() {
     } catch {
       setError("authFlow.onboarding.answerSaveError");
     }
+  }
+
+  // Voltar ate onde o papel foi pulado traz o passo de volta, ja marcado: quem
+  // chegou por um ?path= errado consegue trocar. A pergunta volta exatamente no
+  // indice em que esta, entao o passo atual vira ela e a numeracao segue certa.
+  function goBack() {
+    const pathIndex = getVisibleQuestions(answers).findIndex(
+      (question) => question.id === "path",
+    );
+    if (pathKnown && currentIndex === pathIndex) {
+      setPathKnown(false);
+      return;
+    }
+    setCurrentIndex((index) => Math.max(index - 1, 0));
   }
 
   function advance(nextAnswers = answers) {
@@ -617,7 +632,7 @@ export function OnboardingWizard() {
       <footer className="flex items-center justify-between gap-4 px-6 py-5 sm:px-8">
         <button
           type="button"
-          onClick={() => setCurrentIndex((index) => Math.max(index - 1, 0))}
+          onClick={goBack}
           disabled={currentIndex === 0 || isSaving}
           className="rounded-none px-5 py-3 text-sm font-semibold text-[var(--color-ink-soft)] transition hover:bg-[var(--color-surface-soft)] hover:text-[var(--color-primary)] disabled:pointer-events-none disabled:opacity-40"
         >

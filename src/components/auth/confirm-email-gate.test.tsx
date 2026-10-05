@@ -58,6 +58,9 @@ describe("ConfirmEmailGate notices a confirmation made elsewhere", () => {
 
     await tick(6000);
     expect(mocks.refreshCurrentUserEmailVerification).toHaveBeenCalledTimes(1);
+    // Only THIS account counts: another one signed in elsewhere must not
+    // pull this tab into it.
+    expect(mocks.refreshCurrentUserEmailVerification).toHaveBeenCalledWith("learner@example.com");
     expect(mocks.assign).not.toHaveBeenCalled();
 
     mocks.refreshCurrentUserEmailVerification.mockResolvedValue(true);

@@ -10,8 +10,13 @@
 // Consent: the banner promises non-essential storage can be refused, so the
 // touch lives in memory (enough for ad -> landing -> signup, which navigates
 // inside the app) and is written to sessionStorage only after "Accept all".
+// "Reject" means none of it: nothing is captured, anything already held is
+// wiped, and nothing is handed to the signup.
 
-import { getStoredCookieConsent } from "@/lib/consent/cookie-consent";
+import {
+  getStoredCookieConsent,
+  subscribeCookieConsent,
+} from "@/lib/consent/cookie-consent";
 
 const UTM_KEYS = [
   "utm_source",
@@ -61,24 +66,72 @@ export function parseFirstTouch(
   return touch;
 }
 
+function isRejected(): boolean {
+  return getStoredCookieConsent() === "rejected";
+}
+
+function forgetFirstTouch(): void {
+  memoryTouch = null;
+  try {
+    window.sessionStorage.removeItem(STORAGE_KEY);
+  } catch {
+    // Storage blocked: nothing was written there.
+  }
+}
+
+// Storage is the visitor's to edit: read back only the keys this module writes.
+function pickKnownKeys(stored: Record<string, unknown>): FirstTouch | null {
+  const touch: FirstTouch = {};
+  for (const key of [...UTM_KEYS, "referrer"] as const) {
+    const value = stored[key];
+    if (typeof value === "string" && value) {
+      touch[key] = value.slice(0, MAX_LENGTH);
+    }
+  }
+  return Object.keys(touch).length > 0 ? touch : null;
+}
+
+/** The touch to send with a signup, or null — always null after "Reject". */
 export function getFirstTouch(): FirstTouch | null {
-  if (memoryTouch || typeof window === "undefined") {
+  if (typeof window === "undefined") {
+    return null;
+  }
+  if (isRejected()) {
+    forgetFirstTouch();
+    return null;
+  }
+  if (memoryTouch) {
     return memoryTouch;
   }
   try {
-    const stored = window.sessionStorage.getItem(STORAGE_KEY);
-    // ponytail: not re-validated — it only ever lands in the visitor's own
-    // metadata, which they can already edit through the auth API.
-    memoryTouch = stored ? (JSON.parse(stored) as FirstTouch) : null;
+    const stored = JSON.parse(
+      window.sessionStorage.getItem(STORAGE_KEY) ?? "null",
+    ) as Record<string, unknown> | null;
+    memoryTouch = stored ? pickKnownKeys(stored) : null;
   } catch {
     memoryTouch = null;
   }
   return memoryTouch;
 }
 
+let watchingConsent = false;
+
 /** Call on every full page load; only the first non-empty touch is kept. */
 export function captureFirstTouch(): void {
-  if (typeof window === "undefined" || getFirstTouch()) {
+  if (typeof window === "undefined") {
+    return;
+  }
+  if (!watchingConsent) {
+    watchingConsent = true;
+    // A later "Reject" (or the same choice in another tab) wipes what is held.
+    // ponytail: never unsubscribed — one listener for the life of the page.
+    subscribeCookieConsent(() => {
+      if (isRejected()) {
+        forgetFirstTouch();
+      }
+    });
+  }
+  if (isRejected() || getFirstTouch()) {
     return;
   }
 

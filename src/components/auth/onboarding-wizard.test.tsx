@@ -132,6 +132,29 @@ describe("boas-vindas: o passo de perfil vem primeiro", () => {
     expect(screen.queryByText("How will you use SkillsetMind first?")).toBeNull();
   });
 
+  it("quem chegou com o papel errado no link volta um passo e troca", async () => {
+    mocks.searchParams = new URLSearchParams("path=teacher");
+    mocks.profile = {
+      displayName: "Patrick Simon",
+      phoneNumber: "+1 555 123 4567",
+      onboardingAnswers: { profileConfirmed: true, path: "teacher" },
+    };
+    render(<OnboardingWizard />);
+    await screen.findByText("What best describes your work?");
+
+    fireEvent.click(screen.getByRole("button", { name: "Back" }));
+    expect(await screen.findByText("How will you use SkillsetMind first?")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /I want to learn/ }));
+
+    await waitFor(() =>
+      expect(mocks.updateOnboardingAnswers).toHaveBeenCalledWith(
+        expect.objectContaining({ path: "student" }),
+      ),
+    );
+    expect(await screen.findByText("What do you want to learn first?")).toBeInTheDocument();
+  });
+
   it("sem papel definido (nem no link, nem salvo), ainda pergunta o caminho", async () => {
     render(<OnboardingWizard />);
     await screen.findByText("First, tell us who you are.");
