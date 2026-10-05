@@ -466,6 +466,42 @@ describe("LearnDashboard", () => {
     ).toHaveAttribute("href", "/account/billing?tab=purchases");
   });
 
+  it("assinatura recente nao mostra o aviso: ela nao gera pedido, nao ha o que reembolsar em Purchases", async () => {
+    fixtures.enrollments = [
+      ...fixtures.base,
+      {
+        ...extraEnrollments(1)[0],
+        source: "subscription",
+        progressPercent: 10,
+        createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+      },
+    ];
+    render(<LearnDashboard />);
+
+    await screen.findByRole("region", { name: "My courses" });
+    expect(
+      screen.queryByRole("link", { name: "Billing → Purchases" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("curso concluido abre na capa da area de membros, nao na ultima aula", async () => {
+    fixtures.enrollments = [
+      {
+        ...fixtures.base[0],
+        status: "completed",
+        progressPercent: 100,
+        lastLessonId: "l4",
+      },
+    ];
+    render(<LearnDashboard />);
+
+    const region = await screen.findByRole("region", { name: "My courses" });
+    expect(within(region).getByRole("link", { name: "Open" })).toHaveAttribute(
+      "href",
+      "/learn/courses/effective-communication",
+    );
+  });
+
   it("mostra a proxima live com 'Join' e as tres ultimas novidades com destino", async () => {
     render(<LearnDashboard />);
 

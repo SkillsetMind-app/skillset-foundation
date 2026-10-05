@@ -136,7 +136,7 @@ describe("subscribeToViewableTeacherCourse", () => {
 });
 
 /** Chainable stub recording the columns and filters of every read. */
-function recordingClient() {
+function recordingClient(rows: unknown[] = [courseRow]) {
   const reads: { columns: string; filters: string[] }[] = [];
   supabaseMocks.getSupabaseBrowserClient.mockReturnValue({
     from: () => ({
@@ -154,7 +154,7 @@ function recordingClient() {
           },
           limit: () => builder,
           then: (resolve: (value: unknown) => void) =>
-            resolve({ data: [courseRow], error: null }),
+            resolve({ data: rows, error: null }),
         };
         return builder;
       },
@@ -187,5 +187,13 @@ describe("student dashboard course reads", () => {
     ]);
     expect(reads.every((read) => !read.columns.includes("modules"))).toBe(true);
     expect(courses).toHaveLength(1);
+  });
+
+  it("never offers an internal smoke-test course under 'More from <instructor>'", async () => {
+    recordingClient([courseRow, { ...courseRow, id: "smoke-checkout-1" }]);
+
+    const courses = await fetchPublishedCoursesForRows([], ["teacher-1"]);
+
+    expect(courses.map((course) => course.id)).toEqual(["course-abc123"]);
   });
 });

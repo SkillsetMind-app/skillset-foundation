@@ -37,7 +37,6 @@ import { logSubscriptionError } from "@/lib/data/subscription-error";
 import {
   automaticRefundProgressCap,
   automaticRefundWindowDays,
-  isRefundableEnrollmentSource,
 } from "@/lib/payments/rules";
 
 const dayMillis = 24 * 60 * 60 * 1000;
@@ -201,16 +200,19 @@ export function LearnDashboard() {
   }, [eventBuckets]);
 
   // O aviso de reembolso aparecia em toda visita. Agora so enquanto serve:
-  // ha uma compra paga ainda dentro das regras do reembolso automatico. A
-  // matricula paga nasce no webhook, entao createdAt ~ data do pagamento; o
-  // servidor confere de novo no pedido.
+  // ha uma compra paga ainda dentro das regras do reembolso automatico. So
+  // "payment": assinatura nao gera pedido, entao nao ha o que reembolsar em
+  // Purchases. A janela usa createdAt da matricula, nao o paid_at do pedido
+  // que o servidor usa: um acesso reconcedido mantem o createdAt antigo e o
+  // aviso pode faltar numa recompra elegivel. Billing segue sendo a fonte da
+  // verdade; isto e so um atalho.
   const hasRefundablePurchase = useMemo(() => {
     // Same wall-clock read as above: display-only, staleness is harmless.
     // eslint-disable-next-line react-hooks/purity
     const now = Date.now();
     return enrollments.some(
       (enrollment) =>
-        isRefundableEnrollmentSource(enrollment.source)
+        enrollment.source === "payment"
         && canOpenEnrollment(enrollment.status)
         && enrollment.progressPercent < automaticRefundProgressCap
         && now - Date.parse(String(enrollment.createdAt ?? ""))
@@ -322,10 +324,11 @@ export function LearnDashboard() {
 
   // Um destino so por curso, nos dois lugares em que ele aparece: a area de
   // membros, ja na aula de retomar — direto na aula, nao na capa (?lesson= e
-  // o endereco da aula na sala). Antes "My courses" abria a capa.
+  // o endereco da aula na sala). Antes "My courses" abria a capa. Curso
+  // concluido nao tem o que retomar: abre na capa, como antes.
   const courseLink = (enrollment: Enrollment) => {
     const course = resolveCourse(enrollment);
-    const resume = course
+    const resume = course && canContinueEnrollment(enrollment.status)
       ? getResumeCourseLesson(course, enrollment.lastLessonId)
       : null;
     const base = `/learn/courses/${course ? enrollment.courseSlug : enrollment.courseId}`;

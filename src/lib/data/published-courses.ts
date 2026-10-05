@@ -191,7 +191,11 @@ export async function fetchPublishedCoursesForRows(
     if (result.error) throw result.error;
     for (const row of result.data ?? []) byId.set(row.id, row);
   }
-  return slimRowsToTeacherCourses(Array.from(byId.values()));
+  // Same rule as every browse list: internal smoke courses are reachable by
+  // URL only, never offered.
+  return slimRowsToTeacherCourses(Array.from(byId.values())).filter(
+    (course) => !isInternalSmokeCourse(course),
+  );
 }
 
 export function subscribeToPublishedTeacherCoursesByOwner(
