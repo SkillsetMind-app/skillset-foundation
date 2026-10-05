@@ -2490,7 +2490,7 @@ select:focus-visible {
 .platform-sidebar {
   position: relative;
   /* Above .platform-topbar (z-index 60) yet below full-screen modals — the
-     upgrade modal (z-70) and the legal modal (z-80) must still cover the rail.
+     upgrade modal (z-70) and the legal modal (z-85) must still cover the rail.
      (The collapse toggle used to overflow the rail's edge and needed this to
      show over the topbar; it now lives inside the rail, as its last item.) */
   z-index: 65;
@@ -2587,14 +2587,14 @@ select:focus-visible {
 }
 
 /* ─── Cookie consent banner ──────────────────────────────────────────────
-   Fixed, non-modal bottom banner. z-index sits above the mobile nav menu
-   (z-46) but below the legal-acceptance modal (z-50) so a forced legal
-   re-acceptance always stays on top. */
+   Fixed, non-modal bottom banner. z-index sits above the platform sidebar
+   (65) and the advisor button (68), which hid the start of its text, but
+   below the modals (70) and the legal-acceptance modal (85). */
 .cookie-consent {
   position: fixed;
   inset-inline: 0;
   bottom: 0;
-  z-index: 48;
+  z-index: 69;
   padding: 0.875rem 1rem calc(0.875rem + env(safe-area-inset-bottom, 0px));
   background: color-mix(in srgb, var(--color-surface) 97%, transparent);
   border-top: 1px solid var(--color-line);

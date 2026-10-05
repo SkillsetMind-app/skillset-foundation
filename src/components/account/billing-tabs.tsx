@@ -565,7 +565,7 @@ function RefundModal({
     <div
       ref={dialogRef}
       tabIndex={-1}
-      className="fixed inset-0 z-50 grid place-items-center bg-[rgba(7,9,13,0.55)] p-4 outline-none"
+      className="fixed inset-0 z-[70] grid place-items-center bg-[rgba(7,9,13,0.55)] p-4 outline-none"
       role="dialog"
       aria-modal="true"
       aria-label={t("accountBilling.requestRefund")}
