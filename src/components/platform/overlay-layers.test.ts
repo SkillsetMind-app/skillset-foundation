@@ -37,6 +37,11 @@ describe("camadas das janelas de tela cheia", () => {
       ),
     );
 
+  // Lista vazia vira zero testes e passa calada: o padrão de classe mudou.
+  it("acha as janelas de tela cheia", () => {
+    expect(overlays.length).toBeGreaterThan(0);
+  });
+
   it.each(overlays)("%s fica acima da barra lateral (z %i)", (_, z) => {
     expect(z).toBeGreaterThan(sidebarZ);
   });
