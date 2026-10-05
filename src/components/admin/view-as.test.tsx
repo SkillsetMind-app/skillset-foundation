@@ -127,6 +127,17 @@ describe("view-as preview", () => {
     expect(window.sessionStorage.getItem("skillsetmind.viewAs")).toBeNull();
   });
 
+  it("previews Team with every role a real staff member holds", () => {
+    // Accepting a staff invitation grants support + moderator + ops together;
+    // support alone does not even open /ops, so the preview showed nothing.
+    renderWith(["admin"]);
+
+    fireEvent.click(screen.getByRole("button", { name: "Team" }));
+
+    expect(screen.getByTestId("roles").textContent).toBe("support,moderator,ops");
+    expect(screen.getByTestId("viewAs")).toHaveTextContent("support");
+  });
+
   it.each([
     ["student", "Learner", "Estudiante"],
     ["teacher", "Instructor", "Instructor"],

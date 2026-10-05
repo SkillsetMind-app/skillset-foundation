@@ -6,15 +6,17 @@ import { sendOpsAlert } from "@/lib/ops/alert";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 
 // GET /api/cron/ops-inbox — tells a human when something is waiting for staff:
-// a support ticket, a community report, or a creator verification. All three
-// are written straight from the browser into Supabase, so until now staff
-// only saw them by opening /ops.
+// a support ticket, a community report, a creator verification, or a privacy
+// request (account deletion / data export, which runs on a 30-day clock).
+// None of them notified anyone, so until now staff only saw them by opening /ops.
 //
 // Same shape and anti-spam as /api/cron/stripe-attention, called by the same
 // hourly workflow (.github/workflows/stripe-attention.yml), no state between
 // runs:
-//   - alert when at least one item arrived in the last 2 h 15 min (runs are
-//     hourly; the slack keeps a late or skipped GitHub run from losing it);
+//   - alert when at least one item arrived in the last 70 min: runs are hourly,
+//     so each item alerts once (twice only if it lands in the 10 min of slack
+//     before a run). A run more than 10 min late can miss an item's "new"
+//     alert; it still shows in the daily reminder;
 //   - otherwise, one reminder a day at 12:00 UTC while anything is still open.
 //
 // Only ids and timestamps are read, and only counts, the oldest age and at
@@ -27,7 +29,7 @@ import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 export const dynamic = "force-dynamic";
 
 const HOUR_MS = 60 * 60 * 1000;
-const NEW_WINDOW_MS = 2 * HOUR_MS + 15 * 60 * 1000;
+const NEW_WINDOW_MS = 70 * 60 * 1000;
 const REMINDER_UTC_HOUR = 12;
 const MAX_IDS = 5;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -42,6 +44,8 @@ const QUEUES = [
   { kind: "tickets", table: "support_tickets", statuses: ["open", "in_review"], at: "created_at" },
   { kind: "reports", table: "community_reports", statuses: ["open"], at: "created_at" },
   { kind: "verifications", table: "creator_verification_cases", statuses: ["pending"], at: "updated_at" },
+  // requested_at is set by the request_account_action RPC, not the browser.
+  { kind: "privacy", table: "account_action_requests", statuses: ["pending", "processing"], at: "requested_at" },
 ] as const;
 
 type Kind = (typeof QUEUES)[number]["kind"];
@@ -59,7 +63,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ ok: false, reason: "service_role_missing" }, { status: 500 });
   }
 
-  // ponytail: untyped client so one loop covers three tables; the select is
+  // ponytail: untyped client so one loop covers every table; the select is
   // two columns per table and the tests pin them.
   const client = admin as unknown as SupabaseClient;
   const results = await Promise.all(
@@ -85,17 +89,19 @@ export async function GET(request: Request) {
     tickets: open.tickets.filter(pick).length,
     reports: open.reports.filter(pick).length,
     verifications: open.verifications.filter(pick).length,
+    privacy: open.privacy.filter(pick).length,
   });
+  const sum = (count: Record<Kind, number>) => Object.values(count).reduce((a, b) => a + b, 0);
   const total = counts(() => true);
   const fresh = counts((item) => item.at > now - NEW_WINDOW_MS);
 
-  if (total.tickets + total.reports + total.verifications === 0) {
+  if (sum(total) === 0) {
     return NextResponse.json({ ok: true, open: total, alerted: false });
   }
 
   const times = Object.values(open).flat().map((item) => item.at).filter(Number.isFinite);
   const oldestHours = times.length ? Math.max(0, Math.floor((now - Math.min(...times)) / HOUR_MS)) : null;
-  const reason = fresh.tickets + fresh.reports + fresh.verifications > 0 ? "new"
+  const reason = sum(fresh) > 0 ? "new"
     : new Date(now).getUTCHours() === REMINDER_UTC_HOUR ? "daily"
     : null;
   const result = { open: total, new: fresh, oldest_hours: oldestHours };
@@ -115,19 +121,22 @@ export async function GET(request: Request) {
     : await sendOpsAlert({
       event: "ops.inbox.new",
       severity: "warn",
-      summary: `${lead}, ${shown.reports} report(s), ${shown.verifications} verification(s) waiting. Oldest open: ${oldestHours ?? "?"} h. Open /ops.`,
+      summary: `${lead}, ${shown.reports} report(s), ${shown.verifications} verification(s), ${shown.privacy} privacy request(s) waiting. Oldest open: ${oldestHours ?? "?"} h. Open /ops.`,
       context: {
         reason,
         oldest_hours: oldestHours,
         tickets_new: fresh.tickets,
         reports_new: fresh.reports,
         verifications_new: fresh.verifications,
+        privacy_new: fresh.privacy,
         tickets_open: total.tickets,
         reports_open: total.reports,
         verifications_open: total.verifications,
+        privacy_open: total.privacy,
         ticket_ids: ids("tickets"),
         report_ids: ids("reports"),
         verification_ids: ids("verifications"),
+        privacy_ids: ids("privacy"),
       },
     }) ? null
     : "alert_not_delivered";

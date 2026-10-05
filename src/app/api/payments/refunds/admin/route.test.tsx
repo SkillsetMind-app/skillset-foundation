@@ -96,6 +96,21 @@ describe("POST /api/payments/refunds/admin", () => {
     mocks.getStripe.mockReturnValue({ refunds: { create: mocks.createRefund } });
   });
 
+  // The proxy already refuses cross-site API mutations; the route refuses them
+  // too, like operations/invitations, so a matcher change cannot open it.
+  it("refuses a foreign origin before authorization or any Stripe call", async () => {
+    mocks.getAdmin.mockReturnValue(adminWithOrder(ORDER));
+    const response = await POST(new Request("http://localhost/api/payments/refunds/admin", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Origin: "https://foreign.example.test" },
+      body: JSON.stringify({ orderId: "order-1" }),
+    }));
+
+    expect(response.status).toBe(403);
+    expect(mocks.requireAdminUserId).not.toHaveBeenCalled();
+    expect(mocks.createRefund).not.toHaveBeenCalled();
+  });
+
   // Two legitimate partial refunds of the same size on one order used to mint
   // the same idempotency key, so Stripe replayed the first and the second
   // silently never happened — the buyer was short-changed while the admin UI

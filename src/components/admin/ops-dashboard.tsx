@@ -51,6 +51,7 @@ export function OpsDashboard() {
         [getOpsNavItem("verification").href]: counts.pendingVerifications,
         [getOpsNavItem("community").href]: counts.openReports,
         [getOpsNavItem("support").href]: counts.openTickets,
+        [getOpsNavItem("users").href]: counts.openPrivacyRequests,
       }}
     >
       <div className="grid min-w-0 gap-5">

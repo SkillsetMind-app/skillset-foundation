@@ -531,6 +531,8 @@
         "yes": "sí",
         "no": "no",
         "searchLabel": "Buscar a una persona",
+        "confirmAdminGrant": "¿Convertir a {person} en administrador? Los administradores pueden cambiar el acceso de cualquier persona, emitir reembolsos y ver todas las cuentas.",
+        "confirmAdminRemove": "¿Quitar el acceso de administrador a {person}?",
         "searchPlaceholder": "Nombre o correo electrónico",
         "loading": "Cargando la lista de personas…",
         "empty": "Nadie coincide con esta búsqueda.",
@@ -961,6 +963,7 @@
         "user": "Usuario",
         "requested": "Solicitada",
         "requestId": "ID de solicitud",
+        "deadline": "Día {day} de 30",
         "actioned": "Gestionada",
         "by": "por",
         "types": {

@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
+import { subscribeToAccountActionRequests } from "./account-actions";
 import { subscribeToCommunityReports } from "./community-posts";
 import { subscribeToAdminSupportTickets } from "./support-tickets";
 
@@ -121,5 +122,69 @@ describe.each(queues)("$name refresh ordering", ({ subscribe, row }) => {
     expect(next).toHaveBeenCalledExactlyOnceWith([]);
     expect(onError).toHaveBeenCalledTimes(1);
     stop();
+  });
+});
+
+describe("admin support queue order", () => {
+  it("lists unresolved tickets oldest first, then resolved ones by latest resolution", async () => {
+    const client = queueClient();
+    client.read.mockResolvedValue({ data: [
+      { id: "resolved-old", subject: "A", status: "resolved", created_at: "2026-09-01T10:00:00Z", updated_at: "2026-09-02T10:00:00Z" },
+      { id: "open-new", subject: "B", status: "open", created_at: "2026-09-10T10:00:00Z", updated_at: "2026-09-10T10:00:00Z" },
+      { id: "resolved-new", subject: "C", status: "resolved", created_at: "2026-09-03T10:00:00Z", updated_at: "2026-09-12T10:00:00Z" },
+      { id: "review-old", subject: "Z", status: "in_review", created_at: "2026-09-05T10:00:00Z", updated_at: "2026-09-11T10:00:00Z" },
+    ], error: null });
+    const next = vi.fn();
+    const stop = subscribeToAdminSupportTickets(next, vi.fn());
+
+    await vi.waitFor(() => expect(next).toHaveBeenCalledTimes(1));
+    expect(next.mock.calls[0][0].map((ticket: { id: string }) => ticket.id))
+      .toEqual(["review-old", "open-new", "resolved-new", "resolved-old"]);
+    stop();
+  });
+});
+
+// Mirrors realtime-js: one channel per topic, and a second identical
+// postgres_changes binding on that channel is dropped (only logged).
+function sharedTopicClient(rows: Record<string, unknown>[]) {
+  const topics = new Map<string, Array<() => void>>();
+  const read = vi.fn(async () => ({ data: rows, error: null }));
+  const query = { select: () => query, order: () => query, limit: read };
+  mocks.client = {
+    from: () => query,
+    channel: (topic: string) => {
+      const listeners = topics.get(topic) ?? [];
+      topics.set(topic, listeners);
+      const channel = {
+        on(_event: string, _filter: unknown, callback: () => void) {
+          if (listeners.length === 0) listeners.push(callback);
+          return channel;
+        },
+        subscribe() { return channel; },
+      };
+      return channel;
+    },
+    removeChannel: vi.fn(),
+  };
+  return { read, notifyAll: () => topics.forEach((listeners) => listeners.forEach((listener) => listener())) };
+}
+
+describe("account action requests realtime", () => {
+  it("refreshes every subscriber (Ops badge and panel), not only the first on a topic", async () => {
+    const client = sharedTopicClient([
+      { id: "request-test", status: "pending", type: "data_export", requested_by: "learner-test" },
+    ]);
+    const badge = vi.fn();
+    const panel = vi.fn();
+    const stops = [subscribeToAccountActionRequests(badge, vi.fn()), subscribeToAccountActionRequests(panel, vi.fn())];
+    await vi.waitFor(() => expect(client.read).toHaveBeenCalledTimes(2));
+
+    client.notifyAll();
+
+    await vi.waitFor(() => {
+      expect(badge).toHaveBeenCalledTimes(2);
+      expect(panel).toHaveBeenCalledTimes(2);
+    });
+    stops.forEach((stop) => stop());
   });
 });

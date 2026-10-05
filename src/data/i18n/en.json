@@ -531,6 +531,8 @@
         "yes": "yes",
         "no": "no",
         "searchLabel": "Find someone",
+        "confirmAdminGrant": "Make {person} an administrator? Admins can change anyone's access, issue refunds and see every account.",
+        "confirmAdminRemove": "Remove administrator access from {person}?",
         "searchPlaceholder": "Name or email",
         "loading": "Loading the roster…",
         "empty": "No one matches that search.",
@@ -961,6 +963,7 @@
         "user": "User",
         "requested": "Requested",
         "requestId": "Request ID",
+        "deadline": "Day {day} of 30",
         "actioned": "Actioned",
         "by": "by",
         "types": {

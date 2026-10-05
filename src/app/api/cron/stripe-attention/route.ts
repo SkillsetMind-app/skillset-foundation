@@ -14,10 +14,11 @@ import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 // once a day, so the hourly tick comes from GitHub).
 //
 // Anti-spam, with no state between runs:
-//   - alert when at least one event entered the list in the last 2 hours
-//     (an event enters 15 min after its claim, see the view). Runs are hourly,
-//     so a new stuck event is reported on 1-2 runs; 2 h instead of 1 h keeps a
-//     late or skipped GitHub run from losing it;
+//   - alert when at least one event entered the list in the last 70 min. An
+//     event enters 15 min after its claim (see the view), so the window on
+//     claimed_at is 70 + 15 = 85 min. Runs are hourly: each event alerts once
+//     (twice only inside the 10 min of slack). A run more than 10 min late can
+//     miss the "new" alert; the event still shows in the daily reminder;
 //   - otherwise, one reminder a day at 12:00 UTC while the list is not empty.
 // Everything else stays silent. The alert carries the count and the oldest
 // age only: no event id, no email, no amount.
@@ -30,7 +31,7 @@ import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 export const dynamic = "force-dynamic";
 
 const HOUR_MS = 60 * 60 * 1000;
-const NEW_WINDOW_MS = 2 * HOUR_MS + 15 * 60 * 1000;
+const NEW_WINDOW_MS = (70 + 15) * 60 * 1000;
 const REMINDER_UTC_HOUR = 12;
 
 export async function GET(request: Request) {

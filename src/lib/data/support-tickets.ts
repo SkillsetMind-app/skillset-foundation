@@ -6,6 +6,7 @@ import type {
   SupportTicketCategory,
   SupportTicketStatus,
 } from "@/domain/support-ticket";
+import { toDate } from "@/lib/format-date";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import type { Database } from "@/lib/supabase/database.types";
 
@@ -106,6 +107,17 @@ export function subscribeToUserSupportTickets(
   };
 }
 
+// Whoever has waited longest is answered first; resolved tickets sink to the
+// bottom, most recently closed first.
+// ponytail: every ticket is still read, resolved included; cap the resolved
+// tail in the query (second read or RPC) once it gets long enough to matter.
+function adminQueueOrder(left: SupportTicket, right: SupportTicket): number {
+  const leftDone = left.status === "resolved";
+  if (leftDone !== (right.status === "resolved")) return leftDone ? 1 : -1;
+  const time = (ticket: SupportTicket) => toDate(leftDone ? ticket.updatedAt : ticket.createdAt)?.getTime() ?? 0;
+  return leftDone ? time(right) - time(left) : time(left) - time(right);
+}
+
 export function subscribeToAdminSupportTickets(
   callback: (tickets: SupportTicket[]) => void,
   onError: (error: Error) => void,
@@ -126,11 +138,7 @@ export function subscribeToAdminSupportTickets(
       return;
     }
 
-    callback(
-      (data ?? [])
-        .map(rowToSupportTicket)
-        .sort((left, right) => left.subject.localeCompare(right.subject)),
-    );
+    callback((data ?? []).map(rowToSupportTicket).sort(adminQueueOrder));
   };
 
   void load();

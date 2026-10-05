@@ -117,6 +117,30 @@ describe("stripe attention cron", () => {
     expect(mocks.fetch).not.toHaveBeenCalled();
   });
 
+  // An event enters the view 15 min after its claim and runs are hourly, so the
+  // window on claimed_at is one run plus that lag: each event alerts once.
+  it("does not alert again for an event the previous hourly run already reported", async () => {
+    // Claimed 06:37, in the view since 06:52: the 07:07 run already alerted.
+    stuckFor(1.5);
+
+    const response = await call(`Bearer ${CRON_TOKEN}`);
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ count: 1, alerted: false });
+    expect(mocks.fetch).not.toHaveBeenCalled();
+  });
+
+  it("still alerts for an event that entered the view after the previous run", async () => {
+    // Claimed 72 min ago = in the view for 57 min: the 07:07 run could not see it.
+    stuckFor(1.2);
+
+    const response = await call(`Bearer ${CRON_TOKEN}`);
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ count: 1, alerted: true });
+    expect(sentBody().context).toMatchObject({ reason: "new" });
+  });
+
   it("reminds once a day while something is still stuck", async () => {
     vi.setSystemTime(Date.parse("2026-09-15T12:07:00Z"));
     stuckFor(30, 5);

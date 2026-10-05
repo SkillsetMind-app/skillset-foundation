@@ -5,19 +5,22 @@ import { useOpsQueueCounts } from "./ops-overview-metrics";
 import type { CommunityReport } from "@/domain/community-report";
 import type { CreatorVerificationCase } from "@/domain/creator-verification";
 import type { SupportTicket } from "@/domain/support-ticket";
+import type { AccountActionRequest } from "@/lib/data/account-actions";
 
 type Observer<T> = { next: (rows: T[]) => void; error: (error: Error) => void; stop: ReturnType<typeof vi.fn> };
 const mocks = vi.hoisted(() => ({
   verification: null as Observer<CreatorVerificationCase> | null,
   support: null as Observer<SupportTicket> | null,
   reports: null as Observer<CommunityReport> | null,
-  subscribeVerification: vi.fn(), subscribeSupport: vi.fn(), subscribeReports: vi.fn(),
+  privacy: null as Observer<AccountActionRequest> | null,
+  subscribeVerification: vi.fn(), subscribeSupport: vi.fn(), subscribeReports: vi.fn(), subscribePrivacy: vi.fn(),
   user: { uid: "operator-test", roles: ["admin"] },
 }));
 vi.mock("@/components/auth/auth-provider", () => ({ useAuth: () => ({ user: mocks.user }) }));
 vi.mock("@/lib/data/creator-verification", () => ({ subscribeToVerificationQueue: mocks.subscribeVerification }));
 vi.mock("@/lib/data/support-tickets", () => ({ subscribeToAdminSupportTickets: mocks.subscribeSupport }));
 vi.mock("@/lib/data/community-posts", () => ({ subscribeToCommunityReports: mocks.subscribeReports }));
+vi.mock("@/lib/data/account-actions", () => ({ subscribeToAccountActionRequests: mocks.subscribePrivacy }));
 
 const verificationCase: CreatorVerificationCase = {
   id: "case-test", creatorId: "creator-test", status: "pending", profession: "Coach",
@@ -35,10 +38,15 @@ beforeEach(() => {
   vi.clearAllMocks();
   mocks.user = { uid: "operator-test", roles: ["admin"] };
   mocks.verification = mocks.support = mocks.reports = null;
+  mocks.privacy = null;
   mocks.subscribeVerification.mockImplementation((next, error) => { mocks.verification = { next, error, stop: vi.fn() }; return mocks.verification.stop; });
   mocks.subscribeSupport.mockImplementation((next, error) => { mocks.support = { next, error, stop: vi.fn() }; return mocks.support.stop; });
   mocks.subscribeReports.mockImplementation((next, error) => { mocks.reports = { next, error, stop: vi.fn() }; return mocks.reports.stop; });
+  mocks.subscribePrivacy.mockImplementation((next, error) => { mocks.privacy = { next, error, stop: vi.fn() }; return mocks.privacy.stop; });
 });
+function privacyRequest(status: AccountActionRequest["status"]): AccountActionRequest {
+  return { id: status, type: "account_deletion", requestedBy: "learner-test", email: null, status, requestedAt: null, updatedAt: null, resolvedBy: null, resolvedAt: null };
+}
 afterEach(() => { cleanup(); vi.restoreAllMocks(); });
 
 describe("independent Ops queue counts", () => {
@@ -59,6 +67,15 @@ describe("independent Ops queue counts", () => {
     expect(result.current.openReports).toBe(1);
     act(() => mocks.verification!.next([]));
     expect(result.current.pendingVerifications).toBe(0);
+  });
+
+  it("counts privacy requests still waiting on staff (pending or processing)", () => {
+    const { result } = renderHook(() => useOpsQueueCounts());
+    expect(result.current.openPrivacyRequests).toBe("loading");
+    act(() => mocks.privacy!.next([
+      privacyRequest("pending"), privacyRequest("processing"), privacyRequest("completed"), privacyRequest("rejected"),
+    ]));
+    expect(result.current.openPrivacyRequests).toBe(2);
   });
 
   it("distinguishes a failed queue from zero while keeping other numbers usable", () => {
@@ -94,6 +111,7 @@ describe("independent Ops queue counts", () => {
     expect(mocks.subscribeVerification).toHaveBeenCalledTimes(1);
     expect(mocks.subscribeSupport).not.toHaveBeenCalled();
     expect(mocks.subscribeReports).not.toHaveBeenCalled();
+    expect(mocks.subscribePrivacy).not.toHaveBeenCalled();
   });
 
   it("cleans up the three subscriptions without restarting on a rerender", () => {
