@@ -69,6 +69,19 @@ vi.mock("@/lib/data/user-profiles", () => ({
 
 import { CreatorOpsHub } from "@/components/teacher/creator-ops-hub";
 import { TeacherStudioInsights } from "@/components/teacher/teacher-studio-insights";
+import type { Order } from "@/domain/order";
+import type { TeacherCourse } from "@/domain/teacher-course";
+
+// Na home os dados chegam por props (a Home le uma vez e repassa).
+function HomeInsights() {
+  return (
+    <TeacherStudioInsights
+      courses={mocks.courses as TeacherCourse[]}
+      orders={mocks.orders as Order[]}
+      payoutsPending={false}
+    />
+  );
+}
 
 function daysAgo(days: number) {
   return new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
@@ -207,7 +220,7 @@ describe("Relatorios do professor", () => {
     ).toBeInTheDocument();
     reports.unmount();
 
-    render(<TeacherStudioInsights />);
+    render(<HomeInsights />);
     expect(
       await screen.findByRole("img", { name: "Teacher revenue chart" }),
     ).toBeInTheDocument();
@@ -265,7 +278,7 @@ describe("datas dos gráficos no idioma da pessoa", () => {
   const charts = [
     { name: "relatório diário", Component: CreatorOpsHub, period: "30d", englishLabel: "Aug 10", spanishLabel: "10 ago" },
     { name: "relatório mensal", Component: CreatorOpsHub, period: "12m", englishLabel: "Oct", spanishLabel: "oct" },
-    { name: "home mensal", Component: TeacherStudioInsights, period: "12m", englishLabel: "Oct", spanishLabel: "oct" },
+    { name: "home mensal", Component: HomeInsights, period: "12m", englishLabel: "Oct", spanishLabel: "oct" },
   ];
 
   it.each(charts)("$name já abre com datas em espanhol", ({ Component, period, spanishLabel, englishLabel }) => {

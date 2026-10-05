@@ -9,9 +9,8 @@ import {
   MessageSquareText,
   Sparkles,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
-import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { PeriodTabs } from "@/components/shared/period-tabs";
 import { StatusChip } from "@/components/shared/status-chip";
@@ -23,10 +22,6 @@ import {
 } from "@/domain/creator-reports";
 import type { Order } from "@/domain/order";
 import type { TeacherCourse } from "@/domain/teacher-course";
-import { subscribeToTeacherOrders } from "@/lib/data/orders";
-import { logSubscriptionError } from "@/lib/data/subscription-error";
-import { subscribeToTeacherCourses } from "@/lib/data/teacher-courses";
-import { subscribeToUserProfile } from "@/lib/data/user-profiles";
 
 const revenueRanges: RevenueRange[] = ["3m", "6m", "12m", "all"];
 
@@ -51,54 +46,21 @@ type ActivityItem = {
   icon: "alert" | "clock" | "flag" | "message" | "sparkle";
 };
 
-export function TeacherStudioInsights() {
-  const { user } = useAuth();
+// The Home loads courses, orders and the profile once and passes them down;
+// this block used to open its own three subscriptions on top of the Home's.
+// `payoutsPending`: a paid product is waiting on Stripe. Before, any creator
+// without Stripe got it as URGENT, even with no course or only free ones.
+export function TeacherStudioInsights({
+  courses,
+  orders,
+  payoutsPending,
+}: {
+  courses: TeacherCourse[];
+  orders: Order[];
+  payoutsPending: boolean;
+}) {
   const { locale, t } = useTranslation();
-  const [courses, setCourses] = useState<TeacherCourse[]>([]);
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [payoutsReady, setPayoutsReady] = useState(false);
   const [revenueRange, setRevenueRange] = useState<RevenueRange>("12m");
-
-  useEffect(() => {
-    if (!user) {
-      return;
-    }
-
-    return subscribeToTeacherCourses(
-      user.uid,
-      setCourses,
-      logSubscriptionError("TeacherStudioInsights.courses"),
-    );
-  }, [user]);
-
-  useEffect(() => {
-    if (!user) {
-      return;
-    }
-
-    return subscribeToTeacherOrders(
-      user.uid,
-      setOrders,
-      logSubscriptionError("TeacherStudioInsights.orders"),
-    );
-  }, [user]);
-
-  useEffect(() => {
-    if (!user) {
-      return;
-    }
-
-    return subscribeToUserProfile(
-      user.uid,
-      (profile) => {
-        setPayoutsReady(Boolean(
-          profile?.stripeConnectChargesEnabled
-          && profile?.stripeConnectPayoutsEnabled,
-        ));
-      },
-      () => setPayoutsReady(false),
-    );
-  }, [user]);
 
   const paidOrders = orders.filter((order) => order.status === "paid");
   // Historico de venda = existe pedido pago, nao "entrou dinheiro": um pedido
@@ -120,7 +82,7 @@ export function TeacherStudioInsights() {
     () => buildTopCourses(courses, paidOrders),
     [courses, paidOrders],
   );
-  const activity = buildActivity(courses, payoutsReady, t);
+  const activity = buildActivity(courses, payoutsPending, t);
 
   return (
     <div className="grid gap-8">
@@ -261,7 +223,7 @@ function buildTopCourses(courses: TeacherCourse[], paidOrders: Order[]) {
 
 function buildActivity(
   courses: TeacherCourse[],
-  payoutsReady: boolean,
+  payoutsPending: boolean,
   t: (key: string) => string,
 ): ActivityItem[] {
   const items: ActivityItem[] = [];
@@ -270,7 +232,7 @@ function buildActivity(
   const needsChanges = courses.find((course) => course.status === "needs_changes");
   const inReview = courses.find((course) => course.status === "in_review");
 
-  if (!payoutsReady) {
+  if (payoutsPending) {
     items.push({
       title: t("teach.insights.actPayoutTitle"),
       detail: t("teach.insights.actPayoutDetail"),

@@ -1,15 +1,47 @@
 import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { TeacherStudioDashboard } from "@/components/teacher/teacher-studio-dashboard";
 
-const { mockUser } = vi.hoisted(() => ({
-  mockUser: {
-    uid: "teacher-1",
-    displayName: "Patrick Simon",
-    roles: ["teacher"],
-  },
-}));
+const { mockUser, state, data } = vi.hoisted(() => {
+  const state = {
+    courses: [] as unknown[],
+    orders: [] as unknown[],
+    profile: { creatorVerificationStatus: "none" } as Record<string, unknown>,
+    requireVerification: false,
+  };
+
+  return {
+    mockUser: {
+      uid: "teacher-1",
+      displayName: "Patrick Simon",
+      roles: ["teacher"],
+    },
+    state,
+    // Espioes, nao so stubs: a prova de que a Home le cada dado UMA vez conta
+    // as chamadas a estas tres funcoes.
+    data: {
+      subscribeToTeacherCourses: vi.fn(
+        (_uid: string, onData: (courses: unknown[]) => void) => {
+          onData(state.courses);
+          return () => undefined;
+        },
+      ),
+      subscribeToTeacherOrders: vi.fn(
+        (_uid: string, onData: (orders: unknown[]) => void) => {
+          onData(state.orders);
+          return () => undefined;
+        },
+      ),
+      subscribeToUserProfile: vi.fn(
+        (_uid: string, onData: (profile: unknown) => void) => {
+          onData(state.profile);
+          return () => undefined;
+        },
+      ),
+    },
+  };
+});
 
 vi.mock("@/components/auth/auth-provider", () => ({
   useAuth: () => ({
@@ -21,26 +53,16 @@ vi.mock("@/components/auth/auth-provider", () => ({
 // ingles real. O mock antigo devolvia a CHAVE crua para tudo que nao estava
 // no mapa, e a Home agora le todos os rotulos do dicionario.
 
-vi.mock("@/components/teacher/teacher-overview-metrics", () => ({
-  TeacherOverviewMetrics: () => <div>Overview metrics</div>,
-}));
-
-vi.mock("@/components/teacher/teacher-studio-insights", () => ({
-  TeacherStudioInsights: () => <div>Studio insights</div>,
-}));
-
 vi.mock("@/lib/data/teacher-courses", () => ({
-  subscribeToTeacherCourses: (_uid: string, onData: (courses: unknown[]) => void) => {
-    onData([]);
-    return () => undefined;
-  },
+  subscribeToTeacherCourses: data.subscribeToTeacherCourses,
 }));
 
 vi.mock("@/lib/data/orders", () => ({
-  subscribeToTeacherOrders: (_uid: string, onData: (orders: unknown[]) => void) => {
-    onData([]);
-    return () => undefined;
-  },
+  subscribeToTeacherOrders: data.subscribeToTeacherOrders,
+}));
+
+vi.mock("@/lib/data/creator-verification", () => ({
+  fetchRequireCreatorVerification: () => Promise.resolve(state.requireVerification),
 }));
 
 vi.mock("@/lib/data/enrollments", () => ({
@@ -64,29 +86,47 @@ vi.mock("@/lib/data/payout-ledger", () => ({
 
 vi.mock("@/lib/data/user-profiles", () => ({
   claimWelcomeTour: vi.fn(async () => false),
-  subscribeToUserProfile: (_uid: string, onData: (profile: unknown) => void) => {
-    onData({ creatorVerificationStatus: "none" });
-    return () => undefined;
-  },
+  subscribeToUserProfile: data.subscribeToUserProfile,
 }));
+
+function course(fields: Record<string, unknown>) {
+  return {
+    id: "c1",
+    title: "Breathwork Basics",
+    summary: "",
+    category: "",
+    status: "draft",
+    modules: [],
+    lessonCount: 1,
+    coverImageUrl: null,
+    paymentType: "one_time",
+    priceAmountMinor: 4900,
+    ...fields,
+  };
+}
+
+async function stepLabels() {
+  const list = await screen.findByRole("list", { name: "Creator next steps" });
+  return within(list)
+    .getAllByRole("listitem")
+    .map((item) => item.querySelector("strong")?.textContent);
+}
+
+function recommended() {
+  return screen.getByText("Recommended now").closest("aside") as HTMLElement;
+}
+
+beforeEach(() => {
+  state.courses = [];
+  state.orders = [];
+  state.profile = { creatorVerificationStatus: "none" };
+  state.requireVerification = false;
+  vi.clearAllMocks();
+});
 
 afterEach(cleanup);
 
 describe("TeacherStudioDashboard", () => {
-  it("matches the producer Home hierarchy with three next steps", async () => {
-    render(<TeacherStudioDashboard />);
-
-    const progress = await screen.findByRole("list", {
-      name: "Creator next steps",
-    });
-    const items = within(progress).getAllByRole("listitem");
-
-    expect(items).toHaveLength(3);
-    expect(within(progress).getByText("Create a product")).toBeInTheDocument();
-    expect(within(progress).getByText("Complete creator data")).toBeInTheDocument();
-    expect(within(progress).getByText("Prepare product to sell")).toBeInTheDocument();
-  });
-
   it("routes each viable format to the correct workflow", async () => {
     render(<TeacherStudioDashboard />);
 
@@ -115,6 +155,182 @@ describe("TeacherStudioDashboard", () => {
   });
 });
 
+// O que a pessoa sofria: o passo 2 so fechava com verificacao APROVADA e
+// mandava para /teach/verification, que ninguem exige; nao havia passo de
+// publicar; o progresso parava em 67% e o "Recomendado agora" era a
+// verificacao. Os passos agora sao as travas reais do publish.
+describe("Inicio do professor: os passos sao as travas reais do publish", () => {
+  it("professor novo: criar e publicar, sem Stripe nem verificacao", async () => {
+    render(<TeacherStudioDashboard />);
+
+    expect(await stepLabels()).toEqual(["Create a product", "Publish your product"]);
+    expect(screen.getByText("0 of 2 complete")).toBeInTheDocument();
+    expect(
+      within(recommended()).getByRole("heading", { name: "Create a product" }),
+    ).toBeInTheDocument();
+  });
+
+  it("curso pago em rascunho: Stripe entra antes do publish e vira o recomendado", async () => {
+    state.courses = [course({})];
+
+    render(<TeacherStudioDashboard />);
+
+    expect(await stepLabels()).toEqual([
+      "Create a product",
+      "Connect Stripe",
+      "Publish your product",
+    ]);
+    const steps = screen.getByRole("list", { name: "Creator next steps" });
+    // A frase que MOROU na faixa amarela permanente do topo do /teach.
+    expect(within(steps).getByText(/buyers are charged on it directly/i)).toBeInTheDocument();
+    expect(screen.getByText("1 of 3 complete")).toBeInTheDocument();
+    expect(
+      within(recommended()).getByRole("heading", { name: "Connect Stripe" }),
+    ).toBeInTheDocument();
+    expect(within(recommended()).getByRole("link", { name: /Connect Stripe/ })).toHaveAttribute(
+      "href",
+      "/account/payments#stripe-connect",
+    );
+  });
+
+  it("Stripe pronto: o recomendado e publicar, no painel de publicacao do curso", async () => {
+    state.courses = [course({})];
+    state.profile = {
+      creatorVerificationStatus: "none",
+      stripeConnectChargesEnabled: true,
+      stripeConnectPayoutsEnabled: true,
+    };
+
+    render(<TeacherStudioDashboard />);
+
+    await waitFor(() => {
+      expect(screen.getByText("2 of 3 complete")).toBeInTheDocument();
+    });
+    expect(
+      within(recommended()).getByRole("heading", { name: "Publish your product" }),
+    ).toBeInTheDocument();
+    expect(within(recommended()).getByRole("link", { name: /Review and publish/ })).toHaveAttribute(
+      "href",
+      "/teach/builder?courseId=c1&tab=review",
+    );
+  });
+
+  it("curso gratis nao pede Stripe", async () => {
+    state.courses = [course({ paymentType: "free", priceAmountMinor: 0 })];
+
+    render(<TeacherStudioDashboard />);
+
+    expect(await stepLabels()).toEqual(["Create a product", "Publish your product"]);
+  });
+
+  it("verificacao so entra quando a plataforma exige", async () => {
+    state.requireVerification = true;
+
+    render(<TeacherStudioDashboard />);
+
+    await waitFor(async () => {
+      expect(await stepLabels()).toEqual([
+        "Create a product",
+        "Professional verification",
+        "Publish your product",
+      ]);
+    });
+    const steps = screen.getByRole("list", { name: "Creator next steps" });
+    expect(
+      within(steps).getByRole("link", { name: /Professional verification/ }),
+    ).toHaveAttribute("href", "/teach/verification");
+  });
+
+  it("publicado: o passo de publicar esta feito", async () => {
+    state.courses = [course({ status: "published" })];
+    state.profile = {
+      stripeConnectChargesEnabled: true,
+      stripeConnectPayoutsEnabled: true,
+    };
+
+    render(<TeacherStudioDashboard />);
+
+    await waitFor(() => {
+      expect(screen.getByText("3 of 3 complete")).toBeInTheDocument();
+    });
+    expect(screen.getByText("100%")).toBeInTheDocument();
+  });
+});
+
+// Tres listas de "proximo passo" disputavam a mesma tela: os passos, os marcos
+// e a lista de atencao (que marcava o Stripe como URGENTE antes de existir
+// qualquer curso).
+describe("Inicio do professor: antes do 1o publish so a lista de passos guia", () => {
+  it("rascunho: sem marcos e sem a lista de atencao", async () => {
+    state.courses = [course({})];
+
+    render(<TeacherStudioDashboard />);
+
+    await screen.findByRole("list", { name: "Creator next steps" });
+    expect(screen.queryByRole("heading", { name: "Creator milestones" })).toBeNull();
+    expect(
+      screen.queryByRole("heading", { name: "What needs your attention today." }),
+    ).toBeNull();
+    expect(screen.queryByText("Finish your Stripe setup")).toBeNull();
+    // Os produtos e os formatos continuam.
+    expect(
+      screen.getByRole("heading", { name: "Products in your workspace" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Choose a product format" })).toBeInTheDocument();
+  });
+
+  it("depois do 1o publish os marcos e a lista de atencao voltam", async () => {
+    state.courses = [course({ status: "published", paymentType: "free", priceAmountMinor: 0 })];
+
+    render(<TeacherStudioDashboard />);
+
+    expect(
+      await screen.findByRole("heading", { name: "Creator milestones" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "What needs your attention today." }),
+    ).toBeInTheDocument();
+    // So produto gratis: nada de Stripe "urgente".
+    expect(screen.queryByText("Finish your Stripe setup")).toBeNull();
+  });
+
+  it("produto pago no ar sem Stripe: a lista de atencao cobra o Stripe", async () => {
+    state.courses = [course({ status: "published" })];
+
+    render(<TeacherStudioDashboard />);
+
+    expect(await screen.findByText("Finish your Stripe setup")).toBeInTheDocument();
+  });
+});
+
+describe("Inicio do professor: cada dado e lido uma vez", () => {
+  it("cursos, pedidos e perfil: uma leitura cada, com todos os blocos montados", async () => {
+    state.courses = [course({ status: "published" })];
+    state.orders = [
+      {
+        id: "o1",
+        courseId: "c1",
+        courseTitle: "Breathwork Basics",
+        status: "paid",
+        amountMinor: 4900,
+        currency: "usd",
+        createdAt: new Date(),
+      },
+    ];
+
+    render(<TeacherStudioDashboard />);
+
+    // Metricas, grafico (insights) e atividade recente na tela.
+    expect(await screen.findByText("Revenue, 30d")).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Revenue" })).toBeInTheDocument();
+    expect(await screen.findByText("New sale in Breathwork Basics")).toBeInTheDocument();
+
+    expect(data.subscribeToTeacherCourses).toHaveBeenCalledTimes(1);
+    expect(data.subscribeToTeacherOrders).toHaveBeenCalledTimes(1);
+    expect(data.subscribeToUserProfile).toHaveBeenCalledTimes(1);
+  });
+});
+
 // --- Onda 6: casca do professor -------------------------------------------
 
 describe("Home do professor: uma manchete, o que aconteceu e a vitrine", () => {
@@ -128,19 +344,6 @@ describe("Home do professor: uma manchete, o que aconteceu e a vitrine", () => {
       "Welcome back, Patrick",
     );
     expect(screen.queryByText("Producer home")).toBeNull();
-  });
-
-  it("o aviso do Stripe virou um passo da lista, sem faixa fixa", async () => {
-    render(<TeacherStudioDashboard />);
-
-    const steps = await screen.findByRole("list", { name: "Creator next steps" });
-    const step = within(steps).getByText("Complete creator data");
-
-    expect(step).toBeInTheDocument();
-    // A frase que MOROU na faixa amarela permanente do topo do /teach.
-    expect(
-      within(steps).getByText(/buyers are charged on it directly/i),
-    ).toBeInTheDocument();
   });
 
   it("mostra 'Recent activity' com estado vazio honesto para professor novo", async () => {

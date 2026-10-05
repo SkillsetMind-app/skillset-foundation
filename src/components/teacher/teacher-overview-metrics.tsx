@@ -1,15 +1,11 @@
 "use client";
 
 import { TrendingDown, TrendingUp } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
-import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import type { Order } from "@/domain/order";
 import type { TeacherCourse } from "@/domain/teacher-course";
-import { subscribeToTeacherOrders } from "@/lib/data/orders";
-import { logSubscriptionError } from "@/lib/data/subscription-error";
-import { subscribeToTeacherCourses } from "@/lib/data/teacher-courses";
 import { toDate } from "@/lib/format-date";
 
 const money = new Intl.NumberFormat("en", {
@@ -37,61 +33,19 @@ function percentDelta(
   return { label: `${up ? "+" : ""}${pct.toFixed(1)}%`, up };
 }
 
-export function TeacherOverviewMetrics() {
-  const { user } = useAuth();
+// The Home loads courses and orders once and passes them down; this block used
+// to open its own two subscriptions on top of the Home's.
+export function TeacherOverviewMetrics({
+  courses,
+  orders,
+  isLoading,
+}: {
+  courses: TeacherCourse[];
+  orders: Order[];
+  isLoading: boolean;
+}) {
   const { t } = useTranslation();
-  const [courses, setCourses] = useState<TeacherCourse[]>([]);
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [now] = useState(() => Date.now());
-
-  useEffect(() => {
-    if (!user) {
-      return;
-    }
-
-    try {
-      return subscribeToTeacherCourses(
-        user.uid,
-        (nextCourses) => {
-          setCourses(nextCourses);
-          setIsLoading(false);
-        },
-        () => setIsLoading(false),
-      );
-    } catch (error) {
-      // Data layer unavailable (e.g. Supabase client not configured): degrade to an
-      // empty state instead of crashing the teacher studio. Deliberate
-      // one-shot recovery reset.
-      console.warn(
-        "TeacherOverviewMetrics: courses subscription unavailable",
-        error,
-      );
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setIsLoading(false);
-    }
-  }, [user]);
-
-  useEffect(() => {
-    if (!user) {
-      return;
-    }
-
-    try {
-      return subscribeToTeacherOrders(
-        user.uid,
-        setOrders,
-        logSubscriptionError("TeacherOverviewMetrics.orders"),
-      );
-    } catch (error) {
-      // Non-blocking metric: degrade silently in the UI but keep the failure
-      // visible in logs.
-      console.warn(
-        "TeacherOverviewMetrics: orders subscription unavailable",
-        error,
-      );
-    }
-  }, [user]);
 
   const approvedCount = courses.filter(
     (course) => course.status === "published",
