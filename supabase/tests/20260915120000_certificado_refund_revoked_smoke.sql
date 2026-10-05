@@ -51,6 +51,15 @@ INSERT INTO public.enrollments (
   'Smoke Cert Rebuy', 'smoke', '', 'completed', 'admin', 100, now(), now()
 );
 
+-- Desde 20261005010000 a emissao mede a conclusao contra o curriculo atual
+-- (uma linha de lesson_progress por aula), nao o progress_percent gravado. O
+-- curso de teste ganha uma aula e a matricula a conclui.
+UPDATE public.courses
+SET modules = '[{"id": "smoke-cert-rebuy-m1", "title": "Smoke", "lessons": [{"id": "smoke-cert-rebuy-a", "title": "Smoke", "type": "text"}]}]'::jsonb
+WHERE id = :'test_course';
+INSERT INTO public.lesson_progress (enrollment_id, lesson_id, user_id)
+VALUES (:'test_enrollment', 'smoke-cert-rebuy-a', :'test_uid');
+
 -- O certificado que o reembolso anterior retirou.
 INSERT INTO public.certificates (
   id, enrollment_id, user_id, course_id, course_slug, course_title,

@@ -66,6 +66,24 @@ describe("lesson progress helpers", () => {
     expect(getCourseProgressPercent(course, ["lesson-1", "lesson-2", "lesson-3"])).toBe(100);
   });
 
+  it("never rounds an unfinished course up to 100%", () => {
+    const lessons = Array.from({ length: 200 }, (_, index) => ({
+      id: `big-${index + 1}`,
+      title: `Lesson ${index + 1}`,
+      type: "text" as const,
+      duration: "1 min",
+      isPreview: false,
+    }));
+    const bigCourse: Course = {
+      ...course,
+      modules: [{ id: "big", title: "Big", summary: "Summary", lessons }],
+    };
+    const ids = lessons.map((lesson) => lesson.id);
+
+    expect(getCourseProgressPercent(bigCourse, ids.slice(0, 199))).toBe(99);
+    expect(getCourseProgressPercent(bigCourse, ids)).toBe(100);
+  });
+
   it("finds the next and last completed lessons", () => {
     expect(getNextCourseLesson(course, ["lesson-1"])?.lesson.id).toBe("lesson-2");
     expect(getLastCompletedCourseLesson(course, ["lesson-1", "lesson-3"])?.lesson.id).toBe(

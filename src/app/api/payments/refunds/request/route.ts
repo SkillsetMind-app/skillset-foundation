@@ -40,7 +40,7 @@ export async function POST(request: Request) {
 
     const { data: enrollment } = await admin
       .from("enrollments")
-      .select("user_id, course_id, source, status, progress_percent")
+      .select("user_id, course_id, source, status, progress_percent, max_progress_percent")
       .eq("id", enrollmentId)
       .maybeSingle();
 
@@ -67,7 +67,13 @@ export async function POST(request: Request) {
       );
     }
 
-    if ((enrollment.progress_percent ?? 0) >= automaticRefundProgressCap) {
+    // The PEAK, not the current value: un-marking lessons lowers
+    // progress_percent, and the cap must not be undone by un-marking.
+    const peakProgress = Math.max(
+      enrollment.progress_percent ?? 0,
+      enrollment.max_progress_percent ?? 0,
+    );
+    if (peakProgress >= automaticRefundProgressCap) {
       throw new PaymentError(
         "Automatic refunds are unavailable after substantial course progress.",
         400,

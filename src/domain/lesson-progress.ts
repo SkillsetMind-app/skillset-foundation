@@ -36,7 +36,13 @@ export function getCourseProgressPercent(
   const completedSet = new Set(completedLessonIds);
   const completedCount = lessons.filter((entry) => completedSet.has(entry.lesson.id)).length;
 
-  return Math.round((completedCount / lessons.length) * 100);
+  // 100 only when every lesson is done: 199/200 rounded to 100 and the page
+  // offered the certificate. Same rule as record_lesson_progress.
+  if (completedCount === lessons.length) {
+    return 100;
+  }
+
+  return Math.min(99, Math.round((completedCount / lessons.length) * 100));
 }
 
 export function getNextCourseLesson(

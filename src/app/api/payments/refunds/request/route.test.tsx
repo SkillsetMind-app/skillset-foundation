@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   refundCreate: vi.fn(),
   certificateResult: vi.fn(),
   ordersSelect: vi.fn(),
+  enrollment: {} as Record<string, unknown>,
 }));
 
 vi.mock("@/lib/payments/server/auth", async (importOriginal) => {
@@ -56,6 +57,14 @@ describe("self-serve refund request", () => {
     mocks.ordersSelect.mockImplementation(() => {
       throw new Error("reached the orders lookup");
     });
+    mocks.enrollment = {
+      user_id: "user_1",
+      course_id: "course_1",
+      source: "payment",
+      status: "active",
+      progress_percent: 0,
+      max_progress_percent: 0,
+    };
 
     mocks.getAdmin.mockReturnValue({
       from: vi.fn((table: string) => {
@@ -63,15 +72,7 @@ describe("self-serve refund request", () => {
           return {
             select: () => ({
               eq: () => ({
-                maybeSingle: async () => ({
-                  data: {
-                    user_id: "user_1",
-                    course_id: "course_1",
-                    source: "payment",
-                    status: "active",
-                    progress_percent: 0,
-                  },
-                }),
+                maybeSingle: async () => ({ data: mocks.enrollment }),
               }),
             }),
           };
@@ -115,6 +116,22 @@ describe("self-serve refund request", () => {
 
     expect(response.status).toBe(400);
     expect(mocks.refundCreate).not.toHaveBeenCalled();
+  });
+
+  it("keeps the progress cap after the learner un-marks lessons", async () => {
+    // Un-marking lowers progress_percent; the peak stays. Consume the course,
+    // un-mark everything, refund — the hole this closes.
+    mocks.enrollment = {
+      ...mocks.enrollment,
+      progress_percent: 0,
+      max_progress_percent: 80,
+    };
+
+    const response = await post();
+
+    expect(response.status).toBe(400);
+    expect(mocks.refundCreate).not.toHaveBeenCalled();
+    expect(mocks.ordersSelect).not.toHaveBeenCalled();
   });
 
   it("gets past the certificate guard when none exists", async () => {
