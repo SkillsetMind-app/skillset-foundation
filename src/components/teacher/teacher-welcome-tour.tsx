@@ -74,7 +74,7 @@ export function TeacherWelcomeTour({ userId, firstName }: { userId: string; firs
 
   return (
     <div
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-[rgba(15,31,58,0.45)] p-4"
+      className="fixed inset-0 z-[70] flex items-center justify-center bg-[rgba(15,31,58,0.45)] p-4"
       role="presentation"
       onMouseDown={dismiss}
     >

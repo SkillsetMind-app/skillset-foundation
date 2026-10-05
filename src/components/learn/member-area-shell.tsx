@@ -85,7 +85,9 @@ export function MemberAreaShell({
               </span>
             )
           ) : (
-            <LogoWordmark href="/" nav />
+            // tone fixo pelo tema do CURSO: a paleta --ma-* não segue o
+            // <html>, então "auto" pintava o logo navy no cabeçalho escuro.
+            <LogoWordmark href="/" nav tone={theme === "dark" ? "dark" : "light"} />
           )}
           <div className="flex shrink-0 items-center gap-2 empty:hidden">
             <AdvisorHeaderSlot />

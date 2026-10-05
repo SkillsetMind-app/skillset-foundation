@@ -22,6 +22,24 @@ describe("MemberAreaShell", () => {
     ).not.toBeNull();
   });
 
+  it.each([
+    ["dark", "logo-wordmark__themed--dark"],
+    ["light", "logo-wordmark__themed--light"],
+  ] as const)(
+    "o logo segue o tema do curso (%s), não o tema do app",
+    (theme, tone) => {
+      // O --ma-bg-top do curso escuro é quase preto mesmo com o app no tema
+      // claro: o logo "auto" seguia o <html> e saía azul-marinho no escuro.
+      const { container } = render(
+        <MemberAreaShell theme={theme}>
+          <p>Lesson</p>
+        </MemberAreaShell>,
+      );
+
+      expect(container.querySelector(`header .${tone}`)).not.toBeNull();
+    },
+  );
+
   it("hides every route back into the platform when the teacher is branded", () => {
     const { container } = render(
       <MemberAreaShell brand={{ name: "Atelier Curie" }}>
