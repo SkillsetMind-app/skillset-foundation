@@ -4,6 +4,7 @@ import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vites
 
 import { I18nProvider, useTranslation } from "@/components/i18n/i18n-provider";
 import { ActivationCheckoutPanel } from "@/components/teacher/activation-checkout-panel";
+import { ActivationReturnLink } from "@/components/teacher/activation-return-link";
 import type { Locale } from "@/lib/i18n/config";
 import { getDictionary, translate } from "@/lib/i18n/dictionaries";
 
@@ -147,18 +148,73 @@ describe("ActivationCheckoutPanel", () => {
     expect(screen.queryByRole("link", { name: "Back to studio" })).toBeNull();
   });
 
-  it("asks checkout to return to the course being published and keeps the way back to it", async () => {
-    mocks.fetch.mockResolvedValue(new Response(JSON.stringify({ error: "Down" }), { status: 500 }));
-    render(
+  // The course rides in the tab, not in Stripe. Stripe reuses an open session
+  // for the same creator, so a session first opened from course A must still
+  // bring the creator back to course B when B is the one being published.
+  describe("way back to the course being published", () => {
+    const courseA = "0b5c2f4e-8a1d-4c3b-9e7f-1a2b3c4d5e6f";
+    const courseB = "9d8c7b6a-5f4e-4d3c-8b2a-1f0e9d8c7b6a";
+    const openSession = () => Promise.resolve(new Response(
+      JSON.stringify({ clientSecret: "synthetic-open-session", sessionId: "cs_open" }),
+      { status: 200, headers: { "Content-Type": "application/json" } },
+    ));
+    const panelFor = (courseId: string | null) => render(
       <I18nProvider initialLocale="en">
-        <ActivationCheckoutPanel courseId="0b5c2f4e-8a1d-4c3b-9e7f-1a2b3c4d5e6f" />
+        <ActivationCheckoutPanel courseId={courseId} />
       </I18nProvider>,
     );
-    expect(await screen.findByRole("link", { name: "Back to studio" })).toHaveAttribute(
-      "href",
-      "/teach/builder?courseId=0b5c2f4e-8a1d-4c3b-9e7f-1a2b3c4d5e6f&tab=review",
-    );
-    const init = mocks.fetch.mock.calls[0][1] as RequestInit;
-    expect(JSON.parse(init.body as string)).toEqual({ courseId: "0b5c2f4e-8a1d-4c3b-9e7f-1a2b3c4d5e6f" });
+    const returnHref = () => {
+      const view = render(<ActivationReturnLink>Back to course studio</ActivationReturnLink>);
+      const href = screen.getByRole("link", { name: "Back to course studio" }).getAttribute("href");
+      view.unmount();
+      return href;
+    };
+
+    beforeEach(() => sessionStorage.clear());
+
+    it("returns to the latest course even when Stripe reuses the session opened from another", async () => {
+      mocks.fetch.mockImplementation(openSession);
+      const first = panelFor(courseA);
+      await screen.findByText("Stripe checkout fixture");
+      first.unmount();
+      panelFor(courseB);
+      await screen.findByText("Stripe checkout fixture");
+
+      expect(mocks.checkoutProvider).toHaveBeenLastCalledWith({ clientSecret: "synthetic-open-session" });
+      expect(returnHref()).toBe(`/teach/builder?courseId=${courseB}&tab=review`);
+      // Nothing about the course goes to the checkout route.
+      for (const [, init] of mocks.fetch.mock.calls) {
+        expect(JSON.parse((init as RequestInit).body as string)).toEqual({});
+      }
+    });
+
+    it("falls back to the studio when no course, or no valid course id, was remembered", async () => {
+      mocks.fetch.mockImplementation(openSession);
+      expect(returnHref()).toBe("/teach");
+      const view = panelFor("../admin");
+      await screen.findByText("Stripe checkout fixture");
+      view.unmount();
+      expect(returnHref()).toBe("/teach");
+      panelFor(null);
+      await screen.findByText("Stripe checkout fixture");
+      expect(returnHref()).toBe("/teach");
+    });
+
+    it("tells a creator whose payment already landed to go back to the course and publish", async () => {
+      mocks.fetch.mockResolvedValue(new Response(
+        JSON.stringify({ error: "Your storefront is already activated.", code: "already_activated" }),
+        { status: 409, headers: { "Content-Type": "application/json" } },
+      ));
+      panelFor(courseA);
+
+      const alert = await screen.findByRole("alert");
+      expect(alert).toHaveTextContent("Your storefront is already active.");
+      expect(alert).toHaveTextContent("Go back to your course and publish it.");
+      expect(alert).not.toHaveTextContent("HTTP 409");
+      expect(screen.getByRole("link", { name: "Back to course studio" })).toHaveAttribute(
+        "href",
+        `/teach/builder?courseId=${courseA}&tab=review`,
+      );
+    });
   });
 });

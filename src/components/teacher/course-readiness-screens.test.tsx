@@ -1246,6 +1246,41 @@ describe("publicar sem surpresa", () => {
   });
 });
 
+describe("motivo do bloqueio no analytics", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.resetSubscriptionCounts();
+    vi.mocked(subscribeToTeacherCourse).mockImplementationOnce((_id, emit) => {
+      emit({
+        ...mocks.course,
+        paymentType: "free",
+        priceAmountMinor: 0,
+        modules: [{ id: "m1", title: "Start here", lessons: [{ id: "l1", title: "Welcome", description: "", type: "text", contentText: "Read this first." }] }],
+      });
+      return () => {};
+    });
+  });
+
+  afterEach(() => {
+    cleanup();
+    mocks.searchParams.delete("tab");
+    vi.restoreAllMocks();
+  });
+
+  it.each([
+    ["the draft save fails", "save", () => vi.mocked(updateTeacherCourseBuilder).mockRejectedValueOnce(new Error("Server said no."))],
+    ["the connection drops", "network", () => vi.mocked(publishTeacherCourse).mockRejectedValueOnce(new TypeError("Failed to fetch"))],
+    ["the server refuses for an unknown reason", "publish", () => vi.mocked(publishTeacherCourse).mockRejectedValueOnce(new Error("Something odd."))],
+  ] as const)("records %s as %s", async (_case, reason, arrange) => {
+    const blocked = vi.spyOn(track, "coursePublishBlocked");
+    arrange();
+    renderBuilder("review");
+    fireEvent.click(await screen.findByRole("button", { name: "Publish product" }));
+    await screen.findByRole("alert");
+    expect(blocked).toHaveBeenCalledExactlyOnceWith({ course_id: "course-1", reason });
+  });
+});
+
 describe("item de payouts no construtor", () => {
   afterEach(() => {
     cleanup();

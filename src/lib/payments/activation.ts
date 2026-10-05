@@ -14,13 +14,9 @@ type CreateActivationCheckoutResult = {
  * fee. The Route Handler resolves the Price ID from plans.ts and rejects a
  * creator who already paid, so the client never encodes either rule.
  */
-export async function createActivationCheckoutClientSecret(
-  // The course being published: Stripe's return leg sends the creator back to it.
-  courseId?: string | null,
-): Promise<CreateActivationCheckoutResult> {
+export async function createActivationCheckoutClientSecret(): Promise<CreateActivationCheckoutResult> {
   const result = await postPaymentRoute<CreateActivationCheckoutResult>(
     "/api/payments/activation/checkout",
-    courseId ? { courseId } : undefined,
   );
 
   if (!result.clientSecret) {

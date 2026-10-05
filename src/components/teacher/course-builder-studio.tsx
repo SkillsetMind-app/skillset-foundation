@@ -2109,9 +2109,11 @@ export function CourseBuilderStudio() {
 
     const signatureAtSubmit = builderDraftSignature;
     setIsSubmitting(true);
+    let draftSaved = false;
 
     try {
       await persistDraft(signatureAtSubmit, builderDraftPayload);
+      draftSaved = true;
       if (needsActivation) {
         track.coursePublishBlocked({ course_id: courseId, reason: "activation" });
         router.push(activateHref);
@@ -2143,7 +2145,16 @@ export function CourseBuilderStudio() {
                   ? "payment"
                   : "publish";
       setError({ code });
-      track.coursePublishBlocked({ course_id: courseId, reason: code });
+      // A failed save or a dropped connection is not a refusal: keep them out
+      // of the generic "publish" bucket so the funnel shows what blocks people.
+      // ponytail: network = fetch's TypeError or its message; add codes if the
+      // data layer ever wraps them differently.
+      const network = caughtError instanceof TypeError
+        || /failed to fetch|networkerror|load failed/i.test(message);
+      track.coursePublishBlocked({
+        course_id: courseId,
+        reason: network ? "network" : code !== "publish" ? code : draftSaved ? "publish" : "save",
+      });
     } finally {
       setIsSubmitting(false);
     }

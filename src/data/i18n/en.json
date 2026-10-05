@@ -1614,7 +1614,7 @@
       "step3Title": "Publish and sell",
       "step3Body": "Set your pricing, review the content and access rules, then publish. Share your sales link when the product is ready.",
       "step4Title": "Payments and help",
-      "step4Body": "Connect your Stripe account in Payments to receive sales. Stripe handles verification and payout timing. Open Advisor in the top bar when you need help; it is included once you activate your storefront.",
+      "step4Body": "Connect your Stripe account in Payments to receive sales. Stripe handles verification and payout timing. Open Advisor in the top bar when you need help; it is included with an active storefront.",
       "openStudio": "Open your studio"
     },
     "reports": {
@@ -4556,6 +4556,7 @@
     "backToStudio": "Back to studio",
     "support": "Contact support",
     "errorTitle": "Checkout could not start.",
+    "alreadyActiveTitle": "Your storefront is already active.",
     "reference": "Reference:",
     "preparing": "Preparing secure checkout…",
     "activating": "You're activating",
@@ -4575,6 +4576,7 @@
     "backToCourseStudio": "Back to course studio",
     "error": {
       "notRequired": "The activation fee is not required for your account right now. Return to the studio.",
+      "alreadyActive": "Stripe confirmed your payment. Go back to your course and publish it.",
       "notConfigured": "Activation payments are not configured yet. Contact support; there is nothing to fix in your card details.",
       "permission": "Your account does not have permission to start this checkout. Use a creator account or contact support.",
       "signIn": "Sign in again before starting checkout.",

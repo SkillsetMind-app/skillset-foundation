@@ -59,7 +59,7 @@ describe("saídas do tour de boas-vindas", () => {
     expect(await screen.findByRole("heading", { name: locale === "en" ? "Welcome to your studio, Mc$&Donald" : "Bienvenido a tu espacio, Mc$&Donald" })).toBeInTheDocument();
     for (let step = 0; step < 3; step += 1) fireEvent.click(screen.getByRole("button", { name: locale === "en" ? "Next" : "Siguiente" }));
     expect(screen.getByText(locale === "en" ? /Advisor in the top bar/ : /Advisor en la barra superior/)).toBeInTheDocument();
-    expect(screen.getByText(locale === "en" ? /included once you activate your storefront/ : /viene incluido cuando activas tu tienda/)).toBeInTheDocument();
+    expect(screen.getByText(locale === "en" ? /included with an active storefront/ : /viene incluido con una tienda activa/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: locale === "en" ? "Open your studio" : "Abrir mi espacio" }));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });

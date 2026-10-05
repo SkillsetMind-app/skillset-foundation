@@ -363,6 +363,25 @@ describe("AdvisorSidebar", () => {
     expect(activation.blocked).toHaveBeenCalledOnce();
   });
 
+  it("drops the activation notice once the advisor actually answers", async () => {
+    activation.blocked.mockResolvedValue(true);
+    fetchMock.mockImplementation(async (_url: unknown, init?: RequestInit) =>
+      init?.method === "POST"
+        ? jsonResponse({ reply: "Price it by outcome.", conversationId: null })
+        : jsonResponse({ conversationId: null, messages: [] }),
+    );
+    render(<AdvisorSidebar />);
+    openAdvisor();
+    await screen.findByText(/The studio advisor opens after you activate your storefront/);
+    await screen.findByRole("button", { name: SUGGESTION });
+
+    fireEvent.change(composer(), { target: { value: "How should I price this?" } });
+    fireEvent.keyDown(composer(), { key: "Enter" });
+
+    expect(await screen.findByText("Price it by outcome.")).toBeInTheDocument();
+    expect(screen.queryByText(/The studio advisor opens after you activate your storefront/)).toBeNull();
+  });
+
   it("shows no activation notice to a creator who already activated", async () => {
     render(<AdvisorSidebar />);
     openAdvisor();

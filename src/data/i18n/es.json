@@ -1614,7 +1614,7 @@
       "step3Title": "Publica y vende",
       "step3Body": "Define el precio, revisa el contenido y las reglas de acceso, y publica. Comparte el enlace de venta cuando el producto esté listo.",
       "step4Title": "Cobros y ayuda",
-      "step4Body": "Conecta tu cuenta de Stripe en Pagos para recibir ventas. Stripe gestiona la verificación y los plazos de pago. Abre Advisor en la barra superior cuando necesites ayuda; viene incluido cuando activas tu tienda.",
+      "step4Body": "Conecta tu cuenta de Stripe en Pagos para recibir ventas. Stripe gestiona la verificación y los plazos de pago. Abre Advisor en la barra superior cuando necesites ayuda; viene incluido con una tienda activa.",
       "openStudio": "Abrir mi espacio"
     },
     "reports": {
@@ -4555,6 +4555,7 @@
     "unavailableBody": "Mientras tanto, podemos activar tu tienda manualmente: contáctanos y la activaremos en tu cuenta.",
     "backToStudio": "Volver al estudio",
     "support": "Contactar con soporte",
+    "alreadyActiveTitle": "Tu tienda ya está activa.",
     "errorTitle": "No se pudo iniciar el pago.",
     "reference": "Referencia:",
     "preparing": "Preparando el pago seguro…",
@@ -4574,6 +4575,7 @@
     "returnBody": "Stripe nos confirma la activación en segundo plano; normalmente es instantáneo. Vuelve a tu curso y publícalo. Si al publicar todavía se solicita la tarifa, espera un momento e inténtalo de nuevo.",
     "backToCourseStudio": "Volver al estudio de cursos",
     "error": {
+      "alreadyActive": "Stripe confirmó tu pago. Vuelve a tu curso y publícalo.",
       "notRequired": "Tu cuenta no necesita pagar la tarifa de activación en este momento. Vuelve al estudio.",
       "notConfigured": "Los pagos de activación aún no están configurados. Contacta con soporte; no necesitas corregir los datos de tu tarjeta.",
       "permission": "Tu cuenta no tiene permiso para iniciar este pago. Usa una cuenta de creador o contacta con soporte.",

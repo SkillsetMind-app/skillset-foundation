@@ -14,7 +14,6 @@ import {
   hasRetainedActivationPayment,
 } from "@/lib/payments/server/stripe-helpers";
 import { isPlatformFlagOn } from "@/domain/platform-settings";
-import { uuidPattern } from "@/lib/operations/http";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getServerLocale } from "@/lib/i18n/server";
@@ -32,16 +31,9 @@ import {
  * `stripeAccount` header and no application fee. The webhook stamps
  * `users.activation_fee_paid_at`; the publish gate reads that column in SQL.
  */
-export async function POST(request: Request) {
+export async function POST() {
   try {
     const uid = await requireUserId();
-    // Only decides where Stripe sends the creator back (the course they were
-    // publishing). Never used to authorize anything; the builder loads the
-    // course under the creator's own session. Anything but a UUID is dropped.
-    const body = (await request.json().catch(() => ({}))) as { courseId?: unknown } | null;
-    const returnCourseId = typeof body?.courseId === "string" && uuidPattern.test(body.courseId)
-      ? body.courseId
-      : null;
 
     await enforceRateLimit(`activation_checkout_${uid}`, 10, 60 * 60 * 1000);
 
@@ -108,7 +100,7 @@ export async function POST(request: Request) {
     }
 
     if (profile.activation_fee_paid_at) {
-      throw new PaymentError("Your storefront is already activated.", 409);
+      throw new PaymentError("Your storefront is already activated.", 409, "already_activated");
     }
 
     const stripe = getStripeClient();
@@ -169,7 +161,9 @@ export async function POST(request: Request) {
         .eq("uid", uid)
         .is("activation_fee_paid_at", null);
       if (error) throw new Error(error.message);
-      throw new PaymentError("Your storefront is already activated.", 409);
+      // Webhook lag: the creator came back before Stripe's confirmation. The
+      // stamp is repaired above; the code lets the panel say "go publish".
+      throw new PaymentError("Your storefront is already activated.", 409, "already_activated");
     }
 
     const openSession = activationSessions.find(
@@ -203,11 +197,7 @@ export async function POST(request: Request) {
           uid,
           purpose: ACTIVATION_FEE_CHECKOUT_PURPOSE,
         },
-        // ponytail: a reused open session keeps the course it was opened from;
-        // it expires in 24h, and the creator still lands on one of their courses.
-        return_url: `${appUrl}/teach/activate/return?session_id={CHECKOUT_SESSION_ID}${
-          returnCourseId ? `&courseId=${returnCourseId}` : ""
-        }`,
+        return_url: `${appUrl}/teach/activate/return?session_id={CHECKOUT_SESSION_ID}`,
       },
       {
         idempotencyKey: `activation_checkout_${uid}_${ACTIVATION_FEE_STRIPE_PRICE_ID}_${latestActivationSessionId}`,

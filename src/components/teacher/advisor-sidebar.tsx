@@ -243,6 +243,8 @@ export function AdvisorSidebar({ children }: { children?: ReactNode } = {}) {
         // every later turn ask the server to append to a thread that is not
         // ours — silently dropping the transcript for the rest of the session.
         setConversationId(data.conversationId ?? null);
+        // It answered, so it is open for this creator now (paid since the read).
+        setActivationBlocked(false);
         setMessages((prev) => [
           ...prev,
           { role: "assistant", content: toPlainProse(data.reply as string) },

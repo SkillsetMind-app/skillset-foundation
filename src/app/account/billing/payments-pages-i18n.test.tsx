@@ -72,30 +72,24 @@ it.each(["en", "es"] as const)("localizes activation pages on the server and pre
   render(await TeachActivateReturnPage());
   expect(screen.getByText(locale === "es" ? /normalmente es instantáneo/ : /it is usually instant/)).toBeInTheDocument();
   expect(screen.getByRole("heading", { name: locale === "es" ? "Estamos confirmando tu pago." : "We're confirming your payment." })).toBeInTheDocument();
-  expect(screen.getByRole("link", { name: locale === "es" ? "Volver al estudio de cursos" : "Back to course studio" })).toHaveAttribute("href", "/teach/builder");
+  expect(screen.getByRole("link", { name: locale === "es" ? "Volver al estudio de cursos" : "Back to course studio" })).toHaveAttribute("href", "/teach");
   expect(screen.getByRole("link", { name: locale === "es" ? "Contactar con soporte" : "Contact support" })).toHaveAttribute("href", "/support");
 });
 
-// Paying used to drop the creator on the course list. The course id rides the
-// checkout and the return page sends them back to that course's Publish tab.
-it("carries the course being published through activation and back", async () => {
+// The builder's "Activate and publish" sends the course id; only a UUID reaches
+// the panel, which keeps it in the tab for the return page (see the panel test).
+it("hands the course being published to the checkout panel", async () => {
   mocks.locale = "en";
   const courseId = "0b5c2f4e-8a1d-4c3b-9e7f-1a2b3c4d5e6f";
-  const view = render(await TeachActivatePage({ searchParams: Promise.resolve({ courseId }) }));
+  render(await TeachActivatePage({ searchParams: Promise.resolve({ courseId }) }));
   expect(mocks.activation).toHaveBeenCalledWith({ courseId });
-  view.unmount();
-  render(await TeachActivateReturnPage({ searchParams: Promise.resolve({ session_id: "cs_fixture", courseId }) }));
-  expect(screen.getByRole("link", { name: "Back to course studio" })).toHaveAttribute("href", `/teach/builder?courseId=${courseId}&tab=review`);
 });
 
 it.each([
   ["a non-UUID", "../admin"],
   ["a repeated parameter", ["0b5c2f4e-8a1d-4c3b-9e7f-1a2b3c4d5e6f", "x"]],
-])("ignores %s course id on the activation pages", async (_name, courseId) => {
+])("drops %s course id before the checkout panel", async (_name, courseId) => {
   mocks.locale = "en";
-  const view = render(await TeachActivatePage({ searchParams: Promise.resolve({ courseId }) }));
+  render(await TeachActivatePage({ searchParams: Promise.resolve({ courseId }) }));
   expect(mocks.activation).toHaveBeenCalledWith({ courseId: null });
-  view.unmount();
-  render(await TeachActivateReturnPage({ searchParams: Promise.resolve({ courseId }) }));
-  expect(screen.getByRole("link", { name: "Back to course studio" })).toHaveAttribute("href", "/teach/builder");
 });
