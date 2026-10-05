@@ -229,10 +229,26 @@ function CredentialMetric({
   );
 }
 
+// Exact refusals raised by issue_skillset_certificate. Anything else stays the
+// generic message, so no raw database text reaches the learner.
+const issueErrorKeys = new Map([
+  ["This certificate was revoked by Skillset operations.", "learnWave2.credentials.revokedDetail"],
+  ["This enrollment is not eligible for certificate issuance.", "learnWave2.credentials.unavailableDetail"],
+  ["Complete the course before requesting a certificate.", "learnWave2.credentials.progressDetail"],
+  ["RATE_LIMIT", "learnWave2.credentials.rateLimit"],
+  ["RATE_LIMIT: too many attempts, please wait before trying again", "learnWave2.credentials.rateLimit"],
+]);
+
+function issueErrorKey(error: unknown): string {
+  const message = error && typeof error === "object" && "message" in error ? error.message : null;
+  return (typeof message === "string" && issueErrorKeys.get(message)) || "learnWave2.credentials.issueError";
+}
+
 function CredentialCard({ candidate }: { candidate: CredentialCandidate }) {
   const { t, locale } = useTranslation();
   const isEligible = candidate.status === "eligible";
   const isIssued = candidate.status === "issued";
+  const isUnavailable = candidate.status === "unavailable";
   const [isIssuing, setIsIssuing] = useState(false);
   const [issueError, setIssueError] = useState("");
   const [isNaming, setIsNaming] = useState(false);
@@ -254,8 +270,8 @@ function CredentialCard({ candidate }: { candidate: CredentialCandidate }) {
     try {
       await issueSkillsetCertificate(candidate.enrollmentId, trimmedName);
       // The certificates subscription flips this card to "issued" on success.
-    } catch {
-      setIssueError("learnWave2.credentials.issueError");
+    } catch (error) {
+      setIssueError(issueErrorKey(error));
     } finally {
       setIsIssuing(false);
     }
@@ -281,6 +297,10 @@ function CredentialCard({ candidate }: { candidate: CredentialCandidate }) {
           ? t("learnWave2.credentials.eligibleDetail")
           : isIssued
             ? t("learnWave2.credentials.issuedDetail")
+          : candidate.status === "revoked"
+            ? t("learnWave2.credentials.revokedDetail")
+          : isUnavailable
+            ? t("learnWave2.credentials.unavailableDetail")
           : t("learnWave2.credentials.progressDetail")}
       </p>
       <div className="mt-5 rounded-none border fine-rule bg-[var(--color-surface-soft)] p-4">
@@ -305,12 +325,15 @@ function CredentialCard({ candidate }: { candidate: CredentialCandidate }) {
         </p>
       </div>
       <div className="mt-5 flex flex-wrap gap-3">
-        <Link
-          href={`/learn/courses/${candidate.courseSlug}`}
-          className={isEligible ? "button-outline px-4 py-2.5 text-sm" : "button-solid px-4 py-2.5 text-sm"}
-        >
-          {isEligible ? t("learnWave2.credentials.review") : t("learnWave2.credentials.continue")}
-        </Link>
+        {/* Access ended: the classroom would refuse the learner anyway. */}
+        {isUnavailable ? null : (
+          <Link
+            href={`/learn/courses/${candidate.courseSlug}`}
+            className={isEligible ? "button-outline px-4 py-2.5 text-sm" : "button-solid px-4 py-2.5 text-sm"}
+          >
+            {isEligible ? t("learnWave2.credentials.review") : t("learnWave2.credentials.continue")}
+          </Link>
+        )}
         {isEligible && !isNaming ? (
           <button
             type="button"

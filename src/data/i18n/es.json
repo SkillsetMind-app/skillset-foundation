@@ -5006,6 +5006,9 @@
       "eligibleDetail": "Has completado este curso. Emite tu certificado verificado por SkillsetMind a continuación.",
       "issuedDetail": "Tu certificado verificado por SkillsetMind ya se ha emitido y está listo para su verificación.",
       "progressDetail": "Completa el curso para poder obtener tu certificado verificado por SkillsetMind.",
+      "revokedDetail": "SkillsetMind revocó este certificado y no se puede volver a emitir.",
+      "unavailableDetail": "Tu acceso a este curso terminó, así que no se puede emitir el certificado.",
+      "rateLimit": "Demasiados intentos. Espera antes de volver a intentarlo.",
       "progress": "Progreso",
       "review": "Repasar curso",
       "continue": "Continuar curso",
@@ -5023,7 +5026,8 @@
       "in_progress": "En curso",
       "eligible": "Lista para revisión",
       "issued": "Emitida",
-      "revoked": "Revocada"
+      "revoked": "Revocada",
+      "unavailable": "No disponible"
     },
     "print": {
       "back": "← Volver a credenciales",

@@ -1,4 +1,4 @@
-import type { Enrollment } from "@/domain/enrollment";
+import { canOpenEnrollment, type Enrollment } from "@/domain/enrollment";
 
 /**
  * "revoked" is an ops decision and blocks re-issue. "refund_revoked" is written
@@ -50,7 +50,12 @@ export type CredentialCandidate = {
   courseTitle: string;
   courseCategory: string;
   progressPercent: number;
-  status: CertificateStatus;
+  /**
+   * "unavailable": the enrollment was refunded, revoked or expired, so
+   * issue_skillset_certificate refuses it. A "refund_revoked" certificate never
+   * surfaces here: re-bought it is eligible again, otherwise it is unavailable.
+   */
+  status: Exclude<CertificateStatus, "refund_revoked"> | "unavailable";
   authorityLabel: "SkillsetMind Verified";
   certificateId?: string | null;
   verificationCode?: string | null;
@@ -70,11 +75,17 @@ export function getCredentialCandidate(
     courseTitle: enrollment.courseTitle,
     courseCategory: enrollment.courseCategory,
     progressPercent: enrollment.progressPercent,
+    // Mirrors the refusals in issue_skillset_certificate, so the card never
+    // offers a claim the RPC will turn down.
     status: certificate?.status === "issued"
       ? "issued"
-      : isComplete
-        ? "eligible"
-        : "in_progress",
+      : certificate?.status === "revoked"
+        ? "revoked"
+        : !canOpenEnrollment(enrollment.status)
+          ? "unavailable"
+          : isComplete
+            ? "eligible"
+            : "in_progress",
     authorityLabel: "SkillsetMind Verified",
     certificateId: certificate?.id ?? null,
     verificationCode: certificate?.verificationCode ?? null,
