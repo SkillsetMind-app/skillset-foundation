@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { I18nProvider } from "@/components/i18n/i18n-provider";
@@ -158,10 +158,15 @@ const { mockUser, fixtures, fuse } = vi.hoisted(() => {
 
   const fixtures = {
     course,
+    base: [inProgress, completed],
     enrollments: [inProgress, completed],
     notifications,
     liveEvent,
     events: [liveEvent] as CourseEvent[],
+    // Cursos reais que o banco devolve quando o painel pergunta por id.
+    realCourses: [] as Course[],
+    fetchedIds: [] as string[][],
+    emitEnrollments: (() => undefined) as (next: Enrollment[]) => void,
     calls: 0,
   };
 
@@ -193,8 +198,11 @@ vi.mock("@/components/learn/welcome-tour", () => ({
   WelcomeTour: () => null,
 }));
 
+// Mostra o que o painel repassa para as fileiras: a lista de cursos e uma so.
 vi.mock("@/components/learn/learning-paths-rows", () => ({
-  LearningPathsRows: () => <div>Learning paths</div>,
+  LearningPathsRows: ({ enrolledCourses }: { enrolledCourses: { id: string }[] }) => (
+    <div>Learning paths: {enrolledCourses.map((course) => course.id).join(",")}</div>
+  ),
 }));
 
 vi.mock("@/lib/data/catalog", () => ({
@@ -203,10 +211,10 @@ vi.mock("@/lib/data/catalog", () => ({
 }));
 
 vi.mock("@/lib/data/published-courses", () => ({
-  subscribeToPublishedTeacherCourses: (onData: (courses: unknown[]) => void) => {
+  fetchCoursesByIds: async (ids: string[]) => {
     fuse();
-    onData([]);
-    return () => undefined;
+    fixtures.fetchedIds.push(ids);
+    return fixtures.realCourses.filter((course) => ids.includes(course.id));
   },
   teacherCourseToLearningCourse: (course: unknown) => course,
 }));
@@ -217,10 +225,24 @@ vi.mock("@/lib/data/enrollments", () => ({
     onData: (enrollments: Enrollment[]) => void,
   ) => {
     fuse();
+    fixtures.emitEnrollments = onData;
     onData(fixtures.enrollments);
     return () => undefined;
   },
 }));
+
+// Matriculas ativas a mais, mais antigas que a de Effective Communication.
+function extraEnrollments(count: number): Enrollment[] {
+  return Array.from({ length: count }, (_, index) => ({
+    ...fixtures.base[0],
+    id: `extra-${index}`,
+    courseId: `extra-${index}`,
+    courseSlug: `extra-${index}`,
+    courseTitle: `Extra Course ${index}`,
+    lastLessonId: null,
+    updatedAt: "2026-07-01T10:00:00.000Z",
+  }));
+}
 
 vi.mock("@/lib/data/notifications", () => ({
   subscribeToNotifications: (
@@ -248,6 +270,9 @@ describe("LearnDashboard", () => {
   beforeEach(() => {
     fixtures.calls = 0;
     fixtures.events = [fixtures.liveEvent];
+    fixtures.enrollments = fixtures.base;
+    fixtures.realCourses = [];
+    fixtures.fetchedIds = [];
   });
 
   it("sauda uma vez so: um h1 e nenhum 'Welcome back'", async () => {
@@ -266,6 +291,7 @@ describe("LearnDashboard", () => {
   it("titulo de secao nao usa a serifa de display — Manrope 600, tamanho de cartao", async () => {
     // Cormorant e uma serifa de DISPLAY: em 24px, dentro de um cartao, ela
     // some — vira "quase o texto do corpo", so que mais claro.
+    fixtures.enrollments = [...fixtures.base, ...extraEnrollments(2)];
     render(<LearnDashboard />);
 
     for (const name of ["Continue watching", "My courses"]) {
@@ -275,7 +301,8 @@ describe("LearnDashboard", () => {
     }
   });
 
-  it("'Continue watching' abre na aula seguinte a ultima concluida", async () => {
+  it("'Continue watching' abre na aula seguinte a ultima concluida — o mesmo destino do cartao em 'My courses'", async () => {
+    fixtures.enrollments = [...fixtures.base, ...extraEnrollments(2)];
     render(<LearnDashboard />);
 
     const region = await screen.findByRole("region", { name: "Continue watching" });
@@ -292,12 +319,104 @@ describe("LearnDashboard", () => {
     ).toBeInTheDocument();
     // Curso concluido nao entra na fila de retomar.
     expect(within(region).queryByText("Brand Design Atelier")).not.toBeInTheDocument();
+
+    // O mesmo curso em "My courses" leva ao mesmo lugar, nao a capa.
+    const card = within(screen.getByRole("region", { name: "My courses" }))
+      .getByRole("heading", { level: 3, name: "Effective Communication" })
+      .closest("article") as HTMLElement;
+    expect(within(card).getByRole("link", { name: "Open" })).toHaveAttribute(
+      "href",
+      "/learn/courses/effective-communication?lesson=l4",
+    );
   });
 
-  it("o filtro Completed esconde a em andamento, e In progress e o padrao", async () => {
+  it("com ate 3 cursos, 'Continue watching' nao repete o que 'My courses' ja mostra", async () => {
     render(<LearnDashboard />);
 
     const region = await screen.findByRole("region", { name: "My courses" });
+    expect(
+      screen.queryByRole("region", { name: "Continue watching" }),
+    ).not.toBeInTheDocument();
+    // O cartao de "My courses" herda o destino de retomar.
+    const card = within(region)
+      .getByRole("heading", { level: 3, name: "Effective Communication" })
+      .closest("article") as HTMLElement;
+    expect(within(card).getByRole("link", { name: "Open" })).toHaveAttribute(
+      "href",
+      "/learn/courses/effective-communication?lesson=l4",
+    );
+  });
+
+  it("um curso fora do catalogo publico ainda retoma na aula: o painel busca so os cursos da pessoa, por id, uma vez", async () => {
+    // Despublicado, ou alem dos 200 que o catalogo baixava: antes o cartao
+    // nunca achava o curso e abria a capa generica.
+    const purchase: Enrollment = {
+      ...fixtures.base[0],
+      id: "enrollment-real",
+      courseId: "course-real",
+      // O webhook do Stripe grava o id em course_slug.
+      courseSlug: "course-real",
+      courseTitle: "Private Coaching Lab",
+      lastLessonId: "r1",
+    };
+    fixtures.enrollments = [purchase];
+    fixtures.realCourses = [
+      {
+        ...fixtures.course,
+        id: "course-real",
+        slug: "course-real",
+        modules: [
+          {
+            id: "rm",
+            title: "Only module",
+            summary: "",
+            lessons: [
+              { id: "r1", title: "One", type: "video", duration: "5 min", isPreview: false },
+              { id: "r2", title: "Two", type: "video", duration: "5 min", isPreview: false },
+            ],
+          },
+        ],
+      },
+    ];
+    render(<LearnDashboard />);
+
+    const region = await screen.findByRole("region", { name: "My courses" });
+    await waitFor(() =>
+      expect(within(region).getByRole("link", { name: "Open" })).toHaveAttribute(
+        "href",
+        "/learn/courses/course-real?lesson=r2",
+      ),
+    );
+    expect(fixtures.fetchedIds).toEqual([["course-real"]]);
+    // A mesma lista desce para as fileiras de baixo, sem segunda busca.
+    expect(screen.getByText("Learning paths: course-real")).toBeInTheDocument();
+
+    // Progresso salvo re-emite as matriculas; os cursos sao os mesmos, entao
+    // nada e baixado de novo.
+    act(() => fixtures.emitEnrollments([{ ...purchase, progressPercent: 60 }]));
+    expect(fixtures.fetchedIds).toEqual([["course-real"]]);
+  });
+
+  it("com poucos cursos nao ha busca nem filtro, e o concluido aparece junto", async () => {
+    render(<LearnDashboard />);
+
+    const region = await screen.findByRole("region", { name: "My courses" });
+    expect(within(region).queryByRole("tab")).not.toBeInTheDocument();
+    expect(within(region).queryByRole("searchbox")).not.toBeInTheDocument();
+    for (const name of ["Effective Communication", "Brand Design Atelier"]) {
+      expect(
+        within(region).getByRole("heading", { level: 3, name }),
+      ).toBeInTheDocument();
+    }
+  });
+
+  it("o filtro Completed esconde a em andamento, e In progress e o padrao", async () => {
+    // Busca e filtro so aparecem com mais de 6 cursos.
+    fixtures.enrollments = [...fixtures.base, ...extraEnrollments(5)];
+    render(<LearnDashboard />);
+
+    const region = await screen.findByRole("region", { name: "My courses" });
+    expect(within(region).getByRole("searchbox")).toBeInTheDocument();
     expect(
       within(region).getByRole("heading", { level: 3, name: "Effective Communication" }),
     ).toBeInTheDocument();
@@ -319,14 +438,68 @@ describe("LearnDashboard", () => {
     );
   });
 
-  it("nenhum 'Request refund' no cartao; o caminho e Billing → Purchases", async () => {
+  it("nenhum 'Request refund' no cartao, e o aviso de reembolso nao aparece a cada visita", async () => {
+    render(<LearnDashboard />);
+
+    await screen.findByRole("region", { name: "My courses" });
+    expect(screen.queryByRole("button", { name: /refund/i })).not.toBeInTheDocument();
+    // Nenhuma compra dentro da janela de reembolso: nada a dizer.
+    expect(
+      screen.queryByRole("link", { name: "Billing → Purchases" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("com uma compra ainda dentro da janela de reembolso, aponta Billing → Purchases", async () => {
+    fixtures.enrollments = [
+      ...fixtures.base,
+      {
+        ...extraEnrollments(1)[0],
+        progressPercent: 10,
+        createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+      },
+    ];
     render(<LearnDashboard />);
 
     const region = await screen.findByRole("region", { name: "My courses" });
-    expect(screen.queryByRole("button", { name: /refund/i })).not.toBeInTheDocument();
     expect(
       within(region).getByRole("link", { name: "Billing → Purchases" }),
     ).toHaveAttribute("href", "/account/billing?tab=purchases");
+  });
+
+  it("assinatura recente nao mostra o aviso: ela nao gera pedido, nao ha o que reembolsar em Purchases", async () => {
+    fixtures.enrollments = [
+      ...fixtures.base,
+      {
+        ...extraEnrollments(1)[0],
+        source: "subscription",
+        progressPercent: 10,
+        createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+      },
+    ];
+    render(<LearnDashboard />);
+
+    await screen.findByRole("region", { name: "My courses" });
+    expect(
+      screen.queryByRole("link", { name: "Billing → Purchases" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("curso concluido abre na capa da area de membros, nao na ultima aula", async () => {
+    fixtures.enrollments = [
+      {
+        ...fixtures.base[0],
+        status: "completed",
+        progressPercent: 100,
+        lastLessonId: "l4",
+      },
+    ];
+    render(<LearnDashboard />);
+
+    const region = await screen.findByRole("region", { name: "My courses" });
+    expect(within(region).getByRole("link", { name: "Open" })).toHaveAttribute(
+      "href",
+      "/learn/courses/effective-communication",
+    );
   });
 
   it("mostra a proxima live com 'Join' e as tres ultimas novidades com destino", async () => {
@@ -348,14 +521,14 @@ describe("LearnDashboard", () => {
     expect(within(news).queryByText("Older notification")).not.toBeInTheDocument();
   });
 
-  it("sem live marcada, a coluna diz isso em uma linha e a metrica some", async () => {
+  it("sem live marcada, a coluna some em vez de gastar meia linha dizendo isso, e a metrica some", async () => {
     fixtures.events = [];
     render(<LearnDashboard />);
 
-    const lives = await screen.findByRole("region", { name: "Upcoming lives" });
+    await screen.findByRole("region", { name: "What's new" });
     expect(
-      within(lives).getByText("No live sessions scheduled in your courses."),
-    ).toBeInTheDocument();
+      screen.queryByRole("region", { name: "Upcoming lives" }),
+    ).not.toBeInTheDocument();
     expect(screen.getByText("1 course in progress")).toBeInTheDocument();
   });
 

@@ -14,7 +14,7 @@ import type { LearningPath } from "@/domain/learning-path";
 import { computePathProgress } from "@/domain/learning-path";
 import type { TeacherCourse } from "@/domain/teacher-course";
 import { fetchPublishedLearningPaths } from "@/lib/data/learning-paths";
-import { subscribeToPublishedTeacherCourses } from "@/lib/data/published-courses";
+import { fetchPublishedCoursesForRows } from "@/lib/data/published-courses";
 import { getPublicProfilesByIds } from "@/lib/data/user-profiles";
 
 // Netflix-style rows in the members area, in two flavours:
@@ -29,10 +29,20 @@ import { getPublicProfilesByIds } from "@/lib/data/user-profiles";
 //
 // Renders nothing only when both are empty (a student with no enrollments and
 // no curated paths).
-export function LearningPathsRows({ enrollments }: { enrollments: Enrollment[] }) {
+//
+// `enrolledCourses` comes from the dashboard, which already read the student's
+// own courses by id: the rows reuse that instead of downloading the catalog.
+export function LearningPathsRows({
+  enrollments,
+  enrolledCourses,
+}: {
+  enrollments: Enrollment[];
+  enrolledCourses: TeacherCourse[];
+}) {
   const { t } = useTranslation();
   const [paths, setPaths] = useState<LearningPath[]>([]);
-  const [courses, setCourses] = useState<TeacherCourse[]>([]);
+  // Published courses on offer: path steps and the instructors' other courses.
+  const [offered, setOffered] = useState<TeacherCourse[]>([]);
   const [ownerNames, setOwnerNames] = useState<Map<string, string>>(new Map());
   // The course whose padlock was clicked — drives the unlock popup. Kept here
   // (not per card) so only one dialog can ever be open.
@@ -53,16 +63,38 @@ export function LearningPathsRows({ enrollments }: { enrollments: Enrollment[] }
     };
   }, []);
 
-  // Always live, not gated on paths: the instructor rows need the published
-  // catalog even when nobody has curated a path.
-  useEffect(
-    () => subscribeToPublishedTeacherCourses(setCourses, () => undefined),
-    [],
-  );
+  // Keys, not arrays: the enrollment feed re-emits on every saved lesson, and
+  // only a new path step or a new instructor is worth another read.
+  const pathCourseKey = Array.from(new Set(paths.flatMap((path) => path.courseIds)))
+    .sort()
+    .join(",");
+  const ownerKey = Array.from(new Set(enrolledCourses.map((course) => course.ownerId)))
+    .sort()
+    .join(",");
+  useEffect(() => {
+    if (!pathCourseKey && !ownerKey) {
+      return;
+    }
+    let cancelled = false;
+    fetchPublishedCoursesForRows(
+      pathCourseKey ? pathCourseKey.split(",") : [],
+      ownerKey ? ownerKey.split(",") : [],
+    )
+      .then((nextCourses) => {
+        if (!cancelled) {
+          setOffered(nextCourses);
+        }
+      })
+      // Discovery UI — on error the rows just do not render.
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [pathCourseKey, ownerKey]);
 
   const coursesById = useMemo(
-    () => new Map(courses.map((course) => [course.id, course])),
-    [courses],
+    () => new Map([...offered, ...enrolledCourses].map((course) => [course.id, course])),
+    [offered, enrolledCourses],
   );
   const enrollmentsByCourse = useMemo(
     () => new Map(enrollments.map((enrollment) => [enrollment.courseId, enrollment])),
@@ -72,7 +104,7 @@ export function LearningPathsRows({ enrollments }: { enrollments: Enrollment[] }
   const renderablePaths = paths
     .map((path) => ({
       ...path,
-      // Only courses that are still publicly listed render as steps.
+      // Only courses still publicly listed, or already owned, render as steps.
       courseIds: path.courseIds.filter((courseId) => coursesById.has(courseId)),
     }))
     .filter((path) => path.courseIds.length > 0);
@@ -91,7 +123,7 @@ export function LearningPathsRows({ enrollments }: { enrollments: Enrollment[] }
     return Array.from(ownerIds)
       .map((ownerId) => ({
         ownerId,
-        courses: courses.filter(
+        courses: offered.filter(
           (course) =>
             course.ownerId === ownerId
             && !enrollmentsByCourse.has(course.id)
@@ -101,7 +133,7 @@ export function LearningPathsRows({ enrollments }: { enrollments: Enrollment[] }
       .filter((row) => row.courses.length > 0);
     // renderablePaths is derived from these same inputs, so recomputing on the
     // raw sources keeps the dependency list honest.
-  }, [courses, coursesById, enrollments, enrollmentsByCourse, renderablePaths]);
+  }, [offered, coursesById, enrollments, enrollmentsByCourse, renderablePaths]);
 
   const instructorRowKey = instructorRows.map((row) => row.ownerId).join(",");
   useEffect(() => {
