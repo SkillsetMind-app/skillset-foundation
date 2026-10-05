@@ -41,10 +41,20 @@ const kindIcon = {
   question: MessageCircleQuestion,
 } as const;
 
-export function StudioRecentActivity({ courses }: { courses: TeacherCourse[] }) {
+export function StudioRecentActivity({
+  courses,
+  orders: passedOrders,
+}: {
+  courses: TeacherCourse[];
+  // The Home already loads the orders and passes them; the product page,
+  // which has no list of its own, leaves this out and the block reads them.
+  orders?: Order[];
+}) {
   const { user } = useAuth();
   const { t, locale } = useTranslation();
-  const [orders, setOrders] = useState<Order[]>([]);
+  const [ownOrders, setOrders] = useState<Order[]>([]);
+  const readsOwnOrders = passedOrders === undefined;
+  const orders = passedOrders ?? ownOrders;
   const [students, setStudents] = useState<CourseStudent[]>([]);
   const [reviews, setReviews] = useState<CourseReview[]>([]);
   const [questions, setQuestions] = useState<CommunityPost[]>([]);
@@ -57,7 +67,7 @@ export function StudioRecentActivity({ courses }: { courses: TeacherCourse[] }) 
   );
 
   useEffect(() => {
-    if (!user) {
+    if (!user || !readsOwnOrders) {
       return;
     }
 
@@ -66,7 +76,7 @@ export function StudioRecentActivity({ courses }: { courses: TeacherCourse[] }) 
       setOrders,
       logSubscriptionError("StudioRecentActivity.orders"),
     );
-  }, [user]);
+  }, [user, readsOwnOrders]);
 
   useEffect(() => {
     if (!user) {

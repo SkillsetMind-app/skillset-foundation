@@ -2517,12 +2517,12 @@
       "steps": {
         "create": "Create a product",
         "createDetail": "Choose the delivery and access model.",
-        "creatorData": "Complete creator data",
-        "creatorDataDetail": "Finish professional verification and paid-product payouts.",
-        "creatorDataAction": "Complete setup",
-        "prepare": "Prepare product to sell",
-        "prepareDetail": "Add content, pricing, members experience, and review the draft.",
-        "prepareAction": "Prepare product"
+        "verifyAction": "Start verification",
+        "publish": "Publish your product",
+        "publishDetail": "Finish the publish checklist and open it on your storefront.",
+        "publishAction": "Review and publish",
+        "publishActivateDetail": "Publishing includes the one-time US${amount} activation fee, charged once per account, never per course.",
+        "publishActivateAction": "Activate and publish"
       },
       "products": {
         "title": "Products in your workspace",

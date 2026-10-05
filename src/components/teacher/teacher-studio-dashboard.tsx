@@ -27,21 +27,47 @@ import { StudioRecentActivity } from "@/components/teacher/studio-recent-activit
 import { StudioStorefrontCard } from "@/components/teacher/studio-storefront-card";
 import { TeacherStudioInsights } from "@/components/teacher/teacher-studio-insights";
 import { TeacherWelcomeTour } from "@/components/teacher/teacher-welcome-tour";
+import { usePublishGates } from "@/components/teacher/use-publish-gates";
+import { activationFeeUsd } from "@/data/plans";
+import type { CourseReadinessAccount } from "@/domain/course-readiness";
+import type { Order } from "@/domain/order";
 import type { TeacherCourse } from "@/domain/teacher-course";
+import { fetchCreatorActivationBlocked } from "@/lib/data/creator-verification";
+import { subscribeToTeacherOrders } from "@/lib/data/orders";
 import { subscribeToTeacherCourses } from "@/lib/data/teacher-courses";
 import { logSubscriptionError } from "@/lib/data/subscription-error";
-import { subscribeToUserProfile } from "@/lib/data/user-profiles";
 
 type ProductFilter = "all" | "draft" | "published" | "in_review" | "other";
 
 export function TeacherStudioDashboard() {
   const { user } = useAuth();
   const { t } = useTranslation();
+  // As mesmas travas que o construtor e o Manage leem: payouts, e verificacao
+  // so quando a plataforma exige.
+  const { account, loaded: gatesLoaded, verificationStatus } = usePublishGates(user);
   const [courses, setCourses] = useState<TeacherCourse[]>([]);
   const [coursesLoaded, setCoursesLoaded] = useState(false);
-  const [payoutsReady, setPayoutsReady] = useState(false);
-  const [verificationStatus, setVerificationStatus] = useState("none");
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [activationBlocked, setActivationBlocked] = useState(false);
   const firstName = user?.displayName?.trim().split(/\s+/)[0] ?? "";
+
+  // A taxa unica de ativacao: o MESMO predicado que o servidor aplica no
+  // publish (ja conta isencao de admin e pagamento). O perfil sozinho nao diz
+  // se a taxa e exigida. Leitura: falha aberta, sem aviso de taxa.
+  useEffect(() => {
+    if (!user) {
+      return;
+    }
+    let active = true;
+    fetchCreatorActivationBlocked()
+      .then((blocked) => {
+        if (active) setActivationBlocked(blocked);
+      })
+      .catch(() => undefined);
+    return () => {
+      active = false;
+    };
+  }, [user]);
 
   useEffect(() => {
     if (!user) {
@@ -66,17 +92,24 @@ export function TeacherStudioDashboard() {
       return;
     }
 
-    return subscribeToUserProfile(
+    // Cursos, pedidos e perfil eram lidos 3x, 3x e 2x por /teach: cada bloco
+    // da Home abria a propria leitura. Agora a Home le uma vez e repassa.
+    return subscribeToTeacherOrders(
       user.uid,
-      (profile) => {
-        setPayoutsReady(
-          Boolean(profile?.stripeConnectChargesEnabled && profile?.stripeConnectPayoutsEnabled)
-        );
-        setVerificationStatus(profile?.creatorVerificationStatus ?? "none");
-      },
-      () => setPayoutsReady(false)
+      setOrders,
+      logSubscriptionError("TeacherStudioDashboard.orders")
     );
   }, [user]);
+
+  // "inactive" e um curso que ja esteve no ar (o admin tirou): ja houve publish.
+  const launched = courses.some(
+    (course) => course.status === "published" || course.status === "inactive"
+  );
+  // Arquivado tambem e "inactive": saiu da venda e nao cobra Stripe.
+  const needsStripe = courses.some(
+    (course) => course.status !== "inactive" && sellsPaid(course)
+  );
+  const payoutsPending = needsStripe && !account.payoutsReady;
 
   return (
     <div className="grid gap-8">
@@ -113,15 +146,18 @@ export function TeacherStudioDashboard() {
 
       <StudioNextSteps
         courses={courses}
-        coursesLoaded={coursesLoaded}
-        payoutsReady={payoutsReady}
+        ready={coursesLoaded && gatesLoaded}
+        account={account}
         verificationStatus={verificationStatus}
+        needsStripe={needsStripe}
+        activationBlocked={activationBlocked}
+        launched={launched}
       />
 
       <StudioProductsSection courses={courses} coursesLoaded={coursesLoaded} />
 
       <div className="grid gap-8 lg:grid-cols-2">
-        <StudioRecentActivity courses={courses} />
+        <StudioRecentActivity courses={courses} orders={orders} />
         {user ? (
           <StudioStorefrontCard
             uid={user.uid}
@@ -133,35 +169,49 @@ export function TeacherStudioDashboard() {
 
       <StudioSellFormatsSection />
 
-      <StudioEvolution
-        courses={courses}
-        coursesLoaded={coursesLoaded}
-        payoutsReady={payoutsReady}
-        verificationStatus={verificationStatus}
-      />
+      {/* Antes do 1o publish a lista de passos e o unico guia: os marcos e a
+          lista de atencao repetiam os mesmos passos em outra ordem. */}
+      {launched ? (
+        <StudioEvolution
+          courses={courses}
+          coursesLoaded={coursesLoaded}
+          payoutsReady={account.payoutsReady}
+          verificationApproved={account.verificationApproved}
+        />
+      ) : null}
 
-      <TeacherOverviewMetrics />
-      <TeacherStudioInsights />
+      <TeacherOverviewMetrics courses={courses} orders={orders} isLoading={!coursesLoaded} />
+      {launched ? (
+        <TeacherStudioInsights courses={courses} orders={orders} payoutsPending={payoutsPending} />
+      ) : null}
     </div>
   );
 }
 
 function StudioNextSteps({
   courses,
-  coursesLoaded,
-  payoutsReady,
+  ready,
+  account,
   verificationStatus,
+  needsStripe,
+  activationBlocked,
+  launched,
 }: {
   courses: TeacherCourse[];
-  coursesLoaded: boolean;
-  payoutsReady: boolean;
+  // Cursos e travas carregados. Antes disso a lista ainda pode ganhar um passo
+  // (verificacao exigida) e a porcentagem pularia: contagem e % ficam neutras.
+  ready: boolean;
+  account: CourseReadinessAccount;
   verificationStatus: string;
+  needsStripe: boolean;
+  activationBlocked: boolean;
+  launched: boolean;
 }) {
   const { t } = useTranslation();
-  const hasPaidProduct = courses.some((course) => course.paymentType !== "free");
-  const creatorDataComplete =
-    verificationStatus === "approved" && (!hasPaidProduct || payoutsReady);
-  const preparedProduct = courses.some(isProductPrepared);
+  // Os passos sao as travas reais do publish (getCourseReadiness via
+  // usePublishGates): o Stripe so para produto pago, a verificacao so quando a
+  // plataforma exige. Antes o passo 2 cobrava verificacao APROVADA de todo
+  // mundo, nao havia passo de publicar e a barra parava em 67%.
   const steps = [
     {
       label: t("creatorPanel.home.steps.create"),
@@ -170,36 +220,62 @@ function StudioNextSteps({
       done: courses.length > 0,
       action: t("creatorPanel.createProduct"),
     },
+    ...(needsStripe
+      ? [
+          {
+            label: t("platform.banner.connectPayoutsCta"),
+            // A frase da antiga faixa amarela fixa do topo do /teach: o
+            // comprador paga NA conta do professor.
+            detail: t("platform.banner.connectPayouts"),
+            href: "/account/payments#stripe-connect",
+            done: account.payoutsReady,
+            action: t("platform.banner.connectPayoutsCta"),
+          },
+        ]
+      : []),
+    ...(account.verificationRequired
+      ? [
+          {
+            label: t("creatorEditor.readiness.items.verification.label"),
+            detail: t("creatorEditor.readiness.items.verification.hint"),
+            href: "/teach/verification",
+            done: account.verificationApproved,
+            // Em analise nao se "comeca" de novo; pedido de ajuste ou recusa
+            // se resolve editando a solicitacao.
+            action: t(
+              verificationStatus === "pending"
+                ? "professionalBadge.inReview"
+                : verificationStatus === "needs_changes" || verificationStatus === "rejected"
+                  ? "professionalBadge.edit"
+                  : "creatorPanel.home.steps.verifyAction"
+            ),
+          },
+        ]
+      : []),
     {
-      label: t("creatorPanel.home.steps.creatorData"),
-      // Este passo herdou o texto da faixa amarela fixa que vivia no topo de
-      // todo o /teach. A frase e a mesma, ja traduzida, e diz o que importa:
-      // o comprador paga NA conta do professor, a plataforma nao segura o
-      // dinheiro. Enquanto o Stripe nao conectar, o passo mostra isso; depois
-      // volta a falar da verificacao, que e o que sobra.
-      detail: payoutsReady
-        ? t("creatorPanel.home.steps.creatorDataDetail")
-        : t("platform.banner.connectPayouts"),
-      href:
-        verificationStatus === "approved"
-          ? "/account/payments#stripe-connect"
-          : "/teach/verification",
-      done: creatorDataComplete,
-      action: t("creatorPanel.home.steps.creatorDataAction"),
-    },
-    {
-      label: t("creatorPanel.home.steps.prepare"),
-      detail: t("creatorPanel.home.steps.prepareDetail"),
+      label: t("creatorPanel.home.steps.publish"),
+      // Com a taxa exigida e nao paga, o servidor recusa o publish sem ela: a
+      // Home avisa antes, com o mesmo "Activate and publish" do construtor.
+      detail: activationBlocked
+        ? t("creatorPanel.home.steps.publishActivateDetail").replace(
+            "{amount}",
+            () => String(activationFeeUsd)
+          )
+        : t("creatorPanel.home.steps.publishDetail"),
       href: courses[0]
-        ? `/teach/courses/${encodeURIComponent(courses[0].id)}/manage`
+        ? `/teach/builder?courseId=${encodeURIComponent(courses[0].id)}&tab=review`
         : "/teach/builder?newCourse=1&format=course",
-      done: preparedProduct,
-      action: t("creatorPanel.home.steps.prepareAction"),
+      done: launched,
+      action: t(
+        activationBlocked
+          ? "creatorPanel.home.steps.publishActivateAction"
+          : "creatorPanel.home.steps.publishAction"
+      ),
     },
   ];
   const completeCount = steps.filter((step) => step.done).length;
   const progress = Math.round((completeCount / steps.length) * 100);
-  const nextStep = steps.find((step) => !step.done) ?? steps[2];
+  const nextStep = steps.find((step) => !step.done) ?? steps[steps.length - 1];
 
   return (
     <section
@@ -222,12 +298,14 @@ function StudioNextSteps({
             </div>
             <div className="text-right">
               <p className="text-2xl font-semibold tabular-nums text-[var(--color-primary)]">
-                {coursesLoaded ? `${progress}%` : "-"}
+                {ready ? `${progress}%` : "-"}
               </p>
               <p className="text-xs text-[var(--color-ink-muted)]">
-                {t("creatorPanel.home.nextSteps.progress")
-                  .replace("{done}", () => String(completeCount))
-                  .replace("{total}", () => String(steps.length))}
+                {ready
+                  ? t("creatorPanel.home.nextSteps.progress")
+                      .replace("{done}", () => String(completeCount))
+                      .replace("{total}", () => String(steps.length))
+                  : "-"}
               </p>
             </div>
           </div>
@@ -235,12 +313,12 @@ function StudioNextSteps({
           <div className="mt-4 h-1.5 overflow-hidden rounded-none bg-[var(--color-surface-strong)]">
             <div
               className="h-full rounded-none bg-[var(--color-primary)] transition-[width]"
-              style={{ width: coursesLoaded ? `${progress}%` : "0%" }}
+              style={{ width: ready ? `${progress}%` : "0%" }}
             />
           </div>
 
           <ol
-            className="mt-4 grid gap-2 sm:grid-cols-3"
+            className="mt-4 grid gap-2 sm:auto-cols-fr sm:grid-flow-col"
             aria-label={t("creatorPanel.home.nextSteps.listLabel")}
           >
             {steps.map((step, index) => (
@@ -526,12 +604,12 @@ function StudioEvolution({
   courses,
   coursesLoaded,
   payoutsReady,
-  verificationStatus,
+  verificationApproved,
 }: {
   courses: TeacherCourse[];
   coursesLoaded: boolean;
   payoutsReady: boolean;
-  verificationStatus: string;
+  verificationApproved: boolean;
 }) {
   const { t } = useTranslation();
   const milestones = [
@@ -542,7 +620,7 @@ function StudioEvolution({
     },
     {
       label: t("creatorPanel.home.milestones.verified"),
-      done: verificationStatus === "approved",
+      done: verificationApproved,
       icon: BadgeCheck,
     },
     {
@@ -610,17 +688,10 @@ function StudioEvolution({
   );
 }
 
-function isProductPrepared(course: TeacherCourse) {
-  const hasCommercialTerms = course.paymentType === "free" || (course.priceAmountMinor ?? 0) > 0;
-
-  return (
-    course.status === "published" ||
-    (course.title.trim().length >= 3 &&
-      course.summary.trim().length >= 20 &&
-      course.category.trim().length >= 2 &&
-      course.lessonCount > 0 &&
-      hasCommercialTerms)
-  );
+// A leitura de getCourseReadiness: sem paymentType gravado, preco 0 e Free.
+// Fora do Free so se publica com preco, e preco exige os payouts do Stripe.
+function sellsPaid(course: TeacherCourse) {
+  return (course.paymentType ?? (course.priceAmountMinor === 0 ? "free" : "one_time")) !== "free";
 }
 
 // Data code -> dictionary key; the card shares the format names above.

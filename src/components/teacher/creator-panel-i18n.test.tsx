@@ -96,6 +96,7 @@ vi.mock("@/lib/data/user-profiles", () => ({
 
 vi.mock("@/lib/data/creator-verification", () => ({
   fetchRequireCreatorVerification: () => Promise.resolve(false),
+  fetchCreatorActivationBlocked: () => Promise.resolve(false),
 }));
 
 vi.mock("@/lib/data/orders", () => ({
@@ -313,15 +314,16 @@ describe("painel do criador em espanhol", () => {
   });
 
   it("home do criador: proximos passos, produtos, formatos e marcos falam espanhol", async () => {
-    renderEs(<TeacherStudioDashboard />);
+    const view = renderEs(<TeacherStudioDashboard />);
 
     const steps = await screen.findByRole("list", { name: "Próximos pasos del creador" });
     expect(
       screen.getByRole("heading", { name: "Prepárate para tu primera venta" }),
     ).toBeInTheDocument();
     expect(within(steps).getByText("Crea un producto")).toBeInTheDocument();
-    expect(within(steps).getByText("Completa tus datos de creador")).toBeInTheDocument();
-    expect(within(steps).getByText("Prepara el producto para vender")).toBeInTheDocument();
+    // Rascunho de venda avulsa: o Stripe e trava do publish.
+    expect(within(steps).getByText("Conectar Stripe")).toBeInTheDocument();
+    expect(within(steps).getByText("Publica tu producto")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Productos en tu espacio" })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Borradores" })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "En venta" })).toBeInTheDocument();
@@ -337,7 +339,13 @@ describe("painel do criador em espanhol", () => {
       "href",
       "/teach/builder?newCourse=1&format=program",
     );
-    expect(screen.getByRole("heading", { name: "Hitos del creador" })).toBeInTheDocument();
+    // Marcos so depois do 1o publish: antes, a lista de passos e o unico guia.
+    expect(screen.queryByRole("heading", { name: "Hitos del creador" })).toBeNull();
+    view.unmount();
+
+    mocks.courses = [{ ...mocks.course, status: "published" }];
+    renderEs(<TeacherStudioDashboard />);
+    expect(await screen.findByRole("heading", { name: "Hitos del creador" })).toBeInTheDocument();
   });
 
   it.each([

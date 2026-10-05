@@ -2517,12 +2517,12 @@
       "steps": {
         "create": "Crea un producto",
         "createDetail": "Elige el modelo de entrega y de acceso.",
-        "creatorData": "Completa tus datos de creador",
-        "creatorDataDetail": "Termina la verificación profesional y los pagos de productos de pago.",
-        "creatorDataAction": "Completar configuración",
-        "prepare": "Prepara el producto para vender",
-        "prepareDetail": "Añade contenido, precios, la experiencia de miembros y revisa el borrador.",
-        "prepareAction": "Preparar producto"
+        "verifyAction": "Iniciar verificación",
+        "publish": "Publica tu producto",
+        "publishDetail": "Completa la lista de publicación y ábrelo en tu tienda.",
+        "publishAction": "Revisar y publicar",
+        "publishActivateDetail": "Publicar incluye la tarifa única de activación de US${amount}, cobrada una vez por cuenta, nunca por curso.",
+        "publishActivateAction": "Activar y publicar"
       },
       "products": {
         "title": "Productos en tu espacio",
