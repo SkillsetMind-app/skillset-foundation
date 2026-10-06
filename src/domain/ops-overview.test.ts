@@ -168,6 +168,8 @@ describe("dinheiro", () => {
       order({ course_id: "smoke-checkout", amount_minor: 99_999 }),
       order({ course_title: "[QA] Matrix", amount_minor: 99_999 }),
       order({ status: "pending", paid_at: null }),
+      // Cupom de 100%: pago, mas nada foi cobrado. Nao e venda.
+      order({ amount_minor: 0 }),
     ], window);
     expect(summary.paidOrders).toMatchObject({ current: 3, previous: 1 });
     // USD (a moeda padrao) primeiro, o resto em ordem alfabetica.
@@ -187,14 +189,31 @@ describe("dinheiro", () => {
     const summary = summarizeOrders([
       order({ status: "refunded", refunded_amount_minor: 10_000, updated_at: "2026-10-03T00:00:00Z" }),
       order({ status: "partially_refunded", refunded_amount_minor: 2_500, paid_at: "2026-08-01T00:00:00Z", updated_at: "2026-10-04T00:00:00Z" }),
-      order({ status: "failed", paid_at: null, updated_at: "2026-10-02T00:00:00Z" }),
-      order({ status: "failed", paid_at: null, updated_at: "2026-09-23T00:00:00Z" }),
     ], window);
     expect(summary.paidOrders).toMatchObject({ current: 1, previous: 0 });
     expect(summary.gross).toEqual([{ currency: "USD", current: 10_000, previous: 0 }]);
     expect(summary.refunds).toMatchObject({ current: 2, previous: 0 });
     expect(summary.refundedAmount).toEqual([{ currency: "USD", current: 12_500, previous: 0 }]);
-    expect(summary.failed).toMatchObject({ current: 1, previous: 1 });
+  });
+
+  // O reembolso devolve a taxa (refund_application_fee: true); a carteira do
+  // criador ja tira o reembolsado. A receita da plataforma tambem.
+  it("taxa da plataforma sai do valor liquido: US$100 a 10% reembolsado inteiro da US$0", () => {
+    const refunded = summarizeOrders([
+      order({ status: "refunded", amount_minor: 10_000, platform_fee_bps: 1000, refunded_amount_minor: 10_000 }),
+    ], window);
+    expect(refunded.platformFees).toEqual([{ currency: "USD", current: 0, previous: 0 }]);
+
+    const partial = summarizeOrders([
+      order({ status: "partially_refunded", amount_minor: 10_000, platform_fee_bps: 1000, refunded_amount_minor: 2_500 }),
+    ], window);
+    expect(partial.platformFees).toEqual([{ currency: "USD", current: 750, previous: 0 }]);
+  });
+
+  // Checkout expirado reescreve "failed" para "cancelled": a contagem seria
+  // sempre ~0. Volta quando o webhook deixar "failed" fixo.
+  it("nao entrega contagem de pagamentos com falha", () => {
+    expect(summarizeOrders([], window)).not.toHaveProperty("failed");
   });
 
   it("receita da plataforma soma taxa e ativacao moeda a moeda", () => {
@@ -219,5 +238,16 @@ describe("dinheiro", () => {
       { currency: "USD", current: 2_500, previous: 2_500 },
       { currency: "JPY", current: 100_000, previous: 0 },
     ]);
+  });
+
+  it("taxa de ativacao gravada duas vezes para o mesmo pagamento conta uma vez", () => {
+    const paid = { amountTotal: 2_500, currency: "usd", paymentIntentId: "pi_test_1" };
+    const summary = summarizeActivations([
+      { target_id: "u1", created_at: "2026-10-01T00:00:00Z", metadata: paid },
+      { target_id: "u1", created_at: "2026-10-01T00:05:00Z", metadata: paid },
+      { target_id: "u2", created_at: "2026-10-02T00:00:00Z", metadata: { ...paid, paymentIntentId: "pi_test_2" } },
+    ], window);
+    expect(summary.count).toMatchObject({ current: 2, previous: 0 });
+    expect(summary.amount).toEqual([{ currency: "USD", current: 5_000, previous: 0 }]);
   });
 });

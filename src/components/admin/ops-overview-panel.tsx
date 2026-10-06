@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 import type { OpsQueueCounts } from "@/components/admin/ops-overview-metrics";
 import { useTranslation } from "@/components/i18n/i18n-provider";
@@ -24,6 +24,7 @@ import {
 } from "@/domain/ops-overview";
 import {
   readOverviewActivations,
+  readOverviewAdminSession,
   readOverviewCourses,
   readOverviewEnrollments,
   readOverviewOrders,
@@ -31,30 +32,32 @@ import {
   readOverviewUsers,
 } from "@/lib/data/ops-overview";
 
-// A read that has not answered by now shows as failed; a late answer still lands.
+// A read that has not answered by now is cancelled and shows as failed.
 const READ_TIMEOUT_MS = 20_000;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 type Read<T> = { status: "loading" } | { status: "error" } | { status: "ready"; value: T };
+type Loader<T> = (range: OverviewWindow, signal: AbortSignal) => Promise<T>;
 
 const since = (range: OverviewWindow) => new Date(range.previousStart).toISOString();
 
 // Module-level loaders: stable identities for the effect, and the summary runs
 // inside the promise, so a malformed row fails its own tiles, not the page.
-const loadUsers = (range: OverviewWindow) =>
-  readOverviewUsers(since(range)).then((rows) => summarizeUsers(rows, range));
-const loadCourses = (range: OverviewWindow) =>
-  readOverviewCourses().then((rows) => summarizeCourses(rows, range));
-const loadPublications = (range: OverviewWindow) =>
-  readOverviewPublications(since(range)).then((rows) => summarizePublications(rows, range));
-const loadEnrollments = (range: OverviewWindow) =>
-  readOverviewEnrollments(since(range)).then((rows) => summarizeEnrollments(rows, range));
-const loadOrders = (range: OverviewWindow) =>
-  readOverviewOrders(since(range)).then((rows) => summarizeOrders(rows, range));
-const loadActivations = (range: OverviewWindow) =>
-  readOverviewActivations(since(range)).then((rows) => summarizeActivations(rows, range));
+const loadAccess: Loader<boolean> = (_range, signal) => readOverviewAdminSession(signal);
+const loadUsers: Loader<ReturnType<typeof summarizeUsers>> = (range, signal) =>
+  readOverviewUsers(since(range), signal).then((rows) => summarizeUsers(rows, range));
+const loadCourses: Loader<ReturnType<typeof summarizeCourses>> = (range, signal) =>
+  readOverviewCourses(signal).then((rows) => summarizeCourses(rows, range));
+const loadPublications: Loader<Measure> = (range, signal) =>
+  readOverviewPublications(since(range), signal).then((rows) => summarizePublications(rows, range));
+const loadEnrollments: Loader<ReturnType<typeof summarizeEnrollments>> = (range, signal) =>
+  readOverviewEnrollments(since(range), signal).then((rows) => summarizeEnrollments(rows, range));
+const loadOrders: Loader<ReturnType<typeof summarizeOrders>> = (range, signal) =>
+  readOverviewOrders(since(range), signal).then((rows) => summarizeOrders(rows, range));
+const loadActivations: Loader<ReturnType<typeof summarizeActivations>> = (range, signal) =>
+  readOverviewActivations(since(range), signal).then((rows) => summarizeActivations(rows, range));
 
-function useRead<T>(range: OverviewWindow, load: (range: OverviewWindow) => Promise<T>): Read<T> {
+function useRead<T>(range: OverviewWindow, load: Loader<T>): Read<T> {
   const [state, setState] = useState<{ range: OverviewWindow; read: Read<T> }>({
     range,
     read: { status: "loading" },
@@ -62,13 +65,17 @@ function useRead<T>(range: OverviewWindow, load: (range: OverviewWindow) => Prom
 
   useEffect(() => {
     let live = true;
+    const controller = new AbortController();
     const settle = (read: Read<T>) => {
       if (live) setState({ range, read });
     };
-    const timer = setTimeout(() => settle({ status: "error" }), READ_TIMEOUT_MS);
+    const timer = setTimeout(() => {
+      settle({ status: "error" });
+      controller.abort();
+    }, READ_TIMEOUT_MS);
     // Promise.resolve().then: a loader that throws synchronously is a failed read too.
     Promise.resolve(range)
-      .then(load)
+      .then((value) => load(value, controller.signal))
       .then(
         (value) => settle({ status: "ready", value }),
         () => settle({ status: "error" }),
@@ -77,10 +84,11 @@ function useRead<T>(range: OverviewWindow, load: (range: OverviewWindow) => Prom
     return () => {
       live = false;
       clearTimeout(timer);
+      controller.abort();
     };
   }, [range, load]);
 
-  // A period switch never shows the previous period's numbers.
+  // A period switch or refresh never shows the previous window's numbers.
   return state.range === range ? state.read : { status: "loading" };
 }
 
@@ -121,17 +129,18 @@ export function OpsOverviewPanel({ counts }: { counts: OpsQueueCounts }) {
   const { t, locale } = useTranslation();
   const searchParams = useSearchParams();
   const period = parseOverviewPeriod(searchParams.get("period"));
-  const range = useMemo(() => resolveOverviewWindow(period), [period]);
+  // The window is a snapshot: a new period, or the active one clicked again,
+  // takes a new one, and every read keyed on it runs again.
+  const [range, setRange] = useState(() => resolveOverviewWindow(period));
+  if (range.period !== period) setRange(resolveOverviewWindow(period));
 
-  const users = useRead(range, loadUsers);
-  const courses = useRead(range, loadCourses);
-  const publications = useRead(range, loadPublications);
-  const enrollments = useRead(range, loadEnrollments);
-  const orders = useRead(range, loadOrders);
-  const activations = useRead(range, loadActivations);
+  // RLS filters rows instead of failing, so a session without the second
+  // factor would read believable zeros. Check first, read only after.
+  const access = useRead(range, loadAccess);
 
   const copy = (key: string) => t(`platform.ops.overviewPanel.${key}`);
   const dayFormat = new Intl.DateTimeFormat(locale, { month: "short", day: "numeric", timeZone: "UTC" });
+  const timeFormat = new Intl.DateTimeFormat(locale, { hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZone: "UTC" });
   const fmt: Format = {
     copy,
     compare: copy(`compare.${period}`),
@@ -140,17 +149,6 @@ export function OpsOverviewPanel({ counts }: { counts: OpsQueueCounts }) {
     money: (minor, currency, signed = false) => formatMoney(minor, currency, locale, signed),
     day: (index) => dayFormat.format(new Date(range.start + index * DAY_MS)),
   };
-  const text = { loading: copy("loading"), loadError: copy("loadError") };
-
-  const enrollmentSplit = (value: ReturnType<typeof summarizeEnrollments>) =>
-    copy("enrollmentSplit")
-      .replace("{paid}", () => fmt.count(value.paid.current))
-      .replace("{free}", () => fmt.count(value.free.current));
-  const refundedDetail = (lines: MoneyLine[]) =>
-    lines
-      .filter((line) => line.current)
-      .map((line) => copy("refundedAmount").replace("{amount}", () => fmt.money(line.current, line.currency)))
-      .join(" · ") || undefined;
 
   return (
     <section className="grid min-w-0 gap-6">
@@ -158,6 +156,9 @@ export function OpsOverviewPanel({ counts }: { counts: OpsQueueCounts }) {
         <div className="min-w-0">
           <h2 className="text-base font-bold text-[var(--color-ink)]">{copy("title")}</h2>
           <p className="mt-1 text-xs leading-5 text-[var(--color-ink-soft)]">{copy("note")}</p>
+          <p className="text-xs leading-5 text-[var(--color-ink-soft)]">
+            {copy("asOf").replace("{time}", () => timeFormat.format(range.end))}
+          </p>
         </div>
         <nav aria-label={copy("periodLabel")} className="flex rounded-none border border-[var(--color-line)]">
           {overviewPeriods.map((option) => (
@@ -165,6 +166,13 @@ export function OpsOverviewPanel({ counts }: { counts: OpsQueueCounts }) {
               key={option}
               href={`/ops?tab=overview&period=${option}`}
               aria-current={option === period ? "page" : undefined}
+              onClick={option === period
+                ? (event) => {
+                    // Same URL, so no navigation: take a fresh window instead.
+                    event.preventDefault();
+                    setRange(resolveOverviewWindow(period));
+                  }
+                : undefined}
               className={`inline-flex min-h-11 items-center rounded-none px-3 text-sm font-semibold ${
                 option === period
                   ? "bg-[var(--color-primary)] text-[var(--color-on-primary)]"
@@ -177,6 +185,41 @@ export function OpsOverviewPanel({ counts }: { counts: OpsQueueCounts }) {
         </nav>
       </div>
 
+      {access.status === "loading" ? (
+        <p role="status" className="text-sm text-[var(--color-ink-soft)]">{copy("loading")}</p>
+      ) : access.status === "ready" && access.value ? (
+        <OverviewNumbers range={range} counts={counts} fmt={fmt} />
+      ) : (
+        <p role="alert" className="rounded-none border border-[var(--color-line)] bg-[var(--color-surface)] p-4 text-sm text-[var(--color-ink)]">
+          {copy(access.status === "error" ? "accessError" : "secondFactor")}
+        </p>
+      )}
+    </section>
+  );
+}
+
+function OverviewNumbers({ range, counts, fmt }: { range: OverviewWindow; counts: OpsQueueCounts; fmt: Format }) {
+  const users = useRead(range, loadUsers);
+  const courses = useRead(range, loadCourses);
+  const publications = useRead(range, loadPublications);
+  const enrollments = useRead(range, loadEnrollments);
+  const orders = useRead(range, loadOrders);
+  const activations = useRead(range, loadActivations);
+
+  const { copy } = fmt;
+  const text = { loading: copy("loading"), loadError: copy("loadError") };
+  const enrollmentSplit = (value: ReturnType<typeof summarizeEnrollments>) =>
+    copy("enrollmentSplit")
+      .replace("{paid}", () => fmt.count(value.paid.current))
+      .replace("{free}", () => fmt.count(value.free.current));
+  const refundedDetail = (lines: MoneyLine[]) =>
+    lines
+      .filter((line) => line.current)
+      .map((line) => copy("refundedAmount").replace("{amount}", () => fmt.money(line.current, line.currency)))
+      .join(" · ") || undefined;
+
+  return (
+    <>
       <TileGroup title={copy("growth")}>
         <Tile text={text} label={copy("signups")} read={pick(users, (v) => v.signups)}>
           {(value) => <CountBody fmt={fmt} measure={value} />}
@@ -236,9 +279,6 @@ export function OpsOverviewPanel({ counts }: { counts: OpsQueueCounts }) {
             />
           )}
         </Tile>
-        <Tile text={text} label={copy("failedPayments")} read={pick(orders, (v) => v.failed)}>
-          {(value) => <CountBody fmt={fmt} measure={value} upIsGood={false} />}
-        </Tile>
       </TileGroup>
 
       <TileGroup title={copy("queues")}>
@@ -247,7 +287,7 @@ export function OpsOverviewPanel({ counts }: { counts: OpsQueueCounts }) {
         <QueueTile tab="users" label={copy("openPrivacyRequests")} value={counts.openPrivacyRequests} />
         <QueueTile tab="community" label={copy("openReports")} value={counts.openReports} />
       </TileGroup>
-    </section>
+    </>
   );
 }
 

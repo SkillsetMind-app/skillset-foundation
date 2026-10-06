@@ -1,4 +1,4 @@
-import { act, cleanup, render, screen, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { OpsQueueCounts } from "@/components/admin/ops-overview-metrics";
@@ -9,6 +9,7 @@ import { OpsOverviewPanel } from "./ops-overview-panel";
 
 const mocks = vi.hoisted(() => ({
   query: "",
+  session: vi.fn(),
   users: vi.fn(), courses: vi.fn(), publications: vi.fn(),
   activations: vi.fn(), enrollments: vi.fn(), orders: vi.fn(),
 }));
@@ -18,6 +19,7 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }),
 }));
 vi.mock("@/lib/data/ops-overview", () => ({
+  readOverviewAdminSession: mocks.session,
   readOverviewUsers: mocks.users,
   readOverviewCourses: mocks.courses,
   readOverviewPublications: mocks.publications,
@@ -25,6 +27,8 @@ vi.mock("@/lib/data/ops-overview", () => ({
   readOverviewEnrollments: mocks.enrollments,
   readOverviewOrders: mocks.orders,
 }));
+
+const dataReads = [mocks.users, mocks.courses, mocks.publications, mocks.activations, mocks.enrollments, mocks.orders];
 
 // Fixtures relative to the real clock: a minute ago is always in the 7-day
 // window, and the same minute a week earlier is always in the one before it.
@@ -46,6 +50,7 @@ function order(overrides: Record<string, unknown>) {
 }
 
 function seed() {
+  mocks.session.mockResolvedValue(true);
   mocks.users.mockResolvedValue([
     { created_at: recent(), roles: ["student"] },
     { created_at: recent(), roles: ["teacher"] },
@@ -66,7 +71,7 @@ function seed() {
     order({ amount_minor: 5_000 }),
     order({ paid_at: lastWeek(), updated_at: lastWeek() }),
     order({ course_id: "smoke-checkout", amount_minor: 99_900 }),
-    order({ status: "failed", paid_at: null }),
+    order({ status: "refunded", refunded_amount_minor: 10_000 }),
   ]);
 }
 
@@ -74,8 +79,9 @@ function tile(label: string) {
   return screen.getByText(label, { selector: "p" }).closest("[data-tile]") as HTMLElement;
 }
 
+// The access check, then the reads, then their summaries: a few turns.
 async function settle() {
-  await act(async () => {});
+  for (let turn = 0; turn < 4; turn += 1) await act(async () => {});
 }
 
 beforeEach(() => {
@@ -101,23 +107,49 @@ describe("Overview de /ops", () => {
     expect(tile("Courses created")).toHaveTextContent(/^Courses created1/);
     expect(tile("Creators with a published course")).toHaveTextContent("1");
     expect(tile("Enrollments")).toHaveTextContent("1 paid · 1 free");
-    expect(tile("Paid orders")).toHaveTextContent("2");
-    expect(tile("Gross sales")).toHaveTextContent("$150.00");
-    expect(tile("Gross sales")).toHaveTextContent("+$50.00 vs previous 7 days");
-    // $10 + $5 platform fees, plus one $25 activation fee.
+    expect(tile("Paid orders")).toHaveTextContent("3");
+    expect(tile("Gross sales")).toHaveTextContent("$250.00");
+    expect(tile("Gross sales")).toHaveTextContent("+$150.00 vs previous 7 days");
+    // $10 + $5 fees (the refunded sale gave its fee back), plus one $25 activation fee.
     expect(tile("Platform revenue")).toHaveTextContent("$40.00");
-    expect(tile("Platform revenue")).toHaveTextContent("Platform fees plus 1 activation fees");
-    expect(tile("Failed payments")).toHaveTextContent("1");
+    expect(tile("Platform revenue")).toHaveTextContent("Activation fees: 1");
+    expect(tile("Refunds")).toHaveTextContent("$100.00 refunded");
   });
 
-  it("colors a rise in failed payments as bad and a rise in signups as good, with an arrow too", async () => {
+  it("does not show a failed-payments number that expired checkouts would always reset to zero", async () => {
+    render(<OpsOverviewPanel counts={counts} />);
+    await settle();
+    expect(screen.queryByText("Failed payments")).toBeNull();
+  });
+
+  it("colors a rise in refunds as bad and a rise in signups as good, with an arrow too", async () => {
     render(<OpsOverviewPanel counts={counts} />);
     await settle();
     const signups = within(tile("Signups")).getByText(/vs previous 7 days/);
-    const failed = within(tile("Failed payments")).getByText(/vs previous 7 days/);
+    const refunds = within(tile("Refunds")).getByText(/vs previous 7 days/);
     expect(signups).toHaveClass("text-[var(--color-success-fg)]");
-    expect(failed).toHaveClass("text-[var(--color-danger-fg)]");
+    expect(refunds).toHaveClass("text-[var(--color-danger-fg)]");
     expect(signups).toHaveTextContent("▲");
+  });
+
+  it("asks for the second factor instead of showing numbers RLS would have filtered", async () => {
+    mocks.session.mockResolvedValue(false);
+    render(<OpsOverviewPanel counts={counts} />);
+    await settle();
+    expect(screen.getByRole("alert")).toHaveTextContent("Sign in with your second factor to see these numbers.");
+    expect(document.querySelector("[data-tile]")).toBeNull();
+    expect(screen.queryByRole("link", { name: /Verifications pending/ })).toBeNull();
+    for (const read of dataReads) expect(read).not.toHaveBeenCalled();
+  });
+
+  it("fails closed when the access check itself fails", async () => {
+    mocks.session.mockRejectedValue(new Error("Private network detail"));
+    render(<OpsOverviewPanel counts={counts} />);
+    await settle();
+    expect(screen.getByRole("alert")).toHaveTextContent("We could not load these numbers.");
+    expect(document.querySelector("[data-tile]")).toBeNull();
+    expect(screen.queryByText("Private network detail")).toBeNull();
+    for (const read of dataReads) expect(read).not.toHaveBeenCalled();
   });
 
   it("keeps the rest of the page when one read fails", async () => {
@@ -125,7 +157,7 @@ describe("Overview de /ops", () => {
     render(<OpsOverviewPanel counts={counts} />);
     await settle();
 
-    for (const label of ["Paid orders", "Gross sales", "Refunds", "Failed payments", "Platform revenue"]) {
+    for (const label of ["Paid orders", "Gross sales", "Refunds", "Platform revenue"]) {
       expect(tile(label)).toHaveTextContent("Could not load this number.");
     }
     expect(tile("Signups")).toHaveTextContent("+1 vs previous 7 days");
@@ -138,29 +170,45 @@ describe("Overview de /ops", () => {
     render(<OpsOverviewPanel counts={counts} />);
     await settle();
     expect(tile("Signups")).toHaveTextContent("Could not load this number.");
-    expect(tile("Paid orders")).toHaveTextContent("2");
+    expect(tile("Paid orders")).toHaveTextContent("3");
   });
 
-  it("gives up on a read that hangs, without blocking the others", async () => {
+  it("gives up on a read that hangs and cancels its request, without blocking the others", async () => {
     vi.useFakeTimers({ shouldAdvanceTime: false });
     mocks.users.mockReturnValue(new Promise(() => {}));
     render(<OpsOverviewPanel counts={counts} />);
     await settle();
     expect(within(tile("Signups")).getByRole("status")).toHaveTextContent("Loading");
-    expect(tile("Paid orders")).toHaveTextContent("2");
+    expect(tile("Paid orders")).toHaveTextContent("3");
+    const signal = mocks.users.mock.calls[0][1] as AbortSignal;
+    expect(signal.aborted).toBe(false);
     await act(async () => { vi.advanceTimersByTime(20_000); });
     expect(tile("Signups")).toHaveTextContent("Could not load this number.");
+    expect(signal.aborted).toBe(true);
+  });
+
+  it("cancels in-flight reads when the panel goes away", async () => {
+    mocks.orders.mockReturnValue(new Promise(() => {}));
+    const { unmount } = render(<OpsOverviewPanel counts={counts} />);
+    await settle();
+    const signal = mocks.orders.mock.calls[0][1] as AbortSignal;
+    unmount();
+    expect(signal.aborted).toBe(true);
   });
 
   it("shows zero and no change instead of blanks when nothing happened", async () => {
-    for (const read of [mocks.users, mocks.courses, mocks.publications, mocks.activations, mocks.enrollments, mocks.orders]) {
-      read.mockResolvedValue([]);
-    }
+    for (const read of dataReads) read.mockResolvedValue([]);
     render(<OpsOverviewPanel counts={counts} />);
     await settle();
     expect(tile("Signups")).toHaveTextContent("0");
     expect(tile("Signups")).toHaveTextContent("No change vs previous 7 days");
     expect(tile("Gross sales")).toHaveTextContent("Nothing in this period");
+  });
+
+  it("says when the numbers were taken, in UTC", async () => {
+    render(<OpsOverviewPanel counts={counts} />);
+    await settle();
+    expect(screen.getByText(/As of \d{2}:\d{2} UTC/)).toBeInTheDocument();
   });
 
   it("reads the period from the URL and asks only for the window it compares", async () => {
@@ -172,8 +220,20 @@ describe("Overview de /ops", () => {
     expect(within(period).getByRole("link", { name: "Today" })).toHaveAttribute("href", "/ops?tab=overview&period=today");
     expect(tile("Signups")).toHaveTextContent("vs previous 30 days");
     const expected = new Date(resolveOverviewWindow("30d").previousStart).toISOString();
-    expect(mocks.users).toHaveBeenCalledWith(expected);
-    expect(mocks.orders).toHaveBeenCalledWith(expected);
+    expect(mocks.users).toHaveBeenCalledWith(expected, expect.any(AbortSignal));
+    expect(mocks.orders).toHaveBeenCalledWith(expected, expect.any(AbortSignal));
+  });
+
+  it("refetches when the active period is clicked again", async () => {
+    render(<OpsOverviewPanel counts={counts} />);
+    await settle();
+    expect(mocks.users).toHaveBeenCalledTimes(1);
+    mocks.users.mockResolvedValue([{ created_at: recent(), roles: ["student"] }]);
+    fireEvent.click(within(screen.getByRole("navigation", { name: "Period" })).getByRole("link", { name: "7 days" }));
+    await settle();
+    expect(mocks.users).toHaveBeenCalledTimes(2);
+    expect(mocks.orders).toHaveBeenCalledTimes(2);
+    expect(tile("Signups")).toHaveTextContent(/^Signups1/);
   });
 
   it("draws a per-day trend for 7 and 30 days but not for today", async () => {
@@ -205,5 +265,7 @@ describe("Overview de /ops", () => {
     expect(await screen.findByRole("heading", { name: "Cómo va el negocio" })).toBeInTheDocument();
     expect(tile("Registros")).toHaveTextContent("vs. los 7 días anteriores");
     expect(tile("Inscripciones")).toHaveTextContent("1 de pago · 1 gratis");
+    expect(tile("Ingresos de la plataforma")).toHaveTextContent("Tarifas de activación: 1");
+    expect(screen.getByText(/Datos de las \d{2}:\d{2} UTC/)).toBeInTheDocument();
   });
 });

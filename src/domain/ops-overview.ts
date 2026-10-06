@@ -222,35 +222,49 @@ const REFUND_STATUSES = new Set(["refunded", "partially_refunded"]);
 
 /**
  * Pedido = venda (renovacao de assinatura tambem vira pedido). Venda conta
- * por paid_at; reembolso e falha por updated_at, o momento em que o webhook
- * gravou o desfecho (o pedido nao tem refunded_at/failed_at).
+ * por paid_at e so quando cobrou algo (cupom de 100% fica fora); reembolso
+ * por updated_at, o momento em que o webhook gravou o desfecho (o pedido nao
+ * tem refunded_at). Pagamento com falha fica fora: checkout expirado reescreve
+ * "failed" para "cancelled", entao a contagem seria quase sempre 0.
  */
 export function summarizeOrders(rows: readonly OverviewOrderRow[], window: OverviewWindow) {
   const real = rows.filter((row) => isRealCourse(row.course_id, row.course_title));
-  const paid = real.filter((row) => row.paid_at);
+  const paid = real.filter((row) => row.paid_at && row.amount_minor > 0);
   const refunded = real.filter((row) => REFUND_STATUSES.has(row.status));
-  const failed = real.filter((row) => row.status === "failed");
   const paidAt = (row: OverviewOrderRow) => row.paid_at;
   const updatedAt = (row: OverviewOrderRow) => row.updated_at;
   const currency = (row: OverviewOrderRow) => row.currency;
   return {
     paidOrders: measure(paid, paidAt, window),
     gross: measureMoney(paid, paidAt, currency, (row) => row.amount_minor, window),
-    // A conta que o webhook grava em payout_ledger.skillset_fee_minor.
+    // A conta do webhook (floor(bruto * bps / 10000)) sobre o liquido: o
+    // reembolso devolve a taxa (refund_application_fee: true), como a carteira
+    // do criador ja desconta.
     platformFees: measureMoney(paid, paidAt, currency, (row) =>
-      Math.floor((row.amount_minor * (row.platform_fee_bps ?? DEFAULT_PLATFORM_FEE_BPS)) / 10000), window),
+      Math.floor(
+        (Math.max(0, row.amount_minor - row.refunded_amount_minor) * (row.platform_fee_bps ?? DEFAULT_PLATFORM_FEE_BPS))
+          / 10000,
+      ), window),
     refunds: measure(refunded, updatedAt, window),
     refundedAmount: measureMoney(refunded, updatedAt, currency, (row) => row.refunded_amount_minor, window),
-    failed: measure(failed, updatedAt, window),
   };
 }
 
 /**
  * Eventos STOREFRONT_ACTIVATION_FEE_PAID: e o unico lugar legivel que guarda o
  * valor (a cobranca e da plataforma, sem linha em orders). Evento sem valor
- * gravado entra na contagem, nao na soma.
+ * gravado entra na contagem, nao na soma. Uma reentrega do webhook grava o
+ * evento de novo: um pagamento (paymentIntentId) conta uma vez.
  */
-export function summarizeActivations(rows: readonly OverviewAuditRow[], window: OverviewWindow) {
+export function summarizeActivations(allRows: readonly OverviewAuditRow[], window: OverviewWindow) {
+  const seen = new Set<string>();
+  const rows = allRows.filter((row) => {
+    const paymentIntentId = record(row.metadata).paymentIntentId;
+    if (typeof paymentIntentId !== "string" || !paymentIntentId) return true;
+    if (seen.has(paymentIntentId)) return false;
+    seen.add(paymentIntentId);
+    return true;
+  });
   const priced = rows.filter((row) => {
     const metadata = record(row.metadata);
     return typeof metadata.amountTotal === "number" && typeof metadata.currency === "string";

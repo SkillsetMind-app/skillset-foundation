@@ -17,7 +17,7 @@ const mocks = vi.hoisted(() => ({
   push: vi.fn(), replace: vi.fn(), refresh: vi.fn(),
   verification: vi.fn(), support: vi.fn(), reports: vi.fn(),
   orders: vi.fn(), users: vi.fn(), accounts: vi.fn(), audit: vi.fn(), roster: vi.fn(),
-  overview: vi.fn(),
+  overview: vi.fn(), session: vi.fn(),
 }));
 
 vi.mock("next/navigation", () => ({
@@ -47,6 +47,7 @@ vi.mock("@/lib/data/platform-roles", () => ({ listPlatformUsers: mocks.roster, s
 vi.mock("@/lib/data/ops-users", () => ({ OPS_USERS_PAGE_SIZE: 50, searchOpsUsers: () => Promise.resolve({ users: [], total: 0 }) }));
 vi.mock("@/lib/data/published-courses", () => ({ subscribeToPublishedTeacherCourses: (next: (rows: never[]) => void) => { next([]); return () => {}; } }));
 vi.mock("@/lib/data/ops-overview", () => ({
+  readOverviewAdminSession: mocks.session,
   readOverviewUsers: mocks.overview, readOverviewCourses: mocks.overview, readOverviewPublications: mocks.overview,
   readOverviewActivations: mocks.overview, readOverviewEnrollments: mocks.overview, readOverviewOrders: mocks.overview,
 }));
@@ -80,6 +81,7 @@ beforeEach(() => {
   }
   mocks.roster.mockResolvedValue([]);
   mocks.overview.mockResolvedValue([]);
+  mocks.session.mockResolvedValue(true);
 });
 
 afterEach(() => { cleanup(); vi.restoreAllMocks(); localStorage.clear(); });
@@ -191,6 +193,7 @@ describe("filas de Operações na barra", () => {
     expect(sidebar().querySelector('[aria-current="page"]')).toHaveAttribute("href", "/ops?tab=verification");
     expect(screen.getByRole("heading", { name: "Professional admission applications" })).toBeInTheDocument();
     expect(screen.queryByRole("alert")).toBeNull();
+    expect(mocks.session).not.toHaveBeenCalled();
     expect(mocks.overview).not.toHaveBeenCalled();
   });
 
@@ -199,6 +202,7 @@ describe("filas de Operações na barra", () => {
     mocks.query = "tab=overview";
     render(<OpsPage />);
     expect(screen.getByRole("alert")).toHaveTextContent("Your access level does not include this queue.");
+    expect(mocks.session).not.toHaveBeenCalled();
     expect(mocks.overview).not.toHaveBeenCalled();
   });
 
@@ -285,6 +289,7 @@ describe("filas de Operações na barra", () => {
     expect(mocks.verification).not.toHaveBeenCalled();
     expect(mocks.support).not.toHaveBeenCalled();
     expect(mocks.reports).not.toHaveBeenCalled();
+    expect(mocks.session).not.toHaveBeenCalled();
     expect(mocks.overview).not.toHaveBeenCalled();
   });
 
@@ -294,6 +299,8 @@ describe("filas de Operações na barra", () => {
     expect(mocks.verification).not.toHaveBeenCalled();
     expect(mocks.support).not.toHaveBeenCalled();
     expect(mocks.reports).not.toHaveBeenCalled();
+    expect(mocks.session).not.toHaveBeenCalled();
+    expect(mocks.overview).not.toHaveBeenCalled();
   });
 });
 
