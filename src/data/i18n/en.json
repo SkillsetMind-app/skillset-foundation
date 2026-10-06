@@ -192,7 +192,7 @@
           "eyebrow": "SkillsetMind for experts",
           "title": "Teach the world what you know.",
           "description": "Verify your professional profile where required, publish your program, sell in 30 currencies, and have buyers pay your own Stripe account directly. No website to build.",
-          "point1Title": "Verified professionals",
+          "point1Title": "Professional verification",
           "point1Desc": "Where required, professional eligibility is verified before a creator can publish.",
           "point2Title": "Sell in 30 currencies",
           "point2Desc": "Global checkout via Stripe. The charge lands in your own Stripe account.",
@@ -203,7 +203,7 @@
           "eyebrow": "SkillsetMind for learners",
           "title": "Learn from people who do the work.",
           "description": "Every program comes from an independent professional, verified where required. Pay in your currency, learn at your pace, and earn certificates anyone can verify.",
-          "point1Title": "Verified experts",
+          "point1Title": "Professional verification",
           "point1Desc": "Where required, professional eligibility is checked before a creator can publish.",
           "point2Title": "Pay in your currency",
           "point2Desc": "Checkout via Stripe in 30 currencies.",
@@ -3106,8 +3106,8 @@
     "trust": {
       "trust_and_safety": "Trust and safety",
       "skillsetmind_is_built_around_controlled_course": "SkillsetMind is built around controlled course publication, protected student access, course payments that go straight to the creator's own Stripe account, moderation, and verifiable learning outcomes.",
-      "verified_professionals": "Verified professionals",
-      "skillsetmind_verifies_professional_eligibility_before_publication": "Where required, SkillsetMind verifies professional eligibility before publication, and it can pause or remove courses that break marketplace standards.",
+      "verified_professionals": "Professional verification",
+      "skillsetmind_verifies_professional_eligibility_before_publication": "Where required, SkillsetMind reviews professional evidence before a creator publishes. Otherwise it is optional: a \"Verified professional\" badge means our team checked a license, or reviewed professional evidence, on the date shown. It does not cover course results or claims. Courses that break marketplace standards can be paused or removed.",
       "protected_access": "Protected access",
       "learning_workspaces_open_only_after_enrollment": "Learning workspaces open only after enrollment — no public links bypass paid access.",
       "refund_controls": "Refund controls",
@@ -4274,6 +4274,26 @@
       "qrAlt": "QR code to add this account to your authenticator app",
       "manualHint": "Can’t scan it? Type this key into the app instead.",
       "onDevice": "Setting up on this phone?"
+    }
+  },
+  "verifiedBadge": {
+    "label": "Verified professional",
+    "licenseChecked": "{brand} checked this professional license on {date}.",
+    "licenseCheckedUndated": "{brand} checked this professional license.",
+    "evidenceReviewed": "{brand} reviewed this person's professional evidence on {date}.",
+    "evidenceReviewedUndated": "{brand} reviewed this person's professional evidence.",
+    "noClaims": "We don't verify results or claims made in courses.",
+    "trustLink": "How verification works",
+    "offer": {
+      "eyebrow": "Optional · free for now",
+      "title": "Add the verified-professional badge to your profile",
+      "body": "Send your license or professional evidence. Our team reviews it, and after approval the badge appears next to your name.",
+      "cta": "Get it free (≈3 min)",
+      "notNow": "Not now",
+      "preview": "Preview"
+    },
+    "slot": {
+      "offer": "Add the verified-professional badge (free)"
     }
   },
   "professionalBadge": {

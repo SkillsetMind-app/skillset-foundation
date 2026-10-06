@@ -298,7 +298,24 @@ export type PublicProfile = {
    * Already validated at projection time (https URLs, hex accent, known theme).
    */
   storefront?: StorefrontConfig | null;
+  /**
+   * Selo "profissional verificado" (cosmético). Null sem aprovação. Só a
+   * espécie e a data saem do banco: o número de registro nunca é público.
+   */
+  verification?: ProfessionalVerification | null;
   updatedAt?: unknown;
+};
+
+/**
+ * O que o público sabe do selo: licença conferida ou evidência profissional
+ * revisada. Coach, holístico etc. ficam no caso privado (minimização).
+ */
+export type ProfessionalVerificationKind = "license" | "evidence";
+
+export type ProfessionalVerification = {
+  kind: ProfessionalVerificationKind;
+  /** ISO da revisão (reviewed_at); null quando o caso não tem data de revisão. */
+  verifiedAt: string | null;
 };
 
 /**

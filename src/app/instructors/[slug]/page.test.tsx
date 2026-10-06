@@ -162,6 +162,24 @@ describe("página do perfil", () => {
     expect(screen.getByRole("link", { name: "Made with SkillsetMind" })).toHaveAttribute("href", "/for-creators");
   });
 
+  it("professor verificado: o selo com as palavras logo depois do nome", async () => {
+    mocks.getPublicProfileByRef.mockResolvedValue({
+      ...ana,
+      verification: { kind: "evidence", verifiedAt: "2026-09-01T12:00:00.000Z" },
+    });
+    await renderPage("@ana.souza");
+
+    const heading = screen.getByRole("heading", { level: 1, name: "Ana Souza" });
+    const badge = screen.getByRole("button", { name: "Verified professional" });
+    expect(heading.nextElementSibling).toContainElement(badge);
+    expect(badge.closest("header")).toHaveAttribute("data-section", "header");
+  });
+
+  it("sem verificação, sem selo", async () => {
+    await renderPage("@ana.souza");
+    expect(screen.queryByRole("button", { name: "Verified professional" })).toBeNull();
+  });
+
   it("sem curso, sem botão principal e sem faixa de prova", async () => {
     mocks.listCreatorCourses.mockResolvedValue([]);
     const { container } = await renderPage("@ana.souza");

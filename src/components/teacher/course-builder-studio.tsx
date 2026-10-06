@@ -103,6 +103,7 @@ import { track } from "@/lib/posthog/events";
 import { defaultSkillsetCurrency } from "@/lib/payments/currencies";
 import { CurrencySelect } from "@/components/teacher/currency-select";
 import { usePublishGates } from "@/components/teacher/use-publish-gates";
+import { VerifiedBadgeOffer } from "@/components/teacher/verified-badge-offer";
 import { getCourseReadiness, getLessonIdsWithMedia } from "@/domain/course-readiness";
 import { moveLessonTo } from "@/domain/curriculum-move";
 
@@ -518,7 +519,8 @@ export function CourseBuilderStudio() {
   const { user } = useAuth();
   // Payouts e verificacao: so o Manage sabia; aqui a pessoa clicava em
   // Publish e descobria pelo erro do servidor.
-  const { account: publishGates } = usePublishGates(user);
+  const { account: publishGates, verificationStatus } = usePublishGates(user);
+  const successNoticeRef = useRef<HTMLParagraphElement>(null);
   const [course, setCourse] = useState<TeacherCourse | null>(null);
   const [title, setTitle] = useState("");
   const [summary, setSummary] = useState("");
@@ -3434,7 +3436,8 @@ export function CourseBuilderStudio() {
             </div>
           ) : null}
           {success ? (
-            <p className="mt-4 info-notice">
+            // tabIndex -1: "Agora não" na oferta do selo devolve o foco aqui.
+            <p ref={successNoticeRef} tabIndex={-1} className="mt-4 info-notice">
               {t(`creatorEditor.builder.success.${success}`)}
             </p>
           ) : null}
@@ -3444,6 +3447,17 @@ export function CourseBuilderStudio() {
               label={t("creatorPanel.hub.sections.page")}
               path={`/courses/${encodeURIComponent(courseId)}`}
               title={title.trim() || t("creatorPanel.hub.header.courseFallback")}
+            />
+          ) : null}
+          {/* Depois de publicar, e só aí: a oferta do selo, sem travar nada.
+              Status null (leitura falhou ou não chegou) não oferece. */}
+          {success === "published" && user ? (
+            <VerifiedBadgeOffer
+              uid={user.uid}
+              name={user.displayName}
+              photoURL={user.photoURL}
+              verificationStatus={verificationStatus}
+              onDismiss={() => successNoticeRef.current?.focus()}
             />
           ) : null}
           <div className="mt-5 grid gap-3">

@@ -8,6 +8,7 @@ import type { CSSProperties } from "react";
 import { CourseTile } from "@/components/courses/course-tile";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { UserAvatar } from "@/components/shared/user-avatar";
+import { VerifiedBadge } from "@/components/shared/verified-badge";
 import { brand } from "@/data/brand";
 import {
   isStorefrontHexColor,
@@ -84,11 +85,13 @@ export function InstructorProfileView({
           </div>
         ) : null}
         <UserAvatar name={name} photoURL={profile.photoURL} size="lg" />
-        <div className="mt-4 flex items-center justify-center gap-2">
+        {/* flex-wrap: nome longo no celular empurra o selo para a linha de
+            baixo em vez de sair da tela. */}
+        <div className="mt-4 flex flex-wrap items-center justify-center gap-x-3 gap-y-2">
           <h1 className="display-title text-3xl leading-tight text-[var(--color-primary)] sm:text-4xl">
             {name}
           </h1>
-          {/* Selo de verificado (próximo PR): entra aqui, logo depois do nome. */}
+          {profile.verification ? <VerifiedBadge verification={profile.verification} /> : null}
         </div>
         {profile.username ? (
           <p className="mt-1 text-sm font-semibold text-[var(--color-ink-soft)]">@{profile.username}</p>

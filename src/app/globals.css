@@ -7728,6 +7728,18 @@ button:hover > .dash-card,
   display: none;
 }
 
+/* Selo de profissional verificado: quadrado, como os cantos da marca (só o
+   avatar é redondo), e nunca o azul do Instagram. Claro: marinho com check de
+   latão (5,7:1). Escuro: o marinho vira claro, e o check vira o fundo. */
+.verified-seal {
+  --seal-ground: var(--color-primary);
+  --seal-mark: var(--color-accent);
+}
+
+[data-theme="dark"] .verified-seal {
+  --seal-mark: var(--color-base);
+}
+
 .marketplace-card__media {
   position: relative;
   display: block;

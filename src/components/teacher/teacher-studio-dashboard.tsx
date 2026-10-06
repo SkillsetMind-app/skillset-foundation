@@ -146,6 +146,7 @@ export function TeacherStudioDashboard() {
             uid={user.uid}
             courses={courses}
             coursesLoaded={coursesLoaded}
+            verificationStatus={verificationStatus}
           />
         ) : null}
       </div>
@@ -185,7 +186,7 @@ function StudioNextSteps({
   // (verificacao exigida) e a porcentagem pularia: contagem e % ficam neutras.
   ready: boolean;
   account: CourseReadinessAccount;
-  verificationStatus: string;
+  verificationStatus: string | null;
   needsStripe: boolean;
   activationBlocked: boolean;
   launched: boolean;

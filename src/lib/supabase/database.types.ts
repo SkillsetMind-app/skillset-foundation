@@ -2088,6 +2088,9 @@ export type Database = {
           uid: string
           updated_at: string | null
           username: string | null
+          verification_kind: string | null
+          verified_at: string | null
+          verified_professional: boolean
         }
         Insert: {
           bio?: string | null
@@ -2098,6 +2101,9 @@ export type Database = {
           uid: string
           updated_at?: string | null
           username?: string | null
+          verification_kind?: string | null
+          verified_at?: string | null
+          verified_professional?: boolean
         }
         Update: {
           bio?: string | null
@@ -2108,6 +2114,9 @@ export type Database = {
           uid?: string
           updated_at?: string | null
           username?: string | null
+          verification_kind?: string | null
+          verified_at?: string | null
+          verified_professional?: boolean
         }
         Relationships: []
       }

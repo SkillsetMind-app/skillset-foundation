@@ -20,6 +20,24 @@ it("shows and opens /@username when the public profile has one", async () => {
   expect(screen.getByRole("link", { name: /Open/ })).toHaveAttribute("href", "/@ana.souza");
 });
 
+// Lugar fixo do selo: o que resta depois de 3 "Not now" na oferta. Só para
+// quem pode pedir (none/rejected); status desconhecido (null) não mostra nada.
+it.each(["none", "rejected"])("badge slot for %s links to the request", async (status) => {
+  render(<StudioStorefrontCard uid="teacher-1" courses={[]} coursesLoaded verificationStatus={status} />);
+
+  expect(screen.getByRole("link", { name: "Add the verified-professional badge (free)" }))
+    .toHaveAttribute("href", "/teach/verification");
+  await screen.findByText("/instructors/teacher-1");
+});
+
+it.each(["pending", "needs_changes", "approved", null, undefined])("no badge slot for %s", async (status) => {
+  const { container } = render(
+    <StudioStorefrontCard uid="teacher-1" courses={[]} coursesLoaded verificationStatus={status} />,
+  );
+  expect(container.querySelector("[data-verified-badge-slot]")).toBeNull();
+  await screen.findByText("/instructors/teacher-1");
+});
+
 it("falls back to /instructors/{uid} without a username", async () => {
   render(<StudioStorefrontCard uid="teacher-1" courses={[]} coursesLoaded />);
 

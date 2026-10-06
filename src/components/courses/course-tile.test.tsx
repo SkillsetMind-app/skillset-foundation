@@ -94,6 +94,20 @@ describe("CourseTile", () => {
     expect(screen.getByText("(12)")).toBeInTheDocument();
   });
 
+  it("professor verificado: só o selo, com nome acessível, e sem botão dentro do link", () => {
+    renderTile({ instructor: { name: "Ana Prado", photoURL: null, verified: true } });
+
+    expect(screen.getByRole("img", { name: "Verified professional" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Verified professional" })).toBeNull();
+    expect(screen.queryByText("Verified professional")).toBeNull();
+  });
+
+  it("sem verificação, sem selo", () => {
+    renderTile({ instructor: { name: "Ana Prado", photoURL: null, verified: false } });
+
+    expect(screen.queryByRole("img", { name: "Verified professional" })).toBeNull();
+  });
+
   it("nao inventa nota quando ninguem avaliou", () => {
     renderTile({ rating: { average: 0, count: 0 } });
 
