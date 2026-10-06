@@ -176,6 +176,12 @@ for arquivo in supabase/migrations/*.sql; do
         psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q \
         -f "supabase/tests/20260912020000_community_presence_private_smoke.sql"
       aplica "$arquivo"
+    elif [[ "$nome" == "20261006030000_realtime_canais_privados_voltam_a_entrar.sql" ]]; then
+      prova_red "canal de Postgres Changes sem policy de entrada" \
+        'REALTIME_JOIN_REGRESSION: authenticated user cannot join a Postgres Changes channel' -- \
+        psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q \
+        -f "supabase/tests/20261006030000_realtime_canais_privados_voltam_a_entrar_smoke.sql"
+      aplica "$arquivo"
     else
       aplica "$arquivo"
     fi
