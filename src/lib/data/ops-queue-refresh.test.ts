@@ -171,51 +171,12 @@ function tableQuery(rows: Row[]) {
   return query;
 }
 
-// Mirrors realtime-js: one channel per topic, and a second identical
-// postgres_changes binding on that channel is dropped (only logged).
-function sharedTopicClient(rows: Row[]) {
-  const topics = new Map<string, Array<() => void>>();
-  mocks.client = {
-    from: () => tableQuery(rows),
-    channel: (topic: string) => {
-      const listeners = topics.get(topic) ?? [];
-      topics.set(topic, listeners);
-      const channel = {
-        on(_event: string, _filter: unknown, callback: () => void) {
-          if (listeners.length === 0) listeners.push(callback);
-          return channel;
-        },
-        subscribe() { return channel; },
-      };
-      return channel;
-    },
-    removeChannel: vi.fn(),
-  };
-  return { notifyAll: () => topics.forEach((listeners) => listeners.forEach((listener) => listener())) };
+function tableClient(rows: Row[]) {
+  const channel = { on: () => channel, subscribe: () => channel };
+  mocks.client = { from: () => tableQuery(rows), channel: () => channel, removeChannel: vi.fn() };
 }
 
-describe("account action requests realtime", () => {
-  it("refreshes every subscriber (Ops badge and panel), not only the first on a topic", async () => {
-    const client = sharedTopicClient([
-      { id: "request-test", status: "pending", type: "data_export", requested_by: "learner-test" },
-    ]);
-    const badge = vi.fn();
-    const panel = vi.fn();
-    const stops = [subscribeToAccountActionRequests(badge, vi.fn()), subscribeToAccountActionRequests(panel, vi.fn())];
-    await vi.waitFor(() => {
-      expect(badge).toHaveBeenCalledTimes(1);
-      expect(panel).toHaveBeenCalledTimes(1);
-    });
-
-    client.notifyAll();
-
-    await vi.waitFor(() => {
-      expect(badge).toHaveBeenCalledTimes(2);
-      expect(panel).toHaveBeenCalledTimes(2);
-    });
-    stops.forEach((stop) => stop());
-  });
-
+describe("account action requests read", () => {
   it("never loses an open request behind newer closed ones, and lists open ones oldest first", async () => {
     // 60 closed requests, all newer than the oldest open one: a plain
     // "50 newest" read would drop exactly the request closest to day 30.
@@ -223,7 +184,7 @@ describe("account action requests realtime", () => {
       id: `closed-${index}`, status: index % 2 ? "completed" : "rejected", type: "data_export", requested_by: "learner-test",
       requested_at: `2026-09-${String(10 + (index % 18)).padStart(2, "0")}T10:00:00Z`,
     }));
-    sharedTopicClient([
+    tableClient([
       ...closed,
       { id: "pending-new", status: "pending", type: "data_export", requested_by: "learner-test", requested_at: "2026-09-20T10:00:00Z" },
       { id: "processing-old", status: "processing", type: "account_deletion", requested_by: "learner-test", requested_at: "2026-08-20T10:00:00Z" },

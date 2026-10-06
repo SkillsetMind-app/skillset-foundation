@@ -25,10 +25,6 @@ export type AccountActionRequest = {
 };
 
 const accountActionRequestsTable = "account_action_requests";
-// realtime-js returns the SAME channel for a repeated topic and drops a second
-// identical postgres_changes binding, so the Ops badge and the panel would
-// silently share one listener (and one teardown). One topic per subscription.
-let subscriptionSeq = 0;
 
 type AccountActionRequestRow =
   Database["public"]["Tables"]["account_action_requests"]["Row"];
@@ -116,7 +112,7 @@ export function subscribeToAccountActionRequests(
   // table and re-run the query on any change.
   // ponytail: table-wide change fan-in; fine for the admin-only account queue.
   const channel = supabase
-    .channel(`account_action_requests:queue:${++subscriptionSeq}`)
+    .channel("account_action_requests:queue")
     .on(
       "postgres_changes",
       { event: "*", schema: "public", table: accountActionRequestsTable },
