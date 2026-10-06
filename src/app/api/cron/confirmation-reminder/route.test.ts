@@ -194,6 +194,49 @@ describe("confirmation reminder cron", () => {
     }
   });
 
+  it("points to the sign-in page for when the one-hour link has expired, with no address in any link", async () => {
+    const english = user(40);
+    const spanish = user(30, { user_metadata: { locale: "es" } });
+
+    await run();
+
+    const [en, es] = sentBodies();
+    expect(en.html).toContain(`href="${APP}/login"`);
+    expect(en.text).toContain(`${APP}/login`);
+    expect(en.text).toContain("Link expired? Sign in with your email and password and tap 'Resend the link'.");
+    expect(en.text).toContain("No password? Use 'Forgot password' — that link also confirms your email.");
+    expect(es.html).toContain(`href="${APP}/login"`);
+    expect(es.text).toContain("'Reenviar el enlace'");
+    expect(es.text).toContain("'¿Olvidaste tu contraseña?'");
+    for (const [body, address] of [[en, english.email], [es, spanish.email]] as const) {
+      const hrefs = [...String(body.html).matchAll(/href="([^"]*)"/g)].map((match) => match[1]);
+      expect(hrefs.length).toBeGreaterThan(1);
+      for (const href of hrefs) {
+        expect(href).not.toContain(address);
+        expect(href).not.toContain(encodeURIComponent(String(address)));
+        expect(href).not.toMatch(/[?&]email=/);
+      }
+    }
+  });
+
+  it("emails an account once even when paging returns it twice", async () => {
+    for (let index = 0; index < 199; index += 1) user(1);
+    const twice = user(30);
+    const other = user(40);
+    // Offset paging: a signup arriving between calls shifts page 2 by one, so
+    // the last account of page 1 shows up again at the top of page 2.
+    const sorted = () => [...users].sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at));
+    mocks.listUsers
+      .mockResolvedValueOnce({ data: { users: sorted().slice(0, 200) }, error: null })
+      .mockResolvedValueOnce({ data: { users: [twice, other] }, error: null });
+
+    const response = await run();
+
+    expect(await response.json()).toEqual({ ok: true, due: 2, sent: 2, failed: 0 });
+    expect(sentTo()).toEqual([other.email, twice.email]);
+    expect(mocks.generateLink).toHaveBeenCalledTimes(2);
+  });
+
   it("caps each run at 25 and leaves the rest for the next hour", async () => {
     for (let hours = 30; hours < 60; hours += 1) user(hours);
 
@@ -264,6 +307,22 @@ describe("confirmation reminder cron", () => {
 
     await run();
     expect(sentTo()).toEqual([fine.email, unlucky.email]);
+  });
+
+  it("logs the provider's error code and status when a link cannot be minted", async () => {
+    const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+    user(40);
+    mocks.generateLink.mockResolvedValueOnce({
+      data: { properties: null, user: null },
+      error: { message: "Request rate limit reached", code: "over_request_rate_limit", status: 429 },
+    });
+
+    await run();
+
+    expect(errors).toHaveBeenCalledWith("Confirmation reminder could not mint a link", {
+      code: "over_request_rate_limit",
+      status: 429,
+    });
   });
 
   it("does not send when the mark cannot be saved", async () => {
