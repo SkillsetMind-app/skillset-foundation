@@ -202,7 +202,7 @@ export function SecuritySettingsPanel() {
               </p>
             </div>
             <span
-              className={`rounded-md px-2 py-1 text-[10px] font-bold uppercase tracking-[0.14em] ${
+              className={`rounded-chip px-2 py-1 text-[10px] font-bold uppercase tracking-[0.14em] ${
                 emailVerified
                   ? "bg-white text-[var(--color-primary)]"
                   : "bg-[rgba(178,34,52,0.08)] text-[var(--color-accent-fg)]"

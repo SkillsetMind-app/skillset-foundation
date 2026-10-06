@@ -232,7 +232,7 @@ export function CourseAssetUploader({ course, isEditable, onModuleCoverUploaded,
             {t("creatorEditor.assets.help")}
           </p>
         </div>
-        <span className="rounded-md border border-[var(--color-line)] bg-[var(--color-surface-soft)] px-3 py-2 text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--color-primary)]">
+        <span className="rounded-chip border border-[var(--color-line)] bg-[var(--color-surface-soft)] px-3 py-2 text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--color-primary)]">
           {t("creatorEditor.assets.count").replace("{count}", () => String(assets.length))}
         </span>
       </div>
@@ -513,7 +513,7 @@ function AssetGroup({
                     </p>
                   ) : null}
                 </div>
-                <span className="rounded-md bg-white px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--color-primary)]">
+                <span className="rounded-chip bg-white px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--color-primary)]">
                   {asset.isPreview ? t("creatorEditor.lesson.state.preview") : t("creatorEditor.lesson.state.private")}
                 </span>
               </div>

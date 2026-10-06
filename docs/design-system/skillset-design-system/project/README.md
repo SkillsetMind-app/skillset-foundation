@@ -135,8 +135,8 @@ Hover for all: `transform: translateY(-1px)` + 180ms ease. Active: `translateY(0
 
 ### Chips & badges
 - **Status chip:** white 94% bg, white 70% border, navy or red text, **rounded-full**, 11px / weight 600 / tracking 0.22em UPPERCASE — placed on top of course imagery (`accent-chip`).
-- **Role chip:** navy text on white pill with red 18% border, 10px / weight 700 / tracking 0.12em.
-- **"Beta" pill:** white bg, red 18% border, red text, 10px uppercase, radius 6px (`--radius-chip`; not pill — never pill).
+- **Role chip:** navy text on white **rounded-full** pill with red 18% border, 10px / weight 700 / tracking 0.12em.
+- **"Beta" badge:** white bg, red 18% border, red text, 10px uppercase, radius 6px (`--radius-chip`, `rounded-chip`) — it was never a pill.
 - **Verified badge:** the label is a chip (6px, `rounded-chip`); the seal is a 16px square with a 4px corner (`--radius-sm`), never a circle.
 - **Section count pill:** soft-blue bg, navy text, 12px / weight 600 / tracking 0.14em uppercase.
 
@@ -163,7 +163,7 @@ Corners are slightly rounded — founder decision of 2026-10-06, which reverses 
 | `--radius-lg` | 12px | `rounded-lg` | cards, panels, dropdowns |
 | `--radius-xl` | 16px | `rounded-xl` | dialogs and sheets (sheets round only the top) |
 
-Nothing goes above 16px: `--radius-2xl`, `--radius-3xl` and `--radius-4xl` are capped at 16px. **Fully round (`rounded-full`) only for avatars, status dots, spinners, toggles, progress bars, round icon glyphs, and the chips/badges that were already pills.** Full-bleed bands (cookie banner, footer, header) stay square — they touch the screen edge.
+Nothing goes above 16px: `--radius-2xl`, `--radius-3xl` and `--radius-4xl` are capped at 16px. **Fully round (`rounded-full`) only for avatars, status dots, spinners, toggles, progress bars, round icon glyphs, and the chips/badges that were already pills (they stay `rounded-full`). Text buttons are never pills: 8px (`rounded-md`).** Full-bleed bands (cookie banner, footer, header) stay square — they touch the screen edge.
 
 ### Spacing & layout
 - **4px base spacing scale** (`--space-1` → `--space-12`). The most common values in the code are 4, 8, 12, 16, 20, 24, 32, 40, 48, 64.

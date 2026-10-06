@@ -195,7 +195,7 @@ export function TotpMfaSection({ emailVerified }: { emailVerified: boolean }) {
           </p>
         </div>
         <span
-          className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-[10px] font-bold uppercase tracking-[0.14em] ${
+          className={`inline-flex items-center gap-1 rounded-chip px-2 py-1 text-[10px] font-bold uppercase tracking-[0.14em] ${
             isEnrolled
               ? "bg-[var(--color-success-soft)] text-[var(--color-success-fg)]"
               : "bg-[rgba(26,54,93,0.08)] text-[var(--color-primary)]"

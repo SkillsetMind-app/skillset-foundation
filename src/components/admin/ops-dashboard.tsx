@@ -192,7 +192,7 @@ function AuditLogPanel() {
                     {entry.summary}
                   </p>
                 </div>
-                <span className="rounded-md bg-white px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--color-primary)]">
+                <span className="rounded-chip bg-white px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--color-primary)]">
                   {formatAuditLabel(entry.targetType, auditTargetLabels, t)}
                 </span>
               </div>

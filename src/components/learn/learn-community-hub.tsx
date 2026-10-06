@@ -135,7 +135,7 @@ export function LearnCommunityHub() {
           <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
             {space.categories}
           </p>
-          <span className="mt-4 inline-flex rounded-md bg-[var(--color-surface-soft)] px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--color-primary)]">
+          <span className="mt-4 inline-flex rounded-chip bg-[var(--color-surface-soft)] px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--color-primary)]">
             {t("learnWave2.communityHub.enrolled")}
           </span>
           <h2 className="display-title mt-3 text-3xl text-[var(--color-ink)]">

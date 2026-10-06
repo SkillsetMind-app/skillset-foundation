@@ -80,7 +80,7 @@ export function PlanSelectorCards<TValue extends string>({
               </span>
 
               {option.badge ? (
-                <span className="w-fit rounded-md border border-[var(--color-line)] bg-[var(--color-surface-soft)] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--color-ink-soft)]">
+                <span className="w-fit rounded-chip border border-[var(--color-line)] bg-[var(--color-surface-soft)] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--color-ink-soft)]">
                   {option.badge}
                 </span>
               ) : null}

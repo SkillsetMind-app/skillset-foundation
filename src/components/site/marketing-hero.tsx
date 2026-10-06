@@ -60,7 +60,7 @@ export async function MarketingHero() {
       <div className="mx-auto w-full max-w-7xl px-5 py-12 sm:px-8 sm:py-14 lg:py-16">
         <div className="relative z-10 flex flex-col gap-10 lg:flex-row lg:items-center">
           <div className="hero-copy-rise mx-auto flex max-w-xl flex-col items-center text-center lg:mx-0 lg:max-w-[min(36rem,48%)] lg:items-start lg:text-left">
-            <div className="inline-flex w-fit rounded-md border border-white/20 bg-white/10 px-3.5 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-white">
+            <div className="inline-flex w-fit rounded-chip border border-white/20 bg-white/10 px-3.5 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-white">
               {t("home.hero.eyebrow")}
             </div>
             {/* flex + gap, não space-y: no celular o parágrafo (8 linhas a

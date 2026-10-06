@@ -406,7 +406,7 @@ export function OnboardingChoice() {
               <p className="mt-1">{t("onboarding.emailVerificationDesc")}</p>
             </div>
             <span
-              className={`shrink-0 rounded-md px-2 py-1 text-[10px] font-bold uppercase tracking-[0.14em] ${
+              className={`shrink-0 rounded-chip px-2 py-1 text-[10px] font-bold uppercase tracking-[0.14em] ${
                 emailVerified
                   ? "bg-[rgba(26,54,93,0.08)] text-[var(--color-primary)]"
                   : "bg-[rgba(178,34,52,0.08)] text-[var(--color-accent-fg)]"
@@ -562,7 +562,7 @@ export function OnboardingChoice() {
                     <p className="mt-1">{t("onboarding.emailVerificationDesc")}</p>
                   </div>
                   <span
-                    className={`shrink-0 rounded-md px-2 py-1 text-[10px] font-bold uppercase tracking-[0.14em] ${
+                    className={`shrink-0 rounded-chip px-2 py-1 text-[10px] font-bold uppercase tracking-[0.14em] ${
                       emailVerified
                         ? "bg-[rgba(26,54,93,0.08)] text-[var(--color-primary)]"
                         : "bg-[rgba(178,34,52,0.08)] text-[var(--color-accent-fg)]"

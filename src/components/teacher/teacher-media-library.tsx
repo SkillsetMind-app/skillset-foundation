@@ -262,11 +262,11 @@ export function TeacherMediaLibrary() {
                 </p>
               </div>
               <div className="flex flex-wrap items-start gap-2 md:justify-end">
-                <span className="rounded-md bg-white px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--color-primary)]">
+                <span className="rounded-chip bg-white px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--color-primary)]">
                   {t(asset.isPreview ? "teacherMedia.preview" : "teacherMedia.private")}
                 </span>
                 {asset.lessonId ? (
-                  <span className="rounded-md bg-white px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--color-ink-soft)]">
+                  <span className="rounded-chip bg-white px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--color-ink-soft)]">
                     {t("teacherMedia.lessonAsset")}
                   </span>
                 ) : null}

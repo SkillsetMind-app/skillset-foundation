@@ -2459,7 +2459,7 @@ export function CourseBuilderStudio() {
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <StatusChip status={course?.status ?? "draft"} />
-            <span className="rounded-md border border-[var(--color-line)] bg-[var(--color-surface)]/70 px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--color-ink-soft)]">
+            <span className="rounded-chip border border-[var(--color-line)] bg-[var(--color-surface)]/70 px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--color-ink-soft)]">
               {t("creatorEditor.builder.summary.percent").replace("{percent}", () => String(readiness.percent))}
             </span>
             {isEditable ? (
@@ -3570,7 +3570,7 @@ function BuilderSaveStatus({
     return (
       <span
         role="status"
-        className="inline-flex items-center gap-1.5 rounded-md border border-[rgba(178,34,52,0.22)] bg-[rgba(178,34,52,0.06)] px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--color-danger-fg)]"
+        className="inline-flex items-center gap-1.5 rounded-chip border border-[rgba(178,34,52,0.22)] bg-[rgba(178,34,52,0.06)] px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--color-danger-fg)]"
       >
         <CloudOff aria-hidden="true" size={12} strokeWidth={2} />
         {t("creatorEditor.builder.save.blocked").replace("{reason}", () =>
@@ -3582,7 +3582,7 @@ function BuilderSaveStatus({
 
   if (state === "saving") {
     return (
-      <span className="inline-flex items-center gap-1.5 rounded-md border border-[var(--color-line)] bg-white px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--color-ink-soft)]">
+      <span className="inline-flex items-center gap-1.5 rounded-chip border border-[var(--color-line)] bg-white px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--color-ink-soft)]">
         <Loader2
           aria-hidden="true"
           size={12}
@@ -3596,7 +3596,7 @@ function BuilderSaveStatus({
 
   if (state === "pending") {
     return (
-      <span className="inline-flex items-center gap-1.5 rounded-md border border-[var(--color-line)] bg-white px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--color-ink-muted)]">
+      <span className="inline-flex items-center gap-1.5 rounded-chip border border-[var(--color-line)] bg-white px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--color-ink-muted)]">
         <span className="size-1.5 rounded-full bg-[var(--color-ink-muted)]" />
         {t("creatorEditor.builder.save.pending")}
       </span>
@@ -3605,7 +3605,7 @@ function BuilderSaveStatus({
 
   if (state === "error") {
     return (
-      <span className="inline-flex items-center gap-1.5 rounded-md border border-[rgba(178,34,52,0.22)] bg-[rgba(178,34,52,0.06)] px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--color-danger-fg)]">
+      <span className="inline-flex items-center gap-1.5 rounded-chip border border-[rgba(178,34,52,0.22)] bg-[rgba(178,34,52,0.06)] px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--color-danger-fg)]">
         <CloudOff aria-hidden="true" size={12} strokeWidth={2} />
         {t("creatorEditor.builder.save.error")}
       </span>
@@ -3613,7 +3613,7 @@ function BuilderSaveStatus({
   }
 
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-md border border-[var(--color-line)] bg-white px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--color-primary)]">
+    <span className="inline-flex items-center gap-1.5 rounded-chip border border-[var(--color-line)] bg-white px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--color-primary)]">
       <CheckCircle2 aria-hidden="true" size={12} strokeWidth={2} />
       {t("creatorEditor.builder.save.saved")}
     </span>
@@ -3690,7 +3690,7 @@ function CourseCoverField({
           </p>
         </div>
         {course.coverImageUrl ? (
-          <span className="inline-flex items-center gap-1 rounded-md bg-white px-3 py-1 text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--color-primary)]">
+          <span className="inline-flex items-center gap-1 rounded-chip bg-white px-3 py-1 text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--color-primary)]">
             <CheckCircle2 size={12} aria-hidden /> {t("creatorEditor.members.coverSet")}
           </span>
         ) : null}
@@ -4081,7 +4081,7 @@ function MembersCoverField({
           </p>
         </div>
         {coverUrl ? (
-          <span className="inline-flex items-center gap-1 rounded-md bg-white px-3 py-1 text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--color-primary)]">
+          <span className="inline-flex items-center gap-1 rounded-chip bg-white px-3 py-1 text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--color-primary)]">
             <CheckCircle2 size={12} aria-hidden /> {t("creatorEditor.members.coverSet")}
           </span>
         ) : null}

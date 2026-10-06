@@ -155,7 +155,7 @@ export function ManagedCoursePanel() {
                 <div className="flex flex-col items-end gap-2">
                   <StatusChip status={course.status} />
                   {course.featured ? (
-                    <span className="rounded-md bg-[var(--color-primary)] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--color-base)]">
+                    <span className="rounded-chip bg-[var(--color-primary)] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--color-base)]">
                       {t(`${copy}.featured`)}
                     </span>
                   ) : null}
