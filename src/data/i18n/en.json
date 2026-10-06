@@ -407,7 +407,7 @@
     },
     "marketplace": {
       "kicker": "The marketplace",
-      "title": "Courses by verified experts, ready to learn.",
+      "title": "Courses by independent experts, ready to learn.",
       "sub": "Every course is built by an independent professional, verified by SkillsetMind where required.",
       "browseAll": "Browse all courses",
       "viewCourse": "View course"
@@ -2957,7 +2957,7 @@
       "financial_questions_refunds_payouts_holds_chargebacks": "Financial questions — refunds, payouts, holds, chargebacks — go to a real person, by email. We aim to reply within 2 business days (Mon–Fri). No chatbot wall. No escalation maze.",
       "money_issues_do_not_belong_behind": "Money issues do not belong behind a bot maze.",
       "the_skillsetmind_promise": "The SkillsetMind Promise",
-      "skillsetmind_commitments_to_creators_and_learners": "SkillsetMind commitments to creators and learners: reviewed creator profiles, creator money that never passes through SkillsetMind, refund protection, and verifiable credentials.",
+      "skillsetmind_commitments_to_creators_and_learners": "SkillsetMind commitments to creators and learners: public creator profiles, creator money that never passes through SkillsetMind, refund protection, and verifiable credentials.",
       "the_skillsetmind_creator_promise": "The SkillsetMind Creator Promise",
       "six_commitments_in_writing_public": "Six commitments. In writing. Public.",
       "these_promises_are_contractual_product_rules": "These promises are contractual product rules for creators building on SkillsetMind: fee-locked, portable, cancellable, protected, and supported by humans when money is involved.",
@@ -2967,7 +2967,7 @@
     },
     "about": {
       "about": "About",
-      "skillsetmind_is_an_international_platform_for": "SkillsetMind is an international platform for serious online courses, built around reviewed creator profiles, payments to the creator's own Stripe account, and verifiable learning.",
+      "skillsetmind_is_an_international_platform_for": "SkillsetMind is an international platform for serious online courses, built around public creator profiles, payments to the creator's own Stripe account, and verifiable learning.",
       "skillsetmind_is_a_public_home_for": "SkillsetMind is a public home for learning, teaching, and trusted growth.",
       "skillsetmind_is_where_professional_educators_publish": "SkillsetMind is where professional educators publish courses and learners earn SkillsetMind Verified certificates employers can check. We built it so the platform never sits on an educator's money: buyers are charged directly on the educator's own Stripe account, which means there is no balance here to hold and nothing for us to release.",
       "professional_programs": "Professional programs",
@@ -2998,16 +2998,16 @@
     "instructors": {
       "instructors": "Instructors",
       "independent_experts_publishing_reviewed_professional_courses": "Independent experts publishing professional courses on SkillsetMind.",
-      "learn_from_reviewed_experts": "Learn from reviewed experts.",
-      "meet_independent_creators_whose_public_profiles": "Meet independent creators whose public profiles are published after review. SkillsetMind shows real instructor identity instead of marketplace filler."
+      "learn_from_reviewed_experts": "Learn from independent experts.",
+      "meet_independent_creators_whose_public_profiles": "Meet the independent creators teaching on SkillsetMind. Every profile shows a real instructor instead of marketplace filler; the \"Verified professional\" badge marks the ones our team has reviewed."
     },
     "directory": {
       "loading_instructors": "Loading instructors...",
       "instructor_profiles_could_not_load_right": "Instructor profiles could not load right now.",
       "course_pages_still_show_verified_instructor": "Course pages still show the instructor's identity, verified where required, when a public profile is available.",
       "first_cohort": "First cohort",
-      "public_instructor_profiles_appear_after_review": "Public instructor profiles appear after review.",
-      "skillsetmind_only_lists_real_published_profiles": "SkillsetMind only lists real published profiles. New creators appear here once their professional verification is approved.",
+      "public_instructor_profiles_appear_after_review": "Public instructor profiles appear once creators finish setup.",
+      "skillsetmind_only_lists_real_published_profiles": "SkillsetMind only lists real creator profiles. New creators appear here once they finish creator setup.",
       "start_teaching": "Start teaching",
       "browse_courses": "Browse courses",
       "directory": "Directory",

@@ -407,7 +407,7 @@
     },
     "marketplace": {
       "kicker": "El marketplace",
-      "title": "Cursos de expertos verificados, listos para aprender.",
+      "title": "Cursos de expertos independientes, listos para aprender.",
       "sub": "Cada curso lo crea un profesional independiente, verificado por SkillsetMind cuando se requiere.",
       "browseAll": "Ver todos los cursos",
       "viewCourse": "Ver curso"
@@ -2957,7 +2957,7 @@
       "financial_questions_refunds_payouts_holds_chargebacks": "Las preguntas financieras sobre reembolsos, transferencias, retenciones y contracargos llegan a una persona real, por correo. Intentamos responder en un plazo de 2 días hábiles (de lunes a viernes). Sin barreras de chatbots ni escaladas interminables.",
       "money_issues_do_not_belong_behind": "Los problemas de dinero no deben quedar atrapados detrás de bots.",
       "the_skillsetmind_promise": "La promesa de SkillsetMind",
-      "skillsetmind_commitments_to_creators_and_learners": "Los compromisos de SkillsetMind con creadores y alumnos: perfiles de creador revisados, dinero del creador que nunca pasa por SkillsetMind, protección de reembolsos y credenciales verificables.",
+      "skillsetmind_commitments_to_creators_and_learners": "Los compromisos de SkillsetMind con creadores y alumnos: perfiles públicos de creador, dinero del creador que nunca pasa por SkillsetMind, protección de reembolsos y credenciales verificables.",
       "the_skillsetmind_creator_promise": "La promesa de SkillsetMind a los creadores",
       "six_commitments_in_writing_public": "Seis compromisos. Por escrito. Públicos.",
       "these_promises_are_contractual_product_rules": "Estas promesas son reglas contractuales del producto para quienes construyen en SkillsetMind: comisión fija, portabilidad, cancelación, protección y atención humana cuando hay dinero de por medio.",
@@ -2967,7 +2967,7 @@
     },
     "about": {
       "about": "Acerca de nosotros",
-      "skillsetmind_is_an_international_platform_for": "SkillsetMind es una plataforma internacional de cursos en línea de calidad, centrada en perfiles de creador revisados, pagos a la propia cuenta de Stripe del creador y el aprendizaje verificable.",
+      "skillsetmind_is_an_international_platform_for": "SkillsetMind es una plataforma internacional de cursos en línea de calidad, centrada en perfiles públicos de creador, pagos a la propia cuenta de Stripe del creador y el aprendizaje verificable.",
       "skillsetmind_is_a_public_home_for": "SkillsetMind es un espacio público para aprender, enseñar y crecer con confianza.",
       "skillsetmind_is_where_professional_educators_publish": "En SkillsetMind, educadores profesionales publican cursos y los alumnos obtienen certificados SkillsetMind Verified que los empleadores pueden comprobar. La plataforma está diseñada para no retener nunca el dinero del educador: los compradores pagan directamente a su propia cuenta de Stripe. Aquí no hay un saldo que retener ni dinero que debamos liberar.",
       "professional_programs": "Programas profesionales",
@@ -2998,16 +2998,16 @@
     "instructors": {
       "instructors": "Instructores",
       "independent_experts_publishing_reviewed_professional_courses": "Expertos independientes que publican cursos profesionales en SkillsetMind.",
-      "learn_from_reviewed_experts": "Aprende de expertos evaluados.",
-      "meet_independent_creators_whose_public_profiles": "Conoce a creadores independientes cuyos perfiles públicos se publican después de una revisión. SkillsetMind muestra la identidad real de los instructores, sin perfiles de relleno."
+      "learn_from_reviewed_experts": "Aprende de expertos independientes.",
+      "meet_independent_creators_whose_public_profiles": "Conoce a los creadores independientes que enseñan en SkillsetMind. Cada perfil muestra a un instructor real, sin perfiles de relleno; el sello «Profesional verificado» marca a quienes nuestro equipo revisó."
     },
     "directory": {
       "loading_instructors": "Cargando instructores...",
       "instructor_profiles_could_not_load_right": "No se pudieron cargar los perfiles de instructores en este momento.",
       "course_pages_still_show_verified_instructor": "Las páginas de los cursos siguen mostrando la identidad del instructor, verificada cuando se requiere, si hay un perfil público disponible.",
       "first_cohort": "Primer grupo",
-      "public_instructor_profiles_appear_after_review": "Los perfiles públicos de los instructores aparecen después de la revisión.",
-      "skillsetmind_only_lists_real_published_profiles": "SkillsetMind solo muestra perfiles reales publicados. Los nuevos creadores aparecen aquí cuando se aprueba su verificación profesional.",
+      "public_instructor_profiles_appear_after_review": "Los perfiles públicos de los instructores aparecen cuando el creador completa su configuración.",
+      "skillsetmind_only_lists_real_published_profiles": "SkillsetMind solo muestra perfiles reales de creadores. Los nuevos creadores aparecen aquí cuando completan su configuración de creador.",
       "start_teaching": "Empieza a enseñar",
       "browse_courses": "Explorar cursos",
       "directory": "Directorio",

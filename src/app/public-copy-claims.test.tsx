@@ -297,6 +297,14 @@ describe("creator path order and conditions", () => {
     expect(at(dict, "creatorEditor.builder.publish.help")).not.toMatch(/approved creator|creador aprobado/i);
   });
 
+  // Decisão de 2026-10-06: todo professor com o cadastro completo tem perfil
+  // público e só o selo diz quem foi verificado. Nenhuma frase pública chama
+  // os instrutores de verificados ou revisados em bloco.
+  it.each(dictionaries)("the %s public copy never calls instructors verified or reviewed as a group", (_locale, dict) => {
+    const groupClaim = /\b(verified|reviewed|vetted) (experts|instructors|creators|creator profiles)\b|after review\b|expertos (verificados|evaluados|revisados)(?! cuando se requiere)|perfiles de creador revisados|después de la revisión/i;
+    expect(JSON.stringify([dict.home, dict.footer, dict.publicPages, dict.publicCourses, dict.siteMetadata])).not.toMatch(groupClaim);
+  });
+
   it("the help FAQ answer shared with the assistant says verification applies where required", () => {
     const answer = helpFaqCategories.flatMap((category) => category.items).find((item) => item.id === "course-publishing")?.a;
     expect(answer).toMatch(whereRequired);

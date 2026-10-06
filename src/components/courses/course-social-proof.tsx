@@ -141,8 +141,9 @@ export function CourseInstructorCard({
 }) {
   const { t } = useTranslation();
   // Teachers without a published public profile simply don't get the card —
-  // never fabricate instructor identity. (publicProfiles is projected by a
-  // Cloud Function and anonymously readable.)
+  // never fabricate instructor identity. (public_profiles is projected by
+  // sync_public_profile() for every teacher who finished setup, and is
+  // anonymously readable.)
   if (!profile) {
     return null;
   }

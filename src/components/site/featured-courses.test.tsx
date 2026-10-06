@@ -34,7 +34,7 @@ describe("FeaturedCourses", () => {
 
     expect(
       screen.getByRole("heading", {
-        name: /courses by verified experts/i,
+        name: /courses by independent experts/i,
       }),
     ).toBeInTheDocument();
     expect(
