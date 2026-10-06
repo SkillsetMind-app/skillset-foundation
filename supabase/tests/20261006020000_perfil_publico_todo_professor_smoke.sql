@@ -72,8 +72,9 @@ update public.users set roles = '["student","teacher"]', display_name = 'Perfil 
 update public.users set roles = '["student"]', teacher_terms_accepted_at = now(), teacher_terms_version = 'smoke'
   where uid = pg_temp.uid(7)::text;
 update public.users set roles = '["student","admin"]' where uid = pg_temp.uid(6)::text;
--- Marcador privado: se aparecer na linha pública, vazou.
-update public.users set phone_number = 'SMOKE-PRIVATE-PHONE'
+-- Marcador privado: se aparecer na linha pública, vazou. (users_phone_format
+-- exige E.164.)
+update public.users set phone_number = '+15550100777'
   where uid in (pg_temp.uid(1)::text, pg_temp.uid(2)::text, pg_temp.uid(3)::text);
 
 insert into public.creator_verification_cases
@@ -169,6 +170,7 @@ select pg_temp.check_profile('the public rows carry no private value',
   not exists (select 1 from public.public_profiles pp
                where pp.uid like '61006200-%'
                  and (to_jsonb(pp)::text like '%SMOKE-PRIVATE%'
+                   or to_jsonb(pp)::text like '%15550100777%'
                    or to_jsonb(pp)::text like '%@example.test%')));
 select pg_temp.check_profile('anon cannot read the private users row',
   pg_temp.rows_or_denied(format(
