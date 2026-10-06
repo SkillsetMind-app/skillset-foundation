@@ -130,11 +130,16 @@ jobs:
             url="$url?max_age_hours=$MAX_AGE_HOURS"
             calls=20
           fi
+          ok=1
           for i in $(seq "$calls"); do
             # Public log: the status line only. The body (counts) stays in a file.
+            # Removed first, so a failed call never re-reads the previous answer.
+            rm -f body.json
             code=$(curl -sS -o body.json -w '%{http_code}' --max-time 60 \
               -H "Authorization: Bearer $CRON_SECRET" "$url") || code=000
             echo "call $i: HTTP $code"
+            # Any failed call makes the run red, not only the last one.
+            [ "$code" = 200 ] || ok=0
             # A call that sent nothing means done: nothing due, or every account
             # still due failed (due === failed, and the answer is 500).
             jq -e '.sent > 0' body.json >/dev/null 2>&1 || break
@@ -142,4 +147,4 @@ jobs:
           if [ "$calls" -gt 1 ] && jq -e '.sent > 0' body.json >/dev/null 2>&1; then
             echo "::warning title=Catch-up not finished::Every call still sent emails. Run it again with the same input."
           fi
-          [ "$code" = 200 ]
+          [ "$ok" = 1 ]
