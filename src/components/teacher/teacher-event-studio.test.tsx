@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { I18nProvider } from "@/components/i18n/i18n-provider";
@@ -13,6 +13,9 @@ const authState = vi.hoisted(() => ({
 const agenda = vi.hoisted(() => ({
   events: [] as CourseEvent[],
   params: "courseId=event-product-1&newEvent=1",
+  // Modulos e status do produto de evento: o proximo passo depende deles.
+  productModules: [] as Array<Record<string, unknown>>,
+  productStatus: "draft",
 }));
 
 // O I18nProvider chama useRouter() para o refresh ao trocar de idioma.
@@ -48,8 +51,8 @@ vi.mock("@/lib/data/teacher-courses", () => ({
         title: "Live supervision intensive",
         summary: "A paid live cohort",
         category: "Supervision & Continuing Education",
-        status: "draft",
-        modules: [],
+        status: agenda.productStatus,
+        modules: agenda.productModules,
         lessonCount: 0,
       },
     ]);
@@ -73,7 +76,57 @@ describe("TeacherEventStudio", () => {
   afterEach(() => {
     agenda.events = [];
     agenda.params = "courseId=event-product-1&newEvent=1";
+    agenda.productModules = [];
+    agenda.productStatus = "draft";
     vi.clearAllMocks();
+  });
+
+  async function scheduleSession() {
+    fireEvent.change(screen.getByLabelText("Date and time"), { target: { value: "2027-03-14T15:30" } });
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    fireEvent.change(screen.getByLabelText("Session title"), { target: { value: "Live workshop" } });
+    fireEvent.change(screen.getByLabelText("External class link"), { target: { value: "https://meet.example.com/live" } });
+    fireEvent.change(screen.getByLabelText("Session description"), { target: { value: "Practical exercises together." } });
+    fireEvent.click(screen.getByRole("button", { name: "Schedule session" }));
+    await waitFor(() => expect(createCourseEvent).toHaveBeenCalledTimes(1));
+  }
+
+  // Depois de marcar a sessao a pessoa ficava presa na Agenda, sem caminho
+  // para preco e publicacao. O servidor (publish_teacher_course) ainda exige
+  // uma aula com conteudo, entao o atalho da aula de boas-vindas vem junto.
+  it("depois de marcar a sessao mostra o proximo passo: preco e publicar, com a aula de boas-vindas", async () => {
+    render(<TeacherEventStudio />);
+    expect(screen.queryByRole("link", { name: "Set the price and publish" })).not.toBeInTheDocument();
+    await scheduleSession();
+
+    const next = await screen.findByRole("region", { name: "Session scheduled. Next: set the price and publish." });
+    const pricing = within(next).getByRole("link", { name: "Set the price and publish" });
+    expect(pricing).toHaveAttribute("href", "/teach/builder?courseId=event-product-1&tab=pricing");
+    expect(pricing).toHaveClass("button-solid", "button-lg");
+    expect(pricing.querySelector("svg")).not.toBeNull();
+    expect(within(next).getByText(/Publishing needs at least one lesson with content/)).toBeInTheDocument();
+    const lesson = within(next).getByRole("link", { name: "Add a short welcome lesson" });
+    expect(lesson).toHaveAttribute("href", "/teach/builder?courseId=event-product-1&tab=content&welcome=1");
+    expect(lesson).toHaveClass("button-outline");
+  });
+
+  it("produto que ja tem aula: o proximo passo e so preco e publicar", async () => {
+    agenda.productModules = [{ id: "m1", title: "Welcome", lessons: [{ id: "l1", title: "Hello", type: "text", description: "" }] }];
+    render(<TeacherEventStudio />);
+    await scheduleSession();
+
+    const next = await screen.findByRole("region", { name: "Session scheduled. Next: set the price and publish." });
+    expect(within(next).getByRole("link", { name: "Set the price and publish" })).toBeInTheDocument();
+    expect(within(next).queryByRole("link", { name: "Add a short welcome lesson" })).not.toBeInTheDocument();
+  });
+
+  it("produto ja publicado: nada de proximo passo", async () => {
+    agenda.productStatus = "published";
+    render(<TeacherEventStudio />);
+    await scheduleSession();
+
+    await waitFor(() => expect(screen.queryByLabelText("Session title")).not.toBeInTheDocument());
+    expect(screen.queryByRole("link", { name: "Set the price and publish" })).not.toBeInTheDocument();
   });
 
   it("does not silently schedule against another course when the requested course is unavailable", async () => {
