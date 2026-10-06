@@ -158,6 +158,75 @@ export async function sendResendEmail({ to, subject, html, text, idempotencyKey 
   if (!response.ok) throw new Error(`Resend answered ${response.status}.`);
 }
 
+export type PlanTrialEndingEmail = {
+  /** The creator's account email. */
+  email: string;
+  locale: Locale;
+  trialEnd: Date;
+  /** Stripe's smallest unit, straight off the subscription's Price. */
+  amountMinor: number;
+  currency: string;
+  cycle: "monthly" | "yearly";
+  /** Billing page, where "Cancel plan" lives. */
+  billingUrl: string;
+  idempotencyKey: string;
+};
+
+const TRIAL_COPY: Record<Locale, {
+  subject: (date: string) => string;
+  body: (date: string, price: string) => string;
+  cancel: string;
+  perMonth: string;
+  perYear: string;
+}> = {
+  en: {
+    subject: (date) => `Your free trial ends on ${date}`,
+    body: (date, price) => `Your free trial ends on ${date}. You'll be charged ${price}.`,
+    cancel: "Cancel here",
+    perMonth: "per month",
+    perYear: "per year",
+  },
+  es: {
+    subject: (date) => `Tu prueba gratis termina el ${date}`,
+    body: (date, price) => `Tu prueba gratis termina el ${date}. Se te cobrará ${price}.`,
+    cancel: "Cancela aquí",
+    perMonth: "al mes",
+    perYear: "al año",
+  },
+};
+
+/**
+ * The reminder before a plan trial converts: "Your free trial ends on {date}.
+ * You'll be charged {price}. Cancel here: {link}". The date uses the same
+ * UTC−12 calendar as the checkout disclosure, so it is never later than the
+ * real conversion anywhere. The price is the subscription's Price, before any
+ * promotion code. ponytail: an exact amount needs an upcoming-invoice preview
+ * call; add it if discounted trials ship.
+ */
+export function buildPlanTrialEndingEmail({ locale, trialEnd, amountMinor, currency, cycle, billingUrl }: PlanTrialEndingEmail) {
+  const copy = TRIAL_COPY[locale] ?? TRIAL_COPY[DEFAULT_LOCALE];
+  const date = new Intl.DateTimeFormat(locale, { dateStyle: "long", timeZone: "Etc/GMT+12" }).format(trialEnd);
+  const amount = new Intl.NumberFormat(locale, { style: "currency", currency: currency.toUpperCase() }).format(amountMinor / 100);
+  const price = `${amount} ${cycle === "yearly" ? copy.perYear : copy.perMonth}`;
+  const body = copy.body(date, price);
+  const safeUrl = escapeHtml(billingUrl);
+  const help = (COPY[locale] ?? COPY[DEFAULT_LOCALE]).help;
+
+  const text = [body, "", `${copy.cancel}: ${billingUrl}`, "", `${help} ${SUPPORT}.`].join("\n");
+  const html = `<div style="${PARAGRAPH}">
+  <p>${escapeHtml(body)}</p>
+  <p><a href="${safeUrl}" style="${BUTTON}">${copy.cancel}</a></p>
+  <p style="font-size:13px;word-break:break-all;"><a href="${safeUrl}" style="color:#102a43;">${safeUrl}</a></p>
+  <p>${help} <a href="mailto:${SUPPORT}" style="color:#102a43;font-weight:bold;">${SUPPORT}</a>.</p>
+</div>`;
+
+  return { subject: copy.subject(date), html, text };
+}
+
+export async function sendPlanTrialEndingEmail(input: PlanTrialEndingEmail): Promise<void> {
+  await sendResendEmail({ to: input.email, ...buildPlanTrialEndingEmail(input), idempotencyKey: input.idempotencyKey });
+}
+
 export async function sendPurchaseAccessEmail(input: PurchaseAccessEmail): Promise<void> {
   await sendResendEmail({ to: input.email, ...buildPurchaseAccessEmail(input), idempotencyKey: input.idempotencyKey });
 }

@@ -43,7 +43,8 @@ SELECT pg_temp.assert_true(
   public.custom_domain_limit_for_plan(NULL) = 0
     AND public.custom_domain_limit_for_plan('free') = 0
     AND public.custom_domain_limit_for_plan('starter') = 1
-    AND public.custom_domain_limit_for_plan('pro') = 3
+    -- 5 desde 20261006040000 (Pro herdou os limites do Plus).
+    AND public.custom_domain_limit_for_plan('pro') = 5
     AND public.custom_domain_limit_for_plan('plus') = 5,
   'custom_domain_limit_for_plan mudou de resposta'
 );

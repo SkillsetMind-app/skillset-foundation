@@ -378,13 +378,13 @@
   "home": {
     "metadata": {
       "title": "Course platform for psychologists & personal-development professionals",
-      "description": "For psychologists and personal-development professionals who already teach live: sell a course and community, no monthly fee. Buyers pay into your own Stripe."
+      "description": "For psychologists and personal-development professionals who already teach live: sell a course and community, starting with a 14-day free trial. Buyers pay into your own Stripe."
     },
     "hero": {
       "eyebrow": "For psychologists & personal-development professionals",
       "title1": "Your knowledge changes lives.",
       "title2": "Now turn it into a course.",
-      "sub": "For psychologists and personal-development professionals who already teach live and want to sell their method as a course with a paid community, with no monthly fee. We run the checkout and the classroom — your buyers pay your own Stripe account, so we never hold a cent of your money. You teach.",
+      "sub": "For psychologists and personal-development professionals who already teach live and want to sell their method as a course with a paid community, starting with a 14-day free trial. We run the checkout and the classroom — your buyers pay your own Stripe account, so we never hold a cent of your money. You teach.",
       "trust1Title": "Verified",
       "trust1Desc": "Where required, professionals are verified before they can publish, and courses that break marketplace standards can be paused or removed.",
       "trust2Title": "Global",
@@ -452,8 +452,8 @@
       "title": "Teach beyond the limits of your live sessions.",
       "ctaStart": "Start teaching",
       "ctaPromise": "Read the Creator Promise",
-      "bullet1": "Keep {keep}% on Free, before Stripe processing fees. Scale to Plus and your commission can drop to 2%.",
-      "bullet2": "Buyers pay your Stripe account directly. No platform hold, no subscription needed to start.",
+      "bullet1": "Starter takes {starter}% per sale and Pro takes {pro}%, before Stripe processing fees.",
+      "bullet2": "Buyers pay your Stripe account directly. No platform hold, and 14 days free before your first plan charge.",
       "bullet3": "Drip release and a refund window protect you from abuse.",
       "bullet4": "Course community, live sessions, and verifiable certificates on every plan."
     },
@@ -2345,6 +2345,7 @@
         "gatePlan": "Marketplace highlights start on the {plan} plan.",
         "paidPlan": "paid",
         "gateQuota": "You're using all {limit} highlights on your plan. Remove one from another course first.",
+        "contactUs": "Contact us for more",
         "updateError": "Could not update the marketplace highlight."
       },
       "loading": "Loading course...",
@@ -2866,9 +2867,9 @@
   "publicPages": {
     "pricing": {
       "pricing": "Pricing",
-      "four_plans_free_starts_at_10": "Four plans. Free starts at 10% commission with no subscription. Starter drops it to 5%, Pro to 3%, Plus to 2%. Stripe's processing fee is shown separately so the math is never hidden, and buyers pay your own Stripe account directly — no platform hold, no platform clearing period.",
+      "two_plans_with_a_free_trial": "Two plans, each starting with a 14-day free trial. Starter is $5/month with a 4.9% commission per sale; Pro is $89/month with 0% commission. Stripe's processing fee is shown separately so the math is never hidden, and buyers pay your own Stripe account directly — no platform hold, no platform clearing period.",
       "pricing_that_lowers_as_you_grow": "Pricing that lowers as you grow.",
-      "every_plan_can_sell_paid_plans": "Every plan can sell. Paid plans lower the commission and raise your limits.",
+      "every_plan_can_sell_paid_plans": "Both plans publish and sell, and both start with 14 days free. Pro drops the commission to 0% and raises your limits.",
       "billing_cycle": "Billing cycle",
       "monthly": "Monthly",
       "yearly": "Yearly",
@@ -2876,7 +2877,6 @@
       "plan_comparison": "Plan comparison",
       "recommended": "Recommended",
       "per_sale": "per sale",
-      "mo_no_subscription": "/mo — no subscription",
       "mo": "/mo",
       "mo_billed": "/mo, billed",
       "yearly_2": " yearly",
@@ -2899,18 +2899,18 @@
       "payouts": "Payouts",
       "buyers_pay_your_stripe_account_directly": "Buyers pay your Stripe account directly. We never hold your money, so there is nothing for us to release — Stripe settles and pays out to your bank from your own Stripe balance on its own timing, which depends on your country and the payment method. A brand-new account waits on Stripe's verification before its first payout.",
       "plan_changes": "Plan changes",
-      "upgrade_any_time_new_commission_applies": "Upgrade any time — new commission applies to new sales. Downgrade at the end of your billing cycle. Cancel anytime; you keep your content and revert to Free.",
+      "upgrade_any_time_new_commission_applies": "Upgrade any time — the new commission applies to new sales. Downgrade at the end of your billing cycle. Cancel anytime in Billing; you keep your content.",
       "common_questions": "Common questions",
       "what_happens_when_i_upgrade_a": "What happens when I upgrade a plan?",
       "upgrades_apply_immediately_and_the_new": "Upgrades apply immediately, and the new commission rate takes effect on new sales. Sales made before the change keep the commission rate from the plan you were on at the time. Stripe Billing prorates the subscription difference for the current cycle.",
       "what_happens_when_i_downgrade_or": "What happens when I downgrade or cancel?",
-      "downgrades_and_cancellations_take_effect_at": "Downgrades and cancellations take effect at the end of your current billing period — you keep the plan you're paying for until then. If you cancel, you keep all your content and revert to Free ({value0}% commission, no subscription).",
+      "downgrades_and_cancellations_take_effect_at": "Downgrades and cancellations take effect at the end of your current billing period — you keep the plan you're paying for until then. Cancel during the 14-day free trial and you are not charged. Either way, you keep all your content.",
       "how_do_the_fees_work_on": "How do the fees work on a subscription sale?",
-      "two_fees_come_out_of_each": "Two fees come out of each sale, shown separately so the math is never hidden. SkillsetMind takes its plan commission (10% on Free down to 2% on Plus), and Stripe's standard processing fee (2.9% + $0.30 for USD cards, an estimated 5.4% + $0.30 for non-USD) is passed through to you. Everything left over is yours.",
+      "two_fees_come_out_of_each": "Up to two fees come out of each sale, shown separately so the math is never hidden. SkillsetMind takes its plan commission (4.9% on Starter, 0% on Pro), and Stripe's standard processing fee (2.9% + $0.30 for USD cards, an estimated 5.4% + $0.30 for non-USD) is passed through to you. Everything left over is yours.",
       "when_can_a_sale_be_refunded": "When can a sale be refunded, and does it affect my payout?",
       "learners_can_self_refund_within_days": "Learners can self-refund within {value0} days of purchase if they've completed less than half the course. Because the buyer paid your Stripe account directly, the refund is debited from your own balance — and SkillsetMind's commission on that sale is returned to you with it, so you never pay a fee on a sale that was undone.",
       "ready_to_publish_on_skillsetmind": "Ready to publish on SkillsetMind?",
-      "start_on_free_upgrade_only_when": "Start on Free — upgrade only when the math works in your favor.",
+      "start_with_a_free_trial": "Every plan starts with a 14-day free trial. Cancel anytime in Billing before it ends and you won't be charged.",
       "creator_overview": "Creator overview",
       "start_free": "Create account",
       "start_plan": "Start on {plan}"
@@ -2923,16 +2923,16 @@
       "professional_verification_up_front_then_automated": "Professional verification up front where required, then publishing that never waits for a manual course review.",
       "shareable_course_links_for_simple_launch": "Shareable course links for simple launch campaigns.",
       "teach_on_skillsetmind": "Teach on SkillsetMind",
-      "publish_professional_courses_to_a_global": "Publish professional courses from your own studio. Start on the Free plan (no monthly fee) at {value0}% commission, buyers pay your Stripe account directly, course community and certificates included on every plan.",
+      "publish_professional_courses_to_a_global": "Publish professional courses from your own studio. Start with a 14-day free trial; buyers pay your Stripe account directly, course community and certificates included on every plan.",
       "for_creators": "For creators",
       "teach_with_a_real_course_operating": "Teach with a real course operating system.",
-      "skillsetmind_is_designed_for_experts_who": "For coaches, facilitators and mentors who already teach live and want to sell their method as a course with a paid community, with no monthly fee.",
-      "commission_on_free": "Commission on Free",
-      "to_start": "Monthly fee",
+      "skillsetmind_is_designed_for_experts_who": "For coaches, facilitators and mentors who already teach live and want to sell their method as a course with a paid community, starting with a 14-day free trial.",
+      "commission_on_pro": "Commission on Pro",
+      "to_start": "Days of free trial",
       "direct": "Direct",
       "buyer_pays_you": "Buyer pays you",
-      "buyers_are_charged_on_your_own": "Buyers are charged on your own Stripe account — no platform hold on your money. Start on the Free plan (no monthly fee) at 10% commission; upgrade to drop it to 5%, 3%, or 2%.",
-      "see_all_four_plans": "See all four plans",
+      "buyers_are_charged_on_your_own": "Buyers are charged on your own Stripe account — no platform hold on your money. Starter takes 4.9% per sale and Pro takes 0%; both start with a 14-day free trial.",
+      "see_both_plans": "See both plans",
       "creator_path": "Creator path",
       "create_account": "Create account",
       "draft_then_publish": "Draft, then publish when your launch checks pass.",
@@ -3060,17 +3060,18 @@
         "highlight5": "Course communities and live sessions"
       },
       "starter": {
-        "tagline": "Half the commission, small monthly cost.",
-        "audience": "Creators who sell every month.",
-        "highlight0": "Everything in Free",
-        "highlight1": "Commission drops from 10% to 5%",
+        "tagline": "A low monthly price and a 4.9% commission.",
+        "audience": "Creators starting to sell.",
+        "highlight0": "4.9% commission per sale",
+        "highlight1": "1 custom domain and 1 marketplace highlight",
         "highlight2": "Annual billing saves ~17%"
       },
       "pro": {
-        "tagline": "A lower commission for established catalogs.",
+        "tagline": "0% commission on your sales.",
         "audience": "Creators with an established catalog.",
-        "highlight0": "Everything in Starter",
-        "highlight1": "Commission drops to 3%"
+        "highlight0": "0% commission per sale",
+        "highlight1": "5 custom domains and 5 marketplace highlights",
+        "highlight2": "Remove the SkillsetMind mark"
       },
       "plus": {
         "tagline": "The lowest commission for high-volume creators.",
@@ -3125,7 +3126,7 @@
       "you_get_paid_directly": "You get paid directly",
       "learners_pay_your_stripe_account_not": "Learners pay your Stripe account, not ours. SkillsetMind never holds your money, never remits it to you, and never sits between you and your buyer. You are the merchant of record on every sale.",
       "platform_fee": "Platform fee",
-      "plan_based_every_plan_includes_the": "Plan-based: {value0}. Every plan can publish and sell; paid plans take a lower commission per paid sale, deducted by Stripe at the moment of the charge, and raise the limits. The Free plan has no monthly fee; upgrade when a lower commission helps you.",
+      "plan_based_every_plan_includes_the": "Plan-based: {value0}. Both plans publish and sell; the commission is deducted by Stripe at the moment of the charge. Each plan starts with a 14-day free trial.",
       "stripe_processing_fee": "Stripe processing fee",
       "charged_by_stripe_to_your_account": "Charged by Stripe to your account on every sale. US Stripe pricing is 2.9% + $0.30 for USD card payments and an estimated 5.4% + $0.30 for non-USD; your own rates are the ones Stripe sets in the country your account is registered in. Never hidden inside the platform percentage.",
       "refund_window": "Refund window",
@@ -3203,7 +3204,7 @@
           },
           "2": {
             "q": "How do I set pricing for my course?",
-            "a": "Pricing is set per product inside Studio → course builder. Choose free enrollment, a one-time price, or a monthly or yearly subscription in a supported currency. The platform commission (10% on Free, 5% on Starter, 3% on Pro, 2% on Plus) plus the Stripe processing fee are shown clearly in the earnings ledger for every sale."
+            "a": "Pricing is set per product inside Studio → course builder. Choose free enrollment, a one-time price, or a monthly or yearly subscription in a supported currency. The platform commission (4.9% on Starter, 0% on Pro) plus the Stripe processing fee are shown clearly in the earnings ledger for every sale."
           },
           "3": {
             "q": "What is drip release and when should I use it?",
@@ -3220,7 +3221,7 @@
         "items": {
           "0": {
             "q": "Which plan should I start on?",
-            "a": "Start on Free if you're validating an idea — there's no subscription and you keep 90% of every $100 sale before Stripe fees. Paid plans add a monthly fee and lower the commission. The pricing page shows what each plan takes from a sample $100 sale."
+            "a": "Both plans start with a 14-day free trial; a card is required, and you can cancel in Billing before the trial ends without being charged. Starter is $5/month ($50/year) with a 4.9% commission per sale. Pro is $89/month with 0% commission and higher limits. The pricing page shows what each plan takes from a sample $100 sale."
           },
           "1": {
             "q": "What happens when I upgrade or downgrade?",
@@ -3228,7 +3229,7 @@
           },
           "2": {
             "q": "What if I cancel my plan?",
-            "a": "Cancellation downgrades you to Free at the end of your paid period. Your courses, students, content, and history are preserved — SkillsetMind never deletes a creator's data. Commission goes back to 10% (the Free rate) on new sales from the moment of downgrade."
+            "a": "Cancel anytime from Billing with \"Cancel plan\". If you cancel during the 14-day free trial, you are not charged; otherwise the plan stays active until the end of the period you paid for. Your courses, students, content, and history are preserved — SkillsetMind never deletes a creator's data."
           }
         }
       },
@@ -4470,6 +4471,21 @@
       "account": "This order has no connected account on record. Contact support.",
       "unknown": "We could not submit your refund request. Please try again or contact support."
     }
+  },
+  "planTrial": {
+    "cta": "Start 14-day free trial",
+    "disclosure": "{days} days free, then {price}. Renews automatically until you cancel. Cancel anytime in Billing before {date} and you won't be charged.",
+    "disclosureNoTrial": "{price}, starting today. Renews automatically until you cancel. Cancel anytime in Billing to stop the next charge.",
+    "pricePerMonth": "{amount}/month",
+    "pricePerYear": "{amount}/year",
+    "trialEnds": "Free trial — ends {date}",
+    "endsOn": "Ends on {date}",
+    "cancel": "Cancel plan",
+    "cancelling": "Cancelling…",
+    "cancelConfirmTrial": "Cancel your plan? Your free trial runs until {date} and you won't be charged.",
+    "cancelConfirm": "Cancel your plan? It stays active until {date} and won't renew.",
+    "cancelError": "We couldn't cancel the plan. Try again, or use Manage subscription.",
+    "publicNote": "Every plan starts with a 14-day free trial, one per account. A card is required; cancel anytime in Billing before the trial ends and you won't be charged."
   },
   "accountPlans": {
     "signIn": "Sign in to view and manage your plan.",

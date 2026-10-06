@@ -597,6 +597,75 @@ describe("course checkout subscription exclusivity", () => {
     expect(mocks.createSession.mock.calls[0][0].discounts).toBeUndefined();
   });
 
+  // Commission per tier, in basis points. A 0% plan sends NO application fee
+  // field at all: Stripe rejects a zero fee in some calls.
+  it.each([
+    ["free", 1000],
+    ["starter", 490],
+    ["pro", 0],
+    ["plus", 200],
+  ] as const)("charges the %s commission on a one-time sale", async (planId, bps) => {
+    const admin = createAdmin({ lockReplies: [{ action: "claim", checkout_url: null }] });
+    mocks.getAdmin.mockReturnValue(admin);
+    mocks.getCourseRow.mockResolvedValue(course("one_time"));
+    mocks.getUserRow.mockImplementation(async (id: string) => id === "teacher"
+      ? {
+          uid: "teacher",
+          current_plan_id: planId,
+          stripe_connected_account_id: "acct_teacher",
+          stripe_connect_charges_enabled: true,
+          stripe_connect_payouts_enabled: true,
+        }
+      : { uid: "buyer", email: "buyer@example.com" });
+    mocks.normalizePrice.mockReturnValue({
+      amountMinor: 12_000,
+      currency: "usd",
+      paymentType: "one_time",
+      source: "legacy",
+    });
+    mocks.createSession.mockResolvedValue({ id: "cs_payment", url: "https://checkout.example/payment" });
+
+    expect((await POST(request({ courseId: "course" }))).status).toBe(200);
+
+    const intent = mocks.createSession.mock.calls[0][0].payment_intent_data;
+    if (bps === 0) {
+      expect(intent).not.toHaveProperty("application_fee_amount");
+    } else {
+      expect(intent.application_fee_amount).toBe(Math.floor((12_000 * bps) / 10_000));
+    }
+    expect(intent.metadata.platformFeeBps).toBe(String(bps));
+    expect(admin.orderInserts[0]).toEqual(expect.objectContaining({ platform_fee_bps: bps }));
+  });
+
+  it.each([
+    ["free", 1000],
+    ["starter", 490],
+    ["pro", 0],
+    ["plus", 200],
+  ] as const)("freezes the %s commission on a student subscription", async (planId, bps) => {
+    mocks.getAdmin.mockReturnValue(createAdmin({ lockReplies: [{ action: "claim", checkout_url: null }] }));
+    mocks.getUserRow.mockImplementation(async (id: string) => id === "teacher"
+      ? {
+          uid: "teacher",
+          current_plan_id: planId,
+          stripe_connected_account_id: "acct_teacher",
+          stripe_connect_charges_enabled: true,
+          stripe_connect_payouts_enabled: true,
+        }
+      : { uid: "buyer", email: "buyer@example.com" });
+
+    expect((await POST(request({ courseId: "course" }))).status).toBe(200);
+
+    const subscriptionData = mocks.createSession.mock.calls[0][0].subscription_data;
+    if (bps === 0) {
+      expect(subscriptionData).not.toHaveProperty("application_fee_percent");
+    } else {
+      expect(subscriptionData.application_fee_percent).toBe(bps / 100);
+    }
+    // The webhook reads this "0" as the fee in force when the percent is absent.
+    expect(subscriptionData.metadata.platformFeeBps).toBe(String(bps));
+  });
+
   it("preserves the lock when Stripe may have created a session before losing the response", async () => {
     const admin = createAdmin({
       lockReplies: [{ action: "claim", checkout_url: null }],

@@ -1,10 +1,15 @@
 /**
  * SkillsetMind pricing model — single source of truth.
  *
- * Four tiers. Every plan can publish and sell; a paid plan lowers the
- * commission SkillsetMind takes per paid sale, adds the extras in
- * domain/entitlements.ts, and lifts the Free plan's daily caps (video uploads,
- * advisor, manual access — enforced in their routes by plan, via isOnFreePlan).
+ * The public offer is two paid tiers, Starter and Pro (`publicPlans`), each
+ * opening with a 14-day free trial (card required, one per creator account).
+ * `free` stays in code as the internal default for accounts with no
+ * subscription: it still publishes and sells at 10% until enforcement ships,
+ * and it keeps its daily caps (video uploads, advisor, manual access —
+ * enforced in their routes by plan, via isOnFreePlan). `plus` is retired:
+ * closed to new subscribers, kept here so existing Plus subscriptions resolve
+ * with the same limits. A paid plan lowers the commission SkillsetMind takes
+ * per paid sale and adds the extras in domain/entitlements.ts.
  * Charges are Stripe DIRECT charges on the
  * creator's own connected account: the creator is the merchant of record,
  * Stripe bills them the processing fee, and SkillsetMind takes its commission
@@ -65,11 +70,35 @@ export type Plan = {
   audience: string;
   /** Headline bullets shown on the pricing page. */
   highlights: ReadonlyArray<string>;
+  /**
+   * Closed to new subscribers: hidden from every offer, selector and upgrade
+   * flow, but existing subscriptions keep resolving to this plan.
+   */
+  retired?: boolean;
+  /**
+   * Older Prices that existing subscriptions may still sit on. They resolve
+   * to this plan (same limits, same commission) until moved to the current
+   * Price by scripts/plan-repricing.mjs.
+   */
+  legacyStripePriceIds?: ReadonlyArray<StripePriceIds>;
 };
 
 /** Placeholder marker — the runtime treats any Price ID starting with
  * this prefix as "not configured yet" and surfaces a clear error. */
 export const STRIPE_PRICE_PLACEHOLDER_PREFIX = "price_PLACEHOLDER_";
+
+/** Free-trial length on the first paid plan of a creator account. */
+export const PLAN_TRIAL_DAYS = 14;
+
+/**
+ * Subscription statuses that grant the plan. `trialing` is the plan working in
+ * full — limits and the lower commission — before the first charge.
+ */
+export const PLAN_ENTITLED_STATUSES = ["active", "trialing"] as const;
+
+export function isPlanEntitledStatus(status: string | null | undefined): boolean {
+  return (PLAN_ENTITLED_STATUSES as ReadonlyArray<string>).includes(String(status));
+}
 
 export const plans: ReadonlyArray<Plan> = [
   {
@@ -79,7 +108,7 @@ export const plans: ReadonlyArray<Plan> = [
     yearlyUsd: 0,
     commissionPercent: 10,
     stripePriceIds: null,
-    tagline: "Start selling without a subscription.",
+    tagline: "The default for accounts without a plan.",
     audience: "New creators validating an idea.",
     highlights: [
       "No monthly fee — commission only when you sell",
@@ -93,18 +122,30 @@ export const plans: ReadonlyArray<Plan> = [
   {
     id: "starter",
     name: "Starter",
-    monthlyUsd: 19,
-    yearlyUsd: 190,
-    commissionPercent: 5,
+    monthlyUsd: 5,
+    yearlyUsd: 50,
+    commissionPercent: 4.9,
+    // $5/month and $50/year, lookup keys skillset_starter_monthly_2026_10 and
+    // skillset_starter_yearly_2026_10. Replace the placeholders with the real
+    // `price_...` IDs once they exist in Stripe (see the PR's Stripe steps).
     stripePriceIds: {
-      monthlyId: "price_1TZFTmPvg1vJW0IjLAYWqZok",
-      yearlyId: "price_1TZFTnPvg1vJW0IjjaQXBpDW",
+      monthlyId: "price_PLACEHOLDER_starter_monthly_5",
+      yearlyId: "price_PLACEHOLDER_starter_yearly_50",
     },
-    tagline: "Half the commission, small monthly cost.",
-    audience: "Creators who sell every month.",
+    // The $19/$190 Prices. Existing subscriptions still resolve to Starter.
+    legacyStripePriceIds: [
+      {
+        monthlyId: "price_1TZFTmPvg1vJW0IjLAYWqZok",
+        yearlyId: "price_1TZFTnPvg1vJW0IjjaQXBpDW",
+      },
+    ],
+    tagline: "A low monthly price and a 4.9% commission.",
+    audience: "Creators starting to sell.",
     highlights: [
-      "Everything in Free",
-      "Commission drops from 10% to 5%",
+      "4.9% commission per sale",
+      // Enforced in SQL (claim_custom_domain, set_own_course_featured). Student
+      // and product counts are not enforced, so no public line sells them.
+      "1 custom domain and 1 marketplace highlight",
       "Annual billing saves ~17%",
     ],
   },
@@ -113,16 +154,17 @@ export const plans: ReadonlyArray<Plan> = [
     name: "Pro",
     monthlyUsd: 89,
     yearlyUsd: 890,
-    commissionPercent: 3,
+    commissionPercent: 0,
     stripePriceIds: {
       monthlyId: "price_1TZFTnPvg1vJW0IjHYe4yW9V",
       yearlyId: "price_1TZFToPvg1vJW0IjDHGPIzH0",
     },
-    tagline: "A lower commission for established catalogs.",
+    tagline: "0% commission on your sales.",
     audience: "Creators with an established catalog.",
     highlights: [
-      "Everything in Starter",
-      "Commission drops to 3%",
+      "0% commission per sale",
+      "5 custom domains and 5 marketplace highlights",
+      "Remove the SkillsetMind mark",
     ],
   },
   {
@@ -141,8 +183,21 @@ export const plans: ReadonlyArray<Plan> = [
       "Everything in Pro",
       "Lowest commission — 2% per sale",
     ],
+    retired: true,
   },
 ];
+
+/** What the pricing page, plan selectors and upgrade flows offer. */
+export const publicPlans: ReadonlyArray<Plan> = plans.filter(
+  (plan) => plan.id !== "free" && !plan.retired,
+);
+
+/** The plan the pricing page badges "Recommended". Never "Most popular". */
+export const RECOMMENDED_PLAN_ID: PlanId = "starter";
+
+export function isPublicPlanId(id: unknown): id is Exclude<PlanId, "free"> {
+  return publicPlans.some((plan) => plan.id === id);
+}
 
 export function isPlaceholderStripePriceId(id: string): boolean {
   return id.startsWith(STRIPE_PRICE_PLACEHOLDER_PREFIX);
@@ -156,17 +211,26 @@ export function hasRealStripePriceIds(plan: Plan): boolean {
   );
 }
 
-/** Are at least the paid plans configured with real Stripe Price IDs? */
+/** Are the plans on offer configured with real Stripe Price IDs? */
 export function isBillingConfigured(): boolean {
-  return plans.filter((plan) => plan.id !== "free").every(hasRealStripePriceIds);
+  return publicPlans.every(hasRealStripePriceIds);
+}
+
+/** Plan and cycle of a Price, current or legacy. Undefined for unknown Prices. */
+export function planAndCycleByStripePriceId(
+  priceId: string,
+): { plan: Plan; cycle: PlanBillingCycle } | undefined {
+  for (const plan of plans) {
+    for (const ids of [plan.stripePriceIds, ...(plan.legacyStripePriceIds ?? [])]) {
+      if (ids?.monthlyId === priceId) return { plan, cycle: "monthly" };
+      if (ids?.yearlyId === priceId) return { plan, cycle: "yearly" };
+    }
+  }
+  return undefined;
 }
 
 export function planByStripePriceId(priceId: string): Plan | undefined {
-  return plans.find(
-    (plan) =>
-      plan.stripePriceIds?.monthlyId === priceId ||
-      plan.stripePriceIds?.yearlyId === priceId,
-  );
+  return planAndCycleByStripePriceId(priceId)?.plan;
 }
 
 /**

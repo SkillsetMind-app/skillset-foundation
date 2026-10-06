@@ -16,8 +16,9 @@ import {
 describe("commission ladder alignment", () => {
   it("charges exactly the commission each plan displays (plans.ts vs rules.ts)", () => {
     for (const plan of plans) {
+      // 4.9 * 100 is 490.00000000000006 in floating point.
       expect(canonicalPlatformFeeBpsForPlan(plan.id)).toBe(
-        plan.commissionPercent * 100,
+        Math.round(plan.commissionPercent * 100),
       );
     }
   });

@@ -411,8 +411,12 @@ export async function POST(request: Request) {
             // teacher, connected account and fee without a DB lookup.
             subscription_data: {
               // Our cut of every recurring invoice, taken automatically by
-              // Stripe. bps -> percent (1000 bps = 10%).
-              application_fee_percent: platformFeeBps / 100,
+              // Stripe. bps -> percent (1000 bps = 10%). Omitted at 0% (Pro):
+              // Stripe rejects a zero fee in some calls, and no field means no
+              // fee. The webhook reads the "0" in metadata as the fee in force.
+              ...(platformFeeBps > 0
+                ? { application_fee_percent: platformFeeBps / 100 }
+                : {}),
               metadata: {
                 purpose: "course_subscription",
                 courseId,
@@ -717,8 +721,11 @@ export async function POST(request: Request) {
         // Our cut, deducted by Stripe from a charge that settles directly in the
         // teacher's balance. Computed on the amount actually charged (post
         // coupon), so a discount reduces our fee proportionally rather than
-        // eating the teacher's share.
-        application_fee_amount: applicationFeeMinor,
+        // eating the teacher's share. A zero fee (Pro, or a few cents at
+        // 4.9%) is omitted rather than sent: Stripe rejects 0 here.
+        ...(applicationFeeMinor > 0
+          ? { application_fee_amount: applicationFeeMinor }
+          : {}),
         metadata: {
           orderId,
           courseId,

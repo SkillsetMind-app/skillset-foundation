@@ -54,8 +54,9 @@ describe("public pricing makes no earnings claims", () => {
     state.locale = locale;
     const { container } = render(await PricingPage());
     expect(container.textContent).not.toMatch(incomeClaims);
-    // The fee facts stay: 10% on Free and the $100 sample sale.
-    expect(container.textContent).toContain("10%");
+    // The fee facts stay: 4.9% on Starter, 0% on Pro and the $100 sample sale.
+    expect(container.textContent).toContain("4.9%");
+    expect(container.textContent).toContain("0%");
     expect(container.textContent).toContain("$100");
   });
 
@@ -109,11 +110,14 @@ describe("plan copy states only rules the product applies", () => {
     expect(dict.publicPages.promise.if_a_creator_joins_on_free).not.toMatch(/sell|selling|vender|venta/i);
   });
 
-  it("the assistant's plan summary names the Free daily limits and no feature parity", () => {
+  // The offer is Starter and Pro, each with a trial. The internal free tier and
+  // the retired Plus are not something the assistant may sell.
+  it("the assistant's plan summary names the trial, the two plans and no feature parity", () => {
     const knowledge = buildAssistantKnowledge();
     expect(knowledge).not.toMatch(sameFeatures);
     expect(knowledge).not.toMatch(unenforcedLimits);
-    expect(knowledge).toMatch(/daily limits/);
+    expect(knowledge).toMatch(/14-day free trial/);
+    expect(knowledge).not.toMatch(/Free plan|- Free:|Plus/);
   });
 });
 
@@ -135,7 +139,8 @@ describe("creator payout-country disclosure", () => {
   });
 
   // "Immediately" and "start free" oversell: publishing needs the launch checks
-  // and, where required, verification.
+  // and, where required, verification. Since 2026-10-06 no public plan is
+  // free of a monthly fee: the page offers the 14-day trial instead.
   it.each(["en", "es"])("%s /for-creators never promises immediate drafting or a free start", async (locale) => {
     state.locale = locale;
     const { container } = render(await CreatorsPage());
@@ -143,14 +148,15 @@ describe("creator payout-country disclosure", () => {
     for (const text of [container.textContent, String(description)]) {
       expect(text).not.toMatch(/draft courses immediately|preparar cursos de inmediato|Start free|Empieza gratis/i);
     }
-    expect(container.textContent).toMatch(/no monthly fee|sin mensualidad/);
+    expect(container.textContent).not.toMatch(/no monthly fee|sin mensualidad/);
+    expect(container.textContent).toMatch(/14-day free trial|prueba gratis de 14 días/);
   });
 });
 
 // One guard over every public entry page. Production truth it defends:
 // drafting is open; where verification is required it is approved before
-// publishing; publishing passes launch checks; the Free plan has no monthly fee
-// and takes 10%; there is no activation fee.
+// publishing; publishing passes launch checks; Starter and Pro each start with
+// a 14-day free trial; there is no activation fee.
 describe("public copy guard: home, /pricing, /fees-and-payouts, /for-creators, /help", () => {
   const falseClaims: ReadonlyArray<readonly [string, RegExp]> = [
     ["an earnings claim", incomeClaims],

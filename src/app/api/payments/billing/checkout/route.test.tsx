@@ -45,7 +45,7 @@ vi.mock("@/lib/i18n/server", () => ({ getServerLocale: mocks.getLocale }));
 import { POST } from "@/app/api/payments/billing/checkout/route";
 
 /** Model only the DB boundary: the existing RPC atomically claims one key. */
-function adminReturning(row: { id: string } | null) {
+function adminReturning(row: { id: string } | null, pastTrial: { user_id: string } | null = null) {
   const locks = new Map<string, { owner: string; expiresAt: number }>();
   const query = {
     select: () => query,
@@ -53,6 +53,11 @@ function adminReturning(row: { id: string } | null) {
     in: () => query,
     limit: () => query,
     maybeSingle: async () => ({ data: row, error: null }),
+  };
+  const trialQuery = {
+    select: () => trialQuery,
+    eq: () => trialQuery,
+    maybeSingle: async () => ({ data: pastTrial, error: null }),
   };
   const admin = {
     locks,
@@ -64,6 +69,7 @@ function adminReturning(row: { id: string } | null) {
       return { data: [{ action: "claim", checkout_url: null }], error: null };
     }),
     from: (table: string) => {
+      if (table === "creator_plan_trials") return trialQuery;
       if (table !== "checkout_locks") return query;
       const filters = new Map<string, string>();
       const deletion = {
@@ -438,15 +444,86 @@ describe("POST /api/payments/billing/checkout", () => {
     mocks.getAdmin.mockImplementation(adminReturning(null));
     mocks.listSubscriptions.mockResolvedValue({ data: [] });
     mocks.listSessions.mockResolvedValue({
-      data: [openPlanSession("cs_open_1", "pro", "monthly")],
+      // Opened while the account was still trial-eligible, as it still is.
+      data: [{
+        ...openPlanSession("cs_open_1", "pro", "monthly"),
+        metadata: { ...openPlanSession("cs_open_1", "pro", "monthly").metadata, trialDays: "14" },
+      }],
     });
 
     const response = await POST(request({ planId: "pro", cycle: "monthly" }));
 
     expect(response.status).toBe(200);
-    expect(await response.json()).toMatchObject({ sessionId: "cs_open_1" });
+    expect(await response.json()).toMatchObject({ sessionId: "cs_open_1", trialDays: 14 });
     expect(mocks.createSession).not.toHaveBeenCalled();
     expect(mocks.expireSession).not.toHaveBeenCalled();
+  });
+
+  // --- 14-day free trial: first plan only, card up front, terms on Stripe's page.
+  it("opens the first plan with a 14-day trial, a card and the renewal terms above the button", async () => {
+    mocks.getAdmin.mockImplementation(adminReturning(null));
+    mocks.listSubscriptions.mockResolvedValue({ data: [] });
+
+    const response = await POST(request({ planId: "pro", cycle: "monthly" }));
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ trialDays: 14 });
+    const params = mocks.createSession.mock.calls[0][0];
+    expect(params.subscription_data.trial_period_days).toBe(14);
+    expect(params.payment_method_collection).toBe("always");
+    expect(params.custom_text.submit.message).toMatch(
+      /^14 days free, then \$89\/month\. Renews automatically until you cancel\. Cancel anytime in Billing before .+ and you won't be charged\.$/,
+    );
+    expect(params.metadata.trialDays).toBe("14");
+    // The reminder email is written from the webhook, in this language.
+    expect(params.subscription_data.metadata.locale).toBe("en");
+  });
+
+  it("starts the second subscription paid: one trial per account, ever", async () => {
+    mocks.getAdmin.mockImplementation(adminReturning(null, { user_id: "teacher-1" }));
+    mocks.listSubscriptions.mockResolvedValue({ data: [] });
+
+    const response = await POST(request({ planId: "starter", cycle: "yearly" }));
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ trialDays: 0 });
+    const params = mocks.createSession.mock.calls[0][0];
+    expect(params.subscription_data).not.toHaveProperty("trial_period_days");
+    expect(params.payment_method_collection).toBe("always");
+    expect(params.custom_text.submit.message).toBe(
+      "$50/year, starting today. Renews automatically until you cancel. Cancel anytime in Billing to stop the next charge.",
+    );
+  });
+
+  it("trusts Stripe's history when the webhook has not recorded the first trial yet", async () => {
+    mocks.getAdmin.mockImplementation(adminReturning(null));
+    mocks.listSubscriptions.mockResolvedValue({
+      data: [{ id: "sub_old", status: "canceled", trial_start: 1_790_000_000 }],
+    });
+
+    expect((await POST(request({ planId: "pro", cycle: "monthly" }))).status).toBe(200);
+    expect(mocks.createSession.mock.calls[0][0].subscription_data).not.toHaveProperty("trial_period_days");
+  });
+
+  it("does not hand back an open session that still promises a trial the account has used", async () => {
+    mocks.getAdmin.mockImplementation(adminReturning(null, { user_id: "teacher-1" }));
+    mocks.listSubscriptions.mockResolvedValue({ data: [] });
+    const open = openPlanSession("cs_trial_offer", "pro", "monthly");
+    mocks.listSessions.mockResolvedValue({ data: [{ ...open, metadata: { ...open.metadata, trialDays: "14" } }] });
+
+    expect((await POST(request({ planId: "pro", cycle: "monthly" }))).status).toBe(200);
+    expect(mocks.expireSession).toHaveBeenCalledWith("cs_trial_offer");
+    expect(mocks.createSession.mock.calls[0][0].subscription_data).not.toHaveProperty("trial_period_days");
+  });
+
+  it("refuses the retired Plus before touching Stripe", async () => {
+    mocks.getAdmin.mockImplementation(adminReturning(null));
+
+    const response = await POST(request({ planId: "plus", cycle: "monthly" }));
+
+    expect(response.status).toBe(400);
+    expect(mocks.getCustomer).not.toHaveBeenCalled();
+    expect(mocks.createSession).not.toHaveBeenCalled();
   });
 
   // A session left open for a plan the user moved on from is the same hazard

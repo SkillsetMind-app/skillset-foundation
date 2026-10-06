@@ -51,7 +51,7 @@ export const helpFaqCategories: ReadonlyArray<HelpFaqCategory> = [
       {
         id: "course-pricing",
         q: "How do I set pricing for my course?",
-        a: "Pricing is set per product inside Studio → course builder. Choose free enrollment, a one-time price, or a monthly or yearly subscription in a supported currency. The platform commission (10% on Free, 5% on Starter, 3% on Pro, 2% on Plus) plus the Stripe processing fee are shown clearly in the earnings ledger for every sale.",
+        a: "Pricing is set per product inside Studio → course builder. Choose free enrollment, a one-time price, or a monthly or yearly subscription in a supported currency. The platform commission (4.9% on Starter, 0% on Pro) plus the Stripe processing fee are shown clearly in the earnings ledger for every sale.",
       },
       {
         id: "drip-release",
@@ -71,7 +71,7 @@ export const helpFaqCategories: ReadonlyArray<HelpFaqCategory> = [
     items: [
       {
         q: "Which plan should I start on?",
-        a: "Start on Free if you're validating an idea — there's no subscription and you keep 90% of every $100 sale before Stripe fees. Paid plans add a monthly fee and lower the commission. The pricing page shows what each plan takes from a sample $100 sale.",
+        a: "Both plans start with a 14-day free trial; a card is required, and you can cancel in Billing before the trial ends without being charged. Starter is $5/month ($50/year) with a 4.9% commission per sale. Pro is $89/month with 0% commission and higher limits. The pricing page shows what each plan takes from a sample $100 sale.",
       },
       {
         q: "What happens when I upgrade or downgrade?",
@@ -79,7 +79,7 @@ export const helpFaqCategories: ReadonlyArray<HelpFaqCategory> = [
       },
       {
         q: "What if I cancel my plan?",
-        a: "Cancellation downgrades you to Free at the end of your paid period. Your courses, students, content, and history are preserved — SkillsetMind never deletes a creator's data. Commission goes back to 10% (the Free rate) on new sales from the moment of downgrade.",
+        a: "Cancel anytime from Billing with \"Cancel plan\". If you cancel during the 14-day free trial, you are not charged; otherwise the plan stays active until the end of the period you paid for. Your courses, students, content, and history are preserved — SkillsetMind never deletes a creator's data.",
       },
     ],
   },

@@ -15,7 +15,14 @@ import {
 } from "@/lib/payments/server/stripe-helpers";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getServerLocale } from "@/lib/i18n/server";
-import type { PlanBillingCycle, PlanId } from "@/data/plans";
+import { getDictionary, translate } from "@/lib/i18n/dictionaries";
+import { planDisclosure } from "@/lib/payments/plan-disclosure";
+import {
+  isPublicPlanId,
+  planById,
+  PLAN_TRIAL_DAYS,
+  type PlanBillingCycle,
+} from "@/data/plans";
 
 // Mirrors COURSE_SUBSCRIPTION_CHECKOUT_BLOCKING_STATUSES minus "incomplete" and
 // "paused": an abandoned checkout leaves an `incomplete` row behind, and
@@ -49,9 +56,11 @@ export async function POST(request: Request) {
     const rawPlanId = body.planId;
     const rawCycle = body.cycle;
 
-    if (rawPlanId !== "starter" && rawPlanId !== "pro" && rawPlanId !== "plus") {
+    // Only the plans on offer. The retired Plus keeps working for whoever
+    // already has it, but nobody starts a new Plus subscription.
+    if (!isPublicPlanId(rawPlanId)) {
       throw new PaymentError(
-        "planId must be one of: starter, pro, plus.",
+        "planId must be one of: starter, pro.",
         400,
       );
     }
@@ -59,7 +68,7 @@ export async function POST(request: Request) {
       throw new PaymentError("cycle must be 'monthly' or 'yearly'.", 400);
     }
 
-    const planId = rawPlanId as Exclude<PlanId, "free">;
+    const planId = rawPlanId;
     const cycle = rawCycle as PlanBillingCycle;
     const priceId = resolvePriceId(planId, cycle);
 
@@ -137,7 +146,7 @@ export async function POST(request: Request) {
         && candidate.metadata?.uid === uid
         && candidate.metadata?.purpose === PLAN_SUBSCRIPTION_CHECKOUT_PURPOSE,
     );
-    const reusableSession = openPlanSessions.find(
+    let reusableSession = openPlanSessions.find(
       (candidate) => candidate.metadata?.planId === planId
         && candidate.metadata?.cycle === cycle,
     );
@@ -171,8 +180,40 @@ export async function POST(request: Request) {
       );
     }
 
+    // One free trial per creator account, ever. creator_plan_trials is written
+    // by the webhook when the first trial starts and outlives the subscription;
+    // Stripe's own history covers the seconds before that webhook lands. A
+    // second subscription starts paid. Plan changes go through the portal,
+    // which keeps the running trial_end, so nothing here can restart a trial.
+    const { data: pastTrial, error: pastTrialError } = await admin
+      .from("creator_plan_trials")
+      .select("user_id")
+      .eq("user_id", uid)
+      .maybeSingle();
+    if (pastTrialError) throw new Error(pastTrialError.message);
+    const trialUsed = Boolean(pastTrial)
+      || stripeSubscriptions.data.some((subscription) => subscription.trial_start != null);
+    const trialDays = trialUsed ? 0 : PLAN_TRIAL_DAYS;
+
+    // An open session promising a trial the account no longer has (or the
+    // reverse) must not be handed back.
+    if (reusableSession && reusableSession.metadata?.trialDays !== String(trialDays)) {
+      await stripe.checkout.sessions.expire(reusableSession.id);
+      reusableSession = undefined;
+    }
+
     const appUrl = getAppUrl();
     const locale = await getServerLocale();
+    const t = (key: string) => translate(getDictionary(locale), key);
+    // The renewal terms on Stripe's own page, above the button that collects
+    // the card: same text as the plan card (US ROSCA disclosure).
+    const disclosure = planDisclosure({
+      t,
+      locale,
+      plan: planById(planId),
+      cycle,
+      trial: trialDays > 0,
+    });
 
     // Reuse before create: the response shape below is identical either way, so
     // the returning user gets the session they already have instead of a second.
@@ -198,17 +239,25 @@ export async function POST(request: Request) {
         locale,
         customer: customerId,
         line_items: [{ price: priceId, quantity: 1 }],
+        // A card up front, trial or not: the trial converts on its own unless
+        // the creator cancels before it ends.
+        payment_method_collection: "always",
+        custom_text: { submit: { message: disclosure } },
         // Founding-creator / launch discounts run as Stripe promotion codes on
         // the platform account — no DB, no UI, created in the Dashboard. Safe
         // to combine with nothing else: we never pass `discounts` here.
         allow_promotion_codes: true,
         subscription_data: {
-          metadata: { uid, planId, cycle },
+          ...(trialDays > 0 ? { trial_period_days: trialDays } : {}),
+          // locale: the trial_will_end reminder is sent from the webhook, which
+          // never sees this request. The app stores no language for creators.
+          metadata: { uid, planId, cycle, locale },
         },
         metadata: {
           uid,
           planId,
           cycle,
+          trialDays: String(trialDays),
           purpose: PLAN_SUBSCRIPTION_CHECKOUT_PURPOSE,
         },
         expires_at: sessionExpiresAt,
@@ -234,6 +283,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       clientSecret: session.client_secret,
       sessionId: session.id,
+      trialDays,
     });
   } catch (error) {
     if (releaseClaim && !retainClaimOnError) {

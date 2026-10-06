@@ -2,7 +2,7 @@ import { cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import PricingPage from "@/app/pricing/page";
-import { plans } from "@/data/plans";
+import { publicPlans } from "@/data/plans";
 
 vi.mock("next/headers", () => ({ cookies: async () => ({ get: () => undefined }) }));
 
@@ -31,7 +31,7 @@ describe("pricing page", () => {
 
     expect(
       screen.getByText(
-        "Every plan can sell. Paid plans lower the commission and raise your limits.",
+        "Both plans publish and sell, and both start with 14 days free. Pro drops the commission to 0% and raises your limits.",
       ),
     ).toBeInTheDocument();
     expect(screen.queryByText("Which plan is for me?")).not.toBeInTheDocument();
@@ -41,15 +41,18 @@ describe("pricing page", () => {
     render(await PricingPage());
 
     const grid = within(screen.getByRole("region", { name: "Plan comparison" }));
-    for (const plan of plans) {
+    for (const plan of publicPlans) {
       expect(grid.getByText(`${plan.commissionPercent}%`).className).toContain(
         "text-4xl",
       );
     }
-    expect(grid.getByText("$0/mo — no subscription").className).not.toContain(
-      "text-4xl",
-    );
-    expect(grid.getByText("$19/mo")).toBeInTheDocument();
+    expect(grid.getByText("$5/mo").className).not.toContain("text-4xl");
+    expect(grid.getByText("$89/mo")).toBeInTheDocument();
+    // Only the two plans on offer: no Free card, no retired Plus.
+    expect(grid.queryByText("Free")).not.toBeInTheDocument();
+    expect(grid.queryByText("Plus")).not.toBeInTheDocument();
+    expect(grid.queryByText(/no subscription/i)).not.toBeInTheDocument();
+    expect(grid.getByText("Recommended").closest("article")).toHaveTextContent("Starter");
   });
 
   it("stretches the cards and pins the button to the bottom", async () => {
@@ -57,13 +60,18 @@ describe("pricing page", () => {
 
     const grid = within(screen.getByRole("region", { name: "Plan comparison" }));
     const cards = grid.getAllByRole("article");
-    expect(cards).toHaveLength(plans.length);
+    expect(cards).toHaveLength(publicPlans.length);
     for (const card of cards) {
       expect(card.className).toContain("flex h-full flex-col");
     }
-    expect(grid.getByRole("link", { name: "Start on Free" }).className).toContain(
-      "mt-auto",
+    const cta = grid.getByRole("link", { name: "Start 14-day free trial — Starter" });
+    expect(cta).toHaveTextContent("Start 14-day free trial");
+    expect(cta.parentElement?.className).toContain("mt-auto");
+    // The renewal terms sit next to the button, for each cycle.
+    expect(cta.parentElement).toHaveTextContent(
+      /14 days free, then \$5\/month\. Renews automatically until you cancel\. Cancel anytime in Billing before .+ and you won't be charged\./,
     );
+    expect(cta.parentElement).toHaveTextContent("14 days free, then $50/year.");
   });
 
   it("keeps the no-JavaScript billing toggle, in 13px sentence case", async () => {

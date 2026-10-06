@@ -4,10 +4,13 @@ export const automaticRefundWindowDays = 7;
 export const automaticRefundProgressCap = 50;
 
 export const DEFAULT_PLATFORM_FEE_BPS = 1000;
+// Mirrors platform_fee_bps_for_plan() in
+// supabase/migrations/20261006040000_precos_3_planos_teste_gratis.sql.
+// Plus is retired and grandfathered at its old rate.
 const PLAN_PLATFORM_FEE_BPS: Record<SkillsetPlanId, number> = {
   free: 1000,
-  starter: 500,
-  pro: 300,
+  starter: 490,
+  pro: 0,
   plus: 200,
 };
 

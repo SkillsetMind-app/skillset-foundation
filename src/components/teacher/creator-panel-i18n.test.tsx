@@ -349,11 +349,13 @@ describe("painel do criador em espanhol", () => {
   });
 
   it.each([
-    { planId: "starter", planName: "Starter", limit: 1 },
-    { planId: "pro", planName: "Pro", limit: 3 },
-    { planId: "plus", planName: "Plus", limit: 5 },
+    // Cheio: o Starter aponta para os planos; Pro (topo da oferta) e o Plus
+    // aposentado apontam para "Fale conosco", nunca para um beco sem saida.
+    { planId: "starter", planName: "Starter", limit: 1, next: "plans" },
+    { planId: "pro", planName: "Pro", limit: 5, next: "contact" },
+    { planId: "plus", planName: "Plus", limit: 5, next: "contact" },
   ] as const)("destaques no $planName: quota e idioma acompanham os dados sem escrita", async ({
-    planId, planName, limit,
+    planId, planName, limit, next,
   }) => {
     const literalTitle = "LOCAL QA $& $$ {plan} — Autor";
     mocks.course = { ...mocks.course, title: literalTitle, status: "published", featured: false };
@@ -394,6 +396,8 @@ describe("painel do criador em espanhol", () => {
     expect(highlightCard("en").getByText(
       `You're using all ${limit} highlights on your plan. Remove one from another course first.`
     )).toBeInTheDocument();
+    expect(highlightCard("en").getByRole("link", { name: next === "contact" ? "Contact us for more" : "See plans" }))
+      .toHaveAttribute("href", next === "contact" ? "/contact" : "/account/plans");
     expect(highlightCard("en").getByRole("button", { name: "Highlight this course" })).toBeDisabled();
 
     await changeLocale("es");

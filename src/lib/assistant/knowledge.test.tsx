@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { helpFaqCategories } from "@/data/help-faq";
-import { plans, refundWindowDays } from "@/data/plans";
+import { publicPlans, refundWindowDays } from "@/data/plans";
 import { buildAssistantKnowledge } from "@/lib/assistant/knowledge";
 
 describe("buildAssistantKnowledge", () => {
@@ -13,14 +13,15 @@ describe("buildAssistantKnowledge", () => {
     expect(knowledge).toContain("within 2 business days (Mon–Fri)");
   });
 
-  it("includes every plan with its price and commission", () => {
-    for (const plan of plans) {
+  it("includes every plan on offer with its price, commission and the trial", () => {
+    for (const plan of publicPlans) {
       expect(knowledge).toContain(plan.name);
       expect(knowledge).toContain(`${plan.commissionPercent}% commission`);
-      if (plan.monthlyUsd > 0) {
-        expect(knowledge).toContain(`$${plan.monthlyUsd}/month`);
-      }
+      expect(knowledge).toContain(`$${plan.monthlyUsd}/month`);
     }
+    expect(knowledge).toContain("14-day free trial");
+    expect(knowledge).not.toContain("- Free:");
+    expect(knowledge).not.toContain("- Plus:");
   });
 
   it("states the refund window from plans.ts and the direct-charge payout model", () => {

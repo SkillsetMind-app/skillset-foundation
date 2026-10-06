@@ -3,7 +3,7 @@ import { getServerTranslation } from "@/lib/i18n/server";
 import Link from "next/link";
 
 import { PublicPage } from "@/components/site/public-page";
-import { plans, refundWindowDays } from "@/data/plans";
+import { publicPlans, refundWindowDays } from "@/data/plans";
 
 
 
@@ -21,7 +21,7 @@ export default async function FeesAndPayoutsPage() {
     ],
     [
       t("publicPages.fees.platform_fee"),
-      t("publicPages.fees.plan_based_every_plan_includes_the").replace("{value0}", String(plans
+      t("publicPages.fees.plan_based_every_plan_includes_the").replace("{value0}", String(publicPlans
         .map((plan) => `${plan.name} ${plan.commissionPercent}%`)
         .join(" · "))),
     ],

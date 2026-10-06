@@ -1,7 +1,11 @@
 import { after, NextResponse } from "next/server";
 import type Stripe from "stripe";
 
-import { ACTIVATION_FEE_CHECKOUT_PURPOSE, planByStripePriceId } from "@/data/plans";
+import {
+  ACTIVATION_FEE_CHECKOUT_PURPOSE,
+  PLAN_ENTITLED_STATUSES,
+  planAndCycleByStripePriceId,
+} from "@/data/plans";
 import { normalizeLocale, type Locale } from "@/lib/i18n/config";
 import { notifyOps } from "@/lib/ops/alert";
 import { buildCourseSubscriptionSaleRecords } from "@/lib/payments/course-subscription-sale";
@@ -21,7 +25,11 @@ import {
 } from "@/lib/payments/rules";
 import { fromStripeAmount, toStripeAmount } from "@/lib/payments/currencies";
 import { getAppUrl } from "@/lib/payments/server/app-url";
-import { sendCreatorSaleEmail, sendPurchaseAccessEmail } from "@/lib/payments/server/purchase-access-email";
+import {
+  sendCreatorSaleEmail,
+  sendPlanTrialEndingEmail,
+  sendPurchaseAccessEmail,
+} from "@/lib/payments/server/purchase-access-email";
 import { getStripeClient, isStripeConfigured } from "@/lib/payments/server/stripe";
 import {
   courseSubscriptionInterval,
@@ -61,6 +69,7 @@ const HANDLED_STRIPE_EVENT_TYPES = new Set<string>([
   "customer.subscription.created",
   "customer.subscription.updated",
   "customer.subscription.deleted",
+  "customer.subscription.trial_will_end",
   "invoice.payment_failed",
   "invoice.paid",
   "account.updated",
@@ -697,15 +706,21 @@ async function handleCourseSubscriptionInvoicePaid(
   // Stripe freezes application_fee_percent when the subscription is created and
   // keeps charging that percent on every renewal. Recomputing the fee from the
   // teacher's CURRENT plan would book a number Stripe never took: a teacher who
-  // upgrades Free (10%) -> Pro (3%) is still charged 10% by Stripe until the
-  // subscription is re-created, and the ledger would claim 3% while 10% left the
+  // upgrades Free (10%) -> Starter (4.9%) is still charged 10% by Stripe until
+  // the subscription is updated, and the ledger would claim 4.9% while 10% left the
   // charge. The subscription states the percent actually in force, so trust it;
   // the plan/metadata chain only covers subscriptions with no percent set.
+  //
+  // A 0% plan omits the percent at checkout (Stripe rejects 0), so a null
+  // percent with a "0" snapshot is a fee of 0 — not a cue to re-derive it from
+  // a plan the teacher may have left since.
   const frozenPercent = subscription.application_fee_percent;
   const platformFeeBps =
     typeof frozenPercent === "number" && frozenPercent >= 0
       ? Math.round(frozenPercent * 100)
-      : derivedFeeBps;
+      : metaBps === 0
+        ? 0
+        : derivedFeeBps;
   const skillsetFeeMinor = Math.floor((grossAmountMinor * platformFeeBps) / 10000);
   const stripeFeeMinor =
     grossAmountMinor > 0 ? stripeProcessingFeeMinor(grossAmountMinor, currencyUpper) : 0;
@@ -1568,16 +1583,11 @@ async function syncSubscriptionFromStripe(
 
   const item = subscription.items.data[0];
   const priceId = item?.price?.id ?? null;
-  const plan = priceId ? planByStripePriceId(priceId) : null;
-  const planId = plan?.id ?? null;
-  const cycle = plan?.stripePriceIds
-    ? plan.stripePriceIds.monthlyId === priceId
-      ? "monthly"
-      : plan.stripePriceIds.yearlyId === priceId
-        ? "yearly"
-        : null
-    : null;
-  if (!planId || !cycle || !priceId) return;
+  // Legacy Prices too: a $19 Starter subscription is still Starter.
+  const match = priceId ? planAndCycleByStripePriceId(priceId) : undefined;
+  if (!match || !priceId) return;
+  const planId = match.plan.id;
+  const cycle = match.cycle;
 
   const periodStart = secondsToIso(
     (item as { current_period_start?: number })?.current_period_start ??
@@ -1607,12 +1617,17 @@ async function syncSubscriptionFromStripe(
         current_period_start: periodStart,
         current_period_end: periodEnd,
         cancel_at_period_end: Boolean(subscription.cancel_at_period_end),
+        trial_end: secondsToIso(subscription.trial_end),
         updated_at: ts,
       },
       { onConflict: "id" },
     ),
     "Persist plan subscription",
   );
+
+  if (subscription.trial_start != null) {
+    await recordPlanTrial(admin, uid, subscription);
+  }
 
   // Entitlement must reflect ALL of this user's live subscriptions, not just the
   // one in this event. Stripe checkout never replaces an existing subscription,
@@ -1622,12 +1637,13 @@ async function syncSubscriptionFromStripe(
   // `updated` event on the cheaper sub would overwrite the higher plan). The
   // upsert above already made this row current, so resolve from the table and
   // keep the best live tier. Lower platform fee = higher tier; unknown plan ids
-  // tie with free and lose the strict comparison.
+  // tie with free and lose the strict comparison. `trialing` counts: during
+  // the trial the plan works in full, lower commission and limits included.
   const { data: liveSubscriptions, error: liveSubscriptionsError } = await admin
     .from("subscriptions")
     .select("plan_id")
     .eq("user_id", uid)
-    .in("status", ["active", "trialing"]);
+    .in("status", [...PLAN_ENTITLED_STATUSES]);
   if (liveSubscriptionsError) throw new Error(liveSubscriptionsError.message);
 
   const effectivePlanId = (liveSubscriptions ?? []).reduce<string>((best, row) => {
@@ -1645,6 +1661,90 @@ async function syncSubscriptionFromStripe(
       .eq("uid", uid),
     "Update subscriber plan",
   );
+}
+
+// One trial per creator account, ever: the first subscription that starts a
+// trial claims the account's row. ignoreDuplicates — a later event (a plan
+// change during the trial, a renewal, a second subscription) never rewrites it,
+// so the checkout keeps refusing a second trial.
+async function recordPlanTrial(
+  admin: Admin,
+  uid: string,
+  subscription: Stripe.Subscription,
+): Promise<void> {
+  await requireSupabaseWrite(
+    admin.from("creator_plan_trials").upsert(
+      {
+        user_id: uid,
+        stripe_subscription_id: subscription.id,
+        trial_end: secondsToIso(subscription.trial_end),
+      },
+      { onConflict: "user_id", ignoreDuplicates: true },
+    ),
+    "Record plan trial",
+  );
+}
+
+// customer.subscription.trial_will_end: Stripe sends it three days before the
+// trial converts. One reminder per subscription: the row's reminder_sent_at is
+// claimed before sending (a redelivery or a second event finds it set) and
+// released if the send fails, so Stripe's retry gets another go. Resend's
+// Idempotency-Key covers a send that landed but reported an error.
+async function handlePlanTrialWillEnd(
+  admin: Admin,
+  subscription: Stripe.Subscription,
+): Promise<void> {
+  // Cancelled during the trial, or already converted: nothing will be charged.
+  if (
+    subscription.status !== "trialing"
+    || subscription.cancel_at_period_end
+    || subscription.trial_end == null
+  ) {
+    return;
+  }
+  const uid =
+    (subscription.metadata?.uid as string | undefined) ??
+    (await uidFromCustomer(admin, subscription.customer));
+  if (!uid) return;
+  const price = subscription.items.data[0]?.price;
+  const match = price?.id ? planAndCycleByStripePriceId(price.id) : undefined;
+  if (!match || !price) return;
+
+  await recordPlanTrial(admin, uid, subscription);
+  const { data: claimed, error: claimError } = await admin
+    .from("creator_plan_trials")
+    .update({ reminder_sent_at: nowIso() })
+    .eq("stripe_subscription_id", subscription.id)
+    .is("reminder_sent_at", null)
+    .select("user_id")
+    .maybeSingle();
+  if (claimError) throw new Error(`Claim trial reminder: ${claimError.message}`);
+  if (!claimed) return;
+
+  try {
+    const { data, error } = await admin.auth.admin.getUserById(uid);
+    const email = data?.user?.email;
+    if (error || !email) throw new Error("Subscriber account has no email for the trial reminder.");
+    await sendPlanTrialEndingEmail({
+      email,
+      locale: normalizeLocale(subscription.metadata?.locale),
+      trialEnd: new Date(subscription.trial_end * 1000),
+      amountMinor: price.unit_amount ?? 0,
+      currency: price.currency || "usd",
+      cycle: match.cycle,
+      billingUrl: `${getAppUrl()}/account/billing?tab=subscriptions`,
+      idempotencyKey: `trial_will_end:${subscription.id}`,
+    });
+  } catch (sendError) {
+    await requireSupabaseWrite(
+      admin
+        .from("creator_plan_trials")
+        .update({ reminder_sent_at: null })
+        .eq("stripe_subscription_id", subscription.id),
+      "Release trial reminder claim",
+    );
+    throw sendError;
+  }
 }
 
 async function handleInvoicePaymentFailed(
@@ -1869,6 +1969,17 @@ export async function POST(request: Request) {
         );
         if (!handledAsCourse) {
           await syncSubscriptionFromStripe(admin, subscriptionObject);
+        }
+        break;
+      }
+      case "customer.subscription.trial_will_end": {
+        // Plan subscriptions live on the platform (no event.account). Course
+        // subscriptions on connected accounts never carry a trial.
+        if (!eventAccountId) {
+          await handlePlanTrialWillEnd(
+            admin,
+            await getStripeClient().subscriptions.retrieve(event.data.object.id),
+          );
         }
         break;
       }
