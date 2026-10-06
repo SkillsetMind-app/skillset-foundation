@@ -1296,6 +1296,7 @@ export type Database = {
           created_at: string
           id: string
           last_lesson_id: string | null
+          max_progress_percent: number
           progress_percent: number
           source: string
           status: string
@@ -1313,6 +1314,7 @@ export type Database = {
           created_at?: string
           id: string
           last_lesson_id?: string | null
+          max_progress_percent?: number
           progress_percent?: number
           source: string
           status: string
@@ -1330,6 +1332,7 @@ export type Database = {
           created_at?: string
           id?: string
           last_lesson_id?: string | null
+          max_progress_percent?: number
           progress_percent?: number
           source?: string
           status?: string
