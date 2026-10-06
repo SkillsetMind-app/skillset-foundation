@@ -93,7 +93,7 @@ export function BrandPortrait({
       alt=""
       fill
       priority={priority}
-      quality={90}
+      quality={95}
       sizes={sizes}
       className={imageClassName}
     />
@@ -198,9 +198,8 @@ function RotatingPortrait({
         alt=""
         aria-hidden={layer === shown ? undefined : true}
         fill
-        loading="eager"
         priority={priority && layer === 0 && face === first}
-        quality={90}
+        quality={95}
         sizes={sizes}
         className={imageClassName}
         style={
