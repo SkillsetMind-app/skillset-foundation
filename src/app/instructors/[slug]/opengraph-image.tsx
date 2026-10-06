@@ -18,6 +18,9 @@ export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
 const MAX_PHOTO_BYTES = 2_000_000;
+// Um PNG de 12000×12000 cabe em ~400 KB e custa ~1,3 GB para desenhar: o
+// tamanho em pixels vem do cabeçalho, antes de qualquer decodificação.
+const MAX_PHOTO_SIDE = 2048;
 
 /**
  * O servidor só busca foto nos hosts que a plataforma já aceita para avatar
@@ -28,8 +31,8 @@ const MAX_PHOTO_BYTES = 2_000_000;
 function isAllowedPhotoUrl(url: string | null): url is string {
   if (!url) return false;
   try {
-    const { protocol, hostname, pathname } = new URL(url);
-    if (protocol !== "https:") return false;
+    const { protocol, hostname, port, pathname } = new URL(url);
+    if (protocol !== "https:" || port !== "") return false;
     const supabase = getSupabaseClientConfig()?.url;
     const storageHost = supabase ? new URL(supabase).hostname : null;
     return (hostname === storageHost && pathname.startsWith("/storage/v1/object/"))
@@ -37,6 +40,26 @@ function isAllowedPhotoUrl(url: string | null): url is string {
   } catch {
     return false;
   }
+}
+
+/** Largura e altura lidas do cabeçalho PNG (IHDR) ou JPEG (SOFn); null se não der. */
+function pixelSize(bytes: Buffer, type: string): { width: number; height: number } | null {
+  if (type === "image/png") {
+    const png = bytes.length >= 24 && bytes.readUInt32BE(0) === 0x89504e47 && bytes.toString("ascii", 12, 16) === "IHDR";
+    return png ? { width: bytes.readUInt32BE(16), height: bytes.readUInt32BE(20) } : null;
+  }
+  if (bytes[0] !== 0xff || bytes[1] !== 0xd8) return null;
+  let i = 2;
+  while (i + 9 <= bytes.length && bytes[i] === 0xff) {
+    const marker = bytes[i + 1];
+    // SOF0..SOF15, menos DHT (C4), JPG (C8) e DAC (CC).
+    if (marker >= 0xc0 && marker <= 0xcf && ![0xc4, 0xc8, 0xcc].includes(marker)) {
+      return { height: bytes.readUInt16BE(i + 5), width: bytes.readUInt16BE(i + 7) };
+    }
+    if (marker === 0xda) return null; // começou a imagem sem SOF
+    i += 2 + bytes.readUInt16BE(i + 2);
+  }
+  return null;
 }
 
 // O renderizador só desenha PNG e JPEG com segurança. Foto em outro formato,
@@ -51,6 +74,8 @@ async function photoDataUri(url: string | null): Promise<string | null> {
     if (Number(response.headers.get("content-length") ?? 0) > MAX_PHOTO_BYTES) return null;
     const bytes = Buffer.from(await response.arrayBuffer());
     if (bytes.length > MAX_PHOTO_BYTES) return null;
+    const pixels = pixelSize(bytes, type);
+    if (!pixels || pixels.width > MAX_PHOTO_SIDE || pixels.height > MAX_PHOTO_SIDE) return null;
     return `data:${type};base64,${bytes.toString("base64")}`;
   } catch {
     return null;
@@ -132,6 +157,11 @@ export default async function ProfileOpengraphImage({ params }: { params: Promis
         )}
       </div>
     ),
-    size,
+    {
+      ...size,
+      // A URL leva ?v=<updatedAt> (page.tsx): perfil novo, URL nova; o CDN
+      // pode guardar cada versão.
+      headers: { "Cache-Control": "public, s-maxage=3600, stale-while-revalidate=86400" },
+    },
   );
 }
