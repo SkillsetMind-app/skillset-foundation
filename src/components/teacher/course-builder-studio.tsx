@@ -44,6 +44,7 @@ import { StatusChip } from "@/components/shared/status-chip";
 import { MembersAreaHero } from "@/components/learn/members-area-hero";
 import { CourseAssetUploader } from "@/components/teacher/course-asset-uploader";
 import { CourseCategorySelect } from "@/components/teacher/course-category-select";
+import { CourseShareLink } from "@/components/teacher/course-share-link";
 import { LessonContentModal } from "@/components/teacher/lesson-content-modal";
 import { useLessonUpload } from "@/components/teacher/lesson-upload-provider";
 import { clearLessonVideoSelection, reconcileLessonVideoSelections } from "@/lib/data/course-write-queue";
@@ -1002,6 +1003,11 @@ export function CourseBuilderStudio() {
     publishGates,
     t,
   );
+  // Falta so a taxa: o botao principal vira "Activate and publish" e leva ao
+  // checkout com este curso, para a volta cair de novo aqui.
+  const needsActivation = readiness.pending.some((item) => item.id === "activation");
+  const readyToPublish = readiness.pending.every((item) => item.id === "activation");
+  const activateHref = `/teach/activate?courseId=${encodeURIComponent(courseId ?? "")}`;
   const activeLessonStudioModule = activeLessonStudio
     ? modules.find((module) => module.id === activeLessonStudio.moduleId) ?? null
     : null;
@@ -2103,9 +2109,16 @@ export function CourseBuilderStudio() {
 
     const signatureAtSubmit = builderDraftSignature;
     setIsSubmitting(true);
+    let draftSaved = false;
 
     try {
       await persistDraft(signatureAtSubmit, builderDraftPayload);
+      draftSaved = true;
+      if (needsActivation) {
+        track.coursePublishBlocked({ course_id: courseId, reason: "activation" });
+        router.push(activateHref);
+        return;
+      }
       await publishTeacherCourse(courseId);
       track.coursePublished({
         course_id: courseId,
@@ -2116,7 +2129,7 @@ export function CourseBuilderStudio() {
       setSuccess("published");
     } catch (caughtError) {
       const message = caughtError instanceof Error ? caughtError.message : "";
-      setError({ code: message.toLowerCase().includes("every lesson needs")
+      const code = message.toLowerCase().includes("every lesson needs")
         ? "lessonContent"
         : message.toLowerCase().includes("preview")
         ? "preview"
@@ -2130,7 +2143,18 @@ export function CourseBuilderStudio() {
                 ? "payouts"
                 : message.toLowerCase().includes("payment") || message.toLowerCase().includes("price")
                   ? "payment"
-                  : "publish" });
+                  : "publish";
+      setError({ code });
+      // A failed save or a dropped connection is not a refusal: keep them out
+      // of the generic "publish" bucket so the funnel shows what blocks people.
+      // ponytail: network = fetch's TypeError or its message; add codes if the
+      // data layer ever wraps them differently.
+      const network = caughtError instanceof TypeError
+        || /failed to fetch|networkerror|load failed/i.test(message);
+      track.coursePublishBlocked({
+        course_id: courseId,
+        reason: network ? "network" : code !== "publish" ? code : draftSaved ? "publish" : "save",
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -3229,7 +3253,22 @@ export function CourseBuilderStudio() {
                     ) : null}
                   </p>
                   {item.done ? null : (
-                    <p className="mt-1 text-xs leading-5 text-[var(--color-ink-soft)]">{item.hint}</p>
+                    <p className="mt-1 text-xs leading-5 text-[var(--color-ink-soft)]">
+                      {item.hint}
+                      {/* Mesmo destino do Manage: sem ele a pessoa lia "termine
+                          o cadastro" e nao tinha onde clicar. */}
+                      {item.id === "payouts" ? (
+                        <>
+                          {" "}
+                          <Link
+                            href="/account/payments#stripe-connect"
+                            className="font-semibold text-[var(--color-primary)] underline"
+                          >
+                            {t("creatorPanel.hub.pricing.finishOnboarding")}
+                          </Link>
+                        </>
+                      ) : null}
+                    </p>
                   )}
                 </li>
               )}
@@ -3379,10 +3418,17 @@ export function CourseBuilderStudio() {
               <p>{errorMessage}</p>
               {error.code === "activation" ? (
                 <Link
-                  href="/teach/activate"
+                  href={activateHref}
                   className="button-solid mt-3 px-4 py-2 text-xs"
                 >
                   {t("creatorEditor.builder.publish.activate")}
+                </Link>
+              ) : error.code === "payouts" ? (
+                <Link
+                  href="/account/payments#stripe-connect"
+                  className="button-solid mt-3 px-4 py-2 text-xs"
+                >
+                  {t("creatorPanel.hub.pricing.finishOnboarding")}
                 </Link>
               ) : null}
             </div>
@@ -3391,6 +3437,14 @@ export function CourseBuilderStudio() {
             <p className="mt-4 info-notice">
               {t(`creatorEditor.builder.success.${success}`)}
             </p>
+          ) : null}
+          {/* Publicou: o link para divulgar sai aqui mesmo, sem ir ao Manage. */}
+          {success === "published" && courseId ? (
+            <CourseShareLink
+              label={t("creatorPanel.hub.sections.page")}
+              path={`/courses/${encodeURIComponent(courseId)}`}
+              title={title.trim() || t("creatorPanel.hub.header.courseFallback")}
+            />
           ) : null}
           <div className="mt-5 grid gap-3">
             <button
@@ -3407,12 +3461,16 @@ export function CourseBuilderStudio() {
               disabled={
                 !canPublish
                 || isSubmitting
-                || !readiness.ready
+                || !readyToPublish
                 || !priceFieldIsValid
               }
               className="button-solid px-4 py-2.5 text-sm disabled:opacity-60"
             >
-              {isSubmitting ? t("creatorEditor.builder.publish.publishing") : t("creatorEditor.builder.publish.submit")}
+              {isSubmitting
+                ? t("creatorEditor.builder.publish.publishing")
+                : needsActivation
+                  ? t("creatorEditor.builder.publish.activateAndPublish")
+                  : t("creatorEditor.builder.publish.submit")}
             </button>
             <Link href="/teach" className="button-outline px-4 py-2.5 text-sm">
               {t("creatorEditor.builder.navigation.studio")}

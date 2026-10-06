@@ -2,7 +2,10 @@ import { useEffect, useState } from "react";
 
 import type { PlanId } from "@/data/plans";
 import type { CourseReadinessAccount } from "@/domain/course-readiness";
-import { fetchRequireCreatorVerification } from "@/lib/data/creator-verification";
+import {
+  fetchCreatorActivationBlocked,
+  fetchRequireCreatorVerification,
+} from "@/lib/data/creator-verification";
 import { subscribeToUserProfile } from "@/lib/data/user-profiles";
 
 // As travas de publicacao que sao do professor, nao do curso: payouts do
@@ -23,6 +26,7 @@ export function usePublishGates(user: { uid: string } | null | undefined): {
   const [planId, setPlanId] = useState<PlanId>("free");
   const [profileLoaded, setProfileLoaded] = useState(false);
   const [flagLoaded, setFlagLoaded] = useState(false);
+  const [activationBlocked, setActivationBlocked] = useState(false);
   const uid = user?.uid;
 
   useEffect(() => {
@@ -65,11 +69,31 @@ export function usePublishGates(user: { uid: string } | null | undefined): {
     };
   }, []);
 
+  // Mesmo predicado do gatilho de publicar. Leitura falha aberta: sem resposta
+  // o item some e publish_teacher_course continua recusando no servidor.
+  useEffect(() => {
+    if (!uid) {
+      return;
+    }
+    let active = true;
+    fetchCreatorActivationBlocked()
+      .then((value) => {
+        if (active) {
+          setActivationBlocked(value);
+        }
+      })
+      .catch(() => undefined);
+    return () => {
+      active = false;
+    };
+  }, [uid]);
+
   return {
     account: {
       payoutsReady,
       verificationRequired: requireVerification,
       verificationApproved: verificationStatus === "approved",
+      activationBlocked,
     },
     planId,
     loaded: profileLoaded && flagLoaded,

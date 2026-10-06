@@ -3,7 +3,7 @@ import { PaymentError } from "@/lib/payments/server/auth";
 
 export { isSameOrigin } from "@/lib/security/request-origin";
 
-export const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+export { uuidPattern } from "@/lib/uuid";
 export function failure(status: number, error = "Could not update access. Please try again.") {
   return NextResponse.json({ error }, { status });
 }

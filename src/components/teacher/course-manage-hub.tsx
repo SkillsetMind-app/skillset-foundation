@@ -114,6 +114,8 @@ function readinessEditHref(item: CourseReadinessItem, courseId: string): string 
       return `/teach/courses/${id}/manage?section=page`;
     case "payouts":
       return "/account/payments#stripe-connect";
+    case "activation":
+      return `/teach/activate?courseId=${id}`;
     // `verification` ja tem o proprio link dentro da dica; um segundo link na
     // mesma linha, com outro rotulo e o mesmo destino, so confunde.
     default:

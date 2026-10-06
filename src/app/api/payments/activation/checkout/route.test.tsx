@@ -281,6 +281,9 @@ describe("storefront activation checkout", () => {
     const response = await POST();
 
     expect(response.status).toBe(409);
+    // A code, not just 409: the panel tells the creator to go back and publish
+    // instead of showing the generic "conflict" copy.
+    expect((await response.json()).code).toBe("already_activated");
     expect(mocks.getCustomer).not.toHaveBeenCalled();
     expect(mocks.createSession).not.toHaveBeenCalled();
   });
@@ -323,6 +326,7 @@ describe("storefront activation checkout", () => {
     const response = await POST();
 
     expect(response.status).toBe(409);
+    expect((await response.json()).code).toBe("already_activated");
     expect(admin.userUpdates).toEqual([
       expect.objectContaining({ activation_fee_paid_at: expect.any(String) }),
     ]);
@@ -503,5 +507,16 @@ describe("storefront activation checkout", () => {
     const retryKey = mocks.createSession.mock.calls[1][1].idempotencyKey;
     expect(retryKey).not.toBe(firstKey);
     expect(retryKey).toContain("cs_expired");
+  });
+
+  // The course a creator returns to travels in their own tab, not in Stripe:
+  // an open session is reused across courses and the idempotency key must not
+  // vary, so the return URL stays one fixed address.
+  it("keeps one fixed return URL for every activation session", async () => {
+    await POST();
+
+    expect(mocks.createSession.mock.calls[0][0].return_url).toBe(
+      "https://skillset.test/teach/activate/return?session_id={CHECKOUT_SESSION_ID}",
+    );
   });
 });

@@ -100,7 +100,7 @@ export async function POST() {
     }
 
     if (profile.activation_fee_paid_at) {
-      throw new PaymentError("Your storefront is already activated.", 409);
+      throw new PaymentError("Your storefront is already activated.", 409, "already_activated");
     }
 
     const stripe = getStripeClient();
@@ -161,7 +161,9 @@ export async function POST() {
         .eq("uid", uid)
         .is("activation_fee_paid_at", null);
       if (error) throw new Error(error.message);
-      throw new PaymentError("Your storefront is already activated.", 409);
+      // Webhook lag: the creator came back before Stripe's confirmation. The
+      // stamp is repaired above; the code lets the panel say "go publish".
+      throw new PaymentError("Your storefront is already activated.", 409, "already_activated");
     }
 
     const openSession = activationSessions.find(

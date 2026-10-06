@@ -8,7 +8,7 @@ import TeachActivatePage from "@/app/teach/activate/page";
 import TeachActivateReturnPage from "@/app/teach/activate/return/page";
 import { LOCALE_COOKIE } from "@/lib/i18n/config";
 
-const mocks = vi.hoisted(() => ({ locale: "es", guard: vi.fn(), checkout: vi.fn() }));
+const mocks = vi.hoisted(() => ({ locale: "es", guard: vi.fn(), checkout: vi.fn(), activation: vi.fn() }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: () => {} }) }));
 vi.mock("next/headers", () => ({
   cookies: async () => ({ get: (name: string) => name === LOCALE_COOKIE ? { value: mocks.locale } : undefined }),
@@ -25,7 +25,9 @@ vi.mock("@/components/platform/platform-shell", () => ({
 vi.mock("@/components/account/embedded-checkout-panel", () => ({
   EmbeddedCheckoutPanel: (props: unknown) => { mocks.checkout(props); return <div>Checkout fixture</div>; },
 }));
-vi.mock("@/components/teacher/activation-checkout-panel", () => ({ ActivationCheckoutPanel: () => <div>Activation fixture</div> }));
+vi.mock("@/components/teacher/activation-checkout-panel", () => ({
+  ActivationCheckoutPanel: (props: unknown) => { mocks.activation(props); return <div>Activation fixture</div>; },
+}));
 beforeEach(() => vi.clearAllMocks());
 afterEach(cleanup);
 
@@ -70,6 +72,24 @@ it.each(["en", "es"] as const)("localizes activation pages on the server and pre
   render(await TeachActivateReturnPage());
   expect(screen.getByText(locale === "es" ? /normalmente es instantáneo/ : /it is usually instant/)).toBeInTheDocument();
   expect(screen.getByRole("heading", { name: locale === "es" ? "Estamos confirmando tu pago." : "We're confirming your payment." })).toBeInTheDocument();
-  expect(screen.getByRole("link", { name: locale === "es" ? "Volver al estudio de cursos" : "Back to course studio" })).toHaveAttribute("href", "/teach/builder");
+  expect(screen.getByRole("link", { name: locale === "es" ? "Volver al estudio de cursos" : "Back to course studio" })).toHaveAttribute("href", "/teach");
   expect(screen.getByRole("link", { name: locale === "es" ? "Contactar con soporte" : "Contact support" })).toHaveAttribute("href", "/support");
+});
+
+// The builder's "Activate and publish" sends the course id; only a UUID reaches
+// the panel, which keeps it in the tab for the return page (see the panel test).
+it("hands the course being published to the checkout panel", async () => {
+  mocks.locale = "en";
+  const courseId = "0b5c2f4e-8a1d-4c3b-9e7f-1a2b3c4d5e6f";
+  render(await TeachActivatePage({ searchParams: Promise.resolve({ courseId }) }));
+  expect(mocks.activation).toHaveBeenCalledWith({ courseId });
+});
+
+it.each([
+  ["a non-UUID", "../admin"],
+  ["a repeated parameter", ["0b5c2f4e-8a1d-4c3b-9e7f-1a2b3c4d5e6f", "x"]],
+])("drops %s course id before the checkout panel", async (_name, courseId) => {
+  mocks.locale = "en";
+  render(await TeachActivatePage({ searchParams: Promise.resolve({ courseId }) }));
+  expect(mocks.activation).toHaveBeenCalledWith({ courseId: null });
 });

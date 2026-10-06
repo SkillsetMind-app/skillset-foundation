@@ -1610,7 +1610,7 @@
       "step3Title": "Publish and sell",
       "step3Body": "Set your pricing, review the content and access rules, then publish. Share your sales link when the product is ready.",
       "step4Title": "Payments and help",
-      "step4Body": "Connect your Stripe account in Payments to receive sales. Stripe handles verification and payout timing. Open Advisor in the top bar when you need help.",
+      "step4Body": "Connect your Stripe account in Payments to receive sales. Stripe handles verification and payout timing. Open Advisor in the top bar when you need help; it is included with an active storefront.",
       "openStudio": "Open your studio"
     },
     "reports": {
@@ -3800,6 +3800,7 @@
         "finish": "Finish the publication checks to go live.",
         "passed": "Every publish check passed.",
         "activate": "Activate storefront",
+        "activateAndPublish": "Activate and publish",
         "publishing": "Publishing...",
         "submit": "Publish product"
       },
@@ -3970,6 +3971,10 @@
           "label": "Professional verification",
           "hint": "Complete professional verification before publishing.",
           "optionalHint": "Optional today — becomes required when professional admission opens."
+        },
+        "activation": {
+          "label": "Activation — US${amount}, one time",
+          "hint": "Charged once per creator account, never per course. Paying unlocks publishing."
         }
       },
       "groups": {
@@ -4006,7 +4011,7 @@
         "generic": "We could not upload this file. Check the file type and course permissions.",
         "invalidFile": "Unsupported file type or file too large.",
         "coverHost": "Cover image URL is not on an allowed media host.",
-        "activation": "Pay the one-time activation fee before uploading course video."
+        "activation": "You reached today's video upload limit for accounts that are not activated yet. Pay the one-time activation fee to keep uploading today, or try again tomorrow."
       }
     },
     "preview": {
@@ -4546,12 +4551,13 @@
     "backToStudio": "Back to studio",
     "support": "Contact support",
     "errorTitle": "Checkout could not start.",
+    "alreadyActiveTitle": "Your storefront is already active.",
     "reference": "Reference:",
     "preparing": "Preparing secure checkout…",
     "activating": "You're activating",
     "storefrontBefore": "Your ",
     "storefrontAfter": " storefront",
-    "unlocks": "Unlocks the creator studio. Charged once per creator account, never per course.",
+    "unlocks": "Unlocks publishing your courses. Charged once per creator account, never per course.",
     "oneTimeFee": "One-time fee",
     "once": "once",
     "noSubscription": "No monthly subscription on Free",
@@ -4565,6 +4571,7 @@
     "backToCourseStudio": "Back to course studio",
     "error": {
       "notRequired": "The activation fee is not required for your account right now. Return to the studio.",
+      "alreadyActive": "Stripe confirmed your payment. Go back to your course and publish it.",
       "notConfigured": "Activation payments are not configured yet. Contact support; there is nothing to fix in your card details.",
       "permission": "Your account does not have permission to start this checkout. Use a creator account or contact support.",
       "signIn": "Sign in again before starting checkout.",

@@ -140,8 +140,8 @@ describe("payment checkout localization with real dictionaries", () => {
 
   it.each([
     ["creator_verification_required", "creatorPanel.activationGate.verificationBody", "/teach/verification"],
-    ["activation_not_required", "activationCheckout.error.notRequired", "/teach/builder"],
-    ["payments_not_configured", "activationCheckout.error.notConfigured", "/teach/builder"],
+    ["activation_not_required", "activationCheckout.error.notRequired", "/teach"],
+    ["payments_not_configured", "activationCheckout.error.notConfigured", "/teach"],
   ])("preserves activation recovery for %s", async (code, key, href) => {
     mocks.fetch.mockResolvedValue(response(403, code));
     mount(<ActivationCheckoutPanel />);
@@ -157,7 +157,7 @@ describe("payment checkout localization with real dictionaries", () => {
     mocks.fetch.mockRejectedValue(Object.assign(new Error("creator_verification_required"), { code: "creator_verification_required" }));
     mount(<ActivationCheckoutPanel />);
     expect(await screen.findByRole("alert")).toHaveTextContent(copy("es", "activationCheckout.error.generic"));
-    expect(screen.getByRole("link", { name: "Volver al estudio" })).toHaveAttribute("href", "/teach/builder");
+    expect(screen.getByRole("link", { name: "Volver al estudio" })).toHaveAttribute("href", "/teach");
     fireEvent.click(screen.getByText("EN"));
     expect(screen.getByRole("alert")).toHaveTextContent(copy("en", "activationCheckout.error.generic"));
     expect(mocks.fetch).toHaveBeenCalledTimes(1);

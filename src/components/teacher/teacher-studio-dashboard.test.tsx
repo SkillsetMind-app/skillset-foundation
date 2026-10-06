@@ -43,6 +43,7 @@ const { mockUser, state, data } = vi.hoisted(() => {
           return () => undefined;
         },
       ),
+      fetchCreatorActivationBlocked: vi.fn(() => Promise.resolve(state.activationBlocked)),
     },
   };
 });
@@ -68,7 +69,7 @@ vi.mock("@/lib/data/orders", () => ({
 vi.mock("@/lib/data/creator-verification", () => ({
   fetchRequireCreatorVerification: () =>
     state.verificationFlag ?? Promise.resolve(state.requireVerification),
-  fetchCreatorActivationBlocked: () => Promise.resolve(state.activationBlocked),
+  fetchCreatorActivationBlocked: data.fetchCreatorActivationBlocked,
 }));
 
 vi.mock("@/lib/data/enrollments", () => ({
@@ -415,6 +416,8 @@ describe("Inicio do professor: cada dado e lido uma vez", () => {
     expect(data.subscribeToTeacherCourses).toHaveBeenCalledTimes(1);
     expect(data.subscribeToTeacherOrders).toHaveBeenCalledTimes(1);
     expect(data.subscribeToUserProfile).toHaveBeenCalledTimes(1);
+    // A taxa de ativacao vem das travas do publish, nao de uma leitura extra.
+    expect(data.fetchCreatorActivationBlocked).toHaveBeenCalledTimes(1);
   });
 });
 

@@ -1,3 +1,4 @@
+import { activationFeeUsd } from "@/data/plans";
 import { isVideoAssetKind, type CourseAsset } from "@/domain/course-asset";
 import { getSafeExternalUrl } from "@/domain/external-url";
 import { getTrustedLessonEmbed } from "@/domain/lesson-embed";
@@ -73,6 +74,9 @@ export type CourseReadinessAccount = {
   payoutsReady: boolean;
   verificationRequired: boolean;
   verificationApproved: boolean;
+  // A taxa unica so aparecia como erro do banco depois do clique em Publish.
+  // Vem do mesmo predicado do gatilho (creator_activation_blocked).
+  activationBlocked?: boolean;
 };
 
 export type CourseReadinessItemId =
@@ -87,7 +91,8 @@ export type CourseReadinessItemId =
   | "installments"
   | "outcomes"
   | "payouts"
-  | "verification";
+  | "verification"
+  | "activation";
 
 // Os tres estados que a Hotmart separa e a barra "N de M" misturava:
 // conteudo salvo (o que o aluno assiste), pagina preparada (o que o comprador
@@ -267,6 +272,16 @@ export function getCourseReadiness(
       done: account.verificationApproved,
       optional: !account.verificationRequired,
     });
+    if (account.activationBlocked) {
+      items.push({
+        id: "activation",
+        group: "sale",
+        label: `Activation — US$${activationFeeUsd}, one time`,
+        hint: "Charged once per creator account, never per course. Paying unlocks publishing.",
+        done: false,
+        optional: false,
+      });
+    }
   }
 
   if (t) {
@@ -275,6 +290,9 @@ export function getCourseReadiness(
       item.hint = t(`creatorEditor.readiness.items.${item.id}.${
         item.id === "verification" && item.optional ? "optionalHint" : "hint"
       }`);
+      if (item.id === "activation") {
+        item.label = item.label.replace("{amount}", () => String(activationFeeUsd));
+      }
       if (item.id === "lessonMedia" && !item.done) {
         item.hint += ` ${missingLessonsText(
           t("creatorEditor.lesson.untitled"),

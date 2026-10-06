@@ -12,6 +12,8 @@ vi.mock("@/components/auth/auth-provider", () => ({
 }));
 
 vi.mock("@/lib/advisor/config", () => ({ isAdvisorEnabled: true }));
+const activation = vi.hoisted(() => ({ blocked: vi.fn() }));
+vi.mock("@/lib/data/creator-verification", () => ({ fetchCreatorActivationBlocked: activation.blocked }));
 vi.mock("@/lib/permissions", () => ({ hasAnyPermission: () => true }));
 vi.mock("@/lib/ui/floating-action", () => ({
   announceFloatingAction: vi.fn(),
@@ -49,6 +51,8 @@ function bodyOf(index: number): { conversationId?: string | null } {
 describe("AdvisorSidebar", () => {
   beforeEach(() => {
     viewer.uid = "teacher-1";
+    activation.blocked.mockReset();
+    activation.blocked.mockResolvedValue(false);
     fetchMock.mockReset();
     fetchMock.mockResolvedValue(jsonResponse({ conversationId: null, messages: [] }));
     vi.stubGlobal("fetch", fetchMock);
@@ -346,5 +350,42 @@ describe("AdvisorSidebar", () => {
     expect(
       await screen.findByText(/The studio advisor opens after you activate your storefront/),
     ).toBeInTheDocument();
+  });
+
+  it("tells an unpaid creator above the composer that the advisor comes with activation", async () => {
+    activation.blocked.mockResolvedValue(true);
+    render(<AdvisorSidebar />);
+    openAdvisor();
+
+    const notice = (await screen.findByText(/The studio advisor opens after you activate your storefront/)).closest("p")!;
+    expect(notice.compareDocumentPosition(composer()) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Activate storefront" })).toHaveAttribute("href", "/teach/activate");
+    expect(activation.blocked).toHaveBeenCalledOnce();
+  });
+
+  it("drops the activation notice once the advisor actually answers", async () => {
+    activation.blocked.mockResolvedValue(true);
+    fetchMock.mockImplementation(async (_url: unknown, init?: RequestInit) =>
+      init?.method === "POST"
+        ? jsonResponse({ reply: "Price it by outcome.", conversationId: null })
+        : jsonResponse({ conversationId: null, messages: [] }),
+    );
+    render(<AdvisorSidebar />);
+    openAdvisor();
+    await screen.findByText(/The studio advisor opens after you activate your storefront/);
+    await screen.findByRole("button", { name: SUGGESTION });
+
+    fireEvent.change(composer(), { target: { value: "How should I price this?" } });
+    fireEvent.keyDown(composer(), { key: "Enter" });
+
+    expect(await screen.findByText("Price it by outcome.")).toBeInTheDocument();
+    expect(screen.queryByText(/The studio advisor opens after you activate your storefront/)).toBeNull();
+  });
+
+  it("shows no activation notice to a creator who already activated", async () => {
+    render(<AdvisorSidebar />);
+    openAdvisor();
+    await screen.findByRole("button", { name: SUGGESTION });
+    expect(screen.queryByText(/The studio advisor opens after you activate your storefront/)).toBeNull();
   });
 });

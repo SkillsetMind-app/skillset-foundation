@@ -1,12 +1,14 @@
 "use client";
 
 import { Send, Sparkles, X } from "lucide-react";
+import Link from "next/link";
 import { createContext, useCallback, useContext, useEffect, useRef, useState, useSyncExternalStore, type ReactNode, type RefCallback } from "react";
 import { createPortal } from "react-dom";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { toPlainProse } from "@/domain/plain-prose";
+import { fetchCreatorActivationBlocked } from "@/lib/data/creator-verification";
 import { isAdvisorEnabled } from "@/lib/advisor/config";
 import { hasAnyPermission } from "@/lib/permissions";
 import {
@@ -54,6 +56,9 @@ export function AdvisorSidebar({ children }: { children?: ReactNode } = {}) {
   const [input, setInput] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [notice, setNotice] = useState<Notice | null>(null);
+  // The tour promises the advisor, but the route answers 402 until activation.
+  // Say so above the composer before the teacher types, not after.
+  const [activationBlocked, setActivationBlocked] = useState(false);
   const [headerTarget, setHeaderTarget] = useState<HTMLDivElement | null>(null);
   const header = useHeaderViewport() ? headerTarget : null;
   const registerHeader = useCallback<RefCallback<HTMLDivElement>>((element) => {
@@ -118,6 +123,14 @@ export function AdvisorSidebar({ children }: { children?: ReactNode } = {}) {
     setMessages([]);
     setConversationId(null);
     setHistoryStatus("loading");
+    // Read with the history, so a teacher who never opens the advisor never
+    // pays for it. Fails open: the route's 402 still raises the same notice.
+    setActivationBlocked(false);
+    fetchCreatorActivationBlocked()
+      .then((blocked) => {
+        if (historyUidRef.current === requestedUid) setActivationBlocked(blocked);
+      })
+      .catch(() => undefined);
     void (async () => {
       try {
         const res = await fetch("/api/teach/advisor");
@@ -230,6 +243,8 @@ export function AdvisorSidebar({ children }: { children?: ReactNode } = {}) {
         // every later turn ask the server to append to a thread that is not
         // ours — silently dropping the transcript for the rest of the session.
         setConversationId(data.conversationId ?? null);
+        // It answered, so it is open for this creator now (paid since the read).
+        setActivationBlocked(false);
         setMessages((prev) => [
           ...prev,
           { role: "assistant", content: toPlainProse(data.reply as string) },
@@ -238,8 +253,9 @@ export function AdvisorSidebar({ children }: { children?: ReactNode } = {}) {
         setNotice(data.reply != null ? { text: data.reply } : { key: "notReady" });
       } else if (res.status === 402) {
         // The advisor spends paid inference, so it stays behind the one-time
-        // activation even though drafting and uploads no longer do.
-        setNotice({ key: "activationRequired" });
+        // activation even though drafting and uploads no longer do. Same
+        // notice as the upfront one, so it never shows twice.
+        setActivationBlocked(true);
       } else if (res.status === 429) {
         setNotice({ key: "tooManyMessages" });
       } else if (res.status === 401) {
@@ -376,6 +392,15 @@ export function AdvisorSidebar({ children }: { children?: ReactNode } = {}) {
               </p>
             ) : null}
           </div>
+
+          {activationBlocked ? (
+            <p className="border-t border-[var(--color-line)] bg-[var(--color-surface-soft)] px-4 py-2 text-xs leading-5 text-[var(--color-ink-soft)]">
+              {t("advisor.activationRequired")}{" "}
+              <Link href="/teach/activate" className="font-semibold text-[var(--color-primary)] underline">
+                {t("creatorEditor.builder.publish.activate")}
+              </Link>
+            </p>
+          ) : null}
 
           <form
             onSubmit={handleSubmit}

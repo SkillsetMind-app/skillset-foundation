@@ -9,6 +9,7 @@ import { loadStripe, type Stripe } from "@stripe/stripe-js";
 import { useEffect, useMemo, useState } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { rememberActivationReturnCourse } from "@/components/teacher/activation-return-link";
 import { BrandName } from "@/components/shared/brand-name";
 import { Card, Eyebrow, buttonClasses } from "@/components/ui";
 import { activationFeeUsd, plans } from "@/data/plans";
@@ -36,8 +37,12 @@ function getStripePromise(locale: Locale): Promise<Stripe | null> | null {
  * who cannot publish at all, so a dead end would be the worst possible place
  * to strand one.
  */
-export function ActivationCheckoutPanel() {
+export function ActivationCheckoutPanel({ courseId = null }: { courseId?: string | null } = {}) {
   const { t, locale } = useTranslation();
+  // Validated by the page; the way out goes back to the course being published.
+  const studioHref = courseId
+    ? `/teach/builder?courseId=${encodeURIComponent(courseId)}&tab=review`
+    : "/teach";
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [error, setError] = useState<{
     key: string;
@@ -80,6 +85,7 @@ export function ActivationCheckoutPanel() {
           const paymentError = cause instanceof PaymentRequestError ? cause : null;
           const code = paymentError?.code;
           const key = code === "activation_not_required" ? "notRequired"
+            : code === "already_activated" ? "alreadyActive"
             : code === "payments_not_configured" ? "notConfigured"
             : code === "permission_denied" || paymentError?.status === 403 ? "permission"
             : code === "unauthenticated" || paymentError?.status === 401 ? "signIn"
@@ -110,6 +116,12 @@ export function ActivationCheckoutPanel() {
     };
   }, [stripeLoader]);
 
+  // Before Stripe can redirect: the return page reads it to send the creator
+  // back to this course. A visit without one forgets the previous course.
+  useEffect(() => {
+    rememberActivationReturnCourse(courseId);
+  }, [courseId]);
+
   if (!publishableKey) {
     return (
       <div className="rounded-none border border-dashed border-[var(--color-line-strong)] bg-[var(--color-surface-soft)] p-6 text-sm leading-7 text-[var(--color-ink)]">
@@ -118,7 +130,7 @@ export function ActivationCheckoutPanel() {
           {t("activationCheckout.unavailableBody")}
         </p>
         <div className="mt-5 flex flex-wrap gap-3">
-          <Link href="/teach/builder" className={buttonClasses()}>
+          <Link href={studioHref} className={buttonClasses()}>
             {t("activationCheckout.backToStudio")}
           </Link>
           <Link href="/support" className={buttonClasses({ variant: "outline" })}>
@@ -137,18 +149,22 @@ export function ActivationCheckoutPanel() {
             <p className="font-semibold">
               {error.verificationRequired
                 ? t("creatorPanel.activationGate.verificationTitle")
-                : t("activationCheckout.errorTitle")}
+                : error.key === "alreadyActive"
+                  ? t("activationCheckout.alreadyActiveTitle")
+                  : t("activationCheckout.errorTitle")}
             </p>
             <p className="mt-2 text-[var(--color-ink-soft)]">
               {error.verificationRequired
                 ? t("creatorPanel.activationGate.verificationBody")
                 : t(`activationCheckout.error.${error.key}`)}
             </p>
-            {error.status ? <p className="mt-2 text-xs">{t("activationCheckout.reference")} HTTP {error.status}</p> : null}
-            <Link href={error.verificationRequired ? "/teach/verification" : "/teach/builder"} className={buttonClasses({ variant: "outline" }, "mt-4")}>
+            {error.status && error.key !== "alreadyActive" ? <p className="mt-2 text-xs">{t("activationCheckout.reference")} HTTP {error.status}</p> : null}
+            <Link href={error.verificationRequired ? "/teach/verification" : studioHref} className={buttonClasses({ variant: "outline" }, "mt-4")}>
               {error.verificationRequired
                 ? t("creatorPanel.activationGate.verificationAction")
-                : t("activationCheckout.backToStudio")}
+                : error.key === "alreadyActive"
+                  ? t("activationCheckout.backToCourseStudio")
+                  : t("activationCheckout.backToStudio")}
             </Link>
           </div>
         ) : !options ? (

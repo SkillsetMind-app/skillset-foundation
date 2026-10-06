@@ -165,6 +165,37 @@ describe("getCourseReadiness", () => {
     expect(readiness.items.find((item) => item.id === "verification")?.optional).toBe(true);
     expect(readiness.ready).toBe(true);
   });
+
+  // A taxa unica so aparecia como erro do banco depois do Publish. Quem ainda
+  // deve a taxa ve o item antes, com o valor da constante de planos.
+  it.each([
+    ["en", "Activation — US$25, one time"],
+    ["es", "Activación — US$25, pago único"],
+  ] as const)("lista a ativacao pendente para quem ainda deve a taxa (%s)", (locale, label) => {
+    const dictionary = getDictionary(locale);
+    const account = { payoutsReady: true, verificationRequired: false, verificationApproved: false };
+    const blocked = getCourseReadiness(
+      { ...complete, paymentType: "free", priceAmountMinor: 0 },
+      { ...account, activationBlocked: true },
+      (key) => translate(dictionary, key),
+    );
+
+    expect(blocked.pending.map((item) => item.id)).toEqual(["activation"]);
+    expect(blocked.pending[0]).toMatchObject({ group: "sale", label, optional: false, done: false });
+    expect(blocked.ready).toBe(false);
+    expect(getCourseReadiness(complete, account).items.some((item) => item.id === "activation")).toBe(false);
+  });
+
+  it("sem tradutor, o rotulo da ativacao ja sai com o valor", () => {
+    const readiness = getCourseReadiness(complete, {
+      payoutsReady: true,
+      verificationRequired: false,
+      verificationApproved: false,
+      activationBlocked: true,
+    });
+
+    expect(readiness.next?.label).toBe("Activation — US$25, one time");
+  });
 });
 
 // Auditoria (content-publish-without-media): um curso podia ser publicado e

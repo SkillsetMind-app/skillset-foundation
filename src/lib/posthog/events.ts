@@ -20,6 +20,7 @@ export const EVENTS = {
   TEACHER_KYC_APPROVED: "teacher_kyc_approved",
   COURSE_DRAFT_CREATED: "course_draft_created",
   COURSE_PUBLISHED: "course_published",
+  COURSE_PUBLISH_BLOCKED: "course_publish_blocked",
   COURSE_VIEWED: "course_viewed",
   CHECKOUT_STARTED: "checkout_started",
   CHECKOUT_COMPLETED: "checkout_completed",
@@ -54,6 +55,12 @@ export type CoursePublishedProps = {
   teacher_id: string;
   modules_count: number;
   lessons_count: number;
+};
+
+/** Why Publish stopped: a builder error code ("activation", "payouts", ...). */
+export type CoursePublishBlockedProps = {
+  course_id: string;
+  reason: string;
 };
 
 export type CourseViewedProps = {
@@ -148,6 +155,8 @@ export const track = {
     captureEvent(EVENTS.COURSE_DRAFT_CREATED, p),
   coursePublished: (p: CoursePublishedProps) =>
     captureEvent(EVENTS.COURSE_PUBLISHED, p),
+  coursePublishBlocked: (p: CoursePublishBlockedProps) =>
+    captureEvent(EVENTS.COURSE_PUBLISH_BLOCKED, p),
   courseViewed: (p: CourseViewedProps) => captureEvent(EVENTS.COURSE_VIEWED, p),
   checkoutStarted: (p: CheckoutStartedProps) =>
     captureEvent(EVENTS.CHECKOUT_STARTED, p),

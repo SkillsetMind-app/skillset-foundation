@@ -1610,7 +1610,7 @@
       "step3Title": "Publica y vende",
       "step3Body": "Define el precio, revisa el contenido y las reglas de acceso, y publica. Comparte el enlace de venta cuando el producto esté listo.",
       "step4Title": "Cobros y ayuda",
-      "step4Body": "Conecta tu cuenta de Stripe en Pagos para recibir ventas. Stripe gestiona la verificación y los plazos de pago. Abre Advisor en la barra superior cuando necesites ayuda.",
+      "step4Body": "Conecta tu cuenta de Stripe en Pagos para recibir ventas. Stripe gestiona la verificación y los plazos de pago. Abre Advisor en la barra superior cuando necesites ayuda; viene incluido con una tienda activa.",
       "openStudio": "Abrir mi espacio"
     },
     "reports": {
@@ -3800,6 +3800,7 @@
         "finish": "Completa los requisitos de publicación para lanzar el curso.",
         "passed": "Todos los requisitos de publicación están completos.",
         "activate": "Activar tienda",
+        "activateAndPublish": "Activar y publicar",
         "publishing": "Publicando...",
         "submit": "Publicar producto"
       },
@@ -3970,6 +3971,10 @@
           "label": "Verificación profesional",
           "hint": "Completa la verificación profesional antes de publicar.",
           "optionalHint": "Hoy es opcional; será obligatoria cuando se abra la admisión profesional."
+        },
+        "activation": {
+          "label": "Activación — US${amount}, pago único",
+          "hint": "Se cobra una sola vez por cuenta de creador, nunca por curso. Al pagar se habilita la publicación."
         }
       },
       "groups": {
@@ -4006,7 +4011,7 @@
         "generic": "No pudimos subir este archivo. Revisa el tipo de archivo y los permisos del curso.",
         "invalidFile": "El tipo de archivo no es compatible o el archivo es demasiado grande.",
         "coverHost": "La URL de la portada no pertenece a un sitio de medios permitido.",
-        "activation": "Paga la tarifa única de activación antes de subir videos del curso."
+        "activation": "Llegaste al límite diario de subida de videos para cuentas aún no activadas. Paga la tarifa única de activación para seguir subiendo hoy o vuelve a intentarlo mañana."
       }
     },
     "preview": {
@@ -4545,13 +4550,14 @@
     "unavailableBody": "Mientras tanto, podemos activar tu tienda manualmente: contáctanos y la activaremos en tu cuenta.",
     "backToStudio": "Volver al estudio",
     "support": "Contactar con soporte",
+    "alreadyActiveTitle": "Tu tienda ya está activa.",
     "errorTitle": "No se pudo iniciar el pago.",
     "reference": "Referencia:",
     "preparing": "Preparando el pago seguro…",
     "activating": "Estás activando",
     "storefrontBefore": "Tu tienda de ",
     "storefrontAfter": "",
-    "unlocks": "Desbloquea el estudio del creador. Se cobra una sola vez por cuenta de creador, nunca por curso.",
+    "unlocks": "Desbloquea la publicación de tus cursos. Se cobra una sola vez por cuenta de creador, nunca por curso.",
     "oneTimeFee": "Tarifa única",
     "once": "una sola vez",
     "noSubscription": "Sin suscripción mensual en Free",
@@ -4564,6 +4570,7 @@
     "returnBody": "Stripe nos confirma la activación en segundo plano; normalmente es instantáneo. Vuelve a tu curso y publícalo. Si al publicar todavía se solicita la tarifa, espera un momento e inténtalo de nuevo.",
     "backToCourseStudio": "Volver al estudio de cursos",
     "error": {
+      "alreadyActive": "Stripe confirmó tu pago. Vuelve a tu curso y publícalo.",
       "notRequired": "Tu cuenta no necesita pagar la tarifa de activación en este momento. Vuelve al estudio.",
       "notConfigured": "Los pagos de activación aún no están configurados. Contacta con soporte; no necesitas corregir los datos de tu tarjeta.",
       "permission": "Tu cuenta no tiene permiso para iniciar este pago. Usa una cuenta de creador o contacta con soporte.",
