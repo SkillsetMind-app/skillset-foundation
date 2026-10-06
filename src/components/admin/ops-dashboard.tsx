@@ -10,6 +10,7 @@ import { CommunityModerationQueue } from "@/components/admin/community-moderatio
 import { CreatorVerificationQueue } from "@/components/admin/creator-verification-queue";
 import { ManagedCoursePanel } from "@/components/admin/managed-course-panel";
 import { useOpsQueueCounts } from "@/components/admin/ops-overview-metrics";
+import { OpsOverviewPanel } from "@/components/admin/ops-overview-panel";
 import { OpsUserTable } from "@/components/admin/ops-user-table";
 import { PaymentOperationsPanel } from "@/components/admin/payment-operations-panel";
 import { RoleManager } from "@/components/admin/role-manager";
@@ -30,7 +31,7 @@ export function OpsDashboard() {
   const { user } = useAuth();
   const { t } = useTranslation();
   const searchParams = useSearchParams();
-  const currentItem = getOpsNavItem(searchParams.get("tab"));
+  const currentItem = getOpsNavItem(searchParams.get("tab"), user);
   const activeTab = currentItem.tab;
   const canOpenQueue = canAccessPlatformNavItem(user, currentItem);
   const counts = useOpsQueueCounts();
@@ -67,6 +68,8 @@ export function OpsDashboard() {
               {t("platform.ops.back")}
             </Link>
           </section>
+        ) : activeTab === "overview" ? (
+          <OpsOverviewPanel counts={counts} />
         ) : activeTab === "access" ? (
           <section className="grid min-w-0 grid-cols-1 gap-5">
             <h2 className="text-base font-bold text-[var(--color-ink)]">

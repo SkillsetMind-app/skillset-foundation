@@ -17,6 +17,7 @@ const mocks = vi.hoisted(() => ({
   push: vi.fn(), replace: vi.fn(), refresh: vi.fn(),
   verification: vi.fn(), support: vi.fn(), reports: vi.fn(),
   orders: vi.fn(), users: vi.fn(), accounts: vi.fn(), audit: vi.fn(), roster: vi.fn(),
+  overview: vi.fn(), session: vi.fn(),
 }));
 
 vi.mock("next/navigation", () => ({
@@ -45,12 +46,18 @@ vi.mock("@/lib/data/audit-log", () => ({ subscribeToAuditLog: mocks.audit }));
 vi.mock("@/lib/data/platform-roles", () => ({ listPlatformUsers: mocks.roster, setUserRoles: vi.fn() }));
 vi.mock("@/lib/data/ops-users", () => ({ OPS_USERS_PAGE_SIZE: 50, searchOpsUsers: () => Promise.resolve({ users: [], total: 0 }) }));
 vi.mock("@/lib/data/published-courses", () => ({ subscribeToPublishedTeacherCourses: (next: (rows: never[]) => void) => { next([]); return () => {}; } }));
+vi.mock("@/lib/data/ops-overview", () => ({
+  readOverviewAdminSession: mocks.session,
+  readOverviewUsers: mocks.overview, readOverviewCourses: mocks.overview, readOverviewPublications: mocks.overview,
+  readOverviewActivations: mocks.overview, readOverviewEnrollments: mocks.overview, readOverviewOrders: mocks.overview,
+}));
 vi.mock("@/lib/data/enrollments", () => ({
   subscribeToAdminGrantedEnrollments: (next: (rows: never[]) => void) => { next([]); return () => {}; },
   createAdminEnrollmentForTeacherCourse: vi.fn(), revokeEnrollment: vi.fn(),
 }));
 
 const queues = [
+  ["overview", "Overview", "How the business is doing"],
   ["verification", "Creator verification", "Professional admission applications"],
   ["catalog", "Published catalog", "Manage the live catalog"],
   ["payments", "Payments", "Stripe order monitor."],
@@ -73,6 +80,8 @@ beforeEach(() => {
     subscribe.mockImplementation((next: (rows: never[]) => void) => { next([]); return vi.fn(); });
   }
   mocks.roster.mockResolvedValue([]);
+  mocks.overview.mockResolvedValue([]);
+  mocks.session.mockResolvedValue(true);
 });
 
 afterEach(() => { cleanup(); vi.restoreAllMocks(); localStorage.clear(); });
@@ -143,7 +152,7 @@ describe("filas de Operações na barra", () => {
     expect(within(container.querySelector(".platform-topbar")! as HTMLElement).queryByRole("searchbox")).toBeNull();
   });
 
-  it("exposes all eight existing URLs directly without retaining a second tab menu", () => {
+  it("exposes all nine existing URLs directly without retaining a second tab menu", () => {
     render(<OpsPage />);
     for (const [id, label] of queues) {
       expect(within(sidebar()).getByRole("link", { name: new RegExp(`^${label}`) })).toHaveAttribute("href", `/ops?tab=${id}`);
@@ -163,11 +172,38 @@ describe("filas de Operações na barra", () => {
     expect(screen.getByRole("heading", { name: heading })).toBeInTheDocument();
   });
 
-  it.each(["", "tab=unknown", "tab=", "tab=verification&tab=access"])("preserves the safe default for query %s", (query) => {
+  it.each(["", "tab=unknown", "tab="])("lands an admin on Overview for query %s", (query) => {
     mocks.query = query;
+    render(<OpsPage />);
+    expect(sidebar().querySelector('[aria-current="page"]')).toHaveAttribute("href", "/ops?tab=overview");
+    expect(screen.getByRole("heading", { name: "How the business is doing" })).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("keeps the first tab of a repeated query", () => {
+    mocks.query = "tab=verification&tab=access";
     render(<OpsPage />);
     expect(sidebar().querySelector('[aria-current="page"]')).toHaveAttribute("href", "/ops?tab=verification");
     expect(screen.getByRole("heading", { name: "Professional admission applications" })).toBeInTheDocument();
+  });
+
+  it.each([[["ops"]], [["ops", "support", "moderator"]]] as const)("lands staff without admin (%j) on the first queue they can open", (roles) => {
+    mocks.user!.roles = [...roles];
+    render(<OpsPage />);
+    expect(sidebar().querySelector('[aria-current="page"]')).toHaveAttribute("href", "/ops?tab=verification");
+    expect(screen.getByRole("heading", { name: "Professional admission applications" })).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(mocks.session).not.toHaveBeenCalled();
+    expect(mocks.overview).not.toHaveBeenCalled();
+  });
+
+  it("does not read business numbers for an ops role that opens the Overview link", () => {
+    mocks.user!.roles = ["ops"];
+    mocks.query = "tab=overview";
+    render(<OpsPage />);
+    expect(screen.getByRole("alert")).toHaveTextContent("Your access level does not include this queue.");
+    expect(mocks.session).not.toHaveBeenCalled();
+    expect(mocks.overview).not.toHaveBeenCalled();
   });
 
   it("shares the same links and count subscriptions with the mobile drawer", () => {
@@ -202,7 +238,7 @@ describe("filas de Operações na barra", () => {
     mocks.query = "";
     rerender(<OpsPage />);
     expect(sidebar().querySelectorAll('[aria-current="page"]')).toHaveLength(1);
-    expect(sidebar().querySelector('[aria-current="page"]')).toHaveAttribute("href", "/ops?tab=verification");
+    expect(sidebar().querySelector('[aria-current="page"]')).toHaveAttribute("href", "/ops?tab=overview");
   });
 
   it("labels loading, unavailable and confirmed zero separately in navigation", () => {
@@ -253,6 +289,8 @@ describe("filas de Operações na barra", () => {
     expect(mocks.verification).not.toHaveBeenCalled();
     expect(mocks.support).not.toHaveBeenCalled();
     expect(mocks.reports).not.toHaveBeenCalled();
+    expect(mocks.session).not.toHaveBeenCalled();
+    expect(mocks.overview).not.toHaveBeenCalled();
   });
 
   it("does not open Ops subscriptions before MFA is completed", () => {
@@ -261,6 +299,8 @@ describe("filas de Operações na barra", () => {
     expect(mocks.verification).not.toHaveBeenCalled();
     expect(mocks.support).not.toHaveBeenCalled();
     expect(mocks.reports).not.toHaveBeenCalled();
+    expect(mocks.session).not.toHaveBeenCalled();
+    expect(mocks.overview).not.toHaveBeenCalled();
   });
 });
 

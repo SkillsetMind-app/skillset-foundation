@@ -169,7 +169,7 @@ export function PlatformNav({
   const { user } = useAuth();
   const { t } = useTranslation();
   const pathname = usePathname() ?? "";
-  const activeHref = currentNavigationHref ?? (pathname === "/ops" ? getOpsNavItem(null).href : pathname);
+  const activeHref = currentNavigationHref ?? (pathname === "/ops" ? getOpsNavItem(null, user).href : pathname);
   const panelIdPrefix = useId();
   // Antes isto guardava UMA seção: abrir um grupo fechava todos os outros.
   // Medido no /teach, com 6 grupos: nunca havia mais de 7 a 9 links visíveis,
