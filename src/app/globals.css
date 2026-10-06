@@ -2651,14 +2651,37 @@ select:focus-visible {
   gap: 0.5rem;
 }
 
+/* Os três botões com a mesma letra. Sem isto o link "Manage preferences" saía
+   14px/700 e os dois <button> ao lado 16px/400: a regra fora de camada
+   `button, input, textarea, select { font: inherit }` (perto do topo deste
+   arquivo) vence o `text-sm` e o peso de .button-* em TODO <button>.
+   ponytail: corrigido só aqui. Tirar `button` daquela regra conserta os ~100
+   botões do app de uma vez, mas mexe em telas logadas que pedem varredura
+   visual — fica para um PR próprio. */
+.cookie-consent__actions .button-outline,
+.cookie-consent__actions .button-solid {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
 @media (max-width: 640px) {
+  /* Mais baixo no celular (era 240px de 812 na 1ª visita): texto em 12px e
+     botões numa linha só, sem perder o alvo de 44px. */
+  .cookie-consent {
+    padding-top: 0.75rem;
+  }
+
   .cookie-consent__inner {
     align-items: stretch;
+    gap: 0.625rem;
   }
 
   .cookie-consent__text {
     min-width: 0;
     flex-basis: 100%;
+    font-size: 0.75rem;
+    line-height: 1.5;
   }
 
   .cookie-consent__actions {
@@ -2671,6 +2694,7 @@ select:focus-visible {
   .cookie-consent__actions .button-solid {
     min-width: 0;
     flex: 1 1 9rem;
+    padding: 0.625rem 0.75rem;
     white-space: normal;
   }
 }
