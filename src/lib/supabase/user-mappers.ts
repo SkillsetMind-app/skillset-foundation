@@ -2,12 +2,14 @@ import type { PlanId } from "@/data/plans";
 import type {
   OnboardingAnswers,
   OnboardingPath,
+  ProfessionalVerificationKind,
   PublicProfile,
   StorefrontConfig,
   UserGoal,
   UserPreferences,
   UserProfile,
 } from "@/domain/user-profile";
+import { professionalVerificationKinds } from "@/domain/user-profile";
 import type { Role } from "@/lib/permissions";
 import type { Database } from "@/lib/supabase/database.types";
 
@@ -77,6 +79,14 @@ export function rowToPublicProfile(row: PublicProfileRow): PublicProfile {
     bio: row.bio,
     credentials: (row.credentials as unknown as string[] | null) ?? [],
     storefront: (row.storefront as unknown as StorefrontConfig | null) ?? null,
+    verification: row.verified_professional
+      ? {
+          kind: professionalVerificationKinds.includes(row.verification_kind as ProfessionalVerificationKind)
+            ? (row.verification_kind as ProfessionalVerificationKind)
+            : "other",
+          verifiedAt: row.verified_at ?? null,
+        }
+      : null,
     updatedAt: row.updated_at ?? undefined,
   };
 }

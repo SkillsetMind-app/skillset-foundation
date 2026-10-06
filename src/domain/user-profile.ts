@@ -298,7 +298,22 @@ export type PublicProfile = {
    * Already validated at projection time (https URLs, hex accent, known theme).
    */
   storefront?: StorefrontConfig | null;
+  /**
+   * Selo "profissional verificado" (cosmético). Null sem aprovação. Só a
+   * espécie e a data saem do banco: o número de registro nunca é público.
+   */
+  verification?: ProfessionalVerification | null;
   updatedAt?: unknown;
+};
+
+/** Espécies públicas do selo; 'legacy' e desconhecidas chegam como "other". */
+export const professionalVerificationKinds = ["psychologist", "coach", "holistic", "other"] as const;
+export type ProfessionalVerificationKind = (typeof professionalVerificationKinds)[number];
+
+export type ProfessionalVerification = {
+  kind: ProfessionalVerificationKind;
+  /** ISO da revisão; null em aprovação antiga sem caso registrado. */
+  verifiedAt: string | null;
 };
 
 /**

@@ -62,6 +62,28 @@ describe("getPublicProfileByRef", () => {
     expect(calls).toContainEqual(["eq", "username", "ana.souza"]);
   });
 
+  it("traz o selo: espécie e data, nunca o número de registro", async () => {
+    const calls = fakeClient({
+      data: { ...row, verified_professional: true, verification_kind: "psychologist", verified_at: "2026-09-01T12:00:00+00:00" },
+      error: null,
+    });
+
+    const profile = await getPublicProfileByRef("@ana.souza");
+
+    expect(profile?.verification).toEqual({ kind: "psychologist", verifiedAt: "2026-09-01T12:00:00+00:00" });
+    const select = String(calls.find((call) => call[0] === "select")?.[1]);
+    expect(select).toContain("verified_professional, verification_kind, verified_at");
+    expect(select).not.toMatch(/registration|evidence|document/);
+  });
+
+  it("sem selo, verification null; espécie desconhecida vira a genérica", async () => {
+    fakeClient({ data: { ...row, verified_professional: false, verification_kind: null, verified_at: null }, error: null });
+    expect((await getPublicProfileByRef("@ana.souza"))?.verification).toBeNull();
+
+    fakeClient({ data: { ...row, verified_professional: true, verification_kind: "legacy", verified_at: null }, error: null });
+    expect((await getPublicProfileByRef(row.uid))?.verification).toEqual({ kind: "other", verifiedAt: null });
+  });
+
   it("sem @, procura pelo uid exatamente como veio", async () => {
     const calls = fakeClient({ data: row, error: null });
     await getPublicProfileByRef(row.uid);

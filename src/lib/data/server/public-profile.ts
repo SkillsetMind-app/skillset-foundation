@@ -38,7 +38,7 @@ export const getPublicProfileByRef = cache(async (ref: string): Promise<PublicPr
 
   const { data, error } = await client()
     .from("public_profiles")
-    .select("uid, display_name, username, photo_url, bio, credentials, storefront, updated_at")
+    .select("uid, display_name, username, photo_url, bio, credentials, storefront, verified_professional, verification_kind, verified_at, updated_at")
     .eq(handle === null ? "uid" : "username", handle ?? ref)
     .maybeSingle();
   if (error) throw error;
