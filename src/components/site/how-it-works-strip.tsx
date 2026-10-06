@@ -1,7 +1,6 @@
 import { PenLine, Send, Sparkles, type LucideIcon } from "lucide-react";
 
 import { RevealSection } from "@/components/shared/reveal-section";
-import { activationFeeUsd, isActivationFeeConfigured } from "@/data/plans";
 import { getServerTranslation } from "@/lib/i18n/server";
 
 type Step = {
@@ -21,12 +20,7 @@ export async function HowItWorksStrip() {
     {
       number: "01",
       title: t("home.how.step1Title"),
-      // Same switch and amount as the /pricing fee line. While the fee can be
-      // charged, Stripe Connect answers 402 until activation is paid, so the
-      // fee-on sentence is a full variant with the activation before Stripe.
-      description: isActivationFeeConfigured()
-        ? t("home.how.step1Activation").replace("{amount}", String(activationFeeUsd))
-        : t("home.how.step1Desc"),
+      description: t("home.how.step1Desc"),
       Icon: PenLine,
     },
     {

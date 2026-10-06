@@ -8,7 +8,7 @@ import CopyrightPage, { generateMetadata as copyrightMetadata } from "./copyrigh
 import RefundPolicyPage, { generateMetadata as refundMetadata } from "@/app/refund-policy/page";
 import { LegalText } from "@/components/site/legal-article";
 import { helpFaqCategories } from "@/data/help-faq";
-import { activationFeeUsd, refundWindowDays } from "@/data/plans";
+import { refundWindowDays } from "@/data/plans";
 import { LOCALE_COOKIE, type Locale } from "@/lib/i18n/config";
 import { getDictionary } from "@/lib/i18n/dictionaries";
 import { currentPrivacyVersion, currentTeacherTermsVersion, currentTermsVersion } from "@/lib/legal/versions";
@@ -31,7 +31,7 @@ afterEach(() => { cleanup(); request.locale = undefined; });
 const pages = [
   { key: "privacy", Page: PrivacyPage, metadata: privacyMetadata, path: "/legal/privacy", sections: 12, texts: 44, title: "Política de privacidad" },
   { key: "terms", Page: TermsPage, metadata: termsMetadata, path: "/legal/terms", sections: 18, texts: 37, title: "Condiciones de servicio" },
-  { key: "teacherTerms", Page: TeacherTermsPage, metadata: teacherMetadata, path: "/legal/teacher-terms", sections: 13, texts: 31, title: "Condiciones para educadores" },
+  { key: "teacherTerms", Page: TeacherTermsPage, metadata: teacherMetadata, path: "/legal/teacher-terms", sections: 12, texts: 27, title: "Condiciones para educadores" },
   { key: "copyright", Page: CopyrightPage, metadata: copyrightMetadata, path: "/legal/copyright", sections: 5, texts: 19, title: "Política de derechos de autor (DMCA)" },
   { key: "refund", Page: RefundPolicyPage, metadata: refundMetadata, path: "/refund-policy", sections: 7, texts: 10, title: "Política de reembolsos y devoluciones" },
 ] as const;
@@ -49,9 +49,7 @@ function effectiveDate(locale: Locale, key: string) {
 }
 
 function interpolate(value: string) {
-  return value
-    .replaceAll("{days}", () => String(refundWindowDays))
-    .replaceAll("{amount}", () => String(activationFeeUsd));
+  return value.replaceAll("{days}", () => String(refundWindowDays));
 }
 
 function plain(value: string) {
@@ -103,7 +101,7 @@ describe("legal document translation from the request cookie", () => {
   });
 
   it.each(pages)("$key defaults to English for absent or unsupported cookies", async ({ Page, key }) => {
-    const effective = key === "teacherTerms" ? "Effective October 4, 2026" : "Effective September 24, 2026";
+    const effective = key === "teacherTerms" ? "Effective October 6, 2026" : "Effective September 24, 2026";
     for (const cookie of [undefined, "pt-BR", "invalid"]) {
       request.locale = cookie;
       const view = render(await Page());
@@ -276,7 +274,7 @@ describe("legal document translation from the request cookie", () => {
     expect(main.textContent).not.toMatch(/\b\d{2}-\d{7}\b|\bEIN\b/);
   });
 
-  it.each(["en", "es"] as const)("tells %s teachers the activation fee, eligibility and who carries refunds and disputes", async (locale) => {
+  it.each(["en", "es"] as const)("tells %s teachers the eligibility and who carries refunds and disputes, with no activation fee", async (locale) => {
     request.locale = locale;
     render(await TeacherTermsPage());
     const doc = legalDictionary(locale).teacherTerms as Record<string, string>;
@@ -288,9 +286,8 @@ describe("legal document translation from the request cookie", () => {
     expect(section(2).textContent).not.toMatch(/Economic Area|Espacio Económico|Iceland|Islandia/);
     expect(section(7)).toHaveTextContent(locale === "en" ? "not returned when a sale is lost to a dispute" : "no se devuelve cuando una venta se pierde en una disputa");
     expect(section(7)).toHaveTextContent(locale === "en" ? "may debit your bank account" : "cargar el importe en tu cuenta bancaria");
-    expect(section(8)).toHaveTextContent(`US$${activationFeeUsd}`);
-    expect(section(8)).toHaveTextContent(locale === "en" ? "within 7 days of payment" : "dentro de los 7 días siguientes al pago");
-    expect(section(8)).toHaveTextContent(locale === "en" ? "does not refund the fee you paid" : "no da derecho al reembolso");
+    expect(section(8)).toHaveTextContent(locale === "en" ? "8. Taxes" : "8. Impuestos");
+    expect(screen.getByRole("main").textContent).not.toMatch(/activation|activación|US\$25/i);
   });
 });
 

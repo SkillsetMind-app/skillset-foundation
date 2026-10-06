@@ -41,7 +41,7 @@ export const helpFaqCategories: ReadonlyArray<HelpFaqCategory> = [
     items: [
       {
         q: "Can creators upload courses themselves?",
-        a: "Yes, without a manual review of each course. A creator can draft, upload and connect Stripe first. While SkillsetMind requires studio activation, the one-time activation checkout is completed before the first course is published, and where professional verification is required it must be approved before they can pay. A product that passes the launch checks is then published directly by its creator; paid products also need a Stripe account that can accept charges before checkout opens.",
+        a: "Yes, without a manual review of each course. A creator can draft, upload and connect Stripe first. Where professional verification is required, it must be approved before publishing. A product that passes the launch checks is then published directly by its creator; paid products also need a Stripe account that can accept charges before checkout opens.",
       },
       {
         id: "course-categories",

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { plans } from "@/data/plans";
 import { notifyOps } from "@/lib/ops/alert";
 import { StripeConfigError } from "@/lib/payments/server/stripe";
 import { runRateLimit } from "@/lib/supabase/rate-limit";
@@ -134,6 +135,20 @@ export async function enforceRateLimit(
     }
     throw new Error(error.message);
   }
+}
+
+/**
+ * Whether the creator is on the Free plan, for the Free-plan daily caps (video
+ * uploads, advisor, manual course access). Those caps follow the plan, never
+ * require_activation_fee. Reads users.current_plan_id under the caller's own
+ * session (users_select_self). Unknown, missing or unreadable counts as Free —
+ * the stricter caps — the same default canonicalPlatformFeeBpsForPlan applies.
+ */
+export async function isOnFreePlan(uid: string): Promise<boolean> {
+  const supabase = await createSupabaseServerClient();
+  const { data } = await supabase.from("users").select("current_plan_id").eq("uid", uid).maybeSingle();
+  const planId = data?.current_plan_id;
+  return !plans.some((plan) => plan.id !== "free" && plan.id === planId);
 }
 
 /**

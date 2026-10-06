@@ -17,7 +17,7 @@ export type CourseSortKey =
   | "price-desc";
 
 export const courseSortOptions: { value: CourseSortKey; label: string; labelKey: string }[] = [
-  { value: "featured", label: "Featured & top picks", labelKey: "publicCourses.sortFeatured" },
+  { value: "featured", label: "Featured first", labelKey: "publicCourses.sortFeatured" },
   { value: "trending", label: "Trending now", labelKey: "publicCourses.sortTrending" },
   { value: "alpha", label: "Alphabetical (A–Z)", labelKey: "publicCourses.sortAlpha" },
   { value: "rating", label: "Top rated", labelKey: "publicCourses.sortRating" },

@@ -5,12 +5,7 @@ import { Check, ChevronDown, HelpCircle } from "lucide-react";
 import { PublicPage } from "@/components/site/public-page";
 import { Tooltip } from "@/components/shared/tooltip";
 import { formatUsd, formatUsdWhole } from "@/data/platform";
-import {
-  activationFeeUsd,
-  isActivationFeeConfigured,
-  plans,
-  refundWindowDays,
-} from "@/data/plans";
+import { plans, refundWindowDays } from "@/data/plans";
 import { buildPageMetadata } from "@/lib/seo/page-metadata";
 
 export async function generateMetadata() {
@@ -132,15 +127,6 @@ export default async function PricingPage() {
                 <p className="mt-1 text-xs text-[var(--color-ink-soft)]">
                   {t(`publicPages.plans.${plan.id}.audience`)}
                 </p>
-                {/* Tied to isActivationFeeConfigured(), not to a hardcoded flag:
-                    the fee ships dormant (placeholder Stripe Price), so this line
-                    must not claim a charge that cannot happen yet. It appears on
-                    the deploy that carries the real price_... id. */}
-                {plan.id === "free" && isActivationFeeConfigured() ? (
-                  <p className="mt-3 text-xs leading-5 text-[var(--color-ink-soft)]">
-                    {t("publicPages.pricing.plus_a_one_time")}{formatUsd(activationFeeUsd)} {t("publicPages.pricing.fee_to_activate_your_storefront_paid")}
-                  </p>
-                ) : null}
                 <ul className="mb-6 mt-5 grid gap-2 text-sm text-[var(--color-ink-soft)]">
                   {plan.highlights.map((highlight, highlightIndex) => (
                     <li key={highlight} className="flex items-start gap-2">

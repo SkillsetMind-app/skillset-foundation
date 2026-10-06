@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
-import { assertCreatorActivated, enforceRateLimit, PaymentError, paymentErrorResponse } from "@/lib/payments/server/auth";
+import { assertCreatorActivated, enforceRateLimit, isOnFreePlan, PaymentError, paymentErrorResponse } from "@/lib/payments/server/auth";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+
+const FREE_DAILY_GRANTS = 10;
 
 function failure(status: number, error: string) { return NextResponse.json({ error }, { status }); }
 function databaseFailure(error: { code?: string; message?: string }) {
@@ -44,6 +46,18 @@ export async function POST(request: Request) {
     if (action !== "grant" && (typeof body.grantId !== "string" || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(body.grantId))) return failure(400, "Choose an access record.");
     await enforceRateLimit(`course_access_${user.id}`, 30, 3600000);
     await assertCreatorActivated();
+    // Free plan: FREE_DAILY_GRANTS new grants a day, by plan (never by the
+    // activation flag). Resend and revoke act on an existing grant and do not count.
+    if (action === "grant" && await isOnFreePlan(user.id)) {
+      try {
+        await enforceRateLimit(`course_access_daily_${user.id}`, FREE_DAILY_GRANTS, 86400000);
+      } catch (error) {
+        if (error instanceof PaymentError && error.status === 429) {
+          return NextResponse.json({ error: "Daily limit for manual access on the Free plan. Try again tomorrow.", code: "free_plan_daily_limit" }, { status: 429 });
+        }
+        throw error;
+      }
+    }
     const result = action === "grant"
       ? await client.rpc("grant_course_access", { p_course_id: body.courseId as string, p_email: email })
       : action === "revoke"

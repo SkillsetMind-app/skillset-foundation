@@ -23,7 +23,7 @@ type Message = { role: "user" | "assistant"; content: string };
 type HistoryStatus = "idle" | "loading" | "ready";
 
 type Notice = { text: string } | {
-  key: "notReady" | "tooManyMessages" | "activationRequired" | "sessionExpired" | "somethingWrong" | "unreachable";
+  key: "notReady" | "tooManyMessages" | "freePlanDailyLimit" | "activationRequired" | "sessionExpired" | "somethingWrong" | "unreachable";
 };
 const AdvisorHeaderContext = createContext<RefCallback<HTMLDivElement> | null>(null);
 const HEADER_QUERY = "(min-width: 768px)";
@@ -234,6 +234,7 @@ export function AdvisorSidebar({ children }: { children?: ReactNode } = {}) {
       const data = (await res.json().catch(() => ({}))) as {
         reply?: string;
         error?: string;
+        code?: string;
         conversationId?: string | null;
       };
       if (res.ok && typeof data.reply === "string") {
@@ -257,7 +258,7 @@ export function AdvisorSidebar({ children }: { children?: ReactNode } = {}) {
         // notice as the upfront one, so it never shows twice.
         setActivationBlocked(true);
       } else if (res.status === 429) {
-        setNotice({ key: "tooManyMessages" });
+        setNotice({ key: data.code === "free_plan_daily_limit" ? "freePlanDailyLimit" : "tooManyMessages" });
       } else if (res.status === 401) {
         setNotice({ key: "sessionExpired" });
       } else {

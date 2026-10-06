@@ -1,9 +1,11 @@
 /**
  * SkillsetMind pricing model — single source of truth.
  *
- * Four tiers. Every feature is available on every tier; the plan only
- * changes the commission rate SkillsetMind takes per paid sale and adds an
- * optional monthly subscription. Charges are Stripe DIRECT charges on the
+ * Four tiers. Every plan can publish and sell; a paid plan lowers the
+ * commission SkillsetMind takes per paid sale, adds the extras in
+ * domain/entitlements.ts, and lifts the Free plan's daily caps (video uploads,
+ * advisor, manual access — enforced in their routes by plan, via isOnFreePlan).
+ * Charges are Stripe DIRECT charges on the
  * creator's own connected account: the creator is the merchant of record,
  * Stripe bills them the processing fee, and SkillsetMind takes its commission
  * as `application_fee_amount` at charge time. The platform never holds a
@@ -11,13 +13,14 @@
  * still applies its own settlement and payout timing on the creator's
  * connected account, which the platform does not control and cannot waive.
  *
- * Separately from the tiers, a creator pays a ONE-TIME activation fee when
- * publishing their first course. Drafting, uploading video and connecting
- * Stripe come before it and do not need it. It does not recur and it is not a
- * subscription: the Free plan still costs nothing per month and still takes 10%
- * per sale. The gate is enforced in SQL (public.publish_teacher_course, backed
- * by the courses trigger on the move to 'published') and switched by the
- * `require_activation_fee` row in platform_settings, not by this file.
+ * There is no activation fee. A one-time fee at the first publish still exists
+ * in code, dormant: ONE switch, the `require_activation_fee` row in
+ * platform_settings (false), read only through creator_activation_blocked().
+ * Off, that predicate is false for everyone, so publish, coupons, manual access,
+ * custom domains, the advisor and the studio UI are open, /teach/activate
+ * redirects to /teach and the checkout route answers 409. Public pages and the
+ * Teacher Terms do not mention a fee at all; turning it back on means writing
+ * that disclosure again, not just flipping the row.
  *
  * If the user upgrades or downgrades, sales BEFORE the change keep the
  * commission rate from `plan_at_time_of_sale` (snapshot in the transactions
@@ -167,9 +170,9 @@ export function planByStripePriceId(priceId: string): Plan | undefined {
 }
 
 /**
- * One-time storefront activation fee, in USD. Charged once per creator, when
- * they publish their first course — the studio itself is open before it. Not a
- * subscription, not per-course, never charged again.
+ * Dormant one-time activation fee, in USD — charged only while
+ * `require_activation_fee` is on (see the header). Not a subscription, not
+ * per-course, never charged again.
  */
 export const activationFeeUsd = 25;
 

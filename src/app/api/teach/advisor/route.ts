@@ -4,7 +4,7 @@ import { buildAssistantKnowledge } from "@/lib/assistant/knowledge";
 import { KimiConfigError, KimiError, askKimi, type KimiMessage } from "@/lib/assistant/kimi";
 import { formatKnowledge, retrieveKnowledge } from "@/lib/assistant/retrieve";
 import { buildTeacherContext } from "@/lib/assistant/teacher-context";
-import { assertCreatorActivated, PaymentError } from "@/lib/payments/server/auth";
+import { assertCreatorActivated, isOnFreePlan, PaymentError } from "@/lib/payments/server/auth";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import { runRateLimit } from "@/lib/supabase/rate-limit";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -227,15 +227,23 @@ export async function POST(request: Request) {
   }
 
   // Two-window throttle on a reasoning-model-backed endpoint: an hourly burst
-  // cap (30/h) blunts scripted abuse, and a daily cap (120/day) bounds sustained
-  // economic abuse. Both use the shared enforce_rate_limit SECURITY DEFINER RPC.
+  // cap (30/h) blunts scripted abuse, and a daily cap bounds sustained economic
+  // abuse — 120/day on a paid plan, 20/day on Free (by plan, never by the
+  // activation flag). Both use the shared enforce_rate_limit SECURITY DEFINER RPC.
+  const freePlan = await isOnFreePlan(uid);
   for (const [key, limit, windowMs] of [
     [`advisor_${uid}`, 30, 3_600_000],
-    [`advisor_daily_${uid}`, 120, 86_400_000],
+    [`advisor_daily_${uid}`, freePlan ? 20 : 120, 86_400_000],
   ] as const) {
     try {
       const { error: rlError } = await runRateLimit(key, limit, windowMs);
       if (rlError) {
+        if (rlError.message?.includes("RATE_LIMIT") && freePlan && key.startsWith("advisor_daily_")) {
+          return NextResponse.json(
+            { error: "Daily advisor limit on the Free plan. Try again tomorrow.", code: "free_plan_daily_limit" },
+            { status: 429 },
+          );
+        }
         if (rlError.message?.includes("RATE_LIMIT")) {
           return NextResponse.json(
             { error: "Too many messages. Please wait a moment before continuing." },

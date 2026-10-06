@@ -328,6 +328,26 @@ describe("AdvisorSidebar", () => {
     ).toBeInTheDocument();
   });
 
+  // The Free plan's daily cap resets tomorrow: "wait a moment" would send the
+  // creator into a retry loop.
+  it("tells a Free-plan creator over the daily cap to come back tomorrow", async () => {
+    fetchMock.mockImplementation(async (_url: unknown, init?: RequestInit) =>
+      init?.method === "POST"
+        ? jsonResponse({ error: "Daily advisor limit on the Free plan. Try again tomorrow.", code: "free_plan_daily_limit" }, 429)
+        : jsonResponse({ conversationId: null, messages: [] }),
+    );
+
+    render(<AdvisorSidebar />);
+    openAdvisor();
+    await screen.findByRole("button", { name: SUGGESTION });
+
+    fireEvent.change(composer(), { target: { value: "How should I price this?" } });
+    fireEvent.keyDown(composer(), { key: "Enter" });
+
+    expect(await screen.findByText("Daily advisor limit on the Free plan. Try again tomorrow.")).toBeInTheDocument();
+    expect(screen.queryByText(/wait a moment/)).not.toBeInTheDocument();
+  });
+
   // Drafting and uploads are open before the one-time fee; the advisor is not.
   // The 402 must explain that, not fall through to the route's raw sentence.
   it("explains that the advisor opens after activation when the route answers 402", async () => {

@@ -31,7 +31,7 @@ function plansSection(): string {
     return `- ${plan.name}: ${price}, ${plan.commissionPercent}% commission per paid sale. ${plan.tagline} For: ${plan.audience}`;
   });
   return [
-    "Plans (every feature is available on every tier; plans only change the commission rate; the Stripe processing fee is passed through to the creator on every sale):",
+    "Plans (every plan can publish and sell; paid plans lower the commission rate and add featured slots, custom domains, longer sales pages and branding controls; the Free plan has daily limits on video uploads, advisor questions and manual access grants, which paid plans raise; SkillsetMind charges only the plan price and its commission, and the Stripe processing fee is passed through to the creator on every sale):",
     ...rows,
     `- Refund window: ${refundWindowDays} days from purchase (learner must have completed less than half the course and not received a certificate).`,
     "- Payouts: buyers pay the creator's own Stripe account directly (the creator is the merchant of record). SkillsetMind never holds or remits creator money, so there is no platform clearing period and we add zero days to a payout — Stripe pays out from the creator's own Stripe balance on that account's payout schedule. The timeline is entirely Stripe's and depends on the creator's country and the payment method; Stripe also applies a waiting period before the first payout on a new account, and the settlement of a charge is not the same event as a payout. Refunds and lost disputes are debited from the creator's Stripe balance, and SkillsetMind's application fee is returned to the creator with a refund.",

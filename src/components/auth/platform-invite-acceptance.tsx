@@ -94,7 +94,6 @@ function RecipientInvite({ id, onReauthentication }: { id: string; onReauthentic
       <p className="break-all text-sm font-semibold">{invite.email}</p>
       <dl className="space-y-3 border-y border-[var(--color-line)] py-4 text-sm">
         <div><dt className="text-[var(--color-ink-soft)]">{t(`${copy}.level`)}</dt><dd className="font-semibold">{t(`platform.ops.accessPanel.levels.${invite.access_level}.label`)}</dd></div>
-        {invite.access_level === "teacher" ? <div><dt className="text-[var(--color-ink-soft)]">{t(`${copy}.activationFee`)}</dt><dd>{t(`${copy}.${invite.waive_activation ? "waived" : "notWaived"}`)}</dd></div> : null}
       </dl>
       {ended ? <InlineAlert tone="info">{t(`${copy}.status.${ended}`)}</InlineAlert> : <Button disabled={busy} className="min-h-11 max-w-full whitespace-normal" onClick={() => void accept()}><Check size={16} className="shrink-0" aria-hidden />{t(`${copy}.${busy ? "accepting" : "accept"}`)}</Button>}
     </> : null}

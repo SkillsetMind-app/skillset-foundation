@@ -81,6 +81,7 @@ describe("course access with real EN/ES dictionaries", () => {
 
   it.each([
     ["Too many attempts. Please wait before trying again.", "rateError"],
+    ["Daily limit for manual access on the Free plan. Try again tomorrow.", "freePlanDailyLimit"],
     ["Only the course owner can manage access to a published course.", "ownerError"],
     ["Enter a valid email address.", "emailError"],
     ["raw provider failure", "updateError"], ["toString", "updateError"],
