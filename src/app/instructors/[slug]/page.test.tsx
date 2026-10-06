@@ -118,6 +118,25 @@ describe("metadata do perfil", () => {
     expect(mocks.getPublicProfileByRef).toHaveBeenCalledWith("@ana.souza");
   });
 
+  // Perfil sem curso publicado é página fina: fica fora do índice até o
+  // primeiro curso, mas os links dela continuam seguidos.
+  it("sem curso publicado: noindex, follow (por @ e por uid)", async () => {
+    mocks.listCreatorCourses.mockResolvedValue([]);
+    expect((await generateMetadata(params("@ana.souza"))).robots).toEqual({ index: false, follow: true });
+    expect((await generateMetadata(params(ana.uid))).robots).toEqual({ index: false, follow: true });
+  });
+
+  it("com curso publicado: indexável", async () => {
+    expect((await generateMetadata(params("@ana.souza"))).robots).toEqual({ index: true, follow: true });
+  });
+
+  // Falha de leitura não é perfil vazio: tirar do índice um perfil com curso
+  // por um tropeço do banco custaria semanas de busca.
+  it("leitura dos cursos falhou: continua indexável", async () => {
+    mocks.listCreatorCourses.mockResolvedValue(null);
+    expect((await generateMetadata(params("@ana.souza"))).robots).toEqual({ index: true, follow: true });
+  });
+
   it("leitura que falhou não inventa professor: metadata genérica e fora do índice", async () => {
     mocks.getPublicProfileByRef.mockRejectedValue(new Error("banco fora"));
     const metadata = await generateMetadata(params("@ana.souza"));

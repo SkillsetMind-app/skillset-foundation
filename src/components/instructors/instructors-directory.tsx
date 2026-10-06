@@ -7,7 +7,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { UserAvatar } from "@/components/shared/user-avatar";
-import { VerifiedBadge } from "@/components/shared/verified-badge";
+import { SelfReportedTag, VerifiedBadge } from "@/components/shared/verified-badge";
 import { useHasRealCourses } from "@/components/site/real-courses";
 import { instructorPagePath, type PublicProfile } from "@/domain/user-profile";
 import { listPublicProfiles } from "@/lib/data/user-profiles";
@@ -195,6 +195,7 @@ function InstructorCard({ profile }: { profile: PublicProfile }) {
               className="text-xs leading-5 text-[var(--color-ink-soft)]"
             >
               {credential}
+              {profile.verification ? null : <SelfReportedTag />}
             </li>
           ))}
         </ul>

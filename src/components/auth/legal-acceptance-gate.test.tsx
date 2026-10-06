@@ -190,6 +190,30 @@ describe("LegalAcceptanceGate as the signup recovery path", () => {
     await waitFor(() => expect(screen.queryByRole("button", { name: ACCEPT })).toBeNull());
   });
 
+  // Aceitar os termos de professor é aceitar o perfil público: a linha diz o
+  // que fica público e onde. Só junto dos termos de professor.
+  it.each([
+    ["en", "Your teacher profile (name, photo, bio and credentials) is public at skillsetmind.com/@ana."],
+    ["es", "Tu perfil de profesor (nombre, foto, biografía y credenciales) es público en skillsetmind.com/@ana."],
+  ] as const)("re-accepting the Teacher Terms says the profile is public (%s)", async (locale, line) => {
+    mocks.getUserProfile.mockResolvedValue({
+      termsVersion: currentTermsVersion,
+      privacyVersion: currentPrivacyVersion,
+      marketingConsent: false,
+      ...OUTDATED_TEACHER,
+      username: "ana",
+    });
+    renderSignedIn(locale);
+    expect(await screen.findByText(line)).toBeTruthy();
+  });
+
+  it("general terms alone carry no public-profile line", async () => {
+    mocks.getUserProfile.mockResolvedValue({ termsVersion: null, privacyVersion: null, marketingConsent: false });
+    renderSignedIn();
+    await screen.findByRole("button", { name: ACCEPT });
+    expect(screen.queryByText(/is public at/)).toBeNull();
+  });
+
   it("collects all three when both are outdated and keeps the general acceptance when the teacher write fails", async () => {
     mocks.getUserProfile.mockResolvedValue({
       termsVersion: null,

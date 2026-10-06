@@ -320,6 +320,7 @@
     "publicNamePlaceholder": "Tu nombre",
     "username": "Nombre de usuario",
     "usernamePlaceholder": "tu-nombre",
+    "publicProfileNotice": "Tu perfil de profesor (nombre, foto, biografía y credenciales) es público en skillsetmind.com/@{handle}.",
     "shortBio": "Bio corta",
     "bioPlaceholder": "Una línea sobre tu trabajo, metas de aprendizaje o enfoque de enseñanza.",
     "bioCount": "{count}/280 caracteres",
@@ -2999,7 +3000,7 @@
       "instructors": "Instructores",
       "independent_experts_publishing_reviewed_professional_courses": "Expertos independientes que publican cursos profesionales en SkillsetMind.",
       "learn_from_reviewed_experts": "Aprende de expertos independientes.",
-      "meet_independent_creators_whose_public_profiles": "Conoce a los creadores independientes que enseñan en SkillsetMind. Cada perfil muestra a un instructor real, sin perfiles de relleno; el sello «Profesional verificado» marca a quienes nuestro equipo revisó."
+      "meet_independent_creators_whose_public_profiles": "Conoce a los creadores independientes que enseñan en SkillsetMind. El sello «Profesional verificado» marca a quienes nuestro equipo revisó."
     },
     "directory": {
       "loading_instructors": "Cargando instructores...",
@@ -3007,13 +3008,13 @@
       "course_pages_still_show_verified_instructor": "Las páginas de los cursos siguen mostrando la identidad del instructor, verificada cuando se requiere, si hay un perfil público disponible.",
       "first_cohort": "Primer grupo",
       "public_instructor_profiles_appear_after_review": "Los perfiles públicos de los instructores aparecen cuando el creador completa su configuración.",
-      "skillsetmind_only_lists_real_published_profiles": "SkillsetMind solo muestra perfiles reales de creadores. Los nuevos creadores aparecen aquí cuando completan su configuración de creador.",
+      "skillsetmind_only_lists_real_published_profiles": "Ningún creador ha completado su configuración todavía. Los nuevos creadores aparecen aquí en cuanto lo hagan.",
       "start_teaching": "Empieza a enseñar",
       "browse_courses": "Explorar cursos",
       "directory": "Directorio",
       "published_instructors": "Instructores publicados",
       "browse_their_courses": "Explorar sus cursos",
-      "this_instructor_has_published_their_profile": "Este instructor ha publicado su perfil y está preparando experiencias de aprendizaje en SkillsetMind.",
+      "this_instructor_has_published_their_profile": "Este instructor tiene un perfil público y está preparando experiencias de aprendizaje en SkillsetMind.",
       "view_profile": "Ver perfil",
       "fallback_name": "Instructor de SkillsetMind"
     },
@@ -4278,6 +4279,7 @@
   },
   "verifiedBadge": {
     "label": "Profesional verificado",
+    "selfReported": "Declarado por el creador",
     "licenseChecked": "{brand} comprobó esta licencia profesional el {date}.",
     "licenseCheckedUndated": "{brand} comprobó esta licencia profesional.",
     "evidenceReviewed": "{brand} revisó la evidencia profesional de esta persona el {date}.",

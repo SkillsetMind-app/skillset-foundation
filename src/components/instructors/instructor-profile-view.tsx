@@ -8,7 +8,7 @@ import type { CSSProperties } from "react";
 import { CourseTile } from "@/components/courses/course-tile";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { UserAvatar } from "@/components/shared/user-avatar";
-import { VerifiedBadge } from "@/components/shared/verified-badge";
+import { SelfReportedTag, VerifiedBadge } from "@/components/shared/verified-badge";
 import { brand } from "@/data/brand";
 import {
   isStorefrontHexColor,
@@ -219,6 +219,7 @@ export function InstructorProfileView({
                   className="border-l-2 border-[var(--color-line-strong)] pl-3 text-sm leading-6 text-[var(--color-ink-soft)]"
                 >
                   {credential}
+                  {profile.verification ? null : <SelfReportedTag />}
                 </li>
               ))}
             </ul>

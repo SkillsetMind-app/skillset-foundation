@@ -320,6 +320,7 @@
     "publicNamePlaceholder": "Your name",
     "username": "Username",
     "usernamePlaceholder": "your-name",
+    "publicProfileNotice": "Your teacher profile (name, photo, bio and credentials) is public at skillsetmind.com/@{handle}.",
     "shortBio": "Short bio",
     "bioPlaceholder": "A short line about your work, learning goals, or teaching focus.",
     "bioCount": "{count}/280 characters",
@@ -2999,7 +3000,7 @@
       "instructors": "Instructors",
       "independent_experts_publishing_reviewed_professional_courses": "Independent experts publishing professional courses on SkillsetMind.",
       "learn_from_reviewed_experts": "Learn from independent experts.",
-      "meet_independent_creators_whose_public_profiles": "Meet the independent creators teaching on SkillsetMind. Every profile shows a real instructor instead of marketplace filler; the \"Verified professional\" badge marks the ones our team has reviewed."
+      "meet_independent_creators_whose_public_profiles": "Meet the independent creators teaching on SkillsetMind. The \"Verified professional\" badge marks the ones our team has reviewed."
     },
     "directory": {
       "loading_instructors": "Loading instructors...",
@@ -3007,13 +3008,13 @@
       "course_pages_still_show_verified_instructor": "Course pages still show the instructor's identity, verified where required, when a public profile is available.",
       "first_cohort": "First cohort",
       "public_instructor_profiles_appear_after_review": "Public instructor profiles appear once creators finish setup.",
-      "skillsetmind_only_lists_real_published_profiles": "SkillsetMind only lists real creator profiles. New creators appear here once they finish creator setup.",
+      "skillsetmind_only_lists_real_published_profiles": "No creator has finished setup yet. New creators appear here as soon as they do.",
       "start_teaching": "Start teaching",
       "browse_courses": "Browse courses",
       "directory": "Directory",
       "published_instructors": "Published instructors",
       "browse_their_courses": "Browse their courses",
-      "this_instructor_has_published_their_profile": "This instructor has published their profile and is preparing learning experiences on SkillsetMind.",
+      "this_instructor_has_published_their_profile": "This instructor has a public profile and is preparing learning experiences on SkillsetMind.",
       "view_profile": "View profile",
       "fallback_name": "SkillsetMind instructor"
     },
@@ -4278,6 +4279,7 @@
   },
   "verifiedBadge": {
     "label": "Verified professional",
+    "selfReported": "Self-reported",
     "licenseChecked": "{brand} checked this professional license on {date}.",
     "licenseCheckedUndated": "{brand} checked this professional license.",
     "evidenceReviewed": "{brand} reviewed this person's professional evidence on {date}.",

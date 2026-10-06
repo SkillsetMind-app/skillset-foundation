@@ -172,6 +172,8 @@ function LegalAcceptanceGate() {
     uid: string;
     general: boolean;
     teacher: boolean;
+    /** @ do perfil público, para a linha que diz onde ele fica. */
+    username?: string | null;
   } | null>(null);
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [privacyAccepted, setPrivacyAccepted] = useState(false);
@@ -219,6 +221,7 @@ function LegalAcceptanceGate() {
           && profile.teacherTermsAcceptedAt
           && profile.teacherTermsVersion !== currentTeacherTermsVersion,
         ),
+        username: profile?.username ?? null,
       });
       setTermsAccepted(false);
       setPrivacyAccepted(false);
@@ -255,7 +258,7 @@ function LegalAcceptanceGate() {
         const profile = await getUserProfile(acceptingUid);
         await acceptUserTerms(acceptingUid, profile?.marketingConsent ?? false);
         // Recorded: a later Teacher Terms failure only re-asks for that one.
-        setAcceptance({ uid: acceptingUid, general: false, teacher: needsTeacher });
+        setAcceptance({ uid: acceptingUid, general: false, teacher: needsTeacher, username: current?.username });
       }
       if (needsTeacher) {
         await acceptTeacherTerms(acceptingUid);
@@ -345,6 +348,15 @@ function LegalAcceptanceGate() {
                 .
               </span>
             </label>
+          ) : null}
+          {/* Aceitar os termos de professor é aceitar o perfil público. */}
+          {needsTeacher ? (
+            <p className="text-xs leading-5 text-[var(--color-ink-soft)]">
+              {t("onboarding.publicProfileNotice").replace(
+                "{handle}",
+                () => current?.username || t("onboarding.usernamePlaceholder"),
+              )}
+            </p>
           ) : null}
         </div>
 

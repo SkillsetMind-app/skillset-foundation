@@ -18,7 +18,7 @@ import {
   useInstructorProfile,
 } from "@/components/courses/course-social-proof";
 import { UserAvatar } from "@/components/shared/user-avatar";
-import { VerifiedBadge } from "@/components/shared/verified-badge";
+import { SelfReportedTag, VerifiedBadge } from "@/components/shared/verified-badge";
 import { useHasRealCourses } from "@/components/site/real-courses";
 import { getSafeExternalUrl } from "@/domain/external-url";
 import { CourseLandingBlocks } from "@/components/courses/course-landing-blocks";
@@ -635,8 +635,10 @@ export function CreatorCourseDetail({
               </span>
             ) : null}
             {instructorProfile?.credentials?.[0] ? (
-              <span className="min-w-0 truncate">
-                {instructorProfile.credentials[0]}
+              // A marca fica fora do truncate: credencial longa não a esconde.
+              <span className="inline-flex min-w-0 items-baseline">
+                <span className="min-w-0 truncate">{instructorProfile.credentials[0]}</span>
+                {instructorProfile.verification ? null : <SelfReportedTag />}
               </span>
             ) : null}
             {hasRating ? (
