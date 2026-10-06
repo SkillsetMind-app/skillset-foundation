@@ -6,7 +6,7 @@ import { ExternalLink, Store } from "lucide-react";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { buttonClasses, Card, Eyebrow } from "@/components/ui";
 import type { TeacherCourse } from "@/domain/teacher-course";
-import { instructorPagePath } from "@/domain/user-profile";
+import { useStorefrontPath } from "@/components/teacher/use-storefront-path";
 
 // "Onde as pessoas me compram?" não tinha resposta na Home: a vitrine pública
 // existe em /instructors/{uid} desde sempre, mas o único caminho até ela era o
@@ -23,7 +23,7 @@ export function StudioStorefrontCard({
   coursesLoaded: boolean;
 }) {
   const { t } = useTranslation();
-  const path = instructorPagePath(uid);
+  const path = useStorefrontPath(uid);
   const published = courses.filter((course) => course.status === "published").length;
   // Sem nada publicado a vitrine existe mas está vazia: dizer "está no ar" seria
   // mentira, então o cartão manda publicar em vez de mandar visitar.

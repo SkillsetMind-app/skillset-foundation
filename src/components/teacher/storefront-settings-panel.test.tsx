@@ -95,6 +95,19 @@ describe("StorefrontSettingsPanel", () => {
     mocks.router.refresh.mockReset();
   });
 
+  it("opens the public page at /@username, or by uid without one", async () => {
+    mocks.getUserProfile.mockResolvedValue({ displayName: "Dr. Ana Silva", username: "ana.silva", storefront: null });
+    render(<StorefrontSettingsPanel />);
+    await waitFor(() =>
+      expect(screen.getByRole("link", { name: /Open public page/ })).toHaveAttribute("href", "/@ana.silva"),
+    );
+    cleanup();
+
+    mocks.getUserProfile.mockResolvedValue({ displayName: "Dr. Ana Silva", storefront: null });
+    render(<StorefrontSettingsPanel />);
+    expect(await screen.findByRole("link", { name: /Open public page/ })).toHaveAttribute("href", "/instructors/teacher-1");
+  });
+
   it("uses native file controls instead of asking teachers for image URLs", async () => {
     render(<StorefrontSettingsPanel />);
 

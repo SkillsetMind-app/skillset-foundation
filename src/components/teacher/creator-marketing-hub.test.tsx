@@ -1,4 +1,4 @@
-import { cleanup, render, screen, within } from "@testing-library/react";
+import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { CreatorMarketingHub } from "@/components/teacher/creator-marketing-hub";
@@ -48,8 +48,13 @@ const mocks = vi.hoisted(() => {
     subscribeToTeacherCourses: vi.fn(),
     subscribeToTeacherMessages: vi.fn(),
     countCourseAssets: vi.fn(),
+    publicProfile: null as { username: string | null } | null,
   };
 });
+
+vi.mock("@/lib/data/user-profiles", () => ({
+  getPublicProfile: async () => mocks.publicProfile,
+}));
 
 vi.mock("@/components/auth/auth-provider", () => ({
   useAuth: () => ({ user: mocks.user, status: "authenticated" }),
@@ -166,5 +171,20 @@ describe("CreatorMarketingHub", () => {
     // O cartao continua na grade, so sem numero.
     expect(cardNamed("Media library")).toBeInTheDocument();
     expect(cardNamed("Buyer messages")).toBeInTheDocument();
+  });
+  // O link da vitrine é o que o criador cola na bio: /@usuario quando há @.
+  it("opens the storefront at the creator's @handle when the public profile has one", async () => {
+    mocks.publicProfile = { username: "ana.souza" };
+    givenCourses([mocks.course("c1", "published")]);
+    givenMessages([]);
+    mocks.countCourseAssets.mockResolvedValue(0);
+
+    render(<CreatorMarketingHub />);
+
+    const storefront = cardNamed("Storefront & product pages");
+    await waitFor(() =>
+      expect(within(storefront).getByRole("link", { name: /Open public page/ })).toHaveAttribute("href", "/@ana.souza"),
+    );
+    mocks.publicProfile = null;
   });
 });
