@@ -1575,8 +1575,10 @@ export type Database = {
           actor_name: string | null
           body: string
           created_at: string | null
+          emailed_at: string | null
           link: string | null
           notification_id: string
+          params: Json | null
           read: boolean
           title: string
           type: string
@@ -1586,8 +1588,10 @@ export type Database = {
           actor_name?: string | null
           body: string
           created_at?: string | null
+          emailed_at?: string | null
           link?: string | null
           notification_id: string
+          params?: Json | null
           read?: boolean
           title: string
           type: string
@@ -1597,8 +1601,10 @@ export type Database = {
           actor_name?: string | null
           body?: string
           created_at?: string | null
+          emailed_at?: string | null
           link?: string | null
           notification_id?: string
+          params?: Json | null
           read?: boolean
           title?: string
           type?: string
