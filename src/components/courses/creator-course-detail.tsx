@@ -486,6 +486,7 @@ export function CreatorCourseDetail({
   if (requestedOfferCode) returnParams.set("offer", requestedOfferCode);
   if (requestedPriceId) returnParams.set("priceId", requestedPriceId);
   const returnTo = `${coursePath}${returnParams.size ? `?${returnParams}` : ""}`;
+  const signupHref = `/auth?mode=signup&returnTo=${encodeURIComponent(returnTo)}`;
   const enrollLabel = courseIsFree
     ? t("publicCourses.enrollFree")
     : pricingReady && hasPaidPrice
@@ -561,6 +562,21 @@ export function CreatorCourseDetail({
     } catch {
       setCheckoutError("publicCourses.enrollError");
       setIsEnrollingFree(false);
+    }
+  }
+
+  // Every other buy button on the page (the teacher's sales blocks) does what
+  // the buy card's main button does. They used to call handleCheckout alone,
+  // which does nothing for a visitor, a free course or an enrolled learner.
+  function handleCardAction() {
+    if (authStatus !== "authenticated") {
+      router.push(signupHref);
+    } else if (viewerIsLearner) {
+      router.push(classroomHref);
+    } else if (canEnrollFree) {
+      void handleFreeEnrollment();
+    } else {
+      void handleCheckout();
     }
   }
 
@@ -685,7 +701,7 @@ export function CreatorCourseDetail({
           blocks={landing.blocks}
           template={landing.template}
           priceLabel={priceLabel}
-          onEnrol={handleCheckout}
+          onEnrol={handleCardAction}
         />
 
         {learningOutcomes.length > 0 ? (
@@ -777,7 +793,9 @@ export function CreatorCourseDetail({
                   className="button-outline w-fit px-3.5 py-2 text-xs"
                 >{t("publicCourses.previewResource")}</a>
               ) : null}
-              {!previewLessonRawExternalUrl && previewVideoSource !== "upload" ? (
+              {/* A note for the teacher about their own empty preview; a buyer
+                  has nothing to attach. */}
+              {viewerOwnsCourse && !previewLessonRawExternalUrl && previewVideoSource !== "upload" ? (
                 <p className="rounded-none bg-white p-4 text-xs leading-6 text-[var(--color-ink-soft)]">{t("publicCourses.previewMedia")}</p>
               ) : null}
             </div>
@@ -982,7 +1000,7 @@ export function CreatorCourseDetail({
           // depois de entrar, em vez de deixa-la na home.
           <div className="mt-6 grid gap-3">
             <Link
-              href={`/auth?mode=signup&returnTo=${encodeURIComponent(returnTo)}`}
+              href={signupHref}
               data-cta-focus
               className="button-solid w-full justify-center px-5 py-2.5 text-sm"
             >

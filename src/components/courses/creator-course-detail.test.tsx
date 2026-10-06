@@ -110,8 +110,11 @@ vi.mock("@/lib/payments/checkout", () => ({
   startCourseCheckout: vi.fn(),
 }));
 
+// The teacher's sales blocks: one button wired to onEnrol, like their CTA block.
 vi.mock("@/components/courses/course-landing-blocks", () => ({
-  CourseLandingBlocks: () => null,
+  CourseLandingBlocks: ({ onEnrol }: { onEnrol?: () => void }) => (
+    <button type="button" onClick={onEnrol}>Sales block CTA</button>
+  ),
 }));
 
 vi.mock("@/components/courses/course-social-proof", () => ({
@@ -430,6 +433,86 @@ const launchOffer = {
 function withOffers(offers: object[] = [launchOffer]) {
   vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ offers }) })));
 }
+
+// The sales blocks' button called checkout alone: for a visitor, a free course
+// or an enrolled learner it did nothing at all.
+describe("CreatorCourseDetail: the sales-page button does what the buy card does", () => {
+  const salesCta = () => screen.getByRole("button", { name: "Sales block CTA" });
+
+  it("a visitor goes to sign up and comes back to this course, like the card's link", async () => {
+    render(<CreatorCourseDetail courseIdOverride="course-1" />);
+    const cardLink = await screen.findByRole("link", { name: "Enroll — $149.00" });
+
+    fireEvent.click(salesCta());
+
+    expect(fixtures.router.push).toHaveBeenCalledWith("/auth?mode=signup&returnTo=%2Fcourses%2Fcourse-1");
+    expect(fixtures.router.push).toHaveBeenCalledWith(cardLink.getAttribute("href"));
+    expect(startCourseCheckout).not.toHaveBeenCalled();
+  });
+
+  it("a free course enrolls and opens the classroom", async () => {
+    fixtures.auth.status = "authenticated"; fixtures.auth.user = { uid: "buyer" };
+    Object.assign(fixtures.course, { paymentType: "free", priceAmountMinor: 0 });
+    withOffers([]);
+    render(<CreatorCourseDetail courseIdOverride="course-1" />);
+    await screen.findByRole("button", { name: "Enroll free" });
+
+    fireEvent.click(salesCta());
+
+    await waitFor(() => expect(fixtures.router.push).toHaveBeenCalledWith("/learn/courses/course-1"));
+    expect(enrollInFreeCreatorCourse).toHaveBeenCalledWith("course-1");
+    expect(startCourseCheckout).not.toHaveBeenCalled();
+  });
+
+  it("an enrolled learner goes to the classroom", async () => {
+    fixtures.auth.status = "authenticated"; fixtures.auth.user = { uid: "student-1" };
+    enrollmentState.current = { status: "active" };
+    try {
+      render(<CreatorCourseDetail courseIdOverride="course-1" />);
+      await screen.findAllByRole("link", { name: "Continue learning" });
+
+      fireEvent.click(salesCta());
+
+      expect(fixtures.router.push).toHaveBeenCalledWith("/learn/courses/course-1");
+      expect(startCourseCheckout).not.toHaveBeenCalled();
+    } finally {
+      enrollmentState.current = null;
+    }
+  });
+
+  it("a signed-in buyer of a paid course still opens checkout", async () => {
+    fixtures.auth.status = "authenticated"; fixtures.auth.user = { uid: "buyer" };
+    render(<CreatorCourseDetail courseIdOverride="course-1" />);
+    await screen.findAllByText("$149.00");
+
+    fireEvent.click(salesCta());
+
+    await waitFor(() => expect(startCourseCheckout).toHaveBeenCalledWith("course-1", {}));
+    expect(fixtures.router.push).not.toHaveBeenCalled();
+  });
+});
+
+// "Preview media can be attached by the educator..." is a note to the teacher.
+describe("CreatorCourseDetail: the empty-preview note", () => {
+  it.each([
+    ["a visitor", null, false],
+    ["a signed-in buyer", { uid: "buyer" }, false],
+    ["the course owner", { uid: "teacher-1" }, true],
+  ])("%s: shown only to the owner", async (_who, user, shown) => {
+    vi.mocked(getLessonContentDoc).mockResolvedValue(null);
+    if (user) { fixtures.auth.status = "authenticated"; fixtures.auth.user = user; }
+    const course = fixtures.course as TeacherCourse;
+    course.freePreviewLessonId = "lesson-1";
+    try {
+      render(<CreatorCourseDetail courseIdOverride="course-1" />);
+      await screen.findAllByText("$149.00");
+      expect(screen.getByRole("heading", { name: "Why focus breaks" })).toBeInTheDocument();
+      expect(Boolean(screen.queryByText(/Preview media can be attached/))).toBe(shown);
+    } finally {
+      delete course.freePreviewLessonId;
+    }
+  });
+});
 
 describe("permanent checkout", () => {
   it("shows identity and one purchase card without loading sales content", async () => {

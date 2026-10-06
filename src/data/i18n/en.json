@@ -504,6 +504,7 @@
       "plansFees": "Plans & fees",
       "payoutsTax": "Payouts & tax",
       "billing": "Billing",
+      "myPurchases": "My purchases",
       "reports": "Reports",
       "earnings": "Earnings",
       "verification": "Verification"
@@ -5017,14 +5018,17 @@
       "received": "Payment received — opening your course...",
       "receivedDetail": "Your payment is confirmed. We are setting up your course access right now; this page opens automatically in a few seconds.",
       "required": "Enrollment required.",
-      "requiredDetail": "This private workspace opens only after payment, admin enrollment, or approved access.",
+      "requiredDetail": "You don't have access to this course yet.",
       "inactive": "Course access is inactive.",
       "inactiveDetail": "This enrollment is {status}. Private lessons reopen only after payment, admin approval, or restored access.",
       "missing": "Course record not found.",
       "missingDetail": "The enrollment exists, but the course record is unavailable or restricted.",
       "eyebrow": "Creator course access",
       "back": "Back to My Learning",
-      "marketplace": "Open marketplace"
+      "marketplace": "Open marketplace",
+      "seeCourse": "See the course",
+      "seeCourseAndBuy": "See the course and buy",
+      "wrongAccount": "Signed in with the wrong account? Sign out"
     },
     "enrollmentStatus": {
       "active": "active",

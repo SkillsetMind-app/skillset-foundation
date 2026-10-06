@@ -6,7 +6,7 @@ import { I18nProvider, useTranslation } from "@/components/i18n/i18n-provider";
 import type { Order } from "@/domain/order";
 
 const mocks = vi.hoisted(() => ({
-  user: { uid: "learner-1" }, tab: "overview", orders: [] as Order[], profile: { currentPlanId: "free", stripeCustomerId: "customer-test" },
+  user: { uid: "learner-1", roles: ["student"] }, tab: "overview", orders: [] as Order[], profile: { currentPlanId: "free", stripeCustomerId: "customer-test" },
   refund: vi.fn(), portal: vi.fn(), replace: vi.fn(),
 }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn(), replace: mocks.replace }), useSearchParams: () => new URLSearchParams({ tab: mocks.tab }) }));
@@ -28,7 +28,7 @@ const order: Order = {
   amountMinor: 1950, currency: "USD", platformFeeBps: 1000, status: "paid", provider: "stripe", checkoutSessionId: null, paymentIntentId: null,
   createdAt: "2026-09-01T12:00:00Z", receiptUrl: "https://example.com/receipt",
 };
-beforeEach(() => { vi.clearAllMocks(); mocks.tab = "overview"; mocks.orders = []; mocks.refund.mockResolvedValue(undefined); mocks.portal.mockResolvedValue(undefined); });
+beforeEach(() => { vi.clearAllMocks(); mocks.tab = "overview"; mocks.orders = []; mocks.user.roles = ["student"]; mocks.refund.mockResolvedValue(undefined); mocks.portal.mockResolvedValue(undefined); });
 afterEach(cleanup);
 
 describe("billing locale with real dictionaries", () => {
@@ -88,6 +88,33 @@ describe("billing locale with real dictionaries", () => {
     await waitFor(() => expect(screen.getByRole("alert").textContent).toContain("No pudimos abrir el portal"));
     expect(screen.queryByText("private transport details")).toBeNull();
     expect(screen.getByRole("button", { name: "Abrir el portal de Stripe" })).toHaveProperty("disabled", false);
+  });
+
+  // A learner saw the creator's plan: a Subscription tab and "Active
+  // subscription: Free" next to the courses they bought.
+  it("a learner sees what they bought, with no creator plan", () => {
+    mount(<BillingTabs />);
+    expect(screen.queryByRole("button", { name: "Suscripción" })).toBeNull();
+    expect(screen.queryByText("Suscripción activa")).toBeNull();
+    expect(screen.queryByText(/suscripción Free/i)).toBeNull();
+    expect(screen.getByText("Cursos comprados")).toBeTruthy();
+    cleanup();
+    // An old link straight to the plans tab lands on the overview instead.
+    mocks.tab = "subscriptions";
+    mount(<BillingTabs />);
+    expect(screen.queryByText("Plan actual:")).toBeNull();
+    expect(screen.getByText("Gasto total")).toBeTruthy();
+  });
+
+  it("a teacher keeps the Subscription tab and the plan line", () => {
+    mocks.user.roles = ["student", "teacher"];
+    mount(<BillingTabs />);
+    expect(screen.getByRole("button", { name: "Suscripción" })).toBeTruthy();
+    expect(screen.getByText("Suscripción activa")).toBeTruthy();
+    cleanup();
+    mocks.tab = "subscriptions";
+    mount(<BillingTabs />);
+    expect(screen.getByText("Plan actual:")).toBeTruthy();
   });
 
   it("translates plans and their existing pricing highlights without changing cycle", () => {

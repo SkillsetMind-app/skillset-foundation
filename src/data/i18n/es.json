@@ -504,6 +504,7 @@
       "plansFees": "Planes y tarifas",
       "payoutsTax": "Pagos e impuestos",
       "billing": "Facturación",
+      "myPurchases": "Mis compras",
       "reports": "Informes",
       "earnings": "Ingresos",
       "verification": "Verificación"
@@ -5017,14 +5018,17 @@
       "received": "Pago recibido: abriendo tu curso...",
       "receivedDetail": "Tu pago está confirmado. Estamos preparando tu acceso al curso; esta página se abrirá automáticamente en unos segundos.",
       "required": "Necesitas una matrícula.",
-      "requiredDetail": "Este espacio privado solo se abre después del pago, de una matrícula administrativa o de la aprobación del acceso.",
+      "requiredDetail": "Todavía no tienes acceso a este curso.",
       "inactive": "El acceso al curso está inactivo.",
       "inactiveDetail": "Esta matrícula está {status}. Las clases privadas se reabren solo después del pago, de la aprobación administrativa o de la restauración del acceso.",
       "missing": "No se encontró el registro del curso.",
       "missingDetail": "La matrícula existe, pero el registro del curso no está disponible o tiene acceso restringido.",
       "eyebrow": "Acceso al curso",
       "back": "Volver a Mi aprendizaje",
-      "marketplace": "Abrir catálogo"
+      "marketplace": "Abrir catálogo",
+      "seeCourse": "Ver el curso",
+      "seeCourseAndBuy": "Ver el curso y comprar",
+      "wrongAccount": "¿Entraste con otra cuenta? Salir"
     },
     "enrollmentStatus": {
       "active": "activa",

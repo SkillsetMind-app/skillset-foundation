@@ -20,18 +20,20 @@ const mocks = vi.hoisted(() => ({
   config: vi.fn(), enrollment: vi.fn(), enrollments: vi.fn(), course: vi.fn(),
   messages: vi.fn(), send: vi.fn(), events: vi.fn(), rsvp: vi.fn(), saveRsvp: vi.fn(),
   wishlist: vi.fn(), published: vi.fn(), remove: vi.fn(), leaderboard: vi.fn(),
+  publicCourse: vi.fn(), signOut: vi.fn(),
 }));
 vi.mock("next/navigation", () => ({
   useRouter: () => mocks.router, useSearchParams: () => mocks.params,
   usePathname: () => "/learn/messages",
 }));
-vi.mock("@/components/auth/auth-provider", () => ({ useAuth: () => ({ user: mocks.user }) }));
+vi.mock("@/components/auth/auth-provider", () => ({ useAuth: () => ({ user: mocks.user, signOut: mocks.signOut }) }));
 vi.mock("@/lib/supabase/config", () => ({ getSupabaseClientConfig: mocks.config }));
 vi.mock("@/lib/data/enrollments", () => ({ subscribeToEnrollment: mocks.enrollment, subscribeToUserEnrollments: mocks.enrollments }));
 vi.mock("@/lib/data/teacher-courses", () => ({ subscribeToTeacherCourse: mocks.course }));
 vi.mock("@/lib/data/published-courses", () => ({
   teacherCourseToLearningCourse: (course: unknown) => course,
   subscribeToPublishedTeacherCourses: mocks.published,
+  subscribeToViewableTeacherCourse: mocks.publicCourse,
   teacherCourseToCourseCard: (course: unknown) => course,
 }));
 vi.mock("@/lib/data/catalog", () => ({ getFeaturedCourseCards: () => [] }));
@@ -91,6 +93,8 @@ beforeEach(() => {
   mocks.wishlist.mockImplementation((_uid, next) => { next([]); return () => {}; });
   mocks.published.mockImplementation((next) => { next([]); return () => {}; });
   mocks.leaderboard.mockImplementation((_window, next) => { next(null); return () => {}; });
+  mocks.publicCourse.mockImplementation((_ref, next) => { next(null); return () => {}; });
+  mocks.signOut.mockResolvedValue(undefined);
 });
 afterEach(() => { cleanup(); vi.useRealTimers(); });
 
@@ -120,6 +124,40 @@ describe("learner wave 2 with real provider and dictionaries", () => {
     expect(screen.getByRole("heading", { name: "Necesitas una matrícula." })).toBeVisible();
     expect(screen.queryByRole("link", { name: "Abrir catálogo" })).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Volver a Mi aprendizaje" })).toBeVisible();
+  });
+
+  // "Enrollment required" offered only My Learning and the marketplace: no way
+  // to buy this course, and no way out of the wrong account.
+  it.each([
+    ["free", { paymentType: "free", priceAmountMinor: 0 }, "Ver el curso", "See the course"],
+    ["paid", { paymentType: "one_time", priceAmountMinor: 4900 }, "Ver el curso y comprar", "See the course and buy"],
+  ])("without access to a %s course, the main button opens its page", (_kind, price, es, en) => {
+    mocks.publicCourse.mockImplementation((_ref, next) => {
+      next({ id: "course-es", currency: "USD", ...price });
+      return () => {};
+    });
+    show(<CreatorCourseWorkspace initialCourseId="course-es" />);
+
+    expect(screen.getByText("Todavía no tienes acceso a este curso.")).toBeVisible();
+    expect(screen.queryByText(/espacio privado/)).not.toBeInTheDocument();
+    const main = screen.getByRole("link", { name: es });
+    expect(main).toHaveAttribute("href", "/courses/course-es");
+    expect(main).toHaveClass("button-solid");
+    expect(screen.getByRole("link", { name: "Volver a Mi aprendizaje" })).toHaveClass("button-outline");
+    expect(mocks.publicCourse).toHaveBeenCalledWith("course-es", expect.any(Function), expect.any(Function));
+    changeLanguage();
+    expect(screen.getByRole("link", { name: en })).toHaveAttribute("href", "/courses/course-es");
+    expect(screen.getByText("You don't have access to this course yet.")).toBeVisible();
+  });
+
+  it("without access, signing out stays on this page, which asks to sign in again", () => {
+    show(<CreatorCourseWorkspace initialCourseId="course-es" />);
+
+    fireEvent.click(screen.getByRole("button", { name: "¿Entraste con otra cuenta? Salir" }));
+
+    expect(mocks.signOut).toHaveBeenCalledTimes(1);
+    expect(mocks.router.push).not.toHaveBeenCalled();
+    expect(mocks.router.replace).not.toHaveBeenCalled();
   });
 
   it("hands the enrollment it already has to the classroom instead of fetching it twice", () => {
