@@ -107,7 +107,7 @@ export function ManagedCoursePanel() {
   }
 
   return (
-    <section className="rounded-none border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
+    <section className="rounded-lg border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
@@ -120,7 +120,7 @@ export function ManagedCoursePanel() {
             {t(`${copy}.description`)}
           </p>
         </div>
-        {!isLoading && !loadError ? <span className="rounded-none bg-[var(--color-surface-soft)] px-3 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-primary)]">{countLabel("courses", courses.length)}</span> : null}
+        {!isLoading && !loadError ? <span className="rounded-md bg-[var(--color-surface-soft)] px-3 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-primary)]">{countLabel("courses", courses.length)}</span> : null}
       </div>
 
       {loadError ? <InlineAlert tone="error" className="mt-5">{t(`${copy}.loadError`)}</InlineAlert> : null}
@@ -133,12 +133,12 @@ export function ManagedCoursePanel() {
             {t(`${copy}.loading`)}
           </p>
         ) : courses.length === 0 ? (
-          loadError ? null : <p className="rounded-none border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">{t(`${copy}.empty`)}</p>
+          loadError ? null : <p className="rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">{t(`${copy}.empty`)}</p>
         ) : (
           courses.map((course) => (
             <article
               key={course.id}
-              className="rounded-none border fine-rule bg-[var(--color-surface-soft)] p-4"
+              className="rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4"
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">
@@ -155,7 +155,7 @@ export function ManagedCoursePanel() {
                 <div className="flex flex-col items-end gap-2">
                   <StatusChip status={course.status} />
                   {course.featured ? (
-                    <span className="rounded-none bg-[var(--color-primary)] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--color-base)]">
+                    <span className="rounded-md bg-[var(--color-primary)] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--color-base)]">
                       {t(`${copy}.featured`)}
                     </span>
                   ) : null}

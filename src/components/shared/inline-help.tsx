@@ -119,7 +119,7 @@ export function InlineHelp({ topic, children, href, className }: InlineHelpProps
         aria-controls={dialogId}
         aria-expanded={open}
         onClick={openHelp}
-        className="grid size-6 place-items-center rounded-none text-[var(--color-primary)] transition-colors hover:bg-[var(--color-surface-soft)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary-light)]"
+        className="grid size-6 place-items-center rounded-full text-[var(--color-primary)] transition-colors hover:bg-[var(--color-surface-soft)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary-light)]"
       >
         <CircleHelp aria-hidden="true" size={16} strokeWidth={1.9} />
       </button>
@@ -156,7 +156,7 @@ export function InlineHelp({ topic, children, href, className }: InlineHelpProps
                     autoFocus
                     onClick={closeHelp}
                     aria-label={t("platform.help.contextual.close")}
-                    className="grid size-9 shrink-0 place-items-center rounded-none text-[var(--color-ink-muted)] transition-colors hover:bg-[var(--color-surface-soft)] hover:text-[var(--color-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary-light)]"
+                    className="grid size-9 shrink-0 place-items-center rounded-full text-[var(--color-ink-muted)] transition-colors hover:bg-[var(--color-surface-soft)] hover:text-[var(--color-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary-light)]"
                   >
                     <X aria-hidden="true" size={18} strokeWidth={1.9} />
                   </button>

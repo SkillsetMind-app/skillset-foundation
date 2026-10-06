@@ -27,7 +27,7 @@ const sizeClass: Record<ButtonSize, string> = {
 };
 
 const base =
-  "inline-flex items-center justify-center gap-2 rounded-[var(--radius-md)] font-semibold transition disabled:cursor-not-allowed disabled:opacity-50";
+  "inline-flex items-center justify-center gap-2 rounded-md font-semibold transition disabled:cursor-not-allowed disabled:opacity-50";
 
 /**
  * A forma em texto, para quem precisa de <Link> vestido de botão — 40 arquivos

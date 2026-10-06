@@ -242,7 +242,7 @@ export function CommunityFeed({
 
   if (!canRead) {
     return (
-      <section className="rounded-none border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
+      <section className="rounded-lg border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
         <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
           {t("learn.community.accessRequired")}
         </p>
@@ -253,7 +253,7 @@ export function CommunityFeed({
           {t("learn.community.gateDetails")}
         </p>
         {error ? (
-          <p className="mt-4 rounded-none border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
+          <p className="mt-4 rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
             {t(error)}
           </p>
         ) : null}
@@ -277,7 +277,7 @@ export function CommunityFeed({
             </h2>
           </div>
           {liveChip ? (
-            <span className="inline-flex items-center gap-1.5 rounded-none bg-[rgba(22,163,74,0.1)] px-3 py-1 text-xs font-bold text-[rgb(21,128,61)] lg:hidden">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-[rgba(22,163,74,0.1)] px-3 py-1 text-xs font-bold text-[rgb(21,128,61)] lg:hidden">
               <Radio size={12} aria-hidden /> {liveChip}
             </span>
           ) : null}
@@ -305,7 +305,7 @@ export function CommunityFeed({
                 role="tab"
                 aria-selected={filter === id}
                 onClick={() => setFilter(id)}
-                className={`min-h-11 rounded-none px-4 text-sm font-semibold transition ${
+                className={`min-h-11 rounded-md px-4 text-sm font-semibold transition ${
                   filter === id
                     ? "bg-[var(--color-primary)] text-[var(--color-base)]"
                     : "text-[var(--color-ink-soft)] hover:bg-[var(--color-surface-soft)]"
@@ -340,7 +340,7 @@ export function CommunityFeed({
         ) : null}
 
         {error ? (
-          <p className="rounded-none border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
+          <p className="rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
             {t(error)}
           </p>
         ) : null}
@@ -350,7 +350,7 @@ export function CommunityFeed({
             <button
               type="button"
               onClick={showPending}
-              className="min-h-11 rounded-none bg-[var(--color-primary)] px-5 text-sm font-bold text-[var(--color-base)] shadow-[var(--shadow-soft)]"
+              className="min-h-11 rounded-md bg-[var(--color-primary)] px-5 text-sm font-bold text-[var(--color-base)] shadow-[var(--shadow-soft)]"
             >
               {t(`learn.community.${feed.pending === 1 ? "newPostOne" : "newPostMany"}`).replace("{count}", () => String(feed.pending))}
             </button>
@@ -361,7 +361,7 @@ export function CommunityFeed({
           {!feed.ready ? (
             <p className="text-sm text-[var(--color-ink-soft)]">{t("learn.community.feedLoading")}</p>
           ) : shownPosts.length === 0 ? (
-            <p className="rounded-none border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-7 text-[var(--color-ink-soft)]">
+            <p className="rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-7 text-[var(--color-ink-soft)]">
               {t(feed.visible.length === 0 ? "learn.community.empty" : "learn.community.emptyFilter")}
             </p>
           ) : (
@@ -394,7 +394,7 @@ export function CommunityFeed({
       <aside className="grid gap-3">
         <LiveCard live={nextLive} now={now} locale={locale} />
 
-        <section className="rounded-none border border-[var(--color-line)] bg-white p-4 shadow-[var(--shadow-soft)]">
+        <section className="rounded-lg border border-[var(--color-line)] bg-white p-4 shadow-[var(--shadow-soft)]">
           <div className="flex items-center gap-2">
             <span className="flex -space-x-2">
               {online.slice(0, 3).map((member) => (
@@ -411,7 +411,7 @@ export function CommunityFeed({
         </section>
 
         {isNewHere ? (
-          <section className="rounded-none border border-[rgba(201,154,70,0.35)] bg-[rgba(201,154,70,0.08)] p-4">
+          <section className="rounded-lg border border-[rgba(201,154,70,0.35)] bg-[rgba(201,154,70,0.08)] p-4">
             <p className="text-sm font-bold text-[var(--color-ink)]">{t("learn.community.sayHi")}</p>
             <p className="mt-1 text-xs leading-5 text-[var(--color-ink-soft)]">
               {t("learn.community.sayHiDetails").replace("{name}", () => instructorLabel)}
@@ -424,7 +424,7 @@ export function CommunityFeed({
             type="button"
             onClick={() => setAsideView((view) => (view === "members" ? "none" : "members"))}
             aria-expanded={asideView === "members"}
-            className="min-h-11 rounded-none px-3 text-left text-[var(--color-ink)] hover:bg-[var(--color-surface-soft)]"
+            className="min-h-11 rounded-md px-3 text-left text-[var(--color-ink)] hover:bg-[var(--color-surface-soft)]"
           >
             {t("learn.community.members").replace("{count}", () => String(members.length))}
           </button>
@@ -432,20 +432,20 @@ export function CommunityFeed({
             type="button"
             onClick={() => setAsideView((view) => (view === "rules" ? "none" : "rules"))}
             aria-expanded={asideView === "rules"}
-            className="min-h-11 rounded-none px-3 text-left text-[var(--color-ink)] hover:bg-[var(--color-surface-soft)]"
+            className="min-h-11 rounded-md px-3 text-left text-[var(--color-ink)] hover:bg-[var(--color-surface-soft)]"
           >
             {t("learn.community.rules")}
           </button>
           <Link
             href={pathname.replace(/\/community(\/.*)?$/, "") + "/lives"}
-            className="flex min-h-11 items-center rounded-none px-3 text-[var(--color-ink)] hover:bg-[var(--color-surface-soft)]"
+            className="flex min-h-11 items-center rounded-md px-3 text-[var(--color-ink)] hover:bg-[var(--color-surface-soft)]"
           >
             {t("learn.community.recordings")}
           </Link>
         </nav>
 
         {asideView === "members" ? (
-          <ul className="grid gap-2 rounded-none border border-[var(--color-line)] bg-white p-4 text-sm">
+          <ul className="grid gap-2 rounded-lg border border-[var(--color-line)] bg-white p-4 text-sm">
             {members.length === 0 ? (
               <li className="text-[var(--color-ink-soft)]">{t("learn.community.noMembers")}</li>
             ) : (
@@ -460,7 +460,7 @@ export function CommunityFeed({
         ) : null}
 
         {asideView === "rules" ? (
-          <section className="rounded-none border border-[var(--color-line)] bg-white p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
+          <section className="rounded-lg border border-[var(--color-line)] bg-white p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
             <p>{space.description}</p>
             <ul className="mt-3 list-disc pl-5">
               <li>{t("learn.community.rule1")}</li>
@@ -560,12 +560,12 @@ function Composer({
 
   if (mode === "idle") {
     return (
-      <div className="flex flex-wrap items-center gap-2 rounded-none border border-[var(--color-line)] bg-white p-3 shadow-[var(--shadow-soft)]">
+      <div className="flex flex-wrap items-center gap-2 rounded-lg border border-[var(--color-line)] bg-white p-3 shadow-[var(--shadow-soft)]">
         <Avatar name={user.displayName ?? ""} small />
         <button
           type="button"
           onClick={() => setMode("share")}
-          className="min-h-11 flex-1 rounded-none bg-[var(--color-surface-soft)] px-4 text-left text-sm text-[var(--color-ink-muted)]"
+          className="min-h-11 flex-1 rounded-md bg-[var(--color-surface-soft)] px-4 text-left text-sm text-[var(--color-ink-muted)]"
         >
           {t("learn.community.composer.prompt")}
         </button>
@@ -602,7 +602,7 @@ function Composer({
     <form
       onSubmit={handleSubmit}
       aria-label={t(`learn.community.composer.${modeKey}`)}
-      className="grid gap-3 rounded-none border border-[var(--color-primary)] bg-white p-4 shadow-[var(--shadow-soft)]"
+      className="grid gap-3 rounded-lg border border-[var(--color-primary)] bg-white p-4 shadow-[var(--shadow-soft)]"
     >
       <div className="flex items-center gap-2">
         <Avatar name={user.displayName ?? ""} small />
@@ -653,13 +653,13 @@ function Composer({
       </label>
 
       {mode === "ask" && lesson ? (
-        <span className="inline-flex w-fit items-center gap-1 rounded-none bg-[var(--color-surface-soft)] px-3 py-1 text-xs font-semibold text-[var(--color-ink)]">
+        <span className="inline-flex w-fit items-center gap-1 rounded-full bg-[var(--color-surface-soft)] px-3 py-1 text-xs font-semibold text-[var(--color-ink)]">
           {t("learn.community.composer.aboutLesson").replace("{number}", () => String(lesson.number))}
           <button
             type="button"
             onClick={() => setLesson(null)}
             aria-label={t("learn.community.composer.removeLesson").replace("{number}", () => String(lesson.number))}
-            className="ml-1 rounded-none p-0.5 hover:bg-white"
+            className="ml-1 rounded-full p-0.5 hover:bg-white"
           >
             <X size={12} aria-hidden />
           </button>
@@ -667,7 +667,7 @@ function Composer({
       ) : null}
 
       {similar.length > 0 ? (
-        <div className="rounded-none border border-[rgba(22,163,74,0.35)] bg-[rgba(22,163,74,0.06)] p-3 text-sm">
+        <div className="rounded-md border border-[rgba(22,163,74,0.35)] bg-[rgba(22,163,74,0.06)] p-3 text-sm">
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-[rgb(21,128,61)]">
             {t("learn.community.composer.similar")}
           </p>
@@ -789,7 +789,7 @@ function FeedCard({
   return (
     <article
       aria-label={post.title ?? post.body.slice(0, 60)}
-      className={`rounded-none border border-[var(--color-line)] bg-white p-4 shadow-[var(--shadow-soft)] ${
+      className={`rounded-lg border border-[var(--color-line)] bg-white p-4 shadow-[var(--shadow-soft)] ${
         fromInstructor ? "border-l-4 border-l-[var(--color-primary)]" : ""
       }`}
     >
@@ -810,7 +810,7 @@ function FeedCard({
         ) : null}
         {kind === "question" ? (
           <span
-            className={`ml-auto inline-flex items-center gap-1 rounded-none px-2 py-0.5 font-bold ${
+            className={`ml-auto inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-bold ${
               answered
                 ? "bg-[rgba(22,163,74,0.1)] text-[rgb(21,128,61)]"
                 : "bg-[var(--color-surface-soft)] text-[var(--color-ink-soft)]"
@@ -855,14 +855,14 @@ function FeedCard({
           disabled={!currentUser || isOwn || likePending}
           aria-pressed={liked}
           aria-label={t("learn.community.card.clap").replace("{count}", () => String(likes.count))}
-          className={`min-h-11 rounded-none px-3 ${liked ? "bg-[var(--color-surface-soft)] text-[var(--color-ink)]" : "hover:bg-[var(--color-surface-soft)]"} disabled:opacity-70`}
+          className={`min-h-11 rounded-md px-3 ${liked ? "bg-[var(--color-surface-soft)] text-[var(--color-ink)]" : "hover:bg-[var(--color-surface-soft)]"} disabled:opacity-70`}
         >
           👏 {likes.count}
         </button>
         <button
           type="button"
           onClick={() => setReplyOpen((open) => !open)}
-          className="min-h-11 rounded-none px-3 hover:bg-[var(--color-surface-soft)]"
+          className="min-h-11 rounded-md px-3 hover:bg-[var(--color-surface-soft)]"
         >
           {t("learn.community.card.reply")}
         </button>
@@ -870,7 +870,7 @@ function FeedCard({
           <button
             type="button"
             onClick={onOpen}
-            className="min-h-11 rounded-none px-3 hover:bg-[var(--color-surface-soft)]"
+            className="min-h-11 rounded-md px-3 hover:bg-[var(--color-surface-soft)]"
           >
             {t("learn.community.card.viewReplies").replace("{count}", () => String(comments.length))}
           </button>
@@ -885,7 +885,7 @@ function FeedCard({
             return (
               <li
                 key={reply.id}
-                className={`flex gap-2 rounded-none p-2 text-sm ${
+                className={`flex gap-2 rounded-md p-2 text-sm ${
                   isAnswer ? "bg-[rgba(22,163,74,0.08)]" : ""
                 }`}
               >
@@ -947,7 +947,7 @@ function LiveCard({ live, now, locale }: { live: CourseEvent | null; now: number
   const { t } = useTranslation();
   if (!live) {
     return (
-      <section className="rounded-none border border-[var(--color-line)] bg-white p-4 text-sm text-[var(--color-ink-soft)] shadow-[var(--shadow-soft)]">
+      <section className="rounded-lg border border-[var(--color-line)] bg-white p-4 text-sm text-[var(--color-ink-soft)] shadow-[var(--shadow-soft)]">
         {t("learn.community.live.none")}
       </section>
     );
@@ -958,7 +958,7 @@ function LiveCard({ live, now, locale }: { live: CourseEvent | null; now: number
   return (
     <section
       aria-label={t("learn.community.live.next")}
-      className={`rounded-none border p-4 shadow-[var(--shadow-soft)] ${
+      className={`rounded-lg border p-4 shadow-[var(--shadow-soft)] ${
         running
           ? "border-[rgba(22,163,74,0.35)] bg-[rgba(22,163,74,0.06)]"
           : "border-[var(--color-line)] bg-white"

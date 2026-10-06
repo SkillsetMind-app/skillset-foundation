@@ -281,7 +281,7 @@ export function ProfileSettingsPanel() {
       </p>
 
       <form className="mt-6 grid grid-cols-1 gap-4" onSubmit={handleSubmit}>
-        <div className="flex flex-col gap-4 rounded-none border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-4 sm:flex-row sm:items-center">
+        <div className="flex flex-col gap-4 rounded-lg border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-4 sm:flex-row sm:items-center">
           <UserAvatar
             name={displayName || user?.email}
             photoURL={photoURL}
@@ -295,7 +295,7 @@ export function ProfileSettingsPanel() {
               {t("accountProfile.photo.hint")}
             </p>
             <label
-              className={`relative mt-3 inline-flex min-h-11 w-fit cursor-pointer items-center gap-2 rounded-none border border-dashed border-[var(--color-line)] bg-white px-4 py-2.5 text-sm font-semibold text-[var(--color-primary)] transition-colors hover:border-[var(--color-primary-light)] focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[var(--color-primary)] ${
+              className={`relative mt-3 inline-flex min-h-11 w-fit cursor-pointer items-center gap-2 rounded-md border border-dashed border-[var(--color-line)] bg-white px-4 py-2.5 text-sm font-semibold text-[var(--color-primary)] transition-colors hover:border-[var(--color-primary-light)] focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[var(--color-primary)] ${
                 isUploadingAvatar ? "pointer-events-none opacity-60" : ""
               }`}
             >
@@ -331,13 +331,13 @@ export function ProfileSettingsPanel() {
           <input
             value={displayName}
             onChange={(event) => setDisplayName(event.target.value)}
-            className="min-w-0 rounded-none border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
+            className="min-w-0 rounded-md border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
           />
         </label>
 
         <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
           {t("accountProfile.username")}
-          <div className="flex overflow-hidden rounded-none border border-[var(--color-line)] bg-white focus-within:border-[var(--color-primary-light)]">
+          <div className="flex overflow-hidden rounded-md border border-[var(--color-line)] bg-white focus-within:border-[var(--color-primary-light)]">
             <span className="grid place-items-center border-r border-[var(--color-line)] px-3 text-sm font-semibold text-[var(--color-ink-soft)]">
               @
             </span>
@@ -355,7 +355,7 @@ export function ProfileSettingsPanel() {
             value={bio}
             onChange={(event) => setBio(event.target.value)}
             rows={4}
-            className="min-w-0 resize-none rounded-none border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
+            className="min-w-0 resize-none rounded-md border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
           />
           <span className="text-xs font-normal text-[var(--color-ink-soft)]">
             {t("accountProfile.bioCount").replace("{count}", String(bio.trim().length))}
@@ -387,12 +387,12 @@ export function ProfileSettingsPanel() {
                         updateCredential(index, event.target.value)
                       }
                       placeholder={t("accountProfile.credentials.placeholder")}
-                      className="min-w-0 flex-1 rounded-none border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
+                      className="min-w-0 flex-1 rounded-md border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
                     />
                     <button
                       type="button"
                       onClick={() => removeCredential(index)}
-                      className="shrink-0 rounded-none border border-[var(--color-line)] px-3 py-3 text-xs font-semibold text-[var(--color-ink-soft)] hover:border-[var(--color-accent-fg)] hover:text-[var(--color-accent-fg)]"
+                      className="shrink-0 rounded-md border border-[var(--color-line)] px-3 py-3 text-xs font-semibold text-[var(--color-ink-soft)] hover:border-[var(--color-accent-fg)] hover:text-[var(--color-accent-fg)]"
                       aria-label={t("accountProfile.credentials.removeAria").replace("{number}", String(index + 1))}
                     >
                       {t("accountProfile.credentials.remove")}
@@ -412,8 +412,8 @@ export function ProfileSettingsPanel() {
             ) : null}
           </div>
 
-          <div className="flex flex-col gap-4 rounded-none border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-4 sm:flex-row sm:items-center">
-            <div className="relative grid h-16 w-32 shrink-0 place-items-center overflow-hidden rounded-none border border-[var(--color-line)] bg-white">
+          <div className="flex flex-col gap-4 rounded-lg border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-4 sm:flex-row sm:items-center">
+            <div className="relative grid h-16 w-32 shrink-0 place-items-center overflow-hidden rounded-md border border-[var(--color-line)] bg-white">
               {signatureUrl ? (
                 <Image
                   src={signatureUrl}
@@ -437,7 +437,7 @@ export function ProfileSettingsPanel() {
                 {t("accountProfile.signature.hint")}
               </p>
               <label
-                className={`relative mt-3 inline-flex min-h-11 w-fit cursor-pointer items-center gap-2 rounded-none border border-dashed border-[var(--color-line)] bg-white px-4 py-2.5 text-sm font-semibold text-[var(--color-primary)] transition-colors hover:border-[var(--color-primary-light)] focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[var(--color-primary)] ${
+                className={`relative mt-3 inline-flex min-h-11 w-fit cursor-pointer items-center gap-2 rounded-md border border-dashed border-[var(--color-line)] bg-white px-4 py-2.5 text-sm font-semibold text-[var(--color-primary)] transition-colors hover:border-[var(--color-primary-light)] focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[var(--color-primary)] ${
                   isUploadingSignature ? "pointer-events-none opacity-60" : ""
                 }`}
               >
@@ -481,7 +481,7 @@ export function ProfileSettingsPanel() {
           <select
             value={timezone}
             onChange={(event) => setTimezone(event.target.value)}
-            className="min-w-0 rounded-none border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
+            className="min-w-0 rounded-md border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
           >
             {safeTimezoneOptions.map((option) => (
               <option key={option} value={option}>
@@ -500,7 +500,7 @@ export function ProfileSettingsPanel() {
                 type="button"
                 aria-pressed={goals.includes(value)}
                 onClick={() => toggleGoal(value)}
-                className={`rounded-none border px-4 py-3 text-left text-sm font-semibold ${
+                className={`rounded-md border px-4 py-3 text-left text-sm font-semibold ${
                   goals.includes(value)
                     ? "border-[var(--color-primary)] bg-[rgba(24,58,94,0.08)] text-[var(--color-primary)]"
                     : "border-[var(--color-line)] bg-white text-[var(--color-ink-soft)]"
@@ -513,7 +513,7 @@ export function ProfileSettingsPanel() {
         </div>
 
         {error ? (
-          <p role="alert" className="rounded-none border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
+          <p role="alert" className="rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
             {formatValidationMessage(error, t)}
           </p>
         ) : null}

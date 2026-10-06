@@ -277,7 +277,7 @@ function LegalAcceptanceGate() {
 
   return (
     <div className="fixed inset-0 z-[85] grid place-items-center bg-[rgba(12,25,39,0.62)] px-4 backdrop-blur-sm">
-      <div className="modal-panel modal-panel-scroll w-full max-w-xl rounded-none border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-strong)]">
+      <div className="modal-panel modal-panel-scroll w-full max-w-xl rounded-xl border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-strong)]">
         <p className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--color-accent-fg)]">
           {t("legalAcceptance.eyebrow")}
         </p>
@@ -290,7 +290,7 @@ function LegalAcceptanceGate() {
 
         <div className="mt-5 grid gap-3">
           {needsGeneral ? <>
-          <label className="flex gap-3 rounded-none border fine-rule bg-[var(--color-surface-soft)] p-3 text-sm leading-6 text-[var(--color-ink-soft)]">
+          <label className="flex gap-3 rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-3 text-sm leading-6 text-[var(--color-ink-soft)]">
             <input
               type="checkbox"
               checked={termsAccepted}
@@ -309,7 +309,7 @@ function LegalAcceptanceGate() {
             </span>
           </label>
 
-          <label className="flex gap-3 rounded-none border fine-rule bg-[var(--color-surface-soft)] p-3 text-sm leading-6 text-[var(--color-ink-soft)]">
+          <label className="flex gap-3 rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-3 text-sm leading-6 text-[var(--color-ink-soft)]">
             <input
               type="checkbox"
               checked={privacyAccepted}
@@ -330,7 +330,7 @@ function LegalAcceptanceGate() {
           </> : null}
 
           {needsTeacher ? (
-            <label className="flex gap-3 rounded-none border fine-rule bg-[var(--color-surface-soft)] p-3 text-sm leading-6 text-[var(--color-ink-soft)]">
+            <label className="flex gap-3 rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-3 text-sm leading-6 text-[var(--color-ink-soft)]">
               <input
                 type="checkbox"
                 checked={teacherTermsAccepted}
@@ -361,7 +361,7 @@ function LegalAcceptanceGate() {
         </div>
 
         {error ? (
-          <p className="mt-4 rounded-none border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
+          <p className="mt-4 rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
             {t(error)}
           </p>
         ) : null}

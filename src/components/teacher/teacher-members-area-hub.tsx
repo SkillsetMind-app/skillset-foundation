@@ -70,7 +70,7 @@ export function TeacherMembersAreaHub() {
 
       <section aria-labelledby="members-products-title">
         <div
-          className="mb-5 inline-grid grid-cols-2 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-1"
+          className="mb-5 inline-grid grid-cols-2 rounded-md border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-1"
           role="radiogroup"
           aria-label={t("teacherMembers.contentType")}
         >
@@ -85,7 +85,7 @@ export function TeacherMembersAreaHub() {
                   nextView === "communities" ? "/teach/members?view=communities" : "/teach/members"
                 )
               }
-              className={`min-h-11 rounded-[var(--radius-xs)] px-4 text-sm font-semibold transition-colors ${
+              className={`min-h-11 rounded-sm px-4 text-sm font-semibold transition-colors ${
                 view === nextView
                   ? "bg-[var(--color-primary)] text-[var(--color-on-primary)]"
                   : "text-[var(--color-ink-soft)] hover:text-[var(--color-ink)]"
@@ -114,7 +114,7 @@ export function TeacherMembersAreaHub() {
             ))
           ) : visibleCourses.length === 0 ? (
             <div className="grid place-items-center px-5 py-14 text-center">
-              <span className="grid size-11 place-items-center rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-surface)] text-[var(--color-primary)]">
+              <span className="grid size-11 place-items-center rounded-md border border-[var(--color-line)] bg-[var(--color-surface)] text-[var(--color-primary)]">
                 <BookOpen aria-hidden="true" size={20} strokeWidth={1.8} />
               </span>
               <h3 className="mt-4 text-lg font-semibold text-[var(--color-ink)]">
@@ -131,7 +131,7 @@ export function TeacherMembersAreaHub() {
                 className="grid gap-4 bg-[var(--color-surface)] px-3 py-4 transition-colors hover:bg-[var(--color-surface-soft)] sm:px-4 lg:grid-cols-[minmax(0,1fr)_minmax(180px,0.45fr)_auto] lg:items-center"
               >
                 <div className="flex min-w-0 items-center gap-3">
-                  <div className="grid aspect-video w-24 shrink-0 place-items-center overflow-hidden rounded-[var(--radius-xs)] border border-[var(--color-line)] bg-[var(--color-surface-soft)] text-[var(--color-primary)]">
+                  <div className="grid aspect-video w-24 shrink-0 place-items-center overflow-hidden rounded-md border border-[var(--color-line)] bg-[var(--color-surface-soft)] text-[var(--color-primary)]">
                     {course.coverImageUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
