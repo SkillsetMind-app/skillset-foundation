@@ -1,9 +1,11 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
 import { ProtectedSurface } from "@/components/auth/protected-surface";
 import { PlatformShell } from "@/components/platform/platform-shell";
 import { ActivationReturnLink } from "@/components/teacher/activation-return-link";
 import { getServerTranslation } from "@/lib/i18n/server";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { privatePageMetadata } from "@/lib/seo/private-page-metadata";
 
 export async function generateMetadata() {
@@ -17,6 +19,11 @@ export async function generateMetadata() {
  * type by hand would be a lie the database might not agree with.
  */
 export default async function TeachActivateReturnPage() {
+  // Same switch as /teach/activate: off (or paid, waived, admin, signed out),
+  // there is no payment to confirm here.
+  const supabase = await createSupabaseServerClient();
+  const { data: blocked } = await supabase.rpc("creator_activation_blocked");
+  if (blocked !== true) redirect("/teach");
   const { t } = await getServerTranslation();
   return (
     <ProtectedSurface permissions={["teacherStudio.access"]}>

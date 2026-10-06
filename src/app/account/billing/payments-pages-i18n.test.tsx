@@ -95,6 +95,7 @@ it.each([
 ])("sends the creator back to /teach when activation is %s", async (_name, answer) => {
   mocks.blocked = answer;
   await expect(TeachActivatePage()).rejects.toThrow("redirect:/teach");
+  await expect(TeachActivateReturnPage()).rejects.toThrow("redirect:/teach");
   expect(mocks.activation).not.toHaveBeenCalled();
 });
 
