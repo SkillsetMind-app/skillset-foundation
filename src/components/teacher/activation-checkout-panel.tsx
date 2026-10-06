@@ -42,7 +42,7 @@ export function ActivationCheckoutPanel({ courseId = null }: { courseId?: string
   // Validated by the page; the way out goes back to the course being published.
   const studioHref = courseId
     ? `/teach/builder?courseId=${encodeURIComponent(courseId)}&tab=review`
-    : "/teach/builder";
+    : "/teach";
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [error, setError] = useState<{
     key: string;

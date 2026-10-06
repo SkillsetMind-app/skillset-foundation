@@ -115,7 +115,7 @@ describe("ActivationCheckoutPanel", () => {
     rejectCheckout(code, "creator_verification_required");
     renderPanel();
 
-    expect(await screen.findByRole("link", { name: "Back to studio" })).toHaveAttribute("href", "/teach/builder");
+    expect(await screen.findByRole("link", { name: "Back to studio" })).toHaveAttribute("href", "/teach");
     expect(screen.getByText("Checkout could not start.")).toBeInTheDocument();
     const english = getDictionary("en");
     expect(screen.getByText(translate(english, code ? "activationCheckout.error.notConfigured" : "activationCheckout.error.permission"))).toBeInTheDocument();
@@ -129,7 +129,7 @@ describe("ActivationCheckoutPanel", () => {
     }));
     renderPanel();
 
-    expect(await screen.findByRole("link", { name: "Back to studio" })).toHaveAttribute("href", "/teach/builder");
+    expect(await screen.findByRole("link", { name: "Back to studio" })).toHaveAttribute("href", "/teach");
     expect(screen.getByText(translate(getDictionary("en"), "activationCheckout.error.generic"))).toBeInTheDocument();
     expect(screen.queryByText("Network failure")).toBeNull();
     expect(mocks.checkoutProvider).not.toHaveBeenCalled();
