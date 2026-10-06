@@ -107,7 +107,7 @@ describe("BrandPortrait", () => {
     expect(panel).toBe(hero);
   });
 
-  it("optimizes the original PNG once at portrait quality", () => {
+  it("optimizes the lossless master once at portrait quality", () => {
     const { container } = render(
       <ImageConfigContext.Provider value={{ ...imageConfigDefault, ...config.images }}>
         <BrandPortrait imageClassName="hero" sizes="100vw" />
@@ -115,8 +115,8 @@ describe("BrandPortrait", () => {
     );
     const image = container.querySelector("img")!;
     const url = new URL(image.src, "https://example.test");
-    expect(url.searchParams.get("url")).toMatch(/\.png$/);
-    expect(url.searchParams.get("q")).toBe("90");
+    expect(url.searchParams.get("url")).toMatch(/-master\.webp$/);
+    expect(url.searchParams.get("q")).toBe("95");
   });
 });
 
@@ -136,13 +136,13 @@ describe("BrandPortrait rotate (homepage hero)", () => {
     expect(preloadLinks.some((srcSet) => srcSet.includes(first))).toBe(true);
 
     // Once the (non-existent) opening fade is over, the next face is mounted
-    // underneath, hidden from assistive tech, eager so it loads off-screen.
+    // underneath, hidden from assistive tech, lazy (it sits in the viewport at opacity 0, so it still loads).
     tick(PORTRAIT_FADE_MS);
     const layers = container.querySelectorAll("img");
     expect(layers).toHaveLength(2);
     const preloaded = layers[1];
     expect(preloaded).toHaveAttribute("aria-hidden", "true");
-    expect(preloaded).toHaveAttribute("loading", "eager");
+    expect(preloaded).toHaveAttribute("loading", "lazy");
     expect(preloaded).toHaveAttribute("alt", "");
     expect(preloaded.style.opacity).toBe("0");
     const next = faceOf(decodeURIComponent(preloaded.getAttribute("src") ?? ""));
