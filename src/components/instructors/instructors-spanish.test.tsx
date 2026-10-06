@@ -89,6 +89,22 @@ it.each([[true, 3], [false, 0]])("links the store only while it has a real cours
   expect(document.querySelectorAll('a[href="/courses"]')).toHaveLength(count);
 });
 
+// Perfil indisponível com a loja vazia: em vez de beco sem saída, leva aos
+// instrutores; com curso real, segue levando à loja.
+it.each([
+  [true, "Browse the marketplace", "/courses"],
+  [false, "Instructors", "/instructors"],
+])("gives the unavailable profile a way out (store with courses: %s)", async (value, name, href) => {
+  fixture.profileError = true;
+  render(
+    <I18nProvider initialLocale="en">
+      <RealCoursesProvider value={value}><InstructorProfileView uid="teacher" /></RealCoursesProvider>
+    </I18nProvider>,
+  );
+
+  expect(await screen.findByRole("link", { name })).toHaveAttribute("href", href);
+});
+
 it("translates loaded profile metrics and course labels without restarting subscriptions", async () => {
   show(<InstructorProfileView uid="teacher" />);
   await screen.findByText(/2 lessons/);

@@ -92,13 +92,17 @@ export function InstructorProfileView({ uid }: { uid: string }) {
         <p className="mx-auto mt-4 max-w-md text-sm leading-7 text-[var(--color-ink-soft)]">
           {t("publicPages.profile.the_instructor_may_not_have_published")}
         </p>
-        {hasRealCourses ? (
-          <div className="mt-7">
+        <div className="mt-7">
+          {hasRealCourses ? (
             <Link href="/courses" className="button-solid px-4 py-2.5 text-sm">
               {t("publicPages.profile.browse_the_marketplace")}
             </Link>
-          </div>
-        ) : null}
+          ) : (
+            <Link href="/instructors" className="button-solid px-4 py-2.5 text-sm">
+              {t("footer.instructors")}
+            </Link>
+          )}
+        </div>
       </section>
     );
   }
