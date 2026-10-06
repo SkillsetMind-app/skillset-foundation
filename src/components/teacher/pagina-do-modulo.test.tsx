@@ -194,7 +194,7 @@ describe("pagina do modulo dentro do builder", () => {
     vi.mocked(subscribeToTeacherCourse).mockImplementationOnce((_id, emit) => {
       emitCourse = emit;
       emit(mocks.course);
-      return () => undefined;
+      return Object.assign(() => {}, { reload: async () => {} });
     });
     openAt("courseId=course-1&tab=content&module=m2");
     const card = await renderBuilder();
@@ -256,7 +256,7 @@ describe("pagina do modulo dentro do builder", () => {
     vi.mocked(subscribeToTeacherCourse).mockImplementationOnce((_id, emit) => {
       emitCourse = emit;
       emit(mocks.course);
-      return () => undefined;
+      return Object.assign(() => {}, { reload: async () => {} });
     });
     let finishFirst = () => {};
     vi.mocked(updateTeacherCourseBuilder).mockImplementationOnce(
@@ -329,7 +329,7 @@ describe("pagina do modulo dentro do builder", () => {
     vi.mocked(subscribeToTeacherCourse).mockImplementationOnce((_id, emit) => {
       emitCourse = emit;
       emit(mocks.course);
-      return () => undefined;
+      return Object.assign(() => {}, { reload: async () => {} });
     });
     const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
     try {
@@ -373,7 +373,7 @@ describe("pagina do modulo dentro do builder", () => {
     vi.mocked(subscribeToTeacherCourse).mockImplementationOnce((_id, emit) => {
       emitCourse = emit;
       emit(mocks.course);
-      return () => undefined;
+      return Object.assign(() => {}, { reload: async () => {} });
     });
     openAt("courseId=course-1&tab=content&module=m1");
     const card = await renderBuilder();
@@ -405,7 +405,7 @@ describe("pagina do modulo dentro do builder", () => {
     vi.mocked(subscribeToTeacherCourse).mockImplementationOnce((_id, emit) => {
       emitCourse = emit;
       emit(mocks.course);
-      return () => undefined;
+      return Object.assign(() => {}, { reload: async () => {} });
     });
     let finishFirst = () => {};
     vi.mocked(updateTeacherCourseBuilder).mockImplementationOnce(
@@ -434,7 +434,7 @@ describe("pagina do modulo dentro do builder", () => {
     vi.mocked(subscribeToTeacherCourse).mockImplementationOnce((_id, emit) => {
       emitCourse = emit;
       emit(mocks.course);
-      return () => undefined;
+      return Object.assign(() => {}, { reload: async () => {} });
     });
     let failFirst: (error: Error) => void = () => {};
     vi.mocked(updateTeacherCourseBuilder).mockImplementationOnce(
@@ -469,7 +469,7 @@ describe("pagina do modulo dentro do builder", () => {
     vi.mocked(subscribeToTeacherCourse).mockImplementationOnce((_id, emit) => {
       emitCourse = emit;
       emit(mocks.course);
-      return () => undefined;
+      return Object.assign(() => {}, { reload: async () => {} });
     });
     let finishFirst = () => {};
     vi.mocked(updateTeacherCourseBuilder).mockImplementationOnce(

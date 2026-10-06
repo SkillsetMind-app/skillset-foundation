@@ -196,7 +196,7 @@ describe("checklist de publicacao em tres blocos e faixa de rascunho", () => {
   it("curso publicado: os blocos ficam, a faixa some", async () => {
     vi.mocked(subscribeToTeacherCourse).mockImplementationOnce((_id, emit) => {
       emit({ ...mocks.course, status: "published" });
-      return () => {};
+      return Object.assign(() => {}, { reload: async () => {} });
     });
     render(
       <I18nProvider initialLocale="en">

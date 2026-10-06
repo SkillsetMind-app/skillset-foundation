@@ -212,7 +212,7 @@ beforeEach(() => {
   mocks.subscribeToTeacherCourse.mockImplementation((_id, onData) => {
     mocks.onCourse = onData;
     onData(mocks.course);
-    return () => undefined;
+    return Object.assign(() => undefined, { reload: async () => {} });
   });
   mocks.subscribeToTeacherCourses.mockImplementation((_uid, onData) => {
     mocks.onCourses = onData;

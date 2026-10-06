@@ -659,6 +659,11 @@ export function CourseBuilderStudio() {
   // e nao "cancelar ao mudar dependencia": abrir a aula logo depois (link
   // direto, quando os modulos chegam) descartava a primeira busca para sempre.
   const assetsRequestRef = useRef(0);
+  // Busca o curso de novo sem esperar o Realtime. O construtor so sabe que um
+  // modulo/aula foi gravado pelo snapshot do curso; com o eco do Realtime como
+  // unica fonte, o upload da capa do modulo e o botao de video da aula nova
+  // ficaram travados enquanto o Realtime recusava o canal (06/10).
+  const courseReloadRef = useRef<(() => Promise<void>) | null>(null);
 
   // Copia o snapshot do servidor para o rascunho. So setters (estaveis), entao
   // serve ao callback do realtime e ao efeito que aplica o snapshot pulado.
@@ -713,7 +718,7 @@ export function CourseBuilderStudio() {
       return;
     }
 
-    return subscribeToTeacherCourse(
+    const subscription = subscribeToTeacherCourse(
       courseId,
       (nextCourse) => {
         setIsLoading(false);
@@ -776,6 +781,11 @@ export function CourseBuilderStudio() {
         setError({ code: "load" });
       },
     );
+    courseReloadRef.current = subscription.reload;
+    return () => {
+      courseReloadRef.current = null;
+      subscription();
+    };
   }, [courseId, applyServerDraft]);
 
   // One-shot (re)load instead of a realtime channel: the lesson studio modal
@@ -1578,6 +1588,11 @@ export function CourseBuilderStudio() {
         skippedSnapshotRef.current = null;
         if (inFlightSavesRef.current === 1) {
           setAutosaveState("saved");
+          // Ultimo save no ar: busca o curso em vez de esperar o eco. O contador
+          // de geracao do subscribe descarta uma resposta mais velha que o eco.
+          // ponytail: com o Realtime saudavel, eco e recarga buscam duas vezes;
+          // tirar a recarga so se o custo aparecer.
+          void courseReloadRef.current?.();
         }
       } finally {
         inFlightSavesRef.current -= 1;
@@ -2641,7 +2656,11 @@ export function CourseBuilderStudio() {
         <div className="mt-6 grid gap-4">
           <div id="builder-sec-cover" className="scroll-mt-24">
             {course ? (
-              <CourseCoverField course={course} isEditable={isEditable} />
+              <CourseCoverField
+                course={course}
+                isEditable={isEditable}
+                onUploaded={() => void courseReloadRef.current?.()}
+              />
             ) : null}
           </div>
           <label
@@ -3628,9 +3647,12 @@ function BuilderSaveStatus({
 function CourseCoverField({
   course,
   isEditable,
+  onUploaded,
 }: {
   course: TeacherCourse;
   isEditable: boolean;
+  /** A previa vem de course.coverImageUrl: quem chama busca o curso de novo. */
+  onUploaded?: () => void;
 }) {
   const { t } = useTranslation();
   const [isUploading, setIsUploading] = useState(false);
@@ -3667,6 +3689,7 @@ function CourseCoverField({
         isPreview: false,
         onProgress: setProgress,
       });
+      onUploaded?.();
     } catch (uploadError) {
       // O motivo real (teto de tamanho, permissão, conexão) já vem pronto do
       // domínio; o texto genérico mandava conferir "propriedade do curso".
@@ -3824,8 +3847,16 @@ function MembersAreaTab({
     return () => observer.disconnect();
   }, []);
 
+  // course_assets nao esta na publicacao do Realtime: depois do upload a
+  // previa busca a lista de novo, senao a capa nova so aparecia ao recarregar.
+  const assetsReloadRef = useRef<(() => Promise<void>) | null>(null);
   useEffect(() => {
-    return subscribeToCourseAssets(course.id, setAssets, () => undefined);
+    const subscription = subscribeToCourseAssets(course.id, setAssets, () => undefined);
+    assetsReloadRef.current = subscription.reload;
+    return () => {
+      assetsReloadRef.current = null;
+      subscription();
+    };
   }, [course.id]);
 
   // members_cover is a public-download kind, so the resolved asset carries the
@@ -3885,7 +3916,10 @@ function MembersAreaTab({
           course={course}
           isEditable={isEditable}
           coverUrl={coverUrl}
-          onUploaded={onCoverAssetIdChange}
+          onUploaded={(assetId) => {
+            onCoverAssetIdChange(assetId);
+            void assetsReloadRef.current?.();
+          }}
           onRemove={() => onCoverAssetIdChange(null)}
         />
 
