@@ -35,7 +35,8 @@
 
 -- Nao fica esperando atras de uma escrita longa em users/public_profiles:
 -- melhor falhar e reaplicar do que enfileirar o site inteiro atras do ALTER.
--- (Vale dentro da transacao da Management API; no psql -f e so um aviso.)
+-- (Vale dentro de transacao: arquivo enviado como consulta unica ou psql
+-- --single-transaction. No psql -f puro e so um aviso.)
 set local lock_timeout = '5s';
 
 -- ---------------------------------------------------------------------------
