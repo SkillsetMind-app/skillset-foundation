@@ -13,7 +13,7 @@ import { JsonLd } from "@/components/seo/json-ld";
 import { SiteNav } from "@/components/site/site-nav";
 import { isInternalSmokeCourse } from "@/domain/teacher-course";
 import { getCourseBySlug, getCourseSlugs } from "@/lib/data/catalog";
-import { getCourseRefAccess, getPublicCourseByRef } from "@/lib/data/server/public-course";
+import { getCourseRefAccess, getPublicCourseByRef, hasRealPublishedCourse } from "@/lib/data/server/public-course";
 import { buildCourseJsonLd } from "@/lib/seo/course-jsonld";
 import { buildPageMetadata } from "@/lib/seo/page-metadata";
 
@@ -181,6 +181,7 @@ export default async function CourseDetailPage({
   const priceLabel = course.priceAmountMinor == null ? t("publicCourses.priceAnnounced")
     : new Intl.NumberFormat(locale, { style: "currency", currency: course.currency }).format(course.priceAmountMinor / 100);
   const levelKeys = { Foundation: "foundation", Professional: "professional", Advanced: "advanced" };
+  const hasRealCourses = await hasRealPublishedCourse();
 
   return (
     <div className="page-shell">
@@ -362,10 +363,11 @@ export default async function CourseDetailPage({
             </dl>
             <CourseEnrollmentCta course={course} />
             <Link href="#free-preview" className="button-outline mt-3 w-full px-4 py-2.5 text-sm">{t("publicCourses.seePreview")}</Link>
+            {/* Loja vazia não é destino: a volta leva ao início. */}
             <Link
-              href="/courses"
+              href={hasRealCourses ? "/courses" : "/"}
               className="mt-4 inline-flex w-full justify-center text-sm font-semibold text-[var(--color-primary)]"
-            >{t("publicCourses.backCourses")}</Link>
+            >{t(hasRealCourses ? "publicCourses.backCourses" : "publicPages.notFound.home")}</Link>
           </aside>
         </div>
       </main>

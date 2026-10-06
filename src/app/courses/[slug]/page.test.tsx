@@ -8,6 +8,7 @@ import type { CourseRefAccess, PublicCourseSummary } from "@/lib/data/server/pub
 const mocks = vi.hoisted(() => ({
   getPublicCourseByRef: vi.fn<() => Promise<PublicCourseSummary | null>>(),
   getCourseRefAccess: vi.fn<() => Promise<CourseRefAccess>>(),
+  hasRealPublishedCourse: vi.fn(async () => true),
   // Como o Next: notFound() interrompe a renderizacao lancando.
   notFound: vi.fn(() => {
     throw new Error("NEXT_NOT_FOUND");
@@ -17,6 +18,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@/lib/data/server/public-course", () => ({
   getPublicCourseByRef: mocks.getPublicCourseByRef,
   getCourseRefAccess: mocks.getCourseRefAccess,
+  hasRealPublishedCourse: mocks.hasRealPublishedCourse,
 }));
 
 vi.mock("next/navigation", () => ({ notFound: mocks.notFound }));
@@ -35,6 +37,11 @@ vi.mock("@/components/courses/creator-course-detail", () => ({
 
 vi.mock("@/components/site/site-nav", () => ({
   SiteNav: () => null,
+}));
+
+// O botão de inscrição da amostra lê a sessão; aqui só importa a volta.
+vi.mock("@/components/courses/course-enrollment-cta", () => ({
+  CourseEnrollmentCta: () => null,
 }));
 
 afterEach(cleanup);
@@ -121,6 +128,20 @@ describe("página do curso de criador", () => {
     const metadata = await generateMetadata({ params: Promise.resolve({ slug: "deep-focus-systems" }) });
 
     expect(metadata.description).toContain("Deep $& Focus: contenido");
+  });
+});
+
+// Amostra do catálogo de demonstração: a volta só leva à loja quando ela tem
+// curso real; vazia, leva ao início.
+describe("volta da página de amostra", () => {
+  it.each([
+    [true, "Volver a todos los cursos", "/courses"],
+    [false, "Ir al inicio", "/"],
+  ])("loja com curso real: %s", async (value, name, href) => {
+    mocks.hasRealPublishedCourse.mockResolvedValue(value);
+    render(await CourseDetailPage({ params: Promise.resolve({ slug: "leadership-development" }) }));
+
+    expect(screen.getByRole("link", { name })).toHaveAttribute("href", href);
   });
 });
 

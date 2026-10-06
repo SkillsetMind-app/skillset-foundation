@@ -18,6 +18,7 @@ import {
   useInstructorProfile,
 } from "@/components/courses/course-social-proof";
 import { UserAvatar } from "@/components/shared/user-avatar";
+import { useHasRealCourses } from "@/components/site/real-courses";
 import { getSafeExternalUrl } from "@/domain/external-url";
 import { CourseLandingBlocks } from "@/components/courses/course-landing-blocks";
 import { getTrustedLessonEmbed } from "@/domain/lesson-embed";
@@ -120,6 +121,7 @@ export function CreatorCourseDetail({
 }: CreatorCourseDetailProps = {}) {
   const { t, locale } = useTranslation();
   const { status: authStatus, user } = useAuth();
+  const hasRealCourses = useHasRealCourses();
   const router = useRouter();
   const searchParams = useSearchParams();
   // URL segment: a course id on legacy links (and the Stripe checkout
@@ -1076,10 +1078,11 @@ export function CreatorCourseDetail({
           </p>
         ) : null}
 
+        {/* Loja vazia não é destino: a volta leva ao início. */}
         <Link
-          href="/courses"
+          href={hasRealCourses ? "/courses" : "/"}
           className="mt-4 inline-flex min-h-11 w-full items-center justify-center text-sm font-semibold text-[var(--color-primary)]"
-        >{t("publicCourses.backCourses")}</Link>
+        >{t(hasRealCourses ? "publicCourses.backCourses" : "publicPages.notFound.home")}</Link>
       </aside>
     </div>
 
@@ -1141,7 +1144,10 @@ function CourseDetailState({
   action?: CourseDetailAction;
 }) {
   const { t } = useTranslation();
-  const resolvedAction = action ?? { label: t("publicCourses.openMarketplace"), href: "/courses" };
+  const hasRealCourses = useHasRealCourses();
+  const resolvedAction = action ?? (hasRealCourses
+    ? { label: t("publicCourses.openMarketplace"), href: "/courses" }
+    : { label: t("publicPages.notFound.home"), href: "/" });
 
   return (
     <section className="rounded-none border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)]">
