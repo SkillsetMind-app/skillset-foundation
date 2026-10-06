@@ -4,6 +4,7 @@ import { I18nProvider, useTranslation } from "@/components/i18n/i18n-provider";
 import { InstructorsDirectory } from "./instructors-directory";
 import { InstructorProfileView } from "./instructor-profile-view";
 import { CookieConsent } from "@/components/site/cookie-consent";
+import { RealCoursesProvider } from "@/components/site/real-courses";
 import { PrivacyChoicesButton } from "@/components/site/privacy-choices-button";
 import type { PublicProfile } from "@/domain/user-profile";
 import type { TeacherCourse } from "@/domain/teacher-course";
@@ -71,6 +72,21 @@ it.each([
   fireEvent.click(screen.getByText("ES"));
   expect(screen.getByText(es)).toBeInTheDocument();
   expect(listPublicProfiles).toHaveBeenCalledTimes(1);
+});
+
+// Diretório vazio e vitrine do instrutor só levam à loja quando ela tem curso
+// real: "explorar cursos", "explorar catálogo" e "todos os cursos".
+it.each([[true, 3], [false, 0]])("links the store only while it has a real course (%s)", async (value, count) => {
+  fixture.directory = "empty";
+  render(
+    <I18nProvider initialLocale="en">
+      <RealCoursesProvider value={value}><InstructorsDirectory /><InstructorProfileView uid="teacher" /></RealCoursesProvider>
+    </I18nProvider>,
+  );
+  await screen.findByText("Public instructor profiles appear after review.");
+  await screen.findByText(/2 lessons/);
+
+  expect(document.querySelectorAll('a[href="/courses"]')).toHaveLength(count);
 });
 
 it("translates loaded profile metrics and course labels without restarting subscriptions", async () => {

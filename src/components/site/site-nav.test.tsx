@@ -9,6 +9,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import postcss from "postcss";
 
+import { RealCoursesProvider } from "@/components/site/real-courses";
 import { SiteNav } from "@/components/site/site-nav";
 import type { SkillsetUser } from "@/domain/auth";
 
@@ -92,7 +93,7 @@ describe("SiteNav", () => {
   });
 
   it("leads with Courses, the door for people who come to learn", () => {
-    render(<SiteNav />);
+    render(<RealCoursesProvider value><SiteNav /></RealCoursesProvider>);
 
     const nav = screen.getByRole("navigation", { name: "Primary navigation" });
     expect(linkNames(nav)).toEqual(HEADER_ORDER);
@@ -100,6 +101,21 @@ describe("SiteNav", () => {
       "href",
       "/courses",
     );
+  });
+
+  // Loja sem curso real publicado não aparece: nem na barra, nem no menu do
+  // celular. Sem provedor vale o mesmo "não" de uma leitura que falhou.
+  it.each([
+    ["sem curso real", false],
+    ["sem provedor", undefined],
+  ])("hides Courses while the store is empty (%s)", (_, value) => {
+    render(value === undefined ? <SiteNav /> : <RealCoursesProvider value={value}><SiteNav /></RealCoursesProvider>);
+
+    const withoutCourses = HEADER_ORDER.filter((name) => name !== "Courses");
+    expect(linkNames(screen.getByRole("navigation", { name: "Primary navigation" }))).toEqual(withoutCourses);
+    fireEvent.click(screen.getByRole("button", { name: "Open menu" }));
+    expect(linkNames(screen.getByRole("navigation", { name: "Mobile navigation" }))).toEqual(withoutCourses);
+    expect(document.querySelector('a[href="/courses"]')).toBeNull();
   });
 
   it("opens buyer and creator entry in new tabs from the public header", () => {
@@ -184,7 +200,7 @@ describe("SiteNav", () => {
   });
 
   it("keeps the mobile menu in the same order and closes on Escape", () => {
-    render(<SiteNav />);
+    render(<RealCoursesProvider value><SiteNav /></RealCoursesProvider>);
 
     fireEvent.click(screen.getByRole("button", { name: "Open menu" }));
     const mobile = screen.getByRole("navigation", {

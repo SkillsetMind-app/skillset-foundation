@@ -7,11 +7,13 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { UserAvatar } from "@/components/shared/user-avatar";
+import { useHasRealCourses } from "@/components/site/real-courses";
 import type { PublicProfile } from "@/domain/user-profile";
 import { listPublicProfiles } from "@/lib/data/user-profiles";
 
 export function InstructorsDirectory() {
   const { t } = useTranslation();
+  const hasRealCourses = useHasRealCourses();
   const [profiles, setProfiles] = useState<PublicProfile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
@@ -101,12 +103,14 @@ export function InstructorsDirectory() {
               >
                 {t("publicPages.directory.start_teaching")}
               </Link>
-              <Link
-                href="/courses"
-                className="button-outline px-4 py-2.5 text-sm"
-              >
-                {t("publicPages.directory.browse_courses")}
-              </Link>
+              {hasRealCourses ? (
+                <Link
+                  href="/courses"
+                  className="button-outline px-4 py-2.5 text-sm"
+                >
+                  {t("publicPages.directory.browse_courses")}
+                </Link>
+              ) : null}
             </div>
           </div>
         </div>
@@ -128,12 +132,14 @@ export function InstructorsDirectory() {
             {t("publicPages.directory.published_instructors")}
           </h2>
         </div>
-        <Link
-          href="/courses"
-          className="inline-flex items-center gap-2 text-sm font-bold text-[var(--color-primary)] underline-offset-4 hover:underline"
-        >
-          {t("publicPages.directory.browse_their_courses")}<ArrowRight aria-hidden="true" size={16} strokeWidth={1.9} />
-        </Link>
+        {hasRealCourses ? (
+          <Link
+            href="/courses"
+            className="inline-flex items-center gap-2 text-sm font-bold text-[var(--color-primary)] underline-offset-4 hover:underline"
+          >
+            {t("publicPages.directory.browse_their_courses")}<ArrowRight aria-hidden="true" size={16} strokeWidth={1.9} />
+          </Link>
+        ) : null}
       </div>
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

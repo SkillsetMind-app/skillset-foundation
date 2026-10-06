@@ -2,6 +2,7 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { I18nProvider } from "@/components/i18n/i18n-provider";
+import { RealCoursesProvider } from "@/components/site/real-courses";
 import type { Locale } from "@/lib/i18n/config";
 import { CertificateVerificationPanel } from "./certificate-verification-panel";
 
@@ -36,6 +37,18 @@ describe("certificate verification panel", () => {
 
     expect(await screen.findByRole("heading", { name: revoked })).toBeVisible();
     expect(screen.queryByRole("heading", { name: missing })).toBeNull();
+  });
+
+  // Loja vazia não ganha atalho; "voltar" segue.
+  it.each([[true, 1], [false, 0]])("leva à loja só quando há curso real (%s)", (value, count) => {
+    render(
+      <I18nProvider initialLocale="en">
+        <RealCoursesProvider value={value}><CertificateVerificationPanel /></RealCoursesProvider>
+      </I18nProvider>,
+    );
+
+    expect(screen.queryAllByRole("link", { name: "Explore courses" })).toHaveLength(count);
+    expect(screen.getByRole("link", { name: "Back to homepage" })).toHaveAttribute("href", "/");
   });
 
   it("still says not found for a code that matches nothing", async () => {

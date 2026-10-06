@@ -1,23 +1,51 @@
 import { getServerTranslation } from "@/lib/i18n/server";
+import Link from "next/link";
 import { Suspense } from "react";
 
 import { CourseMarketplace } from "@/components/courses/course-marketplace";
 import { SiteFooter } from "@/components/site/site-footer";
 import { SiteNav } from "@/components/site/site-nav";
+import { hasRealPublishedCourse } from "@/lib/data/server/public-course";
 import { buildPageMetadata } from "@/lib/seo/page-metadata";
 
 export async function generateMetadata() {
-  const { t } = await getServerTranslation();
-  return buildPageMetadata({
+  const [{ t }, hasRealCourses] = await Promise.all([getServerTranslation(), hasRealPublishedCourse()]);
+  const metadata = buildPageMetadata({
   title: t("publicCourses.browseTitle"),
   description:
     t("publicCourses.browseDescription"),
   path: "/courses",
   });
+  // Loja vazia fora do índice, mas os links dela seguem valendo. Volta a ser
+  // indexável sozinha quando o primeiro curso real é publicado.
+  return hasRealCourses ? metadata : { ...metadata, robots: { index: false, follow: true } };
 }
 
 export default async function CoursesPage() {
-  const { t } = await getServerTranslation();
+  const [{ t }, hasRealCourses] = await Promise.all([getServerTranslation(), hasRealPublishedCourse()]);
+
+  // Sem curso real publicado, nada de vitrine com filtro, busca e esqueleto de
+  // cartões: a página diz o que é verdade e aponta para quem vai publicar.
+  if (!hasRealCourses) {
+    return (
+      <div className="page-shell">
+        <SiteNav />
+        <main id="conteudo" className="mx-auto w-full max-w-7xl px-6 py-10 sm:px-8 sm:py-14">
+          <section className="marketplace-empty">
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">{t("publicCourses.openingSoon")}</p>
+            <h1 className="display-title mt-3 text-3xl text-[var(--color-ink)] sm:text-4xl">{t("publicCourses.firstCourses")}</h1>
+            <p className="mx-auto mt-4 max-w-xl text-sm leading-7 text-[var(--color-ink-soft)]">{t("publicCourses.openingBody")}</p>
+            <div className="mt-6 flex flex-wrap justify-center gap-3">
+              <Link href="/auth?mode=signup&path=teacher" className="button-solid px-4 py-2.5 text-sm">{t("publicCourses.startTeaching")}</Link>
+              <Link href="/for-creators" className="button-outline px-4 py-2.5 text-sm">{t("publicCourses.creatorOverview")}</Link>
+            </div>
+          </section>
+        </main>
+        <SiteFooter />
+      </div>
+    );
+  }
+
   return (
     <div className="page-shell">
       <SiteNav />

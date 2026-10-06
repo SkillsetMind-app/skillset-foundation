@@ -8,8 +8,10 @@ import { LessonUploadProvider } from "@/components/teacher/lesson-upload-provide
 import { I18nProvider } from "@/components/i18n/i18n-provider";
 import { ConsoleSignature } from "@/components/shared/console-signature";
 import { CookieConsent } from "@/components/site/cookie-consent";
+import { RealCoursesProvider } from "@/components/site/real-courses";
 import { PostHogProvider } from "@/app/posthog-provider";
 import { brand } from "@/data/brand";
+import { hasRealPublishedCourse } from "@/lib/data/server/public-course";
 import { DEFAULT_LOCALE, LOCALE_HTML_LANG } from "@/lib/i18n/config";
 import { getDictionary } from "@/lib/i18n/dictionaries";
 import { getServerLocale, getServerTranslation } from "@/lib/i18n/server";
@@ -70,7 +72,9 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const locale = await getServerLocale();
+  // Há curso real publicado? Lido uma vez aqui (anônimo, cache de 5 min) para
+  // as ilhas cliente que linkam a loja não buscarem nada no navegador.
+  const [locale, hasRealCourses] = await Promise.all([getServerLocale(), hasRealPublishedCourse()]);
   const nonce = (await headers()).get("x-nonce") ?? undefined;
 
   return (
@@ -91,7 +95,9 @@ export default async function RootLayout({
             // with the page so the first render (and hydration) is already in it.
             initialDictionary={locale === DEFAULT_LOCALE ? undefined : getDictionary(locale)}
           >
-            <AuthProvider><LessonUploadProvider>{children}</LessonUploadProvider></AuthProvider>
+            <RealCoursesProvider value={hasRealCourses}>
+              <AuthProvider><LessonUploadProvider>{children}</LessonUploadProvider></AuthProvider>
+            </RealCoursesProvider>
             <CookieConsent />
           </I18nProvider>
         </PostHogProvider>

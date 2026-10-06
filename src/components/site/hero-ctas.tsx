@@ -5,6 +5,7 @@ import Link from "next/link";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { useHasRealCourses } from "@/components/site/real-courses";
 import { getPrimaryWorkspaceHref } from "@/lib/auth/routing";
 
 // Client island inside the (server-rendered) marketing hero. Guests and
@@ -14,6 +15,7 @@ import { getPrimaryWorkspaceHref } from "@/lib/auth/routing";
 export function HeroCtas() {
   const { status, user } = useAuth();
   const { t } = useTranslation();
+  const hasRealCourses = useHasRealCourses();
 
   if (status === "authenticated" && user) {
     return (
@@ -25,9 +27,12 @@ export function HeroCtas() {
           <LayoutDashboard aria-hidden="true" size={16} strokeWidth={1.9} />
           {t("home.hero.ctaDashboard")}
         </Link>
-        <Link href="/courses" className="button-outline-light">
-          {t("home.hero.ctaBrowse")}
-        </Link>
+        {/* Loja vazia não vira atalho: sobra o painel. */}
+        {hasRealCourses ? (
+          <Link href="/courses" className="button-outline-light">
+            {t("home.hero.ctaBrowse")}
+          </Link>
+        ) : null}
       </div>
     );
   }
