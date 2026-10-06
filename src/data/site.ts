@@ -33,7 +33,9 @@ export type PlatformNavItem = {
 
 // These are the existing ?tab= destinations. Navigation, panels and counters
 // share the workspace gate AND the roles that can read each complete queue.
+// Overview reads users, orders, enrollments and the audit log: admin-only RLS.
 const opsQueues = [
+  { tab: "overview", icon: "LayoutDashboard", roles: ["admin"] },
   { tab: "verification", icon: "UserCheck", roles: ["admin", "ops"] },
   { tab: "catalog", icon: "BookOpen", roles: ["admin", "ops"] },
   { tab: "payments", icon: "CreditCard", roles: ["admin"] },
@@ -67,8 +69,13 @@ export function canAccessPlatformNavItem(
   );
 }
 
-export function getOpsNavItem(tab: string | null) {
-  return opsNavItems.find((item) => item.tab === tab) ?? opsNavItems[0];
+// A known ?tab= wins (the dashboard explains when the role cannot open it).
+// Without one, each person lands on the first destination they can open:
+// Overview for admins, the first queue for the rest of the staff.
+export function getOpsNavItem(tab: string | null, subject?: PermissionSubject | null) {
+  return opsNavItems.find((item) => item.tab === tab)
+    ?? opsNavItems.find((item) => canAccessPlatformNavItem(subject, item))
+    ?? opsNavItems[0];
 }
 
 export const platformNav: PlatformNavItem[] = [
@@ -287,7 +294,7 @@ export const platformNav: PlatformNavItem[] = [
   // --- Operations workspace ---
   ...opsNavItems,
   {
-    // Title source for /ops outside its dashboard; the eight queues are the
+    // Title source for /ops outside its dashboard; the nine tabs are the
     // actual sidebar destinations, so a second Operations link is redundant.
     href: "/ops",
     labelKey: "platform.nav.operations",
