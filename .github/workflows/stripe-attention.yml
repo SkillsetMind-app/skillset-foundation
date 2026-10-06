@@ -3,9 +3,9 @@ name: Stripe attention
 # Hourly tick for /api/cron/stripe-attention: tells ops when a Stripe event did
 # not finish processing (someone may have paid without getting access). Also
 # knocks on /api/cron/ops-inbox: tickets, reports and verifications waiting.
-# And on /api/cron/confirmation-reminder: one "confirm your email" email ~24 h
-# after signup. And checks /, /login and /courses answer 200 (uptime alert via
-# the ops relay).
+# And checks /, /login and /courses answer 200 (uptime alert via the ops relay).
+# A second job knocks on /api/cron/confirmation-reminder: one "confirm your
+# email" email ~24 h after signup.
 #
 # Lives here and not in vercel.json because Vercel Hobby crons run at most once
 # a day. The routes decide whether to alert; this job only knocks on the door.
@@ -16,6 +16,11 @@ on:
   schedule:
     - cron: "7 * * * *"
   workflow_dispatch:
+    inputs:
+      max_age_hours:
+        description: "Confirmation reminder catch-up: also remind accounts up to this many hours old (e.g. 2160 = 90 days). Leave empty for a normal run of every job."
+        required: false
+        default: ""
 
 concurrency:
   group: stripe-attention
@@ -24,9 +29,11 @@ concurrency:
 jobs:
   check:
     name: Check stuck Stripe events and the ops inbox
+    # A reminder catch-up runs the reminder job alone: no repeat ops alerts.
+    if: ${{ github.event_name == 'schedule' || inputs.max_age_hours == '' }}
     runs-on: ubuntu-latest
-    # Site fully down: 3x60 s cron calls + 3x(2x20 s) page checks + 3x20 s
-    # alerts ~ 6 min. Five would cancel the job right before it alerts.
+    # Site fully down: 2x60 s cron calls + 3x(2x20 s) page checks + 3x20 s
+    # alerts ~ 5 min. Five would cancel the job right before it alerts.
     timeout-minutes: 8
     steps:
       # Without the value the call would only ever get 401 — fail loudly instead.
@@ -58,21 +65,6 @@ jobs:
           curl -fsS -o /dev/null -w 'HTTP %{http_code}\n' --max-time 60 \
             -H "Authorization: Bearer $CRON_SECRET" \
             https://www.skillsetmind.com/api/cron/ops-inbox
-
-      # One reminder per unconfirmed account, 24-72 h after signup. The route
-      # marks each account before sending, so a re-run never repeats an email.
-      - name: Send email confirmation reminders
-        if: ${{ !cancelled() }}
-        env:
-          CRON_SECRET: ${{ secrets.CRON_SECRET }}
-        run: |
-          if [ -z "$CRON_SECRET" ]; then
-            echo "::error title=Confirmation reminder not configured::Missing repository secret CRON_SECRET (same value as on Vercel)."
-            exit 1
-          fi
-          curl -fsS -o /dev/null -w 'HTTP %{http_code}\n' --max-time 60 \
-            -H "Authorization: Bearer $CRON_SECRET" \
-            https://www.skillsetmind.com/api/cron/confirmation-reminder
 
       # Uptime from outside Vercel: instrumentation.ts only reports 5xx the app
       # itself sees, so a dead deploy or DNS says nothing. Anything but 200 goes
@@ -106,3 +98,48 @@ jobs:
               || echo "::error title=Uptime alert not delivered::The relay did not accept the alert for $url."
           done
           exit $down
+
+  # One reminder per unconfirmed account, 24-72 h after signup. Its own job, so
+  # a red reminder never turns the Stripe check red; the workflow's concurrency
+  # group keeps a manual catch-up and the hourly run from ever overlapping. The
+  # route marks each account before sending, so a re-run never repeats an email.
+  confirmation-reminder:
+    name: Send email confirmation reminders
+    runs-on: ubuntu-latest
+    # Catch-up: up to 20 calls of ~30 s (60 s at most) each.
+    timeout-minutes: 25
+    steps:
+      - name: Call the reminder
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          # Through env, never pasted into the script: the input is free text.
+          MAX_AGE_HOURS: ${{ inputs.max_age_hours }}
+        run: |
+          if [ -z "$CRON_SECRET" ]; then
+            echo "::error title=Confirmation reminder not configured::Missing repository secret CRON_SECRET (same value as on Vercel)."
+            exit 1
+          fi
+          url=https://www.skillsetmind.com/api/cron/confirmation-reminder
+          calls=1
+          # Hourly: one call, up to 25 emails. Manual catch-up: a wider window,
+          # and calls repeat while each one still sends something.
+          if [ -n "$MAX_AGE_HOURS" ]; then
+            case "$MAX_AGE_HOURS" in
+              *[!0-9]*) echo "::error title=Bad input::max_age_hours must be a whole number of hours."; exit 1 ;;
+            esac
+            url="$url?max_age_hours=$MAX_AGE_HOURS"
+            calls=20
+          fi
+          for i in $(seq "$calls"); do
+            # Public log: the status line only. The body (counts) stays in a file.
+            code=$(curl -sS -o body.json -w '%{http_code}' --max-time 60 \
+              -H "Authorization: Bearer $CRON_SECRET" "$url") || code=000
+            echo "call $i: HTTP $code"
+            # A call that sent nothing means done: nothing due, or every account
+            # still due failed (due === failed, and the answer is 500).
+            jq -e '.sent > 0' body.json >/dev/null 2>&1 || break
+          done
+          if [ "$calls" -gt 1 ] && jq -e '.sent > 0' body.json >/dev/null 2>&1; then
+            echo "::warning title=Catch-up not finished::Every call still sent emails. Run it again with the same input."
+          fi
+          [ "$code" = 200 ]
