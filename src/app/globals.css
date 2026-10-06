@@ -2666,8 +2666,9 @@ select:focus-visible {
 }
 
 @media (max-width: 640px) {
-  /* Mais baixo no celular (era 240px de 812 na 1ª visita): texto em 12px e
-     botões numa linha só, sem perder o alvo de 44px. */
+  /* Mais baixo no celular (era 240px de 812 na 1ª visita): texto em 12px, sem
+     perder o alvo de 44px. Recusar e Aceitar dividem a 1ª linha por igual
+     (recusar tão fácil quanto aceitar); "Gerenciar" vai sozinho por último. */
   .cookie-consent {
     padding-top: 0.75rem;
   }
@@ -2693,9 +2694,14 @@ select:focus-visible {
   .cookie-consent__actions .button-outline,
   .cookie-consent__actions .button-solid {
     min-width: 0;
-    flex: 1 1 9rem;
+    flex: 1 1 0;
     padding: 0.625rem 0.75rem;
     white-space: normal;
+  }
+
+  .cookie-consent__actions > a.button-outline {
+    flex-basis: 100%;
+    order: 1;
   }
 }
 
