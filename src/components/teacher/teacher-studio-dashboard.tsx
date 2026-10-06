@@ -146,6 +146,7 @@ export function TeacherStudioDashboard() {
             uid={user.uid}
             courses={courses}
             coursesLoaded={coursesLoaded}
+            verificationStatus={gatesLoaded ? verificationStatus : undefined}
           />
         ) : null}
       </div>

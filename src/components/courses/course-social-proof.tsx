@@ -7,6 +7,7 @@ import { Star } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { UserAvatar } from "@/components/shared/user-avatar";
+import { VerifiedBadge } from "@/components/shared/verified-badge";
 import type { CourseReview } from "@/domain/course-review";
 import type { PublicProfile } from "@/domain/user-profile";
 import { subscribeToCourseReviews } from "@/lib/data/course-reviews";
@@ -154,9 +155,12 @@ export function CourseInstructorCard({
       <div className="mt-3 flex items-center gap-3">
         <UserAvatar name={name} photoURL={profile.photoURL} size="sm" />
         <div className="min-w-0">
-          <p className="truncate text-sm font-semibold text-[var(--color-ink)]">
-            {name}
-          </p>
+          <div className="flex min-w-0 items-center gap-0.5">
+            <p className="truncate text-sm font-semibold text-[var(--color-ink)]">
+              {name}
+            </p>
+            {profile.verification ? <VerifiedBadge compact verification={profile.verification} /> : null}
+          </div>
           {profile.credentials.length > 0 ? (
             <p className="truncate text-xs text-[var(--color-ink-soft)]">
               {profile.credentials[0]}

@@ -103,6 +103,7 @@ import { track } from "@/lib/posthog/events";
 import { defaultSkillsetCurrency } from "@/lib/payments/currencies";
 import { CurrencySelect } from "@/components/teacher/currency-select";
 import { usePublishGates } from "@/components/teacher/use-publish-gates";
+import { VerifiedBadgeOffer } from "@/components/teacher/verified-badge-offer";
 import { getCourseReadiness, getLessonIdsWithMedia } from "@/domain/course-readiness";
 import { moveLessonTo } from "@/domain/curriculum-move";
 
@@ -518,7 +519,7 @@ export function CourseBuilderStudio() {
   const { user } = useAuth();
   // Payouts e verificacao: so o Manage sabia; aqui a pessoa clicava em
   // Publish e descobria pelo erro do servidor.
-  const { account: publishGates } = usePublishGates(user);
+  const { account: publishGates, loaded: publishGatesLoaded, verificationStatus } = usePublishGates(user);
   const [course, setCourse] = useState<TeacherCourse | null>(null);
   const [title, setTitle] = useState("");
   const [summary, setSummary] = useState("");
@@ -3444,6 +3445,15 @@ export function CourseBuilderStudio() {
               label={t("creatorPanel.hub.sections.page")}
               path={`/courses/${encodeURIComponent(courseId)}`}
               title={title.trim() || t("creatorPanel.hub.header.courseFallback")}
+            />
+          ) : null}
+          {/* Depois de publicar, e só aí: a oferta do selo, sem travar nada. */}
+          {success === "published" && user && publishGatesLoaded ? (
+            <VerifiedBadgeOffer
+              uid={user.uid}
+              name={user.displayName}
+              photoURL={user.photoURL}
+              verificationStatus={verificationStatus}
             />
           ) : null}
           <div className="mt-5 grid gap-3">

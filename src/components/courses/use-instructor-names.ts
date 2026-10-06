@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 
 import { getPublicProfilesByIds } from "@/lib/data/user-profiles";
 
-export type InstructorName = { name: string; photoURL: string | null };
+export type InstructorName = { name: string; photoURL: string | null; verified: boolean };
 
 /**
  * Nome e foto do professor de cada cartao da lista, em UMA consulta.
@@ -44,6 +44,7 @@ export function useInstructorNames(
                 {
                   name: profile.displayName as string,
                   photoURL: profile.photoURL ?? null,
+                  verified: Boolean(profile.verification),
                 },
               ]),
           ),

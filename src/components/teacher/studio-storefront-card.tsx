@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ExternalLink, Store } from "lucide-react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { VerifiedSeal } from "@/components/shared/verified-badge";
 import { buttonClasses, Card, Eyebrow } from "@/components/ui";
 import type { TeacherCourse } from "@/domain/teacher-course";
 import { useStorefrontPath } from "@/components/teacher/use-storefront-path";
@@ -17,10 +18,13 @@ export function StudioStorefrontCard({
   uid,
   courses,
   coursesLoaded,
+  verificationStatus,
 }: {
   uid: string;
   courses: TeacherCourse[];
   coursesLoaded: boolean;
+  /** Status do selo; undefined enquanto não carregou (a linha não aparece). */
+  verificationStatus?: string;
 }) {
   const { t } = useTranslation();
   const path = useStorefrontPath(uid);
@@ -80,6 +84,26 @@ export function StudioStorefrontCard({
             {t("teach.storefrontCard.edit")}
           </Link>
         </div>
+
+        {/* Lugar fixo do selo: depois de 3 "Agora não" na oferta, é só aqui. */}
+        {verificationStatus ? (
+          <div data-verified-badge-slot="" className="mt-4 border-t border-[var(--color-line)] pt-3 text-sm">
+            {verificationStatus === "approved" || verificationStatus === "pending" ? (
+              <p className="flex items-center gap-2 text-[var(--color-ink-soft)]">
+                {verificationStatus === "approved" ? <VerifiedSeal size={14} /> : null}
+                {t(verificationStatus === "approved" ? "verifiedBadge.slot.approved" : "verifiedBadge.slot.pending")}
+              </p>
+            ) : (
+              <Link
+                href="/teach/verification"
+                className="inline-flex min-h-11 items-center gap-2 font-semibold text-[var(--color-primary)] underline-offset-4 hover:underline"
+              >
+                <VerifiedSeal size={14} />
+                {t(verificationStatus === "needs_changes" ? "professionalBadge.edit" : "verifiedBadge.slot.offer")}
+              </Link>
+            )}
+          </div>
+        ) : null}
       </Card>
     </section>
   );

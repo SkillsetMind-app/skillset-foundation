@@ -18,6 +18,7 @@ import {
   useInstructorProfile,
 } from "@/components/courses/course-social-proof";
 import { UserAvatar } from "@/components/shared/user-avatar";
+import { VerifiedBadge } from "@/components/shared/verified-badge";
 import { useHasRealCourses } from "@/components/site/real-courses";
 import { getSafeExternalUrl } from "@/domain/external-url";
 import { CourseLandingBlocks } from "@/components/courses/course-landing-blocks";
@@ -625,6 +626,10 @@ export function CreatorCourseDetail({
                 />
                 {instructorName}
               </Link>
+            ) : null}
+            {/* Fora do link: o selo é botão (abre o que foi conferido). */}
+            {instructorName && instructorProfile?.verification ? (
+              <VerifiedBadge compact verification={instructorProfile.verification} className="-ml-3" />
             ) : null}
             {instructorProfile?.credentials?.[0] ? (
               <span className="min-w-0 truncate">

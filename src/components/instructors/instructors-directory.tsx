@@ -7,6 +7,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { UserAvatar } from "@/components/shared/user-avatar";
+import { VerifiedBadge } from "@/components/shared/verified-badge";
 import { useHasRealCourses } from "@/components/site/real-courses";
 import { instructorPagePath, type PublicProfile } from "@/domain/user-profile";
 import { listPublicProfiles } from "@/lib/data/user-profiles";
@@ -162,9 +163,12 @@ function InstructorCard({ profile }: { profile: PublicProfile }) {
       <div className="flex items-center gap-3">
         <UserAvatar name={name} photoURL={profile.photoURL} size="lg" />
         <div className="min-w-0">
-          <h3 className="truncate text-base font-bold text-[var(--color-ink)]">
-            {name}
-          </h3>
+          <div className="flex min-w-0 items-center gap-0.5">
+            <h3 className="truncate text-base font-bold text-[var(--color-ink)]">
+              {name}
+            </h3>
+            {profile.verification ? <VerifiedBadge compact verification={profile.verification} /> : null}
+          </div>
           {profile.username ? (
             <p className="mt-1 truncate text-xs font-semibold text-[var(--color-ink-soft)]">
               @{profile.username}

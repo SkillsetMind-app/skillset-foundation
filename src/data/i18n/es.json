@@ -4276,6 +4276,28 @@
       "onDevice": "¿Lo configuras en este teléfono?"
     }
   },
+  "verifiedBadge": {
+    "label": "Profesional verificado",
+    "licenseChecked": "{brand} comprobó esta licencia profesional el {date}.",
+    "licenseCheckedUndated": "{brand} comprobó esta licencia profesional.",
+    "evidenceReviewed": "{brand} revisó la identidad y la evidencia profesional de esta persona el {date}.",
+    "evidenceReviewedUndated": "{brand} revisó la identidad y la evidencia profesional de esta persona.",
+    "noClaims": "No verificamos resultados ni afirmaciones hechas en los cursos.",
+    "trustLink": "Cómo funciona la verificación",
+    "offer": {
+      "eyebrow": "Opcional · gratis por ahora",
+      "title": "Añade el sello de profesional verificado a tu perfil",
+      "body": "Envía tu licencia o tu evidencia profesional. Nuestro equipo la revisa y el sello aparece junto a tu nombre.",
+      "cta": "Obtenerlo gratis (≈3 min)",
+      "notNow": "Ahora no",
+      "preview": "Vista previa"
+    },
+    "slot": {
+      "approved": "Tu perfil muestra el sello de profesional verificado.",
+      "pending": "Tu solicitud del sello está en revisión.",
+      "offer": "Añade el sello de profesional verificado (gratis)"
+    }
+  },
   "professionalBadge": {
     "eyebrow": "Estudio del instructor",
     "title": "Verificación profesional",

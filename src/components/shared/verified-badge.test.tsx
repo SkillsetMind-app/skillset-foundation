@@ -1,0 +1,179 @@
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+import { I18nProvider } from "@/components/i18n/i18n-provider";
+import { VerifiedBadge, VerifiedSeal } from "@/components/shared/verified-badge";
+import en from "@/data/i18n/en.json";
+import es from "@/data/i18n/es.json";
+import type { ProfessionalVerification } from "@/domain/user-profile";
+
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
+afterEach(cleanup);
+
+// Toque/mouse: pointerdown, foco e clique, na ordem do navegador.
+function tap(element: HTMLElement) {
+  fireEvent.pointerDown(element);
+  act(() => element.focus());
+  fireEvent.click(element);
+}
+
+// Teclado: o foco chega sem ponteiro.
+function keyboardFocus(element: HTMLElement) {
+  act(() => element.focus());
+}
+
+const psychologist: ProfessionalVerification = { kind: "psychologist", verifiedAt: "2026-09-01T12:00:00.000Z" };
+const coach: ProfessionalVerification = { kind: "coach", verifiedAt: "2026-09-01T12:00:00.000Z" };
+
+function renderBadge(verification: ProfessionalVerification, { locale = "en", compact = false } = {}) {
+  return render(
+    <I18nProvider initialLocale={locale as "en" | "es"}>
+      <h1>Ana Souza</h1>
+      <VerifiedBadge verification={verification} compact={compact} />
+      <a href="/next">after</a>
+    </I18nProvider>,
+  );
+}
+
+describe("o selo", () => {
+  it("é um quadrado com check: sem círculo, sem cantos arredondados, sem o BadgeCheck do Lucide", () => {
+    const { container } = render(<VerifiedSeal label="Verified professional" />);
+    const svg = container.querySelector("svg")!;
+
+    expect(svg).toHaveClass("verified-seal");
+    expect(svg.querySelector("rect")).not.toHaveAttribute("rx");
+    expect(svg.querySelector("circle")).toBeNull();
+    expect(svg.getAttribute("class")).not.toMatch(/lucide|badge-check/);
+    // Na cor da marca (marinho/latão via .verified-seal), nunca um azul fixo.
+    expect(container.innerHTML).not.toMatch(/#[0-9a-f]{6}|rgb\(/i);
+    expect(screen.getByRole("img", { name: "Verified professional" })).toBe(svg);
+  });
+
+  it("sem rótulo é decorativo", () => {
+    const { container } = render(<VerifiedSeal />);
+    expect(container.querySelector("svg")).toHaveAttribute("aria-hidden", "true");
+  });
+});
+
+describe("rótulo", () => {
+  it.each([
+    ["en", "Verified professional"],
+    ["es", "Profesional verificado"],
+  ])("no perfil, as palavras ficam ao lado do nome (%s)", (locale, label) => {
+    renderBadge(coach, { locale });
+    const button = screen.getByRole("button", { name: label });
+    expect(button).toHaveTextContent(label);
+    expect(button).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("compacto mostra só o selo, com nome acessível", () => {
+    renderBadge(coach, { compact: true });
+    const button = screen.getByRole("button", { name: "Verified professional" });
+    expect(button).toHaveTextContent("");
+    expect(button.querySelector("svg")).toHaveAttribute("aria-hidden", "true");
+  });
+});
+
+describe("popover", () => {
+  it("abre e fecha no clique (toque)", () => {
+    renderBadge(coach);
+    const button = screen.getByRole("button", { name: "Verified professional" });
+
+    tap(button);
+    expect(button).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByText(/reviewed this person's identity/)).toBeInTheDocument();
+
+    tap(button);
+    expect(button).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByText(/reviewed this person's identity/)).toBeNull();
+  });
+
+  it("abre no foco do teclado, Enter não fecha, Esc fecha e devolve o foco", () => {
+    renderBadge(coach);
+    const button = screen.getByRole("button", { name: "Verified professional" });
+
+    keyboardFocus(button);
+    expect(button).toHaveAttribute("aria-expanded", "true");
+
+    // Enter/Espaço viram clique sem ponteiro: quem abriu pelo foco não fecha.
+    fireEvent.click(button);
+    expect(button).toHaveAttribute("aria-expanded", "true");
+
+    // O link do popover é alcançável pelo teclado sem fechar.
+    const trust = screen.getByRole("link", { name: "How verification works" });
+    fireEvent.focusOut(button, { relatedTarget: trust });
+    keyboardFocus(trust);
+    expect(button).toHaveAttribute("aria-expanded", "true");
+
+    fireEvent.keyDown(trust, { key: "Escape" });
+    expect(button).toHaveAttribute("aria-expanded", "false");
+    expect(button).toHaveFocus();
+  });
+
+  it("fecha quando o foco sai e no clique fora", () => {
+    renderBadge(coach);
+    const button = screen.getByRole("button", { name: "Verified professional" });
+
+    keyboardFocus(button);
+    expect(button).toHaveAttribute("aria-expanded", "true");
+    fireEvent.focusOut(button, { relatedTarget: screen.getByRole("link", { name: "after" }) });
+    expect(button).toHaveAttribute("aria-expanded", "false");
+
+    tap(button);
+    expect(button).toHaveAttribute("aria-expanded", "true");
+    fireEvent.pointerDown(screen.getByRole("heading", { name: "Ana Souza" }));
+    expect(button).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("aponta para /trust e sempre avisa que resultados de curso não são verificados", () => {
+    renderBadge(coach);
+    tap(screen.getByRole("button", { name: "Verified professional" }));
+
+    expect(screen.getByText("We don't verify results or claims made in courses.")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "How verification works" })).toHaveAttribute("href", "/trust");
+  });
+});
+
+describe("o texto diz o que foi conferido e quando", () => {
+  function statement(verification: ProfessionalVerification, locale = "en") {
+    renderBadge(verification, { locale });
+    tap(screen.getByRole("button"));
+    return document.querySelector("[data-verified-popover]")!.textContent!;
+  }
+
+  it("psicólogo: a licença, com a data em inglês", () => {
+    expect(statement(psychologist)).toContain(
+      "SkillsetMind checked this professional license on September 1, 2026.",
+    );
+  });
+
+  it.each(["coach", "holistic", "other"] as const)("%s: identidade e evidência profissional", (kind) => {
+    expect(statement({ kind, verifiedAt: "2026-09-01T12:00:00.000Z" })).toContain(
+      "SkillsetMind reviewed this person's identity and professional evidence on September 1, 2026.",
+    );
+  });
+
+  it("em espanhol, a data no formato de lá", () => {
+    expect(statement(psychologist, "es")).toContain(
+      "SkillsetMind comprobó esta licencia profesional el 1 de septiembre de 2026.",
+    );
+    cleanup();
+    expect(statement(coach, "es")).toContain(
+      "SkillsetMind revisó la identidad y la evidencia profesional de esta persona el 1 de septiembre de 2026.",
+    );
+  });
+
+  it("aprovação antiga sem data: a frase sem data, nunca uma data inventada", () => {
+    const text = statement({ kind: "other", verifiedAt: null });
+    expect(text).toContain("SkillsetMind reviewed this person's identity and professional evidence.");
+    expect(text).not.toMatch(/\bon\b\s*\./);
+  });
+});
+
+// Restrição legal (EUA): o selo não certifica, não endossa, não credencia.
+it.each([
+  ["en", en.verifiedBadge, /certif|endors|accredit|licensed by|more students|rank/i],
+  ["es", es.verifiedBadge, /certific|avalad|acreditad|licenciad[oa] por|más alumnos|más estudiantes/i],
+] as const)("a copy do selo em %s não promete o que não foi feito", (_locale, copy, forbidden) => {
+  expect(JSON.stringify(copy)).not.toMatch(forbidden);
+});

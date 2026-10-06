@@ -4276,6 +4276,28 @@
       "onDevice": "Setting up on this phone?"
     }
   },
+  "verifiedBadge": {
+    "label": "Verified professional",
+    "licenseChecked": "{brand} checked this professional license on {date}.",
+    "licenseCheckedUndated": "{brand} checked this professional license.",
+    "evidenceReviewed": "{brand} reviewed this person's identity and professional evidence on {date}.",
+    "evidenceReviewedUndated": "{brand} reviewed this person's identity and professional evidence.",
+    "noClaims": "We don't verify results or claims made in courses.",
+    "trustLink": "How verification works",
+    "offer": {
+      "eyebrow": "Optional · free for now",
+      "title": "Add the verified-professional badge to your profile",
+      "body": "Send your license or professional evidence. Our team reviews it, and the badge appears next to your name.",
+      "cta": "Get it free (≈3 min)",
+      "notNow": "Not now",
+      "preview": "Preview"
+    },
+    "slot": {
+      "approved": "Your profile shows the verified-professional badge.",
+      "pending": "Your badge request is in review.",
+      "offer": "Add the verified-professional badge (free)"
+    }
+  },
   "professionalBadge": {
     "eyebrow": "Teacher studio",
     "title": "Professional verification",
