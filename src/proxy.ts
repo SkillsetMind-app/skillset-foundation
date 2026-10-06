@@ -309,5 +309,8 @@ export const config: ProxyConfig = {
     },
     // Preserve the existing exclusions on all other hosts.
     "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
+    // A creator handle may end in ".png" (/@ana.png is a valid profile, rewritten
+    // to an HTML page by next.config): it must still get the CSP and session.
+    "/@:handle",
   ],
 };

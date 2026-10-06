@@ -194,6 +194,16 @@ describe("Next routing configuration for platform entry aliases", () => {
     expect(unstable_doesMiddlewareMatch({ config, nextConfig, url: `https://${host}/auth`, headers: { host } })).toBe(true);
   });
 
+  // /@usuario é rewrite para uma página HTML; um @ válido pode terminar em
+  // ".png" e mesmo assim precisa da CSP do proxy.
+  it("keeps creator handles that look like files inside the proxy", async () => {
+    const { config } = await import("@/proxy");
+    const host = "www.skillsetmind.com";
+    for (const path of ["/@ana.png", "/@ana.souza", "/@ana.webp"]) {
+      expect(unstable_doesMiddlewareMatch({ config, nextConfig, url: `https://${host}${path}`, headers: { host } }), path).toBe(true);
+    }
+  });
+
   it.each(["app", "consumer", "pay"])("lets /lp reach the proxy on %s instead of the earlier landing redirect", async (entry) => {
     const { config, proxy } = await import("@/proxy");
     for (const host of [`${entry}.skillsetmind.com`, `${entry.toUpperCase()}.SKILLSETMIND.COM.:443`]) {

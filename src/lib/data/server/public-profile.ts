@@ -5,7 +5,7 @@ import {
   INTERNAL_COURSE_TITLE_PREFIX,
 } from "@/domain/teacher-course";
 import type { PublicProfile } from "@/domain/user-profile";
-import { anonymousReadClient, publicUrlSlug } from "@/lib/data/server/public-course";
+import { anonymousReadClient } from "@/lib/data/server/public-course";
 import { rowToPublicProfile } from "@/lib/supabase/user-mappers";
 
 // Server-only (segmento `/server/`). O perfil público do professor é montado
@@ -68,7 +68,7 @@ export const listCreatorCourses = cache(async (ownerId: string): Promise<Creator
   try {
     const { data, error } = await client()
       .from("courses")
-      .select("id, title, title_key, slug, cover_image_url, payment_type, price_amount_minor, currency, rating_average, rating_count, enrollment_count")
+      .select("id, title, title_key, cover_image_url, payment_type, price_amount_minor, currency, rating_average, rating_count, enrollment_count")
       .eq("owner_id", ownerId)
       .eq("status", "published")
       .not("id", "like", `${INTERNAL_COURSE_ID_PREFIX}%`)
@@ -79,7 +79,9 @@ export const listCreatorCourses = cache(async (ownerId: string): Promise<Creator
 
     return (data ?? []).map((row) => ({
       id: row.id,
-      href: `/courses/${publicUrlSlug(row)}`,
+      // Mesma regra de courseUrlSlug: title_key, senão o id. O `slug` legado
+      // não serve: a página do curso só resolve id e title_key.
+      href: `/courses/${row.title_key || row.id}`,
       title: row.title,
       coverImageUrl: row.cover_image_url,
       free: row.payment_type === "free",

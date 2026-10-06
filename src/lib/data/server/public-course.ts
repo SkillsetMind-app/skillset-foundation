@@ -62,7 +62,7 @@ type CourseRow = {
  * antigas — espelha `courseUrlSlug` de published-courses.ts. Duplicado de
  * propósito: importar de lá arrastaria o "use client" para o servidor.
  */
-export function publicUrlSlug(row: Pick<CourseRow, "id" | "title_key" | "slug">): string {
+function publicUrlSlug(row: CourseRow): string {
   return row.title_key || row.slug || row.id;
 }
 

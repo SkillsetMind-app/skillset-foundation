@@ -47,7 +47,9 @@ export function InstructorProfileView({
     : null;
   const ordered = orderShowcaseCourses(courses ?? [], showcase);
   const primary = ordered[0];
-  const students = ordered.reduce((sum, course) => sum + course.enrollmentCount, 0);
+  // Soma de inscrições por curso: a mesma pessoa em dois cursos conta duas
+  // vezes, então o rótulo é "inscrições", nunca "alunos".
+  const enrollments = ordered.reduce((sum, course) => sum + course.enrollmentCount, 0);
   const ratingCount = ordered.reduce((sum, course) => sum + course.ratingCount, 0);
   const ratingAverage = ratingCount
     ? ordered.reduce((sum, course) => sum + course.ratingAverage * course.ratingCount, 0) / ratingCount
@@ -144,17 +146,17 @@ export function InstructorProfileView({
       </section>
 
       {/* Prova só com número de verdade: zero não aparece. */}
-      {students > 0 || ratingCount > 0 ? (
+      {enrollments > 0 || ratingCount > 0 ? (
         <dl
           data-section="proof"
           className="flex flex-wrap justify-center gap-x-8 gap-y-3 border-y border-[var(--color-line)] py-4 text-center"
         >
-          {students > 0 ? (
+          {enrollments > 0 ? (
             <div>
-              <dt className="sr-only">{t("publicPages.profile.students_label")}</dt>
+              <dt className="sr-only">{t("publicPages.profile.enrollments_label")}</dt>
               <dd className="text-sm font-semibold text-[var(--color-ink)]">
-                {t(students === 1 ? "publicPages.profile.students_one" : "publicPages.profile.students_many")
-                  .replace("{count}", () => students.toLocaleString(locale))}
+                {t(enrollments === 1 ? "publicPages.profile.enrollments_one" : "publicPages.profile.enrollments_many")
+                  .replace("{count}", () => enrollments.toLocaleString(locale))}
               </dd>
             </div>
           ) : null}

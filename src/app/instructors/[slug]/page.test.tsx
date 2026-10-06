@@ -145,7 +145,7 @@ describe("página do perfil", () => {
     expect(rows[1]).toHaveTextContent("Free");
     expect(rows[0]).toHaveTextContent("$49.00");
     // Prova com números de verdade.
-    expect(screen.getByText("30 students")).toBeInTheDocument();
+    expect(screen.getByText("30 enrollments")).toBeInTheDocument();
     expect(screen.getByText("(4 ratings)")).toBeInTheDocument();
     // Rodapé leva a quem quer criar, não à loja.
     expect(screen.getByRole("link", { name: "Made with SkillsetMind" })).toHaveAttribute("href", "/for-creators");
@@ -187,10 +187,12 @@ describe("página do perfil", () => {
   it("plano sem a marca da plataforma: sem logo nosso e sem 'Made with'", async () => {
     mocks.getPublicProfileByRef.mockResolvedValue({
       ...ana,
-      storefront: { ...ana.storefront, branding: { hidePlatformBrand: true } },
+      storefront: { ...ana.storefront, branding: { hidePlatformBrand: true, logoUrl: "https://cdn.example/ana-logo.png" } },
     });
     const { container } = await renderPage("@ana.souza");
     expect(container.querySelector('a[href="/"]')).toBeNull();
+    // No lugar do nosso, o logo do professor.
+    expect(screen.getByRole("img", { name: "Ana Souza" })).toHaveAttribute("src", "https://cdn.example/ana-logo.png");
     expect(container.querySelector('[data-section="footer"]')).toBeNull();
   });
 

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -78,7 +79,7 @@ export default async function InstructorDetailPage({ params }: Props) {
 
   const [courses, { t }] = await Promise.all([listCreatorCourses(profile.uid), getServerTranslation()]);
   // Plano que tira a marca da plataforma (o banco decide): sem logo nosso e
-  // sem "Feito com".
+  // sem "Feito com"; o logo do professor, se houver, entra no cabeçalho.
   const branding = profile.storefront?.branding;
   const hideBrand = branding?.hidePlatformBrand === true;
 
@@ -87,7 +88,20 @@ export default async function InstructorDetailPage({ params }: Props) {
       {/* Cabeçalho mínimo: sem o menu do site, que levava o visitante para
           longe do professor. */}
       <header className="mx-auto flex w-full max-w-[40rem] justify-center px-4 pt-5 sm:px-6">
-        {hideBrand ? null : <LogoWordmark nav />}
+        {!hideBrand ? (
+          <LogoWordmark nav />
+        ) : branding?.logoUrl ? (
+          // No lugar do nosso, o logo que o professor subiu na vitrine.
+          <Image
+            src={branding.logoUrl}
+            alt={profileName(profile, t)}
+            width={160}
+            height={40}
+            className="h-10 w-auto object-contain"
+            // Host do professor, fora do remotePatterns.
+            unoptimized
+          />
+        ) : null}
       </header>
       <main id="conteudo" className="mx-auto w-full max-w-[40rem] flex-1 px-4 pb-12 pt-6 sm:px-6">
         <InstructorProfileView profile={profile} courses={courses} />

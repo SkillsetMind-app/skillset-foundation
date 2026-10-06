@@ -122,7 +122,7 @@ describe("listCreatorCourses", () => {
     const calls = fakeClient({
       data: [
         { id: "c-1", title: "Deep Focus", title_key: "deep-focus", slug: null, cover_image_url: null, payment_type: "free", price_amount_minor: null, currency: null, rating_average: null, rating_count: null, enrollment_count: null },
-        { id: "c-2", title: "Calm", title_key: null, slug: null, cover_image_url: "https://x/c.jpg", payment_type: "one_time", price_amount_minor: 4900, currency: "usd", rating_average: 4.5, rating_count: 2, enrollment_count: 7 },
+        { id: "c-2", title: "Calm", title_key: null, slug: "calm-legacy", cover_image_url: "https://x/c.jpg", payment_type: "one_time", price_amount_minor: 4900, currency: "usd", rating_average: 4.5, rating_count: 2, enrollment_count: 7 },
       ],
       error: null,
     });
