@@ -51,6 +51,29 @@ select pg_temp.assert_true(not exists(select 1 from realtime.messages
   'join policy opened presence on a Postgres Changes channel');
 reset role;
 
+-- 1b. Entrar não é transmitir: sem policy de INSERT para broadcast, quem está
+-- logado continua sem poder mandar mensagem num canal de Postgres Changes.
+select pg_temp.joins(1, 'courses:builder:smoke-course#13');
+set local role authenticated;
+do $$
+begin
+  begin
+    insert into realtime.messages (topic, extension, private, inserted_at, updated_at)
+    values ('courses:builder:smoke-course#13', 'broadcast', true, '2000-01-01 12:00', '2000-01-01 12:00');
+  exception when insufficient_privilege then
+    return;
+  end;
+  raise exception 'REALTIME_JOIN_REGRESSION: authenticated user can broadcast on a Postgres Changes channel';
+end $$;
+reset role;
+
+-- 1c. Sem tópico (realtime.topic vazio), nada fica visível.
+select pg_temp.joins(1, '');
+set local role authenticated;
+select pg_temp.assert_true(not exists(select 1 from realtime.messages),
+  'messages visible with no realtime.topic set');
+reset role;
+
 -- 2. A presença da comunidade continua fechada para quem não é dono, aluno ou
 -- admin (#355): nem broadcast nem presença.
 select pg_temp.joins(1, 'community-presence:smoke-course#2');
