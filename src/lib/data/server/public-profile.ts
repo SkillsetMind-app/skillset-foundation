@@ -4,7 +4,7 @@ import {
   INTERNAL_COURSE_ID_PREFIX,
   INTERNAL_COURSE_TITLE_PREFIX,
 } from "@/domain/teacher-course";
-import type { PublicProfile } from "@/domain/user-profile";
+import { isReservedHandle, type PublicProfile } from "@/domain/user-profile";
 import { anonymousReadClient } from "@/lib/data/server/public-course";
 import { rowToPublicProfile } from "@/lib/supabase/user-mappers";
 
@@ -34,7 +34,7 @@ const client = () => anonymousReadClient({ timeoutMs: 3_000, revalidate: 60 });
  */
 export const getPublicProfileByRef = cache(async (ref: string): Promise<PublicProfile | null> => {
   const handle = ref.startsWith("@") ? ref.slice(1).toLowerCase() : null;
-  if (handle !== null && !USERNAME.test(handle)) return null;
+  if (handle !== null && (!USERNAME.test(handle) || isReservedHandle(handle))) return null;
 
   const { data, error } = await client()
     .from("public_profiles")
@@ -56,7 +56,6 @@ export type CreatorCourse = {
   currency: string;
   ratingAverage: number;
   ratingCount: number;
-  enrollmentCount: number;
 };
 
 /**
@@ -68,7 +67,7 @@ export const listCreatorCourses = cache(async (ownerId: string): Promise<Creator
   try {
     const { data, error } = await client()
       .from("courses")
-      .select("id, title, title_key, cover_image_url, payment_type, price_amount_minor, currency, rating_average, rating_count, enrollment_count")
+      .select("id, title, title_key, cover_image_url, payment_type, price_amount_minor, currency, rating_average, rating_count")
       .eq("owner_id", ownerId)
       .eq("status", "published")
       .not("id", "like", `${INTERNAL_COURSE_ID_PREFIX}%`)
@@ -89,7 +88,6 @@ export const listCreatorCourses = cache(async (ownerId: string): Promise<Creator
       currency: row.currency ?? "USD",
       ratingAverage: row.rating_average ?? 0,
       ratingCount: row.rating_count ?? 0,
-      enrollmentCount: row.enrollment_count ?? 0,
     }));
   } catch (error) {
     console.error("[public-profile] listCreatorCourses failed", error);

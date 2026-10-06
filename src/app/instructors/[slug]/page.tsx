@@ -60,14 +60,21 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   // Profissão ainda não está em public_profiles (só a tagline da vitrine).
   const tagline = profile.storefront?.showcase?.tagline?.trim();
   const who = `${profileName(profile, t)}${profile.username ? ` (@${profile.username})` : ""}`;
-  return buildPageMetadata({
-    title: tagline ? `${who} · ${tagline}` : who,
+  const title = tagline ? `${who} · ${tagline}` : who;
+  // ?v= troca quando o perfil muda: WhatsApp e Facebook guardam o cartão pela
+  // URL, e sem isso a foto nova nunca aparecia.
+  const version = profile.updatedAt ? `?v=${encodeURIComponent(String(profile.updatedAt))}` : "";
+  const metadata = buildPageMetadata({
+    title,
     description: tagline || excerpt(profile.bio) || t("publicPages.profile.metadata_description"),
     // `/@usuario` quando há @: o mesmo perfil por `/instructors/{uid}` aponta
     // para lá, e o buscador junta os dois endereços num só.
     path: instructorPagePath(profile.uid, profile.username),
-    image: `/instructors/${profile.uid}/opengraph-image`,
+    image: `/instructors/${profile.uid}/opengraph-image${version}`,
   });
+  // Plano que tira a marca da plataforma: a aba não termina em "| SkillsetMind".
+  if (profile.storefront?.branding?.hidePlatformBrand === true) metadata.title = title;
+  return metadata;
 }
 
 export default async function InstructorDetailPage({ params }: Props) {
@@ -78,8 +85,10 @@ export default async function InstructorDetailPage({ params }: Props) {
   if (!profile) notFound();
 
   const [courses, { t }] = await Promise.all([listCreatorCourses(profile.uid), getServerTranslation()]);
-  // Plano que tira a marca da plataforma (o banco decide): sem logo nosso e
-  // sem "Feito com"; o logo do professor, se houver, entra no cabeçalho.
+  // O logo da vitrine (todo plano com vitrine, Starter incluso: a projeção só
+  // traz `storefront` para esses planos) entra no lugar do nosso. Plano que
+  // tira a marca da plataforma (o banco decide): sem logo nosso e sem
+  // "Feito com".
   const branding = profile.storefront?.branding;
   const hideBrand = branding?.hidePlatformBrand === true;
 
@@ -88,10 +97,7 @@ export default async function InstructorDetailPage({ params }: Props) {
       {/* Cabeçalho mínimo: sem o menu do site, que levava o visitante para
           longe do professor. */}
       <header className="mx-auto flex w-full max-w-[40rem] justify-center px-4 pt-5 sm:px-6">
-        {!hideBrand ? (
-          <LogoWordmark nav />
-        ) : branding?.logoUrl ? (
-          // No lugar do nosso, o logo que o professor subiu na vitrine.
+        {branding?.logoUrl ? (
           <Image
             src={branding.logoUrl}
             alt={profileName(profile, t)}
@@ -101,7 +107,9 @@ export default async function InstructorDetailPage({ params }: Props) {
             // Host do professor, fora do remotePatterns.
             unoptimized
           />
-        ) : null}
+        ) : hideBrand ? null : (
+          <LogoWordmark nav />
+        )}
       </header>
       <main id="conteudo" className="mx-auto w-full max-w-[40rem] flex-1 px-4 pb-12 pt-6 sm:px-6">
         <InstructorProfileView profile={profile} courses={courses} />

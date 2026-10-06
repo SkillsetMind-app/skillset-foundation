@@ -31,6 +31,7 @@ const ana: PublicProfile = {
   bio: "Coach de carreira há doze anos. ".repeat(10).trim(),
   credentials: ["ICF Associate Certified Coach"],
   storefront: { showcase: { tagline: "Career coach for first-time managers", featuredCourseId: "c-2" } },
+  updatedAt: "2026-10-05T12:00:00.000Z",
 };
 
 const course = (id: string, title: string, extra: Partial<CreatorCourse> = {}): CreatorCourse => ({
@@ -43,13 +44,12 @@ const course = (id: string, title: string, extra: Partial<CreatorCourse> = {}): 
   currency: "USD",
   ratingAverage: 0,
   ratingCount: 0,
-  enrollmentCount: 0,
   ...extra,
 });
 
 const courses = [
   course("c-1", "Alpha", { free: true, priceAmountMinor: null }),
-  course("c-2", "Bravo", { ratingAverage: 4.5, ratingCount: 4, enrollmentCount: 30 }),
+  course("c-2", "Bravo", { ratingAverage: 4.5, ratingCount: 4 }),
 ];
 
 const params = (slug: string) => ({ params: Promise.resolve({ slug }) });
@@ -77,8 +77,19 @@ describe("metadata do perfil", () => {
     expect(metadata.description).toBe("Career coach for first-time managers");
     expect(metadata.alternates?.canonical).toBe("https://www.skillsetmind.com/@ana.souza");
     expect(metadata.openGraph?.images).toEqual([
-      { url: `https://www.skillsetmind.com/instructors/${ana.uid}/opengraph-image` },
+      // ?v= muda quando o perfil muda: WhatsApp e Facebook guardam o cartão
+      // pela URL, e sem isso a foto nova nunca aparecia.
+      { url: `https://www.skillsetmind.com/instructors/${ana.uid}/opengraph-image?v=2026-10-05T12%3A00%3A00.000Z` },
     ]);
+  });
+
+  it("plano que tira a marca: o título não termina com '| SkillsetMind'", async () => {
+    mocks.getPublicProfileByRef.mockResolvedValue({
+      ...ana,
+      storefront: { ...ana.storefront, branding: { hidePlatformBrand: true } },
+    });
+    const metadata = await generateMetadata(params("@ana.souza"));
+    expect(metadata.title).toBe("Ana Souza (@ana.souza) · Career coach for first-time managers");
   });
 
   it("sem tagline, a descrição são os primeiros ~155 caracteres da bio", async () => {
@@ -144,9 +155,9 @@ describe("página do perfil", () => {
     expect(rows.map((row) => row.querySelector("h3")?.textContent)).toEqual(["Bravo", "Alpha"]);
     expect(rows[1]).toHaveTextContent("Free");
     expect(rows[0]).toHaveTextContent("$49.00");
-    // Prova com números de verdade.
-    expect(screen.getByText("30 enrollments")).toBeInTheDocument();
-    expect(screen.getByText("(4 ratings)")).toBeInTheDocument();
+    // Prova: só a nota. Inscrições saíram (enrollment_count não é mantido).
+    expect(container.querySelector('[data-section="proof"]')).toHaveTextContent("4.5(4 ratings)");
+    expect(container.textContent).not.toMatch(/enrollment|student/i);
     // Rodapé leva a quem quer criar, não à loja.
     expect(screen.getByRole("link", { name: "Made with SkillsetMind" })).toHaveAttribute("href", "/for-creators");
   });
@@ -164,6 +175,52 @@ describe("página do perfil", () => {
     mocks.listCreatorCourses.mockResolvedValue([course("c-1", "Alpha")]);
     const { container } = await renderPage("@ana.souza");
     expect(container.querySelector('[data-section="proof"]')).toBeNull();
+  });
+
+  // Item de layout: com `truncate`, o título longo do botão principal dava ao
+  // grid a largura do texto (448px numa área de 343px a 375px) e o
+  // .page-shell cortava o resto. A coluna tem de poder encolher.
+  it("a coluna encolhe para caber no celular, mesmo com título longo no botão", async () => {
+    mocks.listCreatorCourses.mockResolvedValue([course("c-2", "How to Lead Your First Team Without Burning Out Again")]);
+    const { container } = await renderPage("@ana.souza");
+    expect(container.querySelector("article")).toHaveClass("grid-cols-[minmax(0,1fr)]");
+    expect(container.querySelector('[data-section="primary"]')).toHaveClass("min-w-0");
+  });
+
+  it("bio curta aparece inteira, sem 'Read more'", async () => {
+    mocks.getPublicProfileByRef.mockResolvedValue({ ...ana, bio: "Coach for first-time managers." });
+    const { container } = await renderPage("@ana.souza");
+    expect(container.querySelector("details")).toBeNull();
+    expect(screen.getByText("Coach for first-time managers.")).not.toHaveClass("line-clamp-3");
+  });
+
+  it("bio longa recolhida, com um botão de nome curto", async () => {
+    const { container } = await renderPage("@ana.souza");
+    const summary = container.querySelector("details > summary");
+    // O nome acessível é "Read more", não a bio inteira.
+    expect(summary?.textContent).toBe("Read more");
+    expect(screen.getByText(ana.bio!)).toHaveClass("line-clamp-3");
+  });
+
+  it("plano com vitrine: logo do professor, botão na cor da marca e tema no cabeçalho", async () => {
+    mocks.getPublicProfileByRef.mockResolvedValue({
+      ...ana,
+      storefront: {
+        ...ana.storefront,
+        branding: { logoUrl: "https://cdn.example/ana-logo.png", accentColor: "#f5c518", themePreset: "warm" },
+      },
+    });
+    const { container } = await renderPage("@ana.souza");
+
+    // Starter também mostra o logo; a nossa marca segue no rodapé.
+    expect(screen.getByRole("img", { name: "Ana Souza" })).toHaveAttribute("src", "https://cdn.example/ana-logo.png");
+    expect(screen.getByRole("link", { name: "Made with SkillsetMind" })).toBeInTheDocument();
+    // Amarelo: o texto do botão é escuro (readableTextOnAccent).
+    const primary = container.querySelector<HTMLElement>('[data-section="primary"]')!;
+    expect(primary).toHaveAttribute("data-accent");
+    expect(primary.style.getPropertyValue("--storefront-accent")).toBe("#f5c518");
+    expect(primary.style.getPropertyValue("--storefront-accent-ink")).toBe("#0a0d12");
+    expect(container.querySelector('[data-section="header"]')).toHaveAttribute("data-storefront-theme", "warm");
   });
 
   it("nada do perfil leva ao marketplace, nem o menu do site", async () => {

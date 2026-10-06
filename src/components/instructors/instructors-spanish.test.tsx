@@ -16,7 +16,7 @@ const fixture = vi.hoisted(() => ({
 }));
 const course: CreatorCourse = {
   id: "course", href: "/courses/original-course", title: "Original course title", coverImageUrl: null,
-  free: true, priceAmountMinor: null, currency: "USD", ratingAverage: 0, ratingCount: 0, enrollmentCount: 0,
+  free: true, priceAmountMinor: null, currency: "USD", ratingAverage: 0, ratingCount: 0,
 };
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 vi.mock("@/components/shared/user-avatar", () => ({ UserAvatar: () => null }));
@@ -85,14 +85,16 @@ it.each([[true, 1], [false, 0]])("links the store only while it has a real cours
 });
 
 it("translates profile labels at render time without touching author data", () => {
-  show(<InstructorProfileView profile={fixture.profile as PublicProfile} courses={[course]} />);
+  // Bio longa (mais de 180 caracteres): é a que ganha o "Read more".
+  const bio = "Original author biography. ".repeat(8).trim();
+  show(<InstructorProfileView profile={{ ...(fixture.profile as PublicProfile), bio }} courses={[course]} />);
   expect(screen.getByRole("heading", { name: "Courses" })).toBeInTheDocument();
   fireEvent.click(screen.getByText("ES"));
   expect(screen.getByRole("heading", { name: "Cursos" })).toBeInTheDocument();
   expect(screen.getByRole("heading", { name: "Sobre Original Author" })).toBeInTheDocument();
   expect(screen.getByText("Gratis")).toBeInTheDocument();
   expect(screen.getByText("Leer más")).toBeInTheDocument();
-  expect(screen.getByText("Original author biography")).toBeInTheDocument();
+  expect(screen.getByText(bio)).toBeInTheDocument();
   // Botão principal e linha do curso.
   expect(screen.getAllByText("Original course title")).toHaveLength(2);
 });

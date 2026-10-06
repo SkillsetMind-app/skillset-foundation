@@ -68,6 +68,15 @@ describe("getPublicProfileByRef", () => {
     expect(calls).toContainEqual(["eq", "uid", row.uid]);
   });
 
+  // Ninguém se passa pela plataforma: @support, @admin... são 404.
+  it("@ reservado é 404 sem ir ao banco", async () => {
+    const calls = fakeClient({ data: row, error: null });
+    for (const ref of ["@support", "@Admin", "@skillsetmind", "@billing", "@official"]) {
+      expect(await getPublicProfileByRef(ref), ref).toBeNull();
+    }
+    expect(calls).toEqual([]);
+  });
+
   it("@ fora do formato de username nem vai ao banco", async () => {
     const calls = fakeClient({ data: row, error: null });
     for (const ref of ["@a", "@-ana", "@ana souza", "@ana/x", `@${"a".repeat(33)}`]) {
@@ -137,9 +146,12 @@ describe("listCreatorCourses", () => {
       ["not", "title", "like", "[QA]%"],
     ]));
     expect(courses).toEqual([
-      expect.objectContaining({ id: "c-1", href: "/courses/deep-focus", free: true, currency: "USD", ratingCount: 0, enrollmentCount: 0 }),
-      expect.objectContaining({ id: "c-2", href: "/courses/c-2", free: false, priceAmountMinor: 4900, ratingAverage: 4.5, ratingCount: 2, enrollmentCount: 7 }),
+      expect.objectContaining({ id: "c-1", href: "/courses/deep-focus", free: true, currency: "USD", ratingCount: 0 }),
+      expect.objectContaining({ id: "c-2", href: "/courses/c-2", free: false, priceAmountMinor: 4900, ratingAverage: 4.5, ratingCount: 2 }),
     ]);
+    // enrollment_count não é mantido por nada no banco: nem é lido.
+    expect(JSON.stringify(calls)).not.toContain("enrollment_count");
+    expect(courses?.[0]).not.toHaveProperty("enrollmentCount");
   });
 
   it("falha de leitura vale null e fica no log", async () => {

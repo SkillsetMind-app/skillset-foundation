@@ -7678,6 +7678,56 @@ button:hover > .dash-card,
   padding-top: 0;
 }
 
+/* Perfil do professor (link da bio). Plano com vitrine: o botao principal
+   leva a cor da marca, com o texto que tiver mais contraste
+   (readableTextOnAccent). Especificidade acima de .button-solid e da versao
+   escura, que usam !important na cor. */
+.button-solid[data-accent],
+.button-solid[data-accent]:hover,
+[data-theme="dark"] .button-solid[data-accent],
+[data-theme="dark"] .button-solid[data-accent]:hover {
+  border-color: var(--storefront-accent);
+  background: var(--storefront-accent);
+  color: var(--storefront-accent-ink) !important;
+}
+
+.button-solid[data-accent] *,
+.button-solid[data-accent]:hover *,
+[data-theme="dark"] .button-solid[data-accent] *,
+[data-theme="dark"] .button-solid[data-accent]:hover * {
+  color: var(--storefront-accent-ink) !important;
+}
+
+/* Temas da vitrine no cabecalho do perfil, com os tokens que ja trocam no
+   escuro (a superficie muda; o tom vem do dourado e do azul da marca). */
+.creator-profile-header[data-storefront-theme="warm"] {
+  background: color-mix(in srgb, var(--color-accent) 14%, var(--color-surface));
+}
+
+.creator-profile-header[data-storefront-theme="cool"] {
+  background: color-mix(in srgb, var(--color-info) 14%, var(--color-surface));
+}
+
+.creator-profile-header[data-storefront-theme="mono"] {
+  background: var(--color-surface-strong);
+}
+
+/* Bio longa: 3 linhas e "Read more". Aberto o <details>, o texto solta e o
+   botao some. Sem marcador do <summary>, nem no Safari do iPhone. */
+.creator-bio summary::-webkit-details-marker {
+  display: none;
+}
+
+.creator-bio:has(details[open]) .creator-bio__text {
+  display: block;
+  overflow: visible;
+  -webkit-line-clamp: unset;
+}
+
+.creator-bio details[open] > summary {
+  display: none;
+}
+
 .marketplace-card__media {
   position: relative;
   display: block;

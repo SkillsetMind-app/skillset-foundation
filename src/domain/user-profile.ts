@@ -91,7 +91,21 @@ export const maxStorefrontSectionLabelLength = 60;
  * funcionando para quem nao tem @ e para os links antigos.
  */
 export function instructorPagePath(uid: string, username?: string | null): string {
-  return username ? `/@${username}` : `/instructors/${uid}`;
+  return username && !isReservedHandle(username) ? `/@${username}` : `/instructors/${uid}`;
+}
+
+/**
+ * @ que imitam a plataforma: `/@support` com o perfil de um professor qualquer
+ * seria um convite a golpe. A rota do perfil responde 404 para eles, e o link
+ * de quem já tem um desses cai no endereço pelo uid.
+ */
+export const RESERVED_HANDLES: ReadonlySet<string> = new Set([
+  "skillsetmind", "support", "admin", "help", "ops", "api",
+  "team", "official", "staff", "security", "billing",
+]);
+
+export function isReservedHandle(username: string): boolean {
+  return RESERVED_HANDLES.has(username.toLowerCase());
 }
 
 /** A teacher-chosen brand accent must be a 6-digit hex so it is safe to drop

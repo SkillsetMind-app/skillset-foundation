@@ -1,6 +1,27 @@
 import { describe, expect, it } from "vitest";
 
-import { isStorefrontHexColor, readableTextOnAccent } from "@/domain/user-profile";
+import { instructorPagePath, isReservedHandle, isStorefrontHexColor, readableTextOnAccent } from "@/domain/user-profile";
+
+describe("instructorPagePath", () => {
+  it("usa /@usuario quando há @, senão /instructors/{uid}", () => {
+    expect(instructorPagePath("u-1", "ana.souza")).toBe("/@ana.souza");
+    expect(instructorPagePath("u-1", null)).toBe("/instructors/u-1");
+  });
+
+  // Um @ reservado responde 404 em /@...: o link cai no uid, que funciona.
+  it("@ reservado cai no endereço pelo uid", () => {
+    expect(instructorPagePath("u-1", "support")).toBe("/instructors/u-1");
+  });
+});
+
+describe("isReservedHandle", () => {
+  it("cobre os nomes que imitam a plataforma, sem diferenciar maiúsculas", () => {
+    for (const handle of ["skillsetmind", "support", "admin", "help", "ops", "api", "team", "official", "staff", "security", "billing", "Support"]) {
+      expect(isReservedHandle(handle), handle).toBe(true);
+    }
+    expect(isReservedHandle("ana.souza")).toBe(false);
+  });
+});
 
 // A teacher picks this colour and it gets inlined into a CSS custom property.
 // Two of the three call sites are render-time (member-area-shell, instructor-

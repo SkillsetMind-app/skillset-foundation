@@ -3,6 +3,7 @@
 import { ArrowRight, Star } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+import type { CSSProperties } from "react";
 
 import { CourseTile } from "@/components/courses/course-tile";
 import { useTranslation } from "@/components/i18n/i18n-provider";
@@ -11,6 +12,7 @@ import { brand } from "@/data/brand";
 import {
   isStorefrontHexColor,
   publicProfileName,
+  readableTextOnAccent,
   type PublicProfile,
   type StorefrontShowcase,
 } from "@/domain/user-profile";
@@ -47,9 +49,10 @@ export function InstructorProfileView({
     : null;
   const ordered = orderShowcaseCourses(courses ?? [], showcase);
   const primary = ordered[0];
-  // Soma de inscrições por curso: a mesma pessoa em dois cursos conta duas
-  // vezes, então o rótulo é "inscrições", nunca "alunos".
-  const enrollments = ordered.reduce((sum, course) => sum + course.enrollmentCount, 0);
+  // Bio longa abre recolhida; a curta aparece inteira, sem botão.
+  const longBio = (profile.bio?.length ?? 0) > BIO_PREVIEW_CHARS;
+  // Tema da vitrine (warm/cool/mono) tinge o cabeçalho; "default" não.
+  const theme = branding?.themePreset && branding.themePreset !== "default" ? branding.themePreset : null;
   const ratingCount = ordered.reduce((sum, course) => sum + course.ratingCount, 0);
   const ratingAverage = ratingCount
     ? ordered.reduce((sum, course) => sum + course.ratingAverage * course.ratingCount, 0) / ratingCount
@@ -58,8 +61,14 @@ export function InstructorProfileView({
     value.toLocaleString(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 
   return (
-    <article className="grid gap-8">
-      <header data-section="header" className="flex flex-col items-center text-center">
+    // minmax(0,1fr): sem isto a coluna toma a largura do título do botão
+    // principal (truncate = sem quebra) e o .page-shell corta o resto.
+    <article className="grid grid-cols-[minmax(0,1fr)] gap-8">
+      <header
+        data-section="header"
+        data-storefront-theme={theme ?? undefined}
+        className={`creator-profile-header flex flex-col items-center text-center ${theme ? "px-4 py-6" : ""}`}
+      >
         {branding?.heroImageUrl ? (
           <div className="relative mb-6 aspect-[3/1] w-full overflow-hidden bg-[var(--color-surface-strong)]">
             <Image
@@ -99,7 +108,13 @@ export function InstructorProfileView({
         <Link
           data-section="primary"
           href={primary.href}
-          className="button-solid min-h-12 w-full px-5 py-3 text-base"
+          // Cor da marca do professor no botão; o texto segue o contraste.
+          data-accent={accent ? "" : undefined}
+          style={accent ? ({
+            "--storefront-accent": accent,
+            "--storefront-accent-ink": readableTextOnAccent(accent),
+          } as CSSProperties) : undefined}
+          className="button-solid min-h-12 w-full min-w-0 px-5 py-3 text-base"
         >
           <span className="min-w-0 truncate">{primary.title}</span>
           <ArrowRight aria-hidden="true" size={18} strokeWidth={2} className="shrink-0" />
@@ -145,39 +160,27 @@ export function InstructorProfileView({
         )}
       </section>
 
-      {/* Prova só com número de verdade: zero não aparece. */}
-      {enrollments > 0 || ratingCount > 0 ? (
+      {/* Prova só com número de verdade: zero não aparece. Só a nota: o
+          contador de inscrições do curso não é mantido por nada no banco. */}
+      {ratingCount > 0 ? (
         <dl
           data-section="proof"
-          className="flex flex-wrap justify-center gap-x-8 gap-y-3 border-y border-[var(--color-line)] py-4 text-center"
+          className="flex justify-center border-y border-[var(--color-line)] py-4 text-center"
         >
-          {enrollments > 0 ? (
-            <div>
-              <dt className="sr-only">{t("publicPages.profile.enrollments_label")}</dt>
-              <dd className="text-sm font-semibold text-[var(--color-ink)]">
-                {t(enrollments === 1 ? "publicPages.profile.enrollments_one" : "publicPages.profile.enrollments_many")
-                  .replace("{count}", () => enrollments.toLocaleString(locale))}
-              </dd>
-            </div>
-          ) : null}
-          {ratingCount > 0 ? (
-            <div>
-              <dt className="sr-only">{t("publicPages.profile.rating_label")}</dt>
-              <dd className="inline-flex items-center gap-1.5 text-sm font-semibold text-[var(--color-ink)]">
-                <Star
-                  aria-hidden="true"
-                  size={14}
-                  strokeWidth={1.5}
-                  className="fill-[var(--color-brand)] text-[var(--color-brand)]"
-                />
-                {decimal(ratingAverage)}
-                <span className="font-normal text-[var(--color-ink-soft)]">
-                  {t(ratingCount === 1 ? "publicPages.profile.ratings_one" : "publicPages.profile.ratings_many")
-                    .replace("{count}", () => ratingCount.toLocaleString(locale))}
-                </span>
-              </dd>
-            </div>
-          ) : null}
+          <dt className="sr-only">{t("publicPages.profile.rating_label")}</dt>
+          <dd className="inline-flex items-center gap-1.5 text-sm font-semibold text-[var(--color-ink)]">
+            <Star
+              aria-hidden="true"
+              size={14}
+              strokeWidth={1.5}
+              className="fill-[var(--color-brand)] text-[var(--color-brand)]"
+            />
+            {decimal(ratingAverage)}
+            <span className="font-normal text-[var(--color-ink-soft)]">
+              {t(ratingCount === 1 ? "publicPages.profile.ratings_one" : "publicPages.profile.ratings_many")
+                .replace("{count}", () => ratingCount.toLocaleString(locale))}
+            </span>
+          </dd>
         </dl>
       ) : null}
 
@@ -190,15 +193,20 @@ export function InstructorProfileView({
             {t("publicPages.profile.about").replace("{name}", () => name)}
           </h2>
           {profile.bio ? (
-            // Recolhida: quem chega do Instagram quer o curso, não a biografia.
-            <details className="group mt-3">
-              <summary className="cursor-pointer list-none text-sm leading-6 text-[var(--color-ink-soft)]">
-                <span className="line-clamp-2 group-open:line-clamp-none">{profile.bio}</span>
-                <span className="mt-1 inline-block text-sm font-semibold text-[var(--color-primary)] underline underline-offset-4 group-open:hidden">
-                  {t("publicPages.profile.read_more")}
-                </span>
-              </summary>
-            </details>
+            // Bio longa recolhida (quem chega do Instagram quer o curso). Sem JS:
+            // o <details> abre sozinho e o CSS (.creator-bio) solta o texto.
+            <div className="creator-bio mt-3">
+              <p className={`creator-bio__text text-sm leading-6 text-[var(--color-ink-soft)] ${longBio ? "line-clamp-3" : ""}`}>
+                {profile.bio}
+              </p>
+              {longBio ? (
+                <details>
+                  <summary className="mt-1 inline-block cursor-pointer list-none text-sm font-semibold text-[var(--color-primary)] underline underline-offset-4">
+                    {t("publicPages.profile.read_more")}
+                  </summary>
+                </details>
+              ) : null}
+            </div>
           ) : null}
           {profile.credentials.length > 0 ? (
             <ul className="mt-4 grid gap-2">
@@ -217,6 +225,9 @@ export function InstructorProfileView({
     </article>
   );
 }
+
+/** Acima disto a bio abre recolhida em 3 linhas, com "Read more". */
+const BIO_PREVIEW_CHARS = 180;
 
 /**
  * Ordem da vitrine: o curso em destaque primeiro, depois a ordem do editor.
