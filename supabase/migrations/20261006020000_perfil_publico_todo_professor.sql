@@ -82,7 +82,7 @@ create or replace function public.project_public_profile(p_uid text)
 returns void
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, pg_temp
 as $$
 declare
   u public.users;
@@ -165,7 +165,7 @@ create or replace function public.sync_public_profile_on_account_control()
 returns trigger
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, pg_temp
 as $$
 begin
   if tg_op = 'DELETE' then
