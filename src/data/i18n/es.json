@@ -377,7 +377,7 @@
   "home": {
     "metadata": {
       "title": "Plataforma de cursos para psicólogos y profesionales del desarrollo personal",
-      "description": "Para psicólogos y profesionales del desarrollo personal que ya enseñan en vivo y quieren vender su método como un curso con comunidad de pago, sin mensualidad. Los compradores pagan directamente a tu propia cuenta de Stripe, así que nunca retenemos tu dinero."
+      "description": "Para psicólogos y profesionales del desarrollo personal que ya enseñan en vivo: vende tu curso y comunidad de pago, sin mensualidad. Cobras en tu propio Stripe."
     },
     "hero": {
       "eyebrow": "Para psicólogos y profesionales del desarrollo personal",
@@ -411,9 +411,7 @@
       "title": "Cursos de expertos verificados, listos para aprender.",
       "sub": "Cada curso lo crea un profesional independiente, verificado por SkillsetMind cuando se requiere.",
       "browseAll": "Ver todos los cursos",
-      "viewCourse": "Ver curso",
-      "emptyTitle": "El marketplace abre pronto — sé uno de los primeros profesores.",
-      "emptyCta": "Mira cómo funciona publicar"
+      "viewCourse": "Ver curso"
     },
     "capabilities": {
       "kicker": "Incluido en SkillsetMind",
@@ -3253,9 +3251,8 @@
     "notFound": {
       "eyebrow": "No encontrada",
       "title": "No pudimos encontrar esta página.",
-      "body": "Usa los enlaces de abajo para seguir explorando SkillsetMind.",
-      "home": "Ir al inicio",
-      "courses": "Explorar cursos"
+      "body": "Vuelve al inicio para seguir explorando SkillsetMind.",
+      "home": "Ir al inicio"
     }
   },
   "authFlow": {
@@ -5163,7 +5160,9 @@
       "print": "Imprimir / Guardar como PDF",
       "back": "Volver al inicio",
       "explore": "Explorar cursos",
-      "pageLoading": "Cargando verificación..."
+      "pageLoading": "Cargando verificación...",
+      "metaTitle": "Verificar un certificado",
+      "metaDescription": "Introduce un código para confirmar si SkillsetMind emitió un certificado. Solo muestra datos del curso, nunca registros privados de estudiantes."
     },
     "agenda": {
       "eyebrow": "Sesiones en vivo",

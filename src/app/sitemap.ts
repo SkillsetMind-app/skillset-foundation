@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
 
-import { listPublishedCourses } from "@/lib/data/server/public-course";
+import { hasRealPublishedCourse, listPublishedCourses } from "@/lib/data/server/public-course";
 import { SITE_URL } from "@/lib/seo/page-metadata";
 
 // Era `force-static`, e por isso o sitemap não conseguia enumerar curso nenhum:
@@ -18,8 +18,9 @@ const publicRoutes: Array<{
   priority: number;
 }> = [
   { path: "/", changeFrequency: "weekly", priority: 1 },
-  { path: "/courses", changeFrequency: "daily", priority: 0.9 },
+  // /courses entra só com curso real publicado (ver abaixo).
   { path: "/for-creators", changeFrequency: "weekly", priority: 0.9 },
+  { path: "/how-it-works", changeFrequency: "monthly", priority: 0.8 },
   { path: "/pricing", changeFrequency: "monthly", priority: 0.8 },
   { path: "/promise", changeFrequency: "monthly", priority: 0.8 },
   // Linked from the footer on every page (trust, fees-and-payouts) and from
@@ -27,6 +28,7 @@ const publicRoutes: Array<{
   // never made it into this array, so sitemap consumers had to discover them
   // by crawl. /fees-and-payouts carries the commission + refund policy.
   { path: "/fees-and-payouts", changeFrequency: "monthly", priority: 0.8 },
+  { path: "/refund-policy", changeFrequency: "yearly", priority: 0.5 },
   { path: "/trust", changeFrequency: "monthly", priority: 0.7 },
   { path: "/promise/changelog", changeFrequency: "monthly", priority: 0.4 },
   { path: "/instructors", changeFrequency: "weekly", priority: 0.7 },
@@ -57,11 +59,20 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // Os 6 cursos do catálogo de demonstração seguem FORA de propósito: ninguém
   // pode comprá-los, e listá-los fazia buscador indexar seis páginas de produto
   // fantasma. Aqui entram só cursos com linha em `courses` e status `published`
-  // — os que existem para ser vendidos.
+  // — os que existem para ser vendidos — menos os internos de teste.
   //
   // Falha de leitura devolve lista vazia (ver public-course.ts): o sitemap perde
   // os cursos naquela revalidação em vez de derrubar a rota inteira.
-  const courses = await listPublishedCourses();
+  const [courses, hasRealCourses] = await Promise.all([
+    listPublishedCourses(),
+    hasRealPublishedCourse(),
+  ]);
+
+  // Loja sem curso real não é página que valha indexar. Mesma checagem da
+  // home (anônima, em cache), não o tamanho da lista acima.
+  const storeEntry = hasRealCourses
+    ? [{ url: `${SITE_URL}/courses`, lastModified, changeFrequency: "daily" as const, priority: 0.9 }]
+    : [];
 
   const courseEntries = courses.map((course) => ({
     url: `${SITE_URL}/courses/${course.urlSlug}`,
@@ -70,5 +81,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.8,
   }));
 
-  return [...staticEntries, ...courseEntries];
+  return [...staticEntries, ...storeEntry, ...courseEntries];
 }

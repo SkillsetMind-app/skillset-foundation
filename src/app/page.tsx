@@ -6,6 +6,7 @@ import { MarketingHero } from "@/components/site/marketing-hero";
 import { PromisePreviewBand } from "@/components/site/promise-preview-band";
 import { SiteFooter } from "@/components/site/site-footer";
 import { SiteNav } from "@/components/site/site-nav";
+import { hasRealPublishedCourse } from "@/lib/data/server/public-course";
 import { buildPageMetadata } from "@/lib/seo/page-metadata";
 import { getServerTranslation } from "@/lib/i18n/server";
 
@@ -32,19 +33,30 @@ const landingNav = [
   { labelKey: "home.nav.pricing", href: "/pricing" },
 ] as const;
 
-export default function Home() {
+export default async function Home() {
+  // Loja vazia: a faixa de cursos dizia "o marketplace abre em breve" no meio
+  // da home. Sem curso real publicado, some a seção e o item do menu que rola
+  // até ela. Leitura anônima, em cache de 5 min e com prazo curto; falha conta
+  // como vazio — a home nunca quebra por isso.
+  const hasRealCourses = await hasRealPublishedCourse();
+  const nav = hasRealCourses
+    ? landingNav
+    : landingNav.filter((item) => !("anchorId" in item && item.anchorId === "courses"));
+
   return (
     <div className="page-shell">
-      <SiteNav landingNav={landingNav} />
+      <SiteNav landingNav={nav} />
       {/* Um <main> por página, alvo do "Skip to content" da barra. */}
       <main id="conteudo">
         <MarketingHero />
         <section id="how-it-works" className="scroll-mt-28">
           <HowItWorksStrip />
         </section>
-        <section id="courses" className="scroll-mt-28">
-          <FeaturedCourses />
-        </section>
+        {hasRealCourses ? (
+          <section id="courses" className="scroll-mt-28">
+            <FeaturedCourses />
+          </section>
+        ) : null}
         <section id="capabilities" className="scroll-mt-28">
           <CapabilitiesGrid />
         </section>

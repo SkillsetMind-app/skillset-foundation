@@ -36,13 +36,12 @@ export function buildPageMetadata({
 }: PageMetadataInput): Metadata {
   const fullTitle = `${title} | ${brand.name}`;
   const url = `${SITE_URL}${path}`;
-  // Aceita URL absoluta (capa hospedada) ou caminho local; cai no logo quando
-  // a página não tem imagem própria.
-  const ogImage = image
-    ? image.startsWith("http")
-      ? image
-      : `${SITE_URL}${image}`
-    : `${SITE_URL}${brand.logoUrl}`;
+  // Aceita URL absoluta (capa hospedada) ou caminho local; sem imagem própria,
+  // cai no card 1200×630 de src/app/opengraph-image.tsx. Era o logo 1600×320,
+  // que WhatsApp e LinkedIn cortavam ao meio no card grande.
+  const shareImage = image
+    ? { url: image.startsWith("http") ? image : `${SITE_URL}${image}` }
+    : { url: `${SITE_URL}/opengraph-image`, width: 1200, height: 630 };
 
   return {
     title: fullTitle,
@@ -57,13 +56,13 @@ export function buildPageMetadata({
       title: fullTitle,
       description,
       url,
-      images: [{ url: ogImage }],
+      images: [shareImage],
     },
     twitter: {
       card: "summary_large_image",
       title: fullTitle,
       description,
-      images: [ogImage],
+      images: [shareImage.url],
     },
   };
 }

@@ -11,6 +11,7 @@ import { CourseEnrollmentCta } from "@/components/courses/course-enrollment-cta"
 import { CreatorCourseDetail } from "@/components/courses/creator-course-detail";
 import { JsonLd } from "@/components/seo/json-ld";
 import { SiteNav } from "@/components/site/site-nav";
+import { isInternalSmokeCourse } from "@/domain/teacher-course";
 import { getCourseBySlug, getCourseSlugs } from "@/lib/data/catalog";
 import { getCourseRefAccess, getPublicCourseByRef } from "@/lib/data/server/public-course";
 import { buildCourseJsonLd } from "@/lib/seo/course-jsonld";
@@ -30,11 +31,14 @@ export async function generateMetadata({
   const course = getCourseBySlug(slug);
 
   if (course) {
+    // Amostra de demonstração: fica no ar (decisão do dono), mas mostra preço e
+    // "Inscrever-se" de um curso que ninguém compra — fora do índice.
     return buildPageMetadata({
       title: course.title,
       description: course.summary,
       path: `/courses/${slug}`,
       image: course.image,
+      noindex: true,
     });
   }
 
@@ -52,6 +56,8 @@ export async function generateMetadata({
         ?? t("publicCourses.courseMetaTitle").replace("{title}", () => published.title),
       path: `/courses/${published.urlSlug}`,
       image: published.coverImageUrl,
+      // Curso interno de teste abre pelo link, mas não entra no índice.
+      noindex: isInternalSmokeCourse(published),
     });
   }
 

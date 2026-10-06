@@ -19,10 +19,10 @@ import { getSupabaseClientConfig } from "@/lib/supabase/config";
 
 // A curated slice of the LIVE catalog, shown on the homepage so visitors see the
 // real programs teachers have published. Same stream the /courses marketplace
-// uses; ops-featured picks lead, capped at 6. While the catalog is empty the
-// band keeps its heading and says so in one strip that invites teachers in,
-// instead of four text cards dressed up as courses — an honest homepage beats
-// a fabricated one, but silence is not honesty either.
+// uses; ops-featured picks lead, capped at 6. The homepage mounts this band only
+// once the server has found a real published course (src/app/page.tsx), so an
+// empty store never shows up here as "opens soon" nor as cards posing as
+// courses; the grid simply fills in when the client stream arrives.
 const FEATURED_LIMIT = 6;
 
 export function FeaturedCourses() {
@@ -84,19 +84,7 @@ export function FeaturedCourses() {
           </Link>
         </div>
 
-        {featuredCourses.length === 0 ? (
-          <div className="mt-10 flex flex-col gap-4 rounded-none border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)] sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-[15px] font-semibold leading-7 text-[var(--color-ink)]">
-              {t("home.marketplace.emptyTitle")}
-            </p>
-            <Link
-              href="/for-creators"
-              className="button-solid w-fit shrink-0 px-4 py-2.5 text-sm"
-            >
-              {t("home.marketplace.emptyCta")}
-            </Link>
-          </div>
-        ) : (
+        {featuredCourses.length === 0 ? null : (
         <ul className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {featuredCourses.map((course) => (
             <li key={course.slug}>

@@ -24,10 +24,10 @@ afterEach(() => {
 });
 
 describe("FeaturedCourses", () => {
-  it("keeps the marketplace band and states what it offers when the catalog is empty", () => {
-    // No Supabase config on the client is the same end state as an empty or
-    // failed catalog stream: zero courses. The band used to return null here,
-    // which left the homepage #courses anchor pointing at nothing at all.
+  it("keeps the band heading while the live catalog is still loading", () => {
+    // The homepage only mounts this band once the server has found a real
+    // published course (see src/app/page.tsx), so the heading stays put while
+    // the client stream loads. No Supabase config = a stream that never fills.
     mocks.getSupabaseClientConfig.mockReturnValue(null);
 
     render(<FeaturedCourses />);
@@ -45,21 +45,15 @@ describe("FeaturedCourses", () => {
     ).toBeInTheDocument();
   });
 
-  it("invites teachers in one strip instead of four cards posing as courses", () => {
+  it("never announces an empty store nor dresses up cards as courses", () => {
     mocks.getSupabaseClientConfig.mockReturnValue(null);
 
     render(<FeaturedCourses />);
 
-    expect(
-      screen.getByText(
-        "Marketplace opens soon — be one of the first teachers.",
-      ),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("link", { name: "See how publishing works" }),
-    ).toHaveAttribute("href", "/for-creators");
+    expect(screen.queryByText(/opens soon/i)).not.toBeInTheDocument();
     expect(
       screen.queryByText(/Professional programs across coaching/),
     ).not.toBeInTheDocument();
+    expect(screen.queryByRole("list")).not.toBeInTheDocument();
   });
 });

@@ -63,7 +63,9 @@ describe("buildPageMetadata — imagem do card", () => {
     ]);
   });
 
-  it("cai no logo da marca quando a página não tem imagem própria", () => {
+  // O padrão era o logo 1600×320 num card grande: WhatsApp e LinkedIn cortavam
+  // o logo ao meio. O padrão agora é o card 1200×630 de src/app/opengraph-image.
+  it("cai no card de compartilhamento 1200×630 quando a página não tem imagem própria", () => {
     const semImagem = buildPageMetadata({
       title: "Sobre",
       description: "Descrição",
@@ -75,9 +77,11 @@ describe("buildPageMetadata — imagem do card", () => {
       path: "/about",
       image: null,
     });
+    const card = `${SITE_URL}/opengraph-image`;
 
     expect(semImagem.openGraph?.images).toEqual(comNull.openGraph?.images);
-    expect(JSON.stringify(semImagem.openGraph?.images)).toContain(SITE_URL);
+    expect(semImagem.openGraph?.images).toEqual([{ url: card, width: 1200, height: 630 }]);
+    expect(semImagem.twitter?.images).toEqual([card]);
   });
 });
 
