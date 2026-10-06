@@ -161,8 +161,10 @@ export function getCourseReadiness(
     {
       id: "summary",
       group: "page",
-      label: "Summary",
-      hint: "Write a summary with at least 20 characters.",
+      // "Description" em toda tela: criacao, construtor e checklist. A chave
+      // continua `summary`.
+      label: "Description",
+      hint: "Write a description with at least 20 characters.",
       done: course.summary.trim().length >= 20,
       optional: false,
     },
@@ -218,14 +220,18 @@ export function getCourseReadiness(
           optional: false,
         }]
       : []),
-    {
-      id: "pricing",
-      group: "sale",
-      label: "Pricing",
-      hint: "Set a paid price greater than $0, or choose Free.",
-      done: paymentType === "free" || priceAmountMinor > 0,
-      optional: false,
-    },
+    // Produto gratis nao tem preco a definir: listar "Pricing" como feito so
+    // fazia quem escolheu Gratis ler "Set a paid price" no checklist.
+    ...(paymentType === "free"
+      ? []
+      : [{
+          id: "pricing" as const,
+          group: "sale" as const,
+          label: "Pricing",
+          hint: "Set a paid price greater than $0, or choose Free.",
+          done: priceAmountMinor > 0,
+          optional: false,
+        }]),
     {
       id: "outcomes",
       group: "page",
