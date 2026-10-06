@@ -58,7 +58,9 @@ end $$;
 select pg_temp.act_as(null, 'service_role');
 select set_config('skillset.trusted_write', 'on', true);
 insert into auth.users(id, aud, role, email, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
-select pg_temp.uid(n), 'authenticated', 'authenticated', 'selo-' || n || '@example.test',
+-- Domínio fora dos reservados para teste: conta de teste nunca ganha perfil
+-- público (20261006020000), e aqui as linhas precisam existir.
+select pg_temp.uid(n), 'authenticated', 'authenticated', 'selo-' || n || '@smoke.skillsetmind.com',
   now(), '{}', '{}', now(), now()
 from generate_series(1, 7) n;
 update public.users set roles = '["student","teacher"]', display_name = 'Selo ' || right(uid, 1),
@@ -130,15 +132,17 @@ select pg_temp.check_badge('approval through the RPC: evidence with the review d
     where pp.uid = pg_temp.uid(3)::text));
 
 -- Correção direta no caso, sem tocar em users: o trigger novo reprojeta, e o
--- selo não mexe em updated_at.
-select updated_at as coach_updated_at from pg_temp.pp(3) \gset
+-- selo não mexe em updated_at. A data antiga vem antes: dentro da transação
+-- now() é constante, e comparar com o valor de agora passaria mesmo com bump.
+update public.public_profiles set updated_at = '2020-01-01 00:00:00+00'
+  where uid = pg_temp.uid(3)::text;
 select pg_temp.act_as(null, 'service_role');
 update public.creator_verification_cases set verification_kind = 'psychologist'
   where id = :'coach_case';
 select pg_temp.check_badge('fixing the case kind reprojects the badge',
   (select verification_kind = 'license' from pg_temp.pp(3)));
 select pg_temp.check_badge('the badge does not touch updated_at (directory order)',
-  (select updated_at = :'coach_updated_at'::timestamptz from pg_temp.pp(3)));
+  (select updated_at = '2020-01-01 00:00:00+00' from pg_temp.pp(3)));
 
 -- Revogar o caso (approved -> rejected) com o usuário ainda aprovado.
 update public.creator_verification_cases set status = 'rejected'

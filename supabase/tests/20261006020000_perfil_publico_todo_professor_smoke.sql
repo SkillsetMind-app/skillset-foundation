@@ -9,7 +9,12 @@
 --   - suspender ou bloquear pela RPC de admin tira do ar, restaurar devolve, e
 --     escrever em users não traz um suspenso de volta;
 --   - aprovado com caso aprovado continua com o selo;
---   - anon lê o perfil e continua sem ler nada privado.
+--   - conta de teste (example.com, *.test...) nunca aparece;
+--   - updated_at (ordem do diretório) só anda com mudança visível: pedido
+--     pendente, aprovação, novo aceite dos termos e reescrita de papéis não
+--     mexem nele;
+--   - anon lê o perfil e continua sem ler nada privado, e ninguém de fora
+--     (nem a service role) chama as funções da projeção.
 begin;
 create temp table profile_checks (name text, passed boolean);
 grant insert, select on profile_checks to anon, authenticated;
@@ -33,6 +38,9 @@ begin
 end $$;
 create function pg_temp.listed(n int) returns boolean language sql as $$
   select exists (select 1 from public.public_profiles where uid = pg_temp.uid(n)::text);
+$$;
+create function pg_temp.at(n int) returns timestamptz language sql as $$
+  select updated_at from public.public_profiles where uid = pg_temp.uid(n)::text;
 $$;
 create function pg_temp.account(n int, p_action text) returns boolean language sql as $$
   select (public.admin_set_account_control(pg_temp.uid(n)::text, p_action,
@@ -59,14 +67,19 @@ end $$;
 -- 1 professor sem verificação · 2 professor sem os termos · 3 psicólogo aprovado
 -- 4 professor com pedido pendente · 5 professor que será suspenso · 6 admin
 -- 7 aluno que aceitou os termos · 8 conta suspensa que vira professor depois
+-- 9 professor para a ordem do diretório · 10 e 11 contas internas de teste
+-- Os reais usam um domínio nosso, fora dos reservados: conta em domínio de
+-- teste nunca ganha perfil público.
 select pg_temp.service();
 insert into auth.users(id, aud, role, email, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
-select pg_temp.uid(n), 'authenticated', 'authenticated', 'perfil-' || n || '@example.test',
+select pg_temp.uid(n), 'authenticated', 'authenticated',
+  case n when 10 then 'qa-10@example.com' when 11 then 'perfil-11@lab.test'
+         else 'perfil-' || n || '@smoke.skillsetmind.com' end,
   now(), '{}', '{}', now(), now()
-from generate_series(1, 8) n;
-update public.users set roles = '["student","teacher"]', display_name = 'Perfil ' || right(uid, 1),
+from generate_series(1, 11) n;
+update public.users set roles = '["student","teacher"]', display_name = 'Perfil ' || right(uid, 2),
     teacher_terms_accepted_at = now(), teacher_terms_version = 'smoke'
-  where uid in (select pg_temp.uid(n)::text from generate_series(1, 8) n where n in (1, 3, 4, 5));
+  where uid in (select pg_temp.uid(n)::text from generate_series(1, 11) n where n in (1, 3, 4, 5, 9, 10, 11));
 update public.users set roles = '["student","teacher"]', display_name = 'Perfil 2'
   where uid = pg_temp.uid(2)::text;
 update public.users set roles = '["student"]', teacher_terms_accepted_at = now(), teacher_terms_version = 'smoke'
@@ -98,6 +111,39 @@ select pg_temp.check_profile('approved teacher keeps the badge',
 select pg_temp.check_profile('teacher without setup complete is not listed', not pg_temp.listed(2));
 select pg_temp.check_profile('student who accepted the terms is not listed', not pg_temp.listed(7));
 select pg_temp.check_profile('admin without the teacher role is not listed', not pg_temp.listed(6));
+select pg_temp.check_profile('test account at example.com is never listed', not pg_temp.listed(10));
+select pg_temp.check_profile('test account at a .test domain is never listed', not pg_temp.listed(11));
+select pg_temp.check_profile('reserved test domains are recognised',
+  (select bool_and(public.is_reserved_test_email(e)) from unnest(array[
+    'qa-1@example.com', 'a@example.net', 'a@example.org', 'A@Example.COM', 'a@sub.example.com',
+    'a@foo.example', 'a@lab.test', 'a@x.invalid', 'a@dev.localhost', 'a@example.com.']) e));
+select pg_temp.check_profile('real domains are not mistaken for test domains',
+  (select bool_and(not public.is_reserved_test_email(e)) from unnest(array[
+    'ana@gmail.com', 'a@example.com.br', 'a@notexample.com', 'a@testing.com', 'a@test.com',
+    'a@examples.org', 'a@localhost.com', 'example.com@gmail.com']) e)
+  and not public.is_reserved_test_email(null) and not public.is_reserved_test_email(''));
+
+-- updated_at é a ordem do diretório: só anda quando muda o que o visitante vê.
+-- Data antiga primeiro: dentro da transação now() é constante, e comparar com o
+-- valor de agora passaria mesmo com o bump.
+update public.public_profiles set updated_at = '2020-01-01 00:00:00+00' where uid = pg_temp.uid(9)::text;
+update public.users set creator_verification_status = 'pending' where uid = pg_temp.uid(9)::text;
+select pg_temp.check_profile('a pending request keeps updated_at', pg_temp.at(9) = '2020-01-01 00:00:00+00');
+insert into public.creator_verification_cases
+  (creator_id, status, verification_kind, profession, registration_type, registration_id,
+   registration_region, reviewed_at)
+values (pg_temp.uid(9)::text, 'approved', 'coach', 'Coach', '', '', '', '2026-09-02 12:00:00+00');
+update public.users set creator_verification_status = 'approved' where uid = pg_temp.uid(9)::text;
+select pg_temp.check_profile('approval adds the badge and keeps updated_at',
+  (select verified_professional and updated_at = '2020-01-01 00:00:00+00'
+     from public.public_profiles where uid = pg_temp.uid(9)::text));
+update public.users set teacher_terms_accepted_at = now(), teacher_terms_version = 'smoke-2'
+  where uid = pg_temp.uid(9)::text;
+select pg_temp.check_profile('accepting the terms again keeps updated_at', pg_temp.at(9) = '2020-01-01 00:00:00+00');
+update public.users set roles = '["teacher","student"]' where uid = pg_temp.uid(9)::text;
+select pg_temp.check_profile('rewriting the roles keeps updated_at', pg_temp.at(9) = '2020-01-01 00:00:00+00');
+update public.users set bio = 'A visible change' where uid = pg_temp.uid(9)::text;
+select pg_temp.check_profile('a visible change moves updated_at', pg_temp.at(9) > '2020-01-01 00:00:00+00');
 
 -- Aceitar os termos depois dispara a projeção (coluna nova no trigger).
 update public.users set teacher_terms_accepted_at = now(), teacher_terms_version = 'smoke'
@@ -136,12 +182,14 @@ reset role;
 select pg_temp.check_profile('restoring the account brings the profile back', pg_temp.listed(5));
 
 -- O criterio dito de novo, sem a função: nenhuma linha fora dele.
-select pg_temp.check_profile('every listed fixture is a teacher with setup complete and not suspended',
+select pg_temp.check_profile('every listed fixture is a teacher with setup complete, not suspended, not a test account',
   not exists (
     select 1 from public.public_profiles pp
     join public.users u on u.uid = pp.uid
+    join auth.users a on a.id::text = pp.uid
     where pp.uid like '61006200-%'
       and (not u.roles ? 'teacher' or u.teacher_terms_accepted_at is null
+        or a.email like '%@example.com' or a.email like '%.test'
         or exists (select 1 from public.account_controls c where c.uid = u.uid and c.suspended))));
 
 -- Nada privado vira coluna pública.
@@ -152,12 +200,14 @@ select pg_temp.check_profile('public_profiles has no private column',
                                      'teacher_terms_accepted_at', 'teacher_terms_version',
                                      'stripe_customer_id', 'stripe_connected_account_id',
                                      'registration_id', 'onboarding_answers', 'preferences')));
-select pg_temp.check_profile('anon and authenticated cannot call the projection functions',
-  not has_function_privilege('anon', 'public.public_profile_eligible(text)', 'EXECUTE')
-  and not has_function_privilege('anon', 'public.project_public_profile(text)', 'EXECUTE')
-  and not has_function_privilege('anon', 'public.sync_public_profile_on_account_control()', 'EXECUTE')
-  and not has_function_privilege('authenticated', 'public.project_public_profile(text)', 'EXECUTE')
-  and not has_function_privilege('authenticated', 'public.public_profile_eligible(text)', 'EXECUTE'));
+select pg_temp.check_profile('anon, authenticated and service_role cannot call the projection functions',
+  not exists (
+    select 1
+    from unnest(array['public.is_reserved_test_email(text)', 'public.public_profile_eligible(text)',
+                      'public.project_public_profile(text)',
+                      'public.sync_public_profile_on_account_control()']) f
+    cross join unnest(array['anon', 'authenticated', 'service_role']) r
+    where has_function_privilege(r, f, 'EXECUTE')));
 
 -- Visitante anônimo.
 select pg_temp.act_as(null, 'anon');
@@ -171,7 +221,7 @@ select pg_temp.check_profile('the public rows carry no private value',
                where pp.uid like '61006200-%'
                  and (to_jsonb(pp)::text like '%SMOKE-PRIVATE%'
                    or to_jsonb(pp)::text like '%15550100777%'
-                   or to_jsonb(pp)::text like '%@example.test%')));
+                   or to_jsonb(pp)::text like '%@smoke.skillsetmind.com%')));
 select pg_temp.check_profile('anon cannot read the private users row',
   pg_temp.rows_or_denied(format(
     'select phone_number from public.users where uid = %L', pg_temp.uid(2)::text)) in (0, -1));
