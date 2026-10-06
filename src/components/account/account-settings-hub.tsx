@@ -250,6 +250,13 @@ function NotificationPreferencesPanel() {
           disabled={!loaded}
           onChange={() => toggle("marketingEmails")}
         />
+        <ToggleRow
+          label={t("accountSettings.notifications.emailDigest.label")}
+          description={t("accountSettings.notifications.emailDigest.description")}
+          checked={prefs.emailDigest}
+          disabled={!loaded}
+          onChange={() => toggle("emailDigest")}
+        />
       </div>
     </section>
   );

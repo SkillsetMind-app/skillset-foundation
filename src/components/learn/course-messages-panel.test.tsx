@@ -108,4 +108,18 @@ describe("private course messages in the current locale", () => {
     expect(screen.getByRole("textbox")).toHaveValue("Unsent");
     expect(subscribeToCourseThread).toHaveBeenCalledTimes(1);
   });
+
+  // A sala com a marca do professor nao tem sino (member-area-shell.tsx): ali
+  // a descricao nao pode prometer que a resposta "cai no sino".
+  it("only promises the bell where the bell exists", () => {
+    const { unmount } = renderMessages(false, "en");
+    expect(screen.getByText(/Replies also land in your notification bell/)).toBeInTheDocument();
+    unmount();
+
+    render(<I18nProvider initialLocale="en">
+      <CourseMessagesPanel courseId="course-test" whitelabel />
+    </I18nProvider>);
+    expect(screen.getByText("Only you and the course teacher can read this thread.")).toBeInTheDocument();
+    expect(screen.queryByText(/notification bell/)).toBeNull();
+  });
 });
