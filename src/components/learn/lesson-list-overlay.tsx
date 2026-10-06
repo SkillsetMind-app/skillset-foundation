@@ -208,9 +208,11 @@ export function LessonListOverlay({
                                     {lesson.title}
                                   </span>
                                   <span className="mt-0.5 block text-xs text-[var(--color-ink-soft)]">
-                                    {lesson.duration}
-                                    {isCompleted ? ` · ${t("learn.classroom.curriculum.completed")}` : ""}
-                                    {!unlocked ? ` · ${lockedLabel}` : ""}
+                                    {[
+                                      lesson.duration,
+                                      isCompleted ? t("learn.classroom.curriculum.completed") : "",
+                                      unlocked ? "" : lockedLabel,
+                                    ].filter(Boolean).join(" · ")}
                                   </span>
                                 </span>
                               </span>

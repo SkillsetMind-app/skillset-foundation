@@ -23,6 +23,9 @@ export interface MembersAreaHeroProps {
    *  nao so na aba de credenciais. null (whitelabel, preview) = nada. */
   certificateHref?: string | null;
   backHref?: string | null;
+  /** A acao principal da capa: "Start lesson 1" ou "Continue: <aula>". A sala
+   *  ja sabe qual aula abrir; o hero so desenha o botao. */
+  primaryAction?: { href: string; label: string } | null;
   /** Para onde o "voltar" leva. Na aba About da sala ele sobe UM nivel — para
    *  a aula — em vez de sair do curso inteiro. */
   backTo?: "courses" | "lesson";
@@ -52,6 +55,7 @@ export function MembersAreaHero({
   totalCount,
   certificateHref,
   backHref,
+  primaryAction,
   backTo = "courses",
 }: MembersAreaHeroProps) {
   const { t } = useTranslation();
@@ -147,9 +151,15 @@ export function MembersAreaHero({
           </div>
         ) : null}
 
+        {/* Terminou o curso: a acao principal e o certificado. Mesmo rotulo da
+            barra de abas e do botao da ultima aula. */}
         {pct === 100 && certificateHref ? (
           <Link className="members-hero__cta" href={certificateHref}>
-            {t("learn.membersHero.certificate")}
+            {t("learn.classroom.workspace.certificate")}
+          </Link>
+        ) : primaryAction ? (
+          <Link className="members-hero__cta" href={primaryAction.href}>
+            {primaryAction.label}
           </Link>
         ) : null}
       </div>

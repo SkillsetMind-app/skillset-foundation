@@ -140,7 +140,7 @@ describe("abas da prévia do professor", () => {
     for (const [tab, label] of [["lesson", "Lección"], ["materials", "Materiales"], ["review", "Reseña"], ["about", "Acerca del curso"]]) {
       expect(within(tabs).getByRole("link", { name: label })).toHaveAttribute("href", `/teach/builder/course-1/preview${tab === "lesson" ? "" : `/${tab}`}?lesson=l2`);
     }
-    expect(within(tabs).queryByRole("link", { name: /En vivo|Comunidad|Mensajes/ })).not.toBeInTheDocument();
+    expect(within(tabs).queryByRole("link", { name: /en vivo|Comunidad|Mensajes/i })).not.toBeInTheDocument();
     expect(screen.getByText("Modo de vista previa: así verán tus alumnos el curso.")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Salir de la vista previa" })).toHaveAttribute("href", "/teach/builder?courseId=course-1&tab=members");
     expect(screen.getByRole("navigation", { name: "Navegación de lecciones" })).toBeInTheDocument();

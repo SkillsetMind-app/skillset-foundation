@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { useAuth } from "@/components/auth/auth-provider";
+import { ClassroomLoading } from "@/components/learn/classroom-loading";
 import { EnrolledCourseWorkspace } from "@/components/learn/enrolled-course-workspace";
 import type { ClassroomTab } from "@/domain/classroom-tabs";
 import { canOpenEnrollment, type Enrollment } from "@/domain/enrollment";
@@ -193,6 +194,7 @@ export function CreatorCourseWorkspace({
       <CreatorWorkspaceState
         title={t("learnWave2.workspace.notSelected")}
         detail={t("learnWave2.workspace.notSelectedDetail")}
+        whitelabel={whitelabel}
       />
     );
   }
@@ -202,21 +204,17 @@ export function CreatorCourseWorkspace({
       <CreatorWorkspaceState
         title={t("learnWave2.workspace.disconnected")}
         detail={t("learnWave2.workspace.disconnectedDetail")}
+        whitelabel={whitelabel}
       />
     );
   }
 
   if (isLoadingEnrollment || isLoadingCourse) {
-    return (
-      <CreatorWorkspaceState
-        title={t("learnWave2.workspace.loading")}
-        detail={t("learnWave2.workspace.loadingDetail")}
-      />
-    );
+    return <ClassroomLoading label={t("learnWave2.courseLoading.title")} />;
   }
 
   if (error) {
-    return <CreatorWorkspaceState title={t("learnWave2.workspace.unavailable")} detail={t(error)} />;
+    return <CreatorWorkspaceState title={t("learnWave2.workspace.unavailable")} detail={t(error)} whitelabel={whitelabel} />;
   }
 
   if (!enrollment) {
@@ -225,11 +223,13 @@ export function CreatorCourseWorkspace({
         <CreatorWorkspaceState
           title={t("learnWave2.workspace.delayed")}
           detail={t("learnWave2.workspace.delayedDetail")}
+          whitelabel={whitelabel}
         />
       ) : (
         <CreatorWorkspaceState
           title={t("learnWave2.workspace.received")}
           detail={t("learnWave2.workspace.receivedDetail")}
+          whitelabel={whitelabel}
         />
       );
     }
@@ -238,6 +238,7 @@ export function CreatorCourseWorkspace({
       <CreatorWorkspaceState
         title={t("learnWave2.workspace.required")}
         detail={t("learnWave2.workspace.requiredDetail")}
+        whitelabel={whitelabel}
       />
     );
   }
@@ -247,6 +248,7 @@ export function CreatorCourseWorkspace({
       <CreatorWorkspaceState
         title={t("learnWave2.workspace.inactive")}
         detail={t("learnWave2.workspace.inactiveDetail").replace("{status}", () => t(`learnWave2.enrollmentStatus.${enrollment.status}`))}
+        whitelabel={whitelabel}
       />
     );
   }
@@ -256,6 +258,7 @@ export function CreatorCourseWorkspace({
       <CreatorWorkspaceState
         title={t("learnWave2.workspace.missing")}
         detail={t("learnWave2.workspace.missingDetail")}
+        whitelabel={whitelabel}
       />
     );
   }
@@ -279,6 +282,9 @@ export function CreatorCourseWorkspace({
         whitelabel={whitelabel}
         tab={tab}
         openPostId={openPostId}
+        // Already subscribed above: the classroom used to fetch the same row
+        // again, behind its own loading screen.
+        enrollment={enrollment}
       />
     </>
   );
@@ -287,9 +293,12 @@ export function CreatorCourseWorkspace({
 function CreatorWorkspaceState({
   title,
   detail,
+  whitelabel = false,
 }: {
   title: string;
   detail: string;
+  /** Under a teacher's own brand nothing links back to our marketplace. */
+  whitelabel?: boolean;
 }) {
   const { t } = useTranslation();
   return (
@@ -313,9 +322,11 @@ function CreatorWorkspaceState({
         <Link href="/learn" className="button-solid px-4 py-2.5 text-sm">
           {t("learnWave2.workspace.back")}
         </Link>
-        <Link href="/courses" className="button-outline px-4 py-2.5 text-sm">
-          {t("learnWave2.workspace.marketplace")}
-        </Link>
+        {whitelabel ? null : (
+          <Link href="/courses" className="button-outline px-4 py-2.5 text-sm">
+            {t("learnWave2.workspace.marketplace")}
+          </Link>
+        )}
       </div>
     </section>
   );

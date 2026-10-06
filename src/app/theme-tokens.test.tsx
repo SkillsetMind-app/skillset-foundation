@@ -481,6 +481,38 @@ describe.each(COMBOS)("member area contrast — %s", (_name, vars, courseTheme, 
     expect(failures, `review panel below AA:\n${failures.join("\n")}`).toEqual([]);
   });
 
+  // The tab bar painted platform colours on the course's own background (the
+  // active tab read ~1.3:1 on a dark course), and the current playlist row lost
+  // its meta colour in the cascade (1.04:1 light, 2.7:1 dark). Neither rule
+  // declares colour AND background, so the pair check below never sees them.
+  it("keeps the classroom tabs and the current lesson's meta line readable", () => {
+    const declared = (selector: string, prop: "color" | "background") => {
+      let value: string | undefined;
+      for (const [key, body] of rules) {
+        if (!key.split(",").some((part) => part.trim() === selector)) continue;
+        value = new RegExp(`(?:^|;|\\s)${prop}\\s*:\\s*([^;]+)`).exec(body)?.[1]?.trim() ?? value;
+      }
+      return value;
+    };
+    for (const selector of [
+      ".member-classroom-tabs > a",
+      '.member-classroom-tabs > a[aria-current="page"]',
+      ".member-classroom-tabs > .member-classroom-tabs__action",
+    ]) {
+      const fg = declared(selector, "color");
+      expect(fg, selector).toBeTruthy();
+      expect(ratio(fg!, "var(--ma-bg)", vars, "--ma-bg"), selector).toBeGreaterThanOrEqual(4.5);
+    }
+    // `.member-classroom[data-members-theme] .member-playlist__lesson-meta`
+    // ties the base current-row rule on specificity and comes later, so the
+    // current row has to be re-declared at member scope to keep its colour.
+    const row = ".member-classroom[data-members-theme] .member-playlist__lesson.is-current";
+    const meta = declared(`${row} .member-playlist__lesson-meta`, "color");
+    const background = declared(row, "background");
+    expect(meta, "current row meta not re-declared at member scope").toBeTruthy();
+    expect(ratio(meta!, background!, vars, "--ma-bg")).toBeGreaterThanOrEqual(4.5);
+  });
+
   it("keeps every member color/background pair at or above AA", () => {
     // Merge the cascade rather than skipping overridden selectors: an override
     // can BE the failure (the member-scoped "done" pill re-applied white with

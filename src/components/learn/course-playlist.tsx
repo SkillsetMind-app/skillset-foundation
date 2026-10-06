@@ -216,9 +216,12 @@ export function CoursePlaylist({
                                     {t("learn.classroom.curriculum.playingNow")}
                                   </span>
                                 ) : null}
-                                {lesson.duration}
-                                {isCompleted ? ` · ${t("learn.classroom.curriculum.completed")}` : ""}
-                                {!unlocked ? ` · ${lockedLabel}` : ""}
+                                {/* Sem duracao, a linha nao comeca com "·". */}
+                                {[
+                                  lesson.duration,
+                                  isCompleted ? t("learn.classroom.curriculum.completed") : "",
+                                  unlocked ? "" : lockedLabel,
+                                ].filter(Boolean).join(" · ")}
                               </span>
                             </span>
                           </span>

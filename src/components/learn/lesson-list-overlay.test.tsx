@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { LessonListOverlay } from "@/components/learn/lesson-list-overlay";
@@ -13,12 +13,12 @@ function ChangeLanguage() {
   return <button onClick={() => setLocale(locale === "en" ? "es" : "en")}>Change language</button>;
 }
 
-function lesson(id: string, title: string): Lesson {
+function lesson(id: string, title: string, duration = "10 min"): Lesson {
   return {
     id,
     title,
     type: "video",
-    duration: "10 min",
+    duration,
     isPreview: false,
   };
 }
@@ -28,7 +28,7 @@ const modules: CourseModule[] = [
     id: "m1",
     title: "Foundations",
     summary: "",
-    lessons: [lesson("l1", "Welcome"), lesson("l2", "Setting the frame")],
+    lessons: [lesson("l1", "Welcome", ""), lesson("l2", "Setting the frame")],
   },
   {
     id: "m2",
@@ -65,6 +65,13 @@ function renderOverlay(overrides: { onSelect?: () => void; onClose?: () => void 
 }
 
 describe("LessonListOverlay", () => {
+  it("aula sem duracao: a linha nao comeca com separador solto", () => {
+    renderOverlay();
+
+    const welcome = screen.getByRole("button", { name: /Welcome/ });
+    expect(within(welcome).getByText("Completed")).toBeInTheDocument();
+  });
+
   it("localizes the open dialog without losing search, focus or absolute lesson numbering", () => {
     const onClose = vi.fn();
     const onSelect = vi.fn();

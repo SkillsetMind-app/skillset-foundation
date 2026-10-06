@@ -11,6 +11,7 @@ import { countOpenCommunityQuestions } from "@/lib/data/community-posts";
 import { subscribeToCourseEvents } from "@/lib/data/course-events";
 import { recordLessonProgress } from "@/lib/data/lesson-progress";
 import { subscribeToEnrollment } from "@/lib/data/enrollments";
+import { subscribeToLessonContent } from "@/lib/data/lesson-content";
 
 /**
  * Reanalise item 8, renderizado de verdade (matricula real, nao preview):
@@ -178,6 +179,23 @@ const course = {
   ],
 } as unknown as Course;
 
+function liveEvent(startsAt: string) {
+  return {
+    id: "event-1",
+    courseId: "course-1",
+    courseSlug: "demo-course",
+    courseTitle: "Demo course",
+    ownerId: "teacher-1",
+    title: "Live Q&A",
+    description: "",
+    type: "live_class" as const,
+    status: "scheduled" as const,
+    startsAt,
+    externalUrl: "https://meet.example.com/live",
+    recordingAssetId: null,
+  };
+}
+
 function ChangeLanguage() {
   const { locale, setLocale } = useTranslation();
   return <button onClick={() => setLocale(locale === "en" ? "es" : "en")}>Change language</button>;
@@ -234,9 +252,9 @@ describe("sala de aula com matricula real", () => {
       return vi.fn();
     });
     render(<I18nProvider initialLocale="en"><ChangeLanguage /><EnrolledCourseWorkspace course={course} /></I18nProvider>);
-    expect(screen.getByRole("status")).toHaveTextContent("Loading course workspace...");
+    expect(screen.getByRole("status")).toHaveTextContent("Loading course...");
     fireEvent.click(screen.getByRole("button", { name: "Change language" }));
-    expect(screen.getByRole("status")).toHaveTextContent("Cargando el espacio del curso...");
+    expect(screen.getByRole("status")).toHaveTextContent("Cargando curso...");
     act(() => fail(new Error("private enrollment detail")));
     expect(screen.getByText("No pudimos confirmar tu inscripción en este curso.")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Abrir página del curso" })).toHaveAttribute("href", "/courses/demo-course");
@@ -244,6 +262,30 @@ describe("sala de aula com matricula real", () => {
     expect(screen.getByText("We could not confirm your enrollment for this course.")).toBeInTheDocument();
     expect(subscribeToEnrollment).toHaveBeenCalledTimes(1);
     expect(recordLessonProgress).not.toHaveBeenCalled();
+  });
+
+  it("whitelabel: the enrollment error does not link to our public course page", () => {
+    mocks.searchParams = new URLSearchParams();
+    vi.mocked(subscribeToEnrollment).mockImplementationOnce((_uid, _slug, _next, onError) => {
+      onError(new Error("down"));
+      return vi.fn();
+    });
+    render(<EnrolledCourseWorkspace course={course} whitelabel />);
+    expect(screen.getByText("We could not confirm your enrollment for this course.")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Open course page" })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Back to my learning" })).toHaveAttribute("href", "/learn");
+  });
+
+  it("with the enrollment handed down by the parent, the classroom opens without fetching it again", () => {
+    mocks.searchParams = new URLSearchParams("lesson=l1");
+    mocks.completed = [];
+    render(<EnrolledCourseWorkspace course={course} enrollment={{
+      id: "enr-1", userId: "student-1", courseId: "course-1", courseSlug: "demo-course",
+      courseTitle: "Demo course", courseCategory: "Leadership", courseImage: "",
+      status: "active", source: "admin", progressPercent: 0, lastLessonId: null,
+    }} />);
+    expect(screen.getByText("One")).toBeInTheDocument();
+    expect(mocks.enrollmentSubscriptions).toBe(0);
   });
 
   it("localizes course resource loading, kind, count and empty state with the existing asset contract", () => {
@@ -319,7 +361,10 @@ describe("sala de aula com matricula real", () => {
     mocks.searchParams = new URLSearchParams("lesson=l2");
     mocks.completed = ["l1", "l2"];
     render(<I18nProvider initialLocale="es"><EnrolledCourseWorkspace course={course} /></I18nProvider>);
-    expect(screen.getByRole("link", { name: "Obtener certificado" })).toHaveAttribute("href", "/learn/credentials");
+    // Na barra de abas e, na ultima aula concluida, no botao sob a aula.
+    const links = screen.getAllByRole("link", { name: "Obtener certificado" });
+    expect(links).toHaveLength(2);
+    for (const link of links) expect(link).toHaveAttribute("href", "/learn/credentials");
     expect(recordLessonProgress).not.toHaveBeenCalled();
   });
 
@@ -388,15 +433,45 @@ describe("sala de aula com matricula real", () => {
       communityEnabled: true,
       modules: course.modules.map((module) => ({ ...module, lessons: module.lessons.map((lesson) => lesson.id === "l1" ? { ...lesson, title: authoredTitle } : lesson) })),
     };
+    vi.mocked(subscribeToCourseEvents).mockImplementationOnce((_courseId, onData) => {
+      onData([liveEvent(new Date(Date.now() + 60 * 60 * 1000).toISOString())]);
+      return () => undefined;
+    });
     render(<I18nProvider initialLocale="es"><EnrolledCourseWorkspace course={localizedCourse} enableFirestoreAssets /></I18nProvider>);
     const tabs = screen.getByRole("navigation", { name: "Secciones del curso" });
-    for (const [tab, label] of [["lesson", "Lección"], ["materials", "Materiales"], ["lives", "En vivo"], ["community", "Comunidad"], ["messages", "Mensajes"], ["review", "Reseña"], ["about", "Acerca del curso"]]) {
+    for (const [tab, label] of [["lesson", "Lección"], ["materials", "Materiales"], ["lives", "Sesiones en vivo"], ["community", "Comunidad"], ["messages", "Mensajes"], ["review", "Reseña"], ["about", "Acerca del curso"]]) {
       expect(within(tabs).getByRole("link", { name: label })).toHaveAttribute("href", `/learn/courses/demo-course${tab === "lesson" ? "" : `/${tab}`}?lesson=l2`);
     }
     expect(screen.getByRole("button", { name: `Lección anterior: ${authoredTitle}` })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Todas las lecciones (2)" })).toBeInTheDocument();
     expect(mocks.enrollmentSubscriptions).toBe(1);
     expect(recordLessonProgress).not.toHaveBeenCalled();
+  });
+
+  // Curso antigo: o texto vem no curriculo, mas o link do video so chega com o
+  // conteudo protegido. Decidir "so texto" antes disso fazia a pagina pular.
+  it("aula com texto: enquanto o conteudo protegido carrega, a caixa do player espera", () => {
+    let emit!: Parameters<typeof subscribeToLessonContent>[1];
+    vi.mocked(subscribeToLessonContent).mockImplementationOnce((_courseId, onNext) => {
+      emit = onNext;
+      return Object.assign(vi.fn(), { reload: vi.fn(async () => undefined) });
+    });
+    renderClassroom("lesson=l1");
+
+    expect(document.querySelector("#member-lesson-player .member-video-stage")).not.toBeNull();
+    expect(screen.getByText("Loading lesson content...")).toBeInTheDocument();
+
+    act(() => emit(new Map()));
+    expect(document.querySelector("#member-lesson-player .member-video-stage")).toBeNull();
+  });
+
+  it("aula de texto: sem caixa de video, e o texto vem antes dos comentarios", () => {
+    renderClassroom("lesson=l1");
+
+    expect(document.querySelector("#member-lesson-player .member-video-stage")).toBeNull();
+    const body = screen.getByText("One");
+    const comments = screen.getByRole("region", { name: "Lesson comments" });
+    expect(body.compareDocumentPosition(comments) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it("primeira visita (sem ?lesson=, sem progresso): a capa inteira, sem cabecalho curto", () => {
@@ -441,9 +516,11 @@ describe("sala de aula com matricula real", () => {
     const { rerender } = render(<I18nProvider initialLocale="en">
       <EnrolledCourseWorkspace course={withPosters} enableFirestoreAssets />
     </I18nProvider>);
+    // Sem capa ainda (assinatura sem resposta), nao ha faixa de posters.
+    expect(screen.queryByRole("navigation", { name: "Modules" })).toBeNull();
+    act(() => emit(assets));
     const rail = screen.getByRole("navigation", { name: "Modules" });
     expect(rail.closest("aside")).toHaveClass("member-classroom-sidebar");
-    act(() => emit(assets));
     const firstPoster = within(rail).getByRole("button", { name: "Open module: Module one" });
     expect(firstPoster).toHaveClass("w-[120px]", "sm:w-[160px]");
     expect(firstPoster).toHaveAttribute("aria-current", "true");
@@ -462,8 +539,9 @@ describe("sala de aula com matricula real", () => {
       modules: withPosters.modules.map((module) => ({ ...module, coverAssetId: "tracker" })),
     }} enableFirestoreAssets /></I18nProvider>);
     expect(firstPoster.querySelector("img")).toHaveAttribute("src", "/new.png");
+    // Sem arte de modulo, a faixa so repetiria os grupos da playlist: some.
     act(() => emit([]));
-    expect(rail.querySelector("img")).toBeNull();
+    expect(screen.queryByRole("navigation", { name: "Modules" })).toBeNull();
     act(() => emit(assets));
     expect(subscribeToCourseAssets).toHaveBeenCalledTimes(1);
     expect(getProtectedCourseAssetObjectUrl).not.toHaveBeenCalled();
@@ -477,6 +555,11 @@ describe("sala de aula com matricula real", () => {
     mocks.searchParams = new URLSearchParams("lesson=l1&campaign=literal");
     mocks.pathname = "/learn/courses/demo-course";
     mocks.completed = ["l1"];
+    let emit!: (assets: CourseAsset[]) => void;
+    vi.mocked(subscribeToCourseAssets).mockImplementationOnce((_id, callback) => {
+      emit = callback;
+      return Object.assign(vi.fn(), { reload: vi.fn(async () => undefined) });
+    });
     const withModules: Course = { ...course, dripStrategy: "sequential_progress", modules: [
       { ...course.modules[0], summary: "First module description" },
       { id: "m2", title: "Module $$2 $&", summary: "Second module description", lessons: [
@@ -484,7 +567,13 @@ describe("sala de aula com matricula real", () => {
       ] },
       { id: "m3", title: "Empty module", summary: "", lessons: [] },
     ] };
-    const { rerender } = render(<I18nProvider initialLocale="en"><EnrolledCourseWorkspace course={withModules} /></I18nProvider>);
+    const { rerender } = render(<I18nProvider initialLocale="en"><EnrolledCourseWorkspace course={withModules} enableFirestoreAssets /></I18nProvider>);
+    // Os posters so aparecem quando algum modulo tem arte.
+    act(() => emit([{
+      id: "cover-m1", courseId: course.id, ownerId: "teacher-1", lessonId: null, moduleId: "m1",
+      kind: "module_cover", fileName: "m1.png", contentType: "image/png", size: 1,
+      storagePath: "courses/course-1/assets/m1.png", downloadUrl: "/m1.png", isPreview: false,
+    }]));
     const rail = screen.getByRole("navigation", { name: "Modules" });
     expect(rail.closest("aside")).toHaveClass("min-w-0");
     expect(within(rail).getByRole("list")).toHaveClass("overflow-x-scroll", "[scrollbar-width:auto]");
@@ -507,8 +596,28 @@ describe("sala de aula com matricula real", () => {
     expect(recordLessonProgress).not.toHaveBeenCalled();
     rerender(<I18nProvider initialLocale="en"><EnrolledCourseWorkspace course={{ ...withModules,
       modules: withModules.modules.map((module) => ({ ...module, summary: "  " })),
-    }} /></I18nProvider>);
+    }} enableFirestoreAssets /></I18nProvider>);
     expect(rail.querySelector("p")).toBeNull();
+  });
+
+  it("sem arte de modulo: sem faixa de posters, mas a descricao do modulo atual fica", () => {
+    mocks.searchParams = new URLSearchParams("lesson=l1");
+    mocks.completed = [];
+    render(<EnrolledCourseWorkspace course={{ ...course, modules: [
+      { ...course.modules[0], summary: "What this module covers" },
+    ] }} />);
+
+    expect(screen.queryByRole("navigation", { name: "Modules" })).toBeNull();
+    expect(screen.getByText("What this module covers")).toBeInTheDocument();
+  });
+
+  // jsdom nao aplica media query: a prova e a classe que esconde o botao a
+  // partir de 1181px, onde a playlist ja esta ao lado do video (o layout vira
+  // uma coluna em max-width: 1180px).
+  it("'All lessons' some onde a lista ja esta visivel ao lado do video", () => {
+    renderClassroom("lesson=l1");
+
+    expect(screen.getByRole("button", { name: "All lessons (2)" })).toHaveClass("min-[1181px]:hidden");
   });
 
   it("does not subscribe to module covers or show posters without an enrollment", () => {
@@ -682,6 +791,56 @@ describe("abas da sala com endereco proprio", () => {
     renderClassroom("lesson=l2", [], "review");
     expect(screen.getByTestId("review-panel")).toBeInTheDocument();
     expect(screen.queryByTestId("messages-panel")).toBeNull();
+  });
+
+  // A aba ao vivo existia sempre e, sem sessao marcada, abria uma pagina vazia.
+  it("sem sessao ao vivo marcada, a aba 'Live sessions' nao aparece", () => {
+    vi.mocked(subscribeToCourseEvents).mockImplementationOnce((_courseId, onData) => {
+      onData([liveEvent(new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString())]);
+      return () => undefined;
+    });
+    renderClassroom("lesson=l2");
+
+    const tabs = screen.getByRole("navigation", { name: "Course sections" });
+    expect(within(tabs).queryByRole("link", { name: /live/i })).toBeNull();
+  });
+
+  it("com sessao marcada, a aba se chama 'Live sessions' e mostra a sessao", () => {
+    vi.mocked(subscribeToCourseEvents).mockImplementation((_courseId, onData) => {
+      onData([liveEvent(new Date(Date.now() + 60 * 60 * 1000).toISOString())]);
+      return () => undefined;
+    });
+    try {
+      const { unmount } = renderClassroom("lesson=l2");
+      const tabs = screen.getByRole("navigation", { name: "Course sections" });
+      expect(within(tabs).getByRole("link", { name: "Live sessions" })).toHaveAttribute(
+        "href",
+        "/learn/courses/demo-course/lives?lesson=l2",
+      );
+      unmount();
+
+      renderClassroom("lesson=l2", [], "lives");
+      expect(screen.getByText("Live Q&A")).toBeInTheDocument();
+    } finally {
+      vi.mocked(subscribeToCourseEvents).mockImplementation(() => vi.fn());
+    }
+  });
+
+  it("a aba ao vivo aberta pelo endereco, sem sessao, diz que nao ha nenhuma", () => {
+    let emit!: (events: ReturnType<typeof liveEvent>[]) => void;
+    vi.mocked(subscribeToCourseEvents).mockImplementationOnce((_courseId, onData) => {
+      emit = onData;
+      return () => undefined;
+    });
+    renderClassroom("lesson=l2", [], "lives");
+
+    const tabs = screen.getByRole("navigation", { name: "Course sections" });
+    expect(within(tabs).getByRole("link", { name: "Live sessions" })).toHaveAttribute("aria-current", "page");
+    // Antes da primeira leitura nao se sabe: nada de "nenhuma sessao" ainda.
+    expect(screen.queryByText("No live sessions are scheduled right now.")).not.toBeInTheDocument();
+
+    act(() => emit([]));
+    expect(screen.getByText("No live sessions are scheduled right now.")).toBeInTheDocument();
   });
 
   it("a aba About e a capa inteira, mesmo para quem ja tem progresso", () => {

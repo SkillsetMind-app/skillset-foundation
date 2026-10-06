@@ -1214,7 +1214,6 @@
   "learn": {
     "classroom": {
       "workspace": {
-        "loading": "Loading course workspace...",
         "enrollmentError": "We could not confirm your enrollment for this course.",
         "progressLoadError": "We could not load lesson progress for this course.",
         "assetsError": "We could not load lesson assets for this course.",
@@ -1255,9 +1254,7 @@
         "closeMiniPlayer": "Close mini player",
         "loading": "Loading lesson content...",
         "loadingDetails": "Fetching this lesson's media and notes.",
-        "textFirst": "Text-first lesson",
         "mediaMissing": "Media not attached yet",
-        "textDetails": "Read the lesson notes below and use the discussion area if you need context.",
         "mediaDetails": "When the instructor uploads a video or connects an embed, it plays here.",
         "content": "Lesson content",
         "freePreview": "Free preview",
@@ -1463,7 +1460,8 @@
       "back": "My courses",
       "backToLesson": "Lesson",
       "progress": "{completed} of {total} lessons · {percent}%",
-      "certificate": "View certificate"
+      "start": "Start lesson 1",
+      "continue": "Continue: {title}"
     },
     "paths": {
       "eyebrow": "Learning path",
@@ -3565,7 +3563,7 @@
       "tabs": {
         "lesson": "Lesson",
         "materials": "Materials",
-        "lives": "Lives",
+        "lives": "Live sessions",
         "community": "Community",
         "messages": "Messages",
         "review": "Review",
@@ -4953,8 +4951,6 @@
       "notSelectedDetail": "Open My Learning from an enrollment card or return to the marketplace.",
       "disconnected": "Creator course access is not connected.",
       "disconnectedDetail": "Your enrolled courses cannot load right now. Refresh the page, or contact support if the problem continues.",
-      "loading": "Loading course workspace...",
-      "loadingDetail": "We are confirming enrollment and loading the teacher-published course.",
       "unavailable": "Course unavailable.",
       "delayed": "Almost there — enrollment is taking longer than usual.",
       "delayedDetail": "Your payment went through and is safe. Keep this page open: it opens automatically the moment your enrollment is confirmed. If nothing happens in a few minutes, contact support with your payment receipt.",
@@ -4968,8 +4964,7 @@
       "missingDetail": "The enrollment exists, but the course record is unavailable or restricted.",
       "eyebrow": "Creator course access",
       "back": "Back to My Learning",
-      "marketplace": "Open marketplace",
-      "suspense": "Loading creator course..."
+      "marketplace": "Open marketplace"
     },
     "enrollmentStatus": {
       "active": "active",
@@ -5171,7 +5166,8 @@
       "join": "Join now",
       "open": "Open session link",
       "soon": "Link available soon",
-      "communityDescription": "A course-linked space for announcements, questions, resources, and cohort discussion."
+      "communityDescription": "A course-linked space for announcements, questions, resources, and cohort discussion.",
+      "empty": "No live sessions are scheduled right now."
     },
     "leaderboard": {
       "loadError": "We could not load the leaderboard.",

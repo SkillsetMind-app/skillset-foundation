@@ -493,6 +493,7 @@ describe("a sala busca de novo só quando uma aula abre", () => {
   });
 
   // O aviso grande do player (h5): fechada, carregando, ou o vazio de verdade.
+  // Aula de leitura pronta nao tem caixa de video: null.
   function playerNotice() {
     return (
       document
@@ -512,7 +513,7 @@ describe("a sala busca de novo só quando uma aula abre", () => {
 
     await releaseHeld();
     expect(screen.getByText("Texto da aula dois")).toBeTruthy();
-    expect(playerNotice()).toBe("Text-first lesson");
+    expect(playerNotice()).toBeNull();
   });
 
   it("uma aula que já estava aberta não pisca carregando enquanto outra aula abre", async () => {
@@ -533,13 +534,13 @@ describe("a sala busca de novo só quando uma aula abre", () => {
       course_lesson_content: [contentRow("l1", "Texto da aula um"), contentRow("l2", "Texto da aula dois")],
     };
     await mount(textFirstCourse, "l1");
-    expect(playerNotice()).toBe("Text-first lesson");
+    expect(playerNotice()).toBeNull();
 
     // A aula 2 abre e fica na fila (banco atrasado); a aula 1 não muda.
     await flush(day + 6 * second);
-    expect(playerNotice()).toBe("Text-first lesson");
+    expect(playerNotice()).toBeNull();
     await flush(minute);
-    expect(playerNotice()).toBe("Text-first lesson");
+    expect(playerNotice()).toBeNull();
   });
 
   it("a aula que volta vazia mostra o estado real logo depois da primeira recarga", async () => {
@@ -552,9 +553,9 @@ describe("a sala busca de novo só quando uma aula abre", () => {
     // Banco ainda fechado: a recarga volta sem a aula. A tela mostra o real na
     // hora; as tentativas seguem por trás sem segurar o "carregando".
     await releaseHeld();
-    expect(playerNotice()).toBe("Text-first lesson");
+    expect(playerNotice()).toBeNull();
     await flush(10 * minute);
-    expect(playerNotice()).toBe("Text-first lesson");
+    expect(playerNotice()).toBeNull();
   });
 
   it("no sequencial, a próxima aula sem conteúdo protegido mostra o estado real logo depois da primeira recarga", async () => {
@@ -571,10 +572,10 @@ describe("a sala busca de novo só quando uma aula abre", () => {
     });
     await flush();
 
-    expect(playerNotice()).toBe("Text-first lesson");
+    expect(playerNotice()).toBeNull();
   });
 
-  it("a aula que abre com o texto no próprio currículo mostra 'Text-first lesson', não carregando", async () => {
+  it("a aula que abre com o texto no próprio currículo não mostra carregando", async () => {
     const inlineTextCourse = {
       ...timeDripCourse,
       modules: [
@@ -603,10 +604,10 @@ describe("a sala busca de novo só quando uma aula abre", () => {
     db.state.serverOpen.add("l2");
     db.state.hold = true;
     await flush(day + 6 * second);
-    expect(playerNotice()).toBe("Text-first lesson");
+    expect(playerNotice()).toBeNull();
     expect(screen.getByText("Texto no currículo da aula dois")).toBeTruthy();
 
     await releaseHeld();
-    expect(playerNotice()).toBe("Text-first lesson");
+    expect(playerNotice()).toBeNull();
   });
 });

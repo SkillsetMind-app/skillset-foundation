@@ -42,7 +42,9 @@ vi.mock("@/lib/posthog/page-trackers", () => ({
   ),
 }));
 vi.mock("@/components/learn/enrolled-course-workspace", () => ({
-  EnrolledCourseWorkspace: ({ course }: { course: { title: string } }) => <h1>{course.title}</h1>,
+  EnrolledCourseWorkspace: ({ course, enrollment }: { course: { title: string }; enrollment?: { id: string } }) => (
+    <h1 data-enrollment={enrollment?.id}>{course.title}</h1>
+  ),
 }));
 vi.mock("@/lib/data/course-messages", () => ({ subscribeToStudentMessages: mocks.messages, sendCourseMessage: mocks.send }));
 vi.mock("@/lib/data/course-events", () => ({
@@ -104,6 +106,27 @@ describe("learner wave 2 with real provider and dictionaries", () => {
     mocks.config.mockReturnValue(null);
     view.rerender(<I18nProvider initialLocale="es"><CreatorCourseWorkspace initialCourseId="course-es" /></I18nProvider>);
     expect(screen.getByRole("heading", { name: "El acceso a los cursos no está conectado." })).toBeVisible();
+  });
+
+  it("waits on the classroom's single loading state, with no link out of the course", () => {
+    mocks.enrollment.mockImplementation(() => () => {});
+    show(<CreatorCourseWorkspace initialCourseId="course-es" />);
+    expect(screen.getByRole("status")).toHaveTextContent("Cargando curso...");
+    expect(screen.queryByRole("link")).not.toBeInTheDocument();
+  });
+
+  it("whitelabel: no state links back to our marketplace", () => {
+    show(<CreatorCourseWorkspace initialCourseId="course-es" whitelabel />);
+    expect(screen.getByRole("heading", { name: "Necesitas una matrícula." })).toBeVisible();
+    expect(screen.queryByRole("link", { name: "Abrir catálogo" })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Volver a Mi aprendizaje" })).toBeVisible();
+  });
+
+  it("hands the enrollment it already has to the classroom instead of fetching it twice", () => {
+    mocks.enrollment.mockImplementation((_uid, _id, next) => { next(enrollment); return () => {}; });
+    mocks.course.mockImplementation((_id, next) => { next({ id: "course-es", title: enrollment.courseTitle }); return () => {}; });
+    show(<CreatorCourseWorkspace initialCourseId="course-es" />);
+    expect(screen.getByRole("heading", { name: enrollment.courseTitle })).toHaveAttribute("data-enrollment", enrollment.id);
   });
 
   it.each(["refunded", "revoked", "expired"] as const)("localizes inactive %s without opening private content", (status) => {

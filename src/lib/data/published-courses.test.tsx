@@ -117,6 +117,23 @@ describe("teacherCourseToLearningCourse module covers", () => {
     expect(result.modules[1].coverAssetId).toBeNull();
     expect(teacher.modules[0].coverAssetId).toBe("selected-cover");
   });
+
+  // "Self-paced" em toda linha e "N lessons" como descricao de modulo nao sao
+  // dados: eram texto de enchimento repetido pela sala inteira.
+  it("leaves duration and module summary empty when the teacher gave none", () => {
+    const teacher = rowToTeacherCourse({
+      ...courseRow,
+      modules: [
+        { id: "m1", title: "Module one", lessons: [
+          { id: "l1", title: "No duration", type: "text" },
+          { id: "l2", title: "Timed", type: "video", durationMinutes: 12 },
+        ] },
+      ],
+    });
+    const result = teacherCourseToLearningCourse(teacher);
+    expect(result.modules[0].summary).toBe("");
+    expect(result.modules[0].lessons.map((lesson) => lesson.duration)).toEqual(["", "12 min"]);
+  });
 });
 
 describe("subscribeToViewableTeacherCourse", () => {

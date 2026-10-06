@@ -8,7 +8,7 @@ import type { ClassroomTab } from "@/domain/classroom-tabs";
 import type { Course } from "@/domain/learning";
 import type { CourseAsset } from "@/domain/course-asset";
 import { subscribeToCourseAssets } from "@/lib/data/course-assets";
-import { recordLessonProgress } from "@/lib/data/lesson-progress";
+import { recordLessonProgress, subscribeToCompletedLessons } from "@/lib/data/lesson-progress";
 
 /**
  * P2/P4 da paridade com a Hotmart (§4.2 e §4.3 do relatorio de 2026-09-06):
@@ -355,21 +355,22 @@ describe("hero da home do curso", () => {
         completedCount={3} totalCount={12} certificateHref="/learn/credentials" />,
     );
     expect(screen.getByText("3 of 12 lessons · 25%")).toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "View certificate" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Get certificate" })).toBeNull();
 
     rerender(
       <MembersAreaHero theme="dark" title="Course" progressPercent={100}
         completedCount={12} totalCount={12} certificateHref="/learn/credentials" />,
     );
     expect(screen.getByText("12 of 12 lessons · 100%")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "View certificate" })).toHaveAttribute("href", "/learn/credentials");
+    // O mesmo rotulo da barra de abas e do botao da ultima aula.
+    expect(screen.getByRole("link", { name: "Get certificate" })).toHaveAttribute("href", "/learn/credentials");
 
     // Sem destino (whitelabel) nada aparece, mesmo a 100%.
     rerender(
       <MembersAreaHero theme="dark" title="Course" progressPercent={100}
         completedCount={12} totalCount={12} />,
     );
-    expect(screen.queryByRole("link", { name: "View certificate" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Get certificate" })).toBeNull();
 
     // Sem as contagens: identico ao de hoje.
     rerender(<MembersAreaHero theme="dark" title="Course" progressPercent={42} />);
@@ -381,13 +382,53 @@ describe("hero da home do curso", () => {
   it("na sala, o hero le o progresso ja calculado e o certificado reusa /learn/credentials", () => {
     const { unmount } = renderClassroom("");
     expect(screen.getByText("0 of 3 lessons · 0%")).toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "View certificate" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Get certificate" })).toBeNull();
     unmount();
 
     renderClassroom("lesson=l3", ["l1", "l2", "l3"], { tab: "about" });
     expect(screen.getByText("3 of 3 lessons · 100%")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "View certificate" })).toHaveAttribute("href", "/learn/credentials");
+    const hero = document.querySelector(".members-hero") as HTMLElement;
+    expect(within(hero).getByRole("link", { name: "Get certificate" })).toHaveAttribute("href", "/learn/credentials");
+    // Terminou: a acao principal e o certificado, nao "continuar".
+    expect(within(hero).queryByRole("link", { name: /^Continue/ })).toBeNull();
     expect(recordLessonProgress).not.toHaveBeenCalled();
+  });
+
+  // A capa do curso nao tinha acao principal: a pessoa via titulo, descricao
+  // e progresso, e tinha de achar a aula sozinha.
+  it("primeira visita: 'Start lesson 1' abre a primeira aula", () => {
+    renderClassroom("");
+
+    const hero = document.querySelector(".members-hero") as HTMLElement;
+    expect(within(hero).getByRole("link", { name: "Start lesson 1" })).toHaveAttribute(
+      "href",
+      "/learn/courses/demo-course?lesson=l1",
+    );
+  });
+
+  it("com progresso, na aba About: 'Continue: <aula>' abre a aula em que a pessoa estava", () => {
+    renderClassroom("lesson=l2", ["l1"], { tab: "about" });
+
+    const hero = document.querySelector(".members-hero") as HTMLElement;
+    expect(within(hero).getByRole("link", { name: "Continue: Lesson two" })).toHaveAttribute(
+      "href",
+      "/learn/courses/demo-course?lesson=l2",
+    );
+  });
+
+  it("antes do progresso chegar, a capa nao chuta 'Start lesson 1' para quem ja comecou", () => {
+    let emit!: (lessonIds: string[]) => void;
+    vi.mocked(subscribeToCompletedLessons).mockImplementationOnce((_id, onNext) => {
+      emit = onNext;
+      return vi.fn();
+    });
+    renderClassroom("lesson=l2", [], { tab: "about" });
+
+    const hero = document.querySelector(".members-hero") as HTMLElement;
+    expect(within(hero).queryByRole("link", { name: /^(Start lesson 1|Continue)/ })).toBeNull();
+
+    act(() => emit(["l1"]));
+    expect(within(hero).getByRole("link", { name: "Continue: Lesson two" })).toBeInTheDocument();
   });
 
   it("whitelabel: nenhum certificado no hero mesmo a 100% (nada leva de volta a plataforma)", () => {

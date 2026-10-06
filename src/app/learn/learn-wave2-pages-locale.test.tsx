@@ -89,13 +89,19 @@ describe("learner routes read the real locale cookie", () => {
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
   });
 
-  it("localizes both the route loading state and the real published-course Suspense fallback", async () => {
+  // Abrir um curso passava por ate quatro telas de espera diferentes — a da
+  // rota pintada de escuro (os cursos nascem claros), a do Suspense, um cartao
+  // branco e o esqueleto da sala. A da rota e a do Suspense agora sao a MESMA.
+  it("shows one loading state: the route file and the published-course Suspense fallback match", async () => {
     const view = render(await LoadingCourse());
-    expect(screen.getByText("Cargando curso...")).toBeVisible();
+    expect(screen.getByRole("status")).toHaveTextContent("Cargando curso...");
+    const route = view.container.querySelector("[aria-busy='true']")?.outerHTML;
+    expect(route).toBeTruthy();
+    expect(route).not.toMatch(/#0a0d12|#141923/i);
     view.rerender(await LearnCoursePage({ slug: "teacher-course", tab: "lesson" }));
-    expect(screen.getByText("Cargando el curso...")).toBeVisible();
+    expect(view.container.querySelector("[aria-busy='true']")?.outerHTML).toBe(route);
     mocks.locale = "en";
     view.rerender(await LearnCoursePage({ slug: "teacher-course", tab: "materials" }));
-    expect(screen.getByText("Loading creator course...")).toBeVisible();
+    expect(screen.getByRole("status")).toHaveTextContent("Loading course...");
   });
 });

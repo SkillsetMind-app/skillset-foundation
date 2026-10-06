@@ -2,6 +2,7 @@ import { getServerTranslation } from "@/lib/i18n/server";
 import { Suspense } from "react";
 
 import { ProtectedSurface } from "@/components/auth/protected-surface";
+import { ClassroomLoading } from "@/components/learn/classroom-loading";
 import { CreatorCourseWorkspace } from "@/components/learn/creator-course-workspace";
 import { EnrolledCourseWorkspace } from "@/components/learn/enrolled-course-workspace";
 import { MemberAreaShell } from "@/components/learn/member-area-shell";
@@ -42,14 +43,9 @@ export async function LearnCoursePage({
         <MemberAreaShell brand={brand} theme={theme}>
           <Suspense
             fallback={
-              // Members tokens, not platform ones: this fallback paints inside
-              // the themed shell, and a white card on the dark bg reads as a
-              // flash of the wrong product.
-              <section className="rounded-none border border-[var(--ma-line)] bg-[var(--ma-surface)] p-6">
-                <p className="text-sm text-[var(--ma-ink-soft)]">
-                  {t("learnWave2.workspace.suspense")}
-                </p>
-              </section>
+              // The classroom's one loading state (same as the route file and
+              // the workspaces), here in the course's own --ma-* colours.
+              <ClassroomLoading label={t("learnWave2.courseLoading.title")} />
             }
           >
             <CreatorCourseWorkspace
