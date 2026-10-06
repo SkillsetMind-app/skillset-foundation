@@ -8,7 +8,7 @@ import { useEffect, useState } from "react";
 
 import { UserAvatar } from "@/components/shared/user-avatar";
 import { useHasRealCourses } from "@/components/site/real-courses";
-import type { PublicProfile } from "@/domain/user-profile";
+import { instructorPagePath, type PublicProfile } from "@/domain/user-profile";
 import { listPublicProfiles } from "@/lib/data/user-profiles";
 
 export function InstructorsDirectory() {
@@ -197,7 +197,7 @@ function InstructorCard({ profile }: { profile: PublicProfile }) {
       ) : null}
 
       <Link
-        href={`/instructors/${encodeURIComponent(profile.uid)}`}
+        href={instructorPagePath(profile.uid, profile.username)}
         className="mt-auto inline-flex items-center gap-2 pt-5 text-sm font-bold text-[var(--color-primary)] underline-offset-4 hover:underline"
       >
         {t("publicPages.directory.view_profile")}<ArrowRight aria-hidden="true" size={15} strokeWidth={1.9} />

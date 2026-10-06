@@ -33,6 +33,7 @@ const mocks = vi.hoisted(() => {
     user: { uid: "teacher-1" },
     router: { push: vi.fn(), replace: vi.fn(), refresh: vi.fn() },
     searchParams: new URLSearchParams("section=links"),
+    publicProfile: { username: "ana.souza" } as { username: string | null } | null,
   };
 });
 
@@ -62,6 +63,7 @@ vi.mock("@/lib/data/user-profiles", () => ({
     onData({ creatorVerificationStatus: "none", currentPlanId: "free" });
     return () => undefined;
   },
+  getPublicProfile: async () => mocks.publicProfile,
 }));
 
 vi.mock("@/lib/data/creator-verification", () => ({
@@ -99,7 +101,8 @@ describe("promo links section", () => {
     expect(screen.getAllByRole("button", { name: /^Copy .+ link$/ })).toHaveLength(3);
   });
 
-  it("publishes the storefront of the course owner on the same public base as the product page", () => {
+  it("publishes the storefront of the course owner on the same public base as the product page", async () => {
+    mocks.publicProfile = null;
     renderLinks();
 
     // A pagina do produto define a base publica; a vitrine tem de sair na mesma.
@@ -109,11 +112,24 @@ describe("promo links section", () => {
     const base = productPage.slice(0, productPage.indexOf("/courses/"));
     expect(base).toBe("https://www.skillsetmind.com");
 
+    // Sem @ no perfil público: o endereço pelo uid.
     const storefront = `${base}/instructors/${mocks.course.ownerId}`;
+    expect(await screen.findByText(storefront)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Open Storefront" })).toHaveAttribute(
       "href",
       storefront,
     );
-    expect(screen.getByText(storefront)).toBeInTheDocument();
+  });
+
+  // O link que o criador copia para a bio do Instagram é o /@usuario.
+  it("uses the creator's @handle when the public profile has one", async () => {
+    mocks.publicProfile = { username: "ana.souza" };
+    renderLinks();
+
+    expect(await screen.findByText("https://www.skillsetmind.com/@ana.souza")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Open Storefront" })).toHaveAttribute(
+      "href",
+      "https://www.skillsetmind.com/@ana.souza",
+    );
   });
 });

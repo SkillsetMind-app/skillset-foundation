@@ -42,7 +42,7 @@ import {
 } from "@/domain/product-pricing";
 import type { TeacherCourse } from "@/domain/teacher-course";
 import { teacherCanPublishCourse } from "@/domain/teacher-course";
-import { instructorPagePath } from "@/domain/user-profile";
+import { useStorefrontPath } from "@/components/teacher/use-storefront-path";
 import { countLabel } from "@/lib/i18n/count-label";
 import { getCourseCategoryLabel } from "@/lib/i18n/course-categories";
 import {
@@ -286,6 +286,8 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
     return raw && allSectionIds.has(raw) ? (raw as SectionId) : null;
   })();
   const [course, setCourse] = useState<TeacherCourse | null>(null);
+  // /@usuario quando o perfil público tem @ (é o link que vai para a bio).
+  const storefrontPath = useStorefrontPath(course?.ownerId ?? "");
   // Which courseId the subscription has answered for — derives the loading
   // state without a synchronous setState reset when the route param changes.
   const [loadedCourseId, setLoadedCourseId] = useState<string | null>(null);
@@ -787,7 +789,7 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
                   base publica da pagina do produto, com o mesmo trio de botoes. */}
               <CourseShareLink
                 label={t("creatorPanel.hub.links.storefront")}
-                path={instructorPagePath(course.ownerId)}
+                path={storefrontPath}
                 title={courseTitle}
               />
             </PanelCard>

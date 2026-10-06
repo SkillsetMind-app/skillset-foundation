@@ -19,7 +19,7 @@ import { Card, buttonClasses } from "@/components/ui";
 import { groupCourseMessageThreads } from "@/domain/course-message";
 import type { CourseMessage } from "@/domain/course-message";
 import type { TeacherCourse } from "@/domain/teacher-course";
-import { instructorPagePath } from "@/domain/user-profile";
+import { useStorefrontPath } from "@/components/teacher/use-storefront-path";
 import { countCourseAssets } from "@/lib/data/course-assets";
 import { subscribeToTeacherMessages } from "@/lib/data/course-messages";
 import { subscribeToTeacherCourses } from "@/lib/data/teacher-courses";
@@ -46,6 +46,8 @@ export function CreatorMarketingHub() {
   const { user } = useAuth();
   const { t } = useTranslation();
   const uid = user?.uid ?? "";
+  // /@usuario quando o perfil público tem @ (é o link que vai para a bio).
+  const storefrontPath = useStorefrontPath(uid);
 
   const [courses, setCourses] = useState<TeacherCourse[]>([]);
   const [coursesLoaded, setCoursesLoaded] = useState(false);
@@ -155,7 +157,7 @@ export function CreatorMarketingHub() {
           </span>
           {uid ? (
             <Link
-              href={instructorPagePath(uid)}
+              href={storefrontPath}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1 text-xs font-semibold text-[var(--color-primary)] underline underline-offset-2"

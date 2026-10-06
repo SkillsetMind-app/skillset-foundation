@@ -273,7 +273,7 @@ describe("creator path order and conditions", () => {
   const at = (dict: object, path: string) => path.split(".").reduce<unknown>((node, key) => (node as Record<string, unknown>)[key], dict);
 
   // Every key here is rendered: the home strips, /teach, /for-creators, /help,
-  // the footer, /trust, the instructor directory and profile, onboarding, the
+  // the footer, /trust, the instructor directory, onboarding, the
   // create-course start and the course builder.
   it.each(dictionaries)("the %s lines that describe verification say it applies where required", (_locale, dict) => {
     for (const path of [
@@ -287,7 +287,6 @@ describe("creator path order and conditions", () => {
       "publicPages.helpFaq.course-creation.items.4.a",
       "publicPages.trust.skillsetmind_verifies_professional_eligibility_before_publication",
       "publicPages.directory.course_pages_still_show_verified_instructor",
-      "publicPages.profile.only_shows_published_courses_from_verified",
       "onboarding.pathTeachDesc",
       "courseCreation.privateDraft",
       "creatorPanel.products.description",

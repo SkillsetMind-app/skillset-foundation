@@ -172,6 +172,7 @@ export function StorefrontSettingsPanel() {
   const { t } = useTranslation();
 
   const [displayName, setDisplayName] = useState("");
+  const [username, setUsername] = useState<string | null>(null);
   const [accentColor, setAccentColor] = useState("");
   const [logoUrl, setLogoUrl] = useState("");
   const [heroImageUrl, setHeroImageUrl] = useState("");
@@ -234,6 +235,7 @@ export function StorefrontSettingsPanel() {
         const showcase = profile?.storefront?.showcase;
 
         setDisplayName(profile?.displayName ?? "");
+        setUsername(profile?.username ?? null);
         setAccentColor(branding?.accentColor ?? "");
         setLogoUrl(branding?.logoUrl ?? "");
         setHeroImageUrl(branding?.heroImageUrl ?? "");
@@ -504,7 +506,7 @@ export function StorefrontSettingsPanel() {
   // cartao da Home e do de Marketing. Enquanto nao ha, a frase sobre o passo
   // posterior continua verdadeira; com curso publicado ela virava mentira.
   const isPublished = publishedCourses.length > 0;
-  const publicPath = user ? instructorPagePath(user.uid) : "";
+  const publicPath = user ? instructorPagePath(user.uid, username) : "";
 
   return (
     <section className="settings-section-card">
