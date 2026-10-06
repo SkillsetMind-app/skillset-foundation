@@ -2154,6 +2154,12 @@
       "sectionTitle": "Sesiones programadas",
       "sectionEyebrow": "Agenda",
       "newSession": "Nueva sesión",
+      "nextStep": {
+        "title": "Sesión programada. Siguiente paso: define el precio y publica.",
+        "pricing": "Definir el precio y publicar",
+        "lessonHelp": "Para publicar se necesita al menos una lección con contenido. Basta con una breve lección de bienvenida con los datos de la sesión.",
+        "addLesson": "Añadir una breve lección de bienvenida"
+      },
       "closeForm": "Cerrar",
       "formTitleNew": "Programar una sesión",
       "formTitleEdit": "Editar sesión",
@@ -3605,18 +3611,18 @@
       "steps": {
         "details": {
           "tab": "Datos",
-          "tabHelp": "Título, categorías y propuesta",
+          "tabHelp": "Título, categorías y descripción",
           "stage": "Datos del curso",
-          "stageHelp": "Información, portada y propuesta",
+          "stageHelp": "Información, portada y descripción",
           "heading": "Define las bases del curso.",
           "help": "Esta información ayuda al estudiante a entender lo que ofrece el curso."
         },
         "pricing": {
           "tab": "Precios",
-          "tabHelp": "Pago, acceso gradual y vista previa",
+          "tabHelp": "Cómo te pagan",
           "stageHelp": "Modelo de acceso",
           "heading": "Presenta la oferta.",
-          "help": "Define el acceso, el precio, el calendario y la lección de vista previa gratuita antes de publicar."
+          "help": "Elige cómo te van a pagar y define el precio."
         },
         "content": {
           "tab": "Contenido",
@@ -3643,11 +3649,11 @@
           "detail": "La siguiente lección se abre al completar la anterior."
         },
         "time_drip_lesson": {
-          "label": "Una lección por intervalo",
+          "label": "Una lección cada pocos días",
           "detail": "Libera las lecciones de forma gradual según la fecha de inscripción."
         },
         "time_drip_module": {
-          "label": "Un módulo por intervalo",
+          "label": "Un módulo cada pocos días",
           "detail": "Libera los módulos de forma gradual según la fecha de inscripción."
         },
         "time_drip_custom": {
@@ -3669,14 +3675,14 @@
           "feature2": "Útil para muestras o pruebas piloto"
         },
         "subscription_monthly": {
-          "title": "Suscripción mensual",
-          "description": "Cobro recurrente cada mes.",
+          "title": "Cobrar cada mes",
+          "description": "Un cobro que se repite cada mes hasta que el miembro cancele.",
           "feature1": "Acceso recurrente",
           "feature2": "Controles de cancelación"
         },
         "subscription_yearly": {
-          "title": "Suscripción anual",
-          "description": "Cobro recurrente cada año.",
+          "title": "Cobrar cada año",
+          "description": "Un cobro que se repite cada año hasta que el miembro cancele.",
           "feature1": "Acceso anual",
           "feature2": "Recordatorios de renovación"
         }
@@ -3728,7 +3734,7 @@
         "moduleDescription": "Descripción del módulo",
         "moduleDescriptionExample": "Descripción opcional del módulo. Ejemplo: Presenta los conceptos necesarios antes de las lecciones prácticas.",
         "helpTopic": "Acceso a las lecciones y disponibilidad gradual",
-        "help": "La vista previa gratuita es opcional y debe ser una lección de este curso; permite conocer el estilo de enseñanza antes de inscribirse. Los días de liberación por lección se definen al abrir la lección (Añadir vídeo o Editar contenido) > Ajustes, y solo aparecen cuando la Disponibilidad del contenido del curso es Calendario por lección.",
+        "help": "La vista previa gratuita es opcional y debe ser una lección de este curso; permite conocer el estilo de enseñanza antes de inscribirse. Los días de liberación por lección se definen al abrir la lección (Añadir vídeo o Editar contenido) > Ajustes, y solo aparecen cuando la Liberación de las lecciones del curso es Calendario por lección.",
         "moduleForLesson": "Módulo de esta lección",
         "chooseModule": "Elegir módulo",
         "lessonTitle": "Título de la lección",
@@ -3758,6 +3764,7 @@
         "markPreview": "Marcar como vista previa gratuita",
         "createModule": "Crear módulo",
         "addFirstModule": "Añade tu primer módulo",
+        "welcomeModule": "Bienvenida",
         "addLessonToModule": "Añadir lección al módulo {index}",
         "moreOptions": "Más opciones",
         "cancel": "Cancelar",
@@ -3835,7 +3842,7 @@
         "title": "Título del curso",
         "categories": "Categorías",
         "categoriesHelp": "Obligatorio. Elige hasta cinco. La primera será la categoría principal en el marketplace.",
-        "summary": "Resumen del curso",
+        "summary": "Descripción",
         "characters": "{count} caracteres",
         "minimumCharacters": "{count}/20 caracteres mínimos para publicar",
         "outcomes": "Lo que aprenderán los estudiantes",
@@ -3845,7 +3852,7 @@
         "outcomePlaceholder": "Ejemplo: Crear y lanzar un curso de pago por grupos",
         "noOutcomes": "Aún no hay resultados de aprendizaje. Añade los logros concretos que alcanzará el estudiante.",
         "addOutcome": "Añadir resultado de aprendizaje",
-        "help": "Usa un título específico, una categoría clara y un resumen centrado en lo que aprenderá el estudiante. Este texto aparecerá en el marketplace."
+        "help": "Usa un título específico, una categoría clara y una descripción centrada en lo que aprenderá el estudiante. Este texto aparecerá en el marketplace."
       },
       "community": {
         "title": "Comunidad del curso",
@@ -3854,24 +3861,28 @@
         "on": "La comunidad está activada. Los estudiantes ven la sección Comunidad en este curso.",
         "off": "La comunidad está desactivada. Los estudiantes solo ven lecciones y recursos."
       },
+      "release": {
+        "title": "Cuándo se abren las lecciones",
+        "strategy": "Liberación de las lecciones",
+        "everyLessons": "Liberar lecciones cada",
+        "everyModules": "Liberar módulos cada",
+        "days": "días",
+        "customHelp": " Define los días de espera de cada lección al editarla."
+      },
       "pricing": {
         "setup": "Configuración del marketplace",
         "model": "Modelo de pago",
         "helpTopic": "Precios del curso",
-        "help": "Elige acceso gratuito, pago único o una suscripción mensual o anual. Para publicar productos de pago, necesitas un precio mayor que cero y una cuenta de Stripe Connect lista para recibir cobros.",
+        "help": "Elige Gratis, pago único o un cobro que se repite cada mes o cada año. Para publicar un producto de pago, define un precio mayor que cero y conecta Stripe para recibir tus pagos.",
         "price": "Precio",
         "currency": "Moneda",
-        "freePlaceholder": "Curso gratuito",
+        "freeLine": "Este producto es gratis. ¿Quieres cobrar?",
+        "switchToPaid": "Pasar a pago",
         "pricePlaceholder": "Ejemplo: 149",
-        "installments": "Cuotas con tarjeta",
-        "installmentsOneTime": "Las cuotas solo se aplican a pagos únicos.",
-        "installmentsUnavailable": "No está disponible con la cuenta actual de Stripe. Stripe requiere una cuenta de plataforma de México y precios en MXN.",
-        "installmentsCurrency": "Elige MXN para configurar cuotas con tarjetas mexicanas compatibles.",
-        "installmentsEligible": "Las tarjetas compatibles pueden elegir entre los planes configurados en Stripe. Se aplican las reglas del emisor de la tarjeta y de importe mínimo.",
-        "enableInstallments": "Activar cuotas con tarjeta",
-        "release": "Disponibilidad del contenido",
-        "interval": "Días por intervalo",
-        "customHelp": " Define los días de espera de cada lección en el editor de contenido.",
+        "installments": "Pago en cuotas con tarjeta",
+        "installmentsCurrency": "Cambia la moneda a MXN para que puedan pagar en cuotas.",
+        "installmentsEligible": "Quien pague con una tarjeta mexicana puede dividir el precio en cuotas mensuales. Termina en la última cuota, así que no es una suscripción. El banco emisor decide qué tarjetas califican.",
+        "enableInstallments": "Permitir pagar en cuotas",
         "preview": "Lección de vista previa gratuita",
         "noPreview": "Aún no hay una vista previa seleccionada",
         "listingHelp": "Estos campos preparan la página pública. Para inscribirse en un curso de pago, el estudiante debe completar el pago en Stripe."
@@ -3953,8 +3964,8 @@
           "hint": "Dale al curso un título de al menos 3 caracteres."
         },
         "summary": {
-          "label": "Resumen",
-          "hint": "Escribe un resumen de al menos 20 caracteres."
+          "label": "Descripción",
+          "hint": "Escribe una descripción de al menos 20 caracteres."
         },
         "category": {
           "label": "Categoría del marketplace",
@@ -4726,7 +4737,7 @@
     "format": "Formato",
     "formatDetail": "Modelo de entrega",
     "basics": "Datos básicos",
-    "basicsDetail": "Título, promesa, categorías",
+    "basicsDetail": "Título, descripción, categorías",
     "pricing": "Precio",
     "pricingDetail": "Precio y modelo de acceso",
     "lessons": "Lecciones",
@@ -4735,18 +4746,18 @@
     "publishDetail": "Revisión final",
     "continues": "{detail} · continúa en el editor",
     "titleRequired": "Dale un título al curso (3 caracteres como mínimo).",
-    "summaryRequired": "Escribe un resumen de al menos 20 caracteres.",
+    "summaryRequired": "Escribe una descripción de al menos 20 caracteres.",
     "categoryRequired": "Elige una categoría del catálogo.",
     "createEvent": "Crear y programar evento",
     "createFree": "Crear y añadir contenido",
     "createPaid": "Crear y definir precio",
-    "monthly": "Mensual",
-    "yearly": "Anual",
+    "monthly": "Cobrar cada mes",
+    "yearly": "Cobrar cada año",
     "creating": "Creando...",
     "categoryError": "Elige al menos una categoría del catálogo.",
     "duplicateError": "Ya existe un curso con este título. Elige un nombre más específico.",
     "permissionError": "No puedes crear cursos hasta completar la configuración de creador. Verifica tu correo y acepta las Condiciones para educadores.",
-    "summaryError": "Añade un resumen del curso de al menos 20 caracteres.",
+    "summaryError": "Añade una descripción de al menos 20 caracteres.",
     "createError": "No pudimos crear este curso. Inténtalo de nuevo.",
     "activationError": "Activa tu tienda para habilitar la publicación: una tarifa única de activación, que se cobra una sola vez por cuenta de creador, nunca por curso.",
     "intro": "Elige aquí el modelo de acceso y la información esencial. El precio, las lecciones y la publicación continúan en el editor.",
@@ -4758,9 +4769,10 @@
     "title": "Define la base del producto.",
     "setup": "Configura el producto",
     "productFormat": "Formato del producto",
-    "interval": "Intervalo de facturación inicial",
+    "interval": "Cada cuánto cobrar",
+    "intervalHelp": "Los miembros vuelven a pagar con esta frecuencia hasta que cancelen. Puedes cambiarlo después en Precio.",
     "productTitle": "Título del producto",
-    "promise": "Promesa del producto",
+    "promise": "Descripción",
     "primaryCategory": "La primera selección es la categoría principal del catálogo.",
     "activate": "Activar tienda",
     "beforeContinue": "Antes de continuar:",
