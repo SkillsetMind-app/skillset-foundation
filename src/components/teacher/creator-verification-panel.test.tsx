@@ -111,12 +111,12 @@ describe("CreatorVerificationPanel", () => {
     expect(mocks.submit).not.toHaveBeenCalled();
   });
 
-  it("does not tell an optional pending applicant to wait before activation", async () => {
+  it("does not tell an optional pending applicant to wait before publishing", async () => {
     receiveCase("pending");
     renderPanel();
 
     expect(await screen.findByText(/You can continue without a badge while it is reviewed/)).toBeVisible();
-    expect(screen.queryByText(/before continuing activation/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/decision or any requested changes before you publish/)).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Request professional badge|Edit application/ })).not.toBeInTheDocument();
     expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Not now" })).toHaveAttribute("href", "/teach");
@@ -128,7 +128,7 @@ describe("CreatorVerificationPanel", () => {
     renderPanel();
 
     expect(await screen.findByText(/Verification is required before you can publish a course/)).toBeVisible();
-    expect(screen.getByText(/before continuing activation/)).toBeVisible();
+    expect(screen.getByText(/decision or any requested changes before you publish/)).toBeVisible();
     expect(screen.queryByText(/Verification is optional\./)).not.toBeInTheDocument();
   });
 

@@ -5,6 +5,7 @@ import { buildPageMetadata } from "@/lib/seo/page-metadata";
 const copy = "promiseChangelog";
 // Newest first. `{date}` in a line becomes the entry's own date.
 const entries = [
+  { date: "2026-10-06", title: "change3Title", lines: ["change3WhatChanged", "change3Why", "change3Effective"] },
   { date: "2026-09-15", title: "change2Title", lines: ["change2WhatChanged", "change2Why", "change2Effective"] },
   { date: "2026-07-24", title: "changeTitle", lines: ["whatChanged", "why", "effectiveNew", "effectiveExisting"] },
 ];

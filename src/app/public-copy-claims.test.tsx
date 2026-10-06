@@ -1,7 +1,8 @@
 // Public www copy: no earnings claims on /pricing, psychologists named on the
-// home only (decision of 2026-09-25; the footer and /for-creators still do not), and the one-time fee plus payout countries
-// disclosed on /for-creators and /fees-and-payouts exactly as the teacher terms
-// state them (legalPages.teacherTerms.text5 and text22-23).
+// home only (decision of 2026-09-25; the footer and /for-creators still do not),
+// payout countries disclosed on /for-creators and /fees-and-payouts exactly as
+// the teacher terms state them (legalPages.teacherTerms.text5), and no
+// activation fee anywhere: the plans are the whole price.
 import { cleanup, render } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -22,7 +23,7 @@ import en from "@/data/i18n/en.json";
 import es from "@/data/i18n/es.json";
 import { plans } from "@/data/plans";
 
-const state = vi.hoisted(() => ({ locale: "en", fee: true }));
+const state = vi.hoisted(() => ({ locale: "en" }));
 vi.mock("next/headers", () => ({ cookies: async () => ({ get: () => ({ value: state.locale }) }) }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 vi.mock("@/components/site/site-nav", () => ({ SiteNav: () => null }));
@@ -31,19 +32,17 @@ vi.mock("@/lib/assistant/config", () => ({ isAssistantEnabled: true }));
 vi.mock("@/components/auth/auth-provider", () => ({
   useAuth: () => ({ refreshUser: vi.fn(), status: "unauthenticated", user: null, signOut: vi.fn() }),
 }));
-// The one switch every public page reads to decide whether the fee exists.
-vi.mock("@/data/plans", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/data/plans")>()),
-  isActivationFeeConfigured: () => state.fee,
-}));
 afterEach(() => {
   cleanup();
   state.locale = "en";
-  state.fee = true;
 });
 
 const incomeClaims =
   /\$3,500|\$11,000|\$400|\$380|Worth it from|Conviene a partir de|earning around|creators earning|ingresan|break-even|punto(s)? de equilibrio/i;
+
+// Any mention of a fee to activate or switch on a creator storefront, EN and ES.
+const activationFee =
+  /activation fee|activat\w* (your |the )?storefront|storefront activation|one-time (US\$\S+ )?activation|US\$\s?25\b|\$25(?!\d)|tarifa (única )?de activación|cuota de activación|pago (único )?de activación|activación única|activ\w* (de )?tu tienda/i;
 
 const dictionaries = [["en", en], ["es", es]] as const;
 
@@ -82,10 +81,10 @@ describe("www positioning", () => {
   });
 });
 
-describe("creator fee disclosure", () => {
+describe("creator payout-country disclosure", () => {
   const expected = {
-    en: ["US$25", "activation checkout yourself", "once per creator account", "only while SkillsetMind requires activation", "must be approved before you can pay", "United States", "Canada", "United Kingdom", "Switzerland", "European Union", "Liechtenstein", "Norway", "Brazil"],
-    es: ["US$25", "pago de activación en el estudio", "una sola vez por cuenta de creador", "mientras SkillsetMind exija la activación", "debe estar aprobada antes de que puedas pagar", "Estados Unidos", "Canadá", "Reino Unido", "Suiza", "Unión Europea", "Liechtenstein", "Noruega", "Brasil"],
+    en: ["United States", "Canada", "United Kingdom", "Switzerland", "European Union", "Liechtenstein", "Norway", "Brazil"],
+    es: ["Estados Unidos", "Canadá", "Reino Unido", "Suiza", "Unión Europea", "Liechtenstein", "Noruega", "Brasil"],
   } as const;
 
   it.each([
@@ -93,14 +92,14 @@ describe("creator fee disclosure", () => {
     ["es", "/for-creators", CreatorsPage],
     ["en", "/fees-and-payouts", FeesPage],
     ["es", "/fees-and-payouts", FeesPage],
-  ] as const)("%s %s states the one-time activation fee and the payout countries", async (locale, _path, Page) => {
+  ] as const)("%s %s states the payout countries", async (locale, _path, Page) => {
     state.locale = locale;
     const { container } = render(await Page());
     for (const text of expected[locale]) expect(container.textContent).toContain(text);
   });
 
-  // Drafting is open before the fee, but "immediately" and "start free" still
-  // oversell: publishing needs the fee, and the Free plan is not a free start.
+  // "Immediately" and "start free" oversell: publishing needs the launch checks
+  // and, where required, verification.
   it.each(["en", "es"])("%s /for-creators never promises immediate drafting or a free start", async (locale) => {
     state.locale = locale;
     const { container } = render(await CreatorsPage());
@@ -113,9 +112,9 @@ describe("creator fee disclosure", () => {
 });
 
 // One guard over every public entry page. Production truth it defends:
-// drafting is open, the one-time fee is paid at the first publish; where
-// verification is required it is approved before paying; publishing then
-// passes launch checks; the Free plan has no monthly fee and takes 10%.
+// drafting is open; where verification is required it is approved before
+// publishing; publishing passes launch checks; the Free plan has no monthly fee
+// and takes 10%; there is no activation fee.
 describe("public copy guard: home, /pricing, /fees-and-payouts, /for-creators, /help", () => {
   const falseClaims: ReadonlyArray<readonly [string, RegExp]> = [
     ["an earnings claim", incomeClaims],
@@ -127,7 +126,7 @@ describe("public copy guard: home, /pricing, /fees-and-payouts, /for-creators, /
       "drafting before verification or activation",
       /before (professional )?verification is complete|draft courses immediately|antes de completar la verificación|preparar cursos de inmediato/i,
     ],
-    // The Free plan still charges the one-time activation, so "you only pay when you sell" is false.
+    // Paid plans bill monthly whether or not you sell.
     ["paying only when you sell", /only pay when you sell|solo pagas cuando vendes/i],
     [
       "a free start",
@@ -168,16 +167,16 @@ describe("public copy guard: home, /pricing, /fees-and-payouts, /for-creators, /
   ] as const;
 
   const cases = (["en", "es"] as const).flatMap((locale) =>
-    [true, false].flatMap((fee) => pages.map(([path, Page, metadata]) => [locale, fee, path, Page, metadata] as const)),
+    pages.map(([path, Page, metadata]) => [locale, path, Page, metadata] as const),
   );
 
-  it.each(cases)("%s (fee configured: %s) %s renders no false claim", async (locale, fee, path, Page, metadata) => {
+  it.each(cases)("%s %s renders no false claim and no activation fee", async (locale, path, Page, metadata) => {
     state.locale = locale;
-    state.fee = fee;
     const { container } = render(wrap(locale, await Page()));
     const meta = await metadata();
     const text = `${container.textContent} ${String(meta.title)} ${String(meta.description)}`;
     expectNoFalseClaim(`${locale} ${path}`, text);
+    expect(text, `${locale} ${path} mentions an activation fee`).not.toMatch(activationFee);
     if (path !== "home") expect(text, `${locale} ${path} carries psychologist framing`).not.toMatch(psychologistFraming);
   });
 
@@ -193,28 +192,27 @@ describe("public copy guard: home, /pricing, /fees-and-payouts, /for-creators, /
     expect(JSON.stringify([helpFaqCategories, plans])).not.toMatch(psychologistFraming);
   });
 
-  // The fee sentence tracks isActivationFeeConfigured(), exactly like /pricing.
-  const feeSentence = /\$25(?!\d)|activation fee|one-time activation|pago único de activación|activación única|tarifa (única )?de activación|cuota de activación/i;
-  const feePages = pages.filter(([path]) => path !== "/help");
-  const feeCases = (["en", "es"] as const).flatMap((locale) =>
-    [true, false].flatMap((fee) => feePages.map(([path, Page]) => [locale, fee, path, Page] as const)),
-  );
-
-  it.each(feeCases)("%s (fee configured: %s) %s shows the fee sentence only when the fee is configured", async (locale, fee, path, Page) => {
-    state.locale = locale;
-    state.fee = fee;
-    const { container } = render(wrap(locale, await Page()));
-    if (fee) expect(container.textContent).toMatch(feeSentence);
-    else expect(container.textContent).not.toMatch(feeSentence);
+  // No public string may mention an activation fee: every namespace a signed-out
+  // visitor can read, the legal pages, and the English sources the assistant
+  // quotes. The dormant in-app checkout (activationCheckout.*, admin waivers)
+  // only renders while platform_settings.require_activation_fee is on.
+  it.each(dictionaries)("no public %s string mentions an activation fee or activating a storefront", (_locale, dict) => {
+    const publicCopy = {
+      nav: dict.nav, footer: dict.footer, home: dict.home, siteMetadata: dict.siteMetadata,
+      publicCourses: dict.publicCourses, publicPages: dict.publicPages, legalPages: dict.legalPages,
+      promiseChangelog: dict.promiseChangelog,
+    };
+    for (const [namespace, copy] of Object.entries(publicCopy)) {
+      expect(JSON.stringify(copy), namespace).not.toMatch(activationFee);
+    }
+    expect(JSON.stringify([helpFaqCategories, plans])).not.toMatch(activationFee);
   });
 });
 
 // Production order: free signup, drafting and Stripe; professional verification
-// where required; then the one-time activation, while it is required, at the
-// first publish, after launch checks. Verification is not universal.
+// where required; launch checks; publish. Verification is not universal.
 describe("creator path order and conditions", () => {
   const whereRequired = /where required|cuando se requiere/i;
-  const whileActivation = /while activation is required|mientras se exija la activación/i;
   const at = (dict: object, path: string) => path.split(".").reduce<unknown>((node, key) => (node as Record<string, unknown>)[key], dict);
 
   // Every key here is rendered: the home strips, /teach, /for-creators, /help,
@@ -223,7 +221,6 @@ describe("creator path order and conditions", () => {
   it.each(dictionaries)("the %s lines that describe verification say it applies where required", (_locale, dict) => {
     for (const path of [
       "home.hero.trust1Desc",
-      "home.how.step1Activation",
       "home.how.step3Desc",
       "home.marketplace.sub",
       "footer.tagline",
@@ -244,59 +241,28 @@ describe("creator path order and conditions", () => {
     expect(at(dict, "creatorEditor.builder.publish.help")).not.toMatch(/approved creator|creador aprobado/i);
   });
 
-  it.each(dictionaries)("the %s activation lines say the activation applies while it is required", (_locale, dict) => {
-    for (const path of ["home.how.step1Activation", "teach.page.description"]) {
-      expect(at(dict, path), path).toMatch(whileActivation);
-    }
-  });
-
   it("the help FAQ answer shared with the assistant says verification applies where required", () => {
     const answer = helpFaqCategories.flatMap((category) => category.items).find((item) => item.id === "course-publishing")?.a;
     expect(answer).toMatch(whereRequired);
     expect(answer).not.toMatch(/Approved creators/);
   });
 
-  it.each(dictionaries)("the %s /teach description puts verification before paying and the activation at the first publish", (_locale, dict) => {
-    expect(dict.teach.page.description).toMatch(/before you can pay|antes de que puedas pagar/);
+  it.each(dictionaries)("the %s /teach description opens drafting and asks for nothing to pay", (_locale, dict) => {
     expect(dict.teach.page.description).toMatch(/^(Drafting is open from the start\.|La preparación de cursos está abierta desde el principio\.)/);
-    expect(dict.teach.page.description).toMatch(/your first publish|tu primera publicación/);
+    expect(dict.teach.page.description).not.toMatch(/pay|pagar|activation|activación/i);
     expect(dict.teach.page.description).not.toMatch(/while SkillsetMind verifies|mientras SkillsetMind verifica/i);
   });
 
-  // Connecting Stripe is open before the activation, which is paid at the
-  // first publish, so step 1 names Stripe first and ties the fee to publishing.
-  it.each(["en", "es"])("%s home step 1 (fee configured) puts Stripe Express before the activation at the first publish", async (locale) => {
-    state.locale = locale;
-    const text = String(render(await HowItWorksStrip()).container.textContent);
-    expect(text).toContain("US$25");
-    expect(text.indexOf("Stripe Express")).toBeLessThan(text.indexOf("US$25"));
-    expect(text).toMatch(/when you publish your first course|al publicar tu primer curso/);
-  });
-
   it.each([
     ["en", en],
     ["es", es],
-  ] as const)("%s home step 1 names the activation only while the fee is configured", async (locale, dict) => {
+  ] as const)("%s home step 1 and /for-creators describe the path with no fee", async (locale, dict) => {
     state.locale = locale;
-    const step = dict.home.how.step1Activation.replace("{amount}", "25");
-    expect(render(await HowItWorksStrip()).container.textContent).toContain(step);
+    expect(render(await HowItWorksStrip()).container.textContent).toContain(dict.home.how.step1Desc);
     cleanup();
-    state.fee = false;
-    expect(render(await HowItWorksStrip()).container.textContent).not.toContain(step);
-  });
-
-  it.each([
-    ["en", en],
-    ["es", es],
-  ] as const)("%s /for-creators heading and no-fee paragraph carry their conditions", async (locale, dict) => {
-    state.locale = locale;
-    const withFee = render(await CreatorsPage()).container.textContent;
-    expect(withFee).toContain(dict.publicPages.creators.start_as_a_creator_publish_after);
-    expect(dict.publicPages.creators.start_as_a_creator_publish_after).toMatch(whileActivation);
-    cleanup();
-    state.fee = false;
-    const withoutFee = render(await CreatorsPage()).container.textContent;
-    expect(withoutFee).toContain(dict.publicPages.creators.creators_can_draft_after_verification);
+    const creators = render(await CreatorsPage()).container.textContent;
+    expect(creators).toContain(dict.publicPages.creators.draft_then_publish);
+    expect(creators).toContain(dict.publicPages.creators.creators_can_draft_after_verification);
     expect(dict.publicPages.creators.creators_can_draft_after_verification).toMatch(
       /^(Drafting courses in the studio is open\. Publishing needs|La preparación de cursos en el estudio está abierta\. Para publicar necesitas)/,
     );

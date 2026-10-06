@@ -4,4 +4,4 @@
 // Terms: the legal page test checks it.
 export const currentTermsVersion = "2026-09-24";
 export const currentPrivacyVersion = "2026-09-24";
-export const currentTeacherTermsVersion = "2026-10-04";
+export const currentTeacherTermsVersion = "2026-10-06";

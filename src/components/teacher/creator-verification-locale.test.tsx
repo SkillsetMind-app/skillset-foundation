@@ -158,7 +158,7 @@ describe("professional badge uses the real interface locale", () => {
     receiveCase(application());
     mocks.flag.mockResolvedValue(required);
     renderPanel();
-    expect(await screen.findByText(required ? /antes de continuar con la activación/ : /Puedes continuar sin insignia/)).toBeVisible();
+    expect(await screen.findByText(required ? /cambios solicitados antes de publicar/ : /Puedes continuar sin insignia/)).toBeVisible();
     expect(screen.getByText("Pendiente")).toBeVisible();
     expect(screen.getByText("Profesional holístico")).toBeVisible();
     expect(screen.getByText("Private association")).toBeVisible();

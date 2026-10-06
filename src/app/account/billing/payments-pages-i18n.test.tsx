@@ -8,8 +8,16 @@ import TeachActivatePage from "@/app/teach/activate/page";
 import TeachActivateReturnPage from "@/app/teach/activate/return/page";
 import { LOCALE_COOKIE } from "@/lib/i18n/config";
 
-const mocks = vi.hoisted(() => ({ locale: "es", guard: vi.fn(), checkout: vi.fn(), activation: vi.fn() }));
-vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: () => {} }) }));
+const mocks = vi.hoisted(() => ({
+  locale: "es", guard: vi.fn(), checkout: vi.fn(), activation: vi.fn(),
+  // creator_activation_blocked() answer; the checkout page only renders on true.
+  blocked: { data: true as unknown, error: null as unknown },
+  redirect: vi.fn((to: string) => { throw new Error(`redirect:${to}`); }),
+}));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: () => {} }), redirect: mocks.redirect }));
+vi.mock("@/lib/supabase/server", () => ({
+  createSupabaseServerClient: async () => ({ rpc: async () => mocks.blocked }),
+}));
 vi.mock("next/headers", () => ({
   cookies: async () => ({ get: (name: string) => name === LOCALE_COOKIE ? { value: mocks.locale } : undefined }),
 }));
@@ -28,7 +36,10 @@ vi.mock("@/components/account/embedded-checkout-panel", () => ({
 vi.mock("@/components/teacher/activation-checkout-panel", () => ({
   ActivationCheckoutPanel: (props: unknown) => { mocks.activation(props); return <div>Activation fixture</div>; },
 }));
-beforeEach(() => vi.clearAllMocks());
+beforeEach(() => {
+  vi.clearAllMocks();
+  mocks.blocked = { data: true, error: null };
+});
 afterEach(cleanup);
 
 it.each(["en", "es"] as const)("uses real server dictionaries for upgrade parameters and missing-plan recovery in %s", async (locale) => {
@@ -74,6 +85,17 @@ it.each(["en", "es"] as const)("localizes activation pages on the server and pre
   expect(screen.getByRole("heading", { name: locale === "es" ? "Estamos confirmando tu pago." : "We're confirming your payment." })).toBeInTheDocument();
   expect(screen.getByRole("link", { name: locale === "es" ? "Volver al estudio de cursos" : "Back to course studio" })).toHaveAttribute("href", "/teach");
   expect(screen.getByRole("link", { name: locale === "es" ? "Contactar con soporte" : "Contact support" })).toHaveAttribute("href", "/support");
+});
+
+// require_activation_fee off (or paid, waived, admin, signed out): nothing to
+// pay, so the page never mounts the checkout.
+it.each([
+  ["not blocked", { data: false, error: null }],
+  ["unreadable", { data: null, error: { message: "permission denied" } }],
+])("sends the creator back to /teach when activation is %s", async (_name, answer) => {
+  mocks.blocked = answer;
+  await expect(TeachActivatePage()).rejects.toThrow("redirect:/teach");
+  expect(mocks.activation).not.toHaveBeenCalled();
 });
 
 // The builder's "Activate and publish" sends the course id; only a UUID reaches
