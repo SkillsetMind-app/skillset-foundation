@@ -88,7 +88,7 @@ export default async function PricingPage() {
               >
                 {isHighlight ? (
                   <span className="absolute -top-3 left-6 rounded-none bg-[var(--color-accent)] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-white">
-                    {t("publicPages.pricing.most_popular")}
+                    {t("publicPages.pricing.recommended")}
                   </span>
                 ) : null}
                 <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
