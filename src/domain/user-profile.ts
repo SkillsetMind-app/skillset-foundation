@@ -85,9 +85,13 @@ export const maxStorefrontSectionLabelLength = 60;
  * estava escrito a mao em cada tela que precisava dele; com tres telas
  * apontando para la (Home, Marketing e a propria pagina de vitrine), uma
  * funcao evita que uma delas mude e as outras fiquem para tras.
+ *
+ * Com @usuario, o endereco e `/@usuario` (o link da bio do Instagram; o
+ * next.config reescreve para esta mesma pagina). `/instructors/{uid}` segue
+ * funcionando para quem nao tem @ e para os links antigos.
  */
-export function instructorPagePath(uid: string): string {
-  return `/instructors/${uid}`;
+export function instructorPagePath(uid: string, username?: string | null): string {
+  return username ? `/@${username}` : `/instructors/${uid}`;
 }
 
 /** A teacher-chosen brand accent must be a 6-digit hex so it is safe to drop
@@ -282,6 +286,14 @@ export type PublicProfile = {
   storefront?: StorefrontConfig | null;
   updatedAt?: unknown;
 };
+
+/**
+ * Nome que o perfil publico mostra: o nome de exibicao, senao o @. Null quando
+ * nao ha nenhum dos dois (quem chama poe o rotulo generico traduzido).
+ */
+export function publicProfileName(profile: Pick<PublicProfile, "displayName" | "username">): string | null {
+  return profile.displayName?.trim() || profile.username || null;
+}
 
 // Telefone do perfil: aceita o que a pessoa digitar (espacos, parenteses,
 // hifen, +55) e exige entre 8 e 15 digitos — o intervalo do E.164 mais os

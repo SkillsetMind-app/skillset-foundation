@@ -62,7 +62,7 @@ type CourseRow = {
  * antigas — espelha `courseUrlSlug` de published-courses.ts. Duplicado de
  * propósito: importar de lá arrastaria o "use client" para o servidor.
  */
-function publicUrlSlug(row: CourseRow): string {
+export function publicUrlSlug(row: Pick<CourseRow, "id" | "title_key" | "slug">): string {
   return row.title_key || row.slug || row.id;
 }
 
@@ -210,6 +210,27 @@ export async function getCourseRefAccess(ref: string): Promise<CourseRefAccess> 
 }
 
 /**
+ * Cliente ANÔNIMO para leitura pública no servidor: sem cookie (o token
+ * vencido de um visitante não vira 401), uma tentativa só e prazo curto.
+ *
+ * Sem nova tentativa porque o postgrest-js repete GET 3 vezes (1 s, 2 s, 4 s)
+ * e só desiste de cara com AbortError — o prazo estoura com TimeoutError,
+ * então um banco mudo prendia cada rota ~13 s. A resposta fica `revalidate`
+ * segundos no cache de dados do Next.
+ */
+export function anonymousReadClient({ timeoutMs, revalidate }: { timeoutMs: number; revalidate: number }) {
+  const { url, anonKey } = assertSupabaseClientConfig();
+  return createClient<Database>(url, anonKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+    db: { retry: false },
+    global: {
+      fetch: (input, init) =>
+        fetch(input, { ...init, signal: AbortSignal.timeout(timeoutMs), next: { revalidate } }),
+    },
+  });
+}
+
+/**
  * Existe ao menos UM curso real publicado? Decide a faixa de cursos da home e
  * o /courses do sitemap.
  *
@@ -228,17 +249,7 @@ export async function getCourseRefAccess(ref: string): Promise<CourseRefAccess> 
  */
 export const hasRealPublishedCourse = cache(async (): Promise<boolean> => {
   try {
-    const { url, anonKey } = assertSupabaseClientConfig();
-    const anonymous = createClient<Database>(url, anonKey, {
-      auth: { persistSession: false, autoRefreshToken: false },
-      db: { retry: false },
-      global: {
-        fetch: (input, init) =>
-          fetch(input, { ...init, signal: AbortSignal.timeout(1_500), next: { revalidate: 300 } }),
-      },
-    });
-
-    const { data, error } = await anonymous
+    const { data, error } = await anonymousReadClient({ timeoutMs: 1_500, revalidate: 300 })
       .from("courses")
       .select("id")
       .eq("status", "published")

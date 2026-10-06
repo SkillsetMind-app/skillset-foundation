@@ -13,6 +13,8 @@ vi.mock("next/headers", () => ({ cookies: async () => ({ get: () => ({ value: st
 vi.mock("@/components/site/site-nav", () => ({ SiteNav: () => null }));
 vi.mock("@/components/site/site-footer", () => ({ SiteFooter: () => null }));
 vi.mock("@/components/instructors/instructors-directory", () => ({ InstructorsDirectory: () => null }));
+// Perfil que não se acha: a metadata cai no rótulo genérico traduzido.
+vi.mock("@/lib/data/server/public-profile", () => ({ getPublicProfileByRef: async () => null, listCreatorCourses: async () => [] }));
 afterEach(() => { cleanup(); state.locale = "es"; });
 
 it("localizes profile metadata without changing its canonical reference", async () => {

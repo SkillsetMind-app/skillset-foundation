@@ -7,36 +7,23 @@ import { CookieConsent } from "@/components/site/cookie-consent";
 import { RealCoursesProvider } from "@/components/site/real-courses";
 import { PrivacyChoicesButton } from "@/components/site/privacy-choices-button";
 import type { PublicProfile } from "@/domain/user-profile";
-import type { TeacherCourse } from "@/domain/teacher-course";
-import { listPublicProfiles, subscribeToPublicProfile } from "@/lib/data/user-profiles";
-import { subscribeToPublishedTeacherCoursesByOwner } from "@/lib/data/published-courses";
+import type { CreatorCourse } from "@/lib/data/server/public-profile";
+import { listPublicProfiles } from "@/lib/data/user-profiles";
 
 const fixture = vi.hoisted(() => ({
   directory: "loaded",
-  courseError: false,
-  profileError: false,
   profile: { uid: "teacher", displayName: "Original Author", username: "author", photoURL: null, bio: "Original author biography", credentials: [] },
-  course: { id: "course", ownerId: "teacher", title: "Original course title", summary: "Original course summary", category: "Original category", status: "published", lessonCount: 2, paymentType: "free", freePreviewLessonId: "lesson", modules: [] },
 }));
+const course: CreatorCourse = {
+  id: "course", href: "/courses/original-course", title: "Original course title", coverImageUrl: null,
+  free: true, priceAmountMinor: null, currency: "USD", ratingAverage: 0, ratingCount: 0, enrollmentCount: 0,
+};
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 vi.mock("@/components/shared/user-avatar", () => ({ UserAvatar: () => null }));
-vi.mock("@/components/courses/course-tile", () => ({ CourseTile: (p: { title: string; meta: string; badge: string; priceLabel: string }) => <article>{p.title} {p.meta} {p.badge} {p.priceLabel}</article> }));
-vi.mock("@/lib/supabase/config", () => ({ getSupabaseClientConfig: () => ({}) }));
 vi.mock("@/lib/data/user-profiles", () => ({
   listPublicProfiles: vi.fn(async () => {
     if (fixture.directory === "error") throw new Error("backend");
     return fixture.directory === "empty" ? [] : [fixture.profile];
-  }),
-  subscribeToPublicProfile: vi.fn((_uid: string, next: (p: PublicProfile) => void, fail: () => void) => {
-    if (fixture.profileError) fail(); else next(fixture.profile as PublicProfile);
-    return () => {};
-  }),
-}));
-vi.mock("@/lib/data/published-courses", () => ({
-  isInternalSmokeCourse: () => false,
-  subscribeToPublishedTeacherCoursesByOwner: vi.fn((_uid: string, next: (p: TeacherCourse[]) => void, fail: () => void) => {
-    if (fixture.courseError) fail(); else next([fixture.course as TeacherCourse]);
-    return () => {};
   }),
 }));
 vi.mock("@/lib/consent/cookie-consent", () => ({
@@ -51,7 +38,7 @@ function Switch() {
 function show(children: React.ReactNode) {
   return render(<I18nProvider initialLocale="en"><Switch />{children}</I18nProvider>);
 }
-afterEach(() => { cleanup(); fixture.directory = "loaded"; fixture.courseError = false; fixture.profileError = false; vi.clearAllMocks(); });
+afterEach(() => { cleanup(); fixture.directory = "loaded"; vi.clearAllMocks(); });
 
 it("translates a loaded directory without fetching again or translating author data", async () => {
   show(<InstructorsDirectory />);
@@ -60,6 +47,12 @@ it("translates a loaded directory without fetching again or translating author d
   expect(screen.getByRole("link", { name: "Ver perfil" })).toBeInTheDocument();
   expect(screen.getByText("Original author biography")).toBeInTheDocument();
   expect(listPublicProfiles).toHaveBeenCalledTimes(1);
+});
+
+// O diretório leva ao perfil pelo @ (o endereço canônico), não pelo uid.
+it("links each directory card to the @handle address", async () => {
+  show(<InstructorsDirectory />);
+  expect(await screen.findByRole("link", { name: "View profile" })).toHaveAttribute("href", "/@author");
 });
 
 it.each([
@@ -74,55 +67,41 @@ it.each([
   expect(listPublicProfiles).toHaveBeenCalledTimes(1);
 });
 
-// Diretório vazio e vitrine do instrutor só levam à loja quando ela tem curso
-// real: "explorar cursos", "explorar catálogo" e "todos os cursos".
-it.each([[true, 3], [false, 0]])("links the store only while it has a real course (%s)", async (value, count) => {
+// Diretório vazio só leva à loja quando ela tem curso real; o perfil do
+// professor não leva nunca (é o link da bio dele).
+it.each([[true, 1], [false, 0]])("links the store only while it has a real course (%s)", async (value, count) => {
   fixture.directory = "empty";
   render(
     <I18nProvider initialLocale="en">
-      <RealCoursesProvider value={value}><InstructorsDirectory /><InstructorProfileView uid="teacher" /></RealCoursesProvider>
+      <RealCoursesProvider value={value}>
+        <InstructorsDirectory />
+        <InstructorProfileView profile={fixture.profile as PublicProfile} courses={[course]} />
+      </RealCoursesProvider>
     </I18nProvider>,
   );
   await screen.findByText("Public instructor profiles appear after review.");
-  await screen.findByText(/2 lessons/);
 
   expect(document.querySelectorAll('a[href="/courses"]')).toHaveLength(count);
 });
 
-// Perfil indisponível com a loja vazia: em vez de beco sem saída, leva aos
-// instrutores; com curso real, segue levando à loja.
-it.each([
-  [true, "Browse the marketplace", "/courses"],
-  [false, "Instructors", "/instructors"],
-])("gives the unavailable profile a way out (store with courses: %s)", async (value, name, href) => {
-  fixture.profileError = true;
-  render(
-    <I18nProvider initialLocale="en">
-      <RealCoursesProvider value={value}><InstructorProfileView uid="teacher" /></RealCoursesProvider>
-    </I18nProvider>,
-  );
-
-  expect(await screen.findByRole("link", { name })).toHaveAttribute("href", href);
-});
-
-it("translates loaded profile metrics and course labels without restarting subscriptions", async () => {
-  show(<InstructorProfileView uid="teacher" />);
-  await screen.findByText(/2 lessons/);
+it("translates profile labels at render time without touching author data", () => {
+  show(<InstructorProfileView profile={fixture.profile as PublicProfile} courses={[course]} />);
+  expect(screen.getByRole("heading", { name: "Courses" })).toBeInTheDocument();
   fireEvent.click(screen.getByText("ES"));
-  expect(screen.getByText(/2 lecciones/)).toHaveTextContent("Vista previa gratuita Inscripción gratuita");
-  expect(screen.getByText("Cursos publicados")).toBeInTheDocument();
+  expect(screen.getByRole("heading", { name: "Cursos" })).toBeInTheDocument();
+  expect(screen.getByRole("heading", { name: "Sobre Original Author" })).toBeInTheDocument();
+  expect(screen.getByText("Gratis")).toBeInTheDocument();
+  expect(screen.getByText("Leer más")).toBeInTheDocument();
   expect(screen.getByText("Original author biography")).toBeInTheDocument();
-  expect(subscribeToPublicProfile).toHaveBeenCalledTimes(1);
-  expect(subscribeToPublishedTeacherCoursesByOwner).toHaveBeenCalledTimes(1);
+  // Botão principal e linha do curso.
+  expect(screen.getAllByText("Original course title")).toHaveLength(2);
 });
 
-it("translates an already stored course error at render time", async () => {
-  fixture.courseError = true;
-  show(<InstructorProfileView uid="teacher" />);
-  await screen.findByText("Instructor courses could not load right now.");
+it("translates the course error at render time", () => {
+  show(<InstructorProfileView profile={fixture.profile as PublicProfile} courses={null} />);
+  expect(screen.getByText("Instructor courses could not load right now.")).toBeInTheDocument();
   fireEvent.click(screen.getByText("ES"));
   expect(screen.getByText("No se pudieron cargar los cursos del instructor en este momento.")).toBeInTheDocument();
-  expect(subscribeToPublishedTeacherCoursesByOwner).toHaveBeenCalledTimes(1);
 });
 
 it("translates the open cookie dialog and privacy control while preserving the legal destination", () => {

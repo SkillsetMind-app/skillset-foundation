@@ -1,409 +1,230 @@
 "use client";
 
-import { useTranslation } from "@/components/i18n/i18n-provider";
-
-import { ArrowRight, BookOpen, GraduationCap, Star } from "lucide-react";
+import { ArrowRight, Star } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { type CSSProperties, useEffect, useMemo, useState } from "react";
 
 import { CourseTile } from "@/components/courses/course-tile";
+import { useTranslation } from "@/components/i18n/i18n-provider";
 import { UserAvatar } from "@/components/shared/user-avatar";
-import { useHasRealCourses } from "@/components/site/real-courses";
 import { brand } from "@/data/brand";
-import type { TeacherCourse } from "@/domain/teacher-course";
-import type { PublicProfile, StorefrontShowcase } from "@/domain/user-profile";
-import { isStorefrontHexColor } from "@/domain/user-profile";
 import {
-  isInternalSmokeCourse,
-  subscribeToPublishedTeacherCoursesByOwner,
-} from "@/lib/data/published-courses";
-import { subscribeToPublicProfile } from "@/lib/data/user-profiles";
-import { getSupabaseClientConfig } from "@/lib/supabase/config";
+  isStorefrontHexColor,
+  publicProfileName,
+  type PublicProfile,
+  type StorefrontShowcase,
+} from "@/domain/user-profile";
+import type { CreatorCourse } from "@/lib/data/server/public-profile";
 
-export function InstructorProfileView({ uid }: { uid: string }) {
-  const { t } = useTranslation();
-  const hasRealCourses = useHasRealCourses();
-  const hasSupabaseConfig = Boolean(getSupabaseClientConfig());
-  const [profile, setProfile] = useState<PublicProfile | null>(null);
-  const [courses, setCourses] = useState<TeacherCourse[]>([]);
-  const [isProfileLoading, setIsProfileLoading] = useState(hasSupabaseConfig);
-  const [areCoursesLoading, setAreCoursesLoading] = useState(hasSupabaseConfig);
-  const [hasProfileError, setHasProfileError] = useState(!hasSupabaseConfig);
-  const [coursesError, setCoursesError] = useState(!hasSupabaseConfig);
-
-  useEffect(() => {
-    if (!hasSupabaseConfig) {
-      return;
-    }
-
-    const unsubscribeProfile = subscribeToPublicProfile(
-      uid,
-      (next) => {
-        setProfile(next);
-        setHasProfileError(false);
-        setIsProfileLoading(false);
-      },
-      () => {
-        setHasProfileError(true);
-        setIsProfileLoading(false);
-      },
-    );
-
-    const unsubscribeCourses = subscribeToPublishedTeacherCoursesByOwner(
-      uid,
-      (nextCourses) => {
-        setCourses(nextCourses.filter((course) => !isInternalSmokeCourse(course)));
-        setCoursesError(false);
-        setAreCoursesLoading(false);
-      },
-      () => {
-        setCoursesError(true);
-        setAreCoursesLoading(false);
-      },
-    );
-
-    return () => {
-      unsubscribeProfile();
-      unsubscribeCourses();
-    };
-  }, [hasSupabaseConfig, uid]);
-
-  const stats = useMemo(() => getInstructorStats(courses), [courses]);
-  const showcase = profile?.storefront?.showcase;
-  const orderedCourses = useMemo(
-    () => orderShowcaseCourses(courses, showcase),
-    [courses, showcase],
-  );
-
-  if (isProfileLoading) {
-    return <InstructorProfileSkeleton />;
-  }
-
-  if (hasProfileError || !profile) {
-    return (
-      <section className="rounded-none border border-dashed border-[rgba(26,54,93,0.18)] bg-[var(--color-surface-soft)] p-10 text-center">
-        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-          {t("publicPages.profile.profile_unavailable")}
-        </p>
-        <h1 className="display-title mt-4 text-3xl leading-tight text-[var(--color-primary)]">
-          {t("publicPages.profile.this_instructor_profile_isn_t_available")}
-        </h1>
-        <p className="mx-auto mt-4 max-w-md text-sm leading-7 text-[var(--color-ink-soft)]">
-          {t("publicPages.profile.the_instructor_may_not_have_published")}
-        </p>
-        <div className="mt-7">
-          {hasRealCourses ? (
-            <Link href="/courses" className="button-solid px-4 py-2.5 text-sm">
-              {t("publicPages.profile.browse_the_marketplace")}
-            </Link>
-          ) : (
-            <Link href="/instructors" className="button-solid px-4 py-2.5 text-sm">
-              {t("footer.instructors")}
-            </Link>
-          )}
-        </div>
-      </section>
-    );
-  }
-
-  const name = profile.displayName || profile.username || t("publicPages.profile.fallback_name").replace("{brand}", brand.name);
+/**
+ * O perfil público do professor como link da bio: uma coluna de celular, na
+ * ordem cabeçalho → UM botão principal → cursos em linhas → prova → sobre.
+ *
+ * Os dados chegam prontos do servidor (page.tsx). Nada aqui leva para fora do
+ * professor: sem "explorar o marketplace", sem link para /courses — o
+ * visitante veio do Instagram dele e só sai daqui para um curso dele.
+ *
+ * Redes sociais (Instagram, site...) ficam para depois: public_profiles ainda
+ * não guarda esses campos.
+ */
+export function InstructorProfileView({
+  profile,
+  courses,
+}: {
+  profile: PublicProfile;
+  /** null = a leitura dos cursos falhou (o perfil continua no ar). */
+  courses: CreatorCourse[] | null;
+}) {
+  const { t, locale } = useTranslation();
+  const name = publicProfileName(profile)
+    ?? t("publicPages.profile.fallback_name").replace("{brand}", () => brand.name);
+  const showcase = profile.storefront?.showcase;
   const branding = profile.storefront?.branding;
-  // The projection already sanitizes these, but the accent lands in a CSS
-  // custom property — cheapest possible second gate, reusing the domain rule.
-  const accentColor =
-    branding?.accentColor && isStorefrontHexColor(branding.accentColor)
-      ? branding.accentColor
-      : null;
   const tagline = showcase?.tagline?.trim();
+  // A projeção já sanitiza; segunda trava barata antes de virar CSS.
+  const accent = branding?.accentColor && isStorefrontHexColor(branding.accentColor)
+    ? branding.accentColor
+    : null;
+  const ordered = orderShowcaseCourses(courses ?? [], showcase);
+  const primary = ordered[0];
+  const students = ordered.reduce((sum, course) => sum + course.enrollmentCount, 0);
+  const ratingCount = ordered.reduce((sum, course) => sum + course.ratingCount, 0);
+  const ratingAverage = ratingCount
+    ? ordered.reduce((sum, course) => sum + course.ratingAverage * course.ratingCount, 0) / ratingCount
+    : 0;
+  const decimal = (value: number) =>
+    value.toLocaleString(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 
   return (
-    <>
-      <section
-        className="instructor-storefront-hero"
-        data-storefront-theme={branding?.themePreset ?? "default"}
-        style={
-          accentColor
-            ? ({ "--storefront-accent": accentColor } as CSSProperties)
-            : undefined
-        }
-      >
+    <article className="grid gap-8">
+      <header data-section="header" className="flex flex-col items-center text-center">
         {branding?.heroImageUrl ? (
-          <div className="instructor-storefront-hero__cover">
+          <div className="relative mb-6 aspect-[3/1] w-full overflow-hidden bg-[var(--color-surface-strong)]">
             <Image
               src={branding.heroImageUrl}
               alt=""
               fill
-              sizes="100vw"
+              priority
+              sizes="(max-width: 640px) 100vw, 640px"
               className="object-cover"
-              // Teacher-supplied host; not in next.config remotePatterns.
+              // Host do professor, fora do remotePatterns.
               unoptimized
             />
           </div>
         ) : null}
-        <div className="instructor-storefront-hero__band">
-          <div className="min-w-0">
-            <div className="flex items-center gap-3">
-              {branding?.logoUrl ? (
-                <Image
-                  src={branding.logoUrl}
-                  alt={name}
-                  width={28}
-                  height={28}
-                  className="h-7 w-auto object-contain"
-                  unoptimized
-                />
-              ) : null}
-              <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-                {t("publicPages.profile.instructor_storefront")}
-              </p>
-            </div>
-            <div className="mt-5 flex flex-col gap-5 sm:flex-row sm:items-center">
-              <UserAvatar name={name} photoURL={profile.photoURL} size="lg" />
-              <div className="min-w-0">
-                <h1 className="display-title text-4xl leading-tight text-[var(--color-primary)] sm:text-5xl">
-                  {name}
-                </h1>
-                {profile.username ? (
-                  <p className="mt-2 text-sm font-bold text-[var(--color-ink-soft)]">
-                    @{profile.username}
-                  </p>
-                ) : null}
-              </div>
-            </div>
-
-            {tagline ? (
-              <p className="instructor-storefront-tagline mt-6 max-w-3xl">
-                {tagline}
-              </p>
-            ) : null}
-
-            {profile.bio ? (
-              <p className="mt-6 max-w-3xl text-sm leading-7 text-[var(--color-ink-soft)]">
-                {profile.bio}
-              </p>
-            ) : (
-              <p className="mt-6 max-w-3xl text-sm leading-7 text-[var(--color-ink-soft)]">
-                {t("publicPages.profile.this_instructor_has_published_a_reviewed")}{" "}
-                {brand.name}{t("publicPages.profile.their_course_catalog_appears_below_as")}
-              </p>
-            )}
-
-            <div className="mt-7 flex flex-wrap gap-3">
-              <a href="#courses" className="button-solid px-4 py-2.5 text-sm">
-                {t("publicPages.profile.view_courses")}
-              </a>
-              {hasRealCourses ? (
-                <Link href="/courses" className="button-outline px-4 py-2.5 text-sm">
-                  {t("publicPages.profile.browse_marketplace")}
-                </Link>
-              ) : null}
-            </div>
-          </div>
-
-          <aside className="instructor-storefront-metrics">
-            <InstructorMetric
-              icon={BookOpen}
-              label={t("publicPages.profile.published_courses")}
-              value={String(stats.courseCount)}
-            />
-            <InstructorMetric
-              icon={GraduationCap}
-              label={t("publicPages.profile.lessons")}
-              value={String(stats.lessonCount)}
-            />
-            <InstructorMetric
-              icon={Star}
-              label={t("publicPages.profile.categories")}
-              value={String(stats.categoryCount)}
-            />
-          </aside>
+        <UserAvatar name={name} photoURL={profile.photoURL} size="lg" />
+        <div className="mt-4 flex items-center justify-center gap-2">
+          <h1 className="display-title text-3xl leading-tight text-[var(--color-primary)] sm:text-4xl">
+            {name}
+          </h1>
+          {/* Selo de verificado (próximo PR): entra aqui, logo depois do nome. */}
         </div>
+        {profile.username ? (
+          <p className="mt-1 text-sm font-semibold text-[var(--color-ink-soft)]">@{profile.username}</p>
+        ) : null}
+        {tagline ? (
+          // A cor da marca do professor (plano com vitrine) vira o fio acima.
+          <p
+            className={`mt-3 max-w-md text-base font-semibold leading-6 text-[var(--color-primary)] ${accent ? "border-t-2 pt-3" : ""}`}
+            style={accent ? { borderColor: accent } : undefined}
+          >
+            {tagline}
+          </p>
+        ) : null}
+      </header>
 
-        {profile.credentials.length > 0 ? (
-          <div className="border-t border-[var(--color-line)] p-6 sm:p-8 lg:p-10">
-            <p className="text-sm font-bold text-[var(--color-ink)]">
-              {t("publicPages.profile.background_credentials")}
+      {primary ? (
+        <Link
+          data-section="primary"
+          href={primary.href}
+          className="button-solid min-h-12 w-full px-5 py-3 text-base"
+        >
+          <span className="min-w-0 truncate">{primary.title}</span>
+          <ArrowRight aria-hidden="true" size={18} strokeWidth={2} className="shrink-0" />
+        </Link>
+      ) : null}
+
+      <section data-section="courses" aria-labelledby="creator-courses-heading">
+        <h2
+          id="creator-courses-heading"
+          className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--color-accent-fg)]"
+        >
+          {t("publicPages.profile.courses_heading")}
+        </h2>
+        {courses === null ? (
+          <p className="mt-4 border border-[var(--color-danger)] bg-[var(--color-danger-soft)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
+            {t("publicPages.profile.courses_error")}
+          </p>
+        ) : ordered.length === 0 ? (
+          <div className="mt-4 border border-dashed border-[var(--color-line-strong)] p-6 text-center">
+            <p className="text-sm font-bold text-[var(--color-primary)]">
+              {t("publicPages.profile.no_public_courses_yet")}
             </p>
-            <ul className="mt-4 grid gap-3 sm:grid-cols-2">
+            <p className="mt-2 text-sm leading-6 text-[var(--color-ink-soft)]">
+              {t("publicPages.profile.this_instructor_s_first_courses_will")}
+            </p>
+          </div>
+        ) : (
+          <ul className="mt-4 grid gap-3">
+            {ordered.map((course) => (
+              <li key={course.id}>
+                <CourseTile
+                  href={course.href}
+                  title={course.title}
+                  image={course.coverImageUrl || "/brand/logo-mark.png"}
+                  priceLabel={formatPrice(course, t, locale)}
+                  rating={course.ratingCount ? { average: course.ratingAverage, count: course.ratingCount } : null}
+                  className="marketplace-card--row"
+                  imageSizes="96px"
+                />
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      {/* Prova só com número de verdade: zero não aparece. */}
+      {students > 0 || ratingCount > 0 ? (
+        <dl
+          data-section="proof"
+          className="flex flex-wrap justify-center gap-x-8 gap-y-3 border-y border-[var(--color-line)] py-4 text-center"
+        >
+          {students > 0 ? (
+            <div>
+              <dt className="sr-only">{t("publicPages.profile.students_label")}</dt>
+              <dd className="text-sm font-semibold text-[var(--color-ink)]">
+                {t(students === 1 ? "publicPages.profile.students_one" : "publicPages.profile.students_many")
+                  .replace("{count}", () => students.toLocaleString(locale))}
+              </dd>
+            </div>
+          ) : null}
+          {ratingCount > 0 ? (
+            <div>
+              <dt className="sr-only">{t("publicPages.profile.rating_label")}</dt>
+              <dd className="inline-flex items-center gap-1.5 text-sm font-semibold text-[var(--color-ink)]">
+                <Star
+                  aria-hidden="true"
+                  size={14}
+                  strokeWidth={1.5}
+                  className="fill-[var(--color-brand)] text-[var(--color-brand)]"
+                />
+                {decimal(ratingAverage)}
+                <span className="font-normal text-[var(--color-ink-soft)]">
+                  {t(ratingCount === 1 ? "publicPages.profile.ratings_one" : "publicPages.profile.ratings_many")
+                    .replace("{count}", () => ratingCount.toLocaleString(locale))}
+                </span>
+              </dd>
+            </div>
+          ) : null}
+        </dl>
+      ) : null}
+
+      {profile.bio || profile.credentials.length > 0 ? (
+        <section data-section="about" aria-labelledby="creator-about-heading">
+          <h2
+            id="creator-about-heading"
+            className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--color-accent-fg)]"
+          >
+            {t("publicPages.profile.about").replace("{name}", () => name)}
+          </h2>
+          {profile.bio ? (
+            // Recolhida: quem chega do Instagram quer o curso, não a biografia.
+            <details className="group mt-3">
+              <summary className="cursor-pointer list-none text-sm leading-6 text-[var(--color-ink-soft)]">
+                <span className="line-clamp-2 group-open:line-clamp-none">{profile.bio}</span>
+                <span className="mt-1 inline-block text-sm font-semibold text-[var(--color-primary)] underline underline-offset-4 group-open:hidden">
+                  {t("publicPages.profile.read_more")}
+                </span>
+              </summary>
+            </details>
+          ) : null}
+          {profile.credentials.length > 0 ? (
+            <ul className="mt-4 grid gap-2">
               {profile.credentials.map((credential, index) => (
                 <li
                   key={`${profile.uid}-credential-${index}`}
-                  className="rounded-none border fine-rule bg-[var(--color-surface-soft)] px-4 py-3 text-sm leading-6 text-[var(--color-ink-soft)]"
+                  className="border-l-2 border-[var(--color-line-strong)] pl-3 text-sm leading-6 text-[var(--color-ink-soft)]"
                 >
                   {credential}
                 </li>
               ))}
             </ul>
-          </div>
-        ) : null}
-      </section>
-
-      <section id="courses" className="mt-10" aria-labelledby="instructor-courses-heading">
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-              {t("publicPages.profile.course_catalog")}
-            </p>
-            <h2
-              id="instructor-courses-heading"
-              className="display-title mt-2 text-3xl text-[var(--color-primary)] sm:text-4xl"
-            >
-              {t("publicPages.profile.courses_by")}{name}
-            </h2>
-          </div>
-          {hasRealCourses && courses.length > 0 ? (
-            <Link
-              href="/courses"
-              className="inline-flex items-center gap-2 text-sm font-bold text-[var(--color-primary)] underline-offset-4 hover:underline"
-            >
-              {t("publicPages.profile.browse_all_courses")}<ArrowRight aria-hidden="true" size={16} strokeWidth={1.9} />
-            </Link>
           ) : null}
-        </div>
-
-        {coursesError ? (
-          <p className="mt-6 rounded-none border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
-            {t("publicPages.profile.courses_error")}
-          </p>
-        ) : null}
-
-        {areCoursesLoading ? (
-          <InstructorCourseSkeleton />
-        ) : courses.length === 0 ? (
-          <div className="mt-6 rounded-none border border-dashed border-[var(--color-line-strong)] bg-[var(--color-surface-soft)] p-8 text-center">
-            <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-              {t("publicPages.profile.no_public_courses_yet")}
-            </p>
-            <h3 className="display-title mt-3 text-3xl text-[var(--color-primary)]">
-              {t("publicPages.profile.this_instructor_s_first_courses_will")}
-            </h3>
-            <p className="mx-auto mt-3 max-w-xl text-sm leading-7 text-[var(--color-ink-soft)]">
-              {brand.name} {t("publicPages.profile.only_shows_published_courses_from_verified")}
-            </p>
-            {hasRealCourses ? (
-              <Link href="/courses" className="button-solid mt-6 px-4 py-2.5 text-sm">
-                {t("publicPages.profile.browse_marketplace")}
-              </Link>
-            ) : null}
-          </div>
-        ) : (
-          <div className="marketplace-course-grid mt-6">
-            {orderedCourses.map((course) => (
-              <InstructorCourseCard
-                key={course.id}
-                course={course}
-                instructor={{ name, photoURL: profile.photoURL }}
-              />
-            ))}
-          </div>
-        )}
-      </section>
-    </>
-  );
-}
-
-function InstructorMetric({
-  icon: Icon,
-  label,
-  value,
-}: {
-  icon: typeof BookOpen;
-  label: string;
-  value: string;
-}) {
-  return (
-    <div className="instructor-storefront-metric">
-      <span className="instructor-storefront-metric__icon">
-        <Icon aria-hidden="true" size={18} strokeWidth={1.8} />
-      </span>
-      <div>
-        <p className="num text-2xl font-bold leading-none text-[var(--color-primary)]">
-          {value}
-        </p>
-        <p className="mt-1 text-[11px] font-bold uppercase tracking-[0.16em] text-[var(--color-ink-soft)]">
-          {label}
-        </p>
-      </div>
-    </div>
-  );
-}
-
-function InstructorCourseCard({
-  course,
-  instructor,
-}: {
-  course: TeacherCourse;
-  instructor: { name: string; photoURL: string | null };
-}) {
-  const { t, locale } = useTranslation();
-  return (
-    <CourseTile
-      href={`/courses/${course.id}`}
-      title={course.title}
-      image={course.coverImageUrl || "/brand/logo-mark.png"}
-      summary={course.summary}
-      category={course.category}
-      meta={`${course.lessonCount} ${t(course.lessonCount === 1 ? "publicPages.profile.lesson" : "publicPages.profile.lessons_count")}`}
-      // O selo de status saiu: nesta vitrine todo curso listado ja e publico,
-      // entao "Published" nao separava um cartao do outro.
-      badge={course.freePreviewLessonId ? t("publicPages.profile.free_preview") : null}
-      priceLabel={formatPrice(course, t, locale)}
-      rating={
-        course.ratingAverage && course.ratingCount
-          ? { average: course.ratingAverage, count: course.ratingCount }
-          : null
-      }
-      instructor={instructor}
-      imageSizes="(max-width: 1024px) 100vw, 33vw"
-    />
-  );
-}
-
-function InstructorProfileSkeleton() {
-  const { t } = useTranslation();
-  return (
-    <section aria-busy="true" aria-live="polite">
-      <p role="status" className="sr-only">
-        {t("publicPages.profile.loading_instructor_profile")}
-      </p>
-      <div className="rounded-none border border-[var(--color-line)] bg-white p-8 shadow-[var(--shadow-soft)]">
-        <div className="flex animate-pulse flex-col gap-5 sm:flex-row sm:items-center">
-          <div className="size-20 rounded-full bg-[var(--color-surface-strong)]" />
-          <div className="grid flex-1 gap-3">
-            <div className="h-4 w-28 rounded-none bg-[var(--color-surface-strong)]" />
-            <div className="h-10 w-3/4 rounded-none bg-[var(--color-surface-strong)]" />
-            <div className="h-4 w-1/2 rounded-none bg-[var(--color-surface-strong)]" />
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function InstructorCourseSkeleton() {
-  return (
-    <div className="mt-6 grid gap-5 lg:grid-cols-3" aria-hidden="true">
-      {[0, 1, 2].map((item) => (
-        <div
-          key={item}
-          className="surface-card min-h-80 animate-pulse rounded-none"
-        />
-      ))}
-    </div>
+        </section>
+      ) : null}
+    </article>
   );
 }
 
 /**
- * Applies the teacher's showcase ordering: the featured course first, then the
- * explicit order from the storefront editor. Unranked courses keep their
- * incoming order at the end — same `?? MAX_SAFE_INTEGER` convention the
- * marketplace uses for a null `featured_rank`.
+ * Ordem da vitrine: o curso em destaque primeiro, depois a ordem do editor.
+ * Sem posição, mantém a ordem que chegou (alfabética), no fim — mesma
+ * convenção `?? MAX_SAFE_INTEGER` do marketplace para `featured_rank` nulo.
  */
 function orderShowcaseCourses(
-  courses: TeacherCourse[],
+  courses: CreatorCourse[],
   showcase: StorefrontShowcase | null | undefined,
-): TeacherCourse[] {
+): CreatorCourse[] {
   const featuredId = showcase?.featuredCourseId ?? null;
   const orderedIds = showcase?.orderedCourseIds ?? [];
 
@@ -423,24 +244,15 @@ function orderShowcaseCourses(
   });
 }
 
-function getInstructorStats(courses: TeacherCourse[]) {
-  const publicCourses = courses.filter((course) => !isInternalSmokeCourse(course));
-  return {
-    courseCount: publicCourses.length,
-    lessonCount: publicCourses.reduce((total, course) => total + course.lessonCount, 0),
-    categoryCount: new Set(publicCourses.map((course) => course.category)).size,
-  };
-}
-
-function formatPrice(course: TeacherCourse, t: (key: string) => string, locale: string): string {
-  if (course.paymentType === "free") {
-    return t("publicPages.profile.free_enrollment");
+function formatPrice(course: CreatorCourse, t: (key: string) => string, locale: string): string {
+  if (course.free) {
+    return t("publicPages.profile.free");
   }
 
   if (typeof course.priceAmountMinor === "number") {
     return new Intl.NumberFormat(locale, {
       style: "currency",
-      currency: course.currency ?? "USD",
+      currency: course.currency,
     }).format(course.priceAmountMinor / 100);
   }
 

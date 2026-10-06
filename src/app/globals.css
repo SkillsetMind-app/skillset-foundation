@@ -7635,6 +7635,49 @@ button:hover > .dash-card,
   }
 }
 
+/* Linha do link da bio (perfil do professor): capa quadrada a esquerda,
+   titulo, nota e preco a direita. O mesmo cartao (CourseTile), em outro
+   arranjo: o cartao inteiro continua sendo o link. */
+.marketplace-card--row {
+  display: grid;
+  min-height: 0;
+  grid-template-columns: 6rem minmax(0, 1fr);
+}
+
+.marketplace-card--row:hover {
+  transform: none;
+}
+
+.marketplace-card--row .marketplace-card__media {
+  min-height: 6rem;
+  aspect-ratio: auto;
+}
+
+.marketplace-card--row .marketplace-card__scrim,
+.marketplace-card--row .marketplace-card__cta {
+  display: none;
+}
+
+.marketplace-card--row .marketplace-card__body {
+  justify-content: center;
+  padding: 0.75rem 1rem;
+}
+
+.marketplace-card--row .marketplace-card__title {
+  margin-top: 0;
+  font-size: 1rem;
+}
+
+.marketplace-card--row .marketplace-card__instructor {
+  margin-top: 0.3rem;
+}
+
+.marketplace-card--row .marketplace-card__footer {
+  margin-top: 0.3rem;
+  border-top: 0;
+  padding-top: 0;
+}
+
 .marketplace-card__media {
   position: relative;
   display: block;
@@ -7845,129 +7888,15 @@ button:hover > .dash-card,
   text-align: center;
 }
 
-.instructor-storefront-hero {
-  overflow: hidden;
-  border: 1px solid var(--color-line);
-  border-radius: 0;
-  background: var(--color-surface);
-  box-shadow: var(--shadow-soft);
-}
-
-.instructor-storefront-hero__band {
-  display: grid;
-  gap: 2rem;
-  background: linear-gradient(
-    135deg,
-    #ffffff 0%,
-    var(--color-surface-soft) 62%,
-    var(--color-surface-strong) 100%
-  );
-  padding: clamp(1.5rem, 4vw, 2.5rem);
-}
-
-@media (min-width: 1024px) {
-  .instructor-storefront-hero__band {
-    grid-template-columns: minmax(0, 1fr) 21rem;
-  }
-}
-
-.instructor-storefront-metrics {
-  display: grid;
-  gap: 0.75rem;
-  align-self: start;
-  border: 1px solid var(--color-line);
-  border-radius: 0;
-  background: rgba(255, 255, 255, 0.84);
-  box-shadow: 0 12px 30px rgba(15, 39, 68, 0.08);
-  padding: 1rem;
-}
-
-.instructor-storefront-metric {
-  display: flex;
-  align-items: center;
-  gap: 0.85rem;
-  border-radius: 0;
-  background: var(--color-surface-soft);
-  padding: 1rem;
-}
-
-.instructor-storefront-metric__icon {
-  display: grid;
-  width: 2.5rem;
-  height: 2.5rem;
-  flex: 0 0 2.5rem;
-  place-items: center;
-  border-radius: 0;
-  background: #ffffff;
-  color: var(--color-primary);
-  box-shadow: inset 0 0 0 1px var(--color-line);
-}
-
-/* --- Teacher storefront branding -----------------------------------------
-   `--storefront-accent` is set inline from the teacher's sanitized accent
-   color; every rule below falls back to the platform palette so a profile
-   without branding (or on a free plan, where the projection is null) renders
-   exactly as it did before. Theme presets are whitelisted at projection time,
-   so an unknown value simply matches no rule and keeps the default band. */
-
-.instructor-storefront-hero {
-  border-top: 3px solid var(--storefront-accent, var(--color-line));
-}
-
-.instructor-storefront-hero__cover {
-  position: relative;
-  height: clamp(9rem, 20vw, 14rem);
-  background: var(--color-surface-strong);
-}
-
-.instructor-storefront-tagline {
-  border-left: 3px solid var(--storefront-accent, var(--color-primary));
-  padding-left: 0.9rem;
-  font-size: 1.05rem;
-  font-weight: 600;
-  line-height: 1.6;
-  color: var(--color-primary);
-}
-
-.instructor-storefront-hero[data-storefront-theme="warm"]
-  .instructor-storefront-hero__band {
-  background: linear-gradient(135deg, #fffaf3 0%, #fdf1e0 62%, #f8e4cb 100%);
-}
-
-.instructor-storefront-hero[data-storefront-theme="cool"]
-  .instructor-storefront-hero__band {
-  background: linear-gradient(135deg, #f6fbff 0%, #e8f3fb 62%, #d9e9f6 100%);
-}
-
-.instructor-storefront-hero[data-storefront-theme="mono"]
-  .instructor-storefront-hero__band {
-  background: linear-gradient(135deg, #ffffff 0%, #f4f5f7 62%, #e8eaee 100%);
-}
-
-[data-theme="dark"] .instructor-storefront-hero[data-storefront-theme="warm"]
-  .instructor-storefront-hero__band,
-[data-theme="dark"] .instructor-storefront-hero[data-storefront-theme="cool"]
-  .instructor-storefront-hero__band,
-[data-theme="dark"] .instructor-storefront-hero[data-storefront-theme="mono"]
-  .instructor-storefront-hero__band {
-  background: linear-gradient(
-    135deg,
-    var(--color-surface) 0%,
-    var(--color-surface-soft) 100%
-  );
-}
-
 [data-theme="dark"] .marketplace-page-header,
 [data-theme="dark"] .marketplace-filter-panel,
 [data-theme="dark"] .marketplace-continue-card,
 [data-theme="dark"] .marketplace-card,
-[data-theme="dark"] .marketplace-empty,
-[data-theme="dark"] .instructor-storefront-hero {
+[data-theme="dark"] .marketplace-empty {
   background: var(--color-surface);
 }
 
-[data-theme="dark"] .marketplace-page-header,
-[data-theme="dark"] .instructor-storefront-hero__band {
+[data-theme="dark"] .marketplace-page-header {
   background: linear-gradient(135deg, var(--color-surface) 0%, var(--color-surface-soft) 100%);
 }
 
@@ -7975,9 +7904,7 @@ button:hover > .dash-card,
 [data-theme="dark"] .marketplace-filter-button,
 [data-theme="dark"] .marketplace-searchbox,
 [data-theme="dark"] .marketplace-select,
-[data-theme="dark"] .marketplace-view-toggle,
-[data-theme="dark"] .instructor-storefront-metrics,
-[data-theme="dark"] .instructor-storefront-metric__icon {
+[data-theme="dark"] .marketplace-view-toggle {
   background: var(--color-surface-soft);
 }
 

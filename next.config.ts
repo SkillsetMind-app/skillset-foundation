@@ -55,6 +55,13 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  // `/@usuario` e o link da bio do professor. No App Router uma pasta que
+  // comeca com @ e slot de rota paralela, entao o endereco mora aqui: rewrite
+  // (a URL do visitante nao muda) para a pagina de perfil, que le o @ do
+  // parametro. Nada precisa ser reservado: nenhuma rota do site comeca com @.
+  async rewrites() {
+    return [{ source: "/@:username", destination: "/instructors/@:username" }];
+  },
   async headers() {
     return [
       {
