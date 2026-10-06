@@ -137,6 +137,10 @@ function lessonBar() {
   return screen.getByRole("navigation", { name: "Lesson navigation" });
 }
 
+function playlist() {
+  return screen.getByRole("navigation", { name: "Lessons" });
+}
+
 describe("concluir e seguir para a proxima aula", () => {
   beforeEach(() => {
     mocks.replace.mockReset();
@@ -161,6 +165,10 @@ describe("concluir e seguir para a proxima aula", () => {
     expect(screen.getByText("We could not update lesson progress. Please try again.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "End video" })).toBeInTheDocument();
     expect(mocks.replace).not.toHaveBeenCalled();
+
+    // Trocar de aula leva o aviso junto: ele era da aula anterior.
+    fireEvent.click(within(playlist()).getByRole("button", { name: /Lesson two/ }));
+    expect(screen.queryByText("We could not update lesson progress. Please try again.")).not.toBeInTheDocument();
   });
 
   it("fim do video com a conclusao salva: o cartao de 5 s propoe a proxima", async () => {
@@ -195,6 +203,31 @@ describe("concluir e seguir para a proxima aula", () => {
     });
 
     expect(mocks.replace).toHaveBeenCalledWith("/learn/courses/demo-course?lesson=l2", { scroll: false });
+    expect(screen.queryByRole("dialog", { name: "Next lesson" })).not.toBeInTheDocument();
+    // Curso sequencial: a proxima abre ja liberada, sem esperar o realtime
+    // trazer a conclusao (o mock nao reenvia a lista).
+    expect(screen.queryByRole("heading", { name: "Lesson locked" })).not.toBeInTheDocument();
+    expect(screen.getByText("Two")).toBeInTheDocument();
+  });
+
+  it("trocar de aula com a contagem pendente cancela a contagem", async () => {
+    vi.mocked(recordLessonProgress).mockResolvedValue({ progressPercent: 33, completedLessonCount: 1 } as never);
+    const video = (id: string, title: string) => ({
+      id, title, type: "video", duration: "5 min", isPreview: false,
+      videoSource: "youtube", externalUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+    });
+    mocks.searchParams = new URLSearchParams("lesson=l1");
+    mocks.completed = [];
+    render(<EnrolledCourseWorkspace course={{ ...course, dripStrategy: undefined, modules: [{
+      ...course.modules[0], lessons: [video("l1", "Lesson one"), video("l2", "Lesson two"), video("l3", "Lesson three")],
+    }] } as unknown as Course} />);
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "End video" }));
+    });
+    expect(screen.getByRole("dialog", { name: "Next lesson" })).toBeInTheDocument();
+
+    fireEvent.click(within(playlist()).getByRole("button", { name: /Lesson three/ }));
     expect(screen.queryByRole("dialog", { name: "Next lesson" })).not.toBeInTheDocument();
   });
 

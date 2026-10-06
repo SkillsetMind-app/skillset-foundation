@@ -11,6 +11,7 @@ import { countOpenCommunityQuestions } from "@/lib/data/community-posts";
 import { subscribeToCourseEvents } from "@/lib/data/course-events";
 import { recordLessonProgress } from "@/lib/data/lesson-progress";
 import { subscribeToEnrollment } from "@/lib/data/enrollments";
+import { subscribeToLessonContent } from "@/lib/data/lesson-content";
 
 /**
  * Reanalise item 8, renderizado de verdade (matricula real, nao preview):
@@ -447,6 +448,23 @@ describe("sala de aula com matricula real", () => {
     expect(recordLessonProgress).not.toHaveBeenCalled();
   });
 
+  // Curso antigo: o texto vem no curriculo, mas o link do video so chega com o
+  // conteudo protegido. Decidir "so texto" antes disso fazia a pagina pular.
+  it("aula com texto: enquanto o conteudo protegido carrega, a caixa do player espera", () => {
+    let emit!: Parameters<typeof subscribeToLessonContent>[1];
+    vi.mocked(subscribeToLessonContent).mockImplementationOnce((_courseId, onNext) => {
+      emit = onNext;
+      return Object.assign(vi.fn(), { reload: vi.fn(async () => undefined) });
+    });
+    renderClassroom("lesson=l1");
+
+    expect(document.querySelector("#member-lesson-player .member-video-stage")).not.toBeNull();
+    expect(screen.getByText("Loading lesson content...")).toBeInTheDocument();
+
+    act(() => emit(new Map()));
+    expect(document.querySelector("#member-lesson-player .member-video-stage")).toBeNull();
+  });
+
   it("aula de texto: sem caixa de video, e o texto vem antes dos comentarios", () => {
     renderClassroom("lesson=l1");
 
@@ -809,10 +827,19 @@ describe("abas da sala com endereco proprio", () => {
   });
 
   it("a aba ao vivo aberta pelo endereco, sem sessao, diz que nao ha nenhuma", () => {
+    let emit!: (events: ReturnType<typeof liveEvent>[]) => void;
+    vi.mocked(subscribeToCourseEvents).mockImplementationOnce((_courseId, onData) => {
+      emit = onData;
+      return () => undefined;
+    });
     renderClassroom("lesson=l2", [], "lives");
 
     const tabs = screen.getByRole("navigation", { name: "Course sections" });
     expect(within(tabs).getByRole("link", { name: "Live sessions" })).toHaveAttribute("aria-current", "page");
+    // Antes da primeira leitura nao se sabe: nada de "nenhuma sessao" ainda.
+    expect(screen.queryByText("No live sessions are scheduled right now.")).not.toBeInTheDocument();
+
+    act(() => emit([]));
     expect(screen.getByText("No live sessions are scheduled right now.")).toBeInTheDocument();
   });
 

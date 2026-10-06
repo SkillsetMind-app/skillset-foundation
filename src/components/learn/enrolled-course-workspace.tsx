@@ -203,6 +203,11 @@ export function EnrolledCourseWorkspace({
   // em toda troca, inclusive no avanço automático.
   function selectLesson(lessonId: string) {
     setLessonChoice({ seenParam: lessonParam, id: lessonId });
+    // A contagem da "Próxima aula" e o aviso de erro eram da aula que ficou
+    // para trás. Pendente, a contagem puxaria o aluno para outra aula depois
+    // (até de uma aula de texto, onde o cartão nem aparece).
+    setNextUp(null);
+    setActionError("");
 
     const params = new URLSearchParams(searchParams?.toString() ?? "");
     // The Stripe return marker must not ride along into every lesson URL: a
@@ -811,6 +816,7 @@ export function EnrolledCourseWorkspace({
   }
 
   const completedLessonIds = progressState.lessonIds;
+  const progressReady = progressState.ready && progressState.key === enrollmentId;
   const progressPercent = getCourseProgressPercent(course, completedLessonIds);
   const nextLesson = getNextCourseLesson(course, completedLessonIds)?.lesson ?? null;
   const allLessons = course.modules.flatMap((module) => module.lessons);
@@ -1016,6 +1022,18 @@ export function EnrolledCourseWorkspace({
       );
 
       if (!completed) {
+        // Salvou: a aula entra já na lista de concluídas, sem esperar o
+        // realtime. Senão, num curso sequencial, "concluir e seguir" abria a
+        // próxima como trancada até o canal entregar a escrita. Mesma ordem da
+        // assinatura (sort), para a chave das concluídas não mudar de novo.
+        setProgressState((current) =>
+          current.lessonIds.includes(lessonId)
+            ? current
+            : { ...current, lessonIds: [...current.lessonIds, lessonId].sort() },
+        );
+      }
+
+      if (!completed) {
         // LESSON_COMPLETED — fired only on the mark→complete transition.
         // unmark (toggling off) is treated as a correction, not a milestone.
         const position = allLessons.findIndex((l) => l.id === lessonId);
@@ -1184,7 +1202,9 @@ export function EnrolledCourseWorkspace({
           // A aula que a sala abriria (a do endereco, senao a primeira nao
           // concluida): o mesmo calculo de selectedLesson, sem leitura nova.
           primaryAction={
-            selectedLesson
+            // Só com o progresso em mãos: antes dele, quem já começou via
+            // "Start lesson 1" piscar. O preview não tem progresso.
+            selectedLesson && (previewMode || progressReady)
               ? {
                   href: classroomTabHref(basePath, "lesson", selectedLesson.id),
                   label:
@@ -1280,7 +1300,12 @@ export function EnrolledCourseWorkspace({
               // player fica em "Text-first lesson", não em "carregando".
               || (selectedLessonReleasing && !resolvedSelectedLesson?.contentText?.trim())
             }
-            isLoadingContent={isLessonContentLoading || selectedLessonReleasing}
+            // Aula liberada agora com o texto já no currículo: nada a esperar
+            // (o mesmo critério de isLoadingAssets acima).
+            isLoadingContent={
+              isLessonContentLoading
+              || (selectedLessonReleasing && !resolvedSelectedLesson?.contentText?.trim())
+            }
             lesson={resolvedSelectedLesson}
             moduleTitle={selectedModule?.title ?? null}
             onEnded={handleLessonEnded}
@@ -1513,6 +1538,11 @@ export function EnrolledCourseWorkspace({
 // when there is a session; opened by its address with none, it says so.
 function CourseEventsAgenda({ upcoming, now }: { upcoming: CourseEvent[]; now: number }) {
   const { t, locale } = useTranslation();
+
+  // now = 0: a primeira leitura ainda não voltou. Não dá para dizer "nenhuma".
+  if (now === 0) {
+    return null;
+  }
 
   if (upcoming.length === 0) {
     return (
@@ -2045,11 +2075,13 @@ function LessonContentPanel({
   // Aula de leitura pronta: sem caixa de vídeo nenhuma. Antes ficava ali uma
   // caixa vazia de 260-520px dizendo "leia as notas abaixo", com os
   // comentários entre ela e as notas. Agora o texto vem logo, e depois os
-  // comentários. (Trancada ou carregando, a caixa segue com o aviso dela.)
+  // comentários. (Trancada ou carregando, a caixa segue com o aviso dela: em
+  // curso antigo o link do vídeo chega com o conteúdo protegido, e decidir
+  // "só texto" antes disso fazia a página pular.)
   const textOnly =
     !locked
     && !hasPlayableVideo
-    && !lessonContentPending
+    && !isLoadingContent
     && !isLoadingAssets
     && isTextFirstLesson;
   // No preview do professor não se guarda posição: ele não é o aluno.
@@ -2180,7 +2212,7 @@ function LessonContentPanel({
               autoplay={autoplay}
             />
           </VideoWatermark>
-        ) : lessonContentPending || isLoadingAssets ? (
+        ) : isLoadingContent || isLoadingAssets ? (
           // Com os anexos ainda chegando, a aula de video piscava "Media not
           // attached yet" antes do player aparecer.
           <div className="member-video-empty">

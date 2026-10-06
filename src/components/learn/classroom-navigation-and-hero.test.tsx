@@ -8,7 +8,7 @@ import type { ClassroomTab } from "@/domain/classroom-tabs";
 import type { Course } from "@/domain/learning";
 import type { CourseAsset } from "@/domain/course-asset";
 import { subscribeToCourseAssets } from "@/lib/data/course-assets";
-import { recordLessonProgress } from "@/lib/data/lesson-progress";
+import { recordLessonProgress, subscribeToCompletedLessons } from "@/lib/data/lesson-progress";
 
 /**
  * P2/P4 da paridade com a Hotmart (§4.2 e §4.3 do relatorio de 2026-09-06):
@@ -414,6 +414,21 @@ describe("hero da home do curso", () => {
       "href",
       "/learn/courses/demo-course?lesson=l2",
     );
+  });
+
+  it("antes do progresso chegar, a capa nao chuta 'Start lesson 1' para quem ja comecou", () => {
+    let emit!: (lessonIds: string[]) => void;
+    vi.mocked(subscribeToCompletedLessons).mockImplementationOnce((_id, onNext) => {
+      emit = onNext;
+      return vi.fn();
+    });
+    renderClassroom("lesson=l2", [], { tab: "about" });
+
+    const hero = document.querySelector(".members-hero") as HTMLElement;
+    expect(within(hero).queryByRole("link", { name: /^(Start lesson 1|Continue)/ })).toBeNull();
+
+    act(() => emit(["l1"]));
+    expect(within(hero).getByRole("link", { name: "Continue: Lesson two" })).toBeInTheDocument();
   });
 
   it("whitelabel: nenhum certificado no hero mesmo a 100% (nada leva de volta a plataforma)", () => {
