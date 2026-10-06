@@ -130,9 +130,10 @@ export function buildCreatorSaleEmail({ courseTitle, amountMinor, currency, sale
  * touch Supabase Auth, so it spends none of the project-wide auth email quota.
  *
  * Skips with one warning when RESEND_API_KEY is unset. Throws on a non-2xx or
- * a network error so the caller can log and alert.
+ * a network error so the caller can log and alert. Also used by the signup
+ * confirmation reminder (src/app/api/cron/confirmation-reminder).
  */
-async function sendResendEmail({ to, subject, html, text, idempotencyKey }: {
+export async function sendResendEmail({ to, subject, html, text, idempotencyKey }: {
   to: string; subject: string; html: string; text: string; idempotencyKey: string;
 }): Promise<void> {
   const apiKey = process.env.RESEND_API_KEY;

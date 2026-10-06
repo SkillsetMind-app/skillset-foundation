@@ -3,7 +3,9 @@ name: Stripe attention
 # Hourly tick for /api/cron/stripe-attention: tells ops when a Stripe event did
 # not finish processing (someone may have paid without getting access). Also
 # knocks on /api/cron/ops-inbox: tickets, reports and verifications waiting.
-# And checks /, /login and /courses answer 200 (uptime alert via the ops relay).
+# And on /api/cron/confirmation-reminder: one "confirm your email" email ~24 h
+# after signup. And checks /, /login and /courses answer 200 (uptime alert via
+# the ops relay).
 #
 # Lives here and not in vercel.json because Vercel Hobby crons run at most once
 # a day. The routes decide whether to alert; this job only knocks on the door.
@@ -23,8 +25,8 @@ jobs:
   check:
     name: Check stuck Stripe events and the ops inbox
     runs-on: ubuntu-latest
-    # Site fully down: 2x60 s cron calls + 3x(2x20 s) page checks + 3x20 s
-    # alerts ~ 5 min. Five would cancel the job right before it alerts.
+    # Site fully down: 3x60 s cron calls + 3x(2x20 s) page checks + 3x20 s
+    # alerts ~ 6 min. Five would cancel the job right before it alerts.
     timeout-minutes: 8
     steps:
       # Without the value the call would only ever get 401 — fail loudly instead.
@@ -56,6 +58,21 @@ jobs:
           curl -fsS -o /dev/null -w 'HTTP %{http_code}\n' --max-time 60 \
             -H "Authorization: Bearer $CRON_SECRET" \
             https://www.skillsetmind.com/api/cron/ops-inbox
+
+      # One reminder per unconfirmed account, 24-72 h after signup. The route
+      # marks each account before sending, so a re-run never repeats an email.
+      - name: Send email confirmation reminders
+        if: ${{ !cancelled() }}
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$CRON_SECRET" ]; then
+            echo "::error title=Confirmation reminder not configured::Missing repository secret CRON_SECRET (same value as on Vercel)."
+            exit 1
+          fi
+          curl -fsS -o /dev/null -w 'HTTP %{http_code}\n' --max-time 60 \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            https://www.skillsetmind.com/api/cron/confirmation-reminder
 
       # Uptime from outside Vercel: instrumentation.ts only reports 5xx the app
       # itself sees, so a dead deploy or DNS says nothing. Anything but 200 goes
