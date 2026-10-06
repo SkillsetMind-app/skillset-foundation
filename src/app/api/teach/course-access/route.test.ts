@@ -1,13 +1,15 @@
 // @vitest-environment node
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const mocks = vi.hoisted(() => ({ client: vi.fn(), admin: vi.fn(), limit: vi.fn() }));
+const mocks = vi.hoisted(() => ({ client: vi.fn(), admin: vi.fn(), limit: vi.fn(), free: vi.fn() }));
 vi.mock("@/lib/supabase/server", () => ({ createSupabaseServerClient: mocks.client }));
 vi.mock("@/lib/supabase/admin", () => ({ getSupabaseAdminClient: mocks.admin }));
 vi.mock("@/lib/payments/server/auth", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/payments/server/auth")>()),
   enforceRateLimit: mocks.limit,
+  isOnFreePlan: mocks.free,
 }));
+import { PaymentError } from "@/lib/payments/server/auth";
 import { GET, POST } from "./route";
 
 const grant = { id: "11111111-1111-4111-8111-111111111111", course_id: "course-1", learner_email: "learner@example.com", access_status: "pending", revoked_at: null };
@@ -26,6 +28,7 @@ beforeEach(() => {
   mocks.client.mockResolvedValue({ auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: "teacher" } }, error: null }) }, rpc, from: vi.fn().mockReturnValue(query) });
   mocks.admin.mockReturnValue({ auth: { signInWithOtp: send } });
   mocks.limit.mockResolvedValue(undefined);
+  mocks.free.mockResolvedValue(false);
 });
 
 describe("manual course access route", () => {
@@ -91,5 +94,43 @@ describe("manual course access route", () => {
     expect(JSON.stringify(await response.json())).not.toContain("private activation diagnostic");
     expect(rpc.mock.calls.map(([name]) => name)).toEqual(["creator_activation_blocked"]);
     expect(send).not.toHaveBeenCalled();
+  });
+
+  // Free plan: 10 grants a day on top of the hourly 30, by plan, never by the
+  // activation flag. Resend and revoke do not count.
+  const freeDaily = ["course_access_daily_teacher", 10, 86400000];
+
+  it("holds a Free-plan creator to 10 grants a day on top of the hourly limit", async () => {
+    mocks.free.mockResolvedValue(true);
+    expect((await POST(request({ courseId: "course-1", email: grant.learner_email }))).status).toBe(200);
+    expect(mocks.free).toHaveBeenCalledWith("teacher");
+    expect(mocks.limit).toHaveBeenCalledWith("course_access_teacher", 30, 3600000);
+    expect(mocks.limit).toHaveBeenCalledWith(...freeDaily);
+  });
+
+  it("refuses a Free-plan grant over the daily cap with a come-back-tomorrow 429", async () => {
+    mocks.free.mockResolvedValue(true);
+    mocks.limit.mockImplementation(async (key: string) => {
+      if (key === "course_access_daily_teacher") throw new PaymentError("Too many attempts. Please wait before trying again.", 429);
+    });
+    const response = await POST(request({ courseId: "course-1", email: grant.learner_email }));
+    expect(response.status).toBe(429);
+    expect(await response.json()).toEqual({
+      error: "Daily limit for manual access on the Free plan. Try again tomorrow.",
+      code: "free_plan_daily_limit",
+    });
+    expect(rpc).not.toHaveBeenCalledWith("grant_course_access", expect.anything());
+    expect(send).not.toHaveBeenCalled();
+  });
+
+  it.each(["resend", "revoke"])("does not count a Free-plan %s against the daily grants", async (action) => {
+    mocks.free.mockResolvedValue(true);
+    await POST(request({ action, grantId: grant.id }));
+    expect(mocks.limit).not.toHaveBeenCalledWith(...freeDaily);
+  });
+
+  it("leaves a paid-plan creator with the hourly limit only", async () => {
+    await POST(request({ courseId: "course-1", email: grant.learner_email }));
+    expect(mocks.limit).not.toHaveBeenCalledWith(...freeDaily);
   });
 });

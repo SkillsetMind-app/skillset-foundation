@@ -253,14 +253,14 @@ export async function uploadLessonVideoToBunny(
     });
   }
 
-  if (createRes.status === 402) {
-    // The route's daily cap for unpaid creators (video/create answers 402 only
-    // over it). Carry the route's own wording out of here instead of
-    // "bunny-create-failed:402" — every caller matches on the wording, and a
-    // status code in an error string is not something a creator can act on.
-    throw new Error(
-      "Pay the one-time activation fee to keep uploading video today.",
-    );
+  if (createRes.status === 429) {
+    // Two 429s: the hourly throttle (any plan, wait a little) and the Free
+    // plan's daily cap (wait until tomorrow). Carry the cap's own wording out of
+    // here — every caller matches on it — and keep the hourly one as a status.
+    const body = (await createRes.json().catch(() => null)) as { code?: unknown } | null;
+    if (body?.code === "free_plan_daily_limit") {
+      throw new Error("Daily upload limit on the Free plan. Try again tomorrow.");
+    }
   }
   if (!createRes.ok) {
     throw new Error(`bunny-create-failed:${createRes.status}`);

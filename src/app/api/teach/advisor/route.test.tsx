@@ -194,12 +194,39 @@ describe("advisor route guards", () => {
   // monthly inference bill. Losing either is invisible until the invoice arrives,
   // so assert the exact pair rather than "the limiter ran".
   it("spends both an hourly and a daily budget on every accepted question", async () => {
+    mocks.createServer.mockResolvedValue(supabase({ users: { data: { current_plan_id: "pro" }, error: null } }));
     await ask();
 
     expect(mocks.runRateLimit.mock.calls).toEqual([
       ["advisor_teacher", 30, 3_600_000],
       ["advisor_daily_teacher", 120, 86_400_000],
     ]);
+  });
+
+  // Free plan: 20 a day on the same daily key, whatever the activation flag says.
+  it("holds a Free-plan teacher to 20 questions a day", async () => {
+    mocks.createServer.mockResolvedValue(supabase({ users: { data: { current_plan_id: "free" }, error: null } }));
+    await ask();
+
+    expect(mocks.runRateLimit.mock.calls).toEqual([
+      ["advisor_teacher", 30, 3_600_000],
+      ["advisor_daily_teacher", 20, 86_400_000],
+    ]);
+    expect(chain).toContainEqual({ table: "users", method: "eq", args: ["uid", "teacher"] });
+  });
+
+  it("tells a Free-plan teacher over the daily cap to come back tomorrow", async () => {
+    mocks.runRateLimit.mockImplementation(async (key: string) =>
+      key.startsWith("advisor_daily_") ? { data: null, error: { message: "RATE_LIMIT" } } : { data: null, error: null },
+    );
+    const response = await ask();
+
+    expect(response.status).toBe(429);
+    expect(await response.json()).toEqual({
+      error: "Daily advisor limit on the Free plan. Try again tomorrow.",
+      code: "free_plan_daily_limit",
+    });
+    expect(mocks.askKimi).not.toHaveBeenCalled();
   });
 
   it("returns an opaque error when the limiter is unavailable", async () => {
@@ -574,7 +601,8 @@ describe("advisor route persistence", () => {
       p_question: "How should I price this course?",
       p_reply: "Here is one concrete next step.",
     });
-    expect(mocks.from).not.toHaveBeenCalled();
+    // No direct table write: the only table read is the plan lookup.
+    expect(chain.map(({ table, method }) => `${table}.${method}`)).toEqual(["users.select", "users.eq", "users.maybeSingle"]);
   });
 
   // The teacher already has their answer by the time this runs. Losing the

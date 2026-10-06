@@ -19,6 +19,7 @@ const accessErrorKeys: Record<string, string> = {
   "Only the course owner can manage access to a published course.": "courseAccess.ownerError",
   "Enter a valid email address.": "courseAccess.emailError",
   "Too many attempts. Please wait before trying again.": "courseAccess.rateError",
+  "Daily limit for manual access on the Free plan. Try again tomorrow.": "courseAccess.freePlanDailyLimit",
   "Sign in to manage course access.": "courseAccess.signInError",
   "Choose a course.": "courseAccess.courseError",
   "Request is too large.": "courseAccess.requestLargeError",

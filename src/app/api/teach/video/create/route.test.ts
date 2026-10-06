@@ -2,15 +2,15 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { createHmac } from "node:crypto";
 
 const mocks = vi.hoisted(() => ({
-  createVideo: vi.fn(), course: vi.fn(), assertActivated: vi.fn(), blocked: vi.fn(), rateLimit: vi.fn(),
+  createVideo: vi.fn(), course: vi.fn(), assertActivated: vi.fn(), rpc: vi.fn(), rateLimit: vi.fn(), freePlan: vi.fn(),
 }));
 vi.mock("@/lib/supabase/server", () => ({ createSupabaseServerClient: async () => ({
   auth: { getUser: async () => ({ data: { user: { id: "real-owner" } }, error: null }) },
   from: () => { const query = { select: () => query, eq: () => query, maybeSingle: mocks.course }; return query; },
-  rpc: (name: string) => (name === "creator_activation_blocked" ? mocks.blocked() : Promise.reject(new Error(name))),
+  rpc: mocks.rpc,
 }) }));
 vi.mock("@/lib/payments/server/auth", () => ({
-  assertCreatorActivated: mocks.assertActivated, enforceRateLimit: mocks.rateLimit,
+  assertCreatorActivated: mocks.assertActivated, enforceRateLimit: mocks.rateLimit, isOnFreePlan: mocks.freePlan,
   paymentErrorResponse: () => new Response(null, { status: 429 }),
 }));
 vi.mock("@/lib/bunny/server", async (importOriginal) => ({
@@ -24,7 +24,7 @@ beforeEach(() => {
   vi.stubEnv("NEXT_PUBLIC_BUNNY_STREAM_LIBRARY_ID", "test-library");
   mocks.course.mockResolvedValue({ data: { id: "course-1" }, error: null });
   mocks.createVideo.mockResolvedValue("new-video");
-  mocks.blocked.mockResolvedValue({ data: false, error: null });
+  mocks.freePlan.mockResolvedValue(false);
   mocks.rateLimit.mockResolvedValue(undefined);
 });
 afterEach(() => vi.unstubAllEnvs());
@@ -63,32 +63,39 @@ it("creates the upload for an owner who has not paid the activation fee", async 
 const create = () => POST(new Request("http://localhost/api/teach/video/create", {
   method: "POST", body: JSON.stringify({ courseId: "course-1", title: "Lesson" }),
 }));
-const unpaidCap = ["teach_video_create_unpaid_real-owner", 20, 24 * 60 * 60 * 1000];
+// The key keeps its old name so counters already in the table carry over.
+const freeCap = ["teach_video_create_unpaid_real-owner", 20, 24 * 60 * 60 * 1000];
 
-it("puts an unpaid owner under the daily video cap", async () => {
-  mocks.blocked.mockResolvedValue({ data: true, error: null });
+it("puts a Free-plan owner under the daily video cap", async () => {
+  mocks.freePlan.mockResolvedValue(true);
   expect((await create()).status).toBe(200);
-  expect(mocks.rateLimit).toHaveBeenCalledWith(...unpaidCap);
+  expect(mocks.freePlan).toHaveBeenCalledWith("real-owner");
+  expect(mocks.rateLimit).toHaveBeenCalledWith(...freeCap);
 });
 
-it("stops an unpaid owner over the daily cap before any Bunny video exists", async () => {
-  mocks.blocked.mockResolvedValue({ data: true, error: null });
+it("stops a Free-plan owner over the daily cap with a 429 that names no fee, before any Bunny video exists", async () => {
+  mocks.freePlan.mockResolvedValue(true);
   mocks.rateLimit.mockImplementation(async (key: string) => {
     if (key.startsWith("teach_video_create_unpaid_")) throw Object.assign(new Error("Too many"), { status: 429 });
   });
   const response = await create();
-  expect(response.status).toBe(402);
-  expect(await response.json()).toMatchObject({ code: "activation_required" });
+  expect(response.status).toBe(429);
+  expect(await response.json()).toEqual({
+    error: "Daily upload limit on the Free plan. Try again tomorrow.",
+    code: "free_plan_daily_limit",
+  });
   expect(mocks.createVideo).not.toHaveBeenCalled();
 });
 
-it("leaves a paid owner with the hourly throttle only", async () => {
+it("leaves a paid-plan owner with the hourly throttle only", async () => {
   expect((await create()).status).toBe(200);
-  expect(mocks.rateLimit).not.toHaveBeenCalledWith(...unpaidCap);
+  expect(mocks.rateLimit).not.toHaveBeenCalledWith(...freeCap);
 });
 
-it("fails closed when the activation status cannot be read", async () => {
-  mocks.blocked.mockResolvedValue({ data: null, error: { message: "boom" } });
-  expect((await create()).status).toBe(500);
-  expect(mocks.createVideo).not.toHaveBeenCalled();
+// The cap follows the plan, never require_activation_fee.
+it("never asks the activation gate", async () => {
+  mocks.freePlan.mockResolvedValue(true);
+  await create();
+  expect(mocks.rpc).not.toHaveBeenCalled();
+  expect(mocks.assertActivated).not.toHaveBeenCalled();
 });

@@ -95,6 +95,7 @@
     "send": "Send message",
     "notReady": "The advisor is being set up and will be available shortly.",
     "tooManyMessages": "You've sent a lot of messages. Please wait a moment and try again.",
+    "freePlanDailyLimit": "Daily advisor limit on the Free plan. Try again tomorrow.",
     "activationRequired": "The studio advisor opens after you activate your storefront. Drafting, uploading and connecting Stripe don't need it.",
     "sessionExpired": "Your session expired. Refresh the page and sign in again.",
     "somethingWrong": "Something went wrong. Please try again.",
@@ -4049,7 +4050,7 @@
         "generic": "We could not upload this file. Check the file type and course permissions.",
         "invalidFile": "Unsupported file type or file too large.",
         "coverHost": "Cover image URL is not on an allowed media host.",
-        "activation": "You reached today's video upload limit for accounts that are not activated yet. Pay the one-time activation fee to keep uploading today, or try again tomorrow."
+        "freePlanDailyLimit": "Daily upload limit on the Free plan. Try again tomorrow."
       }
     },
     "preview": {
@@ -4787,6 +4788,7 @@
     "ownerError": "Only the course owner can manage access to a published course.",
     "emailError": "Enter a valid email address.",
     "rateError": "Too many attempts. Please wait before trying again.",
+    "freePlanDailyLimit": "Daily limit for manual access on the Free plan. Try again tomorrow.",
     "signInError": "Sign in to manage course access.",
     "courseError": "Choose a course.",
     "requestLargeError": "Request is too large.",

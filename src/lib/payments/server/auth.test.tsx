@@ -24,6 +24,7 @@ vi.mock("@/lib/supabase/server", () => ({
 import {
   assertCreatorActivated,
   enforceRateLimit,
+  isOnFreePlan,
   requireAdminUserId,
 } from "@/lib/payments/server/auth";
 
@@ -160,5 +161,43 @@ describe("creator activation gate", () => {
   it.each([null, undefined, 0, "false", { value: false }])("does not treat malformed verdict %j as authorization", async (data) => {
     serverRpc.mockResolvedValue({ data, error: null });
     await expect(assertCreatorActivated()).rejects.toThrow("Activation status unavailable.");
+  });
+});
+
+// The Free-plan daily caps follow the plan, never the activation flag.
+describe("Free-plan check for daily caps", () => {
+  const read = vi.fn();
+  const eq = vi.fn(() => ({ maybeSingle: read }));
+  const select = vi.fn(() => ({ eq }));
+  const from = vi.fn(() => ({ select }));
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.createServer.mockResolvedValue({ from, rpc: mocks.rpc });
+  });
+
+  it("reads the caller's own plan row and never the activation gate", async () => {
+    read.mockResolvedValue({ data: { current_plan_id: "free" }, error: null });
+    await expect(isOnFreePlan("creator-1")).resolves.toBe(true);
+    expect(from).toHaveBeenCalledWith("users");
+    expect(select).toHaveBeenCalledWith("current_plan_id");
+    expect(eq).toHaveBeenCalledWith("uid", "creator-1");
+    expect(mocks.rpc).not.toHaveBeenCalled();
+  });
+
+  it.each(["starter", "pro", "plus"])("treats %s as paid", async (plan) => {
+    read.mockResolvedValue({ data: { current_plan_id: plan }, error: null });
+    await expect(isOnFreePlan("creator-1")).resolves.toBe(false);
+  });
+
+  // Unknown, missing or unreadable falls to the stricter Free caps.
+  it.each([
+    [{ data: { current_plan_id: null }, error: null }],
+    [{ data: { current_plan_id: "enterprise" }, error: null }],
+    [{ data: null, error: null }],
+    [{ data: null, error: { message: "boom" } }],
+  ])("counts %j as Free", async (answer) => {
+    read.mockResolvedValue(answer);
+    await expect(isOnFreePlan("creator-1")).resolves.toBe(true);
   });
 });

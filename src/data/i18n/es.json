@@ -95,6 +95,7 @@
     "send": "Enviar mensaje",
     "notReady": "Estamos preparando el asesor. Estará disponible en breve.",
     "tooManyMessages": "Has enviado muchos mensajes. Espera un momento y vuelve a intentarlo.",
+    "freePlanDailyLimit": "Límite diario del asesor en el plan Free. Vuelve a intentarlo mañana.",
     "activationRequired": "El asesor del estudio se abre cuando activas tu tienda. Preparar cursos, subir videos y conectar Stripe no lo necesitan.",
     "sessionExpired": "Tu sesión ha caducado. Actualiza la página e inicia sesión de nuevo.",
     "somethingWrong": "Algo salió mal. Vuelve a intentarlo.",
@@ -4049,7 +4050,7 @@
         "generic": "No pudimos subir este archivo. Revisa el tipo de archivo y los permisos del curso.",
         "invalidFile": "El tipo de archivo no es compatible o el archivo es demasiado grande.",
         "coverHost": "La URL de la portada no pertenece a un sitio de medios permitido.",
-        "activation": "Llegaste al límite diario de subida de videos para cuentas aún no activadas. Paga la tarifa única de activación para seguir subiendo hoy o vuelve a intentarlo mañana."
+        "freePlanDailyLimit": "Límite diario de subidas del plan Free. Vuelve a intentarlo mañana."
       }
     },
     "preview": {
@@ -4787,6 +4788,7 @@
     "ownerError": "Solo el propietario del curso puede administrar el acceso a un curso publicado.",
     "emailError": "Introduce una dirección de correo válida.",
     "rateError": "Demasiados intentos. Espera antes de volver a intentarlo.",
+    "freePlanDailyLimit": "Límite diario de accesos manuales en el plan Free. Vuelve a intentarlo mañana.",
     "signInError": "Inicia sesión para administrar el acceso al curso.",
     "courseError": "Elige un curso.",
     "requestLargeError": "La solicitud es demasiado grande.",
