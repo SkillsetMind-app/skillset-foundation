@@ -9,6 +9,7 @@ import { type CSSProperties, useEffect, useMemo, useState } from "react";
 
 import { CourseTile } from "@/components/courses/course-tile";
 import { UserAvatar } from "@/components/shared/user-avatar";
+import { useHasRealCourses } from "@/components/site/real-courses";
 import { brand } from "@/data/brand";
 import type { TeacherCourse } from "@/domain/teacher-course";
 import type { PublicProfile, StorefrontShowcase } from "@/domain/user-profile";
@@ -22,6 +23,7 @@ import { getSupabaseClientConfig } from "@/lib/supabase/config";
 
 export function InstructorProfileView({ uid }: { uid: string }) {
   const { t } = useTranslation();
+  const hasRealCourses = useHasRealCourses();
   const hasSupabaseConfig = Boolean(getSupabaseClientConfig());
   const [profile, setProfile] = useState<PublicProfile | null>(null);
   const [courses, setCourses] = useState<TeacherCourse[]>([]);
@@ -91,9 +93,15 @@ export function InstructorProfileView({ uid }: { uid: string }) {
           {t("publicPages.profile.the_instructor_may_not_have_published")}
         </p>
         <div className="mt-7">
-          <Link href="/courses" className="button-solid px-4 py-2.5 text-sm">
-            {t("publicPages.profile.browse_the_marketplace")}
-          </Link>
+          {hasRealCourses ? (
+            <Link href="/courses" className="button-solid px-4 py-2.5 text-sm">
+              {t("publicPages.profile.browse_the_marketplace")}
+            </Link>
+          ) : (
+            <Link href="/instructors" className="button-solid px-4 py-2.5 text-sm">
+              {t("footer.instructors")}
+            </Link>
+          )}
         </div>
       </section>
     );
@@ -185,9 +193,11 @@ export function InstructorProfileView({ uid }: { uid: string }) {
               <a href="#courses" className="button-solid px-4 py-2.5 text-sm">
                 {t("publicPages.profile.view_courses")}
               </a>
-              <Link href="/courses" className="button-outline px-4 py-2.5 text-sm">
-                {t("publicPages.profile.browse_marketplace")}
-              </Link>
+              {hasRealCourses ? (
+                <Link href="/courses" className="button-outline px-4 py-2.5 text-sm">
+                  {t("publicPages.profile.browse_marketplace")}
+                </Link>
+              ) : null}
             </div>
           </div>
 
@@ -242,7 +252,7 @@ export function InstructorProfileView({ uid }: { uid: string }) {
               {t("publicPages.profile.courses_by")}{name}
             </h2>
           </div>
-          {courses.length > 0 ? (
+          {hasRealCourses && courses.length > 0 ? (
             <Link
               href="/courses"
               className="inline-flex items-center gap-2 text-sm font-bold text-[var(--color-primary)] underline-offset-4 hover:underline"
@@ -271,9 +281,11 @@ export function InstructorProfileView({ uid }: { uid: string }) {
             <p className="mx-auto mt-3 max-w-xl text-sm leading-7 text-[var(--color-ink-soft)]">
               {brand.name} {t("publicPages.profile.only_shows_published_courses_from_verified")}
             </p>
-            <Link href="/courses" className="button-solid mt-6 px-4 py-2.5 text-sm">
-              {t("publicPages.profile.browse_marketplace")}
-            </Link>
+            {hasRealCourses ? (
+              <Link href="/courses" className="button-solid mt-6 px-4 py-2.5 text-sm">
+                {t("publicPages.profile.browse_marketplace")}
+              </Link>
+            ) : null}
           </div>
         ) : (
           <div className="marketplace-course-grid mt-6">

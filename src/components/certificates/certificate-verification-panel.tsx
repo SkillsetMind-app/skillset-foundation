@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { useHasRealCourses } from "@/components/site/real-courses";
 import { useSearchParams } from "next/navigation";
 import { useState, type FormEvent } from "react";
 
@@ -12,6 +13,7 @@ import {
 
 export function CertificateVerificationPanel() {
   const { t, locale } = useTranslation();
+  const hasRealCourses = useHasRealCourses();
   const searchParams = useSearchParams();
   const initialCode = searchParams.get("code") ?? "";
   const [verificationCode, setVerificationCode] = useState(initialCode);
@@ -130,9 +132,11 @@ export function CertificateVerificationPanel() {
         <Link href="/" className="button-outline px-4 py-2.5 text-sm">
           {t("learnWave2.verification.back")}
         </Link>
-        <Link href="/courses" className="button-solid px-4 py-2.5 text-sm">
-          {t("learnWave2.verification.explore")}
-        </Link>
+        {hasRealCourses ? (
+          <Link href="/courses" className="button-solid px-4 py-2.5 text-sm">
+            {t("learnWave2.verification.explore")}
+          </Link>
+        ) : null}
       </div>
     </section>
   );

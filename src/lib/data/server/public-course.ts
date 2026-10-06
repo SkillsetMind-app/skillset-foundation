@@ -1,4 +1,5 @@
 import { createClient, isAuthSessionMissingError } from "@supabase/supabase-js";
+import { cache } from "react";
 
 import {
   INTERNAL_COURSE_ID_PREFIX,
@@ -218,13 +219,19 @@ export async function getCourseRefAccess(ref: string): Promise<CourseRefAccess> 
  *   loja, e basta uma linha.
  * - A resposta fica 5 min no cache de dados do Next e a leitura desiste em
  *   1,5 s: a home não espera o banco a cada visita.
+ * - Sem nova tentativa: o postgrest-js repete GET 3 vezes (1 s, 2 s, 4 s) e só
+ *   desiste de cara com AbortError — o prazo estoura com TimeoutError, então
+ *   um banco mudo prendia cada rota ~13 s.
+ * - `cache` do React: layout, página e rodapé perguntam no mesmo pedido e o
+ *   banco responde uma vez (fetch com `signal` não é deduplicado pelo Next).
  * - Falha vale "não" (a seção some, a página não quebra) e vai para o log.
  */
-export async function hasRealPublishedCourse(): Promise<boolean> {
+export const hasRealPublishedCourse = cache(async (): Promise<boolean> => {
   try {
     const { url, anonKey } = assertSupabaseClientConfig();
     const anonymous = createClient<Database>(url, anonKey, {
       auth: { persistSession: false, autoRefreshToken: false },
+      db: { retry: false },
       global: {
         fetch: (input, init) =>
           fetch(input, { ...init, signal: AbortSignal.timeout(1_500), next: { revalidate: 300 } }),
@@ -244,7 +251,7 @@ export async function hasRealPublishedCourse(): Promise<boolean> {
     console.error("[public-course] hasRealPublishedCourse failed", error);
     return false;
   }
-}
+});
 
 /**
  * Cursos reais publicados, um por URL do sitemap. Os internos de teste saem

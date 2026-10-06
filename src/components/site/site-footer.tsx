@@ -4,6 +4,7 @@ import { LocaleSwitcher } from "@/components/i18n/locale-switcher";
 import { LogoWordmark } from "@/components/shared/logo-wordmark";
 import { PrivacyChoicesButton } from "@/components/site/privacy-choices-button";
 import { BrandName } from "@/components/shared/brand-name";
+import { hasRealPublishedCourse } from "@/lib/data/server/public-course";
 import { getServerTranslation } from "@/lib/i18n/server";
 
 // Slim 3-column footer. /how-it-works IS listed: the standalone page exists and
@@ -49,7 +50,9 @@ const footerColumns = [
 ] as const;
 
 export async function SiteFooter() {
-  const { t } = await getServerTranslation();
+  // Loja sem curso real publicado sai do rodapé. Mesma leitura da home: anônima,
+  // em cache de 5 min, e falha conta como vazia.
+  const [{ t }, hasRealCourses] = await Promise.all([getServerTranslation(), hasRealPublishedCourse()]);
 
   return (
     // Faixa de largura total com filete no topo. Antes era um cartão com sombra
@@ -71,7 +74,7 @@ export async function SiteFooter() {
                   {t(column.titleKey)}
                 </p>
                 <div className="mt-3 grid gap-2">
-                  {column.links.map(([labelKey, href]) => (
+                  {column.links.filter(([, href]) => hasRealCourses || href !== "/courses").map(([labelKey, href]) => (
                     <Link
                       key={`${column.titleKey}-${href}`}
                       href={href}

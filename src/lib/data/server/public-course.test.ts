@@ -13,15 +13,19 @@ vi.mock("@/lib/supabase/server", () => ({
 }));
 
 // Cliente ANÔNIMO de hasRealPublishedCourse: sem cookie. Guarda as opções com
-// que foi criado e devolve o cliente falso da vez.
+// que foi criado e devolve o cliente falso da vez; sem cliente falso, cria o de
+// verdade (para ver o que o postgrest-js faz com a rede).
 const anon = vi.hoisted(() => ({ client: null as unknown, options: null as unknown }));
-vi.mock("@supabase/supabase-js", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@supabase/supabase-js")>()),
-  createClient: (_url: string, _key: string, options: unknown) => {
-    anon.options = options;
-    return anon.client;
-  },
-}));
+vi.mock("@supabase/supabase-js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@supabase/supabase-js")>();
+  return {
+    ...actual,
+    createClient: (url: string, key: string, options: Parameters<typeof actual.createClient>[2]) => {
+      anon.options = options;
+      return anon.client ?? actual.createClient(url, key, options);
+    },
+  };
+});
 vi.mock("@/lib/supabase/config", () => ({
   assertSupabaseClientConfig: () => ({ url: "https://example.supabase.co", anonKey: "anon" }),
 }));
@@ -249,9 +253,11 @@ describe("hasRealPublishedCourse", () => {
 
     const options = anon.options as {
       auth: { persistSession: boolean };
+      db: { retry?: boolean };
       global: { fetch: (input: string, init?: RequestInit) => Promise<Response> };
     };
     expect(options.auth.persistSession).toBe(false);
+    expect(options.db.retry).toBe(false);
 
     const realFetch = vi.fn<typeof fetch>(async () => new Response("[]"));
     vi.stubGlobal("fetch", realFetch);
@@ -264,6 +270,25 @@ describe("hasRealPublishedCourse", () => {
     expect(init.method).toBe("GET");
     expect(init.next?.revalidate).toBe(300);
     expect(init.signal).toBeInstanceOf(AbortSignal);
+  });
+
+  // Banco mudo: o prazo de 1,5 s estoura com TimeoutError, que o postgrest-js
+  // repetia 3 vezes (esperando 1 s, 2 s e 4 s) — cada rota esperava ~13 s.
+  // Agora é uma tentativa só, e a resposta é não.
+  it("desiste na primeira vez que o prazo estoura, sem repetir", async () => {
+    anon.client = null;
+    const timedOut = vi.fn<typeof fetch>(async () => {
+      throw new DOMException("The operation was aborted due to timeout", "TimeoutError");
+    });
+    vi.stubGlobal("fetch", timedOut);
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      expect(await hasRealPublishedCourse()).toBe(false);
+      expect(timedOut).toHaveBeenCalledTimes(1);
+    } finally {
+      log.mockRestore();
+      vi.unstubAllGlobals();
+    }
   });
 
   it("falha de leitura responde não e fica no log", async () => {

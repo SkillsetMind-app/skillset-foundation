@@ -10,9 +10,26 @@ vi.mock("next/headers", () => ({
   cookies: async () => ({ get: () => undefined }),
 }));
 
-afterEach(cleanup);
+// Há curso real publicado? Contrato de hasRealPublishedCourse; começa com sim.
+const state = vi.hoisted(() => ({ hasCourses: true }));
+vi.mock("@/lib/data/server/public-course", () => ({ hasRealPublishedCourse: async () => state.hasCourses }));
+
+afterEach(() => {
+  cleanup();
+  state.hasCourses = true;
+});
 
 describe("SiteFooter", () => {
+  // Loja vazia não ganha link: o rodapé leva a ela só quando há curso real.
+  it("tira Cursos do rodapé enquanto não há curso real publicado", async () => {
+    state.hasCourses = false;
+    render(await SiteFooter());
+
+    expect(screen.queryByRole("link", { name: "Courses" })).not.toBeInTheDocument();
+    expect(document.querySelector('a[href="/courses"]')).toBeNull();
+    expect(screen.getByRole("link", { name: "Instructors" })).toHaveAttribute("href", "/instructors");
+  });
+
   it("lista Cursos, Instrutores e Sobre, e /promise aparece uma vez só", async () => {
     render(await SiteFooter());
 

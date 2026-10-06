@@ -4,6 +4,7 @@ import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { LocaleSwitcher } from "@/components/i18n/locale-switcher";
 import { PublicEntryMenu } from "@/components/site/public-entry-menu";
+import { useHasRealCourses } from "@/components/site/real-courses";
 import { AccountMenu } from "@/components/site/account-menu";
 import { LogoWordmark } from "@/components/shared/logo-wordmark";
 import { LayoutDashboard, Menu, X } from "lucide-react";
@@ -43,6 +44,7 @@ type ResolvedNavItem = {
 
 function resolveNavItems(
   t: (key: string) => string,
+  hasRealCourses: boolean,
   landingNav?: readonly LandingNavItem[],
 ): ResolvedNavItem[] {
   if (landingNav) {
@@ -63,7 +65,8 @@ function resolveNavItems(
     );
   }
 
-  return navItems.map((item) => ({
+  // Loja sem curso real publicado não ganha porta no menu.
+  return navItems.filter((item) => hasRealCourses || item.href !== "/courses").map((item) => ({
     key: item.href,
     label: t(item.labelKey),
     target: item.href,
@@ -82,7 +85,7 @@ export function SiteNav({ landingNav }: SiteNavProps = {}) {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const mobileToggleRef = useRef<HTMLButtonElement>(null);
-  const resolvedNav = resolveNavItems(t, landingNav);
+  const resolvedNav = resolveNavItems(t, useHasRealCourses(), landingNav);
   const isAuthenticated = status === "authenticated" && user;
 
   useEffect(() => {

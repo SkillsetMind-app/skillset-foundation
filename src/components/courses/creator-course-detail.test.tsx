@@ -2,6 +2,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testi
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { CreatorCourseDetail } from "@/components/courses/creator-course-detail";
+import { RealCoursesProvider } from "@/components/site/real-courses";
 import { startCourseCheckout, enrollInFreeCreatorCourse } from "@/lib/payments/checkout";
 import { PaymentRequestError } from "@/lib/payments/client-fetch";
 import { getCourseLanding } from "@/lib/data/course-landings";
@@ -206,6 +207,28 @@ describe("CreatorCourseDetail", () => {
     expect(screen.queryByText("Deep Focus Systems")).not.toBeInTheDocument();
     // O resto do conteúdo interativo continua no lugar.
     expect(container.querySelector("#free-preview")).not.toBeNull();
+  });
+});
+
+// Loja vazia não é destino: a volta e a ação padrão dos estados levam ao início.
+describe("CreatorCourseDetail: links para a loja", () => {
+  it.each([
+    [true, "Back to all courses", "/courses"],
+    [false, "Go home", "/"],
+  ])("a volta do cartão de compra (loja com curso real: %s)", async (value, name, href) => {
+    render(<RealCoursesProvider value={value}><CreatorCourseDetail courseIdOverride="course-1" hideHeader /></RealCoursesProvider>);
+
+    expect(await screen.findByRole("link", { name })).toHaveAttribute("href", href);
+  });
+
+  it.each([
+    [true, "Open marketplace", "/courses"],
+    [false, "Go home", "/"],
+  ])("a ação padrão de um estado sem curso (loja com curso real: %s)", (value, name, href) => {
+    render(<RealCoursesProvider value={value}><CreatorCourseDetail /></RealCoursesProvider>);
+
+    expect(screen.getByRole("heading", { name: "Course not selected." })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name })).toHaveAttribute("href", href);
   });
 });
 
