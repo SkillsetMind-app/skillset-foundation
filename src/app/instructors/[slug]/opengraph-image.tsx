@@ -7,6 +7,7 @@ import { brand } from "@/data/brand";
 import { publicProfileName } from "@/domain/user-profile";
 import { getPublicProfileByRef, listCreatorCourses } from "@/lib/data/server/public-profile";
 import { getDictionary, translate } from "@/lib/i18n/dictionaries";
+import { getSupabaseClientConfig } from "@/lib/supabase/config";
 
 // Cartão de compartilhamento do professor (1200×630): foto, nome, @ e número
 // de cursos. Antes todo perfil colado no WhatsApp/Instagram saía com o mesmo
@@ -16,15 +17,41 @@ export const alt = brand.name;
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
-// O renderizador só desenha PNG e JPEG com segurança. Foto em outro formato,
-// fora do ar ou lenta: o cartão sai com a inicial, nunca quebra.
-async function photoDataUri(url: string | null): Promise<string | null> {
-  if (!url?.startsWith("https://")) return null;
+const MAX_PHOTO_BYTES = 2_000_000;
+
+/**
+ * O servidor só busca foto nos hosts que a plataforma já aceita para avatar
+ * (os mesmos do remotePatterns do next.config): o Storage do nosso Supabase e
+ * as fotos da conta Google. Sem esta trava, quem controla a URL da foto faria
+ * o servidor buscar o endereço que quisesse (SSRF).
+ */
+function isAllowedPhotoUrl(url: string | null): url is string {
+  if (!url) return false;
   try {
-    const response = await fetch(url, { signal: AbortSignal.timeout(2_000) });
+    const { protocol, hostname, pathname } = new URL(url);
+    if (protocol !== "https:") return false;
+    const supabase = getSupabaseClientConfig()?.url;
+    const storageHost = supabase ? new URL(supabase).hostname : null;
+    return (hostname === storageHost && pathname.startsWith("/storage/v1/object/"))
+      || hostname === "lh3.googleusercontent.com";
+  } catch {
+    return false;
+  }
+}
+
+// O renderizador só desenha PNG e JPEG com segurança. Foto em outro formato,
+// grande, fora do ar ou lenta: o cartão sai com a inicial, nunca quebra.
+// Sem seguir redirect: ele poderia levar para fora da lista acima.
+async function photoDataUri(url: string | null): Promise<string | null> {
+  if (!isAllowedPhotoUrl(url)) return null;
+  try {
+    const response = await fetch(url, { signal: AbortSignal.timeout(2_000), redirect: "error" });
     const type = response.headers.get("content-type")?.split(";")[0] ?? "";
     if (!response.ok || !["image/png", "image/jpeg"].includes(type)) return null;
-    return `data:${type};base64,${Buffer.from(await response.arrayBuffer()).toString("base64")}`;
+    if (Number(response.headers.get("content-length") ?? 0) > MAX_PHOTO_BYTES) return null;
+    const bytes = Buffer.from(await response.arrayBuffer());
+    if (bytes.length > MAX_PHOTO_BYTES) return null;
+    return `data:${type};base64,${bytes.toString("base64")}`;
   } catch {
     return null;
   }
