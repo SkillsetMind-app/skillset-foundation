@@ -51,8 +51,10 @@ export function PublicPage({
             </h1>
           </div>
           {/* <div> e não <p>: os documentos longos passam a introdução já em
-              parágrafos, e <p> dentro de <p> é HTML inválido. */}
-          <div className="text-sm leading-8 text-[var(--color-ink-soft)]">
+              parágrafos, e <p> dentro de <p> é HTML inválido.
+              16px/28px: era 14px com entrelinha de 32px (2,3x), que abria um
+              vão entre as linhas e lia como texto solto ao lado do título. */}
+          <div className="text-base leading-relaxed text-[var(--color-ink-soft)]">
             {description}
           </div>
         </section>

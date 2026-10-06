@@ -63,13 +63,17 @@ export async function MarketingHero() {
             <div className="inline-flex w-fit rounded-none border border-white/20 bg-white/10 px-3.5 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-white">
               {t("home.hero.eyebrow")}
             </div>
-            <div className="mt-5 space-y-4 lg:mt-6">
+            {/* flex + gap, não space-y: no celular o parágrafo (8 linhas a
+                375px) desce para depois dos botões, senão o botão principal
+                cai embaixo do banner de cookies na 1ª visita. Do `sm` para
+                cima a ordem volta a ser título → parágrafo → botões. */}
+            <div className="mt-5 flex flex-col gap-4 lg:mt-6">
               {/* One sentence, two lines — short and direct. */}
               <h1 className="display-title text-[clamp(2.3rem,4.6vw,3.6rem)] leading-[1.07] text-white">
                 {t("home.hero.title1")}
                 <span className="block">{t("home.hero.title2")}</span>
               </h1>
-              <p className="max-w-[34rem] text-[15px] leading-[1.6] text-white/82 sm:text-base">
+              <p className="order-last max-w-[34rem] text-[15px] leading-[1.6] text-white/82 sm:order-none sm:text-base">
                 {t("home.hero.sub")}
               </p>
               <HeroCtas />

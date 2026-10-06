@@ -116,6 +116,23 @@ describe("hero", () => {
     expect(section?.className).not.toContain("min-h-[100svh]");
   });
 
+  it("no celular o botão principal vem antes do parágrafo longo", async () => {
+    // Medido a 375x812 na 1ª visita: o parágrafo de 8 linhas empurrava o botão
+    // para y=602, embaixo do banner de cookies (topo em 572). Teachable, Podia,
+    // Stan e Thinkific mostram o botão na 1ª tela do celular. Do `sm` para
+    // cima a ordem volta a ser título → parágrafo → botões.
+    const { container } = render(await MarketingHero());
+    const title = container.querySelector("h1");
+    const copy = title?.parentElement;
+    const lead = copy?.querySelector(":scope > p");
+
+    expect(copy?.className).toContain("flex-col");
+    // `space-y-*` é margem por posição no DOM: com `order` ela sairia errada.
+    expect(copy?.className).not.toMatch(/space-y-/);
+    expect(lead?.className).toContain("order-last");
+    expect(lead?.className).toContain("sm:order-none");
+  });
+
   it("volta a trocar de retrato: só o hero liga a rotação do BrandPortrait", () => {
     // A onda 2 (#174) trocou a rotação por um retrato fixo por visita; o
     // Patrick pediu as imagens trocando de volta na home. O login fica fixo
