@@ -1,6 +1,85 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
-import { getAuthErrorMessage } from "@/lib/auth/supabase-auth";
+import {
+  getAuthErrorMessage,
+  refreshCurrentUserEmailVerification,
+  signUpWithEmail,
+} from "@/lib/auth/supabase-auth";
+
+const mocks = vi.hoisted(() => ({
+  signUp: vi.fn(),
+  getUser: vi.fn(),
+  firstTouch: null as Record<string, string> | null,
+}));
+
+vi.mock("@/lib/supabase/client", () => ({
+  getSupabaseBrowserClient: () => ({ auth: { signUp: mocks.signUp, getUser: mocks.getUser } }),
+}));
+vi.mock("@/lib/auth/pwned-password", () => ({ assertPasswordNotBreached: vi.fn() }));
+vi.mock("@/lib/data/user-profiles", () => ({ getUserProfile: vi.fn().mockResolvedValue(null) }));
+vi.mock("@/lib/attribution/first-touch", () => ({ getFirstTouch: () => mocks.firstTouch }));
+
+// Ninguem sabia de onde vinha um cadastro nem em que lingua a pessoa usava o
+// site. As duas coisas vao junto, nos metadados da conta (jsonb, sem migration).
+describe("signUpWithEmail metadata", () => {
+  const input = { displayName: " Ana Souza ", email: "ana@example.test", password: "irrelevant-here" };
+
+  async function signUpMetadata() {
+    mocks.signUp.mockResolvedValueOnce({
+      data: { user: { id: "u-1", email: input.email, identities: [{}] }, session: null },
+      error: null,
+    });
+    await signUpWithEmail({ ...input, locale: "es" });
+    return mocks.signUp.mock.calls.at(-1)?.[0].options.data;
+  }
+
+  it("records the UI language and the first touch alongside the name", async () => {
+    mocks.firstTouch = { utm_source: "instagram", utm_campaign: "launch", referrer: "https://l.instagram.com" };
+
+    expect(await signUpMetadata()).toEqual({
+      display_name: "Ana Souza",
+      name: "Ana Souza",
+      locale: "es",
+      utm_source: "instagram",
+      utm_campaign: "launch",
+      referrer: "https://l.instagram.com",
+    });
+  });
+
+  it("sends what it has when there is no first touch", async () => {
+    mocks.firstTouch = null;
+
+    expect(await signUpMetadata()).toEqual({ display_name: "Ana Souza", name: "Ana Souza", locale: "es" });
+  });
+});
+
+// The confirm-your-email screen polls this. A confirmed session for ANOTHER
+// account (signed in in another tab) must not count as "this email confirmed".
+describe("refreshCurrentUserEmailVerification", () => {
+  function sessionFor(email: string, confirmed = true) {
+    mocks.getUser.mockResolvedValueOnce({
+      data: { user: { email, email_confirmed_at: confirmed ? "2026-10-05T00:00:00Z" : null } },
+      error: null,
+    });
+  }
+
+  it("matches the expected email case-insensitively", async () => {
+    sessionFor("Ana@Example.test");
+    expect(await refreshCurrentUserEmailVerification("ana@example.TEST")).toBe(true);
+  });
+
+  it("ignores a confirmed session that belongs to someone else", async () => {
+    sessionFor("other@example.test");
+    expect(await refreshCurrentUserEmailVerification("ana@example.test")).toBe(false);
+  });
+
+  it("without an expected email, keeps answering for whoever is signed in", async () => {
+    sessionFor("other@example.test");
+    expect(await refreshCurrentUserEmailVerification()).toBe(true);
+    sessionFor("other@example.test", false);
+    expect(await refreshCurrentUserEmailVerification()).toBe(false);
+  });
+});
 
 describe("getAuthErrorMessage", () => {
   it("maps invalid credentials by message, case-insensitively", () => {

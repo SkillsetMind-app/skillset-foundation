@@ -11,10 +11,12 @@ import { useTranslation } from "@/components/i18n/i18n-provider";
 import { getAuthRoute, getLoadingRoute, getSafeReturnTo, type AuthPathIntent } from "@/lib/auth/routing";
 import {
   getAuthErrorMessage,
+  refreshCurrentUserEmailVerification,
   resendSignupConfirmation,
 } from "@/lib/auth/supabase-auth";
 
 const RESEND_COOLDOWN_SECONDS = 60;
+const CONFIRMED_CHECK_MS = 6000;
 
 // A porta "confirme seu e-mail", logo depois de criar a conta (e tambem quando
 // alguem tenta entrar sem ter confirmado).
@@ -50,6 +52,50 @@ export function ConfirmEmailGate({
   const [captchaToken, setCaptchaToken] = useState("");
   const [captchaResetSignal, setCaptchaResetSignal] = useState(0);
   const captchaPending = isCaptchaEnabled && !captchaToken;
+  // Same destination as the link in the email: /loading decides between
+  // onboarding and the deep link.
+  const confirmedRoute = getLoadingRoute(
+    "welcome",
+    intent,
+    getSafeReturnTo(new URLSearchParams({ returnTo: returnTo ?? "" })),
+  );
+
+  // Confirmou em outra aba (o link do e-mail abre ao lado)? Esta aba nao
+  // ficava sabendo e esperava para sempre. Olha de novo a cada poucos segundos
+  // e quando a aba volta ao foco — nunca escondida, nunca depois de sair. So
+  // conta a sessao DESTE e-mail: outra conta logada ao lado nao puxa esta aba.
+  // Navegacao completa, nao router: o provider de sessao desta aba ainda acha
+  // que ninguem entrou, e so recarregando ele le o cookie novo.
+  // ponytail: outro APARELHO (celular) nao deixa sessao nesta aba, entao isto
+  // nao o enxerga; para isso segue o link "ja confirmei? entrar".
+  useEffect(() => {
+    let done = false;
+
+    async function check() {
+      if (done || document.visibilityState === "hidden") {
+        return;
+      }
+      try {
+        if ((await refreshCurrentUserEmailVerification(email)) && !done) {
+          done = true;
+          window.location.assign(confirmedRoute);
+        }
+      } catch {
+        // Offline or a transient failure: the next tick tries again.
+      }
+    }
+
+    const onWake = () => void check();
+    const timer = window.setInterval(onWake, CONFIRMED_CHECK_MS);
+    window.addEventListener("focus", onWake);
+    document.addEventListener("visibilitychange", onWake);
+    return () => {
+      done = true;
+      window.clearInterval(timer);
+      window.removeEventListener("focus", onWake);
+      document.removeEventListener("visibilitychange", onWake);
+    };
+  }, [confirmedRoute, email]);
 
   useEffect(() => {
     if (cooldown <= 0) {
@@ -67,10 +113,9 @@ export function ConfirmEmailGate({
     setError(null);
     setSent(false);
     try {
-      const safeReturnTo = getSafeReturnTo(new URLSearchParams({ returnTo: returnTo ?? "" }));
       await resendSignupConfirmation(
         email,
-        getLoadingRoute("welcome", intent, safeReturnTo),
+        confirmedRoute,
         captchaToken || undefined,
       );
       setSent(true);

@@ -177,8 +177,9 @@ const TEMPLATES = [
     subject: "Welcome to SkillsetMind — confirm your email",
     preheader: "Confirm your email to continue to SkillsetMind.",
     title: "Welcome to SkillsetMind",
-    intro:
-      "Confirm your email address to continue to your account. If you received an invitation, you'll review it next. Your access changes only after you accept the invitation.",
+    // No invitation wording here: every new account gets this email, and
+    // almost none of them were invited.
+    intro: "Confirm your email address to continue to your account.",
     main: button(SIGNUP_URL, "Confirm email and continue"),
     footer:
       "You're receiving this because this address was used to sign up at SkillsetMind. If it wasn't you, you can safely ignore this email.",

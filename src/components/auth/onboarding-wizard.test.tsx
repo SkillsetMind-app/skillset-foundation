@@ -92,7 +92,9 @@ describe("boas-vindas: o passo de perfil vem primeiro", () => {
         phoneNumber: null,
       }),
     );
-    expect(await screen.findByText("How will you use SkillsetMind first?")).toBeInTheDocument();
+    // O papel ja veio do cadastro (?path=): nao pergunta de novo.
+    expect(await screen.findByText("What do you want to learn first?")).toBeInTheDocument();
+    expect(screen.queryByText("How will you use SkillsetMind first?")).toBeNull();
   });
 
   it("aluno que digita um telefone torto nao passa com ele", async () => {
@@ -126,6 +128,39 @@ describe("boas-vindas: o passo de perfil vem primeiro", () => {
         expect.objectContaining({ uid: "u-1", answers: expect.objectContaining({ profileConfirmed: true }) }),
       ),
     );
+    expect(await screen.findByText("What best describes your work?")).toBeInTheDocument();
+    expect(screen.queryByText("How will you use SkillsetMind first?")).toBeNull();
+  });
+
+  it("quem chegou com o papel errado no link volta um passo e troca", async () => {
+    mocks.searchParams = new URLSearchParams("path=teacher");
+    mocks.profile = {
+      displayName: "Patrick Simon",
+      phoneNumber: "+1 555 123 4567",
+      onboardingAnswers: { profileConfirmed: true, path: "teacher" },
+    };
+    render(<OnboardingWizard />);
+    await screen.findByText("What best describes your work?");
+
+    fireEvent.click(screen.getByRole("button", { name: "Back" }));
+    expect(await screen.findByText("How will you use SkillsetMind first?")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /I want to learn/ }));
+
+    await waitFor(() =>
+      expect(mocks.updateOnboardingAnswers).toHaveBeenCalledWith(
+        expect.objectContaining({ path: "student" }),
+      ),
+    );
+    expect(await screen.findByText("What do you want to learn first?")).toBeInTheDocument();
+  });
+
+  it("sem papel definido (nem no link, nem salvo), ainda pergunta o caminho", async () => {
+    render(<OnboardingWizard />);
+    await screen.findByText("First, tell us who you are.");
+
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+
     expect(await screen.findByText("How will you use SkillsetMind first?")).toBeInTheDocument();
   });
 
@@ -253,6 +288,52 @@ describe("boas-vindas: o fim leva de volta para onde a pessoa estava", () => {
       () =>
         expect(mocks.router.replace).toHaveBeenCalledWith("/onboarding?path=teacher"),
       { timeout: 4000 },
+    );
+  });
+});
+
+// So o caminho do aluno perguntava "onde conheceu a SkillsetMind"; do professor
+// — quem mais importa saber — nunca. Mesma pergunta, opcional, mesmo lugar.
+describe("boas-vindas: o professor tambem diz onde nos conheceu", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.searchParams = new URLSearchParams("path=teacher");
+    mocks.profile = {
+      displayName: "Patrick Simon",
+      phoneNumber: "+1 555 123 4567",
+      onboardingAnswers: {
+        profileConfirmed: true,
+        path: "teacher",
+        profession: "Coach",
+        primaryGoal: ["Business"],
+        alreadySold: "no",
+      },
+    };
+    mocks.getUserProfile.mockImplementation(() => Promise.resolve(mocks.profile));
+    mocks.updateOnboardingAnswers.mockResolvedValue(undefined);
+    mocks.updateUserIdentity.mockResolvedValue(undefined);
+  });
+
+  afterEach(cleanup);
+
+  it("asks it as an optional step and saves it with the other answers", async () => {
+    render(<OnboardingWizard />);
+    await screen.findByText(/Instagram handle/);
+    fireEvent.click(screen.getByRole("button", { name: "Back" }));
+
+    expect(await screen.findByText("Where did you hear about SkillsetMind?")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Skip for now" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Podcast" }));
+
+    await waitFor(() =>
+      expect(mocks.updateOnboardingAnswers).toHaveBeenCalledWith(
+        expect.objectContaining({
+          uid: "u-1",
+          path: "teacher",
+          answers: expect.objectContaining({ path: "teacher", sourceOfDiscovery: "Podcast" }),
+        }),
+      ),
     );
   });
 });

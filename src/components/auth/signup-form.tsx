@@ -49,7 +49,7 @@ import { track } from "@/lib/posthog/events";
 
 export function SignupForm() {
   const router = useRouter();
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const searchParams = useSearchParams();
   const pathIntent = useMemo(
     () => getAuthPathIntentFromSearchParams(searchParams),
@@ -156,7 +156,7 @@ export function SignupForm() {
 
     try {
       const { user, needsEmailConfirmation } = await signUpWithEmail(
-        { displayName, email, password },
+        { displayName, email, password, locale },
         captchaToken || undefined,
         // The confirmation link carries the destination itself, so it survives
         // being opened on a phone where this tab does not exist.
