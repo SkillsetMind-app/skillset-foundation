@@ -1,9 +1,11 @@
 /**
  * SkillsetMind pricing model — single source of truth.
  *
- * Four tiers. Every feature is available on every tier; the plan only
- * changes the commission rate SkillsetMind takes per paid sale and adds an
- * optional monthly subscription. Charges are Stripe DIRECT charges on the
+ * Four tiers. Every plan can publish and sell; a paid plan lowers the
+ * commission SkillsetMind takes per paid sale, adds the extras in
+ * domain/entitlements.ts, and lifts the Free plan's daily caps (video uploads,
+ * advisor, manual access — enforced in their routes by plan, via isOnFreePlan).
+ * Charges are Stripe DIRECT charges on the
  * creator's own connected account: the creator is the merchant of record,
  * Stripe bills them the processing fee, and SkillsetMind takes its commission
  * as `application_fee_amount` at charge time. The platform never holds a

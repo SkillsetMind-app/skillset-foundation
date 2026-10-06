@@ -22,6 +22,7 @@ import { helpFaqCategories } from "@/data/help-faq";
 import en from "@/data/i18n/en.json";
 import es from "@/data/i18n/es.json";
 import { plans } from "@/data/plans";
+import { buildAssistantKnowledge } from "@/lib/assistant/knowledge";
 
 const state = vi.hoisted(() => ({ locale: "en" }));
 vi.mock("next/headers", () => ({ cookies: async () => ({ get: () => ({ value: state.locale }) }) }));
@@ -78,6 +79,39 @@ describe("www positioning", () => {
     expect(dict.home.hero.sub).toMatch(
       /^(For psychologists and personal-development professionals who already teach live|Para psicólogos y profesionales del desarrollo personal que ya enseñan en vivo)/,
     );
+  });
+});
+
+// Plans differ by commission, a few paid extras, and the Free plan's daily caps
+// (video uploads, advisor, manual access). Published products, active students,
+// video storage and team seats are not enforced, so no public line may sell
+// them as limits, and "same features, only the commission changes" is false.
+describe("plan copy states only rules the product applies", () => {
+  const unenforcedLimits = /published products|active students|students, video storage|team seats|within its limits|already applied|productos publicados|alumnos activos|alumnos, almacenamiento|miembros del equipo|dentro de sus límites|ya se aplicaban/i;
+  const sameFeatures = /same features|same toolset|no locked features|every feature|only changes the commission|mismas funciones|mismo conjunto|sin funciones bloqueadas|todas las funciones|solo cambia la comisión/i;
+
+  it.each(dictionaries)("the %s Promise, changelog and plan lines claim no unenforced limit and no feature parity", (_locale, dict) => {
+    const copy = JSON.stringify([dict.home.promise, dict.home.capabilities, dict.publicPages.promise, dict.promiseChangelog, dict.publicPages.pricing, dict.publicPages.fees, dict.accountPlansPage]);
+    expect(copy).not.toMatch(unenforcedLimits);
+    expect(copy).not.toMatch(sameFeatures);
+  });
+
+  it.each(dictionaries)("the %s Promise 02 says every plan sells and names the Free daily limits", (_locale, dict) => {
+    expect(dict.publicPages.promise.no_plan_ever_blocks_you_from).toMatch(/^(Every plan can publish and sell|Todos los planes pueden publicar y vender)$/);
+    expect(dict.publicPages.promise.the_selling_engine_is_on_every).toMatch(/daily limits|límites diarios/);
+    expect(dict.publicPages.promise.a_creator_on_free_runs_a).toMatch(/commission|comisión/);
+  });
+
+  // Promise 01 protects the rate; it must not assume the creator will sell.
+  it.each(dictionaries)("the %s Promise 01 does not assume the creator will sell", (_locale, dict) => {
+    expect(dict.publicPages.promise.if_a_creator_joins_on_free).not.toMatch(/sell|selling|vender|venta/i);
+  });
+
+  it("the assistant's plan summary names the Free daily limits and no feature parity", () => {
+    const knowledge = buildAssistantKnowledge();
+    expect(knowledge).not.toMatch(sameFeatures);
+    expect(knowledge).not.toMatch(unenforcedLimits);
+    expect(knowledge).toMatch(/daily limits/);
   });
 });
 
