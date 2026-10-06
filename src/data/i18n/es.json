@@ -2832,7 +2832,7 @@
       },
       "course-effective-communication": {
         "duration": "4-8 semanas",
-        "status": "Popular",
+        "status": "Acceso anticipado",
         "preview": "Vista previa gratuita de comunicación"
       },
       "course-project-management": {
@@ -2873,7 +2873,7 @@
       "yearly": "Anual",
       "17_off": "~17% de descuento",
       "plan_comparison": "Comparación de planes",
-      "most_popular": "Más popular",
+      "recommended": "Recomendado",
       "per_sale": "por venta",
       "mo_no_subscription": "/mes — sin suscripción",
       "mo": "/mes",

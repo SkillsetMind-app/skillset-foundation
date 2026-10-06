@@ -158,7 +158,7 @@ export const demoCourses: Course[] = [
     category: "Soft Skills",
     durationLabel: "4-8 weeks",
     status: "published",
-    statusLabel: "Popular",
+    statusLabel: "Early access",
     summary:
       "A practical communication pathway for professionals who want stronger confidence and clearer influence.",
     image: "/courses/effective-communication.jpg",
