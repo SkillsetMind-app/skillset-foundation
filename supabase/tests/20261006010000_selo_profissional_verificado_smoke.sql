@@ -8,8 +8,9 @@
 --   - para o público só existem duas espécies: 'license' e 'evidence';
 --   - revogar ou apagar o caso tira o selo; a aprovação pela RPC da fila e a
 --     correção direta do caso reprojetam;
---   - "none" e "pending" são testados com linha de verdade em public_profiles,
---     para a ausência do selo não passar só porque a linha não existe;
+--   - "none" e "pending" são testados com linha de verdade em public_profiles
+--     (desde 20261006020000 todo professor com o cadastro completo tem a
+--     linha), para a ausência do selo não passar só porque a linha não existe;
 --   - o selo não mexe em updated_at (o diretório ordena por ele);
 --   - anon lê as colunas novas e continua sem ler o que é privado.
 begin;
@@ -57,10 +58,13 @@ end $$;
 select pg_temp.act_as(null, 'service_role');
 select set_config('skillset.trusted_write', 'on', true);
 insert into auth.users(id, aud, role, email, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
-select pg_temp.uid(n), 'authenticated', 'authenticated', 'selo-' || n || '@example.test',
+-- Domínio fora dos reservados para teste: conta de teste nunca ganha perfil
+-- público (20261006020000), e aqui as linhas precisam existir.
+select pg_temp.uid(n), 'authenticated', 'authenticated', 'selo-' || n || '@smoke.skillsetmind.com',
   now(), '{}', '{}', now(), now()
 from generate_series(1, 7) n;
-update public.users set roles = '["student","teacher"]', display_name = 'Selo ' || right(uid, 1)
+update public.users set roles = '["student","teacher"]', display_name = 'Selo ' || right(uid, 1),
+    teacher_terms_accepted_at = now(), teacher_terms_version = 'smoke'
   where uid in (select pg_temp.uid(n)::text from generate_series(1, 7) n where n <> 6);
 update public.users set roles = '["student","ops"]' where uid = pg_temp.uid(6)::text;
 
@@ -95,10 +99,10 @@ select pg_temp.check_badge('the registration number never reaches the public row
   not exists (select 1 from public.public_profiles pp
                where to_jsonb(pp)::text like '%SMOKE-REG%'));
 
--- "none" e "pending" com linha de verdade (o critério de publicação de hoje
--- as apagaria; aqui a linha existe para o teste não passar no vazio).
-insert into public.public_profiles(uid, display_name, updated_at)
-values (pg_temp.uid(2)::text, 'Selo 2', now()), (pg_temp.uid(3)::text, 'Selo 3', now());
+-- "none" e "pending" com linha de verdade: professor com o cadastro completo
+-- tem perfil público sem verificação (20261006020000).
+select pg_temp.check_badge('none and pending teachers have a public row',
+  (pg_temp.pp(2)).uid is not null and (pg_temp.pp(3)).uid is not null);
 -- Caso aprovado com o usuário ainda em "none": o status manda, sem selo.
 insert into public.creator_verification_cases
   (creator_id, status, verification_kind, profession, registration_type, registration_id,
@@ -128,15 +132,17 @@ select pg_temp.check_badge('approval through the RPC: evidence with the review d
     where pp.uid = pg_temp.uid(3)::text));
 
 -- Correção direta no caso, sem tocar em users: o trigger novo reprojeta, e o
--- selo não mexe em updated_at.
-select updated_at as coach_updated_at from pg_temp.pp(3) \gset
+-- selo não mexe em updated_at. A data antiga vem antes: dentro da transação
+-- now() é constante, e comparar com o valor de agora passaria mesmo com bump.
+update public.public_profiles set updated_at = '2020-01-01 00:00:00+00'
+  where uid = pg_temp.uid(3)::text;
 select pg_temp.act_as(null, 'service_role');
 update public.creator_verification_cases set verification_kind = 'psychologist'
   where id = :'coach_case';
 select pg_temp.check_badge('fixing the case kind reprojects the badge',
   (select verification_kind = 'license' from pg_temp.pp(3)));
 select pg_temp.check_badge('the badge does not touch updated_at (directory order)',
-  (select updated_at = :'coach_updated_at'::timestamptz from pg_temp.pp(3)));
+  (select updated_at = '2020-01-01 00:00:00+00' from pg_temp.pp(3)));
 
 -- Revogar o caso (approved -> rejected) com o usuário ainda aprovado.
 update public.creator_verification_cases set status = 'rejected'
@@ -151,12 +157,12 @@ select pg_temp.check_badge('deleting the case clears the badge',
   (select not verified_professional and verification_kind is null and verified_at is null
      from pg_temp.pp(3)));
 
--- Saiu da aprovação: sai o selo (e, pelo critério de publicação, a linha).
+-- Saiu da aprovação: sai o selo, e a linha fica (o perfil não depende dela).
 select set_config('skillset.trusted_write', 'on', true);
 update public.users set creator_verification_status = 'rejected' where uid = pg_temp.uid(7)::text;
-select pg_temp.check_badge('losing the approval removes the badge',
-  not exists (select 1 from public.public_profiles
-               where uid = pg_temp.uid(7)::text and verified_professional));
+select pg_temp.check_badge('losing the approval removes the badge, not the profile',
+  (select not verified_professional and verification_kind is null and verified_at is null
+     from pg_temp.pp(7)));
 
 -- O invariante vive no banco.
 select pg_temp.check_badge('constraint refuses a badge without a kind',

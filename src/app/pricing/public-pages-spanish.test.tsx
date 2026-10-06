@@ -30,7 +30,7 @@ it.each([
   [PromisePage, promiseMetadata, "Seis compromisos. Por escrito. Públicos.", "La promesa de SkillsetMind"],
   [AboutPage, aboutMetadata, "SkillsetMind es un espacio público para aprender, enseñar y crecer con confianza.", "Acerca de nosotros"],
   [ContactPage, contactMetadata, "Contacta con el equipo adecuado para soporte, enseñanza y colaboraciones.", "Contacto"],
-  [InstructorsPage, instructorsMetadata, "Aprende de expertos evaluados.", "Instructores"],
+  [InstructorsPage, instructorsMetadata, "Aprende de expertos independientes.", "Instructores"],
 ] as const)("renders Spanish page and metadata", async (Page, metadata, heading, title) => {
   const { container } = render(await Page());
   expect(screen.getByRole("heading", { level: 1, name: heading })).toBeInTheDocument();

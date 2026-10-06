@@ -7,7 +7,7 @@ import { Star } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { UserAvatar } from "@/components/shared/user-avatar";
-import { VerifiedBadge } from "@/components/shared/verified-badge";
+import { SelfReportedTag, VerifiedBadge } from "@/components/shared/verified-badge";
 import type { CourseReview } from "@/domain/course-review";
 import type { PublicProfile } from "@/domain/user-profile";
 import { subscribeToCourseReviews } from "@/lib/data/course-reviews";
@@ -141,8 +141,9 @@ export function CourseInstructorCard({
 }) {
   const { t } = useTranslation();
   // Teachers without a published public profile simply don't get the card —
-  // never fabricate instructor identity. (publicProfiles is projected by a
-  // Cloud Function and anonymously readable.)
+  // never fabricate instructor identity. (public_profiles is projected by
+  // sync_public_profile() for every teacher who finished setup, and is
+  // anonymously readable.)
   if (!profile) {
     return null;
   }
@@ -162,8 +163,10 @@ export function CourseInstructorCard({
             {profile.verification ? <VerifiedBadge compact verification={profile.verification} /> : null}
           </div>
           {profile.credentials.length > 0 ? (
-            <p className="truncate text-xs text-[var(--color-ink-soft)]">
-              {profile.credentials[0]}
+            // A marca fica fora do truncate: credencial longa não a esconde.
+            <p className="flex min-w-0 items-baseline text-xs text-[var(--color-ink-soft)]">
+              <span className="truncate">{profile.credentials[0]}</span>
+              {profile.verification ? null : <SelfReportedTag />}
             </p>
           ) : profile.username ? (
             <p className="truncate text-xs text-[var(--color-ink-soft)]">

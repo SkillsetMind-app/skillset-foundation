@@ -21,13 +21,17 @@ afterEach(() => {
 
 describe("SiteFooter", () => {
   // Loja vazia não ganha link: o rodapé leva a ela só quando há curso real.
-  it("tira Cursos do rodapé enquanto não há curso real publicado", async () => {
+  // O diretório de instrutores segue a mesma regra (#471): sem curso real, ele
+  // só listaria perfis sem nada à venda.
+  it("tira Cursos e Instrutores do rodapé enquanto não há curso real publicado", async () => {
     state.hasCourses = false;
     render(await SiteFooter());
 
     expect(screen.queryByRole("link", { name: "Courses" })).not.toBeInTheDocument();
     expect(document.querySelector('a[href="/courses"]')).toBeNull();
-    expect(screen.getByRole("link", { name: "Instructors" })).toHaveAttribute("href", "/instructors");
+    expect(screen.queryByRole("link", { name: "Instructors" })).not.toBeInTheDocument();
+    expect(document.querySelector('a[href="/instructors"]')).toBeNull();
+    expect(screen.getByRole("link", { name: "About" })).toHaveAttribute("href", "/about");
   });
 
   it("lista Cursos, Instrutores e Sobre, e /promise aparece uma vez só", async () => {

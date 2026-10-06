@@ -357,6 +357,29 @@ describe("CreatorCourseDetail: o cartão que vende", () => {
     }
   });
 
+  // Sem selo, a credencial é o que o professor digitou: a assinatura diz isso
+  // ao lado dela; com o selo, não. (O cartão do instrutor tem teste próprio
+  // em self-reported-credentials.test.tsx.)
+  it("credencial sem selo vem marcada na assinatura", async () => {
+    render(<CreatorCourseDetail courseIdOverride="course-1" hideHeader />);
+    await screen.findAllByText("$149.00");
+
+    const byline = screen.getByRole("link", { name: /Ana Prado/ }).closest("div")!;
+    expect(byline).toHaveTextContent("PhD in cognitive science");
+    expect(byline).toHaveTextContent("Self-reported");
+  });
+
+  it("credencial com selo não leva a marca", async () => {
+    Object.assign(fixtures.profile, { verification: { kind: "evidence", verifiedAt: null } });
+    try {
+      render(<CreatorCourseDetail courseIdOverride="course-1" hideHeader />);
+      await screen.findAllByText("$149.00");
+      expect(screen.queryByText("Self-reported")).not.toBeInTheDocument();
+    } finally {
+      delete (fixtures.profile as { verification?: unknown }).verification;
+    }
+  });
+
   it("sobe a prova social: o instrutor vem antes da amostra gratuita", async () => {
     const { container } = render(
       <CreatorCourseDetail courseIdOverride="course-1" hideHeader />,

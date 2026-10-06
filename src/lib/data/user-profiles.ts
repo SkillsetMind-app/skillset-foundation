@@ -145,7 +145,8 @@ export type SubscriberProfile = {
  * Names of the learners subscribed to (or who bought from) the calling teacher.
  *
  * Learners are deliberately absent from `public_profiles` -- that projection is
- * world-readable by `anon` and only carries approved teachers. This RPC is
+ * world-readable by `anon` and only carries teachers who finished creator
+ * setup (verified or not; the badge column tells them apart). This RPC is
  * `SECURITY DEFINER` and takes no arguments: the caller cannot ask about an
  * arbitrary id, only "who bought from me", so there is no enumeration surface.
  */

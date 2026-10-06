@@ -72,6 +72,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     path: instructorPagePath(profile.uid, profile.username),
     image: `/instructors/${profile.uid}/opengraph-image${version}`,
   });
+  // Sem curso publicado o perfil é página fina: fora do índice até o primeiro
+  // curso, links seguidos. Leitura que falhou (null) não conta como vazio.
+  // Mesma chamada em cache que a página faz.
+  const courses = await listCreatorCourses(profile.uid);
+  if (courses?.length === 0) metadata.robots = { index: false, follow: true };
   // Plano que tira a marca da plataforma: a aba não termina em "| SkillsetMind".
   if (profile.storefront?.branding?.hidePlatformBrand === true) metadata.title = title;
   return metadata;

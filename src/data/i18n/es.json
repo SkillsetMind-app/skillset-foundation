@@ -320,6 +320,7 @@
     "publicNamePlaceholder": "Tu nombre",
     "username": "Nombre de usuario",
     "usernamePlaceholder": "tu-nombre",
+    "publicProfileNotice": "Tu perfil de profesor (nombre, foto, biografía y credenciales) es público en skillsetmind.com/@{handle}.",
     "shortBio": "Bio corta",
     "bioPlaceholder": "Una línea sobre tu trabajo, metas de aprendizaje o enfoque de enseñanza.",
     "bioCount": "{count}/280 caracteres",
@@ -407,7 +408,7 @@
     },
     "marketplace": {
       "kicker": "El marketplace",
-      "title": "Cursos de expertos verificados, listos para aprender.",
+      "title": "Cursos de expertos independientes, listos para aprender.",
       "sub": "Cada curso lo crea un profesional independiente, verificado por SkillsetMind cuando se requiere.",
       "browseAll": "Ver todos los cursos",
       "viewCourse": "Ver curso"
@@ -2957,7 +2958,7 @@
       "financial_questions_refunds_payouts_holds_chargebacks": "Las preguntas financieras sobre reembolsos, transferencias, retenciones y contracargos llegan a una persona real, por correo. Intentamos responder en un plazo de 2 días hábiles (de lunes a viernes). Sin barreras de chatbots ni escaladas interminables.",
       "money_issues_do_not_belong_behind": "Los problemas de dinero no deben quedar atrapados detrás de bots.",
       "the_skillsetmind_promise": "La promesa de SkillsetMind",
-      "skillsetmind_commitments_to_creators_and_learners": "Los compromisos de SkillsetMind con creadores y alumnos: perfiles de creador revisados, dinero del creador que nunca pasa por SkillsetMind, protección de reembolsos y credenciales verificables.",
+      "skillsetmind_commitments_to_creators_and_learners": "Los compromisos de SkillsetMind con creadores y alumnos: perfiles públicos de creador, dinero del creador que nunca pasa por SkillsetMind, protección de reembolsos y credenciales verificables.",
       "the_skillsetmind_creator_promise": "La promesa de SkillsetMind a los creadores",
       "six_commitments_in_writing_public": "Seis compromisos. Por escrito. Públicos.",
       "these_promises_are_contractual_product_rules": "Estas promesas son reglas contractuales del producto para quienes construyen en SkillsetMind: comisión fija, portabilidad, cancelación, protección y atención humana cuando hay dinero de por medio.",
@@ -2967,7 +2968,7 @@
     },
     "about": {
       "about": "Acerca de nosotros",
-      "skillsetmind_is_an_international_platform_for": "SkillsetMind es una plataforma internacional de cursos en línea de calidad, centrada en perfiles de creador revisados, pagos a la propia cuenta de Stripe del creador y el aprendizaje verificable.",
+      "skillsetmind_is_an_international_platform_for": "SkillsetMind es una plataforma internacional de cursos en línea de calidad, centrada en perfiles públicos de creador, pagos a la propia cuenta de Stripe del creador y el aprendizaje verificable.",
       "skillsetmind_is_a_public_home_for": "SkillsetMind es un espacio público para aprender, enseñar y crecer con confianza.",
       "skillsetmind_is_where_professional_educators_publish": "En SkillsetMind, educadores profesionales publican cursos y los alumnos obtienen certificados SkillsetMind Verified que los empleadores pueden comprobar. La plataforma está diseñada para no retener nunca el dinero del educador: los compradores pagan directamente a su propia cuenta de Stripe. Aquí no hay un saldo que retener ni dinero que debamos liberar.",
       "professional_programs": "Programas profesionales",
@@ -2998,22 +2999,22 @@
     "instructors": {
       "instructors": "Instructores",
       "independent_experts_publishing_reviewed_professional_courses": "Expertos independientes que publican cursos profesionales en SkillsetMind.",
-      "learn_from_reviewed_experts": "Aprende de expertos evaluados.",
-      "meet_independent_creators_whose_public_profiles": "Conoce a creadores independientes cuyos perfiles públicos se publican después de una revisión. SkillsetMind muestra la identidad real de los instructores, sin perfiles de relleno."
+      "learn_from_reviewed_experts": "Aprende de expertos independientes.",
+      "meet_independent_creators_whose_public_profiles": "Conoce a los creadores independientes que enseñan en SkillsetMind. El sello «Profesional verificado» marca a quienes nuestro equipo revisó."
     },
     "directory": {
       "loading_instructors": "Cargando instructores...",
       "instructor_profiles_could_not_load_right": "No se pudieron cargar los perfiles de instructores en este momento.",
       "course_pages_still_show_verified_instructor": "Las páginas de los cursos siguen mostrando la identidad del instructor, verificada cuando se requiere, si hay un perfil público disponible.",
       "first_cohort": "Primer grupo",
-      "public_instructor_profiles_appear_after_review": "Los perfiles públicos de los instructores aparecen después de la revisión.",
-      "skillsetmind_only_lists_real_published_profiles": "SkillsetMind solo muestra perfiles reales publicados. Los nuevos creadores aparecen aquí cuando se aprueba su verificación profesional.",
+      "public_instructor_profiles_appear_after_review": "Los perfiles públicos de los instructores aparecen cuando el creador completa su configuración.",
+      "skillsetmind_only_lists_real_published_profiles": "Ningún creador ha completado su configuración todavía. Los nuevos creadores aparecen aquí en cuanto lo hagan.",
       "start_teaching": "Empieza a enseñar",
       "browse_courses": "Explorar cursos",
       "directory": "Directorio",
       "published_instructors": "Instructores publicados",
       "browse_their_courses": "Explorar sus cursos",
-      "this_instructor_has_published_their_profile": "Este instructor ha publicado su perfil y está preparando experiencias de aprendizaje en SkillsetMind.",
+      "this_instructor_has_published_their_profile": "Este instructor tiene un perfil público y está preparando experiencias de aprendizaje en SkillsetMind.",
       "view_profile": "Ver perfil",
       "fallback_name": "Instructor de SkillsetMind"
     },
@@ -4278,6 +4279,7 @@
   },
   "verifiedBadge": {
     "label": "Profesional verificado",
+    "selfReported": "Declarado por el creador",
     "licenseChecked": "{brand} comprobó esta licencia profesional el {date}.",
     "licenseCheckedUndated": "{brand} comprobó esta licencia profesional.",
     "evidenceReviewed": "{brand} revisó la evidencia profesional de esta persona el {date}.",

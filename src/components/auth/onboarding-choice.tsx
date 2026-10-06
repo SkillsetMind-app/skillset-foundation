@@ -235,6 +235,12 @@ export function OnboardingChoice() {
 
   const selectedPathIncludesTeacher =
     selectedPath?.roles.some((role) => role === "teacher") ?? false;
+  // Aceitar os termos de professor publica o perfil: dito ao lado da caixa,
+  // com o @ escolhido (ou o formato, antes de escolher).
+  const publicProfileNotice = t("onboarding.publicProfileNotice").replace(
+    "{handle}",
+    () => normalizeUsername(username) || t("onboarding.usernamePlaceholder"),
+  );
   const canContinue = selectedPath !== null
     && (!selectedPathIncludesTeacher || (teacherTermsAccepted && emailVerified));
 
@@ -463,6 +469,7 @@ export function OnboardingChoice() {
             {t("onboarding.teacherTermsSuffix")}
           </span>
         </label>
+        <p className="text-xs leading-5 text-[var(--color-ink-soft)]">{publicProfileNotice}</p>
 
         {error ? (
           <p className="rounded-none border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
@@ -618,6 +625,7 @@ export function OnboardingChoice() {
                   {t("onboarding.teacherTermsSuffix")}
                 </span>
               </label>
+              <p className="text-xs leading-5 text-[var(--color-ink-soft)]">{publicProfileNotice}</p>
             </div>
           ) : null}
         </div>

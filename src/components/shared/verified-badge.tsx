@@ -9,6 +9,19 @@ import type { ProfessionalVerification } from "@/domain/user-profile";
 import { cn } from "@/lib/cn";
 
 /**
+ * Ao lado da credencial de quem não tem o selo: o texto é o que o próprio
+ * professor digitou, e ninguém conferiu. Com o selo, não aparece.
+ */
+export function SelfReportedTag() {
+  const { t } = useTranslation();
+  return (
+    <span className="ml-1.5 whitespace-nowrap text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--color-ink-muted)]">
+      {t("verifiedBadge.selfReported")}
+    </span>
+  );
+}
+
+/**
  * O selo em si: quadrado com check. Desenho próprio de propósito — nada do
  * círculo recortado do Instagram nem do BadgeCheck do Lucide. Cores em
  * `.verified-seal` (globals.css), que troca no tema escuro.

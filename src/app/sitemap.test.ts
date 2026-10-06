@@ -33,9 +33,10 @@ describe("sitemap", () => {
     expect(list).toContain(`${SITE}/refund-policy`);
   });
 
-  it("leaves out an empty store and the demo course samples", async () => {
+  it("leaves out an empty store, the instructor directory and the demo course samples", async () => {
     const list = await urls();
     expect(list).not.toContain(`${SITE}/courses`);
+    expect(list).not.toContain(`${SITE}/instructors`);
     for (const slug of getCourseSlugs()) {
       expect(list).not.toContain(`${SITE}/courses/${slug}`);
     }
@@ -46,6 +47,7 @@ describe("sitemap", () => {
   it("keeps the store listed whenever a real course exists, even if the course list read came back empty", async () => {
     state.hasCourses = true;
     expect(await urls()).toContain(`${SITE}/courses`);
+    expect(await urls()).toContain(`${SITE}/instructors`);
   });
 
   it("lists the store and each real course once one is published", async () => {
