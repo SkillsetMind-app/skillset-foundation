@@ -3,8 +3,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { getCourseSlugs } from "@/lib/data/catalog";
 import type { PublicCourseSummary } from "@/lib/data/server/public-course";
 
-const state = vi.hoisted(() => ({ courses: [] as PublicCourseSummary[] }));
-vi.mock("@/lib/data/server/public-course", () => ({ listPublishedCourses: async () => state.courses }));
+const state = vi.hoisted(() => ({ courses: [] as PublicCourseSummary[], hasCourses: false }));
+vi.mock("@/lib/data/server/public-course", () => ({
+  listPublishedCourses: async () => state.courses,
+  hasRealPublishedCourse: async () => state.hasCourses,
+}));
 
 import sitemap from "./sitemap";
 
@@ -13,6 +16,7 @@ const urls = async () => (await sitemap()).map((entry) => entry.url);
 
 beforeEach(() => {
   state.courses = [];
+  state.hasCourses = false;
 });
 
 describe("sitemap", () => {
@@ -37,7 +41,15 @@ describe("sitemap", () => {
     }
   });
 
+  // The store toggle asks the cached, cookie-less check — not the length of
+  // the course list, which a stale session or a slow read can empty.
+  it("keeps the store listed whenever a real course exists, even if the course list read came back empty", async () => {
+    state.hasCourses = true;
+    expect(await urls()).toContain(`${SITE}/courses`);
+  });
+
   it("lists the store and each real course once one is published", async () => {
+    state.hasCourses = true;
     state.courses = [
       {
         id: "c-1",

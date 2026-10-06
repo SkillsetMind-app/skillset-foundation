@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
 
-import { listPublishedCourses } from "@/lib/data/server/public-course";
+import { hasRealPublishedCourse, listPublishedCourses } from "@/lib/data/server/public-course";
 import { SITE_URL } from "@/lib/seo/page-metadata";
 
 // Era `force-static`, e por isso o sitemap não conseguia enumerar curso nenhum:
@@ -63,10 +63,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   //
   // Falha de leitura devolve lista vazia (ver public-course.ts): o sitemap perde
   // os cursos naquela revalidação em vez de derrubar a rota inteira.
-  const courses = await listPublishedCourses();
+  const [courses, hasRealCourses] = await Promise.all([
+    listPublishedCourses(),
+    hasRealPublishedCourse(),
+  ]);
 
-  // Loja sem curso real não é página que valha indexar.
-  const storeEntry = courses.length > 0
+  // Loja sem curso real não é página que valha indexar. Mesma checagem da
+  // home (anônima, em cache), não o tamanho da lista acima.
+  const storeEntry = hasRealCourses
     ? [{ url: `${SITE_URL}/courses`, lastModified, changeFrequency: "daily" as const, priority: 0.9 }]
     : [];
 

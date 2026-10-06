@@ -1,7 +1,13 @@
-import { isAuthSessionMissingError } from "@supabase/supabase-js";
+import { createClient, isAuthSessionMissingError } from "@supabase/supabase-js";
 
-import { isInternalSmokeCourse } from "@/domain/teacher-course";
+import {
+  INTERNAL_COURSE_ID_PREFIX,
+  INTERNAL_COURSE_TITLE_PREFIX,
+  isInternalSmokeCourse,
+} from "@/domain/teacher-course";
 import { hasPermission, isRole, type Role } from "@/lib/permissions";
+import { assertSupabaseClientConfig } from "@/lib/supabase/config";
+import type { Database } from "@/lib/supabase/database.types";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 // Server-only (o segmento `/server/` é o marcador deste repo, como em
@@ -203,8 +209,46 @@ export async function getCourseRefAccess(ref: string): Promise<CourseRefAccess> 
 }
 
 /**
- * Cursos reais publicados — para o sitemap e para a home. Os internos de teste
- * saem pelo MESMO predicado que a loja usa; a página deles segue no ar.
+ * Existe ao menos UM curso real publicado? Decide a faixa de cursos da home e
+ * o /courses do sitemap.
+ *
+ * - Cliente anônimo, sem cookie: o token vencido de um visitante não vira 401
+ *   e não some com a seção dele. `courses_select_public` libera publicado.
+ * - Os internos de teste saem no SQL, pelos mesmos prefixos do predicado da
+ *   loja, e basta uma linha.
+ * - A resposta fica 5 min no cache de dados do Next e a leitura desiste em
+ *   1,5 s: a home não espera o banco a cada visita.
+ * - Falha vale "não" (a seção some, a página não quebra) e vai para o log.
+ */
+export async function hasRealPublishedCourse(): Promise<boolean> {
+  try {
+    const { url, anonKey } = assertSupabaseClientConfig();
+    const anonymous = createClient<Database>(url, anonKey, {
+      auth: { persistSession: false, autoRefreshToken: false },
+      global: {
+        fetch: (input, init) =>
+          fetch(input, { ...init, signal: AbortSignal.timeout(1_500), next: { revalidate: 300 } }),
+      },
+    });
+
+    const { data, error } = await anonymous
+      .from("courses")
+      .select("id")
+      .eq("status", "published")
+      .not("id", "like", `${INTERNAL_COURSE_ID_PREFIX}%`)
+      .not("title", "like", `${INTERNAL_COURSE_TITLE_PREFIX}%`)
+      .limit(1);
+    if (error) throw error;
+    return (data?.length ?? 0) > 0;
+  } catch (error) {
+    console.error("[public-course] hasRealPublishedCourse failed", error);
+    return false;
+  }
+}
+
+/**
+ * Cursos reais publicados, um por URL do sitemap. Os internos de teste saem
+ * pelo MESMO predicado que a loja usa; a página deles segue no ar.
  */
 export async function listPublishedCourses(): Promise<PublicCourseSummary[]> {
   try {

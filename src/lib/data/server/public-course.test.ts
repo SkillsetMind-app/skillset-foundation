@@ -12,7 +12,21 @@ vi.mock("@/lib/supabase/server", () => ({
   },
 }));
 
-const { getCourseRefAccess, listPublishedCourses } = await import("@/lib/data/server/public-course");
+// Cliente ANÔNIMO de hasRealPublishedCourse: sem cookie. Guarda as opções com
+// que foi criado e devolve o cliente falso da vez.
+const anon = vi.hoisted(() => ({ client: null as unknown, options: null as unknown }));
+vi.mock("@supabase/supabase-js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@supabase/supabase-js")>()),
+  createClient: (_url: string, _key: string, options: unknown) => {
+    anon.options = options;
+    return anon.client;
+  },
+}));
+vi.mock("@/lib/supabase/config", () => ({
+  assertSupabaseClientConfig: () => ({ url: "https://example.supabase.co", anonKey: "anon" }),
+}));
+
+const { getCourseRefAccess, hasRealPublishedCourse, listPublishedCourses } = await import("@/lib/data/server/public-course");
 
 type Row = { id: string; title_key: string | null; status: string; owner_id: string };
 
@@ -189,5 +203,77 @@ describe("listPublishedCourses", () => {
     };
 
     expect((await listPublishedCourses()).map((course) => course.urlSlug)).toEqual(["deep-focus-systems"]);
+  });
+});
+
+describe("hasRealPublishedCourse", () => {
+  // Cliente falso que anota cada filtro da consulta encadeada.
+  function anonClient(result: { data: unknown[] | null; error: unknown }) {
+    const calls: unknown[][] = [];
+    const query = {
+      select: (...args: unknown[]) => (calls.push(["select", ...args]), query),
+      eq: (...args: unknown[]) => (calls.push(["eq", ...args]), query),
+      not: (...args: unknown[]) => (calls.push(["not", ...args]), query),
+      limit: async (...args: unknown[]) => (calls.push(["limit", ...args]), result),
+    };
+    anon.client = { from: (table: string) => (calls.push(["from", table]), query) };
+    return calls;
+  }
+
+  // Basta UMA linha: os cursos internos saem no próprio SQL, pelos mesmos
+  // prefixos do predicado da loja, em vez de trazer mil linhas para contar.
+  it("pergunta ao banco por um único curso publicado que não seja interno", async () => {
+    const calls = anonClient({ data: [{ id: "c-real" }], error: null });
+
+    expect(await hasRealPublishedCourse()).toBe(true);
+    expect(calls).toEqual([
+      ["from", "courses"],
+      ["select", "id"],
+      ["eq", "status", "published"],
+      ["not", "id", "like", "smoke-%"],
+      ["not", "title", "like", "[QA]%"],
+      ["limit", 1],
+    ]);
+  });
+
+  it("loja só com cursos internos (ou vazia) responde não", async () => {
+    anonClient({ data: [], error: null });
+    expect(await hasRealPublishedCourse()).toBe(false);
+  });
+
+  // Sem cookie do visitante (token vencido não vira 401), resposta guardada
+  // por 5 min e desistência em 1,5 s: a home não espera o banco.
+  it("usa cliente anônimo, com cache de 5 minutos e prazo curto", async () => {
+    anonClient({ data: [], error: null });
+    await hasRealPublishedCourse();
+
+    const options = anon.options as {
+      auth: { persistSession: boolean };
+      global: { fetch: (input: string, init?: RequestInit) => Promise<Response> };
+    };
+    expect(options.auth.persistSession).toBe(false);
+
+    const realFetch = vi.fn<typeof fetch>(async () => new Response("[]"));
+    vi.stubGlobal("fetch", realFetch);
+    try {
+      await options.global.fetch("https://example.supabase.co/rest/v1/courses", { method: "GET" });
+    } finally {
+      vi.unstubAllGlobals();
+    }
+    const init = realFetch.mock.calls[0]?.[1] as RequestInit & { next?: { revalidate?: number } };
+    expect(init.method).toBe("GET");
+    expect(init.next?.revalidate).toBe(300);
+    expect(init.signal).toBeInstanceOf(AbortSignal);
+  });
+
+  it("falha de leitura responde não e fica no log", async () => {
+    anonClient({ data: null, error: { message: "banco fora" } });
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      expect(await hasRealPublishedCourse()).toBe(false);
+      expect(log).toHaveBeenCalledWith(expect.stringContaining("hasRealPublishedCourse"), expect.anything());
+    } finally {
+      log.mockRestore();
+    }
   });
 });

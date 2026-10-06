@@ -6,7 +6,7 @@ import { MarketingHero } from "@/components/site/marketing-hero";
 import { PromisePreviewBand } from "@/components/site/promise-preview-band";
 import { SiteFooter } from "@/components/site/site-footer";
 import { SiteNav } from "@/components/site/site-nav";
-import { listPublishedCourses } from "@/lib/data/server/public-course";
+import { hasRealPublishedCourse } from "@/lib/data/server/public-course";
 import { buildPageMetadata } from "@/lib/seo/page-metadata";
 import { getServerTranslation } from "@/lib/i18n/server";
 
@@ -36,9 +36,9 @@ const landingNav = [
 export default async function Home() {
   // Loja vazia: a faixa de cursos dizia "o marketplace abre em breve" no meio
   // da home. Sem curso real publicado, some a seção e o item do menu que rola
-  // até ela. Falha de leitura conta como vazio: a home nunca quebra por isso.
-  // ponytail: uma leitura leve por visita; vira contagem em cache se pesar.
-  const hasRealCourses = (await listPublishedCourses()).length > 0;
+  // até ela. Leitura anônima, em cache de 5 min e com prazo curto; falha conta
+  // como vazio — a home nunca quebra por isso.
+  const hasRealCourses = await hasRealPublishedCourse();
   const nav = hasRealCourses
     ? landingNav
     : landingNav.filter((item) => !("anchorId" in item && item.anchorId === "courses"));
