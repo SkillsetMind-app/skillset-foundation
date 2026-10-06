@@ -88,7 +88,8 @@ describe("PlatformInviteAcceptance", () => {
     mocks.acceptPlatformInvite.mockReturnValue(new Promise(resolve => { finish = resolve; }));
     render(<PlatformInviteAcceptance id={invitation.id} />);
     const accept = await screen.findByRole("button", { name: "Accept invitation" });
-    if (level === "teacher") expect(screen.getByText("Activation fee waived. Terms still apply.")).toBeInTheDocument();
+    // There is no activation fee to waive: an invitee never reads about one.
+    expect(screen.queryByText(/activation fee/i)).not.toBeInTheDocument();
     expect(mocks.acceptPlatformInvite).not.toHaveBeenCalled();
     fireEvent.click(accept);
     expect(accept).toBeDisabled();

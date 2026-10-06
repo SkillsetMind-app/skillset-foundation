@@ -39,7 +39,6 @@
     "level": "Nivel de acceso",
     "waive": "Eximir la tarifa de activación",
     "require": "Exigir la tarifa de activación",
-    "activationFee": "Tarifa de activación",
     "waived": "Tarifa de activación eximida. Los términos siguen siendo obligatorios.",
     "notWaived": "No se incluye una exención de la tarifa de activación.",
     "confirmAdmin": "Confirmo que esta persona tendrá acceso completo de administrador.",

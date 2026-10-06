@@ -39,7 +39,6 @@
     "level": "Access level",
     "waive": "Waive activation fee",
     "require": "Require activation fee",
-    "activationFee": "Activation fee",
     "waived": "Activation fee waived. Terms still apply.",
     "notWaived": "No activation fee waiver is included.",
     "confirmAdmin": "I confirm that this person will have full administrator access.",

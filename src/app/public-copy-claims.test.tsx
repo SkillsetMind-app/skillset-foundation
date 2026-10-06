@@ -41,9 +41,11 @@ afterEach(() => {
 const incomeClaims =
   /\$3,500|\$11,000|\$400|\$380|Worth it from|Conviene a partir de|earning around|creators earning|ingresan|break-even|punto(s)? de equilibrio/i;
 
-// Any mention of a fee to activate or switch on a creator storefront, EN and ES.
+// Any mention of a fee to activate or switch on a creator storefront, EN and ES:
+// the words, a US${amount} placeholder next to "fee", and an "active storefront"
+// that something else has to unlock.
 const activationFee =
-  /activation fee|activat\w* (your |the )?storefront|storefront activation|one-time (US\$\S+ )?activation|US\$\s?25\b|\$25(?!\d)|tarifa (única )?de activación|cuota de activación|pago (único )?de activación|activación única|activ\w* (de )?tu tienda/i;
+  /activation fee|activat\w* (your |the )?storefront|storefront activation|activation (charge|cost|payment)|one-time (US\$\S+ )?(activation|fee)|(setup|publishing) fee|US\$\s?\{amount\}[^"]{0,80}\bfee|\bfee\b[^"]{0,80}US\$\s?\{amount\}|US\$\s?25\b|\$25(?!\d)|active storefront|tarifa (única )?de activación|tarifa única|(cuota|cargo|costo|coste|pago) (único )?de activación|activación única|activación de (la|tu) tienda|activ\w* (de )?tu tienda|activar tienda|tienda activa/i;
 
 const dictionaries = [["en", en], ["es", es]] as const;
 
@@ -226,20 +228,41 @@ describe("public copy guard: home, /pricing, /fees-and-payouts, /for-creators, /
     expect(JSON.stringify([helpFaqCategories, plans])).not.toMatch(psychologistFraming);
   });
 
-  // No public string may mention an activation fee: every namespace a signed-out
-  // visitor can read, the legal pages, and the English sources the assistant
-  // quotes. The dormant in-app checkout (activationCheckout.*, admin waivers)
-  // only renders while platform_settings.require_activation_fee is on.
-  it.each(dictionaries)("no public %s string mentions an activation fee or activating a storefront", (_locale, dict) => {
-    const publicCopy = {
-      nav: dict.nav, footer: dict.footer, home: dict.home, siteMetadata: dict.siteMetadata,
-      publicCourses: dict.publicCourses, publicPages: dict.publicPages, legalPages: dict.legalPages,
-      promiseChangelog: dict.promiseChangelog,
-    };
-    for (const [namespace, copy] of Object.entries(publicCopy)) {
-      expect(JSON.stringify(copy), namespace).not.toMatch(activationFee);
-    }
+  // No string a visitor, invitee or creator reads with the activation flag off
+  // may mention an activation fee: the public namespaces, the legal pages, sign
+  // up, onboarding, invitations, the studio (teach.*), and the English sources
+  // the assistant quotes. activationCheckout.* and the other dormant fee strings
+  // live in namespaces this guard does not read, and only render while
+  // platform_settings.require_activation_fee is on.
+  const scanned = ["nav", "footer", "home", "siteMetadata", "publicCourses", "publicPages", "legalPages", "promiseChangelog", "platformInvites", "auth", "onboarding", "teach"] as const;
+  // Dormant keys inside scanned namespaces, each unreachable with the flag off:
+  const dormant = new Set([
+    // Ops-only invite manager and role manager (admin, AAL2): the waiver switch
+    // for the dormant fee. The invitee's screen no longer shows any of them.
+    ...["waive", "require", "waived", "notWaived", "waiveConfirm", "requireConfirm", "waiverSaved", "requireSaved", "waiverError"].map((key) => `platformInvites.${key}`),
+    // The 402 claim_custom_domain raises only while the gate holds a creator back.
+    "teach.customDomains.errors.activation",
+  ]);
+  const strings = (node: unknown, path: string): Array<[string, string]> => typeof node === "string"
+    ? [[path, node]]
+    : Object.entries(node as Record<string, unknown>).flatMap(([key, value]) => strings(value, `${path}.${key}`));
+
+  it.each(dictionaries)("no %s string shown with the flag off mentions an activation fee or activating a storefront", (_locale, dict) => {
+    const offenders = scanned
+      .flatMap((namespace) => strings(dict[namespace], namespace))
+      .filter(([path, value]) => !dormant.has(path) && activationFee.test(value))
+      .map(([path]) => path);
+    expect(offenders).toEqual([]);
     expect(JSON.stringify([helpFaqCategories, plans])).not.toMatch(activationFee);
+  });
+
+  // The exclusions stay honest: each dormant key still names the fee in at least
+  // one language, so a key that stops needing the exemption leaves the list.
+  it("every dormant exclusion still names the fee", () => {
+    for (const path of dormant) {
+      const values = dictionaries.map(([, dict]) => path.split(".").reduce<unknown>((node, key) => (node as Record<string, unknown>)[key], dict));
+      expect(values.some((value) => typeof value === "string" && activationFee.test(value)), path).toBe(true);
+    }
   });
 });
 
