@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import {
   Layers3,
   UploadCloud,
@@ -120,12 +120,20 @@ export function CourseAssetUploader({ course, isEditable, onModuleCoverUploaded,
     };
   }, [previewUrl]);
 
+  // course_assets não está na publicação do Realtime: depois de enviar ou
+  // apagar, a lista busca de novo em vez de esperar um evento que não vem.
+  const assetsReloadRef = useRef<(() => Promise<void>) | null>(null);
   useEffect(() => {
-    return subscribeToCourseAssets(
+    const subscription = subscribeToCourseAssets(
       course.id,
       setAssets,
       () => setError({ kind: "load" }),
     );
+    assetsReloadRef.current = subscription.reload;
+    return () => {
+      assetsReloadRef.current = null;
+      subscription();
+    };
   }, [course.id]);
 
   async function handleUpload(event: FormEvent<HTMLFormElement>) {
@@ -174,6 +182,7 @@ export function CourseAssetUploader({ course, isEditable, onModuleCoverUploaded,
         onProgress: setUploadProgress,
       });
       if (kind === "module_cover") onModuleCoverUploaded?.(moduleId, assetId);
+      void assetsReloadRef.current?.();
       setSuccess("uploaded");
       setSelectedFile(null);
       setModuleId("");
@@ -209,6 +218,7 @@ export function CourseAssetUploader({ course, isEditable, onModuleCoverUploaded,
 
     try {
       await deleteCourseAsset(asset);
+      void assetsReloadRef.current?.();
       onAssetDeleted?.();
       setSuccess("deleted");
     } catch {

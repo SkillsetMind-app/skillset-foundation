@@ -378,7 +378,7 @@ describe("pagina da aula no builder", () => {
     vi.mocked(subscribeToTeacherCourse).mockImplementationOnce((_id, emit) => {
       emitCourse = emit;
       emit(mocks.course);
-      return () => undefined;
+      return Object.assign(() => {}, { reload: async () => {} });
     });
     openAt(moduleUrl);
     await renderBuilder();

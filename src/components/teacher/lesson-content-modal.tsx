@@ -262,10 +262,15 @@ export function LessonContentModal({
     setFileInputKey((current) => current + 1);
     setSuccess("uploaded");
   }
+  // Recarga da lista de arquivos desta aula. course_assets não está na
+  // publicação do Realtime: sem buscar de novo, o arquivo que o próprio
+  // professor acabou de enviar só aparecia depois de recarregar a página.
+  const assetsReloadRef = useRef<(() => Promise<void>) | null>(null);
   const notifiedAssetRef = useRef<string | undefined>(undefined);
   useEffect(() => {
     if (!completedAssetId || notifiedAssetRef.current === completedAssetId) return;
     notifiedAssetRef.current = completedAssetId;
+    void assetsReloadRef.current?.();
     onAssetsChanged?.();
   }, [completedAssetId, onAssetsChanged]);
   const [assetsLoaded, setAssetsLoaded] = useState(false);
@@ -359,7 +364,7 @@ export function LessonContentModal({
   }
 
   useEffect(() => {
-    return subscribeToCourseAssets(
+    const subscription = subscribeToCourseAssets(
       course.id,
       (next) => {
         setAssets(next);
@@ -368,6 +373,11 @@ export function LessonContentModal({
       },
       () => setAssetsLoadFailed(true),
     );
+    assetsReloadRef.current = subscription.reload;
+    return () => {
+      assetsReloadRef.current = null;
+      subscription();
+    };
   }, [course.id]);
 
   // O professor escolheu o envio antes de os arquivos chegarem: com eles na
@@ -635,7 +645,10 @@ export function LessonContentModal({
       setUploadProgress(null);
       setIsPreviewAsset(false);
       setFileInputKey((current) => current + 1);
-      if (!uploadManager) onAssetsChanged?.();
+      if (!uploadManager) {
+        void assetsReloadRef.current?.();
+        onAssetsChanged?.();
+      }
     } catch (caughtError) {
       if (!mountedRef.current) return;
       // Cancelar é desfecho normal, não falha: limpa a tela sem caixa vermelha.
@@ -693,6 +706,7 @@ export function LessonContentModal({
       }
 
       setSuccess("deleted");
+      void assetsReloadRef.current?.();
       onAssetsChanged?.();
     } catch {
       setError({ kind: "delete" });
