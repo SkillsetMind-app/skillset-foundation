@@ -23,8 +23,8 @@ export function StudioStorefrontCard({
   uid: string;
   courses: TeacherCourse[];
   coursesLoaded: boolean;
-  /** Status do selo; undefined enquanto não carregou (a linha não aparece). */
-  verificationStatus?: string;
+  /** Status do selo; null/undefined = desconhecido (a linha não aparece). */
+  verificationStatus?: string | null;
 }) {
   const { t } = useTranslation();
   const path = useStorefrontPath(uid);
@@ -85,23 +85,17 @@ export function StudioStorefrontCard({
           </Link>
         </div>
 
-        {/* Lugar fixo do selo: depois de 3 "Agora não" na oferta, é só aqui. */}
-        {verificationStatus ? (
+        {/* Lugar fixo do selo: depois de 3 "Agora não" na oferta, é só aqui.
+            Só para quem pode pedir; status desconhecido não oferece nada. */}
+        {verificationStatus === "none" || verificationStatus === "rejected" ? (
           <div data-verified-badge-slot="" className="mt-4 border-t border-[var(--color-line)] pt-3 text-sm">
-            {verificationStatus === "approved" || verificationStatus === "pending" ? (
-              <p className="flex items-center gap-2 text-[var(--color-ink-soft)]">
-                {verificationStatus === "approved" ? <VerifiedSeal size={14} /> : null}
-                {t(verificationStatus === "approved" ? "verifiedBadge.slot.approved" : "verifiedBadge.slot.pending")}
-              </p>
-            ) : (
-              <Link
-                href="/teach/verification"
-                className="inline-flex min-h-11 items-center gap-2 font-semibold text-[var(--color-primary)] underline-offset-4 hover:underline"
-              >
-                <VerifiedSeal size={14} />
-                {t(verificationStatus === "needs_changes" ? "professionalBadge.edit" : "verifiedBadge.slot.offer")}
-              </Link>
-            )}
+            <Link
+              href="/teach/verification"
+              className="inline-flex min-h-11 items-center gap-2 font-semibold text-[var(--color-primary)] underline-offset-4 hover:underline"
+            >
+              <VerifiedSeal size={14} />
+              {t("verifiedBadge.slot.offer")}
+            </Link>
           </div>
         ) : null}
       </Card>

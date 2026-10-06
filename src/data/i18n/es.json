@@ -192,7 +192,7 @@
           "eyebrow": "SkillsetMind para expertos",
           "title": "Enséñale al mundo lo que sabes.",
           "description": "Verifica tu perfil profesional cuando se requiere, publica tu programa, vende en 30 monedas y haz que el comprador pague directo en tu propia cuenta de Stripe. Sin montar un sitio web.",
-          "point1Title": "Profesionales verificados",
+          "point1Title": "Verificación profesional",
           "point1Desc": "Cuando se requiere, la elegibilidad profesional se verifica antes de que un creador pueda publicar.",
           "point2Title": "Vende en 30 monedas",
           "point2Desc": "Checkout global vía Stripe. El cobro entra en tu propia cuenta de Stripe.",
@@ -203,7 +203,7 @@
           "eyebrow": "SkillsetMind para estudiantes",
           "title": "Aprende de quienes ya lo hacen.",
           "description": "Cada programa proviene de un profesional independiente, verificado cuando se requiere. Paga en tu moneda, estudia a tu ritmo y obtén certificados que cualquiera puede verificar.",
-          "point1Title": "Expertos verificados",
+          "point1Title": "Verificación profesional",
           "point1Desc": "Cuando se requiere, la elegibilidad profesional se comprueba antes de que un creador pueda publicar.",
           "point2Title": "Paga en tu moneda",
           "point2Desc": "Checkout vía Stripe en 30 monedas.",
@@ -3106,8 +3106,8 @@
     "trust": {
       "trust_and_safety": "Confianza y seguridad",
       "skillsetmind_is_built_around_controlled_course": "SkillsetMind se basa en la publicación controlada de cursos, el acceso protegido de los alumnos, los pagos de cursos que van directamente a la cuenta de Stripe del creador, la moderación y los resultados de aprendizaje verificables.",
-      "verified_professionals": "Profesionales verificados",
-      "skillsetmind_verifies_professional_eligibility_before_publication": "Cuando se requiere, SkillsetMind verifica la elegibilidad profesional antes de la publicación, y puede pausar o retirar los cursos que incumplan las normas del catálogo.",
+      "verified_professionals": "Verificación profesional",
+      "skillsetmind_verifies_professional_eligibility_before_publication": "Cuando se requiere, SkillsetMind revisa la evidencia profesional antes de que un creador publique. En los demás casos es opcional: el sello «Profesional verificado» indica que nuestro equipo comprobó una licencia, o revisó evidencia profesional, en la fecha indicada. No cubre los resultados ni las afirmaciones de los cursos. Los cursos que incumplan las normas del catálogo pueden pausarse o retirarse.",
       "protected_access": "Acceso protegido",
       "learning_workspaces_open_only_after_enrollment": "Los espacios de aprendizaje se abren solo después de la inscripción; ningún enlace público permite eludir el acceso de pago.",
       "refund_controls": "Controles de reembolso",
@@ -4280,21 +4280,19 @@
     "label": "Profesional verificado",
     "licenseChecked": "{brand} comprobó esta licencia profesional el {date}.",
     "licenseCheckedUndated": "{brand} comprobó esta licencia profesional.",
-    "evidenceReviewed": "{brand} revisó la identidad y la evidencia profesional de esta persona el {date}.",
-    "evidenceReviewedUndated": "{brand} revisó la identidad y la evidencia profesional de esta persona.",
+    "evidenceReviewed": "{brand} revisó la evidencia profesional de esta persona el {date}.",
+    "evidenceReviewedUndated": "{brand} revisó la evidencia profesional de esta persona.",
     "noClaims": "No verificamos resultados ni afirmaciones hechas en los cursos.",
     "trustLink": "Cómo funciona la verificación",
     "offer": {
       "eyebrow": "Opcional · gratis por ahora",
       "title": "Añade el sello de profesional verificado a tu perfil",
-      "body": "Envía tu licencia o tu evidencia profesional. Nuestro equipo la revisa y el sello aparece junto a tu nombre.",
+      "body": "Envía tu licencia o tu evidencia profesional. Nuestro equipo la revisa y, tras la aprobación, el sello aparece junto a tu nombre.",
       "cta": "Obtenerlo gratis (≈3 min)",
       "notNow": "Ahora no",
       "preview": "Vista previa"
     },
     "slot": {
-      "approved": "Tu perfil muestra el sello de profesional verificado.",
-      "pending": "Tu solicitud del sello está en revisión.",
       "offer": "Añade el sello de profesional verificado (gratis)"
     }
   },

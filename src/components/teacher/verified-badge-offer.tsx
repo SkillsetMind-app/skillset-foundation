@@ -53,7 +53,10 @@ const noSubscription = () => () => {};
  * Oferta do selo na tela de sucesso da publicação. Não bloqueia nada: é um
  * cartão abaixo do link do curso, com prévia do nome do professor já com o
  * selo. Só para quem não pediu (`none`) ou teve o pedido recusado
- * (`rejected`); quem está em análise, em ajuste ou aprovado não vê.
+ * (`rejected`); quem está em análise, em ajuste ou aprovado não vê, e status
+ * desconhecido (`null`: leitura falhou ou não chegou) também não.
+ *
+ * `onDismiss`: para onde o foco vai quando "Agora não" some com o cartão.
  *
  * Nunca promete alunos, vendas ou destaque: o selo é cosmético.
  */
@@ -62,11 +65,13 @@ export function VerifiedBadgeOffer({
   name,
   photoURL,
   verificationStatus,
+  onDismiss,
 }: {
   uid: string;
   name: string | null;
   photoURL: string | null;
-  verificationStatus: string;
+  verificationStatus: string | null;
+  onDismiss?: () => void;
 }) {
   const { t } = useTranslation();
   const titleId = useId();
@@ -119,6 +124,8 @@ export function VerifiedBadgeOffer({
           type="button"
           onClick={() => {
             snoozeBadgeOffer(uid, Date.now());
+            // Antes de o botão sumir: o foco não pode cair no <body>.
+            onDismiss?.();
             setDismissed(true);
           }}
           className={buttonClasses({ variant: "ghost", size: "sm" }, "min-h-11")}

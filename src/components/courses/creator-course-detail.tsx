@@ -614,22 +614,25 @@ export function CreatorCourseDetail({
             tambem sobe para ca: era a quinta linha de uma lista neutra. */}
         {instructorName || hasRating || durationLabel ? (
           <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-[var(--color-ink-soft)]">
+            {/* Nome e selo num grupo só: numa tela estreita a quebra de linha
+                leva os dois juntos. O selo fica fora do link porque é botão. */}
             {instructorName ? (
-              <Link
-                href={`/instructors/${encodeURIComponent(course.ownerId)}`}
-                className="inline-flex min-h-11 items-center gap-2 font-semibold text-[var(--color-ink)] underline-offset-4 hover:underline"
-              >
-                <UserAvatar
-                  name={instructorName}
-                  photoURL={instructorProfile?.photoURL}
-                  size="sm"
-                />
-                {instructorName}
-              </Link>
-            ) : null}
-            {/* Fora do link: o selo é botão (abre o que foi conferido). */}
-            {instructorName && instructorProfile?.verification ? (
-              <VerifiedBadge compact verification={instructorProfile.verification} className="-ml-3" />
+              <span className="inline-flex min-w-0 items-center gap-0.5">
+                <Link
+                  href={`/instructors/${encodeURIComponent(course.ownerId)}`}
+                  className="inline-flex min-h-11 min-w-0 items-center gap-2 font-semibold text-[var(--color-ink)] underline-offset-4 hover:underline"
+                >
+                  <UserAvatar
+                    name={instructorName}
+                    photoURL={instructorProfile?.photoURL}
+                    size="sm"
+                  />
+                  {instructorName}
+                </Link>
+                {instructorProfile?.verification ? (
+                  <VerifiedBadge compact verification={instructorProfile.verification} />
+                ) : null}
+              </span>
             ) : null}
             {instructorProfile?.credentials?.[0] ? (
               <span className="min-w-0 truncate">

@@ -339,6 +339,24 @@ describe("CreatorCourseDetail: o cartão que vende", () => {
     expect(screen.getAllByText("1h 30m")).toHaveLength(2);
   });
 
+  // A 320 px a assinatura quebra linha: o selo vai junto com o nome, sem
+  // margem negativa puxando o ícone para cima de outro item.
+  it("selo verificado: só o ícone, preso ao nome do instrutor", async () => {
+    Object.assign(fixtures.profile, { verification: { kind: "evidence", verifiedAt: null } });
+    try {
+      render(<CreatorCourseDetail courseIdOverride="course-1" hideHeader />);
+      await screen.findAllByText("$149.00");
+
+      const name = screen.getByRole("link", { name: /Ana Prado/ });
+      const badge = screen.getByRole("button", { name: "Verified professional" });
+      expect(name.parentElement).toContainElement(badge);
+      expect(name.parentElement).toHaveClass("inline-flex");
+      expect(badge.closest("[class*='-ml-']")).toBeNull();
+    } finally {
+      delete (fixtures.profile as { verification?: unknown }).verification;
+    }
+  });
+
   it("sobe a prova social: o instrutor vem antes da amostra gratuita", async () => {
     const { container } = render(
       <CreatorCourseDetail courseIdOverride="course-1" hideHeader />,

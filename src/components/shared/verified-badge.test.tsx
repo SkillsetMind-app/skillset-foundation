@@ -22,8 +22,8 @@ function keyboardFocus(element: HTMLElement) {
   act(() => element.focus());
 }
 
-const psychologist: ProfessionalVerification = { kind: "psychologist", verifiedAt: "2026-09-01T12:00:00.000Z" };
-const coach: ProfessionalVerification = { kind: "coach", verifiedAt: "2026-09-01T12:00:00.000Z" };
+const license: ProfessionalVerification = { kind: "license", verifiedAt: "2026-09-01T12:00:00.000Z" };
+const coach: ProfessionalVerification = { kind: "evidence", verifiedAt: "2026-09-01T12:00:00.000Z" };
 
 function renderBadge(verification: ProfessionalVerification, { locale = "en", compact = false } = {}) {
   return render(
@@ -81,11 +81,11 @@ describe("popover", () => {
 
     tap(button);
     expect(button).toHaveAttribute("aria-expanded", "true");
-    expect(screen.getByText(/reviewed this person's identity/)).toBeInTheDocument();
+    expect(screen.getByText(/reviewed this person's professional evidence/)).toBeInTheDocument();
 
     tap(button);
     expect(button).toHaveAttribute("aria-expanded", "false");
-    expect(screen.queryByText(/reviewed this person's identity/)).toBeNull();
+    expect(screen.queryByText(/reviewed this person's professional evidence/)).toBeNull();
   });
 
   it("abre no foco do teclado, Enter não fecha, Esc fecha e devolve o foco", () => {
@@ -141,31 +141,32 @@ describe("o texto diz o que foi conferido e quando", () => {
     return document.querySelector("[data-verified-popover]")!.textContent!;
   }
 
-  it("psicólogo: a licença, com a data em inglês", () => {
-    expect(statement(psychologist)).toContain(
+  it("license: a licença, com a data em inglês", () => {
+    expect(statement(license)).toContain(
       "SkillsetMind checked this professional license on September 1, 2026.",
     );
   });
 
-  it.each(["coach", "holistic", "other"] as const)("%s: identidade e evidência profissional", (kind) => {
-    expect(statement({ kind, verifiedAt: "2026-09-01T12:00:00.000Z" })).toContain(
-      "SkillsetMind reviewed this person's identity and professional evidence on September 1, 2026.",
-    );
+  it("evidence: a evidência profissional, sem prometer identidade", () => {
+    const text = statement(coach);
+    expect(text).toContain("SkillsetMind reviewed this person's professional evidence on September 1, 2026.");
+    expect(text).not.toMatch(/identity/i);
   });
 
   it("em espanhol, a data no formato de lá", () => {
-    expect(statement(psychologist, "es")).toContain(
+    expect(statement(license, "es")).toContain(
       "SkillsetMind comprobó esta licencia profesional el 1 de septiembre de 2026.",
     );
     cleanup();
     expect(statement(coach, "es")).toContain(
-      "SkillsetMind revisó la identidad y la evidencia profesional de esta persona el 1 de septiembre de 2026.",
+      "SkillsetMind revisó la evidencia profesional de esta persona el 1 de septiembre de 2026.",
     );
+    expect(document.body.textContent).not.toMatch(/identidad/i);
   });
 
-  it("aprovação antiga sem data: a frase sem data, nunca uma data inventada", () => {
-    const text = statement({ kind: "other", verifiedAt: null });
-    expect(text).toContain("SkillsetMind reviewed this person's identity and professional evidence.");
+  it("caso aprovado sem data de revisão: a frase sem data, nunca uma data inventada", () => {
+    const text = statement({ kind: "evidence", verifiedAt: null });
+    expect(text).toContain("SkillsetMind reviewed this person's professional evidence.");
     expect(text).not.toMatch(/\bon\b\s*\./);
   });
 });
@@ -176,4 +177,18 @@ it.each([
   ["es", es.verifiedBadge, /certific|avalad|acreditad|licenciad[oa] por|más alumnos|más estudiantes/i],
 ] as const)("a copy do selo em %s não promete o que não foi feito", (_locale, copy, forbidden) => {
   expect(JSON.stringify(copy)).not.toMatch(forbidden);
+});
+
+// /trust e as faixas do login não dizem que todo mundo é verificado.
+it.each([
+  ["en", en, "Professional verification", /Verified professional/],
+  ["es", es, "Verificación profesional", /Profesional verificado/],
+] as const)("%s: /trust explica o selo opcional e os títulos não prometem verificação geral", (_locale, dict, title, badge) => {
+  expect(dict.publicPages.trust.verified_professionals).toBe(title);
+  const detail = dict.publicPages.trust.skillsetmind_verifies_professional_eligibility_before_publication;
+  expect(detail).toMatch(badge);
+  expect(detail).not.toMatch(/identity|identidad|eligibility|elegibilidad/i);
+  for (const heading of [dict.auth.page.aside.teacher.point1Title, dict.auth.page.aside.learner.point1Title]) {
+    expect(heading).not.toMatch(/^verified|verificad[oa]s$/i);
+  }
 });

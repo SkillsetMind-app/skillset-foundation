@@ -165,7 +165,7 @@ describe("página do perfil", () => {
   it("professor verificado: o selo com as palavras logo depois do nome", async () => {
     mocks.getPublicProfileByRef.mockResolvedValue({
       ...ana,
-      verification: { kind: "coach", verifiedAt: "2026-09-01T12:00:00.000Z" },
+      verification: { kind: "evidence", verifiedAt: "2026-09-01T12:00:00.000Z" },
     });
     await renderPage("@ana.souza");
 

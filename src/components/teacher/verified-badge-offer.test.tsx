@@ -21,10 +21,13 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-function renderOffer(status = "none", { uid = "teacher-1", locale = "en" as "en" | "es" } = {}) {
+function renderOffer(
+  status: string | null = "none",
+  { uid = "teacher-1", locale = "en" as "en" | "es", onDismiss = undefined as (() => void) | undefined } = {},
+) {
   return render(
     <I18nProvider initialLocale={locale}>
-      <VerifiedBadgeOffer uid={uid} name="Ana Souza" photoURL={null} verificationStatus={status} />
+      <VerifiedBadgeOffer uid={uid} name="Ana Souza" photoURL={null} verificationStatus={status} onDismiss={onDismiss} />
     </I18nProvider>,
   );
 }
@@ -37,7 +40,8 @@ describe("quem vê a oferta", () => {
     expect(offer()).not.toBeNull();
   });
 
-  it.each(["pending", "needs_changes", "approved"])("status %s não vê", (status) => {
+  // null = a leitura do perfil falhou ou não chegou: na dúvida, não oferece.
+  it.each(["pending", "needs_changes", "approved", null])("status %s não vê", (status) => {
     renderOffer(status);
     expect(offer()).toBeNull();
   });
@@ -50,6 +54,14 @@ it("prévia com o próprio nome e o selo, e o botão leva ao pedido de verifica�
   expect(preview).toHaveTextContent("Verified professional");
   expect(preview.querySelector("[data-verified-seal]")).not.toBeNull();
   expect(screen.getByRole("link", { name: "Get it free (≈3 min)" })).toHaveAttribute("href", "/teach/verification");
+});
+
+it("diz que o selo só aparece depois da aprovação", () => {
+  renderOffer();
+  expect(offer()).toHaveTextContent("after approval");
+  cleanup();
+  renderOffer("none", { locale: "es" });
+  expect(offer()).toHaveTextContent("tras la aprobación");
 });
 
 it("em espanhol", () => {
@@ -65,6 +77,21 @@ it("nunca promete alunos, vendas ou destaque", () => {
 });
 
 describe("Agora não", () => {
+  it("o foco vai para onde quem chama mandar, não some com o cartão", () => {
+    const target = document.createElement("p");
+    target.tabIndex = -1;
+    document.body.appendChild(target);
+    renderOffer("none", { onDismiss: () => target.focus() });
+
+    const notNow = screen.getByRole("button", { name: "Not now" });
+    notNow.focus();
+    fireEvent.click(notNow);
+
+    expect(offer()).toBeNull();
+    expect(target).toHaveFocus();
+    target.remove();
+  });
+
   it("adia por 21 dias, por uid", () => {
     renderOffer();
     fireEvent.click(screen.getByRole("button", { name: "Not now" }));

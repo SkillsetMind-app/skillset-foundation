@@ -63,7 +63,7 @@ export function verificationStatement(
   t: (key: string) => string,
   locale: string,
 ): string {
-  const license = verification.kind === "psychologist";
+  const license = verification.kind === "license";
   const date = verification.verifiedAt ? new Date(verification.verifiedAt) : null;
   const dated = date !== null && !Number.isNaN(date.getTime());
   const key = license
