@@ -5642,6 +5642,13 @@
       "process": "What we do, step by step",
       "firstStep": "Step one"
     },
+    "upload": {
+      "button": "Upload image",
+      "uploading": "Uploading…",
+      "rules": "JPG, PNG or WebP, up to {limit}.",
+      "orLink": "Or paste a link",
+      "previewAlt": "Preview of {label}"
+    },
     "fields": {
       "headline": "Headline",
       "subheading": "One line under it",

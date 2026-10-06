@@ -35,6 +35,8 @@ import type { TeacherCourse } from "@/domain/teacher-course";
 import { getCourseLanding, saveCourseLanding } from "@/lib/data/course-landings";
 import { getUserProfile } from "@/lib/data/user-profiles";
 
+import { LandingImageField } from "./landing-image-field";
+
 function blankBlock(kind: CourseLandingBlockKind, t: (key: string) => string): CourseLandingBlock {
   switch (kind) {
     case "hero":
@@ -88,9 +90,11 @@ const labelClass = "grid gap-1.5 text-xs font-bold uppercase tracking-[0.16em] t
 
 function BlockFields({
   block,
+  course,
   onChange,
 }: {
   block: CourseLandingBlock;
+  course: TeacherCourse;
   onChange: (next: CourseLandingBlock) => void;
 }) {
   const { t, locale } = useTranslation();
@@ -114,15 +118,14 @@ function BlockFields({
               onChange={(e) => onChange({ ...block, subheading: e.target.value })}
             />
           </label>
-          <label className={labelClass}>
-            {t("teacherLanding.fields.backgroundUrl")}
-            <input
-              className={fieldClass}
-              value={block.imageUrl ?? ""}
-              placeholder="/uploads/your-image.jpg"
-              onChange={(e) => onChange({ ...block, imageUrl: e.target.value || null })}
-            />
-          </label>
+          <LandingImageField
+            courseId={course.id}
+            ownerId={course.ownerId}
+            label={t("teacherLanding.fields.backgroundUrl")}
+            value={block.imageUrl}
+            placeholder="/uploads/your-image.jpg"
+            onChange={(imageUrl) => onChange({ ...block, imageUrl })}
+          />
         </div>
       );
 
@@ -147,15 +150,14 @@ function BlockFields({
             />
           </label>
           {block.kind === "about" ? (
-            <label className={labelClass}>
-              {t("teacherLanding.fields.photoUrl")}
-              <input
-                className={fieldClass}
-                value={block.imageUrl ?? ""}
-                placeholder="/uploads/your-photo.jpg"
-                onChange={(e) => onChange({ ...block, imageUrl: e.target.value || null })}
-              />
-            </label>
+            <LandingImageField
+              courseId={course.id}
+              ownerId={course.ownerId}
+              label={t("teacherLanding.fields.photoUrl")}
+              value={block.imageUrl}
+              placeholder="/uploads/your-photo.jpg"
+              onChange={(imageUrl) => onChange({ ...block, imageUrl })}
+            />
           ) : null}
         </div>
       );
@@ -566,7 +568,7 @@ export function CourseLandingEditor({ course }: { course: TeacherCourse }) {
                 <Trash2 className="h-4 w-4" />
               </button>
             </div>
-            <BlockFields block={block} onChange={(next) => updateBlock(index, next)} />
+            <BlockFields block={block} course={course} onChange={(next) => updateBlock(index, next)} />
           </div>
         ))}
       </div>

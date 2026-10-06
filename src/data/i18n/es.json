@@ -5642,6 +5642,13 @@
       "process": "Lo que hacemos, paso a paso",
       "firstStep": "Primer paso"
     },
+    "upload": {
+      "button": "Subir imagen",
+      "uploading": "Subiendo…",
+      "rules": "JPG, PNG o WebP, de hasta {limit}.",
+      "orLink": "O pega un enlace",
+      "previewAlt": "Vista previa de {label}"
+    },
     "fields": {
       "headline": "Título principal",
       "subheading": "Una línea debajo del título",
