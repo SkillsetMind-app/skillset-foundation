@@ -5647,7 +5647,10 @@
       "uploading": "Uploading…",
       "rules": "JPG, PNG or WebP, up to {limit}.",
       "orLink": "Or paste a link",
-      "previewAlt": "Preview of {label}"
+      "previewAlt": "Preview of {label}",
+      "remove": "Remove image",
+      "wrongType": "That file is not a JPG, PNG or WebP image.",
+      "tooLarge": "That image is {size}. Use one up to {limit}."
     },
     "fields": {
       "headline": "Headline",

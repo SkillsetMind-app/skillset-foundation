@@ -6,23 +6,20 @@ import { LandingImageField } from "./landing-image-field";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 
-const mocks = vi.hoisted(() => ({
-  uploadCourseAsset: vi.fn(),
-  fetchCourseAssets: vi.fn(),
+const mocks = vi.hoisted(() => ({ uploadLandingImage: vi.fn() }));
+
+vi.mock("@/lib/data/landing-images", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/data/landing-images")>()),
+  uploadLandingImage: (courseId: string, file: File) => mocks.uploadLandingImage(courseId, file),
 }));
 
-vi.mock("@/lib/data/course-assets", () => ({
-  uploadCourseAsset: (input: unknown) => mocks.uploadCourseAsset(input),
-  fetchCourseAssets: (id: string) => mocks.fetchCourseAssets(id),
-}));
-
-const publicUrl = "https://example.supabase.co/storage/v1/object/public/public-media/courses/c1/assets/u1/a1/foto.png";
+const publicUrl = "https://example.supabase.co/storage/v1/object/public/public-media/courses/c1/landing/a1.png";
 
 function setup(value: string | null = null, locale: "en" | "es" = "en") {
   const onChange = vi.fn();
   render(
     <I18nProvider initialLocale={locale}>
-      <LandingImageField courseId="c1" ownerId="u1" label="Photo" value={value} onChange={onChange} />
+      <LandingImageField courseId="c1" label="Photo" value={value} onChange={onChange} />
     </I18nProvider>,
   );
   return onChange;
@@ -35,15 +32,15 @@ function pick(file: File) {
 
 describe("LandingImageField", () => {
   beforeEach(() => {
-    mocks.uploadCourseAsset.mockReset();
-    mocks.fetchCourseAssets.mockReset();
+    mocks.uploadLandingImage.mockReset();
   });
 
-  it("offers an upload button and keeps the link field", () => {
+  it("offers an upload button, named by its field and described by the rules", () => {
     setup();
-    expect(screen.getByRole("button", { name: "Upload image" })).toBeInTheDocument();
+    const button = screen.getByRole("button", { name: "Upload image" });
+    expect(button).toHaveAccessibleDescription("JPG, PNG or WebP, up to 5.0 MB.");
+    expect(screen.getByRole("group", { name: "Photo" })).toContainElement(button);
     expect(screen.getByLabelText("Or paste a link")).toBeInTheDocument();
-    expect(screen.getByText(/JPG, PNG or WebP/)).toBeInTheDocument();
   });
 
   it("speaks Spanish", () => {
@@ -52,39 +49,50 @@ describe("LandingImageField", () => {
     expect(screen.getByLabelText("O pega un enlace")).toBeInTheDocument();
   });
 
-  it("uploads through the course asset helper and hands back the public URL", async () => {
-    let finish: (id: string) => void = () => undefined;
-    mocks.uploadCourseAsset.mockReturnValue(new Promise<string>((resolve) => { finish = resolve; }));
-    mocks.fetchCourseAssets.mockResolvedValue([{ id: "a1", downloadUrl: publicUrl }]);
+  it("uploads the sales page image and hands back the public URL", async () => {
+    let finish: (url: string) => void = () => undefined;
+    mocks.uploadLandingImage.mockReturnValue(new Promise<string>((resolve) => { finish = resolve; }));
     const onChange = setup();
     const file = new File(["x"], "foto.png", { type: "image/png" });
     pick(file);
     expect(await screen.findByText("Uploading…")).toBeInTheDocument();
-    finish("a1");
+    finish(publicUrl);
     await waitFor(() => expect(onChange).toHaveBeenCalledWith(publicUrl));
-    expect(mocks.uploadCourseAsset).toHaveBeenCalledWith(
-      expect.objectContaining({ courseId: "c1", ownerId: "u1", kind: "lesson_thumbnail", file, lessonId: null, moduleId: null, isPreview: false }),
-    );
+    expect(mocks.uploadLandingImage).toHaveBeenCalledWith("c1", file);
   });
 
-  it("previews the current image", () => {
-    setup(publicUrl);
+  it("previews the current image and lets the creator remove it", () => {
+    const onChange = setup(publicUrl);
     expect(screen.getByRole("img", { name: "Preview of Photo" })).toHaveAttribute("src", publicUrl);
+    fireEvent.click(screen.getByRole("button", { name: "Remove image" }));
+    expect(onChange).toHaveBeenCalledWith(null);
   });
 
   it("shows a clear error when the upload fails", async () => {
-    mocks.uploadCourseAsset.mockRejectedValue(new Error("boom"));
+    mocks.uploadLandingImage.mockRejectedValue(new Error("boom"));
     const onChange = setup();
     pick(new File(["x"], "foto.png", { type: "image/png" }));
-    expect(await screen.findByRole("alert")).toBeInTheDocument();
+    expect(await screen.findByRole("alert")).toHaveTextContent("We could not upload this file.");
     expect(onChange).not.toHaveBeenCalled();
   });
 
-  it("refuses other formats before uploading", async () => {
+  it.each([
+    ["doc.gif", "image/gif"],
+    ["logo.svg", "image/svg+xml"],
+  ])("refuses %s before uploading", async (name, type) => {
+    setup(null, "es");
+    pick(new File(["x"], name, { type }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Ese archivo no es una imagen JPG, PNG o WebP.");
+    expect(mocks.uploadLandingImage).not.toHaveBeenCalled();
+  });
+
+  it("refuses an image over the limit before uploading", async () => {
     setup();
-    pick(new File(["x"], "doc.gif", { type: "image/gif" }));
-    expect(await screen.findByRole("alert")).toHaveTextContent(/JPG, PNG or WebP/);
-    expect(mocks.uploadCourseAsset).not.toHaveBeenCalled();
+    const big = new File(["x"], "big.jpg", { type: "image/jpeg" });
+    Object.defineProperty(big, "size", { value: 6 * 1024 * 1024 });
+    pick(big);
+    expect(await screen.findByRole("alert")).toHaveTextContent("That image is 6.0 MB. Use one up to 5.0 MB.");
+    expect(mocks.uploadLandingImage).not.toHaveBeenCalled();
   });
 
   it("still lets the creator paste a link", () => {

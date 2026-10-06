@@ -1,37 +1,31 @@
 "use client";
 
-import { Loader2, UploadCloud } from "lucide-react";
-import { useRef, useState } from "react";
+import { Loader2, UploadCloud, X } from "lucide-react";
+import { useId, useRef, useState } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
-import {
-  formatCourseAssetSize,
-  getCourseAssetUploadErrorMessage,
-  supabaseUploadLimitBytes,
-} from "@/domain/course-asset";
-import { fetchCourseAssets, uploadCourseAsset } from "@/lib/data/course-assets";
-
-const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
+import { formatCourseAssetSize, getCourseAssetUploadErrorMessage } from "@/domain/course-asset";
+import { landingImageMaxBytes, landingImageTypes, uploadLandingImage } from "@/lib/data/landing-images";
 
 const fieldClass =
   "w-full rounded-none border border-[var(--color-line)] bg-white px-3 py-2.5 text-sm text-[var(--color-ink)]";
 
 /**
- * Image field for sales page blocks. Reuses the course asset upload (public-media
- * bucket, course-owned path). `lesson_thumbnail` without a lesson is inert in the
- * classroom, so the file never replaces the course cover. The URL field stays as
- * the secondary option.
+ * Image field for sales page blocks: upload first, pasting a link second.
+ *
+ * `onChange` can run long after the click, once the upload finishes; by then
+ * the creator may have typed, moved or removed the section. The caller must
+ * apply it to its latest state by a stable block id, never to a block object
+ * or index captured at render time.
  */
 export function LandingImageField({
   courseId,
-  ownerId,
   label,
   value,
   placeholder,
   onChange,
 }: {
   courseId: string;
-  ownerId: string;
   label: string;
   value: string | null;
   placeholder?: string;
@@ -39,34 +33,32 @@ export function LandingImageField({
 }) {
   const { t } = useTranslation();
   const inputRef = useRef<HTMLInputElement>(null);
+  const labelId = useId();
+  const rulesId = useId();
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
-  const limit = formatCourseAssetSize(supabaseUploadLimitBytes);
-  const rules = t("teacherLanding.upload.rules").replace("{limit}", () => limit);
+  const limit = formatCourseAssetSize(landingImageMaxBytes);
 
   async function handleFile(file: File | undefined) {
     if (!file || uploading) return;
     setError("");
-    if (!allowedTypes.includes(file.type)) {
-      setError(rules);
+    if (!landingImageTypes.includes(file.type)) {
+      setError(t("teacherLanding.upload.wrongType"));
+      return;
+    }
+    if (file.size > landingImageMaxBytes) {
+      setError(
+        t("teacherLanding.upload.tooLarge").replace(/\{size\}|\{limit\}/g, (token) =>
+          token === "{size}" ? formatCourseAssetSize(file.size) : limit,
+        ),
+      );
       return;
     }
     setUploading(true);
     try {
-      const assetId = await uploadCourseAsset({
-        courseId,
-        ownerId,
-        kind: "lesson_thumbnail",
-        file,
-        isPreview: false,
-        lessonId: null,
-        moduleId: null,
-      });
-      const asset = (await fetchCourseAssets(courseId)).find((a) => a.id === assetId);
-      if (!asset?.downloadUrl) throw new Error("missing url");
-      onChange(asset.downloadUrl);
+      onChange(await uploadLandingImage(courseId, file));
     } catch (cause) {
-      setError(getCourseAssetUploadErrorMessage(cause, supabaseUploadLimitBytes, t));
+      setError(getCourseAssetUploadErrorMessage(cause, landingImageMaxBytes, t));
     } finally {
       setUploading(false);
       if (inputRef.current) inputRef.current.value = "";
@@ -74,8 +66,10 @@ export function LandingImageField({
   }
 
   return (
-    <div className="grid gap-2">
-      <span className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--color-ink-soft)]">{label}</span>
+    <div role="group" aria-labelledby={labelId} className="grid gap-2">
+      <span id={labelId} className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--color-ink-soft)]">
+        {label}
+      </span>
       {value ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
@@ -87,22 +81,37 @@ export function LandingImageField({
       <input
         ref={inputRef}
         type="file"
-        accept="image/jpeg,image/png,image/webp"
+        accept={landingImageTypes.join(",")}
         className="sr-only"
         aria-hidden
         tabIndex={-1}
         onChange={(e) => void handleFile(e.target.files?.[0])}
       />
-      <button
-        type="button"
-        disabled={uploading}
-        onClick={() => inputRef.current?.click()}
-        className="inline-flex w-fit items-center gap-2 rounded-none border border-[var(--color-line)] bg-white px-3 py-2.5 text-sm font-semibold text-[var(--color-primary)] disabled:opacity-60"
-      >
-        {uploading ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <UploadCloud className="size-4" aria-hidden />}
-        {uploading ? t("teacherLanding.upload.uploading") : t("teacherLanding.upload.button")}
-      </button>
-      <p className="text-xs normal-case tracking-normal text-[var(--color-ink-soft)]">{rules}</p>
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          disabled={uploading}
+          aria-describedby={rulesId}
+          onClick={() => inputRef.current?.click()}
+          className="inline-flex w-fit items-center gap-2 rounded-none border border-[var(--color-line)] bg-white px-3 py-2.5 text-sm font-semibold text-[var(--color-primary)] disabled:opacity-60"
+        >
+          {uploading ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <UploadCloud className="size-4" aria-hidden />}
+          {uploading ? t("teacherLanding.upload.uploading") : t("teacherLanding.upload.button")}
+        </button>
+        {value ? (
+          <button
+            type="button"
+            onClick={() => onChange(null)}
+            className="inline-flex w-fit items-center gap-2 rounded-none border border-[var(--color-line)] bg-white px-3 py-2.5 text-sm font-semibold text-[var(--color-danger-fg)]"
+          >
+            <X className="size-4" aria-hidden />
+            {t("teacherLanding.upload.remove")}
+          </button>
+        ) : null}
+      </div>
+      <p id={rulesId} className="text-xs normal-case tracking-normal text-[var(--color-ink-soft)]">
+        {t("teacherLanding.upload.rules").replace("{limit}", () => limit)}
+      </p>
       {error ? (
         <p role="alert" className="text-sm font-semibold text-red-700">
           {error}
