@@ -96,6 +96,9 @@ declare
   v_modules jsonb := '[]'::jsonb;
   v_course_id text;
 begin
+  -- A mesma trava de sessao de toda RPC de quem esta logado
+  -- (20260910030000): conta suspensa ou sessao revogada nao cria.
+  perform public.require_strong_session();
   if v_format not in ('course', 'community', 'live_event', 'ebook') then
     raise exception 'Choose a valid product type.';
   end if;
