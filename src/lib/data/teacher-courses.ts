@@ -270,12 +270,14 @@ export function subscribeToTeacherCourse(
   courseId: string,
   callback: (course: TeacherCourse | null) => void,
   onError: (error: Error) => void
-): () => void {
+): (() => void) & { reload: () => Promise<void> } {
   const supabase = getSupabaseBrowserClient();
   let cancelled = false;
   let generation = 0;
 
-  const load = async () => {
+  // `quiet`: a recarga avulsa que falha mantem o curso que ja esta na tela, em
+  // vez de trocar o construtor inteiro pela tela de erro.
+  const load = async (quiet = false) => {
     const current = ++generation;
     const { data, error } = await supabase
       .from(coursesTable)
@@ -285,6 +287,10 @@ export function subscribeToTeacherCourse(
 
     if (cancelled || current !== generation) return;
     if (error) {
+      if (quiet) {
+        console.warn("Course reload failed; keeping the previous snapshot", error);
+        return;
+      }
       onError(error instanceof Error ? error : new Error(String(error)));
       return;
     }
@@ -302,6 +308,10 @@ export function subscribeToTeacherCourse(
       .eq("course_id", courseId);
     if (cancelled || current !== generation) return;
     if (contentError) {
+      if (quiet) {
+        console.warn("Course reload failed; keeping the previous snapshot", contentError);
+        return;
+      }
       onError(new Error(contentError.message));
       return;
     }
@@ -341,10 +351,16 @@ export function subscribeToTeacherCourse(
     )
     .subscribe();
 
-  return () => {
-    cancelled = true;
-    void supabase.removeChannel(channel);
-  };
+  // `reload()` busca de novo sem mexer no canal. O construtor chama depois do
+  // proprio autosave: saber que o modulo/aula foi gravado (e liberar o upload
+  // da capa e do video) nao pode depender do eco do Realtime chegar.
+  return Object.assign(
+    () => {
+      cancelled = true;
+      void supabase.removeChannel(channel);
+    },
+    { reload: () => load(true) },
+  );
 }
 
 export function subscribeToTeacherCourses(

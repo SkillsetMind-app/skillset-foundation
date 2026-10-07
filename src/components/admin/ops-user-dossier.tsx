@@ -74,7 +74,7 @@ function plainValue(value: unknown): string | null {
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <section className="min-w-0 rounded-none border border-[var(--color-line)] bg-white p-4 shadow-[var(--shadow-soft)] sm:p-6">
+    <section className="min-w-0 rounded-lg border border-[var(--color-line)] bg-white p-4 shadow-[var(--shadow-soft)] sm:p-6">
       <h3 className="text-base font-bold text-[var(--color-ink)]">{title}</h3>
       <dl className="mt-4 grid min-w-0 gap-x-6 gap-y-4 text-sm sm:grid-cols-2">{children}</dl>
     </section>
@@ -200,7 +200,7 @@ export function OpsUserDossierPanel({ uid }: { uid: string }) {
       ) : null}
       {back}
 
-      <header className="min-w-0 rounded-none border border-[var(--color-line)] bg-white p-4 shadow-[var(--shadow-soft)] sm:p-6">
+      <header className="min-w-0 rounded-lg border border-[var(--color-line)] bg-white p-4 shadow-[var(--shadow-soft)] sm:p-6">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
             <h2 className="break-words text-xl font-bold text-[var(--color-ink)]">{identity.display_name || t(`${copy}.unnamed`)}</h2>

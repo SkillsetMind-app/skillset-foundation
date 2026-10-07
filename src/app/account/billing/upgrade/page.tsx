@@ -45,7 +45,7 @@ export default async function BillingUpgradePage({
         {planId ? (
             <Suspense
               fallback={
-                <div className="rounded-none border fine-rule bg-white p-8 text-sm text-[var(--color-ink-soft)] shadow-[var(--shadow-soft)]">
+                <div className="rounded-lg border fine-rule bg-white p-8 text-sm text-[var(--color-ink-soft)] shadow-[var(--shadow-soft)]">
                   {t("activationCheckout.preparing")}
                 </div>
               }
@@ -62,7 +62,7 @@ export default async function BillingUpgradePage({
 
 function MissingPlanState({ t }: { t: (key: string) => string }) {
   return (
-    <div className="rounded-none border border-dashed border-[var(--color-line-strong)] bg-[var(--color-surface-soft)] p-8 text-center">
+    <div className="rounded-lg border border-dashed border-[var(--color-line-strong)] bg-[var(--color-surface-soft)] p-8 text-center">
       <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
         {t("billingCheckout.pickPlan")}
       </p>

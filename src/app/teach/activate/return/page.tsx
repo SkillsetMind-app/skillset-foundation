@@ -28,7 +28,7 @@ export default async function TeachActivateReturnPage() {
   return (
     <ProtectedSurface permissions={["teacherStudio.access"]}>
       <PlatformShell title={t("activationCheckout.returnTitle")} compact>
-        <div className="rounded-none border fine-rule bg-white p-8 shadow-[var(--shadow-soft)]">
+        <div className="rounded-lg border fine-rule bg-white p-8 shadow-[var(--shadow-soft)]">
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
             {t("activationCheckout.thanks")}
           </p>

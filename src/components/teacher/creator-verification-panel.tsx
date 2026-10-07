@@ -49,7 +49,7 @@ const validationErrorKeys = new Map([
 ]);
 
 const inputClass =
-  "rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-surface)] px-3.5 py-2.5 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]";
+  "rounded-md border border-[var(--color-line)] bg-[var(--color-surface)] px-3.5 py-2.5 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]";
 
 function DetailRow({ label, value }: { label: string; value: string }) {
   return (

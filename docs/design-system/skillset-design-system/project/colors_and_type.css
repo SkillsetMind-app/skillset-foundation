@@ -52,15 +52,15 @@
   --shadow-button-strong:  0 14px 28px rgba(15, 39, 68, 0.28);
   --shadow-avatar:         0 8px 18px rgba(26, 54, 93, 0.14);
 
-  /* ---------- RADII (moderate, never pill) ---------- */
-  --radius-xs:  6px;   /* badges, micro-pills */
-  --radius-sm:  8px;   /* buttons, chips, inputs (small) */
-  --radius-md: 10px;   /* inputs, dropdowns */
-  --radius-lg: 12px;   /* cards (compact), dropdown panels */
-  --radius-xl: 14px;   /* dashboard panels, header card */
-  --radius-2xl: 16px;  /* feature panels */
-  --radius-3xl: 18px;  /* hero cards, course cards */
-  --radius-4xl: 22px;  /* full-bleed CTA banners */
+  /* ---------- RADII (slightly rounded; mirrors @theme in src/app/globals.css) ---------- */
+  --radius-sm:  4px;   /* verified seal, tiny marks, tab inside a segmented control */
+  --radius-chip: 6px;  /* chips and badges */
+  --radius-md:  8px;   /* buttons, inputs, selects, textareas, icon buttons */
+  --radius-lg: 12px;   /* cards, panels, dropdowns */
+  --radius-xl: 16px;   /* dialogs and sheets */
+  --radius-2xl: 16px;  /* capped at 16px */
+  --radius-3xl: 16px;  /* capped at 16px */
+  --radius-4xl: 16px;  /* capped at 16px */
 
   /* ---------- SPACING SCALE (4-px base) ---------- */
   --space-1:  4px;

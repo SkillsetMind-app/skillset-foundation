@@ -115,7 +115,7 @@ export function CourseMessagesPanel({
             return (
               <li
                 key={message.id}
-                className={`max-w-[85%] rounded-none px-4 py-3 ${
+                className={`max-w-[85%] rounded-lg px-4 py-3 ${
                   isMine
                     ? "justify-self-end bg-[rgba(44,82,130,0.08)]"
                     : "justify-self-start border fine-rule bg-white"
@@ -142,18 +142,18 @@ export function CourseMessagesPanel({
           maxLength={COURSE_MESSAGE_MAX_CHARS}
           rows={3}
           aria-label={t("learn.classroom.messages.bodyLabel")}
-          className="min-h-20 rounded-none border border-[var(--color-line)] bg-white px-4 py-3 text-sm leading-6 text-[var(--color-ink)] outline-none transition focus:border-[var(--color-primary)]"
+          className="min-h-20 rounded-md border border-[var(--color-line)] bg-white px-4 py-3 text-sm leading-6 text-[var(--color-ink)] outline-none transition focus:border-[var(--color-primary)]"
           placeholder={t("learn.classroom.messages.placeholder")}
         />
 
         {!canSend ? (
-          <p className="rounded-none bg-white px-3 py-2 text-xs font-semibold leading-5 text-[var(--color-ink-soft)]">
+          <p className="rounded-md bg-white px-3 py-2 text-xs font-semibold leading-5 text-[var(--color-ink-soft)]">
             {t(previewMode ? "learn.classroom.messages.preview" : "learn.classroom.messages.signIn")}
           </p>
         ) : null}
 
         {notice ? (
-          <p className="rounded-none bg-white px-3 py-2 text-xs font-semibold leading-5 text-[var(--color-primary)]">
+          <p className="rounded-md bg-white px-3 py-2 text-xs font-semibold leading-5 text-[var(--color-primary)]">
             {t(notice)}
           </p>
         ) : null}

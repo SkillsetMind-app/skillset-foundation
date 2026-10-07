@@ -14,6 +14,7 @@ import {
   fetchPublishedCoursesForRows,
   isInternalSmokeCourse,
   rowToTeacherCourse,
+  subscribeToPublishedTeacherCourses,
   subscribeToViewableTeacherCourse,
   teacherCourseToLearningCourse,
 } from "@/lib/data/published-courses";
@@ -79,6 +80,42 @@ function stubClient({ idMatches }: { idMatches: boolean }) {
   supabaseMocks.getSupabaseBrowserClient.mockReturnValue(client);
   return { queriedColumns, channelFilters };
 }
+
+describe("subscribeToPublishedTeacherCourses", () => {
+  // O Realtime é "private only": visitante sem login era recusado ~575 vezes por
+  // dia neste canal. Ele fica só com a carga do catálogo.
+  function catalogClient(session: object | null) {
+    const channels: string[] = [];
+    const client = {
+      from: () => ({ select: () => ({ eq: () => ({ limit: async () => ({ data: [courseRow], error: null }) }) }) }),
+      auth: { getSession: async () => ({ data: { session } }) },
+      channel: (name: string) => {
+        channels.push(name);
+        return { on: () => ({ subscribe: () => ({}) }) };
+      },
+      removeChannel: vi.fn(),
+    };
+    supabaseMocks.getSupabaseBrowserClient.mockReturnValue(client);
+    return { channels, client };
+  }
+
+  it("visitante sem login recebe o catálogo e não abre canal", async () => {
+    const { channels } = catalogClient(null);
+    const received = vi.fn();
+    subscribeToPublishedTeacherCourses(received, vi.fn());
+    await vi.waitFor(() => expect(received).toHaveBeenCalledOnce());
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(channels).toEqual([]);
+  });
+
+  it("com sessão abre o canal e fecha ao sair", async () => {
+    const { channels, client } = catalogClient({ user: { id: "u1" } });
+    const unsubscribe = subscribeToPublishedTeacherCourses(vi.fn(), vi.fn());
+    await vi.waitFor(() => expect(channels).toEqual(["courses:published"]));
+    unsubscribe();
+    expect(client.removeChannel).toHaveBeenCalledOnce();
+  });
+});
 
 describe("courseUrlSlug", () => {
   it("prefers the title_key slug and falls back to the id", () => {

@@ -89,7 +89,7 @@ export function CourseShareLink({
   ];
 
   return (
-    <div className="mt-4 min-w-0 rounded-none border fine-rule bg-white px-4 py-3">
+    <div className="mt-4 min-w-0 rounded-md border fine-rule bg-white px-4 py-3">
       <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-ink-muted)]">{label}</p>
       <p className="mt-1 break-all font-mono text-sm text-[var(--color-ink)]">{url}</p>
       {/* `relative` on the row, not on the Share button: the menu then hangs
@@ -116,7 +116,7 @@ export function CourseShareLink({
           <div
             role="menu"
             aria-label={forLabel("creatorPanel.shareLink.menuAria")}
-            className="absolute left-0 top-[calc(100%+8px)] z-40 w-48 rounded-none border border-[var(--color-line)] bg-white p-1.5 shadow-[var(--shadow-strong)]"
+            className="absolute left-0 top-[calc(100%+8px)] z-40 w-48 rounded-lg border border-[var(--color-line)] bg-white p-1.5 shadow-[var(--shadow-strong)]"
           >
             {targets.map(({ key, href }) => (
               <a
@@ -126,7 +126,7 @@ export function CourseShareLink({
                 target={href.startsWith("mailto:") ? undefined : "_blank"}
                 rel="noopener noreferrer"
                 onClick={() => setOpen(false)}
-                className="flex min-h-11 items-center rounded-none px-3 text-sm font-semibold text-[var(--color-ink)] hover:bg-[var(--color-surface-soft)]"
+                className="flex min-h-11 items-center rounded-md px-3 text-sm font-semibold text-[var(--color-ink)] hover:bg-[var(--color-surface-soft)]"
               >
                 {t(`creatorPanel.shareLink.${key}`)}
               </a>
