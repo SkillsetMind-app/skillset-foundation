@@ -154,9 +154,10 @@ describe("platform shells", () => {
 
     // As filas e seus contadores ficam na navegação principal, sem duas barras.
     const queues = screen.getByRole("navigation", { name: "Workspace" });
-    expect(queues).toHaveTextContent(/Creator verification\s*3/);
-    expect(queues).toHaveTextContent(/Support tickets\s*2/);
-    expect(queues).toHaveTextContent(/Community reports\s*1/);
+    // Rótulo com a contagem exata (lida pelo leitor de tela e mostrada na dica), depois o selo.
+    expect(queues).toHaveTextContent(/Creator verification, 3 pending\s*3/);
+    expect(queues).toHaveTextContent(/Support tickets, 2 pending\s*2/);
+    expect(queues).toHaveTextContent(/Community reports, 1 pending\s*1/);
 
     // "Access levels" deixou de ser um bloco solto no fim da página: é a
     // oitava fila, com endereço próprio (?tab=access).
