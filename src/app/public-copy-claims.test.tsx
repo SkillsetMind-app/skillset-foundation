@@ -110,7 +110,7 @@ describe("plan copy states only rules the product applies", () => {
   // No Free plan is on offer. Only the changelog, which records history, may
   // still name it.
   it.each(dictionaries)("the %s dictionary never offers a Free plan outside the changelog", (_locale, dict) => {
-    const { promiseChangelog: _history, ...rest } = dict as Record<string, unknown>;
+    const rest = Object.entries(dict).filter(([section]) => section !== "promiseChangelog");
     expect(JSON.stringify(rest)).not.toMatch(/Free plan|plan Free|Free included|incluido Free|costs nothing per month|sin costo mensual|on Free\b|en Free\b/);
   });
 
