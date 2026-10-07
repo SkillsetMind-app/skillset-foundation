@@ -4493,6 +4493,7 @@
     "cancelling": "Cancelando…",
     "cancelConfirmTrial": "¿Cancelar tu plan? Tu prueba gratis sigue hasta el {date} y no se te cobrará.",
     "cancelConfirm": "¿Cancelar tu plan? Sigue activo hasta el {date} y no se renovará.",
+    "cancelConfirmNow": "¿Cancelar tu plan ahora? La factura pendiente no se volverá a cobrar y el plan termina de inmediato.",
     "cancelError": "No pudimos cancelar el plan. Inténtalo de nuevo o usa Gestionar suscripción.",
     "publicNote": "Todos los planes empiezan con una prueba gratis de 14 días, una por cuenta. Se pide tarjeta; cancela cuando quieras en Facturación antes de que termine la prueba y no se te cobrará."
   },

@@ -256,9 +256,13 @@ export function hasRealStripePriceIds(plan: Plan): boolean {
   );
 }
 
-/** Are the plans on offer configured with real Stripe Price IDs? */
+export function hasRealPortalConfigurationId(id: string): boolean {
+  return !id.includes("PLACEHOLDER");
+}
+
+/** Real Stripe Price IDs and a real portal configuration, or "Manage" is a dead button. */
 export function isBillingConfigured(): boolean {
-  return publicPlans.every(hasRealStripePriceIds);
+  return publicPlans.every(hasRealStripePriceIds) && hasRealPortalConfigurationId(STRIPE_PORTAL_CONFIGURATION_ID);
 }
 
 /** Plan and cycle of a Price. Undefined for unknown Prices. */

@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import {
   formatPlanCommission,
+  hasRealPortalConfigurationId,
+  isBillingConfigured,
   isPlanEntitledStatus,
   isPublicPlanId,
   planAndCycleByStripePriceId,
@@ -60,5 +62,16 @@ describe("the 2026-10 price table", () => {
     for (const status of ["past_due", "unpaid", "canceled", "incomplete", null]) {
       expect(isPlanEntitledStatus(status)).toBe(false);
     }
+  });
+});
+
+describe("the billing portal gate", () => {
+  it("rejects a placeholder portal configuration id and accepts a real one", () => {
+    expect(hasRealPortalConfigurationId("bpc_PLACEHOLDER_basic_starter_pro")).toBe(false);
+    expect(hasRealPortalConfigurationId("bpc_1Qabc123")).toBe(true);
+  });
+
+  it("is not configured while the portal id in the repo is still the placeholder", () => {
+    expect(isBillingConfigured()).toBe(false);
   });
 });

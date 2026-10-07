@@ -13,7 +13,7 @@ type FakePrice = { id: string; active: boolean; currency: string; unit_amount: n
 function fakeStripe({ byKey = [], onProduct = [], endpoints = [] }: {
   byKey?: FakePrice[];
   onProduct?: FakePrice[];
-  endpoints?: Array<{ id: string; url: string; enabled_events: string[] }>;
+  endpoints?: Array<{ id: string; url: string; connect?: boolean; enabled_events: string[] }>;
 } = {}) {
   return {
     prices: {
@@ -84,6 +84,13 @@ describe("scripts/setup-stripe-billing.mjs", () => {
     const result = await checkWebhook(stripe, "https://www.skillsetmind.com/api/webhooks/stripe");
     expect(result).toEqual({ id: "we_new", created: true, missing: [] });
     expect(JSON.stringify(result)).not.toContain("whsec_");
+  });
+
+  it("ignores a Connect endpoint on the same URL and creates the platform one", async () => {
+    const url = "https://www.skillsetmind.com/api/webhooks/stripe";
+    const stripe = fakeStripe({ endpoints: [{ id: "we_connect", url, connect: true, enabled_events: ["*"] }] });
+    const result = await checkWebhook(stripe, url);
+    expect(result).toEqual({ id: "we_new", created: true, missing: [] });
   });
 
   it("reports the events an existing endpoint lacks, without changing it", async () => {

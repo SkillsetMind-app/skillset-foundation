@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { buildCourseSubscriptionSaleRecords } from "@/lib/payments/course-subscription-sale";
+import { platformFeeForSale } from "@/lib/payments/rules";
 
 const invoice = {
   invoiceId: "in_renewal_123",
@@ -101,8 +102,17 @@ describe("buildCourseSubscriptionSaleRecords", () => {
     expect(Math.floor((1900 * order.platform_fee_bps!) / 10000) + order.platform_fee_fixed_minor!).toBe(123);
   });
 
-  it("never stores a negative fixed part", () => {
-    const { order } = buildCourseSubscriptionSaleRecords({ ...invoice, platformFeeMinor: 0 });
-    expect(order.platform_fee_fixed_minor).toBe(0);
+  // Basic → Pro upgrade: the subscription keeps the frozen 11.58% (Basic's
+  // 1.9% + $0.30 on $19), but the renewal is charged 2.9% + $0.30 = $0.85.
+  it("keeps a negative fixed part so a renewal after an upgrade still reads the exact fee", () => {
+    const { order } = buildCourseSubscriptionSaleRecords({
+      ...invoice,
+      grossAmountMinor: 1900,
+      currency: "USD",
+      platformFeeBps: 1158,
+      platformFeeMinor: 85,
+    });
+    expect(order.platform_fee_fixed_minor).toBeLessThan(0);
+    expect(platformFeeForSale(1900, order.platform_fee_bps!, order.platform_fee_fixed_minor!)).toBe(85);
   });
 });

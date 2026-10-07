@@ -4493,6 +4493,7 @@
     "cancelling": "Cancelling…",
     "cancelConfirmTrial": "Cancel your plan? Your free trial runs until {date} and you won't be charged.",
     "cancelConfirm": "Cancel your plan? It stays active until {date} and won't renew.",
+    "cancelConfirmNow": "Cancel your plan now? The unpaid invoice won't be retried and the plan ends immediately.",
     "cancelError": "We couldn't cancel the plan. Try again, or use Manage subscription.",
     "publicNote": "Every plan starts with a 14-day free trial, one per account. A card is required; cancel anytime in Billing before the trial ends and you won't be charged."
   },

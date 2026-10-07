@@ -125,9 +125,13 @@ export function PlansPanel() {
 
   async function handleCancel() {
     if (!subscription) return;
-    const prompt = subscription.trialEnd
-      ? t("planTrial.cancelConfirmTrial").replace("{date}", () => formatDate(subscription.trialEnd))
-      : t("planTrial.cancelConfirm").replace("{date}", () => formatDate(subscription.currentPeriodEnd));
+    // past_due/unpaid are cancelled at once by the route, not at period end.
+    const prompt =
+      subscription.status === "past_due" || subscription.status === "unpaid"
+        ? t("planTrial.cancelConfirmNow")
+        : subscription.trialEnd
+          ? t("planTrial.cancelConfirmTrial").replace("{date}", () => formatDate(subscription.trialEnd))
+          : t("planTrial.cancelConfirm").replace("{date}", () => formatDate(subscription.currentPeriodEnd));
     if (!window.confirm(prompt)) return;
     setError(null);
     setBusyAction("cancel");

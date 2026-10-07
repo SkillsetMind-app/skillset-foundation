@@ -126,7 +126,7 @@ export async function upsertPrice(stripe, plan, product, cycle) {
  */
 export async function checkWebhook(stripe, url) {
   for await (const endpoint of stripe.webhookEndpoints.list({ limit: 100 })) {
-    if (endpoint.url !== url) continue;
+    if (endpoint.url !== url || endpoint.connect === true) continue;
     const all = endpoint.enabled_events.includes("*");
     const missing = all ? [] : WEBHOOK_EVENTS.filter((event) => !endpoint.enabled_events.includes(event));
     return { id: endpoint.id, created: false, missing };

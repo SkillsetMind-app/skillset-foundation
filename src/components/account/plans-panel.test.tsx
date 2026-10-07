@@ -155,6 +155,31 @@ describe("PlansPanel com os 2 planos e o teste gratis", () => {
     expect(screen.queryByRole("button", { name: "Cancel plan" })).not.toBeInTheDocument();
   });
 
+  it.each([
+    ["past_due", "Cancel your plan now? The unpaid invoice won't be retried and the plan ends immediately."],
+    ["unpaid", "Cancel your plan now? The unpaid invoice won't be retried and the plan ends immediately."],
+    ["active", "Cancel your plan? It stays active until November 3, 2026 and won't renew."],
+  ])("o Cancel plan de uma assinatura %s mostra o aviso certo", async (status, prompt) => {
+    state.planId = "pro";
+    state.billing = {
+      trialEligible: false,
+      subscription: {
+        planId: "pro",
+        cycle: "monthly",
+        status,
+        trialEnd: null,
+        currentPeriodEnd: "2026-11-03T12:00:00.000Z",
+        cancelAtPeriodEnd: false,
+      },
+    };
+    state.cancel.mockResolvedValue({ ...(state.billing.subscription as object), cancelAtPeriodEnd: true });
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    render(<PlansPanel />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Cancel plan" }));
+    expect(confirm).toHaveBeenLastCalledWith(prompt);
+  });
+
   it("um assinante Enterprise (ex-Plus) ve o proprio plano, sem cartao Enterprise a venda", () => {
     state.planId = "plus";
     render(<PlansPanel />);
