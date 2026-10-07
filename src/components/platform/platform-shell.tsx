@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { useState, type ReactNode } from "react";
+import { useId, useState, type ReactNode, type SyntheticEvent } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { MobileSidebarDrawer } from "@/components/platform/mobile-sidebar-drawer";
@@ -49,7 +49,8 @@ export function PlatformShell({
   children,
 }: PlatformShellProps) {
   const { user } = useAuth();
-  const { isRail, isCollapsed, persistentState, toggle } = useSidebarState();
+  const { isRail, isCollapsed, isAuto, toggle } = useSidebarState();
+  const navId = useId();
   const pathname = usePathname() ?? "";
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [mobileNavSection, setMobileNavSection] = useState<string>();
@@ -67,20 +68,28 @@ export function PlatformShell({
         <div className="platform-shell-body">
           <div className="platform-shell-inner w-full">
             <div
-              className={`platform-grid ${
-                isCollapsed ? "platform-grid--collapsed" : ""
-              }`}
+              className={[
+                "platform-grid",
+                isCollapsed ? "platform-grid--collapsed" : "",
+                // Sem escolha salva, a largura do 1º quadro vem do CSS.
+                isAuto ? "platform-grid--auto" : "",
+              ].join(" ")}
             >
               <aside
                 className={`platform-sidebar platform-sidebar-panel ${
                   isCollapsed ? "sidebar-collapsed" : "sidebar-expanded"
                 }`}
+                onMouseOver={placeSidebarTip}
+                onFocus={placeSidebarTip}
               >
                 <SidebarBrand
                   collapsed={isCollapsed}
                   href={getWorkspaceHomeHref(pathname, user)}
-                />
+                >
+                  <SidebarToggle collapsed={isCollapsed} controls={navId} onToggle={toggle} />
+                </SidebarBrand>
                 <PlatformNav
+                  id={navId}
                   collapsed={isCollapsed}
                   currentNavigationHref={currentNavigationHref}
                   navigationCounts={navigationCounts}
@@ -92,14 +101,6 @@ export function PlatformShell({
                       toggle();
                     }
                   }}
-                />
-                {/* Último item da barra, dentro dela (mt-auto). O círculo
-                    flutuante na borda ficava em cima da linha que separa barra
-                    e conteúdo, como um elemento perdido. */}
-                <SidebarToggle
-                  state={persistentState}
-                  isCollapsed={isCollapsed}
-                  onToggle={toggle}
                 />
               </aside>
 
@@ -165,29 +166,39 @@ export function PlatformShell({
   );
 }
 
-function SidebarBrand({ collapsed, href }: { collapsed: boolean; href: string }) {
-  if (collapsed) {
-    return (
-      <div className="platform-sidebar-brand">
+// A dica do rail recolhido (o nome do item) é `position: fixed`: a lista rola e
+// cortaria uma dica absoluta. O item diz onde ela fica, no hover e no foco; o
+// CSS só a mostra depois disto (seletor `[style]`). Uma medida por hover.
+function placeSidebarTip(event: SyntheticEvent) {
+  const item = (event.target as Element).closest?.(".platform-nav-link");
+  if (!(item instanceof HTMLElement)) return;
+  const box = item.getBoundingClientRect();
+  item.style.setProperty("--tip-x", `${Math.round(box.right + 16)}px`);
+  item.style.setProperty("--tip-y", `${Math.round(box.top + box.height / 2)}px`);
+}
+
+// O ☰ e a marca. Recolhida, só o ☰: o rail da Hotmart, e a linha tem a mesma
+// altura nos dois estados (os ícones abaixo não pulam ao recolher).
+function SidebarBrand({
+  collapsed,
+  href,
+  children,
+}: {
+  collapsed: boolean;
+  href: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="platform-sidebar-brand">
+      {children}
+      {collapsed ? null : (
         <LogoWordmark
           href={href}
           nav
-          variant="mark"
           tone="dark"
-          className="platform-sidebar-brand__mark"
+          className="platform-sidebar-brand__lockup-link"
         />
-      </div>
-    );
-  }
-
-  return (
-    <div className="platform-sidebar-brand">
-      <LogoWordmark
-        href={href}
-        nav
-        tone="dark"
-        className="platform-sidebar-brand__lockup-link"
-      />
+      )}
     </div>
   );
 }

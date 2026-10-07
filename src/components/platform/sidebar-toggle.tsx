@@ -1,52 +1,51 @@
 "use client";
 
-import { ChevronsLeft, ChevronsRight } from "lucide-react";
-
 import { useTranslation } from "@/components/i18n/i18n-provider";
-import type { SidebarState } from "@/lib/ui/sidebar-state";
 
 type SidebarToggleProps = {
-  state: SidebarState;
-  isCollapsed: boolean;
+  collapsed: boolean;
+  /** id da lista de navegação que o botão abre e fecha. */
+  controls: string;
   onToggle: () => void;
 };
 
-// O último item da barra, dentro dela, com o mesmo desenho dos outros ícones.
+// O ☰ do topo da barra, à esquerda da marca (como na Hotmart). Recolhida, ele
+// fica no mesmo lugar: o botão não foge do cursor entre um clique e outro.
 //
-// POR QUE ISTO EXISTE
-//
-// Antes era um círculo flutuante pregado na borda direita da barra (right:
-// -1.1rem, z-index 65 para vencer a barra do topo), sentado em cima da linha
-// que separa barra e conteúdo — lia como um elemento perdido, e no modo
-// recolhido precisava de uma regra só para não cobrir a marca. Como item da
-// barra ele tem endereço óbvio, alvo de 44px e o mesmo hover dos vizinhos.
-export function SidebarToggle({
-  isCollapsed,
-  onToggle,
-  state,
-}: SidebarToggleProps) {
+// O ícone é desenhado aqui, e não o Menu do lucide, porque as três barras
+// precisam de classe própria para virar seta (globals.css, ".platform-menu-icon"):
+// aberta, a barra mostra a seta "recolher"; recolhida, o ☰.
+export function SidebarToggle({ collapsed, controls, onToggle }: SidebarToggleProps) {
   const { t } = useTranslation();
-  const Icon = state === "collapsed" ? ChevronsRight : ChevronsLeft;
-  const label =
-    state === "collapsed"
-      ? t("platform.expandSidebar")
-      : t("platform.collapseSidebar");
+  const label = collapsed ? t("platform.expandSidebar") : t("platform.collapseSidebar");
 
   return (
     <button
       type="button"
       onClick={onToggle}
+      aria-expanded={!collapsed}
+      aria-controls={controls}
       aria-label={label}
-      title={label}
-      className={[
-        "platform-nav-link platform-sidebar-toggle group relative mt-auto flex h-11 min-h-11 w-full shrink-0 items-center gap-2.5 rounded-md border border-transparent px-2.5 py-1.5 text-sm font-semibold text-[var(--color-ink-soft)] transition-colors hover:bg-[var(--color-surface-strong)] hover:text-[var(--color-ink)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-white",
-        isCollapsed ? "justify-center px-0" : "",
-      ].join(" ")}
+      className="platform-nav-link platform-sidebar-toggle relative flex size-11 shrink-0 items-center justify-center rounded-md border border-transparent text-[var(--color-ink-soft)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-white"
     >
-      <span className="platform-nav-icon-chip">
-        <Icon aria-hidden="true" size={18} strokeWidth={2} className="shrink-0" />
-      </span>
-      <span className="platform-sidebar-label min-w-0 truncate">{label}</span>
+      <svg
+        aria-hidden="true"
+        className="platform-menu-icon shrink-0"
+        width="18"
+        height="18"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        // 1,5px na tela, como os ícones do lucide a 18px: o traço não escala
+        // (vector-effect no CSS), senão as barras afinariam ao virar seta.
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      >
+        <path d="M4 6h16" />
+        <path d="M4 12h16" />
+        <path d="M4 18h16" />
+      </svg>
+      <span className="platform-sidebar-label">{label}</span>
     </button>
   );
 }

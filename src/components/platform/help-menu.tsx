@@ -216,7 +216,6 @@ export function HelpMenu({
         aria-controls={open ? panelId : undefined}
         aria-haspopup="dialog"
         aria-label={label}
-        title={collapsed ? label : undefined}
         className={`${triggerClass[variant]}${collapsed ? " justify-center px-0" : ""}`}
         onClick={() => {
           focusOnOpen.current = !open;

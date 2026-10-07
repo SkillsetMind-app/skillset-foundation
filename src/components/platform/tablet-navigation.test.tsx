@@ -55,15 +55,21 @@ function openGroup(section: "Sales" | "Promote") {
   return trigger;
 }
 
+// A escolha da barra mora no cookie que o servidor le (onda E, parte 2).
+function savePreference(preference: string) {
+  document.cookie = `skillset_sidebar=${preference}; path=/`;
+}
+
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
-  localStorage.clear();
+  document.cookie = "skillset_sidebar=; max-age=0; path=/";
   mocks.pathname = "/teach";
 });
 
-it.each([768, 1023, 1023.5])("opens both requested groups with labels and working destinations at %s px", (width) => {
+// 1024-1179px: o rail passou a ser o padrao tambem ai, e o grupo abre a gaveta.
+it.each([768, 1023, 1023.5, 1100, 1179])("opens both requested groups with labels and working destinations at %s px", (width) => {
   viewport(width);
   render(<PlatformShell title="Home">Content</PlatformShell>);
   const groups = {
@@ -90,7 +96,7 @@ it.each([768, 1023, 1023.5])("opens both requested groups with labels and workin
     fireEvent.keyDown(document, { key: "Escape" });
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(trigger).toHaveFocus();
-    expect(localStorage.getItem("skillset_sidebar_state")).toBeNull();
+    expect(document.cookie).not.toContain("skillset_sidebar");
   }
 });
 
@@ -172,34 +178,33 @@ it.each([767, 768])("returns focus to visible navigation after crossing the phon
 });
 
 it.each(["expanded", "collapsed"])("closes at desktop, releases Tab and preserves the saved %s preference", async (preference) => {
-  const resize = viewport(1024);
-  localStorage.setItem("skillset_sidebar_state", preference);
-  const writes = vi.spyOn(Storage.prototype, "setItem");
+  const resize = viewport(1180);
+  savePreference(preference);
+  const saved = document.cookie;
   const { container } = render(<PlatformShell title="Home"><button>Page action</button></PlatformShell>);
   const sidebar = container.querySelector(".platform-sidebar");
   await waitFor(() => expect(sidebar).toHaveClass(`sidebar-${preference}`));
   resize(768);
   expect(sidebar).toHaveClass("sidebar-collapsed");
   const trigger = openGroup("Promote");
-  resize(1023);
+  resize(1179);
   expect(screen.getByRole("dialog")).toBeInTheDocument();
-  resize(1024);
+  resize(1180);
   expect(screen.queryByRole("dialog")).toBeNull();
   expect(sidebar).toHaveClass(`sidebar-${preference}`);
   expect(trigger).toHaveFocus();
-  expect(localStorage.getItem("skillset_sidebar_state")).toBe(preference);
-  expect(writes).not.toHaveBeenCalled();
+  expect(document.cookie).toBe(saved);
 
   const outside = screen.getByRole("button", { name: "Page action" });
   outside.focus();
   expect(fireEvent.keyDown(outside, { key: "Tab" })).toBe(true);
-  resize(1023);
+  resize(1179);
   expect(screen.queryByRole("dialog")).toBeNull();
 });
 
 it("still expands a collapsed desktop sidebar when a group is requested", async () => {
-  viewport(1024);
-  localStorage.setItem("skillset_sidebar_state", "collapsed");
+  viewport(1180);
+  savePreference("collapsed");
   const { container } = render(<PlatformShell title="Home">Content</PlatformShell>);
   await waitFor(() => expect(container.querySelector(".platform-sidebar")).toHaveClass("sidebar-collapsed"));
   openGroup("Promote");
@@ -207,12 +212,12 @@ it("still expands a collapsed desktop sidebar when a group is requested", async 
   expect(container.querySelector(".platform-sidebar")).toHaveClass("sidebar-expanded");
   expect(screen.getByRole("button", { name: "Promote" })).toHaveAttribute("aria-expanded", "true");
   expect(screen.getByRole("link", { name: "Media library" })).toHaveAttribute("href", "/teach/media");
-  expect(localStorage.getItem("skillset_sidebar_state")).toBe("expanded");
+  expect(document.cookie).toContain("skillset_sidebar=expanded");
 });
 
 it("closes when resizing directly from phone to desktop without crossing the rail state", async () => {
   const resize = viewport(390);
-  localStorage.setItem("skillset_sidebar_state", "collapsed");
+  savePreference("collapsed");
   const { container } = render(<PlatformShell title="Home">Content</PlatformShell>);
   await waitFor(() => expect(container.querySelector(".platform-sidebar")).toHaveClass("sidebar-collapsed"));
   const trigger = screen.getByRole("button", { name: "Open more navigation" });
@@ -222,7 +227,7 @@ it("closes when resizing directly from phone to desktop without crossing the rai
 
   // The rail query is false on BOTH ends: no parent render can substitute
   // for the drawer's own breakpoint listener.
-  resize(1024);
+  resize(1180);
   expect(screen.queryByRole("dialog")).toBeNull();
   expect(document.activeElement?.getClientRects()).toHaveLength(1);
 });

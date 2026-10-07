@@ -46,14 +46,18 @@ describe("barra lateral recolhida", () => {
     mocks.roles = ["admin"];
   });
 
-  it("da nome a cada icone recolhido (title) e nao mostra dica quando expandida", () => {
+  // Onda E: o nome do icone recolhido e o proprio rotulo, que o CSS mostra de
+  // dica no hover e no foco. O title nativo (so mouse, depois de 1s) saiu: com
+  // os dois, a dica aparecia dobrada.
+  it("da nome a cada icone recolhido (o rotulo no DOM) e nenhum title, recolhida ou nao", () => {
     const { unmount } = render(<PlatformNav collapsed />);
 
     const collapsedLinks = screen.getAllByRole("link");
     expect(collapsedLinks.length).toBeGreaterThan(0);
     for (const link of collapsedLinks) {
-      expect(link).toHaveAttribute("title");
-      expect(link.getAttribute("title")).not.toBe("");
+      expect(link).not.toHaveAttribute("title");
+      expect(link.querySelector(".platform-sidebar-label")?.textContent).toBeTruthy();
+      expect(link).toHaveAccessibleName(/\S/);
     }
 
     unmount();
@@ -83,7 +87,7 @@ describe("barra lateral recolhida", () => {
 
     const students = screen.getByRole("link", { name: "students" });
     expect(students).toHaveAttribute("href", "/teach/students");
-    expect(students).toHaveAttribute("title", "students");
+    expect(students.querySelector(".platform-sidebar-label")).toHaveTextContent("students");
     expect(students).toHaveAttribute("aria-current", "page");
     expect(students.querySelector("svg.lucide-users")).toBeInTheDocument();
 
@@ -179,16 +183,16 @@ describe("rail recolhido: um quadrado por item, sem chip e sem corte", () => {
 describe("o botao de recolher/expandir", () => {
   it("e um item da barra (mesma classe dos links, alvo de 44px), nao um circulo na borda", () => {
     render(
-      <SidebarToggle state="collapsed" isCollapsed onToggle={() => {}} />,
+      <SidebarToggle collapsed controls="nav" onToggle={() => {}} />,
     );
 
     const button = screen.getByRole("button", { name: "expandSidebar" });
     expect(button.className).toMatch(/\bplatform-nav-link\b/);
     expect(button.className).toMatch(/\bplatform-sidebar-toggle\b/);
-    expect(button.className).toMatch(/\bmin-h-11\b/);
+    expect(button.className).toMatch(/\bsize-11\b/);
   });
 
-  it("fica por ultimo dentro da barra, e o CSS nao o pendura mais na borda", () => {
+  it("fica no topo da barra, antes da lista (onda E: o ☰ da Hotmart), e o CSS nao o pendura na borda", () => {
     const shell = readFileSync(
       path.join(process.cwd(), "src/components/platform/platform-shell.tsx"),
       "utf8",
@@ -198,9 +202,9 @@ describe("o botao de recolher/expandir", () => {
       "utf8",
     );
 
-    // Na ordem do JSX: PlatformNav vem antes de SidebarToggle.
-    expect(shell.indexOf("<PlatformNav")).toBeLessThan(
-      shell.indexOf("<SidebarToggle"),
+    // Na ordem do JSX: o ☰ vem antes da lista.
+    expect(shell.indexOf("<SidebarToggle")).toBeLessThan(
+      shell.indexOf("<PlatformNav"),
     );
     // As regras antigas selecionavam o botao pelo aria-label e o pregavam na
     // borda (position: absolute; right: -1.1rem). Sumiram.
