@@ -6,8 +6,9 @@ already cost us a real defect in production, not general advice.
 Applies to every agent working in this repo — Claude Code, Codex, anything else.
 
 Where things are: `README.md` (what this is, how to run it, how a change ships),
-`docs/ARQUITETURA.md` (map of the system) and `docs/README.md` (index of the
-rest). This repo is **public**: plans, session notes, business strategy,
+`docs/COMO-TRABALHAR.md` (onboarding: accesses, setup, flow, code conventions,
+migrations), `docs/ARQUITETURA.md` (map of the system) and `docs/README.md`
+(index of the rest). This repo is **public**: plans, session notes, business strategy,
 investor material and security findings do not belong in it.
 
 ---

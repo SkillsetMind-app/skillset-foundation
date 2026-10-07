@@ -1,5 +1,18 @@
 # Arquitetura da SkillsetMind
 
+## In English
+
+Map of the system; every path below is real and checked by `src/app/documentacao-caminhos.test.ts`.
+- **App:** Next.js on Vercel. Pages and server routes in `src/app` (API in `src/app/api`); `src/proxy.ts` runs before every request (custom domains, CSP, country filter).
+- **Layers:** UI pieces in `src/components`, external I/O in `src/lib`, pure business rules in `src/domain`, static content and EN/ES strings in `src/data`.
+- **Data:** Supabase Postgres with row-level security enforced in the database; schema history in `supabase/migrations`, smoke tests in `supabase/tests`; migrations are applied to production by hand.
+- **Payments:** Stripe Connect direct charges, so the teacher is the merchant of record and the platform fee is taken at charge time; webhook in `src/app/api/webhooks/stripe/route.ts`.
+- **Video:** Bunny Stream, with direct TUS uploads and signed, expiring playback links.
+- **Email and jobs:** Supabase Auth templates plus Resend; daily Vercel cron and hourly GitHub Actions jobs hit `src/app/api/cron`.
+- **Gates:** lint/typecheck/tests/build, RLS smoke tests, Semgrep, TruffleHog and npm audit are required on every PR; an AI reviewer (Porteiro) comments without blocking.
+
+---
+
 O mapa do sistema: onde fica cada parte e como elas conversam. Escrito para quem
 nunca programou e para quem acabou de chegar ao código. Todo caminho entre
 crases existe de verdade; o teste `src/app/documentacao-caminhos.test.ts` quebra
@@ -141,8 +154,9 @@ nas telas de entrada (`src/components/auth/turnstile-widget.tsx`) e limite de te
   `src/app/api/payments/connect`.
 - **Plano do professor** (assinatura mensal): `src/app/api/payments/billing`.
   Os planos e o que cada um libera estão em `src/data/plans.ts` e
-  `src/domain/entitlements.ts`. A ativação da vitrine passa por
-  `src/app/api/payments/activation`.
+  `src/domain/entitlements.ts`. A cobrança de ativação da vitrine
+  (`src/app/api/payments/activation`) só acontece quando a configuração
+  `require_activation_fee` está ligada no banco.
 - **Reembolsos:** `src/app/api/payments/refunds`. **Cancelar assinatura de curso:**
   `src/app/api/payments/course-subscription`.
 - **Taxas e regras de valor:** `src/lib/payments/rules.ts`.

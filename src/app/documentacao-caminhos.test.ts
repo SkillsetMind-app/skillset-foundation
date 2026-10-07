@@ -9,7 +9,12 @@ import { describe, expect, it } from "vitest";
  * atualizar o documento no mesmo PR, em vez de o mapa apodrecer em silêncio.
  */
 const RAIZ = process.cwd();
-const DOCUMENTOS = ["README.md", "docs/ARQUITETURA.md", "docs/README.md"];
+const DOCUMENTOS = [
+  "README.md",
+  "docs/ARQUITETURA.md",
+  "docs/README.md",
+  "docs/COMO-TRABALHAR.md",
+];
 const CAMINHO = /`((?:src|supabase|scripts|\.github|docs)\/[^`\s]*)`/g;
 
 describe("a documentação só cita caminhos que existem", () => {

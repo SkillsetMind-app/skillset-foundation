@@ -3,6 +3,10 @@
 O que existe em `docs/`, uma linha por item. Para começar, leia o `README.md` da
 raiz e depois `docs/ARQUITETURA.md`.
 
+## Para começar
+
+- `docs/COMO-TRABALHAR.md` — guia de entrada para um time novo: acessos, ambiente, fluxo de trabalho, convenções do código, migrations do banco, design system e o que não fazer.
+
 ## Como o sistema funciona
 
 - `docs/ARQUITETURA.md` — mapa do sistema: páginas, dados, banco, pagamentos, vídeo, e-mail, tarefas agendadas, traduções, testes e portões de segurança.
@@ -31,4 +35,5 @@ raiz e depois `docs/ARQUITETURA.md`.
 - Plano, relatório de sessão, estratégia de negócio, material de investidor e
   achado de segurança **não** entram neste repositório: ele é público.
 - O teste `src/app/documentacao-caminhos.test.ts` confere que todo caminho entre
-  crases neste índice, no `README.md` e em `docs/ARQUITETURA.md` existe.
+  crases neste índice, no `README.md`, em `docs/ARQUITETURA.md` e em
+  `docs/COMO-TRABALHAR.md` existe.

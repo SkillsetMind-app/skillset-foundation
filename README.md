@@ -1,5 +1,18 @@
 # SkillsetMind
 
+## In English
+
+SkillsetMind is an online course platform for psychologists and personal-development
+professionals: creators build and sell courses, learners buy and watch them on the same site.
+- **Four areas:** visitor (`src/app/courses`), student (`src/app/learn`), teacher (`src/app/teach`) and operations (`src/app/ops`).
+- **Stack:** Next.js on Vercel, Supabase (Postgres database and login), Stripe Connect with direct charges, Bunny Stream for video, GitHub Actions for checks.
+- **Run locally:** `npm ci`, copy `.env.example` to `.env.local` with test values, `npm run dev`.
+- **Shipping:** branch → pull request → review → 5 required checks → merge → Vercel deploys `main`. Database migrations are applied by hand, never by merging.
+- **Docs:** `docs/COMO-TRABALHAR.md` (onboarding), `docs/ARQUITETURA.md` (system map), `docs/README.md` (index). This file and the first two open with an English summary; the rest is in Portuguese.
+- This repository is public: no secrets, customer data or business strategy here.
+
+---
+
 A SkillsetMind é uma plataforma de cursos on-line para psicólogos e
 profissionais de desenvolvimento pessoal: quem ensina monta e vende os cursos,
 quem aprende compra e assiste, tudo no mesmo site (https://www.skillsetmind.com).
@@ -34,7 +47,7 @@ A conta de cada pessoa (perfil, segurança, planos, pagamentos) fica em
 Você precisa do Node.js (o programa que roda JavaScript fora do navegador) na
 versão do arquivo `.nvmrc`, e de acesso a um projeto Supabase de teste.
 
-1. Instale as dependências (as bibliotecas que o projeto usa): `npm install`
+1. Instale as dependências (as bibliotecas que o projeto usa), exatamente como o CI: `npm ci`
 2. Copie `.env.example` para `.env.local` e preencha os valores. O `.env.local`
    nunca vai para o git. Os nomes mais importantes:
    - banco e login: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`
@@ -84,11 +97,12 @@ sozinha. Veja "Banco de dados" em `docs/ARQUITETURA.md`.
 ## Onde está a documentação
 
 - `README.md` — este arquivo: o que é e como trabalhar.
+- `docs/COMO-TRABALHAR.md` — guia de entrada para um time novo de desenvolvimento: acessos, ambiente, fluxo, convenções, migrations e o que não fazer.
 - `docs/ARQUITETURA.md` — o mapa do sistema: onde fica cada parte e como elas se ligam.
 - `docs/README.md` — índice de tudo o que existe em `docs/`.
 - `AGENTS.md` — regras que já custaram defeito em produção; leitura obrigatória antes de mexer em tela.
 - `STRIPE_CHECKLIST.md` — passo a passo para configurar o Stripe.
 
 O teste `src/app/documentacao-caminhos.test.ts` confere que todo caminho citado
-entre crases neste README, em `docs/ARQUITETURA.md` e em `docs/README.md`
-existe de verdade. Se você mover um arquivo, atualize o documento junto.
+entre crases neste README, em `docs/ARQUITETURA.md`, em `docs/README.md` e em
+`docs/COMO-TRABALHAR.md` existe de verdade. Se você mover um arquivo, atualize o documento junto.
