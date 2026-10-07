@@ -291,11 +291,13 @@ describe("CreateCourseStart — corte 1 da criacao simples", () => {
     expect(within(rail).getAllByRole("listitem")).toHaveLength(4);
   });
 
-  it("o botao principal e o cheio grande com seta", () => {
+  // Criar o produto e um dos dois marcos: latao (nao o navy de toda acao).
+  it("o botao principal e o de latao grande com seta", () => {
     render(<CreateCourseStart ownerId="teacher-1" />);
 
     const submit = screen.getByRole("button", { name: /Create and set pricing/i });
-    expect(submit).toHaveClass("button-solid", "button-lg");
+    expect(submit).toHaveClass("button-accent", "button-lg");
+    expect(submit).not.toHaveClass("button-solid");
     expect(submit.querySelector("svg")).not.toBeNull();
   });
 });

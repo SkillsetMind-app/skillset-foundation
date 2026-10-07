@@ -1724,7 +1724,9 @@
     },
     "dashboard": {
       "welcomeBackNamed": "Hola de nuevo, {name}.",
-      "welcomeBack": "Hola de nuevo."
+      "welcomeBack": "Hola de nuevo.",
+      "welcomeNamed": "Te damos la bienvenida, {name}.",
+      "welcome": "Te damos la bienvenida."
     },
     "metrics": {
       "revenue30d": "Ingresos, 30 días",
@@ -1758,7 +1760,6 @@
       "courseMeta": "{lessons} lecciones - {orders} pedidos",
       "noCoursesTitle": "Aún no hay cursos.",
       "noCoursesDetail": "Tu primer curso aparecerá aquí cuando lo crees en el Creador de cursos.",
-      "activityEyebrow": "Actividad",
       "activityTitle": "Lo que necesita tu atención hoy.",
       "open": "Abrir",
       "actPayoutTitle": "Termina la configuración de Stripe",

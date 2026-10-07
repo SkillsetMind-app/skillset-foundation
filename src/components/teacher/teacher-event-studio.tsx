@@ -783,7 +783,7 @@ function TeacherEventRsvpSummary({ eventId }: { eventId: string }) {
           {t(`${copy}.rsvpLoading`)}
         </p>
       ) : error ? (
-        <p className="mt-2 text-sm font-semibold text-[var(--color-accent-fg)]">
+        <p className="mt-2 text-sm font-semibold text-[var(--color-danger-fg)]">
           {t(`${copy}.rsvpError`)}
         </p>
       ) : (

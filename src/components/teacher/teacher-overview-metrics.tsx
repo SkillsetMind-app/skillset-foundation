@@ -54,6 +54,14 @@ export function TeacherOverviewMetrics({
     (course) => course.status === "in_review",
   ).length;
   const paidOrders = orders.filter((order) => order.status === "paid");
+
+  // Antes da 1a venda os quatro quadros eram $0 / 0 / -- / --: so frase
+  // negativa na primeira visita. Mesmo criterio do grafico (insights):
+  // aparecem com o primeiro pedido pago.
+  if (paidOrders.length === 0) {
+    return null;
+  }
+
   const paidOrders30d = paidOrders.filter((order) => {
     const createdAt = getTimestampMillis(order.createdAt);
 
@@ -165,7 +173,7 @@ export function TeacherOverviewMetrics({
               className={`mt-2 inline-flex items-center gap-1 text-xs font-bold ${
                 card.delta.up
                   ? "text-[var(--color-success-fg)]"
-                  : "text-[var(--color-accent-fg)]"
+                  : "text-[var(--color-danger-fg)]"
               }`}
             >
               {card.delta.up ? (

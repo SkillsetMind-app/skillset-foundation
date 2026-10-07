@@ -431,7 +431,7 @@ describe("Home do professor: uma manchete, o que aconteceu e a vitrine", () => {
       expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
     });
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
-      "Welcome back, Patrick",
+      "Welcome, Patrick",
     );
     expect(screen.queryByText("Producer home")).toBeNull();
   });
@@ -474,10 +474,109 @@ describe("Home do professor: uma manchete, o que aconteceu e a vitrine", () => {
       render(<TeacherStudioDashboard />);
 
       expect(await screen.findByRole("heading", { level: 1 })).toHaveTextContent(
-        "Welcome back, Mc$&Donald.",
+        "Welcome, Mc$&Donald.",
       );
     } finally {
       mockUser.displayName = "Patrick Simon";
+    }
+  });
+});
+
+// --- Primeira visita: nada de "Welcome back" nem quadros de $0 ---------------
+
+describe("Home do professor: primeira visita", () => {
+  it("sem produto diz 'Welcome', nunca 'Welcome back'", async () => {
+    render(<TeacherStudioDashboard />);
+
+    const heading = await screen.findByRole("heading", { level: 1 });
+    expect(heading).toHaveTextContent("Welcome, Patrick.");
+    expect(heading).not.toHaveTextContent("Welcome back");
+  });
+
+  it("com um produto volta a dizer 'Welcome back'", async () => {
+    state.courses = [course({})];
+
+    render(<TeacherStudioDashboard />);
+
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
+        "Welcome back, Patrick.",
+      );
+    });
+  });
+
+  it("antes da 1a venda esconde os quadros de receita, alunos e nota", async () => {
+    state.courses = [course({ status: "published" })];
+    // Pedido que nao virou venda (nao pago) nao conta.
+    state.orders = [
+      {
+        id: "o1",
+        courseId: "c1",
+        courseTitle: "Breathwork Basics",
+        status: "pending",
+        amountMinor: 4900,
+        currency: "usd",
+        createdAt: new Date(),
+      },
+    ];
+
+    render(<TeacherStudioDashboard />);
+
+    await screen.findByRole("heading", { level: 1 });
+    expect(screen.queryByText("Revenue, 30d")).toBeNull();
+    expect(screen.queryByText("New students")).toBeNull();
+    expect(screen.queryByText("$0")).toBeNull();
+  });
+
+  it("com a 1a venda paga os quadros aparecem", async () => {
+    state.courses = [course({ status: "published" })];
+    state.orders = [
+      {
+        id: "o1",
+        courseId: "c1",
+        courseTitle: "Breathwork Basics",
+        status: "paid",
+        amountMinor: 4900,
+        currency: "usd",
+        createdAt: new Date(),
+      },
+    ];
+
+    render(<TeacherStudioDashboard />);
+
+    expect(await screen.findByText("Revenue, 30d")).toBeInTheDocument();
+    expect(screen.getByText("New students")).toBeInTheDocument();
+  });
+});
+
+// --- Status dos cartoes: cada um com a sua cor, nenhum em latao ---------------
+
+describe("Home do professor: status dos cartoes de produto", () => {
+  it("Published, Draft e Needs changes saem em StatusChip diferentes", async () => {
+    state.courses = [
+      course({ id: "c1", title: "No ar", status: "published" }),
+      course({ id: "c2", title: "Rascunho", status: "draft" }),
+      course({ id: "c3", title: "Com ajuste", status: "needs_changes" }),
+    ];
+
+    render(<TeacherStudioDashboard />);
+
+    const produtos = await screen.findByRole("region", {
+      name: "Products in your workspace",
+    });
+    const cardOf = (title: string) =>
+      within(produtos).getByRole("link", { name: new RegExp(title) });
+    const chipOf = (title: string) => cardOf(title).querySelector(".status-chip");
+
+    expect(chipOf("No ar")).toHaveClass("status-chip--success");
+    expect(chipOf("No ar")).toHaveTextContent("Published");
+    expect(chipOf("Rascunho")).toHaveClass("status-chip--draft");
+    expect(chipOf("Rascunho")).toHaveTextContent("Draft");
+    expect(chipOf("Com ajuste")).toHaveClass("status-chip--danger");
+    expect(chipOf("Com ajuste")).toHaveTextContent("Needs changes");
+    // O texto dourado de antes nao volta em nenhum cartao.
+    for (const title of ["No ar", "Rascunho", "Com ajuste"]) {
+      expect(cardOf(title).innerHTML).not.toContain("--color-accent-fg");
     }
   });
 });

@@ -75,8 +75,15 @@
   --shadow-soft: 0 1px 2px rgba(26, 54, 93, 0.08), 0 10px 24px rgba(26, 54, 93, 0.11);
   --shadow-strong: 0 18px 44px rgba(15, 39, 68, 0.14);
   /* Anel de foco unico. Antes cada tela pintava o seu (navy antigo
-     rgba(44,82,130,.24/.28/.35) inline) e o anel mudava de cor por tela. */
+     rgba(44,82,130,.24/.28/.35) inline) e o anel mudava de cor por tela.
+     Navy em superficie clara (14.6:1 no branco). Superficie navy troca para
+     latao no proprio seletor dela (6.67:1 no #091d2f); navy sobre navy dava
+     1.17:1, invisivel. */
   --focus-ring: var(--color-primary);
+  /* Borda de campo: a --color-line (navy 28%) dava 1.78:1 e o campo sumia no
+     cartao branco. #7c8a98 (= navy 55%) da 3.53:1 no branco e 3.43:1 no
+     surface-soft, acima dos 3:1 de componente. Cartoes seguem com a linha. */
+  --color-field-border: #7c8a98;
   --shadow-avatar: 0 8px 18px rgba(26, 54, 93, 0.14);
   /* Design V2 net-new tokens (additive — no existing value changed) */
   --color-on-primary: #ffffff;
@@ -155,6 +162,7 @@
   --color-primary-light: #cbd0d7;
   /* Sobre fundo escuro o navy some; o anel vira claro para manter contraste. */
   --focus-ring: var(--color-primary-light);
+  --color-field-border: var(--color-line-strong);
   --color-ink: #e8edf5;
   --color-ink-soft: #a4b3c8;
   /* Lifted from #6b7e9a → #8493ad: the old value failed WCAG AA on dark
@@ -413,12 +421,12 @@ a {
   text-decoration: none;
 }
 
-button,
-input,
-textarea,
-select {
-  font: inherit;
-}
+/* Botões e campos herdam a letra pelo preflight do Tailwind, que já faz
+   `font: inherit` DENTRO de `@layer base`. Aqui morava a mesma regra fora de
+   camada, e regra sem camada vence qualquer utility: todo <button> saía 16px
+   peso 400, ignorando text-sm/font-semibold e o peso de .button-*, e o
+   `font-normal` dos campos não valia: o texto digitado saía no negrito do
+   rótulo. */
 
 /* ─── Fundo branco fixo no tema escuro ────────────────────────────────────
    182 elementos combinam `bg-white` (fundo branco literal) com tinta por token
@@ -860,7 +868,8 @@ p {
 
 .status-chip--danger {
   background: var(--color-danger-soft);
-  color: var(--color-accent-fg);
+  /* Era --color-accent-fg (latão): erro pintado de conquista. 6.01:1 no tom. */
+  color: var(--color-danger-fg);
   border-color: rgba(178, 34, 52, 0.22);
 }
 
@@ -976,8 +985,10 @@ p {
     gap: 0.5rem;
     padding: 0.75rem 1.25rem;
     border-radius: var(--radius-md);
-    font-size: 0.84375rem;
-    font-weight: 700;
+    /* 14px/600 em <a> e <button> por igual. Antes o <a> saía 13.5px/700 e o
+       <button> 16px/400 (regra fora de camada, removida lá em cima). */
+    font-size: 0.875rem;
+    font-weight: 600;
     line-height: 1;
     text-decoration: none;
     transition:
@@ -995,16 +1006,9 @@ p {
   .button-lg {
     min-height: 48px;
     padding: 0.875rem 1.5rem;
+    font-size: 0.9375rem;
+    font-weight: 600;
   }
-}
-
-/* Fora da camada de propósito: a regra global `button { font: inherit }` não
-   tem camada e vence o font-weight 700 da camada `components`, então todo
-   <button class="button-solid"> saía com peso normal (só os <a> ficavam em
-   negrito). Aqui a classe ganha da regra de elemento. */
-.button-lg {
-  font-size: 0.9375rem;
-  font-weight: 800;
 }
 
 /* O contorno cinza do .button-outline sumia ao lado do botão cheio e o "Voltar"
@@ -1046,7 +1050,7 @@ p {
 .button-solid:focus-visible,
 .button-outline:focus-visible,
 .button-accent:focus-visible {
-  outline: 2px solid var(--color-primary);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 3px;
 }
 
@@ -2041,7 +2045,7 @@ p {
 .field-input {
   width: 100%;
   border-radius: var(--radius-md);
-  border: 1.5px solid var(--color-line-strong);
+  border: 1.5px solid var(--color-field-border);
   background: var(--color-surface-soft);
   padding: 0.7rem 0.95rem;
   font-size: 0.875rem;
@@ -2063,7 +2067,7 @@ p {
   outline: none;
   border-color: var(--color-primary);
   background: #ffffff;
-  box-shadow: 0 0 0 3px rgba(26, 54, 93, 0.14);
+  box-shadow: 0 0 0 2px var(--focus-ring);
 }
 
 /* Global focus fallback (WCAG 2.4.7). Many inputs/textareas across the app use
@@ -2073,26 +2077,23 @@ p {
    never box-shadow, so this reaches those fields with no specificity war and no
    31-file className sweep. `.field-input` sets its own ring at higher
    specificity, so it is unaffected. ponytail: box-shadow ring can be clipped by
-   an `overflow:hidden` ancestor — same known ceiling as `.field-input`. */
+   an `overflow:hidden` ancestor — same known ceiling as `.field-input`.
+   O anel era navy a 22% (≈1.5:1 no branco); agora é o --focus-ring sólido
+   (navy 14.6:1 no claro, claro no escuro, latão nas superfícies navy). */
 input:focus-visible,
 textarea:focus-visible,
 select:focus-visible {
-  box-shadow: 0 0 0 3px rgba(26, 54, 93, 0.22);
-}
-
-[data-theme="dark"] input:focus-visible,
-[data-theme="dark"] textarea:focus-visible,
-[data-theme="dark"] select:focus-visible {
-  box-shadow: 0 0 0 3px rgba(143, 180, 228, 0.28);
+  box-shadow: 0 0 0 2px var(--focus-ring);
 }
 
 .field-input[aria-invalid="true"] {
-  border-color: var(--color-accent-fg);
+  /* Erro em vermelho, nunca em latão (6.62:1 no branco). */
+  border-color: var(--color-danger-fg);
   background: rgba(178, 34, 52, 0.04);
 }
 
 .field-input[aria-invalid="true"]:focus {
-  box-shadow: 0 0 0 3px rgba(178, 34, 52, 0.16);
+  box-shadow: 0 0 0 2px var(--color-danger-fg);
 }
 
 [data-theme="dark"] .field-input {
@@ -2105,7 +2106,7 @@ select:focus-visible {
 [data-theme="dark"] .field-input:focus-visible {
   background: rgba(143, 180, 228, 0.1) !important;
   border-color: var(--color-primary-light);
-  box-shadow: 0 0 0 3px rgba(143, 180, 228, 0.2);
+  box-shadow: 0 0 0 2px var(--focus-ring);
 }
 
 .auth-split {
@@ -2539,8 +2540,9 @@ select:focus-visible {
 }
 
 .platform-sidebar-panel {
-  /* This rail stays navy in both themes. */
-  --focus-ring: #ffffff;
+  /* This rail stays navy in both themes: latão no navy (5.62:1 no tom mais
+     claro do degradê, 7.39:1 no mais escuro). */
+  --focus-ring: var(--color-accent);
   width: var(--platform-sidebar-width, var(--sidebar-width));
   display: flex;
   flex-direction: column;
@@ -2689,13 +2691,10 @@ select:focus-visible {
   gap: 0.5rem;
 }
 
-/* Os três botões com a mesma letra. Sem isto o link "Manage preferences" saía
-   14px/700 e os dois <button> ao lado 16px/400: a regra fora de camada
-   `button, input, textarea, select { font: inherit }` (perto do topo deste
-   arquivo) vence o `text-sm` e o peso de .button-* em TODO <button>.
-   ponytail: corrigido só aqui. Tirar `button` daquela regra conserta os ~100
-   botões do app de uma vez, mas mexe em telas logadas que pedem varredura
-   visual — fica para um PR próprio. */
+/* A barra de cookies usa uma letra um pouco menor que o botão padrão (13px,
+   com entrelinha para quebrar em duas linhas no celular). A regra fora de
+   camada que fazia todo <button> sair 16px/400 já saiu do topo do arquivo;
+   isto agora é só o tamanho compacto da barra. */
 .cookie-consent__actions .button-outline,
 .cookie-consent__actions .button-solid {
   font-size: 0.8125rem;
@@ -3238,8 +3237,10 @@ body:has([aria-label="Course categories"])
 }
 
 .create-course-screen__intro {
+  /* Coluna navy nos dois temas: o anel navy dava 1.17:1 aqui. */
+  --focus-ring: var(--color-accent);
   background: var(--color-primary-dark);
-  border-color: rgba(198, 161, 91, 0.36);
+  border-color: color-mix(in srgb, var(--color-accent) 36%, transparent);
   padding: 1.75rem;
   color: #ffffff;
 }
@@ -3305,8 +3306,8 @@ body:has([aria-label="Course categories"])
 }
 
 .create-course-step.is-current {
-  border-color: rgba(198, 161, 91, 0.58);
-  background: rgba(198, 161, 91, 0.1);
+  border-color: color-mix(in srgb, var(--color-accent) 58%, transparent);
+  background: color-mix(in srgb, var(--color-accent) 10%, transparent);
 }
 
 .create-course-step > span {
@@ -3357,14 +3358,20 @@ body:has([aria-label="Course categories"])
     transform 180ms ease;
 }
 
-.create-course-payment:hover,
-.create-course-payment.is-active {
-  border-color: var(--color-primary-light);
-  box-shadow: 0 8px 20px rgba(15, 39, 68, 0.08);
+/* Hover e escolhido eram a MESMA regra: passar o mouse num cartão o deixava
+   igual ao escolhido. Agora o hover só escurece a borda; o escolhido ganha
+   borda navy de 2px (a 2ª via sombra interna, sem pular o layout), fundo de
+   latão claro e o selo com check. */
+.create-course-payment:hover {
+  border-color: var(--color-field-border);
 }
 
 .create-course-payment.is-active {
-  background: var(--color-surface-soft);
+  border-color: var(--color-primary);
+  background: var(--color-accent-soft);
+  box-shadow:
+    inset 0 0 0 1px var(--color-primary),
+    0 8px 20px rgba(15, 39, 68, 0.08);
 }
 
 .create-course-payment > span {
@@ -3401,11 +3408,17 @@ body:has([aria-label="Course categories"])
   line-height: 1.5;
 }
 
+/* Selo quadrado de latão com check navy (6.67:1), não um check solto. */
 .create-course-payment__selected {
   position: absolute;
-  right: 0.875rem;
-  top: 0.875rem;
-  color: var(--color-accent-fg);
+  right: 0.75rem;
+  top: 0.75rem;
+  width: 1.5rem;
+  height: 1.5rem;
+  padding: 0.25rem;
+  border-radius: var(--radius-sm);
+  background: var(--color-accent);
+  color: var(--color-on-accent);
 }
 
 .lesson-modal-overlay {

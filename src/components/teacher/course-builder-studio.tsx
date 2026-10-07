@@ -2,11 +2,14 @@
 
 import Link from "next/link";
 import {
+  AlertTriangle,
   ArrowLeft,
   ArrowRight,
   CalendarClock,
+  Check,
   CheckCircle2,
   ChevronRight,
+  Circle,
   CloudOff,
   CreditCard,
   ExternalLink,
@@ -17,6 +20,7 @@ import {
   Moon,
   Plus,
   Repeat,
+  Send,
   Sun,
   Trash2,
   UploadCloud,
@@ -92,7 +96,7 @@ import {
 import { compressImage, MAX_SOURCE_IMAGE_BYTES } from "@/lib/media/compress-image";
 import { ReadinessGroups } from "@/components/teacher/readiness-groups";
 import { UploadProgressNote } from "@/components/teacher/upload-progress-note";
-import { InlineAlert } from "@/components/ui";
+import { Button, InlineAlert } from "@/components/ui";
 import type { CourseAsset } from "@/domain/course-asset";
 import { isActivationRequiredError } from "@/domain/creator-verification";
 import { getTrustedLessonEmbed } from "@/domain/lesson-embed";
@@ -1753,7 +1757,7 @@ export function CourseBuilderStudio() {
                 value={module.title}
                 onChange={(event) => updateModuleTitle(module.id, event.target.value)}
                 disabled={!isEditable}
-                className="rounded-md border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
+                className="rounded-md border border-[var(--color-field-border)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
               />
             </label>
             <label className="grid content-start gap-2 text-sm font-semibold text-[var(--color-ink)]">
@@ -1765,7 +1769,7 @@ export function CourseBuilderStudio() {
                 rows={3}
                 aria-label={t("creatorEditor.builder.curriculum.moduleDescriptionNumber").replace("{index}", () => String(moduleIndex + 1))}
                 placeholder={t("creatorEditor.builder.curriculum.moduleDescriptionPlaceholder")}
-                className="w-full resize-none rounded-md border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
+                className="w-full resize-none rounded-md border border-[var(--color-field-border)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
               />
             </label>
           </div>
@@ -1812,7 +1816,7 @@ export function CourseBuilderStudio() {
               disabled={!isEditable}
               aria-label={t("creatorEditor.builder.curriculum.lessonTitle")}
               placeholder={t("creatorEditor.builder.curriculum.lessonTitle")}
-              className="min-w-0 rounded-md border border-[var(--color-line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
+              className="min-w-0 rounded-md border border-[var(--color-field-border)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
             />
             {/* Previa gratis e a minoria dos casos: fica a um clique daqui. */}
             <details className="rounded-md border fine-rule bg-[var(--color-surface-soft)] px-4 py-3">
@@ -1934,7 +1938,7 @@ export function CourseBuilderStudio() {
                       })
                     }
                     disabled={!isEditable}
-                    className="rounded-md border border-[var(--color-line)] bg-white px-3 py-2.5 text-sm font-normal normal-case tracking-normal text-[var(--color-ink)] outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
+                    className="rounded-md border border-[var(--color-field-border)] bg-white px-3 py-2.5 text-sm font-normal normal-case tracking-normal text-[var(--color-ink)] outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
                   />
                 </label>
                 <div className="flex flex-wrap gap-2">
@@ -2051,7 +2055,7 @@ export function CourseBuilderStudio() {
                   type="button"
                   onClick={() => deleteLesson(module.id, lesson.id)}
                   disabled={!isEditable}
-                  className="rounded-md border border-[rgba(178,34,52,0.22)] bg-white px-3 py-2 text-xs font-semibold text-[var(--color-accent-fg)] disabled:opacity-50"
+                  className="button-danger px-3 py-2 text-xs disabled:opacity-50"
                 >
                   {t("creatorEditor.builder.curriculum.deleteLesson")}
                 </button>
@@ -2424,9 +2428,13 @@ export function CourseBuilderStudio() {
     }
     pendingScrollRef.current = null;
     window.requestAnimationFrame(() => {
-      document
-        .getElementById(anchor)
-        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+      // O bloco de reduzir movimento do CSS nao alcanca a rolagem pedida em JS.
+      document.getElementById(anchor)?.scrollIntoView({
+        behavior: window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
+          ? "auto"
+          : "smooth",
+        block: "start",
+      });
     });
   }, []);
 
@@ -2469,6 +2477,27 @@ export function CourseBuilderStudio() {
       </section>
     );
   }
+
+  // O marco da jornada: latão, com ícone, e o carregando dentro do botão. Mora
+  // no fim da aba Publish (onde a pessoa procura) e, nas outras abas, no
+  // cartão do rodapé — nunca nos dois ao mesmo tempo.
+  const publishButton = (
+    <Button
+      variant="accent"
+      size="lg"
+      icon={<Send aria-hidden="true" size={16} strokeWidth={2} />}
+      loading={isSubmitting}
+      onClick={publishCourse}
+      disabled={!canPublish || !readyToPublish || !priceFieldIsValid}
+      className="w-full disabled:opacity-60 sm:w-auto"
+    >
+      {isSubmitting
+        ? t("creatorEditor.builder.publish.publishing")
+        : needsActivation
+          ? t("creatorEditor.builder.publish.activateAndPublish")
+          : t("creatorEditor.builder.publish.submit")}
+    </Button>
+  );
 
   return (
     <div className="course-builder-shell">
@@ -2566,10 +2595,12 @@ export function CourseBuilderStudio() {
             {/* A barra media estagios (5) e o chip media checks (7): 40% e
                 71% no mesmo cabecalho para o mesmo curso. Agora os tres leem
                 o mesmo numero. */}
-            <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[var(--color-surface-strong)]">
+            {/* Latão, como a barra do aluno (learn-dashboard): progresso e
+                conquista. O número fica sempre ao lado. */}
+            <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[rgba(26,54,93,0.12)]">
               <div
                 data-testid="publish-readiness-bar"
-                className="h-full rounded-full bg-[var(--color-primary)] transition-[width] duration-300"
+                className="h-full rounded-full bg-[var(--color-accent)] transition-[width] duration-300"
                 style={{ width: `${readiness.percent}%` }}
               />
             </div>
@@ -2691,7 +2722,7 @@ export function CourseBuilderStudio() {
               value={title}
               onChange={(event) => setTitle(event.target.value)}
               disabled={!isEditable}
-              className="rounded-md border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
+              className="rounded-md border border-[var(--color-field-border)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
             />
           </label>
           <div className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
@@ -2716,15 +2747,18 @@ export function CourseBuilderStudio() {
               onChange={(event) => setSummary(event.target.value)}
               disabled={!isEditable}
               rows={4}
-              className="resize-none rounded-md border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
+              className="resize-none rounded-md border border-[var(--color-field-border)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
             />
             <span
-              className={`text-xs font-semibold ${
+              className={`inline-flex items-center gap-1.5 text-xs font-semibold ${
                 summary.trim().length >= 20
                   ? "text-[var(--color-ink-soft)]"
-                  : "text-[var(--color-accent-fg)]"
+                  : "text-[var(--color-warning-fg)]"
               }`}
             >
+              {summary.trim().length >= 20 ? null : (
+                <AlertTriangle aria-hidden="true" size={13} strokeWidth={2} />
+              )}
               {summary.trim().length >= 20
                 ? t("creatorEditor.builder.details.characters").replace("{count}", () => String(summary.trim().length))
                 : t("creatorEditor.builder.details.minimumCharacters").replace("{count}", () => String(summary.trim().length))}
@@ -2763,7 +2797,7 @@ export function CourseBuilderStudio() {
                       maxLength={120}
                       aria-label={t("creatorEditor.builder.details.outcomeLabel").replace("{index}", () => String(index + 1))}
                       placeholder={t("creatorEditor.builder.details.outcomePlaceholder")}
-                      className="min-w-0 flex-1 rounded-md border border-[var(--color-line)] bg-white px-4 py-2.5 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
+                      className="min-w-0 flex-1 rounded-md border border-[var(--color-field-border)] bg-white px-4 py-2.5 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
                     />
                     {isEditable ? (
                       <button
@@ -2776,7 +2810,7 @@ export function CourseBuilderStudio() {
                           )
                         }
                         aria-label={t("creatorEditor.builder.details.removeOutcome").replace("{index}", () => String(index + 1))}
-                        className="shrink-0 rounded-md border border-[var(--color-line)] p-2.5 text-[var(--color-ink-soft)] transition-colors hover:border-[var(--color-accent-fg)] hover:text-[var(--color-accent-fg)]"
+                        className="grid size-11 shrink-0 place-items-center rounded-md border border-[var(--color-line)] text-[var(--color-ink-soft)] transition-colors hover:border-[var(--color-danger-fg)] hover:text-[var(--color-danger-fg)]"
                       >
                         <Trash2 aria-hidden="true" size={14} strokeWidth={1.8} />
                       </button>
@@ -2946,7 +2980,7 @@ export function CourseBuilderStudio() {
                       disabled={!isEditable}
                       inputMode="decimal"
                       placeholder={t("creatorEditor.builder.pricing.pricePlaceholder")}
-                      className="min-w-0 rounded-md border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
+                      className="min-w-0 rounded-md border border-[var(--color-field-border)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
                     />
                   </label>
                   <label className="grid min-w-0 gap-2 text-sm font-semibold text-[var(--color-ink)]">
@@ -3005,7 +3039,7 @@ export function CourseBuilderStudio() {
                     value={freePreviewLessonId}
                     onChange={(event) => setFreePreviewLessonId(event.target.value)}
                     disabled={!isEditable || allLessons.length === 0}
-                    className="rounded-md border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
+                    className="rounded-md border border-[var(--color-field-border)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
                   >
                     <option value="">{t("creatorEditor.builder.pricing.noPreview")}</option>
                     {allLessons.map((lesson) => (
@@ -3068,7 +3102,7 @@ export function CourseBuilderStudio() {
                   disabled={!isEditable}
                   aria-label={t("creatorEditor.builder.curriculum.moduleTitle")}
                   placeholder={t("creatorEditor.builder.curriculum.moduleTitlePlaceholder")}
-                  className="min-w-0 flex-1 rounded-md border border-[var(--color-line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
+                  className="min-w-0 flex-1 rounded-md border border-[var(--color-field-border)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
                 />
                 <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
                   {t("creatorEditor.builder.curriculum.moduleDescription")}
@@ -3079,7 +3113,7 @@ export function CourseBuilderStudio() {
                     rows={2}
                     aria-label={t("creatorEditor.builder.curriculum.moduleDescription")}
                     placeholder={t("creatorEditor.builder.curriculum.moduleDescriptionExample")}
-                    className="mt-3 w-full resize-none rounded-md border border-[var(--color-line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
+                    className="mt-3 w-full resize-none rounded-md border border-[var(--color-field-border)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
                   />
                 </label>
                 {moduleError ? (
@@ -3190,7 +3224,7 @@ export function CourseBuilderStudio() {
                         type="button"
                         onClick={() => deleteModule(module.id)}
                         disabled={!isEditable}
-                        className="rounded-md border border-[rgba(178,34,52,0.22)] bg-white px-3 py-2 text-xs font-semibold text-[var(--color-accent-fg)] disabled:opacity-50"
+                        className="button-danger px-3 py-2 text-xs disabled:opacity-50"
                       >
                         {t("creatorEditor.builder.curriculum.delete")}
                       </button>
@@ -3239,7 +3273,7 @@ export function CourseBuilderStudio() {
                       setDripStrategy(event.target.value as DripStrategy)
                     }
                     disabled={!isEditable}
-                    className="rounded-md border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
+                    className="rounded-md border border-[var(--color-field-border)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
                   >
                     {dripStrategies.map((item) => (
                       <option key={item.value} value={item.value}>
@@ -3258,7 +3292,7 @@ export function CourseBuilderStudio() {
                       onChange={(event) => setDripIntervalDays(event.target.value)}
                       disabled={!isEditable}
                       inputMode="numeric"
-                      className="w-20 rounded-md border border-[var(--color-line)] bg-white px-3 py-3 text-center text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
+                      className="w-20 rounded-md border border-[var(--color-field-border)] bg-white px-3 py-3 text-center text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
                     />
                   </label>
                 ) : null}
@@ -3301,8 +3335,18 @@ export function CourseBuilderStudio() {
                   key={item.id}
                   className="rounded-md border border-[var(--color-line)] bg-white px-4 py-3"
                 >
-                  <p className={`text-sm font-semibold ${item.done ? "text-[var(--color-primary)]" : "text-[var(--color-accent-fg)]"}`}>
-                    {item.done ? "✓ " : ""}
+                  {/* Pendente era texto dourado e feito era um "✓" digitado: o
+                      latão marcava problema. Feito = check verde (6.51:1) com
+                      "Done" para o leitor de tela; pendente = círculo vazio. */}
+                  <p className={`flex items-center gap-2 text-sm font-semibold ${item.done ? "text-[var(--color-success-fg)]" : "text-[var(--color-ink)]"}`}>
+                    {item.done ? (
+                      <>
+                        <Check aria-hidden="true" size={15} strokeWidth={2.4} className="shrink-0" />
+                        <span className="sr-only">{t("creatorEditor.lesson.state.done")}: </span>
+                      </>
+                    ) : (
+                      <Circle aria-hidden="true" size={13} strokeWidth={1.8} className="shrink-0 text-[var(--color-ink-muted)]" />
+                    )}
                     {item.label}
                     {item.optional ? (
                       <span className="ml-2 text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--color-ink-muted)]">
@@ -3373,9 +3417,16 @@ export function CourseBuilderStudio() {
               <ArrowRight aria-hidden="true" size={16} strokeWidth={2} />
             </button>
           ) : (
-            <span className="text-xs font-semibold text-[var(--color-ink-soft)]">
-              {t("creatorEditor.builder.publish.finish")}
-            </span>
+            // A aba Publish terminava num texto; o botão de publicar ficava no
+            // cartão do rodapé, que no celular vem depois do resumo inteiro.
+            <div className="flex w-full flex-wrap items-center justify-end gap-3 sm:w-auto">
+              {readyToPublish ? null : (
+                <span className="text-xs font-semibold text-[var(--color-ink-soft)]">
+                  {t("creatorEditor.builder.publish.finish")}
+                </span>
+              )}
+              {publishButton}
+            </div>
           )}
         </div>
       </section>
@@ -3525,23 +3576,7 @@ export function CourseBuilderStudio() {
             >
               {isSaving ? t("creatorEditor.builder.navigation.saving") : t("creatorEditor.builder.navigation.save")}
             </button>
-            <button
-              type="button"
-              onClick={publishCourse}
-              disabled={
-                !canPublish
-                || isSubmitting
-                || !readyToPublish
-                || !priceFieldIsValid
-              }
-              className="button-solid button-lg disabled:opacity-60"
-            >
-              {isSubmitting
-                ? t("creatorEditor.builder.publish.publishing")
-                : needsActivation
-                  ? t("creatorEditor.builder.publish.activateAndPublish")
-                  : t("creatorEditor.builder.publish.submit")}
-            </button>
+            {activeTab === "review" ? null : publishButton}
             <Link href="/teach" className="button-outline px-4 py-2.5 text-sm">
               {t("creatorEditor.builder.navigation.studio")}
             </Link>
@@ -3968,7 +4003,7 @@ function MembersAreaTab({
             disabled={!isEditable}
             maxLength={80}
             placeholder={course.title || t("creatorEditor.members.titlePlaceholder")}
-            className="rounded-md border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
+            className="rounded-md border border-[var(--color-field-border)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
           />
           <span className="text-xs font-semibold text-[var(--color-ink-soft)]">
             {t("creatorEditor.members.titleHelp").replace("{length}", () => String(title.length))}
@@ -3983,7 +4018,7 @@ function MembersAreaTab({
             disabled={!isEditable}
             maxLength={160}
             placeholder={t("creatorEditor.members.subtitlePlaceholder")}
-            className="rounded-md border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
+            className="rounded-md border border-[var(--color-field-border)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
           />
           <span className="text-xs font-semibold text-[var(--color-ink-soft)]">
             {t("creatorEditor.members.subtitleHelp").replace("{length}", () => String(subtitle.length))}
@@ -3999,7 +4034,7 @@ function MembersAreaTab({
             maxLength={2000}
             rows={4}
             placeholder={t("creatorEditor.members.descriptionPlaceholder")}
-            className="resize-none rounded-md border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
+            className="resize-none rounded-md border border-[var(--color-field-border)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
           />
           <span className="text-xs font-semibold text-[var(--color-ink-soft)]">
             {description.length}/2000
@@ -4206,7 +4241,7 @@ function MembersCoverField({
             <button
               type="button"
               onClick={onRemove}
-              className="min-h-11 w-fit text-xs font-semibold text-[var(--color-accent-fg)] underline-offset-2 hover:underline"
+              className="min-h-11 w-fit text-xs font-semibold text-[var(--color-danger-fg)] underline-offset-2 hover:underline"
             >
               {t("creatorEditor.members.removeCover")}
             </button>

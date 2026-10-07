@@ -22,6 +22,7 @@ import { useEffect, useState } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { StatusChip } from "@/components/shared/status-chip";
 import { TeacherOverviewMetrics } from "@/components/teacher/teacher-overview-metrics";
 import { StudioRecentActivity } from "@/components/teacher/studio-recent-activity";
 import { StudioStorefrontCard } from "@/components/teacher/studio-storefront-card";
@@ -103,10 +104,17 @@ export function TeacherStudioDashboard() {
               versalete APOIADO por "Welcome back, {name}" logo abaixo: dois
               titulos disputando a mesma linha de leitura, e o de cima nem
               nomeava a tela ("Home" ja esta na barra e na trilha do topo). */}
+          {/* "Welcome back" so para quem ja tem produto: na 1a visita a frase
+              era falsa. Enquanto a lista carrega vale "Welcome", que nunca
+              mente. */}
           <h1 className="text-3xl font-semibold leading-tight text-[var(--color-primary)] sm:text-4xl">
             {firstName
-              ? t("teach.dashboard.welcomeBackNamed").replace("{name}", () => firstName)
-              : t("teach.dashboard.welcomeBack")}
+              ? t(
+                  courses.length > 0
+                    ? "teach.dashboard.welcomeBackNamed"
+                    : "teach.dashboard.welcomeNamed"
+                ).replace("{name}", () => firstName)
+              : t(courses.length > 0 ? "teach.dashboard.welcomeBack" : "teach.dashboard.welcome")}
           </h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--color-ink-soft)]">
             {t("creatorPanel.home.description")}
@@ -294,9 +302,12 @@ function StudioNextSteps({
             </div>
           </div>
 
-          <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-[var(--color-surface-strong)]">
+          {/* Latao, como a barra do aluno: progresso e conquista. O "2 of 3"
+              logo acima e o numero que acompanha a barra. */}
+          <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-[rgba(26,54,93,0.12)]">
             <div
-              className="h-full rounded-full bg-[var(--color-primary)] transition-[width]"
+              data-testid="studio-next-steps-bar"
+              className="h-full rounded-full bg-[var(--color-accent)] transition-[width]"
               style={{ width: ready ? `${progress}%` : "0%" }}
             />
           </div>
@@ -463,9 +474,9 @@ function StudioProductsSection({
                   <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--color-ink-muted)]">
                     {t(productTypeKey(course))}
                   </span>
-                  <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--color-accent-fg)]">
-                    {t(`statusChip.${course.status || "draft"}`)}
-                  </span>
+                  {/* Era texto dourado para todo status: "Published" e "Needs
+                      changes" saiam iguais. O chip da cor a cada um. */}
+                  <StatusChip status={course.status || "draft"} />
                 </div>
                 <h3 className="mt-3 line-clamp-2 text-sm font-semibold leading-5 text-[var(--color-ink)]">
                   {course.title || t("creatorPanel.untitledProduct")}

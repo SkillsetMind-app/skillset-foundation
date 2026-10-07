@@ -266,7 +266,7 @@ function MarketplaceHighlightPanel({
         </p>
       ) : null}
       {error ? (
-        <p className="mt-3 text-xs font-semibold text-[var(--color-accent-fg)]">
+        <p className="mt-3 text-xs font-semibold text-[var(--color-danger-fg)]">
           {"message" in error ? error.message : t(error.key)}
         </p>
       ) : null}
