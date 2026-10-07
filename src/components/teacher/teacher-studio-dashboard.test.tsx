@@ -160,6 +160,20 @@ describe("TeacherStudioDashboard", () => {
     ]);
     expect(within(formats).queryByText(/Guided program|Subscription|Free program/)).toBeNull();
   });
+
+  // O painel com 0 produtos era uma faixa tracejada com "No products in this
+  // view yet.". Agora e a cena do primeiro produto e o unico botao latao.
+  it("sem produto: a cena do primeiro produto e o botao latao de criar", async () => {
+    render(<TeacherStudioDashboard />);
+
+    const heading = await screen.findByRole("heading", { name: "Your first product starts here." });
+    const box = heading.closest(".border-dashed") as HTMLElement;
+    expect(box.querySelector('svg[data-scene="firstProduct"]')).toHaveAttribute("aria-hidden", "true");
+    const create = within(box).getByRole("link", { name: "Create my first product" });
+    expect(create).toHaveClass("button-accent");
+    expect(create).toHaveAttribute("href", "/teach/builder?newCourse=1&format=course");
+    expect(screen.queryByText("No products in this view yet.")).toBeNull();
+  });
 });
 
 // O que a pessoa sofria: o passo 2 so fechava com verificacao APROVADA e
@@ -640,5 +654,40 @@ describe("Home do professor: status dos cartoes de produto", () => {
     for (const title of ["No ar", "Rascunho", "Com ajuste"]) {
       expect(cardOf(title).innerHTML).not.toContain("--color-accent-fg");
     }
+  });
+});
+
+// Onda D na Home: os cartoes chegam em escada e sobem no hover; quem abre a
+// Home com tudo pronto ve o check e o selo parados (festa so na mudanca).
+describe("Home do professor: movimento", () => {
+  it("cartoes em escada (--i por cartao) e com o hover que sobe", async () => {
+    state.courses = [
+      course({ id: "c1", title: "Primeiro" }),
+      course({ id: "c2", title: "Segundo" }),
+    ];
+
+    render(<TeacherStudioDashboard />);
+
+    const produtos = await screen.findByRole("region", { name: "Products in your workspace" });
+    const list = produtos.querySelector("ul.motion-stagger")!;
+    expect(list).not.toBeNull();
+    const items = [...list.children] as HTMLElement[];
+    expect(items.map((item) => item.style.getPropertyValue("--i"))).toEqual(["0", "1"]);
+    expect(within(produtos).getByRole("link", { name: /Primeiro/ })).toHaveClass("motion-hover-lift");
+  });
+
+  it("abrir a Home com os passos prontos: check e selo de 100% parados", async () => {
+    state.courses = [course({ status: "published" })];
+    state.profile = {
+      stripeConnectChargesEnabled: true,
+      stripeConnectPayoutsEnabled: true,
+    };
+
+    const { container } = render(<TeacherStudioDashboard />);
+
+    await waitFor(() => expect(screen.getByText("3 of 3 complete")).toBeInTheDocument());
+    expect(container.querySelectorAll("[data-drawn-check]").length).toBeGreaterThan(0);
+    expect(container.querySelector(".drawn-check")).toBeNull();
+    expect(container.querySelector("[data-milestone-seal]")).not.toHaveClass("milestone-seal");
   });
 });

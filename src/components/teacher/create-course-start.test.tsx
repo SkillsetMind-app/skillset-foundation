@@ -152,7 +152,7 @@ describe("CreateCourseStart — tela 2 grava o tipo", () => {
         });
       });
       expect(mocks.createCourseEvent).not.toHaveBeenCalled();
-      expect(mocks.push).toHaveBeenCalledWith("/teach/builder?courseId=course-123&tab=content");
+      expect(mocks.push).toHaveBeenCalledWith("/teach/builder?courseId=course-123&tab=content&created=1");
     },
   );
 
@@ -191,7 +191,7 @@ describe("CreateCourseStart — tela 2 grava o tipo", () => {
         externalUrl: "",
       });
     });
-    expect(mocks.push).toHaveBeenCalledWith("/teach/builder?courseId=course-123&tab=content");
+    expect(mocks.push).toHaveBeenCalledWith("/teach/builder?courseId=course-123&tab=content&created=1");
   });
 
   it("evento ao vivo: link digitado precisa ser um endereco completo", () => {

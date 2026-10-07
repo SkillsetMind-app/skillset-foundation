@@ -90,7 +90,7 @@ describe("course creation with real EN/ES dictionaries", () => {
       category: skillsetCourseCategories[0], categories: [skillsetCourseCategories[0]], paymentType, communityEnabled,
       productFormat: format, moduleTitle, lessonTitle,
     }));
-    expect(mocks.push).toHaveBeenCalledWith("/teach/builder?courseId=course-123&tab=content");
+    expect(mocks.push).toHaveBeenCalledWith("/teach/builder?courseId=course-123&tab=content&created=1");
   });
 
   it("keeps the event fields and pending state while changing locale", async () => {

@@ -15,6 +15,10 @@ export function CourseShareLink({
   path,
   title,
   entry,
+  copyLabel,
+  accent = false,
+  focusCopy = false,
+  copyDescribedBy,
 }: {
   label: string;
   path: string;
@@ -27,6 +31,16 @@ export function CourseShareLink({
    * test environment. Omitted: the canonical www URL, as before.
    */
   entry?: EntryKind;
+  /**
+   * Texto visível do botão de copiar ("Copy my page link"). Com ele, o nome
+   * acessível é o próprio texto, não o aria-label genérico.
+   */
+  copyLabel?: string;
+  /** Latão: só no marco (painel "Publicado!"), no máximo 1 por tela. */
+  accent?: boolean;
+  /** Leva o foco ao botão de copiar ao montar (marco de publicação). */
+  focusCopy?: boolean;
+  copyDescribedBy?: string;
 }) {
   const { t } = useTranslation();
   const hostname = useCurrentHostname();
@@ -35,7 +49,16 @@ export function CourseShareLink({
   const [open, setOpen] = useState(false);
   const rowRef = useRef<HTMLDivElement>(null);
   const shareRef = useRef<HTMLButtonElement>(null);
+  const copyRef = useRef<HTMLButtonElement>(null);
   const forLabel = (key: string) => t(key).replace("{label}", () => label);
+  const outlineClass = accent ? "button-outline button-lg" : `button-outline ${actionClass}`;
+
+  useEffect(() => {
+    const active = document.activeElement;
+    if (focusCopy && (!active || active === document.body)) {
+      copyRef.current?.focus();
+    }
+  }, [focusCopy]);
 
   // Same close rules as the product-list kebab (teacher-course-studio): Escape
   // closes and hands focus back, a press outside the button row closes.
@@ -95,10 +118,18 @@ export function CourseShareLink({
       {/* `relative` on the row, not on the Share button: the menu then hangs
           from the row's left edge and never runs past the card on a phone. */}
       <div ref={rowRef} className="relative mt-3 flex flex-wrap gap-2">
-        <button type="button" onClick={() => void copyLink()} aria-label={forLabel("creatorPanel.shareLink.copyAria")} className={`button-solid ${actionClass}`}>
-          {t("creatorPanel.shareLink.copy")}
+        <button
+          ref={copyRef}
+          type="button"
+          onClick={() => void copyLink()}
+          aria-label={copyLabel ? undefined : forLabel("creatorPanel.shareLink.copyAria")}
+          aria-describedby={copyDescribedBy}
+          // O marco sai no tamanho do fluxo (48px, 15px/600), não no 12px da fileira.
+          className={accent ? "button-accent button-lg" : `button-solid ${actionClass}`}
+        >
+          {copyLabel ?? t("creatorPanel.shareLink.copy")}
         </button>
-        <a href={url} aria-label={forLabel("creatorPanel.shareLink.openAria")} className={`button-outline ${actionClass}`}>
+        <a href={url} aria-label={forLabel("creatorPanel.shareLink.openAria")} className={outlineClass}>
           {t("creatorPanel.shareLink.open")}
         </a>
         <button
@@ -108,7 +139,7 @@ export function CourseShareLink({
           aria-expanded={open}
           aria-label={forLabel("creatorPanel.shareLink.shareAria")}
           onClick={() => setOpen((current) => !current)}
-          className={`button-outline ${actionClass}`}
+          className={outlineClass}
         >
           {t("creatorPanel.shareLink.share")}
         </button>
@@ -116,7 +147,7 @@ export function CourseShareLink({
           <div
             role="menu"
             aria-label={forLabel("creatorPanel.shareLink.menuAria")}
-            className="absolute left-0 top-[calc(100%+8px)] z-40 w-48 rounded-lg border border-[var(--color-line)] bg-white p-1.5 shadow-[var(--shadow-strong)]"
+            className="motion-drop-in absolute left-0 top-[calc(100%+8px)] z-40 w-48 rounded-lg border border-[var(--color-line)] bg-white p-1.5 shadow-[var(--shadow-strong)]"
           >
             {targets.map(({ key, href }) => (
               <a

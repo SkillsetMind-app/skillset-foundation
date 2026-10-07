@@ -147,6 +147,10 @@
   --duration-fast: 120ms;
   --duration-base: 180ms;
   --duration-slow: 280ms;
+  /* Onda D: um leve passar do ponto, só para selo de marco; e o teto de uma
+     festa (publicado, produto criado). Feedback fica nos 120-280ms acima. */
+  --ease-pop: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --duration-celebrate: 600ms;
 }
 
 [data-theme="dark"] {
@@ -992,12 +996,14 @@ p {
     font-weight: 600;
     line-height: 1;
     text-decoration: none;
+    /* Soltar em 180ms; apertar em 120ms (regra :active logo abaixo). O
+       `transition` do ui/button.tsx punha 150ms por cima e brigava com isto. */
     transition:
-      transform 180ms ease,
-      background-color 180ms ease,
-      border-color 180ms ease,
-      box-shadow 180ms ease,
-      color 180ms ease;
+      transform var(--duration-base) var(--ease-standard),
+      background-color var(--duration-base) var(--ease-standard),
+      border-color var(--duration-base) var(--ease-standard),
+      box-shadow var(--duration-base) var(--ease-standard),
+      color var(--duration-base) var(--ease-standard);
   }
 
   /* Ação principal de um fluxo (Continuar, Criar, Publicar): 48px de alvo,
@@ -1070,6 +1076,8 @@ p {
 .button-solid-light:active,
 .button-outline-light:active {
   transform: translateY(1px) scale(0.985);
+  /* A duração vem do estado de destino: afunda em 120ms, volta em 180ms. */
+  transition-duration: var(--duration-fast);
 }
 
 .button-outline {
@@ -2659,6 +2667,12 @@ select:focus-visible {
   body:has(.platform-mobile-nav) .cookie-consent {
     bottom: calc(60px + env(safe-area-inset-bottom, 0px));
     padding-bottom: 0.875rem;
+  }
+
+  /* A faixa "Rascunho salvo. Próximo: ..." (onda D) cobria Home/Market/
+     Teach/Profile por 4s: sobe a barra (60px) e mais o respiro dela. */
+  body:has(.platform-mobile-nav) .created-strip {
+    bottom: calc(60px + 0.75rem + env(safe-area-inset-bottom, 0px));
   }
 }
 
@@ -8205,5 +8219,318 @@ button:hover > .dash-card,
       border-radius: var(--radius-xl) var(--radius-xl) 0 0;
       box-shadow: 0 -12px 32px rgba(16, 42, 67, 0.18);
     }
+  }
+}
+
+/* ==========================================================================
+   Onda D: calor. As cenas de gravura (ui/spot-art.tsx) e o catálogo de
+   movimento do estúdio. Regras do catálogo:
+   - só transform e opacity (a barra de progresso é a única que anda em
+     largura);
+   - nada em loop fora o spinner;
+   - retorno de ação até 300ms; festa até 700ms (--duration-celebrate);
+   - TODA animação mora dentro de `no-preference`. O estado padrão já é o
+     final: com "reduzir movimento" nada se mexe e nada some;
+   - fill `backwards`, nunca `both`: terminada a entrada, o elemento fica sem
+     transform preso (um transform "segurado" vira bloco de contenção para
+     qualquer filho `position: fixed`, como um diálogo aberto ali dentro).
+   ========================================================================== */
+
+/* Em camada: as utilities de tamanho escritas ao lado (h-20 w-auto no tour,
+   max-w-[6.5rem] no gráfico) precisam vencer este padrão. */
+@layer components {
+  .spot-art {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+}
+
+/* 1,25-1,5px de traço em qualquer tamanho: a cena do tour (80px de altura) e
+   a do painel vazio (128px) desenham a mesma linha. */
+.spot-art * {
+  vector-effect: non-scaling-stroke;
+}
+
+/* Gravura no pé da coluna marinho da tela de criar: o vão de ~450px embaixo
+   dos passos. Some quando a coluna vira faixa (uma coluna só) e no celular. */
+.create-course-screen__art {
+  max-width: 13rem;
+  margin-top: 2.5rem;
+  opacity: 0.92;
+}
+
+@media (max-width: 1180px) {
+  .create-course-screen__art {
+    display: none;
+  }
+}
+
+/* O painel vazio com cena: a gravura ao lado do texto, ou em cima dele no
+   celular. A cena nunca passa de 9rem para não virar o assunto da tela. */
+.empty-state__art {
+  width: 100%;
+  max-width: 9rem;
+  flex: 0 0 auto;
+}
+
+/* 4. "Saved": o fundo verde-claro acende e apaga por baixo do texto. É uma
+   camada própria só para animar opacidade, não a cor do chip. */
+.builder-save-status--saved {
+  position: relative;
+  isolation: isolate;
+}
+
+.builder-save-status--saved::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: var(--color-success-soft);
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* 5. A linha do checklist que acabou de ficar pronta acende em latão claro.
+   Latão aqui é conquista, nunca pendência. */
+.is-just-done {
+  position: relative;
+  isolation: isolate;
+}
+
+.is-just-done::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: var(--color-accent-soft);
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* 7. A faixa "Rascunho salvo. Próximo: ..." depois de criar. Fixa no rodapé,
+   acima da barra do celular; nunca cobre o botão principal por mais de 4s. */
+.created-strip {
+  position: fixed;
+  right: max(1rem, env(safe-area-inset-right, 0px));
+  bottom: max(1rem, env(safe-area-inset-bottom, 0px));
+  left: max(1rem, env(safe-area-inset-left, 0px));
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  max-width: 34rem;
+  margin-inline: auto;
+  /* Marinho e latao a 40% fixos nos dois temas (o --color-primary-dark vira
+     branco no escuro). Literal, sem color-mix: nao gera regra de reserva. */
+  border: 1px solid rgba(201, 154, 70, 0.4);
+  border-radius: var(--radius-lg);
+  background: #091d2f;
+  padding: 0.75rem 0.75rem 0.75rem 1rem;
+  color: #ffffff;
+  box-shadow: 0 18px 40px rgba(9, 29, 47, 0.28);
+  --focus-ring: var(--color-accent);
+}
+
+/* 8. O painel "Publicado!": cena, frase e o botão latão. Sem borda própria:
+   ele já mora dentro do cartão de publicar e leva a caixa do link dentro de
+   si; uma terceira moldura viraria caixa dentro de caixa. */
+.published-panel {
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-soft);
+  padding: 1.25rem;
+}
+
+.published-panel .spot-art {
+  max-width: 10rem;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* 1. Troca de etapa: o painel novo sobe 8px e acende; a saída é seca. */
+  .motion-panel-in {
+    animation: motion-panel-in 200ms var(--ease-standard) backwards;
+  }
+
+  /* 2. Escolher uma opção: o selo latão cresce de 0,6 para 1 (formato na tela
+     de criar; "Como as pessoas vão pagar?" no construtor). As cores do cartão
+     seguem na transição de 120-180ms que ele já tem. */
+  .create-course-payment__selected,
+  .motion-select {
+    animation: motion-grow var(--duration-base) var(--ease-pop) backwards;
+  }
+
+  /* 4. Salvando -> Salvo: entra em 160ms, o verde segura 1,5s e apaga em 200ms.
+     `motion-rise-in` é a entrada de qualquer retorno curto: o chip, o aviso
+     de sucesso ("Draft saved."). */
+  .motion-rise-in {
+    animation: motion-rise-in 160ms var(--ease-standard) backwards;
+  }
+
+  .builder-save-status--saved::after {
+    animation: motion-save-flash 1860ms linear backwards;
+  }
+
+  /* 5. O check se desenha (pathLength=1 no SVG); a linha pisca e apaga. A
+     classe só entra no item que ACABOU de ficar pronto (ui/drawn-check.tsx,
+     useJustDone): abrir a tela com tudo pronto não redesenha nada. */
+  .drawn-check path {
+    stroke-dasharray: 1;
+    animation: motion-check-draw 240ms var(--ease-standard) backwards;
+  }
+
+  .is-just-done::before {
+    animation: motion-flash var(--duration-celebrate) ease-out backwards;
+  }
+
+  /* 6. O selo de marco quando a barra chega em 100% (de novo: só na
+     chegada, não a cada carga). */
+  .milestone-seal {
+    animation: motion-pop var(--duration-base) var(--ease-pop) backwards;
+  }
+
+  /* 7. A faixa de marco entra subindo. */
+  .created-strip {
+    animation: motion-rise-in 240ms var(--ease-standard) backwards;
+  }
+
+  /* 8. Publicado: o selo carimba (1,15 -> 1, -6deg -> 0), a gravura acende
+     logo depois e os três losangos aparecem uma vez. Tudo acaba em 700ms. */
+  .published-panel.is-celebrating .spot-art__seal,
+  .published-panel.is-celebrating .spot-art__spark path {
+    transform-box: fill-box;
+    transform-origin: center;
+  }
+
+  .published-panel.is-celebrating .spot-art__seal {
+    animation: motion-stamp 420ms var(--ease-pop) backwards;
+  }
+
+  .published-panel.is-celebrating .spot-art__engraving {
+    animation: motion-fade var(--duration-celebrate) var(--ease-standard) 100ms backwards;
+  }
+
+  .published-panel.is-celebrating .spot-art__spark path {
+    animation: motion-pop 280ms var(--ease-pop) backwards;
+  }
+
+  .published-panel.is-celebrating .spot-art__spark path:nth-child(1) {
+    animation-delay: 300ms;
+  }
+
+  .published-panel.is-celebrating .spot-art__spark path:nth-child(2) {
+    animation-delay: 360ms;
+  }
+
+  .published-panel.is-celebrating .spot-art__spark path:nth-child(3) {
+    animation-delay: 420ms;
+  }
+
+  /* 10. A cena do estado vazio entra subindo, no mesmo desenho do painel
+     (um keyframe a menos no CSS de todo mundo). */
+  .spot-art-in {
+    animation: motion-panel-in var(--duration-slow) var(--ease-standard) backwards;
+  }
+
+  /* 11. Menu que abre de um botão (Compartilhar): cai 6px e acende. */
+  .motion-drop-in {
+    animation: dropdown-in var(--duration-fast) var(--ease-standard) backwards;
+  }
+
+  /* 12. Lista que chega dos dados (cartões da Home, linhas de produtos): os
+     itens sobem em escada, 40ms cada, e do 6º em diante juntos, para a
+     entrada inteira caber em 400ms. Só transform: o item está pintado desde
+     o 1º quadro, então a capa de um cartão conta para o LCP na hora certa. */
+  .motion-stagger > * {
+    animation: motion-lift 200ms var(--ease-standard) backwards;
+    animation-delay: calc(min(var(--i, 0), 5) * 40ms);
+  }
+
+  /* 13. Cartao de produto do estudio: sobe 2px no hover, junto da sombra que
+     ele ja tinha (a `transition` do cartao ja inclui transform). */
+  .motion-hover-lift:hover {
+    transform: translateY(-2px);
+  }
+}
+
+@keyframes motion-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+@keyframes motion-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+}
+
+@keyframes motion-grow {
+  from {
+    transform: scale(0.6);
+  }
+}
+
+@keyframes motion-rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+
+@keyframes motion-save-flash {
+  0% {
+    opacity: 0;
+  }
+
+  9%,
+  89% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes motion-check-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes motion-flash {
+  from {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes motion-stamp {
+  from {
+    opacity: 0;
+    transform: scale(1.15) rotate(-6deg);
+  }
+}
+
+@keyframes motion-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes motion-lift {
+  from {
+    transform: translateY(6px);
   }
 }

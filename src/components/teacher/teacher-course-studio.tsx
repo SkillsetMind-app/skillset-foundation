@@ -13,7 +13,7 @@ import {
   UsersRound,
 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
@@ -358,10 +358,14 @@ export function TeacherCourseStudio({
                   </th>
                 </tr>
               </thead>
-              <tbody className="block divide-y divide-[var(--color-line)] lg:table-row-group">
-                {visibleCourses.map((course) => (
+              {/* motion-stagger: as linhas sobem em escada quando a lista chega
+                  (a tabela so monta depois do esqueleto); da 6a em diante,
+                  juntas, para a entrada inteira caber em 400ms. */}
+              <tbody className="motion-stagger block divide-y divide-[var(--color-line)] lg:table-row-group">
+                {visibleCourses.map((course, index) => (
                   <tr
                     key={course.id}
+                    style={{ "--i": index } as CSSProperties}
                     className="block bg-white px-3 py-4 transition-colors hover:bg-[var(--color-surface-soft)] sm:px-4 lg:table-row lg:px-0 lg:py-0"
                   >
                     <td className="block pb-4 lg:table-cell lg:px-4 lg:py-4">

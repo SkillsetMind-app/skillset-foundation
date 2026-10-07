@@ -18,7 +18,7 @@ import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { BunnyVideoPlayer } from "@/components/courses/bunny-video-player";
 import { ClassroomLoading } from "@/components/learn/classroom-loading";
-import { ClassroomTabs, type ClassroomTabItem } from "@/components/learn/classroom-tabs";
+import { ClassroomTabs, useTabChanged, type ClassroomTabItem } from "@/components/learn/classroom-tabs";
 import { CommunityFeed, type CommunityFeedLesson } from "@/components/learn/community-feed";
 import { CourseMessagesPanel } from "@/components/learn/course-messages-panel";
 import { CoursePlaylist } from "@/components/learn/course-playlist";
@@ -35,6 +35,7 @@ import {
   VideoWatermark,
 } from "@/components/learn/watermarked-video-player";
 import { ProtectedAssetPreview } from "@/components/shared/protected-asset-preview";
+import { MilestoneSeal, useJustDone } from "@/components/ui/drawn-check";
 import type { CourseAsset } from "@/domain/course-asset";
 import { formatCourseAssetSize, getModuleCoverAsset, getPrimaryLessonVideoAsset } from "@/domain/course-asset";
 import { getCourseAssetKindLabel } from "@/lib/i18n/course-assets";
@@ -733,6 +734,15 @@ export function EnrolledCourseWorkspace({
     });
   }, [selectedLessonId, course.id, course.modules, previewMode]);
 
+  // O check da aula e o selo de 100% so se mexem quando o aluno conclui com a
+  // sala aberta: a primeira carga do progresso e a linha de base.
+  const justCompletedIds = useJustDone(
+    progressState.lessonIds,
+    progressState.ready && progressState.key === enrollmentId,
+  );
+  // Painel novo so na troca de aba (ver useTabChanged).
+  const tabChanged = useTabChanged(tab);
+
   if (isLoading) {
     // The classroom's one loading state, the same the route file and the
     // creator workspace paint, so a student never sees the wait change look.
@@ -1270,7 +1280,11 @@ export function EnrolledCourseWorkspace({
           >
             <span style={{ width: `${progressPercent}%` }} />
           </span>
-          <span className="member-classroom-head__percent">{progressPercent}%</span>
+          <span className="member-classroom-head__percent inline-flex items-center gap-1">
+            {progressPercent}%
+            {/* O marco: a barra chegou ao fim (o mesmo selo do construtor). */}
+            {progressPercent === 100 ? <MilestoneSeal animate={justCompletedIds.size > 0} /> : null}
+          </span>
         </header>
       )}
 
@@ -1302,6 +1316,9 @@ export function EnrolledCourseWorkspace({
         certificateHref={certificateHref}
       />
 
+      {/* Um item so da grade para a aba aberta: na troca de aba ele entra
+          subindo 8px (motion-panel-in); na carga da pagina, parado. */}
+      <div className={tabChanged ? "motion-panel-in" : undefined}>
       {activeTab === "lesson" && totalLessonCount === 0 ? (
         <section className="member-resource-panel">
           <p className="text-sm text-[var(--color-ink-soft)]">{t("learn.classroom.workspace.noLessons")}</p>
@@ -1494,6 +1511,7 @@ export function EnrolledCourseWorkspace({
                 ? undefined
                 : (lessonId) => toggleLessonCompletion(lessonId, true)
             }
+            justCompletedIds={justCompletedIds}
           />
           {!previewMode
             && workspaceEnrollment.source === "subscription"
@@ -1554,6 +1572,7 @@ export function EnrolledCourseWorkspace({
           previewMode={previewMode}
         />
       ) : null}
+      </div>
 
       {lessonListOpen ? (
         <LessonListOverlay

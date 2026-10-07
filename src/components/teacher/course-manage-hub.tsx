@@ -1078,7 +1078,12 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
             </PanelCard>
           ) : null}
 
-          {section === "students" ? <CourseStudentRoster courseId={course.id} /> : null}
+          {section === "students" ? (
+            <CourseStudentRoster
+              courseId={course.id}
+              share={course.status === "published" ? { title: course.title } : undefined}
+            />
+          ) : null}
 
           {section === "page" ? (
             <div className="grid gap-4">

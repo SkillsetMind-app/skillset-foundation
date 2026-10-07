@@ -2160,7 +2160,8 @@
       "countAllOne": "1 order, all time",
       "emptyTitle": "No sales in this period.",
       "emptyBody": "When a learner completes checkout, the order appears here.",
-      "emptyCta": "Go to your courses",
+      "emptyCta": "Go to your products",
+      "firstTitle": "Your sales will show up here.",
       "datePending": "Date pending",
       "refundInStripe": "Refund in Stripe",
       "showMore": "Show {count} more",
@@ -2307,6 +2308,7 @@
     },
     "shareLink": {
       "copy": "Copy link",
+      "copyMyPage": "Copy my page link",
       "copyAria": "Copy {label} link",
       "open": "Open page",
       "openAria": "Open {label}",
@@ -2602,6 +2604,8 @@
         "filtersLabel": "Product filters",
         "filterLiveSales": "Live sales",
         "empty": "No products in this view yet.",
+        "firstTitle": "Your first product starts here.",
+        "firstCta": "Create my first product",
         "manage": "Manage product"
       },
       "formats": {
@@ -3704,6 +3708,18 @@
         "community": "Turn on the community before publishing: it is what members join.",
         "publish": "We could not publish this course. Please try again."
       },
+      "created": {
+        "course": "Draft saved. Next: your first lesson.",
+        "community": "Draft saved. Next: set your price.",
+        "live_event": "Draft saved. Next: schedule your session.",
+        "live_eventScheduled": "Draft saved. Your session is on the calendar.",
+        "ebook": "Draft saved. Next: upload your file.",
+        "close": "Close"
+      },
+      "publishedPanel": {
+        "title": "It's live.",
+        "detail": "Your product page is open to everyone. Share the link so people can find it."
+      },
       "success": {
         "lessonAdded": "Lesson added — opening the lesson studio once it autosaves…",
         "draftSaved": "Draft saved.",
@@ -3757,6 +3773,10 @@
         "markPreview": "Mark free preview",
         "createModule": "Create module",
         "addFirstModule": "Add your first module",
+        "firstLessonTitle": "Add your first lesson.",
+        "firstLessonDetail": "A video, a text or a file is enough.",
+        "firstModuleTitle": "Add your first module.",
+        "firstModuleDetail": "Then add a lesson to it: a video, a text or a file is enough.",
         "welcomeModule": "Welcome",
         "addLessonToModule": "Add lesson to module {index}",
         "moreOptions": "More options",
@@ -5055,7 +5075,7 @@
     "cancel": "Cancel",
     "loading": "Loading students...",
     "loadError": "We could not load the roster. Reload the page — if it keeps failing, contact support.",
-    "empty": "No one is enrolled yet. Buyers show up here the moment a purchase clears, with their name, e-mail, and progress — so you can support them without leaving the studio.",
+    "emptyTitle": "When someone joins, you'll see them here.",
     "search": "Search students by name or e-mail",
     "progressFilter": "Filter by progress",
     "accessFilter": "Filter by access",
