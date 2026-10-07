@@ -358,19 +358,18 @@
   "account": {
     "openMenu": "Open account menu",
     "memberFallback": "SkillsetMind member",
-    "switchView": "Switch view",
-    "studentView": "Student view",
-    "teacherView": "Teacher view",
-    "opsView": "Operations view",
+    "switchView": "Switch area",
+    "studentView": "Student area",
+    "teacherView": "Teacher area",
+    "opsView": "Operations area",
     "viewAs": "View as…",
     "becomeTeacher": "Become a teacher",
     "sectionAccount": "Account",
     "creatorPlan": "Creator plan",
     "subscription": "Subscription",
     "settings": "Settings",
-    "payoutsTax": "Payouts & tax",
     "billing": "Billing",
-    "myCredentials": "My credentials",
+    "myCredentials": "My certificates",
     "wishlist": "Wishlist",
     "signOut": "Sign out",
     "opensNewTab": "(opens in a new tab)"
@@ -479,11 +478,10 @@
     "openMobileNav": "Open navigation menu",
     "openSectionNav": "Open {section} navigation",
     "nav": {
-      "classroom": "Classroom",
       "communities": "Communities",
       "wishlist": "Wishlist",
       "agenda": "Agenda",
-      "credentials": "Credentials",
+      "credentials": "Certificates",
       "myCourses": "My courses",
       "studio": "Home",
       "courseBuilder": "My products",
@@ -496,18 +494,17 @@
       "sales": "Sales",
       "subscriptions": "Subscriptions",
       "coupons": "Coupons",
-      "team": "Collaborators",
-      "integrations": "Integrations",
       "operations": "Operations",
       "marketplace": "Marketplace",
       "settings": "Settings",
       "plansFees": "Plans & fees",
-      "payoutsTax": "Payouts & tax",
       "billing": "Billing",
       "myPurchases": "My purchases",
       "reports": "Reports",
       "earnings": "Earnings",
-      "verification": "Verification"
+      "verification": "Verification",
+      "students": "Students",
+      "inbox": "Inbox"
     },
     "ops": {
       "overview": "Overview",
@@ -1139,16 +1136,13 @@
     "navSection": {
       "home": "Home",
       "products": "Products",
-      "marketing": "Marketing",
       "sales": "Sales",
       "earnings": "Earnings",
-      "reports": "Reports",
-      "tools": "Tools",
-      "myLearning": "My Learning",
       "discover": "Discover",
       "learn": "Learn",
       "operations": "Operations",
-      "account": "Account"
+      "account": "Account",
+      "promote": "Promote"
     },
     "crumbs": {
       "learn": "Learn",
@@ -1234,7 +1228,14 @@
     },
     "switchToLightMode": "Switch to light mode",
     "switchToDarkMode": "Switch to dark mode",
-    "openSearch": "Open search"
+    "openSearch": "Open search",
+    "side": {
+      "student": "Student",
+      "teacher": "Teacher",
+      "ops": "Staff",
+      "goStudent": "Go to student area",
+      "goTeacher": "Go to teacher area"
+    }
   },
   "roles": {
     "admin": "Admin",
@@ -1471,9 +1472,7 @@
       }
     },
     "page": {
-      "eyebrow": "Student experience",
-      "title": "Your learning, in one place.",
-      "description": "Courses, milestones, community, and certificates come together in a workspace that keeps progress easy to follow."
+      "title": "My courses"
     },
     "dashboard": {
       "loading": "Loading your learning workspace...",
@@ -1509,7 +1508,8 @@
       "filterInProgress": "In progress",
       "filterCompleted": "Completed",
       "refundsMoved": "Refunds and receipts live in",
-      "refundsMovedLink": "Billing → Purchases"
+      "refundsMovedLink": "My purchases",
+      "allEvents": "See all live sessions"
     },
     "membersHero": {
       "showMore": "Show more",
@@ -1668,8 +1668,8 @@
       "step2Body": "Choose a product format, then add lessons, videos, and learning materials in the builder.",
       "step3Title": "Publish and sell",
       "step3Body": "Set your pricing, review the content and access rules, then publish. Share your sales link when the product is ready.",
-      "step4Title": "Payments and help",
-      "step4Body": "Connect your Stripe account in Payments to receive sales. Stripe handles verification and payout timing. Open Advisor in the top bar when you need help.",
+      "step4Title": "Earnings and help",
+      "step4Body": "Connect your Stripe account in Earnings to receive sales. Stripe handles verification and payout timing. Use Help in the menu when you need a hand.",
       "openStudio": "Open your studio"
     },
     "reports": {
@@ -1700,8 +1700,7 @@
       "shortcuts": "Operations shortcuts",
       "linkSales": "All sales",
       "linkSubscriptions": "Subscriptions",
-      "linkEarnings": "Earnings & Connect",
-      "linkCoupons": "Coupons",
+      "linkEarnings": "Earnings",
       "linkBuilder": "Course builder"
     },
     "reportsPage": {
@@ -1892,12 +1891,7 @@
       "coupons": {
         "title": "Coupons & promotions",
         "description": "Open a product to configure its discount codes and offer rules.",
-        "action": "Manage promotions"
-      },
-      "integrations": {
-        "title": "Integrations",
-        "description": "Email tools, webhooks, and analytics destinations are on the roadmap.",
-        "action": "See what's planned"
+        "action": "Open your products"
       },
       "state": {
         "published": "Published",
@@ -1908,17 +1902,8 @@
         "awaitingReplyOne": "1 awaiting reply",
         "awaitingReplyMany": "{count} awaiting reply",
         "noAwaitingReply": "No reply pending",
-        "couponsPerProduct": "Set per product",
-        "planned": "Planned"
+        "couponsPerProduct": "Set per product"
       }
-    },
-    "integrationsPage": {
-      "title": "Integrations are on the roadmap.",
-      "description": "Connect email tools, webhooks, and analytics destinations — it's on the SkillsetMind roadmap. Stripe is already connected, so you can open your own Stripe account from Payouts & tax anytime."
-    },
-    "messagesPage": {
-      "title": "Answer your students.",
-      "description": "Private per-course threads from enrolled students. Replies land in the student's classroom and notification bell."
     },
     "saleDetailPage": {
       "title": "Sale detail.",
@@ -1983,13 +1968,6 @@
     },
     "subscriptionsPage": {
       "description": "Recurring revenue, subscriber health, cancellation signals, and every renewal in one operational view."
-    },
-    "teamPage": {
-      "title": "Team & roles are on the roadmap.",
-      "description": "Invite teammates, assign editor or analyst roles, and share a course catalog across a team — it's on the SkillsetMind roadmap. Today, each Teacher Studio belongs to a single account."
-    },
-    "comingSoon": {
-      "openBuilder": "Open Course Builder"
     },
     "storefrontPage": {
       "title": "Your storefront.",
@@ -2127,6 +2105,25 @@
         "single_label": "Include the ending, for example yourname.com rather than yourname",
         "reserved": "That domain belongs to the platform and cannot be claimed."
       }
+    },
+    "inboxPage": {
+      "description": "Messages from your students and questions from your communities, in one place.",
+      "questionsTitle": "Questions waiting for you",
+      "questionsEmpty": "No questions waiting. When a student asks something in a community, it shows up here.",
+      "questionsError": "We couldn't load the questions. Please try again later.",
+      "answer": "Answer",
+      "messagesTitle": "Messages"
+    },
+    "studentsPage": {
+      "description": "Everyone who joined one of your products.",
+      "loading": "Loading your students...",
+      "error": "We couldn't load your students. Please try again later.",
+      "empty": "No students yet. When someone joins one of your products, they show up here.",
+      "countOne": "1 active student",
+      "countMany": "{count} active students",
+      "product": "Product",
+      "seeInProduct": "See in product",
+      "community": "Community"
     }
   },
   "creatorPanel": {
@@ -2481,7 +2478,6 @@
         "marketing": "Marketing workspace",
         "marketingDetail": "Pages, media, buyer messages, and promotions",
         "mediaDetail": "Course covers and delivery assets",
-        "integrationsDetail": "Connected delivery and business services",
         "verification": "Professional verification",
         "verificationDetail": "Credentials and marketplace admission"
       }
@@ -2574,8 +2570,7 @@
         "label": "Product workspace shortcuts",
         "membersDetail": "Customize delivery and learner spaces",
         "eventsDetail": "Schedule workshops and live sessions",
-        "marketingDetail": "Pages, media, messages, and promotions",
-        "couponsDetail": "Create discount codes for your products"
+        "marketingDetail": "Pages, media, messages, and promotions"
       }
     },
     "home": {
@@ -3700,7 +3695,7 @@
         "preview": "Clear the invalid free preview or choose a lesson from this course.",
         "setup": "Teacher setup must be complete before publishing courses.",
         "verification": "Professional verification must be approved before publishing.",
-        "payouts": "Finish Stripe payout onboarding before publishing a paid course — open the Payouts panel in your studio.",
+        "payouts": "Finish Stripe payout onboarding before publishing a paid course — open Earnings in your studio.",
         "payment": "Check how people pay, in Pricing, before publishing.",
         "lessonContent": "Add a video, text or file to every lesson before publishing.",
         "session": "Schedule the live session before publishing: the date has to be in the future.",
@@ -5588,9 +5583,6 @@
     }
   },
   "teacherRouteResidual": {
-    "couponsTitle": "Coupons live in each course's central.",
-    "couponsDescription": "Open a course, choose Manage, and head to the Coupons section to create discount codes for it. Codes are live at checkout: buyers enter them on your course page and the discount applies before payment.",
-    "openCourses": "Open my courses",
     "manageLoading": "Loading course management..."
   },
   "teacherSalesCopy": {
@@ -5839,5 +5831,28 @@
   "siteMetadata": {
     "title": "SkillsetMind | Coaching, Personal Development & Human Potential",
     "description": "A vertical business and learning platform for coaching, personal development and human potential."
+  },
+  "helpMenu": {
+    "trigger": "Help",
+    "title": "What do you need help with?",
+    "student": {
+      "lesson": "Question about a lesson",
+      "lessonCommunity": "Ask in the course community.",
+      "lessonMessage": "Write to your teacher.",
+      "private": "Private matter with the teacher",
+      "privateHint": "Send a private message.",
+      "account": "Login, payment, refund or something broken",
+      "accountHint": "Ask our help assistant first."
+    },
+    "person": "Talk to a person",
+    "teacher": {
+      "howTo": "How do I do something on the platform",
+      "howToAdvisor": "Ask the Advisor, our AI helper.",
+      "howToCenter": "Read the help center.",
+      "students": "My students",
+      "studentsHint": "Messages and questions are in your Inbox.",
+      "account": "Account, payment or error",
+      "accountHint": "Send a request to our team."
+    }
   }
 }

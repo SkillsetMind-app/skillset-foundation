@@ -105,7 +105,7 @@ describe("CreatorMarketingHub", () => {
     );
   }
 
-  it("mostra os cinco cartoes com o estado real de cada um", async () => {
+  it("mostra os quatro cartoes com o estado real de cada um", async () => {
     givenCourses([mocks.course("c1", "published"), mocks.course("c2", "draft")]);
     // Duas conversas: a do aluno espera resposta, a que o professor respondeu nao.
     givenMessages([
@@ -117,7 +117,7 @@ describe("CreatorMarketingHub", () => {
     render(<CreatorMarketingHub />);
 
     expect(await screen.findByText("12 files")).toBeInTheDocument();
-    expect(screen.getAllByRole("article")).toHaveLength(5);
+    expect(screen.getAllByRole("article")).toHaveLength(4);
 
     const storefront = cardNamed("Storefront & product pages");
     expect(within(storefront).getByText("Published")).toBeInTheDocument();
@@ -128,10 +128,14 @@ describe("CreatorMarketingHub", () => {
     expect(
       within(cardNamed("Buyer messages")).getByText("1 awaiting reply"),
     ).toBeInTheDocument();
-    expect(
-      within(cardNamed("Coupons & promotions")).getByText("Set per product"),
-    ).toBeInTheDocument();
-    expect(within(cardNamed("Integrations")).getByText("Planned")).toBeInTheDocument();
+    // Cupom mora em cada produto: o cartao leva para a lista de produtos e diz
+    // isso no botao, em vez de passar por /teach/coupons (que so redireciona).
+    const coupons = cardNamed("Coupons & promotions");
+    expect(within(coupons).getByText("Set per product")).toBeInTheDocument();
+    expect(within(coupons).getByRole("link", { name: /Open your products/ })).toHaveAttribute("href", "/teach/builder");
+    // "Integrations — See what's planned" caia em Ganhos: saiu.
+    expect(screen.queryByRole("heading", { name: "Integrations" })).toBeNull();
+    expect(document.querySelector('a[href="/teach/integrations"], a[href="/teach/coupons"]')).toBeNull();
   });
 
   it("no zero, diz que a vitrine nao esta publicada e que nada espera resposta", async () => {

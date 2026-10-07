@@ -358,19 +358,18 @@
   "account": {
     "openMenu": "Abrir menú de cuenta",
     "memberFallback": "Miembro de SkillsetMind",
-    "switchView": "Cambiar de vista",
-    "studentView": "Vista de estudiante",
-    "teacherView": "Vista de profesor",
-    "opsView": "Vista de operaciones",
+    "switchView": "Cambiar de área",
+    "studentView": "Área del alumno",
+    "teacherView": "Área del profesor",
+    "opsView": "Área de operaciones",
     "viewAs": "Ver como…",
     "becomeTeacher": "Conviértete en profesor",
     "sectionAccount": "Cuenta",
     "creatorPlan": "Plan de creador",
     "subscription": "Suscripción",
     "settings": "Ajustes",
-    "payoutsTax": "Pagos e impuestos",
     "billing": "Facturación",
-    "myCredentials": "Mis credenciales",
+    "myCredentials": "Mis certificados",
     "wishlist": "Lista de deseos",
     "signOut": "Cerrar sesión",
     "opensNewTab": "(se abre en una pestaña nueva)"
@@ -479,11 +478,10 @@
     "openMobileNav": "Abrir menú de navegación",
     "openSectionNav": "Abrir navegación de {section}",
     "nav": {
-      "classroom": "Aula",
       "communities": "Comunidades",
       "wishlist": "Lista de deseos",
       "agenda": "Agenda",
-      "credentials": "Credenciales",
+      "credentials": "Certificados",
       "myCourses": "Mis cursos",
       "studio": "Inicio",
       "courseBuilder": "Mis productos",
@@ -496,18 +494,17 @@
       "sales": "Ventas",
       "subscriptions": "Suscripciones",
       "coupons": "Cupones",
-      "team": "Colaboradores",
-      "integrations": "Integraciones",
       "operations": "Operaciones",
       "marketplace": "Marketplace",
       "settings": "Ajustes",
       "plansFees": "Planes y tarifas",
-      "payoutsTax": "Pagos e impuestos",
       "billing": "Facturación",
       "myPurchases": "Mis compras",
       "reports": "Informes",
-      "earnings": "Ingresos",
-      "verification": "Verificación"
+      "earnings": "Ganancias",
+      "verification": "Verificación",
+      "students": "Alumnos",
+      "inbox": "Bandeja de entrada"
     },
     "ops": {
       "overview": "Resumen",
@@ -1139,16 +1136,13 @@
     "navSection": {
       "home": "Inicio",
       "products": "Productos",
-      "marketing": "Marketing",
       "sales": "Ventas",
-      "earnings": "Ingresos",
-      "reports": "Informes",
-      "tools": "Herramientas",
-      "myLearning": "Mi aprendizaje",
+      "earnings": "Ganancias",
       "discover": "Descubrir",
       "learn": "Aprender",
       "operations": "Operaciones",
-      "account": "Cuenta"
+      "account": "Cuenta",
+      "promote": "Promocionar"
     },
     "crumbs": {
       "learn": "Aprender",
@@ -1234,7 +1228,14 @@
     },
     "switchToLightMode": "Cambiar al modo claro",
     "switchToDarkMode": "Cambiar al modo oscuro",
-    "openSearch": "Abrir búsqueda"
+    "openSearch": "Abrir búsqueda",
+    "side": {
+      "student": "Alumno",
+      "teacher": "Profesor",
+      "ops": "Equipo",
+      "goStudent": "Ir al área del alumno",
+      "goTeacher": "Ir al área del profesor"
+    }
   },
   "roles": {
     "admin": "Administrador",
@@ -1471,9 +1472,7 @@
       }
     },
     "page": {
-      "eyebrow": "Experiencia del estudiante",
-      "title": "Tu aprendizaje, en un solo lugar.",
-      "description": "Cursos, hitos, comunidad y certificados se reúnen en un espacio que hace fácil seguir tu progreso."
+      "title": "Mis cursos"
     },
     "dashboard": {
       "loading": "Cargando tu espacio de aprendizaje...",
@@ -1509,7 +1508,8 @@
       "filterInProgress": "En curso",
       "filterCompleted": "Completados",
       "refundsMoved": "Los reembolsos y recibos están en",
-      "refundsMovedLink": "Facturación → Compras"
+      "refundsMovedLink": "Mis compras",
+      "allEvents": "Ver todas las sesiones en vivo"
     },
     "membersHero": {
       "showMore": "Ver más",
@@ -1668,8 +1668,8 @@
       "step2Body": "Elige un formato de producto y añade lecciones, vídeos y materiales de aprendizaje en el editor.",
       "step3Title": "Publica y vende",
       "step3Body": "Define el precio, revisa el contenido y las reglas de acceso, y publica. Comparte el enlace de venta cuando el producto esté listo.",
-      "step4Title": "Cobros y ayuda",
-      "step4Body": "Conecta tu cuenta de Stripe en Pagos para recibir ventas. Stripe gestiona la verificación y los plazos de pago. Abre Advisor en la barra superior cuando necesites ayuda.",
+      "step4Title": "Ganancias y ayuda",
+      "step4Body": "Conecta tu cuenta de Stripe en Ganancias para recibir ventas. Stripe gestiona la verificación y los plazos de pago. Usa Ayuda en el menú cuando necesites una mano.",
       "openStudio": "Abrir mi espacio"
     },
     "reports": {
@@ -1700,8 +1700,7 @@
       "shortcuts": "Atajos de operaciones",
       "linkSales": "Todas las ventas",
       "linkSubscriptions": "Suscripciones",
-      "linkEarnings": "Ganancias y Connect",
-      "linkCoupons": "Cupones",
+      "linkEarnings": "Ganancias",
       "linkBuilder": "Constructor de cursos"
     },
     "reportsPage": {
@@ -1799,7 +1798,7 @@
       "learnMore": "Más información",
       "details": "Esta página es tu registro de ingresos: pedidos pagados, lo que cobró SkillsetMind y el estado de tu cuenta de Stripe Connect. Los plazos de pago son de Stripe y dependen de tu país, del método de pago y del calendario de pagos de tu cuenta de Stripe; una cuenta nueva espera la verificación antes de su primer pago. Stripe Connect debe tener los cobros y los pagos habilitados antes de que un producto de pago pueda publicarse. El perfil y la seguridad siguen en Ajustes.",
       "netHint": "Neto de ventas únicas y por suscripción, después de la comisión de SkillsetMind y las comisiones de Stripe.",
-      "title": "Tus ingresos, tu configuración de pagos.",
+      "title": "Tus ganancias, tu configuración de pagos.",
       "helpTopic": "Calendario de pagos",
       "helpBody": "Los compradores pagan directamente a tu cuenta de Stripe, así que la plataforma no retiene nada. Después Stripe liquida y transfiere a tu banco según sus propios plazos, que dependen de tu país y del método de pago, y una cuenta nueva espera la verificación antes de su primer pago. Stripe Connect debe tener los cobros y los pagos habilitados antes de que un producto de pago pueda publicarse.",
       "taxForms": "Stripe recoge tus datos fiscales",
@@ -1892,12 +1891,7 @@
       "coupons": {
         "title": "Cupones y promociones",
         "description": "Abre un producto para configurar sus códigos de descuento y reglas de oferta.",
-        "action": "Gestionar promociones"
-      },
-      "integrations": {
-        "title": "Integraciones",
-        "description": "Las herramientas de email, los webhooks y los destinos de analítica están en la hoja de ruta.",
-        "action": "Ver lo planificado"
+        "action": "Abrir tus productos"
       },
       "state": {
         "published": "Publicada",
@@ -1908,17 +1902,8 @@
         "awaitingReplyOne": "1 espera respuesta",
         "awaitingReplyMany": "{count} esperan respuesta",
         "noAwaitingReply": "Sin respuestas pendientes",
-        "couponsPerProduct": "Se configura por producto",
-        "planned": "Planificado"
+        "couponsPerProduct": "Se configura por producto"
       }
-    },
-    "integrationsPage": {
-      "title": "Las integraciones están previstas.",
-      "description": "Conecta herramientas de correo, webhooks y servicios de análisis: está previsto en SkillsetMind. Stripe ya está conectado, así que puedes abrir tu propia cuenta de Stripe desde Pagos e impuestos en cualquier momento."
-    },
-    "messagesPage": {
-      "title": "Responde a tus alumnos.",
-      "description": "Conversaciones privadas por curso con los alumnos inscritos. Las respuestas llegan al aula y a la campana de notificaciones del alumno."
     },
     "saleDetailPage": {
       "title": "Detalle de la venta.",
@@ -1983,13 +1968,6 @@
     },
     "subscriptionsPage": {
       "description": "Ingresos recurrentes, estado de las suscripciones, señales de cancelación y cada renovación en una sola vista de operaciones."
-    },
-    "teamPage": {
-      "title": "Los equipos y roles están previstos.",
-      "description": "Invita a colaboradores, asigna roles de editor o analista y comparte un catálogo de cursos con tu equipo: está previsto en SkillsetMind. Actualmente, cada estudio del profesor pertenece a una sola cuenta."
-    },
-    "comingSoon": {
-      "openBuilder": "Abre el constructor de cursos"
     },
     "storefrontPage": {
       "title": "Tu tienda.",
@@ -2127,6 +2105,25 @@
         "single_label": "Incluye la terminación, por ejemplo tunombre.com en lugar de tunombre",
         "reserved": "Ese dominio pertenece a la plataforma y no se puede registrar."
       }
+    },
+    "inboxPage": {
+      "description": "Mensajes de tus alumnos y preguntas de tus comunidades, en un solo lugar.",
+      "questionsTitle": "Preguntas que esperan tu respuesta",
+      "questionsEmpty": "No hay preguntas esperando. Cuando un alumno pregunte algo en una comunidad, aparecerá aquí.",
+      "questionsError": "No pudimos cargar las preguntas. Inténtalo de nuevo más tarde.",
+      "answer": "Responder",
+      "messagesTitle": "Mensajes"
+    },
+    "studentsPage": {
+      "description": "Todas las personas que entraron en alguno de tus productos.",
+      "loading": "Cargando tus alumnos...",
+      "error": "No pudimos cargar tus alumnos. Inténtalo de nuevo más tarde.",
+      "empty": "Todavía no hay alumnos. Cuando alguien entre en uno de tus productos, aparecerá aquí.",
+      "countOne": "1 alumno activo",
+      "countMany": "{count} alumnos activos",
+      "product": "Producto",
+      "seeInProduct": "Ver en el producto",
+      "community": "Comunidad"
     }
   },
   "creatorPanel": {
@@ -2481,7 +2478,6 @@
         "marketing": "Espacio de marketing",
         "marketingDetail": "Páginas, multimedia, mensajes de compradores y promociones",
         "mediaDetail": "Portadas de cursos y archivos de entrega",
-        "integrationsDetail": "Servicios de entrega y de negocio conectados",
         "verification": "Verificación profesional",
         "verificationDetail": "Credenciales y admisión en el marketplace"
       }
@@ -2574,8 +2570,7 @@
         "label": "Atajos del espacio de productos",
         "membersDetail": "Personaliza la entrega y los espacios de los alumnos",
         "eventsDetail": "Programa talleres y sesiones en vivo",
-        "marketingDetail": "Páginas, multimedia, mensajes y promociones",
-        "couponsDetail": "Crea códigos de descuento para tus productos"
+        "marketingDetail": "Páginas, multimedia, mensajes y promociones"
       }
     },
     "home": {
@@ -3700,7 +3695,7 @@
         "preview": "Quita la vista previa gratuita no válida o elige una lección de este curso.",
         "setup": "Completa la configuración del creador antes de publicar cursos.",
         "verification": "La verificación profesional debe estar aprobada antes de publicar.",
-        "payouts": "Completa la configuración de cobros de Stripe antes de publicar un curso de pago. Abre el panel Cobros en tu estudio.",
+        "payouts": "Completa la configuración de cobros de Stripe antes de publicar un curso de pago. Abre Ganancias en tu estudio.",
         "payment": "Revisa cómo te van a pagar, en Precios, antes de publicar.",
         "lessonContent": "Añade un video, texto o archivo a cada lección antes de publicar.",
         "session": "Agenda la sesión en vivo antes de publicar: la fecha tiene que ser futura.",
@@ -5588,9 +5583,6 @@
     }
   },
   "teacherRouteResidual": {
-    "couponsTitle": "Los cupones se gestionan en el panel de cada curso.",
-    "couponsDescription": "Abre un curso, elige Gestionar y ve a la sección Cupones para crear códigos de descuento. Los compradores introducen el código en la página de tu curso y el descuento se aplica antes del pago.",
-    "openCourses": "Abrir mis cursos",
     "manageLoading": "Cargando la gestión del curso..."
   },
   "teacherSalesCopy": {
@@ -5839,5 +5831,28 @@
   "siteMetadata": {
     "title": "SkillsetMind | Coaching, desarrollo personal y potencial humano",
     "description": "Una plataforma vertical de negocio y aprendizaje para coaching, desarrollo personal y potencial humano."
+  },
+  "helpMenu": {
+    "trigger": "Ayuda",
+    "title": "¿Con qué necesitas ayuda?",
+    "student": {
+      "lesson": "Duda sobre una clase",
+      "lessonCommunity": "Pregunta en la comunidad del curso.",
+      "lessonMessage": "Escribe a tu profesor.",
+      "private": "Asunto privado con el profesor",
+      "privateHint": "Envía un mensaje privado.",
+      "account": "Acceso, pago, reembolso o algo que no funciona",
+      "accountHint": "Pregunta primero a nuestro asistente de ayuda."
+    },
+    "person": "Hablar con una persona",
+    "teacher": {
+      "howTo": "Cómo hago algo en la plataforma",
+      "howToAdvisor": "Pregunta al Asesor, nuestro ayudante con IA.",
+      "howToCenter": "Lee el centro de ayuda.",
+      "students": "Mis alumnos",
+      "studentsHint": "Los mensajes y las preguntas están en tu bandeja de entrada.",
+      "account": "Cuenta, pago o error",
+      "accountHint": "Envía una solicitud a nuestro equipo."
+    }
   }
 }

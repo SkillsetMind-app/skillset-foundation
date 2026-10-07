@@ -2,9 +2,9 @@
 
 import {
   Award,
+  BadgeCheck,
   Bookmark,
   ChevronDown,
-  ExternalLink,
   Eye,
   FileText,
   GraduationCap,
@@ -31,6 +31,9 @@ import { subscribeToUserProfile } from "@/lib/data/user-profiles";
 type AccountMenuProps = {
   user: SkillsetUser;
   onSignOut: () => Promise<void>;
+  /** Sala com a marca do professor: sem portas para dentro da SkillsetMind
+   *  ("Become a teacher", "Go to dashboard"). */
+  branded?: boolean;
 };
 
 function useDismissableLayer(
@@ -71,7 +74,7 @@ function useDismissableLayer(
   }, [isOpen, onDismiss, ref, triggerRef]);
 }
 
-export function AccountMenu({ onSignOut, user }: AccountMenuProps) {
+export function AccountMenu({ onSignOut, user, branded = false }: AccountMenuProps) {
   const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const [currentPlanId, setCurrentPlanId] = useState<PlanId>("free");
@@ -84,8 +87,9 @@ export function AccountMenu({ onSignOut, user }: AccountMenuProps) {
     : "/account/billing";
   // Plans are what a creator pays to sell; same gate as /teach.
   const canTeach = hasPermission({ roles: user.roles }, "teacherStudio.access");
+  // Um nome so para a pagina do dinheiro do professor, o mesmo da barra.
   const moneyLabel = user.roles.includes("teacher")
-    ? t("account.payoutsTax")
+    ? t("platform.nav.earnings")
     : canTeach
       ? t("account.billing")
       : t("platform.nav.myPurchases");
@@ -121,10 +125,9 @@ export function AccountMenu({ onSignOut, user }: AccountMenuProps) {
   // fila de acessos do /ops. Atalho, nao reimplementacao (reanalise Ops 5).
   const canViewAs = hasPermission({ roles: user.roles }, "platform.accessAdmin");
 
-  // Someone with no studio yet gets the application instead. That one still
-  // opens in a new tab: it is a side trip through the onboarding quiz, not a
-  // switch between places the account already lives.
-  const becomeTeacher = user.roles.includes("teacher")
+  // Someone with no studio yet gets the application instead, in the SAME tab:
+  // a new tab reads as "the site vanished" to people new to the web.
+  const becomeTeacher = user.roles.includes("teacher") || branded
     ? null
     : {
         href: "/onboarding?path=teacher",
@@ -242,18 +245,20 @@ export function AccountMenu({ onSignOut, user }: AccountMenuProps) {
             </div>
           </div>
 
-          <div className="py-1">
-            <MenuLink
-              href={getPrimaryWorkspaceHref(user)}
-              icon={LayoutDashboard}
-              label={t("nav.goToDashboard")}
-              onNavigate={() => setIsOpen(false)}
-            />
-          </div>
+          {branded ? null : (
+            <div className="py-1">
+              <MenuLink
+                href={getPrimaryWorkspaceHref(user)}
+                icon={LayoutDashboard}
+                label={t("nav.goToDashboard")}
+                onNavigate={() => setIsOpen(false)}
+              />
+            </div>
+          )}
 
           {otherWorkspaces.length > 0 || becomeTeacher || canViewAs ? (
             <>
-              <div className="account-menu-separator" />
+              {branded ? null : <div className="account-menu-separator" />}
               <div className="py-1">
                 <p className="account-menu-section-label">
                   {t("account.switchView")}
@@ -276,7 +281,7 @@ export function AccountMenu({ onSignOut, user }: AccountMenuProps) {
                   />
                 ) : null}
                 {becomeTeacher ? (
-                  <RoleSwitchItem
+                  <MenuLink
                     href={becomeTeacher.href}
                     icon={becomeTeacher.icon}
                     label={becomeTeacher.label}
@@ -318,6 +323,16 @@ export function AccountMenu({ onSignOut, user }: AccountMenuProps) {
               label={moneyLabel}
               onNavigate={() => setIsOpen(false)}
             />
+            {/* As ferramentas do professor que nao sao trabalho do dia saem da
+                barra lateral e moram aqui. */}
+            {user.roles.includes("teacher") ? (
+              <MenuLink
+                href="/teach/verification"
+                icon={BadgeCheck}
+                label={t("platform.nav.verification")}
+                onNavigate={() => setIsOpen(false)}
+              />
+            ) : null}
             <MenuLink
               href="/learn/credentials"
               icon={Bookmark}
@@ -334,6 +349,8 @@ export function AccountMenu({ onSignOut, user }: AccountMenuProps) {
             ) : null}
           </div>
 
+          {/* A Ajuda nao mora aqui: uma por tela, na barra lateral (ou no
+              topo da sala de aula, que nao tem barra). */}
           <div className="account-menu-separator" />
           <button
             type="button"
@@ -374,41 +391,6 @@ function MenuLink({
       </span>
       <span className="min-w-0 flex-1 truncate">{label}</span>
       {chip ? <span className="account-menu-chip">{chip}</span> : null}
-    </Link>
-  );
-}
-
-function RoleSwitchItem({
-  href,
-  icon: Icon,
-  label,
-  onNavigate,
-}: {
-  href: string;
-  icon: LucideIcon;
-  label: string;
-  onNavigate: () => void;
-}) {
-  const { t } = useTranslation();
-  return (
-    <Link
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
-      aria-label={`${label} ${t("account.opensNewTab")}`}
-      className="account-menu-item"
-      onClick={onNavigate}
-    >
-      <span className="account-menu-icon">
-        <Icon aria-hidden="true" size={14} strokeWidth={1.9} />
-      </span>
-      <span className="min-w-0 flex-1 truncate">{label}</span>
-      <ExternalLink
-        aria-hidden="true"
-        size={13}
-        strokeWidth={1.9}
-        className="shrink-0 text-[var(--color-ink-muted)]"
-      />
     </Link>
   );
 }

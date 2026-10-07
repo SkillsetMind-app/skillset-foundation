@@ -367,6 +367,26 @@ export function subscribeToTeacherCourse(
   );
 }
 
+/** Id, titulo e comunidade de cada produto do professor, numa leitura so:
+ *  para telas que listam por produto (Alunos, Caixa de entrada) sem abrir uma
+ *  inscricao em tempo real do curso inteiro. */
+export async function getMyCourseSummaries(
+  ownerId: string,
+): Promise<Array<{ id: string; title: string; communityEnabled: boolean }>> {
+  const supabase = getSupabaseBrowserClient();
+  const { data, error } = await supabase
+    .from(coursesTable)
+    .select("id, title, community_enabled")
+    .eq("owner_id", ownerId);
+
+  if (error) throw error;
+  return (data ?? []).map((row) => ({
+    id: row.id,
+    title: row.title,
+    communityEnabled: row.community_enabled === true,
+  }));
+}
+
 export function subscribeToTeacherCourses(
   ownerId: string,
   callback: (courses: TeacherCourse[]) => void,

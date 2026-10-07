@@ -76,21 +76,21 @@ describe("barra lateral recolhida", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("Members usa Users no rail e expandida, sem trocar Image da biblioteca de midia", () => {
+  it("Students usa Users no rail e expandida, sem trocar Image da biblioteca de midia", () => {
     mocks.roles = ["teacher"];
-    mocks.pathname = "/teach/members";
-    const { rerender } = render(<PlatformNav collapsed initialSection="marketing" />);
+    mocks.pathname = "/teach/students";
+    const { rerender } = render(<PlatformNav collapsed initialSection="promote" />);
 
-    const members = screen.getByRole("link", { name: "membersArea" });
-    expect(members).toHaveAttribute("href", "/teach/members");
-    expect(members).toHaveAttribute("title", "membersArea");
-    expect(members).toHaveAttribute("aria-current", "page");
-    expect(members.querySelector("svg.lucide-users")).toBeInTheDocument();
+    const students = screen.getByRole("link", { name: "students" });
+    expect(students).toHaveAttribute("href", "/teach/students");
+    expect(students).toHaveAttribute("title", "students");
+    expect(students).toHaveAttribute("aria-current", "page");
+    expect(students.querySelector("svg.lucide-users")).toBeInTheDocument();
 
-    rerender(<PlatformNav initialSection="marketing" />);
-    const expandedMembers = screen.getByRole("link", { name: "membersArea" });
-    expect(expandedMembers.querySelector("svg.lucide-users")).toBeInTheDocument();
-    expect(expandedMembers).not.toHaveAttribute("title");
+    rerender(<PlatformNav initialSection="promote" />);
+    const expandedStudents = screen.getByRole("link", { name: "students" });
+    expect(expandedStudents.querySelector("svg.lucide-users")).toBeInTheDocument();
+    expect(expandedStudents).not.toHaveAttribute("title");
     const media = screen.getByRole("link", { name: "mediaLibrary" });
     expect(media).toHaveAttribute("href", "/teach/media");
     expect(media.querySelector("svg.lucide-image")).toBeInTheDocument();

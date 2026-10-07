@@ -58,7 +58,8 @@ describe("saídas do tour de boas-vindas", () => {
     render(<I18nProvider initialLocale={locale}><TeacherWelcomeTour userId={`locale-${locale}`} firstName="Mc$&Donald" /></I18nProvider>);
     expect(await screen.findByRole("heading", { name: locale === "en" ? "Welcome to your studio, Mc$&Donald" : "Bienvenido a tu espacio, Mc$&Donald" })).toBeInTheDocument();
     for (let step = 0; step < 3; step += 1) fireEvent.click(screen.getByRole("button", { name: locale === "en" ? "Next" : "Siguiente" }));
-    expect(screen.getByText(locale === "en" ? /Advisor in the top bar/ : /Advisor en la barra superior/)).toBeInTheDocument();
+    // A Ajuda mora no menu (barra lateral; no celular, dentro da gaveta), nao no topo.
+    expect(screen.getByText(locale === "en" ? /Help in the menu/ : /Ayuda en el menú/)).toBeInTheDocument();
     // The advisor is open on every account: the tour no longer ties it to a fee.
     expect(screen.queryByText(/active storefront|tienda activa/)).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: locale === "en" ? "Open your studio" : "Abrir mi espacio" }));

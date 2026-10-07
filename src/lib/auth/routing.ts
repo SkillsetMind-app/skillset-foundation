@@ -53,6 +53,21 @@ export function getWorkspaceHomeHref(
   return user ? getPrimaryWorkspaceHref(user) : "/platform";
 }
 
+export type WorkspaceSide = "student" | "teacher" | "ops";
+
+/**
+ * Which side of the platform a page belongs to — the top bar names it and
+ * offers the way to the other side, and the Help menu picks its choices by
+ * it. Same rule as the logo's home link, so the two never disagree.
+ */
+export function getWorkspaceSide(
+  pathname: string,
+  user: Pick<SkillsetUser, "roles"> | null | undefined,
+): WorkspaceSide {
+  const home = getWorkspaceHomeHref(pathname, user);
+  return home === "/teach" ? "teacher" : home === "/ops" ? "ops" : "student";
+}
+
 export function parseAuthPathIntent(value: string | null | undefined): AuthPathIntent | null {
   if (value === "student" || value === "teacher") {
     return value;

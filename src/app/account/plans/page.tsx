@@ -1,3 +1,4 @@
+import { PlansForTeachersOnly } from "@/components/account/plans-for-teachers-only";
 import { PlansPanel } from "@/components/account/plans-panel";
 import { ProtectedSurface } from "@/components/auth/protected-surface";
 import { PlatformShell } from "@/components/platform/platform-shell";
@@ -13,34 +14,36 @@ export default async function AccountPlansPage() {
   const { t } = await getServerTranslation();
   return (
     <ProtectedSurface permissions={["auth.signOut"]}>
-      {/* O cartão de abertura ("Pricing model / Choose the plan that fits…")
-          era a segunda manchete da página, antes de "Current plan" virar a
-          terceira. A página abre no que importa: o plano atual e os cartões.
-          A frase de que todo plano inclui tudo foi para a descrição do título. */}
-      <PlatformShell
-        title={t("accountPlansPage.title")}
-        description={t("accountPlansPage.description")}
-        compact
-      >
-        <section className="grid gap-5">
-          <PlansPanel />
+      <PlansForTeachersOnly>
+        {/* O cartão de abertura ("Pricing model / Choose the plan that fits…")
+            era a segunda manchete da página, antes de "Current plan" virar a
+            terceira. A página abre no que importa: o plano atual e os cartões.
+            A frase de que todo plano inclui tudo foi para a descrição do título. */}
+        <PlatformShell
+          title={t("accountPlansPage.title")}
+          description={t("accountPlansPage.description")}
+          compact
+        >
+          <section className="grid gap-5">
+            <PlansPanel />
 
-          <div className="grid gap-4 lg:grid-cols-3">
-            <PolicyCard
-              title={t("accountPlansPage.processing")}
-              detail={t("accountPlansPage.processingBody")}
-            />
-            <PolicyCard
-              title={t("accountPlansPage.refund")}
-              detail={t("accountPlansPage.refundBody").replace("{days}", () => String(refundWindowDays))}
-            />
-            <PolicyCard
-              title={t("accountPlansPage.payouts")}
-              detail={t("accountPlansPage.payoutsBody")}
-            />
-          </div>
-        </section>
-      </PlatformShell>
+            <div className="grid gap-4 lg:grid-cols-3">
+              <PolicyCard
+                title={t("accountPlansPage.processing")}
+                detail={t("accountPlansPage.processingBody")}
+              />
+              <PolicyCard
+                title={t("accountPlansPage.refund")}
+                detail={t("accountPlansPage.refundBody").replace("{days}", () => String(refundWindowDays))}
+              />
+              <PolicyCard
+                title={t("accountPlansPage.payouts")}
+                detail={t("accountPlansPage.payoutsBody")}
+              />
+            </div>
+          </section>
+        </PlatformShell>
+      </PlansForTeachersOnly>
     </ProtectedSurface>
   );
 }

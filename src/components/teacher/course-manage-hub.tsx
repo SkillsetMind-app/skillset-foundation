@@ -1140,11 +1140,6 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
                     href: "/teach/media",
                   },
                   {
-                    label: t("platform.nav.integrations"),
-                    detail: t("creatorPanel.hub.tools.integrationsDetail"),
-                    href: "/teach/integrations",
-                  },
-                  {
                     label: t("creatorPanel.hub.tools.verification"),
                     detail: t("creatorPanel.hub.tools.verificationDetail"),
                     href: "/teach/verification",

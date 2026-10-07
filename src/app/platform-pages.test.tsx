@@ -190,8 +190,8 @@ describe("platform shells", () => {
     // studio context, but the menu now lists every workspace the account holds
     // and hides the current one, so it reads as a toggle — and a toggle that
     // opens a tab per press leaves you with a pile of them.
-    expect(screen.getByText("Switch view")).toBeInTheDocument();
-    const studentViewLink = screen.getByRole("link", { name: /Student view/i });
+    expect(screen.getByText("Switch area")).toBeInTheDocument();
+    const studentViewLink = screen.getByRole("link", { name: /Student area/i });
     expect(studentViewLink).toHaveAttribute("href", "/learn");
     expect(studentViewLink).not.toHaveAttribute("target");
     // A teacher should not see the learner-to-teacher upgrade prompt.

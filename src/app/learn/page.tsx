@@ -13,15 +13,11 @@ export default async function LearnPage() {
 
   return (
     <ProtectedSurface permissions={["courses.viewLearning"]}>
-      {/* hideHeader: o aluno via duas boas-vindas seguidas, a manchete do
-          shell e o "Welcome back" do painel logo abaixo. O painel passa a
-          emitir a unica saudacao (e o unico h1), como o estudio do professor. */}
-      <PlatformShell
-        eyebrow={t("learn.page.eyebrow")}
-        title={t("learn.page.title")}
-        description={t("learn.page.description")}
-        hideHeader
-      >
+      {/* hideHeader: o painel emite a unica saudacao (e o unico h1). O titulo
+          da casca so nomeia a aba do navegador: "My courses", como o menu —
+          nao mais "Your learning, in one place." com o selo de marketing
+          "Student experience". */}
+      <PlatformShell title={t("learn.page.title")} hideHeader>
         <LearnDashboard />
       </PlatformShell>
     </ProtectedSurface>

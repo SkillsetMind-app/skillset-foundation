@@ -1,7 +1,7 @@
 "use client";
 
 import type { CourseMessage } from "@/domain/course-message";
-import { normalizeCourseMessageBody } from "@/domain/course-message";
+import { countThreadsAwaitingReply, normalizeCourseMessageBody } from "@/domain/course-message";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import type { Database } from "@/lib/supabase/database.types";
 
@@ -191,4 +191,29 @@ export function subscribeToStudentMessages(
   return () => {
     void supabase.removeChannel(channel);
   };
+}
+
+/** Quantas conversas esperam a resposta do professor (a ultima mensagem e do
+ *  aluno). Le so quem mandou e quando: o texto das mensagens nao entra na
+ *  conta. ponytail: as 400 mensagens mais novas, o mesmo teto da caixa; uma
+ *  conversa parada ha mais tempo que isso fica fora do numero. */
+export async function countThreadsAwaitingTeacher(teacherId: string): Promise<number> {
+  const supabase = getSupabaseBrowserClient();
+  const { data, error } = await supabase
+    .from(courseMessagesTable)
+    .select("course_id, student_id, sender_id, created_at")
+    .eq("teacher_id", teacherId)
+    .order("created_at", { ascending: false })
+    .limit(400);
+
+  if (error) throw error;
+  return countThreadsAwaitingReply(
+    (data ?? []).map((row) => ({
+      courseId: row.course_id,
+      studentId: row.student_id,
+      senderId: row.sender_id,
+      createdAt: row.created_at,
+    })),
+    teacherId,
+  );
 }

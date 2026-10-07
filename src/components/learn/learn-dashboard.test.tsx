@@ -445,11 +445,11 @@ describe("LearnDashboard", () => {
     expect(screen.queryByRole("button", { name: /refund/i })).not.toBeInTheDocument();
     // Nenhuma compra dentro da janela de reembolso: nada a dizer.
     expect(
-      screen.queryByRole("link", { name: "Billing → Purchases" }),
+      screen.queryByRole("link", { name: "My purchases" }),
     ).not.toBeInTheDocument();
   });
 
-  it("com uma compra ainda dentro da janela de reembolso, aponta Billing → Purchases", async () => {
+  it("com uma compra ainda dentro da janela de reembolso, aponta My purchases", async () => {
     fixtures.enrollments = [
       ...fixtures.base,
       {
@@ -462,7 +462,7 @@ describe("LearnDashboard", () => {
 
     const region = await screen.findByRole("region", { name: "My courses" });
     expect(
-      within(region).getByRole("link", { name: "Billing → Purchases" }),
+      within(region).getByRole("link", { name: "My purchases" }),
     ).toHaveAttribute("href", "/account/billing?tab=purchases");
   });
 
@@ -480,7 +480,7 @@ describe("LearnDashboard", () => {
 
     await screen.findByRole("region", { name: "My courses" });
     expect(
-      screen.queryByRole("link", { name: "Billing → Purchases" }),
+      screen.queryByRole("link", { name: "My purchases" }),
     ).not.toBeInTheDocument();
   });
 
@@ -552,6 +552,23 @@ describe("LearnDashboard", () => {
     expect(join).toHaveAttribute("href", "http://example.com/live");
     expect(join).toHaveAttribute("target", "_blank");
     expect(join).toHaveAttribute("rel", "noreferrer");
+  });
+
+  // A agenda saiu da barra lateral do aluno (quatro itens fixos); o caminho
+  // ate ela fica no topo de My courses, na mesma aba, com ou sem live marcada:
+  // e em /learn/events que estao as lives que ja passaram.
+  it.each([
+    ["com live marcada", true],
+    ["sem live marcada", false],
+  ])("o link para a agenda inteira esta sempre a vista (%s)", async (_label, hasLive) => {
+    if (!hasLive) fixtures.events = [];
+    render(<LearnDashboard />);
+
+    await screen.findByRole("region", { name: "What's new" });
+    const all = screen.getByRole("link", { name: "See all live sessions" });
+    expect(all).toHaveAttribute("href", "/learn/events");
+    expect(all).not.toHaveAttribute("target");
+    expect(Boolean(screen.queryByRole("region", { name: "Upcoming lives" }))).toBe(hasLive);
   });
 
   it("a data da proxima live sai no idioma da pessoa", async () => {

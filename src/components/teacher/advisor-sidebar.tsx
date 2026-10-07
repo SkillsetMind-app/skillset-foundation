@@ -13,6 +13,7 @@ import { isAdvisorEnabled } from "@/lib/advisor/config";
 import { hasAnyPermission } from "@/lib/permissions";
 import {
   announceFloatingAction,
+  onAdvisorOpenRequested,
   onFloatingActionOpened,
 } from "@/lib/ui/floating-action";
 
@@ -32,6 +33,12 @@ const HEADER_QUERY = "(min-width: 768px)";
 export function AdvisorHeaderSlot() {
   const register = useContext(AdvisorHeaderContext);
   return register ? <div ref={register} className="advisor-header-slot" /> : null;
+}
+
+/** True where an Advisor is mounted and switched on (inside /teach): the Help
+ *  menu can open it instead of sending the teacher to the help center. */
+export function useAdvisorAvailable() {
+  return useContext(AdvisorHeaderContext) !== null;
 }
 
 function useHeaderViewport() {
@@ -199,6 +206,16 @@ export function AdvisorSidebar({ children }: { children?: ReactNode } = {}) {
         if (action !== "advisor") {
           setOpen(false);
         }
+      }),
+    [],
+  );
+
+  // "How do I do something on the platform" in the Help menu.
+  useEffect(
+    () =>
+      onAdvisorOpenRequested(() => {
+        announceFloatingAction("advisor");
+        setOpen(true);
       }),
     [],
   );

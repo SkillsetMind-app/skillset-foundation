@@ -75,3 +75,20 @@ export function groupCourseMessageThreads(
   );
   return result;
 }
+
+/** Quantas conversas esperam o professor: a ultima mensagem e do aluno. So
+ *  precisa de quem mandou e quando, em qualquer ordem — o texto fica no banco. */
+export function countThreadsAwaitingReply(
+  messages: Pick<CourseMessage, "courseId" | "studentId" | "senderId" | "createdAt">[],
+  teacherId: string,
+): number {
+  const latest = new Map<string, (typeof messages)[number]>();
+  for (const message of messages) {
+    const key = `${message.courseId}__${message.studentId}`;
+    const seen = latest.get(key);
+    if (!seen || Date.parse(message.createdAt) >= Date.parse(seen.createdAt)) {
+      latest.set(key, message);
+    }
+  }
+  return [...latest.values()].filter((message) => message.senderId !== teacherId).length;
+}

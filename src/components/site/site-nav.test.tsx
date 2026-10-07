@@ -118,11 +118,11 @@ describe("SiteNav", () => {
     expect(document.querySelector('a[href="/courses"]')).toBeNull();
   });
 
-  it("opens buyer and creator entry in new tabs from the public header", () => {
+  it("opens buyer and creator entry in the same tab from the public header", () => {
     render(<SiteNav />);
     fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
     expect(screen.getByRole("link", { name: /My courses/ })).toHaveAttribute("href", "/auth?mode=signin&path=student");
-    expect(screen.getByRole("link", { name: /Manage my business/ })).toHaveAttribute("target", "_blank");
+    expect(screen.getByRole("link", { name: /Manage my business/ })).not.toHaveAttribute("target");
   });
 
   // A barra pública é onde o visitante encontra a entrada. Em produção o menu
@@ -134,7 +134,7 @@ describe("SiteNav", () => {
     fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
     expect(screen.getByRole("link", { name: /My courses/ })).toHaveAttribute("href", "https://consumer.skillsetmind.com/auth?mode=signin&path=student");
     expect(screen.getByRole("link", { name: /Manage my business/ })).toHaveAttribute("href", "https://app.skillsetmind.com/auth?mode=signin&path=teacher");
-    expect(screen.getByRole("link", { name: /Manage my business/ })).toHaveAttribute("target", "_blank");
+    expect(screen.getByRole("link", { name: /Manage my business/ })).not.toHaveAttribute("target");
     expect(screen.getAllByRole("link", { name: "Create account" })[0]).toHaveAttribute("href", "/auth?mode=signup");
 
     fireEvent.click(screen.getByRole("button", { name: "Open menu" }));
