@@ -8,7 +8,13 @@
 --   - resposta do suporte avisa o dono do ticket; regravar o mesmo texto não;
 --   - o texto não é frase em inglês: title vazio, ids em params;
 --   - cada um lê só os próprios avisos; estranho e anon não leem nada;
---   - o cliente continua sem gravar params nem emailed_at.
+--   - o cliente continua sem gravar params nem emailed_at;
+--   - quem perdeu a matrícula não recebe mais respostas daquele curso;
+--   - o nome no aviso vem do perfil, nunca do author_name do cliente;
+--   - editar atualiza o trecho sem avisar de novo; apagar apaga o aviso;
+--   - o resumo por e-mail (claim_notification_digests) pula quem desligou,
+--     está suspenso, não confirmou, foi apagado ou recebeu nesta hora, sem
+--     segurar a fila, e nunca devolve o mesmo aviso duas vezes.
 -- Tudo pelo caminho real: aluno, professor e suporte escrevem sob RLS.
 begin;
 create temp table aviso_checks (name text, passed boolean);
@@ -254,15 +260,187 @@ select pg_temp.check_aviso('functions: security definer with a fixed search_path
      from pg_proc p
      where p.oid in ('public.notify_course_owner_on_question()'::regprocedure,
                      'public.notify_on_community_comment()'::regprocedure,
-                     'public.notify_ticket_owner_on_support_reply()'::regprocedure)));
+                     'public.notify_ticket_owner_on_support_reply()'::regprocedure,
+                     'public.sync_notifications_with_community_content()'::regprocedure,
+                     'public.set_community_author_role()'::regprocedure,
+                     'public.claim_notification_digests(integer)'::regprocedure)));
 select pg_temp.check_aviso('functions: anon and authenticated cannot call them',
   not exists (
     select 1
     from unnest(array['public.notify_course_owner_on_question()',
                       'public.notify_on_community_comment()',
-                      'public.notify_ticket_owner_on_support_reply()']) f,
+                      'public.notify_ticket_owner_on_support_reply()',
+                      'public.sync_notifications_with_community_content()',
+                      'public.set_community_author_role()',
+                      'public.claim_notification_digests(integer)']) f,
          unnest(array['anon', 'authenticated']) r
     where has_function_privilege(r, f, 'execute')));
+select pg_temp.check_aviso('functions: the service role can claim digests',
+  has_function_privilege('service_role', 'public.claim_notification_digests(integer)', 'execute'));
+
+-- 7. Quem perdeu o acesso não recebe mais; o nome vem do perfil, não do cliente.
+-- A matrícula do aluno 3 é revogada e o aluno 4 responde dizendo ser o suporte.
+select pg_temp.act_as(null, 'service_role');
+select set_config('skillset.trusted_write', 'on', true);
+update public.enrollments set status = 'revoked' where id = pg_temp.uid(3)::text || '__smoke-avisos';
+select set_config('skillset.trusted_write', 'off', true);
+
+select pg_temp.act_as(pg_temp.uid(4), 'authenticated');
+set local role authenticated;
+insert into public.community_comments(id, post_id, course_slug, author_id, author_name, author_role, body)
+values ('smoke-avisos-c6', 'smoke-avisos-q', 'smoke-avisos', pg_temp.uid(4)::text, 'SkillsetMind Support', 'student',
+  'Your account will be closed.');
+reset role;
+select pg_temp.check_aviso('access: a replier whose enrollment was revoked gets nothing for later replies',
+  pg_temp.comments_for(3, 'community_reply') = array['smoke-avisos-c2', 'smoke-avisos-c4', 'smoke-avisos-c5']
+  and not exists (select 1 from public.notifications
+    where user_id = pg_temp.uid(3)::text and params->>'commentId' = 'smoke-avisos-c6'));
+select pg_temp.check_aviso('access: the post author and the course owner still get the reply',
+  (select array_agg(user_id || ':' || type order by user_id) from public.notifications
+    where params->>'commentId' = 'smoke-avisos-c6')
+    = array[pg_temp.uid(1)::text || ':community_reply', pg_temp.uid(2)::text || ':community_comment']);
+select pg_temp.check_aviso('name: the notification shows the profile name, never the name the client sent',
+  (select bool_and(actor_name = 'Avisos 4') from public.notifications
+    where params->>'commentId' = 'smoke-avisos-c6'));
+select pg_temp.check_aviso('name: the reply itself stores the profile name',
+  (select author_name = 'Avisos 4' from public.community_comments where id = 'smoke-avisos-c6'));
+
+-- Sem nome no perfil: "SkillsetMind member", nunca o e-mail nem o que veio do cliente.
+select pg_temp.act_as(null, 'service_role');
+update public.users set display_name = null where uid = pg_temp.uid(4)::text;
+select pg_temp.act_as(pg_temp.uid(4), 'authenticated');
+set local role authenticated;
+insert into public.community_comments(id, post_id, course_slug, author_id, author_name, author_role, body)
+values ('smoke-avisos-c7', 'smoke-avisos-q', 'smoke-avisos', pg_temp.uid(4)::text, 'avisos-smoke-4@example.test',
+  'student', 'One more thing.');
+reset role;
+select pg_temp.check_aviso('name: an empty profile name falls back to SkillsetMind member',
+  (select bool_and(actor_name = 'SkillsetMind member') from public.notifications
+    where params->>'commentId' = 'smoke-avisos-c7')
+  and (select author_name = 'SkillsetMind member' from public.community_comments where id = 'smoke-avisos-c7'));
+
+-- 8. Editar atualiza o trecho guardado, sem avisar de novo; apagar apaga o aviso.
+create temp table aviso_antes as
+  select notification_id, read, emailed_at from public.notifications
+  where user_id in (select pg_temp.uid(n)::text from generate_series(1, 6) n);
+
+select pg_temp.act_as(pg_temp.uid(2), 'authenticated');
+set local role authenticated;
+update public.community_comments set body = 'Solved.', updated_at = now() where id = 'smoke-avisos-c4';
+update public.community_posts set title = 'How do I export it?', updated_at = now() where id = 'smoke-avisos-q';
+reset role;
+select pg_temp.check_aviso('edit: the reply notifications carry the edited text',
+  (select count(*) = 2 and bool_and(body = 'Solved.') from public.notifications
+    where params->>'commentId' = 'smoke-avisos-c4'));
+select pg_temp.check_aviso('edit: the question notification carries the edited title',
+  exists (select 1 from public.notifications
+    where user_id = pg_temp.uid(1)::text and type = 'community_question' and body = 'How do I export it?'));
+select pg_temp.check_aviso('edit: an edit creates no notification and keeps read and emailed_at',
+  (select count(*) from public.notifications
+    where user_id in (select pg_temp.uid(n)::text from generate_series(1, 6) n))
+    = (select count(*) from aviso_antes)
+  and not exists (select 1 from aviso_antes a join public.notifications n using (notification_id)
+    where n.read is distinct from a.read or n.emailed_at is distinct from a.emailed_at));
+
+-- O admin modera uma resposta; depois a autora apaga a pergunta inteira.
+select pg_temp.act_as(pg_temp.uid(6), 'authenticated');
+set local role authenticated;
+delete from public.community_comments where id = 'smoke-avisos-c5';
+reset role;
+select pg_temp.check_aviso('delete: a moderated reply leaves no notification behind',
+  not exists (select 1 from public.notifications where params->>'commentId' = 'smoke-avisos-c5')
+  and exists (select 1 from public.notifications where params->>'commentId' = 'smoke-avisos-c4'));
+
+select pg_temp.act_as(pg_temp.uid(2), 'authenticated');
+set local role authenticated;
+delete from public.community_posts where id = 'smoke-avisos-q';
+reset role;
+select pg_temp.check_aviso('delete: a deleted question takes all of its notifications with it',
+  not exists (select 1 from public.community_posts where id = 'smoke-avisos-q')
+  and not exists (select 1 from public.notifications where params->>'postId' = 'smoke-avisos-q'));
+select pg_temp.check_aviso('delete: notifications of other things stay',
+  pg_temp.avisos(2, 'support_reply') = 1);
+
+-- 9. O resumo por e-mail: claim_notification_digests escolhe e marca.
+-- Na fila só ficam os avisos deste smoke (o resto volta no ROLLBACK).
+--  7 recebe · 8 desligou o resumo · 9 suspenso · 10 e-mail não confirmado
+--  11 recebeu um resumo há 30 minutos · 12 nada na fila · 13 conta apagada
+--  14 e 15 recebem
+--  100-159 desligaram e 160-219 estão suspensos, todos com aviso mais antigo
+--  que o de 7: 120 pessoas que não podem receber na frente da fila.
+select pg_temp.act_as(null, 'service_role');
+select set_config('skillset.trusted_write', 'on', true);
+delete from public.notifications where user_id not like '61006415-%';
+insert into auth.users(id, aud, role, email, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
+select pg_temp.uid(n), 'authenticated', 'authenticated', 'avisos-smoke-' || n || '@example.test',
+  case when n = 10 then null else now() end, '{}',
+  case when n = 7 then '{"locale":"es"}' else '{}' end::jsonb, now(), now()
+from (select generate_series(7, 15) union all select generate_series(100, 219)) s(n);
+update auth.users set deleted_at = now() where id = pg_temp.uid(13);
+update public.users set preferences = '{"notifications":{"emailDigest":false}}'
+  where uid in (select pg_temp.uid(n)::text from generate_series(100, 159) n) or uid = pg_temp.uid(8)::text;
+insert into public.account_controls(uid, suspended, sessions_revoked_before)
+select pg_temp.uid(n)::text, true, now()
+from (select 9 union all select generate_series(160, 219)) s(n);
+
+create function pg_temp.fila(p_id text, n int, p_age interval, p_read boolean default false,
+  p_emailed_ago interval default null) returns void language sql as $$
+  insert into public.notifications(notification_id, user_id, type, title, body, read, link, created_at, emailed_at)
+  values (p_id, pg_temp.uid(n)::text, 'community_reply', '', 'Synthetic digest row.', p_read,
+    '/account/notifications', now() - p_age, now() - p_emailed_ago);
+$$;
+select pg_temp.fila('d7a', 7, '40 minutes');
+select pg_temp.fila('d7b', 7, '20 minutes');
+select pg_temp.fila('d7-young', 7, '5 minutes');
+select pg_temp.fila('d7-old', 7, '4 days');
+select pg_temp.fila('d7-read', 7, '30 minutes', true);
+select pg_temp.fila('d' || n, n, '2 days') from (values (8), (9), (10), (11), (13)) v(n);
+select pg_temp.fila('d11-sent', 11, '2 hours', false, '30 minutes');
+select pg_temp.fila('d14', 14, '30 minutes');
+select pg_temp.fila('d15', 15, '25 minutes');
+select pg_temp.fila('d' || n, n, '2 days 1 hour') from generate_series(100, 219) n;
+select set_config('skillset.trusted_write', 'off', true);
+
+create temp table aviso_claims (
+  round int, user_id text, email text, locale text, notification_ids text[], notification_count int);
+grant insert, select on aviso_claims to service_role;
+set local role service_role;
+insert into aviso_claims select 1, * from public.claim_notification_digests(1);
+insert into aviso_claims select 2, * from public.claim_notification_digests(1);
+insert into aviso_claims select 3, * from public.claim_notification_digests(1);
+insert into aviso_claims select 4, * from public.claim_notification_digests(100);
+reset role;
+
+select pg_temp.check_aviso('digest: 120 people who cannot get email at the head of the queue do not block the next one',
+  (select array_agg(user_id) from aviso_claims where round = 1) = array[pg_temp.uid(7)::text]);
+select pg_temp.check_aviso('digest: only unread, never emailed rows from 10 minutes to 3 days old go in',
+  exists (select 1 from aviso_claims where round = 1
+    and notification_ids = array['d7a', 'd7b'] and notification_count = 2));
+select pg_temp.check_aviso('digest: the claim marks exactly the rows it returns',
+  (select bool_and(emailed_at is not null) from public.notifications where notification_id in ('d7a', 'd7b'))
+  and (select bool_and(emailed_at is null) from public.notifications
+    where notification_id in ('d7-young', 'd7-old', 'd7-read')));
+select pg_temp.check_aviso('digest: it returns the address and the language of the account',
+  exists (select 1 from aviso_claims where round = 1
+    and email = 'avisos-smoke-7@example.test' and locale = 'es'));
+select pg_temp.check_aviso('digest: oldest waiting person first, one person per claim',
+  (select array_agg(user_id order by round) from aviso_claims where round in (2, 3))
+    = array[pg_temp.uid(14)::text, pg_temp.uid(15)::text]);
+select pg_temp.check_aviso('digest: two claims never return the same notification or person',
+  not exists (select 1 from aviso_claims, unnest(notification_ids) id group by id having count(*) > 1)
+  and not exists (select 1 from aviso_claims group by user_id having count(*) > 1));
+select pg_temp.check_aviso('digest: opted out, suspended, unconfirmed, deleted or emailed this hour: never claimed',
+  not exists (select 1 from aviso_claims
+    where user_id in (select pg_temp.uid(n)::text from generate_series(8, 13) n)
+       or user_id in (select pg_temp.uid(n)::text from generate_series(100, 219) n))
+  and not exists (select 1 from aviso_claims where round = 4)
+  and (select bool_and(emailed_at is null) from public.notifications
+    where notification_id in ('d8', 'd9', 'd10', 'd11', 'd13')));
+-- Concorrência: uma execução que já segura as linhas é pulada, e a outra só
+-- marca o que ainda está sem emailed_at no mesmo comando que devolve.
+select pg_temp.check_aviso('digest: concurrent runs skip rows another run holds',
+  (select prosrc ~* 'for update of n skip locked' and prosrc ~* 'update public[.]notifications n'
+     from pg_proc where oid = 'public.claim_notification_digests(integer)'::regprocedure));
 
 select name, passed from aviso_checks order by name;
 do $$

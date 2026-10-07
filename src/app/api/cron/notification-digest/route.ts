@@ -2,15 +2,8 @@ import { setTimeout as sleep } from "node:timers/promises";
 
 import { NextResponse } from "next/server";
 
-import {
-  DIGEST_GAP_MS,
-  DIGEST_MAX_AGE_MS,
-  DIGEST_MIN_AGE_MS,
-  digestTurnedOff,
-  selectDigests,
-} from "@/domain/notification-digest";
 import { isCronRequest } from "@/lib/cron/authorized";
-import { DEFAULT_LOCALE, isLocale, type Locale } from "@/lib/i18n/config";
+import { normalizeLocale, type Locale } from "@/lib/i18n/config";
 import { getAppUrl } from "@/lib/payments/server/app-url";
 import { sendResendEmail } from "@/lib/payments/server/purchase-access-email";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
@@ -22,31 +15,32 @@ import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 // with the same "Bearer CRON_SECRET" header as the other crons (Vercel Hobby
 // crons run at most once a day).
 //
-// Who and what: src/domain/notification-digest.ts (unread, never emailed,
-// 10 minutes to 3 days old; nobody emailed in the last hour; nobody who turned
-// "Email summary" off in /account?tab=notifications).
+// Who and what: public.claim_notification_digests (migration
+// 20261006041500). Unread, never emailed, 10 minutes to 3 days old; nobody
+// emailed in the last hour, nobody who turned "Email summary" off in
+// /account?tab=notifications, nobody suspended, deleted or unconfirmed. People
+// who cannot get email are filtered out before the limit, so they never hold
+// up the queue.
 //
-// Never twice: the notifications get emailed_at before the email goes out. A
-// send that fails after the mark is not retried, because the provider may have
-// delivered it anyway, and the notifications are still in the bell. The
-// failure stops the run, so an outage costs one email, not a batch.
+// Never twice: the claim marks the notifications (emailed_at) in the same
+// statement that returns them, skipping rows a concurrent run holds. A send
+// that fails after the claim is not retried, because the provider may have
+// delivered it anyway, and the notifications are still in the bell. One
+// person per claim, and a failure stops the run, so an outage costs one email,
+// not a batch.
 // Logs and the response carry counts only: no email, no account id.
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 // ponytail: 25 emails a run, hourly = 600 a day. With the pause below a full
-// run takes ~15 s plus lookups, inside maxDuration and the 60 s curl.
+// run takes ~15 s plus 25 claims, inside maxDuration and the 60 s curl.
 const CAP = 25;
-// Accounts that cannot get email (unconfirmed, banned) stay due until their
-// notifications age out; this bounds how many lookups they cost per run.
-const MAX_LOOKUPS = 100;
-const SCAN_LIMIT = 1000;
 // Resend allows 10 requests/second per team, shared with the other emails.
 const SEND_GAP_MS = 600;
-const SELECT = "notification_id, user_id, created_at, read, emailed_at";
-
-const iso = (ms: number) => new Date(ms).toISOString();
+// Same window as the claim's "at most one digest an hour": the idempotency key
+// makes a repeated call in the same hour send nothing new.
+const HOUR_MS = 60 * 60_000;
 
 export async function GET(request: Request) {
   if (!isCronRequest(request)) {
@@ -65,73 +59,26 @@ export async function GET(request: Request) {
     return NextResponse.json({ ok: false, reason: "service_role_missing" }, { status: 500 });
   }
 
-  const now = Date.now();
-  const { data: waiting, error: waitingError } = await admin
-    .from("notifications")
-    .select(SELECT)
-    .eq("read", false)
-    .is("emailed_at", null)
-    .lte("created_at", iso(now - DIGEST_MIN_AGE_MS))
-    .gte("created_at", iso(now - DIGEST_MAX_AGE_MS))
-    .order("created_at", { ascending: true })
-    .limit(SCAN_LIMIT);
-  if (waitingError) {
-    console.error("Notification digest could not read notifications", waitingError.code ?? null);
-    return NextResponse.json({ ok: false, reason: "scan_failed" }, { status: 500 });
-  }
-
-  const userIds = [...new Set((waiting ?? []).map((row) => row.user_id))];
-  if (userIds.length === 0) {
-    return NextResponse.json({ ok: true, due: 0, sent: 0, skipped: 0, failed: 0 });
-  }
-
-  const [recent, profiles] = await Promise.all([
-    admin.from("notifications").select(SELECT).in("user_id", userIds).gte("emailed_at", iso(now - DIGEST_GAP_MS)),
-    admin.from("users").select("uid, preferences").in("uid", userIds),
-  ]);
-  if (recent.error || profiles.error) {
-    console.error("Notification digest could not read recipients", (recent.error ?? profiles.error)?.code ?? null);
-    return NextResponse.json({ ok: false, reason: "scan_failed" }, { status: 500 });
-  }
-
-  const turnedOff = new Set(
-    (profiles.data ?? []).filter((profile) => digestTurnedOff(profile.preferences)).map((profile) => profile.uid),
-  );
-  const digests = selectDigests([...(waiting ?? []), ...(recent.data ?? [])], turnedOff, now);
-
+  const hour = Math.floor(Date.now() / HOUR_MS);
   let sent = 0;
-  let skipped = 0;
   let failed = 0;
-  for (const digest of digests.slice(0, MAX_LOOKUPS)) {
-    if (sent >= CAP) break;
-
-    const { data, error } = await admin.auth.admin.getUserById(digest.userId);
-    const user = data?.user;
-    if (error || !user?.email || !user.email_confirmed_at || user.deleted_at
-      || Date.parse(user.banned_until ?? "") > now) {
-      skipped += 1;
-      continue;
-    }
-
-    const { error: markError } = await admin
-      .from("notifications")
-      .update({ emailed_at: iso(now) })
-      .in("notification_id", digest.notificationIds)
-      .is("emailed_at", null);
-    if (markError) {
-      console.error("Notification digest could not mark notifications", markError.code ?? null);
+  while (sent < CAP) {
+    const { data, error } = await admin.rpc("claim_notification_digests", { p_limit: 1 });
+    if (error) {
+      console.error("Notification digest could not claim notifications", error.code ?? null);
       failed += 1;
-      continue;
+      break;
     }
+    const digest = data?.[0];
+    if (!digest) break;
 
     if (sent > 0) await sleep(SEND_GAP_MS);
-    const locale = isLocale(user.user_metadata?.locale) ? user.user_metadata.locale : DEFAULT_LOCALE;
     try {
       await sendResendEmail({
-        to: user.email,
-        ...buildDigestEmail(locale, digest.notificationIds.length),
+        to: digest.email,
+        ...buildDigestEmail(normalizeLocale(digest.locale), digest.notification_count),
         // Same person, same hour: a repeated call is answered without a second email.
-        idempotencyKey: `notification-digest:${digest.userId}:${Math.floor(now / DIGEST_GAP_MS)}`,
+        idempotencyKey: `notification-digest:${digest.user_id}:${hour}`,
       });
       sent += 1;
     } catch (error) {
@@ -142,7 +89,7 @@ export async function GET(request: Request) {
     }
   }
 
-  const result = { due: digests.length, sent, skipped, failed };
+  const result = { sent, failed };
   console.info("Notification digest run", result);
   return NextResponse.json({ ok: failed === 0, ...result }, { status: failed ? 500 : 200 });
 }
