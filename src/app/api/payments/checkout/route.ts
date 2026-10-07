@@ -52,7 +52,7 @@ const COURSE_SUBSCRIPTION_CHECKOUT_BLOCKING_STATUSES = [
 // ON the teacher's account: the teacher is the merchant of record, the money
 // never lands in a platform balance, and Stripe deducts our cut automatically
 // via `application_fee_amount`. The platform therefore holds no third-party
-// funds and runs no payout release — see docs/plans/2026-07-24-pivot-direct-charges.md.
+// funds and runs no payout release — see docs/ARQUITETURA.md (Pagamentos).
 export async function POST(request: Request) {
   let releasableCouponReservation: {
     admin: ReturnType<typeof getSupabaseAdminClient>;

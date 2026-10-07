@@ -111,7 +111,7 @@ jobs:
       # mean handing CI a token that can delete backups, and a token that can
       # delete backups is a token that deletes them once it leaks. 30 days
       # covers the gap left by Supabase's 7.
-      #   verify: GET /accounts/<acc>/r2/buckets/skillsetmind-backups/lifecycle
+      #   verify: GET /accounts/<acc>/r2/buckets/<bucket>/lifecycle
 
       - name: Summary
         if: always()
