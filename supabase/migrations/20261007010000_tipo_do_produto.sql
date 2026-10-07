@@ -16,9 +16,11 @@
 --    - ebook: ao menos um arquivo (lesson_material) numa aula do produto.
 --    Em todos, aula que existe continua precisando de conteudo.
 --
--- 5. Apagar um rascunho apaga as sessoes dele (course_events em cascata):
---    a criacao do evento ao vivo agora deixa uma sessao presa ao produto, e
---    delete_or_archive_own_course parava na chave estrangeira.
+-- 5. Apagar um rascunho sem comprador apaga tambem as sessoes dele: a
+--    criacao do evento ao vivo agora deixa uma sessao presa ao produto, e a
+--    RPC de apagar parava na chave estrangeira de course_events. A chave
+--    continua sem cascata (20260906020000): so a RPC, no galho sem
+--    comprador, apaga as sessoes, como ja apaga o texto das aulas.
 --
 -- Idempotente: coluna e restricao so entram se faltarem, o backfill so mexe
 -- em linha ainda no padrao, e as funcoes sao create or replace.
@@ -74,29 +76,30 @@ begin
   perform set_config('skillset.trusted_write', 'off', true);
 end $$;
 
--- As sessoes morrem com o produto. Rascunho apagado por
--- delete_or_archive_own_course nunca teve matricula, entao nao ha RSVP de
--- aluno a perder (e course_event_rsvps ja cai em cascata com a sessao).
-do $$
+-- Apagar rascunho: as sessoes saem junto com o texto das aulas, so no galho
+-- sem matricula nem pedido (sem matricula nao ha RSVP). Remendo textual sobre
+-- a definicao viva, como 20260901160000: copiar a funcao criaria uma segunda
+-- fonte da verdade. Aborta se o ponto de insercao nao existir.
+do $patch$
+declare
+  v_def text := pg_get_functiondef('public.delete_or_archive_own_course(text)'::regprocedure);
+  v_new text;
 begin
-  if exists (
-    select 1 from pg_constraint
-    where conname = 'course_events_course_id_fkey'
-      and conrelid = 'public.course_events'::regclass
-      and confdeltype <> 'c'
-  ) then
-    alter table public.course_events drop constraint course_events_course_id_fkey;
+  if v_def ~* 'delete\s+from\s+public\.course_events' then
+    return;
   end if;
-  if not exists (
-    select 1 from pg_constraint
-    where conname = 'course_events_course_id_fkey'
-      and conrelid = 'public.course_events'::regclass
-  ) then
-    alter table public.course_events
-      add constraint course_events_course_id_fkey
-      foreign key (course_id) references public.courses(id) on delete cascade;
+  v_new := regexp_replace(
+    v_def,
+    '(delete\s+from\s+public\.course_lesson_content\s+where\s+course_id\s*=\s*p_course_id\s*;)',
+    E'delete from public.course_events where course_id = p_course_id;\n    \\1',
+    'i'
+  );
+  if v_new = v_def then
+    raise exception 'delete_or_archive_own_course: lesson content delete not found; sessions would still block deleting a draft.';
   end if;
-end $$;
+  execute v_new;
+end
+$patch$;
 
 -- Criacao com tipo. Chama a versao de cinco argumentos (titulo, URL livre,
 -- limite de criacao, taxa do plano, trava de ativacao) e so completa a linha:
