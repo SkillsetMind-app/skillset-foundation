@@ -12,6 +12,7 @@ import type { UserProfile } from "@/domain/user-profile";
 import { getFirstTouch } from "@/lib/attribution/first-touch";
 import { assertPasswordNotBreached } from "@/lib/auth/pwned-password";
 import { getUserProfile, upsertUserProfile } from "@/lib/data/user-profiles";
+import { currentPrivacyVersion, currentTermsVersion } from "@/lib/legal/versions";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import type { Database } from "@/lib/supabase/database.types";
 
@@ -228,7 +229,7 @@ export type SignupResult = {
 };
 
 export async function signUpWithEmail(
-  { displayName, email, password, locale }: SignupInput,
+  { displayName, email, password, locale, acceptedTerms }: SignupInput,
   captchaToken?: string,
   // Where the confirmation link lands. Defaults to onboarding; a signup that
   // started from a deep link (a course page) passes /welcome with the returnTo
@@ -254,6 +255,19 @@ export async function signUpWithEmail(
         ...getFirstTouch(),
         ...(locale ? { locale } : {}),
         ...(trimmedName ? { display_name: trimmedName, name: trimmedName } : {}),
+        // Os termos marcados no formulario. Sem sessao (cadastro que espera a
+        // confirmacao) o perfil ainda nao pode ser gravado: as versoes esperam
+        // aqui e a porta dos termos grava na primeira pagina ja logada. Antes o
+        // tique se perdia e a pessoa via "Legal update" logo ao chegar.
+        ...(acceptedTerms
+          ? { terms_version: currentTermsVersion, privacy_version: currentPrivacyVersion }
+          : {}),
+        // Para onde a confirmacao leva (o curso, o caminho de professor), para
+        // o lembrete de 24 h nao cair no inicio generico. Com teto, como o
+        // first touch: os metadados viajam dentro do token da sessao.
+        ...(confirmNext !== "/welcome" && confirmNext.length <= 300
+          ? { signup_next: confirmNext }
+          : {}),
       },
       emailRedirectTo: authCallbackUrl(
         `/auth/confirm?next=${encodeURIComponent(confirmNext)}`,
@@ -395,6 +409,17 @@ export async function sendSkillsetEmailVerification(
   }
 }
 
+// Versoes dos termos marcadas no cadastro (ver signUpWithEmail). Lidas so
+// quando o perfil ainda nao tem nenhuma gravada.
+export async function getSignupLegalVersions(): Promise<{ terms?: string; privacy?: string }> {
+  const { data } = await getSupabaseBrowserClient().auth.getUser();
+  const metadata = data.user?.user_metadata ?? {};
+  return {
+    terms: typeof metadata.terms_version === "string" ? metadata.terms_version : undefined,
+    privacy: typeof metadata.privacy_version === "string" ? metadata.privacy_version : undefined,
+  };
+}
+
 export async function refreshCurrentUserEmailVerification(
   // When given, only a session for THIS address counts — a confirmed session
   // of another account signed in elsewhere is not this email being confirmed.
@@ -521,6 +546,13 @@ function authErrorMatcher(error: unknown) {
 export function isEmailRateLimitError(error: unknown): boolean {
   const { matches } = authErrorMatcher(error);
   return matches("rate_limit") || matches("rate limit");
+}
+
+// Falhas que acontecem antes de procurar a conta (a checagem de seguranca, a
+// conexao). Mostrar estas nao diz a ninguem se um e-mail tem cadastro.
+export function isAccountNeutralAuthError(error: unknown): boolean {
+  const { matches } = authErrorMatcher(error);
+  return matches("captcha") || matches("network") || matches("fetch");
 }
 
 // Signup can only fail this way because the account is already there, so the

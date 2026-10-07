@@ -2,9 +2,11 @@ import { describe, expect, it, vi } from "vitest";
 
 import {
   getAuthErrorMessage,
+  getSignupLegalVersions,
   refreshCurrentUserEmailVerification,
   signUpWithEmail,
 } from "@/lib/auth/supabase-auth";
+import { currentPrivacyVersion, currentTermsVersion } from "@/lib/legal/versions";
 
 const mocks = vi.hoisted(() => ({
   signUp: vi.fn(),
@@ -24,12 +26,12 @@ vi.mock("@/lib/attribution/first-touch", () => ({ getFirstTouch: () => mocks.fir
 describe("signUpWithEmail metadata", () => {
   const input = { displayName: " Ana Souza ", email: "ana@example.test", password: "irrelevant-here" };
 
-  async function signUpMetadata() {
+  async function signUpMetadata(extra: { acceptedTerms?: boolean } = {}, confirmNext?: string) {
     mocks.signUp.mockResolvedValueOnce({
       data: { user: { id: "u-1", email: input.email, identities: [{}] }, session: null },
       error: null,
     });
-    await signUpWithEmail({ ...input, locale: "es" });
+    await signUpWithEmail({ ...input, locale: "es", ...extra }, undefined, confirmNext);
     return mocks.signUp.mock.calls.at(-1)?.[0].options.data;
   }
 
@@ -50,6 +52,37 @@ describe("signUpWithEmail metadata", () => {
     mocks.firstTouch = null;
 
     expect(await signUpMetadata()).toEqual({ display_name: "Ana Souza", name: "Ana Souza", locale: "es" });
+  });
+
+  // Onda F: o tique dos termos se perdia no cadastro com confirmacao de e-mail
+  // (sem sessao, o perfil nao grava). Agora vai junto com a conta.
+  it("keeps the accepted terms and privacy versions with the account", async () => {
+    mocks.firstTouch = null;
+
+    expect(await signUpMetadata({ acceptedTerms: true })).toMatchObject({
+      terms_version: currentTermsVersion,
+      privacy_version: currentPrivacyVersion,
+    });
+  });
+
+  // O lembrete de 24 h le daqui o curso de onde a pessoa veio.
+  it("keeps where the confirmation leads, but not the plain start or an oversized value", async () => {
+    mocks.firstTouch = null;
+    const course = "/welcome?path=student&returnTo=%2Fcourses%2Ffocus";
+
+    expect(await signUpMetadata({}, course)).toMatchObject({ signup_next: course });
+    expect(await signUpMetadata({}, "/welcome")).not.toHaveProperty("signup_next");
+    expect(await signUpMetadata({}, `/welcome?returnTo=%2F${"x".repeat(400)}`)).not.toHaveProperty("signup_next");
+  });
+});
+
+describe("getSignupLegalVersions", () => {
+  it("reads the versions kept at signup, ignoring anything that is not text", async () => {
+    mocks.getUser.mockResolvedValueOnce({
+      data: { user: { user_metadata: { terms_version: "2026-09-24", privacy_version: 42 } } },
+      error: null,
+    });
+    expect(await getSignupLegalVersions()).toEqual({ terms: "2026-09-24", privacy: undefined });
   });
 });
 

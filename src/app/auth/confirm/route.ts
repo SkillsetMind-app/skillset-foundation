@@ -1,7 +1,12 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import type { EmailOtpType } from "@supabase/supabase-js";
-import { getAuthErrorRoute, getSafeReturnTo } from "@/lib/auth/routing";
+import {
+  getAuthErrorRoute,
+  getAuthPathIntentFromSearchParams,
+  getLoadingRoute,
+  getSafeReturnTo,
+} from "@/lib/auth/routing";
 
 import {
   RESET_PASSWORD_PATH,
@@ -67,7 +72,28 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  const reason = providerError ?? "confirm";
+  // Link de confirmacao do cadastro (ou o lembrete) vencido ou ja usado. Antes
+  // caia no login com texto de "troca de senha" e sem como pedir outro.
+  // Troca de senha e troca de e-mail nao entram aqui: tem tipo proprio.
+  const entry = new URL(safeNext, origin);
+  const confirmsSignup = (type === "signup" || type === "email")
+    && ["/welcome", "/loading"].includes(entry.pathname);
+  if (confirmsSignup) {
+    // Clicou duas vezes ou ja confirmou neste navegador: a sessao esta aqui,
+    // entao entra direto — no curso, quando o link trazia um. /loading decide
+    // entre o onboarding e o destino, como o link que deu certo.
+    const { data } = await supabase.auth.getUser();
+    if (data.user?.email_confirmed_at) {
+      return NextResponse.redirect(`${origin}${getLoadingRoute(
+        "welcome",
+        getAuthPathIntentFromSearchParams(entry.searchParams),
+        getSafeReturnTo(entry.searchParams),
+      )}`);
+    }
+  }
+
+  // confirm_expired abre no login a tela "este link venceu" com reenviar.
+  const reason = confirmsSignup ? "confirm_expired" : providerError ?? "confirm";
   return NextResponse.redirect(
     `${origin}${getAuthErrorRoute(reason, next)}`,
   );

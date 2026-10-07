@@ -330,8 +330,10 @@ describe("SignupForm leva o curso junto para o cadastro", () => {
     );
     // E tambem dentro do e-mail de confirmacao: quem confirma no celular nao
     // tem nada da aba original, entao o endereco viaja no proprio link.
+    // Os termos marcados vao junto com a conta (Onda F: sem isso eram pedidos
+    // de novo depois da confirmacao do e-mail).
     expect(mocks.signUpWithEmail).toHaveBeenCalledWith(
-      expect.anything(),
+      expect.objectContaining({ acceptedTerms: true }),
       undefined,
       paraOnboarding,
     );

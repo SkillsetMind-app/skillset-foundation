@@ -156,7 +156,8 @@ export function SignupForm() {
 
     try {
       const { user, needsEmailConfirmation } = await signUpWithEmail(
-        { displayName, email, password, locale },
+        // legalAccepted e exigido acima: o tique vai junto com a conta.
+        { displayName, email, password, locale, acceptedTerms: true },
         captchaToken || undefined,
         // The confirmation link carries the destination itself, so it survives
         // being opened on a phone where this tab does not exist.
@@ -167,11 +168,11 @@ export function SignupForm() {
         source: "email",
       });
 
-      // No session yet: every profile write below would be filtered by RLS and
-      // return a silent zero-row success, and /welcome would bounce straight to
-      // sign-in with no explanation. Park on the confirm screen instead — terms
-      // are re-captured by the acceptance modal and the username by onboarding,
-      // both of which run once the confirmed session exists.
+      // Ainda sem sessao: toda gravacao de perfil abaixo seria filtrada pela RLS
+      // (sucesso silencioso com zero linhas) e /welcome mandaria direto para o
+      // login sem explicar. Fica na tela de confirmar. Os termos marcados aqui
+      // vao nos metadados da conta e a porta dos termos grava na primeira
+      // pagina logada (sem perguntar de novo); o @ fica para o onboarding.
       if (needsEmailConfirmation) {
         setConfirmSent(true);
         return;

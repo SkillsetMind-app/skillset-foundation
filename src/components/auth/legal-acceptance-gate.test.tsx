@@ -21,6 +21,7 @@ const mocks = vi.hoisted(() => ({
   getUserProfile: vi.fn(),
   acceptUserTerms: vi.fn(),
   acceptTeacherTerms: vi.fn(),
+  getSignupLegalVersions: vi.fn(),
 }));
 
 vi.mock("next/navigation", () => ({
@@ -32,6 +33,7 @@ vi.mock("@/lib/auth/supabase-auth", () => ({
   listenToAuthState: mocks.listenToAuthState,
   signOutOfSkillsetMind: vi.fn(),
   getCurrentAuthSession: vi.fn(),
+  getSignupLegalVersions: mocks.getSignupLegalVersions,
 }));
 
 vi.mock("@/lib/data/user-profiles", () => ({
@@ -94,6 +96,7 @@ describe("LegalAcceptanceGate as the signup recovery path", () => {
     mocks.pathname = "/learn";
     mocks.acceptUserTerms.mockResolvedValue(undefined);
     mocks.acceptTeacherTerms.mockResolvedValue(undefined);
+    mocks.getSignupLegalVersions.mockResolvedValue({});
   });
 
   afterEach(cleanup);
@@ -273,5 +276,78 @@ describe("LegalAcceptanceGate as the signup recovery path", () => {
     await waitFor(() => expect(mocks.getUserProfile).toHaveBeenCalled());
     await settle();
     expect(screen.queryByRole("button", { name: ACCEPT })).toBeNull();
+  });
+});
+
+// Onda F: os termos eram pedidos duas vezes. A pessoa marcava no cadastro, o
+// tique se perdia no caminho da confirmacao do e-mail, e na chegada vinha uma
+// janela "Legal update". Agora o cadastro guarda as versoes aceitas e esta
+// porta as grava sem perguntar; a janela de "atualizacao" so aparece quando a
+// versao aceita ficou para tras.
+describe("LegalAcceptanceGate asks only once", () => {
+  const OLD = { termsVersion: "2026-04-26", privacyVersion: "2026-05-10" };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.pathname = "/learn";
+    mocks.acceptUserTerms.mockResolvedValue(undefined);
+    mocks.acceptTeacherTerms.mockResolvedValue(undefined);
+    mocks.getUserProfile.mockResolvedValue({ termsVersion: null, privacyVersion: null, marketingConsent: false });
+    mocks.getSignupLegalVersions.mockResolvedValue({});
+  });
+
+  afterEach(cleanup);
+
+  it("stores the terms ticked at signup without asking again", async () => {
+    mocks.getSignupLegalVersions.mockResolvedValue({ terms: currentTermsVersion, privacy: currentPrivacyVersion });
+    renderSignedIn();
+
+    await waitFor(() => expect(mocks.acceptUserTerms).toHaveBeenCalledWith("u-1", false));
+    await settle();
+    expect(screen.queryByRole("button", { name: ACCEPT })).toBeNull();
+    expect(screen.queryByText("Legal update")).toBeNull();
+  });
+
+  it("stores it even when the confirmation lands on /welcome", async () => {
+    mocks.pathname = "/welcome";
+    mocks.getSignupLegalVersions.mockResolvedValue({ terms: currentTermsVersion, privacy: currentPrivacyVersion });
+    renderSignedIn();
+
+    await waitFor(() => expect(mocks.acceptUserTerms).toHaveBeenCalledWith("u-1", false));
+  });
+
+  it("asks again, as an update, when the version accepted at signup is older", async () => {
+    mocks.getSignupLegalVersions.mockResolvedValue({ terms: OLD.termsVersion, privacy: OLD.privacyVersion });
+    renderSignedIn();
+
+    await screen.findByRole("button", { name: ACCEPT });
+    expect(screen.getByText("Legal update")).toBeTruthy();
+    expect(mocks.acceptUserTerms).not.toHaveBeenCalled();
+  });
+
+  it("shows the update prompt when the stored version changed", async () => {
+    mocks.getUserProfile.mockResolvedValue({ ...OLD, marketingConsent: false });
+    renderSignedIn();
+
+    await screen.findByRole("button", { name: ACCEPT });
+    expect(screen.getByText("Legal update")).toBeTruthy();
+    expect(mocks.getSignupLegalVersions).not.toHaveBeenCalled();
+  });
+
+  it("never says 'update' to someone who has accepted nothing yet", async () => {
+    renderSignedIn();
+
+    await screen.findByRole("button", { name: ACCEPT });
+    expect(screen.getByText("Before you start")).toBeTruthy();
+    expect(screen.queryByText("Legal update")).toBeNull();
+    expect(mocks.acceptUserTerms).not.toHaveBeenCalled();
+  });
+
+  it("falls back to asking when the signup acceptance cannot be saved", async () => {
+    mocks.getSignupLegalVersions.mockResolvedValue({ terms: currentTermsVersion, privacy: currentPrivacyVersion });
+    mocks.acceptUserTerms.mockRejectedValueOnce(new Error("no row"));
+    renderSignedIn();
+
+    await screen.findByRole("button", { name: ACCEPT });
   });
 });
