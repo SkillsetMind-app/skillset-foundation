@@ -121,3 +121,9 @@ alter table public.creator_plan_trials enable row level security;
 alter table public.creator_plan_trials force row level security;
 revoke all on public.creator_plan_trials from public, anon, authenticated;
 grant select, insert, update on public.creator_plan_trials to service_role;
+-- Toda tabela com RLS leva a trava restritiva de sessão (20260910030000):
+-- conta suspensa ou sessão revogada não passa, mesmo que um dia ganhe policy de leitura.
+drop policy if exists account_access_guard on public.creator_plan_trials;
+create policy account_access_guard on public.creator_plan_trials as restrictive for all to authenticated
+  using ((select public.account_session_allowed()))
+  with check ((select public.account_session_allowed()));
