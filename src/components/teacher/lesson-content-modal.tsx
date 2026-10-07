@@ -926,7 +926,7 @@ export function LessonContentModal({
               {oldLink ? (
                 <section
                   aria-label={t("creatorEditor.lesson.oldLink")}
-                  className="grid gap-2 rounded-none border border-[var(--color-line)] p-3 text-sm"
+                  className="grid gap-2 rounded-lg border border-[var(--color-line)] p-3 text-sm"
                 >
                   <p className="font-semibold">{t("creatorEditor.lesson.oldLink")}</p>
                   <p className="break-all text-[var(--color-ink-soft)]">{oldLink}</p>

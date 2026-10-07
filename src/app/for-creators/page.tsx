@@ -35,7 +35,7 @@ export default async function ForCreatorsPage() {
       title={t("publicPages.creators.teach_with_a_real_course_operating")}
       description={t("publicPages.creators.skillsetmind_is_designed_for_experts_who")}
     >
-      <section className="mt-8 rounded-none border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-6 shadow-[var(--shadow-soft)]">
+      <section className="mt-8 rounded-lg border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-6 shadow-[var(--shadow-soft)]">
         <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
           <div className="grid grid-cols-3 gap-5 sm:flex sm:gap-8">
             <div>
@@ -82,13 +82,13 @@ export default async function ForCreatorsPage() {
           {creatorTools.map((tool) => (
             <div
               key={tool}
-              className="rounded-none border fine-rule bg-white p-5 text-sm font-semibold leading-7 text-[var(--color-ink)] shadow-[var(--shadow-soft)]"
+              className="rounded-lg border fine-rule bg-white p-5 text-sm font-semibold leading-7 text-[var(--color-ink)] shadow-[var(--shadow-soft)]"
             >
               {tool}
             </div>
           ))}
         </div>
-        <aside className="primary-fill-card rounded-none border border-[var(--color-line)] bg-[var(--color-primary)] p-6 text-white shadow-[var(--shadow-soft)]">
+        <aside className="primary-fill-card rounded-lg border border-[var(--color-line)] bg-[var(--color-primary)] p-6 text-white shadow-[var(--shadow-soft)]">
           <p className="text-xs font-bold uppercase tracking-[0.2em] text-white/70">
             {t("publicPages.creators.creator_path")}
           </p>

@@ -130,9 +130,9 @@ export function Tooltip({
           onMouseEnter={show}
           onMouseLeave={leave}
           style={{ position: "fixed", visibility: "hidden" }}
-          className="z-[100] w-max max-w-[240px] rounded-none bg-[var(--color-primary)] text-left text-xs font-normal leading-5 text-[var(--color-base)] shadow-[0_10px_22px_rgba(15,39,68,0.18)]"
+          className="z-[100] w-max max-w-[240px] rounded-md bg-[var(--color-primary)] text-left text-xs font-normal leading-5 text-[var(--color-base)] shadow-[0_10px_22px_rgba(15,39,68,0.18)]"
         >
-          <span ref={contentRef} className="block overflow-y-auto whitespace-normal break-words rounded-none px-3 py-2">{content}</span>
+          <span ref={contentRef} className="block overflow-y-auto whitespace-normal break-words rounded-md px-3 py-2">{content}</span>
           <span ref={arrowRef} aria-hidden="true" className="absolute size-2 rotate-45 bg-[var(--color-primary)]" />
         </span>,
         document.body,

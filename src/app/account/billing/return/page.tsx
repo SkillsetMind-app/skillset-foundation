@@ -50,8 +50,8 @@ export default async function BillingReturnPage({
     <ProtectedSurface permissions={["auth.signOut"]}>
       <PlatformShell title={t("billingCheckout.returnTitle")} compact>
         {checkoutCompleted ? (
-          <div className="rounded-none border fine-rule bg-white p-10 text-center shadow-[var(--shadow-soft)]">
-            <div className="mx-auto grid size-12 place-items-center rounded-none bg-[var(--color-primary)] text-[var(--color-base)]">
+          <div className="rounded-lg border fine-rule bg-white p-10 text-center shadow-[var(--shadow-soft)]">
+            <div className="mx-auto grid size-12 place-items-center rounded-full bg-[var(--color-primary)] text-[var(--color-base)]">
               <Check aria-hidden="true" size={24} strokeWidth={2.4} />
             </div>
             <h2 className="display-title mt-5 text-3xl text-[var(--color-primary)]">
@@ -73,7 +73,7 @@ export default async function BillingReturnPage({
             </div>
           </div>
         ) : (
-          <div className="rounded-none border border-dashed border-[var(--color-line-strong)] bg-[var(--color-surface-soft)] p-8 text-center">
+          <div className="rounded-lg border border-dashed border-[var(--color-line-strong)] bg-[var(--color-surface-soft)] p-8 text-center">
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
               {t("billingCheckout.nothingToConfirm")}
             </p>

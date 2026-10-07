@@ -154,7 +154,7 @@ export function PlansPanel() {
 
   if (!user) {
     return (
-      <div className="rounded-none border border-dashed border-[var(--color-line-strong)] bg-[var(--color-surface-soft)] p-6 text-sm text-[var(--color-ink-soft)]">
+      <div className="rounded-lg border border-dashed border-[var(--color-line-strong)] bg-[var(--color-surface-soft)] p-6 text-sm text-[var(--color-ink-soft)]">
         {t("accountPlans.signIn")}
       </div>
     );
@@ -163,7 +163,7 @@ export function PlansPanel() {
   return (
     <section className="grid gap-5">
       {!checkoutReady ? (
-        <div className="rounded-none border border-dashed border-[rgba(178,34,52,0.32)] bg-[rgba(178,34,52,0.04)] p-4 text-sm leading-6 text-[var(--color-ink)]">
+        <div className="rounded-lg border border-dashed border-[rgba(178,34,52,0.32)] bg-[rgba(178,34,52,0.04)] p-4 text-sm leading-6 text-[var(--color-ink)]">
           <p className="font-semibold text-[var(--color-accent-fg)]">
             {t(priceIdsReady ? "accountPlans.checkoutSoon" : "accountPlans.setupPending")}
           </p>
@@ -240,7 +240,7 @@ export function PlansPanel() {
         <div
           role="radiogroup"
           aria-label={t("accountPlans.cycle")}
-          className="inline-flex w-fit gap-1 rounded-none border fine-rule bg-[var(--color-surface-soft)] p-1"
+          className="inline-flex w-fit gap-1 rounded-md border fine-rule bg-[var(--color-surface-soft)] p-1"
         >
           {billingCycles.map((option) => {
             const active = cycle === option.value;
@@ -254,8 +254,8 @@ export function PlansPanel() {
                 title={t(`accountPlans.cycles.${option.value}.hint`)}
                 className={
                   active
-                    ? "rounded-none bg-[var(--color-primary)] px-3 py-1.5 text-[13px] font-semibold text-[var(--color-base)]"
-                    : "rounded-none px-3 py-1.5 text-[13px] font-semibold text-[var(--color-ink-soft)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-primary)]"
+                    ? "rounded-sm bg-[var(--color-primary)] px-3 py-1.5 text-[13px] font-semibold text-[var(--color-base)]"
+                    : "rounded-sm px-3 py-1.5 text-[13px] font-semibold text-[var(--color-ink-soft)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-primary)]"
                 }
               >
                 {t(`accountPlans.cycles.${option.value}.label`)}
@@ -273,7 +273,7 @@ export function PlansPanel() {
       {error ? (
         <p
           role="alert"
-          className="rounded-none border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]"
+          className="rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]"
         >
           {t(error)}
         </p>
@@ -300,8 +300,8 @@ export function PlansPanel() {
               key={plan.id}
               className={
                 isCurrent
-                  ? "relative flex h-full flex-col rounded-none border-2 border-[var(--color-primary)] bg-white p-5 shadow-[0_18px_36px_rgba(15,39,68,0.10)]"
-                  : "flex h-full flex-col rounded-none border fine-rule bg-white p-5 shadow-[var(--shadow-soft)]"
+                  ? "relative flex h-full flex-col rounded-lg border-2 border-[var(--color-primary)] bg-white p-5 shadow-[0_18px_36px_rgba(15,39,68,0.10)]"
+                  : "flex h-full flex-col rounded-lg border fine-rule bg-white p-5 shadow-[var(--shadow-soft)]"
               }
             >
               <div className="flex items-start justify-between gap-2">
@@ -327,7 +327,7 @@ export function PlansPanel() {
                 {t(`publicPages.plans.${plan.id}.tagline`)}
               </p>
 
-              <div className="mt-4 rounded-none border fine-rule bg-[var(--color-surface-soft)] px-3 py-2 text-center">
+              <div className="mt-4 rounded-md border fine-rule bg-[var(--color-surface-soft)] px-3 py-2 text-center">
                 <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--color-ink-soft)]">
                   {t("accountPlans.commission")}
                 </p>
@@ -339,7 +339,7 @@ export function PlansPanel() {
               <ul className="mt-4 grid gap-1.5 text-xs leading-5 text-[var(--color-ink-soft)]">
                 {plan.highlights.map((highlight, index) => (
                   <li key={highlight} className="flex items-start gap-2">
-                    <span className="mt-0.5 grid size-4 shrink-0 place-items-center rounded-none bg-[var(--color-success-soft)]">
+                    <span className="mt-0.5 grid size-4 shrink-0 place-items-center rounded-full bg-[var(--color-success-soft)]">
                       <Check
                         aria-hidden="true"
                         size={10}
@@ -409,7 +409,7 @@ export function PlansPanel() {
         })}
       </div>
 
-      <footer className="rounded-none border fine-rule bg-[var(--color-surface-soft)] p-4 text-xs leading-6 text-[var(--color-ink-soft)]">
+      <footer className="rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4 text-xs leading-6 text-[var(--color-ink-soft)]">
         {t("accountPlans.footer")}
       </footer>
 

@@ -63,7 +63,7 @@ export function PlatformHeader({ currentNavigationHref, searchHref }: {
           {showSearch ? <button
             type="button"
             onClick={() => setSearchOpen((open) => !open)}
-            className="platform-topbar__search-toggle grid size-10 place-items-center rounded-none border border-[var(--color-line)] bg-[var(--color-surface-soft)] text-[var(--color-ink)] transition hover:bg-[var(--color-surface-strong)]"
+            className="platform-topbar__search-toggle grid size-10 place-items-center rounded-full border border-[var(--color-line)] bg-[var(--color-surface-soft)] text-[var(--color-ink)] transition hover:bg-[var(--color-surface-strong)]"
             aria-expanded={searchOpen}
             aria-label={t("platform.openSearch")}
           >

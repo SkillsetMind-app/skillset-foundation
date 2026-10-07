@@ -28,7 +28,7 @@ export async function ForCreatorsBand() {
   return (
     <section className="mx-auto w-full max-w-7xl px-5 py-16 sm:px-8 sm:py-20 lg:py-24">
       <RevealSection>
-        <div className="relative overflow-hidden rounded-none bg-[var(--color-primary)] p-6 text-white shadow-[var(--shadow-strong)] sm:p-8 lg:p-10">
+        <div className="relative overflow-hidden rounded-lg bg-[var(--color-primary)] p-6 text-white shadow-[var(--shadow-strong)] sm:p-8 lg:p-10">
           <div className="absolute inset-0 bg-gradient-to-br from-[#07172a] via-[#102944] to-[#1a365d]" />
           <div className="relative z-10 grid gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-end">
             <div>
@@ -62,10 +62,10 @@ export async function ForCreatorsBand() {
             <div className="grid gap-3 sm:grid-cols-2">
               {trustBullets.map((bullet) => (
                 <RevealSection key={bullet}>
-                  <div className="flex h-full items-start gap-3 rounded-none border border-white/16 bg-white/10 p-4 text-sm leading-6 text-white/85">
+                  <div className="flex h-full items-start gap-3 rounded-lg border border-white/16 bg-white/10 p-4 text-sm leading-6 text-white/85">
                     <span
                       aria-hidden="true"
-                      className="grid size-6 shrink-0 place-items-center rounded-none bg-[var(--color-accent)]/30 text-[var(--color-accent-soft)]"
+                      className="grid size-6 shrink-0 place-items-center rounded-full bg-[var(--color-accent)]/30 text-[var(--color-accent-soft)]"
                     >
                       <Check size={14} strokeWidth={2.4} />
                     </span>

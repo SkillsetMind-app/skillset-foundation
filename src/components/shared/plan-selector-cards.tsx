@@ -49,7 +49,7 @@ export function PlanSelectorCards<TValue extends string>({
               disabled={isDisabled}
               onClick={() => onChange(option.value)}
               className={cn(
-                "group grid gap-4 rounded-none border-2 bg-white p-5 text-left transition duration-[180ms] ease-out",
+                "group grid gap-4 rounded-lg border-2 bg-white p-5 text-left transition duration-[180ms] ease-out",
                 "hover:-translate-y-0.5 hover:border-[rgba(26,54,93,0.22)] hover:shadow-[var(--shadow-soft)]",
                 "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[3px] focus-visible:outline-[rgba(26,54,93,0.28)]",
                 isSelected
@@ -70,7 +70,7 @@ export function PlanSelectorCards<TValue extends string>({
                 </span>
                 <span
                   className={cn(
-                    "grid size-10 shrink-0 place-items-center rounded-none bg-[var(--color-surface-soft)] text-[var(--color-primary)]",
+                    "grid size-10 shrink-0 place-items-center rounded-md bg-[var(--color-surface-soft)] text-[var(--color-primary)]",
                     isSelected &&
                       "bg-[rgba(178,34,52,0.08)] text-[var(--color-accent-fg)]",
                   )}
@@ -80,7 +80,7 @@ export function PlanSelectorCards<TValue extends string>({
               </span>
 
               {option.badge ? (
-                <span className="w-fit rounded-none border border-[var(--color-line)] bg-[var(--color-surface-soft)] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--color-ink-soft)]">
+                <span className="w-fit rounded-chip border border-[var(--color-line)] bg-[var(--color-surface-soft)] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--color-ink-soft)]">
                   {option.badge}
                 </span>
               ) : null}
