@@ -2668,6 +2668,12 @@ select:focus-visible {
     bottom: calc(60px + env(safe-area-inset-bottom, 0px));
     padding-bottom: 0.875rem;
   }
+
+  /* A faixa "Rascunho salvo. Próximo: ..." (onda D) cobria Home/Market/
+     Teach/Profile por 4s: sobe a barra (60px) e mais o respiro dela. */
+  body:has(.platform-mobile-nav) .created-strip {
+    bottom: calc(60px + 0.75rem + env(safe-area-inset-bottom, 0px));
+  }
 }
 
 .cookie-consent__inner {
@@ -8317,17 +8323,15 @@ button:hover > .dash-card,
   gap: 0.75rem;
   max-width: 34rem;
   margin-inline: auto;
-  border: 1px solid color-mix(in srgb, var(--color-accent) 40%, transparent);
+  /* Marinho e latao a 40% fixos nos dois temas (o --color-primary-dark vira
+     branco no escuro). Literal, sem color-mix: nao gera regra de reserva. */
+  border: 1px solid rgba(201, 154, 70, 0.4);
   border-radius: var(--radius-lg);
-  background: var(--color-primary-dark);
+  background: #091d2f;
   padding: 0.75rem 0.75rem 0.75rem 1rem;
   color: #ffffff;
   box-shadow: 0 18px 40px rgba(9, 29, 47, 0.28);
   --focus-ring: var(--color-accent);
-}
-
-[data-theme="dark"] .created-strip {
-  background: #091d2f;
 }
 
 /* 8. O painel "Publicado!": cena, frase e o botão latão. Sem borda própria:
@@ -8357,8 +8361,10 @@ button:hover > .dash-card,
     animation: motion-grow var(--duration-base) var(--ease-pop) backwards;
   }
 
-  /* 4. Salvando -> Salvo: entra em 160ms, o verde segura 1,5s e apaga em 200ms. */
-  .builder-save-status--saved {
+  /* 4. Salvando -> Salvo: entra em 160ms, o verde segura 1,5s e apaga em 200ms.
+     `motion-rise-in` é a entrada de qualquer retorno curto: o chip, o aviso
+     de sucesso ("Draft saved."). */
+  .motion-rise-in {
     animation: motion-rise-in 160ms var(--ease-standard) backwards;
   }
 
@@ -8366,7 +8372,9 @@ button:hover > .dash-card,
     animation: motion-save-flash 1860ms linear backwards;
   }
 
-  /* 5. O check se desenha (pathLength=1 no SVG); a linha pisca e apaga. */
+  /* 5. O check se desenha (pathLength=1 no SVG); a linha pisca e apaga. A
+     classe só entra no item que ACABOU de ficar pronto (ui/drawn-check.tsx,
+     useJustDone): abrir a tela com tudo pronto não redesenha nada. */
   .drawn-check path {
     stroke-dasharray: 1;
     animation: motion-check-draw 240ms var(--ease-standard) backwards;
@@ -8376,7 +8384,8 @@ button:hover > .dash-card,
     animation: motion-flash var(--duration-celebrate) ease-out backwards;
   }
 
-  /* 6. O selo de marco quando a barra chega em 100%. */
+  /* 6. O selo de marco quando a barra chega em 100% (de novo: só na
+     chegada, não a cada carga). */
   .milestone-seal {
     animation: motion-pop var(--duration-base) var(--ease-pop) backwards;
   }
@@ -8418,9 +8427,30 @@ button:hover > .dash-card,
     animation-delay: 420ms;
   }
 
-  /* 10. A cena do estado vazio entra subindo 6px. */
+  /* 10. A cena do estado vazio entra subindo, no mesmo desenho do painel
+     (um keyframe a menos no CSS de todo mundo). */
   .spot-art-in {
-    animation: motion-art-in var(--duration-slow) var(--ease-standard) backwards;
+    animation: motion-panel-in var(--duration-slow) var(--ease-standard) backwards;
+  }
+
+  /* 11. Menu que abre de um botão (Compartilhar): cai 6px e acende. */
+  .motion-drop-in {
+    animation: dropdown-in var(--duration-fast) var(--ease-standard) backwards;
+  }
+
+  /* 12. Lista que chega dos dados (cartões da Home, linhas de produtos): os
+     itens sobem em escada, 40ms cada, e do 6º em diante juntos, para a
+     entrada inteira caber em 400ms. Só transform: o item está pintado desde
+     o 1º quadro, então a capa de um cartão conta para o LCP na hora certa. */
+  .motion-stagger > * {
+    animation: motion-lift 200ms var(--ease-standard) backwards;
+    animation-delay: calc(min(var(--i, 0), 5) * 40ms);
+  }
+
+  /* 13. Cartao de produto do estudio: sobe 2px no hover, junto da sombra que
+     ele ja tinha (a `transition` do cartao ja inclui transform). */
+  .motion-hover-lift:hover {
+    transform: translateY(-2px);
   }
 }
 
@@ -8499,9 +8529,8 @@ button:hover > .dash-card,
   }
 }
 
-@keyframes motion-art-in {
+@keyframes motion-lift {
   from {
-    opacity: 0;
     transform: translateY(6px);
   }
 }

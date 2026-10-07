@@ -18,6 +18,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { CourseCategorySelect } from "@/components/teacher/course-category-select";
 import { InlineHelp } from "@/components/shared/inline-help";
 import { Button } from "@/components/ui";
+import { useJustDone } from "@/components/ui/drawn-check";
 import { SpotArt } from "@/components/ui/spot-art";
 import { isValidExternalEventUrl } from "@/domain/course-event";
 import {
@@ -61,6 +62,9 @@ export function CreateCourseStart({ ownerId, initialFormat = "course" }: CreateC
   const { t } = useTranslation();
   // Tela 1: o que vai entregar. Tela 2: o nome (e, no evento, quando e onde).
   const [step, setStep] = useState<1 | 2>(1);
+  // So a troca de passo anima o painel; o passo de abertura entra parado (o
+  // titulo dele e o maior texto da tela, candidato a LCP).
+  const panelIn = useJustDone([String(step)]).has(String(step)) ? "motion-panel-in" : undefined;
   const [productFormat, setProductFormat] = useState<TeacherCourseProductFormat>(initialFormat);
   const [title, setTitle] = useState("");
   const [summary, setSummary] = useState("");
@@ -265,7 +269,7 @@ export function CreateCourseStart({ ownerId, initialFormat = "course" }: CreateC
 
       <form onSubmit={handleSubmit} className="create-course-screen__form">
         {step === 1 ? (
-          <div key="format" className="motion-panel-in">
+          <div key="format" className={panelIn}>
             <h2
               ref={stepHeading}
               tabIndex={-1}
@@ -305,7 +309,7 @@ export function CreateCourseStart({ ownerId, initialFormat = "course" }: CreateC
             </div>
           </div>
         ) : (
-          <div key="basics" className="motion-panel-in">
+          <div key="basics" className={panelIn}>
             <h2
               ref={stepHeading}
               tabIndex={-1}

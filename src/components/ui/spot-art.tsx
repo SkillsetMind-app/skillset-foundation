@@ -4,15 +4,17 @@ import { cn } from "@/lib/cn";
 
 /**
  * As cinco cenas do estúdio, no traço da gravura de cédula que a marca usa no
- * fundo do site (public/brand/hero-engraving-*), mais o selo quadrado do
- * verificado. SVG inline, sem rede: cada cena pesa menos de 3 KB, o que conta
+ * fundo do site (public/brand/hero-engraving-*). O check e o selo de marco
+ * moram em ui/drawn-check.tsx. SVG inline, sem rede: cada cena pesa menos de 3 KB, o que conta
  * para quem abre o estúdio com internet ruim.
  *
  * Regras do desenho (o teste confere as que dá para medir):
  * - traço marinho de 1,25 a 1,5px (`vector-effect` no CSS mantém o px em
  *   qualquer tamanho);
  * - a gravura em elipses e ondas a 15–35% de opacidade;
- * - UM elemento em latão por cena; o resto, quando pede cor, é latão claro;
+ * - UM elemento em latão por cena; o resto, quando pede cor, é latão claro.
+ *   A exceção é o recibo (noSales): ele mora no gráfico de receita, e latão
+ *   cheio em gráfico de dinheiro é proibido; lá só entra latão claro;
  * - cantos do token (rx 2 no viewBox ~ raio sm na tela);
  * - sem pessoas, sem dinheiro desenhado, sem número;
  * - `aria-hidden`: o texto ao lado já diz tudo.
@@ -113,7 +115,8 @@ const scenes: Record<SpotArtScene, ReactNode> = {
       <path d="M46 44v12M40 50h12" />
     </>
   ),
-  // Recibo gravado; a última linha em latão claro. Sem moeda e sem número.
+  // Recibo gravado; a última linha em latão claro, contorno marinho. Sem
+  // moeda, sem número e sem latão cheio (vai no gráfico de receita).
   noSales: (
     <>
       {rosette(80, 60, 40, 18, 9)}
@@ -121,7 +124,7 @@ const scenes: Record<SpotArtScene, ReactNode> = {
       {waves(62, [22, 27], 6)}
       <path d="M62 40h22M62 49h22M62 58h22M62 67h22" opacity=".35" />
       <path d="M90 40h8M90 49h8M90 58h8M90 67h8" opacity=".35" />
-      <rect className="spot-art__seal" x="62" y="75" width="36" height="7" rx="1.5" fill="var(--art-soft)" stroke="var(--art-brass)" strokeWidth="1.5" />
+      <rect className="spot-art__seal" x="62" y="75" width="36" height="7" rx="1.5" fill="var(--art-soft)" />
     </>
   ),
   // O documento com o selo de check carimbado, a roseta e três losangos.
@@ -144,61 +147,6 @@ const scenes: Record<SpotArtScene, ReactNode> = {
     </>
   ),
 };
-
-/**
- * Check que se desenha ao aparecer (catálogo de movimento, item 5). O mesmo
- * traço do `Check` do lucide; `pathLength=1` deixa o CSS animar o
- * stroke-dashoffset sem medir o caminho. Com "reduzir movimento", ele já
- * nasce inteiro.
- */
-export function DrawnCheck({
-  size = 15,
-  strokeWidth = 2.4,
-  className,
-}: {
-  size?: number;
-  strokeWidth?: number;
-  className?: string;
-}) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      width={size}
-      height={size}
-      aria-hidden="true"
-      focusable="false"
-      className={cn("drawn-check shrink-0", className)}
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={strokeWidth}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M20 6 9 17l-5-5" pathLength={1} />
-    </svg>
-  );
-}
-
-/**
- * O selo de marco (barra em 100%): a geometria do VerifiedSeal, em latão com
- * check marinho (6,67:1). Decorativo: o número ao lado já diz "100%".
- */
-export function MilestoneSeal({ className }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 16 16"
-      width="18"
-      height="18"
-      aria-hidden="true"
-      focusable="false"
-      data-milestone-seal=""
-      className={cn("milestone-seal shrink-0", className)}
-    >
-      <rect width="16" height="16" rx="4" fill="var(--color-accent,#c99a46)" />
-      <path d="M4.2 8.3 6.9 11l4.9-5.6" fill="none" stroke="#091d2f" strokeWidth="2" strokeLinecap="square" />
-    </svg>
-  );
-}
 
 export function SpotArt({ scene, tone = "default", className }: SpotArtProps) {
   return (

@@ -51,9 +51,11 @@ export function CourseShareLink({
   const shareRef = useRef<HTMLButtonElement>(null);
   const copyRef = useRef<HTMLButtonElement>(null);
   const forLabel = (key: string) => t(key).replace("{label}", () => label);
+  const outlineClass = accent ? "button-outline button-lg" : `button-outline ${actionClass}`;
 
   useEffect(() => {
-    if (focusCopy) {
+    const active = document.activeElement;
+    if (focusCopy && (!active || active === document.body)) {
       copyRef.current?.focus();
     }
   }, [focusCopy]);
@@ -127,7 +129,7 @@ export function CourseShareLink({
         >
           {copyLabel ?? t("creatorPanel.shareLink.copy")}
         </button>
-        <a href={url} aria-label={forLabel("creatorPanel.shareLink.openAria")} className={`button-outline ${actionClass}`}>
+        <a href={url} aria-label={forLabel("creatorPanel.shareLink.openAria")} className={outlineClass}>
           {t("creatorPanel.shareLink.open")}
         </a>
         <button
@@ -137,7 +139,7 @@ export function CourseShareLink({
           aria-expanded={open}
           aria-label={forLabel("creatorPanel.shareLink.shareAria")}
           onClick={() => setOpen((current) => !current)}
-          className={`button-outline ${actionClass}`}
+          className={outlineClass}
         >
           {t("creatorPanel.shareLink.share")}
         </button>
@@ -145,7 +147,7 @@ export function CourseShareLink({
           <div
             role="menu"
             aria-label={forLabel("creatorPanel.shareLink.menuAria")}
-            className="absolute left-0 top-[calc(100%+8px)] z-40 w-48 rounded-lg border border-[var(--color-line)] bg-white p-1.5 shadow-[var(--shadow-strong)]"
+            className="motion-drop-in absolute left-0 top-[calc(100%+8px)] z-40 w-48 rounded-lg border border-[var(--color-line)] bg-white p-1.5 shadow-[var(--shadow-strong)]"
           >
             {targets.map(({ key, href }) => (
               <a

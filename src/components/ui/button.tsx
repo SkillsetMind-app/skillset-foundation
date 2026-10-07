@@ -26,7 +26,7 @@ const variantClass: Record<ButtonVariant, string> = {
   // Sem classe global: fundo transparente que só ganha cor no hover. A única
   // variante que traz a própria transição (as outras vêm do CSS global).
   ghost:
-    "border border-transparent bg-transparent text-[var(--color-ink-soft)] transition-colors duration-[var(--duration-base)] hover:bg-[var(--color-surface-soft)] hover:text-[var(--color-ink)]",
+    "border border-transparent bg-transparent text-[var(--color-ink-soft)] transition-colors duration-200 hover:bg-[var(--color-surface-soft)] hover:text-[var(--color-ink)]",
 };
 
 const sizeClass: Record<ButtonSize, string> = {

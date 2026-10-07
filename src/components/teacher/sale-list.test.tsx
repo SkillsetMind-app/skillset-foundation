@@ -81,7 +81,7 @@ describe("SaleList", () => {
     expect(screen.getByRole("heading", { name: "Your sales will show up here." })).toBeInTheDocument();
     expect(document.querySelector('svg[data-scene="noSales"]')).toHaveAttribute("aria-hidden", "true");
     expect(
-      screen.getByRole("link", { name: "Go to your courses" }),
+      screen.getByRole("link", { name: "Go to your products" }),
     ).toBeInTheDocument();
     expect(screen.queryByText(/settlement and payout timing/i)).toBeNull();
   });

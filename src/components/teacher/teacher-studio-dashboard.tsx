@@ -15,7 +15,7 @@ import {
   Wallet,
   type LucideIcon,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
@@ -27,7 +27,8 @@ import { TeacherStudioInsights } from "@/components/teacher/teacher-studio-insig
 import { TeacherWelcomeTour } from "@/components/teacher/teacher-welcome-tour";
 import { usePublishGates } from "@/components/teacher/use-publish-gates";
 import { EmptyState, buttonClasses } from "@/components/ui";
-import { DrawnCheck, MilestoneSeal, SpotArt } from "@/components/ui/spot-art";
+import { DrawnCheck, MilestoneSeal, useJustDone } from "@/components/ui/drawn-check";
+import { SpotArt } from "@/components/ui/spot-art";
 import { activationFeeUsd } from "@/data/plans";
 import type { CourseReadinessAccount } from "@/domain/course-readiness";
 import type { Order } from "@/domain/order";
@@ -210,6 +211,7 @@ function StudioNextSteps({
   // mundo, nao havia passo de publicar e a barra parava em 67%.
   const steps = [
     {
+      id: "create",
       label: t("creatorPanel.home.steps.create"),
       detail: t("creatorPanel.home.steps.createDetail"),
       href: "/teach/builder?newCourse=1&format=course",
@@ -219,6 +221,7 @@ function StudioNextSteps({
     ...(needsStripe
       ? [
           {
+            id: "payouts",
             label: t("platform.banner.connectPayoutsCta"),
             // A frase da antiga faixa amarela fixa do topo do /teach: o
             // comprador paga NA conta do professor.
@@ -232,6 +235,7 @@ function StudioNextSteps({
     ...(account.verificationRequired
       ? [
           {
+            id: "verification",
             label: t("creatorEditor.readiness.items.verification.label"),
             detail: t("creatorEditor.readiness.items.verification.hint"),
             href: "/teach/verification",
@@ -249,6 +253,7 @@ function StudioNextSteps({
         ]
       : []),
     {
+      id: "publish",
       label: t("creatorPanel.home.steps.publish"),
       // Com a taxa exigida e nao paga, o servidor recusa o publish sem ela: a
       // Home avisa antes, com o mesmo "Activate and publish" do construtor.
@@ -272,6 +277,9 @@ function StudioNextSteps({
   const completeCount = steps.filter((step) => step.done).length;
   const progress = Math.round((completeCount / steps.length) * 100);
   const nextStep = steps.find((step) => !step.done) ?? steps[steps.length - 1];
+  // O check se desenha e o selo cresce so no passo que ficou pronto com a
+  // Home aberta; quem chega com tudo pronto ve tudo parado.
+  const justDone = useJustDone(steps.filter((step) => step.done).map((step) => step.id), ready);
 
   return (
     <section
@@ -312,12 +320,12 @@ function StudioNextSteps({
             <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-[rgba(26,54,93,0.12)]">
               <div
                 data-testid="studio-next-steps-bar"
-                className="h-full rounded-full bg-[var(--color-accent)] transition-[width] duration-[400ms] ease-[var(--ease-standard)]"
+                className="h-full rounded-full bg-[var(--color-accent)] transition-[width] duration-300 ease-out"
                 style={{ width: ready ? `${progress}%` : "0%" }}
               />
             </div>
             {/* O marco: a barra chegou ao fim. */}
-            {ready && progress === 100 ? <MilestoneSeal /> : null}
+            {ready && progress === 100 ? <MilestoneSeal animate={justDone.size > 0} /> : null}
           </div>
 
           <ol
@@ -332,7 +340,7 @@ function StudioNextSteps({
                 >
                   <span className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.12em] text-[var(--color-ink-muted)]">
                     {step.done ? (
-                      <DrawnCheck size={15} />
+                      <DrawnCheck size={15} animate={justDone.has(step.id)} />
                     ) : (
                       <Circle aria-hidden="true" size={13} strokeWidth={1.8} />
                     )}
@@ -473,12 +481,14 @@ function StudioProductsSection({
           </Link>
         </div>
       ) : (
-        <ul className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          {filtered.slice(0, 4).map((course) => (
-            <li key={course.id}>
+        // motion-stagger: os cartoes sobem em escada (40ms cada) quando os
+        // dados chegam; a lista so monta depois do esqueleto.
+        <ul className="motion-stagger mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {filtered.slice(0, 4).map((course, index) => (
+            <li key={course.id} style={{ "--i": index } as CSSProperties}>
               <Link
                 href={`/teach/courses/${encodeURIComponent(course.id)}/manage`}
-                className="flex h-full min-h-36 flex-col rounded-lg border border-[var(--color-line)] bg-white p-4 transition hover:border-[var(--color-primary-light)] hover:shadow-sm"
+                className="motion-hover-lift flex h-full min-h-36 flex-col rounded-lg border border-[var(--color-line)] bg-white p-4 transition hover:border-[var(--color-primary-light)] hover:shadow-sm"
               >
                 {/* A mesma miniatura 16:9 da lista de produtos (/teach/builder):
                     a capa quando existe, o mesmo icone quando nao existe. Sem a

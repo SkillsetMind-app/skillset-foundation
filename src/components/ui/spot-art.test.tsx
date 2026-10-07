@@ -22,9 +22,11 @@ describe.each(spotArtScenes)("a cena %s", (scene) => {
     expect(markup).not.toMatch(/<image|<text|<use|href=|url\(/);
   });
 
-  it("tem um único elemento em latão", () => {
+  // O recibo vai no gráfico de receita, onde latão cheio é proibido: só latão
+  // claro. As outras cenas têm exatamente um.
+  it(`tem ${scene === "noSales" ? "zero elementos" : "um único elemento"} em latão cheio`, () => {
     const markup = renderToStaticMarkup(<SpotArt scene={scene} />);
-    expect(markup.match(/var\(--art-brass\)/g)).toHaveLength(1);
+    expect(markup.match(/var\(--art-brass\)/g) ?? []).toHaveLength(scene === "noSales" ? 0 : 1);
   });
 
   it("a gravura fica entre 15% e 35% de opacidade", () => {

@@ -90,13 +90,29 @@ vi.mock("@/lib/data/user-profiles", () => ({
   subscribeToUserProfile: mocks.fused(
     "subscribeToUserProfile",
     (_uid: string, onData: (profile: unknown) => void) => {
-      onData({ creatorVerificationStatus: "none", currentPlanId: "free", ...profileExtra });
+      const emit = () => onData({ creatorVerificationStatus: "none", currentPlanId: "free", ...profileExtra });
+      profileGate.onData = onData;
+      if (profileGate.hold) {
+        profileGate.release = emit;
+      } else {
+        emit();
+      }
       return () => undefined;
     },
   ),
 }));
 // Pais da conta Stripe do professor: so o parcelamento (Mexico) le.
-const profileExtra = vi.hoisted((): { stripeConnectCountry?: string } => ({}));
+const profileExtra = vi.hoisted((): {
+  stripeConnectCountry?: string;
+  stripeConnectChargesEnabled?: boolean;
+  stripeConnectPayoutsEnabled?: boolean;
+} => ({}));
+// hold: o perfil (payouts, verificacao) so chega quando o teste chamar release.
+const profileGate = vi.hoisted(() => ({
+  hold: false,
+  release: null as null | (() => void),
+  onData: null as null | ((profile: unknown) => void),
+}));
 
 vi.mock("@/lib/data/creator-verification", () => ({
   fetchRequireCreatorVerification: () => Promise.resolve(false),
@@ -112,10 +128,19 @@ vi.mock("@/lib/data/course-assets", () => ({
 }));
 
 // As sessoes do evento ao vivo (construtor e Manage leem a mesma lista).
-const sessions = vi.hoisted(() => ({ list: [] as CourseEvent[] }));
+// hold: a lista so chega quando o teste chamar `held` (uma ida a rede).
+const sessions = vi.hoisted(() => ({
+  list: [] as CourseEvent[],
+  hold: false,
+  held: null as null | ((events: CourseEvent[]) => void),
+}));
 vi.mock("@/lib/data/course-events", () => ({
   subscribeToTeacherCourseEvents: (_uid: string, onEvents: (events: CourseEvent[]) => void) => {
-    onEvents(sessions.list);
+    if (sessions.hold) {
+      sessions.held = onEvents;
+    } else {
+      onEvents(sessions.list);
+    }
     return () => undefined;
   },
 }));
@@ -1544,7 +1569,7 @@ describe("publicar sem surpresa", () => {
     });
 
     it("festeja uma vez por produto: publicar de novo mostra o painel parado", async () => {
-      window.localStorage.setItem("skillset:celebrated:published:course-1", "1");
+      window.localStorage.setItem("skillsetmind.publishedCelebrated.course-1", "1");
       vi.mocked(publishTeacherCourse).mockResolvedValueOnce(undefined as never);
       renderBuilder("review");
       fireEvent.click(await screen.findByRole("button", { name: "Publish product" }));
@@ -1714,7 +1739,7 @@ describe("faixa de marco depois de criar (created=1)", () => {
     renderBuilder("content");
 
     const text = await screen.findByText("Draft saved. Next: your first lesson.");
-    expect(text.closest(".created-strip")).toHaveAttribute("role", "status");
+    expect(text.closest(".created-strip")?.parentElement).toHaveAttribute("role", "status");
     await waitFor(() =>
       expect(mocks.router.replace).toHaveBeenCalledWith(
         "/teach/builder?courseId=course-1&tab=content",
@@ -1730,22 +1755,258 @@ describe("faixa de marco depois de criar (created=1)", () => {
     expect(screen.queryByText("Draft saved. Next: your first lesson.")).toBeNull();
   });
 
-  it("some sozinha em 4 segundos", async () => {
-    vi.useFakeTimers({ shouldAdvanceTime: true });
+  const STRIP = "Draft saved. Next: your first lesson.";
+
+  it("some sozinha em 4 segundos", () => {
+    vi.useFakeTimers();
     renderBuilder("content");
-    await screen.findByText("Draft saved. Next: your first lesson.");
-    act(() => {
-      vi.advanceTimersByTime(4000);
-    });
-    expect(screen.queryByText("Draft saved. Next: your first lesson.")).toBeNull();
+    act(() => vi.advanceTimersByTime(0));
+    expect(screen.getByText(STRIP)).toBeInTheDocument();
+    act(() => vi.advanceTimersByTime(3999));
+    expect(screen.getByText(STRIP)).toBeInTheDocument();
+    act(() => vi.advanceTimersByTime(1));
+    expect(screen.queryByText(STRIP)).toBeNull();
   });
 
-  it("na comunidade, o proximo passo e o post de boas-vindas", async () => {
+  // NVDA e JAWS nao anunciam uma regiao viva que ja nasce preenchida.
+  it("a regiao role=status ja esta montada, vazia, quando o texto entra", () => {
+    vi.useFakeTimers();
+    renderBuilder("content");
+    const region = screen.getAllByRole("status").find((node) => node.classList.contains("absolute"))!;
+    expect(region).toBeEmptyDOMElement();
+    act(() => vi.advanceTimersByTime(0));
+    expect(region).toHaveTextContent(STRIP);
+    // Fechada, a regiao continua ali, so sem conteudo.
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    expect(region).toBeInTheDocument();
+    expect(region).toBeEmptyDOMElement();
+  });
+
+  it("para o relogio com o ponteiro ou o foco na faixa", () => {
+    vi.useFakeTimers();
+    renderBuilder("content");
+    act(() => vi.advanceTimersByTime(0));
+    const strip = screen.getByText(STRIP).closest(".created-strip")!;
+
+    fireEvent.mouseEnter(strip);
+    act(() => vi.advanceTimersByTime(10_000));
+    expect(screen.getByText(STRIP)).toBeInTheDocument();
+    fireEvent.mouseLeave(strip);
+
+    // Foco no X: a faixa nao some debaixo dele (o foco cairia no <body>).
+    const close = screen.getByRole("button", { name: "Close" });
+    act(() => close.focus());
+    act(() => vi.advanceTimersByTime(10_000));
+    expect(close).toHaveFocus();
+    act(() => close.blur());
+
+    // Solto, o relogio recomeca: 4s inteiros.
+    act(() => vi.advanceTimersByTime(3999));
+    expect(screen.getByText(STRIP)).toBeInTheDocument();
+    act(() => vi.advanceTimersByTime(1));
+    expect(screen.queryByText(STRIP)).toBeNull();
+  });
+
+  // A comunidade nao tem "post de boas-vindas" no construtor; preco existe
+  // em todo tipo.
+  it("na comunidade, o proximo passo e o preco", async () => {
     vi.mocked(subscribeToTeacherCourse).mockImplementationOnce((_id, emit) => {
       emit({ ...mocks.course, productFormat: "community", communityEnabled: true });
       return Object.assign(() => {}, { reload: async () => {} });
     });
     renderBuilder("content");
-    expect(await screen.findByText("Draft saved. Next: write your first welcome post.")).toBeInTheDocument();
+    expect(await screen.findByText("Draft saved. Next: set your price.")).toBeInTheDocument();
+  });
+
+  // A frase do evento depende das sessoes, que chegam uma ida a rede depois
+  // do curso. Antes a faixa dizia "agende" a quem ja tinha agendado e trocava
+  // a frase na cara do leitor de tela.
+  describe("evento ao vivo: espera as sessoes antes de falar", () => {
+    const liveEvent = {
+      ...mocks.course,
+      paymentType: "free" as const,
+      priceAmountMinor: 0,
+      productFormat: "live_event" as const,
+      modules: [],
+      lessonCount: 0,
+    };
+    const session: CourseEvent = {
+      id: "event-1", courseId: "course-1", courseSlug: "course-1", courseTitle: liveEvent.title,
+      ownerId: "teacher-1", title: liveEvent.title, description: "", type: "live_class", status: "scheduled",
+      startsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), externalUrl: "",
+      recordingAssetId: null,
+    };
+
+    beforeEach(() => {
+      sessions.hold = true;
+      vi.mocked(subscribeToTeacherCourse).mockImplementationOnce((_id, emit) => {
+        emit(liveEvent);
+        return Object.assign(() => {}, { reload: async () => {} });
+      });
+    });
+
+    afterEach(() => {
+      sessions.hold = false;
+      sessions.held = null;
+    });
+
+    it("com sessao marcada: so fala depois da lista, e diz que ja esta no calendario", () => {
+      vi.useFakeTimers();
+      renderBuilder("content");
+      act(() => vi.advanceTimersByTime(0));
+      expect(screen.queryByText(/^Draft saved\./)).toBeNull();
+
+      act(() => sessions.held!([session]));
+      act(() => vi.advanceTimersByTime(0));
+      expect(screen.getByText("Draft saved. Your session is on the calendar.")).toBeInTheDocument();
+      expect(screen.queryByText("Draft saved. Next: schedule your session.")).toBeNull();
+    });
+
+    it("sem sessao: so fala depois da lista, e pede para agendar", () => {
+      vi.useFakeTimers();
+      renderBuilder("content");
+      act(() => vi.advanceTimersByTime(0));
+      expect(screen.queryByText(/^Draft saved\./)).toBeNull();
+
+      act(() => sessions.held!([]));
+      act(() => vi.advanceTimersByTime(0));
+      expect(screen.getByText("Draft saved. Next: schedule your session.")).toBeInTheDocument();
+    });
+  });
+});
+
+// Onda D, consertos da revisao: movimento so na MUDANCA, nunca na carga.
+describe("movimento so na mudanca", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.resetSubscriptionCounts();
+  });
+
+  afterEach(() => {
+    cleanup();
+    profileGate.hold = false;
+    profileGate.release = null;
+    profileGate.onData = null;
+    delete profileExtra.stripeConnectChargesEnabled;
+    delete profileExtra.stripeConnectPayoutsEnabled;
+    mocks.searchParams.delete("tab");
+    vi.restoreAllMocks();
+  });
+
+  const paid = () =>
+    vi.mocked(subscribeToTeacherCourse).mockImplementationOnce((_id, emit) => {
+      emit({ ...mocks.course, priceAmountMinor: 12000 });
+      return Object.assign(() => {}, { reload: async () => {} });
+    });
+  const payoutsRow = () => screen.getAllByText("Stripe payouts")[0].closest("li")!;
+  // As leituras por promessa (flag de verificacao, arquivos do curso) voltam.
+  const settle = () => act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  });
+
+  // P1: abrir ?tab=review com o perfil chegando depois do curso acendia
+  // "Stripe payouts" em latao sem ninguem ter feito nada.
+  it("o perfil que chega atrasado nao acende linha nem desenha check", async () => {
+    profileGate.hold = true;
+    Object.assign(profileExtra, { stripeConnectChargesEnabled: true, stripeConnectPayoutsEnabled: true });
+    paid();
+    const { container } = renderBuilder("review");
+    await screen.findByRole("heading", { name: mocks.course.title });
+    await settle();
+    expect(payoutsRow().querySelector("[data-drawn-check]")).toBeNull();
+
+    act(() => profileGate.release!());
+    await waitFor(() => expect(payoutsRow().querySelector("[data-drawn-check]")).not.toBeNull());
+    expect(container.querySelector(".is-just-done")).toBeNull();
+    expect(container.querySelector(".drawn-check")).toBeNull();
+  });
+
+  it("o que fica pronto com a aba aberta acende uma vez e o check se desenha", async () => {
+    paid();
+    const { container } = renderBuilder("review");
+    await screen.findByRole("heading", { name: mocks.course.title });
+    await settle();
+    expect(container.querySelector(".is-just-done")).toBeNull();
+
+    // O Stripe terminou o cadastro em outra aba: o perfil chega de novo.
+    act(() => profileGate.onData!({
+      creatorVerificationStatus: "none",
+      currentPlanId: "free",
+      stripeConnectChargesEnabled: true,
+      stripeConnectPayoutsEnabled: true,
+    }));
+    await waitFor(() => expect(payoutsRow()).toHaveClass("is-just-done"));
+    expect(payoutsRow().querySelector(".drawn-check")).not.toBeNull();
+  });
+
+  // P9: o painel entrava subindo na primeira carga tambem (e o check da
+  // trilha se redesenhava a cada visita).
+  it("o painel so entra subindo na troca de aba; a carga entra parada", async () => {
+    const view = renderBuilder("details");
+    await screen.findByRole("heading", { name: mocks.course.title });
+    await settle();
+    expect(view.container.querySelector(".motion-panel-in")).toBeNull();
+    expect(view.container.querySelector(".drawn-check")).toBeNull();
+
+    mocks.searchParams.set("tab", "pricing");
+    view.rerender(
+      <I18nProvider initialLocale="en">
+        <SwitchLanguage />
+        <CourseBuilderStudio />
+      </I18nProvider>,
+    );
+    expect(view.container.querySelector(".motion-panel-in")).not.toBeNull();
+  });
+
+  // P6: com 0 modulos o vazio dizia "Add your first lesson", mas a unica acao
+  // na tela e o formulario "Add your first module" (aberto sozinho).
+  it("curso sem modulo: o vazio diz o mesmo que a acao logo abaixo", async () => {
+    vi.mocked(subscribeToTeacherCourse).mockImplementationOnce((_id, emit) => {
+      emit({ ...mocks.course, modules: [] });
+      return Object.assign(() => {}, { reload: async () => {} });
+    });
+    renderBuilder("content");
+    expect(await screen.findByRole("heading", { name: "Add your first module.", level: 4 })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Add your first module", level: 5 })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Create module" })).toBeInTheDocument();
+    expect(screen.queryByText("Add your first lesson.")).toBeNull();
+  });
+
+  // C2: publicar espera a rede e os campos seguem editaveis. Quem voltou a
+  // digitar no titulo nao pode ter as teclas roubadas pelo botao latao.
+  it("publicar nao rouba o foco de quem voltou a digitar no titulo", async () => {
+    let finishPublish: () => void = () => undefined;
+    vi.mocked(publishTeacherCourse).mockImplementationOnce(
+      () => new Promise<never>((resolve) => { finishPublish = () => resolve(undefined as never); }),
+    );
+    // Gratis e com uma aula de texto: o Publish destrava.
+    vi.mocked(subscribeToTeacherCourse).mockImplementationOnce((_id, emit) => {
+      emit({
+        ...mocks.course,
+        paymentType: "free",
+        priceAmountMinor: 0,
+        modules: [{ id: "m1", title: "Start here", lessons: [{ id: "l1", title: "Welcome", description: "", type: "text", contentText: "Read this first." }] }],
+      });
+      return Object.assign(() => {}, { reload: async () => {} });
+    });
+    const view = renderBuilder("review");
+    fireEvent.click(await screen.findByRole("button", { name: "Publish product" }));
+    await waitFor(() => expect(publishTeacherCourse).toHaveBeenCalled());
+
+    // Enquanto a rede responde: aba Details, clique no titulo.
+    mocks.searchParams.set("tab", "details");
+    view.rerender(
+      <I18nProvider initialLocale="en">
+        <SwitchLanguage />
+        <CourseBuilderStudio />
+      </I18nProvider>,
+    );
+    const title = screen.getByRole("textbox", { name: "Course title" });
+    title.focus();
+    await act(async () => finishPublish());
+
+    const copy = await screen.findByRole("button", { name: "Copy my page link" });
+    expect(title).toHaveFocus();
+    expect(copy).not.toHaveFocus();
   });
 });

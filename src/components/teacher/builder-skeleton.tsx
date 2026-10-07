@@ -9,7 +9,7 @@ const block = "bg-[var(--color-surface-strong)]";
 
 export function BuilderSkeleton({ label }: { label: string }) {
   return (
-    <section role="status" aria-busy="true" className="grid gap-4">
+    <section role="status" className="grid gap-4">
       <span className="sr-only">{label}</span>
       <div aria-hidden="true" className="grid animate-pulse gap-4">
         <div className="rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)] p-6">

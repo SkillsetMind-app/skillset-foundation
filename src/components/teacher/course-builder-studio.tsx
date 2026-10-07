@@ -110,7 +110,8 @@ import { compressImage, MAX_SOURCE_IMAGE_BYTES } from "@/lib/media/compress-imag
 import { ReadinessGroups } from "@/components/teacher/readiness-groups";
 import { UploadProgressNote } from "@/components/teacher/upload-progress-note";
 import { Button, buttonClasses, EmptyState, InlineAlert } from "@/components/ui";
-import { DrawnCheck, MilestoneSeal, SpotArt } from "@/components/ui/spot-art";
+import { DrawnCheck, MilestoneSeal, useJustDone } from "@/components/ui/drawn-check";
+import { SpotArt } from "@/components/ui/spot-art";
 import type { CourseAsset } from "@/domain/course-asset";
 import { isActivationRequiredError } from "@/domain/creator-verification";
 import { getTrustedLessonEmbed } from "@/domain/lesson-embed";
@@ -532,7 +533,12 @@ export function CourseBuilderStudio() {
   const { user } = useAuth();
   // Payouts e verificacao: so o Manage sabia; aqui a pessoa clicava em
   // Publish e descobria pelo erro do servidor.
-  const { account: publishGates, verificationStatus, stripeConnectCountry } = usePublishGates(user);
+  const {
+    account: publishGates,
+    loaded: gatesLoaded,
+    verificationStatus,
+    stripeConnectCountry,
+  } = usePublishGates(user);
   // "Agora nao" na oferta do selo devolve o foco ao titulo do painel "Publicado!".
   const successNoticeRef = useRef<HTMLHeadingElement>(null);
   const [course, setCourse] = useState<TeacherCourse | null>(null);
@@ -610,11 +616,12 @@ export function CourseBuilderStudio() {
   // ?created=1 vem da tela de criar (catalogo de movimento, item 7): a faixa
   // "Rascunho salvo. Proximo: ..." aparece uma vez, quando o curso termina de
   // carregar. O parametro sai da URL nessa hora, para uma recarga ou a troca
-  // de aba (que copia os parametros) nao repetir o marco. Some em 4s ou no X.
+  // de aba (que copia os parametros) nao repetir o marco. Some em 4s ou no X
+  // (o relogio mora em CreatedStrip).
   const [createdStripOpen, setCreatedStripOpen] = useState(
     () => searchParams.get("created") === "1",
   );
-  const createdStripVisible = createdStripOpen && !isLoading;
+  const closeCreatedStrip = useCallback(() => setCreatedStripOpen(false), []);
   useEffect(() => {
     if (isLoading || searchParams.get("created") !== "1") {
       return;
@@ -623,13 +630,6 @@ export function CourseBuilderStudio() {
     params.delete("created");
     router.replace(`/teach/builder?${params.toString()}`, { scroll: false });
   }, [isLoading, router, searchParams]);
-  useEffect(() => {
-    if (!createdStripVisible) {
-      return;
-    }
-    const timer = window.setTimeout(() => setCreatedStripOpen(false), 4000);
-    return () => window.clearTimeout(timer);
-  }, [createdStripVisible]);
   const [isSaving, setIsSaving] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   // A aula aberta vem da URL (?module=M&lesson=L), como o modulo: o voltar do
@@ -1304,6 +1304,25 @@ export function CourseBuilderStudio() {
   const activeStageId =
     builderStages.find((stage) => stage.target === activeTab)?.id ??
     builderStages[0].id;
+  // "Acabou de ficar pronto" so conta depois que todas as leituras voltaram:
+  // payouts e verificacao, os arquivos do curso e, no evento, as sessoes.
+  // Antes disso os falsos iniciais virariam festa ao chegar (abrir
+  // ?tab=review acendia "Stripe payouts" sem ninguem ter feito nada).
+  const readinessLoaded =
+    gatesLoaded &&
+    courseAssetsLoaded &&
+    (productFormat !== "live_event" || courseSessions !== null);
+  const justDoneStages = useJustDone(
+    builderStages.filter((stage) => stageCompletion[stage.id]).map((stage) => stage.id),
+    readinessLoaded,
+  );
+  const justDoneReadiness = useJustDone(
+    readiness.items.filter((item) => item.done).map((item) => item.id),
+    readinessLoaded,
+  );
+  // A aba de abertura e a linha de base: so a TROCA de aba anima o painel. A
+  // primeira carga entra parada (nada de opacidade 0 no que vira LCP).
+  const panelIn = useJustDone([activeTab]).has(activeTab) ? "motion-panel-in" : "";
   const totalDurationMinutes = allLessons.reduce(
     (sum, lesson) => sum + (lesson.durationMinutes ?? 0),
     0,
@@ -2902,11 +2921,11 @@ export function CourseBuilderStudio() {
               <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-[rgba(26,54,93,0.12)]">
                 <div
                   data-testid="publish-readiness-bar"
-                  className="h-full rounded-full bg-[var(--color-accent)] transition-[width] duration-[400ms] ease-[var(--ease-standard)]"
+                  className="h-full rounded-full bg-[var(--color-accent)] transition-[width] duration-300 ease-out"
                   style={{ width: `${readiness.percent}%` }}
                 />
               </div>
-              {readiness.percent === 100 ? <MilestoneSeal /> : null}
+              {readiness.percent === 100 ? <MilestoneSeal animate={justDoneReadiness.size > 0} /> : null}
             </div>
           </div>
         </div>
@@ -2932,7 +2951,7 @@ export function CourseBuilderStudio() {
               >
                 <span className="course-builder-step__num">
                   {isDone ? (
-                    <DrawnCheck size={13} strokeWidth={2.6} />
+                    <DrawnCheck size={13} strokeWidth={2.6} animate={justDoneStages.has(stage.id)} />
                   ) : (
                     String(index + 1).padStart(2, "0")
                   )}
@@ -2949,7 +2968,7 @@ export function CourseBuilderStudio() {
 
       <section className="course-builder-panel">
           {/* key: trocar de aba remonta o cabecalho e a animacao roda de novo. */}
-          <div key={activeTab} className="motion-panel-in flex flex-wrap items-start justify-between gap-4 pb-4">
+          <div key={activeTab} className={`${panelIn} flex flex-wrap items-start justify-between gap-4 pb-4`}>
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
                 {activeTab === "members" ? t("creatorEditor.members.step") : t(builderTabs[selectedTabIndex]?.label ?? "creatorEditor.builder.shell.shortTitle")}
@@ -3023,7 +3042,7 @@ export function CourseBuilderStudio() {
         ) : null}
 
         {activeTab === "details" ? (
-        <div className="motion-panel-in mt-6 grid gap-4">
+        <div className={`${panelIn} mt-6 grid gap-4`}>
           <div id="builder-sec-cover" className="scroll-mt-24">
             {course ? (
               <CourseCoverField
@@ -3169,7 +3188,7 @@ export function CourseBuilderStudio() {
         ) : null}
 
         {activeTab === "members" && course ? (
-          <div className="motion-panel-in">
+          <div className={panelIn || undefined}>
           <MembersAreaTab
             courseId={courseId}
             course={course}
@@ -3204,7 +3223,7 @@ export function CourseBuilderStudio() {
         ) : null}
 
         {activeTab === "members" && course ? (
-          <div className="motion-panel-in rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4">
+          <div className={`${panelIn} rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4`}>
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="grid gap-1">
                 <p className="text-sm font-semibold text-[var(--color-ink)]">
@@ -3249,7 +3268,7 @@ export function CourseBuilderStudio() {
         {activeTab === "pricing" ? (
           <div
             id="builder-sec-pricing"
-            className="motion-panel-in scroll-mt-24 rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4"
+            className={`${panelIn} scroll-mt-24 rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4`}
           >
             {!checkoutOffers ? (
               // Sem a lista de precos, o preco principal e desconhecido: nada
@@ -3486,7 +3505,7 @@ export function CourseBuilderStudio() {
         ) : null}
 
         {activeTab === "content" ? (
-        <div className="motion-panel-in mt-6 grid gap-4">
+        <div className={`${panelIn} mt-6 grid gap-4`}>
           {/* A lista vem primeiro. Antes, a estrutura do curso era a ultima
               coisa da aba: dois formularios grandes sempre abertos ("Add
               module" e "Add lesson", com um select "Choose module") ficavam
@@ -3500,13 +3519,15 @@ export function CourseBuilderStudio() {
             {ebookLesson && ebookModule ? renderEbookFiles(ebookModule, ebookLesson) : activeLessonStudioLesson ? renderLessonPage() : activeModule ? renderModulePage(activeModule, activeModuleIndex) : (
             <>
             {renderLiveSession()}
-            {/* So no curso: comunidade, evento e e-book tem a propria acao. */}
+            {/* So no curso: comunidade, evento e e-book tem a propria acao.
+                Sem modulo, a unica acao e o formulario "Add your first module"
+                logo abaixo (aberto sozinho): o vazio diz o mesmo. */}
             {modules.length === 0 && productFormat === "course" ? (
               <EmptyState
                 as="h4"
                 art={<SpotArt scene="firstLesson" />}
-                title={t("creatorEditor.builder.curriculum.firstLessonTitle")}
-                description={t("creatorEditor.builder.curriculum.firstLessonDetail")}
+                title={t("creatorEditor.builder.curriculum.firstModuleTitle")}
+                description={t("creatorEditor.builder.curriculum.firstModuleDetail")}
                 className="mb-4"
               />
             ) : null}
@@ -3754,7 +3775,7 @@ export function CourseBuilderStudio() {
         {activeTab === "review" ? (
           <div
             id="builder-sec-review"
-            className="motion-panel-in mt-6 scroll-mt-24 rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-5"
+            className={`${panelIn} mt-6 scroll-mt-24 rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-5`}
           >
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
               {t("creatorEditor.builder.publish.title")}
@@ -3772,14 +3793,15 @@ export function CourseBuilderStudio() {
               readiness={readiness}
               className="mt-5 grid gap-6"
               renderItem={(item) => (
-                <ChecklistRow key={item.id} done={item.done}>
+                <ChecklistRow key={item.id} id={item.id} done={item.done} ready={readinessLoaded}>
+                  {(justDone) => (<>
                   {/* Pendente era texto dourado e feito era um "✓" digitado: o
                       latão marcava problema. Feito = check verde (6.51:1) com
                       "Done" para o leitor de tela; pendente = círculo vazio. */}
                   <p className={`flex items-center gap-2 text-sm font-semibold ${item.done ? "text-[var(--color-success-fg)]" : "text-[var(--color-ink)]"}`}>
                     {item.done ? (
                       <>
-                        <DrawnCheck size={15} />
+                        <DrawnCheck size={15} animate={justDone} />
                         <span className="sr-only">{t("creatorEditor.lesson.state.done")}: </span>
                       </>
                     ) : (
@@ -3810,6 +3832,7 @@ export function CourseBuilderStudio() {
                       ) : null}
                     </p>
                   )}
+                  </>)}
                 </ChecklistRow>
               )}
             />
@@ -3984,7 +4007,7 @@ export function CourseBuilderStudio() {
             </div>
           ) : null}
           {success && success !== "published" ? (
-            <p className="mt-4 info-notice">
+            <p key={success} className="motion-rise-in mt-4 info-notice">
               {t(`creatorEditor.builder.success.${success}`)}
             </p>
           ) : null}
@@ -4045,17 +4068,100 @@ export function CourseBuilderStudio() {
           </div>
         ) : null}
       </div>
-      {createdStripVisible && course ? (
-        <div role="status" className="created-strip">
-          <MilestoneSeal />
-          <p className="min-w-0 flex-1 text-sm font-semibold leading-5">
-            {t(`creatorEditor.builder.created.${
-              productFormat === "live_event" && courseSessions?.length ? "live_eventScheduled" : productFormat
-            }`)}
-          </p>
+      <CreatedStrip
+        // Evento ao vivo: espera as sessoes chegarem, senao a faixa diria
+        // "agende sua sessao" a quem ja agendou e trocaria a frase na cara do
+        // leitor de tela. Se a leitura falhar, a faixa nao aparece.
+        message={
+          createdStripOpen && course && (productFormat !== "live_event" || courseSessions !== null)
+            ? t(`creatorEditor.builder.created.${
+                productFormat === "live_event" && courseSessions?.length ? "live_eventScheduled" : productFormat
+              }`)
+            : null
+        }
+        onClose={closeCreatedStrip}
+      />
+    </div>
+  );
+}
+
+/**
+ * Linha do checklist de publicar (catalogo de movimento, item 5). O que fica
+ * pronto COM a aba aberta acende em latao claro uma vez e o check se desenha;
+ * o que ja estava pronto quando a aba abriu nao pisca, senao abrir a aba
+ * viraria festa. A foto de "pronto" so e tirada com `ready` (as leituras de
+ * payouts, verificacao, arquivos e sessoes de volta).
+ */
+function ChecklistRow({
+  id,
+  done,
+  ready,
+  children,
+}: {
+  id: string;
+  done: boolean;
+  ready: boolean;
+  children: (justDone: boolean) => ReactNode;
+}) {
+  const justDone = useJustDone(done ? [id] : [], ready).has(id);
+  return (
+    <li
+      className={`rounded-md border border-[var(--color-line)] bg-white px-4 py-3 ${justDone ? "is-just-done" : ""}`}
+    >
+      {children(justDone)}
+    </li>
+  );
+}
+
+/**
+ * A faixa "Rascunho salvo. Proximo: ..." (catalogo de movimento, item 7).
+ * - A regiao `role="status"` fica sempre montada e so o conteudo entra, um
+ *   tique depois: NVDA e JAWS nao anunciam uma regiao viva que ja nasce
+ *   preenchida.
+ * - Some em 4s, mas o relogio para enquanto o ponteiro ou o foco estao nela
+ *   (sem isso o foco no X caia no <body> quando a faixa sumia).
+ * - `absolute` sem tamanho: vazia, nao ocupa linha nem gap na grade do
+ *   construtor. Nao `fixed`: fixed cria contexto de empilhamento e prenderia
+ *   o z-index 60 da faixa dentro dele.
+ */
+function CreatedStrip({ message, onClose }: { message: string | null; onClose: () => void }) {
+  const { t } = useTranslation();
+  const [shown, setShown] = useState(false);
+  const [held, setHeld] = useState(false);
+  // Os dois relogios saem juntos: o tique que poe o texto na regiao ja
+  // montada e os 4s ate sumir (que nao corre enquanto `held`). Soltar a
+  // faixa recomeca os 4s.
+  useEffect(() => {
+    if (!message) {
+      return;
+    }
+    const tick = window.setTimeout(() => setShown(true), 0);
+    const timer = held ? undefined : window.setTimeout(onClose, 4000);
+    return () => {
+      window.clearTimeout(tick);
+      window.clearTimeout(timer);
+    };
+  }, [message, held, onClose]);
+
+  return (
+    <div role="status" className="absolute">
+      {message && shown ? (
+        <div
+          className="created-strip"
+          onMouseEnter={() => setHeld(true)}
+          onMouseLeave={() => setHeld(false)}
+          onFocus={() => setHeld(true)}
+          onBlur={(event) => {
+            if (!event.currentTarget.contains(event.relatedTarget)) {
+              setHeld(false);
+            }
+          }}
+        >
+          <MilestoneSeal animate />
+          <p className="min-w-0 flex-1 text-sm font-semibold leading-5">{message}</p>
           <button
             type="button"
-            onClick={() => setCreatedStripOpen(false)}
+            onClick={onClose}
             aria-label={t("creatorEditor.builder.created.close")}
             className="grid h-11 w-11 shrink-0 place-items-center rounded-md text-white/80 transition-colors hover:bg-white/10 hover:text-white"
           >
@@ -4064,22 +4170,6 @@ export function CourseBuilderStudio() {
         </div>
       ) : null}
     </div>
-  );
-}
-
-/**
- * Linha do checklist de publicar (catalogo de movimento, item 5). O que fica
- * pronto COM a aba aberta acende em latao claro uma vez; o que ja estava
- * pronto quando a aba abriu nao pisca, senao abrir a aba viraria festa.
- */
-function ChecklistRow({ done, children }: { done: boolean; children: ReactNode }) {
-  const [doneAtMount] = useState(done);
-  return (
-    <li
-      className={`rounded-md border border-[var(--color-line)] bg-white px-4 py-3 ${done && !doneAtMount ? "is-just-done" : ""}`}
-    >
-      {children}
-    </li>
   );
 }
 
@@ -4100,7 +4190,7 @@ function PublishedPanel({
 }) {
   const { t } = useTranslation();
   const id = useId();
-  const storageKey = `skillset:celebrated:published:${courseId}`;
+  const storageKey = `skillsetmind.publishedCelebrated.${courseId}`;
   // So le no inicializador; quem grava e o efeito. No StrictMode o
   // inicializador roda duas vezes antes de qualquer efeito, entao as duas
   // leituras concordam.
@@ -4132,7 +4222,7 @@ function PublishedPanel({
             ref={headingRef}
             id={`${id}-title`}
             tabIndex={-1}
-            className="text-lg font-semibold leading-snug text-[var(--color-primary)] outline-none"
+            className="text-lg font-semibold leading-snug text-[var(--color-primary)]"
           >
             {t("creatorEditor.builder.publishedPanel.title")}
           </h4>
@@ -4253,7 +4343,7 @@ function BuilderSaveStatus({
   }
 
   return (
-    <span className={`inline-flex items-center gap-1.5 rounded-chip border border-[var(--color-line)] bg-white px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--color-primary)] ${justSaved ? "builder-save-status--saved" : ""}`}>
+    <span className={`inline-flex items-center gap-1.5 rounded-chip border border-[var(--color-line)] bg-white px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--color-primary)] ${justSaved ? "builder-save-status--saved motion-rise-in" : ""}`}>
       <CheckCircle2 aria-hidden="true" size={12} strokeWidth={2} />
       {t("creatorEditor.builder.save.saved")}
     </span>

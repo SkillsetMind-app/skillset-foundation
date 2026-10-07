@@ -656,3 +656,38 @@ describe("Home do professor: status dos cartoes de produto", () => {
     }
   });
 });
+
+// Onda D na Home: os cartoes chegam em escada e sobem no hover; quem abre a
+// Home com tudo pronto ve o check e o selo parados (festa so na mudanca).
+describe("Home do professor: movimento", () => {
+  it("cartoes em escada (--i por cartao) e com o hover que sobe", async () => {
+    state.courses = [
+      course({ id: "c1", title: "Primeiro" }),
+      course({ id: "c2", title: "Segundo" }),
+    ];
+
+    render(<TeacherStudioDashboard />);
+
+    const produtos = await screen.findByRole("region", { name: "Products in your workspace" });
+    const list = produtos.querySelector("ul.motion-stagger")!;
+    expect(list).not.toBeNull();
+    const items = [...list.children] as HTMLElement[];
+    expect(items.map((item) => item.style.getPropertyValue("--i"))).toEqual(["0", "1"]);
+    expect(within(produtos).getByRole("link", { name: /Primeiro/ })).toHaveClass("motion-hover-lift");
+  });
+
+  it("abrir a Home com os passos prontos: check e selo de 100% parados", async () => {
+    state.courses = [course({ status: "published" })];
+    state.profile = {
+      stripeConnectChargesEnabled: true,
+      stripeConnectPayoutsEnabled: true,
+    };
+
+    const { container } = render(<TeacherStudioDashboard />);
+
+    await waitFor(() => expect(screen.getByText("3 of 3 complete")).toBeInTheDocument());
+    expect(container.querySelectorAll("[data-drawn-check]").length).toBeGreaterThan(0);
+    expect(container.querySelector(".drawn-check")).toBeNull();
+    expect(container.querySelector("[data-milestone-seal]")).not.toHaveClass("milestone-seal");
+  });
+});

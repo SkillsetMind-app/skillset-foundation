@@ -102,3 +102,78 @@ describe("catálogo de movimento: tempos", () => {
     );
   });
 });
+
+// Consertos da revisão do PR #497 e o polimento: o que dá para provar na regra.
+describe("catálogo de movimento: consertos e polimento", () => {
+  /** Trechos [início, fim) de cada bloco aberto por `opener`. */
+  function rangesOf(opener: RegExp): Array<[number, number]> {
+    return [...css.matchAll(opener)].map((match) => {
+      let depth = 0;
+      let end = match.index! + match[0].length - 1;
+      for (; end < css.length; end += 1) {
+        if (css[end] === "{") depth += 1;
+        if (css[end] === "}") {
+          depth -= 1;
+          if (depth === 0) break;
+        }
+      }
+      return [match.index!, end] as [number, number];
+    });
+  }
+  const motionRanges = noPreferenceRanges();
+  const keyframeRanges = rangesOf(/@keyframes [a-z-]+ \{/g);
+  const within = (ranges: Array<[number, number]>, index: number) =>
+    ranges.some(([start, end]) => index > start && index < end);
+
+  it("C1: no celular a faixa sobe acima da barra de navegação, no bloco do banner de cookies", () => {
+    const rule = css.indexOf("body:has(.platform-mobile-nav) .created-strip {");
+    expect(rule).toBeGreaterThan(-1);
+    const media = css.lastIndexOf("@media (max-width: 767.98px) {", rule);
+    expect(css.slice(media, rule)).toContain("body:has(.platform-mobile-nav) .cookie-consent {");
+    expect(block("body:has(.platform-mobile-nav) .created-strip")).toContain(
+      "bottom: calc(60px + 0.75rem + env(safe-area-inset-bottom, 0px));",
+    );
+  });
+
+  it("nada da onda nasce invisível: fora da animação, opacidade 0 só nos brilhos decorativos", () => {
+    const waveStart = css.indexOf("Onda D: calor");
+    expect(waveStart).toBeGreaterThan(-1);
+    const hits = [...css.slice(waveStart).matchAll(/opacity: 0;/g)].map((match) => waveStart + match.index!);
+    expect(hits.length).toBeGreaterThan(0);
+    for (const at of hits) {
+      if (within(motionRanges, at) || within(keyframeRanges, at)) continue;
+      const open = css.lastIndexOf("{", at);
+      const selector = css
+        .slice(css.lastIndexOf("}", open) + 1, open)
+        .replace(/\/\*[\s\S]*?\*\//g, "")
+        .trim();
+      expect(selector, `opacidade 0 no estilo base de ${selector}`).toMatch(/::(after|before)$/);
+    }
+  });
+
+  it("a escada da lista: 40ms por item, teto no 6º, entrada inteira em até 400ms, só transform", () => {
+    const rule = block(".motion-stagger > *");
+    const [, duration] = rule.match(/animation: motion-lift (\d+)ms/)!;
+    const [, cap, step] = rule.match(/animation-delay: calc\(min\(var\(--i, 0\), (\d+)\) \* (\d+)ms\)/)!;
+    expect(Number(cap) + 1).toBe(6);
+    expect(Number(cap) * Number(step) + Number(duration)).toBeLessThanOrEqual(400);
+    // Sem opacidade: o cartão está pintado desde o 1º quadro e conta para o LCP.
+    expect(css).toMatch(/@keyframes motion-lift \{\s*from \{\s*transform: translateY\(6px\);\s*\}\s*\}/);
+  });
+
+  it("Mark complete (button-solid da sala) afunda ao apertar", () => {
+    const list = css.indexOf(".button-solid:active,");
+    expect(list).toBeGreaterThan(-1);
+    expect(css.slice(list, css.indexOf("{", list))).toContain(".button-outline-light:active");
+    expect(block(".button-outline-light:active")).toContain("transform: translateY(1px) scale(0.985);");
+  });
+
+  it("menu, avisos, escada e hover do cartão moram em no-preference", () => {
+    for (const selector of [".motion-drop-in", ".motion-rise-in", ".motion-stagger > *", ".motion-hover-lift:hover"]) {
+      const at = css.indexOf(`${selector} {`);
+      expect(at, selector).toBeGreaterThan(-1);
+      expect(within(motionRanges, at), selector).toBe(true);
+    }
+    expect(block(".motion-drop-in")).toContain("animation: dropdown-in var(--duration-fast)");
+  });
+});
