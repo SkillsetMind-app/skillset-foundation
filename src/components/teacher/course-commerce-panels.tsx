@@ -48,7 +48,7 @@ const taxRegionKeys: Record<TaxRegion, string> = {
 };
 
 const inputClass =
-  "rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-surface)] px-3.5 py-2.5 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]";
+  "rounded-md border border-[var(--color-line)] bg-[var(--color-surface)] px-3.5 py-2.5 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]";
 
 export function PanelCard({
   title,
@@ -337,7 +337,7 @@ export function CouponsPanel({
             return (
               <li
                 key={coupon.id}
-                className="flex flex-wrap items-center justify-between gap-3 rounded-[var(--radius-md)] border fine-rule bg-[var(--color-surface)] px-4 py-3"
+                className="flex flex-wrap items-center justify-between gap-3 rounded-md border fine-rule bg-[var(--color-surface)] px-4 py-3"
               >
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-[var(--color-ink)]">

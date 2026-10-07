@@ -100,7 +100,7 @@ export function LessonListOverlay({
         aria-label={t("learn.classroom.curriculum.close")}
         onClick={onClose}
       />
-      <div className="relative z-[75] flex w-full max-w-3xl flex-col overflow-hidden bg-white shadow-[0_30px_80px_rgba(15,39,68,0.32)] sm:max-h-[86vh] sm:rounded-none">
+      <div className="relative z-[75] flex w-full max-w-3xl flex-col overflow-hidden bg-white shadow-[0_30px_80px_rgba(15,39,68,0.32)] sm:max-h-[86vh] sm:rounded-xl">
         <header className="flex items-start justify-between gap-3 border-b border-[var(--color-line)] px-5 py-4 sm:px-6">
           <div className="min-w-0">
             <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
@@ -116,7 +116,7 @@ export function LessonListOverlay({
           <button
             type="button"
             onClick={onClose}
-            className="grid size-11 shrink-0 place-items-center rounded-none text-[var(--color-ink-soft)] transition hover:bg-[var(--color-surface-soft)] hover:text-[var(--color-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus-ring)]"
+            className="grid size-11 shrink-0 place-items-center rounded-md text-[var(--color-ink-soft)] transition hover:bg-[var(--color-surface-soft)] hover:text-[var(--color-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus-ring)]"
             aria-label={t("learn.classroom.curriculum.close")}
           >
             <X aria-hidden="true" size={18} strokeWidth={1.8} />
@@ -124,7 +124,7 @@ export function LessonListOverlay({
         </header>
 
         <div className="border-b border-[var(--color-line)] px-5 py-3 sm:px-6">
-          <label className="flex min-h-11 items-center gap-2 rounded-none border border-[var(--color-line)] bg-[var(--color-surface-soft)] px-3 py-2">
+          <label className="flex min-h-11 items-center gap-2 rounded-md border border-[var(--color-line)] bg-[var(--color-surface-soft)] px-3 py-2">
             <Search
               aria-hidden="true"
               className="text-[var(--color-ink-soft)]"
@@ -184,13 +184,13 @@ export function LessonListOverlay({
                                 onClose();
                               }}
                               aria-current={isSelected ? "true" : undefined}
-                              className={`flex w-full items-center gap-3 rounded-none border bg-white px-3 py-3 text-left transition-colors hover:border-[var(--color-primary-light)] ${
+                              className={`flex w-full items-center gap-3 rounded-md border bg-white px-3 py-3 text-left transition-colors hover:border-[var(--color-primary-light)] ${
                                 isSelected
                                   ? "border-[var(--color-primary)]"
                                   : "border-[var(--color-line)]"
                               }`}
                             >
-                              <span className="grid size-8 shrink-0 place-items-center rounded-none bg-[var(--color-surface-strong)] text-xs font-bold text-[var(--color-primary)]">
+                              <span className="grid size-8 shrink-0 place-items-center rounded-full bg-[var(--color-surface-strong)] text-xs font-bold text-[var(--color-primary)]">
                                 {isCompleted ? (
                                   <CheckCircle2 aria-hidden size={15} />
                                 ) : isSelected ? (

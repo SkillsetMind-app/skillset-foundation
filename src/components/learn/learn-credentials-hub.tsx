@@ -88,7 +88,7 @@ export function LearnCredentialsHub() {
 
   if (isLoading || !certificatesReady) {
     return (
-      <section className="rounded-none border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
+      <section className="rounded-lg border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
         <p className="text-sm text-[var(--color-ink-soft)]">{t("learnWave2.credentials.loading")}</p>
       </section>
     );
@@ -96,8 +96,8 @@ export function LearnCredentialsHub() {
 
   if (error) {
     return (
-      <section className="rounded-none border border-[rgba(178,34,52,0.2)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
-        <p role="alert" className="rounded-none bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
+      <section className="rounded-lg border border-[rgba(178,34,52,0.2)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
+        <p role="alert" className="rounded-md bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
           {t(error)}
         </p>
       </section>
@@ -106,7 +106,7 @@ export function LearnCredentialsHub() {
 
   if (candidates.length === 0) {
     return (
-      <section className="rounded-none border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
+      <section className="rounded-lg border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
         <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
           {t("learnWave2.credentials.brand")}
         </p>
@@ -196,7 +196,7 @@ export function LearnCredentialsHub() {
               <CredentialCard key={candidate.enrollmentId} candidate={candidate} />
             ))
           ) : (
-            <div className="rounded-none border border-dashed border-[var(--color-line-strong)] bg-[var(--color-surface-soft)] p-6 lg:col-span-2">
+            <div className="rounded-lg border border-dashed border-[var(--color-line-strong)] bg-[var(--color-surface-soft)] p-6 lg:col-span-2">
               <p className="text-sm font-semibold text-[var(--color-ink)]">
                 {t("learnWave2.credentials.noMatch")}
               </p>
@@ -278,7 +278,7 @@ function CredentialCard({ candidate }: { candidate: CredentialCandidate }) {
   }
 
   return (
-    <article className="credential-card rounded-none border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
+    <article className="credential-card rounded-lg border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
@@ -288,7 +288,7 @@ function CredentialCard({ candidate }: { candidate: CredentialCandidate }) {
             {candidate.courseTitle}
           </h2>
         </div>
-        <span className="rounded-none bg-[var(--color-surface-soft)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-primary)]">
+        <span className="rounded-md bg-[var(--color-surface-soft)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-primary)]">
           {t(`learnWave2.credentialStatus.${candidate.status}`)}
         </span>
       </div>
@@ -303,7 +303,7 @@ function CredentialCard({ candidate }: { candidate: CredentialCandidate }) {
             ? t("learnWave2.credentials.unavailableDetail")
           : t("learnWave2.credentials.progressDetail")}
       </p>
-      <div className="mt-5 rounded-none border fine-rule bg-[var(--color-surface-soft)] p-4">
+      <div className="mt-5 rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4">
         <div className="flex items-center justify-between gap-4">
           <p className="text-xs uppercase tracking-[0.14em] text-[var(--color-ink-soft)]">
             {t("learnWave2.credentials.progress")}
@@ -314,9 +314,9 @@ function CredentialCard({ candidate }: { candidate: CredentialCandidate }) {
             className={isIssued ? "text-[var(--color-success-fg)]" : "text-[var(--color-primary-light)]"}
           />
         </div>
-        <div className="mt-3 h-2 overflow-hidden rounded-none bg-[rgba(26,54,93,0.12)]">
+        <div className="mt-3 h-2 overflow-hidden rounded-full bg-[rgba(26,54,93,0.12)]">
           <div
-            className="h-full rounded-none bg-[var(--color-accent)]"
+            className="h-full rounded-full bg-[var(--color-accent)]"
             style={{ width: `${Math.max(0, Math.min(100, candidate.progressPercent))}%` }}
           />
         </div>
@@ -361,7 +361,7 @@ function CredentialCard({ candidate }: { candidate: CredentialCandidate }) {
         ) : null}
       </div>
       {isEligible && isNaming ? (
-        <div className="mt-4 rounded-none border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-4">
+        <div className="mt-4 rounded-lg border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-4">
           <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
             {t("learnWave2.credentials.fullName")}
             <input
@@ -370,7 +370,7 @@ function CredentialCard({ candidate }: { candidate: CredentialCandidate }) {
               autoFocus
               onChange={(event) => setFullName(event.target.value)}
               placeholder={t("learnWave2.credentials.namePlaceholder")}
-              className="rounded-none border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
+              className="rounded-md border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
             />
           </label>
           <p className="mt-2 text-xs leading-5 text-[var(--color-ink-soft)]">
@@ -400,7 +400,7 @@ function CredentialCard({ candidate }: { candidate: CredentialCandidate }) {
         </div>
       ) : null}
       {issueError ? (
-        <p role="alert" className="mt-3 rounded-none border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
+        <p role="alert" className="mt-3 rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
           {t(issueError)}
         </p>
       ) : null}

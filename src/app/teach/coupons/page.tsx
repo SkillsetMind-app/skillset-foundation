@@ -17,7 +17,7 @@ export default async function TeacherCouponsPage() {
   return (
     <ProtectedSurface permissions={["teacherStudio.access"]}>
       <PlatformShell title={t("teach.marketing.coupons.title")} hideHeader>
-        <section className="overflow-hidden rounded-none border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)] sm:p-10">
+        <section className="overflow-hidden rounded-lg border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)] sm:p-10">
           <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
             {t("teach.page.eyebrow")}
           </p>

@@ -242,12 +242,12 @@ export function CourseAssetUploader({ course, isEditable, onModuleCoverUploaded,
             {t("creatorEditor.assets.help")}
           </p>
         </div>
-        <span className="rounded-none border border-[var(--color-line)] bg-[var(--color-surface-soft)] px-3 py-2 text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--color-primary)]">
+        <span className="rounded-chip border border-[var(--color-line)] bg-[var(--color-surface-soft)] px-3 py-2 text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--color-primary)]">
           {t("creatorEditor.assets.count").replace("{count}", () => String(assets.length))}
         </span>
       </div>
       {course.coverImageUrl ? (
-        <p className="mt-4 rounded-none border fine-rule bg-[var(--color-surface-soft)] px-4 py-3 text-sm font-semibold text-[var(--color-primary)]">
+        <p className="mt-4 rounded-md border fine-rule bg-[var(--color-surface-soft)] px-4 py-3 text-sm font-semibold text-[var(--color-primary)]">
           {t("creatorEditor.assets.coverSet")}
         </p>
       ) : null}
@@ -287,7 +287,7 @@ export function CourseAssetUploader({ course, isEditable, onModuleCoverUploaded,
           })}
         </div>
 
-        <div className="rounded-none border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-4">
+        <div className="rounded-lg border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-4">
           <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--color-accent-fg)]">
             {t("creatorEditor.assets.uploadingLabel")}
           </p>
@@ -311,7 +311,7 @@ export function CourseAssetUploader({ course, isEditable, onModuleCoverUploaded,
             setFileInputKey((current) => current + 1);
           }}
           disabled={!isEditable || isUploading}
-          className="rounded-none border border-[var(--color-line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
+          className="rounded-md border border-[var(--color-line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
         >
           {assetKinds.map((item) => (
             <option key={item} value={item}>
@@ -327,7 +327,7 @@ export function CourseAssetUploader({ course, isEditable, onModuleCoverUploaded,
               value={moduleId}
               onChange={(event) => setModuleId(event.target.value)}
               disabled={!isEditable || isUploading || allModules.length === 0}
-              className="rounded-none border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
+              className="rounded-md border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
             >
               <option value="">
                 {allModules.length === 0 ? t("creatorEditor.assets.addModules") : t("creatorEditor.assets.chooseModule")}
@@ -351,10 +351,10 @@ export function CourseAssetUploader({ course, isEditable, onModuleCoverUploaded,
             setSelectedFile(event.target.files?.[0] ?? null);
             setUploadProgress(null);
           }}
-          className="rounded-none border border-dashed border-[var(--color-line)] bg-[var(--color-surface-soft)] px-4 py-3 text-sm text-[var(--color-ink-soft)] file:mr-4 file:rounded-none file:border-0 file:bg-white file:px-3 file:py-2 file:text-sm file:font-semibold file:text-[var(--color-primary)] disabled:opacity-60"
+          className="rounded-md border border-dashed border-[var(--color-line)] bg-[var(--color-surface-soft)] px-4 py-3 text-sm text-[var(--color-ink-soft)] file:mr-4 file:rounded-md file:border-0 file:bg-white file:px-3 file:py-2 file:text-sm file:font-semibold file:text-[var(--color-primary)] disabled:opacity-60"
         />
 
-        <label className="flex items-start gap-3 rounded-none border fine-rule bg-[var(--color-surface-soft)] p-3 text-sm leading-6 text-[var(--color-ink-soft)]">
+        <label className="flex items-start gap-3 rounded-md border fine-rule bg-[var(--color-surface-soft)] p-3 text-sm leading-6 text-[var(--color-ink-soft)]">
           <input
             type="checkbox"
             checked={isPreview}
@@ -366,14 +366,14 @@ export function CourseAssetUploader({ course, isEditable, onModuleCoverUploaded,
         </label>
 
         {selectedFile ? (
-          <div className="flex items-center gap-3 rounded-none bg-[var(--color-surface-soft)] px-4 py-3 text-xs font-semibold text-[var(--color-primary)]">
+          <div className="flex items-center gap-3 rounded-md bg-[var(--color-surface-soft)] px-4 py-3 text-xs font-semibold text-[var(--color-primary)]">
             {previewUrl ? (
               // Blob URL local; next/image não se aplica a um objeto em memória.
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={previewUrl}
                 alt={t("creatorEditor.assets.previewAlt").replace("{fileName}", () => selectedFile.name)}
-                className={`shrink-0 rounded-none border border-[var(--color-line)] bg-white object-cover ${kind === "module_cover" ? "aspect-[2/3] w-24" : "h-16 w-24"}`}
+                className={`shrink-0 rounded-md border border-[var(--color-line)] bg-white object-cover ${kind === "module_cover" ? "aspect-[2/3] w-24" : "h-16 w-24"}`}
               />
             ) : null}
             <span>
@@ -385,7 +385,7 @@ export function CourseAssetUploader({ course, isEditable, onModuleCoverUploaded,
         {uploadProgress ? <UploadProgressNote progress={uploadProgress} /> : null}
 
         {error ? (
-          <p role="alert" className="rounded-none border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
+          <p role="alert" className="rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
             {errorMessage}
           </p>
         ) : null}
@@ -412,7 +412,7 @@ export function CourseAssetUploader({ course, isEditable, onModuleCoverUploaded,
 
       <div className="mt-6 grid gap-4">
         {assets.length === 0 ? (
-          <p className="rounded-none border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
+          <p className="rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
             {t("creatorEditor.assets.empty")}
           </p>
         ) : (
@@ -475,7 +475,7 @@ function AssetGroup({
         {title}
       </p>
       {assets.length === 0 ? (
-        <p className="rounded-none border fine-rule bg-[var(--color-surface-soft)] p-3 text-xs leading-5 text-[var(--color-ink-soft)]">
+        <p className="rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-3 text-xs leading-5 text-[var(--color-ink-soft)]">
           {t("creatorEditor.assets.groupEmpty")}
         </p>
       ) : (
@@ -490,7 +490,7 @@ function AssetGroup({
           return (
             <article
               key={asset.id}
-              className="rounded-none border fine-rule bg-[var(--color-surface-soft)] p-4"
+              className="rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4"
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 {asset.downloadUrl && asset.contentType.startsWith("image/") ? (
@@ -499,7 +499,7 @@ function AssetGroup({
                   <img
                     src={asset.downloadUrl}
                     alt={`${getCourseAssetKindLabel(asset.kind, t)}: ${asset.fileName}`}
-                    className={`shrink-0 rounded-none border border-[var(--color-line)] bg-white object-cover ${asset.kind === "module_cover" ? "aspect-[2/3] w-24" : "h-16 w-24"}`}
+                    className={`shrink-0 rounded-md border border-[var(--color-line)] bg-white object-cover ${asset.kind === "module_cover" ? "aspect-[2/3] w-24" : "h-16 w-24"}`}
                   />
                 ) : null}
                 <div className="min-w-0 flex-1">
@@ -523,7 +523,7 @@ function AssetGroup({
                     </p>
                   ) : null}
                 </div>
-                <span className="rounded-none bg-white px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--color-primary)]">
+                <span className="rounded-chip bg-white px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--color-primary)]">
                   {asset.isPreview ? t("creatorEditor.lesson.state.preview") : t("creatorEditor.lesson.state.private")}
                 </span>
               </div>

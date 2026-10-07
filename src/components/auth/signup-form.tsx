@@ -254,7 +254,7 @@ export function SignupForm() {
     <p
       role="alert"
       aria-live="assertive"
-      className="rounded-none border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]"
+      className="rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]"
     >
       {errorMessage}
       {accountExists ? (
@@ -303,7 +303,7 @@ export function SignupForm() {
             <span
               key={n}
               className={[
-                "h-1.5 rounded-none transition-all",
+                "h-1.5 rounded-full transition-all",
                 step === n ? "w-6 bg-[var(--color-primary)]" : "w-2 bg-[var(--color-line)]",
               ].join(" ")}
             />
@@ -326,7 +326,7 @@ export function SignupForm() {
                   aria-checked={intent === option}
                   onClick={() => chooseIntent(option)}
                   className={[
-                    "rounded-none border-[1.5px] px-4 py-2.5 text-sm font-semibold transition",
+                    "rounded-md border-[1.5px] px-4 py-2.5 text-sm font-semibold transition",
                     intent === option
                       ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-[var(--color-base)]"
                       : "border-[var(--color-line)] bg-white text-[var(--color-ink)] hover:bg-[var(--color-surface-soft)]",

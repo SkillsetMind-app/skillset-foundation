@@ -107,7 +107,7 @@ export function SupportTicketQueue({ query = "" }: { query?: string }) {
   }
 
   return (
-    <section className="min-w-0 break-words rounded-none border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
+    <section className="min-w-0 break-words rounded-lg border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
@@ -122,7 +122,7 @@ export function SupportTicketQueue({ query = "" }: { query?: string }) {
         </div>
         <div className="flex max-w-full flex-wrap items-center gap-2">
           <ExportTableButton filename="skillset-support-tickets" rows={exportRows} />
-          <span className="rounded-none bg-[var(--color-surface-soft)] px-3 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-primary)]">
+          <span className="rounded-md bg-[var(--color-surface-soft)] px-3 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-primary)]">
             {isLoading ? t("platform.queueCount.loading") : loadError ? t("platform.queueCount.unavailable")
               : t(`${copy}.${tickets.length === 1 ? "countOne" : "count"}`).replace("{count}", String(tickets.length))}
           </span>
@@ -137,14 +137,14 @@ export function SupportTicketQueue({ query = "" }: { query?: string }) {
         {isLoading ? (
           <p role="status" className="text-sm text-[var(--color-ink-soft)]">{t(`${copy}.loading`)}</p>
         ) : loadError ? null : visibleTickets.length === 0 ? (
-          <p className="rounded-none border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
+          <p className="rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
             {t(`${copy}.${tickets.length === 0 ? "empty" : "noResults"}`)}
           </p>
         ) : (
           visibleTickets.map((ticket) => (
             <article
               key={ticket.id}
-              className="min-w-0 rounded-none border fine-rule bg-[var(--color-surface-soft)] p-4"
+              className="min-w-0 rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4"
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">
@@ -164,7 +164,7 @@ export function SupportTicketQueue({ query = "" }: { query?: string }) {
                 {ticket.message}
               </p>
               {ticket.adminResponse ? (
-                <div className="mt-3 rounded-none border fine-rule bg-white p-3">
+                <div className="mt-3 rounded-md border fine-rule bg-white p-3">
                   <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[var(--color-accent-fg)]">
                     {t(`${copy}.replySentLabel`)}
                   </p>
@@ -192,7 +192,7 @@ export function SupportTicketQueue({ query = "" }: { query?: string }) {
                       }
                       rows={3}
                       placeholder={t(`${copy}.replyPlaceholder`)}
-                      className="min-w-0 resize-none rounded-none border border-[var(--color-line)] bg-white px-3 py-2.5 text-sm outline-none focus:border-[var(--color-primary-light)]"
+                      className="min-w-0 resize-none rounded-md border border-[var(--color-line)] bg-white px-3 py-2.5 text-sm outline-none focus:border-[var(--color-primary-light)]"
                     />
                   )}
                 </Field>

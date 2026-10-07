@@ -57,13 +57,13 @@ export function OpsDashboard() {
     >
       <div className="grid min-w-0 gap-5">
         {!canOpenQueue ? (
-          <section className="rounded-none border border-[var(--color-line)] bg-[var(--color-surface)] p-4 sm:p-6">
+          <section className="rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)] p-4 sm:p-6">
             <p role="alert" className="text-sm text-[var(--color-ink)]">
               {t("platform.ops.unavailable")}
             </p>
             <Link
               href="/ops"
-              className="mt-4 inline-flex min-h-11 items-center rounded-none px-3 text-sm font-semibold text-[var(--color-primary)] underline underline-offset-4"
+              className="mt-4 inline-flex min-h-11 items-center rounded-md px-3 text-sm font-semibold text-[var(--color-primary)] underline underline-offset-4"
             >
               {t("platform.ops.back")}
             </Link>
@@ -156,7 +156,7 @@ function AuditLogPanel() {
   }, []);
 
   return (
-    <section className="rounded-none border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
+    <section className="rounded-lg border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
       {/* Era mais uma camada de título antes da tabela: sobretítulo, manchete
           de 30px em serifa e parágrafo. Título de 16px e a lista. */}
       <h3 className="text-base font-bold text-[var(--color-ink)]">
@@ -174,14 +174,14 @@ function AuditLogPanel() {
         ) : error ? (
           <InlineAlert tone="error">{t(`${copy}.loadError`)}</InlineAlert>
         ) : entries.length === 0 ? (
-          <div className="rounded-none border border-dashed border-[var(--color-line-strong)] bg-[var(--color-surface-soft)] p-5 text-sm leading-7 text-[var(--color-ink-soft)]">
+          <div className="rounded-lg border border-dashed border-[var(--color-line-strong)] bg-[var(--color-surface-soft)] p-5 text-sm leading-7 text-[var(--color-ink-soft)]">
             {t(`${copy}.empty`)}
           </div>
         ) : (
           entries.map((entry) => (
             <article
               key={entry.id}
-              className="rounded-none border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-4"
+              className="rounded-lg border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-4"
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">
@@ -192,7 +192,7 @@ function AuditLogPanel() {
                     {entry.summary}
                   </p>
                 </div>
-                <span className="rounded-none bg-white px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--color-primary)]">
+                <span className="rounded-chip bg-white px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--color-primary)]">
                   {formatAuditLabel(entry.targetType, auditTargetLabels, t)}
                 </span>
               </div>
