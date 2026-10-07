@@ -27,13 +27,7 @@
  * duration, max room size — not the attendee-minute bucket this file used to
  * carry.
  *
- * No bandwidth quota either — and unlike the live-session gap, that one has a
- * cost ceiling worth knowing. `videoStorageMinutes` caps the cheap resource
- * ($2/month of Bunny storage at the largest tier); the expensive one is hours
- * WATCHED, at ~$0.0066/hour on the Volume network. Pro turns unprofitable past
- * roughly 640 students completing its catalog, and `activeStudents: null` on
- * Plus puts no ceiling on it at all. Deliberately unmetered for now: Bunny is
- * not serving production video yet. Build the meter before it does.
+ * No bandwidth quota yet: `videoStorageMinutes` limits stored video, not hours watched.
  */
 
 import type { PlanId } from "@/data/plans";
