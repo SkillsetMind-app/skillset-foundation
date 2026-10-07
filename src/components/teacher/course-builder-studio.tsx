@@ -77,8 +77,10 @@ import {
   paymentChoiceOf,
   paymentChoicesFor,
   paymentTypeOfChoice,
+  resolveCoursePrice,
   yearlySavingMinor,
   type PaymentChoice,
+  type ProductOffer,
 } from "@/domain/product-pricing";
 import {
   subscribeToTeacherCourse,
@@ -325,7 +327,7 @@ function sanitizeModules(modules: TeacherCourseModule[]): TeacherCourseModule[] 
 
 type BuilderError = {
   code: "notFound" | "load" | "chooseModule" | "lessonTitle" | "moduleTitleMissing"
-    | "lessonTitleMissing" | "price" | "installmentsSave" | "category" | "paidPrice"
+    | "lessonTitleMissing" | "price" | "livePrice" | "installmentsSave" | "category" | "paidPrice"
     | "installmentsPublish" | "duplicateTitle" | "activation" | "save" | "preview"
     | "setup" | "verification" | "payouts" | "payment" | "lessonContent" | "publish"
     | "session" | "file" | "community";
@@ -439,9 +441,9 @@ function builderDraftSignatureFromCourse(course: TeacherCourse): string {
           ? String(course.priceAmountMinor / 100)
           : "",
       currency: course.currency ?? defaultSkillsetCurrency,
+      // Sem forma gravada, sem valor e gratis: e como o checkout e o banco leem.
       paymentType:
-        course.paymentType ??
-        (course.priceAmountMinor === 0 ? "free" : "one_time"),
+        course.paymentType ?? (course.priceAmountMinor ? "one_time" : "free"),
       installmentsEnabled: Boolean(course.installmentsEnabled),
       installmentsMax: String(course.installmentsMax ?? 12),
       dripStrategy: course.dripStrategy ?? "instant",
@@ -715,8 +717,7 @@ export function CourseBuilderStudio() {
     );
     setCurrency(nextCourse.currency ?? defaultSkillsetCurrency);
     setPaymentType(
-      nextCourse.paymentType ??
-        (nextCourse.priceAmountMinor === 0 ? "free" : "one_time"),
+      nextCourse.paymentType ?? (nextCourse.priceAmountMinor ? "one_time" : "free"),
     );
     setInstallmentsEnabled(Boolean(nextCourse.installmentsEnabled));
     setInstallmentsMax(String(nextCourse.installmentsMax ?? 12));
@@ -895,6 +896,29 @@ export function CourseBuilderStudio() {
       currency,
       stripeAccountCountry: stripeConnectCountry,
     });
+  // Com preco em Outros precos, o checkout cobra a oferta principal
+  // (resolveCoursePrice), nao estes campos: a etapa de preco so mostra o que a
+  // pagina cobra e leva para la. Sem resposta da API, segue como antes.
+  const [checkoutOffers, setCheckoutOffers] = useState<ProductOffer[]>([]);
+  useEffect(() => {
+    if (!courseId) {
+      return;
+    }
+    let alive = true;
+    fetch(`/api/teach/offers?courseId=${encodeURIComponent(courseId)}`, { credentials: "include" })
+      .then((res) => (res.ok ? res.json() : {}))
+      .then((data: { offers?: Omit<ProductOffer, "courseId">[] }) => {
+        if (alive) {
+          setCheckoutOffers((data.offers ?? []).map((offer) => ({ ...offer, courseId })));
+        }
+      })
+      .catch(() => undefined);
+    return () => {
+      alive = false;
+    };
+  }, [courseId]);
+  const offerPrice = course ? resolveCoursePrice(course, checkoutOffers) : null;
+  const chargedByOffer = offerPrice?.source === "offer" ? offerPrice : null;
   const paymentChoice = paymentChoiceOf(paymentType);
   const paymentChoices = paymentChoicesFor(productFormat, paymentChoice);
   const paymentChoiceFits = paymentTypeFitsFormat(productFormat, paymentType);
@@ -983,8 +1007,17 @@ export function CourseBuilderStudio() {
     })),
   );
   const parsedPriceAmountMinor = parsePriceAmountMinor(priceAmount);
+  // Produto no ar, cobrado e sem valor: gravar isso abria a entrada gratis
+  // (create_free_course_enrollment le preco nulo como zero). Nao salva ate ter
+  // valor ou virar Gratis. Com oferta cobrando, o campo nem aparece e a
+  // entrada gratis ja e recusada pelo preco pago.
+  const liveWithoutPrice =
+    !chargedByOffer
+    && course?.status === "published"
+    && paymentType !== "free"
+    && !(parsedPriceAmountMinor && parsedPriceAmountMinor > 0);
   const priceFieldIsValid =
-    paymentType === "free" || !hasInvalidPriceAmount(priceAmount);
+    paymentType === "free" || (!hasInvalidPriceAmount(priceAmount) && !liveWithoutPrice);
   // Free is always ready; every paid model (one_time, subscription_monthly,
   // subscription_yearly) needs a positive price — priceAmountMinor is the
   // one-time charge or the per-cycle subscription amount.
@@ -1131,13 +1164,31 @@ export function CourseBuilderStudio() {
         : t("creatorEditor.builder.summary.setPrice");
   // Valor na moeda escolhida: os exemplos dos cartoes, a previa das parcelas
   // e a economia do anual. Centavos so quando existem ("3x of $100").
-  const formatMoney = (amountMinor: number) =>
+  const formatMoney = (amountMinor: number, moneyCurrency = currency) =>
     new Intl.NumberFormat(locale, {
       style: "currency",
-      currency: currency.toUpperCase(),
+      currency: moneyCurrency.toUpperCase(),
       minimumFractionDigits: amountMinor % 100 === 0 ? 0 : 2,
       maximumFractionDigits: 2,
     }).format(amountMinor / 100);
+  const previewLessonField = (
+    <label className="mt-4 grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
+      {t("creatorEditor.builder.pricing.preview")}
+      <select
+        value={freePreviewLessonId}
+        onChange={(event) => setFreePreviewLessonId(event.target.value)}
+        disabled={!isEditable || allLessons.length === 0}
+        className="rounded-md border border-[var(--color-field-border)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
+      >
+        <option value="">{t("creatorEditor.builder.pricing.noPreview")}</option>
+        {allLessons.map((lesson) => (
+          <option key={lesson.id} value={lesson.id}>
+            {lesson.moduleTitle} - {lesson.title}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
   const splitCountOptions = [...new Set([...splitPaymentCounts, Number(installmentsMax)])]
     .filter((count) => Number.isInteger(count) && count >= 1)
     .sort((left, right) => left - right);
@@ -2247,7 +2298,7 @@ export function CourseBuilderStudio() {
     setSuccess(null);
 
     if (!priceFieldIsValid) {
-      setError({ code: "price" });
+      setError({ code: liveWithoutPrice ? "livePrice" : "price" });
       return;
     }
 
@@ -3123,6 +3174,28 @@ export function CourseBuilderStudio() {
             id="builder-sec-pricing"
             className="scroll-mt-24 rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4"
           >
+            {chargedByOffer ? (
+              // A pagina cobra a oferta principal: cartoes e campos aqui
+              // mudariam so o construtor, e o checkout seguiria cobrando ela.
+              <>
+                <p className="text-base font-semibold text-[var(--color-ink)]">
+                  {t("creatorEditor.builder.pricing.question")}
+                </p>
+                <p className="mt-2 text-sm text-[var(--color-ink)]">
+                  {t("creatorEditor.builder.pricing.offerCharges")
+                    .replace("{price}", () => formatMoney(chargedByOffer.amountMinor, chargedByOffer.currency))
+                    .replace("{model}", () => t(`creatorPanel.paymentType.${chargedByOffer.paymentType}`))}{" "}
+                  <Link
+                    href={`/teach/courses/${encodeURIComponent(courseId ?? "")}/manage?section=pricing`}
+                    className="font-semibold text-[var(--color-primary)] underline"
+                  >
+                    {t("creatorEditor.builder.pricing.offerChange")}
+                  </Link>
+                </p>
+                {chargedByOffer.paymentType === "free" ? null : previewLessonField}
+              </>
+            ) : (
+            <>
             {/* Uma pergunta so, feita uma vez. Os campos de cada cartao so
                 aparecem depois da escolha; os cartoes ficam montados e o foco
                 continua no cartao clicado. */}
@@ -3298,7 +3371,9 @@ export function CourseBuilderStudio() {
                         <p className="text-xs leading-5 text-[var(--color-ink-soft)]">
                           {t("creatorEditor.builder.pricing.yearlyWhere")}
                         </p>
-                        {courseId && yearlyAmountMinor ? (
+                        {/* So com o mensal ja gravado: o Manage le o curso salvo e,
+                            com o valor antigo, abria outro preco principal. */}
+                        {courseId && yearlyAmountMinor && displayedSaveStatus === "saved" ? (
                           <Link
                             href={`/teach/courses/${encodeURIComponent(courseId)}/manage?section=pricing&addPrice=yearly&amount=${yearlyAmountMinor}`}
                             className={buttonClasses({ variant: "outline", size: "sm" }, "w-fit")}
@@ -3310,26 +3385,13 @@ export function CourseBuilderStudio() {
                     ) : null}
                   </div>
                 ) : null}
-                <label className="mt-4 grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
-                  {t("creatorEditor.builder.pricing.preview")}
-                  <select
-                    value={freePreviewLessonId}
-                    onChange={(event) => setFreePreviewLessonId(event.target.value)}
-                    disabled={!isEditable || allLessons.length === 0}
-                    className="rounded-md border border-[var(--color-field-border)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
-                  >
-                    <option value="">{t("creatorEditor.builder.pricing.noPreview")}</option>
-                    {allLessons.map((lesson) => (
-                      <option key={lesson.id} value={lesson.id}>
-                        {lesson.moduleTitle} - {lesson.title}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                {previewLessonField}
                 <p className="mt-3 text-xs leading-5 text-[var(--color-ink-soft)]">
                   {t("creatorEditor.builder.pricing.listingHelp")}
                 </p>
               </>
+            )}
+            </>
             )}
             {/* A frase fixa que separa parcelar de mensalidade. */}
             <p className="mt-4 border-t border-[var(--color-line)] pt-3 text-xs leading-5 text-[var(--color-ink-soft)]">

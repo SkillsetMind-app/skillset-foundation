@@ -144,6 +144,7 @@ export function CourseOffersPanel({
   // Sem preco principal, o checkout usa o primeiro preco ativo daqui
   // (resolveCoursePrice). Quem adiciona um preco a mais precisa saber disso.
   const hasMainPrice = offers.some((offer) => offer.isDefault && offer.active);
+  const mainPriceFirst = !isDefault && !hasMainPrice && coursePricing !== undefined && !coursePricing.free;
 
   const reload = useCallback(async () => {
     setLoading(true);
@@ -193,25 +194,36 @@ export function CourseOffersPanel({
       setSaving(false);
       return;
     }
-    try {
+    const postOffer = async (offer: Record<string, unknown>) => {
       const res = await fetch("/api/teach/offers", {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          courseId,
-          name,
-          amountMinor,
-          currency,
-          paymentType,
-          isDefault,
-          publicCode,
-        }),
+        body: JSON.stringify({ courseId, ...offer }),
       });
       const data = (await res.json()) as { error?: string };
       if (!res.ok) {
         throw new Error(data.error || t("creatorPanel.offers.createError"));
       }
+    };
+    try {
+      // Um preco a mais nunca entra sozinho: sem preco principal, o checkout
+      // cobra o primeiro preco daqui (resolveCoursePrice) e o plano anual
+      // virava o preco da pagina. O preco atual do produto vira o principal
+      // antes; set_default_product_offer regrava o curso com os mesmos valores.
+      if (mainPriceFirst && coursePricing?.paymentType) {
+        await postOffer({
+          name: courseTitle,
+          amountMinor: coursePricing.amountMinor,
+          currency: coursePricing.currency,
+          paymentType: coursePricing.paymentType,
+          isDefault: true,
+        });
+        // Se o segundo falhar, a lista ja tem o principal e tentar de novo
+        // nao cria outro.
+        await reload();
+      }
+      await postOffer({ name, amountMinor, currency, paymentType, isDefault, publicCode });
       setNotice(t("creatorPanel.offers.created"));
       setPublicCode("");
       setCreating(false);
@@ -235,7 +247,8 @@ export function CourseOffersPanel({
       {/* Com oferta criada, o formulario empurrava a lista real para baixo:
           quem ja precificou vem aqui para conferir ou copiar link, nao para
           criar de novo. */}
-      {canAddPrice ? null : (
+      {/* "Sem outros precios" so e verdade sem nenhum na lista. */}
+      {canAddPrice || loading || offers.length ? null : (
         <p className="mt-1 text-sm leading-6 text-[var(--color-ink-soft)]">
           {t("creatorPanel.offers.free")}
         </p>
@@ -397,15 +410,17 @@ export function CourseOffersPanel({
             />
             {t("creatorPanel.offers.isDefault")}
           </label>
-          {!isDefault && !loading && !hasMainPrice ? (
+          {mainPriceFirst && coursePricing && !loading ? (
             <p className="text-xs leading-5 text-[var(--color-ink-soft)] sm:col-span-2">
-              {t("creatorPanel.offers.firstIsMain")}
+              {t("creatorPanel.offers.firstIsMain")
+                .replace("{price}", () => money(coursePricing.amountMinor, coursePricing.currency))
+                .replace("{model}", () => paymentTypeLabel(coursePricing.paymentType ?? "one_time"))}
             </p>
           ) : null}
           <div className="sm:col-span-2">
             <button
               type="submit"
-              disabled={saving}
+              disabled={saving || loading}
               className="button-solid px-5 py-2.5 text-xs disabled:opacity-60"
             >
               {saving

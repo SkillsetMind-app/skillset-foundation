@@ -1,5 +1,6 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
+import { resolveCoursePrice, type ProductOffer } from "@/domain/product-pricing";
 import { CourseOffersPanel } from "./course-offers-panel";
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 function stubOffers() {
@@ -90,8 +91,8 @@ it("curso gratuito: nao tem outro preco, e a tela diz onde mudar", async () => {
 });
 
 // "Add the yearly plan" na etapa de preco abre o formulario ja pronto. O anual
-// e um preco a mais: nao vira o principal, e sem principal a tela avisa que a
-// pagina mostra o primeiro preco.
+// e um preco a mais: nao vira o principal, e sem principal a tela avisa que o
+// preco atual vira o principal antes.
 it("plano anual vindo da etapa de preco: formulario aberto, anual e nao principal", async () => {
   vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ offers: [] }) })));
   render(
@@ -107,7 +108,50 @@ it("plano anual vindo da etapa de preco: formulario aberto, anual e nao principa
   expect(screen.getByLabelText("Name of this price")).toHaveValue("Yearly plan");
   expect(screen.getByLabelText("How often they pay")).toHaveValue("subscription_yearly");
   expect(screen.getByLabelText("Make this the main price on your page")).not.toBeChecked();
-  expect(screen.getByText("Until one price is the main price, your page shows the first price added here.")).toBeInTheDocument();
+  expect(screen.getByText(/^Your page keeps charging \D*29[.,]00 \(Monthly membership\): that price becomes the main price first/)).toBeInTheDocument();
+});
+
+// O anual sozinho virava o preco da pagina: o checkout cobra o principal ou,
+// sem principal, o primeiro preco ativo (resolveCoursePrice). Enviar o
+// formulario pronto num produto sem preco nenhum aqui grava antes o mensal
+// atual como principal, e a pagina continua cobrando o mensal.
+it("plano anual sem preco principal: o mensal vira o principal antes e o checkout segue no mensal", async () => {
+  const saved: ProductOffer[] = [];
+  const posts: Record<string, unknown>[] = [];
+  vi.stubGlobal("fetch", vi.fn(async (_url: string, init?: RequestInit) => {
+    if (init?.method === "POST") {
+      const body = JSON.parse(String(init.body)) as Record<string, unknown>;
+      posts.push(body);
+      if (body.isDefault) saved.forEach((offer) => { offer.isDefault = false; });
+      const id = `o${saved.length + 1}`;
+      saved.push({
+        id, courseId: "course-1", name: String(body.name), isDefault: Boolean(body.isDefault), active: true,
+        prices: [{ id: `p-${id}`, offerId: id, amountMinor: Number(body.amountMinor), currency: String(body.currency),
+          paymentType: body.paymentType as ProductOffer["prices"][number]["paymentType"], active: true }],
+      });
+      return { ok: true, json: async () => ({ offerId: id }) };
+    }
+    return { ok: true, json: async () => ({ offers: saved.map((offer) => ({ ...offer })) }) };
+  }));
+  render(
+    <CourseOffersPanel
+      courseId="course-1"
+      courseTitle="Launch course"
+      coursePricing={pricing("subscription_monthly", 2900)}
+      prefill={{ paymentType: "subscription_yearly", amountMinor: 29000 }}
+    />,
+  );
+
+  const submit = await screen.findByRole("button", { name: "Add price" });
+  await waitFor(() => expect(submit).toBeEnabled());
+  fireEvent.click(submit);
+  await screen.findByText("Price added. Its link charges exactly this price.");
+
+  expect(posts).toHaveLength(2);
+  expect(posts[0]).toMatchObject({ isDefault: true, paymentType: "subscription_monthly", amountMinor: 2900, currency: "USD" });
+  expect(posts[1]).toMatchObject({ isDefault: false, paymentType: "subscription_yearly", amountMinor: 29000 });
+  const course = { id: "course-1", priceAmountMinor: 2900, currency: "USD", paymentType: "subscription_monthly" as const };
+  expect(resolveCoursePrice(course, saved)).toMatchObject({ amountMinor: 2900, paymentType: "subscription_monthly" });
 });
 
 it("plano anual num produto de pagamento unico: o pedido e ignorado", async () => {

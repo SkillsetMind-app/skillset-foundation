@@ -9,9 +9,14 @@
 -- Creating, saving the builder, publishing, changing the type and adding an
 -- extra price all refuse a way to pay the type does not take. A product
 -- already set up the old way keeps its price and still saves other changes.
+-- A live paid product never loses its price, and an extra price only sits
+-- next to a main price (alone, checkout would charge it).
 begin;
 create temp table pagar_checks (name text, passed boolean);
 grant insert, select on pagar_checks to authenticated;
+-- Before pg_temp.draft: a language sql body is checked when it is created.
+create temp table drafts (key text primary key, id text);
+grant insert, select on drafts to authenticated;
 create function pg_temp.check_gate(p_name text, p_ok boolean) returns void
 language sql as $$ insert into pagar_checks values (p_name, coalesce(p_ok, false)); $$;
 create function pg_temp.uid(n int) returns uuid language sql immutable as $$
@@ -80,6 +85,8 @@ create function pg_temp.draft(p_key text) returns text language sql as $$
 $$;
 
 \set not_allowed 'PAYMENT_TYPE_NOT_ALLOWED_FOR_FORMAT:%'
+\set needs_price 'PAID_PRODUCT_NEEDS_PRICE:%'
+\set needs_main 'PRODUCT_OFFER_NEEDS_MAIN_PRICE:%'
 
 -- One activated creator, ready to sell.
 select pg_temp.act_as(null, 'service_role');
@@ -105,9 +112,6 @@ values ('smoke-pagar-legacy', pg_temp.uid(1)::text, 'smoke-pagar-legacy', 'Smoke
   'community', true, '[]'::jsonb, 0);
 alter table public.courses enable trigger courses_payment_type_fits_format;
 select set_config('skillset.trusted_write', 'off', true);
-
-create temp table drafts (key text primary key, id text);
-grant insert, select on drafts to authenticated;
 
 -- 1. Creation.
 select pg_temp.act_as(pg_temp.uid(1), 'authenticated');
@@ -161,6 +165,16 @@ select pg_temp.check_gate('publish: the refused product stays a draft',
   (select status = 'draft' from public.courses where id = 'smoke-pagar-legacy'));
 select pg_temp.check_gate('publish: a community with a yearly membership publishes',
   pg_temp.passed(format('select public.publish_teacher_course(%L)', pg_temp.draft('community'))));
+
+-- 4b. A live paid product never loses its price: a null price opened free
+-- enrollment (create_free_course_enrollment reads null as zero).
+select pg_temp.check_gate('live price: a published product cannot lose its price',
+  pg_temp.refused(pg_temp.save(pg_temp.draft('community'), 'subscription_monthly', null), :'needs_price'));
+select pg_temp.check_gate('live price: zero is no price either',
+  pg_temp.refused(pg_temp.save(pg_temp.draft('community'), 'subscription_yearly', 0), :'needs_price'));
+select pg_temp.check_gate('live price: the published product kept its price',
+  (select payment_type = 'subscription_yearly' and price_amount_minor = 29000
+     from public.courses where id = pg_temp.draft('community')));
 reset role;
 
 -- 5. Changing the type (service_role only) follows the same list.
@@ -169,15 +183,27 @@ select pg_temp.check_gate('type: a one-payment e-book cannot become a community'
   pg_temp.refused(format($q$update public.courses set product_format = 'community' where id = %L$q$,
     pg_temp.draft('ebook')), :'not_allowed'));
 
--- 6. Extra prices (Offers) follow the type of the product.
-select pg_temp.check_gate('extra price: a live event cannot get a monthly price',
-  pg_temp.refused(pg_temp.offer(pg_temp.draft('live'), 'subscription_monthly', 2900, false), :'not_allowed'));
+-- 6. Prices in Offers follow the type of the product, and an extra price only
+-- sits next to a main price.
+select pg_temp.check_gate('extra price: refused while the product has no main price',
+  pg_temp.refused(pg_temp.offer(pg_temp.draft('ebook'), 'one_time', 990, false), :'needs_main'));
+select pg_temp.check_gate('price: a live event cannot get a monthly price',
+  pg_temp.refused(pg_temp.offer(pg_temp.draft('live'), 'subscription_monthly', 2900, true), :'not_allowed'));
+select pg_temp.check_gate('main price: a community gets its yearly main price',
+  pg_temp.passed(pg_temp.offer(pg_temp.draft('community'), 'subscription_yearly', 29000, true)));
+select pg_temp.check_gate('main price: an e-book gets its main price',
+  pg_temp.passed(pg_temp.offer(pg_temp.draft('ebook'), 'one_time', 1900, true)));
 select pg_temp.check_gate('extra price: a community cannot get a one-payment price',
   pg_temp.refused(pg_temp.offer(pg_temp.draft('community'), 'one_time', 9900, false), :'not_allowed'));
 select pg_temp.check_gate('extra price: a community gets a monthly price',
   pg_temp.passed(pg_temp.offer(pg_temp.draft('community'), 'subscription_monthly', 2900, false)));
 select pg_temp.check_gate('extra price: an e-book gets another one-payment price',
-  pg_temp.passed(pg_temp.offer(pg_temp.draft('ebook'), 'one_time', 1900, false)));
+  pg_temp.passed(pg_temp.offer(pg_temp.draft('ebook'), 'one_time', 990, false)));
+select pg_temp.check_gate('extra price: the page still charges the main price',
+  (select p.payment_type = 'subscription_yearly' and p.amount_minor = 29000
+     from public.product_offers o
+     join public.product_prices p on p.offer_id = o.id
+    where o.course_id = pg_temp.draft('community') and o.is_default and o.active));
 
 -- 7. The functions.
 select pg_temp.check_gate('functions: fixed search_path; the price check runs as definer',
@@ -189,7 +215,7 @@ select pg_temp.check_gate('functions: fixed search_path; the price check runs as
   and (select prosecdef from pg_proc
         where oid = 'public.product_prices_payment_type_fits_format()'::regprocedure));
 
-select pg_temp.check_gate('every case ran', (select count(*) = 22 from pagar_checks));
+select pg_temp.check_gate('every case ran', (select count(*) = 29 from pagar_checks));
 
 select name, passed from pagar_checks order by name;
 do $$

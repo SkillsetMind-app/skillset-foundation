@@ -354,7 +354,9 @@ describe("como as pessoas vao pagar", () => {
     fireEvent.click(yearly);
     fireEvent.change(screen.getByRole("textbox", { name: "Price per year" }), { target: { value: "290" } });
     expect(screen.getByText("They save $58 compared to 12 monthly payments.")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Add the yearly plan" })).toHaveAttribute(
+    // O Manage le o curso salvo: o link so aparece com o mensal gravado.
+    expect(screen.queryByRole("link", { name: "Add the yearly plan" })).toBeNull();
+    expect(await screen.findByRole("link", { name: "Add the yearly plan" }, { timeout: 4000 })).toHaveAttribute(
       "href",
       "/teach/courses/course-1/manage?section=pricing&addPrice=yearly&amount=29000",
     );
@@ -388,6 +390,85 @@ describe("como as pessoas vao pagar", () => {
     }
     await act(async () => vi.advanceTimersByTime(5000));
     expect(updateTeacherCourseBuilder).not.toHaveBeenCalled();
+  });
+
+  // Produto no ar que cobra por ano: "Charge every month instead" limpa o
+  // valor. Gravar assim deixava o preco nulo e a entrada gratis.
+  it("produto publicado anual: trocar para mensal nao salva sem valor", async () => {
+    vi.useFakeTimers();
+    mocks.course = paid("course", "subscription_yearly", 29000, { status: "published" });
+    renderBuilder("pricing");
+    await act(async () => {});
+
+    fireEvent.click(screen.getByRole("button", { name: "Charge every month instead" }));
+    expect(screen.getByRole("textbox", { name: "Price per month" })).toHaveValue("");
+    await act(async () => vi.advanceTimersByTime(5000));
+    expect(updateTeacherCourseBuilder).not.toHaveBeenCalled();
+    expect(screen.getByText("Not saving — fix the price")).toBeInTheDocument();
+
+    fireEvent.change(screen.getByRole("textbox", { name: "Price per month" }), { target: { value: "29" } });
+    await act(async () => vi.advanceTimersByTime(5000));
+    expect(updateTeacherCourseBuilder).toHaveBeenCalledWith(
+      "course-1",
+      expect.objectContaining({ paymentType: "subscription_monthly", priceAmountMinor: 2900 }),
+    );
+  });
+
+  // Sem forma gravada e sem valor, o checkout e o banco leem gratis.
+  it("produto antigo sem forma e sem valor: aparece gratis e nada salvo", async () => {
+    vi.useFakeTimers();
+    mocks.course = paid("community", undefined, undefined as unknown as number, { status: "published" });
+    renderBuilder("pricing");
+    await act(async () => {});
+
+    expect(pressed()).toEqual(["Free"]);
+    await act(async () => vi.advanceTimersByTime(5000));
+    expect(updateTeacherCourseBuilder).not.toHaveBeenCalled();
+  });
+
+  // Com preco principal em Outros precos, o checkout cobra ele. Os cartoes
+  // daqui mudariam so o construtor: a etapa diz o que a pagina cobra e leva
+  // para la, e nao deixa virar Gratis com a cobranca de pe.
+  describe("com preco principal em Outros precos", () => {
+    function stubOffers(offers: unknown[]) {
+      vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ offers }) })));
+    }
+    const main = {
+      id: "o1", name: "Main", isDefault: true, active: true,
+      prices: [{ id: "p1", amountMinor: 9700, currency: "USD", paymentType: "one_time", active: true }],
+    };
+
+    afterEach(() => {
+      vi.unstubAllGlobals();
+    });
+
+    it.each([
+      ["o mesmo modelo", "one_time", 9700],
+      ["um construtor que diz gratis", "free", 0],
+      ["um construtor que diz mensal", "subscription_monthly", 2900],
+    ] as const)("com %s: mostra o que a pagina cobra, sem cartoes nem campos", async (_label, paymentType, price) => {
+      stubOffers([main]);
+      mocks.course = paid("course", paymentType, price, { status: "published" });
+      renderBuilder("pricing");
+
+      expect(await screen.findByText(/^Your page charges \$97 \(One payment\)\./)).toBeInTheDocument();
+      expect(screen.getByRole("link", { name: "Change it in Other prices." })).toHaveAttribute(
+        "href",
+        "/teach/courses/course-1/manage?section=pricing",
+      );
+      expect(screen.queryByRole("group", { name: /How will people pay\?/ })).toBeNull();
+      expect(screen.queryByRole("button", { name: /^Free/ })).toBeNull();
+      expect(screen.queryByRole("textbox", { name: /Price/ })).toBeNull();
+    });
+
+    it("oferta inativa nao conta: os cartoes voltam", async () => {
+      stubOffers([{ ...main, active: false }]);
+      mocks.course = paid("course", "one_time", 9700);
+      renderBuilder("pricing");
+
+      expect(await screen.findByRole("group", { name: /How will people pay\?/ })).toBeInTheDocument();
+      expect(screen.queryByText(/^Your page charges/)).toBeNull();
+    });
   });
 
   // Produto criado antes da regra: a tela mostra o que ele e e avisa.
