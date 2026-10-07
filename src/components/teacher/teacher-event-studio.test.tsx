@@ -16,6 +16,7 @@ const agenda = vi.hoisted(() => ({
   // Modulos e status do produto de evento: o proximo passo depende deles.
   productModules: [] as Array<Record<string, unknown>>,
   productStatus: "draft",
+  productPaymentType: "one_time",
 }));
 
 // O I18nProvider chama useRouter() para o refresh ao trocar de idioma.
@@ -52,6 +53,7 @@ vi.mock("@/lib/data/teacher-courses", () => ({
         summary: "A paid live cohort",
         category: "Supervision & Continuing Education",
         status: agenda.productStatus,
+        paymentType: agenda.productPaymentType,
         modules: agenda.productModules,
         lessonCount: 0,
       },
@@ -78,6 +80,7 @@ describe("TeacherEventStudio", () => {
     agenda.params = "courseId=event-product-1&newEvent=1";
     agenda.productModules = [];
     agenda.productStatus = "draft";
+    agenda.productPaymentType = "one_time";
     vi.clearAllMocks();
   });
 
@@ -118,6 +121,30 @@ describe("TeacherEventStudio", () => {
     const next = await screen.findByRole("region", { name: "Session scheduled. Next: set the price and publish." });
     expect(within(next).getByRole("link", { name: "Set the price and publish" })).toBeInTheDocument();
     expect(within(next).queryByRole("link", { name: "Add a short welcome lesson" })).not.toBeInTheDocument();
+  });
+
+  // Gratis nao tem preco: o atalho mandava para a aba de preco, onde a propria
+  // tela pergunta "quer cobrar?". O passo vira so publicar, na revisao.
+  it("produto gratis: o proximo passo e publicar, sem falar de preco", async () => {
+    agenda.productPaymentType = "free";
+    render(<TeacherEventStudio />);
+    await scheduleSession();
+
+    const next = await screen.findByRole("region", { name: "Session scheduled. Next: publish." });
+    const publish = within(next).getByRole("link", { name: "Review and publish" });
+    expect(publish).toHaveAttribute("href", "/teach/builder?courseId=event-product-1&tab=review");
+    expect(within(next).queryByRole("link", { name: "Set the price and publish" })).not.toBeInTheDocument();
+    expect(within(next).getByRole("link", { name: "Add a short welcome lesson" })).toBeInTheDocument();
+  });
+
+  // Em revisao o construtor abre so para leitura: nenhum atalho para la.
+  it("produto em revisao: nada de proximo passo", async () => {
+    agenda.productStatus = "in_review";
+    render(<TeacherEventStudio />);
+    await scheduleSession();
+
+    await waitFor(() => expect(screen.queryByLabelText("Session title")).not.toBeInTheDocument());
+    expect(screen.queryByRole("region", { name: /Session scheduled/ })).not.toBeInTheDocument();
   });
 
   it("produto ja publicado: nada de proximo passo", async () => {

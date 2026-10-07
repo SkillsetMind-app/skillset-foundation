@@ -17,7 +17,11 @@ import {
   type CourseEventType,
 } from "@/domain/course-event";
 import { getSafeExternalUrl } from "@/domain/external-url";
-import { countCourseLessons, type TeacherCourse } from "@/domain/teacher-course";
+import {
+  countCourseLessons,
+  teacherCanEditCourse,
+  type TeacherCourse,
+} from "@/domain/teacher-course";
 import {
   cancelCourseEvent,
   createCourseEvent,
@@ -361,10 +365,16 @@ export function TeacherEventStudio() {
   ];
 
   // Publicado nao precisa do passo; o status vem da inscricao, entao o aviso
-  // some sozinho quando o produto for publicado.
+  // some sozinho quando o produto for publicado. Em revisao o construtor abre
+  // so para leitura: o atalho levaria a uma tela sem nada para fazer.
   const nextStepCourse = courses.find(
-    (course) => course.id === nextStepCourseId && course.status !== "published",
+    (course) =>
+      course.id === nextStepCourseId
+      && teacherCanEditCourse(course.status)
+      && course.status !== "published",
   );
+  // Gratis nao tem preco para definir: o passo e so publicar.
+  const nextStepIsFree = nextStepCourse?.paymentType === "free";
   // publish_teacher_course ainda exige uma aula com conteudo, mesmo para
   // evento. Ate o tipo do produto existir no banco, o atalho resolve.
   const nextStepNeedsLesson = nextStepCourse
@@ -432,10 +442,10 @@ export function TeacherEventStudio() {
         {nextStepCourse ? (
           <section
             aria-labelledby="event-next-step-title"
-            className="mt-4 grid gap-3 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-4"
+            className="mt-4 grid gap-3 rounded-lg border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-4"
           >
             <h4 id="event-next-step-title" className="text-base font-semibold text-[var(--color-ink)]">
-              {t(`${copy}.nextStep.title`)}
+              {t(`${copy}.nextStep.${nextStepIsFree ? "titleFree" : "title"}`)}
             </h4>
             {nextStepNeedsLesson ? (
               <p className="text-sm leading-6 text-[var(--color-ink-soft)]">
@@ -444,10 +454,10 @@ export function TeacherEventStudio() {
             ) : null}
             <div className="flex flex-wrap gap-3">
               <Link
-                href={`/teach/builder?courseId=${encodeURIComponent(nextStepCourse.id)}&tab=pricing`}
+                href={`/teach/builder?courseId=${encodeURIComponent(nextStepCourse.id)}&tab=${nextStepIsFree ? "review" : "pricing"}`}
                 className="button-solid button-lg w-full sm:w-auto"
               >
-                {t(`${copy}.nextStep.pricing`)}
+                {t(`${copy}.nextStep.${nextStepIsFree ? "publish" : "pricing"}`)}
                 <ArrowRight aria-hidden="true" size={16} strokeWidth={2} />
               </Link>
               {nextStepNeedsLesson ? (

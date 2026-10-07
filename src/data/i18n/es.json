@@ -2168,7 +2168,9 @@
       "newSession": "Nueva sesión",
       "nextStep": {
         "title": "Sesión programada. Siguiente paso: define el precio y publica.",
+        "titleFree": "Sesión programada. Siguiente: publicar.",
         "pricing": "Definir el precio y publicar",
+        "publish": "Revisar y publicar",
         "lessonHelp": "Para publicar se necesita al menos una lección con contenido. Basta con una breve lección de bienvenida con los datos de la sesión.",
         "addLesson": "Añadir una breve lección de bienvenida"
       },
@@ -2405,7 +2407,7 @@
         "title": "Título",
         "category": "Categoría",
         "allCategories": "Todas las categorías",
-        "summary": "Resumen",
+        "summary": "Descripción",
         "outcomes": "Resultados de aprendizaje",
         "noneYet": "Todavía ninguno",
         "cover": "Imagen de portada",
@@ -3876,9 +3878,7 @@
       "release": {
         "title": "Cuándo se abren las lecciones",
         "strategy": "Liberación de las lecciones",
-        "everyLessons": "Liberar lecciones cada",
-        "everyModules": "Liberar módulos cada",
-        "days": "días",
+        "interval": "Días entre cada liberación",
         "customHelp": " Define los días de espera de cada lección al editarla."
       },
       "pricing": {
@@ -3888,8 +3888,7 @@
         "help": "Elige Gratis, pago único o un cobro que se repite cada mes o cada año. Para publicar un producto de pago, define un precio mayor que cero y conecta Stripe para recibir tus pagos.",
         "price": "Precio",
         "currency": "Moneda",
-        "freeLine": "Este producto es gratis. ¿Quieres cobrar?",
-        "switchToPaid": "Pasar a pago",
+        "freeLine": "Este producto es gratis. Para cobrar, elige una opción de pago arriba.",
         "pricePlaceholder": "Ejemplo: 149",
         "installments": "Pago en cuotas con tarjeta",
         "installmentsCurrency": "Cambia la moneda a MXN para que puedan pagar en cuotas.",
@@ -5523,9 +5522,9 @@
   },
   "teacherSalesCopy": {
     "title": "Editor de la página de ventas",
-    "description": "Edita el título, la propuesta y los resultados que ven los compradores. Este editor se centra en esos campos; el constructor completo de páginas con arrastrar y soltar sigue previsto para más adelante.",
+    "description": "Edita el título, la descripción y los resultados que ven los compradores. Este editor se centra en esos campos; el constructor completo de páginas con arrastrar y soltar sigue previsto para más adelante.",
     "productTitle": "Título del producto",
-    "summary": "Propuesta de venta / resumen",
+    "summary": "Descripción",
     "outcomes": "Resultados (uno por línea)",
     "outcomesPlaceholder": "Define tu oferta\nRealiza una primera sesión\nSigue el progreso del cliente",
     "saved": "Textos de venta guardados. Abre la página pública del producto para ver la vista previa.",

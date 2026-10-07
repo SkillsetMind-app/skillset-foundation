@@ -552,6 +552,16 @@ export function CourseBuilderStudio() {
   const [moduleTitle, setModuleTitle] = useState(() =>
     searchParams.get("welcome") === "1" ? t("creatorEditor.builder.curriculum.welcomeModule") : "",
   );
+  // O nome ja entrou no formulario: o parametro sai da URL para uma recarga
+  // (ou a troca de aba, que copia os parametros) nao abrir outro "Welcome".
+  useEffect(() => {
+    if (searchParams.get("welcome") !== "1") {
+      return;
+    }
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("welcome");
+    router.replace(`/teach/builder?${params.toString()}`, { scroll: false });
+  }, [router, searchParams]);
   const [moduleSummary, setModuleSummary] = useState("");
   const [moduleError, setModuleError] = useState(false);
   const [lessonModuleId, setLessonModuleId] = useState("");
@@ -850,11 +860,6 @@ export function CourseBuilderStudio() {
     && stripeConnectCountry === "MX"
     && isPublicFeatureEnabled("payments.cardInstallments");
   const canConfigureCardInstallments = showCardInstallments && currency === "MXN";
-  const releaseEveryLabel = t(
-    dripStrategy === "time_drip_module"
-      ? "creatorEditor.builder.release.everyModules"
-      : "creatorEditor.builder.release.everyLessons",
-  );
   const lessonCount = countCourseLessons(modules);
   // "1 module", "2 modules": a tela dizia "1 modules, 1 lessons" (QA visual em
   // producao, 08/09). O singular tem chave propria, como no hub do curso.
@@ -2890,52 +2895,42 @@ export function CourseBuilderStudio() {
             id="builder-sec-pricing"
             className="scroll-mt-24 rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4"
           >
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
+              {t("creatorEditor.builder.pricing.setup")}
+            </p>
+            <div className="mt-4">
+              <PlanSelectorCards
+                label={
+                  <span className="flex items-center gap-2">
+                    {t("creatorEditor.builder.pricing.model")}
+                    <InlineHelp
+                      topic={t("creatorEditor.builder.pricing.helpTopic")}
+                      href="/help#course-pricing"
+                    >
+                      {t("creatorEditor.builder.pricing.help")}
+                    </InlineHelp>
+                  </span>
+                }
+                options={paymentModelOptions.map((option) => ({
+                  ...option,
+                  title: t(option.title),
+                  description: t(option.description),
+                  features: option.features.map((feature) => t(feature)),
+                }))}
+                value={paymentType}
+                onChange={handlePaymentTypeChange}
+                disabled={!isEditable}
+              />
+            </div>
             {paymentType === "free" ? (
-              // Gratis pula o preco. Antes a aba inteira aparecia com o valor
-              // cinza, moeda, parcelamento e aula de amostra, nada disso valendo
-              // para quem escolheu Gratis. Uma frase e o caminho para cobrar.
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <p className="text-sm font-semibold text-[var(--color-ink)]">
-                  {t("creatorEditor.builder.pricing.freeLine")}
-                </p>
-                <button
-                  type="button"
-                  onClick={() => handlePaymentTypeChange("one_time")}
-                  disabled={!isEditable}
-                  className="button-outline disabled:opacity-60"
-                >
-                  {t("creatorEditor.builder.pricing.switchToPaid")}
-                </button>
-              </div>
+              // Gratis pula o preco: valor, moeda, parcelamento e aula de amostra
+              // nao valem para quem escolheu Gratis. Os cartoes ficam montados
+              // (o foco continua no cartao clicado); so os campos dao lugar a frase.
+              <p className="mt-4 text-sm font-semibold text-[var(--color-ink)]">
+                {t("creatorEditor.builder.pricing.freeLine")}
+              </p>
             ) : (
               <>
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
-                  {t("creatorEditor.builder.pricing.setup")}
-                </p>
-                <div className="mt-4">
-                  <PlanSelectorCards
-                    label={
-                      <span className="flex items-center gap-2">
-                        {t("creatorEditor.builder.pricing.model")}
-                        <InlineHelp
-                          topic={t("creatorEditor.builder.pricing.helpTopic")}
-                          href="/help#course-pricing"
-                        >
-                          {t("creatorEditor.builder.pricing.help")}
-                        </InlineHelp>
-                      </span>
-                    }
-                    options={paymentModelOptions.map((option) => ({
-                      ...option,
-                      title: t(option.title),
-                      description: t(option.description),
-                      features: option.features.map((feature) => t(feature)),
-                    }))}
-                    value={paymentType}
-                    onChange={handlePaymentTypeChange}
-                    disabled={!isEditable}
-                  />
-                </div>
                 {/* A coluna da moeda era 140px fixos. Um <select> nunca fica mais
                     estreito que a sua opção mais larga ("BRL - Brazilian Real"),
                     então ele empurrava a borda e saía do cartão em telas médias e
@@ -3254,18 +3249,18 @@ export function CourseBuilderStudio() {
                   </select>
                 </label>
                 {dripStrategy === "time_drip_lesson" || dripStrategy === "time_drip_module" ? (
-                  <div className="flex min-h-11 items-center gap-2 text-sm font-semibold text-[var(--color-ink)]">
-                    <span aria-hidden="true">{releaseEveryLabel}</span>
+                  // "Release lessons every [1] days": com o padrao 1 a frase saia
+                  // errada. Um rotulo de campo nao depende do numero.
+                  <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
+                    {t("creatorEditor.builder.release.interval")}
                     <input
                       value={dripIntervalDays}
                       onChange={(event) => setDripIntervalDays(event.target.value)}
                       disabled={!isEditable}
                       inputMode="numeric"
-                      aria-label={`${releaseEveryLabel} … ${t("creatorEditor.builder.release.days")}`}
                       className="w-20 rounded-md border border-[var(--color-line)] bg-white px-3 py-3 text-center text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
                     />
-                    <span aria-hidden="true">{t("creatorEditor.builder.release.days")}</span>
-                  </div>
+                  </label>
                 ) : null}
               </div>
               <p className="text-xs leading-5 text-[var(--color-ink-soft)]">

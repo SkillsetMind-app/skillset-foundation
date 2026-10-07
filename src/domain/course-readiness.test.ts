@@ -421,7 +421,8 @@ describe("groupCourseReadiness", () => {
 
   // Produto gratis nao tem preco para definir: a linha "Pricing" (com a dica
   // "Set a paid price greater than $0") era um "feito" de graca que so
-  // confundia quem escolheu Gratis. Sem conta, a venda fica vazia e pronta.
+  // confundia quem escolheu Gratis. Sem conta, a venda fica vazia e pronta
+  // (total 0: a tela esconde a contagem em vez de dizer "0 of 0").
   it("sem conta e curso gratis, venda nao lista preco e ja nasce pronta", () => {
     const readiness = getCourseReadiness({ ...complete, paymentType: "free", priceAmountMinor: 0 });
     const sale = groupCourseReadiness(readiness)[2];

@@ -286,16 +286,16 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     await act(async () => {});
     const release = screen.getByRole("combobox", { name: "Lesson release" });
     fireEvent.change(release, { target: { value: "time_drip_lesson" } });
-    fireEvent.change(screen.getByRole("textbox", { name: "Release lessons every … days" }), { target: { value: "7" } });
+    fireEvent.change(screen.getByRole("textbox", { name: "Days between releases" }), { target: { value: "7" } });
     fireEvent.click(screen.getByRole("button", { name: "Switch language" }));
     expect(screen.getByRole("combobox", { name: "Liberación de las lecciones" })).toBe(release);
     expect(release).toHaveValue("time_drip_lesson");
     expect(screen.getByRole("option", { name: "Una lección cada pocos días" })).toHaveProperty("selected", true);
-    expect(screen.getByRole("textbox", { name: "Liberar lecciones cada … días" })).toHaveValue("7");
+    expect(screen.getByRole("textbox", { name: "Días entre cada liberación" })).toHaveValue("7");
     fireEvent.change(release, { target: { value: "time_drip_module" } });
-    expect(screen.getByRole("textbox", { name: "Liberar módulos cada … días" })).toHaveValue("7");
+    expect(screen.getByRole("textbox", { name: "Días entre cada liberación" })).toHaveValue("7");
     fireEvent.change(release, { target: { value: "time_drip_custom" } });
-    expect(screen.queryByRole("textbox", { name: /cada … días/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("textbox", { name: "Días entre cada liberación" })).not.toBeInTheDocument();
     await act(async () => vi.advanceTimersByTime(1800));
     expect(vi.mocked(updateTeacherCourseBuilder).mock.calls[0][1]).toMatchObject({
       dripStrategy: "time_drip_custom",
@@ -1125,24 +1125,42 @@ describe("aba de preco sem o que nao se aplica", () => {
     vi.restoreAllMocks();
   });
 
-  it("produto gratis: so a frase 'This product is free' e o botao para cobrar", async () => {
+  it("produto gratis: a frase 'This product is free' toma o lugar dos campos de preco, nao dos cartoes", async () => {
     emit(freeCourse);
     renderBuilder("pricing");
     await screen.findByRole("heading", { name: mocks.course.title, level: 1 });
 
-    expect(screen.getByText("This product is free. Want to charge?")).toBeInTheDocument();
+    expect(screen.getByText(/^This product is free\./)).toBeInTheDocument();
     expect(screen.queryByRole("textbox", { name: "Price" })).not.toBeInTheDocument();
     expect(screen.queryByRole("combobox", { name: "Currency" })).not.toBeInTheDocument();
     expect(screen.queryByRole("switch", { name: "Let buyers split the price" })).not.toBeInTheDocument();
     expect(screen.queryByRole("combobox", { name: "Free preview lesson" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /Charge every month/ })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Free/ })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: /Charge every month/ })).toBeInTheDocument();
+  });
 
-    fireEvent.click(screen.getByRole("button", { name: "Switch to paid" }));
+  // Teclado e leitor de tela: antes o grupo de cartoes inteiro desmontava ao
+  // escolher Gratis (e a frase ao voltar para pago), e o foco caia no <body>.
+  it("trocar entre Gratis e pago deixa o foco no cartao clicado e so os campos de preco somem e voltam", async () => {
+    renderBuilder("pricing");
+    await screen.findByRole("heading", { name: mocks.course.title, level: 1 });
 
-    expect(screen.queryByText("This product is free. Want to charge?")).not.toBeInTheDocument();
+    const free = screen.getByRole("button", { name: /^Free/ });
+    free.focus();
+    fireEvent.click(free);
+    expect(free).toHaveAttribute("aria-pressed", "true");
+    expect(document.activeElement).toBe(free);
+    expect(screen.queryByRole("textbox", { name: "Price" })).not.toBeInTheDocument();
+    expect(screen.getByText(/^This product is free\./)).toBeInTheDocument();
+
+    const monthly = screen.getByRole("button", { name: /Charge every month/ });
+    monthly.focus();
+    fireEvent.click(monthly);
+    expect(monthly).toHaveAttribute("aria-pressed", "true");
+    expect(document.activeElement).toBe(monthly);
+    expect(screen.queryByText(/^This product is free\./)).not.toBeInTheDocument();
     expect(screen.getByRole("textbox", { name: "Price" })).toHaveValue("");
     expect(screen.getByRole("combobox", { name: "Currency" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /One-time payment/ })).toHaveAttribute("aria-pressed", "true");
   });
 
   it("produto gratis: o checklist de publicar nao pede preco", async () => {
@@ -1152,6 +1170,11 @@ describe("aba de preco sem o que nao se aplica", () => {
 
     expect(screen.queryByText(/Set a paid price/)).not.toBeInTheDocument();
     expect(screen.queryByText("Pricing", { selector: "p" })).not.toBeInTheDocument();
+    // A venda sem item dizia "Sale available · 0 of 0"; os outros grupos
+    // continuam com a contagem.
+    expect(document.querySelector('[data-readiness-group="sale"] p')).toHaveTextContent(/^Sale available$/);
+    expect(document.querySelector('[data-readiness-group="content"] p')).toHaveTextContent(/^Content saved · \d+ of \d+$/);
+    expect(screen.queryByText(/0 of 0/)).not.toBeInTheDocument();
   });
 
   it("produto pago: mensal e anual dizem que a cobranca se repete", async () => {
@@ -1205,6 +1228,11 @@ describe("aba de preco sem o que nao se aplica", () => {
     await screen.findByRole("heading", { name: mocks.course.title, level: 1 });
     expect(screen.getByRole("heading", { name: "When lessons open" })).toBeInTheDocument();
     expect(screen.getByRole("combobox", { name: "Lesson release" })).toHaveValue("instant");
+
+    // O intervalo padrao e 1: "Release lessons every 1 days" saia errado.
+    fireEvent.change(screen.getByRole("combobox", { name: "Lesson release" }), { target: { value: "time_drip_lesson" } });
+    expect(screen.getByRole("textbox", { name: "Days between releases" })).toHaveValue("1");
+    expect(screen.queryByText(/Release (lessons|modules) every/)).not.toBeInTheDocument();
   });
 
   // O atalho "Add a short welcome lesson" da Agenda chega com ?welcome=1: o
@@ -1216,6 +1244,25 @@ describe("aba de preco sem o que nao se aplica", () => {
     await screen.findByRole("heading", { name: mocks.course.title, level: 1 });
 
     expect(screen.getByRole("textbox", { name: "Module title" })).toHaveValue("Welcome");
+
+    // Preenchido uma vez, o parametro sai da URL (replace, sem nova entrada no
+    // historico). Recarregar a URL que ficou nao preenche outro "Welcome".
+    expect(mocks.router.replace).toHaveBeenCalledOnce();
+    const [href, options] = vi.mocked(mocks.router.replace).mock.calls[0];
+    const next = new URL(String(href), "https://app.test");
+    expect(next.pathname).toBe("/teach/builder");
+    expect(next.searchParams.get("welcome")).toBeNull();
+    expect(next.searchParams.get("courseId")).toBe("course-1");
+    expect(next.searchParams.get("tab")).toBe("content");
+    expect(options).toEqual({ scroll: false });
+
+    cleanup();
+    mocks.searchParams.delete("welcome");
+    emit({ ...mocks.course, modules: [] });
+    renderBuilder("content");
+    await screen.findByRole("heading", { name: mocks.course.title, level: 1 });
+    expect(screen.getByRole("textbox", { name: "Module title" })).toHaveValue("");
+    expect(mocks.router.replace).toHaveBeenCalledOnce();
   });
 
   it("detalhes chama o texto de Description", async () => {

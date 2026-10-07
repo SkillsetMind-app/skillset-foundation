@@ -2168,7 +2168,9 @@
       "newSession": "New session",
       "nextStep": {
         "title": "Session scheduled. Next: set the price and publish.",
+        "titleFree": "Session scheduled. Next: publish.",
         "pricing": "Set the price and publish",
+        "publish": "Review and publish",
         "lessonHelp": "Publishing needs at least one lesson with content. A short welcome lesson with the session details is enough.",
         "addLesson": "Add a short welcome lesson"
       },
@@ -2405,7 +2407,7 @@
         "title": "Title",
         "category": "Category",
         "allCategories": "All categories",
-        "summary": "Summary",
+        "summary": "Description",
         "outcomes": "Learning outcomes",
         "noneYet": "None yet",
         "cover": "Cover image",
@@ -3627,7 +3629,7 @@
           "stage": "Course basics",
           "stageHelp": "Info, cover, description",
           "heading": "Set the course foundation.",
-          "help": "This is the information learners use to understand the promise of the course."
+          "help": "This is the information learners use to understand what the course offers."
         },
         "pricing": {
           "tab": "Pricing",
@@ -3876,9 +3878,7 @@
       "release": {
         "title": "When lessons open",
         "strategy": "Lesson release",
-        "everyLessons": "Release lessons every",
-        "everyModules": "Release modules every",
-        "days": "days",
+        "interval": "Days between releases",
         "customHelp": " Set each lesson's delay when you edit the lesson."
       },
       "pricing": {
@@ -3888,8 +3888,7 @@
         "help": "Choose Free, a one-time payment, or a charge that repeats every month or year. To publish a paid product, set a price above zero and connect Stripe so you can receive payouts.",
         "price": "Price",
         "currency": "Currency",
-        "freeLine": "This product is free. Want to charge?",
-        "switchToPaid": "Switch to paid",
+        "freeLine": "This product is free. To charge for it, pick a paid option above.",
         "pricePlaceholder": "Example: 149",
         "installments": "Split payments by card",
         "installmentsCurrency": "Switch the currency to MXN to let buyers split the price.",
@@ -5523,9 +5522,9 @@
   },
   "teacherSalesCopy": {
     "title": "Sales page editor",
-    "description": "Edit the headline, promise, and outcomes buyers see. This is a focused editor — not a full drag-and-drop page builder (that stays on the roadmap).",
+    "description": "Edit the headline, description, and outcomes buyers see. This is a focused editor — not a full drag-and-drop page builder (that stays on the roadmap).",
     "productTitle": "Product title",
-    "summary": "Sales promise / summary",
+    "summary": "Description",
     "outcomes": "Outcomes (one per line)",
     "outcomesPlaceholder": "Clarify your offer\nShip a first session\nTrack client progress",
     "saved": "Sales page copy saved. Open the public product page to preview.",
