@@ -33,8 +33,8 @@ describe("CreateCourseStart", () => {
   });
 
   it.each([
-    ["Monthly", "subscription_monthly"],
-    ["Yearly", "subscription_yearly"],
+    ["Charge every month", "subscription_monthly"],
+    ["Charge every year", "subscription_yearly"],
   ])("creates a %s subscription product and opens pricing", async (interval, paymentType) => {
     render(<CreateCourseStart ownerId="teacher-1" />);
 
@@ -43,7 +43,7 @@ describe("CreateCourseStart", () => {
     fireEvent.change(screen.getByLabelText("Product title"), {
       target: { value: "Clinical performance foundations" },
     });
-    fireEvent.change(screen.getByLabelText(/Product promise/), {
+    fireEvent.change(screen.getByLabelText(/^Description/), {
       target: {
         value: "Build a repeatable practice for evidence-informed performance work.",
       },
@@ -69,7 +69,7 @@ describe("CreateCourseStart", () => {
     fireEvent.change(screen.getByLabelText("Product title"), {
       target: { value: "Open clinical toolkit" },
     });
-    fireEvent.change(screen.getByLabelText(/Product promise/), {
+    fireEvent.change(screen.getByLabelText(/^Description/), {
       target: { value: "Use a practical set of open exercises with your clients." },
     });
     selectPrimaryCategory();
@@ -90,7 +90,7 @@ describe("CreateCourseStart", () => {
     fireEvent.change(screen.getByLabelText("Product title"), {
       target: { value: "Clinical supervision community" },
     });
-    fireEvent.change(screen.getByLabelText(/Product promise/), {
+    fireEvent.change(screen.getByLabelText(/^Description/), {
       target: {
         value: "Create a protected peer space for recurring clinical supervision.",
       },
@@ -119,7 +119,7 @@ describe("CreateCourseStart", () => {
     fireEvent.change(screen.getByLabelText("Product title"), {
       target: { value: "Live clinical supervision intensive" },
     });
-    fireEvent.change(screen.getByLabelText(/Product promise/), {
+    fireEvent.change(screen.getByLabelText(/^Description/), {
       target: { value: "Practice advanced supervision methods in a live facilitated cohort." },
     });
     selectPrimaryCategory();
@@ -143,7 +143,7 @@ describe("CreateCourseStart", () => {
     fireEvent.change(screen.getByLabelText("Product title"), {
       target: { value: "Eight-week resilience program" },
     });
-    fireEvent.change(screen.getByLabelText(/Product promise/), {
+    fireEvent.change(screen.getByLabelText(/^Description/), {
       target: { value: "Follow a sequenced eight-week path of learning, practice, and reflection." },
     });
     selectPrimaryCategory();
@@ -186,7 +186,7 @@ describe("CreateCourseStart — uma tela so, cinco estagios", () => {
 
     expect(screen.getByRole("button", { name: /Online course/i })).toBeInTheDocument();
     expect(screen.getByLabelText("Product title")).toBeInTheDocument();
-    expect(screen.getByLabelText(/Product promise/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/^Description/)).toBeInTheDocument();
     expect(screen.queryByText(/Step \d of \d/i)).toBeNull();
     expect(screen.queryByRole("button", { name: /^Continue$/i })).toBeNull();
     expect(screen.queryByRole("button", { name: /^Back$/i })).toBeNull();
@@ -221,7 +221,7 @@ describe("CreateCourseStart — uma tela so, cinco estagios", () => {
     fireEvent.change(screen.getByLabelText("Product title"), {
       target: { value: "Clinical performance foundations" },
     });
-    fireEvent.change(screen.getByLabelText(/Product promise/), {
+    fireEvent.change(screen.getByLabelText(/^Description/), {
       target: { value: "A practical course about clinical performance." },
     });
     selectPrimaryCategory();
@@ -249,7 +249,7 @@ describe("CreateCourseStart — o que falta para continuar", () => {
     fireEvent.change(screen.getByLabelText("Product title"), {
       target: { value: "Clinical performance foundations" },
     });
-    fireEvent.change(screen.getByLabelText(/Product promise/i), {
+    fireEvent.change(screen.getByLabelText(/^Description/), {
       target: { value: "A practical course about clinical performance." },
     });
     selectPrimaryCategory();
@@ -257,5 +257,45 @@ describe("CreateCourseStart — o que falta para continuar", () => {
     await waitFor(() => {
       expect(screen.queryByText(/Before you continue:/i)).not.toBeInTheDocument();
     });
+  });
+});
+
+describe("CreateCourseStart — corte 1 da criacao simples", () => {
+  // Promise, Summary e Description eram o mesmo campo com tres nomes.
+  it("o campo de texto se chama Description; nada de promise", () => {
+    render(<CreateCourseStart ownerId="teacher-1" />);
+
+    expect(screen.getByLabelText(/^Description/)).toBeInTheDocument();
+    expect(screen.queryByText(/promise/i)).not.toBeInTheDocument();
+  });
+
+  // "Initial billing interval / Monthly / Yearly" nao dizia que a cobranca se
+  // repete, e "mensal" aparecia tambem no ritmo das aulas.
+  it("assinatura pergunta 'Charge every month / year' com uma frase de explicacao", () => {
+    render(<CreateCourseStart ownerId="teacher-1" initialFormat="community" />);
+
+    expect(screen.getByRole("group", { name: "How often to charge" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Charge every month" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "Charge every year" })).toHaveAttribute("aria-pressed", "false");
+    expect(screen.getByText(/pay again on this schedule until they cancel/i)).toBeInTheDocument();
+    expect(screen.queryByText(/billing interval/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/installment/i)).not.toBeInTheDocument();
+  });
+
+  // Gratis pula o preco: o rail nao promete uma etapa de preco que nao existe.
+  it("produto gratis: o rail nao tem a etapa Pricing", () => {
+    render(<CreateCourseStart ownerId="teacher-1" initialFormat="free" />);
+
+    const rail = screen.getByRole("list", { name: "Product creation progress" });
+    expect(within(rail).queryByText("Pricing")).not.toBeInTheDocument();
+    expect(within(rail).getAllByRole("listitem")).toHaveLength(4);
+  });
+
+  it("o botao principal e o cheio grande com seta", () => {
+    render(<CreateCourseStart ownerId="teacher-1" />);
+
+    const submit = screen.getByRole("button", { name: /Create and set pricing/i });
+    expect(submit).toHaveClass("button-solid", "button-lg");
+    expect(submit.querySelector("svg")).not.toBeNull();
   });
 });

@@ -19,7 +19,7 @@ function mount(format: TeacherCourseProductFormat = "course") {
 }
 function fill() {
   fireEvent.change(screen.getByLabelText("Título del producto"), { target: { value: "Original $& course" } });
-  fireEvent.change(screen.getByLabelText(/Promesa del producto/), { target: { value: "Original summary $& with enough characters." } });
+  fireEvent.change(screen.getByLabelText(/^Descripción/), { target: { value: "Original summary $& with enough characters." } });
   const label = translate(getDictionary("es"), "creatorEditor.categorySelect.select").replace("{max}", "5");
   fireEvent.click(screen.getByRole("button", { name: new RegExp(label) }));
   fireEvent.click(screen.getAllByRole("checkbox")[0]);
@@ -69,12 +69,12 @@ describe("course creation with real EN/ES dictionaries", () => {
     let finish!: (id: string) => void;
     mocks.create.mockImplementation(() => new Promise<string>((resolve) => { finish = resolve; }));
     mount("subscription");
-    fireEvent.click(screen.getByRole("button", { name: "Anual" }));
+    fireEvent.click(screen.getByRole("button", { name: "Cobrar cada año" }));
     fill();
     fireEvent.submit(screen.getByLabelText("Título del producto").closest("form")!);
     expect(screen.getByRole("button", { name: "Creando..." })).toBeDisabled();
     fireEvent.click(screen.getByRole("button", { name: "Change language" }));
-    expect(screen.getByRole("button", { name: "Yearly" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "Charge every year" })).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByRole("button", { name: "Creating..." })).toBeDisabled();
     expect(mocks.create).toHaveBeenCalledWith(expect.objectContaining({ paymentType: "subscription_yearly" }));
     await act(async () => finish("course-123"));

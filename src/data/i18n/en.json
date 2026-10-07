@@ -2166,6 +2166,14 @@
       "sectionTitle": "Scheduled sessions",
       "sectionEyebrow": "Agenda",
       "newSession": "New session",
+      "nextStep": {
+        "title": "Session scheduled. Next: set the price and publish.",
+        "titleFree": "Session scheduled. Next: publish.",
+        "pricing": "Set the price and publish",
+        "publish": "Review and publish",
+        "lessonHelp": "Publishing needs at least one lesson with content. A short welcome lesson with the session details is enough.",
+        "addLesson": "Add a short welcome lesson"
+      },
       "closeForm": "Close",
       "formTitleNew": "Schedule a session",
       "formTitleEdit": "Edit session",
@@ -2399,7 +2407,7 @@
         "title": "Title",
         "category": "Category",
         "allCategories": "All categories",
-        "summary": "Summary",
+        "summary": "Description",
         "outcomes": "Learning outcomes",
         "noneYet": "None yet",
         "cover": "Cover image",
@@ -3617,18 +3625,18 @@
       "steps": {
         "details": {
           "tab": "Details",
-          "tabHelp": "Title, categories, promise",
+          "tabHelp": "Title, categories, description",
           "stage": "Course basics",
-          "stageHelp": "Info, cover, promise",
+          "stageHelp": "Info, cover, description",
           "heading": "Set the course foundation.",
-          "help": "This is the information learners use to understand the promise of the course."
+          "help": "This is the information learners use to understand what the course offers."
         },
         "pricing": {
           "tab": "Pricing",
-          "tabHelp": "Payment, drip, preview",
+          "tabHelp": "How people pay",
           "stageHelp": "Access model",
           "heading": "Package the offer.",
-          "help": "Set access, price, release timing, and the free preview lesson before publishing."
+          "help": "Choose how people pay and set the price."
         },
         "content": {
           "tab": "Curriculum",
@@ -3655,11 +3663,11 @@
           "detail": "The next lesson opens after the previous lesson is completed."
         },
         "time_drip_lesson": {
-          "label": "One lesson per interval",
+          "label": "One lesson every few days",
           "detail": "Release lessons gradually based on enrollment date."
         },
         "time_drip_module": {
-          "label": "One module per interval",
+          "label": "One module every few days",
           "detail": "Release modules gradually based on enrollment date."
         },
         "time_drip_custom": {
@@ -3681,14 +3689,14 @@
           "feature2": "Useful for previews or pilots"
         },
         "subscription_monthly": {
-          "title": "Monthly subscription",
-          "description": "Recurring monthly billing.",
+          "title": "Charge every month",
+          "description": "A charge that repeats every month until the member cancels.",
           "feature1": "Recurring access",
           "feature2": "Cancellation controls"
         },
         "subscription_yearly": {
-          "title": "Yearly subscription",
-          "description": "Recurring yearly billing.",
+          "title": "Charge every year",
+          "description": "A charge that repeats every year until the member cancels.",
           "feature1": "Annual access",
           "feature2": "Renewal reminders"
         }
@@ -3740,7 +3748,7 @@
         "moduleDescription": "Module description",
         "moduleDescriptionExample": "Optional module description. Example: Set up the concepts students need before the practical lessons.",
         "helpTopic": "Lesson access and drip release",
-        "help": "A free preview is optional and must point to a lesson in this course; it helps buyers inspect the teaching style before enrolling. Release days per lesson are set by opening the lesson (Add video or Edit content) > Settings, and only appear when the course's Content release is Custom lesson schedule.",
+        "help": "A free preview is optional and must point to a lesson in this course; it helps buyers inspect the teaching style before enrolling. Release days per lesson are set by opening the lesson (Add video or Edit content) > Settings, and only appear when the course's Lesson release is Custom lesson schedule.",
         "moduleForLesson": "Module for this lesson",
         "chooseModule": "Choose module",
         "lessonTitle": "Lesson title",
@@ -3770,6 +3778,7 @@
         "markPreview": "Mark free preview",
         "createModule": "Create module",
         "addFirstModule": "Add your first module",
+        "welcomeModule": "Welcome",
         "addLessonToModule": "Add lesson to module {index}",
         "moreOptions": "More options",
         "cancel": "Cancel",
@@ -3847,7 +3856,7 @@
         "title": "Course title",
         "categories": "Categories",
         "categoriesHelp": "Required. Select up to five. The first selected category becomes the primary marketplace category.",
-        "summary": "Course summary",
+        "summary": "Description",
         "characters": "{count} characters",
         "minimumCharacters": "{count}/20 characters minimum for publication",
         "outcomes": "What learners will learn",
@@ -3857,7 +3866,7 @@
         "outcomePlaceholder": "Example: Launch a paid cohort course end to end",
         "noOutcomes": "No outcomes yet. Add the concrete results a student walks away with.",
         "addOutcome": "Add learning outcome",
-        "help": "Keep the title specific, the category clear, and the summary focused on learner outcomes. This copy will influence the marketplace page."
+        "help": "Keep the title specific, the category clear, and the description focused on learner outcomes. This copy will influence the marketplace page."
       },
       "community": {
         "title": "Course community",
@@ -3866,24 +3875,25 @@
         "on": "Community is on. Students see a Community section in this course.",
         "off": "Community is off. Students only see lessons and resources."
       },
+      "release": {
+        "title": "When lessons open",
+        "strategy": "Lesson release",
+        "interval": "Days between releases",
+        "customHelp": " Set each lesson's delay when you edit the lesson."
+      },
       "pricing": {
         "setup": "Marketplace setup",
         "model": "Payment model",
         "helpTopic": "Course pricing",
-        "help": "Choose free access, a one-time purchase, or recurring monthly or yearly access. Paid products require a positive price and payout-ready Stripe Connect account before they can be published.",
+        "help": "Choose Free, a one-time payment, or a charge that repeats every month or year. To publish a paid product, set a price above zero and connect Stripe so you can receive payouts.",
         "price": "Price",
         "currency": "Currency",
-        "freePlaceholder": "Free course",
+        "freeLine": "This product is free. To charge for it, pick a paid option above.",
         "pricePlaceholder": "Example: 149",
-        "installments": "Card installments",
-        "installmentsOneTime": "Installments apply only to one-time payments.",
-        "installmentsUnavailable": "Unavailable with the current Stripe account. Stripe requires a Mexico platform account and MXN pricing.",
-        "installmentsCurrency": "Select MXN to configure installments for eligible Mexican cards.",
-        "installmentsEligible": "Eligible cards choose from the plans configured in Stripe. Card issuer and minimum amount rules apply.",
-        "enableInstallments": "Enable card installments",
-        "release": "Content release",
-        "interval": "Interval days",
-        "customHelp": " Set each lesson delay in the curriculum editor.",
+        "installments": "Split payments by card",
+        "installmentsCurrency": "Switch the currency to MXN to let buyers split the price.",
+        "installmentsEligible": "Buyers with a Mexican card can split the price into monthly payments. It ends on the last payment, so it is not a subscription. The card issuer decides which cards qualify.",
+        "enableInstallments": "Let buyers split the price",
         "preview": "Free preview lesson",
         "noPreview": "No preview selected yet",
         "listingHelp": "These fields prepare the public listing. Paid access still requires Stripe checkout before enrollment opens."
@@ -3965,8 +3975,8 @@
           "hint": "Give the course a title (3+ characters)."
         },
         "summary": {
-          "label": "Summary",
-          "hint": "Write a summary with at least 20 characters."
+          "label": "Description",
+          "hint": "Write a description with at least 20 characters."
         },
         "category": {
           "label": "Marketplace category",
@@ -4742,7 +4752,7 @@
     "format": "Format",
     "formatDetail": "Delivery model",
     "basics": "Basics",
-    "basicsDetail": "Title, promise, categories",
+    "basicsDetail": "Title, description, categories",
     "pricing": "Pricing",
     "pricingDetail": "Price and access model",
     "lessons": "Lessons",
@@ -4751,18 +4761,18 @@
     "publishDetail": "Final checks",
     "continues": "{detail} · continues in the builder",
     "titleRequired": "Give the course a title (3+ characters).",
-    "summaryRequired": "Write a summary with at least 20 characters.",
+    "summaryRequired": "Write a description with at least 20 characters.",
     "categoryRequired": "Choose a marketplace category.",
     "createEvent": "Create and schedule event",
     "createFree": "Create and add content",
     "createPaid": "Create and set pricing",
-    "monthly": "Monthly",
-    "yearly": "Yearly",
+    "monthly": "Charge every month",
+    "yearly": "Charge every year",
     "creating": "Creating...",
     "categoryError": "Choose at least one marketplace category.",
     "duplicateError": "A course with this title already exists. Choose a more specific name.",
     "permissionError": "Course creation is blocked until creator setup is complete. Verify your email and accept Teacher Terms first.",
-    "summaryError": "Add a course summary with at least 20 characters.",
+    "summaryError": "Add a description with at least 20 characters.",
     "createError": "We could not create this course. Please try again.",
     "activationError": "Activate your storefront to unlock publishing: a one-time activation fee, charged once per creator account, never per course.",
     "intro": "Pick the access model and the essential information here. Pricing, lessons, and publication continue in the builder.",
@@ -4774,9 +4784,10 @@
     "title": "Build the product foundation.",
     "setup": "Set up the product",
     "productFormat": "Product format",
-    "interval": "Initial billing interval",
+    "interval": "How often to charge",
+    "intervalHelp": "Members pay again on this schedule until they cancel. You can change it later in Pricing.",
     "productTitle": "Product title",
-    "promise": "Product promise",
+    "promise": "Description",
     "primaryCategory": "The first selection is the primary marketplace category.",
     "activate": "Activate storefront",
     "beforeContinue": "Before you continue:",
@@ -5511,9 +5522,9 @@
   },
   "teacherSalesCopy": {
     "title": "Sales page editor",
-    "description": "Edit the headline, promise, and outcomes buyers see. This is a focused editor — not a full drag-and-drop page builder (that stays on the roadmap).",
+    "description": "Edit the headline, description, and outcomes buyers see. This is a focused editor — not a full drag-and-drop page builder (that stays on the roadmap).",
     "productTitle": "Product title",
-    "summary": "Sales promise / summary",
+    "summary": "Description",
     "outcomes": "Outcomes (one per line)",
     "outcomesPlaceholder": "Clarify your offer\nShip a first session\nTrack client progress",
     "saved": "Sales page copy saved. Open the public product page to preview.",

@@ -111,6 +111,39 @@ describe("getCourseReadiness", () => {
     ).toEqual(["pricing"]);
   });
 
+  // Promise, Summary e Description eram o mesmo texto com tres nomes. O
+  // checklist usa o nome da tela de criacao e do construtor.
+  it.each([
+    ["en", "Description", "Write a description with at least 20 characters."],
+    ["es", "Descripción", "Escribe una descripción de al menos 20 caracteres."],
+  ] as const)("o item do resumo se chama Descricao (%s)", (locale, label, hint) => {
+    const readiness = getCourseReadiness(
+      { ...complete, summary: "short" },
+      undefined,
+      (key) => translate(getDictionary(locale), key),
+    );
+
+    expect(readiness.pending[0]).toMatchObject({ id: "summary", label, hint });
+  });
+
+  // A lista de quem escolheu Gratis nao fala de preco em lugar nenhum, nem
+  // como item feito: curso antigo sem paymentType e preco 0 conta como gratis.
+  it.each([
+    ["free", 0],
+    [undefined, 0],
+  ] as const)("produto gratis (paymentType %s) nao tem item de preco no checklist", (paymentType, priceAmountMinor) => {
+    const account = { payoutsReady: false, verificationRequired: false, verificationApproved: false };
+    const readiness = getCourseReadiness(
+      { ...complete, paymentType, priceAmountMinor },
+      account,
+      (key) => translate(getDictionary("en"), key),
+    );
+
+    expect(readiness.items.map((item) => item.id)).not.toContain("pricing");
+    expect(readiness.items.map((item) => `${item.label} ${item.hint}`).join(" ")).not.toMatch(/price/i);
+    expect(readiness.ready).toBe(true);
+  });
+
   // Parcelamento so conta quando existe: listar "Payment model is ready" num
   // curso gratuito era um item feito de graca que inflava a porcentagem.
   it("so cobra limite de parcelas na venda avulsa com parcelamento ligado", () => {
@@ -386,11 +419,15 @@ describe("groupCourseReadiness", () => {
     );
   });
 
-  it("sem conta e curso gratis, venda so tem preco e ja nasce pronta", () => {
+  // Produto gratis nao tem preco para definir: a linha "Pricing" (com a dica
+  // "Set a paid price greater than $0") era um "feito" de graca que so
+  // confundia quem escolheu Gratis. Sem conta, a venda fica vazia e pronta
+  // (total 0: a tela esconde a contagem em vez de dizer "0 of 0").
+  it("sem conta e curso gratis, venda nao lista preco e ja nasce pronta", () => {
     const readiness = getCourseReadiness({ ...complete, paymentType: "free", priceAmountMinor: 0 });
     const sale = groupCourseReadiness(readiness)[2];
 
-    expect(sale.items.map((item) => item.id)).toEqual(["pricing"]);
-    expect([sale.doneCount, sale.total, sale.ready]).toEqual([1, 1, true]);
+    expect(sale.items.map((item) => item.id)).toEqual([]);
+    expect([sale.doneCount, sale.total, sale.ready]).toEqual([0, 0, true]);
   });
 });

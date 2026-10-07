@@ -519,7 +519,7 @@ export function CourseBuilderStudio() {
   const { user } = useAuth();
   // Payouts e verificacao: so o Manage sabia; aqui a pessoa clicava em
   // Publish e descobria pelo erro do servidor.
-  const { account: publishGates, verificationStatus } = usePublishGates(user);
+  const { account: publishGates, verificationStatus, stripeConnectCountry } = usePublishGates(user);
   const successNoticeRef = useRef<HTMLParagraphElement>(null);
   const [course, setCourse] = useState<TeacherCourse | null>(null);
   const [title, setTitle] = useState("");
@@ -547,7 +547,21 @@ export function CourseBuilderStudio() {
   const [membersSubtitle, setMembersSubtitle] = useState("");
   const [membersDescription, setMembersDescription] = useState("");
   const [communityEnabled, setCommunityEnabled] = useState(false);
-  const [moduleTitle, setModuleTitle] = useState("");
+  // ?welcome=1 vem do atalho da Agenda ("Add a short welcome lesson"): o
+  // primeiro modulo ja nasce com nome.
+  const [moduleTitle, setModuleTitle] = useState(() =>
+    searchParams.get("welcome") === "1" ? t("creatorEditor.builder.curriculum.welcomeModule") : "",
+  );
+  // O nome ja entrou no formulario: o parametro sai da URL para uma recarga
+  // (ou a troca de aba, que copia os parametros) nao abrir outro "Welcome".
+  useEffect(() => {
+    if (searchParams.get("welcome") !== "1") {
+      return;
+    }
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("welcome");
+    router.replace(`/teach/builder?${params.toString()}`, { scroll: false });
+  }, [router, searchParams]);
   const [moduleSummary, setModuleSummary] = useState("");
   const [moduleError, setModuleError] = useState(false);
   const [lessonModuleId, setLessonModuleId] = useState("");
@@ -839,13 +853,13 @@ export function CourseBuilderStudio() {
   const canPublish = Boolean(
     isOwner && course && teacherCanPublishCourse(course.status),
   );
-  const cardInstallmentsConfigured = isPublicFeatureEnabled(
-    "payments.cardInstallments",
-  );
-  const canConfigureCardInstallments =
+  // O interruptor aparecia para todo mundo e nunca ligava: so funciona com a
+  // flag ligada e conta Stripe do Mexico (MXN). Fora disso ele nao existe.
+  const showCardInstallments =
     paymentType === "one_time"
-    && currency === "MXN"
-    && cardInstallmentsConfigured;
+    && stripeConnectCountry === "MX"
+    && isPublicFeatureEnabled("payments.cardInstallments");
+  const canConfigureCardInstallments = showCardInstallments && currency === "MXN";
   const lessonCount = countCourseLessons(modules);
   // "1 module", "2 modules": a tela dizia "1 modules, 1 lessons" (QA visual em
   // producao, 08/09). O singular tem chave propria, como no hub do curso.
@@ -1176,6 +1190,11 @@ export function CourseBuilderStudio() {
     }
 
     setPaymentType(nextPaymentType);
+
+    // Saindo do Gratis o campo nascia com "0"; vazio mostra o exemplo.
+    if (paymentType === "free" && nextPaymentType !== "free" && priceAmount.trim() === "0") {
+      setPriceAmount("");
+    }
 
     if (nextPaymentType === "free") {
       setPriceAmount("0");
@@ -2903,137 +2922,104 @@ export function CourseBuilderStudio() {
                 disabled={!isEditable}
               />
             </div>
-            {/* A coluna da moeda era 140px fixos. Um <select> nunca fica mais
-                estreito que a sua opção mais larga ("BRL - Brazilian Real"),
-                então ele empurrava a borda e saía do cartão em telas médias e
-                grandes. minmax(0, …) nas duas colunas deixa a grade encolher, e o
-                min-w-0 do próprio select (em CurrencySelect) deixa o controle
-                acompanhar a coluna em vez de a coluna acompanhar o controle. */}
-            <div className="mt-4 grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,200px)]">
-              <label className="grid min-w-0 gap-2 text-sm font-semibold text-[var(--color-ink)]">
-                {t("creatorEditor.builder.pricing.price")}
-                <input
-                  value={priceAmount}
-                  onChange={(event) => setPriceAmount(event.target.value)}
-                  disabled={!isEditable || paymentType === "free"}
-                  inputMode="decimal"
-                  placeholder={
-                    paymentType === "free" ? t("creatorEditor.builder.pricing.freePlaceholder") : t("creatorEditor.builder.pricing.pricePlaceholder")
-                  }
-                  className="min-w-0 rounded-md border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
-                />
-              </label>
-              <label className="grid min-w-0 gap-2 text-sm font-semibold text-[var(--color-ink)]">
-                {t("creatorEditor.builder.pricing.currency")}
-                <CurrencySelect
-                  value={currency}
-                  onChange={(nextCurrency) => {
-                    setCurrency(nextCurrency);
-                    if (nextCurrency !== "MXN") {
-                      setInstallmentsEnabled(false);
-                    }
-                  }}
-                  disabled={!isEditable}
-                />
-              </label>
-            </div>
-            <div className="mt-4 flex flex-wrap items-start justify-between gap-4 rounded-lg border border-[var(--color-line)] bg-white p-4">
-              <div className="max-w-xl">
-                <p className="text-sm font-semibold text-[var(--color-ink)]">
-                  {t("creatorEditor.builder.pricing.installments")}
+            {paymentType === "free" ? (
+              // Gratis pula o preco: valor, moeda, parcelamento e aula de amostra
+              // nao valem para quem escolheu Gratis. Os cartoes ficam montados
+              // (o foco continua no cartao clicado); so os campos dao lugar a frase.
+              <p className="mt-4 text-sm font-semibold text-[var(--color-ink)]">
+                {t("creatorEditor.builder.pricing.freeLine")}
+              </p>
+            ) : (
+              <>
+                {/* A coluna da moeda era 140px fixos. Um <select> nunca fica mais
+                    estreito que a sua opção mais larga ("BRL - Brazilian Real"),
+                    então ele empurrava a borda e saía do cartão em telas médias e
+                    grandes. minmax(0, …) nas duas colunas deixa a grade encolher, e o
+                    min-w-0 do próprio select (em CurrencySelect) deixa o controle
+                    acompanhar a coluna em vez de a coluna acompanhar o controle. */}
+                <div className="mt-4 grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,200px)]">
+                  <label className="grid min-w-0 gap-2 text-sm font-semibold text-[var(--color-ink)]">
+                    {t("creatorEditor.builder.pricing.price")}
+                    <input
+                      value={priceAmount}
+                      onChange={(event) => setPriceAmount(event.target.value)}
+                      disabled={!isEditable}
+                      inputMode="decimal"
+                      placeholder={t("creatorEditor.builder.pricing.pricePlaceholder")}
+                      className="min-w-0 rounded-md border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
+                    />
+                  </label>
+                  <label className="grid min-w-0 gap-2 text-sm font-semibold text-[var(--color-ink)]">
+                    {t("creatorEditor.builder.pricing.currency")}
+                    <CurrencySelect
+                      value={currency}
+                      onChange={(nextCurrency) => {
+                        setCurrency(nextCurrency);
+                        if (nextCurrency !== "MXN") {
+                          setInstallmentsEnabled(false);
+                        }
+                      }}
+                      disabled={!isEditable}
+                    />
+                  </label>
+                </div>
+                {showCardInstallments ? (
+                  <div className="mt-4 flex flex-wrap items-start justify-between gap-4 rounded-lg border border-[var(--color-line)] bg-white p-4">
+                    <div className="max-w-xl">
+                      <p className="text-sm font-semibold text-[var(--color-ink)]">
+                        {t("creatorEditor.builder.pricing.installments")}
+                      </p>
+                      <p className="mt-1 text-xs leading-5 text-[var(--color-ink-soft)]">
+                        {currency !== "MXN"
+                          ? t("creatorEditor.builder.pricing.installmentsCurrency")
+                          : t("creatorEditor.builder.pricing.installmentsEligible")}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={installmentsEnabled && canConfigureCardInstallments}
+                      aria-label={t("creatorEditor.builder.pricing.enableInstallments")}
+                      disabled={!isEditable || !canConfigureCardInstallments}
+                      onClick={() => setInstallmentsEnabled((previous) => !previous)}
+                      className={`relative h-7 w-12 shrink-0 rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+                        installmentsEnabled && canConfigureCardInstallments
+                          ? "bg-[var(--color-primary)]"
+                          : "bg-[var(--color-line)]"
+                      }`}
+                    >
+                      <span
+                        aria-hidden="true"
+                        className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow transition-all ${
+                          installmentsEnabled && canConfigureCardInstallments
+                            ? "left-6"
+                            : "left-1"
+                        }`}
+                      />
+                    </button>
+                  </div>
+                ) : null}
+                <label className="mt-4 grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
+                  {t("creatorEditor.builder.pricing.preview")}
+                  <select
+                    value={freePreviewLessonId}
+                    onChange={(event) => setFreePreviewLessonId(event.target.value)}
+                    disabled={!isEditable || allLessons.length === 0}
+                    className="rounded-md border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
+                  >
+                    <option value="">{t("creatorEditor.builder.pricing.noPreview")}</option>
+                    {allLessons.map((lesson) => (
+                      <option key={lesson.id} value={lesson.id}>
+                        {lesson.moduleTitle} - {lesson.title}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <p className="mt-3 text-xs leading-5 text-[var(--color-ink-soft)]">
+                  {t("creatorEditor.builder.pricing.listingHelp")}
                 </p>
-                <p className="mt-1 text-xs leading-5 text-[var(--color-ink-soft)]">
-                  {paymentType !== "one_time"
-                    ? t("creatorEditor.builder.pricing.installmentsOneTime")
-                    : !cardInstallmentsConfigured
-                      ? t("creatorEditor.builder.pricing.installmentsUnavailable")
-                      : currency !== "MXN"
-                        ? t("creatorEditor.builder.pricing.installmentsCurrency")
-                        : t("creatorEditor.builder.pricing.installmentsEligible")}
-                </p>
-              </div>
-              <button
-                type="button"
-                role="switch"
-                aria-checked={installmentsEnabled && canConfigureCardInstallments}
-                aria-label={t("creatorEditor.builder.pricing.enableInstallments")}
-                disabled={!isEditable || !canConfigureCardInstallments}
-                onClick={() => setInstallmentsEnabled((previous) => !previous)}
-                className={`relative h-7 w-12 shrink-0 rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
-                  installmentsEnabled && canConfigureCardInstallments
-                    ? "bg-[var(--color-primary)]"
-                    : "bg-[var(--color-line)]"
-                }`}
-              >
-                <span
-                  aria-hidden="true"
-                  className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow transition-all ${
-                    installmentsEnabled && canConfigureCardInstallments
-                      ? "left-6"
-                      : "left-1"
-                  }`}
-                />
-              </button>
-            </div>
-            <div className="mt-4 grid gap-4 md:grid-cols-[1fr_180px]">
-              <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
-                {t("creatorEditor.builder.pricing.release")}
-                <select
-                  value={dripStrategy}
-                  onChange={(event) =>
-                    setDripStrategy(event.target.value as DripStrategy)
-                  }
-                  disabled={!isEditable}
-                  className="rounded-md border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
-                >
-                  {dripStrategies.map((item) => (
-                    <option key={item.value} value={item.value}>
-                      {t(item.label)}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
-                {t("creatorEditor.builder.pricing.interval")}
-                <input
-                  value={dripIntervalDays}
-                  onChange={(event) => setDripIntervalDays(event.target.value)}
-                  disabled={
-                    !isEditable
-                    || !["time_drip_lesson", "time_drip_module"].includes(
-                      dripStrategy,
-                    )
-                  }
-                  inputMode="numeric"
-                  className="rounded-md border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
-                />
-              </label>
-            </div>
-            <p className="mt-3 rounded-md border fine-rule bg-white px-4 py-3 text-xs leading-5 text-[var(--color-ink-soft)]">
-              {t(dripStrategies.find((item) => item.value === dripStrategy)?.detail ?? "")}
-              {dripStrategy === "time_drip_custom"
-                ? t("creatorEditor.builder.pricing.customHelp")
-                : ""}
-            </p>
-            <label className="mt-4 grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
-              {t("creatorEditor.builder.pricing.preview")}
-              <select
-                value={freePreviewLessonId}
-                onChange={(event) => setFreePreviewLessonId(event.target.value)}
-                disabled={!isEditable || allLessons.length === 0}
-                className="rounded-md border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
-              >
-                <option value="">{t("creatorEditor.builder.pricing.noPreview")}</option>
-                {allLessons.map((lesson) => (
-                  <option key={lesson.id} value={lesson.id}>
-                    {lesson.moduleTitle} - {lesson.title}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <p className="mt-3 text-xs leading-5 text-[var(--color-ink-soft)]">
-              {t("creatorEditor.builder.pricing.listingHelp")}
-            </p>
+              </>
+            )}
           </div>
         ) : null}
 
@@ -3233,6 +3219,57 @@ export function CourseBuilderStudio() {
                 );
               })}
             </div>
+            {/* A liberacao das aulas morava na aba de preco, com "Interval
+                days" ao lado da moeda. E ritmo de aula, nao cobranca: fica
+                aqui, embaixo da lista de modulos, com rotulo simples. */}
+            <section
+              id="builder-sec-release"
+              aria-labelledby="builder-release-title"
+              className="mt-6 grid gap-3 border-t border-[var(--color-line)] pt-5"
+            >
+              <h4 id="builder-release-title" className="text-sm font-semibold text-[var(--color-ink)]">
+                {t("creatorEditor.builder.release.title")}
+              </h4>
+              <div className="flex flex-wrap items-end gap-4">
+                <label className="grid min-w-0 flex-1 basis-60 gap-2 text-sm font-semibold text-[var(--color-ink)]">
+                  {t("creatorEditor.builder.release.strategy")}
+                  <select
+                    value={dripStrategy}
+                    onChange={(event) =>
+                      setDripStrategy(event.target.value as DripStrategy)
+                    }
+                    disabled={!isEditable}
+                    className="rounded-md border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
+                  >
+                    {dripStrategies.map((item) => (
+                      <option key={item.value} value={item.value}>
+                        {t(item.label)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                {dripStrategy === "time_drip_lesson" || dripStrategy === "time_drip_module" ? (
+                  // "Release lessons every [1] days": com o padrao 1 a frase saia
+                  // errada. Um rotulo de campo nao depende do numero.
+                  <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
+                    {t("creatorEditor.builder.release.interval")}
+                    <input
+                      value={dripIntervalDays}
+                      onChange={(event) => setDripIntervalDays(event.target.value)}
+                      disabled={!isEditable}
+                      inputMode="numeric"
+                      className="w-20 rounded-md border border-[var(--color-line)] bg-white px-3 py-3 text-center text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
+                    />
+                  </label>
+                ) : null}
+              </div>
+              <p className="text-xs leading-5 text-[var(--color-ink-soft)]">
+                {t(dripStrategies.find((item) => item.value === dripStrategy)?.detail ?? "")}
+                {dripStrategy === "time_drip_custom"
+                  ? t("creatorEditor.builder.release.customHelp")
+                  : ""}
+              </p>
+            </section>
             </>
             )}
           </div>
@@ -3310,9 +3347,9 @@ export function CourseBuilderStudio() {
               }
             }}
             disabled={selectedTabIndex <= 0}
-            className="button-outline inline-flex items-center gap-2 px-4 py-2.5 text-sm disabled:opacity-40"
+            className="button-outline button-lg w-full disabled:opacity-40 sm:w-auto"
           >
-            <ArrowLeft aria-hidden="true" size={14} strokeWidth={1.9} />
+            <ArrowLeft aria-hidden="true" size={16} strokeWidth={2} />
             {selectedTabIndex > 0
               ? builderTabs[selectedTabIndex - 1].value === "members"
                 ? t("creatorEditor.members.backTo")
@@ -3328,12 +3365,12 @@ export function CourseBuilderStudio() {
                   selectTab(nextTab.value);
                 }
               }}
-              className="button-solid inline-flex items-center gap-2 px-4 py-2.5 text-sm"
+              className="button-solid button-lg w-full sm:w-auto"
             >
               {builderTabs[selectedTabIndex + 1].value === "members"
                 ? t("creatorEditor.members.continueTo")
                 : t("creatorEditor.builder.navigation.continueTo").replace("{step}", () => t(builderTabs[selectedTabIndex + 1].label))}
-              <ArrowRight aria-hidden="true" size={14} strokeWidth={1.9} />
+              <ArrowRight aria-hidden="true" size={16} strokeWidth={2} />
             </button>
           ) : (
             <span className="text-xs font-semibold text-[var(--color-ink-soft)]">
@@ -3484,7 +3521,7 @@ export function CourseBuilderStudio() {
               type="button"
               onClick={saveDraft}
               disabled={!isEditable || isSaving}
-              className="button-outline px-4 py-2.5 text-sm disabled:opacity-60"
+              className="button-outline button-lg disabled:opacity-60"
             >
               {isSaving ? t("creatorEditor.builder.navigation.saving") : t("creatorEditor.builder.navigation.save")}
             </button>
@@ -3497,7 +3534,7 @@ export function CourseBuilderStudio() {
                 || !readyToPublish
                 || !priceFieldIsValid
               }
-              className="button-solid px-4 py-2.5 text-sm disabled:opacity-60"
+              className="button-solid button-lg disabled:opacity-60"
             >
               {isSubmitting
                 ? t("creatorEditor.builder.publish.publishing")

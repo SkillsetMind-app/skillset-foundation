@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   getAdmin: vi.fn(),
@@ -54,6 +54,7 @@ vi.mock("@/lib/payments/server/stripe-helpers", () => ({
 }));
 
 import { POST } from "@/app/api/payments/checkout/route";
+import { getStripeAccountCountry } from "@/lib/payments/server/stripe";
 
 type ExistingRow = { id?: string; status: string } | null;
 type LockReply = { action: string; checkout_url: string | null };
@@ -528,6 +529,48 @@ describe("course checkout subscription exclusivity", () => {
       expect.objectContaining({ mode: "payment" }),
     );
     expect(admin.orderInserts).toHaveLength(1);
+  });
+
+  // O construtor so mostra o interruptor com a flag ligada. Com a flag
+  // desligada depois que o criador ligou o parcelamento, a Stripe parcelava um
+  // ajuste que ninguem conseguia ver nem desligar. O valor salvo nao e apagado.
+  describe("card installments follow the builder's flag", () => {
+    afterEach(() => {
+      vi.unstubAllEnvs();
+      // Flag desligada nao consome o "MX" de uma vez so; nao vaza para o proximo teste.
+      vi.mocked(getStripeAccountCountry).mockReset();
+    });
+
+    it.each([
+      ["false", false],
+      ["true", true],
+    ])("flag %s", async (flag, expected) => {
+      vi.stubEnv("NEXT_PUBLIC_PAYMENTS_CARD_INSTALLMENTS_ENABLED", flag);
+      vi.mocked(getStripeAccountCountry).mockResolvedValueOnce("MX");
+      const admin = createAdmin({ lockReplies: [{ action: "claim", checkout_url: null }] });
+      mocks.getAdmin.mockReturnValue(admin);
+      mocks.getCourseRow.mockResolvedValue({
+        ...course("one_time"),
+        currency: "MXN",
+        installments_enabled: true,
+        installments_max: 6,
+      });
+      mocks.normalizePrice.mockReturnValue({
+        amountMinor: 120_000,
+        currency: "mxn",
+        paymentType: "one_time",
+        source: "legacy",
+      });
+      mocks.createSession.mockResolvedValue({ id: "cs_payment", url: "https://checkout.example/payment" });
+
+      const response = await POST(request({ courseId: "course" }));
+
+      expect(response.status).toBe(200);
+      const session = mocks.createSession.mock.calls[0][0];
+      expect(session.payment_intent_data.payment_method_options?.card?.installments?.enabled === true).toBe(expected);
+      expect(session.metadata.installmentsEnabled).toBe(expected ? "1" : undefined);
+      expect(getStripeAccountCountry).toHaveBeenCalledTimes(expected ? 1 : 0);
+    });
   });
 
   it("mints the recurring price at list value and puts the coupon on the session", async () => {

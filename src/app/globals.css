@@ -987,6 +987,31 @@ p {
       box-shadow 180ms ease,
       color 180ms ease;
   }
+
+  /* Ação principal de um fluxo (Continuar, Criar, Publicar): 48px de alvo,
+     para não parecer igual a todo botão da tela. Sem raio próprio: o canto
+     vem do botão base. Junto de .button-solid (primária) ou .button-outline
+     (secundária). */
+  .button-lg {
+    min-height: 48px;
+    padding: 0.875rem 1.5rem;
+  }
+}
+
+/* Fora da camada de propósito: a regra global `button { font: inherit }` não
+   tem camada e vence o font-weight 700 da camada `components`, então todo
+   <button class="button-solid"> saía com peso normal (só os <a> ficavam em
+   negrito). Aqui a classe ganha da regra de elemento. */
+.button-lg {
+  font-size: 0.9375rem;
+  font-weight: 800;
+}
+
+/* O contorno cinza do .button-outline sumia ao lado do botão cheio e o "Voltar"
+   parecia texto solto. No par grande, a secundária ganha contorno navy. */
+.button-outline.button-lg,
+.button-outline.button-lg:hover {
+  border-color: var(--color-primary);
 }
 
 .button-solid {

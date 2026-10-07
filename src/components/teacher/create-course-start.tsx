@@ -76,6 +76,11 @@ export function CreateCourseStart({ ownerId, initialFormat = "course" }: CreateC
   const courseType: NonNullable<CreateTeacherCourseInput["paymentType"]> =
     resolveTeacherCoursePaymentType(productFormat, subscriptionInterval);
   const nextBuilderTab = productFormat === "free" ? "content" : "pricing";
+  // Gratis pula o preco: o rail nao promete uma etapa que nao existe.
+  const stages =
+    productFormat === "free"
+      ? creationStages.filter((stage) => stage.id !== "pricing")
+      : creationStages;
   const submitLabel =
     productFormat === "event"
       ? t("courseCreation.createEvent")
@@ -179,7 +184,7 @@ export function CreateCourseStart({ ownerId, initialFormat = "course" }: CreateC
           className="create-course-screen__progress mt-8 grid gap-2"
           aria-label={t("courseCreation.progress")}
         >
-          {creationStages.map((stage, index) => {
+          {stages.map((stage, index) => {
             const done = stageDone[stage.id];
             const here = stage.where === "here";
 
@@ -272,6 +277,9 @@ export function CreateCourseStart({ ownerId, initialFormat = "course" }: CreateC
             <legend className="text-sm font-semibold text-[var(--color-ink)]">
               {t("courseCreation.interval")}
             </legend>
+            <p className="mt-1 text-xs leading-5 text-[var(--color-ink-muted)]">
+              {t("courseCreation.intervalHelp")}
+            </p>
             <div className="mt-2 grid grid-cols-2 gap-1 rounded-md border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-1">
               {(["monthly", "yearly"] as const).map((interval) => (
                 <button
@@ -376,7 +384,7 @@ export function CreateCourseStart({ ownerId, initialFormat = "course" }: CreateC
             aria-describedby={
               submitBlockers.length > 0 ? "create-course-blockers" : undefined
             }
-            className="button-solid px-4 text-sm disabled:opacity-60"
+            className="button-solid button-lg w-full disabled:opacity-60 sm:w-auto"
           >
             {isSaving ? t("courseCreation.creating") : submitLabel}
             <ArrowRight aria-hidden="true" size={15} strokeWidth={1.9} />

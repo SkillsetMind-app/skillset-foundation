@@ -177,6 +177,22 @@ describe("tamanho dos botões (P-16)", () => {
     expect(resolve(css, button, "min-height")).toBe("44px");
   });
 
+  // A ação principal da criação de produto (Continuar, Criar, Publicar). O
+  // `button { font: inherit }` global não tem camada: se o peso morasse em
+  // `components`, ele perderia para o inherit e o botão sairia sem negrito —
+  // o que já acontece com o 700 do .button-solid em <button>.
+  it("o par grande sai com 48px e negrito de verdade num <button>", () => {
+    const primary = mount("button-solid button-lg");
+    const secondary = mount("button-outline button-lg");
+
+    expect(resolve(css, primary, "min-height")).toBe("48px");
+    expect(resolve(css, primary, "font-weight", "font")).toBe("800");
+    expect(resolve(css, primary, "font-size", "font")).toBe("0.9375rem");
+    expect(resolve(css, secondary, "min-height")).toBe("48px");
+    expect(resolve(css, secondary, "font-weight", "font")).toBe("800");
+    expect(resolve(css, secondary, "border-color")).toBe("var(--color-primary)");
+  });
+
   // As variantes claras do hero viviam num bloco próprio, sem min-height:
   // padding 10 + linha 20 + borda 2 = 42px no celular e no tablet (QA 07/09).
   it("as variantes claras (hero) guardam os mesmos 44px", () => {

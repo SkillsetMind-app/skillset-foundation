@@ -61,7 +61,7 @@ describe("ES-09 editors with the shipped dictionaries", () => {
     mount(<SalesPageEditor course={course} />);
     expect(screen.getByRole("heading", { name: "Editor de la página de ventas" })).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText("Título del producto"), { target: { value: "Typed title $&" } });
-    expect(screen.getByLabelText("Propuesta de venta / resumen")).toHaveValue(course.summary);
+    expect(screen.getByLabelText("Descripción")).toHaveValue(course.summary);
     expect(screen.getByLabelText("Resultados (uno por línea)")).toHaveValue("Original outcome");
     expect(screen.getByRole("link", { name: "Vista previa de la página pública" }))
       .toHaveAttribute("href", "/courses/course%2F%24%26");
@@ -74,6 +74,20 @@ describe("ES-09 editors with the shipped dictionaries", () => {
     fireEvent.click(screen.getByRole("button", { name: "EN" }));
     expect(screen.getByRole("status")).toHaveTextContent("Sales page copy saved.");
     expect(screen.getByLabelText("Product title")).toHaveValue("Typed title $&");
+    expect(screen.getByLabelText("Description")).toHaveValue(course.summary);
+  });
+
+  // courses.summary e um campo so: criacao, construtor e checklist ja diziam
+  // Description; o editor da pagina de vendas e o Manage diziam "Sales promise
+  // / summary" e "Summary".
+  it("o mesmo campo se chama Description / Descripcion em toda parte, sem 'promise'", () => {
+    for (const [locale, label] of [["en", "Description"], ["es", "Descripción"]] as const) {
+      const dictionary = getDictionary(locale);
+      expect(translate(dictionary, "teacherSalesCopy.summary")).toBe(label);
+      expect(translate(dictionary, "creatorPanel.hub.basic.summary")).toBe(label);
+      expect(translate(dictionary, "teacherSalesCopy.description")).not.toMatch(/promise|propuesta/i);
+      expect(translate(dictionary, "creatorEditor.builder.steps.details.help")).not.toMatch(/promise|propuesta/i);
+    }
   });
 
   it("relocalizes sales errors and pending state while preserving the draft", async () => {

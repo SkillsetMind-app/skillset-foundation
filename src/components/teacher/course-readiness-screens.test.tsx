@@ -89,11 +89,13 @@ vi.mock("@/lib/data/user-profiles", () => ({
   subscribeToUserProfile: mocks.fused(
     "subscribeToUserProfile",
     (_uid: string, onData: (profile: unknown) => void) => {
-      onData({ creatorVerificationStatus: "none", currentPlanId: "free" });
+      onData({ creatorVerificationStatus: "none", currentPlanId: "free", ...profileExtra });
       return () => undefined;
     },
   ),
 }));
+// Pais da conta Stripe do professor: so o parcelamento (Mexico) le.
+const profileExtra = vi.hoisted((): { stripeConnectCountry?: string } => ({}));
 
 vi.mock("@/lib/data/creator-verification", () => ({
   fetchRequireCreatorVerification: () => Promise.resolve(false),
@@ -253,18 +255,15 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     expect(screen.getByRole("button", { name: "Publicar producto" })).toBeDisabled();
   });
 
-  it("keeps canonical price, currency and release values when their labels change", async () => {
+  it("keeps canonical price and currency values when their labels change", async () => {
     vi.useFakeTimers();
     renderBuilder("pricing");
     await act(async () => {});
     fireEvent.change(screen.getByRole("textbox", { name: "Price" }), { target: { value: "149,50" } });
     fireEvent.change(screen.getByRole("combobox", { name: "Currency" }), { target: { value: "BRL" } });
-    fireEvent.change(screen.getByRole("combobox", { name: "Content release" }), { target: { value: "time_drip_custom" } });
     fireEvent.click(screen.getByRole("button", { name: "Switch language" }));
     expect(screen.getByRole("textbox", { name: "Precio" })).toHaveValue("149,50");
     expect(screen.getByRole("combobox", { name: "Moneda" })).toHaveValue("BRL");
-    expect(screen.getByRole("combobox", { name: "Disponibilidad del contenido" })).toHaveValue("time_drip_custom");
-    expect(screen.getByRole("option", { name: "Calendario por lección" })).toHaveProperty("selected", true);
     const displayPrice = new Intl.NumberFormat("es", { style: "currency", currency: "BRL", maximumFractionDigits: 0 }).format(149.5);
     expect(screen.getByText((_content, element) => element?.tagName === "SPAN" && element.textContent === displayPrice)).toBeInTheDocument();
     expect(updateTeacherCourseBuilder).not.toHaveBeenCalled();
@@ -275,9 +274,33 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
       currency: "BRL",
       paymentType: "one_time",
       installmentsEnabled: false,
-      dripStrategy: "time_drip_custom",
     });
     expect(subscribeToTeacherCourse).toHaveBeenCalledOnce();
+  });
+
+  // A liberacao das aulas morava na aba de preco ("Interval days" ao lado da
+  // moeda). Agora fica onde as aulas sao montadas, com rotulo simples.
+  it("keeps the canonical release values in Curriculum when their labels change", async () => {
+    vi.useFakeTimers();
+    renderBuilder("content");
+    await act(async () => {});
+    const release = screen.getByRole("combobox", { name: "Lesson release" });
+    fireEvent.change(release, { target: { value: "time_drip_lesson" } });
+    fireEvent.change(screen.getByRole("textbox", { name: "Days between releases" }), { target: { value: "7" } });
+    fireEvent.click(screen.getByRole("button", { name: "Switch language" }));
+    expect(screen.getByRole("combobox", { name: "Liberación de las lecciones" })).toBe(release);
+    expect(release).toHaveValue("time_drip_lesson");
+    expect(screen.getByRole("option", { name: "Una lección cada pocos días" })).toHaveProperty("selected", true);
+    expect(screen.getByRole("textbox", { name: "Días entre cada liberación" })).toHaveValue("7");
+    fireEvent.change(release, { target: { value: "time_drip_module" } });
+    expect(screen.getByRole("textbox", { name: "Días entre cada liberación" })).toHaveValue("7");
+    fireEvent.change(release, { target: { value: "time_drip_custom" } });
+    expect(screen.queryByRole("textbox", { name: "Días entre cada liberación" })).not.toBeInTheDocument();
+    await act(async () => vi.advanceTimersByTime(1800));
+    expect(vi.mocked(updateTeacherCourseBuilder).mock.calls[0][1]).toMatchObject({
+      dripStrategy: "time_drip_custom",
+      dripIntervalDays: 7,
+    });
   });
 
   it.each([0, 1, 2])("keeps a module name literal and cancels its deletion with %i lessons in Spanish", async (count) => {
@@ -985,7 +1008,7 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     const card = screen.getByText("Lista de publicación").closest("section")!;
     for (const [id, label, hint, optional, done, href] of [
       ["title", "Título del curso", "Dale al curso un título de al menos 3 caracteres.", false, true, "/teach/builder?courseId=course-1&tab=details"],
-      ["summary", "Resumen", "Escribe un resumen de al menos 20 caracteres.", false, true, "/teach/builder?courseId=course-1&tab=details"],
+      ["summary", "Descripción", "Escribe una descripción de al menos 20 caracteres.", false, true, "/teach/builder?courseId=course-1&tab=details"],
       ["category", "Categoría del marketplace", "Elige al menos una categoría del marketplace.", false, true, "/teach/builder?courseId=course-1&tab=details"],
       ["cover", "Imagen de portada", "Sube una portada. Aparece en la página del producto y en las tarjetas del marketplace.", true, false, "/teach/builder?courseId=course-1&tab=details"],
       ["module", "Módulo", "Añade al menos un módulo.", false, true, "/teach/builder?courseId=course-1&tab=content"],
@@ -1072,6 +1095,194 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     expect(
       within(list).getByText("Set a paid price greater than $0, or choose Free."),
     ).toBeInTheDocument();
+  });
+});
+
+// Corte 1 da criacao simples: quem escolhe Gratis nao passa pela aba de preco
+// inteira, o parcelamento morto some, a liberacao das aulas sai do preco e a
+// cobranca recorrente diz "cobrar todo mes / todo ano".
+describe("aba de preco sem o que nao se aplica", () => {
+  const freeCourse: TeacherCourse = { ...mocks.course, paymentType: "free", priceAmountMinor: 0 };
+
+  function emit(course: TeacherCourse) {
+    vi.mocked(subscribeToTeacherCourse).mockImplementationOnce((_id, onData) => {
+      onData(course);
+      return Object.assign(() => {}, { reload: async () => {} });
+    });
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.resetSubscriptionCounts();
+  });
+
+  afterEach(() => {
+    cleanup();
+    mocks.searchParams.delete("tab");
+    mocks.searchParams.delete("welcome");
+    delete profileExtra.stripeConnectCountry;
+    vi.unstubAllEnvs();
+    vi.restoreAllMocks();
+  });
+
+  it("produto gratis: a frase 'This product is free' toma o lugar dos campos de preco, nao dos cartoes", async () => {
+    emit(freeCourse);
+    renderBuilder("pricing");
+    await screen.findByRole("heading", { name: mocks.course.title, level: 1 });
+
+    expect(screen.getByText(/^This product is free\./)).toBeInTheDocument();
+    expect(screen.queryByRole("textbox", { name: "Price" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("combobox", { name: "Currency" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("switch", { name: "Let buyers split the price" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("combobox", { name: "Free preview lesson" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Free/ })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: /Charge every month/ })).toBeInTheDocument();
+  });
+
+  // Teclado e leitor de tela: antes o grupo de cartoes inteiro desmontava ao
+  // escolher Gratis (e a frase ao voltar para pago), e o foco caia no <body>.
+  it("trocar entre Gratis e pago deixa o foco no cartao clicado e so os campos de preco somem e voltam", async () => {
+    renderBuilder("pricing");
+    await screen.findByRole("heading", { name: mocks.course.title, level: 1 });
+
+    const free = screen.getByRole("button", { name: /^Free/ });
+    free.focus();
+    fireEvent.click(free);
+    expect(free).toHaveAttribute("aria-pressed", "true");
+    expect(document.activeElement).toBe(free);
+    expect(screen.queryByRole("textbox", { name: "Price" })).not.toBeInTheDocument();
+    expect(screen.getByText(/^This product is free\./)).toBeInTheDocument();
+
+    const monthly = screen.getByRole("button", { name: /Charge every month/ });
+    monthly.focus();
+    fireEvent.click(monthly);
+    expect(monthly).toHaveAttribute("aria-pressed", "true");
+    expect(document.activeElement).toBe(monthly);
+    expect(screen.queryByText(/^This product is free\./)).not.toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "Price" })).toHaveValue("");
+    expect(screen.getByRole("combobox", { name: "Currency" })).toBeInTheDocument();
+  });
+
+  it("produto gratis: o checklist de publicar nao pede preco", async () => {
+    emit(freeCourse);
+    renderBuilder("review");
+    await screen.findByRole("heading", { name: mocks.course.title, level: 1 });
+
+    expect(screen.queryByText(/Set a paid price/)).not.toBeInTheDocument();
+    expect(screen.queryByText("Pricing", { selector: "p" })).not.toBeInTheDocument();
+    // A venda sem item dizia "Sale available · 0 of 0"; os outros grupos
+    // continuam com a contagem.
+    expect(document.querySelector('[data-readiness-group="sale"] p')).toHaveTextContent(/^Sale available$/);
+    expect(document.querySelector('[data-readiness-group="content"] p')).toHaveTextContent(/^Content saved · \d+ of \d+$/);
+    expect(screen.queryByText(/0 of 0/)).not.toBeInTheDocument();
+  });
+
+  it("produto pago: mensal e anual dizem que a cobranca se repete", async () => {
+    renderBuilder("pricing");
+    await screen.findByRole("heading", { name: mocks.course.title, level: 1 });
+
+    expect(screen.getByRole("button", { name: /Charge every month/ })).toHaveTextContent("repeats every month until the member cancels");
+    expect(screen.getByRole("button", { name: /Charge every year/ })).toHaveTextContent("repeats every year until the member cancels");
+    expect(screen.queryByText(/subscription/i)).not.toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "Price" })).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "Free preview lesson" })).toBeInTheDocument();
+  });
+
+  it.each([
+    ["flag desligada, conta do Mexico", undefined, "MX"],
+    ["flag ligada, conta dos EUA", "true", "US"],
+  ])("parcelamento fica escondido: %s", async (_case, flag, country) => {
+    if (flag) vi.stubEnv("NEXT_PUBLIC_PAYMENTS_CARD_INSTALLMENTS_ENABLED", flag);
+    profileExtra.stripeConnectCountry = country;
+    renderBuilder("pricing");
+    await screen.findByRole("heading", { name: mocks.course.title, level: 1 });
+
+    expect(screen.queryByRole("switch", { name: "Let buyers split the price" })).not.toBeInTheDocument();
+    expect(screen.queryByText(/installment/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Stripe requires/)).not.toBeInTheDocument();
+  });
+
+  it("parcelamento aparece com a flag ligada e conta do Mexico, sem jargao da Stripe", async () => {
+    vi.stubEnv("NEXT_PUBLIC_PAYMENTS_CARD_INSTALLMENTS_ENABLED", "true");
+    profileExtra.stripeConnectCountry = "MX";
+    renderBuilder("pricing");
+    await screen.findByRole("heading", { name: mocks.course.title, level: 1 });
+
+    const toggle = screen.getByRole("switch", { name: "Let buyers split the price" });
+    expect(toggle).toBeDisabled();
+    expect(screen.getByText("Switch the currency to MXN to let buyers split the price.")).toBeInTheDocument();
+    fireEvent.change(screen.getByRole("combobox", { name: "Currency" }), { target: { value: "MXN" } });
+    expect(toggle).toBeEnabled();
+    expect(screen.getByText(/it is not a subscription/)).toBeInTheDocument();
+  });
+
+  it("a liberacao das aulas mora no conteudo, nao no preco", async () => {
+    renderBuilder("pricing");
+    await screen.findByRole("heading", { name: mocks.course.title, level: 1 });
+
+    expect(screen.queryByRole("combobox", { name: "Lesson release" })).not.toBeInTheDocument();
+    expect(screen.queryByText(/Interval days|Content release/)).not.toBeInTheDocument();
+    cleanup();
+
+    renderBuilder("content");
+    await screen.findByRole("heading", { name: mocks.course.title, level: 1 });
+    expect(screen.getByRole("heading", { name: "When lessons open" })).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "Lesson release" })).toHaveValue("instant");
+
+    // O intervalo padrao e 1: "Release lessons every 1 days" saia errado.
+    fireEvent.change(screen.getByRole("combobox", { name: "Lesson release" }), { target: { value: "time_drip_lesson" } });
+    expect(screen.getByRole("textbox", { name: "Days between releases" })).toHaveValue("1");
+    expect(screen.queryByText(/Release (lessons|modules) every/)).not.toBeInTheDocument();
+  });
+
+  // O atalho "Add a short welcome lesson" da Agenda chega com ?welcome=1: o
+  // primeiro modulo ja vem com o nome preenchido.
+  it("atalho da aula de boas-vindas: o primeiro modulo nasce com o nome Welcome", async () => {
+    emit({ ...mocks.course, modules: [] });
+    mocks.searchParams.set("welcome", "1");
+    renderBuilder("content");
+    await screen.findByRole("heading", { name: mocks.course.title, level: 1 });
+
+    expect(screen.getByRole("textbox", { name: "Module title" })).toHaveValue("Welcome");
+
+    // Preenchido uma vez, o parametro sai da URL (replace, sem nova entrada no
+    // historico). Recarregar a URL que ficou nao preenche outro "Welcome".
+    expect(mocks.router.replace).toHaveBeenCalledOnce();
+    const [href, options] = vi.mocked(mocks.router.replace).mock.calls[0];
+    const next = new URL(String(href), "https://app.test");
+    expect(next.pathname).toBe("/teach/builder");
+    expect(next.searchParams.get("welcome")).toBeNull();
+    expect(next.searchParams.get("courseId")).toBe("course-1");
+    expect(next.searchParams.get("tab")).toBe("content");
+    expect(options).toEqual({ scroll: false });
+
+    cleanup();
+    mocks.searchParams.delete("welcome");
+    emit({ ...mocks.course, modules: [] });
+    renderBuilder("content");
+    await screen.findByRole("heading", { name: mocks.course.title, level: 1 });
+    expect(screen.getByRole("textbox", { name: "Module title" })).toHaveValue("");
+    expect(mocks.router.replace).toHaveBeenCalledOnce();
+  });
+
+  it("detalhes chama o texto de Description", async () => {
+    renderBuilder("details");
+    await screen.findByRole("heading", { name: mocks.course.title, level: 1 });
+
+    expect(screen.getByRole("textbox", { name: /^Description/ })).toHaveValue(mocks.course.summary);
+    expect(screen.queryByText(/summary/i)).not.toBeInTheDocument();
+  });
+
+  it("rodape: Continue cheio, grande e com seta; Back contornado", async () => {
+    renderBuilder("pricing");
+    await screen.findByRole("heading", { name: mocks.course.title, level: 1 });
+
+    const next = screen.getByRole("button", { name: "Continue to Curriculum" });
+    const back = screen.getByRole("button", { name: "Back to Details" });
+    expect(next).toHaveClass("button-solid", "button-lg");
+    expect(next.querySelector("svg")).not.toBeNull();
+    expect(back).toHaveClass("button-outline", "button-lg");
+    expect(back).not.toHaveClass("button-solid");
   });
 });
 
