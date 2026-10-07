@@ -276,7 +276,7 @@ export function CreatorSubscriptionCenterView({
 
       <section className="border-y border-[var(--color-line)] py-5">
         <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="inline-flex rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-surface)] p-1" role="tablist">
+          <div className="inline-flex rounded-md border border-[var(--color-line)] bg-[var(--color-surface)] p-1" role="tablist">
             <TabButton active={tab === "subscribers"} onClick={() => setTab("subscribers")}>
               {t(`${copy}.subscribers`)}
             </TabButton>
@@ -300,14 +300,14 @@ export function CreatorSubscriptionCenterView({
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
                   placeholder={t(`${copy}.searchPlaceholder`)}
-                  className="min-h-11 w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-surface)] py-2 pl-9 pr-3 text-sm text-[var(--color-ink)] outline-none focus:border-[var(--color-primary-light)]"
+                  className="min-h-11 w-full rounded-md border border-[var(--color-line)] bg-[var(--color-surface)] py-2 pl-9 pr-3 text-sm text-[var(--color-ink)] outline-none focus:border-[var(--color-primary-light)]"
                 />
               </label>
               <select
                 aria-label={t(`${copy}.filterLabel`)}
                 value={filter}
                 onChange={(event) => setFilter(event.target.value as SubscriberFilter)}
-                className="min-h-11 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-surface)] px-3 text-sm font-semibold text-[var(--color-primary)]"
+                className="min-h-11 rounded-md border border-[var(--color-line)] bg-[var(--color-surface)] px-3 text-sm font-semibold text-[var(--color-primary)]"
               >
                 <option value="all">{t("creatorPanel.sales.status.all")}</option>
                 <option value="active">{t("statusChip.active")}</option>
@@ -479,7 +479,7 @@ function TabButton({ active, onClick, children }: { active: boolean; onClick: ()
       role="tab"
       aria-selected={active}
       onClick={onClick}
-      className={`min-h-11 rounded-[var(--radius-xs)] px-3 text-sm font-bold sm:px-4 ${active ? "bg-[var(--color-primary)] text-[var(--color-on-primary)]" : "text-[var(--color-ink-soft)] hover:text-[var(--color-primary)]"}`}
+      className={`min-h-11 rounded-sm px-3 text-sm font-bold sm:px-4 ${active ? "bg-[var(--color-primary)] text-[var(--color-on-primary)]" : "text-[var(--color-ink-soft)] hover:text-[var(--color-primary)]"}`}
     >
       {children}
     </button>
@@ -491,7 +491,7 @@ function SubscriptionCenterLoading() {
   return (
     <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label={t(`${copy}.loading`)}>
       {[0, 1, 2, 3].map((item) => (
-        <div key={item} className="h-32 animate-pulse rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-surface)]" />
+        <div key={item} className="h-32 animate-pulse rounded-md border border-[var(--color-line)] bg-[var(--color-surface)]" />
       ))}
     </section>
   );

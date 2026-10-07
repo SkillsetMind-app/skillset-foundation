@@ -87,7 +87,7 @@ function StorefrontImageUpload({
   return (
     <div className="grid gap-3 border-t border-[var(--color-line)] pt-4 sm:grid-cols-[8rem_minmax(0,1fr)] sm:items-center">
       <div
-        className={`relative grid overflow-hidden rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-surface)] ${
+        className={`relative grid overflow-hidden rounded-md border border-[var(--color-line)] bg-[var(--color-surface)] ${
           kind === "logo" ? "aspect-square w-24 place-items-center" : "aspect-[16/7] w-full"
         }`}
       >
@@ -116,7 +116,7 @@ function StorefrontImageUpload({
         </p>
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <label
-            className={`relative inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-[var(--radius-sm)] border border-dashed border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2 text-sm font-semibold text-[var(--color-primary)] transition-colors hover:border-[var(--color-primary-light)] focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[var(--color-primary)] ${
+            className={`relative inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-md border border-dashed border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2 text-sm font-semibold text-[var(--color-primary)] transition-colors hover:border-[var(--color-primary-light)] focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[var(--color-primary)] ${
               isUploading ? "pointer-events-none opacity-60" : ""
             }`}
           >
@@ -142,7 +142,7 @@ function StorefrontImageUpload({
               disabled={isUploading}
               aria-label={removeLabel}
               title={removeLabel}
-              className="inline-flex min-h-11 items-center gap-2 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2 text-sm font-semibold text-[var(--color-ink-soft)] hover:text-[var(--color-ink)] disabled:opacity-60"
+              className="inline-flex min-h-11 items-center gap-2 rounded-md border border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2 text-sm font-semibold text-[var(--color-ink-soft)] hover:text-[var(--color-ink)] disabled:opacity-60"
             >
               <Trash2 aria-hidden="true" size={15} />
               {t("teach.storefrontEditor.image.remove")}
@@ -549,7 +549,7 @@ export function StorefrontSettingsPanel() {
           nao tinha como saber que aquilo era a previa da vitrine. */}
       <section
         aria-label={t("teach.storefrontPage.previewLabel")}
-        className="mt-6 overflow-hidden rounded-[var(--radius-2xl)] border border-[var(--color-line)] shadow-[var(--shadow-soft)]"
+        className="mt-6 overflow-hidden rounded-lg border border-[var(--color-line)] shadow-[var(--shadow-soft)]"
       >
         <div className="relative flex min-h-32 items-center gap-4 overflow-hidden bg-[#102a43] px-5 py-6 sm:px-7">
           {heroImageUrl ? (
@@ -557,7 +557,7 @@ export function StorefrontSettingsPanel() {
             <img src={heroImageUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />
           ) : null}
           <span className="absolute inset-0 bg-[rgba(10,24,43,0.66)]" aria-hidden="true" />
-          <span className="relative grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-[var(--radius-sm)] bg-white/10 text-xl font-bold text-white ring-1 ring-white/20">
+          <span className="relative grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-md bg-white/10 text-xl font-bold text-white ring-1 ring-white/20">
             {logoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
@@ -613,7 +613,7 @@ export function StorefrontSettingsPanel() {
                   value={previewAccent}
                   onChange={(event) => setAccentColor(event.target.value)}
                   aria-label={t("teach.storefrontEditor.accentPicker")}
-                  className="h-11 w-14 shrink-0 cursor-pointer rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-surface)] p-1"
+                  className="h-11 w-14 shrink-0 cursor-pointer rounded-md border border-[var(--color-line)] bg-[var(--color-surface)] p-1"
                 />
                 <input
                   {...a11y}
@@ -621,7 +621,7 @@ export function StorefrontSettingsPanel() {
                   onChange={(event) => setAccentColor(event.target.value)}
                   placeholder="#183a5e"
                   spellCheck={false}
-                  className="min-w-0 flex-1 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-surface)] px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
+                  className="min-w-0 flex-1 rounded-md border border-[var(--color-line)] bg-[var(--color-surface)] px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
                 />
               </div>
             )}
@@ -659,7 +659,7 @@ export function StorefrontSettingsPanel() {
                 onChange={(event) =>
                   setThemePreset(event.target.value as StorefrontThemePreset)
                 }
-                className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-surface)] px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
+                className="rounded-md border border-[var(--color-line)] bg-[var(--color-surface)] px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
               >
                 {storefrontThemePresets.map((preset) => (
                   <option key={preset} value={preset}>
@@ -680,7 +680,7 @@ export function StorefrontSettingsPanel() {
                   rows={2}
                   maxLength={maxStorefrontTaglineLength}
                   placeholder={t("teach.storefrontEditor.taglinePlaceholder")}
-                  className="resize-none rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-surface)] px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
+                  className="resize-none rounded-md border border-[var(--color-line)] bg-[var(--color-surface)] px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
                 />
                 <span className="text-xs font-normal text-[var(--color-ink-soft)]">
                   {t("teach.storefrontEditor.characters")
@@ -731,9 +731,9 @@ export function StorefrontSettingsPanel() {
                 return (
                   <li
                     key={course.id}
-                    className="flex flex-wrap items-center gap-3 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2.5"
+                    className="flex flex-wrap items-center gap-3 rounded-md border border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2.5"
                   >
-                    <span className="grid h-6 w-6 shrink-0 place-items-center rounded-none bg-[var(--color-surface-soft)] text-xs font-semibold text-[var(--color-ink-soft)]">
+                    <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-[var(--color-surface-soft)] text-xs font-semibold text-[var(--color-ink-soft)]">
                       {index + 1}
                     </span>
                     <span className="min-w-0 flex-1 basis-[calc(100%_-_2.25rem)] truncate text-sm font-semibold text-[var(--color-ink)] sm:basis-0">
@@ -745,7 +745,7 @@ export function StorefrontSettingsPanel() {
                         setFeaturedCourseId(isFeatured ? null : course.id)
                       }
                       aria-pressed={isFeatured}
-                      className={`min-h-11 shrink-0 rounded-[var(--radius-sm)] border px-2.5 py-1.5 text-xs font-semibold ${
+                      className={`min-h-11 shrink-0 rounded-md border px-2.5 py-1.5 text-xs font-semibold ${
                         isFeatured
                           ? "border-[var(--color-primary)] bg-[rgba(24,58,94,0.08)] text-[var(--color-primary)]"
                           : "border-[var(--color-line)] text-[var(--color-ink-soft)]"
@@ -759,7 +759,7 @@ export function StorefrontSettingsPanel() {
                         onClick={() => reorder(index, -1)}
                         disabled={index === 0}
                         aria-label={t("teach.storefrontEditor.moveUp").replace("{title}", () => course.title)}
-                        className="min-h-11 min-w-11 rounded-[var(--radius-sm)] border border-[var(--color-line)] px-2.5 py-1.5 text-xs font-semibold text-[var(--color-ink-soft)] disabled:opacity-40"
+                        className="min-h-11 min-w-11 rounded-md border border-[var(--color-line)] px-2.5 py-1.5 text-xs font-semibold text-[var(--color-ink-soft)] disabled:opacity-40"
                       >
                         ↑
                       </button>
@@ -768,7 +768,7 @@ export function StorefrontSettingsPanel() {
                         onClick={() => reorder(index, 1)}
                         disabled={index === orderedCourses.length - 1}
                         aria-label={t("teach.storefrontEditor.moveDown").replace("{title}", () => course.title)}
-                        className="min-h-11 min-w-11 rounded-[var(--radius-sm)] border border-[var(--color-line)] px-2.5 py-1.5 text-xs font-semibold text-[var(--color-ink-soft)] disabled:opacity-40"
+                        className="min-h-11 min-w-11 rounded-md border border-[var(--color-line)] px-2.5 py-1.5 text-xs font-semibold text-[var(--color-ink-soft)] disabled:opacity-40"
                       >
                         ↓
                       </button>

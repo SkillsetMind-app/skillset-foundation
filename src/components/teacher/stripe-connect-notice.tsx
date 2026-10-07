@@ -99,7 +99,7 @@ export function StripeConnectNotice() {
         type="button"
         onClick={dismiss}
         aria-label={t("platform.banner.dismissNotice")}
-        className="grid size-11 shrink-0 place-items-center rounded-none text-[var(--color-ink-muted)] transition hover:bg-[var(--color-surface-strong)] hover:text-[var(--color-ink)]"
+        className="grid size-11 shrink-0 place-items-center rounded-full text-[var(--color-ink-muted)] transition hover:bg-[var(--color-surface-strong)] hover:text-[var(--color-ink)]"
       >
         <X aria-hidden="true" size={16} strokeWidth={2} />
       </button>

@@ -740,8 +740,8 @@ export function EnrolledCourseWorkspace({
 
   if (error) {
     return (
-      <section className="rounded-none border border-[rgba(178,34,52,0.2)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
-        <p className="rounded-none bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
+      <section className="rounded-lg border border-[rgba(178,34,52,0.2)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
+        <p className="rounded-md bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
           {t(error)}
         </p>
         <div className="mt-4 flex flex-wrap gap-3">
@@ -765,7 +765,7 @@ export function EnrolledCourseWorkspace({
   if (!workspaceEnrollment) {
     if (cameFromCheckout) {
       return (
-        <section className="rounded-none border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
+        <section className="rounded-lg border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
           <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
             {t("learn.classroom.workspace.paymentReceived")}
           </p>
@@ -1282,7 +1282,7 @@ export function EnrolledCourseWorkspace({
       <div className="member-classroom-layout">
         <section id="member-lesson-player" className="member-classroom-player">
         {actionError ? (
-          <p role="alert" className="mb-5 rounded-none border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
+          <p role="alert" className="mb-5 rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
             {t(actionError)}
           </p>
         ) : null}
@@ -1507,7 +1507,7 @@ export function EnrolledCourseWorkspace({
         />
       ) : null}
 
-      {tab === "messages" && !previewMode ? <CourseMessagesPanel courseId={course.id} /> : null}
+      {tab === "messages" && !previewMode ? <CourseMessagesPanel courseId={course.id} whitelabel={whitelabel} /> : null}
 
       {tab === "review" ? (
         <CourseReviewPanel
@@ -1572,7 +1572,7 @@ function CourseEventsAgenda({ upcoming, now }: { upcoming: CourseEvent[]; now: n
           return (
             <li
               key={event.id}
-              className="flex flex-wrap items-center justify-between gap-4 rounded-none border fine-rule bg-[var(--color-surface-soft)] px-5 py-4"
+              className="flex flex-wrap items-center justify-between gap-4 rounded-lg border fine-rule bg-[var(--color-surface-soft)] px-5 py-4"
             >
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
@@ -1580,7 +1580,7 @@ function CourseEventsAgenda({ upcoming, now }: { upcoming: CourseEvent[]; now: n
                     {t(`creatorPanel.events.type.${event.type}`)}
                   </span>
                   {isLiveNow ? (
-                    <span className="rounded-none bg-[rgba(178,34,52,0.1)] px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--color-accent-fg)]">
+                    <span className="rounded-full bg-[rgba(178,34,52,0.1)] px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--color-accent-fg)]">
                       {t("learnWave2.agenda.now")}
                     </span>
                   ) : null}
@@ -1895,7 +1895,7 @@ function LessonInfo({
         aria-expanded={open}
         aria-controls={open ? "member-lesson-info" : undefined}
         onClick={() => setOpen((current) => !current)}
-        className="inline-flex min-h-11 items-center gap-1.5 rounded-none px-2 text-sm font-semibold text-[var(--color-ink)] underline-offset-4 hover:underline"
+        className="inline-flex min-h-11 items-center gap-1.5 rounded-md px-2 text-sm font-semibold text-[var(--color-ink)] underline-offset-4 hover:underline"
       >
         <Info aria-hidden="true" size={15} />
         {t("learn.classroom.lessonInfo.toggle")}
@@ -1907,7 +1907,7 @@ function LessonInfo({
       {open ? (
         <dl
           id="member-lesson-info"
-          className="mt-2 grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1.5 rounded-none border border-[var(--color-line)] bg-[var(--color-surface-soft)] px-4 py-3 text-sm"
+          className="mt-2 grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1.5 rounded-lg border border-[var(--color-line)] bg-[var(--color-surface-soft)] px-4 py-3 text-sm"
         >
           {rows.map(([term, value]) => (
             <Fragment key={term}>
@@ -1946,11 +1946,11 @@ function CourseAssetResourceList({
         </span>
       </div>
       {isLoading ? (
-        <p className="mt-4 rounded-none bg-white px-3 py-2 text-sm text-[var(--color-ink-soft)]">
+        <p className="mt-4 rounded-md bg-white px-3 py-2 text-sm text-[var(--color-ink-soft)]">
           {t("learn.classroom.resources.loading")}
         </p>
       ) : assets.length === 0 ? (
-        <p className="mt-4 rounded-none bg-white px-3 py-2 text-sm text-[var(--color-ink-soft)]">
+        <p className="mt-4 rounded-md bg-white px-3 py-2 text-sm text-[var(--color-ink-soft)]">
           {t("learn.classroom.resources.empty")}
         </p>
       ) : (
@@ -1958,7 +1958,7 @@ function CourseAssetResourceList({
           {assets.map((asset) => (
             <div
               key={asset.id}
-              className="rounded-none border border-[var(--color-line)] bg-white p-3"
+              className="rounded-lg border border-[var(--color-line)] bg-white p-3"
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
@@ -1969,7 +1969,7 @@ function CourseAssetResourceList({
                     {getCourseAssetKindLabel(asset.kind, t)} - {formatCourseAssetSize(asset.size)}
                   </p>
                 </div>
-                <span className="rounded-none bg-[var(--color-surface-soft)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--color-primary)]">
+                <span className="rounded-chip bg-[var(--color-surface-soft)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--color-primary)]">
                   {t(asset.isPreview ? "learn.classroom.resources.preview" : "learn.classroom.resources.enrolled")}
                 </span>
               </div>
@@ -2100,7 +2100,7 @@ function LessonContentPanel({
             {t("learn.classroom.lesson.content")}
           </p>
           {lesson.isPreview ? (
-            <span className="rounded-none border border-[rgba(178,34,52,0.18)] bg-[rgba(178,34,52,0.05)] px-3 py-1 text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--color-accent-fg)]">
+            <span className="rounded-chip border border-[rgba(178,34,52,0.18)] bg-[rgba(178,34,52,0.05)] px-3 py-1 text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--color-accent-fg)]">
               {t("learn.classroom.lesson.freePreview")}
             </span>
           ) : null}
@@ -2116,7 +2116,7 @@ function LessonContentPanel({
           </p>
         ) : null}
         {!locked && lesson.contentText ? (
-          <div className="mt-4 whitespace-pre-line rounded-none border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-4 text-sm leading-7 text-[var(--color-ink-soft)]">
+          <div className="mt-4 whitespace-pre-line rounded-lg border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-4 text-sm leading-7 text-[var(--color-ink-soft)]">
             {linkify(lesson.contentText)}
           </div>
         ) : null}
@@ -2260,7 +2260,7 @@ function LessonAssetList({
   const { t } = useTranslation();
   if (isLoading) {
     return (
-      <p className="mt-4 rounded-none bg-[var(--color-surface-soft)] px-3 py-2 text-sm text-[var(--color-ink-soft)]">
+      <p className="mt-4 rounded-md bg-[var(--color-surface-soft)] px-3 py-2 text-sm text-[var(--color-ink-soft)]">
         {t("learn.classroom.resources.loadingLesson")}
       </p>
     );
@@ -2268,7 +2268,7 @@ function LessonAssetList({
 
   if (assets.length === 0) {
     return (
-      <p className="mt-4 rounded-none bg-[var(--color-surface-soft)] px-3 py-2 text-sm text-[var(--color-ink-soft)]">
+      <p className="mt-4 rounded-md bg-[var(--color-surface-soft)] px-3 py-2 text-sm text-[var(--color-ink-soft)]">
         {t("learn.classroom.resources.emptyLesson")}
       </p>
     );
@@ -2279,7 +2279,7 @@ function LessonAssetList({
       {assets.map((asset) => (
         <div
           key={asset.id}
-          className="rounded-none border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-3"
+          className="rounded-lg border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-3"
         >
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
@@ -2291,7 +2291,7 @@ function LessonAssetList({
                 <span>{getCourseAssetKindLabel(asset.kind, t)} - {formatCourseAssetSize(asset.size)}</span>
               </div>
             </div>
-            <span className="rounded-none bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--color-primary)]">
+            <span className="rounded-chip bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--color-primary)]">
               {t(asset.isPreview ? "learn.classroom.resources.preview" : "learn.classroom.resources.enrolled")}
             </span>
           </div>

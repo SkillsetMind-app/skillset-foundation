@@ -70,9 +70,9 @@ function button(href, label) {
   return `
                 <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto 24px;">
                   <tr>
-                    <td align="center" bgcolor="${C.navy}" style="background-color:${C.navy};border-radius:0;">
+                    <td align="center" bgcolor="${C.navy}" style="background-color:${C.navy};border-radius:8px;">
                       <a href="${href}"
-                         style="display:inline-block;padding:15px 38px;font-family:${SANS};font-size:15px;font-weight:bold;color:${C.onNavy};text-decoration:none;border-radius:0;">
+                         style="display:inline-block;padding:15px 38px;font-family:${SANS};font-size:15px;font-weight:bold;color:${C.onNavy};text-decoration:none;border-radius:8px;">
                         ${label}
                       </a>
                     </td>
@@ -88,7 +88,7 @@ function button(href, label) {
 
 function codeBox(token) {
   return `
-                <div style="margin:0;padding:20px 0;background-color:${C.pageBg};border:1px solid ${C.line};border-radius:0;text-align:center;font-family:${DISPLAY};font-size:30px;font-weight:bold;letter-spacing:8px;color:${C.navy};">
+                <div style="margin:0;padding:20px 0;background-color:${C.pageBg};border:1px solid ${C.line};border-radius:8px;text-align:center;font-family:${DISPLAY};font-size:30px;font-weight:bold;letter-spacing:8px;color:${C.navy};">
                   ${token}
                 </div>`;
 }
@@ -112,7 +112,7 @@ function shell({ slug, dashboardTab, subject, preheader, title, intro, main, out
           <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;">
             <!-- Brand header -->
             <tr>
-              <td align="center" bgcolor="${C.navy}" style="background-color:${C.navy};border-radius:0;padding:22px 40px;text-align:center;">
+              <td align="center" bgcolor="${C.navy}" style="background-color:${C.navy};border-radius:12px 12px 0 0;padding:22px 40px;text-align:center;">
                 <img src="${LOGO}" width="${LOGO_W}" height="${LOGO_H}" alt="SkillsetMind"
                      style="display:block;margin:0 auto;width:${LOGO_W}px;height:${LOGO_H}px;border:0;outline:none;text-decoration:none;color:${C.onNavy};font-family:${DISPLAY};font-size:20px;font-weight:bold;letter-spacing:2px;" />
               </td>
@@ -141,7 +141,7 @@ function shell({ slug, dashboardTab, subject, preheader, title, intro, main, out
             </tr>
             <!-- Footer -->
             <tr>
-              <td style="background-color:${C.footerBg};border-radius:0;padding:20px 40px;border:1px solid ${C.line};border-top:none;">
+              <td style="background-color:${C.footerBg};border-radius:0 0 12px 12px;padding:20px 40px;border:1px solid ${C.line};border-top:none;">
                 <p style="margin:0;font-family:${SANS};font-size:12px;line-height:1.7;color:${C.muted};text-align:center;">
                   ${footer ? `${footer}\n                  <br />\n                  ` : ""}Questions? <a href="mailto:${SUPPORT}" style="color:${C.navy};font-weight:bold;">${SUPPORT}</a>
                 </p>

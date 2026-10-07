@@ -183,7 +183,7 @@ export function TotpMfaSection({ emailVerified }: { emailVerified: boolean }) {
     <div
       ref={sectionRef}
       tabIndex={-1}
-      className="rounded-none border border-[var(--color-line)] bg-white p-4 outline-none"
+      className="rounded-lg border border-[var(--color-line)] bg-white p-4 outline-none"
     >
       <div className="flex items-start justify-between gap-3">
         <div>
@@ -195,7 +195,7 @@ export function TotpMfaSection({ emailVerified }: { emailVerified: boolean }) {
           </p>
         </div>
         <span
-          className={`inline-flex items-center gap-1 rounded-none px-2 py-1 text-[10px] font-bold uppercase tracking-[0.14em] ${
+          className={`inline-flex items-center gap-1 rounded-chip px-2 py-1 text-[10px] font-bold uppercase tracking-[0.14em] ${
             isEnrolled
               ? "bg-[var(--color-success-soft)] text-[var(--color-success-fg)]"
               : "bg-[rgba(26,54,93,0.08)] text-[var(--color-primary)]"
@@ -208,11 +208,11 @@ export function TotpMfaSection({ emailVerified }: { emailVerified: boolean }) {
 
       {/* Flag off: honest unavailable state, never a fake setup. */}
       {!mfaEnabled ? (
-        <p className="mt-4 rounded-none border fine-rule bg-[var(--color-surface-soft)] px-4 py-3 text-sm leading-6 text-[var(--color-ink-soft)]">
+        <p className="mt-4 rounded-md border fine-rule bg-[var(--color-surface-soft)] px-4 py-3 text-sm leading-6 text-[var(--color-ink-soft)]">
           {t("accountSecurity.mfa.unavailable")}
         </p>
       ) : !emailVerified && !isEnrolled ? (
-        <p className="mt-4 rounded-none border fine-rule bg-[var(--color-surface-soft)] px-4 py-3 text-sm leading-6 text-[var(--color-ink-soft)]">
+        <p className="mt-4 rounded-md border fine-rule bg-[var(--color-surface-soft)] px-4 py-3 text-sm leading-6 text-[var(--color-ink-soft)]">
           {t("accountSecurity.mfa.verifyEmail")}
         </p>
       ) : isEnrolled ? (
@@ -220,7 +220,7 @@ export function TotpMfaSection({ emailVerified }: { emailVerified: boolean }) {
           {factors.map((factor) => (
             <div
               key={factor.uid}
-              className="flex flex-wrap items-center justify-between gap-3 rounded-none border fine-rule bg-[var(--color-surface-soft)] px-4 py-3"
+              className="flex flex-wrap items-center justify-between gap-3 rounded-md border fine-rule bg-[var(--color-surface-soft)] px-4 py-3"
             >
               <div className="text-sm">
                 <p className="font-semibold text-[var(--color-ink)]">
@@ -296,7 +296,7 @@ export function TotpMfaSection({ emailVerified }: { emailVerified: boolean }) {
             role="dialog"
             aria-modal="true"
             aria-labelledby="totp-setup-title"
-            className="modal-panel modal-panel-scroll w-full max-w-md rounded-none border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-strong)] outline-none"
+            className="modal-panel modal-panel-scroll w-full max-w-md rounded-xl border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-strong)] outline-none"
           >
             <h2
               id="totp-setup-title"
@@ -343,11 +343,11 @@ export function TotpMfaSection({ emailVerified }: { emailVerified: boolean }) {
                 alt={t("accountSecurity.mfa.qrAlt")}
                 width={192}
                 height={192}
-                className="mx-auto mt-4 h-48 w-48 rounded-none border fine-rule bg-white p-2"
+                className="mx-auto mt-4 h-48 w-48 rounded-lg border fine-rule bg-white p-2"
               />
             ) : null}
 
-            <div className="mt-4 rounded-none border fine-rule bg-[var(--color-surface-soft)] p-3">
+            <div className="mt-4 rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-3">
               {setup.qrCode ? (
                 <p className="mb-2 text-xs leading-5 text-[var(--color-ink-soft)]">
                   {t("accountSecurity.mfa.manualHint")}
@@ -401,7 +401,7 @@ export function TotpMfaSection({ emailVerified }: { emailVerified: boolean }) {
                   inputMode="numeric"
                   autoComplete="one-time-code"
                   aria-label={t("accountSecurity.mfa.codeLabel")}
-                  className="w-32 rounded-none border border-[var(--color-line)] bg-white px-4 py-3 text-center font-mono text-base tracking-[0.3em] outline-none focus:border-[var(--color-primary-light)]"
+                  className="w-32 rounded-md border border-[var(--color-line)] bg-white px-4 py-3 text-center font-mono text-base tracking-[0.3em] outline-none focus:border-[var(--color-primary-light)]"
                 />
               </label>
               <button
@@ -424,7 +424,7 @@ export function TotpMfaSection({ emailVerified }: { emailVerified: boolean }) {
             {error ? (
               <p
                 role="alert"
-                className="mt-3 rounded-none border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]"
+                className="mt-3 rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]"
               >
                 {"key" in error ? t(error.key) : getAuthErrorMessage(error.cause, t)}
               </p>
@@ -441,7 +441,7 @@ export function TotpMfaSection({ emailVerified }: { emailVerified: boolean }) {
       {error && !setup ? (
         <p
           role="alert"
-          className="mt-3 rounded-none border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]"
+          className="mt-3 rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]"
         >
           {"key" in error ? t(error.key) : getAuthErrorMessage(error.cause, t)}
         </p>

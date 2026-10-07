@@ -123,7 +123,7 @@ export function CreatorVerificationQueue({ query = "" }: { query?: string }) {
   }
 
   return (
-    <section className="min-w-0 break-words rounded-none border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
+    <section className="min-w-0 break-words rounded-lg border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
@@ -136,7 +136,7 @@ export function CreatorVerificationQueue({ query = "" }: { query?: string }) {
             {t(`${copy}.description`)}
           </p>
         </div>
-        <span className="rounded-none bg-[var(--color-surface-soft)] px-3 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-primary)]">
+        <span className="rounded-md bg-[var(--color-surface-soft)] px-3 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-primary)]">
           {isLoading ? t("platform.queueCount.loading") : loadError ? t("platform.queueCount.unavailable")
             : t(`${copy}.${cases.length === 1 ? "countOne" : "count"}`).replace("{count}", String(cases.length))}
         </span>
@@ -152,14 +152,14 @@ export function CreatorVerificationQueue({ query = "" }: { query?: string }) {
             {t(`${copy}.loading`)}
           </p>
         ) : loadError ? null : visibleCases.length === 0 ? (
-          <p className="rounded-none border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
+          <p className="rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
             {t(`${copy}.${cases.length === 0 ? "empty" : "noResults"}`)}
           </p>
         ) : (
           visibleCases.map((verificationCase) => (
             <article
               key={verificationCase.id}
-              className="min-w-0 rounded-none border fine-rule bg-[var(--color-surface-soft)] p-4"
+              className="min-w-0 rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4"
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">
@@ -177,12 +177,12 @@ export function CreatorVerificationQueue({ query = "" }: { query?: string }) {
                     </p>
                   ) : null}
                 </div>
-                <span className="rounded-none bg-white px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-primary)]">
+                <span className="rounded-md bg-white px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-primary)]">
                   {formatSubmittedAt(verificationCase.createdAt, locale, t(`${copy}.pendingTimestamp`))}
                 </span>
               </div>
 
-              <div className="mt-4 grid min-w-0 gap-2 rounded-none border fine-rule bg-white p-4">
+              <div className="mt-4 grid min-w-0 gap-2 rounded-lg border fine-rule bg-white p-4">
                 {verificationCase.registrationId ? <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--color-ink-soft)]">
                   {verificationCase.registrationType} —{" "}
                   {verificationCase.registrationId} (
@@ -231,7 +231,7 @@ export function CreatorVerificationQueue({ query = "" }: { query?: string }) {
                   }
                   rows={3}
                   placeholder={t(`${copy}.reviewPlaceholder`)}
-                  className="min-w-0 resize-none rounded-none border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
+                  className="min-w-0 resize-none rounded-md border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
                 />}
               </Field>
 

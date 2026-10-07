@@ -19,6 +19,9 @@ let emitAssets: (assets: CourseAsset[]) => void;
 let emitLoadError: (error: Error) => void;
 // "wait" segura a primeira entrega dos arquivos; "fail" simula erro de carga.
 let subscribeOutcome: "emit" | "wait" | "fail" = "emit";
+// Recarga avulsa (reload) devolvendo o que o servidor tem. Desligada por padrão
+// para não mexer nos testes que entregam a lista à mão com emitAssets.
+let reloadServesCurrentAssets = false;
 const subscribed = vi.fn();
 const router = vi.hoisted(() => ({ refresh: vi.fn() }));
 vi.mock("next/navigation", () => ({ useRouter: () => router }));
@@ -63,7 +66,11 @@ vi.mock("@/lib/data/course-assets", () => ({
     emitLoadError = onError;
     if (subscribeOutcome === "emit") onAssets(currentAssets);
     if (subscribeOutcome === "fail") onError(new Error("load-failed"));
-    return () => {};
+    return Object.assign(() => {}, {
+      reload: async () => {
+        if (reloadServesCurrentAssets) onAssets(currentAssets);
+      },
+    });
   },
 }));
 
@@ -905,6 +912,29 @@ describe("LessonContentModal — video tab", () => {
     expect(screen.getByText('"Material $& <autoral>.pdf" no es un archivo de video. Usa MP4, MOV o WebM.')).toBeInTheDocument();
     expect(uploadLessonVideoToBunny).not.toHaveBeenCalled();
     expect(uploadCourseAsset).not.toHaveBeenCalled();
+  });
+
+  it("o material enviado aparece na lista sem esperar evento do Realtime", async () => {
+    // course_assets não está na publicação do Realtime: nenhum emitAssets aqui,
+    // só a recarga que o próprio estúdio pede depois do envio.
+    reloadServesCurrentAssets = true;
+    uploadCourseAsset.mockImplementationOnce(async () => {
+      currentAssets = [videoAsset({
+        id: "material-1", kind: "lesson_material", contentType: "application/pdf", fileName: "apostila.pdf",
+      })];
+    });
+    try {
+      renderModal({}, "Módulo 1", true);
+      fireEvent.click(screen.getByRole("button", { name: /^Materials/ }));
+      expect(screen.queryByText("apostila.pdf")).not.toBeInTheDocument();
+      fireEvent.change(screen.getByLabelText("Lesson material"), {
+        target: { files: [new File(["pdf"], "apostila.pdf", { type: "application/pdf" })] },
+      });
+      fireEvent.click(screen.getByRole("button", { name: "Upload file" }));
+      expect(await screen.findByText("apostila.pdf", { selector: "strong" })).toBeInTheDocument();
+    } finally {
+      reloadServesCurrentAssets = false;
+    }
   });
 
   it("localizes materials and settings while preserving lesson values, type codes and authored placeholders", () => {

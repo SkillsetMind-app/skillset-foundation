@@ -363,9 +363,9 @@ export function CourseMarketplace({ courses = [] }: CourseMarketplaceProps) {
                     <p className="marketplace-continue-card__title">
                       {course.title}
                     </p>
-                    <div className="mt-2 h-1.5 overflow-hidden rounded-none bg-[rgba(26,54,93,0.12)]">
+                    <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[rgba(26,54,93,0.12)]">
                       <div
-                        className="h-full rounded-none bg-[var(--color-accent)]"
+                        className="h-full rounded-full bg-[var(--color-accent)]"
                         style={{ width: `${progress}%` }}
                       />
                     </div>
@@ -387,13 +387,13 @@ export function CourseMarketplace({ courses = [] }: CourseMarketplaceProps) {
       ) : null}
 
       {publishedCoursesError ? (
-        <p className="mb-5 rounded-none border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
+        <p className="mb-5 rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
           {t(publishedCoursesError)}
         </p>
       ) : null}
 
       {wishlistError ? (
-        <p className="mb-5 rounded-none border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
+        <p className="mb-5 rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
           {t(wishlistError)}
         </p>
       ) : null}
@@ -409,9 +409,9 @@ export function CourseMarketplace({ courses = [] }: CourseMarketplaceProps) {
               >
                 <div className="marketplace-card__media bg-[var(--color-surface-strong)]" />
                 <div className="space-y-3 p-5">
-                  <div className="h-3 w-24 rounded-none bg-[var(--color-surface-strong)]" />
-                  <div className="h-6 w-3/4 rounded-none bg-[var(--color-surface-strong)]" />
-                  <div className="h-16 rounded-none bg-[var(--color-surface-soft)]" />
+                  <div className="h-3 w-24 rounded bg-[var(--color-surface-strong)]" />
+                  <div className="h-6 w-3/4 rounded bg-[var(--color-surface-strong)]" />
+                  <div className="h-16 rounded bg-[var(--color-surface-soft)]" />
                 </div>
               </div>
             ))}
@@ -434,7 +434,7 @@ export function CourseMarketplace({ courses = [] }: CourseMarketplaceProps) {
           </div>
         ) : (
           <div className="marketplace-empty">
-            <div className="mx-auto grid size-14 place-items-center rounded-none bg-[var(--color-surface-soft)] text-[var(--color-primary)]">
+            <div className="mx-auto grid size-14 place-items-center rounded-lg bg-[var(--color-surface-soft)] text-[var(--color-primary)]">
               <svg
                 aria-hidden="true"
                 viewBox="0 0 24 24"

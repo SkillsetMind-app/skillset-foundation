@@ -133,13 +133,13 @@ export function CourseReviewPanel({
           disabled={!canReview || isSaving}
           maxLength={1200}
           rows={4}
-          className="min-h-28 rounded-none border border-[var(--color-line)] bg-white px-4 py-3 text-sm leading-6 text-[var(--color-ink)] outline-none transition focus:border-[var(--color-primary)]"
+          className="min-h-28 rounded-md border border-[var(--color-line)] bg-white px-4 py-3 text-sm leading-6 text-[var(--color-ink)] outline-none transition focus:border-[var(--color-primary)]"
           aria-label={t("learn.classroom.review.bodyLabel")}
           placeholder={t("learn.classroom.review.placeholder")}
         />
 
         {!canReview ? (
-          <p className="rounded-none bg-white px-3 py-2 text-xs font-semibold leading-5 text-[var(--color-ink-soft)]">
+          <p className="rounded-md bg-white px-3 py-2 text-xs font-semibold leading-5 text-[var(--color-ink-soft)]">
             {previewMode
               ? t("learn.classroom.review.preview")
               : progressPercent < 50
@@ -149,7 +149,7 @@ export function CourseReviewPanel({
         ) : null}
 
         {message ? (
-          <p className="rounded-none bg-white px-3 py-2 text-xs font-semibold leading-5 text-[var(--color-primary)]">
+          <p className="rounded-md bg-white px-3 py-2 text-xs font-semibold leading-5 text-[var(--color-primary)]">
             {t(message)}
           </p>
         ) : null}

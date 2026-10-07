@@ -280,14 +280,14 @@ export function CreateCourseStart({ ownerId, initialFormat = "course" }: CreateC
             <p className="mt-1 text-xs leading-5 text-[var(--color-ink-muted)]">
               {t("courseCreation.intervalHelp")}
             </p>
-            <div className="mt-2 grid grid-cols-2 gap-1 rounded-none border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-1">
+            <div className="mt-2 grid grid-cols-2 gap-1 rounded-md border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-1">
               {(["monthly", "yearly"] as const).map((interval) => (
                 <button
                   key={interval}
                   type="button"
                   aria-pressed={subscriptionInterval === interval}
                   onClick={() => setSubscriptionInterval(interval)}
-                  className={`min-h-11 rounded-none px-3 py-2 text-sm font-semibold transition-colors ${
+                  className={`min-h-11 rounded-sm px-3 py-2 text-sm font-semibold transition-colors ${
                     subscriptionInterval === interval
                       ? "bg-[var(--color-primary)] text-[var(--color-base)]"
                       : "text-[var(--color-ink-soft)] hover:text-[var(--color-ink)]"
@@ -309,7 +309,7 @@ export function CreateCourseStart({ ownerId, initialFormat = "course" }: CreateC
               minLength={3}
               maxLength={120}
               placeholder={t("courseCreation.titlePlaceholder")}
-              className="min-h-11 rounded-none border border-[var(--color-line)] bg-white px-3.5 py-2.5 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] focus:ring-2 focus:ring-[rgba(66,102,145,0.18)]"
+              className="min-h-11 rounded-md border border-[var(--color-line)] bg-white px-3.5 py-2.5 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] focus:ring-2 focus:ring-[rgba(66,102,145,0.18)]"
             />
           </label>
 
@@ -322,7 +322,7 @@ export function CreateCourseStart({ ownerId, initialFormat = "course" }: CreateC
               maxLength={1200}
               rows={4}
               placeholder={t("courseCreation.promisePlaceholder")}
-              className="resize-none rounded-none border border-[var(--color-line)] bg-white px-3.5 py-2.5 text-sm font-normal leading-6 outline-none focus:border-[var(--color-primary-light)] focus:ring-2 focus:ring-[rgba(66,102,145,0.18)]"
+              className="resize-none rounded-md border border-[var(--color-line)] bg-white px-3.5 py-2.5 text-sm font-normal leading-6 outline-none focus:border-[var(--color-primary-light)] focus:ring-2 focus:ring-[rgba(66,102,145,0.18)]"
             />
             <span className="text-xs font-normal text-[var(--color-ink-muted)]">
               {t("courseCreation.characterCount").replace("{count}", () => String(summary.trim().length))}
@@ -351,7 +351,7 @@ export function CreateCourseStart({ ownerId, initialFormat = "course" }: CreateC
         {error ? (
           <div
             role="alert"
-            className="mt-5 rounded-none border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]"
+            className="mt-5 rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]"
           >
             <p>{t(error)}</p>
             {error === "courseCreation.activationError" ? (

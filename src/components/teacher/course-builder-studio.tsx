@@ -663,6 +663,11 @@ export function CourseBuilderStudio() {
   // e nao "cancelar ao mudar dependencia": abrir a aula logo depois (link
   // direto, quando os modulos chegam) descartava a primeira busca para sempre.
   const assetsRequestRef = useRef(0);
+  // Busca o curso de novo sem esperar o Realtime. O construtor so sabe que um
+  // modulo/aula foi gravado pelo snapshot do curso; com o eco do Realtime como
+  // unica fonte, o upload da capa do modulo e o botao de video da aula nova
+  // ficaram travados enquanto o Realtime recusava o canal (06/10).
+  const courseReloadRef = useRef<(() => Promise<void>) | null>(null);
 
   // Copia o snapshot do servidor para o rascunho. So setters (estaveis), entao
   // serve ao callback do realtime e ao efeito que aplica o snapshot pulado.
@@ -717,7 +722,7 @@ export function CourseBuilderStudio() {
       return;
     }
 
-    return subscribeToTeacherCourse(
+    const subscription = subscribeToTeacherCourse(
       courseId,
       (nextCourse) => {
         setIsLoading(false);
@@ -780,6 +785,11 @@ export function CourseBuilderStudio() {
         setError({ code: "load" });
       },
     );
+    courseReloadRef.current = subscription.reload;
+    return () => {
+      courseReloadRef.current = null;
+      subscription();
+    };
   }, [courseId, applyServerDraft]);
 
   // One-shot (re)load instead of a realtime channel: the lesson studio modal
@@ -1592,6 +1602,11 @@ export function CourseBuilderStudio() {
         skippedSnapshotRef.current = null;
         if (inFlightSavesRef.current === 1) {
           setAutosaveState("saved");
+          // Ultimo save no ar: busca o curso em vez de esperar o eco. O contador
+          // de geracao do subscribe descarta uma resposta mais velha que o eco.
+          // ponytail: com o Realtime saudavel, eco e recarga buscam duas vezes;
+          // tirar a recarga so se o custo aparecer.
+          void courseReloadRef.current?.();
         }
       } finally {
         inFlightSavesRef.current -= 1;
@@ -1733,7 +1748,7 @@ export function CourseBuilderStudio() {
                 value={module.title}
                 onChange={(event) => updateModuleTitle(module.id, event.target.value)}
                 disabled={!isEditable}
-                className="rounded-none border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
+                className="rounded-md border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
               />
             </label>
             <label className="grid content-start gap-2 text-sm font-semibold text-[var(--color-ink)]">
@@ -1745,7 +1760,7 @@ export function CourseBuilderStudio() {
                 rows={3}
                 aria-label={t("creatorEditor.builder.curriculum.moduleDescriptionNumber").replace("{index}", () => String(moduleIndex + 1))}
                 placeholder={t("creatorEditor.builder.curriculum.moduleDescriptionPlaceholder")}
-                className="w-full resize-none rounded-none border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
+                className="w-full resize-none rounded-md border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
               />
             </label>
           </div>
@@ -1774,7 +1789,7 @@ export function CourseBuilderStudio() {
 
         {isLessonFormOpen ? (
           <form
-            className="grid gap-3 rounded-none border fine-rule bg-white p-4"
+            className="grid gap-3 rounded-lg border fine-rule bg-white p-4"
             onSubmit={handleAddLesson}
           >
             <h5 className="flex items-center gap-2 text-sm font-semibold text-[var(--color-ink)]">
@@ -1792,14 +1807,14 @@ export function CourseBuilderStudio() {
               disabled={!isEditable}
               aria-label={t("creatorEditor.builder.curriculum.lessonTitle")}
               placeholder={t("creatorEditor.builder.curriculum.lessonTitle")}
-              className="min-w-0 rounded-none border border-[var(--color-line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
+              className="min-w-0 rounded-md border border-[var(--color-line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
             />
             {/* Previa gratis e a minoria dos casos: fica a um clique daqui. */}
-            <details className="rounded-none border fine-rule bg-[var(--color-surface-soft)] px-4 py-3">
+            <details className="rounded-md border fine-rule bg-[var(--color-surface-soft)] px-4 py-3">
               <summary className="cursor-pointer text-xs font-semibold text-[var(--color-ink-soft)]">
                 {t("creatorEditor.builder.curriculum.moreOptions")}
               </summary>
-              <label className="mt-3 flex items-start gap-3 rounded-none border fine-rule bg-white p-3 text-sm leading-6 text-[var(--color-ink-soft)]">
+              <label className="mt-3 flex items-start gap-3 rounded-md border fine-rule bg-white p-3 text-sm leading-6 text-[var(--color-ink-soft)]">
                 <input
                   type="checkbox"
                   checked={lessonIsFreePreview}
@@ -1844,14 +1859,14 @@ export function CourseBuilderStudio() {
         </p>
 
         {module.lessons.length === 0 ? (
-          <p className="rounded-none border fine-rule bg-white px-4 py-3 text-sm leading-6 text-[var(--color-ink-soft)]">
+          <p className="rounded-md border fine-rule bg-white px-4 py-3 text-sm leading-6 text-[var(--color-ink-soft)]">
             {t("creatorEditor.builder.curriculum.moduleEmpty")}
           </p>
         ) : (
           module.lessons.map((lesson, lessonIndex) => (
             <div
               key={lesson.id}
-              className="grid gap-3 rounded-none border border-[var(--color-line)] bg-white p-4"
+              className="grid gap-3 rounded-lg border border-[var(--color-line)] bg-white p-4"
             >
               <div className="flex flex-wrap items-center gap-2">
                 {savedLessonIds.has(lesson.id) ? (
@@ -1889,7 +1904,7 @@ export function CourseBuilderStudio() {
                     {t("creatorEditor.builder.curriculum.saveToUpload")}
                   </button>
                 ) : (
-                  <span className="inline-flex items-center gap-1.5 rounded-none border border-[var(--color-line)] bg-white px-3 py-2 text-xs font-semibold text-[var(--color-ink-soft)]">
+                  <span className="inline-flex items-center gap-1.5 rounded-md border border-[var(--color-line)] bg-white px-3 py-2 text-xs font-semibold text-[var(--color-ink-soft)]">
                     <Loader2
                       aria-hidden="true"
                       size={13}
@@ -1914,7 +1929,7 @@ export function CourseBuilderStudio() {
                       })
                     }
                     disabled={!isEditable}
-                    className="rounded-none border border-[var(--color-line)] bg-white px-3 py-2.5 text-sm font-normal normal-case tracking-normal text-[var(--color-ink)] outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
+                    className="rounded-md border border-[var(--color-line)] bg-white px-3 py-2.5 text-sm font-normal normal-case tracking-normal text-[var(--color-ink)] outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
                   />
                 </label>
                 <div className="flex flex-wrap gap-2">
@@ -1952,7 +1967,7 @@ export function CourseBuilderStudio() {
                           "{title}",
                           () => lesson.title || t("creatorEditor.builder.curriculum.untitledLesson"),
                         )}
-                        className="rounded-none border border-[var(--color-line)] bg-white px-3 py-2 text-xs text-[var(--color-ink-soft)] disabled:opacity-50"
+                        className="rounded-md border border-[var(--color-line)] bg-white px-3 py-2 text-xs text-[var(--color-ink-soft)] disabled:opacity-50"
                       >
                         <option value="">{t("creatorEditor.builder.curriculum.moveToModule")}</option>
                         {modules.map((other, otherIndex) =>
@@ -2016,7 +2031,7 @@ export function CourseBuilderStudio() {
                       )
                     }
                     disabled={!isEditable}
-                    className={`rounded-none border px-3 py-2 text-xs font-semibold disabled:opacity-50 ${
+                    className={`rounded-md border px-3 py-2 text-xs font-semibold disabled:opacity-50 ${
                       freePreviewLessonId === lesson.id
                         ? "border-[var(--color-primary)] bg-[rgba(26,54,93,0.08)] text-[var(--color-primary)]"
                         : "border-[var(--color-line)] bg-white text-[var(--color-ink-soft)]"
@@ -2031,7 +2046,7 @@ export function CourseBuilderStudio() {
                   type="button"
                   onClick={() => deleteLesson(module.id, lesson.id)}
                   disabled={!isEditable}
-                  className="rounded-none border border-[rgba(178,34,52,0.22)] bg-white px-3 py-2 text-xs font-semibold text-[var(--color-accent-fg)] disabled:opacity-50"
+                  className="rounded-md border border-[rgba(178,34,52,0.22)] bg-white px-3 py-2 text-xs font-semibold text-[var(--color-accent-fg)] disabled:opacity-50"
                 >
                   {t("creatorEditor.builder.curriculum.deleteLesson")}
                 </button>
@@ -2419,7 +2434,7 @@ export function CourseBuilderStudio() {
   if (!courseId) {
     return (
       <section className="settings-section-card">
-        <p className="rounded-none border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
+        <p className="rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
           {t("creatorEditor.builder.shell.chooseCourse")}
         </p>
         <Link href="/teach" className="button-outline mt-5 px-4 py-2.5 text-sm">
@@ -2440,7 +2455,7 @@ export function CourseBuilderStudio() {
   if (error && !course) {
     return (
       <section className="settings-section-card">
-        <p className="rounded-none border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
+        <p className="rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
           {errorMessage}
         </p>
         <Link href="/teach" className="button-outline mt-5 px-4 py-2.5 text-sm">
@@ -2473,7 +2488,7 @@ export function CourseBuilderStudio() {
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <StatusChip status={course?.status ?? "draft"} />
-            <span className="rounded-none border border-[var(--color-line)] bg-[var(--color-surface)]/70 px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--color-ink-soft)]">
+            <span className="rounded-chip border border-[var(--color-line)] bg-[var(--color-surface)]/70 px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--color-ink-soft)]">
               {t("creatorEditor.builder.summary.percent").replace("{percent}", () => String(readiness.percent))}
             </span>
             {isEditable ? (
@@ -2546,10 +2561,10 @@ export function CourseBuilderStudio() {
             {/* A barra media estagios (5) e o chip media checks (7): 40% e
                 71% no mesmo cabecalho para o mesmo curso. Agora os tres leem
                 o mesmo numero. */}
-            <div className="mt-2 h-1.5 overflow-hidden rounded-none bg-[var(--color-surface-strong)]">
+            <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[var(--color-surface-strong)]">
               <div
                 data-testid="publish-readiness-bar"
-                className="h-full rounded-none bg-[var(--color-primary)] transition-[width] duration-300"
+                className="h-full rounded-full bg-[var(--color-primary)] transition-[width] duration-300"
                 style={{ width: `${readiness.percent}%` }}
               />
             </div>
@@ -2632,16 +2647,16 @@ export function CourseBuilderStudio() {
           </div>
 
         {course?.status === "in_review" ? (
-          <p className="mt-5 rounded-none border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
+          <p className="mt-5 rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
             {t("creatorEditor.builder.shell.legacy")}
           </p>
         ) : course?.status === "published" ? (
-          <p className="mt-5 rounded-none border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
+          <p className="mt-5 rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
             {t("creatorEditor.builder.shell.published")}
           </p>
         ) : null}
         {course?.reviewNote ? (
-          <div className="mt-5 rounded-none border border-[rgba(178,34,52,0.18)] bg-[rgba(178,34,52,0.04)] p-4">
+          <div className="mt-5 rounded-lg border border-[rgba(178,34,52,0.18)] bg-[rgba(178,34,52,0.04)] p-4">
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
               {t("creatorEditor.builder.shell.reviewNote")}
             </p>
@@ -2655,7 +2670,11 @@ export function CourseBuilderStudio() {
         <div className="mt-6 grid gap-4">
           <div id="builder-sec-cover" className="scroll-mt-24">
             {course ? (
-              <CourseCoverField course={course} isEditable={isEditable} />
+              <CourseCoverField
+                course={course}
+                isEditable={isEditable}
+                onUploaded={() => void courseReloadRef.current?.()}
+              />
             ) : null}
           </div>
           <label
@@ -2667,7 +2686,7 @@ export function CourseBuilderStudio() {
               value={title}
               onChange={(event) => setTitle(event.target.value)}
               disabled={!isEditable}
-              className="rounded-none border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
+              className="rounded-md border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
             />
           </label>
           <div className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
@@ -2692,7 +2711,7 @@ export function CourseBuilderStudio() {
               onChange={(event) => setSummary(event.target.value)}
               disabled={!isEditable}
               rows={4}
-              className="resize-none rounded-none border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
+              className="resize-none rounded-md border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
             />
             <span
               className={`text-xs font-semibold ${
@@ -2739,7 +2758,7 @@ export function CourseBuilderStudio() {
                       maxLength={120}
                       aria-label={t("creatorEditor.builder.details.outcomeLabel").replace("{index}", () => String(index + 1))}
                       placeholder={t("creatorEditor.builder.details.outcomePlaceholder")}
-                      className="min-w-0 flex-1 rounded-none border border-[var(--color-line)] bg-white px-4 py-2.5 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
+                      className="min-w-0 flex-1 rounded-md border border-[var(--color-line)] bg-white px-4 py-2.5 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
                     />
                     {isEditable ? (
                       <button
@@ -2752,7 +2771,7 @@ export function CourseBuilderStudio() {
                           )
                         }
                         aria-label={t("creatorEditor.builder.details.removeOutcome").replace("{index}", () => String(index + 1))}
-                        className="shrink-0 rounded-none border border-[var(--color-line)] p-2.5 text-[var(--color-ink-soft)] transition-colors hover:border-[var(--color-accent-fg)] hover:text-[var(--color-accent-fg)]"
+                        className="shrink-0 rounded-md border border-[var(--color-line)] p-2.5 text-[var(--color-ink-soft)] transition-colors hover:border-[var(--color-accent-fg)] hover:text-[var(--color-accent-fg)]"
                       >
                         <Trash2 aria-hidden="true" size={14} strokeWidth={1.8} />
                       </button>
@@ -2761,7 +2780,7 @@ export function CourseBuilderStudio() {
                 ))}
               </ul>
             ) : (
-              <p className="rounded-none border border-dashed border-[var(--color-line)] bg-[var(--color-surface-soft)] px-4 py-3 text-xs text-[var(--color-ink-soft)]">
+              <p className="rounded-md border border-dashed border-[var(--color-line)] bg-[var(--color-surface-soft)] px-4 py-3 text-xs text-[var(--color-ink-soft)]">
                 {t("creatorEditor.builder.details.noOutcomes")}
               </p>
             )}
@@ -2777,14 +2796,14 @@ export function CourseBuilderStudio() {
                   )
                 }
                 disabled={learningOutcomes.length >= MAX_LEARNING_OUTCOMES}
-                className="inline-flex w-fit items-center gap-1.5 rounded-none border border-[var(--color-line)] px-3 py-2 text-xs font-semibold text-[var(--color-primary)] transition-colors hover:border-[var(--color-primary-light)] disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex w-fit items-center gap-1.5 rounded-md border border-[var(--color-line)] px-3 py-2 text-xs font-semibold text-[var(--color-primary)] transition-colors hover:border-[var(--color-primary-light)] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <Plus aria-hidden="true" size={14} strokeWidth={2} />
                 {t("creatorEditor.builder.details.addOutcome")}
               </button>
             ) : null}
           </div>
-          <p className="rounded-none border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
+          <p className="rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
             {t("creatorEditor.builder.details.help")}
           </p>
         </div>
@@ -2824,7 +2843,7 @@ export function CourseBuilderStudio() {
         ) : null}
 
         {activeTab === "members" && course ? (
-          <div className="rounded-none border fine-rule bg-[var(--color-surface-soft)] p-4">
+          <div className="rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="grid gap-1">
                 <p className="text-sm font-semibold text-[var(--color-ink)]">
@@ -2844,7 +2863,7 @@ export function CourseBuilderStudio() {
                   setCommunityEnabled((previous) => !previous);
                   setSuccess(null);
                 }}
-                className={`relative h-7 w-12 shrink-0 rounded-none transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+                className={`relative h-7 w-12 shrink-0 rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
                   communityEnabled
                     ? "bg-[var(--color-primary)]"
                     : "bg-[var(--color-line)]"
@@ -2869,7 +2888,7 @@ export function CourseBuilderStudio() {
         {activeTab === "pricing" ? (
           <div
             id="builder-sec-pricing"
-            className="scroll-mt-24 rounded-none border fine-rule bg-[var(--color-surface-soft)] p-4"
+            className="scroll-mt-24 rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4"
           >
             {paymentType === "free" ? (
               // Gratis pula o preco. Antes a aba inteira aparecia com o valor
@@ -2932,7 +2951,7 @@ export function CourseBuilderStudio() {
                       disabled={!isEditable}
                       inputMode="decimal"
                       placeholder={t("creatorEditor.builder.pricing.pricePlaceholder")}
-                      className="min-w-0 rounded-none border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
+                      className="min-w-0 rounded-md border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
                     />
                   </label>
                   <label className="grid min-w-0 gap-2 text-sm font-semibold text-[var(--color-ink)]">
@@ -2950,7 +2969,7 @@ export function CourseBuilderStudio() {
                   </label>
                 </div>
                 {showCardInstallments ? (
-                  <div className="mt-4 flex flex-wrap items-start justify-between gap-4 rounded-none border border-[var(--color-line)] bg-white p-4">
+                  <div className="mt-4 flex flex-wrap items-start justify-between gap-4 rounded-lg border border-[var(--color-line)] bg-white p-4">
                     <div className="max-w-xl">
                       <p className="text-sm font-semibold text-[var(--color-ink)]">
                         {t("creatorEditor.builder.pricing.installments")}
@@ -2968,7 +2987,7 @@ export function CourseBuilderStudio() {
                       aria-label={t("creatorEditor.builder.pricing.enableInstallments")}
                       disabled={!isEditable || !canConfigureCardInstallments}
                       onClick={() => setInstallmentsEnabled((previous) => !previous)}
-                      className={`relative h-7 w-12 shrink-0 rounded-none transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+                      className={`relative h-7 w-12 shrink-0 rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
                         installmentsEnabled && canConfigureCardInstallments
                           ? "bg-[var(--color-primary)]"
                           : "bg-[var(--color-line)]"
@@ -2991,7 +3010,7 @@ export function CourseBuilderStudio() {
                     value={freePreviewLessonId}
                     onChange={(event) => setFreePreviewLessonId(event.target.value)}
                     disabled={!isEditable || allLessons.length === 0}
-                    className="rounded-none border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
+                    className="rounded-md border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
                   >
                     <option value="">{t("creatorEditor.builder.pricing.noPreview")}</option>
                     {allLessons.map((lesson) => (
@@ -3037,7 +3056,7 @@ export function CourseBuilderStudio() {
 
             {isModuleFormOpen ? (
               <form
-                className="mt-4 grid gap-3 rounded-none border fine-rule bg-[var(--color-surface-soft)] p-4"
+                className="mt-4 grid gap-3 rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4"
                 onSubmit={handleAddModule}
               >
                 <h5 className="text-sm font-semibold text-[var(--color-ink)]">
@@ -3054,7 +3073,7 @@ export function CourseBuilderStudio() {
                   disabled={!isEditable}
                   aria-label={t("creatorEditor.builder.curriculum.moduleTitle")}
                   placeholder={t("creatorEditor.builder.curriculum.moduleTitlePlaceholder")}
-                  className="min-w-0 flex-1 rounded-none border border-[var(--color-line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
+                  className="min-w-0 flex-1 rounded-md border border-[var(--color-line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
                 />
                 <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
                   {t("creatorEditor.builder.curriculum.moduleDescription")}
@@ -3065,7 +3084,7 @@ export function CourseBuilderStudio() {
                     rows={2}
                     aria-label={t("creatorEditor.builder.curriculum.moduleDescription")}
                     placeholder={t("creatorEditor.builder.curriculum.moduleDescriptionExample")}
-                    className="mt-3 w-full resize-none rounded-none border border-[var(--color-line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
+                    className="mt-3 w-full resize-none rounded-md border border-[var(--color-line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
                   />
                 </label>
                 {moduleError ? (
@@ -3120,7 +3139,7 @@ export function CourseBuilderStudio() {
                         moveLessonToModule(lessonId, module.id);
                       }
                     }}
-                    className="flex flex-wrap items-center gap-3 rounded-none border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-3"
+                    className="flex flex-wrap items-center gap-3 rounded-lg border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-3"
                   >
                     <Link
                       href={builderModuleHref(module.id)}
@@ -3131,10 +3150,10 @@ export function CourseBuilderStudio() {
                           moduleNavigationRef.current = { returnTo: null };
                         }
                       }}
-                      className="flex min-h-11 min-w-0 flex-1 items-center gap-3 rounded-none"
+                      className="flex min-h-11 min-w-0 flex-1 items-center gap-3 rounded-md"
                     >
-                      {/* Recorte da capa vertical 2:3. */}
-                      <span className="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-none border border-[var(--color-line)] bg-white text-[var(--color-ink-soft)]">
+                      {/* Recorte redondo da capa vertical 2:3. */}
+                      <span className="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-full border border-[var(--color-line)] bg-white text-[var(--color-ink-soft)]">
                         {coverUrl ? (
                           // eslint-disable-next-line @next/next/no-img-element -- module cover is an arbitrary CourseAsset URL
                           <img src={coverUrl} alt="" className="h-full w-full object-cover" />
@@ -3176,7 +3195,7 @@ export function CourseBuilderStudio() {
                         type="button"
                         onClick={() => deleteModule(module.id)}
                         disabled={!isEditable}
-                        className="rounded-none border border-[rgba(178,34,52,0.22)] bg-white px-3 py-2 text-xs font-semibold text-[var(--color-accent-fg)] disabled:opacity-50"
+                        className="rounded-md border border-[rgba(178,34,52,0.22)] bg-white px-3 py-2 text-xs font-semibold text-[var(--color-accent-fg)] disabled:opacity-50"
                       >
                         {t("creatorEditor.builder.curriculum.delete")}
                       </button>
@@ -3193,7 +3212,7 @@ export function CourseBuilderStudio() {
                                 event.dataTransfer.effectAllowed = "move";
                               }}
                               title={t("creatorEditor.builder.curriculum.dragLessonHint")}
-                              className="inline-flex cursor-grab rounded-none border border-[var(--color-line)] bg-white px-2 py-1 text-xs text-[var(--color-ink-soft)]"
+                              className="inline-flex cursor-grab rounded-md border border-[var(--color-line)] bg-white px-2 py-1 text-xs text-[var(--color-ink-soft)]"
                             >
                               {lesson.title || t("creatorEditor.builder.curriculum.untitledLesson")}
                             </span>
@@ -3225,7 +3244,7 @@ export function CourseBuilderStudio() {
                       setDripStrategy(event.target.value as DripStrategy)
                     }
                     disabled={!isEditable}
-                    className="rounded-none border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
+                    className="rounded-md border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
                   >
                     {dripStrategies.map((item) => (
                       <option key={item.value} value={item.value}>
@@ -3243,7 +3262,7 @@ export function CourseBuilderStudio() {
                       disabled={!isEditable}
                       inputMode="numeric"
                       aria-label={`${releaseEveryLabel} … ${t("creatorEditor.builder.release.days")}`}
-                      className="w-20 rounded-none border border-[var(--color-line)] bg-white px-3 py-3 text-center text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
+                      className="w-20 rounded-md border border-[var(--color-line)] bg-white px-3 py-3 text-center text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
                     />
                     <span aria-hidden="true">{t("creatorEditor.builder.release.days")}</span>
                   </div>
@@ -3265,7 +3284,7 @@ export function CourseBuilderStudio() {
         {activeTab === "review" ? (
           <div
             id="builder-sec-review"
-            className="mt-6 scroll-mt-24 rounded-none border fine-rule bg-[var(--color-surface-soft)] p-5"
+            className="mt-6 scroll-mt-24 rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-5"
           >
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
               {t("creatorEditor.builder.publish.title")}
@@ -3285,7 +3304,7 @@ export function CourseBuilderStudio() {
               renderItem={(item) => (
                 <li
                   key={item.id}
-                  className="rounded-none border border-[var(--color-line)] bg-white px-4 py-3"
+                  className="rounded-md border border-[var(--color-line)] bg-white px-4 py-3"
                 >
                   <p className={`text-sm font-semibold ${item.done ? "text-[var(--color-primary)]" : "text-[var(--color-accent-fg)]"}`}>
                     {item.done ? "✓ " : ""}
@@ -3376,14 +3395,14 @@ export function CourseBuilderStudio() {
           </h3>
           <div className="mt-5 grid gap-3">
             {modules.length === 0 ? (
-              <p className="rounded-none border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
+              <p className="rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
                 {t("creatorEditor.builder.summary.empty")}
               </p>
             ) : (
               modules.map((module, index) => (
                 <article
                   key={module.id}
-                  className="rounded-none border fine-rule bg-[var(--color-surface-soft)] p-4"
+                  className="rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4"
                 >
                   <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
                     {t("creatorEditor.builder.curriculum.moduleNumber").replace("{index}", () => String(index + 1))}
@@ -3400,7 +3419,7 @@ export function CourseBuilderStudio() {
                       module.lessons.map((lesson) => (
                         <div
                           key={lesson.id}
-                          className="rounded-none bg-white px-3 py-2"
+                          className="rounded-md bg-white px-3 py-2"
                         >
                           <p className="text-xs font-semibold text-[var(--color-ink)]">
                             {lesson.title}
@@ -3457,7 +3476,7 @@ export function CourseBuilderStudio() {
           {error ? (
             <div
               role="alert"
-              className="mt-4 rounded-none border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]"
+              className="mt-4 rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]"
             >
               <p>{errorMessage}</p>
               {error.code === "activation" ? (
@@ -3612,7 +3631,7 @@ function BuilderSaveStatus({
     return (
       <span
         role="status"
-        className="inline-flex items-center gap-1.5 rounded-none border border-[rgba(178,34,52,0.22)] bg-[rgba(178,34,52,0.06)] px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--color-danger-fg)]"
+        className="inline-flex items-center gap-1.5 rounded-chip border border-[rgba(178,34,52,0.22)] bg-[rgba(178,34,52,0.06)] px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--color-danger-fg)]"
       >
         <CloudOff aria-hidden="true" size={12} strokeWidth={2} />
         {t("creatorEditor.builder.save.blocked").replace("{reason}", () =>
@@ -3624,7 +3643,7 @@ function BuilderSaveStatus({
 
   if (state === "saving") {
     return (
-      <span className="inline-flex items-center gap-1.5 rounded-none border border-[var(--color-line)] bg-white px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--color-ink-soft)]">
+      <span className="inline-flex items-center gap-1.5 rounded-chip border border-[var(--color-line)] bg-white px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--color-ink-soft)]">
         <Loader2
           aria-hidden="true"
           size={12}
@@ -3638,7 +3657,7 @@ function BuilderSaveStatus({
 
   if (state === "pending") {
     return (
-      <span className="inline-flex items-center gap-1.5 rounded-none border border-[var(--color-line)] bg-white px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--color-ink-muted)]">
+      <span className="inline-flex items-center gap-1.5 rounded-chip border border-[var(--color-line)] bg-white px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--color-ink-muted)]">
         <span className="size-1.5 rounded-full bg-[var(--color-ink-muted)]" />
         {t("creatorEditor.builder.save.pending")}
       </span>
@@ -3647,7 +3666,7 @@ function BuilderSaveStatus({
 
   if (state === "error") {
     return (
-      <span className="inline-flex items-center gap-1.5 rounded-none border border-[rgba(178,34,52,0.22)] bg-[rgba(178,34,52,0.06)] px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--color-danger-fg)]">
+      <span className="inline-flex items-center gap-1.5 rounded-chip border border-[rgba(178,34,52,0.22)] bg-[rgba(178,34,52,0.06)] px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--color-danger-fg)]">
         <CloudOff aria-hidden="true" size={12} strokeWidth={2} />
         {t("creatorEditor.builder.save.error")}
       </span>
@@ -3655,7 +3674,7 @@ function BuilderSaveStatus({
   }
 
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-none border border-[var(--color-line)] bg-white px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--color-primary)]">
+    <span className="inline-flex items-center gap-1.5 rounded-chip border border-[var(--color-line)] bg-white px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--color-primary)]">
       <CheckCircle2 aria-hidden="true" size={12} strokeWidth={2} />
       {t("creatorEditor.builder.save.saved")}
     </span>
@@ -3670,9 +3689,12 @@ function BuilderSaveStatus({
 function CourseCoverField({
   course,
   isEditable,
+  onUploaded,
 }: {
   course: TeacherCourse;
   isEditable: boolean;
+  /** A previa vem de course.coverImageUrl: quem chama busca o curso de novo. */
+  onUploaded?: () => void;
 }) {
   const { t } = useTranslation();
   const [isUploading, setIsUploading] = useState(false);
@@ -3709,6 +3731,7 @@ function CourseCoverField({
         isPreview: false,
         onProgress: setProgress,
       });
+      onUploaded?.();
     } catch (uploadError) {
       // O motivo real (teto de tamanho, permissão, conexão) já vem pronto do
       // domínio; o texto genérico mandava conferir "propriedade do curso".
@@ -3721,7 +3744,7 @@ function CourseCoverField({
   }
 
   return (
-    <section className="grid gap-3 rounded-none border fine-rule bg-[var(--color-surface-soft)] p-4">
+    <section className="grid gap-3 rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
@@ -3732,14 +3755,14 @@ function CourseCoverField({
           </p>
         </div>
         {course.coverImageUrl ? (
-          <span className="inline-flex items-center gap-1 rounded-none bg-white px-3 py-1 text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--color-primary)]">
+          <span className="inline-flex items-center gap-1 rounded-chip bg-white px-3 py-1 text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--color-primary)]">
             <CheckCircle2 size={12} aria-hidden /> {t("creatorEditor.members.coverSet")}
           </span>
         ) : null}
       </div>
 
       <div className="grid gap-3 sm:grid-cols-[200px_1fr] sm:items-start">
-        <div className="relative aspect-video overflow-hidden rounded-none border border-[var(--color-line)] bg-white">
+        <div className="relative aspect-video overflow-hidden rounded-md border border-[var(--color-line)] bg-white">
           {course.coverImageUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -3759,7 +3782,7 @@ function CourseCoverField({
 
         <div className="grid content-start gap-2">
           <label
-            className={`inline-flex w-fit items-center gap-2 rounded-none border border-dashed border-[var(--color-line)] bg-white px-4 py-3 text-sm font-semibold text-[var(--color-primary)] transition-colors hover:border-[var(--color-primary-light)] focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[var(--color-primary)] ${
+            className={`inline-flex w-fit items-center gap-2 rounded-md border border-dashed border-[var(--color-line)] bg-white px-4 py-3 text-sm font-semibold text-[var(--color-primary)] transition-colors hover:border-[var(--color-primary-light)] focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[var(--color-primary)] ${
               !isEditable || isUploading
                 ? "pointer-events-none opacity-60"
                 : "cursor-pointer"
@@ -3784,7 +3807,7 @@ function CourseCoverField({
           {progress ? <UploadProgressNote progress={progress} /> : null}
 
           {error ? (
-            <p role="alert" className="rounded-none border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-3 py-2 text-xs font-semibold text-[var(--color-danger-fg)]">
+            <p role="alert" className="rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-3 py-2 text-xs font-semibold text-[var(--color-danger-fg)]">
               {error.kind === "invalid-image"
                 ? t("creatorEditor.members.invalidImage").replace("{limit}", () => formatCourseAssetSize(supabaseUploadLimitBytes))
                 : getCourseAssetUploadErrorMessage(error.cause, supabaseUploadLimitBytes, t)}
@@ -3866,8 +3889,16 @@ function MembersAreaTab({
     return () => observer.disconnect();
   }, []);
 
+  // course_assets nao esta na publicacao do Realtime: depois do upload a
+  // previa busca a lista de novo, senao a capa nova so aparecia ao recarregar.
+  const assetsReloadRef = useRef<(() => Promise<void>) | null>(null);
   useEffect(() => {
-    return subscribeToCourseAssets(course.id, setAssets, () => undefined);
+    const subscription = subscribeToCourseAssets(course.id, setAssets, () => undefined);
+    assetsReloadRef.current = subscription.reload;
+    return () => {
+      assetsReloadRef.current = null;
+      subscription();
+    };
   }, [course.id]);
 
   // members_cover is a public-download kind, so the resolved asset carries the
@@ -3892,7 +3923,7 @@ function MembersAreaTab({
           <p className="text-xs font-normal leading-5 text-[var(--color-ink-soft)]">
             {t("creatorEditor.members.themeHelp")}
           </p>
-          <div className="inline-flex w-fit gap-1 rounded-none border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-1">
+          <div className="inline-flex w-fit gap-1 rounded-md border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-1">
             {(
               [
                 { value: "light", label: t("creatorEditor.members.light"), icon: Sun },
@@ -3909,7 +3940,7 @@ function MembersAreaTab({
                   disabled={!isEditable}
                   aria-pressed={active}
                   onClick={() => onThemeChange(option.value)}
-                  className={`inline-flex min-h-11 items-center gap-1.5 rounded-none px-3 py-2 text-sm font-semibold transition-colors disabled:opacity-60 ${
+                  className={`inline-flex min-h-11 items-center gap-1.5 rounded-sm px-3 py-2 text-sm font-semibold transition-colors disabled:opacity-60 ${
                     active
                       ? "bg-white text-[var(--color-primary)] shadow-[var(--shadow-soft)]"
                       : "text-[var(--color-ink-soft)] hover:text-[var(--color-ink)]"
@@ -3927,7 +3958,10 @@ function MembersAreaTab({
           course={course}
           isEditable={isEditable}
           coverUrl={coverUrl}
-          onUploaded={onCoverAssetIdChange}
+          onUploaded={(assetId) => {
+            onCoverAssetIdChange(assetId);
+            void assetsReloadRef.current?.();
+          }}
           onRemove={() => onCoverAssetIdChange(null)}
         />
 
@@ -3939,7 +3973,7 @@ function MembersAreaTab({
             disabled={!isEditable}
             maxLength={80}
             placeholder={course.title || t("creatorEditor.members.titlePlaceholder")}
-            className="rounded-none border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
+            className="rounded-md border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
           />
           <span className="text-xs font-semibold text-[var(--color-ink-soft)]">
             {t("creatorEditor.members.titleHelp").replace("{length}", () => String(title.length))}
@@ -3954,7 +3988,7 @@ function MembersAreaTab({
             disabled={!isEditable}
             maxLength={160}
             placeholder={t("creatorEditor.members.subtitlePlaceholder")}
-            className="rounded-none border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
+            className="rounded-md border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
           />
           <span className="text-xs font-semibold text-[var(--color-ink-soft)]">
             {t("creatorEditor.members.subtitleHelp").replace("{length}", () => String(subtitle.length))}
@@ -3970,7 +4004,7 @@ function MembersAreaTab({
             maxLength={2000}
             rows={4}
             placeholder={t("creatorEditor.members.descriptionPlaceholder")}
-            className="resize-none rounded-none border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
+            className="resize-none rounded-md border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
           />
           <span className="text-xs font-semibold text-[var(--color-ink-soft)]">
             {description.length}/2000
@@ -3978,7 +4012,7 @@ function MembersAreaTab({
         </label>
       </div>
 
-      <div className="grid gap-3 rounded-none border fine-rule bg-[var(--color-surface-soft)] p-4 lg:sticky lg:top-24">
+      <div className="grid gap-3 rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4 lg:sticky lg:top-24">
         <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
           {t("creatorEditor.members.livePreview")}
         </p>
@@ -3991,7 +4025,7 @@ function MembersAreaTab({
             width: "100%",
             height: previewSize.height * previewSize.width / 1080,
             overflow: "hidden",
-            borderRadius: 0,
+            borderRadius: 8,
             background: "var(--ma-bg)",
             pointerEvents: "none",
           }}
@@ -4112,7 +4146,7 @@ function MembersCoverField({
   }
 
   return (
-    <section aria-label={title} className={moduleId ? "grid min-w-0 content-start gap-3" : "grid gap-3 rounded-none border fine-rule bg-[var(--color-surface-soft)] p-4"}>
+    <section aria-label={title} className={moduleId ? "grid min-w-0 content-start gap-3" : "grid gap-3 rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4"}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
@@ -4123,14 +4157,14 @@ function MembersCoverField({
           </p>
         </div>
         {coverUrl ? (
-          <span className="inline-flex items-center gap-1 rounded-none bg-white px-3 py-1 text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--color-primary)]">
+          <span className="inline-flex items-center gap-1 rounded-chip bg-white px-3 py-1 text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--color-primary)]">
             <CheckCircle2 size={12} aria-hidden /> {t("creatorEditor.members.coverSet")}
           </span>
         ) : null}
       </div>
 
       <div className={moduleId ? "grid min-w-0 gap-3" : "grid gap-3 sm:grid-cols-[200px_1fr] sm:items-start"}>
-        <div className={`relative overflow-hidden rounded-none border border-[var(--color-line)] bg-white ${moduleId ? "aspect-[2/3] w-32" : "aspect-video"}`}>
+        <div className={`relative overflow-hidden rounded-md border border-[var(--color-line)] bg-white ${moduleId ? "aspect-[2/3] w-32" : "aspect-video"}`}>
           {coverUrl ? (
             // eslint-disable-next-line @next/next/no-img-element -- members cover is an arbitrary CourseAsset URL
             <img
@@ -4150,7 +4184,7 @@ function MembersCoverField({
 
         <div className="grid content-start gap-2">
           <label
-            className={`inline-flex w-fit items-center gap-2 rounded-none border border-dashed border-[var(--color-line)] bg-white px-4 py-3 text-sm font-semibold text-[var(--color-primary)] transition-colors hover:border-[var(--color-primary-light)] focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[var(--color-primary)] ${
+            className={`inline-flex w-fit items-center gap-2 rounded-md border border-dashed border-[var(--color-line)] bg-white px-4 py-3 text-sm font-semibold text-[var(--color-primary)] transition-colors hover:border-[var(--color-primary-light)] focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[var(--color-primary)] ${
               !isEditable || isUploading
                 ? "pointer-events-none opacity-60"
                 : "cursor-pointer"
@@ -4186,7 +4220,7 @@ function MembersCoverField({
           {progress ? <UploadProgressNote progress={progress} /> : null}
 
           {error ? (
-            <p role="alert" className="rounded-none border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-3 py-2 text-xs font-semibold text-[var(--color-danger-fg)]">
+            <p role="alert" className="rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-3 py-2 text-xs font-semibold text-[var(--color-danger-fg)]">
               {error.kind === "too-large"
                 ? t("creatorEditor.members.coverTooLarge")
                 : error.kind === "invalid-image"

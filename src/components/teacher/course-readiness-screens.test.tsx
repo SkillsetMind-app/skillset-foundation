@@ -310,7 +310,7 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     }));
     vi.mocked(subscribeToTeacherCourse).mockImplementationOnce((_id, emit) => {
       emit({ ...mocks.course, modules: [{ id: "m1", title, lessons }] });
-      return () => {};
+      return Object.assign(() => {}, { reload: async () => {} });
     });
     const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
     renderBuilder("content");
@@ -349,7 +349,7 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     vi.mocked(subscribeToTeacherCourse).mockImplementationOnce((_id, emit) => {
       // A aula precisa de conteudo para o Publish destravar (item lessonMedia).
       emit({ ...mocks.course, paymentType: "free", priceAmountMinor: 0, modules: [{ id: "m1", title: "Start here", lessons: [{ id: "l1", title: "Welcome", description: "", type: "text", contentText: "Read this first." }] }] });
-      return () => {};
+      return Object.assign(() => {}, { reload: async () => {} });
     });
     const activation = new Error("Pay the one-time activation fee before publishing courses.");
     if (operation === "save") vi.mocked(updateTeacherCourseBuilder).mockRejectedValueOnce(activation);
@@ -372,7 +372,7 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
   it("maps the server empty-lesson refusal to the lesson content message", async () => {
     vi.mocked(subscribeToTeacherCourse).mockImplementationOnce((_id, emit) => {
       emit({ ...mocks.course, paymentType: "free", priceAmountMinor: 0, modules: [{ id: "m1", title: "Start here", lessons: [{ id: "l1", title: "Welcome", description: "", type: "text", contentText: "Read this first." }] }] });
-      return () => {};
+      return Object.assign(() => {}, { reload: async () => {} });
     });
     vi.mocked(publishTeacherCourse).mockRejectedValueOnce(
       new Error("Every lesson needs a video, text or a file before publishing."),
@@ -402,7 +402,7 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     vi.mocked(subscribeToTeacherCourse).mockImplementationOnce((_id, emit) => {
       emitCourse = emit;
       emit(mocks.course);
-      return () => {};
+      return Object.assign(() => {}, { reload: async () => {} });
     });
     vi.mocked(updateTeacherCourseBuilder).mockImplementationOnce(() => new Promise<void>((resolve) => { finishSave = resolve; }));
     mocks.searchParams.set("module", "m1");
@@ -486,7 +486,7 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     vi.mocked(subscribeToTeacherCourse).mockImplementationOnce((_id, emit, fail) => {
       recover = emit;
       fail(new Error("Temporary fixture failure"));
-      return unsubscribe;
+      return Object.assign(unsubscribe, { reload: async () => {} });
     });
     const { unmount } = renderBuilder();
     expect(screen.getByText(/We could not load this course/)).toBeInTheDocument();
@@ -528,7 +528,7 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     vi.mocked(subscribeToTeacherCourse).mockImplementationOnce((_id, onCourse, onError) => {
       recover = onCourse;
       onError(new Error("Temporary load failure"));
-      return () => {};
+      return Object.assign(() => {}, { reload: async () => {} });
     });
     const observe = vi.fn();
     vi.stubGlobal("ResizeObserver", class {
@@ -658,7 +658,7 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     vi.mocked(subscribeToTeacherCourse).mockImplementationOnce((_id, onCourse, onError) => {
       receive = onCourse;
       if (failsFirst) onError(new Error("Temporary load failure"));
-      return () => {};
+      return Object.assign(() => {}, { reload: async () => {} });
     });
     const { container } = render(navigationFixture());
     const viewport = container.querySelector<HTMLElement>(".platform-content")!;
@@ -916,7 +916,7 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     const authorTitle = "Curso $$50; código $&.";
     vi.mocked(subscribeToTeacherCourse).mockImplementationOnce((_id, emit) => {
       emit({ ...mocks.course, title: authorTitle });
-      return () => {};
+      return Object.assign(() => {}, { reload: async () => {} });
     });
     let emitAssets: (assets: CourseAsset[]) => void = () => {};
     vi.mocked(subscribeToCourseAssets).mockImplementationOnce((_id, emit) => {
@@ -980,7 +980,7 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     };
     vi.mocked(subscribeToTeacherCourse).mockImplementationOnce((_id, emit) => {
       emit(paidCourse);
-      return () => {};
+      return Object.assign(() => {}, { reload: async () => {} });
     });
     const { container } = render(
       <I18nProvider initialLocale={initialLocale}>
@@ -1059,7 +1059,7 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
           },
         ] }],
       });
-      return () => {};
+      return Object.assign(() => {}, { reload: async () => {} });
     });
     renderBuilder("review");
     await screen.findByRole("heading", { name: mocks.course.title });
@@ -1107,7 +1107,7 @@ describe("aba de preco sem o que nao se aplica", () => {
   function emit(course: TeacherCourse) {
     vi.mocked(subscribeToTeacherCourse).mockImplementationOnce((_id, onData) => {
       onData(course);
-      return () => {};
+      return Object.assign(() => {}, { reload: async () => {} });
     });
   }
 
@@ -1278,7 +1278,7 @@ describe("Painel: o que falta para publicar vem primeiro e cada linha leva a alg
 
     vi.mocked(subscribeToTeacherCourse).mockImplementation((_id, onCourse) => {
       onCourse({ ...mocks.course, status: "published" });
-      return () => undefined;
+      return Object.assign(() => {}, { reload: async () => {} });
     });
     render(<CourseManageHub courseId="course-1" />);
     await screen.findByText("Publish checklist");
@@ -1341,7 +1341,7 @@ describe("publicar sem surpresa", () => {
     mocks.resetSubscriptionCounts();
     vi.mocked(subscribeToTeacherCourse).mockImplementationOnce((_id, emit) => {
       emit(readyFreeCourse);
-      return () => {};
+      return Object.assign(() => {}, { reload: async () => {} });
     });
   });
 
@@ -1421,7 +1421,7 @@ describe("motivo do bloqueio no analytics", () => {
         priceAmountMinor: 0,
         modules: [{ id: "m1", title: "Start here", lessons: [{ id: "l1", title: "Welcome", description: "", type: "text", contentText: "Read this first." }] }],
       });
-      return () => {};
+      return Object.assign(() => {}, { reload: async () => {} });
     });
   });
 
@@ -1455,7 +1455,7 @@ describe("item de payouts no construtor", () => {
   it("links the pending Stripe payouts item to the payouts setup, like Manage", async () => {
     vi.mocked(subscribeToTeacherCourse).mockImplementationOnce((_id, emit) => {
       emit({ ...mocks.course, priceAmountMinor: 12000 });
-      return () => {};
+      return Object.assign(() => {}, { reload: async () => {} });
     });
     renderBuilder("review");
     await screen.findByRole("heading", { name: mocks.course.title });

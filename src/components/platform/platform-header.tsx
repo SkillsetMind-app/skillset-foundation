@@ -13,8 +13,9 @@ import { AccountMenu } from "@/components/site/account-menu";
 import { LogoWordmark } from "@/components/shared/logo-wordmark";
 import { ThemeToggle } from "@/components/shared/theme-toggle";
 import { AdvisorHeaderSlot } from "@/components/teacher/advisor-sidebar";
-import { platformNav } from "@/data/site";
+import { isPlatformNavItemHidden, platformNav } from "@/data/site";
 import { getWorkspaceHomeHref } from "@/lib/auth/routing";
+import type { PermissionSubject } from "@/lib/permissions";
 
 // O hambúrguer daqui foi embora: abaixo de 640px ele abria EXATAMENTE a mesma
 // gaveta que o "More" da barra de baixo, que está sempre visível e ao alcance
@@ -29,7 +30,7 @@ export function PlatformHeader({ currentNavigationHref, searchHref }: {
   const { status, user, signOut } = useAuth();
   const [searchOpen, setSearchOpen] = useState(false);
   const surface = getSurface(pathname);
-  const pageLabel = getPageLabel(pathname, t, currentNavigationHref);
+  const pageLabel = getPageLabel(pathname, t, currentNavigationHref, { roles: user?.roles });
   const showSearch = searchHref !== null && (!pathname.startsWith("/ops") || Boolean(searchHref));
 
   return (
@@ -63,7 +64,7 @@ export function PlatformHeader({ currentNavigationHref, searchHref }: {
           {showSearch ? <button
             type="button"
             onClick={() => setSearchOpen((open) => !open)}
-            className="platform-topbar__search-toggle grid size-10 place-items-center rounded-none border border-[var(--color-line)] bg-[var(--color-surface-soft)] text-[var(--color-ink)] transition hover:bg-[var(--color-surface-strong)]"
+            className="platform-topbar__search-toggle grid size-10 place-items-center rounded-full border border-[var(--color-line)] bg-[var(--color-surface-soft)] text-[var(--color-ink)] transition hover:bg-[var(--color-surface-strong)]"
             aria-expanded={searchOpen}
             aria-label={t("platform.openSearch")}
           >
@@ -121,11 +122,15 @@ function getPageLabel(
   pathname: string,
   t: (key: string) => string,
   currentNavigationHref?: string,
+  subject?: PermissionSubject,
 ): string {
-  const currentItem = platformNav.find((item) => item.href === currentNavigationHref);
+  // A page with a learner name and a teacher name is two entries; skip the
+  // one this account does not see.
+  const items = platformNav.filter((item) => !isPlatformNavItemHidden(subject, item));
+  const currentItem = items.find((item) => item.href === currentNavigationHref);
   if (currentItem) return t(currentItem.labelKey);
 
-  const matches = platformNav
+  const matches = items
     .filter(
       (item) =>
         pathname === item.href || pathname.startsWith(`${item.href}/`),

@@ -123,7 +123,7 @@ export function AdminEnrollmentPanel() {
   }
 
   return (
-    <section className="rounded-none border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
+    <section className="rounded-lg border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
@@ -136,7 +136,7 @@ export function AdminEnrollmentPanel() {
             {t(`${copy}.description`)}
           </p>
         </div>
-        <span className="rounded-none bg-[var(--color-surface-soft)] px-3 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-primary)]">
+        <span className="rounded-md bg-[var(--color-surface-soft)] px-3 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-primary)]">
           {t("platform.ops.paymentsPanel.adminOnly")}
         </span>
       </div>
@@ -148,7 +148,7 @@ export function AdminEnrollmentPanel() {
             value={userId}
             onChange={(event) => setUserId(event.target.value)}
             disabled={isLoadingUsers || users.length === 0 || readErrors.users}
-            className="min-h-11 min-w-0 w-full rounded-none border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
+            className="min-h-11 min-w-0 w-full rounded-md border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
           >
             <option value="">
               {t(`${copy}.${isLoadingUsers ? "loadingUsers" : "chooseUser"}`)}
@@ -167,7 +167,7 @@ export function AdminEnrollmentPanel() {
             value={courseId}
             onChange={(event) => setCourseId(event.target.value)}
             disabled={isLoadingCourses || courses.length === 0 || readErrors.courses}
-            className="min-h-11 min-w-0 w-full rounded-none border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
+            className="min-h-11 min-w-0 w-full rounded-md border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
           >
             <option value="">
               {t(`${copy}.${isLoadingCourses ? "loadingCourses" : "chooseCourse"}`)}
@@ -198,7 +198,7 @@ export function AdminEnrollmentPanel() {
           <h4 className="text-sm font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
             {t(`${copy}.grantedTitle`)}
           </h4>
-          {!isLoadingGranted && !readErrors.grants ? <span className="rounded-none bg-[var(--color-surface-soft)] px-3 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-primary)]">{t(`${copy}.${grantedEnrollments.length === 1 ? "activeOne" : "active"}`).replace("{count}", () => String(grantedEnrollments.length))}</span> : null}
+          {!isLoadingGranted && !readErrors.grants ? <span className="rounded-md bg-[var(--color-surface-soft)] px-3 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-primary)]">{t(`${copy}.${grantedEnrollments.length === 1 ? "activeOne" : "active"}`).replace("{count}", () => String(grantedEnrollments.length))}</span> : null}
         </div>
         <p className="mt-2 text-sm leading-6 text-[var(--color-ink-soft)]">
           {t(`${copy}.grantedDescription`)}
@@ -212,7 +212,7 @@ export function AdminEnrollmentPanel() {
               {t(`${copy}.loadingGranted`)}
             </p>
           ) : grantedEnrollments.length === 0 ? (
-            readErrors.grants ? null : <p className="rounded-none border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">{t(`${copy}.empty`)}</p>
+            readErrors.grants ? null : <p className="rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">{t(`${copy}.empty`)}</p>
           ) : (
             grantedEnrollments.map((enrollment) => {
               const learner = users.find((user) => user.uid === enrollment.userId);
@@ -220,7 +220,7 @@ export function AdminEnrollmentPanel() {
               return (
                 <article
                   key={enrollment.id}
-                  className="flex flex-wrap items-center justify-between gap-3 rounded-none border fine-rule bg-[var(--color-surface-soft)] p-4"
+                  className="flex flex-wrap items-center justify-between gap-3 rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4"
                 >
                   <div className="min-w-0">
                     <p className="break-words text-sm font-semibold text-[var(--color-ink)]">

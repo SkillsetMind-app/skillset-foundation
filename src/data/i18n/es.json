@@ -504,6 +504,7 @@
       "plansFees": "Planes y tarifas",
       "payoutsTax": "Pagos e impuestos",
       "billing": "Facturación",
+      "myPurchases": "Mis compras",
       "reports": "Informes",
       "earnings": "Ingresos",
       "verification": "Verificación"
@@ -1214,6 +1215,16 @@
         "minutes": "Hace {count} min",
         "hours": "Hace {count} h",
         "days": "Hace {count} d"
+      },
+      "types": {
+        "someone": "Alguien",
+        "communityQuestion": "{name} hizo una pregunta en tu curso",
+        "answeredQuestion": "{name} respondió tu pregunta",
+        "repliedPost": "{name} respondió tu publicación",
+        "repliedThread": "{name} respondió una publicación que comentaste",
+        "supportReply": "Soporte respondió tu solicitud",
+        "teacherMessage": "Nuevo mensaje de tu profesor",
+        "studentMessage": "Nuevo mensaje de un alumno"
       }
     },
     "session": {
@@ -1418,6 +1429,7 @@
         "title": "Escribe a tu instructor",
         "heading": "Haz una pregunta privada sobre este curso",
         "description": "Solo tú y el instructor del curso pueden leer esta conversación. Las respuestas también llegan a tu campana de notificaciones.",
+        "descriptionWhitelabel": "Solo tú y el instructor del curso pueden leer esta conversación.",
         "you": "Tú",
         "teacher": "Instructor",
         "bodyLabel": "Tu mensaje privado",
@@ -4113,6 +4125,10 @@
       "marketingEmails": {
         "label": "Correos promocionales",
         "description": "Anuncios de lanzamientos, promociones y campañas editoriales."
+      },
+      "emailDigest": {
+        "label": "Resumen por correo",
+        "description": "Como máximo un correo por hora cuando tienes notificaciones sin ver, como respuestas a tus preguntas."
       }
     },
     "learning": {
@@ -4529,9 +4545,9 @@
     "payoutsBody": "Los compradores pagan directamente a tu cuenta de Stripe. La plataforma no retiene tu dinero; Stripe liquida y transfiere los fondos a tu banco según sus propios plazos, que dependen del país y del método de pago."
   },
   "accountBillingPage": {
-    "eyebrow": "Facturación y recibos",
+    "eyebrow": "Compras y recibos",
     "title": "Tus compras y recibos.",
-    "description": "Cada curso lo vende el educador que lo publica. El pago se realiza en su cuenta de Stripe, por lo que su nombre puede aparecer en el extracto de tu tarjeta. Los cursos de pago único siguen disponibles mientras los conserves; los cursos por suscripción, mientras esta esté activa. Tu plan de SkillsetMind, tus métodos de pago y tus facturas están en el portal seguro de Stripe. Los pagos a los creadores están en Pagos e impuestos."
+    "description": "Cada curso lo vende el educador que lo publica. El pago se realiza en su cuenta de Stripe, por lo que su nombre puede aparecer en el extracto de tu tarjeta. Los cursos de pago único siguen disponibles mientras los conserves; los cursos por suscripción, mientras esta esté activa. Los métodos de pago y las facturas están en tu portal seguro de Stripe."
   },
   "accountNotifications": {
     "title": "Notificaciones",
@@ -5029,14 +5045,16 @@
       "received": "Pago recibido: abriendo tu curso...",
       "receivedDetail": "Tu pago está confirmado. Estamos preparando tu acceso al curso; esta página se abrirá automáticamente en unos segundos.",
       "required": "Necesitas una matrícula.",
-      "requiredDetail": "Este espacio privado solo se abre después del pago, de una matrícula administrativa o de la aprobación del acceso.",
+      "requiredDetail": "Todavía no tienes acceso a este curso.",
       "inactive": "El acceso al curso está inactivo.",
       "inactiveDetail": "Esta matrícula está {status}. Las clases privadas se reabren solo después del pago, de la aprobación administrativa o de la restauración del acceso.",
       "missing": "No se encontró el registro del curso.",
       "missingDetail": "La matrícula existe, pero el registro del curso no está disponible o tiene acceso restringido.",
       "eyebrow": "Acceso al curso",
       "back": "Volver a Mi aprendizaje",
-      "marketplace": "Abrir catálogo"
+      "marketplace": "Abrir catálogo",
+      "seeCourse": "Ver el curso",
+      "wrongAccount": "¿Entraste con otra cuenta? Salir"
     },
     "enrollmentStatus": {
       "active": "activa",
@@ -5653,6 +5671,16 @@
       "teaching": "Cómo enseño esto",
       "process": "Lo que hacemos, paso a paso",
       "firstStep": "Primer paso"
+    },
+    "upload": {
+      "button": "Subir imagen",
+      "uploading": "Subiendo…",
+      "rules": "JPG, PNG o WebP, de hasta {limit}.",
+      "orLink": "O pega un enlace",
+      "previewAlt": "Vista previa de {label}",
+      "remove": "Quitar imagen",
+      "wrongType": "Ese archivo no es una imagen JPG, PNG o WebP.",
+      "tooLarge": "Esa imagen pesa {size}. Usa una de hasta {limit}."
     },
     "fields": {
       "headline": "Título principal",

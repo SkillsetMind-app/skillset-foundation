@@ -60,7 +60,7 @@ export function InstructorsDirectory() {
         {[0, 1, 2].map((item) => (
           <div
             key={item}
-            className="h-56 animate-pulse rounded-none border border-[var(--color-line)] bg-white shadow-[var(--shadow-soft)]"
+            className="h-56 animate-pulse rounded-lg border border-[var(--color-line)] bg-white shadow-[var(--shadow-soft)]"
           />
         ))}
       </section>
@@ -69,7 +69,7 @@ export function InstructorsDirectory() {
 
   if (hasError) {
     return (
-      <section className="mt-12 rounded-none border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] p-6">
+      <section className="mt-12 rounded-lg border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] p-6">
         <p className="text-sm font-semibold text-[var(--color-danger-fg)]">
           {t("publicPages.directory.instructor_profiles_could_not_load_right")}
         </p>
@@ -82,9 +82,9 @@ export function InstructorsDirectory() {
 
   if (profiles.length === 0) {
     return (
-      <section className="mt-12 rounded-none border border-dashed border-[rgba(26,54,93,0.22)] bg-[var(--color-surface-soft)] p-8 sm:p-10">
+      <section className="mt-12 rounded-lg border border-dashed border-[rgba(26,54,93,0.22)] bg-[var(--color-surface-soft)] p-8 sm:p-10">
         <div className="flex max-w-3xl flex-col gap-5 sm:flex-row sm:items-start">
-          <span className="grid size-11 shrink-0 place-items-center rounded-none bg-white text-[var(--color-primary)] shadow-[var(--shadow-soft)]">
+          <span className="grid size-11 shrink-0 place-items-center rounded-full bg-white text-[var(--color-primary)] shadow-[var(--shadow-soft)]">
             <GraduationCap aria-hidden="true" size={22} strokeWidth={1.8} />
           </span>
           <div>
@@ -159,7 +159,7 @@ function InstructorCard({ profile }: { profile: PublicProfile }) {
   const credentials = profile.credentials.slice(0, 2);
 
   return (
-    <article className="flex min-h-64 flex-col rounded-none border border-[var(--color-line)] bg-white p-5 shadow-[var(--shadow-soft)]">
+    <article className="flex min-h-64 flex-col rounded-lg border border-[var(--color-line)] bg-white p-5 shadow-[var(--shadow-soft)]">
       <div className="flex items-center gap-3">
         <UserAvatar name={name} photoURL={profile.photoURL} size="lg" />
         <div className="min-w-0">

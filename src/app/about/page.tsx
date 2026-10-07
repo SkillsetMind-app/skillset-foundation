@@ -23,7 +23,7 @@ export default async function AboutPage() {
     >
       <section className="mt-10 grid gap-4 sm:grid-cols-3">
         {[t("publicPages.about.professional_programs"), t("publicPages.about.visible_educators"), t("publicPages.about.educators_are_paid_directly")].map((item) => (
-          <div key={item} className="rounded-none border border-[var(--color-line)] bg-white p-5">
+          <div key={item} className="rounded-lg border border-[var(--color-line)] bg-white p-5">
             <p className="text-sm font-semibold text-[var(--color-primary)]">{item}</p>
           </div>
         ))}

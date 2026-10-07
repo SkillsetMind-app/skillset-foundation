@@ -504,6 +504,7 @@
       "plansFees": "Plans & fees",
       "payoutsTax": "Payouts & tax",
       "billing": "Billing",
+      "myPurchases": "My purchases",
       "reports": "Reports",
       "earnings": "Earnings",
       "verification": "Verification"
@@ -1214,6 +1215,16 @@
         "minutes": "{count}m ago",
         "hours": "{count}h ago",
         "days": "{count}d ago"
+      },
+      "types": {
+        "someone": "Someone",
+        "communityQuestion": "{name} asked a question in your course",
+        "answeredQuestion": "{name} answered your question",
+        "repliedPost": "{name} replied to your post",
+        "repliedThread": "{name} replied to a post you commented on",
+        "supportReply": "Support replied to your request",
+        "teacherMessage": "New message from your teacher",
+        "studentMessage": "New message from a student"
       }
     },
     "session": {
@@ -1418,6 +1429,7 @@
         "title": "Message your teacher",
         "heading": "Ask a private question about this course",
         "description": "Only you and the course teacher can read this thread. Replies also land in your notification bell.",
+        "descriptionWhitelabel": "Only you and the course teacher can read this thread.",
         "you": "You",
         "teacher": "Teacher",
         "bodyLabel": "Your private message",
@@ -4113,6 +4125,10 @@
       "marketingEmails": {
         "label": "Marketing emails",
         "description": "Launch announcements, promotions, and editorial campaigns."
+      },
+      "emailDigest": {
+        "label": "Email summary",
+        "description": "At most one email an hour when you have notifications you have not seen, like replies to your questions."
       }
     },
     "learning": {
@@ -4529,9 +4545,9 @@
     "payoutsBody": "Buyers pay your Stripe account directly. There is no platform hold — Stripe then settles and pays out to your bank on its own timing, which depends on your country and the payment method."
   },
   "accountBillingPage": {
-    "eyebrow": "Billing & receipts",
+    "eyebrow": "Purchases & receipts",
     "title": "Your purchases and receipts.",
-    "description": "Each course is sold by the educator who publishes it — their Stripe account takes the payment, so their name may be what you see on your card statement. One-time course purchases stay accessible for as long as you keep them; subscription courses run while the subscription is active. Your SkillsetMind plan, payment methods, and invoices live in your secure Stripe portal. Creator payouts are under Payouts."
+    "description": "Each course is sold by the educator who publishes it — their Stripe account takes the payment, so their name may be what you see on your card statement. One-time course purchases stay accessible for as long as you keep them; subscription courses run while the subscription is active. Payment methods and invoices live in your secure Stripe portal."
   },
   "accountNotifications": {
     "title": "Notifications",
@@ -5029,14 +5045,16 @@
       "received": "Payment received — opening your course...",
       "receivedDetail": "Your payment is confirmed. We are setting up your course access right now; this page opens automatically in a few seconds.",
       "required": "Enrollment required.",
-      "requiredDetail": "This private workspace opens only after payment, admin enrollment, or approved access.",
+      "requiredDetail": "You don't have access to this course yet.",
       "inactive": "Course access is inactive.",
       "inactiveDetail": "This enrollment is {status}. Private lessons reopen only after payment, admin approval, or restored access.",
       "missing": "Course record not found.",
       "missingDetail": "The enrollment exists, but the course record is unavailable or restricted.",
       "eyebrow": "Creator course access",
       "back": "Back to My Learning",
-      "marketplace": "Open marketplace"
+      "marketplace": "Open marketplace",
+      "seeCourse": "See the course",
+      "wrongAccount": "Signed in with the wrong account? Sign out"
     },
     "enrollmentStatus": {
       "active": "active",
@@ -5653,6 +5671,16 @@
       "teaching": "How I teach this",
       "process": "What we do, step by step",
       "firstStep": "Step one"
+    },
+    "upload": {
+      "button": "Upload image",
+      "uploading": "Uploading…",
+      "rules": "JPG, PNG or WebP, up to {limit}.",
+      "orLink": "Or paste a link",
+      "previewAlt": "Preview of {label}",
+      "remove": "Remove image",
+      "wrongType": "That file is not a JPG, PNG or WebP image.",
+      "tooLarge": "That image is {size}. Use one up to {limit}."
     },
     "fields": {
       "headline": "Headline",

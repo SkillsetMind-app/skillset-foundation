@@ -176,3 +176,30 @@ describe("workspace switcher in the account menu", () => {
     expect(screen.queryByRole("link", { name: /view as/i })).toBeNull();
   });
 });
+
+// O aluno via "Subscription · Free" (o plano de quem vende) e "Billing" para o
+// que ele mesmo comprou.
+describe("account menu for a learner", () => {
+  it("shows My purchases and no creator plan", () => {
+    openMenu(["student"], "/learn");
+
+    expect(screen.getByRole("link", { name: "My purchases" })).toHaveAttribute("href", "/account/billing");
+    expect(screen.queryByRole("link", { name: /subscription|creator plan/i })).toBeNull();
+    expect(document.querySelector('a[href="/account/plans"]')).toBeNull();
+  });
+
+  it("an admin without the teacher role sees Billing, like the sidebar", () => {
+    openMenu(["admin"], "/learn");
+
+    expect(screen.getByRole("link", { name: "Billing" })).toHaveAttribute("href", "/account/billing");
+    expect(screen.queryByRole("link", { name: "My purchases" })).toBeNull();
+  });
+
+  it("a teacher keeps the creator plan and payouts", () => {
+    openMenu(["student", "teacher"], "/learn");
+
+    expect(screen.getByRole("link", { name: /creator plan/i })).toHaveAttribute("href", "/account/plans");
+    expect(screen.getByRole("link", { name: /payouts & tax/i })).toHaveAttribute("href", "/account/payments");
+    expect(screen.queryByRole("link", { name: "My purchases" })).toBeNull();
+  });
+});

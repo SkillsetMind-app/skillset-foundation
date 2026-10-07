@@ -100,7 +100,7 @@ export function PlatformInviteManager() {
         <fieldset disabled={busy} className="min-w-0 space-y-4">
           <div className="grid min-w-0 gap-4 sm:grid-cols-2">
             <Field id="platform-invite-email" label={t(`${copy}.email`)}>
-              {a11y => <input {...a11y} type="email" autoComplete="email" required value={email} onChange={event => { setEmail(event.target.value); setConfirmAdmin(false); }} className="min-h-11 w-full min-w-0 rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-ink)]" />}
+              {a11y => <input {...a11y} type="email" autoComplete="email" required value={email} onChange={event => { setEmail(event.target.value); setConfirmAdmin(false); }} className="min-h-11 w-full min-w-0 rounded-md border border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-ink)]" />}
             </Field>
             <Field id="platform-invite-level" label={t(`${copy}.level`)}>
               {a11y => <select {...a11y} value={accessLevel} onChange={event => {
@@ -109,7 +109,7 @@ export function PlatformInviteManager() {
                 setAccessLevel(next as PlatformInvite["access_level"]);
                 setWaiveActivation(false);
                 setConfirmAdmin(false);
-              }} className="min-h-11 w-full min-w-0 rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-ink)]">
+              }} className="min-h-11 w-full min-w-0 rounded-md border border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-ink)]">
                 {levels.map(level => <option key={level} value={level}>{t(`platform.ops.accessPanel.levels.${level}.label`)}</option>)}
               </select>}
             </Field>

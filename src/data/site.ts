@@ -21,6 +21,9 @@ export type PlatformNavItem = {
   /** Group of the sidebar; the label is `platform.navSection.<sectionKey>`. */
   sectionKey: string;
   permission?: Permission;
+  /** Hidden from accounts that hold this permission: lets one page carry a
+   *  learner label and a teacher label as two entries with the same href. */
+  hiddenWithPermission?: Permission;
   /** Additional role scope when the backing queue has narrower RLS policies. */
   roles?: readonly Role[];
   /**
@@ -65,8 +68,16 @@ export function canAccessPlatformNavItem(
 ): boolean {
   return (
     (!item.permission || hasPermission(subject, item.permission)) &&
+    !isPlatformNavItemHidden(subject, item) &&
     (!item.roles || item.roles.some((role) => hasRole(subject, role)))
   );
+}
+
+export function isPlatformNavItemHidden(
+  subject: PermissionSubject | null | undefined,
+  item: PlatformNavItem,
+): boolean {
+  return Boolean(item.hiddenWithPermission && hasPermission(subject, item.hiddenWithPermission));
 }
 
 // A known ?tab= wins (the dashboard explains when the role cannot open it).
@@ -349,13 +360,15 @@ export const platformNav: PlatformNavItem[] = [
     sectionKey: "account",
   },
   {
-    // "Subscription" no menu do avatar leva o aluno para ca; com `contexts: []`
-    // a barra nao acendia nada nesta pagina (reanalise Ops 6).
+    // "Creator plan" no menu do avatar leva o professor para ca; com
+    // `contexts: []` a barra nao acendia nada nesta pagina (reanalise Ops 6).
+    // Os planos sao de quem vende: o aluno nao ve o item.
     href: "/account/plans",
     labelKey: "platform.nav.plansFees",
     icon: "Receipt",
     contexts: ["learner"],
     sectionKey: "account",
+    permission: "teacherStudio.access",
   },
   {
     href: "/account/payments",
@@ -365,12 +378,24 @@ export const platformNav: PlatformNavItem[] = [
     sectionKey: "account",
     permission: "teacherStudio.access",
   },
+  // Mesma pagina, dois nomes: para o aluno ela so guarda o que ele comprou,
+  // entao se chama "My purchases"; o professor segue vendo "Billing". O do
+  // aluno vem primeiro: e o titulo que getPageLabel acha enquanto o papel carrega.
+  {
+    href: "/account/billing",
+    labelKey: "platform.nav.myPurchases",
+    icon: "Receipt",
+    contexts: ["learner"],
+    sectionKey: "account",
+    hiddenWithPermission: "teacherStudio.access",
+  },
   {
     href: "/account/billing",
     labelKey: "platform.nav.billing",
     icon: "Receipt",
     contexts: ["learner"],
     sectionKey: "account",
+    permission: "teacherStudio.access",
   },
   {
     // The only /account subpage that renders its own PlatformShell instead of
