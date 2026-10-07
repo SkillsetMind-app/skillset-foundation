@@ -27,17 +27,19 @@ export default async function PromisePage() {
       // published rate was raised on anyone. From launch on, this promise is
       // binding: any future ladder change requires either a signup-rate snapshot
       // in the engine or the 90-day notice below. Tracked in PR #18.
+      // 2026-10-06: the percent + fixed-fee plans replaced it the same way,
+      // with no plan subscription, published product or sale in production.
       title: t("publicPages.promise.fee_lock_for_24_months"),
       body: t("publicPages.promise.the_commission_rate_of_the_plan"),
       practice:
-        t("publicPages.promise.if_a_creator_joins_on_free"),
+        t("publicPages.promise.the_rate_you_subscribe_at_is_the_one_you_keep"),
     },
     {
       number: "02",
       title: t("publicPages.promise.no_plan_ever_blocks_you_from"),
       body: t("publicPages.promise.the_selling_engine_is_on_every"),
       practice:
-        t("publicPages.promise.a_creator_on_free_runs_a"),
+        t("publicPages.promise.basic_publishes_and_sells"),
     },
     {
       number: "03",

@@ -166,6 +166,15 @@ export default async function PricingPage() {
             );
           })}
         </section>
+        {/* Enterprise is not a card: it is set up by hand, so it is a contact. */}
+        <p className="mt-4 text-sm">
+          <Link
+            href="/contact?subject=enterprise"
+            className="font-semibold text-[var(--color-primary)] underline-offset-4 hover:underline"
+          >
+            {t("publicPages.pricing.enterprise_talk_to_us")}
+          </Link>
+        </p>
         <p className="mt-4 text-xs leading-5 text-[var(--color-ink-muted)]">
           {t("planTrial.publicNote")}
         </p>

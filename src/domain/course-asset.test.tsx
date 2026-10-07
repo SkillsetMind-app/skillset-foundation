@@ -127,7 +127,7 @@ describe("upload error mapping", () => {
     ["session 419", new Error("bunny-create-failed:419"), "Tu sesión caducó. Inicia sesión de nuevo y vuelve a enviar el archivo."],
     ["video permission", new Error("bunny-create-failed:403"), "No tienes permiso para subir videos a este curso."],
     ["video service", new Error("bunny-create-failed:500"), "El servicio de video no pudo aceptar el archivo. Inténtalo de nuevo en unos minutos."],
-    ["Free daily limit", new Error("Daily upload limit on the Free plan. Try again tomorrow."), "Límite diario de subidas del plan Free. Vuelve a intentarlo mañana."],
+    ["Free daily limit", new Error("Daily upload limit without a plan. Try again tomorrow."), "Límite diario de subidas sin plan. Vuelve a intentarlo mañana."],
     ["file type", new Error("Unsupported file type or file too large."), "El tipo de archivo no es compatible o el archivo es demasiado grande."],
     ["cover host", new Error("Cover image URL is not on an allowed media host."), "La URL de la portada no pertenece a un sitio de medios permitido."],
     ["interrupted", Object.assign(new Error("PATCH https://provider.example/private"), { originalRequest: {} }), "La subida se interrumpió, normalmente por una pérdida de conexión. Revisa tu conexión y vuelve a enviar el archivo."],

@@ -19,14 +19,14 @@ const answer = (status: number, body: unknown) =>
 // video/create answers 429 for two reasons: the hourly throttle on every plan,
 // and the Free plan's daily cap. Only the second waits until tomorrow.
 it("tells a Free-plan creator over the daily cap to come back tomorrow, in EN and ES, without a fee", async () => {
-  answer(429, { error: "Daily upload limit on the Free plan. Try again tomorrow.", code: "free_plan_daily_limit" });
+  answer(429, { error: "Daily upload limit without a plan. Try again tomorrow.", code: "free_plan_daily_limit" });
   const error = await upload().catch((caught: unknown) => caught);
-  expect(error).toEqual(new Error("Daily upload limit on the Free plan. Try again tomorrow."));
+  expect(error).toEqual(new Error("Daily upload limit without a plan. Try again tomorrow."));
   for (const locale of ["en", "es"] as const) {
     const message = getCourseAssetUploadErrorMessage(error, undefined, (key) => translate(getDictionary(locale), key));
     expect(message).toBe(locale === "en"
-      ? "Daily upload limit on the Free plan. Try again tomorrow."
-      : "Límite diario de subidas del plan Free. Vuelve a intentarlo mañana.");
+      ? "Daily upload limit without a plan. Try again tomorrow."
+      : "Límite diario de subidas sin plan. Vuelve a intentarlo mañana.");
     expect(message).not.toMatch(/fee|tarifa|activ/i);
   }
 });

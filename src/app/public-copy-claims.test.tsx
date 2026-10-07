@@ -85,8 +85,8 @@ describe("www positioning", () => {
   });
 });
 
-// Plans differ by commission, a few paid extras, and the Free plan's daily caps
-// (video uploads, advisor, manual access). Published products, active students,
+// Plans differ by commission and a few paid extras; accounts without a plan
+// have daily caps (video uploads, advisor, manual access). Published products, active students,
 // video storage and team seats are not enforced, so no public line may sell
 // them as limits, and "same features, only the commission changes" is false.
 describe("plan copy states only rules the product applies", () => {
@@ -99,15 +99,33 @@ describe("plan copy states only rules the product applies", () => {
     expect(copy).not.toMatch(sameFeatures);
   });
 
-  it.each(dictionaries)("the %s Promise 02 says every plan sells and names the Free daily limits", (_locale, dict) => {
+  // There is no Free plan on offer: the Promise names Basic, never Free.
+  it.each(dictionaries)("the %s Promise 02 says every plan sells, Basic included, and never mentions Free", (_locale, dict) => {
     expect(dict.publicPages.promise.no_plan_ever_blocks_you_from).toMatch(/^(Every plan can publish and sell|Todos los planes pueden publicar y vender)$/);
-    expect(dict.publicPages.promise.the_selling_engine_is_on_every).toMatch(/daily limits|límites diarios/);
-    expect(dict.publicPages.promise.a_creator_on_free_runs_a).toMatch(/commission|comisión/);
+    expect(dict.publicPages.promise.the_selling_engine_is_on_every).toMatch(/Basic/);
+    expect(dict.publicPages.promise.basic_publishes_and_sells).toMatch(/commission|comisión/);
+    expect(JSON.stringify(dict.publicPages.promise)).not.toMatch(/\bFree\b/);
+  });
+
+  // No Free plan is on offer. Only the changelog, which records history, may
+  // still name it.
+  it.each(dictionaries)("the %s dictionary never offers a Free plan outside the changelog", (_locale, dict) => {
+    const { promiseChangelog: _history, ...rest } = dict as Record<string, unknown>;
+    expect(JSON.stringify(rest)).not.toMatch(/Free plan|plan Free|Free included|incluido Free|costs nothing per month|sin costo mensual|on Free\b|en Free\b/);
+  });
+
+  // Every sale pays percent + fixed fee, so the 24-month lock covers both.
+  it.each(dictionaries)("the %s Promise 01 locks the commission and the fixed fee for 24 months, with 90 days' notice", (_locale, dict) => {
+    const lock = dict.publicPages.promise.the_commission_rate_of_the_plan;
+    expect(lock).toMatch(/commission and the fixed per-sale fee|comisión y la tarifa fija por venta/);
+    expect(lock).toMatch(/24 months from your subscription date|24 meses desde la fecha de tu suscripción/);
+    expect(lock).toMatch(/90 days' notice|90 días de aviso/);
+    expect(lock).toMatch(/export|exportarlo/);
   });
 
   // Promise 01 protects the rate; it must not assume the creator will sell.
   it.each(dictionaries)("the %s Promise 01 does not assume the creator will sell", (_locale, dict) => {
-    expect(dict.publicPages.promise.if_a_creator_joins_on_free).not.toMatch(/sell|selling|vender|venta/i);
+    expect(dict.publicPages.promise.the_rate_you_subscribe_at_is_the_one_you_keep).not.toMatch(/sell|selling|vender|venta/i);
   });
 
   // The offer is Starter and Pro, each with a trial. The internal free tier and

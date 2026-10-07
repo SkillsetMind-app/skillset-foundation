@@ -6,7 +6,7 @@ import { EmbeddedCheckoutPanel } from "@/components/account/embedded-checkout-pa
 import { UpgradeModal } from "@/components/account/upgrade-modal";
 import { ActivationCheckoutPanel } from "@/components/teacher/activation-checkout-panel";
 import { I18nProvider, useTranslation } from "@/components/i18n/i18n-provider";
-import { activationFeeUsd, formatPlanCommission, plans, publicPlans } from "@/data/plans";
+import { activationFeeUsd, formatPlanCommission, publicPlans } from "@/data/plans";
 import { formatUsdWhole } from "@/data/platform";
 import { LOCALE_COOKIE, type Locale } from "@/lib/i18n/config";
 import { getDictionary, translate } from "@/lib/i18n/dictionaries";
@@ -94,12 +94,15 @@ describe("payment checkout localization with real dictionaries", () => {
     });
   });
 
-  it("keeps the activation amount, Free commission and processing estimates", async () => {
-    mount(<ActivationCheckoutPanel />);
+  // There is no Free plan on offer: the commission shown is Basic's, fixed
+  // fee included.
+  it("keeps the activation amount, Basic commission and processing estimates", async () => {
+    const { container } = mount(<ActivationCheckoutPanel />);
     await screen.findByTestId("embedded-checkout-fixture");
     expect(screen.getByRole("heading", { name: "Tu tienda de SkillsetMind" })).toBeInTheDocument();
     expect(screen.getByText(formatUsdWhole(activationFeeUsd, "es").replace(/\s/g, " "))).toBeInTheDocument();
-    expect(screen.getByText(`${plans.find((plan) => plan.id === "free")!.commissionPercent}%`)).toBeInTheDocument();
+    expect(screen.getByText("10% + $0.30")).toBeInTheDocument();
+    expect(container.textContent).not.toMatch(/Free/);
     expect(screen.getByText(copy("es", "activationCheckout.noSubscription"))).toBeInTheDocument();
     expect(screen.getByText(/2\.9% \+ \$0\.30 USD \/ 5\.4% \+ \$0\.30/)).toBeInTheDocument();
   });

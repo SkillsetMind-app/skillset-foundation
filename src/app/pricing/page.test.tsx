@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import PricingPage from "@/app/pricing/page";
 import { publicPlans } from "@/data/plans";
+import { getDictionary, translate } from "@/lib/i18n/dictionaries";
 
 vi.mock("next/headers", () => ({ cookies: async () => ({ get: () => undefined }) }));
 
@@ -35,6 +36,20 @@ describe("pricing page", () => {
       ),
     ).toBeInTheDocument();
     expect(screen.queryByText("Which plan is for me?")).not.toBeInTheDocument();
+  });
+
+  // Enterprise is not a card; it is one line under them that goes to /contact
+  // with the subject already filled in.
+  it("offers Enterprise as a contact line below the plan cards", async () => {
+    render(await PricingPage());
+
+    expect(screen.getByRole("region", { name: "Plan comparison" }).querySelectorAll("article")).toHaveLength(3);
+    expect(
+      screen.getByRole("link", { name: "Selling more than US$10,000/month? Talk to us about Enterprise" }),
+    ).toHaveAttribute("href", "/contact?subject=enterprise");
+    expect(translate(getDictionary("es"), "publicPages.pricing.enterprise_talk_to_us")).toBe(
+      "¿Vendes más de US$10.000 al mes? Habla con nosotros sobre Enterprise",
+    );
   });
 
   it("leads every card with the commission and keeps the subscription small", async () => {

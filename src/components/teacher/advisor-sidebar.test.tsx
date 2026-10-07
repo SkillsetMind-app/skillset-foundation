@@ -333,7 +333,7 @@ describe("AdvisorSidebar", () => {
   it("tells a Free-plan creator over the daily cap to come back tomorrow", async () => {
     fetchMock.mockImplementation(async (_url: unknown, init?: RequestInit) =>
       init?.method === "POST"
-        ? jsonResponse({ error: "Daily advisor limit on the Free plan. Try again tomorrow.", code: "free_plan_daily_limit" }, 429)
+        ? jsonResponse({ error: "Daily advisor limit without a plan. Try again tomorrow.", code: "free_plan_daily_limit" }, 429)
         : jsonResponse({ conversationId: null, messages: [] }),
     );
 
@@ -344,7 +344,7 @@ describe("AdvisorSidebar", () => {
     fireEvent.change(composer(), { target: { value: "How should I price this?" } });
     fireEvent.keyDown(composer(), { key: "Enter" });
 
-    expect(await screen.findByText("Daily advisor limit on the Free plan. Try again tomorrow.")).toBeInTheDocument();
+    expect(await screen.findByText("Daily advisor limit without a plan. Try again tomorrow.")).toBeInTheDocument();
     expect(screen.queryByText(/wait a moment/)).not.toBeInTheDocument();
   });
 
