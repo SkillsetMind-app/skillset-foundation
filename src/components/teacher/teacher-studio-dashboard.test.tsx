@@ -26,7 +26,8 @@ const { mockUser, state, data } = vi.hoisted(() => {
     // as chamadas a estas tres funcoes.
     data: {
       subscribeToTeacherCourses: vi.fn(
-        (_uid: string, onData: (courses: unknown[]) => void) => {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars -- a assinatura real tem o 3o argumento (erro)
+        (_uid: string, onData: (courses: unknown[]) => void, _onError?: (error: Error) => void) => {
           onData(state.courses);
           return () => undefined;
         },
@@ -546,6 +547,52 @@ describe("Home do professor: primeira visita", () => {
 
     expect(await screen.findByText("Revenue, 30d")).toBeInTheDocument();
     expect(screen.getByText("New students")).toBeInTheDocument();
+  });
+
+  it("so com matricula gratis (sem pedido pago) os quadros aparecem", async () => {
+    state.courses = [course({ status: "published", paymentType: "free", enrollmentCount: 3 })];
+    state.orders = [];
+
+    render(<TeacherStudioDashboard />);
+
+    expect(await screen.findByText("Revenue, 30d")).toBeInTheDocument();
+  });
+
+  it("com produto mas zero matriculas e zero pedidos pagos continua sem quadros", async () => {
+    state.courses = [course({ status: "published", enrollmentCount: 0 })];
+    state.orders = [];
+
+    render(<TeacherStudioDashboard />);
+
+    await screen.findByRole("heading", { level: 1 });
+    expect(screen.queryByText("Revenue, 30d")).toBeNull();
+  });
+
+  it("enquanto a lista de cursos carrega diz 'Hello', nunca 'Welcome' nem 'Welcome back'", async () => {
+    data.subscribeToTeacherCourses.mockImplementationOnce(() => () => undefined);
+
+    render(<TeacherStudioDashboard />);
+
+    const heading = await screen.findByRole("heading", { level: 1 });
+    expect(heading).toHaveTextContent("Hello, Patrick.");
+    expect(heading).not.toHaveTextContent("Welcome");
+  });
+
+  it("se a assinatura de cursos falhar, mantem 'Welcome back'", async () => {
+    data.subscribeToTeacherCourses.mockImplementationOnce(
+      (_uid: string, _onData: (courses: unknown[]) => void, onError?: (error: Error) => void) => {
+        onError?.(new Error("boom"));
+        return () => undefined;
+      },
+    );
+
+    render(<TeacherStudioDashboard />);
+
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
+        "Welcome back, Patrick.",
+      );
+    });
   });
 });
 

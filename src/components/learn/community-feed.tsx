@@ -824,7 +824,7 @@ function FeedCard({
           <button
             type="button"
             onClick={() => void setCommunityPostPinned(post.id, !post.pinned)}
-            className="text-xs font-semibold text-[var(--color-ink-soft)] hover:text-[var(--color-ink)]"
+            className="min-h-6 text-xs font-semibold text-[var(--color-ink-soft)] hover:text-[var(--color-ink)]"
           >
             {t(post.pinned ? "learn.community.card.unpin" : "learn.community.card.pin")}
           </button>

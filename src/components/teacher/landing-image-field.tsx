@@ -93,7 +93,7 @@ export function LandingImageField({
           disabled={uploading}
           aria-describedby={rulesId}
           onClick={() => inputRef.current?.click()}
-          className="inline-flex w-fit items-center gap-2 rounded-md border border-[var(--color-line)] bg-white px-3 py-2.5 text-sm font-semibold text-[var(--color-primary)] disabled:opacity-60"
+          className="inline-flex min-h-11 w-fit items-center gap-2 rounded-md border border-[var(--color-line)] bg-white px-3 py-2.5 text-sm font-semibold text-[var(--color-primary)] disabled:opacity-60"
         >
           {uploading ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <UploadCloud className="size-4" aria-hidden />}
           {uploading ? t("teacherLanding.upload.uploading") : t("teacherLanding.upload.button")}
@@ -102,7 +102,7 @@ export function LandingImageField({
           <button
             type="button"
             onClick={() => onChange(null)}
-            className="inline-flex w-fit items-center gap-2 rounded-md border border-[var(--color-line)] bg-white px-3 py-2.5 text-sm font-semibold text-[var(--color-danger-fg)]"
+            className="inline-flex min-h-11 w-fit items-center gap-2 rounded-md border border-[var(--color-line)] bg-white px-3 py-2.5 text-sm font-semibold text-[var(--color-danger-fg)]"
           >
             <X className="size-4" aria-hidden />
             {t("teacherLanding.upload.remove")}

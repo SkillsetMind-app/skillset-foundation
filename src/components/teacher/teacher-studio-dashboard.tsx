@@ -47,6 +47,7 @@ export function TeacherStudioDashboard() {
   const { account, loaded: gatesLoaded, verificationStatus } = usePublishGates(user);
   const [courses, setCourses] = useState<TeacherCourse[]>([]);
   const [coursesLoaded, setCoursesLoaded] = useState(false);
+  const [coursesFailed, setCoursesFailed] = useState(false);
   const [orders, setOrders] = useState<Order[]>([]);
   const firstName = user?.displayName?.trim().split(/\s+/)[0] ?? "";
   // A taxa unica de ativacao vem do mesmo hook (o MESMO predicado que o
@@ -66,6 +67,7 @@ export function TeacherStudioDashboard() {
       },
       (error) => {
         logSubscriptionError("TeacherStudioDashboard.courses")(error);
+        setCoursesFailed(true);
         setCoursesLoaded(true);
       }
     );
@@ -94,6 +96,11 @@ export function TeacherStudioDashboard() {
     (course) => course.status !== "inactive" && sellsPaid(course)
   );
   const payoutsPending = needsStripe && !account.payoutsReady;
+  const greetingKey = !coursesLoaded
+    ? "hello"
+    : courses.length > 0 || coursesFailed
+      ? "welcomeBack"
+      : "welcome";
 
   return (
     <div className="grid gap-8">
@@ -106,15 +113,13 @@ export function TeacherStudioDashboard() {
               nomeava a tela ("Home" ja esta na barra e na trilha do topo). */}
           {/* "Welcome back" so para quem ja tem produto: na 1a visita a frase
               era falsa. Enquanto a lista carrega vale "Welcome", que nunca
-              mente. */}
+              mente. Antes de a lista chegar nao da para saber qual das duas e
+              verdade: vale "Hello", que nao afirma nada. Se a assinatura de
+              cursos falhar, fica o "Welcome back" de antes. */}
           <h1 className="text-3xl font-semibold leading-tight text-[var(--color-primary)] sm:text-4xl">
             {firstName
-              ? t(
-                  courses.length > 0
-                    ? "teach.dashboard.welcomeBackNamed"
-                    : "teach.dashboard.welcomeNamed"
-                ).replace("{name}", () => firstName)
-              : t(courses.length > 0 ? "teach.dashboard.welcomeBack" : "teach.dashboard.welcome")}
+              ? t(`teach.dashboard.${greetingKey}Named`).replace("{name}", () => firstName)
+              : t(`teach.dashboard.${greetingKey}`)}
           </h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--color-ink-soft)]">
             {t("creatorPanel.home.description")}
@@ -470,7 +475,7 @@ function StudioProductsSection({
                     <Layers3 aria-hidden="true" size={19} strokeWidth={1.7} />
                   )}
                 </div>
-                <div className="flex items-start justify-between gap-2">
+                <div className="flex flex-wrap items-start justify-between gap-2">
                   <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--color-ink-muted)]">
                     {t(productTypeKey(course))}
                   </span>

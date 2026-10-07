@@ -282,7 +282,7 @@ export function LoginForm() {
           onClick={() => {
             void handleUseDifferentAccount();
           }}
-          className="text-sm font-semibold text-[var(--color-primary)] disabled:opacity-60"
+          className="min-h-6 text-sm font-semibold text-[var(--color-primary)] disabled:opacity-60"
         >
           {t("auth.useDifferentAccount")}
         </button>

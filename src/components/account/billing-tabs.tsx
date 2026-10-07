@@ -494,7 +494,7 @@ function PurchasesTab({
                     <button
                       type="button"
                       onClick={() => setRefundFor(order)}
-                      className="text-xs font-semibold text-[var(--color-accent-fg)] hover:underline"
+                      className="min-h-6 text-xs font-semibold text-[var(--color-accent-fg)] hover:underline"
                     >
                       {t("accountBilling.requestRefund")}
                     </button>

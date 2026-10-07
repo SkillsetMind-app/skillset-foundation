@@ -1726,7 +1726,9 @@
       "welcomeBackNamed": "Hola de nuevo, {name}.",
       "welcomeBack": "Hola de nuevo.",
       "welcomeNamed": "Te damos la bienvenida, {name}.",
-      "welcome": "Te damos la bienvenida."
+      "welcome": "Te damos la bienvenida.",
+      "helloNamed": "Hola, {name}.",
+      "hello": "Hola."
     },
     "metrics": {
       "revenue30d": "Ingresos, 30 días",

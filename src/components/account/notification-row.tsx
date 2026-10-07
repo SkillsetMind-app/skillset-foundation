@@ -45,7 +45,7 @@ const unreadChipByType: Record<NotificationType, string> = {
   enrollment: "bg-[var(--color-success-soft)] text-[var(--color-success-fg)]",
   certificate: "bg-[var(--color-success-soft)] text-[var(--color-success-fg)]",
   course_review: "bg-[var(--color-warning-soft)] text-[var(--color-warning-fg)]",
-  live_event: "bg-[rgba(178,34,52,0.1)] text-[var(--color-accent-fg)]",
+  live_event: "bg-[rgba(178,34,52,0.1)] text-[var(--color-danger-fg)]",
   course_message: "bg-[rgba(44,82,130,0.1)] text-[var(--color-primary)]",
   support_reply: "bg-[var(--color-success-soft)] text-[var(--color-success-fg)]",
 };

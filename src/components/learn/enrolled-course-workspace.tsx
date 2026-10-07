@@ -89,6 +89,7 @@ import {
   type LessonContent,
 } from "@/lib/data/lesson-content";
 import { track } from "@/lib/posthog/events";
+import { scrollBehavior } from "@/lib/ui/scroll-behavior";
 
 // Liberação de aula pelo calendário (migration 20260915020000).
 // Folga depois do prazo: o relógio do aparelho pode estar à frente do banco.
@@ -219,7 +220,7 @@ export function EnrolledCourseWorkspace({
     window.requestAnimationFrame(() => {
       document
         .getElementById("member-lesson-player")
-        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+        ?.scrollIntoView({ behavior: scrollBehavior(), block: "start" });
     });
   }
   const [lessonListOpen, setLessonListOpen] = useState(false);

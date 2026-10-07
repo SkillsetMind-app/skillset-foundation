@@ -81,8 +81,9 @@
      1.17:1, invisivel. */
   --focus-ring: var(--color-primary);
   /* Borda de campo: a --color-line (navy 28%) dava 1.78:1 e o campo sumia no
-     cartao branco. #7c8a98 (= navy 55%) da 3.53:1 no branco e 3.43:1 no
-     surface-soft, acima dos 3:1 de componente. Cartoes seguem com a linha. */
+     cartao branco. #7c8a98 (= navy 55%) da 3.53:1 no branco, 3.19:1 no
+     surface-soft e 3.00:1 no surface-strong (no limite dos 3:1 de
+     componente). Cartoes seguem com a linha. */
   --color-field-border: #7c8a98;
   --shadow-avatar: 0 8px 18px rgba(26, 54, 93, 0.14);
   /* Design V2 net-new tokens (additive — no existing value changed) */
