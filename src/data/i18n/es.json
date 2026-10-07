@@ -1215,6 +1215,16 @@
         "minutes": "Hace {count} min",
         "hours": "Hace {count} h",
         "days": "Hace {count} d"
+      },
+      "types": {
+        "someone": "Alguien",
+        "communityQuestion": "{name} hizo una pregunta en tu curso",
+        "answeredQuestion": "{name} respondió tu pregunta",
+        "repliedPost": "{name} respondió tu publicación",
+        "repliedThread": "{name} respondió una publicación que comentaste",
+        "supportReply": "Soporte respondió tu solicitud",
+        "teacherMessage": "Nuevo mensaje de tu profesor",
+        "studentMessage": "Nuevo mensaje de un alumno"
       }
     },
     "session": {
@@ -1419,6 +1429,7 @@
         "title": "Escribe a tu instructor",
         "heading": "Haz una pregunta privada sobre este curso",
         "description": "Solo tú y el instructor del curso pueden leer esta conversación. Las respuestas también llegan a tu campana de notificaciones.",
+        "descriptionWhitelabel": "Solo tú y el instructor del curso pueden leer esta conversación.",
         "you": "Tú",
         "teacher": "Instructor",
         "bodyLabel": "Tu mensaje privado",
@@ -4103,6 +4114,10 @@
       "marketingEmails": {
         "label": "Correos promocionales",
         "description": "Anuncios de lanzamientos, promociones y campañas editoriales."
+      },
+      "emailDigest": {
+        "label": "Resumen por correo",
+        "description": "Como máximo un correo por hora cuando tienes notificaciones sin ver, como respuestas a tus preguntas."
       }
     },
     "learning": {

@@ -1215,6 +1215,16 @@
         "minutes": "{count}m ago",
         "hours": "{count}h ago",
         "days": "{count}d ago"
+      },
+      "types": {
+        "someone": "Someone",
+        "communityQuestion": "{name} asked a question in your course",
+        "answeredQuestion": "{name} answered your question",
+        "repliedPost": "{name} replied to your post",
+        "repliedThread": "{name} replied to a post you commented on",
+        "supportReply": "Support replied to your request",
+        "teacherMessage": "New message from your teacher",
+        "studentMessage": "New message from a student"
       }
     },
     "session": {
@@ -1419,6 +1429,7 @@
         "title": "Message your teacher",
         "heading": "Ask a private question about this course",
         "description": "Only you and the course teacher can read this thread. Replies also land in your notification bell.",
+        "descriptionWhitelabel": "Only you and the course teacher can read this thread.",
         "you": "You",
         "teacher": "Teacher",
         "bodyLabel": "Your private message",
@@ -4103,6 +4114,10 @@
       "marketingEmails": {
         "label": "Marketing emails",
         "description": "Launch announcements, promotions, and editorial campaigns."
+      },
+      "emailDigest": {
+        "label": "Email summary",
+        "description": "At most one email an hour when you have notifications you have not seen, like replies to your questions."
       }
     },
     "learning": {

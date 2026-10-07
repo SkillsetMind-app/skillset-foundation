@@ -40,12 +40,16 @@ function sendFailureKey(error: unknown): string {
 // Private student->teacher thread for this course, rendered inside the
 // members-area workspace next to the community/review panels. One thread per
 // enrollment; replies arrive here (and through the notification bell).
+// The teacher-branded room has no bell (member-area-shell.tsx), so there the
+// description leaves the bell out.
 export function CourseMessagesPanel({
   courseId,
   previewMode = false,
+  whitelabel = false,
 }: {
   courseId: string;
   previewMode?: boolean;
+  whitelabel?: boolean;
 }) {
   const { t, locale } = useTranslation();
   const { user } = useAuth();
@@ -104,7 +108,11 @@ export function CourseMessagesPanel({
           {t("learn.classroom.messages.heading")}
         </h4>
         <p className="mt-2 max-w-2xl text-sm leading-7 text-[var(--color-ink-soft)]">
-          {t("learn.classroom.messages.description")}
+          {t(
+            whitelabel
+              ? "learn.classroom.messages.descriptionWhitelabel"
+              : "learn.classroom.messages.description",
+          )}
         </p>
       </div>
 

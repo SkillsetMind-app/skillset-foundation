@@ -1507,7 +1507,7 @@ export function EnrolledCourseWorkspace({
         />
       ) : null}
 
-      {tab === "messages" && !previewMode ? <CourseMessagesPanel courseId={course.id} /> : null}
+      {tab === "messages" && !previewMode ? <CourseMessagesPanel courseId={course.id} whitelabel={whitelabel} /> : null}
 
       {tab === "review" ? (
         <CourseReviewPanel
