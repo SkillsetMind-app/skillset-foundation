@@ -150,7 +150,7 @@ export function ConfirmEmailGate({
           type="button"
           onClick={() => void handleResend()}
           disabled={isSending || cooldown > 0 || captchaPending}
-          className="rounded-md bg-[var(--color-primary)] px-4 py-2.5 text-sm font-semibold text-[var(--color-base)] disabled:opacity-60"
+          className="min-h-11 rounded-md bg-[var(--color-primary)] px-4 py-2.5 text-sm font-semibold text-[var(--color-base)] disabled:opacity-60"
         >
           {cooldown > 0
             ? t("auth.signup.confirmResendIn").replace("{seconds}", String(cooldown))
@@ -162,7 +162,7 @@ export function ConfirmEmailGate({
           <button
             type="button"
             onClick={onChangeEmail}
-            className="rounded-md border border-[var(--color-line)] bg-white px-4 py-2.5 text-sm font-semibold text-[var(--color-ink)]"
+            className="min-h-11 rounded-md border border-[var(--color-line)] bg-white px-4 py-2.5 text-sm font-semibold text-[var(--color-ink)]"
           >
             {t("auth.signup.confirmChangeEmail")}
           </button>

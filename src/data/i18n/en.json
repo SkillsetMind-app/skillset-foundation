@@ -1724,7 +1724,11 @@
     },
     "dashboard": {
       "welcomeBackNamed": "Welcome back, {name}.",
-      "welcomeBack": "Welcome back."
+      "welcomeBack": "Welcome back.",
+      "welcomeNamed": "Welcome, {name}.",
+      "welcome": "Welcome.",
+      "helloNamed": "Hello, {name}.",
+      "hello": "Hello."
     },
     "metrics": {
       "revenue30d": "Revenue, 30d",
@@ -1758,7 +1762,6 @@
       "courseMeta": "{lessons} lessons - {orders} orders",
       "noCoursesTitle": "No courses yet.",
       "noCoursesDetail": "Your first course will appear here after it is created in Course Builder.",
-      "activityEyebrow": "Activity",
       "activityTitle": "What needs your attention today.",
       "open": "Open",
       "actPayoutTitle": "Finish your Stripe setup",

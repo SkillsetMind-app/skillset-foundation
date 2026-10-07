@@ -22,6 +22,7 @@ import { useEffect, useState } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { StatusChip } from "@/components/shared/status-chip";
 import { TeacherOverviewMetrics } from "@/components/teacher/teacher-overview-metrics";
 import { StudioRecentActivity } from "@/components/teacher/studio-recent-activity";
 import { StudioStorefrontCard } from "@/components/teacher/studio-storefront-card";
@@ -46,6 +47,7 @@ export function TeacherStudioDashboard() {
   const { account, loaded: gatesLoaded, verificationStatus } = usePublishGates(user);
   const [courses, setCourses] = useState<TeacherCourse[]>([]);
   const [coursesLoaded, setCoursesLoaded] = useState(false);
+  const [coursesFailed, setCoursesFailed] = useState(false);
   const [orders, setOrders] = useState<Order[]>([]);
   const firstName = user?.displayName?.trim().split(/\s+/)[0] ?? "";
   // A taxa unica de ativacao vem do mesmo hook (o MESMO predicado que o
@@ -65,6 +67,7 @@ export function TeacherStudioDashboard() {
       },
       (error) => {
         logSubscriptionError("TeacherStudioDashboard.courses")(error);
+        setCoursesFailed(true);
         setCoursesLoaded(true);
       }
     );
@@ -93,6 +96,11 @@ export function TeacherStudioDashboard() {
     (course) => course.status !== "inactive" && sellsPaid(course)
   );
   const payoutsPending = needsStripe && !account.payoutsReady;
+  const greetingKey = !coursesLoaded
+    ? "hello"
+    : courses.length > 0 || coursesFailed
+      ? "welcomeBack"
+      : "welcome";
 
   return (
     <div className="grid gap-8">
@@ -103,10 +111,15 @@ export function TeacherStudioDashboard() {
               versalete APOIADO por "Welcome back, {name}" logo abaixo: dois
               titulos disputando a mesma linha de leitura, e o de cima nem
               nomeava a tela ("Home" ja esta na barra e na trilha do topo). */}
+          {/* "Welcome back" so para quem ja tem produto: na 1a visita a frase
+              era falsa. Enquanto a lista carrega vale "Welcome", que nunca
+              mente. Antes de a lista chegar nao da para saber qual das duas e
+              verdade: vale "Hello", que nao afirma nada. Se a assinatura de
+              cursos falhar, fica o "Welcome back" de antes. */}
           <h1 className="text-3xl font-semibold leading-tight text-[var(--color-primary)] sm:text-4xl">
             {firstName
-              ? t("teach.dashboard.welcomeBackNamed").replace("{name}", () => firstName)
-              : t("teach.dashboard.welcomeBack")}
+              ? t(`teach.dashboard.${greetingKey}Named`).replace("{name}", () => firstName)
+              : t(`teach.dashboard.${greetingKey}`)}
           </h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--color-ink-soft)]">
             {t("creatorPanel.home.description")}
@@ -294,9 +307,12 @@ function StudioNextSteps({
             </div>
           </div>
 
-          <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-[var(--color-surface-strong)]">
+          {/* Latao, como a barra do aluno: progresso e conquista. O "2 of 3"
+              logo acima e o numero que acompanha a barra. */}
+          <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-[rgba(26,54,93,0.12)]">
             <div
-              className="h-full rounded-full bg-[var(--color-primary)] transition-[width]"
+              data-testid="studio-next-steps-bar"
+              className="h-full rounded-full bg-[var(--color-accent)] transition-[width]"
               style={{ width: ready ? `${progress}%` : "0%" }}
             />
           </div>
@@ -459,13 +475,13 @@ function StudioProductsSection({
                     <Layers3 aria-hidden="true" size={19} strokeWidth={1.7} />
                   )}
                 </div>
-                <div className="flex items-start justify-between gap-2">
+                <div className="flex flex-wrap items-start justify-between gap-2">
                   <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--color-ink-muted)]">
                     {t(productTypeKey(course))}
                   </span>
-                  <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--color-accent-fg)]">
-                    {t(`statusChip.${course.status || "draft"}`)}
-                  </span>
+                  {/* Era texto dourado para todo status: "Published" e "Needs
+                      changes" saiam iguais. O chip da cor a cada um. */}
+                  <StatusChip status={course.status || "draft"} />
                 </div>
                 <h3 className="mt-3 line-clamp-2 text-sm font-semibold leading-5 text-[var(--color-ink)]">
                   {course.title || t("creatorPanel.untitledProduct")}

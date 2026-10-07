@@ -207,7 +207,7 @@ export function ManagedCoursePanel() {
                       type="button"
                       onClick={() => handleDelete(course.id)}
                       disabled={busyCourseId === course.id}
-                      className="button-accent min-h-11 px-3.5 py-2 text-xs disabled:opacity-60"
+                      className="button-danger min-h-11 px-3.5 py-2 text-xs disabled:opacity-60"
                     >
                       {t(`${copy}.${busyCourseId === course.id ? "deleting" : "confirmDelete"}`)}
                     </button>

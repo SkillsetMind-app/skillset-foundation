@@ -369,14 +369,16 @@ export function CouponsPanel({
                   ) : null}
                   {confirmingDeleteId === coupon.id ? (
                     <>
-                      <button
-                        type="button"
+                      {/* Confirmar a exclusão era um botão de latão: apagar
+                          vestido de conquista. */}
+                      <Button
+                        variant="danger"
+                        size="sm"
+                        loading={removingId === coupon.id}
                         onClick={() => void handleRemove(coupon)}
-                        disabled={removingId === coupon.id}
-                        className="button-accent px-3 py-1.5 text-xs disabled:opacity-60"
                       >
                         {removingId === coupon.id ? t("courseCommerce.removing") : t("courseCommerce.confirmRemove")}
-                      </button>
+                      </Button>
                       <Button
                         variant="outline"
                         size="sm"

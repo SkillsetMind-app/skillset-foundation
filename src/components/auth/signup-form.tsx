@@ -326,7 +326,7 @@ export function SignupForm() {
                   aria-checked={intent === option}
                   onClick={() => chooseIntent(option)}
                   className={[
-                    "rounded-md border-[1.5px] px-4 py-2.5 text-sm font-semibold transition",
+                    "min-h-11 rounded-md border-[1.5px] px-4 py-2.5 text-sm font-semibold transition",
                     intent === option
                       ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-[var(--color-base)]"
                       : "border-[var(--color-line)] bg-white text-[var(--color-ink)] hover:bg-[var(--color-surface-soft)]",
@@ -526,7 +526,7 @@ export function SignupForm() {
               setFocusIdentityOnReturn(true);
               setStep(1);
             }}
-            className="mt-1 inline-flex items-center justify-center text-sm font-semibold text-[var(--color-primary)]"
+            className="mt-1 inline-flex min-h-6 items-center justify-center text-sm font-semibold text-[var(--color-primary)]"
           >
             {t("auth.signup.back")}
           </button>

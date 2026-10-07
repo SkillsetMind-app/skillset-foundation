@@ -137,7 +137,8 @@ describe("rail recolhido: um quadrado por item, sem chip e sem corte", () => {
     // the 63px inner rail. One gutter leaves room for the 44px target and focus.
     expect(css.includes("scrollbar-gutter: stable both-edges")).toBe(false);
     expect(css).toMatch(/\.platform-grid--collapsed \.platform-sidebar-panel\s*\{\s*padding-inline: 0;/);
-    expect(css).toMatch(/\.platform-sidebar-panel\s*\{[^}]*--focus-ring: #ffffff;/);
+    // Foco latão sobre o navy do rail (decisão do fundador): 5.62:1 no pior tom.
+    expect(css).toMatch(/\.platform-sidebar-panel\s*\{[^}]*--focus-ring: var\(--color-accent\);/);
     expect(css).toMatch(/\.platform-sidebar\.sidebar-collapsed \.platform-nav-link:focus-visible\s*\{\s*outline-offset: 2px;/);
     expect(css).toMatch(/\.platform-sidebar\.sidebar-collapsed \.platform-nav-link\.platform-nav-active svg\s*\{\s*color: #102a43 !important;/);
 

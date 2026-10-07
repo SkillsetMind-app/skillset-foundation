@@ -49,6 +49,21 @@ describe("Button", () => {
     );
   });
 
+  it("latão grande carregando: o spinner toma o lugar do ícone e o botão trava", () => {
+    render(
+      <Button variant="accent" size="lg" loading icon={<svg data-testid="icone" />}>
+        Publicar
+      </Button>,
+    );
+
+    const button = screen.getByRole("button", { name: "Publicar" });
+    expect(button).toHaveClass("button-accent", "button-lg");
+    expect(button).toBeDisabled();
+    expect(button).toHaveAttribute("aria-busy", "true");
+    expect(screen.queryByTestId("icone")).toBeNull();
+    expect(button.querySelector(".animate-spin")).not.toBeNull();
+  });
+
   it("expõe a mesma roupa em texto, para Link vestido de botão", () => {
     expect(buttonClasses({ variant: "outline", size: "sm" })).toContain("button-outline");
     expect(buttonClasses({ variant: "outline", size: "sm" })).toContain("text-xs");

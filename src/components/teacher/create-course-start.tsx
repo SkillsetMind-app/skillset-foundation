@@ -18,6 +18,7 @@ import { useState, type FormEvent } from "react";
 
 import { CourseCategorySelect } from "@/components/teacher/course-category-select";
 import { InlineHelp } from "@/components/shared/inline-help";
+import { Button } from "@/components/ui";
 import {
   isActivationRequiredError,
 } from "@/domain/creator-verification";
@@ -309,7 +310,7 @@ export function CreateCourseStart({ ownerId, initialFormat = "course" }: CreateC
               minLength={3}
               maxLength={120}
               placeholder={t("courseCreation.titlePlaceholder")}
-              className="min-h-11 rounded-md border border-[var(--color-line)] bg-white px-3.5 py-2.5 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] focus:ring-2 focus:ring-[rgba(66,102,145,0.18)]"
+              className="min-h-11 rounded-md border border-[var(--color-field-border)] bg-white px-3.5 py-2.5 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
             />
           </label>
 
@@ -322,7 +323,7 @@ export function CreateCourseStart({ ownerId, initialFormat = "course" }: CreateC
               maxLength={1200}
               rows={4}
               placeholder={t("courseCreation.promisePlaceholder")}
-              className="resize-none rounded-md border border-[var(--color-line)] bg-white px-3.5 py-2.5 text-sm font-normal leading-6 outline-none focus:border-[var(--color-primary-light)] focus:ring-2 focus:ring-[rgba(66,102,145,0.18)]"
+              className="resize-none rounded-md border border-[var(--color-field-border)] bg-white px-3.5 py-2.5 text-sm font-normal leading-6 outline-none focus:border-[var(--color-primary-light)]"
             />
             <span className="text-xs font-normal text-[var(--color-ink-muted)]">
               {t("courseCreation.characterCount").replace("{count}", () => String(summary.trim().length))}
@@ -378,17 +379,22 @@ export function CreateCourseStart({ ownerId, initialFormat = "course" }: CreateC
         ) : null}
 
         <div className="mt-7 flex justify-end border-t border-[var(--color-line)] pt-5">
-          <button
+          {/* Criar o produto é um dos dois marcos da jornada: latão, e o
+              "criando" acontece dentro do próprio botão. */}
+          <Button
             type="submit"
+            variant="accent"
+            size="lg"
+            loading={isSaving}
             disabled={!canSubmit}
             aria-describedby={
               submitBlockers.length > 0 ? "create-course-blockers" : undefined
             }
-            className="button-solid button-lg w-full disabled:opacity-60 sm:w-auto"
+            className="w-full disabled:opacity-60 sm:w-auto"
           >
             {isSaving ? t("courseCreation.creating") : submitLabel}
-            <ArrowRight aria-hidden="true" size={15} strokeWidth={1.9} />
-          </button>
+            {isSaving ? null : <ArrowRight aria-hidden="true" size={15} strokeWidth={1.9} />}
+          </Button>
         </div>
       </form>
     </section>

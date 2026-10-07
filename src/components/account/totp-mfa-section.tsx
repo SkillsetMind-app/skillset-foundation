@@ -363,7 +363,7 @@ export function TotpMfaSection({ emailVerified }: { emailVerified: boolean }) {
                 <button
                   type="button"
                   onClick={handleCopyKey}
-                  className="shrink-0 text-xs font-bold text-[var(--color-primary)] hover:underline"
+                  className="min-h-6 shrink-0 text-xs font-bold text-[var(--color-primary)] hover:underline"
                 >
                   {t(copied ? "accountSecurity.mfa.copied" : "accountSecurity.mfa.copy")}
                 </button>
@@ -415,7 +415,7 @@ export function TotpMfaSection({ emailVerified }: { emailVerified: boolean }) {
                 type="button"
                 onClick={closeSetup}
                 disabled={busy}
-                className="text-xs font-semibold text-[var(--color-ink-soft)] hover:text-[var(--color-ink)] disabled:opacity-60"
+                className="min-h-6 text-xs font-semibold text-[var(--color-ink-soft)] hover:text-[var(--color-ink)] disabled:opacity-60"
               >
                 {t("accountSecurity.mfa.cancel")}
               </button>

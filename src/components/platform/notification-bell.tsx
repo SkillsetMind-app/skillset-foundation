@@ -131,7 +131,8 @@ export function NotificationBell() {
       >
         <Bell aria-hidden="true" size={18} strokeWidth={1.8} />
         {unreadCount > 0 ? (
-          <span className="absolute -right-0.5 -top-0.5 grid min-w-[18px] place-items-center rounded-full bg-[var(--color-accent)] px-1 text-[10px] font-bold leading-[18px] text-white">
+          // Branco no latão dava 2.56:1; o navy de --color-on-accent dá 6.67:1.
+          <span className="absolute -right-0.5 -top-0.5 grid min-w-[18px] place-items-center rounded-full bg-[var(--color-accent)] px-1 text-[10px] font-bold leading-[18px] text-[var(--color-on-accent)]">
             {unreadCount > 9 ? "9+" : unreadCount}
           </span>
         ) : null}

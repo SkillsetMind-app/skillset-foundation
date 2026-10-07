@@ -147,6 +147,15 @@ describe("LoginForm com segundo fator pendente", () => {
     ).toBeNull();
   });
 
+  it("'usar outra conta' (botao so de texto) tem pelo menos 24px de area", async () => {
+    render(<LoginForm />);
+    await screen.findByLabelText(/auth\.mfaCodeLabel/);
+
+    expect(
+      screen.getByRole("button", { name: /auth\.useDifferentAccount/ }).className,
+    ).toContain("min-h-6");
+  });
+
   it("'usar outra conta' sai de verdade antes de voltar ao formulario de senha", async () => {
     render(<LoginForm />);
     await screen.findByLabelText(/auth\.mfaCodeLabel/);

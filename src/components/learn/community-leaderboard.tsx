@@ -200,7 +200,7 @@ export function CommunityLeaderboard({
       ) : null}
 
       {error ? (
-        <p role="alert" className="mt-3 text-xs font-semibold text-[var(--color-accent-fg)]">
+        <p role="alert" className="mt-3 text-xs font-semibold text-[var(--color-danger-fg)]">
           {t(error)}
         </p>
       ) : null}

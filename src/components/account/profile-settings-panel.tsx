@@ -392,7 +392,7 @@ export function ProfileSettingsPanel() {
                     <button
                       type="button"
                       onClick={() => removeCredential(index)}
-                      className="shrink-0 rounded-md border border-[var(--color-line)] px-3 py-3 text-xs font-semibold text-[var(--color-ink-soft)] hover:border-[var(--color-accent-fg)] hover:text-[var(--color-accent-fg)]"
+                      className="min-h-11 shrink-0 rounded-md border border-[var(--color-line)] px-3 py-3 text-xs font-semibold text-[var(--color-ink-soft)] hover:border-[var(--color-danger-fg)] hover:text-[var(--color-danger-fg)]"
                       aria-label={t("accountProfile.credentials.removeAria").replace("{number}", String(index + 1))}
                     >
                       {t("accountProfile.credentials.remove")}
