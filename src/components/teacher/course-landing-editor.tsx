@@ -86,7 +86,7 @@ function suggestedBlocks(courseTitle: string, t: (key: string) => string): Cours
 }
 
 const fieldClass =
-  "w-full rounded-none border border-[var(--color-line)] bg-white px-3 py-2.5 text-sm text-[var(--color-ink)]";
+  "w-full rounded-md border border-[var(--color-line)] bg-white px-3 py-2.5 text-sm text-[var(--color-ink)]";
 const labelClass = "grid gap-1.5 text-xs font-bold uppercase tracking-[0.16em] text-[var(--color-ink-soft)]";
 
 // Editor-only identity for a block. Position is not identity: an upload that
@@ -185,7 +185,7 @@ function BlockFields({
             />
           </label>
           {block.steps.map((step, index) => (
-            <div key={index} className="grid gap-2 rounded-none border border-[var(--color-line)] p-3">
+            <div key={index} className="grid gap-2 rounded-md border border-[var(--color-line)] p-3">
               {/* Rótulo de verdade, não placeholder. Todo campo repetido deste
                   editor identificava-se só pelo placeholder — que some no
                   primeiro caractere digitado. Revisando uma página de vendas com
@@ -249,7 +249,7 @@ function BlockFields({
             />
           </label>
           {block.quotes.map((quote, index) => (
-            <div key={index} className="grid gap-2 rounded-none border border-[var(--color-line)] p-3">
+            <div key={index} className="grid gap-2 rounded-md border border-[var(--color-line)] p-3">
               <label className={labelClass}>
                 {t("teacherLanding.fields.quote")}
                 <textarea
@@ -309,7 +309,7 @@ function BlockFields({
             />
           </label>
           {block.items.map((item, index) => (
-            <div key={index} className="grid gap-2 rounded-none border border-[var(--color-line)] p-3">
+            <div key={index} className="grid gap-2 rounded-md border border-[var(--color-line)] p-3">
               <label className={labelClass}>
                 {t("teacherLanding.fields.question")}
                 <input
@@ -538,7 +538,7 @@ export function CourseLandingEditor({ course }: { course: TeacherCourse }) {
                 type="button"
                 disabled={locked}
                 onClick={() => setTemplate(option)}
-                className={`rounded-none border px-4 py-2 text-sm font-semibold disabled:opacity-50 ${
+                className={`rounded-md border px-4 py-2 text-sm font-semibold disabled:opacity-50 ${
                   template === option
                     ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-[var(--color-on-primary)]"
                     : "border-[var(--color-line)] bg-white text-[var(--color-ink)]"
@@ -560,7 +560,7 @@ export function CourseLandingEditor({ course }: { course: TeacherCourse }) {
         <button
           type="button"
           onClick={() => setEntries(suggestedBlocks(course.title, t).slice(0, limit).map(withId))}
-          className="mt-3 justify-self-start rounded-none border border-[var(--color-line)] bg-white px-4 py-2.5 text-sm font-semibold text-[var(--color-ink)]"
+          className="mt-3 justify-self-start rounded-md border border-[var(--color-line)] bg-white px-4 py-2.5 text-sm font-semibold text-[var(--color-ink)]"
         >
           {t("teacherLanding.suggested")}
         </button>
@@ -570,7 +570,7 @@ export function CourseLandingEditor({ course }: { course: TeacherCourse }) {
         {entries.map(({ id, block }, index) => (
           <div
             key={id}
-            className="grid gap-3 rounded-none border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-4"
+            className="grid gap-3 rounded-lg border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-4"
           >
             <div className="flex items-center gap-2">
               <span className="flex-1 text-sm font-bold text-[var(--color-ink)]">
@@ -581,7 +581,7 @@ export function CourseLandingEditor({ course }: { course: TeacherCourse }) {
                 onClick={() => move(index, -1)}
                 disabled={index === 0}
                 aria-label={t("teacherLanding.moveUp")}
-                className="grid h-8 w-8 place-items-center rounded-none border border-[var(--color-line)] bg-white disabled:opacity-30"
+                className="grid h-8 w-8 place-items-center rounded-md border border-[var(--color-line)] bg-white disabled:opacity-30"
               >
                 <ChevronUp className="h-4 w-4" />
               </button>
@@ -590,7 +590,7 @@ export function CourseLandingEditor({ course }: { course: TeacherCourse }) {
                 onClick={() => move(index, 1)}
                 disabled={index === blocks.length - 1}
                 aria-label={t("teacherLanding.moveDown")}
-                className="grid h-8 w-8 place-items-center rounded-none border border-[var(--color-line)] bg-white disabled:opacity-30"
+                className="grid h-8 w-8 place-items-center rounded-md border border-[var(--color-line)] bg-white disabled:opacity-30"
               >
                 <ChevronDown className="h-4 w-4" />
               </button>
@@ -611,7 +611,7 @@ export function CourseLandingEditor({ course }: { course: TeacherCourse }) {
                 }}
                 aria-label={t("teacherLanding.removeSection").replace("{section}", () => t(`teacherLanding.blocks.${block.kind}`))}
                 title={t("teacherLanding.removeSection").replace("{section}", () => t(`teacherLanding.blocks.${block.kind}`))}
-                className="ml-2 grid h-8 w-8 place-items-center rounded-none border border-[var(--color-line)] bg-white text-[var(--color-danger-fg)]"
+                className="ml-2 grid h-8 w-8 place-items-center rounded-md border border-[var(--color-line)] bg-white text-[var(--color-danger-fg)]"
               >
                 <Trash2 className="h-4 w-4" />
               </button>
@@ -633,7 +633,7 @@ export function CourseLandingEditor({ course }: { course: TeacherCourse }) {
             type="button"
             disabled={atLimit}
             onClick={() => setEntries((current) => [...current, withId(blankBlock(kind, t))])}
-            className="inline-flex items-center gap-1.5 rounded-none border border-[var(--color-line)] bg-white px-3 py-2 text-sm font-semibold text-[var(--color-ink)] disabled:opacity-40"
+            className="inline-flex items-center gap-1.5 rounded-md border border-[var(--color-line)] bg-white px-3 py-2 text-sm font-semibold text-[var(--color-ink)] disabled:opacity-40"
           >
             <Plus className="h-3.5 w-3.5" />
             {t(`teacherLanding.blocks.${kind}`)}
@@ -651,7 +651,7 @@ export function CourseLandingEditor({ course }: { course: TeacherCourse }) {
           to say so; deciding for them is not our call, and staying quiet about
           it is not either. */}
       {warnings.length > 0 ? (
-        <p className="mt-4 rounded-none border border-[rgba(192,123,10,0.35)] bg-[var(--color-warning-soft)] p-3 text-sm leading-6 text-[var(--color-warning-fg)]">
+        <p className="mt-4 rounded-md border border-[rgba(192,123,10,0.35)] bg-[var(--color-warning-soft)] p-3 text-sm leading-6 text-[var(--color-warning-fg)]">
           {t("teacherLanding.warning").replace("{terms}", () => warnings.map((w) => `“${w}”`).join(", "))}
         </p>
       ) : null}
@@ -661,7 +661,7 @@ export function CourseLandingEditor({ course }: { course: TeacherCourse }) {
           type="button"
           onClick={handleSave}
           disabled={saving}
-          className="inline-flex items-center gap-2 rounded-none bg-[var(--color-primary)] px-5 py-2.5 text-sm font-bold text-[var(--color-on-primary)] disabled:opacity-50"
+          className="inline-flex items-center gap-2 rounded-md bg-[var(--color-primary)] px-5 py-2.5 text-sm font-bold text-[var(--color-on-primary)] disabled:opacity-50"
         >
           {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
           {t(saving ? "teacherLanding.saving" : "teacherLanding.save")}

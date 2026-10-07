@@ -68,10 +68,10 @@ export function InstructorProfileView({
       <header
         data-section="header"
         data-storefront-theme={theme ?? undefined}
-        className={`creator-profile-header flex flex-col items-center text-center ${theme ? "px-4 py-6" : ""}`}
+        className={`creator-profile-header flex flex-col items-center text-center ${theme ? "rounded-lg px-4 py-6" : ""}`}
       >
         {branding?.heroImageUrl ? (
-          <div className="relative mb-6 aspect-[3/1] w-full overflow-hidden bg-[var(--color-surface-strong)]">
+          <div className="relative mb-6 aspect-[3/1] w-full overflow-hidden rounded-lg bg-[var(--color-surface-strong)]">
             <Image
               src={branding.heroImageUrl}
               alt=""
@@ -132,11 +132,11 @@ export function InstructorProfileView({
           {t("publicPages.profile.courses_heading")}
         </h2>
         {courses === null ? (
-          <p className="mt-4 border border-[var(--color-danger)] bg-[var(--color-danger-soft)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
+          <p className="mt-4 rounded-md border border-[var(--color-danger)] bg-[var(--color-danger-soft)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
             {t("publicPages.profile.courses_error")}
           </p>
         ) : ordered.length === 0 ? (
-          <div className="mt-4 border border-dashed border-[var(--color-line-strong)] p-6 text-center">
+          <div className="mt-4 rounded-lg border border-dashed border-[var(--color-line-strong)] p-6 text-center">
             <p className="text-sm font-bold text-[var(--color-primary)]">
               {t("publicPages.profile.no_public_courses_yet")}
             </p>

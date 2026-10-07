@@ -39,7 +39,7 @@ export function InlineAlert({ tone, title, className, children }: InlineAlertPro
       role={urgent ? "alert" : "status"}
       aria-live={urgent ? "assertive" : "polite"}
       className={cn(
-        "rounded-[var(--radius-md)] border px-4 py-3 text-sm font-semibold leading-6",
+        "rounded-md border px-4 py-3 text-sm font-semibold leading-6",
         toneClass[tone],
         className,
       )}

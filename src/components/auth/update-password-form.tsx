@@ -75,7 +75,7 @@ export function UpdatePasswordForm({
       <div className="mt-6 grid gap-4">
         <p
           role="alert"
-          className="rounded-none border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]"
+          className="rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]"
         >
           {t("authFlow.recovery.invalid")}
         </p>
@@ -106,7 +106,7 @@ export function UpdatePasswordForm({
         <p
           role="status"
           aria-live="polite"
-          className="rounded-none border border-[rgba(26,54,93,0.14)] bg-[var(--color-surface-soft)] px-4 py-3 text-sm font-semibold text-[var(--color-primary)]"
+          className="rounded-md border border-[rgba(26,54,93,0.14)] bg-[var(--color-surface-soft)] px-4 py-3 text-sm font-semibold text-[var(--color-primary)]"
         >
           {t("authFlow.recovery.updated")}
         </p>
@@ -159,7 +159,7 @@ export function UpdatePasswordForm({
         <p
           role="alert"
           aria-live="assertive"
-          className="rounded-none border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]"
+          className="rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]"
         >
           {errorMessage}
         </p>

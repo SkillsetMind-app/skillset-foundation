@@ -20,7 +20,7 @@ export default async function TeacherBuilderPage() {
       >
         <Suspense
           fallback={
-            <section className="rounded-none border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)]">
+            <section className="rounded-lg border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)]">
               <p className="text-sm text-[var(--color-ink-soft)]">
                 {t("creatorEditor.builder.shell.loading")}
               </p>

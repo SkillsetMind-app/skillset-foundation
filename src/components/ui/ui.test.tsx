@@ -25,7 +25,7 @@ describe("Button", () => {
     // A classe global só pinta borda, fundo, cor e sombra. Raio, espaçamento e
     // alinhamento do ícone estavam copiados em 361 lugares.
     expect(button).toHaveClass("button-solid", "inline-flex", "items-center", "gap-2");
-    expect(button.className).toContain("rounded-[var(--radius-md)]");
+    expect(button).toHaveClass("rounded-md");
   });
 
   it("mapeia cada variante na classe global correspondente", () => {
@@ -61,7 +61,7 @@ describe("Card", () => {
 
     const card = container.firstElementChild!;
     expect(card.className).toContain("bg-[var(--color-surface)]");
-    expect(card.className).toContain("rounded-[var(--radius-xl)]");
+    expect(card).toHaveClass("rounded-lg");
     expect(card.className).toContain("border-[var(--color-line)]");
     // bg-white é atropelado no tema escuro por uma regra global com
     // !important que nem a exceção do certificado consegue vencer.
@@ -178,7 +178,7 @@ describe("EmptyState", () => {
 
     const box = container.firstElementChild!;
     expect(box.className).toContain("border-dashed");
-    expect(box.className).toContain("rounded-[var(--radius-xl)]");
+    expect(box).toHaveClass("rounded-lg");
     expect(screen.getByRole("button", { name: "Criar curso" })).toBeInTheDocument();
   });
 });

@@ -53,7 +53,7 @@ export function AccountDataPanel() {
   }
 
   return (
-    <section className="rounded-none border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
+    <section className="rounded-lg border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
       <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
         {t("accountData.label")}
       </p>
@@ -77,7 +77,7 @@ export function AccountDataPanel() {
           type="button"
           onClick={handleDelete}
           disabled={isExporting || isDeleting}
-          className="rounded-none border border-[rgba(178,34,52,0.3)] bg-white px-4 py-2 text-sm font-semibold text-[var(--color-danger-fg)] transition hover:bg-[rgba(178,34,52,0.06)] disabled:opacity-60"
+          className="rounded-md border border-[rgba(178,34,52,0.3)] bg-white px-4 py-2 text-sm font-semibold text-[var(--color-danger-fg)] transition hover:bg-[rgba(178,34,52,0.06)] disabled:opacity-60"
         >
           {t(isDeleting
             ? "accountData.requesting"
@@ -105,7 +105,7 @@ export function AccountDataPanel() {
         </p>
       ) : null}
       {error ? (
-        <p className="mt-4 rounded-none border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
+        <p className="mt-4 rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
           {t(error)}
         </p>
       ) : null}
