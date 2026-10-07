@@ -28,10 +28,15 @@ export type CourseReadinessInput = Pick<
   | "installmentsMax"
   | "coverImageUrl"
   | "learningOutcomes"
+  | "productFormat"
 > & {
   // Aulas com conteudo (ver getLessonIdsWithMedia). Quem nao tem a lista de
   // arquivos (o Manage) nao passa: o item some e a porcentagem nao muda.
   lessonIdsWithMedia?: ReadonlySet<string>;
+  // Evento ao vivo: sessoes agendadas em course_events. E-book: arquivos numa
+  // aula do produto (countLessonFiles). Mesma regra de quem nao sabe: o item some.
+  scheduledSessionCount?: number;
+  lessonFileCount?: number;
 };
 
 // Aula com conteudo. A MESMA regra do aviso "aulas sem conteudo" do painel
@@ -67,6 +72,18 @@ export function getLessonIdsWithMedia(
   return ids;
 }
 
+// Arquivos (lesson_material) presos a uma aula do produto: e la que o comprador
+// baixa. Arquivo de aula apagada nao conta. Mesma regra de publish_teacher_course.
+export function countLessonFiles(
+  modules: Pick<TeacherCourseModule, "lessons">[],
+  assets: Pick<CourseAsset, "kind" | "lessonId">[],
+): number {
+  const lessonIds = new Set(modules.flatMap((courseModule) => courseModule.lessons.map((lesson) => lesson.id)));
+  return assets.filter(
+    (asset) => asset.kind === "lesson_material" && asset.lessonId !== null && lessonIds.has(asset.lessonId),
+  ).length;
+}
+
 // Travas que nao sao do curso, sao do professor. So o Manage as conhecia; o
 // construtor deixava a pessoa clicar em Publish e descobrir pelo erro do
 // servidor. Opcional para quem nao tem o perfil carregado (ex.: testes puros).
@@ -87,6 +104,8 @@ export type CourseReadinessItemId =
   | "module"
   | "lesson"
   | "lessonMedia"
+  | "session"
+  | "file"
   | "pricing"
   | "installments"
   | "outcomes"
@@ -133,6 +152,9 @@ export function getCourseReadiness(
     course.paymentType ?? (course.priceAmountMinor === 0 ? "free" : "one_time");
   const priceAmountMinor = course.priceAmountMinor ?? 0;
   const modules = course.modules ?? [];
+  // O que cada tipo precisa entregar. Curso: modulo e aula. Comunidade: nada
+  // (aulas opcionais). Evento ao vivo: a sessao. E-book: um arquivo.
+  const productFormat = course.productFormat ?? "course";
   const paid = paymentType !== "free" && priceAmountMinor > 0;
   const lessons = modules.flatMap((courseModule) => courseModule.lessons);
   const withMedia = course.lessonIdsWithMedia;
@@ -186,25 +208,50 @@ export function getCourseReadiness(
       done: Boolean(course.coverImageUrl),
       optional: true,
     },
-    {
-      id: "module",
-      group: "content",
-      label: "Module",
-      hint: "Add at least one module.",
-      done: modules.length > 0,
-      optional: false,
-    },
-    {
-      id: "lesson",
-      group: "content",
-      label: "Lesson",
-      hint: "Add at least one lesson.",
-      done: countCourseLessons(modules) > 0,
-      optional: false,
-    },
+    ...(productFormat === "course"
+      ? [
+          {
+            id: "module" as const,
+            group: "content" as const,
+            label: "Module",
+            hint: "Add at least one module.",
+            done: modules.length > 0,
+            optional: false,
+          },
+          {
+            id: "lesson" as const,
+            group: "content" as const,
+            label: "Lesson",
+            hint: "Add at least one lesson.",
+            done: countCourseLessons(modules) > 0,
+            optional: false,
+          },
+        ]
+      : []),
+    ...(productFormat === "live_event" && course.scheduledSessionCount !== undefined
+      ? [{
+          id: "session" as const,
+          group: "content" as const,
+          label: "Live session",
+          hint: "Schedule the date and time of the live session.",
+          done: course.scheduledSessionCount > 0,
+          optional: false,
+        }]
+      : []),
+    ...(productFormat === "ebook" && course.lessonFileCount !== undefined
+      ? [{
+          id: "file" as const,
+          group: "content" as const,
+          label: "File to download",
+          hint: "Upload at least one file: PDF, slides or workbook.",
+          done: course.lessonFileCount > 0,
+          optional: false,
+        }]
+      : []),
     // So com a lista de aulas com conteudo e ao menos uma aula: sem aula, o
-    // item "lesson" ja cobra, e listar este daria um "feito" de graca.
-    ...(withMedia && lessons.length > 0
+    // item "lesson" ja cobra, e listar este daria um "feito" de graca. No
+    // e-book a aula nao aparece na tela; o item "file" cobra o mesmo arquivo.
+    ...(withMedia && lessons.length > 0 && productFormat !== "ebook"
       ? [{
           id: "lessonMedia" as const,
           group: "content" as const,

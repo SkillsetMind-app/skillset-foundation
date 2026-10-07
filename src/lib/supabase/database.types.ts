@@ -1029,6 +1029,7 @@ export type Database = {
           payment_type: string | null
           platform_fee_bps: number | null
           price_amount_minor: number | null
+          product_format: string
           rating_average: number | null
           rating_count: number | null
           rating_sum: number | null
@@ -1072,6 +1073,7 @@ export type Database = {
           payment_type?: string | null
           platform_fee_bps?: number | null
           price_amount_minor?: number | null
+          product_format?: string
           rating_average?: number | null
           rating_count?: number | null
           rating_sum?: number | null
@@ -1115,6 +1117,7 @@ export type Database = {
           payment_type?: string | null
           platform_fee_bps?: number | null
           price_amount_minor?: number | null
+          product_format?: string
           rating_average?: number | null
           rating_count?: number | null
           rating_sum?: number | null
@@ -2621,6 +2624,20 @@ export type Database = {
               p_category: string
               p_community_enabled: boolean
               p_payment_type: string
+              p_summary: string
+              p_title: string
+            }
+            Returns: string
+          }
+        | {
+            Args: {
+              p_categories: string[]
+              p_category: string
+              p_community_enabled: boolean
+              p_lesson_title: string
+              p_module_title: string
+              p_payment_type: string
+              p_product_format: string
               p_summary: string
               p_title: string
             }

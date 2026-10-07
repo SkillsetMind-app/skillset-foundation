@@ -137,31 +137,28 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("TeacherStudioDashboard", () => {
-  it("routes each viable format to the correct workflow", async () => {
+  // Os mesmos quatro tipos da tela de criacao. Gratis, assinatura e programa
+  // guiado deixaram de ser tipo.
+  it("routes each of the four product types to the creation screen", async () => {
     render(<TeacherStudioDashboard />);
 
-    await waitFor(() => {
-      expect(screen.getByRole("link", { name: /Online course/i })).toHaveAttribute(
-        "href",
-        "/teach/builder?newCourse=1&format=course"
-      );
-    });
-    expect(screen.getByRole("link", { name: /Subscription/i })).toHaveAttribute(
-      "href",
-      "/teach/builder?newCourse=1&format=subscription"
-    );
-    expect(screen.getByRole("link", { name: /Community/i })).toHaveAttribute(
-      "href",
-      "/teach/builder?newCourse=1&format=community"
-    );
-    expect(screen.getByRole("link", { name: /Online event/i })).toHaveAttribute(
-      "href",
-      "/teach/builder?newCourse=1&format=event"
-    );
-    expect(screen.getByRole("link", { name: /Guided program/i })).toHaveAttribute(
-      "href",
-      "/teach/builder?newCourse=1&format=program"
-    );
+    const formats = (
+      await screen.findByRole("heading", { name: "Choose a product format" })
+    ).closest("section") as HTMLElement;
+    const links = within(formats).getAllByRole("link");
+    expect(links.map((link) => link.querySelector("h3")?.textContent)).toEqual([
+      "Course",
+      "Community",
+      "Live event",
+      "E-book",
+    ]);
+    expect(links.map((link) => link.getAttribute("href"))).toEqual([
+      "/teach/builder?newCourse=1&format=course",
+      "/teach/builder?newCourse=1&format=community",
+      "/teach/builder?newCourse=1&format=live_event",
+      "/teach/builder?newCourse=1&format=ebook",
+    ]);
+    expect(within(formats).queryByText(/Guided program|Subscription|Free program/)).toBeNull();
   });
 });
 

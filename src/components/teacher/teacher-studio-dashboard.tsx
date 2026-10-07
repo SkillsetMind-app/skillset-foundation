@@ -8,11 +8,9 @@ import {
   CalendarDays,
   Check,
   Circle,
-  Gift,
+  FileDown,
   Layers3,
   Plus,
-  Repeat2,
-  Route,
   Store,
   UsersRound,
   Wallet,
@@ -508,49 +506,24 @@ function StudioProductsSection({
 
 function StudioSellFormatsSection() {
   const { t } = useTranslation();
+  // Os mesmos quatro tipos da tela de criacao, com os mesmos textos. Gratis,
+  // assinatura e programa guiado deixaram de ser tipo (sao preco e ritmo).
   const formats: Array<{
     title: string;
     detail: string;
     href: string;
     icon: LucideIcon;
   }> = [
-    {
-      title: t("creatorPanel.home.formats.course"),
-      detail: t("creatorPanel.home.formats.courseDetail"),
-      href: "/teach/builder?newCourse=1&format=course",
-      icon: BookOpenCheck,
-    },
-    {
-      title: t("creatorPanel.home.formats.program"),
-      detail: t("creatorPanel.home.formats.programDetail"),
-      href: "/teach/builder?newCourse=1&format=program",
-      icon: Route,
-    },
-    {
-      title: t("creatorPanel.home.formats.subscription"),
-      detail: t("creatorPanel.home.formats.subscriptionDetail"),
-      href: "/teach/builder?newCourse=1&format=subscription",
-      icon: Repeat2,
-    },
-    {
-      title: t("creatorPanel.home.formats.community"),
-      detail: t("creatorPanel.home.formats.communityDetail"),
-      href: "/teach/builder?newCourse=1&format=community",
-      icon: UsersRound,
-    },
-    {
-      title: t("creatorPanel.home.formats.event"),
-      detail: t("creatorPanel.home.formats.eventDetail"),
-      href: "/teach/builder?newCourse=1&format=event",
-      icon: CalendarDays,
-    },
-    {
-      title: t("creatorPanel.home.formats.free"),
-      detail: t("creatorPanel.home.formats.freeDetail"),
-      href: "/teach/builder?newCourse=1&format=free",
-      icon: Gift,
-    },
-  ];
+    { id: "course", icon: BookOpenCheck },
+    { id: "community", icon: UsersRound },
+    { id: "live_event", icon: CalendarDays },
+    { id: "ebook", icon: FileDown },
+  ].map(({ id, icon }) => ({
+    title: t(`courseCreation.types.${id}.label`),
+    detail: t(`courseCreation.types.${id}.help`),
+    href: `/teach/builder?newCourse=1&format=${id}`,
+    icon,
+  }));
 
   return (
     <section
@@ -566,7 +539,7 @@ function StudioSellFormatsSection() {
       >
         {t("creatorPanel.home.formats.title")}
       </h2>
-      <ul className="mt-5 grid gap-px overflow-hidden rounded-md border border-[var(--color-line)] bg-[var(--color-line)] sm:grid-cols-2 lg:grid-cols-3">
+      <ul className="mt-5 grid gap-px overflow-hidden rounded-md border border-[var(--color-line)] bg-[var(--color-line)] sm:grid-cols-2 lg:grid-cols-4">
         {formats.map((format) => {
           const Icon = format.icon;
 

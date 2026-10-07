@@ -5,6 +5,7 @@ import { DEFAULT_PLATFORM_FEE_BPS } from "@/lib/payments/rules";
 import type { TeacherCourse, TeacherCourseModule, TeacherCourseStatus, TeacherCoursePaymentType, MembersTheme } from "@/domain/teacher-course";
 import {
   isInternalSmokeCourse,
+  parseTeacherCourseProductFormat,
   normalizeLearningOutcomes,
   normalizeMembersText,
   normalizeMembersTheme,
@@ -43,6 +44,7 @@ export function rowToTeacherCourse(row: CourseRow): TeacherCourse {
     category: row.category,
     categories: (row.categories as string[] | null) ?? undefined,
     learningOutcomes: (row.learning_outcomes as string[] | null) ?? undefined,
+    productFormat: parseTeacherCourseProductFormat(row.product_format),
     status: row.status as TeacherCourseStatus,
     modules: (row.modules as unknown as TeacherCourseModule[]) ?? [],
     lessonCount: row.lesson_count,

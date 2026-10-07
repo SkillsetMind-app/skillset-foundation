@@ -2601,19 +2601,7 @@
       },
       "formats": {
         "eyebrow": "¿Qué quieres vender?",
-        "title": "Elige un formato de producto",
-        "course": "Curso online",
-        "courseDetail": "Video, texto, descargas, certificados y lecciones estructuradas.",
-        "program": "Programa guiado",
-        "programDetail": "Un recorrido secuenciado de aprendizaje, práctica y encuentros en vivo opcionales.",
-        "subscription": "Suscripción",
-        "subscriptionDetail": "Acceso recurrente con cobro mensual o anual.",
-        "community": "Comunidad",
-        "communityDetail": "Un espacio recurrente para miembros con publicaciones e intercambio entre profesionales.",
-        "event": "Evento online",
-        "eventDetail": "Talleres en vivo, cohortes y sesiones grupales programadas.",
-        "free": "Programa gratuito",
-        "freeDetail": "Inscripción abierta sin checkout ni pago."
+        "title": "Elige un formato de producto"
       },
       "milestones": {
         "eyebrow": "Mi evolución",
@@ -3919,6 +3907,18 @@
         "alt": "Portada de {title}",
         "course": "Curso",
         "emptyHelp": "Añade una portada. Aparecerá en la tarjeta del marketplace, en la página del curso y en el aula."
+      },
+      "productTypes": {
+        "communityOptional": "Opcional: añade lecciones o archivos.",
+        "sessionTitle": "Sesión en vivo",
+        "sessionHelp": "La fecha es lo que la gente reserva. La grabación puede entrar después, como una lección de repetición opcional.",
+        "sessionNone": "Todavía no hay una sesión programada.",
+        "sessionNoLink": "Enlace aún no añadido",
+        "sessionSchedule": "Programar la sesión",
+        "sessionEdit": "Editar en la Agenda",
+        "replayTitle": "Repetición (opcional)",
+        "ebookTitle": "Archivo para descargar",
+        "ebookHelp": "Sube el archivo que la persona recibe al comprar o inscribirse: PDF, presentaciones o cuaderno de trabajo."
       }
     },
     "assets": {
@@ -4002,6 +4002,14 @@
           "hint": "Añade un video, texto o archivo a cada lección.",
           "missing": "Faltan: {lessons}.",
           "missingMore": "Faltan: {lessons} y {count} más."
+        },
+        "session": {
+          "label": "Sesión en vivo",
+          "hint": "Programa la fecha y la hora de la sesión en vivo."
+        },
+        "file": {
+          "label": "Archivo para descargar",
+          "hint": "Sube al menos un archivo: PDF, presentaciones o cuaderno de trabajo."
         },
         "pricing": {
           "label": "Precios",
@@ -4753,43 +4761,33 @@
   },
   "courseCreation": {
     "format": "Formato",
-    "formatDetail": "Modelo de entrega",
+    "formatDetail": "Lo que entregas",
     "basics": "Datos básicos",
-    "basicsDetail": "Título, descripción, categorías",
+    "basicsDetail": "Nombre, descripción, categorías",
     "pricing": "Precio",
-    "pricingDetail": "Precio y modelo de acceso",
-    "lessons": "Lecciones",
-    "lessonsDetail": "Módulos y lecciones",
+    "pricingDetail": "Cómo van a pagar",
+    "lessons": "Contenido",
+    "lessonsDetail": "Lecciones, archivos o la sesión en vivo",
     "publish": "Publicar",
     "publishDetail": "Revisión final",
     "continues": "{detail} · continúa en el editor",
-    "titleRequired": "Dale un título al curso (3 caracteres como mínimo).",
+    "titleRequired": "Ponle un nombre (3 caracteres como mínimo).",
     "summaryRequired": "Escribe una descripción de al menos 20 caracteres.",
     "categoryRequired": "Elige una categoría del catálogo.",
-    "createEvent": "Crear y programar evento",
-    "createFree": "Crear y añadir contenido",
-    "createPaid": "Crear y definir precio",
-    "monthly": "Cobrar cada mes",
-    "yearly": "Cobrar cada año",
     "creating": "Creando...",
     "categoryError": "Elige al menos una categoría del catálogo.",
-    "duplicateError": "Ya existe un curso con este título. Elige un nombre más específico.",
+    "duplicateError": "Ya existe un producto con este nombre. Elige un nombre más específico.",
     "permissionError": "No puedes crear cursos hasta completar la configuración de creador. Verifica tu correo y acepta las Condiciones para educadores.",
     "summaryError": "Añade una descripción de al menos 20 caracteres.",
-    "createError": "No pudimos crear este curso. Inténtalo de nuevo.",
+    "createError": "No pudimos crear este producto. Inténtalo de nuevo.",
     "activationError": "Activa tu tienda para habilitar la publicación: una tarifa única de activación, que se cobra una sola vez por cuenta de creador, nunca por curso.",
-    "intro": "Elige aquí el modelo de acceso y la información esencial. El precio, las lecciones y la publicación continúan en el editor.",
+    "intro": "Elige lo que vas a entregar y ponle un nombre. El precio, el contenido y la publicación continúan en el editor.",
     "privateDraft": "Esto crea un borrador privado. Nada será visible ni estará a la venta antes de que publiques, y para publicar se necesita la verificación profesional cuando se requiere.",
-    "formatHelp": "El formato define cómo acceden los estudiantes. Las condiciones comerciales se pueden editar en Precio y ofertas.",
     "categoryHelp": "Las categorías deciden en qué parte del catálogo aparece el producto y cómo agrupa SkillsetMind los conocimientos relacionados. Elige primero la más específica: será la categoría principal del catálogo.",
     "products": "Mis productos",
     "newProduct": "Nuevo producto",
-    "title": "Define la base del producto.",
-    "setup": "Configura el producto",
-    "productFormat": "Formato del producto",
-    "interval": "Cada cuánto cobrar",
-    "intervalHelp": "Los miembros vuelven a pagar con esta frecuencia hasta que cancelen. Puedes cambiarlo después en Precio.",
-    "productTitle": "Título del producto",
+    "title": "Crea un producto.",
+    "productTitle": "Nombre",
     "promise": "Descripción",
     "primaryCategory": "La primera selección es la categoría principal del catálogo.",
     "activate": "Activar tienda",
@@ -4799,19 +4797,45 @@
     "titlePlaceholder": "Ej.: Fundamentos del alto rendimiento",
     "promisePlaceholder": "Describe el resultado práctico que pueden esperar los estudiantes.",
     "categoryTopic": "Categorías del curso",
-    "courseLabel": "Curso en línea",
-    "courseHelp": "Compra única con acceso permanente o administrado.",
-    "programLabel": "Programa guiado",
-    "programHelp": "Un recorrido secuencial que combina aprendizaje, práctica y encuentros en vivo opcionales.",
-    "eventLabel": "Evento en línea",
-    "eventHelp": "Talleres en vivo, cohortes y sesiones grupales programadas.",
-    "subscriptionLabel": "Suscripción",
-    "subscriptionHelp": "Acceso continuo con facturación periódica.",
-    "communityLabel": "Comunidad",
-    "communityHelp": "Un espacio de membresía periódica para publicaciones e intercambio entre participantes.",
-    "freeLabel": "Programa gratuito",
-    "freeHelp": "Inscripción abierta sin proceso de compra ni pago.",
-    "characterCount": "{count}/1200 caracteres. Mínimo 20."
+    "characterCount": "{count}/1200 caracteres. Mínimo 20.",
+    "deliverTitle": "¿Qué vas a entregar?",
+    "deliverHelp": "Elige uno. Gratis o de pago, pago único o mensual: eso lo decides después, en Precio.",
+    "types": {
+      "course": {
+        "label": "Curso",
+        "help": "Clases grabadas que cada persona ve a su ritmo."
+      },
+      "community": {
+        "label": "Comunidad",
+        "help": "Un espacio de miembros donde publicas, respondes y haces encuentros en vivo. Normalmente se paga cada mes."
+      },
+      "live_event": {
+        "label": "Evento en vivo",
+        "help": "Un taller o clase en una fecha fija, por Zoom o Meet."
+      },
+      "ebook": {
+        "label": "E-book",
+        "help": "Un archivo que la persona descarga: PDF, presentaciones, cuaderno de trabajo."
+      }
+    },
+    "nameTitle": {
+      "course": "Ponle nombre a tu curso",
+      "community": "Ponle nombre a tu comunidad",
+      "live_event": "Ponle nombre a tu evento en vivo",
+      "ebook": "Ponle nombre a tu e-book"
+    },
+    "continue": "Continuar",
+    "back": "Volver",
+    "create": "Crear",
+    "eventDate": "Fecha",
+    "eventTime": "Hora",
+    "eventLink": "Enlace de Zoom o Meet",
+    "eventLinkHelp": "Opcional. Puedes añadirlo después.",
+    "whenRequired": "Elige la fecha y la hora de la sesión.",
+    "linkInvalid": "Usa un enlace completo que empiece por https://.",
+    "starterModule": "Módulo 1",
+    "starterLesson": "Lección 1",
+    "ebookModule": "Descarga"
   },
   "courseAccess": {
     "pending": "Esperando confirmación del correo",

@@ -3,6 +3,7 @@ import { getDictionary, translate } from "@/lib/i18n/dictionaries";
 
 import type { CourseAsset } from "@/domain/course-asset";
 import {
+  countLessonFiles,
   getCourseReadiness,
   getLessonIdsWithMedia,
   groupCourseReadiness,
@@ -429,5 +430,75 @@ describe("groupCourseReadiness", () => {
 
     expect(sale.items.map((item) => item.id)).toEqual([]);
     expect([sale.doneCount, sale.total, sale.ready]).toEqual([0, 0, true]);
+  });
+});
+
+// O tipo gravado na criacao (courses.product_format) decide o que publicar
+// cobra. Mesma regra de publish_teacher_course (20261007010000).
+describe("o que cada tipo precisa entregar", () => {
+  const ids = (input: CourseReadinessInput) =>
+    getCourseReadiness(input).items.filter((item) => !item.optional).map((item) => item.id);
+  const empty = { ...complete, modules: [], paymentType: "free" as const, priceAmountMinor: 0 };
+
+  it("curso: modulo e aula, como antes (e sem tipo gravado, curso)", () => {
+    expect(ids({ ...empty, productFormat: "course" })).toEqual(["title", "summary", "category", "module", "lesson"]);
+    expect(getCourseReadiness({ ...empty, productFormat: "course" }).ready).toBe(false);
+    expect(ids(empty)).toEqual(ids({ ...empty, productFormat: "course" }));
+  });
+
+  it("comunidade: aula opcional, publica sem nenhuma", () => {
+    const readiness = getCourseReadiness({ ...empty, productFormat: "community" });
+    expect(readiness.items.map((item) => item.id)).not.toContain("module");
+    expect(readiness.items.map((item) => item.id)).not.toContain("lesson");
+    expect(readiness.ready).toBe(true);
+  });
+
+  it("comunidade: aula que existe continua precisando de conteudo", () => {
+    const readiness = getCourseReadiness({
+      ...complete,
+      productFormat: "community",
+      lessonIdsWithMedia: new Set<string>(),
+    });
+    expect(readiness.pending.map((item) => item.id)).toEqual(["lessonMedia"]);
+  });
+
+  it("evento ao vivo: a sessao agendada no lugar da aula", () => {
+    const base = { ...empty, productFormat: "live_event" as const };
+    expect(getCourseReadiness({ ...base, scheduledSessionCount: 0 }).pending.map((item) => item.id)).toEqual(["session"]);
+    expect(getCourseReadiness({ ...base, scheduledSessionCount: 1 }).ready).toBe(true);
+    // Sem a lista de sessoes (Manage), o item some, como lessonMedia.
+    expect(ids(base)).not.toContain("session");
+  });
+
+  it("e-book: ao menos um arquivo, sem cobrar modulo, aula nem conteudo de aula", () => {
+    const base = {
+      ...complete,
+      paymentType: "free" as const,
+      priceAmountMinor: 0,
+      productFormat: "ebook" as const,
+      lessonIdsWithMedia: new Set<string>(),
+    };
+    expect(getCourseReadiness({ ...base, lessonFileCount: 0 }).pending.map((item) => item.id)).toEqual(["file"]);
+    expect(getCourseReadiness({ ...base, lessonFileCount: 1 }).ready).toBe(true);
+  });
+
+  it("so conta arquivo preso a uma aula do produto", () => {
+    const modules = [{ id: "m1", title: "Download", lessons: [lesson] }];
+    const assets: Pick<CourseAsset, "kind" | "lessonId">[] = [
+      { kind: "lesson_material", lessonId: "l1" },
+      { kind: "lesson_material", lessonId: "deleted-lesson" },
+      { kind: "lesson_material", lessonId: null },
+      { kind: "lesson_video", lessonId: "l1" },
+    ];
+    expect(countLessonFiles(modules, assets)).toBe(1);
+  });
+
+  it("traduz os itens novos", () => {
+    const es = (key: string) => translate(getDictionary("es"), key);
+    const session = getCourseReadiness({ ...empty, productFormat: "live_event", scheduledSessionCount: 0 }, undefined, es)
+      .items.find((item) => item.id === "session");
+    const file = getCourseReadiness({ ...empty, productFormat: "ebook", lessonFileCount: 0 }, undefined, es)
+      .items.find((item) => item.id === "file");
+    expect([session?.label, file?.label]).toEqual(["Sesión en vivo", "Archivo para descargar"]);
   });
 });

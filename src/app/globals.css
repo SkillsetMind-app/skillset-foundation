@@ -3390,6 +3390,17 @@ body:has([aria-label="Course categories"])
   color: #ffffff;
 }
 
+/* "O que você vai entregar?": quatro cartões com o ícone grande. */
+.create-course-payment--large {
+  min-height: 168px;
+  padding: 1.25rem;
+}
+
+.create-course-payment--large > span {
+  width: 3.5rem;
+  height: 3.5rem;
+}
+
 /* A1-cont-2: the active payment-method indicator fills with --color-primary
    (light blue in dark) → white drops to 2.14:1. Flip to --color-base dark ink
    (8.8:1 on the inverted fill). Dark-scoped, so light mode (navy) is untouched. */
