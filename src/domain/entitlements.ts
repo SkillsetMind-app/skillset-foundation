@@ -32,7 +32,7 @@
  * ($2/month of Bunny storage at the largest tier); the expensive one is hours
  * WATCHED, at ~$0.0066/hour on the Volume network. Pro caps `activeStudents`
  * at 3,000 for that reason (above it the teacher is sent to "Contact us", not
- * to a bigger plan), while the retired Plus keeps its `null`. Deliberately
+ * to a bigger plan), while Enterprise (id `plus`) keeps its `null`. Deliberately
  * unmetered for now: Bunny is not serving production video yet. D23 in
  * DECISIONS.md carries the math and the trigger for building the meter.
  */
@@ -92,6 +92,26 @@ export const planEntitlements: Record<PlanId, PlanEntitlements> = {
       storefrontTemplates: false,
     },
   },
+  // Basic takes Free's place on the offer and keeps its quotas. Its features
+  // follow the SQL, which treats every plan other than `free` as paid: own
+  // logo on certificates and storefront templates are on, whitelabel is not.
+  basic: {
+    quotas: {
+      publishedProducts: 1,
+      activeStudents: 50,
+      videoStorageMinutes: 60,
+      featuredSlots: 0,
+      customDomains: 0,
+      teamSeats: 1,
+      emailSendsPerMonth: 0,
+      landingBlocks: 4,
+    },
+    features: {
+      removePlatformBranding: false,
+      certificateOwnLogo: true,
+      storefrontTemplates: true,
+    },
+  },
   starter: {
     quotas: {
       publishedProducts: 5,
@@ -109,7 +129,7 @@ export const planEntitlements: Record<PlanId, PlanEntitlements> = {
       storefrontTemplates: true,
     },
   },
-  // The retired Plus limits, except a 3,000 cap on active students.
+  // Enterprise's limits, except a 3,000 cap on active students.
   pro: {
     quotas: {
       publishedProducts: null,
@@ -127,7 +147,7 @@ export const planEntitlements: Record<PlanId, PlanEntitlements> = {
       storefrontTemplates: true,
     },
   },
-  // Retired: closed to new subscribers, kept for existing Plus subscriptions.
+  // Enterprise (id `plus`): not on the public offer, by arrangement only.
   plus: {
     quotas: {
       publishedProducts: null,
@@ -210,9 +230,9 @@ export function hasFeature(planId: PlanId, key: FeatureKey): boolean {
   return planEntitlements[planId].features[key];
 }
 
-// Plans a teacher can still move to, cheapest first. The retired Plus is not
-// one of them, so nothing ever says "Upgrade to Plus".
-const UPGRADE_ORDER: PlanId[] = ["free", "starter", "pro"];
+// Plans a teacher can move to on their own, cheapest first. Enterprise is not
+// one of them: above Pro the answer is "Contact us", never "Upgrade".
+const UPGRADE_ORDER: PlanId[] = ["free", "basic", "starter", "pro"];
 
 /** The cheapest plan that includes a feature — powers "Upgrade to Pro" copy. */
 export function lowestPlanWithFeature(key: FeatureKey): PlanId | null {

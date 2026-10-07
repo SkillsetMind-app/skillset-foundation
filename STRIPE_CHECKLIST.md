@@ -66,6 +66,8 @@ evento é confirmado e ignorado.
 - [ ] `charge.dispute.closed` — registra o resultado da disputa.
 
 **Assinatura** (curso recorrente + plano do professor):
+- [ ] `invoice.created` — **endpoint Connect**: grava na fatura de renovação da assinatura de curso a taxa exata (percentual + fixo), enquanto ela ainda é rascunho (`handleCourseSubscriptionInvoiceCreated`). Sem ele, a renovação cobra só o percentual da primeira fatura.
+- [ ] `customer.subscription.trial_will_end` — **endpoint da plataforma**: e-mail de fim do teste grátis do plano, um por assinatura (`handlePlanTrialWillEnd`).
 - [ ] `invoice.paid` — fulfillment do ciclo (`handleCourseSubscriptionInvoicePaid`).
 - [ ] `invoice.payment_failed` — falha de cobrança do ciclo (`handleInvoicePaymentFailed`).
 - [ ] `customer.subscription.created` — lifecycle (`handleCourseSubscriptionLifecycle` → fallback `syncSubscriptionFromStripe`).
@@ -81,6 +83,22 @@ evento é confirmado e ignorado.
 Depois de criar cada endpoint:
 - Abra o endpoint → **Signing secret** → **Reveal** → copie o `whsec_...`
 - Grave na variável de ambiente do projeto na Vercel correspondente (tabela acima) e faça redeploy.
+
+## 2b. Planos do professor (tabela de 2026-10-06)
+
+Fonte da verdade: `src/data/plans.ts` (preços) e `src/lib/payments/rules.ts` (comissão e taxa fixa).
+
+| Plano | Mensal | Anual | Comissão por venda | Price IDs |
+|---|---|---|---|---|
+| Basic | $5 | $50 | 10% + $0.30 | **criar** (lookup `skillset_basic_monthly` / `skillset_basic_yearly`) |
+| Starter (Recomendado) | $19 | $190 | 4,9% + $0.30 | já existem |
+| Pro | $89 | $890 | 2,9% + $0.30 | já existem |
+| Enterprise (fora da oferta, id `plus`) | $199 | $1990 | 1,9% + $0.30 | os do antigo Plus |
+
+- [ ] Criar o Product **Skillset Basic** com os dois Prices recorrentes em USD da tabela e colar os `price_...` em `src/data/plans.ts` (hoje `price_PLACEHOLDER_basic_*`). Enquanto houver placeholder, o cartão Basic mostra "Disponível em breve".
+- [ ] Opcional: renomear o Product "Skillset Plus" para "Skillset Enterprise" no painel (os Price IDs não mudam).
+- [ ] **Customer portal** (Settings → Billing → Customer portal): cancelamento ligado, "no fim do período"; troca de plano entre os Prices de Basic, Starter e Pro, sem Enterprise.
+- [ ] Teste grátis: nada a configurar no painel. O checkout pede `trial_period_days: 14` e `payment_method_collection: always`; um teste por conta (`creator_plan_trials`).
 
 ## 3. Stripe Connect (pagamentos dos professores)
 

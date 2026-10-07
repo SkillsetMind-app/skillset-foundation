@@ -51,7 +51,7 @@ export const helpFaqCategories: ReadonlyArray<HelpFaqCategory> = [
       {
         id: "course-pricing",
         q: "How do I set pricing for my course?",
-        a: "Pricing is set per product inside Studio → course builder. Choose free enrollment, a one-time price, or a monthly or yearly subscription in a supported currency. The platform commission (4.9% on Starter, 0% on Pro) plus the Stripe processing fee are shown clearly in the earnings ledger for every sale.",
+        a: "Pricing is set per product inside Studio → course builder. Choose free enrollment, a one-time price, or a monthly or yearly subscription in a supported currency. The platform commission (10% + $0.30 on Basic, 4.9% + $0.30 on Starter, 2.9% + $0.30 on Pro) plus the Stripe processing fee are shown clearly in the earnings ledger for every sale.",
       },
       {
         id: "drip-release",
@@ -71,7 +71,7 @@ export const helpFaqCategories: ReadonlyArray<HelpFaqCategory> = [
     items: [
       {
         q: "Which plan should I start on?",
-        a: "Both plans start with a 14-day free trial; a card is required, and you can cancel in Billing before the trial ends without being charged. Starter is $5/month ($50/year) with a 4.9% commission per sale. Pro is $89/month with 0% commission and higher limits. The pricing page shows what each plan takes from a sample $100 sale.",
+        a: "Every plan starts with a 14-day free trial; a card is required, and you can cancel in Billing before the trial ends without being charged. Basic is $5/month ($50/year) with 10% + $0.30 per sale. Starter is $19/month ($190/year) with 4.9% + $0.30. Pro is $89/month ($890/year) with 2.9% + $0.30 and higher limits. The pricing page shows what each plan takes from a sample $100 sale.",
       },
       {
         q: "What happens when I upgrade or downgrade?",

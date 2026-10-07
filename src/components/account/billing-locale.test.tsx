@@ -102,11 +102,11 @@ describe("billing locale with real dictionaries", () => {
     fireEvent.click(annual);
     expect(annual.getAttribute("aria-checked")).toBe("true");
     expect(await screen.findByRole("button", { name: "Mejorar a Pro" })).toBeTruthy();
-    expect(screen.getByText("0% de comisión en tus ventas.")).toBeTruthy();
+    expect(screen.getByText("La comisión más baja de la oferta.")).toBeTruthy();
     expect(screen.getByText(/^\$890 al año, desde hoy\. Se renueva automáticamente/)).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "English" }));
     expect(screen.getByRole("radio", { name: "Yearly" }).getAttribute("aria-checked")).toBe("true");
-    expect(screen.getByText("0% commission on your sales.")).toBeTruthy();
+    expect(screen.getByText("The lowest commission on the offer.")).toBeTruthy();
     expect(screen.getByText(/^\$890\/year, starting today\./)).toBeTruthy();
   });
 });

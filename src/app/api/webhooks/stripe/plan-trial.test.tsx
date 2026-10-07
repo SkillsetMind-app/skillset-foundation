@@ -148,7 +148,7 @@ describe("plan free trial through the Stripe webhook", () => {
     await deliver("customer.subscription.created", planSubscription());
     const changed = planSubscription({
       trial_end: TRIAL_END + 86_400,
-      items: { data: [{ price: { id: starterMonthly, unit_amount: 500, currency: "usd" } }] },
+      items: { data: [{ price: { id: starterMonthly, unit_amount: 1900, currency: "usd" } }] },
     });
     expect((await deliver("customer.subscription.updated", changed)).status).toBe(200);
 
@@ -157,16 +157,16 @@ describe("plan free trial through the Stripe webhook", () => {
     expect(db.tables.creator_plan_trials[0].trial_end).toBe("2026-10-20T12:00:00.000Z");
   });
 
-  it("still resolves a subscription on the old $19 Starter price as Starter", async () => {
-    const legacy = planById("starter").legacyStripePriceIds![0].monthlyId;
+  it("still resolves an Enterprise (ex-Plus) subscription, which never had a trial", async () => {
+    const enterprise = planById("plus").stripePriceIds!.yearlyId;
     await deliver("customer.subscription.updated", planSubscription({
       status: "active",
       trial_start: null,
       trial_end: null,
-      items: { data: [{ price: { id: legacy, unit_amount: 1900, currency: "usd" } }] },
+      items: { data: [{ price: { id: enterprise, unit_amount: 199_000, currency: "usd" } }] },
     }));
-    expect(db.tables.users[0].current_plan_id).toBe("starter");
-    expect(db.tables.subscriptions[0]).toMatchObject({ plan_id: "starter", cycle: "monthly" });
+    expect(db.tables.users[0].current_plan_id).toBe("plus");
+    expect(db.tables.subscriptions[0]).toMatchObject({ plan_id: "plus", cycle: "yearly" });
     expect(db.tables.creator_plan_trials).toEqual([]);
   });
 

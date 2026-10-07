@@ -25,6 +25,8 @@ export type Order = {
   refundedAmountMinor?: number;
   currency: string;
   platformFeeBps: number;
+  /** Fixed part of the platform fee (stored unit). 0 on orders before it existed. */
+  platformFeeFixedMinor?: number;
   /**
    * How the money moved. "direct_charge" is the ONLY model SkillsetMind uses:
    * the buyer is charged on the teacher's own connected account and the

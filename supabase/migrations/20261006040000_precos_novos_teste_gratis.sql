@@ -1,23 +1,29 @@
--- Nova tabela de preços (decisão do fundador, 06/10/2026). A oferta pública
--- passa a ser Starter e Pro, cada um abrindo com 14 dias grátis:
---   - Starter: US$ 5/mês ou US$ 50/ano, comissão de 4,9% (490 bps);
---   - Pro: US$ 89/mês, comissão de 0%, e os limites que eram do Plus;
---   - Plus sai da oferta. Quem já assina continua com os mesmos limites e a
---     mesma comissão (200 bps): nenhuma assinatura existente quebra;
---   - free segue no código como padrão de conta sem plano (10%).
+-- Nova tabela de preços (decisão do fundador, 06/10/2026). Não existe mais
+-- plano gratuito na oferta: o que existe é o teste grátis de 14 dias.
+--   - Básico (basic): US$ 5/mês, 10% + taxa fixa por venda;
+--   - Starter: US$ 19/mês, 4,9% + taxa fixa (Recomendado);
+--   - Pro: US$ 89/mês, 2,9% + taxa fixa, com os limites que eram do Plus;
+--   - Enterprise (id `plus`, fora da oferta): US$ 199/mês, 1,9% + taxa fixa.
+--   - A taxa fixa (~US$ 0,30 por venda, tabela por moeda em
+--     src/lib/payments/rules.ts) vale para toda venda, avulsa ou renovação.
+--   - `free` fica só como estado de conta sem assinatura, na taxa do Básico,
+--     até a mudança que bloqueia vender sem plano.
 --
 -- O que muda aqui:
---   1. platform_fee_bps_for_plan: starter 490, pro 0. Espelha
---      canonicalPlatformFeeBpsForPlan em src/lib/payments/rules.ts.
+--   1. platform_fee_bps_for_plan: basic 1000, starter 490, pro 290, plus 190.
+--      Espelha canonicalPlatformFeeBpsForPlan em src/lib/payments/rules.ts.
 --   2. featured_slots_for_plan e custom_domain_limit_for_plan: pro sobe para 5
 --      e 5, os números do Plus. Espelham planEntitlements em
 --      src/domain/entitlements.ts (o teste de deriva lê ESTE arquivo).
---      landing_block_limit_for_plan não muda: pro e plus já eram 20.
---   3. courses.platform_fee_bps é refeito a partir do plano do dono, como na
+--      basic cai no `else` das duas (0 e 0) e das outras funções de plano,
+--      que já tratam todo plano diferente de `free` como pago.
+--   3. orders.platform_fee_fixed_minor: a parte fixa da taxa, guardada no
+--      pedido como o percentual já é (platform_fee_bps). Pedidos antigos: 0.
+--   4. courses.platform_fee_bps é refeito a partir do plano do dono, como na
 --      20260718000100. As vendas antigas guardam a própria taxa no pedido.
---   4. subscriptions.trial_end: a página de cobrança mostra "Teste grátis —
+--   5. subscriptions.trial_end: a página de cobrança mostra "Teste grátis —
 --      termina em {data}".
---   5. creator_plan_trials: um teste grátis por conta de criador, para sempre.
+--   6. creator_plan_trials: um teste grátis por conta de criador, para sempre.
 --      A linha nasce quando o webhook vê a primeira assinatura com trial e não
 --      é apagada quando a assinatura acaba; o checkout consulta a tabela antes
 --      de oferecer o trial. reminder_sent_at torna o e-mail de
@@ -36,9 +42,10 @@ set search_path = ''
 as $function$
   select case p_plan
     when 'free' then 1000
+    when 'basic' then 1000
     when 'starter' then 490
-    when 'pro' then 0
-    when 'plus' then 200
+    when 'pro' then 290
+    when 'plus' then 190
     else 1000
   end;
 $function$;
@@ -70,11 +77,18 @@ as $$
     when 'starter' then 1
     when 'pro'     then 5
     when 'plus'    then 5
-    else 0            -- free: nao incluso
+    else 0            -- free e basic: nao incluso
   end;
 $$;
 
--- 3. Snapshot de comissão nos cursos ------------------------------------------
+-- 3. Parte fixa da taxa no pedido ----------------------------------------------
+alter table public.orders
+  add column if not exists platform_fee_fixed_minor integer not null default 0;
+
+comment on column public.orders.platform_fee_fixed_minor is
+  'Parte fixa da taxa da plataforma nesta venda, na unidade guardada (valor x 100). Soma-se a platform_fee_bps.';
+
+-- 4. Snapshot de comissão nos cursos ------------------------------------------
 -- courses_freeze_privileged_columns() só deixa mexer em platform_fee_bps por
 -- escrita confiável; mesma porta da 20260718000100.
 select set_config('skillset.trusted_write', 'on', true);
@@ -87,11 +101,11 @@ where u.uid = c.owner_id
 
 select set_config('skillset.trusted_write', 'off', true);
 
--- 4. Fim do teste na assinatura do plano --------------------------------------
+-- 5. Fim do teste na assinatura do plano --------------------------------------
 alter table public.subscriptions
   add column if not exists trial_end timestamptz;
 
--- 5. Um teste grátis por conta --------------------------------------------------
+-- 6. Um teste grátis por conta --------------------------------------------------
 create table if not exists public.creator_plan_trials (
   user_id text primary key references public.users(uid) on delete cascade,
   stripe_subscription_id text not null unique,

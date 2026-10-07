@@ -11,8 +11,8 @@ Last updated: 2026-04-26
 > balance for the teacher and adds no clearing period of its own — Stripe's own settlement
 > and payout timelines still apply and are unchanged by us. Refunds and lost disputes are
 > debited from the teacher's Stripe balance (with `refund_application_fee: true`).
-> The fee ladder below (8/4/1/0%) is also stale — the live ladder is Free 10% / Starter 5% /
-> Pro 3% / Plus 2% (`src/data/plans.ts`). Kept for history only; do not implement from it.
+> The fee ladder below (8/4/1/0%) is also stale — the live ladder is in `src/data/plans.ts`
+> and `src/lib/payments/rules.ts` (D27 in DECISIONS.md). Kept for history only; do not implement from it.
 
 ## Product Flow
 

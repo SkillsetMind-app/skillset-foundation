@@ -1,8 +1,10 @@
 \set ON_ERROR_STOP on
 -- Banco descartável apenas. Nada fica: tudo volta no ROLLBACK.
 --
--- Preços em 3 planos + teste grátis (20261006040000_precos_3_planos_teste_gratis.sql):
---   - comissão: free 1000, starter 490, pro 0, plus 200 (aposentado, mantido);
+-- Preços novos + teste grátis (20261006040000_precos_novos_teste_gratis.sql):
+--   - comissão: free 1000, basic 1000, starter 490, pro 290, plus (Enterprise) 190;
+--   - basic sem destaque nem domínio (cai no else);
+--   - orders.platform_fee_fixed_minor existe, com default 0;
 --   - pro com os destaques e domínios do Plus (5 e 5); landing segue 20;
 --   - os pinos de search_path continuam lá depois do create or replace;
 --   - subscriptions.trial_end existe;
@@ -20,15 +22,17 @@ end $$;
 
 select pg_temp.assert_true(
   public.platform_fee_bps_for_plan('free') = 1000
+    and public.platform_fee_bps_for_plan('basic') = 1000
     and public.platform_fee_bps_for_plan('starter') = 490
-    and public.platform_fee_bps_for_plan('pro') = 0
-    and public.platform_fee_bps_for_plan('plus') = 200
+    and public.platform_fee_bps_for_plan('pro') = 290
+    and public.platform_fee_bps_for_plan('plus') = 190
     and public.platform_fee_bps_for_plan(null) = 1000,
   'platform_fee_bps_for_plan fora da tabela nova'
 );
 
 select pg_temp.assert_true(
   public.featured_slots_for_plan(null) = 0
+    and public.featured_slots_for_plan('basic') = 0
     and public.featured_slots_for_plan('starter') = 1
     and public.featured_slots_for_plan('pro') = 5
     and public.featured_slots_for_plan('plus') = 5,
@@ -37,6 +41,7 @@ select pg_temp.assert_true(
 
 select pg_temp.assert_true(
   public.custom_domain_limit_for_plan(null) = 0
+    and public.custom_domain_limit_for_plan('basic') = 0
     and public.custom_domain_limit_for_plan('starter') = 1
     and public.custom_domain_limit_for_plan('pro') = 5
     and public.custom_domain_limit_for_plan('plus') = 5,
@@ -63,6 +68,13 @@ select pg_temp.assert_true(
   exists (select 1 from information_schema.columns
     where table_schema = 'public' and table_name = 'subscriptions' and column_name = 'trial_end'),
   'subscriptions.trial_end nao existe'
+);
+
+select pg_temp.assert_true(
+  exists (select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'orders'
+      and column_name = 'platform_fee_fixed_minor' and column_default = '0' and is_nullable = 'NO'),
+  'orders.platform_fee_fixed_minor nao existe com default 0'
 );
 
 select pg_temp.assert_true(

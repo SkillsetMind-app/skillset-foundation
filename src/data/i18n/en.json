@@ -452,7 +452,7 @@
       "title": "Teach beyond the limits of your live sessions.",
       "ctaStart": "Start teaching",
       "ctaPromise": "Read the Creator Promise",
-      "bullet1": "Starter takes {starter}% per sale and Pro takes {pro}%, before Stripe processing fees.",
+      "bullet1": "Basic takes {basic}% + $0.30 per sale, Starter {starter}% + $0.30 and Pro {pro}% + $0.30, before Stripe processing fees.",
       "bullet2": "Buyers pay your Stripe account directly. No platform hold, and 14 days free before your first plan charge.",
       "bullet3": "Drip release and a refund window protect you from abuse.",
       "bullet4": "Course community, live sessions, and verifiable certificates on every plan."
@@ -2867,9 +2867,9 @@
   "publicPages": {
     "pricing": {
       "pricing": "Pricing",
-      "two_plans_with_a_free_trial": "Two plans, each starting with a 14-day free trial. Starter is $5/month with a 4.9% commission per sale; Pro is $89/month with 0% commission. Stripe's processing fee is shown separately so the math is never hidden, and buyers pay your own Stripe account directly — no platform hold, no platform clearing period.",
+      "plans_with_a_free_trial": "Three plans, each starting with a 14-day free trial. Basic is $5/month with 10% + $0.30 per sale; Starter is $19/month with 4.9% + $0.30; Pro is $89/month with 2.9% + $0.30. Stripe's processing fee is shown separately so the math is never hidden, and buyers pay your own Stripe account directly — no platform hold, no platform clearing period.",
       "pricing_that_lowers_as_you_grow": "Pricing that lowers as you grow.",
-      "every_plan_can_sell_paid_plans": "Both plans publish and sell, and both start with 14 days free. Pro drops the commission to 0% and raises your limits.",
+      "every_plan_can_sell_paid_plans": "Every plan publishes and sells, and each starts with 14 days free. Higher plans lower the commission and raise your limits.",
       "billing_cycle": "Billing cycle",
       "monthly": "Monthly",
       "yearly": "Yearly",
@@ -2877,6 +2877,7 @@
       "plan_comparison": "Plan comparison",
       "recommended": "Recommended",
       "per_sale": "per sale",
+      "per_sale_with_fixed": "+ {fixed} per sale",
       "mo": "/mo",
       "mo_billed": "/mo, billed",
       "yearly_2": " yearly",
@@ -2906,7 +2907,7 @@
       "what_happens_when_i_downgrade_or": "What happens when I downgrade or cancel?",
       "downgrades_and_cancellations_take_effect_at": "Downgrades and cancellations take effect at the end of your current billing period — you keep the plan you're paying for until then. Cancel during the 14-day free trial and you are not charged. Either way, you keep all your content.",
       "how_do_the_fees_work_on": "How do the fees work on a subscription sale?",
-      "two_fees_come_out_of_each": "Up to two fees come out of each sale, shown separately so the math is never hidden. SkillsetMind takes its plan commission (4.9% on Starter, 0% on Pro), and Stripe's standard processing fee (2.9% + $0.30 for USD cards, an estimated 5.4% + $0.30 for non-USD) is passed through to you. Everything left over is yours.",
+      "two_fees_come_out_of_each": "Two fees come out of each sale, shown separately so the math is never hidden. SkillsetMind takes its plan commission (from 10% + $0.30 on Basic down to 2.9% + $0.30 on Pro; the $0.30 is charged as its local equivalent in other currencies), and Stripe's standard processing fee (2.9% + $0.30 for USD cards, an estimated 5.4% + $0.30 for non-USD) is passed through to you. Everything left over is yours.",
       "when_can_a_sale_be_refunded": "When can a sale be refunded, and does it affect my payout?",
       "learners_can_self_refund_within_days": "Learners can self-refund within {value0} days of purchase if they've completed less than half the course. Because the buyer paid your Stripe account directly, the refund is debited from your own balance — and SkillsetMind's commission on that sale is returned to you with it, so you never pay a fee on a sale that was undone.",
       "ready_to_publish_on_skillsetmind": "Ready to publish on SkillsetMind?",
@@ -2927,12 +2928,12 @@
       "for_creators": "For creators",
       "teach_with_a_real_course_operating": "Teach with a real course operating system.",
       "skillsetmind_is_designed_for_experts_who": "For coaches, facilitators and mentors who already teach live and want to sell their method as a course with a paid community, starting with a 14-day free trial.",
-      "commission_on_pro": "Commission on Pro",
+      "commission_on_pro": "Commission on Pro, + $0.30 per sale",
       "to_start": "Days of free trial",
       "direct": "Direct",
       "buyer_pays_you": "Buyer pays you",
-      "buyers_are_charged_on_your_own": "Buyers are charged on your own Stripe account — no platform hold on your money. Starter takes 4.9% per sale and Pro takes 0%; both start with a 14-day free trial.",
-      "see_both_plans": "See both plans",
+      "buyers_are_charged_on_your_own": "Buyers are charged on your own Stripe account — no platform hold on your money. Basic takes 10% + $0.30 per sale, Starter 4.9% + $0.30 and Pro 2.9% + $0.30; every plan starts with a 14-day free trial.",
+      "see_all_plans": "See all plans",
       "creator_path": "Creator path",
       "create_account": "Create account",
       "draft_then_publish": "Draft, then publish when your launch checks pass.",
@@ -3059,17 +3060,24 @@
         "highlight4": "SkillsetMind Verified certificates",
         "highlight5": "Course communities and live sessions"
       },
+      "basic": {
+        "tagline": "Start selling for a small monthly price.",
+        "audience": "Creators validating their first course.",
+        "highlight0": "10% + $0.30 per sale",
+        "highlight1": "Publish once your course passes the launch checks",
+        "highlight2": "Annual billing saves ~17%"
+      },
       "starter": {
-        "tagline": "A low monthly price and a 4.9% commission.",
-        "audience": "Creators starting to sell.",
-        "highlight0": "4.9% commission per sale",
+        "tagline": "A lower commission once you sell every month.",
+        "audience": "Creators who sell every month.",
+        "highlight0": "4.9% + $0.30 per sale",
         "highlight1": "1 custom domain and 1 marketplace highlight",
         "highlight2": "Annual billing saves ~17%"
       },
       "pro": {
-        "tagline": "0% commission on your sales.",
+        "tagline": "The lowest commission on the offer.",
         "audience": "Creators with an established catalog.",
-        "highlight0": "0% commission per sale",
+        "highlight0": "2.9% + $0.30 per sale",
         "highlight1": "5 custom domains and 5 marketplace highlights",
         "highlight2": "Remove the SkillsetMind mark"
       },
@@ -3126,7 +3134,7 @@
       "you_get_paid_directly": "You get paid directly",
       "learners_pay_your_stripe_account_not": "Learners pay your Stripe account, not ours. SkillsetMind never holds your money, never remits it to you, and never sits between you and your buyer. You are the merchant of record on every sale.",
       "platform_fee": "Platform fee",
-      "plan_based_every_plan_includes_the": "Plan-based: {value0}. Both plans publish and sell; the commission is deducted by Stripe at the moment of the charge. Each plan starts with a 14-day free trial.",
+      "plan_based_every_plan_includes_the": "Plan-based: {value0}. Every plan publishes and sells; the commission is deducted by Stripe at the moment of the charge, and the $0.30 is charged as its local equivalent in other currencies. Each plan starts with a 14-day free trial.",
       "stripe_processing_fee": "Stripe processing fee",
       "charged_by_stripe_to_your_account": "Charged by Stripe to your account on every sale. US Stripe pricing is 2.9% + $0.30 for USD card payments and an estimated 5.4% + $0.30 for non-USD; your own rates are the ones Stripe sets in the country your account is registered in. Never hidden inside the platform percentage.",
       "refund_window": "Refund window",
@@ -3204,7 +3212,7 @@
           },
           "2": {
             "q": "How do I set pricing for my course?",
-            "a": "Pricing is set per product inside Studio → course builder. Choose free enrollment, a one-time price, or a monthly or yearly subscription in a supported currency. The platform commission (4.9% on Starter, 0% on Pro) plus the Stripe processing fee are shown clearly in the earnings ledger for every sale."
+            "a": "Pricing is set per product inside Studio → course builder. Choose free enrollment, a one-time price, or a monthly or yearly subscription in a supported currency. The platform commission (10% + $0.30 on Basic, 4.9% + $0.30 on Starter, 2.9% + $0.30 on Pro) plus the Stripe processing fee are shown clearly in the earnings ledger for every sale."
           },
           "3": {
             "q": "What is drip release and when should I use it?",
@@ -3221,7 +3229,7 @@
         "items": {
           "0": {
             "q": "Which plan should I start on?",
-            "a": "Both plans start with a 14-day free trial; a card is required, and you can cancel in Billing before the trial ends without being charged. Starter is $5/month ($50/year) with a 4.9% commission per sale. Pro is $89/month with 0% commission and higher limits. The pricing page shows what each plan takes from a sample $100 sale."
+            "a": "Every plan starts with a 14-day free trial; a card is required, and you can cancel in Billing before the trial ends without being charged. Basic is $5/month ($50/year) with 10% + $0.30 per sale. Starter is $19/month ($190/year) with 4.9% + $0.30. Pro is $89/month ($890/year) with 2.9% + $0.30 and higher limits. The pricing page shows what each plan takes from a sample $100 sale."
           },
           "1": {
             "q": "What happens when I upgrade or downgrade?",

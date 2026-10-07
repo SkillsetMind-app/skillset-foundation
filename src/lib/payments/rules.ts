@@ -1,18 +1,93 @@
-export type SkillsetPlanId = "free" | "starter" | "pro" | "plus";
+export type SkillsetPlanId = "free" | "basic" | "starter" | "pro" | "plus";
 
 export const automaticRefundWindowDays = 7;
 export const automaticRefundProgressCap = 50;
 
 export const DEFAULT_PLATFORM_FEE_BPS = 1000;
 // Mirrors platform_fee_bps_for_plan() in
-// supabase/migrations/20261006040000_precos_3_planos_teste_gratis.sql.
-// Plus is retired and grandfathered at its old rate.
+// supabase/migrations/20261006040000_precos_novos_teste_gratis.sql.
+// `free` (an account with no plan) pays Basic's rate; `plus` is Enterprise.
 const PLAN_PLATFORM_FEE_BPS: Record<SkillsetPlanId, number> = {
   free: 1000,
+  basic: 1000,
   starter: 490,
-  pro: 0,
-  plus: 200,
+  pro: 290,
+  plus: 190,
 };
+
+// The fixed part of every sale's fee, on every plan: about US$0.30 in each
+// currency we sell in, in the STORED unit (value x 100, also for CLP and JPY;
+// toStripeAmount converts at the Stripe boundary). Round local amounts, so a
+// creator reads "+ R$1.50", not "+ R$1.62".
+// ponytail: a static table, written at the 2026-10 exchange rates. Review it
+// when a currency moves more than ~20% against the dollar; a live FX feed is
+// the upgrade if that becomes routine.
+const PLATFORM_FIXED_FEE_MINOR: Record<string, number> = {
+  USD: 30,
+  EUR: 30,
+  GBP: 25,
+  CAD: 40,
+  AUD: 45,
+  BRL: 150,
+  MXN: 600,
+  NGN: 45_000,
+  ZAR: 550,
+  GYD: 6_000,
+  ARS: 40_000,
+  BBD: 60,
+  BMD: 30,
+  CLP: 30_000,
+  COP: 120_000,
+  CRC: 15_000,
+  DOP: 1_800,
+  GHS: 350,
+  GTQ: 230,
+  HKD: 230,
+  INR: 2_500,
+  JMD: 5_000,
+  JPY: 4_500,
+  KES: 4_000,
+  NZD: 50,
+  PEN: 110,
+  SGD: 40,
+  TTD: 200,
+  UYU: 1_200,
+  XCD: 80,
+};
+
+/** The fixed part of the per-sale fee in `currency`, stored unit. USD's for an unknown currency. */
+export function platformFixedFeeMinor(currency?: string | null): number {
+  return PLATFORM_FIXED_FEE_MINOR[String(currency || "USD").toUpperCase()] ?? PLATFORM_FIXED_FEE_MINOR.USD;
+}
+
+/**
+ * application_fee_percent for a student subscription: the plan percent plus
+ * the fixed fee as a share of the recurring price, floored to Stripe's two
+ * decimals (half a cent at most, in the teacher's favour). Stripe takes only
+ * a percent on subscriptions, so this is what the FIRST invoice pays — it is
+ * charged synchronously at checkout and cannot be edited. Every renewal gets
+ * the exact amount from invoice.created (webhook).
+ */
+export function subscriptionFeePercent(unitAmount: number, bps: number, fixedMinor: number): number {
+  if (!(unitAmount > 0)) return 0;
+  const percent = bps / 100 + (fixedMinor / unitAmount) * 100;
+  return Math.min(99.99, Math.floor(percent * 100 + 1e-9) / 100);
+}
+
+/**
+ * SkillsetMind's cut of one sale: the percent, floored so rounding never
+ * favours us, plus the fixed fee — capped one unit below the charge so Stripe
+ * never rejects a fee as large as the sale. Units in = units out: pass Stripe's
+ * smallest unit for both amounts at the Stripe boundary, or the stored unit
+ * for both in the ledger.
+ */
+export function platformFeeForSale(grossMinor: number, bps: number, fixedMinor: number): number {
+  if (!(grossMinor > 0)) return 0;
+  return Math.min(
+    Math.max(0, Math.floor((grossMinor * bps) / 10000) + fixedMinor),
+    grossMinor - 1,
+  );
+}
 
 const USD_PERCENT_BPS = 290;
 const INTERNATIONAL_WITH_CONVERSION_PERCENT_BPS = 540;
@@ -23,6 +98,7 @@ export function canonicalPlatformFeeBpsForPlan(
 ): number {
   if (
     planId === "free" ||
+    planId === "basic" ||
     planId === "starter" ||
     planId === "pro" ||
     planId === "plus"

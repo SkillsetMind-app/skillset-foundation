@@ -14,7 +14,7 @@ import {
 describe("plan entitlements", () => {
   it("keeps the featured-slot quota in step with the SQL enforcement copy", () => {
     // Mirrors featured_slots_for_plan() in
-    // supabase/migrations/20261006040000_precos_3_planos_teste_gratis.sql.
+    // supabase/migrations/20261006040000_precos_novos_teste_gratis.sql.
     // If this fails, the teacher sees one number and the server enforces
     // another.
     expect(planEntitlements.free.quotas.featuredSlots).toBe(0);
@@ -29,7 +29,7 @@ describe("plan entitlements", () => {
     // stamps the teacher's brand mark whenever current_plan_id <> 'free'.
     // Flipping any paid tier off here without touching the SQL would show a
     // locked feature in the UI while the server keeps printing the logo.
-    for (const planId of ["free", "starter", "pro", "plus"] as const) {
+    for (const planId of ["free", "basic", "starter", "pro", "plus"] as const) {
       expect(hasFeature(planId, "certificateOwnLogo")).toBe(planId !== "free");
     }
   });
@@ -40,7 +40,7 @@ describe("plan entitlements", () => {
     // returns null for `free` and the sanitized config for every other plan.
     // Turning a paid tier off here without touching the SQL would show a
     // locked feature while the public vitrine keeps rendering the theme.
-    for (const planId of ["free", "starter", "pro", "plus"] as const) {
+    for (const planId of ["free", "basic", "starter", "pro", "plus"] as const) {
       expect(hasFeature(planId, "storefrontTemplates")).toBe(planId !== "free");
     }
   });
@@ -58,7 +58,7 @@ describe("plan entitlements", () => {
 
   it("keeps the custom-domain quota in step with the SQL enforcement copy", () => {
     // Mirrors custom_domain_limit_for_plan() in
-    // supabase/migrations/20261006040000_precos_3_planos_teste_gratis.sql. Free stays at 0
+    // supabase/migrations/20261006040000_precos_novos_teste_gratis.sql. Free stays at 0
     // deliberately: claim_custom_domain() refuses outright at 0, so raising it
     // here without touching the SQL would offer the teacher a button that the
     // server always rejects.
@@ -103,7 +103,7 @@ describe("plan entitlements", () => {
     // The newest definition: 20261006040000 replaced the one in
     // 20260820000000_custom_domains.sql.
     const sql = readFileSync(
-      "supabase/migrations/20261006040000_precos_3_planos_teste_gratis.sql",
+      "supabase/migrations/20261006040000_precos_novos_teste_gratis.sql",
       "utf8",
     );
 
@@ -133,7 +133,7 @@ describe("plan entitlements", () => {
 
   it("reads the featured-slot and commission functions from the newest migration", async () => {
     const { readFileSync } = await import("node:fs");
-    const sql = readFileSync("supabase/migrations/20261006040000_precos_3_planos_teste_gratis.sql", "utf8");
+    const sql = readFileSync("supabase/migrations/20261006040000_precos_novos_teste_gratis.sql", "utf8");
     const branch = (fn: string, planId: string): number => {
       const body = sql.slice(sql.indexOf(`function public.${fn}`));
       const match = body.match(new RegExp(`when '${planId}'\\s+then\\s+(\\d+)`));
@@ -220,7 +220,7 @@ describe("plan entitlements", () => {
   });
 
   it("names the cheapest plan that unlocks a feature", () => {
-    expect(lowestPlanWithFeature("certificateOwnLogo")).toBe("starter");
+    expect(lowestPlanWithFeature("certificateOwnLogo")).toBe("basic");
     expect(lowestPlanWithFeature("removePlatformBranding")).toBe("pro");
   });
 
@@ -243,6 +243,7 @@ describe("plan entitlements", () => {
     // here without touching the SQL would sell the removal on a plan whose
     // certificates and classroom still print our mark.
     expect(hasFeature("free", "removePlatformBranding")).toBe(false);
+    expect(hasFeature("basic", "removePlatformBranding")).toBe(false);
     expect(hasFeature("starter", "removePlatformBranding")).toBe(false);
     expect(hasFeature("pro", "removePlatformBranding")).toBe(true);
     expect(hasFeature("plus", "removePlatformBranding")).toBe(true);

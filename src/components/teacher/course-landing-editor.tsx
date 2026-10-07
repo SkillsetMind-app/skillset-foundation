@@ -30,6 +30,7 @@ import {
   type CourseLandingBlockKind,
   type CourseLandingTemplate,
 } from "@/domain/course-landing";
+import type { PlanId } from "@/data/plans";
 import { planEntitlements } from "@/domain/entitlements";
 import type { TeacherCourse } from "@/domain/teacher-course";
 import { getCourseLanding, saveCourseLanding } from "@/lib/data/course-landings";
@@ -388,7 +389,7 @@ export function CourseLandingEditor({ course }: { course: TeacherCourse }) {
 
   const [template, setTemplate] = useState<CourseLandingTemplate>("classic");
   const [blocks, setBlocks] = useState<CourseLandingBlock[]>([]);
-  const [planId, setPlanId] = useState<"free" | "starter" | "pro" | "plus">("free");
+  const [planId, setPlanId] = useState<PlanId>("free");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");

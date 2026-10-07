@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  formatPlanCommission,
   isPlanEntitledStatus,
   isPublicPlanId,
   planAndCycleByStripePriceId,
   planById,
-  planByStripePriceId,
   plans,
   publicPlans,
   RECOMMENDED_PLAN_ID,
@@ -13,46 +13,44 @@ import {
 import { canonicalPlatformFeeBpsForPlan } from "@/lib/payments/rules";
 
 describe("the 2026-10 price table", () => {
-  it("offers Starter and Pro only, with Starter recommended", () => {
-    expect(publicPlans.map((plan) => plan.id)).toEqual(["starter", "pro"]);
+  it("offers Basic, Starter and Pro, with Starter recommended and no free plan", () => {
+    expect(publicPlans.map((plan) => plan.id)).toEqual(["basic", "starter", "pro"]);
     expect(RECOMMENDED_PLAN_ID).toBe("starter");
-    expect(isPublicPlanId("starter")).toBe(true);
-    expect(isPublicPlanId("pro")).toBe(true);
-    expect(isPublicPlanId("plus")).toBe(false);
+    for (const id of ["basic", "starter", "pro"]) expect(isPublicPlanId(id)).toBe(true);
     expect(isPublicPlanId("free")).toBe(false);
+    expect(isPublicPlanId("plus")).toBe(false);
   });
 
-  it("prices Starter at $5/$50 and keeps Pro at $89/$890", () => {
-    expect(planById("starter")).toMatchObject({ monthlyUsd: 5, yearlyUsd: 50, commissionPercent: 4.9 });
-    expect(planById("pro")).toMatchObject({ monthlyUsd: 89, yearlyUsd: 890, commissionPercent: 0 });
+  it("prices and commissions match the founder's table", () => {
+    expect(planById("basic")).toMatchObject({ monthlyUsd: 5, yearlyUsd: 50, commissionPercent: 10 });
+    expect(planById("starter")).toMatchObject({ monthlyUsd: 19, yearlyUsd: 190, commissionPercent: 4.9 });
+    expect(planById("pro")).toMatchObject({ monthlyUsd: 89, yearlyUsd: 890, commissionPercent: 2.9 });
+    expect(planById("plus")).toMatchObject({ name: "Enterprise", monthlyUsd: 199, commissionPercent: 1.9 });
     // ~17% off: two months free on the yearly price.
     for (const plan of publicPlans) expect(plan.yearlyUsd).toBe(plan.monthlyUsd * 10);
+    expect(formatPlanCommission(planById("starter"))).toBe("4.9% + $0.30");
   });
 
   it("keeps the displayed percent and the charged basis points in step", () => {
     for (const plan of plans) {
       expect(Math.round(plan.commissionPercent * 100)).toBe(canonicalPlatformFeeBpsForPlan(plan.id));
     }
-    expect(canonicalPlatformFeeBpsForPlan("free")).toBe(1000);
-    expect(canonicalPlatformFeeBpsForPlan("starter")).toBe(490);
-    expect(canonicalPlatformFeeBpsForPlan("pro")).toBe(0);
+    // An account with no plan pays Basic's rate; no tier is ever 0%.
+    expect(canonicalPlatformFeeBpsForPlan("free")).toBe(canonicalPlatformFeeBpsForPlan("basic"));
+    for (const plan of plans) expect(canonicalPlatformFeeBpsForPlan(plan.id)).toBeGreaterThan(0);
   });
 
-  it("hides the retired Plus but still resolves an existing Plus subscription", () => {
-    const plus = planById("plus");
-    expect(plus.retired).toBe(true);
-    expect(publicPlans).not.toContain(plus);
-    expect(planAndCycleByStripePriceId(plus.stripePriceIds!.monthlyId)).toEqual({ plan: plus, cycle: "monthly" });
-    expect(planAndCycleByStripePriceId(plus.stripePriceIds!.yearlyId)).toEqual({ plan: plus, cycle: "yearly" });
-    expect(canonicalPlatformFeeBpsForPlan("plus")).toBe(200);
+  it("hides Enterprise but still resolves an existing Enterprise (ex-Plus) subscription", () => {
+    const enterprise = planById("plus");
+    expect(enterprise.hidden).toBe(true);
+    expect(publicPlans).not.toContain(enterprise);
+    expect(planAndCycleByStripePriceId(enterprise.stripePriceIds!.monthlyId)).toEqual({ plan: enterprise, cycle: "monthly" });
+    expect(planAndCycleByStripePriceId(enterprise.stripePriceIds!.yearlyId)).toEqual({ plan: enterprise, cycle: "yearly" });
   });
 
-  it("still reads a $19 Starter subscription as Starter, with its cycle", () => {
+  it("keeps the existing $19 Starter Prices as Starter's current Prices", () => {
     const starter = planById("starter");
-    const [legacy] = starter.legacyStripePriceIds!;
-    expect(planAndCycleByStripePriceId(legacy.monthlyId)).toEqual({ plan: starter, cycle: "monthly" });
-    expect(planAndCycleByStripePriceId(legacy.yearlyId)).toEqual({ plan: starter, cycle: "yearly" });
-    expect(planByStripePriceId(starter.stripePriceIds!.monthlyId)).toBe(starter);
+    expect(planAndCycleByStripePriceId(starter.stripePriceIds!.monthlyId)).toEqual({ plan: starter, cycle: "monthly" });
     expect(planAndCycleByStripePriceId("price_unknown")).toBeUndefined();
   });
 

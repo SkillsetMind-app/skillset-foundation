@@ -31,7 +31,7 @@ describe("pricing page", () => {
 
     expect(
       screen.getByText(
-        "Both plans publish and sell, and both start with 14 days free. Pro drops the commission to 0% and raises your limits.",
+        "Every plan publishes and sells, and each starts with 14 days free. Higher plans lower the commission and raise your limits.",
       ),
     ).toBeInTheDocument();
     expect(screen.queryByText("Which plan is for me?")).not.toBeInTheDocument();
@@ -48,9 +48,10 @@ describe("pricing page", () => {
     }
     expect(grid.getByText("$5/mo").className).not.toContain("text-4xl");
     expect(grid.getByText("$89/mo")).toBeInTheDocument();
-    // Only the two plans on offer: no Free card, no retired Plus.
+    // Only the three plans on offer: no Free card, no Enterprise.
     expect(grid.queryByText("Free")).not.toBeInTheDocument();
-    expect(grid.queryByText("Plus")).not.toBeInTheDocument();
+    expect(grid.queryByText("Enterprise")).not.toBeInTheDocument();
+    expect(grid.getAllByText("+ $0.30 per sale")).toHaveLength(3);
     expect(grid.queryByText(/no subscription/i)).not.toBeInTheDocument();
     expect(grid.getByText("Recommended").closest("article")).toHaveTextContent("Starter");
   });
@@ -69,9 +70,9 @@ describe("pricing page", () => {
     expect(cta.parentElement?.className).toContain("mt-auto");
     // The renewal terms sit next to the button, for each cycle.
     expect(cta.parentElement).toHaveTextContent(
-      /14 days free, then \$5\/month\. Renews automatically until you cancel\. Cancel anytime in Billing before .+ and you won't be charged\./,
+      /14 days free, then \$19\/month\. Renews automatically until you cancel\. Cancel anytime in Billing before .+ and you won't be charged\./,
     );
-    expect(cta.parentElement).toHaveTextContent("14 days free, then $50/year.");
+    expect(cta.parentElement).toHaveTextContent("14 days free, then $190/year.");
   });
 
   it("keeps the no-JavaScript billing toggle, in 13px sentence case", async () => {

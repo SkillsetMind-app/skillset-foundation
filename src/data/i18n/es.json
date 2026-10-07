@@ -452,7 +452,7 @@
       "title": "Enseña más allá de los límites de tus sesiones en vivo.",
       "ctaStart": "Empieza a enseñar",
       "ctaPromise": "Lee la Promesa al Creador",
-      "bullet1": "Starter cobra un {starter}% por venta y Pro un {pro}%, antes de las comisiones de procesamiento de Stripe.",
+      "bullet1": "Basic cobra un {basic}% + $0.30 por venta, Starter un {starter}% + $0.30 y Pro un {pro}% + $0.30, antes de las comisiones de procesamiento de Stripe.",
       "bullet2": "Tus compradores pagan directo a tu cuenta de Stripe. Sin retención de la plataforma y con 14 días gratis antes del primer cobro del plan.",
       "bullet3": "Liberación gradual y ventana de reembolso te protegen del abuso.",
       "bullet4": "Comunidad del curso, sesiones en vivo y certificados verificables en cada plan."
@@ -2867,9 +2867,9 @@
   "publicPages": {
     "pricing": {
       "pricing": "Precios",
-      "two_plans_with_a_free_trial": "Dos planes, cada uno con una prueba gratis de 14 días. Starter cuesta $5 al mes con una comisión del 4.9% por venta; Pro cuesta $89 al mes con 0% de comisión. La tarifa de procesamiento de Stripe se muestra por separado para que las cuentas sean claras, y los compradores pagan directamente a tu cuenta de Stripe: sin retención ni plazo de liquidación de la plataforma.",
+      "plans_with_a_free_trial": "Tres planes, cada uno con una prueba gratis de 14 días. Basic cuesta $5 al mes con 10% + $0.30 por venta; Starter cuesta $19 al mes con 4.9% + $0.30; Pro cuesta $89 al mes con 2.9% + $0.30. La tarifa de procesamiento de Stripe se muestra por separado para que las cuentas sean claras, y los compradores pagan directamente a tu cuenta de Stripe: sin retención ni plazo de liquidación de la plataforma.",
       "pricing_that_lowers_as_you_grow": "Precios que bajan a medida que creces.",
-      "every_plan_can_sell_paid_plans": "Los dos planes permiten publicar y vender, y los dos empiezan con 14 días gratis. Pro baja la comisión al 0% y aumenta tus límites.",
+      "every_plan_can_sell_paid_plans": "Todos los planes permiten publicar y vender, y cada uno empieza con 14 días gratis. Los planes superiores bajan la comisión y aumentan tus límites.",
       "billing_cycle": "Ciclo de facturación",
       "monthly": "Mensual",
       "yearly": "Anual",
@@ -2877,6 +2877,7 @@
       "plan_comparison": "Comparación de planes",
       "recommended": "Recomendado",
       "per_sale": "por venta",
+      "per_sale_with_fixed": "+ {fixed} por venta",
       "mo": "/mes",
       "mo_billed": "/mes, con un cobro de",
       "yearly_2": " al año",
@@ -2906,7 +2907,7 @@
       "what_happens_when_i_downgrade_or": "¿Qué ocurre si cambio a un plan inferior o cancelo?",
       "downgrades_and_cancellations_take_effect_at": "Los cambios a un plan inferior y las cancelaciones entran en vigor al final del período de facturación actual; hasta entonces conservas el plan que estás pagando. Si cancelas durante la prueba gratis de 14 días, no se te cobra. En cualquier caso, conservas todo tu contenido.",
       "how_do_the_fees_work_on": "¿Cómo funcionan las tarifas en una venta por suscripción?",
-      "two_fees_come_out_of_each": "De cada venta se deducen hasta dos tarifas, que se muestran por separado para que las cuentas sean claras. SkillsetMind cobra la comisión de tu plan (4.9% en Starter, 0% en Pro), y se te repercute la tarifa estándar de procesamiento de Stripe (2.9% + $0.30 para tarjetas en USD y un estimado del 5.4% + $0.30 para otras monedas). Todo lo que queda es tuyo.",
+      "two_fees_come_out_of_each": "De cada venta se deducen dos tarifas, que se muestran por separado para que las cuentas sean claras. SkillsetMind cobra la comisión de tu plan (de 10% + $0.30 en Basic a 2.9% + $0.30 en Pro; en otras monedas, los $0.30 se cobran en su equivalente local), y se te repercute la tarifa estándar de procesamiento de Stripe (2.9% + $0.30 para tarjetas en USD y un estimado del 5.4% + $0.30 para otras monedas). Todo lo que queda es tuyo.",
       "when_can_a_sale_be_refunded": "¿Cuándo se puede reembolsar una venta y cómo afecta a mi transferencia?",
       "learners_can_self_refund_within_days": "Los alumnos pueden solicitar el reembolso por su cuenta dentro de los {value0} días posteriores a la compra si completaron menos de la mitad del curso. Como el comprador pagó directamente a tu cuenta de Stripe, el reembolso se descuenta de tu propio saldo y se te devuelve la comisión de SkillsetMind de esa venta. Así no pagas una comisión por una venta que se anuló.",
       "ready_to_publish_on_skillsetmind": "¿Listo para publicar en SkillsetMind?",
@@ -2927,12 +2928,12 @@
       "for_creators": "Para creadores",
       "teach_with_a_real_course_operating": "Enseña con un sistema completo para gestionar cursos.",
       "skillsetmind_is_designed_for_experts_who": "Para coaches, facilitadores y mentores que ya enseñan en vivo y quieren vender su método como un curso con comunidad de pago, empezando con una prueba gratis de 14 días.",
-      "commission_on_pro": "Comisión en Pro",
+      "commission_on_pro": "Comisión en Pro, + $0.30 por venta",
       "to_start": "Días de prueba gratis",
       "direct": "Directo",
       "buyer_pays_you": "El comprador te paga",
-      "buyers_are_charged_on_your_own": "Los compradores pagan en tu propia cuenta de Stripe: la plataforma no retiene tu dinero. Starter cobra un 4.9% por venta y Pro un 0%; los dos empiezan con una prueba gratis de 14 días.",
-      "see_both_plans": "Ver los dos planes",
+      "buyers_are_charged_on_your_own": "Los compradores pagan en tu propia cuenta de Stripe: la plataforma no retiene tu dinero. Basic cobra un 10% + $0.30 por venta, Starter un 4.9% + $0.30 y Pro un 2.9% + $0.30; todos los planes empiezan con una prueba gratis de 14 días.",
+      "see_all_plans": "Ver todos los planes",
       "creator_path": "El camino del creador",
       "create_account": "Crear cuenta",
       "draft_then_publish": "Prepara y publica cuando tu curso supere los controles de lanzamiento.",
@@ -3059,17 +3060,24 @@
         "highlight4": "Certificados SkillsetMind Verified",
         "highlight5": "Comunidades de cursos y sesiones en vivo"
       },
+      "basic": {
+        "tagline": "Empieza a vender por una mensualidad baja.",
+        "audience": "Creadores que validan su primer curso.",
+        "highlight0": "10% + $0.30 por venta",
+        "highlight1": "Publica cuando tu curso supere los controles de lanzamiento",
+        "highlight2": "La facturación anual ahorra aproximadamente un 17%"
+      },
       "starter": {
-        "tagline": "Una mensualidad baja y una comisión del 4.9%.",
-        "audience": "Creadores que empiezan a vender.",
-        "highlight0": "Comisión del 4.9% por venta",
+        "tagline": "Una comisión más baja cuando vendes todos los meses.",
+        "audience": "Creadores que venden todos los meses.",
+        "highlight0": "4.9% + $0.30 por venta",
         "highlight1": "1 dominio propio y 1 destacado en el marketplace",
         "highlight2": "La facturación anual ahorra aproximadamente un 17%"
       },
       "pro": {
-        "tagline": "0% de comisión en tus ventas.",
+        "tagline": "La comisión más baja de la oferta.",
         "audience": "Creadores con un catálogo consolidado.",
-        "highlight0": "0% de comisión por venta",
+        "highlight0": "2.9% + $0.30 por venta",
         "highlight1": "5 dominios propios y 5 destacados en el marketplace",
         "highlight2": "Quita la marca SkillsetMind"
       },
@@ -3126,7 +3134,7 @@
       "you_get_paid_directly": "Cobras directamente",
       "learners_pay_your_stripe_account_not": "Los alumnos pagan a tu cuenta de Stripe, no a la nuestra. SkillsetMind nunca retiene tu dinero, nunca te lo remite ni intermedia entre tú y tu comprador. Tú eres el vendedor responsable de cada venta.",
       "platform_fee": "Comisión de la plataforma",
-      "plan_based_every_plan_includes_the": "Según el plan: {value0}. Los dos planes permiten publicar y vender; Stripe descuenta la comisión en el momento del cobro. Cada plan empieza con una prueba gratis de 14 días.",
+      "plan_based_every_plan_includes_the": "Según el plan: {value0}. Todos los planes permiten publicar y vender; Stripe descuenta la comisión en el momento del cobro, y en otras monedas los $0.30 se cobran en su equivalente local. Cada plan empieza con una prueba gratis de 14 días.",
       "stripe_processing_fee": "Tarifa de procesamiento de Stripe",
       "charged_by_stripe_to_your_account": "Stripe la cobra a tu cuenta en cada venta. Los precios de Stripe en Estados Unidos son del 2.9% + $0.30 para pagos con tarjeta en USD y un estimado del 5.4% + $0.30 para otras monedas. Tus tarifas son las que Stripe establece en el país donde está registrada tu cuenta. Nunca se oculta dentro del porcentaje de la plataforma.",
       "refund_window": "Plazo de reembolso",
@@ -3204,7 +3212,7 @@
           },
           "2": {
             "q": "¿Cómo fijo el precio de mi curso?",
-            "a": "El precio se configura por producto en Estudio → constructor de cursos. Elige inscripción gratuita, pago único o suscripción mensual o anual en una moneda admitida. La comisión de la plataforma (4.9% en Starter y 0% en Pro), junto con la tarifa de procesamiento de Stripe, se muestra claramente en el registro de ingresos de cada venta."
+            "a": "El precio se configura por producto en Estudio → constructor de cursos. Elige inscripción gratuita, pago único o suscripción mensual o anual en una moneda admitida. La comisión de la plataforma (10% + $0.30 en Basic, 4.9% + $0.30 en Starter y 2.9% + $0.30 en Pro), junto con la tarifa de procesamiento de Stripe, se muestra claramente en el registro de ingresos de cada venta."
           },
           "3": {
             "q": "¿Qué es la publicación gradual y cuándo debo usarla?",
@@ -3221,7 +3229,7 @@
         "items": {
           "0": {
             "q": "¿Con qué plan debería empezar?",
-            "a": "Los dos planes empiezan con una prueba gratis de 14 días; se pide tarjeta y puedes cancelar en Facturación antes de que termine la prueba sin que se te cobre. Starter cuesta $5 al mes ($50 al año) con una comisión del 4.9% por venta. Pro cuesta $89 al mes con 0% de comisión y límites más altos. La página de precios muestra lo que cada plan descuenta de una venta de ejemplo de $100."
+            "a": "Todos los planes empiezan con una prueba gratis de 14 días; se pide tarjeta y puedes cancelar en Facturación antes de que termine la prueba sin que se te cobre. Basic cuesta $5 al mes ($50 al año) con 10% + $0.30 por venta. Starter cuesta $19 al mes ($190 al año) con 4.9% + $0.30. Pro cuesta $89 al mes ($890 al año) con 2.9% + $0.30 y límites más altos. La página de precios muestra lo que cada plan descuenta de una venta de ejemplo de $100."
           },
           "1": {
             "q": "¿Qué ocurre cuando mejoro mi plan o cambio a uno inferior?",

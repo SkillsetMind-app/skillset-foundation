@@ -3,10 +3,9 @@ import { describe, expect, it } from "vitest";
 import { planById, plans } from "@/data/plans";
 import { canonicalPlatformFeeBpsForPlan } from "@/lib/payments/rules";
 import {
+  ENTERPRISE_PRICES,
   expectedFeePercent,
   feeDrifted,
-  OLD_STARTER_PRICES,
-  PLUS_PRICES,
   RATE_BPS,
 } from "../../../scripts/plan-repricing.mjs";
 
@@ -19,22 +18,20 @@ describe("scripts/plan-repricing.mjs", () => {
     }
   });
 
-  it("targets the $19 Starter Prices and the retired Plus Prices from plans.ts", () => {
-    expect(planById("starter").legacyStripePriceIds).toContainEqual({
-      monthlyId: OLD_STARTER_PRICES.monthly,
-      yearlyId: OLD_STARTER_PRICES.yearly,
-    });
-    const plus = planById("plus").stripePriceIds!;
-    expect(PLUS_PRICES).toEqual([plus.monthlyId, plus.yearlyId]);
+  it("counts Enterprise on the Prices plans.ts gives it", () => {
+    const enterprise = planById("plus").stripePriceIds!;
+    expect(ENTERPRISE_PRICES).toEqual([enterprise.monthlyId, enterprise.yearlyId]);
   });
 
   it("flags a student subscription whose frozen percent is not the creator's rate", () => {
     for (const plan of plans) {
-      const percent = expectedFeePercent(plan.id);
-      expect(feeDrifted(percent, plan.id)).toBe(false);
-      expect(feeDrifted((percent ?? 0) + 1, plan.id)).toBe(true);
+      expect(feeDrifted(expectedFeePercent(plan.id), plan.id)).toBe(false);
+      expect(feeDrifted(expectedFeePercent(plan.id) + 1, plan.id)).toBe(true);
     }
-    // A subscription with no percent pays no fee: drifted unless the plan is 0%.
-    expect(feeDrifted(null, "free")).toBe(true);
+    // The old ladder: Starter froze 5%, Pro 3%.
+    expect(feeDrifted(5, "starter")).toBe(true);
+    expect(feeDrifted(3, "pro")).toBe(true);
+    // A subscription with no percent pays no fee: always drifted now.
+    expect(feeDrifted(null, "pro")).toBe(true);
   });
 });

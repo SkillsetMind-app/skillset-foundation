@@ -54,9 +54,9 @@ describe("public pricing makes no earnings claims", () => {
     state.locale = locale;
     const { container } = render(await PricingPage());
     expect(container.textContent).not.toMatch(incomeClaims);
-    // The fee facts stay: 4.9% on Starter, 0% on Pro and the $100 sample sale.
-    expect(container.textContent).toContain("4.9%");
-    expect(container.textContent).toContain("0%");
+    // The fee facts stay: each plan's percent + $0.30 and the $100 sample sale.
+    for (const percent of ["10%", "4.9%", "2.9%"]) expect(container.textContent).toContain(percent);
+    expect(container.textContent).toContain("$0.30");
     expect(container.textContent).toContain("$100");
   });
 

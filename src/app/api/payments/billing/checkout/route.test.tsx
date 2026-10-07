@@ -491,7 +491,7 @@ describe("POST /api/payments/billing/checkout", () => {
     expect(params.subscription_data).not.toHaveProperty("trial_period_days");
     expect(params.payment_method_collection).toBe("always");
     expect(params.custom_text.submit.message).toBe(
-      "$50/year, starting today. Renews automatically until you cancel. Cancel anytime in Billing to stop the next charge.",
+      "$190/year, starting today. Renews automatically until you cancel. Cancel anytime in Billing to stop the next charge.",
     );
   });
 
@@ -516,7 +516,7 @@ describe("POST /api/payments/billing/checkout", () => {
     expect(mocks.createSession.mock.calls[0][0].subscription_data).not.toHaveProperty("trial_period_days");
   });
 
-  it("refuses the retired Plus before touching Stripe", async () => {
+  it("refuses Enterprise (id plus) before touching Stripe: it is not on the public offer", async () => {
     mocks.getAdmin.mockImplementation(adminReturning(null));
 
     const response = await POST(request({ planId: "plus", cycle: "monthly" }));

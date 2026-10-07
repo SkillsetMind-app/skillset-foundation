@@ -8,7 +8,7 @@ import { formatTrialDate, planDisclosure, planTrialEnd } from "@/lib/payments/pl
 // in UTC−12. The deadline date must never be later than that anywhere.
 const now = new Date("2026-10-06T12:00:00Z");
 
-function disclosure(locale: "en" | "es", planId: "starter" | "pro", cycle: PlanBillingCycle, trial: boolean) {
+function disclosure(locale: "en" | "es", planId: "basic" | "starter" | "pro", cycle: PlanBillingCycle, trial: boolean) {
   const dict = getDictionary(locale);
   return planDisclosure({
     t: (key) => translate(dict, key),
@@ -22,8 +22,10 @@ function disclosure(locale: "en" | "es", planId: "starter" | "pro", cycle: PlanB
 
 describe("renewal disclosure (US ROSCA)", () => {
   it.each([
-    ["starter", "monthly", "14 days free, then $5/month."],
-    ["starter", "yearly", "14 days free, then $50/year."],
+    ["basic", "monthly", "14 days free, then $5/month."],
+    ["basic", "yearly", "14 days free, then $50/year."],
+    ["starter", "monthly", "14 days free, then $19/month."],
+    ["starter", "yearly", "14 days free, then $190/year."],
     ["pro", "monthly", "14 days free, then $89/month."],
     ["pro", "yearly", "14 days free, then $890/year."],
   ] as const)("states the %s %s price, renewal and deadline in English", (planId, cycle, opening) => {
@@ -33,8 +35,10 @@ describe("renewal disclosure (US ROSCA)", () => {
   });
 
   it.each([
-    ["starter", "monthly", "14 días gratis, luego $5 al mes."],
-    ["starter", "yearly", "14 días gratis, luego $50 al año."],
+    ["basic", "monthly", "14 días gratis, luego $5 al mes."],
+    ["basic", "yearly", "14 días gratis, luego $50 al año."],
+    ["starter", "monthly", "14 días gratis, luego $19 al mes."],
+    ["starter", "yearly", "14 días gratis, luego $190 al año."],
     ["pro", "monthly", "14 días gratis, luego $89 al mes."],
     ["pro", "yearly", "14 días gratis, luego $890 al año."],
   ] as const)("states the %s %s price, renewal and deadline in Spanish", (planId, cycle, opening) => {
@@ -45,7 +49,7 @@ describe("renewal disclosure (US ROSCA)", () => {
   });
 
   it("drops the trial and the date when the account already used its trial", () => {
-    expect(disclosure("en", "starter", "monthly", false)).toBe(
+    expect(disclosure("en", "basic", "monthly", false)).toBe(
       "$5/month, starting today. Renews automatically until you cancel. Cancel anytime in Billing to stop the next charge.",
     );
     expect(disclosure("es", "pro", "yearly", false)).toContain("$890 al año, desde hoy.");

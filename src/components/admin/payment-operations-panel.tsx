@@ -8,6 +8,7 @@ import { StatusChip } from "@/components/shared/status-chip";
 import { InlineAlert } from "@/components/ui";
 import type { Order } from "@/domain/order";
 import { subscribeToRecentOrders } from "@/lib/data/orders";
+import { platformFeeForSale } from "@/lib/payments/rules";
 
 function formatMoney(amountMinor: number, currency: Order["currency"], locale = "en") {
   return new Intl.NumberFormat(locale, {
@@ -55,8 +56,10 @@ export function PaymentOperationsPanel() {
             feeMinor: 0,
           };
           bucket.grossMinor += order.amountMinor;
-          bucket.feeMinor += Math.floor(
-            (order.amountMinor * order.platformFeeBps) / 10000,
+          bucket.feeMinor += platformFeeForSale(
+            order.amountMinor,
+            order.platformFeeBps,
+            order.platformFeeFixedMinor ?? 0,
           );
           byCurrency.set(order.currency, bucket);
         }

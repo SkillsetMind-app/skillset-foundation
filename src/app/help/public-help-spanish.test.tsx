@@ -124,7 +124,7 @@ it.each(["toString", "__proto__"])("does not resolve inherited notice properties
 
 it("preserves the financial figures and limits on the Spanish fee page", async () => {
   const { container } = render(await FeesPage());
-  expect(container).toHaveTextContent("Starter 4.9% · Pro 0%");
+  expect(container).toHaveTextContent("Basic 10% + $0.30 · Starter 4.9% + $0.30 · Pro 2.9% + $0.30");
   expect(container).not.toHaveTextContent(/Free 10%|Plus 2%/);
   expect(container).toHaveTextContent("2.9% + $0.30");
   expect(container).toHaveTextContent("5.4% + $0.30");

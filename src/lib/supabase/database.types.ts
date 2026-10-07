@@ -1657,6 +1657,7 @@ export type Database = {
           payment_intent_id: string | null
           payout_model: string | null
           platform_fee_bps: number | null
+          platform_fee_fixed_minor: number
           price_id: string | null
           provider: string | null
           receipt_url: string | null
@@ -1688,6 +1689,7 @@ export type Database = {
           payment_intent_id?: string | null
           payout_model?: string | null
           platform_fee_bps?: number | null
+          platform_fee_fixed_minor?: number
           price_id?: string | null
           provider?: string | null
           receipt_url?: string | null
@@ -1719,6 +1721,7 @@ export type Database = {
           payment_intent_id?: string | null
           payout_model?: string | null
           platform_fee_bps?: number | null
+          platform_fee_fixed_minor?: number
           price_id?: string | null
           provider?: string | null
           receipt_url?: string | null

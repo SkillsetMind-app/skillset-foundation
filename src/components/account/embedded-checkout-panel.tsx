@@ -11,7 +11,12 @@ import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { BrandName } from "@/components/shared/brand-name";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import type { Locale } from "@/lib/i18n/config";
-import { publicPlans, type PlanBillingCycle, type PlanId } from "@/data/plans";
+import {
+  formatPlanCommission,
+  publicPlans,
+  type PlanBillingCycle,
+  type PlanId,
+} from "@/data/plans";
 import { formatUsdWhole } from "@/data/platform";
 import { createBillingCheckoutClientSecret } from "@/lib/payments/billing";
 import { planDisclosure } from "@/lib/payments/plan-disclosure";
@@ -88,7 +93,7 @@ export function EmbeddedCheckoutPanel({
   // No live locale setter in Embedded Checkout: preserve Stripe and card input
   // for this mount, while the surrounding copy follows the current language.
   const [stripeLoader] = useState(() => getStripePromise(locale));
-  // Only plans on offer: a link to the retired Plus lands on "unknown plan".
+  // Only plans on offer: a link to Enterprise or Free lands on "unknown plan".
   const plan = publicPlans.find((candidate) => candidate.id === planId);
 
   // Stable options object — recreating it every render reboots the
@@ -102,7 +107,7 @@ export function EmbeddedCheckoutPanel({
     let cancelled = false;
 
     async function load() {
-      // A plan that is not on offer (the retired Plus, a typo) never reaches
+      // A plan that is not on offer (Enterprise, Free, a typo) never reaches
       // the server: the panel shows "unknown plan" below.
       if (!stripeLoader || !publicPlans.some((candidate) => candidate.id === planId)) return;
       setError(null);
@@ -242,7 +247,7 @@ export function EmbeddedCheckoutPanel({
         <p className="mt-4 text-[11px] leading-5 text-[var(--color-ink-muted)]">
           {t("billingCheckout.commission").replace("{plan}", () => plan.name)}{" "}
           <strong className="text-[var(--color-ink)]">
-            {plan.commissionPercent}%
+            {formatPlanCommission(plan)}
           </strong>
           {t("billingCheckout.processing")}
         </p>

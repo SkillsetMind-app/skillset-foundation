@@ -8,6 +8,7 @@ import { useTranslation } from "@/components/i18n/i18n-provider";
 import { UpgradeModal } from "@/components/account/upgrade-modal";
 import { StatusChip } from "@/components/shared/status-chip";
 import {
+  formatPlanCommission,
   hasRealStripePriceIds,
   isBillingConfigured,
   plans,
@@ -278,9 +279,9 @@ export function PlansPanel() {
         </p>
       ) : null}
 
-      {/* Only the plans on offer. A retired Plus subscriber sees "Plus" in
-          the line above and changes plan through Manage, like everyone. */}
-      <div className="grid gap-4 lg:grid-cols-2">
+      {/* Only the plans on offer. An Enterprise subscriber sees "Enterprise"
+          in the line above and changes plan through Manage, like everyone. */}
+      <div className="grid gap-4 lg:grid-cols-3">
         {publicPlans.map((plan) => {
           const isCurrent = plan.id === currentPlanId;
           const canPurchase = hasRealStripePriceIds(plan) && checkoutClientReady;
@@ -331,7 +332,7 @@ export function PlansPanel() {
                   {t("accountPlans.commission")}
                 </p>
                 <p className="mt-0.5 text-2xl font-extrabold tabular-nums text-[var(--color-primary)]">
-                  {plan.commissionPercent}%
+                  {formatPlanCommission(plan)}
                 </p>
               </div>
 

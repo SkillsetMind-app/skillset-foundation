@@ -1,8 +1,12 @@
 import { describe, expect, it } from "vitest";
 
 import { plans } from "@/data/plans";
+import { supportedStripeCurrencies } from "@/lib/payments/currencies";
 import {
   canonicalPlatformFeeBpsForPlan,
+  platformFeeForSale,
+  platformFixedFeeMinor,
+  subscriptionFeePercent,
   isRefundableEnrollmentSource,
   ledgerRefundStatus,
   nextLedgerStatusOnDispute,
@@ -27,6 +31,35 @@ describe("commission ladder alignment", () => {
     expect(canonicalPlatformFeeBpsForPlan("unknown")).toBe(1000);
     expect(canonicalPlatformFeeBpsForPlan(null)).toBe(1000);
     expect(canonicalPlatformFeeBpsForPlan(undefined)).toBe(1000);
+  });
+});
+
+describe("fixed per-sale fee (~US$0.30)", () => {
+  it("has a local amount for every currency we sell in", () => {
+    expect(platformFixedFeeMinor("USD")).toBe(30);
+    expect(platformFixedFeeMinor("usd")).toBe(30);
+    for (const currency of supportedStripeCurrencies) {
+      expect(platformFixedFeeMinor(currency), currency).toBeGreaterThan(0);
+    }
+    // Unknown currency: the USD amount, never 0.
+    expect(platformFixedFeeMinor("XXX")).toBe(30);
+  });
+
+  it("adds the fixed part to the floored percent and stays below the sale", () => {
+    expect(platformFeeForSale(10_000, 490, 30)).toBe(490 + 30);
+    expect(platformFeeForSale(999, 290, 30)).toBe(28 + 30);
+    // A sale smaller than the fee: one unit below the charge, so Stripe accepts it.
+    expect(platformFeeForSale(20, 1000, 30)).toBe(19);
+    expect(platformFeeForSale(1, 1000, 30)).toBe(0);
+    expect(platformFeeForSale(0, 1000, 30)).toBe(0);
+  });
+
+  it("spreads the fixed part over a subscription price as Stripe's two-decimal percent", () => {
+    // $20/month on Starter: 4.9% + $0.30/$20 (1.5%) = 6.4%.
+    expect(subscriptionFeePercent(2_000, 490, 30)).toBe(6.4);
+    // $7/month on Pro: 2.9% + 4.2857...% -> floored to 7.18.
+    expect(subscriptionFeePercent(700, 290, 30)).toBe(7.18);
+    expect(subscriptionFeePercent(0, 290, 30)).toBe(0);
   });
 });
 

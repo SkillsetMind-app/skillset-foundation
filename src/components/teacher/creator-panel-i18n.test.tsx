@@ -353,7 +353,7 @@ describe("painel do criador em espanhol", () => {
     // aposentado apontam para "Fale conosco", nunca para um beco sem saida.
     { planId: "starter", planName: "Starter", limit: 1, next: "plans" },
     { planId: "pro", planName: "Pro", limit: 5, next: "contact" },
-    { planId: "plus", planName: "Plus", limit: 5, next: "contact" },
+    { planId: "plus", planName: "Enterprise", limit: 5, next: "contact" },
   ] as const)("destaques no $planName: quota e idioma acompanham os dados sem escrita", async ({
     planId, planName, limit, next,
   }) => {
@@ -420,7 +420,7 @@ describe("painel do criador em espanhol", () => {
     mocks.profile = { ...mocks.profile, currentPlanId: "plus" };
     renderEs(<CourseManageHub courseId="course-1" />);
 
-    expect(await screen.findByText("1 de 5 destacados usados en el plan Plus")).toBeInTheDocument();
+    expect(await screen.findByText("1 de 5 destacados usados en el plan Enterprise")).toBeInTheDocument();
     expect(highlightCard("es").getByRole("button", { name: "Quitar destacado" })).toBeEnabled();
     expect(screen.getByRole("heading", { level: 1, name: literalTitle })).toBeInTheDocument();
     const initialSubscriptions = subscriptionCounts();

@@ -5,6 +5,7 @@ import { RevealSection } from "@/components/shared/reveal-section";
 import { planById } from "@/data/plans";
 import { getServerTranslation } from "@/lib/i18n/server";
 
+const basicPlan = planById("basic");
 const starterPlan = planById("starter");
 const proPlan = planById("pro");
 
@@ -16,6 +17,7 @@ export async function ForCreatorsBand() {
 
   const trustBullets = [
     t("home.creators.bullet1")
+      .replace("{basic}", String(basicPlan.commissionPercent))
       .replace("{starter}", String(starterPlan.commissionPercent))
       .replace("{pro}", String(proPlan.commissionPercent)),
     t("home.creators.bullet2"),

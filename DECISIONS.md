@@ -13,6 +13,8 @@ para atraso de webhook/refund antes de transferir dinheiro ao professor.
 (cartao internacional 4.4% + conversao 1%). Motivo: previsao conservadora no
 ledger; a taxa exata so fecha no saldo Stripe depois.
 
+> ⚠️ Escada atual em **D27 (2026-10-06)**: percentual + taxa fixa por venda.
+
 **D18 - Comissao canonica vem do plano do professor no servidor.** O servidor
 ignora bps enviados pelo cliente e resolve a taxa pelo plano atual:
 Free 1000 bps, Starter 500 bps, Pro 300 bps, Plus 200 bps (pivô 2026-07;
@@ -155,7 +157,7 @@ pago/sacar. Padrão Stripe recomendado (deferred onboarding).
 **Planos (Free/Starter/Pro/Plus):** são Stripe **Billing** (assinatura),
 SUBSYSTEM SEPARADO de Connect. Modelo recomendado: Checkout
 `mode:'subscription'` + Customer Portal p/ upgrade/downgrade; o tier
-define o `platformFeeBps` (canônico em `rules.ts`: 10/5/3/2%).
+define o `platformFeeBps` (canônico em `rules.ts`; escada atual em D27).
 Connect (receber) e Billing (pagar o plano) coexistem independentes.
 Implementação plena depende de Price IDs do painel Stripe + confirmação
 do mapeamento tier→fee (ver BLOCKERS B7).
@@ -394,3 +396,20 @@ Decisão explícita do fundador. Quem estoura 100 alunos **já está vendendo** 
 **Por que preserva o modelo:** o "$0 para começar" continua intacto, e o professor grande deixa de ter motivo aritmético para migrar. Vira argumento de venda: *"a sua taxa tem teto; a mensalidade deles não tem piso."*
 
 **Fonte da análise:** `docs/benchmarks/2026-08-20-teachable-thinkific-kajabi-vs-skillset.md`
+
+---
+
+## D27 — Tabela de preços de 2026-10-06: sem plano gratuito, teste de 14 dias, taxa fixa por venda
+**Data:** 2026-10-06 · Decisão do fundador.
+
+| Plano | Mensal | Anual | Comissão por venda | Na oferta |
+|---|---|---|---|---|
+| Basic | US$ 5 | US$ 50 | 10% + US$ 0,30 | sim |
+| Starter | US$ 19 | US$ 190 | 4,9% + US$ 0,30 | sim, **Recomendado** |
+| Pro | US$ 89 | US$ 890 | 2,9% + US$ 0,30 | sim |
+| Enterprise (id `plus`) | US$ 199 | US$ 1990 | 1,9% + US$ 0,30 | não (por contato) |
+
+- **Não existe plano gratuito.** Existe o teste grátis de 14 dias, com cartão, um por conta de criador, em qualquer plano pago. `free` segue no código só como o estado de quem não tem assinatura, na taxa e nos limites do Basic, até a mudança que bloqueia vender sem plano.
+- **Taxa fixa em toda venda**, avulsa ou renovação: cerca de US$ 0,30, numa tabela por moeda em `rules.ts` (valor redondo local, revisar quando o câmbio andar mais de ~20%). Na assinatura de curso, a primeira fatura leva o percentual equivalente (a Stripe só aceita percentual na assinatura) e cada renovação recebe o valor exato no `invoice.created`, pelo plano do professor naquele momento.
+- **Limites:** Basic herda os do antigo Free; Starter não muda; Pro fica com os do antigo Plus e teto de 3.000 alunos ativos ("Fale conosco" acima); Enterprise mantém os do Plus.
+- Implementação: PR de 06/10 (`feat/precos-3-planos-teste-gratis`) e a migration `20261006040000_precos_novos_teste_gratis.sql`.

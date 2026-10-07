@@ -3,7 +3,8 @@
  * One-shot setup for Skillset's subscription billing on Stripe.
  *
  * Creates (idempotently, by lookup_key + metadata):
- *   - 3 Products:  Skillset Starter / Pro / Plus
+ *   - 3 Products:  Skillset Basic / Starter / Pro (Enterprise is the existing
+ *                  Plus Product and Prices, sold by arrangement: never recreated)
  *   - 6 Prices:    each Product × {monthly, yearly} in USD recurring
  *   - 1 Webhook Endpoint pointing at the deployed stripeWebhook function
  *     with the exact set of events the in-app subscription flow listens to.
@@ -62,6 +63,8 @@ const WEBHOOK_EVENTS = [
   "customer.subscription.created",
   "customer.subscription.updated",
   "customer.subscription.deleted",
+  // The 14-day plan trial: the reminder email before it converts.
+  "customer.subscription.trial_will_end",
   "invoice.payment_failed",
   // Course one-time checkout (existing — keep ringing through this webhook)
   "checkout.session.completed",
@@ -70,30 +73,30 @@ const WEBHOOK_EVENTS = [
   "charge.refunded",
 ];
 
-// Catalog — MUST match src/data/plans.ts. Keep in sync.
+// Catalog — MUST match src/data/plans.ts. Keep in sync. Starter and Pro
+// already exist under their lookup keys and are reused as they are; Basic is
+// the only new Product.
 const PLANS = [
+  {
+    id: "basic",
+    name: "Skillset Basic",
+    description: "10% + $0.30 per sale.",
+    monthlyUsd: 5,
+    yearlyUsd: 50,
+  },
   {
     id: "starter",
     name: "Skillset Starter",
-    description:
-      "Lower commission as sales grow: 5% per sale.",
+    description: "4.9% + $0.30 per sale.",
     monthlyUsd: 19,
     yearlyUsd: 190,
   },
   {
     id: "pro",
     name: "Skillset Pro",
-    description:
-      "A lower commission for established catalogs: 3% per sale.",
+    description: "2.9% + $0.30 per sale.",
     monthlyUsd: 89,
     yearlyUsd: 890,
-  },
-  {
-    id: "plus",
-    name: "Skillset Plus",
-    description: "The lowest commission for high-volume creators: 2% per sale.",
-    monthlyUsd: 199,
-    yearlyUsd: 1990,
   },
 ];
 

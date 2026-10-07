@@ -8,7 +8,12 @@ import { redeemCourseCoupon } from "@/domain/coupon-redemption";
 import { buildInstallmentPlan } from "@/domain/installments";
 import { isCoursePubliclySellable } from "@/domain/teacher-course";
 import { toStripeAmount } from "@/lib/payments/currencies";
-import { canonicalPlatformFeeBpsForPlan } from "@/lib/payments/rules";
+import {
+  canonicalPlatformFeeBpsForPlan,
+  platformFeeForSale,
+  platformFixedFeeMinor,
+  subscriptionFeePercent,
+} from "@/lib/payments/rules";
 import {
   PaymentError,
   paymentErrorResponse,
@@ -243,6 +248,8 @@ export async function POST(request: Request) {
 
     const owner = await getUserRow(course.owner_id);
     const platformFeeBps = canonicalPlatformFeeBpsForPlan(owner?.current_plan_id);
+    // The fixed part of the fee (~US$0.30), in the stored unit of this currency.
+    const platformFeeFixedMinor = platformFixedFeeMinor(currency);
     // Course fields are caches; only the owner's protected Connect profile
     // can authorize the account that receives a new payment.
     const connectedAccountId = owner?.stripe_connected_account_id ?? null;
@@ -388,6 +395,13 @@ export async function POST(request: Request) {
           subscriptionInterval,
           connectedAccountId,
         );
+        // amountMinor is the list price here (a coupon rides on the session),
+        // so the fixed fee is spread over what the Price actually charges.
+        const subscriptionFeePercentValue = subscriptionFeePercent(
+          toStripeAmount(amountMinor, currency),
+          platformFeeBps,
+          toStripeAmount(platformFeeFixedMinor, currency),
+        );
 
         stripeCreateStarted = true;
         subscriptionSession = await stripe.checkout.sessions.create(
@@ -410,12 +424,13 @@ export async function POST(request: Request) {
             // future invoice.paid / lifecycle event resolves course, buyer,
             // teacher, connected account and fee without a DB lookup.
             subscription_data: {
-              // Our cut of every recurring invoice, taken automatically by
-              // Stripe. bps -> percent (1000 bps = 10%). Omitted at 0% (Pro):
-              // Stripe rejects a zero fee in some calls, and no field means no
-              // fee. The webhook reads the "0" in metadata as the fee in force.
-              ...(platformFeeBps > 0
-                ? { application_fee_percent: platformFeeBps / 100 }
+              // Our cut of the FIRST invoice: percent + fixed fee as a share
+              // of the price (Stripe takes only a percent on subscriptions).
+              // Each renewal is then set to the exact amount by the webhook on
+              // invoice.created. Omitted if it ever came to 0: Stripe rejects a
+              // zero fee in some calls, and no field means no fee.
+              ...(subscriptionFeePercentValue > 0
+                ? { application_fee_percent: subscriptionFeePercentValue }
                 : {}),
               metadata: {
                 purpose: "course_subscription",
@@ -425,6 +440,7 @@ export async function POST(request: Request) {
                 teacherId: course.owner_id,
                 connectedAccountId,
                 platformFeeBps: String(platformFeeBps),
+                platformFeeFixedMinor: String(platformFeeFixedMinor),
                 currency: currency.toUpperCase(),
                 // The purchase email is sent from invoice.paid, which never
                 // sees this session's locale.
@@ -444,6 +460,7 @@ export async function POST(request: Request) {
               teacherId: course.owner_id,
               connectedAccountId,
               platformFeeBps: String(platformFeeBps),
+              platformFeeFixedMinor: String(platformFeeFixedMinor),
               ...(priced.offerId ? { offerId: priced.offerId } : {}),
               ...(priced.priceId ? { priceId: priced.priceId } : {}),
               ...couponMetadata,
@@ -626,6 +643,7 @@ export async function POST(request: Request) {
       amount_minor: amountMinor,
       currency: currency.toUpperCase(),
       platform_fee_bps: platformFeeBps,
+      platform_fee_fixed_minor: platformFeeFixedMinor,
       offer_id: priced.offerId ?? null,
       price_id: priced.priceId ?? null,
       coupon_code: appliedCouponCode,
@@ -667,12 +685,13 @@ export async function POST(request: Request) {
     // a fee equal to the charge after rounding.
     const stripeUnitAmount = toStripeAmount(amountMinor, currency);
 
-    // Platform cut on this charge. Floored so rounding never favours us over the
-    // teacher, and capped below the charge so Stripe can never reject the
-    // session for a fee that exceeds the amount being collected.
-    const applicationFeeMinor = Math.min(
-      Math.max(0, Math.floor((stripeUnitAmount * platformFeeBps) / 10000)),
-      Math.max(0, stripeUnitAmount - 1),
+    // Platform cut on this charge: the plan percent (floored, so rounding never
+    // favours us over the teacher) plus the fixed fee, capped below the charge
+    // so Stripe can never reject the session for a fee as large as the sale.
+    const applicationFeeMinor = platformFeeForSale(
+      stripeUnitAmount,
+      platformFeeBps,
+      toStripeAmount(platformFeeFixedMinor, currency),
     );
 
     const sessionParams: Stripe.Checkout.SessionCreateParams = {
@@ -716,13 +735,14 @@ export async function POST(request: Request) {
         teacherId: course.owner_id,
         connectedAccountId,
         platformFeeBps: String(platformFeeBps),
+        platformFeeFixedMinor: String(platformFeeFixedMinor),
       },
       payment_intent_data: {
         // Our cut, deducted by Stripe from a charge that settles directly in the
         // teacher's balance. Computed on the amount actually charged (post
         // coupon), so a discount reduces our fee proportionally rather than
-        // eating the teacher's share. A zero fee (Pro, or a few cents at
-        // 4.9%) is omitted rather than sent: Stripe rejects 0 here.
+        // eating the teacher's share. A zero fee (a sale too small to carry
+        // one) is omitted rather than sent: Stripe rejects 0 here.
         ...(applicationFeeMinor > 0
           ? { application_fee_amount: applicationFeeMinor }
           : {}),

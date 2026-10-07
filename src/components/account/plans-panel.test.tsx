@@ -94,20 +94,20 @@ describe("PlansPanel", () => {
 });
 
 describe("PlansPanel com os 2 planos e o teste gratis", () => {
-  it("mostra so Starter e Pro, mesmo para quem ainda esta no free interno", () => {
+  it("mostra so Basic, Starter e Pro, mesmo para quem ainda esta sem plano", () => {
     state.planId = "free";
     render(<PlansPanel />);
 
     const names = screen.getAllByRole("article").map((card) => card.querySelector("p")?.textContent);
-    expect(names).toEqual(["Starter", "Pro"]);
-    expect(screen.queryByText("Plus")).not.toBeInTheDocument();
+    expect(names).toEqual(["Basic", "Starter", "Pro"]);
+    expect(screen.queryByText("Enterprise")).not.toBeInTheDocument();
   });
 
   it("oferece o teste de 14 dias com os termos de renovacao junto do botao", async () => {
     state.planId = "free";
     render(<PlansPanel />);
 
-    const pro = screen.getAllByRole("article")[1];
+    const pro = screen.getAllByRole("article")[2];
     const cta = await within(pro).findByRole("button", { name: "Start 14-day free trial" });
     expect(cta.parentElement).toHaveTextContent(
       /14 days free, then \$89\/month\. Renews automatically until you cancel\. Cancel anytime in Billing before .+ and you won't be charged\./,
@@ -122,7 +122,7 @@ describe("PlansPanel com os 2 planos e o teste gratis", () => {
     state.billing = { trialEligible: false, subscription: null };
     render(<PlansPanel />);
 
-    const pro = screen.getAllByRole("article")[1];
+    const pro = screen.getAllByRole("article")[2];
     expect(await within(pro).findByRole("button", { name: "Upgrade to Pro" })).toBeInTheDocument();
     expect(pro).toHaveTextContent("$89/month, starting today. Renews automatically until you cancel.");
     expect(pro).not.toHaveTextContent("days free");
@@ -155,12 +155,12 @@ describe("PlansPanel com os 2 planos e o teste gratis", () => {
     expect(screen.queryByRole("button", { name: "Cancel plan" })).not.toBeInTheDocument();
   });
 
-  it("um assinante Plus antigo continua vendo o proprio plano, sem cartao Plus a venda", () => {
+  it("um assinante Enterprise (ex-Plus) ve o proprio plano, sem cartao Enterprise a venda", () => {
     state.planId = "plus";
     render(<PlansPanel />);
 
-    expect(screen.getByText("Current plan:").parentElement).toHaveTextContent("Plus");
-    expect(screen.getAllByRole("article")).toHaveLength(2);
+    expect(screen.getByText("Current plan:").parentElement).toHaveTextContent("Enterprise");
+    expect(screen.getAllByRole("article")).toHaveLength(3);
     expect(screen.queryByText("Current")).not.toBeInTheDocument();
   });
 });

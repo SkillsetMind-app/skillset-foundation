@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { helpFaqCategories } from "@/data/help-faq";
-import { publicPlans, refundWindowDays } from "@/data/plans";
+import { formatPlanCommission, publicPlans, refundWindowDays } from "@/data/plans";
 import { buildAssistantKnowledge } from "@/lib/assistant/knowledge";
 
 describe("buildAssistantKnowledge", () => {
@@ -16,7 +16,7 @@ describe("buildAssistantKnowledge", () => {
   it("includes every plan on offer with its price, commission and the trial", () => {
     for (const plan of publicPlans) {
       expect(knowledge).toContain(plan.name);
-      expect(knowledge).toContain(`${plan.commissionPercent}% commission`);
+      expect(knowledge).toContain(`${formatPlanCommission(plan)} commission`);
       expect(knowledge).toContain(`$${plan.monthlyUsd}/month`);
     }
     expect(knowledge).toContain("14-day free trial");

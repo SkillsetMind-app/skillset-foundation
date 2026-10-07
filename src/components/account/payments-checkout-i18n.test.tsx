@@ -6,7 +6,7 @@ import { EmbeddedCheckoutPanel } from "@/components/account/embedded-checkout-pa
 import { UpgradeModal } from "@/components/account/upgrade-modal";
 import { ActivationCheckoutPanel } from "@/components/teacher/activation-checkout-panel";
 import { I18nProvider, useTranslation } from "@/components/i18n/i18n-provider";
-import { activationFeeUsd, plans, publicPlans } from "@/data/plans";
+import { activationFeeUsd, formatPlanCommission, plans, publicPlans } from "@/data/plans";
 import { formatUsdWhole } from "@/data/platform";
 import { LOCALE_COOKIE, type Locale } from "@/lib/i18n/config";
 import { getDictionary, translate } from "@/lib/i18n/dictionaries";
@@ -114,7 +114,7 @@ describe("payment checkout localization with real dictionaries", () => {
     const total = cycle === "yearly" ? plan.yearlyUsd : plan.monthlyUsd;
     expect(screen.getByText(copy("es", cycle === "yearly" ? "billingCheckout.billedYearly" : "billingCheckout.billedMonthly")
       .replace("{amount}", () => formatUsdWhole(total, "es")).replace(/\s/g, " "))).toBeInTheDocument();
-    expect(screen.getByText(`${plan.commissionPercent}%`)).toBeInTheDocument();
+    expect(screen.getByText(formatPlanCommission(plan))).toBeInTheDocument();
     expect(screen.getByText(/2\.9% \+ \$0\.30 USD \/ 5\.4% \+ \$0\.30/)).toBeInTheDocument();
     // The server opened a trial: the renewal terms beside the card form say so.
     const price = `$${total} ${cycle === "yearly" ? "al año" : "al mes"}`;
@@ -125,7 +125,7 @@ describe("payment checkout localization with real dictionaries", () => {
     expect(mocks.fetch).toHaveBeenCalledTimes(1);
   });
 
-  it("never opens a checkout for the retired Plus", async () => {
+  it("never opens a checkout for Enterprise (id plus), which is not on the public offer", async () => {
     mount(<EmbeddedCheckoutPanel planId="plus" cycle="monthly" />);
     expect(await screen.findByText(copy("es", "billingCheckout.unknownPlanTitle"))).toBeInTheDocument();
     expect(mocks.fetch).not.toHaveBeenCalled();

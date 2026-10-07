@@ -71,7 +71,7 @@ export default async function ForCreatorsPage() {
               href="/pricing"
               className="mt-2 inline-flex text-sm font-semibold text-[var(--color-primary)] underline-offset-4 hover:underline"
             >
-              {t("publicPages.creators.see_both_plans")}
+              {t("publicPages.creators.see_all_plans")}
             </Link>
           </div>
         </div>

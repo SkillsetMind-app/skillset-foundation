@@ -13,6 +13,8 @@ import {
   DEFAULT_PLATFORM_FEE_BPS,
   canonicalPlatformFeeBpsForPlan,
   ledgerRefundStatus,
+  platformFeeForSale,
+  platformFixedFeeMinor,
   nextLedgerStatusOnDispute,
   resolveInvoicePaymentIntentId,
   sanitizeStripeSecret,
@@ -70,6 +72,7 @@ const HANDLED_STRIPE_EVENT_TYPES = new Set<string>([
   "customer.subscription.updated",
   "customer.subscription.deleted",
   "customer.subscription.trial_will_end",
+  "invoice.created",
   "invoice.payment_failed",
   "invoice.paid",
   "account.updated",
@@ -515,7 +518,13 @@ async function handleCheckoutCompleted(
   const grossAmountMinor = Number(order.amount_minor || 0);
   // ?? not || so an explicitly snapshotted 0-bps fee survives.
   const platformFeeBps = Number(order.platform_fee_bps ?? DEFAULT_PLATFORM_FEE_BPS);
-  const skillsetFeeMinor = Math.floor((grossAmountMinor * platformFeeBps) / 10000);
+  // Same formula the checkout charged: percent + the fixed part snapshotted on
+  // the order (0 on orders from before the fixed fee), capped below the sale.
+  const skillsetFeeMinor = platformFeeForSale(
+    grossAmountMinor,
+    platformFeeBps,
+    Number(order.platform_fee_fixed_minor ?? 0),
+  );
   const stripeFeeMinor =
     actualStripeFeeMinor ??
     stripeProcessingFeeMinor(grossAmountMinor, order.currency);
@@ -711,9 +720,12 @@ async function handleCourseSubscriptionInvoicePaid(
   // charge. The subscription states the percent actually in force, so trust it;
   // the plan/metadata chain only covers subscriptions with no percent set.
   //
-  // A 0% plan omits the percent at checkout (Stripe rejects 0), so a null
-  // percent with a "0" snapshot is a fee of 0 — not a cue to re-derive it from
-  // a plan the teacher may have left since.
+  // A null percent with a "0" snapshot is a fee of 0 — not a cue to re-derive
+  // it from a plan the teacher may have left since.
+  //
+  // Better than any of that: the invoice states the fee Stripe took. Renewals
+  // carry the exact percent + fixed amount set on invoice.created, and that is
+  // what the ledger books whenever it is present.
   const frozenPercent = subscription.application_fee_percent;
   const platformFeeBps =
     typeof frozenPercent === "number" && frozenPercent >= 0
@@ -721,7 +733,11 @@ async function handleCourseSubscriptionInvoicePaid(
       : metaBps === 0
         ? 0
         : derivedFeeBps;
-  const skillsetFeeMinor = Math.floor((grossAmountMinor * platformFeeBps) / 10000);
+  const invoiceFee = (invoice as { application_fee_amount?: number | null }).application_fee_amount;
+  const skillsetFeeMinor =
+    typeof invoiceFee === "number" && invoiceFee >= 0
+      ? fromStripeAmount(invoiceFee, currencyUpper)
+      : Math.floor((grossAmountMinor * platformFeeBps) / 10000);
   const stripeFeeMinor =
     grossAmountMinor > 0 ? stripeProcessingFeeMinor(grossAmountMinor, currencyUpper) : 0;
   // Record of what the teacher actually received: Stripe already took our
@@ -1663,6 +1679,55 @@ async function syncSubscriptionFromStripe(
   );
 }
 
+// --- fixed per-sale fee on student-subscription renewals ----------------------
+// Stripe takes only a percent on a subscription, so a renewal's fee (plan
+// percent + the fixed ~US$0.30) is written on the invoice itself while it is
+// still a draft: Stripe holds automatic-collection invoices about an hour after
+// our 2xx to invoice.created (up to 72 h if we fail), and an invoice-level
+// application_fee_amount overrides the subscription's percent. The FIRST
+// invoice is paid synchronously at checkout and never waits; it carries the
+// percent-equivalent set there. The rate is the teacher's plan NOW: a renewal
+// is a new sale, and new sales use the current plan.
+async function handleCourseSubscriptionInvoiceCreated(
+  admin: Admin,
+  invoice: Stripe.Invoice,
+  eventAccountId: string,
+): Promise<void> {
+  if (invoice.status !== "draft" || invoice.billing_reason === "subscription_create") return;
+  const amountDue = Number(invoice.amount_due || 0);
+  if (amountDue <= 0) return;
+  const subscriptionId = resolveInvoiceSubscriptionId(invoice);
+  if (!subscriptionId) return;
+
+  const subscription = await getStripeClient().subscriptions.retrieve(
+    subscriptionId,
+    undefined,
+    { stripeAccount: eventAccountId },
+  );
+  const meta = subscription.metadata ?? {};
+  if (meta.purpose !== "course_subscription" || !meta.teacherId) return;
+
+  const { data: owner, error } = await admin
+    .from("users")
+    .select("current_plan_id")
+    .eq("uid", meta.teacherId)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+
+  const currency = String(invoice.currency || "usd");
+  const fee = platformFeeForSale(
+    amountDue,
+    canonicalPlatformFeeBpsForPlan(owner?.current_plan_id),
+    toStripeAmount(platformFixedFeeMinor(currency), currency),
+  );
+  if (fee <= 0) return;
+  await getStripeClient().invoices.update(
+    invoice.id!,
+    { application_fee_amount: fee },
+    { stripeAccount: eventAccountId },
+  );
+}
+
 // One trial per creator account, ever: the first subscription that starts a
 // trial claims the account's row. ignoreDuplicates — a later event (a plan
 // change during the trial, a renewal, a second subscription) never rewrites it,
@@ -1983,6 +2048,13 @@ export async function POST(request: Request) {
         }
         break;
       }
+      case "invoice.created":
+        // Student subscriptions live on connected accounts; plan invoices on
+        // the platform (no event.account) keep their price as it is.
+        if (eventAccountId) {
+          await handleCourseSubscriptionInvoiceCreated(admin, event.data.object, eventAccountId);
+        }
+        break;
       case "invoice.payment_failed":
         await handleInvoicePaymentFailed(
           admin,
