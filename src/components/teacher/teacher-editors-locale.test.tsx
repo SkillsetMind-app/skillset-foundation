@@ -115,6 +115,30 @@ describe("ES-09 editors with the shipped dictionaries", () => {
     expect(screen.getByRole("alert")).toHaveTextContent("A product with this name already exists. Choose a more specific name.");
   });
 
+  // Produto no ar de antes da forma de pagar: o texto salva pela mesma RPC do
+  // construtor, que regrava preco e forma. O banco (20261007030000) recusa
+  // trocar para "cobrado sem valor"; repetir o que esta gravado passa.
+  it.each([
+    ["sem forma e sem valor (gratis)", undefined, "free"],
+    ["pagamento unico sem valor", "one_time", "one_time"],
+  ] as const)("produto antigo no ar, %s: o texto salva sem mexer no preco", async (_label, paymentType, sent) => {
+    const legacy: TeacherCourse = { ...course, status: "published", paymentType, priceAmountMinor: null };
+    vi.mocked(updateTeacherCourseBuilder).mockImplementationOnce(async (_id, input) => {
+      const changed = input.paymentType !== (legacy.paymentType ?? null) || input.priceAmountMinor !== legacy.priceAmountMinor;
+      if (input.paymentType !== "free" && !(input.priceAmountMinor && input.priceAmountMinor > 0) && changed) {
+        throw new Error("PAID_PRODUCT_NEEDS_PRICE: a published product sold as one_time needs a price.");
+      }
+    });
+    mount(<SalesPageEditor course={legacy} />);
+    fireEvent.change(screen.getByLabelText("Descripción"), { target: { value: "Resumen nuevo" } });
+    fireEvent.click(screen.getByRole("button", { name: "Guardar página de ventas" }));
+
+    expect(await screen.findByRole("status")).toHaveTextContent("Textos de venta guardados.");
+    expect(updateTeacherCourseBuilder).toHaveBeenCalledWith(legacy.id, expect.objectContaining({
+      summary: "Resumen nuevo", paymentType: sent, priceAmountMinor: null,
+    }));
+  });
+
   it("localizes every block field and action while preserving saved blocks on language changes", async () => {
     state.landing = { template: "bold", blocks: [
       { kind: "hero", heading: "Saved therapist $&", subheading: "Saved subtitle", imageUrl: "/uploads/original.jpg" },

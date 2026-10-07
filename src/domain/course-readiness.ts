@@ -5,6 +5,7 @@ import { getTrustedLessonEmbed } from "@/domain/lesson-embed";
 import {
   countCourseLessons,
   normalizeCourseCategories,
+  paymentTypeFitsFormat,
   type TeacherCourse,
   type TeacherCourseModule,
 } from "@/domain/teacher-course";
@@ -23,6 +24,7 @@ export type CourseReadinessInput = Pick<
   | "categories"
   | "modules"
   | "priceAmountMinor"
+  | "currency"
   | "paymentType"
   | "installmentsEnabled"
   | "installmentsMax"
@@ -172,6 +174,12 @@ export function getCourseReadiness(
   // arquivo.
   const productFormat = course.productFormat ?? "course";
   const paid = paymentType !== "free" && priceAmountMinor > 0;
+  // Produto criado antes da regra pode cobrar de um jeito que o tipo nao
+  // aceita (comunidade por pagamento unico). Publicar recusa (gatilho de
+  // 20261007030000); aqui a pessoa ve antes, no item de preco.
+  const paymentFits = paymentTypeFitsFormat(course.productFormat ?? "course", paymentType);
+  // "$0" fixo dizia dolar para quem vende em real: o zero vem na moeda escolhida.
+  const zeroPrice = formatZeroPrice(course.currency);
   const lessons = modules.flatMap((courseModule) => courseModule.lessons);
   const withMedia = course.lessonIdsWithMedia;
   const lessonsWithoutMedia = withMedia ? lessons.filter((lesson) => !withMedia.has(lesson.id)) : [];
@@ -301,8 +309,10 @@ export function getCourseReadiness(
           id: "pricing" as const,
           group: "sale" as const,
           label: "Pricing",
-          hint: "Set a paid price greater than $0, or choose Free.",
-          done: priceAmountMinor > 0,
+          hint: paymentFits
+            ? `Set a price above ${zeroPrice}, or choose Free.`
+            : "This way of paying does not fit this type of product. Pick another one in Pricing.",
+          done: priceAmountMinor > 0 && paymentFits,
           optional: false,
         }]),
     {
@@ -372,6 +382,11 @@ export function getCourseReadiness(
       if (item.id === "activation") {
         item.label = item.label.replace("{amount}", () => String(activationFeeUsd));
       }
+      if (item.id === "pricing") {
+        item.hint = paymentFits
+          ? item.hint.replace("{zero}", () => zeroPrice)
+          : t("creatorEditor.readiness.items.pricing.notForType");
+      }
       if (item.id === "lessonMedia" && !item.done) {
         item.hint += ` ${missingLessonsText(
           t("creatorEditor.lesson.untitled"),
@@ -397,6 +412,18 @@ export function getCourseReadiness(
       : 0,
     ready: pending.length === 0,
   };
+}
+
+export function formatZeroPrice(currency: string | null | undefined): string {
+  try {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: String(currency || "USD").toUpperCase(),
+      maximumFractionDigits: 0,
+    }).format(0);
+  } catch {
+    return `0 ${String(currency || "USD").toUpperCase()}`;
+  }
 }
 
 export type CourseReadinessGroup = {

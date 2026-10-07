@@ -2268,34 +2268,37 @@
     "disabled": "Disabled",
     "paymentType": {
       "free": "Free",
-      "one_time": "One-time purchase",
-      "subscription_monthly": "Monthly subscription",
-      "subscription_yearly": "Yearly subscription"
+      "one_time": "One payment",
+      "subscription_monthly": "Monthly membership",
+      "subscription_yearly": "Yearly plan"
     },
     "offers": {
-      "title": "Offers & prices",
-      "description": "Create one-time or subscription packages. The default drives the main page; every active offer has an exact buyer link.",
-      "loading": "Loading offers…",
-      "empty": "No offers yet — checkout uses the legacy course price until you create one.",
-      "defaultBadge": "default",
+      "title": "Other prices",
+      "description": "Another price for the same way of paying, like a launch price or a yearly plan. Each one gets its own link.",
+      "loading": "Loading prices…",
+      "empty": "No other prices yet. Buyers pay the price you set in Pricing.",
+      "free": "This product is free, so it has no other prices. To charge for it, change how people pay in Pricing.",
+      "defaultBadge": "main price",
       "noPrice": "No price",
       "code": "code {code}",
       "inactive": "inactive",
-      "checkoutLink": "{name} checkout",
-      "defaultName": "Standard offer",
-      "name": "Offer name",
-      "publicCode": "Public code (optional)",
+      "checkoutLink": "{name} payment page",
+      "defaultName": "Another price",
+      "yearlyName": "Yearly plan",
+      "firstIsMain": "Your page keeps charging {price} ({model}): that price becomes the main price first, and this one is added next to it.",
+      "name": "Name of this price",
+      "publicCode": "Code for the link (optional)",
       "publicCodePlaceholder": "e.g. LAUNCH",
       "amount": "Amount",
       "currency": "Currency",
-      "paymentType": "Payment type",
-      "isDefault": "Default offer (drives checkout + syncs legacy price)",
-      "submit": "Create offer",
-      "submitting": "Creating...",
-      "loadError": "Could not load offers.",
-      "createError": "Could not create offer.",
+      "paymentType": "How often they pay",
+      "isDefault": "Make this the main price on your page",
+      "submit": "Add price",
+      "submitting": "Adding...",
+      "loadError": "Could not load your prices.",
+      "createError": "Could not add this price.",
       "invalidAmount": "Enter a valid price.",
-      "created": "Offer created. Its buyer link now resolves this exact price."
+      "created": "Price added. Its link charges exactly this price."
     },
     "filters": {
       "all": "All",
@@ -2422,9 +2425,9 @@
       },
       "pricing": {
         "title": "Pricing & checkout",
-        "description": "Set the access model and base commercial terms, then create targeted offers for distinct buyer links.",
+        "description": "How people pay is set in Pricing. Other prices, each with its own link, are below.",
         "price": "Price",
-        "paymentType": "Payment type",
+        "paymentType": "How people pay",
         "installments": "Installments",
         "installmentsUpTo": "Up to {max}x",
         "stripeCheckout": "Secure Stripe checkout",
@@ -2435,13 +2438,13 @@
         "finishOnboarding": "Finish payout onboarding",
         "notApplicable": "—",
         "installmentsHint": "Installments: {value}",
-        "paymentTypeHint": "How buyers are charged at checkout.",
+        "paymentTypeHint": "What buyers pay on your page.",
         "paymentTypeFreeHint": "Free course — nothing is charged at checkout.",
         "refundWindow": "Refund window",
         "refundWindowDays": "{days} days",
         "refundWindowHint": "Platform guarantee on every course: less than half completed and no certificate issued.",
         "payoutsFreeHint": "Free course — no payout to set up.",
-        "newOffer": "New offer",
+        "newOffer": "Add another price",
         "newOfferCancel": "Cancel"
       },
       "content": {
@@ -3632,8 +3635,8 @@
         "pricing": {
           "tab": "Pricing",
           "tabHelp": "How people pay",
-          "stageHelp": "Access model",
-          "heading": "Package the offer.",
+          "stageHelp": "How people pay",
+          "heading": "Set the price.",
           "help": "Choose how people pay and set the price."
         },
         "content": {
@@ -3673,32 +3676,6 @@
           "detail": "Use each lesson's delay field for precise release timing."
         }
       },
-      "paymentModels": {
-        "one_time": {
-          "title": "One-time payment",
-          "description": "Learners pay once and get lifetime access.",
-          "feature1": "Best for complete courses",
-          "feature2": "Lifetime access for learners"
-        },
-        "free": {
-          "title": "Free",
-          "description": "No payment required. Useful for lead-gen or trial cohorts.",
-          "feature1": "Opens enrollment without checkout",
-          "feature2": "Useful for previews or pilots"
-        },
-        "subscription_monthly": {
-          "title": "Charge every month",
-          "description": "A charge that repeats every month until the member cancels.",
-          "feature1": "Recurring access",
-          "feature2": "Cancellation controls"
-        },
-        "subscription_yearly": {
-          "title": "Charge every year",
-          "description": "A charge that repeats every year until the member cancels.",
-          "feature1": "Annual access",
-          "feature2": "Renewal reminders"
-        }
-      },
       "errors": {
         "notFound": "We could not find this course.",
         "load": "We could not load this course. Please return to Teacher Studio and try again.",
@@ -3710,7 +3687,8 @@
         "price": "Use a valid non-negative price, or leave the field empty.",
         "installmentsSave": "Set a valid installment limit before saving.",
         "category": "Choose at least one marketplace category before publishing.",
-        "paidPrice": "Set a paid price greater than $0, or choose Free as the payment model before publishing.",
+        "paidPrice": "Set a price above {zero}, or choose Free, before publishing.",
+        "livePrice": "This product is live. Set a price above {zero}, or choose Free.",
         "installmentsPublish": "Set a valid installment limit before publishing.",
         "duplicateTitle": "A course with this title already exists. Choose a different name.",
         "activation": "Activate your storefront to unlock publishing: a one-time activation fee, charged once per creator account, never per course.",
@@ -3719,7 +3697,7 @@
         "setup": "Teacher setup must be complete before publishing courses.",
         "verification": "Professional verification must be approved before publishing.",
         "payouts": "Finish Stripe payout onboarding before publishing a paid course — open the Payouts panel in your studio.",
-        "payment": "Set a valid payment model before publishing.",
+        "payment": "Check how people pay, in Pricing, before publishing.",
         "lessonContent": "Add a video, text or file to every lesson before publishing.",
         "session": "Schedule the live session before publishing: the date has to be in the future.",
         "file": "Upload at least one file (PDF, slides or workbook) before publishing.",
@@ -3883,21 +3861,51 @@
         "customHelp": " Set each lesson's delay when you edit the lesson."
       },
       "pricing": {
-        "setup": "Marketplace setup",
-        "model": "Payment model",
-        "helpTopic": "Course pricing",
-        "help": "Choose Free, a one-time payment, or a charge that repeats every month or year. To publish a paid product, set a price above zero and connect Stripe so you can receive payouts.",
+        "question": "How will people pay?",
+        "helpTopic": "How people pay",
+        "help": "Pick one option. To sell, set a price and connect your Stripe account so the money reaches you.",
+        "choices": {
+          "free": {
+            "title": "Free",
+            "description": "Anyone can join. No checkout."
+          },
+          "one_payment": {
+            "title": "One payment",
+            "description": "They pay once and keep access. Ex.: {amount}."
+          },
+          "ticket": {
+            "title": "Ticket",
+            "description": "They pay once to take part. Ex.: {amount}."
+          },
+          "membership": {
+            "title": "Monthly membership",
+            "description": "Charged every month until they cancel. Ex.: {amount}/month."
+          }
+        },
+        "rule": "Split payments = the same price divided; it ends on the last payment. Monthly membership = a charge that repeats until they cancel.",
+        "notForType": "This option does not fit this type of product. Pick another one to publish.",
         "price": "Price",
+        "pricePerMonth": "Price per month",
+        "pricePerYear": "Price per year",
         "currency": "Currency",
         "freeLine": "This product is free. To charge for it, pick a paid option above.",
         "pricePlaceholder": "Example: 149",
-        "installments": "Split payments by card",
-        "installmentsCurrency": "Switch the currency to MXN to let buyers split the price.",
-        "installmentsEligible": "Buyers with a Mexican card can split the price into monthly payments. It ends on the last payment, so it is not a subscription. The card issuer decides which cards qualify.",
-        "enableInstallments": "Let buyers split the price",
+        "split": "Let them split it into payments",
+        "splitMax": "Up to how many payments",
+        "splitPreview": "{count}x of {amount}",
+        "yearly": "Also offer a yearly plan",
+        "yearlySaving": "They save {amount} compared to 12 monthly payments.",
+        "yearlyNoSaving": "This costs the same as 12 monthly payments, or more.",
+        "yearlyWhere": "Your page shows the monthly price. The yearly plan is an extra price with its own link.",
+        "yearlyAdd": "Add the yearly plan",
+        "yearlyOnly": "This product charges once a year until they cancel.",
+        "switchToMonthly": "Charge every month instead",
+        "offerCharges": "Your page charges {price} ({model}).",
+        "offerChange": "Change it in Other prices.",
+        "offersFailed": "Couldn't load your prices. Reload the page.",
         "preview": "Free preview lesson",
         "noPreview": "No preview selected yet",
-        "listingHelp": "These fields prepare the public listing. Paid access still requires Stripe checkout before enrollment opens."
+        "listingHelp": "People pay on a secure page before they get access."
       },
       "save": {
         "blocked": "Not saving — {reason}",
@@ -4027,7 +4035,8 @@
         },
         "pricing": {
           "label": "Pricing",
-          "hint": "Set a paid price greater than $0, or choose Free."
+          "hint": "Set a price above {zero}, or choose Free.",
+          "notForType": "This way of paying does not fit this type of product. Pick another one in Pricing."
         },
         "outcomes": {
           "label": "Learning outcomes",

@@ -467,6 +467,14 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
     t,
   );
   const pricing = getCoursePricingShape(course);
+  // "Add the yearly plan" na etapa de preco chega com ?addPrice=yearly&amount=
+  // (em centavos): o formulario de outro preco ja abre com o plano anual.
+  const yearlyPrefillMinor = searchParams?.get("addPrice") === "yearly"
+    ? Number(searchParams.get("amount"))
+    : Number.NaN;
+  const yearlyPrefill = Number.isInteger(yearlyPrefillMinor) && yearlyPrefillMinor > 0
+    ? { paymentType: "subscription_yearly" as const, amountMinor: yearlyPrefillMinor }
+    : null;
   const paid = !pricing.free;
   const published = course.status === "published";
   const switchableCourses = myCourses.filter((candidate) => candidate.id !== course.id);
@@ -977,6 +985,7 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
                 courseId={course.id}
                 courseTitle={courseTitle}
                 coursePricing={pricing}
+                prefill={yearlyPrefill}
               />
             </div>
           ) : null}

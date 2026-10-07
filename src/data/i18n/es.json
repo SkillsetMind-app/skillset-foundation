@@ -2269,33 +2269,36 @@
     "paymentType": {
       "free": "Gratis",
       "one_time": "Pago único",
-      "subscription_monthly": "Suscripción mensual",
-      "subscription_yearly": "Suscripción anual"
+      "subscription_monthly": "Mensualidad",
+      "subscription_yearly": "Plan anual"
     },
     "offers": {
-      "title": "Ofertas y precios",
-      "description": "Crea paquetes de pago único o por suscripción. La oferta predeterminada rige la página principal; cada oferta activa tiene su propio enlace de compra exacto.",
-      "loading": "Cargando ofertas…",
-      "empty": "Todavía no hay ofertas: el checkout usa el precio anterior del curso hasta que crees una.",
-      "defaultBadge": "predeterminada",
+      "title": "Otros precios",
+      "description": "Otro precio para la misma forma de pago, como un precio de lanzamiento o un plan anual. Cada uno tiene su propio enlace.",
+      "loading": "Cargando precios…",
+      "empty": "Todavía no hay otros precios. Se paga el precio que definiste en Precios.",
+      "free": "Este producto es gratis, así que no tiene otros precios. Para cobrar, cambia cómo te van a pagar en Precios.",
+      "defaultBadge": "precio principal",
       "noPrice": "Sin precio",
       "code": "código {code}",
-      "inactive": "inactiva",
-      "checkoutLink": "checkout de {name}",
-      "defaultName": "Oferta estándar",
-      "name": "Nombre de la oferta",
-      "publicCode": "Código público (opcional)",
+      "inactive": "inactivo",
+      "checkoutLink": "página de pago de {name}",
+      "defaultName": "Otro precio",
+      "yearlyName": "Plan anual",
+      "firstIsMain": "Tu página sigue cobrando {price} ({model}): ese precio pasa a ser el principal primero, y este se agrega a su lado.",
+      "name": "Nombre de este precio",
+      "publicCode": "Código para el enlace (opcional)",
       "publicCodePlaceholder": "p. ej. LAUNCH",
       "amount": "Importe",
       "currency": "Moneda",
-      "paymentType": "Tipo de pago",
-      "isDefault": "Oferta predeterminada (rige el checkout y sincroniza el precio anterior)",
-      "submit": "Crear oferta",
-      "submitting": "Creando...",
-      "loadError": "No pudimos cargar las ofertas.",
-      "createError": "No pudimos crear la oferta.",
+      "paymentType": "Cada cuánto pagan",
+      "isDefault": "Usar como precio principal de tu página",
+      "submit": "Agregar precio",
+      "submitting": "Agregando...",
+      "loadError": "No pudimos cargar tus precios.",
+      "createError": "No pudimos agregar este precio.",
       "invalidAmount": "Introduce un precio válido.",
-      "created": "Oferta creada. Su enlace de compra ahora resuelve exactamente este precio."
+      "created": "Precio agregado. Su enlace cobra exactamente este precio."
     },
     "filters": {
       "all": "Todos",
@@ -2422,9 +2425,9 @@
       },
       "pricing": {
         "title": "Precios y checkout",
-        "description": "Define el modelo de acceso y las condiciones comerciales base, y luego crea ofertas específicas con enlaces distintos para cada comprador.",
+        "description": "Cómo te pagan se define en Precios. Otros precios, cada uno con su enlace, están abajo.",
         "price": "Precio",
-        "paymentType": "Tipo de pago",
+        "paymentType": "Cómo te pagan",
         "installments": "Cuotas",
         "installmentsUpTo": "Hasta {max} cuotas",
         "stripeCheckout": "Checkout seguro de Stripe",
@@ -2435,13 +2438,13 @@
         "finishOnboarding": "Completar la configuración de pagos",
         "notApplicable": "—",
         "installmentsHint": "Cuotas: {value}",
-        "paymentTypeHint": "Cómo se cobra a los compradores en el checkout.",
+        "paymentTypeHint": "Lo que se paga en tu página.",
         "paymentTypeFreeHint": "Curso gratuito: no se cobra nada en el checkout.",
         "refundWindow": "Plazo de reembolso",
         "refundWindowDays": "{days} días",
         "refundWindowHint": "Garantía de la plataforma en todos los cursos: menos de la mitad completada y sin certificado emitido.",
         "payoutsFreeHint": "Curso gratuito: no hay pagos que configurar.",
-        "newOffer": "Nueva oferta",
+        "newOffer": "Agregar otro precio",
         "newOfferCancel": "Cancelar"
       },
       "content": {
@@ -3632,8 +3635,8 @@
         "pricing": {
           "tab": "Precios",
           "tabHelp": "Cómo te pagan",
-          "stageHelp": "Modelo de acceso",
-          "heading": "Presenta la oferta.",
+          "stageHelp": "Cómo te pagan",
+          "heading": "Define el precio.",
           "help": "Elige cómo te van a pagar y define el precio."
         },
         "content": {
@@ -3673,32 +3676,6 @@
           "detail": "Usa el campo de días de espera de cada lección para definir cuándo se abre."
         }
       },
-      "paymentModels": {
-        "one_time": {
-          "title": "Pago único",
-          "description": "El estudiante paga una vez y obtiene acceso de por vida.",
-          "feature1": "Ideal para cursos completos",
-          "feature2": "Acceso de por vida para estudiantes"
-        },
-        "free": {
-          "title": "Gratis",
-          "description": "Sin pago. Útil para captar contactos o probar un grupo piloto.",
-          "feature1": "Inscripción sin pasar por el pago",
-          "feature2": "Útil para muestras o pruebas piloto"
-        },
-        "subscription_monthly": {
-          "title": "Cobrar cada mes",
-          "description": "Un cobro que se repite cada mes hasta que el miembro cancele.",
-          "feature1": "Acceso recurrente",
-          "feature2": "Controles de cancelación"
-        },
-        "subscription_yearly": {
-          "title": "Cobrar cada año",
-          "description": "Un cobro que se repite cada año hasta que el miembro cancele.",
-          "feature1": "Acceso anual",
-          "feature2": "Recordatorios de renovación"
-        }
-      },
       "errors": {
         "notFound": "No pudimos encontrar este curso.",
         "load": "No pudimos cargar este curso. Vuelve al estudio del creador e inténtalo de nuevo.",
@@ -3710,7 +3687,8 @@
         "price": "Usa un precio válido igual o mayor que cero, o deja el campo vacío.",
         "installmentsSave": "Define un límite de cuotas válido antes de guardar.",
         "category": "Elige al menos una categoría del marketplace antes de publicar.",
-        "paidPrice": "Define un precio mayor que $0 o elige Gratis como modelo de pago antes de publicar.",
+        "paidPrice": "Define un precio mayor que {zero} o elige Gratis antes de publicar.",
+        "livePrice": "Este producto está publicado. Define un precio mayor que {zero} o elige Gratis.",
         "installmentsPublish": "Define un límite de cuotas válido antes de publicar.",
         "duplicateTitle": "Ya existe un curso con este título. Elige otro nombre.",
         "activation": "Activa tu tienda para habilitar la publicación: una tarifa única de activación, que se cobra una sola vez por cuenta de creador, nunca por curso.",
@@ -3719,7 +3697,7 @@
         "setup": "Completa la configuración del creador antes de publicar cursos.",
         "verification": "La verificación profesional debe estar aprobada antes de publicar.",
         "payouts": "Completa la configuración de cobros de Stripe antes de publicar un curso de pago. Abre el panel Cobros en tu estudio.",
-        "payment": "Define un modelo de pago válido antes de publicar.",
+        "payment": "Revisa cómo te van a pagar, en Precios, antes de publicar.",
         "lessonContent": "Añade un video, texto o archivo a cada lección antes de publicar.",
         "session": "Agenda la sesión en vivo antes de publicar: la fecha tiene que ser futura.",
         "file": "Sube al menos un archivo (PDF, presentación o cuaderno) antes de publicar.",
@@ -3883,21 +3861,51 @@
         "customHelp": " Define los días de espera de cada lección al editarla."
       },
       "pricing": {
-        "setup": "Configuración del marketplace",
-        "model": "Modelo de pago",
-        "helpTopic": "Precios del curso",
-        "help": "Elige Gratis, pago único o un cobro que se repite cada mes o cada año. Para publicar un producto de pago, define un precio mayor que cero y conecta Stripe para recibir tus pagos.",
+        "question": "¿Cómo van a pagar?",
+        "helpTopic": "Cómo te pagan",
+        "help": "Elige una opción. Para vender, define un precio y conecta tu cuenta de Stripe para que el dinero te llegue.",
+        "choices": {
+          "free": {
+            "title": "Gratis",
+            "description": "Cualquiera entra. Sin pago."
+          },
+          "one_payment": {
+            "title": "Pago único",
+            "description": "Pagan una vez y conservan el acceso. Ej.: {amount}."
+          },
+          "ticket": {
+            "title": "Entrada",
+            "description": "Pagan una vez para participar. Ej.: {amount}."
+          },
+          "membership": {
+            "title": "Mensualidad",
+            "description": "Se cobra cada mes hasta que cancelen. Ej.: {amount}/mes."
+          }
+        },
+        "rule": "Pagar en cuotas = el mismo precio dividido; termina en la última cuota. Mensualidad = un cobro que se repite hasta que cancelen.",
+        "notForType": "Esta opción no corresponde a este tipo de producto. Elige otra para publicar.",
         "price": "Precio",
+        "pricePerMonth": "Precio por mes",
+        "pricePerYear": "Precio por año",
         "currency": "Moneda",
         "freeLine": "Este producto es gratis. Para cobrar, elige una opción de pago arriba.",
         "pricePlaceholder": "Ejemplo: 149",
-        "installments": "Pago en cuotas con tarjeta",
-        "installmentsCurrency": "Cambia la moneda a MXN para que puedan pagar en cuotas.",
-        "installmentsEligible": "Quien pague con una tarjeta mexicana puede dividir el precio en cuotas mensuales. Termina en la última cuota, así que no es una suscripción. El banco emisor decide qué tarjetas califican.",
-        "enableInstallments": "Permitir pagar en cuotas",
+        "split": "Permitir pagar en cuotas",
+        "splitMax": "Hasta cuántas cuotas",
+        "splitPreview": "{count}x de {amount}",
+        "yearly": "Ofrecer también plan anual",
+        "yearlySaving": "Ahorran {amount} frente a 12 mensualidades.",
+        "yearlyNoSaving": "Cuesta lo mismo que 12 mensualidades, o más.",
+        "yearlyWhere": "Tu página muestra el precio mensual. El plan anual es un precio extra con su propio enlace.",
+        "yearlyAdd": "Agregar el plan anual",
+        "yearlyOnly": "Este producto cobra una vez al año hasta que cancelen.",
+        "switchToMonthly": "Cobrar cada mes",
+        "offerCharges": "Tu página cobra {price} ({model}).",
+        "offerChange": "Cámbialo en Otros precios.",
+        "offersFailed": "No pudimos cargar tus precios. Recarga la página.",
         "preview": "Lección de vista previa gratuita",
         "noPreview": "Aún no hay una vista previa seleccionada",
-        "listingHelp": "Estos campos preparan la página pública. Para inscribirse en un curso de pago, el estudiante debe completar el pago en Stripe."
+        "listingHelp": "Las personas pagan en una página segura antes de entrar."
       },
       "save": {
         "blocked": "No se guarda: {reason}",
@@ -4027,7 +4035,8 @@
         },
         "pricing": {
           "label": "Precios",
-          "hint": "Define un precio mayor que $0 o elige Gratis."
+          "hint": "Define un precio mayor que {zero} o elige Gratis.",
+          "notForType": "Esta forma de pago no corresponde a este tipo de producto. Elige otra en Precios."
         },
         "outcomes": {
           "label": "Resultados de aprendizaje",

@@ -457,6 +457,7 @@ describe("o que cada tipo precisa entregar", () => {
     const readiness = getCourseReadiness({
       ...complete,
       productFormat: "community",
+      paymentType: "subscription_monthly",
       communityEnabled: true,
       lessonIdsWithMedia: new Set<string>(),
     });
@@ -510,5 +511,47 @@ describe("o que cada tipo precisa entregar", () => {
       .items.find((item) => item.id === "community");
     expect([session?.label, file?.label, community?.label])
       .toEqual(["Sesión en vivo", "Archivo para descargar", "Comunidad activada"]);
+  });
+});
+
+// Cada tipo aceita so as suas formas de pagar (paymentTypeFitsFormat, o
+// espelho de course_payment_type_fits_format). Produto criado antes da regra
+// mostra o item de preco aberto, com o motivo, em vez de publicar e o banco
+// recusar.
+describe("forma de pagar que o tipo nao aceita", () => {
+  const pricing = (input: CourseReadinessInput, t?: (key: string) => string) =>
+    getCourseReadiness(input, undefined, t).items.find((item) => item.id === "pricing");
+
+  it.each([
+    ["community", "one_time"],
+    ["live_event", "subscription_monthly"],
+    ["ebook", "subscription_yearly"],
+  ] as const)("%s cobrando %s: o preco fica pendente", (productFormat, paymentType) => {
+    const item = pricing({ ...complete, productFormat, paymentType, communityEnabled: true });
+    expect(item?.done).toBe(false);
+    expect(item?.hint).toBe("This way of paying does not fit this type of product. Pick another one in Pricing.");
+    const es = pricing({ ...complete, productFormat, paymentType, communityEnabled: true }, (key) =>
+      translate(getDictionary("es"), key),
+    );
+    expect(es?.hint).toBe("Esta forma de pago no corresponde a este tipo de producto. Elige otra en Precios.");
+  });
+
+  it.each([
+    ["course", "subscription_yearly"],
+    ["community", "subscription_yearly"],
+    ["live_event", "one_time"],
+    ["ebook", "one_time"],
+  ] as const)("%s cobrando %s: o preco conta como feito", (productFormat, paymentType) => {
+    expect(pricing({ ...complete, productFormat, paymentType, communityEnabled: true })?.done).toBe(true);
+  });
+
+  // "$0" fixo dizia dolar para quem vende em real.
+  it("o zero da dica vem na moeda escolhida", () => {
+    const empty = { ...complete, priceAmountMinor: null, currency: "BRL" };
+    expect(pricing(empty)?.hint).toBe("Set a price above R$0, or choose Free.");
+    expect(pricing(empty, (key) => translate(getDictionary("es"), key))?.hint).toBe(
+      "Define un precio mayor que R$0 o elige Gratis.",
+    );
+    expect(pricing({ ...empty, currency: "USD" })?.hint).toBe("Set a price above $0, or choose Free.");
   });
 });
