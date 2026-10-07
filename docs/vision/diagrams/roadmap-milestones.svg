@@ -1,6 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="260" viewBox="0 0 1200 260">
-<rect width="1200" height="260" rx="24" fill="#F5F8FC"/>
-<text x="60" y="92" font-family="Segoe UI, Arial" font-size="34" font-weight="700" fill="#0E2542">Roadmap Milestones</text>
-<text x="60" y="145" font-family="Segoe UI, Arial" font-size="20" fill="#526B8B">Editable source is provided in the matching Mermaid file. PNG render is embedded in the PDF/DOCX.</text>
-<rect x="60" y="180" width="1080" height="2" fill="#D8E2EE"/>
-</svg>
