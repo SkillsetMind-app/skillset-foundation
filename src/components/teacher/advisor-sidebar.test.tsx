@@ -18,6 +18,7 @@ vi.mock("@/lib/permissions", () => ({ hasAnyPermission: () => true }));
 vi.mock("@/lib/ui/floating-action", () => ({
   announceFloatingAction: vi.fn(),
   onFloatingActionOpened: () => () => undefined,
+  onAdvisorOpenRequested: () => () => undefined,
 }));
 
 const fetchMock = vi.fn();

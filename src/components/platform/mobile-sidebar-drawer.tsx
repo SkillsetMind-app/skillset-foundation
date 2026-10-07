@@ -20,7 +20,8 @@ import { SessionCard } from "@/components/platform/session-card";
 import { LogoWordmark } from "@/components/shared/logo-wordmark";
 import type { PlatformNavCounts } from "@/data/site";
 import { useModalFocus } from "@/lib/a11y/use-modal-focus";
-import { getWorkspaceHomeHref } from "@/lib/auth/routing";
+import { getWorkspaceHomeHref, getWorkspaceSide } from "@/lib/auth/routing";
+import { hasPermission } from "@/lib/permissions";
 
 type MobileSidebarDrawerProps = {
   open: boolean;
@@ -53,13 +54,17 @@ export function MobileSidebarDrawer({
 
   useModalFocus(drawerRef, open, visibleNavigationControl);
   const homeHref = getWorkspaceHomeHref(pathname, user);
+  // O atalho e sempre o OUTRO lado: no lado do professor, "Learn"; no do
+  // aluno, "Teach" (so para quem ensina). Antes era sempre "Teach", e no
+  // estudio ele se fundia com o Home — nao havia como ir estudar pela barra.
+  const side = getWorkspaceSide(pathname, user);
   const workspaceItem = useMemo(() => {
-    const isTeacher = user?.roles.includes("teacher");
+    const canTeach = Boolean(user) && hasPermission({ roles: user?.roles ?? [] }, "teacherStudio.access");
 
-    return isTeacher
+    return canTeach && side !== "teacher"
       ? { href: "/teach", label: t("platform.mobile.teach"), icon: Presentation }
       : { href: "/learn", label: t("platform.mobile.learn"), icon: GraduationCap };
-  }, [user?.roles, t]);
+  }, [user, side, t]);
   const primaryItems = [
     { href: homeHref, label: t("platform.mobile.home"), icon: Home },
     { href: "/courses", label: t("platform.mobile.market"), icon: ShoppingBag },

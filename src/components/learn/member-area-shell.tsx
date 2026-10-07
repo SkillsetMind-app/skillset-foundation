@@ -3,8 +3,11 @@
 import Image from "next/image";
 import type { CSSProperties, ReactNode } from "react";
 
+import { useAuth } from "@/components/auth/auth-provider";
+import { HelpMenu, type HelpCourse } from "@/components/platform/help-menu";
 import { NotificationBell } from "@/components/platform/notification-bell";
 import { LogoWordmark } from "@/components/shared/logo-wordmark";
+import { AccountMenu } from "@/components/site/account-menu";
 import { AdvisorHeaderSlot } from "@/components/teacher/advisor-sidebar";
 import type { MembersTheme } from "@/domain/teacher-course";
 import { isStorefrontHexColor, readableTextOnAccent } from "@/domain/user-profile";
@@ -39,10 +42,14 @@ export function MemberAreaShell({
   children,
   brand,
   theme = "light",
+  course = null,
 }: {
   children: ReactNode;
   brand?: MemberAreaBrand | null;
   theme?: MembersTheme;
+  /** O curso desta sala: a Ajuda manda a duvida da aula para a comunidade
+   *  dele (ou para a mensagem ao professor, se a comunidade estiver off). */
+  course?: HelpCourse | null;
 }) {
   // Same guard-then-inline shape as the storefront hero: the projection already
   // sanitizes the value, this is the cheap second gate before it lands in a CSS
@@ -73,8 +80,9 @@ export function MemberAreaShell({
       >
         <header className="sticky top-0 z-40 flex items-center justify-between gap-4 border-b border-[var(--ma-line)] bg-[var(--ma-bg-top)] px-4 py-3 sm:px-6">
           {brand ? (
-            // Whitelabel: no href, and no door back into our dashboard. A
-            // branded member area must not read as living inside our platform.
+            // Whitelabel: the teacher's mark carries no link of ours. The
+            // student still gets Help, the bell and the account menu below:
+            // a class with no way to reach messages or support is a dead end.
             brand.logoUrl ? (
               <span className="relative block h-8 w-32">
                 <Image
@@ -94,24 +102,21 @@ export function MemberAreaShell({
           ) : (
             // tone fixo pelo tema do CURSO: a paleta --ma-* não segue o
             // <html>, então "auto" pintava o logo navy no cabeçalho escuro.
-            <LogoWordmark href="/" nav tone={theme === "dark" ? "dark" : "light"} />
+            // O logo leva para "My courses", nao para a home publica: quem
+            // esta estudando quer voltar para os seus cursos, nao para a vitrine.
+            <LogoWordmark href="/learn" nav tone={theme === "dark" ? "dark" : "light"} />
           )}
           <div className="flex shrink-0 items-center gap-2 empty:hidden">
             <AdvisorHeaderSlot />
-              {/* O sino da plataforma, aqui também. A sala de aula usa esta
-                  casca (sem barra lateral) e ela não tinha sino: o painel de
-                  mensagens dizia "a resposta cai no sino" numa tela onde o
-                  sino não existia. Mesmo componente, mesma lista de avisos.
-                  Fica fora do modo whitelabel de propósito: cada aviso leva a
-                  uma página da plataforma, e a área com marca do professor
-                  não pode ter porta de volta para dentro dela.
-
-                  Um "Exit to dashboard" morava aqui ao lado. Era a terceira
-                  saída para o mesmo lugar ("Back to dashboard" na capa, "Back
-                  to My Learning" na lateral). A sala agora tem UMA: "← My
-                  courses", na capa (página inicial) ou no cabeçalho curto
-                  (em aula). */}
-            {brand ? null : <NotificationBell />}
+            {/* Ajuda, sino e conta, aqui tambem — inclusive na sala com a
+                marca do professor. Antes a sala tinha so o logo (e, sem marca,
+                o sino): para chegar em mensagens, compras ou suporte o aluno
+                precisava sair por "← My courses", e com a marca do professor
+                nem o sino aparecia, embora o painel de mensagens diga que a
+                resposta "cai no sino". A saida da sala continua UMA: "← My
+                courses", na capa ou no cabecalho curto da aula. */}
+            <HelpMenu variant="bar" side="student" course={course} />
+            <MemberAreaAccount />
           </div>
         </header>
         {/* No side gutter below md: on a phone the classroom runs edge to edge
@@ -122,5 +127,16 @@ export function MemberAreaShell({
         </main>
       </div>
     </ThemeProvider>
+  );
+}
+
+function MemberAreaAccount() {
+  const { status, user, signOut } = useAuth();
+
+  return (
+    <>
+      <NotificationBell />
+      {status === "authenticated" && user ? <AccountMenu user={user} onSignOut={signOut} /> : null}
+    </>
   );
 }

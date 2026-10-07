@@ -13,12 +13,12 @@ import {
   ChevronDown,
   ClipboardList,
   CreditCard,
-  ExternalLink,
   Flag,
   GraduationCap,
   Handshake,
   House,
   Image,
+  Inbox,
   LayoutDashboard,
   LifeBuoy,
   Megaphone,
@@ -43,6 +43,7 @@ import {
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { HelpMenu } from "@/components/platform/help-menu";
 import {
   canAccessPlatformNavItem,
   getOpsNavItem,
@@ -67,6 +68,7 @@ const iconMap: Record<string, LucideIcon> = {
   Handshake,
   House,
   Image,
+  Inbox,
   LayoutDashboard,
   LifeBuoy,
   Megaphone,
@@ -89,64 +91,55 @@ const iconMap: Record<string, LucideIcon> = {
 };
 
 // Chaves de `platform.navSection.*`; o rotulo visivel sai do dicionario.
-// Primeiro a lista plana do trabalho do dia (Home, Produtos, Vendas,
-// Assinaturas, Ganhos, Relatórios), depois os dois únicos grupos que sobraram,
-// e por último o rodapé.
+// Professor: oito itens no primeiro nivel (Inicio, Produtos, Alunos, Caixa de
+// entrada, Vendas, Ganhos, Promover, Ajuda). Aluno: quatro itens fixos e a
+// Ajuda; embaixo, compras e configuracoes. "help" nao e uma secao de itens:
+// marca onde o botao Ajuda entra na lista.
 const sectionOrder = [
   "home",
   "products",
+  "students",
+  "inbox",
   "sales",
   "earnings",
-  "reports",
-  "marketing",
-  "tools",
+  "promote",
   "learn",
+  "help",
   "operations",
   "account",
-  // Rodapé — ver `footerSections`. "myLearning" e "teach" são o mesmo papel em
-  // cada lado (o pulo para a outra bancada) e nunca aparecem juntos: um é do
-  // professor, o outro do aluno.
-  "myLearning",
-  "teach",
+  // Rodape — ver `footerSections`.
   "discover",
 ];
 
-// Seções que NÃO viram acordeão: cada item vira uma linha direta da barra.
-//
-// Antes só o grupo de item único escapava ("Operations" abria para mostrar
-// "Operations"). Products, Sales e Reports continuavam como gaveta de um ou
-// dois links, então chegar em "Vendas" custava um clique para abrir e outro
-// para ir — e, fechada a gaveta, a pessoa não via que a tela existia. Com a
-// lista plana, Produtos, Vendas, Assinaturas, Ganhos e Relatórios estão
-// sempre à vista. Marketing e Tools seguem em grupo: são caudas longas
-// (5 e 3 itens) que só se consulta de vez em quando.
+// Secoes que NAO viram acordeao: cada item vira uma linha direta da barra.
+// So Vendas (vendas, assinaturas, relatorios) e Promover (marketing, loja,
+// midia) seguem em grupo: sao o que se consulta de vez em quando, e assim o
+// primeiro nivel cabe em oito itens.
 const directSections = new Set([
   "home",
   "products",
-  "sales",
+  "students",
+  "inbox",
   "earnings",
-  "reports",
-  "myLearning",
-  "teach",
+  "learn",
+  "account",
   "discover",
   "operations",
 ]);
 
-// Descoberta e "o que eu estudo" não são o trabalho de produzir: vão para o pé
-// da barra, separados por uma linha, em vez de disputar o topo com Produtos.
-const footerSections = new Set(["myLearning", "teach", "discover"]);
+// Descoberta nao e o trabalho de produzir nem de estudar: vai para o pe da
+// barra, separada por uma linha. A troca entre aluno e professor e o botao do
+// topo, nao um link aqui.
+const footerSections = new Set(["discover"]);
 
 const sectionIconMap: Record<string, LucideIcon> = {
   discover: ShoppingBag,
   home: House,
   learn: GraduationCap,
-  myLearning: BookOpen,
   products: PackageOpen,
-  marketing: Megaphone,
+  promote: Megaphone,
   sales: Receipt,
   earnings: TrendingUp,
-  reports: BarChart3,
-  tools: Settings,
   operations: UserCheck,
   account: Settings,
 };
@@ -245,11 +238,28 @@ export function PlatformNav({
 
   const mainGroups = groups.filter((group) => !footerSections.has(group.section));
   const footerGroups = groups.filter((group) => footerSections.has(group.section));
+  // Ajuda entra logo depois do trabalho do dia (Promover / os itens fixos do
+  // aluno) e antes de compras e configuracoes. A equipe de operacoes tem a
+  // Ajuda no menu do avatar.
+  const helpRank = getSectionRank("help");
+  const beforeHelp = mainGroups.filter((group) => getSectionRank(group.section) < helpRank);
+  const afterHelp = mainGroups.filter((group) => getSectionRank(group.section) > helpRank);
+  const help = context === "ops" ? null : (
+    <div className="platform-nav-section shrink-0" key="help">
+      <HelpMenu
+        variant="nav"
+        side={context === "teacher" ? "teacher" : "student"}
+        collapsed={collapsed}
+        open={expandedSections.includes("help")}
+        onOpenChange={() => toggleSection("help")}
+      />
+    </div>
+  );
 
   function renderGroup(group: (typeof groups)[number]) {
     if (directSections.has(group.section)) {
       return (
-        <div className="platform-nav-section shrink-0" key={group.section}>
+        <div className="platform-nav-section shrink-0" key={group.section} data-section={group.section}>
           {group.items.map((item) => (
             <PlatformNavLink
               key={`${item.href}-${item.labelKey}`}
@@ -257,7 +267,6 @@ export function PlatformNav({
               label={t(item.labelKey)}
               icon={item.icon}
               active={isActivePlatformRoute(pathname, item.href, activeHref)}
-              newTab={item.newTab}
               collapsed={collapsed}
               count={navigationCounts?.[item.href]}
             />
@@ -325,7 +334,6 @@ export function PlatformNav({
                 label={t(item.labelKey)}
                 icon={item.icon}
                 active={isActivePlatformRoute(pathname, item.href, activeHref)}
-                newTab={item.newTab}
                 count={navigationCounts?.[item.href]}
               />
             ))}
@@ -340,7 +348,9 @@ export function PlatformNav({
       className="platform-sidebar-nav mt-3 flex flex-1 flex-col"
       aria-label={t("platform.sidebarNavLabel")}
     >
-      {mainGroups.map(renderGroup)}
+      {beforeHelp.map(renderGroup)}
+      {help}
+      {afterHelp.map(renderGroup)}
       {footerGroups.length ? (
         <div className="platform-nav-footer mt-auto shrink-0">
           {footerGroups.map(renderGroup)}
@@ -355,7 +365,7 @@ function getSectionRank(section: string) {
   return index === -1 ? sectionOrder.length : index;
 }
 
-function resolveContext(pathname: string, subject: PermissionSubject): PlatformNavContext {
+export function resolveContext(pathname: string, subject: PermissionSubject): PlatformNavContext {
   if (pathname.startsWith("/learn")) {
     return "learner";
   }
@@ -419,7 +429,6 @@ function PlatformNavLink({
   label,
   icon,
   active,
-  newTab = false,
   collapsed = false,
   count,
 }: {
@@ -427,7 +436,6 @@ function PlatformNavLink({
   label: string;
   icon: string;
   active: boolean;
-  newTab?: boolean;
   collapsed?: boolean;
   count?: PlatformNavCount;
 }) {
@@ -450,8 +458,6 @@ function PlatformNavLink({
       // nome: só os grupos tinham dica. O title devolve o nome no hover; o
       // rótulo continua no DOM para leitores de tela.
       title={collapsed ? [label, countLabel].filter(Boolean).join(", ") : undefined}
-      target={newTab ? "_blank" : undefined}
-      rel={newTab ? "noopener noreferrer" : undefined}
       className={`platform-nav-link group relative flex h-11 min-h-11 shrink-0 items-center gap-2.5 rounded-md border px-2.5 py-1.5 text-sm font-semibold transition-colors ${
         active
           ? "platform-nav-active border-[rgba(24,58,94,0.2)] shadow-[0_10px_22px_rgba(26,54,93,0.16)]"
@@ -486,15 +492,6 @@ function PlatformNavLink({
           <span className="sr-only">, {countLabel}</span>
         </>
       ) : null}
-      {newTab ? (
-        <ExternalLink
-          aria-hidden="true"
-          size={14}
-          strokeWidth={1.8}
-          className="ml-auto shrink-0 text-[var(--color-ink-muted)] transition-colors group-hover:text-[var(--color-ink-soft)]"
-        />
-      ) : null}
-      {newTab ? <span className="sr-only">{t("platform.opensInNewTab")}</span> : null}
     </Link>
   );
 }

@@ -5,7 +5,6 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   ArrowRight,
   BadgePercent,
-  ExternalLink,
   Image,
   MessageCircle,
   Plug,
@@ -158,13 +157,9 @@ export function CreatorMarketingHub() {
           {uid ? (
             <Link
               href={storefrontPath}
-              target="_blank"
-              rel="noopener noreferrer"
               className="inline-flex items-center gap-1 text-xs font-semibold text-[var(--color-primary)] underline underline-offset-2"
             >
               {t("teach.marketing.state.openPublicPage")}
-              <ExternalLink aria-hidden="true" size={12} strokeWidth={1.9} />
-              <span className="sr-only">{t("platform.opensInNewTab")}</span>
             </Link>
           ) : null}
         </span>

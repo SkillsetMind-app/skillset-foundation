@@ -75,3 +75,13 @@ export function groupCourseMessageThreads(
   );
   return result;
 }
+
+/** Conversas cuja ultima mensagem e do aluno: o professor ainda nao respondeu. */
+export function threadsAwaitingReply(
+  messages: CourseMessage[],
+  teacherId: string,
+): CourseMessageThread[] {
+  return groupCourseMessageThreads(messages).filter(
+    (thread) => thread.lastMessage.senderId !== teacherId,
+  );
+}

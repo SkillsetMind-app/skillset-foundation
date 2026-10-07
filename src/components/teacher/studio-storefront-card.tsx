@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ExternalLink, Store } from "lucide-react";
+import { Store } from "lucide-react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { VerifiedSeal } from "@/components/shared/verified-badge";
@@ -69,13 +69,9 @@ export function StudioStorefrontCard({
         <div className="mt-4 flex flex-wrap gap-2">
           <Link
             href={path}
-            target="_blank"
-            rel="noopener noreferrer"
             className={buttonClasses({ variant: "outline", size: "sm" })}
           >
             {t("teach.storefrontCard.open")}
-            <ExternalLink aria-hidden="true" size={14} strokeWidth={1.9} />
-            <span className="sr-only">{t("platform.opensInNewTab")}</span>
           </Link>
           <Link
             href="/teach/storefront"

@@ -84,20 +84,11 @@ describe("a comunidade tem uma cara so: os enderecos antigos encaminham para a a
 });
 
 describe("nada do proprio app abre em nova aba", () => {
-  it("todo item da navegacao com newTab e um link externo", () => {
-    const newTab = platformNav.filter((item) => item.newTab);
-
-    for (const item of newTab) {
-      expect(item.href, `${item.labelKey} abre em nova aba`).toMatch(/^https?:\/\//);
+  // A opcao `newTab` saiu da navegacao: a troca entre aluno e professor e o
+  // botao do topo, na mesma aba (platform-header).
+  it("nenhum item da navegacao abre em nova aba", () => {
+    for (const item of platformNav) {
+      expect(item, `${item.labelKey}`).not.toHaveProperty("newTab");
     }
-  });
-
-  it("'My courses' no estudio do professor abre na mesma aba", () => {
-    const myCourses = platformNav.find(
-      (item) => item.href === "/learn" && item.contexts.includes("teacher"),
-    );
-
-    expect(myCourses).toBeDefined();
-    expect(myCourses?.newTab).toBeFalsy();
   });
 });

@@ -12,7 +12,7 @@ import type {
   CommunityReportStatus,
   CommunityReportTargetType,
 } from "@/domain/community-report";
-import { countOpenQuestions } from "@/domain/community-feed";
+import { countOpenQuestions, openQuestions } from "@/domain/community-feed";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import type { Database } from "@/lib/supabase/database.types";
 
@@ -522,4 +522,48 @@ export async function getRecentCommunityQuestions(
 
   if (error) throw error;
   return (data ?? []).map(rowToPost);
+}
+
+/**
+ * As perguntas que esperam pelo professor em TODAS as comunidades dele: a
+ * mesma regra da caixa de cada curso (openQuestions) — sem resposta aceita e
+ * sem resposta de instrutor. Alimenta a Caixa de entrada e o numero ao lado
+ * dela na barra lateral.
+ *
+ * ponytail: leitura unica, sem realtime, ate 200 perguntas abertas. O numero
+ * muda ao trocar de pagina; se precisar mudar sozinho, o upgrade e uma
+ * inscricao, como a da caixa por curso.
+ */
+export async function getOpenCommunityQuestions(
+  courseSlugs: string[],
+  instructorId: string,
+): Promise<CommunityPost[]> {
+  if (!courseSlugs.length) {
+    return [];
+  }
+
+  const supabase = getSupabaseBrowserClient();
+  const { data, error } = await supabase
+    .from("community_posts")
+    .select("*")
+    .in("course_slug", courseSlugs)
+    .eq("category", "question")
+    .is("accepted_comment_id", null)
+    .order("created_at", { ascending: true })
+    .limit(200);
+
+  if (error) throw error;
+  const posts = (data ?? []).map(rowToPost);
+  if (!posts.length) {
+    return [];
+  }
+
+  const { data: replies, error: repliesError } = await supabase
+    .from("community_comments")
+    .select("*")
+    .in("post_id", posts.map((post) => post.id))
+    .limit(2000);
+
+  if (repliesError) throw repliesError;
+  return openQuestions(posts, (replies ?? []).map(rowToComment), [instructorId]);
 }

@@ -525,6 +525,14 @@ export function LearnDashboard() {
                 </li>
               ))}
             </ul>
+            {/* A agenda inteira saiu da barra lateral (o aluno tem quatro
+                itens fixos); o caminho ate ela passa a ser este. */}
+            <Link
+              href="/learn/events"
+              className="mt-3 inline-flex min-h-11 items-center text-sm font-semibold text-[var(--color-primary)] hover:underline"
+            >
+              {t("learn.dashboard.allEvents")}
+            </Link>
           </section>
         ) : null}
 

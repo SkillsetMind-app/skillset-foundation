@@ -6,10 +6,11 @@ import { useState, type ReactNode } from "react";
 import { useAuth } from "@/components/auth/auth-provider";
 import { MobileSidebarDrawer } from "@/components/platform/mobile-sidebar-drawer";
 import { PlatformHeader } from "@/components/platform/platform-header";
-import { PlatformNav } from "@/components/platform/platform-nav";
+import { PlatformNav, resolveContext } from "@/components/platform/platform-nav";
 import { SidebarToggle } from "@/components/platform/sidebar-toggle";
 import { StatusBanner } from "@/components/platform/status-banner";
 import { LogoWordmark } from "@/components/shared/logo-wordmark";
+import { useTeacherInboxCount } from "@/components/teacher/use-teacher-inbox-count";
 import type { PlatformNavCounts } from "@/data/site";
 import { getWorkspaceHomeHref } from "@/lib/auth/routing";
 import { ThemeProvider } from "@/lib/theme/theme-provider";
@@ -44,7 +45,7 @@ export function PlatformShell({
   hideHeader = false,
   currentNavigationHref,
   searchHref,
-  navigationCounts,
+  navigationCounts: pageCounts,
   children,
 }: PlatformShellProps) {
   const { user } = useAuth();
@@ -52,6 +53,12 @@ export function PlatformShell({
   const pathname = usePathname() ?? "";
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [mobileNavSection, setMobileNavSection] = useState<string>();
+  // O numero de pendentes ao lado de "Inbox", em toda pagina do professor.
+  const teacherSide = Boolean(user) && resolveContext(pathname, { roles: user?.roles ?? ["guest"] }) === "teacher";
+  const inboxPending = useTeacherInboxCount(teacherSide ? user?.uid ?? null : null);
+  const navigationCounts = inboxPending
+    ? { ...pageCounts, "/teach/messages": inboxPending }
+    : pageCounts;
 
   return (
     <ThemeProvider>

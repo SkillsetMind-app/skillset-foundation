@@ -1,12 +1,14 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { ChevronRight, Search } from "lucide-react";
+import { ArrowLeftRight, ChevronRight, Search } from "lucide-react";
+import Link from "next/link";
 import { useState } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { LocaleSwitcher } from "@/components/i18n/locale-switcher";
+import { HelpMenu } from "@/components/platform/help-menu";
 import { NotificationBell } from "@/components/platform/notification-bell";
 import { PlatformSearch } from "@/components/platform/platform-search";
 import { AccountMenu } from "@/components/site/account-menu";
@@ -14,8 +16,8 @@ import { LogoWordmark } from "@/components/shared/logo-wordmark";
 import { ThemeToggle } from "@/components/shared/theme-toggle";
 import { AdvisorHeaderSlot } from "@/components/teacher/advisor-sidebar";
 import { isPlatformNavItemHidden, platformNav } from "@/data/site";
-import { getWorkspaceHomeHref } from "@/lib/auth/routing";
-import type { PermissionSubject } from "@/lib/permissions";
+import { getWorkspaceHomeHref, getWorkspaceSide } from "@/lib/auth/routing";
+import { hasPermission, type PermissionSubject } from "@/lib/permissions";
 
 // O hambúrguer daqui foi embora: abaixo de 640px ele abria EXATAMENTE a mesma
 // gaveta que o "More" da barra de baixo, que está sempre visível e ao alcance
@@ -32,6 +34,16 @@ export function PlatformHeader({ currentNavigationHref, searchHref }: {
   const surface = getSurface(pathname);
   const pageLabel = getPageLabel(pathname, t, currentNavigationHref, { roles: user?.roles });
   const showSearch = searchHref !== null && (!pathname.startsWith("/ops") || Boolean(searchHref));
+  const signedIn = status === "authenticated" && Boolean(user);
+  const side = getWorkspaceSide(pathname, user);
+  // Trocar de lado era "Switch view", escondido no menu do avatar, e o atalho
+  // do site publico abria ABA NOVA — para quem tem pouca familiaridade com a
+  // internet, aba nova e "o site sumiu". Agora e um botao a vista, na mesma aba.
+  const switchTo = signedIn && user && hasPermission({ roles: user.roles }, "teacherStudio.access")
+    ? side === "teacher"
+      ? { href: "/learn", label: t("platform.side.goStudent") }
+      : { href: "/teach", label: t("platform.side.goTeacher") }
+    : null;
 
   return (
     <header className="platform-topbar">
@@ -55,10 +67,26 @@ export function PlatformHeader({ currentNavigationHref, searchHref }: {
           />
           <span className="cur">{pageLabel}</span>
         </nav>
+        {/* No celular o caminho acima some (falta espaco): fica o nome do lado
+            em que a pessoa esta. */}
+        {signedIn ? <p className="platform-topbar__side">{t(`platform.side.${side}`)}</p> : null}
 
         {showSearch ? <PlatformSearch pathname={pathname} open={searchOpen} searchHref={searchHref ?? undefined} /> : null}
 
         <div className="platform-topbar__actions">
+          {switchTo ? (
+            <Link href={switchTo.href} className="platform-topbar__switch">
+              <ArrowLeftRight aria-hidden="true" size={16} strokeWidth={1.9} />
+              <span>{switchTo.label}</span>
+            </Link>
+          ) : null}
+          {signedIn ? (
+            <HelpMenu
+              variant="bar"
+              side={side === "teacher" ? "teacher" : "student"}
+              className="platform-topbar__help"
+            />
+          ) : null}
           {/* No celular o campo não cabe na linha: o ícone o abre logo abaixo
               da barra. Em telas maiores ele já está aberto e este botão some. */}
           {showSearch ? <button

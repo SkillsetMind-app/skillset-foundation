@@ -1,17 +1,17 @@
-import { cleanup, render, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { PlatformNav } from "@/components/platform/platform-nav";
-import { platformNav } from "@/data/site";
 
-// A barra do professor eram OITO gavetas de acordeao, tres delas com um ou dois
-// links: chegar em "Vendas" custava um clique para abrir e outro para ir, e com
-// a gaveta fechada a pessoa nem sabia que a tela existia. Agora o trabalho do
-// dia e uma lista plana; so Marketing e Ferramentas, que sao caudas longas,
-// seguem em grupo. Marketplace e "o que eu estudo" foram para o pe da barra.
+// Os menus por papel. O aluno via 10 links em dois grupos que abriam e
+// fechavam (quem estava em "Learn" nao via "Messages"); o professor via 18
+// links, com as mensagens dos alunos escondidas dentro de "Marketing" e tres
+// itens que nao faziam nada. Agora: aluno com quatro itens fixos + Ajuda, e
+// compras/configuracoes embaixo; professor com oito itens no primeiro nivel.
 
 const mocks = vi.hoisted(() => ({
   pathname: "/teach",
+  roles: ["teacher"] as string[],
 }));
 
 vi.mock("next/navigation", () => ({
@@ -22,117 +22,166 @@ vi.mock("@/components/auth/auth-provider", () => ({
   useAuth: () => ({
     status: "authenticated",
     user: {
-      uid: "teacher-1",
-      email: "teacher@example.com",
-      displayName: "Teacher",
+      uid: "person-1",
+      email: "person@example.com",
+      displayName: "Person",
       emailVerified: true,
       photoURL: null,
-      roles: ["teacher"],
+      roles: mocks.roles,
     },
-  }),
-}));
-
-vi.mock("@/components/i18n/i18n-provider", () => ({
-  useTranslation: () => ({
-    t: (key: string) =>
-      ({
-        "platform.sidebarNavLabel": "Workspace",
-        "platform.navSection.marketing": "Marketing",
-        "platform.navSection.tools": "Tools",
-        "platform.nav.studio": "Home",
-        "platform.nav.courseBuilder": "My products",
-        "platform.nav.membersArea": "Members & communities",
-        "platform.nav.onlineEvents": "Online events",
-        "platform.nav.sales": "Sales",
-        "platform.nav.subscriptions": "Subscriptions",
-        "platform.nav.earnings": "Earnings",
-        "platform.nav.reports": "Reports",
-        "platform.nav.marketplace": "Marketplace",
-        "platform.nav.myCourses": "My courses",
-        "platform.nav.coupons": "Coupons",
-        "platform.nav.team": "Team",
-      })[key] ?? key,
   }),
 }));
 
 afterEach(() => {
   cleanup();
   mocks.pathname = "/teach";
+  mocks.roles = ["teacher"];
 });
 
-function itemsIn(section: string) {
-  return platformNav
-    .filter((item) => item.sectionKey === section && item.contexts.includes("teacher"))
-    .map((item) => item.href);
+/** O que a pessoa ve no primeiro nivel, em ordem: links diretos, gatilhos de
+ *  grupo e o botao Ajuda. O rodape (Marketplace) fica de fora. */
+function firstLevel() {
+  const nav = screen.getByRole("navigation", { name: "Workspace" });
+  return [...nav.querySelectorAll(":scope > .platform-nav-section")].flatMap((section) =>
+    [...section.querySelectorAll(":scope > a, :scope > button, :scope > .help-menu > button")].map(
+      (control) => control.textContent?.trim(),
+    ),
+  );
 }
 
-describe("lista plana da barra do professor", () => {
-  it("Produtos, Vendas, Assinaturas, Ganhos e Relatorios sao links diretos", () => {
+describe("barra do professor", () => {
+  it("oito itens no primeiro nivel (mais Eventos dentro de Produtos), Ajuda por ultimo", () => {
     render(<PlatformNav />);
 
-    const direct: Array<[string, string]> = [
+    expect(firstLevel()).toEqual([
+      "Home",
+      "My products",
+      "Online events",
+      "Students",
+      "Inbox",
+      "Sales",
+      "Earnings",
+      "Promote",
+      "Help",
+    ]);
+  });
+
+  it("os destinos diretos", () => {
+    render(<PlatformNav />);
+
+    for (const [label, href] of [
       ["Home", "/teach"],
       ["My products", "/teach/builder"],
-      ["Sales", "/teach/sales"],
-      ["Subscriptions", "/teach/subscriptions"],
+      ["Students", "/teach/students"],
+      ["Inbox", "/teach/messages"],
       ["Earnings", "/account/payments"],
-      ["Reports", "/teach/reports"],
-    ];
-
-    for (const [label, href] of direct) {
+    ]) {
       expect(screen.getByRole("link", { name: label })).toHaveAttribute("href", href);
-      // Nenhum deles esconde a tela atras de um gatilho de grupo.
-      expect(screen.queryByRole("button", { name: label })).toBeNull();
     }
   });
 
-  it("so Marketing e Ferramentas seguem como grupo", () => {
+  it("Vendas e Promover sao os dois unicos grupos", () => {
     render(<PlatformNav />);
 
-    const triggers = screen
-      .getAllByRole("button")
-      .map((button) => button.textContent?.trim());
+    // Vendas e o primeiro grupo: vem aberto.
+    const sales = screen.getByRole("button", { name: "Sales" });
+    expect(sales).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByRole("link", { name: "Sales" })).toHaveAttribute("href", "/teach/sales");
+    expect(screen.getByRole("link", { name: "Subscriptions" })).toHaveAttribute("href", "/teach/subscriptions");
+    expect(screen.getByRole("link", { name: "Reports" })).toHaveAttribute("href", "/teach/reports");
 
-    expect(triggers).toEqual(["Marketing", "Tools"]);
+    const promote = screen.getByRole("button", { name: "Promote" });
+    fireEvent.click(promote);
+    expect(promote).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByRole("link", { name: "Marketing overview" })).toHaveAttribute("href", "/teach/marketing");
+    expect(screen.getByRole("link", { name: "Storefront & pages" })).toHaveAttribute("href", "/teach/storefront");
+    expect(screen.getByRole("link", { name: "Media library" })).toHaveAttribute("href", "/teach/media");
   });
 
-  it("Marketplace e 'o que eu estudo' ficam no pe da barra", () => {
+  it("os itens que sairam: mortos, ferramentas (avatar) e o pulo para o lado do aluno (topo)", () => {
+    render(<PlatformNav />);
+    fireEvent.click(screen.getByRole("button", { name: "Promote" }));
+
+    for (const gone of [
+      "Collaborators",
+      "Integrations",
+      "Coupons",
+      "Verification",
+      "Members & communities",
+      "Messages",
+      "My courses",
+      "Plans & fees",
+    ]) {
+      expect(screen.queryByRole("link", { name: gone }), gone).toBeNull();
+    }
+  });
+
+  it("o numero de pendentes aparece ao lado de Inbox", () => {
+    render(<PlatformNav navigationCounts={{ "/teach/messages": 3 }} />);
+
+    const inbox = screen.getByRole("link", { name: /Inbox/ });
+    expect(inbox).toHaveAttribute("href", "/teach/messages");
+    expect(inbox).toHaveTextContent("3");
+  });
+
+  it("Marketplace segue no pe da barra", () => {
     render(<PlatformNav />);
 
-    const footer = screen.getByRole("link", { name: "Marketplace" }).closest(
-      ".platform-nav-footer",
-    );
-
+    const footer = screen.getByRole("link", { name: "Marketplace" }).closest(".platform-nav-footer");
     expect(footer).not.toBeNull();
-    expect(
-      within(footer as HTMLElement).getByRole("link", { name: "My courses" }),
-    ).toBeInTheDocument();
-    // Ultimo bloco do <nav>: nada do trabalho do dia vem depois dele.
-    expect(footer?.parentElement?.lastElementChild).toBe(footer);
+    expect(within(footer as HTMLElement).getAllByRole("link")).toHaveLength(1);
   });
 });
 
-describe("o grupo Growth foi dissolvido item a item", () => {
-  it("nao existe mais uma secao growth", () => {
-    expect(platformNav.some((item) => item.sectionKey === "growth")).toBe(false);
-  });
-
-  it("Coupons virou promocao (Marketing) e Team virou acesso (Tools)", () => {
-    expect(itemsIn("marketing")).toContain("/teach/coupons");
-    expect(itemsIn("tools")).toContain("/teach/team");
-  });
-
-  it("os dois continuam alcancaveis pela barra, dentro do grupo novo", () => {
-    mocks.pathname = "/teach/coupons";
+describe("barra do aluno", () => {
+  it.each([
+    ["so estuda", ["student"], ["My purchases", "/account/billing"]],
+    ["tambem ensina", ["student", "teacher"], ["Billing", "/account/billing"]],
+  ] as const)("quatro itens fixos, Ajuda, e embaixo compras e configuracoes (%s)", (_label, roles, purchases) => {
+    mocks.roles = [...roles];
+    mocks.pathname = "/learn";
     render(<PlatformNav />);
 
-    expect(screen.getByRole("link", { name: "Coupons" })).toHaveAttribute(
-      "aria-current",
-      "page",
-    );
-    expect(screen.getByRole("button", { name: "Marketing" })).toHaveAttribute(
-      "aria-expanded",
-      "true",
-    );
+    expect(firstLevel()).toEqual([
+      "My courses",
+      "Messages",
+      "Communities",
+      "Certificates",
+      "Help",
+      purchases[0],
+      "Settings",
+    ]);
+    expect(screen.getByRole("link", { name: "My courses" })).toHaveAttribute("href", "/learn");
+    expect(screen.getByRole("link", { name: "Messages" })).toHaveAttribute("href", "/learn/messages");
+    expect(screen.getByRole("link", { name: "Communities" })).toHaveAttribute("href", "/learn/community");
+    expect(screen.getByRole("link", { name: "Certificates" })).toHaveAttribute("href", "/learn/credentials");
+    expect(screen.getByRole("link", { name: purchases[0] })).toHaveAttribute("href", purchases[1]);
+    expect(screen.getByRole("link", { name: "Settings" })).toHaveAttribute("href", "/account");
+  });
+
+  it("sem planos de criador, sem 'Classroom' e sem pulo para o estudio na barra", () => {
+    mocks.roles = ["student", "teacher"];
+    mocks.pathname = "/learn";
+    render(<PlatformNav />);
+
+    expect(screen.queryByRole("link", { name: "Plans & fees" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Classroom" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Teach" })).toBeNull();
+    expect(document.querySelector('a[href="/account/plans"]')).toBeNull();
+    expect(document.querySelector('a[href="/teach"]')).toBeNull();
+  });
+
+  it("a Ajuda da barra abre as tres escolhas do aluno no lugar", () => {
+    mocks.roles = ["student"];
+    mocks.pathname = "/learn";
+    render(<PlatformNav />);
+
+    const help = screen.getByRole("button", { name: "Help" });
+    fireEvent.click(help);
+
+    expect(help).toHaveAttribute("aria-expanded", "true");
+    const dialog = screen.getByRole("dialog", { name: "What do you need help with?" });
+    expect(within(dialog).getByRole("link", { name: /Question about a lesson/ })).toHaveAttribute("href", "/learn/community");
+    expect(within(dialog).getByRole("link", { name: /Private matter with the teacher/ })).toHaveAttribute("href", "/learn/messages");
   });
 });

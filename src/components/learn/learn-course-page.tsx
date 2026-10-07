@@ -29,9 +29,11 @@ export async function LearnCoursePage({
 }) {
   const { t } = await getServerTranslation();
   const course = getCourseBySlug(slug);
+  // A sala desta rota: a Ajuda do topo manda a duvida da aula para ca.
+  const classroomHref = `/learn/courses/${encodeURIComponent(slug)}`;
 
   if (!course) {
-    const { brand, theme } = await getMemberArea(slug);
+    const { brand, theme, communityEnabled } = await getMemberArea(slug);
 
     return (
       <ProtectedSurface permissions={["courses.viewLearning"]}>
@@ -40,7 +42,7 @@ export async function LearnCoursePage({
             lands here — this is the live path (Stripe success_url, "Continue"
             on the dashboard), not a fallback. It has to open in the member
             shell too, or the dashboard rail comes back for real students. */}
-        <MemberAreaShell brand={brand} theme={theme}>
+        <MemberAreaShell brand={brand} theme={theme} course={{ href: classroomHref, communityEnabled }}>
           <Suspense
             fallback={
               // The classroom's one loading state (same as the route file and
@@ -74,7 +76,10 @@ export async function LearnCoursePage({
       {/* Static demo catalog: the course record is already in hand, so the
           theme comes straight off it — no round trip, and shell and classroom
           card read the same value. */}
-      <MemberAreaShell theme={course.membersTheme ?? "light"}>
+      <MemberAreaShell
+        theme={course.membersTheme ?? "light"}
+        course={{ href: classroomHref, communityEnabled: Boolean(course.communityEnabled) }}
+      >
         <EnrolledCourseWorkspace course={course} tab={tab} openPostId={openPostId} />
       </MemberAreaShell>
     </ProtectedSurface>

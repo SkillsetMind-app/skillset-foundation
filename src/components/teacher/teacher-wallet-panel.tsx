@@ -207,7 +207,7 @@ export function TeacherWalletPanel() {
       <header className="payouts-head">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-            {t("account.payoutsTax")}
+            {t("platform.nav.earnings")}
           </p>
           {/* h1, nao h2: este painel e o cabecalho da unica pagina que o usa
               (/account/payments), e a casca esconde o titulo dela para nao
