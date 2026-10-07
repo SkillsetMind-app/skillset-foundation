@@ -66,6 +66,8 @@ const CAP = 25;
 // the pause keeps this job far below that.
 const SEND_GAP_MS = 600;
 const MARK = "confirmation_reminder_sent_at";
+// Teto de user_metadata.signup_next, o mesmo do cadastro (signUpWithEmail).
+const SIGNUP_NEXT_MAX = 300;
 const SUPPORT = "support@skillsetmind.com";
 
 type Due = User & { email: string };
@@ -164,6 +166,9 @@ export async function GET(request: Request) {
 
 function signupDestination(user: User): string {
   const saved = String(user.user_metadata?.signup_next ?? "");
+  // O mesmo teto do cadastro, aqui no servidor: a pessoa reescreve os proprios
+  // metadados, e o teto do navegador nao vale para ela.
+  if (saved.length > SIGNUP_NEXT_MAX) return "/welcome";
   const params = new URLSearchParams(saved.startsWith("/welcome?") ? saved.slice("/welcome?".length) : "");
   return getWelcomeRoute(getAuthPathIntentFromSearchParams(params), getSafeReturnTo(params));
 }

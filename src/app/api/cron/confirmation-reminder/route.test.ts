@@ -228,6 +228,20 @@ describe("confirmation reminder cron", () => {
     expect(body.text).not.toContain("next=");
   });
 
+  // O teto de 300 do cadastro vale tambem aqui: a pessoa pode gravar um
+  // signup_next enorme direto na API, e o link iria inteiro para o e-mail.
+  it("drops a destination longer than the signup cap and sends the plain link", async () => {
+    const huge = `/welcome?returnTo=${encodeURIComponent(`/${"b".repeat(5_000)}`)}`;
+    const person = user(30, { user_metadata: { signup_next: huge } });
+
+    await run();
+
+    const [body] = sentBodies();
+    expect(body.text).toContain(`${APP}/auth/confirm?token_hash=h_${person.id}&type=email\n`);
+    expect(body.text).not.toContain("next=");
+    expect(`${body.html} ${body.text}`).not.toContain("bbbb");
+  });
+
   it("points to the sign-in page for when the one-hour link has expired, with no address in any link", async () => {
     const english = user(40);
     const spanish = user(30, { user_metadata: { locale: "es" } });
