@@ -3902,6 +3902,7 @@
         "switchToMonthly": "Cobrar cada mes",
         "offerCharges": "Tu página cobra {price} ({model}).",
         "offerChange": "Cámbialo en Otros precios.",
+        "offersFailed": "No pudimos cargar tus precios. Recarga la página.",
         "preview": "Lección de vista previa gratuita",
         "noPreview": "Aún no hay una vista previa seleccionada",
         "listingHelp": "Las personas pagan en una página segura antes de entrar."

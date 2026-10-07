@@ -10,7 +10,8 @@
 -- extra price all refuse a way to pay the type does not take. A product
 -- already set up the old way keeps its price and still saves other changes.
 -- A live paid product never loses its price, and an extra price only sits
--- next to a main price (alone, checkout would charge it).
+-- next to a main price (alone, checkout would charge it). With a main price,
+-- the product's own price follows it: only the main price copies over.
 begin;
 create temp table pagar_checks (name text, passed boolean);
 grant insert, select on pagar_checks to authenticated;
@@ -87,6 +88,7 @@ $$;
 \set not_allowed 'PAYMENT_TYPE_NOT_ALLOWED_FOR_FORMAT:%'
 \set needs_price 'PAID_PRODUCT_NEEDS_PRICE:%'
 \set needs_main 'PRODUCT_OFFER_NEEDS_MAIN_PRICE:%'
+\set follows_main 'COURSE_PRICE_FOLLOWS_MAIN_OFFER:%'
 
 -- One activated creator, ready to sell.
 select pg_temp.act_as(null, 'service_role');
@@ -111,6 +113,12 @@ values ('smoke-pagar-legacy', pg_temp.uid(1)::text, 'smoke-pagar-legacy', 'Smoke
   'Product used only by the payment smoke test.', 'smoke', 'draft', 'USD', 9900, 'one_time',
   'community', true, '[]'::jsonb, 0);
 alter table public.courses enable trigger courses_payment_type_fits_format;
+-- A free product from before payment_type existed: live, no type, no price.
+insert into public.courses(id, owner_id, slug, title, summary, category, status, currency,
+  price_amount_minor, payment_type, product_format, community_enabled, modules, lesson_count)
+values ('smoke-pagar-legacy-free', pg_temp.uid(1)::text, 'smoke-pagar-legacy-free', 'Smoke pagar legacy free',
+  'Product used only by the payment smoke test.', 'smoke', 'published', 'USD', null, null,
+  'course', false, '[]'::jsonb, 0);
 select set_config('skillset.trusted_write', 'off', true);
 
 -- 1. Creation.
@@ -175,6 +183,16 @@ select pg_temp.check_gate('live price: zero is no price either',
 select pg_temp.check_gate('live price: the published product kept its price',
   (select payment_type = 'subscription_yearly' and price_amount_minor = 29000
      from public.courses where id = pg_temp.draft('community')));
+
+-- 4c. The sales page saves copy through the same full-replace save. On a live
+-- free product with no type and no price, it used to send one payment at 0.
+select pg_temp.check_gate('legacy free: the old copy save (one payment at 0) is refused',
+  pg_temp.refused(pg_temp.save('smoke-pagar-legacy-free', 'one_time', 0), :'needs_price'));
+select pg_temp.check_gate('legacy free: the copy saves as free with the stored price',
+  pg_temp.passed(pg_temp.save('smoke-pagar-legacy-free', 'free', null)));
+select pg_temp.check_gate('legacy free: it is still free',
+  (select payment_type = 'free' and price_amount_minor = 0
+     from public.courses where id = 'smoke-pagar-legacy-free'));
 reset role;
 
 -- 5. Changing the type (service_role only) follows the same list.
@@ -205,17 +223,55 @@ select pg_temp.check_gate('extra price: the page still charges the main price',
      join public.product_prices p on p.offer_id = o.id
     where o.course_id = pg_temp.draft('community') and o.is_default and o.active));
 
+-- 6b. With a main price, checkout charges it, not the product's own price. A
+-- builder opened before the main price existed cannot save another one.
+select pg_temp.act_as(pg_temp.uid(1), 'authenticated');
+set local role authenticated;
+select pg_temp.check_gate('main price: the builder cannot save a price checkout ignores',
+  pg_temp.refused(pg_temp.save(pg_temp.draft('community'), 'subscription_monthly', 2900), :'follows_main'));
+select pg_temp.check_gate('main price: nor can the owner update the price directly',
+  pg_temp.refused(format($q$update public.courses set price_amount_minor = 100 where id = %L$q$,
+    pg_temp.draft('community')), :'follows_main'));
+select pg_temp.check_gate('main price: the builder still saves with the main price',
+  pg_temp.passed(pg_temp.save(pg_temp.draft('community'), 'subscription_yearly', 29000)));
+select pg_temp.check_gate('main price: the product kept the main price',
+  (select payment_type = 'subscription_yearly' and price_amount_minor = 29000
+     from public.courses where id = pg_temp.draft('community')));
+select pg_temp.check_gate('no offers: the builder changes the price as before',
+  pg_temp.passed(pg_temp.save(pg_temp.draft('course'), 'one_time', 4900)));
+select pg_temp.check_gate('no offers: the new price is saved',
+  (select payment_type = 'one_time' and price_amount_minor = 4900
+     from public.courses where id = pg_temp.draft('course')));
+reset role;
+
+-- 6c. Making another price the main one copies it to the product, and only
+-- inside that copy.
+select pg_temp.act_as(null, 'service_role');
+select pg_temp.check_gate('sync: a new main price copies to the product',
+  pg_temp.passed(format('select public.set_default_product_offer(%L, %L)', pg_temp.draft('ebook'),
+    (select id from public.product_offers where course_id = pg_temp.draft('ebook') and not is_default))));
+select pg_temp.check_gate('sync: the product now has that price',
+  (select payment_type = 'one_time' and price_amount_minor = 990
+     from public.courses where id = pg_temp.draft('ebook')));
+select pg_temp.check_gate('sync: the pass ends with the copy',
+  pg_temp.refused(format($q$update public.courses set price_amount_minor = 100 where id = %L$q$,
+    pg_temp.draft('ebook')), :'follows_main'));
+
 -- 7. The functions.
-select pg_temp.check_gate('functions: fixed search_path; the price check runs as definer',
+select pg_temp.check_gate('functions: fixed search_path; the price checks run as definer',
   (select bool_and(p.proconfig @> array['search_path=public, pg_temp'])
      from pg_proc p
     where p.oid in ('public.course_payment_type_fits_format(text, text)'::regprocedure,
                     'public.courses_payment_type_fits_format()'::regprocedure,
-                    'public.product_prices_payment_type_fits_format()'::regprocedure))
-  and (select prosecdef from pg_proc
-        where oid = 'public.product_prices_payment_type_fits_format()'::regprocedure));
+                    'public.product_prices_payment_type_fits_format()'::regprocedure,
+                    'public.courses_price_follows_main_offer()'::regprocedure,
+                    'public.set_default_product_offer(text, text)'::regprocedure))
+  and (select bool_and(prosecdef) from pg_proc
+        where oid in ('public.product_prices_payment_type_fits_format()'::regprocedure,
+                      'public.courses_price_follows_main_offer()'::regprocedure))
+  and not has_function_privilege('authenticated', 'public.set_default_product_offer(text, text)', 'execute'));
 
-select pg_temp.check_gate('every case ran', (select count(*) = 29 from pagar_checks));
+select pg_temp.check_gate('every case ran', (select count(*) = 41 from pagar_checks));
 
 select name, passed from pagar_checks order by name;
 do $$

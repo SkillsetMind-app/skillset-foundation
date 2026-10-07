@@ -35,6 +35,12 @@
 --    preco principal ativo (PRODUCT_OFFER_NEEDS_MAIN_PRICE). Sem principal, o
 --    checkout cobra o primeiro preco ativo, e o plano anual virava o preco da
 --    pagina. Mesma assinatura e mesmas permissoes de antes.
+-- 6. Com preco principal em Outros precos, o checkout cobra ele, nao a linha
+--    do curso. Trocar preco, moeda ou forma de pagar do curso para algo
+--    diferente do preco principal e recusado (COURSE_PRICE_FOLLOWS_MAIN_OFFER):
+--    um construtor aberto antes da oferta nao grava um preco que o checkout
+--    ignora. So set_default_product_offer copia o preco principal para o
+--    curso, com a marca skillset.offer_sync ligada so na transacao.
 --
 -- Nenhum dado muda. Idempotente: create or replace e drop trigger if exists.
 -- As funcoes dos gatilhos tem search_path fixo; a de product_prices e
@@ -148,6 +154,117 @@ create trigger product_prices_payment_type_fits_format
   before insert or update of payment_type, offer_id
   on public.product_prices
   for each row execute function public.product_prices_payment_type_fits_format();
+
+-- 6. O curso segue o preco principal. SECURITY DEFINER: le as ofertas mesmo
+-- num PATCH direto do dono, que nao passa pela RPC.
+create or replace function public.courses_price_follows_main_offer()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_new_type text := coalesce(
+    new.payment_type,
+    case when coalesce(new.price_amount_minor, 0) = 0 then 'free' else 'one_time' end
+  );
+  v_old_type text := coalesce(
+    old.payment_type,
+    case when coalesce(old.price_amount_minor, 0) = 0 then 'free' else 'one_time' end
+  );
+  v_main public.product_prices%rowtype;
+begin
+  if current_setting('skillset.offer_sync', true) = 'on'
+     or (v_new_type = v_old_type
+         and new.price_amount_minor is not distinct from old.price_amount_minor
+         and upper(new.currency) is not distinct from upper(old.currency)) then
+    return new;
+  end if;
+
+  -- O mesmo preco que set_default_product_offer copia.
+  select prices.* into v_main
+  from public.product_prices as prices
+  join public.product_offers as offers on offers.id = prices.offer_id
+  where offers.course_id = new.id
+    and offers.is_default
+    and offers.active
+    and prices.active
+  order by prices.created_at, prices.id
+  limit 1;
+
+  if not found
+     or (v_new_type = v_main.payment_type
+         and new.price_amount_minor is not distinct from v_main.amount_minor
+         and upper(new.currency) is not distinct from upper(v_main.currency)) then
+    return new;
+  end if;
+
+  raise exception 'COURSE_PRICE_FOLLOWS_MAIN_OFFER: this product charges its main price; change it in Other prices.'
+    using errcode = 'check_violation';
+end;
+$$;
+
+revoke all on function public.courses_price_follows_main_offer() from public, anon, authenticated;
+
+drop trigger if exists courses_price_follows_main_offer on public.courses;
+create trigger courses_price_follows_main_offer
+  before update of price_amount_minor, currency, payment_type
+  on public.courses
+  for each row execute function public.courses_price_follows_main_offer();
+
+-- Igual a 20260716_checkout_offer_integrity.sql (search_path de
+-- 20260809030000), mais a marca em volta da copia para o curso.
+create or replace function public.set_default_product_offer(
+  p_course_id text,
+  p_offer_id text
+) returns void
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_price public.product_prices%rowtype;
+begin
+  select prices.* into v_price
+  from public.product_prices as prices
+  join public.product_offers as offers on offers.id = prices.offer_id
+  where offers.id = p_offer_id
+    and offers.course_id = p_course_id
+    and offers.active = true
+    and prices.active = true
+  order by prices.created_at, prices.id
+  limit 1
+  for update of offers, prices;
+
+  if not found then
+    raise exception 'Offer or active price not found.';
+  end if;
+
+  update public.product_offers
+  set is_default = false,
+      updated_at = now()
+  where course_id = p_course_id
+    and id <> p_offer_id;
+
+  update public.product_offers
+  set is_default = true,
+      updated_at = now()
+  where id = p_offer_id
+    and course_id = p_course_id;
+
+  perform set_config('skillset.offer_sync', 'on', true);
+  update public.courses
+  set price_amount_minor = v_price.amount_minor,
+      currency = upper(v_price.currency),
+      payment_type = v_price.payment_type,
+      updated_at = now()
+  where id = p_course_id;
+  perform set_config('skillset.offer_sync', 'off', true);
+end;
+$$;
+
+revoke all on function public.set_default_product_offer(text, text) from public, anon, authenticated;
+grant execute on function public.set_default_product_offer(text, text) to service_role;
 
 -- 5. Um preco a mais so ao lado de um principal. Igual a
 -- 20260716000400_financial_schema_hardening.sql, mais a trava depois do dono.

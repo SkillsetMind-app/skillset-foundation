@@ -898,26 +898,53 @@ export function CourseBuilderStudio() {
     });
   // Com preco em Outros precos, o checkout cobra a oferta principal
   // (resolveCoursePrice), nao estes campos: a etapa de preco so mostra o que a
-  // pagina cobra e leva para la. Sem resposta da API, segue como antes.
-  const [checkoutOffers, setCheckoutOffers] = useState<ProductOffer[]>([]);
+  // pagina cobra e leva para la. null = ainda nao sabe: sem saber o preco
+  // principal, os cartoes nao aparecem (mudariam so o construtor). Rele ao
+  // voltar para a aba: outra aba pode ter criado o preco principal.
+  const [checkoutOffers, setCheckoutOffers] = useState<ProductOffer[] | null>(null);
+  const [offersFailed, setOffersFailed] = useState(false);
   useEffect(() => {
     if (!courseId) {
       return;
     }
     let alive = true;
-    fetch(`/api/teach/offers?courseId=${encodeURIComponent(courseId)}`, { credentials: "include" })
-      .then((res) => (res.ok ? res.json() : {}))
-      .then((data: { offers?: Omit<ProductOffer, "courseId">[] }) => {
-        if (alive) {
-          setCheckoutOffers((data.offers ?? []).map((offer) => ({ ...offer, courseId })));
-        }
-      })
-      .catch(() => undefined);
+    let latest = 0;
+    const load = () => {
+      const request = ++latest;
+      fetch(`/api/teach/offers?courseId=${encodeURIComponent(courseId)}`, { credentials: "include" })
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data: { offers?: Omit<ProductOffer, "courseId">[]; warning?: string } | null) => {
+          // A rota devolve 200 com warning quando a leitura falha: nao e "sem ofertas".
+          if (!data || data.warning || !Array.isArray(data.offers)) {
+            throw new Error("offers unavailable");
+          }
+          if (alive && request === latest) {
+            setCheckoutOffers(data.offers.map((offer) => ({ ...offer, courseId })));
+            setOffersFailed(false);
+          }
+        })
+        .catch(() => {
+          if (alive && request === latest) {
+            setCheckoutOffers(null);
+            setOffersFailed(true);
+          }
+        });
+    };
+    const loadWhenVisible = () => {
+      if (document.visibilityState === "visible") {
+        load();
+      }
+    };
+    load();
+    window.addEventListener("focus", load);
+    document.addEventListener("visibilitychange", loadWhenVisible);
     return () => {
       alive = false;
+      window.removeEventListener("focus", load);
+      document.removeEventListener("visibilitychange", loadWhenVisible);
     };
   }, [courseId]);
-  const offerPrice = course ? resolveCoursePrice(course, checkoutOffers) : null;
+  const offerPrice = course && checkoutOffers ? resolveCoursePrice(course, checkoutOffers) : null;
   const chargedByOffer = offerPrice?.source === "offer" ? offerPrice : null;
   const paymentChoice = paymentChoiceOf(paymentType);
   const paymentChoices = paymentChoicesFor(productFormat, paymentChoice);
@@ -1146,21 +1173,28 @@ export function CourseBuilderStudio() {
       module.lessons.map((lesson) => lesson.id),
     ) ?? [],
   );
+  // O resumo diz o que a pagina cobra: com preco principal, ele; sem saber
+  // ainda, nenhum preco.
+  const summaryPrice = chargedByOffer
+    ? { type: chargedByOffer.paymentType, amountMinor: chargedByOffer.amountMinor, currency: chargedByOffer.currency }
+    : { type: paymentType, amountMinor: parsedPriceAmountMinor, currency };
   const priceIntervalSuffix =
-    paymentType === "subscription_monthly"
+    summaryPrice.type === "subscription_monthly"
       ? t("creatorEditor.builder.summary.month")
-      : paymentType === "subscription_yearly"
+      : summaryPrice.type === "subscription_yearly"
         ? t("creatorEditor.builder.summary.year")
         : "";
   const formattedPrice =
-    paymentType === "free"
+    !checkoutOffers
+      ? null
+      : summaryPrice.type === "free"
       ? t("publicCourses.free")
-      : parsedPriceAmountMinor
+      : summaryPrice.amountMinor
         ? `${new Intl.NumberFormat(locale, {
             style: "currency",
-            currency: currency.toUpperCase(),
+            currency: summaryPrice.currency.toUpperCase(),
             maximumFractionDigits: 0,
-          }).format(parsedPriceAmountMinor / 100)}${priceIntervalSuffix}`
+          }).format(summaryPrice.amountMinor / 100)}${priceIntervalSuffix}`
         : t("creatorEditor.builder.summary.setPrice");
   // Valor na moeda escolhida: os exemplos dos cartoes, a previa das parcelas
   // e a economia do anual. Centavos so quando existem ("3x of $100").
@@ -3174,7 +3208,15 @@ export function CourseBuilderStudio() {
             id="builder-sec-pricing"
             className="scroll-mt-24 rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4"
           >
-            {chargedByOffer ? (
+            {!checkoutOffers ? (
+              // Sem a lista de precos, o preco principal e desconhecido: nada
+              // de cartoes por cima dele.
+              offersFailed ? (
+                <p role="alert" className="text-sm font-semibold text-[var(--color-danger-fg)]">
+                  {t("creatorEditor.builder.pricing.offersFailed")}
+                </p>
+              ) : null
+            ) : chargedByOffer ? (
               // A pagina cobra a oferta principal: cartoes e campos aqui
               // mudariam so o construtor, e o checkout seguiria cobrando ela.
               <>

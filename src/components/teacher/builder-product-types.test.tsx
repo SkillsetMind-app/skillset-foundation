@@ -154,10 +154,13 @@ async function requiredChecklist() {
 beforeEach(() => {
   mocks.assets = [];
   mocks.sessions = [];
+  // Nenhum preco em Outros precos: a etapa de preco mostra os cartoes.
+  vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ offers: [] }) })));
 });
 
 afterEach(() => {
   cleanup();
+  vi.unstubAllGlobals();
   vi.clearAllMocks();
   mocks.searchParams.delete("module");
   mocks.searchParams.delete("lesson");
@@ -468,6 +471,40 @@ describe("como as pessoas vao pagar", () => {
 
       expect(await screen.findByRole("group", { name: /How will people pay\?/ })).toBeInTheDocument();
       expect(screen.queryByText(/^Your page charges/)).toBeNull();
+    });
+
+    // Sem a lista, o preco principal e desconhecido: os cartoes mudariam so o
+    // construtor. A rota devolve 200 com warning quando a leitura falha.
+    it.each([
+      ["a leitura falha", { ok: false, json: async () => ({}) }],
+      ["a rota avisa que nao leu", { ok: true, json: async () => ({ offers: [], warning: "Offers are unavailable." }) }],
+    ])("quando %s: sem cartoes, pede para recarregar", async (_label, response) => {
+      vi.stubGlobal("fetch", vi.fn(async () => response));
+      mocks.course = paid("course", "one_time", 9700, { status: "published" });
+      renderBuilder("pricing");
+
+      expect(await screen.findByText("Couldn't load your prices. Reload the page.")).toHaveAttribute("role", "alert");
+      expect(screen.queryByRole("group", { name: /How will people pay\?/ })).toBeNull();
+      expect(screen.queryByRole("textbox", { name: /Price/ })).toBeNull();
+      expect(screen.queryByText("$97")).toBeNull();
+    });
+
+    // Aba aberta antes do preco principal: outra aba cria o preco, e ao voltar
+    // para esta a etapa le de novo e mostra o que a pagina cobra.
+    it("ao voltar para a aba, le de novo: os cartoes saem", async () => {
+      mocks.course = paid("course", "subscription_monthly", 2900);
+      renderBuilder("pricing");
+      await screen.findByRole("group", { name: /How will people pay\?/ });
+      expect(screen.getByText("$29 / month")).toBeInTheDocument();
+
+      stubOffers([main]);
+      fireEvent.focus(window);
+
+      expect(await screen.findByText(/^Your page charges \$97 \(One payment\)\./)).toBeInTheDocument();
+      expect(screen.queryByRole("group", { name: /How will people pay\?/ })).toBeNull();
+      // O resumo ao lado tambem diz o que a pagina cobra.
+      expect(screen.queryByText("$29 / month")).toBeNull();
+      expect(screen.getByText("$97")).toBeInTheDocument();
     });
   });
 

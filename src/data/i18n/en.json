@@ -3902,6 +3902,7 @@
         "switchToMonthly": "Charge every month instead",
         "offerCharges": "Your page charges {price} ({model}).",
         "offerChange": "Change it in Other prices.",
+        "offersFailed": "Couldn't load your prices. Reload the page.",
         "preview": "Free preview lesson",
         "noPreview": "No preview selected yet",
         "listingHelp": "People pay on a secure page before they get access."
