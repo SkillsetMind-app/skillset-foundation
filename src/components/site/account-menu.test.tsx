@@ -188,6 +188,13 @@ describe("account menu for a learner", () => {
     expect(document.querySelector('a[href="/account/plans"]')).toBeNull();
   });
 
+  it("an admin without the teacher role sees Billing, like the sidebar", () => {
+    openMenu(["admin"], "/learn");
+
+    expect(screen.getByRole("link", { name: "Billing" })).toHaveAttribute("href", "/account/billing");
+    expect(screen.queryByRole("link", { name: "My purchases" })).toBeNull();
+  });
+
   it("a teacher keeps the creator plan and payouts", () => {
     openMenu(["student", "teacher"], "/learn");
 

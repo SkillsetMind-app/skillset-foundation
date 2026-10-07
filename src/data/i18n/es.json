@@ -4519,9 +4519,9 @@
     "payoutsBody": "Los compradores pagan directamente a tu cuenta de Stripe. La plataforma no retiene tu dinero; Stripe liquida y transfiere los fondos a tu banco según sus propios plazos, que dependen del país y del método de pago."
   },
   "accountBillingPage": {
-    "eyebrow": "Facturación y recibos",
+    "eyebrow": "Compras y recibos",
     "title": "Tus compras y recibos.",
-    "description": "Cada curso lo vende el educador que lo publica. El pago se realiza en su cuenta de Stripe, por lo que su nombre puede aparecer en el extracto de tu tarjeta. Los cursos de pago único siguen disponibles mientras los conserves; los cursos por suscripción, mientras esta esté activa. Tu plan de SkillsetMind, tus métodos de pago y tus facturas están en el portal seguro de Stripe. Los pagos a los creadores están en Pagos e impuestos."
+    "description": "Cada curso lo vende el educador que lo publica. El pago se realiza en su cuenta de Stripe, por lo que su nombre puede aparecer en el extracto de tu tarjeta. Los cursos de pago único siguen disponibles mientras los conserves; los cursos por suscripción, mientras esta esté activa. Los métodos de pago y las facturas están en tu portal seguro de Stripe."
   },
   "accountNotifications": {
     "title": "Notificaciones",
@@ -5027,7 +5027,6 @@
       "back": "Volver a Mi aprendizaje",
       "marketplace": "Abrir catálogo",
       "seeCourse": "Ver el curso",
-      "seeCourseAndBuy": "Ver el curso y comprar",
       "wrongAccount": "¿Entraste con otra cuenta? Salir"
     },
     "enrollmentStatus": {

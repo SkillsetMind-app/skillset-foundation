@@ -4,6 +4,7 @@ import { BillingTabs } from "./billing-tabs";
 import { PlansPanel } from "./plans-panel";
 import { I18nProvider, useTranslation } from "@/components/i18n/i18n-provider";
 import type { Order } from "@/domain/order";
+import { getDictionary, translate } from "@/lib/i18n/dictionaries";
 
 const mocks = vi.hoisted(() => ({
   user: { uid: "learner-1", roles: ["student"] }, tab: "overview", orders: [] as Order[], profile: { currentPlanId: "free", stripeCustomerId: "customer-test" },
@@ -32,6 +33,20 @@ beforeEach(() => { vi.clearAllMocks(); mocks.tab = "overview"; mocks.orders = []
 afterEach(cleanup);
 
 describe("billing locale with real dictionaries", () => {
+  // A página é de servidor e serve aluno e criador: o texto não fala de plano de criador.
+  it("keeps the billing page copy neutral for learners", () => {
+    for (const locale of ["en", "es"] as const) {
+      const dictionary = getDictionary(locale);
+      const description = translate(dictionary, "accountBillingPage.description");
+      expect(description).not.toMatch(/SkillsetMind|Payouts|Pagos e impuestos/);
+      expect(description).toContain(locale === "en"
+        ? "Payment methods and invoices live in your secure Stripe portal."
+        : "Los métodos de pago y las facturas están en tu portal seguro de Stripe.");
+    }
+    expect(translate(getDictionary("en"), "accountBillingPage.eyebrow")).toBe("Purchases & receipts");
+    expect(translate(getDictionary("es"), "accountBillingPage.eyebrow")).toBe("Compras y recibos");
+  });
+
   it("translates overview and navigation without changing route keys", () => {
     mount(<BillingTabs />);
     expect(screen.getByRole("group", { name: "Secciones de facturación" })).toBeTruthy();

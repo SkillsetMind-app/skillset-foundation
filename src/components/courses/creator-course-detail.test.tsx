@@ -490,6 +490,70 @@ describe("CreatorCourseDetail: the sales-page button does what the buy card does
     await waitFor(() => expect(startCourseCheckout).toHaveBeenCalledWith("course-1", {}));
     expect(fixtures.router.push).not.toHaveBeenCalled();
   });
+
+  describe("sem resposta visível", () => {
+    const scrollIntoView = vi.fn();
+    beforeEach(() => {
+      scrollIntoView.mockClear();
+      Element.prototype.scrollIntoView = scrollIntoView;
+    });
+    afterEach(() => {
+      // @ts-expect-error jsdom não define scrollIntoView; remove o stub do teste
+      delete Element.prototype.scrollIntoView;
+    });
+
+    it("when checkout cannot proceed, the click brings the buy card into view", async () => {
+      fixtures.auth.status = "authenticated"; fixtures.auth.user = { uid: "buyer" };
+      fixtures.query = "offer=MISSING";
+      withOffers();
+      render(<CreatorCourseDetail courseIdOverride="course-1" />);
+      await screen.findByText("The selected offer is no longer available.");
+
+      fireEvent.click(salesCta());
+
+      expect(startCourseCheckout).not.toHaveBeenCalled();
+      expect(scrollIntoView).toHaveBeenCalledTimes(1);
+      expect(scrollIntoView.mock.contexts[0]).toBe(document.getElementById("enroll-card"));
+      expect(scrollIntoView).toHaveBeenCalledWith({ behavior: "smooth", block: "center" });
+    });
+
+    it("after a checkout error, the click brings the buy card (with the error) into view", async () => {
+      fixtures.auth.status = "authenticated"; fixtures.auth.user = { uid: "buyer" };
+      vi.mocked(startCourseCheckout).mockRejectedValueOnce(new Error("boom"));
+      render(<CreatorCourseDetail courseIdOverride="course-1" />);
+      await screen.findAllByText("$149.00");
+
+      fireEvent.click(salesCta());
+
+      await waitFor(() => expect(scrollIntoView).toHaveBeenCalledTimes(1));
+    });
+  });
+
+  it("a second click while checkout is running does not open a second session", async () => {
+    fixtures.auth.status = "authenticated"; fixtures.auth.user = { uid: "buyer" };
+    vi.mocked(startCourseCheckout).mockReturnValueOnce(new Promise(() => {}));
+    render(<CreatorCourseDetail courseIdOverride="course-1" />);
+    await screen.findAllByText("$149.00");
+
+    fireEvent.click(salesCta());
+    fireEvent.click(salesCta());
+
+    await waitFor(() => expect(startCourseCheckout).toHaveBeenCalledTimes(1));
+  });
+
+  it("a second click while the free enrollment runs does not enroll twice", async () => {
+    fixtures.auth.status = "authenticated"; fixtures.auth.user = { uid: "buyer" };
+    Object.assign(fixtures.course, { paymentType: "free", priceAmountMinor: 0 });
+    withOffers([]);
+    vi.mocked(enrollInFreeCreatorCourse).mockReturnValueOnce(new Promise(() => {}));
+    render(<CreatorCourseDetail courseIdOverride="course-1" />);
+    await screen.findByRole("button", { name: "Enroll free" });
+
+    fireEvent.click(salesCta());
+    fireEvent.click(salesCta());
+
+    await waitFor(() => expect(enrollInFreeCreatorCourse).toHaveBeenCalledTimes(1));
+  });
 });
 
 // "Preview media can be attached by the educator..." is a note to the teacher.

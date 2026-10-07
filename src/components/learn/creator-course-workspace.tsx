@@ -10,13 +10,9 @@ import { ClassroomLoading } from "@/components/learn/classroom-loading";
 import { EnrolledCourseWorkspace } from "@/components/learn/enrolled-course-workspace";
 import type { ClassroomTab } from "@/domain/classroom-tabs";
 import { canOpenEnrollment, type Enrollment } from "@/domain/enrollment";
-import { resolveCoursePrice } from "@/domain/product-pricing";
 import type { TeacherCourse } from "@/domain/teacher-course";
 import { subscribeToEnrollment } from "@/lib/data/enrollments";
-import {
-  subscribeToViewableTeacherCourse,
-  teacherCourseToLearningCourse,
-} from "@/lib/data/published-courses";
+import { teacherCourseToLearningCourse } from "@/lib/data/published-courses";
 import { CourseViewedTracker, PurchaseCompletedTracker } from "@/lib/posthog/page-trackers";
 import { subscribeToTeacherCourse } from "@/lib/data/teacher-courses";
 import { getSupabaseClientConfig } from "@/lib/supabase/config";
@@ -80,28 +76,6 @@ export function CreatorCourseWorkspace({
   const isLoadingCourse = Boolean(
     canOpenCourse && (!courseState.ready || courseState.key !== courseId),
   );
-  // No enrollment: the way out is the course's public page. Its public row
-  // only decides whether the button also says "buy".
-  const lacksEnrollment = Boolean(
-    user && courseId && hasBackendConfig && !cameFromCheckout
-      && enrollmentState.ready && enrollmentState.key === courseId && !enrollmentState.enrollment,
-  );
-  const [publicCourse, setPublicCourse] = useState<{ key: string; course: TeacherCourse | null } | null>(null);
-  useEffect(() => {
-    if (!lacksEnrollment) return;
-    return subscribeToViewableTeacherCourse(
-      courseId,
-      (next) => setPublicCourse({ key: courseId, course: next }),
-      // Without the price the button still opens the course page.
-      () => undefined,
-    );
-  }, [courseId, lacksEnrollment]);
-  const publicPrice =
-    publicCourse?.key === courseId && publicCourse.course
-      ? resolveCoursePrice(publicCourse.course)
-      : null;
-  const courseIsPaid = (publicPrice?.amountMinor ?? 0) > 0;
-
   const router = useRouter();
   // Once the paid enrollment has opened the course, the checkout marker has
   // done its job. Left in the URL it rode along into lesson links, bookmarks
@@ -242,6 +216,14 @@ export function CreatorCourseWorkspace({
     return <CreatorWorkspaceState title={t("learnWave2.workspace.unavailable")} detail={t(error)} whitelabel={whitelabel} />;
   }
 
+  // Sem acesso, a saída é a página pública do curso (e sair da conta, se for a conta errada).
+  const coursePage = {
+    href: `/courses/${encodeURIComponent(courseId)}`,
+    label: t("learnWave2.workspace.seeCourse"),
+  };
+  // Signed out, this same page asks to sign in and comes back here.
+  const onSignOut = () => void signOut();
+
   if (!enrollment) {
     if (cameFromCheckout) {
       return checkoutGraceExpired ? (
@@ -264,12 +246,8 @@ export function CreatorCourseWorkspace({
         title={t("learnWave2.workspace.required")}
         detail={t("learnWave2.workspace.requiredDetail")}
         whitelabel={whitelabel}
-        coursePage={{
-          href: `/courses/${encodeURIComponent(courseId)}`,
-          label: t(courseIsPaid ? "learnWave2.workspace.seeCourseAndBuy" : "learnWave2.workspace.seeCourse"),
-        }}
-        // Signed out, this same page asks to sign in and comes back here.
-        onSignOut={() => void signOut()}
+        coursePage={coursePage}
+        onSignOut={onSignOut}
       />
     );
   }
@@ -280,6 +258,8 @@ export function CreatorCourseWorkspace({
         title={t("learnWave2.workspace.inactive")}
         detail={t("learnWave2.workspace.inactiveDetail").replace("{status}", () => t(`learnWave2.enrollmentStatus.${enrollment.status}`))}
         whitelabel={whitelabel}
+        coursePage={coursePage}
+        onSignOut={onSignOut}
       />
     );
   }

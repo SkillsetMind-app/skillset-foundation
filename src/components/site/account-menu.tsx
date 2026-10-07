@@ -82,11 +82,13 @@ export function AccountMenu({ onSignOut, user }: AccountMenuProps) {
   const moneyHref = user.roles.includes("teacher")
     ? "/account/payments"
     : "/account/billing";
-  const moneyLabel = user.roles.includes("teacher")
-    ? t("account.payoutsTax")
-    : t("platform.nav.myPurchases");
   // Plans are what a creator pays to sell; same gate as /teach.
   const canTeach = hasPermission({ roles: user.roles }, "teacherStudio.access");
+  const moneyLabel = user.roles.includes("teacher")
+    ? t("account.payoutsTax")
+    : canTeach
+      ? t("account.billing")
+      : t("platform.nav.myPurchases");
   const currentPlanName = planById(currentPlanId).name;
   const accountRoleLabel = t(primaryRoleKey(user.roles));
   const memberFallback = t("account.memberFallback");

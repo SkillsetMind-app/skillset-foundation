@@ -519,6 +519,15 @@ export function CreatorCourseDetail({
       : []),
   ];
 
+  // O cartão de compra fica no fim da página no celular: sem rolar até ele, um
+  // clique nos blocos que não pode seguir (ou que falhou) parece não fazer nada.
+  function revealBuyCard() {
+    const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    document
+      .getElementById("enroll-card")
+      ?.scrollIntoView?.({ behavior: reduce ? "auto" : "smooth", block: "center" });
+  }
+
   async function handleCheckout() {
     if (!course || !resolvedPrice || !canCheckout || !checkoutEnabled) {
       return;
@@ -545,6 +554,7 @@ export function CreatorCourseDetail({
     } catch (error) {
       setCheckoutError(getCheckoutErrorKey(error));
       setIsCheckingOut(false);
+      revealBuyCard();
     }
   }
 
@@ -562,6 +572,7 @@ export function CreatorCourseDetail({
     } catch {
       setCheckoutError("publicCourses.enrollError");
       setIsEnrollingFree(false);
+      revealBuyCard();
     }
   }
 
@@ -569,12 +580,15 @@ export function CreatorCourseDetail({
   // the buy card's main button does. They used to call handleCheckout alone,
   // which does nothing for a visitor, a free course or an enrolled learner.
   function handleCardAction() {
+    if (isEnrollingFree || isCheckingOut) return;
     if (authStatus !== "authenticated") {
       router.push(signupHref);
     } else if (viewerIsLearner) {
       router.push(classroomHref);
     } else if (canEnrollFree) {
       void handleFreeEnrollment();
+    } else if (!canCheckout || !checkoutEnabled) {
+      revealBuyCard();
     } else {
       void handleCheckout();
     }
@@ -702,6 +716,7 @@ export function CreatorCourseDetail({
           template={landing.template}
           priceLabel={priceLabel}
           onEnrol={handleCardAction}
+          enrolDisabled={isEnrollingFree || isCheckingOut}
         />
 
         {learningOutcomes.length > 0 ? (

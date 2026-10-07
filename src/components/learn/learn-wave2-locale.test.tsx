@@ -127,26 +127,20 @@ describe("learner wave 2 with real provider and dictionaries", () => {
   });
 
   // "Enrollment required" offered only My Learning and the marketplace: no way
-  // to buy this course, and no way out of the wrong account.
-  it.each([
-    ["free", { paymentType: "free", priceAmountMinor: 0 }, "Ver el curso", "See the course"],
-    ["paid", { paymentType: "one_time", priceAmountMinor: 4900 }, "Ver el curso y comprar", "See the course and buy"],
-  ])("without access to a %s course, the main button opens its page", (_kind, price, es, en) => {
-    mocks.publicCourse.mockImplementation((_ref, next) => {
-      next({ id: "course-es", currency: "USD", ...price });
-      return () => {};
-    });
+  // to reach this course's page, and no way out of the wrong account. The label
+  // is always "See the course": the price lives in offers, and the page shows it.
+  it("without access, the main button opens the course page", () => {
     show(<CreatorCourseWorkspace initialCourseId="course-es" />);
 
     expect(screen.getByText("Todavía no tienes acceso a este curso.")).toBeVisible();
     expect(screen.queryByText(/espacio privado/)).not.toBeInTheDocument();
-    const main = screen.getByRole("link", { name: es });
+    const main = screen.getByRole("link", { name: "Ver el curso" });
     expect(main).toHaveAttribute("href", "/courses/course-es");
     expect(main).toHaveClass("button-solid");
     expect(screen.getByRole("link", { name: "Volver a Mi aprendizaje" })).toHaveClass("button-outline");
-    expect(mocks.publicCourse).toHaveBeenCalledWith("course-es", expect.any(Function), expect.any(Function));
+    expect(mocks.publicCourse).not.toHaveBeenCalled();
     changeLanguage();
-    expect(screen.getByRole("link", { name: en })).toHaveAttribute("href", "/courses/course-es");
+    expect(screen.getByRole("link", { name: "See the course" })).toHaveAttribute("href", "/courses/course-es");
     expect(screen.getByText("You don't have access to this course yet.")).toBeVisible();
   });
 
@@ -176,6 +170,16 @@ describe("learner wave 2 with real provider and dictionaries", () => {
     changeLanguage();
     expect(screen.getByRole("heading", { name: "Course access is inactive." })).toBeVisible();
     expect(mocks.enrollment).toHaveBeenCalledTimes(1);
+  });
+
+  // Reembolsada, cancelada, vencida ou em atraso: também não pode ser beco.
+  it("an inactive enrollment still offers the course page and a way out of the wrong account", () => {
+    mocks.enrollment.mockImplementation((_uid, _id, next) => { next({ ...enrollment, status: "refunded" }); return () => {}; });
+    show(<CreatorCourseWorkspace initialCourseId="course-es" />);
+
+    expect(screen.getByRole("link", { name: "Ver el curso" })).toHaveAttribute("href", "/courses/course-es");
+    fireEvent.click(screen.getByRole("button", { name: "¿Entraste con otra cuenta? Salir" }));
+    expect(mocks.signOut).toHaveBeenCalledTimes(1);
   });
 
   it("changes checkout waiting copy at 90 seconds and keeps polling for actual enrollment", () => {
