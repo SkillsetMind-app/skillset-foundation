@@ -16,7 +16,7 @@
  */
 
 import { ChevronDown, ChevronUp, Loader2, Plus, Trash2 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { useAuth } from "@/components/auth/auth-provider";
@@ -34,7 +34,10 @@ import type { PlanId } from "@/data/plans";
 import { planEntitlements } from "@/domain/entitlements";
 import type { TeacherCourse } from "@/domain/teacher-course";
 import { getCourseLanding, saveCourseLanding } from "@/lib/data/course-landings";
+import { removeLandingImages } from "@/lib/data/landing-images";
 import { getUserProfile } from "@/lib/data/user-profiles";
+
+import { LandingImageField } from "./landing-image-field";
 
 function blankBlock(kind: CourseLandingBlockKind, t: (key: string) => string): CourseLandingBlock {
   switch (kind) {
@@ -87,12 +90,29 @@ const fieldClass =
   "w-full rounded-md border border-[var(--color-line)] bg-white px-3 py-2.5 text-sm text-[var(--color-ink)]";
 const labelClass = "grid gap-1.5 text-xs font-bold uppercase tracking-[0.16em] text-[var(--color-ink-soft)]";
 
+// Editor-only identity for a block. Position is not identity: an upload that
+// finishes after the sections moved must still land on the block that asked.
+type BlockEntry = { id: number; block: CourseLandingBlock };
+let nextBlockId = 0;
+const withId = (block: CourseLandingBlock): BlockEntry => ({ id: nextBlockId++, block });
+
+// Pasted links often carry stray spaces; a saved URL must never.
+function trimImageUrls(blocks: readonly CourseLandingBlock[]): CourseLandingBlock[] {
+  return blocks.map((block) =>
+    "imageUrl" in block ? { ...block, imageUrl: block.imageUrl?.trim() || null } : block,
+  );
+}
+
 function BlockFields({
   block,
+  courseId,
   onChange,
+  onImageChange,
 }: {
   block: CourseLandingBlock;
+  courseId: string;
   onChange: (next: CourseLandingBlock) => void;
+  onImageChange: (url: string | null) => void;
 }) {
   const { t, locale } = useTranslation();
   switch (block.kind) {
@@ -115,15 +135,13 @@ function BlockFields({
               onChange={(e) => onChange({ ...block, subheading: e.target.value })}
             />
           </label>
-          <label className={labelClass}>
-            {t("teacherLanding.fields.backgroundUrl")}
-            <input
-              className={fieldClass}
-              value={block.imageUrl ?? ""}
-              placeholder="/uploads/your-image.jpg"
-              onChange={(e) => onChange({ ...block, imageUrl: e.target.value || null })}
-            />
-          </label>
+          <LandingImageField
+            courseId={courseId}
+            label={t("teacherLanding.fields.backgroundUrl")}
+            value={block.imageUrl}
+            placeholder="/uploads/your-image.jpg"
+            onChange={onImageChange}
+          />
         </div>
       );
 
@@ -148,15 +166,13 @@ function BlockFields({
             />
           </label>
           {block.kind === "about" ? (
-            <label className={labelClass}>
-              {t("teacherLanding.fields.photoUrl")}
-              <input
-                className={fieldClass}
-                value={block.imageUrl ?? ""}
-                placeholder="/uploads/your-photo.jpg"
-                onChange={(e) => onChange({ ...block, imageUrl: e.target.value || null })}
-              />
-            </label>
+            <LandingImageField
+              courseId={courseId}
+              label={t("teacherLanding.fields.photoUrl")}
+              value={block.imageUrl}
+              placeholder="/uploads/your-photo.jpg"
+              onChange={onImageChange}
+            />
           ) : null}
         </div>
       );
@@ -388,7 +404,10 @@ export function CourseLandingEditor({ course }: { course: TeacherCourse }) {
   const uid = user?.uid ?? null;
 
   const [template, setTemplate] = useState<CourseLandingTemplate>("classic");
-  const [blocks, setBlocks] = useState<CourseLandingBlock[]>([]);
+  const [entries, setEntries] = useState<BlockEntry[]>([]);
+  const blocks = useMemo(() => entries.map((entry) => entry.block), [entries]);
+  // Latest blocks for callbacks that outlive a render (an upload finishing).
+  const entriesRef = useRef(entries);
   const [planId, setPlanId] = useState<PlanId>("free");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -406,7 +425,7 @@ export function CourseLandingEditor({ course }: { course: TeacherCourse }) {
       uid ? getUserProfile(uid).catch(() => null) : Promise.resolve(null),
     ]);
     setTemplate(landing.template);
-    setBlocks(landing.blocks);
+    setEntries(landing.blocks.map(withId));
     setPlanId(profile?.currentPlanId ?? "free");
     setLoading(false);
   }, [course.id, uid]);
@@ -419,20 +438,42 @@ export function CourseLandingEditor({ course }: { course: TeacherCourse }) {
     return () => window.clearTimeout(timer);
   }, [load]);
 
+  useEffect(() => {
+    entriesRef.current = entries;
+  }, [entries]);
+
   const limit = planEntitlements[planId].quotas.landingBlocks ?? 0;
   const canChooseTemplate = planId !== "free";
   const atLimit = blocks.length >= limit;
 
   const warnings = useMemo(() => protectedTitleWarnings(blocks), [blocks]);
 
-  function updateBlock(index: number, next: CourseLandingBlock) {
-    setBlocks((current) => current.map((b, i) => (i === index ? next : b)));
+  function updateBlock(id: number, next: CourseLandingBlock) {
+    setEntries((current) => current.map((entry) => (entry.id === id ? { ...entry, block: next } : entry)));
+  }
+
+  // Changes only the image of block `id`, on the latest state. An upload ends
+  // here after the creator may have typed, reordered or removed sections; if the
+  // block is gone, the file it just uploaded is deleted instead: no saved page
+  // can reference it. Saving never deletes; replaced images stay in storage.
+  function setBlockImage(id: number, imageUrl: string | null) {
+    if (!entriesRef.current.some((entry) => entry.id === id)) {
+      if (imageUrl) void removeLandingImages(course.id, [imageUrl]).catch(() => undefined);
+      return;
+    }
+    setEntries((current) =>
+      current.map((entry) =>
+        entry.id === id && (entry.block.kind === "hero" || entry.block.kind === "about")
+          ? { ...entry, block: { ...entry.block, imageUrl } }
+          : entry,
+      ),
+    );
   }
 
   function move(index: number, direction: -1 | 1) {
     const to = index + direction;
     if (to < 0 || to >= blocks.length) return;
-    setBlocks((current) => {
+    setEntries((current) => {
       const next = [...current];
       const [moved] = next.splice(index, 1);
       next.splice(to, 0, moved);
@@ -445,7 +486,7 @@ export function CourseLandingEditor({ course }: { course: TeacherCourse }) {
     setError("");
     setMessage("");
     try {
-      const result = await saveCourseLanding(course.id, { template, blocks });
+      const result = await saveCourseLanding(course.id, { template, blocks: trimImageUrls(blocks) });
       if (result.ok) {
         setMessage("teacherLanding.saved");
       } else {
@@ -510,7 +551,7 @@ export function CourseLandingEditor({ course }: { course: TeacherCourse }) {
       {blocks.length === 0 ? (
         <button
           type="button"
-          onClick={() => setBlocks(suggestedBlocks(course.title, t).slice(0, limit))}
+          onClick={() => setEntries(suggestedBlocks(course.title, t).slice(0, limit).map(withId))}
           className="mt-3 justify-self-start rounded-md border border-[var(--color-line)] bg-white px-4 py-2.5 text-sm font-semibold text-[var(--color-ink)]"
         >
           {t("teacherLanding.suggested")}
@@ -518,9 +559,9 @@ export function CourseLandingEditor({ course }: { course: TeacherCourse }) {
       ) : null}
 
       <div className="mt-4 grid gap-4">
-        {blocks.map((block, index) => (
+        {entries.map(({ id, block }, index) => (
           <div
-            key={index}
+            key={id}
             className="grid gap-3 rounded-lg border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-4"
           >
             <div className="flex items-center gap-2">
@@ -557,7 +598,7 @@ export function CourseLandingEditor({ course }: { course: TeacherCourse }) {
                     t("teacherLanding.confirmRemove").replace("{section}", () => t(`teacherLanding.blocks.${block.kind}`)),
                   );
                   if (confirmed) {
-                    setBlocks((c) => c.filter((_, i) => i !== index));
+                    setEntries((c) => c.filter((entry) => entry.id !== id));
                   }
                 }}
                 aria-label={t("teacherLanding.removeSection").replace("{section}", () => t(`teacherLanding.blocks.${block.kind}`))}
@@ -567,7 +608,12 @@ export function CourseLandingEditor({ course }: { course: TeacherCourse }) {
                 <Trash2 className="h-4 w-4" />
               </button>
             </div>
-            <BlockFields block={block} onChange={(next) => updateBlock(index, next)} />
+            <BlockFields
+              block={block}
+              courseId={course.id}
+              onChange={(next) => updateBlock(id, next)}
+              onImageChange={(imageUrl) => setBlockImage(id, imageUrl)}
+            />
           </div>
         ))}
       </div>
@@ -578,7 +624,7 @@ export function CourseLandingEditor({ course }: { course: TeacherCourse }) {
             key={kind}
             type="button"
             disabled={atLimit}
-            onClick={() => setBlocks((current) => [...current, blankBlock(kind, t)])}
+            onClick={() => setEntries((current) => [...current, withId(blankBlock(kind, t))])}
             className="inline-flex items-center gap-1.5 rounded-md border border-[var(--color-line)] bg-white px-3 py-2 text-sm font-semibold text-[var(--color-ink)] disabled:opacity-40"
           >
             <Plus className="h-3.5 w-3.5" />

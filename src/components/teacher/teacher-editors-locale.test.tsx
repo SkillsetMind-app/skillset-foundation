@@ -116,11 +116,15 @@ describe("ES-09 editors with the shipped dictionaries", () => {
     mount(<CourseLandingEditor course={course} />);
     expect(screen.getByText("Cargando tu página de ventas…")).toBeInTheDocument();
     await screen.findByLabelText("Título principal");
-    for (const name of ["Una línea debajo del título", "URL de la imagen de fondo", "URL de tu foto",
+    for (const name of ["Una línea debajo del título",
       "Título del paso 1", "Qué ocurre en este paso", "Qué dijeron", "Quién lo dijo",
       "Pregunta", "Respuesta", "Texto del botón"]) {
       expect(screen.getByLabelText(name)).toBeInTheDocument();
     }
+    expect(screen.getByText("URL de la imagen de fondo")).toBeInTheDocument();
+    expect(screen.getByText("URL de tu foto")).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "Subir imagen" })).toHaveLength(2);
+    expect(screen.getAllByLabelText("O pega un enlace")).toHaveLength(2);
     expect(screen.getAllByRole("button", { name: "Subir" })).toHaveLength(7);
     expect(screen.getByText(/Atención: esta página usa/)).toHaveTextContent("therapist");
     fireEvent.click(screen.getByRole("button", { name: "Eliminar sección Sobre ti" }));
