@@ -2683,6 +2683,13 @@ export type Database = {
           uid: string
         }[]
       }
+      get_live_event_session: {
+        Args: { p_course_id: string }
+        Returns: {
+          starts_at: string
+          timezone: string | null
+        }[]
+      }
       get_my_course_lesson_funnel: {
         Args: never
         Returns: {

@@ -1282,6 +1282,7 @@
         "enrollmentDelayed": "Ya casi está: la inscripción está tardando más de lo habitual.",
         "openingCourse": "Abriendo tu curso...",
         "delayedDetails": "Tu pago se completó y está seguro en la cuenta de Stripe de tu instructor. Te vendió este curso directamente, por lo que su nombre puede aparecer en el extracto de tu tarjeta. Mantén esta página abierta: se abrirá automáticamente cuando se confirme tu inscripción. Si no ocurre nada en unos minutos, contacta con soporte y adjunta el recibo del pago.",
+        "noLessons": "Todavía no hay lecciones aquí.",
         "openingDetails": "Tu pago está confirmado. Tu instructor te vendió este curso directamente, por lo que su nombre, en lugar de \"SkillsetMind\", puede aparecer en el extracto de tu tarjeta. Estamos preparando tu acceso al curso; esta página se abrirá automáticamente en unos segundos.",
         "enrollmentRequired": "Inscripción necesaria",
         "enrollmentHeading": "Este espacio privado se abre después de la inscripción.",
@@ -1518,6 +1519,7 @@
       "backToLesson": "Lección",
       "progress": "{completed} de {total} lecciones · {percent}%",
       "start": "Empezar la lección 1",
+      "openFile": "Abrir tu archivo",
       "continue": "Continuar: {title}"
     },
     "paths": {
@@ -2712,6 +2714,11 @@
     "lockedMany": "Inscríbete para acceder a las {count} lecciones restantes de este curso.",
     "structure": "Estructura del curso",
     "curriculumPending": "El curso está aprobado, pero la vista previa del contenido aún se está preparando.",
+    "deliveryCommunity": "Los miembros entran a la comunidad: publicaciones, respuestas y encuentros en vivo.",
+    "deliveryLiveEvent": "Sesión en vivo el {date}",
+    "deliveryLiveEventPending": "Sesión en vivo. La fecha se anunciará aquí.",
+    "deliveryEbook": "Un archivo que descargas justo después de comprar.",
+    "delivery": "Qué recibes",
     "access": "Acceso",
     "chooseOffer": "Elige una oferta",
     "unavailableShort": "No disponible",
@@ -3714,6 +3721,9 @@
         "payouts": "Completa la configuración de cobros de Stripe antes de publicar un curso de pago. Abre el panel Cobros en tu estudio.",
         "payment": "Define un modelo de pago válido antes de publicar.",
         "lessonContent": "Añade un video, texto o archivo a cada lección antes de publicar.",
+        "session": "Agenda la sesión en vivo antes de publicar: la fecha tiene que ser futura.",
+        "file": "Sube al menos un archivo (PDF, presentación o cuaderno) antes de publicar.",
+        "community": "Activa la comunidad antes de publicar: es lo que reciben los miembros.",
         "publish": "No pudimos publicar este curso. Inténtalo de nuevo."
       },
       "success": {
@@ -4836,6 +4846,7 @@
     "eventLink": "Enlace de Zoom o Meet",
     "eventLinkHelp": "Opcional. Puedes añadirlo después.",
     "whenRequired": "Elige la fecha y la hora de la sesión.",
+    "whenPast": "Elige una fecha y una hora que aún no hayan pasado.",
     "linkInvalid": "Usa un enlace completo que empiece por https://.",
     "starterModule": "Módulo 1",
     "starterLesson": "Lección 1",
@@ -5287,7 +5298,9 @@
       "open": "Abrir enlace de la sesión",
       "soon": "Enlace disponible pronto",
       "communityDescription": "Un espacio del curso para anuncios, preguntas, recursos y conversaciones entre estudiantes.",
-      "empty": "No hay sesiones en vivo programadas por ahora."
+      "empty": "No hay sesiones en vivo programadas por ahora.",
+      "happened": "La sesión ya ocurrió.",
+      "replay": "Ver la grabación"
     },
     "leaderboard": {
       "loadError": "No pudimos cargar la clasificación.",

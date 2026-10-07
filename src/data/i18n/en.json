@@ -1282,6 +1282,7 @@
         "enrollmentDelayed": "Almost there — enrollment is taking longer than usual.",
         "openingCourse": "Opening your course...",
         "delayedDetails": "Your payment went through and is safe in your instructor's Stripe account — they sold you this course directly, so their name may be what appears on your card statement. Keep this page open: it opens automatically the moment your enrollment is confirmed. If nothing happens in a few minutes, contact support with your payment receipt.",
+        "noLessons": "There are no lessons here yet.",
         "openingDetails": "Your payment is confirmed. Your instructor sold you this course directly, so their name — not \"SkillsetMind\" — may be what appears on your card statement. We are setting up your course access right now; this page opens automatically in a few seconds.",
         "enrollmentRequired": "Enrollment required",
         "enrollmentHeading": "This private workspace opens after enrollment.",
@@ -1518,6 +1519,7 @@
       "backToLesson": "Lesson",
       "progress": "{completed} of {total} lessons · {percent}%",
       "start": "Start lesson 1",
+      "openFile": "Open your file",
       "continue": "Continue: {title}"
     },
     "paths": {
@@ -2712,6 +2714,11 @@
     "lockedMany": "Enroll to open the remaining {count} lessons in this course.",
     "structure": "Course structure",
     "curriculumPending": "The course is approved, but the public curriculum preview is still being prepared.",
+    "deliveryCommunity": "Members join the community: posts, answers and live calls.",
+    "deliveryLiveEvent": "Live session on {date}",
+    "deliveryLiveEventPending": "Live session. The date will be announced here.",
+    "deliveryEbook": "A file you download right after purchase.",
+    "delivery": "What you get",
     "access": "Access",
     "chooseOffer": "Choose an offer",
     "unavailableShort": "Unavailable",
@@ -3714,6 +3721,9 @@
         "payouts": "Finish Stripe payout onboarding before publishing a paid course — open the Payouts panel in your studio.",
         "payment": "Set a valid payment model before publishing.",
         "lessonContent": "Add a video, text or file to every lesson before publishing.",
+        "session": "Schedule the live session before publishing: the date has to be in the future.",
+        "file": "Upload at least one file (PDF, slides or workbook) before publishing.",
+        "community": "Turn on the community before publishing: it is what members join.",
         "publish": "We could not publish this course. Please try again."
       },
       "success": {
@@ -4836,6 +4846,7 @@
     "eventLink": "Zoom or Meet link",
     "eventLinkHelp": "Optional. You can add it later.",
     "whenRequired": "Choose the date and time of the session.",
+    "whenPast": "Choose a date and time that has not passed yet.",
     "linkInvalid": "Use a full link that starts with https://.",
     "starterModule": "Module 1",
     "starterLesson": "Lesson 1",
@@ -5287,7 +5298,9 @@
       "open": "Open session link",
       "soon": "Link available soon",
       "communityDescription": "A course-linked space for announcements, questions, resources, and cohort discussion.",
-      "empty": "No live sessions are scheduled right now."
+      "empty": "No live sessions are scheduled right now.",
+      "happened": "The session already happened.",
+      "replay": "Watch the replay"
     },
     "leaderboard": {
       "loadError": "We could not load the leaderboard.",

@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { CreateCourseStart } from "@/components/teacher/create-course-start";
 
@@ -20,6 +20,16 @@ vi.mock("@/lib/data/teacher-courses", () => ({
 vi.mock("@/lib/data/course-events", () => ({
   createCourseEvent: mocks.createCourseEvent,
 }));
+
+// O evento ao vivo recusa data passada: o relogio fica parado num dia antes
+// das datas dos testes, que assim nao vencem.
+beforeEach(() => {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date("2026-10-01T12:00:00"));
+});
+afterEach(() => {
+  vi.useRealTimers();
+});
 
 function selectPrimaryCategory() {
   fireEvent.click(screen.getByRole("button", { name: /Select up to 5 categories/i }));
@@ -200,6 +210,38 @@ describe("CreateCourseStart — tela 2 grava o tipo", () => {
       target: { value: "https://meet.google.com/abc-defg-hij" },
     });
     expect(screen.getByRole("button", { name: /^Create/ })).toBeEnabled();
+  });
+
+  it("evento ao vivo: hora que ja passou trava o envio, e o campo de data comeca hoje", () => {
+    render(<CreateCourseStart ownerId="teacher-1" initialFormat="live_event" />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    fillBasics();
+    expect(screen.getByLabelText("Date")).toHaveAttribute("min", "2026-10-01");
+    fireEvent.change(screen.getByLabelText("Date"), { target: { value: "2026-10-01" } });
+    fireEvent.change(screen.getByLabelText("Time"), { target: { value: "09:00" } });
+
+    const create = screen.getByRole("button", { name: /^Create/ });
+    expect(create).toBeDisabled();
+    expect(screen.getByText(/Choose a date and time that has not passed yet/)).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("Time"), { target: { value: "18:00" } });
+    expect(create).toBeEnabled();
+  });
+
+  it("evento ao vivo: se a hora passa com a tela aberta, o envio confere de novo", async () => {
+    render(<CreateCourseStart ownerId="teacher-1" initialFormat="live_event" />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    fillBasics();
+    fireEvent.change(screen.getByLabelText("Date"), { target: { value: "2026-10-01" } });
+    fireEvent.change(screen.getByLabelText("Time"), { target: { value: "13:00" } });
+    vi.setSystemTime(new Date("2026-10-01T14:00:00"));
+    fireEvent.click(screen.getByRole("button", { name: /^Create/ }));
+
+    expect(await screen.findByText(/Choose a date and time that has not passed yet/)).toBeInTheDocument();
+    expect(mocks.createTeacherCourse).not.toHaveBeenCalled();
+    expect(mocks.createCourseEvent).not.toHaveBeenCalled();
   });
 
   it("so o evento pergunta data, hora e link", () => {

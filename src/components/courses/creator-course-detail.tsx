@@ -20,6 +20,7 @@ import {
 import { UserAvatar } from "@/components/shared/user-avatar";
 import { SelfReportedTag, VerifiedBadge } from "@/components/shared/verified-badge";
 import { useHasRealCourses } from "@/components/site/real-courses";
+import { formatEventDateTimeInZone } from "@/domain/course-event";
 import { getSafeExternalUrl } from "@/domain/external-url";
 import { CourseLandingBlocks } from "@/components/courses/course-landing-blocks";
 import { getTrustedLessonEmbed } from "@/domain/lesson-embed";
@@ -37,6 +38,7 @@ import {
   resolveLessonVideoSource,
 } from "@/domain/teacher-course";
 import { canOpenEnrollment } from "@/domain/enrollment";
+import { getLiveEventSession, type LiveEventSession } from "@/lib/data/course-events";
 import { subscribeToEnrollment } from "@/lib/data/enrollments";
 import { subscribeToViewableTeacherCourse } from "@/lib/data/published-courses";
 import {
@@ -294,6 +296,29 @@ export function CreatorCourseDetail({
     return () => controller.abort();
   }, [course?.status, resolvedCourseId]);
 
+  // Evento ao vivo: a data da sessao, no fuso de quem ensina. Fica guardada
+  // com o id do curso, entao uma resposta velha nunca aparece em outro.
+  const liveEventCourseId = course?.productFormat === "live_event" ? course.id : null;
+  const [liveSession, setLiveSession] = useState<{
+    courseId: string;
+    session: LiveEventSession | null;
+  } | null>(null);
+  useEffect(() => {
+    if (checkoutOnly || !liveEventCourseId || !hasBackendConfig) {
+      return;
+    }
+    let cancelled = false;
+    getLiveEventSession(liveEventCourseId)
+      .then((session) => {
+        if (!cancelled) setLiveSession({ courseId: liveEventCourseId, session });
+      })
+      // Sem a data, a pagina diz que ela sera anunciada.
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [checkoutOnly, hasBackendConfig, liveEventCourseId]);
+
   if (!courseRef) {
     return (
       <CourseDetailState
@@ -449,6 +474,25 @@ export function CreatorCourseDetail({
     previewVideoSource === "upload" ? null : previewLessonTrustedEmbed;
   const previewLessonExternalUrl = getSafeExternalUrl(previewLessonRawExternalUrl);
   const lockedLessonCount = Math.max(lessons.length - (previewLesson ? 1 : 0), 0);
+  // Comunidade, evento ao vivo e e-book nao vendem uma grade de aulas: em vez
+  // de previa, curriculo, "N aulas restantes" e "Lessons: 0", a pagina diz o
+  // que o comprador recebe.
+  const productFormat = course.productFormat ?? "course";
+  const showsCurriculum = productFormat === "course" && course.modules.length > 0;
+  const session = liveSession?.courseId === course.id ? liveSession.session : null;
+  const sessionLabel = session
+    ? formatEventDateTimeInZone(session.startsAt, locale, session.timeZone)
+    : null;
+  const deliveryText =
+    productFormat === "community"
+      ? t("publicCourses.deliveryCommunity")
+      : productFormat === "ebook"
+        ? t("publicCourses.deliveryEbook")
+        : productFormat === "live_event"
+          ? sessionLabel
+            ? t("publicCourses.deliveryLiveEvent").replace("{date}", () => sessionLabel)
+            : t("publicCourses.deliveryLiveEventPending")
+          : t("publicCourses.curriculumPending");
   const hasRating = Boolean(course.ratingCount && course.ratingAverage);
   const learningOutcomes = normalizeLearningOutcomes(course.learningOutcomes);
   // Duracao real do curso, somada das aulas. Sem minuto declarado em nenhuma
@@ -511,8 +555,12 @@ export function CreatorCourseDetail({
     ...(learningOutcomes.length > 0
       ? ([[t("publicCourses.outcomes"), "#what-you-will-learn"]] as [string, string][])
       : []),
-    [t("publicCourses.preview"), "#free-preview"],
-    [t("publicCourses.curriculum"), "#curriculum"],
+    ...(showsCurriculum
+      ? ([
+          [t("publicCourses.preview"), "#free-preview"],
+          [t("publicCourses.curriculum"), "#curriculum"],
+        ] as [string, string][])
+      : ([[t("publicCourses.delivery"), "#delivery"]] as [string, string][])),
     ...(hasRating ? ([[t("publicCourses.reviews"), "#reviews"]] as [string, string][]) : []),
     ...(instructorProfile
       ? ([[t("publicCourses.instructor"), "#instructor"]] as [string, string][])
@@ -754,6 +802,7 @@ export function CreatorCourseDetail({
           </div>
         ) : null}
 
+        {showsCurriculum ? <>
         <section
           id="free-preview"
           className="mt-8 scroll-mt-24 rounded-lg border border-[var(--color-line)] bg-white p-5 shadow-[var(--shadow-soft)]"
@@ -884,6 +933,15 @@ export function CreatorCourseDetail({
             )}
           </div>
         </section>
+        </> : (
+          <section
+            id="delivery"
+            className="mt-8 scroll-mt-24 rounded-lg border border-[var(--color-line)] bg-white p-5 shadow-[var(--shadow-soft)]"
+          >
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">{t("publicCourses.delivery")}</p>
+            <p className="mt-4 text-sm leading-7 text-[var(--color-ink)]">{deliveryText}</p>
+          </section>
+        )}
 
         {/* Social proof: real learner reviews (enrollment-gated server-side by
             submitCourseReview). Renders nothing while a course has no
@@ -972,7 +1030,7 @@ export function CreatorCourseDetail({
         <dl className="mt-5 grid gap-4">
           {[
             [t("publicCourses.category"), getCourseCategoryLabel(course.category, t)],
-            [t("publicCourses.lessons"), String(course.lessonCount)],
+            ...(showsCurriculum ? [[t("publicCourses.lessons"), String(course.lessonCount)]] : []),
             ...(durationLabel ? [[t("publicCourses.duration"), durationLabel]] : []),
           ].map(([label, value]) => (
             <div

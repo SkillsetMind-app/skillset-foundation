@@ -109,7 +109,12 @@ import { defaultSkillsetCurrency } from "@/lib/payments/currencies";
 import { CurrencySelect } from "@/components/teacher/currency-select";
 import { usePublishGates } from "@/components/teacher/use-publish-gates";
 import { VerifiedBadgeOffer } from "@/components/teacher/verified-badge-offer";
-import { countLessonFiles, getCourseReadiness, getLessonIdsWithMedia } from "@/domain/course-readiness";
+import {
+  countLessonFiles,
+  getCourseReadiness,
+  getLessonIdsWithMedia,
+  upcomingSessionsOf,
+} from "@/domain/course-readiness";
 import { formatEventDateTime, type CourseEvent } from "@/domain/course-event";
 import { subscribeToTeacherCourseEvents } from "@/lib/data/course-events";
 import { moveLessonTo } from "@/domain/curriculum-move";
@@ -329,7 +334,8 @@ type BuilderError = {
   code: "notFound" | "load" | "chooseModule" | "lessonTitle" | "moduleTitleMissing"
     | "lessonTitleMissing" | "price" | "installmentsSave" | "category" | "paidPrice"
     | "installmentsPublish" | "duplicateTitle" | "activation" | "save" | "preview"
-    | "setup" | "verification" | "payouts" | "payment" | "lessonContent" | "publish";
+    | "setup" | "verification" | "payouts" | "payment" | "lessonContent" | "publish"
+    | "session" | "file" | "community";
   moduleIndex?: number;
   lessonIndex?: number;
 };
@@ -847,12 +853,7 @@ export function CourseBuilderStudio() {
     }
     return subscribeToTeacherCourseEvents(
       ownerUid,
-      (events) => setCourseSessions(
-        events.filter((event) =>
-          event.courseId === courseId
-          && event.status === "scheduled"
-          && Date.parse(event.startsAt) > Date.now()),
-      ),
+      (events) => setCourseSessions(upcomingSessionsOf(events, courseId, Date.now())),
       // Sem a lista, o item some da prontidao e o servidor segue cobrando.
       () => {},
     );
@@ -2294,8 +2295,16 @@ export function CourseBuilderStudio() {
       setSuccess("published");
     } catch (caughtError) {
       const message = caughtError instanceof Error ? caughtError.message : "";
+      // O que cada tipo cobra (publish_teacher_course) tem a sua mensagem: a
+      // sessao do evento, o arquivo do e-book, a comunidade ligada.
       const code = message.toLowerCase().includes("every lesson needs")
         ? "lessonContent"
+        : message.toLowerCase().includes("schedule the live session")
+        ? "session"
+        : message.toLowerCase().includes("upload at least one file")
+        ? "file"
+        : message.toLowerCase().includes("turn on the community")
+        ? "community"
         : message.toLowerCase().includes("preview")
         ? "preview"
         : message.toLowerCase().includes("teacher setup")

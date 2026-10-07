@@ -408,6 +408,7 @@ export function teacherCourseToLearningCourse(course: TeacherCourse): Course {
       })),
     })),
     communityEnabled: course.communityEnabled ?? false,
+    productFormat: course.productFormat ?? "course",
     membersTheme: normalizeMembersTheme(course.membersTheme),
     membersCoverAssetId: normalizeMembersText(course.membersCoverAssetId, 160),
     membersTitle: normalizeMembersText(course.membersTitle, MAX_MEMBERS_TITLE_LENGTH),

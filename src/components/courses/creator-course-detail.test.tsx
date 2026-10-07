@@ -7,6 +7,7 @@ import { startCourseCheckout, enrollInFreeCreatorCourse } from "@/lib/payments/c
 import { PaymentRequestError } from "@/lib/payments/client-fetch";
 import { getCourseLanding } from "@/lib/data/course-landings";
 import { getLessonContentDoc } from "@/lib/data/lesson-content";
+import { getLiveEventSession } from "@/lib/data/course-events";
 import { subscribeToEnrollment } from "@/lib/data/enrollments";
 import { getDictionary, translate } from "@/lib/i18n/dictionaries";
 import type { TeacherCourse } from "@/domain/teacher-course";
@@ -103,6 +104,11 @@ vi.mock("@/lib/data/lesson-content", () => ({
     _doc: unknown,
     lesson: { contentText?: string | null; externalUrl?: string | null },
   ) => ({ contentText: lesson.contentText ?? null, externalUrl: lesson.externalUrl ?? null }),
+}));
+
+// A data da sessao do evento ao vivo (get_live_event_session).
+vi.mock("@/lib/data/course-events", () => ({
+  getLiveEventSession: vi.fn(async () => null),
 }));
 
 vi.mock("@/lib/payments/checkout", () => ({
@@ -962,6 +968,126 @@ describe("CreatorCourseDetail — padlocked lessons and the buy popup", () => {
       expect(screen.queryByText(/Enroll —/)).not.toBeInTheDocument();
     } finally {
       enrollmentState.current = null;
+    }
+  });
+});
+
+// Comunidade, evento ao vivo e e-book publicam sem grade de aulas. A pagina de
+// venda mostrava "previa ainda sendo preparada", "Enroll to open the remaining
+// 0 lessons" e "Lessons: 0". Agora diz o que o comprador recebe.
+describe("CreatorCourseDetail: o que cada tipo entrega", () => {
+  function renderAs(productFormat: TeacherCourse["productFormat"], modules: TeacherCourse["modules"] = []) {
+    const course = fixtures.course as TeacherCourse;
+    const saved = { modules: course.modules, lessonCount: course.lessonCount };
+    course.productFormat = productFormat;
+    course.modules = modules;
+    course.lessonCount = modules.reduce((total, item) => total + item.lessons.length, 0);
+    const view = render(<CreatorCourseDetail courseIdOverride="course-1" />);
+    return {
+      ...view,
+      restore: () => {
+        delete course.productFormat;
+        course.modules = saved.modules;
+        course.lessonCount = saved.lessonCount;
+      },
+    };
+  }
+
+  function expectNoCurriculum(container: HTMLElement) {
+    expect(container.querySelector("#free-preview")).toBeNull();
+    expect(container.querySelector("#curriculum")).toBeNull();
+    expect(screen.queryByText(/remaining \d+ lessons?/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/curriculum preview is still being prepared/)).not.toBeInTheDocument();
+    expect(screen.queryByText("Lessons")).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Curriculum" })).not.toBeInTheDocument();
+  }
+
+  it("comunidade: a pagina fala da comunidade, sem curriculo nem 'Lessons: 0'", async () => {
+    const { container, restore } = renderAs("community");
+    try {
+      await screen.findAllByText("$149.00");
+      expectNoCurriculum(container);
+      expect(
+        within(container.querySelector("#delivery") as HTMLElement).getByText(
+          "Members join the community: posts, answers and live calls.",
+        ),
+      ).toBeInTheDocument();
+      expect(screen.getByRole("link", { name: "What you get" })).toHaveAttribute("href", "#delivery");
+    } finally {
+      restore();
+    }
+  });
+
+  it("comunidade em espanhol", async () => {
+    fixtures.locale = "es";
+    const { restore } = renderAs("community");
+    try {
+      expect(
+        await screen.findByText(
+          "Los miembros entran a la comunidad: publicaciones, respuestas y encuentros en vivo.",
+        ),
+      ).toBeInTheDocument();
+    } finally {
+      restore();
+    }
+  });
+
+  it("e-book: um arquivo para baixar, mesmo com a aula do arquivo no produto", async () => {
+    const { container, restore } = renderAs("ebook", [
+      {
+        id: "module-1",
+        title: "Your file",
+        lessons: [{ id: "lesson-1", title: "Workbook", type: "download", description: "" }],
+      },
+    ]);
+    try {
+      await screen.findAllByText("$149.00");
+      expectNoCurriculum(container);
+      expect(screen.getByText("A file you download right after purchase.")).toBeInTheDocument();
+    } finally {
+      restore();
+    }
+  });
+
+  it("evento ao vivo: a data da sessao no fuso de quem ensina, com o fuso escrito", async () => {
+    vi.mocked(getLiveEventSession).mockResolvedValueOnce({
+      startsAt: "2026-11-20T22:30:00.000Z",
+      timeZone: "America/Sao_Paulo",
+    });
+    const { container, restore } = renderAs("live_event");
+    try {
+      expect(
+        await screen.findByText(/^Live session on November 20, 2026.*7:30\sPM GMT-3$/),
+      ).toBeInTheDocument();
+      expect(getLiveEventSession).toHaveBeenCalledWith("course-1");
+      expectNoCurriculum(container);
+    } finally {
+      restore();
+    }
+  });
+
+  it("evento ao vivo sem data conhecida diz que ela sera anunciada", async () => {
+    const { restore } = renderAs("live_event");
+    try {
+      expect(
+        await screen.findByText("Live session. The date will be announced here."),
+      ).toBeInTheDocument();
+    } finally {
+      restore();
+    }
+  });
+
+  it("curso segue com previa, curriculo e o numero de aulas", async () => {
+    const { container, restore } = renderAs("course", (fixtures.course as TeacherCourse).modules);
+    try {
+      await screen.findAllByText("$149.00");
+      expect(container.querySelector("#free-preview")).not.toBeNull();
+      expect(container.querySelector("#curriculum")).not.toBeNull();
+      expect(screen.getByText("Lessons")).toBeInTheDocument();
+      expect(container.querySelector("#delivery")).toBeNull();
+      expect(getLiveEventSession).not.toHaveBeenCalled();
+    } finally {
+      restore();
     }
   });
 });

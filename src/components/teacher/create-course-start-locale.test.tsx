@@ -36,6 +36,17 @@ beforeEach(() => {
 });
 afterEach(cleanup);
 
+// O evento ao vivo recusa data passada: o relogio fica parado num dia antes
+// das datas dos testes, que assim nao vencem.
+beforeEach(() => {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date("2026-10-01T12:00:00"));
+});
+afterEach(() => {
+  vi.useRealTimers();
+});
+
+
 describe("course creation with real EN/ES dictionaries", () => {
   it("localizes the two screens, the four types and the blockers", () => {
     expect(translate(getDictionary("es"), "courseCreation.title")).toBe("Crea un producto.");

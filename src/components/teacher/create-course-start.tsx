@@ -67,6 +67,9 @@ export function CreateCourseStart({ ownerId, initialFormat = "course" }: CreateC
   const [eventDate, setEventDate] = useState("");
   const [eventTime, setEventTime] = useState("");
   const [eventLink, setEventLink] = useState("");
+  // "Agora" amostrado na montagem (o render tem de ser puro, como na Agenda);
+  // o envio confere de novo com o relogio da hora.
+  const [now] = useState(() => Date.now());
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
   // Trocar de etapa leva o foco ao titulo da etapa nova, como a Agenda faz:
@@ -79,6 +82,9 @@ export function CreateCourseStart({ ownerId, initialFormat = "course" }: CreateC
   }, [step]);
   const isLiveEvent = productFormat === "live_event";
   const startsAt = eventDate && eventTime ? new Date(`${eventDate}T${eventTime}`) : null;
+  const startsAtValid = Boolean(startsAt && Number.isFinite(startsAt.getTime()));
+  // O dia de hoje no fuso de quem cria: o minimo do campo de data.
+  const today = new Date(now - new Date(now).getTimezoneOffset() * 60_000).toISOString().slice(0, 10);
   const linkIsValid = !eventLink.trim() || isValidExternalEventUrl(eventLink.trim());
   // Cada condicao que trava o envio, com o texto que diz o que fazer.
   const submitBlockers = [
@@ -87,7 +93,10 @@ export function CreateCourseStart({ ownerId, initialFormat = "course" }: CreateC
       ? null
       : t("courseCreation.summaryRequired"),
     selectedCategories.length > 0 ? null : t("courseCreation.categoryRequired"),
-    !isLiveEvent || (startsAt && Number.isFinite(startsAt.getTime())) ? null : t("courseCreation.whenRequired"),
+    !isLiveEvent || startsAtValid ? null : t("courseCreation.whenRequired"),
+    // Sessao no passado: o produto nasceria sem data para vender, e publicar
+    // recusa (publish_teacher_course so aceita sessao por vir).
+    !isLiveEvent || !startsAtValid || (startsAt?.getTime() ?? 0) > now ? null : t("courseCreation.whenPast"),
     !isLiveEvent || linkIsValid ? null : t("courseCreation.linkInvalid"),
   ].filter((item): item is string => item !== null);
   const canSubmit = submitBlockers.length === 0 && !isSaving;
@@ -124,6 +133,10 @@ export function CreateCourseStart({ ownerId, initialFormat = "course" }: CreateC
     }
 
     if (!canSubmit) {
+      return;
+    }
+    if (isLiveEvent && startsAt && startsAt.getTime() <= Date.now()) {
+      setError("courseCreation.whenPast");
       return;
     }
 
@@ -314,6 +327,7 @@ export function CreateCourseStart({ ownerId, initialFormat = "course" }: CreateC
                     {t("courseCreation.eventDate")}
                     <input
                       type="date"
+                      min={today}
                       value={eventDate}
                       onChange={(event) => setEventDate(event.target.value)}
                       className="min-h-11 rounded-md border border-[var(--color-field-border)] bg-white px-3.5 py-2.5 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"

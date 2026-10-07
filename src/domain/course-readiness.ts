@@ -86,6 +86,18 @@ export function countLessonFiles(
   ).length;
 }
 
+// Sessoes deste produto ainda de pe e por vir: a que ja passou nao se vende
+// (publish_teacher_course cobra o mesmo). Construtor e Manage leem daqui.
+export function upcomingSessionsOf<T extends { courseId: string; status: string; startsAt: string }>(
+  events: T[],
+  courseId: string,
+  now: number,
+): T[] {
+  return events.filter(
+    (event) => event.courseId === courseId && event.status === "scheduled" && Date.parse(event.startsAt) > now,
+  );
+}
+
 // Travas que nao sao do curso, sao do professor. So o Manage as conhecia; o
 // construtor deixava a pessoa clicar em Publish e descobrir pelo erro do
 // servidor. Opcional para quem nao tem o perfil carregado (ex.: testes puros).
