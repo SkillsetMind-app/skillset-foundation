@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { cookies, headers } from "next/headers";
+import { headers } from "next/headers";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Cormorant_Garamond, Inter, Manrope } from "next/font/google";
@@ -16,8 +16,6 @@ import { DEFAULT_LOCALE, LOCALE_HTML_LANG } from "@/lib/i18n/config";
 import { getDictionary } from "@/lib/i18n/dictionaries";
 import { getServerLocale, getServerTranslation } from "@/lib/i18n/server";
 import { SITE_URL } from "@/lib/seo/page-metadata";
-import { parseSidebarPref, SIDEBAR_COOKIE } from "@/lib/ui/sidebar-cookie";
-import { SidebarPreferenceProvider } from "@/lib/ui/sidebar-state";
 import "./globals.css";
 
 const manrope = Manrope({
@@ -76,15 +74,7 @@ export default async function RootLayout({
 }>) {
   // Há curso real publicado? Lido uma vez aqui (anônimo, cache de 5 min) para
   // as ilhas cliente que linkam a loja não buscarem nada no navegador.
-  const [locale, hasRealCourses, cookieStore] = await Promise.all([
-    getServerLocale(),
-    hasRealPublishedCourse(),
-    cookies(),
-  ]);
-  // Barra lateral aberta ou recolhida: lida aqui para o primeiro HTML ja sair
-  // como a pessoa deixou (sem piscar na carga). Sem cookie, o CSS decide pela
-  // largura da tela.
-  const sidebarPref = parseSidebarPref(cookieStore.get(SIDEBAR_COOKIE)?.value);
+  const [locale, hasRealCourses] = await Promise.all([getServerLocale(), hasRealPublishedCourse()]);
   const nonce = (await headers()).get("x-nonce") ?? undefined;
 
   return (
@@ -106,9 +96,7 @@ export default async function RootLayout({
             initialDictionary={locale === DEFAULT_LOCALE ? undefined : getDictionary(locale)}
           >
             <RealCoursesProvider value={hasRealCourses}>
-              <SidebarPreferenceProvider value={sidebarPref}>
-                <AuthProvider><LessonUploadProvider>{children}</LessonUploadProvider></AuthProvider>
-              </SidebarPreferenceProvider>
+              <AuthProvider><LessonUploadProvider>{children}</LessonUploadProvider></AuthProvider>
             </RealCoursesProvider>
             <CookieConsent />
           </I18nProvider>

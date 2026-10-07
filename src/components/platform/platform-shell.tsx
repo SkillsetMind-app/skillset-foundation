@@ -79,11 +79,15 @@ export function PlatformShell({
                 className={`platform-sidebar platform-sidebar-panel ${
                   isCollapsed ? "sidebar-collapsed" : "sidebar-expanded"
                 }`}
-                onMouseOver={placeSidebarTip}
-                onFocus={placeSidebarTip}
+                onMouseOver={(event) => placeSidebarTip(event, isCollapsed)}
+                onFocus={(event) => placeSidebarTip(event, isCollapsed)}
+                // A lista rolou: a dica ficaria parada no lugar velho. Some, e
+                // o próximo hover ou foco mede de novo.
+                onScrollCapture={(event) => hideSidebarTips(event.currentTarget)}
               >
                 <SidebarBrand
                   collapsed={isCollapsed}
+                  auto={isAuto}
                   href={getWorkspaceHomeHref(pathname, user)}
                 >
                   <SidebarToggle collapsed={isCollapsed} controls={navId} onToggle={toggle} />
@@ -169,28 +173,55 @@ export function PlatformShell({
 // A dica do rail recolhido (o nome do item) é `position: fixed`: a lista rola e
 // cortaria uma dica absoluta. O item diz onde ela fica, no hover e no foco; o
 // CSS só a mostra depois disto (seletor `[style]`). Uma medida por hover.
-function placeSidebarTip(event: SyntheticEvent) {
+// Uma dica por vez: medir um item apaga a medida dos outros, então o foco do
+// teclado num item e o mouse em outro não mostram duas. Aberta, só o ☰ tem dica.
+function placeSidebarTip(event: SyntheticEvent<HTMLElement>, collapsed: boolean) {
   const item = (event.target as Element).closest?.(".platform-nav-link");
   if (!(item instanceof HTMLElement)) return;
+  if (!collapsed && !item.classList.contains("platform-sidebar-toggle")) return;
+  hideSidebarTips(event.currentTarget, item);
   const box = item.getBoundingClientRect();
   item.style.setProperty("--tip-x", `${Math.round(box.right + 16)}px`);
   item.style.setProperty("--tip-y", `${Math.round(box.top + box.height / 2)}px`);
 }
 
-// O ☰ e a marca. Recolhida, só o ☰: o rail da Hotmart, e a linha tem a mesma
-// altura nos dois estados (os ícones abaixo não pulam ao recolher).
+// Sem `style`, o CSS não mostra a dica. Nenhum item da barra tem outro estilo
+// em linha: só esta medida.
+function hideSidebarTips(sidebar: HTMLElement, keep?: Element) {
+  sidebar.querySelectorAll(".platform-nav-link[style]").forEach((item) => {
+    if (item !== keep) item.removeAttribute("style");
+  });
+}
+
+// O ☰ e a marca. Recolhida, a marca larga sai. A pequena só aparece de 768 a
+// 1023px (CSS), onde o ☰ some e a barra do topo ainda não tem logo: o rail não
+// fica sem marca nem sem caminho para a home. Sem escolha salva ela já vem no
+// HTML do servidor, para o 1º quadro do tablet ter a marca. Sem `priority`:
+// onde está escondida, o navegador não a baixa.
 function SidebarBrand({
   collapsed,
+  auto,
   href,
   children,
 }: {
   collapsed: boolean;
+  auto: boolean;
   href: string;
   children: ReactNode;
 }) {
   return (
     <div className="platform-sidebar-brand">
       {children}
+      {collapsed || auto ? (
+        <LogoWordmark
+          href={href}
+          nav
+          variant="mark"
+          tone="dark"
+          priority={false}
+          className="platform-sidebar-brand__mark"
+        />
+      ) : null}
       {collapsed ? null : (
         <LogoWordmark
           href={href}

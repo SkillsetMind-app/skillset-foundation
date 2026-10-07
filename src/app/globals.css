@@ -2779,6 +2779,17 @@ select:focus-visible {
   padding: 0.125rem 0.25rem 1rem;
 }
 
+/* A marca pequena só aparece de 768 a 1023px (bloco do tablet), onde o ☰
+   some: acima disso o rail mostra o ☰ no lugar dela. */
+.platform-sidebar-brand__mark {
+  display: none;
+}
+
+.platform-sidebar-brand__mark img {
+  width: 2rem;
+  height: 2rem;
+}
+
 /* Rail recolhido: o ☰ centra no mesmo eixo dos icones. Antes a marca ficava
    encostada a esquerda (flex sem justify + 4px de padding) enquanto cada
    icone abaixo e um quadrado centrado nos 64px — parecia deslocada. */
@@ -7186,6 +7197,7 @@ button:hover > .dash-card,
     min-height: 44px;
     margin-inline: 0;
     padding-inline: 0 !important;
+    border-bottom-color: transparent;
   }
 
   .platform-grid--auto:not(.platform-grid--collapsed) :is(.platform-nav-section, .platform-nav-footer) {
@@ -7194,6 +7206,35 @@ button:hover > .dash-card,
 
   .platform-grid--auto .platform-sidebar:not(.sidebar-collapsed) .platform-menu-icon path:is(:first-child, :last-child) {
     transform: none;
+  }
+
+  /* ...e o 1º quadro já é o rail que o JS vai desenhar: o ativo é o quadrado
+     branco de 44px, os ícones sem caixinha e a calha da rolagem reservada
+     (sem ela os ícones andam ~5px no Windows quando o JS monta). */
+  .platform-grid--auto:not(.platform-grid--collapsed) .platform-sidebar-nav {
+    scrollbar-gutter: stable;
+  }
+
+  .platform-grid--auto:not(.platform-grid--collapsed) .platform-nav-icon-chip {
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+
+  .platform-grid--auto:not(.platform-grid--collapsed) .platform-nav-link:is(.platform-nav-active, .platform-nav-section-active) {
+    width: 44px;
+    margin-inline: auto;
+    border-color: transparent !important;
+    background: #ffffff !important;
+    box-shadow: none !important;
+  }
+
+  .platform-grid--auto:not(.platform-grid--collapsed) .platform-nav-link:is(.platform-nav-active, .platform-nav-section-active) svg {
+    color: #102a43 !important;
+    opacity: 1;
+  }
+
+  .platform-grid--auto:not(.platform-grid--collapsed) .platform-nav-active::before {
+    content: none;
   }
 }
 
@@ -7217,6 +7258,62 @@ button:hover > .dash-card,
 
   .platform-sidebar .platform-sidebar-toggle {
     display: none;
+  }
+
+  /* No lugar do ☰, a marca pequena: o rail não começa com uma faixa vazia e
+     a home continua a um clique (a barra do topo só tem logo abaixo de 768). */
+  .platform-sidebar-brand__mark {
+    display: inline-flex;
+  }
+
+  /* Com o cookie "expanded" o servidor manda a barra aberta, mas aqui ela é o
+     rail mesmo assim: as regras da faixa média valem para qualquer grade não
+     recolhida. Nada vaza dos 64px (a marca larga passava por cima da barra do
+     topo) e o 1º quadro já é o rail. */
+  .platform-grid:not(.platform-grid--collapsed) .platform-sidebar-panel {
+    padding-inline: 0;
+  }
+
+  .platform-grid:not(.platform-grid--collapsed) :is(.platform-nav-section-items, .platform-nav-section-chevron, .platform-sidebar-brand__lockup-link) {
+    display: none;
+  }
+
+  .platform-grid:not(.platform-grid--collapsed) :is(.platform-sidebar-brand, .platform-nav-link) {
+    justify-content: center;
+    min-height: 44px;
+    margin-inline: 0;
+    padding-inline: 0 !important;
+    border-bottom-color: transparent;
+  }
+
+  .platform-grid:not(.platform-grid--collapsed) :is(.platform-nav-section, .platform-nav-footer) {
+    gap: inherit;
+  }
+
+  .platform-grid:not(.platform-grid--collapsed) .platform-sidebar-nav {
+    scrollbar-gutter: stable;
+  }
+
+  .platform-grid:not(.platform-grid--collapsed) .platform-nav-icon-chip {
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+
+  .platform-grid:not(.platform-grid--collapsed) .platform-nav-link:is(.platform-nav-active, .platform-nav-section-active) {
+    width: 44px;
+    margin-inline: auto;
+    border-color: transparent !important;
+    background: #ffffff !important;
+    box-shadow: none !important;
+  }
+
+  .platform-grid:not(.platform-grid--collapsed) .platform-nav-link:is(.platform-nav-active, .platform-nav-section-active) svg {
+    color: #102a43 !important;
+    opacity: 1;
+  }
+
+  .platform-grid:not(.platform-grid--collapsed) .platform-nav-active::before {
+    content: none;
   }
 }
 

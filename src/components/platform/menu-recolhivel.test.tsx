@@ -9,7 +9,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { I18nProvider } from "@/components/i18n/i18n-provider";
 import { PlatformShell } from "@/components/platform/platform-shell";
 import { parseSidebarPref, SIDEBAR_COOKIE, type SidebarPref } from "@/lib/ui/sidebar-cookie";
-import { SidebarPreferenceProvider } from "@/lib/ui/sidebar-state";
+import { SidebarPreferenceProvider } from "@/lib/ui/sidebar-preference";
 
 // Onda E, parte 2: menu lateral recolhível no estilo da Hotmart. Aberto, ícone
 // e nome; fechado, só o ícone, com o nome de dica no hover e no foco. A
@@ -126,10 +126,17 @@ describe("a escolha vem do cookie, lida no servidor", () => {
     host.remove();
   });
 
-  it("o layout raiz lê o cookie e entrega ao provider; valor estranho vale como 'sem escolha'", () => {
-    const layout = readFileSync(path.join(process.cwd(), "src/app/layout.tsx"), "utf8");
-    expect(layout).toContain("parseSidebarPref(cookieStore.get(SIDEBAR_COOKIE)?.value)");
-    expect(layout).toContain("<SidebarPreferenceProvider value={sidebarPref}>");
+  it("só as áreas logadas leem o cookie; valor estranho vale como 'sem escolha'", () => {
+    const read = (file: string) => readFileSync(path.join(process.cwd(), file), "utf8");
+    // O layout raiz envolve a home e as páginas públicas: nada da barra nele.
+    const root = read("src/app/layout.tsx");
+    expect(root).not.toMatch(/@\/lib\/ui\/sidebar|sidebar-preference|SidebarPreference/);
+    expect(read("src/components/platform/sidebar-preference-layout.tsx")).toContain(
+      "parseSidebarPref((await cookies()).get(SIDEBAR_COOKIE)?.value)",
+    );
+    for (const area of ["account", "learn", "ops", "support", "teach"]) {
+      expect(read(`src/app/${area}/layout.tsx`), area).toContain("@/components/platform/sidebar-preference-layout");
+    }
     expect(parseSidebarPref("collapsed")).toBe("collapsed");
     expect(parseSidebarPref("expanded")).toBe("expanded");
     expect(parseSidebarPref("open")).toBeNull();
@@ -330,5 +337,199 @@ describe("movimento leve, e nenhum com 'reduzir movimento'", () => {
     const outside = blocks.reduce((rest, block) => rest.replace(block, ""), css);
     expect(outside).not.toMatch(/\.platform-sidebar-label \{[^}]*transition/);
     expect(outside).not.toMatch(/\.platform-menu-icon path \{[^}]*transition/);
+  });
+});
+
+// ─── Segunda rodada: consertos da revisão do PR ─────────────────────────────
+
+const MEDIUM = "(min-width: 768px) and (width < 1180px)";
+const TABLET = "(min-width: 768px) and (width < 1024px)";
+
+function mediaBlock(query: string) {
+  const start = css.indexOf(`@media ${query} {`);
+  expect(start, query).toBeGreaterThan(-1);
+  return css.slice(start, css.indexOf("\n}\n", start));
+}
+
+/** O corpo `{ ... }` da regra com exatamente este seletor, dentro de `scope`. */
+function ruleBody(scope: string, selector: string) {
+  const at = scope.indexOf(`${selector} {`);
+  expect(at, selector).toBeGreaterThan(-1);
+  return scope.slice(scope.indexOf("{", at), scope.indexOf("}", at) + 1);
+}
+
+function serverRender(pref: SidebarPref) {
+  const host = document.createElement("div");
+  host.innerHTML = renderToString(
+    <SidebarPreferenceProvider value={pref}>{shell()}</SidebarPreferenceProvider>,
+  );
+  return host;
+}
+
+describe("tablet: a marca volta ao topo do rail", () => {
+  it("recolhida, a linha do topo tem o ☰ e a marca pequena, que leva à home sem pré-carga", () => {
+    const html = serverRender("collapsed");
+    const brand = html.querySelector(".platform-sidebar-brand")!;
+    const mark = brand.querySelector("a.platform-sidebar-brand__mark")!;
+    expect(mark).toHaveAttribute("href", "/teach");
+    expect(mark).toHaveAccessibleName("SkillsetMind");
+    for (const img of mark.querySelectorAll("img")) expect(img).toHaveAttribute("loading", "lazy");
+    expect(brand.querySelector(".platform-sidebar-toggle")).not.toBeNull();
+    expect(brand.querySelector(".platform-sidebar-brand__lockup-link")).toBeNull();
+  });
+
+  it("sem escolha salva a marca pequena já vem no HTML do servidor (1º quadro do tablet); aberta por escolha, não", () => {
+    expect(serverRender(null).querySelector(".platform-sidebar-brand__mark")).not.toBeNull();
+    expect(serverRender("expanded").querySelector(".platform-sidebar-brand__mark")).toBeNull();
+  });
+
+  it("no CSS, a marca só aparece de 768 a 1023px, onde o ☰ some: os dois nunca dividem a linha", () => {
+    expect(css).toMatch(/\n\.platform-sidebar-brand__mark \{\s*display: none;\s*\}/);
+    expect(css).toMatch(/\n\.platform-sidebar-brand__mark img \{\s*width: 2rem;\s*height: 2rem;\s*\}/);
+    const tablet = mediaBlock(TABLET);
+    expect(ruleBody(tablet, "  .platform-sidebar-brand__mark")).toMatch(/display: inline-flex;/);
+    expect(ruleBody(tablet, "  .platform-sidebar .platform-sidebar-toggle")).toMatch(/display: none;/);
+    // Em nenhum outro lugar a marca acende (acima de 1023px o ☰ ocupa a linha).
+    expect(css.match(/\.platform-sidebar-brand__mark \{/g)).toHaveLength(2);
+  });
+});
+
+describe("1024–1179px sem escolha: o 1º quadro já é o rail que o JS desenha", () => {
+  const auto = ".platform-grid--auto:not(.platform-grid--collapsed)";
+
+  it("ativo em quadrado branco de 44px, ícones sem caixinha, sem filete e calha da rolagem reservada", () => {
+    const medium = mediaBlock(MEDIUM);
+    const active = ruleBody(medium, `  ${auto} .platform-nav-link:is(.platform-nav-active, .platform-nav-section-active)`);
+    expect(active).toMatch(/width: 44px;/);
+    expect(active).toMatch(/margin-inline: auto;/);
+    expect(active).toMatch(/background: #ffffff !important;/);
+    expect(ruleBody(medium, `  ${auto} .platform-nav-link:is(.platform-nav-active, .platform-nav-section-active) svg`))
+      .toMatch(/color: #102a43 !important;/);
+    expect(ruleBody(medium, `  ${auto} .platform-nav-active::before`)).toMatch(/content: none;/);
+    const chip = ruleBody(medium, `  ${auto} .platform-nav-icon-chip`);
+    expect(chip).toMatch(/background: transparent !important;/);
+    expect(chip).toMatch(/box-shadow: none !important;/);
+    expect(ruleBody(medium, `  ${auto} .platform-sidebar-nav`)).toMatch(/scrollbar-gutter: stable;/);
+  });
+
+  it("é o mesmo desenho do rail recolhido, e vence o gatilho ativo (mesma especificidade, vem depois)", () => {
+    expect(css).toMatch(/\.platform-sidebar\.sidebar-collapsed \.platform-nav-link\.platform-nav-active \{\s*background: #ffffff !important;/);
+    expect(css).toMatch(/\.platform-sidebar\.sidebar-collapsed \.platform-sidebar-nav \{[^}]*scrollbar-gutter: stable;/);
+    expect(css.indexOf(`${auto} .platform-nav-link:is(.platform-nav-active`)).toBeGreaterThan(
+      css.indexOf(".platform-sidebar .platform-nav-link.platform-nav-section-trigger.platform-nav-section-active"),
+    );
+  });
+});
+
+describe("tablet com o cookie 'expanded': o HTML do servidor já é o rail", () => {
+  // As regras da faixa média valem, no tablet, para QUALQUER grade não
+  // recolhida — não só sem cookie. Mesmo corpo, seletor mais largo.
+  const suffixes = [
+    " .platform-sidebar-panel",
+    " :is(.platform-nav-section-items, .platform-nav-section-chevron, .platform-sidebar-brand__lockup-link)",
+    " :is(.platform-sidebar-brand, .platform-nav-link)",
+    " :is(.platform-nav-section, .platform-nav-footer)",
+    " .platform-sidebar-nav",
+    " .platform-nav-icon-chip",
+    " .platform-nav-link:is(.platform-nav-active, .platform-nav-section-active)",
+    " .platform-nav-link:is(.platform-nav-active, .platform-nav-section-active) svg",
+    " .platform-nav-active::before",
+  ];
+
+  it.each(suffixes)("%s: mesma regra da faixa média, para .platform-grid:not(.platform-grid--collapsed)", (suffix) => {
+    const medium = ruleBody(mediaBlock(MEDIUM), `  .platform-grid--auto:not(.platform-grid--collapsed)${suffix}`);
+    const tablet = ruleBody(mediaBlock(TABLET), `  .platform-grid:not(.platform-grid--collapsed)${suffix}`);
+    expect(tablet).toBe(medium);
+  });
+
+  it("a marca larga e os itens dos grupos somem: nada vaza por cima da barra do topo", () => {
+    const hide = ruleBody(
+      mediaBlock(TABLET),
+      "  .platform-grid:not(.platform-grid--collapsed) :is(.platform-nav-section-items, .platform-nav-section-chevron, .platform-sidebar-brand__lockup-link)",
+    );
+    expect(hide).toMatch(/display: none;/);
+    // E o servidor manda mesmo a marca larga nesse caso (é o que precisava sumir).
+    expect(serverRender("expanded").querySelector(".platform-sidebar-brand__lockup-link")).not.toBeNull();
+  });
+});
+
+describe("a dica do rail: uma por vez, e some quando a lista rola", () => {
+  function tipped() {
+    return sidebar().querySelectorAll(".platform-nav-link[style]");
+  }
+
+  it("o mouse num item apaga a dica do item com foco do teclado (e vice-versa)", () => {
+    setCookie("collapsed");
+    render(shell());
+    const students = screen.getByRole("link", { name: "Students" });
+    const inbox = screen.getByRole("link", { name: "Inbox" });
+    fireEvent.focus(inbox);
+    expect(inbox).toHaveAttribute("style");
+    fireEvent.mouseOver(students);
+    expect(students).toHaveAttribute("style");
+    expect(inbox).not.toHaveAttribute("style");
+    expect(tipped()).toHaveLength(1);
+    fireEvent.focus(inbox);
+    expect(students).not.toHaveAttribute("style");
+    expect(tipped()).toHaveLength(1);
+  });
+
+  it("rolar a lista apaga a dica (ela ficaria parada no lugar velho)", () => {
+    setCookie("collapsed");
+    render(shell());
+    fireEvent.mouseOver(screen.getByRole("link", { name: "Students" }));
+    expect(tipped()).toHaveLength(1);
+    fireEvent.scroll(screen.getByRole("navigation", { name: "Workspace" }));
+    expect(tipped()).toHaveLength(0);
+  });
+
+  it("aberta, passar o mouse num item não mede nada; só o ☰ (a única dica aberta) mede", () => {
+    render(shell());
+    expect(sidebar()).toHaveClass("sidebar-expanded");
+    const nav = screen.getByRole("navigation", { name: "Workspace" });
+    for (const item of within(nav).getAllByRole("link")) {
+      fireEvent.mouseOver(item);
+      fireEvent.focus(item);
+    }
+    expect(tipped()).toHaveLength(0);
+    fireEvent.mouseOver(toggleButton());
+    expect(toggleButton().style.getPropertyValue("--tip-x")).toMatch(/^\d+px$/);
+  });
+});
+
+describe("a Ajuda do rail depois da gaveta", () => {
+  it("fechar a gaveta não deixa a Ajuda do rail dizendo 'expandida'", () => {
+    viewport(1100);
+    render(shell());
+    const help = within(sidebar() as HTMLElement).getByRole("button", { name: "Help" });
+    fireEvent.click(help);
+    const drawer = screen.getByRole("dialog", { name: "Platform navigation" });
+    expect(within(drawer).getByRole("dialog", { name: "What do you need help with?" })).toBeInTheDocument();
+    fireEvent.click(within(drawer).getByRole("button", { name: "Close navigation" }));
+    expect(screen.queryByRole("dialog", { name: "Platform navigation" })).toBeNull();
+    expect(help).toHaveAttribute("aria-expanded", "false");
+  });
+});
+
+describe("a chave velha do localStorage", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    localStorage.clear();
+  });
+
+  it("é apagada quando o módulo da barra chega ao navegador", async () => {
+    localStorage.setItem("skillset_sidebar_state", "collapsed");
+    vi.resetModules();
+    const fresh = await import("@/lib/ui/sidebar-state");
+    expect(fresh.LEGACY_SIDEBAR_KEY).toBe("skillset_sidebar_state");
+    expect(localStorage.getItem("skillset_sidebar_state")).toBeNull();
+  });
+
+  it("armazenamento bloqueado não derruba a página", async () => {
+    vi.spyOn(Storage.prototype, "removeItem").mockImplementation(() => {
+      throw new DOMException("blocked", "SecurityError");
+    });
+    vi.resetModules();
+    await expect(import("@/lib/ui/sidebar-state")).resolves.toHaveProperty("useSidebarState");
   });
 });

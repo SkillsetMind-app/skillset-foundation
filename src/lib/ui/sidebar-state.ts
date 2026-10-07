@@ -1,14 +1,9 @@
 "use client";
 
-import {
-  createContext,
-  createElement,
-  useContext,
-  useSyncExternalStore,
-  type ReactNode,
-} from "react";
+import { useContext, useSyncExternalStore } from "react";
 
 import { parseSidebarPref, SIDEBAR_COOKIE, type SidebarPref } from "@/lib/ui/sidebar-cookie";
+import { SidebarPrefContext } from "@/lib/ui/sidebar-preference";
 
 /** 768–1023px: sempre o rail. Aberta, a barra deixaria ~465px de conteúdo e a
  *  barra do topo não cabe (conta em src/app/barra-do-topo-cabe.test.ts). */
@@ -16,25 +11,22 @@ const TABLET_QUERY = "(min-width: 768px) and (width < 1024px)";
 /** 1024–1179px: o rail é o padrão de quem nunca escolheu; quem abriu fica aberto. */
 const LAPTOP_QUERY = "(min-width: 1024px) and (width < 1180px)";
 
-const SidebarPrefContext = createContext<SidebarPref>(null);
+/** Onde a escolha morava antes do cookie. */
+export const LEGACY_SIDEBAR_KEY = "skillset_sidebar_state";
 
-/**
- * O layout raiz lê o cookie no servidor e entrega aqui: o primeiro HTML já sai
- * com a barra como a pessoa deixou, sem piscar.
- */
-export function SidebarPreferenceProvider({
-  value,
-  children,
-}: {
-  value: SidebarPref;
-  children: ReactNode;
-}) {
-  return createElement(SidebarPrefContext.Provider, { value }, children);
+// A chave velha não é lida (o cookie a substituiu); só é apagada, uma vez por
+// carga, quando este módulo chega ao navegador.
+if (typeof window !== "undefined") {
+  try {
+    window.localStorage.removeItem(LEGACY_SIDEBAR_KEY);
+  } catch {
+    // ponytail: armazenamento bloqueado (iframe isolado, modo privado): nada a apagar.
+  }
 }
 
 // O cookie é a fonte da escolha. No servidor (e na hidratação) vale o valor que
-// o layout leu; no navegador, o próprio cookie — o layout não roda de novo
-// numa navegação, e cada página monta o seu PlatformShell.
+// o layout da área logada leu; no navegador, o próprio cookie — o layout não
+// roda de novo numa navegação, e cada página monta o seu PlatformShell.
 const listeners = new Set<() => void>();
 const cookiePattern = new RegExp(`(?:^|;\\s*)${SIDEBAR_COOKIE}=([^;]*)`);
 

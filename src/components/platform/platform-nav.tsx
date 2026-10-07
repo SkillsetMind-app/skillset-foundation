@@ -254,7 +254,9 @@ export function PlatformNav({
         variant="nav"
         side={context === "teacher" ? "teacher" : "student"}
         collapsed={collapsed}
-        open={expandedSections.includes("help")}
+        // Recolhida, a Ajuda não abre no lugar (abre a barra ou a gaveta),
+        // como os grupos: não diz "expandida" depois que a gaveta fecha.
+        open={!collapsed && expandedSections.includes("help")}
         onOpenChange={() => toggleSection("help")}
         autoFocus={initialSection === "help"}
       />
