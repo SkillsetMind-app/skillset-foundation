@@ -154,13 +154,19 @@ select pg_temp.check_gate('community without lessons publishes',
 -- Live event: the session is the content.
 select pg_temp.check_gate('live event without a session is refused',
   pg_temp.refused(pg_temp.publish((select id from drafts where format = 'live_event')), :'session_message'));
--- A session that already happened does not count.
+-- A session that already happened does not count. Since 20261007020000 the
+-- owner cannot write a past live-event session, so service_role stands in for
+-- one whose date has passed.
+reset role;
+select pg_temp.act_as(null, 'service_role');
 insert into public.course_events(id, course_id, course_slug, course_title, owner_id, title,
   description, type, status, starts_at, external_url, recording_asset_id)
 select 'smoke-product-format-past', d.id, d.id, 'Smoke product format live_event',
   pg_temp.uid(1)::text, 'Smoke product format live_event', '', 'live_class', 'scheduled',
   to_char((now() - interval '1 day') at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'), '', null
 from drafts d where d.format = 'live_event';
+select pg_temp.act_as(pg_temp.uid(1), 'authenticated');
+set local role authenticated;
 select pg_temp.check_gate('live event with only a past session is refused',
   pg_temp.refused(pg_temp.publish((select id from drafts where format = 'live_event')), :'session_message'));
 -- Inserted by the owner, as the creation screen does (the link can wait).
