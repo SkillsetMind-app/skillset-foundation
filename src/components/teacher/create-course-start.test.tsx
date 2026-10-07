@@ -291,3 +291,26 @@ describe("CreateCourseStart — tela 2 grava o tipo", () => {
     expect(screen.queryByText(/promise/i)).not.toBeInTheDocument();
   });
 });
+
+// A criacao pergunta so o tipo e o nome. "Como as pessoas vao pagar?" e uma
+// pergunta so, feita uma vez, na etapa de preco do construtor.
+describe("CreateCourseStart — sem pergunta de pagamento", () => {
+  it.each(["Course", "Community", "Live event", "E-book"])("%s: nenhuma das duas telas pergunta como pagar", (card) => {
+    render(<CreateCourseStart ownerId="teacher-1" />);
+    // A frase de apoio da tela 1 pode dizer que isso se decide em Preco; o
+    // que nao pode existir e a pergunta, nem um botao ou campo para responder.
+    const asksToPay = /how will people pay|how often to charge|charge every|billing interval|payment model/i;
+    const answersPayment = /free|paid|one payment|monthly|yearly|subscription/i;
+    const paymentControls = () => [
+      ...screen.queryAllByRole("button").filter((button) => answersPayment.test(button.textContent ?? "") && !/^(Course|Community|Live event|E-book)/.test(button.textContent ?? "")),
+      ...screen.queryAllByRole("radio"),
+      ...screen.queryAllByRole("checkbox"),
+    ];
+
+    expect(screen.queryByText(asksToPay)).toBeNull();
+    expect(paymentControls()).toEqual([]);
+    fireEvent.click(screen.getByRole("button", { name: new RegExp(`^${card}`) }));
+    expect(screen.queryByText(asksToPay)).toBeNull();
+    expect(paymentControls()).toEqual([]);
+  });
+});

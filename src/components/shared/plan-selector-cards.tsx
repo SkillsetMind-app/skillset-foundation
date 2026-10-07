@@ -85,22 +85,24 @@ export function PlanSelectorCards<TValue extends string>({
                 </span>
               ) : null}
 
-              <span className="block border-t border-[var(--color-line)] pt-4">
-                <span className="grid gap-2">
-                  {option.features.map((feature) => (
-                    <span
-                      key={feature}
-                      className="flex items-start gap-2 text-sm leading-6 text-[var(--color-ink)]"
-                    >
+              {option.features.length ? (
+                <span className="block border-t border-[var(--color-line)] pt-4">
+                  <span className="grid gap-2">
+                    {option.features.map((feature) => (
                       <span
-                        aria-hidden="true"
-                        className="mt-2 size-1.5 rounded-full bg-[var(--color-success)]"
-                      />
-                      {feature}
-                    </span>
-                  ))}
+                        key={feature}
+                        className="flex items-start gap-2 text-sm leading-6 text-[var(--color-ink)]"
+                      >
+                        <span
+                          aria-hidden="true"
+                          className="mt-2 size-1.5 rounded-full bg-[var(--color-success)]"
+                        />
+                        {feature}
+                      </span>
+                    ))}
+                  </span>
                 </span>
-              </span>
+              ) : null}
             </button>
           );
         })}

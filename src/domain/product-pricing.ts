@@ -2,7 +2,12 @@
  * Dual-read pricing: legacy course columns OR future offer/price rows.
  * ponytail: no DB tables required yet — pure resolution for checkout/UI.
  */
-import type { TeacherCourse, TeacherCoursePaymentType } from "@/domain/teacher-course";
+import {
+  paymentTypeFitsFormat,
+  type TeacherCourse,
+  type TeacherCourseProductFormat,
+  type TeacherCoursePaymentType,
+} from "@/domain/teacher-course";
 
 export type ProductPrice = {
   id: string;
@@ -157,4 +162,44 @@ export function getCoursePricingShape(
         ? null
         : Math.max(1, Math.round(Number(course.installmentsMax ?? 1))),
   };
+}
+
+/**
+ * "Como as pessoas vao pagar?": uma pergunta, tres cartoes. O cartao e so a
+ * leitura do `paymentType` gravado; nada muda no banco. Mensalidade cobre o
+ * mensal e o anual: um produto antigo que cobra uma vez por ano continua
+ * assim, dentro do mesmo cartao.
+ */
+export type PaymentChoice = "free" | "one_payment" | "membership";
+
+const paymentChoiceOrder: readonly PaymentChoice[] = ["free", "one_payment", "membership"];
+
+export function paymentChoiceOf(paymentType: TeacherCoursePaymentType): PaymentChoice {
+  if (paymentType === "free") return "free";
+  return paymentType === "one_time" ? "one_payment" : "membership";
+}
+
+/** O que gravar ao escolher o cartao. Mensalidade nasce mensal. */
+export function paymentTypeOfChoice(choice: PaymentChoice): TeacherCoursePaymentType {
+  if (choice === "free") return "free";
+  return choice === "one_payment" ? "one_time" : "subscription_monthly";
+}
+
+/**
+ * Os cartoes de cada tipo, na ordem da tela. O cartao ja gravado aparece
+ * mesmo fora da lista (produto criado antes da regra): a tela mostra o que o
+ * produto e, e publicar pede para trocar.
+ */
+export function paymentChoicesFor(
+  format: TeacherCourseProductFormat,
+  current?: PaymentChoice,
+): PaymentChoice[] {
+  return paymentChoiceOrder.filter(
+    (choice) => choice === current || paymentTypeFitsFormat(format, paymentTypeOfChoice(choice)),
+  );
+}
+
+/** Quanto o plano anual poupa diante de 12 mensalidades. Zero ou menos: nao poupa. */
+export function yearlySavingMinor(monthlyMinor: number, yearlyMinor: number): number {
+  return monthlyMinor * 12 - yearlyMinor;
 }

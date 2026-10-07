@@ -6,7 +6,7 @@ import type { FormEvent } from "react";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { CourseShareLink } from "@/components/teacher/course-share-link";
 import { CurrencySelect } from "@/components/teacher/currency-select";
-import type { CoursePricingShape } from "@/domain/product-pricing";
+import { paymentChoiceOf, type CoursePricingShape } from "@/domain/product-pricing";
 import type { TeacherCoursePaymentType } from "@/domain/teacher-course";
 
 type OfferPrice = {
@@ -50,6 +50,23 @@ function money(amountMinor: number, currency: string): string {
   }
 }
 
+// "Adicionar outro preco" fica dentro da forma de pagar escolhida em Preco,
+// em vez de ser um segundo "Payment type" que podia contradizer a etapa de
+// preco: pagamento unico ganha outro valor; mensalidade, outro mensal ou o
+// plano anual; gratis nao tem outro preco. Sem o preco do curso (chamada
+// antiga), as quatro formas continuam.
+function paymentTypesFor(coursePricing?: CoursePricingShape): TeacherCoursePaymentType[] {
+  if (!coursePricing) {
+    return ["one_time", "subscription_monthly", "subscription_yearly", "free"];
+  }
+  if (coursePricing.free) {
+    return [];
+  }
+  return paymentChoiceOf(coursePricing.paymentType ?? "one_time") === "membership"
+    ? ["subscription_monthly", "subscription_yearly"]
+    : ["one_time"];
+}
+
 /**
  * Hotmart-style multi-offer list for a course.
  * Creates offer+price packages consumed by dual-read checkout.
@@ -58,12 +75,17 @@ export function CourseOffersPanel({
   courseId,
   courseTitle,
   coursePricing,
+  prefill,
 }: {
   courseId: string;
   courseTitle: string;
   /** Como o curso cobra hoje: e daqui que a primeira oferta nasce. */
   coursePricing?: CoursePricingShape;
+  /** "Adicionar o plano anual" da etapa de preco: o formulario ja abre assim. */
+  prefill?: { paymentType: TeacherCoursePaymentType; amountMinor: number } | null;
 }) {
+  const paymentTypes = paymentTypesFor(coursePricing);
+  const startWith = prefill && paymentTypes.includes(prefill.paymentType) ? prefill : null;
   const { t } = useTranslation();
   // `t` fica fora das dependencias dos efeitos: com ele la, um provider que
   // devolva funcao nova por render reinscreve tudo em laco (a suite do CI
@@ -77,24 +99,38 @@ export function CourseOffersPanel({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
-  const [name, setName] = useState(() => t("creatorPanel.offers.defaultName"));
+  const [name, setName] = useState(() =>
+    t(
+      startWith?.paymentType === "subscription_yearly"
+        ? "creatorPanel.offers.yearlyName"
+        : "creatorPanel.offers.defaultName",
+    ),
+  );
   // O formulario nascia com 97 USD avulso mesmo num curso gratuito ou por
   // assinatura: a tela pedia para confirmar um preco que nao era o do curso.
   // Semente unica, no primeiro render — reagir a cada mudanca do curso
   // apagaria o que a pessoa ja estivesse digitando.
   const [amount, setAmount] = useState(() =>
-    coursePricing ? String(coursePricing.amountMinor / 100) : "97",
+    startWith
+      ? String(startWith.amountMinor / 100)
+      : coursePricing
+        ? String(coursePricing.amountMinor / 100)
+        : "97",
   );
   const [currency, setCurrency] = useState(coursePricing?.currency || "USD");
   const [paymentType, setPaymentType] = useState<TeacherCoursePaymentType>(
-    () => coursePricing?.paymentType ?? (coursePricing?.free ? "free" : "one_time"),
+    () =>
+      startWith?.paymentType
+      ?? coursePricing?.paymentType
+      ?? (coursePricing?.free ? "free" : "one_time"),
   );
-  const [isDefault, setIsDefault] = useState(true);
+  // O plano anual e um preco a mais: nao toma o lugar do mensal na pagina.
+  const [isDefault, setIsDefault] = useState(!startWith);
   const [publicCode, setPublicCode] = useState("");
   // Com oferta na mesa, a tabela e o assunto; criar outra e uma acao, nao o
   // primeiro que a pessoa ve. Sem nenhuma, o formulario aberto guia melhor que
   // uma tabela vazia.
-  const [creating, setCreating] = useState(false);
+  const [creating, setCreating] = useState(Boolean(startWith));
 
   const paymentTypeLabel = (value: string) =>
     KNOWN_PAYMENT_TYPES.has(value)
@@ -102,8 +138,12 @@ export function CourseOffersPanel({
       : value.replaceAll("_", " ");
 
   const hasOffers = !loading && offers.length > 0;
+  const canAddPrice = paymentTypes.length > 0;
   // Sem nenhuma oferta o formulario segue aberto: vazio guiado bate tabela vazia.
-  const formOpen = creating || (!loading && offers.length === 0);
+  const formOpen = canAddPrice && (creating || (!loading && offers.length === 0));
+  // Sem preco principal, o checkout usa o primeiro preco ativo daqui
+  // (resolveCoursePrice). Quem adiciona um preco a mais precisa saber disso.
+  const hasMainPrice = offers.some((offer) => offer.isDefault && offer.active);
 
   const reload = useCallback(async () => {
     setLoading(true);
@@ -195,7 +235,12 @@ export function CourseOffersPanel({
       {/* Com oferta criada, o formulario empurrava a lista real para baixo:
           quem ja precificou vem aqui para conferir ou copiar link, nao para
           criar de novo. */}
-      {hasOffers ? (
+      {canAddPrice ? null : (
+        <p className="mt-1 text-sm leading-6 text-[var(--color-ink-soft)]">
+          {t("creatorPanel.offers.free")}
+        </p>
+      )}
+      {hasOffers && canAddPrice ? (
         <div className="mt-4 flex justify-end">
           <button
             type="button"
@@ -259,11 +304,11 @@ export function CourseOffersPanel({
             );
           })}
         </ul>
-      ) : (
+      ) : canAddPrice ? (
         <p className="mt-4 text-sm text-[var(--color-ink-soft)]">
           {t("creatorPanel.offers.empty")}
         </p>
-      )}
+      ) : null}
 
       {formOpen ? (
         <form onSubmit={(e) => void handleCreate(e)} className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -321,29 +366,28 @@ export function CourseOffersPanel({
               aria-label={t("creatorPanel.offers.currency")}
             />
           </label>
-          <label className="flex flex-col gap-1.5">
-            <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--color-ink-soft)]">
-              {t("creatorPanel.offers.paymentType")}
-            </span>
-            <select
-              value={paymentType}
-              onChange={(e) => {
-                const next = e.target.value as TeacherCoursePaymentType;
-                setPaymentType(next);
-                if (next === "free") setIsDefault(true);
-              }}
-              className={inputClass}
-            >
-              <option value="one_time">{t("creatorPanel.paymentType.one_time")}</option>
-              <option value="subscription_monthly">
-                {t("creatorPanel.paymentType.subscription_monthly")}
-              </option>
-              <option value="subscription_yearly">
-                {t("creatorPanel.paymentType.subscription_yearly")}
-              </option>
-              <option value="free">{t("creatorPanel.paymentType.free")}</option>
-            </select>
-          </label>
+          {paymentTypes.length > 1 ? (
+            <label className="flex flex-col gap-1.5">
+              <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--color-ink-soft)]">
+                {t("creatorPanel.offers.paymentType")}
+              </span>
+              <select
+                value={paymentType}
+                onChange={(e) => {
+                  const next = e.target.value as TeacherCoursePaymentType;
+                  setPaymentType(next);
+                  if (next === "free") setIsDefault(true);
+                }}
+                className={inputClass}
+              >
+                {paymentTypes.map((type) => (
+                  <option key={type} value={type}>
+                    {t(`creatorPanel.paymentType.${type}`)}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
           <label className="flex items-center gap-2 pt-6 text-sm text-[var(--color-ink)]">
             <input
               type="checkbox"
@@ -353,6 +397,11 @@ export function CourseOffersPanel({
             />
             {t("creatorPanel.offers.isDefault")}
           </label>
+          {!isDefault && !loading && !hasMainPrice ? (
+            <p className="text-xs leading-5 text-[var(--color-ink-soft)] sm:col-span-2">
+              {t("creatorPanel.offers.firstIsMain")}
+            </p>
+          ) : null}
           <div className="sm:col-span-2">
             <button
               type="submit"

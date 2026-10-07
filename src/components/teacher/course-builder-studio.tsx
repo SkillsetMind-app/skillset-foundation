@@ -5,7 +5,6 @@ import {
   AlertTriangle,
   ArrowLeft,
   ArrowRight,
-  CalendarClock,
   CalendarDays,
   Check,
   CheckCircle2,
@@ -23,6 +22,7 @@ import {
   Repeat,
   Send,
   Sun,
+  Ticket,
   Trash2,
   UploadCloud,
 } from "lucide-react";
@@ -40,10 +40,7 @@ import {
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
-import {
-  PlanSelectorCards,
-  type PlanSelectorOption,
-} from "@/components/shared/plan-selector-cards";
+import { PlanSelectorCards } from "@/components/shared/plan-selector-cards";
 import { InlineHelp } from "@/components/shared/inline-help";
 import { StatusChip } from "@/components/shared/status-chip";
 import { MembersAreaHero } from "@/components/learn/members-area-hero";
@@ -70,10 +67,19 @@ import {
   normalizeInstallmentsMax,
   normalizeLearningOutcomes,
   normalizeTeacherCourseModules,
+  paymentTypeFitsFormat,
   skillsetCourseCategories,
   teacherCanEditCourse,
   teacherCanPublishCourse,
 } from "@/domain/teacher-course";
+import { buildInstallmentPlan, canSplitPayments } from "@/domain/installments";
+import {
+  paymentChoiceOf,
+  paymentChoicesFor,
+  paymentTypeOfChoice,
+  yearlySavingMinor,
+  type PaymentChoice,
+} from "@/domain/product-pricing";
 import {
   subscribeToTeacherCourse,
   publishTeacherCourse,
@@ -111,6 +117,7 @@ import { usePublishGates } from "@/components/teacher/use-publish-gates";
 import { VerifiedBadgeOffer } from "@/components/teacher/verified-badge-offer";
 import {
   countLessonFiles,
+  formatZeroPrice,
   getCourseReadiness,
   getLessonIdsWithMedia,
   upcomingSessionsOf,
@@ -179,36 +186,22 @@ const dripStrategies: { value: DripStrategy; label: string; detail: string }[] =
   },
 ];
 
-const paymentModelOptions: PlanSelectorOption<TeacherCoursePaymentType>[] = [
-  {
-    value: "one_time",
-    title: "creatorEditor.builder.paymentModels.one_time.title",
-    description: "creatorEditor.builder.paymentModels.one_time.description",
-    features: ["creatorEditor.builder.paymentModels.one_time.feature1", "creatorEditor.builder.paymentModels.one_time.feature2"],
-    icon: CreditCard,
-  },
-  {
-    value: "free",
-    title: "creatorEditor.builder.paymentModels.free.title",
-    description: "creatorEditor.builder.paymentModels.free.description",
-    features: ["creatorEditor.builder.paymentModels.free.feature1", "creatorEditor.builder.paymentModels.free.feature2"],
-    icon: Gift,
-  },
-  {
-    value: "subscription_monthly",
-    title: "creatorEditor.builder.paymentModels.subscription_monthly.title",
-    description: "creatorEditor.builder.paymentModels.subscription_monthly.description",
-    features: ["creatorEditor.builder.paymentModels.subscription_monthly.feature1", "creatorEditor.builder.paymentModels.subscription_monthly.feature2"],
-    icon: Repeat,
-  },
-  {
-    value: "subscription_yearly",
-    title: "creatorEditor.builder.paymentModels.subscription_yearly.title",
-    description: "creatorEditor.builder.paymentModels.subscription_yearly.description",
-    features: ["creatorEditor.builder.paymentModels.subscription_yearly.feature1", "creatorEditor.builder.paymentModels.subscription_yearly.feature2"],
-    icon: CalendarClock,
-  },
-];
+// "Como as pessoas vao pagar?": tres cartoes, cada um com um exemplo em
+// numeros na moeda escolhida. No evento ao vivo o pagamento unico se chama
+// Ingresso.
+const paymentChoiceIcons = {
+  free: Gift,
+  one_payment: CreditCard,
+  ticket: Ticket,
+  membership: Repeat,
+} as const;
+const paymentChoiceExamples: Record<PaymentChoice, number> = {
+  free: 0,
+  one_payment: 300,
+  membership: 29,
+};
+// Ate quantas parcelas: 2 a 12, mais o valor ja gravado se for outro.
+const splitPaymentCounts = Array.from({ length: 11 }, (_, index) => index + 2);
 
 // Ctrl/Cmd/Shift/Alt ou botao que nao e o esquerdo: o navegador abre outra aba
 // e esta aqui nao navega. Nada que dependa de "a pessoa saiu daqui" pode rodar.
@@ -552,6 +545,11 @@ export function CourseBuilderStudio() {
     useState<TeacherCoursePaymentType>("one_time");
   const [installmentsEnabled, setInstallmentsEnabled] = useState(false);
   const [installmentsMax, setInstallmentsMax] = useState("12");
+  // "Oferecer tambem plano anual": o valor do ano so serve para a conta da
+  // economia e para levar ao "Adicionar outro preco" (Ofertas); a etapa de
+  // preco nao grava um segundo preco escondido.
+  const [yearlyPlanOpen, setYearlyPlanOpen] = useState(false);
+  const [yearlyAmount, setYearlyAmount] = useState("");
   const [dripStrategy, setDripStrategy] = useState<DripStrategy>("instant");
   const [dripIntervalDays, setDripIntervalDays] = useState("1");
   const [freePreviewLessonId, setFreePreviewLessonId] = useState("");
@@ -598,6 +596,7 @@ export function CourseBuilderStudio() {
     ? t(`creatorEditor.builder.errors.${error.code}`)
       .replace("{module}", () => String(error.moduleIndex ?? ""))
       .replace("{lesson}", () => String(error.lessonIndex ?? ""))
+      .replace("{zero}", () => formatZeroPrice(currency))
     : null;
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -886,13 +885,19 @@ export function CourseBuilderStudio() {
   const canPublish = Boolean(
     isOwner && course && teacherCanPublishCourse(course.status),
   );
-  // O interruptor aparecia para todo mundo e nunca ligava: so funciona com a
-  // flag ligada e conta Stripe do Mexico (MXN). Fora disso ele nao existe.
-  const showCardInstallments =
+  // Parcelar so aparece onde funciona, pela mesma regra do checkout: flag
+  // ligada, venda em MXN e conta Stripe do Mexico. Fora disso a opcao nao
+  // existe na tela (o valor gravado fica como esta).
+  const showSplitPayments =
     paymentType === "one_time"
-    && stripeConnectCountry === "MX"
-    && isPublicFeatureEnabled("payments.cardInstallments");
-  const canConfigureCardInstallments = showCardInstallments && currency === "MXN";
+    && canSplitPayments({
+      featureEnabled: isPublicFeatureEnabled("payments.cardInstallments"),
+      currency,
+      stripeAccountCountry: stripeConnectCountry,
+    });
+  const paymentChoice = paymentChoiceOf(paymentType);
+  const paymentChoices = paymentChoicesFor(productFormat, paymentChoice);
+  const paymentChoiceFits = paymentTypeFitsFormat(productFormat, paymentType);
   const lessonCount = countCourseLessons(modules);
   // "1 module", "2 modules": a tela dizia "1 modules, 1 lessons" (QA visual em
   // producao, 08/09). O singular tem chave propria, como no hub do curso.
@@ -1124,6 +1129,38 @@ export function CourseBuilderStudio() {
             maximumFractionDigits: 0,
           }).format(parsedPriceAmountMinor / 100)}${priceIntervalSuffix}`
         : t("creatorEditor.builder.summary.setPrice");
+  // Valor na moeda escolhida: os exemplos dos cartoes, a previa das parcelas
+  // e a economia do anual. Centavos so quando existem ("3x of $100").
+  const formatMoney = (amountMinor: number) =>
+    new Intl.NumberFormat(locale, {
+      style: "currency",
+      currency: currency.toUpperCase(),
+      minimumFractionDigits: amountMinor % 100 === 0 ? 0 : 2,
+      maximumFractionDigits: 2,
+    }).format(amountMinor / 100);
+  const splitCountOptions = [...new Set([...splitPaymentCounts, Number(installmentsMax)])]
+    .filter((count) => Number.isInteger(count) && count >= 1)
+    .sort((left, right) => left - right);
+  // A mesma conta do checkout (buildInstallmentPlan): o maior numero de
+  // parcelas e quanto fica cada uma.
+  const lastSplit = parsedPriceAmountMinor
+    ? buildInstallmentPlan({
+        amountMinor: parsedPriceAmountMinor,
+        installmentsEnabled: true,
+        installmentsMax: Number(installmentsMax),
+        currency,
+      }).options.at(-1)
+    : undefined;
+  const splitPreview = lastSplit
+    ? t("creatorEditor.builder.pricing.splitPreview")
+        .replace("{count}", () => String(lastSplit.count))
+        .replace("{amount}", () => formatMoney(lastSplit.amountMinor))
+    : null;
+  const yearlyAmountMinor = parsePriceAmountMinor(yearlyAmount);
+  const yearlySaving =
+    parsedPriceAmountMinor && yearlyAmountMinor
+      ? yearlySavingMinor(parsedPriceAmountMinor, yearlyAmountMinor)
+      : null;
   const tabCompletion: Record<BuilderTab, boolean> = {
     details: Boolean(
       title.trim()
@@ -1234,6 +1271,14 @@ export function CourseBuilderStudio() {
           : draftIsDirty
             ? "pending"
             : "saved";
+
+  // Clicar no cartao ja escolhido nao muda nada: um produto antigo que cobra
+  // por ano continua anual dentro de "Mensalidade".
+  function handlePaymentChoiceChange(nextChoice: PaymentChoice) {
+    if (nextChoice !== paymentChoice) {
+      handlePaymentTypeChange(paymentTypeOfChoice(nextChoice));
+    }
+  }
 
   function handlePaymentTypeChange(nextPaymentType: TeacherCoursePaymentType) {
     if (!isEditable) {
@@ -3078,37 +3123,44 @@ export function CourseBuilderStudio() {
             id="builder-sec-pricing"
             className="scroll-mt-24 rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4"
           >
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
-              {t("creatorEditor.builder.pricing.setup")}
-            </p>
-            <div className="mt-4">
-              <PlanSelectorCards
-                label={
-                  <span className="flex items-center gap-2">
-                    {t("creatorEditor.builder.pricing.model")}
-                    <InlineHelp
-                      topic={t("creatorEditor.builder.pricing.helpTopic")}
-                      href="/help#course-pricing"
-                    >
-                      {t("creatorEditor.builder.pricing.help")}
-                    </InlineHelp>
-                  </span>
-                }
-                options={paymentModelOptions.map((option) => ({
-                  ...option,
-                  title: t(option.title),
-                  description: t(option.description),
-                  features: option.features.map((feature) => t(feature)),
-                }))}
-                value={paymentType}
-                onChange={handlePaymentTypeChange}
-                disabled={!isEditable}
-              />
-            </div>
-            {paymentType === "free" ? (
-              // Gratis pula o preco: valor, moeda, parcelamento e aula de amostra
-              // nao valem para quem escolheu Gratis. Os cartoes ficam montados
-              // (o foco continua no cartao clicado); so os campos dao lugar a frase.
+            {/* Uma pergunta so, feita uma vez. Os campos de cada cartao so
+                aparecem depois da escolha; os cartoes ficam montados e o foco
+                continua no cartao clicado. */}
+            <PlanSelectorCards
+              label={
+                <span className="flex items-center gap-2 text-base">
+                  {t("creatorEditor.builder.pricing.question")}
+                  <InlineHelp
+                    topic={t("creatorEditor.builder.pricing.helpTopic")}
+                    href="/help#course-pricing"
+                  >
+                    {t("creatorEditor.builder.pricing.help")}
+                  </InlineHelp>
+                </span>
+              }
+              options={paymentChoices.map((choice) => {
+                const copy = choice === "one_payment" && productFormat === "live_event" ? "ticket" : choice;
+                return {
+                  value: choice,
+                  title: t(`creatorEditor.builder.pricing.choices.${copy}.title`),
+                  description: t(`creatorEditor.builder.pricing.choices.${copy}.description`).replace(
+                    "{amount}",
+                    () => formatMoney(paymentChoiceExamples[choice] * 100),
+                  ),
+                  features: [],
+                  icon: paymentChoiceIcons[copy],
+                };
+              })}
+              value={paymentChoice}
+              onChange={handlePaymentChoiceChange}
+              disabled={!isEditable}
+            />
+            {paymentChoiceFits ? null : (
+              <p className="mt-3 text-sm font-semibold text-[var(--color-danger-fg)]">
+                {t("creatorEditor.builder.pricing.notForType")}
+              </p>
+            )}
+            {paymentChoice === "free" ? (
               <p className="mt-4 text-sm font-semibold text-[var(--color-ink)]">
                 {t("creatorEditor.builder.pricing.freeLine")}
               </p>
@@ -3122,7 +3174,13 @@ export function CourseBuilderStudio() {
                     acompanhar a coluna em vez de a coluna acompanhar o controle. */}
                 <div className="mt-4 grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,200px)]">
                   <label className="grid min-w-0 gap-2 text-sm font-semibold text-[var(--color-ink)]">
-                    {t("creatorEditor.builder.pricing.price")}
+                    {t(
+                      paymentType === "subscription_monthly"
+                        ? "creatorEditor.builder.pricing.pricePerMonth"
+                        : paymentType === "subscription_yearly"
+                          ? "creatorEditor.builder.pricing.pricePerYear"
+                          : "creatorEditor.builder.pricing.price",
+                    )}
                     <input
                       value={priceAmount}
                       onChange={(event) => setPriceAmount(event.target.value)}
@@ -3146,40 +3204,110 @@ export function CourseBuilderStudio() {
                     />
                   </label>
                 </div>
-                {showCardInstallments ? (
-                  <div className="mt-4 flex flex-wrap items-start justify-between gap-4 rounded-lg border border-[var(--color-line)] bg-white p-4">
-                    <div className="max-w-xl">
-                      <p className="text-sm font-semibold text-[var(--color-ink)]">
-                        {t("creatorEditor.builder.pricing.installments")}
-                      </p>
-                      <p className="mt-1 text-xs leading-5 text-[var(--color-ink-soft)]">
-                        {currency !== "MXN"
-                          ? t("creatorEditor.builder.pricing.installmentsCurrency")
-                          : t("creatorEditor.builder.pricing.installmentsEligible")}
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      role="switch"
-                      aria-checked={installmentsEnabled && canConfigureCardInstallments}
-                      aria-label={t("creatorEditor.builder.pricing.enableInstallments")}
-                      disabled={!isEditable || !canConfigureCardInstallments}
-                      onClick={() => setInstallmentsEnabled((previous) => !previous)}
-                      className={`relative h-7 w-12 shrink-0 rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
-                        installmentsEnabled && canConfigureCardInstallments
-                          ? "bg-[var(--color-primary)]"
-                          : "bg-[var(--color-line)]"
-                      }`}
+                {paymentType === "subscription_yearly" ? (
+                  // Produto antigo que cobra uma vez por ano: continua assim.
+                  // Passar para mensal limpa o valor, que era o do ano.
+                  <div className="mt-3 flex flex-wrap items-center gap-3">
+                    <p className="text-sm text-[var(--color-ink)]">
+                      {t("creatorEditor.builder.pricing.yearlyOnly")}
+                    </p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={!isEditable}
+                      onClick={() => {
+                        handlePaymentTypeChange("subscription_monthly");
+                        setPriceAmount("");
+                      }}
                     >
-                      <span
-                        aria-hidden="true"
-                        className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow transition-all ${
-                          installmentsEnabled && canConfigureCardInstallments
-                            ? "left-6"
-                            : "left-1"
-                        }`}
+                      {t("creatorEditor.builder.pricing.switchToMonthly")}
+                    </Button>
+                  </div>
+                ) : null}
+                {showSplitPayments ? (
+                  <div className="mt-4 grid gap-3 rounded-lg border border-[var(--color-line)] bg-white p-4">
+                    <label className="flex items-center gap-2 text-sm font-semibold text-[var(--color-ink)]">
+                      <input
+                        type="checkbox"
+                        checked={installmentsEnabled}
+                        onChange={(event) => setInstallmentsEnabled(event.target.checked)}
+                        disabled={!isEditable}
                       />
-                    </button>
+                      {t("creatorEditor.builder.pricing.split")}
+                    </label>
+                    {installmentsEnabled ? (
+                      <div className="flex flex-wrap items-end gap-4">
+                        <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
+                          {t("creatorEditor.builder.pricing.splitMax")}
+                          <select
+                            value={installmentsMax}
+                            onChange={(event) => setInstallmentsMax(event.target.value)}
+                            disabled={!isEditable}
+                            className="rounded-md border border-[var(--color-field-border)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
+                          >
+                            {splitCountOptions.map((count) => (
+                              <option key={count} value={String(count)}>
+                                {count}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                        {splitPreview ? (
+                          <p aria-live="polite" className="pb-3 text-sm font-semibold text-[var(--color-ink)]">
+                            {splitPreview}
+                          </p>
+                        ) : null}
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
+                {paymentType === "subscription_monthly" ? (
+                  <div className="mt-4 grid gap-3 rounded-lg border border-[var(--color-line)] bg-white p-4">
+                    <label className="flex items-center gap-2 text-sm font-semibold text-[var(--color-ink)]">
+                      <input
+                        type="checkbox"
+                        checked={yearlyPlanOpen}
+                        onChange={(event) => setYearlyPlanOpen(event.target.checked)}
+                        disabled={!isEditable}
+                      />
+                      {t("creatorEditor.builder.pricing.yearly")}
+                    </label>
+                    {yearlyPlanOpen ? (
+                      <>
+                        <label className="grid max-w-xs gap-2 text-sm font-semibold text-[var(--color-ink)]">
+                          {t("creatorEditor.builder.pricing.pricePerYear")}
+                          <input
+                            value={yearlyAmount}
+                            onChange={(event) => setYearlyAmount(event.target.value)}
+                            disabled={!isEditable}
+                            inputMode="decimal"
+                            placeholder={t("creatorEditor.builder.pricing.pricePlaceholder")}
+                            className="min-w-0 rounded-md border border-[var(--color-field-border)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
+                          />
+                        </label>
+                        {yearlySaving !== null ? (
+                          <p aria-live="polite" className="text-sm font-semibold text-[var(--color-ink)]">
+                            {yearlySaving > 0
+                              ? t("creatorEditor.builder.pricing.yearlySaving").replace(
+                                  "{amount}",
+                                  () => formatMoney(yearlySaving),
+                                )
+                              : t("creatorEditor.builder.pricing.yearlyNoSaving")}
+                          </p>
+                        ) : null}
+                        <p className="text-xs leading-5 text-[var(--color-ink-soft)]">
+                          {t("creatorEditor.builder.pricing.yearlyWhere")}
+                        </p>
+                        {courseId && yearlyAmountMinor ? (
+                          <Link
+                            href={`/teach/courses/${encodeURIComponent(courseId)}/manage?section=pricing&addPrice=yearly&amount=${yearlyAmountMinor}`}
+                            className={buttonClasses({ variant: "outline", size: "sm" }, "w-fit")}
+                          >
+                            {t("creatorEditor.builder.pricing.yearlyAdd")}
+                          </Link>
+                        ) : null}
+                      </>
+                    ) : null}
                   </div>
                 ) : null}
                 <label className="mt-4 grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
@@ -3203,6 +3331,10 @@ export function CourseBuilderStudio() {
                 </p>
               </>
             )}
+            {/* A frase fixa que separa parcelar de mensalidade. */}
+            <p className="mt-4 border-t border-[var(--color-line)] pt-3 text-xs leading-5 text-[var(--color-ink-soft)]">
+              {t("creatorEditor.builder.pricing.rule")}
+            </p>
           </div>
         ) : null}
 

@@ -1,4 +1,4 @@
-import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { I18nProvider } from "@/components/i18n/i18n-provider";
@@ -6,6 +6,7 @@ import { CourseBuilderStudio } from "@/components/teacher/course-builder-studio"
 import type { CourseAsset } from "@/domain/course-asset";
 import type { CourseEvent } from "@/domain/course-event";
 import type { TeacherCourse, TeacherCourseProductFormat } from "@/domain/teacher-course";
+import { updateTeacherCourseBuilder } from "@/lib/data/teacher-courses";
 
 // O construtor se adapta ao tipo gravado na criacao (courses.product_format):
 // comunidade com aula opcional, evento com a sessao no lugar da aula, e-book
@@ -273,5 +274,130 @@ describe("curso: igual a antes", () => {
 
     expect(within(content).getByText("Module")).toBeInTheDocument();
     expect(within(content).getByText("Lesson")).toBeInTheDocument();
+  });
+});
+
+// "Como as pessoas vao pagar?": uma pergunta so, com os cartoes do tipo.
+describe("como as pessoas vao pagar", () => {
+  function paid(
+    productFormat: TeacherCourseProductFormat,
+    paymentType: TeacherCourse["paymentType"],
+    priceAmountMinor: number,
+    extra: Partial<TeacherCourse> = {},
+  ): TeacherCourse {
+    return { ...product(productFormat, false), paymentType, priceAmountMinor, ...extra };
+  }
+
+  function cardTitles() {
+    const group = screen.getByRole("group", { name: /How will people pay\?/ });
+    // So os cartoes: o botao de ajuda da pergunta mora na legenda.
+    return within(group)
+      .getAllByRole("button")
+      .filter((button) => button.hasAttribute("aria-pressed"))
+      .map((button) => button.querySelector(".display-title")?.textContent);
+  }
+
+  function pressed() {
+    const group = screen.getByRole("group", { name: /How will people pay\?/ });
+    return within(group)
+      .getAllByRole("button", { pressed: true })
+      .map((button) => button.querySelector(".display-title")?.textContent);
+  }
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it.each([
+    ["course", "one_time", ["Free", "One payment", "Monthly membership"], "One payment"],
+    ["community", "subscription_monthly", ["Free", "Monthly membership"], "Monthly membership"],
+    ["live_event", "one_time", ["Free", "Ticket"], "Ticket"],
+    ["ebook", "one_time", ["Free", "One payment"], "One payment"],
+  ] as const)("%s: os cartoes do tipo e o que ja vem marcado", async (format, paymentType, titles, selected) => {
+    mocks.course = paid(format, paymentType, 0);
+    renderBuilder("pricing");
+    await screen.findByRole("group", { name: /How will people pay\?/ });
+
+    expect(cardTitles()).toEqual(titles);
+    expect(pressed()).toEqual([selected]);
+    // O exemplo em numeros, na moeda do produto.
+    if (format === "live_event") {
+      expect(screen.getByRole("button", { name: /Ticket/ })).toHaveTextContent("Ex.: $300.");
+    }
+  });
+
+  it("os campos so aparecem depois de escolher: gratis nao tem nenhum", async () => {
+    mocks.course = paid("live_event", "free", 0);
+    renderBuilder("pricing");
+    await screen.findByRole("group", { name: /How will people pay\?/ });
+
+    expect(screen.queryByRole("textbox", { name: /Price/ })).toBeNull();
+    expect(screen.queryByRole("combobox", { name: "Currency" })).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: /Ticket/ }));
+    expect(screen.getByRole("textbox", { name: "Price" })).toHaveValue("");
+    expect(screen.getByRole("combobox", { name: "Currency" })).toBeInTheDocument();
+    expect(screen.queryByRole("checkbox", { name: "Also offer a yearly plan" })).toBeNull();
+  });
+
+  it("mensalidade: o anual so abre quando marcado, com a economia calculada", async () => {
+    mocks.course = paid("course", "one_time", 14900);
+    renderBuilder("pricing");
+    await screen.findByRole("group", { name: /How will people pay\?/ });
+
+    expect(screen.queryByRole("checkbox", { name: "Also offer a yearly plan" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: /Monthly membership/ }));
+    fireEvent.change(screen.getByRole("textbox", { name: "Price per month" }), { target: { value: "29" } });
+
+    const yearly = screen.getByRole("checkbox", { name: "Also offer a yearly plan" });
+    expect(screen.queryByRole("textbox", { name: "Price per year" })).toBeNull();
+    fireEvent.click(yearly);
+    fireEvent.change(screen.getByRole("textbox", { name: "Price per year" }), { target: { value: "290" } });
+    expect(screen.getByText("They save $58 compared to 12 monthly payments.")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Add the yearly plan" })).toHaveAttribute(
+      "href",
+      "/teach/courses/course-1/manage?section=pricing&addPrice=yearly&amount=29000",
+    );
+
+    fireEvent.change(screen.getByRole("textbox", { name: "Price per year" }), { target: { value: "348" } });
+    expect(screen.getByText("This costs the same as 12 monthly payments, or more.")).toBeInTheDocument();
+  });
+
+  // Cada forma de pagar ja gravada cai num cartao e a tela nao grava nada
+  // por conta propria.
+  it.each([
+    ["course", "free", 0, {}, "Free", null, null],
+    ["course", "one_time", 14900, { installmentsEnabled: true, installmentsMax: 6 }, "One payment", "Price", "149"],
+    ["course", "subscription_monthly", 2900, {}, "Monthly membership", "Price per month", "29"],
+    ["course", "subscription_yearly", 29000, {}, "Monthly membership", "Price per year", "290"],
+    ["community", "subscription_yearly", 29000, {}, "Monthly membership", "Price per year", "290"],
+    ["live_event", "one_time", 4900, {}, "Ticket", "Price", "49"],
+    ["ebook", "one_time", 1900, {}, "One payment", "Price", "19"],
+  ] as const)("produto existente %s/%s: cartao certo, preco igual e nada salvo", async (format, paymentType, price, extra, selected, field, value) => {
+    vi.useFakeTimers();
+    mocks.course = paid(format, paymentType, price, extra);
+    renderBuilder("pricing");
+    await act(async () => {});
+
+    expect(pressed()).toEqual([selected]);
+    if (field) {
+      expect(screen.getByRole("textbox", { name: field })).toHaveValue(value);
+    }
+    if (paymentType === "subscription_yearly") {
+      expect(screen.getByText("This product charges once a year until they cancel.")).toBeInTheDocument();
+    }
+    await act(async () => vi.advanceTimersByTime(5000));
+    expect(updateTeacherCourseBuilder).not.toHaveBeenCalled();
+  });
+
+  // Produto criado antes da regra: a tela mostra o que ele e e avisa.
+  it("comunidade antiga por pagamento unico: o cartao aparece, com o aviso", async () => {
+    mocks.course = paid("community", "one_time", 9900);
+    renderBuilder("pricing");
+    await screen.findByRole("group", { name: /How will people pay\?/ });
+
+    expect(cardTitles()).toEqual(["Free", "One payment", "Monthly membership"]);
+    expect(pressed()).toEqual(["One payment"]);
+    expect(screen.getByText("This option does not fit this type of product. Pick another one to publish.")).toBeInTheDocument();
   });
 });

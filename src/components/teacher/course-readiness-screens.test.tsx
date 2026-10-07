@@ -195,7 +195,7 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
 
   it.each([
     ["details", "Define las bases del curso."],
-    ["pricing", "Presenta la oferta."],
+    ["pricing", "Define el precio."],
     ["content", "Organiza el contenido."],
     ["members", "Personaliza el área de miembros."],
     ["review", "Publica en el marketplace."],
@@ -1013,7 +1013,7 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
 
     // O proximo passo e o rodape vem da mesma lista.
     expect(screen.getAllByText("Add at least one lesson.").length).toBeGreaterThanOrEqual(2);
-    expect(screen.getByText("Set a paid price greater than $0, or choose Free.")).toBeInTheDocument();
+    expect(screen.getByText("Set a price above $0, or choose Free.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Publish product" })).toBeDisabled();
   });
 
@@ -1140,7 +1140,7 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     const list = screen.getByText("Publish checklist").closest("section") ?? document.body;
     expect(within(list).getByText("Add at least one lesson.")).toBeInTheDocument();
     expect(
-      within(list).getByText("Set a paid price greater than $0, or choose Free."),
+      within(list).getByText("Set a price above $0, or choose Free."),
     ).toBeInTheDocument();
   });
 });
@@ -1180,10 +1180,10 @@ describe("aba de preco sem o que nao se aplica", () => {
     expect(screen.getByText(/^This product is free\./)).toBeInTheDocument();
     expect(screen.queryByRole("textbox", { name: "Price" })).not.toBeInTheDocument();
     expect(screen.queryByRole("combobox", { name: "Currency" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("switch", { name: "Let buyers split the price" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("checkbox", { name: "Let them split it into payments" })).not.toBeInTheDocument();
     expect(screen.queryByRole("combobox", { name: "Free preview lesson" })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: /^Free/ })).toHaveAttribute("aria-pressed", "true");
-    expect(screen.getByRole("button", { name: /Charge every month/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Monthly membership/ })).toBeInTheDocument();
   });
 
   // Teclado e leitor de tela: antes o grupo de cartoes inteiro desmontava ao
@@ -1200,13 +1200,13 @@ describe("aba de preco sem o que nao se aplica", () => {
     expect(screen.queryByRole("textbox", { name: "Price" })).not.toBeInTheDocument();
     expect(screen.getByText(/^This product is free\./)).toBeInTheDocument();
 
-    const monthly = screen.getByRole("button", { name: /Charge every month/ });
+    const monthly = screen.getByRole("button", { name: /Monthly membership/ });
     monthly.focus();
     fireEvent.click(monthly);
     expect(monthly).toHaveAttribute("aria-pressed", "true");
     expect(document.activeElement).toBe(monthly);
     expect(screen.queryByText(/^This product is free\./)).not.toBeInTheDocument();
-    expect(screen.getByRole("textbox", { name: "Price" })).toHaveValue("");
+    expect(screen.getByRole("textbox", { name: "Price per month" })).toHaveValue("");
     expect(screen.getByRole("combobox", { name: "Currency" })).toBeInTheDocument();
   });
 
@@ -1224,13 +1224,15 @@ describe("aba de preco sem o que nao se aplica", () => {
     expect(screen.queryByText(/0 of 0/)).not.toBeInTheDocument();
   });
 
-  it("produto pago: mensal e anual dizem que a cobranca se repete", async () => {
+  it("produto pago: uma pergunta, a mensalidade diz que se repete e a frase fixa separa parcelar de mensalidade", async () => {
     renderBuilder("pricing");
     await screen.findByRole("heading", { name: mocks.course.title, level: 1 });
 
-    expect(screen.getByRole("button", { name: /Charge every month/ })).toHaveTextContent("repeats every month until the member cancels");
-    expect(screen.getByRole("button", { name: /Charge every year/ })).toHaveTextContent("repeats every year until the member cancels");
-    expect(screen.queryByText(/subscription/i)).not.toBeInTheDocument();
+    expect(screen.getByRole("group", { name: /How will people pay\?/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Monthly membership/ })).toHaveTextContent("Charged every month until they cancel. Ex.: $29/month.");
+    expect(screen.getByRole("button", { name: /One payment/ })).toHaveTextContent("They pay once and keep access. Ex.: $300.");
+    expect(screen.getByText("Split payments = the same price divided; it ends on the last payment. Monthly membership = a charge that repeats until they cancel.")).toBeInTheDocument();
+    expect(screen.queryByText(/subscription|Payment model|Marketplace setup|billing interval/i)).not.toBeInTheDocument();
     expect(screen.getByRole("textbox", { name: "Price" })).toBeInTheDocument();
     expect(screen.getByRole("combobox", { name: "Free preview lesson" })).toBeInTheDocument();
   });
@@ -1244,23 +1246,35 @@ describe("aba de preco sem o que nao se aplica", () => {
     renderBuilder("pricing");
     await screen.findByRole("heading", { name: mocks.course.title, level: 1 });
 
-    expect(screen.queryByRole("switch", { name: "Let buyers split the price" })).not.toBeInTheDocument();
+    fireEvent.change(screen.getByRole("combobox", { name: "Currency" }), { target: { value: "MXN" } });
+    expect(screen.queryByRole("checkbox", { name: "Let them split it into payments" })).not.toBeInTheDocument();
     expect(screen.queryByText(/installment/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/Stripe requires/)).not.toBeInTheDocument();
   });
 
-  it("parcelamento aparece com a flag ligada e conta do Mexico, sem jargao da Stripe", async () => {
+  // A mesma regra do checkout (canSplitPayments): flag, MXN e conta do
+  // Mexico. Com a conta certa e a moeda errada a opcao tambem nao existe, em
+  // vez de aparecer desligada pedindo para trocar a moeda.
+  it("parcelamento aparece so com flag ligada, conta do Mexico e MXN, com a previa das parcelas", async () => {
     vi.stubEnv("NEXT_PUBLIC_PAYMENTS_CARD_INSTALLMENTS_ENABLED", "true");
     profileExtra.stripeConnectCountry = "MX";
     renderBuilder("pricing");
     await screen.findByRole("heading", { name: mocks.course.title, level: 1 });
 
-    const toggle = screen.getByRole("switch", { name: "Let buyers split the price" });
-    expect(toggle).toBeDisabled();
-    expect(screen.getByText("Switch the currency to MXN to let buyers split the price.")).toBeInTheDocument();
+    expect(screen.queryByRole("checkbox", { name: "Let them split it into payments" })).not.toBeInTheDocument();
     fireEvent.change(screen.getByRole("combobox", { name: "Currency" }), { target: { value: "MXN" } });
-    expect(toggle).toBeEnabled();
-    expect(screen.getByText(/it is not a subscription/)).toBeInTheDocument();
+    fireEvent.change(screen.getByRole("textbox", { name: "Price" }), { target: { value: "300" } });
+    const split = screen.getByRole("checkbox", { name: "Let them split it into payments" });
+    expect(split).not.toBeChecked();
+    expect(screen.queryByRole("combobox", { name: "Up to how many payments" })).not.toBeInTheDocument();
+    fireEvent.click(split);
+    fireEvent.change(screen.getByRole("combobox", { name: "Up to how many payments" }), { target: { value: "3" } });
+    expect(screen.getByText(`3x of ${new Intl.NumberFormat("en", { style: "currency", currency: "MXN", maximumFractionDigits: 0 }).format(100)}`)).toBeInTheDocument();
+    expect(screen.queryByText(/Mexican card|card issuer|not a subscription/)).not.toBeInTheDocument();
+
+    // Mensalidade nao parcela: a opcao some.
+    fireEvent.click(screen.getByRole("button", { name: /Monthly membership/ }));
+    expect(screen.queryByRole("checkbox", { name: "Let them split it into payments" })).not.toBeInTheDocument();
   });
 
   it("a liberacao das aulas mora no conteudo, nao no preco", async () => {

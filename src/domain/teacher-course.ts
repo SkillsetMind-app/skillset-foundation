@@ -72,6 +72,27 @@ export function defaultPaymentTypeForProductFormat(
   return format === "community" ? "subscription_monthly" : "one_time";
 }
 
+// As formas de pagar que cada tipo aceita. Evento e e-book nao cobram todo
+// mes; comunidade nao se vende por pagamento unico. O banco cobra a mesma
+// lista ao criar, salvar, publicar e criar preco extra
+// (course_payment_type_fits_format, 20261007030000_como_vao_pagar.sql).
+const paymentTypesByProductFormat: Record<
+  TeacherCourseProductFormat,
+  readonly TeacherCoursePaymentType[]
+> = {
+  course: ["free", "one_time", "subscription_monthly", "subscription_yearly"],
+  community: ["free", "subscription_monthly", "subscription_yearly"],
+  live_event: ["free", "one_time"],
+  ebook: ["free", "one_time"],
+};
+
+export function paymentTypeFitsFormat(
+  format: TeacherCourseProductFormat,
+  paymentType: TeacherCoursePaymentType,
+): boolean {
+  return paymentTypesByProductFormat[format].includes(paymentType);
+}
+
 export type MembersTheme = "light" | "dark";
 
 export type LessonVideoSource = "youtube" | "upload";
