@@ -29,7 +29,8 @@ const coursesTable = "courses";
 // createTeacherCourseDraft callable → create_teacher_course_draft RPC
 // (SECURITY DEFINER): enforces the teacher/terms gate, rate limit, and title-key
 // uniqueness server-side, then inserts the draft with a plan-derived platform
-// fee. Returns the new course id.
+// fee, the product type and (course, e-book) the first module and lesson.
+// Returns the new course id.
 export async function createTeacherCourse(input: CreateTeacherCourseInput) {
   const supabase = getSupabaseBrowserClient();
   const paymentType = input.paymentType ?? "one_time";
@@ -42,6 +43,9 @@ export async function createTeacherCourse(input: CreateTeacherCourseInput) {
     p_categories: categories,
     p_payment_type: paymentType,
     p_community_enabled: input.communityEnabled === true,
+    p_product_format: input.productFormat ?? "course",
+    p_module_title: input.moduleTitle ?? "",
+    p_lesson_title: input.lessonTitle ?? "",
   });
 
   if (error) {

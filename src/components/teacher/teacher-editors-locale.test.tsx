@@ -110,9 +110,9 @@ describe("ES-09 editors with the shipped dictionaries", () => {
     vi.mocked(updateTeacherCourseBuilder).mockRejectedValueOnce(new Error("A course with this title already exists. Choose a more specific name."));
     mount(<SalesPageEditor course={course} />);
     fireEvent.click(screen.getByRole("button", { name: "Guardar página de ventas" }));
-    expect(await screen.findByRole("alert")).toHaveTextContent("Ya existe un curso con este título. Elige un nombre más específico.");
+    expect(await screen.findByRole("alert")).toHaveTextContent("Ya existe un producto con este nombre. Elige un nombre más específico.");
     fireEvent.click(screen.getByRole("button", { name: "EN" }));
-    expect(screen.getByRole("alert")).toHaveTextContent("A course with this title already exists. Choose a more specific name.");
+    expect(screen.getByRole("alert")).toHaveTextContent("A product with this name already exists. Choose a more specific name.");
   });
 
   it("localizes every block field and action while preserving saved blocks on language changes", async () => {

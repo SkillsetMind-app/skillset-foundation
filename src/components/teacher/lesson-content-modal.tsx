@@ -87,6 +87,9 @@ type LessonContentModalProps = {
   onAssetsChanged?: () => void;
   // Builder saindo da pagina: grava, sem prompt, o link digitado e sem blur.
   leaveFlushRef?: Ref<() => void>;
+  // E-book: so a lista de arquivos da aula, sem trilha, abas, video nem o
+  // "Done". O comprador baixa o arquivo nessa aula, que o criador nao ve.
+  filesOnly?: boolean;
   course: TeacherCourse;
   module: TeacherCourseModule;
   moduleIndex: number;
@@ -221,6 +224,7 @@ export function LessonContentModal({
   crumbs,
   onUploadingChange,
   onAssetsChanged,
+  filesOnly = false,
 }: LessonContentModalProps) {
   const { t } = useTranslation();
   const uploadManager = useLessonUpload();
@@ -230,13 +234,13 @@ export function LessonContentModal({
     mountedRef.current = true;
     return () => { mountedRef.current = false; };
   }, []);
-  const [tab, setTab] = useState<LessonModalTab>("video");
+  const [tab, setTab] = useState<LessonModalTab>(filesOnly ? "materials" : "video");
   // Decidido uma vez ao abrir a aula (o builder monta uma instancia por aula):
   // se dependesse do valor vivo, apagar a nota desmontava o campo no mesmo
   // toque e o professor nao conseguia desfazer.
   const [hadOldNote] = useState(() => Boolean(lesson.description?.trim()));
   const [assets, setAssets] = useState<CourseAsset[]>([]);
-  const [uploadKind, setUploadKind] = useState<CourseAssetKind>("lesson_video");
+  const [uploadKind, setUploadKind] = useState<CourseAssetKind>(filesOnly ? "lesson_material" : "lesson_video");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [fileInputKey, setFileInputKey] = useState(0);
   const [isPreviewAsset, setIsPreviewAsset] = useState(false);
@@ -730,12 +734,12 @@ export function LessonContentModal({
         ref={dialogRef}
         tabIndex={-1}
         aria-modal={isPage ? undefined : "true"}
-        aria-labelledby="lesson-modal-title"
+        aria-labelledby={filesOnly ? undefined : "lesson-modal-title"}
         className={isPage ? "lesson-modal lesson-modal--page" : "lesson-modal"}
         role={isPage ? undefined : "dialog"}
         onMouseDown={isPage ? undefined : (event) => event.stopPropagation()}
       >
-        {isPage && crumbs ? (
+        {filesOnly ? null : isPage && crumbs ? (
           <nav className="lesson-modal__header" aria-label={t("creatorEditor.builder.curriculum.breadcrumb")}>
             <ol className="lesson-modal__trail">
               <li>
@@ -778,6 +782,7 @@ export function LessonContentModal({
           </header>
         )}
 
+        {filesOnly ? null : (
         <nav className="lesson-modal__tabs" aria-label={t("creatorEditor.lesson.setup")}>
           {lessonModalTabs.map((item) => {
             const Icon = item.icon;
@@ -811,8 +816,10 @@ export function LessonContentModal({
             );
           })}
         </nav>
+        )}
 
         <div className="lesson-modal__body">
+          {filesOnly ? null : (
           <div className="lesson-modal__context">
             <h3 id="lesson-modal-title" tabIndex={-1}>{lesson.title || t("creatorEditor.lesson.untitled")}</h3>
             <p className="lesson-modal__crumb">
@@ -822,6 +829,7 @@ export function LessonContentModal({
                 .replace("{moduleTitle}", () => module.title)}
             </p>
           </div>
+          )}
           {tab === "video" ? (
             <div className="grid gap-5">
 
@@ -1176,11 +1184,14 @@ export function LessonContentModal({
               ) : null}
             </div>
           ) : null}
+          {filesOnly ? null : (
           <p className="lesson-modal__guidance">
             {t("creatorEditor.lesson.contextHelp")}
           </p>
+          )}
         </div>
 
+        {filesOnly ? null : (
         <footer className="lesson-modal__footer">
           <p>
             <CheckCircle2 aria-hidden="true" size={14} />
@@ -1195,6 +1206,7 @@ export function LessonContentModal({
             {isUploading ? t("creatorEditor.lesson.file.uploading") : t("creatorEditor.lesson.state.done")}
           </button>
         </footer>
+        )}
       </section>
   );
 

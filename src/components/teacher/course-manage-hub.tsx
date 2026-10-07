@@ -35,7 +35,12 @@ import {
   quotaStatus,
 } from "@/domain/entitlements";
 import { usePublishGates } from "@/components/teacher/use-publish-gates";
-import { getCourseReadiness, type CourseReadinessItem } from "@/domain/course-readiness";
+import {
+  countLessonFiles,
+  getCourseReadiness,
+  upcomingSessionsOf,
+  type CourseReadinessItem,
+} from "@/domain/course-readiness";
 import {
   getCoursePricingShape,
   type CoursePricingShape,
@@ -50,6 +55,8 @@ import {
   subscribeToTeacherCourse,
   subscribeToTeacherCourses,
 } from "@/lib/data/teacher-courses";
+import { fetchCourseAssets } from "@/lib/data/course-assets";
+import { subscribeToTeacherCourseEvents } from "@/lib/data/course-events";
 
 // Per-course management central (Hotmart-style "product hub"): one place with
 // the publish checklist, the course's real settings, and the commerce surfaces.
@@ -377,6 +384,40 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
     return subscribeToTeacherCourses(user.uid, setMyCourses, () => undefined);
   }, [user]);
 
+  // O que o tipo entrega, como o construtor le: a sessao por vir do evento ao
+  // vivo e o arquivo do e-book. Sem eles a porcentagem daqui chegava a 100%
+  // com o construtor dizendo "nao esta pronto". Lista que nao chega deixa o
+  // item de fora, como no construtor; o servidor segue cobrando.
+  const productFormat = course?.productFormat ?? "course";
+  const ownerUid = user?.uid;
+  const [sessionCount, setSessionCount] = useState<{ courseId: string; count: number } | null>(null);
+  useEffect(() => {
+    if (!ownerUid || productFormat !== "live_event") {
+      return;
+    }
+    return subscribeToTeacherCourseEvents(
+      ownerUid,
+      (events) => setSessionCount({ courseId, count: upcomingSessionsOf(events, courseId, Date.now()).length }),
+      () => {},
+    );
+  }, [ownerUid, courseId, productFormat]);
+  const ebookModules = productFormat === "ebook" ? course?.modules : undefined;
+  const [fileCount, setFileCount] = useState<{ courseId: string; count: number } | null>(null);
+  useEffect(() => {
+    if (!ebookModules) {
+      return;
+    }
+    let cancelled = false;
+    fetchCourseAssets(courseId)
+      .then((assets) => {
+        if (!cancelled) setFileCount({ courseId, count: countLessonFiles(ebookModules, assets) });
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [courseId, ebookModules]);
+
   const isOwner = Boolean(course && user && course.ownerId === user.uid);
   // Server-enforced by the commerce RPCs; surfaced here so the panels can
   // explain the gate instead of failing on click.
@@ -414,7 +455,17 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
   // diferir da do construtor. O aviso "aulas sem conteudo" do painel cobre o
   // mesmo caso com a mesma regra (getLessonIdsWithMedia). Antes o Manage tinha
   // regra propria e o mesmo curso aparecia com tres porcentagens diferentes.
-  const readiness = getCourseReadiness(course, account, t);
+  const readiness = getCourseReadiness(
+    {
+      ...course,
+      scheduledSessionCount:
+        productFormat === "live_event" && sessionCount?.courseId === course.id ? sessionCount.count : undefined,
+      lessonFileCount:
+        productFormat === "ebook" && fileCount?.courseId === course.id ? fileCount.count : undefined,
+    },
+    account,
+    t,
+  );
   const pricing = getCoursePricingShape(course);
   const paid = !pricing.free;
   const published = course.status === "published";

@@ -6,9 +6,10 @@ import { CourseBuilderStudio } from "@/components/teacher/course-builder-studio"
 import { CourseManageHub } from "@/components/teacher/course-manage-hub";
 import { getCourseReadiness } from "@/domain/course-readiness";
 import type { CourseAsset } from "@/domain/course-asset";
+import type { CourseEvent } from "@/domain/course-event";
 import type { TeacherCourse } from "@/domain/teacher-course";
 import { publishTeacherCourse, subscribeToTeacherCourse, updateTeacherCourseBuilder } from "@/lib/data/teacher-courses";
-import { subscribeToCourseAssets, uploadCourseAsset } from "@/lib/data/course-assets";
+import { fetchCourseAssets, subscribeToCourseAssets, uploadCourseAsset } from "@/lib/data/course-assets";
 import { track } from "@/lib/posthog/events";
 
 const mocks = vi.hoisted(() => {
@@ -104,10 +105,19 @@ vi.mock("@/lib/data/creator-verification", () => ({
 const activation = vi.hoisted(() => ({ blocked: false }));
 
 vi.mock("@/lib/data/course-assets", () => ({
-  fetchCourseAssets: () => Promise.resolve([]),
+  fetchCourseAssets: vi.fn(() => Promise.resolve([])),
   subscribeToCourseAssets: vi.fn(() => () => undefined),
   syncLessonPreviewAssets: () => Promise.resolve(),
   uploadCourseAsset: vi.fn(),
+}));
+
+// As sessoes do evento ao vivo (construtor e Manage leem a mesma lista).
+const sessions = vi.hoisted(() => ({ list: [] as CourseEvent[] }));
+vi.mock("@/lib/data/course-events", () => ({
+  subscribeToTeacherCourseEvents: (_uid: string, onEvents: (events: CourseEvent[]) => void) => {
+    onEvents(sessions.list);
+    return () => undefined;
+  },
 }));
 
 // Upload de capa depende de APIs de browser que o jsdom nao tem e nao entra
@@ -383,6 +393,43 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("Add a video, text or file to every lesson before publishing.");
     fireEvent.click(screen.getByRole("button", { name: "Switch language" }));
     expect(screen.getByRole("alert")).toHaveTextContent("Añade un video, texto o archivo a cada lección antes de publicar.");
+  });
+
+  // Os tipos novos tem recusas proprias no servidor: cada uma diz o que falta,
+  // em vez do generico "try again".
+  it.each([
+    [
+      "Schedule the live session before publishing.",
+      "session",
+      "Schedule the live session before publishing: the date has to be in the future.",
+      "Agenda la sesión en vivo antes de publicar: la fecha tiene que ser futura.",
+    ],
+    [
+      "Upload at least one file before publishing.",
+      "file",
+      "Upload at least one file (PDF, slides or workbook) before publishing.",
+      "Sube al menos un archivo (PDF, presentación o cuaderno) antes de publicar.",
+    ],
+    [
+      "Turn on the community before publishing.",
+      "community",
+      "Turn on the community before publishing: it is what members join.",
+      "Activa la comunidad antes de publicar: es lo que reciben los miembros.",
+    ],
+  ])("maps the server refusal \"%s\" to its own message", async (serverMessage, reason, english, spanish) => {
+    const blocked = vi.spyOn(track, "coursePublishBlocked");
+    vi.mocked(subscribeToTeacherCourse).mockImplementationOnce((_id, emit) => {
+      emit({ ...mocks.course, paymentType: "free", priceAmountMinor: 0, modules: [{ id: "m1", title: "Start here", lessons: [{ id: "l1", title: "Welcome", description: "", type: "text", contentText: "Read this first." }] }] });
+      return Object.assign(() => {}, { reload: async () => {} });
+    });
+    vi.mocked(publishTeacherCourse).mockRejectedValueOnce(new Error(serverMessage));
+    renderBuilder("review");
+    await screen.findByRole("heading", { name: mocks.course.title });
+    fireEvent.click(screen.getByRole("button", { name: "Publish product" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(english);
+    expect(blocked).toHaveBeenCalledWith({ course_id: "course-1", reason });
+    fireEvent.click(screen.getByRole("button", { name: "Switch language" }));
+    expect(screen.getByRole("alert")).toHaveTextContent(spanish);
   });
 
   it("translates a completed save without repeating it", async () => {
@@ -1508,5 +1555,79 @@ describe("item de payouts no construtor", () => {
     await screen.findByRole("heading", { name: mocks.course.title });
     const item = screen.getAllByText("Stripe payouts")[0].closest("li")!;
     expect(within(item).getByRole("link", { name: "Finish payout onboarding" })).toHaveAttribute("href", "/account/payments#stripe-connect");
+  });
+});
+
+// O Manage chegava a 100% com o construtor dizendo "nao esta pronto": nao
+// conhecia a sessao do evento ao vivo nem o arquivo do e-book.
+describe("Manage: o que o tipo entrega entra na porcentagem", () => {
+  afterEach(() => {
+    cleanup();
+    sessions.list = [];
+    vi.clearAllMocks();
+  });
+
+  function renderHub(course: TeacherCourse) {
+    vi.mocked(subscribeToTeacherCourse).mockImplementationOnce((_id, emit) => {
+      emit(course);
+      return Object.assign(() => {}, { reload: async () => {} });
+    });
+    return render(
+      <I18nProvider initialLocale="en">
+        <CourseManageHub courseId="course-1" />
+      </I18nProvider>,
+    );
+  }
+
+  const row = (container: HTMLElement, id: string) =>
+    container.querySelector<HTMLElement>(`[data-readiness-item="${id}"]`);
+  const done = (element: HTMLElement | null) =>
+    Boolean(element?.classList.contains("bg-[var(--color-success-soft)]"));
+
+  const free = { paymentType: "free" as const, priceAmountMinor: 0 };
+
+  it("evento ao vivo: a sessao por vir e um item, pendente ate existir", async () => {
+    const event = { ...mocks.course, ...free, productFormat: "live_event" as const, modules: [], lessonCount: 0 };
+    const pending = renderHub(event);
+    await screen.findByRole("heading", { name: event.title });
+    await waitFor(() => expect(row(pending.container, "session")).not.toBeNull());
+    expect(done(row(pending.container, "session"))).toBe(false);
+    expect(row(pending.container, "lesson")).toBeNull();
+    cleanup();
+
+    sessions.list = [{
+      id: "event-1", courseId: "course-1", courseSlug: "course-1", courseTitle: event.title,
+      ownerId: "teacher-1", title: event.title, description: "", type: "live_class", status: "scheduled",
+      startsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), externalUrl: "",
+      recordingAssetId: null,
+    }];
+    const ready = renderHub(event);
+    await screen.findByRole("heading", { name: event.title });
+    await waitFor(() => expect(done(row(ready.container, "session"))).toBe(true));
+  });
+
+  it("e-book: o arquivo na aula do produto e um item", async () => {
+    const ebook = {
+      ...mocks.course,
+      ...free,
+      productFormat: "ebook" as const,
+      modules: [{ id: "m1", title: "Your file", lessons: [{ id: "l1", title: "Workbook", type: "download" as const, description: "" }] }],
+      lessonCount: 1,
+    };
+    const pending = renderHub(ebook);
+    await screen.findByRole("heading", { name: ebook.title });
+    await waitFor(() => expect(row(pending.container, "file")).not.toBeNull());
+    expect(done(row(pending.container, "file"))).toBe(false);
+    cleanup();
+
+    vi.mocked(fetchCourseAssets).mockResolvedValueOnce([{
+      id: "asset-1", courseId: "course-1", ownerId: "teacher-1", kind: "lesson_material",
+      fileName: "workbook.pdf", contentType: "application/pdf", size: 1024,
+      storagePath: "courses/course-1/workbook.pdf", isPreview: false, lessonId: "l1",
+    } as CourseAsset]);
+    const ready = renderHub(ebook);
+    await screen.findByRole("heading", { name: ebook.title });
+    await waitFor(() => expect(done(row(ready.container, "file"))).toBe(true));
+    expect(fetchCourseAssets).toHaveBeenCalledWith("course-1");
   });
 });

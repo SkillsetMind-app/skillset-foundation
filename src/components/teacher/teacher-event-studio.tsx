@@ -375,10 +375,11 @@ export function TeacherEventStudio() {
   );
   // Gratis nao tem preco para definir: o passo e so publicar.
   const nextStepIsFree = nextStepCourse?.paymentType === "free";
-  // publish_teacher_course ainda exige uma aula com conteudo, mesmo para
-  // evento. Ate o tipo do produto existir no banco, o atalho resolve.
+  // So o curso exige aula para publicar (publish_teacher_course,
+  // 20261007010000). Evento ao vivo, comunidade e e-book publicam sem.
   const nextStepNeedsLesson = nextStepCourse
-    ? countCourseLessons(nextStepCourse.modules ?? []) === 0
+    ? (nextStepCourse.productFormat ?? "course") === "course"
+      && countCourseLessons(nextStepCourse.modules ?? []) === 0
     : false;
 
   const countLine = t(`${copy}.${visible.length === 1 ? "countOne" : "count"}`)

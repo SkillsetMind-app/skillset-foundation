@@ -1282,6 +1282,7 @@
         "enrollmentDelayed": "Almost there — enrollment is taking longer than usual.",
         "openingCourse": "Opening your course...",
         "delayedDetails": "Your payment went through and is safe in your instructor's Stripe account — they sold you this course directly, so their name may be what appears on your card statement. Keep this page open: it opens automatically the moment your enrollment is confirmed. If nothing happens in a few minutes, contact support with your payment receipt.",
+        "noLessons": "There are no lessons here yet.",
         "openingDetails": "Your payment is confirmed. Your instructor sold you this course directly, so their name — not \"SkillsetMind\" — may be what appears on your card statement. We are setting up your course access right now; this page opens automatically in a few seconds.",
         "enrollmentRequired": "Enrollment required",
         "enrollmentHeading": "This private workspace opens after enrollment.",
@@ -1518,6 +1519,7 @@
       "backToLesson": "Lesson",
       "progress": "{completed} of {total} lessons · {percent}%",
       "start": "Start lesson 1",
+      "openFile": "Open your file",
       "continue": "Continue: {title}"
     },
     "paths": {
@@ -2601,19 +2603,7 @@
       },
       "formats": {
         "eyebrow": "What do you want to sell?",
-        "title": "Choose a product format",
-        "course": "Online course",
-        "courseDetail": "Video, text, downloads, certificates, and structured lessons.",
-        "program": "Guided program",
-        "programDetail": "A sequenced pathway of learning, practice, and optional live touchpoints.",
-        "subscription": "Subscription",
-        "subscriptionDetail": "Recurring access billed monthly or yearly.",
-        "community": "Community",
-        "communityDetail": "A recurring members space for posts and practitioner-led exchange.",
-        "event": "Online event",
-        "eventDetail": "Live workshops, cohorts, and scheduled group sessions.",
-        "free": "Free program",
-        "freeDetail": "Open enrollment without checkout or payment."
+        "title": "Choose a product format"
       },
       "milestones": {
         "eyebrow": "My evolution",
@@ -2724,6 +2714,11 @@
     "lockedMany": "Enroll to open the remaining {count} lessons in this course.",
     "structure": "Course structure",
     "curriculumPending": "The course is approved, but the public curriculum preview is still being prepared.",
+    "deliveryCommunity": "Members join the community: posts, answers and live calls.",
+    "deliveryLiveEvent": "Live session on {date}",
+    "deliveryLiveEventPending": "Live session. The date will be announced here.",
+    "deliveryEbook": "A file you download right after purchase.",
+    "delivery": "What you get",
     "access": "Access",
     "chooseOffer": "Choose an offer",
     "unavailableShort": "Unavailable",
@@ -3726,6 +3721,9 @@
         "payouts": "Finish Stripe payout onboarding before publishing a paid course — open the Payouts panel in your studio.",
         "payment": "Set a valid payment model before publishing.",
         "lessonContent": "Add a video, text or file to every lesson before publishing.",
+        "session": "Schedule the live session before publishing: the date has to be in the future.",
+        "file": "Upload at least one file (PDF, slides or workbook) before publishing.",
+        "community": "Turn on the community before publishing: it is what members join.",
         "publish": "We could not publish this course. Please try again."
       },
       "success": {
@@ -3919,6 +3917,18 @@
         "alt": "{title} cover",
         "course": "Course",
         "emptyHelp": "Add a cover — it appears on the marketplace card, the course page, and the classroom."
+      },
+      "productTypes": {
+        "communityOptional": "Optional: add lessons or files.",
+        "sessionTitle": "Live session",
+        "sessionHelp": "The date is what people sign up for. The recording can go in later, as an optional replay lesson.",
+        "sessionNone": "No session scheduled yet.",
+        "sessionNoLink": "Link not added yet",
+        "sessionSchedule": "Schedule the session",
+        "sessionEdit": "Edit in the Agenda",
+        "replayTitle": "Replay (optional)",
+        "ebookTitle": "File to download",
+        "ebookHelp": "Upload the file people get when they buy or join: PDF, slides or workbook."
       }
     },
     "assets": {
@@ -4002,6 +4012,18 @@
           "hint": "Add a video, text or file to every lesson.",
           "missing": "Missing: {lessons}.",
           "missingMore": "Missing: {lessons} and {count} more."
+        },
+        "community": {
+          "label": "Community turned on",
+          "hint": "Turn the community on in the Members Area tab: it is what members join."
+        },
+        "session": {
+          "label": "Live session",
+          "hint": "Schedule the date and time of the live session."
+        },
+        "file": {
+          "label": "File to download",
+          "hint": "Upload at least one file: PDF, slides or workbook."
         },
         "pricing": {
           "label": "Pricing",
@@ -4753,43 +4775,33 @@
   },
   "courseCreation": {
     "format": "Format",
-    "formatDetail": "Delivery model",
+    "formatDetail": "What you deliver",
     "basics": "Basics",
-    "basicsDetail": "Title, description, categories",
+    "basicsDetail": "Name, description, categories",
     "pricing": "Pricing",
-    "pricingDetail": "Price and access model",
-    "lessons": "Lessons",
-    "lessonsDetail": "Modules and lessons",
+    "pricingDetail": "How people pay",
+    "lessons": "Content",
+    "lessonsDetail": "Lessons, files or the live session",
     "publish": "Publish",
     "publishDetail": "Final checks",
     "continues": "{detail} · continues in the builder",
-    "titleRequired": "Give the course a title (3+ characters).",
+    "titleRequired": "Give it a name (3+ characters).",
     "summaryRequired": "Write a description with at least 20 characters.",
     "categoryRequired": "Choose a marketplace category.",
-    "createEvent": "Create and schedule event",
-    "createFree": "Create and add content",
-    "createPaid": "Create and set pricing",
-    "monthly": "Charge every month",
-    "yearly": "Charge every year",
     "creating": "Creating...",
     "categoryError": "Choose at least one marketplace category.",
-    "duplicateError": "A course with this title already exists. Choose a more specific name.",
+    "duplicateError": "A product with this name already exists. Choose a more specific name.",
     "permissionError": "Course creation is blocked until creator setup is complete. Verify your email and accept Teacher Terms first.",
     "summaryError": "Add a description with at least 20 characters.",
-    "createError": "We could not create this course. Please try again.",
+    "createError": "We could not create this product. Please try again.",
     "activationError": "Activate your storefront to unlock publishing: a one-time activation fee, charged once per creator account, never per course.",
-    "intro": "Pick the access model and the essential information here. Pricing, lessons, and publication continue in the builder.",
+    "intro": "Choose what you deliver and give it a name. Price, content and publishing continue in the builder.",
     "privateDraft": "This creates a private draft. Nothing becomes visible or sellable before you publish, and publishing needs professional verification where required.",
-    "formatHelp": "The format defines how learners receive access. Commercial terms remain editable in Pricing and offers.",
     "categoryHelp": "Categories decide where the product is listed in the marketplace and how SkillsetMind groups related expertise. Choose the most specific fit first; that first selection becomes the primary marketplace category.",
     "products": "My products",
     "newProduct": "New product",
-    "title": "Build the product foundation.",
-    "setup": "Set up the product",
-    "productFormat": "Product format",
-    "interval": "How often to charge",
-    "intervalHelp": "Members pay again on this schedule until they cancel. You can change it later in Pricing.",
-    "productTitle": "Product title",
+    "title": "Create a product.",
+    "productTitle": "Name",
     "promise": "Description",
     "primaryCategory": "The first selection is the primary marketplace category.",
     "activate": "Activate storefront",
@@ -4799,19 +4811,46 @@
     "titlePlaceholder": "e.g. Peak Performance Foundations",
     "promisePlaceholder": "Describe the practical outcome learners can expect.",
     "categoryTopic": "Course categories",
-    "courseLabel": "Online course",
-    "courseHelp": "One-time purchase with permanent or managed access.",
-    "programLabel": "Guided program",
-    "programHelp": "A sequenced pathway combining learning, practice, and optional live touchpoints.",
-    "eventLabel": "Online event",
-    "eventHelp": "Live workshops, cohorts, and scheduled group sessions.",
-    "subscriptionLabel": "Subscription",
-    "subscriptionHelp": "Ongoing access billed on a recurring schedule.",
-    "communityLabel": "Community",
-    "communityHelp": "A recurring members space built for posts and peer exchange.",
-    "freeLabel": "Free program",
-    "freeHelp": "Open enrollment with no checkout or payment.",
-    "characterCount": "{count}/1200 characters. Minimum 20."
+    "characterCount": "{count}/1200 characters. Minimum 20.",
+    "deliverTitle": "What will you deliver?",
+    "deliverHelp": "Choose one. Free or paid, one payment or monthly: you decide that later, in Pricing.",
+    "types": {
+      "course": {
+        "label": "Course",
+        "help": "Recorded lessons people watch at their own pace."
+      },
+      "community": {
+        "label": "Community",
+        "help": "A members' space where you post, answer and run live calls. Usually paid monthly."
+      },
+      "live_event": {
+        "label": "Live event",
+        "help": "A workshop or class on a set date, by Zoom or Meet."
+      },
+      "ebook": {
+        "label": "E-book",
+        "help": "A file people download: PDF, slides, workbook."
+      }
+    },
+    "nameTitle": {
+      "course": "Name your course",
+      "community": "Name your community",
+      "live_event": "Name your live event",
+      "ebook": "Name your e-book"
+    },
+    "continue": "Continue",
+    "back": "Back",
+    "create": "Create",
+    "eventDate": "Date",
+    "eventTime": "Time",
+    "eventLink": "Zoom or Meet link",
+    "eventLinkHelp": "Optional. You can add it later.",
+    "whenRequired": "Choose the date and time of the session.",
+    "whenPast": "Choose a date and time that has not passed yet.",
+    "linkInvalid": "Use a full link that starts with https://.",
+    "starterModule": "Module 1",
+    "starterLesson": "Lesson 1",
+    "ebookModule": "Download"
   },
   "courseAccess": {
     "pending": "Waiting for email confirmation",
@@ -5259,7 +5298,9 @@
       "open": "Open session link",
       "soon": "Link available soon",
       "communityDescription": "A course-linked space for announcements, questions, resources, and cohort discussion.",
-      "empty": "No live sessions are scheduled right now."
+      "empty": "No live sessions are scheduled right now.",
+      "happened": "The session already happened.",
+      "replay": "Watch the replay"
     },
     "leaderboard": {
       "loadError": "We could not load the leaderboard.",

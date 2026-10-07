@@ -905,8 +905,12 @@ export function EnrolledCourseWorkspace({
     : null;
   // Um so criterio para o certificado, no hero e na barra de abas. Whitelabel
   // esconde todo link que volta para a plataforma.
+  // E-book nao emite certificado (issue_skillset_certificate recusa).
+  const productFormat = course.productFormat ?? "course";
   const certificateHref =
-    progressPercent === 100 && !whitelabel ? "/learn/credentials" : null;
+    progressPercent === 100 && !whitelabel && productFormat !== "ebook"
+      ? "/learn/credentials"
+      : null;
   const selectedLessonNumber = selectedLesson
     ? allLessons.findIndex((lesson) => lesson.id === selectedLesson.id) + 1
     : 0;
@@ -1166,15 +1170,33 @@ export function EnrolledCourseWorkspace({
     : "/learn";
   const backLabel = t(inClassroomTab ? "learn.membersHero.backToLesson" : "learn.membersHero.back");
 
+  // Sem aula, a sala abre no que o produto entrega: a comunidade, ou a aba
+  // de lives do evento ao vivo. A aba Lessons sai da barra (repetiria a
+  // mesma tela); em qualquer outro caso sem aula ela mostra o aviso vazio.
+  const emptyDefaultTab: ClassroomTab | null =
+    totalLessonCount > 0 || tab !== "lesson"
+      ? null
+      : productFormat === "community" && communityEnabled
+        ? "community"
+        : productFormat === "live_event" && !previewMode
+          ? "lives"
+          : null;
+  const activeTab = emptyDefaultTab ?? tab;
+  // Evento ao vivo depois da data: a aba fica, com "ja aconteceu" e a
+  // gravacao (a aula que o professor acrescentar), se houver.
+  const sessionAlreadyHappened =
+    productFormat === "live_event"
+    && liveState.events.some((event) => Date.parse(event.startsAt) <= liveState.now);
+
   // As abas que este curso tem. Materiais só quando há arquivos de curso
   // (cursos publicados por professor); lives, comunidade e mensagens não
   // existem na pré-visualização — e comunidade só se o professor ligou.
   const classroomTabs: ClassroomTabItem[] = [
-    { id: "lesson", label: t("creatorEditor.preview.tabs.lesson") },
+    ...(emptyDefaultTab ? [] : [{ id: "lesson" as const, label: t("creatorEditor.preview.tabs.lesson") }]),
     ...(enableFirestoreAssets
       ? [{ id: "materials" as const, label: t("creatorEditor.preview.tabs.materials"), count: courseLevelAssets.length }]
       : []),
-    ...(!previewMode && (upcomingEvents.length > 0 || tab === "lives")
+    ...(!previewMode && (upcomingEvents.length > 0 || activeTab === "lives" || productFormat === "live_event")
       ? [{ id: "lives" as const, label: t("creatorEditor.preview.tabs.lives") }]
       : []),
     ...(communityEnabled
@@ -1194,9 +1216,9 @@ export function EnrolledCourseWorkspace({
         <MembersAreaHeroBand
           course={course}
           coverAsset={membersCoverAsset}
-          progressPercent={previewMode ? null : progressPercent}
-          completedCount={previewMode ? null : completedLessonCount}
-          totalCount={previewMode ? null : totalLessonCount}
+          progressPercent={previewMode || totalLessonCount === 0 ? null : progressPercent}
+          completedCount={previewMode || totalLessonCount === 0 ? null : completedLessonCount}
+          totalCount={previewMode || totalLessonCount === 0 ? null : totalLessonCount}
           certificateHref={previewMode ? null : certificateHref}
           backHref={backHref}
           backTo={inClassroomTab ? "lesson" : "courses"}
@@ -1208,8 +1230,9 @@ export function EnrolledCourseWorkspace({
             selectedLesson && (previewMode || progressReady)
               ? {
                   href: classroomTabHref(basePath, "lesson", selectedLesson.id),
-                  label:
-                    completedLessonIds.length === 0 && selectedLesson.id === allLessons[0]?.id
+                  label: productFormat === "ebook"
+                    ? t("learn.membersHero.openFile")
+                    : completedLessonIds.length === 0 && selectedLesson.id === allLessons[0]?.id
                       ? t("learn.membersHero.start")
                       : t("learn.membersHero.continue").replace("{title}", () => selectedLesson.title),
                 }
@@ -1225,7 +1248,7 @@ export function EnrolledCourseWorkspace({
             <h1 className="member-classroom-head__title">
               {course.membersTitle ?? course.title}
             </h1>
-            {tab === "lesson" && selectedLesson ? (
+            {activeTab === "lesson" && selectedLesson ? (
               <LessonStepper
                 previous={previousInOrder}
                 next={nextInOrder}
@@ -1273,13 +1296,19 @@ export function EnrolledCourseWorkspace({
           endereço. */}
       <ClassroomTabs
         basePath={basePath}
-        active={tab}
+        active={activeTab}
         lessonId={selectedLesson?.id ?? null}
         tabs={classroomTabs}
         certificateHref={certificateHref}
       />
 
-      {tab === "lesson" ? (
+      {activeTab === "lesson" && totalLessonCount === 0 ? (
+        <section className="member-resource-panel">
+          <p className="text-sm text-[var(--color-ink-soft)]">{t("learn.classroom.workspace.noLessons")}</p>
+        </section>
+      ) : null}
+
+      {activeTab === "lesson" && totalLessonCount > 0 ? (
       <div className="member-classroom-layout">
         <section id="member-lesson-player" className="member-classroom-player">
         {actionError ? (
@@ -1482,7 +1511,7 @@ export function EnrolledCourseWorkspace({
       {/* As outras abas. Antes TUDO isto vinha depois do currículo, na mesma
           rolagem (4 a 6 telas de altura), sem endereço. Agora só a aba aberta
           renderiza — e ela tem um caminho próprio. */}
-      {tab === "materials" && enableFirestoreAssets ? (
+      {activeTab === "materials" && enableFirestoreAssets ? (
         <CourseAssetResourceList
           assets={courseLevelAssets}
           isLoading={Boolean(
@@ -1492,11 +1521,16 @@ export function EnrolledCourseWorkspace({
         />
       ) : null}
 
-      {tab === "lives" && !previewMode ? (
-        <CourseEventsAgenda upcoming={upcomingEvents} now={liveState.now} />
+      {activeTab === "lives" && !previewMode ? (
+        <CourseEventsAgenda
+          upcoming={upcomingEvents}
+          now={liveState.now}
+          alreadyHappened={sessionAlreadyHappened}
+          replayHref={allLessons[0] ? classroomTabHref(basePath, "lesson", allLessons[0].id) : null}
+        />
       ) : null}
 
-      {tab === "community" && communityEnabled ? (
+      {activeTab === "community" && communityEnabled ? (
         <CourseCommunitySection
           course={course}
           currentLesson={
@@ -1508,12 +1542,15 @@ export function EnrolledCourseWorkspace({
         />
       ) : null}
 
-      {tab === "messages" && !previewMode ? <CourseMessagesPanel courseId={course.id} whitelabel={whitelabel} /> : null}
+      {activeTab === "messages" && !previewMode ? <CourseMessagesPanel courseId={course.id} whitelabel={whitelabel} /> : null}
 
-      {tab === "review" ? (
+      {activeTab === "review" ? (
         <CourseReviewPanel
           courseId={course.id}
           progressPercent={progressPercent}
+          // Sem trilha de aulas (outro tipo, ou nenhuma aula) nao ha 50% a
+          // cumprir. Mesma regra de submit_course_review.
+          requiresProgress={productFormat === "course" && totalLessonCount > 0}
           previewMode={previewMode}
         />
       ) : null}
@@ -1537,7 +1574,17 @@ export function EnrolledCourseWorkspace({
 // Events are keyed by course.id in course_events.course_slug (the convention
 // teacher-event-studio writes). The workspace subscribes and only lists the tab
 // when there is a session; opened by its address with none, it says so.
-function CourseEventsAgenda({ upcoming, now }: { upcoming: CourseEvent[]; now: number }) {
+function CourseEventsAgenda({
+  upcoming,
+  now,
+  alreadyHappened = false,
+  replayHref = null,
+}: {
+  upcoming: CourseEvent[];
+  now: number;
+  alreadyHappened?: boolean;
+  replayHref?: string | null;
+}) {
   const { t, locale } = useTranslation();
 
   // now = 0: a primeira leitura ainda não voltou. Não dá para dizer "nenhuma".
@@ -1548,7 +1595,15 @@ function CourseEventsAgenda({ upcoming, now }: { upcoming: CourseEvent[]; now: n
   if (upcoming.length === 0) {
     return (
       <section className="member-resource-panel">
-        <p className="text-sm text-[var(--color-ink-soft)]">{t("learnWave2.agenda.empty")}</p>
+        <p className="text-sm text-[var(--color-ink-soft)]">
+          {t(alreadyHappened ? "learnWave2.agenda.happened" : "learnWave2.agenda.empty")}
+        </p>
+        {alreadyHappened && replayHref ? (
+          <Link href={replayHref} className="button-outline mt-4 inline-flex items-center gap-2 px-5 py-2.5 text-sm">
+            <PlayCircle size={16} aria-hidden />
+            {t("learnWave2.agenda.replay")}
+          </Link>
+        ) : null}
       </section>
     );
   }
@@ -2071,8 +2126,11 @@ function LessonContentPanel({
   // so de leitura nao pode dizer "Media not attached yet". A descricao nao
   // conta: quase toda aula de video tem uma linha de resumo. O tipo "text"
   // antigo continua valendo.
+  // A aula do e-book ("download") e o arquivo, listado logo abaixo.
   const isTextFirstLesson =
-    lesson.type === "text" || Boolean(lesson.contentText?.trim());
+    lesson.type === "text"
+    || lesson.type === "download"
+    || Boolean(lesson.contentText?.trim());
   // Aula de leitura pronta: sem caixa de vídeo nenhuma. Antes ficava ali uma
   // caixa vazia de 260-520px dizendo "leia as notas abaixo", com os
   // comentários entre ela e as notas. Agora o texto vem logo, e depois os

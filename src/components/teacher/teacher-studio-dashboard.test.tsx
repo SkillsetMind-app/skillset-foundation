@@ -137,31 +137,28 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("TeacherStudioDashboard", () => {
-  it("routes each viable format to the correct workflow", async () => {
+  // Os mesmos quatro tipos da tela de criacao. Gratis, assinatura e programa
+  // guiado deixaram de ser tipo.
+  it("routes each of the four product types to the creation screen", async () => {
     render(<TeacherStudioDashboard />);
 
-    await waitFor(() => {
-      expect(screen.getByRole("link", { name: /Online course/i })).toHaveAttribute(
-        "href",
-        "/teach/builder?newCourse=1&format=course"
-      );
-    });
-    expect(screen.getByRole("link", { name: /Subscription/i })).toHaveAttribute(
-      "href",
-      "/teach/builder?newCourse=1&format=subscription"
-    );
-    expect(screen.getByRole("link", { name: /Community/i })).toHaveAttribute(
-      "href",
-      "/teach/builder?newCourse=1&format=community"
-    );
-    expect(screen.getByRole("link", { name: /Online event/i })).toHaveAttribute(
-      "href",
-      "/teach/builder?newCourse=1&format=event"
-    );
-    expect(screen.getByRole("link", { name: /Guided program/i })).toHaveAttribute(
-      "href",
-      "/teach/builder?newCourse=1&format=program"
-    );
+    const formats = (
+      await screen.findByRole("heading", { name: "Choose a product format" })
+    ).closest("section") as HTMLElement;
+    const links = within(formats).getAllByRole("link");
+    expect(links.map((link) => link.querySelector("h3")?.textContent)).toEqual([
+      "Course",
+      "Community",
+      "Live event",
+      "E-book",
+    ]);
+    expect(links.map((link) => link.getAttribute("href"))).toEqual([
+      "/teach/builder?newCourse=1&format=course",
+      "/teach/builder?newCourse=1&format=community",
+      "/teach/builder?newCourse=1&format=live_event",
+      "/teach/builder?newCourse=1&format=ebook",
+    ]);
+    expect(within(formats).queryByText(/Guided program|Subscription|Free program/)).toBeNull();
   });
 });
 
@@ -597,6 +594,24 @@ describe("Home do professor: primeira visita", () => {
 });
 
 // --- Status dos cartoes: cada um com a sua cor, nenhum em latao ---------------
+
+describe("Home do professor: o selo do cartao e o tipo gravado", () => {
+  it("mostra o tipo do produto, e gratis ou assinatura nao viram tipo", async () => {
+    state.courses = [
+      course({ id: "c1", title: "Grupo", productFormat: "community", paymentType: "subscription_monthly" }),
+      course({ id: "c2", title: "Apostila", productFormat: "ebook", paymentType: "free", priceAmountMinor: 0 }),
+      course({ id: "c3", title: "Antigo", paymentType: "free", priceAmountMinor: 0 }),
+    ];
+
+    render(<TeacherStudioDashboard />);
+
+    const produtos = await screen.findByRole("region", { name: "Products in your workspace" });
+    const typeOf = (title: string) =>
+      within(produtos).getByRole("link", { name: new RegExp(title) }).querySelector("span.uppercase")?.textContent;
+    expect([typeOf("Grupo"), typeOf("Apostila"), typeOf("Antigo")]).toEqual(["Community", "E-book", "Course"]);
+    expect(produtos.textContent).not.toContain("creatorPanel.home.formats");
+  });
+});
 
 describe("Home do professor: status dos cartoes de produto", () => {
   it("Published, Draft e Needs changes saem em StatusChip diferentes", async () => {

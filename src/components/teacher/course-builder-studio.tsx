@@ -6,6 +6,7 @@ import {
   ArrowLeft,
   ArrowRight,
   CalendarClock,
+  CalendarDays,
   Check,
   CheckCircle2,
   ChevronRight,
@@ -96,11 +97,11 @@ import {
 import { compressImage, MAX_SOURCE_IMAGE_BYTES } from "@/lib/media/compress-image";
 import { ReadinessGroups } from "@/components/teacher/readiness-groups";
 import { UploadProgressNote } from "@/components/teacher/upload-progress-note";
-import { Button, InlineAlert } from "@/components/ui";
+import { Button, buttonClasses, InlineAlert } from "@/components/ui";
 import type { CourseAsset } from "@/domain/course-asset";
 import { isActivationRequiredError } from "@/domain/creator-verification";
 import { getTrustedLessonEmbed } from "@/domain/lesson-embed";
-import { getSafeMediaUrl } from "@/domain/external-url";
+import { getSafeExternalUrl, getSafeMediaUrl } from "@/domain/external-url";
 import { isPublicFeatureEnabled } from "@/lib/feature-flags";
 import { countLabel } from "@/lib/i18n/count-label";
 import { track } from "@/lib/posthog/events";
@@ -108,7 +109,14 @@ import { defaultSkillsetCurrency } from "@/lib/payments/currencies";
 import { CurrencySelect } from "@/components/teacher/currency-select";
 import { usePublishGates } from "@/components/teacher/use-publish-gates";
 import { VerifiedBadgeOffer } from "@/components/teacher/verified-badge-offer";
-import { getCourseReadiness, getLessonIdsWithMedia } from "@/domain/course-readiness";
+import {
+  countLessonFiles,
+  getCourseReadiness,
+  getLessonIdsWithMedia,
+  upcomingSessionsOf,
+} from "@/domain/course-readiness";
+import { formatEventDateTime, type CourseEvent } from "@/domain/course-event";
+import { subscribeToTeacherCourseEvents } from "@/lib/data/course-events";
 import { moveLessonTo } from "@/domain/curriculum-move";
 
 const builderTabs = [
@@ -326,7 +334,8 @@ type BuilderError = {
   code: "notFound" | "load" | "chooseModule" | "lessonTitle" | "moduleTitleMissing"
     | "lessonTitleMissing" | "price" | "installmentsSave" | "category" | "paidPrice"
     | "installmentsPublish" | "duplicateTitle" | "activation" | "save" | "preview"
-    | "setup" | "verification" | "payouts" | "payment" | "lessonContent" | "publish";
+    | "setup" | "verification" | "payouts" | "payment" | "lessonContent" | "publish"
+    | "session" | "file" | "community";
   moduleIndex?: number;
   lessonIndex?: number;
 };
@@ -526,6 +535,9 @@ export function CourseBuilderStudio() {
   const { account: publishGates, verificationStatus, stripeConnectCountry } = usePublishGates(user);
   const successNoticeRef = useRef<HTMLParagraphElement>(null);
   const [course, setCourse] = useState<TeacherCourse | null>(null);
+  // O que o produto entrega (courses.product_format): muda a aba de conteudo
+  // e o que publicar cobra, como em publish_teacher_course.
+  const productFormat = course?.productFormat ?? "course";
   const [title, setTitle] = useState("");
   const [summary, setSummary] = useState("");
   const [category, setCategory] = useState<string>(skillsetCourseCategories[0]);
@@ -830,6 +842,23 @@ export function CourseBuilderStudio() {
       });
   }, [courseId, activeTab, activeLessonId]);
 
+  // Evento ao vivo: a sessao agendada e o conteudo. Mesma leitura da Agenda,
+  // so as sessoes deste produto ainda de pe e por vir: a que ja passou nao
+  // se vende (publish_teacher_course cobra o mesmo).
+  const [courseSessions, setCourseSessions] = useState<CourseEvent[] | null>(null);
+  const ownerUid = user?.uid;
+  useEffect(() => {
+    if (!ownerUid || !courseId || productFormat !== "live_event") {
+      return;
+    }
+    return subscribeToTeacherCourseEvents(
+      ownerUid,
+      (events) => setCourseSessions(upcomingSessionsOf(events, courseId, Date.now())),
+      // Sem a lista, o item some da prontidao e o servidor segue cobrando.
+      () => {},
+    );
+  }, [ownerUid, courseId, productFormat]);
+
   useEffect(() => {
     openPendingLessonRef.current = (target) => {
       if (activeLessonStudio) {
@@ -1029,7 +1058,17 @@ export function CourseBuilderStudio() {
     [courseAssetsLoaded, builderDraftPayload.modules, courseAssets],
   );
   const readiness = getCourseReadiness(
-    { ...builderDraftPayload, coverImageUrl: course?.coverImageUrl ?? null, lessonIdsWithMedia },
+    {
+      ...builderDraftPayload,
+      coverImageUrl: course?.coverImageUrl ?? null,
+      lessonIdsWithMedia,
+      productFormat,
+      scheduledSessionCount: productFormat === "live_event" ? courseSessions?.length : undefined,
+      lessonFileCount:
+        productFormat === "ebook" && courseAssetsLoaded
+          ? countLessonFiles(builderDraftPayload.modules, courseAssets)
+          : undefined,
+    },
     publishGates,
     t,
   );
@@ -1041,6 +1080,11 @@ export function CourseBuilderStudio() {
   const activeLessonStudioModule = activeLessonStudio
     ? modules.find((module) => module.id === activeLessonStudio.moduleId) ?? null
     : null;
+  // A aula do e-book: a primeira que existir (o produto nasce com uma).
+  const ebookModule = productFormat === "ebook"
+    ? modules.find((module) => module.lessons.length > 0)
+    : undefined;
+  const ebookLesson = ebookModule?.lessons[0];
   const activeLessonStudioLesson =
     activeLessonStudio && activeLessonStudioModule
       ? activeLessonStudioModule.lessons.find(
@@ -1089,7 +1133,10 @@ export function CourseBuilderStudio() {
     // Members-area customization is optional; the learner workspace falls back
     // to the course title, cover, and light theme.
     members: true,
-    content: modules.length > 0 && lessonCount > 0,
+    // Curso: modulo e aula. Os outros tipos: o que a prontidao cobra deles.
+    content: productFormat === "course"
+      ? modules.length > 0 && lessonCount > 0
+      : readiness.items.every((item) => item.group !== "content" || item.optional || item.done),
     pricing:
       pricingModelIsReady &&
       priceFieldIsValid &&
@@ -1634,6 +1681,85 @@ export function CourseBuilderStudio() {
 
   // Pagina do modulo (?module=M). Funcao de render, nao componente: le o mesmo
   // estado do builder, entao nao existe segunda copia do rascunho.
+  // Evento ao vivo: a sessao vem antes das aulas, que viram a gravacao
+  // opcional (replay). Marcar e editar continuam na Agenda.
+  function renderLiveSession() {
+    if (productFormat !== "live_event" || !courseId) {
+      return null;
+    }
+    const agendaHref = `/teach/events?courseId=${encodeURIComponent(courseId)}`;
+    const hasSession = Boolean(courseSessions?.length);
+
+    return (
+      <>
+        <section
+          aria-label={t("creatorEditor.builder.productTypes.sessionTitle")}
+          className="mb-6 grid gap-3 rounded-lg border fine-rule bg-white p-5"
+        >
+          {courseSessions === null ? null : hasSession ? (
+            <ul className="grid gap-2">
+              {courseSessions.map((session) => (
+                <li key={session.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+                  <CalendarDays aria-hidden="true" size={16} className="text-[var(--color-primary)]" />
+                  <strong className="text-[var(--color-ink)]">
+                    {formatEventDateTime(session.startsAt, locale, t("platform.events.datePending"))}
+                  </strong>
+                  <span className="break-all text-[var(--color-ink-soft)]">
+                    {getSafeExternalUrl(session.externalUrl) ?? t("creatorEditor.builder.productTypes.sessionNoLink")}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-sm font-semibold text-[var(--color-ink)]">
+              {t("creatorEditor.builder.productTypes.sessionNone")}
+            </p>
+          )}
+          <Link
+            href={hasSession ? agendaHref : `${agendaHref}&newEvent=1`}
+            className={buttonClasses({ variant: hasSession ? "outline" : "solid" }, "w-fit")}
+          >
+            <CalendarDays aria-hidden="true" size={15} />
+            {t(hasSession
+              ? "creatorEditor.builder.productTypes.sessionEdit"
+              : "creatorEditor.builder.productTypes.sessionSchedule")}
+          </Link>
+        </section>
+        <h4 className="text-sm font-semibold text-[var(--color-ink)]">
+          {t("creatorEditor.builder.productTypes.replayTitle")}
+        </h4>
+      </>
+    );
+  }
+
+  // E-book: so o envio de arquivos da aula que nasceu com o produto. O
+  // comprador baixa ali; modulo, aula e video nao aparecem.
+  function renderEbookFiles(lessonModule: TeacherCourseModule, lesson: TeacherLesson) {
+    if (!course) {
+      return null;
+    }
+
+    return (
+      <LessonContentModal
+        key={lesson.id}
+        variant="page"
+        filesOnly
+        course={course}
+        module={lessonModule}
+        moduleIndex={0}
+        lesson={lesson}
+        lessonIndex={0}
+        isEditable={isEditable}
+        isFreePreview={false}
+        dripStrategy={dripStrategy}
+        onClose={() => {}}
+        onSetFreePreview={() => {}}
+        onAssetsChanged={refreshCourseAssets}
+        onUpdateLesson={(patch) => updateLesson(lessonModule.id, lesson.id, patch)}
+      />
+    );
+  }
+
   // Pagina da aula (?module=M&lesson=L): o corpo do estudio na propria pagina,
   // com a trilha Curso > Modulo > Aula no lugar do modal. Mesmo rascunho,
   // mesmo autosave e mesmo Salvar do resto do builder.
@@ -2169,8 +2295,16 @@ export function CourseBuilderStudio() {
       setSuccess("published");
     } catch (caughtError) {
       const message = caughtError instanceof Error ? caughtError.message : "";
+      // O que cada tipo cobra (publish_teacher_course) tem a sua mensagem: a
+      // sessao do evento, o arquivo do e-book, a comunidade ligada.
       const code = message.toLowerCase().includes("every lesson needs")
         ? "lessonContent"
+        : message.toLowerCase().includes("schedule the live session")
+        ? "session"
+        : message.toLowerCase().includes("upload at least one file")
+        ? "file"
+        : message.toLowerCase().includes("turn on the community")
+        ? "community"
         : message.toLowerCase().includes("preview")
         ? "preview"
         : message.toLowerCase().includes("teacher setup")
@@ -2655,7 +2789,11 @@ export function CourseBuilderStudio() {
                   : activeTab === "members"
                     ? t("creatorEditor.members.heading")
                     : activeTab === "content"
-                      ? t("creatorEditor.builder.steps.content.heading")
+                      ? t(productFormat === "live_event"
+                        ? "creatorEditor.builder.productTypes.sessionTitle"
+                        : productFormat === "ebook"
+                          ? "creatorEditor.builder.productTypes.ebookTitle"
+                          : "creatorEditor.builder.steps.content.heading")
                       : activeTab === "pricing"
                         ? t("creatorEditor.builder.steps.pricing.heading")
                         : t("creatorEditor.builder.steps.review.heading")}
@@ -2666,15 +2804,26 @@ export function CourseBuilderStudio() {
                   : activeTab === "members"
                     ? t("creatorEditor.members.help")
                     : activeTab === "content"
-                      ? t("creatorEditor.builder.steps.content.help")
+                      ? t(productFormat === "live_event"
+                        ? "creatorEditor.builder.productTypes.sessionHelp"
+                        : productFormat === "ebook"
+                          ? "creatorEditor.builder.productTypes.ebookHelp"
+                          : productFormat === "community"
+                            ? "creatorEditor.builder.productTypes.communityOptional"
+                            : "creatorEditor.builder.steps.content.help")
                       : activeTab === "pricing"
                         ? t("creatorEditor.builder.steps.pricing.help")
                         : t("creatorEditor.builder.steps.review.help")}
               </p>
             </div>
             <div className="grid gap-2 text-right text-xs font-semibold text-[var(--color-ink-soft)]">
-              <span>{modulesLabel}</span>
-              <span>{lessonsLabel}</span>
+              {/* O e-book nao mostra modulo nem aula. */}
+              {productFormat === "ebook" ? null : (
+                <>
+                  <span>{modulesLabel}</span>
+                  <span>{lessonsLabel}</span>
+                </>
+              )}
               {totalDurationMinutes > 0 ? (
                 <span>{t("creatorEditor.builder.summary.duration").replace("{duration}", () => formattedDuration)}</span>
               ) : null}
@@ -3067,8 +3216,11 @@ export function CourseBuilderStudio() {
             id="builder-sec-modules"
             className="scroll-mt-24"
           >
-            {activeLessonStudioLesson ? renderLessonPage() : activeModule ? renderModulePage(activeModule, activeModuleIndex) : (
+            {/* O e-book vem antes da pagina da aula: o link "Open" do envio
+                leva ?module&lesson, e a aula dele nao tem pagina propria. */}
+            {ebookLesson && ebookModule ? renderEbookFiles(ebookModule, ebookLesson) : activeLessonStudioLesson ? renderLessonPage() : activeModule ? renderModulePage(activeModule, activeModuleIndex) : (
             <>
+            {renderLiveSession()}
             <div className="flex justify-end">
               {isModuleFormOpen ? null : (
                 <button
@@ -3432,6 +3584,8 @@ export function CourseBuilderStudio() {
       </section>
 
       <div className="course-builder-footer">
+        {/* O e-book nao tem estrutura de modulos e aulas para mostrar. */}
+        {productFormat === "ebook" ? null : (
         <section className="settings-section-card">
           <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
             {t("creatorEditor.builder.summary.structure")}
@@ -3502,6 +3656,7 @@ export function CourseBuilderStudio() {
             )}
           </div>
         </section>
+        )}
 
         <section className="settings-section-card">
           <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">

@@ -17,6 +17,7 @@ const agenda = vi.hoisted(() => ({
   productModules: [] as Array<Record<string, unknown>>,
   productStatus: "draft",
   productPaymentType: "one_time",
+  productFormat: undefined as string | undefined,
 }));
 
 // O I18nProvider chama useRouter() para o refresh ao trocar de idioma.
@@ -54,6 +55,7 @@ vi.mock("@/lib/data/teacher-courses", () => ({
         category: "Supervision & Continuing Education",
         status: agenda.productStatus,
         paymentType: agenda.productPaymentType,
+        productFormat: agenda.productFormat,
         modules: agenda.productModules,
         lessonCount: 0,
       },
@@ -81,6 +83,7 @@ describe("TeacherEventStudio", () => {
     agenda.productModules = [];
     agenda.productStatus = "draft";
     agenda.productPaymentType = "one_time";
+    agenda.productFormat = undefined;
     vi.clearAllMocks();
   });
 
@@ -120,6 +123,18 @@ describe("TeacherEventStudio", () => {
 
     const next = await screen.findByRole("region", { name: "Session scheduled. Next: set the price and publish." });
     expect(within(next).getByRole("link", { name: "Set the price and publish" })).toBeInTheDocument();
+    expect(within(next).queryByRole("link", { name: "Add a short welcome lesson" })).not.toBeInTheDocument();
+  });
+
+  // Evento ao vivo publica sem aula (20261007010000): nada de aula de boas-vindas.
+  it("evento ao vivo: o proximo passo e so preco e publicar, sem aula", async () => {
+    agenda.productFormat = "live_event";
+    render(<TeacherEventStudio />);
+    await scheduleSession();
+
+    const next = await screen.findByRole("region", { name: "Session scheduled. Next: set the price and publish." });
+    expect(within(next).getByRole("link", { name: "Set the price and publish" })).toBeInTheDocument();
+    expect(within(next).queryByText(/Publishing needs at least one lesson with content/)).not.toBeInTheDocument();
     expect(within(next).queryByRole("link", { name: "Add a short welcome lesson" })).not.toBeInTheDocument();
   });
 
