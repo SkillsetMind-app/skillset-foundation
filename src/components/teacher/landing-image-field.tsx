@@ -8,7 +8,7 @@ import { formatCourseAssetSize, getCourseAssetUploadErrorMessage } from "@/domai
 import { landingImageMaxBytes, landingImageTypes, uploadLandingImage } from "@/lib/data/landing-images";
 
 const fieldClass =
-  "w-full rounded-none border border-[var(--color-line)] bg-white px-3 py-2.5 text-sm text-[var(--color-ink)]";
+  "w-full rounded-md border border-[var(--color-line)] bg-white px-3 py-2.5 text-sm text-[var(--color-ink)]";
 
 /**
  * Image field for sales page blocks: upload first, pasting a link second.
@@ -75,7 +75,7 @@ export function LandingImageField({
         <img
           src={value}
           alt={t("teacherLanding.upload.previewAlt").replace("{label}", () => label)}
-          className="max-h-40 w-full rounded-none border border-[var(--color-line)] object-cover"
+          className="max-h-40 w-full rounded-md border border-[var(--color-line)] object-cover"
         />
       ) : null}
       <input
@@ -93,7 +93,7 @@ export function LandingImageField({
           disabled={uploading}
           aria-describedby={rulesId}
           onClick={() => inputRef.current?.click()}
-          className="inline-flex w-fit items-center gap-2 rounded-none border border-[var(--color-line)] bg-white px-3 py-2.5 text-sm font-semibold text-[var(--color-primary)] disabled:opacity-60"
+          className="inline-flex w-fit items-center gap-2 rounded-md border border-[var(--color-line)] bg-white px-3 py-2.5 text-sm font-semibold text-[var(--color-primary)] disabled:opacity-60"
         >
           {uploading ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <UploadCloud className="size-4" aria-hidden />}
           {uploading ? t("teacherLanding.upload.uploading") : t("teacherLanding.upload.button")}
@@ -102,7 +102,7 @@ export function LandingImageField({
           <button
             type="button"
             onClick={() => onChange(null)}
-            className="inline-flex w-fit items-center gap-2 rounded-none border border-[var(--color-line)] bg-white px-3 py-2.5 text-sm font-semibold text-[var(--color-danger-fg)]"
+            className="inline-flex w-fit items-center gap-2 rounded-md border border-[var(--color-line)] bg-white px-3 py-2.5 text-sm font-semibold text-[var(--color-danger-fg)]"
           >
             <X className="size-4" aria-hidden />
             {t("teacherLanding.upload.remove")}
@@ -123,7 +123,7 @@ export function LandingImageField({
           className={fieldClass}
           value={value ?? ""}
           placeholder={placeholder}
-          onChange={(e) => onChange(e.target.value || null)}
+          onChange={(e) => onChange(e.target.value.trim() || null)}
         />
       </label>
     </div>

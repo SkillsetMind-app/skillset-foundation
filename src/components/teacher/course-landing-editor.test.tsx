@@ -155,40 +155,26 @@ describe("sales page images stay out of course material", () => {
 });
 
 describe("sales page image cleanup", () => {
-  it("deletes the replaced image, but only once the page is saved", async () => {
-    await mountEditor([hero(landingUrl("old.png")), about()]);
+  it("never deletes storage objects on save, even for a replaced or removed image", async () => {
+    await mountEditor([hero(landingUrl("old.png")), about(landingUrl("gone.png"))]);
     pick(0);
     await finishUpload();
     await waitFor(() =>
-      expect(screen.getByRole("img", { name: "Preview of Background image URL" }).getAttribute("src")).not.toBe(landingUrl("old.png")),
+      expect(screen.getAllByRole("img")[0].getAttribute("src")).not.toBe(landingUrl("old.png")),
     );
-    // The live page still shows the old file until the new one is saved.
-    expect(sb.removed).toEqual([]);
+    fireEvent.change(screen.getAllByLabelText("Or paste a link")[1], { target: { value: "" } });
 
     await save();
-    await waitFor(() => expect(sb.removed).toEqual(["courses/c1/landing/old.png"]));
+    expect(sb.removed).toEqual([]);
   });
 
-  it("deletes an image removed from its block unless another block still uses it", async () => {
-    const shared = landingUrl("shared.png");
-    await mountEditor([hero(shared), about(shared)]);
-    const links = () => screen.getAllByLabelText("Or paste a link");
+  it("saves image links trimmed", async () => {
+    await mountEditor([hero(), about()]);
+    fireEvent.change(screen.getAllByLabelText("Or paste a link")[0], {
+      target: { value: "  https://cdn.example.com/a.png  " },
+    });
 
-    fireEvent.change(links()[0], { target: { value: "" } });
-    await save();
-    expect(sb.removed).toEqual([]);
-
-    fireEvent.change(links()[1], { target: { value: "https://cdn.example.com/elsewhere.png" } });
-    await save();
-    await waitFor(() => expect(sb.removed).toEqual(["courses/c1/landing/shared.png"]));
-  });
-
-  it("never deletes files it did not upload for this page", async () => {
-    await mountEditor([hero(`${sb.base}/object/public/public-media/courses/c1/assets/teacher/a1/cover.png`), about("https://cdn.example.com/me.png")]);
-    for (const link of screen.getAllByLabelText("Or paste a link")) {
-      fireEvent.change(link, { target: { value: "" } });
-    }
-    await save();
-    expect(sb.removed).toEqual([]);
+    const saved = await save();
+    expect(saved[0]).toMatchObject({ imageUrl: "https://cdn.example.com/a.png" });
   });
 });

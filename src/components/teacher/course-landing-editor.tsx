@@ -95,8 +95,11 @@ type BlockEntry = { id: number; block: CourseLandingBlock };
 let nextBlockId = 0;
 const withId = (block: CourseLandingBlock): BlockEntry => ({ id: nextBlockId++, block });
 
-function imageUrls(blocks: readonly CourseLandingBlock[]): string[] {
-  return blocks.flatMap((block) => ("imageUrl" in block && block.imageUrl ? [block.imageUrl] : []));
+// Pasted links often carry stray spaces; a saved URL must never.
+function trimImageUrls(blocks: readonly CourseLandingBlock[]): CourseLandingBlock[] {
+  return blocks.map((block) =>
+    "imageUrl" in block ? { ...block, imageUrl: block.imageUrl?.trim() || null } : block,
+  );
 }
 
 function BlockFields({
@@ -404,9 +407,6 @@ export function CourseLandingEditor({ course }: { course: TeacherCourse }) {
   const blocks = useMemo(() => entries.map((entry) => entry.block), [entries]);
   // Latest blocks for callbacks that outlive a render (an upload finishing).
   const entriesRef = useRef(entries);
-  // Images the saved page may still show: what was loaded, plus every image set
-  // since. After a save, the ones no block uses any more are deleted.
-  const knownImages = useRef(new Set<string>());
   const [planId, setPlanId] = useState<"free" | "starter" | "pro" | "plus">("free");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -425,7 +425,6 @@ export function CourseLandingEditor({ course }: { course: TeacherCourse }) {
     ]);
     setTemplate(landing.template);
     setEntries(landing.blocks.map(withId));
-    knownImages.current = new Set(imageUrls(landing.blocks));
     setPlanId(profile?.currentPlanId ?? "free");
     setLoading(false);
   }, [course.id, uid]);
@@ -454,13 +453,13 @@ export function CourseLandingEditor({ course }: { course: TeacherCourse }) {
 
   // Changes only the image of block `id`, on the latest state. An upload ends
   // here after the creator may have typed, reordered or removed sections; if the
-  // block is gone, the file it just uploaded is deleted instead.
+  // block is gone, the file it just uploaded is deleted instead: no saved page
+  // can reference it. Saving never deletes; replaced images stay in storage.
   function setBlockImage(id: number, imageUrl: string | null) {
     if (!entriesRef.current.some((entry) => entry.id === id)) {
       if (imageUrl) void removeLandingImages(course.id, [imageUrl]).catch(() => undefined);
       return;
     }
-    if (imageUrl) knownImages.current.add(imageUrl);
     setEntries((current) =>
       current.map((entry) =>
         entry.id === id && (entry.block.kind === "hero" || entry.block.kind === "about")
@@ -486,17 +485,9 @@ export function CourseLandingEditor({ course }: { course: TeacherCourse }) {
     setError("");
     setMessage("");
     try {
-      const result = await saveCourseLanding(course.id, { template, blocks });
+      const result = await saveCourseLanding(course.id, { template, blocks: trimImageUrls(blocks) });
       if (result.ok) {
         setMessage("teacherLanding.saved");
-        // Only after the save: until then the live page still shows the old
-        // image. Never one that a block, saved or still being edited, uses.
-        const inUse = new Set([...imageUrls(blocks), ...imageUrls(entriesRef.current.map((entry) => entry.block))]);
-        const unused = [...knownImages.current].filter((url) => !inUse.has(url));
-        unused.forEach((url) => knownImages.current.delete(url));
-        // ponytail: best effort. A failed delete, or an upload never saved
-        // before the tab closed, leaves an orphan file in the bucket.
-        if (unused.length > 0) void removeLandingImages(course.id, unused).catch(() => undefined);
       } else {
         setError(landingSaveErrorKeys[result.reason] ?? "teacherLanding.errors.save");
       }
