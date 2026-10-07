@@ -483,21 +483,24 @@ function PlatformNavLink({
           <Icon aria-hidden="true" size={18} strokeWidth={2} className="shrink-0" />
         </span>
       )}
-      <span className="platform-sidebar-label min-w-0 truncate">{label}</span>
+      {/* A contagem exata mora dentro do rótulo: com a barra aberta fica só
+          para o leitor de tela (o selo mostra o número); recolhida, a dica
+          mostra "128 pending" mesmo quando o selo diz "99+". */}
+      <span className="platform-sidebar-label min-w-0 truncate">
+        {label}
+        {countLabel !== undefined ? <span className="platform-sidebar-label-count">, {countLabel}</span> : null}
+      </span>
       {count !== undefined ? (
-        <>
-          <span
-            aria-hidden="true"
-            className={`shrink-0 rounded-sm bg-[var(--color-surface-soft)] px-1 text-center font-semibold tabular-nums text-[var(--color-ink)] ${
-              collapsed
-                ? "absolute bottom-1 left-1/2 h-3.5 min-w-5 -translate-x-1/2 text-[10px] leading-3.5"
-                : "ml-auto h-5 min-w-5 text-[11px] leading-5"
-            }`}
-          >
-            {countText}
-          </span>
-          <span className="sr-only">, {countLabel}</span>
-        </>
+        <span
+          aria-hidden="true"
+          className={`shrink-0 rounded-sm bg-[var(--color-surface-soft)] px-1 text-center font-semibold tabular-nums text-[var(--color-ink)] ${
+            collapsed
+              ? "absolute bottom-1 left-1/2 h-3.5 min-w-5 -translate-x-1/2 text-[10px] leading-3.5"
+              : "ml-auto h-5 min-w-5 text-[11px] leading-5"
+          }`}
+        >
+          {countText}
+        </span>
       ) : null}
     </Link>
   );

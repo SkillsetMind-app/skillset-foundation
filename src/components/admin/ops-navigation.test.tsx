@@ -255,7 +255,9 @@ describe("filas de Operações na barra", () => {
     render(<PlatformNav collapsed navigationCounts={{ "/ops?tab=verification": 128 }} />);
     const verification = screen.getByRole("link", { name: "Creator verification, 128 pending" });
     expect(verification).toHaveTextContent("99+");
-    expect(verification).toHaveAttribute("title", "Creator verification, 128 pending");
+    // Sem title (a dica é o próprio rótulo, que traz a contagem exata).
+    expect(verification).not.toHaveAttribute("title");
+    expect(verification.querySelector(".platform-sidebar-label")).toHaveTextContent("Creator verification, 128 pending");
   });
 
   it("does not present admin data or counters to a bare ops role", () => {

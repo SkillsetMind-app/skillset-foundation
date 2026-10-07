@@ -7128,6 +7128,24 @@ button:hover > .dash-card,
   transform: translateY(-50%);
 }
 
+/* A contagem exata dentro do rótulo (platform-nav.tsx): fora da dica, só
+   para o leitor de tela; na dica, aparece ("128 pending" quando o selo diz 99+). */
+.platform-sidebar-label-count {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+.platform-sidebar.sidebar-collapsed .platform-nav-link[style]:is(:hover, :focus-visible) .platform-sidebar-label-count {
+  position: static;
+  width: auto;
+  height: auto;
+  overflow: visible;
+  clip-path: none;
+}
+
 /* O ☰ vira seta "recolher" com a barra aberta: as barras de cima e de baixo
    encurtam e giram até a ponta da do meio. Recolhida, volta a ser ☰. */
 .platform-menu-icon path {
