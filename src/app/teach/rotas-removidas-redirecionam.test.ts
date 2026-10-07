@@ -1,3 +1,6 @@
+import { readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
+
 import { describe, expect, it, vi } from "vitest";
 
 import TeacherCouponsPage from "@/app/teach/coupons/page";
@@ -33,5 +36,22 @@ describe("itens mortos do menu do professor", () => {
     expect(hrefs).not.toContain("/teach/team");
     expect(hrefs).not.toContain("/teach/integrations");
     expect(hrefs).not.toContain("/teach/coupons");
+  });
+
+  // Um cartao que aponta para um endereco que so redireciona engana: "Coupons"
+  // na pagina de produtos recarregava a propria pagina, e "Integrations" caia
+  // em Ganhos. Nenhuma tela (fora os testes e as proprias rotas) linka para eles.
+  it("nenhum cartao ou link das telas aponta para os enderecos que so redirecionam", () => {
+    const files = ["components", "data"].flatMap((dir) =>
+      readdirSync(join(process.cwd(), "src", dir), { recursive: true, encoding: "utf8" })
+        .filter((file) => /\.tsx?$/.test(file) && !/\.test\.tsx?$/.test(file))
+        .map((file) => join("src", dir, file)),
+    );
+
+    expect(files.length).toBeGreaterThan(50);
+    const offenders = files.filter((file) =>
+      /["'`]\/teach\/(team|integrations|coupons)["'`?]/.test(readFileSync(join(process.cwd(), file), "utf8")),
+    );
+    expect(offenders).toEqual([]);
   });
 });

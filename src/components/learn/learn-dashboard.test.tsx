@@ -539,8 +539,7 @@ describe("LearnDashboard", () => {
       render(<I18nProvider initialLocale="es"><LearnDashboard /></I18nProvider>);
       const lives = await screen.findByRole("region", { name: "Próximas sesiones en vivo" });
       expect(lives).toHaveTextContent("Live Q&A");
-      // Nenhum link de entrar; so o "ver todas", que leva para a agenda.
-      expect(within(lives).getAllByRole("link").map((link) => link.getAttribute("href"))).toEqual(["/learn/events"]);
+      expect(within(lives).queryByRole("link")).not.toBeInTheDocument();
       expect(lives).toHaveTextContent("El enlace de la sesión no está disponible. Contacta a tu instructor.");
     },
   );
@@ -556,13 +555,20 @@ describe("LearnDashboard", () => {
   });
 
   // A agenda saiu da barra lateral do aluno (quatro itens fixos); o caminho
-  // ate ela passa a ser o cartao das proximas lives, na mesma aba.
-  it("o cartao das proximas lives leva para a agenda inteira", async () => {
+  // ate ela fica no topo de My courses, na mesma aba, com ou sem live marcada:
+  // e em /learn/events que estao as lives que ja passaram.
+  it.each([
+    ["com live marcada", true],
+    ["sem live marcada", false],
+  ])("o link para a agenda inteira esta sempre a vista (%s)", async (_label, hasLive) => {
+    if (!hasLive) fixtures.events = [];
     render(<LearnDashboard />);
-    const lives = await screen.findByRole("region", { name: "Upcoming lives" });
-    const all = within(lives).getByRole("link", { name: "See all live sessions" });
+
+    await screen.findByRole("region", { name: "What's new" });
+    const all = screen.getByRole("link", { name: "See all live sessions" });
     expect(all).toHaveAttribute("href", "/learn/events");
     expect(all).not.toHaveAttribute("target");
+    expect(Boolean(screen.queryByRole("region", { name: "Upcoming lives" }))).toBe(hasLive);
   });
 
   it("a data da proxima live sai no idioma da pessoa", async () => {

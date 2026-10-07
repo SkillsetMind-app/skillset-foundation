@@ -21,17 +21,19 @@ import { usePathname } from "next/navigation";
 import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
-import { HelpMenu } from "@/components/platform/help-menu";
 import { UserAvatar } from "@/components/shared/user-avatar";
 import { planById, type PlanId } from "@/data/plans";
 import { primaryRoleKey, type SkillsetUser } from "@/domain/auth";
-import { getPrimaryWorkspaceHref, getWorkspaceSide } from "@/lib/auth/routing";
+import { getPrimaryWorkspaceHref } from "@/lib/auth/routing";
 import { hasPermission } from "@/lib/permissions";
 import { subscribeToUserProfile } from "@/lib/data/user-profiles";
 
 type AccountMenuProps = {
   user: SkillsetUser;
   onSignOut: () => Promise<void>;
+  /** Sala com a marca do professor: sem portas para dentro da SkillsetMind
+   *  ("Become a teacher", "Go to dashboard"). */
+  branded?: boolean;
 };
 
 function useDismissableLayer(
@@ -72,7 +74,7 @@ function useDismissableLayer(
   }, [isOpen, onDismiss, ref, triggerRef]);
 }
 
-export function AccountMenu({ onSignOut, user }: AccountMenuProps) {
+export function AccountMenu({ onSignOut, user, branded = false }: AccountMenuProps) {
   const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const [currentPlanId, setCurrentPlanId] = useState<PlanId>("free");
@@ -125,7 +127,7 @@ export function AccountMenu({ onSignOut, user }: AccountMenuProps) {
 
   // Someone with no studio yet gets the application instead, in the SAME tab:
   // a new tab reads as "the site vanished" to people new to the web.
-  const becomeTeacher = user.roles.includes("teacher")
+  const becomeTeacher = user.roles.includes("teacher") || branded
     ? null
     : {
         href: "/onboarding?path=teacher",
@@ -243,18 +245,20 @@ export function AccountMenu({ onSignOut, user }: AccountMenuProps) {
             </div>
           </div>
 
-          <div className="py-1">
-            <MenuLink
-              href={getPrimaryWorkspaceHref(user)}
-              icon={LayoutDashboard}
-              label={t("nav.goToDashboard")}
-              onNavigate={() => setIsOpen(false)}
-            />
-          </div>
+          {branded ? null : (
+            <div className="py-1">
+              <MenuLink
+                href={getPrimaryWorkspaceHref(user)}
+                icon={LayoutDashboard}
+                label={t("nav.goToDashboard")}
+                onNavigate={() => setIsOpen(false)}
+              />
+            </div>
+          )}
 
           {otherWorkspaces.length > 0 || becomeTeacher || canViewAs ? (
             <>
-              <div className="account-menu-separator" />
+              {branded ? null : <div className="account-menu-separator" />}
               <div className="py-1">
                 <p className="account-menu-section-label">
                   {t("account.switchView")}
@@ -345,15 +349,8 @@ export function AccountMenu({ onSignOut, user }: AccountMenuProps) {
             ) : null}
           </div>
 
-          <div className="account-menu-separator" />
-          <div className="py-1">
-            <HelpMenu
-              variant="menu"
-              side={getWorkspaceSide(pathname, user) === "teacher" ? "teacher" : "student"}
-              onNavigate={() => setIsOpen(false)}
-            />
-          </div>
-
+          {/* A Ajuda nao mora aqui: uma por tela, na barra lateral (ou no
+              topo da sala de aula, que nao tem barra). */}
           <div className="account-menu-separator" />
           <button
             type="button"

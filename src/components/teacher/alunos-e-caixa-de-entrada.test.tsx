@@ -4,15 +4,17 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { TeacherInboxQuestions } from "@/components/teacher/teacher-inbox-questions";
 import { TeacherStudentsList } from "@/components/teacher/teacher-students-list";
 import { useTeacherInboxCount } from "@/components/teacher/use-teacher-inbox-count";
-import { threadsAwaitingReply, type CourseMessage } from "@/domain/course-message";
+import { countThreadsAwaitingReply } from "@/domain/course-message";
 
 // As duas paginas novas do professor: Alunos (todos os alunos de todos os
 // produtos) e a Caixa de entrada (perguntas da comunidade + mensagens), com o
-// numero de pendentes que aparece na barra.
+// numero de pendentes que aparece na barra. As consultas em si (colunas,
+// ordem, filtros) estao em src/lib/data/caixa-de-entrada-leituras.test.ts.
 
 const mocks = vi.hoisted(() => ({
   getMyCourseSummaries: vi.fn(),
   getOpenCommunityQuestions: vi.fn(),
+  getCommunityPostsByIds: vi.fn(),
   getMyCourseStudents: vi.fn(),
   countThreadsAwaitingTeacher: vi.fn(),
 }));
@@ -24,7 +26,10 @@ vi.mock("@/components/auth/auth-provider", () => ({
   }),
 }));
 vi.mock("@/lib/data/teacher-courses", () => ({ getMyCourseSummaries: mocks.getMyCourseSummaries }));
-vi.mock("@/lib/data/community-posts", () => ({ getOpenCommunityQuestions: mocks.getOpenCommunityQuestions }));
+vi.mock("@/lib/data/community-posts", () => ({
+  getOpenCommunityQuestions: mocks.getOpenCommunityQuestions,
+  getCommunityPostsByIds: mocks.getCommunityPostsByIds,
+}));
 vi.mock("@/lib/data/enrollments", () => ({ getMyCourseStudents: mocks.getMyCourseStudents }));
 vi.mock("@/lib/data/course-messages", () => ({ countThreadsAwaitingTeacher: mocks.countThreadsAwaitingTeacher }));
 
@@ -44,14 +49,29 @@ const question = {
   createdAt: new Date().toISOString(),
 };
 
+const enrollment = (id: string, courseId: string, uid: string, name: string, status: string) => ({
+  enrollmentId: id,
+  courseId,
+  courseTitle: courseId === "c-1" ? "Leadership" : "Public speaking",
+  uid,
+  displayName: name,
+  email: "",
+  photoUrl: "",
+  status,
+  source: "payment",
+  progressPercent: 0,
+  enrolledAt: `2026-09-0${id.slice(-1)}T00:00:00Z`,
+});
+
 beforeEach(() => {
   mocks.getMyCourseSummaries.mockResolvedValue(courses);
-  mocks.getOpenCommunityQuestions.mockResolvedValue([question, { ...question, id: "p-2" }]);
+  mocks.getOpenCommunityQuestions.mockResolvedValue(["p-1", "p-2"]);
+  mocks.getCommunityPostsByIds.mockResolvedValue([question, { ...question, id: "p-2" }]);
   mocks.countThreadsAwaitingTeacher.mockResolvedValue(1);
   mocks.getMyCourseStudents.mockResolvedValue([
-    { enrollmentId: "e-1", courseId: "c-1", courseTitle: "Leadership", uid: "s-1", displayName: "Ana", email: "ana@example.com", photoUrl: "", status: "active", source: "payment", progressPercent: 40, enrolledAt: "2026-09-01T00:00:00Z" },
-    { enrollmentId: "e-2", courseId: "c-2", courseTitle: "Public speaking", uid: "s-1", displayName: "Ana", email: "ana@example.com", photoUrl: "", status: "active", source: "payment", progressPercent: 0, enrolledAt: "2026-09-02T00:00:00Z" },
-    { enrollmentId: "e-3", courseId: "c-2", courseTitle: "Public speaking", uid: "s-2", displayName: "Bruno", email: "", photoUrl: "", status: "active", source: "free_course", progressPercent: 100, enrolledAt: "2026-09-03T00:00:00Z" },
+    enrollment("e-1", "c-1", "s-1", "Ana", "active"),
+    enrollment("e-2", "c-2", "s-1", "Ana", "active"),
+    enrollment("e-3", "c-2", "s-2", "Bruno", "completed"),
   ]);
 });
 
@@ -64,7 +84,7 @@ describe("Alunos: todos os produtos numa lista", () => {
   it("conta pessoas, nao matriculas, e leva para a lista do produto e para a comunidade", async () => {
     render(<TeacherStudentsList />);
 
-    expect(await screen.findByText("2 students")).toBeInTheDocument();
+    expect(await screen.findByText("2 active students")).toBeInTheDocument();
     const rows = screen.getAllByRole("row").slice(1);
     expect(rows).toHaveLength(3);
 
@@ -78,6 +98,36 @@ describe("Alunos: todos os produtos numa lista", () => {
     // Produto sem comunidade: sem o link que daria numa caixa vazia.
     const bruno = rows.find((row) => within(row).queryByText("Bruno"))!;
     expect(within(bruno).queryByRole("link", { name: /Community/ })).toBeNull();
+  });
+
+  // Antes, quem pediu reembolso continuava contando como aluno, sem marca.
+  it("reembolsado, removido e expirado aparecem com a situacao e nao contam como alunos", async () => {
+    mocks.getMyCourseStudents.mockResolvedValue([
+      enrollment("e-1", "c-1", "s-1", "Ana", "active"),
+      enrollment("e-2", "c-2", "s-2", "Bruno", "completed"),
+      enrollment("e-3", "c-1", "s-3", "Carla", "refunded"),
+      enrollment("e-4", "c-1", "s-4", "Dani", "revoked"),
+      enrollment("e-5", "c-2", "s-5", "Edu", "expired"),
+    ]);
+    render(<TeacherStudentsList />);
+
+    expect(await screen.findByText("2 active students")).toBeInTheDocument();
+    const rows = screen.getAllByRole("row").slice(1);
+    expect(rows).toHaveLength(5);
+    const statusOf = (name: string) => rows.find((row) => within(row).queryByText(name))!;
+    expect(within(statusOf("Ana")).getByText("Active")).toBeInTheDocument();
+    expect(within(statusOf("Bruno")).getByText("Completed")).toBeInTheDocument();
+    expect(within(statusOf("Carla")).getByText("Refunded")).toBeInTheDocument();
+    expect(within(statusOf("Dani")).getByText("Revoked")).toBeInTheDocument();
+    expect(within(statusOf("Edu")).getByText("Expired")).toBeInTheDocument();
+  });
+
+  it("so com matriculas encerradas, a conta diz zero", async () => {
+    mocks.getMyCourseStudents.mockResolvedValue([enrollment("e-1", "c-1", "s-1", "Ana", "refunded")]);
+    render(<TeacherStudentsList />);
+
+    expect(await screen.findByText("0 active students")).toBeInTheDocument();
+    expect(screen.getByText("Refunded")).toBeInTheDocument();
   });
 
   it("sem alunos, um estado vazio que explica", async () => {
@@ -97,22 +147,48 @@ describe("Caixa de entrada: perguntas que esperam pelo professor", () => {
     const answers = screen.getAllByRole("link", { name: /Answer/ });
     expect(answers[0]).toHaveAttribute("href", "/teach/courses/c-1/community");
     expect(screen.getAllByText(/Leadership · Ana/)).toHaveLength(2);
-    expect(mocks.getOpenCommunityQuestions).toHaveBeenCalledWith(["c-1", "c-2"], "teacher-1");
+    // Curso com a comunidade desligada fica de fora da busca.
+    expect(mocks.getOpenCommunityQuestions).toHaveBeenCalledWith(["c-1"], "teacher-1");
+    // O texto so e lido para as perguntas que esperam.
+    expect(mocks.getCommunityPostsByIds).toHaveBeenCalledWith(["p-1", "p-2"]);
   });
 
   it("nada esperando: diz isso", async () => {
     mocks.getOpenCommunityQuestions.mockResolvedValue([]);
+    mocks.getCommunityPostsByIds.mockResolvedValue([]);
     render(<TeacherInboxQuestions />);
 
     expect(await screen.findByText(/No questions waiting/)).toBeInTheDocument();
   });
+
+  // Na pagina Inbox a casca (numero da barra) e a lista pedem juntas: uma
+  // leitura so de cursos, perguntas e conversas.
+  it("na pagina Inbox, o numero da barra e a lista dividem a mesma leitura", async () => {
+    function InboxPage() {
+      const count = useTeacherInboxCount("teacher-1");
+      return (
+        <>
+          <p data-testid="nav-count">{count ?? ""}</p>
+          <TeacherInboxQuestions />
+        </>
+      );
+    }
+    render(<InboxPage />);
+
+    await waitFor(() => expect(screen.getByTestId("nav-count")).toHaveTextContent("3"));
+    await screen.findAllByRole("link", { name: /Answer/ });
+    expect(mocks.getMyCourseSummaries).toHaveBeenCalledOnce();
+    expect(mocks.getOpenCommunityQuestions).toHaveBeenCalledOnce();
+    expect(mocks.countThreadsAwaitingTeacher).toHaveBeenCalledOnce();
+  });
 });
 
 describe("o numero de pendentes da barra", () => {
-  it("soma perguntas sem resposta e conversas em que o aluno falou por ultimo", async () => {
+  it("soma perguntas sem resposta (so de comunidades ligadas) e conversas em que o aluno falou por ultimo", async () => {
     const { result } = renderHook(() => useTeacherInboxCount("teacher-1"));
 
     await waitFor(() => expect(result.current).toBe(3));
+    expect(mocks.getOpenCommunityQuestions).toHaveBeenCalledWith(["c-1"], "teacher-1");
   });
 
   it("desligado fora do lado do professor", () => {
@@ -127,32 +203,28 @@ describe("o numero de pendentes da barra", () => {
     const { result } = renderHook(() => useTeacherInboxCount("teacher-1"));
 
     await waitFor(() => expect(mocks.countThreadsAwaitingTeacher).toHaveBeenCalled());
+    await waitFor(() => expect(mocks.getOpenCommunityQuestions).toHaveBeenCalled());
     expect(result.current).toBeUndefined();
   });
 
-  it("a conversa espera o professor quando a ultima mensagem e do aluno", () => {
-    const message = (id: string, studentId: string, senderId: string, minute: number): CourseMessage => ({
-      id,
+  it("a conversa espera o professor quando a ultima mensagem e do aluno, em qualquer ordem", () => {
+    const message = (studentId: string, senderId: string, minute: number) => ({
       courseId: "c-1",
-      courseTitle: "Leadership",
       studentId,
-      studentName: studentId,
-      teacherId: "teacher-1",
       senderId,
-      body: "hi",
       createdAt: `2026-10-01T10:${String(minute).padStart(2, "0")}:00Z`,
     });
 
-    const waiting = threadsAwaitingReply(
-      [
-        message("1", "s-1", "s-1", 1),
-        message("2", "s-1", "teacher-1", 2),
-        message("3", "s-2", "teacher-1", 1),
-        message("4", "s-2", "s-2", 3),
-      ],
-      "teacher-1",
-    );
-
-    expect(waiting.map((thread) => thread.studentId)).toEqual(["s-2"]);
+    expect(
+      countThreadsAwaitingReply(
+        [
+          message("s-2", "s-2", 3),
+          message("s-1", "teacher-1", 2),
+          message("s-1", "s-1", 1),
+          message("s-2", "teacher-1", 1),
+        ],
+        "teacher-1",
+      ),
+    ).toBe(1);
   });
 });

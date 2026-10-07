@@ -1,7 +1,10 @@
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getHelpChoices, HelpMenu } from "@/components/platform/help-menu";
+import { MobileSidebarDrawer } from "@/components/platform/mobile-sidebar-drawer";
+import { PlatformNav } from "@/components/platform/platform-nav";
 import { AdvisorSidebar } from "@/components/teacher/advisor-sidebar";
 
 // O botao Ajuda: o mesmo em todo lugar, tres escolhas por lado.
@@ -92,6 +95,74 @@ describe("teclado e leitor de tela", () => {
     fireEvent.click(screen.getByRole("link", { name: "Talk to a person" }));
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(onNavigate).toHaveBeenCalledOnce();
+  });
+
+  it("setas andam entre as escolhas, dando a volta; do botao, a seta leva para dentro", () => {
+    render(<HelpMenu variant="bar" side="student" />);
+    const trigger = screen.getByRole("button", { name: "Help" });
+    fireEvent.click(trigger);
+
+    const dialog = screen.getByRole("dialog");
+    const lesson = within(dialog).getByRole("link", { name: /Question about a lesson/ });
+    const privateMatter = within(dialog).getByRole("link", { name: /Private matter with the teacher/ });
+    const person = within(dialog).getByRole("link", { name: "Talk to a person" });
+    expect(lesson).toHaveFocus();
+
+    fireEvent.keyDown(lesson, { key: "ArrowDown" });
+    expect(privateMatter).toHaveFocus();
+    fireEvent.keyDown(privateMatter, { key: "ArrowUp" });
+    expect(lesson).toHaveFocus();
+    fireEvent.keyDown(lesson, { key: "ArrowUp" });
+    expect(person).toHaveFocus();
+    fireEvent.keyDown(person, { key: "ArrowDown" });
+    expect(lesson).toHaveFocus();
+
+    trigger.focus();
+    fireEvent.keyDown(trigger, { key: "ArrowDown" });
+    expect(lesson).toHaveFocus();
+  });
+
+  it("sair do painel do topo com Tab fecha; o foco segue para onde a pessoa foi", () => {
+    render(
+      <>
+        <HelpMenu variant="bar" side="student" />
+        <a href="/next">Next thing</a>
+      </>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Help" }));
+    const person = screen.getByRole("link", { name: "Talk to a person" });
+    const next = screen.getByRole("link", { name: "Next thing" });
+
+    // Dentro do painel, nao fecha.
+    fireEvent.blur(person, { relatedTarget: screen.getByRole("link", { name: /Question about a lesson/ }) });
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+
+    fireEvent.blur(person, { relatedTarget: next });
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(screen.getByRole("button", { name: "Help" })).toHaveAttribute("aria-expanded", "false");
+  });
+
+  // No tablet a barra e um trilho de icones: Ajuda abre a gaveta ja na Ajuda.
+  // A gaveta se foca ao abrir; o foco tem de terminar DENTRO das escolhas.
+  it("aberta pelo trilho recolhido, na gaveta, o foco vai para a primeira escolha", async () => {
+    render(<MobileSidebarDrawer open initialSection="help" onOpen={vi.fn()} onClose={vi.fn()} />);
+
+    const dialog = screen.getByRole("dialog", { name: "What do you need help with?" });
+    const first = within(dialog).getAllByRole("link")[0];
+    await waitFor(() => expect(first).toHaveFocus());
+  });
+
+  it("na barra lateral recolhida que se abre ao clicar, o foco vai para a primeira escolha", () => {
+    function Sidebar() {
+      const [collapsed, setCollapsed] = useState(true);
+      return <PlatformNav collapsed={collapsed} onRequestExpand={() => setCollapsed(false)} />;
+    }
+    render(<Sidebar />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Help" }));
+
+    const dialog = screen.getByRole("dialog", { name: "What do you need help with?" });
+    expect(within(dialog).getAllByRole("link")[0]).toHaveFocus();
   });
 
   it("o aluno ve 'falar com uma pessoa' depois do assistente", () => {

@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { I18nProvider } from "@/components/i18n/i18n-provider";
@@ -49,11 +49,11 @@ afterEach(() => {
 
 describe("botao de troca de lado no topo", () => {
   it.each([
-    ["/teach", "Go to student area", "/learn", "Teacher area"],
-    ["/teach/sales", "Go to student area", "/learn", "Teacher area"],
-    ["/account/payments", "Go to student area", "/learn", "Teacher area"],
-    ["/learn", "Go to teacher area", "/teach", "Student area"],
-    ["/learn/messages", "Go to teacher area", "/teach", "Student area"],
+    ["/teach", "Go to student area", "/learn", "Teacher"],
+    ["/teach/sales", "Go to student area", "/learn", "Teacher"],
+    ["/account/payments", "Go to student area", "/learn", "Teacher"],
+    ["/learn", "Go to teacher area", "/teach", "Student"],
+    ["/learn/messages", "Go to teacher area", "/teach", "Student"],
   ])("em %s: '%s' leva para %s na mesma aba", (pathname, label, href, side) => {
     mocks.pathname = pathname;
     const { container } = render(<PlatformHeader />);
@@ -61,19 +61,29 @@ describe("botao de troca de lado no topo", () => {
     const link = screen.getByRole("link", { name: label });
     expect(link).toHaveAttribute("href", href);
     expect(link).not.toHaveAttribute("target");
-    // O celular mostra em que lado a pessoa esta (o caminho do topo nao cabe).
-    expect(container.querySelector(".platform-topbar__side")).toHaveTextContent(side);
+    // Abaixo de 1280px so o icone aparece: o nome inteiro fica no aria-label
+    // (leitor de tela), no title (dica do mouse) e no texto escondido.
+    expect(link).toHaveAttribute("aria-label", label);
+    expect(link).toHaveAttribute("title", label);
+    expect(link.querySelector(".platform-topbar__switch-label")).toHaveTextContent(label);
+    // O celular mostra em que lado a pessoa esta, numa palavra so.
+    expect(container.querySelector(".platform-topbar__side")).toHaveTextContent(new RegExp(`^${side}$`));
   });
 
-  it("em espanhol", () => {
-    mocks.pathname = "/teach";
-    render(
+  it.each([
+    ["/teach", "Ir al área del alumno", "/learn", "Profesor"],
+    ["/learn", "Ir al área del profesor", "/teach", "Alumno"],
+  ])("em espanhol, em %s: '%s' e o lado '%s'", (pathname, label, href, side) => {
+    mocks.pathname = pathname;
+    const { container } = render(
       <I18nProvider initialLocale="es">
         <PlatformHeader />
       </I18nProvider>,
     );
 
-    expect(screen.getByRole("link", { name: "Ir al área del alumno" })).toHaveAttribute("href", "/learn");
+    expect(screen.getByRole("link", { name: label })).toHaveAttribute("href", href);
+    // "Área del alumno" e "Área del profesor" cortavam os dois em "ÁREA D…".
+    expect(container.querySelector(".platform-topbar__side")).toHaveTextContent(new RegExp(`^${side}$`));
   });
 
   it("quem so estuda nao ve botao de troca, mas ve em que lado esta", () => {
@@ -82,7 +92,7 @@ describe("botao de troca de lado no topo", () => {
     const { container } = render(<PlatformHeader />);
 
     expect(screen.queryByRole("link", { name: /Go to (teacher|student) area/ })).toBeNull();
-    expect(container.querySelector(".platform-topbar__side")).toHaveTextContent("Student area");
+    expect(container.querySelector(".platform-topbar__side")).toHaveTextContent("Student");
   });
 
   it("a barra lateral nao repete a troca: nem 'Teach' no rodape do aluno, nem 'My courses' no do professor", () => {
@@ -97,16 +107,15 @@ describe("botao de troca de lado no topo", () => {
   });
 });
 
-describe("Ajuda no topo", () => {
-  it.each([
-    ["/teach/sales", "My students"],
-    ["/learn", "Private matter with the teacher"],
-  ])("em %s o botao Ajuda abre as escolhas do lado (%s)", (pathname, choice) => {
+// A Ajuda saiu do topo do estudio e da area do aluno: ela mora na barra
+// lateral (no celular, na gaveta). Uma por tela — ver uma-ajuda-por-tela.test.
+describe("o topo nao tem Ajuda", () => {
+  it.each(["/teach/sales", "/learn", "/ops"])("em %s", (pathname) => {
     mocks.pathname = pathname;
+    mocks.roles = pathname === "/ops" ? ["admin"] : ["teacher"];
     render(<PlatformHeader />);
 
-    fireEvent.click(within(screen.getByRole("banner")).getByRole("button", { name: "Help" }));
-    expect(screen.getByRole("dialog", { name: "What do you need help with?" })).toHaveTextContent(choice);
+    expect(within(screen.getByRole("banner")).queryByRole("button", { name: "Help" })).toBeNull();
   });
 });
 

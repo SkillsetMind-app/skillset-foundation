@@ -494,7 +494,6 @@
       "sales": "Sales",
       "subscriptions": "Subscriptions",
       "coupons": "Coupons",
-      "integrations": "Integrations",
       "operations": "Operations",
       "marketplace": "Marketplace",
       "settings": "Settings",
@@ -1231,9 +1230,9 @@
     "switchToDarkMode": "Switch to dark mode",
     "openSearch": "Open search",
     "side": {
-      "student": "Student area",
-      "teacher": "Teacher area",
-      "ops": "Operations",
+      "student": "Student",
+      "teacher": "Teacher",
+      "ops": "Staff",
       "goStudent": "Go to student area",
       "goTeacher": "Go to teacher area"
     }
@@ -1670,7 +1669,7 @@
       "step3Title": "Publish and sell",
       "step3Body": "Set your pricing, review the content and access rules, then publish. Share your sales link when the product is ready.",
       "step4Title": "Earnings and help",
-      "step4Body": "Connect your Stripe account in Earnings to receive sales. Stripe handles verification and payout timing. Use Help in the top bar when you need a hand.",
+      "step4Body": "Connect your Stripe account in Earnings to receive sales. Stripe handles verification and payout timing. Use Help in the menu when you need a hand.",
       "openStudio": "Open your studio"
     },
     "reports": {
@@ -1702,7 +1701,6 @@
       "linkSales": "All sales",
       "linkSubscriptions": "Subscriptions",
       "linkEarnings": "Earnings",
-      "linkCoupons": "Coupons",
       "linkBuilder": "Course builder"
     },
     "reportsPage": {
@@ -1893,12 +1891,7 @@
       "coupons": {
         "title": "Coupons & promotions",
         "description": "Open a product to configure its discount codes and offer rules.",
-        "action": "Manage promotions"
-      },
-      "integrations": {
-        "title": "Integrations",
-        "description": "Email tools, webhooks, and analytics destinations are on the roadmap.",
-        "action": "See what's planned"
+        "action": "Open your products"
       },
       "state": {
         "published": "Published",
@@ -1909,8 +1902,7 @@
         "awaitingReplyOne": "1 awaiting reply",
         "awaitingReplyMany": "{count} awaiting reply",
         "noAwaitingReply": "No reply pending",
-        "couponsPerProduct": "Set per product",
-        "planned": "Planned"
+        "couponsPerProduct": "Set per product"
       }
     },
     "saleDetailPage": {
@@ -2127,8 +2119,8 @@
       "loading": "Loading your students...",
       "error": "We couldn't load your students. Please try again later.",
       "empty": "No students yet. When someone joins one of your products, they show up here.",
-      "countOne": "1 student",
-      "countMany": "{count} students",
+      "countOne": "1 active student",
+      "countMany": "{count} active students",
       "product": "Product",
       "seeInProduct": "See in product",
       "community": "Community"
@@ -2486,7 +2478,6 @@
         "marketing": "Marketing workspace",
         "marketingDetail": "Pages, media, buyer messages, and promotions",
         "mediaDetail": "Course covers and delivery assets",
-        "integrationsDetail": "Connected delivery and business services",
         "verification": "Professional verification",
         "verificationDetail": "Credentials and marketplace admission"
       }
@@ -2579,8 +2570,7 @@
         "label": "Product workspace shortcuts",
         "membersDetail": "Customize delivery and learner spaces",
         "eventsDetail": "Schedule workshops and live sessions",
-        "marketingDetail": "Pages, media, messages, and promotions",
-        "couponsDetail": "Create discount codes for your products"
+        "marketingDetail": "Pages, media, messages, and promotions"
       }
     },
     "home": {
@@ -3585,7 +3575,7 @@
       "descriptionPlaceholder": "A short welcome shown under the title in the members area.",
       "livePreview": "Live preview",
       "openPreview": "Open full preview",
-      "previewHelp": "The full preview shows the last saved version. Wait for autosave to finish before opening it.",
+      "previewHelp": "The full preview opens the last saved version in a new tab. Wait for autosave to finish before opening it.",
       "cover": "Members area cover",
       "coverHelp": "Hero background for the enrolled-student workspace. Recommended 16:9, under {limit}.",
       "coverSet": "Cover set",

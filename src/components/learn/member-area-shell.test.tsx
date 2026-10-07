@@ -145,8 +145,31 @@ describe("MemberAreaShell", () => {
       </MemberAreaShell>,
     );
 
-    expect(screen.getByRole("button", { name: "Help" })).toBeInTheDocument();
+    // Uma Ajuda so: a sala nao tem barra lateral, entao ela mora no topo.
+    expect(screen.getAllByRole("button", { name: "Help" })).toHaveLength(1);
     expect(screen.getByRole("button", { name: "Open account menu" })).toBeInTheDocument();
+  });
+
+  // Na sala com a marca do professor, o menu da conta nao abre portas para
+  // dentro da SkillsetMind; sem marca, elas continuam.
+  it.each([
+    ["sem marca", null, true],
+    ["com a marca do professor", { name: "Atelier Curie" }, false],
+  ])("menu da conta %s: 'Become a teacher' e 'Go to dashboard' aparecem = %s", (_label, brand, shown) => {
+    render(
+      <MemberAreaShell brand={brand}>
+        <p>Lesson</p>
+      </MemberAreaShell>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Open account menu" }));
+    for (const name of ["Become a teacher", "Go to dashboard"]) {
+      if (shown) expect(screen.getByRole("link", { name })).toBeInTheDocument();
+      else expect(screen.queryByRole("link", { name })).toBeNull();
+    }
+    // A Ajuda nao se repete dentro do menu da conta.
+    expect(screen.getAllByRole("button", { name: "Help" })).toHaveLength(1);
+    expect(screen.getByRole("button", { name: /sign out/i })).toBeInTheDocument();
   });
 
   it.each([

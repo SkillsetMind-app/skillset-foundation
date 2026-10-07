@@ -5,7 +5,6 @@ import {
   ArrowRight,
   BookOpen,
   CalendarDays,
-  Handshake,
   Layers3,
   Megaphone,
   MoreHorizontal,
@@ -63,12 +62,8 @@ const workspaceShortcuts = [
     href: "/teach/marketing",
     icon: Megaphone,
   },
-  {
-    titleKey: "platform.nav.coupons",
-    detailKey: "creatorPanel.products.shortcuts.couponsDetail",
-    href: "/teach/coupons",
-    icon: Handshake,
-  },
+  // "Coupons" saiu: levava para /teach/coupons, que volta para esta mesma
+  // pagina. Os cupons ficam dentro de cada produto.
 ] as const;
 
 function filterMatches(course: TeacherCourse, filter: ProductFilter) {
@@ -454,7 +449,7 @@ export function TeacherCourseStudio({
 
       <nav
         aria-label={t("creatorPanel.products.shortcuts.label")}
-        className="grid overflow-hidden rounded-md border border-[var(--color-line)] sm:grid-cols-2 xl:grid-cols-4"
+        className="grid overflow-hidden rounded-md border border-[var(--color-line)] sm:grid-cols-3"
       >
         {workspaceShortcuts.map((item) => {
           const Icon = item.icon;
@@ -463,7 +458,7 @@ export function TeacherCourseStudio({
             <Link
               key={item.href}
               href={item.href}
-              className="group flex min-h-28 items-start gap-3 border-b border-[var(--color-line)] bg-white p-4 last:border-b-0 hover:bg-[var(--color-surface-soft)] sm:[&:nth-last-child(-n+2)]:border-b-0 xl:border-b-0 xl:border-r xl:last:border-r-0"
+              className="group flex min-h-28 items-start gap-3 border-b border-[var(--color-line)] bg-white p-4 last:border-b-0 hover:bg-[var(--color-surface-soft)] sm:border-b-0 sm:border-r sm:last:border-r-0"
             >
               <span className="grid size-9 shrink-0 place-items-center rounded-md border border-[var(--color-line)] text-[var(--color-primary)]">
                 <Icon aria-hidden="true" size={17} strokeWidth={1.8} />

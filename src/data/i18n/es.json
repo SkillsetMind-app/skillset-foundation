@@ -494,7 +494,6 @@
       "sales": "Ventas",
       "subscriptions": "Suscripciones",
       "coupons": "Cupones",
-      "integrations": "Integraciones",
       "operations": "Operaciones",
       "marketplace": "Marketplace",
       "settings": "Ajustes",
@@ -1231,9 +1230,9 @@
     "switchToDarkMode": "Cambiar al modo oscuro",
     "openSearch": "Abrir búsqueda",
     "side": {
-      "student": "Área del alumno",
-      "teacher": "Área del profesor",
-      "ops": "Operaciones",
+      "student": "Alumno",
+      "teacher": "Profesor",
+      "ops": "Equipo",
       "goStudent": "Ir al área del alumno",
       "goTeacher": "Ir al área del profesor"
     }
@@ -1670,7 +1669,7 @@
       "step3Title": "Publica y vende",
       "step3Body": "Define el precio, revisa el contenido y las reglas de acceso, y publica. Comparte el enlace de venta cuando el producto esté listo.",
       "step4Title": "Ganancias y ayuda",
-      "step4Body": "Conecta tu cuenta de Stripe en Ganancias para recibir ventas. Stripe gestiona la verificación y los plazos de pago. Usa Ayuda en la barra superior cuando necesites una mano.",
+      "step4Body": "Conecta tu cuenta de Stripe en Ganancias para recibir ventas. Stripe gestiona la verificación y los plazos de pago. Usa Ayuda en el menú cuando necesites una mano.",
       "openStudio": "Abrir mi espacio"
     },
     "reports": {
@@ -1702,7 +1701,6 @@
       "linkSales": "Todas las ventas",
       "linkSubscriptions": "Suscripciones",
       "linkEarnings": "Ganancias",
-      "linkCoupons": "Cupones",
       "linkBuilder": "Constructor de cursos"
     },
     "reportsPage": {
@@ -1893,12 +1891,7 @@
       "coupons": {
         "title": "Cupones y promociones",
         "description": "Abre un producto para configurar sus códigos de descuento y reglas de oferta.",
-        "action": "Gestionar promociones"
-      },
-      "integrations": {
-        "title": "Integraciones",
-        "description": "Las herramientas de email, los webhooks y los destinos de analítica están en la hoja de ruta.",
-        "action": "Ver lo planificado"
+        "action": "Abrir tus productos"
       },
       "state": {
         "published": "Publicada",
@@ -1909,8 +1902,7 @@
         "awaitingReplyOne": "1 espera respuesta",
         "awaitingReplyMany": "{count} esperan respuesta",
         "noAwaitingReply": "Sin respuestas pendientes",
-        "couponsPerProduct": "Se configura por producto",
-        "planned": "Planificado"
+        "couponsPerProduct": "Se configura por producto"
       }
     },
     "saleDetailPage": {
@@ -2127,8 +2119,8 @@
       "loading": "Cargando tus alumnos...",
       "error": "No pudimos cargar tus alumnos. Inténtalo de nuevo más tarde.",
       "empty": "Todavía no hay alumnos. Cuando alguien entre en uno de tus productos, aparecerá aquí.",
-      "countOne": "1 alumno",
-      "countMany": "{count} alumnos",
+      "countOne": "1 alumno activo",
+      "countMany": "{count} alumnos activos",
       "product": "Producto",
       "seeInProduct": "Ver en el producto",
       "community": "Comunidad"
@@ -2486,7 +2478,6 @@
         "marketing": "Espacio de marketing",
         "marketingDetail": "Páginas, multimedia, mensajes de compradores y promociones",
         "mediaDetail": "Portadas de cursos y archivos de entrega",
-        "integrationsDetail": "Servicios de entrega y de negocio conectados",
         "verification": "Verificación profesional",
         "verificationDetail": "Credenciales y admisión en el marketplace"
       }
@@ -2579,8 +2570,7 @@
         "label": "Atajos del espacio de productos",
         "membersDetail": "Personaliza la entrega y los espacios de los alumnos",
         "eventsDetail": "Programa talleres y sesiones en vivo",
-        "marketingDetail": "Páginas, multimedia, mensajes y promociones",
-        "couponsDetail": "Crea códigos de descuento para tus productos"
+        "marketingDetail": "Páginas, multimedia, mensajes y promociones"
       }
     },
     "home": {
@@ -3585,7 +3575,7 @@
       "descriptionPlaceholder": "Una breve bienvenida debajo del título en el área de miembros.",
       "livePreview": "Vista previa en vivo",
       "openPreview": "Abrir vista previa completa",
-      "previewHelp": "La vista previa completa muestra la última versión guardada. Espera a que termine el guardado automático antes de abrirla.",
+      "previewHelp": "La vista previa completa abre la última versión guardada en una pestaña nueva. Espera a que termine el guardado automático antes de abrirla.",
       "cover": "Portada del área de miembros",
       "coverHelp": "Imagen de fondo del curso para tus alumnos. Recomendamos 16:9 y menos de {limit}.",
       "coverSet": "Portada añadida",

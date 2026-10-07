@@ -224,19 +224,16 @@ describe("account menu: tools, help and same-tab switching", () => {
     expect(screen.queryByRole("link", { name: "Verification" })).toBeNull();
   });
 
+  // Uma Ajuda por tela: ela mora na barra lateral (ou no topo da sala de
+  // aula). Repetida aqui, eram duas ou tres iguais na mesma tela.
   it.each([
-    ["/teach", ["teacher"], ["How do I do something on the platform", "My students", "Account, payment or error"]],
-    ["/learn", ["student"], ["Question about a lesson", "Private matter with the teacher", "Login, payment, refund or something broken"]],
-  ])("on %s the Help item opens the three choices of that side", (pathname, roles, labels) => {
+    ["/teach", ["teacher"]],
+    ["/learn", ["student"]],
+    ["/ops", ["admin"]],
+  ])("on %s the account menu has no Help of its own", (pathname, roles) => {
     openMenu(roles, pathname);
-    const help = screen.getByRole("button", { name: "Help" });
-    expect(help).toHaveAttribute("aria-expanded", "false");
 
-    fireEvent.click(help);
-
-    const dialog = screen.getByRole("dialog", { name: "What do you need help with?" });
-    for (const label of labels) {
-      expect(dialog).toHaveTextContent(label);
-    }
+    expect(screen.queryByRole("button", { name: "Help" })).toBeNull();
+    expect(screen.queryByRole("dialog", { name: "What do you need help with?" })).toBeNull();
   });
 });

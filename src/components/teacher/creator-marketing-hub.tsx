@@ -7,7 +7,6 @@ import {
   BadgePercent,
   Image,
   MessageCircle,
-  Plug,
   Store,
   type LucideIcon,
 } from "lucide-react";
@@ -207,30 +206,21 @@ export function CreatorMarketingHub() {
       key: "coupons",
       title: t("teach.marketing.coupons.title"),
       description: t("teach.marketing.coupons.description"),
-      href: "/teach/coupons",
+      // Cupom mora dentro de cada produto: o cartao leva para a lista de
+      // produtos e diz isso no botao. (/teach/coupons so redireciona.)
+      href: "/teach/builder",
       action: t("teach.marketing.coupons.action"),
       icon: BadgePercent,
-      // Cupom mora dentro de cada produto: nao existe cupom "do criador" para
-      // contar sem consulta nova. O cartao diz onde o ajuste vive, sem numero.
+      // Nao existe cupom "do criador" para contar sem consulta nova. O cartao
+      // diz onde o ajuste vive, sem numero.
       state: (
         <span className="text-xs text-[var(--color-ink-soft)]">
           {t("teach.marketing.state.couponsPerProduct")}
         </span>
       ),
     },
-    {
-      key: "integrations",
-      title: t("teach.marketing.integrations.title"),
-      description: t("teach.marketing.integrations.description"),
-      href: "/teach/integrations",
-      action: t("teach.marketing.integrations.action"),
-      icon: Plug,
-      state: (
-        <span className="status-chip status-chip--info">
-          {t("teach.marketing.state.planned")}
-        </span>
-      ),
-    },
+    // "Integrations — See what's planned" saiu: nao ha pagina de integracoes,
+    // e o endereco antigo cai em Ganhos.
   ];
 
   return (
@@ -254,7 +244,7 @@ export function CreatorMarketingHub() {
           {t("teach.marketing.sectionTitle")}
         </h2>
 
-        <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {tools.map((tool) => {
             const Icon = tool.icon;
 

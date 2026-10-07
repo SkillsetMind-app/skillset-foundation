@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { StatusChip } from "@/components/shared/status-chip";
 import { EmptyState, InlineAlert } from "@/components/ui";
 import { SpotArt } from "@/components/ui/spot-art";
 import { getMyCourseStudents, type CourseStudent } from "@/lib/data/enrollments";
@@ -76,7 +77,11 @@ export function TeacherStudentsList() {
     );
   }
 
-  const people = new Set(state.students.map((student) => student.uid)).size;
+  // Reembolsado, removido ou expirado continua na lista, com a situacao a
+  // vista, mas nao conta como aluno: a mesma regra da lista por produto.
+  const people = new Set(
+    state.students.filter((student) => isActiveEnrollment(student.status)).map((student) => student.uid),
+  ).size;
 
   return (
     <section className="rounded-lg border border-[var(--color-line)] bg-white p-5 shadow-[var(--shadow-soft)]">
@@ -86,10 +91,10 @@ export function TeacherStudentsList() {
           : t("teach.studentsPage.countMany").replace("{count}", () => new Intl.NumberFormat(locale).format(people))}
       </p>
       <div className="mt-4 overflow-x-auto">
-        <table className="w-full min-w-[640px] border-collapse text-left text-sm">
+        <table className="w-full min-w-[720px] border-collapse text-left text-sm">
           <thead>
             <tr className="border-b fine-rule">
-              {[t("courseRoster.studentHead"), t("teach.studentsPage.product"), t("courseRoster.progress"), t("courseRoster.joined")].map((head) => (
+              {[t("courseRoster.studentHead"), t("teach.studentsPage.product"), t("courseRoster.access"), t("courseRoster.progress"), t("courseRoster.joined")].map((head) => (
                 <th key={head} className="py-2 pr-4 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-ink-muted)]">
                   {head}
                 </th>
@@ -112,6 +117,9 @@ export function TeacherStudentsList() {
                     ) : null}
                   </td>
                   <td className="py-3 pr-4 text-[var(--color-ink)]">{student.courseTitle}</td>
+                  <td className="py-3 pr-4">
+                    <StatusChip status={student.status} />
+                  </td>
                   <td className="py-3 pr-4 tabular-nums text-[var(--color-ink)]">{student.progressPercent}%</td>
                   <td className="py-3 pr-4 text-xs text-[var(--color-ink-soft)]">{formatDate(student.enrolledAt, locale)}</td>
                   <td className="py-3 pr-4">
@@ -142,6 +150,10 @@ export function TeacherStudentsList() {
       </div>
     </section>
   );
+}
+
+function isActiveEnrollment(status: CourseStudent["status"]): boolean {
+  return status === "active" || status === "completed";
 }
 
 function formatDate(value: string, locale: string): string {

@@ -8,9 +8,9 @@ import { formatNotificationTime } from "@/components/account/notification-row";
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { InlineAlert } from "@/components/ui";
+import { loadTeacherInbox } from "@/components/teacher/use-teacher-inbox-count";
 import type { CommunityPost } from "@/domain/community-post";
-import { getOpenCommunityQuestions } from "@/lib/data/community-posts";
-import { getMyCourseSummaries } from "@/lib/data/teacher-courses";
+import { getCommunityPostsByIds } from "@/lib/data/community-posts";
 
 type Question = { post: CommunityPost; courseTitle: string };
 type State =
@@ -19,9 +19,14 @@ type State =
   | { status: "ready"; questions: Question[] };
 
 // A metade "comunidade" da Caixa de entrada: as perguntas que esperam pelo
-// professor em todos os produtos. A resposta continua sendo dada na caixa de
-// cada curso (/teach/courses/<id>/community), que ja marca a resposta aceita;
-// aqui so se ve o que falta e se chega la com um clique.
+// professor em todos os produtos com comunidade ligada. A resposta continua
+// sendo dada na caixa de cada curso (/teach/courses/<id>/community), que ja
+// marca a resposta aceita; aqui so se ve o que falta e se chega la com um
+// clique. A caixa do curso nao tem endereco por pergunta (la as que esperam
+// ficam no topo), entao "Answer" leva para a caixa do curso.
+//
+// A lista de quem espera vem da MESMA leitura do numero da barra
+// (loadTeacherInbox); o texto das perguntas so e lido aqui.
 export function TeacherInboxQuestions() {
   const { user } = useAuth();
   const { t, locale } = useTranslation();
@@ -36,9 +41,9 @@ export function TeacherInboxQuestions() {
     let alive = true;
     void (async () => {
       try {
-        const courses = await getMyCourseSummaries(uid);
-        const titles = new Map(courses.map((course) => [course.id, course.title]));
-        const posts = await getOpenCommunityQuestions(courses.map((course) => course.id), uid);
+        const inbox = await loadTeacherInbox(uid);
+        const titles = new Map(inbox.courses.map((course) => [course.id, course.title]));
+        const posts = await getCommunityPostsByIds(inbox.questions);
         if (alive) {
           setState({
             status: "ready",

@@ -10,9 +10,10 @@ import { requestAdvisorOpen } from "@/lib/ui/floating-action";
 
 // "Com quem eu falo?" O aluno tinha nove portas para pedir ajuda (comentario
 // da aula, comunidade, mensagens, sino, /support escondido...) e nada dizia
-// qual usar; o professor tinha seis. Este botao e o MESMO em todo lugar (barra
-// lateral, menu do avatar, topo da sala de aula e do estudio) e abre tres
-// escolhas escritas do jeito que a pessoa pensa no problema.
+// qual usar; o professor tinha seis. Este botao abre tres escolhas escritas do
+// jeito que a pessoa pensa no problema. E UM por tela: na barra lateral do
+// aluno e do professor (no celular, dentro da gaveta) e, na sala de aula, que
+// nao tem barra lateral, no topo. A equipe de operacoes nao tem Ajuda.
 
 export type HelpSide = "student" | "teacher";
 
@@ -75,34 +76,36 @@ export function getHelpChoices(
 type HelpMenuProps = {
   side: HelpSide;
   course?: HelpCourse | null;
-  /** nav: item da barra lateral; menu: item do menu do avatar; bar: botao no topo. */
-  variant: "nav" | "menu" | "bar";
+  /** nav: item da barra lateral; bar: botao no topo da sala de aula. */
+  variant: "nav" | "bar";
   collapsed?: boolean;
   /** Controlado pela barra lateral (o rail recolhido pede para abrir a barra). */
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
-  /** Chamado ao escolher: o menu do avatar fecha junto. */
+  /** Ja nasce aberta e com o foco dentro: o rail recolhido abriu a gaveta
+   *  direto na Ajuda. */
+  autoFocus?: boolean;
+  /** Chamado ao escolher. */
   onNavigate?: () => void;
   className?: string;
 };
 
 const triggerClass = {
   nav: "platform-nav-link group relative flex h-11 min-h-11 w-full shrink-0 items-center gap-2.5 rounded-md border border-transparent px-2.5 py-1.5 text-sm font-semibold text-[var(--color-ink-soft)] transition-colors hover:bg-[var(--color-surface-strong)] hover:text-[var(--color-ink)]",
-  menu: "account-menu-item",
   bar: "help-menu-trigger",
 };
 
 const labelClass = {
   nav: "platform-sidebar-label min-w-0 truncate",
-  menu: "min-w-0 flex-1 truncate",
   bar: "help-menu-trigger__label",
 };
 
 const choiceClass = {
   nav: "platform-nav-link help-menu-choice-link flex min-h-11 w-full items-center rounded-md border border-transparent px-2.5 py-2 text-sm text-[var(--color-ink-soft)] hover:bg-[var(--color-surface-strong)] hover:text-[var(--color-ink)]",
-  menu: "account-menu-item help-menu-choice-link",
   bar: "account-menu-item help-menu-choice-link",
 };
+
+const choiceSelector = "a[href], button";
 
 export function HelpMenu({
   side,
@@ -111,6 +114,7 @@ export function HelpMenu({
   collapsed = false,
   open: controlledOpen,
   onOpenChange,
+  autoFocus = false,
   onNavigate,
   className,
 }: HelpMenuProps) {
@@ -123,7 +127,7 @@ export function HelpMenu({
   const wrapperRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
-  const focusOnOpen = useRef(false);
+  const focusOnOpen = useRef(autoFocus);
   const choices = getHelpChoices(side, course, advisorReady);
   const label = t("helpMenu.trigger");
 
@@ -143,15 +147,34 @@ export function HelpMenu({
   }
 
   // Ao abrir pelo botao, o foco vai para a primeira escolha: quem usa teclado
-  // ou leitor de tela cai dentro das opcoes, nao perde o lugar.
+  // ou leitor de tela cai dentro das opcoes, nao perde o lugar. Na barra
+  // recolhida o painel so existe depois que ela abre, entao o pedido de foco
+  // espera o painel aparecer (por isso `collapsed` nas dependencias). Na gaveta
+  // (autoFocus), a gaveta se foca logo depois deste efeito — os pais rodam por
+  // ultimo —, entao a escolha recebe o foco numa microtarefa, depois dela.
   useEffect(() => {
-    if (!open || !focusOnOpen.current) return;
+    const panel = panelRef.current;
+    if (!open || !panel || !focusOnOpen.current) return;
     focusOnOpen.current = false;
-    panelRef.current?.querySelector<HTMLElement>("a[href], button")?.focus();
-  }, [open]);
+    const focusFirst = () => panel.querySelector<HTMLElement>(choiceSelector)?.focus();
+    if (autoFocus) queueMicrotask(focusFirst);
+    else focusFirst();
+  }, [open, collapsed, autoFocus]);
 
-  // So o botao do topo flutua por cima da pagina; clicar fora fecha. Na barra
-  // e no menu do avatar a lista abre no lugar, como um grupo.
+  // Setas andam entre as escolhas (e do botao para a primeira ou a ultima).
+  function moveFocus(step: 1 | -1) {
+    const items = Array.from(panelRef.current?.querySelectorAll<HTMLElement>(choiceSelector) ?? []);
+    if (!items.length) return false;
+    const at = items.indexOf(document.activeElement as HTMLElement);
+    const next = at === -1
+      ? (step === 1 ? 0 : items.length - 1)
+      : (at + step + items.length) % items.length;
+    items[next].focus();
+    return true;
+  }
+
+  // So o botao do topo flutua por cima da pagina; clicar fora ou sair dele com
+  // Tab fecha. Na barra lateral a lista abre no lugar, como os outros grupos.
   useEffect(() => {
     if (!open || variant !== "bar") return;
     function dismiss(event: MouseEvent) {
@@ -169,9 +192,21 @@ export function HelpMenu({
       ref={wrapperRef}
       className={["help-menu", variant === "bar" ? "relative" : "", className ?? ""].filter(Boolean).join(" ")}
       onKeyDown={(event) => {
-        if (event.key !== "Escape" || !open) return;
-        event.stopPropagation();
-        close({ restoreFocus: true });
+        if (!open) return;
+        if (event.key === "Escape") {
+          event.stopPropagation();
+          close({ restoreFocus: true });
+        } else if ((event.key === "ArrowDown" || event.key === "ArrowUp") && moveFocus(event.key === "ArrowDown" ? 1 : -1)) {
+          event.preventDefault();
+        }
+      }}
+      onBlur={(event) => {
+        // Tab para fora do painel flutuante: fecha, e o foco segue para onde a
+        // pessoa foi. Foco para "lugar nenhum" (clique em texto) nao fecha.
+        const next = event.relatedTarget;
+        if (variant === "bar" && open && next instanceof Node && !event.currentTarget.contains(next)) {
+          setOpen(false);
+        }
       }}
     >
       <button
@@ -188,11 +223,7 @@ export function HelpMenu({
           setOpen(!open);
         }}
       >
-        {variant === "menu" ? (
-          <span className="account-menu-icon">
-            <LifeBuoy aria-hidden="true" size={14} strokeWidth={1.9} />
-          </span>
-        ) : variant === "nav" && !collapsed ? (
+        {variant === "nav" && !collapsed ? (
           <span className="platform-nav-icon-chip">
             <LifeBuoy aria-hidden="true" size={18} strokeWidth={2} />
           </span>
@@ -211,9 +242,7 @@ export function HelpMenu({
           className={
             variant === "bar"
               ? "help-menu-popover motion-drop-in"
-              : variant === "nav"
-                ? "platform-nav-section-items help-menu-inline motion-panel-in"
-                : "help-menu-inline motion-panel-in"
+              : "platform-nav-section-items help-menu-inline motion-panel-in"
           }
         >
           <p id={titleId} className="help-menu-title">

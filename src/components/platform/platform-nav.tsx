@@ -239,8 +239,9 @@ export function PlatformNav({
   const mainGroups = groups.filter((group) => !footerSections.has(group.section));
   const footerGroups = groups.filter((group) => footerSections.has(group.section));
   // Ajuda entra logo depois do trabalho do dia (Promover / os itens fixos do
-  // aluno) e antes de compras e configuracoes. A equipe de operacoes tem a
-  // Ajuda no menu do avatar.
+  // aluno) e antes de compras e configuracoes. E a UNICA Ajuda da tela (nem o
+  // topo nem o menu do avatar repetem). A equipe de operacoes nao tem Ajuda:
+  // as escolhas falam com aluno e professor, nao com o suporte.
   const helpRank = getSectionRank("help");
   const beforeHelp = mainGroups.filter((group) => getSectionRank(group.section) < helpRank);
   const afterHelp = mainGroups.filter((group) => getSectionRank(group.section) > helpRank);
@@ -252,6 +253,7 @@ export function PlatformNav({
         collapsed={collapsed}
         open={expandedSections.includes("help")}
         onOpenChange={() => toggleSection("help")}
+        autoFocus={initialSection === "help"}
       />
     </div>
   );

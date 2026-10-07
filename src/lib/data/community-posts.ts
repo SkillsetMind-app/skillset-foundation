@@ -12,7 +12,7 @@ import type {
   CommunityReportStatus,
   CommunityReportTargetType,
 } from "@/domain/community-report";
-import { countOpenQuestions, openQuestions } from "@/domain/community-feed";
+import { countOpenQuestions } from "@/domain/community-feed";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import type { Database } from "@/lib/supabase/database.types";
 
@@ -525,19 +525,24 @@ export async function getRecentCommunityQuestions(
 }
 
 /**
- * As perguntas que esperam pelo professor em TODAS as comunidades dele: a
+ * Os ids das perguntas que esperam pelo professor nas comunidades dele: a
  * mesma regra da caixa de cada curso (openQuestions) — sem resposta aceita e
- * sem resposta de instrutor. Alimenta a Caixa de entrada e o numero ao lado
- * dela na barra lateral.
+ * sem resposta de instrutor. Alimenta o numero ao lado de "Inbox" em toda
+ * pagina do professor, entao le so ids, nunca o texto.
  *
- * ponytail: leitura unica, sem realtime, ate 200 perguntas abertas. O numero
- * muda ao trocar de pagina; se precisar mudar sozinho, o upgrade e uma
- * inscricao, como a da caixa por curso.
+ * As mais NOVAS primeiro, com os filtros na consulta: a janela pegava as 200
+ * mais antigas, e perguntas ja respondidas sem "resposta aceita" ocupavam a
+ * janela ate a Caixa dizer "nada esperando" com aluno esperando. Das
+ * respostas, o banco devolve so as de instrutor, e so a coluna post_id.
+ *
+ * ponytail: duas leituras, tetos de 200 perguntas e 2000 respostas. Uma
+ * pergunta aberta mais velha que as 200 mais novas sem resposta aceita fica de
+ * fora; o upgrade e uma RPC que filtre "sem resposta de instrutor" no banco.
  */
 export async function getOpenCommunityQuestions(
   courseSlugs: string[],
   instructorId: string,
-): Promise<CommunityPost[]> {
+): Promise<string[]> {
   if (!courseSlugs.length) {
     return [];
   }
@@ -545,25 +550,46 @@ export async function getOpenCommunityQuestions(
   const supabase = getSupabaseBrowserClient();
   const { data, error } = await supabase
     .from("community_posts")
-    .select("*")
+    .select("id")
     .in("course_slug", courseSlugs)
     .eq("category", "question")
     .is("accepted_comment_id", null)
-    .order("created_at", { ascending: true })
+    .order("created_at", { ascending: false })
     .limit(200);
 
   if (error) throw error;
-  const posts = (data ?? []).map(rowToPost);
-  if (!posts.length) {
+  const ids = (data ?? []).map((post) => post.id);
+  if (!ids.length) {
     return [];
   }
 
+  // A mesma regra de isInstructor (community-feed): papel de professor ou
+  // admin, ou o dono do curso.
   const { data: replies, error: repliesError } = await supabase
     .from("community_comments")
-    .select("*")
-    .in("post_id", posts.map((post) => post.id))
+    .select("post_id")
+    .in("post_id", ids)
+    .or(`author_role.in.(teacher,admin),author_id.eq.${instructorId}`)
     .limit(2000);
 
   if (repliesError) throw repliesError;
-  return openQuestions(posts, (replies ?? []).map(rowToComment), [instructorId]);
+  const answered = new Set((replies ?? []).map((reply) => reply.post_id));
+  return ids.filter((id) => !answered.has(id));
+}
+
+/** O texto das perguntas que a Caixa de entrada lista, da que espera ha mais
+ *  tempo para a mais nova. So a pagina Inbox le isto; a conta nao precisa. */
+export async function getCommunityPostsByIds(ids: string[]): Promise<CommunityPost[]> {
+  if (!ids.length) {
+    return [];
+  }
+
+  const { data, error } = await getSupabaseBrowserClient()
+    .from("community_posts")
+    .select("*")
+    .in("id", ids)
+    .order("created_at", { ascending: true });
+
+  if (error) throw error;
+  return (data ?? []).map(rowToPost);
 }

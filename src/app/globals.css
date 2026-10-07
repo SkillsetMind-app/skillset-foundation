@@ -1651,8 +1651,8 @@ p {
 }
 
 /* ── Botao Ajuda: tres escolhas (help-menu.tsx) ────────────────────────────
-   No topo abre por cima da pagina; na barra lateral e no menu do avatar abre
-   no lugar, como um grupo. Mesmo componente, mesmas escolhas. ── */
+   No topo da sala de aula abre por cima da pagina; na barra lateral abre
+   no lugar, como um grupo. Uma Ajuda por tela. ── */
 .help-menu-popover {
   position: absolute;
   top: calc(100% + 8px);
@@ -2639,10 +2639,36 @@ select:focus-visible {
   display: none;
 }
 
+/* Abaixo de 1280px a troca de lado fica so com o icone (o nome vai no
+   aria-label e no title). Com o texto inteiro, de 768 a ~1180px, ela empurrava
+   o idioma e o menu da conta para fora da tela: a coluna tem overflow hidden e
+   o grupo de acoes nao encolhe. Conta em src/app/barra-do-topo-cabe.test.ts. */
+@media (max-width: 1279.98px) {
+  .platform-topbar__switch {
+    width: 44px;
+    justify-content: center;
+    padding: 0;
+  }
+
+  .platform-topbar__switch-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+}
+
 @media (max-width: 767.98px) {
-  .platform-topbar__switch,
-  .platform-topbar__help {
+  .platform-topbar__switch {
     display: none;
+  }
+
+  /* 360px: 328 de conteudo - logo 40 - acoes 200 - 2 espacos de 8 = 72px
+     para o nome do lado, que e uma palavra so ("Profesor" e a maior). */
+  .platform-topbar__inner {
+    gap: 0.5rem;
   }
 
   .platform-topbar__side {
@@ -2652,7 +2678,7 @@ select:focus-visible {
     color: var(--color-accent-fg);
     font-size: 0.6875rem;
     font-weight: 800;
-    letter-spacing: 0.08em;
+    letter-spacing: 0.04em;
     text-overflow: ellipsis;
     text-transform: uppercase;
     white-space: nowrap;

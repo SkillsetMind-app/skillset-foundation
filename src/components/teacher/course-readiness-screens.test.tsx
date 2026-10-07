@@ -543,9 +543,7 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     expect(subscribeToTeacherCourse).toHaveBeenCalledOnce();
   });
 
-  // A previa abre na MESMA aba agora; a guarda do rascunho pergunta antes,
-  // como em qualquer outro link que sai da pagina.
-  it("uses the current language when leaving a dirty draft, also through the preview", async () => {
+  it("uses the current language when leaving a dirty draft and keeps new-tab preview exempt", async () => {
     const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
     const { container } = renderBuilder();
     await screen.findByRole("heading", { name: mocks.course.title });
@@ -557,11 +555,10 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     container.appendChild(leave);
     expect(fireEvent.click(leave)).toBe(false);
     expect(confirm).toHaveBeenCalledExactlyOnceWith("Este curso tiene cambios sin guardar. ¿Quieres salir y perderlos?");
-    const preview = screen.getByRole("link", { name: "Vista previa" });
-    expect(preview).not.toHaveAttribute("target");
+    const preview = screen.getByRole("link", { name: /^Vista previa.*pestaña nueva/i });
     preview.addEventListener("click", (event) => event.preventDefault());
     fireEvent.click(preview);
-    expect(confirm).toHaveBeenCalledTimes(2);
+    expect(confirm).toHaveBeenCalledOnce();
     expect(updateTeacherCourseBuilder).not.toHaveBeenCalled();
   });
 
@@ -916,24 +913,24 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     expect(disconnect).toHaveBeenCalledOnce();
   });
 
-  it("keeps both previews plain same-tab links without saving or publishing on click", async () => {
+  it("keeps both previews native new-tab links without saving or publishing on click", async () => {
     renderMembers();
     await screen.findByText("Live preview");
     for (const locale of ["en", "es"]) {
       const labels = locale === "en"
-        ? ["Preview", "Open full preview"]
-        : ["Vista previa", "Abrir vista previa completa"];
+        ? [/^Preview.*opens in a new tab/i, /^Open full preview.*opens in a new tab/i]
+        : [/^Vista previa.*abre en una pestaña nueva/i, /^Abrir vista previa completa.*abre en una pestaña nueva/i];
       for (const label of labels) {
         const link = screen.getByRole("link", { name: label });
         expect(link.tagName).toBe("A");
         expect(link).toHaveAttribute("href", "/teach/builder/course-1/preview");
-        expect(link).not.toHaveAttribute("target");
-        link.addEventListener("click", (event) => event.preventDefault());
+        expect(link).toHaveAttribute("target", "_blank");
+        expect(link).toHaveAttribute("rel", "noopener noreferrer");
         fireEvent.click(link);
       }
       if (locale === "en") fireEvent.click(screen.getByRole("button", { name: "Switch language" }));
     }
-    expect(screen.getByText("La vista previa completa muestra la última versión guardada. Espera a que termine el guardado automático antes de abrirla.")).toBeInTheDocument();
+    expect(screen.getByText("La vista previa completa abre la última versión guardada en una pestaña nueva. Espera a que termine el guardado automático antes de abrirla.")).toBeInTheDocument();
     expect(updateTeacherCourseBuilder).not.toHaveBeenCalled();
     expect(publishTeacherCourse).not.toHaveBeenCalled();
     expect(mocks.router.push).not.toHaveBeenCalled();

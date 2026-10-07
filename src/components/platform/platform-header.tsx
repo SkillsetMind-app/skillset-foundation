@@ -8,7 +8,6 @@ import { useState } from "react";
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { LocaleSwitcher } from "@/components/i18n/locale-switcher";
-import { HelpMenu } from "@/components/platform/help-menu";
 import { NotificationBell } from "@/components/platform/notification-bell";
 import { PlatformSearch } from "@/components/platform/platform-search";
 import { AccountMenu } from "@/components/site/account-menu";
@@ -74,18 +73,21 @@ export function PlatformHeader({ currentNavigationHref, searchHref }: {
         {showSearch ? <PlatformSearch pathname={pathname} open={searchOpen} searchHref={searchHref ?? undefined} /> : null}
 
         <div className="platform-topbar__actions">
+          {/* Abaixo de 1280px o botao fica so com o icone (o texto continua
+              para leitor de tela): com o texto inteiro ele empurrava o idioma
+              e o menu da conta para fora da tela em tablet e notebook pequeno.
+              A Ajuda nao mora aqui: e uma por tela, na barra lateral (no
+              celular, dentro da gaveta). */}
           {switchTo ? (
-            <Link href={switchTo.href} className="platform-topbar__switch">
+            <Link
+              href={switchTo.href}
+              aria-label={switchTo.label}
+              title={switchTo.label}
+              className="platform-topbar__switch"
+            >
               <ArrowLeftRight aria-hidden="true" size={16} strokeWidth={1.9} />
-              <span>{switchTo.label}</span>
+              <span className="platform-topbar__switch-label">{switchTo.label}</span>
             </Link>
-          ) : null}
-          {signedIn ? (
-            <HelpMenu
-              variant="bar"
-              side={side === "teacher" ? "teacher" : "student"}
-              className="platform-topbar__help"
-            />
           ) : null}
           {/* No celular o campo não cabe na linha: o ícone o abre logo abaixo
               da barra. Em telas maiores ele já está aberto e este botão some. */}

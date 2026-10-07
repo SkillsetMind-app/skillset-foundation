@@ -116,7 +116,7 @@ export function MemberAreaShell({
                 resposta "cai no sino". A saida da sala continua UMA: "← My
                 courses", na capa ou no cabecalho curto da aula. */}
             <HelpMenu variant="bar" side="student" course={course} />
-            <MemberAreaAccount />
+            <MemberAreaAccount branded={Boolean(brand)} />
           </div>
         </header>
         {/* No side gutter below md: on a phone the classroom runs edge to edge
@@ -130,13 +130,13 @@ export function MemberAreaShell({
   );
 }
 
-function MemberAreaAccount() {
+function MemberAreaAccount({ branded }: { branded: boolean }) {
   const { status, user, signOut } = useAuth();
 
   return (
     <>
       <NotificationBell />
-      {status === "authenticated" && user ? <AccountMenu user={user} onSignOut={signOut} /> : null}
+      {status === "authenticated" && user ? <AccountMenu user={user} onSignOut={signOut} branded={branded} /> : null}
     </>
   );
 }
