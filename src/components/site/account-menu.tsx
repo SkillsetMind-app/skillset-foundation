@@ -82,9 +82,13 @@ export function AccountMenu({ onSignOut, user }: AccountMenuProps) {
   const moneyHref = user.roles.includes("teacher")
     ? "/account/payments"
     : "/account/billing";
+  // Plans are what a creator pays to sell; same gate as /teach.
+  const canTeach = hasPermission({ roles: user.roles }, "teacherStudio.access");
   const moneyLabel = user.roles.includes("teacher")
     ? t("account.payoutsTax")
-    : t("account.billing");
+    : canTeach
+      ? t("account.billing")
+      : t("platform.nav.myPurchases");
   const currentPlanName = planById(currentPlanId).name;
   const accountRoleLabel = t(primaryRoleKey(user.roles));
   const memberFallback = t("account.memberFallback");
@@ -289,17 +293,19 @@ export function AccountMenu({ onSignOut, user }: AccountMenuProps) {
             <p className="account-menu-section-label">
               {t("account.sectionAccount")}
             </p>
-            <MenuLink
-              href="/account/plans"
-              icon={Award}
-              label={
-                user.roles.includes("teacher")
-                  ? t("account.creatorPlan")
-                  : t("account.subscription")
-              }
-              chip={currentPlanName}
-              onNavigate={() => setIsOpen(false)}
-            />
+            {canTeach ? (
+              <MenuLink
+                href="/account/plans"
+                icon={Award}
+                label={
+                  user.roles.includes("teacher")
+                    ? t("account.creatorPlan")
+                    : t("account.subscription")
+                }
+                chip={currentPlanName}
+                onNavigate={() => setIsOpen(false)}
+              />
+            ) : null}
             <MenuLink
               href="/account"
               icon={Settings}

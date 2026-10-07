@@ -71,15 +71,52 @@ describe("grupos da barra lateral traduzidos", () => {
   });
 });
 
-describe("Conta > Planos acende na barra do aluno", () => {
-  it("/account/plans marca Plans & fees como pagina atual (antes: contexts vazio, nada aceso)", () => {
-    mocks.roles = ["student"];
-    mocks.pathname = "/account/plans";
+describe("Conta > Planos acende na barra do professor que estuda", () => {
+  // /learn/messages: a rota da conta que o professor abre como aluno, entao o
+  // grupo Account vem aberto.
+  it("o grupo Account do professor oferece Plans & fees (antes: contexts vazio, nada aceso)", () => {
+    mocks.roles = ["student", "teacher"];
+    mocks.pathname = "/learn/messages";
     render(<PlatformNav />);
 
     expect(screen.getByRole("link", { name: "Plans & fees" })).toHaveAttribute(
-      "aria-current",
-      "page",
+      "href",
+      "/account/plans",
     );
+  });
+});
+
+// O aluno via os planos de quem vende e uma pagina chamada "Billing" que so
+// guarda o que ele comprou.
+describe("Conta do aluno: compras, sem plano de criador", () => {
+  it("o aluno ve My purchases e nenhum Plans & fees", () => {
+    mocks.roles = ["student"];
+    mocks.pathname = "/account/billing";
+    render(<PlatformNav />);
+
+    expect(screen.getByRole("link", { name: "My purchases" })).toHaveAttribute("aria-current", "page");
+    expect(screen.queryByRole("link", { name: "Billing" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Plans & fees" })).toBeNull();
+  });
+
+  it("em espanhol, Mis compras", () => {
+    mocks.roles = ["student"];
+    mocks.pathname = "/learn/messages";
+    render(
+      <I18nProvider initialLocale="es">
+        <PlatformNav />
+      </I18nProvider>,
+    );
+
+    expect(screen.getByRole("link", { name: "Mis compras" })).toHaveAttribute("href", "/account/billing");
+  });
+
+  it("o professor que estuda segue vendo Billing", () => {
+    mocks.roles = ["student", "teacher"];
+    mocks.pathname = "/learn/messages";
+    render(<PlatformNav />);
+
+    expect(screen.getByRole("link", { name: "Billing" })).toHaveAttribute("href", "/account/billing");
+    expect(screen.queryByRole("link", { name: "My purchases" })).toBeNull();
   });
 });

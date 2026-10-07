@@ -14,6 +14,7 @@ import type { UserProfile } from "@/domain/user-profile";
 import { subscribeToUserOrders } from "@/lib/data/orders";
 import { subscribeToUserProfile } from "@/lib/data/user-profiles";
 import { useModalFocus } from "@/lib/a11y/use-modal-focus";
+import { hasPermission } from "@/lib/permissions";
 import { toDate } from "@/lib/format-date";
 import { openBillingPortal, requestOrderRefund } from "@/lib/payments/billing";
 
@@ -50,8 +51,12 @@ export function BillingTabs() {
   const { t } = useTranslation();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const activeTab = searchParams.get("tab") ?? "overview";
   const { status, user } = useAuth();
+  // The Subscription tab and the plan line are the creator's plan, which only
+  // a teacher pays for (same gate as /teach). A learner sees what they bought.
+  const canTeach = hasPermission({ roles: user?.roles }, "teacherStudio.access");
+  const requestedTab = searchParams.get("tab") ?? "overview";
+  const activeTab = requestedTab === "subscriptions" && !canTeach ? "overview" : requestedTab;
 
   const [orders, setOrders] = useState<Order[]>([]);
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -132,7 +137,9 @@ export function BillingTabs() {
   return (
     <section className="rounded-lg border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
       <HorizontalTabs
-        tabs={billingTabs.map((tab) => ({ ...tab, label: t(`accountBilling.tabs.${tab.value}`) }))}
+        tabs={billingTabs
+          .filter((tab) => canTeach || tab.value !== "subscriptions")
+          .map((tab) => ({ ...tab, label: t(`accountBilling.tabs.${tab.value}`) }))}
         activeValue={activeTab}
         onChange={handleTabChange}
         ariaLabel={t("accountBilling.sections")}
@@ -164,6 +171,7 @@ export function BillingTabs() {
             error={error}
             isSignedIn={isSignedIn}
             authResolving={authResolving}
+            showPlan={canTeach}
             onSeePurchases={() => handleTabChange("purchases")}
           />
         )}
@@ -217,10 +225,12 @@ function OverviewTab({
   error,
   isSignedIn,
   authResolving,
+  showPlan,
   onSeePurchases,
 }: OrderTabProps & {
   profile: UserProfile | null;
   profileStatus: "loading" | "ready" | "error";
+  showPlan: boolean;
   onSeePurchases: () => void;
 }) {
   const { t, locale } = useTranslation();
@@ -259,13 +269,13 @@ function OverviewTab({
         </p>
         <p className="mt-1 text-sm text-[var(--color-ink-soft)]">
           {t(courseCount === 1 ? "accountBilling.coursePurchased" : "accountBilling.coursesPurchased").replace("{count}", () => String(courseCount))}
-          {profileFailed ? "" : ` · ${t("accountBilling.planSubscription").replace("{plan}", () => planName)}`}
+          {profileFailed || !showPlan ? "" : ` · ${t("accountBilling.planSubscription").replace("{plan}", () => planName)}`}
         </p>
 
         <dl className="mt-5 grid gap-px overflow-hidden rounded-md border fine-rule bg-[var(--color-line)]">
           {[
             [t("accountBilling.coursesLabel"), String(courseCount)],
-            [t("accountBilling.subscriptionLabel"), planName],
+            ...(showPlan ? [[t("accountBilling.subscriptionLabel"), planName]] : []),
             [t("accountBilling.refunds"), String(refundCount)],
           ].map(([label, value]) => (
             <div
