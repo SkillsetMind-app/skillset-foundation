@@ -572,7 +572,9 @@ function StudioSellFormatsSection() {
       >
         {t("creatorPanel.home.formats.title")}
       </h2>
-      <ul className="mt-5 grid gap-px overflow-hidden rounded-md border border-[var(--color-line)] bg-[var(--color-line)] sm:grid-cols-2 lg:grid-cols-4">
+      {/* Quatro colunas so no xl, como os cartoes e os marcos desta tela: em
+          lg (1024px) com a barra aberta cada formato ficava com ~176px. */}
+      <ul className="mt-5 grid gap-px overflow-hidden rounded-md border border-[var(--color-line)] bg-[var(--color-line)] sm:grid-cols-2 xl:grid-cols-4">
         {formats.map((format) => {
           const Icon = format.icon;
 
