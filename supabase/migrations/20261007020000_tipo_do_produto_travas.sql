@@ -521,12 +521,13 @@ begin
        select 1 from public.courses c
        where c.id = new.course_id and c.product_format = 'live_event'
      )
-     -- starts_at e texto ISO; o case so converte o que tem cara de data.
-     and not case
-           when coalesce(new.starts_at, '') ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}'
-             then new.starts_at::timestamptz > now()
-           else false
-         end then
+     -- starts_at e texto ISO; o case so converte o que tem cara de data. Entre
+     -- parenteses: sem eles o IF do plpgsql para no primeiro THEN do case.
+     and not (case
+                when coalesce(new.starts_at, '') ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}'
+                  then new.starts_at::timestamptz > now()
+                else false
+              end) then
     raise exception 'The live session must start in the future.';
   end if;
   return new;
