@@ -95,9 +95,10 @@ Fonte da verdade: `src/data/plans.ts` (preços) e `src/lib/payments/rules.ts` (c
 | Pro | $89 | $890 | 2,9% + $0.30 | já existem |
 | Enterprise (fora da oferta, id `plus`) | $199 | $1990 | 1,9% + $0.30 | os do antigo Plus |
 
-- [ ] Criar o Product **Skillset Basic** com os dois Prices recorrentes em USD da tabela e colar os `price_...` em `src/data/plans.ts` (hoje `price_PLACEHOLDER_basic_*`). Enquanto houver placeholder, o cartão Basic mostra "Disponível em breve".
+- [ ] Criar o Product **Skillset Basic** com os dois Prices recorrentes em USD da tabela e colar os `price_...` em `src/data/plans.ts` (hoje `price_PLACEHOLDER_basic_*`). Enquanto houver placeholder, o cartão Basic mostra "Disponível em breve". Dá para criar pelo painel ou com `scripts/setup-stripe-billing.mjs` rodado pelo cofre, sem `STRIPE_WEBHOOK_URL` (o script só cria o Basic, reaproveita Price pela lookup key e nunca imprime segredo).
 - [ ] Opcional: renomear o Product "Skillset Plus" para "Skillset Enterprise" no painel (os Price IDs não mudam).
-- [ ] **Customer portal** (Settings → Billing → Customer portal): cancelamento ligado, "no fim do período"; troca de plano entre os Prices de Basic, Starter e Pro, sem Enterprise.
+- [ ] **Configuração própria do Customer portal** (Settings → Billing → Customer portal → nova configuração, não a padrão): cancelamento ligado, "no fim do período"; troca de plano só entre os Prices de Basic, Starter e Pro (mensal e anual), sem Enterprise. Colar o `bpc_...` em `STRIPE_PORTAL_CONFIGURATION_ID` (`src/data/plans.ts`). Enquanto for placeholder, "Gerenciar" responde 503 em vez de abrir o portal padrão.
+- [ ] **Enterprise só por admin:** criar a assinatura no painel, no customer do criador (`users.stripe_customer_id`), com a metadata `uid=<uid do criador>` e `enterprise_grant=admin`. Sem essa metadata o webhook não concede plano nenhum e avisa ops (`stripe.plan.enterprise_not_granted`).
 - [ ] Teste grátis: nada a configurar no painel. O checkout pede `trial_period_days: 14` e `payment_method_collection: always`; um teste por conta (`creator_plan_trials`).
 
 ## 3. Stripe Connect (pagamentos dos professores)

@@ -1,82 +1,50 @@
 #!/usr/bin/env node
 /**
- * One-shot setup for Skillset's subscription billing on Stripe.
+ * Creates the Skillset Basic Product and its two Prices on Stripe, idempotently.
  *
- * Creates (idempotently, by lookup_key + metadata):
- *   - 3 Products:  Skillset Basic / Starter / Pro (Enterprise is the existing
- *                  Plus Product and Prices, sold by arrangement: never recreated)
- *   - 6 Prices:    each Product × {monthly, yearly} in USD recurring
- *   - 1 Webhook Endpoint pointing at the deployed stripeWebhook function
- *     with the exact set of events the in-app subscription flow listens to.
+ *   - Basic: $5/month (lookup key skillset_basic_monthly) and $50/year
+ *     (skillset_basic_yearly), recurring USD.
+ *   - Starter, Pro and Enterprise already exist and src/data/plans.ts carries
+ *     their Price ids. This script never creates them, so it cannot mint a
+ *     second $19 or $89 Price.
  *
- * Prints the price IDs and the webhook signing secret in copy-paste form
- * for the in-repo replacement (src/data/plans.ts + functions/src/index.ts).
+ * Optional: set STRIPE_WEBHOOK_URL to the REAL platform endpoint
+ * (https://<production host>/api/webhooks/stripe) to check that endpoint's
+ * events, or create it if it does not exist. There is no default URL: without
+ * it the webhook step is skipped. The signing secret is never printed; reveal
+ * it in the Dashboard (Developers → Webhooks → the endpoint → Signing secret).
  *
- * Run:
- *   STRIPE_SECRET_KEY=sk_live_xxx \
- *   STRIPE_WEBHOOK_URL=https://us-central1-skillsetusaofficial.cloudfunctions.net/stripeWebhook \
- *     node scripts/setup-stripe-billing.mjs
- *
- * Defaults to the standard cloudfunctions.net URL when STRIPE_WEBHOOK_URL is
- * not set. If you've deployed functions as Gen2 with a *.run.app endpoint,
- * pass that URL explicitly so the webhook signature signs against it.
+ * Run through the vault, never with the key on the command line:
+ *   py -3.13 C:\Users\nicae\.claude\seguranca\cofre.py roda STRIPE_SECRET_KEY -- node scripts/setup-stripe-billing.mjs
  *
  * Re-running is safe:
- *   - Existing Products are reused (matched by metadata.skillset_plan_id).
- *   - Existing Prices with the same lookup_key are reused as-is.
- *   - An existing Webhook Endpoint at the same URL is reused (BUT its
- *     signing secret is only returned at creation — Stripe doesn't allow
- *     reading it back. If it already exists, this script tells you to
- *     rotate it manually in the Dashboard if you lost the secret.)
+ *   - The Product is reused when one carries metadata.skillset_plan_id=basic or
+ *     is named "Skillset Basic".
+ *   - A Price is reused by lookup key. An archived Price under the key stops
+ *     the run (reactivate it; never a twin). A Price on the Product with the
+ *     same amount and interval but no lookup key is reused too.
  */
 
+import { pathToFileURL } from "node:url";
 import Stripe from "stripe";
 
-const SECRET = process.env.STRIPE_SECRET_KEY;
-if (!SECRET) {
-  console.error(
-    "ERROR: STRIPE_SECRET_KEY is required.\n" +
-      "Run with:  STRIPE_SECRET_KEY=sk_live_xxx node scripts/setup-stripe-billing.mjs",
-  );
-  process.exit(1);
-}
-if (!SECRET.startsWith("sk_")) {
-  // Sem eco do valor, nem dos primeiros caracteres: a variavel esta errada
-  // JUSTAMENTE porque nao e uma chave Stripe, entao o que estiver ali pode ser
-  // qualquer outro segredo colado no lugar errado -- e um terminal, um log de
-  // CI ou um screenshot de suporte carrega isso adiante.
-  console.error(
-    "ERROR: STRIPE_SECRET_KEY has an invalid format (expected a key starting with 'sk_').",
-  );
-  process.exit(1);
-}
-
-const isLive = SECRET.startsWith("sk_live_");
-const MODE_LABEL = isLive ? "LIVE" : "TEST";
-
-const WEBHOOK_URL =
-  process.env.STRIPE_WEBHOOK_URL ||
-  "https://us-central1-skillsetusaofficial.cloudfunctions.net/stripeWebhook";
-
-const WEBHOOK_EVENTS = [
-  // Subscriptions (new — Wave 5B)
+// The platform endpoint's events for the plan flow. Read-only check against an
+// existing endpoint; only used as-is when the endpoint has to be created.
+export const WEBHOOK_EVENTS = [
   "customer.subscription.created",
   "customer.subscription.updated",
   "customer.subscription.deleted",
   // The 14-day plan trial: the reminder email before it converts.
   "customer.subscription.trial_will_end",
   "invoice.payment_failed",
-  // Course one-time checkout (existing — keep ringing through this webhook)
   "checkout.session.completed",
   "checkout.session.expired",
   "payment_intent.payment_failed",
   "charge.refunded",
 ];
 
-// Catalog — MUST match src/data/plans.ts. Keep in sync. Starter and Pro
-// already exist under their lookup keys and are reused as they are; Basic is
-// the only new Product.
-const PLANS = [
+// MUST match the basic entry in src/data/plans.ts.
+export const PLANS = [
   {
     id: "basic",
     name: "Skillset Basic",
@@ -84,50 +52,21 @@ const PLANS = [
     monthlyUsd: 5,
     yearlyUsd: 50,
   },
-  {
-    id: "starter",
-    name: "Skillset Starter",
-    description: "4.9% + $0.30 per sale.",
-    monthlyUsd: 19,
-    yearlyUsd: 190,
-  },
-  {
-    id: "pro",
-    name: "Skillset Pro",
-    description: "2.9% + $0.30 per sale.",
-    monthlyUsd: 89,
-    yearlyUsd: 890,
-  },
 ];
 
-const stripe = new Stripe(SECRET, { apiVersion: "2025-06-30.basil" });
-
-function header(text) {
-  const line = "─".repeat(text.length + 4);
-  console.log("\n" + line + "\n  " + text + "\n" + line);
+/** The webhook URL to check, or null: there is no default endpoint. */
+export function webhookUrlFrom(env) {
+  const url = (env.STRIPE_WEBHOOK_URL ?? "").trim();
+  return url || null;
 }
 
-async function findProductByPlanId(planId) {
+export async function upsertProduct(stripe, plan) {
   const found = await stripe.products.search({
-    query: `metadata['skillset_plan_id']:'${planId}'`,
+    query: `metadata['skillset_plan_id']:'${plan.id}' OR name:'${plan.name}'`,
   });
-  return found.data[0] ?? null;
-}
-
-async function findPriceByLookupKey(lookupKey) {
-  const found = await stripe.prices.list({
-    lookup_keys: [lookupKey],
-    active: true,
-    limit: 1,
-  });
-  return found.data[0] ?? null;
-}
-
-async function upsertProduct(plan) {
-  const existing = await findProductByPlanId(plan.id);
-  if (existing) {
-    console.log(`  ✓ Product '${plan.name}' already exists: ${existing.id}`);
-    return existing;
+  if (found.data[0]) {
+    console.log(`  ✓ Product '${plan.name}' already exists: ${found.data[0].id}`);
+    return found.data[0];
   }
   const product = await stripe.products.create({
     name: plan.name,
@@ -138,150 +77,114 @@ async function upsertProduct(plan) {
   return product;
 }
 
-async function upsertPrice(plan, product, cycle) {
-  const monthlyAmount = cycle === "monthly" ? plan.monthlyUsd : plan.yearlyUsd;
+export async function upsertPrice(stripe, plan, product, cycle) {
   const lookupKey = `skillset_${plan.id}_${cycle}`;
+  const amount = (cycle === "monthly" ? plan.monthlyUsd : plan.yearlyUsd) * 100;
+  const interval = cycle === "monthly" ? "month" : "year";
 
-  const existing = await findPriceByLookupKey(lookupKey);
+  // Active or not: a lookup key names one Price.
+  const byKey = await stripe.prices.list({ lookup_keys: [lookupKey], limit: 1 });
+  const existing = byKey.data[0];
   if (existing) {
-    console.log(
-      `  ✓ Price '${lookupKey}' already exists: ${existing.id}` +
-        ` (${(existing.unit_amount ?? 0) / 100} ${(existing.currency ?? "").toUpperCase()})`,
-    );
+    if (!existing.active) {
+      throw new Error(
+        `Price ${existing.id} (${lookupKey}) is archived. Reactivate it in the Dashboard; this script will not create a second one.`,
+      );
+    }
+    console.log(`  ✓ Price '${lookupKey}' already exists: ${existing.id}`);
     return existing;
+  }
+
+  // Made in the Dashboard without the lookup key: same Product, amount and
+  // interval is the same Price.
+  const onProduct = await stripe.prices.list({ product: product.id, active: true, limit: 100 });
+  const twin = onProduct.data.find(
+    (price) => price.currency === "usd"
+      && price.unit_amount === amount
+      && price.recurring?.interval === interval,
+  );
+  if (twin) {
+    console.log(`  ✓ Price ${twin.id} already exists without a lookup key; set it to '${lookupKey}' in the Dashboard.`);
+    return twin;
   }
 
   const price = await stripe.prices.create({
     product: product.id,
     currency: "usd",
-    unit_amount: monthlyAmount * 100,
-    recurring: { interval: cycle === "monthly" ? "month" : "year" },
+    unit_amount: amount,
+    recurring: { interval },
     lookup_key: lookupKey,
-    metadata: {
-      skillset_plan_id: plan.id,
-      skillset_cycle: cycle,
-    },
+    metadata: { skillset_plan_id: plan.id, skillset_cycle: cycle },
   });
-  console.log(
-    `  + Price '${lookupKey}' created: ${price.id} ` +
-      `($${monthlyAmount}/${cycle === "monthly" ? "mo" : "yr"})`,
-  );
+  console.log(`  + Price '${lookupKey}' created: ${price.id}`);
   return price;
 }
 
-async function findWebhookByUrl(url) {
-  // No filter by url in the list call — paginate and match.
+/**
+ * Finds the endpoint at `url` and reports the events it lacks, or creates it.
+ * Never returns or prints the signing secret.
+ */
+export async function checkWebhook(stripe, url) {
   for await (const endpoint of stripe.webhookEndpoints.list({ limit: 100 })) {
-    if (endpoint.url === url) return endpoint;
-  }
-  return null;
-}
-
-async function upsertWebhook() {
-  const existing = await findWebhookByUrl(WEBHOOK_URL);
-  if (existing) {
-    console.log(`  ✓ Webhook for ${WEBHOOK_URL} already exists: ${existing.id}`);
-    console.log(
-      `    Configured events: ${existing.enabled_events.length} (will not modify)`,
-    );
-    return { endpoint: existing, secret: null };
+    if (endpoint.url !== url) continue;
+    const all = endpoint.enabled_events.includes("*");
+    const missing = all ? [] : WEBHOOK_EVENTS.filter((event) => !endpoint.enabled_events.includes(event));
+    return { id: endpoint.id, created: false, missing };
   }
   const endpoint = await stripe.webhookEndpoints.create({
-    url: WEBHOOK_URL,
+    url,
     enabled_events: WEBHOOK_EVENTS,
-    description: "Skillset subscriptions + course checkout (auto-created)",
+    description: "Skillset plan subscriptions (setup-stripe-billing)",
   });
-  console.log(`  + Webhook created: ${endpoint.id}`);
-  return { endpoint, secret: endpoint.secret };
+  return { id: endpoint.id, created: true, missing: [] };
 }
 
 async function main() {
-  header(`Setting up Skillset billing on Stripe (${MODE_LABEL})`);
-
-  if (!isLive) {
-    console.log(
-      "  ! Running in TEST mode. Re-run with sk_live_* to provision real billing.",
-    );
+  const key = (process.env.STRIPE_SECRET_KEY ?? "").trim();
+  if (!/^(sk|rk)_(test|live)_/.test(key)) {
+    // No echo of the value: if it is not a Stripe key it may be any other
+    // secret pasted in the wrong place.
+    console.error("STRIPE_SECRET_KEY is missing or is not a Stripe secret key.");
+    process.exit(1);
   }
+  const live = /^(sk|rk)_live_/.test(key);
+  const stripe = new Stripe(key);
+  console.log(`Skillset Basic on Stripe (${live ? "LIVE" : "TEST"})`);
 
-  // 1. Products
-  header("1/3  Products");
-  const products = {};
+  const ids = {};
   for (const plan of PLANS) {
-    products[plan.id] = await upsertProduct(plan);
-  }
-
-  // 2. Prices
-  header("2/3  Prices");
-  const priceIds = {};
-  for (const plan of PLANS) {
-    priceIds[plan.id] = {
-      monthly: (await upsertPrice(plan, products[plan.id], "monthly")).id,
-      yearly: (await upsertPrice(plan, products[plan.id], "yearly")).id,
+    const product = await upsertProduct(stripe, plan);
+    ids[plan.id] = {
+      monthly: (await upsertPrice(stripe, plan, product, "monthly")).id,
+      yearly: (await upsertPrice(stripe, plan, product, "yearly")).id,
     };
   }
 
-  // 3. Webhook
-  header("3/3  Webhook endpoint");
-  const { secret: newWebhookSecret } = await upsertWebhook();
-
-  // Copy-paste section
-  header("Copy-paste BLOCKS for the repo");
-
-  console.log(
-    "\nReplace the placeholder Price IDs in BOTH places:\n" +
-      "  src/data/plans.ts (stripePriceIds on starter/pro/plus)\n" +
-      "  functions/src/index.ts (PLAN_PRICE_MAP)\n",
-  );
-
-  console.log("// src/data/plans.ts — patch:\n");
-  for (const plan of PLANS) {
-    console.log(`  ${plan.id}: {`);
-    console.log(`    monthlyId: "${priceIds[plan.id].monthly}",`);
-    console.log(`    yearlyId:  "${priceIds[plan.id].yearly}",`);
-    console.log(`  },`);
-  }
-
-  console.log("\n\n// functions/src/index.ts — patch PLAN_PRICE_MAP:\n");
-  console.log("const PLAN_PRICE_MAP = {");
-  for (const plan of PLANS) {
-    console.log(`  ${plan.id}: {`);
-    console.log(`    monthly: "${priceIds[plan.id].monthly}",`);
-    console.log(`    yearly:  "${priceIds[plan.id].yearly}",`);
-    console.log(`  },`);
-  }
-  console.log("};");
-
-  if (newWebhookSecret) {
-    console.log("\n\n// Webhook signing secret (set as functions secret):\n");
-    console.log(`  firebase functions:secrets:set STRIPE_WEBHOOK_SECRET`);
-    console.log(`  # When prompted, paste:`);
-    console.log(`  ${newWebhookSecret}`);
+  const url = webhookUrlFrom(process.env);
+  if (!url) {
+    console.log("\nWebhook: skipped (STRIPE_WEBHOOK_URL not set; there is no default).");
   } else {
-    console.log(
-      "\n\n! Webhook endpoint already existed at this URL. Stripe does not\n" +
-        "  expose the signing secret after creation. If you don't already\n" +
-        "  have STRIPE_WEBHOOK_SECRET set, rotate it in the Dashboard:\n" +
-        `    https://dashboard.stripe.com/${isLive ? "" : "test/"}webhooks\n` +
-        "  → click your endpoint → 'Roll secret' → copy → firebase functions:secrets:set.",
-    );
+    const webhook = await checkWebhook(stripe, url);
+    console.log(`\nWebhook ${webhook.id} ${webhook.created ? "created" : "found"} at ${url}.`);
+    if (webhook.created) {
+      console.log("  Reveal its signing secret in the Dashboard and store it in the vault; it is not printed here.");
+    }
+    if (webhook.missing.length > 0) {
+      console.log(`  Missing events (add them in the Dashboard): ${webhook.missing.join(", ")}`);
+    }
   }
 
-  console.log(
-    "\n\nNext:\n" +
-      "  1. Paste the two blocks above into the listed files.\n" +
-      "  2. firebase functions:secrets:set STRIPE_SECRET_KEY  (sk_live_*)\n" +
-      "  3. firebase functions:secrets:set STRIPE_WEBHOOK_SECRET (whsec_*)\n" +
-      "  4. Set NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_live_* in hosting env.\n" +
-      "  5. firebase deploy --only functions\n" +
-      "  6. firebase deploy --only hosting\n",
-  );
+  console.log("\nsrc/data/plans.ts, the basic entry:");
+  for (const plan of PLANS) {
+    console.log(`  monthlyId: "${ids[plan.id].monthly}",`);
+    console.log(`  yearlyId: "${ids[plan.id].yearly}",`);
+  }
 }
 
-main().catch((error) => {
-  console.error("\nERROR:", error.message);
-  if (error.raw) {
-    console.error("Stripe error type:", error.raw.type);
-  }
-  process.exit(1);
-});
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main().catch((error) => {
+    // Message only: a Stripe error object can carry request details.
+    console.error(`Failed: ${error instanceof Error ? error.message : "unknown error"}`);
+    process.exit(1);
+  });
+}
