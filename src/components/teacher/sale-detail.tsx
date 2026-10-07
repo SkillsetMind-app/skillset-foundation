@@ -64,7 +64,7 @@ function CopyIdButton({ value, label }: { value: string | null; label: string })
     <button
       type="button"
       onClick={handleCopy}
-      className="inline-flex items-center gap-2 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-surface)] px-2.5 py-1.5 text-xs font-semibold text-[var(--color-primary)] hover:bg-[var(--color-surface-soft)]"
+      className="inline-flex items-center gap-2 rounded-md border border-[var(--color-line)] bg-[var(--color-surface)] px-2.5 py-1.5 text-xs font-semibold text-[var(--color-primary)] hover:bg-[var(--color-surface-soft)]"
       aria-label={t("saleDetail.copy").replace("{label}", () => label)}
     >
       <Copy aria-hidden="true" size={13} strokeWidth={1.9} />

@@ -130,7 +130,7 @@ export function BillingTabs() {
   }
 
   return (
-    <section className="rounded-none border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
+    <section className="rounded-lg border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
       <HorizontalTabs
         tabs={billingTabs.map((tab) => ({ ...tab, label: t(`accountBilling.tabs.${tab.value}`) }))}
         activeValue={activeTab}
@@ -250,7 +250,7 @@ function OverviewTab({
   return (
     <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
       {/* Lifetime summary */}
-      <div className="rounded-none border fine-rule bg-[var(--color-surface-soft)] p-5">
+      <div className="rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-5">
         <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
           {t("accountBilling.lifetimeSpend")}
         </p>
@@ -262,7 +262,7 @@ function OverviewTab({
           {profileFailed ? "" : ` · ${t("accountBilling.planSubscription").replace("{plan}", () => planName)}`}
         </p>
 
-        <dl className="mt-5 grid gap-px overflow-hidden rounded-none border fine-rule bg-[var(--color-line)]">
+        <dl className="mt-5 grid gap-px overflow-hidden rounded-md border fine-rule bg-[var(--color-line)]">
           {[
             [t("accountBilling.coursesLabel"), String(courseCount)],
             [t("accountBilling.subscriptionLabel"), planName],
@@ -288,7 +288,7 @@ function OverviewTab({
       </div>
 
       {/* Payments & invoices via Stripe */}
-      <div className="rounded-none border border-[var(--color-line)] bg-white p-5">
+      <div className="rounded-lg border border-[var(--color-line)] bg-white p-5">
         <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
           {t("accountBilling.paymentsInvoices")}
         </p>
@@ -298,7 +298,7 @@ function OverviewTab({
         {hasCustomer ? (
           <PortalButton label={t("accountBilling.openPortal")} />
         ) : (
-          <p className="mt-3 rounded-none border fine-rule bg-[var(--color-surface-soft)] px-4 py-3 text-sm leading-6 text-[var(--color-ink-soft)]">
+          <p className="mt-3 rounded-md border fine-rule bg-[var(--color-surface-soft)] px-4 py-3 text-sm leading-6 text-[var(--color-ink-soft)]">
             {t(profileFailed ? "accountBilling.detailsError" : "accountBilling.portalAfterPurchase")}
           </p>
         )}
@@ -333,7 +333,7 @@ function PaymentMethodsTab({
   const hasCustomer = Boolean(profile?.stripeCustomerId);
 
   return (
-    <div className="rounded-none border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-5">
+    <div className="rounded-lg border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-5">
       <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
         {t("accountBilling.tabs.payment-methods")}
       </p>
@@ -346,7 +346,7 @@ function PaymentMethodsTab({
       {hasCustomer ? (
         <PortalButton label={t("accountBilling.manageMethods")} />
       ) : (
-        <p className="mt-3 rounded-none border fine-rule bg-white px-4 py-3 text-sm leading-6 text-[var(--color-ink-soft)]">
+        <p className="mt-3 rounded-md border fine-rule bg-white px-4 py-3 text-sm leading-6 text-[var(--color-ink-soft)]">
           {t("accountBilling.firstCard")}
         </p>
       )}
@@ -387,7 +387,7 @@ function PortalButton({ label }: { label: string }) {
       {portalError ? (
         <p
           role="alert"
-          className="mt-3 rounded-none border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]"
+          className="mt-3 rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]"
         >
           {t(portalError)}
         </p>
@@ -446,14 +446,14 @@ function PurchasesTab({
           bank shows THEIR descriptor. Said here, where a learner reconciles a
           statement line, it turns an unrecognised charge into a recognised one
           instead of a chargeback against the educator's balance. */}
-      <p className="rounded-none border fine-rule bg-[var(--color-surface-soft)] px-4 py-3 text-xs leading-6 text-[var(--color-ink-soft)]">
+      <p className="rounded-md border fine-rule bg-[var(--color-surface-soft)] px-4 py-3 text-xs leading-6 text-[var(--color-ink-soft)]">
         {t("accountBilling.sellerBody")}
       </p>
       <ul className="grid gap-3">
         {orders.map((order) => (
           <li
             key={order.id}
-            className="rounded-none border fine-rule bg-[var(--color-surface-soft)] p-4"
+            className="rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4"
           >
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="min-w-0">
@@ -466,7 +466,7 @@ function PurchasesTab({
                 </p>
               </div>
               <div className="flex flex-col items-end gap-2">
-                <span className="rounded-none bg-white px-3 py-1 text-sm font-bold text-[var(--color-primary)]">
+                <span className="rounded-md bg-white px-3 py-1 text-sm font-bold text-[var(--color-primary)]">
                   {formatMoney(order.amountMinor, order.currency, locale)}
                 </span>
                 <div className="flex flex-wrap items-center justify-end gap-3">
@@ -572,7 +572,7 @@ function RefundModal({
       onClick={onClose}
     >
       <div
-        className="modal-panel modal-panel-scroll w-full max-w-md rounded-none border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-strong)]"
+        className="modal-panel modal-panel-scroll w-full max-w-md rounded-xl border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-strong)]"
         onClick={(event) => event.stopPropagation()}
       >
         {done ? (
@@ -608,7 +608,7 @@ function RefundModal({
               {t("accountBilling.refundPolicy")}
             </p>
 
-            <dl className="mt-4 grid gap-px overflow-hidden rounded-none border fine-rule bg-[var(--color-line)]">
+            <dl className="mt-4 grid gap-px overflow-hidden rounded-md border fine-rule bg-[var(--color-line)]">
               {[
                 [t("accountBilling.course"), order.courseTitle],
                 [t("accountBilling.purchased"), formatDate(order.paidAt ?? order.createdAt, locale, t("accountBilling.datePending"))],
@@ -629,7 +629,7 @@ function RefundModal({
             {submitError ? (
               <p
                 role="alert"
-                className="mt-4 rounded-none border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]"
+                className="mt-4 rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]"
               >
                 {t(submitError)}
               </p>
@@ -685,14 +685,14 @@ function BillingNotice({
 }) {
   if (tone === "error") {
     return (
-      <p className="rounded-none border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
+      <p className="rounded-lg border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
         {children}
       </p>
     );
   }
 
   return (
-    <div className="rounded-none border border-dashed border-[var(--color-line-strong)] bg-[var(--color-surface-soft)] p-6 text-sm text-[var(--color-ink-soft)]">
+    <div className="rounded-lg border border-dashed border-[var(--color-line-strong)] bg-[var(--color-surface-soft)] p-6 text-sm text-[var(--color-ink-soft)]">
       {children}
     </div>
   );
@@ -710,7 +710,7 @@ function BillingEmptyState({
   statusLabel: string;
 }) {
   return (
-    <div className="rounded-none border border-dashed border-[var(--color-line-strong)] bg-[var(--color-surface-soft)] p-6">
+    <div className="rounded-lg border border-dashed border-[var(--color-line-strong)] bg-[var(--color-surface-soft)] p-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">

@@ -77,7 +77,7 @@ function ProtectedAssetPreviewContent({
 
   if (hasError) {
     return (
-      <p className="mt-3 rounded-none border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-3 py-2 text-sm font-semibold text-[var(--color-danger-fg)]">
+      <p className="mt-3 rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-3 py-2 text-sm font-semibold text-[var(--color-danger-fg)]">
         {t("courseMedia.preview.assetError")}
       </p>
     );
@@ -85,7 +85,7 @@ function ProtectedAssetPreviewContent({
 
   if (!objectUrl) {
     return (
-      <p className="mt-3 rounded-none bg-white px-3 py-2 text-sm text-[var(--color-ink-soft)]">
+      <p className="mt-3 rounded-md bg-white px-3 py-2 text-sm text-[var(--color-ink-soft)]">
         {t("courseMedia.preview.preparingAsset")}
       </p>
     );
@@ -109,7 +109,7 @@ function ProtectedAssetPreviewContent({
         <img
           src={objectUrl}
           alt={asset.fileName}
-          className="max-h-72 w-full rounded-none object-cover"
+          className="max-h-72 w-full rounded-md object-cover"
         />
         <ProtectedAssetActions asset={asset} objectUrl={objectUrl} />
       </div>
@@ -122,7 +122,7 @@ function ProtectedAssetPreviewContent({
         <iframe
           src={objectUrl}
           title={asset.fileName}
-          className="h-80 w-full rounded-none border border-[var(--color-line)] bg-white"
+          className="h-80 w-full rounded-md border border-[var(--color-line)] bg-white"
         />
         <ProtectedAssetActions asset={asset} objectUrl={objectUrl} />
       </div>

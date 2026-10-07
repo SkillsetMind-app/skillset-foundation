@@ -114,12 +114,12 @@ Skillset reads like a serious institution that is also a working product. Senten
 - **No** repeating patterns, no hand-drawn illustrations, no grain, no noise overlays.
 
 ### Cards
-- **Default card:** white background, 1px navy-12% border, `--shadow-soft`, radius 18px (`--radius-3xl`) for hero/course cards, 14px for dashboard panels, 12px for nested compact cards.
+- **Default card:** white background, 1px navy-12% border, `--shadow-soft`, radius 12px (`--radius-lg`, `rounded-lg`) — hero/course cards, dashboard panels and feature panels alike. Small nested boxes inside a card use 8px (`rounded-md`).
 - **`surface-card`:** white at 92% alpha + backdrop blur (used over the page-shell gradient).
 - **Active sidebar nav** is the only place a card-like element becomes solid navy with a heavier `0 10px 22px rgba(26,54,93,0.16)` shadow.
 
 ### Buttons
-Four variants — all radius 8px, weight 600, line-height 1, gap 8px between icon and label.
+Four variants — all radius 8px (`--radius-md`), weight 600, line-height 1, gap 8px between icon and label.
 
 | Variant | Use on | Fill | Border | Text | Effects |
 | --- | --- | --- | --- | --- | --- |
@@ -131,12 +131,13 @@ Four variants — all radius 8px, weight 600, line-height 1, gap 8px between ico
 Hover for all: `transform: translateY(-1px)` + 180ms ease. Active: `translateY(0)`. Focus: 2px navy-28% outline, 3px offset.
 
 ### Inputs
-- Radius 10px (`--radius-md`), border `--color-line`, white fill (or `--color-surface-soft` on disabled), 16px padding, 14px Manrope regular. Focus border becomes `--color-primary-light` (`#2c5282`). No focus ring shadow — just a border color change. Disabled inputs keep the soft-blue fill and `ink-soft` text.
+- Radius 8px (`--radius-md`) — inputs, selects and textareas match the buttons. Border `--color-line`, white fill (or `--color-surface-soft` on disabled), 16px padding, 14px Manrope regular. Focus border becomes `--color-primary-light` (`#2c5282`). No focus ring shadow — just a border color change. Disabled inputs keep the soft-blue fill and `ink-soft` text.
 
 ### Chips & badges
 - **Status chip:** white 94% bg, white 70% border, navy or red text, **rounded-full**, 11px / weight 600 / tracking 0.22em UPPERCASE — placed on top of course imagery (`accent-chip`).
-- **Role chip:** navy text on white pill with red 18% border, 10px / weight 700 / tracking 0.12em.
-- **"Beta" pill:** white bg, red 18% border, red text, 10px uppercase, radius 8px (not pill — never pill).
+- **Role chip:** navy text on white **rounded-full** pill with red 18% border, 10px / weight 700 / tracking 0.12em.
+- **"Beta" badge:** white bg, red 18% border, red text, 10px uppercase, radius 6px (`--radius-chip`, `rounded-chip`) — it was never a pill.
+- **Verified badge:** the label is a chip (6px, `rounded-chip`); the seal is a 16px square with a 4px corner (`--radius-sm`), never a circle.
 - **Section count pill:** soft-blue bg, navy text, 12px / weight 600 / tracking 0.14em uppercase.
 
 ### Borders & dividers
@@ -151,8 +152,18 @@ Two-tier system; nothing colored.
 - Buttons carry their own inset/drop shadows (see Buttons).
 - Avatars carry a small `0 8px 18px rgba(26,54,93,0.14)` ring.
 
-### Radii (system, never pill)
-Buttons 8 / inputs 10 / dropdowns 12 / dashboard panels 14 / feature panels 16 / hero+course cards 18 / full-bleed bands 22. **Nothing is fully rounded except status chips on imagery and avatars.**
+### Radii (subtle, one per role)
+Corners are slightly rounded — founder decision of 2026-10-06, which reverses the square corners of #447 (2026-10-01). The tokens live in the `@theme` block of `src/app/globals.css`, so Tailwind's `rounded-*` classes read them; never write a pixel radius by hand.
+
+| Token | Value | Class | Use |
+| --- | --- | --- | --- |
+| `--radius-sm` | 4px | `rounded-sm` | verified seal, tiny marks, a tab inside a segmented control |
+| `--radius-chip` | 6px | `rounded-chip` | chips and badges |
+| `--radius-md` | 8px | `rounded-md` | buttons, inputs, selects, textareas, icon buttons, small tiles |
+| `--radius-lg` | 12px | `rounded-lg` | cards, panels, dropdowns |
+| `--radius-xl` | 16px | `rounded-xl` | dialogs and sheets (sheets round only the top) |
+
+Nothing goes above 16px: `--radius-2xl`, `--radius-3xl` and `--radius-4xl` are capped at 16px. **Fully round (`rounded-full`) only for avatars, status dots, spinners, toggles, progress bars, round icon glyphs, and the chips/badges that were already pills (they stay `rounded-full`). Text buttons are never pills: 8px (`rounded-md`).** Full-bleed bands (cookie banner, footer, header) stay square — they touch the screen edge.
 
 ### Spacing & layout
 - **4px base spacing scale** (`--space-1` → `--space-12`). The most common values in the code are 4, 8, 12, 16, 20, 24, 32, 40, 48, 64.
@@ -189,7 +200,7 @@ Buttons 8 / inputs 10 / dropdowns 12 / dashboard panels 14 / feature panels 16 /
 - **Header** is sticky top with the white-94% blur background and a 1px navy-12% bottom rule.
 - **Sidebar** is `position: sticky; top: 1rem` inside the platform grid.
 - **Footer** is *not* sticky — it lives inside a card at the bottom of the page.
-- **Dropdowns** anchor right (`right-0 mt-2`) and have a 14px (small) or 18px (large) radius.
+- **Dropdowns** anchor right (`right-0 mt-2`) and have a 12px radius (`rounded-lg`).
 
 ### What to AVOID
 - Purple, magenta, teal, mint, peach.

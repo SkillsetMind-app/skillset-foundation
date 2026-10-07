@@ -285,7 +285,7 @@ export function PlatformNav({
             collapsed ? t("platform.openSectionNav").replace("{section}", sectionLabel) : undefined
           }
           title={collapsed ? sectionLabel : undefined}
-          className={`platform-nav-link platform-nav-section-trigger group relative flex w-full shrink-0 items-center rounded-none border text-sm font-semibold transition-colors ${
+          className={`platform-nav-link platform-nav-section-trigger group relative flex w-full shrink-0 items-center rounded-md border text-sm font-semibold transition-colors ${
             collapsed ? "justify-center px-0" : "px-2"
           } ${
             collapsed && isActiveSection
@@ -452,7 +452,7 @@ function PlatformNavLink({
       title={collapsed ? [label, countLabel].filter(Boolean).join(", ") : undefined}
       target={newTab ? "_blank" : undefined}
       rel={newTab ? "noopener noreferrer" : undefined}
-      className={`platform-nav-link group relative flex h-11 min-h-11 shrink-0 items-center gap-2.5 rounded-none border px-2.5 py-1.5 text-sm font-semibold transition-colors ${
+      className={`platform-nav-link group relative flex h-11 min-h-11 shrink-0 items-center gap-2.5 rounded-md border px-2.5 py-1.5 text-sm font-semibold transition-colors ${
         active
           ? "platform-nav-active border-[rgba(24,58,94,0.2)] shadow-[0_10px_22px_rgba(26,54,93,0.16)]"
           : "border-transparent text-[var(--color-ink-soft)] hover:bg-[var(--color-surface-strong)] hover:text-[var(--color-ink)]"
@@ -475,7 +475,7 @@ function PlatformNavLink({
         <>
           <span
             aria-hidden="true"
-            className={`shrink-0 rounded-none bg-[var(--color-surface-soft)] px-1 text-center font-semibold tabular-nums text-[var(--color-ink)] ${
+            className={`shrink-0 rounded-sm bg-[var(--color-surface-soft)] px-1 text-center font-semibold tabular-nums text-[var(--color-ink)] ${
               collapsed
                 ? "absolute bottom-1 left-1/2 h-3.5 min-w-5 -translate-x-1/2 text-[10px] leading-3.5"
                 : "ml-auto h-5 min-w-5 text-[11px] leading-5"

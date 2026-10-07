@@ -93,7 +93,7 @@ export function LocaleSwitcher({
         className={
           compact
             ? "locale-switcher-compact grid size-11 shrink-0 place-items-center rounded-md bg-transparent text-[11px] font-semibold text-[var(--color-ink-soft)] transition-colors hover:bg-[var(--color-surface-soft)] hover:text-[var(--color-ink)]"
-            : "inline-flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-none border border-[var(--color-line)] bg-[var(--color-surface-soft)] px-2.5 text-[11px] font-bold tracking-[0.08em] text-[var(--color-ink)] transition-colors hover:border-[var(--color-line-strong)]"
+            : "inline-flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-md border border-[var(--color-line)] bg-[var(--color-surface-soft)] px-2.5 text-[11px] font-bold tracking-[0.08em] text-[var(--color-ink)] transition-colors hover:border-[var(--color-line-strong)]"
         }
       >
         <span aria-hidden="true" className={compact ? "text-[11px] font-semibold tracking-normal" : undefined}>{LOCALE_SHORT_LABELS[locale]}</span>
@@ -112,7 +112,7 @@ export function LocaleSwitcher({
           id={listId}
           role="listbox"
           aria-label={t("footer.language")}
-          className={`absolute right-0 z-[60] min-w-44 max-w-[calc(100vw-2rem)] rounded-none border border-[var(--color-line)] bg-[var(--color-surface)] p-1.5 shadow-[var(--shadow-soft)] ${dropUp ? "bottom-full mb-2" : "top-full mt-2"}`}
+          className={`absolute right-0 z-[60] min-w-44 max-w-[calc(100vw-2rem)] rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)] p-1.5 shadow-[var(--shadow-soft)] ${dropUp ? "bottom-full mb-2" : "top-full mt-2"}`}
         >
           {LOCALES.map((code) => {
             const selected = code === locale;
@@ -126,7 +126,7 @@ export function LocaleSwitcher({
                 tabIndex={-1}
                 onClick={() => choose(code)}
                 onKeyDown={moveFocus}
-                className={`flex min-h-11 w-full items-center justify-between gap-3 rounded-none px-3 text-left text-sm font-semibold transition-colors hover:bg-[var(--color-surface-soft)] ${selected ? "text-[var(--color-primary)]" : "text-[var(--color-ink)]"}`}
+                className={`flex min-h-11 w-full items-center justify-between gap-3 rounded-md px-3 text-left text-sm font-semibold transition-colors hover:bg-[var(--color-surface-soft)] ${selected ? "text-[var(--color-primary)]" : "text-[var(--color-ink)]"}`}
               >
                 {LOCALE_LABELS[code]}
                 {selected ? <Check aria-hidden="true" size={16} strokeWidth={2.2} className="shrink-0" /> : null}

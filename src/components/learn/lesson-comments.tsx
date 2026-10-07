@@ -157,7 +157,7 @@ function LessonCommentsPanel({
   return (
     <section
       aria-labelledby="member-lesson-comments-title"
-      className="rounded-none border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-4"
+      className="rounded-lg border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-4"
     >
       <div className="flex items-center gap-2">
         <MessageCircle size={15} className="text-[var(--color-accent-fg)]" aria-hidden />
@@ -181,7 +181,7 @@ function LessonCommentsPanel({
               rows={3}
               autoFocus
               placeholder={t("learn.classroom.lessonComments.prompt")}
-              className="resize-y rounded-none border border-[var(--color-line)] bg-white px-3 py-2.5 text-sm text-[var(--color-ink)]"
+              className="resize-y rounded-md border border-[var(--color-line)] bg-white px-3 py-2.5 text-sm text-[var(--color-ink)]"
             />
           </label>
           <div className="flex flex-wrap justify-end gap-2">
@@ -209,14 +209,14 @@ function LessonCommentsPanel({
           type="button"
           disabled={!canRead}
           onClick={() => setOpen(true)}
-          className="mt-3 flex min-h-11 w-full items-center rounded-none border border-[var(--color-line)] bg-white px-4 text-left text-sm text-[var(--color-ink-soft)] disabled:opacity-70"
+          className="mt-3 flex min-h-11 w-full items-center rounded-md border border-[var(--color-line)] bg-white px-4 text-left text-sm text-[var(--color-ink-soft)] disabled:opacity-70"
         >
           {t(canRead ? "learn.classroom.lessonComments.prompt" : "learn.community.gateHeading")}
         </button>
       )}
 
       {error ? (
-        <p className="mt-3 rounded-none border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-3 py-2 text-sm font-semibold text-[var(--color-danger-fg)]">
+        <p className="mt-3 rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-3 py-2 text-sm font-semibold text-[var(--color-danger-fg)]">
           {t(error)}
         </p>
       ) : null}
@@ -238,7 +238,7 @@ function LessonCommentsPanel({
                 return (
                   <li
                     key={post.id}
-                    className="flex gap-3 rounded-none border border-[var(--color-line)] bg-white p-3"
+                    className="flex gap-3 rounded-md border border-[var(--color-line)] bg-white p-3"
                   >
                     <span
                       aria-hidden="true"
@@ -272,7 +272,7 @@ function LessonCommentsPanel({
                         </span>
                         <Link
                           href={`${basePath}/community/q/${encodeURIComponent(post.id)}?lesson=${encodeURIComponent(lesson.id)}`}
-                          className="inline-flex min-h-11 items-center rounded-none px-2 text-[var(--color-ink)] underline-offset-4 hover:underline"
+                          className="inline-flex min-h-11 items-center rounded-md px-2 text-[var(--color-ink)] underline-offset-4 hover:underline"
                         >
                           {t("learn.classroom.lessonComments.viewInCommunity")}
                         </Link>

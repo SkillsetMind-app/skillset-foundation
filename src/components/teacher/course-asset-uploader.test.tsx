@@ -152,6 +152,22 @@ describe("CourseAssetUploader", () => {
     await waitFor(() => expect(onModuleCoverUploaded).toHaveBeenCalledWith("m1", "poster-library"));
   });
 
+  it("mostra o arquivo enviado na lista sem esperar evento do Realtime", async () => {
+    // course_assets não está na publicação do Realtime: só a recarga avulsa
+    // traz a lista nova.
+    const uploaded: CourseAsset = { id: "a-new", courseId: course.id, ownerId: course.ownerId, kind: "course_cover", fileName: "capa.png", contentType: "image/png", size: 3, storagePath: "fixture/a-new.png", downloadUrl: "/fixture-new.png", isPreview: false, lessonId: null };
+    vi.mocked(subscribeToCourseAssets).mockImplementationOnce((_courseId, onAssets) => {
+      onAssets([]);
+      return Object.assign(vi.fn(), { reload: vi.fn(async () => onAssets([uploaded])) });
+    });
+    mocks.uploadCourseAsset.mockResolvedValueOnce("a-new");
+    render(<I18nProvider initialLocale="en"><CourseAssetUploader course={course} isEditable /></I18nProvider>);
+    chooseCover();
+    fireEvent.click(screen.getByRole("button", { name: "Upload asset" }));
+    // A lista nomeia cada miniatura "<tipo>: <arquivo>"; a prévia local é outra.
+    expect(await screen.findByRole("img", { name: /: capa\.png$/ })).toHaveAttribute("src", "/fixture-new.png");
+  });
+
   function chooseModuleCover(file: File) {
     render(<I18nProvider initialLocale="en"><CourseAssetUploader
       course={{ ...course, modules: [{ id: "m1", title: "Module", lessons: [] }] }}

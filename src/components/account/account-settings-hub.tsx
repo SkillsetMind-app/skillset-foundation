@@ -73,7 +73,7 @@ export function AccountSettingsHub() {
 
   return (
     <div className="space-y-6">
-      <header className="platform-hero-card rounded-none border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)] sm:p-8">
+      <header className="platform-hero-card rounded-lg border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)] sm:p-8">
         <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
           {t("accountSettings.label")}
         </p>
@@ -216,7 +216,7 @@ function NotificationPreferencesPanel() {
       </p>
 
       {saveFailed ? (
-        <p className="mt-4 rounded-none border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
+        <p className="mt-4 rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
           {t("accountSettings.saveError")}
         </p>
       ) : null}
@@ -317,7 +317,7 @@ function LearningPreferencesPanel() {
       </p>
 
       {saveFailed ? (
-        <p className="mt-4 rounded-none border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
+        <p className="mt-4 rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
           {t("accountSettings.saveError")}
         </p>
       ) : null}
