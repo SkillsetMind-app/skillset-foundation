@@ -1,128 +1,94 @@
-# Skillset Foundation
-## Multi-page product shell for Skillset
+# SkillsetMind
 
-> **Version:** 0.1.0
-> **Updated:** 2026-04-20
+A SkillsetMind é uma plataforma de cursos on-line para psicólogos e
+profissionais de desenvolvimento pessoal: quem ensina monta e vende os cursos,
+quem aprende compra e assiste, tudo no mesmo site (https://www.skillsetmind.com).
 
----
+Este repositório guarda o código do site inteiro. Ele é **público**: não coloque
+aqui chave, senha, dado de cliente nem estratégia da empresa.
 
-## What this is
+## As 4 áreas do site
 
-This repository is no longer treated as a one-page Firebase prototype.
+| Área | Para quem | Onde fica o código |
+|---|---|---|
+| Visitante | Quem ainda não entrou: página inicial, catálogo de cursos, página de cada professor, preços, ajuda, termos | `src/app/page.tsx`, `src/app/courses`, `src/app/instructors`, `src/app/legal` |
+| Aluno | Quem comprou: sala de aula, comunidade, certificados, mensagens | `src/app/learn` |
+| Professor | Quem vende: criação de curso, vitrine, vendas, alunos, cupons, relatórios | `src/app/teach` |
+| Operações | A equipe da plataforma: usuários, papéis, fila de pendências | `src/app/ops` |
 
-It now contains the first real application shell for `Skillset`, organized as a multi-page product with separate surfaces for:
+A conta de cada pessoa (perfil, segurança, planos, pagamentos) fica em
+`src/app/account` e serve às quatro áreas. O mapa completo está em
+`docs/ARQUITETURA.md`.
 
-- Public marketplace
-- Student learning
-- Teacher operations
-- Admin and trust operations
+## As peças principais
 
----
+- **Next.js** — o "motor" do site: monta as páginas e roda as rotas do servidor (os endereços que o site chama por trás, em `src/app/api`).
+- **Supabase** — guarda o banco de dados (Postgres, onde ficam cursos, alunos, pedidos) e cuida do login.
+- **Stripe Connect** — recebe os pagamentos; o dinheiro da venda cai direto na conta Stripe do professor.
+- **Bunny** — hospeda e entrega os vídeos das aulas.
+- **Vercel** — hospeda o site: pega o código do GitHub, monta e publica.
+- **GitHub Actions** — robôs que conferem cada mudança automaticamente antes de ela entrar.
 
-## Current routes
+## Como rodar no seu computador
 
-### Public
+Você precisa do Node.js (o programa que roda JavaScript fora do navegador) na
+versão do arquivo `.nvmrc`, e de acesso a um projeto Supabase de teste.
 
-- `/`
-- `/courses`
-- `/courses/[slug]`
-- `/instructors`
-- `/instructors/[slug]`
-- `/about`
-- `/contact`
-- `/legal/privacy`
-- `/legal/terms`
+1. Instale as dependências (as bibliotecas que o projeto usa): `npm install`
+2. Copie `.env.example` para `.env.local` e preencha os valores. O `.env.local`
+   nunca vai para o git. Os nomes mais importantes:
+   - banco e login: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`
+   - pagamentos: `STRIPE_SECRET_KEY`, `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_CONNECT_WEBHOOK_SECRET`
+   - vídeo: `BUNNY_STREAM_API_KEY`, `BUNNY_STREAM_TOKEN_KEY`, `NEXT_PUBLIC_BUNNY_STREAM_LIBRARY_ID`
+   - e-mail: `RESEND_API_KEY`
+   - tarefas agendadas: `CRON_SECRET`
 
-### Product surfaces
+   A lista completa, com o que cada um faz, está no próprio `.env.example`.
+   Regra: valor secreto **nunca** leva o prefixo `NEXT_PUBLIC_` (esse prefixo
+   manda o valor para o navegador de qualquer visitante).
+3. Suba o site: `npm run dev` e abra http://localhost:3000.
 
-- `/platform`
-- `/learn`
-- `/teach`
-- `/ops`
+Comandos de conferência (os mesmos que o robô roda):
 
----
+| Comando | O que faz |
+|---|---|
+| `npm run lint` | procura erros de estilo e descuidos no código |
+| `npx tsc --noEmit` | confere os tipos (se cada dado tem o formato esperado) |
+| `npm test` | roda os testes automáticos (Vitest) |
+| `npm run build` | monta o site como em produção |
+| `npm run test:db` | roda os testes de segurança do banco num banco descartável (veja `scripts/build-test-db.sh`; nunca aponte para produção) |
 
-## Why this structure
+Em máquina com pouca memória, rode **um arquivo de teste por vez**:
+`npx vitest run src/app/documentacao-caminhos.test.ts --pool=forks --maxWorkers=1`.
 
-### What
+## Como uma mudança chega ao site
 
-The project was reshaped into a route-based application instead of a single landing page.
+1. **Rascunho:** crie uma branch (uma cópia paralela do código) a partir de `main`. Nunca mexa direto na `main`.
+2. **Salvar:** faça commits (cada commit é um "salvar" com descrição do que mudou).
+3. **Pedido de revisão:** abra um pull request (PR), o pedido para juntar a branch na `main`.
+4. **Revisão:** uma pessoa lê a mudança. O Porteiro de PR (uma IA que lê o diff procurando brechas de segurança) comenta um placar no PR; ele avisa, mas não bloqueia.
+5. **Conferências automáticas:** o GitHub só deixa juntar se estes 5 checks passarem:
+   - `Lint, typecheck, test, build` — estilo, tipos, testes e montagem (`.github/workflows/ci.yml`);
+   - `RLS smoke tests (banco efêmero)` — testa as regras de acesso do banco num banco descartável (`.github/workflows/ci.yml`);
+   - `Semgrep SAST` — procura padrões de código inseguro (`.github/workflows/security.yml`);
+   - `TruffleHog secrets scan` — procura chave ou senha vazada no código (`.github/workflows/security.yml`);
+   - `npm audit (high+)` — procura bibliotecas com falha de segurança grave conhecida (`.github/workflows/security.yml`).
 
-### Why
+   A Vercel também monta uma prévia do site para cada PR.
+6. **Juntar:** com tudo verde, o PR é mesclado na `main`.
+7. **Publicar:** a Vercel percebe a mudança na `main` e publica sozinha em produção.
 
-Skillset is meant to become a real platform, not a marketing page with ambition. A multi-page structure is required now so later modules such as auth, checkout, course publishing, and moderation can attach to stable surfaces.
+Mudança no banco de dados (uma migration) é a exceção: ela não é aplicada
+sozinha. Veja "Banco de dados" em `docs/ARQUITETURA.md`.
 
-### How
+## Onde está a documentação
 
-The current build uses one Next.js app with separated product surfaces by route and feature folder. This is the fastest solo-buildable version of the larger long-term architecture.
+- `README.md` — este arquivo: o que é e como trabalhar.
+- `docs/ARQUITETURA.md` — o mapa do sistema: onde fica cada parte e como elas se ligam.
+- `docs/README.md` — índice de tudo o que existe em `docs/`.
+- `AGENTS.md` — regras que já custaram defeito em produção; leitura obrigatória antes de mexer em tela.
+- `STRIPE_CHECKLIST.md` — passo a passo para configurar o Stripe.
 
----
-
-## Tech stack
-
-- Next.js
-- React
-- TypeScript
-- Tailwind CSS
-- Vitest
-- Testing Library
-
----
-
-## Design references
-
-Historical prototypes and visual reference material live under `docs/`.
-The production app entrypoint is the Next.js application in `src/app`.
-
----
-
-## Local development
-
-```bash
-npm install
-npm run dev
-```
-
-Open:
-
-- `http://localhost:3000/`
-
----
-
-## Verification
-
-```bash
-npm test
-npm run lint
-npm run build
-```
-
----
-
-## Documentation
-
-Startup-grade documentation now starts at:
-
-- `docs/README.md`
-
-Key areas:
-
-- `docs/company`
-- `docs/product`
-- `docs/technical`
-- `docs/operations`
-- `docs/investor`
-
-These documents are living references for product, engineering, operations, API/payment behavior, and future investor material.
-
----
-
-## Next implementation slices
-
-1. Add real auth and role gating.
-2. Replace mock data with a typed content layer.
-3. Add course detail model and catalog search state.
-4. Add teacher onboarding flow.
-5. Add student lesson/player flow.
-6. Add admin moderation primitives.
-7. Decide deployment target beyond the legacy Firebase static setup.
+O teste `src/app/documentacao-caminhos.test.ts` confere que todo caminho citado
+entre crases neste README, em `docs/ARQUITETURA.md` e em `docs/README.md`
+existe de verdade. Se você mover um arquivo, atualize o documento junto.
