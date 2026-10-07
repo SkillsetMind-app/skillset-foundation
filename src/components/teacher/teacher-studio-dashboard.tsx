@@ -6,7 +6,6 @@ import {
   BadgeCheck,
   BookOpenCheck,
   CalendarDays,
-  Check,
   Circle,
   FileDown,
   Layers3,
@@ -27,6 +26,8 @@ import { StudioStorefrontCard } from "@/components/teacher/studio-storefront-car
 import { TeacherStudioInsights } from "@/components/teacher/teacher-studio-insights";
 import { TeacherWelcomeTour } from "@/components/teacher/teacher-welcome-tour";
 import { usePublishGates } from "@/components/teacher/use-publish-gates";
+import { EmptyState, buttonClasses } from "@/components/ui";
+import { DrawnCheck, MilestoneSeal, SpotArt } from "@/components/ui/spot-art";
 import { activationFeeUsd } from "@/data/plans";
 import type { CourseReadinessAccount } from "@/domain/course-readiness";
 import type { Order } from "@/domain/order";
@@ -307,12 +308,16 @@ function StudioNextSteps({
 
           {/* Latao, como a barra do aluno: progresso e conquista. O "2 of 3"
               logo acima e o numero que acompanha a barra. */}
-          <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-[rgba(26,54,93,0.12)]">
-            <div
-              data-testid="studio-next-steps-bar"
-              className="h-full rounded-full bg-[var(--color-accent)] transition-[width]"
-              style={{ width: ready ? `${progress}%` : "0%" }}
-            />
+          <div className="mt-4 flex items-center gap-2">
+            <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-[rgba(26,54,93,0.12)]">
+              <div
+                data-testid="studio-next-steps-bar"
+                className="h-full rounded-full bg-[var(--color-accent)] transition-[width] duration-[400ms] ease-[var(--ease-standard)]"
+                style={{ width: ready ? `${progress}%` : "0%" }}
+              />
+            </div>
+            {/* O marco: a barra chegou ao fim. */}
+            {ready && progress === 100 ? <MilestoneSeal /> : null}
           </div>
 
           <ol
@@ -327,7 +332,7 @@ function StudioNextSteps({
                 >
                   <span className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.12em] text-[var(--color-ink-muted)]">
                     {step.done ? (
-                      <Check aria-hidden="true" size={15} strokeWidth={2.4} />
+                      <DrawnCheck size={15} />
                     ) : (
                       <Circle aria-hidden="true" size={13} strokeWidth={1.8} />
                     )}
@@ -437,6 +442,24 @@ function StudioProductsSection({
             />
           ))}
         </div>
+      ) : courses.length === 0 ? (
+        // Nenhum produto ainda: a cena do primeiro produto e o unico botao
+        // latao da Home (o marco), no lugar da faixa tracejada de uma frase.
+        <EmptyState
+          as="h3"
+          art={<SpotArt scene="firstProduct" />}
+          title={t("creatorPanel.home.products.firstTitle")}
+          action={
+            <Link
+              href="/teach/builder?newCourse=1&format=course"
+              className={buttonClasses({ variant: "accent", size: "lg" })}
+            >
+              <Plus aria-hidden="true" size={16} strokeWidth={2} />
+              {t("creatorPanel.home.products.firstCta")}
+            </Link>
+          }
+          className="mt-3"
+        />
       ) : filtered.length === 0 ? (
         <div className="mt-3 border-y border-dashed border-[var(--color-line-strong)] px-5 py-10 text-center">
           <p className="text-sm font-semibold text-[var(--color-ink)]">

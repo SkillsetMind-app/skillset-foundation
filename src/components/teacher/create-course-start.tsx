@@ -18,6 +18,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { CourseCategorySelect } from "@/components/teacher/course-category-select";
 import { InlineHelp } from "@/components/shared/inline-help";
 import { Button } from "@/components/ui";
+import { SpotArt } from "@/components/ui/spot-art";
 import { isValidExternalEventUrl } from "@/domain/course-event";
 import {
   isActivationRequiredError,
@@ -184,7 +185,9 @@ export function CreateCourseStart({ ownerId, initialFormat = "course" }: CreateC
         }).catch(() => null);
       }
 
-      router.push(`/teach/builder?courseId=${encodeURIComponent(courseId)}&tab=content`);
+      // created=1: o construtor mostra a faixa de marco uma vez e tira o
+      // parametro da URL.
+      router.push(`/teach/builder?courseId=${encodeURIComponent(courseId)}&tab=content&created=1`);
     } catch (caughtError) {
       const message = caughtError instanceof Error ? caughtError.message : "";
       setError(
@@ -252,11 +255,17 @@ export function CreateCourseStart({ ownerId, initialFormat = "course" }: CreateC
             );
           })}
         </ol>
+
+        {/* O vao marinho embaixo dos passos ganha a cena do primeiro produto,
+            na versao clara. Some quando a coluna vira faixa. */}
+        <div className="create-course-screen__art">
+          <SpotArt scene="firstProduct" tone="light" />
+        </div>
       </aside>
 
       <form onSubmit={handleSubmit} className="create-course-screen__form">
         {step === 1 ? (
-          <>
+          <div key="format" className="motion-panel-in">
             <h2
               ref={stepHeading}
               tabIndex={-1}
@@ -294,9 +303,9 @@ export function CreateCourseStart({ ownerId, initialFormat = "course" }: CreateC
                 <ArrowRight aria-hidden="true" size={15} strokeWidth={1.9} />
               </Button>
             </div>
-          </>
+          </div>
         ) : (
-          <>
+          <div key="basics" className="motion-panel-in">
             <h2
               ref={stepHeading}
               tabIndex={-1}
@@ -454,7 +463,7 @@ export function CreateCourseStart({ ownerId, initialFormat = "course" }: CreateC
                 {isSaving ? null : <ArrowRight aria-hidden="true" size={15} strokeWidth={1.9} />}
               </Button>
             </div>
-          </>
+          </div>
         )}
       </form>
     </section>

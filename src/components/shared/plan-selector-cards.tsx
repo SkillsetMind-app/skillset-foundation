@@ -71,8 +71,10 @@ export function PlanSelectorCards<TValue extends string>({
                 <span
                   className={cn(
                     "grid size-10 shrink-0 place-items-center rounded-md bg-[var(--color-surface-soft)] text-[var(--color-primary)]",
+                    // motion-select: o selo da escolha cresce de 0,6 para 1
+                    // (catálogo de movimento, item 2).
                     isSelected &&
-                      "bg-[rgba(178,34,52,0.08)] text-[var(--color-accent-fg)]",
+                      "motion-select bg-[rgba(178,34,52,0.08)] text-[var(--color-accent-fg)]",
                   )}
                 >
                   <Icon aria-hidden="true" size={18} />

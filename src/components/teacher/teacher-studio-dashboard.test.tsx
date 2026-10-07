@@ -160,6 +160,20 @@ describe("TeacherStudioDashboard", () => {
     ]);
     expect(within(formats).queryByText(/Guided program|Subscription|Free program/)).toBeNull();
   });
+
+  // O painel com 0 produtos era uma faixa tracejada com "No products in this
+  // view yet.". Agora e a cena do primeiro produto e o unico botao latao.
+  it("sem produto: a cena do primeiro produto e o botao latao de criar", async () => {
+    render(<TeacherStudioDashboard />);
+
+    const heading = await screen.findByRole("heading", { name: "Your first product starts here." });
+    const box = heading.closest(".border-dashed") as HTMLElement;
+    expect(box.querySelector('svg[data-scene="firstProduct"]')).toHaveAttribute("aria-hidden", "true");
+    const create = within(box).getByRole("link", { name: "Create my first product" });
+    expect(create).toHaveClass("button-accent");
+    expect(create).toHaveAttribute("href", "/teach/builder?newCourse=1&format=course");
+    expect(screen.queryByText("No products in this view yet.")).toBeNull();
+  });
 });
 
 // O que a pessoa sofria: o passo 2 so fechava com verificacao APROVADA e

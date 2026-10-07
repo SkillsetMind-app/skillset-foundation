@@ -1512,9 +1512,47 @@ describe("publicar sem surpresa", () => {
     vi.mocked(publishTeacherCourse).mockResolvedValueOnce(undefined as never);
     renderBuilder("review");
     fireEvent.click(await screen.findByRole("button", { name: "Publish product" }));
-    expect(await screen.findByText("Course published. Its product page is now live.")).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "It's live." })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Open Product page" })).toHaveAttribute("href", "https://www.skillsetmind.com/courses/course-1");
-    expect(screen.getByRole("button", { name: "Copy Product page link" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Copy my page link" })).toBeInTheDocument();
+  });
+
+  // O pico da jornada era um paragrafo cinza igual ao "Draft saved.". Agora e
+  // um painel com a cena "Publicado!" e o foco no botao latao de copiar.
+  describe("o painel Publicado!", () => {
+    beforeEach(() => {
+      window.localStorage.clear();
+    });
+
+    it("troca o paragrafo cinza pela cena e leva o foco ao 'Copy my page link'", async () => {
+      vi.mocked(publishTeacherCourse).mockResolvedValueOnce(undefined as never);
+      const { container } = renderBuilder("review");
+      fireEvent.click(await screen.findByRole("button", { name: "Publish product" }));
+
+      const copy = await screen.findByRole("button", { name: "Copy my page link" });
+      await waitFor(() => expect(copy).toHaveFocus());
+      expect(copy).toHaveClass("button-accent");
+      // O botao le o titulo e a frase do painel para quem chega pelo foco.
+      expect(copy).toHaveAccessibleDescription(/It's live\. Your product page is open to everyone/);
+
+      const panel = screen.getByRole("region", { name: "It's live." });
+      expect(panel).toHaveClass("published-panel", "is-celebrating");
+      expect(panel.querySelector('svg[data-scene="published"]')).toHaveAttribute("aria-hidden", "true");
+      expect(container.querySelector(".info-notice")).toBeNull();
+      // Um latao por tela: o "Publish product" sai enquanto o painel esta ali.
+      expect(screen.queryByRole("button", { name: "Publish product" })).toBeNull();
+    });
+
+    it("festeja uma vez por produto: publicar de novo mostra o painel parado", async () => {
+      window.localStorage.setItem("skillset:celebrated:published:course-1", "1");
+      vi.mocked(publishTeacherCourse).mockResolvedValueOnce(undefined as never);
+      renderBuilder("review");
+      fireEvent.click(await screen.findByRole("button", { name: "Publish product" }));
+
+      const panel = await screen.findByRole("region", { name: "It's live." });
+      expect(panel).not.toHaveClass("is-celebrating");
+      expect(panel).toHaveClass("published-panel");
+    });
   });
 
   it("links the payouts error to Stripe setup and records why publishing was blocked", async () => {
@@ -1653,5 +1691,61 @@ describe("Manage: o que o tipo entrega entra na porcentagem", () => {
     await screen.findByRole("heading", { name: ebook.title });
     await waitFor(() => expect(done(row(ready.container, "file"))).toBe(true));
     expect(fetchCourseAssets).toHaveBeenCalledWith("course-1");
+  });
+});
+
+// Criar o produto redirecionava em silencio. Agora a tela de criar manda
+// ?created=1 e o construtor mostra a faixa de marco uma vez.
+describe("faixa de marco depois de criar (created=1)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.resetSubscriptionCounts();
+    mocks.searchParams.set("created", "1");
+  });
+
+  afterEach(() => {
+    cleanup();
+    mocks.searchParams.delete("created");
+    mocks.searchParams.delete("tab");
+    vi.useRealTimers();
+  });
+
+  it("aparece com o proximo passo do curso e tira o parametro da URL", async () => {
+    renderBuilder("content");
+
+    const text = await screen.findByText("Draft saved. Next: your first lesson.");
+    expect(text.closest(".created-strip")).toHaveAttribute("role", "status");
+    await waitFor(() =>
+      expect(mocks.router.replace).toHaveBeenCalledWith(
+        "/teach/builder?courseId=course-1&tab=content",
+        { scroll: false },
+      ),
+    );
+  });
+
+  it("fecha no X e nao volta", async () => {
+    renderBuilder("content");
+    await screen.findByText("Draft saved. Next: your first lesson.");
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    expect(screen.queryByText("Draft saved. Next: your first lesson.")).toBeNull();
+  });
+
+  it("some sozinha em 4 segundos", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    renderBuilder("content");
+    await screen.findByText("Draft saved. Next: your first lesson.");
+    act(() => {
+      vi.advanceTimersByTime(4000);
+    });
+    expect(screen.queryByText("Draft saved. Next: your first lesson.")).toBeNull();
+  });
+
+  it("na comunidade, o proximo passo e o post de boas-vindas", async () => {
+    vi.mocked(subscribeToTeacherCourse).mockImplementationOnce((_id, emit) => {
+      emit({ ...mocks.course, productFormat: "community", communityEnabled: true });
+      return Object.assign(() => {}, { reload: async () => {} });
+    });
+    renderBuilder("content");
+    expect(await screen.findByText("Draft saved. Next: write your first welcome post.")).toBeInTheDocument();
   });
 });

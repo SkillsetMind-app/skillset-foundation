@@ -2161,6 +2161,7 @@
       "emptyTitle": "Sin ventas en este periodo.",
       "emptyBody": "Cuando alguien complete el pago, el pedido aparece aquí.",
       "emptyCta": "Ir a tus cursos",
+      "firstTitle": "Tus ventas aparecerán aquí.",
       "datePending": "Fecha pendiente",
       "refundInStripe": "Reembolsar en Stripe",
       "showMore": "Ver {count} más",
@@ -2307,6 +2308,7 @@
     },
     "shareLink": {
       "copy": "Copiar enlace",
+      "copyMyPage": "Copiar el enlace de mi página",
       "copyAria": "Copiar enlace de {label}",
       "open": "Abrir página",
       "openAria": "Abrir {label}",
@@ -2602,6 +2604,8 @@
         "filtersLabel": "Filtros de productos",
         "filterLiveSales": "En venta",
         "empty": "Todavía no hay productos en esta vista.",
+        "firstTitle": "Tu primer producto empieza aquí.",
+        "firstCta": "Crear mi primer producto",
         "manage": "Gestionar producto"
       },
       "formats": {
@@ -3704,6 +3708,18 @@
         "community": "Activa la comunidad antes de publicar: es lo que reciben los miembros.",
         "publish": "No pudimos publicar este curso. Inténtalo de nuevo."
       },
+      "created": {
+        "course": "Borrador guardado. Siguiente: tu primera clase.",
+        "community": "Borrador guardado. Siguiente: escribe tu primera publicación de bienvenida.",
+        "live_event": "Borrador guardado. Siguiente: programa tu sesión.",
+        "live_eventScheduled": "Borrador guardado. Tu sesión ya está en el calendario.",
+        "ebook": "Borrador guardado. Siguiente: sube tu archivo.",
+        "close": "Cerrar"
+      },
+      "publishedPanel": {
+        "title": "Ya está publicado.",
+        "detail": "Tu página de producto ya está abierta para todos. Comparte el enlace para que la gente la encuentre."
+      },
       "success": {
         "lessonAdded": "Lección añadida. El editor se abrirá cuando termine el guardado automático…",
         "draftSaved": "Borrador guardado.",
@@ -3757,6 +3773,8 @@
         "markPreview": "Marcar como vista previa gratuita",
         "createModule": "Crear módulo",
         "addFirstModule": "Añade tu primer módulo",
+        "firstLessonTitle": "Agrega tu primera clase.",
+        "firstLessonDetail": "Basta un video, un texto o un archivo.",
         "welcomeModule": "Bienvenida",
         "addLessonToModule": "Añadir lección al módulo {index}",
         "moreOptions": "Más opciones",
@@ -5055,7 +5073,7 @@
     "cancel": "Cancelar",
     "loading": "Cargando estudiantes...",
     "loadError": "No pudimos cargar la lista de estudiantes. Recarga la página; si el problema continúa, contacta con soporte.",
-    "empty": "Todavía no hay estudiantes inscritos. Los compradores aparecen aquí en cuanto se confirma la compra, con su nombre, correo y progreso, para que puedas ayudarlos sin salir del estudio.",
+    "emptyTitle": "Cuando alguien se inscriba, aparecerá aquí.",
     "search": "Buscar estudiantes por nombre o correo",
     "progressFilter": "Filtrar por progreso",
     "accessFilter": "Filtrar por acceso",

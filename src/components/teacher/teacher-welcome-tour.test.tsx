@@ -64,6 +64,21 @@ describe("saídas do tour de boas-vindas", () => {
     fireEvent.click(screen.getByRole("button", { name: locale === "en" ? "Open your studio" : "Abrir mi espacio" }));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
+
+  // O iconezinho redondo de cada passo virou uma faixa de gravura com a cena
+  // do passo: produto, aula, publicado, recibo.
+  it("no tour do professor, cada passo mostra a sua cena de gravura", async () => {
+    render(<TeacherWelcomeTour userId="teacher-scenes" firstName="Ana" />);
+    const dialog = await screen.findByRole("dialog");
+    const scenes: string[] = [];
+    for (let step = 0; step < 4; step += 1) {
+      const art = dialog.querySelector("svg[data-scene]")!;
+      expect(art).toHaveAttribute("aria-hidden", "true");
+      scenes.push(art.getAttribute("data-scene")!);
+      if (step < 3) fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    }
+    expect(scenes).toEqual(["firstProduct", "firstLesson", "published", "noSales"]);
+  });
 });
 
 describe.each([
