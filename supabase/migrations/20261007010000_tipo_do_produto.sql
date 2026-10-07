@@ -11,10 +11,14 @@
 --    curso e e-book, ja cria o primeiro modulo com a primeira aula.
 -- 4. publish_teacher_course cobra o conteudo de cada tipo:
 --    - course: ao menos um modulo com uma aula (como antes);
---    - community: nada (aulas opcionais);
---    - live_event: uma sessao agendada em course_events;
+--    - community: a comunidade ligada (aulas opcionais);
+--    - live_event: uma sessao agendada e ainda por vir em course_events;
 --    - ebook: ao menos um arquivo (lesson_material) numa aula do produto.
 --    Em todos, aula que existe continua precisando de conteudo.
+--
+-- 5. Apagar um rascunho apaga as sessoes dele (course_events em cascata):
+--    a criacao do evento ao vivo agora deixa uma sessao presa ao produto, e
+--    delete_or_archive_own_course parava na chave estrangeira.
 --
 -- Idempotente: coluna e restricao so entram se faltarem, o backfill so mexe
 -- em linha ainda no padrao, e as funcoes sao create or replace.
@@ -39,15 +43,23 @@ comment on column public.courses.product_format is
   'O que o produto entrega: course, community, live_event ou ebook. Escolhido na criacao; decide o que publish_teacher_course cobra.';
 
 -- Backfill. O banco nunca gravou o tipo, entao vale so o sinal que existe:
+-- - comunidade: o fluxo antigo criava assinatura com a comunidade ligada.
+--   Vem primeiro: a Agenda deixa marcar encontro em qualquer produto, e uma
+--   comunidade sem aula com um encontro marcado nao e um evento.
 -- - evento: o fluxo antigo criava o produto e uma sessao em course_events, sem
 --   aula (e por isso nao publicava). Curso com aula e sessao ao vivo continua
 --   curso.
--- - comunidade: o fluxo antigo criava assinatura com a comunidade ligada.
 -- O resto fica course, que e a regra antiga: errar para curso nao baixa a
 -- exigencia de ninguem.
 do $$
 begin
   perform set_config('skillset.trusted_write', 'on', true);
+
+  update public.courses c
+     set product_format = 'community'
+   where c.product_format = 'course'
+     and coalesce(c.community_enabled, false)
+     and c.payment_type in ('subscription_monthly', 'subscription_yearly');
 
   update public.courses c
      set product_format = 'live_event'
@@ -59,13 +71,31 @@ begin
             jsonb_array_elements(coalesce(m->'lessons', '[]'::jsonb)) l
      );
 
-  update public.courses c
-     set product_format = 'community'
-   where c.product_format = 'course'
-     and coalesce(c.community_enabled, false)
-     and c.payment_type in ('subscription_monthly', 'subscription_yearly');
-
   perform set_config('skillset.trusted_write', 'off', true);
+end $$;
+
+-- As sessoes morrem com o produto. Rascunho apagado por
+-- delete_or_archive_own_course nunca teve matricula, entao nao ha RSVP de
+-- aluno a perder (e course_event_rsvps ja cai em cascata com a sessao).
+do $$
+begin
+  if exists (
+    select 1 from pg_constraint
+    where conname = 'course_events_course_id_fkey'
+      and conrelid = 'public.course_events'::regclass
+      and confdeltype <> 'c'
+  ) then
+    alter table public.course_events drop constraint course_events_course_id_fkey;
+  end if;
+  if not exists (
+    select 1 from pg_constraint
+    where conname = 'course_events_course_id_fkey'
+      and conrelid = 'public.course_events'::regclass
+  ) then
+    alter table public.course_events
+      add constraint course_events_course_id_fkey
+      foreign key (course_id) references public.courses(id) on delete cascade;
+  end if;
 end $$;
 
 -- Criacao com tipo. Chama a versao de cinco argumentos (titulo, URL livre,
@@ -268,11 +298,22 @@ BEGIN
   if v_format = 'course' and (v_module_count < 1 or v_lesson_count < 1) then
     raise exception 'Add at least one module with a lesson before publishing.';
   end if;
+  -- Sem aula exigida, a comunidade e o que o membro recebe.
+  if v_format = 'community' and not coalesce(c.community_enabled, false) then
+    raise exception 'Turn on the community before publishing.';
+  end if;
+  -- Uma sessao que ainda vai acontecer: a que ja passou nao se vende.
+  -- starts_at e texto ISO (toISOString); o case so converte o que tem cara de data.
   if v_format = 'live_event' and not exists (
     select 1
     from public.course_events e
     where e.course_id = c.id
       and e.status = 'scheduled'
+      and case
+            when e.starts_at ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}'
+              then e.starts_at::timestamptz > now()
+            else false
+          end
   ) then
     raise exception 'Schedule the live session before publishing.';
   end if;

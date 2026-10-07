@@ -595,6 +595,24 @@ describe("Home do professor: primeira visita", () => {
 
 // --- Status dos cartoes: cada um com a sua cor, nenhum em latao ---------------
 
+describe("Home do professor: o selo do cartao e o tipo gravado", () => {
+  it("mostra o tipo do produto, e gratis ou assinatura nao viram tipo", async () => {
+    state.courses = [
+      course({ id: "c1", title: "Grupo", productFormat: "community", paymentType: "subscription_monthly" }),
+      course({ id: "c2", title: "Apostila", productFormat: "ebook", paymentType: "free", priceAmountMinor: 0 }),
+      course({ id: "c3", title: "Antigo", paymentType: "free", priceAmountMinor: 0 }),
+    ];
+
+    render(<TeacherStudioDashboard />);
+
+    const produtos = await screen.findByRole("region", { name: "Products in your workspace" });
+    const typeOf = (title: string) =>
+      within(produtos).getByRole("link", { name: new RegExp(title) }).querySelector("span.uppercase")?.textContent;
+    expect([typeOf("Grupo"), typeOf("Apostila"), typeOf("Antigo")]).toEqual(["Community", "E-book", "Course"]);
+    expect(produtos.textContent).not.toContain("creatorPanel.home.formats");
+  });
+});
+
 describe("Home do professor: status dos cartoes de produto", () => {
   it("Published, Draft e Needs changes saem em StatusChip diferentes", async () => {
     state.courses = [

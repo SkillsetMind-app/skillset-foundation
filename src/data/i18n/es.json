@@ -4003,6 +4003,10 @@
           "missing": "Faltan: {lessons}.",
           "missingMore": "Faltan: {lessons} y {count} más."
         },
+        "community": {
+          "label": "Comunidad activada",
+          "hint": "Activa la comunidad en la pestaña Área de miembros: es lo que reciben los miembros."
+        },
         "session": {
           "label": "Sesión en vivo",
           "hint": "Programa la fecha y la hora de la sesión en vivo."

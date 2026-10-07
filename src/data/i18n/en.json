@@ -4003,6 +4003,10 @@
           "missing": "Missing: {lessons}.",
           "missingMore": "Missing: {lessons} and {count} more."
         },
+        "community": {
+          "label": "Community turned on",
+          "hint": "Turn the community on in the Members Area tab: it is what members join."
+        },
         "session": {
           "label": "Live session",
           "hint": "Schedule the date and time of the live session."

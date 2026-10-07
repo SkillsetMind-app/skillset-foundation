@@ -668,10 +668,8 @@ function sellsPaid(course: TeacherCourse) {
 }
 
 // Data code -> dictionary key; the card shares the format names above.
+// O selo do cartao e o tipo gravado na criacao (courses.product_format).
+// Gratis e assinatura sao preco, nao tipo.
 function productTypeKey(course: TeacherCourse) {
-  if (course.communityEnabled) return "creatorPanel.home.formats.community";
-  if (course.paymentType === "subscription_monthly") return "creatorPanel.home.formats.subscription";
-  if (course.paymentType === "subscription_yearly") return "creatorPanel.home.formats.subscription";
-  if (course.paymentType === "free") return "creatorPanel.home.formats.free";
-  return "creatorPanel.home.formats.course";
+  return `courseCreation.types.${course.productFormat ?? "course"}.label`;
 }

@@ -87,6 +87,7 @@ function product(productFormat: TeacherCourseProductFormat, lessons: boolean): T
     categories: ["Applied Psychology & Behavior"],
     status: "draft",
     productFormat,
+    communityEnabled: productFormat === "community",
     modules: lessons
       ? [{ id: "m1", title: "Download", lessons: [{ id: "l1", title: "Workbook", type: "download", description: "" }] }]
       : [],
@@ -112,6 +113,10 @@ function session(): CourseEvent {
     externalUrl: "",
     recordingAssetId: null,
   };
+}
+
+function pastSession(): CourseEvent {
+  return { ...session(), id: "event-0", startsAt: "2020-01-10T22:30:00.000Z" };
 }
 
 function material(): CourseAsset {
@@ -153,6 +158,8 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
+  mocks.searchParams.delete("module");
+  mocks.searchParams.delete("lesson");
 });
 
 describe("comunidade: aulas opcionais", () => {
@@ -164,12 +171,13 @@ describe("comunidade: aulas opcionais", () => {
     expect(screen.getByText("Add your first module")).toBeInTheDocument();
   });
 
-  it("publicar nao cobra modulo nem aula", async () => {
+  it("publicar nao cobra modulo nem aula, so a comunidade ligada", async () => {
     mocks.course = product("community", false);
     const [content] = await requiredChecklist();
 
     expect(within(content).queryByText("Module")).toBeNull();
     expect(within(content).queryByText("Lesson")).toBeNull();
+    expect(within(content).getByText("Community turned on")).toBeInTheDocument();
   });
 });
 
@@ -199,6 +207,16 @@ describe("evento ao vivo: a sessao e o conteudo", () => {
     );
   });
 
+  // A sessao que ja passou nao se vende: o servidor cobra uma sessao por vir.
+  it("sessao que ja passou nao conta", async () => {
+    mocks.course = product("live_event", false);
+    mocks.sessions = [pastSession()];
+    renderBuilder("content");
+
+    expect(await screen.findByText("No session scheduled yet.")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Schedule the session" })).toBeInTheDocument();
+  });
+
   it("publicar cobra a sessao, nao a aula", async () => {
     mocks.course = product("live_event", false);
     const [content] = await requiredChecklist();
@@ -219,6 +237,18 @@ describe("e-book: so o arquivo", () => {
     expect(screen.queryByRole("navigation", { name: /Lesson setup/i })).toBeNull();
     expect(screen.queryByText("Workbook")).toBeNull();
     expect(screen.queryByText(/1 module/i)).toBeNull();
+  });
+
+  // O link "Open" do envio leva ?module&lesson; o e-book continua so com arquivos.
+  it("com a aula na URL, continua so com o envio de arquivo", async () => {
+    mocks.course = product("ebook", true);
+    mocks.searchParams.set("module", "m1");
+    mocks.searchParams.set("lesson", "l1");
+    renderBuilder("content");
+
+    expect(await screen.findByRole("heading", { name: "File to download" })).toBeInTheDocument();
+    expect(screen.queryByRole("navigation", { name: /Lesson setup/i })).toBeNull();
+    expect(screen.queryByText("Workbook")).toBeNull();
   });
 
   it("publicar cobra um arquivo e fica pronto quando ele chega", async () => {

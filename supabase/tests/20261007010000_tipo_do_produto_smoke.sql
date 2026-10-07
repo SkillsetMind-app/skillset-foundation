@@ -4,10 +4,11 @@
 -- The product type chosen at creation is stored in courses.product_format,
 -- and publish_teacher_course asks each type for its own content:
 -- - course: a module with a lesson;
--- - community: nothing (lessons are optional);
--- - live_event: a scheduled session in course_events;
+-- - community: its community turned on (lessons are optional);
+-- - live_event: a scheduled session still to come in course_events;
 -- - ebook: a file (lesson_material) on one of the product's lessons.
--- A lesson that exists still needs content, whatever the type.
+-- A lesson that exists still needs content, whatever the type. Deleting a
+-- draft takes its sessions with it.
 begin;
 create temp table product_format_checks (name text, passed boolean);
 grant insert, select on product_format_checks to authenticated;
@@ -117,6 +118,7 @@ select pg_temp.check_gate('the community type starts with the community on',
 \set empty_message 'Every lesson needs a video, text or a file before publishing.'
 \set session_message 'Schedule the live session before publishing.'
 \set file_message 'Upload at least one file before publishing.'
+\set community_message 'Turn on the community before publishing.'
 
 -- Course: an empty starter lesson is not enough, and neither is no lesson.
 select pg_temp.act_as(pg_temp.uid(1), 'authenticated');
@@ -132,19 +134,41 @@ set local role authenticated;
 select pg_temp.check_gate('course without lessons is refused',
   pg_temp.refused(pg_temp.publish((select id from drafts where format = 'legacy')), :'lesson_message'));
 
--- Community: publishes with no lesson at all.
+-- Community: the community itself is the delivery, so it has to be on.
+reset role;
+select pg_temp.act_as(null, 'service_role');
+update public.courses set community_enabled = false where id = (select id from drafts where format = 'community');
+select pg_temp.act_as(pg_temp.uid(1), 'authenticated');
+set local role authenticated;
+select pg_temp.check_gate('community with its community off is refused',
+  pg_temp.refused(pg_temp.publish((select id from drafts where format = 'community')), :'community_message'));
+reset role;
+select pg_temp.act_as(null, 'service_role');
+update public.courses set community_enabled = true where id = (select id from drafts where format = 'community');
+select pg_temp.act_as(pg_temp.uid(1), 'authenticated');
+set local role authenticated;
+-- With it on, no lesson at all is needed.
 select pg_temp.check_gate('community without lessons publishes',
   pg_temp.passed(pg_temp.publish((select id from drafts where format = 'community'))));
 
 -- Live event: the session is the content.
 select pg_temp.check_gate('live event without a session is refused',
   pg_temp.refused(pg_temp.publish((select id from drafts where format = 'live_event')), :'session_message'));
+-- A session that already happened does not count.
+insert into public.course_events(id, course_id, course_slug, course_title, owner_id, title,
+  description, type, status, starts_at, external_url, recording_asset_id)
+select 'smoke-product-format-past', d.id, d.id, 'Smoke product format live_event',
+  pg_temp.uid(1)::text, 'Smoke product format live_event', '', 'live_class', 'scheduled',
+  to_char((now() - interval '1 day') at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'), '', null
+from drafts d where d.format = 'live_event';
+select pg_temp.check_gate('live event with only a past session is refused',
+  pg_temp.refused(pg_temp.publish((select id from drafts where format = 'live_event')), :'session_message'));
 -- Inserted by the owner, as the creation screen does (the link can wait).
 insert into public.course_events(id, course_id, course_slug, course_title, owner_id, title,
   description, type, status, starts_at, external_url, recording_asset_id)
 select 'smoke-product-format-event', d.id, d.id, 'Smoke product format live_event',
   pg_temp.uid(1)::text, 'Smoke product format live_event', '', 'live_class', 'scheduled',
-  (now() + interval '7 days')::text, '', null
+  to_char((now() + interval '7 days') at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'), '', null
 from drafts d where d.format = 'live_event';
 select pg_temp.check_gate('live event with a scheduled session publishes without lessons',
   pg_temp.passed(pg_temp.publish((select id from drafts where format = 'live_event'))));
@@ -181,11 +205,11 @@ reset role;
 select pg_temp.act_as(null, 'service_role');
 select set_config('skillset.trusted_write', 'on', true);
 insert into public.courses(id, owner_id, slug, title, summary, category, status, currency,
-  price_amount_minor, payment_type, product_format, modules)
+  price_amount_minor, payment_type, product_format, community_enabled, modules)
 values ('smoke-product-format-empty-community', pg_temp.uid(1)::text,
   'smoke-product-format-empty-community', 'Smoke product format empty community',
   'Product used only by the product type smoke test.', 'smoke', 'draft', 'USD', 0, 'free',
-  'community', jsonb_build_array(jsonb_build_object('id', 'smoke-pf-m1', 'title', 'Module',
+  'community', true, jsonb_build_array(jsonb_build_object('id', 'smoke-pf-m1', 'title', 'Module',
     'lessons', jsonb_build_array(jsonb_build_object('id', 'smoke-pf-l1', 'title', 'Lesson', 'type', 'video')))));
 select set_config('skillset.trusted_write', 'off', true);
 select pg_temp.act_as(pg_temp.uid(1), 'authenticated');
@@ -194,13 +218,32 @@ select pg_temp.check_gate('community with an empty lesson is refused',
   pg_temp.refused(pg_temp.publish('smoke-product-format-empty-community'), :'empty_message'));
 reset role;
 
+-- A live-event draft with its session can be deleted: the session goes too.
+select pg_temp.act_as(pg_temp.uid(1), 'authenticated');
+set local role authenticated;
+insert into drafts values ('deleted_event', pg_temp.create_draft('Smoke product format deleted event', 'live_event'));
+insert into public.course_events(id, course_id, course_slug, course_title, owner_id, title,
+  description, type, status, starts_at, external_url, recording_asset_id)
+select 'smoke-product-format-deleted-event', d.id, d.id, 'Smoke product format deleted event',
+  pg_temp.uid(1)::text, 'Smoke product format deleted event', '', 'live_class', 'scheduled',
+  to_char((now() + interval '7 days') at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'), '', null
+from drafts d where d.format = 'deleted_event';
+select pg_temp.check_gate('a live-event draft with a session can be deleted',
+  pg_temp.passed(format('select public.delete_or_archive_own_course(%L)',
+    (select id from drafts where format = 'deleted_event'))));
+reset role;
+select pg_temp.act_as(null, 'service_role');
+select pg_temp.check_gate('deleting the draft removed its session',
+  not exists (select 1 from public.courses where id = (select id from drafts where format = 'deleted_event'))
+  and not exists (select 1 from public.course_events where id = 'smoke-product-format-deleted-event'));
+
 -- The column only takes the four types.
 select pg_temp.act_as(null, 'service_role');
 select pg_temp.check_gate('the column refuses another type',
   pg_temp.refused(
     $q$update public.courses set product_format = 'subscription' where id = 'smoke-product-format-empty-community'$q$,
     'new row for relation "courses" violates check constraint "courses_product_format_check"'));
-select pg_temp.check_gate('every case ran', (select count(*) = 17 from product_format_checks));
+select pg_temp.check_gate('every case ran', (select count(*) = 21 from product_format_checks));
 
 select name, passed from product_format_checks order by name;
 do $$

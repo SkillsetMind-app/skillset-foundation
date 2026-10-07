@@ -447,7 +447,7 @@ describe("o que cada tipo precisa entregar", () => {
   });
 
   it("comunidade: aula opcional, publica sem nenhuma", () => {
-    const readiness = getCourseReadiness({ ...empty, productFormat: "community" });
+    const readiness = getCourseReadiness({ ...empty, productFormat: "community", communityEnabled: true });
     expect(readiness.items.map((item) => item.id)).not.toContain("module");
     expect(readiness.items.map((item) => item.id)).not.toContain("lesson");
     expect(readiness.ready).toBe(true);
@@ -457,9 +457,16 @@ describe("o que cada tipo precisa entregar", () => {
     const readiness = getCourseReadiness({
       ...complete,
       productFormat: "community",
+      communityEnabled: true,
       lessonIdsWithMedia: new Set<string>(),
     });
     expect(readiness.pending.map((item) => item.id)).toEqual(["lessonMedia"]);
+  });
+
+  // Sem aula exigida, a comunidade desligada deixaria publicar um produto vazio.
+  it("comunidade: a comunidade precisa estar ligada", () => {
+    const readiness = getCourseReadiness({ ...empty, productFormat: "community", communityEnabled: false });
+    expect(readiness.pending.map((item) => item.id)).toEqual(["community"]);
   });
 
   it("evento ao vivo: a sessao agendada no lugar da aula", () => {
@@ -499,6 +506,9 @@ describe("o que cada tipo precisa entregar", () => {
       .items.find((item) => item.id === "session");
     const file = getCourseReadiness({ ...empty, productFormat: "ebook", lessonFileCount: 0 }, undefined, es)
       .items.find((item) => item.id === "file");
-    expect([session?.label, file?.label]).toEqual(["Sesión en vivo", "Archivo para descargar"]);
+    const community = getCourseReadiness({ ...empty, productFormat: "community" }, undefined, es)
+      .items.find((item) => item.id === "community");
+    expect([session?.label, file?.label, community?.label])
+      .toEqual(["Sesión en vivo", "Archivo para descargar", "Comunidad activada"]);
   });
 });

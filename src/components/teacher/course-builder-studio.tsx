@@ -837,7 +837,8 @@ export function CourseBuilderStudio() {
   }, [courseId, activeTab, activeLessonId]);
 
   // Evento ao vivo: a sessao agendada e o conteudo. Mesma leitura da Agenda,
-  // so as sessoes ainda de pe deste produto.
+  // so as sessoes deste produto ainda de pe e por vir: a que ja passou nao
+  // se vende (publish_teacher_course cobra o mesmo).
   const [courseSessions, setCourseSessions] = useState<CourseEvent[] | null>(null);
   const ownerUid = user?.uid;
   useEffect(() => {
@@ -847,7 +848,10 @@ export function CourseBuilderStudio() {
     return subscribeToTeacherCourseEvents(
       ownerUid,
       (events) => setCourseSessions(
-        events.filter((event) => event.courseId === courseId && event.status === "scheduled"),
+        events.filter((event) =>
+          event.courseId === courseId
+          && event.status === "scheduled"
+          && Date.parse(event.startsAt) > Date.now()),
       ),
       // Sem a lista, o item some da prontidao e o servidor segue cobrando.
       () => {},
@@ -3203,7 +3207,9 @@ export function CourseBuilderStudio() {
             id="builder-sec-modules"
             className="scroll-mt-24"
           >
-            {activeLessonStudioLesson ? renderLessonPage() : activeModule ? renderModulePage(activeModule, activeModuleIndex) : ebookLesson && ebookModule ? renderEbookFiles(ebookModule, ebookLesson) : (
+            {/* O e-book vem antes da pagina da aula: o link "Open" do envio
+                leva ?module&lesson, e a aula dele nao tem pagina propria. */}
+            {ebookLesson && ebookModule ? renderEbookFiles(ebookModule, ebookLesson) : activeLessonStudioLesson ? renderLessonPage() : activeModule ? renderModulePage(activeModule, activeModuleIndex) : (
             <>
             {renderLiveSession()}
             <div className="flex justify-end">

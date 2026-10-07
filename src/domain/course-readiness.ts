@@ -29,12 +29,14 @@ export type CourseReadinessInput = Pick<
   | "coverImageUrl"
   | "learningOutcomes"
   | "productFormat"
+  | "communityEnabled"
 > & {
   // Aulas com conteudo (ver getLessonIdsWithMedia). Quem nao tem a lista de
   // arquivos (o Manage) nao passa: o item some e a porcentagem nao muda.
   lessonIdsWithMedia?: ReadonlySet<string>;
-  // Evento ao vivo: sessoes agendadas em course_events. E-book: arquivos numa
-  // aula do produto (countLessonFiles). Mesma regra de quem nao sabe: o item some.
+  // Evento ao vivo: sessoes agendadas e ainda por vir em course_events.
+  // E-book: arquivos numa aula do produto (countLessonFiles). Mesma regra de
+  // quem nao sabe: o item some.
   scheduledSessionCount?: number;
   lessonFileCount?: number;
 };
@@ -104,6 +106,7 @@ export type CourseReadinessItemId =
   | "module"
   | "lesson"
   | "lessonMedia"
+  | "community"
   | "session"
   | "file"
   | "pricing"
@@ -152,8 +155,9 @@ export function getCourseReadiness(
     course.paymentType ?? (course.priceAmountMinor === 0 ? "free" : "one_time");
   const priceAmountMinor = course.priceAmountMinor ?? 0;
   const modules = course.modules ?? [];
-  // O que cada tipo precisa entregar. Curso: modulo e aula. Comunidade: nada
-  // (aulas opcionais). Evento ao vivo: a sessao. E-book: um arquivo.
+  // O que cada tipo precisa entregar. Curso: modulo e aula. Comunidade: a
+  // comunidade ligada (aulas opcionais). Evento ao vivo: a sessao. E-book: um
+  // arquivo.
   const productFormat = course.productFormat ?? "course";
   const paid = paymentType !== "free" && priceAmountMinor > 0;
   const lessons = modules.flatMap((courseModule) => courseModule.lessons);
@@ -227,6 +231,16 @@ export function getCourseReadiness(
             optional: false,
           },
         ]
+      : []),
+    ...(productFormat === "community"
+      ? [{
+          id: "community" as const,
+          group: "content" as const,
+          label: "Community turned on",
+          hint: "Turn the community on in the Members Area tab: it is what members join.",
+          done: course.communityEnabled === true,
+          optional: false,
+        }]
       : []),
     ...(productFormat === "live_event" && course.scheduledSessionCount !== undefined
       ? [{
