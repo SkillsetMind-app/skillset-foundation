@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   enforceRateLimit: vi.fn(),
   retrieve: vi.fn(),
   update: vi.fn(),
+  cancel: vi.fn(),
 }));
 
 vi.mock("@/lib/supabase/admin", () => ({ getSupabaseAdminClient: mocks.getAdmin }));
@@ -16,7 +17,7 @@ vi.mock("@/lib/payments/server/auth", async (importOriginal) => ({
 }));
 vi.mock("@/lib/payments/server/stripe", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/payments/server/stripe")>()),
-  getStripeClient: () => ({ subscriptions: { retrieve: mocks.retrieve, update: mocks.update } }),
+  getStripeClient: () => ({ subscriptions: { retrieve: mocks.retrieve, update: mocks.update, cancel: mocks.cancel } }),
 }));
 
 import { GET, POST } from "@/app/api/payments/billing/subscription/route";
@@ -101,6 +102,23 @@ describe("/api/payments/billing/subscription", () => {
       trialEnd: "2026-10-20T12:00:00.000Z",
       cancelAtPeriodEnd: true,
     });
+  });
+
+  // Cancel at period end would leave Stripe retrying the open invoice, so the
+  // creator could still be charged after clicking Cancel.
+  it.each(["past_due", "unpaid"])("cancels a %s plan at once, so Stripe stops retrying", async (status) => {
+    const db = admin({ ...trialing, status, trial_end: null }, { user_id: "creator_1" });
+    mocks.getAdmin.mockReturnValue(db);
+    mocks.retrieve.mockResolvedValue({ id: "sub_plan_1", status, metadata: { uid: "creator_1" } });
+    mocks.cancel.mockResolvedValue({ id: "sub_plan_1", status: "canceled" });
+
+    const response = await POST();
+
+    expect(response.status).toBe(200);
+    expect(mocks.cancel).toHaveBeenCalledWith("sub_plan_1");
+    expect(mocks.update).not.toHaveBeenCalled();
+    expect(db.writes[0]).toMatchObject({ status: "canceled" });
+    expect((await response.json()).subscription).toBeNull();
   });
 
   it("answers 404 when there is no live plan to cancel", async () => {

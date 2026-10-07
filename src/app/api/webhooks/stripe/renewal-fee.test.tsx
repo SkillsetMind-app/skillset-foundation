@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   getAdmin: vi.fn(),
   retrieve: vi.fn(),
   updateInvoice: vi.fn(),
+  retrieveInvoice: vi.fn(),
 }));
 
 vi.mock("@/lib/supabase/admin", () => ({ getSupabaseAdminClient: mocks.getAdmin }));
@@ -17,7 +18,7 @@ vi.mock("@/lib/payments/server/stripe", () => ({
   getStripeClient: () => ({
     webhooks: { constructEvent: (raw: string) => JSON.parse(raw) },
     subscriptions: { retrieve: mocks.retrieve },
-    invoices: { update: mocks.updateInvoice },
+    invoices: { update: mocks.updateInvoice, retrieve: mocks.retrieveInvoice },
   }),
 }));
 
@@ -75,6 +76,7 @@ describe("invoice.created on a student-subscription renewal", () => {
       metadata: { purpose: "course_subscription", teacherId: "teacher_1" },
     });
     mocks.updateInvoice.mockReset().mockResolvedValue({});
+    mocks.retrieveInvoice.mockReset();
     vi.spyOn(console, "error").mockImplementation(() => undefined);
   });
 
@@ -107,6 +109,28 @@ describe("invoice.created on a student-subscription renewal", () => {
     mocks.getAdmin.mockReturnValue(createDb("starter"));
     expect((await deliver(renewal(overrides))).status).toBe(200);
     expect(mocks.updateInvoice).not.toHaveBeenCalled();
+  });
+
+  // A redelivery after Stripe finalized the invoice: the snapshot still says
+  // draft, the update is refused. Retrying cannot help, so it must not 500.
+  it.each([
+    ["Stripe says the invoice is not editable", { code: "invoice_not_editable" }, "draft"],
+    ["the invoice is no longer a draft", { code: "invalid_request_error" }, "open"],
+  ])("answers 200 when %s", async (_label, error, currentStatus) => {
+    mocks.getAdmin.mockReturnValue(createDb("starter"));
+    mocks.updateInvoice.mockRejectedValue(Object.assign(new Error("not editable"), error));
+    mocks.retrieveInvoice.mockResolvedValue({ id: "in_renewal_1", status: currentStatus });
+    vi.spyOn(console, "warn").mockImplementation(() => undefined);
+
+    expect((await deliver(renewal())).status).toBe(200);
+  });
+
+  it("still fails, so Stripe retries, when the invoice is a draft and the update failed", async () => {
+    mocks.getAdmin.mockReturnValue(createDb("starter"));
+    mocks.updateInvoice.mockRejectedValue(Object.assign(new Error("rate limited"), { code: "rate_limit" }));
+    mocks.retrieveInvoice.mockResolvedValue({ id: "in_renewal_1", status: "draft" });
+
+    expect((await deliver(renewal())).status).toBe(500);
   });
 
   it("leaves the platform's own plan invoices alone", async () => {

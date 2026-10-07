@@ -522,6 +522,7 @@ describe("POST /api/payments/billing/checkout", () => {
     const response = await POST(request({ planId: "plus", cycle: "monthly" }));
 
     expect(response.status).toBe(400);
+    expect((await response.json()).error).toBe("planId must be one of: basic, starter, pro.");
     expect(mocks.getCustomer).not.toHaveBeenCalled();
     expect(mocks.createSession).not.toHaveBeenCalled();
   });

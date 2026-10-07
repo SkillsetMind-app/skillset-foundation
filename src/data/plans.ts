@@ -90,6 +90,31 @@ export const PER_SALE_FIXED_FEE_USD = 0.3;
  * this prefix as "not configured yet" and surfaces a clear error. */
 export const STRIPE_PRICE_PLACEHOLDER_PREFIX = "price_PLACEHOLDER_";
 
+/**
+ * Stripe Customer Portal configuration (`bpc_...`) every portal session uses:
+ * plan switching only between Basic, Starter and Pro, cancellation at the end
+ * of the period. Passed explicitly so the Dashboard's default configuration,
+ * which can still list Enterprise, is never what a creator sees. Until the
+ * real id is pasted here the portal route answers 503 instead of opening the
+ * default (see resolvePortalConfigurationId).
+ */
+export const STRIPE_PORTAL_CONFIGURATION_ID = "bpc_PLACEHOLDER_basic_starter_pro";
+
+/**
+ * Enterprise (`plus`) is never self-serve. Ops create the subscription in the
+ * Stripe Dashboard and set this metadata on it; the webhook grants Enterprise
+ * only then. A customer cannot set subscription metadata (neither Checkout nor
+ * the portal lets them), so a switch to an Enterprise Price without it grants
+ * no plan.
+ */
+export const ENTERPRISE_GRANT_METADATA = { key: "enterprise_grant", value: "admin" } as const;
+
+/**
+ * Checkout metadata discriminator for plan subscriptions, written by the plan
+ * checkout and read by the webhook (trial acknowledgement email).
+ */
+export const PLAN_SUBSCRIPTION_CHECKOUT_PURPOSE = "skillset_plan_subscription";
+
 /** Free-trial length on the first paid plan of a creator account. */
 export const PLAN_TRIAL_DAYS = 14;
 

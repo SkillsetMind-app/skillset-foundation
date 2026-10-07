@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   getStripe: vi.fn(),
   createPortalSession: vi.fn(),
   getLocale: vi.fn(),
+  portalConfiguration: vi.fn(),
 }));
 
 vi.mock("@/lib/payments/server/auth", async (importOriginal) => ({
@@ -26,6 +27,7 @@ vi.mock("@/lib/payments/server/stripe", async (importOriginal) => ({
 
 vi.mock("@/lib/payments/server/stripe-helpers", () => ({
   getUserRow: mocks.getUserRow,
+  resolvePortalConfigurationId: mocks.portalConfiguration,
 }));
 
 vi.mock("@/lib/i18n/server", () => ({ getServerLocale: mocks.getLocale }));
@@ -39,6 +41,7 @@ describe("POST /api/payments/billing/portal", () => {
     mocks.getLocale.mockResolvedValue("en");
     mocks.requireUserId.mockResolvedValue("user-1");
     mocks.enforceRateLimit.mockResolvedValue(undefined);
+    mocks.portalConfiguration.mockReturnValue("bpc_basic_starter_pro");
     mocks.createPortalSession.mockResolvedValue({
       url: "https://billing.stripe.test/session/live",
     });
@@ -81,6 +84,27 @@ describe("POST /api/payments/billing/portal", () => {
     const response = await POST();
 
     expect(response.status).toBe(429);
+    expect(mocks.createPortalSession).not.toHaveBeenCalled();
+  });
+
+  // The Dashboard's default configuration can still list Enterprise; only our
+  // own (Basic, Starter, Pro) may open.
+  it("opens the portal on the explicit Basic/Starter/Pro configuration", async () => {
+    mocks.getUserRow.mockResolvedValue({ stripe_customer_id: "cus_1" });
+
+    expect((await POST()).status).toBe(200);
+    expect(mocks.createPortalSession.mock.calls[0][0].configuration).toBe("bpc_basic_starter_pro");
+  });
+
+  it("refuses rather than open the default portal when no configuration is set", async () => {
+    mocks.getUserRow.mockResolvedValue({ stripe_customer_id: "cus_1" });
+    mocks.portalConfiguration.mockImplementation(() => {
+      throw new PaymentError("The billing portal is not configured yet.", 503, "payments_not_configured");
+    });
+
+    const response = await POST();
+
+    expect(response.status).toBe(503);
     expect(mocks.createPortalSession).not.toHaveBeenCalled();
   });
 

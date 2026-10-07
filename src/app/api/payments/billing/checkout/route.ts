@@ -20,7 +20,9 @@ import { planDisclosure } from "@/lib/payments/plan-disclosure";
 import {
   isPublicPlanId,
   planById,
+  PLAN_SUBSCRIPTION_CHECKOUT_PURPOSE,
   PLAN_TRIAL_DAYS,
+  publicPlans,
   type PlanBillingCycle,
 } from "@/data/plans";
 
@@ -33,10 +35,6 @@ const PLAN_CHECKOUT_BLOCKING_STATUSES = [
   "past_due",
   "unpaid",
 ];
-
-// Written onto every plan session and read back below to tell them apart from
-// activation-fee and course sessions on the same customer.
-const PLAN_SUBSCRIPTION_CHECKOUT_PURPOSE = "skillset_plan_subscription";
 
 // Ports createBillingCheckoutSession: embedded Stripe Checkout for a plan
 // subscription. Firebase-free; getStripeClient()/resolvePriceId() surface a
@@ -56,11 +54,10 @@ export async function POST(request: Request) {
     const rawPlanId = body.planId;
     const rawCycle = body.cycle;
 
-    // Only the plans on offer. The retired Plus keeps working for whoever
-    // already has it, but nobody starts a new Plus subscription.
+    // Only the plans on offer. Enterprise is set up by hand, never here.
     if (!isPublicPlanId(rawPlanId)) {
       throw new PaymentError(
-        "planId must be one of: starter, pro.",
+        `planId must be one of: ${publicPlans.map((plan) => plan.id).join(", ")}.`,
         400,
       );
     }

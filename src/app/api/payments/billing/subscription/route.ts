@@ -75,8 +75,9 @@ export async function GET() {
 }
 
 // "Cancel plan": cancel at the end of the current period. During the trial
-// that period IS the trial, so the card is never charged. The webhook re-syncs
-// the row; it is updated here too so the page reflects the click at once.
+// that period IS the trial, so the card is never charged. A plan in arrears is
+// cancelled at once instead (below). The webhook re-syncs the row; it is
+// updated here too so the page reflects the click at once.
 export async function POST() {
   try {
     const uid = await requireUserId();
@@ -98,20 +99,29 @@ export async function POST() {
       );
     }
 
-    const updated = await stripe.subscriptions.update(row.id, {
-      cancel_at_period_end: true,
-    });
+    // past_due/unpaid: an open invoice Stripe keeps retrying, and the plan is
+    // already off. Cancelling at period end would let a retry still charge the
+    // card after "Cancel"; cancelling now stops collection on that invoice.
+    const cancelNow = subscription.status === "past_due" || subscription.status === "unpaid";
+    const updated = cancelNow
+      ? await stripe.subscriptions.cancel(row.id)
+      : await stripe.subscriptions.update(row.id, { cancel_at_period_end: true });
 
     const { error } = await getSupabaseAdminClient()
       .from("subscriptions")
-      .update({ cancel_at_period_end: true, updated_at: new Date().toISOString() })
+      .update({
+        ...(cancelNow ? { status: updated.status } : { cancel_at_period_end: true }),
+        updated_at: new Date().toISOString(),
+      })
       .eq("id", row.id);
     // Stripe already has the cancellation and the webhook re-syncs the row:
     // a failed mirror must not tell the creator the cancel did not happen.
     if (error) console.error("[billing/subscription] mirror cancel failed", error.message);
 
     return NextResponse.json({
-      subscription: toView({ ...row, status: updated.status, cancel_at_period_end: true }),
+      subscription: cancelNow
+        ? null
+        : toView({ ...row, status: updated.status, cancel_at_period_end: true }),
     });
   } catch (error) {
     return paymentErrorResponse(error);

@@ -1,7 +1,13 @@
 import { createHash } from "node:crypto";
 import type Stripe from "stripe";
 
-import { ACTIVATION_FEE_CHECKOUT_PURPOSE, activationFeeUsd, planById, hasRealStripePriceIds } from "@/data/plans";
+import {
+  ACTIVATION_FEE_CHECKOUT_PURPOSE,
+  activationFeeUsd,
+  hasRealStripePriceIds,
+  planById,
+  STRIPE_PORTAL_CONFIGURATION_ID,
+} from "@/data/plans";
 import type { PlanBillingCycle, PlanId } from "@/data/plans";
 import type {
   ProductOffer,
@@ -594,6 +600,22 @@ export function resolvePriceId(
   return cycle === "monthly"
     ? plan.stripePriceIds.monthlyId
     : plan.stripePriceIds.yearlyId;
+}
+
+/**
+ * The portal configuration every billing-portal session must use (Basic,
+ * Starter and Pro only). A placeholder fails closed with a 503: the Dashboard
+ * default could still offer Enterprise.
+ */
+export function resolvePortalConfigurationId(): string {
+  if (STRIPE_PORTAL_CONFIGURATION_ID.includes("PLACEHOLDER")) {
+    throw new PaymentError(
+      "The billing portal is not configured yet.",
+      503,
+      "payments_not_configured",
+    );
+  }
+  return STRIPE_PORTAL_CONFIGURATION_ID;
 }
 
 /** A succeeded PaymentIntent stays succeeded after its money is returned. */

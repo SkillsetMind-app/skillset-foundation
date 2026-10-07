@@ -205,26 +205,78 @@ const TRIAL_COPY: Record<Locale, {
  */
 export function buildPlanTrialEndingEmail({ locale, trialEnd, amountMinor, currency, cycle, billingUrl }: PlanTrialEndingEmail) {
   const copy = TRIAL_COPY[locale] ?? TRIAL_COPY[DEFAULT_LOCALE];
-  const date = new Intl.DateTimeFormat(locale, { dateStyle: "long", timeZone: "Etc/GMT+12" }).format(trialEnd);
-  const amount = new Intl.NumberFormat(locale, { style: "currency", currency: currency.toUpperCase() }).format(amountMinor / 100);
-  const price = `${amount} ${cycle === "yearly" ? copy.perYear : copy.perMonth}`;
-  const body = copy.body(date, price);
-  const safeUrl = escapeHtml(billingUrl);
-  const help = (COPY[locale] ?? COPY[DEFAULT_LOCALE]).help;
-
-  const text = [body, "", `${copy.cancel}: ${billingUrl}`, "", `${help} ${SUPPORT}.`].join("\n");
-  const html = `<div style="${PARAGRAPH}">
-  <p>${escapeHtml(body)}</p>
-  <p><a href="${safeUrl}" style="${BUTTON}">${copy.cancel}</a></p>
-  <p style="font-size:13px;word-break:break-all;"><a href="${safeUrl}" style="color:#102a43;">${safeUrl}</a></p>
-  <p>${help} <a href="mailto:${SUPPORT}" style="color:#102a43;font-weight:bold;">${SUPPORT}</a>.</p>
-</div>`;
-
-  return { subject: copy.subject(date), html, text };
+  const date = trialDate(locale, trialEnd);
+  const price = `${trialAmount(locale, amountMinor, currency)} ${cycle === "yearly" ? copy.perYear : copy.perMonth}`;
+  return planTrialEmail(locale, copy.subject(date), copy.body(date, price), copy.cancel, billingUrl);
 }
 
 export async function sendPlanTrialEndingEmail(input: PlanTrialEndingEmail): Promise<void> {
   await sendResendEmail({ to: input.email, ...buildPlanTrialEndingEmail(input), idempotencyKey: input.idempotencyKey });
+}
+
+export type PlanTrialStartedEmail = PlanTrialEndingEmail & { trialDays: number };
+
+const TRIAL_STARTED_COPY: Record<Locale, {
+  subject: (days: number) => string;
+  body: (days: number, date: string, price: string) => string;
+  cancel: string;
+  month: string;
+  year: string;
+}> = {
+  en: {
+    subject: (days) => `Your ${days}-day free trial started`,
+    body: (days, date, price) =>
+      `Your ${days}-day free trial started. It ends on ${date}. Then ${price}, renewing until you cancel.`,
+    cancel: "Cancel anytime",
+    month: "month",
+    year: "year",
+  },
+  es: {
+    subject: (days) => `Tu prueba gratis de ${days} días empezó`,
+    body: (days, date, price) =>
+      `Tu prueba gratis de ${days} días empezó. Termina el ${date}. Después, ${price}, con renovación automática hasta que canceles.`,
+    cancel: "Cancela cuando quieras",
+    month: "mes",
+    year: "año",
+  },
+};
+
+/**
+ * The acknowledgement right after a plan checkout opens a trial: "Your 14-day
+ * free trial started. It ends on {date}. Then {price}/{interval}, renewing
+ * until you cancel. Cancel anytime: {link}". Same date and price rules as the
+ * reminder above.
+ */
+export function buildPlanTrialStartedEmail({ locale, trialDays, trialEnd, amountMinor, currency, cycle, billingUrl }: PlanTrialStartedEmail) {
+  const copy = TRIAL_STARTED_COPY[locale] ?? TRIAL_STARTED_COPY[DEFAULT_LOCALE];
+  const price = `${trialAmount(locale, amountMinor, currency)}/${cycle === "yearly" ? copy.year : copy.month}`;
+  const body = copy.body(trialDays, trialDate(locale, trialEnd), price);
+  return planTrialEmail(locale, copy.subject(trialDays), body, copy.cancel, billingUrl);
+}
+
+export async function sendPlanTrialStartedEmail(input: PlanTrialStartedEmail): Promise<void> {
+  await sendResendEmail({ to: input.email, ...buildPlanTrialStartedEmail(input), idempotencyKey: input.idempotencyKey });
+}
+
+function trialDate(locale: Locale, date: Date): string {
+  return new Intl.DateTimeFormat(locale, { dateStyle: "long", timeZone: "Etc/GMT+12" }).format(date);
+}
+
+function trialAmount(locale: Locale, amountMinor: number, currency: string): string {
+  return new Intl.NumberFormat(locale, { style: "currency", currency: currency.toUpperCase() }).format(amountMinor / 100);
+}
+
+function planTrialEmail(locale: Locale, subject: string, body: string, cancel: string, billingUrl: string) {
+  const safeUrl = escapeHtml(billingUrl);
+  const help = (COPY[locale] ?? COPY[DEFAULT_LOCALE]).help;
+  const text = [body, "", `${cancel}: ${billingUrl}`, "", `${help} ${SUPPORT}.`].join("\n");
+  const html = `<div style="${PARAGRAPH}">
+  <p>${escapeHtml(body)}</p>
+  <p><a href="${safeUrl}" style="${BUTTON}">${cancel}</a></p>
+  <p style="font-size:13px;word-break:break-all;"><a href="${safeUrl}" style="color:#102a43;">${safeUrl}</a></p>
+  <p>${help} <a href="mailto:${SUPPORT}" style="color:#102a43;font-weight:bold;">${SUPPORT}</a>.</p>
+</div>`;
+  return { subject, html, text };
 }
 
 export async function sendPurchaseAccessEmail(input: PurchaseAccessEmail): Promise<void> {

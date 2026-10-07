@@ -8,10 +8,11 @@ const mocks = vi.hoisted(() => ({
   getAdmin: vi.fn(),
   retrieve: vi.fn(),
   fetch: vi.fn(),
+  notifyOps: vi.fn(),
 }));
 
 vi.mock("@/lib/supabase/admin", () => ({ getSupabaseAdminClient: mocks.getAdmin }));
-vi.mock("@/lib/ops/alert", () => ({ notifyOps: vi.fn() }));
+vi.mock("@/lib/ops/alert", () => ({ notifyOps: mocks.notifyOps }));
 vi.mock("@/lib/payments/server/stripe", () => ({
   isStripeConfigured: () => true,
   getStripeClient: () => ({
@@ -21,7 +22,7 @@ vi.mock("@/lib/payments/server/stripe", () => ({
 }));
 
 import { POST } from "@/app/api/webhooks/stripe/route";
-import { planById } from "@/data/plans";
+import { ENTERPRISE_GRANT_METADATA, PLAN_SUBSCRIPTION_CHECKOUT_PURPOSE, planById } from "@/data/plans";
 
 type Row = Record<string, unknown>;
 
@@ -81,6 +82,8 @@ function createDb() {
 
 const proMonthly = planById("pro").stripePriceIds!.monthlyId;
 const starterMonthly = planById("starter").stripePriceIds!.monthlyId;
+const basicMonthly = planById("basic").stripePriceIds!.monthlyId;
+const enterpriseYearly = planById("plus").stripePriceIds!.yearlyId;
 const TRIAL_END = Date.UTC(2026, 9, 20, 12) / 1000;
 
 function planSubscription(overrides: Row = {}) {
@@ -119,6 +122,7 @@ describe("plan free trial through the Stripe webhook", () => {
     db = createDb();
     mocks.getAdmin.mockReturnValue(db);
     mocks.retrieve.mockReset();
+    mocks.notifyOps.mockReset();
     mocks.fetch.mockReset().mockResolvedValue(new Response("{}", { status: 200 }));
     vi.stubGlobal("fetch", mocks.fetch);
     vi.spyOn(console, "error").mockImplementation(() => undefined);
@@ -157,17 +161,63 @@ describe("plan free trial through the Stripe webhook", () => {
     expect(db.tables.creator_plan_trials[0].trial_end).toBe("2026-10-20T12:00:00.000Z");
   });
 
-  it("still resolves an Enterprise (ex-Plus) subscription, which never had a trial", async () => {
-    const enterprise = planById("plus").stripePriceIds!.yearlyId;
+  // A Basic payer is a paying customer: own-logo certificates, the public
+  // storefront and no daily caps all key off current_plan_id <> 'free'.
+  it.each(["trialing", "active"])("stores a %s Basic subscriber as basic, not free", async (status) => {
+    await deliver("customer.subscription.created", planSubscription({
+      status,
+      metadata: { uid: "creator_1", planId: "basic", cycle: "monthly", locale: "en" },
+      items: { data: [{ price: { id: basicMonthly, unit_amount: 500, currency: "usd" } }] },
+    }));
+    expect(db.tables.subscriptions[0]).toMatchObject({ plan_id: "basic", status });
+    expect(db.tables.users[0].current_plan_id).toBe("basic");
+  });
+
+  it("keeps the highest tier when a creator holds two live subscriptions", async () => {
+    db.tables.subscriptions.push({ id: "sub_old_pro", user_id: "creator_1", plan_id: "pro", status: "active" });
+    await deliver("customer.subscription.created", planSubscription({
+      status: "active",
+      items: { data: [{ price: { id: basicMonthly, unit_amount: 500, currency: "usd" } }] },
+    }));
+    expect(db.tables.users[0].current_plan_id).toBe("pro");
+  });
+
+  it("resolves an Enterprise subscription that ops set up by hand", async () => {
     await deliver("customer.subscription.updated", planSubscription({
       status: "active",
       trial_start: null,
       trial_end: null,
-      items: { data: [{ price: { id: enterprise, unit_amount: 199_000, currency: "usd" } }] },
+      metadata: { uid: "creator_1", [ENTERPRISE_GRANT_METADATA.key]: ENTERPRISE_GRANT_METADATA.value },
+      items: { data: [{ price: { id: enterpriseYearly, unit_amount: 199_000, currency: "usd" } }] },
     }));
     expect(db.tables.users[0].current_plan_id).toBe("plus");
     expect(db.tables.subscriptions[0]).toMatchObject({ plan_id: "plus", cycle: "yearly" });
     expect(db.tables.creator_plan_trials).toEqual([]);
+    expect(mocks.notifyOps).not.toHaveBeenCalled();
+  });
+
+  // The Dashboard's default portal can still list Enterprise. A Basic trialist
+  // who switches there must not get 1.9% and Enterprise limits for free.
+  it("grants no plan for a self-serve switch to Enterprise and alerts ops", async () => {
+    const basicMeta = { uid: "creator_1", planId: "basic", cycle: "monthly", locale: "en" };
+    await deliver("customer.subscription.created", planSubscription({
+      metadata: basicMeta,
+      items: { data: [{ price: { id: basicMonthly, unit_amount: 500, currency: "usd" } }] },
+    }));
+    expect(db.tables.users[0].current_plan_id).toBe("basic");
+
+    const switched = planSubscription({
+      metadata: basicMeta,
+      items: { data: [{ price: { id: enterpriseYearly, unit_amount: 199_000, currency: "usd" } }] },
+    });
+    expect((await deliver("customer.subscription.updated", switched)).status).toBe(200);
+
+    expect(db.tables.subscriptions[0]).toMatchObject({ plan_id: null, status: "trialing" });
+    expect(db.tables.users[0].current_plan_id).toBe("free");
+    expect(mocks.notifyOps).toHaveBeenCalledWith(expect.objectContaining({
+      event: "stripe.plan.enterprise_not_granted",
+      severity: "critical",
+    }));
   });
 
   it("sends the trial_will_end reminder once per subscription", async () => {
@@ -210,6 +260,64 @@ describe("plan free trial through the Stripe webhook", () => {
     expect((await deliver("customer.subscription.trial_will_end", planSubscription())).status).toBe(200);
     expect(mocks.fetch).toHaveBeenCalledTimes(2);
     expect(db.tables.creator_plan_trials[0].reminder_sent_at).toEqual(expect.any(String));
+  });
+
+  // California's auto-renewal law wants an acknowledgement after checkout, and
+  // Stripe sends no receipt for a $0 trial invoice.
+  function checkoutCompleted(eventId: string, subscription: Row) {
+    mocks.retrieve.mockResolvedValueOnce(subscription);
+    return POST(new Request("http://localhost/api/webhooks/stripe", {
+      method: "POST",
+      headers: { "stripe-signature": "sig" },
+      body: JSON.stringify({
+        id: eventId,
+        type: "checkout.session.completed",
+        livemode: true,
+        data: { object: {
+          id: `cs_${eventId}`,
+          mode: "subscription",
+          subscription: subscription.id,
+          metadata: { uid: "creator_1", planId: "pro", cycle: "monthly", trialDays: "14", purpose: PLAN_SUBSCRIPTION_CHECKOUT_PURPOSE },
+        } },
+      }),
+    }));
+  }
+
+  it("acknowledges a trial checkout once, with the end date, the price and how to cancel", async () => {
+    expect((await checkoutCompleted("evt_cs_1", planSubscription())).status).toBe(200);
+    expect((await checkoutCompleted("evt_cs_1", planSubscription())).status).toBe(200);
+
+    expect(mocks.retrieve).toHaveBeenCalledWith("sub_plan_1");
+    expect(mocks.fetch).toHaveBeenCalledOnce();
+    const [url, init] = mocks.fetch.mock.calls[0];
+    expect(url).toBe("https://api.resend.com/emails");
+    expect((init.headers as Record<string, string>)["Idempotency-Key"]).toBe("trial_started:sub_plan_1");
+    const body = JSON.parse(String(init.body));
+    expect(body.to).toEqual(["creator@example.test"]);
+    expect(body.subject).toBe("Your 14-day free trial started");
+    expect(body.text).toContain(
+      "Your 14-day free trial started. It ends on October 20, 2026. Then $89.00/month, renewing until you cancel.",
+    );
+    expect(body.text).toContain("Cancel anytime: https://app.skillset.test/account/billing?tab=subscriptions");
+  });
+
+  it("writes the trial acknowledgement in Spanish", async () => {
+    await checkoutCompleted("evt_cs_es", planSubscription({
+      metadata: { uid: "creator_1", planId: "pro", cycle: "monthly", locale: "es" },
+    }));
+    const body = JSON.parse(String(mocks.fetch.mock.calls[0][1].body));
+    expect(body.subject).toBe("Tu prueba gratis de 14 días empezó");
+    expect(body.text).toContain("Tu prueba gratis de 14 días empezó. Termina el 20 de octubre de 2026.");
+    expect(body.text).toMatch(/Después, .*89,00.*\/mes, con renovación automática hasta que canceles\./);
+    expect(body.text).toContain("Cancela cuando quieras: https://app.skillset.test/account/billing?tab=subscriptions");
+  });
+
+  it.each([
+    ["a paid start, with no trial", { status: "active", trial_start: null, trial_end: null }],
+    ["a trial already cancelled", { cancel_at_period_end: true }],
+  ])("sends no trial acknowledgement for %s", async (_label, overrides) => {
+    expect((await checkoutCompleted("evt_cs_none", planSubscription(overrides))).status).toBe(200);
+    expect(mocks.fetch).not.toHaveBeenCalled();
   });
 
   it("ignores trial_will_end from a connected account (course subscriptions carry no trial)", async () => {
