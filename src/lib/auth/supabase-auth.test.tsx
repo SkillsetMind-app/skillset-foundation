@@ -84,6 +84,15 @@ describe("getSignupLegalVersions", () => {
     });
     expect(await getSignupLegalVersions()).toEqual({ terms: "2026-09-24", privacy: undefined });
   });
+
+  // A hora do aceite e a da criacao da conta (servidor), nao a do navegador.
+  it("gives the account creation time as the acceptance time", async () => {
+    mocks.getUser.mockResolvedValueOnce({
+      data: { user: { created_at: "2026-10-05T10:00:00Z", user_metadata: { terms_version: "2026-09-24" } } },
+      error: null,
+    });
+    expect(await getSignupLegalVersions()).toMatchObject({ acceptedAt: "2026-10-05T10:00:00Z" });
+  });
 });
 
 // The confirm-your-email screen polls this. A confirmed session for ANOTHER

@@ -410,13 +410,16 @@ export async function sendSkillsetEmailVerification(
 }
 
 // Versoes dos termos marcadas no cadastro (ver signUpWithEmail). Lidas so
-// quando o perfil ainda nao tem nenhuma gravada.
-export async function getSignupLegalVersions(): Promise<{ terms?: string; privacy?: string }> {
+// quando o perfil ainda nao tem nenhuma gravada. acceptedAt e a hora em que a
+// conta foi criada, pelo relogio do servidor: a hora do tique, nao a da
+// primeira pagina logada (que pode ser dias depois).
+export async function getSignupLegalVersions(): Promise<{ terms?: string; privacy?: string; acceptedAt?: string }> {
   const { data } = await getSupabaseBrowserClient().auth.getUser();
   const metadata = data.user?.user_metadata ?? {};
   return {
     terms: typeof metadata.terms_version === "string" ? metadata.terms_version : undefined,
     privacy: typeof metadata.privacy_version === "string" ? metadata.privacy_version : undefined,
+    acceptedAt: data.user?.created_at || undefined,
   };
 }
 

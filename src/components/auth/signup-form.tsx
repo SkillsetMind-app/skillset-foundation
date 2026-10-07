@@ -36,6 +36,7 @@ import {
   getSafeReturnTo,
   getWelcomeRoute,
 } from "@/lib/auth/routing";
+import { markSignupTerms } from "@/lib/auth/signup-terms-mark";
 import {
   acceptUserTerms,
   getUserProfile,
@@ -172,8 +173,10 @@ export function SignupForm() {
       // (sucesso silencioso com zero linhas) e /welcome mandaria direto para o
       // login sem explicar. Fica na tela de confirmar. Os termos marcados aqui
       // vao nos metadados da conta e a porta dos termos grava na primeira
-      // pagina logada (sem perguntar de novo); o @ fica para o onboarding.
+      // pagina logada (sem perguntar de novo) se ela abrir neste navegador; o
+      // @ fica para o onboarding.
       if (needsEmailConfirmation) {
+        markSignupTerms(user.uid);
         setConfirmSent(true);
         return;
       }

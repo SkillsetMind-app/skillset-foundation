@@ -24,6 +24,7 @@ import {
   listenToAuthState,
   signOutOfSkillsetMind,
 } from "@/lib/auth/supabase-auth";
+import { clearSignupTermsMark, hasSignupTermsMark } from "@/lib/auth/signup-terms-mark";
 import {
   currentPrivacyVersion,
   currentTeacherTermsVersion,
@@ -208,30 +209,25 @@ function LegalAcceptanceGate() {
 
     async function checkLegalAcceptance() {
       const profile = await getUserProfile(checkedUid);
+      // A versao mudou (ou nada foi aceito): so entao a janela aparece.
+      let general = profile?.termsVersion !== currentTermsVersion
+        || profile?.privacyVersion !== currentPrivacyVersion;
       // Os termos marcados no cadastro. Quem confirma o e-mail ainda nao tinha
       // sessao para gravar o perfil, entao as versoes esperam nos metadados da
-      // conta e sao gravadas aqui, sem perguntar de novo. Antes a pessoa
-      // marcava no cadastro e via "Legal update" logo ao entrar.
-      let signup: { terms?: string; privacy?: string } | null = null;
-      if (!profile?.termsVersion || !profile.privacyVersion) {
+      // conta e sao gravadas aqui, sem perguntar de novo, com a hora do
+      // cadastro. So no mesmo navegador do cadastro (a marca local): em outro
+      // aparelho, ou se outra pessoa cadastrou este e-mail, a janela pergunta.
+      if ((!profile?.termsVersion || !profile.privacyVersion) && hasSignupTermsMark(checkedUid)) {
         try {
-          signup = await getSignupLegalVersions();
+          const signup = await getSignupLegalVersions();
+          if (signup.terms === currentTermsVersion && signup.privacy === currentPrivacyVersion && signup.acceptedAt) {
+            await acceptUserTerms(checkedUid, profile?.marketingConsent ?? false, signup.acceptedAt);
+            general = false;
+          }
         } catch {
-          // Sem a leitura, a janela pergunta, como antes.
+          // Nao leu ou nao gravou: a janela pergunta e grava de novo.
         }
-      }
-      const termsVersion = profile?.termsVersion || signup?.terms;
-      const privacyVersion = profile?.privacyVersion || signup?.privacy;
-      // A versao mudou (ou nada foi aceito): so entao a janela aparece.
-      let general = termsVersion !== currentTermsVersion
-        || privacyVersion !== currentPrivacyVersion;
-      if (signup && !general) {
-        try {
-          await acceptUserTerms(checkedUid, profile?.marketingConsent ?? false);
-        } catch {
-          // Nao gravou: a janela pergunta e grava de novo.
-          general = true;
-        }
+        clearSignupTermsMark();
       }
 
       if (cancelled) {
@@ -241,7 +237,7 @@ function LegalAcceptanceGate() {
       setAcceptance({
         uid: checkedUid,
         general,
-        firstTime: !termsVersion,
+        firstTime: !profile?.termsVersion,
         // Re-acceptance only: a teacher who accepted an older version. The
         // first acceptance belongs to onboarding, which grants the role.
         teacher: Boolean(

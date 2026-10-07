@@ -9,6 +9,7 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { SignupForm } from "@/components/auth/signup-form";
+import { hasSignupTermsMark } from "@/lib/auth/signup-terms-mark";
 
 const mocks = vi.hoisted(() => ({
   router: { push: vi.fn(), replace: vi.fn() },
@@ -205,6 +206,21 @@ describe("SignupForm once the account exists", () => {
     );
     expect(mocks.acceptUserTerms).toHaveBeenCalledWith("u-1", false);
     expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  // Sem sessao ainda (espera a confirmacao do e-mail): a marca deste navegador
+  // e o que deixa a primeira pagina logada gravar o tique sem perguntar.
+  it("marks this browser as the one that ticked the terms when the email still needs confirming", async () => {
+    window.localStorage.clear();
+    mocks.signUpWithEmail.mockResolvedValue({ user: { uid: "u-1" }, needsEmailConfirmation: true });
+    render(<SignupForm />);
+
+    submitSignup();
+
+    await waitFor(() => expect(hasSignupTermsMark("u-1")).toBe(true));
+    expect(hasSignupTermsMark("u-2")).toBe(false);
+    expect(mocks.acceptUserTerms).not.toHaveBeenCalled();
+    window.localStorage.clear();
   });
 
   it("writes terms and a derived username on the happy path", async () => {
