@@ -9,6 +9,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AuthProvider } from "@/components/auth/auth-provider";
 import { I18nProvider, useTranslation } from "@/components/i18n/i18n-provider";
+import { markSignupTerms, SIGNUP_TERMS_MARK_KEY } from "@/lib/auth/signup-terms-mark";
 import {
   currentPrivacyVersion,
   currentTeacherTermsVersion,
@@ -21,6 +22,7 @@ const mocks = vi.hoisted(() => ({
   getUserProfile: vi.fn(),
   acceptUserTerms: vi.fn(),
   acceptTeacherTerms: vi.fn(),
+  getSignupLegalVersions: vi.fn(),
 }));
 
 vi.mock("next/navigation", () => ({
@@ -32,6 +34,7 @@ vi.mock("@/lib/auth/supabase-auth", () => ({
   listenToAuthState: mocks.listenToAuthState,
   signOutOfSkillsetMind: vi.fn(),
   getCurrentAuthSession: vi.fn(),
+  getSignupLegalVersions: mocks.getSignupLegalVersions,
 }));
 
 vi.mock("@/lib/data/user-profiles", () => ({
@@ -94,6 +97,7 @@ describe("LegalAcceptanceGate as the signup recovery path", () => {
     mocks.pathname = "/learn";
     mocks.acceptUserTerms.mockResolvedValue(undefined);
     mocks.acceptTeacherTerms.mockResolvedValue(undefined);
+    mocks.getSignupLegalVersions.mockResolvedValue({});
   });
 
   afterEach(cleanup);
@@ -273,5 +277,114 @@ describe("LegalAcceptanceGate as the signup recovery path", () => {
     await waitFor(() => expect(mocks.getUserProfile).toHaveBeenCalled());
     await settle();
     expect(screen.queryByRole("button", { name: ACCEPT })).toBeNull();
+  });
+});
+
+// Onda F: os termos eram pedidos duas vezes. A pessoa marcava no cadastro, o
+// tique se perdia no caminho da confirmacao do e-mail, e na chegada vinha uma
+// janela "Legal update". Agora o cadastro guarda as versoes aceitas e esta
+// porta as grava sem perguntar, com a hora do cadastro, mas so no mesmo
+// navegador do cadastro. Fora dele a janela pergunta uma vez, como primeira
+// aceitacao ("Before you start"), nunca como "atualizacao".
+describe("LegalAcceptanceGate asks only once", () => {
+  const OLD = { termsVersion: "2026-04-26", privacyVersion: "2026-05-10" };
+  const SIGNED_UP_AT = "2026-10-05T10:00:00Z";
+  const TICKED = { terms: currentTermsVersion, privacy: currentPrivacyVersion, acceptedAt: SIGNED_UP_AT };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    window.localStorage.clear();
+    mocks.pathname = "/learn";
+    mocks.acceptUserTerms.mockResolvedValue(undefined);
+    mocks.acceptTeacherTerms.mockResolvedValue(undefined);
+    mocks.getUserProfile.mockResolvedValue({ termsVersion: null, privacyVersion: null, marketingConsent: false });
+    mocks.getSignupLegalVersions.mockResolvedValue(TICKED);
+  });
+
+  afterEach(() => {
+    cleanup();
+    window.localStorage.clear();
+  });
+
+  async function expectFirstAcceptancePrompt() {
+    await screen.findByRole("button", { name: ACCEPT });
+    expect(screen.getByText("Before you start")).toBeTruthy();
+    expect(screen.queryByText("Legal update")).toBeNull();
+    expect(mocks.acceptUserTerms).not.toHaveBeenCalled();
+  }
+
+  it("same browser: stores the signup tick with the signup time, without asking, and clears the mark", async () => {
+    markSignupTerms("u-1");
+    renderSignedIn();
+
+    await waitFor(() => expect(mocks.acceptUserTerms).toHaveBeenCalledWith("u-1", false, SIGNED_UP_AT));
+    await settle();
+    expect(screen.queryByRole("button", { name: ACCEPT })).toBeNull();
+    expect(window.localStorage.getItem(SIGNUP_TERMS_MARK_KEY)).toBeNull();
+  });
+
+  it("stores it even when the confirmation lands on /welcome", async () => {
+    mocks.pathname = "/welcome";
+    markSignupTerms("u-1");
+    renderSignedIn();
+
+    await waitFor(() => expect(mocks.acceptUserTerms).toHaveBeenCalledWith("u-1", false, SIGNED_UP_AT));
+  });
+
+  it("another browser or device: asks once, as a first acceptance, and records the click", async () => {
+    renderSignedIn();
+
+    await expectFirstAcceptancePrompt();
+    expect(mocks.getSignupLegalVersions).not.toHaveBeenCalled();
+    const [terms, privacy] = screen.getAllByRole("checkbox");
+    fireEvent.click(terms);
+    fireEvent.click(privacy);
+    fireEvent.click(screen.getByRole("button", { name: ACCEPT }));
+
+    await waitFor(() => expect(screen.queryByRole("button", { name: ACCEPT })).toBeNull());
+    expect(mocks.acceptUserTerms).toHaveBeenCalledTimes(1);
+    expect(mocks.acceptUserTerms).toHaveBeenCalledWith("u-1", false);
+  });
+
+  // Alguem cadastrou o meu e-mail e marcou os termos. A marca, se existir, e
+  // da conta de quem cadastrou neste navegador, nao da minha.
+  it("someone else signed up with my email: asks, and leaves their mark alone", async () => {
+    markSignupTerms("u-someone-else");
+    renderSignedIn();
+
+    await expectFirstAcceptancePrompt();
+    expect(window.localStorage.getItem(SIGNUP_TERMS_MARK_KEY)).toContain("u-someone-else");
+  });
+
+  it.each([
+    ["the mark carries older versions", { uid: "u-1", terms: OLD.termsVersion, privacy: OLD.privacyVersion, expiresAt: Date.now() + 60_000 }, TICKED],
+    ["the account carries older versions", null, { ...TICKED, terms: OLD.termsVersion, privacy: OLD.privacyVersion }],
+    ["the mark expired", { uid: "u-1", terms: currentTermsVersion, privacy: currentPrivacyVersion, expiresAt: Date.now() - 1 }, TICKED],
+  ])("versions changed since signup (%s): asks as a first acceptance", async (_label, mark, signup) => {
+    if (mark) window.localStorage.setItem(SIGNUP_TERMS_MARK_KEY, JSON.stringify(mark));
+    else markSignupTerms("u-1");
+    mocks.getSignupLegalVersions.mockResolvedValue(signup);
+    renderSignedIn();
+
+    await expectFirstAcceptancePrompt();
+  });
+
+  it("shows the update prompt when the stored version changed", async () => {
+    mocks.getUserProfile.mockResolvedValue({ ...OLD, marketingConsent: false });
+    markSignupTerms("u-1");
+    renderSignedIn();
+
+    await screen.findByRole("button", { name: ACCEPT });
+    expect(screen.getByText("Legal update")).toBeTruthy();
+    expect(mocks.getSignupLegalVersions).not.toHaveBeenCalled();
+  });
+
+  it("falls back to asking when the signup acceptance cannot be saved", async () => {
+    markSignupTerms("u-1");
+    mocks.acceptUserTerms.mockRejectedValueOnce(new Error("no row"));
+    renderSignedIn();
+
+    await screen.findByRole("button", { name: ACCEPT });
+    expect(screen.getByText("Before you start")).toBeTruthy();
   });
 });

@@ -273,7 +273,11 @@
       "confirmResent": "Sent again. Give it a minute.",
       "confirmChangeEmail": "Wrong email? Change it",
       "confirmAlreadyDone": "Already confirmed?",
-      "existingAccountSignIn": "Sign in instead"
+      "existingAccountSignIn": "Sign in instead",
+      "expiredTitle": "This link has expired",
+      "expiredBody": "Links in our emails work for 1 hour and only once. Type your email and we will send you a new link.",
+      "expiredSend": "Send me a new link",
+      "expiredSent": "Done. If this email still needs to be confirmed, a new link is on its way. Check your inbox and your spam folder."
     },
     "guard": {
       "loadingTitle": "Preparing your workspace",
@@ -3303,7 +3307,7 @@
   "authFlow": {
     "callback": {
       "sameBrowser": "This link has to be opened in the same browser that requested it. Open it there, or request a new one from this browser.",
-      "usedOrExpired": "That link has already been used or has expired. Reset links work once. Request a new one and try again.",
+      "usedOrExpired": "That link has already been used or has expired. Links in our emails work only once. Request a new one and try again.",
       "invalidOrExpired": "That link is invalid or has expired. Request a new one and try again."
     },
     "errors": {
@@ -4462,6 +4466,8 @@
   },
   "legalAcceptance": {
     "eyebrow": "Legal update",
+    "firstEyebrow": "Before you start",
+    "firstBody": "Read and accept the SkillsetMind terms to use your account.",
     "title": "Review SkillsetMind terms to continue.",
     "body": "SkillsetMind updated its legal terms. Accept the current versions below to continue using your account.",
     "agreeTerms": "I agree to the current SkillsetMind",

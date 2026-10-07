@@ -273,7 +273,11 @@
       "confirmResent": "Enviado de nuevo. Dale un minuto.",
       "confirmChangeEmail": "¿Correo equivocado? Cámbialo",
       "confirmAlreadyDone": "¿Ya lo confirmaste?",
-      "existingAccountSignIn": "Inicia sesión en su lugar"
+      "existingAccountSignIn": "Inicia sesión en su lugar",
+      "expiredTitle": "Este enlace venció",
+      "expiredBody": "Los enlaces de nuestros correos sirven por 1 hora y una sola vez. Escribe tu correo y te enviamos un enlace nuevo.",
+      "expiredSend": "Envíame un enlace nuevo",
+      "expiredSent": "Listo. Si este correo todavía no está confirmado, te llega un enlace nuevo. Revisa tu bandeja de entrada y la carpeta de spam."
     },
     "guard": {
       "loadingTitle": "Preparando tu espacio de trabajo",
@@ -3303,7 +3307,7 @@
   "authFlow": {
     "callback": {
       "sameBrowser": "Este enlace debe abrirse en el mismo navegador desde el que se solicitó. Ábrelo allí o solicita uno nuevo desde este navegador.",
-      "usedOrExpired": "Este enlace ya se usó o caducó. Los enlaces para restablecer la contraseña funcionan una sola vez. Solicita uno nuevo e inténtalo de nuevo.",
+      "usedOrExpired": "Este enlace ya se usó o caducó. Los enlaces de nuestros correos funcionan una sola vez. Solicita uno nuevo e inténtalo de nuevo.",
       "invalidOrExpired": "Este enlace no es válido o caducó. Solicita uno nuevo e inténtalo de nuevo."
     },
     "errors": {
@@ -4462,6 +4466,8 @@
   },
   "legalAcceptance": {
     "eyebrow": "Actualización legal",
+    "firstEyebrow": "Antes de empezar",
+    "firstBody": "Lee y acepta los términos de SkillsetMind para usar tu cuenta.",
     "title": "Revisa los términos de SkillsetMind para continuar.",
     "body": "SkillsetMind ha actualizado sus términos legales. Acepta las versiones vigentes que aparecen abajo para seguir usando tu cuenta.",
     "agreeTerms": "Acepto la versión vigente de las",

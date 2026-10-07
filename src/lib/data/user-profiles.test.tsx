@@ -61,6 +61,31 @@ describe("legal acceptance writes must land on a row", () => {
   });
 });
 
+// O aceite do cadastro e gravado na primeira pagina logada, as vezes dias
+// depois do tique. A hora gravada tem que ser a do tique, nao a da gravacao.
+describe("acceptUserTerms records when the box was ticked", () => {
+  it("stores the given acceptance time for terms and privacy, and now as the update time", async () => {
+    const { client, calls } = buildAcceptClient([{ uid: "u-1" }]);
+    supabaseMocks.getSupabaseBrowserClient.mockReturnValue(client);
+    const signedUpAt = "2026-10-05T10:00:00.000Z";
+
+    await acceptUserTerms("u-1", false, signedUpAt);
+
+    expect(calls.payload).toMatchObject({ terms_accepted_at: signedUpAt, privacy_accepted_at: signedUpAt });
+    expect(calls.payload?.updated_at).not.toBe(signedUpAt);
+  });
+
+  it("uses the current time when the person ticks it now", async () => {
+    const { client, calls } = buildAcceptClient([{ uid: "u-1" }]);
+    supabaseMocks.getSupabaseBrowserClient.mockReturnValue(client);
+
+    await acceptUserTerms("u-1", false);
+
+    expect(calls.payload?.terms_accepted_at).toBe(calls.payload?.updated_at);
+    expect(calls.payload?.privacy_accepted_at).toBe(calls.payload?.updated_at);
+  });
+});
+
 const usernameCollision = {
   code: "23505",
   details: "Key (username)=(joao-silva) already exists.",
