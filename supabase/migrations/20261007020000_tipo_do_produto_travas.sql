@@ -487,6 +487,9 @@ as $function$
     where c.id = p_course_id
       and c.status = 'published'
       and c.product_format = 'live_event'
+      -- A mesma trava de sessao das policies (20260910030000): visitante
+      -- passa; conta suspensa ou sessao revogada nao le nada.
+      and (select public.account_session_allowed())
   ) s
   order by (s.starts_at_ts > now()) desc,
            case when s.starts_at_ts > now() then s.starts_at_ts end asc,
