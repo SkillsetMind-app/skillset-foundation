@@ -145,6 +145,8 @@ const sectionIconMap: Record<string, LucideIcon> = {
 };
 
 type PlatformNavProps = {
+  /** O botao ☰ aponta para esta lista (aria-controls). */
+  id?: string;
   collapsed?: boolean;
   onRequestExpand?: (section: string) => void;
   initialSection?: string;
@@ -153,6 +155,7 @@ type PlatformNavProps = {
 };
 
 export function PlatformNav({
+  id,
   collapsed = false,
   onRequestExpand,
   initialSection,
@@ -251,7 +254,9 @@ export function PlatformNav({
         variant="nav"
         side={context === "teacher" ? "teacher" : "student"}
         collapsed={collapsed}
-        open={expandedSections.includes("help")}
+        // Recolhida, a Ajuda não abre no lugar (abre a barra ou a gaveta),
+        // como os grupos: não diz "expandida" depois que a gaveta fecha.
+        open={!collapsed && expandedSections.includes("help")}
         onOpenChange={() => toggleSection("help")}
         autoFocus={initialSection === "help"}
       />
@@ -295,7 +300,6 @@ export function PlatformNav({
           aria-label={
             collapsed ? t("platform.openSectionNav").replace("{section}", sectionLabel) : undefined
           }
-          title={collapsed ? sectionLabel : undefined}
           className={`platform-nav-link platform-nav-section-trigger group relative flex w-full shrink-0 items-center rounded-md border text-sm font-semibold transition-colors ${
             collapsed ? "justify-center px-0" : "px-2"
           } ${
@@ -308,7 +312,8 @@ export function PlatformNav({
         >
           {/* Recolhida, o item e o unico quadrado: sem o chip do icone
               (era a segunda camada no hover; ver bloco "Rail recolhido"
-              no globals.css). */}
+              no globals.css). O rotulo abaixo vira a dica no hover e no
+              foco do teclado. */}
           {collapsed ? (
             <SectionIcon aria-hidden="true" size={18} strokeWidth={2} />
           ) : (
@@ -347,6 +352,7 @@ export function PlatformNav({
 
   return (
     <nav
+      id={id}
       className="platform-sidebar-nav mt-3 flex flex-1 flex-col"
       aria-label={t("platform.sidebarNavLabel")}
     >
@@ -456,10 +462,9 @@ function PlatformNavLink({
     <Link
       href={href}
       aria-current={active ? "page" : undefined}
-      // Recolhida, a barra esconde o rótulo (largura 0) e o ícone ficava sem
-      // nome: só os grupos tinham dica. O title devolve o nome no hover; o
-      // rótulo continua no DOM para leitores de tela.
-      title={collapsed ? [label, countLabel].filter(Boolean).join(", ") : undefined}
+      // Recolhida, o rótulo sai da linha mas fica no DOM: é o nome do link
+      // para o leitor de tela, e o CSS o mostra como dica no hover E no foco
+      // do teclado (o title só aparecia no mouse, e depois de 1s).
       className={`platform-nav-link group relative flex h-11 min-h-11 shrink-0 items-center gap-2.5 rounded-md border px-2.5 py-1.5 text-sm font-semibold transition-colors ${
         active
           ? "platform-nav-active border-[rgba(24,58,94,0.2)] shadow-[0_10px_22px_rgba(26,54,93,0.16)]"
@@ -478,21 +483,24 @@ function PlatformNavLink({
           <Icon aria-hidden="true" size={18} strokeWidth={2} className="shrink-0" />
         </span>
       )}
-      <span className="platform-sidebar-label min-w-0 truncate">{label}</span>
+      {/* A contagem exata mora dentro do rótulo: com a barra aberta fica só
+          para o leitor de tela (o selo mostra o número); recolhida, a dica
+          mostra "128 pending" mesmo quando o selo diz "99+". */}
+      <span className="platform-sidebar-label min-w-0 truncate">
+        {label}
+        {countLabel !== undefined ? <span className="platform-sidebar-label-count">, {countLabel}</span> : null}
+      </span>
       {count !== undefined ? (
-        <>
-          <span
-            aria-hidden="true"
-            className={`shrink-0 rounded-sm bg-[var(--color-surface-soft)] px-1 text-center font-semibold tabular-nums text-[var(--color-ink)] ${
-              collapsed
-                ? "absolute bottom-1 left-1/2 h-3.5 min-w-5 -translate-x-1/2 text-[10px] leading-3.5"
-                : "ml-auto h-5 min-w-5 text-[11px] leading-5"
-            }`}
-          >
-            {countText}
-          </span>
-          <span className="sr-only">, {countLabel}</span>
-        </>
+        <span
+          aria-hidden="true"
+          className={`shrink-0 rounded-sm bg-[var(--color-surface-soft)] px-1 text-center font-semibold tabular-nums text-[var(--color-ink)] ${
+            collapsed
+              ? "absolute bottom-1 left-1/2 h-3.5 min-w-5 -translate-x-1/2 text-[10px] leading-3.5"
+              : "ml-auto h-5 min-w-5 text-[11px] leading-5"
+          }`}
+        >
+          {countText}
+        </span>
       ) : null}
     </Link>
   );

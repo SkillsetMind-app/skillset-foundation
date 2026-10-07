@@ -32,9 +32,10 @@ type MobileSidebarDrawerProps = {
   navigationCounts?: PlatformNavCounts;
 };
 
+// Os itens da lista, nao o ☰ do topo da barra: o foco volta para um destino.
 function visibleNavigationControl() {
   return Array.from(document.querySelectorAll<HTMLElement>(
-    ".platform-sidebar .platform-nav-link, .platform-mobile-nav button",
+    ".platform-sidebar .platform-sidebar-nav .platform-nav-link, .platform-mobile-nav button",
   )).find((element) => element.getClientRects().length > 0) ?? null;
 }
 
@@ -86,7 +87,9 @@ export function MobileSidebarDrawer({
       }
     }
 
-    const desktop = window.matchMedia?.("(min-width: 1024px)");
+    // Abaixo de 1180px o rail recolhido abre esta gaveta; acima, o grupo abre a
+    // propria barra.
+    const desktop = window.matchMedia?.("(min-width: 1180px)");
     function handleDesktopChange() {
       if (desktop?.matches) onClose();
     }
@@ -134,7 +137,7 @@ export function MobileSidebarDrawer({
       </nav>
 
       {open ? (
-        <div className="fixed inset-0 z-[100] min-[1024px]:hidden">
+        <div className="fixed inset-0 z-[100] min-[1180px]:hidden">
           <button
             type="button"
             className="absolute inset-0 bg-[rgba(15,39,68,0.45)]"

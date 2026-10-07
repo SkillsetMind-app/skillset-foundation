@@ -2719,7 +2719,6 @@ select:focus-visible {
   height: 100%;
   min-height: 0;
   grid-template-columns: var(--platform-sidebar-width, var(--sidebar-width)) minmax(0, 1fr);
-  transition: grid-template-columns 240ms cubic-bezier(0.2, 0.6, 0.2, 1);
 }
 
 .platform-grid--collapsed {
@@ -2752,7 +2751,6 @@ select:focus-visible {
   color: rgba(255, 255, 255, 0.86);
   padding: 1.25rem 0.875rem 0.875rem;
   box-shadow: 18px 0 44px rgba(7, 23, 42, 0.1);
-  transition: width 240ms cubic-bezier(0.2, 0.6, 0.2, 1);
 }
 
 .platform-sidebar-panel::before {
@@ -2781,14 +2779,20 @@ select:focus-visible {
   padding: 0.125rem 0.25rem 1rem;
 }
 
+/* A marca pequena só aparece de 768 a 1023px (bloco do tablet), onde o ☰
+   some: acima disso o rail mostra o ☰ no lugar dela. */
+.platform-sidebar-brand__mark {
+  display: none;
+}
+
 .platform-sidebar-brand__mark img {
   width: 2rem;
   height: 2rem;
 }
 
-/* Rail recolhido: a marca centra no mesmo eixo dos icones. Antes ficava
+/* Rail recolhido: o ☰ centra no mesmo eixo dos icones. Antes a marca ficava
    encostada a esquerda (flex sem justify + 4px de padding) enquanto cada
-   icone abaixo e um quadrado centrado nos 64px — a marca parecia deslocada. */
+   icone abaixo e um quadrado centrado nos 64px — parecia deslocada. */
 .platform-sidebar.sidebar-collapsed .platform-sidebar-brand {
   justify-content: center;
   padding-inline: 0;
@@ -2948,21 +2952,13 @@ select:focus-visible {
   }
 }
 
-/* O botão de recolher/expandir é o último item da barra, dentro dela, com o
-   mesmo desenho dos links (classe .platform-nav-link herda a pele escura).
-   Antes era um círculo flutuante pregado na borda direita (right: -1.1rem), em
-   cima da linha entre barra e conteúdo — lia como um elemento perdido e, no
-   modo recolhido, precisava de uma regra só para não cobrir a marca. */
+/* O ☰ (onda E) mora no topo, à esquerda da marca, com a pele dos links
+   (.platform-nav-link). Antes de virar item da barra era um círculo pregado
+   na borda direita, em cima da linha entre barra e conteúdo. O recuo de 8px
+   põe o ícone no mesmo eixo do rail (32px): recolher não o tira de baixo do
+   cursor. Recolhida, a regra do rail (44px, margin-inline: auto) vence. */
 .platform-sidebar .platform-sidebar-toggle {
-  margin-top: auto;
-  padding-top: 0.75rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 0;
-}
-
-.platform-sidebar.sidebar-collapsed .platform-sidebar-toggle {
-  justify-content: center;
-  padding-inline: 0 !important;
+  margin-inline-start: -0.5rem;
 }
 
 .platform-grid--collapsed .platform-sidebar-panel {
@@ -2981,7 +2977,7 @@ select:focus-visible {
 .platform-grid--collapsed .platform-sidebar-brand {
   justify-content: center;
   border-bottom-color: transparent;
-  padding: 0.375rem 0 0.875rem;
+  padding: 0.125rem 0 1rem;
 }
 
 .platform-main-column {
@@ -6066,17 +6062,10 @@ body:has([aria-label="Course categories"])
   }
 }
 
+/* A largura da barra troca na hora (onda E): animar a coluna refazia o layout
+   da página inteira a cada quadro. O que anda é o nome acendendo, no bloco
+   de movimento da onda D (item 14). */
 .platform-sidebar-label {
-  opacity: 1;
-  transform: translateX(0);
-  /* A largura do rail leva 240ms; o rotulo levava 180ms COMECANDO JUNTO, entao
-     o texto aparecia dentro de uma barra ainda estreita (e sumia antes de ela
-     encolher) — as duas coisas correndo uma por cima da outra. Ao ABRIR, o
-     rotulo espera a largura terminar (delay 180ms, aqui). Ao FECHAR, ele sai na
-     hora: a regra .sidebar-collapsed zera o delay. */
-  transition:
-    opacity 180ms ease 180ms,
-    transform 180ms ease 180ms;
   white-space: nowrap;
 }
 
@@ -7098,15 +7087,85 @@ button:hover > .dash-card,
   }
 }
 
-.sidebar-collapsed .platform-sidebar-label {
-  width: 0;
-  opacity: 0;
+/* Recolhida, o nome sai da linha mas fica no DOM: é o nome acessível do link.
+   O do ☰ fica assim nos dois estados (ao lado da marca não há lugar). */
+.sidebar-collapsed .platform-sidebar-label,
+.platform-sidebar-toggle .platform-sidebar-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
   overflow: hidden;
+  clip-path: inset(50%);
   pointer-events: none;
-  transform: translateX(-8px);
-  /* Fechando, o texto sai primeiro e a barra encolhe depois — sem o delay que
-     a regra base usa para ABRIR. */
-  transition-delay: 0s;
+}
+
+/* ...e vira dica no hover E no foco do teclado (o title só aparecia no mouse,
+   depois de 1s). `position: fixed` porque a lista rola e cortaria uma dica
+   absoluta; o lugar (--tip-x/--tip-y) vem do item, medido no hover e no foco
+   (placeSidebarTip, platform-shell.tsx). O `[style]` espera essa medida: antes
+   dela (página ainda sem JS) não há dica solta no lugar errado. */
+.platform-sidebar.sidebar-collapsed .platform-nav-link[style]:is(:hover, :focus-visible) .platform-sidebar-label,
+.platform-sidebar .platform-sidebar-toggle[style]:is(:hover, :focus-visible) .platform-sidebar-label {
+  position: fixed;
+  top: var(--tip-y);
+  left: var(--tip-x);
+  z-index: 1;
+  width: auto;
+  height: auto;
+  overflow: visible;
+  clip-path: none;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: var(--radius-md);
+  background: #102a43;
+  padding: 0.375rem 0.625rem;
+  color: #ffffff;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+  box-shadow: 0 10px 24px rgba(7, 23, 42, 0.28);
+  opacity: 1;
+  transform: translateY(-50%);
+}
+
+/* A contagem exata dentro do rótulo (platform-nav.tsx): fora da dica, só
+   para o leitor de tela; na dica, aparece ("128 pending" quando o selo diz 99+). */
+.platform-sidebar-label-count {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+.platform-sidebar.sidebar-collapsed .platform-nav-link[style]:is(:hover, :focus-visible) .platform-sidebar-label-count {
+  position: static;
+  width: auto;
+  height: auto;
+  overflow: visible;
+  clip-path: none;
+}
+
+/* O ☰ vira seta "recolher" com a barra aberta: as barras de cima e de baixo
+   encurtam e giram até a ponta da do meio. Recolhida, volta a ser ☰. */
+.platform-menu-icon path {
+  vector-effect: non-scaling-stroke;
+}
+
+.platform-menu-icon path:first-child {
+  transform-origin: 4px 6px;
+}
+
+.platform-menu-icon path:last-child {
+  transform-origin: 4px 18px;
+}
+
+.platform-sidebar:not(.sidebar-collapsed) .platform-menu-icon path:first-child {
+  transform: translateY(6px) rotate(-45deg) scaleX(0.53);
+}
+
+.platform-sidebar:not(.sidebar-collapsed) .platform-menu-icon path:last-child {
+  transform: translateY(-6px) rotate(45deg) scaleX(0.53);
 }
 
 .platform-mobile-nav {
@@ -7122,31 +7181,157 @@ button:hover > .dash-card,
   box-shadow: var(--shadow-strong);
 }
 
-/* TABLET (768–1023px): o rail de 64px É a navegação.
-   Antes esta faixa caía inteira no desenho de celular — barra lateral sumia,
-   barra de baixo aparecia — e numa tela de 1000px de largura, com espaço de
-   sobra, a pessoa navegava com o polegar num rodapé fixo. O rail já existia
-   (.platform-grid--collapsed) e só era alcançável acima de 1024px.
-   A largura vem daqui, e não da classe, para não haver o salto de 288px→64px
-   no primeiro quadro: o servidor renderiza "expanded" e só depois de montar o
-   useSidebarState sabe a largura da janela. O resto do visual recolhido (ícones
-   centralizados, marca no meio) vem da classe .sidebar-collapsed, que o
-   useSidebarState força nesta faixa. O botão de recolher some porque nela não
-   há o que recolher. */
+/* TELAS MÉDIAS (768–1179px): o rail de 64px é o padrão, e o conteúdo fica
+   com os ~196px que a barra aberta comia (onda E).
+   A largura vem daqui, e não só da classe, para não haver o salto de
+   260px→64px no primeiro quadro: sem escolha salva (.platform-grid--auto) o
+   servidor não sabe a largura da janela e manda a barra "aberta" até o
+   useSidebarState montar. As regras com :not(.platform-grid--collapsed)
+   cobrem só esse intervalo: escondem o que não cabe em 64px. Quem abriu a
+   barra (cookie "expanded") fica com ela aberta de 1024px para cima. */
+@media (min-width: 768px) and (width < 1180px) {
+  .platform-grid--auto {
+    --platform-sidebar-width: 64px;
+  }
+
+  .platform-grid--auto .platform-sidebar-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  .platform-grid--auto:not(.platform-grid--collapsed) .platform-sidebar-panel {
+    padding-inline: 0;
+  }
+
+  .platform-grid--auto:not(.platform-grid--collapsed) :is(.platform-nav-section-items, .platform-nav-section-chevron, .platform-sidebar-brand__lockup-link) {
+    display: none;
+  }
+
+  .platform-grid--auto:not(.platform-grid--collapsed) :is(.platform-sidebar-brand, .platform-nav-link) {
+    justify-content: center;
+    min-height: 44px;
+    margin-inline: 0;
+    padding-inline: 0 !important;
+    border-bottom-color: transparent;
+  }
+
+  .platform-grid--auto:not(.platform-grid--collapsed) :is(.platform-nav-section, .platform-nav-footer) {
+    gap: inherit;
+  }
+
+  .platform-grid--auto .platform-sidebar:not(.sidebar-collapsed) .platform-menu-icon path:is(:first-child, :last-child) {
+    transform: none;
+  }
+
+  /* ...e o 1º quadro já é o rail que o JS vai desenhar: o ativo é o quadrado
+     branco de 44px, os ícones sem caixinha e a calha da rolagem reservada
+     (sem ela os ícones andam ~5px no Windows quando o JS monta). */
+  .platform-grid--auto:not(.platform-grid--collapsed) .platform-sidebar-nav {
+    scrollbar-gutter: stable;
+  }
+
+  .platform-grid--auto:not(.platform-grid--collapsed) .platform-nav-icon-chip {
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+
+  .platform-grid--auto:not(.platform-grid--collapsed) .platform-nav-link:is(.platform-nav-active, .platform-nav-section-active) {
+    width: 44px;
+    margin-inline: auto;
+    border-color: transparent !important;
+    background: #ffffff !important;
+    box-shadow: none !important;
+  }
+
+  .platform-grid--auto:not(.platform-grid--collapsed) .platform-nav-link:is(.platform-nav-active, .platform-nav-section-active) svg {
+    color: #102a43 !important;
+    opacity: 1;
+  }
+
+  .platform-grid--auto:not(.platform-grid--collapsed) .platform-nav-active::before {
+    content: none;
+  }
+}
+
+/* TABLET (768–1023px): sempre o rail, mesmo para quem abriu a barra. Aberta,
+   ela deixaria ~465px de conteúdo e a barra do topo não cabe (conta em
+   src/app/barra-do-topo-cabe.test.ts). Antes do rail esta faixa caía no
+   desenho de celular, com a barra de baixo numa tela de 1000px. O ☰ some:
+   aqui não há o que abrir — um grupo ou a Ajuda abrem a gaveta. */
 @media (min-width: 768px) and (width < 1024px) {
   .platform-grid {
     --platform-sidebar-width: 64px;
   }
 
-  .platform-sidebar .platform-sidebar-label {
-    width: 0;
-    opacity: 0;
+  .platform-grid .platform-sidebar-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
     overflow: hidden;
-    pointer-events: none;
+    clip-path: inset(50%);
   }
 
   .platform-sidebar .platform-sidebar-toggle {
     display: none;
+  }
+
+  /* No lugar do ☰, a marca pequena: o rail não começa com uma faixa vazia e
+     a home continua a um clique (a barra do topo só tem logo abaixo de 768). */
+  .platform-sidebar-brand__mark {
+    display: inline-flex;
+  }
+
+  /* Com o cookie "expanded" o servidor manda a barra aberta, mas aqui ela é o
+     rail mesmo assim: as regras da faixa média valem para qualquer grade não
+     recolhida. Nada vaza dos 64px (a marca larga passava por cima da barra do
+     topo) e o 1º quadro já é o rail. */
+  .platform-grid:not(.platform-grid--collapsed) .platform-sidebar-panel {
+    padding-inline: 0;
+  }
+
+  .platform-grid:not(.platform-grid--collapsed) :is(.platform-nav-section-items, .platform-nav-section-chevron, .platform-sidebar-brand__lockup-link) {
+    display: none;
+  }
+
+  .platform-grid:not(.platform-grid--collapsed) :is(.platform-sidebar-brand, .platform-nav-link) {
+    justify-content: center;
+    min-height: 44px;
+    margin-inline: 0;
+    padding-inline: 0 !important;
+    border-bottom-color: transparent;
+  }
+
+  .platform-grid:not(.platform-grid--collapsed) :is(.platform-nav-section, .platform-nav-footer) {
+    gap: inherit;
+  }
+
+  .platform-grid:not(.platform-grid--collapsed) .platform-sidebar-nav {
+    scrollbar-gutter: stable;
+  }
+
+  .platform-grid:not(.platform-grid--collapsed) .platform-nav-icon-chip {
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+
+  .platform-grid:not(.platform-grid--collapsed) .platform-nav-link:is(.platform-nav-active, .platform-nav-section-active) {
+    width: 44px;
+    margin-inline: auto;
+    border-color: transparent !important;
+    background: #ffffff !important;
+    box-shadow: none !important;
+  }
+
+  .platform-grid:not(.platform-grid--collapsed) .platform-nav-link:is(.platform-nav-active, .platform-nav-section-active) svg {
+    color: #102a43 !important;
+    opacity: 1;
+  }
+
+  .platform-grid:not(.platform-grid--collapsed) .platform-nav-active::before {
+    content: none;
   }
 }
 
@@ -7222,12 +7407,6 @@ button:hover > .dash-card,
 
   .welcome-question {
     animation: none;
-  }
-
-  .platform-grid,
-  .platform-sidebar-panel,
-  .platform-sidebar-label {
-    transition: none;
   }
 }
 
@@ -8642,6 +8821,23 @@ button:hover > .dash-card,
      ele ja tinha (a `transition` do cartao ja inclui transform). */
   .motion-hover-lift:hover {
     transform: translateY(-2px);
+  }
+
+  /* 14. Menu lateral (onda E). A largura troca na hora: animar a coluna
+     refaria o layout da página inteira a cada quadro. Ao abrir, os nomes
+     acendem; recolhida, a dica acende no hover/foco; o ☰ vira seta. Tudo
+     em 180ms, só opacity e transform. */
+  .platform-sidebar-label {
+    transition: opacity var(--duration-base) var(--ease-standard);
+  }
+
+  .sidebar-collapsed .platform-sidebar-label,
+  .platform-sidebar-toggle .platform-sidebar-label {
+    opacity: 0;
+  }
+
+  .platform-menu-icon path {
+    transition: transform var(--duration-base) var(--ease-standard);
   }
 }
 

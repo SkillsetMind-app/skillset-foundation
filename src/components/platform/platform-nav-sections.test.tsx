@@ -47,7 +47,9 @@ describe("grupos da barra lateral traduzidos", () => {
     );
 
     const promote = screen.getByRole("button", { name: "Abrir navegación de Promocionar" });
-    expect(promote).toHaveAttribute("title", "Promocionar");
+    // A dica do icone recolhido e o proprio rotulo (CSS), nao um title.
+    expect(promote.querySelector(".platform-sidebar-label")).toHaveTextContent("Promocionar");
+    expect(promote).not.toHaveAttribute("title");
     expect(screen.queryByRole("button", { name: /Open Promote navigation/ })).toBeNull();
   });
 
@@ -67,8 +69,8 @@ describe("grupos da barra lateral traduzidos", () => {
     render(<PlatformNav collapsed />);
 
     expect(
-      screen.getByRole("button", { name: "Open Promote navigation" }),
-    ).toHaveAttribute("title", "Promote");
+      screen.getByRole("button", { name: "Open Promote navigation" }).querySelector(".platform-sidebar-label"),
+    ).toHaveTextContent("Promote");
   });
 });
 

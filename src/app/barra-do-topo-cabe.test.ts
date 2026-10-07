@@ -79,6 +79,11 @@ const innerPadding = px(prop(inner, "padding").split(/\s+/)[1]);
 const actionsGap = px(prop(actions, "gap"));
 const sidebar = px(css.match(/--sidebar-width:\s*([^;]+);/)![1]);
 const rail = px(prop(rule(css, ".platform-grid--collapsed"), "--platform-sidebar-width"));
+// Onda E: sem escolha salva, de 768 a 1179px a coluna e o rail ja no CSS.
+const mediumRail = px(prop(
+  rule(mediaBlocks("(min-width: 768px) and (width < 1180px)").join("\n"), ".platform-grid--auto"),
+  "--platform-sidebar-width",
+));
 
 /** O menu da conta com nome: avatar, nome no maximo, seta e respiros. */
 function accountTrigger(): number {
@@ -126,12 +131,22 @@ describe("a barra do topo cabe de 768px para cima", () => {
   });
 
   it.each([
-    [768, "trilho", rail],
-    [1023, "trilho", rail],
-    [1024, "barra aberta", sidebar],
-    [1279, "barra aberta", sidebar],
+    [768, "trilho, o padrao", mediumRail],
+    [1023, "trilho, o padrao", mediumRail],
+    [1024, "trilho, o padrao", mediumRail],
+    [1179, "trilho, o padrao", mediumRail],
+    [1024, "barra aberta por escolha", sidebar],
+    [1179, "barra aberta por escolha", sidebar],
+    [1180, "barra aberta, o padrao", sidebar],
+    [1279, "barra aberta, o padrao", sidebar],
   ])("em %spx (%s), o grupo de acoes com a troca so de icone cabe", (viewport, _label, sidebarWidth) => {
     expect(actionsWidth(iconButton)).toBeLessThanOrEqual(roomForActions(viewport, sidebarWidth));
+  });
+
+  it("a conta prova por que 768-1023px e sempre trilho: com a barra aberta, o grupo nao caberia", () => {
+    expect(actionsWidth(iconButton)).toBeGreaterThan(roomForActions(768, sidebar));
+    const tablet = mediaBlocks("(min-width: 768px) and (width < 1024px)").join("\n");
+    expect(px(prop(rule(tablet, ".platform-grid"), "--platform-sidebar-width"))).toBe(rail);
   });
 
   it("de 1280px para cima, cabe com o texto inteiro da troca, em ingles e em espanhol", () => {
@@ -170,5 +185,69 @@ describe("no celular, o nome do lado cabe em 360px", () => {
     for (const labels of [en.platform.side, es.platform.side]) {
       expect(labels.student.slice(0, 4)).not.toBe(labels.teacher.slice(0, 4));
     }
+  });
+});
+
+/**
+ * Telas medias (onda E): o conteudo encolhia ~196px de 1024 a 1179px com a
+ * barra aberta por padrao. A conta abaixo usa as larguras da folha (barra,
+ * rail, respiro do conteudo) e os minimos escritos nas grades que nao podem
+ * encolher. Barra de rolagem classica de 17px, do lado pior.
+ */
+describe("telas medias: nada estoura de 600 a 1179px", () => {
+  const SCROLLBAR = 17;
+  const phone = mediaBlocks("(max-width: 767.98px)").join("\n");
+  const contentPadding = prop(rule(css, ".platform-content"), "padding");
+  const clamp = contentPadding.match(/clamp\(([^,]+),\s*([\d.]+)vw,\s*([^)]+)\)/)!;
+  const read = (file: string) => readFileSync(join(process.cwd(), file), "utf8");
+
+  function defaultSidebar(viewport: number): number {
+    if (viewport < 768) return 0;
+    return viewport < 1180 ? mediumRail : sidebar;
+  }
+
+  function contentWidth(viewport: number, sidebarWidth = defaultSidebar(viewport)): number {
+    const padding = Math.min(Math.max(px(clamp[1]), (viewport * parseFloat(clamp[2])) / 100), px(clamp[3]));
+    return viewport - sidebarWidth - padding * 2 - SCROLLBAR;
+  }
+
+  // Busca + dois filtros dos produtos, lado a lado a partir de md (768px).
+  const filters = read("src/components/teacher/teacher-course-studio.tsx")
+    .match(/md:grid-cols-\[minmax\((\d+)px,1fr\)_minmax\((\d+)px,auto\)_minmax\((\d+)px,auto\)\]/)!;
+  const filtersMin = Number(filters[1]) + Number(filters[2]) + Number(filters[3]) + 2 * 12;
+
+  it("abaixo de 768px: barra de baixo e gaveta, sem barra lateral; a faixa de 'Publicado' sobe acima dela", () => {
+    expect(phone).toMatch(/\.platform-sidebar \{\s*display: none;/);
+    expect(phone).toMatch(/\.platform-mobile-nav \{\s*display: flex;/);
+    expect(phone).toContain("body:has(.platform-mobile-nav) .created-strip");
+    expect(defaultSidebar(600)).toBe(0);
+  });
+
+  it.each([600, 768, 1024, 1179])("em %ipx os filtros dos produtos cabem na largura do conteudo", (viewport) => {
+    const room = contentWidth(viewport);
+    // Em 600px os filtros ficam um embaixo do outro (md comeca em 768).
+    const needed = viewport >= 768 ? filtersMin : 0;
+    expect(needed, `precisa ${needed}px, sobram ${Math.round(room)}px`).toBeLessThanOrEqual(room);
+  });
+
+  it.each([768, 1024, 1179])("em %ipx o rail devolve ao conteudo o que a barra aberta comia", (viewport) => {
+    expect(contentWidth(viewport) - contentWidth(viewport, sidebar)).toBeCloseTo(sidebar - mediumRail);
+  });
+
+  it("os formatos da Home do estudio so vao a 4 colunas no xl; em lg, com a barra aberta, cada um teria < 180px", () => {
+    const home = read("src/components/teacher/teacher-studio-dashboard.tsx");
+    expect(home).toContain("bg-[var(--color-line)] sm:grid-cols-2 xl:grid-cols-4");
+    expect(home).not.toContain("lg:grid-cols-4");
+    expect((contentWidth(1024, sidebar) - 3) / 4).toBeLessThan(180);
+    for (const viewport of [1024, 1179]) {
+      // Duas colunas no padrao (rail) e com a barra aberta por escolha.
+      expect((contentWidth(viewport) - 1) / 2).toBeGreaterThan(400);
+      expect((contentWidth(viewport, sidebar) - 1) / 2).toBeGreaterThan(330);
+    }
+  });
+
+  it("a tabela de alunos tem largura minima, mas rola dentro da propria caixa, nunca a pagina", () => {
+    const students = read("src/components/teacher/teacher-students-list.tsx");
+    expect(students).toMatch(/<div className="mt-4 overflow-x-auto">\s*<table className="w-full min-w-\[720px\]/);
   });
 });

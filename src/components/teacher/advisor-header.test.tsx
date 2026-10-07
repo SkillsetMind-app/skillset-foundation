@@ -29,6 +29,10 @@ vi.mock("@/components/auth/auth-provider", () => ({
 vi.mock("@/lib/advisor/config", () => ({ get isAdvisorEnabled() { return viewer.enabled; } }));
 // Keep the layout/gate/Advisor composition real; only the server verdict is fixed.
 vi.mock("@/lib/data/creator-verification", () => ({ fetchCreatorActivationBlocked: vi.fn().mockResolvedValue(false) }));
+// O layout lê o cookie da barra no servidor (cookies() fora de pedido falha no jsdom).
+vi.mock("@/components/platform/sidebar-preference-layout", () => ({
+  default: ({ children }: { children: ReactNode }) => children,
+}));
 vi.mock("@/components/platform/platform-search", () => ({ PlatformSearch: () => null }));
 vi.mock("@/components/platform/notification-bell", () => ({ NotificationBell: () => <button>Notifications</button> }));
 vi.mock("@/components/site/account-menu", () => ({ AccountMenu: () => <button>Account</button> }));
