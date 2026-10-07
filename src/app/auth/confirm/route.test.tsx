@@ -203,6 +203,34 @@ describe("/auth/confirm", () => {
       expect(response.headers.get("location")).toBe(`${ORIGIN}/loading?next=welcome`);
     });
 
+    // O acesso manual a curso manda um magic link (type=email) para /loading.
+    // Vencido, nao e cadastro: a tela de "reenviar confirmacao" nunca chegaria
+    // a quem ja tem conta confirmada. O link e montado como o do e-mail real.
+    it("leaves an expired course-access magic link out of the signup screen", async () => {
+      const source = readFileSync("src/app/api/teach/course-access/route.ts", "utf8");
+      const emailRedirectTo = source.match(/emailRedirectTo: "([^"]+)"/)?.[1];
+      expect(emailRedirectTo).toMatch(/\/loading\?next=route$/);
+      const template = readFileSync("supabase/templates/magic_link.html", "utf8");
+      expect(template).toContain("&amp;type=email&amp;next=/loading%3Fnext%3Droute&amp;redirect_to=");
+      const site = new URL(emailRedirectTo!).origin;
+      mocks.getUser.mockResolvedValue(confirmed);
+
+      const response = await GET(new NextRequest(
+        `${site}/auth/confirm?token_hash=abc&type=email&next=/loading%3Fnext%3Droute&redirect_to=${encodeURIComponent(emailRedirectTo!)}`,
+      ));
+
+      expect(response.headers.get("location")).toBe(`${site}/login?error=confirm`);
+      expect(mocks.getUser).not.toHaveBeenCalled();
+    });
+
+    it("leaves an expired invitation signup link out of the signup screen", async () => {
+      mocks.getUser.mockResolvedValue(confirmed);
+      const invitation = "/invitations/81000000-0000-4000-8000-000000000001";
+      const response = await get(`?token_hash=abc&type=signup&redirect_to=${encodeURIComponent(`${ORIGIN}/auth/confirm?next=${encodeURIComponent(invitation)}`)}`);
+      expect(response.headers.get("location")).toBe(`${ORIGIN}/login?error=confirm&returnTo=${encodeURIComponent(invitation)}`);
+      expect(mocks.getUser).not.toHaveBeenCalled();
+    });
+
     // Troca de senha e troca de e-mail tem tela propria: nada de "entrar direto".
     it.each([
       ["recovery", "?token_hash=abc&type=recovery&next=/reset-password", `${ORIGIN}/login?error=confirm`],

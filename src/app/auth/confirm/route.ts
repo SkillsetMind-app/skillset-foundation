@@ -74,10 +74,14 @@ export async function GET(request: NextRequest) {
 
   // Link de confirmacao do cadastro (ou o lembrete) vencido ou ja usado. Antes
   // caia no login com texto de "troca de senha" e sem como pedir outro.
-  // Troca de senha e troca de e-mail nao entram aqui: tem tipo proprio.
+  // Troca de senha e troca de e-mail nao entram aqui: tem tipo proprio. O link
+  // de acesso a curso (type=email tambem) vai para /loading, e o lembrete
+  // sempre para /welcome: so o /welcome conta como cadastro, senao o aluno com
+  // conta confirmada caia num "reenviar confirmacao" que nunca chega. Convite
+  // (/invitations/...) tambem fica de fora, mesmo vindo de um cadastro.
   const entry = new URL(safeNext, origin);
-  const confirmsSignup = (type === "signup" || type === "email")
-    && ["/welcome", "/loading"].includes(entry.pathname);
+  const confirmsSignup = (type === "signup" && ["/welcome", "/loading"].includes(entry.pathname))
+    || (type === "email" && entry.pathname === "/welcome");
   if (confirmsSignup) {
     // Clicou duas vezes ou ja confirmou neste navegador: a sessao esta aqui,
     // entao entra direto — no curso, quando o link trazia um. /loading decide
