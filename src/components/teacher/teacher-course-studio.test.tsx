@@ -11,6 +11,7 @@ const authState = vi.hoisted(() => ({
 const mocks = vi.hoisted(() => ({
   deleteOrArchiveCourse: vi.fn(),
   getCourseAudience: vi.fn(),
+  getMyCoursesBeingDeleted: vi.fn(),
   push: vi.fn(),
   subscribeCalls: 0,
 }));
@@ -79,6 +80,10 @@ vi.mock("@/lib/data/teacher-courses", () => ({
   },
 }));
 
+vi.mock("@/lib/data/course-deletions", () => ({
+  getMyCoursesBeingDeleted: mocks.getMyCoursesBeingDeleted,
+}));
+
 async function renderStudio() {
   render(<TeacherCourseStudio />);
   return screen.findByRole("table", { name: "Products" });
@@ -91,6 +96,8 @@ describe("TeacherCourseStudio — lista de produtos", () => {
     mocks.getCourseAudience.mockReset();
     mocks.getCourseAudience.mockResolvedValue({ enrollments: 0, orders: 0 });
     mocks.push.mockReset();
+    mocks.getMyCoursesBeingDeleted.mockReset();
+    mocks.getMyCoursesBeingDeleted.mockResolvedValue([]);
     mocks.subscribeCalls = 0;
   });
 
@@ -151,6 +158,36 @@ describe("TeacherCourseStudio — lista de produtos", () => {
 
   // Os atalhos de navegacao ocupavam a primeira faixa e escondiam o assunto
   // da pagina. No DOM, a lista precisa vir antes deles para leitura e teclado.
+  // Onda G2b: o produto apagado sai da tabela na hora, mas arquivos e videos
+  // saem ate 24 h depois. Ate la ele aparece fora da tabela, com o selo.
+  it("shows products still being deleted with the chip, outside the table and not clickable", async () => {
+    mocks.getMyCoursesBeingDeleted.mockResolvedValue([
+      { courseId: "gone-1", title: "Old workshop", requestedAt: "2026-10-08T10:00:00Z" },
+    ]);
+    const table = await renderStudio();
+
+    const list = await screen.findByRole("list", { name: "Products being deleted" });
+    expect(within(list).getByText("Old workshop")).toBeInTheDocument();
+    expect(within(list).getByText("Being deleted")).toHaveClass("status-chip--warning");
+    expect(
+      within(list).getByText("Removing files and videos. This takes up to 24 hours."),
+    ).toBeInTheDocument();
+    expect(within(list).queryByRole("link")).toBeNull();
+    expect(within(list).queryByRole("button")).toBeNull();
+    expect(within(table).queryByText("Old workshop")).toBeNull();
+  });
+
+  it.each([
+    ["nothing is being deleted", () => Promise.resolve([])],
+    ["the read fails", () => Promise.reject(new Error("offline"))],
+  ])("shows no being-deleted list when %s", async (_label, read) => {
+    mocks.getMyCoursesBeingDeleted.mockImplementation(read);
+    await renderStudio();
+
+    await waitFor(() => expect(mocks.getMyCoursesBeingDeleted).toHaveBeenCalled());
+    expect(screen.queryByRole("list", { name: "Products being deleted" })).toBeNull();
+  });
+
   it("places workspace shortcuts after the product list", async () => {
     const table = await renderStudio();
     const shortcuts = screen.getByRole("navigation", { name: "Product workspace shortcuts" });

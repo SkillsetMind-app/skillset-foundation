@@ -706,6 +706,42 @@ export type Database = {
           },
         ]
       }
+      course_deletions: {
+        Row: {
+          attempts: number
+          bunny_assets: Json
+          course_id: string
+          finished_at: string | null
+          last_error: string | null
+          owner_id: string
+          requested_at: string
+          status: string
+          title: string
+        }
+        Insert: {
+          attempts?: number
+          bunny_assets?: Json
+          course_id: string
+          finished_at?: string | null
+          last_error?: string | null
+          owner_id: string
+          requested_at?: string
+          status?: string
+          title?: string
+        }
+        Update: {
+          attempts?: number
+          bunny_assets?: Json
+          course_id?: string
+          finished_at?: string | null
+          last_error?: string | null
+          owner_id?: string
+          requested_at?: string
+          status?: string
+          title?: string
+        }
+        Relationships: []
+      }
       course_event_rsvps: {
         Row: {
           attendee_email: string | null
@@ -2653,6 +2689,13 @@ export type Database = {
         Args: { p_uid?: string } | never
         Returns: boolean
       }
+      course_storage_objects_for_cleanup: {
+        Args: { p_course_id: string }
+        Returns: {
+          object_bucket: string
+          object_name: string
+        }[]
+      }
       delete_course_as_admin: { Args: { p_course_id: string }; Returns: Json }
       delete_course_coupon: { Args: { p_coupon_id: string }; Returns: Json }
       delete_or_archive_own_course: {
@@ -2731,6 +2774,14 @@ export type Database = {
       issue_skillset_certificate: {
         Args: { p_enrollment_id: string; p_full_name: string }
         Returns: string
+      }
+      list_my_courses_being_deleted: {
+        Args: never
+        Returns: {
+          course_id: string
+          requested_at: string
+          title: string
+        }[]
       }
       log_audit_event: {
         Args: {

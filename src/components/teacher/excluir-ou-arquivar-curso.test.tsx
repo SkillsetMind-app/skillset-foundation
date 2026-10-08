@@ -67,6 +67,10 @@ vi.mock("@/lib/data/teacher-courses", () => ({
   setOwnCourseFeatured: vi.fn(),
 }));
 
+vi.mock("@/lib/data/course-deletions", () => ({
+  getMyCoursesBeingDeleted: () => Promise.resolve([]),
+}));
+
 vi.mock("@/lib/data/user-profiles", () => ({
   subscribeToUserProfile: (_uid: string, onData: (profile: unknown) => void) => {
     onData({ creatorVerificationStatus: "none", currentPlanId: "free" });
@@ -275,6 +279,54 @@ describe("modal de excluir/arquivar — o texto segue o dado", () => {
     ).toBeInTheDocument();
     expect(within(dialog).getByRole("button", { name: "Yes, delete" })).toBeInTheDocument();
     expect(within(dialog).queryByRole("button", { name: "Archive course" })).toBeNull();
+  });
+
+  // Onda G2b: o que some junto vem escrito antes do clique, e o botão final
+  // parece perigo (vermelho cheio), não um contorno vermelho em fundo branco.
+  it("sem comprador, lista o que some, avisa das 24 h e confirma em vermelho cheio", async () => {
+    const dialog = await abreModalDoHub();
+
+    await within(dialog).findByText("This also deletes:");
+    for (const item of [
+      "Lessons, texts and files",
+      "Every uploaded video",
+      "Community posts and replies",
+      "Live sessions and pending invitations",
+    ]) {
+      expect(within(dialog).getByText(item).tagName).toBe("LI");
+    }
+    expect(
+      within(dialog).getByText(
+        'Files and videos leave our servers within 24 hours. Until then the product shows as "Being deleted".',
+      ),
+    ).toBeInTheDocument();
+    expect(within(dialog).getByRole("button", { name: "Yes, delete" })).toHaveClass(
+      "button-danger",
+      "button-danger-solid",
+    );
+  });
+
+  it("com comprador, não promete apagar nada e confirma em azul", async () => {
+    mocks.getCourseAudience.mockResolvedValue({ enrollments: 1, orders: 0 });
+    const dialog = await abreModalDoHub();
+
+    const archive = await within(dialog).findByRole("button", { name: "Archive course" });
+    expect(archive).toHaveClass("button-solid");
+    expect(archive).not.toHaveClass("button-danger-solid");
+    expect(within(dialog).queryByText("This also deletes:")).toBeNull();
+    expect(within(dialog).queryByText(/within 24 hours/)).toBeNull();
+  });
+
+  it("se o servidor recusar, diz que nada foi apagado (e não fala mais em rascunho)", async () => {
+    mocks.deleteOrArchiveCourse.mockRejectedValue(new Error("23503"));
+    const dialog = await abreModalDoHub();
+    fireEvent.click(within(dialog).getByRole("button", { name: "Yes, delete" }));
+
+    expect(
+      await within(dialog).findByText(
+        "We could not delete this product. Nothing was removed. Please try again or contact SkillsetMind support.",
+      ),
+    ).toBeInTheDocument();
   });
 
   it("com comprador, promete arquivar e manter o acesso de quem pagou", async () => {

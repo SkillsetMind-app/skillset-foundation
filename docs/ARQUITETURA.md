@@ -176,6 +176,10 @@ nas telas de entrada (`src/components/auth/turnstile-widget.tsx`) e limite de te
 - Exibição: antes de tocar, `src/app/api/courses/video-token/route.ts` confere se
   a pessoa tem direito à aula e devolve um link assinado que expira.
 - O código que fala com a Bunny está em `src/lib/bunny/server.ts`.
+- Produto apagado perde os vídeos da Bunny e os arquivos do Storage 24 h depois:
+  a fila `course_deletions` nasce junto com o DELETE e a tarefa agendada
+  `src/app/api/cron/course-cleanup` apaga só a pasta `courses/<id>/` e só vídeo
+  com recibo daquele curso. Produto com comprador é arquivado, nunca apagado.
 - Capas e miniaturas ficam no armazenamento de arquivos do Supabase, num espaço
   público; materiais de apoio do curso ficam num espaço privado, lido por links
   temporários (`src/lib/data/course-assets.ts`).
@@ -201,6 +205,7 @@ nas telas de entrada (`src/components/auth/turnstile-widget.tsx`) e limite de te
 | Reindexar a base de conhecimento do consultor de IA (`src/app/api/cron/advisor-knowledge`) | todo dia, 07:00 UTC | `vercel.json` |
 | Pagamentos travados no Stripe, fila de pendências da equipe e se o site está no ar (`src/app/api/cron/stripe-attention`, `src/app/api/cron/ops-inbox`) | de hora em hora | `.github/workflows/stripe-attention.yml` |
 | Lembrete de confirmar e-mail e resumo de notificações | de hora em hora | `.github/workflows/stripe-attention.yml` |
+| Apagar arquivos e vídeos de produto apagado, 24 h depois (`src/app/api/cron/course-cleanup`); só ensaia até `COURSE_CLEANUP_LIVE=1` na Vercel | de hora em hora | `.github/workflows/stripe-attention.yml` |
 | Backup criptografado do banco e dos arquivos | todo dia, 04:10 UTC | `.github/workflows/backup.yml` (detalhes em `docs/BACKUP.md`) |
 | Varredura de segurança completa | todo domingo, 06:00 UTC | `.github/workflows/security.yml` |
 

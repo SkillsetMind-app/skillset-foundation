@@ -7,7 +7,8 @@ name: Stripe attention
 # A second job knocks on /api/cron/confirmation-reminder: one "confirm your
 # email" email ~24 h after signup. A third knocks on
 # /api/cron/notification-digest: "you have N new notifications", at most one
-# email per person per hour.
+# email per person per hour. A fourth knocks on /api/cron/course-cleanup: the
+# files and videos of deleted products.
 #
 # Lives here and not in vercel.json because Vercel Hobby crons run at most once
 # a day. The routes decide whether to alert; this job only knocks on the door.
@@ -174,3 +175,27 @@ jobs:
           curl -fsS -o /dev/null -w 'HTTP %{http_code}\n' --max-time 60 \
             -H "Authorization: Bearer $CRON_SECRET" \
             https://www.skillsetmind.com/api/cron/notification-digest
+
+  # Files (Storage) and videos (Bunny) of deleted products, 24 h after the
+  # delete. Its own job, so a red cleanup never turns the Stripe check red. The
+  # route only lists (dry run) until COURSE_CLEANUP_LIVE=1 is set on Vercel.
+  course-cleanup:
+    name: Clean up deleted products
+    # A reminder catch-up runs the reminder job alone.
+    if: ${{ github.event_name == 'schedule' || inputs.max_age_hours == '' }}
+    runs-on: ubuntu-latest
+    # One call of up to 60 s.
+    timeout-minutes: 5
+    steps:
+      - name: Call the cleanup
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$CRON_SECRET" ]; then
+            echo "::error title=Course cleanup not configured::Missing repository secret CRON_SECRET (same value as on Vercel)."
+            exit 1
+          fi
+          # Public log: the status line only. The body names course ids.
+          curl -fsS -o /dev/null -w 'HTTP %{http_code}\n' --max-time 70 \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            https://www.skillsetmind.com/api/cron/course-cleanup

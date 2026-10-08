@@ -81,6 +81,10 @@ vi.mock("@/components/auth/auth-provider", () => ({
   useAuth: () => ({ user: mocks.user, status: "authenticated" }),
 }));
 
+vi.mock("@/lib/data/course-deletions", () => ({
+  getMyCoursesBeingDeleted: () => Promise.resolve([]),
+}));
+
 vi.mock("@/lib/data/teacher-courses", () => ({
   subscribeToTeacherCourse: mocks.subscribeToTeacherCourse,
   subscribeToTeacherCourses: mocks.subscribeToTeacherCourses,

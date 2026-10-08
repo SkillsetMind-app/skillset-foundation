@@ -138,6 +138,68 @@ describe("delete_or_archive_own_course — apagar não pode virar apagar de quem
     expect(corpo).toMatch(/require_strong_session\(\)/i);
     expect(corpo).toMatch(/v_owner\s*<>\s*v_uid/i);
   });
+
+  // Onda G2b: post do professor e convite pendente travavam o DELETE (FK sem
+  // cascata), e assinatura não contava como comprador.
+  it("trava a linha, conta assinatura e limpa os filhos antes de apagar", () => {
+    expect(corpo).toMatch(/for\s+update/i);
+    expect(corpo).toMatch(/from\s+public\.course_subscriptions/i);
+    expect(corpo).toMatch(/v_subscriptions\s*=\s*0/i);
+
+    const limpa = corpo.search(/clear_course_for_delete\(/i);
+    const apaga = corpo.search(/delete\s+from\s+public\.courses/i);
+    expect(limpa, "o delete não limpa mais os filhos sem cascata").toBeGreaterThan(-1);
+    expect(limpa < apaga, "a limpeza dos filhos tem de vir antes do delete").toBe(true);
+  });
+});
+
+describe("delete_course_as_admin — o admin apaga pelo mesmo caminho", () => {
+  const corpo = definicaoEfetiva("delete_course_as_admin");
+
+  it("segundo fator, só admin, e recusa curso com comprador", () => {
+    expect(corpo).toMatch(/require_strong_session\(\)/i);
+    expect(corpo).toMatch(/is_admin\(\)/i);
+    expect(corpo).toMatch(/from\s+public\.enrollments\s+where\s+course_id/i);
+    expect(corpo).toMatch(/from\s+public\.orders\s+where\s+course_id/i);
+    expect(corpo).toMatch(/from\s+public\.course_subscriptions/i);
+  });
+
+  it("limpa os filhos sem cascata antes de apagar", () => {
+    const limpa = corpo.search(/clear_course_for_delete\(/i);
+    expect(limpa).toBeGreaterThan(-1);
+    expect(limpa < corpo.search(/delete\s+from\s+public\.courses/i)).toBe(true);
+  });
+});
+
+describe("course_deletions — a fila da limpeza nasce junto com o DELETE", () => {
+  // Depois do DELETE, course_assets cai em cascata e leva a única lista dos
+  // vídeos da Bunny. A fila tem de ser gravada ANTES, na mesma transação.
+  it("um gatilho BEFORE DELETE em courses grava a fila com os vídeos", () => {
+    const gatilho = definicaoEfetiva("course_deletions_record");
+    expect(gatilho).toMatch(/insert\s+into\s+public\.course_deletions/i);
+    expect(gatilho).toMatch(/bunny_video_id/i);
+    expect(textoDasMigrations()).toMatch(
+      /before\s+delete\s+on\s+public\.courses[\s\S]{0,80}course_deletions_record\(\)/i,
+    );
+  });
+
+  it("o cliente não chama a limpeza dos filhos nem a lista de arquivos", () => {
+    const todas = textoDasMigrations();
+    expect(todas).toMatch(
+      /revoke\s+all\s+on\s+function\s+public\.clear_course_for_delete\(text\)\s+from\s+public,\s*anon,\s*authenticated/i,
+    );
+    expect(todas).toMatch(
+      /revoke\s+all\s+on\s+function\s+public\.course_storage_objects_for_cleanup\(text\)\s+from\s+public,\s*anon,\s*authenticated/i,
+    );
+  });
+
+  it("a lista de arquivos só casa a pasta exata do curso, com a barra final", () => {
+    const lista = definicaoEfetiva("course_storage_objects_for_cleanup");
+    expect(lista).toMatch(/is_service_role\(\)/);
+    expect(lista).toMatch(/'courses\/'\s*\|\|\s*p_course_id\s*\|\|\s*'\/'/);
+    expect(lista).toMatch(/\^\[A-Za-z0-9\]\[A-Za-z0-9_-\]\*\$/);
+    expect(lista).toMatch(/Course id is in use again/);
+  });
 });
 
 describe("courses_delete_owner — a tabela não pode ser a porta dos fundos", () => {

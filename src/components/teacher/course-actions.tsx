@@ -224,6 +224,22 @@ export function DeleteOrArchiveCourseDialog({
             <AlertTriangle aria-hidden="true" size={18} strokeWidth={1.9} className="mt-0.5 shrink-0" />
             <span>{t("creatorPanel.products.archive.callout")}</span>
           </InlineAlert>
+        ) : audience !== null ? (
+          // O que some junto, dito antes do clique: a migration 20261008030000
+          // apaga tudo isto, e a limpeza tira arquivos e videos ate 24 h depois.
+          <>
+            <p className="mt-3 text-sm font-semibold text-[var(--color-ink)]">
+              {t("creatorPanel.products.delete.consequences.lead")}
+            </p>
+            <ul className="mt-1 list-disc pl-5 text-sm leading-6 text-[var(--color-ink-soft)]">
+              {(["content", "videos", "community", "events"] as const).map((item) => (
+                <li key={item}>{t(`creatorPanel.products.delete.consequences.${item}`)}</li>
+              ))}
+            </ul>
+            <p className="mt-3 text-sm leading-6 text-[var(--color-ink-soft)]">
+              {t("creatorPanel.products.delete.filesNote")}
+            </p>
+          </>
         ) : null}
 
         {failed ? (
@@ -245,7 +261,8 @@ export function DeleteOrArchiveCourseDialog({
             type="button"
             onClick={() => void handleConfirm()}
             disabled={busy || audience === null}
-            className={`${hasAudience ? "button-solid" : "button-danger"} px-4 text-sm disabled:opacity-60`}
+            // Apagar e para sempre: vermelho cheio. Arquivar volta atras: azul.
+            className={`${hasAudience ? "button-solid" : "button-danger button-danger-solid"} px-4 text-sm disabled:opacity-60`}
           >
             {busy ? t(`${prefix}.busy`) : t(`${prefix}.confirm`)}
           </button>
