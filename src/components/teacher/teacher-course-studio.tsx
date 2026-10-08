@@ -17,6 +17,7 @@ import { useEffect, useState, type CSSProperties } from "react";
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { ListingSearchBar } from "@/components/shared/listing-search-bar";
+import { ShortId } from "@/components/shared/short-id";
 import { StatusChip } from "@/components/shared/status-chip";
 import {
   CourseActionsMenu,
@@ -400,6 +401,9 @@ export function TeacherCourseStudio({
                             )}
                             {course.communityEnabled ? ` · ${t("creatorPanel.communityOn")}` : ""}
                           </p>
+                          <div className="mt-1">
+                            <ShortId id={course.id} label={t("shortId.product")} />
+                          </div>
                         </div>
                       </div>
                     </td>

@@ -84,6 +84,15 @@ describe("billing locale with real dictionaries", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
   });
 
+  // O número que o aluno manda ao suporte quando "comprei e não entrou".
+  it("shows the short order ID with a copy button in My purchases", () => {
+    mocks.tab = "purchases"; mocks.orders = [{ ...order, id: "9b1d4e2a-0c3f-4a5b-8d6e-7f8091a2b3c4" }];
+    mount(<BillingTabs />);
+    expect(screen.getByText("ID del pedido")).toBeTruthy();
+    expect(screen.getByText("9B1D4E2A")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Copiar 9B1D4E2A" })).toBeTruthy();
+  });
+
   it("relocalizes a policy rejection without retrying or inventing eligibility", async () => {
     mocks.tab = "purchases"; mocks.orders = [order];
     mocks.refund.mockRejectedValue(new Error("The automatic refund window has ended."));

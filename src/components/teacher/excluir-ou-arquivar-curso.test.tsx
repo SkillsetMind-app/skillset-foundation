@@ -182,6 +182,20 @@ describe("hub do curso — entrada de excluir/arquivar", () => {
     await screen.findByRole("dialog", { name: "Delete Facilitation foundations" });
     await waitFor(() => expect(mocks.getCourseAudience).toHaveBeenCalledWith("course-1"));
   });
+
+  // "Comprei e não entrou": o professor precisa de um número para procurar.
+  // O id de curso de verdade é UUID e sai curto (ver short-id.test); o deste
+  // teste ("course-1") não é, então sai inteiro.
+  it("a lista e o painel do produto mostram o ID, com copiar", async () => {
+    const list = renderEn(<TeacherCourseStudio />);
+    expect(await screen.findByRole("button", { name: "Copy course-1" })).toBeInTheDocument();
+    expect(screen.getByText("Product ID")).toBeInTheDocument();
+    list.unmount();
+
+    renderEn(<CourseManageHub courseId="course-1" />);
+    expect(await screen.findByRole("button", { name: "Copy course-1" })).toBeInTheDocument();
+    expect(screen.getByText("course-1", { selector: "code" })).toBeInTheDocument();
+  });
 });
 
 describe("o menu abre para dentro da tela", () => {

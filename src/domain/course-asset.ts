@@ -23,9 +23,28 @@ export type CourseAsset = {
   isPreview: boolean;
   lessonId: string | null;
   moduleId?: string | null;
+  /** Nome que o professor deu ao arquivo. Nulo: vale o nome do arquivo. */
+  title?: string | null;
+  /** Ordem na aula, a partir de 0. Nula (arquivo novo): vai para o fim. */
+  position?: number | null;
   createdAt?: unknown;
   updatedAt?: unknown;
 };
+
+export const courseAssetTitleMaxLength = 180;
+
+/** O que o aluno lê: o nome dado pelo professor, senão o nome do arquivo. */
+export function getCourseAssetTitle(asset: Pick<CourseAsset, "title" | "fileName">): string {
+  return asset.title?.trim() || asset.fileName;
+}
+
+/** Posição primeiro (sem posição vai para o fim), depois o nome que aparece. */
+export function compareCourseAssets(left: CourseAsset, right: CourseAsset): number {
+  const a = left.position ?? Number.POSITIVE_INFINITY;
+  const b = right.position ?? Number.POSITIVE_INFINITY;
+  if (a !== b) return a < b ? -1 : 1;
+  return getCourseAssetTitle(left).localeCompare(getCourseAssetTitle(right));
+}
 
 // Quais kinds contam como "o vídeo da aula". A comparação literal estava aberta
 // em cinco lugares (rótulo de status, filtro de assets, gravação da fonte após o
@@ -61,6 +80,12 @@ export const courseAssetAcceptTypes: Record<CourseAssetKind, string> = {
       ".xlsx",
       ".csv",
       ".zip",
+      // E-book e mapas mentais (XMind e FreeMind). O navegador costuma não
+      // saber o tipo deles, então a extensão é que abre o seletor.
+      ".epub",
+      "application/epub+zip",
+      ".xmind",
+      ".mm",
       "text/*",
       "image/*",
       "audio/*",
@@ -228,8 +253,17 @@ const lessonMaterialMimeTypes = new Set([
   "application/vnd.ms-excel.sheet.macroenabled.12",
   "application/zip",
   "application/x-zip-compressed",
+  "application/epub+zip",
   "text/csv",
 ]);
+
+// O navegador manda tipo vazio (ou genérico) para .xmind e .mm, e o .mm vira
+// "código Objective-C++" no Mac. Para estes, a extensão decide o tipo gravado.
+const materialTypesByExtension: Record<string, string> = {
+  epub: "application/epub+zip",
+  xmind: "application/vnd.xmind.workbook",
+  mm: "application/x-freemind",
+};
 
 const lessonMaterialExtensions = new Set([
   "pdf",
@@ -243,6 +277,9 @@ const lessonMaterialExtensions = new Set([
   "xls",
   "xlsx",
   "zip",
+  "epub",
+  "xmind",
+  "mm",
   "mp3",
   "m4a",
   "wav",
@@ -251,6 +288,16 @@ const lessonMaterialExtensions = new Set([
 
 function getFileExtension(fileName: string) {
   return fileName.split(".").pop()?.toLowerCase() ?? "";
+}
+
+/**
+ * O tipo gravado no arquivo e na linha. Tipo vazio quebrava o envio: a linha
+ * exige ao menos 3 letras em content_type, e um .md ou .xmind sem tipo do
+ * navegador caía no erro genérico.
+ */
+export function getCourseAssetContentType(file: File): string {
+  return materialTypesByExtension[getFileExtension(file.name)]
+    ?? (file.type || "application/octet-stream");
 }
 
 export function isAllowedCourseAssetFile(file: File, kind: CourseAssetKind): boolean {
