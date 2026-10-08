@@ -2,11 +2,13 @@
 
 import { ArrowLeft, CheckCircle2, Pin } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 
 import { formatNotificationTime } from "@/components/account/notification-row";
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { CommunityItemActions } from "@/components/learn/community-item-actions";
+import { CommunityPostDrawer } from "@/components/learn/community-post-drawer";
 import {
   groupCommentsByPost,
   isInstructor,
@@ -14,6 +16,7 @@ import {
   toMillis,
   waitingFor,
   weekSummary,
+  withoutDeleted,
 } from "@/domain/community-feed";
 import type { CommunityComment, CommunityPost } from "@/domain/community-post";
 import type { TeacherCourse } from "@/domain/teacher-course";
@@ -38,6 +41,10 @@ import { subscribeToTeacherCourse } from "@/lib/data/teacher-courses";
 // com a resposta escrita ali mesmo e ja marcada como A resposta; e o resto em
 // cartoes curtos. Espacos, automacoes e moderadores nao existem no sistema —
 // entao nao aparecem aqui fingindo existir.
+//
+// "All posts" e o lugar de moderar: o professor so via a fila de perguntas, e
+// o spam de um aluno ficava no mural sem botao para tirar. Aqui ele abre,
+// desafixa e apaga qualquer post ou resposta do proprio curso.
 
 export function TeacherCommunityInbox({ courseId }: { courseId: string }) {
   const { user } = useAuth();
@@ -45,8 +52,13 @@ export function TeacherCommunityInbox({ courseId }: { courseId: string }) {
   const number = (value: number) => new Intl.NumberFormat(locale).format(value);
   const [course, setCourse] = useState<TeacherCourse | null>(null);
   const [courseReady, setCourseReady] = useState(false);
-  const [posts, setPosts] = useState<CommunityPost[]>([]);
-  const [comments, setComments] = useState<CommunityComment[]>([]);
+  const [loadedPosts, setPosts] = useState<CommunityPost[]>([]);
+  const [loadedComments, setComments] = useState<CommunityComment[]>([]);
+  // O que o professor apagou agora some na hora (o DELETE nao chega pelo
+  // realtime filtrado por curso).
+  const [deleted, setDeleted] = useState<ReadonlySet<string>>(() => new Set());
+  const hide = useCallback((id: string) => setDeleted((current) => new Set(current).add(id)), []);
+  const [openPostId, setOpenPostId] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [now, setNow] = useState(() => Date.now());
 
@@ -85,7 +97,13 @@ export function TeacherCommunityInbox({ courseId }: { courseId: string }) {
     return () => window.clearInterval(timer);
   }, []);
 
+  // Ja vem com os fixados no topo e o mais novo primeiro (subscribeToCommunityPosts).
+  const posts = useMemo(() => withoutDeleted(loadedPosts, deleted), [deleted, loadedPosts]);
+  const comments = useMemo(() => withoutDeleted(loadedComments, deleted), [deleted, loadedComments]);
+  const commentsByPost = useMemo(() => groupCommentsByPost(comments), [comments]);
   const instructorIds = useMemo(() => (course ? [course.ownerId] : []), [course]);
+  const instructorSet = useMemo(() => new Set(instructorIds), [instructorIds]);
+  const openPost = openPostId ? posts.find((post) => post.id === openPostId) ?? null : null;
   const queue = useMemo(
     () => openQuestions(posts, comments, instructorIds),
     [comments, instructorIds, posts],
@@ -144,32 +162,95 @@ export function TeacherCommunityInbox({ courseId }: { courseId: string }) {
       ) : null}
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_300px] lg:items-start">
-        <section aria-labelledby="waiting-heading" className="grid gap-3">
-          <h2 id="waiting-heading" className="text-lg font-semibold text-[var(--color-ink)]">
-            {t("teacherCommunity.waitingTitle")}
-            <span className="ml-2 inline-flex min-w-7 items-center justify-center rounded-full bg-[var(--color-primary)] px-2 text-xs font-bold text-[var(--color-base)]">
-              {number(queue.length)}
-            </span>
-          </h2>
+        <div className="grid gap-5">
+          <section aria-labelledby="waiting-heading" className="grid gap-3">
+            <h2 id="waiting-heading" className="text-lg font-semibold text-[var(--color-ink)]">
+              {t("teacherCommunity.waitingTitle")}
+              <span className="ml-2 inline-flex min-w-7 items-center justify-center rounded-full bg-[var(--color-primary)] px-2 text-xs font-bold text-[var(--color-base)]">
+                {number(queue.length)}
+              </span>
+            </h2>
 
-          {queue.length === 0 ? (
-            <p className="rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
-              {t("teacherCommunity.empty")}
-            </p>
-          ) : (
-            queue.map((post) => (
-              <WaitingCard
-                key={post.id}
-                post={post}
-                replies={groupCommentsByPost(comments).get(post.id) ?? []}
-                instructorIds={instructorIds}
-                now={now}
-                user={user}
-                onError={setError}
-              />
-            ))
-          )}
-        </section>
+            {queue.length === 0 ? (
+              <p className="rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
+                {t("teacherCommunity.empty")}
+              </p>
+            ) : (
+              queue.map((post) => (
+                <WaitingCard
+                  key={post.id}
+                  post={post}
+                  replies={commentsByPost.get(post.id) ?? []}
+                  instructorIds={instructorIds}
+                  now={now}
+                  user={user}
+                  onError={setError}
+                />
+              ))
+            )}
+          </section>
+
+          <section aria-labelledby="all-posts-heading" className="grid gap-3">
+            <h2 id="all-posts-heading" className="text-lg font-semibold text-[var(--color-ink)]">
+              {t("teacherCommunity.allPosts")}
+              <span className="ml-2 inline-flex min-w-7 items-center justify-center rounded-full bg-[var(--color-surface-soft)] px-2 text-xs font-bold text-[var(--color-ink)]">
+                {number(posts.length)}
+              </span>
+            </h2>
+
+            {posts.length === 0 ? (
+              <p className="rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
+                {t("teacherCommunity.allPostsEmpty")}
+              </p>
+            ) : (
+              <ul className="grid gap-2">
+                {posts.map((post) => {
+                  const replyCount = commentsByPost.get(post.id)?.length ?? 0;
+                  const textId = `all-posts-${post.id}`;
+                  return (
+                    <li
+                      key={post.id}
+                      className="rounded-lg border border-[var(--color-line)] bg-white p-4 shadow-[var(--shadow-soft)]"
+                    >
+                      <p className="flex flex-wrap items-center gap-x-1 text-xs text-[var(--color-ink-muted)]">
+                        <span className="font-semibold text-[var(--color-ink)]">{post.authorName}</span>
+                        <span>· {formatNotificationTime(post.createdAt, t, locale)}</span>
+                        {post.pinned ? (
+                          <span className="inline-flex items-center gap-1 font-semibold text-[var(--color-ink)]">
+                            · <Pin size={11} aria-hidden /> {t("learn.community.card.pinned")}
+                          </span>
+                        ) : null}
+                      </p>
+                      <p id={textId} className="mt-1 line-clamp-2 whitespace-pre-wrap text-sm leading-6 text-[var(--color-ink)]">
+                        {post.title ?? post.body}
+                      </p>
+                      <div className="mt-2 flex flex-wrap items-center gap-2">
+                        <span className="text-xs text-[var(--color-ink-muted)]">
+                          {t(replyCount === 1 ? "teacherCommunity.repliesOne" : "teacherCommunity.repliesMany")
+                            .replace("{count}", () => number(replyCount))}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setOpenPostId(post.id)}
+                          aria-describedby={textId}
+                          className="min-h-11 rounded-md px-3 text-xs font-semibold text-[var(--color-primary)] hover:bg-[var(--color-surface-soft)]"
+                        >
+                          {t("teacherCommunity.open")}
+                        </button>
+                        <CommunityItemActions
+                          post={post}
+                          currentUser={user}
+                          canModerate
+                          onDeleted={() => hide(post.id)}
+                        />
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </section>
+        </div>
 
         <aside className="grid gap-3">
           <section className="rounded-lg border border-[var(--color-line)] bg-white p-4 shadow-[var(--shadow-soft)]">
@@ -188,6 +269,18 @@ export function TeacherCommunityInbox({ courseId }: { courseId: string }) {
           </section>
         </aside>
       </div>
+
+      {openPost ? (
+        <CommunityPostDrawer
+          post={openPost}
+          comments={commentsByPost.get(openPost.id) ?? []}
+          currentUser={user}
+          instructorIds={instructorSet}
+          canModerate
+          onClose={() => setOpenPostId(null)}
+          onHide={hide}
+        />
+      ) : null}
     </div>
   );
 }

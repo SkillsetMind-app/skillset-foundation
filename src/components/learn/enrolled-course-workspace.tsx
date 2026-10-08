@@ -1733,6 +1733,10 @@ function CourseCommunitySection({
   }, [instructorId]);
   const instructorName = instructor.forId === instructorId ? instructor.name : null;
   const instructorIds = useMemo(() => (instructorId ? [instructorId] : []), [instructorId]);
+  // O dono do curso que tambem esta matriculado modera daqui (fixa, apaga).
+  // O banco confere de novo (owns_course_reference).
+  const { user } = useAuth();
+  const canModerate = Boolean(user && instructorId && user.uid === instructorId);
 
   const space: CommunitySpace = {
     id: `creator-${course.id}`,
@@ -1755,6 +1759,7 @@ function CourseCommunitySection({
         openPostId={openPostId}
         instructorName={instructorName}
         instructorIds={instructorIds}
+        canModerate={canModerate}
       />
     </section>
   );

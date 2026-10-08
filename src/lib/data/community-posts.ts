@@ -80,9 +80,9 @@ function rowToReport(row: CommunityReportRow): CommunityReport {
   };
 }
 
-// Pinned posts float above the rest; within each group newest-first. Sorting
-// client-side keeps the query a single course_slug filter (no composite index)
-// and stays correct for legacy posts that predate the `pinned` field.
+// Pinned posts float above the rest; within each group newest-first. A
+// consulta ja vem nessa ordem (para a janela de 200 ser a certa); ordenar aqui
+// de novo mantem o post legado com `pinned` nulo junto dos nao fixados.
 function compareFeedPosts(left: CommunityPost, right: CommunityPost): number {
   const leftPinned = left.pinned === true ? 1 : 0;
   const rightPinned = right.pinned === true ? 1 : 0;
@@ -146,12 +146,16 @@ export function subscribeToCommunityPosts(
 
   const load = async () => {
     // Bounded so one viral course community can't stream an unbounded
-    // collection to every viewer. Truncation past the cap is arbitrary; a
-    // cursor-based pagination path is the scale-up upgrade.
+    // collection to every viewer. A janela fica com os fixados e os MAIS
+    // NOVOS (sem order, o banco devolvia 200 quaisquer e o post de hoje podia
+    // sumir); usa o indice (course_slug, pinned, created_at desc). A pagina
+    // por cursor e o upgrade se 200 nao bastar.
     const { data, error } = await supabase
       .from("community_posts")
       .select("*")
       .eq("course_slug", courseSlug)
+      .order("pinned", { ascending: false, nullsFirst: false })
+      .order("created_at", { ascending: false, nullsFirst: false })
       .limit(200);
 
     if (error) {
@@ -230,6 +234,35 @@ export async function setCommunityPostPinned(postId: string, pinned: boolean) {
 
   if (error) {
     throw error;
+  }
+}
+
+// Apagar post ou resposta: o autor, o dono do curso ou o admin (policies de
+// DELETE). As respostas do post (e as respostas de uma resposta) vao junto em
+// cascata. A RLS recusa em SILENCIO (0 linhas, sem erro): sem o count a tela
+// diria "apagado" com o post ainda la.
+export async function deleteCommunityPost(postId: string) {
+  await deleteCommunityRow("community_posts", postId);
+}
+
+export async function deleteCommunityComment(commentId: string) {
+  await deleteCommunityRow("community_comments", commentId);
+}
+
+async function deleteCommunityRow(
+  table: "community_posts" | "community_comments",
+  id: string,
+) {
+  const { error, count } = await getSupabaseBrowserClient()
+    .from(table)
+    .delete({ count: "exact" })
+    .eq("id", id);
+
+  if (error) {
+    throw error;
+  }
+  if (!count) {
+    throw new Error("community_delete_refused");
   }
 }
 
@@ -353,11 +386,14 @@ export function subscribeToCourseCommunityComments(
   const supabase = getSupabaseBrowserClient();
 
   const load = async () => {
+    // A janela guarda as respostas MAIS NOVAS (antes cortava justamente
+    // elas, passando de maxComments); a tela continua lendo da mais antiga
+    // para a mais nova.
     const { data, error } = await supabase
       .from("community_comments")
       .select("*")
       .eq("course_slug", courseSlug)
-      .order("created_at", { ascending: true })
+      .order("created_at", { ascending: false, nullsFirst: false })
       .limit(maxComments);
 
     if (error) {
@@ -365,7 +401,7 @@ export function subscribeToCourseCommunityComments(
       return;
     }
 
-    callback((data ?? []).map(rowToComment));
+    callback((data ?? []).map(rowToComment).reverse());
   };
 
   void load();
