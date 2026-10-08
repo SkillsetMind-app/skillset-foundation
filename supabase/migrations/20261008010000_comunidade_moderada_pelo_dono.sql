@@ -23,7 +23,17 @@
 --   - a data de post e de resposta e a do servidor (vinha do navegador);
 --   - post antigo com pinned nulo vira false.
 --
--- Nada e apagado. O unico dado escrito e o pinned nulo -> false.
+-- Terceira rodada (revisao focada do PR #505), ainda no mesmo arquivo:
+--   - denuncia: quem denuncia tem de ser quem chama, conferido ANTES de
+--     qualquer busca (com reporter_id de outra pessoa, a checagem de duplicata
+--     dizia quem tinha denunciado o post); "enxerga o post" tambem subiu;
+--   - escrita confiavel (skillset.trusted_write: restauracao so de dados,
+--     manutencao) mantem a data que veio no post e na resposta;
+--   - pinned passa a ser not null.
+--
+-- Nada e apagado. Dados escritos: as linhas com pinned nulo viram false, e o
+-- UPDATE delas faz o community_author_role_biu regravar author_role a partir
+-- do perfil de hoje (so nessas linhas).
 -- Idempotente: drop ... if exists + create, create or replace.
 
 -- Vale dentro de transacao (begin ... commit, ou psql --single-transaction).
@@ -119,6 +129,9 @@ revoke all on function public.community_posts_update_guard() from public, anon, 
 -- A data do post e da resposta vinha do navegador (nowIso()): com
 -- created_at = 2099 o post ficava no topo do mural, logo abaixo dos fixados,
 -- e empurrava os novos para fora da janela de 200. Agora e a hora do servidor.
+-- A escrita confiavel (skillset.trusted_write, que so RPC e manutencao ligam)
+-- mantem a data que veio: uma restauracao so de dados nao vira "tudo postado
+-- agora". So preenche a que faltar.
 create or replace function public.community_stamp_created_at()
 returns trigger
 language plpgsql
@@ -126,8 +139,13 @@ security definer
 set search_path = public, pg_temp
 as $function$
 begin
-  new.created_at := now();
-  new.updated_at := now();
+  if current_setting('skillset.trusted_write', true) = 'on' then
+    new.created_at := coalesce(new.created_at, now());
+    new.updated_at := coalesce(new.updated_at, now());
+  else
+    new.created_at := now();
+    new.updated_at := now();
+  end if;
   return new;
 end;
 $function$;
@@ -147,12 +165,18 @@ create trigger community_comments_stamp_created_at
 -- Denuncia: o navegador mandava o autor denunciado, o nome de quem denuncia,
 -- a resposta e a data, e ninguem conferia; a fila do /ops mostrava o que o
 -- cliente quisesse. Agora o banco:
+--   - PRIMEIRO, antes de qualquer busca: quem denuncia e quem chama, e
+--     enxerga o post (matriculado no curso ou dono dele). O servidor
+--     (service_role, trusted_write) fica fora destas duas regras. O gatilho
+--     roda antes do WITH CHECK da RLS (reporter_id = auth.uid()); sem isto, um
+--     reporter_id de outra pessoa fazia a checagem de duplicata responder
+--     23505 (ELA tem denuncia aberta neste alvo) ou 42501 (nao tem), e o
+--     denunciado descobria quem o denunciou. Quem nao e do curso para aqui
+--     tambem, sem saber se a resposta e do post nem quem a escreveu;
 --   - pega o autor do post ou da resposta de verdade; a resposta tem de ser
 --     daquele post, e denuncia de post nao leva comment_id;
 --   - recusa denunciar o que a pessoa escreveu (o is_target_author da policy
 --     compara o id da resposta com o id do post e nunca pega resposta);
---   - exige que quem denuncia enxergue o post: matriculado no curso ou dono
---     dele (o servidor, service_role, fica fora desta regra);
 --   - pega nome e e-mail de quem denuncia do perfil, e a data do servidor;
 --   - recusa uma segunda denuncia ABERTA da mesma pessoa no mesmo alvo
 --     (COMMUNITY_REPORT_DUPLICATE; a tela diz "You already reported this").
@@ -167,6 +191,21 @@ declare
   v_author_id text;
   v_author_name text;
 begin
+  -- coalesce: com a configuracao ausente, "not (false or null)" daria null e
+  -- o if pularia as duas checagens.
+  if not (public.is_service_role()
+          or coalesce(current_setting('skillset.trusted_write', true) = 'on', false)) then
+    if new.reporter_id is distinct from (select auth.uid())::text then
+      raise exception 'community_reports: the reporter must be the caller'
+        using errcode = '42501';
+    end if;
+    if not (public.has_enrollment_for_course_slug(new.course_slug)
+            or public.owns_course_reference(new.course_slug)) then
+      raise exception 'community_reports: the reporter cannot see this post'
+        using errcode = '42501';
+    end if;
+  end if;
+
   if new.target_type = 'comment' and new.comment_id is not null then
     select c.author_id, c.author_name into v_author_id, v_author_name
       from public.community_comments c
@@ -182,12 +221,6 @@ begin
   end if;
   if v_author_id = new.reporter_id then
     raise exception 'community_reports: nobody reports what they wrote'
-      using errcode = '42501';
-  end if;
-  if not public.is_service_role()
-     and not (public.has_enrollment_for_course_slug(new.course_slug)
-              or public.owns_course_reference(new.course_slug)) then
-    raise exception 'community_reports: the reporter cannot see this post'
       using errcode = '42501';
   end if;
 
@@ -233,6 +266,11 @@ create trigger community_reports_trusted_fields
 -- (order pinned desc nulls last) e podia cair fora da janela de 200. Escolha:
 -- preencher com false e manter o default false, em vez de coalesce na
 -- ordenacao (o PostgREST nao ordena por expressao). O UPDATE passa pelo guard:
--- nulo -> false nao conta como fixar.
+-- nulo -> false nao conta como fixar. Efeito do UPDATE: o
+-- community_author_role_biu regrava author_role dessas linhas a partir do
+-- perfil de hoje. Depois, not null: a policy de insert usa coalesce e
+-- aceitava um pinned nulo mandado de proposito.
 update public.community_posts set pinned = false where pinned is null;
-alter table public.community_posts alter column pinned set default false;
+alter table public.community_posts
+  alter column pinned set default false,
+  alter column pinned set not null;

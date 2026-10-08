@@ -9,10 +9,15 @@
 --   - aluno apaga so o que escreveu (post e comentario);
 --   - a resposta aceita sai quando a resposta sai: apagada pelo autor, pelo
 --     dono, em cascata com a resposta-mae ou com o post;
---   - a data do post e da resposta e a do servidor;
+--   - a data do post e da resposta e a do servidor; a escrita confiavel
+--     (restauracao so de dados) mantem a data que veio;
 --   - a denuncia chega na fila do /ops com o autor, o nome e a data que o
 --     banco conferiu; resposta de outro post, a propria resposta, quem nao e
 --     do curso e a segunda denuncia aberta sao recusados;
+--   - denuncia assinada com o id de outra pessoa para antes da checagem de
+--     duplicata (senao ela dizia quem denunciou); quem nao e do curso recebe a
+--     mesma recusa, com ou sem a resposta no post;
+--   - pinned nulo mandado de proposito e recusado;
 --   - as funcoes sao definer, com search_path fixo, e ninguem as chama direto.
 -- Tudo pelo caminho real: cada um escreve sob RLS.
 begin;
@@ -46,6 +51,14 @@ begin
   raise exception using errcode = 'Z0001';
 exception when others then
   return sqlstate = p_state;
+end $$;
+-- 'SQLSTATE: mensagem' do erro. Se passar, e desfeito e devolve 'Z0001: no error'.
+create function pg_temp.error_of(p_sql text) returns text language plpgsql as $$
+begin
+  execute p_sql;
+  raise exception 'no error' using errcode = 'Z0001';
+exception when others then
+  return sqlstate || ': ' || sqlerrm;
 end $$;
 
 -- 1 dono do curso A · 2 aluna de A · 3 aluno de A · 4 dono do curso B
@@ -104,6 +117,16 @@ select pg_temp.check_mod('a post dated in the future gets the server time',
   (select created_at = now() and updated_at = now() from public.community_posts where id = 'smoke-mod-q'));
 select pg_temp.check_mod('a reply dated in the future gets the server time',
   (select created_at = now() from public.community_comments where id = 'smoke-mod-c1'));
+-- Restauracao so de dados (skillset.trusted_write) mantem a data que veio.
+select set_config('skillset.trusted_write', 'on', true);
+insert into public.community_posts(id, course_slug, author_id, author_name, author_role, category, body,
+  created_at, updated_at)
+values ('smoke-mod-r', 'smoke-mod-a', pg_temp.uid(2)::text, 'Mod 2', 'student', 'discussion',
+  'Synthetic restored post.', '2001-01-01T00:00:00Z', '2001-02-01T00:00:00Z');
+select set_config('skillset.trusted_write', 'off', true);
+select pg_temp.check_mod('a trusted restore keeps the post''s own dates',
+  (select created_at = '2001-01-01T00:00:00Z' and updated_at = '2001-02-01T00:00:00Z'
+     from public.community_posts where id = 'smoke-mod-r'));
 -- O post de conversa nasce fixado (o banco nao deixa fixar no insert).
 update public.community_posts set pinned = true where id = 'smoke-mod-d';
 
@@ -191,6 +214,13 @@ insert into public.community_reports(course_slug, post_id, comment_id, target_ty
   target_author_name, reporter_id, reporter_name, reason, status)
 values ('smoke-mod-a', 'smoke-mod-q', 'smoke-mod-c2', 'comment', pg_temp.uid(1)::text, 'Forged owner',
   pg_temp.uid(2)::text, 'Mod 2', 'harassment', 'open');
+-- A autora de smoke-mod-d assina com o id do aluno 3, que tem denuncia aberta
+-- ali. Se a duplicata fosse conferida antes, o 23505 diria que foi ele.
+select pg_temp.check_mod('a report signed with someone else''s id stops before the duplicate check',
+  pg_temp.error_of(format($q$insert into public.community_reports(course_slug, post_id, comment_id, target_type,
+    target_author_id, target_author_name, reporter_id, reporter_name, reason, status)
+    values ('smoke-mod-a', 'smoke-mod-d', null, 'post', %L, 'Mod 2', %L, 'Mod 3', 'spam', 'open')$q$,
+    pg_temp.uid(2)::text, pg_temp.uid(3)::text)) = '42501: community_reports: the reporter must be the caller');
 select pg_temp.check_mod('the reported author does not read the report against her',
   not exists (select 1 from public.community_reports where post_id = 'smoke-mod-d'));
 reset role;
@@ -202,6 +232,16 @@ select pg_temp.check_mod('someone outside the course cannot report there',
     target_author_id, target_author_name, reporter_id, reporter_name, reason, status)
     values ('smoke-mod-a', 'smoke-mod-d', null, 'post', %L, 'Mod 2', %L, 'Mod 4', 'spam', 'open')$q$,
     pg_temp.uid(2)::text, pg_temp.uid(4)::text), '42501'));
+-- c1 nao e de smoke-mod-d; c2 e de smoke-mod-q. A recusa e a mesma.
+select pg_temp.check_mod('an outsider gets the same refusal whether or not the reply is in the post',
+  pg_temp.error_of(format($q$insert into public.community_reports(course_slug, post_id, comment_id, target_type,
+    target_author_id, target_author_name, reporter_id, reporter_name, reason, status)
+    values ('smoke-mod-a', 'smoke-mod-d', 'smoke-mod-c1', 'comment', %L, 'Mod 3', %L, 'Mod 4', 'spam', 'open')$q$,
+    pg_temp.uid(3)::text, pg_temp.uid(4)::text)) = '42501: community_reports: the reporter cannot see this post'
+  and pg_temp.error_of(format($q$insert into public.community_reports(course_slug, post_id, comment_id, target_type,
+    target_author_id, target_author_name, reporter_id, reporter_name, reason, status)
+    values ('smoke-mod-a', 'smoke-mod-q', 'smoke-mod-c2', 'comment', %L, 'Mod 3', %L, 'Mod 4', 'spam', 'open')$q$,
+    pg_temp.uid(3)::text, pg_temp.uid(4)::text)) = '42501: community_reports: the reporter cannot see this post');
 reset role;
 select pg_temp.act_as(null, 'service_role');
 select pg_temp.check_mod('a post report reaches the ops queue with the real author, reporter and time',
@@ -312,8 +352,17 @@ select pg_temp.check_mod('posts default to not pinned',
      from pg_attrdef d
      join pg_attribute a on a.attrelid = d.adrelid and a.attnum = d.adnum
     where d.adrelid = 'public.community_posts'::regclass and a.attname = 'pinned'));
+-- A policy de insert usa coalesce(pinned, false): o not null e que recusa o nulo.
+select pg_temp.act_as(pg_temp.uid(2), 'authenticated');
+set local role authenticated;
+select pg_temp.check_mod('a post cannot be saved with pinned empty',
+  pg_temp.fails_with(format($q$insert into public.community_posts(id, course_slug, author_id, author_name, author_role,
+    category, body, pinned)
+    values ('smoke-mod-n', 'smoke-mod-a', %L, 'Mod 2', 'student', 'discussion', 'Synthetic post.', null)$q$,
+    pg_temp.uid(2)::text), '23502'));
+reset role;
 
-select pg_temp.check_mod('every case ran', (select count(*) = 34 from mod_checks));
+select pg_temp.check_mod('every case ran', (select count(*) = 38 from mod_checks));
 select name, passed from mod_checks order by name;
 do $$
 declare failures text;
