@@ -184,15 +184,17 @@ describe("hub do curso — entrada de excluir/arquivar", () => {
   });
 
   // "Comprei e não entrou": o professor precisa de um número para procurar.
-  it("a lista e o painel do produto mostram o ID curto, com copiar", async () => {
+  // O id de curso de verdade é UUID e sai curto (ver short-id.test); o deste
+  // teste ("course-1") não é, então sai inteiro.
+  it("a lista e o painel do produto mostram o ID, com copiar", async () => {
     const list = renderEn(<TeacherCourseStudio />);
-    expect(await screen.findByRole("button", { name: "Copy COURSE1" })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Copy course-1" })).toBeInTheDocument();
     expect(screen.getByText("Product ID")).toBeInTheDocument();
     list.unmount();
 
     renderEn(<CourseManageHub courseId="course-1" />);
-    expect(await screen.findByRole("button", { name: "Copy COURSE1" })).toBeInTheDocument();
-    expect(screen.getByText("COURSE1")).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Copy course-1" })).toBeInTheDocument();
+    expect(screen.getByText("course-1", { selector: "code" })).toBeInTheDocument();
   });
 });
 
