@@ -512,8 +512,10 @@ export type Database = {
           lesson_id: string | null
           module_id: string | null
           owner_id: string
+          position: number | null
           size: number
           storage_path: string
+          title: string | null
           updated_at: string | null
         }
         Insert: {
@@ -529,8 +531,10 @@ export type Database = {
           lesson_id?: string | null
           module_id?: string | null
           owner_id: string
+          position?: number | null
           size: number
           storage_path: string
+          title?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -546,8 +550,10 @@ export type Database = {
           lesson_id?: string | null
           module_id?: string | null
           owner_id?: string
+          position?: number | null
           size?: number
           storage_path?: string
+          title?: string | null
           updated_at?: string | null
         }
         Relationships: [
