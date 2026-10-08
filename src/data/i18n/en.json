@@ -1669,6 +1669,38 @@
         "replyLabel": "Add your reply",
         "replyPlaceholder": "Add your reply…",
         "send": "Reply"
+      },
+      "actions": {
+        "delete": "Delete",
+        "deleteConfirmPost": "Delete this post for everyone? Its replies go too.",
+        "deleteConfirmReply": "Delete this reply for everyone? Replies to it go too.",
+        "deleteYes": "Yes, delete",
+        "deleting": "Deleting...",
+        "keep": "Keep it",
+        "deleteError": "We could not delete it. Try again.",
+        "pinError": "We could not change the pin. Try again.",
+        "report": "Report"
+      },
+      "report": {
+        "titlePost": "Report this post",
+        "titleReply": "Report this reply",
+        "intro": "Tell us what is wrong. The SkillsetMind team reviews every report. The author does not see your name.",
+        "reason": "Reason",
+        "reasons": {
+          "spam": "Spam or selling",
+          "harassment": "Insults or harassment",
+          "unsafe_content": "Dangerous or explicit content",
+          "off_topic": "Off-topic",
+          "other": "Something else"
+        },
+        "detail": "Anything else? (optional)",
+        "send": "Send report",
+        "sending": "Sending...",
+        "cancel": "Cancel",
+        "done": "Thanks. Our team will review it.",
+        "error": "We could not send your report. Try again.",
+        "duplicate": "You already reported this. Our team will review it.",
+        "rateLimit": "You sent a lot of reports in the last hour. Wait a little and try again."
       }
     }
   },
@@ -5833,6 +5865,11 @@
     "updatePlaceholder": "What should the cohort know this week?",
     "pin": "Pin to the top",
     "postUpdate": "Post update",
+    "allPosts": "All posts",
+    "allPostsEmpty": "No posts yet.",
+    "open": "Open",
+    "repliesOne": "{count} reply",
+    "repliesMany": "{count} replies",
     "waiting": {
       "minutes": {
         "one": "waiting {count} min",

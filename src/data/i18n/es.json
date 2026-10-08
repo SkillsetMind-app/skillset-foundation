@@ -1669,6 +1669,38 @@
         "replyLabel": "Añade tu respuesta",
         "replyPlaceholder": "Añade tu respuesta…",
         "send": "Responder"
+      },
+      "actions": {
+        "delete": "Eliminar",
+        "deleteConfirmPost": "¿Eliminar esta publicación para todos? Sus respuestas también se eliminan.",
+        "deleteConfirmReply": "¿Eliminar esta respuesta para todos? Las respuestas a ella también se eliminan.",
+        "deleteYes": "Sí, eliminar",
+        "deleting": "Eliminando...",
+        "keep": "Mantener",
+        "deleteError": "No pudimos eliminarlo. Inténtalo de nuevo.",
+        "pinError": "No pudimos cambiar el fijado. Inténtalo de nuevo.",
+        "report": "Denunciar"
+      },
+      "report": {
+        "titlePost": "Denunciar esta publicación",
+        "titleReply": "Denunciar esta respuesta",
+        "intro": "Cuéntanos qué pasa. El equipo de SkillsetMind revisa cada denuncia. El autor no ve tu nombre.",
+        "reason": "Motivo",
+        "reasons": {
+          "spam": "Spam o venta",
+          "harassment": "Insultos o acoso",
+          "unsafe_content": "Contenido peligroso o explícito",
+          "off_topic": "Fuera de tema",
+          "other": "Otra cosa"
+        },
+        "detail": "¿Algo más? (opcional)",
+        "send": "Enviar denuncia",
+        "sending": "Enviando...",
+        "cancel": "Cancelar",
+        "done": "Gracias. Nuestro equipo lo revisará.",
+        "error": "No pudimos enviar tu denuncia. Inténtalo de nuevo.",
+        "duplicate": "Ya lo denunciaste. Nuestro equipo lo revisará.",
+        "rateLimit": "Enviaste muchas denuncias en la última hora. Espera un poco y vuelve a intentarlo."
       }
     }
   },
@@ -5833,6 +5865,11 @@
     "updatePlaceholder": "¿Qué debería saber el grupo esta semana?",
     "pin": "Fijar arriba",
     "postUpdate": "Publicar novedad",
+    "allPosts": "Todas las publicaciones",
+    "allPostsEmpty": "Todavía no hay publicaciones.",
+    "open": "Abrir",
+    "repliesOne": "{count} respuesta",
+    "repliesMany": "{count} respuestas",
     "waiting": {
       "minutes": {
         "one": "esperando {count} min",

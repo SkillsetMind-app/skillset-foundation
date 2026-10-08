@@ -11,6 +11,7 @@ import {
   postKind,
   waitingFor,
   weekSummary,
+  withoutDeleted,
 } from "@/domain/community-feed";
 import type { CommunityComment, CommunityPost } from "@/domain/community-post";
 
@@ -185,5 +186,23 @@ describe("a caixa de entrada do professor", () => {
       shares: 1,
       activeMembers: 3,
     });
+  });
+});
+
+describe("o que acabou de ser apagado", () => {
+  it("some da tela com as respostas dele, como a cascata do banco", () => {
+    const replies = [
+      { id: "c-1", postId: "p-gone", parentId: null },
+      { id: "c-2", postId: "p-kept", parentId: null },
+      { id: "c-3", postId: "p-kept", parentId: "c-gone" },
+      { id: "c-gone", postId: "p-kept", parentId: null },
+    ];
+
+    expect(withoutDeleted(replies, new Set(["p-gone", "c-gone"])).map((reply) => reply.id)).toEqual(["c-2"]);
+  });
+
+  it("sem nada apagado devolve a mesma lista (os useMemo nao recalculam a toa)", () => {
+    const posts = [{ id: "p-1" }];
+    expect(withoutDeleted(posts, new Set())).toBe(posts);
   });
 });
