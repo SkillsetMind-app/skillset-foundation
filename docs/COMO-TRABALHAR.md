@@ -227,8 +227,9 @@ podem ter ido.
   não guarda os arquivos do Storage; só o backup do repositório (30 dias) tem
   cópia deles.
 
-O banco só aceita criar de novo um curso com esse id depois do `cancelled` (ou
-do `done`).
+O app nunca mais aceita esse id: nenhuma conta (nem o dono) recria um curso
+com um id que já passou pela fila, em qualquer status. A equipe recria pelo
+SQL Editor (ou pelo service role), de preferência depois do `cancelled`.
 
 **Uma limpeza falhou 5 vezes** (`status = 'failed'`, a equipe recebe um alerta
 `course_cleanup_failed`): leia `last_error`, corrija a causa e devolva para a

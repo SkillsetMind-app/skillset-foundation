@@ -222,10 +222,18 @@ describe("course_deletions — a fila da limpeza nasce junto com o DELETE", () =
     expect(video).toMatch(/not\s+exists\s*\(select\s+1\s+from\s+public\.course_cleanup_references\(p_video_id\)\)/i);
   });
 
-  it("criar ou renomear curso para um id ainda na fila é recusado", () => {
+  // Terceira rodada: para o cliente o id fica reservado para sempre (qualquer
+  // status), e o gatilho é AFTER (roda depois da RLS: sem oráculo da fila).
+  it("o cliente nunca cria nem renomeia curso para um id que passou pela fila", () => {
     const gatilho = definicaoEfetiva("courses_refuse_id_being_deleted");
-    expect(gatilho).toMatch(/status\s+not\s+in\s*\(\s*'done'\s*,\s*'cancelled'\s*\)/i);
-    expect(textoDasMigrations()).toMatch(
+    expect(gatilho).toMatch(/auth\.role\(\)\s*\)\s*,\s*''\s*\)\s+in\s*\(\s*'anon'\s*,\s*'authenticated'\s*\)/i);
+    expect(gatilho).toMatch(/exists\s*\(select\s+1\s+from\s+public\.course_deletions\s+d\s+where\s+d\.course_id\s*=\s*new\.id\)/i);
+    expect(gatilho).not.toMatch(/status/i);
+    const migrations = textoDasMigrations();
+    expect(migrations).toMatch(
+      /after\s+insert\s+or\s+update\s+of\s+id\s+on\s+public\.courses[\s\S]{0,80}courses_refuse_id_being_deleted\(\)/i,
+    );
+    expect(migrations).not.toMatch(
       /before\s+insert\s+or\s+update\s+of\s+id\s+on\s+public\.courses[\s\S]{0,80}courses_refuse_id_being_deleted\(\)/i,
     );
   });

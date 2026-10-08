@@ -28,8 +28,9 @@
 --     "apaguei o produto errado", docs/COMO-TRABALHAR.md). O selo da lista do
 --     professor so aparece em pending;
 --   - id escolhido a mao: um gatilho recusa criar (ou renomear para) um curso
---     com id que ainda esta na fila; a lista de arquivos so traz objeto criado
---     enquanto o curso existia (entre courses.created_at e o pedido);
+--     com id que ja passou pela fila (terceira rodada: para o cliente, em
+--     qualquer status, para sempre; gatilho AFTER, sem oraculo); a lista de
+--     arquivos so traz objeto criado entre courses.created_at e o pedido;
 --   - arquivo "emprestado": objeto que outra linha viva cita (capa, pagina de
 --     venda, texto de aula, perfil, configuracao) vem marcado in_use e fica;
 --   - video: conferido de novo logo antes de cada DELETE da Bunny (fila ainda
@@ -113,8 +114,8 @@ begin
     ), '[]'::jsonb),
     old.created_at
   )
-  -- Id apagado de novo. So acontece depois de done ou cancelled (o gatilho de
-  -- INSERT abaixo recusa recriar antes): a fila antiga nao volta. Cancelled
+  -- Id apagado de novo. So acontece se a equipe (service role ou SQL Editor)
+  -- recriou o id: o gatilho abaixo recusa o cliente. A fila antiga nao volta. Cancelled
   -- quer dizer "guarde": os videos daquela vez nunca entram na conta nova.
   on conflict (course_id) do update
      set owner_id          = excluded.owner_id,
@@ -144,10 +145,16 @@ create trigger courses_record_deletion
 
 -- 2b. Id escolhido a mao ------------------------------------------------------
 -- O cliente escolhe o id no INSERT (GRANT ALL em courses, a policy de insert
--- nao limita o id). Recriar um id ainda na fila faria de quem recriou o "dono"
--- da pasta: leria os materiais privados do dono anterior e veria a limpeza
--- apagar o que ele subiu. Enquanto a fila nao terminou (pending ou failed), o
--- id fica reservado. O slug nao entra: os arquivos usam so o id.
+-- nao limita o id). Recriar um id apagado faria de quem recriou o "dono" da
+-- pasta: leria, trocaria e apagaria os arquivos que ficaram (os guardados por
+-- cancelled, os em uso depois de done). Terceira rodada: para o cliente (anon
+-- ou authenticated) o id fica reservado PARA SEMPRE, em qualquer status. O
+-- service role e o SQL Editor (sem JWT) ainda recriam: e assim que a equipe
+-- restaura. O app gera ids aleatorios, entao nada legitimo esbarra aqui. O
+-- slug nao entra: os arquivos usam so o id.
+-- AFTER (nao BEFORE): roda depois da RLS e da chave primaria. Quem nao pode
+-- inserir aquela linha recebe o erro da RLS, nunca este; senao qualquer conta
+-- logada descobriria se um id esta na fila. O erro ainda desfaz o comando.
 create or replace function public.courses_refuse_id_being_deleted()
 returns trigger
 language plpgsql
@@ -157,18 +164,15 @@ as $function$
 begin
   if tg_op = 'UPDATE' then
     if new.id = old.id then
-      return new;
+      return null;
     end if;
   end if;
-  if exists (
-    select 1 from public.course_deletions d
-     where d.course_id = new.id
-       and d.status not in ('done', 'cancelled')
-  ) then
-    raise exception 'This course id belongs to a product that is being deleted.'
+  if coalesce((select auth.role()), '') in ('anon', 'authenticated')
+     and exists (select 1 from public.course_deletions d where d.course_id = new.id) then
+    raise exception 'This course id belongs to a deleted product.'
       using errcode = '23505';
   end if;
-  return new;
+  return null; -- AFTER: o retorno e ignorado
 end;
 $function$;
 
@@ -176,7 +180,7 @@ revoke all on function public.courses_refuse_id_being_deleted() from public, ano
 
 drop trigger if exists courses_refuse_id_being_deleted on public.courses;
 create trigger courses_refuse_id_being_deleted
-  before insert or update of id on public.courses
+  after insert or update of id on public.courses
   for each row execute function public.courses_refuse_id_being_deleted();
 
 -- 3. Os filhos sem cascata, numa funcao so ---------------------------------

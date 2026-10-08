@@ -16,7 +16,10 @@
 --     barra final), so do que nasceu enquanto o curso existia, marca o arquivo
 --     que outro curso vivo usa, e recusa id perigoso, id sem pedido, id
 --     reaproveitado e limpeza cancelada;
---   - criar ou renomear curso para um id ainda na fila e recusado;
+--   - o cliente nunca cria nem renomeia curso para um id que ja passou pela
+--     fila (pending, cancelled ou done); quem nem poderia inserir a linha
+--     recebe o erro da RLS, sem descobrir se o id esta na fila; a equipe
+--     (service role) ainda recria para restaurar;
 --   - video so pode sair com a fila pending, o id sem dono e ninguem citando;
 --   - o admin apaga pelo mesmo caminho, com post do dono no curso.
 begin;
@@ -222,20 +225,41 @@ select pg_temp.check_del('a video a live course still uses never goes',
   not public.course_cleanup_video_deletable('smoke-del-a', 'smoke-del-vid-shared'));
 reset role;
 
--- Id escolhido a mao: enquanto a fila nao terminou, ninguem pega o id.
-select set_config('skillset.trusted_write', 'on', true);
-select pg_temp.check_del('creating a course with an id still being deleted is refused',
-  pg_temp.error_of($q$insert into public.courses(id, owner_id, slug, title, title_key, summary, category, status,
+-- Id escolhido a mao: para o cliente, o id que passou pela fila e reservado.
+-- O gatilho e AFTER: o aluno que tenta um id alheio para na RLS (42501) e
+-- nao descobre se o id esta na fila.
+select pg_temp.act_as(pg_temp.uid(4), 'authenticated');
+set local role authenticated;
+select pg_temp.check_del('a student probing an id being deleted gets the RLS error, not the queue error',
+  pg_temp.error_of(format($q$insert into public.courses(id, owner_id, slug, title, title_key, summary, category, status,
       payment_type, price_amount_minor, currency)
-    values ('smoke-del-a', '$q$ || pg_temp.uid(2)::text || $q$', 'smoke-del-a-again', 'Smoke del A again',
-      'smoke-del-a-again', 'Curso usado so por este smoke.', 'smoke', 'draft', 'free', 0, 'USD')$q$)
-    like '23505:%being deleted%');
+    values (%L, %L, %L, 'Smoke del again', %L, 'Curso usado so por este smoke.', 'smoke', 'draft', 'free', 0, 'USD')$q$,
+    'smoke-del-a', pg_temp.uid(1)::text, 'smoke-del-a-probe', 'smoke-del-a-probe')) like '42501:%');
+reset role;
+-- Curso sem filhos do professor 2, para o caso do renomear (um filho com FK
+-- sem ON UPDATE daria 23503 antes deste gatilho).
+select pg_temp.act_as(null, 'service_role');
+select set_config('skillset.trusted_write', 'on', true);
+insert into public.courses(id, owner_id, slug, title, title_key, summary, category, status, payment_type,
+  price_amount_minor, currency)
+values ('smoke-del-rename', pg_temp.uid(2)::text, 'smoke-del-rename-slug', 'Smoke del rename', 'smoke-del-rename',
+  'Curso usado so por este smoke.', 'smoke', 'draft', 'free', 0, 'USD');
+select pg_temp.act_as(pg_temp.uid(2), 'authenticated');
+set local role authenticated;
+select pg_temp.check_del('creating a course with an id still being deleted is refused',
+  pg_temp.error_of(format($q$insert into public.courses(id, owner_id, slug, title, title_key, summary, category, status,
+      payment_type, price_amount_minor, currency)
+    values (%L, %L, %L, 'Smoke del again', %L, 'Curso usado so por este smoke.', 'smoke', 'draft', 'free', 0, 'USD')$q$,
+    'smoke-del-a', pg_temp.uid(2)::text, 'smoke-del-a-again', 'smoke-del-a-again')) like '23505:%deleted product%');
 select pg_temp.check_del('renaming a course to an id still being deleted is refused',
-  pg_temp.error_of($q$update public.courses set id = 'smoke-del-a' where id = 'smoke-del-a-b'$q$)
-    like '23505:%being deleted%');
+  pg_temp.error_of($q$update public.courses set id = 'smoke-del-a' where id = 'smoke-del-rename'$q$)
+    like '23505:%deleted product%');
+reset role;
+select pg_temp.act_as(null, 'service_role');
+select set_config('skillset.trusted_write', 'on', true);
 
--- Defesa em profundidade: se o id voltar mesmo assim (aqui, com a fila
--- cancelada e reaberta a mao), a lista e o video recusam.
+-- Defesa em profundidade: se o id voltar mesmo assim (aqui, pela equipe, com
+-- a fila cancelada e reaberta a mao), a lista e o video recusam.
 update public.course_deletions set status = 'cancelled' where course_id = 'smoke-del-a';
 insert into public.courses(id, owner_id, slug, title, title_key, summary, category, status, payment_type,
   price_amount_minor, currency)
@@ -301,6 +325,22 @@ select pg_temp.check_del('the chip shows only pending rows, never failed or canc
   (select coalesce(array_agg(course_id order by course_id), '{}') = array['smoke-del-a']
      from public.list_my_courses_being_deleted()));
 reset role;
+-- O cliente nunca recria um id cancelado nem terminado: quem recriasse viraria
+-- dono da pasta e dos arquivos que a equipe guardou.
+select pg_temp.act_as(null, 'service_role');
+update public.course_deletions set status = 'done' where course_id = 'smoke-del-admin';
+select pg_temp.act_as(pg_temp.uid(2), 'authenticated');
+set local role authenticated;
+select pg_temp.check_del('the client never recreates a cancelled or a done id',
+  pg_temp.error_of(format($q$insert into public.courses(id, owner_id, slug, title, title_key, summary, category, status,
+      payment_type, price_amount_minor, currency)
+    values (%L, %L, %L, 'Smoke del again', %L, 'Curso usado so por este smoke.', 'smoke', 'draft', 'free', 0, 'USD')$q$,
+    'smoke-del-direct', pg_temp.uid(2)::text, 'smoke-del-direct-c', 'smoke-del-direct-c')) like '23505:%deleted product%'
+  and pg_temp.error_of(format($q$insert into public.courses(id, owner_id, slug, title, title_key, summary, category, status,
+      payment_type, price_amount_minor, currency)
+    values (%L, %L, %L, 'Smoke del again', %L, 'Curso usado so por este smoke.', 'smoke', 'draft', 'free', 0, 'USD')$q$,
+    'smoke-del-admin', pg_temp.uid(2)::text, 'smoke-del-admin-c', 'smoke-del-admin-c')) like '23505:%deleted product%');
+reset role;
 select pg_temp.act_as(null, 'service_role');
 set local role service_role;
 select pg_temp.check_del('a cancelled cleanup lists no file and lets no video go',
@@ -309,7 +349,7 @@ select pg_temp.check_del('a cancelled cleanup lists no file and lets no video go
   and not public.course_cleanup_video_deletable('smoke-del-direct', 'smoke-del-vid-1'));
 reset role;
 select set_config('skillset.trusted_write', 'on', true);
-select pg_temp.check_del('a cancelled id can be created again (recovery)',
+select pg_temp.check_del('the team (service role) can still create a cancelled id again (recovery)',
   pg_temp.affected(format($q$insert into public.courses(id, owner_id, slug, title, title_key, summary, category,
       status, payment_type, price_amount_minor, currency)
     values ('smoke-del-direct', %L, 'smoke-del-direct-2', 'Smoke del direct 2', 'smoke-del-direct-2',
@@ -321,7 +361,7 @@ select pg_temp.check_del('deleting it again queues a fresh cleanup',
       and title = 'Smoke del direct 2' and result = '{}'::jsonb
      from public.course_deletions where course_id = 'smoke-del-direct'));
 
-select pg_temp.check_del('every case ran', (select count(*) = 39 from del_checks));
+select pg_temp.check_del('every case ran', (select count(*) = 41 from del_checks));
 select name, passed from del_checks order by name;
 do $$
 declare failures text;

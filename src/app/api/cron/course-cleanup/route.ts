@@ -50,6 +50,9 @@ const STALLED_RUNS_PER_ATTEMPT = 3;
 const BUDGET_MS = 40_000;
 const CHUNK = 100;
 const BUCKETS = ["public-media", "course-content"] as const;
+// Cada RPC tem freio proprio: o de 40 s so e conferido ENTRE chamadas, e uma
+// consulta lenta passaria dos 60 s da Vercel sem contar tentativa nem alertar.
+const RPC_TIMEOUT_MS = 15_000;
 
 type Admin = ReturnType<typeof getSupabaseAdminClient>;
 type QueuePatch = Database["public"]["Tables"]["course_deletions"]["Update"];
@@ -184,7 +187,9 @@ async function recordPause(admin: Admin, job: Job, progressed: boolean): Promise
 // aqui: uma linha fora de `courses/<id>/` ou de outro balde nunca chega ao
 // remove. Arquivo que outra linha viva cita (`in_use`) fica.
 async function listObjects(admin: Admin, courseId: string) {
-  const { data, error } = await admin.rpc("course_storage_objects_for_cleanup", { p_course_id: courseId });
+  const { data, error } = await admin
+    .rpc("course_storage_objects_for_cleanup", { p_course_id: courseId })
+    .abortSignal(AbortSignal.timeout(RPC_TIMEOUT_MS));
   if (error) throw new Error(`list files: ${error.message}`);
   const prefix = `courses/${courseId}/`;
   const byBucket = new Map<string, string[]>();
@@ -201,6 +206,10 @@ async function listObjects(admin: Admin, courseId: string) {
     count += 1;
   }
   return { byBucket, count, kept };
+}
+
+function fileKeys(byBucket: Map<string, string[]>) {
+  return [...byBucket].flatMap(([bucket, names]) => names.map((name) => `${bucket}/${name}`));
 }
 
 async function cleanJob(admin: Admin, job: Job, live: boolean, outOfTime: () => boolean) {
@@ -247,14 +256,17 @@ async function cleanJob(admin: Admin, job: Job, live: boolean, outOfTime: () => 
         progressed = true;
       }
     }
-    // ponytail: o PostgREST devolve no maximo ~1000 linhas por chamada. Sobrou
-    // menos do que havia = progresso, e a proxima hora continua. Sobrou o mesmo
-    // tanto = o remove nao apagou: falha contada.
+    // O PostgREST devolve no maximo ~1000 linhas por chamada: pasta grande sai
+    // em varias voltas. Falha e so o arquivo que foi mandado apagar e continua
+    // listado. Sobrou arquivo que nao estava no lote = progresso salvo, e a
+    // proxima hora continua.
+    // ponytail: se as ~1000 primeiras linhas forem todas in_use, a pasta vira
+    // done com arquivos depois delas. Teto conhecido; paginar a RPC se aparecer.
+    const removed = new Set(fileKeys(files.byBucket));
     const left = await listObjects(admin, job.course_id);
-    if (left.count > 0) {
-      if (left.count < files.count) return paused();
-      throw new Error(`${left.count} file(s) still in storage after removal`);
-    }
+    const stuck = fileKeys(left.byBucket).filter((key) => removed.has(key)).length;
+    if (stuck > 0) throw new Error(`${stuck} file(s) still in storage after removal`);
+    if (left.count > 0) return paused();
   }
 
   const inUse: string[] = [];
@@ -263,10 +275,9 @@ async function cleanJob(admin: Admin, job: Job, live: boolean, outOfTime: () => 
     if (outOfTime()) return paused();
     // Logo antes de CADA DELETE, nao uma vez no comeco: o id pode ter voltado,
     // a equipe pode ter cancelado, outra aula pode ter passado a usar o video.
-    const { data: deletable, error } = await admin.rpc("course_cleanup_video_deletable", {
-      p_course_id: job.course_id,
-      p_video_id: videoId,
-    });
+    const { data: deletable, error } = await admin
+      .rpc("course_cleanup_video_deletable", { p_course_id: job.course_id, p_video_id: videoId })
+      .abortSignal(AbortSignal.timeout(RPC_TIMEOUT_MS));
     if (error) throw new Error(`video check: ${error.message}`);
     if (!deletable) {
       inUse.push(videoId);

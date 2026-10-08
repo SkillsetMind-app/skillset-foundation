@@ -47,6 +47,9 @@ let bunnyStatus: number;
 let onList: () => void;
 let onBunnyDelete: (videoId: string) => void;
 const removed: { bucket: string; names: string[] }[] = [];
+const rpcSignals: unknown[] = [];
+// max-rows do PostgREST: vale tambem para RPC, entao a lista vem cortada.
+const MAX_ROWS = 1000;
 const timeline: string[] = [];
 
 function job(courseId: string, hours: number, extra: Partial<Row> = {}): Row {
@@ -134,22 +137,31 @@ function fakeAdmin() {
       };
     },
     rpc(name: string, args: { p_course_id: string; p_video_id?: string }) {
-      if (name === "course_cleanup_video_deletable") {
-        timeline.push(`check ${args.p_video_id}`);
-        return Promise.resolve({ data: !videosStillNeeded.includes(args.p_video_id!), error: null });
-      }
-      expect(name).toBe("course_storage_objects_for_cleanup");
-      onList();
-      if (listError) return Promise.resolve({ data: null, error: { message: listError } });
-      const prefix = `courses/${args.p_course_id}/`;
-      const own = storage
-        .filter((object) => object.name.startsWith(prefix))
-        .map((object) => ({
-          object_bucket: object.bucket,
-          object_name: object.name,
-          in_use: referencedFiles.includes(object.name),
-        }));
-      return Promise.resolve({ data: [...own, ...foreignListing], error: null });
+      const answer = () => {
+        if (name === "course_cleanup_video_deletable") {
+          timeline.push(`check ${args.p_video_id}`);
+          return Promise.resolve({ data: !videosStillNeeded.includes(args.p_video_id!), error: null });
+        }
+        expect(name).toBe("course_storage_objects_for_cleanup");
+        onList();
+        if (listError) return Promise.resolve({ data: null, error: { message: listError } });
+        const prefix = `courses/${args.p_course_id}/`;
+        const own = storage
+          .filter((object) => object.name.startsWith(prefix))
+          .map((object) => ({
+            object_bucket: object.bucket,
+            object_name: object.name,
+            in_use: referencedFiles.includes(object.name),
+          }));
+        return Promise.resolve({ data: [...own, ...foreignListing].slice(0, MAX_ROWS), error: null });
+      };
+      // Toda RPC da rotina sai com freio proprio (abortSignal).
+      return {
+        abortSignal: (signal: unknown) => {
+          rpcSignals.push(signal);
+          return answer();
+        },
+      };
     },
     storage: {
       from: (bucket: string) => ({
@@ -216,6 +228,7 @@ describe("course cleanup cron", () => {
     onList = () => undefined;
     onBunnyDelete = () => undefined;
     removed.length = 0;
+    rpcSignals.length = 0;
     timeline.length = 0;
     vi.spyOn(console, "info").mockImplementation(() => undefined);
     vi.spyOn(console, "warn").mockImplementation(() => undefined);
@@ -480,6 +493,42 @@ describe("course cleanup cron", () => {
 
       expect(row("c1")).toMatchObject({ status: "pending", attempts: 1 });
       expect(row("c1").last_error).toContain("still in storage");
+    });
+
+    // Revisao focada do #507 (A3): a lista do banco para em ~1000 linhas. A
+    // conferencia so conta como falha o arquivo mandado apagar que ficou.
+    it("a folder with more than 2000 files goes out over several runs, with no failure counted", async () => {
+      queue = [job("c1", 30)];
+      for (let index = 0; index < 2_500; index += 1) {
+        storage.push({ bucket: "course-content", name: `courses/c1/assets/bulk/${index}.pdf` });
+      }
+      const left = () => storage.filter((object) => object.name.startsWith("courses/c1/")).length;
+      expect(left()).toBe(2_502);
+
+      const first = await run();
+      expect(first.jobs[0]).toMatchObject({ courseId: "c1", done: false });
+      expect(row("c1")).toMatchObject({ status: "pending", attempts: 0, stalled_runs: 0 });
+      expect(left()).toBe(1_502);
+
+      await authed();
+      expect(row("c1")).toMatchObject({ status: "pending", attempts: 0 });
+      expect(left()).toBe(502);
+
+      await authed();
+      expect(row("c1")).toMatchObject({ status: "done", attempts: 0 });
+      expect(left()).toBe(0);
+      expect(removed.every((batch) => batch.names.length <= 100)).toBe(true);
+      expect(storage.map((object) => object.name)).toContain("courses/c1-b/landing/neighbour.webp");
+    });
+
+    it("every database call of the cleanup carries its own timeout", async () => {
+      queue = [job("c1", 30, { bunny_assets: [video("c1", "vid-1")] })];
+
+      await authed();
+
+      // 2 listagens (antes e depois do remove) + 1 conferencia do video.
+      expect(rpcSignals).toHaveLength(3);
+      expect(rpcSignals.every((signal) => signal instanceof AbortSignal && !signal.aborted)).toBe(true);
     });
 
     it("the 5th failure marks the row failed, alerts the team once, and then the row is left alone", async () => {
