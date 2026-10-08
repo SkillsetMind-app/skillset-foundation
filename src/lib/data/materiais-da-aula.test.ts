@@ -1,3 +1,4 @@
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { CourseAsset } from "@/domain/course-asset";
@@ -22,11 +23,13 @@ const mocks = vi.hoisted(() => ({
   eq: vi.fn(),
   rows: [] as Record<string, unknown>[],
   bucket: "",
+  // Quando preenchido, o storage é o da supabase-js de verdade (só o fetch é falso).
+  realStorage: null as SupabaseClient["storage"] | null,
 }));
 
 vi.mock("@/lib/supabase/client", () => ({
   getSupabaseBrowserClient: () => ({
-    storage: {
+    storage: mocks.realStorage ?? {
       from: (bucket: string) => {
         mocks.bucket = bucket;
         return {
@@ -41,7 +44,8 @@ vi.mock("@/lib/supabase/client", () => ({
       insert: mocks.insert,
       update: (patch: unknown) => {
         mocks.update(patch);
-        return { eq: (column: string, value: string) => mocks.eq(column, value) };
+        // .update().eq().select("id"): a resposta diz quantas linhas mudaram.
+        return { eq: (column: string, value: string) => ({ select: () => mocks.eq(column, value) }) };
       },
       select: () => ({ eq: async () => ({ data: mocks.rows, error: null }) }),
     }),
@@ -65,21 +69,23 @@ function row(id: string, fileName: string, title: string | null, position: numbe
 }
 
 beforeEach(() => {
+  mocks.realStorage = null;
   for (const fn of [mocks.sign, mocks.upload, mocks.insert, mocks.update, mocks.eq]) fn.mockReset();
   mocks.sign.mockResolvedValue({ data: { signedUrl: "https://storage.test/signed" }, error: null });
   mocks.upload.mockResolvedValue({ error: null });
   mocks.insert.mockResolvedValue({ error: null });
-  mocks.eq.mockResolvedValue({ error: null });
+  mocks.eq.mockResolvedValue({ data: [{ id: "changed" }], error: null });
 });
 
 describe("link assinado", () => {
   it("o link de baixar leva o nome original do arquivo, com a mesma 1 hora", async () => {
-    await getProtectedCourseAssetObjectUrl(material(), { download: true });
+    const url = await getProtectedCourseAssetObjectUrl(material(), { download: true });
 
     expect(mocks.bucket).toBe("course-content");
-    expect(mocks.sign).toHaveBeenCalledExactlyOnceWith(
-      material().storagePath, 3600, { download: "Apostila final v3.pdf" },
-    );
+    // O nome não vai pela opção da biblioteca (ela codifica duas vezes); vai
+    // no fim do link, codificado uma vez só.
+    expect(mocks.sign).toHaveBeenCalledExactlyOnceWith(material().storagePath, 3600);
+    expect(url).toBe("https://storage.test/signed?download=Apostila%20final%20v3.pdf");
   });
 
   it("o link de abrir continua sem a opção de baixar", async () => {
@@ -92,6 +98,46 @@ describe("link assinado", () => {
     mocks.sign.mockResolvedValue({ data: null, error: new Error("Object not found") });
 
     await expect(getProtectedCourseAssetObjectUrl(material(), { download: true })).rejects.toThrow("Object not found");
+  });
+});
+
+/**
+ * A storage-js de verdade monta o link (só a resposta do servidor é falsa).
+ * Ela codifica o nome duas vezes (URLSearchParams e depois encodeURI) e o
+ * servidor do storage decodifica uma: "Introdução.pdf" chegava como
+ * "Introdu%C3%A7%C3%A3o.pdf". Aqui o link é lido como o servidor lê (uma
+ * decodificação, igual ao URL do navegador) e o nome tem que chegar idêntico.
+ */
+describe("nome do arquivo baixado, com a storage-js de verdade", () => {
+  const signFetch = vi.fn(async (input: RequestInfo | URL) => {
+    const signedPath = String(input).split("/object/sign/")[1];
+    return new Response(JSON.stringify({ signedURL: `/object/sign/${signedPath}?token=t0k3n` }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  });
+  const realStorage = createClient("https://project.test", "public-test-key", {
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+    global: { fetch: signFetch },
+  }).storage;
+
+  it.each(["Apostila (1).pdf", "Introdução.pdf", "a,b&c#d+e%f.pdf"])("%s chega igual ao servidor", async (fileName) => {
+    mocks.realStorage = realStorage;
+
+    const url = await getProtectedCourseAssetObjectUrl(material({ fileName }), { download: true });
+
+    expect(String(signFetch.mock.lastCall?.[0])).toContain("/storage/v1/object/sign/course-content/courses/course-1/");
+    const query = new URL(url).searchParams;
+    expect(query.get("download")).toBe(fileName);
+    expect(query.get("token")).toBe("t0k3n");
+  });
+
+  it("o link de abrir não ganha nome nenhum", async () => {
+    mocks.realStorage = realStorage;
+
+    const url = await getProtectedCourseAssetObjectUrl(material({ fileName: "Introdução.pdf" }));
+
+    expect(new URL(url).searchParams.has("download")).toBe(false);
   });
 });
 
@@ -144,6 +190,21 @@ describe("ordem e nome", () => {
     mocks.eq.mockResolvedValueOnce({ error: new Error("denied") });
 
     await expect(saveCourseAssetOrder([{ id: "b", position: 1 }, { id: "a", position: 0 }])).rejects.toThrow("denied");
+  });
+
+  // A RLS filtra a linha sem dar erro (sessão sem segundo fator, curso de
+  // outro dono): nenhuma linha mudou, e isso não pode virar "salvo".
+  it("renomear que não mudou nenhuma linha é erro, não 'salvo'", async () => {
+    mocks.eq.mockResolvedValueOnce({ data: [], error: null });
+
+    await expect(renameCourseAsset("asset-1", "Guia")).rejects.toThrow("course-asset-not-updated");
+  });
+
+  it("reordenar com alguma linha que não mudou é erro, não 'salvo'", async () => {
+    mocks.eq.mockResolvedValueOnce({ data: [{ id: "b" }], error: null }).mockResolvedValueOnce({ data: [], error: null });
+
+    await expect(saveCourseAssetOrder([{ id: "b", position: 1 }, { id: "a", position: 0 }]))
+      .rejects.toThrow("course-asset-not-updated");
   });
 });
 

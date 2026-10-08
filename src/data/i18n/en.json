@@ -1328,7 +1328,7 @@
         "content": "Lesson content",
         "freePreview": "Free preview",
         "openResource": "Open instructor resource",
-        "fileOnlyHint": "This lesson is a file. Download it to read on your phone or computer."
+        "fileOnlyHint": "This lesson is a file. Download it to open or save it on your phone or computer."
       },
       "curriculum": {
         "lessons": "Lessons",
@@ -4139,6 +4139,7 @@
       "openFile": "Open file",
       "download": "Download",
       "downloadNamed": "Download {title}",
+      "openWith": { "xmind": "To open it, use the free app XMind.", "mm": "To open it, use the free app FreeMind or Freeplane." },
       "videoError": "We could not load this video. Refresh and try again.",
       "unavailable": "Video unavailable",
       "loading": "Loading video...",

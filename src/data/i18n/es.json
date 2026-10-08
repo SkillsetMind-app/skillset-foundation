@@ -1328,7 +1328,7 @@
         "content": "Contenido de la lección",
         "freePreview": "Vista previa gratuita",
         "openResource": "Abrir recurso del instructor",
-        "fileOnlyHint": "Esta lección es un archivo. Descárgalo para leerlo en tu teléfono o computadora."
+        "fileOnlyHint": "Esta lección es un archivo. Descárgalo para abrirlo o guardarlo en tu teléfono o computadora."
       },
       "curriculum": {
         "lessons": "Lecciones",
@@ -4139,6 +4139,7 @@
       "openFile": "Abrir archivo",
       "download": "Descargar",
       "downloadNamed": "Descargar {title}",
+      "openWith": { "xmind": "Para abrirlo, usa la app gratuita XMind.", "mm": "Para abrirlo, usa la app gratuita FreeMind o Freeplane." },
       "videoError": "No pudimos cargar este video. Actualiza la página e inténtalo de nuevo.",
       "unavailable": "Video no disponible",
       "loading": "Cargando video...",

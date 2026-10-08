@@ -24,6 +24,7 @@ import { CourseMessagesPanel } from "@/components/learn/course-messages-panel";
 import {
   CourseMaterialsPanel,
   groupReleasedMaterials,
+  MaterialAppHint,
   MaterialFileList,
 } from "@/components/learn/course-materials-panel";
 import { CoursePlaylist } from "@/components/learn/course-playlist";
@@ -42,7 +43,13 @@ import {
 import { ProtectedAssetPreview } from "@/components/shared/protected-asset-preview";
 import { MilestoneSeal, useJustDone } from "@/components/ui/drawn-check";
 import type { CourseAsset } from "@/domain/course-asset";
-import { formatCourseAssetSize, getModuleCoverAsset, getPrimaryLessonVideoAsset } from "@/domain/course-asset";
+import {
+  formatCourseAssetSize,
+  getCourseAssetTitle,
+  getModuleCoverAsset,
+  getPrimaryLessonVideoAsset,
+  isVideoAssetKind,
+} from "@/domain/course-asset";
 import { getCourseAssetKindLabel } from "@/lib/i18n/course-assets";
 import type { CourseEvent } from "@/domain/course-event";
 import {
@@ -2316,15 +2323,18 @@ function LessonAssetList({
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <p className="text-sm font-semibold text-[var(--color-ink)]">
-                  {asset.fileName}
-                </p>
+                {getCourseAssetTitle(asset)}
+              </p>
               <div className="mt-1 flex flex-wrap items-center gap-2 text-xs uppercase tracking-[0.12em] text-[var(--color-ink-soft)]">
                 <FileText size={13} aria-hidden />
                 <span>{getCourseAssetKindLabel(asset.kind, t)} - {formatCourseAssetSize(asset.size)}</span>
               </div>
+              <MaterialAppHint fileName={asset.fileName} />
             </div>
+            {/* "Preview" só vale para vídeo (a aula de amostra). Material
+                marcado no passado continua só de matriculado. */}
             <span className="rounded-chip bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--color-primary)]">
-              {t(asset.isPreview ? "learn.classroom.resources.preview" : "learn.classroom.resources.enrolled")}
+              {t(asset.isPreview && isVideoAssetKind(asset.kind) ? "learn.classroom.resources.preview" : "learn.classroom.resources.enrolled")}
             </span>
           </div>
 

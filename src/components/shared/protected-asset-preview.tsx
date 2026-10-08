@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Download } from "lucide-react";
+import { Download, Loader2 } from "lucide-react";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { WatermarkedVideoPlayer } from "@/components/learn/watermarked-video-player";
-import type { CourseAsset } from "@/domain/course-asset";
+import { getCourseAssetTitle, type CourseAsset } from "@/domain/course-asset";
 import { getProtectedCourseAssetObjectUrl } from "@/lib/data/course-assets";
 import type { LessonPositionRef } from "@/lib/learn/lesson-position";
 
@@ -95,7 +95,7 @@ function ProtectedAssetPreviewContent({
   if (asset.contentType.startsWith("video/")) {
     return (
       <WatermarkedVideoPlayer
-        fileName={asset.fileName}
+        fileName={getCourseAssetTitle(asset)}
         onEnded={onEnded}
         resume={resume}
         src={objectUrl}
@@ -109,7 +109,7 @@ function ProtectedAssetPreviewContent({
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={objectUrl}
-          alt={asset.fileName}
+          alt={getCourseAssetTitle(asset)}
           className="max-h-72 w-full rounded-md object-cover"
         />
         <ProtectedAssetActions asset={asset} objectUrl={objectUrl} />
@@ -122,7 +122,7 @@ function ProtectedAssetPreviewContent({
       <div className="mt-3 grid gap-3">
         <iframe
           src={objectUrl}
-          title={asset.fileName}
+          title={getCourseAssetTitle(asset)}
           className="h-80 w-full rounded-md border border-[var(--color-line)] bg-white"
         />
         <ProtectedAssetActions asset={asset} objectUrl={objectUrl} />
@@ -161,6 +161,10 @@ function ProtectedAssetActions({
  * <a> é ignorado para outro domínio, e o arquivo só abria numa aba. Este pede
  * um link assinado próprio, com o nome original do arquivo (1 hora, mesma RLS
  * de matrícula e aula liberada).
+ *
+ * O link é pedido NO CLIQUE: abrir a aba Materiais não faz um pedido por
+ * arquivo, e um link pedido há mais de 1 hora (aba esquecida aberta) não
+ * chega vencido ao aluno.
  */
 export function ProtectedAssetDownload({
   asset,
@@ -172,63 +176,49 @@ export function ProtectedAssetDownload({
   /** Nome acessível quando há vários botões na tela ("Download Apostila"). */
   label?: string;
 }) {
-  return (
-    <ProtectedAssetDownloadContent
-      key={JSON.stringify([asset.id, asset.storagePath, asset.fileName])}
-      asset={asset}
-      className={className}
-      label={label}
-    />
-  );
-}
-
-function ProtectedAssetDownloadContent({
-  asset,
-  className,
-  label,
-}: {
-  asset: CourseAsset;
-  className: string;
-  label?: string;
-}) {
   const { t } = useTranslation();
-  const [state, setState] = useState<{ url: string | null; failed: boolean }>({ url: null, failed: false });
+  const [state, setState] = useState<"idle" | "loading" | "failed">("idle");
+  const loading = state === "loading";
 
-  useEffect(() => {
-    let isMounted = true;
-    void (async () => {
-      try {
-        const url = await getProtectedCourseAssetObjectUrl(asset, { download: true });
-        if (isMounted) setState({ url, failed: false });
-      } catch {
-        if (isMounted) setState({ url: null, failed: true });
-      }
-    })();
-    return () => {
-      isMounted = false;
-    };
-  }, [asset]);
-
-  if (state.failed) {
-    return (
-      <p className="text-sm font-semibold text-[var(--color-danger-fg)]">
-        {t("courseMedia.preview.assetError")}
-      </p>
-    );
+  async function download() {
+    if (loading) return;
+    setState("loading");
+    try {
+      const url = await getProtectedCourseAssetObjectUrl(asset, { download: true });
+      // A resposta vem como anexo: o navegador baixa e a página fica onde está.
+      const link = document.createElement("a");
+      link.href = url;
+      document.body.append(link);
+      link.click();
+      link.remove();
+      setState("idle");
+    } catch {
+      setState("failed");
+    }
   }
 
-  const text = t("courseMedia.preview.download");
-  // Enquanto o link não chega, o botão aparece desligado no mesmo lugar: nada
-  // pula na tela quando ele liga.
-  return state.url ? (
-    <a href={state.url} download={asset.fileName} aria-label={label} className={className}>
-      <Download aria-hidden="true" size={16} />
-      {text}
-    </a>
-  ) : (
-    <button type="button" disabled aria-label={label} className={`${className} opacity-60`}>
-      <Download aria-hidden="true" size={16} />
-      {text}
-    </button>
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => void download()}
+        aria-label={label}
+        aria-busy={loading}
+        aria-disabled={loading}
+        className={loading ? `${className} opacity-60` : className}
+      >
+        {loading ? (
+          <Loader2 aria-hidden="true" size={16} className="animate-spin" />
+        ) : (
+          <Download aria-hidden="true" size={16} />
+        )}
+        {t("courseMedia.preview.download")}
+      </button>
+      {state === "failed" ? (
+        <p role="alert" className="basis-full text-sm font-semibold text-[var(--color-danger-fg)]">
+          {t("courseMedia.preview.assetError")}
+        </p>
+      ) : null}
+    </>
   );
 }

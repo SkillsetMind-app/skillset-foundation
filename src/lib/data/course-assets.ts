@@ -374,24 +374,33 @@ export async function uploadLessonVideoToBunny(
  *
  * `download`: o link de baixar. O atributo `download` de um <a> não vale para
  * outro domínio (o do Supabase), então o botão "Download" só abria o arquivo.
- * Com a opção, o Supabase responde "attachment" com o nome original do arquivo.
- * A regra de quem recebe o link é a mesma: a da RLS, para os dois.
+ * Com `download=<nome>` no link, o Supabase responde "attachment" com o nome
+ * original do arquivo. A regra de quem recebe o link é a mesma: a da RLS.
+ *
+ * O nome NÃO vai pela opção `download` da storage-js: ela codifica o nome
+ * (URLSearchParams) e depois o link inteiro de novo (encodeURI), e o servidor
+ * decodifica uma vez só. "Introdução.pdf" baixava como
+ * "Introdu%C3%A7%C3%A3o.pdf". Aqui ele é codificado uma vez.
  */
 export async function getProtectedCourseAssetObjectUrl(
   asset: CourseAsset,
   options: { download?: boolean } = {},
 ) {
   const supabase = getSupabaseBrowserClient();
-  const bucket = supabase.storage.from(bucketForKind(asset.kind));
-  const { data, error } = options.download
-    ? await bucket.createSignedUrl(asset.storagePath, 3600, { download: asset.fileName })
-    : await bucket.createSignedUrl(asset.storagePath, 3600);
+  const { data, error } = await supabase.storage
+    .from(bucketForKind(asset.kind))
+    .createSignedUrl(asset.storagePath, 3600);
 
   if (error) {
     throw error;
   }
 
-  return data.signedUrl;
+  if (!options.download) {
+    return data.signedUrl;
+  }
+
+  const separator = data.signedUrl.includes("?") ? "&" : "?";
+  return `${data.signedUrl}${separator}download=${encodeURIComponent(asset.fileName)}`;
 }
 
 // One-shot load for callers that must not open a second realtime channel on
@@ -412,18 +421,31 @@ export async function fetchCourseAssets(courseId: string): Promise<CourseAsset[]
   return (data ?? []).map(rowToCourseAsset).sort(compareCourseAssets);
 }
 
+/**
+ * A RLS não devolve erro quando filtra a linha (sessão sem segundo fator, curso
+ * de outro dono): o update só não muda nada. Sem esta conferência a tela dizia
+ * "Name saved." sem ter salvado.
+ */
+function assertOneRowUpdated(result: { data: unknown[] | null; error: unknown }) {
+  if (result.error) {
+    throw result.error;
+  }
+  if (!result.data || result.data.length === 0) {
+    throw new Error("course-asset-not-updated");
+  }
+}
+
 /** Nome que o aluno vê. Vazio volta a mostrar o nome do arquivo. */
 export async function renameCourseAsset(assetId: string, title: string) {
   const supabase = getSupabaseBrowserClient();
   const trimmed = title.trim().slice(0, courseAssetTitleMaxLength);
-  const { error } = await supabase
-    .from(courseAssetsTable)
-    .update({ title: trimmed || null })
-    .eq("id", assetId);
-
-  if (error) {
-    throw error;
-  }
+  assertOneRowUpdated(
+    await supabase
+      .from(courseAssetsTable)
+      .update({ title: trimmed || null })
+      .eq("id", assetId)
+      .select("id"),
+  );
 }
 
 /**
@@ -437,14 +459,10 @@ export async function saveCourseAssetOrder(ordered: Pick<CourseAsset, "id" | "po
       .map((asset, index) => ({ asset, index }))
       .filter(({ asset, index }) => asset.position !== index)
       .map(({ asset, index }) =>
-        supabase.from(courseAssetsTable).update({ position: index }).eq("id", asset.id),
+        supabase.from(courseAssetsTable).update({ position: index }).eq("id", asset.id).select("id"),
       ),
   );
-  const failed = results.find((result) => result.error);
-
-  if (failed?.error) {
-    throw failed.error;
-  }
+  results.forEach(assertOneRowUpdated);
 }
 
 /**

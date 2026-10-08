@@ -129,6 +129,7 @@ export function MaterialFileList({ files, large = false }: { files: CourseAsset[
               <div className="min-w-0">
                 <p className="text-sm font-semibold text-[var(--color-ink)] [overflow-wrap:anywhere]">{title}</p>
                 <p className="mt-0.5 text-xs text-[var(--color-ink-soft)]">{formatCourseAssetSize(asset.size)}</p>
+                <MaterialAppHint fileName={asset.fileName} />
               </div>
             </div>
             <ProtectedAssetDownload
@@ -141,4 +142,17 @@ export function MaterialFileList({ files, large = false }: { files: CourseAsset[
       })}
     </ul>
   );
+}
+
+/**
+ * Mapa mental (.xmind, .mm) não abre no celular nem no computador sem um
+ * programa próprio: quem baixava ficava com um arquivo "que não abre". Uma
+ * linha diz qual programa gratuito usar.
+ */
+export function MaterialAppHint({ fileName }: { fileName: string }) {
+  const { t } = useTranslation();
+  const app = /\.(xmind|mm)$/i.exec(fileName)?.[1].toLowerCase();
+  return app ? (
+    <p className="mt-0.5 text-xs text-[var(--color-ink-soft)]">{t(`courseMedia.preview.openWith.${app}`)}</p>
+  ) : null;
 }
