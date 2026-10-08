@@ -20,7 +20,7 @@ const mocks = vi.hoisted(() => ({
   config: vi.fn(), enrollment: vi.fn(), enrollments: vi.fn(), course: vi.fn(),
   messages: vi.fn(), send: vi.fn(), events: vi.fn(), rsvp: vi.fn(), saveRsvp: vi.fn(),
   wishlist: vi.fn(), published: vi.fn(), remove: vi.fn(), leaderboard: vi.fn(),
-  publicCourse: vi.fn(), signOut: vi.fn(),
+  publicCourse: vi.fn(), signOut: vi.fn(), communityIds: vi.fn(),
 }));
 vi.mock("next/navigation", () => ({
   useRouter: () => mocks.router, useSearchParams: () => mocks.params,
@@ -28,7 +28,7 @@ vi.mock("next/navigation", () => ({
 }));
 vi.mock("@/components/auth/auth-provider", () => ({ useAuth: () => ({ user: mocks.user, signOut: mocks.signOut }) }));
 vi.mock("@/lib/supabase/config", () => ({ getSupabaseClientConfig: mocks.config }));
-vi.mock("@/lib/data/enrollments", () => ({ subscribeToEnrollment: mocks.enrollment, subscribeToUserEnrollments: mocks.enrollments }));
+vi.mock("@/lib/data/enrollments", () => ({ subscribeToEnrollment: mocks.enrollment, subscribeToUserEnrollments: mocks.enrollments, getCommunityCourseIds: mocks.communityIds }));
 vi.mock("@/lib/data/teacher-courses", () => ({ subscribeToTeacherCourse: mocks.course }));
 vi.mock("@/lib/data/published-courses", () => ({
   teacherCourseToLearningCourse: (course: unknown) => course,
@@ -95,6 +95,7 @@ beforeEach(() => {
   mocks.leaderboard.mockImplementation((_window, next) => { next(null); return () => {}; });
   mocks.publicCourse.mockImplementation((_ref, next) => { next(null); return () => {}; });
   mocks.signOut.mockResolvedValue(undefined);
+  mocks.communityIds.mockResolvedValue(new Set(["course-es"]));
 });
 afterEach(() => { cleanup(); vi.useRealTimers(); });
 
@@ -253,10 +254,11 @@ describe("learner wave 2 with real provider and dictionaries", () => {
     expect(screen.queryByText("Internal transport detail")).not.toBeInTheDocument();
   });
 
-  it("localizes generated community copy and searches the translated category without changing course titles", () => {
+  it("localizes generated community copy and searches the translated category without changing course titles", async () => {
     mocks.enrollments.mockImplementation((_uid, next) => { next([enrollment]); return () => {}; });
     show(<LearnCommunityHub />);
-    expect(screen.getByRole("heading", { name: "Comunidad de Original course $&" })).toBeVisible();
+    expect(await screen.findByRole("heading", { name: "Comunidad de Original course $&" })).toBeVisible();
+    expect(mocks.communityIds).toHaveBeenCalledExactlyOnceWith(["course-es"]);
     fireEvent.change(screen.getByRole("searchbox", { name: "Buscar en las comunidades de tus cursos" }), { target: { value: "comunidad" } });
     expect(screen.getByRole("link", { name: "Abrir comunidad" })).toHaveAttribute("href", "/learn/courses/course-es/community");
     expect(screen.getByText("1 de 1 comunidades visibles")).toBeVisible();
@@ -264,6 +266,16 @@ describe("learner wave 2 with real provider and dictionaries", () => {
     expect(screen.getByRole("searchbox", { name: "Search enrolled communities" })).toHaveValue("comunidad");
     expect(screen.getByText("No communities match this filter.")).toBeVisible();
     expect(mocks.enrollments).toHaveBeenCalledTimes(1);
+  });
+
+  it("hides the card of a course whose community is turned off", async () => {
+    const quiet: Enrollment = { ...enrollment, id: "enrollment-quiet", courseId: "course-quiet", courseSlug: "course-quiet", courseTitle: "Quiet course" };
+    mocks.enrollments.mockImplementation((_uid, next) => { next([enrollment, quiet]); return () => {}; });
+    show(<LearnCommunityHub />);
+    expect(await screen.findByRole("heading", { name: "Comunidad de Original course $&" })).toBeVisible();
+    expect(screen.queryByRole("heading", { name: /Quiet course/ })).not.toBeInTheDocument();
+    expect(screen.getByText("1 de 1 comunidades visibles")).toBeVisible();
+    expect(mocks.communityIds).toHaveBeenCalledExactlyOnceWith(["course-es", "course-quiet"]);
   });
 
   it("localizes event types, attendance, dates and pending RSVP without changing the request", async () => {
