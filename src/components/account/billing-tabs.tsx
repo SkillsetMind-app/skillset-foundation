@@ -7,6 +7,7 @@ import { PlansPanel } from "@/components/account/plans-panel";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { useAuth } from "@/components/auth/auth-provider";
 import { HorizontalTabs } from "@/components/shared/horizontal-tabs";
+import { ShortId } from "@/components/shared/short-id";
 import { StatusChip } from "@/components/shared/status-chip";
 import { planById, type PlanId } from "@/data/plans";
 import type { Order } from "@/domain/order";
@@ -474,6 +475,10 @@ function PurchasesTab({
                 <p className="mt-1 text-xs text-[var(--color-ink-soft)]">
                   {formatDate(order.paidAt ?? order.createdAt, locale, t("accountBilling.datePending"))}
                 </p>
+                {/* O número que o aluno manda ao suporte quando "comprei e não entrou". */}
+                <div className="mt-1">
+                  <ShortId id={order.id} label={t("shortId.order")} />
+                </div>
               </div>
               <div className="flex flex-col items-end gap-2">
                 <span className="rounded-md bg-white px-3 py-1 text-sm font-bold text-[var(--color-primary)]">
