@@ -136,7 +136,116 @@ describe("delete_or_archive_own_course — apagar não pode virar apagar de quem
     expect(corpo).toMatch(/security\s+definer/i);
     expect(corpo).toMatch(/set\s+search_path\s+to\s+'public',\s*'pg_temp'/i);
     expect(corpo).toMatch(/require_strong_session\(\)/i);
-    expect(corpo).toMatch(/v_owner\s*<>\s*v_uid/i);
+    // O dono vai no WHERE do FOR UPDATE: quem não é dono nem trava a linha de
+    // outra pessoa nem descobre se o id existe (revisão do #507, D7).
+    expect(corpo).toMatch(/where\s+id\s*=\s*p_course_id\s+and\s+owner_id\s*=\s*v_uid\s+for\s+update/i);
+    expect(corpo).not.toMatch(/Only the course owner can delete it/);
+  });
+
+  // Onda G2b: post do professor e convite pendente travavam o DELETE (FK sem
+  // cascata), e assinatura não contava como comprador.
+  it("trava a linha, conta assinatura e limpa os filhos antes de apagar", () => {
+    expect(corpo).toMatch(/for\s+update/i);
+    expect(corpo).toMatch(/from\s+public\.course_subscriptions/i);
+    expect(corpo).toMatch(/v_subscriptions\s*=\s*0/i);
+
+    const limpa = corpo.search(/clear_course_for_delete\(/i);
+    const apaga = corpo.search(/delete\s+from\s+public\.courses/i);
+    expect(limpa, "o delete não limpa mais os filhos sem cascata").toBeGreaterThan(-1);
+    expect(limpa < apaga, "a limpeza dos filhos tem de vir antes do delete").toBe(true);
+  });
+});
+
+describe("delete_course_as_admin — o admin apaga pelo mesmo caminho", () => {
+  const corpo = definicaoEfetiva("delete_course_as_admin");
+
+  it("segundo fator, só admin, e recusa curso com comprador", () => {
+    expect(corpo).toMatch(/require_strong_session\(\)/i);
+    expect(corpo).toMatch(/is_admin\(\)/i);
+    expect(corpo).toMatch(/from\s+public\.enrollments\s+where\s+course_id/i);
+    expect(corpo).toMatch(/from\s+public\.orders\s+where\s+course_id/i);
+    expect(corpo).toMatch(/from\s+public\.course_subscriptions/i);
+  });
+
+  it("limpa os filhos sem cascata antes de apagar", () => {
+    const limpa = corpo.search(/clear_course_for_delete\(/i);
+    expect(limpa).toBeGreaterThan(-1);
+    expect(limpa < corpo.search(/delete\s+from\s+public\.courses/i)).toBe(true);
+  });
+});
+
+describe("course_deletions — a fila da limpeza nasce junto com o DELETE", () => {
+  // Depois do DELETE, course_assets cai em cascata e leva a única lista dos
+  // vídeos da Bunny. A fila tem de ser gravada ANTES, na mesma transação.
+  it("um gatilho BEFORE DELETE em courses grava a fila com os vídeos", () => {
+    const gatilho = definicaoEfetiva("course_deletions_record");
+    expect(gatilho).toMatch(/insert\s+into\s+public\.course_deletions/i);
+    expect(gatilho).toMatch(/bunny_video_id/i);
+    expect(textoDasMigrations()).toMatch(
+      /before\s+delete\s+on\s+public\.courses[\s\S]{0,80}course_deletions_record\(\)/i,
+    );
+  });
+
+  it("o cliente não chama a limpeza dos filhos nem a lista de arquivos", () => {
+    const todas = textoDasMigrations();
+    expect(todas).toMatch(
+      /revoke\s+all\s+on\s+function\s+public\.clear_course_for_delete\(text\)\s+from\s+public,\s*anon,\s*authenticated/i,
+    );
+    expect(todas).toMatch(
+      /revoke\s+all\s+on\s+function\s+public\.course_storage_objects_for_cleanup\(text\)\s+from\s+public,\s*anon,\s*authenticated/i,
+    );
+  });
+
+  it("a lista de arquivos só casa a pasta exata do curso, com a barra final", () => {
+    const lista = definicaoEfetiva("course_storage_objects_for_cleanup");
+    expect(lista).toMatch(/is_service_role\(\)/);
+    expect(lista).toMatch(/'courses\/'\s*\|\|\s*p_course_id\s*\|\|\s*'\/'/);
+    expect(lista).toMatch(/\^\[A-Za-z0-9\]\[A-Za-z0-9_-\]\*\$/);
+    expect(lista).toMatch(/Course id is in use again/);
+  });
+
+  // Revisão do #507: id escolhido à mão, arquivo emprestado, vídeo re-checado.
+  it("a lista só traz o que nasceu enquanto o curso existia, da fila pending, e marca o que outra linha usa", () => {
+    const lista = definicaoEfetiva("course_storage_objects_for_cleanup");
+    expect(lista).toMatch(/v_job\.status\s*<>\s*'pending'/);
+    expect(lista).toMatch(/o\.created_at\s*<=\s*v_job\.requested_at/);
+    expect(lista).toMatch(/o\.created_at\s*>=\s*v_job\.course_created_at/);
+    expect(lista).toMatch(/course_cleanup_references\(/);
+    expect(lista).toMatch(/in_use\s+boolean/i);
+  });
+
+  it("vídeo só sai com a fila pending, o id sem curso e ninguém citando", () => {
+    const video = definicaoEfetiva("course_cleanup_video_deletable");
+    expect(video).toMatch(/is_service_role\(\)/);
+    expect(video).toMatch(/d\.status\s*=\s*'pending'/);
+    expect(video).toMatch(/not\s+exists\s*\(select\s+1\s+from\s+public\.courses/i);
+    expect(video).toMatch(/not\s+exists\s*\(select\s+1\s+from\s+public\.course_cleanup_references\(p_video_id\)\)/i);
+  });
+
+  // Terceira rodada: para o cliente o id fica reservado para sempre (qualquer
+  // status), e o gatilho é AFTER (roda depois da RLS: sem oráculo da fila).
+  it("o cliente nunca cria nem renomeia curso para um id que passou pela fila", () => {
+    const gatilho = definicaoEfetiva("courses_refuse_id_being_deleted");
+    expect(gatilho).toMatch(/auth\.role\(\)\s*\)\s*,\s*''\s*\)\s+in\s*\(\s*'anon'\s*,\s*'authenticated'\s*\)/i);
+    expect(gatilho).toMatch(/exists\s*\(select\s+1\s+from\s+public\.course_deletions\s+d\s+where\s+d\.course_id\s*=\s*new\.id\)/i);
+    expect(gatilho).not.toMatch(/status/i);
+    const migrations = textoDasMigrations();
+    expect(migrations).toMatch(
+      /after\s+insert\s+or\s+update\s+of\s+id\s+on\s+public\.courses[\s\S]{0,80}courses_refuse_id_being_deleted\(\)/i,
+    );
+    expect(migrations).not.toMatch(
+      /before\s+insert\s+or\s+update\s+of\s+id\s+on\s+public\.courses[\s\S]{0,80}courses_refuse_id_being_deleted\(\)/i,
+    );
+  });
+
+  it("o selo mostra só o que ainda está na fila (failed e cancelled não ficam para sempre)", () => {
+    expect(definicaoEfetiva("list_my_courses_being_deleted")).toMatch(/d\.status\s*=\s*'pending'/);
+  });
+
+  it("a porta antiga delete_teacher_course_draft não é mais do cliente", () => {
+    expect(textoDasMigrations()).toMatch(
+      /revoke\s+execute\s+on\s+function\s+public\.delete_teacher_course_draft\(text\)\s+from\s+public,\s*anon,\s*authenticated/i,
+    );
   });
 });
 

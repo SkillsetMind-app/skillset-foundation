@@ -1259,6 +1259,7 @@
     "active": "Activo",
     "cancelled": "Cancelado",
     "completed": "Completado",
+    "deleting": "En eliminación",
     "dismissed": "Descartado",
     "draft": "Borrador",
     "expired": "Expirado",
@@ -2585,7 +2586,7 @@
       "uncategorized": "Sin categoría",
       "signIn": "Inicia sesión como creador para empezar un producto.",
       "loadError": "No pudimos cargar tus productos. Actualiza la página o contacta con el soporte de SkillsetMind.",
-      "deleteError": "No pudimos eliminar este borrador. Inténtalo de nuevo o contacta con el soporte de SkillsetMind.",
+      "deleteError": "No pudimos eliminar este producto. No se borró nada. Inténtalo de nuevo o contacta con el soporte de SkillsetMind.",
       "actions": {
         "more": "Más acciones para {title}",
         "menu": "Acciones para {title}",
@@ -2600,7 +2601,19 @@
         "description": "Esto elimina de forma permanente el curso y todo su contenido. No se puede deshacer.",
         "cancel": "Cancelar",
         "busy": "Eliminando...",
-        "confirm": "Sí, eliminar"
+        "confirm": "Sí, eliminar",
+        "consequences": {
+          "lead": "También se elimina:",
+          "content": "Lecciones, textos y archivos",
+          "videos": "Los videos subidos",
+          "community": "Publicaciones y respuestas de la comunidad",
+          "events": "Sesiones en vivo e invitaciones pendientes"
+        },
+        "filesNote": "Los archivos y videos se quitan de nuestros servidores por lotes, cada hora, a partir de un día después de eliminarlo. Hasta entonces, el producto aparece como \"En eliminación\". Lo que otro producto todavía usa se conserva."
+      },
+      "beingDeleted": {
+        "aria": "Productos en eliminación",
+        "note": "Quitamos archivos y videos por lotes, cada hora, a partir de un día después de eliminarlo."
       },
       "archive": {
         "eyebrow": "Archivar producto",

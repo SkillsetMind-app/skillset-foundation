@@ -1259,6 +1259,7 @@
     "active": "Active",
     "cancelled": "Cancelled",
     "completed": "Completed",
+    "deleting": "Being deleted",
     "dismissed": "Dismissed",
     "draft": "Draft",
     "expired": "Expired",
@@ -2585,7 +2586,7 @@
       "uncategorized": "Uncategorized",
       "signIn": "Sign in as a creator to start a product.",
       "loadError": "We could not load your products. Please refresh or contact SkillsetMind support.",
-      "deleteError": "We could not delete this draft. Please try again or contact SkillsetMind support.",
+      "deleteError": "We could not delete this product. Nothing was removed. Please try again or contact SkillsetMind support.",
       "actions": {
         "more": "More actions for {title}",
         "menu": "Actions for {title}",
@@ -2600,7 +2601,19 @@
         "description": "This permanently deletes the course and all its content. It can't be undone.",
         "cancel": "Cancel",
         "busy": "Deleting...",
-        "confirm": "Yes, delete"
+        "confirm": "Yes, delete",
+        "consequences": {
+          "lead": "This also deletes:",
+          "content": "Lessons, texts and files",
+          "videos": "Uploaded videos",
+          "community": "Community posts and replies",
+          "events": "Live sessions and pending invitations"
+        },
+        "filesNote": "Files and videos are removed from our servers in hourly batches, starting about a day after you delete. Until then the product shows as \"Being deleted\". Anything another product still uses is kept."
+      },
+      "beingDeleted": {
+        "aria": "Products being deleted",
+        "note": "Files and videos are removed in hourly batches, starting about a day after deletion."
       },
       "archive": {
         "eyebrow": "Archive product",

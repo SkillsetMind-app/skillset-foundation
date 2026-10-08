@@ -129,7 +129,18 @@ SELECT pg_temp.check_security('event prevents deleting a referenced course',pg_t
  $$DELETE FROM public.courses WHERE id='audit-retained-event'$$));
 SELECT pg_temp.check_security('event prevents changing a referenced course ID',pg_temp.foreign_key_denied(
  $$UPDATE public.courses SET id='audit-reused-event-id' WHERE id='audit-retained-event'$$));
-SELECT public.delete_teacher_course_draft('audit-empty-draft');
+-- 20261008030000 tirou o EXECUTE do cliente na delete_teacher_course_draft; o
+-- app apaga pela delete_or_archive_own_course. Este arquivo tambem roda ANTES
+-- de 20260908120000 (prova RED em scripts/build-test-db.sh), quando so a
+-- antiga existe: chama a que houver.
+SELECT pg_temp.assume_session(:'teacher_uid','authenticated','aal2');
+DO $$ BEGIN
+  EXECUTE format('SELECT public.%I(%L)',
+    CASE WHEN to_regprocedure('public.delete_or_archive_own_course(text)') IS NULL
+      THEN 'delete_teacher_course_draft' ELSE 'delete_or_archive_own_course' END,
+    'audit-empty-draft');
+END $$;
+SELECT pg_temp.assume_session(:'teacher_uid','authenticated');
 SELECT pg_temp.check_security('teacher retains deletion of an empty draft',
  NOT EXISTS(SELECT FROM public.courses WHERE id='audit-empty-draft'));
 SELECT pg_temp.check_security('RSVP cannot use enrollment in a different course',pg_temp.denied(format(
