@@ -265,6 +265,37 @@ const materialTypesByExtension: Record<string, string> = {
   mm: "application/x-freemind",
 };
 
+/**
+ * O que o bucket `course-content` aceita: tipos que o navegador mostra sem
+ * rodar script, ou que ele só baixa. SVG, HTML e XML ficam de fora — abertos
+ * pelo link assinado, o script deles rodava no domínio do storage. Espelho de
+ * supabase/migrations/20261008020000_course_content_sem_conteudo_ativo.sql
+ * (materiais-extensoes.test.ts confere).
+ */
+export const courseContentMimeTypes: readonly string[] = [
+  ...new Set([
+    ...lessonMaterialMimeTypes,
+    ...Object.values(materialTypesByExtension),
+    "application/octet-stream",
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "image/gif",
+    "image/avif",
+    "text/plain",
+    "text/markdown",
+    "audio/*",
+    "video/*",
+  ]),
+];
+
+/** Mesma regra do Storage: o tipo exato ou o curinga da família (`video/*`). */
+export function isCourseContentMimeType(type: string): boolean {
+  const slash = type.indexOf("/");
+  return courseContentMimeTypes.includes(type)
+    || (slash > 0 && courseContentMimeTypes.includes(`${type.slice(0, slash)}/*`));
+}
+
 const lessonMaterialExtensions = new Set([
   "pdf",
   "txt",
@@ -293,11 +324,13 @@ function getFileExtension(fileName: string) {
 /**
  * O tipo gravado no arquivo e na linha. Tipo vazio quebrava o envio: a linha
  * exige ao menos 3 letras em content_type, e um .md ou .xmind sem tipo do
- * navegador caía no erro genérico.
+ * navegador caía no erro genérico. Fora de `courseContentMimeTypes` (SVG,
+ * HTML, XML, tipo vazio) vira application/octet-stream: o navegador baixa em
+ * vez de abrir.
  */
 export function getCourseAssetContentType(file: File): string {
-  return materialTypesByExtension[getFileExtension(file.name)]
-    ?? (file.type || "application/octet-stream");
+  const type = materialTypesByExtension[getFileExtension(file.name)] ?? file.type;
+  return isCourseContentMimeType(type) ? type : "application/octet-stream";
 }
 
 export function isAllowedCourseAssetFile(file: File, kind: CourseAssetKind): boolean {

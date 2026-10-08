@@ -7,6 +7,7 @@ import {
   courseAssetUploadLimitMessage,
   getCourseAssetContentType,
   isAllowedCourseAssetFile,
+  isCourseContentMimeType,
   supabaseUploadLimitBytes,
 } from "@/domain/course-asset";
 import { getSafeMediaUrl } from "@/domain/external-url";
@@ -126,9 +127,12 @@ export async function uploadCourseAsset(input: UploadCourseAssetInput) {
     state: "running",
   });
 
+  // A storage-js ignora `contentType` quando o corpo é um File e grava o tipo
+  // do próprio File: um SVG ficava image/svg+xml no storage. O novo File só
+  // aponta para os mesmos bytes, com o tipo seguro.
   const { error: uploadError } = await supabase.storage
     .from(bucket)
-    .upload(storagePath, input.file, {
+    .upload(storagePath, new File([input.file], input.file.name, { type: contentType }), {
       contentType,
       upsert: false,
     });
@@ -395,7 +399,10 @@ export async function getProtectedCourseAssetObjectUrl(
     throw error;
   }
 
-  if (!options.download) {
+  // Arquivo antigo com tipo fora da lista do bucket (SVG, HTML, XML): o link de
+  // abrir também vem como anexo. Aberto na aba, o script dele rodaria no
+  // domínio do storage. <img> e <video> ignoram o anexo e seguem mostrando.
+  if (!options.download && isCourseContentMimeType(asset.contentType)) {
     return data.signedUrl;
   }
 

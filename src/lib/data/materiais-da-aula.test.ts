@@ -214,15 +214,51 @@ describe("tipo do arquivo no envio", () => {
     ["mapa.mm", "text/x-objective-c++", "application/x-freemind"],
     ["livro.epub", "application/epub+zip", "application/epub+zip"],
     ["notas.md", "", "application/octet-stream"],
+    // Conteúdo ativo: aberto inline, o script rodaria no domínio do storage.
+    ["logo.svg", "image/svg+xml", "application/octet-stream"],
+    ["pagina.html", "text/html", "application/octet-stream"],
+    ["feed.xml", "text/xml", "application/octet-stream"],
   ])("%s (navegador disse %j) sobe como %s", async (name, browserType, expected) => {
-    const file = new File(["x"], name, { type: browserType });
+    const file = new File(["conteudo"], name, { type: browserType });
 
     await uploadCourseAsset({
       courseId: "course-1", ownerId: "teacher-1", kind: "lesson_material", file,
       isPreview: false, lessonId: "lesson-1",
     });
 
-    expect(mocks.upload).toHaveBeenCalledWith(expect.any(String), file, { contentType: expected, upsert: false });
+    expect(mocks.upload).toHaveBeenCalledWith(expect.any(String), expect.any(File), { contentType: expected, upsert: false });
+    // A storage-js ignora `contentType` quando o corpo é um File e grava o tipo
+    // do próprio File. O tipo seguro tem que estar no arquivo que sobe.
+    const body = mocks.upload.mock.lastCall?.[1] as File;
+    expect(body.type).toBe(expected);
+    expect(body.name).toBe(name);
+    expect(await body.text()).toBe("conteudo");
     expect(mocks.insert).toHaveBeenCalledWith(expect.objectContaining({ content_type: expected, file_name: name }));
+  });
+});
+
+describe("arquivo antigo com conteúdo ativo", () => {
+  it.each([
+    ["logo.svg", "image/svg+xml"],
+    ["pagina.html", "text/html"],
+    ["feed.xml", "text/xml"],
+  ])("o link de abrir de %s (%s) vem como anexo, com o mesmo pedido assinado", async (fileName, contentType) => {
+    const url = await getProtectedCourseAssetObjectUrl(material({ fileName, contentType }));
+
+    expect(mocks.sign).toHaveBeenCalledExactlyOnceWith(material().storagePath, 3600);
+    expect(url).toBe(`https://storage.test/signed?download=${fileName}`);
+  });
+
+  it("PDF, imagem comum e vídeo continuam abrindo na tela", async () => {
+    for (const contentType of ["application/pdf", "image/png", "video/mp4"]) {
+      expect(await getProtectedCourseAssetObjectUrl(material({ contentType }))).toBe("https://storage.test/signed");
+    }
+  });
+
+  it("recusa do storage (sem matrícula ou aula fechada) segue virando erro", async () => {
+    mocks.sign.mockResolvedValue({ data: null, error: new Error("Object not found") });
+
+    await expect(getProtectedCourseAssetObjectUrl(material({ contentType: "image/svg+xml" })))
+      .rejects.toThrow("Object not found");
   });
 });
