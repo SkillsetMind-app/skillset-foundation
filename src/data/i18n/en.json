@@ -3492,7 +3492,7 @@
       "descriptionPlaceholder": "Explain what the student is about to learn and why it matters.",
       "descriptionHelpPreview": "This is the free preview lesson: anyone can read this text on the course page. Links that start with https:// become clickable.",
       "oldNote": "Old public note (shown to students above the description; anyone can read it)",
-      "materialsHelp": "Complementary files are attached to this lesson and become downloadable inside the student classroom.",
+      "materialsHelp": "Students download these files inside the lesson. You can add PDF, Word, PowerPoint, Excel, e-books (EPUB), mind maps (XMind, FreeMind), images, audio or ZIP.",
       "noMaterials": "No complementary materials yet.",
       "type": "Lesson type",
       "duration": "Duration minutes",
@@ -3513,7 +3513,6 @@
         "previewUnavailable": "This browser cannot preview this file. You can still upload it.",
         "videoType": "Video type",
         "select": "Choose file",
-        "allowPreview": "Allow this file in the public preview when it is safe.",
         "cancel": "Cancel upload",
         "upload": "Upload file",
         "uploading": "Uploading..."
@@ -3528,16 +3527,25 @@
         "videoTooLarge": "This video is {size} — the limit is {limit}.",
         "videoLimit": "Use a video file under {limit}.",
         "invalidFile": "Use a valid {kind} file under {limit}.",
-        "delete": "We could not delete this file. Check course ownership and current permissions."
+        "delete": "We could not delete this file. Check course ownership and current permissions.",
+        "save": "We could not save this change. Try again."
       },
       "success": {
         "uploaded": "File uploaded to this lesson.",
         "deleted": "Asset deleted.",
-        "oldLinkRemoved": "Old link removed."
+        "oldLinkRemoved": "Old link removed.",
+        "renamed": "Name saved.",
+        "ordered": "Order saved."
       },
       "deleteConfirm": "Delete \"{fileName}\"? This permanently removes the file.",
       "thumbnailAlt": "Lesson thumbnail: {fileName}",
       "enrolledOnly": "Enrolled only",
+      "files": {
+        "titleLabel": "Name students see",
+        "originalName": "File: {fileName}",
+        "moveUp": "Move \"{title}\" up",
+        "moveDown": "Move \"{title}\" down"
+      },
       "deleting": "Deleting...",
       "delete": "Delete"
     },
