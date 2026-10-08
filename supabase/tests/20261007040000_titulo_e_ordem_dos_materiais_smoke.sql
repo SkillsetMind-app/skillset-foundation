@@ -6,8 +6,9 @@
 --   hoje dentro de cada aula, sem tocar no que já tinha valor;
 -- - rodar a migration de novo não muda nada (idempotente);
 -- - o envio de hoje (sem título nem posição) continua entrando;
--- - o banco recusa título vazio, título comprido e posição negativa;
--- - o dono renomeia e reordena pela própria sessão;
+-- - o banco recusa título vazio, título comprido e posição fora de 0..10000,
+--   e aceita título de exatamente 180 caracteres;
+-- - o dono renomeia e reordena pela própria sessão; professor de outro curso não;
 -- - o acesso continua igual: quem não é matriculado não vê linha nem arquivo;
 --   o matriculado não vê o material da aula ainda fechada e não renomeia nada.
 begin;
@@ -47,17 +48,18 @@ create function pg_temp.files_seen() returns text[] language sql stable as $$
   where bucket_id = 'course-content' and name like 'courses/smoke-materiais/%';
 $$;
 
--- 1 dono, 2 aluno ativo (matriculado hoje), 3 ninguém matriculado.
+-- 1 dono, 2 aluno ativo (matriculado hoje), 3 ninguém matriculado,
+-- 4 professor dono de outro curso.
 select pg_temp.act_as(null, 'service_role');
 select set_config('skillset.trusted_write', 'on', true);
 insert into auth.users(id, aud, role, email, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
 select pg_temp.uid(n), 'authenticated', 'authenticated', 'materiais-' || n || '@example.test',
   now(), '{}', '{}', now(), now()
-from generate_series(1, 3) n;
+from generate_series(1, 4) n;
 update public.users
   set roles = '["student","teacher"]', teacher_terms_accepted_at = now(), teacher_terms_version = 'smoke',
       activation_fee_paid_at = now()
-  where uid = pg_temp.uid(1)::text;
+  where uid in (pg_temp.uid(1)::text, pg_temp.uid(4)::text);
 -- Aula a abre no dia da matrícula; aula b, 7 dias depois; aula c, também no dia.
 insert into public.courses(id, owner_id, slug, title, summary, category, status, currency,
   price_amount_minor, payment_type, modules, drip_strategy)
@@ -68,6 +70,10 @@ values ('smoke-materiais', pg_temp.uid(1)::text, 'smoke-materiais', 'Smoke mater
     jsonb_build_object('id', 'sm-b', 'title', 'Aula b', 'type', 'text', 'dripDelayDays', 7),
     jsonb_build_object('id', 'sm-c', 'title', 'Aula c', 'type', 'text', 'dripDelayDays', 0)))),
   'time_drip_custom');
+insert into public.courses(id, owner_id, slug, title, summary, category, status, currency,
+  price_amount_minor, payment_type, modules)
+values ('smoke-materiais-outro', pg_temp.uid(4)::text, 'smoke-materiais-outro', 'Smoke materiais outro',
+  'Curso de outro professor, usado só por este smoke.', 'smoke', 'draft', 'usd', 0, 'free', '[]'::jsonb);
 insert into public.enrollments(id, user_id, course_id, course_slug, course_title, course_category,
   course_image, status, source)
 values (pg_temp.uid(2)::text || '__smoke-materiais', pg_temp.uid(2)::text, 'smoke-materiais',
@@ -151,7 +157,21 @@ select pg_temp.check_material('a title over 180 characters is refused',
   pg_temp.refused(format('update public.course_assets set title = %L where id = %L', repeat('x', 181), 'sm-alpha')));
 select pg_temp.check_material('a negative position is refused',
   pg_temp.refused($q$update public.course_assets set position = -1 where id = 'sm-alpha'$q$));
+select pg_temp.check_material('a position over 10000 is refused',
+  pg_temp.refused($q$update public.course_assets set position = 10001 where id = 'sm-alpha'$q$));
+update public.course_assets set title = repeat('y', 180), position = 10000 where id = 'sm-beta';
+select pg_temp.check_material('a title of exactly 180 characters and position 10000 are accepted',
+  (select char_length(title) = 180 and position = 10000 from public.course_assets where id = 'sm-beta'));
 reset role;
+
+-- Professor de outro curso: a policy de update do dono filtra a linha, nada muda.
+select pg_temp.act_as(pg_temp.uid(4), 'authenticated');
+set local role authenticated;
+update public.course_assets set title = 'Outro professor', position = 1 where id = 'sm-beta';
+reset role;
+select pg_temp.act_as(null, 'service_role');
+select pg_temp.check_material('another teacher cannot rename or reorder',
+  (select title = repeat('y', 180) and position = 10000 from public.course_assets where id = 'sm-beta'));
 
 -- O acesso não mudou. Sem matrícula: nem a linha nem o arquivo (sem linha não
 -- há link assinado; o storage confere a mesma policy ao assinar).
@@ -181,7 +201,7 @@ select pg_temp.check_material('enrolled: cannot rename or reorder',
   (select a.title = 'alpha.pdf' and a.position = s.position
      from public.course_assets a join material_snapshot s using (id) where a.id = 'sm-alpha'));
 
-select pg_temp.check_material('every case ran', (select count(*) = 19 from material_checks));
+select pg_temp.check_material('every case ran', (select count(*) = 22 from material_checks));
 
 select name, passed from material_checks order by name;
 do $$
