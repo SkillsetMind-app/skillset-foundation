@@ -146,9 +146,11 @@ export async function deleteOrArchiveCourse(courseId: string): Promise<DeleteOrA
  * Quantos compradores este curso tem, na visao do dono. Decide o TEXTO do modal
  * antes da acao; o destino de verdade continua sendo o do servidor.
  *
- * Sao duas leituras porque as duas tabelas se leem de formas diferentes: a RLS
- * de `enrollments` so devolve a linha do PROPRIO aluno (por isso o RPC do
- * roster existe), enquanto `orders` tem policy de leitura para o professor.
+ * As tabelas se leem de formas diferentes: a RLS de `enrollments` so devolve a
+ * linha do PROPRIO aluno (por isso o RPC do roster existe), enquanto `orders` e
+ * `course_subscriptions` tem policy de leitura para o professor
+ * (`*_teacher_read`, 20260807120000). Assinatura conta como comprador: o
+ * servidor arquiva produto so com assinatura, e o modal nao pode prometer apagar.
  *
  * ponytail: reusa o roster inteiro do professor e conta em memoria. Trocar por
  * um `p_course_id` + LIMIT na `get_my_course_students` quando alguem passar do
@@ -157,20 +159,25 @@ export async function deleteOrArchiveCourse(courseId: string): Promise<DeleteOrA
  */
 export async function getCourseAudience(
   courseId: string
-): Promise<{ enrollments: number; orders: number }> {
+): Promise<{ enrollments: number; orders: number; subscriptions: number }> {
   const supabase = getSupabaseBrowserClient();
-  const [students, orders] = await Promise.all([
+  const [students, orders, subscriptions] = await Promise.all([
     getMyCourseStudents(),
     supabase.from("orders").select("id", { count: "exact", head: true }).eq("course_id", courseId),
+    supabase.from("course_subscriptions").select("id", { count: "exact", head: true }).eq("course_id", courseId),
   ]);
 
   if (orders.error) {
     throw orders.error;
   }
+  if (subscriptions.error) {
+    throw subscriptions.error;
+  }
 
   return {
     enrollments: students.filter((student) => student.courseId === courseId).length,
     orders: orders.count ?? 0,
+    subscriptions: subscriptions.count ?? 0,
   };
 }
 

@@ -710,33 +710,45 @@ export type Database = {
         Row: {
           attempts: number
           bunny_assets: Json
+          course_created_at: string | null
           course_id: string
           finished_at: string | null
           last_error: string | null
+          last_progress_at: string | null
           owner_id: string
           requested_at: string
+          result: Json
+          stalled_runs: number
           status: string
           title: string
         }
         Insert: {
           attempts?: number
           bunny_assets?: Json
+          course_created_at?: string | null
           course_id: string
           finished_at?: string | null
           last_error?: string | null
+          last_progress_at?: string | null
           owner_id: string
           requested_at?: string
+          result?: Json
+          stalled_runs?: number
           status?: string
           title?: string
         }
         Update: {
           attempts?: number
           bunny_assets?: Json
+          course_created_at?: string | null
           course_id?: string
           finished_at?: string | null
           last_error?: string | null
+          last_progress_at?: string | null
           owner_id?: string
           requested_at?: string
+          result?: Json
+          stalled_runs?: number
           status?: string
           title?: string
         }
@@ -2689,9 +2701,14 @@ export type Database = {
         Args: { p_uid?: string } | never
         Returns: boolean
       }
+      course_cleanup_video_deletable: {
+        Args: { p_course_id: string; p_video_id: string }
+        Returns: boolean
+      }
       course_storage_objects_for_cleanup: {
         Args: { p_course_id: string }
         Returns: {
+          in_use: boolean
           object_bucket: string
           object_name: string
         }[]

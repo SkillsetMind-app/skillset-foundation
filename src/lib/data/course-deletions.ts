@@ -10,7 +10,8 @@ export type CourseBeingDeleted = { courseId: string; title: string; requestedAt:
 
 /**
  * Produtos do professor apagados cujos arquivos e videos ainda nao sairam
- * (a limpeza roda ate 24 h depois). A fila e so do service role; a funcao
+ * (fila pending: a limpeza comeca um dia depois e roda de hora em hora, em
+ * lotes). failed e cancelled nao aparecem. A fila e so do service role; a funcao
  * devolve so as linhas do proprio dono, e lista vazia sem o segundo fator.
  */
 export async function getMyCoursesBeingDeleted(): Promise<CourseBeingDeleted[]> {

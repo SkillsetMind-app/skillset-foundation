@@ -176,9 +176,10 @@ jobs:
             -H "Authorization: Bearer $CRON_SECRET" \
             https://www.skillsetmind.com/api/cron/notification-digest
 
-  # Files (Storage) and videos (Bunny) of deleted products, 24 h after the
-  # delete. Its own job, so a red cleanup never turns the Stripe check red. The
-  # route only lists (dry run) until COURSE_CLEANUP_LIVE=1 is set on Vercel.
+  # Files (Storage) and videos (Bunny) of deleted products, starting a day
+  # after the delete, in hourly batches. Its own job, so a red cleanup never
+  # turns the Stripe check red. The route only lists (dry run) until
+  # COURSE_CLEANUP_LIVE=1 is set on Vercel.
   course-cleanup:
     name: Clean up deleted products
     # A reminder catch-up runs the reminder job alone.

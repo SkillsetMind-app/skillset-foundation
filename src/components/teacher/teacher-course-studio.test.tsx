@@ -94,7 +94,7 @@ describe("TeacherCourseStudio — lista de produtos", () => {
     mocks.deleteOrArchiveCourse.mockReset();
     mocks.deleteOrArchiveCourse.mockResolvedValue({ outcome: "deleted" });
     mocks.getCourseAudience.mockReset();
-    mocks.getCourseAudience.mockResolvedValue({ enrollments: 0, orders: 0 });
+    mocks.getCourseAudience.mockResolvedValue({ enrollments: 0, orders: 0, subscriptions: 0 });
     mocks.push.mockReset();
     mocks.getMyCoursesBeingDeleted.mockReset();
     mocks.getMyCoursesBeingDeleted.mockResolvedValue([]);
@@ -159,7 +159,8 @@ describe("TeacherCourseStudio — lista de produtos", () => {
   // Os atalhos de navegacao ocupavam a primeira faixa e escondiam o assunto
   // da pagina. No DOM, a lista precisa vir antes deles para leitura e teclado.
   // Onda G2b: o produto apagado sai da tabela na hora, mas arquivos e videos
-  // saem ate 24 h depois. Ate la ele aparece fora da tabela, com o selo.
+  // saem a partir de um dia depois, em lotes. Ate la (fila pending) ele
+  // aparece fora da tabela, com o selo.
   it("shows products still being deleted with the chip, outside the table and not clickable", async () => {
     mocks.getMyCoursesBeingDeleted.mockResolvedValue([
       { courseId: "gone-1", title: "Old workshop", requestedAt: "2026-10-08T10:00:00Z" },
@@ -170,7 +171,7 @@ describe("TeacherCourseStudio — lista de produtos", () => {
     expect(within(list).getByText("Old workshop")).toBeInTheDocument();
     expect(within(list).getByText("Being deleted")).toHaveClass("status-chip--warning");
     expect(
-      within(list).getByText("Removing files and videos. This takes up to 24 hours."),
+      within(list).getByText("Files and videos are removed in hourly batches, starting about a day after deletion."),
     ).toBeInTheDocument();
     expect(within(list).queryByRole("link")).toBeNull();
     expect(within(list).queryByRole("button")).toBeNull();

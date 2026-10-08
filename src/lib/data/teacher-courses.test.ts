@@ -4,6 +4,7 @@ import type { UpdateTeacherCourseBuilderInput } from "@/domain/teacher-course";
 import { clearLessonVideoSelection, invalidateCourseWrites, recordLessonVideoSelection, runCourseWrite } from "./course-write-queue";
 import {
   deleteOrArchiveCourse,
+  getCourseAudience,
   subscribeToTeacherCourse,
   updateTeacherCourseBuilder,
 } from "@/lib/data/teacher-courses";
@@ -11,6 +12,7 @@ import {
 const mocks = vi.hoisted(() => ({
   course: vi.fn(),
   content: vi.fn(),
+  count: vi.fn(),
   rpc: vi.fn(),
   removeChannel: vi.fn(),
   listeners: new Map<string, () => void>(),
@@ -26,8 +28,10 @@ vi.mock("@/lib/supabase/client", () => ({
       subscribe: () => channel,
     };
     return {
-      from: (table: string) => ({ select: () => ({
-        eq: table === "courses" ? () => ({ maybeSingle: mocks.course }) : mocks.content,
+      from: (table: string) => ({ select: (_columns: string, options?: { head?: boolean }) => ({
+        eq: table === "courses" ? () => ({ maybeSingle: mocks.course })
+          : options?.head ? (column: string, value: string) => mocks.count(table, column, value)
+          : mocks.content,
       }) }),
       rpc: mocks.rpc,
       channel: () => channel,
@@ -167,5 +171,27 @@ describe("uma acao, dois destinos", () => {
     mocks.rpc.mockResolvedValueOnce({ data: null, error: new Error("Course not found.") });
 
     await expect(deleteOrArchiveCourse("course")).rejects.toThrow("Course not found.");
+  });
+
+  // O servidor arquiva produto só com assinatura; o modal precisa saber disso
+  // antes do clique. O professor lê as assinaturas pela policy
+  // course_subscriptions_teacher_read, filtrando pelo id do curso.
+  it("a contagem do modal inclui as assinaturas do curso", async () => {
+    mocks.rpc.mockResolvedValueOnce({ data: [], error: null });
+    mocks.count.mockImplementation((table: string) =>
+      Promise.resolve({ count: table === "course_subscriptions" ? 2 : 0, error: null }));
+
+    await expect(getCourseAudience("course")).resolves.toEqual({ enrollments: 0, orders: 0, subscriptions: 2 });
+    expect(mocks.count).toHaveBeenCalledWith("course_subscriptions", "course_id", "course");
+  });
+
+  it("sem conseguir ler as assinaturas, o modal não chuta", async () => {
+    mocks.rpc.mockResolvedValueOnce({ data: [], error: null });
+    mocks.count.mockImplementation((table: string) =>
+      Promise.resolve(table === "course_subscriptions"
+        ? { count: null, error: new Error("permission denied") }
+        : { count: 0, error: null }));
+
+    await expect(getCourseAudience("course")).rejects.toThrow("permission denied");
   });
 });

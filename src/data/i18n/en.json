@@ -2605,15 +2605,15 @@
         "consequences": {
           "lead": "This also deletes:",
           "content": "Lessons, texts and files",
-          "videos": "Every uploaded video",
+          "videos": "Uploaded videos",
           "community": "Community posts and replies",
           "events": "Live sessions and pending invitations"
         },
-        "filesNote": "Files and videos leave our servers within 24 hours. Until then the product shows as \"Being deleted\"."
+        "filesNote": "Files and videos are removed from our servers in hourly batches, starting about a day after you delete. Until then the product shows as \"Being deleted\". Anything another product still uses is kept."
       },
       "beingDeleted": {
         "aria": "Products being deleted",
-        "note": "Removing files and videos. This takes up to 24 hours."
+        "note": "Files and videos are removed in hourly batches, starting about a day after deletion."
       },
       "archive": {
         "eyebrow": "Archive product",

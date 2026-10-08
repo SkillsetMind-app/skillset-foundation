@@ -72,7 +72,7 @@ const statusVariants: Record<string, string> = {
   succeeded: "success",
   draft: "draft",
   in_review: "warning",
-  // Produto apagado esperando a limpeza de arquivos e videos (ate 24 h).
+  // Produto apagado esperando a limpeza de arquivos e videos (fila pending).
   deleting: "warning",
   needs_changes: "danger",
   rejected: "danger",

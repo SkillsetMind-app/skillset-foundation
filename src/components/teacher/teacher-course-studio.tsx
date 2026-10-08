@@ -310,7 +310,7 @@ export function TeacherCourseStudio({
           </label>
         </div>
 
-        {/* Apagado, mas arquivos e videos ainda saindo (ate 24 h). Nao e
+        {/* Apagado, mas arquivos e videos ainda na fila (status pending). Nao e
             clicavel: o produto ja nao existe. */}
         {beingDeleted.length > 0 ? (
           <ul

@@ -136,7 +136,10 @@ describe("delete_or_archive_own_course — apagar não pode virar apagar de quem
     expect(corpo).toMatch(/security\s+definer/i);
     expect(corpo).toMatch(/set\s+search_path\s+to\s+'public',\s*'pg_temp'/i);
     expect(corpo).toMatch(/require_strong_session\(\)/i);
-    expect(corpo).toMatch(/v_owner\s*<>\s*v_uid/i);
+    // O dono vai no WHERE do FOR UPDATE: quem não é dono nem trava a linha de
+    // outra pessoa nem descobre se o id existe (revisão do #507, D7).
+    expect(corpo).toMatch(/where\s+id\s*=\s*p_course_id\s+and\s+owner_id\s*=\s*v_uid\s+for\s+update/i);
+    expect(corpo).not.toMatch(/Only the course owner can delete it/);
   });
 
   // Onda G2b: post do professor e convite pendente travavam o DELETE (FK sem
@@ -199,6 +202,42 @@ describe("course_deletions — a fila da limpeza nasce junto com o DELETE", () =
     expect(lista).toMatch(/'courses\/'\s*\|\|\s*p_course_id\s*\|\|\s*'\/'/);
     expect(lista).toMatch(/\^\[A-Za-z0-9\]\[A-Za-z0-9_-\]\*\$/);
     expect(lista).toMatch(/Course id is in use again/);
+  });
+
+  // Revisão do #507: id escolhido à mão, arquivo emprestado, vídeo re-checado.
+  it("a lista só traz o que nasceu enquanto o curso existia, da fila pending, e marca o que outra linha usa", () => {
+    const lista = definicaoEfetiva("course_storage_objects_for_cleanup");
+    expect(lista).toMatch(/v_job\.status\s*<>\s*'pending'/);
+    expect(lista).toMatch(/o\.created_at\s*<=\s*v_job\.requested_at/);
+    expect(lista).toMatch(/o\.created_at\s*>=\s*v_job\.course_created_at/);
+    expect(lista).toMatch(/course_cleanup_references\(/);
+    expect(lista).toMatch(/in_use\s+boolean/i);
+  });
+
+  it("vídeo só sai com a fila pending, o id sem curso e ninguém citando", () => {
+    const video = definicaoEfetiva("course_cleanup_video_deletable");
+    expect(video).toMatch(/is_service_role\(\)/);
+    expect(video).toMatch(/d\.status\s*=\s*'pending'/);
+    expect(video).toMatch(/not\s+exists\s*\(select\s+1\s+from\s+public\.courses/i);
+    expect(video).toMatch(/not\s+exists\s*\(select\s+1\s+from\s+public\.course_cleanup_references\(p_video_id\)\)/i);
+  });
+
+  it("criar ou renomear curso para um id ainda na fila é recusado", () => {
+    const gatilho = definicaoEfetiva("courses_refuse_id_being_deleted");
+    expect(gatilho).toMatch(/status\s+not\s+in\s*\(\s*'done'\s*,\s*'cancelled'\s*\)/i);
+    expect(textoDasMigrations()).toMatch(
+      /before\s+insert\s+or\s+update\s+of\s+id\s+on\s+public\.courses[\s\S]{0,80}courses_refuse_id_being_deleted\(\)/i,
+    );
+  });
+
+  it("o selo mostra só o que ainda está na fila (failed e cancelled não ficam para sempre)", () => {
+    expect(definicaoEfetiva("list_my_courses_being_deleted")).toMatch(/d\.status\s*=\s*'pending'/);
+  });
+
+  it("a porta antiga delete_teacher_course_draft não é mais do cliente", () => {
+    expect(textoDasMigrations()).toMatch(
+      /revoke\s+execute\s+on\s+function\s+public\.delete_teacher_course_draft\(text\)\s+from\s+public,\s*anon,\s*authenticated/i,
+    );
   });
 });
 

@@ -152,7 +152,7 @@ beforeEach(() => {
   mocks.deleteOrArchiveCourse.mockReset();
   mocks.deleteOrArchiveCourse.mockResolvedValue({ outcome: "deleted" });
   mocks.getCourseAudience.mockReset();
-  mocks.getCourseAudience.mockResolvedValue({ enrollments: 0, orders: 0 });
+  mocks.getCourseAudience.mockResolvedValue({ enrollments: 0, orders: 0, subscriptions: 0 });
 });
 
 afterEach(cleanup);
@@ -283,13 +283,13 @@ describe("modal de excluir/arquivar — o texto segue o dado", () => {
 
   // Onda G2b: o que some junto vem escrito antes do clique, e o botão final
   // parece perigo (vermelho cheio), não um contorno vermelho em fundo branco.
-  it("sem comprador, lista o que some, avisa das 24 h e confirma em vermelho cheio", async () => {
+  it("sem comprador, lista o que some, diz quando a limpeza começa e confirma em vermelho cheio", async () => {
     const dialog = await abreModalDoHub();
 
     await within(dialog).findByText("This also deletes:");
     for (const item of [
       "Lessons, texts and files",
-      "Every uploaded video",
+      "Uploaded videos",
       "Community posts and replies",
       "Live sessions and pending invitations",
     ]) {
@@ -297,7 +297,7 @@ describe("modal de excluir/arquivar — o texto segue o dado", () => {
     }
     expect(
       within(dialog).getByText(
-        'Files and videos leave our servers within 24 hours. Until then the product shows as "Being deleted".',
+        'Files and videos are removed from our servers in hourly batches, starting about a day after you delete. Until then the product shows as "Being deleted". Anything another product still uses is kept.',
       ),
     ).toBeInTheDocument();
     expect(within(dialog).getByRole("button", { name: "Yes, delete" })).toHaveClass(
@@ -307,14 +307,25 @@ describe("modal de excluir/arquivar — o texto segue o dado", () => {
   });
 
   it("com comprador, não promete apagar nada e confirma em azul", async () => {
-    mocks.getCourseAudience.mockResolvedValue({ enrollments: 1, orders: 0 });
+    mocks.getCourseAudience.mockResolvedValue({ enrollments: 1, orders: 0, subscriptions: 0 });
     const dialog = await abreModalDoHub();
 
     const archive = await within(dialog).findByRole("button", { name: "Archive course" });
     expect(archive).toHaveClass("button-solid");
     expect(archive).not.toHaveClass("button-danger-solid");
     expect(within(dialog).queryByText("This also deletes:")).toBeNull();
-    expect(within(dialog).queryByText(/within 24 hours/)).toBeNull();
+    expect(within(dialog).queryByText(/about a day after/)).toBeNull();
+  });
+
+  // Produto só com assinatura: o servidor arquiva (assinatura é comprador), e
+  // o modal dizia "Yes, delete" e prometia apagar arquivos e vídeos.
+  it("só com assinatura, também promete arquivar, nunca apagar", async () => {
+    mocks.getCourseAudience.mockResolvedValue({ enrollments: 0, orders: 0, subscriptions: 1 });
+    const dialog = await abreModalDoHub();
+
+    expect(await within(dialog).findByRole("button", { name: "Archive course" })).toBeInTheDocument();
+    expect(within(dialog).queryByRole("button", { name: "Yes, delete" })).toBeNull();
+    expect(within(dialog).queryByText("This also deletes:")).toBeNull();
   });
 
   it("se o servidor recusar, diz que nada foi apagado (e não fala mais em rascunho)", async () => {
@@ -330,7 +341,7 @@ describe("modal de excluir/arquivar — o texto segue o dado", () => {
   });
 
   it("com comprador, promete arquivar e manter o acesso de quem pagou", async () => {
-    mocks.getCourseAudience.mockResolvedValue({ enrollments: 3, orders: 3 });
+    mocks.getCourseAudience.mockResolvedValue({ enrollments: 3, orders: 3, subscriptions: 0 });
     const dialog = await abreModalDoHub();
 
     await within(dialog).findByText("This course has students");
@@ -358,7 +369,7 @@ describe("o que acontece depois da ação", () => {
 
   it("arquivado, o hub continua de pé e mostra como republicar", async () => {
     mocks.course.status = "inactive";
-    mocks.getCourseAudience.mockResolvedValue({ enrollments: 3, orders: 3 });
+    mocks.getCourseAudience.mockResolvedValue({ enrollments: 3, orders: 3, subscriptions: 0 });
     mocks.deleteOrArchiveCourse.mockResolvedValue({
       outcome: "archived",
       enrollments: 3,

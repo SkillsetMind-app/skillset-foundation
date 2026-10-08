@@ -2605,15 +2605,15 @@
         "consequences": {
           "lead": "También se elimina:",
           "content": "Lecciones, textos y archivos",
-          "videos": "Todos los videos subidos",
+          "videos": "Los videos subidos",
           "community": "Publicaciones y respuestas de la comunidad",
           "events": "Sesiones en vivo e invitaciones pendientes"
         },
-        "filesNote": "Los archivos y videos salen de nuestros servidores en un plazo de 24 horas. Hasta entonces, el producto aparece como \"En eliminación\"."
+        "filesNote": "Los archivos y videos se quitan de nuestros servidores por lotes, cada hora, a partir de un día después de eliminarlo. Hasta entonces, el producto aparece como \"En eliminación\". Lo que otro producto todavía usa se conserva."
       },
       "beingDeleted": {
         "aria": "Productos en eliminación",
-        "note": "Estamos quitando archivos y videos. Tarda hasta 24 horas."
+        "note": "Quitamos archivos y videos por lotes, cada hora, a partir de un día después de eliminarlo."
       },
       "archive": {
         "eyebrow": "Archivar producto",
