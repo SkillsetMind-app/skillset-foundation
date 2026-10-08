@@ -62,6 +62,37 @@ describe("getPublicProfileByRef", () => {
     expect(calls).toContainEqual(["eq", "username", "ana.souza"]);
   });
 
+  // select *: o perfil não quebra se o deploy chegar antes da migration do
+  // selo (colunas ausentes = sem selo).
+  it("lê com select *, e sem as colunas do selo o perfil sai sem selo", async () => {
+    const calls = fakeClient({ data: row, error: null });
+
+    const profile = await getPublicProfileByRef("@ana.souza");
+
+    expect(calls).toContainEqual(["select", "*"]);
+    expect(profile).toMatchObject({ uid: row.uid, verification: null });
+  });
+
+  it("traz o selo: só license ou evidence, e a data", async () => {
+    fakeClient({
+      data: { ...row, verified_professional: true, verification_kind: "license", verified_at: "2026-09-01T12:00:00+00:00" },
+      error: null,
+    });
+    expect((await getPublicProfileByRef("@ana.souza"))?.verification)
+      .toEqual({ kind: "license", verifiedAt: "2026-09-01T12:00:00+00:00" });
+
+    fakeClient({ data: { ...row, verified_professional: true, verification_kind: "evidence", verified_at: null }, error: null });
+    expect((await getPublicProfileByRef(row.uid))?.verification).toEqual({ kind: "evidence", verifiedAt: null });
+  });
+
+  it("sem selo, verification null; espécie desconhecida vira evidence (a que promete menos)", async () => {
+    fakeClient({ data: { ...row, verified_professional: false, verification_kind: null, verified_at: null }, error: null });
+    expect((await getPublicProfileByRef("@ana.souza"))?.verification).toBeNull();
+
+    fakeClient({ data: { ...row, verified_professional: true, verification_kind: "coach", verified_at: null }, error: null });
+    expect((await getPublicProfileByRef(row.uid))?.verification).toEqual({ kind: "evidence", verifiedAt: null });
+  });
+
   it("sem @, procura pelo uid exatamente como veio", async () => {
     const calls = fakeClient({ data: row, error: null });
     await getPublicProfileByRef(row.uid);

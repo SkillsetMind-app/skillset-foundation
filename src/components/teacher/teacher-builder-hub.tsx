@@ -4,7 +4,7 @@ import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
-import type { TeacherCourseProductFormat } from "@/domain/teacher-course";
+import { parseTeacherCourseProductFormat } from "@/domain/teacher-course";
 
 // Each screen is its own chunk: the course list no longer downloads the whole
 // course editor (and vice versa).
@@ -33,21 +33,11 @@ if (typeof window !== "undefined") {
   void (new URLSearchParams(window.location.search).get("courseId") ? loadEditor() : loadList());
 }
 
-function parseProductFormat(value: string | null): TeacherCourseProductFormat {
-  return value === "program"
-    || value === "subscription"
-    || value === "community"
-    || value === "event"
-    || value === "free"
-    ? value
-    : "course";
-}
-
 export function TeacherBuilderHub() {
   const searchParams = useSearchParams();
   const courseId = searchParams.get("courseId");
   const newCourseRequested = searchParams.get("newCourse") === "1";
-  const initialFormat = parseProductFormat(searchParams.get("format"));
+  const initialFormat = parseTeacherCourseProductFormat(searchParams.get("format"));
   // Chosen once per mount: swapping the dynamic wrapper for the direct
   // component later would remount the screen and drop its state.
   const [CourseBuilderStudio] = useState(() => editorModule?.CourseBuilderStudio ?? DynamicEditor);

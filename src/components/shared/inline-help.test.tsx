@@ -58,17 +58,17 @@ describe("InlineHelp", () => {
 
   it("localizes an already open dialog while preserving its identity, href and return focus", () => {
     render(<I18nProvider initialLocale="en"><LocalizedHelp /></I18nProvider>);
-    const trigger = screen.getByRole("button", { name: "Help about Course pricing" });
+    const trigger = screen.getByRole("button", { name: "Help about How people pay" });
     fireEvent.click(trigger);
-    const dialog = screen.getByRole("dialog", { name: "Course pricing" });
+    const dialog = screen.getByRole("dialog", { name: "How people pay" });
     fireEvent.click(screen.getByRole("button", { name: "Switch language" }));
-    expect(screen.getByRole("dialog", { name: "Precios del curso" })).toBe(dialog);
+    expect(screen.getByRole("dialog", { name: "Cómo te pagan" })).toBe(dialog);
     expect(screen.getAllByRole("dialog")).toHaveLength(1);
     expect(screen.getByText("Ayuda contextual")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Abrir la ayuda relacionada" })).toHaveAttribute("href", "/help#course-pricing");
     fireEvent.click(screen.getByRole("button", { name: "Cerrar la ayuda contextual" }));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Ayuda sobre Precios del curso" })).toBe(trigger);
+    expect(screen.getByRole("button", { name: "Ayuda sobre Cómo te pagan" })).toBe(trigger);
     expect(trigger).toHaveFocus();
   });
 });

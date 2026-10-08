@@ -16,7 +16,7 @@
  */
 
 import { ChevronDown, ChevronUp, Loader2, Plus, Trash2 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { useAuth } from "@/components/auth/auth-provider";
@@ -33,7 +33,10 @@ import {
 import { planEntitlements } from "@/domain/entitlements";
 import type { TeacherCourse } from "@/domain/teacher-course";
 import { getCourseLanding, saveCourseLanding } from "@/lib/data/course-landings";
+import { removeLandingImages } from "@/lib/data/landing-images";
 import { getUserProfile } from "@/lib/data/user-profiles";
+
+import { LandingImageField } from "./landing-image-field";
 
 function blankBlock(kind: CourseLandingBlockKind, t: (key: string) => string): CourseLandingBlock {
   switch (kind) {
@@ -83,15 +86,32 @@ function suggestedBlocks(courseTitle: string, t: (key: string) => string): Cours
 }
 
 const fieldClass =
-  "w-full rounded-none border border-[var(--color-line)] bg-white px-3 py-2.5 text-sm text-[var(--color-ink)]";
+  "w-full rounded-md border border-[var(--color-line)] bg-white px-3 py-2.5 text-sm text-[var(--color-ink)]";
 const labelClass = "grid gap-1.5 text-xs font-bold uppercase tracking-[0.16em] text-[var(--color-ink-soft)]";
+
+// Editor-only identity for a block. Position is not identity: an upload that
+// finishes after the sections moved must still land on the block that asked.
+type BlockEntry = { id: number; block: CourseLandingBlock };
+let nextBlockId = 0;
+const withId = (block: CourseLandingBlock): BlockEntry => ({ id: nextBlockId++, block });
+
+// Pasted links often carry stray spaces; a saved URL must never.
+function trimImageUrls(blocks: readonly CourseLandingBlock[]): CourseLandingBlock[] {
+  return blocks.map((block) =>
+    "imageUrl" in block ? { ...block, imageUrl: block.imageUrl?.trim() || null } : block,
+  );
+}
 
 function BlockFields({
   block,
+  courseId,
   onChange,
+  onImageChange,
 }: {
   block: CourseLandingBlock;
+  courseId: string;
   onChange: (next: CourseLandingBlock) => void;
+  onImageChange: (url: string | null) => void;
 }) {
   const { t, locale } = useTranslation();
   switch (block.kind) {
@@ -114,15 +134,13 @@ function BlockFields({
               onChange={(e) => onChange({ ...block, subheading: e.target.value })}
             />
           </label>
-          <label className={labelClass}>
-            {t("teacherLanding.fields.backgroundUrl")}
-            <input
-              className={fieldClass}
-              value={block.imageUrl ?? ""}
-              placeholder="/uploads/your-image.jpg"
-              onChange={(e) => onChange({ ...block, imageUrl: e.target.value || null })}
-            />
-          </label>
+          <LandingImageField
+            courseId={courseId}
+            label={t("teacherLanding.fields.backgroundUrl")}
+            value={block.imageUrl}
+            placeholder="/uploads/your-image.jpg"
+            onChange={onImageChange}
+          />
         </div>
       );
 
@@ -147,15 +165,13 @@ function BlockFields({
             />
           </label>
           {block.kind === "about" ? (
-            <label className={labelClass}>
-              {t("teacherLanding.fields.photoUrl")}
-              <input
-                className={fieldClass}
-                value={block.imageUrl ?? ""}
-                placeholder="/uploads/your-photo.jpg"
-                onChange={(e) => onChange({ ...block, imageUrl: e.target.value || null })}
-              />
-            </label>
+            <LandingImageField
+              courseId={courseId}
+              label={t("teacherLanding.fields.photoUrl")}
+              value={block.imageUrl}
+              placeholder="/uploads/your-photo.jpg"
+              onChange={onImageChange}
+            />
           ) : null}
         </div>
       );
@@ -172,7 +188,7 @@ function BlockFields({
             />
           </label>
           {block.steps.map((step, index) => (
-            <div key={index} className="grid gap-2 rounded-none border border-[var(--color-line)] p-3">
+            <div key={index} className="grid gap-2 rounded-md border border-[var(--color-line)] p-3">
               {/* Rótulo de verdade, não placeholder. Todo campo repetido deste
                   editor identificava-se só pelo placeholder — que some no
                   primeiro caractere digitado. Revisando uma página de vendas com
@@ -208,7 +224,7 @@ function BlockFields({
                 onClick={() =>
                   onChange({ ...block, steps: block.steps.filter((_, i) => i !== index) })
                 }
-                className="justify-self-start text-xs font-semibold text-[var(--color-danger-fg)]"
+                className="min-h-6 justify-self-start text-xs font-semibold text-[var(--color-danger-fg)]"
               >
                 {t("teacherLanding.fields.removeStep")}
               </button>
@@ -236,7 +252,7 @@ function BlockFields({
             />
           </label>
           {block.quotes.map((quote, index) => (
-            <div key={index} className="grid gap-2 rounded-none border border-[var(--color-line)] p-3">
+            <div key={index} className="grid gap-2 rounded-md border border-[var(--color-line)] p-3">
               <label className={labelClass}>
                 {t("teacherLanding.fields.quote")}
                 <textarea
@@ -266,7 +282,7 @@ function BlockFields({
                 onClick={() =>
                   onChange({ ...block, quotes: block.quotes.filter((_, i) => i !== index) })
                 }
-                className="justify-self-start text-xs font-semibold text-[var(--color-danger-fg)]"
+                className="min-h-6 justify-self-start text-xs font-semibold text-[var(--color-danger-fg)]"
               >
                 {t("teacherLanding.fields.remove")}
               </button>
@@ -296,7 +312,7 @@ function BlockFields({
             />
           </label>
           {block.items.map((item, index) => (
-            <div key={index} className="grid gap-2 rounded-none border border-[var(--color-line)] p-3">
+            <div key={index} className="grid gap-2 rounded-md border border-[var(--color-line)] p-3">
               <label className={labelClass}>
                 {t("teacherLanding.fields.question")}
                 <input
@@ -387,7 +403,10 @@ export function CourseLandingEditor({ course }: { course: TeacherCourse }) {
   const uid = user?.uid ?? null;
 
   const [template, setTemplate] = useState<CourseLandingTemplate>("classic");
-  const [blocks, setBlocks] = useState<CourseLandingBlock[]>([]);
+  const [entries, setEntries] = useState<BlockEntry[]>([]);
+  const blocks = useMemo(() => entries.map((entry) => entry.block), [entries]);
+  // Latest blocks for callbacks that outlive a render (an upload finishing).
+  const entriesRef = useRef(entries);
   const [planId, setPlanId] = useState<"free" | "starter" | "pro" | "plus">("free");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -405,7 +424,7 @@ export function CourseLandingEditor({ course }: { course: TeacherCourse }) {
       uid ? getUserProfile(uid).catch(() => null) : Promise.resolve(null),
     ]);
     setTemplate(landing.template);
-    setBlocks(landing.blocks);
+    setEntries(landing.blocks.map(withId));
     setPlanId(profile?.currentPlanId ?? "free");
     setLoading(false);
   }, [course.id, uid]);
@@ -418,20 +437,42 @@ export function CourseLandingEditor({ course }: { course: TeacherCourse }) {
     return () => window.clearTimeout(timer);
   }, [load]);
 
+  useEffect(() => {
+    entriesRef.current = entries;
+  }, [entries]);
+
   const limit = planEntitlements[planId].quotas.landingBlocks ?? 0;
   const canChooseTemplate = planId !== "free";
   const atLimit = blocks.length >= limit;
 
   const warnings = useMemo(() => protectedTitleWarnings(blocks), [blocks]);
 
-  function updateBlock(index: number, next: CourseLandingBlock) {
-    setBlocks((current) => current.map((b, i) => (i === index ? next : b)));
+  function updateBlock(id: number, next: CourseLandingBlock) {
+    setEntries((current) => current.map((entry) => (entry.id === id ? { ...entry, block: next } : entry)));
+  }
+
+  // Changes only the image of block `id`, on the latest state. An upload ends
+  // here after the creator may have typed, reordered or removed sections; if the
+  // block is gone, the file it just uploaded is deleted instead: no saved page
+  // can reference it. Saving never deletes; replaced images stay in storage.
+  function setBlockImage(id: number, imageUrl: string | null) {
+    if (!entriesRef.current.some((entry) => entry.id === id)) {
+      if (imageUrl) void removeLandingImages(course.id, [imageUrl]).catch(() => undefined);
+      return;
+    }
+    setEntries((current) =>
+      current.map((entry) =>
+        entry.id === id && (entry.block.kind === "hero" || entry.block.kind === "about")
+          ? { ...entry, block: { ...entry.block, imageUrl } }
+          : entry,
+      ),
+    );
   }
 
   function move(index: number, direction: -1 | 1) {
     const to = index + direction;
     if (to < 0 || to >= blocks.length) return;
-    setBlocks((current) => {
+    setEntries((current) => {
       const next = [...current];
       const [moved] = next.splice(index, 1);
       next.splice(to, 0, moved);
@@ -444,7 +485,7 @@ export function CourseLandingEditor({ course }: { course: TeacherCourse }) {
     setError("");
     setMessage("");
     try {
-      const result = await saveCourseLanding(course.id, { template, blocks });
+      const result = await saveCourseLanding(course.id, { template, blocks: trimImageUrls(blocks) });
       if (result.ok) {
         setMessage("teacherLanding.saved");
       } else {
@@ -488,7 +529,7 @@ export function CourseLandingEditor({ course }: { course: TeacherCourse }) {
                 type="button"
                 disabled={locked}
                 onClick={() => setTemplate(option)}
-                className={`rounded-none border px-4 py-2 text-sm font-semibold disabled:opacity-50 ${
+                className={`rounded-md border px-4 py-2 text-sm font-semibold disabled:opacity-50 ${
                   template === option
                     ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-[var(--color-on-primary)]"
                     : "border-[var(--color-line)] bg-white text-[var(--color-ink)]"
@@ -509,18 +550,18 @@ export function CourseLandingEditor({ course }: { course: TeacherCourse }) {
       {blocks.length === 0 ? (
         <button
           type="button"
-          onClick={() => setBlocks(suggestedBlocks(course.title, t).slice(0, limit))}
-          className="mt-3 justify-self-start rounded-none border border-[var(--color-line)] bg-white px-4 py-2.5 text-sm font-semibold text-[var(--color-ink)]"
+          onClick={() => setEntries(suggestedBlocks(course.title, t).slice(0, limit).map(withId))}
+          className="mt-3 min-h-11 justify-self-start rounded-md border border-[var(--color-line)] bg-white px-4 py-2.5 text-sm font-semibold text-[var(--color-ink)]"
         >
           {t("teacherLanding.suggested")}
         </button>
       ) : null}
 
       <div className="mt-4 grid gap-4">
-        {blocks.map((block, index) => (
+        {entries.map(({ id, block }, index) => (
           <div
-            key={index}
-            className="grid gap-3 rounded-none border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-4"
+            key={id}
+            className="grid gap-3 rounded-lg border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-4"
           >
             <div className="flex items-center gap-2">
               <span className="flex-1 text-sm font-bold text-[var(--color-ink)]">
@@ -531,7 +572,7 @@ export function CourseLandingEditor({ course }: { course: TeacherCourse }) {
                 onClick={() => move(index, -1)}
                 disabled={index === 0}
                 aria-label={t("teacherLanding.moveUp")}
-                className="grid h-8 w-8 place-items-center rounded-none border border-[var(--color-line)] bg-white disabled:opacity-30"
+                className="grid h-8 w-8 place-items-center rounded-md border border-[var(--color-line)] bg-white disabled:opacity-30"
               >
                 <ChevronUp className="h-4 w-4" />
               </button>
@@ -540,7 +581,7 @@ export function CourseLandingEditor({ course }: { course: TeacherCourse }) {
                 onClick={() => move(index, 1)}
                 disabled={index === blocks.length - 1}
                 aria-label={t("teacherLanding.moveDown")}
-                className="grid h-8 w-8 place-items-center rounded-none border border-[var(--color-line)] bg-white disabled:opacity-30"
+                className="grid h-8 w-8 place-items-center rounded-md border border-[var(--color-line)] bg-white disabled:opacity-30"
               >
                 <ChevronDown className="h-4 w-4" />
               </button>
@@ -556,17 +597,22 @@ export function CourseLandingEditor({ course }: { course: TeacherCourse }) {
                     t("teacherLanding.confirmRemove").replace("{section}", () => t(`teacherLanding.blocks.${block.kind}`)),
                   );
                   if (confirmed) {
-                    setBlocks((c) => c.filter((_, i) => i !== index));
+                    setEntries((c) => c.filter((entry) => entry.id !== id));
                   }
                 }}
                 aria-label={t("teacherLanding.removeSection").replace("{section}", () => t(`teacherLanding.blocks.${block.kind}`))}
                 title={t("teacherLanding.removeSection").replace("{section}", () => t(`teacherLanding.blocks.${block.kind}`))}
-                className="ml-2 grid h-8 w-8 place-items-center rounded-none border border-[var(--color-line)] bg-white text-[var(--color-danger-fg)]"
+                className="ml-2 grid h-8 w-8 place-items-center rounded-md border border-[var(--color-line)] bg-white text-[var(--color-danger-fg)]"
               >
                 <Trash2 className="h-4 w-4" />
               </button>
             </div>
-            <BlockFields block={block} onChange={(next) => updateBlock(index, next)} />
+            <BlockFields
+              block={block}
+              courseId={course.id}
+              onChange={(next) => updateBlock(id, next)}
+              onImageChange={(imageUrl) => setBlockImage(id, imageUrl)}
+            />
           </div>
         ))}
       </div>
@@ -577,8 +623,8 @@ export function CourseLandingEditor({ course }: { course: TeacherCourse }) {
             key={kind}
             type="button"
             disabled={atLimit}
-            onClick={() => setBlocks((current) => [...current, blankBlock(kind, t)])}
-            className="inline-flex items-center gap-1.5 rounded-none border border-[var(--color-line)] bg-white px-3 py-2 text-sm font-semibold text-[var(--color-ink)] disabled:opacity-40"
+            onClick={() => setEntries((current) => [...current, withId(blankBlock(kind, t))])}
+            className="inline-flex items-center gap-1.5 rounded-md border border-[var(--color-line)] bg-white px-3 py-2 text-sm font-semibold text-[var(--color-ink)] disabled:opacity-40"
           >
             <Plus className="h-3.5 w-3.5" />
             {t(`teacherLanding.blocks.${kind}`)}
@@ -596,7 +642,7 @@ export function CourseLandingEditor({ course }: { course: TeacherCourse }) {
           to say so; deciding for them is not our call, and staying quiet about
           it is not either. */}
       {warnings.length > 0 ? (
-        <p className="mt-4 rounded-none border border-[rgba(192,123,10,0.35)] bg-[var(--color-warning-soft)] p-3 text-sm leading-6 text-[var(--color-warning-fg)]">
+        <p className="mt-4 rounded-md border border-[rgba(192,123,10,0.35)] bg-[var(--color-warning-soft)] p-3 text-sm leading-6 text-[var(--color-warning-fg)]">
           {t("teacherLanding.warning").replace("{terms}", () => warnings.map((w) => `“${w}”`).join(", "))}
         </p>
       ) : null}
@@ -606,7 +652,7 @@ export function CourseLandingEditor({ course }: { course: TeacherCourse }) {
           type="button"
           onClick={handleSave}
           disabled={saving}
-          className="inline-flex items-center gap-2 rounded-none bg-[var(--color-primary)] px-5 py-2.5 text-sm font-bold text-[var(--color-on-primary)] disabled:opacity-50"
+          className="inline-flex min-h-11 items-center gap-2 rounded-md bg-[var(--color-primary)] px-5 py-2.5 text-sm font-bold text-[var(--color-on-primary)] disabled:opacity-50"
         >
           {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
           {t(saving ? "teacherLanding.saving" : "teacherLanding.save")}

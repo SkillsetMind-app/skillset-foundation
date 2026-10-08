@@ -17,7 +17,7 @@ const root = process.cwd();
 const globalsPath = join(root, "src/app/globals.css");
 
 const PROBE_CLASSES =
-  "button-solid button-outline button-danger button-solid-light button-outline-light text-xs text-sm py-2 py-2.5 px-3.5 text-[var(--color-accent-fg)] focus-visible:outline-[var(--focus-ring)] focus-visible:ring-[var(--focus-ring)]";
+  "button-solid button-outline button-danger button-solid-light button-outline-light text-xs text-sm font-semibold font-normal py-2 py-2.5 px-3.5 text-[var(--color-accent-fg)] focus-visible:outline-[var(--focus-ring)] focus-visible:ring-[var(--focus-ring)]";
 
 async function compileGlobals(): Promise<Root> {
   // Só troca a varredura de arquivos por uma lista fixa de classes: o resto
@@ -146,11 +146,11 @@ beforeAll(async () => {
   css = await compileGlobals();
 }, 60_000);
 
-function mount(className: string): Element {
-  const button = document.createElement("button");
-  button.className = className;
-  document.body.append(button);
-  return button;
+function mount(className: string, tag = "button"): Element {
+  const element = document.createElement(tag);
+  element.className = className;
+  document.body.append(element);
+  return element;
 }
 
 describe("tamanho dos botões (P-16)", () => {
@@ -175,6 +175,42 @@ describe("tamanho dos botões (P-16)", () => {
   it("o alvo mínimo de 44px continua valendo quando ninguém pede outra altura", () => {
     const button = mount("button-outline px-3.5 py-2 text-xs");
     expect(resolve(css, button, "min-height")).toBe("44px");
+  });
+
+  // A ação principal da criação de produto (Continuar, Criar, Publicar). O
+  // 48px, 15px e peso 600 (decisão do fundador: primária sólida, mais alta,
+  // 600). Antes um `button { font: inherit }` sem camada vencia a camada
+  // `components` e o .button-lg precisava morar fora dela com 800.
+  it("o par grande sai com 48px e 15px/600 num <button>", () => {
+    const primary = mount("button-solid button-lg");
+    const secondary = mount("button-outline button-lg");
+
+    expect(resolve(css, primary, "min-height")).toBe("48px");
+    expect(resolve(css, primary, "font-weight", "font")).toBe("600");
+    expect(resolve(css, primary, "font-size", "font")).toBe("0.9375rem");
+    expect(resolve(css, secondary, "min-height")).toBe("48px");
+    expect(resolve(css, secondary, "font-weight", "font")).toBe("600");
+    expect(resolve(css, secondary, "border-color")).toBe("var(--color-primary)");
+  });
+
+  // A regra `button, input, textarea, select { font: inherit }` fora de camada
+  // fazia TODO <button> sair 16px/400 e todo campo ignorar text-sm/font-normal.
+  // O `font: inherit` agora vem só do preflight (camada base).
+  it("um <button> .button-solid sai 14px/600, não a letra herdada", () => {
+    const button = mount("button-solid");
+
+    expect(resolve(css, button, "font-size", "font")).toBe("0.875rem");
+    expect(resolve(css, button, "font-weight", "font")).toBe("600");
+  });
+
+  it("utilities de letra valem em <button> e em campo", () => {
+    const button = mount("text-sm font-semibold");
+    const input = mount("text-sm font-normal", "input");
+
+    expect(resolve(css, button, "font-size", "font")).toContain("--text-sm");
+    expect(resolve(css, button, "font-weight", "font")).toContain("--font-weight-semibold");
+    expect(resolve(css, input, "font-size", "font")).toContain("--text-sm");
+    expect(resolve(css, input, "font-weight", "font")).toContain("--font-weight-normal");
   });
 
   // As variantes claras do hero viviam num bloco próprio, sem min-height:

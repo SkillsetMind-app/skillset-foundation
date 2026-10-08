@@ -13,6 +13,7 @@ import { isAdvisorEnabled } from "@/lib/advisor/config";
 import { hasAnyPermission } from "@/lib/permissions";
 import {
   announceFloatingAction,
+  onAdvisorOpenRequested,
   onFloatingActionOpened,
 } from "@/lib/ui/floating-action";
 
@@ -32,6 +33,12 @@ const HEADER_QUERY = "(min-width: 768px)";
 export function AdvisorHeaderSlot() {
   const register = useContext(AdvisorHeaderContext);
   return register ? <div ref={register} className="advisor-header-slot" /> : null;
+}
+
+/** True where an Advisor is mounted and switched on (inside /teach): the Help
+ *  menu can open it instead of sending the teacher to the help center. */
+export function useAdvisorAvailable() {
+  return useContext(AdvisorHeaderContext) !== null;
 }
 
 function useHeaderViewport() {
@@ -203,6 +210,16 @@ export function AdvisorSidebar({ children }: { children?: ReactNode } = {}) {
     [],
   );
 
+  // "How do I do something on the platform" in the Help menu.
+  useEffect(
+    () =>
+      onAdvisorOpenRequested(() => {
+        announceFloatingAction("advisor");
+        setOpen(true);
+      }),
+    [],
+  );
+
   // Hidden until the model keys are set in production
   // (NEXT_PUBLIC_TEACHER_ADVISOR_ENABLED — see src/lib/advisor/config.ts) and
   // only for teachers. The layout renders outside each page's ProtectedSurface,
@@ -294,7 +311,7 @@ export function AdvisorSidebar({ children }: { children?: ReactNode } = {}) {
       aria-label={open ? t("advisor.close") : t("advisor.open")}
       aria-expanded={open}
       title={open ? t("advisor.close") : t("advisor.open")}
-      className={"advisor-trigger flex items-center gap-2 rounded-none bg-[var(--color-primary)] px-4 py-3 text-sm font-semibold text-[var(--color-base)] shadow-[0_10px_30px_rgba(15,31,58,0.3)] transition-transform hover:scale-[1.03]" + (header ? " advisor-trigger--header" : "")}
+      className={"advisor-trigger flex items-center gap-2 rounded-md bg-[var(--color-primary)] px-4 py-3 text-sm font-semibold text-[var(--color-base)] shadow-[0_10px_30px_rgba(15,31,58,0.3)] transition-transform hover:scale-[1.03]" + (header ? " advisor-trigger--header" : "")}
     >
       <Sparkles className="h-4 w-4" aria-hidden="true" />
       <span className="advisor-trigger-label">{open ? t("advisor.closeLabel") : t("advisor.trigger")}</span>
@@ -310,7 +327,7 @@ export function AdvisorSidebar({ children }: { children?: ReactNode } = {}) {
         <section
           role="dialog"
           aria-label={t("advisor.title")}
-          className="advisor-panel flex w-[min(380px,calc(100vw-2.5rem))] flex-col overflow-hidden rounded-none border border-[var(--color-line)] bg-white shadow-[0_18px_50px_rgba(15,31,58,0.22)]"
+          className="advisor-panel flex w-[min(380px,calc(100vw-2.5rem))] flex-col overflow-hidden rounded-lg border border-[var(--color-line)] bg-white shadow-[0_18px_50px_rgba(15,31,58,0.22)]"
         >
           <header className="flex items-center justify-between gap-3 border-b border-[var(--color-line)] bg-[var(--color-surface-soft)] px-4 py-3">
             <span className="flex items-center gap-2 text-sm font-semibold text-[var(--color-primary)]">
@@ -321,7 +338,7 @@ export function AdvisorSidebar({ children }: { children?: ReactNode } = {}) {
               type="button"
               onClick={closeAdvisor}
               aria-label={t("advisor.close")}
-              className="grid size-11 shrink-0 place-items-center rounded-none text-[var(--color-ink-muted)] transition-colors hover:bg-[var(--color-line)] hover:text-[var(--color-ink)]"
+              className="grid size-11 shrink-0 place-items-center rounded-full text-[var(--color-ink-muted)] transition-colors hover:bg-[var(--color-line)] hover:text-[var(--color-ink)]"
             >
               <X className="h-4 w-4" aria-hidden="true" />
             </button>
@@ -332,7 +349,7 @@ export function AdvisorSidebar({ children }: { children?: ReactNode } = {}) {
             className="flex-1 space-y-3 overflow-y-auto px-4 py-4"
             aria-live="polite"
           >
-            <p className="rounded-none bg-[var(--color-surface-soft)] px-3 py-2.5 text-sm leading-6 text-[var(--color-ink-soft)]">
+            <p className="rounded-lg bg-[var(--color-surface-soft)] px-3 py-2.5 text-sm leading-6 text-[var(--color-ink-soft)]">
               {t("advisor.greeting")}
             </p>
 
@@ -353,7 +370,7 @@ export function AdvisorSidebar({ children }: { children?: ReactNode } = {}) {
                     key={suggestion}
                     type="button"
                     onClick={() => void send(suggestion)}
-                    className="rounded-none border border-[var(--color-line)] px-3 py-2 text-left text-xs font-medium text-[var(--color-primary)] transition-colors hover:bg-[var(--color-surface-soft)]"
+                    className="rounded-md border border-[var(--color-line)] px-3 py-2 text-left text-xs font-medium text-[var(--color-primary)] transition-colors hover:bg-[var(--color-surface-soft)]"
                   >
                     {suggestion}
                   </button>
@@ -370,7 +387,7 @@ export function AdvisorSidebar({ children }: { children?: ReactNode } = {}) {
               >
                 <p
                   className={[
-                    "max-w-[85%] whitespace-pre-wrap rounded-none px-3 py-2 text-sm leading-6",
+                    "max-w-[85%] whitespace-pre-wrap rounded-lg px-3 py-2 text-sm leading-6",
                     message.role === "user"
                       ? "bg-[var(--color-primary)] text-[var(--color-base)]"
                       : "border border-[var(--color-line)] bg-white text-[var(--color-ink)]",
@@ -388,7 +405,7 @@ export function AdvisorSidebar({ children }: { children?: ReactNode } = {}) {
             ) : null}
 
             {noticeText ? (
-              <p className="rounded-none border border-[var(--color-line)] bg-[var(--color-surface-soft)] px-3 py-2 text-xs leading-5 text-[var(--color-ink-soft)]">
+              <p className="rounded-md border border-[var(--color-line)] bg-[var(--color-surface-soft)] px-3 py-2 text-xs leading-5 text-[var(--color-ink-soft)]">
                 {noticeText}
               </p>
             ) : null}
@@ -427,7 +444,7 @@ export function AdvisorSidebar({ children }: { children?: ReactNode } = {}) {
               type="submit"
               disabled={isSending || historyStatus !== "ready" || input.trim().length === 0}
               aria-label={t("advisor.send")}
-              className="button-solid flex h-10 w-10 shrink-0 items-center justify-center rounded-none p-0 disabled:opacity-50"
+              className="button-solid flex h-10 w-10 shrink-0 items-center justify-center rounded-md p-0 disabled:opacity-50"
             >
               <Send className="h-4 w-4" aria-hidden="true" />
             </button>

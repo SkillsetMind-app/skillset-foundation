@@ -7,6 +7,7 @@ import { normalizeCouponCode } from "@/domain/course-commerce";
 import { redeemCourseCoupon } from "@/domain/coupon-redemption";
 import { buildInstallmentPlan } from "@/domain/installments";
 import { isCoursePubliclySellable } from "@/domain/teacher-course";
+import { isPublicFeatureEnabled } from "@/lib/feature-flags";
 import { toStripeAmount } from "@/lib/payments/currencies";
 import { canonicalPlatformFeeBpsForPlan } from "@/lib/payments/rules";
 import {
@@ -51,7 +52,7 @@ const COURSE_SUBSCRIPTION_CHECKOUT_BLOCKING_STATUSES = [
 // ON the teacher's account: the teacher is the merchant of record, the money
 // never lands in a platform balance, and Stripe deducts our cut automatically
 // via `application_fee_amount`. The platform therefore holds no third-party
-// funds and runs no payout release — see docs/plans/2026-07-24-pivot-direct-charges.md.
+// funds and runs no payout release — see docs/ARQUITETURA.md (Pagamentos).
 export async function POST(request: Request) {
   let releasableCouponReservation: {
     admin: ReturnType<typeof getSupabaseAdminClient>;
@@ -638,15 +639,20 @@ export async function POST(request: Request) {
       throw new Error(orderError.message);
     }
 
+    // Same flag the builder uses to show the toggle. With it off the creator
+    // can no longer see the setting, so checkout must not act on it either.
+    // The saved value is left alone: turning the flag back on restores it.
+    const installmentsEnabled = Boolean(course.installments_enabled)
+      && isPublicFeatureEnabled("payments.cardInstallments");
     // The teacher's account, not ours: direct charges make THEM the merchant of
     // record, so Stripe judges installment eligibility against their country.
-    const stripeAccountCountry = course.installments_enabled
+    const stripeAccountCountry = installmentsEnabled
       && currency.toUpperCase() === "MXN"
       ? await getStripeAccountCountry(stripe, connectedAccountId)
       : null;
     const installmentPlan = buildInstallmentPlan({
       amountMinor,
-      installmentsEnabled: Boolean(course.installments_enabled),
+      installmentsEnabled,
       installmentsMax: course.installments_max,
       currency,
       stripeAccountCountry,

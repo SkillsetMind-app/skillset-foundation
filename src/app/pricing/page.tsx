@@ -43,8 +43,8 @@ export default async function PricingPage() {
             reprice ever needs interactivity beyond show/hide. */}
         <fieldset className="mb-5">
           <legend className="sr-only">{t("publicPages.pricing.billing_cycle")}</legend>
-          <div className="inline-flex w-fit gap-1 rounded-none border fine-rule bg-[var(--color-surface-soft)] p-1">
-            <label className="inline-flex min-h-11 cursor-pointer items-center rounded-none px-3 py-1.5 text-[13px] font-semibold text-[var(--color-ink-soft)] transition-colors hover:text-[var(--color-primary)] has-[:checked]:bg-[var(--color-primary)] has-[:checked]:text-[var(--color-base)] has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-[var(--color-primary)]">
+          <div className="inline-flex w-fit gap-1 rounded-md border fine-rule bg-[var(--color-surface-soft)] p-1">
+            <label className="inline-flex min-h-11 cursor-pointer items-center rounded-sm px-3 py-1.5 text-[13px] font-semibold text-[var(--color-ink-soft)] transition-colors hover:text-[var(--color-primary)] has-[:checked]:bg-[var(--color-primary)] has-[:checked]:text-[var(--color-base)] has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-[var(--color-primary)]">
               <input
                 type="radio"
                 name="billing-cycle"
@@ -54,7 +54,7 @@ export default async function PricingPage() {
               />
               {t("publicPages.pricing.monthly")}
             </label>
-            <label className="inline-flex min-h-11 cursor-pointer items-center rounded-none px-3 py-1.5 text-[13px] font-semibold text-[var(--color-ink-soft)] transition-colors hover:text-[var(--color-primary)] has-[:checked]:bg-[var(--color-primary)] has-[:checked]:text-[var(--color-base)] has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-[var(--color-primary)]">
+            <label className="inline-flex min-h-11 cursor-pointer items-center rounded-sm px-3 py-1.5 text-[13px] font-semibold text-[var(--color-ink-soft)] transition-colors hover:text-[var(--color-primary)] has-[:checked]:bg-[var(--color-primary)] has-[:checked]:text-[var(--color-base)] has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-[var(--color-primary)]">
               <input
                 type="radio"
                 name="billing-cycle"
@@ -82,13 +82,13 @@ export default async function PricingPage() {
                 key={plan.id}
                 className={
                   isHighlight
-                    ? "relative flex h-full flex-col rounded-none border-2 border-[var(--color-primary)] bg-white p-6 shadow-[0_24px_48px_rgba(15,39,68,0.12)]"
-                    : "flex h-full flex-col rounded-none border fine-rule bg-white p-6 shadow-[var(--shadow-soft)]"
+                    ? "relative flex h-full flex-col rounded-lg border-2 border-[var(--color-primary)] bg-white p-6 shadow-[0_24px_48px_rgba(15,39,68,0.12)]"
+                    : "flex h-full flex-col rounded-lg border fine-rule bg-white p-6 shadow-[var(--shadow-soft)]"
                 }
               >
                 {isHighlight ? (
-                  <span className="absolute -top-3 left-6 rounded-none bg-[var(--color-accent)] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-white">
-                    {t("publicPages.pricing.most_popular")}
+                  <span className="absolute -top-3 left-6 rounded-full bg-[var(--color-accent)] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-white">
+                    {t("publicPages.pricing.recommended")}
                   </span>
                 ) : null}
                 <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
@@ -162,7 +162,7 @@ export default async function PricingPage() {
 
       {/* Breakdown — same $100 sale across all four tiers so the user can
           see exactly where every cent goes. */}
-      <section className="mt-12 rounded-none border fine-rule bg-white p-6 shadow-[var(--shadow-soft)]">
+      <section className="mt-12 rounded-lg border fine-rule bg-white p-6 shadow-[var(--shadow-soft)]">
         <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
           {t("publicPages.pricing.the_math_on_a_100_usd")}
         </p>
@@ -174,7 +174,7 @@ export default async function PricingPage() {
           {t("publicPages.pricing.2_9_0_30_skillsetmind_takes")}
         </p>
 
-        <div className="mt-6 overflow-x-auto rounded-none border fine-rule">
+        <div className="mt-6 overflow-x-auto rounded-lg border fine-rule">
           <table className="w-full min-w-[520px] text-left text-sm">
             <thead className="bg-[var(--color-surface-soft)] text-[11px] uppercase tracking-[0.14em] text-[var(--color-ink-soft)]">
               <tr>
@@ -193,7 +193,7 @@ export default async function PricingPage() {
                       <button
                         type="button"
                         aria-label={t("publicPages.pricing.what_is_the_stripe_processing_fee")}
-                        className="inline-flex size-5 items-center justify-center rounded-none text-[var(--color-ink-muted)] transition hover:text-[var(--color-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus-ring)]"
+                        className="inline-flex size-5 items-center justify-center rounded-full text-[var(--color-ink-muted)] transition hover:text-[var(--color-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus-ring)]"
                       >
                         <HelpCircle
                           aria-hidden="true"
@@ -250,7 +250,7 @@ export default async function PricingPage() {
 
       {/* Operational rules — refund window, direct payouts, plan changes. */}
       <section className="mt-8 grid gap-4 md:grid-cols-3">
-        <article className="rounded-none border fine-rule bg-[var(--color-surface-soft)] p-5">
+        <article className="rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-5">
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
             {t("publicPages.pricing.refund_window")}
           </p>
@@ -258,7 +258,7 @@ export default async function PricingPage() {
             {t("publicPages.pricing.learners_can_self_refund_within")}{refundWindowDays} {t("publicPages.pricing.days_of_purchase_if_they_ve")}
           </p>
         </article>
-        <article className="rounded-none border fine-rule bg-[var(--color-surface-soft)] p-5">
+        <article className="rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-5">
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
             {t("publicPages.pricing.payouts")}
           </p>
@@ -266,7 +266,7 @@ export default async function PricingPage() {
             {t("publicPages.pricing.buyers_pay_your_stripe_account_directly")}
           </p>
         </article>
-        <article className="rounded-none border fine-rule bg-[var(--color-surface-soft)] p-5">
+        <article className="rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-5">
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
             {t("publicPages.pricing.plan_changes")}
           </p>
@@ -308,9 +308,9 @@ export default async function PricingPage() {
           ].map((item, index) => (
             <details
               key={index}
-              className="group rounded-none border fine-rule bg-white shadow-[var(--shadow-soft)] [&_summary::-webkit-details-marker]:hidden"
+              className="group rounded-lg border fine-rule bg-white shadow-[var(--shadow-soft)] [&_summary::-webkit-details-marker]:hidden"
             >
-              <summary className="flex cursor-pointer items-center justify-between gap-4 rounded-none px-5 py-4 text-sm font-semibold text-[var(--color-ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]">
+              <summary className="flex cursor-pointer items-center justify-between gap-4 rounded-lg px-5 py-4 text-sm font-semibold text-[var(--color-ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]">
                 {item.q}
                 <ChevronDown
                   aria-hidden="true"
@@ -327,7 +327,7 @@ export default async function PricingPage() {
         </div>
       </section>
 
-      <section className="mt-8 flex flex-wrap items-center justify-between gap-4 rounded-none border fine-rule bg-[var(--color-surface-soft)] p-6">
+      <section className="mt-8 flex flex-wrap items-center justify-between gap-4 rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-6">
         <div>
           <p className="text-sm font-semibold text-[var(--color-ink)]">
             {t("publicPages.pricing.ready_to_publish_on_skillsetmind")}

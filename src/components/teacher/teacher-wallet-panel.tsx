@@ -207,7 +207,7 @@ export function TeacherWalletPanel() {
       <header className="payouts-head">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-            {t("account.payoutsTax")}
+            {t("platform.nav.earnings")}
           </p>
           {/* h1, nao h2: este painel e o cabecalho da unica pagina que o usa
               (/account/payments), e a casca esconde o titulo dela para nao
@@ -239,12 +239,12 @@ export function TeacherWalletPanel() {
       </header>
 
       {message ? (
-        <p className="rounded-none border border-[rgba(24,58,94,0.12)] bg-[var(--color-surface-soft)] px-4 py-3 text-sm font-semibold text-[var(--color-primary)]">
+        <p className="rounded-md border border-[rgba(24,58,94,0.12)] bg-[var(--color-surface-soft)] px-4 py-3 text-sm font-semibold text-[var(--color-primary)]">
           {message}
         </p>
       ) : null}
       {error ? (
-        <p className="rounded-none border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
+        <p className="rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
           {error}
         </p>
       ) : null}
@@ -410,7 +410,7 @@ export function TeacherWalletPanel() {
       </div>
 
       {ready ? null : (
-        <section id="stripe-connect" className="scroll-mt-24 rounded-none border border-[var(--color-line)] bg-white p-5 shadow-[var(--shadow-soft)]">
+        <section id="stripe-connect" className="scroll-mt-24 rounded-lg border border-[var(--color-line)] bg-white p-5 shadow-[var(--shadow-soft)]">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
@@ -465,7 +465,7 @@ export function TeacherWalletPanel() {
           </button>
         </div>
 
-        <div className="mt-5 overflow-hidden rounded-none border border-[var(--color-line)]">
+        <div className="mt-5 overflow-hidden rounded-lg border border-[var(--color-line)]">
           {ledgerState === "loading" ? (
             <div className="bg-[var(--color-surface-soft)] p-6 text-sm leading-7 text-[var(--color-ink-soft)]">
               {t("teach.earnings.ledgerLoading")}
@@ -504,7 +504,7 @@ export function TeacherWalletPanel() {
       </section>
 
       <section className="payout-tax-card">
-        <span className="grid size-12 place-items-center rounded-none bg-[var(--color-surface-soft)] text-[var(--color-primary)]">
+        <span className="grid size-12 place-items-center rounded-md bg-[var(--color-surface-soft)] text-[var(--color-primary)]">
           <FileText aria-hidden="true" size={22} strokeWidth={2} />
         </span>
         <div className="min-w-0 flex-1">
@@ -522,7 +522,7 @@ export function TeacherWalletPanel() {
 
 function BalanceRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-center justify-between gap-4 rounded-none bg-white/10 px-4 py-3 text-sm text-white">
+    <div className="flex items-center justify-between gap-4 rounded-lg bg-white/10 px-4 py-3 text-sm text-white">
       <span className="text-[rgba(255,255,255,0.72)]">{label}</span>
       <strong>{value}</strong>
     </div>
@@ -531,7 +531,7 @@ function BalanceRow({ label, value }: { label: string; value: string }) {
 
 function MetricCard({ label, value }: { label: string; value: string }) {
   return (
-    <article className="rounded-none border border-[var(--color-line)] bg-white p-5 shadow-[var(--shadow-soft)]">
+    <article className="rounded-lg border border-[var(--color-line)] bg-white p-5 shadow-[var(--shadow-soft)]">
       <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-ink-muted)]">
         {label}
       </p>
@@ -552,8 +552,8 @@ function PayoutStatusRow({
   value: string;
 }) {
   return (
-    <div className="flex items-center gap-3 rounded-none border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-3">
-      <span className="grid size-9 place-items-center rounded-none bg-white text-[var(--color-primary)]">
+    <div className="flex items-center gap-3 rounded-lg border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-3">
+      <span className="grid size-9 place-items-center rounded-md bg-white text-[var(--color-primary)]">
         <Icon aria-hidden="true" size={16} strokeWidth={2} />
       </span>
       <span className="min-w-0">

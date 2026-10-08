@@ -77,6 +77,11 @@ export function rowToPublicProfile(row: PublicProfileRow): PublicProfile {
     bio: row.bio,
     credentials: (row.credentials as unknown as string[] | null) ?? [],
     storefront: (row.storefront as unknown as StorefrontConfig | null) ?? null,
+    // Colunas ausentes (deploy antes da migration) = sem selo. Espécie
+    // desconhecida vira "evidence", a frase que promete menos.
+    verification: row.verified_professional
+      ? { kind: row.verification_kind === "license" ? "license" : "evidence", verifiedAt: row.verified_at ?? null }
+      : null,
     updatedAt: row.updated_at ?? undefined,
   };
 }

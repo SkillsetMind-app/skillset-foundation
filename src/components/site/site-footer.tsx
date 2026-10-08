@@ -49,9 +49,12 @@ const footerColumns = [
   },
 ] as const;
 
+// Sem curso real publicado, loja e diretório de instrutores saem do rodapé
+// (#471): o diretório só listaria perfis sem nada à venda.
+const hiddenWithoutRealCourses = new Set(["/courses", "/instructors"]);
+
 export async function SiteFooter() {
-  // Loja sem curso real publicado sai do rodapé. Mesma leitura da home: anônima,
-  // em cache de 5 min, e falha conta como vazia.
+  // Mesma leitura da home: anônima, em cache de 5 min, e falha conta como vazia.
   const [{ t }, hasRealCourses] = await Promise.all([getServerTranslation(), hasRealPublishedCourse()]);
 
   return (
@@ -74,7 +77,7 @@ export async function SiteFooter() {
                   {t(column.titleKey)}
                 </p>
                 <div className="mt-3 grid gap-2">
-                  {column.links.filter(([, href]) => hasRealCourses || href !== "/courses").map(([labelKey, href]) => (
+                  {column.links.filter(([, href]) => hasRealCourses || !hiddenWithoutRealCourses.has(href)).map(([labelKey, href]) => (
                     <Link
                       key={`${column.titleKey}-${href}`}
                       href={href}

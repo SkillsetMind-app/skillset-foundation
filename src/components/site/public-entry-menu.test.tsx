@@ -18,15 +18,16 @@ function viewFrom(hostname: string) {
 }
 
 describe("public account entry", () => {
-  it("opens two role-intent links in separate tabs without changing the current page", () => {
+  // Mesma aba: para quem tem pouca familiaridade com a internet, aba nova e
+  // "o site sumiu". Antes os dois links abriam em aba nova.
+  it("opens two role-intent links in the SAME tab", () => {
     render(<PublicEntryMenu />);
     expect(screen.queryByRole("link", { name: /My courses/ })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
     for (const [name, intent] of [["My courses", "student"], ["Manage my business", "teacher"]]) {
-      const link = screen.getByRole("link", { name: `${name} (opens in a new tab)` });
+      const link = screen.getByRole("link", { name });
       expect(link).toHaveAttribute("href", `/auth?mode=signin&path=${intent}`);
-      expect(link).toHaveAttribute("target", "_blank");
-      expect(link).toHaveAttribute("rel", "noopener noreferrer");
+      expect(link).not.toHaveAttribute("target");
     }
   });
 
@@ -34,18 +35,17 @@ describe("public account entry", () => {
   // intenção viajam inteiras na URL, porque o proxy responde 307 preservando
   // caminho e query — o destino final é o mesmo /auth?mode=signin&path=… de sempre.
   it.each(["www.skillsetmind.com", "skillsetmind.com"])(
-    "enters through consumer. and app. when viewed from %s, keeping intent and the new tab",
+    "enters through consumer. and app. when viewed from %s, keeping intent in the same tab",
     (hostname) => {
       viewFrom(hostname);
       render(<PublicEntryMenu />);
       fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
-      const student = screen.getByRole("link", { name: "My courses (opens in a new tab)" });
-      const teacher = screen.getByRole("link", { name: "Manage my business (opens in a new tab)" });
+      const student = screen.getByRole("link", { name: "My courses" });
+      const teacher = screen.getByRole("link", { name: "Manage my business" });
       expect(student).toHaveAttribute("href", "https://consumer.skillsetmind.com/auth?mode=signin&path=student");
       expect(teacher).toHaveAttribute("href", "https://app.skillsetmind.com/auth?mode=signin&path=teacher");
       for (const link of [student, teacher]) {
-        expect(link).toHaveAttribute("target", "_blank");
-        expect(link).toHaveAttribute("rel", "noopener noreferrer");
+        expect(link).not.toHaveAttribute("target");
       }
     },
   );
@@ -86,7 +86,7 @@ describe("public account entry", () => {
     fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
     locale.value = "es";
     rerender(<PublicEntryMenu />);
-    expect(screen.getByRole("link", { name: "Mis cursos (se abre en una pestaña nueva)" })).toHaveAttribute("href", "/auth?mode=signin&path=student");
-    expect(screen.getByRole("link", { name: "Gestionar mi negocio (se abre en una pestaña nueva)" })).toHaveAttribute("href", "/auth?mode=signin&path=teacher");
+    expect(screen.getByRole("link", { name: "Mis cursos" })).toHaveAttribute("href", "/auth?mode=signin&path=student");
+    expect(screen.getByRole("link", { name: "Gestionar mi negocio" })).toHaveAttribute("href", "/auth?mode=signin&path=teacher");
   });
 });

@@ -47,8 +47,11 @@ export function SalesPageEditor({ course }: { course: TeacherCourse }) {
         categories: course.categories ?? [],
         learningOutcomes,
         modules: course.modules ?? [],
-        paymentType: course.paymentType ?? "one_time",
-        priceAmountMinor: course.priceAmountMinor ?? 0,
+        // Mesma leitura do construtor: sem forma gravada e sem valor e gratis.
+        // Mandar "pagamento unico a 0" num produto no ar era recusado
+        // (PAID_PRODUCT_NEEDS_PRICE) e o texto nao salvava.
+        paymentType: course.paymentType ?? (course.priceAmountMinor ? "one_time" : "free"),
+        priceAmountMinor: course.priceAmountMinor ?? null,
         currency: course.currency ?? "USD",
         installmentsEnabled: Boolean(course.installmentsEnabled),
         installmentsMax: course.installmentsMax ?? 1,
@@ -88,7 +91,7 @@ export function SalesPageEditor({ course }: { course: TeacherCourse }) {
             {t("teacherSalesCopy.productTitle")}
           </span>
           <input
-            className="rounded-none border border-[var(--color-line)] bg-white px-3.5 py-2.5 text-sm outline-none focus:border-[var(--color-primary-light)]"
+            className="rounded-md border border-[var(--color-line)] bg-white px-3.5 py-2.5 text-sm outline-none focus:border-[var(--color-primary-light)]"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             maxLength={120}
@@ -100,7 +103,7 @@ export function SalesPageEditor({ course }: { course: TeacherCourse }) {
             {t("teacherSalesCopy.summary")}
           </span>
           <textarea
-            className="min-h-[120px] rounded-none border border-[var(--color-line)] bg-white px-3.5 py-2.5 text-sm outline-none focus:border-[var(--color-primary-light)]"
+            className="min-h-[120px] rounded-md border border-[var(--color-line)] bg-white px-3.5 py-2.5 text-sm outline-none focus:border-[var(--color-primary-light)]"
             value={summary}
             onChange={(e) => setSummary(e.target.value)}
             maxLength={2000}
@@ -112,7 +115,7 @@ export function SalesPageEditor({ course }: { course: TeacherCourse }) {
             {t("teacherSalesCopy.outcomes")}
           </span>
           <textarea
-            className="min-h-[100px] rounded-none border border-[var(--color-line)] bg-white px-3.5 py-2.5 text-sm outline-none focus:border-[var(--color-primary-light)]"
+            className="min-h-[100px] rounded-md border border-[var(--color-line)] bg-white px-3.5 py-2.5 text-sm outline-none focus:border-[var(--color-primary-light)]"
             value={outcomesText}
             onChange={(e) => setOutcomesText(e.target.value)}
             placeholder={t("teacherSalesCopy.outcomesPlaceholder")}

@@ -523,3 +523,73 @@ export async function getRecentCommunityQuestions(
   if (error) throw error;
   return (data ?? []).map(rowToPost);
 }
+
+/**
+ * Os ids das perguntas que esperam pelo professor nas comunidades dele: a
+ * mesma regra da caixa de cada curso (openQuestions) — sem resposta aceita e
+ * sem resposta de instrutor. Alimenta o numero ao lado de "Inbox" em toda
+ * pagina do professor, entao le so ids, nunca o texto.
+ *
+ * As mais NOVAS primeiro, com os filtros na consulta: a janela pegava as 200
+ * mais antigas, e perguntas ja respondidas sem "resposta aceita" ocupavam a
+ * janela ate a Caixa dizer "nada esperando" com aluno esperando. Das
+ * respostas, o banco devolve so as de instrutor, e so a coluna post_id.
+ *
+ * ponytail: duas leituras, tetos de 200 perguntas e 2000 respostas. Uma
+ * pergunta aberta mais velha que as 200 mais novas sem resposta aceita fica de
+ * fora; o upgrade e uma RPC que filtre "sem resposta de instrutor" no banco.
+ */
+export async function getOpenCommunityQuestions(
+  courseSlugs: string[],
+  instructorId: string,
+): Promise<string[]> {
+  if (!courseSlugs.length) {
+    return [];
+  }
+
+  const supabase = getSupabaseBrowserClient();
+  const { data, error } = await supabase
+    .from("community_posts")
+    .select("id")
+    .in("course_slug", courseSlugs)
+    .eq("category", "question")
+    .is("accepted_comment_id", null)
+    .order("created_at", { ascending: false })
+    .limit(200);
+
+  if (error) throw error;
+  const ids = (data ?? []).map((post) => post.id);
+  if (!ids.length) {
+    return [];
+  }
+
+  // A mesma regra de isInstructor (community-feed): papel de professor ou
+  // admin, ou o dono do curso.
+  const { data: replies, error: repliesError } = await supabase
+    .from("community_comments")
+    .select("post_id")
+    .in("post_id", ids)
+    .or(`author_role.in.(teacher,admin),author_id.eq.${instructorId}`)
+    .limit(2000);
+
+  if (repliesError) throw repliesError;
+  const answered = new Set((replies ?? []).map((reply) => reply.post_id));
+  return ids.filter((id) => !answered.has(id));
+}
+
+/** O texto das perguntas que a Caixa de entrada lista, da que espera ha mais
+ *  tempo para a mais nova. So a pagina Inbox le isto; a conta nao precisa. */
+export async function getCommunityPostsByIds(ids: string[]): Promise<CommunityPost[]> {
+  if (!ids.length) {
+    return [];
+  }
+
+  const { data, error } = await getSupabaseBrowserClient()
+    .from("community_posts")
+    .select("*")
+    .in("id", ids)
+    .order("created_at", { ascending: true });
+
+  if (error) throw error;
+  return (data ?? []).map(rowToPost);
+}

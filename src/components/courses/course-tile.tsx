@@ -9,6 +9,7 @@ import { ArrowRight, Star } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { UserAvatar } from "@/components/shared/user-avatar";
+import { VerifiedSeal } from "@/components/shared/verified-badge";
 import type { CourseCard } from "@/lib/data/catalog";
 
 /**
@@ -53,7 +54,8 @@ export type CourseTileProps = {
   badge?: string | null;
   priceLabel?: string;
   rating?: { average: number; count: number } | null;
-  instructor?: { name: string; photoURL?: string | null } | null;
+  /** `verified`: só o selo, sem popover (o cartão inteiro já é um link). */
+  instructor?: { name: string; photoURL?: string | null; verified?: boolean } | null;
   actionLabel?: string;
   /** Botao de salvar e afins. Fica acima do link esticado pelo z-index. */
   overlay?: ReactNode;
@@ -132,6 +134,9 @@ export function CourseTile({
                   className="size-6"
                 />
                 <span className="min-w-0 truncate">{instructor.name}</span>
+                {instructor.verified ? (
+                  <VerifiedSeal size={12} label={t("verifiedBadge.label")} />
+                ) : null}
               </>
             ) : null}
             {hasRating && rating ? (

@@ -297,6 +297,84 @@ describe("creator path order and conditions", () => {
     expect(at(dict, "creatorEditor.builder.publish.help")).not.toMatch(/approved creator|creador aprobado/i);
   });
 
+  // Decisão de 2026-10-06: todo professor com o cadastro completo tem perfil
+  // público e só o selo diz quem foi verificado. Nenhuma frase pública chama
+  // os instrutores de verificados, revisados ou avaliados em bloco — no
+  // singular ou no plural, nas duas ordens, em EN e ES. Ficam de fora o nome
+  // do selo entre aspas e a frase com a ressalva "where required".
+  describe("no group verification claim", () => {
+    const enNoun = String.raw`(?:instructor|teacher|creator|professional|educator|expert)s?`;
+    const enAdj = String.raw`(?:verified|vetted|reviewed)`;
+    const esNoun = String.raw`(?:instructor(?:a|es|as)?|profesor(?:a|es|as)?|creador(?:a|es|as)?|educador(?:a|es|as)?|profesional(?:es)?|expert[oa]s?|docentes?)`;
+    const esAdj = String.raw`(?:verificad|evaluad|revisad)[oa]s?`;
+    const groupClaim = new RegExp([
+      // "verified experts", "reviewed creator profiles" (não "reviewed professional evidence")
+      String.raw`\b${enAdj}\s+${enNoun}\b(?![-\s]+(?:evidence|badge|license|credentials?)\b)`,
+      // "instructors are vetted", "every teacher is verified"
+      String.raw`\b${enNoun}\s+(?:(?:are|is|were|was|get|gets|been|being|all)\s+)*${enAdj}\b`,
+      String.raw`\b${esAdj}\s+${esNoun}\b`,
+      // "expertos evaluados", "creadores son revisados" (não "evidencia profesional revisada")
+      String.raw`(?<!(?:evidencia|licencia)\s)\b${esNoun}\s+(?:(?:son|es|fueron|fue|están|está)\s+)?${esAdj}\b`,
+    ].join("|"), "i");
+    const badgeName = /["“«]\s*(?:verified professional|profesional verificad[oa])\s*["”»]/gi;
+    const qualified = /where required|cuando se requiere/i;
+    const claimsGroup = (text: string) => text.replace(badgeName, "").split(/(?<=[.!?;])\s+/)
+      .some((sentence) => !qualified.test(sentence) && groupClaim.test(sentence));
+    const strings = (node: unknown, path: string): Array<[string, string]> => typeof node === "string"
+      ? [[path, node]]
+      : node && typeof node === "object"
+        ? Object.entries(node).flatMap(([key, value]) => strings(value, `${path}.${key}`))
+        : [];
+
+    it.each([
+      "Courses by verified experts, ready to learn.",
+      "Learn from reviewed experts.",
+      "Every instructor is vetted by our team.",
+      "Built around reviewed creator profiles.",
+      "Our teachers are verified before they publish.",
+      "Learn from a verified professional.",
+      "Aprende de expertos evaluados.",
+      "Cursos de instructores verificados.",
+      "Los creadores son revisados por SkillsetMind.",
+      "Clases de profesionales verificados.",
+    ])("catches %s", (text) => {
+      expect(claimsGroup(text)).toBe(true);
+    });
+
+    it.each([
+      "Experts verified where required, no platform hold on your money, verifiable certificates.",
+      "Where required, professionals are verified before they can publish.",
+      "Expertos verificados cuando se requiere, sin retención de la plataforma sobre tu dinero.",
+      "Every course is built by an independent professional, verified by SkillsetMind where required.",
+      'Otherwise it is optional: a "Verified professional" badge means our team checked a license, or reviewed professional evidence, on the date shown.',
+      "En los demás casos es opcional: el sello «Profesional verificado» indica que nuestro equipo comprobó una licencia, o revisó evidencia profesional.",
+      'Meet the independent creators teaching on SkillsetMind. The "Verified professional" badge marks the ones our team has reviewed.',
+      "Add the verified-professional badge to your profile.",
+    ])("lets through %s", (text) => {
+      expect(claimsGroup(text)).toBe(false);
+    });
+
+    it.each(dictionaries)("the %s public copy never calls instructors verified or reviewed as a group", (_locale, dict) => {
+      const offenders = (["home", "footer", "publicPages", "publicCourses", "siteMetadata"] as const)
+        .flatMap((namespace) => strings(dict[namespace], namespace))
+        .filter(([, value]) => claimsGroup(value))
+        .map(([path]) => path);
+      expect(offenders).toEqual([]);
+    });
+
+    // O diretório não promete identidade conferida: "real" saiu das frases.
+    it.each(dictionaries)("the %s /instructors copy makes no identity claim", (_locale, dict) => {
+      const { instructors, directory } = dict.publicPages;
+      for (const text of [
+        instructors.meet_independent_creators_whose_public_profiles,
+        directory.skillsetmind_only_lists_real_published_profiles,
+        directory.this_instructor_has_published_their_profile,
+      ]) {
+        expect(text).not.toMatch(/\breal(?:es)?\b|published their profile|ha publicado su perfil/i);
+      }
+    });
+  });
+
   it("the help FAQ answer shared with the assistant says verification applies where required", () => {
     const answer = helpFaqCategories.flatMap((category) => category.items).find((item) => item.id === "course-publishing")?.a;
     expect(answer).toMatch(whereRequired);

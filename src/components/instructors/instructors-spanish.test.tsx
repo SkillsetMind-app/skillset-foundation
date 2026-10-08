@@ -56,7 +56,7 @@ it("links each directory card to the @handle address", async () => {
 });
 
 it.each([
-  ["empty", "Public instructor profiles appear after review.", "Los perfiles públicos de los instructores aparecen después de la revisión."],
+  ["empty", "Public instructor profiles appear once creators finish setup.", "Los perfiles públicos de los instructores aparecen cuando el creador completa su configuración."],
   ["error", "Instructor profiles could not load right now.", "No se pudieron cargar los perfiles de instructores en este momento."],
 ])("translates an existing directory %s state", async (mode, en, es) => {
   fixture.directory = mode;
@@ -79,7 +79,7 @@ it.each([[true, 1], [false, 0]])("links the store only while it has a real cours
       </RealCoursesProvider>
     </I18nProvider>,
   );
-  await screen.findByText("Public instructor profiles appear after review.");
+  await screen.findByText("Public instructor profiles appear once creators finish setup.");
 
   expect(document.querySelectorAll('a[href="/courses"]')).toHaveLength(count);
 });

@@ -25,25 +25,22 @@ describe("a barra de progresso da sala", () => {
 });
 
 describe("os rotulos da barra lateral", () => {
-  // A largura do rail leva 240ms e o rotulo levava 180ms COMECANDO JUNTO: o
-  // texto aparecia dentro de uma barra ainda estreita, e sumia antes de ela
-  // encolher — as duas coisas correndo uma por cima da outra.
-  it("ao ABRIR, esperam a largura terminar antes de aparecer", () => {
-    const label = block(".platform-sidebar-label");
-    expect(label).toContain("opacity 180ms ease 180ms");
-    expect(label).toContain("transform 180ms ease 180ms");
-  });
-
-  it("ao FECHAR, saem na hora — sem o atraso da abertura", () => {
-    expect(block(".sidebar-collapsed .platform-sidebar-label")).toContain(
-      "transition-delay: 0s",
+  // Onda E: a largura do rail troca na hora (animar a coluna refazia o layout
+  // da pagina a cada quadro), e o rotulo so acende. Antes a largura levava
+  // 240ms e o rotulo esperava 180ms para nao correr por cima dela.
+  it("fora de no-preference o rotulo nao anima; dentro, so a opacidade, em 180ms", () => {
+    expect(block(".platform-sidebar-label")).not.toContain("transition");
+    const motion = css.slice(css.indexOf("/* 14. Menu lateral (onda E)."));
+    expect(motion.slice(0, 600)).toMatch(
+      /\.platform-sidebar-label \{\s*transition: opacity var\(--duration-base\) var\(--ease-standard\);/,
     );
+    const opener = css.lastIndexOf("@media (prefers-reduced-motion: no-preference) {", css.indexOf("/* 14. Menu lateral"));
+    expect(opener).toBeGreaterThan(-1);
   });
 
-  it("com prefers-reduced-motion, nem largura nem rotulo animam", () => {
+  it("com prefers-reduced-motion nada anda: o bloco global zera as transicoes", () => {
     const reduced = css.slice(css.indexOf("@media (prefers-reduced-motion: reduce)"));
-    expect(reduced).toContain(".platform-sidebar-label");
-    expect(reduced).toMatch(/\.platform-sidebar-label \{\s*transition: none;/);
+    expect(reduced).toMatch(/transition-duration: 0\.01ms !important;/);
   });
 });
 

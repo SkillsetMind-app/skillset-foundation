@@ -12,7 +12,10 @@ import {
 } from "@/components/auth/turnstile-widget";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { isGoogleAuthEnabled } from "@/lib/auth/providers";
-import { ConfirmEmailGate } from "@/components/auth/confirm-email-gate";
+import {
+  ConfirmEmailGate,
+  ExpiredConfirmationLink,
+} from "@/components/auth/confirm-email-gate";
 import {
   completeMfaSignIn,
   getAuthErrorMessage,
@@ -69,6 +72,10 @@ export function LoginForm() {
     if (reason === "session_revoked") {
       return { key: "authFlow.errors.sessionRevoked" };
     }
+    // Tem tela propria (abaixo), nao uma linha vermelha.
+    if (reason === "confirm_expired") {
+      return null;
+    }
     if (reason === "otp_expired" || reason === "access_denied") {
       return { key: "authFlow.callback.usedOrExpired" };
     }
@@ -84,6 +91,11 @@ export function LoginForm() {
   // Conta criada, e-mail nunca confirmado: em vez de uma frase de erro, a
   // mesma porta do cadastro (com "reenviar o link").
   const [unconfirmedEmail, setUnconfirmedEmail] = useState("");
+  // Link de confirmacao vencido ou ja usado: primeiro a tela de pedir outro,
+  // com "ja confirmei? entrar" para quem so precisa do formulario.
+  const [expiredLink, setExpiredLink] = useState(
+    () => searchParams.get("error") === "confirm_expired",
+  );
   const [isLoading, setIsLoading] = useState(false);
   // Set when a sign-in succeeds at the password step but the account also
   // requires a TOTP second factor. Holds the original error the resolver needs.
@@ -221,6 +233,19 @@ export function LoginForm() {
     }
   }
 
+  if (expiredLink) {
+    return (
+      <ExpiredConfirmationLink
+        intent={pathIntent}
+        returnTo={returnTo}
+        onSignIn={(typed) => {
+          setEmail(typed);
+          setExpiredLink(false);
+        }}
+      />
+    );
+  }
+
   if (unconfirmedEmail) {
     return (
       <ConfirmEmailGate
@@ -237,7 +262,7 @@ export function LoginForm() {
   if (mfaError) {
     return (
       <form className="mt-5 grid gap-3.5" onSubmit={handleSubmit}>
-        <div className="rounded-none border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-3">
+        <div className="rounded-lg border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-3">
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
             {t("auth.mfaTitle")}
           </p>
@@ -264,7 +289,7 @@ export function LoginForm() {
           <p
             role="alert"
             aria-live="assertive"
-            className="rounded-none border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]"
+            className="rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]"
           >
             {errorMessage}
           </p>
@@ -282,7 +307,7 @@ export function LoginForm() {
           onClick={() => {
             void handleUseDifferentAccount();
           }}
-          className="text-sm font-semibold text-[var(--color-primary)] disabled:opacity-60"
+          className="min-h-6 text-sm font-semibold text-[var(--color-primary)] disabled:opacity-60"
         >
           {t("auth.useDifferentAccount")}
         </button>
@@ -361,7 +386,7 @@ export function LoginForm() {
         <p
           role="alert"
           aria-live="assertive"
-          className="rounded-none border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]"
+          className="rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]"
         >
           {errorMessage}
         </p>

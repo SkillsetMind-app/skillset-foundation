@@ -160,12 +160,10 @@ export function TeacherStudioInsights({
       ) : null}
 
       <section>
-        <div className="sec-head">
-          <div>
-            <span className="eyebrow brand">{t("teach.insights.activityEyebrow")}</span>
-            <h2>{t("teach.insights.activityTitle")}</h2>
-          </div>
-        </div>
+        {/* .sec-head e .eyebrow.brand nao tinham CSS: o h2 saia sem estilo. */}
+        <h2 className="text-xl font-semibold text-[var(--color-primary)]">
+          {t("teach.insights.activityTitle")}
+        </h2>
         <div className="mt-5 grid gap-4 lg:grid-cols-3">
           {activity.map((item) => (
             <Link key={item.title} href={item.href} className="studio-activity-card">
@@ -187,7 +185,7 @@ export function TeacherStudioInsights({
 
 function RichEmptyLine({ title, detail }: { title: string; detail: string }) {
   return (
-    <div className="rounded-none border border-dashed border-[var(--color-line-strong)] bg-[var(--color-surface-soft)] p-4">
+    <div className="rounded-lg border border-dashed border-[var(--color-line-strong)] bg-[var(--color-surface-soft)] p-4">
       <p className="text-sm font-semibold text-[var(--color-ink)]">{title}</p>
       <p className="mt-1 text-xs leading-5 text-[var(--color-ink-soft)]">{detail}</p>
     </div>

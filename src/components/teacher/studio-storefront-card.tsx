@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { ExternalLink, Store } from "lucide-react";
+import { Store } from "lucide-react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { VerifiedSeal } from "@/components/shared/verified-badge";
 import { buttonClasses, Card, Eyebrow } from "@/components/ui";
 import type { TeacherCourse } from "@/domain/teacher-course";
 import { useStorefrontPath } from "@/components/teacher/use-storefront-path";
@@ -17,10 +18,13 @@ export function StudioStorefrontCard({
   uid,
   courses,
   coursesLoaded,
+  verificationStatus,
 }: {
   uid: string;
   courses: TeacherCourse[];
   coursesLoaded: boolean;
+  /** Status do selo; null/undefined = desconhecido (a linha não aparece). */
+  verificationStatus?: string | null;
 }) {
   const { t } = useTranslation();
   const path = useStorefrontPath(uid);
@@ -41,7 +45,7 @@ export function StudioStorefrontCard({
 
       <Card className="mt-4" padding="md">
         <div className="flex flex-wrap items-start gap-4">
-          <span className="grid size-10 shrink-0 place-items-center rounded-none border border-[var(--color-line)] text-[var(--color-primary)]">
+          <span className="grid size-10 shrink-0 place-items-center rounded-md border border-[var(--color-line)] text-[var(--color-primary)]">
             <Store aria-hidden="true" size={18} strokeWidth={1.8} />
           </span>
           <div className="min-w-0 flex-1">
@@ -65,13 +69,9 @@ export function StudioStorefrontCard({
         <div className="mt-4 flex flex-wrap gap-2">
           <Link
             href={path}
-            target="_blank"
-            rel="noopener noreferrer"
             className={buttonClasses({ variant: "outline", size: "sm" })}
           >
             {t("teach.storefrontCard.open")}
-            <ExternalLink aria-hidden="true" size={14} strokeWidth={1.9} />
-            <span className="sr-only">{t("platform.opensInNewTab")}</span>
           </Link>
           <Link
             href="/teach/storefront"
@@ -80,6 +80,20 @@ export function StudioStorefrontCard({
             {t("teach.storefrontCard.edit")}
           </Link>
         </div>
+
+        {/* Lugar fixo do selo: depois de 3 "Agora não" na oferta, é só aqui.
+            Só para quem pode pedir; status desconhecido não oferece nada. */}
+        {verificationStatus === "none" || verificationStatus === "rejected" ? (
+          <div data-verified-badge-slot="" className="mt-4 border-t border-[var(--color-line)] pt-3 text-sm">
+            <Link
+              href="/teach/verification"
+              className="inline-flex min-h-11 items-center gap-2 font-semibold text-[var(--color-primary)] underline-offset-4 hover:underline"
+            >
+              <VerifiedSeal size={14} />
+              {t("verifiedBadge.slot.offer")}
+            </Link>
+          </div>
+        ) : null}
       </Card>
     </section>
   );

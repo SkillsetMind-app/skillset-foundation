@@ -23,6 +23,7 @@ import {
   resetPassword,
   sendSkillsetEmailVerification,
 } from "@/lib/auth/supabase-auth";
+import { scrollBehavior } from "@/lib/ui/scroll-behavior";
 
 export function SecuritySettingsPanel() {
   const { t } = useTranslation();
@@ -54,7 +55,7 @@ export function SecuritySettingsPanel() {
   // its await and writes after, so the paragraph genuinely unmounts and
   // remounts on every attempt and this callback ref fires each time.
   const revealFeedback = (node: HTMLParagraphElement | null) => {
-    node?.scrollIntoView({ block: "center", behavior: "smooth" });
+    node?.scrollIntoView({ block: "center", behavior: scrollBehavior() });
   };
   const passwordReady = isStrongPassword(nextPassword);
 
@@ -191,7 +192,7 @@ export function SecuritySettingsPanel() {
       </p>
 
       <div className="mt-6 grid gap-4 lg:grid-cols-2">
-        <div className="rounded-none border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-4">
+        <div className="rounded-lg border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-4">
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="font-semibold text-[var(--color-ink)]">
@@ -202,7 +203,7 @@ export function SecuritySettingsPanel() {
               </p>
             </div>
             <span
-              className={`rounded-none px-2 py-1 text-[10px] font-bold uppercase tracking-[0.14em] ${
+              className={`rounded-chip px-2 py-1 text-[10px] font-bold uppercase tracking-[0.14em] ${
                 emailVerified
                   ? "bg-white text-[var(--color-primary)]"
                   : "bg-[rgba(178,34,52,0.08)] text-[var(--color-accent-fg)]"
@@ -233,7 +234,7 @@ export function SecuritySettingsPanel() {
           </div>
         </div>
 
-        <div className="rounded-none border border-[var(--color-line)] bg-white p-4">
+        <div className="rounded-lg border border-[var(--color-line)] bg-white p-4">
           <p className="font-semibold text-[var(--color-ink)]">
             {t("accountSecurity.email.title")}
           </p>
@@ -251,7 +252,7 @@ export function SecuritySettingsPanel() {
               placeholder={t("accountSecurity.email.placeholder")}
               aria-label={t("accountSecurity.email.label")}
               autoComplete="email"
-              className="rounded-none border border-[var(--color-line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--color-primary-light)]"
+              className="rounded-md border border-[var(--color-line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--color-primary-light)]"
             />
             <button
               type="button"
@@ -264,7 +265,7 @@ export function SecuritySettingsPanel() {
           </div>
         </div>
 
-        <div className="rounded-none border border-[var(--color-line)] bg-white p-4">
+        <div className="rounded-lg border border-[var(--color-line)] bg-white p-4">
           <p className="font-semibold text-[var(--color-ink)]">
             {t("accountSecurity.password.title")}
           </p>
@@ -279,7 +280,7 @@ export function SecuritySettingsPanel() {
               placeholder={t("accountSecurity.password.current")}
               aria-label={t("accountSecurity.password.current")}
               autoComplete="current-password"
-              className="rounded-none border border-[var(--color-line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--color-primary-light)]"
+              className="rounded-md border border-[var(--color-line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--color-primary-light)]"
             />
             <input
               type="password"
@@ -288,7 +289,7 @@ export function SecuritySettingsPanel() {
               placeholder={t("accountSecurity.password.next")}
               aria-label={t("accountSecurity.password.next")}
               autoComplete="new-password"
-              className="rounded-none border border-[var(--color-line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--color-primary-light)]"
+              className="rounded-md border border-[var(--color-line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--color-primary-light)]"
             />
             {nextPassword ? (
               <PasswordStrengthChecklist password={nextPassword} />
@@ -315,7 +316,7 @@ export function SecuritySettingsPanel() {
                 type="button"
                 onClick={handleSendPasswordReset}
                 disabled={isBusy || captchaPending}
-                className="mt-2 text-xs font-bold text-[var(--color-primary)] underline-offset-2 hover:underline disabled:opacity-60"
+                className="mt-2 min-h-6 text-xs font-bold text-[var(--color-primary)] underline-offset-2 hover:underline disabled:opacity-60"
               >
                 {t("accountSecurity.password.sendReset")}
               </button>
@@ -337,7 +338,7 @@ export function SecuritySettingsPanel() {
           ref={revealFeedback}
           role="alert"
           aria-live="assertive"
-          className="mt-4 rounded-none border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]"
+          className="mt-4 rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]"
         >
           {"key" in error ? t(error.key) : getAuthErrorMessage(error.cause, t)}
         </p>

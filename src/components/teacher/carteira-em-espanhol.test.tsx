@@ -146,10 +146,12 @@ describe("carteira do professor em espanhol", () => {
     );
 
     // Cabecalho e cartao do saldo.
-    expect(screen.getByText("Pagos e impuestos")).toBeInTheDocument();
+    // Um nome so para a pagina do dinheiro: "Ganancias", o mesmo da barra.
+    expect(screen.getByText("Ganancias", { selector: "p" })).toBeInTheDocument();
+    expect(screen.queryByText("Pagos e impuestos")).toBeNull();
     expect(
       screen.getByRole("heading", {
-        name: /Tus ingresos, tu configuración de pagos\./,
+        name: /Tus ganancias, tu configuración de pagos\./,
       }),
     ).toBeInTheDocument();
     expect(screen.getByText("Stripe recoge tus datos fiscales")).toBeInTheDocument();

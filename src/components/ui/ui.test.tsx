@@ -11,6 +11,7 @@ import {
   SectionHeader,
   buttonClasses,
 } from "@/components/ui";
+import { SpotArt } from "@/components/ui/spot-art";
 
 // Um arquivo só para os sete primitivos: são componentes de uma tela cada, e
 // sete arquivos de teste custariam sete inicializações de jsdom sem provar
@@ -25,7 +26,7 @@ describe("Button", () => {
     // A classe global só pinta borda, fundo, cor e sombra. Raio, espaçamento e
     // alinhamento do ícone estavam copiados em 361 lugares.
     expect(button).toHaveClass("button-solid", "inline-flex", "items-center", "gap-2");
-    expect(button.className).toContain("rounded-[var(--radius-md)]");
+    expect(button).toHaveClass("rounded-md");
   });
 
   it("mapeia cada variante na classe global correspondente", () => {
@@ -49,6 +50,21 @@ describe("Button", () => {
     );
   });
 
+  it("latão grande carregando: o spinner toma o lugar do ícone e o botão trava", () => {
+    render(
+      <Button variant="accent" size="lg" loading icon={<svg data-testid="icone" />}>
+        Publicar
+      </Button>,
+    );
+
+    const button = screen.getByRole("button", { name: "Publicar" });
+    expect(button).toHaveClass("button-accent", "button-lg");
+    expect(button).toBeDisabled();
+    expect(button).toHaveAttribute("aria-busy", "true");
+    expect(screen.queryByTestId("icone")).toBeNull();
+    expect(button.querySelector(".animate-spin")).not.toBeNull();
+  });
+
   it("expõe a mesma roupa em texto, para Link vestido de botão", () => {
     expect(buttonClasses({ variant: "outline", size: "sm" })).toContain("button-outline");
     expect(buttonClasses({ variant: "outline", size: "sm" })).toContain("text-xs");
@@ -61,7 +77,7 @@ describe("Card", () => {
 
     const card = container.firstElementChild!;
     expect(card.className).toContain("bg-[var(--color-surface)]");
-    expect(card.className).toContain("rounded-[var(--radius-xl)]");
+    expect(card).toHaveClass("rounded-lg");
     expect(card.className).toContain("border-[var(--color-line)]");
     // bg-white é atropelado no tema escuro por uma regra global com
     // !important que nem a exceção do certificado consegue vencer.
@@ -178,7 +194,32 @@ describe("EmptyState", () => {
 
     const box = container.firstElementChild!;
     expect(box.className).toContain("border-dashed");
-    expect(box.className).toContain("rounded-[var(--radius-xl)]");
+    expect(box).toHaveClass("rounded-lg");
     expect(screen.getByRole("button", { name: "Criar curso" })).toBeInTheDocument();
+  });
+
+  it("com cena: a gravura entra antes do texto, escondida do leitor de tela, e o título é sans", () => {
+    const { container } = render(
+      <EmptyState
+        title="Tu primer producto empieza aquí."
+        art={<SpotArt scene="firstProduct" />}
+        action={<Button>Crear mi primer producto</Button>}
+      />,
+    );
+
+    const box = container.firstElementChild!;
+    const art = box.firstElementChild!;
+    // A cena sobe 6px e acende (catálogo de movimento, item 10).
+    expect(art).toHaveClass("empty-state__art", "spot-art-in");
+    expect(art.querySelector("svg")).toHaveAttribute("aria-hidden", "true");
+    const heading = screen.getByRole("heading", { name: "Tu primer producto empieza aquí." });
+    expect(heading).toHaveClass("text-lg", "font-semibold");
+    expect(heading).not.toHaveClass("display-title");
+    expect(screen.getByRole("button", { name: "Crear mi primer producto" })).toBeInTheDocument();
+  });
+
+  it("sem cena, nada de moldura de arte", () => {
+    const { container } = render(<EmptyState title="Vazio." />);
+    expect(container.querySelector(".empty-state__art")).toBeNull();
   });
 });

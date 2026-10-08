@@ -36,6 +36,7 @@ import {
   getSafeReturnTo,
   getWelcomeRoute,
 } from "@/lib/auth/routing";
+import { markSignupTerms } from "@/lib/auth/signup-terms-mark";
 import {
   acceptUserTerms,
   getUserProfile,
@@ -156,7 +157,8 @@ export function SignupForm() {
 
     try {
       const { user, needsEmailConfirmation } = await signUpWithEmail(
-        { displayName, email, password, locale },
+        // legalAccepted e exigido acima: o tique vai junto com a conta.
+        { displayName, email, password, locale, acceptedTerms: true },
         captchaToken || undefined,
         // The confirmation link carries the destination itself, so it survives
         // being opened on a phone where this tab does not exist.
@@ -167,12 +169,14 @@ export function SignupForm() {
         source: "email",
       });
 
-      // No session yet: every profile write below would be filtered by RLS and
-      // return a silent zero-row success, and /welcome would bounce straight to
-      // sign-in with no explanation. Park on the confirm screen instead — terms
-      // are re-captured by the acceptance modal and the username by onboarding,
-      // both of which run once the confirmed session exists.
+      // Ainda sem sessao: toda gravacao de perfil abaixo seria filtrada pela RLS
+      // (sucesso silencioso com zero linhas) e /welcome mandaria direto para o
+      // login sem explicar. Fica na tela de confirmar. Os termos marcados aqui
+      // vao nos metadados da conta e a porta dos termos grava na primeira
+      // pagina logada (sem perguntar de novo) se ela abrir neste navegador; o
+      // @ fica para o onboarding.
       if (needsEmailConfirmation) {
+        markSignupTerms(user.uid);
         setConfirmSent(true);
         return;
       }
@@ -254,7 +258,7 @@ export function SignupForm() {
     <p
       role="alert"
       aria-live="assertive"
-      className="rounded-none border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]"
+      className="rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]"
     >
       {errorMessage}
       {accountExists ? (
@@ -303,7 +307,7 @@ export function SignupForm() {
             <span
               key={n}
               className={[
-                "h-1.5 rounded-none transition-all",
+                "h-1.5 rounded-full transition-all",
                 step === n ? "w-6 bg-[var(--color-primary)]" : "w-2 bg-[var(--color-line)]",
               ].join(" ")}
             />
@@ -326,7 +330,7 @@ export function SignupForm() {
                   aria-checked={intent === option}
                   onClick={() => chooseIntent(option)}
                   className={[
-                    "rounded-none border-[1.5px] px-4 py-2.5 text-sm font-semibold transition",
+                    "min-h-11 rounded-md border-[1.5px] px-4 py-2.5 text-sm font-semibold transition",
                     intent === option
                       ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-[var(--color-base)]"
                       : "border-[var(--color-line)] bg-white text-[var(--color-ink)] hover:bg-[var(--color-surface-soft)]",
@@ -526,7 +530,7 @@ export function SignupForm() {
               setFocusIdentityOnReturn(true);
               setStep(1);
             }}
-            className="mt-1 inline-flex items-center justify-center text-sm font-semibold text-[var(--color-primary)]"
+            className="mt-1 inline-flex min-h-6 items-center justify-center text-sm font-semibold text-[var(--color-primary)]"
           >
             {t("auth.signup.back")}
           </button>

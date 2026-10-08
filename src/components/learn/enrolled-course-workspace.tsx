@@ -18,7 +18,7 @@ import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { BunnyVideoPlayer } from "@/components/courses/bunny-video-player";
 import { ClassroomLoading } from "@/components/learn/classroom-loading";
-import { ClassroomTabs, type ClassroomTabItem } from "@/components/learn/classroom-tabs";
+import { ClassroomTabs, useTabChanged, type ClassroomTabItem } from "@/components/learn/classroom-tabs";
 import { CommunityFeed, type CommunityFeedLesson } from "@/components/learn/community-feed";
 import { CourseMessagesPanel } from "@/components/learn/course-messages-panel";
 import { CoursePlaylist } from "@/components/learn/course-playlist";
@@ -35,6 +35,7 @@ import {
   VideoWatermark,
 } from "@/components/learn/watermarked-video-player";
 import { ProtectedAssetPreview } from "@/components/shared/protected-asset-preview";
+import { MilestoneSeal, useJustDone } from "@/components/ui/drawn-check";
 import type { CourseAsset } from "@/domain/course-asset";
 import { formatCourseAssetSize, getModuleCoverAsset, getPrimaryLessonVideoAsset } from "@/domain/course-asset";
 import { getCourseAssetKindLabel } from "@/lib/i18n/course-assets";
@@ -89,6 +90,7 @@ import {
   type LessonContent,
 } from "@/lib/data/lesson-content";
 import { track } from "@/lib/posthog/events";
+import { scrollBehavior } from "@/lib/ui/scroll-behavior";
 
 // Liberação de aula pelo calendário (migration 20260915020000).
 // Folga depois do prazo: o relógio do aparelho pode estar à frente do banco.
@@ -219,7 +221,7 @@ export function EnrolledCourseWorkspace({
     window.requestAnimationFrame(() => {
       document
         .getElementById("member-lesson-player")
-        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+        ?.scrollIntoView({ behavior: scrollBehavior(), block: "start" });
     });
   }
   const [lessonListOpen, setLessonListOpen] = useState(false);
@@ -732,6 +734,15 @@ export function EnrolledCourseWorkspace({
     });
   }, [selectedLessonId, course.id, course.modules, previewMode]);
 
+  // O check da aula e o selo de 100% so se mexem quando o aluno conclui com a
+  // sala aberta: a primeira carga do progresso e a linha de base.
+  const justCompletedIds = useJustDone(
+    progressState.lessonIds,
+    progressState.ready && progressState.key === enrollmentId,
+  );
+  // Painel novo so na troca de aba (ver useTabChanged).
+  const tabChanged = useTabChanged(tab);
+
   if (isLoading) {
     // The classroom's one loading state, the same the route file and the
     // creator workspace paint, so a student never sees the wait change look.
@@ -740,8 +751,8 @@ export function EnrolledCourseWorkspace({
 
   if (error) {
     return (
-      <section className="rounded-none border border-[rgba(178,34,52,0.2)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
-        <p className="rounded-none bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
+      <section className="rounded-lg border border-[rgba(178,34,52,0.2)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
+        <p className="rounded-md bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
           {t(error)}
         </p>
         <div className="mt-4 flex flex-wrap gap-3">
@@ -765,7 +776,7 @@ export function EnrolledCourseWorkspace({
   if (!workspaceEnrollment) {
     if (cameFromCheckout) {
       return (
-        <section className="rounded-none border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
+        <section className="rounded-lg border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
           <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
             {t("learn.classroom.workspace.paymentReceived")}
           </p>
@@ -904,8 +915,12 @@ export function EnrolledCourseWorkspace({
     : null;
   // Um so criterio para o certificado, no hero e na barra de abas. Whitelabel
   // esconde todo link que volta para a plataforma.
+  // E-book nao emite certificado (issue_skillset_certificate recusa).
+  const productFormat = course.productFormat ?? "course";
   const certificateHref =
-    progressPercent === 100 && !whitelabel ? "/learn/credentials" : null;
+    progressPercent === 100 && !whitelabel && productFormat !== "ebook"
+      ? "/learn/credentials"
+      : null;
   const selectedLessonNumber = selectedLesson
     ? allLessons.findIndex((lesson) => lesson.id === selectedLesson.id) + 1
     : 0;
@@ -1165,15 +1180,33 @@ export function EnrolledCourseWorkspace({
     : "/learn";
   const backLabel = t(inClassroomTab ? "learn.membersHero.backToLesson" : "learn.membersHero.back");
 
+  // Sem aula, a sala abre no que o produto entrega: a comunidade, ou a aba
+  // de lives do evento ao vivo. A aba Lessons sai da barra (repetiria a
+  // mesma tela); em qualquer outro caso sem aula ela mostra o aviso vazio.
+  const emptyDefaultTab: ClassroomTab | null =
+    totalLessonCount > 0 || tab !== "lesson"
+      ? null
+      : productFormat === "community" && communityEnabled
+        ? "community"
+        : productFormat === "live_event" && !previewMode
+          ? "lives"
+          : null;
+  const activeTab = emptyDefaultTab ?? tab;
+  // Evento ao vivo depois da data: a aba fica, com "ja aconteceu" e a
+  // gravacao (a aula que o professor acrescentar), se houver.
+  const sessionAlreadyHappened =
+    productFormat === "live_event"
+    && liveState.events.some((event) => Date.parse(event.startsAt) <= liveState.now);
+
   // As abas que este curso tem. Materiais só quando há arquivos de curso
   // (cursos publicados por professor); lives, comunidade e mensagens não
   // existem na pré-visualização — e comunidade só se o professor ligou.
   const classroomTabs: ClassroomTabItem[] = [
-    { id: "lesson", label: t("creatorEditor.preview.tabs.lesson") },
+    ...(emptyDefaultTab ? [] : [{ id: "lesson" as const, label: t("creatorEditor.preview.tabs.lesson") }]),
     ...(enableFirestoreAssets
       ? [{ id: "materials" as const, label: t("creatorEditor.preview.tabs.materials"), count: courseLevelAssets.length }]
       : []),
-    ...(!previewMode && (upcomingEvents.length > 0 || tab === "lives")
+    ...(!previewMode && (upcomingEvents.length > 0 || activeTab === "lives" || productFormat === "live_event")
       ? [{ id: "lives" as const, label: t("creatorEditor.preview.tabs.lives") }]
       : []),
     ...(communityEnabled
@@ -1193,9 +1226,9 @@ export function EnrolledCourseWorkspace({
         <MembersAreaHeroBand
           course={course}
           coverAsset={membersCoverAsset}
-          progressPercent={previewMode ? null : progressPercent}
-          completedCount={previewMode ? null : completedLessonCount}
-          totalCount={previewMode ? null : totalLessonCount}
+          progressPercent={previewMode || totalLessonCount === 0 ? null : progressPercent}
+          completedCount={previewMode || totalLessonCount === 0 ? null : completedLessonCount}
+          totalCount={previewMode || totalLessonCount === 0 ? null : totalLessonCount}
           certificateHref={previewMode ? null : certificateHref}
           backHref={backHref}
           backTo={inClassroomTab ? "lesson" : "courses"}
@@ -1207,8 +1240,9 @@ export function EnrolledCourseWorkspace({
             selectedLesson && (previewMode || progressReady)
               ? {
                   href: classroomTabHref(basePath, "lesson", selectedLesson.id),
-                  label:
-                    completedLessonIds.length === 0 && selectedLesson.id === allLessons[0]?.id
+                  label: productFormat === "ebook"
+                    ? t("learn.membersHero.openFile")
+                    : completedLessonIds.length === 0 && selectedLesson.id === allLessons[0]?.id
                       ? t("learn.membersHero.start")
                       : t("learn.membersHero.continue").replace("{title}", () => selectedLesson.title),
                 }
@@ -1224,7 +1258,7 @@ export function EnrolledCourseWorkspace({
             <h1 className="member-classroom-head__title">
               {course.membersTitle ?? course.title}
             </h1>
-            {tab === "lesson" && selectedLesson ? (
+            {activeTab === "lesson" && selectedLesson ? (
               <LessonStepper
                 previous={previousInOrder}
                 next={nextInOrder}
@@ -1246,7 +1280,11 @@ export function EnrolledCourseWorkspace({
           >
             <span style={{ width: `${progressPercent}%` }} />
           </span>
-          <span className="member-classroom-head__percent">{progressPercent}%</span>
+          <span className="member-classroom-head__percent inline-flex items-center gap-1">
+            {progressPercent}%
+            {/* O marco: a barra chegou ao fim (o mesmo selo do construtor). */}
+            {progressPercent === 100 ? <MilestoneSeal animate={justCompletedIds.size > 0} /> : null}
+          </span>
         </header>
       )}
 
@@ -1272,17 +1310,26 @@ export function EnrolledCourseWorkspace({
           endereço. */}
       <ClassroomTabs
         basePath={basePath}
-        active={tab}
+        active={activeTab}
         lessonId={selectedLesson?.id ?? null}
         tabs={classroomTabs}
         certificateHref={certificateHref}
       />
 
-      {tab === "lesson" ? (
+      {/* Um item so da grade para a aba aberta: na troca de aba ele entra
+          subindo 8px (motion-panel-in); na carga da pagina, parado. */}
+      <div className={tabChanged ? "motion-panel-in" : undefined}>
+      {activeTab === "lesson" && totalLessonCount === 0 ? (
+        <section className="member-resource-panel">
+          <p className="text-sm text-[var(--color-ink-soft)]">{t("learn.classroom.workspace.noLessons")}</p>
+        </section>
+      ) : null}
+
+      {activeTab === "lesson" && totalLessonCount > 0 ? (
       <div className="member-classroom-layout">
         <section id="member-lesson-player" className="member-classroom-player">
         {actionError ? (
-          <p role="alert" className="mb-5 rounded-none border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
+          <p role="alert" className="mb-5 rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
             {t(actionError)}
           </p>
         ) : null}
@@ -1464,6 +1511,7 @@ export function EnrolledCourseWorkspace({
                 ? undefined
                 : (lessonId) => toggleLessonCompletion(lessonId, true)
             }
+            justCompletedIds={justCompletedIds}
           />
           {!previewMode
             && workspaceEnrollment.source === "subscription"
@@ -1481,7 +1529,7 @@ export function EnrolledCourseWorkspace({
       {/* As outras abas. Antes TUDO isto vinha depois do currículo, na mesma
           rolagem (4 a 6 telas de altura), sem endereço. Agora só a aba aberta
           renderiza — e ela tem um caminho próprio. */}
-      {tab === "materials" && enableFirestoreAssets ? (
+      {activeTab === "materials" && enableFirestoreAssets ? (
         <CourseAssetResourceList
           assets={courseLevelAssets}
           isLoading={Boolean(
@@ -1491,11 +1539,16 @@ export function EnrolledCourseWorkspace({
         />
       ) : null}
 
-      {tab === "lives" && !previewMode ? (
-        <CourseEventsAgenda upcoming={upcomingEvents} now={liveState.now} />
+      {activeTab === "lives" && !previewMode ? (
+        <CourseEventsAgenda
+          upcoming={upcomingEvents}
+          now={liveState.now}
+          alreadyHappened={sessionAlreadyHappened}
+          replayHref={allLessons[0] ? classroomTabHref(basePath, "lesson", allLessons[0].id) : null}
+        />
       ) : null}
 
-      {tab === "community" && communityEnabled ? (
+      {activeTab === "community" && communityEnabled ? (
         <CourseCommunitySection
           course={course}
           currentLesson={
@@ -1507,15 +1560,19 @@ export function EnrolledCourseWorkspace({
         />
       ) : null}
 
-      {tab === "messages" && !previewMode ? <CourseMessagesPanel courseId={course.id} /> : null}
+      {activeTab === "messages" && !previewMode ? <CourseMessagesPanel courseId={course.id} whitelabel={whitelabel} /> : null}
 
-      {tab === "review" ? (
+      {activeTab === "review" ? (
         <CourseReviewPanel
           courseId={course.id}
           progressPercent={progressPercent}
+          // Sem trilha de aulas (outro tipo, ou nenhuma aula) nao ha 50% a
+          // cumprir. Mesma regra de submit_course_review.
+          requiresProgress={productFormat === "course" && totalLessonCount > 0}
           previewMode={previewMode}
         />
       ) : null}
+      </div>
 
       {lessonListOpen ? (
         <LessonListOverlay
@@ -1536,7 +1593,17 @@ export function EnrolledCourseWorkspace({
 // Events are keyed by course.id in course_events.course_slug (the convention
 // teacher-event-studio writes). The workspace subscribes and only lists the tab
 // when there is a session; opened by its address with none, it says so.
-function CourseEventsAgenda({ upcoming, now }: { upcoming: CourseEvent[]; now: number }) {
+function CourseEventsAgenda({
+  upcoming,
+  now,
+  alreadyHappened = false,
+  replayHref = null,
+}: {
+  upcoming: CourseEvent[];
+  now: number;
+  alreadyHappened?: boolean;
+  replayHref?: string | null;
+}) {
   const { t, locale } = useTranslation();
 
   // now = 0: a primeira leitura ainda não voltou. Não dá para dizer "nenhuma".
@@ -1547,7 +1614,15 @@ function CourseEventsAgenda({ upcoming, now }: { upcoming: CourseEvent[]; now: n
   if (upcoming.length === 0) {
     return (
       <section className="member-resource-panel">
-        <p className="text-sm text-[var(--color-ink-soft)]">{t("learnWave2.agenda.empty")}</p>
+        <p className="text-sm text-[var(--color-ink-soft)]">
+          {t(alreadyHappened ? "learnWave2.agenda.happened" : "learnWave2.agenda.empty")}
+        </p>
+        {alreadyHappened && replayHref ? (
+          <Link href={replayHref} className="button-outline mt-4 inline-flex items-center gap-2 px-5 py-2.5 text-sm">
+            <PlayCircle size={16} aria-hidden />
+            {t("learnWave2.agenda.replay")}
+          </Link>
+        ) : null}
       </section>
     );
   }
@@ -1572,7 +1647,7 @@ function CourseEventsAgenda({ upcoming, now }: { upcoming: CourseEvent[]; now: n
           return (
             <li
               key={event.id}
-              className="flex flex-wrap items-center justify-between gap-4 rounded-none border fine-rule bg-[var(--color-surface-soft)] px-5 py-4"
+              className="flex flex-wrap items-center justify-between gap-4 rounded-lg border fine-rule bg-[var(--color-surface-soft)] px-5 py-4"
             >
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
@@ -1580,7 +1655,7 @@ function CourseEventsAgenda({ upcoming, now }: { upcoming: CourseEvent[]; now: n
                     {t(`creatorPanel.events.type.${event.type}`)}
                   </span>
                   {isLiveNow ? (
-                    <span className="rounded-none bg-[rgba(178,34,52,0.1)] px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--color-accent-fg)]">
+                    <span className="rounded-full bg-[rgba(178,34,52,0.1)] px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--color-accent-fg)]">
                       {t("learnWave2.agenda.now")}
                     </span>
                   ) : null}
@@ -1895,7 +1970,7 @@ function LessonInfo({
         aria-expanded={open}
         aria-controls={open ? "member-lesson-info" : undefined}
         onClick={() => setOpen((current) => !current)}
-        className="inline-flex min-h-11 items-center gap-1.5 rounded-none px-2 text-sm font-semibold text-[var(--color-ink)] underline-offset-4 hover:underline"
+        className="inline-flex min-h-11 items-center gap-1.5 rounded-md px-2 text-sm font-semibold text-[var(--color-ink)] underline-offset-4 hover:underline"
       >
         <Info aria-hidden="true" size={15} />
         {t("learn.classroom.lessonInfo.toggle")}
@@ -1907,7 +1982,7 @@ function LessonInfo({
       {open ? (
         <dl
           id="member-lesson-info"
-          className="mt-2 grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1.5 rounded-none border border-[var(--color-line)] bg-[var(--color-surface-soft)] px-4 py-3 text-sm"
+          className="mt-2 grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1.5 rounded-lg border border-[var(--color-line)] bg-[var(--color-surface-soft)] px-4 py-3 text-sm"
         >
           {rows.map(([term, value]) => (
             <Fragment key={term}>
@@ -1946,11 +2021,11 @@ function CourseAssetResourceList({
         </span>
       </div>
       {isLoading ? (
-        <p className="mt-4 rounded-none bg-white px-3 py-2 text-sm text-[var(--color-ink-soft)]">
+        <p className="mt-4 rounded-md bg-white px-3 py-2 text-sm text-[var(--color-ink-soft)]">
           {t("learn.classroom.resources.loading")}
         </p>
       ) : assets.length === 0 ? (
-        <p className="mt-4 rounded-none bg-white px-3 py-2 text-sm text-[var(--color-ink-soft)]">
+        <p className="mt-4 rounded-md bg-white px-3 py-2 text-sm text-[var(--color-ink-soft)]">
           {t("learn.classroom.resources.empty")}
         </p>
       ) : (
@@ -1958,7 +2033,7 @@ function CourseAssetResourceList({
           {assets.map((asset) => (
             <div
               key={asset.id}
-              className="rounded-none border border-[var(--color-line)] bg-white p-3"
+              className="rounded-lg border border-[var(--color-line)] bg-white p-3"
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
@@ -1969,7 +2044,7 @@ function CourseAssetResourceList({
                     {getCourseAssetKindLabel(asset.kind, t)} - {formatCourseAssetSize(asset.size)}
                   </p>
                 </div>
-                <span className="rounded-none bg-[var(--color-surface-soft)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--color-primary)]">
+                <span className="rounded-chip bg-[var(--color-surface-soft)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--color-primary)]">
                   {t(asset.isPreview ? "learn.classroom.resources.preview" : "learn.classroom.resources.enrolled")}
                 </span>
               </div>
@@ -2070,8 +2145,11 @@ function LessonContentPanel({
   // so de leitura nao pode dizer "Media not attached yet". A descricao nao
   // conta: quase toda aula de video tem uma linha de resumo. O tipo "text"
   // antigo continua valendo.
+  // A aula do e-book ("download") e o arquivo, listado logo abaixo.
   const isTextFirstLesson =
-    lesson.type === "text" || Boolean(lesson.contentText?.trim());
+    lesson.type === "text"
+    || lesson.type === "download"
+    || Boolean(lesson.contentText?.trim());
   // Aula de leitura pronta: sem caixa de vídeo nenhuma. Antes ficava ali uma
   // caixa vazia de 260-520px dizendo "leia as notas abaixo", com os
   // comentários entre ela e as notas. Agora o texto vem logo, e depois os
@@ -2100,7 +2178,7 @@ function LessonContentPanel({
             {t("learn.classroom.lesson.content")}
           </p>
           {lesson.isPreview ? (
-            <span className="rounded-none border border-[rgba(178,34,52,0.18)] bg-[rgba(178,34,52,0.05)] px-3 py-1 text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--color-accent-fg)]">
+            <span className="rounded-chip border border-[rgba(178,34,52,0.18)] bg-[rgba(178,34,52,0.05)] px-3 py-1 text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--color-accent-fg)]">
               {t("learn.classroom.lesson.freePreview")}
             </span>
           ) : null}
@@ -2116,7 +2194,7 @@ function LessonContentPanel({
           </p>
         ) : null}
         {!locked && lesson.contentText ? (
-          <div className="mt-4 whitespace-pre-line rounded-none border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-4 text-sm leading-7 text-[var(--color-ink-soft)]">
+          <div className="mt-4 whitespace-pre-line rounded-lg border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-4 text-sm leading-7 text-[var(--color-ink-soft)]">
             {linkify(lesson.contentText)}
           </div>
         ) : null}
@@ -2260,7 +2338,7 @@ function LessonAssetList({
   const { t } = useTranslation();
   if (isLoading) {
     return (
-      <p className="mt-4 rounded-none bg-[var(--color-surface-soft)] px-3 py-2 text-sm text-[var(--color-ink-soft)]">
+      <p className="mt-4 rounded-md bg-[var(--color-surface-soft)] px-3 py-2 text-sm text-[var(--color-ink-soft)]">
         {t("learn.classroom.resources.loadingLesson")}
       </p>
     );
@@ -2268,7 +2346,7 @@ function LessonAssetList({
 
   if (assets.length === 0) {
     return (
-      <p className="mt-4 rounded-none bg-[var(--color-surface-soft)] px-3 py-2 text-sm text-[var(--color-ink-soft)]">
+      <p className="mt-4 rounded-md bg-[var(--color-surface-soft)] px-3 py-2 text-sm text-[var(--color-ink-soft)]">
         {t("learn.classroom.resources.emptyLesson")}
       </p>
     );
@@ -2279,7 +2357,7 @@ function LessonAssetList({
       {assets.map((asset) => (
         <div
           key={asset.id}
-          className="rounded-none border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-3"
+          className="rounded-lg border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-3"
         >
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
@@ -2291,7 +2369,7 @@ function LessonAssetList({
                 <span>{getCourseAssetKindLabel(asset.kind, t)} - {formatCourseAssetSize(asset.size)}</span>
               </div>
             </div>
-            <span className="rounded-none bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--color-primary)]">
+            <span className="rounded-chip bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--color-primary)]">
               {t(asset.isPreview ? "learn.classroom.resources.preview" : "learn.classroom.resources.enrolled")}
             </span>
           </div>

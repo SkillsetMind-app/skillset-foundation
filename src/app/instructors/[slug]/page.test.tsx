@@ -118,6 +118,25 @@ describe("metadata do perfil", () => {
     expect(mocks.getPublicProfileByRef).toHaveBeenCalledWith("@ana.souza");
   });
 
+  // Perfil sem curso publicado é página fina: fica fora do índice até o
+  // primeiro curso, mas os links dela continuam seguidos.
+  it("sem curso publicado: noindex, follow (por @ e por uid)", async () => {
+    mocks.listCreatorCourses.mockResolvedValue([]);
+    expect((await generateMetadata(params("@ana.souza"))).robots).toEqual({ index: false, follow: true });
+    expect((await generateMetadata(params(ana.uid))).robots).toEqual({ index: false, follow: true });
+  });
+
+  it("com curso publicado: indexável", async () => {
+    expect((await generateMetadata(params("@ana.souza"))).robots).toEqual({ index: true, follow: true });
+  });
+
+  // Falha de leitura não é perfil vazio: tirar do índice um perfil com curso
+  // por um tropeço do banco custaria semanas de busca.
+  it("leitura dos cursos falhou: continua indexável", async () => {
+    mocks.listCreatorCourses.mockResolvedValue(null);
+    expect((await generateMetadata(params("@ana.souza"))).robots).toEqual({ index: true, follow: true });
+  });
+
   it("leitura que falhou não inventa professor: metadata genérica e fora do índice", async () => {
     mocks.getPublicProfileByRef.mockRejectedValue(new Error("banco fora"));
     const metadata = await generateMetadata(params("@ana.souza"));
@@ -160,6 +179,24 @@ describe("página do perfil", () => {
     expect(container.textContent).not.toMatch(/enrollment|student/i);
     // Rodapé leva a quem quer criar, não à loja.
     expect(screen.getByRole("link", { name: "Made with SkillsetMind" })).toHaveAttribute("href", "/for-creators");
+  });
+
+  it("professor verificado: o selo com as palavras logo depois do nome", async () => {
+    mocks.getPublicProfileByRef.mockResolvedValue({
+      ...ana,
+      verification: { kind: "evidence", verifiedAt: "2026-09-01T12:00:00.000Z" },
+    });
+    await renderPage("@ana.souza");
+
+    const heading = screen.getByRole("heading", { level: 1, name: "Ana Souza" });
+    const badge = screen.getByRole("button", { name: "Verified professional" });
+    expect(heading.nextElementSibling).toContainElement(badge);
+    expect(badge.closest("header")).toHaveAttribute("data-section", "header");
+  });
+
+  it("sem verificação, sem selo", async () => {
+    await renderPage("@ana.souza");
+    expect(screen.queryByRole("button", { name: "Verified professional" })).toBeNull();
   });
 
   it("sem curso, sem botão principal e sem faixa de prova", async () => {

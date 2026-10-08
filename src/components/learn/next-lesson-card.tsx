@@ -73,7 +73,7 @@ export function NextLessonCard({
       role="dialog"
       aria-label={t("learn.classroom.nextLesson.title")}
       aria-live="polite"
-      className={`member-next-lesson ${leaving ? "is-leaving" : ""} absolute inset-x-3 bottom-3 z-10 flex items-center gap-3 rounded-none bg-[rgba(15,39,68,0.92)] p-3 text-white shadow-[0_18px_36px_rgba(15,39,68,0.35)] backdrop-blur sm:inset-x-auto sm:right-3 sm:max-w-[360px]`}
+      className={`member-next-lesson ${leaving ? "is-leaving" : ""} absolute inset-x-3 bottom-3 z-10 flex items-center gap-3 rounded-lg bg-[rgba(15,39,68,0.92)] p-3 text-white shadow-[0_18px_36px_rgba(15,39,68,0.35)] backdrop-blur sm:inset-x-auto sm:right-3 sm:max-w-[360px]`}
     >
       <div
         aria-hidden="true"
@@ -96,7 +96,7 @@ export function NextLessonCard({
         <button
           type="button"
           onClick={onPlay}
-          className="inline-flex min-h-11 items-center gap-1.5 rounded-none bg-[var(--color-accent)] px-3 text-xs font-bold text-white"
+          className="inline-flex min-h-11 items-center gap-1.5 rounded-md bg-[var(--color-accent)] px-3 text-xs font-bold text-white"
         >
           <Play aria-hidden="true" size={14} strokeWidth={2.5} />
           {t("learn.classroom.nextLesson.watch")}
@@ -105,7 +105,7 @@ export function NextLessonCard({
           type="button"
           onClick={() => setLeaving(true)}
           aria-label={t("learn.classroom.nextLesson.cancel")}
-          className="grid size-11 place-items-center rounded-none text-white/80 hover:bg-white/10 hover:text-white"
+          className="grid size-11 place-items-center rounded-md text-white/80 hover:bg-white/10 hover:text-white"
         >
           <X aria-hidden="true" size={16} strokeWidth={2.25} />
         </button>

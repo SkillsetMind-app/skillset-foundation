@@ -4,7 +4,7 @@ name: Porteiro de PR
 # Não substitui o Semgrep (padrão conhecido); pega a lógica errada — a classe
 # de bug que produziu a moeda sem validação e o base sem head.
 #
-# Regras que este arquivo obedece (skillset-ops/protecao-glm/ARQUITETURA.md):
+# Regras que este arquivo obedece:
 #   - Job separado dos existentes: o build do `checks` estoura memória de
 #     forma intermitente e não pode esconder o veredito — nem o contrário.
 #   - Repo PÚBLICO: o comentário no PR e o log trazem SÓ O PLACAR. O detalhe

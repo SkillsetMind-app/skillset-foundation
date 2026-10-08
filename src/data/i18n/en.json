@@ -192,7 +192,7 @@
           "eyebrow": "SkillsetMind for experts",
           "title": "Teach the world what you know.",
           "description": "Verify your professional profile where required, publish your program, sell in 30 currencies, and have buyers pay your own Stripe account directly. No website to build.",
-          "point1Title": "Verified professionals",
+          "point1Title": "Professional verification",
           "point1Desc": "Where required, professional eligibility is verified before a creator can publish.",
           "point2Title": "Sell in 30 currencies",
           "point2Desc": "Global checkout via Stripe. The charge lands in your own Stripe account.",
@@ -203,7 +203,7 @@
           "eyebrow": "SkillsetMind for learners",
           "title": "Learn from people who do the work.",
           "description": "Every program comes from an independent professional, verified where required. Pay in your currency, learn at your pace, and earn certificates anyone can verify.",
-          "point1Title": "Verified experts",
+          "point1Title": "Professional verification",
           "point1Desc": "Where required, professional eligibility is checked before a creator can publish.",
           "point2Title": "Pay in your currency",
           "point2Desc": "Checkout via Stripe in 30 currencies.",
@@ -273,7 +273,11 @@
       "confirmResent": "Sent again. Give it a minute.",
       "confirmChangeEmail": "Wrong email? Change it",
       "confirmAlreadyDone": "Already confirmed?",
-      "existingAccountSignIn": "Sign in instead"
+      "existingAccountSignIn": "Sign in instead",
+      "expiredTitle": "This link has expired",
+      "expiredBody": "Links in our emails work for 1 hour and only once. Type your email and we will send you a new link.",
+      "expiredSend": "Send me a new link",
+      "expiredSent": "Done. If this email still needs to be confirmed, a new link is on its way. Check your inbox and your spam folder."
     },
     "guard": {
       "loadingTitle": "Preparing your workspace",
@@ -320,6 +324,7 @@
     "publicNamePlaceholder": "Your name",
     "username": "Username",
     "usernamePlaceholder": "your-name",
+    "publicProfileNotice": "Your teacher profile (name, photo, bio and credentials) is public at skillsetmind.com/@{handle}.",
     "shortBio": "Short bio",
     "bioPlaceholder": "A short line about your work, learning goals, or teaching focus.",
     "bioCount": "{count}/280 characters",
@@ -357,19 +362,18 @@
   "account": {
     "openMenu": "Open account menu",
     "memberFallback": "SkillsetMind member",
-    "switchView": "Switch view",
-    "studentView": "Student view",
-    "teacherView": "Teacher view",
-    "opsView": "Operations view",
+    "switchView": "Switch area",
+    "studentView": "Student area",
+    "teacherView": "Teacher area",
+    "opsView": "Operations area",
     "viewAs": "View as…",
     "becomeTeacher": "Become a teacher",
     "sectionAccount": "Account",
     "creatorPlan": "Creator plan",
     "subscription": "Subscription",
     "settings": "Settings",
-    "payoutsTax": "Payouts & tax",
     "billing": "Billing",
-    "myCredentials": "My credentials",
+    "myCredentials": "My certificates",
     "wishlist": "Wishlist",
     "signOut": "Sign out",
     "opensNewTab": "(opens in a new tab)"
@@ -407,7 +411,7 @@
     },
     "marketplace": {
       "kicker": "The marketplace",
-      "title": "Courses by verified experts, ready to learn.",
+      "title": "Courses by independent experts, ready to learn.",
       "sub": "Every course is built by an independent professional, verified by SkillsetMind where required.",
       "browseAll": "Browse all courses",
       "viewCourse": "View course"
@@ -471,18 +475,17 @@
     "searchDefaultPlaceholder": "Search SkillsetMind...",
     "clearSearch": "Clear search",
     "sidebarNavLabel": "Workspace",
-    "expandSidebar": "Expand sidebar",
-    "collapseSidebar": "Collapse sidebar",
+    "expandSidebar": "Expand menu",
+    "collapseSidebar": "Collapse menu",
     "opensInNewTab": "(opens in a new tab)",
     "breadcrumbLabel": "Breadcrumb",
     "openMobileNav": "Open navigation menu",
     "openSectionNav": "Open {section} navigation",
     "nav": {
-      "classroom": "Classroom",
       "communities": "Communities",
       "wishlist": "Wishlist",
       "agenda": "Agenda",
-      "credentials": "Credentials",
+      "credentials": "Certificates",
       "myCourses": "My courses",
       "studio": "Home",
       "courseBuilder": "My products",
@@ -495,17 +498,17 @@
       "sales": "Sales",
       "subscriptions": "Subscriptions",
       "coupons": "Coupons",
-      "team": "Collaborators",
-      "integrations": "Integrations",
       "operations": "Operations",
       "marketplace": "Marketplace",
       "settings": "Settings",
       "plansFees": "Plans & fees",
-      "payoutsTax": "Payouts & tax",
       "billing": "Billing",
+      "myPurchases": "My purchases",
       "reports": "Reports",
       "earnings": "Earnings",
-      "verification": "Verification"
+      "verification": "Verification",
+      "students": "Students",
+      "inbox": "Inbox"
     },
     "ops": {
       "overview": "Overview",
@@ -1137,16 +1140,13 @@
     "navSection": {
       "home": "Home",
       "products": "Products",
-      "marketing": "Marketing",
       "sales": "Sales",
       "earnings": "Earnings",
-      "reports": "Reports",
-      "tools": "Tools",
-      "myLearning": "My Learning",
       "discover": "Discover",
       "learn": "Learn",
       "operations": "Operations",
-      "account": "Account"
+      "account": "Account",
+      "promote": "Promote"
     },
     "crumbs": {
       "learn": "Learn",
@@ -1213,6 +1213,16 @@
         "minutes": "{count}m ago",
         "hours": "{count}h ago",
         "days": "{count}d ago"
+      },
+      "types": {
+        "someone": "Someone",
+        "communityQuestion": "{name} asked a question in your course",
+        "answeredQuestion": "{name} answered your question",
+        "repliedPost": "{name} replied to your post",
+        "repliedThread": "{name} replied to a post you commented on",
+        "supportReply": "Support replied to your request",
+        "teacherMessage": "New message from your teacher",
+        "studentMessage": "New message from a student"
       }
     },
     "session": {
@@ -1222,7 +1232,14 @@
     },
     "switchToLightMode": "Switch to light mode",
     "switchToDarkMode": "Switch to dark mode",
-    "openSearch": "Open search"
+    "openSearch": "Open search",
+    "side": {
+      "student": "Student",
+      "teacher": "Teacher",
+      "ops": "Staff",
+      "goStudent": "Go to student area",
+      "goTeacher": "Go to teacher area"
+    }
   },
   "roles": {
     "admin": "Admin",
@@ -1270,6 +1287,7 @@
         "enrollmentDelayed": "Almost there — enrollment is taking longer than usual.",
         "openingCourse": "Opening your course...",
         "delayedDetails": "Your payment went through and is safe in your instructor's Stripe account — they sold you this course directly, so their name may be what appears on your card statement. Keep this page open: it opens automatically the moment your enrollment is confirmed. If nothing happens in a few minutes, contact support with your payment receipt.",
+        "noLessons": "There are no lessons here yet.",
         "openingDetails": "Your payment is confirmed. Your instructor sold you this course directly, so their name — not \"SkillsetMind\" — may be what appears on your card statement. We are setting up your course access right now; this page opens automatically in a few seconds.",
         "enrollmentRequired": "Enrollment required",
         "enrollmentHeading": "This private workspace opens after enrollment.",
@@ -1417,6 +1435,7 @@
         "title": "Message your teacher",
         "heading": "Ask a private question about this course",
         "description": "Only you and the course teacher can read this thread. Replies also land in your notification bell.",
+        "descriptionWhitelabel": "Only you and the course teacher can read this thread.",
         "you": "You",
         "teacher": "Teacher",
         "bodyLabel": "Your private message",
@@ -1457,9 +1476,7 @@
       }
     },
     "page": {
-      "eyebrow": "Student experience",
-      "title": "Your learning, in one place.",
-      "description": "Courses, milestones, community, and certificates come together in a workspace that keeps progress easy to follow."
+      "title": "My courses"
     },
     "dashboard": {
       "loading": "Loading your learning workspace...",
@@ -1495,7 +1512,8 @@
       "filterInProgress": "In progress",
       "filterCompleted": "Completed",
       "refundsMoved": "Refunds and receipts live in",
-      "refundsMovedLink": "Billing → Purchases"
+      "refundsMovedLink": "My purchases",
+      "allEvents": "See all live sessions"
     },
     "membersHero": {
       "showMore": "Show more",
@@ -1505,6 +1523,7 @@
       "backToLesson": "Lesson",
       "progress": "{completed} of {total} lessons · {percent}%",
       "start": "Start lesson 1",
+      "openFile": "Open your file",
       "continue": "Continue: {title}"
     },
     "paths": {
@@ -1653,8 +1672,8 @@
       "step2Body": "Choose a product format, then add lessons, videos, and learning materials in the builder.",
       "step3Title": "Publish and sell",
       "step3Body": "Set your pricing, review the content and access rules, then publish. Share your sales link when the product is ready.",
-      "step4Title": "Payments and help",
-      "step4Body": "Connect your Stripe account in Payments to receive sales. Stripe handles verification and payout timing. Open Advisor in the top bar when you need help.",
+      "step4Title": "Earnings and help",
+      "step4Body": "Connect your Stripe account in Earnings to receive sales. Stripe handles verification and payout timing. Use Help in the menu when you need a hand.",
       "openStudio": "Open your studio"
     },
     "reports": {
@@ -1685,8 +1704,7 @@
       "shortcuts": "Operations shortcuts",
       "linkSales": "All sales",
       "linkSubscriptions": "Subscriptions",
-      "linkEarnings": "Earnings & Connect",
-      "linkCoupons": "Coupons",
+      "linkEarnings": "Earnings",
       "linkBuilder": "Course builder"
     },
     "reportsPage": {
@@ -1711,7 +1729,11 @@
     },
     "dashboard": {
       "welcomeBackNamed": "Welcome back, {name}.",
-      "welcomeBack": "Welcome back."
+      "welcomeBack": "Welcome back.",
+      "welcomeNamed": "Welcome, {name}.",
+      "welcome": "Welcome.",
+      "helloNamed": "Hello, {name}.",
+      "hello": "Hello."
     },
     "metrics": {
       "revenue30d": "Revenue, 30d",
@@ -1745,7 +1767,6 @@
       "courseMeta": "{lessons} lessons - {orders} orders",
       "noCoursesTitle": "No courses yet.",
       "noCoursesDetail": "Your first course will appear here after it is created in Course Builder.",
-      "activityEyebrow": "Activity",
       "activityTitle": "What needs your attention today.",
       "open": "Open",
       "actPayoutTitle": "Finish your Stripe setup",
@@ -1874,12 +1895,7 @@
       "coupons": {
         "title": "Coupons & promotions",
         "description": "Open a product to configure its discount codes and offer rules.",
-        "action": "Manage promotions"
-      },
-      "integrations": {
-        "title": "Integrations",
-        "description": "Email tools, webhooks, and analytics destinations are on the roadmap.",
-        "action": "See what's planned"
+        "action": "Open your products"
       },
       "state": {
         "published": "Published",
@@ -1890,17 +1906,8 @@
         "awaitingReplyOne": "1 awaiting reply",
         "awaitingReplyMany": "{count} awaiting reply",
         "noAwaitingReply": "No reply pending",
-        "couponsPerProduct": "Set per product",
-        "planned": "Planned"
+        "couponsPerProduct": "Set per product"
       }
-    },
-    "integrationsPage": {
-      "title": "Integrations are on the roadmap.",
-      "description": "Connect email tools, webhooks, and analytics destinations — it's on the SkillsetMind roadmap. Stripe is already connected, so you can open your own Stripe account from Payouts & tax anytime."
-    },
-    "messagesPage": {
-      "title": "Answer your students.",
-      "description": "Private per-course threads from enrolled students. Replies land in the student's classroom and notification bell."
     },
     "saleDetailPage": {
       "title": "Sale detail.",
@@ -1965,13 +1972,6 @@
     },
     "subscriptionsPage": {
       "description": "Recurring revenue, subscriber health, cancellation signals, and every renewal in one operational view."
-    },
-    "teamPage": {
-      "title": "Team & roles are on the roadmap.",
-      "description": "Invite teammates, assign editor or analyst roles, and share a course catalog across a team — it's on the SkillsetMind roadmap. Today, each Teacher Studio belongs to a single account."
-    },
-    "comingSoon": {
-      "openBuilder": "Open Course Builder"
     },
     "storefrontPage": {
       "title": "Your storefront.",
@@ -2109,6 +2109,25 @@
         "single_label": "Include the ending, for example yourname.com rather than yourname",
         "reserved": "That domain belongs to the platform and cannot be claimed."
       }
+    },
+    "inboxPage": {
+      "description": "Messages from your students and questions from your communities, in one place.",
+      "questionsTitle": "Questions waiting for you",
+      "questionsEmpty": "No questions waiting. When a student asks something in a community, it shows up here.",
+      "questionsError": "We couldn't load the questions. Please try again later.",
+      "answer": "Answer",
+      "messagesTitle": "Messages"
+    },
+    "studentsPage": {
+      "description": "Everyone who joined one of your products.",
+      "loading": "Loading your students...",
+      "error": "We couldn't load your students. Please try again later.",
+      "empty": "No students yet. When someone joins one of your products, they show up here.",
+      "countOne": "1 active student",
+      "countMany": "{count} active students",
+      "product": "Product",
+      "seeInProduct": "See in product",
+      "community": "Community"
     }
   },
   "creatorPanel": {
@@ -2142,7 +2161,8 @@
       "countAllOne": "1 order, all time",
       "emptyTitle": "No sales in this period.",
       "emptyBody": "When a learner completes checkout, the order appears here.",
-      "emptyCta": "Go to your courses",
+      "emptyCta": "Go to your products",
+      "firstTitle": "Your sales will show up here.",
       "datePending": "Date pending",
       "refundInStripe": "Refund in Stripe",
       "showMore": "Show {count} more",
@@ -2153,6 +2173,14 @@
       "sectionTitle": "Scheduled sessions",
       "sectionEyebrow": "Agenda",
       "newSession": "New session",
+      "nextStep": {
+        "title": "Session scheduled. Next: set the price and publish.",
+        "titleFree": "Session scheduled. Next: publish.",
+        "pricing": "Set the price and publish",
+        "publish": "Review and publish",
+        "lessonHelp": "Publishing needs at least one lesson with content. A short welcome lesson with the session details is enough.",
+        "addLesson": "Add a short welcome lesson"
+      },
       "closeForm": "Close",
       "formTitleNew": "Schedule a session",
       "formTitleEdit": "Edit session",
@@ -2242,34 +2270,37 @@
     "disabled": "Disabled",
     "paymentType": {
       "free": "Free",
-      "one_time": "One-time purchase",
-      "subscription_monthly": "Monthly subscription",
-      "subscription_yearly": "Yearly subscription"
+      "one_time": "One payment",
+      "subscription_monthly": "Monthly membership",
+      "subscription_yearly": "Yearly plan"
     },
     "offers": {
-      "title": "Offers & prices",
-      "description": "Create one-time or subscription packages. The default drives the main page; every active offer has an exact buyer link.",
-      "loading": "Loading offers…",
-      "empty": "No offers yet — checkout uses the legacy course price until you create one.",
-      "defaultBadge": "default",
+      "title": "Other prices",
+      "description": "Another price for the same way of paying, like a launch price or a yearly plan. Each one gets its own link.",
+      "loading": "Loading prices…",
+      "empty": "No other prices yet. Buyers pay the price you set in Pricing.",
+      "free": "This product is free, so it has no other prices. To charge for it, change how people pay in Pricing.",
+      "defaultBadge": "main price",
       "noPrice": "No price",
       "code": "code {code}",
       "inactive": "inactive",
-      "checkoutLink": "{name} checkout",
-      "defaultName": "Standard offer",
-      "name": "Offer name",
-      "publicCode": "Public code (optional)",
+      "checkoutLink": "{name} payment page",
+      "defaultName": "Another price",
+      "yearlyName": "Yearly plan",
+      "firstIsMain": "Your page keeps charging {price} ({model}): that price becomes the main price first, and this one is added next to it.",
+      "name": "Name of this price",
+      "publicCode": "Code for the link (optional)",
       "publicCodePlaceholder": "e.g. LAUNCH",
       "amount": "Amount",
       "currency": "Currency",
-      "paymentType": "Payment type",
-      "isDefault": "Default offer (drives checkout + syncs legacy price)",
-      "submit": "Create offer",
-      "submitting": "Creating...",
-      "loadError": "Could not load offers.",
-      "createError": "Could not create offer.",
+      "paymentType": "How often they pay",
+      "isDefault": "Make this the main price on your page",
+      "submit": "Add price",
+      "submitting": "Adding...",
+      "loadError": "Could not load your prices.",
+      "createError": "Could not add this price.",
       "invalidAmount": "Enter a valid price.",
-      "created": "Offer created. Its buyer link now resolves this exact price."
+      "created": "Price added. Its link charges exactly this price."
     },
     "filters": {
       "all": "All",
@@ -2278,6 +2309,7 @@
     },
     "shareLink": {
       "copy": "Copy link",
+      "copyMyPage": "Copy my page link",
       "copyAria": "Copy {label} link",
       "open": "Open page",
       "openAria": "Open {label}",
@@ -2386,7 +2418,7 @@
         "title": "Title",
         "category": "Category",
         "allCategories": "All categories",
-        "summary": "Summary",
+        "summary": "Description",
         "outcomes": "Learning outcomes",
         "noneYet": "None yet",
         "cover": "Cover image",
@@ -2396,9 +2428,9 @@
       },
       "pricing": {
         "title": "Pricing & checkout",
-        "description": "Set the access model and base commercial terms, then create targeted offers for distinct buyer links.",
+        "description": "How people pay is set in Pricing. Other prices, each with its own link, are below.",
         "price": "Price",
-        "paymentType": "Payment type",
+        "paymentType": "How people pay",
         "installments": "Installments",
         "installmentsUpTo": "Up to {max}x",
         "stripeCheckout": "Secure Stripe checkout",
@@ -2409,13 +2441,13 @@
         "finishOnboarding": "Finish payout onboarding",
         "notApplicable": "—",
         "installmentsHint": "Installments: {value}",
-        "paymentTypeHint": "How buyers are charged at checkout.",
+        "paymentTypeHint": "What buyers pay on your page.",
         "paymentTypeFreeHint": "Free course — nothing is charged at checkout.",
         "refundWindow": "Refund window",
         "refundWindowDays": "{days} days",
         "refundWindowHint": "Platform guarantee on every course: less than half completed and no certificate issued.",
         "payoutsFreeHint": "Free course — no payout to set up.",
-        "newOffer": "New offer",
+        "newOffer": "Add another price",
         "newOfferCancel": "Cancel"
       },
       "content": {
@@ -2450,7 +2482,6 @@
         "marketing": "Marketing workspace",
         "marketingDetail": "Pages, media, buyer messages, and promotions",
         "mediaDetail": "Course covers and delivery assets",
-        "integrationsDetail": "Connected delivery and business services",
         "verification": "Professional verification",
         "verificationDetail": "Credentials and marketplace admission"
       }
@@ -2543,8 +2574,7 @@
         "label": "Product workspace shortcuts",
         "membersDetail": "Customize delivery and learner spaces",
         "eventsDetail": "Schedule workshops and live sessions",
-        "marketingDetail": "Pages, media, messages, and promotions",
-        "couponsDetail": "Create discount codes for your products"
+        "marketingDetail": "Pages, media, messages, and promotions"
       }
     },
     "home": {
@@ -2573,23 +2603,13 @@
         "filtersLabel": "Product filters",
         "filterLiveSales": "Live sales",
         "empty": "No products in this view yet.",
+        "firstTitle": "Your first product starts here.",
+        "firstCta": "Create my first product",
         "manage": "Manage product"
       },
       "formats": {
         "eyebrow": "What do you want to sell?",
-        "title": "Choose a product format",
-        "course": "Online course",
-        "courseDetail": "Video, text, downloads, certificates, and structured lessons.",
-        "program": "Guided program",
-        "programDetail": "A sequenced pathway of learning, practice, and optional live touchpoints.",
-        "subscription": "Subscription",
-        "subscriptionDetail": "Recurring access billed monthly or yearly.",
-        "community": "Community",
-        "communityDetail": "A recurring members space for posts and practitioner-led exchange.",
-        "event": "Online event",
-        "eventDetail": "Live workshops, cohorts, and scheduled group sessions.",
-        "free": "Free program",
-        "freeDetail": "Open enrollment without checkout or payment."
+        "title": "Choose a product format"
       },
       "milestones": {
         "eyebrow": "My evolution",
@@ -2700,6 +2720,11 @@
     "lockedMany": "Enroll to open the remaining {count} lessons in this course.",
     "structure": "Course structure",
     "curriculumPending": "The course is approved, but the public curriculum preview is still being prepared.",
+    "deliveryCommunity": "Members join the community: posts, answers and live calls.",
+    "deliveryLiveEvent": "Live session on {date}",
+    "deliveryLiveEventPending": "Live session. The date will be announced here.",
+    "deliveryEbook": "A file you download right after purchase.",
+    "delivery": "What you get",
     "access": "Access",
     "chooseOffer": "Choose an offer",
     "unavailableShort": "Unavailable",
@@ -2832,7 +2857,7 @@
       },
       "course-effective-communication": {
         "duration": "4-8 weeks",
-        "status": "Popular",
+        "status": "Early access",
         "preview": "Free communication preview"
       },
       "course-project-management": {
@@ -2873,7 +2898,7 @@
       "yearly": "Yearly",
       "17_off": "~17% off",
       "plan_comparison": "Plan comparison",
-      "most_popular": "Most popular",
+      "recommended": "Recommended",
       "per_sale": "per sale",
       "mo_no_subscription": "/mo — no subscription",
       "mo": "/mo",
@@ -2957,7 +2982,7 @@
       "financial_questions_refunds_payouts_holds_chargebacks": "Financial questions — refunds, payouts, holds, chargebacks — go to a real person, by email. We aim to reply within 2 business days (Mon–Fri). No chatbot wall. No escalation maze.",
       "money_issues_do_not_belong_behind": "Money issues do not belong behind a bot maze.",
       "the_skillsetmind_promise": "The SkillsetMind Promise",
-      "skillsetmind_commitments_to_creators_and_learners": "SkillsetMind commitments to creators and learners: reviewed creator profiles, creator money that never passes through SkillsetMind, refund protection, and verifiable credentials.",
+      "skillsetmind_commitments_to_creators_and_learners": "SkillsetMind commitments to creators and learners: public creator profiles, creator money that never passes through SkillsetMind, refund protection, and verifiable credentials.",
       "the_skillsetmind_creator_promise": "The SkillsetMind Creator Promise",
       "six_commitments_in_writing_public": "Six commitments. In writing. Public.",
       "these_promises_are_contractual_product_rules": "These promises are contractual product rules for creators building on SkillsetMind: fee-locked, portable, cancellable, protected, and supported by humans when money is involved.",
@@ -2967,7 +2992,7 @@
     },
     "about": {
       "about": "About",
-      "skillsetmind_is_an_international_platform_for": "SkillsetMind is an international platform for serious online courses, built around reviewed creator profiles, payments to the creator's own Stripe account, and verifiable learning.",
+      "skillsetmind_is_an_international_platform_for": "SkillsetMind is an international platform for serious online courses, built around public creator profiles, payments to the creator's own Stripe account, and verifiable learning.",
       "skillsetmind_is_a_public_home_for": "SkillsetMind is a public home for learning, teaching, and trusted growth.",
       "skillsetmind_is_where_professional_educators_publish": "SkillsetMind is where professional educators publish courses and learners earn SkillsetMind Verified certificates employers can check. We built it so the platform never sits on an educator's money: buyers are charged directly on the educator's own Stripe account, which means there is no balance here to hold and nothing for us to release.",
       "professional_programs": "Professional programs",
@@ -2998,22 +3023,22 @@
     "instructors": {
       "instructors": "Instructors",
       "independent_experts_publishing_reviewed_professional_courses": "Independent experts publishing professional courses on SkillsetMind.",
-      "learn_from_reviewed_experts": "Learn from reviewed experts.",
-      "meet_independent_creators_whose_public_profiles": "Meet independent creators whose public profiles are published after review. SkillsetMind shows real instructor identity instead of marketplace filler."
+      "learn_from_reviewed_experts": "Learn from independent experts.",
+      "meet_independent_creators_whose_public_profiles": "Meet the independent creators teaching on SkillsetMind. The \"Verified professional\" badge marks the ones our team has reviewed."
     },
     "directory": {
       "loading_instructors": "Loading instructors...",
       "instructor_profiles_could_not_load_right": "Instructor profiles could not load right now.",
       "course_pages_still_show_verified_instructor": "Course pages still show the instructor's identity, verified where required, when a public profile is available.",
       "first_cohort": "First cohort",
-      "public_instructor_profiles_appear_after_review": "Public instructor profiles appear after review.",
-      "skillsetmind_only_lists_real_published_profiles": "SkillsetMind only lists real published profiles. New creators appear here once their professional verification is approved.",
+      "public_instructor_profiles_appear_after_review": "Public instructor profiles appear once creators finish setup.",
+      "skillsetmind_only_lists_real_published_profiles": "No creator has finished setup yet. New creators appear here as soon as they do.",
       "start_teaching": "Start teaching",
       "browse_courses": "Browse courses",
       "directory": "Directory",
       "published_instructors": "Published instructors",
       "browse_their_courses": "Browse their courses",
-      "this_instructor_has_published_their_profile": "This instructor has published their profile and is preparing learning experiences on SkillsetMind.",
+      "this_instructor_has_published_their_profile": "This instructor has a public profile and is preparing learning experiences on SkillsetMind.",
       "view_profile": "View profile",
       "fallback_name": "SkillsetMind instructor"
     },
@@ -3106,8 +3131,8 @@
     "trust": {
       "trust_and_safety": "Trust and safety",
       "skillsetmind_is_built_around_controlled_course": "SkillsetMind is built around controlled course publication, protected student access, course payments that go straight to the creator's own Stripe account, moderation, and verifiable learning outcomes.",
-      "verified_professionals": "Verified professionals",
-      "skillsetmind_verifies_professional_eligibility_before_publication": "Where required, SkillsetMind verifies professional eligibility before publication, and it can pause or remove courses that break marketplace standards.",
+      "verified_professionals": "Professional verification",
+      "skillsetmind_verifies_professional_eligibility_before_publication": "Where required, SkillsetMind reviews professional evidence before a creator publishes. Otherwise it is optional: a \"Verified professional\" badge means our team checked a license, or reviewed professional evidence, on the date shown. It does not cover course results or claims. Courses that break marketplace standards can be paused or removed.",
       "protected_access": "Protected access",
       "learning_workspaces_open_only_after_enrollment": "Learning workspaces open only after enrollment — no public links bypass paid access.",
       "refund_controls": "Refund controls",
@@ -3282,7 +3307,7 @@
   "authFlow": {
     "callback": {
       "sameBrowser": "This link has to be opened in the same browser that requested it. Open it there, or request a new one from this browser.",
-      "usedOrExpired": "That link has already been used or has expired. Reset links work once. Request a new one and try again.",
+      "usedOrExpired": "That link has already been used or has expired. Links in our emails work only once. Request a new one and try again.",
       "invalidOrExpired": "That link is invalid or has expired. Request a new one and try again."
     },
     "errors": {
@@ -3604,18 +3629,18 @@
       "steps": {
         "details": {
           "tab": "Details",
-          "tabHelp": "Title, categories, promise",
+          "tabHelp": "Title, categories, description",
           "stage": "Course basics",
-          "stageHelp": "Info, cover, promise",
+          "stageHelp": "Info, cover, description",
           "heading": "Set the course foundation.",
-          "help": "This is the information learners use to understand the promise of the course."
+          "help": "This is the information learners use to understand what the course offers."
         },
         "pricing": {
           "tab": "Pricing",
-          "tabHelp": "Payment, drip, preview",
-          "stageHelp": "Access model",
-          "heading": "Package the offer.",
-          "help": "Set access, price, release timing, and the free preview lesson before publishing."
+          "tabHelp": "How people pay",
+          "stageHelp": "How people pay",
+          "heading": "Set the price.",
+          "help": "Choose how people pay and set the price."
         },
         "content": {
           "tab": "Curriculum",
@@ -3642,42 +3667,16 @@
           "detail": "The next lesson opens after the previous lesson is completed."
         },
         "time_drip_lesson": {
-          "label": "One lesson per interval",
+          "label": "One lesson every few days",
           "detail": "Release lessons gradually based on enrollment date."
         },
         "time_drip_module": {
-          "label": "One module per interval",
+          "label": "One module every few days",
           "detail": "Release modules gradually based on enrollment date."
         },
         "time_drip_custom": {
           "label": "Custom lesson schedule",
           "detail": "Use each lesson's delay field for precise release timing."
-        }
-      },
-      "paymentModels": {
-        "one_time": {
-          "title": "One-time payment",
-          "description": "Learners pay once and get lifetime access.",
-          "feature1": "Best for complete courses",
-          "feature2": "Lifetime access for learners"
-        },
-        "free": {
-          "title": "Free",
-          "description": "No payment required. Useful for lead-gen or trial cohorts.",
-          "feature1": "Opens enrollment without checkout",
-          "feature2": "Useful for previews or pilots"
-        },
-        "subscription_monthly": {
-          "title": "Monthly subscription",
-          "description": "Recurring monthly billing.",
-          "feature1": "Recurring access",
-          "feature2": "Cancellation controls"
-        },
-        "subscription_yearly": {
-          "title": "Yearly subscription",
-          "description": "Recurring yearly billing.",
-          "feature1": "Annual access",
-          "feature2": "Renewal reminders"
         }
       },
       "errors": {
@@ -3691,7 +3690,8 @@
         "price": "Use a valid non-negative price, or leave the field empty.",
         "installmentsSave": "Set a valid installment limit before saving.",
         "category": "Choose at least one marketplace category before publishing.",
-        "paidPrice": "Set a paid price greater than $0, or choose Free as the payment model before publishing.",
+        "paidPrice": "Set a price above {zero}, or choose Free, before publishing.",
+        "livePrice": "This product is live. Set a price above {zero}, or choose Free.",
         "installmentsPublish": "Set a valid installment limit before publishing.",
         "duplicateTitle": "A course with this title already exists. Choose a different name.",
         "activation": "Activate your storefront to unlock publishing: a one-time activation fee, charged once per creator account, never per course.",
@@ -3699,10 +3699,25 @@
         "preview": "Clear the invalid free preview or choose a lesson from this course.",
         "setup": "Teacher setup must be complete before publishing courses.",
         "verification": "Professional verification must be approved before publishing.",
-        "payouts": "Finish Stripe payout onboarding before publishing a paid course — open the Payouts panel in your studio.",
-        "payment": "Set a valid payment model before publishing.",
+        "payouts": "Finish Stripe payout onboarding before publishing a paid course — open Earnings in your studio.",
+        "payment": "Check how people pay, in Pricing, before publishing.",
         "lessonContent": "Add a video, text or file to every lesson before publishing.",
+        "session": "Schedule the live session before publishing: the date has to be in the future.",
+        "file": "Upload at least one file (PDF, slides or workbook) before publishing.",
+        "community": "Turn on the community before publishing: it is what members join.",
         "publish": "We could not publish this course. Please try again."
+      },
+      "created": {
+        "course": "Draft saved. Next: your first lesson.",
+        "community": "Draft saved. Next: set your price.",
+        "live_event": "Draft saved. Next: schedule your session.",
+        "live_eventScheduled": "Draft saved. Your session is on the calendar.",
+        "ebook": "Draft saved. Next: upload your file.",
+        "close": "Close"
+      },
+      "publishedPanel": {
+        "title": "It's live.",
+        "detail": "Your product page is open to everyone. Share the link so people can find it."
       },
       "success": {
         "lessonAdded": "Lesson added — opening the lesson studio once it autosaves…",
@@ -3727,7 +3742,7 @@
         "moduleDescription": "Module description",
         "moduleDescriptionExample": "Optional module description. Example: Set up the concepts students need before the practical lessons.",
         "helpTopic": "Lesson access and drip release",
-        "help": "A free preview is optional and must point to a lesson in this course; it helps buyers inspect the teaching style before enrolling. Release days per lesson are set by opening the lesson (Add video or Edit content) > Settings, and only appear when the course's Content release is Custom lesson schedule.",
+        "help": "A free preview is optional and must point to a lesson in this course; it helps buyers inspect the teaching style before enrolling. Release days per lesson are set by opening the lesson (Add video or Edit content) > Settings, and only appear when the course's Lesson release is Custom lesson schedule.",
         "moduleForLesson": "Module for this lesson",
         "chooseModule": "Choose module",
         "lessonTitle": "Lesson title",
@@ -3757,6 +3772,11 @@
         "markPreview": "Mark free preview",
         "createModule": "Create module",
         "addFirstModule": "Add your first module",
+        "firstLessonTitle": "Add your first lesson.",
+        "firstLessonDetail": "A video, a text or a file is enough.",
+        "firstModuleTitle": "Add your first module.",
+        "firstModuleDetail": "Then add a lesson to it: a video, a text or a file is enough.",
+        "welcomeModule": "Welcome",
         "addLessonToModule": "Add lesson to module {index}",
         "moreOptions": "More options",
         "cancel": "Cancel",
@@ -3834,7 +3854,7 @@
         "title": "Course title",
         "categories": "Categories",
         "categoriesHelp": "Required. Select up to five. The first selected category becomes the primary marketplace category.",
-        "summary": "Course summary",
+        "summary": "Description",
         "characters": "{count} characters",
         "minimumCharacters": "{count}/20 characters minimum for publication",
         "outcomes": "What learners will learn",
@@ -3844,7 +3864,7 @@
         "outcomePlaceholder": "Example: Launch a paid cohort course end to end",
         "noOutcomes": "No outcomes yet. Add the concrete results a student walks away with.",
         "addOutcome": "Add learning outcome",
-        "help": "Keep the title specific, the category clear, and the summary focused on learner outcomes. This copy will influence the marketplace page."
+        "help": "Keep the title specific, the category clear, and the description focused on learner outcomes. This copy will influence the marketplace page."
       },
       "community": {
         "title": "Course community",
@@ -3853,27 +3873,58 @@
         "on": "Community is on. Students see a Community section in this course.",
         "off": "Community is off. Students only see lessons and resources."
       },
+      "release": {
+        "title": "When lessons open",
+        "strategy": "Lesson release",
+        "interval": "Days between releases",
+        "customHelp": " Set each lesson's delay when you edit the lesson."
+      },
       "pricing": {
-        "setup": "Marketplace setup",
-        "model": "Payment model",
-        "helpTopic": "Course pricing",
-        "help": "Choose free access, a one-time purchase, or recurring monthly or yearly access. Paid products require a positive price and payout-ready Stripe Connect account before they can be published.",
+        "question": "How will people pay?",
+        "helpTopic": "How people pay",
+        "help": "Pick one option. To sell, set a price and connect your Stripe account so the money reaches you.",
+        "choices": {
+          "free": {
+            "title": "Free",
+            "description": "Anyone can join. No checkout."
+          },
+          "one_payment": {
+            "title": "One payment",
+            "description": "They pay once and keep access. Ex.: {amount}."
+          },
+          "ticket": {
+            "title": "Ticket",
+            "description": "They pay once to take part. Ex.: {amount}."
+          },
+          "membership": {
+            "title": "Monthly membership",
+            "description": "Charged every month until they cancel. Ex.: {amount}/month."
+          }
+        },
+        "rule": "Split payments = the same price divided; it ends on the last payment. Monthly membership = a charge that repeats until they cancel.",
+        "notForType": "This option does not fit this type of product. Pick another one to publish.",
         "price": "Price",
+        "pricePerMonth": "Price per month",
+        "pricePerYear": "Price per year",
         "currency": "Currency",
-        "freePlaceholder": "Free course",
+        "freeLine": "This product is free. To charge for it, pick a paid option above.",
         "pricePlaceholder": "Example: 149",
-        "installments": "Card installments",
-        "installmentsOneTime": "Installments apply only to one-time payments.",
-        "installmentsUnavailable": "Unavailable with the current Stripe account. Stripe requires a Mexico platform account and MXN pricing.",
-        "installmentsCurrency": "Select MXN to configure installments for eligible Mexican cards.",
-        "installmentsEligible": "Eligible cards choose from the plans configured in Stripe. Card issuer and minimum amount rules apply.",
-        "enableInstallments": "Enable card installments",
-        "release": "Content release",
-        "interval": "Interval days",
-        "customHelp": " Set each lesson delay in the curriculum editor.",
+        "split": "Let them split it into payments",
+        "splitMax": "Up to how many payments",
+        "splitPreview": "{count}x of {amount}",
+        "yearly": "Also offer a yearly plan",
+        "yearlySaving": "They save {amount} compared to 12 monthly payments.",
+        "yearlyNoSaving": "This costs the same as 12 monthly payments, or more.",
+        "yearlyWhere": "Your page shows the monthly price. The yearly plan is an extra price with its own link.",
+        "yearlyAdd": "Add the yearly plan",
+        "yearlyOnly": "This product charges once a year until they cancel.",
+        "switchToMonthly": "Charge every month instead",
+        "offerCharges": "Your page charges {price} ({model}).",
+        "offerChange": "Change it in Other prices.",
+        "offersFailed": "Couldn't load your prices. Reload the page.",
         "preview": "Free preview lesson",
         "noPreview": "No preview selected yet",
-        "listingHelp": "These fields prepare the public listing. Paid access still requires Stripe checkout before enrollment opens."
+        "listingHelp": "People pay on a secure page before they get access."
       },
       "save": {
         "blocked": "Not saving — {reason}",
@@ -3893,6 +3944,18 @@
         "alt": "{title} cover",
         "course": "Course",
         "emptyHelp": "Add a cover — it appears on the marketplace card, the course page, and the classroom."
+      },
+      "productTypes": {
+        "communityOptional": "Optional: add lessons or files.",
+        "sessionTitle": "Live session",
+        "sessionHelp": "The date is what people sign up for. The recording can go in later, as an optional replay lesson.",
+        "sessionNone": "No session scheduled yet.",
+        "sessionNoLink": "Link not added yet",
+        "sessionSchedule": "Schedule the session",
+        "sessionEdit": "Edit in the Agenda",
+        "replayTitle": "Replay (optional)",
+        "ebookTitle": "File to download",
+        "ebookHelp": "Upload the file people get when they buy or join: PDF, slides or workbook."
       }
     },
     "assets": {
@@ -3952,8 +4015,8 @@
           "hint": "Give the course a title (3+ characters)."
         },
         "summary": {
-          "label": "Summary",
-          "hint": "Write a summary with at least 20 characters."
+          "label": "Description",
+          "hint": "Write a description with at least 20 characters."
         },
         "category": {
           "label": "Marketplace category",
@@ -3977,9 +4040,22 @@
           "missing": "Missing: {lessons}.",
           "missingMore": "Missing: {lessons} and {count} more."
         },
+        "community": {
+          "label": "Community turned on",
+          "hint": "Turn the community on in the Members Area tab: it is what members join."
+        },
+        "session": {
+          "label": "Live session",
+          "hint": "Schedule the date and time of the live session."
+        },
+        "file": {
+          "label": "File to download",
+          "hint": "Upload at least one file: PDF, slides or workbook."
+        },
         "pricing": {
           "label": "Pricing",
-          "hint": "Set a paid price greater than $0, or choose Free."
+          "hint": "Set a price above {zero}, or choose Free.",
+          "notForType": "This way of paying does not fit this type of product. Pick another one in Pricing."
         },
         "outcomes": {
           "label": "Learning outcomes",
@@ -4101,6 +4177,10 @@
       "marketingEmails": {
         "label": "Marketing emails",
         "description": "Launch announcements, promotions, and editorial campaigns."
+      },
+      "emailDigest": {
+        "label": "Email summary",
+        "description": "At most one email an hour when you have notifications you have not seen, like replies to your questions."
       }
     },
     "learning": {
@@ -4276,6 +4356,27 @@
       "onDevice": "Setting up on this phone?"
     }
   },
+  "verifiedBadge": {
+    "label": "Verified professional",
+    "selfReported": "Self-reported",
+    "licenseChecked": "{brand} checked this professional license on {date}.",
+    "licenseCheckedUndated": "{brand} checked this professional license.",
+    "evidenceReviewed": "{brand} reviewed this person's professional evidence on {date}.",
+    "evidenceReviewedUndated": "{brand} reviewed this person's professional evidence.",
+    "noClaims": "We don't verify results or claims made in courses.",
+    "trustLink": "How verification works",
+    "offer": {
+      "eyebrow": "Optional · free for now",
+      "title": "Add the verified-professional badge to your profile",
+      "body": "Send your license or professional evidence. Our team reviews it, and after approval the badge appears next to your name.",
+      "cta": "Get it free (≈3 min)",
+      "notNow": "Not now",
+      "preview": "Preview"
+    },
+    "slot": {
+      "offer": "Add the verified-professional badge (free)"
+    }
+  },
   "professionalBadge": {
     "eyebrow": "Teacher studio",
     "title": "Professional verification",
@@ -4365,6 +4466,8 @@
   },
   "legalAcceptance": {
     "eyebrow": "Legal update",
+    "firstEyebrow": "Before you start",
+    "firstBody": "Read and accept the SkillsetMind terms to use your account.",
     "title": "Review SkillsetMind terms to continue.",
     "body": "SkillsetMind updated its legal terms. Accept the current versions below to continue using your account.",
     "agreeTerms": "I agree to the current SkillsetMind",
@@ -4496,9 +4599,9 @@
     "payoutsBody": "Buyers pay your Stripe account directly. There is no platform hold — Stripe then settles and pays out to your bank on its own timing, which depends on your country and the payment method."
   },
   "accountBillingPage": {
-    "eyebrow": "Billing & receipts",
+    "eyebrow": "Purchases & receipts",
     "title": "Your purchases and receipts.",
-    "description": "Each course is sold by the educator who publishes it — their Stripe account takes the payment, so their name may be what you see on your card statement. One-time course purchases stay accessible for as long as you keep them; subscription courses run while the subscription is active. Your SkillsetMind plan, payment methods, and invoices live in your secure Stripe portal. Creator payouts are under Payouts."
+    "description": "Each course is sold by the educator who publishes it — their Stripe account takes the payment, so their name may be what you see on your card statement. One-time course purchases stay accessible for as long as you keep them; subscription courses run while the subscription is active. Payment methods and invoices live in your secure Stripe portal."
   },
   "accountNotifications": {
     "title": "Notifications",
@@ -4702,43 +4805,34 @@
   },
   "courseCreation": {
     "format": "Format",
-    "formatDetail": "Delivery model",
+    "formatDetail": "What you deliver",
     "basics": "Basics",
-    "basicsDetail": "Title, promise, categories",
+    "basicsDetail": "Name, description, categories",
     "pricing": "Pricing",
-    "pricingDetail": "Price and access model",
-    "lessons": "Lessons",
-    "lessonsDetail": "Modules and lessons",
+    "pricingDetail": "How people pay",
+    "lessons": "Content",
+    "lessonsDetail": "Lessons, files or the live session",
     "publish": "Publish",
     "publishDetail": "Final checks",
     "continues": "{detail} · continues in the builder",
-    "titleRequired": "Give the course a title (3+ characters).",
-    "summaryRequired": "Write a summary with at least 20 characters.",
+    "titleRequired": "Give it a name (3+ characters).",
+    "summaryRequired": "Write a description with at least 20 characters.",
     "categoryRequired": "Choose a marketplace category.",
-    "createEvent": "Create and schedule event",
-    "createFree": "Create and add content",
-    "createPaid": "Create and set pricing",
-    "monthly": "Monthly",
-    "yearly": "Yearly",
     "creating": "Creating...",
     "categoryError": "Choose at least one marketplace category.",
-    "duplicateError": "A course with this title already exists. Choose a more specific name.",
+    "duplicateError": "A product with this name already exists. Choose a more specific name.",
     "permissionError": "Course creation is blocked until creator setup is complete. Verify your email and accept Teacher Terms first.",
-    "summaryError": "Add a course summary with at least 20 characters.",
-    "createError": "We could not create this course. Please try again.",
+    "summaryError": "Add a description with at least 20 characters.",
+    "createError": "We could not create this product. Please try again.",
     "activationError": "Activate your storefront to unlock publishing: a one-time activation fee, charged once per creator account, never per course.",
-    "intro": "Pick the access model and the essential information here. Pricing, lessons, and publication continue in the builder.",
+    "intro": "Choose what you deliver and give it a name. Price, content and publishing continue in the builder.",
     "privateDraft": "This creates a private draft. Nothing becomes visible or sellable before you publish, and publishing needs professional verification where required.",
-    "formatHelp": "The format defines how learners receive access. Commercial terms remain editable in Pricing and offers.",
     "categoryHelp": "Categories decide where the product is listed in the marketplace and how SkillsetMind groups related expertise. Choose the most specific fit first; that first selection becomes the primary marketplace category.",
     "products": "My products",
     "newProduct": "New product",
-    "title": "Build the product foundation.",
-    "setup": "Set up the product",
-    "productFormat": "Product format",
-    "interval": "Initial billing interval",
-    "productTitle": "Product title",
-    "promise": "Product promise",
+    "title": "Create a product.",
+    "productTitle": "Name",
+    "promise": "Description",
     "primaryCategory": "The first selection is the primary marketplace category.",
     "activate": "Activate storefront",
     "beforeContinue": "Before you continue:",
@@ -4747,19 +4841,46 @@
     "titlePlaceholder": "e.g. Peak Performance Foundations",
     "promisePlaceholder": "Describe the practical outcome learners can expect.",
     "categoryTopic": "Course categories",
-    "courseLabel": "Online course",
-    "courseHelp": "One-time purchase with permanent or managed access.",
-    "programLabel": "Guided program",
-    "programHelp": "A sequenced pathway combining learning, practice, and optional live touchpoints.",
-    "eventLabel": "Online event",
-    "eventHelp": "Live workshops, cohorts, and scheduled group sessions.",
-    "subscriptionLabel": "Subscription",
-    "subscriptionHelp": "Ongoing access billed on a recurring schedule.",
-    "communityLabel": "Community",
-    "communityHelp": "A recurring members space built for posts and peer exchange.",
-    "freeLabel": "Free program",
-    "freeHelp": "Open enrollment with no checkout or payment.",
-    "characterCount": "{count}/1200 characters. Minimum 20."
+    "characterCount": "{count}/1200 characters. Minimum 20.",
+    "deliverTitle": "What will you deliver?",
+    "deliverHelp": "Choose one. Free or paid, one payment or monthly: you decide that later, in Pricing.",
+    "types": {
+      "course": {
+        "label": "Course",
+        "help": "Recorded lessons people watch at their own pace."
+      },
+      "community": {
+        "label": "Community",
+        "help": "A members' space where you post, answer and run live calls. Usually paid monthly."
+      },
+      "live_event": {
+        "label": "Live event",
+        "help": "A workshop or class on a set date, by Zoom or Meet."
+      },
+      "ebook": {
+        "label": "E-book",
+        "help": "A file people download: PDF, slides, workbook."
+      }
+    },
+    "nameTitle": {
+      "course": "Name your course",
+      "community": "Name your community",
+      "live_event": "Name your live event",
+      "ebook": "Name your e-book"
+    },
+    "continue": "Continue",
+    "back": "Back",
+    "create": "Create",
+    "eventDate": "Date",
+    "eventTime": "Time",
+    "eventLink": "Zoom or Meet link",
+    "eventLinkHelp": "Optional. You can add it later.",
+    "whenRequired": "Choose the date and time of the session.",
+    "whenPast": "Choose a date and time that has not passed yet.",
+    "linkInvalid": "Use a full link that starts with https://.",
+    "starterModule": "Module 1",
+    "starterLesson": "Lesson 1",
+    "ebookModule": "Download"
   },
   "courseAccess": {
     "pending": "Waiting for email confirmation",
@@ -4955,7 +5076,7 @@
     "cancel": "Cancel",
     "loading": "Loading students...",
     "loadError": "We could not load the roster. Reload the page — if it keeps failing, contact support.",
-    "empty": "No one is enrolled yet. Buyers show up here the moment a purchase clears, with their name, e-mail, and progress — so you can support them without leaving the studio.",
+    "emptyTitle": "When someone joins, you'll see them here.",
     "search": "Search students by name or e-mail",
     "progressFilter": "Filter by progress",
     "accessFilter": "Filter by access",
@@ -4995,14 +5116,16 @@
       "received": "Payment received — opening your course...",
       "receivedDetail": "Your payment is confirmed. We are setting up your course access right now; this page opens automatically in a few seconds.",
       "required": "Enrollment required.",
-      "requiredDetail": "This private workspace opens only after payment, admin enrollment, or approved access.",
+      "requiredDetail": "You don't have access to this course yet.",
       "inactive": "Course access is inactive.",
       "inactiveDetail": "This enrollment is {status}. Private lessons reopen only after payment, admin approval, or restored access.",
       "missing": "Course record not found.",
       "missingDetail": "The enrollment exists, but the course record is unavailable or restricted.",
       "eyebrow": "Creator course access",
       "back": "Back to My Learning",
-      "marketplace": "Open marketplace"
+      "marketplace": "Open marketplace",
+      "seeCourse": "See the course",
+      "wrongAccount": "Signed in with the wrong account? Sign out"
     },
     "enrollmentStatus": {
       "active": "active",
@@ -5205,7 +5328,9 @@
       "open": "Open session link",
       "soon": "Link available soon",
       "communityDescription": "A course-linked space for announcements, questions, resources, and cohort discussion.",
-      "empty": "No live sessions are scheduled right now."
+      "empty": "No live sessions are scheduled right now.",
+      "happened": "The session already happened.",
+      "replay": "Watch the replay"
     },
     "leaderboard": {
       "loadError": "We could not load the leaderboard.",
@@ -5464,16 +5589,13 @@
     }
   },
   "teacherRouteResidual": {
-    "couponsTitle": "Coupons live in each course's central.",
-    "couponsDescription": "Open a course, choose Manage, and head to the Coupons section to create discount codes for it. Codes are live at checkout: buyers enter them on your course page and the discount applies before payment.",
-    "openCourses": "Open my courses",
     "manageLoading": "Loading course management..."
   },
   "teacherSalesCopy": {
     "title": "Sales page editor",
-    "description": "Edit the headline, promise, and outcomes buyers see. This is a focused editor — not a full drag-and-drop page builder (that stays on the roadmap).",
+    "description": "Edit the headline, description, and outcomes buyers see. This is a focused editor — not a full drag-and-drop page builder (that stays on the roadmap).",
     "productTitle": "Product title",
-    "summary": "Sales promise / summary",
+    "summary": "Description",
     "outcomes": "Outcomes (one per line)",
     "outcomesPlaceholder": "Clarify your offer\nShip a first session\nTrack client progress",
     "saved": "Sales page copy saved. Open the public product page to preview.",
@@ -5620,6 +5742,16 @@
       "process": "What we do, step by step",
       "firstStep": "Step one"
     },
+    "upload": {
+      "button": "Upload image",
+      "uploading": "Uploading…",
+      "rules": "JPG, PNG or WebP, up to {limit}.",
+      "orLink": "Or paste a link",
+      "previewAlt": "Preview of {label}",
+      "remove": "Remove image",
+      "wrongType": "That file is not a JPG, PNG or WebP image.",
+      "tooLarge": "That image is {size}. Use one up to {limit}."
+    },
     "fields": {
       "headline": "Headline",
       "subheading": "One line under it",
@@ -5705,5 +5837,28 @@
   "siteMetadata": {
     "title": "SkillsetMind | Coaching, Personal Development & Human Potential",
     "description": "A vertical business and learning platform for coaching, personal development and human potential."
+  },
+  "helpMenu": {
+    "trigger": "Help",
+    "title": "What do you need help with?",
+    "student": {
+      "lesson": "Question about a lesson",
+      "lessonCommunity": "Ask in the course community.",
+      "lessonMessage": "Write to your teacher.",
+      "private": "Private matter with the teacher",
+      "privateHint": "Send a private message.",
+      "account": "Login, payment, refund or something broken",
+      "accountHint": "Ask our help assistant first."
+    },
+    "person": "Talk to a person",
+    "teacher": {
+      "howTo": "How do I do something on the platform",
+      "howToAdvisor": "Ask the Advisor, our AI helper.",
+      "howToCenter": "Read the help center.",
+      "students": "My students",
+      "studentsHint": "Messages and questions are in your Inbox.",
+      "account": "Account, payment or error",
+      "accountHint": "Send a request to our team."
+    }
   }
 }

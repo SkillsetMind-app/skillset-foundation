@@ -1029,6 +1029,7 @@ export type Database = {
           payment_type: string | null
           platform_fee_bps: number | null
           price_amount_minor: number | null
+          product_format: string
           rating_average: number | null
           rating_count: number | null
           rating_sum: number | null
@@ -1072,6 +1073,7 @@ export type Database = {
           payment_type?: string | null
           platform_fee_bps?: number | null
           price_amount_minor?: number | null
+          product_format?: string
           rating_average?: number | null
           rating_count?: number | null
           rating_sum?: number | null
@@ -1115,6 +1117,7 @@ export type Database = {
           payment_type?: string | null
           platform_fee_bps?: number | null
           price_amount_minor?: number | null
+          product_format?: string
           rating_average?: number | null
           rating_count?: number | null
           rating_sum?: number | null
@@ -1575,8 +1578,10 @@ export type Database = {
           actor_name: string | null
           body: string
           created_at: string | null
+          emailed_at: string | null
           link: string | null
           notification_id: string
+          params: Json | null
           read: boolean
           title: string
           type: string
@@ -1586,8 +1591,10 @@ export type Database = {
           actor_name?: string | null
           body: string
           created_at?: string | null
+          emailed_at?: string | null
           link?: string | null
           notification_id: string
+          params?: Json | null
           read?: boolean
           title: string
           type: string
@@ -1597,8 +1604,10 @@ export type Database = {
           actor_name?: string | null
           body?: string
           created_at?: string | null
+          emailed_at?: string | null
           link?: string | null
           notification_id?: string
+          params?: Json | null
           read?: boolean
           title?: string
           type?: string
@@ -2088,6 +2097,9 @@ export type Database = {
           uid: string
           updated_at: string | null
           username: string | null
+          verification_kind: string | null
+          verified_at: string | null
+          verified_professional: boolean
         }
         Insert: {
           bio?: string | null
@@ -2098,6 +2110,9 @@ export type Database = {
           uid: string
           updated_at?: string | null
           username?: string | null
+          verification_kind?: string | null
+          verified_at?: string | null
+          verified_professional?: boolean
         }
         Update: {
           bio?: string | null
@@ -2108,6 +2123,9 @@ export type Database = {
           uid?: string
           updated_at?: string | null
           username?: string | null
+          verification_kind?: string | null
+          verified_at?: string | null
+          verified_professional?: boolean
         }
         Relationships: []
       }
@@ -2394,6 +2412,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      claim_notification_digests: {
+        Args: { p_limit: number }
+        Returns: {
+          user_id: string
+          email: string
+          locale: string | null
+          notification_ids: string[]
+          notification_count: number
+        }[]
+      }
       claim_welcome_tour: {
         Args: { p_uid: string; p_surface: string }
         Returns: boolean
@@ -2601,6 +2629,20 @@ export type Database = {
             }
             Returns: string
           }
+        | {
+            Args: {
+              p_categories: string[]
+              p_category: string
+              p_community_enabled: boolean
+              p_lesson_title: string
+              p_module_title: string
+              p_payment_type: string
+              p_product_format: string
+              p_summary: string
+              p_title: string
+            }
+            Returns: string
+          }
       creator_activation_blocked: {
         Args: { p_uid?: string } | never
         Returns: boolean
@@ -2639,6 +2681,13 @@ export type Database = {
           source: string
           status: string
           uid: string
+        }[]
+      }
+      get_live_event_session: {
+        Args: { p_course_id: string }
+        Returns: {
+          starts_at: string
+          timezone: string | null
         }[]
       }
       get_my_course_lesson_funnel: {

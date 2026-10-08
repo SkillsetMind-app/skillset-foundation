@@ -18,10 +18,14 @@ export function usePublishGates(user: { uid: string } | null | undefined): {
   // As duas leituras responderam (com dado ou erro). Antes disso `account`
   // traz os valores falsos iniciais, e quem conta passos pisca.
   loaded: boolean;
-  verificationStatus: string;
+  /** null até a leitura chegar, e quando ela falha: sem status, sem oferta do selo. */
+  verificationStatus: string | null;
+  /** País da conta Stripe Connect (ex.: "MX"); null sem conta ou sem leitura. */
+  stripeConnectCountry: string | null;
 } {
   const [payoutsReady, setPayoutsReady] = useState(false);
-  const [verificationStatus, setVerificationStatus] = useState("none");
+  const [stripeConnectCountry, setStripeConnectCountry] = useState<string | null>(null);
+  const [verificationStatus, setVerificationStatus] = useState<string | null>(null);
   const [requireVerification, setRequireVerification] = useState(false);
   const [planId, setPlanId] = useState<PlanId>("free");
   const [profileLoaded, setProfileLoaded] = useState(false);
@@ -39,12 +43,15 @@ export function usePublishGates(user: { uid: string } | null | undefined): {
         setPayoutsReady(
           Boolean(profile?.stripeConnectChargesEnabled && profile?.stripeConnectPayoutsEnabled),
         );
-        setVerificationStatus(profile?.creatorVerificationStatus ?? "none");
+        setVerificationStatus(profile ? profile.creatorVerificationStatus ?? "none" : null);
+        setStripeConnectCountry(profile?.stripeConnectCountry ?? null);
         setPlanId(profile?.currentPlanId ?? "free");
         setProfileLoaded(true);
       },
       () => {
         setPayoutsReady(false);
+        setVerificationStatus(null);
+        setStripeConnectCountry(null);
         setProfileLoaded(true);
       },
     );
@@ -98,5 +105,6 @@ export function usePublishGates(user: { uid: string } | null | undefined): {
     planId,
     loaded: profileLoaded && flagLoaded,
     verificationStatus,
+    stripeConnectCountry,
   };
 }

@@ -2,7 +2,6 @@ import type { ReactNode } from "react";
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import TeacherCouponsPage from "@/app/teach/coupons/page";
 import TeacherMarketingPage from "@/app/teach/marketing/page";
 import CourseManagePage from "@/app/teach/courses/[courseId]/manage/page";
 import { I18nProvider } from "@/components/i18n/i18n-provider";
@@ -32,7 +31,8 @@ afterEach(cleanup);
 
 describe("residual teacher routes with real server translation and I18nProvider", () => {
   it("requires all residual strings in both real dictionaries without fragment injection", () => {
-    for (const key of ["couponsTitle", "couponsDescription", "openCourses", "manageLoading"]) {
+    // A placa de cupons virou um redirecionamento (rotas-removidas-redirecionam.test.ts).
+    for (const key of ["manageLoading"]) {
       const path = `teacherRouteResidual.${key}`;
       const english = translate(getDictionary("en"), path);
       const spanish = translate(getDictionary("es"), path);
@@ -40,23 +40,6 @@ describe("residual teacher routes with real server translation and I18nProvider"
       expect(spanish).not.toBe(path);
       expect(spanish).not.toBe(english);
     }
-  });
-
-  it.each(["en", "es"] as const)("localizes the coupons signpost in %s without changing the destination or gate", async locale => {
-    mocks.locale = locale;
-    render(<I18nProvider initialLocale={locale}>{await TeacherCouponsPage()}</I18nProvider>);
-    expect(screen.getByRole("heading")).toHaveTextContent(locale === "es"
-      ? "Los cupones se gestionan en el panel de cada curso."
-      : "Coupons live in each course's central.");
-    expect(screen.getByText(locale === "es" ? "Estudio del Profesor" : "Teacher Studio")).toBeInTheDocument();
-    const description = translate(getDictionary(locale), "teacherRouteResidual.couponsDescription");
-    expect(screen.getByText(description)).toHaveTextContent(locale === "es" ? "antes del pago" : "before payment");
-    const link = screen.getByRole("link", { name: locale === "es" ? "Abrir mis cursos" : "Open my courses" });
-    expect(link).toHaveAttribute("href", "/teach/builder");
-    expect(link.querySelector("svg")).toHaveAttribute("aria-hidden", "true");
-    expect(screen.getByRole("main")).toHaveAttribute("data-title", locale === "es" ? "Cupones y promociones" : "Coupons & promotions");
-    expect(screen.getByRole("main")).toHaveAttribute("data-hide-header", "true");
-    expect(screen.getByTestId("gate")).toHaveAttribute("data-permissions", "teacherStudio.access");
   });
 
   it.each(["en", "es"] as const)("keeps the marketing hub, hidden header and canonical access permission in %s", async locale => {

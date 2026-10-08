@@ -145,7 +145,8 @@ export type SubscriberProfile = {
  * Names of the learners subscribed to (or who bought from) the calling teacher.
  *
  * Learners are deliberately absent from `public_profiles` -- that projection is
- * world-readable by `anon` and only carries approved teachers. This RPC is
+ * world-readable by `anon` and only carries teachers who finished creator
+ * setup (verified or not; the badge column tells them apart). This RPC is
  * `SECURITY DEFINER` and takes no arguments: the caller cannot ask about an
  * arbitrary id, only "who bought from me", so there is no enumeration surface.
  */
@@ -540,16 +541,20 @@ export async function completeUserOnboarding({
   }
 }
 
-export async function acceptUserTerms(uid: string, marketingConsent: boolean) {
+// acceptedAt: when the person ticked the box, if that was earlier than now. The
+// signup tick is recorded on the first signed-in page, so it passes the
+// account's creation time (server clock) instead of this browser's clock.
+export async function acceptUserTerms(uid: string, marketingConsent: boolean, acceptedAt?: string) {
   const supabase = getSupabaseBrowserClient();
   const timestamp = nowIso();
+  const accepted = acceptedAt ?? timestamp;
 
   const { data, error } = await supabase
     .from("users")
     .update({
-      terms_accepted_at: timestamp,
+      terms_accepted_at: accepted,
       terms_version: currentTermsVersion,
-      privacy_accepted_at: timestamp,
+      privacy_accepted_at: accepted,
       privacy_version: currentPrivacyVersion,
       marketing_consent: marketingConsent,
       updated_at: timestamp,

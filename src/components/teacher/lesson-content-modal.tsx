@@ -87,6 +87,9 @@ type LessonContentModalProps = {
   onAssetsChanged?: () => void;
   // Builder saindo da pagina: grava, sem prompt, o link digitado e sem blur.
   leaveFlushRef?: Ref<() => void>;
+  // E-book: so a lista de arquivos da aula, sem trilha, abas, video nem o
+  // "Done". O comprador baixa o arquivo nessa aula, que o criador nao ve.
+  filesOnly?: boolean;
   course: TeacherCourse;
   module: TeacherCourseModule;
   moduleIndex: number;
@@ -221,6 +224,7 @@ export function LessonContentModal({
   crumbs,
   onUploadingChange,
   onAssetsChanged,
+  filesOnly = false,
 }: LessonContentModalProps) {
   const { t } = useTranslation();
   const uploadManager = useLessonUpload();
@@ -230,13 +234,13 @@ export function LessonContentModal({
     mountedRef.current = true;
     return () => { mountedRef.current = false; };
   }, []);
-  const [tab, setTab] = useState<LessonModalTab>("video");
+  const [tab, setTab] = useState<LessonModalTab>(filesOnly ? "materials" : "video");
   // Decidido uma vez ao abrir a aula (o builder monta uma instancia por aula):
   // se dependesse do valor vivo, apagar a nota desmontava o campo no mesmo
   // toque e o professor nao conseguia desfazer.
   const [hadOldNote] = useState(() => Boolean(lesson.description?.trim()));
   const [assets, setAssets] = useState<CourseAsset[]>([]);
-  const [uploadKind, setUploadKind] = useState<CourseAssetKind>("lesson_video");
+  const [uploadKind, setUploadKind] = useState<CourseAssetKind>(filesOnly ? "lesson_material" : "lesson_video");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [fileInputKey, setFileInputKey] = useState(0);
   const [isPreviewAsset, setIsPreviewAsset] = useState(false);
@@ -262,10 +266,15 @@ export function LessonContentModal({
     setFileInputKey((current) => current + 1);
     setSuccess("uploaded");
   }
+  // Recarga da lista de arquivos desta aula. course_assets não está na
+  // publicação do Realtime: sem buscar de novo, o arquivo que o próprio
+  // professor acabou de enviar só aparecia depois de recarregar a página.
+  const assetsReloadRef = useRef<(() => Promise<void>) | null>(null);
   const notifiedAssetRef = useRef<string | undefined>(undefined);
   useEffect(() => {
     if (!completedAssetId || notifiedAssetRef.current === completedAssetId) return;
     notifiedAssetRef.current = completedAssetId;
+    void assetsReloadRef.current?.();
     onAssetsChanged?.();
   }, [completedAssetId, onAssetsChanged]);
   const [assetsLoaded, setAssetsLoaded] = useState(false);
@@ -359,7 +368,7 @@ export function LessonContentModal({
   }
 
   useEffect(() => {
-    return subscribeToCourseAssets(
+    const subscription = subscribeToCourseAssets(
       course.id,
       (next) => {
         setAssets(next);
@@ -368,6 +377,11 @@ export function LessonContentModal({
       },
       () => setAssetsLoadFailed(true),
     );
+    assetsReloadRef.current = subscription.reload;
+    return () => {
+      assetsReloadRef.current = null;
+      subscription();
+    };
   }, [course.id]);
 
   // O professor escolheu o envio antes de os arquivos chegarem: com eles na
@@ -635,7 +649,10 @@ export function LessonContentModal({
       setUploadProgress(null);
       setIsPreviewAsset(false);
       setFileInputKey((current) => current + 1);
-      if (!uploadManager) onAssetsChanged?.();
+      if (!uploadManager) {
+        void assetsReloadRef.current?.();
+        onAssetsChanged?.();
+      }
     } catch (caughtError) {
       if (!mountedRef.current) return;
       // Cancelar é desfecho normal, não falha: limpa a tela sem caixa vermelha.
@@ -693,6 +710,7 @@ export function LessonContentModal({
       }
 
       setSuccess("deleted");
+      void assetsReloadRef.current?.();
       onAssetsChanged?.();
     } catch {
       setError({ kind: "delete" });
@@ -716,12 +734,12 @@ export function LessonContentModal({
         ref={dialogRef}
         tabIndex={-1}
         aria-modal={isPage ? undefined : "true"}
-        aria-labelledby="lesson-modal-title"
+        aria-labelledby={filesOnly ? undefined : "lesson-modal-title"}
         className={isPage ? "lesson-modal lesson-modal--page" : "lesson-modal"}
         role={isPage ? undefined : "dialog"}
         onMouseDown={isPage ? undefined : (event) => event.stopPropagation()}
       >
-        {isPage && crumbs ? (
+        {filesOnly ? null : isPage && crumbs ? (
           <nav className="lesson-modal__header" aria-label={t("creatorEditor.builder.curriculum.breadcrumb")}>
             <ol className="lesson-modal__trail">
               <li>
@@ -764,6 +782,7 @@ export function LessonContentModal({
           </header>
         )}
 
+        {filesOnly ? null : (
         <nav className="lesson-modal__tabs" aria-label={t("creatorEditor.lesson.setup")}>
           {lessonModalTabs.map((item) => {
             const Icon = item.icon;
@@ -797,8 +816,10 @@ export function LessonContentModal({
             );
           })}
         </nav>
+        )}
 
         <div className="lesson-modal__body">
+          {filesOnly ? null : (
           <div className="lesson-modal__context">
             <h3 id="lesson-modal-title" tabIndex={-1}>{lesson.title || t("creatorEditor.lesson.untitled")}</h3>
             <p className="lesson-modal__crumb">
@@ -808,6 +829,7 @@ export function LessonContentModal({
                 .replace("{moduleTitle}", () => module.title)}
             </p>
           </div>
+          )}
           {tab === "video" ? (
             <div className="grid gap-5">
 
@@ -912,7 +934,7 @@ export function LessonContentModal({
               {oldLink ? (
                 <section
                   aria-label={t("creatorEditor.lesson.oldLink")}
-                  className="grid gap-2 rounded-none border border-[var(--color-line)] p-3 text-sm"
+                  className="grid gap-2 rounded-lg border border-[var(--color-line)] p-3 text-sm"
                 >
                   <p className="font-semibold">{t("creatorEditor.lesson.oldLink")}</p>
                   <p className="break-all text-[var(--color-ink-soft)]">{oldLink}</p>
@@ -1162,11 +1184,14 @@ export function LessonContentModal({
               ) : null}
             </div>
           ) : null}
+          {filesOnly ? null : (
           <p className="lesson-modal__guidance">
             {t("creatorEditor.lesson.contextHelp")}
           </p>
+          )}
         </div>
 
+        {filesOnly ? null : (
         <footer className="lesson-modal__footer">
           <p>
             <CheckCircle2 aria-hidden="true" size={14} />
@@ -1181,6 +1206,7 @@ export function LessonContentModal({
             {isUploading ? t("creatorEditor.lesson.file.uploading") : t("creatorEditor.lesson.state.done")}
           </button>
         </footer>
+        )}
       </section>
   );
 

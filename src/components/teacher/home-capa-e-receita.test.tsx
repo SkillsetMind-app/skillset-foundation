@@ -111,15 +111,16 @@ describe("Home do professor: o card do produto mostra a capa", () => {
 
 // Antes da 1a venda o bloco de desempenho era ~700px de nada.
 describe("Home do professor: desempenho so com historico de venda", () => {
-  it("sem nenhuma venda esconde o grafico e o Top courses, mas mantem os tiles", async () => {
+  it("sem nenhuma venda esconde o grafico, o Top courses e os tiles de $0", async () => {
     state.courses = [course("c1", "Curso sem venda", null)];
     state.orders = [];
 
     render(<TeacherStudioDashboard />);
 
-    // Os tiles ficam, com as dicas de vazio que ja tem.
-    expect(await screen.findByText("Revenue, 30d")).toBeInTheDocument();
-    expect(screen.getByText("New students")).toBeInTheDocument();
+    // Os tiles de $0 / 0 tambem saem: so aparecem com a 1a venda paga.
+    await screen.findByRole("heading", { level: 1 });
+    expect(screen.queryByText("Revenue, 30d")).toBeNull();
+    expect(screen.queryByText("New students")).toBeNull();
 
     expect(screen.queryByRole("heading", { name: "Revenue" })).toBeNull();
     expect(screen.queryByRole("heading", { name: "Top courses" })).toBeNull();

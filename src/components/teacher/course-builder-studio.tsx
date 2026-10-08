@@ -2,11 +2,13 @@
 
 import Link from "next/link";
 import {
+  AlertTriangle,
   ArrowLeft,
   ArrowRight,
-  CalendarClock,
+  CalendarDays,
   CheckCircle2,
   ChevronRight,
+  Circle,
   CloudOff,
   CreditCard,
   ExternalLink,
@@ -17,31 +19,35 @@ import {
   Moon,
   Plus,
   Repeat,
+  Send,
   Sun,
+  Ticket,
   Trash2,
   UploadCloud,
+  X,
 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   useCallback,
   useEffect,
+  useId,
   useLayoutEffect,
   useMemo,
   useRef,
   useState,
   type ChangeEvent,
   type FormEvent,
+  type ReactNode,
+  type RefObject,
 } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
-import {
-  PlanSelectorCards,
-  type PlanSelectorOption,
-} from "@/components/shared/plan-selector-cards";
+import { PlanSelectorCards } from "@/components/shared/plan-selector-cards";
 import { InlineHelp } from "@/components/shared/inline-help";
 import { StatusChip } from "@/components/shared/status-chip";
 import { MembersAreaHero } from "@/components/learn/members-area-hero";
+import { BuilderSkeleton } from "@/components/teacher/builder-skeleton";
 import { CourseAssetUploader } from "@/components/teacher/course-asset-uploader";
 import { CourseCategorySelect } from "@/components/teacher/course-category-select";
 import { CourseShareLink } from "@/components/teacher/course-share-link";
@@ -65,10 +71,21 @@ import {
   normalizeInstallmentsMax,
   normalizeLearningOutcomes,
   normalizeTeacherCourseModules,
+  paymentTypeFitsFormat,
   skillsetCourseCategories,
   teacherCanEditCourse,
   teacherCanPublishCourse,
 } from "@/domain/teacher-course";
+import { buildInstallmentPlan, canSplitPayments } from "@/domain/installments";
+import {
+  paymentChoiceOf,
+  paymentChoicesFor,
+  paymentTypeOfChoice,
+  resolveCoursePrice,
+  yearlySavingMinor,
+  type PaymentChoice,
+  type ProductOffer,
+} from "@/domain/product-pricing";
 import {
   subscribeToTeacherCourse,
   publishTeacherCourse,
@@ -92,18 +109,29 @@ import {
 import { compressImage, MAX_SOURCE_IMAGE_BYTES } from "@/lib/media/compress-image";
 import { ReadinessGroups } from "@/components/teacher/readiness-groups";
 import { UploadProgressNote } from "@/components/teacher/upload-progress-note";
-import { InlineAlert } from "@/components/ui";
+import { Button, buttonClasses, EmptyState, InlineAlert } from "@/components/ui";
+import { DrawnCheck, MilestoneSeal, useJustDone } from "@/components/ui/drawn-check";
+import { SpotArt } from "@/components/ui/spot-art";
 import type { CourseAsset } from "@/domain/course-asset";
 import { isActivationRequiredError } from "@/domain/creator-verification";
 import { getTrustedLessonEmbed } from "@/domain/lesson-embed";
-import { getSafeMediaUrl } from "@/domain/external-url";
+import { getSafeExternalUrl, getSafeMediaUrl } from "@/domain/external-url";
 import { isPublicFeatureEnabled } from "@/lib/feature-flags";
 import { countLabel } from "@/lib/i18n/count-label";
 import { track } from "@/lib/posthog/events";
 import { defaultSkillsetCurrency } from "@/lib/payments/currencies";
 import { CurrencySelect } from "@/components/teacher/currency-select";
 import { usePublishGates } from "@/components/teacher/use-publish-gates";
-import { getCourseReadiness, getLessonIdsWithMedia } from "@/domain/course-readiness";
+import { VerifiedBadgeOffer } from "@/components/teacher/verified-badge-offer";
+import {
+  countLessonFiles,
+  formatZeroPrice,
+  getCourseReadiness,
+  getLessonIdsWithMedia,
+  upcomingSessionsOf,
+} from "@/domain/course-readiness";
+import { formatEventDateTime, type CourseEvent } from "@/domain/course-event";
+import { subscribeToTeacherCourseEvents } from "@/lib/data/course-events";
 import { moveLessonTo } from "@/domain/curriculum-move";
 
 const builderTabs = [
@@ -166,36 +194,22 @@ const dripStrategies: { value: DripStrategy; label: string; detail: string }[] =
   },
 ];
 
-const paymentModelOptions: PlanSelectorOption<TeacherCoursePaymentType>[] = [
-  {
-    value: "one_time",
-    title: "creatorEditor.builder.paymentModels.one_time.title",
-    description: "creatorEditor.builder.paymentModels.one_time.description",
-    features: ["creatorEditor.builder.paymentModels.one_time.feature1", "creatorEditor.builder.paymentModels.one_time.feature2"],
-    icon: CreditCard,
-  },
-  {
-    value: "free",
-    title: "creatorEditor.builder.paymentModels.free.title",
-    description: "creatorEditor.builder.paymentModels.free.description",
-    features: ["creatorEditor.builder.paymentModels.free.feature1", "creatorEditor.builder.paymentModels.free.feature2"],
-    icon: Gift,
-  },
-  {
-    value: "subscription_monthly",
-    title: "creatorEditor.builder.paymentModels.subscription_monthly.title",
-    description: "creatorEditor.builder.paymentModels.subscription_monthly.description",
-    features: ["creatorEditor.builder.paymentModels.subscription_monthly.feature1", "creatorEditor.builder.paymentModels.subscription_monthly.feature2"],
-    icon: Repeat,
-  },
-  {
-    value: "subscription_yearly",
-    title: "creatorEditor.builder.paymentModels.subscription_yearly.title",
-    description: "creatorEditor.builder.paymentModels.subscription_yearly.description",
-    features: ["creatorEditor.builder.paymentModels.subscription_yearly.feature1", "creatorEditor.builder.paymentModels.subscription_yearly.feature2"],
-    icon: CalendarClock,
-  },
-];
+// "Como as pessoas vao pagar?": tres cartoes, cada um com um exemplo em
+// numeros na moeda escolhida. No evento ao vivo o pagamento unico se chama
+// Ingresso.
+const paymentChoiceIcons = {
+  free: Gift,
+  one_payment: CreditCard,
+  ticket: Ticket,
+  membership: Repeat,
+} as const;
+const paymentChoiceExamples: Record<PaymentChoice, number> = {
+  free: 0,
+  one_payment: 300,
+  membership: 29,
+};
+// Ate quantas parcelas: 2 a 12, mais o valor ja gravado se for outro.
+const splitPaymentCounts = Array.from({ length: 11 }, (_, index) => index + 2);
 
 // Ctrl/Cmd/Shift/Alt ou botao que nao e o esquerdo: o navegador abre outra aba
 // e esta aqui nao navega. Nada que dependa de "a pessoa saiu daqui" pode rodar.
@@ -319,9 +333,10 @@ function sanitizeModules(modules: TeacherCourseModule[]): TeacherCourseModule[] 
 
 type BuilderError = {
   code: "notFound" | "load" | "chooseModule" | "lessonTitle" | "moduleTitleMissing"
-    | "lessonTitleMissing" | "price" | "installmentsSave" | "category" | "paidPrice"
+    | "lessonTitleMissing" | "price" | "livePrice" | "installmentsSave" | "category" | "paidPrice"
     | "installmentsPublish" | "duplicateTitle" | "activation" | "save" | "preview"
-    | "setup" | "verification" | "payouts" | "payment" | "lessonContent" | "publish";
+    | "setup" | "verification" | "payouts" | "payment" | "lessonContent" | "publish"
+    | "session" | "file" | "community";
   moduleIndex?: number;
   lessonIndex?: number;
 };
@@ -432,9 +447,9 @@ function builderDraftSignatureFromCourse(course: TeacherCourse): string {
           ? String(course.priceAmountMinor / 100)
           : "",
       currency: course.currency ?? defaultSkillsetCurrency,
+      // Sem forma gravada, sem valor e gratis: e como o checkout e o banco leem.
       paymentType:
-        course.paymentType ??
-        (course.priceAmountMinor === 0 ? "free" : "one_time"),
+        course.paymentType ?? (course.priceAmountMinor ? "one_time" : "free"),
       installmentsEnabled: Boolean(course.installmentsEnabled),
       installmentsMax: String(course.installmentsMax ?? 12),
       dripStrategy: course.dripStrategy ?? "instant",
@@ -518,8 +533,18 @@ export function CourseBuilderStudio() {
   const { user } = useAuth();
   // Payouts e verificacao: so o Manage sabia; aqui a pessoa clicava em
   // Publish e descobria pelo erro do servidor.
-  const { account: publishGates } = usePublishGates(user);
+  const {
+    account: publishGates,
+    loaded: gatesLoaded,
+    verificationStatus,
+    stripeConnectCountry,
+  } = usePublishGates(user);
+  // "Agora nao" na oferta do selo devolve o foco ao titulo do painel "Publicado!".
+  const successNoticeRef = useRef<HTMLHeadingElement>(null);
   const [course, setCourse] = useState<TeacherCourse | null>(null);
+  // O que o produto entrega (courses.product_format): muda a aba de conteudo
+  // e o que publicar cobra, como em publish_teacher_course.
+  const productFormat = course?.productFormat ?? "course";
   const [title, setTitle] = useState("");
   const [summary, setSummary] = useState("");
   const [category, setCategory] = useState<string>(skillsetCourseCategories[0]);
@@ -534,6 +559,11 @@ export function CourseBuilderStudio() {
     useState<TeacherCoursePaymentType>("one_time");
   const [installmentsEnabled, setInstallmentsEnabled] = useState(false);
   const [installmentsMax, setInstallmentsMax] = useState("12");
+  // "Oferecer tambem plano anual": o valor do ano so serve para a conta da
+  // economia e para levar ao "Adicionar outro preco" (Ofertas); a etapa de
+  // preco nao grava um segundo preco escondido.
+  const [yearlyPlanOpen, setYearlyPlanOpen] = useState(false);
+  const [yearlyAmount, setYearlyAmount] = useState("");
   const [dripStrategy, setDripStrategy] = useState<DripStrategy>("instant");
   const [dripIntervalDays, setDripIntervalDays] = useState("1");
   const [freePreviewLessonId, setFreePreviewLessonId] = useState("");
@@ -545,7 +575,21 @@ export function CourseBuilderStudio() {
   const [membersSubtitle, setMembersSubtitle] = useState("");
   const [membersDescription, setMembersDescription] = useState("");
   const [communityEnabled, setCommunityEnabled] = useState(false);
-  const [moduleTitle, setModuleTitle] = useState("");
+  // ?welcome=1 vem do atalho da Agenda ("Add a short welcome lesson"): o
+  // primeiro modulo ja nasce com nome.
+  const [moduleTitle, setModuleTitle] = useState(() =>
+    searchParams.get("welcome") === "1" ? t("creatorEditor.builder.curriculum.welcomeModule") : "",
+  );
+  // O nome ja entrou no formulario: o parametro sai da URL para uma recarga
+  // (ou a troca de aba, que copia os parametros) nao abrir outro "Welcome".
+  useEffect(() => {
+    if (searchParams.get("welcome") !== "1") {
+      return;
+    }
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("welcome");
+    router.replace(`/teach/builder?${params.toString()}`, { scroll: false });
+  }, [router, searchParams]);
   const [moduleSummary, setModuleSummary] = useState("");
   const [moduleError, setModuleError] = useState(false);
   const [lessonModuleId, setLessonModuleId] = useState("");
@@ -566,8 +610,26 @@ export function CourseBuilderStudio() {
     ? t(`creatorEditor.builder.errors.${error.code}`)
       .replace("{module}", () => String(error.moduleIndex ?? ""))
       .replace("{lesson}", () => String(error.lessonIndex ?? ""))
+      .replace("{zero}", () => formatZeroPrice(currency))
     : null;
   const [isLoading, setIsLoading] = useState(true);
+  // ?created=1 vem da tela de criar (catalogo de movimento, item 7): a faixa
+  // "Rascunho salvo. Proximo: ..." aparece uma vez, quando o curso termina de
+  // carregar. O parametro sai da URL nessa hora, para uma recarga ou a troca
+  // de aba (que copia os parametros) nao repetir o marco. Some em 4s ou no X
+  // (o relogio mora em CreatedStrip).
+  const [createdStripOpen, setCreatedStripOpen] = useState(
+    () => searchParams.get("created") === "1",
+  );
+  const closeCreatedStrip = useCallback(() => setCreatedStripOpen(false), []);
+  useEffect(() => {
+    if (isLoading || searchParams.get("created") !== "1") {
+      return;
+    }
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("created");
+    router.replace(`/teach/builder?${params.toString()}`, { scroll: false });
+  }, [isLoading, router, searchParams]);
   const [isSaving, setIsSaving] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   // A aula aberta vem da URL (?module=M&lesson=L), como o modulo: o voltar do
@@ -657,6 +719,11 @@ export function CourseBuilderStudio() {
   // e nao "cancelar ao mudar dependencia": abrir a aula logo depois (link
   // direto, quando os modulos chegam) descartava a primeira busca para sempre.
   const assetsRequestRef = useRef(0);
+  // Busca o curso de novo sem esperar o Realtime. O construtor so sabe que um
+  // modulo/aula foi gravado pelo snapshot do curso; com o eco do Realtime como
+  // unica fonte, o upload da capa do modulo e o botao de video da aula nova
+  // ficaram travados enquanto o Realtime recusava o canal (06/10).
+  const courseReloadRef = useRef<(() => Promise<void>) | null>(null);
 
   // Copia o snapshot do servidor para o rascunho. So setters (estaveis), entao
   // serve ao callback do realtime e ao efeito que aplica o snapshot pulado.
@@ -679,8 +746,7 @@ export function CourseBuilderStudio() {
     );
     setCurrency(nextCourse.currency ?? defaultSkillsetCurrency);
     setPaymentType(
-      nextCourse.paymentType ??
-        (nextCourse.priceAmountMinor === 0 ? "free" : "one_time"),
+      nextCourse.paymentType ?? (nextCourse.priceAmountMinor ? "one_time" : "free"),
     );
     setInstallmentsEnabled(Boolean(nextCourse.installmentsEnabled));
     setInstallmentsMax(String(nextCourse.installmentsMax ?? 12));
@@ -711,7 +777,7 @@ export function CourseBuilderStudio() {
       return;
     }
 
-    return subscribeToTeacherCourse(
+    const subscription = subscribeToTeacherCourse(
       courseId,
       (nextCourse) => {
         setIsLoading(false);
@@ -774,6 +840,11 @@ export function CourseBuilderStudio() {
         setError({ code: "load" });
       },
     );
+    courseReloadRef.current = subscription.reload;
+    return () => {
+      courseReloadRef.current = null;
+      subscription();
+    };
   }, [courseId, applyServerDraft]);
 
   // One-shot (re)load instead of a realtime channel: the lesson studio modal
@@ -799,6 +870,23 @@ export function CourseBuilderStudio() {
         // Non-critical: only the "Add video"/"Edit content" hint degrades.
       });
   }, [courseId, activeTab, activeLessonId]);
+
+  // Evento ao vivo: a sessao agendada e o conteudo. Mesma leitura da Agenda,
+  // so as sessoes deste produto ainda de pe e por vir: a que ja passou nao
+  // se vende (publish_teacher_course cobra o mesmo).
+  const [courseSessions, setCourseSessions] = useState<CourseEvent[] | null>(null);
+  const ownerUid = user?.uid;
+  useEffect(() => {
+    if (!ownerUid || !courseId || productFormat !== "live_event") {
+      return;
+    }
+    return subscribeToTeacherCourseEvents(
+      ownerUid,
+      (events) => setCourseSessions(upcomingSessionsOf(events, courseId, Date.now())),
+      // Sem a lista, o item some da prontidao e o servidor segue cobrando.
+      () => {},
+    );
+  }, [ownerUid, courseId, productFormat]);
 
   useEffect(() => {
     openPendingLessonRef.current = (target) => {
@@ -827,13 +915,69 @@ export function CourseBuilderStudio() {
   const canPublish = Boolean(
     isOwner && course && teacherCanPublishCourse(course.status),
   );
-  const cardInstallmentsConfigured = isPublicFeatureEnabled(
-    "payments.cardInstallments",
-  );
-  const canConfigureCardInstallments =
+  // Parcelar so aparece onde funciona, pela mesma regra do checkout: flag
+  // ligada, venda em MXN e conta Stripe do Mexico. Fora disso a opcao nao
+  // existe na tela (o valor gravado fica como esta).
+  const showSplitPayments =
     paymentType === "one_time"
-    && currency === "MXN"
-    && cardInstallmentsConfigured;
+    && canSplitPayments({
+      featureEnabled: isPublicFeatureEnabled("payments.cardInstallments"),
+      currency,
+      stripeAccountCountry: stripeConnectCountry,
+    });
+  // Com preco em Outros precos, o checkout cobra a oferta principal
+  // (resolveCoursePrice), nao estes campos: a etapa de preco so mostra o que a
+  // pagina cobra e leva para la. null = ainda nao sabe: sem saber o preco
+  // principal, os cartoes nao aparecem (mudariam so o construtor). Rele ao
+  // voltar para a aba: outra aba pode ter criado o preco principal.
+  const [checkoutOffers, setCheckoutOffers] = useState<ProductOffer[] | null>(null);
+  const [offersFailed, setOffersFailed] = useState(false);
+  useEffect(() => {
+    if (!courseId) {
+      return;
+    }
+    let alive = true;
+    let latest = 0;
+    const load = () => {
+      const request = ++latest;
+      fetch(`/api/teach/offers?courseId=${encodeURIComponent(courseId)}`, { credentials: "include" })
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data: { offers?: Omit<ProductOffer, "courseId">[]; warning?: string } | null) => {
+          // A rota devolve 200 com warning quando a leitura falha: nao e "sem ofertas".
+          if (!data || data.warning || !Array.isArray(data.offers)) {
+            throw new Error("offers unavailable");
+          }
+          if (alive && request === latest) {
+            setCheckoutOffers(data.offers.map((offer) => ({ ...offer, courseId })));
+            setOffersFailed(false);
+          }
+        })
+        .catch(() => {
+          if (alive && request === latest) {
+            setCheckoutOffers(null);
+            setOffersFailed(true);
+          }
+        });
+    };
+    const loadWhenVisible = () => {
+      if (document.visibilityState === "visible") {
+        load();
+      }
+    };
+    load();
+    window.addEventListener("focus", load);
+    document.addEventListener("visibilitychange", loadWhenVisible);
+    return () => {
+      alive = false;
+      window.removeEventListener("focus", load);
+      document.removeEventListener("visibilitychange", loadWhenVisible);
+    };
+  }, [courseId]);
+  const offerPrice = course && checkoutOffers ? resolveCoursePrice(course, checkoutOffers) : null;
+  const chargedByOffer = offerPrice?.source === "offer" ? offerPrice : null;
+  const paymentChoice = paymentChoiceOf(paymentType);
+  const paymentChoices = paymentChoicesFor(productFormat, paymentChoice);
+  const paymentChoiceFits = paymentTypeFitsFormat(productFormat, paymentType);
   const lessonCount = countCourseLessons(modules);
   // "1 module", "2 modules": a tela dizia "1 modules, 1 lessons" (QA visual em
   // producao, 08/09). O singular tem chave propria, como no hub do curso.
@@ -919,8 +1063,17 @@ export function CourseBuilderStudio() {
     })),
   );
   const parsedPriceAmountMinor = parsePriceAmountMinor(priceAmount);
+  // Produto no ar, cobrado e sem valor: gravar isso abria a entrada gratis
+  // (create_free_course_enrollment le preco nulo como zero). Nao salva ate ter
+  // valor ou virar Gratis. Com oferta cobrando, o campo nem aparece e a
+  // entrada gratis ja e recusada pelo preco pago.
+  const liveWithoutPrice =
+    !chargedByOffer
+    && course?.status === "published"
+    && paymentType !== "free"
+    && !(parsedPriceAmountMinor && parsedPriceAmountMinor > 0);
   const priceFieldIsValid =
-    paymentType === "free" || !hasInvalidPriceAmount(priceAmount);
+    paymentType === "free" || (!hasInvalidPriceAmount(priceAmount) && !liveWithoutPrice);
   // Free is always ready; every paid model (one_time, subscription_monthly,
   // subscription_yearly) needs a positive price — priceAmountMinor is the
   // one-time charge or the per-cycle subscription amount.
@@ -999,7 +1152,17 @@ export function CourseBuilderStudio() {
     [courseAssetsLoaded, builderDraftPayload.modules, courseAssets],
   );
   const readiness = getCourseReadiness(
-    { ...builderDraftPayload, coverImageUrl: course?.coverImageUrl ?? null, lessonIdsWithMedia },
+    {
+      ...builderDraftPayload,
+      coverImageUrl: course?.coverImageUrl ?? null,
+      lessonIdsWithMedia,
+      productFormat,
+      scheduledSessionCount: productFormat === "live_event" ? courseSessions?.length : undefined,
+      lessonFileCount:
+        productFormat === "ebook" && courseAssetsLoaded
+          ? countLessonFiles(builderDraftPayload.modules, courseAssets)
+          : undefined,
+    },
     publishGates,
     t,
   );
@@ -1011,6 +1174,11 @@ export function CourseBuilderStudio() {
   const activeLessonStudioModule = activeLessonStudio
     ? modules.find((module) => module.id === activeLessonStudio.moduleId) ?? null
     : null;
+  // A aula do e-book: a primeira que existir (o produto nasce com uma).
+  const ebookModule = productFormat === "ebook"
+    ? modules.find((module) => module.lessons.length > 0)
+    : undefined;
+  const ebookLesson = ebookModule?.lessons[0];
   const activeLessonStudioLesson =
     activeLessonStudio && activeLessonStudioModule
       ? activeLessonStudioModule.lessons.find(
@@ -1034,22 +1202,79 @@ export function CourseBuilderStudio() {
       module.lessons.map((lesson) => lesson.id),
     ) ?? [],
   );
+  // O resumo diz o que a pagina cobra: com preco principal, ele; sem saber
+  // ainda, nenhum preco.
+  const summaryPrice = chargedByOffer
+    ? { type: chargedByOffer.paymentType, amountMinor: chargedByOffer.amountMinor, currency: chargedByOffer.currency }
+    : { type: paymentType, amountMinor: parsedPriceAmountMinor, currency };
   const priceIntervalSuffix =
-    paymentType === "subscription_monthly"
+    summaryPrice.type === "subscription_monthly"
       ? t("creatorEditor.builder.summary.month")
-      : paymentType === "subscription_yearly"
+      : summaryPrice.type === "subscription_yearly"
         ? t("creatorEditor.builder.summary.year")
         : "";
   const formattedPrice =
-    paymentType === "free"
+    !checkoutOffers
+      ? null
+      : summaryPrice.type === "free"
       ? t("publicCourses.free")
-      : parsedPriceAmountMinor
+      : summaryPrice.amountMinor
         ? `${new Intl.NumberFormat(locale, {
             style: "currency",
-            currency: currency.toUpperCase(),
+            currency: summaryPrice.currency.toUpperCase(),
             maximumFractionDigits: 0,
-          }).format(parsedPriceAmountMinor / 100)}${priceIntervalSuffix}`
+          }).format(summaryPrice.amountMinor / 100)}${priceIntervalSuffix}`
         : t("creatorEditor.builder.summary.setPrice");
+  // Valor na moeda escolhida: os exemplos dos cartoes, a previa das parcelas
+  // e a economia do anual. Centavos so quando existem ("3x of $100").
+  const formatMoney = (amountMinor: number, moneyCurrency = currency) =>
+    new Intl.NumberFormat(locale, {
+      style: "currency",
+      currency: moneyCurrency.toUpperCase(),
+      minimumFractionDigits: amountMinor % 100 === 0 ? 0 : 2,
+      maximumFractionDigits: 2,
+    }).format(amountMinor / 100);
+  const previewLessonField = (
+    <label className="mt-4 grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
+      {t("creatorEditor.builder.pricing.preview")}
+      <select
+        value={freePreviewLessonId}
+        onChange={(event) => setFreePreviewLessonId(event.target.value)}
+        disabled={!isEditable || allLessons.length === 0}
+        className="rounded-md border border-[var(--color-field-border)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
+      >
+        <option value="">{t("creatorEditor.builder.pricing.noPreview")}</option>
+        {allLessons.map((lesson) => (
+          <option key={lesson.id} value={lesson.id}>
+            {lesson.moduleTitle} - {lesson.title}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+  const splitCountOptions = [...new Set([...splitPaymentCounts, Number(installmentsMax)])]
+    .filter((count) => Number.isInteger(count) && count >= 1)
+    .sort((left, right) => left - right);
+  // A mesma conta do checkout (buildInstallmentPlan): o maior numero de
+  // parcelas e quanto fica cada uma.
+  const lastSplit = parsedPriceAmountMinor
+    ? buildInstallmentPlan({
+        amountMinor: parsedPriceAmountMinor,
+        installmentsEnabled: true,
+        installmentsMax: Number(installmentsMax),
+        currency,
+      }).options.at(-1)
+    : undefined;
+  const splitPreview = lastSplit
+    ? t("creatorEditor.builder.pricing.splitPreview")
+        .replace("{count}", () => String(lastSplit.count))
+        .replace("{amount}", () => formatMoney(lastSplit.amountMinor))
+    : null;
+  const yearlyAmountMinor = parsePriceAmountMinor(yearlyAmount);
+  const yearlySaving =
+    parsedPriceAmountMinor && yearlyAmountMinor
+      ? yearlySavingMinor(parsedPriceAmountMinor, yearlyAmountMinor)
+      : null;
   const tabCompletion: Record<BuilderTab, boolean> = {
     details: Boolean(
       title.trim()
@@ -1059,7 +1284,10 @@ export function CourseBuilderStudio() {
     // Members-area customization is optional; the learner workspace falls back
     // to the course title, cover, and light theme.
     members: true,
-    content: modules.length > 0 && lessonCount > 0,
+    // Curso: modulo e aula. Os outros tipos: o que a prontidao cobra deles.
+    content: productFormat === "course"
+      ? modules.length > 0 && lessonCount > 0
+      : readiness.items.every((item) => item.group !== "content" || item.optional || item.done),
     pricing:
       pricingModelIsReady &&
       priceFieldIsValid &&
@@ -1076,6 +1304,25 @@ export function CourseBuilderStudio() {
   const activeStageId =
     builderStages.find((stage) => stage.target === activeTab)?.id ??
     builderStages[0].id;
+  // "Acabou de ficar pronto" so conta depois que todas as leituras voltaram:
+  // payouts e verificacao, os arquivos do curso e, no evento, as sessoes.
+  // Antes disso os falsos iniciais virariam festa ao chegar (abrir
+  // ?tab=review acendia "Stripe payouts" sem ninguem ter feito nada).
+  const readinessLoaded =
+    gatesLoaded &&
+    courseAssetsLoaded &&
+    (productFormat !== "live_event" || courseSessions !== null);
+  const justDoneStages = useJustDone(
+    builderStages.filter((stage) => stageCompletion[stage.id]).map((stage) => stage.id),
+    readinessLoaded,
+  );
+  const justDoneReadiness = useJustDone(
+    readiness.items.filter((item) => item.done).map((item) => item.id),
+    readinessLoaded,
+  );
+  // A aba de abertura e a linha de base: so a TROCA de aba anima o painel. A
+  // primeira carga entra parada (nada de opacidade 0 no que vira LCP).
+  const panelIn = useJustDone([activeTab]).has(activeTab) ? "motion-panel-in" : "";
   const totalDurationMinutes = allLessons.reduce(
     (sum, lesson) => sum + (lesson.durationMinutes ?? 0),
     0,
@@ -1158,12 +1405,25 @@ export function CourseBuilderStudio() {
             ? "pending"
             : "saved";
 
+  // Clicar no cartao ja escolhido nao muda nada: um produto antigo que cobra
+  // por ano continua anual dentro de "Mensalidade".
+  function handlePaymentChoiceChange(nextChoice: PaymentChoice) {
+    if (nextChoice !== paymentChoice) {
+      handlePaymentTypeChange(paymentTypeOfChoice(nextChoice));
+    }
+  }
+
   function handlePaymentTypeChange(nextPaymentType: TeacherCoursePaymentType) {
     if (!isEditable) {
       return;
     }
 
     setPaymentType(nextPaymentType);
+
+    // Saindo do Gratis o campo nascia com "0"; vazio mostra o exemplo.
+    if (paymentType === "free" && nextPaymentType !== "free" && priceAmount.trim() === "0") {
+      setPriceAmount("");
+    }
 
     if (nextPaymentType === "free") {
       setPriceAmount("0");
@@ -1576,6 +1836,11 @@ export function CourseBuilderStudio() {
         skippedSnapshotRef.current = null;
         if (inFlightSavesRef.current === 1) {
           setAutosaveState("saved");
+          // Ultimo save no ar: busca o curso em vez de esperar o eco. O contador
+          // de geracao do subscribe descarta uma resposta mais velha que o eco.
+          // ponytail: com o Realtime saudavel, eco e recarga buscam duas vezes;
+          // tirar a recarga so se o custo aparecer.
+          void courseReloadRef.current?.();
         }
       } finally {
         inFlightSavesRef.current -= 1;
@@ -1594,6 +1859,85 @@ export function CourseBuilderStudio() {
 
   // Pagina do modulo (?module=M). Funcao de render, nao componente: le o mesmo
   // estado do builder, entao nao existe segunda copia do rascunho.
+  // Evento ao vivo: a sessao vem antes das aulas, que viram a gravacao
+  // opcional (replay). Marcar e editar continuam na Agenda.
+  function renderLiveSession() {
+    if (productFormat !== "live_event" || !courseId) {
+      return null;
+    }
+    const agendaHref = `/teach/events?courseId=${encodeURIComponent(courseId)}`;
+    const hasSession = Boolean(courseSessions?.length);
+
+    return (
+      <>
+        <section
+          aria-label={t("creatorEditor.builder.productTypes.sessionTitle")}
+          className="mb-6 grid gap-3 rounded-lg border fine-rule bg-white p-5"
+        >
+          {courseSessions === null ? null : hasSession ? (
+            <ul className="grid gap-2">
+              {courseSessions.map((session) => (
+                <li key={session.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+                  <CalendarDays aria-hidden="true" size={16} className="text-[var(--color-primary)]" />
+                  <strong className="text-[var(--color-ink)]">
+                    {formatEventDateTime(session.startsAt, locale, t("platform.events.datePending"))}
+                  </strong>
+                  <span className="break-all text-[var(--color-ink-soft)]">
+                    {getSafeExternalUrl(session.externalUrl) ?? t("creatorEditor.builder.productTypes.sessionNoLink")}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-sm font-semibold text-[var(--color-ink)]">
+              {t("creatorEditor.builder.productTypes.sessionNone")}
+            </p>
+          )}
+          <Link
+            href={hasSession ? agendaHref : `${agendaHref}&newEvent=1`}
+            className={buttonClasses({ variant: hasSession ? "outline" : "solid" }, "w-fit")}
+          >
+            <CalendarDays aria-hidden="true" size={15} />
+            {t(hasSession
+              ? "creatorEditor.builder.productTypes.sessionEdit"
+              : "creatorEditor.builder.productTypes.sessionSchedule")}
+          </Link>
+        </section>
+        <h4 className="text-sm font-semibold text-[var(--color-ink)]">
+          {t("creatorEditor.builder.productTypes.replayTitle")}
+        </h4>
+      </>
+    );
+  }
+
+  // E-book: so o envio de arquivos da aula que nasceu com o produto. O
+  // comprador baixa ali; modulo, aula e video nao aparecem.
+  function renderEbookFiles(lessonModule: TeacherCourseModule, lesson: TeacherLesson) {
+    if (!course) {
+      return null;
+    }
+
+    return (
+      <LessonContentModal
+        key={lesson.id}
+        variant="page"
+        filesOnly
+        course={course}
+        module={lessonModule}
+        moduleIndex={0}
+        lesson={lesson}
+        lessonIndex={0}
+        isEditable={isEditable}
+        isFreePreview={false}
+        dripStrategy={dripStrategy}
+        onClose={() => {}}
+        onSetFreePreview={() => {}}
+        onAssetsChanged={refreshCourseAssets}
+        onUpdateLesson={(patch) => updateLesson(lessonModule.id, lesson.id, patch)}
+      />
+    );
+  }
+
   // Pagina da aula (?module=M&lesson=L): o corpo do estudio na propria pagina,
   // com a trilha Curso > Modulo > Aula no lugar do modal. Mesmo rascunho,
   // mesmo autosave e mesmo Salvar do resto do builder.
@@ -1717,7 +2061,7 @@ export function CourseBuilderStudio() {
                 value={module.title}
                 onChange={(event) => updateModuleTitle(module.id, event.target.value)}
                 disabled={!isEditable}
-                className="rounded-none border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
+                className="rounded-md border border-[var(--color-field-border)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
               />
             </label>
             <label className="grid content-start gap-2 text-sm font-semibold text-[var(--color-ink)]">
@@ -1729,7 +2073,7 @@ export function CourseBuilderStudio() {
                 rows={3}
                 aria-label={t("creatorEditor.builder.curriculum.moduleDescriptionNumber").replace("{index}", () => String(moduleIndex + 1))}
                 placeholder={t("creatorEditor.builder.curriculum.moduleDescriptionPlaceholder")}
-                className="w-full resize-none rounded-none border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
+                className="w-full resize-none rounded-md border border-[var(--color-field-border)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
               />
             </label>
           </div>
@@ -1758,7 +2102,7 @@ export function CourseBuilderStudio() {
 
         {isLessonFormOpen ? (
           <form
-            className="grid gap-3 rounded-none border fine-rule bg-white p-4"
+            className="grid gap-3 rounded-lg border fine-rule bg-white p-4"
             onSubmit={handleAddLesson}
           >
             <h5 className="flex items-center gap-2 text-sm font-semibold text-[var(--color-ink)]">
@@ -1776,14 +2120,14 @@ export function CourseBuilderStudio() {
               disabled={!isEditable}
               aria-label={t("creatorEditor.builder.curriculum.lessonTitle")}
               placeholder={t("creatorEditor.builder.curriculum.lessonTitle")}
-              className="min-w-0 rounded-none border border-[var(--color-line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
+              className="min-w-0 rounded-md border border-[var(--color-field-border)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
             />
             {/* Previa gratis e a minoria dos casos: fica a um clique daqui. */}
-            <details className="rounded-none border fine-rule bg-[var(--color-surface-soft)] px-4 py-3">
+            <details className="rounded-md border fine-rule bg-[var(--color-surface-soft)] px-4 py-3">
               <summary className="cursor-pointer text-xs font-semibold text-[var(--color-ink-soft)]">
                 {t("creatorEditor.builder.curriculum.moreOptions")}
               </summary>
-              <label className="mt-3 flex items-start gap-3 rounded-none border fine-rule bg-white p-3 text-sm leading-6 text-[var(--color-ink-soft)]">
+              <label className="mt-3 flex items-start gap-3 rounded-md border fine-rule bg-white p-3 text-sm leading-6 text-[var(--color-ink-soft)]">
                 <input
                   type="checkbox"
                   checked={lessonIsFreePreview}
@@ -1828,14 +2172,23 @@ export function CourseBuilderStudio() {
         </p>
 
         {module.lessons.length === 0 ? (
-          <p className="rounded-none border fine-rule bg-white px-4 py-3 text-sm leading-6 text-[var(--color-ink-soft)]">
-            {t("creatorEditor.builder.curriculum.moduleEmpty")}
-          </p>
+          productFormat === "course" ? (
+            <EmptyState
+              as="h4"
+              art={<SpotArt scene="firstLesson" />}
+              title={t("creatorEditor.builder.curriculum.firstLessonTitle")}
+              description={t("creatorEditor.builder.curriculum.firstLessonDetail")}
+            />
+          ) : (
+            <p className="rounded-md border fine-rule bg-white px-4 py-3 text-sm leading-6 text-[var(--color-ink-soft)]">
+              {t("creatorEditor.builder.curriculum.moduleEmpty")}
+            </p>
+          )
         ) : (
           module.lessons.map((lesson, lessonIndex) => (
             <div
               key={lesson.id}
-              className="grid gap-3 rounded-none border border-[var(--color-line)] bg-white p-4"
+              className="grid gap-3 rounded-lg border border-[var(--color-line)] bg-white p-4"
             >
               <div className="flex flex-wrap items-center gap-2">
                 {savedLessonIds.has(lesson.id) ? (
@@ -1873,7 +2226,7 @@ export function CourseBuilderStudio() {
                     {t("creatorEditor.builder.curriculum.saveToUpload")}
                   </button>
                 ) : (
-                  <span className="inline-flex items-center gap-1.5 rounded-none border border-[var(--color-line)] bg-white px-3 py-2 text-xs font-semibold text-[var(--color-ink-soft)]">
+                  <span className="inline-flex items-center gap-1.5 rounded-md border border-[var(--color-line)] bg-white px-3 py-2 text-xs font-semibold text-[var(--color-ink-soft)]">
                     <Loader2
                       aria-hidden="true"
                       size={13}
@@ -1898,7 +2251,7 @@ export function CourseBuilderStudio() {
                       })
                     }
                     disabled={!isEditable}
-                    className="rounded-none border border-[var(--color-line)] bg-white px-3 py-2.5 text-sm font-normal normal-case tracking-normal text-[var(--color-ink)] outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
+                    className="rounded-md border border-[var(--color-field-border)] bg-white px-3 py-2.5 text-sm font-normal normal-case tracking-normal text-[var(--color-ink)] outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
                   />
                 </label>
                 <div className="flex flex-wrap gap-2">
@@ -1936,7 +2289,7 @@ export function CourseBuilderStudio() {
                           "{title}",
                           () => lesson.title || t("creatorEditor.builder.curriculum.untitledLesson"),
                         )}
-                        className="rounded-none border border-[var(--color-line)] bg-white px-3 py-2 text-xs text-[var(--color-ink-soft)] disabled:opacity-50"
+                        className="rounded-md border border-[var(--color-line)] bg-white px-3 py-2 text-xs text-[var(--color-ink-soft)] disabled:opacity-50"
                       >
                         <option value="">{t("creatorEditor.builder.curriculum.moveToModule")}</option>
                         {modules.map((other, otherIndex) =>
@@ -2000,7 +2353,7 @@ export function CourseBuilderStudio() {
                       )
                     }
                     disabled={!isEditable}
-                    className={`rounded-none border px-3 py-2 text-xs font-semibold disabled:opacity-50 ${
+                    className={`rounded-md border px-3 py-2 text-xs font-semibold disabled:opacity-50 ${
                       freePreviewLessonId === lesson.id
                         ? "border-[var(--color-primary)] bg-[rgba(26,54,93,0.08)] text-[var(--color-primary)]"
                         : "border-[var(--color-line)] bg-white text-[var(--color-ink-soft)]"
@@ -2015,7 +2368,7 @@ export function CourseBuilderStudio() {
                   type="button"
                   onClick={() => deleteLesson(module.id, lesson.id)}
                   disabled={!isEditable}
-                  className="rounded-none border border-[rgba(178,34,52,0.22)] bg-white px-3 py-2 text-xs font-semibold text-[var(--color-accent-fg)] disabled:opacity-50"
+                  className="button-danger px-3 py-2 text-xs disabled:opacity-50"
                 >
                   {t("creatorEditor.builder.curriculum.deleteLesson")}
                 </button>
@@ -2036,7 +2389,7 @@ export function CourseBuilderStudio() {
     setSuccess(null);
 
     if (!priceFieldIsValid) {
-      setError({ code: "price" });
+      setError({ code: liveWithoutPrice ? "livePrice" : "price" });
       return;
     }
 
@@ -2129,8 +2482,16 @@ export function CourseBuilderStudio() {
       setSuccess("published");
     } catch (caughtError) {
       const message = caughtError instanceof Error ? caughtError.message : "";
+      // O que cada tipo cobra (publish_teacher_course) tem a sua mensagem: a
+      // sessao do evento, o arquivo do e-book, a comunidade ligada.
       const code = message.toLowerCase().includes("every lesson needs")
         ? "lessonContent"
+        : message.toLowerCase().includes("schedule the live session")
+        ? "session"
+        : message.toLowerCase().includes("upload at least one file")
+        ? "file"
+        : message.toLowerCase().includes("turn on the community")
+        ? "community"
         : message.toLowerCase().includes("preview")
         ? "preview"
         : message.toLowerCase().includes("teacher setup")
@@ -2388,9 +2749,13 @@ export function CourseBuilderStudio() {
     }
     pendingScrollRef.current = null;
     window.requestAnimationFrame(() => {
-      document
-        .getElementById(anchor)
-        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+      // O bloco de reduzir movimento do CSS nao alcanca a rolagem pedida em JS.
+      document.getElementById(anchor)?.scrollIntoView({
+        behavior: window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
+          ? "auto"
+          : "smooth",
+        block: "start",
+      });
     });
   }, []);
 
@@ -2403,7 +2768,7 @@ export function CourseBuilderStudio() {
   if (!courseId) {
     return (
       <section className="settings-section-card">
-        <p className="rounded-none border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
+        <p className="rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
           {t("creatorEditor.builder.shell.chooseCourse")}
         </p>
         <Link href="/teach" className="button-outline mt-5 px-4 py-2.5 text-sm">
@@ -2414,17 +2779,13 @@ export function CourseBuilderStudio() {
   }
 
   if (isLoading) {
-    return (
-      <section className="settings-section-card">
-        <p className="text-sm text-[var(--color-ink-soft)]">{t("creatorEditor.builder.shell.loading")}</p>
-      </section>
-    );
+    return <BuilderSkeleton label={t("creatorEditor.builder.shell.loading")} />;
   }
 
   if (error && !course) {
     return (
       <section className="settings-section-card">
-        <p className="rounded-none border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
+        <p className="rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
           {errorMessage}
         </p>
         <Link href="/teach" className="button-outline mt-5 px-4 py-2.5 text-sm">
@@ -2433,6 +2794,27 @@ export function CourseBuilderStudio() {
       </section>
     );
   }
+
+  // O marco da jornada: latão, com ícone, e o carregando dentro do botão. Mora
+  // no fim da aba Publish (onde a pessoa procura) e, nas outras abas, no
+  // cartão do rodapé — nunca nos dois ao mesmo tempo.
+  const publishButton = (
+    <Button
+      variant="accent"
+      size="lg"
+      icon={<Send aria-hidden="true" size={16} strokeWidth={2} />}
+      loading={isSubmitting}
+      onClick={publishCourse}
+      disabled={!canPublish || !readyToPublish || !priceFieldIsValid}
+      className="w-full disabled:opacity-60 sm:w-auto"
+    >
+      {isSubmitting
+        ? t("creatorEditor.builder.publish.publishing")
+        : needsActivation
+          ? t("creatorEditor.builder.publish.activateAndPublish")
+          : t("creatorEditor.builder.publish.submit")}
+    </Button>
+  );
 
   return (
     <div className="course-builder-shell">
@@ -2457,13 +2839,16 @@ export function CourseBuilderStudio() {
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <StatusChip status={course?.status ?? "draft"} />
-            <span className="rounded-none border border-[var(--color-line)] bg-[var(--color-surface)]/70 px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--color-ink-soft)]">
+            <span className="rounded-chip border border-[var(--color-line)] bg-[var(--color-surface)]/70 px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--color-ink-soft)]">
               {t("creatorEditor.builder.summary.percent").replace("{percent}", () => String(readiness.percent))}
             </span>
             {isEditable ? (
               <BuilderSaveStatus
                 state={displayedSaveStatus}
                 blockedReason={autosaveBlockedReason}
+                // Ao abrir o curso o chip ja diz "Saved" sem ninguem ter
+                // salvado: o verde so acende depois de uma gravacao de verdade.
+                justSaved={autosaveState === "saved"}
               />
             ) : null}
           </div>
@@ -2530,12 +2915,17 @@ export function CourseBuilderStudio() {
             {/* A barra media estagios (5) e o chip media checks (7): 40% e
                 71% no mesmo cabecalho para o mesmo curso. Agora os tres leem
                 o mesmo numero. */}
-            <div className="mt-2 h-1.5 overflow-hidden rounded-none bg-[var(--color-surface-strong)]">
-              <div
-                data-testid="publish-readiness-bar"
-                className="h-full rounded-none bg-[var(--color-primary)] transition-[width] duration-300"
-                style={{ width: `${readiness.percent}%` }}
-              />
+            {/* Latão, como a barra do aluno (learn-dashboard): progresso e
+                conquista. O número fica sempre ao lado. */}
+            <div className="mt-2 flex items-center gap-2">
+              <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-[rgba(26,54,93,0.12)]">
+                <div
+                  data-testid="publish-readiness-bar"
+                  className="h-full rounded-full bg-[var(--color-accent)] transition-[width] duration-300 ease-out"
+                  style={{ width: `${readiness.percent}%` }}
+                />
+              </div>
+              {readiness.percent === 100 ? <MilestoneSeal animate={justDoneReadiness.size > 0} /> : null}
             </div>
           </div>
         </div>
@@ -2561,7 +2951,7 @@ export function CourseBuilderStudio() {
               >
                 <span className="course-builder-step__num">
                   {isDone ? (
-                    <CheckCircle2 aria-hidden="true" size={13} strokeWidth={2} />
+                    <DrawnCheck size={13} strokeWidth={2.6} animate={justDoneStages.has(stage.id)} />
                   ) : (
                     String(index + 1).padStart(2, "0")
                   )}
@@ -2577,7 +2967,8 @@ export function CourseBuilderStudio() {
       </nav>
 
       <section className="course-builder-panel">
-          <div className="flex flex-wrap items-start justify-between gap-4 pb-4">
+          {/* key: trocar de aba remonta o cabecalho e a animacao roda de novo. */}
+          <div key={activeTab} className={`${panelIn} flex flex-wrap items-start justify-between gap-4 pb-4`}>
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
                 {activeTab === "members" ? t("creatorEditor.members.step") : t(builderTabs[selectedTabIndex]?.label ?? "creatorEditor.builder.shell.shortTitle")}
@@ -2588,7 +2979,11 @@ export function CourseBuilderStudio() {
                   : activeTab === "members"
                     ? t("creatorEditor.members.heading")
                     : activeTab === "content"
-                      ? t("creatorEditor.builder.steps.content.heading")
+                      ? t(productFormat === "live_event"
+                        ? "creatorEditor.builder.productTypes.sessionTitle"
+                        : productFormat === "ebook"
+                          ? "creatorEditor.builder.productTypes.ebookTitle"
+                          : "creatorEditor.builder.steps.content.heading")
                       : activeTab === "pricing"
                         ? t("creatorEditor.builder.steps.pricing.heading")
                         : t("creatorEditor.builder.steps.review.heading")}
@@ -2599,15 +2994,26 @@ export function CourseBuilderStudio() {
                   : activeTab === "members"
                     ? t("creatorEditor.members.help")
                     : activeTab === "content"
-                      ? t("creatorEditor.builder.steps.content.help")
+                      ? t(productFormat === "live_event"
+                        ? "creatorEditor.builder.productTypes.sessionHelp"
+                        : productFormat === "ebook"
+                          ? "creatorEditor.builder.productTypes.ebookHelp"
+                          : productFormat === "community"
+                            ? "creatorEditor.builder.productTypes.communityOptional"
+                            : "creatorEditor.builder.steps.content.help")
                       : activeTab === "pricing"
                         ? t("creatorEditor.builder.steps.pricing.help")
                         : t("creatorEditor.builder.steps.review.help")}
               </p>
             </div>
             <div className="grid gap-2 text-right text-xs font-semibold text-[var(--color-ink-soft)]">
-              <span>{modulesLabel}</span>
-              <span>{lessonsLabel}</span>
+              {/* O e-book nao mostra modulo nem aula. */}
+              {productFormat === "ebook" ? null : (
+                <>
+                  <span>{modulesLabel}</span>
+                  <span>{lessonsLabel}</span>
+                </>
+              )}
               {totalDurationMinutes > 0 ? (
                 <span>{t("creatorEditor.builder.summary.duration").replace("{duration}", () => formattedDuration)}</span>
               ) : null}
@@ -2616,16 +3022,16 @@ export function CourseBuilderStudio() {
           </div>
 
         {course?.status === "in_review" ? (
-          <p className="mt-5 rounded-none border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
+          <p className="mt-5 rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
             {t("creatorEditor.builder.shell.legacy")}
           </p>
         ) : course?.status === "published" ? (
-          <p className="mt-5 rounded-none border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
+          <p className="mt-5 rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
             {t("creatorEditor.builder.shell.published")}
           </p>
         ) : null}
         {course?.reviewNote ? (
-          <div className="mt-5 rounded-none border border-[rgba(178,34,52,0.18)] bg-[rgba(178,34,52,0.04)] p-4">
+          <div className="mt-5 rounded-lg border border-[rgba(178,34,52,0.18)] bg-[rgba(178,34,52,0.04)] p-4">
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
               {t("creatorEditor.builder.shell.reviewNote")}
             </p>
@@ -2636,10 +3042,14 @@ export function CourseBuilderStudio() {
         ) : null}
 
         {activeTab === "details" ? (
-        <div className="mt-6 grid gap-4">
+        <div className={`${panelIn} mt-6 grid gap-4`}>
           <div id="builder-sec-cover" className="scroll-mt-24">
             {course ? (
-              <CourseCoverField course={course} isEditable={isEditable} />
+              <CourseCoverField
+                course={course}
+                isEditable={isEditable}
+                onUploaded={() => void courseReloadRef.current?.()}
+              />
             ) : null}
           </div>
           <label
@@ -2651,7 +3061,7 @@ export function CourseBuilderStudio() {
               value={title}
               onChange={(event) => setTitle(event.target.value)}
               disabled={!isEditable}
-              className="rounded-none border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
+              className="rounded-md border border-[var(--color-field-border)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
             />
           </label>
           <div className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
@@ -2676,15 +3086,18 @@ export function CourseBuilderStudio() {
               onChange={(event) => setSummary(event.target.value)}
               disabled={!isEditable}
               rows={4}
-              className="resize-none rounded-none border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
+              className="resize-none rounded-md border border-[var(--color-field-border)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
             />
             <span
-              className={`text-xs font-semibold ${
+              className={`inline-flex items-center gap-1.5 text-xs font-semibold ${
                 summary.trim().length >= 20
                   ? "text-[var(--color-ink-soft)]"
-                  : "text-[var(--color-accent-fg)]"
+                  : "text-[var(--color-warning-fg)]"
               }`}
             >
+              {summary.trim().length >= 20 ? null : (
+                <AlertTriangle aria-hidden="true" size={13} strokeWidth={2} />
+              )}
               {summary.trim().length >= 20
                 ? t("creatorEditor.builder.details.characters").replace("{count}", () => String(summary.trim().length))
                 : t("creatorEditor.builder.details.minimumCharacters").replace("{count}", () => String(summary.trim().length))}
@@ -2723,7 +3136,7 @@ export function CourseBuilderStudio() {
                       maxLength={120}
                       aria-label={t("creatorEditor.builder.details.outcomeLabel").replace("{index}", () => String(index + 1))}
                       placeholder={t("creatorEditor.builder.details.outcomePlaceholder")}
-                      className="min-w-0 flex-1 rounded-none border border-[var(--color-line)] bg-white px-4 py-2.5 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
+                      className="min-w-0 flex-1 rounded-md border border-[var(--color-field-border)] bg-white px-4 py-2.5 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
                     />
                     {isEditable ? (
                       <button
@@ -2736,7 +3149,7 @@ export function CourseBuilderStudio() {
                           )
                         }
                         aria-label={t("creatorEditor.builder.details.removeOutcome").replace("{index}", () => String(index + 1))}
-                        className="shrink-0 rounded-none border border-[var(--color-line)] p-2.5 text-[var(--color-ink-soft)] transition-colors hover:border-[var(--color-accent-fg)] hover:text-[var(--color-accent-fg)]"
+                        className="grid size-11 shrink-0 place-items-center rounded-md border border-[var(--color-line)] text-[var(--color-ink-soft)] transition-colors hover:border-[var(--color-danger-fg)] hover:text-[var(--color-danger-fg)]"
                       >
                         <Trash2 aria-hidden="true" size={14} strokeWidth={1.8} />
                       </button>
@@ -2745,7 +3158,7 @@ export function CourseBuilderStudio() {
                 ))}
               </ul>
             ) : (
-              <p className="rounded-none border border-dashed border-[var(--color-line)] bg-[var(--color-surface-soft)] px-4 py-3 text-xs text-[var(--color-ink-soft)]">
+              <p className="rounded-md border border-dashed border-[var(--color-line)] bg-[var(--color-surface-soft)] px-4 py-3 text-xs text-[var(--color-ink-soft)]">
                 {t("creatorEditor.builder.details.noOutcomes")}
               </p>
             )}
@@ -2761,20 +3174,21 @@ export function CourseBuilderStudio() {
                   )
                 }
                 disabled={learningOutcomes.length >= MAX_LEARNING_OUTCOMES}
-                className="inline-flex w-fit items-center gap-1.5 rounded-none border border-[var(--color-line)] px-3 py-2 text-xs font-semibold text-[var(--color-primary)] transition-colors hover:border-[var(--color-primary-light)] disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex w-fit items-center gap-1.5 rounded-md border border-[var(--color-line)] px-3 py-2 text-xs font-semibold text-[var(--color-primary)] transition-colors hover:border-[var(--color-primary-light)] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <Plus aria-hidden="true" size={14} strokeWidth={2} />
                 {t("creatorEditor.builder.details.addOutcome")}
               </button>
             ) : null}
           </div>
-          <p className="rounded-none border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
+          <p className="rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
             {t("creatorEditor.builder.details.help")}
           </p>
         </div>
         ) : null}
 
         {activeTab === "members" && course ? (
+          <div className={panelIn || undefined}>
           <MembersAreaTab
             courseId={courseId}
             course={course}
@@ -2805,10 +3219,11 @@ export function CourseBuilderStudio() {
               setSuccess(null);
             }}
           />
+          </div>
         ) : null}
 
         {activeTab === "members" && course ? (
-          <div className="rounded-none border fine-rule bg-[var(--color-surface-soft)] p-4">
+          <div className={`${panelIn} rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4`}>
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="grid gap-1">
                 <p className="text-sm font-semibold text-[var(--color-ink)]">
@@ -2828,7 +3243,7 @@ export function CourseBuilderStudio() {
                   setCommunityEnabled((previous) => !previous);
                   setSuccess(null);
                 }}
-                className={`relative h-7 w-12 shrink-0 rounded-none transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+                className={`relative h-7 w-12 shrink-0 rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
                   communityEnabled
                     ? "bg-[var(--color-primary)]"
                     : "bg-[var(--color-line)]"
@@ -2853,171 +3268,244 @@ export function CourseBuilderStudio() {
         {activeTab === "pricing" ? (
           <div
             id="builder-sec-pricing"
-            className="scroll-mt-24 rounded-none border fine-rule bg-[var(--color-surface-soft)] p-4"
+            className={`${panelIn} scroll-mt-24 rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4`}
           >
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
-              {t("creatorEditor.builder.pricing.setup")}
-            </p>
-            <div className="mt-4">
-              <PlanSelectorCards
-                label={
-                  <span className="flex items-center gap-2">
-                    {t("creatorEditor.builder.pricing.model")}
-                    <InlineHelp
-                      topic={t("creatorEditor.builder.pricing.helpTopic")}
-                      href="/help#course-pricing"
+            {!checkoutOffers ? (
+              // Sem a lista de precos, o preco principal e desconhecido: nada
+              // de cartoes por cima dele.
+              offersFailed ? (
+                <p role="alert" className="text-sm font-semibold text-[var(--color-danger-fg)]">
+                  {t("creatorEditor.builder.pricing.offersFailed")}
+                </p>
+              ) : null
+            ) : chargedByOffer ? (
+              // A pagina cobra a oferta principal: cartoes e campos aqui
+              // mudariam so o construtor, e o checkout seguiria cobrando ela.
+              <>
+                <p className="text-base font-semibold text-[var(--color-ink)]">
+                  {t("creatorEditor.builder.pricing.question")}
+                </p>
+                <p className="mt-2 text-sm text-[var(--color-ink)]">
+                  {t("creatorEditor.builder.pricing.offerCharges")
+                    .replace("{price}", () => formatMoney(chargedByOffer.amountMinor, chargedByOffer.currency))
+                    .replace("{model}", () => t(`creatorPanel.paymentType.${chargedByOffer.paymentType}`))}{" "}
+                  <Link
+                    href={`/teach/courses/${encodeURIComponent(courseId ?? "")}/manage?section=pricing`}
+                    className="font-semibold text-[var(--color-primary)] underline"
+                  >
+                    {t("creatorEditor.builder.pricing.offerChange")}
+                  </Link>
+                </p>
+                {chargedByOffer.paymentType === "free" ? null : previewLessonField}
+              </>
+            ) : (
+            <>
+            {/* Uma pergunta so, feita uma vez. Os campos de cada cartao so
+                aparecem depois da escolha; os cartoes ficam montados e o foco
+                continua no cartao clicado. */}
+            <PlanSelectorCards
+              label={
+                <span className="flex items-center gap-2 text-base">
+                  {t("creatorEditor.builder.pricing.question")}
+                  <InlineHelp
+                    topic={t("creatorEditor.builder.pricing.helpTopic")}
+                    href="/help#course-pricing"
+                  >
+                    {t("creatorEditor.builder.pricing.help")}
+                  </InlineHelp>
+                </span>
+              }
+              options={paymentChoices.map((choice) => {
+                const copy = choice === "one_payment" && productFormat === "live_event" ? "ticket" : choice;
+                return {
+                  value: choice,
+                  title: t(`creatorEditor.builder.pricing.choices.${copy}.title`),
+                  description: t(`creatorEditor.builder.pricing.choices.${copy}.description`).replace(
+                    "{amount}",
+                    () => formatMoney(paymentChoiceExamples[choice] * 100),
+                  ),
+                  features: [],
+                  icon: paymentChoiceIcons[copy],
+                };
+              })}
+              value={paymentChoice}
+              onChange={handlePaymentChoiceChange}
+              disabled={!isEditable}
+            />
+            {paymentChoiceFits ? null : (
+              <p className="mt-3 text-sm font-semibold text-[var(--color-danger-fg)]">
+                {t("creatorEditor.builder.pricing.notForType")}
+              </p>
+            )}
+            {paymentChoice === "free" ? (
+              <p className="mt-4 text-sm font-semibold text-[var(--color-ink)]">
+                {t("creatorEditor.builder.pricing.freeLine")}
+              </p>
+            ) : (
+              <>
+                {/* A coluna da moeda era 140px fixos. Um <select> nunca fica mais
+                    estreito que a sua opção mais larga ("BRL - Brazilian Real"),
+                    então ele empurrava a borda e saía do cartão em telas médias e
+                    grandes. minmax(0, …) nas duas colunas deixa a grade encolher, e o
+                    min-w-0 do próprio select (em CurrencySelect) deixa o controle
+                    acompanhar a coluna em vez de a coluna acompanhar o controle. */}
+                <div className="mt-4 grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,200px)]">
+                  <label className="grid min-w-0 gap-2 text-sm font-semibold text-[var(--color-ink)]">
+                    {t(
+                      paymentType === "subscription_monthly"
+                        ? "creatorEditor.builder.pricing.pricePerMonth"
+                        : paymentType === "subscription_yearly"
+                          ? "creatorEditor.builder.pricing.pricePerYear"
+                          : "creatorEditor.builder.pricing.price",
+                    )}
+                    <input
+                      value={priceAmount}
+                      onChange={(event) => setPriceAmount(event.target.value)}
+                      disabled={!isEditable}
+                      inputMode="decimal"
+                      placeholder={t("creatorEditor.builder.pricing.pricePlaceholder")}
+                      className="min-w-0 rounded-md border border-[var(--color-field-border)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
+                    />
+                  </label>
+                  <label className="grid min-w-0 gap-2 text-sm font-semibold text-[var(--color-ink)]">
+                    {t("creatorEditor.builder.pricing.currency")}
+                    <CurrencySelect
+                      value={currency}
+                      onChange={(nextCurrency) => {
+                        setCurrency(nextCurrency);
+                        if (nextCurrency !== "MXN") {
+                          setInstallmentsEnabled(false);
+                        }
+                      }}
+                      disabled={!isEditable}
+                    />
+                  </label>
+                </div>
+                {paymentType === "subscription_yearly" ? (
+                  // Produto antigo que cobra uma vez por ano: continua assim.
+                  // Passar para mensal limpa o valor, que era o do ano.
+                  <div className="mt-3 flex flex-wrap items-center gap-3">
+                    <p className="text-sm text-[var(--color-ink)]">
+                      {t("creatorEditor.builder.pricing.yearlyOnly")}
+                    </p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={!isEditable}
+                      onClick={() => {
+                        handlePaymentTypeChange("subscription_monthly");
+                        setPriceAmount("");
+                      }}
                     >
-                      {t("creatorEditor.builder.pricing.help")}
-                    </InlineHelp>
-                  </span>
-                }
-                options={paymentModelOptions.map((option) => ({
-                  ...option,
-                  title: t(option.title),
-                  description: t(option.description),
-                  features: option.features.map((feature) => t(feature)),
-                }))}
-                value={paymentType}
-                onChange={handlePaymentTypeChange}
-                disabled={!isEditable}
-              />
-            </div>
-            {/* A coluna da moeda era 140px fixos. Um <select> nunca fica mais
-                estreito que a sua opção mais larga ("BRL - Brazilian Real"),
-                então ele empurrava a borda e saía do cartão em telas médias e
-                grandes. minmax(0, …) nas duas colunas deixa a grade encolher, e o
-                min-w-0 do próprio select (em CurrencySelect) deixa o controle
-                acompanhar a coluna em vez de a coluna acompanhar o controle. */}
-            <div className="mt-4 grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,200px)]">
-              <label className="grid min-w-0 gap-2 text-sm font-semibold text-[var(--color-ink)]">
-                {t("creatorEditor.builder.pricing.price")}
-                <input
-                  value={priceAmount}
-                  onChange={(event) => setPriceAmount(event.target.value)}
-                  disabled={!isEditable || paymentType === "free"}
-                  inputMode="decimal"
-                  placeholder={
-                    paymentType === "free" ? t("creatorEditor.builder.pricing.freePlaceholder") : t("creatorEditor.builder.pricing.pricePlaceholder")
-                  }
-                  className="min-w-0 rounded-none border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
-                />
-              </label>
-              <label className="grid min-w-0 gap-2 text-sm font-semibold text-[var(--color-ink)]">
-                {t("creatorEditor.builder.pricing.currency")}
-                <CurrencySelect
-                  value={currency}
-                  onChange={(nextCurrency) => {
-                    setCurrency(nextCurrency);
-                    if (nextCurrency !== "MXN") {
-                      setInstallmentsEnabled(false);
-                    }
-                  }}
-                  disabled={!isEditable}
-                />
-              </label>
-            </div>
-            <div className="mt-4 flex flex-wrap items-start justify-between gap-4 rounded-none border border-[var(--color-line)] bg-white p-4">
-              <div className="max-w-xl">
-                <p className="text-sm font-semibold text-[var(--color-ink)]">
-                  {t("creatorEditor.builder.pricing.installments")}
+                      {t("creatorEditor.builder.pricing.switchToMonthly")}
+                    </Button>
+                  </div>
+                ) : null}
+                {showSplitPayments ? (
+                  <div className="mt-4 grid gap-3 rounded-lg border border-[var(--color-line)] bg-white p-4">
+                    <label className="flex items-center gap-2 text-sm font-semibold text-[var(--color-ink)]">
+                      <input
+                        type="checkbox"
+                        checked={installmentsEnabled}
+                        onChange={(event) => setInstallmentsEnabled(event.target.checked)}
+                        disabled={!isEditable}
+                      />
+                      {t("creatorEditor.builder.pricing.split")}
+                    </label>
+                    {installmentsEnabled ? (
+                      <div className="flex flex-wrap items-end gap-4">
+                        <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
+                          {t("creatorEditor.builder.pricing.splitMax")}
+                          <select
+                            value={installmentsMax}
+                            onChange={(event) => setInstallmentsMax(event.target.value)}
+                            disabled={!isEditable}
+                            className="rounded-md border border-[var(--color-field-border)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
+                          >
+                            {splitCountOptions.map((count) => (
+                              <option key={count} value={String(count)}>
+                                {count}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                        {splitPreview ? (
+                          <p aria-live="polite" className="pb-3 text-sm font-semibold text-[var(--color-ink)]">
+                            {splitPreview}
+                          </p>
+                        ) : null}
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
+                {paymentType === "subscription_monthly" ? (
+                  <div className="mt-4 grid gap-3 rounded-lg border border-[var(--color-line)] bg-white p-4">
+                    <label className="flex items-center gap-2 text-sm font-semibold text-[var(--color-ink)]">
+                      <input
+                        type="checkbox"
+                        checked={yearlyPlanOpen}
+                        onChange={(event) => setYearlyPlanOpen(event.target.checked)}
+                        disabled={!isEditable}
+                      />
+                      {t("creatorEditor.builder.pricing.yearly")}
+                    </label>
+                    {yearlyPlanOpen ? (
+                      <>
+                        <label className="grid max-w-xs gap-2 text-sm font-semibold text-[var(--color-ink)]">
+                          {t("creatorEditor.builder.pricing.pricePerYear")}
+                          <input
+                            value={yearlyAmount}
+                            onChange={(event) => setYearlyAmount(event.target.value)}
+                            disabled={!isEditable}
+                            inputMode="decimal"
+                            placeholder={t("creatorEditor.builder.pricing.pricePlaceholder")}
+                            className="min-w-0 rounded-md border border-[var(--color-field-border)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
+                          />
+                        </label>
+                        {yearlySaving !== null ? (
+                          <p aria-live="polite" className="text-sm font-semibold text-[var(--color-ink)]">
+                            {yearlySaving > 0
+                              ? t("creatorEditor.builder.pricing.yearlySaving").replace(
+                                  "{amount}",
+                                  () => formatMoney(yearlySaving),
+                                )
+                              : t("creatorEditor.builder.pricing.yearlyNoSaving")}
+                          </p>
+                        ) : null}
+                        <p className="text-xs leading-5 text-[var(--color-ink-soft)]">
+                          {t("creatorEditor.builder.pricing.yearlyWhere")}
+                        </p>
+                        {/* So com o mensal ja gravado: o Manage le o curso salvo e,
+                            com o valor antigo, abria outro preco principal. */}
+                        {courseId && yearlyAmountMinor && displayedSaveStatus === "saved" ? (
+                          <Link
+                            href={`/teach/courses/${encodeURIComponent(courseId)}/manage?section=pricing&addPrice=yearly&amount=${yearlyAmountMinor}`}
+                            className={buttonClasses({ variant: "outline", size: "sm" }, "w-fit")}
+                          >
+                            {t("creatorEditor.builder.pricing.yearlyAdd")}
+                          </Link>
+                        ) : null}
+                      </>
+                    ) : null}
+                  </div>
+                ) : null}
+                {previewLessonField}
+                <p className="mt-3 text-xs leading-5 text-[var(--color-ink-soft)]">
+                  {t("creatorEditor.builder.pricing.listingHelp")}
                 </p>
-                <p className="mt-1 text-xs leading-5 text-[var(--color-ink-soft)]">
-                  {paymentType !== "one_time"
-                    ? t("creatorEditor.builder.pricing.installmentsOneTime")
-                    : !cardInstallmentsConfigured
-                      ? t("creatorEditor.builder.pricing.installmentsUnavailable")
-                      : currency !== "MXN"
-                        ? t("creatorEditor.builder.pricing.installmentsCurrency")
-                        : t("creatorEditor.builder.pricing.installmentsEligible")}
-                </p>
-              </div>
-              <button
-                type="button"
-                role="switch"
-                aria-checked={installmentsEnabled && canConfigureCardInstallments}
-                aria-label={t("creatorEditor.builder.pricing.enableInstallments")}
-                disabled={!isEditable || !canConfigureCardInstallments}
-                onClick={() => setInstallmentsEnabled((previous) => !previous)}
-                className={`relative h-7 w-12 shrink-0 rounded-none transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
-                  installmentsEnabled && canConfigureCardInstallments
-                    ? "bg-[var(--color-primary)]"
-                    : "bg-[var(--color-line)]"
-                }`}
-              >
-                <span
-                  aria-hidden="true"
-                  className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow transition-all ${
-                    installmentsEnabled && canConfigureCardInstallments
-                      ? "left-6"
-                      : "left-1"
-                  }`}
-                />
-              </button>
-            </div>
-            <div className="mt-4 grid gap-4 md:grid-cols-[1fr_180px]">
-              <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
-                {t("creatorEditor.builder.pricing.release")}
-                <select
-                  value={dripStrategy}
-                  onChange={(event) =>
-                    setDripStrategy(event.target.value as DripStrategy)
-                  }
-                  disabled={!isEditable}
-                  className="rounded-none border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
-                >
-                  {dripStrategies.map((item) => (
-                    <option key={item.value} value={item.value}>
-                      {t(item.label)}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
-                {t("creatorEditor.builder.pricing.interval")}
-                <input
-                  value={dripIntervalDays}
-                  onChange={(event) => setDripIntervalDays(event.target.value)}
-                  disabled={
-                    !isEditable
-                    || !["time_drip_lesson", "time_drip_module"].includes(
-                      dripStrategy,
-                    )
-                  }
-                  inputMode="numeric"
-                  className="rounded-none border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
-                />
-              </label>
-            </div>
-            <p className="mt-3 rounded-none border fine-rule bg-white px-4 py-3 text-xs leading-5 text-[var(--color-ink-soft)]">
-              {t(dripStrategies.find((item) => item.value === dripStrategy)?.detail ?? "")}
-              {dripStrategy === "time_drip_custom"
-                ? t("creatorEditor.builder.pricing.customHelp")
-                : ""}
-            </p>
-            <label className="mt-4 grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
-              {t("creatorEditor.builder.pricing.preview")}
-              <select
-                value={freePreviewLessonId}
-                onChange={(event) => setFreePreviewLessonId(event.target.value)}
-                disabled={!isEditable || allLessons.length === 0}
-                className="rounded-none border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
-              >
-                <option value="">{t("creatorEditor.builder.pricing.noPreview")}</option>
-                {allLessons.map((lesson) => (
-                  <option key={lesson.id} value={lesson.id}>
-                    {lesson.moduleTitle} - {lesson.title}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <p className="mt-3 text-xs leading-5 text-[var(--color-ink-soft)]">
-              {t("creatorEditor.builder.pricing.listingHelp")}
+              </>
+            )}
+            </>
+            )}
+            {/* A frase fixa que separa parcelar de mensalidade. */}
+            <p className="mt-4 border-t border-[var(--color-line)] pt-3 text-xs leading-5 text-[var(--color-ink-soft)]">
+              {t("creatorEditor.builder.pricing.rule")}
             </p>
           </div>
         ) : null}
 
         {activeTab === "content" ? (
-        <div className="mt-6 grid gap-4">
+        <div className={`${panelIn} mt-6 grid gap-4`}>
           {/* A lista vem primeiro. Antes, a estrutura do curso era a ultima
               coisa da aba: dois formularios grandes sempre abertos ("Add
               module" e "Add lesson", com um select "Choose module") ficavam
@@ -3026,8 +3514,23 @@ export function CourseBuilderStudio() {
             id="builder-sec-modules"
             className="scroll-mt-24"
           >
-            {activeLessonStudioLesson ? renderLessonPage() : activeModule ? renderModulePage(activeModule, activeModuleIndex) : (
+            {/* O e-book vem antes da pagina da aula: o link "Open" do envio
+                leva ?module&lesson, e a aula dele nao tem pagina propria. */}
+            {ebookLesson && ebookModule ? renderEbookFiles(ebookModule, ebookLesson) : activeLessonStudioLesson ? renderLessonPage() : activeModule ? renderModulePage(activeModule, activeModuleIndex) : (
             <>
+            {renderLiveSession()}
+            {/* So no curso: comunidade, evento e e-book tem a propria acao.
+                Sem modulo, a unica acao e o formulario "Add your first module"
+                logo abaixo (aberto sozinho): o vazio diz o mesmo. */}
+            {modules.length === 0 && productFormat === "course" ? (
+              <EmptyState
+                as="h4"
+                art={<SpotArt scene="firstLesson" />}
+                title={t("creatorEditor.builder.curriculum.firstModuleTitle")}
+                description={t("creatorEditor.builder.curriculum.firstModuleDetail")}
+                className="mb-4"
+              />
+            ) : null}
             <div className="flex justify-end">
               {isModuleFormOpen ? null : (
                 <button
@@ -3044,7 +3547,7 @@ export function CourseBuilderStudio() {
 
             {isModuleFormOpen ? (
               <form
-                className="mt-4 grid gap-3 rounded-none border fine-rule bg-[var(--color-surface-soft)] p-4"
+                className="mt-4 grid gap-3 rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4"
                 onSubmit={handleAddModule}
               >
                 <h5 className="text-sm font-semibold text-[var(--color-ink)]">
@@ -3061,7 +3564,7 @@ export function CourseBuilderStudio() {
                   disabled={!isEditable}
                   aria-label={t("creatorEditor.builder.curriculum.moduleTitle")}
                   placeholder={t("creatorEditor.builder.curriculum.moduleTitlePlaceholder")}
-                  className="min-w-0 flex-1 rounded-none border border-[var(--color-line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
+                  className="min-w-0 flex-1 rounded-md border border-[var(--color-field-border)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
                 />
                 <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
                   {t("creatorEditor.builder.curriculum.moduleDescription")}
@@ -3072,7 +3575,7 @@ export function CourseBuilderStudio() {
                     rows={2}
                     aria-label={t("creatorEditor.builder.curriculum.moduleDescription")}
                     placeholder={t("creatorEditor.builder.curriculum.moduleDescriptionExample")}
-                    className="mt-3 w-full resize-none rounded-none border border-[var(--color-line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
+                    className="mt-3 w-full resize-none rounded-md border border-[var(--color-field-border)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
                   />
                 </label>
                 {moduleError ? (
@@ -3127,7 +3630,7 @@ export function CourseBuilderStudio() {
                         moveLessonToModule(lessonId, module.id);
                       }
                     }}
-                    className="flex flex-wrap items-center gap-3 rounded-none border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-3"
+                    className="flex flex-wrap items-center gap-3 rounded-lg border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-3"
                   >
                     <Link
                       href={builderModuleHref(module.id)}
@@ -3138,10 +3641,10 @@ export function CourseBuilderStudio() {
                           moduleNavigationRef.current = { returnTo: null };
                         }
                       }}
-                      className="flex min-h-11 min-w-0 flex-1 items-center gap-3 rounded-none"
+                      className="flex min-h-11 min-w-0 flex-1 items-center gap-3 rounded-md"
                     >
-                      {/* Recorte da capa vertical 2:3. */}
-                      <span className="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-none border border-[var(--color-line)] bg-white text-[var(--color-ink-soft)]">
+                      {/* Recorte redondo da capa vertical 2:3. */}
+                      <span className="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-full border border-[var(--color-line)] bg-white text-[var(--color-ink-soft)]">
                         {coverUrl ? (
                           // eslint-disable-next-line @next/next/no-img-element -- module cover is an arbitrary CourseAsset URL
                           <img src={coverUrl} alt="" className="h-full w-full object-cover" />
@@ -3183,7 +3686,7 @@ export function CourseBuilderStudio() {
                         type="button"
                         onClick={() => deleteModule(module.id)}
                         disabled={!isEditable}
-                        className="rounded-none border border-[rgba(178,34,52,0.22)] bg-white px-3 py-2 text-xs font-semibold text-[var(--color-accent-fg)] disabled:opacity-50"
+                        className="button-danger px-3 py-2 text-xs disabled:opacity-50"
                       >
                         {t("creatorEditor.builder.curriculum.delete")}
                       </button>
@@ -3200,7 +3703,7 @@ export function CourseBuilderStudio() {
                                 event.dataTransfer.effectAllowed = "move";
                               }}
                               title={t("creatorEditor.builder.curriculum.dragLessonHint")}
-                              className="inline-flex cursor-grab rounded-none border border-[var(--color-line)] bg-white px-2 py-1 text-xs text-[var(--color-ink-soft)]"
+                              className="inline-flex cursor-grab rounded-md border border-[var(--color-line)] bg-white px-2 py-1 text-xs text-[var(--color-ink-soft)]"
                             >
                               {lesson.title || t("creatorEditor.builder.curriculum.untitledLesson")}
                             </span>
@@ -3212,6 +3715,57 @@ export function CourseBuilderStudio() {
                 );
               })}
             </div>
+            {/* A liberacao das aulas morava na aba de preco, com "Interval
+                days" ao lado da moeda. E ritmo de aula, nao cobranca: fica
+                aqui, embaixo da lista de modulos, com rotulo simples. */}
+            <section
+              id="builder-sec-release"
+              aria-labelledby="builder-release-title"
+              className="mt-6 grid gap-3 border-t border-[var(--color-line)] pt-5"
+            >
+              <h4 id="builder-release-title" className="text-sm font-semibold text-[var(--color-ink)]">
+                {t("creatorEditor.builder.release.title")}
+              </h4>
+              <div className="flex flex-wrap items-end gap-4">
+                <label className="grid min-w-0 flex-1 basis-60 gap-2 text-sm font-semibold text-[var(--color-ink)]">
+                  {t("creatorEditor.builder.release.strategy")}
+                  <select
+                    value={dripStrategy}
+                    onChange={(event) =>
+                      setDripStrategy(event.target.value as DripStrategy)
+                    }
+                    disabled={!isEditable}
+                    className="rounded-md border border-[var(--color-field-border)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
+                  >
+                    {dripStrategies.map((item) => (
+                      <option key={item.value} value={item.value}>
+                        {t(item.label)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                {dripStrategy === "time_drip_lesson" || dripStrategy === "time_drip_module" ? (
+                  // "Release lessons every [1] days": com o padrao 1 a frase saia
+                  // errada. Um rotulo de campo nao depende do numero.
+                  <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
+                    {t("creatorEditor.builder.release.interval")}
+                    <input
+                      value={dripIntervalDays}
+                      onChange={(event) => setDripIntervalDays(event.target.value)}
+                      disabled={!isEditable}
+                      inputMode="numeric"
+                      className="w-20 rounded-md border border-[var(--color-field-border)] bg-white px-3 py-3 text-center text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
+                    />
+                  </label>
+                ) : null}
+              </div>
+              <p className="text-xs leading-5 text-[var(--color-ink-soft)]">
+                {t(dripStrategies.find((item) => item.value === dripStrategy)?.detail ?? "")}
+                {dripStrategy === "time_drip_custom"
+                  ? t("creatorEditor.builder.release.customHelp")
+                  : ""}
+              </p>
+            </section>
             </>
             )}
           </div>
@@ -3221,7 +3775,7 @@ export function CourseBuilderStudio() {
         {activeTab === "review" ? (
           <div
             id="builder-sec-review"
-            className="mt-6 scroll-mt-24 rounded-none border fine-rule bg-[var(--color-surface-soft)] p-5"
+            className={`${panelIn} mt-6 scroll-mt-24 rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-5`}
           >
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
               {t("creatorEditor.builder.publish.title")}
@@ -3239,12 +3793,20 @@ export function CourseBuilderStudio() {
               readiness={readiness}
               className="mt-5 grid gap-6"
               renderItem={(item) => (
-                <li
-                  key={item.id}
-                  className="rounded-none border border-[var(--color-line)] bg-white px-4 py-3"
-                >
-                  <p className={`text-sm font-semibold ${item.done ? "text-[var(--color-primary)]" : "text-[var(--color-accent-fg)]"}`}>
-                    {item.done ? "✓ " : ""}
+                <ChecklistRow key={item.id} id={item.id} done={item.done} ready={readinessLoaded}>
+                  {(justDone) => (<>
+                  {/* Pendente era texto dourado e feito era um "✓" digitado: o
+                      latão marcava problema. Feito = check verde (6.51:1) com
+                      "Done" para o leitor de tela; pendente = círculo vazio. */}
+                  <p className={`flex items-center gap-2 text-sm font-semibold ${item.done ? "text-[var(--color-success-fg)]" : "text-[var(--color-ink)]"}`}>
+                    {item.done ? (
+                      <>
+                        <DrawnCheck size={15} animate={justDone} />
+                        <span className="sr-only">{t("creatorEditor.lesson.state.done")}: </span>
+                      </>
+                    ) : (
+                      <Circle aria-hidden="true" size={13} strokeWidth={1.8} className="shrink-0 text-[var(--color-ink-muted)]" />
+                    )}
                     {item.label}
                     {item.optional ? (
                       <span className="ml-2 text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--color-ink-muted)]">
@@ -3270,7 +3832,8 @@ export function CourseBuilderStudio() {
                       ) : null}
                     </p>
                   )}
-                </li>
+                  </>)}
+                </ChecklistRow>
               )}
             />
             <p className="mt-5 text-sm leading-7 text-[var(--color-ink-soft)]">
@@ -3289,9 +3852,9 @@ export function CourseBuilderStudio() {
               }
             }}
             disabled={selectedTabIndex <= 0}
-            className="button-outline inline-flex items-center gap-2 px-4 py-2.5 text-sm disabled:opacity-40"
+            className="button-outline button-lg w-full disabled:opacity-40 sm:w-auto"
           >
-            <ArrowLeft aria-hidden="true" size={14} strokeWidth={1.9} />
+            <ArrowLeft aria-hidden="true" size={16} strokeWidth={2} />
             {selectedTabIndex > 0
               ? builderTabs[selectedTabIndex - 1].value === "members"
                 ? t("creatorEditor.members.backTo")
@@ -3307,22 +3870,31 @@ export function CourseBuilderStudio() {
                   selectTab(nextTab.value);
                 }
               }}
-              className="button-solid inline-flex items-center gap-2 px-4 py-2.5 text-sm"
+              className="button-solid button-lg w-full sm:w-auto"
             >
               {builderTabs[selectedTabIndex + 1].value === "members"
                 ? t("creatorEditor.members.continueTo")
                 : t("creatorEditor.builder.navigation.continueTo").replace("{step}", () => t(builderTabs[selectedTabIndex + 1].label))}
-              <ArrowRight aria-hidden="true" size={14} strokeWidth={1.9} />
+              <ArrowRight aria-hidden="true" size={16} strokeWidth={2} />
             </button>
           ) : (
-            <span className="text-xs font-semibold text-[var(--color-ink-soft)]">
-              {t("creatorEditor.builder.publish.finish")}
-            </span>
+            // A aba Publish terminava num texto; o botão de publicar ficava no
+            // cartão do rodapé, que no celular vem depois do resumo inteiro.
+            <div className="flex w-full flex-wrap items-center justify-end gap-3 sm:w-auto">
+              {readyToPublish || success === "published" ? null : (
+                <span className="text-xs font-semibold text-[var(--color-ink-soft)]">
+                  {t("creatorEditor.builder.publish.finish")}
+                </span>
+              )}
+              {success === "published" ? null : publishButton}
+            </div>
           )}
         </div>
       </section>
 
       <div className="course-builder-footer">
+        {/* O e-book nao tem estrutura de modulos e aulas para mostrar. */}
+        {productFormat === "ebook" ? null : (
         <section className="settings-section-card">
           <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
             {t("creatorEditor.builder.summary.structure")}
@@ -3332,14 +3904,14 @@ export function CourseBuilderStudio() {
           </h3>
           <div className="mt-5 grid gap-3">
             {modules.length === 0 ? (
-              <p className="rounded-none border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
+              <p className="rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
                 {t("creatorEditor.builder.summary.empty")}
               </p>
             ) : (
               modules.map((module, index) => (
                 <article
                   key={module.id}
-                  className="rounded-none border fine-rule bg-[var(--color-surface-soft)] p-4"
+                  className="rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4"
                 >
                   <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
                     {t("creatorEditor.builder.curriculum.moduleNumber").replace("{index}", () => String(index + 1))}
@@ -3356,7 +3928,7 @@ export function CourseBuilderStudio() {
                       module.lessons.map((lesson) => (
                         <div
                           key={lesson.id}
-                          className="rounded-none bg-white px-3 py-2"
+                          className="rounded-md bg-white px-3 py-2"
                         >
                           <p className="text-xs font-semibold text-[var(--color-ink)]">
                             {lesson.title}
@@ -3393,6 +3965,7 @@ export function CourseBuilderStudio() {
             )}
           </div>
         </section>
+        )}
 
         <section className="settings-section-card">
           <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
@@ -3413,7 +3986,7 @@ export function CourseBuilderStudio() {
           {error ? (
             <div
               role="alert"
-              className="mt-4 rounded-none border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]"
+              className="mt-4 rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]"
             >
               <p>{errorMessage}</p>
               {error.code === "activation" ? (
@@ -3433,17 +4006,29 @@ export function CourseBuilderStudio() {
               ) : null}
             </div>
           ) : null}
-          {success ? (
-            <p className="mt-4 info-notice">
+          {success && success !== "published" ? (
+            <p key={success} className="motion-rise-in mt-4 info-notice">
               {t(`creatorEditor.builder.success.${success}`)}
             </p>
           ) : null}
-          {/* Publicou: o link para divulgar sai aqui mesmo, sem ir ao Manage. */}
+          {/* Publicou: o pico da jornada. O link para divulgar sai aqui mesmo,
+              sem ir ao Manage, e o botao latao de copiar recebe o foco. */}
           {success === "published" && courseId ? (
-            <CourseShareLink
-              label={t("creatorPanel.hub.sections.page")}
-              path={`/courses/${encodeURIComponent(courseId)}`}
-              title={title.trim() || t("creatorPanel.hub.header.courseFallback")}
+            <PublishedPanel
+              courseId={courseId}
+              courseTitle={title.trim() || t("creatorPanel.hub.header.courseFallback")}
+              headingRef={successNoticeRef}
+            />
+          ) : null}
+          {/* Depois de publicar, e só aí: a oferta do selo, sem travar nada.
+              Status null (leitura falhou ou não chegou) não oferece. */}
+          {success === "published" && user ? (
+            <VerifiedBadgeOffer
+              uid={user.uid}
+              name={user.displayName}
+              photoURL={user.photoURL}
+              verificationStatus={verificationStatus}
+              onDismiss={() => successNoticeRef.current?.focus()}
             />
           ) : null}
           <div className="mt-5 grid gap-3">
@@ -3451,27 +4036,11 @@ export function CourseBuilderStudio() {
               type="button"
               onClick={saveDraft}
               disabled={!isEditable || isSaving}
-              className="button-outline px-4 py-2.5 text-sm disabled:opacity-60"
+              className="button-outline button-lg disabled:opacity-60"
             >
               {isSaving ? t("creatorEditor.builder.navigation.saving") : t("creatorEditor.builder.navigation.save")}
             </button>
-            <button
-              type="button"
-              onClick={publishCourse}
-              disabled={
-                !canPublish
-                || isSubmitting
-                || !readyToPublish
-                || !priceFieldIsValid
-              }
-              className="button-solid px-4 py-2.5 text-sm disabled:opacity-60"
-            >
-              {isSubmitting
-                ? t("creatorEditor.builder.publish.publishing")
-                : needsActivation
-                  ? t("creatorEditor.builder.publish.activateAndPublish")
-                  : t("creatorEditor.builder.publish.submit")}
-            </button>
+            {activeTab === "review" || success === "published" ? null : publishButton}
             <Link href="/teach" className="button-outline px-4 py-2.5 text-sm">
               {t("creatorEditor.builder.navigation.studio")}
             </Link>
@@ -3499,7 +4068,179 @@ export function CourseBuilderStudio() {
           </div>
         ) : null}
       </div>
+      <CreatedStrip
+        // Evento ao vivo: espera as sessoes chegarem, senao a faixa diria
+        // "agende sua sessao" a quem ja agendou e trocaria a frase na cara do
+        // leitor de tela. Se a leitura falhar, a faixa nao aparece.
+        message={
+          createdStripOpen && course && (productFormat !== "live_event" || courseSessions !== null)
+            ? t(`creatorEditor.builder.created.${
+                productFormat === "live_event" && courseSessions?.length ? "live_eventScheduled" : productFormat
+              }`)
+            : null
+        }
+        onClose={closeCreatedStrip}
+      />
     </div>
+  );
+}
+
+/**
+ * Linha do checklist de publicar (catalogo de movimento, item 5). O que fica
+ * pronto COM a aba aberta acende em latao claro uma vez e o check se desenha;
+ * o que ja estava pronto quando a aba abriu nao pisca, senao abrir a aba
+ * viraria festa. A foto de "pronto" so e tirada com `ready` (as leituras de
+ * payouts, verificacao, arquivos e sessoes de volta).
+ */
+function ChecklistRow({
+  id,
+  done,
+  ready,
+  children,
+}: {
+  id: string;
+  done: boolean;
+  ready: boolean;
+  children: (justDone: boolean) => ReactNode;
+}) {
+  const justDone = useJustDone(done ? [id] : [], ready).has(id);
+  return (
+    <li
+      className={`rounded-md border border-[var(--color-line)] bg-white px-4 py-3 ${justDone ? "is-just-done" : ""}`}
+    >
+      {children(justDone)}
+    </li>
+  );
+}
+
+/**
+ * A faixa "Rascunho salvo. Proximo: ..." (catalogo de movimento, item 7).
+ * - A regiao `role="status"` fica sempre montada e so o conteudo entra, um
+ *   tique depois: NVDA e JAWS nao anunciam uma regiao viva que ja nasce
+ *   preenchida.
+ * - Some em 4s, mas o relogio para enquanto o ponteiro ou o foco estao nela
+ *   (sem isso o foco no X caia no <body> quando a faixa sumia).
+ * - `absolute` sem tamanho: vazia, nao ocupa linha nem gap na grade do
+ *   construtor. Nao `fixed`: fixed cria contexto de empilhamento e prenderia
+ *   o z-index 60 da faixa dentro dele.
+ */
+function CreatedStrip({ message, onClose }: { message: string | null; onClose: () => void }) {
+  const { t } = useTranslation();
+  const [shown, setShown] = useState(false);
+  const [held, setHeld] = useState(false);
+  // Os dois relogios saem juntos: o tique que poe o texto na regiao ja
+  // montada e os 4s ate sumir (que nao corre enquanto `held`). Soltar a
+  // faixa recomeca os 4s.
+  useEffect(() => {
+    if (!message) {
+      return;
+    }
+    const tick = window.setTimeout(() => setShown(true), 0);
+    const timer = held ? undefined : window.setTimeout(onClose, 4000);
+    return () => {
+      window.clearTimeout(tick);
+      window.clearTimeout(timer);
+    };
+  }, [message, held, onClose]);
+
+  return (
+    <div role="status" className="absolute">
+      {message && shown ? (
+        <div
+          className="created-strip"
+          onMouseEnter={() => setHeld(true)}
+          onMouseLeave={() => setHeld(false)}
+          onFocus={() => setHeld(true)}
+          onBlur={(event) => {
+            if (!event.currentTarget.contains(event.relatedTarget)) {
+              setHeld(false);
+            }
+          }}
+        >
+          <MilestoneSeal animate />
+          <p className="min-w-0 flex-1 text-sm font-semibold leading-5">{message}</p>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label={t("creatorEditor.builder.created.close")}
+            className="grid h-11 w-11 shrink-0 place-items-center rounded-md text-white/80 transition-colors hover:bg-white/10 hover:text-white"
+          >
+            <X aria-hidden="true" size={16} strokeWidth={2} />
+          </button>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * O painel "Publicado!" (catalogo de movimento, item 8), no lugar do paragrafo
+ * cinza igual ao "Draft saved.". O selo carimba, a gravura acende e o botao
+ * latao "Copy my page link" recebe o foco. Uma festa por produto: publicar de
+ * novo o mesmo curso mostra o painel parado.
+ */
+function PublishedPanel({
+  courseId,
+  courseTitle,
+  headingRef,
+}: {
+  courseId: string;
+  courseTitle: string;
+  headingRef: RefObject<HTMLHeadingElement | null>;
+}) {
+  const { t } = useTranslation();
+  const id = useId();
+  const storageKey = `skillsetmind.publishedCelebrated.${courseId}`;
+  // So le no inicializador; quem grava e o efeito. No StrictMode o
+  // inicializador roda duas vezes antes de qualquer efeito, entao as duas
+  // leituras concordam.
+  const [celebrate] = useState(() => {
+    try {
+      return !window.localStorage.getItem(storageKey);
+    } catch {
+      return true;
+    }
+  });
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(storageKey, "1");
+    } catch {
+      // Sem armazenamento (cota zero): a festa so se repete.
+    }
+  }, [storageKey]);
+
+  return (
+    <section
+      aria-labelledby={`${id}-title`}
+      data-celebrating={celebrate ? "" : undefined}
+      className={`published-panel mt-4 ${celebrate ? "is-celebrating" : ""}`}
+    >
+      <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center">
+        <SpotArt scene="published" />
+        <div className="min-w-0">
+          <h4
+            ref={headingRef}
+            id={`${id}-title`}
+            tabIndex={-1}
+            className="text-lg font-semibold leading-snug text-[var(--color-primary)]"
+          >
+            {t("creatorEditor.builder.publishedPanel.title")}
+          </h4>
+          <p id={`${id}-detail`} className="mt-1 text-sm leading-6 text-[var(--color-ink-soft)]">
+            {t("creatorEditor.builder.publishedPanel.detail")}
+          </p>
+        </div>
+      </div>
+      <CourseShareLink
+        label={t("creatorPanel.hub.sections.page")}
+        path={`/courses/${encodeURIComponent(courseId)}`}
+        title={courseTitle}
+        copyLabel={t("creatorPanel.shareLink.copyMyPage")}
+        copyDescribedBy={`${id}-title ${id}-detail`}
+        accent
+        focusCopy
+      />
+    </section>
   );
 }
 
@@ -3544,9 +4285,12 @@ export function getAutosaveBlockedReason(input: {
 function BuilderSaveStatus({
   state,
   blockedReason,
+  justSaved = false,
 }: {
   state: "pending" | "saving" | "saved" | "error" | "blocked";
   blockedReason?: AutosaveBlockedReason | null;
+  /** Uma gravacao acabou de voltar: o chip entra e o verde acende 1,5s. */
+  justSaved?: boolean;
 }) {
   const { t } = useTranslation();
   // Autosave parado por campo inválido. Precisa ser visualmente diferente do
@@ -3556,7 +4300,7 @@ function BuilderSaveStatus({
     return (
       <span
         role="status"
-        className="inline-flex items-center gap-1.5 rounded-none border border-[rgba(178,34,52,0.22)] bg-[rgba(178,34,52,0.06)] px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--color-danger-fg)]"
+        className="inline-flex items-center gap-1.5 rounded-chip border border-[rgba(178,34,52,0.22)] bg-[rgba(178,34,52,0.06)] px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--color-danger-fg)]"
       >
         <CloudOff aria-hidden="true" size={12} strokeWidth={2} />
         {t("creatorEditor.builder.save.blocked").replace("{reason}", () =>
@@ -3568,7 +4312,7 @@ function BuilderSaveStatus({
 
   if (state === "saving") {
     return (
-      <span className="inline-flex items-center gap-1.5 rounded-none border border-[var(--color-line)] bg-white px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--color-ink-soft)]">
+      <span className="inline-flex items-center gap-1.5 rounded-chip border border-[var(--color-line)] bg-white px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--color-ink-soft)]">
         <Loader2
           aria-hidden="true"
           size={12}
@@ -3582,7 +4326,7 @@ function BuilderSaveStatus({
 
   if (state === "pending") {
     return (
-      <span className="inline-flex items-center gap-1.5 rounded-none border border-[var(--color-line)] bg-white px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--color-ink-muted)]">
+      <span className="inline-flex items-center gap-1.5 rounded-chip border border-[var(--color-line)] bg-white px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--color-ink-muted)]">
         <span className="size-1.5 rounded-full bg-[var(--color-ink-muted)]" />
         {t("creatorEditor.builder.save.pending")}
       </span>
@@ -3591,7 +4335,7 @@ function BuilderSaveStatus({
 
   if (state === "error") {
     return (
-      <span className="inline-flex items-center gap-1.5 rounded-none border border-[rgba(178,34,52,0.22)] bg-[rgba(178,34,52,0.06)] px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--color-danger-fg)]">
+      <span className="inline-flex items-center gap-1.5 rounded-chip border border-[rgba(178,34,52,0.22)] bg-[rgba(178,34,52,0.06)] px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--color-danger-fg)]">
         <CloudOff aria-hidden="true" size={12} strokeWidth={2} />
         {t("creatorEditor.builder.save.error")}
       </span>
@@ -3599,7 +4343,7 @@ function BuilderSaveStatus({
   }
 
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-none border border-[var(--color-line)] bg-white px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--color-primary)]">
+    <span className={`inline-flex items-center gap-1.5 rounded-chip border border-[var(--color-line)] bg-white px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--color-primary)] ${justSaved ? "builder-save-status--saved motion-rise-in" : ""}`}>
       <CheckCircle2 aria-hidden="true" size={12} strokeWidth={2} />
       {t("creatorEditor.builder.save.saved")}
     </span>
@@ -3614,9 +4358,12 @@ function BuilderSaveStatus({
 function CourseCoverField({
   course,
   isEditable,
+  onUploaded,
 }: {
   course: TeacherCourse;
   isEditable: boolean;
+  /** A previa vem de course.coverImageUrl: quem chama busca o curso de novo. */
+  onUploaded?: () => void;
 }) {
   const { t } = useTranslation();
   const [isUploading, setIsUploading] = useState(false);
@@ -3653,6 +4400,7 @@ function CourseCoverField({
         isPreview: false,
         onProgress: setProgress,
       });
+      onUploaded?.();
     } catch (uploadError) {
       // O motivo real (teto de tamanho, permissão, conexão) já vem pronto do
       // domínio; o texto genérico mandava conferir "propriedade do curso".
@@ -3665,7 +4413,7 @@ function CourseCoverField({
   }
 
   return (
-    <section className="grid gap-3 rounded-none border fine-rule bg-[var(--color-surface-soft)] p-4">
+    <section className="grid gap-3 rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
@@ -3676,14 +4424,14 @@ function CourseCoverField({
           </p>
         </div>
         {course.coverImageUrl ? (
-          <span className="inline-flex items-center gap-1 rounded-none bg-white px-3 py-1 text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--color-primary)]">
+          <span className="inline-flex items-center gap-1 rounded-chip bg-white px-3 py-1 text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--color-primary)]">
             <CheckCircle2 size={12} aria-hidden /> {t("creatorEditor.members.coverSet")}
           </span>
         ) : null}
       </div>
 
       <div className="grid gap-3 sm:grid-cols-[200px_1fr] sm:items-start">
-        <div className="relative aspect-video overflow-hidden rounded-none border border-[var(--color-line)] bg-white">
+        <div className="relative aspect-video overflow-hidden rounded-md border border-[var(--color-line)] bg-white">
           {course.coverImageUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -3703,7 +4451,7 @@ function CourseCoverField({
 
         <div className="grid content-start gap-2">
           <label
-            className={`inline-flex w-fit items-center gap-2 rounded-none border border-dashed border-[var(--color-line)] bg-white px-4 py-3 text-sm font-semibold text-[var(--color-primary)] transition-colors hover:border-[var(--color-primary-light)] focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[var(--color-primary)] ${
+            className={`inline-flex w-fit items-center gap-2 rounded-md border border-dashed border-[var(--color-line)] bg-white px-4 py-3 text-sm font-semibold text-[var(--color-primary)] transition-colors hover:border-[var(--color-primary-light)] focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[var(--color-primary)] ${
               !isEditable || isUploading
                 ? "pointer-events-none opacity-60"
                 : "cursor-pointer"
@@ -3728,7 +4476,7 @@ function CourseCoverField({
           {progress ? <UploadProgressNote progress={progress} /> : null}
 
           {error ? (
-            <p role="alert" className="rounded-none border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-3 py-2 text-xs font-semibold text-[var(--color-danger-fg)]">
+            <p role="alert" className="rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-3 py-2 text-xs font-semibold text-[var(--color-danger-fg)]">
               {error.kind === "invalid-image"
                 ? t("creatorEditor.members.invalidImage").replace("{limit}", () => formatCourseAssetSize(supabaseUploadLimitBytes))
                 : getCourseAssetUploadErrorMessage(error.cause, supabaseUploadLimitBytes, t)}
@@ -3810,8 +4558,16 @@ function MembersAreaTab({
     return () => observer.disconnect();
   }, []);
 
+  // course_assets nao esta na publicacao do Realtime: depois do upload a
+  // previa busca a lista de novo, senao a capa nova so aparecia ao recarregar.
+  const assetsReloadRef = useRef<(() => Promise<void>) | null>(null);
   useEffect(() => {
-    return subscribeToCourseAssets(course.id, setAssets, () => undefined);
+    const subscription = subscribeToCourseAssets(course.id, setAssets, () => undefined);
+    assetsReloadRef.current = subscription.reload;
+    return () => {
+      assetsReloadRef.current = null;
+      subscription();
+    };
   }, [course.id]);
 
   // members_cover is a public-download kind, so the resolved asset carries the
@@ -3836,7 +4592,7 @@ function MembersAreaTab({
           <p className="text-xs font-normal leading-5 text-[var(--color-ink-soft)]">
             {t("creatorEditor.members.themeHelp")}
           </p>
-          <div className="inline-flex w-fit gap-1 rounded-none border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-1">
+          <div className="inline-flex w-fit gap-1 rounded-md border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-1">
             {(
               [
                 { value: "light", label: t("creatorEditor.members.light"), icon: Sun },
@@ -3853,7 +4609,7 @@ function MembersAreaTab({
                   disabled={!isEditable}
                   aria-pressed={active}
                   onClick={() => onThemeChange(option.value)}
-                  className={`inline-flex min-h-11 items-center gap-1.5 rounded-none px-3 py-2 text-sm font-semibold transition-colors disabled:opacity-60 ${
+                  className={`inline-flex min-h-11 items-center gap-1.5 rounded-sm px-3 py-2 text-sm font-semibold transition-colors disabled:opacity-60 ${
                     active
                       ? "bg-white text-[var(--color-primary)] shadow-[var(--shadow-soft)]"
                       : "text-[var(--color-ink-soft)] hover:text-[var(--color-ink)]"
@@ -3871,7 +4627,10 @@ function MembersAreaTab({
           course={course}
           isEditable={isEditable}
           coverUrl={coverUrl}
-          onUploaded={onCoverAssetIdChange}
+          onUploaded={(assetId) => {
+            onCoverAssetIdChange(assetId);
+            void assetsReloadRef.current?.();
+          }}
           onRemove={() => onCoverAssetIdChange(null)}
         />
 
@@ -3883,7 +4642,7 @@ function MembersAreaTab({
             disabled={!isEditable}
             maxLength={80}
             placeholder={course.title || t("creatorEditor.members.titlePlaceholder")}
-            className="rounded-none border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
+            className="rounded-md border border-[var(--color-field-border)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
           />
           <span className="text-xs font-semibold text-[var(--color-ink-soft)]">
             {t("creatorEditor.members.titleHelp").replace("{length}", () => String(title.length))}
@@ -3898,7 +4657,7 @@ function MembersAreaTab({
             disabled={!isEditable}
             maxLength={160}
             placeholder={t("creatorEditor.members.subtitlePlaceholder")}
-            className="rounded-none border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
+            className="rounded-md border border-[var(--color-field-border)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
           />
           <span className="text-xs font-semibold text-[var(--color-ink-soft)]">
             {t("creatorEditor.members.subtitleHelp").replace("{length}", () => String(subtitle.length))}
@@ -3914,7 +4673,7 @@ function MembersAreaTab({
             maxLength={2000}
             rows={4}
             placeholder={t("creatorEditor.members.descriptionPlaceholder")}
-            className="resize-none rounded-none border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
+            className="resize-none rounded-md border border-[var(--color-field-border)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
           />
           <span className="text-xs font-semibold text-[var(--color-ink-soft)]">
             {description.length}/2000
@@ -3922,7 +4681,7 @@ function MembersAreaTab({
         </label>
       </div>
 
-      <div className="grid gap-3 rounded-none border fine-rule bg-[var(--color-surface-soft)] p-4 lg:sticky lg:top-24">
+      <div className="grid gap-3 rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4 lg:sticky lg:top-24">
         <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
           {t("creatorEditor.members.livePreview")}
         </p>
@@ -3935,7 +4694,7 @@ function MembersAreaTab({
             width: "100%",
             height: previewSize.height * previewSize.width / 1080,
             overflow: "hidden",
-            borderRadius: 0,
+            borderRadius: 8,
             background: "var(--ma-bg)",
             pointerEvents: "none",
           }}
@@ -4056,7 +4815,7 @@ function MembersCoverField({
   }
 
   return (
-    <section aria-label={title} className={moduleId ? "grid min-w-0 content-start gap-3" : "grid gap-3 rounded-none border fine-rule bg-[var(--color-surface-soft)] p-4"}>
+    <section aria-label={title} className={moduleId ? "grid min-w-0 content-start gap-3" : "grid gap-3 rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4"}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
@@ -4067,14 +4826,14 @@ function MembersCoverField({
           </p>
         </div>
         {coverUrl ? (
-          <span className="inline-flex items-center gap-1 rounded-none bg-white px-3 py-1 text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--color-primary)]">
+          <span className="inline-flex items-center gap-1 rounded-chip bg-white px-3 py-1 text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--color-primary)]">
             <CheckCircle2 size={12} aria-hidden /> {t("creatorEditor.members.coverSet")}
           </span>
         ) : null}
       </div>
 
       <div className={moduleId ? "grid min-w-0 gap-3" : "grid gap-3 sm:grid-cols-[200px_1fr] sm:items-start"}>
-        <div className={`relative overflow-hidden rounded-none border border-[var(--color-line)] bg-white ${moduleId ? "aspect-[2/3] w-32" : "aspect-video"}`}>
+        <div className={`relative overflow-hidden rounded-md border border-[var(--color-line)] bg-white ${moduleId ? "aspect-[2/3] w-32" : "aspect-video"}`}>
           {coverUrl ? (
             // eslint-disable-next-line @next/next/no-img-element -- members cover is an arbitrary CourseAsset URL
             <img
@@ -4094,7 +4853,7 @@ function MembersCoverField({
 
         <div className="grid content-start gap-2">
           <label
-            className={`inline-flex w-fit items-center gap-2 rounded-none border border-dashed border-[var(--color-line)] bg-white px-4 py-3 text-sm font-semibold text-[var(--color-primary)] transition-colors hover:border-[var(--color-primary-light)] focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[var(--color-primary)] ${
+            className={`inline-flex w-fit items-center gap-2 rounded-md border border-dashed border-[var(--color-line)] bg-white px-4 py-3 text-sm font-semibold text-[var(--color-primary)] transition-colors hover:border-[var(--color-primary-light)] focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[var(--color-primary)] ${
               !isEditable || isUploading
                 ? "pointer-events-none opacity-60"
                 : "cursor-pointer"
@@ -4121,7 +4880,7 @@ function MembersCoverField({
             <button
               type="button"
               onClick={onRemove}
-              className="min-h-11 w-fit text-xs font-semibold text-[var(--color-accent-fg)] underline-offset-2 hover:underline"
+              className="min-h-11 w-fit text-xs font-semibold text-[var(--color-danger-fg)] underline-offset-2 hover:underline"
             >
               {t("creatorEditor.members.removeCover")}
             </button>
@@ -4130,7 +4889,7 @@ function MembersCoverField({
           {progress ? <UploadProgressNote progress={progress} /> : null}
 
           {error ? (
-            <p role="alert" className="rounded-none border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-3 py-2 text-xs font-semibold text-[var(--color-danger-fg)]">
+            <p role="alert" className="rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-3 py-2 text-xs font-semibold text-[var(--color-danger-fg)]">
               {error.kind === "too-large"
                 ? t("creatorEditor.members.coverTooLarge")
                 : error.kind === "invalid-image"

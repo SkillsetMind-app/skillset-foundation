@@ -75,17 +75,17 @@
   --shadow-soft: 0 1px 2px rgba(26, 54, 93, 0.08), 0 10px 24px rgba(26, 54, 93, 0.11);
   --shadow-strong: 0 18px 44px rgba(15, 39, 68, 0.14);
   /* Anel de foco unico. Antes cada tela pintava o seu (navy antigo
-     rgba(44,82,130,.24/.28/.35) inline) e o anel mudava de cor por tela. */
+     rgba(44,82,130,.24/.28/.35) inline) e o anel mudava de cor por tela.
+     Navy em superficie clara (14.6:1 no branco). Superficie navy troca para
+     latao no proprio seletor dela (6.67:1 no #091d2f); navy sobre navy dava
+     1.17:1, invisivel. */
   --focus-ring: var(--color-primary);
+  /* Borda de campo: a --color-line (navy 28%) dava 1.78:1 e o campo sumia no
+     cartao branco. #7c8a98 (= navy 55%) da 3.53:1 no branco, 3.19:1 no
+     surface-soft e 3.00:1 no surface-strong (no limite dos 3:1 de
+     componente). Cartoes seguem com a linha. */
+  --color-field-border: #7c8a98;
   --shadow-avatar: 0 8px 18px rgba(26, 54, 93, 0.14);
-  --radius-sm: 0;
-  --radius-md: 0;
-  --radius-lg: 0;
-  --radius-xl: 0;
-  --radius-xs: 0;
-  --radius-3xl: 0;
-  --radius-2xl: 0;
-  --radius-4xl: 0;
   /* Design V2 net-new tokens (additive — no existing value changed) */
   --color-on-primary: #ffffff;
   --color-on-accent: #091d2f;
@@ -147,6 +147,10 @@
   --duration-fast: 120ms;
   --duration-base: 180ms;
   --duration-slow: 280ms;
+  /* Onda D: um leve passar do ponto, só para selo de marco; e o teto de uma
+     festa (publicado, produto criado). Feedback fica nos 120-280ms acima. */
+  --ease-pop: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --duration-celebrate: 600ms;
 }
 
 [data-theme="dark"] {
@@ -163,6 +167,7 @@
   --color-primary-light: #cbd0d7;
   /* Sobre fundo escuro o navy some; o anel vira claro para manter contraste. */
   --focus-ring: var(--color-primary-light);
+  --color-field-border: var(--color-line-strong);
   --color-ink: #e8edf5;
   --color-ink-soft: #a4b3c8;
   /* Lifted from #6b7e9a → #8493ad: the old value failed WCAG AA on dark
@@ -201,6 +206,27 @@
   --color-success-fg: #5fc99a;
   --shadow-soft: 0 1px 2px rgba(0, 0, 0, 0.2), 0 14px 34px rgba(0, 0, 0, 0.32);
   --shadow-strong: 0 22px 54px rgba(0, 0, 0, 0.42);
+}
+
+/* Cantos levemente arredondados (decisão do fundador, 06/10/2026 — desfaz os
+   cantos retos do #447). Um raio por papel, e nada passa de 16px:
+     sm   4px  selo verificado, marcas miúdas
+     chip 6px  chips e badges (os que já eram pílula continuam rounded-full)
+     md   8px  botões, inputs, selects, textareas, ícones-botão
+     lg  12px  cards, painéis, dropdowns
+     xl  16px  dialogs e sheets
+   Avatares, pontos de status, spinners e toggles seguem redondos. Fica em
+   @theme para o Tailwind gerar rounded-sm/chip/md/lg/xl a partir daqui. */
+@theme {
+  --radius-sm: 4px;
+  --radius-chip: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  /* Teto: as classes maiores do Tailwind não passam do raio de dialog. */
+  --radius-2xl: 16px;
+  --radius-3xl: 16px;
+  --radius-4xl: 16px;
 }
 
 @theme inline {
@@ -380,7 +406,7 @@ body {
   background-color: var(--color-line-strong);
   background-clip: padding-box;
   border: 2px solid transparent;
-  border-radius: 0;
+  border-radius: 999px;
 }
 
 *::-webkit-scrollbar-thumb:hover {
@@ -400,12 +426,12 @@ a {
   text-decoration: none;
 }
 
-button,
-input,
-textarea,
-select {
-  font: inherit;
-}
+/* Botões e campos herdam a letra pelo preflight do Tailwind, que já faz
+   `font: inherit` DENTRO de `@layer base`. Aqui morava a mesma regra fora de
+   camada, e regra sem camada vence qualquer utility: todo <button> saía 16px
+   peso 400, ignorando text-sm/font-semibold e o peso de .button-*, e o
+   `font-normal` dos campos não valia: o texto digitado saía no negrito do
+   rótulo. */
 
 /* ─── Fundo branco fixo no tema escuro ────────────────────────────────────
    182 elementos combinam `bg-white` (fundo branco literal) com tinta por token
@@ -567,7 +593,7 @@ p {
 .surface-card {
   background: var(--color-surface);
   border: 1px solid var(--color-line);
-  border-radius: var(--radius-xl);
+  border-radius: var(--radius-lg);
   box-shadow: var(--shadow-soft);
 }
 
@@ -789,7 +815,7 @@ p {
    border can adapt in dark instead of vanishing. Light values match the old
    inline utilities exactly (verified by computed-style probe). */
 .info-notice {
-  border-radius: 0;
+  border-radius: var(--radius-md);
   border: 1px solid rgba(26, 54, 93, 0.12);
   background: var(--color-surface-soft);
   padding: 0.75rem 1rem;
@@ -812,7 +838,7 @@ p {
   display: inline-flex;
   align-items: center;
   gap: 0.375rem;
-  border-radius: 0;
+  border-radius: 999px;
   padding: 0.25rem 0.625rem;
   border: 1px solid var(--color-line);
   font-size: 0.625rem;
@@ -847,7 +873,8 @@ p {
 
 .status-chip--danger {
   background: var(--color-danger-soft);
-  color: var(--color-accent-fg);
+  /* Era --color-accent-fg (latão): erro pintado de conquista. 6.01:1 no tom. */
+  color: var(--color-danger-fg);
   border-color: rgba(178, 34, 52, 0.22);
 }
 
@@ -962,18 +989,40 @@ p {
     justify-content: center;
     gap: 0.5rem;
     padding: 0.75rem 1.25rem;
-    border-radius: 0;
-    font-size: 0.84375rem;
-    font-weight: 700;
+    border-radius: var(--radius-md);
+    /* 14px/600 em <a> e <button> por igual. Antes o <a> saía 13.5px/700 e o
+       <button> 16px/400 (regra fora de camada, removida lá em cima). */
+    font-size: 0.875rem;
+    font-weight: 600;
     line-height: 1;
     text-decoration: none;
+    /* Soltar em 180ms; apertar em 120ms (regra :active logo abaixo). O
+       `transition` do ui/button.tsx punha 150ms por cima e brigava com isto. */
     transition:
-      transform 180ms ease,
-      background-color 180ms ease,
-      border-color 180ms ease,
-      box-shadow 180ms ease,
-      color 180ms ease;
+      transform var(--duration-base) var(--ease-standard),
+      background-color var(--duration-base) var(--ease-standard),
+      border-color var(--duration-base) var(--ease-standard),
+      box-shadow var(--duration-base) var(--ease-standard),
+      color var(--duration-base) var(--ease-standard);
   }
+
+  /* Ação principal de um fluxo (Continuar, Criar, Publicar): 48px de alvo,
+     para não parecer igual a todo botão da tela. Sem raio próprio: o canto
+     vem do botão base. Junto de .button-solid (primária) ou .button-outline
+     (secundária). */
+  .button-lg {
+    min-height: 48px;
+    padding: 0.875rem 1.5rem;
+    font-size: 0.9375rem;
+    font-weight: 600;
+  }
+}
+
+/* O contorno cinza do .button-outline sumia ao lado do botão cheio e o "Voltar"
+   parecia texto solto. No par grande, a secundária ganha contorno navy. */
+.button-outline.button-lg,
+.button-outline.button-lg:hover {
+  border-color: var(--color-primary);
 }
 
 .button-solid {
@@ -1008,7 +1057,7 @@ p {
 .button-solid:focus-visible,
 .button-outline:focus-visible,
 .button-accent:focus-visible {
-  outline: 2px solid var(--color-primary);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 3px;
 }
 
@@ -1027,6 +1076,8 @@ p {
 .button-solid-light:active,
 .button-outline-light:active {
   transform: translateY(1px) scale(0.985);
+  /* A duração vem do estado de destino: afunda em 120ms, volta em 180ms. */
+  transition-duration: var(--duration-fast);
 }
 
 .button-outline {
@@ -1104,7 +1155,7 @@ p {
     justify-content: center;
     gap: 0.5rem;
     padding: 0.625rem 1rem;
-    border-radius: 0;
+    border-radius: var(--radius-md);
     font-size: 0.875rem;
     font-weight: 600;
     line-height: 1.25rem;
@@ -1146,7 +1197,7 @@ p {
    dark mode and would wreck contrast on this white card (same rationale as the
    hero-product-preview header). */
 .hero-signup-card {
-  border-radius: 0;
+  border-radius: var(--radius-lg);
   background: #ffffff;
   padding: 1.5rem;
   box-shadow: 0 30px 70px rgba(7, 23, 42, 0.45);
@@ -1199,7 +1250,7 @@ p {
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  border-radius: 0;
+  border-radius: var(--radius-md);
   border: 1px solid #d2dbe6;
   background: #ffffff;
   color: #1a365d;
@@ -1340,7 +1391,7 @@ p {
   /* Alvo de toque: 32px de altura era menor que o mínimo de 44px. */
   min-height: 44px;
   padding: 9px 12px;
-  border-radius: 0;
+  border-radius: var(--radius-md);
   color: var(--color-ink-soft);
   font-size: 14px;
   font-weight: 500;
@@ -1376,7 +1427,7 @@ p {
   min-height: 44px;
   padding: 9px 16px;
   border: 1.5px solid var(--color-accent-fg);
-  border-radius: 0;
+  border-radius: var(--radius-md);
   background: var(--color-surface);
   color: var(--color-accent-fg);
   cursor: pointer;
@@ -1405,7 +1456,7 @@ p {
   min-height: 44px;
   padding: 10px 18px;
   border: none;
-  border-radius: 0;
+  border-radius: var(--radius-md);
   background: var(--color-accent);
   color: var(--color-on-accent) !important;
   cursor: pointer;
@@ -1439,7 +1490,7 @@ p {
   width: 344px;
   padding: 6px;
   border: 1px solid var(--color-line);
-  border-radius: 0;
+  border-radius: var(--radius-lg);
   background: var(--color-surface);
   box-shadow: var(--shadow-strong);
   animation: dropdown-in 180ms cubic-bezier(0.16, 1, 0.3, 1);
@@ -1450,7 +1501,7 @@ p {
   align-items: center;
   gap: 10px;
   border: 1px solid var(--color-line);
-  border-radius: 0;
+  border-radius: 999px;
   background: rgba(255, 255, 255, 0.72);
   padding: 5px 12px 5px 6px;
   color: var(--color-ink);
@@ -1511,7 +1562,7 @@ p {
   display: inline-flex;
   margin-top: 0.45rem;
   border: 1px solid rgba(178, 34, 52, 0.2);
-  border-radius: 0;
+  border-radius: 999px;
   background: rgba(178, 34, 52, 0.06);
   padding: 0.2rem 0.45rem;
   color: var(--color-accent-fg);
@@ -1538,7 +1589,7 @@ p {
   gap: 10px;
   width: 100%;
   padding: 9px 12px;
-  border-radius: 0;
+  border-radius: var(--radius-md);
   color: var(--color-ink);
   font-size: 13px;
   font-weight: 700;
@@ -1561,7 +1612,7 @@ p {
   height: 26px;
   flex: 0 0 26px;
   place-items: center;
-  border-radius: 0;
+  border-radius: var(--radius-md);
   background: var(--color-surface-soft);
   color: var(--color-primary);
 }
@@ -1573,7 +1624,7 @@ p {
 
 .account-menu-chip {
   margin-left: auto;
-  border-radius: 0;
+  border-radius: var(--radius-chip);
   background: var(--color-surface-strong);
   padding: 3px 7px;
   color: var(--color-primary);
@@ -1597,6 +1648,87 @@ p {
 .account-menu-item--danger:focus-visible {
   background: rgba(178, 34, 52, 0.06);
   color: var(--color-danger-fg);
+}
+
+/* ── Botao Ajuda: tres escolhas (help-menu.tsx) ────────────────────────────
+   No topo da sala de aula abre por cima da pagina; na barra lateral abre
+   no lugar, como um grupo. Uma Ajuda por tela. ── */
+.help-menu-popover {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 50;
+  width: min(320px, calc(100vw - 24px));
+  padding: 6px;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-strong);
+  color: var(--color-ink);
+}
+
+.help-menu-inline {
+  display: grid;
+  gap: 0.125rem;
+  min-width: 0;
+  padding-block: 0.25rem;
+}
+
+.help-menu-title {
+  padding: 0.5rem 0.75rem 0.375rem;
+  color: var(--color-ink-soft);
+  font-size: 0.75rem;
+  font-weight: 800;
+  line-height: 1.3;
+}
+
+.help-menu-choice-link {
+  align-items: flex-start;
+  line-height: 1.3;
+  text-align: left;
+  white-space: normal;
+}
+
+.help-menu-choice {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.help-menu-choice__label {
+  font-size: 0.8125rem;
+  font-weight: 800;
+}
+
+.help-menu-choice__hint {
+  font-size: 0.75rem;
+  font-weight: 500;
+  opacity: 0.8;
+}
+
+.help-menu-person {
+  display: inline-flex;
+  min-height: 32px;
+  align-items: center;
+  margin: 0 0 0.25rem 0.75rem;
+  color: var(--color-primary);
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.platform-sidebar .help-menu-title {
+  color: rgba(255, 255, 255, 0.62);
+}
+
+.platform-sidebar .help-menu-person {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+/* "Embaixo": compras e configuracoes do aluno, separadas dos itens fixos. */
+.platform-nav-section[data-section="account"] {
+  margin-top: 0.75rem;
 }
 
 /* A4 — dark theming for the account/sign-in dropdown.
@@ -1650,7 +1782,7 @@ p {
   display: grid;
   gap: 0.35rem;
   border: 1px solid var(--color-line);
-  border-radius: 0;
+  border-radius: var(--radius-lg);
   background: var(--color-surface-soft);
   padding: 0.65rem;
   box-shadow: var(--shadow-soft);
@@ -1663,7 +1795,7 @@ p {
   gap: 0.7rem;
   width: 100%;
   border: 1px solid transparent;
-  border-radius: 0;
+  border-radius: var(--radius-md);
   background: transparent;
   padding: 0.85rem;
   color: var(--color-ink-soft);
@@ -1713,14 +1845,14 @@ p {
   height: 34px;
   place-items: center;
   border: 1px solid var(--color-line);
-  border-radius: 0;
+  border-radius: var(--radius-md);
   background: var(--color-surface);
   color: var(--color-primary);
 }
 
 .settings-section-card {
   border: 1px solid var(--color-line);
-  border-radius: 0;
+  border-radius: var(--radius-lg);
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(255, 255, 255, 0.94)),
     radial-gradient(circle at 100% 0%, rgba(26, 54, 93, 0.08), transparent 32%);
@@ -1733,7 +1865,7 @@ p {
   align-items: center;
   gap: 0.85rem;
   border: 1px solid var(--color-line);
-  border-radius: 0;
+  border-radius: var(--radius-lg);
   background: var(--color-surface-soft);
   padding: 1rem;
 }
@@ -1744,7 +1876,7 @@ p {
   height: 38px;
   flex: 0 0 38px;
   place-items: center;
-  border-radius: 0;
+  border-radius: var(--radius-md);
   background: #ffffff;
   color: var(--color-primary);
   box-shadow: inset 0 0 0 1px var(--color-line);
@@ -1752,7 +1884,7 @@ p {
 
 .settings-pill {
   white-space: nowrap;
-  border-radius: 0;
+  border-radius: 999px;
   padding: 0.35rem 0.6rem;
   font-size: 10px;
   font-weight: 800;
@@ -1784,7 +1916,7 @@ p {
   height: 26px;
   flex: 0 0 46px;
   border: 1px solid var(--color-line);
-  border-radius: 0;
+  border-radius: 999px;
   background: var(--color-surface-strong);
   transition:
     background 180ms ease,
@@ -1838,7 +1970,7 @@ p {
   position: relative;
   overflow: hidden;
   min-height: 360px;
-  border-radius: 0;
+  border-radius: var(--radius-lg);
   background:
     radial-gradient(circle at 85% 20%, rgba(178, 34, 52, 0.38), transparent 18rem),
     radial-gradient(circle at 20% 110%, rgba(255, 255, 255, 0.16), transparent 16rem),
@@ -1862,7 +1994,7 @@ p {
 .payout-statements,
 .payout-tax-card {
   border: 1px solid var(--color-line);
-  border-radius: 0;
+  border-radius: var(--radius-lg);
   background: #ffffff;
   padding: 1.25rem;
   box-shadow: var(--shadow-soft);
@@ -1876,7 +2008,7 @@ p {
 
 .course-upload-panel {
   border: 1px solid var(--color-line);
-  border-radius: 0;
+  border-radius: var(--radius-lg);
   background:
     linear-gradient(180deg, #ffffff, rgba(255, 255, 255, 0.96)),
     radial-gradient(circle at 100% 0%, rgba(26, 54, 93, 0.07), transparent 30%);
@@ -1908,7 +2040,7 @@ p {
   align-items: start;
   gap: 0.75rem;
   border: 1px solid var(--color-line);
-  border-radius: 0;
+  border-radius: var(--radius-lg);
   background: var(--color-surface-soft);
   padding: 1rem;
   color: var(--color-ink-soft);
@@ -1952,7 +2084,7 @@ p {
   height: 38px;
   place-items: center;
   border: 1px solid var(--color-line);
-  border-radius: 0;
+  border-radius: var(--radius-md);
   background: #ffffff;
   color: var(--color-primary);
 }
@@ -1968,7 +2100,7 @@ p {
   .payout-bank-card,
   .payout-statements,
   .payout-tax-card {
-    border-radius: 0;
+    border-radius: var(--radius-lg);
     padding: 1rem;
   }
 
@@ -2002,8 +2134,8 @@ p {
    every auth + platform form so all fields demarcate consistently. */
 .field-input {
   width: 100%;
-  border-radius: 0;
-  border: 1.5px solid var(--color-line-strong);
+  border-radius: var(--radius-md);
+  border: 1.5px solid var(--color-field-border);
   background: var(--color-surface-soft);
   padding: 0.7rem 0.95rem;
   font-size: 0.875rem;
@@ -2025,7 +2157,7 @@ p {
   outline: none;
   border-color: var(--color-primary);
   background: #ffffff;
-  box-shadow: 0 0 0 3px rgba(26, 54, 93, 0.14);
+  box-shadow: 0 0 0 2px var(--focus-ring);
 }
 
 /* Global focus fallback (WCAG 2.4.7). Many inputs/textareas across the app use
@@ -2035,26 +2167,23 @@ p {
    never box-shadow, so this reaches those fields with no specificity war and no
    31-file className sweep. `.field-input` sets its own ring at higher
    specificity, so it is unaffected. ponytail: box-shadow ring can be clipped by
-   an `overflow:hidden` ancestor — same known ceiling as `.field-input`. */
+   an `overflow:hidden` ancestor — same known ceiling as `.field-input`.
+   O anel era navy a 22% (≈1.5:1 no branco); agora é o --focus-ring sólido
+   (navy 14.6:1 no claro, claro no escuro, latão nas superfícies navy). */
 input:focus-visible,
 textarea:focus-visible,
 select:focus-visible {
-  box-shadow: 0 0 0 3px rgba(26, 54, 93, 0.22);
-}
-
-[data-theme="dark"] input:focus-visible,
-[data-theme="dark"] textarea:focus-visible,
-[data-theme="dark"] select:focus-visible {
-  box-shadow: 0 0 0 3px rgba(143, 180, 228, 0.28);
+  box-shadow: 0 0 0 2px var(--focus-ring);
 }
 
 .field-input[aria-invalid="true"] {
-  border-color: var(--color-accent-fg);
+  /* Erro em vermelho, nunca em latão (6.62:1 no branco). */
+  border-color: var(--color-danger-fg);
   background: rgba(178, 34, 52, 0.04);
 }
 
 .field-input[aria-invalid="true"]:focus {
-  box-shadow: 0 0 0 3px rgba(178, 34, 52, 0.16);
+  box-shadow: 0 0 0 2px var(--color-danger-fg);
 }
 
 [data-theme="dark"] .field-input {
@@ -2067,7 +2196,7 @@ select:focus-visible {
 [data-theme="dark"] .field-input:focus-visible {
   background: rgba(143, 180, 228, 0.1) !important;
   border-color: var(--color-primary-light);
-  box-shadow: 0 0 0 3px rgba(143, 180, 228, 0.2);
+  box-shadow: 0 0 0 2px var(--focus-ring);
 }
 
 .auth-split {
@@ -2187,7 +2316,7 @@ select:focus-visible {
   justify-content: center;
   gap: 8px;
   padding: 8px 12px;
-  border-radius: 0;
+  border-radius: var(--radius-md);
   color: var(--color-ink-soft);
   font-size: 13px;
   font-weight: 600;
@@ -2342,7 +2471,7 @@ select:focus-visible {
   gap: 0.5rem;
   min-height: 44px;
   border: 1px solid var(--color-line);
-  border-radius: 0;
+  border-radius: var(--radius-md);
   background: var(--color-surface-soft);
   padding: 0 0.7rem;
   color: var(--color-ink-muted);
@@ -2375,7 +2504,7 @@ select:focus-visible {
 
 .platform-topbar-search span {
   border: 1px solid var(--color-line);
-  border-radius: 0;
+  border-radius: var(--radius-chip);
   background: var(--color-surface);
   padding: 0.15rem 0.35rem;
   font-size: 9px;
@@ -2409,19 +2538,19 @@ select:focus-visible {
   }
 }
 
-.platform-topbar__actions > div > button:not(.locale-switcher-compact):not(.account-menu-trigger),
-.platform-topbar__actions > button:not(.locale-switcher-compact):not(.account-menu-trigger) {
+.platform-topbar__actions > div > button:not(.locale-switcher-compact):not(.account-menu-trigger):not(.help-menu-trigger),
+.platform-topbar__actions > button:not(.locale-switcher-compact):not(.account-menu-trigger):not(.help-menu-trigger) {
   width: 44px !important;
   height: 44px !important;
   border-color: var(--color-line) !important;
-  border-radius: 0 !important;
+  border-radius: var(--radius-md) !important;
   background: #ffffff !important;
   color: var(--color-primary) !important;
   box-shadow: 0 8px 18px rgba(15, 39, 68, 0.06);
 }
 
-.platform-topbar__actions > div > button:not(.locale-switcher-compact):not(.account-menu-trigger):hover,
-.platform-topbar__actions > button:not(.locale-switcher-compact):not(.account-menu-trigger):hover {
+.platform-topbar__actions > div > button:not(.locale-switcher-compact):not(.account-menu-trigger):not(.help-menu-trigger):hover,
+.platform-topbar__actions > button:not(.locale-switcher-compact):not(.account-menu-trigger):not(.help-menu-trigger):hover {
   border-color: var(--color-line-strong) !important;
   background: var(--color-surface-soft) !important;
   color: var(--color-primary-dark) !important;
@@ -2430,7 +2559,7 @@ select:focus-visible {
 .platform-topbar__actions .account-menu-trigger {
   width: auto !important;
   min-height: 44px;
-  border-radius: 0 !important;
+  border-radius: 999px !important;
   background: #ffffff !important;
   padding: 5px 14px 5px 6px;
   box-shadow: 0 8px 18px rgba(15, 39, 68, 0.06);
@@ -2450,8 +2579,8 @@ select:focus-visible {
   }
 }
 
-[data-theme="dark"] .platform-topbar__actions > div > button:not(.locale-switcher-compact):not(.account-menu-trigger),
-[data-theme="dark"] .platform-topbar__actions > button:not(.locale-switcher-compact):not(.account-menu-trigger),
+[data-theme="dark"] .platform-topbar__actions > div > button:not(.locale-switcher-compact):not(.account-menu-trigger):not(.help-menu-trigger),
+[data-theme="dark"] .platform-topbar__actions > button:not(.locale-switcher-compact):not(.account-menu-trigger):not(.help-menu-trigger),
 [data-theme="dark"] .platform-topbar__actions .account-menu-trigger {
   background: var(--color-surface) !important;
   color: var(--color-ink) !important;
@@ -2460,6 +2589,116 @@ select:focus-visible {
 @media (min-width: 768px) {
   .platform-crumbs {
     display: flex;
+  }
+}
+
+/* ── Lado e troca de lado na barra do topo ────────────────────────────────
+   O botao "Go to student area" / "Go to teacher area" abre na MESMA aba. No
+   celular ele sai daqui (vai para a barra de baixo) e fica so o nome do lado,
+   no lugar do caminho que nao cabe. ── */
+.platform-topbar__switch,
+.help-menu-trigger {
+  display: inline-flex;
+  min-height: 44px;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 0.4rem;
+  border: 1px solid var(--color-line);
+  border-radius: 999px;
+  background: #ffffff;
+  padding: 0 0.875rem;
+  color: var(--color-primary);
+  font-size: 0.8125rem;
+  font-weight: 800;
+  white-space: nowrap;
+  box-shadow: 0 8px 18px rgba(15, 39, 68, 0.06);
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease;
+}
+
+.platform-topbar__switch:hover,
+.help-menu-trigger:hover {
+  border-color: var(--color-line-strong);
+  background: var(--color-surface-soft);
+}
+
+.platform-topbar__switch:focus-visible,
+.help-menu-trigger:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+[data-theme="dark"] .platform-topbar__switch,
+[data-theme="dark"] .help-menu-trigger {
+  background: var(--color-surface);
+  color: var(--color-ink);
+}
+
+.platform-topbar__side {
+  display: none;
+}
+
+/* Abaixo de 1280px a troca de lado fica so com o icone (o nome vai no
+   aria-label e no title). Com o texto inteiro, de 768 a ~1180px, ela empurrava
+   o idioma e o menu da conta para fora da tela: a coluna tem overflow hidden e
+   o grupo de acoes nao encolhe. Conta em src/app/barra-do-topo-cabe.test.ts. */
+@media (max-width: 1279.98px) {
+  .platform-topbar__switch {
+    width: 44px;
+    justify-content: center;
+    padding: 0;
+  }
+
+  .platform-topbar__switch-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 767.98px) {
+  .platform-topbar__switch {
+    display: none;
+  }
+
+  /* 360px: 328 de conteudo - logo 40 - acoes 200 - 2 espacos de 8 = 72px
+     para o nome do lado, que e uma palavra so ("Profesor" e a maior). */
+  .platform-topbar__inner {
+    gap: 0.5rem;
+  }
+
+  .platform-topbar__side {
+    display: block;
+    min-width: 0;
+    overflow: hidden;
+    color: var(--color-accent-fg);
+    font-size: 0.6875rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-overflow: ellipsis;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 479.98px) {
+  .help-menu-trigger {
+    width: 44px;
+    justify-content: center;
+    padding: 0;
+  }
+
+  .help-menu-trigger__label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
   }
 }
 
@@ -2480,7 +2719,6 @@ select:focus-visible {
   height: 100%;
   min-height: 0;
   grid-template-columns: var(--platform-sidebar-width, var(--sidebar-width)) minmax(0, 1fr);
-  transition: grid-template-columns 240ms cubic-bezier(0.2, 0.6, 0.2, 1);
 }
 
 .platform-grid--collapsed {
@@ -2501,8 +2739,9 @@ select:focus-visible {
 }
 
 .platform-sidebar-panel {
-  /* This rail stays navy in both themes. */
-  --focus-ring: #ffffff;
+  /* This rail stays navy in both themes: latão no navy (5.62:1 no tom mais
+     claro do degradê, 7.39:1 no mais escuro). */
+  --focus-ring: var(--color-accent);
   width: var(--platform-sidebar-width, var(--sidebar-width));
   display: flex;
   flex-direction: column;
@@ -2512,7 +2751,6 @@ select:focus-visible {
   color: rgba(255, 255, 255, 0.86);
   padding: 1.25rem 0.875rem 0.875rem;
   box-shadow: 18px 0 44px rgba(7, 23, 42, 0.1);
-  transition: width 240ms cubic-bezier(0.2, 0.6, 0.2, 1);
 }
 
 .platform-sidebar-panel::before {
@@ -2541,14 +2779,20 @@ select:focus-visible {
   padding: 0.125rem 0.25rem 1rem;
 }
 
+/* A marca pequena só aparece de 768 a 1023px (bloco do tablet), onde o ☰
+   some: acima disso o rail mostra o ☰ no lugar dela. */
+.platform-sidebar-brand__mark {
+  display: none;
+}
+
 .platform-sidebar-brand__mark img {
   width: 2rem;
   height: 2rem;
 }
 
-/* Rail recolhido: a marca centra no mesmo eixo dos icones. Antes ficava
+/* Rail recolhido: o ☰ centra no mesmo eixo dos icones. Antes a marca ficava
    encostada a esquerda (flex sem justify + 4px de padding) enquanto cada
-   icone abaixo e um quadrado centrado nos 64px — a marca parecia deslocada. */
+   icone abaixo e um quadrado centrado nos 64px — parecia deslocada. */
 .platform-sidebar.sidebar-collapsed .platform-sidebar-brand {
   justify-content: center;
   padding-inline: 0;
@@ -2565,7 +2809,7 @@ select:focus-visible {
 .platform-sidebar-brand__badge {
   margin-left: auto;
   border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: 0;
+  border-radius: 999px;
   padding: 0.125rem 0.45rem;
   color: rgba(255, 255, 255, 0.76);
   font-size: 0.625rem;
@@ -2619,6 +2863,12 @@ select:focus-visible {
     bottom: calc(60px + env(safe-area-inset-bottom, 0px));
     padding-bottom: 0.875rem;
   }
+
+  /* A faixa "Rascunho salvo. Próximo: ..." (onda D) cobria Home/Market/
+     Teach/Profile por 4s: sobe a barra (60px) e mais o respiro dela. */
+  body:has(.platform-mobile-nav) .created-strip {
+    bottom: calc(60px + 0.75rem + env(safe-area-inset-bottom, 0px));
+  }
 }
 
 .cookie-consent__inner {
@@ -2651,13 +2901,10 @@ select:focus-visible {
   gap: 0.5rem;
 }
 
-/* Os três botões com a mesma letra. Sem isto o link "Manage preferences" saía
-   14px/700 e os dois <button> ao lado 16px/400: a regra fora de camada
-   `button, input, textarea, select { font: inherit }` (perto do topo deste
-   arquivo) vence o `text-sm` e o peso de .button-* em TODO <button>.
-   ponytail: corrigido só aqui. Tirar `button` daquela regra conserta os ~100
-   botões do app de uma vez, mas mexe em telas logadas que pedem varredura
-   visual — fica para um PR próprio. */
+/* A barra de cookies usa uma letra um pouco menor que o botão padrão (13px,
+   com entrelinha para quebrar em duas linhas no celular). A regra fora de
+   camada que fazia todo <button> sair 16px/400 já saiu do topo do arquivo;
+   isto agora é só o tamanho compacto da barra. */
 .cookie-consent__actions .button-outline,
 .cookie-consent__actions .button-solid {
   font-size: 0.8125rem;
@@ -2705,21 +2952,13 @@ select:focus-visible {
   }
 }
 
-/* O botão de recolher/expandir é o último item da barra, dentro dela, com o
-   mesmo desenho dos links (classe .platform-nav-link herda a pele escura).
-   Antes era um círculo flutuante pregado na borda direita (right: -1.1rem), em
-   cima da linha entre barra e conteúdo — lia como um elemento perdido e, no
-   modo recolhido, precisava de uma regra só para não cobrir a marca. */
+/* O ☰ (onda E) mora no topo, à esquerda da marca, com a pele dos links
+   (.platform-nav-link). Antes de virar item da barra era um círculo pregado
+   na borda direita, em cima da linha entre barra e conteúdo. O recuo de 8px
+   põe o ícone no mesmo eixo do rail (32px): recolher não o tira de baixo do
+   cursor. Recolhida, a regra do rail (44px, margin-inline: auto) vence. */
 .platform-sidebar .platform-sidebar-toggle {
-  margin-top: auto;
-  padding-top: 0.75rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 0;
-}
-
-.platform-sidebar.sidebar-collapsed .platform-sidebar-toggle {
-  justify-content: center;
-  padding-inline: 0 !important;
+  margin-inline-start: -0.5rem;
 }
 
 .platform-grid--collapsed .platform-sidebar-panel {
@@ -2738,7 +2977,7 @@ select:focus-visible {
 .platform-grid--collapsed .platform-sidebar-brand {
   justify-content: center;
   border-bottom-color: transparent;
-  padding: 0.375rem 0 0.875rem;
+  padding: 0.125rem 0 1rem;
 }
 
 .platform-main-column {
@@ -2784,7 +3023,7 @@ select:focus-visible {
   /* border: 0 anula os 2px transparentes da barra global, que numa barra de
      6px deixariam 2px visiveis de polegar. */
   border: 0;
-  border-radius: 0;
+  border-radius: 999px;
   background-color: rgba(255, 255, 255, 0.35);
 }
 
@@ -2821,7 +3060,7 @@ select:focus-visible {
   justify-content: center;
   padding: 0;
   border: 1px solid var(--color-line);
-  border-radius: 0;
+  border-radius: var(--radius-md);
   background: var(--color-surface-soft);
   color: var(--color-ink);
   box-shadow: none;
@@ -2911,7 +3150,7 @@ body:has([aria-label="Course categories"])
   gap: 0.5rem;
   min-height: 38px;
   border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 0;
+  border-radius: var(--radius-md);
   background: rgba(255, 255, 255, 0.06);
   padding: 0 0.6rem;
   color: rgba(255, 255, 255, 0.56);
@@ -2963,7 +3202,7 @@ body:has([aria-label="Course categories"])
 
 .platform-sidebar-search span {
   border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: 0;
+  border-radius: var(--radius-chip);
   background: rgba(255, 255, 255, 0.06);
   padding: 0.15rem 0.35rem;
   font-size: 9px;
@@ -3068,7 +3307,7 @@ body:has([aria-label="Course categories"])
   max-height: calc(100dvh - 2rem);
   overflow-y: auto;
   border: 1px solid var(--color-line);
-  border-radius: 0;
+  border-radius: var(--radius-lg);
   background: color-mix(in srgb, var(--color-surface) 92%, transparent);
   box-shadow: var(--shadow-soft);
   padding: 1rem;
@@ -3089,7 +3328,7 @@ body:has([aria-label="Course categories"])
   gap: 0.625rem;
   width: 100%;
   border: 1px solid transparent;
-  border-radius: 0;
+  border-radius: var(--radius-md);
   background: transparent;
   padding: 0.625rem;
   color: var(--color-ink-soft);
@@ -3123,7 +3362,7 @@ body:has([aria-label="Course categories"])
   left: 0.625rem;
   width: auto;
   height: 2px;
-  border-radius: 0;
+  border-radius: 999px;
   background: var(--color-accent);
 }
 
@@ -3134,7 +3373,7 @@ body:has([aria-label="Course categories"])
   flex: 0 0 auto;
   place-items: center;
   border: 1px solid var(--color-line);
-  border-radius: 0;
+  border-radius: var(--radius-md);
   background: var(--color-surface);
   color: var(--color-primary);
   font-size: 0.6875rem;
@@ -3196,12 +3435,14 @@ body:has([aria-label="Course categories"])
 .create-course-screen__form {
   min-width: 0;
   border: 1px solid var(--color-line);
-  border-radius: 0;
+  border-radius: var(--radius-lg);
 }
 
 .create-course-screen__intro {
+  /* Coluna navy nos dois temas: o anel navy dava 1.17:1 aqui. */
+  --focus-ring: var(--color-accent);
   background: var(--color-primary-dark);
-  border-color: rgba(198, 161, 91, 0.36);
+  border-color: color-mix(in srgb, var(--color-accent) 36%, transparent);
   padding: 1.75rem;
   color: #ffffff;
 }
@@ -3221,7 +3462,7 @@ body:has([aria-label="Course categories"])
   gap: 0.45rem;
   margin-bottom: 2.25rem;
   border: 1px solid rgba(255, 255, 255, 0.22);
-  border-radius: 0;
+  border-radius: var(--radius-md);
   background: rgba(255, 255, 255, 0.1);
   padding: 0.5rem 0.75rem;
   color: #ffffff;
@@ -3261,14 +3502,14 @@ body:has([aria-label="Course categories"])
   align-items: center;
   gap: 0.875rem;
   border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 0;
+  border-radius: var(--radius-lg);
   background: rgba(255, 255, 255, 0.055);
   padding: 0.875rem;
 }
 
 .create-course-step.is-current {
-  border-color: rgba(198, 161, 91, 0.58);
-  background: rgba(198, 161, 91, 0.1);
+  border-color: color-mix(in srgb, var(--color-accent) 58%, transparent);
+  background: color-mix(in srgb, var(--color-accent) 10%, transparent);
 }
 
 .create-course-step > span {
@@ -3276,7 +3517,7 @@ body:has([aria-label="Course categories"])
   width: 2.2rem;
   height: 2.2rem;
   place-items: center;
-  border-radius: 0;
+  border-radius: var(--radius-chip);
   background: rgba(255, 255, 255, 0.12);
   color: #ffffff;
   font-size: 0.6875rem;
@@ -3308,7 +3549,7 @@ body:has([aria-label="Course categories"])
   gap: 0.45rem;
   min-height: 140px;
   border: 1px solid var(--color-line);
-  border-radius: 0;
+  border-radius: var(--radius-lg);
   background: #ffffff;
   padding: 1rem;
   color: var(--color-ink-soft);
@@ -3319,14 +3560,20 @@ body:has([aria-label="Course categories"])
     transform 180ms ease;
 }
 
-.create-course-payment:hover,
-.create-course-payment.is-active {
-  border-color: var(--color-primary-light);
-  box-shadow: 0 8px 20px rgba(15, 39, 68, 0.08);
+/* Hover e escolhido eram a MESMA regra: passar o mouse num cartão o deixava
+   igual ao escolhido. Agora o hover só escurece a borda; o escolhido ganha
+   borda navy de 2px (a 2ª via sombra interna, sem pular o layout), fundo de
+   latão claro e o selo com check. */
+.create-course-payment:hover {
+  border-color: var(--color-field-border);
 }
 
 .create-course-payment.is-active {
-  background: var(--color-surface-soft);
+  border-color: var(--color-primary);
+  background: var(--color-accent-soft);
+  box-shadow:
+    inset 0 0 0 1px var(--color-primary),
+    0 8px 20px rgba(15, 39, 68, 0.08);
 }
 
 .create-course-payment > span {
@@ -3334,7 +3581,7 @@ body:has([aria-label="Course categories"])
   width: 2.5rem;
   height: 2.5rem;
   place-items: center;
-  border-radius: 0;
+  border-radius: var(--radius-chip);
   background: var(--color-surface-soft);
   color: var(--color-primary);
 }
@@ -3342,6 +3589,17 @@ body:has([aria-label="Course categories"])
 .create-course-payment.is-active > span {
   background: var(--color-primary);
   color: #ffffff;
+}
+
+/* "O que você vai entregar?": quatro cartões com o ícone grande. */
+.create-course-payment--large {
+  min-height: 168px;
+  padding: 1.25rem;
+}
+
+.create-course-payment--large > span {
+  width: 3.5rem;
+  height: 3.5rem;
 }
 
 /* A1-cont-2: the active payment-method indicator fills with --color-primary
@@ -3363,11 +3621,17 @@ body:has([aria-label="Course categories"])
   line-height: 1.5;
 }
 
+/* Selo quadrado de latão com check navy (6.67:1), não um check solto. */
 .create-course-payment__selected {
   position: absolute;
-  right: 0.875rem;
-  top: 0.875rem;
-  color: var(--color-accent-fg);
+  right: 0.75rem;
+  top: 0.75rem;
+  width: 1.5rem;
+  height: 1.5rem;
+  padding: 0.25rem;
+  border-radius: var(--radius-sm);
+  background: var(--color-accent);
+  color: var(--color-on-accent);
 }
 
 .lesson-modal-overlay {
@@ -3389,7 +3653,7 @@ body:has([aria-label="Course categories"])
   max-height: min(860px, calc(100svh - 2.5rem));
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.28);
-  border-radius: 0;
+  border-radius: var(--radius-xl);
   background:
     radial-gradient(circle at 92% 0%, rgba(178, 34, 52, 0.08), transparent 20rem),
     linear-gradient(180deg, #ffffff 0%, var(--color-surface-soft) 100%);
@@ -3492,7 +3756,7 @@ body:has([aria-label="Course categories"])
   flex: 0 0 auto;
   place-items: center;
   border: 1px solid var(--color-line);
-  border-radius: 0;
+  border-radius: 999px;
   background: #ffffff;
   color: var(--color-primary);
   transition:
@@ -3540,7 +3804,7 @@ body:has([aria-label="Course categories"])
 
 .lesson-modal__tabs span {
   border: 1px solid var(--color-line);
-  border-radius: 0;
+  border-radius: 999px;
   background: var(--color-surface-soft);
   padding: 0.125rem 0.45rem;
   color: var(--color-primary);
@@ -3583,7 +3847,7 @@ body:has([aria-label="Course categories"])
   gap: 0.6rem;
   min-height: 148px;
   border: 1.5px dashed var(--color-line-strong);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-lg);
   background: #ffffff;
   padding: 1.25rem;
   color: var(--color-ink-soft);
@@ -3644,7 +3908,7 @@ body:has([aria-label="Course categories"])
   align-content: start;
   gap: 0.5rem;
   border: 1px solid var(--color-line);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-lg);
   background: #ffffff;
   padding: 1rem;
   color: var(--color-ink-soft);
@@ -3668,7 +3932,7 @@ body:has([aria-label="Course categories"])
   width: 100%;
   min-width: 0;
   border: 1px solid var(--color-line);
-  border-radius: var(--radius-xs);
+  border-radius: var(--radius-md);
   background: #ffffff;
   padding: 0.6rem 0.75rem;
   color: var(--color-ink);
@@ -3693,7 +3957,7 @@ body:has([aria-label="Course categories"])
 
 .lesson-video-source-picker__primary {
   height: 40px;
-  border-radius: var(--radius-xs);
+  border-radius: var(--radius-md);
   font-weight: 400;
 }
 
@@ -3701,7 +3965,7 @@ body:has([aria-label="Course categories"])
   display: grid;
   gap: 0.45rem;
   border: 1px solid var(--color-line);
-  border-radius: 0;
+  border-radius: var(--radius-lg);
   background: #ffffff;
   padding: 1rem;
   color: var(--color-ink-soft);
@@ -3754,7 +4018,7 @@ body:has([aria-label="Course categories"])
 .lesson-modal-field textarea {
   width: 100%;
   border: 1px solid var(--color-line);
-  border-radius: 0;
+  border-radius: var(--radius-md);
   background: var(--color-surface);
   padding: 0.8rem 0.95rem;
   color: var(--color-ink);
@@ -3793,7 +4057,7 @@ body:has([aria-label="Course categories"])
   gap: 0.5rem;
   cursor: pointer;
   border: 1px dashed var(--color-line);
-  border-radius: 0;
+  border-radius: var(--radius-md);
   background: #ffffff;
   padding: 0.55rem 0.9rem;
   color: var(--color-primary);
@@ -3824,7 +4088,7 @@ body:has([aria-label="Course categories"])
   align-items: flex-start;
   gap: 0.65rem;
   border: 1px solid var(--color-line);
-  border-radius: 0;
+  border-radius: var(--radius-lg);
   background: var(--color-surface);
   padding: 0.9rem 1rem;
   color: var(--color-ink-soft);
@@ -3847,7 +4111,7 @@ body:has([aria-label="Course categories"])
   min-width: 0;
   gap: 0.85rem;
   border: 1px solid var(--color-line);
-  border-radius: 0;
+  border-radius: var(--radius-lg);
   background: #ffffff;
   padding: 1rem;
 }
@@ -3874,7 +4138,7 @@ body:has([aria-label="Course categories"])
 .lesson-modal-upload__error,
 .lesson-modal-upload__success {
   overflow-wrap: anywhere;
-  border-radius: 0;
+  border-radius: var(--radius-md);
   background: var(--color-surface-soft);
   padding: 0.75rem 0.9rem;
   color: var(--color-primary);
@@ -3905,7 +4169,7 @@ body:has([aria-label="Course categories"])
   justify-content: space-between;
   gap: 1rem;
   border: 1px solid var(--color-line);
-  border-radius: 0;
+  border-radius: var(--radius-lg);
   background: #ffffff;
   padding: 0.85rem 1rem;
 }
@@ -3930,7 +4194,7 @@ body:has([aria-label="Course categories"])
 }
 
 .lesson-modal-assets small {
-  border-radius: 0;
+  border-radius: 999px;
   background: var(--color-surface-soft);
   padding: 0.35rem 0.55rem;
   color: var(--color-primary);
@@ -3946,7 +4210,7 @@ body:has([aria-label="Course categories"])
   justify-content: space-between;
   gap: 1rem;
   border: 1px solid var(--color-line);
-  border-radius: 0;
+  border-radius: var(--radius-lg);
   background: #ffffff;
   padding: 1rem;
 }
@@ -3970,7 +4234,7 @@ body:has([aria-label="Course categories"])
   height: 1.65rem;
   flex: 0 0 auto;
   border: 1px solid var(--color-line);
-  border-radius: 0;
+  border-radius: 999px;
   background: var(--color-surface-strong);
   transition:
     background-color 180ms ease,
@@ -4166,7 +4430,7 @@ body:has([aria-label="Course categories"])
 .member-module-deck,
 .member-resource-panel {
   border: 1px solid var(--color-line);
-  border-radius: 0;
+  border-radius: var(--radius-lg);
   box-shadow: 0 14px 34px rgba(15, 39, 68, 0.055);
 }
 
@@ -4203,7 +4467,7 @@ body:has([aria-label="Course categories"])
   min-height: 260px;
   overflow: hidden;
   border: 1px solid rgba(26, 54, 93, 0.12);
-  border-radius: 0;
+  border-radius: var(--radius-lg);
   background: var(--color-primary);
   box-shadow: 0 20px 44px rgba(15, 39, 68, 0.16);
 }
@@ -4222,7 +4486,7 @@ body:has([aria-label="Course categories"])
   bottom: 16px;
   left: 16px;
   border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 0;
+  border-radius: var(--radius-lg);
   background: rgba(15, 39, 68, 0.78);
   padding: 14px;
   color: #ffffff;
@@ -4251,7 +4515,7 @@ body:has([aria-label="Course categories"])
   align-items: center;
   gap: 7px;
   border: 1px solid var(--color-line);
-  border-radius: 0;
+  border-radius: 999px;
   background: rgba(255, 255, 255, 0.78);
   padding: 7px 11px;
   color: var(--color-primary);
@@ -4265,7 +4529,7 @@ body:has([aria-label="Course categories"])
   gap: 8px;
   flex-wrap: wrap;
   border: 1px solid var(--color-line);
-  border-radius: 0;
+  border-radius: var(--radius-lg);
   background: #ffffff;
   padding: 18px 22px;
   box-shadow: var(--shadow-soft);
@@ -4396,7 +4660,7 @@ body:has([aria-label="Course categories"])
   display: block;
   height: 6px;
   overflow: hidden;
-  border-radius: 0;
+  border-radius: 999px;
   background: var(--color-line);
 }
 
@@ -4445,7 +4709,7 @@ body:has([aria-label="Course categories"])
   place-items: center;
   width: 44px;
   height: 44px;
-  border-radius: 0;
+  border-radius: var(--radius-md);
   color: var(--color-ink-soft);
 }
 
@@ -4465,7 +4729,7 @@ body:has([aria-label="Course categories"])
   display: grid;
   gap: 10px;
   border: 1px solid var(--color-line);
-  border-radius: 0;
+  border-radius: var(--radius-lg);
   background: var(--color-surface);
   padding: 12px;
 }
@@ -4476,7 +4740,7 @@ body:has([aria-label="Course categories"])
   gap: 8px;
   min-height: 40px;
   border: 1px solid var(--color-line);
-  border-radius: 0;
+  border-radius: var(--radius-md);
   background: var(--color-surface-soft);
   padding: 0 12px;
   color: var(--color-ink-soft);
@@ -4522,7 +4786,7 @@ body:has([aria-label="Course categories"])
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  border-radius: 0;
+  border-radius: var(--radius-md);
   padding: 8px;
   text-align: left;
 }
@@ -4569,7 +4833,7 @@ body:has([aria-label="Course categories"])
   grid-template-columns: 28px minmax(0, 1fr);
   align-items: center;
   gap: 8px;
-  border-radius: 0;
+  border-radius: var(--radius-md);
   padding: 0 8px 0 6px;
 }
 
@@ -4587,7 +4851,7 @@ body:has([aria-label="Course categories"])
   place-items: center;
   width: 28px;
   height: 28px;
-  border-radius: 0;
+  border-radius: 999px;
   background: var(--color-surface-soft);
   font-size: 12px;
   font-weight: 700;
@@ -4658,7 +4922,7 @@ body:has([aria-label="Course categories"])
   display: inline-block;
   margin-right: 6px;
   padding: 1px 7px;
-  border-radius: 0;
+  border-radius: 999px;
   background: #fff;
   font-size: 10px;
   font-weight: 800;
@@ -4685,7 +4949,7 @@ body:has([aria-label="Course categories"])
 
 .member-sidebar-card {
   border: 1px solid var(--color-line);
-  border-radius: 0;
+  border-radius: var(--radius-lg);
   background: var(--color-surface);
   padding: 18px;
   box-shadow: 0 10px 24px rgba(15, 39, 68, 0.045);
@@ -4701,7 +4965,7 @@ body:has([aria-label="Course categories"])
 
 .member-dark-stat {
   border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 0;
+  border-radius: var(--radius-lg);
   padding: 12px;
   color: #ffffff;
 }
@@ -4726,7 +4990,7 @@ body:has([aria-label="Course categories"])
   align-items: center;
   justify-content: space-between;
   border: 1px solid var(--color-line);
-  border-radius: 0;
+  border-radius: var(--radius-md);
   background: var(--color-surface-soft);
   padding: 12px 14px;
   color: var(--color-primary);
@@ -4758,7 +5022,7 @@ body:has([aria-label="Course categories"])
 .member-video-stage {
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 0;
+  border-radius: var(--radius-lg);
   background:
     radial-gradient(circle at 84% 18%, rgba(178, 34, 52, 0.22), transparent 18rem),
     linear-gradient(135deg, #081426 0%, #102744 100%);
@@ -4806,7 +5070,7 @@ body:has([aria-label="Course categories"])
 
   .member-video-dock--mini .member-video-stage {
     flex: 0 0 42%;
-    border-radius: 0;
+    border-radius: var(--radius-md);
   }
 
   .member-video-dock--mini .member-video-mini {
@@ -4835,7 +5099,7 @@ body:has([aria-label="Course categories"])
   width: 44px;
   height: 44px;
   place-items: center;
-  border-radius: 0;
+  border-radius: 999px;
   color: rgba(255, 255, 255, 0.82);
 }
 
@@ -4889,7 +5153,7 @@ body:has([aria-label="Course categories"])
 
 .member-lesson-body {
   border: 1px solid var(--color-line);
-  border-radius: 0;
+  border-radius: var(--radius-lg);
   background: var(--color-surface-soft);
   padding: clamp(16px, 2vw, 22px);
 }
@@ -4929,7 +5193,7 @@ body:has([aria-label="Course categories"])
   flex: 1;
   height: 6px;
   overflow: hidden;
-  border-radius: 0;
+  border-radius: 999px;
   background: var(--color-surface-strong);
 }
 
@@ -4956,7 +5220,7 @@ body:has([aria-label="Course categories"])
 }
 
 .member-module-rail::-webkit-scrollbar-thumb {
-  border-radius: 0;
+  border-radius: 999px;
   background: var(--color-line-strong);
 }
 
@@ -4993,7 +5257,7 @@ body:has([aria-label="Course categories"])
   overflow: hidden;
   aspect-ratio: 16 / 10;
   place-items: center;
-  border-radius: 0;
+  border-radius: var(--radius-lg);
   background: linear-gradient(135deg, #17365d 0%, #0f2744 64%, #10233c 100%);
   box-shadow:
     0 12px 30px rgba(15, 23, 42, 0.18),
@@ -5042,7 +5306,7 @@ body:has([aria-label="Course categories"])
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  border-radius: 0;
+  border-radius: 999px;
   background: rgba(0, 0, 0, 0.42);
   color: #ffffff;
   padding: 4px 10px;
@@ -5071,7 +5335,7 @@ body:has([aria-label="Course categories"])
   width: 26px;
   height: 26px;
   place-items: center;
-  border-radius: 0;
+  border-radius: 999px;
   /* The seal only ever renders inside .member-classroom, so it belongs to the
      COURSE palette, not the platform toggle: --color-success-fg tracked the
      student's light/dark switch and left white at 4.33:1 in light. --ma-* is
@@ -5181,7 +5445,7 @@ body:has([aria-label="Course categories"])
   display: grid;
   gap: 10px;
   border: 1px solid var(--color-line);
-  border-radius: 0;
+  border-radius: var(--radius-lg);
   background: #ffffff;
   padding: 12px 14px;
   transition:
@@ -5224,7 +5488,7 @@ body:has([aria-label="Course categories"])
   flex: 0 0 26px;
   place-items: center;
   border: 1px solid var(--color-line);
-  border-radius: 0;
+  border-radius: var(--radius-md);
   background: var(--color-surface-soft);
   color: var(--color-ink-soft);
   font-size: 12px;
@@ -5305,7 +5569,7 @@ body:has([aria-label="Course categories"])
 }
 
 .member-lesson-chip {
-  border-radius: 0;
+  border-radius: var(--radius-chip);
   background: var(--color-surface-soft);
   padding: 5px 8px;
   font-size: 11px;
@@ -5394,7 +5658,7 @@ body:has([aria-label="Course categories"])
   overflow: hidden;
   gap: 0;
   border: 1px solid var(--ma-line);
-  border-radius: 0;
+  border-radius: var(--radius-lg);
   background: var(--ma-bg);
   color: var(--ma-ink);
   box-shadow: var(--ma-shadow);
@@ -5751,7 +6015,7 @@ body:has([aria-label="Course categories"])
 
 @media (max-width: 767.98px) {
   .member-classroom[data-members-theme] {
-    border-radius: 0;
+    border-radius: var(--radius-lg);
     /* The shell drops its side gutter below md (member-area-shell.tsx): the
        classroom touches the screen edges, so these borders would too. */
     border-inline-width: 0;
@@ -5798,17 +6062,10 @@ body:has([aria-label="Course categories"])
   }
 }
 
+/* A largura da barra troca na hora (onda E): animar a coluna refazia o layout
+   da página inteira a cada quadro. O que anda é o nome acendendo, no bloco
+   de movimento da onda D (item 14). */
 .platform-sidebar-label {
-  opacity: 1;
-  transform: translateX(0);
-  /* A largura do rail leva 240ms; o rotulo levava 180ms COMECANDO JUNTO, entao
-     o texto aparecia dentro de uma barra ainda estreita (e sumia antes de ela
-     encolher) — as duas coisas correndo uma por cima da outra. Ao ABRIR, o
-     rotulo espera a largura terminar (delay 180ms, aqui). Ao FECHAR, ele sai na
-     hora: a regra .sidebar-collapsed zera o delay. */
-  transition:
-    opacity 180ms ease 180ms,
-    transform 180ms ease 180ms;
   white-space: nowrap;
 }
 
@@ -5847,7 +6104,7 @@ body:has([aria-label="Course categories"])
   left: 4px;
   width: 3px;
   height: 18px;
-  border-radius: 0;
+  border-radius: 999px;
   background: var(--color-accent);
   transform: translateY(-50%);
 }
@@ -5862,7 +6119,7 @@ body:has([aria-label="Course categories"])
   height: 32px;
   flex: 0 0 32px;
   place-items: center;
-  border-radius: 0;
+  border-radius: var(--radius-md);
   background: transparent;
   color: currentColor;
 }
@@ -5986,7 +6243,7 @@ body:has([aria-label="Course categories"])
   justify-content: center;
   gap: 0;
   padding: 0 !important;
-  border-radius: 0;
+  border-radius: var(--radius-md);
   border-color: transparent !important;
   background: transparent !important;
   box-shadow: none !important;
@@ -6100,7 +6357,7 @@ body:has([aria-label="Course categories"])
 .dash-card {
   background: var(--color-surface);
   border: 1px solid var(--color-line);
-  border-radius: 0;
+  border-radius: var(--radius-lg);
   box-shadow: 0 12px 28px rgba(26, 54, 93, 0.04);
   transition:
     border-color 180ms ease,
@@ -6137,7 +6394,7 @@ button:hover > .dash-card,
 
 /* Inner chips, badges, tiny pills inside a dash-card */
 .dash-chip {
-  border-radius: 0;
+  border-radius: var(--radius-chip);
   border: 1px solid var(--color-line);
   background: var(--color-surface);
   padding: 4px 8px;
@@ -6179,14 +6436,14 @@ button:hover > .dash-card,
   display: inline-flex;
   overflow: hidden;
   border: 1px solid var(--color-line);
-  border-radius: 0;
+  border-radius: var(--radius-lg);
   background: var(--color-surface-soft);
   padding: 0.25rem;
 }
 
 .studio-range-tabs button {
   border: 0;
-  border-radius: 0;
+  border-radius: var(--radius-md);
   background: transparent;
   color: var(--color-ink-soft);
   cursor: pointer;
@@ -6214,7 +6471,7 @@ button:hover > .dash-card,
   min-height: 292px;
   overflow: hidden;
   border: 1px solid var(--color-line);
-  border-radius: 0;
+  border-radius: var(--radius-lg);
   background:
     radial-gradient(circle at 80% 24%, rgba(178, 34, 52, 0.08), transparent 11rem),
     linear-gradient(180deg, #ffffff 0%, var(--color-surface-soft) 100%);
@@ -6232,7 +6489,7 @@ button:hover > .dash-card,
   height: max-content;
   max-width: 17rem;
   border: 1px solid rgba(26, 54, 93, 0.1);
-  border-radius: 0;
+  border-radius: var(--radius-lg);
   background: rgba(255, 255, 255, 0.84);
   box-shadow: 0 18px 40px rgba(15, 39, 68, 0.08);
   padding: 1rem;
@@ -6286,7 +6543,7 @@ button:hover > .dash-card,
   position: relative;
   overflow: hidden;
   min-height: 196px;
-  border-radius: 0;
+  border-radius: var(--radius-lg);
   background:
     radial-gradient(circle at 86% 50%, rgba(178, 34, 52, 0.42), transparent 10rem),
     linear-gradient(135deg, #0f2744 0%, #102a43 100%);
@@ -6300,7 +6557,7 @@ button:hover > .dash-card,
   inset: auto -8rem -9rem auto;
   width: 18rem;
   height: 18rem;
-  border-radius: 0;
+  border-radius: 999px;
   background: rgba(255, 255, 255, 0.1);
 }
 
@@ -6313,7 +6570,7 @@ button:hover > .dash-card,
   flex-direction: column;
   gap: 0.1rem;
   min-width: 11rem;
-  border-radius: 0;
+  border-radius: var(--radius-lg);
   padding: 0.7rem 1rem;
   background:
     radial-gradient(circle at 88% 30%, rgba(178, 34, 52, 0.36), transparent 7rem),
@@ -6363,7 +6620,7 @@ button:hover > .dash-card,
   gap: 0.85rem;
   grid-template-columns: 44px minmax(0, 1fr) auto;
   border: 1px solid var(--color-line);
-  border-radius: 0;
+  border-radius: var(--radius-lg);
   background: var(--color-surface-soft);
   padding: 0.75rem;
   text-decoration: none;
@@ -6386,7 +6643,7 @@ button:hover > .dash-card,
   width: 2.75rem;
   height: 2.75rem;
   place-items: center;
-  border-radius: 0;
+  border-radius: var(--radius-md);
   background:
     radial-gradient(circle at 75% 20%, rgba(178, 34, 52, 0.28), transparent 1.5rem),
     var(--color-primary);
@@ -6433,7 +6690,7 @@ button:hover > .dash-card,
   gap: 0.8rem;
   min-height: 100%;
   border: 1px solid var(--color-line);
-  border-radius: 0;
+  border-radius: var(--radius-lg);
   background: radial-gradient(circle at 90% 12%, rgba(26, 54, 93, 0.07), transparent 9rem), var(--color-surface);
   box-shadow: 0 12px 28px rgba(26, 54, 93, 0.04);
   padding: 1.25rem;
@@ -6455,7 +6712,7 @@ button:hover > .dash-card,
   width: 2.5rem;
   height: 2.5rem;
   place-items: center;
-  border-radius: 0;
+  border-radius: var(--radius-md);
   background: var(--color-surface-strong);
   color: var(--color-primary);
 }
@@ -6499,7 +6756,7 @@ button:hover > .dash-card,
   gap: 0.65rem;
   min-height: 100%;
   border: 1px solid var(--color-line);
-  border-radius: 0;
+  border-radius: var(--radius-lg);
   background: linear-gradient(180deg, var(--color-surface) 0%, var(--color-surface-soft) 100%);
   padding: 1rem;
   color: var(--color-ink-soft);
@@ -6524,7 +6781,7 @@ button:hover > .dash-card,
   height: 2.5rem;
   place-items: center;
   border: 1px solid var(--color-line);
-  border-radius: 0;
+  border-radius: var(--radius-md);
   background: #ffffff;
   color: var(--color-primary);
 }
@@ -6569,7 +6826,7 @@ button:hover > .dash-card,
   inset: auto -8rem -8rem auto;
   width: 18rem;
   height: 18rem;
-  border-radius: 0;
+  border-radius: 999px;
   background: radial-gradient(circle, rgba(44, 82, 130, 0.1), transparent 70%);
   pointer-events: none;
 }
@@ -6606,7 +6863,7 @@ button:hover > .dash-card,
   display: grid;
   gap: 0.35rem;
   border: 1px solid var(--color-line);
-  border-radius: 0;
+  border-radius: var(--radius-lg);
   background: rgba(255, 255, 255, 0.82);
   padding: 1rem;
   color: var(--color-primary);
@@ -6633,14 +6890,14 @@ button:hover > .dash-card,
   flex-wrap: wrap;
   gap: 0.35rem;
   border: 1px solid var(--color-line);
-  border-radius: 0;
+  border-radius: var(--radius-lg);
   background: var(--color-surface-soft);
   padding: 0.25rem;
 }
 
 .credential-filter-tabs button {
   border: 0;
-  border-radius: 0;
+  border-radius: var(--radius-md);
   background: transparent;
   color: var(--color-ink-soft);
   cursor: pointer;
@@ -6675,7 +6932,7 @@ button:hover > .dash-card,
 
 .member-review-panel {
   border: 1px solid var(--color-line);
-  border-radius: 0;
+  border-radius: var(--radius-lg);
   background:
     radial-gradient(circle at 88% 18%, rgba(178, 34, 52, 0.08), transparent 9rem), var(--ma-surface);
   box-shadow: var(--shadow-soft);
@@ -6688,7 +6945,7 @@ button:hover > .dash-card,
   height: 2.5rem;
   place-items: center;
   border: 1px solid var(--color-line);
-  border-radius: 0;
+  border-radius: var(--radius-md);
   background: var(--color-surface-soft);
   color: var(--color-ink-muted);
   cursor: pointer;
@@ -6830,15 +7087,85 @@ button:hover > .dash-card,
   }
 }
 
-.sidebar-collapsed .platform-sidebar-label {
-  width: 0;
-  opacity: 0;
+/* Recolhida, o nome sai da linha mas fica no DOM: é o nome acessível do link.
+   O do ☰ fica assim nos dois estados (ao lado da marca não há lugar). */
+.sidebar-collapsed .platform-sidebar-label,
+.platform-sidebar-toggle .platform-sidebar-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
   overflow: hidden;
+  clip-path: inset(50%);
   pointer-events: none;
-  transform: translateX(-8px);
-  /* Fechando, o texto sai primeiro e a barra encolhe depois — sem o delay que
-     a regra base usa para ABRIR. */
-  transition-delay: 0s;
+}
+
+/* ...e vira dica no hover E no foco do teclado (o title só aparecia no mouse,
+   depois de 1s). `position: fixed` porque a lista rola e cortaria uma dica
+   absoluta; o lugar (--tip-x/--tip-y) vem do item, medido no hover e no foco
+   (placeSidebarTip, platform-shell.tsx). O `[style]` espera essa medida: antes
+   dela (página ainda sem JS) não há dica solta no lugar errado. */
+.platform-sidebar.sidebar-collapsed .platform-nav-link[style]:is(:hover, :focus-visible) .platform-sidebar-label,
+.platform-sidebar .platform-sidebar-toggle[style]:is(:hover, :focus-visible) .platform-sidebar-label {
+  position: fixed;
+  top: var(--tip-y);
+  left: var(--tip-x);
+  z-index: 1;
+  width: auto;
+  height: auto;
+  overflow: visible;
+  clip-path: none;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: var(--radius-md);
+  background: #102a43;
+  padding: 0.375rem 0.625rem;
+  color: #ffffff;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+  box-shadow: 0 10px 24px rgba(7, 23, 42, 0.28);
+  opacity: 1;
+  transform: translateY(-50%);
+}
+
+/* A contagem exata dentro do rótulo (platform-nav.tsx): fora da dica, só
+   para o leitor de tela; na dica, aparece ("128 pending" quando o selo diz 99+). */
+.platform-sidebar-label-count {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+.platform-sidebar.sidebar-collapsed .platform-nav-link[style]:is(:hover, :focus-visible) .platform-sidebar-label-count {
+  position: static;
+  width: auto;
+  height: auto;
+  overflow: visible;
+  clip-path: none;
+}
+
+/* O ☰ vira seta "recolher" com a barra aberta: as barras de cima e de baixo
+   encurtam e giram até a ponta da do meio. Recolhida, volta a ser ☰. */
+.platform-menu-icon path {
+  vector-effect: non-scaling-stroke;
+}
+
+.platform-menu-icon path:first-child {
+  transform-origin: 4px 6px;
+}
+
+.platform-menu-icon path:last-child {
+  transform-origin: 4px 18px;
+}
+
+.platform-sidebar:not(.sidebar-collapsed) .platform-menu-icon path:first-child {
+  transform: translateY(6px) rotate(-45deg) scaleX(0.53);
+}
+
+.platform-sidebar:not(.sidebar-collapsed) .platform-menu-icon path:last-child {
+  transform: translateY(-6px) rotate(45deg) scaleX(0.53);
 }
 
 .platform-mobile-nav {
@@ -6854,31 +7181,157 @@ button:hover > .dash-card,
   box-shadow: var(--shadow-strong);
 }
 
-/* TABLET (768–1023px): o rail de 64px É a navegação.
-   Antes esta faixa caía inteira no desenho de celular — barra lateral sumia,
-   barra de baixo aparecia — e numa tela de 1000px de largura, com espaço de
-   sobra, a pessoa navegava com o polegar num rodapé fixo. O rail já existia
-   (.platform-grid--collapsed) e só era alcançável acima de 1024px.
-   A largura vem daqui, e não da classe, para não haver o salto de 288px→64px
-   no primeiro quadro: o servidor renderiza "expanded" e só depois de montar o
-   useSidebarState sabe a largura da janela. O resto do visual recolhido (ícones
-   centralizados, marca no meio) vem da classe .sidebar-collapsed, que o
-   useSidebarState força nesta faixa. O botão de recolher some porque nela não
-   há o que recolher. */
+/* TELAS MÉDIAS (768–1179px): o rail de 64px é o padrão, e o conteúdo fica
+   com os ~196px que a barra aberta comia (onda E).
+   A largura vem daqui, e não só da classe, para não haver o salto de
+   260px→64px no primeiro quadro: sem escolha salva (.platform-grid--auto) o
+   servidor não sabe a largura da janela e manda a barra "aberta" até o
+   useSidebarState montar. As regras com :not(.platform-grid--collapsed)
+   cobrem só esse intervalo: escondem o que não cabe em 64px. Quem abriu a
+   barra (cookie "expanded") fica com ela aberta de 1024px para cima. */
+@media (min-width: 768px) and (width < 1180px) {
+  .platform-grid--auto {
+    --platform-sidebar-width: 64px;
+  }
+
+  .platform-grid--auto .platform-sidebar-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  .platform-grid--auto:not(.platform-grid--collapsed) .platform-sidebar-panel {
+    padding-inline: 0;
+  }
+
+  .platform-grid--auto:not(.platform-grid--collapsed) :is(.platform-nav-section-items, .platform-nav-section-chevron, .platform-sidebar-brand__lockup-link) {
+    display: none;
+  }
+
+  .platform-grid--auto:not(.platform-grid--collapsed) :is(.platform-sidebar-brand, .platform-nav-link) {
+    justify-content: center;
+    min-height: 44px;
+    margin-inline: 0;
+    padding-inline: 0 !important;
+    border-bottom-color: transparent;
+  }
+
+  .platform-grid--auto:not(.platform-grid--collapsed) :is(.platform-nav-section, .platform-nav-footer) {
+    gap: inherit;
+  }
+
+  .platform-grid--auto .platform-sidebar:not(.sidebar-collapsed) .platform-menu-icon path:is(:first-child, :last-child) {
+    transform: none;
+  }
+
+  /* ...e o 1º quadro já é o rail que o JS vai desenhar: o ativo é o quadrado
+     branco de 44px, os ícones sem caixinha e a calha da rolagem reservada
+     (sem ela os ícones andam ~5px no Windows quando o JS monta). */
+  .platform-grid--auto:not(.platform-grid--collapsed) .platform-sidebar-nav {
+    scrollbar-gutter: stable;
+  }
+
+  .platform-grid--auto:not(.platform-grid--collapsed) .platform-nav-icon-chip {
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+
+  .platform-grid--auto:not(.platform-grid--collapsed) .platform-nav-link:is(.platform-nav-active, .platform-nav-section-active) {
+    width: 44px;
+    margin-inline: auto;
+    border-color: transparent !important;
+    background: #ffffff !important;
+    box-shadow: none !important;
+  }
+
+  .platform-grid--auto:not(.platform-grid--collapsed) .platform-nav-link:is(.platform-nav-active, .platform-nav-section-active) svg {
+    color: #102a43 !important;
+    opacity: 1;
+  }
+
+  .platform-grid--auto:not(.platform-grid--collapsed) .platform-nav-active::before {
+    content: none;
+  }
+}
+
+/* TABLET (768–1023px): sempre o rail, mesmo para quem abriu a barra. Aberta,
+   ela deixaria ~465px de conteúdo e a barra do topo não cabe (conta em
+   src/app/barra-do-topo-cabe.test.ts). Antes do rail esta faixa caía no
+   desenho de celular, com a barra de baixo numa tela de 1000px. O ☰ some:
+   aqui não há o que abrir — um grupo ou a Ajuda abrem a gaveta. */
 @media (min-width: 768px) and (width < 1024px) {
   .platform-grid {
     --platform-sidebar-width: 64px;
   }
 
-  .platform-sidebar .platform-sidebar-label {
-    width: 0;
-    opacity: 0;
+  .platform-grid .platform-sidebar-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
     overflow: hidden;
-    pointer-events: none;
+    clip-path: inset(50%);
   }
 
   .platform-sidebar .platform-sidebar-toggle {
     display: none;
+  }
+
+  /* No lugar do ☰, a marca pequena: o rail não começa com uma faixa vazia e
+     a home continua a um clique (a barra do topo só tem logo abaixo de 768). */
+  .platform-sidebar-brand__mark {
+    display: inline-flex;
+  }
+
+  /* Com o cookie "expanded" o servidor manda a barra aberta, mas aqui ela é o
+     rail mesmo assim: as regras da faixa média valem para qualquer grade não
+     recolhida. Nada vaza dos 64px (a marca larga passava por cima da barra do
+     topo) e o 1º quadro já é o rail. */
+  .platform-grid:not(.platform-grid--collapsed) .platform-sidebar-panel {
+    padding-inline: 0;
+  }
+
+  .platform-grid:not(.platform-grid--collapsed) :is(.platform-nav-section-items, .platform-nav-section-chevron, .platform-sidebar-brand__lockup-link) {
+    display: none;
+  }
+
+  .platform-grid:not(.platform-grid--collapsed) :is(.platform-sidebar-brand, .platform-nav-link) {
+    justify-content: center;
+    min-height: 44px;
+    margin-inline: 0;
+    padding-inline: 0 !important;
+    border-bottom-color: transparent;
+  }
+
+  .platform-grid:not(.platform-grid--collapsed) :is(.platform-nav-section, .platform-nav-footer) {
+    gap: inherit;
+  }
+
+  .platform-grid:not(.platform-grid--collapsed) .platform-sidebar-nav {
+    scrollbar-gutter: stable;
+  }
+
+  .platform-grid:not(.platform-grid--collapsed) .platform-nav-icon-chip {
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+
+  .platform-grid:not(.platform-grid--collapsed) .platform-nav-link:is(.platform-nav-active, .platform-nav-section-active) {
+    width: 44px;
+    margin-inline: auto;
+    border-color: transparent !important;
+    background: #ffffff !important;
+    box-shadow: none !important;
+  }
+
+  .platform-grid:not(.platform-grid--collapsed) .platform-nav-link:is(.platform-nav-active, .platform-nav-section-active) svg {
+    color: #102a43 !important;
+    opacity: 1;
+  }
+
+  .platform-grid:not(.platform-grid--collapsed) .platform-nav-active::before {
+    content: none;
   }
 }
 
@@ -6954,12 +7407,6 @@ button:hover > .dash-card,
 
   .welcome-question {
     animation: none;
-  }
-
-  .platform-grid,
-  .platform-sidebar-panel,
-  .platform-sidebar-label {
-    transition: none;
   }
 }
 
@@ -7218,14 +7665,14 @@ button:hover > .dash-card,
 .members-hero__bar {
   display: block;
   height: 6px;
-  border-radius: 0;
+  border-radius: 999px;
   background: rgba(255, 255, 255, 0.22);
   overflow: hidden;
 }
 .members-hero__bar > span {
   display: block;
   height: 100%;
-  border-radius: 0;
+  border-radius: 999px;
   background: var(--ma-accent);
 }
 /* "Ver certificado" no hero, só a 100%: branco sobre o acento (AA nos dois
@@ -7236,7 +7683,7 @@ button:hover > .dash-card,
   min-height: 44px;
   margin-top: 18px;
   padding: 0 20px;
-  border-radius: 0;
+  border-radius: var(--radius-md);
   background: var(--ma-accent);
   color: var(--ma-on-accent);
   font-size: 14px;
@@ -7303,7 +7750,7 @@ button:hover > .dash-card,
   position: relative;
   overflow: hidden;
   border: 1px solid var(--color-line);
-  border-radius: 0;
+  border-radius: var(--radius-lg);
   background: linear-gradient(135deg, #ffffff 0%, #f5f9ff 70%, #fff7f9 100%);
   box-shadow: var(--shadow-soft);
   padding: clamp(1.5rem, 3vw, 2.25rem);
@@ -7354,7 +7801,7 @@ button:hover > .dash-card,
 .marketplace-filter-panel {
   overflow: hidden;
   border: 1px solid var(--color-line);
-  border-radius: 0;
+  border-radius: var(--radius-lg);
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(245, 249, 255, 0.92));
   box-shadow: var(--shadow-soft);
 }
@@ -7372,7 +7819,7 @@ button:hover > .dash-card,
   align-items: center;
   gap: 0.5rem;
   border: 1px solid var(--color-line);
-  border-radius: 0;
+  border-radius: var(--radius-md);
   background: rgba(255, 255, 255, 0.82);
   color: var(--color-ink-soft);
   cursor: pointer;
@@ -7446,7 +7893,7 @@ button:hover > .dash-card,
 .marketplace-select {
   min-height: 2.75rem;
   border: 1px solid var(--color-line);
-  border-radius: 0;
+  border-radius: var(--radius-md);
   background: rgba(255, 255, 255, 0.88);
   color: var(--color-ink);
   box-shadow: 0 8px 20px rgba(26, 54, 93, 0.04);
@@ -7499,7 +7946,7 @@ button:hover > .dash-card,
   width: fit-content;
   gap: 0.2rem;
   border: 1px solid var(--color-line);
-  border-radius: 0;
+  border-radius: var(--radius-md);
   background: rgba(255, 255, 255, 0.88);
   padding: 0.25rem;
 }
@@ -7510,7 +7957,7 @@ button:hover > .dash-card,
   height: 2.75rem;
   place-items: center;
   border: 0;
-  border-radius: 0;
+  border-radius: var(--radius-sm);
   background: transparent;
   color: var(--color-ink-muted);
   cursor: pointer;
@@ -7549,7 +7996,7 @@ button:hover > .dash-card,
   gap: 0.9rem;
   min-width: min(24rem, 84vw);
   border: 1px solid var(--color-line);
-  border-radius: 0;
+  border-radius: var(--radius-lg);
   background: var(--color-surface);
   box-shadow: var(--shadow-soft);
   padding: 0.85rem;
@@ -7560,7 +8007,7 @@ button:hover > .dash-card,
   overflow: hidden;
   width: 4.25rem;
   aspect-ratio: 16 / 10;
-  border-radius: 0;
+  border-radius: var(--radius-md);
   background: var(--color-surface-strong);
 }
 
@@ -7609,7 +8056,7 @@ button:hover > .dash-card,
   flex-direction: column;
   overflow: hidden;
   border: 1px solid var(--color-line);
-  border-radius: 0;
+  border-radius: var(--radius-lg);
   background: var(--color-surface);
   box-shadow: var(--shadow-soft);
   transition:
@@ -7728,6 +8175,18 @@ button:hover > .dash-card,
   display: none;
 }
 
+/* Selo de profissional verificado: quadrado, como os cantos da marca (só o
+   avatar é redondo), e nunca o azul do Instagram. Claro: marinho com check de
+   latão (5,7:1). Escuro: o marinho vira claro, e o check vira o fundo. */
+.verified-seal {
+  --seal-ground: var(--color-primary);
+  --seal-mark: var(--color-accent);
+}
+
+[data-theme="dark"] .verified-seal {
+  --seal-mark: var(--color-base);
+}
+
 .marketplace-card__media {
   position: relative;
   display: block;
@@ -7780,7 +8239,7 @@ button:hover > .dash-card,
   align-items: center;
   min-height: 1.65rem;
   border: 1px solid rgba(255, 255, 255, 0.22);
-  border-radius: 0;
+  border-radius: var(--radius-chip);
   background: rgba(7, 23, 42, 0.48);
   color: #ffffff;
   font-size: 0.64rem;
@@ -7803,7 +8262,7 @@ button:hover > .dash-card,
   height: 2.75rem;
   place-items: center;
   border: 1px solid rgba(255, 255, 255, 0.3);
-  border-radius: 0;
+  border-radius: 999px;
   background: color-mix(in srgb, var(--color-surface) 94%, transparent);
   color: var(--color-primary);
   cursor: pointer;
@@ -7879,7 +8338,7 @@ button:hover > .dash-card,
 .marketplace-card__link:focus-visible::after {
   outline: 2px solid var(--focus-ring);
   outline-offset: -3px;
-  border-radius: 0;
+  border-radius: var(--radius-lg);
 }
 
 .marketplace-card__summary {
@@ -7931,7 +8390,7 @@ button:hover > .dash-card,
 
 .marketplace-empty {
   border: 1px dashed var(--color-line-strong);
-  border-radius: 0;
+  border-radius: var(--radius-lg);
   background: var(--color-surface);
   box-shadow: var(--shadow-soft);
   padding: clamp(2rem, 4vw, 3rem);
@@ -8067,7 +8526,7 @@ button:hover > .dash-card,
     align-items: center;
     min-height: 18px;
     padding: 0 7px;
-    border-radius: 0;
+    border-radius: 999px;
     background: var(--ma-surface-2);
     color: var(--ma-ink-soft);
     font-size: 11px;
@@ -8127,8 +8586,338 @@ button:hover > .dash-card,
       width: 100%;
       height: auto;
       max-height: 90vh;
-      border-radius: 0;
+      border-radius: var(--radius-xl) var(--radius-xl) 0 0;
       box-shadow: 0 -12px 32px rgba(16, 42, 67, 0.18);
     }
+  }
+}
+
+/* ==========================================================================
+   Onda D: calor. As cenas de gravura (ui/spot-art.tsx) e o catálogo de
+   movimento do estúdio. Regras do catálogo:
+   - só transform e opacity (a barra de progresso é a única que anda em
+     largura);
+   - nada em loop fora o spinner;
+   - retorno de ação até 300ms; festa até 700ms (--duration-celebrate);
+   - TODA animação mora dentro de `no-preference`. O estado padrão já é o
+     final: com "reduzir movimento" nada se mexe e nada some;
+   - fill `backwards`, nunca `both`: terminada a entrada, o elemento fica sem
+     transform preso (um transform "segurado" vira bloco de contenção para
+     qualquer filho `position: fixed`, como um diálogo aberto ali dentro).
+   ========================================================================== */
+
+/* Em camada: as utilities de tamanho escritas ao lado (h-20 w-auto no tour,
+   max-w-[6.5rem] no gráfico) precisam vencer este padrão. */
+@layer components {
+  .spot-art {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+}
+
+/* 1,25-1,5px de traço em qualquer tamanho: a cena do tour (80px de altura) e
+   a do painel vazio (128px) desenham a mesma linha. */
+.spot-art * {
+  vector-effect: non-scaling-stroke;
+}
+
+/* Gravura no pé da coluna marinho da tela de criar: o vão de ~450px embaixo
+   dos passos. Some quando a coluna vira faixa (uma coluna só) e no celular. */
+.create-course-screen__art {
+  max-width: 13rem;
+  margin-top: 2.5rem;
+  opacity: 0.92;
+}
+
+@media (max-width: 1180px) {
+  .create-course-screen__art {
+    display: none;
+  }
+}
+
+/* O painel vazio com cena: a gravura ao lado do texto, ou em cima dele no
+   celular. A cena nunca passa de 9rem para não virar o assunto da tela. */
+.empty-state__art {
+  width: 100%;
+  max-width: 9rem;
+  flex: 0 0 auto;
+}
+
+/* 4. "Saved": o fundo verde-claro acende e apaga por baixo do texto. É uma
+   camada própria só para animar opacidade, não a cor do chip. */
+.builder-save-status--saved {
+  position: relative;
+  isolation: isolate;
+}
+
+.builder-save-status--saved::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: var(--color-success-soft);
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* 5. A linha do checklist que acabou de ficar pronta acende em latão claro.
+   Latão aqui é conquista, nunca pendência. */
+.is-just-done {
+  position: relative;
+  isolation: isolate;
+}
+
+.is-just-done::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: var(--color-accent-soft);
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* 7. A faixa "Rascunho salvo. Próximo: ..." depois de criar. Fixa no rodapé,
+   acima da barra do celular; nunca cobre o botão principal por mais de 4s. */
+.created-strip {
+  position: fixed;
+  right: max(1rem, env(safe-area-inset-right, 0px));
+  bottom: max(1rem, env(safe-area-inset-bottom, 0px));
+  left: max(1rem, env(safe-area-inset-left, 0px));
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  max-width: 34rem;
+  margin-inline: auto;
+  /* Marinho e latao a 40% fixos nos dois temas (o --color-primary-dark vira
+     branco no escuro). Literal, sem color-mix: nao gera regra de reserva. */
+  border: 1px solid rgba(201, 154, 70, 0.4);
+  border-radius: var(--radius-lg);
+  background: #091d2f;
+  padding: 0.75rem 0.75rem 0.75rem 1rem;
+  color: #ffffff;
+  box-shadow: 0 18px 40px rgba(9, 29, 47, 0.28);
+  --focus-ring: var(--color-accent);
+}
+
+/* 8. O painel "Publicado!": cena, frase e o botão latão. Sem borda própria:
+   ele já mora dentro do cartão de publicar e leva a caixa do link dentro de
+   si; uma terceira moldura viraria caixa dentro de caixa. */
+.published-panel {
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-soft);
+  padding: 1.25rem;
+}
+
+.published-panel .spot-art {
+  max-width: 10rem;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* 1. Troca de etapa: o painel novo sobe 8px e acende; a saída é seca. */
+  .motion-panel-in {
+    animation: motion-panel-in 200ms var(--ease-standard) backwards;
+  }
+
+  /* 2. Escolher uma opção: o selo latão cresce de 0,6 para 1 (formato na tela
+     de criar; "Como as pessoas vão pagar?" no construtor). As cores do cartão
+     seguem na transição de 120-180ms que ele já tem. */
+  .create-course-payment__selected,
+  .motion-select {
+    animation: motion-grow var(--duration-base) var(--ease-pop) backwards;
+  }
+
+  /* 4. Salvando -> Salvo: entra em 160ms, o verde segura 1,5s e apaga em 200ms.
+     `motion-rise-in` é a entrada de qualquer retorno curto: o chip, o aviso
+     de sucesso ("Draft saved."). */
+  .motion-rise-in {
+    animation: motion-rise-in 160ms var(--ease-standard) backwards;
+  }
+
+  .builder-save-status--saved::after {
+    animation: motion-save-flash 1860ms linear backwards;
+  }
+
+  /* 5. O check se desenha (pathLength=1 no SVG); a linha pisca e apaga. A
+     classe só entra no item que ACABOU de ficar pronto (ui/drawn-check.tsx,
+     useJustDone): abrir a tela com tudo pronto não redesenha nada. */
+  .drawn-check path {
+    stroke-dasharray: 1;
+    animation: motion-check-draw 240ms var(--ease-standard) backwards;
+  }
+
+  .is-just-done::before {
+    animation: motion-flash var(--duration-celebrate) ease-out backwards;
+  }
+
+  /* 6. O selo de marco quando a barra chega em 100% (de novo: só na
+     chegada, não a cada carga). */
+  .milestone-seal {
+    animation: motion-pop var(--duration-base) var(--ease-pop) backwards;
+  }
+
+  /* 7. A faixa de marco entra subindo. */
+  .created-strip {
+    animation: motion-rise-in 240ms var(--ease-standard) backwards;
+  }
+
+  /* 8. Publicado: o selo carimba (1,15 -> 1, -6deg -> 0), a gravura acende
+     logo depois e os três losangos aparecem uma vez. Tudo acaba em 700ms. */
+  .published-panel.is-celebrating .spot-art__seal,
+  .published-panel.is-celebrating .spot-art__spark path {
+    transform-box: fill-box;
+    transform-origin: center;
+  }
+
+  .published-panel.is-celebrating .spot-art__seal {
+    animation: motion-stamp 420ms var(--ease-pop) backwards;
+  }
+
+  .published-panel.is-celebrating .spot-art__engraving {
+    animation: motion-fade var(--duration-celebrate) var(--ease-standard) 100ms backwards;
+  }
+
+  .published-panel.is-celebrating .spot-art__spark path {
+    animation: motion-pop 280ms var(--ease-pop) backwards;
+  }
+
+  .published-panel.is-celebrating .spot-art__spark path:nth-child(1) {
+    animation-delay: 300ms;
+  }
+
+  .published-panel.is-celebrating .spot-art__spark path:nth-child(2) {
+    animation-delay: 360ms;
+  }
+
+  .published-panel.is-celebrating .spot-art__spark path:nth-child(3) {
+    animation-delay: 420ms;
+  }
+
+  /* 10. A cena do estado vazio entra subindo, no mesmo desenho do painel
+     (um keyframe a menos no CSS de todo mundo). */
+  .spot-art-in {
+    animation: motion-panel-in var(--duration-slow) var(--ease-standard) backwards;
+  }
+
+  /* 11. Menu que abre de um botão (Compartilhar): cai 6px e acende. */
+  .motion-drop-in {
+    animation: dropdown-in var(--duration-fast) var(--ease-standard) backwards;
+  }
+
+  /* 12. Lista que chega dos dados (cartões da Home, linhas de produtos): os
+     itens sobem em escada, 40ms cada, e do 6º em diante juntos, para a
+     entrada inteira caber em 400ms. Só transform: o item está pintado desde
+     o 1º quadro, então a capa de um cartão conta para o LCP na hora certa. */
+  .motion-stagger > * {
+    animation: motion-lift 200ms var(--ease-standard) backwards;
+    animation-delay: calc(min(var(--i, 0), 5) * 40ms);
+  }
+
+  /* 13. Cartao de produto do estudio: sobe 2px no hover, junto da sombra que
+     ele ja tinha (a `transition` do cartao ja inclui transform). */
+  .motion-hover-lift:hover {
+    transform: translateY(-2px);
+  }
+
+  /* 14. Menu lateral (onda E). A largura troca na hora: animar a coluna
+     refaria o layout da página inteira a cada quadro. Ao abrir, os nomes
+     acendem; recolhida, a dica acende no hover/foco; o ☰ vira seta. Tudo
+     em 180ms, só opacity e transform. */
+  .platform-sidebar-label {
+    transition: opacity var(--duration-base) var(--ease-standard);
+  }
+
+  .sidebar-collapsed .platform-sidebar-label,
+  .platform-sidebar-toggle .platform-sidebar-label {
+    opacity: 0;
+  }
+
+  .platform-menu-icon path {
+    transition: transform var(--duration-base) var(--ease-standard);
+  }
+}
+
+@keyframes motion-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+@keyframes motion-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+}
+
+@keyframes motion-grow {
+  from {
+    transform: scale(0.6);
+  }
+}
+
+@keyframes motion-rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+
+@keyframes motion-save-flash {
+  0% {
+    opacity: 0;
+  }
+
+  9%,
+  89% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes motion-check-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes motion-flash {
+  from {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes motion-stamp {
+  from {
+    opacity: 0;
+    transform: scale(1.15) rotate(-6deg);
+  }
+}
+
+@keyframes motion-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes motion-lift {
+  from {
+    transform: translateY(6px);
   }
 }

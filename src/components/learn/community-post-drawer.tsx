@@ -135,7 +135,7 @@ export function CommunityPostDrawer({
             type="button"
             onClick={onClose}
             aria-label={t("learn.community.drawer.close")}
-            className="inline-flex h-11 w-11 items-center justify-center rounded-none text-[var(--color-ink-muted)] hover:bg-[var(--color-surface-soft)]"
+            className="inline-flex h-11 w-11 items-center justify-center rounded-full text-[var(--color-ink-muted)] hover:bg-[var(--color-surface-soft)]"
           >
             <X size={18} aria-hidden="true" />
           </button>
@@ -153,7 +153,7 @@ export function CommunityPostDrawer({
           </p>
           {kind === "question" ? (
             <span
-              className={`mt-2 inline-flex items-center gap-1 rounded-none px-2 py-0.5 text-xs font-bold ${
+              className={`mt-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-bold ${
                 answered
                   ? "bg-[rgba(22,163,74,0.1)] text-[rgb(21,128,61)]"
                   : "bg-[var(--color-surface-soft)] text-[var(--color-ink-soft)]"
@@ -179,7 +179,7 @@ export function CommunityPostDrawer({
                 return (
                   <li
                     key={reply.id}
-                    className={`rounded-none p-3 text-sm ${
+                    className={`rounded-lg p-3 text-sm ${
                       isAnswer
                         ? "border border-[rgba(22,163,74,0.35)] bg-[rgba(22,163,74,0.08)]"
                         : "bg-[var(--color-surface-soft)]"

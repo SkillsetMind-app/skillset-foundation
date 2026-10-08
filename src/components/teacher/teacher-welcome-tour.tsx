@@ -1,14 +1,16 @@
 "use client";
 
-import { LayoutDashboard, PenTool, Store, Wallet, X, type LucideIcon } from "lucide-react";
+import { X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { SpotArt, type SpotArtScene } from "@/components/ui/spot-art";
 import { useModalFocus } from "@/lib/a11y/use-modal-focus";
 import { useWelcomeTour } from "@/lib/ui/use-welcome-tour";
 
 type TourStep = {
-  icon: LucideIcon;
+  // A faixa de gravura do passo (no lugar do iconezinho redondo).
+  scene: SpotArtScene;
   title: string;
   body: string;
 };
@@ -20,22 +22,22 @@ function buildSteps(firstName: string, t: (key: string) => string): TourStep[] {
 
   return [
     {
-      icon: LayoutDashboard,
+      scene: "firstProduct",
       title: welcomeTitle,
       body: t("teach.tour.step1Body"),
     },
     {
-      icon: PenTool,
+      scene: "firstLesson",
       title: t("teach.tour.step2Title"),
       body: t("teach.tour.step2Body"),
     },
     {
-      icon: Store,
+      scene: "published",
       title: t("teach.tour.step3Title"),
       body: t("teach.tour.step3Body"),
     },
     {
-      icon: Wallet,
+      scene: "noSales",
       title: t("teach.tour.step4Title"),
       body: t("teach.tour.step4Body"),
     },
@@ -69,7 +71,6 @@ export function TeacherWelcomeTour({ userId, firstName }: { userId: string; firs
   }
 
   const step = steps[stepIndex];
-  const Icon = step.icon;
   const isLast = stepIndex === steps.length - 1;
 
   return (
@@ -84,18 +85,18 @@ export function TeacherWelcomeTour({ userId, firstName }: { userId: string; firs
         role="dialog"
         aria-modal="true"
         aria-labelledby="teacher-welcome-tour-title"
-        className="modal-panel modal-panel-scroll w-full max-w-md overflow-hidden rounded-none border border-[var(--color-line)] bg-white shadow-[0_24px_60px_rgba(15,31,58,0.28)] outline-none"
+        className="modal-panel modal-panel-scroll w-full max-w-md overflow-hidden rounded-xl border border-[var(--color-line)] bg-white shadow-[0_24px_60px_rgba(15,31,58,0.28)] outline-none"
         onMouseDown={(event) => event.stopPropagation()}
       >
-        <div className="flex items-start justify-between gap-3 px-6 pt-6">
-          <span className="flex h-11 w-11 items-center justify-center rounded-none bg-[var(--color-surface-soft)] text-[var(--color-primary)]">
-            <Icon className="h-5 w-5" aria-hidden="true" />
-          </span>
+        {/* Faixa estreita de gravura com a cena do passo. key: trocar de
+            passo remonta a cena e ela entra de novo (subir 6px, 280ms). */}
+        <div className="relative border-b border-[var(--color-line)] bg-[var(--color-surface-soft)] px-6 py-3">
+          <SpotArt key={step.scene} scene={step.scene} className="spot-art-in mx-auto h-20 w-auto" />
           <button
             type="button"
             onClick={dismiss}
             aria-label={t("learn.tour.skipTour")}
-            className="grid h-11 w-11 place-items-center rounded-none text-[var(--color-ink-muted)] transition-colors hover:bg-[var(--color-surface-soft)] hover:text-[var(--color-ink)]"
+            className="absolute right-2 top-2 grid h-11 w-11 place-items-center rounded-full text-[var(--color-ink-muted)] transition-colors hover:bg-[var(--color-surface)] hover:text-[var(--color-ink)]"
           >
             <X className="h-4 w-4" aria-hidden="true" />
           </button>
@@ -116,7 +117,7 @@ export function TeacherWelcomeTour({ userId, firstName }: { userId: string; firs
             <span
               key={item.title}
               className={[
-                "h-1.5 rounded-none transition-all",
+                "h-1.5 rounded-full transition-all",
                 index === stepIndex
                   ? "w-6 bg-[var(--color-primary)]"
                   : "w-1.5 bg-[var(--color-line)]",
@@ -129,7 +130,7 @@ export function TeacherWelcomeTour({ userId, firstName }: { userId: string; firs
           <button
             type="button"
             onClick={dismiss}
-            className="-ml-3 inline-flex min-h-11 items-center rounded-none px-3 text-sm font-medium text-[var(--color-ink-muted)] transition-colors hover:text-[var(--color-ink)]"
+            className="-ml-3 inline-flex min-h-11 items-center rounded-md px-3 text-sm font-medium text-[var(--color-ink-muted)] transition-colors hover:text-[var(--color-ink)]"
           >
             {t("learn.tour.skip")}
           </button>

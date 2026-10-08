@@ -212,7 +212,7 @@ beforeEach(() => {
   mocks.subscribeToTeacherCourse.mockImplementation((_id, onData) => {
     mocks.onCourse = onData;
     onData(mocks.course);
-    return () => undefined;
+    return Object.assign(() => undefined, { reload: async () => {} });
   });
   mocks.subscribeToTeacherCourses.mockImplementation((_uid, onData) => {
     mocks.onCourses = onData;
@@ -327,18 +327,19 @@ describe("painel do criador em espanhol", () => {
     expect(screen.getByRole("heading", { name: "Productos en tu espacio" })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Borradores" })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "En venta" })).toBeInTheDocument();
-    // O card do produto tambem diz "Curso online"; a prova olha so a secao de formatos.
+    // A prova olha so a secao de formatos: os quatro tipos da criacao.
     const formats = screen
       .getByRole("heading", { name: "Elige un formato de producto" })
       .closest("section") as HTMLElement;
-    expect(within(formats).getByRole("link", { name: /Curso online/ })).toHaveAttribute(
+    expect(within(formats).getByRole("link", { name: /^Curso/ })).toHaveAttribute(
       "href",
       "/teach/builder?newCourse=1&format=course",
     );
-    expect(within(formats).getByRole("link", { name: /Programa guiado/ })).toHaveAttribute(
+    expect(within(formats).getByRole("link", { name: /Evento en vivo/ })).toHaveAttribute(
       "href",
-      "/teach/builder?newCourse=1&format=program",
+      "/teach/builder?newCourse=1&format=live_event",
     );
+    expect(within(formats).queryByRole("link", { name: /Programa guiado/ })).toBeNull();
     // Marcos so depois do 1o publish: antes, a lista de passos e o unico guia.
     expect(screen.queryByRole("heading", { name: "Hitos del creador" })).toBeNull();
     view.unmount();

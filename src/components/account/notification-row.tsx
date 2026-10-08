@@ -4,18 +4,25 @@ import {
   Award,
   Bell,
   GraduationCap,
+  LifeBuoy,
   Mail,
   MessageCircle,
+  MessageCircleQuestion,
   Radio,
   Reply,
   Star,
 } from "lucide-react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
-import type { AppNotification, NotificationType } from "@/domain/notification";
+import {
+  notificationTitle,
+  type AppNotification,
+  type NotificationType,
+} from "@/domain/notification";
 import { englishDictionary, translate } from "@/lib/i18n/translate";
 
 const typeIcons: Record<NotificationType, typeof Bell> = {
+  community_question: MessageCircleQuestion,
   community_comment: MessageCircle,
   community_reply: Reply,
   enrollment: GraduationCap,
@@ -23,6 +30,7 @@ const typeIcons: Record<NotificationType, typeof Bell> = {
   certificate: Award,
   live_event: Radio,
   course_message: Mail,
+  support_reply: LifeBuoy,
 };
 
 // Unread chip color per kind. Read rows keep the muted grey chip (below), so
@@ -31,13 +39,15 @@ const typeIcons: Record<NotificationType, typeof Bell> = {
 // clears contrast on both themes. Primary reuses the file's existing
 // unread pair since there is no --color-primary-soft token.
 const unreadChipByType: Record<NotificationType, string> = {
+  community_question: "bg-[rgba(44,82,130,0.1)] text-[var(--color-primary)]",
   community_comment: "bg-[rgba(44,82,130,0.1)] text-[var(--color-primary)]",
   community_reply: "bg-[rgba(44,82,130,0.1)] text-[var(--color-primary)]",
   enrollment: "bg-[var(--color-success-soft)] text-[var(--color-success-fg)]",
   certificate: "bg-[var(--color-success-soft)] text-[var(--color-success-fg)]",
   course_review: "bg-[var(--color-warning-soft)] text-[var(--color-warning-fg)]",
-  live_event: "bg-[rgba(178,34,52,0.1)] text-[var(--color-accent-fg)]",
+  live_event: "bg-[rgba(178,34,52,0.1)] text-[var(--color-danger-fg)]",
   course_message: "bg-[rgba(44,82,130,0.1)] text-[var(--color-primary)]",
+  support_reply: "bg-[var(--color-success-soft)] text-[var(--color-success-fg)]",
 };
 
 // English dictionary as the default translator: callers that pass nothing keep
@@ -92,7 +102,7 @@ export function NotificationRow({
   return (
     <div className="flex items-start gap-3 px-3 py-3">
       <span
-        className={`mt-0.5 grid size-9 shrink-0 place-items-center rounded-none ${
+        className={`mt-0.5 grid size-9 shrink-0 place-items-center rounded-full ${
           notification.read
             ? "bg-[var(--color-surface-soft)] text-[var(--color-ink-soft)]"
             : unreadChipByType[notification.type]
@@ -108,7 +118,7 @@ export function NotificationRow({
               : "font-semibold text-[var(--color-primary)]"
           }`}
         >
-          {notification.title}
+          {notificationTitle(notification, t)}
         </p>
         {notification.body ? (
           <p className="mt-0.5 line-clamp-2 text-xs leading-5 text-[var(--color-ink-soft)]">

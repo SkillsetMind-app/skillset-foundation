@@ -7,6 +7,7 @@ import { Star } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { UserAvatar } from "@/components/shared/user-avatar";
+import { SelfReportedTag, VerifiedBadge } from "@/components/shared/verified-badge";
 import type { CourseReview } from "@/domain/course-review";
 import type { PublicProfile } from "@/domain/user-profile";
 import { subscribeToCourseReviews } from "@/lib/data/course-reviews";
@@ -62,7 +63,7 @@ export function CourseReviewsSection({
   return (
     <section
       id="reviews"
-      className="mt-8 scroll-mt-24 rounded-none border border-[var(--color-line)] bg-white p-5 shadow-[var(--shadow-soft)]"
+      className="mt-8 scroll-mt-24 rounded-lg border border-[var(--color-line)] bg-white p-5 shadow-[var(--shadow-soft)]"
     >
       <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">{t("publicCourses.reviewsTitle")}</p>
       <div className="mt-4 flex flex-wrap items-center gap-3">
@@ -81,7 +82,7 @@ export function CourseReviewsSection({
         {reviews.map((review) => (
           <article
             key={review.id}
-            className="rounded-none border fine-rule bg-[var(--color-surface-soft)] p-4"
+            className="rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4"
           >
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="text-sm font-semibold text-[var(--color-ink)]">
@@ -140,8 +141,9 @@ export function CourseInstructorCard({
 }) {
   const { t } = useTranslation();
   // Teachers without a published public profile simply don't get the card —
-  // never fabricate instructor identity. (publicProfiles is projected by a
-  // Cloud Function and anonymously readable.)
+  // never fabricate instructor identity. (public_profiles is projected by
+  // sync_public_profile() for every teacher who finished setup, and is
+  // anonymously readable.)
   if (!profile) {
     return null;
   }
@@ -149,17 +151,22 @@ export function CourseInstructorCard({
   const name = profile.displayName || t("publicCourses.instructorFallback");
 
   return (
-    <div className="rounded-none border fine-rule bg-[var(--color-surface-soft)] p-4">
+    <div className="rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4">
       <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">{t("publicCourses.yourInstructor")}</p>
       <div className="mt-3 flex items-center gap-3">
         <UserAvatar name={name} photoURL={profile.photoURL} size="sm" />
         <div className="min-w-0">
-          <p className="truncate text-sm font-semibold text-[var(--color-ink)]">
-            {name}
-          </p>
+          <div className="flex min-w-0 items-center gap-0.5">
+            <p className="truncate text-sm font-semibold text-[var(--color-ink)]">
+              {name}
+            </p>
+            {profile.verification ? <VerifiedBadge compact verification={profile.verification} /> : null}
+          </div>
           {profile.credentials.length > 0 ? (
-            <p className="truncate text-xs text-[var(--color-ink-soft)]">
-              {profile.credentials[0]}
+            // A marca fica fora do truncate: credencial longa não a esconde.
+            <p className="flex min-w-0 items-baseline text-xs text-[var(--color-ink-soft)]">
+              <span className="truncate">{profile.credentials[0]}</span>
+              {profile.verification ? null : <SelfReportedTag />}
             </p>
           ) : profile.username ? (
             <p className="truncate text-xs text-[var(--color-ink-soft)]">

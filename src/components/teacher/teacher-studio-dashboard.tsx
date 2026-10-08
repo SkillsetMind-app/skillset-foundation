@@ -6,28 +6,29 @@ import {
   BadgeCheck,
   BookOpenCheck,
   CalendarDays,
-  Check,
   Circle,
-  Gift,
+  FileDown,
   Layers3,
   Plus,
-  Repeat2,
-  Route,
   Store,
   UsersRound,
   Wallet,
   type LucideIcon,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { StatusChip } from "@/components/shared/status-chip";
 import { TeacherOverviewMetrics } from "@/components/teacher/teacher-overview-metrics";
 import { StudioRecentActivity } from "@/components/teacher/studio-recent-activity";
 import { StudioStorefrontCard } from "@/components/teacher/studio-storefront-card";
 import { TeacherStudioInsights } from "@/components/teacher/teacher-studio-insights";
 import { TeacherWelcomeTour } from "@/components/teacher/teacher-welcome-tour";
 import { usePublishGates } from "@/components/teacher/use-publish-gates";
+import { EmptyState, buttonClasses } from "@/components/ui";
+import { DrawnCheck, MilestoneSeal, useJustDone } from "@/components/ui/drawn-check";
+import { SpotArt } from "@/components/ui/spot-art";
 import { activationFeeUsd } from "@/data/plans";
 import type { CourseReadinessAccount } from "@/domain/course-readiness";
 import type { Order } from "@/domain/order";
@@ -46,6 +47,7 @@ export function TeacherStudioDashboard() {
   const { account, loaded: gatesLoaded, verificationStatus } = usePublishGates(user);
   const [courses, setCourses] = useState<TeacherCourse[]>([]);
   const [coursesLoaded, setCoursesLoaded] = useState(false);
+  const [coursesFailed, setCoursesFailed] = useState(false);
   const [orders, setOrders] = useState<Order[]>([]);
   const firstName = user?.displayName?.trim().split(/\s+/)[0] ?? "";
   // A taxa unica de ativacao vem do mesmo hook (o MESMO predicado que o
@@ -65,6 +67,7 @@ export function TeacherStudioDashboard() {
       },
       (error) => {
         logSubscriptionError("TeacherStudioDashboard.courses")(error);
+        setCoursesFailed(true);
         setCoursesLoaded(true);
       }
     );
@@ -93,6 +96,11 @@ export function TeacherStudioDashboard() {
     (course) => course.status !== "inactive" && sellsPaid(course)
   );
   const payoutsPending = needsStripe && !account.payoutsReady;
+  const greetingKey = !coursesLoaded
+    ? "hello"
+    : courses.length > 0 || coursesFailed
+      ? "welcomeBack"
+      : "welcome";
 
   return (
     <div className="grid gap-8">
@@ -103,10 +111,15 @@ export function TeacherStudioDashboard() {
               versalete APOIADO por "Welcome back, {name}" logo abaixo: dois
               titulos disputando a mesma linha de leitura, e o de cima nem
               nomeava a tela ("Home" ja esta na barra e na trilha do topo). */}
+          {/* "Welcome back" so para quem ja tem produto: na 1a visita a frase
+              era falsa. Enquanto a lista carrega vale "Welcome", que nunca
+              mente. Antes de a lista chegar nao da para saber qual das duas e
+              verdade: vale "Hello", que nao afirma nada. Se a assinatura de
+              cursos falhar, fica o "Welcome back" de antes. */}
           <h1 className="text-3xl font-semibold leading-tight text-[var(--color-primary)] sm:text-4xl">
             {firstName
-              ? t("teach.dashboard.welcomeBackNamed").replace("{name}", () => firstName)
-              : t("teach.dashboard.welcomeBack")}
+              ? t(`teach.dashboard.${greetingKey}Named`).replace("{name}", () => firstName)
+              : t(`teach.dashboard.${greetingKey}`)}
           </h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--color-ink-soft)]">
             {t("creatorPanel.home.description")}
@@ -146,6 +159,7 @@ export function TeacherStudioDashboard() {
             uid={user.uid}
             courses={courses}
             coursesLoaded={coursesLoaded}
+            verificationStatus={verificationStatus}
           />
         ) : null}
       </div>
@@ -185,7 +199,7 @@ function StudioNextSteps({
   // (verificacao exigida) e a porcentagem pularia: contagem e % ficam neutras.
   ready: boolean;
   account: CourseReadinessAccount;
-  verificationStatus: string;
+  verificationStatus: string | null;
   needsStripe: boolean;
   activationBlocked: boolean;
   launched: boolean;
@@ -197,6 +211,7 @@ function StudioNextSteps({
   // mundo, nao havia passo de publicar e a barra parava em 67%.
   const steps = [
     {
+      id: "create",
       label: t("creatorPanel.home.steps.create"),
       detail: t("creatorPanel.home.steps.createDetail"),
       href: "/teach/builder?newCourse=1&format=course",
@@ -206,6 +221,7 @@ function StudioNextSteps({
     ...(needsStripe
       ? [
           {
+            id: "payouts",
             label: t("platform.banner.connectPayoutsCta"),
             // A frase da antiga faixa amarela fixa do topo do /teach: o
             // comprador paga NA conta do professor.
@@ -219,6 +235,7 @@ function StudioNextSteps({
     ...(account.verificationRequired
       ? [
           {
+            id: "verification",
             label: t("creatorEditor.readiness.items.verification.label"),
             detail: t("creatorEditor.readiness.items.verification.hint"),
             href: "/teach/verification",
@@ -236,6 +253,7 @@ function StudioNextSteps({
         ]
       : []),
     {
+      id: "publish",
       label: t("creatorPanel.home.steps.publish"),
       // Com a taxa exigida e nao paga, o servidor recusa o publish sem ela: a
       // Home avisa antes, com o mesmo "Activate and publish" do construtor.
@@ -259,6 +277,9 @@ function StudioNextSteps({
   const completeCount = steps.filter((step) => step.done).length;
   const progress = Math.round((completeCount / steps.length) * 100);
   const nextStep = steps.find((step) => !step.done) ?? steps[steps.length - 1];
+  // O check se desenha e o selo cresce so no passo que ficou pronto com a
+  // Home aberta; quem chega com tudo pronto ve tudo parado.
+  const justDone = useJustDone(steps.filter((step) => step.done).map((step) => step.id), ready);
 
   return (
     <section
@@ -293,11 +314,18 @@ function StudioNextSteps({
             </div>
           </div>
 
-          <div className="mt-4 h-1.5 overflow-hidden rounded-none bg-[var(--color-surface-strong)]">
-            <div
-              className="h-full rounded-none bg-[var(--color-primary)] transition-[width]"
-              style={{ width: ready ? `${progress}%` : "0%" }}
-            />
+          {/* Latao, como a barra do aluno: progresso e conquista. O "2 of 3"
+              logo acima e o numero que acompanha a barra. */}
+          <div className="mt-4 flex items-center gap-2">
+            <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-[rgba(26,54,93,0.12)]">
+              <div
+                data-testid="studio-next-steps-bar"
+                className="h-full rounded-full bg-[var(--color-accent)] transition-[width] duration-300 ease-out"
+                style={{ width: ready ? `${progress}%` : "0%" }}
+              />
+            </div>
+            {/* O marco: a barra chegou ao fim. */}
+            {ready && progress === 100 ? <MilestoneSeal animate={justDone.size > 0} /> : null}
           </div>
 
           <ol
@@ -312,7 +340,7 @@ function StudioNextSteps({
                 >
                   <span className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.12em] text-[var(--color-ink-muted)]">
                     {step.done ? (
-                      <Check aria-hidden="true" size={15} strokeWidth={2.4} />
+                      <DrawnCheck size={15} animate={justDone.has(step.id)} />
                     ) : (
                       <Circle aria-hidden="true" size={13} strokeWidth={1.8} />
                     )}
@@ -418,10 +446,28 @@ function StudioProductsSection({
           {[1, 2, 3, 4].map((item) => (
             <div
               key={item}
-              className="h-32 animate-pulse rounded-none bg-[var(--color-surface-strong)]"
+              className="h-32 animate-pulse rounded-md bg-[var(--color-surface-strong)]"
             />
           ))}
         </div>
+      ) : courses.length === 0 ? (
+        // Nenhum produto ainda: a cena do primeiro produto e o unico botao
+        // latao da Home (o marco), no lugar da faixa tracejada de uma frase.
+        <EmptyState
+          as="h3"
+          art={<SpotArt scene="firstProduct" />}
+          title={t("creatorPanel.home.products.firstTitle")}
+          action={
+            <Link
+              href="/teach/builder?newCourse=1&format=course"
+              className={buttonClasses({ variant: "accent", size: "lg" })}
+            >
+              <Plus aria-hidden="true" size={16} strokeWidth={2} />
+              {t("creatorPanel.home.products.firstCta")}
+            </Link>
+          }
+          className="mt-3"
+        />
       ) : filtered.length === 0 ? (
         <div className="mt-3 border-y border-dashed border-[var(--color-line-strong)] px-5 py-10 text-center">
           <p className="text-sm font-semibold text-[var(--color-ink)]">
@@ -435,18 +481,20 @@ function StudioProductsSection({
           </Link>
         </div>
       ) : (
-        <ul className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          {filtered.slice(0, 4).map((course) => (
-            <li key={course.id}>
+        // motion-stagger: os cartoes sobem em escada (40ms cada) quando os
+        // dados chegam; a lista so monta depois do esqueleto.
+        <ul className="motion-stagger mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {filtered.slice(0, 4).map((course, index) => (
+            <li key={course.id} style={{ "--i": index } as CSSProperties}>
               <Link
                 href={`/teach/courses/${encodeURIComponent(course.id)}/manage`}
-                className="flex h-full min-h-36 flex-col rounded-none border border-[var(--color-line)] bg-white p-4 transition hover:border-[var(--color-primary-light)] hover:shadow-sm"
+                className="motion-hover-lift flex h-full min-h-36 flex-col rounded-lg border border-[var(--color-line)] bg-white p-4 transition hover:border-[var(--color-primary-light)] hover:shadow-sm"
               >
                 {/* A mesma miniatura 16:9 da lista de produtos (/teach/builder):
                     a capa quando existe, o mesmo icone quando nao existe. Sem a
                     capa o card era so texto e o professor nao reconhecia o
                     proprio produto. */}
-                <div className="mb-3 grid aspect-video w-full place-items-center overflow-hidden rounded-none border border-[var(--color-line)] bg-[var(--color-surface-soft)] text-[var(--color-primary)]">
+                <div className="mb-3 grid aspect-video w-full place-items-center overflow-hidden rounded-md border border-[var(--color-line)] bg-[var(--color-surface-soft)] text-[var(--color-primary)]">
                   {course.coverImageUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
@@ -458,13 +506,13 @@ function StudioProductsSection({
                     <Layers3 aria-hidden="true" size={19} strokeWidth={1.7} />
                   )}
                 </div>
-                <div className="flex items-start justify-between gap-2">
+                <div className="flex flex-wrap items-start justify-between gap-2">
                   <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--color-ink-muted)]">
                     {t(productTypeKey(course))}
                   </span>
-                  <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--color-accent-fg)]">
-                    {t(`statusChip.${course.status || "draft"}`)}
-                  </span>
+                  {/* Era texto dourado para todo status: "Published" e "Needs
+                      changes" saiam iguais. O chip da cor a cada um. */}
+                  <StatusChip status={course.status || "draft"} />
                 </div>
                 <h3 className="mt-3 line-clamp-2 text-sm font-semibold leading-5 text-[var(--color-ink)]">
                   {course.title || t("creatorPanel.untitledProduct")}
@@ -491,49 +539,24 @@ function StudioProductsSection({
 
 function StudioSellFormatsSection() {
   const { t } = useTranslation();
+  // Os mesmos quatro tipos da tela de criacao, com os mesmos textos. Gratis,
+  // assinatura e programa guiado deixaram de ser tipo (sao preco e ritmo).
   const formats: Array<{
     title: string;
     detail: string;
     href: string;
     icon: LucideIcon;
   }> = [
-    {
-      title: t("creatorPanel.home.formats.course"),
-      detail: t("creatorPanel.home.formats.courseDetail"),
-      href: "/teach/builder?newCourse=1&format=course",
-      icon: BookOpenCheck,
-    },
-    {
-      title: t("creatorPanel.home.formats.program"),
-      detail: t("creatorPanel.home.formats.programDetail"),
-      href: "/teach/builder?newCourse=1&format=program",
-      icon: Route,
-    },
-    {
-      title: t("creatorPanel.home.formats.subscription"),
-      detail: t("creatorPanel.home.formats.subscriptionDetail"),
-      href: "/teach/builder?newCourse=1&format=subscription",
-      icon: Repeat2,
-    },
-    {
-      title: t("creatorPanel.home.formats.community"),
-      detail: t("creatorPanel.home.formats.communityDetail"),
-      href: "/teach/builder?newCourse=1&format=community",
-      icon: UsersRound,
-    },
-    {
-      title: t("creatorPanel.home.formats.event"),
-      detail: t("creatorPanel.home.formats.eventDetail"),
-      href: "/teach/builder?newCourse=1&format=event",
-      icon: CalendarDays,
-    },
-    {
-      title: t("creatorPanel.home.formats.free"),
-      detail: t("creatorPanel.home.formats.freeDetail"),
-      href: "/teach/builder?newCourse=1&format=free",
-      icon: Gift,
-    },
-  ];
+    { id: "course", icon: BookOpenCheck },
+    { id: "community", icon: UsersRound },
+    { id: "live_event", icon: CalendarDays },
+    { id: "ebook", icon: FileDown },
+  ].map(({ id, icon }) => ({
+    title: t(`courseCreation.types.${id}.label`),
+    detail: t(`courseCreation.types.${id}.help`),
+    href: `/teach/builder?newCourse=1&format=${id}`,
+    icon,
+  }));
 
   return (
     <section
@@ -549,7 +572,9 @@ function StudioSellFormatsSection() {
       >
         {t("creatorPanel.home.formats.title")}
       </h2>
-      <ul className="mt-5 grid gap-px overflow-hidden rounded-none border border-[var(--color-line)] bg-[var(--color-line)] sm:grid-cols-2 lg:grid-cols-3">
+      {/* Quatro colunas so no xl, como os cartoes e os marcos desta tela: em
+          lg (1024px) com a barra aberta cada formato ficava com ~176px. */}
+      <ul className="mt-5 grid gap-px overflow-hidden rounded-md border border-[var(--color-line)] bg-[var(--color-line)] sm:grid-cols-2 xl:grid-cols-4">
         {formats.map((format) => {
           const Icon = format.icon;
 
@@ -559,7 +584,7 @@ function StudioSellFormatsSection() {
                 href={format.href}
                 className="group flex h-full min-h-44 flex-col p-4 hover:bg-[var(--color-surface-soft)]"
               >
-                <span className="grid size-9 place-items-center rounded-none border border-[var(--color-line)] text-[var(--color-primary)]">
+                <span className="grid size-9 place-items-center rounded-md border border-[var(--color-line)] text-[var(--color-primary)]">
                   <Icon aria-hidden="true" size={18} strokeWidth={1.8} />
                 </span>
                 <h3 className="mt-4 text-sm font-semibold text-[var(--color-ink)]">
@@ -647,7 +672,7 @@ function StudioEvolution({
               className="flex items-center gap-3 border-b border-[var(--color-line)] px-3 py-4 last:border-b-0 sm:[&:nth-last-child(-n+2)]:border-b-0 xl:border-b-0 xl:border-r xl:last:border-r-0"
             >
               <span
-                className={`grid size-9 place-items-center rounded-none ${
+                className={`grid size-9 place-items-center rounded-full ${
                   milestone.done
                     ? "bg-[var(--color-primary)] text-[var(--color-on-primary)]"
                     : "border border-[var(--color-line)] text-[var(--color-ink-muted)]"
@@ -678,10 +703,8 @@ function sellsPaid(course: TeacherCourse) {
 }
 
 // Data code -> dictionary key; the card shares the format names above.
+// O selo do cartao e o tipo gravado na criacao (courses.product_format).
+// Gratis e assinatura sao preco, nao tipo.
 function productTypeKey(course: TeacherCourse) {
-  if (course.communityEnabled) return "creatorPanel.home.formats.community";
-  if (course.paymentType === "subscription_monthly") return "creatorPanel.home.formats.subscription";
-  if (course.paymentType === "subscription_yearly") return "creatorPanel.home.formats.subscription";
-  if (course.paymentType === "free") return "creatorPanel.home.formats.free";
-  return "creatorPanel.home.formats.course";
+  return `courseCreation.types.${course.productFormat ?? "course"}.label`;
 }

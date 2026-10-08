@@ -33,9 +33,9 @@ export function CertificateDocument({
     // baixava um PDF ilegível. Cores literais aqui são a escolha certa, não
     // descuido: o artefato não deve seguir o tema de quem o abre.
     <article className="cert-doc mx-auto w-full max-w-4xl bg-white text-[#102a43] shadow-[var(--shadow-soft)] print:max-w-none print:shadow-none">
-      <div className="relative overflow-hidden rounded-none border-[3px] border-[var(--color-primary)] p-6 sm:p-10 print:rounded-none print:border-2">
+      <div className="relative overflow-hidden rounded-lg border-[3px] border-[var(--color-primary)] p-6 sm:p-10 print:rounded-none print:border-2">
         <div
-          className="pointer-events-none absolute inset-2 rounded-none border border-[var(--color-line-strong)] print:inset-1"
+          className="pointer-events-none absolute inset-2 rounded-sm border border-[var(--color-line-strong)] print:inset-1"
           aria-hidden="true"
         />
         <div className="relative">

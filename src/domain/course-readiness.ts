@@ -5,6 +5,7 @@ import { getTrustedLessonEmbed } from "@/domain/lesson-embed";
 import {
   countCourseLessons,
   normalizeCourseCategories,
+  paymentTypeFitsFormat,
   type TeacherCourse,
   type TeacherCourseModule,
 } from "@/domain/teacher-course";
@@ -23,15 +24,23 @@ export type CourseReadinessInput = Pick<
   | "categories"
   | "modules"
   | "priceAmountMinor"
+  | "currency"
   | "paymentType"
   | "installmentsEnabled"
   | "installmentsMax"
   | "coverImageUrl"
   | "learningOutcomes"
+  | "productFormat"
+  | "communityEnabled"
 > & {
   // Aulas com conteudo (ver getLessonIdsWithMedia). Quem nao tem a lista de
   // arquivos (o Manage) nao passa: o item some e a porcentagem nao muda.
   lessonIdsWithMedia?: ReadonlySet<string>;
+  // Evento ao vivo: sessoes agendadas e ainda por vir em course_events.
+  // E-book: arquivos numa aula do produto (countLessonFiles). Mesma regra de
+  // quem nao sabe: o item some.
+  scheduledSessionCount?: number;
+  lessonFileCount?: number;
 };
 
 // Aula com conteudo. A MESMA regra do aviso "aulas sem conteudo" do painel
@@ -67,6 +76,30 @@ export function getLessonIdsWithMedia(
   return ids;
 }
 
+// Arquivos (lesson_material) presos a uma aula do produto: e la que o comprador
+// baixa. Arquivo de aula apagada nao conta. Mesma regra de publish_teacher_course.
+export function countLessonFiles(
+  modules: Pick<TeacherCourseModule, "lessons">[],
+  assets: Pick<CourseAsset, "kind" | "lessonId">[],
+): number {
+  const lessonIds = new Set(modules.flatMap((courseModule) => courseModule.lessons.map((lesson) => lesson.id)));
+  return assets.filter(
+    (asset) => asset.kind === "lesson_material" && asset.lessonId !== null && lessonIds.has(asset.lessonId),
+  ).length;
+}
+
+// Sessoes deste produto ainda de pe e por vir: a que ja passou nao se vende
+// (publish_teacher_course cobra o mesmo). Construtor e Manage leem daqui.
+export function upcomingSessionsOf<T extends { courseId: string; status: string; startsAt: string }>(
+  events: T[],
+  courseId: string,
+  now: number,
+): T[] {
+  return events.filter(
+    (event) => event.courseId === courseId && event.status === "scheduled" && Date.parse(event.startsAt) > now,
+  );
+}
+
 // Travas que nao sao do curso, sao do professor. So o Manage as conhecia; o
 // construtor deixava a pessoa clicar em Publish e descobrir pelo erro do
 // servidor. Opcional para quem nao tem o perfil carregado (ex.: testes puros).
@@ -87,6 +120,9 @@ export type CourseReadinessItemId =
   | "module"
   | "lesson"
   | "lessonMedia"
+  | "community"
+  | "session"
+  | "file"
   | "pricing"
   | "installments"
   | "outcomes"
@@ -133,7 +169,17 @@ export function getCourseReadiness(
     course.paymentType ?? (course.priceAmountMinor === 0 ? "free" : "one_time");
   const priceAmountMinor = course.priceAmountMinor ?? 0;
   const modules = course.modules ?? [];
+  // O que cada tipo precisa entregar. Curso: modulo e aula. Comunidade: a
+  // comunidade ligada (aulas opcionais). Evento ao vivo: a sessao. E-book: um
+  // arquivo.
+  const productFormat = course.productFormat ?? "course";
   const paid = paymentType !== "free" && priceAmountMinor > 0;
+  // Produto criado antes da regra pode cobrar de um jeito que o tipo nao
+  // aceita (comunidade por pagamento unico). Publicar recusa (gatilho de
+  // 20261007030000); aqui a pessoa ve antes, no item de preco.
+  const paymentFits = paymentTypeFitsFormat(course.productFormat ?? "course", paymentType);
+  // "$0" fixo dizia dolar para quem vende em real: o zero vem na moeda escolhida.
+  const zeroPrice = formatZeroPrice(course.currency);
   const lessons = modules.flatMap((courseModule) => courseModule.lessons);
   const withMedia = course.lessonIdsWithMedia;
   const lessonsWithoutMedia = withMedia ? lessons.filter((lesson) => !withMedia.has(lesson.id)) : [];
@@ -161,8 +207,10 @@ export function getCourseReadiness(
     {
       id: "summary",
       group: "page",
-      label: "Summary",
-      hint: "Write a summary with at least 20 characters.",
+      // "Description" em toda tela: criacao, construtor e checklist. A chave
+      // continua `summary`.
+      label: "Description",
+      hint: "Write a description with at least 20 characters.",
       done: course.summary.trim().length >= 20,
       optional: false,
     },
@@ -184,25 +232,60 @@ export function getCourseReadiness(
       done: Boolean(course.coverImageUrl),
       optional: true,
     },
-    {
-      id: "module",
-      group: "content",
-      label: "Module",
-      hint: "Add at least one module.",
-      done: modules.length > 0,
-      optional: false,
-    },
-    {
-      id: "lesson",
-      group: "content",
-      label: "Lesson",
-      hint: "Add at least one lesson.",
-      done: countCourseLessons(modules) > 0,
-      optional: false,
-    },
+    ...(productFormat === "course"
+      ? [
+          {
+            id: "module" as const,
+            group: "content" as const,
+            label: "Module",
+            hint: "Add at least one module.",
+            done: modules.length > 0,
+            optional: false,
+          },
+          {
+            id: "lesson" as const,
+            group: "content" as const,
+            label: "Lesson",
+            hint: "Add at least one lesson.",
+            done: countCourseLessons(modules) > 0,
+            optional: false,
+          },
+        ]
+      : []),
+    ...(productFormat === "community"
+      ? [{
+          id: "community" as const,
+          group: "content" as const,
+          label: "Community turned on",
+          hint: "Turn the community on in the Members Area tab: it is what members join.",
+          done: course.communityEnabled === true,
+          optional: false,
+        }]
+      : []),
+    ...(productFormat === "live_event" && course.scheduledSessionCount !== undefined
+      ? [{
+          id: "session" as const,
+          group: "content" as const,
+          label: "Live session",
+          hint: "Schedule the date and time of the live session.",
+          done: course.scheduledSessionCount > 0,
+          optional: false,
+        }]
+      : []),
+    ...(productFormat === "ebook" && course.lessonFileCount !== undefined
+      ? [{
+          id: "file" as const,
+          group: "content" as const,
+          label: "File to download",
+          hint: "Upload at least one file: PDF, slides or workbook.",
+          done: course.lessonFileCount > 0,
+          optional: false,
+        }]
+      : []),
     // So com a lista de aulas com conteudo e ao menos uma aula: sem aula, o
-    // item "lesson" ja cobra, e listar este daria um "feito" de graca.
-    ...(withMedia && lessons.length > 0
+    // item "lesson" ja cobra, e listar este daria um "feito" de graca. No
+    // e-book a aula nao aparece na tela; o item "file" cobra o mesmo arquivo.
+    ...(withMedia && lessons.length > 0 && productFormat !== "ebook"
       ? [{
           id: "lessonMedia" as const,
           group: "content" as const,
@@ -218,14 +301,20 @@ export function getCourseReadiness(
           optional: false,
         }]
       : []),
-    {
-      id: "pricing",
-      group: "sale",
-      label: "Pricing",
-      hint: "Set a paid price greater than $0, or choose Free.",
-      done: paymentType === "free" || priceAmountMinor > 0,
-      optional: false,
-    },
+    // Produto gratis nao tem preco a definir: listar "Pricing" como feito so
+    // fazia quem escolheu Gratis ler "Set a paid price" no checklist.
+    ...(paymentType === "free"
+      ? []
+      : [{
+          id: "pricing" as const,
+          group: "sale" as const,
+          label: "Pricing",
+          hint: paymentFits
+            ? `Set a price above ${zeroPrice}, or choose Free.`
+            : "This way of paying does not fit this type of product. Pick another one in Pricing.",
+          done: priceAmountMinor > 0 && paymentFits,
+          optional: false,
+        }]),
     {
       id: "outcomes",
       group: "page",
@@ -293,6 +382,11 @@ export function getCourseReadiness(
       if (item.id === "activation") {
         item.label = item.label.replace("{amount}", () => String(activationFeeUsd));
       }
+      if (item.id === "pricing") {
+        item.hint = paymentFits
+          ? item.hint.replace("{zero}", () => zeroPrice)
+          : t("creatorEditor.readiness.items.pricing.notForType");
+      }
       if (item.id === "lessonMedia" && !item.done) {
         item.hint += ` ${missingLessonsText(
           t("creatorEditor.lesson.untitled"),
@@ -318,6 +412,18 @@ export function getCourseReadiness(
       : 0,
     ready: pending.length === 0,
   };
+}
+
+export function formatZeroPrice(currency: string | null | undefined): string {
+  try {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: String(currency || "USD").toUpperCase(),
+      maximumFractionDigits: 0,
+    }).format(0);
+  } catch {
+    return `0 ${String(currency || "USD").toUpperCase()}`;
+  }
 }
 
 export type CourseReadinessGroup = {

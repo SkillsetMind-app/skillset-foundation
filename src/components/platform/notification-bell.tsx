@@ -127,18 +127,19 @@ export function NotificationBell() {
               )
             : t("platform.notifications.open")
         }
-        className="relative grid size-10 place-items-center rounded-none border border-[var(--color-line)] bg-[var(--color-surface-soft)] text-[var(--color-ink)] transition hover:bg-[var(--color-surface-strong)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus-ring)]"
+        className="relative grid size-10 place-items-center rounded-full border border-[var(--color-line)] bg-[var(--color-surface-soft)] text-[var(--color-ink)] transition hover:bg-[var(--color-surface-strong)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus-ring)]"
       >
         <Bell aria-hidden="true" size={18} strokeWidth={1.8} />
         {unreadCount > 0 ? (
-          <span className="absolute -right-0.5 -top-0.5 grid min-w-[18px] place-items-center rounded-none bg-[var(--color-accent)] px-1 text-[10px] font-bold leading-[18px] text-white">
+          // Branco no latão dava 2.56:1; o navy de --color-on-accent dá 6.67:1.
+          <span className="absolute -right-0.5 -top-0.5 grid min-w-[18px] place-items-center rounded-full bg-[var(--color-accent)] px-1 text-[10px] font-bold leading-[18px] text-[var(--color-on-accent)]">
             {unreadCount > 9 ? "9+" : unreadCount}
           </span>
         ) : null}
       </button>
 
       {open ? (
-        <div className="absolute right-0 top-[calc(100%+8px)] z-50 w-[min(380px,calc(100vw-32px))] overflow-hidden rounded-none border border-[var(--color-line)] bg-white shadow-[0_24px_48px_rgba(15,39,68,0.16)]">
+        <div className="absolute right-0 top-[calc(100%+8px)] z-50 w-[min(380px,calc(100vw-32px))] overflow-hidden rounded-lg border border-[var(--color-line)] bg-white shadow-[0_24px_48px_rgba(15,39,68,0.16)]">
           <div className="flex items-center justify-between border-b border-[var(--color-line)] px-5 py-4">
             <h4 className="text-[15px] font-bold text-[var(--color-primary)]">
               {t("platform.notifications.title")}
@@ -148,7 +149,7 @@ export function NotificationBell() {
                 <button
                   type="button"
                   onClick={handleMarkAll}
-                  className="rounded-none px-2 py-1 text-xs font-semibold text-[var(--color-primary)] hover:bg-[var(--color-surface-soft)]"
+                  className="rounded-md px-2 py-1 text-xs font-semibold text-[var(--color-primary)] hover:bg-[var(--color-surface-soft)]"
                 >
                   {t("platform.notifications.markAllRead")}
                 </button>
@@ -156,7 +157,7 @@ export function NotificationBell() {
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                className="grid size-8 place-items-center rounded-none text-[var(--color-ink-soft)] hover:bg-[var(--color-surface-soft)] hover:text-[var(--color-primary)]"
+                className="grid size-8 place-items-center rounded-md text-[var(--color-ink-soft)] hover:bg-[var(--color-surface-soft)] hover:text-[var(--color-primary)]"
                 aria-label={t("platform.notifications.close")}
               >
                 <X aria-hidden="true" size={16} strokeWidth={1.8} />
@@ -175,7 +176,7 @@ export function NotificationBell() {
                 role="tab"
                 aria-selected={filter === value}
                 onClick={() => setFilter(value)}
-                className={`rounded-none px-2.5 py-1 text-xs font-semibold transition ${
+                className={`rounded-md px-2.5 py-1 text-xs font-semibold transition ${
                   filter === value
                     ? "bg-[var(--color-surface-soft)] text-[var(--color-primary)]"
                     : "text-[var(--color-ink-soft)] hover:bg-[var(--color-surface-soft)]"

@@ -8,6 +8,7 @@ import type { CSSProperties } from "react";
 import { CourseTile } from "@/components/courses/course-tile";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { UserAvatar } from "@/components/shared/user-avatar";
+import { SelfReportedTag, VerifiedBadge } from "@/components/shared/verified-badge";
 import { brand } from "@/data/brand";
 import {
   isStorefrontHexColor,
@@ -67,10 +68,10 @@ export function InstructorProfileView({
       <header
         data-section="header"
         data-storefront-theme={theme ?? undefined}
-        className={`creator-profile-header flex flex-col items-center text-center ${theme ? "px-4 py-6" : ""}`}
+        className={`creator-profile-header flex flex-col items-center text-center ${theme ? "rounded-lg px-4 py-6" : ""}`}
       >
         {branding?.heroImageUrl ? (
-          <div className="relative mb-6 aspect-[3/1] w-full overflow-hidden bg-[var(--color-surface-strong)]">
+          <div className="relative mb-6 aspect-[3/1] w-full overflow-hidden rounded-lg bg-[var(--color-surface-strong)]">
             <Image
               src={branding.heroImageUrl}
               alt=""
@@ -84,11 +85,13 @@ export function InstructorProfileView({
           </div>
         ) : null}
         <UserAvatar name={name} photoURL={profile.photoURL} size="lg" />
-        <div className="mt-4 flex items-center justify-center gap-2">
+        {/* flex-wrap: nome longo no celular empurra o selo para a linha de
+            baixo em vez de sair da tela. */}
+        <div className="mt-4 flex flex-wrap items-center justify-center gap-x-3 gap-y-2">
           <h1 className="display-title text-3xl leading-tight text-[var(--color-primary)] sm:text-4xl">
             {name}
           </h1>
-          {/* Selo de verificado (próximo PR): entra aqui, logo depois do nome. */}
+          {profile.verification ? <VerifiedBadge verification={profile.verification} /> : null}
         </div>
         {profile.username ? (
           <p className="mt-1 text-sm font-semibold text-[var(--color-ink-soft)]">@{profile.username}</p>
@@ -129,11 +132,11 @@ export function InstructorProfileView({
           {t("publicPages.profile.courses_heading")}
         </h2>
         {courses === null ? (
-          <p className="mt-4 border border-[var(--color-danger)] bg-[var(--color-danger-soft)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
+          <p className="mt-4 rounded-md border border-[var(--color-danger)] bg-[var(--color-danger-soft)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
             {t("publicPages.profile.courses_error")}
           </p>
         ) : ordered.length === 0 ? (
-          <div className="mt-4 border border-dashed border-[var(--color-line-strong)] p-6 text-center">
+          <div className="mt-4 rounded-lg border border-dashed border-[var(--color-line-strong)] p-6 text-center">
             <p className="text-sm font-bold text-[var(--color-primary)]">
               {t("publicPages.profile.no_public_courses_yet")}
             </p>
@@ -216,6 +219,7 @@ export function InstructorProfileView({
                   className="border-l-2 border-[var(--color-line-strong)] pl-3 text-sm leading-6 text-[var(--color-ink-soft)]"
                 >
                   {credential}
+                  {profile.verification ? null : <SelfReportedTag />}
                 </li>
               ))}
             </ul>

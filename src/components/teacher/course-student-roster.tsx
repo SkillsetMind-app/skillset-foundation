@@ -9,7 +9,9 @@ import { ExportTableButton } from "@/components/shared/export-table-button";
 import { StatusChip } from "@/components/shared/status-chip";
 import { PanelCard } from "@/components/teacher/course-commerce-panels";
 import { CourseAccessPanel } from "@/components/teacher/course-access-panel";
-import { Button, InlineAlert } from "@/components/ui";
+import { CourseShareLink } from "@/components/teacher/course-share-link";
+import { Button, EmptyState, InlineAlert } from "@/components/ui";
+import { SpotArt } from "@/components/ui/spot-art";
 import { isCourseStudentComplete } from "@/domain/course-overview";
 import { sendCourseMessage } from "@/lib/data/course-messages";
 import { getMyCourseStudents, type CourseStudent } from "@/lib/data/enrollments";
@@ -93,7 +95,7 @@ function matchesProgress(student: CourseStudent, filter: ProgressFilter): boolea
 }
 
 function selectClasses() {
-  return "min-h-11 rounded-none border border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2 text-sm font-semibold text-[var(--color-ink)]";
+  return "min-h-11 rounded-md border border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2 text-sm font-semibold text-[var(--color-ink)]";
 }
 
 /**
@@ -156,7 +158,7 @@ function MessageComposer({
         value={body}
         onChange={(event) => setBody(event.target.value)}
         rows={3}
-        className="w-full rounded-none border border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-ink)]"
+        className="w-full rounded-md border border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-ink)]"
         placeholder={t("courseRoster.messagePlaceholder")}
       />
       {error ? (
@@ -185,11 +187,14 @@ export function CourseStudentRosterView({
   students,
   courseId,
   now,
+  share,
 }: {
   state: "loading" | "ready" | "error";
   students: CourseStudent[];
   courseId: string;
   now?: Date;
+  /** Produto publicado: a lista vazia oferece "Copy my page link". */
+  share?: { title: string };
 }) {
   const { t, locale } = useTranslation();
   const [search, setSearch] = useState("");
@@ -269,9 +274,22 @@ export function CourseStudentRosterView({
   if (students.length === 0) {
     return (
       <PanelCard title={t("courseRoster.title")} description={t("courseRoster.description")}>
-        <p className="mt-5 text-sm leading-6 text-[var(--color-ink-soft)]">
-          {t("courseRoster.empty")}
-        </p>
+        <EmptyState
+          as="h3"
+          art={<SpotArt scene="noStudents" />}
+          title={t("courseRoster.emptyTitle")}
+          className="mt-5"
+        />
+        {/* O link da pagina so serve depois de publicar: rascunho nao tem
+            pagina aberta para mandar a ninguem. */}
+        {share ? (
+          <CourseShareLink
+            label={t("creatorPanel.hub.sections.page")}
+            path={`/courses/${encodeURIComponent(courseId)}`}
+            title={share.title}
+            copyLabel={t("creatorPanel.shareLink.copyMyPage")}
+          />
+        ) : null}
       </PanelCard>
     );
   }
@@ -293,7 +311,7 @@ export function CourseStudentRosterView({
         ].map((stat) => (
           <div
             key={t(stat.label)}
-            className="rounded-none border border-[var(--color-line)] bg-[var(--color-surface)] px-4 py-3"
+            className="rounded-md border border-[var(--color-line)] bg-[var(--color-surface)] px-4 py-3"
           >
             <dt className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--color-ink-muted)]">
               {t(stat.label)}
@@ -315,7 +333,7 @@ export function CourseStudentRosterView({
           value={search}
           onChange={(event) => setSearch(event.target.value)}
           placeholder={t("courseRoster.searchPlaceholder")}
-          className="min-h-11 min-w-0 flex-1 rounded-none border border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-ink)]"
+          className="min-h-11 min-w-0 flex-1 rounded-md border border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-ink)]"
         />
         <label htmlFor="roster-progress" className="sr-only">
           {t("courseRoster.progressFilter")}
@@ -442,7 +460,7 @@ export function CourseStudentRosterView({
   );
 }
 
-export function CourseStudentRoster({ courseId }: { courseId: string }) {
+export function CourseStudentRoster({ courseId, share }: { courseId: string; share?: { title: string } }) {
   const [revision, setRevision] = useState(0);
   const [state, setState] = useState<"loading" | "ready" | "error">("loading");
   const [students, setStudents] = useState<CourseStudent[]>([]);
@@ -469,6 +487,6 @@ export function CourseStudentRoster({ courseId }: { courseId: string }) {
 
   return <div className="grid min-w-0 gap-5">
     <CourseAccessPanel key={courseId} courseId={courseId} onChange={() => setRevision((value) => value + 1)} />
-    <CourseStudentRosterView state={state} students={students} courseId={courseId} />
+    <CourseStudentRosterView state={state} students={students} courseId={courseId} share={share} />
   </div>;
 }

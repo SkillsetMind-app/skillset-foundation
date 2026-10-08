@@ -35,7 +35,12 @@ import {
   quotaStatus,
 } from "@/domain/entitlements";
 import { usePublishGates } from "@/components/teacher/use-publish-gates";
-import { getCourseReadiness, type CourseReadinessItem } from "@/domain/course-readiness";
+import {
+  countLessonFiles,
+  getCourseReadiness,
+  upcomingSessionsOf,
+  type CourseReadinessItem,
+} from "@/domain/course-readiness";
 import {
   getCoursePricingShape,
   type CoursePricingShape,
@@ -50,6 +55,8 @@ import {
   subscribeToTeacherCourse,
   subscribeToTeacherCourses,
 } from "@/lib/data/teacher-courses";
+import { fetchCourseAssets } from "@/lib/data/course-assets";
+import { subscribeToTeacherCourseEvents } from "@/lib/data/course-events";
 
 // Per-course management central (Hotmart-style "product hub"): one place with
 // the publish checklist, the course's real settings, and the commerce surfaces.
@@ -87,7 +94,7 @@ const roadmapSections = [
 type SectionId = (typeof manageSections)[number]["id"] | (typeof roadmapSections)[number]["id"];
 
 const hubMenuItemClass =
-  "flex min-h-11 items-center rounded-none px-3 text-sm font-semibold text-[var(--color-ink)] hover:bg-[var(--color-surface-soft)]";
+  "flex min-h-11 items-center rounded-md px-3 text-sm font-semibold text-[var(--color-ink)] hover:bg-[var(--color-surface-soft)]";
 
 // Cada linha do checklist so DESCREVIA a pendencia ("Add at least one module")
 // e nao levava a lugar nenhum: a pessoa lia o que faltava e tinha de caçar
@@ -225,7 +232,7 @@ function MarketplaceHighlightPanel({
       title={t("creatorPanel.hub.highlight.title")}
       description={t("creatorPanel.hub.highlight.description")}
     >
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-none border fine-rule bg-white px-4 py-3">
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-md border fine-rule bg-white px-4 py-3">
         <div>
           <p className="text-sm font-semibold text-[var(--color-ink)]">
             {featured ? t("creatorPanel.hub.highlight.on") : t("creatorPanel.hub.highlight.off")}
@@ -266,7 +273,7 @@ function MarketplaceHighlightPanel({
         </p>
       ) : null}
       {error ? (
-        <p className="mt-3 text-xs font-semibold text-[var(--color-accent-fg)]">
+        <p className="mt-3 text-xs font-semibold text-[var(--color-danger-fg)]">
           {"message" in error ? error.message : t(error.key)}
         </p>
       ) : null}
@@ -377,6 +384,40 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
     return subscribeToTeacherCourses(user.uid, setMyCourses, () => undefined);
   }, [user]);
 
+  // O que o tipo entrega, como o construtor le: a sessao por vir do evento ao
+  // vivo e o arquivo do e-book. Sem eles a porcentagem daqui chegava a 100%
+  // com o construtor dizendo "nao esta pronto". Lista que nao chega deixa o
+  // item de fora, como no construtor; o servidor segue cobrando.
+  const productFormat = course?.productFormat ?? "course";
+  const ownerUid = user?.uid;
+  const [sessionCount, setSessionCount] = useState<{ courseId: string; count: number } | null>(null);
+  useEffect(() => {
+    if (!ownerUid || productFormat !== "live_event") {
+      return;
+    }
+    return subscribeToTeacherCourseEvents(
+      ownerUid,
+      (events) => setSessionCount({ courseId, count: upcomingSessionsOf(events, courseId, Date.now()).length }),
+      () => {},
+    );
+  }, [ownerUid, courseId, productFormat]);
+  const ebookModules = productFormat === "ebook" ? course?.modules : undefined;
+  const [fileCount, setFileCount] = useState<{ courseId: string; count: number } | null>(null);
+  useEffect(() => {
+    if (!ebookModules) {
+      return;
+    }
+    let cancelled = false;
+    fetchCourseAssets(courseId)
+      .then((assets) => {
+        if (!cancelled) setFileCount({ courseId, count: countLessonFiles(ebookModules, assets) });
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [courseId, ebookModules]);
+
   const isOwner = Boolean(course && user && course.ownerId === user.uid);
   // Server-enforced by the commerce RPCs; surfaced here so the panels can
   // explain the gate instead of failing on click.
@@ -384,7 +425,7 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
 
   if (!courseLoaded) {
     return (
-      <section className="rounded-none border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)]">
+      <section className="rounded-lg border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)]">
         <p className="text-sm text-[var(--color-ink-soft)]">{t("creatorPanel.hub.loading")}</p>
       </section>
     );
@@ -394,7 +435,7 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
   // treated the same as a non-owner instead of bypassing the guard.
   if (!course || !user || !isOwner) {
     return (
-      <section className="rounded-none border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)]">
+      <section className="rounded-lg border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)]">
         <h2 className="text-lg font-semibold text-[var(--color-ink)]">
           {t("creatorPanel.hub.notFound.title")}
         </h2>
@@ -414,8 +455,26 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
   // diferir da do construtor. O aviso "aulas sem conteudo" do painel cobre o
   // mesmo caso com a mesma regra (getLessonIdsWithMedia). Antes o Manage tinha
   // regra propria e o mesmo curso aparecia com tres porcentagens diferentes.
-  const readiness = getCourseReadiness(course, account, t);
+  const readiness = getCourseReadiness(
+    {
+      ...course,
+      scheduledSessionCount:
+        productFormat === "live_event" && sessionCount?.courseId === course.id ? sessionCount.count : undefined,
+      lessonFileCount:
+        productFormat === "ebook" && fileCount?.courseId === course.id ? fileCount.count : undefined,
+    },
+    account,
+    t,
+  );
   const pricing = getCoursePricingShape(course);
+  // "Add the yearly plan" na etapa de preco chega com ?addPrice=yearly&amount=
+  // (em centavos): o formulario de outro preco ja abre com o plano anual.
+  const yearlyPrefillMinor = searchParams?.get("addPrice") === "yearly"
+    ? Number(searchParams.get("amount"))
+    : Number.NaN;
+  const yearlyPrefill = Number.isInteger(yearlyPrefillMinor) && yearlyPrefillMinor > 0
+    ? { paymentType: "subscription_yearly" as const, amountMinor: yearlyPrefillMinor }
+    : null;
   const paid = !pricing.free;
   const published = course.status === "published";
   const switchableCourses = myCourses.filter((candidate) => candidate.id !== course.id);
@@ -452,7 +511,7 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
         </Link>
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex min-w-0 items-center gap-4">
-            <div className="relative aspect-video w-28 shrink-0 overflow-hidden rounded-none border fine-rule bg-[var(--color-surface-soft)]">
+            <div className="relative aspect-video w-28 shrink-0 overflow-hidden rounded-md border fine-rule bg-[var(--color-surface-soft)]">
               {course.coverImageUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
@@ -490,7 +549,7 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
                 aria-label={t("creatorPanel.hub.header.switchCourse")}
                 value={course.id}
                 onChange={(event) => router.push(`/teach/courses/${event.target.value}/manage`)}
-                className="min-h-11 rounded-none border fine-rule bg-white px-3 py-2 text-xs font-semibold text-[var(--color-ink)]"
+                className="min-h-11 rounded-md border fine-rule bg-white px-3 py-2 text-xs font-semibold text-[var(--color-ink)]"
               >
                 <option value={course.id}>{course.title}</option>
                 {switchableCourses.map((candidate) => (
@@ -528,7 +587,7 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
                 type="button"
                 role="menuitem"
                 onClick={() => setConfirmingDelete(true)}
-                className="flex min-h-11 w-full items-center rounded-none border-t border-[var(--color-line)] px-3 text-left text-sm font-semibold text-[var(--color-danger-fg)] hover:bg-[var(--color-danger-soft)]"
+                className="flex min-h-11 w-full items-center rounded-md border-t border-[var(--color-line)] px-3 text-left text-sm font-semibold text-[var(--color-danger-fg)] hover:bg-[var(--color-danger-soft)]"
               >
                 {t("creatorPanel.hub.header.deleteCourse")}
               </button>
@@ -571,7 +630,7 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
         <nav
           ref={menuRef}
           aria-label={t("creatorPanel.hub.nav.label")}
-          className="relative min-w-0 border-b border-[var(--color-line)] bg-white pb-2 lg:rounded-none lg:border lg:p-2"
+          className="relative min-w-0 border-b border-[var(--color-line)] bg-white pb-2 lg:rounded-md lg:border lg:p-2"
         >
           <p className="hidden px-2 pb-2 pt-1 text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--color-ink-muted)] lg:block">
             {t("creatorPanel.hub.nav.manage")}
@@ -602,7 +661,7 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
                 ref={section === item.id ? activeSectionRef : undefined}
                 type="button"
                 onClick={() => setSection(item.id)}
-                className={`min-h-11 shrink-0 whitespace-nowrap rounded-none border-b-2 px-3 py-2 text-left text-sm font-semibold transition lg:w-full lg:border-b-0 lg:border-l-2 ${
+                className={`min-h-11 shrink-0 whitespace-nowrap rounded-md border-b-2 px-3 py-2 text-left text-sm font-semibold transition lg:w-full lg:border-b-0 lg:border-l-2 ${
                   section === item.id
                     ? "border-[var(--color-primary)] bg-[var(--color-surface-soft)] text-[var(--color-primary)]"
                     : "border-transparent text-[var(--color-ink-soft)] hover:bg-[var(--color-surface-hover)]"
@@ -622,7 +681,7 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
                 ref={section === item.id ? activeSectionRef : undefined}
                 type="button"
                 onClick={() => setSection(item.id)}
-                className={`rounded-none px-3 py-2 text-left text-sm font-semibold transition ${
+                className={`rounded-md px-3 py-2 text-left text-sm font-semibold transition ${
                   section === item.id
                     ? "bg-[var(--color-surface-soft)] text-[var(--color-primary)]"
                     : "text-[var(--color-ink-muted)] hover:bg-[var(--color-surface-hover)]"
@@ -650,10 +709,10 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
               title={t("creatorPanel.hub.checklist.title")}
               description={t(`creatorPanel.hub.status.${course.status}`)}
             >
-              <div className="mt-4 h-2 overflow-hidden rounded-none bg-[var(--color-surface-hover)]">
+              <div className="mt-4 h-2 overflow-hidden rounded-full bg-[var(--color-surface-hover)]">
                 <div
                   data-testid="publish-readiness-bar"
-                  className="h-full rounded-none bg-[var(--color-primary)] transition-all"
+                  className="h-full rounded-full bg-[var(--color-primary)] transition-all"
                   style={{ width: `${readiness.percent}%` }}
                 />
               </div>
@@ -675,13 +734,13 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
                     <li
                       key={item.id}
                       data-readiness-item={item.id}
-                      className={`flex items-start gap-3 rounded-none px-3 py-2 ${
+                      className={`flex items-start gap-3 rounded-md px-3 py-2 ${
                         item.done ? "bg-[var(--color-success-soft)]" : ""
                       }`}
                     >
                       <span
                         aria-hidden
-                        className={`mt-0.5 inline-flex size-5 shrink-0 items-center justify-center rounded-none text-[11px] font-bold ${
+                        className={`mt-0.5 inline-flex size-5 shrink-0 items-center justify-center rounded-full text-[11px] font-bold ${
                           item.done
                             ? "bg-[var(--color-primary)] text-[var(--color-on-primary)]"
                             : "border fine-rule bg-white text-[var(--color-ink-muted)]"
@@ -733,7 +792,7 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
                 }}
               />
               {course.reviewNote ? (
-                <div className="mt-4 rounded-none border border-[rgba(178,34,52,0.18)] bg-white px-4 py-3">
+                <div className="mt-4 rounded-md border border-[rgba(178,34,52,0.18)] bg-white px-4 py-3">
                   <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--color-accent-fg)]">
                     {t("creatorPanel.hub.checklist.reviewNote")}
                   </p>
@@ -926,6 +985,7 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
                 courseId={course.id}
                 courseTitle={courseTitle}
                 coursePricing={pricing}
+                prefill={yearlyPrefill}
               />
             </div>
           ) : null}
@@ -942,7 +1002,7 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
                   {course.modules.map((courseModule, index) => (
                     <li
                       key={courseModule.id}
-                      className="rounded-none border fine-rule bg-white px-4 py-3"
+                      className="rounded-md border fine-rule bg-white px-4 py-3"
                     >
                       <p className="text-sm font-semibold text-[var(--color-ink)]">
                         {index + 1}. {courseModule.title}
@@ -1018,7 +1078,12 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
             </PanelCard>
           ) : null}
 
-          {section === "students" ? <CourseStudentRoster courseId={course.id} /> : null}
+          {section === "students" ? (
+            <CourseStudentRoster
+              courseId={course.id}
+              share={course.status === "published" ? { title: course.title } : undefined}
+            />
+          ) : null}
 
           {section === "page" ? (
             <div className="grid gap-4">
@@ -1075,11 +1140,6 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
                     href: "/teach/media",
                   },
                   {
-                    label: t("platform.nav.integrations"),
-                    detail: t("creatorPanel.hub.tools.integrationsDetail"),
-                    href: "/teach/integrations",
-                  },
-                  {
                     label: t("creatorPanel.hub.tools.verification"),
                     detail: t("creatorPanel.hub.tools.verificationDetail"),
                     href: "/teach/verification",
@@ -1088,7 +1148,7 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
                   <Link
                     key={tool.href}
                     href={tool.href}
-                    className="rounded-none border fine-rule bg-white px-4 py-3 hover:bg-[var(--color-surface-soft)]"
+                    className="rounded-md border fine-rule bg-white px-4 py-3 hover:bg-[var(--color-surface-soft)]"
                   >
                     <strong className="block text-sm text-[var(--color-ink)]">{tool.label}</strong>
                     <span className="mt-1 block text-xs leading-5 text-[var(--color-ink-soft)]">

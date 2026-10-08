@@ -8,6 +8,7 @@ import {
 } from "@/components/auth/turnstile-widget";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { isGoogleAuthEnabled } from "@/lib/auth/providers";
+import { scrollBehavior } from "@/lib/ui/scroll-behavior";
 import {
   getAuthErrorMessage,
   isEmailRateLimitError,
@@ -34,7 +35,7 @@ export function ResetPasswordForm() {
   // fold. Dropping focus closes the keyboard and the callback ref pulls the
   // box into view.
   const revealFeedback = (node: HTMLParagraphElement | null) => {
-    node?.scrollIntoView({ block: "center", behavior: "smooth" });
+    node?.scrollIntoView({ block: "center", behavior: scrollBehavior() });
   };
 
   async function handleReset(event: FormEvent<HTMLFormElement>) {
@@ -85,7 +86,7 @@ export function ResetPasswordForm() {
           ref={revealFeedback}
           role="alert"
           aria-live="assertive"
-          className="rounded-none border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]"
+          className="rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]"
         >
           {getAuthErrorMessage(error.cause, t)}
         </p>
@@ -96,7 +97,7 @@ export function ResetPasswordForm() {
           ref={revealFeedback}
           role="status"
           aria-live="polite"
-          className="rounded-none border border-[rgba(26,54,93,0.14)] bg-[var(--color-surface-soft)] px-4 py-3 text-sm font-semibold text-[var(--color-primary)]"
+          className="rounded-md border border-[rgba(26,54,93,0.14)] bg-[var(--color-surface-soft)] px-4 py-3 text-sm font-semibold text-[var(--color-primary)]"
         >
           {t(`authFlow.recovery.${success}`)}
           {success === "sent" && isGoogleAuthEnabled ? t("authFlow.recovery.googleHint") : ""}

@@ -18,7 +18,9 @@ import {
   useInstructorProfile,
 } from "@/components/courses/course-social-proof";
 import { UserAvatar } from "@/components/shared/user-avatar";
+import { SelfReportedTag, VerifiedBadge } from "@/components/shared/verified-badge";
 import { useHasRealCourses } from "@/components/site/real-courses";
+import { formatEventDateTimeInZone } from "@/domain/course-event";
 import { getSafeExternalUrl } from "@/domain/external-url";
 import { CourseLandingBlocks } from "@/components/courses/course-landing-blocks";
 import { getTrustedLessonEmbed } from "@/domain/lesson-embed";
@@ -36,6 +38,7 @@ import {
   resolveLessonVideoSource,
 } from "@/domain/teacher-course";
 import { canOpenEnrollment } from "@/domain/enrollment";
+import { getLiveEventSession, type LiveEventSession } from "@/lib/data/course-events";
 import { subscribeToEnrollment } from "@/lib/data/enrollments";
 import { subscribeToViewableTeacherCourse } from "@/lib/data/published-courses";
 import {
@@ -293,6 +296,29 @@ export function CreatorCourseDetail({
     return () => controller.abort();
   }, [course?.status, resolvedCourseId]);
 
+  // Evento ao vivo: a data da sessao, no fuso de quem ensina. Fica guardada
+  // com o id do curso, entao uma resposta velha nunca aparece em outro.
+  const liveEventCourseId = course?.productFormat === "live_event" ? course.id : null;
+  const [liveSession, setLiveSession] = useState<{
+    courseId: string;
+    session: LiveEventSession | null;
+  } | null>(null);
+  useEffect(() => {
+    if (checkoutOnly || !liveEventCourseId || !hasBackendConfig) {
+      return;
+    }
+    let cancelled = false;
+    getLiveEventSession(liveEventCourseId)
+      .then((session) => {
+        if (!cancelled) setLiveSession({ courseId: liveEventCourseId, session });
+      })
+      // Sem a data, a pagina diz que ela sera anunciada.
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [checkoutOnly, hasBackendConfig, liveEventCourseId]);
+
   if (!courseRef) {
     return (
       <CourseDetailState
@@ -448,6 +474,25 @@ export function CreatorCourseDetail({
     previewVideoSource === "upload" ? null : previewLessonTrustedEmbed;
   const previewLessonExternalUrl = getSafeExternalUrl(previewLessonRawExternalUrl);
   const lockedLessonCount = Math.max(lessons.length - (previewLesson ? 1 : 0), 0);
+  // Comunidade, evento ao vivo e e-book nao vendem uma grade de aulas: em vez
+  // de previa, curriculo, "N aulas restantes" e "Lessons: 0", a pagina diz o
+  // que o comprador recebe.
+  const productFormat = course.productFormat ?? "course";
+  const showsCurriculum = productFormat === "course" && course.modules.length > 0;
+  const session = liveSession?.courseId === course.id ? liveSession.session : null;
+  const sessionLabel = session
+    ? formatEventDateTimeInZone(session.startsAt, locale, session.timeZone)
+    : null;
+  const deliveryText =
+    productFormat === "community"
+      ? t("publicCourses.deliveryCommunity")
+      : productFormat === "ebook"
+        ? t("publicCourses.deliveryEbook")
+        : productFormat === "live_event"
+          ? sessionLabel
+            ? t("publicCourses.deliveryLiveEvent").replace("{date}", () => sessionLabel)
+            : t("publicCourses.deliveryLiveEventPending")
+          : t("publicCourses.curriculumPending");
   const hasRating = Boolean(course.ratingCount && course.ratingAverage);
   const learningOutcomes = normalizeLearningOutcomes(course.learningOutcomes);
   // Duracao real do curso, somada das aulas. Sem minuto declarado em nenhuma
@@ -485,6 +530,7 @@ export function CreatorCourseDetail({
   if (requestedOfferCode) returnParams.set("offer", requestedOfferCode);
   if (requestedPriceId) returnParams.set("priceId", requestedPriceId);
   const returnTo = `${coursePath}${returnParams.size ? `?${returnParams}` : ""}`;
+  const signupHref = `/auth?mode=signup&returnTo=${encodeURIComponent(returnTo)}`;
   const enrollLabel = courseIsFree
     ? t("publicCourses.enrollFree")
     : pricingReady && hasPaidPrice
@@ -509,13 +555,26 @@ export function CreatorCourseDetail({
     ...(learningOutcomes.length > 0
       ? ([[t("publicCourses.outcomes"), "#what-you-will-learn"]] as [string, string][])
       : []),
-    [t("publicCourses.preview"), "#free-preview"],
-    [t("publicCourses.curriculum"), "#curriculum"],
+    ...(showsCurriculum
+      ? ([
+          [t("publicCourses.preview"), "#free-preview"],
+          [t("publicCourses.curriculum"), "#curriculum"],
+        ] as [string, string][])
+      : ([[t("publicCourses.delivery"), "#delivery"]] as [string, string][])),
     ...(hasRating ? ([[t("publicCourses.reviews"), "#reviews"]] as [string, string][]) : []),
     ...(instructorProfile
       ? ([[t("publicCourses.instructor"), "#instructor"]] as [string, string][])
       : []),
   ];
+
+  // O cartão de compra fica no fim da página no celular: sem rolar até ele, um
+  // clique nos blocos que não pode seguir (ou que falhou) parece não fazer nada.
+  function revealBuyCard() {
+    const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    document
+      .getElementById("enroll-card")
+      ?.scrollIntoView?.({ behavior: reduce ? "auto" : "smooth", block: "center" });
+  }
 
   async function handleCheckout() {
     if (!course || !resolvedPrice || !canCheckout || !checkoutEnabled) {
@@ -543,6 +602,7 @@ export function CreatorCourseDetail({
     } catch (error) {
       setCheckoutError(getCheckoutErrorKey(error));
       setIsCheckingOut(false);
+      revealBuyCard();
     }
   }
 
@@ -560,6 +620,25 @@ export function CreatorCourseDetail({
     } catch {
       setCheckoutError("publicCourses.enrollError");
       setIsEnrollingFree(false);
+      revealBuyCard();
+    }
+  }
+
+  // Every other buy button on the page (the teacher's sales blocks) does what
+  // the buy card's main button does. They used to call handleCheckout alone,
+  // which does nothing for a visitor, a free course or an enrolled learner.
+  function handleCardAction() {
+    if (isEnrollingFree || isCheckingOut) return;
+    if (authStatus !== "authenticated") {
+      router.push(signupHref);
+    } else if (viewerIsLearner) {
+      router.push(classroomHref);
+    } else if (canEnrollFree) {
+      void handleFreeEnrollment();
+    } else if (!canCheckout || !checkoutEnabled) {
+      revealBuyCard();
+    } else {
+      void handleCheckout();
     }
   }
 
@@ -593,7 +672,7 @@ export function CreatorCourseDetail({
         {hideHeader ? null : (
           <div
             id="overview"
-            className="primary-fill-card scroll-mt-24 rounded-none border border-[var(--color-line)] bg-[var(--color-primary)] p-8 text-white shadow-[var(--shadow-soft)]"
+            className="primary-fill-card scroll-mt-24 rounded-lg border border-[var(--color-line)] bg-[var(--color-primary)] p-8 text-white shadow-[var(--shadow-soft)]"
           >
             <p className="text-xs font-semibold uppercase tracking-[0.24em] text-white/70">
               {t("publicCourses.independent")}
@@ -613,22 +692,31 @@ export function CreatorCourseDetail({
             tambem sobe para ca: era a quinta linha de uma lista neutra. */}
         {instructorName || hasRating || durationLabel ? (
           <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-[var(--color-ink-soft)]">
+            {/* Nome e selo num grupo só: numa tela estreita a quebra de linha
+                leva os dois juntos. O selo fica fora do link porque é botão. */}
             {instructorName ? (
-              <Link
-                href={`/instructors/${encodeURIComponent(course.ownerId)}`}
-                className="inline-flex min-h-11 items-center gap-2 font-semibold text-[var(--color-ink)] underline-offset-4 hover:underline"
-              >
-                <UserAvatar
-                  name={instructorName}
-                  photoURL={instructorProfile?.photoURL}
-                  size="sm"
-                />
-                {instructorName}
-              </Link>
+              <span className="inline-flex min-w-0 items-center gap-0.5">
+                <Link
+                  href={`/instructors/${encodeURIComponent(course.ownerId)}`}
+                  className="inline-flex min-h-11 min-w-0 items-center gap-2 font-semibold text-[var(--color-ink)] underline-offset-4 hover:underline"
+                >
+                  <UserAvatar
+                    name={instructorName}
+                    photoURL={instructorProfile?.photoURL}
+                    size="sm"
+                  />
+                  {instructorName}
+                </Link>
+                {instructorProfile?.verification ? (
+                  <VerifiedBadge compact verification={instructorProfile.verification} />
+                ) : null}
+              </span>
             ) : null}
             {instructorProfile?.credentials?.[0] ? (
-              <span className="min-w-0 truncate">
-                {instructorProfile.credentials[0]}
+              // A marca fica fora do truncate: credencial longa não a esconde.
+              <span className="inline-flex min-w-0 items-baseline">
+                <span className="min-w-0 truncate">{instructorProfile.credentials[0]}</span>
+                {instructorProfile.verification ? null : <SelfReportedTag />}
               </span>
             ) : null}
             {hasRating ? (
@@ -675,22 +763,23 @@ export function CreatorCourseDetail({
           blocks={landing.blocks}
           template={landing.template}
           priceLabel={priceLabel}
-          onEnrol={handleCheckout}
+          onEnrol={handleCardAction}
+          enrolDisabled={isEnrollingFree || isCheckingOut}
         />
 
         {learningOutcomes.length > 0 ? (
           <section
             id="what-you-will-learn"
-            className="mt-8 scroll-mt-24 rounded-none border border-[var(--color-line)] bg-white p-5 shadow-[var(--shadow-soft)]"
+            className="mt-8 scroll-mt-24 rounded-lg border border-[var(--color-line)] bg-white p-5 shadow-[var(--shadow-soft)]"
           >
             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">{t("publicCourses.outcomes")}</p>
             <div className="mt-5 grid gap-3 sm:grid-cols-2">
               {learningOutcomes.map((item) => (
                 <div
                   key={item}
-                  className="flex items-start gap-3 rounded-none border fine-rule bg-[var(--color-surface-soft)] p-4"
+                  className="flex items-start gap-3 rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4"
                 >
-                  <span className="grid size-7 shrink-0 place-items-center rounded-none bg-white text-[var(--color-primary)]">
+                  <span className="grid size-7 shrink-0 place-items-center rounded-md bg-white text-[var(--color-primary)]">
                     <Target aria-hidden="true" size={14} strokeWidth={2.2} />
                   </span>
                   <p className="text-sm font-semibold leading-6 text-[var(--color-ink)]">
@@ -713,13 +802,14 @@ export function CreatorCourseDetail({
           </div>
         ) : null}
 
+        {showsCurriculum ? <>
         <section
           id="free-preview"
-          className="mt-8 scroll-mt-24 rounded-none border border-[var(--color-line)] bg-white p-5 shadow-[var(--shadow-soft)]"
+          className="mt-8 scroll-mt-24 rounded-lg border border-[var(--color-line)] bg-white p-5 shadow-[var(--shadow-soft)]"
         >
           <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">{t("publicCourses.preview")}</p>
           {previewLesson ? (
-            <div className="mt-5 grid gap-4 rounded-none border fine-rule bg-[var(--color-surface-soft)] p-5">
+            <div className="mt-5 grid gap-4 rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-5">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--color-ink-soft)]">
                   {previewLesson.moduleTitle}
@@ -735,12 +825,12 @@ export function CreatorCourseDetail({
               {previewLessonContentText ? (
                 // Mesmo texto da area de membros: quebras de linha e links
                 // clicaveis, sem HTML cru.
-                <div className="whitespace-pre-line rounded-none bg-white p-4 text-sm leading-7 text-[var(--color-ink)]">
+                <div className="whitespace-pre-line rounded-lg bg-white p-4 text-sm leading-7 text-[var(--color-ink)]">
                   {linkify(previewLessonContentText)}
                 </div>
               ) : null}
               {previewLessonEmbed ? (
-                <div className="overflow-hidden rounded-none border border-[var(--color-line)] bg-[var(--color-primary)]">
+                <div className="overflow-hidden rounded-lg border border-[var(--color-line)] bg-[var(--color-primary)]">
                   <iframe
                     src={previewLessonEmbed.embedUrl}
                     title={previewLesson.title}
@@ -751,7 +841,7 @@ export function CreatorCourseDetail({
                 </div>
               ) : null}
               {previewVideoSource === "upload" ? (
-                <div className="overflow-hidden rounded-none border border-[var(--color-line)] bg-[var(--color-primary)]">
+                <div className="overflow-hidden rounded-lg border border-[var(--color-line)] bg-[var(--color-primary)]">
                   <BunnyVideoPlayer
                     courseId={course.id}
                     lessonId={previewLesson.id}
@@ -767,12 +857,14 @@ export function CreatorCourseDetail({
                   className="button-outline w-fit px-3.5 py-2 text-xs"
                 >{t("publicCourses.previewResource")}</a>
               ) : null}
-              {!previewLessonRawExternalUrl && previewVideoSource !== "upload" ? (
-                <p className="rounded-none bg-white p-4 text-xs leading-6 text-[var(--color-ink-soft)]">{t("publicCourses.previewMedia")}</p>
+              {/* A note for the teacher about their own empty preview; a buyer
+                  has nothing to attach. */}
+              {viewerOwnsCourse && !previewLessonRawExternalUrl && previewVideoSource !== "upload" ? (
+                <p className="rounded-lg bg-white p-4 text-xs leading-6 text-[var(--color-ink-soft)]">{t("publicCourses.previewMedia")}</p>
               ) : null}
             </div>
           ) : (
-            <p className="mt-5 rounded-none border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-7 text-[var(--color-ink-soft)]">{t("publicCourses.noPreview")}</p>
+            <p className="mt-5 rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-7 text-[var(--color-ink-soft)]">{t("publicCourses.noPreview")}</p>
           )}
           <p className="mt-4 text-xs leading-6 text-[var(--color-ink-soft)]">
             {t(lockedLessonCount === 1 ? "publicCourses.lockedOne" : "publicCourses.lockedMany").replace("{count}", String(lockedLessonCount))}
@@ -781,17 +873,17 @@ export function CreatorCourseDetail({
 
         <section
           id="curriculum"
-          className="mt-8 scroll-mt-24 rounded-none border border-[var(--color-line)] bg-white p-5 shadow-[var(--shadow-soft)]"
+          className="mt-8 scroll-mt-24 rounded-lg border border-[var(--color-line)] bg-white p-5 shadow-[var(--shadow-soft)]"
         >
           <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">{t("publicCourses.structure")}</p>
           <div className="mt-5 grid gap-4">
             {course.modules.length === 0 ? (
-              <p className="rounded-none border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-7 text-[var(--color-ink-soft)]">{t("publicCourses.curriculumPending")}</p>
+              <p className="rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-7 text-[var(--color-ink-soft)]">{t("publicCourses.curriculumPending")}</p>
             ) : (
               course.modules.map((module) => (
                 <div
                   key={module.id}
-                  className="rounded-none border fine-rule bg-[var(--color-surface-soft)] p-4"
+                  className="rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4"
                 >
                   <h2 className="text-sm font-semibold text-[var(--color-ink)]">
                     {module.title}
@@ -800,7 +892,7 @@ export function CreatorCourseDetail({
                     {module.lessons.map((lesson) => {
                       const isPreview = course.freePreviewLessonId === lesson.id;
                       const rowClass =
-                        "flex items-center justify-between gap-3 rounded-none bg-white px-3 py-2 text-xs text-[var(--color-ink-soft)]";
+                        "flex items-center justify-between gap-3 rounded-md bg-white px-3 py-2 text-xs text-[var(--color-ink-soft)]";
                       const meta = (
                         <span className="shrink-0 text-right uppercase tracking-[0.16em]">
                           {t(`publicCourses.lessonTypes.${lesson.type}`)}
@@ -841,6 +933,15 @@ export function CreatorCourseDetail({
             )}
           </div>
         </section>
+        </> : (
+          <section
+            id="delivery"
+            className="mt-8 scroll-mt-24 rounded-lg border border-[var(--color-line)] bg-white p-5 shadow-[var(--shadow-soft)]"
+          >
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">{t("publicCourses.delivery")}</p>
+            <p className="mt-4 text-sm leading-7 text-[var(--color-ink)]">{deliveryText}</p>
+          </section>
+        )}
 
         {/* Social proof: real learner reviews (enrollment-gated server-side by
             submitCourseReview). Renders nothing while a course has no
@@ -860,7 +961,7 @@ export function CreatorCourseDetail({
         id="enroll-card"
         // Focus fallback for the popup's button when no main action is enabled.
         tabIndex={-1}
-        className="min-w-0 h-fit scroll-mt-24 self-start rounded-none border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)] lg:sticky lg:top-24"
+        className="min-w-0 h-fit scroll-mt-24 self-start rounded-lg border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)] lg:sticky lg:top-24"
       >
         {/* O preco era a quarta de seis linhas de uma lista "At a glance",
             entre "Status: Published" e "Access: Secure checkout" — vocabulario
@@ -929,7 +1030,7 @@ export function CreatorCourseDetail({
         <dl className="mt-5 grid gap-4">
           {[
             [t("publicCourses.category"), getCourseCategoryLabel(course.category, t)],
-            [t("publicCourses.lessons"), String(course.lessonCount)],
+            ...(showsCurriculum ? [[t("publicCourses.lessons"), String(course.lessonCount)]] : []),
             ...(durationLabel ? [[t("publicCourses.duration"), durationLabel]] : []),
           ].map(([label, value]) => (
             <div
@@ -947,7 +1048,7 @@ export function CreatorCourseDetail({
         </dl>
 
         {checkoutStatus === "cancelled" ? (
-          <p className="mt-5 rounded-none border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">{t("publicCourses.cancelled")}</p>
+          <p className="mt-5 rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">{t("publicCourses.cancelled")}</p>
         ) : null}
 
         {checkoutStatus === "success" ? (
@@ -955,13 +1056,13 @@ export function CreatorCourseDetail({
         ) : null}
 
         {checkoutError ? (
-          <p className="mt-5 rounded-none border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
+          <p className="mt-5 rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
             {t(checkoutError)}
           </p>
         ) : null}
 
         {offerLoadError || (pricingReady && hasExplicitOffer && !resolvedPrice) ? (
-          <p className="mt-5 rounded-none border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
+          <p className="mt-5 rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
             {offerLoadError ? t(offerLoadError) : t("publicCourses.selectedOfferUnavailable")}
           </p>
         ) : null}
@@ -972,7 +1073,7 @@ export function CreatorCourseDetail({
           // depois de entrar, em vez de deixa-la na home.
           <div className="mt-6 grid gap-3">
             <Link
-              href={`/auth?mode=signup&returnTo=${encodeURIComponent(returnTo)}`}
+              href={signupHref}
               data-cta-focus
               className="button-solid w-full justify-center px-5 py-2.5 text-sm"
             >
@@ -1032,7 +1133,7 @@ export function CreatorCourseDetail({
                     }
                     autoComplete="off"
                     placeholder={t("publicCourses.optional")}
-                    className="mt-2 w-full rounded-none border border-[var(--color-line)] bg-white px-3.5 py-2.5 text-sm outline-none focus:border-[var(--color-primary-light)]"
+                    className="mt-2 w-full rounded-md border border-[var(--color-line)] bg-white px-3.5 py-2.5 text-sm outline-none focus:border-[var(--color-primary-light)]"
                   />
                 </label>
               ) : (
@@ -1044,7 +1145,7 @@ export function CreatorCourseDetail({
               )
             ) : null}
             {!checkoutEnabled ? (
-              <p className="mt-3 rounded-none border border-[rgba(24,58,94,0.12)] bg-[var(--color-surface-soft)] px-4 py-3 text-xs leading-6 text-[var(--color-ink-soft)]">{t("publicCourses.checkoutLater")}</p>
+              <p className="mt-3 rounded-md border border-[rgba(24,58,94,0.12)] bg-[var(--color-surface-soft)] px-4 py-3 text-xs leading-6 text-[var(--color-ink-soft)]">{t("publicCourses.checkoutLater")}</p>
             ) : null}
           </>
         )}
@@ -1059,7 +1160,7 @@ export function CreatorCourseDetail({
             (automaticRefundWindowDays = 7, progress < 50% — see requestRefund),
             never an invented "30-day guarantee" the platform doesn't honor. */}
         {!courseIsFree ? (
-          <p className="mt-3 rounded-none border border-[rgba(26,54,93,0.12)] bg-[var(--color-surface-soft)] px-4 py-3 text-xs leading-6 text-[var(--color-ink-soft)]">
+          <p className="mt-3 rounded-md border border-[rgba(26,54,93,0.12)] bg-[var(--color-surface-soft)] px-4 py-3 text-xs leading-6 text-[var(--color-ink-soft)]">
             <strong className="text-[var(--color-ink)]">{t("publicCourses.refundTitle")}</strong>{" "}
             {t("publicCourses.refundBody")}
           </p>
@@ -1072,7 +1173,7 @@ export function CreatorCourseDetail({
             statement. A buyer who does not expect that name disputes it, and
             the chargeback lands on the educator's balance. */}
         {!courseIsFree ? (
-          <p className="mt-3 rounded-none border border-[rgba(26,54,93,0.12)] bg-[var(--color-surface-soft)] px-4 py-3 text-xs leading-6 text-[var(--color-ink-soft)]">
+          <p className="mt-3 rounded-md border border-[rgba(26,54,93,0.12)] bg-[var(--color-surface-soft)] px-4 py-3 text-xs leading-6 text-[var(--color-ink-soft)]">
             <strong className="text-[var(--color-ink)]">{t("publicCourses.sellerTitle")}</strong>{" "}
             {t("publicCourses.sellerBody")}
           </p>
@@ -1091,7 +1192,7 @@ export function CreatorCourseDetail({
         mantem os dois a mao e leva ao cartao. Escondida a partir de lg, onde
         o cartao ja acompanha a rolagem na coluna lateral. */}
     {!checkoutOnly ? <div className="pointer-events-none fixed inset-x-0 bottom-0 z-40 px-3 pb-3 lg:hidden">
-      <div className="pointer-events-auto flex items-center gap-3 rounded-none border border-[var(--color-line)] bg-[var(--color-surface)]/95 px-4 py-3 shadow-[0_-6px_30px_rgba(15,39,68,0.18)] backdrop-blur supports-[backdrop-filter]:bg-[var(--color-surface)]/85">
+      <div className="pointer-events-auto flex items-center gap-3 rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)]/95 px-4 py-3 shadow-[0_-6px_30px_rgba(15,39,68,0.18)] backdrop-blur supports-[backdrop-filter]:bg-[var(--color-surface)]/85">
         <div className="min-w-0 flex-1">
           <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">{t("publicCourses.access")}</p>
           <p className="display-title truncate text-xl leading-none text-[var(--color-primary)]">
@@ -1150,7 +1251,7 @@ function CourseDetailState({
     : { label: t("publicPages.notFound.home"), href: "/" });
 
   return (
-    <section className="rounded-none border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)]">
+    <section className="rounded-lg border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)]">
       <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">{t("publicCourses.creatorCourse")}</p>
       <h1 className="display-title mt-3 text-4xl text-[var(--color-ink)]">
         {title}

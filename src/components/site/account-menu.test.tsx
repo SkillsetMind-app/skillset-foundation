@@ -126,30 +126,30 @@ describe("workspace switcher in the account menu", () => {
     // studio from the menu — the bug this exists to prevent coming back.
     openMenu(["admin", "teacher"], "/learn");
 
-    expect(screen.getByRole("link", { name: /teacher view/i })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /operations view/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /teacher area/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /operations area/i })).toBeInTheDocument();
   });
 
   it("hides the workspace you are already in", () => {
     // Otherwise it is a list of links, not a toggle.
     openMenu(["admin", "teacher"], "/teach");
 
-    expect(screen.queryByRole("link", { name: /teacher view/i })).toBeNull();
-    expect(screen.getByRole("link", { name: /student view/i })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /operations view/i })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /teacher area/i })).toBeNull();
+    expect(screen.getByRole("link", { name: /student area/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /operations area/i })).toBeInTheDocument();
   });
 
   it("matches a workspace by its subpaths too", () => {
     openMenu(["admin", "teacher"], "/teach/courses/abc");
 
-    expect(screen.queryByRole("link", { name: /teacher view/i })).toBeNull();
+    expect(screen.queryByRole("link", { name: /teacher area/i })).toBeNull();
   });
 
   it("offers no studio to someone who does not teach, only the application", () => {
     openMenu(["student"], "/learn");
 
-    expect(screen.queryByRole("link", { name: /teacher view/i })).toBeNull();
-    expect(screen.queryByRole("link", { name: /operations view/i })).toBeNull();
+    expect(screen.queryByRole("link", { name: /teacher area/i })).toBeNull();
+    expect(screen.queryByRole("link", { name: /operations area/i })).toBeNull();
     expect(
       screen.getByRole("link", { name: /become a teacher/i }),
     ).toBeInTheDocument();
@@ -158,8 +158,8 @@ describe("workspace switcher in the account menu", () => {
   it("offers no operations to a teacher who is not an admin", () => {
     openMenu(["teacher"], "/teach");
 
-    expect(screen.queryByRole("link", { name: /operations view/i })).toBeNull();
-    expect(screen.getByRole("link", { name: /student view/i })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /operations area/i })).toBeNull();
+    expect(screen.getByRole("link", { name: /student area/i })).toBeInTheDocument();
   });
 
   // O admin procurava "ver como" no menu do avatar (reanalise Ops 5). E um
@@ -174,5 +174,66 @@ describe("workspace switcher in the account menu", () => {
 
     openMenu(["teacher"], "/teach");
     expect(screen.queryByRole("link", { name: /view as/i })).toBeNull();
+  });
+});
+
+// O aluno via "Subscription · Free" (o plano de quem vende) e "Billing" para o
+// que ele mesmo comprou.
+describe("account menu for a learner", () => {
+  it("shows My purchases and no creator plan", () => {
+    openMenu(["student"], "/learn");
+
+    expect(screen.getByRole("link", { name: "My purchases" })).toHaveAttribute("href", "/account/billing");
+    expect(screen.queryByRole("link", { name: /subscription|creator plan/i })).toBeNull();
+    expect(document.querySelector('a[href="/account/plans"]')).toBeNull();
+  });
+
+  it("an admin without the teacher role sees Billing, like the sidebar", () => {
+    openMenu(["admin"], "/learn");
+
+    expect(screen.getByRole("link", { name: "Billing" })).toHaveAttribute("href", "/account/billing");
+    expect(screen.queryByRole("link", { name: "My purchases" })).toBeNull();
+  });
+
+  it("a teacher keeps the creator plan and payouts", () => {
+    openMenu(["student", "teacher"], "/learn");
+
+    expect(screen.getByRole("link", { name: /creator plan/i })).toHaveAttribute("href", "/account/plans");
+    // Um nome so para a pagina do dinheiro, o mesmo da barra lateral.
+    expect(screen.getByRole("link", { name: "Earnings" })).toHaveAttribute("href", "/account/payments");
+    expect(screen.queryByRole("link", { name: /payouts & tax/i })).toBeNull();
+    expect(screen.queryByRole("link", { name: "My purchases" })).toBeNull();
+  });
+});
+
+describe("account menu: tools, help and same-tab switching", () => {
+  it("'Become a teacher' opens in the same tab", () => {
+    openMenu(["student"], "/learn");
+
+    const become = screen.getByRole("link", { name: /become a teacher/i });
+    expect(become).toHaveAttribute("href", "/onboarding?path=teacher");
+    expect(become).not.toHaveAttribute("target");
+  });
+
+  it("Verification left the sidebar and lives here, for teachers only", () => {
+    openMenu(["teacher"], "/teach");
+    expect(screen.getByRole("link", { name: "Verification" })).toHaveAttribute("href", "/teach/verification");
+    cleanup();
+
+    openMenu(["student"], "/learn");
+    expect(screen.queryByRole("link", { name: "Verification" })).toBeNull();
+  });
+
+  // Uma Ajuda por tela: ela mora na barra lateral (ou no topo da sala de
+  // aula). Repetida aqui, eram duas ou tres iguais na mesma tela.
+  it.each([
+    ["/teach", ["teacher"]],
+    ["/learn", ["student"]],
+    ["/ops", ["admin"]],
+  ])("on %s the account menu has no Help of its own", (pathname, roles) => {
+    openMenu(roles, pathname);
+
+    expect(screen.queryByRole("button", { name: "Help" })).toBeNull();
+    expect(screen.queryByRole("dialog", { name: "What do you need help with?" })).toBeNull();
   });
 });

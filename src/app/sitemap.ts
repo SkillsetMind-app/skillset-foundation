@@ -31,7 +31,6 @@ const publicRoutes: Array<{
   { path: "/refund-policy", changeFrequency: "yearly", priority: 0.5 },
   { path: "/trust", changeFrequency: "monthly", priority: 0.7 },
   { path: "/promise/changelog", changeFrequency: "monthly", priority: 0.4 },
-  { path: "/instructors", changeFrequency: "weekly", priority: 0.7 },
   { path: "/about", changeFrequency: "monthly", priority: 0.6 },
   { path: "/help", changeFrequency: "monthly", priority: 0.6 },
   { path: "/contact", changeFrequency: "yearly", priority: 0.4 },
@@ -70,8 +69,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   // Loja sem curso real não é página que valha indexar. Mesma checagem da
   // home (anônima, em cache), não o tamanho da lista acima.
+  // O diretório de instrutores segue a loja (#471): sem curso real, ele só
+  // listaria perfis sem nada à venda.
   const storeEntry = hasRealCourses
-    ? [{ url: `${SITE_URL}/courses`, lastModified, changeFrequency: "daily" as const, priority: 0.9 }]
+    ? [
+        { url: `${SITE_URL}/courses`, lastModified, changeFrequency: "daily" as const, priority: 0.9 },
+        { url: `${SITE_URL}/instructors`, lastModified, changeFrequency: "weekly" as const, priority: 0.7 },
+      ]
     : [];
 
   const courseEntries = courses.map((course) => ({

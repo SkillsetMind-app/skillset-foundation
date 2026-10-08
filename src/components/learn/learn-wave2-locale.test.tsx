@@ -20,18 +20,20 @@ const mocks = vi.hoisted(() => ({
   config: vi.fn(), enrollment: vi.fn(), enrollments: vi.fn(), course: vi.fn(),
   messages: vi.fn(), send: vi.fn(), events: vi.fn(), rsvp: vi.fn(), saveRsvp: vi.fn(),
   wishlist: vi.fn(), published: vi.fn(), remove: vi.fn(), leaderboard: vi.fn(),
+  publicCourse: vi.fn(), signOut: vi.fn(),
 }));
 vi.mock("next/navigation", () => ({
   useRouter: () => mocks.router, useSearchParams: () => mocks.params,
   usePathname: () => "/learn/messages",
 }));
-vi.mock("@/components/auth/auth-provider", () => ({ useAuth: () => ({ user: mocks.user }) }));
+vi.mock("@/components/auth/auth-provider", () => ({ useAuth: () => ({ user: mocks.user, signOut: mocks.signOut }) }));
 vi.mock("@/lib/supabase/config", () => ({ getSupabaseClientConfig: mocks.config }));
 vi.mock("@/lib/data/enrollments", () => ({ subscribeToEnrollment: mocks.enrollment, subscribeToUserEnrollments: mocks.enrollments }));
 vi.mock("@/lib/data/teacher-courses", () => ({ subscribeToTeacherCourse: mocks.course }));
 vi.mock("@/lib/data/published-courses", () => ({
   teacherCourseToLearningCourse: (course: unknown) => course,
   subscribeToPublishedTeacherCourses: mocks.published,
+  subscribeToViewableTeacherCourse: mocks.publicCourse,
   teacherCourseToCourseCard: (course: unknown) => course,
 }));
 vi.mock("@/lib/data/catalog", () => ({ getFeaturedCourseCards: () => [] }));
@@ -91,6 +93,8 @@ beforeEach(() => {
   mocks.wishlist.mockImplementation((_uid, next) => { next([]); return () => {}; });
   mocks.published.mockImplementation((next) => { next([]); return () => {}; });
   mocks.leaderboard.mockImplementation((_window, next) => { next(null); return () => {}; });
+  mocks.publicCourse.mockImplementation((_ref, next) => { next(null); return () => {}; });
+  mocks.signOut.mockResolvedValue(undefined);
 });
 afterEach(() => { cleanup(); vi.useRealTimers(); });
 
@@ -122,6 +126,34 @@ describe("learner wave 2 with real provider and dictionaries", () => {
     expect(screen.getByRole("link", { name: "Volver a Mi aprendizaje" })).toBeVisible();
   });
 
+  // "Enrollment required" offered only My Learning and the marketplace: no way
+  // to reach this course's page, and no way out of the wrong account. The label
+  // is always "See the course": the price lives in offers, and the page shows it.
+  it("without access, the main button opens the course page", () => {
+    show(<CreatorCourseWorkspace initialCourseId="course-es" />);
+
+    expect(screen.getByText("Todavía no tienes acceso a este curso.")).toBeVisible();
+    expect(screen.queryByText(/espacio privado/)).not.toBeInTheDocument();
+    const main = screen.getByRole("link", { name: "Ver el curso" });
+    expect(main).toHaveAttribute("href", "/courses/course-es");
+    expect(main).toHaveClass("button-solid");
+    expect(screen.getByRole("link", { name: "Volver a Mi aprendizaje" })).toHaveClass("button-outline");
+    expect(mocks.publicCourse).not.toHaveBeenCalled();
+    changeLanguage();
+    expect(screen.getByRole("link", { name: "See the course" })).toHaveAttribute("href", "/courses/course-es");
+    expect(screen.getByText("You don't have access to this course yet.")).toBeVisible();
+  });
+
+  it("without access, signing out stays on this page, which asks to sign in again", () => {
+    show(<CreatorCourseWorkspace initialCourseId="course-es" />);
+
+    fireEvent.click(screen.getByRole("button", { name: "¿Entraste con otra cuenta? Salir" }));
+
+    expect(mocks.signOut).toHaveBeenCalledTimes(1);
+    expect(mocks.router.push).not.toHaveBeenCalled();
+    expect(mocks.router.replace).not.toHaveBeenCalled();
+  });
+
   it("hands the enrollment it already has to the classroom instead of fetching it twice", () => {
     mocks.enrollment.mockImplementation((_uid, _id, next) => { next(enrollment); return () => {}; });
     mocks.course.mockImplementation((_id, next) => { next({ id: "course-es", title: enrollment.courseTitle }); return () => {}; });
@@ -138,6 +170,16 @@ describe("learner wave 2 with real provider and dictionaries", () => {
     changeLanguage();
     expect(screen.getByRole("heading", { name: "Course access is inactive." })).toBeVisible();
     expect(mocks.enrollment).toHaveBeenCalledTimes(1);
+  });
+
+  // Reembolsada, cancelada, vencida ou em atraso: também não pode ser beco.
+  it("an inactive enrollment still offers the course page and a way out of the wrong account", () => {
+    mocks.enrollment.mockImplementation((_uid, _id, next) => { next({ ...enrollment, status: "refunded" }); return () => {}; });
+    show(<CreatorCourseWorkspace initialCourseId="course-es" />);
+
+    expect(screen.getByRole("link", { name: "Ver el curso" })).toHaveAttribute("href", "/courses/course-es");
+    fireEvent.click(screen.getByRole("button", { name: "¿Entraste con otra cuenta? Salir" }));
+    expect(mocks.signOut).toHaveBeenCalledTimes(1);
   });
 
   it("changes checkout waiting copy at 90 seconds and keeps polling for actual enrollment", () => {

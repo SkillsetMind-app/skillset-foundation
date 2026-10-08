@@ -62,7 +62,7 @@ function buildConnectAppearance(theme: "light" | "dark") {
       colorDanger: dark ? "#e36b78" : "#b22234",
       fontFamily:
         "ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
-      borderRadius: "0px",
+      borderRadius: "8px",
     },
   };
 }
@@ -132,7 +132,7 @@ export function TeacherConnectOnboarding({
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
           aria-describedby="payout-country-hint"
-          className="mt-2 block min-h-11 w-full max-w-sm rounded-none border border-[var(--color-line)] bg-white px-4 text-sm outline-none focus:border-[var(--color-primary-light)]"
+          className="mt-2 block min-h-11 w-full max-w-sm rounded-md border border-[var(--color-line)] bg-white px-4 text-sm outline-none focus:border-[var(--color-primary-light)]"
         >
           {options.map(({ code, label }) => (
             <option key={code} value={code}>{label}</option>
@@ -415,7 +415,7 @@ function ConnectOnboardingFlow({
       // Card não repassa atributos ARIA, e aqui o aria-busy/aria-live é o
       // ponto: sai como <div> com as mesmas variáveis do primitivo.
       <div
-        className="rounded-[var(--radius-xl)] border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-5 text-sm text-[var(--color-ink-soft)]"
+        className="rounded-lg border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-5 text-sm text-[var(--color-ink-soft)]"
         aria-busy="true"
         aria-live="polite"
       >
@@ -468,7 +468,7 @@ function StripeConnectFallback({
   const { t } = useTranslation();
   const recoveryHref = connectRecoveryHref(errorKey);
   return (
-    <div className="rounded-none border border-[rgba(178,34,52,0.18)] bg-[rgba(178,34,52,0.04)] p-5">
+    <div className="rounded-lg border border-[rgba(178,34,52,0.18)] bg-[rgba(178,34,52,0.04)] p-5">
       <Eyebrow>{t("connectOnboarding.fallbackEyebrow")}</Eyebrow>
       <h4 className="display-title mt-2 text-2xl text-[var(--color-primary)]">
         {t("connectOnboarding.fallbackTitle")}
