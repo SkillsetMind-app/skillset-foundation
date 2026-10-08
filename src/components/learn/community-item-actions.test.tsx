@@ -100,10 +100,103 @@ describe("acoes de moderacao da comunidade", () => {
     expect(buttonNames()).toEqual(names);
   });
 
-  it("the owner unpins with the same write the database already allowed", () => {
+  it("the owner unpins with the same write the database already allowed", async () => {
     show({ currentUser: owner, canModerate: true });
-    fireEvent.click(screen.getByRole("button", { name: "Unpin" }));
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Unpin" })); });
     expect(setCommunityPostPinned).toHaveBeenCalledExactlyOnceWith("p-1", false);
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it.each([
+    ["en", "Unpin", "We could not change the pin. Try again."],
+    ["es", "Desfijar", "No pudimos cambiar el fijado. Inténtalo de nuevo."],
+  ] as const)("a refused pin says so instead of failing silently (%s)", async (locale, unpin, message) => {
+    // 0 linhas (RLS) vira erro em setCommunityPostPinned; a tela mostra.
+    vi.mocked(setCommunityPostPinned).mockRejectedValueOnce(new Error("community_pin_refused"));
+    show({ currentUser: owner, canModerate: true }, locale);
+
+    const button = screen.getByRole("button", { name: unpin });
+    await act(async () => { fireEvent.click(button); });
+
+    expect(screen.getByRole("alert")).toHaveTextContent(message);
+    expect(screen.queryByText("community_pin_refused")).toBeNull();
+    expect(button).toHaveAttribute("aria-disabled", "false");
+  });
+
+  it("a second click while the pin is saving does not write twice", async () => {
+    let finish!: () => void;
+    vi.mocked(setCommunityPostPinned).mockReturnValueOnce(new Promise<void>((done) => { finish = done; }));
+    show({ currentUser: owner, canModerate: true });
+
+    const button = screen.getByRole("button", { name: "Unpin" });
+    fireEvent.click(button);
+    expect(button).toHaveAttribute("aria-disabled", "true");
+    fireEvent.click(button);
+    await act(async () => { finish(); });
+
+    expect(setCommunityPostPinned).toHaveBeenCalledTimes(1);
+  });
+
+  it("the delete confirmation takes the focus, and Escape closes only it", () => {
+    // A gaveta em volta tambem fecha com Esc (ouve no document).
+    const drawerEscape = vi.fn();
+    document.addEventListener("keydown", drawerEscape);
+    try {
+      show({ currentUser: owner, canModerate: true });
+      const open = screen.getByRole("button", { name: "Delete" });
+      fireEvent.click(open);
+
+      const keep = screen.getByRole("button", { name: "Keep it" });
+      expect(keep).toHaveFocus();
+      fireEvent.keyDown(keep, { key: "Escape" });
+
+      expect(screen.queryByRole("group")).toBeNull();
+      expect(open).toHaveFocus();
+      expect(open).toHaveAttribute("aria-expanded", "false");
+      expect(drawerEscape).not.toHaveBeenCalled();
+      expect(deleteCommunityPost).not.toHaveBeenCalled();
+    } finally {
+      document.removeEventListener("keydown", drawerEscape);
+    }
+  });
+
+  it("'Cancel' and Escape on the report form give the focus back to the button that opened it", () => {
+    show({ currentUser: member });
+    const open = screen.getByRole("button", { name: "Report" });
+
+    fireEvent.click(open);
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(open).toHaveFocus();
+
+    fireEvent.click(open);
+    fireEvent.keyDown(screen.getByRole("combobox", { name: "Reason" }), { key: "Escape" });
+    expect(screen.queryByRole("form")).toBeNull();
+    expect(open).toHaveFocus();
+  });
+
+  it.each([
+    ["the next item", true, "Next post"],
+    ["the list heading when it was the last item", false, "Community"],
+  ] as const)("after deleting, the focus goes to %s", async (_label, withNext, focused) => {
+    render(
+      <I18nProvider initialLocale="en">
+        <h2 data-community-heading tabIndex={-1}>Community</h2>
+        <article data-community-item>
+          <CommunityItemActions post={post} currentUser={owner} canModerate />
+        </article>
+        {withNext ? (
+          <article data-community-item>
+            <button type="button">Next post</button>
+          </article>
+        ) : null}
+      </I18nProvider>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Delete" }));
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Yes, delete" })); });
+
+    expect(deleteCommunityPost).toHaveBeenCalledExactlyOnceWith("p-1");
+    expect(document.activeElement).toHaveTextContent(focused);
   });
 
   it("delete asks first: 'Keep it' changes nothing, 'Yes, delete' deletes and hides", async () => {
@@ -224,5 +317,36 @@ describe("acoes de moderacao da comunidade", () => {
     expect(screen.getByRole("alert")).toHaveTextContent("We could not send your report. Try again.");
     expect(screen.getByRole("form", { name: "Report this post" })).toBeInTheDocument();
     expect(screen.queryByText("internal detail")).toBeNull();
+  });
+
+  it.each([
+    ["en", "Report", "Send report", "You sent a lot of reports in the last hour. Wait a little and try again."],
+    ["es", "Denunciar", "Enviar denuncia", "Enviaste muchas denuncias en la última hora. Espera un poco y vuelve a intentarlo."],
+  ] as const)("the report limit has its own words, not 'you posted a lot' (%s)", async (locale, report, send, message) => {
+    vi.mocked(createCommunityReport).mockRejectedValueOnce({ code: "P0001", message: "RATE_LIMIT" });
+    show({ currentUser: member }, locale);
+
+    fireEvent.click(screen.getByRole("button", { name: report }));
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: send })); });
+
+    expect(screen.getByRole("alert")).toHaveTextContent(message);
+    expect(screen.getByRole("alert")).not.toHaveTextContent(/posted|Publicaste/);
+  });
+
+  it.each([
+    ["en", "Report", "Send report", "You already reported this. Our team will review it."],
+    ["es", "Denunciar", "Enviar denuncia", "Ya lo denunciaste. Nuestro equipo lo revisará."],
+  ] as const)("reporting the same thing again is a friendly note, not an error (%s)", async (locale, report, send, message) => {
+    // O banco recusa a segunda denuncia aberta do mesmo alvo.
+    vi.mocked(createCommunityReport).mockRejectedValueOnce({ code: "23505", message: "COMMUNITY_REPORT_DUPLICATE" });
+    show({ currentUser: member }, locale);
+
+    fireEvent.click(screen.getByRole("button", { name: report }));
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: send })); });
+
+    expect(screen.getByRole("status")).toHaveTextContent(message);
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.queryByRole("form")).toBeNull();
+    expect(screen.queryByRole("button", { name: report })).toBeNull();
   });
 });

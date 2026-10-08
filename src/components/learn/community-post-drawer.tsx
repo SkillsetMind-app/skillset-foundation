@@ -27,6 +27,9 @@ import { useModalFocus } from "@/lib/a11y/use-modal-focus";
 // resposta aceita fica em verde no topo, as demais embaixo, e a caixa de
 // resposta e fixa no rodape. A mesma gaveta serve para qualquer post.
 
+// Fora do componente: useModalFocus refaz o efeito se a funcao mudar.
+const focusCommunityHeading = () => document.querySelector<HTMLElement>("[data-community-heading]");
+
 export function CommunityPostDrawer({
   post,
   comments,
@@ -52,7 +55,9 @@ export function CommunityPostDrawer({
   // Chave do dicionario, nao texto: o idioma pode trocar com o erro na tela.
   const [error, setError] = useState("");
 
-  useModalFocus(panelRef, true);
+  // Fechou porque o post foi apagado: o botao que abriu a gaveta sumiu junto,
+  // e o foco vai para o titulo da lista.
+  useModalFocus(panelRef, true, focusCommunityHeading);
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -194,6 +199,7 @@ export function CommunityPostDrawer({
                 return (
                   <li
                     key={reply.id}
+                    data-community-item
                     className={`rounded-lg p-3 text-sm ${
                       isAnswer
                         ? "border border-[rgba(22,163,74,0.35)] bg-[rgba(22,163,74,0.08)]"

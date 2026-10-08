@@ -191,7 +191,7 @@ export function TeacherCommunityInbox({ courseId }: { courseId: string }) {
           </section>
 
           <section aria-labelledby="all-posts-heading" className="grid gap-3">
-            <h2 id="all-posts-heading" className="text-lg font-semibold text-[var(--color-ink)]">
+            <h2 id="all-posts-heading" data-community-heading tabIndex={-1} className="text-lg font-semibold text-[var(--color-ink)]">
               {t("teacherCommunity.allPosts")}
               <span className="ml-2 inline-flex min-w-7 items-center justify-center rounded-full bg-[var(--color-surface-soft)] px-2 text-xs font-bold text-[var(--color-ink)]">
                 {number(posts.length)}
@@ -210,6 +210,7 @@ export function TeacherCommunityInbox({ courseId }: { courseId: string }) {
                   return (
                     <li
                       key={post.id}
+                      data-community-item
                       className="rounded-lg border border-[var(--color-line)] bg-white p-4 shadow-[var(--shadow-soft)]"
                     >
                       <p className="flex flex-wrap items-center gap-x-1 text-xs text-[var(--color-ink-muted)]">

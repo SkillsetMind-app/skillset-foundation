@@ -198,8 +198,12 @@ export function subscribeToCommunityPosts(
  *  Uma leitura ao abrir a sala, so as duas colunas da regra. A regra em si
  *  mora no dominio (countOpenQuestions), nao aqui.
  *
- *  ponytail: leitura unica na montagem, sem realtime. Se o numero precisar
- *  mudar sem recarregar, o upgrade e trocar por uma inscricao. */
+ *  O banco ja filtra (pergunta sem resposta aceita) e manda as MAIS NOVAS:
+ *  sem isso a janela de 200 pegava 200 posts quaisquer e o numero da aba
+ *  saia errado num curso com mais posts. A regra continua no dominio.
+ *
+ *  ponytail: leitura unica na montagem, sem realtime, teto de 200. Se o numero
+ *  precisar mudar sem recarregar, o upgrade e trocar por uma inscricao. */
 export async function countOpenCommunityQuestions(courseSlug: string): Promise<number> {
   const supabase = getSupabaseBrowserClient();
 
@@ -207,6 +211,9 @@ export async function countOpenCommunityQuestions(courseSlug: string): Promise<n
     .from("community_posts")
     .select("category, accepted_comment_id")
     .eq("course_slug", courseSlug)
+    .eq("category", "question")
+    .is("accepted_comment_id", null)
+    .order("created_at", { ascending: false, nullsFirst: false })
     .limit(200);
 
   if (error) {
@@ -223,17 +230,22 @@ export async function countOpenCommunityQuestions(courseSlug: string): Promise<n
 
 // Teacher/admin moderation: toggle a post's pinned state. The write touches only
 // `pinned` + `updated_at`, which is exactly what the RLS teacher-pin path
-// allows (any other changed column would be rejected).
+// allows (any other changed column would be rejected). A RLS recusa em
+// SILENCIO (0 linhas), como no apagar: sem o count o botao nao mudava e
+// ninguem ficava sabendo.
 export async function setCommunityPostPinned(postId: string, pinned: boolean) {
   const supabase = getSupabaseBrowserClient();
 
-  const { error } = await supabase
+  const { error, count } = await supabase
     .from("community_posts")
-    .update({ pinned, updated_at: nowIso() })
+    .update({ pinned, updated_at: nowIso() }, { count: "exact" })
     .eq("id", postId);
 
   if (error) {
     throw error;
+  }
+  if (!count) {
+    throw new Error("community_pin_refused");
   }
 }
 

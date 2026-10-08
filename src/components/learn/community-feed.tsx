@@ -285,7 +285,8 @@ export function CommunityFeed({
             <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
               {t("learn.community.eyebrow")}
             </p>
-            <h2 className="display-title mt-1 text-2xl text-[var(--color-ink)]">
+            {/* Recebe o foco quando o ultimo post visivel e apagado. */}
+            <h2 data-community-heading tabIndex={-1} className="display-title mt-1 text-2xl text-[var(--color-ink)]">
               {space.name.replace(/ community$/i, "")}
             </h2>
           </div>
@@ -805,6 +806,7 @@ function FeedCard({
 
   return (
     <article
+      data-community-item
       aria-label={post.title ?? post.body.slice(0, 60)}
       className={`rounded-lg border border-[var(--color-line)] bg-white p-4 shadow-[var(--shadow-soft)] ${
         fromInstructor ? "border-l-4 border-l-[var(--color-primary)]" : ""

@@ -2,9 +2,11 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { CommunityComment, CommunityPost } from "@/domain/community-post";
 import {
+  countOpenCommunityQuestions,
   createCommunityReport,
   deleteCommunityComment,
   deleteCommunityPost,
+  setCommunityPostPinned,
   subscribeToCommunityPosts,
   subscribeToCourseCommunityComments,
 } from "@/lib/data/community-posts";
@@ -137,6 +139,58 @@ describe("apagar post ou resposta", () => {
   it("o erro do banco sobe como veio", async () => {
     db.error = { code: "42501", message: "permission denied" };
     await expect(deleteCommunityPost("row-1")).rejects.toEqual({ code: "42501", message: "permission denied" });
+  });
+});
+
+describe("fixar e desafixar", () => {
+  it("muda so pinned e updated_at, pelo id, e pede a contagem", async () => {
+    db.count = 1;
+
+    await expect(setCommunityPostPinned("p-1", true)).resolves.toBeUndefined();
+
+    expect(db.calls.community_posts).toEqual([
+      ["update", [{ pinned: true, updated_at: expect.any(String) }, { count: "exact" }]],
+      ["eq", ["id", "p-1"]],
+    ]);
+  });
+
+  it("a RLS recusou (0 linhas) vira erro: o botao nao falha calado", async () => {
+    db.count = 0;
+    await expect(setCommunityPostPinned("p-1", false)).rejects.toThrow("community_pin_refused");
+  });
+
+  it("o erro do banco sobe como veio", async () => {
+    db.error = { code: "42501", message: "permission denied" };
+    await expect(setCommunityPostPinned("p-1", false)).rejects.toEqual({ code: "42501", message: "permission denied" });
+  });
+});
+
+describe("contador de perguntas em aberto da aba", () => {
+  it("pede ao banco so perguntas sem resposta aceita, das mais novas, antes do teto de 200", async () => {
+    db.rows.community_posts = [
+      { category: "question", accepted_comment_id: null },
+      { category: "question", accepted_comment_id: null },
+    ];
+
+    await expect(countOpenCommunityQuestions("course-1")).resolves.toBe(2);
+
+    expect(db.calls.community_posts).toEqual([
+      ["select", ["category, accepted_comment_id"]],
+      ["eq", ["course_slug", "course-1"]],
+      ["eq", ["category", "question"]],
+      ["is", ["accepted_comment_id", null]],
+      ["order", ["created_at", { ascending: false, nullsFirst: false }]],
+      ["limit", [200]],
+    ]);
+  });
+
+  it("a regra do dominio continua valendo sobre o que o banco devolveu", async () => {
+    db.rows.community_posts = [
+      { category: "question", accepted_comment_id: "c-1" },
+      { category: "discussion", accepted_comment_id: null },
+      { category: "question", accepted_comment_id: null },
+    ];
+    await expect(countOpenCommunityQuestions("course-1")).resolves.toBe(1);
   });
 });
 

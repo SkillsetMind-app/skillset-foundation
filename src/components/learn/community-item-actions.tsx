@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState, type FormEvent } from "react";
+import { useEffect, useId, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import type { SkillsetUser } from "@/domain/auth";
@@ -31,11 +31,39 @@ import { isRateLimitError } from "@/lib/data/rate-limit-error";
 //
 // Devolve um fragmento: quem usa poe dentro de um container flex-wrap, e o
 // painel aberto (confirmar ou denunciar) ocupa a linha inteira (basis-full).
+//
+// Teclado: o painel de confirmar recebe o foco (em "Keep it", o lado seguro);
+// Esc fecha o painel aberto e devolve o foco ao botao que o abriu; depois de
+// apagar, o foco vai para o item seguinte da lista (marcado com
+// data-community-item) ou, sem vizinho, para a gaveta ou o titulo da lista
+// (data-community-heading). Antes ele caia no body.
 
 const REASONS: CommunityReportReason[] = ["spam", "harassment", "unsafe_content", "off_topic", "other"];
 
 const ACTION =
   "min-h-11 rounded-md px-3 text-xs font-semibold text-[var(--color-ink-soft)] hover:bg-[var(--color-surface-soft)] hover:text-[var(--color-ink)]";
+
+const FOCUSABLE = "button:not([disabled]), a[href]";
+
+/** Para onde o foco vai quando o item sai da tela. Calculado ANTES de apagar. */
+function focusTargetAfterDelete(from: HTMLElement | null): HTMLElement | null {
+  const item = from?.closest("[data-community-item]");
+  const neighbour = [item?.nextElementSibling, item?.previousElementSibling].find((element) =>
+    element?.matches("[data-community-item]"),
+  );
+  return (
+    neighbour?.querySelector<HTMLElement>(FOCUSABLE) ??
+    from?.closest("[role='dialog']")?.querySelector<HTMLElement>(FOCUSABLE) ??
+    document.querySelector<HTMLElement>("[data-community-heading]")
+  );
+}
+
+// O banco recusa a segunda denuncia ABERTA da mesma pessoa no mesmo alvo
+// (trigger community_reports_trusted_fields): a tela agradece de novo.
+function isDuplicateReport(failure: unknown): boolean {
+  const message = failure && typeof failure === "object" && "message" in failure ? failure.message : null;
+  return typeof message === "string" && message.startsWith("COMMUNITY_REPORT_DUPLICATE");
+}
 
 export function CommunityItemActions({
   post,
@@ -60,7 +88,17 @@ export function CommunityItemActions({
   const [error, setError] = useState("");
   const [reason, setReason] = useState<CommunityReportReason>("spam");
   const [detail, setDetail] = useState("");
-  const [reported, setReported] = useState(false);
+  // "done" = acabou de denunciar; "duplicate" = ja tinha denunciado antes.
+  const [reported, setReported] = useState<"" | "done" | "duplicate">("");
+  const deleteRef = useRef<HTMLButtonElement>(null);
+  const reportRef = useRef<HTMLButtonElement>(null);
+  const keepRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (panel === "delete") {
+      keepRef.current?.focus();
+    }
+  }, [panel]);
 
   const item = comment ?? post;
   const isAuthor = Boolean(currentUser) && currentUser?.uid === item.authorId;
@@ -77,9 +115,37 @@ export function CommunityItemActions({
     setPanel((current) => (current === next ? "none" : next));
   }
 
+  function closePanel() {
+    const opener = panel === "delete" ? deleteRef.current : reportRef.current;
+    setPanel("none");
+    opener?.focus();
+  }
+
+  function closeOnEscape(event: KeyboardEvent<HTMLElement>) {
+    if (event.key !== "Escape") return;
+    // Fecha so o painel: a gaveta em volta tambem fecha com Esc.
+    event.preventDefault();
+    event.stopPropagation();
+    closePanel();
+  }
+
+  async function togglePin() {
+    if (busy) return;
+    setError("");
+    setBusy(true);
+    try {
+      await setCommunityPostPinned(post.id, !post.pinned);
+    } catch {
+      setError("learn.community.actions.pinError");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function confirmDelete() {
     setError("");
     setBusy(true);
+    const nextFocus = focusTargetAfterDelete(deleteRef.current);
     try {
       if (comment) {
         await deleteCommunityComment(comment.id);
@@ -87,6 +153,7 @@ export function CommunityItemActions({
         await deleteCommunityPost(post.id);
       }
       setPanel("none");
+      nextFocus?.focus();
       onDeleted?.();
     } catch {
       setError("learn.community.actions.deleteError");
@@ -113,9 +180,14 @@ export function CommunityItemActions({
         user: currentUser,
       });
       setPanel("none");
-      setReported(true);
+      setReported("done");
     } catch (failure) {
-      setError(isRateLimitError(failure) ? "learn.community.rateLimit" : "learn.community.report.error");
+      if (isDuplicateReport(failure)) {
+        setPanel("none");
+        setReported("duplicate");
+      } else {
+        setError(isRateLimitError(failure) ? "learn.community.report.rateLimit" : "learn.community.report.error");
+      }
     } finally {
       setBusy(false);
     }
@@ -128,7 +200,9 @@ export function CommunityItemActions({
       {canPin ? (
         <button
           type="button"
-          onClick={() => void setCommunityPostPinned(post.id, !post.pinned)}
+          onClick={() => void togglePin()}
+          // aria-disabled, nao disabled: botao desabilitado perde o foco do teclado.
+          aria-disabled={busy}
           className={ACTION}
         >
           {t(post.pinned ? "learn.community.card.unpin" : "learn.community.card.pin")}
@@ -136,6 +210,7 @@ export function CommunityItemActions({
       ) : null}
       {canDelete ? (
         <button
+          ref={deleteRef}
           type="button"
           onClick={() => toggle("delete")}
           aria-expanded={panel === "delete"}
@@ -147,6 +222,7 @@ export function CommunityItemActions({
       ) : null}
       {canReport && !reported ? (
         <button
+          ref={reportRef}
           type="button"
           onClick={() => toggle("report")}
           aria-expanded={panel === "report"}
@@ -158,7 +234,7 @@ export function CommunityItemActions({
       ) : null}
       {reported ? (
         <p role="status" className="basis-full text-xs font-semibold text-[rgb(21,128,61)]">
-          {t("learn.community.report.done")}
+          {t(reported === "duplicate" ? "learn.community.report.duplicate" : "learn.community.report.done")}
         </p>
       ) : null}
 
@@ -167,6 +243,7 @@ export function CommunityItemActions({
           id={panelId}
           role="group"
           aria-labelledby={`${panelId}-title`}
+          onKeyDown={closeOnEscape}
           className="flex basis-full flex-wrap items-center gap-2 rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] p-3"
         >
           <p id={`${panelId}-title`} className="w-full text-sm font-semibold text-[var(--color-ink)]">
@@ -181,8 +258,9 @@ export function CommunityItemActions({
             {t(busy ? "learn.community.actions.deleting" : "learn.community.actions.deleteYes")}
           </button>
           <button
+            ref={keepRef}
             type="button"
-            onClick={() => setPanel("none")}
+            onClick={closePanel}
             className="button-outline min-h-11 px-3 text-sm"
           >
             {t("learn.community.actions.keep")}
@@ -194,6 +272,7 @@ export function CommunityItemActions({
         <form
           id={panelId}
           onSubmit={sendReport}
+          onKeyDown={closeOnEscape}
           aria-labelledby={`${panelId}-title`}
           className="grid basis-full gap-2 rounded-md border border-[var(--color-line)] bg-white p-3"
         >
@@ -228,7 +307,7 @@ export function CommunityItemActions({
           <div className="flex flex-wrap justify-end gap-2">
             <button
               type="button"
-              onClick={() => setPanel("none")}
+              onClick={closePanel}
               className="button-outline min-h-11 px-3 text-sm"
             >
               {t("learn.community.report.cancel")}

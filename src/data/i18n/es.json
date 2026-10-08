@@ -1678,6 +1678,7 @@
         "deleting": "Eliminando...",
         "keep": "Mantener",
         "deleteError": "No pudimos eliminarlo. Inténtalo de nuevo.",
+        "pinError": "No pudimos cambiar el fijado. Inténtalo de nuevo.",
         "report": "Denunciar"
       },
       "report": {
@@ -1697,7 +1698,9 @@
         "sending": "Enviando...",
         "cancel": "Cancelar",
         "done": "Gracias. Nuestro equipo lo revisará.",
-        "error": "No pudimos enviar tu denuncia. Inténtalo de nuevo."
+        "error": "No pudimos enviar tu denuncia. Inténtalo de nuevo.",
+        "duplicate": "Ya lo denunciaste. Nuestro equipo lo revisará.",
+        "rateLimit": "Enviaste muchas denuncias en la última hora. Espera un poco y vuelve a intentarlo."
       }
     }
   },
