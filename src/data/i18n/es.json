@@ -1320,7 +1320,8 @@
         "mediaDetails": "El video se reproduce aquí cuando el instructor lo sube o conecta un contenido externo.",
         "content": "Contenido de la lección",
         "freePreview": "Vista previa gratuita",
-        "openResource": "Abrir recurso del instructor"
+        "openResource": "Abrir recurso del instructor",
+        "fileOnlyHint": "Esta lección es un archivo. Descárgalo para leerlo en tu teléfono o computadora."
       },
       "curriculum": {
         "lessons": "Lecciones",
@@ -1344,11 +1345,12 @@
       },
       "resources": {
         "title": "Recursos del curso",
-        "heading": "Archivos e imágenes generales adjuntos a este curso",
+        "heading": "Archivos para descargar de tus lecciones",
         "fileOne": "{count} archivo",
         "fileMany": "{count} archivos",
         "loading": "Cargando recursos del curso...",
-        "empty": "Este curso todavía no tiene recursos generales adjuntos.",
+        "empty": "Todavía no hay archivos para descargar.",
+        "courseFiles": "Archivos del curso",
         "loadingLesson": "Cargando archivos de la lección...",
         "emptyLesson": "Esta lección todavía no tiene archivos adjuntos.",
         "preview": "Vista previa",
@@ -4129,6 +4131,7 @@
       "preparingAsset": "Preparando archivo protegido...",
       "openFile": "Abrir archivo",
       "download": "Descargar",
+      "downloadNamed": "Descargar {title}",
       "videoError": "No pudimos cargar este video. Actualiza la página e inténtalo de nuevo.",
       "unavailable": "Video no disponible",
       "loading": "Cargando video...",

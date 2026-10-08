@@ -31,7 +31,9 @@ describe("protected asset preview identity", () => {
   it.each(["success", "failure"])("translates pending and %s UI without acquiring another protected URL", async (outcome) => {
     let finish!: (url: string) => void;
     let fail!: (error: Error) => void;
-    sign.mockImplementationOnce(() => new Promise<string>((resolve, reject) => { finish = resolve; fail = reject; }));
+    sign.mockImplementationOnce(() => new Promise<string>((resolve, reject) => { finish = resolve; fail = reject; }))
+      // O botão de baixar pede o link dele, com o nome do arquivo.
+      .mockResolvedValue("https://storage.example/signed-download");
     const selectedAsset = { ...asset("image"), fileName: "Capa $& íntegra.png", kind: "lesson_thumbnail" as const, contentType: "image/png" };
     const view = render(
       <I18nProvider initialLocale="en"><ChangeLanguage /><ProtectedAssetPreview asset={selectedAsset} /></I18nProvider>,
@@ -46,7 +48,9 @@ describe("protected asset preview identity", () => {
     });
     if (outcome === "success") {
       expect(screen.getByRole("link", { name: "Abrir archivo" })).toHaveAttribute("href", "blob:protected-image");
-      expect(screen.getByRole("link", { name: "Descargar" })).toHaveAttribute("download", selectedAsset.fileName);
+      const download = await screen.findByRole("link", { name: "Descargar" });
+      expect(download).toHaveAttribute("href", "https://storage.example/signed-download");
+      expect(download).toHaveAttribute("download", selectedAsset.fileName);
     } else {
       expect(screen.getByText("El acceso al archivo está protegido. Actualiza tu sesión e inténtalo de nuevo.")).toBeInTheDocument();
       expect(screen.queryByText("provider detail stays private")).not.toBeInTheDocument();
@@ -54,7 +58,10 @@ describe("protected asset preview identity", () => {
     fireEvent.click(screen.getByRole("button", { name: "Change language" }));
     if (outcome === "success") expect(screen.getByRole("link", { name: "Open file" })).toHaveAttribute("href", "blob:protected-image");
     else expect(screen.getByText("Asset access is protected. Try again after refreshing your session.")).toBeInTheDocument();
-    expect(sign).toHaveBeenCalledExactlyOnceWith(selectedAsset);
+    // Trocar o idioma não pede link novo: um para abrir e, com sucesso, um para baixar.
+    expect(sign.mock.calls).toEqual(outcome === "success"
+      ? [[selectedAsset], [selectedAsset, { download: true }]]
+      : [[selectedAsset]]);
     view.unmount();
     if (outcome === "success") expect(URL.revokeObjectURL).toHaveBeenCalledExactlyOnceWith("blob:protected-image");
   });

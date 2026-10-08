@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Download } from "lucide-react";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { WatermarkedVideoPlayer } from "@/components/learn/watermarked-video-player";
 import type { CourseAsset } from "@/domain/course-asset";
@@ -150,13 +151,84 @@ function ProtectedAssetActions({
       >
         {t("courseMedia.preview.openFile")}
       </a>
-      <a
-        href={objectUrl}
-        download={asset.fileName}
-        className="button-solid px-4 py-2 text-xs"
-      >
-        {t("courseMedia.preview.download")}
-      </a>
+      <ProtectedAssetDownload asset={asset} className="button-solid px-4 py-2 text-xs" />
     </div>
+  );
+}
+
+/**
+ * Botão que baixa de verdade. O link de abrir não serve: o `download` de um
+ * <a> é ignorado para outro domínio, e o arquivo só abria numa aba. Este pede
+ * um link assinado próprio, com o nome original do arquivo (1 hora, mesma RLS
+ * de matrícula e aula liberada).
+ */
+export function ProtectedAssetDownload({
+  asset,
+  className,
+  label,
+}: {
+  asset: CourseAsset;
+  className: string;
+  /** Nome acessível quando há vários botões na tela ("Download Apostila"). */
+  label?: string;
+}) {
+  return (
+    <ProtectedAssetDownloadContent
+      key={JSON.stringify([asset.id, asset.storagePath, asset.fileName])}
+      asset={asset}
+      className={className}
+      label={label}
+    />
+  );
+}
+
+function ProtectedAssetDownloadContent({
+  asset,
+  className,
+  label,
+}: {
+  asset: CourseAsset;
+  className: string;
+  label?: string;
+}) {
+  const { t } = useTranslation();
+  const [state, setState] = useState<{ url: string | null; failed: boolean }>({ url: null, failed: false });
+
+  useEffect(() => {
+    let isMounted = true;
+    void (async () => {
+      try {
+        const url = await getProtectedCourseAssetObjectUrl(asset, { download: true });
+        if (isMounted) setState({ url, failed: false });
+      } catch {
+        if (isMounted) setState({ url: null, failed: true });
+      }
+    })();
+    return () => {
+      isMounted = false;
+    };
+  }, [asset]);
+
+  if (state.failed) {
+    return (
+      <p className="text-sm font-semibold text-[var(--color-danger-fg)]">
+        {t("courseMedia.preview.assetError")}
+      </p>
+    );
+  }
+
+  const text = t("courseMedia.preview.download");
+  // Enquanto o link não chega, o botão aparece desligado no mesmo lugar: nada
+  // pula na tela quando ele liga.
+  return state.url ? (
+    <a href={state.url} download={asset.fileName} aria-label={label} className={className}>
+      <Download aria-hidden="true" size={16} />
+      {text}
+    </a>
+  ) : (
+    <button type="button" disabled aria-label={label} className={`${className} opacity-60`}>
+      <Download aria-hidden="true" size={16} />
+      {text}
+    </button>
   );
 }

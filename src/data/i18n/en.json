@@ -1320,7 +1320,8 @@
         "mediaDetails": "When the instructor uploads a video or connects an embed, it plays here.",
         "content": "Lesson content",
         "freePreview": "Free preview",
-        "openResource": "Open instructor resource"
+        "openResource": "Open instructor resource",
+        "fileOnlyHint": "This lesson is a file. Download it to read on your phone or computer."
       },
       "curriculum": {
         "lessons": "Lessons",
@@ -1344,11 +1345,12 @@
       },
       "resources": {
         "title": "Course resources",
-        "heading": "General files and visuals attached to this course",
+        "heading": "Files to download from your lessons",
         "fileOne": "{count} file",
         "fileMany": "{count} files",
         "loading": "Loading course resources...",
-        "empty": "No general course resources are attached yet.",
+        "empty": "No files to download yet.",
+        "courseFiles": "Course files",
         "loadingLesson": "Loading lesson assets...",
         "emptyLesson": "No files are attached to this lesson yet.",
         "preview": "Preview",
@@ -4129,6 +4131,7 @@
       "preparingAsset": "Preparing protected asset...",
       "openFile": "Open file",
       "download": "Download",
+      "downloadNamed": "Download {title}",
       "videoError": "We could not load this video. Refresh and try again.",
       "unavailable": "Video unavailable",
       "loading": "Loading video...",
