@@ -1468,22 +1468,26 @@ function LessonAssetList({
           </div>
           <div className="flex items-center gap-3">
             {onMove && isEditable ? (
+              // aria-disabled, não disabled: o botão desligado durante a gravação
+              // jogava o foco do teclado para o começo da página a cada movimento.
+              // O clique fora de hora (gravando, ou na ponta da lista) é ignorado
+              // por quem recebe onMove.
               <div className="flex gap-1">
                 <button
                   type="button"
                   onClick={() => onMove(index, -1)}
-                  disabled={index === 0 || isSavingOrder}
+                  aria-disabled={index === 0 || isSavingOrder}
                   aria-label={t("creatorEditor.lesson.files.moveUp").replace("{title}", () => title)}
-                  className="button-outline min-h-11 min-w-11 px-2 disabled:opacity-40"
+                  className="button-outline min-h-11 min-w-11 px-2 aria-disabled:opacity-40"
                 >
                   <ArrowUp aria-hidden="true" size={16} />
                 </button>
                 <button
                   type="button"
                   onClick={() => onMove(index, 1)}
-                  disabled={index === assets.length - 1 || isSavingOrder}
+                  aria-disabled={index === assets.length - 1 || isSavingOrder}
                   aria-label={t("creatorEditor.lesson.files.moveDown").replace("{title}", () => title)}
-                  className="button-outline min-h-11 min-w-11 px-2 disabled:opacity-40"
+                  className="button-outline min-h-11 min-w-11 px-2 aria-disabled:opacity-40"
                 >
                   <ArrowDown aria-hidden="true" size={16} />
                 </button>

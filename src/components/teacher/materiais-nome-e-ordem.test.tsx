@@ -103,8 +103,8 @@ describe("nome e ordem dos materiais", () => {
   it("o professor sobe o arquivo na lista; só a nova ordem vai ao banco", async () => {
     renderModal(true);
 
-    expect(screen.getByRole("button", { name: 'Move "slides-v3.pdf" up' })).toBeDisabled();
-    expect(screen.getByRole("button", { name: 'Move "Workbook" down' })).toBeDisabled();
+    expect(screen.getByRole("button", { name: 'Move "slides-v3.pdf" up' })).toHaveAttribute("aria-disabled", "true");
+    expect(screen.getByRole("button", { name: 'Move "Workbook" down' })).toHaveAttribute("aria-disabled", "true");
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: 'Move "Workbook" up' }));
     });
@@ -112,6 +112,56 @@ describe("nome e ordem dos materiais", () => {
     expect(mocks.saveOrder).toHaveBeenCalledOnce();
     expect(mocks.saveOrder.mock.calls[0][0].map((asset: CourseAsset) => asset.id)).toEqual(["workbook", "slides"]);
     expect(screen.getByText("Order saved.")).toBeInTheDocument();
+  });
+
+  // Quem usa o teclado: o botão em foco não pode virar `disabled` durante a
+  // gravação (o foco ia para o começo da página). Fica marcado e ignora o clique.
+  it("enquanto grava, as setas continuam focáveis e ignoram outro clique", async () => {
+    let finish!: () => void;
+    mocks.saveOrder.mockImplementationOnce(() => new Promise<void>((resolve) => { finish = resolve; }));
+    renderModal(true);
+    const up = screen.getByRole("button", { name: 'Move "Workbook" up' });
+    up.focus();
+
+    await act(async () => {
+      fireEvent.click(up);
+    });
+    expect(up).not.toBeDisabled();
+    expect(up).toHaveAttribute("aria-disabled", "true");
+    expect(document.activeElement).toBe(up);
+    await act(async () => {
+      fireEvent.click(up);
+      fireEvent.click(screen.getByRole("button", { name: 'Move "slides-v3.pdf" down' }));
+    });
+    expect(mocks.saveOrder).toHaveBeenCalledOnce();
+
+    await act(async () => finish());
+    expect(screen.getByText("Order saved.")).toBeInTheDocument();
+    expect(document.activeElement).toBe(up);
+  });
+
+  it("clique na seta da ponta da lista não faz nada", async () => {
+    renderModal(true);
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: 'Move "slides-v3.pdf" up' }));
+    });
+
+    expect(mocks.saveOrder).not.toHaveBeenCalled();
+  });
+
+  it("nome que não foi gravado (nenhuma linha mudou) avisa, sem dizer 'salvo'", async () => {
+    mocks.rename.mockRejectedValueOnce(new Error("course-asset-not-updated"));
+    renderModal(true);
+    const field = screen.getAllByLabelText("Name students see")[0];
+
+    fireEvent.change(field, { target: { value: "Slides" } });
+    await act(async () => {
+      fireEvent.blur(field);
+    });
+
+    expect(screen.getByText("We could not save this change. Try again.")).toBeInTheDocument();
+    expect(screen.queryByText("Name saved.")).toBeNull();
   });
 
   it("falha ao gravar a ordem avisa, sem fingir que salvou", async () => {
