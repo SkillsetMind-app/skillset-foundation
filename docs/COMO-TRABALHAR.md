@@ -177,3 +177,60 @@ Uma migration é um arquivo SQL que muda a estrutura do banco.
 - **Rodar testes de banco contra produção:** não.
 - **Plano, anotação de sessão, estratégia de negócio, material de investidor ou
   achado de segurança no repositório:** não. Ele é público.
+
+## 8. Apaguei um produto por engano
+
+**In English:** within about a day of the delete, cancel the cleanup
+(`status = 'cancelled'` on the `course_deletions` row) and the product's files
+and videos stay; its database rows (lessons, sales page, community posts,
+sessions) are already gone and only come back from the database backup
+(`docs/BACKUP.md`), recreated with the same course id.
+
+Quando um produto sem comprador é apagado, as linhas dele no banco somem na
+hora: o curso, as aulas, o texto das aulas, a página de venda, os posts da
+comunidade, as sessões ao vivo, os convites e as listas de desejo. Os arquivos
+(capa, materiais, imagens da página de venda) e os vídeos da Bunny entram numa
+fila, a tabela `course_deletions`, e só começam a sair cerca de um dia depois,
+de hora em hora e em lotes (`src/app/api/cron/course-cleanup/route.ts`). Esse
+dia existe para dar tempo de parar.
+
+**1. Parar a limpeza, o quanto antes.** Só quem tem acesso de administrador ao
+banco (a tabela é fechada para o app). No painel do Supabase, em SQL Editor,
+com o id do produto:
+
+```sql
+update public.course_deletions
+   set status = 'cancelled', finished_at = now(),
+       last_error = 'cancelado pela equipe: produto apagado por engano'
+ where course_id = '<id do produto>' and status in ('pending', 'failed');
+-- Esperado: 1 linha. 0 linhas = id errado, ou a limpeza já terminou (done).
+select status, attempts, requested_at, last_progress_at, result
+  from public.course_deletions where course_id = '<id do produto>';
+```
+
+Com `cancelled`, a rotina não lista mais arquivos deste produto e não apaga
+nenhum vídeo dele, nem numa volta que já esteja rodando: ela pergunta ao banco
+antes de cada vídeo. Arquivos de um lote que já estava saindo naquele minuto
+podem ter ido.
+
+**2. O que volta e o que não volta.**
+- **Volta, se a limpeza foi parada antes de começar** (`last_progress_at`
+  vazio): os arquivos na pasta `courses/<id>/` do Storage e os vídeos na Bunny.
+- **Não volta sozinho:** as linhas do banco. Elas só voltam pelo backup
+  (`docs/BACKUP.md`), recriando o curso com o MESMO id e as linhas que eram
+  dele. Com o mesmo id, a pasta de arquivos e os recibos dos vídeos voltam a
+  valer. Um produto novo, com outro id, não enxerga os arquivos antigos.
+  Mantenha o `created_at` original do curso: se ele for apagado de novo um dia,
+  a limpeza só apaga arquivo criado depois dessa data.
+- **Não volta nunca:** o que a limpeza já apagou (`done`, ou
+  `last_progress_at` preenchido). A Bunny não tem lixeira. O backup do Supabase
+  não guarda os arquivos do Storage; só o backup do repositório (30 dias) tem
+  cópia deles.
+
+O app nunca mais aceita esse id: nenhuma conta (nem o dono) recria um curso
+com um id que já passou pela fila, em qualquer status. A equipe recria pelo
+SQL Editor (ou pelo service role), de preferência depois do `cancelled`.
+
+**Uma limpeza falhou 5 vezes** (`status = 'failed'`, a equipe recebe um alerta
+`course_cleanup_failed`): leia `last_error`, corrija a causa e devolva para a
+fila com `status = 'pending', attempts = 0, stalled_runs = 0, last_error = null`.

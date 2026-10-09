@@ -17,6 +17,7 @@ import { useEffect, useState, type CSSProperties } from "react";
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { ListingSearchBar } from "@/components/shared/listing-search-bar";
+import { ShortId } from "@/components/shared/short-id";
 import { StatusChip } from "@/components/shared/status-chip";
 import {
   CourseActionsMenu,
@@ -24,6 +25,7 @@ import {
 } from "@/components/teacher/course-actions";
 import { CreateCourseStart } from "@/components/teacher/create-course-start";
 import type { TeacherCourse, TeacherCourseProductFormat } from "@/domain/teacher-course";
+import { getMyCoursesBeingDeleted, type CourseBeingDeleted } from "@/lib/data/course-deletions";
 import { subscribeToTeacherCourses } from "@/lib/data/teacher-courses";
 import { getCourseCategoryLabel } from "@/lib/i18n/course-categories";
 
@@ -136,6 +138,7 @@ export function TeacherCourseStudio({
   const [errorKey, setErrorKey] = useState<string | null>(null);
   const [isLoadingCourses, setIsLoadingCourses] = useState(true);
   const [confirmingDeleteId, setConfirmingDeleteId] = useState<string | null>(null);
+  const [beingDeleted, setBeingDeleted] = useState<CourseBeingDeleted[]>([]);
   const normalizedCourseQuery = courseQuery.toLowerCase().trim();
   const visibleCourses = courses.filter((course) => {
     if (productView === "communities" && !course.communityEnabled) {
@@ -167,6 +170,26 @@ export function TeacherCourseStudio({
       },
     );
   }, [user]);
+
+  // ponytail: rele quando a lista em tempo real muda, que e exatamente quando
+  // um produto some. Falhou: esconde a lista, que e so informativa.
+  useEffect(() => {
+    if (!user) {
+      return;
+    }
+
+    let live = true;
+    getMyCoursesBeingDeleted()
+      .then((next) => {
+        if (live) setBeingDeleted(next);
+      })
+      .catch(() => {
+        if (live) setBeingDeleted([]);
+      });
+    return () => {
+      live = false;
+    };
+  }, [user, courses]);
 
   if (autoOpenCreate) {
     return user ? (
@@ -287,6 +310,30 @@ export function TeacherCourseStudio({
           </label>
         </div>
 
+        {/* Apagado, mas arquivos e videos ainda na fila (status pending). Nao e
+            clicavel: o produto ja nao existe. */}
+        {beingDeleted.length > 0 ? (
+          <ul
+            aria-label={t("creatorPanel.products.beingDeleted.aria")}
+            className="mt-5 divide-y divide-[var(--color-line)] border-y border-[var(--color-line)]"
+          >
+            {beingDeleted.map((item) => (
+              <li
+                key={item.courseId}
+                className="flex flex-wrap items-center gap-x-3 gap-y-1 bg-white px-3 py-3 sm:px-4"
+              >
+                <span className="min-w-0 truncate text-sm font-semibold text-[var(--color-ink-soft)]">
+                  {item.title || t("creatorPanel.untitledProduct")}
+                </span>
+                <StatusChip status="deleting" />
+                <span className="w-full text-xs text-[var(--color-ink-muted)] sm:w-auto">
+                  {t("creatorPanel.products.beingDeleted.note")}
+                </span>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+
         <div className="mt-5">
           {isLoadingCourses ? (
             <div className="grid gap-0" aria-label={t("creatorPanel.products.loadingAria")}>
@@ -400,6 +447,9 @@ export function TeacherCourseStudio({
                             )}
                             {course.communityEnabled ? ` · ${t("creatorPanel.communityOn")}` : ""}
                           </p>
+                          <div className="mt-1">
+                            <ShortId id={course.id} label={t("shortId.product")} />
+                          </div>
                         </div>
                       </div>
                     </td>

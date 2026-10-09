@@ -1,4 +1,11 @@
 {
+  "shortId": {
+    "product": "ID del producto",
+    "order": "ID del pedido",
+    "copy": "Copiar {id}",
+    "copied": "Copiado",
+    "failed": "No se pudo copiar. Selecciona el código y cópialo a mano."
+  },
   "lessonUpload": {
     "title": "Carga de la lección", "uploading": "Subiendo archivo...", "connecting": "Guardando el contenido...", "close": "Cerrar estado de carga",
     "success": "Archivo guardado.", "error": "La carga necesita atención. Abre la lección para revisarla.", "cancelled": "Carga cancelada.",
@@ -273,7 +280,11 @@
       "confirmResent": "Enviado de nuevo. Dale un minuto.",
       "confirmChangeEmail": "¿Correo equivocado? Cámbialo",
       "confirmAlreadyDone": "¿Ya lo confirmaste?",
-      "existingAccountSignIn": "Inicia sesión en su lugar"
+      "existingAccountSignIn": "Inicia sesión en su lugar",
+      "expiredTitle": "Este enlace venció",
+      "expiredBody": "Los enlaces de nuestros correos sirven por 1 hora y una sola vez. Escribe tu correo y te enviamos un enlace nuevo.",
+      "expiredSend": "Envíame un enlace nuevo",
+      "expiredSent": "Listo. Si este correo todavía no está confirmado, te llega un enlace nuevo. Revisa tu bandeja de entrada y la carpeta de spam."
     },
     "guard": {
       "loadingTitle": "Preparando tu espacio de trabajo",
@@ -1248,6 +1259,7 @@
     "active": "Activo",
     "cancelled": "Cancelado",
     "completed": "Completado",
+    "deleting": "En eliminación",
     "dismissed": "Descartado",
     "draft": "Borrador",
     "expired": "Expirado",
@@ -1316,7 +1328,8 @@
         "mediaDetails": "El video se reproduce aquí cuando el instructor lo sube o conecta un contenido externo.",
         "content": "Contenido de la lección",
         "freePreview": "Vista previa gratuita",
-        "openResource": "Abrir recurso del instructor"
+        "openResource": "Abrir recurso del instructor",
+        "fileOnlyHint": "Esta lección es un archivo. Descárgalo para abrirlo o guardarlo en tu teléfono o computadora."
       },
       "curriculum": {
         "lessons": "Lecciones",
@@ -1340,11 +1353,12 @@
       },
       "resources": {
         "title": "Recursos del curso",
-        "heading": "Archivos e imágenes generales adjuntos a este curso",
+        "heading": "Archivos para descargar de tus lecciones",
         "fileOne": "{count} archivo",
         "fileMany": "{count} archivos",
         "loading": "Cargando recursos del curso...",
-        "empty": "Este curso todavía no tiene recursos generales adjuntos.",
+        "empty": "Todavía no hay archivos para descargar.",
+        "courseFiles": "Archivos del curso",
         "loadingLesson": "Cargando archivos de la lección...",
         "emptyLesson": "Esta lección todavía no tiene archivos adjuntos.",
         "preview": "Vista previa",
@@ -1656,6 +1670,38 @@
         "replyLabel": "Añade tu respuesta",
         "replyPlaceholder": "Añade tu respuesta…",
         "send": "Responder"
+      },
+      "actions": {
+        "delete": "Eliminar",
+        "deleteConfirmPost": "¿Eliminar esta publicación para todos? Sus respuestas también se eliminan.",
+        "deleteConfirmReply": "¿Eliminar esta respuesta para todos? Las respuestas a ella también se eliminan.",
+        "deleteYes": "Sí, eliminar",
+        "deleting": "Eliminando...",
+        "keep": "Mantener",
+        "deleteError": "No pudimos eliminarlo. Inténtalo de nuevo.",
+        "pinError": "No pudimos cambiar el fijado. Inténtalo de nuevo.",
+        "report": "Denunciar"
+      },
+      "report": {
+        "titlePost": "Denunciar esta publicación",
+        "titleReply": "Denunciar esta respuesta",
+        "intro": "Cuéntanos qué pasa. El equipo de SkillsetMind revisa cada denuncia. El autor no ve tu nombre.",
+        "reason": "Motivo",
+        "reasons": {
+          "spam": "Spam o venta",
+          "harassment": "Insultos o acoso",
+          "unsafe_content": "Contenido peligroso o explícito",
+          "off_topic": "Fuera de tema",
+          "other": "Otra cosa"
+        },
+        "detail": "¿Algo más? (opcional)",
+        "send": "Enviar denuncia",
+        "sending": "Enviando...",
+        "cancel": "Cancelar",
+        "done": "Gracias. Nuestro equipo lo revisará.",
+        "error": "No pudimos enviar tu denuncia. Inténtalo de nuevo.",
+        "duplicate": "Ya lo denunciaste. Nuestro equipo lo revisará.",
+        "rateLimit": "Enviaste muchas denuncias en la última hora. Espera un poco y vuelve a intentarlo."
       }
     }
   },
@@ -2540,7 +2586,7 @@
       "uncategorized": "Sin categoría",
       "signIn": "Inicia sesión como creador para empezar un producto.",
       "loadError": "No pudimos cargar tus productos. Actualiza la página o contacta con el soporte de SkillsetMind.",
-      "deleteError": "No pudimos eliminar este borrador. Inténtalo de nuevo o contacta con el soporte de SkillsetMind.",
+      "deleteError": "No pudimos eliminar este producto. No se borró nada. Inténtalo de nuevo o contacta con el soporte de SkillsetMind.",
       "actions": {
         "more": "Más acciones para {title}",
         "menu": "Acciones para {title}",
@@ -2555,7 +2601,19 @@
         "description": "Esto elimina de forma permanente el curso y todo su contenido. No se puede deshacer.",
         "cancel": "Cancelar",
         "busy": "Eliminando...",
-        "confirm": "Sí, eliminar"
+        "confirm": "Sí, eliminar",
+        "consequences": {
+          "lead": "También se elimina:",
+          "content": "Lecciones, textos y archivos",
+          "videos": "Los videos subidos",
+          "community": "Publicaciones y respuestas de la comunidad",
+          "events": "Sesiones en vivo e invitaciones pendientes"
+        },
+        "filesNote": "Los archivos y videos se quitan de nuestros servidores por lotes, cada hora, a partir de un día después de eliminarlo. Hasta entonces, el producto aparece como \"En eliminación\". Lo que otro producto todavía usa se conserva."
+      },
+      "beingDeleted": {
+        "aria": "Productos en eliminación",
+        "note": "Quitamos archivos y videos por lotes, cada hora, a partir de un día después de eliminarlo."
       },
       "archive": {
         "eyebrow": "Archivar producto",
@@ -3303,7 +3361,7 @@
   "authFlow": {
     "callback": {
       "sameBrowser": "Este enlace debe abrirse en el mismo navegador desde el que se solicitó. Ábrelo allí o solicita uno nuevo desde este navegador.",
-      "usedOrExpired": "Este enlace ya se usó o caducó. Los enlaces para restablecer la contraseña funcionan una sola vez. Solicita uno nuevo e inténtalo de nuevo.",
+      "usedOrExpired": "Este enlace ya se usó o caducó. Los enlaces de nuestros correos funcionan una sola vez. Solicita uno nuevo e inténtalo de nuevo.",
       "invalidOrExpired": "Este enlace no es válido o caducó. Solicita uno nuevo e inténtalo de nuevo."
     },
     "errors": {
@@ -3488,7 +3546,7 @@
       "descriptionPlaceholder": "Explica qué aprenderá el estudiante y por qué es útil.",
       "descriptionHelpPreview": "Esta es la lección de vista previa gratuita: cualquiera puede leer este texto en la página del curso. Los enlaces que empiezan con https:// se vuelven clicables.",
       "oldNote": "Nota pública antigua (los estudiantes la ven encima de la descripción; cualquiera puede leerla)",
-      "materialsHelp": "Los archivos complementarios se adjuntan a esta lección y se pueden descargar desde el aula.",
+      "materialsHelp": "Los estudiantes descargan estos archivos dentro de la lección. Puedes subir PDF, Word, PowerPoint, Excel, e-books (EPUB), mapas mentales (XMind, FreeMind), imágenes, audio o ZIP.",
       "noMaterials": "Todavía no hay materiales complementarios.",
       "type": "Tipo de lección",
       "duration": "Duración en minutos",
@@ -3509,7 +3567,6 @@
         "previewUnavailable": "Este navegador no puede reproducir la vista previa. Puedes subir el archivo igualmente.",
         "videoType": "Tipo de video",
         "select": "Elegir archivo",
-        "allowPreview": "Permitir este archivo en la vista previa pública cuando sea seguro.",
         "cancel": "Cancelar subida",
         "upload": "Subir archivo",
         "uploading": "Subiendo..."
@@ -3524,16 +3581,25 @@
         "videoTooLarge": "Este video ocupa {size}; el límite es {limit}.",
         "videoLimit": "Usa un archivo de video de menos de {limit}.",
         "invalidFile": "Usa un archivo válido de {kind} de menos de {limit}.",
-        "delete": "No pudimos eliminar este archivo. Revisa la titularidad del curso y los permisos actuales."
+        "delete": "No pudimos eliminar este archivo. Revisa la titularidad del curso y los permisos actuales.",
+        "save": "No pudimos guardar este cambio. Inténtalo de nuevo."
       },
       "success": {
         "uploaded": "Archivo subido a esta lección.",
         "deleted": "Archivo eliminado.",
-        "oldLinkRemoved": "Enlace antiguo quitado."
+        "oldLinkRemoved": "Enlace antiguo quitado.",
+        "renamed": "Nombre guardado.",
+        "ordered": "Orden guardado."
       },
       "deleteConfirm": "¿Eliminar \"{fileName}\"? El archivo se eliminará de forma permanente.",
       "thumbnailAlt": "Miniatura de la lección: {fileName}",
       "enrolledOnly": "Solo inscritos",
+      "files": {
+        "titleLabel": "Nombre que ven los estudiantes",
+        "originalName": "Archivo: {fileName}",
+        "moveUp": "Subir \"{title}\"",
+        "moveDown": "Bajar \"{title}\""
+      },
       "deleting": "Eliminando...",
       "delete": "Eliminar"
     },
@@ -4117,6 +4183,8 @@
       "preparingAsset": "Preparando archivo protegido...",
       "openFile": "Abrir archivo",
       "download": "Descargar",
+      "downloadNamed": "Descargar {title}",
+      "openWith": { "xmind": "Para abrirlo, usa la app gratuita XMind.", "mm": "Para abrirlo, usa la app gratuita FreeMind o Freeplane." },
       "videoError": "No pudimos cargar este video. Actualiza la página e inténtalo de nuevo.",
       "unavailable": "Video no disponible",
       "loading": "Cargando video...",
@@ -4462,6 +4530,8 @@
   },
   "legalAcceptance": {
     "eyebrow": "Actualización legal",
+    "firstEyebrow": "Antes de empezar",
+    "firstBody": "Lee y acepta los términos de SkillsetMind para usar tu cuenta.",
     "title": "Revisa los términos de SkillsetMind para continuar.",
     "body": "SkillsetMind ha actualizado sus términos legales. Acepta las versiones vigentes que aparecen abajo para seguir usando tu cuenta.",
     "agreeTerms": "Acepto la versión vigente de las",
@@ -5808,6 +5878,11 @@
     "updatePlaceholder": "¿Qué debería saber el grupo esta semana?",
     "pin": "Fijar arriba",
     "postUpdate": "Publicar novedad",
+    "allPosts": "Todas las publicaciones",
+    "allPostsEmpty": "Todavía no hay publicaciones.",
+    "open": "Abrir",
+    "repliesOne": "{count} respuesta",
+    "repliesMany": "{count} respuestas",
     "waiting": {
       "minutes": {
         "one": "esperando {count} min",

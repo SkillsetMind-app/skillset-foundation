@@ -931,7 +931,8 @@ describe("LessonContentModal — video tab", () => {
         target: { files: [new File(["pdf"], "apostila.pdf", { type: "application/pdf" })] },
       });
       fireEvent.click(screen.getByRole("button", { name: "Upload file" }));
-      expect(await screen.findByText("apostila.pdf", { selector: "strong" })).toBeInTheDocument();
+      // O nome do material agora é um campo editável (o nome que o aluno vê).
+      expect(await screen.findByDisplayValue("apostila.pdf")).toBeInTheDocument();
     } finally {
       reloadServesCurrentAssets = false;
     }

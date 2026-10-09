@@ -21,6 +21,12 @@ import { ClassroomLoading } from "@/components/learn/classroom-loading";
 import { ClassroomTabs, useTabChanged, type ClassroomTabItem } from "@/components/learn/classroom-tabs";
 import { CommunityFeed, type CommunityFeedLesson } from "@/components/learn/community-feed";
 import { CourseMessagesPanel } from "@/components/learn/course-messages-panel";
+import {
+  CourseMaterialsPanel,
+  groupReleasedMaterials,
+  MaterialAppHint,
+  MaterialFileList,
+} from "@/components/learn/course-materials-panel";
 import { CoursePlaylist } from "@/components/learn/course-playlist";
 import { CourseReviewPanel } from "@/components/learn/course-review-panel";
 import { LessonComments } from "@/components/learn/lesson-comments";
@@ -37,7 +43,13 @@ import {
 import { ProtectedAssetPreview } from "@/components/shared/protected-asset-preview";
 import { MilestoneSeal, useJustDone } from "@/components/ui/drawn-check";
 import type { CourseAsset } from "@/domain/course-asset";
-import { formatCourseAssetSize, getModuleCoverAsset, getPrimaryLessonVideoAsset } from "@/domain/course-asset";
+import {
+  formatCourseAssetSize,
+  getCourseAssetTitle,
+  getModuleCoverAsset,
+  getPrimaryLessonVideoAsset,
+  isVideoAssetKind,
+} from "@/domain/course-asset";
 import { getCourseAssetKindLabel } from "@/lib/i18n/course-assets";
 import type { CourseEvent } from "@/domain/course-event";
 import {
@@ -882,16 +894,13 @@ export function EnrolledCourseWorkspace({
     assetsState.key === course.id && selectedLesson
       ? assetsState.assets.filter((asset) => asset.lessonId === selectedLesson.id)
       : [];
-  const courseLevelAssets =
-    assetsState.key === course.id
-      ? assetsState.assets.filter(
-          (asset) =>
-            !asset.lessonId
-            && !asset.moduleId
-            && asset.kind !== "course_cover"
-            && asset.kind !== "members_cover",
-        )
-      : [];
+  // Aba Materiais: os arquivos de todas as aulas já liberadas (e os do curso
+  // inteiro), por módulo e aula. Aula trancada não entra.
+  const materialGroups = groupReleasedMaterials(
+    course.modules,
+    assetsState.key === course.id ? assetsState.assets : [],
+    (lessonId) => lessonUnlockStateById.get(lessonId)?.unlocked === true,
+  );
   const assetCountByLessonId = new Map<string, number>();
   const thumbnailUrlByLessonId = new Map<string, string>();
   const thumbnailDateByLessonId = new Map<string, number>();
@@ -1198,13 +1207,13 @@ export function EnrolledCourseWorkspace({
     productFormat === "live_event"
     && liveState.events.some((event) => Date.parse(event.startsAt) <= liveState.now);
 
-  // As abas que este curso tem. Materiais só quando há arquivos de curso
-  // (cursos publicados por professor); lives, comunidade e mensagens não
+  // As abas que este curso tem. Materiais só quando os arquivos do curso são
+  // lidos (cursos publicados por professor); lives, comunidade e mensagens não
   // existem na pré-visualização — e comunidade só se o professor ligou.
   const classroomTabs: ClassroomTabItem[] = [
     ...(emptyDefaultTab ? [] : [{ id: "lesson" as const, label: t("creatorEditor.preview.tabs.lesson") }]),
     ...(enableFirestoreAssets
-      ? [{ id: "materials" as const, label: t("creatorEditor.preview.tabs.materials"), count: courseLevelAssets.length }]
+      ? [{ id: "materials" as const, label: t("creatorEditor.preview.tabs.materials"), count: materialGroups.count }]
       : []),
     ...(!previewMode && (upcomingEvents.length > 0 || activeTab === "lives" || productFormat === "live_event")
       ? [{ id: "lives" as const, label: t("creatorEditor.preview.tabs.lives") }]
@@ -1530,8 +1539,8 @@ export function EnrolledCourseWorkspace({
           rolagem (4 a 6 telas de altura), sem endereço. Agora só a aba aberta
           renderiza — e ela tem um caminho próprio. */}
       {activeTab === "materials" && enableFirestoreAssets ? (
-        <CourseAssetResourceList
-          assets={courseLevelAssets}
+        <CourseMaterialsPanel
+          groups={materialGroups}
           isLoading={Boolean(
             enableFirestoreAssets
               && (!assetsState.ready || assetsState.key !== course.id),
@@ -1724,6 +1733,10 @@ function CourseCommunitySection({
   }, [instructorId]);
   const instructorName = instructor.forId === instructorId ? instructor.name : null;
   const instructorIds = useMemo(() => (instructorId ? [instructorId] : []), [instructorId]);
+  // O dono do curso que tambem esta matriculado modera daqui (fixa, apaga).
+  // O banco confere de novo (owns_course_reference).
+  const { user } = useAuth();
+  const canModerate = Boolean(user && instructorId && user.uid === instructorId);
 
   const space: CommunitySpace = {
     id: `creator-${course.id}`,
@@ -1746,6 +1759,7 @@ function CourseCommunitySection({
         openPostId={openPostId}
         instructorName={instructorName}
         instructorIds={instructorIds}
+        canModerate={canModerate}
       />
     </section>
   );
@@ -1996,67 +2010,6 @@ function LessonInfo({
   );
 }
 
-function CourseAssetResourceList({
-  assets,
-  isLoading,
-}: {
-  assets: CourseAsset[];
-  isLoading: boolean;
-}) {
-  const { t } = useTranslation();
-  return (
-    <section className="member-resource-panel">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
-            {t("learn.classroom.resources.title")}
-          </p>
-          <h4 className="mt-2 text-lg font-semibold text-[var(--color-primary)]">
-            {t("learn.classroom.resources.heading")}
-          </h4>
-        </div>
-        <span className="member-meta-chip">
-          <FileText size={14} aria-hidden />
-          {t(`learn.classroom.resources.${assets.length === 1 ? "fileOne" : "fileMany"}`).replace("{count}", () => String(assets.length))}
-        </span>
-      </div>
-      {isLoading ? (
-        <p className="mt-4 rounded-md bg-white px-3 py-2 text-sm text-[var(--color-ink-soft)]">
-          {t("learn.classroom.resources.loading")}
-        </p>
-      ) : assets.length === 0 ? (
-        <p className="mt-4 rounded-md bg-white px-3 py-2 text-sm text-[var(--color-ink-soft)]">
-          {t("learn.classroom.resources.empty")}
-        </p>
-      ) : (
-        <div className="mt-4 grid gap-3">
-          {assets.map((asset) => (
-            <div
-              key={asset.id}
-              className="rounded-lg border border-[var(--color-line)] bg-white p-3"
-            >
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <p className="text-sm font-semibold text-[var(--color-ink)]">
-                    {asset.fileName}
-                  </p>
-                  <p className="mt-1 text-xs uppercase tracking-[0.12em] text-[var(--color-ink-soft)]">
-                    {getCourseAssetKindLabel(asset.kind, t)} - {formatCourseAssetSize(asset.size)}
-                  </p>
-                </div>
-                <span className="rounded-chip bg-[var(--color-surface-soft)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--color-primary)]">
-                  {t(asset.isPreview ? "learn.classroom.resources.preview" : "learn.classroom.resources.enrolled")}
-                </span>
-              </div>
-              <ProtectedAssetPreview asset={asset} />
-            </div>
-          ))}
-        </div>
-      )}
-    </section>
-  );
-}
-
 // "Mark complete" used to live at the end of this panel. It now sits in the
 // sticky lesson action bar with Previous / All lessons / Next, so the student
 // never has to scroll past the discussion to find it.
@@ -2117,8 +2070,8 @@ function LessonContentPanel({
   const lessonContentPending =
     isLoadingContent && !lesson.contentText && !lesson.externalUrl;
   // O que toca é o vídeo MAIS RECENTE da aula, não o primeiro da lista.
-  // fetchCourseAssets ordena por fileName (bom para a lista de anexos), então
-  // um `.find()` aqui escolhia por ordem alfabética: quem regravava e subia
+  // fetchCourseAssets ordena pela ordem dos anexos (posição, nome), então
+  // um `.find()` aqui escolhia pela ordem da lista: quem regravava e subia
   // `final-v2.mp4` sobre `aula-01.mp4` via "arquivo enviado" e os alunos
   // continuavam vendo a take antiga, sem nenhuma forma de trocar.
   const primaryHostedVideo = locked
@@ -2156,12 +2109,15 @@ function LessonContentPanel({
   // comentários. (Trancada ou carregando, a caixa segue com o aviso dela: em
   // curso antigo o link do vídeo chega com o conteúdo protegido, e decidir
   // "só texto" antes disso fazia a página pular.)
-  const textOnly =
-    !locked
-    && !hasPlayableVideo
-    && !isLoadingContent
-    && !isLoadingAssets
-    && isTextFirstLesson;
+  // Aula só de arquivo (PDF, e-book, mapa mental): sem vídeo e com arquivo
+  // para baixar. Era "Media not attached yet" em cima do PDF, e a aula
+  // parecia quebrada; agora é o arquivo com um botão grande de baixar. Vale
+  // para a aula "download" do e-book e para a aula comum que só tem arquivo.
+  const lessonFiles = supportingAssets.filter((asset) => asset.kind === "lesson_material");
+  const otherSupportingAssets = supportingAssets.filter((asset) => asset.kind !== "lesson_material");
+  const contentReady = !locked && !hasPlayableVideo && !isLoadingContent && !isLoadingAssets;
+  const fileOnly = contentReady && lessonFiles.length > 0;
+  const textOnly = contentReady && (isTextFirstLesson || fileOnly);
   // No preview do professor não se guarda posição: ele não é o aluno.
   // Memoizado porque a referência é objeto: uma nova a cada render reabriria
   // a aula (e o evento "abriu" do funil) a cada quadro.
@@ -2208,7 +2164,17 @@ function LessonContentPanel({
             {t("learn.classroom.lesson.openResource")}
           </a>
         ) : null}
-        {!locked && enableFirestoreAssets ? (
+        {fileOnly ? (
+          <>
+            <p className="mt-3 text-sm leading-7 text-[var(--color-ink-soft)]">
+              {t("learn.classroom.lesson.fileOnlyHint")}
+            </p>
+            <MaterialFileList files={lessonFiles} large />
+            {otherSupportingAssets.length > 0 ? (
+              <LessonAssetList assets={otherSupportingAssets} isLoading={false} />
+            ) : null}
+          </>
+        ) : !locked && enableFirestoreAssets ? (
           <LessonAssetList assets={supportingAssets} isLoading={isLoadingAssets} />
         ) : null}
       </div>
@@ -2362,15 +2328,18 @@ function LessonAssetList({
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <p className="text-sm font-semibold text-[var(--color-ink)]">
-                  {asset.fileName}
-                </p>
+                {getCourseAssetTitle(asset)}
+              </p>
               <div className="mt-1 flex flex-wrap items-center gap-2 text-xs uppercase tracking-[0.12em] text-[var(--color-ink-soft)]">
                 <FileText size={13} aria-hidden />
                 <span>{getCourseAssetKindLabel(asset.kind, t)} - {formatCourseAssetSize(asset.size)}</span>
               </div>
+              <MaterialAppHint fileName={asset.fileName} />
             </div>
+            {/* "Preview" só vale para vídeo (a aula de amostra). Material
+                marcado no passado continua só de matriculado. */}
             <span className="rounded-chip bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--color-primary)]">
-              {t(asset.isPreview ? "learn.classroom.resources.preview" : "learn.classroom.resources.enrolled")}
+              {t(asset.isPreview && isVideoAssetKind(asset.kind) ? "learn.classroom.resources.preview" : "learn.classroom.resources.enrolled")}
             </span>
           </div>
 

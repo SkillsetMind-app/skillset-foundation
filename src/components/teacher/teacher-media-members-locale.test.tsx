@@ -82,14 +82,22 @@ describe("ES-12 media and members with real dictionaries", () => {
     expect(screen.getByRole("link", { name: "Open builder" })).toHaveAttribute("href", "/teach/builder?courseId=course-1&tab=content");
   });
 
+  // "Vista previa" só vale para vídeo (a aula de amostra). Material marcado
+  // como prévia no tempo da caixa que saiu continua privado.
   it("localizes nonimage MIME categories and private lesson metadata", () => {
-    state.assets = [{ ...cover, kind: "lesson_material", contentType: "application/pdf",
-      fileName: "Original.pdf", downloadUrl: null, lessonId: "lesson", isPreview: true }];
+    state.assets = [
+      { ...cover, kind: "lesson_material", contentType: "application/pdf",
+        fileName: "Original.pdf", downloadUrl: null, lessonId: "lesson", isPreview: true },
+      { ...cover, id: "video", kind: "lesson_video", contentType: "video/mp4",
+        fileName: "Intro.mp4", downloadUrl: null, lessonId: "lesson", isPreview: true },
+    ];
     mount(<TeacherMediaLibrary />);
-    expect(screen.getByText("archivo")).toBeInTheDocument();
-    expect(screen.getByText("Recurso de la lección")).toBeInTheDocument();
-    expect(screen.getByText("Vista previa")).toBeInTheDocument();
-    expect(screen.getByText("Original.pdf")).toBeInTheDocument();
+    const material = screen.getByText("Original.pdf").closest("article")!;
+    expect(within(material).getByText("archivo")).toBeInTheDocument();
+    expect(within(material).getByText("Recurso de la lección")).toBeInTheDocument();
+    expect(within(material).getByText("Privado")).toBeInTheDocument();
+    expect(within(material).queryByText("Vista previa")).toBeNull();
+    expect(within(screen.getByText("Intro.mp4").closest("article")!).getByText("Vista previa")).toBeInTheDocument();
   });
 
   it("localizes loading, no-course and empty-library copy", () => {

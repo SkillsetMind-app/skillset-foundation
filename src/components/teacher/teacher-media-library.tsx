@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
-import type { CourseAsset, CourseAssetKind } from "@/domain/course-asset";
+import { isVideoAssetKind, type CourseAsset, type CourseAssetKind } from "@/domain/course-asset";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { getCourseAssetKindLabel } from "@/lib/i18n/course-assets";
 import type { TeacherCourse } from "@/domain/teacher-course";
@@ -262,8 +262,10 @@ export function TeacherMediaLibrary() {
                 </p>
               </div>
               <div className="flex flex-wrap items-start gap-2 md:justify-end">
+                {/* "Preview" só vale para vídeo (a aula de amostra), como no
+                    estúdio. Material marcado no passado continua fechado. */}
                 <span className="rounded-chip bg-white px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--color-primary)]">
-                  {t(asset.isPreview ? "teacherMedia.preview" : "teacherMedia.private")}
+                  {t(asset.isPreview && isVideoAssetKind(asset.kind) ? "teacherMedia.preview" : "teacherMedia.private")}
                 </span>
                 {asset.lessonId ? (
                   <span className="rounded-chip bg-white px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--color-ink-soft)]">

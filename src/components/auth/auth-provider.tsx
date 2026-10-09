@@ -20,9 +20,11 @@ import {
 } from "@/lib/data/user-profiles";
 import {
   getCurrentAuthSession,
+  getSignupLegalVersions,
   listenToAuthState,
   signOutOfSkillsetMind,
 } from "@/lib/auth/supabase-auth";
+import { clearSignupTermsMark, hasSignupTermsMark } from "@/lib/auth/signup-terms-mark";
 import {
   currentPrivacyVersion,
   currentTeacherTermsVersion,
@@ -171,6 +173,8 @@ function LegalAcceptanceGate() {
   const [acceptance, setAcceptance] = useState<{
     uid: string;
     general: boolean;
+    /** Nada aceito ainda: primeira aceitacao, nao "atualizacao". */
+    firstTime?: boolean;
     teacher: boolean;
     /** @ do perfil público, para a linha que diz onde ele fica. */
     username?: string | null;
@@ -185,6 +189,7 @@ function LegalAcceptanceGate() {
   const needsGeneral = Boolean(current?.general);
   const needsTeacher = Boolean(current?.teacher);
   const needsAcceptance = needsGeneral || needsTeacher;
+  const firstAcceptance = needsGeneral && Boolean(current?.firstTime);
   const canAccept =
     (!needsGeneral || (termsAccepted && privacyAccepted))
     && (!needsTeacher || teacherTermsAccepted);
@@ -204,6 +209,26 @@ function LegalAcceptanceGate() {
 
     async function checkLegalAcceptance() {
       const profile = await getUserProfile(checkedUid);
+      // A versao mudou (ou nada foi aceito): so entao a janela aparece.
+      let general = profile?.termsVersion !== currentTermsVersion
+        || profile?.privacyVersion !== currentPrivacyVersion;
+      // Os termos marcados no cadastro. Quem confirma o e-mail ainda nao tinha
+      // sessao para gravar o perfil, entao as versoes esperam nos metadados da
+      // conta e sao gravadas aqui, sem perguntar de novo, com a hora do
+      // cadastro. So no mesmo navegador do cadastro (a marca local): em outro
+      // aparelho, ou se outra pessoa cadastrou este e-mail, a janela pergunta.
+      if ((!profile?.termsVersion || !profile.privacyVersion) && hasSignupTermsMark(checkedUid)) {
+        try {
+          const signup = await getSignupLegalVersions();
+          if (signup.terms === currentTermsVersion && signup.privacy === currentPrivacyVersion && signup.acceptedAt) {
+            await acceptUserTerms(checkedUid, profile?.marketingConsent ?? false, signup.acceptedAt);
+            general = false;
+          }
+        } catch {
+          // Nao leu ou nao gravou: a janela pergunta e grava de novo.
+        }
+        clearSignupTermsMark();
+      }
 
       if (cancelled) {
         return;
@@ -211,9 +236,8 @@ function LegalAcceptanceGate() {
 
       setAcceptance({
         uid: checkedUid,
-        general:
-          profile?.termsVersion !== currentTermsVersion
-          || profile?.privacyVersion !== currentPrivacyVersion,
+        general,
+        firstTime: !profile?.termsVersion,
         // Re-acceptance only: a teacher who accepted an older version. The
         // first acceptance belongs to onboarding, which grants the role.
         teacher: Boolean(
@@ -279,13 +303,13 @@ function LegalAcceptanceGate() {
     <div className="fixed inset-0 z-[85] grid place-items-center bg-[rgba(12,25,39,0.62)] px-4 backdrop-blur-sm">
       <div className="modal-panel modal-panel-scroll w-full max-w-xl rounded-xl border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-strong)]">
         <p className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--color-accent-fg)]">
-          {t("legalAcceptance.eyebrow")}
+          {t(firstAcceptance ? "legalAcceptance.firstEyebrow" : "legalAcceptance.eyebrow")}
         </p>
         <h2 className="display-title mt-3 text-4xl text-[var(--color-primary)]">
           {t("legalAcceptance.title")}
         </h2>
         <p className="mt-3 text-sm leading-7 text-[var(--color-ink-soft)]">
-          {t("legalAcceptance.body")}
+          {t(firstAcceptance ? "legalAcceptance.firstBody" : "legalAcceptance.body")}
         </p>
 
         <div className="mt-5 grid gap-3">

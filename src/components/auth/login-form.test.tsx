@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   signInWithGoogle: vi.fn(),
   getPendingSecondFactor: vi.fn(),
   signOut: vi.fn(),
+  resend: vi.fn(),
 }));
 
 vi.mock("next/navigation", () => ({
@@ -33,6 +34,7 @@ vi.mock("@/lib/auth/supabase-auth", async (importOriginal) => ({
   signInWithGoogle: mocks.signInWithGoogle,
   getPendingSecondFactor: mocks.getPendingSecondFactor,
   signOutOfSkillsetMind: mocks.signOut,
+  resendSignupConfirmation: mocks.resend,
 }));
 
 vi.mock("@/lib/data/user-profiles", () => ({ getUserProfile: vi.fn() }));
@@ -168,5 +170,88 @@ describe("LoginForm com segundo fator pendente", () => {
       await screen.findByRole("button", { name: /auth\.continueWithGoogle/ }),
     ).toBeTruthy();
     expect(mocks.signOut).toHaveBeenCalledOnce();
+  });
+});
+
+// Onda F: link de confirmacao vencido ou ja usado. Antes caia numa frase sobre
+// "reset links" (troca de senha) e sem jeito de pedir outro. Agora: a tela de
+// reenviar, com a mesma resposta para qualquer e-mail, para ninguem descobrir
+// quem tem cadastro.
+describe("LoginForm com link de confirmacao vencido", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.getPendingSecondFactor.mockResolvedValue(null);
+    mocks.resend.mockResolvedValue(undefined);
+    mocks.searchParams = new URLSearchParams(
+      "error=confirm_expired&path=student&returnTo=%2Fcourses%2Ffocus",
+    );
+  });
+
+  afterEach(cleanup);
+
+  function askForNewLink() {
+    fireEvent.change(screen.getByLabelText("auth.email"), {
+      target: { value: "ana@example.test" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "auth.signup.expiredSend" }));
+  }
+
+  it("mostra a tela de pedir outro link, e nao o texto de troca de senha", () => {
+    render(<LoginForm />);
+
+    expect(screen.getByRole("heading", { name: "auth.signup.expiredTitle" })).toBeTruthy();
+    expect(screen.getByText("auth.signup.expiredBody")).toBeTruthy();
+    expect(screen.queryByText("authFlow.callback.usedOrExpired")).toBeNull();
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("reenvia pelo reenvio que ja existe, para o mesmo curso, com a espera de 60 s", async () => {
+    render(<LoginForm />);
+    askForNewLink();
+
+    expect(await screen.findByText("auth.signup.expiredSent")).toBeTruthy();
+    expect(mocks.resend).toHaveBeenCalledWith(
+      "ana@example.test",
+      "/loading?next=welcome&path=student&returnTo=%2Fcourses%2Ffocus",
+      undefined,
+    );
+    expect(
+      screen.getByRole("button", { name: "auth.signup.confirmResendIn" }),
+    ).toHaveProperty("disabled", true);
+  });
+
+  it.each([
+    ["o limite de envios", { code: "over_email_send_rate_limit", status: 429 }],
+    ["conta que nao existe", { code: "user_not_found", status: 404 }],
+    ["falha do servidor de e-mail", { message: "Error sending confirmation email", status: 500 }],
+  ])("responde %s com a mesma frase de enviado", async (_label, error) => {
+    mocks.resend.mockRejectedValue(error);
+    render(<LoginForm />);
+    askForNewLink();
+
+    expect(await screen.findByText("auth.signup.expiredSent")).toBeTruthy();
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("mostra a falha do CAPTCHA, que nao diz nada sobre a conta", async () => {
+    mocks.resend.mockRejectedValue({ message: "captcha protection: request disallowed" });
+    render(<LoginForm />);
+    askForNewLink();
+
+    expect(await screen.findByText("authFlow.errors.captcha")).toBeTruthy();
+    expect(screen.queryByText("auth.signup.expiredSent")).toBeNull();
+  });
+
+  it("'ja confirmou? entrar' abre o formulario com o e-mail digitado", () => {
+    render(<LoginForm />);
+    fireEvent.change(screen.getByLabelText("auth.email"), {
+      target: { value: "ana@example.test" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "auth.signup.confirmSignIn" }));
+
+    expect(screen.getByDisplayValue("ana@example.test")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "auth.signIn" })).toBeTruthy();
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(mocks.resend).not.toHaveBeenCalled();
   });
 });

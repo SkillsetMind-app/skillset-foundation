@@ -10,6 +10,8 @@ import type { CommunityComment, CommunityPost } from "@/domain/community-post";
 import {
   createCommunityComment,
   createCommunityPost,
+  deleteCommunityComment,
+  deleteCommunityPost,
   setCommunityPostAcceptedAnswer,
   setCommunityPostPinned,
 } from "@/lib/data/community-posts";
@@ -66,6 +68,9 @@ vi.mock("@/lib/data/community-posts", () => ({
   createCommunityComment: vi.fn(() => Promise.resolve({ id: "comment-new" })),
   setCommunityPostAcceptedAnswer: vi.fn(() => Promise.resolve()),
   setCommunityPostPinned: vi.fn(() => Promise.resolve()),
+  deleteCommunityPost: vi.fn(() => Promise.resolve()),
+  deleteCommunityComment: vi.fn(() => Promise.resolve()),
+  createCommunityReport: vi.fn(() => Promise.resolve()),
 }));
 
 function post(overrides: Partial<CommunityPost>): CommunityPost {
@@ -266,6 +271,91 @@ describe("caixa de entrada da comunidade (professor)", () => {
     expect(await screen.findByText("Publicaste mucho en la última hora. Espera un poco y vuelve a intentarlo.")).toBeInTheDocument();
     expect(screen.queryByText("No pudimos publicar la novedad.")).toBeNull();
     expect(setCommunityPostPinned).not.toHaveBeenCalled();
+  });
+});
+
+describe("'All posts': o professor modera a propria comunidade", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.useFakeTimers({ shouldAdvanceTime: true, now: NOW });
+    mocks.postsCallback = null;
+    mocks.commentsCallback = null;
+  });
+
+  afterEach(() => {
+    cleanup();
+    vi.useRealTimers();
+  });
+
+  // A leitura (subscribeToCommunityPosts) ja entrega fixado no topo e o mais
+  // novo primeiro; a lista mostra nessa ordem.
+  const update = post({ id: "update", category: "announcement", authorId: "owner-1", authorName: "Patrick S.", body: "Live on Friday.", pinned: true, createdAt: new Date(NOW - 4 * 24 * HOUR).toISOString() });
+  const ordered = [update, posts[1], posts[4], posts[3], posts[0], posts[2]];
+
+  async function renderWithPinned() {
+    await renderInbox();
+    await act(async () => {
+      mocks.postsCallback?.(ordered);
+    });
+    return screen.getByRole("region", { name: /All posts/ });
+  }
+
+  it("lista todos os posts na ordem da leitura, com o fixado marcado e as respostas contadas", async () => {
+    const all = await renderWithPinned();
+
+    const rows = within(all).getAllByRole("listitem");
+    expect(rows).toHaveLength(6);
+    expect(rows[0]).toHaveTextContent("Live on Friday.");
+    expect(rows[0]).toHaveTextContent("pinned");
+    expect(rows[1]).toHaveTextContent("Is there a Portuguese version of the bias checklist?");
+    expect(rows[4]).toHaveTextContent("How do you set a real deadline?");
+    expect(rows[4]).toHaveTextContent("1 reply");
+    expect(rows[5]).toHaveTextContent("Do I lose progress if I skip?");
+    expect(within(all).getByRole("heading", { level: 2 })).toHaveTextContent(/^All posts\s*6$/);
+    // O dono modera; nao denuncia o proprio curso.
+    expect(within(all).queryByRole("button", { name: "Report" })).toBeNull();
+  });
+
+  it("desafixar usa a mesma escrita que o banco ja permitia", async () => {
+    const all = await renderWithPinned();
+
+    fireEvent.click(within(within(all).getAllByRole("listitem")[0]).getByRole("button", { name: "Unpin" }));
+    expect(setCommunityPostPinned).toHaveBeenCalledExactlyOnceWith("update", false);
+  });
+
+  it("apagar um post de aluno pede confirmacao e tira o post da lista e da fila", async () => {
+    const all = await renderWithPinned();
+    const row = within(all).getAllByRole("listitem")[4];
+
+    fireEvent.click(within(row).getByRole("button", { name: "Delete" }));
+    await act(async () => { fireEvent.click(within(row).getByRole("button", { name: "Yes, delete" })); });
+
+    expect(deleteCommunityPost).toHaveBeenCalledExactlyOnceWith("q-old");
+    expect(within(all).getAllByRole("listitem")).toHaveLength(5);
+    expect(within(all).queryByText("How do you set a real deadline?")).toBeNull();
+    const waiting = screen.getByRole("region", { name: /Waiting for an answer/ });
+    expect(within(waiting).getAllByRole("article")).toHaveLength(1);
+  });
+
+  it("'Open' abre a gaveta; la o professor apaga a resposta de um aluno", async () => {
+    const all = await renderWithPinned();
+    const row = within(all).getAllByRole("listitem")[4];
+
+    const open = within(row).getByRole("button", { name: "Open" });
+    expect(open).toHaveAccessibleDescription("How do you set a real deadline?");
+    fireEvent.click(open);
+    const drawer = screen.getByRole("dialog", { name: "How do you set a real deadline?" });
+    const [reply] = within(drawer).getAllByRole("listitem");
+    expect(reply).toHaveTextContent("reply");
+
+    fireEvent.click(within(reply).getByRole("button", { name: "Delete" }));
+    await act(async () => { fireEvent.click(within(reply).getByRole("button", { name: "Yes, delete" })); });
+
+    expect(deleteCommunityComment).toHaveBeenCalledExactlyOnceWith("c-student");
+    expect(within(drawer).getByText("No replies yet. Be the first.")).toBeInTheDocument();
+
+    fireEvent.click(within(drawer).getByRole("button", { name: "Back to feed" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
   });
 });
 

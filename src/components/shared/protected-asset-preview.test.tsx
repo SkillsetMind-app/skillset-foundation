@@ -46,7 +46,8 @@ describe("protected asset preview identity", () => {
     });
     if (outcome === "success") {
       expect(screen.getByRole("link", { name: "Abrir archivo" })).toHaveAttribute("href", "blob:protected-image");
-      expect(screen.getByRole("link", { name: "Descargar" })).toHaveAttribute("download", selectedAsset.fileName);
+      // O botão de baixar só pede o link dele no clique.
+      expect(screen.getByRole("button", { name: "Descargar" })).toBeInTheDocument();
     } else {
       expect(screen.getByText("El acceso al archivo está protegido. Actualiza tu sesión e inténtalo de nuevo.")).toBeInTheDocument();
       expect(screen.queryByText("provider detail stays private")).not.toBeInTheDocument();
@@ -54,9 +55,28 @@ describe("protected asset preview identity", () => {
     fireEvent.click(screen.getByRole("button", { name: "Change language" }));
     if (outcome === "success") expect(screen.getByRole("link", { name: "Open file" })).toHaveAttribute("href", "blob:protected-image");
     else expect(screen.getByText("Asset access is protected. Try again after refreshing your session.")).toBeInTheDocument();
-    expect(sign).toHaveBeenCalledExactlyOnceWith(selectedAsset);
+    // Trocar o idioma não pede link novo: só o de abrir.
+    expect(sign.mock.calls).toEqual([[selectedAsset]]);
     view.unmount();
     if (outcome === "success") expect(URL.revokeObjectURL).toHaveBeenCalledExactlyOnceWith("blob:protected-image");
+  });
+
+  it("asks for the download link on click and hands it to the browser", async () => {
+    const clicks = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+    sign.mockResolvedValueOnce("https://storage.example/open")
+      .mockResolvedValueOnce("https://storage.example/open?download=Apostila%20(1).pdf");
+    const pdf = { ...asset("pdf"), fileName: "Apostila (1).pdf", title: "Apostila", kind: "lesson_material" as const, contentType: "application/pdf" };
+    render(<ProtectedAssetPreview asset={pdf} />);
+
+    // O nome dado pelo professor é o que aparece.
+    expect(await screen.findByTitle("Apostila")).toHaveAttribute("src", "https://storage.example/open");
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Download" }));
+    });
+
+    expect(sign.mock.calls).toEqual([[pdf], [pdf, { download: true }]]);
+    expect(clicks.mock.contexts.map((link) => (link as HTMLAnchorElement).href))
+      .toEqual(["https://storage.example/open?download=Apostila%20(1).pdf"]);
   });
 
   it("removes the old video immediately and releases its blob when changing assets", async () => {
