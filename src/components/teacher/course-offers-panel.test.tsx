@@ -108,7 +108,10 @@ it("plano anual vindo da etapa de preco: formulario aberto, anual e nao principa
   expect(screen.getByLabelText("Name of this price")).toHaveValue("Yearly plan");
   expect(screen.getByLabelText("How often they pay")).toHaveValue("subscription_yearly");
   expect(screen.getByLabelText("Make this the main price on your page")).not.toBeChecked();
-  expect(screen.getByText(/^Your page keeps charging \D*29[.,]00 \(Monthly membership\): that price becomes the main price first/)).toBeInTheDocument();
+  // Com prefill o formulario ja nasce aberto, entao o findBy acima resolve antes
+  // de as ofertas carregarem; o aviso so aparece depois (!loading). getBy aqui
+  // dependia da corrida com o fetch e falhava no CI.
+  expect(await screen.findByText(/^Your page keeps charging \D*29[.,]00 \(Monthly membership\): that price becomes the main price first/)).toBeInTheDocument();
 });
 
 // O anual sozinho virava o preco da pagina: o checkout cobra o principal ou,
