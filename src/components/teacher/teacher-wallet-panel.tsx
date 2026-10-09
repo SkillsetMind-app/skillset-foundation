@@ -18,6 +18,7 @@ import { useTranslation } from "@/components/i18n/i18n-provider";
 import { InlineHelp } from "@/components/shared/inline-help";
 import { StatusChip } from "@/components/shared/status-chip";
 import { TeacherConnectOnboarding } from "@/components/teacher/teacher-connect-onboarding";
+import { StripeDashboardButton } from "@/components/teacher/stripe-dashboard-button";
 import {
   summarizeCreatorWallet,
   type CurrencyAmount,
@@ -370,6 +371,9 @@ export function TeacherWalletPanel() {
             />
           </div>
 
+          <div className="mt-5">
+            <StripeDashboardButton />
+          </div>
           <button
             type="button"
             onClick={refreshStripeStatus}

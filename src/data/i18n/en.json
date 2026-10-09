@@ -4777,6 +4777,20 @@
       "generic": "Could not start checkout. Try again in a moment, or contact support if this continues."
     }
   },
+  "stripeDashboard": {
+    "open": "Open my Stripe",
+    "opening": "Opening Stripe...",
+    "error": "We could not open your Stripe dashboard. Try again or contact support.",
+    "setup": "Set up your payout account before opening Stripe.",
+    "setupAction": "Set up payouts",
+    "signIn": "Sign in again to verify access to your account.",
+    "signInAction": "Sign in",
+    "rateLimit": "Too many attempts. Wait before trying again.",
+    "support": "Contact support",
+    "refundGuidance": "Open your Stripe Express dashboard to find the payment. You can issue a refund there if that feature is enabled. If the payment or refund option is missing, contact support with the order ID.",
+    "refundHelp": "Refund options",
+    "refundSupport": "Get refund help"
+  },
   "connectOnboarding": {
     "setup": "Payout setup",
     "unavailableTitle": "Payouts are being configured.",

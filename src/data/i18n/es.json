@@ -4777,6 +4777,20 @@
       "generic": "No se pudo iniciar el pago. Inténtalo de nuevo en unos instantes o contacta con soporte si el problema continúa."
     }
   },
+  "stripeDashboard": {
+    "open": "Abrir mi Stripe",
+    "opening": "Abriendo Stripe...",
+    "error": "No pudimos abrir tu panel de Stripe. Inténtalo de nuevo o contacta con soporte.",
+    "setup": "Configura tu cuenta de cobros antes de abrir Stripe.",
+    "setupAction": "Configurar cobros",
+    "signIn": "Vuelve a iniciar sesión para verificar el acceso a tu cuenta.",
+    "signInAction": "Iniciar sesión",
+    "rateLimit": "Demasiados intentos. Espera antes de volver a intentarlo.",
+    "support": "Contactar con soporte",
+    "refundGuidance": "Abre tu panel de Stripe Express para buscar el pago. Puedes emitir un reembolso allí si esa función está habilitada. Si no encuentras el pago o la opción de reembolso, contacta con soporte con el identificador del pedido.",
+    "refundHelp": "Opciones de reembolso",
+    "refundSupport": "Ayuda con el reembolso"
+  },
   "connectOnboarding": {
     "setup": "Configuración de transferencias",
     "unavailableTitle": "Se están configurando las transferencias.",

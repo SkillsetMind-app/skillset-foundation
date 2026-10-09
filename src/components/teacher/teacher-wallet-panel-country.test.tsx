@@ -5,6 +5,7 @@ import { afterAll, afterEach, beforeEach, expect, it, vi } from "vitest";
 import { TeacherWalletPanel } from "@/components/teacher/teacher-wallet-panel";
 import { I18nProvider } from "@/components/i18n/i18n-provider";
 import { getDictionary, translate } from "@/lib/i18n/dictionaries";
+import type { Locale } from "@/lib/i18n/config";
 
 // Wiring of the payouts panel to the REAL onboarding component: only Stripe's
 // own SDK, the profile/ledger reads and the refresh call are faked, so the
@@ -13,6 +14,7 @@ const mocks = vi.hoisted(() => {
   vi.stubEnv("NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY", "pk_test_wallet_wiring");
   return {
     fetch: vi.fn(),
+    openStripe: vi.fn(),
     initialize: vi.fn(),
     // Stable references: the panel's effects depend on `user`, and a fresh
     // object (or ledger array) per render resubscribes forever.
@@ -56,6 +58,7 @@ vi.mock("@/lib/data/creator-verification", () => ({
 }));
 vi.mock("@/lib/payments/connect", async (original) => ({
   ...await original<object>(),
+  openTeacherStripeDashboard: mocks.openStripe,
   refreshTeacherStripeAccountStatus: () =>
     Promise.resolve({ connected: false, chargesEnabled: false, payoutsEnabled: false }),
 }));
@@ -68,8 +71,8 @@ function copy(key: string) {
 function sessionCalls() {
   return mocks.fetch.mock.calls.filter(([url]) => url === "/api/payments/connect/account-session");
 }
-function mount() {
-  return render(<I18nProvider initialLocale="en"><TeacherWalletPanel /></I18nProvider>);
+function mount(locale: Locale = "en") {
+  return render(<I18nProvider initialLocale={locale}><TeacherWalletPanel /></I18nProvider>);
 }
 
 beforeEach(() => {
@@ -133,4 +136,20 @@ it("shows the load error, never the country picker, when the profile read fails"
   expect(screen.getByRole("alert")).toHaveTextContent(copy("teach.earnings.profileError"));
   expect(screen.queryByLabelText(copy("connectOnboarding.countryLabel"))).toBeNull();
   expect(sessionCalls()).toHaveLength(0);
+});
+
+it.each(["en", "es"] as const)("opens the shared Stripe action only on click in earnings (%s)", async (locale) => {
+  mocks.profile.mode = "data";
+  mocks.profile.value = {
+    uid: "teacher-1", stripeConnectedAccountId: "acct_teacher_1",
+    stripeConnectChargesEnabled: true, stripeConnectPayoutsEnabled: true,
+  };
+  mount(locale);
+  await act(async () => {});
+  expect(mocks.openStripe).not.toHaveBeenCalled();
+  expect(sessionCalls()).toHaveLength(0);
+  const label = translate(getDictionary(locale), "stripeDashboard.open");
+  fireEvent.click(screen.getByRole("button", { name: label }));
+  await act(async () => {});
+  expect(mocks.openStripe).toHaveBeenCalledTimes(1);
 });

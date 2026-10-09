@@ -5,7 +5,8 @@ import { getDictionary, translate } from "@/lib/i18n/dictionaries";
 import type { Order } from "@/domain/order";
 import { SaleDetail } from "./sale-detail";
 
-const mocks = vi.hoisted(() => ({ subscribe: vi.fn(), refresh: vi.fn(), copy: vi.fn(), user: { uid: "teacher-1", roles: ["teacher"] } }));
+const mocks = vi.hoisted(() => ({ subscribe: vi.fn(), refresh: vi.fn(), copy: vi.fn(), openStripe: vi.fn(), user: { uid: "teacher-1", roles: ["teacher"] } }));
+vi.mock("@/lib/payments/connect", () => ({ openTeacherStripeDashboard: mocks.openStripe }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: mocks.refresh }) }));
 vi.mock("@/components/auth/auth-provider", () => ({ useAuth: () => ({ user: mocks.user }) }));
 vi.mock("@/lib/data/orders", () => ({ subscribeToOrder: mocks.subscribe }));
@@ -46,7 +47,7 @@ describe("sale detail with real EN/ES dictionaries", () => {
     expect(amount.textContent).toBe(new Intl.NumberFormat("es", { style: "currency", currency: "USD" }).format(123.45));
     const dates = screen.getByText(/^Creado /);
     expect(dates).toHaveTextContent(new Intl.DateTimeFormat("es", { dateStyle: "medium", timeStyle: "short" }).format(new Date(order.createdAt as string)));
-    const refund = screen.getByRole("link", { name: "Solicitar reembolso" });
+    const refund = screen.getByRole("link", { name: "Ayuda con el reembolso" });
     const params = new URL(refund.getAttribute("href")!).searchParams;
     expect(params.get("subject")).toBe(`Solicitud de reembolso - pedido ${order.id}`);
     expect(params.get("body")).toBe(`Por favor, ayúdenme a tramitar un reembolso del pedido ${order.id} (${order.courseTitle}).`);
@@ -109,6 +110,22 @@ describe("sale detail with real EN/ES dictionaries", () => {
     mocks.user = { uid, roles: [role] };
     mount();
     expect(screen.getByRole("heading", { name: order.courseTitle })).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Abrir mi Stripe" })).toBeNull();
+    expect(screen.getByRole("link", { name: "Solicitar reembolso" })).toBeVisible();
+  });
+
+  it("uses the same EN/ES refund guidance as the list and opens only the teacher's own Stripe on click", async () => {
+    mount();
+    expect(mocks.openStripe).not.toHaveBeenCalled();
+    expect(screen.getByText(translate(getDictionary("es"), "stripeDashboard.refundGuidance"))).toBeVisible();
+    expect(document.getElementById("sale-refund")).toContainElement(screen.getByRole("button", { name: "Abrir mi Stripe" }));
+    fireEvent.click(screen.getByRole("button", { name: "Abrir mi Stripe" }));
+    await act(async () => {});
+    expect(mocks.openStripe).toHaveBeenCalledTimes(1);
+    switchLanguage();
+    expect(screen.getByText(translate(getDictionary("en"), "stripeDashboard.refundGuidance"))).toBeVisible();
+    expect(screen.getByRole("button", { name: "Open my Stripe" })).toBeVisible();
+    expect(screen.getByRole("link", { name: "Get refund help" })).toHaveAttribute("href", expect.stringContaining("mailto:support@skillsetmind.com?subject="));
   });
 
   it("copies literal IDs and relocalizes success and clipboard failure", async () => {
