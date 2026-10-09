@@ -23,8 +23,8 @@ function copy(locale: "en" | "es", key: string) {
   expect(result).not.toBe(key);
   return result;
 }
-function ui(locale: "en" | "es", needsCountry?: boolean) {
-  return <I18nProvider initialLocale={locale}><TeacherConnectOnboarding needsCountry={needsCountry} /></I18nProvider>;
+function ui(locale: "en" | "es", needsCountry?: boolean, initialPayoutCountry?: string) {
+  return <I18nProvider initialLocale={locale}><TeacherConnectOnboarding needsCountry={needsCountry} initialPayoutCountry={initialPayoutCountry} /></I18nProvider>;
 }
 function sentBody(call = 0) {
   return JSON.parse(String(mocks.fetch.mock.calls[call][1].body));
@@ -78,10 +78,42 @@ it("labels the countries in the interface language and offers only the supported
   const select = screen.getByLabelText(copy("es", "connectOnboarding.countryLabel"));
   expect(within(select).getByRole("option", { name: "Alemania" })).toHaveValue("DE");
   expect(within(select).getByRole("option", { name: "Reino Unido" })).toHaveValue("GB");
-  expect(within(select).getAllByRole("option")).toHaveLength(33);
+  expect(within(select).getAllByRole("option")).toHaveLength(34);
   expect(within(select).queryByRole("option", { name: "Brasil" })).toBeNull();
   expect(within(select).queryByRole("option", { name: "México" })).toBeNull();
   expect(screen.getByText(copy("es", "connectOnboarding.countryLater"))).toBeInTheDocument();
+});
+
+it.each(["en", "es"] as const)("uses the declared country only after explicit confirmation (%s)", async (locale) => {
+  render(ui(locale, true, "CA"));
+  const select = screen.getByLabelText(copy(locale, "connectOnboarding.countryLabel"));
+  expect(select).toHaveValue("CA");
+  await act(async () => {});
+  expect(mocks.fetch).not.toHaveBeenCalled();
+  fireEvent.change(select, { target: { value: "GB" } });
+  fireEvent.click(screen.getByRole("button", { name: copy(locale, "connectOnboarding.countryContinue") }));
+  await screen.findByTestId("connect-onboarding-fixture");
+  expect(sentBody()).toEqual({ country: "GB" });
+});
+
+it.each(["other", "BR", "GY", "invalid"])("does not silently replace an unsupported declaration with US: %s", async (country) => {
+  render(ui("en", true, country));
+  expect(screen.getByLabelText(copy("en", "connectOnboarding.countryLabel"))).toHaveValue("other");
+  expect(screen.getByRole("status")).toHaveTextContent(copy("en", "onboarding.payoutCountryUnavailable"));
+  const confirm = screen.getByRole("button", { name: copy("en", "connectOnboarding.countryContinue") });
+  expect(confirm).toBeDisabled();
+  fireEvent.click(confirm);
+  await act(async () => {});
+  expect(mocks.fetch).not.toHaveBeenCalled();
+});
+
+it("lets an unsupported declaration be corrected before confirmation", async () => {
+  render(ui("es", true, "other"));
+  fireEvent.change(screen.getByLabelText(copy("es", "connectOnboarding.countryLabel")), { target: { value: "ES" } });
+  expect(screen.getByRole("status")).toBeEmptyDOMElement();
+  fireEvent.click(screen.getByRole("button", { name: copy("es", "connectOnboarding.countryContinue") }));
+  await screen.findByTestId("connect-onboarding-fixture");
+  expect(sentBody()).toEqual({ country: "ES" });
 });
 
 // The profile flips to "connected" right after the account is created. That
@@ -99,7 +131,7 @@ it("keeps the onboarding mounted when the account appears", async () => {
 
 // Control: an existing account goes straight to onboarding, with no country.
 it("skips the picker when the creator already has an account", async () => {
-  render(ui("en"));
+  render(ui("en", false, "other"));
   await screen.findByTestId("connect-onboarding-fixture");
   expect(screen.queryByLabelText(copy("en", "connectOnboarding.countryLabel"))).toBeNull();
   expect(sentBody()).toEqual({});

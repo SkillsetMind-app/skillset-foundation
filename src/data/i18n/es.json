@@ -302,6 +302,12 @@
     }
   },
   "onboarding": {
+    "payoutCountryTitle": "¿Dónde recibirás los pagos?",
+    "payoutCountryHint": "Indica el país que piensas usar para tu cuenta de cobro. Esto no crea una cuenta de Stripe ni habilita las ventas. Confirmarás el país al configurar los cobros.",
+    "payoutCountryPlaceholder": "Elige un país de cobro",
+    "payoutCountryOther": "Otro país",
+    "payoutCountryUnavailable": "Los cobros no están disponibles para otro país en esta configuración. Puedes preparar tus productos, pero no puedes vender ni recibir pagos hasta tener una cuenta de cobro elegible.",
+    "payoutCountryRequired": "Elige un país de cobro, u otro país, antes de continuar.",
     "preparing": "Preparando la configuración de tu cuenta...",
     "stepPath": "Camino",
     "stepProfile": "Perfil",
@@ -4797,8 +4803,8 @@
     "retry": "Reintentar la configuración integrada",
     "countryLabel": "País de cobro",
     "countryHint": "Elige el país donde vives y tienes tu cuenta bancaria. Stripe no puede cambiarlo después de la configuración.",
-    "countryLater": "América Latina y Brasil llegarán más adelante.",
-    "countryContinue": "Continuar",
+    "countryLater": "Solo los países de la lista son compatibles con esta configuración de cobros. Elegir un país no demuestra elegibilidad; Stripe debe verificar tu cuenta.",
+    "countryContinue": "Confirmar país y continuar",
     "chooseAnotherCountry": "Elegir otro país",
     "error": {
       "country": "Las transferencias aún no están disponibles en ese país. Contacta con soporte si crees que es un error.",

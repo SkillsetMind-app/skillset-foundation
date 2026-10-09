@@ -15,6 +15,8 @@ export type UserGoal = (typeof userGoalOptions)[number];
 export type OnboardingPath = "student" | "teacher" | "both";
 
 export type OnboardingAnswers = {
+  /** Pais declarado (ISO alpha-2 ou "other"); nao verifica nem habilita recebimentos. */
+  payoutCountry?: string;
   path?: OnboardingPath;
   /** Teacher-only: what they practice (coach, facilitator, mentor, ...). */
   profession?: string;
