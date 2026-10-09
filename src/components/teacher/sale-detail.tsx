@@ -171,7 +171,7 @@ export function SaleDetail({ orderId }: SaleDetailProps) {
 
   const canView =
     user?.roles.includes("admin") || user?.uid === order.teacherId || user?.uid === order.userId;
-  const isOwnSale = user?.uid === order.teacherId && user.roles.includes("teacher");
+  const isOwnSale = Boolean(user && user.uid === order.teacherId && user.roles.includes("teacher"));
   const platformFeeMinor = Math.floor((order.amountMinor * order.platformFeeBps) / 10000);
   const creatorNetMinor = order.amountMinor - platformFeeMinor;
   const timeline = getTimeline(order, t, locale);
