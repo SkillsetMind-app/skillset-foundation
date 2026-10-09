@@ -53,6 +53,23 @@ vi.mock("@/lib/data/course-landings", () => ({
   saveCourseLanding: vi.fn(async () => ({ ok: true })),
 }));
 
+// A slow render, as on a busy CI runner: past React's 5 ms slice, passive
+// effects move to a later task, after the new blocks are already on screen.
+const slowRender = vi.hoisted(() => ({ on: false }));
+vi.mock("@/domain/course-landing", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/domain/course-landing")>();
+  return {
+    ...actual,
+    protectedTitleWarnings: (blocks: Parameters<typeof actual.protectedTitleWarnings>[0]) => {
+      const end = performance.now() + (slowRender.on ? 10 : 0);
+      while (performance.now() < end) {
+        // busy wait on purpose
+      }
+      return actual.protectedTitleWarnings(blocks);
+    },
+  };
+});
+
 const course = { id: "c1", ownerId: "teacher", title: "Course" } as TeacherCourse;
 const landingUrl = (name: string) => `${sb.base}/object/public/public-media/courses/c1/landing/${name}`;
 
@@ -96,6 +113,7 @@ beforeEach(() => {
   sb.removed.length = 0;
   sb.tables.length = 0;
   sb.rows.length = 0;
+  slowRender.on = false;
   vi.spyOn(window, "confirm").mockReturnValue(true);
 });
 afterEach(() => vi.restoreAllMocks());
@@ -173,6 +191,25 @@ describe("sales page image cleanup", () => {
     fireEvent.change(screen.getAllByLabelText("Or paste a link")[0], {
       target: { value: "  https://cdn.example.com/a.png  " },
     });
+
+    const saved = await save();
+    expect(saved[0]).toMatchObject({ imageUrl: "https://cdn.example.com/a.png" });
+  });
+
+  it("keeps a link pasted the moment the field appears, even after a slow render", async () => {
+    slowRender.on = true;
+    let pasted = false;
+    const observer = new MutationObserver(() => {
+      const input = screen.queryAllByLabelText("Or paste a link")[0];
+      if (input && !pasted) {
+        pasted = true;
+        fireEvent.change(input, { target: { value: "https://cdn.example.com/a.png" } });
+      }
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+    await mountEditor([hero(), about()]);
+    observer.disconnect();
+    slowRender.on = false;
 
     const saved = await save();
     expect(saved[0]).toMatchObject({ imageUrl: "https://cdn.example.com/a.png" });

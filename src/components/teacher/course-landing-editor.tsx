@@ -16,7 +16,7 @@
  */
 
 import { ChevronDown, ChevronUp, Loader2, Plus, Trash2 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { useAuth } from "@/components/auth/auth-provider";
@@ -437,7 +437,10 @@ export function CourseLandingEditor({ course }: { course: TeacherCourse }) {
     return () => window.clearTimeout(timer);
   }, [load]);
 
-  useEffect(() => {
+  // Layout, not passive: a passive effect can run after the new blocks are
+  // already on screen, and a link pasted in that gap was checked against the
+  // old list, taken for a removed block and dropped.
+  useLayoutEffect(() => {
     entriesRef.current = entries;
   }, [entries]);
 
