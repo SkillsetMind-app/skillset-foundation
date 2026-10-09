@@ -71,7 +71,7 @@ manager **and** onto the VPS at `/root/skillsetmind-backup.key` (chmod 600).
 
 ### 2. Cloudflare R2
 
-1. R2 → create bucket, e.g. `skillsetmind-backups`, in a region away from the
+1. R2 → create bucket, e.g. `<bucket>`, in a region away from the
    Supabase project.
 2. Create an API token scoped **to that bucket only**:
    - CI token: **Object Write** only. A leaked CI token must not be able to read
@@ -110,7 +110,7 @@ backup. A green tick over no data is the failure mode that hurts most.
 Then run it once by hand: Actions → Backup → Run workflow. Do not wait for the
 first scheduled run to discover a typo.
 
-### 4. Contabo VPS
+### 4. The standby VPS
 
 Ubuntu 22.04/24.04:
 
@@ -135,7 +135,7 @@ Put the read-only credentials in `/etc/skillsetmind-backup.env`:
 R2_ACCESS_KEY_ID=...
 R2_SECRET_ACCESS_KEY=...
 R2_ENDPOINT=https://<account-id>.r2.cloudflarestorage.com
-R2_BUCKET=skillsetmind-backups
+R2_BUCKET=<bucket>
 AGE_KEY_FILE=/root/skillsetmind-backup.key
 PGDATABASE_DR=skillsetmind_dr
 ```

@@ -1,4 +1,11 @@
 {
+  "shortId": {
+    "product": "Product ID",
+    "order": "Order ID",
+    "copy": "Copy {id}",
+    "copied": "Copied",
+    "failed": "Could not copy. Select the code and copy it by hand."
+  },
   "lessonUpload": {
     "title": "Lesson upload", "uploading": "Uploading file...", "connecting": "Saving lesson media...", "close": "Dismiss upload status",
     "success": "File saved.", "error": "Upload needs attention. Open the lesson to review it.", "cancelled": "Upload cancelled.",
@@ -273,7 +280,11 @@
       "confirmResent": "Sent again. Give it a minute.",
       "confirmChangeEmail": "Wrong email? Change it",
       "confirmAlreadyDone": "Already confirmed?",
-      "existingAccountSignIn": "Sign in instead"
+      "existingAccountSignIn": "Sign in instead",
+      "expiredTitle": "This link has expired",
+      "expiredBody": "Links in our emails work for 1 hour and only once. Type your email and we will send you a new link.",
+      "expiredSend": "Send me a new link",
+      "expiredSent": "Done. If this email still needs to be confirmed, a new link is on its way. Check your inbox and your spam folder."
     },
     "guard": {
       "loadingTitle": "Preparing your workspace",
@@ -358,19 +369,18 @@
   "account": {
     "openMenu": "Open account menu",
     "memberFallback": "SkillsetMind member",
-    "switchView": "Switch view",
-    "studentView": "Student view",
-    "teacherView": "Teacher view",
-    "opsView": "Operations view",
+    "switchView": "Switch area",
+    "studentView": "Student area",
+    "teacherView": "Teacher area",
+    "opsView": "Operations area",
     "viewAs": "View as…",
     "becomeTeacher": "Become a teacher",
     "sectionAccount": "Account",
     "creatorPlan": "Creator plan",
     "subscription": "Subscription",
     "settings": "Settings",
-    "payoutsTax": "Payouts & tax",
     "billing": "Billing",
-    "myCredentials": "My credentials",
+    "myCredentials": "My certificates",
     "wishlist": "Wishlist",
     "signOut": "Sign out",
     "opensNewTab": "(opens in a new tab)"
@@ -472,18 +482,17 @@
     "searchDefaultPlaceholder": "Search SkillsetMind...",
     "clearSearch": "Clear search",
     "sidebarNavLabel": "Workspace",
-    "expandSidebar": "Expand sidebar",
-    "collapseSidebar": "Collapse sidebar",
+    "expandSidebar": "Expand menu",
+    "collapseSidebar": "Collapse menu",
     "opensInNewTab": "(opens in a new tab)",
     "breadcrumbLabel": "Breadcrumb",
     "openMobileNav": "Open navigation menu",
     "openSectionNav": "Open {section} navigation",
     "nav": {
-      "classroom": "Classroom",
       "communities": "Communities",
       "wishlist": "Wishlist",
       "agenda": "Agenda",
-      "credentials": "Credentials",
+      "credentials": "Certificates",
       "myCourses": "My courses",
       "studio": "Home",
       "courseBuilder": "My products",
@@ -496,18 +505,17 @@
       "sales": "Sales",
       "subscriptions": "Subscriptions",
       "coupons": "Coupons",
-      "team": "Collaborators",
-      "integrations": "Integrations",
       "operations": "Operations",
       "marketplace": "Marketplace",
       "settings": "Settings",
       "plansFees": "Plans & fees",
-      "payoutsTax": "Payouts & tax",
       "billing": "Billing",
       "myPurchases": "My purchases",
       "reports": "Reports",
       "earnings": "Earnings",
-      "verification": "Verification"
+      "verification": "Verification",
+      "students": "Students",
+      "inbox": "Inbox"
     },
     "ops": {
       "overview": "Overview",
@@ -1139,16 +1147,13 @@
     "navSection": {
       "home": "Home",
       "products": "Products",
-      "marketing": "Marketing",
       "sales": "Sales",
       "earnings": "Earnings",
-      "reports": "Reports",
-      "tools": "Tools",
-      "myLearning": "My Learning",
       "discover": "Discover",
       "learn": "Learn",
       "operations": "Operations",
-      "account": "Account"
+      "account": "Account",
+      "promote": "Promote"
     },
     "crumbs": {
       "learn": "Learn",
@@ -1234,7 +1239,14 @@
     },
     "switchToLightMode": "Switch to light mode",
     "switchToDarkMode": "Switch to dark mode",
-    "openSearch": "Open search"
+    "openSearch": "Open search",
+    "side": {
+      "student": "Student",
+      "teacher": "Teacher",
+      "ops": "Staff",
+      "goStudent": "Go to student area",
+      "goTeacher": "Go to teacher area"
+    }
   },
   "roles": {
     "admin": "Admin",
@@ -1247,6 +1259,7 @@
     "active": "Active",
     "cancelled": "Cancelled",
     "completed": "Completed",
+    "deleting": "Being deleted",
     "dismissed": "Dismissed",
     "draft": "Draft",
     "expired": "Expired",
@@ -1315,7 +1328,8 @@
         "mediaDetails": "When the instructor uploads a video or connects an embed, it plays here.",
         "content": "Lesson content",
         "freePreview": "Free preview",
-        "openResource": "Open instructor resource"
+        "openResource": "Open instructor resource",
+        "fileOnlyHint": "This lesson is a file. Download it to open or save it on your phone or computer."
       },
       "curriculum": {
         "lessons": "Lessons",
@@ -1339,11 +1353,12 @@
       },
       "resources": {
         "title": "Course resources",
-        "heading": "General files and visuals attached to this course",
+        "heading": "Files to download from your lessons",
         "fileOne": "{count} file",
         "fileMany": "{count} files",
         "loading": "Loading course resources...",
-        "empty": "No general course resources are attached yet.",
+        "empty": "No files to download yet.",
+        "courseFiles": "Course files",
         "loadingLesson": "Loading lesson assets...",
         "emptyLesson": "No files are attached to this lesson yet.",
         "preview": "Preview",
@@ -1471,9 +1486,7 @@
       }
     },
     "page": {
-      "eyebrow": "Student experience",
-      "title": "Your learning, in one place.",
-      "description": "Courses, milestones, community, and certificates come together in a workspace that keeps progress easy to follow."
+      "title": "My courses"
     },
     "dashboard": {
       "loading": "Loading your learning workspace...",
@@ -1509,7 +1522,8 @@
       "filterInProgress": "In progress",
       "filterCompleted": "Completed",
       "refundsMoved": "Refunds and receipts live in",
-      "refundsMovedLink": "Billing → Purchases"
+      "refundsMovedLink": "My purchases",
+      "allEvents": "See all live sessions"
     },
     "membersHero": {
       "showMore": "Show more",
@@ -1656,6 +1670,38 @@
         "replyLabel": "Add your reply",
         "replyPlaceholder": "Add your reply…",
         "send": "Reply"
+      },
+      "actions": {
+        "delete": "Delete",
+        "deleteConfirmPost": "Delete this post for everyone? Its replies go too.",
+        "deleteConfirmReply": "Delete this reply for everyone? Replies to it go too.",
+        "deleteYes": "Yes, delete",
+        "deleting": "Deleting...",
+        "keep": "Keep it",
+        "deleteError": "We could not delete it. Try again.",
+        "pinError": "We could not change the pin. Try again.",
+        "report": "Report"
+      },
+      "report": {
+        "titlePost": "Report this post",
+        "titleReply": "Report this reply",
+        "intro": "Tell us what is wrong. The SkillsetMind team reviews every report. The author does not see your name.",
+        "reason": "Reason",
+        "reasons": {
+          "spam": "Spam or selling",
+          "harassment": "Insults or harassment",
+          "unsafe_content": "Dangerous or explicit content",
+          "off_topic": "Off-topic",
+          "other": "Something else"
+        },
+        "detail": "Anything else? (optional)",
+        "send": "Send report",
+        "sending": "Sending...",
+        "cancel": "Cancel",
+        "done": "Thanks. Our team will review it.",
+        "error": "We could not send your report. Try again.",
+        "duplicate": "You already reported this. Our team will review it.",
+        "rateLimit": "You sent a lot of reports in the last hour. Wait a little and try again."
       }
     }
   },
@@ -1668,8 +1714,8 @@
       "step2Body": "Choose a product format, then add lessons, videos, and learning materials in the builder.",
       "step3Title": "Publish and sell",
       "step3Body": "Set your pricing, review the content and access rules, then publish. Share your sales link when the product is ready.",
-      "step4Title": "Payments and help",
-      "step4Body": "Connect your Stripe account in Payments to receive sales. Stripe handles verification and payout timing. Open Advisor in the top bar when you need help.",
+      "step4Title": "Earnings and help",
+      "step4Body": "Connect your Stripe account in Earnings to receive sales. Stripe handles verification and payout timing. Use Help in the menu when you need a hand.",
       "openStudio": "Open your studio"
     },
     "reports": {
@@ -1700,8 +1746,7 @@
       "shortcuts": "Operations shortcuts",
       "linkSales": "All sales",
       "linkSubscriptions": "Subscriptions",
-      "linkEarnings": "Earnings & Connect",
-      "linkCoupons": "Coupons",
+      "linkEarnings": "Earnings",
       "linkBuilder": "Course builder"
     },
     "reportsPage": {
@@ -1892,12 +1937,7 @@
       "coupons": {
         "title": "Coupons & promotions",
         "description": "Open a product to configure its discount codes and offer rules.",
-        "action": "Manage promotions"
-      },
-      "integrations": {
-        "title": "Integrations",
-        "description": "Email tools, webhooks, and analytics destinations are on the roadmap.",
-        "action": "See what's planned"
+        "action": "Open your products"
       },
       "state": {
         "published": "Published",
@@ -1908,17 +1948,8 @@
         "awaitingReplyOne": "1 awaiting reply",
         "awaitingReplyMany": "{count} awaiting reply",
         "noAwaitingReply": "No reply pending",
-        "couponsPerProduct": "Set per product",
-        "planned": "Planned"
+        "couponsPerProduct": "Set per product"
       }
-    },
-    "integrationsPage": {
-      "title": "Integrations are on the roadmap.",
-      "description": "Connect email tools, webhooks, and analytics destinations — it's on the SkillsetMind roadmap. Stripe is already connected, so you can open your own Stripe account from Payouts & tax anytime."
-    },
-    "messagesPage": {
-      "title": "Answer your students.",
-      "description": "Private per-course threads from enrolled students. Replies land in the student's classroom and notification bell."
     },
     "saleDetailPage": {
       "title": "Sale detail.",
@@ -1983,13 +2014,6 @@
     },
     "subscriptionsPage": {
       "description": "Recurring revenue, subscriber health, cancellation signals, and every renewal in one operational view."
-    },
-    "teamPage": {
-      "title": "Team & roles are on the roadmap.",
-      "description": "Invite teammates, assign editor or analyst roles, and share a course catalog across a team — it's on the SkillsetMind roadmap. Today, each Teacher Studio belongs to a single account."
-    },
-    "comingSoon": {
-      "openBuilder": "Open Course Builder"
     },
     "storefrontPage": {
       "title": "Your storefront.",
@@ -2127,6 +2151,25 @@
         "single_label": "Include the ending, for example yourname.com rather than yourname",
         "reserved": "That domain belongs to the platform and cannot be claimed."
       }
+    },
+    "inboxPage": {
+      "description": "Messages from your students and questions from your communities, in one place.",
+      "questionsTitle": "Questions waiting for you",
+      "questionsEmpty": "No questions waiting. When a student asks something in a community, it shows up here.",
+      "questionsError": "We couldn't load the questions. Please try again later.",
+      "answer": "Answer",
+      "messagesTitle": "Messages"
+    },
+    "studentsPage": {
+      "description": "Everyone who joined one of your products.",
+      "loading": "Loading your students...",
+      "error": "We couldn't load your students. Please try again later.",
+      "empty": "No students yet. When someone joins one of your products, they show up here.",
+      "countOne": "1 active student",
+      "countMany": "{count} active students",
+      "product": "Product",
+      "seeInProduct": "See in product",
+      "community": "Community"
     }
   },
   "creatorPanel": {
@@ -2160,7 +2203,8 @@
       "countAllOne": "1 order, all time",
       "emptyTitle": "No sales in this period.",
       "emptyBody": "When a learner completes checkout, the order appears here.",
-      "emptyCta": "Go to your courses",
+      "emptyCta": "Go to your products",
+      "firstTitle": "Your sales will show up here.",
       "datePending": "Date pending",
       "refundInStripe": "Refund in Stripe",
       "showMore": "Show {count} more",
@@ -2307,6 +2351,7 @@
     },
     "shareLink": {
       "copy": "Copy link",
+      "copyMyPage": "Copy my page link",
       "copyAria": "Copy {label} link",
       "open": "Open page",
       "openAria": "Open {label}",
@@ -2479,7 +2524,6 @@
         "marketing": "Marketing workspace",
         "marketingDetail": "Pages, media, buyer messages, and promotions",
         "mediaDetail": "Course covers and delivery assets",
-        "integrationsDetail": "Connected delivery and business services",
         "verification": "Professional verification",
         "verificationDetail": "Credentials and marketplace admission"
       }
@@ -2542,7 +2586,7 @@
       "uncategorized": "Uncategorized",
       "signIn": "Sign in as a creator to start a product.",
       "loadError": "We could not load your products. Please refresh or contact SkillsetMind support.",
-      "deleteError": "We could not delete this draft. Please try again or contact SkillsetMind support.",
+      "deleteError": "We could not delete this product. Nothing was removed. Please try again or contact SkillsetMind support.",
       "actions": {
         "more": "More actions for {title}",
         "menu": "Actions for {title}",
@@ -2557,7 +2601,19 @@
         "description": "This permanently deletes the course and all its content. It can't be undone.",
         "cancel": "Cancel",
         "busy": "Deleting...",
-        "confirm": "Yes, delete"
+        "confirm": "Yes, delete",
+        "consequences": {
+          "lead": "This also deletes:",
+          "content": "Lessons, texts and files",
+          "videos": "Uploaded videos",
+          "community": "Community posts and replies",
+          "events": "Live sessions and pending invitations"
+        },
+        "filesNote": "Files and videos are removed from our servers in hourly batches, starting about a day after you delete. Until then the product shows as \"Being deleted\". Anything another product still uses is kept."
+      },
+      "beingDeleted": {
+        "aria": "Products being deleted",
+        "note": "Files and videos are removed in hourly batches, starting about a day after deletion."
       },
       "archive": {
         "eyebrow": "Archive product",
@@ -2572,8 +2628,7 @@
         "label": "Product workspace shortcuts",
         "membersDetail": "Customize delivery and learner spaces",
         "eventsDetail": "Schedule workshops and live sessions",
-        "marketingDetail": "Pages, media, messages, and promotions",
-        "couponsDetail": "Create discount codes for your products"
+        "marketingDetail": "Pages, media, messages, and promotions"
       }
     },
     "home": {
@@ -2602,6 +2657,8 @@
         "filtersLabel": "Product filters",
         "filterLiveSales": "Live sales",
         "empty": "No products in this view yet.",
+        "firstTitle": "Your first product starts here.",
+        "firstCta": "Create my first product",
         "manage": "Manage product"
       },
       "formats": {
@@ -3304,7 +3361,7 @@
   "authFlow": {
     "callback": {
       "sameBrowser": "This link has to be opened in the same browser that requested it. Open it there, or request a new one from this browser.",
-      "usedOrExpired": "That link has already been used or has expired. Reset links work once. Request a new one and try again.",
+      "usedOrExpired": "That link has already been used or has expired. Links in our emails work only once. Request a new one and try again.",
       "invalidOrExpired": "That link is invalid or has expired. Request a new one and try again."
     },
     "errors": {
@@ -3489,7 +3546,7 @@
       "descriptionPlaceholder": "Explain what the student is about to learn and why it matters.",
       "descriptionHelpPreview": "This is the free preview lesson: anyone can read this text on the course page. Links that start with https:// become clickable.",
       "oldNote": "Old public note (shown to students above the description; anyone can read it)",
-      "materialsHelp": "Complementary files are attached to this lesson and become downloadable inside the student classroom.",
+      "materialsHelp": "Students download these files inside the lesson. You can add PDF, Word, PowerPoint, Excel, e-books (EPUB), mind maps (XMind, FreeMind), images, audio or ZIP.",
       "noMaterials": "No complementary materials yet.",
       "type": "Lesson type",
       "duration": "Duration minutes",
@@ -3510,7 +3567,6 @@
         "previewUnavailable": "This browser cannot preview this file. You can still upload it.",
         "videoType": "Video type",
         "select": "Choose file",
-        "allowPreview": "Allow this file in the public preview when it is safe.",
         "cancel": "Cancel upload",
         "upload": "Upload file",
         "uploading": "Uploading..."
@@ -3525,16 +3581,25 @@
         "videoTooLarge": "This video is {size} — the limit is {limit}.",
         "videoLimit": "Use a video file under {limit}.",
         "invalidFile": "Use a valid {kind} file under {limit}.",
-        "delete": "We could not delete this file. Check course ownership and current permissions."
+        "delete": "We could not delete this file. Check course ownership and current permissions.",
+        "save": "We could not save this change. Try again."
       },
       "success": {
         "uploaded": "File uploaded to this lesson.",
         "deleted": "Asset deleted.",
-        "oldLinkRemoved": "Old link removed."
+        "oldLinkRemoved": "Old link removed.",
+        "renamed": "Name saved.",
+        "ordered": "Order saved."
       },
       "deleteConfirm": "Delete \"{fileName}\"? This permanently removes the file.",
       "thumbnailAlt": "Lesson thumbnail: {fileName}",
       "enrolledOnly": "Enrolled only",
+      "files": {
+        "titleLabel": "Name students see",
+        "originalName": "File: {fileName}",
+        "moveUp": "Move \"{title}\" up",
+        "moveDown": "Move \"{title}\" down"
+      },
       "deleting": "Deleting...",
       "delete": "Delete"
     },
@@ -3696,13 +3761,25 @@
         "preview": "Clear the invalid free preview or choose a lesson from this course.",
         "setup": "Teacher setup must be complete before publishing courses.",
         "verification": "Professional verification must be approved before publishing.",
-        "payouts": "Finish Stripe payout onboarding before publishing a paid course — open the Payouts panel in your studio.",
+        "payouts": "Finish Stripe payout onboarding before publishing a paid course — open Earnings in your studio.",
         "payment": "Check how people pay, in Pricing, before publishing.",
         "lessonContent": "Add a video, text or file to every lesson before publishing.",
         "session": "Schedule the live session before publishing: the date has to be in the future.",
         "file": "Upload at least one file (PDF, slides or workbook) before publishing.",
         "community": "Turn on the community before publishing: it is what members join.",
         "publish": "We could not publish this course. Please try again."
+      },
+      "created": {
+        "course": "Draft saved. Next: your first lesson.",
+        "community": "Draft saved. Next: set your price.",
+        "live_event": "Draft saved. Next: schedule your session.",
+        "live_eventScheduled": "Draft saved. Your session is on the calendar.",
+        "ebook": "Draft saved. Next: upload your file.",
+        "close": "Close"
+      },
+      "publishedPanel": {
+        "title": "It's live.",
+        "detail": "Your product page is open to everyone. Share the link so people can find it."
       },
       "success": {
         "lessonAdded": "Lesson added — opening the lesson studio once it autosaves…",
@@ -3757,6 +3834,10 @@
         "markPreview": "Mark free preview",
         "createModule": "Create module",
         "addFirstModule": "Add your first module",
+        "firstLessonTitle": "Add your first lesson.",
+        "firstLessonDetail": "A video, a text or a file is enough.",
+        "firstModuleTitle": "Add your first module.",
+        "firstModuleDetail": "Then add a lesson to it: a video, a text or a file is enough.",
         "welcomeModule": "Welcome",
         "addLessonToModule": "Add lesson to module {index}",
         "moreOptions": "More options",
@@ -4102,6 +4183,8 @@
       "preparingAsset": "Preparing protected asset...",
       "openFile": "Open file",
       "download": "Download",
+      "downloadNamed": "Download {title}",
+      "openWith": { "xmind": "To open it, use the free app XMind.", "mm": "To open it, use the free app FreeMind or Freeplane." },
       "videoError": "We could not load this video. Refresh and try again.",
       "unavailable": "Video unavailable",
       "loading": "Loading video...",
@@ -4447,6 +4530,8 @@
   },
   "legalAcceptance": {
     "eyebrow": "Legal update",
+    "firstEyebrow": "Before you start",
+    "firstBody": "Read and accept the SkillsetMind terms to use your account.",
     "title": "Review SkillsetMind terms to continue.",
     "body": "SkillsetMind updated its legal terms. Accept the current versions below to continue using your account.",
     "agreeTerms": "I agree to the current SkillsetMind",
@@ -5055,7 +5140,7 @@
     "cancel": "Cancel",
     "loading": "Loading students...",
     "loadError": "We could not load the roster. Reload the page — if it keeps failing, contact support.",
-    "empty": "No one is enrolled yet. Buyers show up here the moment a purchase clears, with their name, e-mail, and progress — so you can support them without leaving the studio.",
+    "emptyTitle": "When someone joins, you'll see them here.",
     "search": "Search students by name or e-mail",
     "progressFilter": "Filter by progress",
     "accessFilter": "Filter by access",
@@ -5568,9 +5653,6 @@
     }
   },
   "teacherRouteResidual": {
-    "couponsTitle": "Coupons live in each course's central.",
-    "couponsDescription": "Open a course, choose Manage, and head to the Coupons section to create discount codes for it. Codes are live at checkout: buyers enter them on your course page and the discount applies before payment.",
-    "openCourses": "Open my courses",
     "manageLoading": "Loading course management..."
   },
   "teacherSalesCopy": {
@@ -5796,6 +5878,11 @@
     "updatePlaceholder": "What should the cohort know this week?",
     "pin": "Pin to the top",
     "postUpdate": "Post update",
+    "allPosts": "All posts",
+    "allPostsEmpty": "No posts yet.",
+    "open": "Open",
+    "repliesOne": "{count} reply",
+    "repliesMany": "{count} replies",
     "waiting": {
       "minutes": {
         "one": "waiting {count} min",
@@ -5819,5 +5906,28 @@
   "siteMetadata": {
     "title": "SkillsetMind | Coaching, Personal Development & Human Potential",
     "description": "A vertical business and learning platform for coaching, personal development and human potential."
+  },
+  "helpMenu": {
+    "trigger": "Help",
+    "title": "What do you need help with?",
+    "student": {
+      "lesson": "Question about a lesson",
+      "lessonCommunity": "Ask in the course community.",
+      "lessonMessage": "Write to your teacher.",
+      "private": "Private matter with the teacher",
+      "privateHint": "Send a private message.",
+      "account": "Login, payment, refund or something broken",
+      "accountHint": "Ask our help assistant first."
+    },
+    "person": "Talk to a person",
+    "teacher": {
+      "howTo": "How do I do something on the platform",
+      "howToAdvisor": "Ask the Advisor, our AI helper.",
+      "howToCenter": "Read the help center.",
+      "students": "My students",
+      "studentsHint": "Messages and questions are in your Inbox.",
+      "account": "Account, payment or error",
+      "accountHint": "Send a request to our team."
+    }
   }
 }

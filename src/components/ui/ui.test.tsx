@@ -11,6 +11,7 @@ import {
   SectionHeader,
   buttonClasses,
 } from "@/components/ui";
+import { SpotArt } from "@/components/ui/spot-art";
 
 // Um arquivo só para os sete primitivos: são componentes de uma tela cada, e
 // sete arquivos de teste custariam sete inicializações de jsdom sem provar
@@ -195,5 +196,30 @@ describe("EmptyState", () => {
     expect(box.className).toContain("border-dashed");
     expect(box).toHaveClass("rounded-lg");
     expect(screen.getByRole("button", { name: "Criar curso" })).toBeInTheDocument();
+  });
+
+  it("com cena: a gravura entra antes do texto, escondida do leitor de tela, e o título é sans", () => {
+    const { container } = render(
+      <EmptyState
+        title="Tu primer producto empieza aquí."
+        art={<SpotArt scene="firstProduct" />}
+        action={<Button>Crear mi primer producto</Button>}
+      />,
+    );
+
+    const box = container.firstElementChild!;
+    const art = box.firstElementChild!;
+    // A cena sobe 6px e acende (catálogo de movimento, item 10).
+    expect(art).toHaveClass("empty-state__art", "spot-art-in");
+    expect(art.querySelector("svg")).toHaveAttribute("aria-hidden", "true");
+    const heading = screen.getByRole("heading", { name: "Tu primer producto empieza aquí." });
+    expect(heading).toHaveClass("text-lg", "font-semibold");
+    expect(heading).not.toHaveClass("display-title");
+    expect(screen.getByRole("button", { name: "Crear mi primer producto" })).toBeInTheDocument();
+  });
+
+  it("sem cena, nada de moldura de arte", () => {
+    const { container } = render(<EmptyState title="Vazio." />);
+    expect(container.querySelector(".empty-state__art")).toBeNull();
   });
 });

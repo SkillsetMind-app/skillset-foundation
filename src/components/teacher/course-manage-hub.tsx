@@ -8,6 +8,7 @@ import type { ReactNode } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { ShortId } from "@/components/shared/short-id";
 import { StatusChip } from "@/components/shared/status-chip";
 import {
   CourseActionsMenu,
@@ -540,6 +541,9 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
                 <span className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-ink-muted)]">
                   {modulesLabel} - {lessonsLabel} - {priceLabel(pricing, t)}
                 </span>
+              </div>
+              <div className="mt-2">
+                <ShortId id={course.id} label={t("shortId.product")} />
               </div>
             </div>
           </div>
@@ -1078,7 +1082,12 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
             </PanelCard>
           ) : null}
 
-          {section === "students" ? <CourseStudentRoster courseId={course.id} /> : null}
+          {section === "students" ? (
+            <CourseStudentRoster
+              courseId={course.id}
+              share={course.status === "published" ? { title: course.title } : undefined}
+            />
+          ) : null}
 
           {section === "page" ? (
             <div className="grid gap-4">
@@ -1133,11 +1142,6 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
                     label: t("platform.nav.mediaLibrary"),
                     detail: t("creatorPanel.hub.tools.mediaDetail"),
                     href: "/teach/media",
-                  },
-                  {
-                    label: t("platform.nav.integrations"),
-                    detail: t("creatorPanel.hub.tools.integrationsDetail"),
-                    href: "/teach/integrations",
                   },
                   {
                     label: t("creatorPanel.hub.tools.verification"),

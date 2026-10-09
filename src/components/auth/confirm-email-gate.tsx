@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 
 import {
   TurnstileWidget,
@@ -11,12 +11,27 @@ import { useTranslation } from "@/components/i18n/i18n-provider";
 import { getAuthRoute, getLoadingRoute, getSafeReturnTo, type AuthPathIntent } from "@/lib/auth/routing";
 import {
   getAuthErrorMessage,
+  isAccountNeutralAuthError,
   refreshCurrentUserEmailVerification,
   resendSignupConfirmation,
 } from "@/lib/auth/supabase-auth";
 
 const RESEND_COOLDOWN_SECONDS = 60;
 const CONFIRMED_CHECK_MS = 6000;
+
+// Espera entre reenvios, para o botao nao virar fonte de spam. A mesma para as
+// duas telas que reenviam o link.
+function useResendCooldown() {
+  const [cooldown, setCooldown] = useState(0);
+  useEffect(() => {
+    if (cooldown <= 0) {
+      return;
+    }
+    const timer = window.setTimeout(() => setCooldown((s) => s - 1), 1000);
+    return () => window.clearTimeout(timer);
+  }, [cooldown]);
+  return [cooldown, () => setCooldown(RESEND_COOLDOWN_SECONDS)] as const;
+}
 
 // A porta "confirme seu e-mail", logo depois de criar a conta (e tambem quando
 // alguem tenta entrar sem ter confirmado).
@@ -42,7 +57,7 @@ export function ConfirmEmailGate({
   onChangeEmail?: () => void;
 }) {
   const { t } = useTranslation();
-  const [cooldown, setCooldown] = useState(0);
+  const [cooldown, startCooldown] = useResendCooldown();
   const [isSending, setIsSending] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<{ cause: unknown } | null>(null);
@@ -97,14 +112,6 @@ export function ConfirmEmailGate({
     };
   }, [confirmedRoute, email]);
 
-  useEffect(() => {
-    if (cooldown <= 0) {
-      return;
-    }
-    const timer = window.setTimeout(() => setCooldown((s) => s - 1), 1000);
-    return () => window.clearTimeout(timer);
-  }, [cooldown]);
-
   async function handleResend() {
     if (isSending || cooldown > 0 || captchaPending) {
       return;
@@ -119,7 +126,7 @@ export function ConfirmEmailGate({
         captchaToken || undefined,
       );
       setSent(true);
-      setCooldown(RESEND_COOLDOWN_SECONDS);
+      startCooldown();
     } catch (caughtError) {
       setError({ cause: caughtError });
     } finally {
@@ -185,5 +192,127 @@ export function ConfirmEmailGate({
         </Link>
       </p>
     </section>
+  );
+}
+
+// Link de confirmacao vencido ou ja usado (o login abre isto com
+// ?error=confirm_expired). Antes a pessoa caia num texto sobre "links de troca
+// de senha" e sem botao de reenviar: beco sem saida. Aqui ela digita o e-mail e
+// pede outro link, pelo MESMO reenvio da porta acima (CAPTCHA, espera de 60 s e
+// o limite do proprio Supabase).
+//
+// A resposta e sempre a mesma frase, exista a conta ou nao, ja confirmada ou
+// nao: esta tela nao pode servir para descobrir quem tem cadastro. So aparece
+// erro do que acontece antes de procurar a conta (CAPTCHA, conexao).
+export function ExpiredConfirmationLink({
+  intent = null,
+  returnTo = null,
+  onSignIn,
+}: {
+  intent?: AuthPathIntent | null;
+  returnTo?: string | null;
+  /** Ja confirmou: volta ao formulario de entrada com o e-mail digitado. */
+  onSignIn: (email: string) => void;
+}) {
+  const { t } = useTranslation();
+  const [email, setEmail] = useState("");
+  const [cooldown, startCooldown] = useResendCooldown();
+  const [isSending, setIsSending] = useState(false);
+  const [sent, setSent] = useState(false);
+  const [error, setError] = useState<{ cause: unknown } | null>(null);
+  const [captchaToken, setCaptchaToken] = useState("");
+  const [captchaResetSignal, setCaptchaResetSignal] = useState(0);
+  const captchaPending = isCaptchaEnabled && !captchaToken;
+
+  async function handleSend(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (isSending || cooldown > 0 || captchaPending || !email.trim()) {
+      return;
+    }
+    setIsSending(true);
+    setError(null);
+    setSent(false);
+    try {
+      await resendSignupConfirmation(
+        email.trim(),
+        // O link novo leva ao mesmo lugar que o vencido: o curso, se havia.
+        getLoadingRoute("welcome", intent, getSafeReturnTo(new URLSearchParams({ returnTo: returnTo ?? "" }))),
+        captchaToken || undefined,
+      );
+      setSent(true);
+      startCooldown();
+    } catch (caughtError) {
+      if (isAccountNeutralAuthError(caughtError)) {
+        setError({ cause: caughtError });
+      } else {
+        // Limite, conta inexistente, ja confirmada: mesma frase de sempre.
+        setSent(true);
+        startCooldown();
+      }
+    } finally {
+      // O token do CAPTCHA vale uma vez: renova para a proxima tentativa.
+      if (isCaptchaEnabled) setCaptchaResetSignal((n) => n + 1);
+      setIsSending(false);
+    }
+  }
+
+  return (
+    <form
+      onSubmit={(event) => void handleSend(event)}
+      className="mt-5 grid gap-3 rounded-lg border border-[var(--color-line)] bg-[var(--color-surface-soft)] px-5 py-6"
+    >
+      <h2 className="text-lg font-semibold text-[var(--color-ink)]">
+        {t("auth.signup.expiredTitle")}
+      </h2>
+      <p className="text-sm leading-6 text-[var(--color-ink-soft)]">
+        {t("auth.signup.expiredBody")}
+      </p>
+      <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
+        {t("auth.email")}
+        <input
+          type="email"
+          value={email}
+          onChange={(event) => setEmail(event.target.value)}
+          placeholder={t("auth.emailPlaceholder")}
+          autoComplete="email"
+          required
+          className="field-input"
+        />
+      </label>
+
+      <TurnstileWidget onToken={setCaptchaToken} resetSignal={captchaResetSignal} />
+
+      <button
+        type="submit"
+        disabled={isSending || cooldown > 0 || captchaPending}
+        className="min-h-11 rounded-md bg-[var(--color-primary)] px-4 py-2.5 text-sm font-semibold text-[var(--color-base)] disabled:opacity-60"
+      >
+        {cooldown > 0
+          ? t("auth.signup.confirmResendIn").replace("{seconds}", String(cooldown))
+          : isSending
+            ? t("auth.signup.confirmResending")
+            : t("auth.signup.expiredSend")}
+      </button>
+
+      {sent ? (
+        <p role="status" className="text-sm font-semibold text-[var(--color-primary)]">{t("auth.signup.expiredSent")}</p>
+      ) : null}
+      {error ? (
+        <p role="alert" className="text-sm font-semibold text-[var(--color-danger-fg)]">
+          {getAuthErrorMessage(error.cause, t)}
+        </p>
+      ) : null}
+
+      <p className="text-sm leading-6 text-[var(--color-ink-muted)]">
+        {t("auth.signup.confirmAlreadyDone")}{" "}
+        <button
+          type="button"
+          onClick={() => onSignIn(email.trim())}
+          className="min-h-6 font-semibold text-[var(--color-primary)]"
+        >
+          {t("auth.signup.confirmSignIn")}
+        </button>
+      </p>
+    </form>
   );
 }

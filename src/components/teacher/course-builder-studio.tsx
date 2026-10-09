@@ -6,7 +6,6 @@ import {
   ArrowLeft,
   ArrowRight,
   CalendarDays,
-  Check,
   CheckCircle2,
   ChevronRight,
   Circle,
@@ -25,17 +24,21 @@ import {
   Ticket,
   Trash2,
   UploadCloud,
+  X,
 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   useCallback,
   useEffect,
+  useId,
   useLayoutEffect,
   useMemo,
   useRef,
   useState,
   type ChangeEvent,
   type FormEvent,
+  type ReactNode,
+  type RefObject,
 } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
@@ -44,6 +47,7 @@ import { PlanSelectorCards } from "@/components/shared/plan-selector-cards";
 import { InlineHelp } from "@/components/shared/inline-help";
 import { StatusChip } from "@/components/shared/status-chip";
 import { MembersAreaHero } from "@/components/learn/members-area-hero";
+import { BuilderSkeleton } from "@/components/teacher/builder-skeleton";
 import { CourseAssetUploader } from "@/components/teacher/course-asset-uploader";
 import { CourseCategorySelect } from "@/components/teacher/course-category-select";
 import { CourseShareLink } from "@/components/teacher/course-share-link";
@@ -105,7 +109,9 @@ import {
 import { compressImage, MAX_SOURCE_IMAGE_BYTES } from "@/lib/media/compress-image";
 import { ReadinessGroups } from "@/components/teacher/readiness-groups";
 import { UploadProgressNote } from "@/components/teacher/upload-progress-note";
-import { Button, buttonClasses, InlineAlert } from "@/components/ui";
+import { Button, buttonClasses, EmptyState, InlineAlert } from "@/components/ui";
+import { DrawnCheck, MilestoneSeal, useJustDone } from "@/components/ui/drawn-check";
+import { SpotArt } from "@/components/ui/spot-art";
 import type { CourseAsset } from "@/domain/course-asset";
 import { isActivationRequiredError } from "@/domain/creator-verification";
 import { getTrustedLessonEmbed } from "@/domain/lesson-embed";
@@ -527,8 +533,14 @@ export function CourseBuilderStudio() {
   const { user } = useAuth();
   // Payouts e verificacao: so o Manage sabia; aqui a pessoa clicava em
   // Publish e descobria pelo erro do servidor.
-  const { account: publishGates, verificationStatus, stripeConnectCountry } = usePublishGates(user);
-  const successNoticeRef = useRef<HTMLParagraphElement>(null);
+  const {
+    account: publishGates,
+    loaded: gatesLoaded,
+    verificationStatus,
+    stripeConnectCountry,
+  } = usePublishGates(user);
+  // "Agora nao" na oferta do selo devolve o foco ao titulo do painel "Publicado!".
+  const successNoticeRef = useRef<HTMLHeadingElement>(null);
   const [course, setCourse] = useState<TeacherCourse | null>(null);
   // O que o produto entrega (courses.product_format): muda a aba de conteudo
   // e o que publicar cobra, como em publish_teacher_course.
@@ -601,6 +613,23 @@ export function CourseBuilderStudio() {
       .replace("{zero}", () => formatZeroPrice(currency))
     : null;
   const [isLoading, setIsLoading] = useState(true);
+  // ?created=1 vem da tela de criar (catalogo de movimento, item 7): a faixa
+  // "Rascunho salvo. Proximo: ..." aparece uma vez, quando o curso termina de
+  // carregar. O parametro sai da URL nessa hora, para uma recarga ou a troca
+  // de aba (que copia os parametros) nao repetir o marco. Some em 4s ou no X
+  // (o relogio mora em CreatedStrip).
+  const [createdStripOpen, setCreatedStripOpen] = useState(
+    () => searchParams.get("created") === "1",
+  );
+  const closeCreatedStrip = useCallback(() => setCreatedStripOpen(false), []);
+  useEffect(() => {
+    if (isLoading || searchParams.get("created") !== "1") {
+      return;
+    }
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("created");
+    router.replace(`/teach/builder?${params.toString()}`, { scroll: false });
+  }, [isLoading, router, searchParams]);
   const [isSaving, setIsSaving] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   // A aula aberta vem da URL (?module=M&lesson=L), como o modulo: o voltar do
@@ -1275,6 +1304,25 @@ export function CourseBuilderStudio() {
   const activeStageId =
     builderStages.find((stage) => stage.target === activeTab)?.id ??
     builderStages[0].id;
+  // "Acabou de ficar pronto" so conta depois que todas as leituras voltaram:
+  // payouts e verificacao, os arquivos do curso e, no evento, as sessoes.
+  // Antes disso os falsos iniciais virariam festa ao chegar (abrir
+  // ?tab=review acendia "Stripe payouts" sem ninguem ter feito nada).
+  const readinessLoaded =
+    gatesLoaded &&
+    courseAssetsLoaded &&
+    (productFormat !== "live_event" || courseSessions !== null);
+  const justDoneStages = useJustDone(
+    builderStages.filter((stage) => stageCompletion[stage.id]).map((stage) => stage.id),
+    readinessLoaded,
+  );
+  const justDoneReadiness = useJustDone(
+    readiness.items.filter((item) => item.done).map((item) => item.id),
+    readinessLoaded,
+  );
+  // A aba de abertura e a linha de base: so a TROCA de aba anima o painel. A
+  // primeira carga entra parada (nada de opacidade 0 no que vira LCP).
+  const panelIn = useJustDone([activeTab]).has(activeTab) ? "motion-panel-in" : "";
   const totalDurationMinutes = allLessons.reduce(
     (sum, lesson) => sum + (lesson.durationMinutes ?? 0),
     0,
@@ -2124,9 +2172,18 @@ export function CourseBuilderStudio() {
         </p>
 
         {module.lessons.length === 0 ? (
-          <p className="rounded-md border fine-rule bg-white px-4 py-3 text-sm leading-6 text-[var(--color-ink-soft)]">
-            {t("creatorEditor.builder.curriculum.moduleEmpty")}
-          </p>
+          productFormat === "course" ? (
+            <EmptyState
+              as="h4"
+              art={<SpotArt scene="firstLesson" />}
+              title={t("creatorEditor.builder.curriculum.firstLessonTitle")}
+              description={t("creatorEditor.builder.curriculum.firstLessonDetail")}
+            />
+          ) : (
+            <p className="rounded-md border fine-rule bg-white px-4 py-3 text-sm leading-6 text-[var(--color-ink-soft)]">
+              {t("creatorEditor.builder.curriculum.moduleEmpty")}
+            </p>
+          )
         ) : (
           module.lessons.map((lesson, lessonIndex) => (
             <div
@@ -2722,11 +2779,7 @@ export function CourseBuilderStudio() {
   }
 
   if (isLoading) {
-    return (
-      <section className="settings-section-card">
-        <p className="text-sm text-[var(--color-ink-soft)]">{t("creatorEditor.builder.shell.loading")}</p>
-      </section>
-    );
+    return <BuilderSkeleton label={t("creatorEditor.builder.shell.loading")} />;
   }
 
   if (error && !course) {
@@ -2793,6 +2846,9 @@ export function CourseBuilderStudio() {
               <BuilderSaveStatus
                 state={displayedSaveStatus}
                 blockedReason={autosaveBlockedReason}
+                // Ao abrir o curso o chip ja diz "Saved" sem ninguem ter
+                // salvado: o verde so acende depois de uma gravacao de verdade.
+                justSaved={autosaveState === "saved"}
               />
             ) : null}
           </div>
@@ -2861,12 +2917,15 @@ export function CourseBuilderStudio() {
                 o mesmo numero. */}
             {/* Latão, como a barra do aluno (learn-dashboard): progresso e
                 conquista. O número fica sempre ao lado. */}
-            <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[rgba(26,54,93,0.12)]">
-              <div
-                data-testid="publish-readiness-bar"
-                className="h-full rounded-full bg-[var(--color-accent)] transition-[width] duration-300"
-                style={{ width: `${readiness.percent}%` }}
-              />
+            <div className="mt-2 flex items-center gap-2">
+              <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-[rgba(26,54,93,0.12)]">
+                <div
+                  data-testid="publish-readiness-bar"
+                  className="h-full rounded-full bg-[var(--color-accent)] transition-[width] duration-300 ease-out"
+                  style={{ width: `${readiness.percent}%` }}
+                />
+              </div>
+              {readiness.percent === 100 ? <MilestoneSeal animate={justDoneReadiness.size > 0} /> : null}
             </div>
           </div>
         </div>
@@ -2892,7 +2951,7 @@ export function CourseBuilderStudio() {
               >
                 <span className="course-builder-step__num">
                   {isDone ? (
-                    <CheckCircle2 aria-hidden="true" size={13} strokeWidth={2} />
+                    <DrawnCheck size={13} strokeWidth={2.6} animate={justDoneStages.has(stage.id)} />
                   ) : (
                     String(index + 1).padStart(2, "0")
                   )}
@@ -2908,7 +2967,8 @@ export function CourseBuilderStudio() {
       </nav>
 
       <section className="course-builder-panel">
-          <div className="flex flex-wrap items-start justify-between gap-4 pb-4">
+          {/* key: trocar de aba remonta o cabecalho e a animacao roda de novo. */}
+          <div key={activeTab} className={`${panelIn} flex flex-wrap items-start justify-between gap-4 pb-4`}>
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
                 {activeTab === "members" ? t("creatorEditor.members.step") : t(builderTabs[selectedTabIndex]?.label ?? "creatorEditor.builder.shell.shortTitle")}
@@ -2982,7 +3042,7 @@ export function CourseBuilderStudio() {
         ) : null}
 
         {activeTab === "details" ? (
-        <div className="mt-6 grid gap-4">
+        <div className={`${panelIn} mt-6 grid gap-4`}>
           <div id="builder-sec-cover" className="scroll-mt-24">
             {course ? (
               <CourseCoverField
@@ -3128,6 +3188,7 @@ export function CourseBuilderStudio() {
         ) : null}
 
         {activeTab === "members" && course ? (
+          <div className={panelIn || undefined}>
           <MembersAreaTab
             courseId={courseId}
             course={course}
@@ -3158,10 +3219,11 @@ export function CourseBuilderStudio() {
               setSuccess(null);
             }}
           />
+          </div>
         ) : null}
 
         {activeTab === "members" && course ? (
-          <div className="rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4">
+          <div className={`${panelIn} rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4`}>
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="grid gap-1">
                 <p className="text-sm font-semibold text-[var(--color-ink)]">
@@ -3206,7 +3268,7 @@ export function CourseBuilderStudio() {
         {activeTab === "pricing" ? (
           <div
             id="builder-sec-pricing"
-            className="scroll-mt-24 rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4"
+            className={`${panelIn} scroll-mt-24 rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4`}
           >
             {!checkoutOffers ? (
               // Sem a lista de precos, o preco principal e desconhecido: nada
@@ -3443,7 +3505,7 @@ export function CourseBuilderStudio() {
         ) : null}
 
         {activeTab === "content" ? (
-        <div className="mt-6 grid gap-4">
+        <div className={`${panelIn} mt-6 grid gap-4`}>
           {/* A lista vem primeiro. Antes, a estrutura do curso era a ultima
               coisa da aba: dois formularios grandes sempre abertos ("Add
               module" e "Add lesson", com um select "Choose module") ficavam
@@ -3457,6 +3519,18 @@ export function CourseBuilderStudio() {
             {ebookLesson && ebookModule ? renderEbookFiles(ebookModule, ebookLesson) : activeLessonStudioLesson ? renderLessonPage() : activeModule ? renderModulePage(activeModule, activeModuleIndex) : (
             <>
             {renderLiveSession()}
+            {/* So no curso: comunidade, evento e e-book tem a propria acao.
+                Sem modulo, a unica acao e o formulario "Add your first module"
+                logo abaixo (aberto sozinho): o vazio diz o mesmo. */}
+            {modules.length === 0 && productFormat === "course" ? (
+              <EmptyState
+                as="h4"
+                art={<SpotArt scene="firstLesson" />}
+                title={t("creatorEditor.builder.curriculum.firstModuleTitle")}
+                description={t("creatorEditor.builder.curriculum.firstModuleDetail")}
+                className="mb-4"
+              />
+            ) : null}
             <div className="flex justify-end">
               {isModuleFormOpen ? null : (
                 <button
@@ -3701,7 +3775,7 @@ export function CourseBuilderStudio() {
         {activeTab === "review" ? (
           <div
             id="builder-sec-review"
-            className="mt-6 scroll-mt-24 rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-5"
+            className={`${panelIn} mt-6 scroll-mt-24 rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-5`}
           >
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
               {t("creatorEditor.builder.publish.title")}
@@ -3719,17 +3793,15 @@ export function CourseBuilderStudio() {
               readiness={readiness}
               className="mt-5 grid gap-6"
               renderItem={(item) => (
-                <li
-                  key={item.id}
-                  className="rounded-md border border-[var(--color-line)] bg-white px-4 py-3"
-                >
+                <ChecklistRow key={item.id} id={item.id} done={item.done} ready={readinessLoaded}>
+                  {(justDone) => (<>
                   {/* Pendente era texto dourado e feito era um "✓" digitado: o
                       latão marcava problema. Feito = check verde (6.51:1) com
                       "Done" para o leitor de tela; pendente = círculo vazio. */}
                   <p className={`flex items-center gap-2 text-sm font-semibold ${item.done ? "text-[var(--color-success-fg)]" : "text-[var(--color-ink)]"}`}>
                     {item.done ? (
                       <>
-                        <Check aria-hidden="true" size={15} strokeWidth={2.4} className="shrink-0" />
+                        <DrawnCheck size={15} animate={justDone} />
                         <span className="sr-only">{t("creatorEditor.lesson.state.done")}: </span>
                       </>
                     ) : (
@@ -3760,7 +3832,8 @@ export function CourseBuilderStudio() {
                       ) : null}
                     </p>
                   )}
-                </li>
+                  </>)}
+                </ChecklistRow>
               )}
             />
             <p className="mt-5 text-sm leading-7 text-[var(--color-ink-soft)]">
@@ -3808,12 +3881,12 @@ export function CourseBuilderStudio() {
             // A aba Publish terminava num texto; o botão de publicar ficava no
             // cartão do rodapé, que no celular vem depois do resumo inteiro.
             <div className="flex w-full flex-wrap items-center justify-end gap-3 sm:w-auto">
-              {readyToPublish ? null : (
+              {readyToPublish || success === "published" ? null : (
                 <span className="text-xs font-semibold text-[var(--color-ink-soft)]">
                   {t("creatorEditor.builder.publish.finish")}
                 </span>
               )}
-              {publishButton}
+              {success === "published" ? null : publishButton}
             </div>
           )}
         </div>
@@ -3933,18 +4006,18 @@ export function CourseBuilderStudio() {
               ) : null}
             </div>
           ) : null}
-          {success ? (
-            // tabIndex -1: "Agora não" na oferta do selo devolve o foco aqui.
-            <p ref={successNoticeRef} tabIndex={-1} className="mt-4 info-notice">
+          {success && success !== "published" ? (
+            <p key={success} className="motion-rise-in mt-4 info-notice">
               {t(`creatorEditor.builder.success.${success}`)}
             </p>
           ) : null}
-          {/* Publicou: o link para divulgar sai aqui mesmo, sem ir ao Manage. */}
+          {/* Publicou: o pico da jornada. O link para divulgar sai aqui mesmo,
+              sem ir ao Manage, e o botao latao de copiar recebe o foco. */}
           {success === "published" && courseId ? (
-            <CourseShareLink
-              label={t("creatorPanel.hub.sections.page")}
-              path={`/courses/${encodeURIComponent(courseId)}`}
-              title={title.trim() || t("creatorPanel.hub.header.courseFallback")}
+            <PublishedPanel
+              courseId={courseId}
+              courseTitle={title.trim() || t("creatorPanel.hub.header.courseFallback")}
+              headingRef={successNoticeRef}
             />
           ) : null}
           {/* Depois de publicar, e só aí: a oferta do selo, sem travar nada.
@@ -3967,7 +4040,7 @@ export function CourseBuilderStudio() {
             >
               {isSaving ? t("creatorEditor.builder.navigation.saving") : t("creatorEditor.builder.navigation.save")}
             </button>
-            {activeTab === "review" ? null : publishButton}
+            {activeTab === "review" || success === "published" ? null : publishButton}
             <Link href="/teach" className="button-outline px-4 py-2.5 text-sm">
               {t("creatorEditor.builder.navigation.studio")}
             </Link>
@@ -3995,7 +4068,179 @@ export function CourseBuilderStudio() {
           </div>
         ) : null}
       </div>
+      <CreatedStrip
+        // Evento ao vivo: espera as sessoes chegarem, senao a faixa diria
+        // "agende sua sessao" a quem ja agendou e trocaria a frase na cara do
+        // leitor de tela. Se a leitura falhar, a faixa nao aparece.
+        message={
+          createdStripOpen && course && (productFormat !== "live_event" || courseSessions !== null)
+            ? t(`creatorEditor.builder.created.${
+                productFormat === "live_event" && courseSessions?.length ? "live_eventScheduled" : productFormat
+              }`)
+            : null
+        }
+        onClose={closeCreatedStrip}
+      />
     </div>
+  );
+}
+
+/**
+ * Linha do checklist de publicar (catalogo de movimento, item 5). O que fica
+ * pronto COM a aba aberta acende em latao claro uma vez e o check se desenha;
+ * o que ja estava pronto quando a aba abriu nao pisca, senao abrir a aba
+ * viraria festa. A foto de "pronto" so e tirada com `ready` (as leituras de
+ * payouts, verificacao, arquivos e sessoes de volta).
+ */
+function ChecklistRow({
+  id,
+  done,
+  ready,
+  children,
+}: {
+  id: string;
+  done: boolean;
+  ready: boolean;
+  children: (justDone: boolean) => ReactNode;
+}) {
+  const justDone = useJustDone(done ? [id] : [], ready).has(id);
+  return (
+    <li
+      className={`rounded-md border border-[var(--color-line)] bg-white px-4 py-3 ${justDone ? "is-just-done" : ""}`}
+    >
+      {children(justDone)}
+    </li>
+  );
+}
+
+/**
+ * A faixa "Rascunho salvo. Proximo: ..." (catalogo de movimento, item 7).
+ * - A regiao `role="status"` fica sempre montada e so o conteudo entra, um
+ *   tique depois: NVDA e JAWS nao anunciam uma regiao viva que ja nasce
+ *   preenchida.
+ * - Some em 4s, mas o relogio para enquanto o ponteiro ou o foco estao nela
+ *   (sem isso o foco no X caia no <body> quando a faixa sumia).
+ * - `absolute` sem tamanho: vazia, nao ocupa linha nem gap na grade do
+ *   construtor. Nao `fixed`: fixed cria contexto de empilhamento e prenderia
+ *   o z-index 60 da faixa dentro dele.
+ */
+function CreatedStrip({ message, onClose }: { message: string | null; onClose: () => void }) {
+  const { t } = useTranslation();
+  const [shown, setShown] = useState(false);
+  const [held, setHeld] = useState(false);
+  // Os dois relogios saem juntos: o tique que poe o texto na regiao ja
+  // montada e os 4s ate sumir (que nao corre enquanto `held`). Soltar a
+  // faixa recomeca os 4s.
+  useEffect(() => {
+    if (!message) {
+      return;
+    }
+    const tick = window.setTimeout(() => setShown(true), 0);
+    const timer = held ? undefined : window.setTimeout(onClose, 4000);
+    return () => {
+      window.clearTimeout(tick);
+      window.clearTimeout(timer);
+    };
+  }, [message, held, onClose]);
+
+  return (
+    <div role="status" className="absolute">
+      {message && shown ? (
+        <div
+          className="created-strip"
+          onMouseEnter={() => setHeld(true)}
+          onMouseLeave={() => setHeld(false)}
+          onFocus={() => setHeld(true)}
+          onBlur={(event) => {
+            if (!event.currentTarget.contains(event.relatedTarget)) {
+              setHeld(false);
+            }
+          }}
+        >
+          <MilestoneSeal animate />
+          <p className="min-w-0 flex-1 text-sm font-semibold leading-5">{message}</p>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label={t("creatorEditor.builder.created.close")}
+            className="grid h-11 w-11 shrink-0 place-items-center rounded-md text-white/80 transition-colors hover:bg-white/10 hover:text-white"
+          >
+            <X aria-hidden="true" size={16} strokeWidth={2} />
+          </button>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * O painel "Publicado!" (catalogo de movimento, item 8), no lugar do paragrafo
+ * cinza igual ao "Draft saved.". O selo carimba, a gravura acende e o botao
+ * latao "Copy my page link" recebe o foco. Uma festa por produto: publicar de
+ * novo o mesmo curso mostra o painel parado.
+ */
+function PublishedPanel({
+  courseId,
+  courseTitle,
+  headingRef,
+}: {
+  courseId: string;
+  courseTitle: string;
+  headingRef: RefObject<HTMLHeadingElement | null>;
+}) {
+  const { t } = useTranslation();
+  const id = useId();
+  const storageKey = `skillsetmind.publishedCelebrated.${courseId}`;
+  // So le no inicializador; quem grava e o efeito. No StrictMode o
+  // inicializador roda duas vezes antes de qualquer efeito, entao as duas
+  // leituras concordam.
+  const [celebrate] = useState(() => {
+    try {
+      return !window.localStorage.getItem(storageKey);
+    } catch {
+      return true;
+    }
+  });
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(storageKey, "1");
+    } catch {
+      // Sem armazenamento (cota zero): a festa so se repete.
+    }
+  }, [storageKey]);
+
+  return (
+    <section
+      aria-labelledby={`${id}-title`}
+      data-celebrating={celebrate ? "" : undefined}
+      className={`published-panel mt-4 ${celebrate ? "is-celebrating" : ""}`}
+    >
+      <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center">
+        <SpotArt scene="published" />
+        <div className="min-w-0">
+          <h4
+            ref={headingRef}
+            id={`${id}-title`}
+            tabIndex={-1}
+            className="text-lg font-semibold leading-snug text-[var(--color-primary)]"
+          >
+            {t("creatorEditor.builder.publishedPanel.title")}
+          </h4>
+          <p id={`${id}-detail`} className="mt-1 text-sm leading-6 text-[var(--color-ink-soft)]">
+            {t("creatorEditor.builder.publishedPanel.detail")}
+          </p>
+        </div>
+      </div>
+      <CourseShareLink
+        label={t("creatorPanel.hub.sections.page")}
+        path={`/courses/${encodeURIComponent(courseId)}`}
+        title={courseTitle}
+        copyLabel={t("creatorPanel.shareLink.copyMyPage")}
+        copyDescribedBy={`${id}-title ${id}-detail`}
+        accent
+        focusCopy
+      />
+    </section>
   );
 }
 
@@ -4040,9 +4285,12 @@ export function getAutosaveBlockedReason(input: {
 function BuilderSaveStatus({
   state,
   blockedReason,
+  justSaved = false,
 }: {
   state: "pending" | "saving" | "saved" | "error" | "blocked";
   blockedReason?: AutosaveBlockedReason | null;
+  /** Uma gravacao acabou de voltar: o chip entra e o verde acende 1,5s. */
+  justSaved?: boolean;
 }) {
   const { t } = useTranslation();
   // Autosave parado por campo inválido. Precisa ser visualmente diferente do
@@ -4095,7 +4343,7 @@ function BuilderSaveStatus({
   }
 
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-chip border border-[var(--color-line)] bg-white px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--color-primary)]">
+    <span className={`inline-flex items-center gap-1.5 rounded-chip border border-[var(--color-line)] bg-white px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--color-primary)] ${justSaved ? "builder-save-status--saved motion-rise-in" : ""}`}>
       <CheckCircle2 aria-hidden="true" size={12} strokeWidth={2} />
       {t("creatorEditor.builder.save.saved")}
     </span>

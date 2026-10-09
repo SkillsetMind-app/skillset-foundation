@@ -512,8 +512,10 @@ export type Database = {
           lesson_id: string | null
           module_id: string | null
           owner_id: string
+          position: number | null
           size: number
           storage_path: string
+          title: string | null
           updated_at: string | null
         }
         Insert: {
@@ -529,8 +531,10 @@ export type Database = {
           lesson_id?: string | null
           module_id?: string | null
           owner_id: string
+          position?: number | null
           size: number
           storage_path: string
+          title?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -546,8 +550,10 @@ export type Database = {
           lesson_id?: string | null
           module_id?: string | null
           owner_id?: string
+          position?: number | null
           size?: number
           storage_path?: string
+          title?: string | null
           updated_at?: string | null
         }
         Relationships: [
@@ -699,6 +705,54 @@ export type Database = {
             referencedColumns: ["uid"]
           },
         ]
+      }
+      course_deletions: {
+        Row: {
+          attempts: number
+          bunny_assets: Json
+          course_created_at: string | null
+          course_id: string
+          finished_at: string | null
+          last_error: string | null
+          last_progress_at: string | null
+          owner_id: string
+          requested_at: string
+          result: Json
+          stalled_runs: number
+          status: string
+          title: string
+        }
+        Insert: {
+          attempts?: number
+          bunny_assets?: Json
+          course_created_at?: string | null
+          course_id: string
+          finished_at?: string | null
+          last_error?: string | null
+          last_progress_at?: string | null
+          owner_id: string
+          requested_at?: string
+          result?: Json
+          stalled_runs?: number
+          status?: string
+          title?: string
+        }
+        Update: {
+          attempts?: number
+          bunny_assets?: Json
+          course_created_at?: string | null
+          course_id?: string
+          finished_at?: string | null
+          last_error?: string | null
+          last_progress_at?: string | null
+          owner_id?: string
+          requested_at?: string
+          result?: Json
+          stalled_runs?: number
+          status?: string
+          title?: string
+        }
+        Relationships: []
       }
       course_event_rsvps: {
         Row: {
@@ -2647,6 +2701,18 @@ export type Database = {
         Args: { p_uid?: string } | never
         Returns: boolean
       }
+      course_cleanup_video_deletable: {
+        Args: { p_course_id: string; p_video_id: string }
+        Returns: boolean
+      }
+      course_storage_objects_for_cleanup: {
+        Args: { p_course_id: string }
+        Returns: {
+          in_use: boolean
+          object_bucket: string
+          object_name: string
+        }[]
+      }
       delete_course_as_admin: { Args: { p_course_id: string }; Returns: Json }
       delete_course_coupon: { Args: { p_coupon_id: string }; Returns: Json }
       delete_or_archive_own_course: {
@@ -2725,6 +2791,14 @@ export type Database = {
       issue_skillset_certificate: {
         Args: { p_enrollment_id: string; p_full_name: string }
         Returns: string
+      }
+      list_my_courses_being_deleted: {
+        Args: never
+        Returns: {
+          course_id: string
+          requested_at: string
+          title: string
+        }[]
       }
       log_audit_event: {
         Args: {

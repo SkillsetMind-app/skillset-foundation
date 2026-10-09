@@ -2,8 +2,12 @@
 
 import type { CourseAsset, CourseAssetKind } from "@/domain/course-asset";
 import {
+  compareCourseAssets,
+  courseAssetTitleMaxLength,
   courseAssetUploadLimitMessage,
+  getCourseAssetContentType,
   isAllowedCourseAssetFile,
+  isCourseContentMimeType,
   supabaseUploadLimitBytes,
 } from "@/domain/course-asset";
 import { getSafeMediaUrl } from "@/domain/external-url";
@@ -44,6 +48,9 @@ function rowToCourseAsset(row: CourseAssetRow): CourseAsset {
     isPreview: row.is_preview,
     lessonId: row.lesson_id,
     moduleId: row.module_id,
+    // `?? null`: antes da migration 20261007040000 as colunas nem vêm.
+    title: row.title ?? null,
+    position: row.position ?? null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -107,6 +114,7 @@ export async function uploadCourseAsset(input: UploadCourseAssetInput) {
   const safeFileName = sanitizeFileName(input.file.name);
   const storagePath = `courses/${input.courseId}/assets/${input.ownerId}/${assetId}/${safeFileName}`;
   const bucket = bucketForKind(input.kind);
+  const contentType = getCourseAssetContentType(input.file);
 
   // ponytail: supabase-js upload() has no granular progress event. Emit an
   // honest "running, percent unknown" instead of a 0% that sat frozen for the
@@ -119,10 +127,13 @@ export async function uploadCourseAsset(input: UploadCourseAssetInput) {
     state: "running",
   });
 
+  // A storage-js ignora `contentType` quando o corpo é um File e grava o tipo
+  // do próprio File: um SVG ficava image/svg+xml no storage. O novo File só
+  // aponta para os mesmos bytes, com o tipo seguro.
   const { error: uploadError } = await supabase.storage
     .from(bucket)
-    .upload(storagePath, input.file, {
-      contentType: input.file.type,
+    .upload(storagePath, new File([input.file], input.file.name, { type: contentType }), {
+      contentType,
       upsert: false,
     });
 
@@ -143,7 +154,7 @@ export async function uploadCourseAsset(input: UploadCourseAssetInput) {
       owner_id: input.ownerId,
       kind: input.kind,
       file_name: input.file.name,
-      content_type: input.file.type,
+      content_type: contentType,
       size: input.file.size,
       storage_path: storagePath,
       download_url: downloadUrl,
@@ -364,8 +375,21 @@ export async function uploadLessonVideoToBunny(
  * Short-lived signed URL for a gated asset (lesson video/material). RLS on
  * storage.objects only issues it to the course owner, an enrolled learner, or an
  * admin — so this is safe to call directly from the client.
+ *
+ * `download`: o link de baixar. O atributo `download` de um <a> não vale para
+ * outro domínio (o do Supabase), então o botão "Download" só abria o arquivo.
+ * Com `download=<nome>` no link, o Supabase responde "attachment" com o nome
+ * original do arquivo. A regra de quem recebe o link é a mesma: a da RLS.
+ *
+ * O nome NÃO vai pela opção `download` da storage-js: ela codifica o nome
+ * (URLSearchParams) e depois o link inteiro de novo (encodeURI), e o servidor
+ * decodifica uma vez só. "Introdução.pdf" baixava como
+ * "Introdu%C3%A7%C3%A3o.pdf". Aqui ele é codificado uma vez.
  */
-export async function getProtectedCourseAssetObjectUrl(asset: CourseAsset) {
+export async function getProtectedCourseAssetObjectUrl(
+  asset: CourseAsset,
+  options: { download?: boolean } = {},
+) {
   const supabase = getSupabaseBrowserClient();
   const { data, error } = await supabase.storage
     .from(bucketForKind(asset.kind))
@@ -375,7 +399,15 @@ export async function getProtectedCourseAssetObjectUrl(asset: CourseAsset) {
     throw error;
   }
 
-  return data.signedUrl;
+  // Arquivo antigo com tipo fora da lista do bucket (SVG, HTML, XML): o link de
+  // abrir também vem como anexo. Aberto na aba, o script dele rodaria no
+  // domínio do storage. <img> e <video> ignoram o anexo e seguem mostrando.
+  if (!options.download && isCourseContentMimeType(asset.contentType)) {
+    return data.signedUrl;
+  }
+
+  const separator = data.signedUrl.includes("?") ? "&" : "?";
+  return `${data.signedUrl}${separator}download=${encodeURIComponent(asset.fileName)}`;
 }
 
 // One-shot load for callers that must not open a second realtime channel on
@@ -391,9 +423,53 @@ export async function fetchCourseAssets(courseId: string): Promise<CourseAsset[]
     throw error instanceof Error ? error : new Error(String(error));
   }
 
-  return (data ?? [])
-    .map(rowToCourseAsset)
-    .sort((left, right) => left.fileName.localeCompare(right.fileName));
+  // Ordem do professor (posição), depois o nome. Ordenado aqui e não no banco:
+  // `.order("position")` derrubaria a leitura enquanto a coluna não existe.
+  return (data ?? []).map(rowToCourseAsset).sort(compareCourseAssets);
+}
+
+/**
+ * A RLS não devolve erro quando filtra a linha (sessão sem segundo fator, curso
+ * de outro dono): o update só não muda nada. Sem esta conferência a tela dizia
+ * "Name saved." sem ter salvado.
+ */
+function assertOneRowUpdated(result: { data: unknown[] | null; error: unknown }) {
+  if (result.error) {
+    throw result.error;
+  }
+  if (!result.data || result.data.length === 0) {
+    throw new Error("course-asset-not-updated");
+  }
+}
+
+/** Nome que o aluno vê. Vazio volta a mostrar o nome do arquivo. */
+export async function renameCourseAsset(assetId: string, title: string) {
+  const supabase = getSupabaseBrowserClient();
+  const trimmed = title.trim().slice(0, courseAssetTitleMaxLength);
+  assertOneRowUpdated(
+    await supabase
+      .from(courseAssetsTable)
+      .update({ title: trimmed || null })
+      .eq("id", assetId)
+      .select("id"),
+  );
+}
+
+/**
+ * Grava a ordem da lista: posição = índice. Só manda as linhas que mudaram
+ * (trocar dois vizinhos custa duas escritas).
+ */
+export async function saveCourseAssetOrder(ordered: Pick<CourseAsset, "id" | "position">[]) {
+  const supabase = getSupabaseBrowserClient();
+  const results = await Promise.all(
+    ordered
+      .map((asset, index) => ({ asset, index }))
+      .filter(({ asset, index }) => asset.position !== index)
+      .map(({ asset, index }) =>
+        supabase.from(courseAssetsTable).update({ position: index }).eq("id", asset.id).select("id"),
+      ),
+  );
+  results.forEach(assertOneRowUpdated);
 }
 
 /**

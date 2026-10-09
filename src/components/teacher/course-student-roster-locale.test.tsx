@@ -61,7 +61,7 @@ describe("student roster with real EN/ES dictionaries", () => {
   it.each([
     ["loading", "Cargando estudiantes...", "Loading students..."],
     ["error", "No pudimos cargar la lista de estudiantes.", "We could not load the roster."],
-    ["ready", "Todavía no hay estudiantes inscritos.", "No one is enrolled yet."],
+    ["ready", "Cuando alguien se inscriba, aparecerá aquí.", "When someone joins, you'll see them here."],
   ] as const)("localizes the %s state", (state, es, en) => {
     const view = mount([], state);
     expect(view.container).toHaveTextContent(es);

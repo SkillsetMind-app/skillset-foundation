@@ -7,7 +7,8 @@ import { useAuth } from "@/components/auth/auth-provider";
 import { ExportTableButton } from "@/components/shared/export-table-button";
 import { StatusChip } from "@/components/shared/status-chip";
 import { useTranslation } from "@/components/i18n/i18n-provider";
-import { Button, Card, InlineAlert, buttonClasses } from "@/components/ui";
+import { Button, Card, EmptyState, InlineAlert, buttonClasses } from "@/components/ui";
+import { SpotArt } from "@/components/ui/spot-art";
 import type { Order } from "@/domain/order";
 import { subscribeToTeacherOrders } from "@/lib/data/orders";
 import { toDate } from "@/lib/format-date";
@@ -241,7 +242,20 @@ export function SaleList() {
 
       <p className="text-sm text-[var(--color-ink-soft)]">{countLine}</p>
 
-      {visibleOrders.length === 0 ? (
+      {orders.length === 0 ? (
+        // Nenhuma venda nunca: a cena do recibo, sem moeda e sem número. O
+        // "nenhuma venda neste período" fica para quando já houve venda.
+        <EmptyState
+          as="h2"
+          art={<SpotArt scene="noSales" />}
+          title={t(`${copy}.firstTitle`)}
+          action={
+            <Link href="/teach/builder" className={buttonClasses({ variant: "outline" })}>
+              {t(`${copy}.emptyCta`)}
+            </Link>
+          }
+        />
+      ) : visibleOrders.length === 0 ? (
         <Card as="div" padding="none" className="p-8 text-center">
           <h2 className="display-title text-2xl text-[var(--color-primary)]">
             {t(`${copy}.emptyTitle`)}

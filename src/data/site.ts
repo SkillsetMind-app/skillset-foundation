@@ -26,12 +26,6 @@ export type PlatformNavItem = {
   hiddenWithPermission?: Permission;
   /** Additional role scope when the backing queue has narrower RLS policies. */
   roles?: readonly Role[];
-  /**
-   * Opens in a new browser tab with an external-link affordance. Used for
-   * cross-surface jumps (e.g. a teacher hopping into the student classroom)
-   * so the studio tab is preserved.
-   */
-  newTab?: boolean;
 };
 
 // These are the existing ?tab= destinations. Navigation, panels and counters
@@ -89,12 +83,27 @@ export function getOpsNavItem(tab: string | null, subject?: PermissionSubject | 
     ?? opsNavItems[0];
 }
 
+// Ordem da lista = ordem na barra dentro de cada secao; a ordem das secoes
+// mora em platform-nav.tsx (sectionOrder). `contexts: []` nao aparece na barra,
+// mas segue aqui: platform-header's getPageLabel varre a lista inteira para
+// traduzir o titulo da pagina, e sem a entrada o topo cairia num pedaco de URL.
 export const platformNav: PlatformNavItem[] = [
-  // --- Learner workspace ---
+  // --- Aluno: quatro itens fixos (+ Ajuda, que e um botao e nao uma rota).
+  // "Classroom" era o nome da LISTA de cursos; a sala de aula e outra tela. ---
   {
     href: "/learn",
-    labelKey: "platform.nav.classroom",
+    labelKey: "platform.nav.myCourses",
     icon: "BookOpen",
+    contexts: ["learner"],
+    sectionKey: "learn",
+    permission: "courses.viewLearning",
+  },
+  {
+    // A caixa de entrada do aluno: uma conversa por curso. Antes morava no
+    // grupo Account, fechado para quem estava em "Learn".
+    href: "/learn/messages",
+    labelKey: "platform.nav.messages",
+    icon: "MessageCircle",
     contexts: ["learner"],
     sectionKey: "learn",
     permission: "courses.viewLearning",
@@ -108,24 +117,6 @@ export const platformNav: PlatformNavItem[] = [
     permission: "community.read",
   },
   {
-    // Title source only — see the note above the Account block. The wishlist
-    // link lives in the account dropdown, not the learner sidebar.
-    href: "/learn/wishlist",
-    labelKey: "platform.nav.wishlist",
-    icon: "Bookmark",
-    contexts: [],
-    sectionKey: "learn",
-    permission: "courses.viewLearning",
-  },
-  {
-    href: "/learn/events",
-    labelKey: "platform.nav.agenda",
-    icon: "Calendar",
-    contexts: ["learner"],
-    sectionKey: "learn",
-    permission: "courses.viewLearning",
-  },
-  {
     href: "/learn/credentials",
     labelKey: "platform.nav.credentials",
     icon: "Award",
@@ -133,18 +124,29 @@ export const platformNav: PlatformNavItem[] = [
     sectionKey: "learn",
     permission: "certificates.view",
   },
-  // --- Teacher-as-student: a teacher also buys courses. Kept as a direct
-  // workspace destination after the producer tools. Reuses the learner classroom. ---
   {
-    href: "/learn",
-    labelKey: "platform.nav.myCourses",
-    icon: "GraduationCap",
-    contexts: ["teacher"],
-    sectionKey: "myLearning",
+    // Fora da barra: as proximas lives aparecem em "My courses", com um link
+    // para esta pagina.
+    href: "/learn/events",
+    labelKey: "platform.nav.agenda",
+    icon: "Calendar",
+    contexts: [],
+    sectionKey: "learn",
     permission: "courses.viewLearning",
   },
-  // --- Teacher workspace: workflow hierarchy informed by the live producer
-  // audit, using only SkillsetMind routes and capabilities. ---
+  {
+    // A lista de desejos mora no menu do avatar.
+    href: "/learn/wishlist",
+    labelKey: "platform.nav.wishlist",
+    icon: "Bookmark",
+    contexts: [],
+    sectionKey: "learn",
+    permission: "courses.viewLearning",
+  },
+  // --- Professor: oito itens no primeiro nivel. Ferramentas (Verification) e
+  // planos foram para o menu do avatar; "Collaborators", "Integrations" e a
+  // placa de "Coupons" sairam (as rotas redirecionam). A troca para o lado do
+  // aluno e o botao do topo, nao um link no rodape. ---
   {
     href: "/teach",
     labelKey: "platform.nav.studio",
@@ -153,19 +155,10 @@ export const platformNav: PlatformNavItem[] = [
     sectionKey: "home",
     permission: "teacherStudio.access",
   },
-  // Products
   {
     href: "/teach/builder",
     labelKey: "platform.nav.courseBuilder",
     icon: "BookOpen",
-    contexts: ["teacher"],
-    sectionKey: "products",
-    permission: "teacherStudio.manageCourses",
-  },
-  {
-    href: "/teach/members",
-    labelKey: "platform.nav.membersArea",
-    icon: "Users",
     contexts: ["teacher"],
     sectionKey: "products",
     permission: "teacherStudio.manageCourses",
@@ -179,41 +172,33 @@ export const platformNav: PlatformNavItem[] = [
     permission: "teacherStudio.manageCourses",
   },
   {
-    href: "/teach/marketing",
-    labelKey: "platform.nav.marketingOverview",
-    icon: "Megaphone",
+    // Todos os alunos de todos os produtos. "Members & communities" era uma
+    // lista de PRODUTOS com esse nome; a rota segue viva, fora da barra.
+    href: "/teach/students",
+    labelKey: "platform.nav.students",
+    icon: "Users",
     contexts: ["teacher"],
-    sectionKey: "marketing",
-    permission: "teacherStudio.access",
-  },
-  {
-    href: "/teach/storefront",
-    labelKey: "platform.nav.storefrontPages",
-    icon: "Store",
-    contexts: ["teacher"],
-    sectionKey: "marketing",
-    // Matches the page's own gate (manageStorefront). They agree today for
-    // every role, but a nav entry that gates on a different permission than
-    // its destination is a denial screen waiting for the first role split.
-    permission: "teacherStudio.manageStorefront",
-  },
-  {
-    href: "/teach/media",
-    labelKey: "platform.nav.mediaLibrary",
-    icon: "Image",
-    contexts: ["teacher"],
-    sectionKey: "marketing",
+    sectionKey: "students",
     permission: "teacherStudio.manageCourses",
   },
   {
+    href: "/teach/members",
+    labelKey: "platform.nav.membersArea",
+    icon: "Users",
+    contexts: [],
+    sectionKey: "students",
+    permission: "teacherStudio.manageCourses",
+  },
+  {
+    // Mensagens + perguntas da comunidade. Era "Messages", escondido dentro
+    // do grupo Marketing.
     href: "/teach/messages",
-    labelKey: "platform.nav.messages",
-    icon: "MessageCircle",
+    labelKey: "platform.nav.inbox",
+    icon: "Inbox",
     contexts: ["teacher"],
-    sectionKey: "marketing",
+    sectionKey: "inbox",
     permission: "teacherStudio.access",
   },
-  // Sales
   {
     href: "/teach/sales",
     labelKey: "platform.nav.sales",
@@ -230,17 +215,19 @@ export const platformNav: PlatformNavItem[] = [
     sectionKey: "sales",
     permission: "teacherStudio.access",
   },
+  {
+    href: "/teach/reports",
+    labelKey: "platform.nav.reports",
+    icon: "BarChart3",
+    contexts: ["teacher"],
+    sectionKey: "sales",
+    permission: "teacherStudio.access",
+  },
   // No "Reviews & refunds" entry: /teach/refunds is a bare redirect to
-  // /account/payments, so the menu item promised a screen that does not exist
-  // and dropped the creator on Earnings with no refund surface in sight. The
-  // route itself stays as a redirect for old bookmarks. Under direct charges a
-  // refund debits the creator's OWN Stripe balance, which is more reason to
-  // build them a real refund screen, not less — until then the nav says nothing
-  // rather than something false.
+  // /account/payments, and /teach/operations redirects to /teach/reports.
   // Earnings — a record of what Stripe already paid into the creator's own
-  // connected account. Called "Wallet" until the pivot to direct charges, which
-  // is a word for a balance the platform holds. We hold nothing, so the nav no
-  // longer says we do.
+  // connected account. ONE name everywhere (barra, avatar, titulo, erros):
+  // antes eram quatro ("Payments", "Earnings", "Payouts & tax", "Payouts panel").
   {
     href: "/account/payments",
     labelKey: "platform.nav.earnings",
@@ -249,56 +236,39 @@ export const platformNav: PlatformNavItem[] = [
     sectionKey: "earnings",
     permission: "teacherStudio.access",
   },
-  // Reports
+  // Promote: o que faz o produto ser encontrado. Os cupons vivem dentro de
+  // cada produto; /teach/coupons redireciona para a lista de produtos.
   {
-    href: "/teach/reports",
-    labelKey: "platform.nav.reports",
-    icon: "BarChart3",
+    href: "/teach/marketing",
+    labelKey: "platform.nav.marketingOverview",
+    icon: "Megaphone",
     contexts: ["teacher"],
-    sectionKey: "reports",
+    sectionKey: "promote",
     permission: "teacherStudio.access",
   },
-  // No "Business overview" entry: /teach/operations rendered the exact same
-  // <CreatorOpsHub /> as /teach/reports above it — two adjacent menu items, one
-  // screen. Two names for one page reads as an unfinished product. The route
-  // stays as a redirect for old bookmarks, same as /teach/refunds.
-  // O grupo "Growth" tinha exatamente dois itens — Coupons e Team — e nenhum
-  // dos dois era sobre crescimento: um é um desconto que se anuncia, o outro é
-  // quem tem acesso ao estúdio. (Afiliados e coproduções, que seriam o miolo do
-  // grupo, sumiram na virada para cobrança direta: a plataforma nunca segura o
-  // dinheiro, então não pode dividi-lo.) Sobrou uma gaveta com o nome errado,
-  // então cada item foi para a casa que descreve o que ele faz: Coupons é
-  // promoção (Marketing) e Team é acesso ao estúdio (Tools).
   {
-    href: "/teach/coupons",
-    labelKey: "platform.nav.coupons",
-    icon: "Tag",
+    href: "/teach/storefront",
+    labelKey: "platform.nav.storefrontPages",
+    icon: "Store",
     contexts: ["teacher"],
-    sectionKey: "marketing",
+    sectionKey: "promote",
+    // Matches the page's own gate (manageStorefront).
+    permission: "teacherStudio.manageStorefront",
+  },
+  {
+    href: "/teach/media",
+    labelKey: "platform.nav.mediaLibrary",
+    icon: "Image",
+    contexts: ["teacher"],
+    sectionKey: "promote",
     permission: "teacherStudio.manageCourses",
   },
-  // Tools
   {
-    href: "/teach/team",
-    labelKey: "platform.nav.team",
-    icon: "UserCheck",
-    contexts: ["teacher"],
-    sectionKey: "tools",
-    permission: "teacherStudio.access",
-  },
-  {
+    // Menu do avatar; aqui so como fonte do titulo.
     href: "/teach/verification",
     labelKey: "platform.nav.verification",
     icon: "UserCheck",
-    contexts: ["teacher"],
-    sectionKey: "tools",
-    permission: "teacherStudio.access",
-  },
-  {
-    href: "/teach/integrations",
-    labelKey: "platform.nav.integrations",
-    icon: "Plug",
-    contexts: ["teacher"],
+    contexts: [],
     sectionKey: "tools",
     permission: "teacherStudio.access",
   },
@@ -314,20 +284,6 @@ export const platformNav: PlatformNavItem[] = [
     sectionKey: "operations",
     permission: "platform.accessAdmin",
   },
-  // --- Criador-que-estuda: o caminho de volta ao estudio. Espelha o
-  // "My courses" do rodape do Teach; sem ele, quem e criador e cai no /learn
-  // so voltava pelo menu do avatar ou digitando a URL (a gaveta de celular ja
-  // tinha o atalho, o desktop nao). Fica DEPOIS do item /teach do professor
-  // porque getPageLabel resolve o titulo de /teach pelo primeiro da lista.
-  // O rotulo reaproveita a chave da gaveta: mesmo texto, mesmo destino. ---
-  {
-    href: "/teach",
-    labelKey: "platform.mobile.teach",
-    icon: "Presentation",
-    contexts: ["learner"],
-    sectionKey: "teach",
-    permission: "teacherStudio.access",
-  },
   // --- Shared across every workspace ---
   {
     href: "/courses",
@@ -336,48 +292,7 @@ export const platformNav: PlatformNavItem[] = [
     contexts: ["learner", "teacher", "ops"],
     sectionKey: "discover",
   },
-  // --- Account. Para o ALUNO, um grupo "Account" na barra lateral: mensagens,
-  // avisos, compras e configuracoes. Antes nada disso aparecia na barra (os
-  // links moravam so no menu do avatar) e, dentro de /account, a barra nao
-  // acendia item nenhum — "onde eu estava?". Para o professor os itens seguem
-  // com `contexts: []`: nao renderizam, mas platform-header's getPageLabel
-  // varre a lista inteira para traduzir o titulo da pagina; remover degradaria
-  // o titulo a um segmento de URL em toda lingua. ---
-  {
-    // A caixa de entrada do aluno: uma conversa por curso (reanalise item 12).
-    href: "/learn/messages",
-    labelKey: "platform.nav.messages",
-    icon: "MessageCircle",
-    contexts: ["learner"],
-    sectionKey: "account",
-    permission: "courses.viewLearning",
-  },
-  {
-    href: "/account",
-    labelKey: "platform.nav.settings",
-    icon: "Settings",
-    contexts: ["learner"],
-    sectionKey: "account",
-  },
-  {
-    // "Creator plan" no menu do avatar leva o professor para ca; com
-    // `contexts: []` a barra nao acendia nada nesta pagina (reanalise Ops 6).
-    // Os planos sao de quem vende: o aluno nao ve o item.
-    href: "/account/plans",
-    labelKey: "platform.nav.plansFees",
-    icon: "Receipt",
-    contexts: ["learner"],
-    sectionKey: "account",
-    permission: "teacherStudio.access",
-  },
-  {
-    href: "/account/payments",
-    labelKey: "platform.nav.payoutsTax",
-    icon: "CreditCard",
-    contexts: [],
-    sectionKey: "account",
-    permission: "teacherStudio.access",
-  },
+  // --- Conta do aluno, abaixo dos itens fixos: compras e configuracoes. ---
   // Mesma pagina, dois nomes: para o aluno ela so guarda o que ele comprou,
   // entao se chama "My purchases"; o professor segue vendo "Billing". O do
   // aluno vem primeiro: e o titulo que getPageLabel acha enquanto o papel carrega.
@@ -398,14 +313,30 @@ export const platformNav: PlatformNavItem[] = [
     permission: "teacherStudio.access",
   },
   {
+    href: "/account",
+    labelKey: "platform.nav.settings",
+    icon: "Settings",
+    contexts: ["learner"],
+    sectionKey: "account",
+  },
+  {
+    // Os planos sao de quem VENDE: so o professor chega aqui, pelo "Creator
+    // plan" do menu do avatar. Fora da barra (o aluno lia "Plans & fees" e
+    // achava que precisava pagar assinatura).
+    href: "/account/plans",
+    labelKey: "platform.nav.plansFees",
+    icon: "Receipt",
+    contexts: [],
+    sectionKey: "account",
+    permission: "teacherStudio.access",
+  },
+  {
     // The only /account subpage that renders its own PlatformShell instead of
-    // redirecting into a tab, so it was the only one whose header fell back to
-    // the slugified URL segment — untranslated in Spanish. Reuses the existing
-    // notifications-panel title rather than minting a duplicate key.
+    // redirecting into a tab. Reached from the bell; kept as a title source.
     href: "/account/notifications",
     labelKey: "platform.notifications.title",
     icon: "Bell",
-    contexts: ["learner"],
+    contexts: [],
     sectionKey: "account",
   },
 ];

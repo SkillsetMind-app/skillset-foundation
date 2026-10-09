@@ -10,6 +10,7 @@ afterEach(cleanup);
 it.each([
   ["processing", "En proceso", "info"],
   ["rejected", "Rechazado", "danger"],
+  ["deleting", "En eliminación", "warning"],
   ["future_custom_status", "future custom status", "draft"],
 ])("presents %s without changing its canonical status or losing the future fallback", (status, label, variant) => {
   render(<I18nProvider initialLocale="es"><StatusChip status={status} /></I18nProvider>);

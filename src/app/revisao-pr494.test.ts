@@ -100,7 +100,8 @@ describe("Plausivel 5: botao-texto com pelo menos 24px de area", () => {
     ["components/account/totp-mfa-section.tsx", "min-h-6 shrink-0 text-xs"],
     ["components/account/totp-mfa-section.tsx", "min-h-6 text-xs font-semibold"],
     ["components/account/billing-tabs.tsx", "min-h-6 text-xs font-semibold"],
-    ["components/learn/community-feed.tsx", "min-h-6 text-xs font-semibold"],
+    // O Pin saiu do cabecalho do cartao (PR #505) e mora nas acoes, com 44px.
+    ["components/learn/community-item-actions.tsx", "min-h-11 rounded-md px-3 text-xs font-semibold"],
     ["components/auth/signup-form.tsx", "inline-flex min-h-6 items-center"],
   ])("%s tem %s", (file, snippet) => {
     expect(read(file)).toContain(snippet);
