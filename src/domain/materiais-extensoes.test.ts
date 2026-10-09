@@ -1,8 +1,11 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import {
   compareCourseAssets,
   courseAssetAcceptTypes,
+  courseContentMimeTypes,
   getCourseAssetContentType,
   getCourseAssetTitle,
   isAllowedCourseAssetFile,
@@ -72,5 +75,51 @@ describe("nome e ordem do arquivo", () => {
     ].sort(compareCourseAssets);
 
     expect(sorted.map((item) => item.id)).toEqual(["one-a", "one-z", "two", "late-a", "late-b"]);
+  });
+});
+
+/**
+ * Um SVG (ou HTML, XML) aberto pelo "Open file" rodava script no domínio do
+ * storage. Fora da lista segura, o arquivo sobe como application/octet-stream:
+ * o navegador baixa, não abre.
+ */
+describe("conteúdo ativo nunca abre no domínio do storage", () => {
+  it.each([
+    ["logo.svg", "image/svg+xml"],
+    ["logo.svg", ""],
+    ["pagina.html", "text/html"],
+    ["pagina.xhtml", "application/xhtml+xml"],
+    ["feed.xml", "text/xml"],
+    ["feed.xml", "application/xml"],
+    ["estilo.xsl", "text/xsl"],
+  ])("%s (navegador disse %j) sobe como download", (name, type) => {
+    expect(getCourseAssetContentType(file(name, type))).toBe("application/octet-stream");
+  });
+
+  it.each([
+    ["foto.png", "image/png"],
+    ["aula.mp4", "video/mp4"],
+    ["aula.mov", "video/quicktime"],
+    ["audio.mp3", "audio/mpeg"],
+    ["notas.txt", "text/plain"],
+    ["notas.md", "text/markdown"],
+    ["planilha.csv", "text/csv"],
+    ["texto.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"],
+  ])("%s mantém o tipo do navegador (%s)", (name, type) => {
+    expect(getCourseAssetContentType(file(name, type))).toBe(type);
+  });
+
+  it("a lista do código é a mesma que a migration grava no bucket course-content", () => {
+    const sql = readFileSync(
+      join(process.cwd(), "supabase/migrations/20261008020000_course_content_sem_conteudo_ativo.sql"),
+      "utf8",
+    );
+    const array = /allowed_mime_types\s*=\s*array\[([^\]]*)\]/.exec(sql)?.[1] ?? "";
+    const fromSql = [...array.matchAll(/'([^']+)'/g)].map((match) => match[1]);
+
+    expect([...fromSql].sort()).toEqual([...courseContentMimeTypes].sort());
+    expect(courseContentMimeTypes).not.toContain("image/svg+xml");
+    expect(courseContentMimeTypes).not.toContain("image/*");
+    expect(courseContentMimeTypes).not.toContain("text/*");
   });
 });
