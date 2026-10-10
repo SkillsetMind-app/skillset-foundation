@@ -2661,6 +2661,8 @@ export type Database = {
         Returns: Json
       }
       course_owner_can_sell: { Args: { p_owner_uid: string }; Returns: boolean }
+      creator_plan_required: { Args: Record<PropertyKey, never>; Returns: boolean }
+      creator_has_current_plan: { Args: { p_uid: string }; Returns: boolean }
       course_title_key: { Args: { p_title: string }; Returns: string }
       create_course_coupon: {
         Args: {

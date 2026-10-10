@@ -55,6 +55,13 @@ vi.mock("@/components/account/upgrade-modal", () => ({
 }));
 
 describe("PlansPanel", () => {
+  it("does not describe an account without a subscription as a free plan", () => {
+    state.planId = "free";
+    render(<PlansPanel />);
+    expect(screen.getByText("No subscription")).toBeInTheDocument();
+    expect(screen.queryByText(/^Free$/)).not.toBeInTheDocument();
+  });
+
   it("diz o plano atual UMA vez, numa linha, sem manchete", () => {
     render(<PlansPanel />);
 

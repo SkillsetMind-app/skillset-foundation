@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   getAdmin: vi.fn(),
   retrieve: vi.fn(),
+  preview: vi.fn(),
   fetch: vi.fn(),
   notifyOps: vi.fn(),
 }));
@@ -18,6 +19,7 @@ vi.mock("@/lib/payments/server/stripe", () => ({
   getStripeClient: () => ({
     webhooks: { constructEvent: (raw: string) => JSON.parse(raw) },
     subscriptions: { retrieve: mocks.retrieve },
+    invoices: { createPreview: mocks.preview },
   }),
 }));
 
@@ -28,6 +30,7 @@ type Row = Record<string, unknown>;
 
 /** Just the tables the plan path touches, with PostgREST's semantics. */
 function createDb() {
+  const failures = { reminderWrites: 0 };
   const tables: Record<string, Row[]> = {
     subscriptions: [],
     users: [{ uid: "creator_1", current_plan_id: "free" }],
@@ -54,6 +57,10 @@ function createDb() {
     }
     private matches(row: Row) { return this.filters.every(([column, test]) => test(row[column])); }
     private run(single: boolean) {
+      if (this.table === "creator_plan_trials" && this.op === "update" && failures.reminderWrites > 0) {
+        failures.reminderWrites -= 1;
+        return { data: null, error: { message: "Delivery marker unavailable" } };
+      }
       const rows = tables[this.table] ?? [];
       let touched: Row[] = [];
       if (this.op === "upsert") {
@@ -73,6 +80,7 @@ function createDb() {
   }
 
   return {
+    failures,
     tables,
     from: (table: string) => new Query(table),
     rpc: vi.fn(async () => ({ data: null, error: null })),
@@ -122,6 +130,7 @@ describe("plan free trial through the Stripe webhook", () => {
     db = createDb();
     mocks.getAdmin.mockReturnValue(db);
     mocks.retrieve.mockReset();
+    mocks.preview.mockReset().mockResolvedValue({ amount_due: 8900, currency: "usd" });
     mocks.notifyOps.mockReset();
     mocks.fetch.mockReset().mockResolvedValue(new Response("{}", { status: 200 }));
     vi.stubGlobal("fetch", mocks.fetch);
@@ -232,7 +241,7 @@ describe("plan free trial through the Stripe webhook", () => {
     const body = JSON.parse(String(init.body));
     expect(body.to).toEqual(["creator@example.test"]);
     expect(body.subject).toBe("Your free trial ends on October 20, 2026");
-    expect(body.text).toContain("Your free trial ends on October 20, 2026. You'll be charged $89.00 per month.");
+    expect(body.text).toContain("Your free trial ends on October 20, 2026. Your next payment is $89.00.");
     expect(body.text).toContain("Cancel here: https://app.skillset.test/account/billing?tab=subscriptions");
     expect(db.tables.creator_plan_trials[0].reminder_sent_at).toEqual(expect.any(String));
   });
@@ -243,7 +252,7 @@ describe("plan free trial through the Stripe webhook", () => {
 
     const body = JSON.parse(String(mocks.fetch.mock.calls[0][1].body));
     expect(body.subject).toBe("Tu prueba gratis termina el 20 de octubre de 2026");
-    expect(body.text).toContain("Se te cobrará");
+    expect(body.text).toContain("Tu próximo pago es de");
     expect(body.text).toContain("Cancela aquí: https://app.skillset.test/account/billing?tab=subscriptions");
   });
 
@@ -252,10 +261,10 @@ describe("plan free trial through the Stripe webhook", () => {
     expect(mocks.fetch).not.toHaveBeenCalled();
   });
 
-  it("releases the claim when the send fails, so Stripe's retry delivers it", async () => {
+  it("does not mark a failed send as delivered, so Stripe's retry delivers it", async () => {
     mocks.fetch.mockResolvedValueOnce(new Response("{}", { status: 500 }));
     expect((await deliver("customer.subscription.trial_will_end", planSubscription())).status).toBe(500);
-    expect(db.tables.creator_plan_trials[0].reminder_sent_at).toBeNull();
+    expect(db.tables.creator_plan_trials[0].reminder_sent_at).toBeUndefined();
 
     expect((await deliver("customer.subscription.trial_will_end", planSubscription())).status).toBe(200);
     expect(mocks.fetch).toHaveBeenCalledTimes(2);
@@ -296,7 +305,7 @@ describe("plan free trial through the Stripe webhook", () => {
     expect(body.to).toEqual(["creator@example.test"]);
     expect(body.subject).toBe("Your 14-day free trial started");
     expect(body.text).toContain(
-      "Your 14-day free trial started. It ends on October 20, 2026. Then $89.00/month, renewing until you cancel.",
+      "Your 14-day free trial started. It ends on October 20, 2026. Your next payment is $89.00. Your subscription renews until you cancel.",
     );
     expect(body.text).toContain("Cancel anytime: https://app.skillset.test/account/billing?tab=subscriptions");
   });
@@ -308,7 +317,7 @@ describe("plan free trial through the Stripe webhook", () => {
     const body = JSON.parse(String(mocks.fetch.mock.calls[0][1].body));
     expect(body.subject).toBe("Tu prueba gratis de 14 días empezó");
     expect(body.text).toContain("Tu prueba gratis de 14 días empezó. Termina el 20 de octubre de 2026.");
-    expect(body.text).toMatch(/Después, .*89,00.*\/mes, con renovación automática hasta que canceles\./);
+    expect(body.text).toMatch(/Tu próximo pago es de .*89,00/);
     expect(body.text).toContain("Cancela cuando quieras: https://app.skillset.test/account/billing?tab=subscriptions");
   });
 
@@ -318,6 +327,78 @@ describe("plan free trial through the Stripe webhook", () => {
   ])("sends no trial acknowledgement for %s", async (_label, overrides) => {
     expect((await checkoutCompleted("evt_cs_none", planSubscription(overrides))).status).toBe(200);
     expect(mocks.fetch).not.toHaveBeenCalled();
+  });
+
+  it("writes the delivery marker only after the provider accepts the reminder", async () => {
+    mocks.fetch.mockImplementationOnce(async () => {
+      expect(db.tables.creator_plan_trials[0].reminder_sent_at).toBeUndefined();
+      return new Response("{}", { status: 200 });
+    });
+    expect((await deliver("customer.subscription.trial_will_end", planSubscription())).status).toBe(200);
+    expect(db.tables.creator_plan_trials[0].reminder_sent_at).toEqual(expect.any(String));
+  });
+
+  it("retries a failed delivery-marker write with the same provider idempotency key", async () => {
+    db.failures.reminderWrites = 1;
+    const event = { id: "evt_marker_retry" };
+    expect((await deliver("customer.subscription.trial_will_end", planSubscription(), event)).status).toBe(500);
+    expect(db.tables.creator_plan_trials[0].reminder_sent_at).toBeUndefined();
+    expect((await deliver("customer.subscription.trial_will_end", planSubscription(), event)).status).toBe(200);
+    expect(mocks.fetch).toHaveBeenCalledTimes(2);
+    for (const [, init] of mocks.fetch.mock.calls) {
+      expect(init.headers["Idempotency-Key"]).toBe("trial_will_end:sub_plan_1");
+    }
+    expect(mocks.fetch.mock.calls[0][1].body).toBe(mocks.fetch.mock.calls[1][1].body);
+  });
+
+  it.each(["reminder", "acknowledgement"])("uses the discounted preview in the %s", async (kind) => {
+    mocks.preview.mockResolvedValue({ amount_due: 4450, currency: "usd" });
+    const response = kind === "reminder"
+      ? await deliver("customer.subscription.trial_will_end", planSubscription())
+      : await checkoutCompleted("evt_discount", planSubscription());
+    expect(response.status).toBe(200);
+    expect(mocks.preview).toHaveBeenCalledWith({ subscription: "sub_plan_1" });
+    const text = JSON.parse(String(mocks.fetch.mock.calls[0][1].body)).text;
+    expect(text).toContain("Your next payment is $44.50.");
+    expect(text).not.toContain("$89.00");
+    expect(text).not.toMatch(/\$44\.50(?:\/month| per month)/);
+  });
+
+  it.each(["reminder", "acknowledgement"])("retries a failed preview for the %s without sending or dumping the provider error", async (kind) => {
+    mocks.preview.mockRejectedValueOnce(new Error("private provider diagnostic"));
+    const send = () => kind === "reminder"
+      ? deliver("customer.subscription.trial_will_end", planSubscription(), { id: "evt_preview_retry" })
+      : checkoutCompleted("evt_preview_retry", planSubscription());
+    expect((await send()).status).toBe(500);
+    expect(mocks.fetch).not.toHaveBeenCalled();
+    expect(db.tables.creator_plan_trials[0]?.reminder_sent_at).toBeUndefined();
+    expect(JSON.stringify(db.tables.processed_stripe_events)).not.toContain("private provider diagnostic");
+    expect(vi.mocked(console.error).mock.calls.flat().map(String).join(" ")).not.toContain("private provider diagnostic");
+    expect((await send()).status).toBe(200);
+    expect(mocks.fetch).toHaveBeenCalledOnce();
+  });
+
+  it("preserves a zero-dollar preview instead of falling back to the list price", async () => {
+    mocks.preview.mockResolvedValue({ amount_due: 0, currency: "usd" });
+    expect((await checkoutCompleted("evt_free_renewal", planSubscription())).status).toBe(200);
+    expect(JSON.parse(String(mocks.fetch.mock.calls[0][1].body)).text).toContain("Your next payment is $0.00.");
+  });
+
+  it.each([-1, NaN, 1.5, undefined])("fails closed on invalid preview amount %s", async (amount) => {
+    mocks.preview.mockResolvedValue({ amount_due: amount, currency: "usd" });
+    expect((await deliver("customer.subscription.trial_will_end", planSubscription())).status).toBe(500);
+    expect(mocks.fetch).not.toHaveBeenCalled();
+    expect(db.tables.creator_plan_trials[0].reminder_sent_at).toBeUndefined();
+  });
+
+  it.each(["reminder", "acknowledgement"])("does not silently complete the %s without email configuration", async (kind) => {
+    vi.stubEnv("RESEND_API_KEY", "");
+    const response = kind === "reminder"
+      ? await deliver("customer.subscription.trial_will_end", planSubscription())
+      : await checkoutCompleted("evt_no_email_config", planSubscription());
+    expect(response.status).toBe(500);
+    expect(mocks.fetch).not.toHaveBeenCalled();
+    expect(db.tables.creator_plan_trials[0]?.reminder_sent_at).toBeUndefined();
   });
 
   it("ignores trial_will_end from a connected account (course subscriptions carry no trial)", async () => {

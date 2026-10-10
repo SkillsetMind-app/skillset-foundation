@@ -98,7 +98,7 @@ export const STRIPE_PRICE_PLACEHOLDER_PREFIX = "price_PLACEHOLDER_";
  * real id is pasted here the portal route answers 503 instead of opening the
  * default (see resolvePortalConfigurationId).
  */
-export const STRIPE_PORTAL_CONFIGURATION_ID = "bpc_PLACEHOLDER_basic_starter_pro";
+export const STRIPE_PORTAL_CONFIGURATION_ID = "bpc_1UP4OGPvg1vJW0IjmbpVDwiT";
 
 /**
  * Enterprise (`plus`) is never self-serve. Ops create the subscription in the
@@ -131,7 +131,7 @@ export function isPlanEntitledStatus(status: string | null | undefined): boolean
 export const plans: ReadonlyArray<Plan> = [
   {
     id: "free",
-    name: "Free",
+    name: "No subscription",
     monthlyUsd: 0,
     yearlyUsd: 0,
     commissionPercent: 10,
@@ -140,7 +140,7 @@ export const plans: ReadonlyArray<Plan> = [
     tagline: "The default for accounts without a plan.",
     audience: "New creators validating an idea.",
     highlights: [
-      "No monthly fee — commission only when you sell",
+      "Choose a plan to publish and sell",
       "Publish once your course passes the launch checks",
       "Stripe checkout in 30 currencies",
       "Buyers pay your own Stripe account — no platform hold on your money",
@@ -154,12 +154,10 @@ export const plans: ReadonlyArray<Plan> = [
     monthlyUsd: 5,
     yearlyUsd: 50,
     commissionPercent: 10,
-    // $5/month and $50/year, lookup keys skillset_basic_monthly and
-    // skillset_basic_yearly. Replace the placeholders with the real
-    // `price_...` IDs once they exist in Stripe (see the PR's Stripe steps).
+    // Precos ativos conferidos na conta da plataforma: US$5/mes e US$50/ano.
     stripePriceIds: {
-      monthlyId: "price_PLACEHOLDER_basic_monthly_5",
-      yearlyId: "price_PLACEHOLDER_basic_yearly_50",
+      monthlyId: "price_1UP4MvPvg1vJW0IjLNG6YeC9",
+      yearlyId: "price_1UP4MwPvg1vJW0IjKAq6kpd8",
     },
     tagline: "Start selling for a small monthly price.",
     audience: "Creators validating their first course.",

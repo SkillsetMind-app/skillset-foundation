@@ -93,7 +93,7 @@ export function AccountMenu({ onSignOut, user, branded = false }: AccountMenuPro
     : canTeach
       ? t("account.billing")
       : t("platform.nav.myPurchases");
-  const currentPlanName = planById(currentPlanId).name;
+  const currentPlanName = currentPlanId === "free" ? t("accountPlans.withoutSubscription") : planById(currentPlanId).name;
   const accountRoleLabel = t(primaryRoleKey(user.roles));
   const memberFallback = t("account.memberFallback");
   // One account, several workspaces. Everyone signed in has the classroom; a

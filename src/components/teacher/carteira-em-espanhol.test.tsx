@@ -216,3 +216,4 @@ describe("carteira do professor em espanhol", () => {
     expect(screen.getByText("Centro fiscal")).toBeInTheDocument();
   });
 });
+vi.mock("@/lib/data/creator-plan", () => ({ fetchCreatorPlanRequired: async () => false }));

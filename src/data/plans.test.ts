@@ -71,7 +71,7 @@ describe("the billing portal gate", () => {
     expect(hasRealPortalConfigurationId("bpc_1Qabc123")).toBe(true);
   });
 
-  it("is not configured while the portal id in the repo is still the placeholder", () => {
-    expect(isBillingConfigured()).toBe(false);
+  it("has configured prices and a dedicated portal for the public plans", () => {
+    expect(isBillingConfigured()).toBe(true);
   });
 });

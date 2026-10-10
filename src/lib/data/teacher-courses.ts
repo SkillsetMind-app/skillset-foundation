@@ -113,7 +113,7 @@ export async function publishTeacherCourse(courseId: string) {
   });
 
   if (error) {
-    throw error;
+    throw Object.assign(new Error(error.message), error);
   }
 }
 

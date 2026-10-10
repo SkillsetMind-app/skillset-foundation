@@ -477,3 +477,4 @@ describe("painel do criador em espanhol", () => {
     expect(mocks.setOwnCourseFeatured).toHaveBeenCalledExactlyOnceWith("course-1", false);
   });
 });
+vi.mock("@/lib/data/creator-plan", () => ({ fetchCreatorPlanRequired: async () => false }));

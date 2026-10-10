@@ -394,7 +394,7 @@
       "eyebrow": "For psychologists & personal-development professionals",
       "title1": "Your knowledge changes lives.",
       "title2": "Now turn it into a course.",
-      "sub": "For psychologists and personal-development professionals who already teach live and want to sell their method as a course with a paid community, starting with a 14-day free trial. We run the checkout and the classroom — your buyers pay your own Stripe account, so we never hold a cent of your money. You teach.",
+      "sub": "For psychologists and personal-development professionals who already teach live and want to sell their method as a course with a paid community. Start with 14 days free, then Basic is US$5/month. A card is required; cancel before the trial ends to avoid the subscription charge. Sales fees apply. We run the checkout and the classroom — your buyers pay your own Stripe account. You teach.",
       "trust1Title": "Verified",
       "trust1Desc": "Where required, professionals are verified before they can publish, and courses that break marketplace standards can be paused or removed.",
       "trust2Title": "Global",
@@ -3130,9 +3130,9 @@
     },
     "plans": {
       "free": {
-        "tagline": "Start selling without a subscription.",
+        "tagline": "Choose a plan to publish and sell.",
         "audience": "New creators validating an idea.",
-        "highlight0": "No monthly fee — commission only when you sell",
+        "highlight0": "14 days free on your first plan; subscription required afterward",
         "highlight1": "Publish once your course passes the launch checks",
         "highlight2": "Stripe checkout in 30 currencies",
         "highlight3": "Buyers pay your own Stripe account — no platform hold on your money",
@@ -3767,6 +3767,7 @@
         "installmentsPublish": "Set a valid installment limit before publishing.",
         "duplicateTitle": "A course with this title already exists. Choose a different name.",
         "activation": "Activate your storefront to unlock publishing: a one-time activation fee, charged once per creator account, never per course.",
+        "plan": "An active plan or an unexpired trial is required to publish. Manage your plan in billing.",
         "save": "We could not save this course. Please try again.",
         "preview": "Clear the invalid free preview or choose a lesson from this course.",
         "setup": "Teacher setup must be complete before publishing courses.",
@@ -3919,6 +3920,7 @@
         "passed": "Every publish check passed.",
         "activate": "Activate storefront",
         "activateAndPublish": "Activate and publish",
+        "managePlan": "Manage plan",
         "publishing": "Publishing...",
         "submit": "Publish product"
       },
@@ -4149,6 +4151,10 @@
         "activation": {
           "label": "Activation — US${amount}, one time",
           "hint": "Charged once per creator account, never per course. Paying unlocks publishing."
+        },
+        "plan": {
+          "label": "Creator plan",
+          "hint": "Start your 14-day trial or renew your plan to publish and sell."
         }
       },
       "groups": {
@@ -4649,6 +4655,7 @@
     "checkoutSoonBody": "Plans are ready, and card checkout is being switched on for this site. Free stays the default plan until then — no action is needed from you.",
     "setupPendingBody": "Paid plans can't be purchased here yet while billing setup finishes. Free still works as the default plan for every account.",
     "currentPlan": "Current plan:",
+    "withoutSubscription": "No subscription",
     "loading": "Loading…",
     "manage": "Manage subscription",
     "cycle": "Billing cycle",

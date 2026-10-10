@@ -133,3 +133,4 @@ describe("promo links section", () => {
     );
   });
 });
+vi.mock("@/lib/data/creator-plan", () => ({ fetchCreatorPlanRequired: async () => false }));

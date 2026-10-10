@@ -146,3 +146,4 @@ describe("ganhos: uma frase, quatro colunas e a barra certa", () => {
     }
   });
 });
+vi.mock("@/lib/data/creator-plan", () => ({ fetchCreatorPlanRequired: async () => false }));

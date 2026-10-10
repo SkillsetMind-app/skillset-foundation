@@ -394,7 +394,7 @@
       "eyebrow": "Para psicólogos y profesionales del desarrollo personal",
       "title1": "Tu conocimiento cambia vidas.",
       "title2": "Ahora conviértelo en un curso.",
-      "sub": "Para psicólogos y profesionales del desarrollo personal que ya enseñan en vivo y quieren vender su método como un curso con comunidad de pago, empezando con una prueba gratis de 14 días. Nosotros manejamos el checkout y el aula — tus compradores pagan directo a tu cuenta de Stripe, así que nunca retenemos tu dinero. Tú enseñas.",
+      "sub": "Para psicólogos y profesionales del desarrollo personal que ya enseñan en vivo y quieren vender su método como un curso con comunidad de pago. Empieza con 14 días gratis; después Basic cuesta US$5 al mes. Se requiere tarjeta; cancela antes de terminar la prueba para evitar el cobro de la suscripción. Se aplican tarifas por venta. Nosotros manejamos el checkout y el aula — tus compradores pagan directo a tu cuenta de Stripe. Tú enseñas.",
       "trust1Title": "Verificado",
       "trust1Desc": "Cuando se requiere, los profesionales se verifican antes de publicar, y los cursos que incumplan las normas del catálogo pueden pausarse o retirarse.",
       "trust2Title": "Global",
@@ -3130,9 +3130,9 @@
     },
     "plans": {
       "free": {
-        "tagline": "Empieza a vender sin suscripción.",
+        "tagline": "Elige un plan para publicar y vender.",
         "audience": "Nuevos creadores que están validando una idea.",
-        "highlight0": "Sin mensualidad: comisión solo cuando vendes",
+        "highlight0": "14 días gratis en tu primer plan; después se requiere suscripción",
         "highlight1": "Publica cuando tu curso supere los controles de lanzamiento",
         "highlight2": "Pagos con Stripe en 30 monedas",
         "highlight3": "Los compradores pagan a tu propia cuenta de Stripe: la plataforma no retiene tu dinero",
@@ -3767,6 +3767,7 @@
         "installmentsPublish": "Define un límite de cuotas válido antes de publicar.",
         "duplicateTitle": "Ya existe un curso con este título. Elige otro nombre.",
         "activation": "Activa tu tienda para habilitar la publicación: una tarifa única de activación, que se cobra una sola vez por cuenta de creador, nunca por curso.",
+        "plan": "Necesitas un plan activo o una prueba vigente para publicar. Gestiona tu plan en facturación.",
         "save": "No pudimos guardar este curso. Inténtalo de nuevo.",
         "preview": "Quita la vista previa gratuita no válida o elige una lección de este curso.",
         "setup": "Completa la configuración del creador antes de publicar cursos.",
@@ -3919,6 +3920,7 @@
         "passed": "Todos los requisitos de publicación están completos.",
         "activate": "Activar tienda",
         "activateAndPublish": "Activar y publicar",
+        "managePlan": "Gestionar plan",
         "publishing": "Publicando...",
         "submit": "Publicar producto"
       },
@@ -4149,6 +4151,10 @@
         "activation": {
           "label": "Activación — US${amount}, pago único",
           "hint": "Se cobra una sola vez por cuenta de creador, nunca por curso. Al pagar se habilita la publicación."
+        },
+        "plan": {
+          "label": "Plan de creador",
+          "hint": "Inicia tu prueba de 14 días o renueva tu plan para publicar y vender."
         }
       },
       "groups": {
@@ -4649,6 +4655,7 @@
     "checkoutSoonBody": "Los planes están listos y estamos activando el pago con tarjeta. Mientras tanto, Free sigue siendo el plan predeterminado; no tienes que hacer nada.",
     "setupPendingBody": "Todavía no puedes comprar planes de pago mientras terminamos la configuración de facturación. Free sigue disponible como plan predeterminado para todas las cuentas.",
     "currentPlan": "Plan actual:",
+    "withoutSubscription": "Sin suscripción",
     "loading": "Cargando…",
     "manage": "Gestionar suscripción",
     "cycle": "Ciclo de facturación",

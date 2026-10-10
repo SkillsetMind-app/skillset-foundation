@@ -146,3 +146,4 @@ it("precos tem uma unica camada visual, sem moldura envolvendo os quatro resumos
     "href", "/teach/builder?courseId=course-1&tab=pricing",
   );
 });
+vi.mock("@/lib/data/creator-plan", () => ({ fetchCreatorPlanRequired: async () => false }));

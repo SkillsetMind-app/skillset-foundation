@@ -192,7 +192,9 @@ export function PlansPanel() {
                 ? planLoadFailed
                   ? t("accountBilling.unavailable")
                   : t("accountPlans.loading")
-                : (plans.find((plan) => plan.id === currentPlanId)?.name ?? "Free")}
+                : currentPlanId === "free"
+                  ? t("accountPlans.withoutSubscription")
+                  : (plans.find((plan) => plan.id === currentPlanId)?.name ?? t("accountBilling.unavailable"))}
             </strong>
           </span>
           {subscription?.trialEnd && !subscription.cancelAtPeriodEnd ? (

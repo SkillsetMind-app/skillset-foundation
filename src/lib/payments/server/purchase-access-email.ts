@@ -163,10 +163,9 @@ export type PlanTrialEndingEmail = {
   email: string;
   locale: Locale;
   trialEnd: Date;
-  /** Stripe's smallest unit, straight off the subscription's Price. */
+  /** Next invoice amount_due in Stripe's smallest unit, including discounts. */
   amountMinor: number;
   currency: string;
-  cycle: "monthly" | "yearly";
   /** Billing page, where "Cancel plan" lives. */
   billingUrl: string;
   idempotencyKey: string;
@@ -176,41 +175,35 @@ const TRIAL_COPY: Record<Locale, {
   subject: (date: string) => string;
   body: (date: string, price: string) => string;
   cancel: string;
-  perMonth: string;
-  perYear: string;
 }> = {
   en: {
     subject: (date) => `Your free trial ends on ${date}`,
-    body: (date, price) => `Your free trial ends on ${date}. You'll be charged ${price}.`,
+    body: (date, price) => `Your free trial ends on ${date}. Your next payment is ${price}.`,
     cancel: "Cancel here",
-    perMonth: "per month",
-    perYear: "per year",
   },
   es: {
     subject: (date) => `Tu prueba gratis termina el ${date}`,
-    body: (date, price) => `Tu prueba gratis termina el ${date}. Se te cobrará ${price}.`,
+    body: (date, price) => `Tu prueba gratis termina el ${date}. Tu próximo pago es de ${price}.`,
     cancel: "Cancela aquí",
-    perMonth: "al mes",
-    perYear: "al año",
   },
 };
 
 /**
  * The reminder before a plan trial converts: "Your free trial ends on {date}.
- * You'll be charged {price}. Cancel here: {link}". The date uses the same
+ * Your next payment is {price}. Cancel here: {link}". The date uses the same
  * UTC−12 calendar as the checkout disclosure, so it is never later than the
- * real conversion anywhere. The price is the subscription's Price, before any
- * promotion code. ponytail: an exact amount needs an upcoming-invoice preview
- * call; add it if discounted trials ship.
+ * real conversion anywhere. The preview describes only the next payment:
+ * temporary discounts must not be presented as the ongoing renewal price.
  */
-export function buildPlanTrialEndingEmail({ locale, trialEnd, amountMinor, currency, cycle, billingUrl }: PlanTrialEndingEmail) {
+export function buildPlanTrialEndingEmail({ locale, trialEnd, amountMinor, currency, billingUrl }: PlanTrialEndingEmail) {
   const copy = TRIAL_COPY[locale] ?? TRIAL_COPY[DEFAULT_LOCALE];
   const date = trialDate(locale, trialEnd);
-  const price = `${trialAmount(locale, amountMinor, currency)} ${cycle === "yearly" ? copy.perYear : copy.perMonth}`;
+  const price = trialAmount(locale, amountMinor, currency);
   return planTrialEmail(locale, copy.subject(date), copy.body(date, price), copy.cancel, billingUrl);
 }
 
 export async function sendPlanTrialEndingEmail(input: PlanTrialEndingEmail): Promise<void> {
+  if (!process.env.RESEND_API_KEY) throw new Error("Trial email delivery is not configured.");
   await sendResendEmail({ to: input.email, ...buildPlanTrialEndingEmail(input), idempotencyKey: input.idempotencyKey });
 }
 
@@ -220,41 +213,36 @@ const TRIAL_STARTED_COPY: Record<Locale, {
   subject: (days: number) => string;
   body: (days: number, date: string, price: string) => string;
   cancel: string;
-  month: string;
-  year: string;
 }> = {
   en: {
     subject: (days) => `Your ${days}-day free trial started`,
     body: (days, date, price) =>
-      `Your ${days}-day free trial started. It ends on ${date}. Then ${price}, renewing until you cancel.`,
+      `Your ${days}-day free trial started. It ends on ${date}. Your next payment is ${price}. Your subscription renews until you cancel.`,
     cancel: "Cancel anytime",
-    month: "month",
-    year: "year",
   },
   es: {
     subject: (days) => `Tu prueba gratis de ${days} días empezó`,
     body: (days, date, price) =>
-      `Tu prueba gratis de ${days} días empezó. Termina el ${date}. Después, ${price}, con renovación automática hasta que canceles.`,
+      `Tu prueba gratis de ${days} días empezó. Termina el ${date}. Tu próximo pago es de ${price}. Tu suscripción se renueva automáticamente hasta que canceles.`,
     cancel: "Cancela cuando quieras",
-    month: "mes",
-    year: "año",
   },
 };
 
 /**
  * The acknowledgement right after a plan checkout opens a trial: "Your 14-day
- * free trial started. It ends on {date}. Then {price}/{interval}, renewing
- * until you cancel. Cancel anytime: {link}". Same date and price rules as the
+ * free trial started. It ends on {date}. Your next payment is {price}."
+ * Includes renewal and cancellation information. Same date and price rules as the
  * reminder above.
  */
-export function buildPlanTrialStartedEmail({ locale, trialDays, trialEnd, amountMinor, currency, cycle, billingUrl }: PlanTrialStartedEmail) {
+export function buildPlanTrialStartedEmail({ locale, trialDays, trialEnd, amountMinor, currency, billingUrl }: PlanTrialStartedEmail) {
   const copy = TRIAL_STARTED_COPY[locale] ?? TRIAL_STARTED_COPY[DEFAULT_LOCALE];
-  const price = `${trialAmount(locale, amountMinor, currency)}/${cycle === "yearly" ? copy.year : copy.month}`;
+  const price = trialAmount(locale, amountMinor, currency);
   const body = copy.body(trialDays, trialDate(locale, trialEnd), price);
   return planTrialEmail(locale, copy.subject(trialDays), body, copy.cancel, billingUrl);
 }
 
 export async function sendPlanTrialStartedEmail(input: PlanTrialStartedEmail): Promise<void> {
+  if (!process.env.RESEND_API_KEY) throw new Error("Trial email delivery is not configured.");
   await sendResendEmail({ to: input.email, ...buildPlanTrialStartedEmail(input), idempotencyKey: input.idempotencyKey });
 }
 
