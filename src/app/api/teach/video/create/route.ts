@@ -74,7 +74,7 @@ export async function POST(request: Request) {
     } catch (error) {
       if ((error as { status?: unknown }).status !== 429) return paymentErrorResponse(error);
       return NextResponse.json(
-        { error: "Daily upload limit on the Free plan. Try again tomorrow.", code: "free_plan_daily_limit" },
+        { error: "Daily upload limit without a plan. Try again tomorrow.", code: "free_plan_daily_limit" },
         { status: 429 },
       );
     }

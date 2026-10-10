@@ -559,3 +559,4 @@ describe("pagina do modulo dentro do builder", () => {
     expect(screen.queryByText("Saving")).not.toBeInTheDocument();
   }, 10000);
 });
+vi.mock("@/lib/data/creator-plan", () => ({ fetchCreatorPlanRequired: async () => false }));

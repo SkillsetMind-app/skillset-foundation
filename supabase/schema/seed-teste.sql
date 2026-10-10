@@ -66,6 +66,9 @@ end $$;
 
 -- 20260902120000 (segundo fator) matricula este usuário neste curso para provar
 -- que a policy some com a matrícula numa sessão fraca.
+insert into public.subscriptions(id, user_id, plan_id, status, current_period_end)
+values ('smoke-ci-plan', '11111111-1111-4111-8111-111111111111', 'basic', 'active', now() + interval '1 day');
+
 insert into public.courses (
   id,
   owner_id,

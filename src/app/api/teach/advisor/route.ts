@@ -240,7 +240,7 @@ export async function POST(request: Request) {
       if (rlError) {
         if (rlError.message?.includes("RATE_LIMIT") && freePlan && key.startsWith("advisor_daily_")) {
           return NextResponse.json(
-            { error: "Daily advisor limit on the Free plan. Try again tomorrow.", code: "free_plan_daily_limit" },
+            { error: "Daily advisor limit without a plan. Try again tomorrow.", code: "free_plan_daily_limit" },
             { status: 429 },
           );
         }

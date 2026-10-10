@@ -8,7 +8,7 @@
  * olha nao muda o numero.
  */
 import { isInternalSmokeCourse } from "@/domain/teacher-course";
-import { DEFAULT_PLATFORM_FEE_BPS, isRefundableEnrollmentSource } from "@/lib/payments/rules";
+import { DEFAULT_PLATFORM_FEE_BPS, isRefundableEnrollmentSource, platformFeeForSale } from "@/lib/payments/rules";
 import { defaultSkillsetCurrency, fromStripeAmount } from "@/lib/payments/currencies";
 
 export const overviewPeriods = ["today", "7d", "30d"] as const;
@@ -164,6 +164,8 @@ export type OverviewOrderRow = {
   amount_minor: number;
   currency: string;
   platform_fee_bps: number | null;
+  /** Absent on rows read before the column existed: treat as 0. */
+  platform_fee_fixed_minor?: number | null;
   refunded_amount_minor: number;
   paid_at: string | null;
   updated_at: string;
@@ -237,14 +239,19 @@ export function summarizeOrders(rows: readonly OverviewOrderRow[], window: Overv
   return {
     paidOrders: measure(paid, paidAt, window),
     gross: measureMoney(paid, paidAt, currency, (row) => row.amount_minor, window),
-    // A conta do webhook (floor(bruto * bps / 10000)) sobre o liquido: o
-    // reembolso devolve a taxa (refund_application_fee: true), como a carteira
-    // do criador ja desconta.
-    platformFees: measureMoney(paid, paidAt, currency, (row) =>
-      Math.floor(
-        (Math.max(0, row.amount_minor - row.refunded_amount_minor) * (row.platform_fee_bps ?? DEFAULT_PLATFORM_FEE_BPS))
-          / 10000,
-      ), window),
+    // A conta do webhook (percentual + parte fixa, platformFeeForSale) na
+    // proporcao do que nao foi reembolsado: o reembolso devolve a taxa na mesma
+    // proporcao (refund_application_fee: true), como a carteira do criador ja
+    // desconta.
+    platformFees: measureMoney(paid, paidAt, currency, (row) => {
+      if (row.amount_minor <= 0) return 0;
+      const fee = platformFeeForSale(
+        row.amount_minor,
+        row.platform_fee_bps ?? DEFAULT_PLATFORM_FEE_BPS,
+        row.platform_fee_fixed_minor ?? 0,
+      );
+      return Math.floor((fee * Math.max(0, row.amount_minor - row.refunded_amount_minor)) / row.amount_minor);
+    }, window),
     refunds: measure(refunded, updatedAt, window),
     refundedAmount: measureMoney(refunded, updatedAt, currency, (row) => row.refunded_amount_minor, window),
   };

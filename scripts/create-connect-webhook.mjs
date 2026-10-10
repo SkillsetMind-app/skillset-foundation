@@ -41,6 +41,9 @@ const EVENTS = [
   "customer.subscription.created",
   "customer.subscription.updated",
   "customer.subscription.deleted",
+  // Renewals of student subscriptions get the exact fee (percent + fixed)
+  // written on the draft invoice (handleCourseSubscriptionInvoiceCreated).
+  "invoice.created",
   "invoice.payment_failed",
   "invoice.paid",
   "account.updated",

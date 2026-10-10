@@ -1189,6 +1189,30 @@ export type Database = {
         }
         Relationships: []
       }
+      creator_plan_trials: {
+        Row: {
+          created_at: string
+          reminder_sent_at: string | null
+          stripe_subscription_id: string
+          trial_end: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          reminder_sent_at?: string | null
+          stripe_subscription_id: string
+          trial_end?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          reminder_sent_at?: string | null
+          stripe_subscription_id?: string
+          trial_end?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       creator_verification_cases: {
         Row: {
           verification_kind: string
@@ -1696,6 +1720,7 @@ export type Database = {
           payment_intent_id: string | null
           payout_model: string | null
           platform_fee_bps: number | null
+          platform_fee_fixed_minor: number
           price_id: string | null
           provider: string | null
           receipt_url: string | null
@@ -1727,6 +1752,7 @@ export type Database = {
           payment_intent_id?: string | null
           payout_model?: string | null
           platform_fee_bps?: number | null
+          platform_fee_fixed_minor?: number
           price_id?: string | null
           provider?: string | null
           receipt_url?: string | null
@@ -1758,6 +1784,7 @@ export type Database = {
           payment_intent_id?: string | null
           payout_model?: string | null
           platform_fee_bps?: number | null
+          platform_fee_fixed_minor?: number
           price_id?: string | null
           provider?: string | null
           receipt_url?: string | null
@@ -2218,6 +2245,7 @@ export type Database = {
           stripe_customer_id: string | null
           stripe_price_id: string | null
           stripe_subscription_id: string | null
+          trial_end: string | null
           updated_at: string
           user_id: string
         }
@@ -2234,6 +2262,7 @@ export type Database = {
           stripe_customer_id?: string | null
           stripe_price_id?: string | null
           stripe_subscription_id?: string | null
+          trial_end?: string | null
           updated_at?: string
           user_id: string
         }
@@ -2250,6 +2279,7 @@ export type Database = {
           stripe_customer_id?: string | null
           stripe_price_id?: string | null
           stripe_subscription_id?: string | null
+          trial_end?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -2631,6 +2661,8 @@ export type Database = {
         Returns: Json
       }
       course_owner_can_sell: { Args: { p_owner_uid: string }; Returns: boolean }
+      creator_plan_required: { Args: Record<PropertyKey, never>; Returns: boolean }
+      creator_has_current_plan: { Args: { p_uid: string }; Returns: boolean }
       course_title_key: { Args: { p_title: string }; Returns: string }
       create_course_coupon: {
         Args: {

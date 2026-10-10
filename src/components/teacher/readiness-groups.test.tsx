@@ -225,3 +225,4 @@ describe("checklist de publicacao em tres blocos e faixa de rascunho", () => {
     expect(screen.getByTestId("publish-readiness-bar")).toHaveStyle({ width: "67%" });
   });
 });
+vi.mock("@/lib/data/creator-plan", () => ({ fetchCreatorPlanRequired: async () => false }));

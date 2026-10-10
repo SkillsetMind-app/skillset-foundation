@@ -101,7 +101,7 @@
     "send": "Enviar mensaje",
     "notReady": "Estamos preparando el asesor. Estará disponible en breve.",
     "tooManyMessages": "Has enviado muchos mensajes. Espera un momento y vuelve a intentarlo.",
-    "freePlanDailyLimit": "Límite diario del asesor en el plan Free. Vuelve a intentarlo mañana.",
+    "freePlanDailyLimit": "Límite diario del asesor sin plan. Vuelve a intentarlo mañana.",
     "activationRequired": "El asesor del estudio se abre cuando activas tu tienda. Preparar cursos, subir videos y conectar Stripe no lo necesitan.",
     "sessionExpired": "Tu sesión ha caducado. Actualiza la página e inicia sesión de nuevo.",
     "somethingWrong": "Algo salió mal. Vuelve a intentarlo.",
@@ -388,13 +388,13 @@
   "home": {
     "metadata": {
       "title": "Plataforma de cursos para psicólogos y profesionales del desarrollo personal",
-      "description": "Para psicólogos y profesionales del desarrollo personal que ya enseñan en vivo: vende tu curso y comunidad de pago, sin mensualidad. Cobras en tu propio Stripe."
+      "description": "Para psicólogos y profesionales del desarrollo personal que ya enseñan en vivo: vende tu curso y comunidad. Prueba 14 días gratis. Cobras en tu propio Stripe."
     },
     "hero": {
       "eyebrow": "Para psicólogos y profesionales del desarrollo personal",
       "title1": "Tu conocimiento cambia vidas.",
       "title2": "Ahora conviértelo en un curso.",
-      "sub": "Para psicólogos y profesionales del desarrollo personal que ya enseñan en vivo y quieren vender su método como un curso con comunidad de pago, sin mensualidad. Nosotros manejamos el checkout y el aula — tus compradores pagan directo a tu cuenta de Stripe, así que nunca retenemos tu dinero. Tú enseñas.",
+      "sub": "Para psicólogos y profesionales del desarrollo personal que ya enseñan en vivo y quieren vender su método como un curso con comunidad de pago. Empieza con 14 días gratis; después Basic cuesta US$5 al mes. Se requiere tarjeta; cancela antes de terminar la prueba para evitar el cobro de la suscripción. Se aplican tarifas por venta. Nosotros manejamos el checkout y el aula — tus compradores pagan directo a tu cuenta de Stripe. Tú enseñas.",
       "trust1Title": "Verificado",
       "trust1Desc": "Cuando se requiere, los profesionales se verifican antes de publicar, y los cursos que incumplan las normas del catálogo pueden pausarse o retirarse.",
       "trust2Title": "Global",
@@ -462,8 +462,8 @@
       "title": "Enseña más allá de los límites de tus sesiones en vivo.",
       "ctaStart": "Empieza a enseñar",
       "ctaPromise": "Lee la Promesa al Creador",
-      "bullet1": "Quédate con {keep}% en Free, antes de las comisiones de procesamiento de Stripe. Sube a Plus y tu comisión puede bajar a 2%.",
-      "bullet2": "Tus compradores pagan directo a tu cuenta de Stripe. Sin retención de la plataforma y sin suscripción para empezar.",
+      "bullet1": "Basic cobra un {basic}% + $0.30 por venta, Starter un {starter}% + $0.30 y Pro un {pro}% + $0.30, antes de las comisiones de procesamiento de Stripe.",
+      "bullet2": "Tus compradores pagan directo a tu cuenta de Stripe. Sin retención de la plataforma y con 14 días gratis antes del primer cobro del plan.",
       "bullet3": "Liberación gradual y ventana de reembolso te protegen del abuso.",
       "bullet4": "Comunidad del curso, sesiones en vivo y certificados verificables en cada plan."
     },
@@ -2410,6 +2410,7 @@
         "off": "No destacado",
         "usage": "{used} de {limit} destacados usados en el plan {plan}",
         "notIncluded": "El plan {plan} no incluye destacados en el marketplace.",
+        "noSubscription": "Los destacados en el marketplace requieren un plan de creador compatible.",
         "saving": "Guardando...",
         "remove": "Quitar destacado",
         "add": "Destacar este curso",
@@ -2418,6 +2419,7 @@
         "gatePlan": "Los destacados del marketplace empiezan en el plan {plan}.",
         "paidPlan": "de pago",
         "gateQuota": "Estás usando los {limit} destacados de tu plan. Quita uno de otro curso primero.",
+        "contactUs": "Escríbenos para ampliarlo",
         "updateError": "No se pudo actualizar el destacado del marketplace."
       },
       "loading": "Cargando curso...",
@@ -2944,17 +2946,18 @@
   "publicPages": {
     "pricing": {
       "pricing": "Precios",
-      "four_plans_free_starts_at_10": "Cuatro planes. Free comienza con una comisión del 10% y sin suscripción. Starter la reduce al 5%, Pro al 3% y Plus al 2%. La tarifa de procesamiento de Stripe se muestra por separado para que las cuentas sean claras, y los compradores pagan directamente a tu cuenta de Stripe: sin retención ni plazo de liquidación de la plataforma.",
+      "plans_with_a_free_trial": "Tres planes, cada uno con una prueba gratis de 14 días. Basic cuesta $5 al mes con 10% + $0.30 por venta; Starter cuesta $19 al mes con 4.9% + $0.30; Pro cuesta $89 al mes con 2.9% + $0.30. La tarifa de procesamiento de Stripe se muestra por separado para que las cuentas sean claras, y los compradores pagan directamente a tu cuenta de Stripe: sin retención ni plazo de liquidación de la plataforma.",
       "pricing_that_lowers_as_you_grow": "Precios que bajan a medida que creces.",
-      "every_plan_can_sell_paid_plans": "Todos los planes permiten vender. Los planes de pago reducen la comisión y aumentan tus límites.",
+      "every_plan_can_sell_paid_plans": "Todos los planes permiten publicar y vender, y cada uno empieza con 14 días gratis. Los planes superiores bajan la comisión y aumentan tus límites.",
       "billing_cycle": "Ciclo de facturación",
       "monthly": "Mensual",
       "yearly": "Anual",
       "17_off": "~17% de descuento",
+      "enterprise_talk_to_us": "¿Vendes más de US$10.000 al mes? Habla con nosotros sobre Enterprise",
       "plan_comparison": "Comparación de planes",
       "recommended": "Recomendado",
       "per_sale": "por venta",
-      "mo_no_subscription": "/mes — sin suscripción",
+      "per_sale_with_fixed": "+ {fixed} por venta",
       "mo": "/mes",
       "mo_billed": "/mes, con un cobro de",
       "yearly_2": " al año",
@@ -2977,18 +2980,18 @@
       "payouts": "Transferencias",
       "buyers_pay_your_stripe_account_directly": "Los compradores pagan directamente a tu cuenta de Stripe. Nunca retenemos tu dinero, así que no hay nada que debamos liberar. Stripe liquida y transfiere a tu banco desde tu propio saldo de Stripe según sus plazos, que dependen de tu país y del método de pago. Una cuenta nueva debe esperar la verificación de Stripe antes de su primera transferencia.",
       "plan_changes": "Cambios de plan",
-      "upgrade_any_time_new_commission_applies": "Mejora tu plan cuando quieras: la nueva comisión se aplica a las ventas nuevas. Cambia a un plan inferior al final de tu ciclo de facturación. Cancela cuando quieras; conservas tu contenido y vuelves a Free.",
+      "upgrade_any_time_new_commission_applies": "Mejora tu plan cuando quieras: la nueva comisión se aplica a las ventas nuevas. Cambia a un plan inferior al final de tu ciclo de facturación. Cancela cuando quieras en Facturación; conservas tu contenido.",
       "common_questions": "Preguntas frecuentes",
       "what_happens_when_i_upgrade_a": "¿Qué ocurre cuando mejoro mi plan?",
       "upgrades_apply_immediately_and_the_new": "Las mejoras se aplican de inmediato y la nueva comisión entra en vigor para las ventas nuevas. Las ventas anteriores al cambio conservan la comisión del plan que tenías en ese momento. Stripe Billing prorratea la diferencia de suscripción para el ciclo actual.",
       "what_happens_when_i_downgrade_or": "¿Qué ocurre si cambio a un plan inferior o cancelo?",
-      "downgrades_and_cancellations_take_effect_at": "Los cambios a un plan inferior y las cancelaciones entran en vigor al final del período de facturación actual; hasta entonces conservas el plan que estás pagando. Si cancelas, conservas todo tu contenido y vuelves a Free ({value0}% de comisión, sin suscripción).",
+      "downgrades_and_cancellations_take_effect_at": "Los cambios a un plan inferior y las cancelaciones entran en vigor al final del período de facturación actual; hasta entonces conservas el plan que estás pagando. Si cancelas durante la prueba gratis de 14 días, no se te cobra. En cualquier caso, conservas todo tu contenido.",
       "how_do_the_fees_work_on": "¿Cómo funcionan las tarifas en una venta por suscripción?",
-      "two_fees_come_out_of_each": "De cada venta se deducen dos tarifas, que se muestran por separado para que las cuentas sean claras. SkillsetMind cobra la comisión de tu plan (del 10% en Free al 2% en Plus), y se te repercute la tarifa estándar de procesamiento de Stripe (2.9% + $0.30 para tarjetas en USD y un estimado del 5.4% + $0.30 para otras monedas). Todo lo que queda es tuyo.",
+      "two_fees_come_out_of_each": "De cada venta se deducen dos tarifas, que se muestran por separado para que las cuentas sean claras. SkillsetMind cobra la comisión de tu plan (de 10% + $0.30 en Basic a 2.9% + $0.30 en Pro; en otras monedas, los $0.30 se cobran en su equivalente local), y se te repercute la tarifa estándar de procesamiento de Stripe (2.9% + $0.30 para tarjetas en USD y un estimado del 5.4% + $0.30 para otras monedas). Todo lo que queda es tuyo.",
       "when_can_a_sale_be_refunded": "¿Cuándo se puede reembolsar una venta y cómo afecta a mi transferencia?",
       "learners_can_self_refund_within_days": "Los alumnos pueden solicitar el reembolso por su cuenta dentro de los {value0} días posteriores a la compra si completaron menos de la mitad del curso. Como el comprador pagó directamente a tu cuenta de Stripe, el reembolso se descuenta de tu propio saldo y se te devuelve la comisión de SkillsetMind de esa venta. Así no pagas una comisión por una venta que se anuló.",
       "ready_to_publish_on_skillsetmind": "¿Listo para publicar en SkillsetMind?",
-      "start_on_free_upgrade_only_when": "Empieza con Free y mejora tu plan solo cuando las cuentas te favorezcan.",
+      "start_with_a_free_trial": "Todos los planes empiezan con una prueba gratis de 14 días. Cancela cuando quieras en Facturación antes de que termine y no se te cobrará.",
       "creator_overview": "Información para creadores",
       "start_free": "Crear cuenta",
       "start_plan": "Empieza con {plan}"
@@ -3001,16 +3004,16 @@
       "professional_verification_up_front_then_automated": "Verificación profesional inicial cuando se requiere y después una publicación que nunca espera una revisión manual del curso.",
       "shareable_course_links_for_simple_launch": "Enlaces de cursos para compartir en campañas de lanzamiento sencillas.",
       "teach_on_skillsetmind": "Enseña en SkillsetMind",
-      "publish_professional_courses_to_a_global": "Publica cursos profesionales desde tu propio estudio. Empieza en el plan Free (sin mensualidad) con una comisión del {value0}%; los compradores pagan directamente a tu cuenta de Stripe. Comunidad del curso y certificados incluidos en todos los planes.",
+      "publish_professional_courses_to_a_global": "Publica cursos profesionales desde tu propio estudio. Empieza con una prueba gratis de 14 días; los compradores pagan directamente a tu cuenta de Stripe. Comunidad del curso y certificados incluidos en todos los planes.",
       "for_creators": "Para creadores",
       "teach_with_a_real_course_operating": "Enseña con un sistema completo para gestionar cursos.",
-      "skillsetmind_is_designed_for_experts_who": "Para coaches, facilitadores y mentores que ya enseñan en vivo y quieren vender su método como un curso con comunidad de pago, sin mensualidad.",
-      "commission_on_free": "Comisión en Free",
-      "to_start": "Mensualidad",
+      "skillsetmind_is_designed_for_experts_who": "Para coaches, facilitadores y mentores que ya enseñan en vivo y quieren vender su método como un curso con comunidad de pago, empezando con una prueba gratis de 14 días.",
+      "commission_on_pro": "Comisión en Pro, + $0.30 por venta",
+      "to_start": "Días de prueba gratis",
       "direct": "Directo",
       "buyer_pays_you": "El comprador te paga",
-      "buyers_are_charged_on_your_own": "Los compradores pagan en tu propia cuenta de Stripe: la plataforma no retiene tu dinero. Empieza en el plan Free (sin mensualidad) con una comisión del 10% y mejora tu plan para reducirla al 5%, 3% o 2%.",
-      "see_all_four_plans": "Ver los cuatro planes",
+      "buyers_are_charged_on_your_own": "Los compradores pagan en tu propia cuenta de Stripe: la plataforma no retiene tu dinero. Basic cobra un 10% + $0.30 por venta, Starter un 4.9% + $0.30 y Pro un 2.9% + $0.30; todos los planes empiezan con una prueba gratis de 14 días.",
+      "see_all_plans": "Ver todos los planes",
       "creator_path": "El camino del creador",
       "create_account": "Crear cuenta",
       "draft_then_publish": "Prepara y publica cuando tu curso supere los controles de lanzamiento.",
@@ -3018,11 +3021,11 @@
     },
     "promise": {
       "fee_lock_for_24_months": "Comisión fija durante 24 meses",
-      "the_commission_rate_of_the_plan": "La comisión del plan con el que te registras se mantiene durante los siguientes 24 meses, aunque SkillsetMind aumente los precios de los planes más adelante. Si SkillsetMind necesita cambiarla, recibirás un aviso con 90 días de antelación y tendrás derecho a exportarlo todo y marcharte sin trabas.",
-      "if_a_creator_joins_on_free": "Si un creador se registra en Free con un 10%, no se encontrará más adelante con un aumento de comisión inesperado.",
+      "the_commission_rate_of_the_plan": "La comisión y la tarifa fija por venta del plan al que te suscribes quedan fijas durante 24 meses desde la fecha de tu suscripción, aunque SkillsetMind suba los precios de los planes más adelante. Cualquier cambio llega con 90 días de aviso y con el derecho a exportarlo todo y marcharte sin trabas.",
+      "the_rate_you_subscribe_at_is_the_one_you_keep": "La comisión y la tarifa fija con las que te suscribes son las que conservas: ningún aumento inesperado durante esos 24 meses.",
       "no_plan_ever_blocks_you_from": "Todos los planes pueden publicar y vender",
-      "the_selling_engine_is_on_every": "Todos los planes, incluido Free, permiten publicar cursos, cobrar, liberar contenido gradualmente, gestionar una comunidad y sesiones en vivo, emitir certificados y crear cupones ilimitados. Los planes de pago reducen la comisión y añaden espacios destacados, dominios propios, páginas de venta más largas y controles de marca, como quitar la marca SkillsetMind o poner tu logo en los certificados. El plan Free tiene límites diarios de subidas de video, preguntas al asesor y accesos manuales. Mejorar el plan nunca es un requisito para poder vender.",
-      "a_creator_on_free_runs_a": "Free publica y vende. Mejorar el plan reduce la comisión; nunca compra el derecho a vender.",
+      "the_selling_engine_is_on_every": "Todos los planes, incluido Basic, permiten publicar cursos, cobrar, liberar contenido gradualmente, gestionar una comunidad y sesiones en vivo, emitir certificados con tu logo y crear cupones ilimitados. Los planes superiores reducen la comisión y añaden espacios destacados, dominios propios, páginas de venta más largas y, en Pro, la opción de quitar la marca SkillsetMind. Mejorar el plan nunca es un requisito para poder vender.",
+      "basic_publishes_and_sells": "Basic publica y vende. Mejorar el plan reduce la comisión; nunca compra el derecho a vender.",
       "data_portability_one_click": "Portabilidad de datos",
       "at_any_moment_you_can_export": "Tus cursos y tus datos son tuyos y puedes llevártelos. Hoy ya puedes descargar desde el estudio la lista de alumnos de cada curso en CSV. Para todo lo demás (cursos, materiales, historial de ventas, publicaciones de la comunidad), solicita una exportación desde tu Cuenta: procesamos las solicitudes verificadas en un plazo de 30 días, o antes si tu ley de privacidad lo exige. La exportación completa en autoservicio está en nuestra hoja de ruta. Sin llamadas ni intentos de retención.",
       "skillsetmind_can_host_your_business_but": "SkillsetMind aloja tus cursos, pero no es dueño de ellos.",
@@ -3128,27 +3131,35 @@
     },
     "plans": {
       "free": {
-        "tagline": "Empieza a vender sin suscripción.",
+        "tagline": "Elige un plan para publicar y vender.",
         "audience": "Nuevos creadores que están validando una idea.",
-        "highlight0": "Sin mensualidad: comisión solo cuando vendes",
+        "highlight0": "14 días gratis en tu primer plan; después se requiere suscripción",
         "highlight1": "Publica cuando tu curso supere los controles de lanzamiento",
         "highlight2": "Pagos con Stripe en 30 monedas",
         "highlight3": "Los compradores pagan a tu propia cuenta de Stripe: la plataforma no retiene tu dinero",
         "highlight4": "Certificados SkillsetMind Verified",
         "highlight5": "Comunidades de cursos y sesiones en vivo"
       },
+      "basic": {
+        "tagline": "Empieza a vender por una mensualidad baja.",
+        "audience": "Creadores que validan su primer curso.",
+        "highlight0": "10% + $0.30 por venta",
+        "highlight1": "Publica cuando tu curso supere los controles de lanzamiento",
+        "highlight2": "La facturación anual ahorra aproximadamente un 17%"
+      },
       "starter": {
-        "tagline": "La mitad de comisión por un pequeño costo mensual.",
+        "tagline": "Una comisión más baja cuando vendes todos los meses.",
         "audience": "Creadores que venden todos los meses.",
-        "highlight0": "Todo lo incluido en Free",
-        "highlight1": "La comisión baja del 10% al 5%",
+        "highlight0": "4.9% + $0.30 por venta",
+        "highlight1": "1 dominio propio y 1 destacado en el marketplace",
         "highlight2": "La facturación anual ahorra aproximadamente un 17%"
       },
       "pro": {
-        "tagline": "Una comisión más baja para catálogos consolidados.",
+        "tagline": "La comisión más baja de la oferta.",
         "audience": "Creadores con un catálogo consolidado.",
-        "highlight0": "Todo lo incluido en Starter",
-        "highlight1": "La comisión baja al 3%"
+        "highlight0": "2.9% + $0.30 por venta",
+        "highlight1": "5 dominios propios y 5 destacados en el marketplace",
+        "highlight2": "Quita la marca SkillsetMind"
       },
       "plus": {
         "tagline": "La comisión más baja para creadores con grandes volúmenes de ventas.",
@@ -3203,7 +3214,7 @@
       "you_get_paid_directly": "Cobras directamente",
       "learners_pay_your_stripe_account_not": "Los alumnos pagan a tu cuenta de Stripe, no a la nuestra. SkillsetMind nunca retiene tu dinero, nunca te lo remite ni intermedia entre tú y tu comprador. Tú eres el vendedor responsable de cada venta.",
       "platform_fee": "Comisión de la plataforma",
-      "plan_based_every_plan_includes_the": "Según el plan: {value0}. Todos los planes permiten publicar y vender; los planes de pago cobran una comisión menor por cada venta de pago, que Stripe descuenta en el momento del cobro, y aumentan los límites. El plan Free no tiene mensualidad; mejora tu plan cuando una comisión más baja te favorezca.",
+      "plan_based_every_plan_includes_the": "Según el plan: {value0}. Todos los planes permiten publicar y vender; Stripe descuenta la comisión en el momento del cobro, y en otras monedas los $0.30 se cobran en su equivalente local. Cada plan empieza con una prueba gratis de 14 días.",
       "stripe_processing_fee": "Tarifa de procesamiento de Stripe",
       "charged_by_stripe_to_your_account": "Stripe la cobra a tu cuenta en cada venta. Los precios de Stripe en Estados Unidos son del 2.9% + $0.30 para pagos con tarjeta en USD y un estimado del 5.4% + $0.30 para otras monedas. Tus tarifas son las que Stripe establece en el país donde está registrada tu cuenta. Nunca se oculta dentro del porcentaje de la plataforma.",
       "refund_window": "Plazo de reembolso",
@@ -3281,7 +3292,7 @@
           },
           "2": {
             "q": "¿Cómo fijo el precio de mi curso?",
-            "a": "El precio se configura por producto en Estudio → constructor de cursos. Elige inscripción gratuita, pago único o suscripción mensual o anual en una moneda admitida. La comisión de la plataforma (10% en Free, 5% en Starter, 3% en Pro y 2% en Plus), junto con la tarifa de procesamiento de Stripe, se muestra claramente en el registro de ingresos de cada venta."
+            "a": "El precio se configura por producto en Estudio → constructor de cursos. Elige inscripción gratuita, pago único o suscripción mensual o anual en una moneda admitida. La comisión de la plataforma (10% + $0.30 en Basic, 4.9% + $0.30 en Starter y 2.9% + $0.30 en Pro), junto con la tarifa de procesamiento de Stripe, se muestra claramente en el registro de ingresos de cada venta."
           },
           "3": {
             "q": "¿Qué es la publicación gradual y cuándo debo usarla?",
@@ -3298,7 +3309,7 @@
         "items": {
           "0": {
             "q": "¿Con qué plan debería empezar?",
-            "a": "Empieza con Free si estás validando una idea: no hay suscripción y conservas el 90% de cada venta de $100 antes de las tarifas de Stripe. Los planes de pago añaden una cuota mensual y bajan la comisión. La página de precios muestra lo que cada plan descuenta de una venta de ejemplo de $100."
+            "a": "Todos los planes empiezan con una prueba gratis de 14 días; se pide tarjeta y puedes cancelar en Facturación antes de que termine la prueba sin que se te cobre. Basic cuesta $5 al mes ($50 al año) con 10% + $0.30 por venta. Starter cuesta $19 al mes ($190 al año) con 4.9% + $0.30. Pro cuesta $89 al mes ($890 al año) con 2.9% + $0.30 y límites más altos. La página de precios muestra lo que cada plan descuenta de una venta de ejemplo de $100."
           },
           "1": {
             "q": "¿Qué ocurre cuando mejoro mi plan o cambio a uno inferior?",
@@ -3306,7 +3317,7 @@
           },
           "2": {
             "q": "¿Qué ocurre si cancelo mi plan?",
-            "a": "La cancelación te devuelve a Free al final del período pagado. Se conservan tus cursos, alumnos, contenido e historial; SkillsetMind nunca elimina los datos de un creador. La comisión vuelve al 10% (la tarifa de Free) en las ventas nuevas desde el momento del cambio."
+            "a": "Cancela cuando quieras desde Facturación con \"Cancelar plan\". Si cancelas durante la prueba gratis de 14 días, no se te cobra; si no, el plan sigue activo hasta el final del período que pagaste. Se conservan tus cursos, alumnos, contenido e historial; SkillsetMind nunca elimina los datos de un creador."
           }
         }
       },
@@ -3757,6 +3768,7 @@
         "installmentsPublish": "Define un límite de cuotas válido antes de publicar.",
         "duplicateTitle": "Ya existe un curso con este título. Elige otro nombre.",
         "activation": "Activa tu tienda para habilitar la publicación: una tarifa única de activación, que se cobra una sola vez por cuenta de creador, nunca por curso.",
+        "plan": "Necesitas un plan activo o una prueba vigente para publicar. Gestiona tu plan en facturación.",
         "save": "No pudimos guardar este curso. Inténtalo de nuevo.",
         "preview": "Quita la vista previa gratuita no válida o elige una lección de este curso.",
         "setup": "Completa la configuración del creador antes de publicar cursos.",
@@ -3909,6 +3921,7 @@
         "passed": "Todos los requisitos de publicación están completos.",
         "activate": "Activar tienda",
         "activateAndPublish": "Activar y publicar",
+        "managePlan": "Gestionar plan",
         "publishing": "Publicando...",
         "submit": "Publicar producto"
       },
@@ -4139,6 +4152,10 @@
         "activation": {
           "label": "Activación — US${amount}, pago único",
           "hint": "Se cobra una sola vez por cuenta de creador, nunca por curso. Al pagar se habilita la publicación."
+        },
+        "plan": {
+          "label": "Plan de creador",
+          "hint": "Inicia tu prueba de 14 días o renueva tu plan para publicar y vender."
         }
       },
       "groups": {
@@ -4175,7 +4192,7 @@
         "generic": "No pudimos subir este archivo. Revisa el tipo de archivo y los permisos del curso.",
         "invalidFile": "El tipo de archivo no es compatible o el archivo es demasiado grande.",
         "coverHost": "La URL de la portada no pertenece a un sitio de medios permitido.",
-        "freePlanDailyLimit": "Límite diario de subidas del plan Free. Vuelve a intentarlo mañana."
+        "freePlanDailyLimit": "Límite diario de subidas sin plan. Vuelve a intentarlo mañana."
       }
     },
     "preview": {
@@ -4616,6 +4633,23 @@
       "unknown": "No pudimos enviar tu solicitud de reembolso. Inténtalo de nuevo o contacta con soporte."
     }
   },
+  "planTrial": {
+    "disclosurePublic": "{days} días gratis, luego {price}. Se requiere tarjeta. Se renueva automáticamente hasta que canceles. Cancela en Facturación antes de que termine tu prueba para evitar el cobro de la suscripción.",
+    "cta": "Empieza tu prueba gratis de 14 días",
+    "disclosure": "{days} días gratis, luego {price}. Se renueva automáticamente hasta que canceles. Cancela cuando quieras en Facturación antes del {date} y no se te cobrará.",
+    "disclosureNoTrial": "{price}, desde hoy. Se renueva automáticamente hasta que canceles. Cancela cuando quieras en Facturación para evitar el próximo cargo.",
+    "pricePerMonth": "{amount} al mes",
+    "pricePerYear": "{amount} al año",
+    "trialEnds": "Prueba gratis — termina el {date}",
+    "endsOn": "Termina el {date}",
+    "cancel": "Cancelar plan",
+    "cancelling": "Cancelando…",
+    "cancelConfirmTrial": "¿Cancelar tu plan? Tu prueba gratis sigue hasta el {date} y no se te cobrará.",
+    "cancelConfirm": "¿Cancelar tu plan? Sigue activo hasta el {date} y no se renovará.",
+    "cancelConfirmNow": "¿Cancelar tu plan ahora? La factura pendiente no se volverá a cobrar y el plan termina de inmediato.",
+    "cancelError": "No pudimos cancelar el plan. Inténtalo de nuevo o usa Gestionar suscripción.",
+    "publicNote": "Todos los planes empiezan con una prueba gratis de 14 días, una por cuenta. Se pide tarjeta; cancela cuando quieras en Facturación antes de que termine la prueba y no se te cobrará."
+  },
   "accountPlans": {
     "signIn": "Inicia sesión para ver y gestionar tu plan.",
     "checkoutSoon": "El pago con tarjeta estará disponible pronto.",
@@ -4623,6 +4657,7 @@
     "checkoutSoonBody": "Los planes están listos y estamos activando el pago con tarjeta. Mientras tanto, Free sigue siendo el plan predeterminado; no tienes que hacer nada.",
     "setupPendingBody": "Todavía no puedes comprar planes de pago mientras terminamos la configuración de facturación. Free sigue disponible como plan predeterminado para todas las cuentas.",
     "currentPlan": "Plan actual:",
+    "withoutSubscription": "Sin suscripción",
     "loading": "Cargando…",
     "manage": "Gestionar suscripción",
     "cycle": "Ciclo de facturación",
@@ -4720,7 +4755,7 @@
     "title": "Cada cambio en la Promesa debe ser público.",
     "description": "La promesa de SkillsetMind a los creadores se publicó con un historial público de cambios para que los creadores puedan revisar cualquier cambio futuro de las políticas antes de que afecte a su negocio.",
     "publishedOn": "Publicado el {date}",
-    "publication": "La promesa de SkillsetMind a los creadores se publicó el {date}. Desde su publicación se han realizado tres cambios, registrados a continuación. Cualquier cambio futuro se documentará aquí con su fecha, diferencias y motivo al menos 90 días antes de entrar en vigor para los creadores existentes.",
+    "publication": "La promesa de SkillsetMind a los creadores se publicó el {date}. Desde su publicación se han realizado cuatro cambios, registrados a continuación. Cualquier cambio futuro se documentará aquí con su fecha, diferencias y motivo al menos 90 días antes de entrar en vigor para los creadores existentes.",
     "changeTitle": "Promesa 05 sustituida: “Protección de fondos por contrato” pasó a ser “Nunca retenemos tu dinero”",
     "whatChanged": "Qué cambió: los pagos de cursos pasaron a utilizar cargos directos de Stripe. Ahora se cobra al comprador en la propia cuenta de Stripe del instructor, el instructor es el comerciante registrado (merchant of record) y SkillsetMind cobra su comisión de plataforma en el momento del cargo. Se eliminó el periodo anterior de liquidación de 30 días de la plataforma, porque SkillsetMind ya no recibe ni retiene en absoluto los ingresos de las ventas. También se eliminaron los repartos de ingresos con afiliados y coproductores: una plataforma que nunca toca el dinero no puede repartirlo.",
     "why": "Por qué: prometer proteger fondos retenidos por SkillsetMind es menos sólido que no retenerlos. Eliminar la custodia elimina el riesgo que la promesa anterior buscaba cubrir.",
@@ -4734,6 +4769,10 @@
     "change3WhatChanged": "Qué cambió: la promesa 02 se titulaba “Ningún plan te impide vender”. Ahora se titula “Todos los planes pueden publicar y vender”. Explica que los planes de pago reducen la comisión y añaden espacios destacados, dominios propios, páginas de venta más largas y controles de marca, y que el plan Free tiene límites diarios de subidas de video, preguntas al asesor y accesos manuales. Ya no enumera límites de plan que el producto no aplica. Las promesas 01, 02 y 03 hablan ahora de tus cursos y tus datos en lugar de “tu negocio”. La comisión fija de la promesa 01 no cambia.",
     "change3Why": "Por qué: una promesa pública tiene que describir lo que el producto hace hoy.",
     "change3Effective": "En vigor desde: {date} para creadores nuevos y existentes. Entra en vigor de inmediato, y no tras el plazo de aviso de 90 días, porque no sube ningún precio ni ninguna comisión.",
+    "change4Title": "Promesas 01 y 02 reescritas para los nuevos planes",
+    "change4WhatChanged": "Qué cambió: cada venta paga ahora el porcentaje del plan más una tarifa fija de unos US$0.30, ya no existe el plan Free y todos los planes empiezan con una prueba gratis de 14 días. La promesa 01 fija ahora tanto la comisión como la tarifa fija por venta del plan al que te suscribes, durante 24 meses desde la fecha de tu suscripción. La promesa 02 nombra ahora Basic en lugar de Free y ya no menciona los límites diarios del plan Free.",
+    "change4Why": "Por qué: la Promesa tiene que describir los planes que realmente se ofrecen.",
+    "change4Effective": "En vigor desde: {date} para creadores nuevos y existentes. Entra en vigor de inmediato, y no tras el plazo de aviso de 90 días, porque cuando se hizo ningún creador tenía una suscripción a un plan, un producto publicado ni una venta, así que no cambia ningún acuerdo en curso.",
     "futureFormat": "Formato de futuras entradas",
     "futureTitle": "Título del cambio",
     "futureChange": "Qué cambió: descripción.",
@@ -4757,8 +4796,8 @@
     "unlocks": "Desbloquea la publicación de tus cursos. Se cobra una sola vez por cuenta de creador, nunca por curso.",
     "oneTimeFee": "Tarifa única",
     "once": "una sola vez",
-    "noSubscription": "Sin suscripción mensual en Free",
-    "commissionBefore": "Después, el plan Free sigue sin costo mensual y cobra un",
+    "noSubscription": "Pago único, no es una suscripción",
+    "commissionBefore": "Después, Basic cobra un",
     "commissionAfter": "por venta. La tarifa de procesamiento de Stripe se te traslada en cada venta (2.9% + $0.30 USD / 5.4% + $0.30 estimado para monedas distintas del USD).",
     "poweredBy": "Con tecnología de Stripe",
     "returnTitle": "Activación de la tienda",
@@ -4960,7 +4999,7 @@
     "ownerError": "Solo el propietario del curso puede administrar el acceso a un curso publicado.",
     "emailError": "Introduce una dirección de correo válida.",
     "rateError": "Demasiados intentos. Espera antes de volver a intentarlo.",
-    "freePlanDailyLimit": "Límite diario de accesos manuales en el plan Free. Vuelve a intentarlo mañana.",
+    "freePlanDailyLimit": "Límite diario de accesos manuales sin plan. Vuelve a intentarlo mañana.",
     "signInError": "Inicia sesión para administrar el acceso al curso.",
     "courseError": "Elige un curso.",
     "requestLargeError": "La solicitud es demasiado grande.",

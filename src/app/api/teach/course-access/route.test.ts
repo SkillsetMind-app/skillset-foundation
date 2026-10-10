@@ -116,7 +116,7 @@ describe("manual course access route", () => {
     const response = await POST(request({ courseId: "course-1", email: grant.learner_email }));
     expect(response.status).toBe(429);
     expect(await response.json()).toEqual({
-      error: "Daily limit for manual access on the Free plan. Try again tomorrow.",
+      error: "Daily limit for manual access without a plan. Try again tomorrow.",
       code: "free_plan_daily_limit",
     });
     expect(rpc).not.toHaveBeenCalledWith("grant_course_access", expect.anything());

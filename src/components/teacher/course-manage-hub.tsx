@@ -124,6 +124,8 @@ function readinessEditHref(item: CourseReadinessItem, courseId: string): string 
       return "/account/payments#stripe-connect";
     case "activation":
       return `/teach/activate?courseId=${id}`;
+    case "plan":
+      return "/account/billing";
     // `verification` ja tem o proprio link dentro da dica; um segundo link na
     // mesma linha, com outro rotulo e o mesmo destino, so confunde.
     default:
@@ -197,6 +199,11 @@ function MarketplaceHighlightPanel({
   const quota = quotaStatus(usedSlots, limit);
   const published = course.status === "published";
   const upgradeTo = lowestPlanWithQuota("featuredSlots", 1);
+  // Used up: a bigger plan on offer if one covers the next slot, otherwise a
+  // person. Above the top tier the answer is "Contact us", never a dead end.
+  const outOfQuota = published && !quota.lockedOnPlan && !quota.canConsume;
+  const contactInstead =
+    outOfQuota && lowestPlanWithQuota("featuredSlots", quota.used + 1) === null;
 
   // Removing a highlight is always allowed, including over quota after a
   // downgrade — same rule the RPC applies, so the button matches the server.
@@ -240,7 +247,7 @@ function MarketplaceHighlightPanel({
           </p>
           <p className="mt-0.5 text-xs text-[var(--color-ink-muted)]">
             {(quota.lockedOnPlan
-              ? t("creatorPanel.hub.highlight.notIncluded")
+              ? t(planId === "free" ? "creatorPanel.hub.highlight.noSubscription" : "creatorPanel.hub.highlight.notIncluded")
               : t("creatorPanel.hub.highlight.usage"))
               .replace("{used}", () => String(quota.used))
               .replace("{limit}", () => formatLimit(limit))
@@ -263,11 +270,18 @@ function MarketplaceHighlightPanel({
       {gateReason ? (
         <p className="mt-3 text-xs leading-5 text-[var(--color-ink-muted)]">
           {gateReason}
-          {quota.lockedOnPlan ? (
+          {quota.lockedOnPlan || (outOfQuota && !contactInstead) ? (
             <>
               {" "}
               <Link href="/account/plans" className="font-semibold text-[var(--color-primary)] underline">
                 {t("creatorPanel.hub.highlight.seePlans")}
+              </Link>
+            </>
+          ) : contactInstead ? (
+            <>
+              {" "}
+              <Link href="/contact" className="font-semibold text-[var(--color-primary)] underline">
+                {t("creatorPanel.hub.highlight.contactUs")}
               </Link>
             </>
           ) : null}

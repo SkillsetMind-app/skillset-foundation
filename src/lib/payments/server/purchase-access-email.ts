@@ -158,6 +158,109 @@ export async function sendResendEmail({ to, subject, html, text, idempotencyKey 
   if (!response.ok) throw new Error(`Resend answered ${response.status}.`);
 }
 
+export type PlanTrialEndingEmail = {
+  /** The creator's account email. */
+  email: string;
+  locale: Locale;
+  trialEnd: Date;
+  /** Next invoice amount_due in Stripe's smallest unit, including discounts. */
+  amountMinor: number;
+  currency: string;
+  /** Billing page, where "Cancel plan" lives. */
+  billingUrl: string;
+};
+
+const TRIAL_COPY: Record<Locale, {
+  subject: (date: string) => string;
+  body: (date: string, price: string) => string;
+  cancel: string;
+}> = {
+  en: {
+    subject: (date) => `Your free trial ends on ${date}`,
+    body: (date, price) => `Your free trial ends on ${date}. Your next payment is ${price}.`,
+    cancel: "Cancel here",
+  },
+  es: {
+    subject: (date) => `Tu prueba gratis termina el ${date}`,
+    body: (date, price) => `Tu prueba gratis termina el ${date}. Tu próximo pago es de ${price}.`,
+    cancel: "Cancela aquí",
+  },
+};
+
+/**
+ * The reminder before a plan trial converts: "Your free trial ends on {date}.
+ * Your next payment is {price}. Cancel here: {link}". The date uses the same
+ * UTC−12 calendar as the checkout disclosure, so it is never later than the
+ * real conversion anywhere. The preview describes only the next payment:
+ * temporary discounts must not be presented as the ongoing renewal price.
+ */
+export function buildPlanTrialEndingEmail({ locale, trialEnd, amountMinor, currency, billingUrl }: PlanTrialEndingEmail) {
+  const copy = TRIAL_COPY[locale] ?? TRIAL_COPY[DEFAULT_LOCALE];
+  const date = trialDate(locale, trialEnd);
+  const price = trialAmount(locale, amountMinor, currency);
+  return planTrialEmail(locale, copy.subject(date), copy.body(date, price), copy.cancel, billingUrl);
+}
+
+export type PlanTrialStartedEmail = PlanTrialEndingEmail & { trialDays: number };
+
+const TRIAL_STARTED_COPY: Record<Locale, {
+  subject: (days: number) => string;
+  body: (days: number, date: string, price: string) => string;
+  cancel: string;
+}> = {
+  en: {
+    subject: (days) => `Your ${days}-day free trial started`,
+    body: (days, date, price) =>
+      `Your ${days}-day free trial started. It ends on ${date}. Your next payment is ${price}. Your subscription renews until you cancel.`,
+    cancel: "Cancel anytime",
+  },
+  es: {
+    subject: (days) => `Tu prueba gratis de ${days} días empezó`,
+    body: (days, date, price) =>
+      `Tu prueba gratis de ${days} días empezó. Termina el ${date}. Tu próximo pago es de ${price}. Tu suscripción se renueva automáticamente hasta que canceles.`,
+    cancel: "Cancela cuando quieras",
+  },
+};
+
+/**
+ * The acknowledgement right after a plan checkout opens a trial: "Your 14-day
+ * free trial started. It ends on {date}. Your next payment is {price}."
+ * Includes renewal and cancellation information. Same date and price rules as the
+ * reminder above.
+ */
+export function buildPlanTrialStartedEmail({ locale, trialDays, trialEnd, amountMinor, currency, billingUrl }: PlanTrialStartedEmail) {
+  const copy = TRIAL_STARTED_COPY[locale] ?? TRIAL_STARTED_COPY[DEFAULT_LOCALE];
+  const price = trialAmount(locale, amountMinor, currency);
+  const body = copy.body(trialDays, trialDate(locale, trialEnd), price);
+  return planTrialEmail(locale, copy.subject(trialDays), body, copy.cancel, billingUrl);
+}
+
+export function buildPlanTrialEmailPayload(input: PlanTrialEndingEmail | PlanTrialStartedEmail): string {
+  const content = "trialDays" in input ? buildPlanTrialStartedEmail(input) : buildPlanTrialEndingEmail(input);
+  return JSON.stringify({ from: FROM, to: [input.email], ...content });
+}
+
+function trialDate(locale: Locale, date: Date): string {
+  return new Intl.DateTimeFormat(locale, { dateStyle: "long", timeZone: "Etc/GMT+12" }).format(date);
+}
+
+function trialAmount(locale: Locale, amountMinor: number, currency: string): string {
+  return new Intl.NumberFormat(locale, { style: "currency", currency: currency.toUpperCase() }).format(amountMinor / 100);
+}
+
+function planTrialEmail(locale: Locale, subject: string, body: string, cancel: string, billingUrl: string) {
+  const safeUrl = escapeHtml(billingUrl);
+  const help = (COPY[locale] ?? COPY[DEFAULT_LOCALE]).help;
+  const text = [body, "", `${cancel}: ${billingUrl}`, "", `${help} ${SUPPORT}.`].join("\n");
+  const html = `<div style="${PARAGRAPH}">
+  <p>${escapeHtml(body)}</p>
+  <p><a href="${safeUrl}" style="${BUTTON}">${cancel}</a></p>
+  <p style="font-size:13px;word-break:break-all;"><a href="${safeUrl}" style="color:#102a43;">${safeUrl}</a></p>
+  <p>${help} <a href="mailto:${SUPPORT}" style="color:#102a43;font-weight:bold;">${SUPPORT}</a>.</p>
+</div>`;
+  return { subject, html, text };
+}
+
 export async function sendPurchaseAccessEmail(input: PurchaseAccessEmail): Promise<void> {
   await sendResendEmail({ to: input.email, ...buildPurchaseAccessEmail(input), idempotencyKey: input.idempotencyKey });
 }

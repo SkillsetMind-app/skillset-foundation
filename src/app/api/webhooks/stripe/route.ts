@@ -1,7 +1,16 @@
 import { after, NextResponse } from "next/server";
 import type Stripe from "stripe";
 
-import { ACTIVATION_FEE_CHECKOUT_PURPOSE, planByStripePriceId } from "@/data/plans";
+import {
+  ACTIVATION_FEE_CHECKOUT_PURPOSE,
+  ENTERPRISE_GRANT_METADATA,
+  isPlanEntitledStatus,
+  PLAN_ENTITLED_STATUSES,
+  PLAN_SUBSCRIPTION_CHECKOUT_PURPOSE,
+  PLAN_TRIAL_DAYS,
+  planAndCycleByStripePriceId,
+  plans,
+} from "@/data/plans";
 import { normalizeLocale, type Locale } from "@/lib/i18n/config";
 import { notifyOps } from "@/lib/ops/alert";
 import { buildCourseSubscriptionSaleRecords } from "@/lib/payments/course-subscription-sale";
@@ -9,6 +18,8 @@ import {
   DEFAULT_PLATFORM_FEE_BPS,
   canonicalPlatformFeeBpsForPlan,
   ledgerRefundStatus,
+  platformFeeForSale,
+  platformFixedFeeMinor,
   nextLedgerStatusOnDispute,
   resolveInvoicePaymentIntentId,
   sanitizeStripeSecret,
@@ -21,7 +32,12 @@ import {
 } from "@/lib/payments/rules";
 import { fromStripeAmount, toStripeAmount } from "@/lib/payments/currencies";
 import { getAppUrl } from "@/lib/payments/server/app-url";
-import { sendCreatorSaleEmail, sendPurchaseAccessEmail } from "@/lib/payments/server/purchase-access-email";
+import {
+  sendCreatorSaleEmail,
+  buildPlanTrialEmailPayload,
+  sendPurchaseAccessEmail,
+} from "@/lib/payments/server/purchase-access-email";
+import { deliverPlanTrialEmail } from "@/lib/payments/server/plan-trial-email-delivery";
 import { getStripeClient, isStripeConfigured } from "@/lib/payments/server/stripe";
 import {
   courseSubscriptionInterval,
@@ -61,6 +77,8 @@ const HANDLED_STRIPE_EVENT_TYPES = new Set<string>([
   "customer.subscription.created",
   "customer.subscription.updated",
   "customer.subscription.deleted",
+  "customer.subscription.trial_will_end",
+  "invoice.created",
   "invoice.payment_failed",
   "invoice.paid",
   "account.updated",
@@ -506,7 +524,13 @@ async function handleCheckoutCompleted(
   const grossAmountMinor = Number(order.amount_minor || 0);
   // ?? not || so an explicitly snapshotted 0-bps fee survives.
   const platformFeeBps = Number(order.platform_fee_bps ?? DEFAULT_PLATFORM_FEE_BPS);
-  const skillsetFeeMinor = Math.floor((grossAmountMinor * platformFeeBps) / 10000);
+  // Same formula the checkout charged: percent + the fixed part snapshotted on
+  // the order (0 on orders from before the fixed fee), capped below the sale.
+  const skillsetFeeMinor = platformFeeForSale(
+    grossAmountMinor,
+    platformFeeBps,
+    Number(order.platform_fee_fixed_minor ?? 0),
+  );
   const stripeFeeMinor =
     actualStripeFeeMinor ??
     stripeProcessingFeeMinor(grossAmountMinor, order.currency);
@@ -697,16 +721,29 @@ async function handleCourseSubscriptionInvoicePaid(
   // Stripe freezes application_fee_percent when the subscription is created and
   // keeps charging that percent on every renewal. Recomputing the fee from the
   // teacher's CURRENT plan would book a number Stripe never took: a teacher who
-  // upgrades Free (10%) -> Pro (3%) is still charged 10% by Stripe until the
-  // subscription is re-created, and the ledger would claim 3% while 10% left the
+  // upgrades Free (10%) -> Starter (4.9%) is still charged 10% by Stripe until
+  // the subscription is updated, and the ledger would claim 4.9% while 10% left the
   // charge. The subscription states the percent actually in force, so trust it;
   // the plan/metadata chain only covers subscriptions with no percent set.
+  //
+  // A null percent with a "0" snapshot is a fee of 0 — not a cue to re-derive
+  // it from a plan the teacher may have left since.
+  //
+  // Better than any of that: the invoice states the fee Stripe took. Renewals
+  // carry the exact percent + fixed amount set on invoice.created, and that is
+  // what the ledger books whenever it is present.
   const frozenPercent = subscription.application_fee_percent;
   const platformFeeBps =
     typeof frozenPercent === "number" && frozenPercent >= 0
       ? Math.round(frozenPercent * 100)
-      : derivedFeeBps;
-  const skillsetFeeMinor = Math.floor((grossAmountMinor * platformFeeBps) / 10000);
+      : metaBps === 0
+        ? 0
+        : derivedFeeBps;
+  const invoiceFee = (invoice as { application_fee_amount?: number | null }).application_fee_amount;
+  const skillsetFeeMinor =
+    typeof invoiceFee === "number" && invoiceFee >= 0
+      ? fromStripeAmount(invoiceFee, currencyUpper)
+      : Math.floor((grossAmountMinor * platformFeeBps) / 10000);
   const stripeFeeMinor =
     grossAmountMinor > 0 ? stripeProcessingFeeMinor(grossAmountMinor, currencyUpper) : 0;
   // Record of what the teacher actually received: Stripe already took our
@@ -767,6 +804,7 @@ async function handleCourseSubscriptionInvoicePaid(
     grossAmountMinor,
     currency: currencyUpper,
     platformFeeBps,
+    platformFeeMinor: skillsetFeeMinor,
     createdAt: secondsToIso(invoice.created) ?? ts,
     paidAt: secondsToIso(invoice.status_transitions?.paid_at) ?? ts,
     updatedAt: ts,
@@ -1568,16 +1606,25 @@ async function syncSubscriptionFromStripe(
 
   const item = subscription.items.data[0];
   const priceId = item?.price?.id ?? null;
-  const plan = priceId ? planByStripePriceId(priceId) : null;
-  const planId = plan?.id ?? null;
-  const cycle = plan?.stripePriceIds
-    ? plan.stripePriceIds.monthlyId === priceId
-      ? "monthly"
-      : plan.stripePriceIds.yearlyId === priceId
-        ? "yearly"
-        : null
-    : null;
-  if (!planId || !cycle || !priceId) return;
+  // Legacy Prices too: a $19 Starter subscription is still Starter.
+  const match = priceId ? planAndCycleByStripePriceId(priceId) : undefined;
+  if (!match || !priceId) return;
+  // Enterprise is granted only by hand (ENTERPRISE_GRANT_METADATA). A switch to
+  // an Enterprise Price any other way — a portal still listing it — keeps the
+  // row in sync but grants no plan, and ops are told to revert it.
+  const enterpriseGranted =
+    subscription.metadata?.[ENTERPRISE_GRANT_METADATA.key] === ENTERPRISE_GRANT_METADATA.value;
+  const planId = match.plan.id === "plus" && !enterpriseGranted ? null : match.plan.id;
+  if (!planId && isPlanEntitledStatus(subscription.status)) {
+    notifyOps({
+      event: "stripe.plan.enterprise_not_granted",
+      severity: "critical",
+      summary:
+        "A plan subscription moved to an Enterprise Price without the admin grant. No plan was granted; revert it in Stripe.",
+      context: { subscriptionId: subscription.id, uid },
+    });
+  }
+  const cycle = match.cycle;
 
   const periodStart = secondsToIso(
     (item as { current_period_start?: number })?.current_period_start ??
@@ -1607,12 +1654,17 @@ async function syncSubscriptionFromStripe(
         current_period_start: periodStart,
         current_period_end: periodEnd,
         cancel_at_period_end: Boolean(subscription.cancel_at_period_end),
+        trial_end: secondsToIso(subscription.trial_end),
         updated_at: ts,
       },
       { onConflict: "id" },
     ),
     "Persist plan subscription",
   );
+
+  if (subscription.trial_start != null) {
+    await recordPlanTrial(admin, uid, subscription);
+  }
 
   // Entitlement must reflect ALL of this user's live subscriptions, not just the
   // one in this event. Stripe checkout never replaces an existing subscription,
@@ -1621,21 +1673,22 @@ async function syncSubscriptionFromStripe(
   // that single event would drop a paying Pro customer to free (and an
   // `updated` event on the cheaper sub would overwrite the higher plan). The
   // upsert above already made this row current, so resolve from the table and
-  // keep the best live tier. Lower platform fee = higher tier; unknown plan ids
-  // tie with free and lose the strict comparison.
+  // keep the best live tier, by the order of `plans` (free < basic < starter <
+  // pro < plus). Not by fee: Basic charges what free does and would never win.
+  // Unknown plan ids rank -1 and lose. `trialing` counts: during the trial the
+  // plan works in full, lower commission and limits included.
   const { data: liveSubscriptions, error: liveSubscriptionsError } = await admin
     .from("subscriptions")
     .select("plan_id")
     .eq("user_id", uid)
-    .in("status", ["active", "trialing"]);
+    .in("status", [...PLAN_ENTITLED_STATUSES]);
   if (liveSubscriptionsError) throw new Error(liveSubscriptionsError.message);
 
+  const tier = (id: string) => plans.findIndex((plan) => plan.id === id);
   const effectivePlanId = (liveSubscriptions ?? []).reduce<string>((best, row) => {
     const candidate = row.plan_id as string | null;
     if (!candidate) return best;
-    return canonicalPlatformFeeBpsForPlan(candidate) < canonicalPlatformFeeBpsForPlan(best)
-      ? candidate
-      : best;
+    return tier(candidate) > tier(best) ? candidate : best;
   }, "free");
 
   await requireSupabaseWrite(
@@ -1645,6 +1698,203 @@ async function syncSubscriptionFromStripe(
       .eq("uid", uid),
     "Update subscriber plan",
   );
+}
+
+// --- fixed per-sale fee on student-subscription renewals ----------------------
+// Stripe takes only a percent on a subscription, so a renewal's fee (plan
+// percent + the fixed ~US$0.30) is written on the invoice itself while it is
+// still a draft: Stripe holds automatic-collection invoices about an hour after
+// our 2xx to invoice.created (up to 72 h if we fail), and an invoice-level
+// application_fee_amount overrides the subscription's percent. The FIRST
+// invoice is paid synchronously at checkout and never waits; it carries the
+// percent-equivalent set there. The rate is the teacher's plan NOW: a renewal
+// is a new sale, and new sales use the current plan.
+async function handleCourseSubscriptionInvoiceCreated(
+  admin: Admin,
+  invoice: Stripe.Invoice,
+  eventAccountId: string,
+): Promise<void> {
+  if (invoice.status !== "draft" || invoice.billing_reason === "subscription_create") return;
+  const amountDue = Number(invoice.amount_due || 0);
+  if (amountDue <= 0) return;
+  const subscriptionId = resolveInvoiceSubscriptionId(invoice);
+  if (!subscriptionId) return;
+
+  const subscription = await getStripeClient().subscriptions.retrieve(
+    subscriptionId,
+    undefined,
+    { stripeAccount: eventAccountId },
+  );
+  const meta = subscription.metadata ?? {};
+  if (meta.purpose !== "course_subscription" || !meta.teacherId) return;
+
+  const { data: owner, error } = await admin
+    .from("users")
+    .select("current_plan_id")
+    .eq("uid", meta.teacherId)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+
+  const currency = String(invoice.currency || "usd");
+  const fee = platformFeeForSale(
+    amountDue,
+    canonicalPlatformFeeBpsForPlan(owner?.current_plan_id),
+    toStripeAmount(platformFixedFeeMinor(currency), currency),
+  );
+  if (fee <= 0) return;
+  try {
+    await getStripeClient().invoices.update(
+      invoice.id!,
+      { application_fee_amount: fee },
+      { stripeAccount: eventAccountId },
+    );
+  } catch (error) {
+    // A redelivery can land after Stripe finalized the invoice (the snapshot
+    // above still says draft). Retrying cannot help, and a 500 would loop for
+    // three days: log it and let the renewal keep the subscription's percent.
+    if ((error as { code?: string }).code !== "invoice_not_editable") {
+      const current = await getStripeClient().invoices.retrieve(
+        invoice.id!,
+        undefined,
+        { stripeAccount: eventAccountId },
+      );
+      if (current.status === "draft") throw error;
+    }
+    console.warn(
+      `[stripe webhook] invoice.created: ${invoice.id} is no longer editable; the renewal keeps the subscription's percent.`,
+    );
+  }
+}
+
+// One trial per creator account, ever: the first subscription that starts a
+// trial claims the account's row. ignoreDuplicates — a later event (a plan
+// change during the trial, a renewal, a second subscription) never rewrites it,
+// so the checkout keeps refusing a second trial.
+async function recordPlanTrial(
+  admin: Admin,
+  uid: string,
+  subscription: Stripe.Subscription,
+): Promise<void> {
+  await requireSupabaseWrite(
+    admin.from("creator_plan_trials").upsert(
+      {
+        user_id: uid,
+        stripe_subscription_id: subscription.id,
+        trial_end: secondsToIso(subscription.trial_end),
+      },
+      { onConflict: "user_id", ignoreDuplicates: true },
+    ),
+    "Record plan trial",
+  );
+}
+
+async function previewPlanTrialPayment(subscriptionId: string): Promise<Stripe.Invoice> {
+  let invoice: Stripe.Invoice;
+  try {
+    invoice = await getStripeClient().invoices.createPreview({ subscription: subscriptionId });
+  } catch {
+    throw new Error("Could not preview the plan trial payment.");
+  }
+  if (!Number.isSafeInteger(invoice.amount_due) || invoice.amount_due < 0
+    || !/^[a-z]{3}$/.test(invoice.currency)) {
+    throw new Error("Invalid plan trial payment preview.");
+  }
+  return invoice;
+}
+
+// The delivery RPC freezes the first payload and bounds uncertain retries.
+async function handlePlanTrialWillEnd(
+  admin: Admin,
+  subscription: Stripe.Subscription,
+): Promise<void> {
+  // Cancelled during the trial, or already converted: nothing will be charged.
+  if (
+    subscription.status !== "trialing"
+    || subscription.cancel_at_period_end
+    || subscription.trial_end == null
+  ) {
+    return;
+  }
+  const uid =
+    (subscription.metadata?.uid as string | undefined) ??
+    (await uidFromCustomer(admin, subscription.customer));
+  if (!uid) return;
+  const price = subscription.items.data[0]?.price;
+  const match = price?.id ? planAndCycleByStripePriceId(price.id) : undefined;
+  if (!match || !price) return;
+
+  await recordPlanTrial(admin, uid, subscription);
+  const { data: trial, error: trialError } = await admin
+    .from("creator_plan_trials")
+    .select("reminder_sent_at")
+    .eq("stripe_subscription_id", subscription.id)
+    .maybeSingle();
+  if (trialError) throw new Error("Could not read the trial reminder delivery marker.");
+  if (!trial || trial.reminder_sent_at) return;
+
+  await deliverPlanTrialEmail(admin, `trial_will_end:${subscription.id}`, async () => {
+    const invoice = await previewPlanTrialPayment(subscription.id);
+    const { data, error } = await admin.auth.admin.getUserById(uid);
+    const email = data?.user?.email;
+    if (error || !email) throw new Error("Subscriber account has no email for the trial reminder.");
+    return buildPlanTrialEmailPayload({
+      email,
+      locale: normalizeLocale(subscription.metadata?.locale),
+      trialEnd: new Date(subscription.trial_end! * 1000),
+      amountMinor: invoice.amount_due,
+      currency: invoice.currency,
+      billingUrl: `${getAppUrl()}/account/billing?tab=subscriptions`,
+    });
+  });
+  await requireSupabaseWrite(
+    admin
+      .from("creator_plan_trials")
+      .update({ reminder_sent_at: nowIso() })
+      .eq("stripe_subscription_id", subscription.id),
+    "Confirm trial reminder delivery",
+  );
+}
+
+// checkout.session.completed for a plan checkout that opened a trial: one
+// acknowledgement with the auto-renewal terms and how to cancel (California's
+// ARL; Stripe sends no receipt for the $0 trial invoice). Idempotent: the
+// event claim stops processed events; the delivery row freezes the payload
+// and prevents automatic replay after an uncertain send outlives deduplication.
+async function handlePlanCheckoutCompleted(
+  admin: Admin,
+  session: Stripe.Checkout.Session,
+): Promise<void> {
+  const subscriptionId =
+    typeof session.subscription === "string" ? session.subscription : session.subscription?.id;
+  if (!subscriptionId) return;
+  const subscription = await getStripeClient().subscriptions.retrieve(subscriptionId);
+  if (
+    subscription.status !== "trialing"
+    || subscription.cancel_at_period_end
+    || subscription.trial_end == null
+  ) {
+    return;
+  }
+  const uid = (subscription.metadata?.uid as string | undefined) ?? session.metadata?.uid;
+  const price = subscription.items.data[0]?.price;
+  const match = price?.id ? planAndCycleByStripePriceId(price.id) : undefined;
+  if (!uid || !match || !price) return;
+
+  await deliverPlanTrialEmail(admin, `trial_started:${subscription.id}`, async () => {
+    const invoice = await previewPlanTrialPayment(subscription.id);
+    const { data, error } = await admin.auth.admin.getUserById(uid);
+    const email = data?.user?.email;
+    if (error || !email) throw new Error("Subscriber account has no email for the trial acknowledgement.");
+    return buildPlanTrialEmailPayload({
+      email,
+      locale: normalizeLocale(subscription.metadata?.locale),
+      trialDays: PLAN_TRIAL_DAYS,
+      trialEnd: new Date(subscription.trial_end! * 1000),
+      amountMinor: invoice.amount_due,
+      currency: invoice.currency,
+      billingUrl: `${getAppUrl()}/account/billing?tab=subscriptions`,
+    });
+  });
 }
 
 async function handleInvoicePaymentFailed(
@@ -1829,6 +2079,13 @@ export async function POST(request: Request) {
           await handleActivationFeePaid(admin, session);
         } else if (session.mode !== "subscription") {
           await handleCheckoutCompleted(admin, session, eventAccountId);
+        } else if (
+          !eventAccountId
+          && session.metadata?.purpose === PLAN_SUBSCRIPTION_CHECKOUT_PURPOSE
+        ) {
+          // Only the trial acknowledgement email: the plan itself is synced by
+          // customer.subscription.*.
+          await handlePlanCheckoutCompleted(admin, session);
         }
         // subscription-mode sessions are owned by customer.subscription.* / invoice.paid
         break;
@@ -1872,6 +2129,24 @@ export async function POST(request: Request) {
         }
         break;
       }
+      case "customer.subscription.trial_will_end": {
+        // Plan subscriptions live on the platform (no event.account). Course
+        // subscriptions on connected accounts never carry a trial.
+        if (!eventAccountId) {
+          await handlePlanTrialWillEnd(
+            admin,
+            await getStripeClient().subscriptions.retrieve(event.data.object.id),
+          );
+        }
+        break;
+      }
+      case "invoice.created":
+        // Student subscriptions live on connected accounts; plan invoices on
+        // the platform (no event.account) keep their price as it is.
+        if (eventAccountId) {
+          await handleCourseSubscriptionInvoiceCreated(admin, event.data.object, eventAccountId);
+        }
+        break;
       case "invoice.payment_failed":
         await handleInvoicePaymentFailed(
           admin,

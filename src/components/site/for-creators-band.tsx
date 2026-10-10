@@ -5,7 +5,9 @@ import { RevealSection } from "@/components/shared/reveal-section";
 import { planById } from "@/data/plans";
 import { getServerTranslation } from "@/lib/i18n/server";
 
-const freePlan = planById("free");
+const basicPlan = planById("basic");
+const starterPlan = planById("starter");
+const proPlan = planById("pro");
 
 // Server component: só texto traduzido, nenhum estado. Sai do bundle do
 // navegador; o que precisa do cliente aqui é o RevealSection, que continua
@@ -14,10 +16,10 @@ export async function ForCreatorsBand() {
   const { t } = await getServerTranslation();
 
   const trustBullets = [
-    t("home.creators.bullet1").replace(
-      "{keep}",
-      String(100 - freePlan.commissionPercent),
-    ),
+    t("home.creators.bullet1")
+      .replace("{basic}", String(basicPlan.commissionPercent))
+      .replace("{starter}", String(starterPlan.commissionPercent))
+      .replace("{pro}", String(proPlan.commissionPercent)),
     t("home.creators.bullet2"),
     t("home.creators.bullet3"),
     t("home.creators.bullet4"),

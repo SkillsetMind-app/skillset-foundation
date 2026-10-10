@@ -169,3 +169,4 @@ describe("upload sem depender do Realtime", () => {
     }, { timeout: 8000 });
   }, 20000);
 });
+vi.mock("@/lib/data/creator-plan", () => ({ fetchCreatorPlanRequired: async () => false }));

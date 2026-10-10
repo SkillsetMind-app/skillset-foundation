@@ -96,6 +96,10 @@ select set_config('skillset.trusted_write', 'on', true);
 insert into auth.users(id, aud, role, email, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
 values (pg_temp.uid(1), 'authenticated', 'authenticated', 'como-vao-pagar-1@example.test',
   now(), '{}', '{}', now(), now());
+-- This smoke isolates activation/content; creator plans are already current.
+insert into public.subscriptions(id, user_id, plan_id, status, current_period_end)
+select 'plan-' || pg_temp.uid(n)::text, pg_temp.uid(n)::text, 'basic', 'active', now() + interval '1 day'
+from generate_series(1, 1) n;
 update public.users
   set roles = '["student","teacher"]', teacher_terms_accepted_at = now(),
       teacher_terms_version = 'smoke', activation_fee_paid_at = now(),

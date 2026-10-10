@@ -17,6 +17,8 @@ export type CourseSubscriptionSaleInput = {
   grossAmountMinor: number;
   currency: string;
   platformFeeBps: number;
+  /** The fee Stripe actually took on this invoice, in the stored unit. */
+  platformFeeMinor: number;
   createdAt: string;
   paidAt: string;
   updatedAt: string;
@@ -45,6 +47,13 @@ export function buildCourseSubscriptionSaleRecords(
       status: "paid",
       provider: "stripe",
       platform_fee_bps: input.platformFeeBps,
+      // Sale detail and the ops overview read the fee back as
+      // floor(gross × bps) + fixed, so the fixed part is whatever the real fee
+      // adds on top of the percent. Then they match the ledger. It can go
+      // negative after a plan upgrade (frozen percent above the new fee);
+      // platformFeeForSale adds it back to the exact fee.
+      platform_fee_fixed_minor:
+        input.platformFeeMinor - Math.floor((input.grossAmountMinor * input.platformFeeBps) / 10000),
       // Direct charge, same as the one-time path. The renewal is charged on the
       // teacher's connected account with an application fee; SkillsetMind never
       // receives the money and owes no transfer. Writing the legacy

@@ -270,7 +270,7 @@ export async function uploadLessonVideoToBunny(
     // here — every caller matches on it — and keep the hourly one as a status.
     const body = (await createRes.json().catch(() => null)) as { code?: unknown } | null;
     if (body?.code === "free_plan_daily_limit") {
-      throw new Error("Daily upload limit on the Free plan. Try again tomorrow.");
+      throw new Error("Daily upload limit without a plan. Try again tomorrow.");
     }
   }
   if (!createRes.ok) {

@@ -54,8 +54,9 @@ describe("public pricing makes no earnings claims", () => {
     state.locale = locale;
     const { container } = render(await PricingPage());
     expect(container.textContent).not.toMatch(incomeClaims);
-    // The fee facts stay: 10% on Free and the $100 sample sale.
-    expect(container.textContent).toContain("10%");
+    // The fee facts stay: each plan's percent + $0.30 and the $100 sample sale.
+    for (const percent of ["10%", "4.9%", "2.9%"]) expect(container.textContent).toContain(percent);
+    expect(container.textContent).toContain("$0.30");
     expect(container.textContent).toContain("$100");
   });
 
@@ -84,8 +85,8 @@ describe("www positioning", () => {
   });
 });
 
-// Plans differ by commission, a few paid extras, and the Free plan's daily caps
-// (video uploads, advisor, manual access). Published products, active students,
+// Plans differ by commission and a few paid extras; accounts without a plan
+// have daily caps (video uploads, advisor, manual access). Published products, active students,
 // video storage and team seats are not enforced, so no public line may sell
 // them as limits, and "same features, only the commission changes" is false.
 describe("plan copy states only rules the product applies", () => {
@@ -98,22 +99,43 @@ describe("plan copy states only rules the product applies", () => {
     expect(copy).not.toMatch(sameFeatures);
   });
 
-  it.each(dictionaries)("the %s Promise 02 says every plan sells and names the Free daily limits", (_locale, dict) => {
+  // There is no Free plan on offer: the Promise names Basic, never Free.
+  it.each(dictionaries)("the %s Promise 02 says every plan sells, Basic included, and never mentions Free", (_locale, dict) => {
     expect(dict.publicPages.promise.no_plan_ever_blocks_you_from).toMatch(/^(Every plan can publish and sell|Todos los planes pueden publicar y vender)$/);
-    expect(dict.publicPages.promise.the_selling_engine_is_on_every).toMatch(/daily limits|límites diarios/);
-    expect(dict.publicPages.promise.a_creator_on_free_runs_a).toMatch(/commission|comisión/);
+    expect(dict.publicPages.promise.the_selling_engine_is_on_every).toMatch(/Basic/);
+    expect(dict.publicPages.promise.basic_publishes_and_sells).toMatch(/commission|comisión/);
+    expect(JSON.stringify(dict.publicPages.promise)).not.toMatch(/\bFree\b/);
+  });
+
+  // No Free plan is on offer. Only the changelog, which records history, may
+  // still name it.
+  it.each(dictionaries)("the %s dictionary never offers a Free plan outside the changelog", (_locale, dict) => {
+    const rest = Object.entries(dict).filter(([section]) => section !== "promiseChangelog");
+    expect(JSON.stringify(rest)).not.toMatch(/Free plan|plan Free|Free included|incluido Free|costs nothing per month|sin costo mensual|on Free\b|en Free\b/);
+  });
+
+  // Every sale pays percent + fixed fee, so the 24-month lock covers both.
+  it.each(dictionaries)("the %s Promise 01 locks the commission and the fixed fee for 24 months, with 90 days' notice", (_locale, dict) => {
+    const lock = dict.publicPages.promise.the_commission_rate_of_the_plan;
+    expect(lock).toMatch(/commission and the fixed per-sale fee|comisión y la tarifa fija por venta/);
+    expect(lock).toMatch(/24 months from your subscription date|24 meses desde la fecha de tu suscripción/);
+    expect(lock).toMatch(/90 days' notice|90 días de aviso/);
+    expect(lock).toMatch(/export|exportarlo/);
   });
 
   // Promise 01 protects the rate; it must not assume the creator will sell.
   it.each(dictionaries)("the %s Promise 01 does not assume the creator will sell", (_locale, dict) => {
-    expect(dict.publicPages.promise.if_a_creator_joins_on_free).not.toMatch(/sell|selling|vender|venta/i);
+    expect(dict.publicPages.promise.the_rate_you_subscribe_at_is_the_one_you_keep).not.toMatch(/sell|selling|vender|venta/i);
   });
 
-  it("the assistant's plan summary names the Free daily limits and no feature parity", () => {
+  // The offer is Starter and Pro, each with a trial. The internal free tier and
+  // the retired Plus are not something the assistant may sell.
+  it("the assistant's plan summary names the trial, the two plans and no feature parity", () => {
     const knowledge = buildAssistantKnowledge();
     expect(knowledge).not.toMatch(sameFeatures);
     expect(knowledge).not.toMatch(unenforcedLimits);
-    expect(knowledge).toMatch(/daily limits/);
+    expect(knowledge).toMatch(/14-day free trial/);
+    expect(knowledge).not.toMatch(/Free plan|- Free:|Plus/);
   });
 });
 
@@ -135,7 +157,8 @@ describe("creator payout-country disclosure", () => {
   });
 
   // "Immediately" and "start free" oversell: publishing needs the launch checks
-  // and, where required, verification.
+  // and, where required, verification. Since 2026-10-06 no public plan is
+  // free of a monthly fee: the page offers the 14-day trial instead.
   it.each(["en", "es"])("%s /for-creators never promises immediate drafting or a free start", async (locale) => {
     state.locale = locale;
     const { container } = render(await CreatorsPage());
@@ -143,14 +166,15 @@ describe("creator payout-country disclosure", () => {
     for (const text of [container.textContent, String(description)]) {
       expect(text).not.toMatch(/draft courses immediately|preparar cursos de inmediato|Start free|Empieza gratis/i);
     }
-    expect(container.textContent).toMatch(/no monthly fee|sin mensualidad/);
+    expect(container.textContent).not.toMatch(/no monthly fee|sin mensualidad/);
+    expect(container.textContent).toMatch(/14-day free trial|prueba gratis de 14 días/);
   });
 });
 
 // One guard over every public entry page. Production truth it defends:
 // drafting is open; where verification is required it is approved before
-// publishing; publishing passes launch checks; the Free plan has no monthly fee
-// and takes 10%; there is no activation fee.
+// publishing; publishing passes launch checks; Starter and Pro each start with
+// a 14-day free trial; there is no activation fee.
 describe("public copy guard: home, /pricing, /fees-and-payouts, /for-creators, /help", () => {
   const falseClaims: ReadonlyArray<readonly [string, RegExp]> = [
     ["an earnings claim", incomeClaims],
@@ -373,6 +397,14 @@ describe("creator path order and conditions", () => {
         expect(text).not.toMatch(/\breal(?:es)?\b|published their profile|ha publicado su perfil/i);
       }
     });
+  });
+
+  it.each(dictionaries)("the %s home discloses the Basic price after the trial", (_locale, dict) => {
+    expect(dict.home.hero.sub).toContain("14");
+    expect(dict.home.hero.sub).toContain("US$5");
+    expect(dict.home.hero.sub).toMatch(/card|tarjeta/i);
+    expect(dict.home.hero.sub).toMatch(/cancel/i);
+    expect(dict.home.hero.sub).not.toMatch(/no monthly fee|sin mensualidad/i);
   });
 
   it("the help FAQ answer shared with the assistant says verification applies where required", () => {

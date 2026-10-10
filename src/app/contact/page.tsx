@@ -23,8 +23,13 @@ export async function generateMetadata() {
 // quem tem conta), no parágrafo de abertura.
 
 
-export default async function ContactPage() {
+export default async function ContactPage({
+  searchParams,
+}: { searchParams?: Promise<{ subject?: string | string[] }> } = {}) {
   const { t } = await getServerTranslation();
+  // /pricing's "Talk to us about Enterprise" lands here with ?subject=enterprise.
+  // Only known subjects are prefilled; anything else stays a general inquiry.
+  const subject = (await searchParams)?.subject === "enterprise" ? "Enterprise" : "General inquiry";
   const contactRoutes = [
     {
       label: t("publicPages.contact.general_inquiries"),
@@ -32,7 +37,7 @@ export default async function ContactPage() {
         t("publicPages.contact.questions_about_programs_access_and_the"),
       action: {
         label: t("publicPages.contact.email_the_team"),
-        href: `mailto:${SUPPORT_EMAIL}?subject=General%20inquiry`,
+        href: `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(subject)}`,
         external: true,
       },
     },

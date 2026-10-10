@@ -366,3 +366,4 @@ describe("mover a aula entre modulos", () => {
     expect(updateTeacherCourseBuilder).not.toHaveBeenCalled();
   }, 10000);
 });
+vi.mock("@/lib/data/creator-plan", () => ({ fetchCreatorPlanRequired: async () => false }));

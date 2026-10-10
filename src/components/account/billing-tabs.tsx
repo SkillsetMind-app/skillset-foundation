@@ -255,7 +255,7 @@ function OverviewTab({
   // rather than asserting "Free" (which would misstate a paying user's plan).
   const profileFailed = profileStatus === "error";
   const planId: PlanId = profile?.currentPlanId ?? "free";
-  const planName = profileFailed ? t("accountBilling.unavailable") : planById(planId).name;
+  const planName = profileFailed ? t("accountBilling.unavailable") : planId === "free" ? t("accountPlans.withoutSubscription") : planById(planId).name;
   const hasCustomer = Boolean(profile?.stripeCustomerId);
 
   return (

@@ -12,7 +12,7 @@ import { useTranslation } from "@/components/i18n/i18n-provider";
 import { rememberActivationReturnCourse } from "@/components/teacher/activation-return-link";
 import { BrandName } from "@/components/shared/brand-name";
 import { Card, Eyebrow, buttonClasses } from "@/components/ui";
-import { activationFeeUsd, plans } from "@/data/plans";
+import { activationFeeUsd, formatPlanCommission, planById } from "@/data/plans";
 import { formatUsdWhole } from "@/data/platform";
 import { createActivationCheckoutClientSecret } from "@/lib/payments/activation";
 import { PaymentRequestError } from "@/lib/payments/client-fetch";
@@ -53,8 +53,7 @@ export function ActivationCheckoutPanel({ courseId = null }: { courseId?: string
   // mount: changing language must not replace Stripe or lose entered card data.
   const [stripeLoader] = useState(() => getStripePromise(locale));
 
-  const freeCommission =
-    plans.find((plan) => plan.id === "free")?.commissionPercent ?? 10;
+  const basicCommission = formatPlanCommission(planById("basic"));
 
   // Stable options object — recreating it every render reboots the provider and
   // the creator loses any half-typed card.
@@ -208,7 +207,7 @@ export function ActivationCheckoutPanel({ courseId = null }: { courseId?: string
         </Card>
         <p className="mt-4 text-[11px] leading-5 text-[var(--color-ink-muted)]">
           {t("activationCheckout.commissionBefore")}{" "}
-          <strong className="text-[var(--color-ink)]">{freeCommission}%</strong>{" "}
+          <strong className="text-[var(--color-ink)]">{basicCommission}</strong>{" "}
           {t("activationCheckout.commissionAfter")}
         </p>
         <p className="mt-3 text-[10px] uppercase tracking-[0.12em] text-[var(--color-ink-muted)]">

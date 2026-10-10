@@ -38,6 +38,7 @@ describe("mapOrderRow", () => {
       payment_intent_id: "pi_123",
       payout_model: "destination_charge",
       platform_fee_bps: 950,
+      platform_fee_fixed_minor: 30,
       price_id: null,
       provider: "stripe",
       receipt_url: "https://pay.example/receipt/1",

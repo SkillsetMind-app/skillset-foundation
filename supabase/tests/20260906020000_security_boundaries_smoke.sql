@@ -43,6 +43,11 @@ UPDATE public.users SET roles='["student","teacher"]',teacher_terms_accepted_at=
 WHERE uid IN (:'teacher_uid',:'admin_uid',:'other_teacher_uid');
 UPDATE public.users SET roles='["student","teacher","admin"]' WHERE uid=:'admin_uid';
 
+-- Non-admin owners retain their roles; only the plan prerequisite is seeded.
+INSERT INTO public.subscriptions(id,user_id,plan_id,status,current_period_end)
+VALUES
+ ('smoke-plan-' || :'teacher_uid', :'teacher_uid', 'basic', 'active', now() + interval '1 day'),
+ ('smoke-plan-' || :'other_teacher_uid', :'other_teacher_uid', 'basic', 'active', now() + interval '1 day');
 INSERT INTO public.courses(id,owner_id,slug,title,title_key,summary,category,status,payment_type,price_amount_minor,currency,community_enabled)
 VALUES
  ('audit-boundaries-own',:'teacher_uid','audit-boundaries-own-slug','Own course','audit-boundaries-own','Course for isolated security tests.','smoke','published','one_time',100,'USD',true),

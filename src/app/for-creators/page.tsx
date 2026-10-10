@@ -2,18 +2,18 @@ import { getServerTranslation } from "@/lib/i18n/server";
 import Link from "next/link";
 
 import { PublicPage } from "@/components/site/public-page";
-import { planById } from "@/data/plans";
+import { PLAN_TRIAL_DAYS, planById } from "@/data/plans";
 import { buildPageMetadata } from "@/lib/seo/page-metadata";
 
 
 
-const freePlan = planById("free");
+const proPlan = planById("pro");
 
 export async function generateMetadata() {
   const { t } = await getServerTranslation();
   return buildPageMetadata({
     title: t("publicPages.creators.teach_on_skillsetmind"),
-    description: t("publicPages.creators.publish_professional_courses_to_a_global").replace("{value0}", String(freePlan.commissionPercent)),
+    description: t("publicPages.creators.publish_professional_courses_to_a_global"),
     path: "/for-creators",
   });
 }
@@ -40,15 +40,15 @@ export default async function ForCreatorsPage() {
           <div className="grid grid-cols-3 gap-5 sm:flex sm:gap-8">
             <div>
               <p className="display-title text-3xl text-[var(--color-primary)]">
-                {freePlan.commissionPercent}%
+                {proPlan.commissionPercent}%
               </p>
               <p className="mt-1 text-xs font-semibold uppercase tracking-[0.16em] text-[var(--color-ink-soft)]">
-                {t("publicPages.creators.commission_on_free")}
+                {t("publicPages.creators.commission_on_pro")}
               </p>
             </div>
             <div>
               <p className="display-title text-3xl text-[var(--color-primary)]">
-                $0
+                {PLAN_TRIAL_DAYS}
               </p>
               <p className="mt-1 text-xs font-semibold uppercase tracking-[0.16em] text-[var(--color-ink-soft)]">
                 {t("publicPages.creators.to_start")}
@@ -71,7 +71,7 @@ export default async function ForCreatorsPage() {
               href="/pricing"
               className="mt-2 inline-flex text-sm font-semibold text-[var(--color-primary)] underline-offset-4 hover:underline"
             >
-              {t("publicPages.creators.see_all_four_plans")}
+              {t("publicPages.creators.see_all_plans")}
             </Link>
           </div>
         </div>

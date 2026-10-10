@@ -14,7 +14,11 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn(), replac
 vi.mock("@/components/auth/auth-provider", () => ({ useAuth: () => ({ status: "authenticated", user: mocks.user }) }));
 vi.mock("@/lib/data/orders", () => ({ subscribeToUserOrders: (_uid: string, next: (rows: Order[]) => void) => { next(mocks.orders); return vi.fn(); } }));
 vi.mock("@/lib/data/user-profiles", () => ({ subscribeToUserProfile: (_uid: string, next: (profile: typeof mocks.profile) => void) => { next(mocks.profile); return vi.fn(); } }));
-vi.mock("@/lib/payments/billing", () => ({ openBillingPortal: mocks.portal, requestOrderRefund: mocks.refund, isCheckoutClientConfigured: () => true }));
+vi.mock("@/lib/payments/billing", () => ({
+  openBillingPortal: mocks.portal, requestOrderRefund: mocks.refund, isCheckoutClientConfigured: () => true,
+  // Trial already used: the cards offer a plain upgrade.
+  fetchPlanBillingState: () => Promise.resolve({ trialEligible: false, subscription: null }), cancelPlanSubscription: vi.fn(),
+}));
 vi.mock("@/components/account/upgrade-modal", () => ({ UpgradeModal: () => null }));
 
 function Language() {
@@ -141,17 +145,19 @@ describe("billing locale with real dictionaries", () => {
     expect(screen.getByText("Plan actual:")).toBeTruthy();
   });
 
-  it("translates plans and their existing pricing highlights without changing cycle", () => {
+  it("translates plans and their existing pricing highlights without changing cycle", async () => {
     mount(<PlansPanel />);
     expect(screen.getByText("Plan actual:")).toBeTruthy();
     expect(screen.getByRole("radiogroup", { name: "Ciclo de facturación" })).toBeTruthy();
     const annual = screen.getByRole("radio", { name: "Anual" });
     fireEvent.click(annual);
     expect(annual.getAttribute("aria-checked")).toBe("true");
-    expect(screen.getByRole("button", { name: "Mejorar a Starter" })).toBeTruthy();
-    expect(screen.queryByText("Start selling without a subscription.")).toBeNull();
+    expect(await screen.findByRole("button", { name: "Mejorar a Pro" })).toBeTruthy();
+    expect(screen.getByText("La comisión más baja de la oferta.")).toBeTruthy();
+    expect(screen.getByText(/^\$890 al año, desde hoy\. Se renueva automáticamente/)).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "English" }));
     expect(screen.getByRole("radio", { name: "Yearly" }).getAttribute("aria-checked")).toBe("true");
-    expect(screen.getByText("Start selling without a subscription.")).toBeTruthy();
+    expect(screen.getByText("The lowest commission on the offer.")).toBeTruthy();
+    expect(screen.getByText(/^\$890\/year, starting today\./)).toBeTruthy();
   });
 });

@@ -113,7 +113,7 @@ export function readOverviewOrders(since: string, signal?: AbortSignal): Promise
   return readAll((from, to) => {
     const query = getSupabaseBrowserClient()
       .from("orders")
-      .select("id,course_id,course_title,status,amount_minor,currency,platform_fee_bps,refunded_amount_minor,paid_at,updated_at")
+      .select("id,course_id,course_title,status,amount_minor,currency,platform_fee_bps,platform_fee_fixed_minor,refunded_amount_minor,paid_at,updated_at")
       .gte("updated_at", since)
       .order("updated_at")
       .order("id")
