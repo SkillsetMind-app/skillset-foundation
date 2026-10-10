@@ -302,6 +302,12 @@
     }
   },
   "onboarding": {
+    "payoutCountryTitle": "Where will you receive payments?",
+    "payoutCountryHint": "Tell us the country you plan to use for your payout account. This does not create a Stripe account or enable sales. You will confirm the country when setting up payouts.",
+    "payoutCountryPlaceholder": "Choose a payout country",
+    "payoutCountryOther": "Another country",
+    "payoutCountryUnavailable": "Payouts are not available for another country in this setup. You can prepare your products, but you cannot sell or receive payments until you have an eligible payout account.",
+    "payoutCountryRequired": "Choose a payout country, or select another country, before continuing.",
     "preparing": "Preparing your account setup...",
     "stepPath": "Path",
     "stepProfile": "Profile",
@@ -4836,8 +4842,8 @@
     "retry": "Retry embedded setup",
     "countryLabel": "Payout country",
     "countryHint": "Choose the country where you live and keep your bank account. Stripe can't change it after setup.",
-    "countryLater": "Latin America and Brazil are coming later.",
-    "countryContinue": "Continue",
+    "countryLater": "Only the listed countries are supported for this payout setup. Selecting a country does not establish eligibility; Stripe must verify your account.",
+    "countryContinue": "Confirm country and continue",
     "chooseAnotherCountry": "Choose another country",
     "error": {
       "country": "Payouts aren't available in that country yet. Contact support if this looks wrong.",

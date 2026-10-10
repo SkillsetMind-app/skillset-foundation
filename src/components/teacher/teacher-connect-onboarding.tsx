@@ -18,7 +18,7 @@ import {
   isConnectNotEnabledError,
   startTeacherStripeOnboarding,
 } from "@/lib/payments/connect";
-import { CONNECT_PAYOUT_COUNTRIES } from "@/lib/payments/connect-countries";
+import { CONNECT_PAYOUT_COUNTRIES, isConnectPayoutCountry } from "@/lib/payments/connect-countries";
 import { useTheme } from "@/lib/theme/theme-provider";
 import { PaymentRequestError } from "@/lib/payments/client-fetch";
 
@@ -82,6 +82,7 @@ type TeacherConnectOnboardingProps = {
    * because Stripe can never change an account's country afterwards.
    */
   needsCountry?: boolean;
+  initialPayoutCountry?: string;
 };
 
 function connectFailure(cause: unknown, fallback: "initialize" | "hosted") {
@@ -108,10 +109,13 @@ function connectRecoveryHref(key: string) {
 
 export function TeacherConnectOnboarding({
   needsCountry = false,
+  initialPayoutCountry,
   ...props
 }: TeacherConnectOnboardingProps) {
   const { locale, t } = useTranslation();
-  const [draft, setDraft] = useState("US");
+  const [draft, setDraft] = useState(() => initialPayoutCountry
+    ? isConnectPayoutCountry(initialPayoutCountry) ? initialPayoutCountry.toUpperCase() : "other"
+    : "US");
   const [country, setCountry] = useState<string | null>(null);
 
   // Once chosen, the flow below stays mounted even after the profile flips to
@@ -131,12 +135,13 @@ export function TeacherConnectOnboarding({
           id="payout-country"
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
-          aria-describedby="payout-country-hint"
+          aria-describedby="payout-country-hint payout-country-warning"
           className="mt-2 block min-h-11 w-full max-w-sm rounded-md border border-[var(--color-line)] bg-white px-4 text-sm outline-none focus:border-[var(--color-primary-light)]"
         >
           {options.map(({ code, label }) => (
             <option key={code} value={code}>{label}</option>
           ))}
+          <option value="other">{t("onboarding.payoutCountryOther")}</option>
         </select>
         <p id="payout-country-hint" className="mt-2 text-sm leading-6 text-[var(--color-ink-soft)]">
           {t("connectOnboarding.countryHint")}
@@ -144,8 +149,13 @@ export function TeacherConnectOnboarding({
         <p className="mt-1 text-sm leading-6 text-[var(--color-ink-soft)]">
           {t("connectOnboarding.countryLater")}
         </p>
+        <p id="payout-country-warning" role="status" className="mt-2 text-sm leading-6 text-[var(--color-ink-soft)]">
+          {draft === "other" ? t("onboarding.payoutCountryUnavailable") : null}
+        </p>
         <div className="mt-4">
-          <Button onClick={() => setCountry(draft)}>
+          <Button disabled={!isConnectPayoutCountry(draft)} onClick={() => {
+            if (isConnectPayoutCountry(draft)) setCountry(draft);
+          }}>
             {t("connectOnboarding.countryContinue")}
           </Button>
         </div>

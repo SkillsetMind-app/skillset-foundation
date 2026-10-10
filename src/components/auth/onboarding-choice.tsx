@@ -9,7 +9,8 @@ import {
   isCaptchaEnabled,
 } from "@/components/auth/turnstile-widget";
 import { useTranslation } from "@/components/i18n/i18n-provider";
-import type { UserGoal } from "@/domain/user-profile";
+import type { OnboardingAnswers, UserGoal } from "@/domain/user-profile";
+import { CONNECT_PAYOUT_COUNTRIES, isConnectPayoutCountry } from "@/lib/payments/connect-countries";
 import {
   formatValidationMessage,
   normalizeUsername,
@@ -25,6 +26,7 @@ import {
 import {
   completeUserOnboarding,
   getUserProfile,
+  updateOnboardingAnswers,
 } from "@/lib/data/user-profiles";
 import type { Role } from "@/lib/permissions";
 import { getAuthPathIntentFromSearchParams } from "@/lib/auth/routing";
@@ -103,7 +105,7 @@ const timezoneOptions = [
 
 export function OnboardingChoice() {
   const router = useRouter();
-  const { t } = useTranslation();
+  const { locale, t } = useTranslation();
   const searchParams = useSearchParams();
   const pathIntent = useMemo(
     () => getAuthPathIntentFromSearchParams(searchParams),
@@ -117,6 +119,9 @@ export function OnboardingChoice() {
   const [bio, setBio] = useState("");
   const [timezone, setTimezone] = useState("America/New_York");
   const [goals, setGoals] = useState<UserGoal[]>([]);
+  const [onboardingAnswers, setOnboardingAnswers] = useState<OnboardingAnswers>({});
+  const [answersLoaded, setAnswersLoaded] = useState(false);
+  const [payoutCountry, setPayoutCountry] = useState("");
   const [teacherTermsAccepted, setTeacherTermsAccepted] = useState(false);
   const [emailVerified, setEmailVerified] = useState(false);
   const [verificationMessage, setVerificationMessage] = useState("");
@@ -129,9 +134,7 @@ export function OnboardingChoice() {
   const [error, setError] = useState("");
   const [isBootstrapping, setIsBootstrapping] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  // Streamlined teacher activation: user already completed the new
-  // onboarding wizard. Do not re-ask path/profile/goals. Only gate the
-  // teacher role behind email verification + Teacher Terms.
+  // Quem ja terminou o cadastro nao repete perfil/objetivos na ativacao.
   const [streamlinedTeacherActivation, setStreamlinedTeacherActivation] =
     useState(false);
 
@@ -177,6 +180,9 @@ export function OnboardingChoice() {
               "America/New_York",
           );
           setGoals(profile?.goals ?? []);
+          setOnboardingAnswers(profile?.onboardingAnswers ?? {});
+          setAnswersLoaded(true);
+          setPayoutCountry(profile?.onboardingAnswers?.payoutCountry ?? "");
           setTeacherTermsAccepted(Boolean(profile?.teacherTermsAcceptedAt));
 
           const intendedRole = pathIntent ?? "student";
@@ -189,14 +195,10 @@ export function OnboardingChoice() {
               )
             : null;
 
-          // Wizard already gathered the survey. If this is a teacher who
-          // finished the wizard but does not yet hold the teacher role,
-          // collapse to a single activation step instead of re-asking
-          // path/profile/goals.
+          // Quem terminou como aluno tambem ativa o ensino sem repetir o cadastro.
           const finishedWizardAsTeacher =
             pathIntent === "teacher" &&
             Boolean(profile?.onboardingCompleted) &&
-            profile?.onboardingPath === "teacher" &&
             !(profile?.roles ?? []).includes("teacher");
 
           if (finishedWizardAsTeacher) {
@@ -243,6 +245,33 @@ export function OnboardingChoice() {
   );
   const canContinue = selectedPath !== null
     && (!selectedPathIncludesTeacher || (teacherTermsAccepted && emailVerified));
+  const payoutCountryAnswered = payoutCountry === "other" || isConnectPayoutCountry(payoutCountry);
+  const regionNames = new Intl.DisplayNames(locale, { type: "region" });
+  const payoutCountryField = (
+    <div className="grid gap-2">
+      <label htmlFor="activation-payout-country" className="text-sm font-semibold text-[var(--color-ink)]">
+        {t("connectOnboarding.countryLabel")}
+      </label>
+      <select
+        id="activation-payout-country"
+        value={payoutCountry}
+        disabled={isSaving}
+        onChange={(event) => setPayoutCountry(event.target.value)}
+        aria-describedby="activation-payout-hint activation-payout-warning"
+        className="field-input w-full"
+      >
+        <option value="">{t("onboarding.payoutCountryPlaceholder")}</option>
+        {CONNECT_PAYOUT_COUNTRIES.map((code) => ({ code, label: regionNames.of(code) ?? code }))
+          .sort((a, b) => a.label.localeCompare(b.label, locale))
+          .map(({ code, label }) => <option key={code} value={code}>{label}</option>)}
+        <option value="other">{t("onboarding.payoutCountryOther")}</option>
+      </select>
+      <p id="activation-payout-hint" className="text-sm leading-6 text-[var(--color-ink-soft)]">{t("onboarding.payoutCountryHint")}</p>
+      <p id="activation-payout-warning" role="status" className="text-sm leading-6 text-[var(--color-ink-soft)]">
+        {payoutCountry === "other" ? t("onboarding.payoutCountryUnavailable") : null}
+      </p>
+    </div>
+  );
 
   function toggleGoal(goal: UserGoal) {
     setGoals((currentGoals) =>
@@ -301,6 +330,11 @@ export function OnboardingChoice() {
   function handleNext() {
     setError("");
 
+    if (step === 0 && selectedPathIncludesTeacher && !payoutCountryAnswered) {
+      setError(t("onboarding.payoutCountryRequired"));
+      return;
+    }
+
     if (step === 0 && !canContinue) {
       setError(
         selectedPathIncludesTeacher
@@ -332,9 +366,8 @@ export function OnboardingChoice() {
       return;
     }
 
-    // Streamlined teacher activation skips profile/goals re-validation:
-    // the wizard already captured identity and survey answers. Only the
-    // security gate (verified email + Teacher Terms) matters here.
+    // A ativacao simplificada preserva perfil/objetivos; so acrescenta o pais
+    // declarado aos portoes existentes de e-mail e termos.
     if (!streamlinedTeacherActivation) {
       const validationError = validateProfileStep();
 
@@ -356,9 +389,26 @@ export function OnboardingChoice() {
       return;
     }
 
+    if (selectedPathIncludesTeacher && !payoutCountryAnswered) {
+      setStep(0);
+      setError(t("onboarding.payoutCountryRequired"));
+      return;
+    }
+
     setIsSaving(true);
 
     try {
+      if (selectedPathIncludesTeacher) {
+        if (!answersLoaded) {
+          setError(t("onboarding.errorProfileLoad"));
+          setIsSaving(false);
+          return;
+        }
+        await updateOnboardingAnswers({
+          uid,
+          answers: { ...onboardingAnswers, payoutCountry },
+        });
+      }
       await completeUserOnboarding({
         uid,
         roles: selectedPath.roles,
@@ -390,6 +440,7 @@ export function OnboardingChoice() {
   if (streamlinedTeacherActivation) {
     return (
       <div className="mt-6 grid gap-5">
+        {payoutCountryField}
         <div className="rounded-lg border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
           <p className="font-semibold text-[var(--color-ink)]">
             {t("onboarding.streamlinedTitle")}
@@ -472,7 +523,7 @@ export function OnboardingChoice() {
         <p className="text-xs leading-5 text-[var(--color-ink-soft)]">{publicProfileNotice}</p>
 
         {error ? (
-          <p className="rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
+          <p role="alert" className="rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
             {error}
           </p>
         ) : null}
@@ -489,7 +540,7 @@ export function OnboardingChoice() {
           <button
             type="button"
             onClick={handleFinish}
-            disabled={isSaving || !emailVerified || !teacherTermsAccepted}
+            disabled={isSaving || !emailVerified || !teacherTermsAccepted || !payoutCountryAnswered}
             className="button-solid px-4 py-2.5 text-sm disabled:opacity-60"
           >
             {isSaving ? t("onboarding.activating") : t("onboarding.activateTeaching")}
@@ -553,6 +604,7 @@ export function OnboardingChoice() {
 
           {selectedPathIncludesTeacher ? (
             <div className="grid gap-3">
+              {payoutCountryField}
               <div className="rounded-lg border border-[var(--color-line)] bg-white p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
                 <div className="flex items-start justify-between gap-4">
                   <div>
@@ -723,7 +775,7 @@ export function OnboardingChoice() {
       ) : null}
 
       {error ? (
-        <p className="rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
+        <p role="alert" className="rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
           {error}
         </p>
       ) : null}
