@@ -80,4 +80,46 @@ describe("post-login return paths", () => {
     const path = "/courses/example?offer=annual#checkout";
     expect(getSafeReturnTo(new URLSearchParams({ returnTo: path }))).toBe(path);
   });
+
+  // Each string is judged the way the browser will read it: dot segments
+  // resolved, percent escapes decoded. None may leave the site or loop sign-in.
+  it.each([
+    "//evil.com",
+    "/\\evil.com",
+    "/..//evil.com",
+    "/.//evil.com",
+    "/%2e%2e//evil.com",
+    "/%2F%2Fevil.com",
+    "/%2f/evil.com",
+    "/.%2F/evil.com",
+    "/%5Cevil.com",
+    "/%5cevil.com",
+    "%2F%2Fevil.com",
+    "/%09/evil.com",
+    "/%0a/evil.com",
+    "/\u0000/evil.com",
+    "/\u007f/evil.com",
+    "/courses/\\evil.com",
+    "javascript:alert(1)",
+    "JaVaScRiPt:alert(1)",
+    "https://evil.com",
+    "http:evil.com",
+    "evil.com",
+    "/%",
+    "/./login",
+    "/x/../login?next=route",
+    "/%6Cogin",
+    "/loading#x",
+  ])("rejects %j", (returnTo) => {
+    expect(getSafeReturnTo(new URLSearchParams({ returnTo }))).toBeNull();
+  });
+
+  it.each([
+    ["/courses/x/../focus", "/courses/focus"],
+    ["/./courses/focus", "/courses/focus"],
+    ["/courses/focus?ref=a%2Fb", "/courses/focus?ref=a%2Fb"],
+    ["/courses/a b", "/courses/a%20b"],
+  ])("returns the resolved path for %j", (returnTo, expected) => {
+    expect(getSafeReturnTo(new URLSearchParams({ returnTo }))).toBe(expected);
+  });
 });

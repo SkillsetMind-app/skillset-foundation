@@ -8,6 +8,7 @@ import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react
 import { formatNotificationTime } from "@/components/account/notification-row";
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { CommunityItemActions } from "@/components/learn/community-item-actions";
 import { CommunityPostDrawer } from "@/components/learn/community-post-drawer";
 import type { SkillsetUser } from "@/domain/auth";
 import {
@@ -20,6 +21,7 @@ import {
   pickInlineReply,
   postKind,
   toMillis,
+  withoutDeleted,
   type CommunityFeedFilter,
 } from "@/domain/community-feed";
 import type { CommunityComment, CommunityPost } from "@/domain/community-post";
@@ -30,7 +32,6 @@ import type { CommunitySpace } from "@/domain/learning";
 import {
   createCommunityComment,
   createCommunityPost,
-  setCommunityPostPinned,
   subscribeToCommunityPosts,
   subscribeToCourseCommunityComments,
 } from "@/lib/data/community-posts";
@@ -70,7 +71,8 @@ type CommunityFeedProps = {
   instructorName?: string | null;
   /** Quem e instrutor alem de quem escreveu com papel de professor. */
   instructorIds?: string[];
-  /** O viewer modera este espaco (dono do curso): fixa posts, publica avisos. */
+  /** O viewer modera este espaco (dono do curso): fixa posts, publica avisos,
+   *  apaga post e resposta de qualquer membro. */
   canModerate?: boolean;
   /** O dono do curso abrindo "como membro" nao tem matricula; nao barrar. */
   skipEnrollmentGate?: boolean;
@@ -125,6 +127,10 @@ export function CommunityFeed({
   const [filter, setFilter] = useState<CommunityFeedFilter>("all");
   const [query, setQuery] = useState("");
   const [asideView, setAsideView] = useState<"none" | "members" | "rules">("none");
+  // O que esta pessoa apagou agora: some na hora, mesmo que uma leitura
+  // antiga do realtime ainda o traga.
+  const [deleted, setDeleted] = useState<ReadonlySet<string>>(() => new Set());
+  const hide = useCallback((id: string) => setDeleted((current) => new Set(current).add(id)), []);
 
   useEffect(() => {
     if (!user || skipEnrollmentGate) {
@@ -208,12 +214,16 @@ export function CommunityFeed({
   }, []);
 
   const instructorSet = useMemo(() => new Set(instructorIds), [instructorIds]);
-  const commentsByPost = useMemo(() => groupCommentsByPost(comments), [comments]);
-  const shownPosts = useMemo(
-    () => filterPosts(feed.visible, filter, instructorSet, query),
-    [feed.visible, filter, instructorSet, query],
+  const commentsByPost = useMemo(
+    () => groupCommentsByPost(withoutDeleted(comments, deleted)),
+    [comments, deleted],
   );
-  const openQuestionCount = useMemo(() => countOpenQuestions(feed.visible), [feed.visible]);
+  const livePosts = useMemo(() => withoutDeleted(feed.visible, deleted), [deleted, feed.visible]);
+  const shownPosts = useMemo(
+    () => filterPosts(livePosts, filter, instructorSet, query),
+    [livePosts, filter, instructorSet, query],
+  );
+  const openQuestionCount = useMemo(() => countOpenQuestions(livePosts), [livePosts]);
 
   const members = useMemo(() => {
     const byId = new Map<string, string>();
@@ -228,8 +238,11 @@ export function CommunityFeed({
   // A gaveta acha o post em tudo o que chegou — inclusive o que ainda espera
   // na pilula (um link compartilhado aponta para um post que a pessoa nunca viu).
   const drawerPost = useMemo(
-    () => (openPostId ? feed.all.find((post) => post.id === openPostId) ?? null : null),
-    [feed.all, openPostId],
+    () =>
+      openPostId && !deleted.has(openPostId)
+        ? feed.all.find((post) => post.id === openPostId) ?? null
+        : null,
+    [deleted, feed.all, openPostId],
   );
 
   function showPending() {
@@ -272,7 +285,8 @@ export function CommunityFeed({
             <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
               {t("learn.community.eyebrow")}
             </p>
-            <h2 className="display-title mt-1 text-2xl text-[var(--color-ink)]">
+            {/* Recebe o foco quando o ultimo post visivel e apagado. */}
+            <h2 data-community-heading tabIndex={-1} className="display-title mt-1 text-2xl text-[var(--color-ink)]">
               {space.name.replace(/ community$/i, "")}
             </h2>
           </div>
@@ -362,7 +376,7 @@ export function CommunityFeed({
             <p className="text-sm text-[var(--color-ink-soft)]">{t("learn.community.feedLoading")}</p>
           ) : shownPosts.length === 0 ? (
             <p className="rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-7 text-[var(--color-ink-soft)]">
-              {t(feed.visible.length === 0 ? "learn.community.empty" : "learn.community.emptyFilter")}
+              {t(livePosts.length === 0 ? "learn.community.empty" : "learn.community.emptyFilter")}
             </p>
           ) : (
             shownPosts.map((post) => (
@@ -374,6 +388,7 @@ export function CommunityFeed({
                 instructorIds={instructorSet}
                 canModerate={canModerate}
                 onOpen={() => openPost(post.id)}
+                onDeleted={() => hide(post.id)}
               />
             ))
           )}
@@ -388,6 +403,7 @@ export function CommunityFeed({
           instructorIds={instructorSet}
           canModerate={canModerate}
           onClose={closePost}
+          onHide={hide}
         />
       ) : null}
 
@@ -716,6 +732,7 @@ function FeedCard({
   instructorIds,
   canModerate,
   onOpen,
+  onDeleted,
 }: {
   post: CommunityPost;
   comments: CommunityComment[];
@@ -724,6 +741,7 @@ function FeedCard({
   canModerate: boolean;
   /** Abre o post na gaveta (titulo e "View N replies"). */
   onOpen: () => void;
+  onDeleted: () => void;
 }) {
   const { t, locale } = useTranslation();
   const [likes, setLikes] = useState<{ count: number; likerIds: string[] }>({ count: 0, likerIds: [] });
@@ -788,6 +806,7 @@ function FeedCard({
 
   return (
     <article
+      data-community-item
       aria-label={post.title ?? post.body.slice(0, 60)}
       className={`rounded-lg border border-[var(--color-line)] bg-white p-4 shadow-[var(--shadow-soft)] ${
         fromInstructor ? "border-l-4 border-l-[var(--color-primary)]" : ""
@@ -819,15 +838,6 @@ function FeedCard({
             {answered ? <CheckCircle2 size={12} aria-hidden /> : <HelpCircle size={12} aria-hidden />}
             {t(answered ? "learn.community.card.answered" : "learn.community.card.question")}
           </span>
-        ) : null}
-        {canModerate ? (
-          <button
-            type="button"
-            onClick={() => void setCommunityPostPinned(post.id, !post.pinned)}
-            className="text-xs font-semibold text-[var(--color-ink-soft)] hover:text-[var(--color-ink)]"
-          >
-            {t(post.pinned ? "learn.community.card.unpin" : "learn.community.card.pin")}
-          </button>
         ) : null}
       </header>
 
@@ -875,6 +885,14 @@ function FeedCard({
             {t("learn.community.card.viewReplies").replace("{count}", () => String(comments.length))}
           </button>
         ) : null}
+        {/* Fixar, Apagar e Denunciar moram aqui, com alvo de toque de 44px
+            (o "Pin" no cabecalho tinha 24px). */}
+        <CommunityItemActions
+          post={post}
+          currentUser={currentUser}
+          canModerate={canModerate}
+          onDeleted={onDeleted}
+        />
       </footer>
 
       {replies.length > 0 ? (

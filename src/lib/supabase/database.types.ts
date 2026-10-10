@@ -512,8 +512,10 @@ export type Database = {
           lesson_id: string | null
           module_id: string | null
           owner_id: string
+          position: number | null
           size: number
           storage_path: string
+          title: string | null
           updated_at: string | null
         }
         Insert: {
@@ -529,8 +531,10 @@ export type Database = {
           lesson_id?: string | null
           module_id?: string | null
           owner_id: string
+          position?: number | null
           size: number
           storage_path: string
+          title?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -546,8 +550,10 @@ export type Database = {
           lesson_id?: string | null
           module_id?: string | null
           owner_id?: string
+          position?: number | null
           size?: number
           storage_path?: string
+          title?: string | null
           updated_at?: string | null
         }
         Relationships: [
@@ -699,6 +705,54 @@ export type Database = {
             referencedColumns: ["uid"]
           },
         ]
+      }
+      course_deletions: {
+        Row: {
+          attempts: number
+          bunny_assets: Json
+          course_created_at: string | null
+          course_id: string
+          finished_at: string | null
+          last_error: string | null
+          last_progress_at: string | null
+          owner_id: string
+          requested_at: string
+          result: Json
+          stalled_runs: number
+          status: string
+          title: string
+        }
+        Insert: {
+          attempts?: number
+          bunny_assets?: Json
+          course_created_at?: string | null
+          course_id: string
+          finished_at?: string | null
+          last_error?: string | null
+          last_progress_at?: string | null
+          owner_id: string
+          requested_at?: string
+          result?: Json
+          stalled_runs?: number
+          status?: string
+          title?: string
+        }
+        Update: {
+          attempts?: number
+          bunny_assets?: Json
+          course_created_at?: string | null
+          course_id?: string
+          finished_at?: string | null
+          last_error?: string | null
+          last_progress_at?: string | null
+          owner_id?: string
+          requested_at?: string
+          result?: Json
+          stalled_runs?: number
+          status?: string
+          title?: string
+        }
+        Relationships: []
       }
       course_event_rsvps: {
         Row: {
@@ -1029,6 +1083,7 @@ export type Database = {
           payment_type: string | null
           platform_fee_bps: number | null
           price_amount_minor: number | null
+          product_format: string
           rating_average: number | null
           rating_count: number | null
           rating_sum: number | null
@@ -1072,6 +1127,7 @@ export type Database = {
           payment_type?: string | null
           platform_fee_bps?: number | null
           price_amount_minor?: number | null
+          product_format?: string
           rating_average?: number | null
           rating_count?: number | null
           rating_sum?: number | null
@@ -1115,6 +1171,7 @@ export type Database = {
           payment_type?: string | null
           platform_fee_bps?: number | null
           price_amount_minor?: number | null
+          product_format?: string
           rating_average?: number | null
           rating_count?: number | null
           rating_sum?: number | null
@@ -1599,8 +1656,10 @@ export type Database = {
           actor_name: string | null
           body: string
           created_at: string | null
+          emailed_at: string | null
           link: string | null
           notification_id: string
+          params: Json | null
           read: boolean
           title: string
           type: string
@@ -1610,8 +1669,10 @@ export type Database = {
           actor_name?: string | null
           body: string
           created_at?: string | null
+          emailed_at?: string | null
           link?: string | null
           notification_id: string
+          params?: Json | null
           read?: boolean
           title: string
           type: string
@@ -1621,8 +1682,10 @@ export type Database = {
           actor_name?: string | null
           body?: string
           created_at?: string | null
+          emailed_at?: string | null
           link?: string | null
           notification_id?: string
+          params?: Json | null
           read?: boolean
           title?: string
           type?: string
@@ -2433,6 +2496,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      claim_notification_digests: {
+        Args: { p_limit: number }
+        Returns: {
+          user_id: string
+          email: string
+          locale: string | null
+          notification_ids: string[]
+          notification_count: number
+        }[]
+      }
       claim_welcome_tour: {
         Args: { p_uid: string; p_surface: string }
         Returns: boolean
@@ -2640,9 +2713,35 @@ export type Database = {
             }
             Returns: string
           }
+        | {
+            Args: {
+              p_categories: string[]
+              p_category: string
+              p_community_enabled: boolean
+              p_lesson_title: string
+              p_module_title: string
+              p_payment_type: string
+              p_product_format: string
+              p_summary: string
+              p_title: string
+            }
+            Returns: string
+          }
       creator_activation_blocked: {
         Args: { p_uid?: string } | never
         Returns: boolean
+      }
+      course_cleanup_video_deletable: {
+        Args: { p_course_id: string; p_video_id: string }
+        Returns: boolean
+      }
+      course_storage_objects_for_cleanup: {
+        Args: { p_course_id: string }
+        Returns: {
+          in_use: boolean
+          object_bucket: string
+          object_name: string
+        }[]
       }
       delete_course_as_admin: { Args: { p_course_id: string }; Returns: Json }
       delete_course_coupon: { Args: { p_coupon_id: string }; Returns: Json }
@@ -2680,6 +2779,13 @@ export type Database = {
           uid: string
         }[]
       }
+      get_live_event_session: {
+        Args: { p_course_id: string }
+        Returns: {
+          starts_at: string
+          timezone: string | null
+        }[]
+      }
       get_my_course_lesson_funnel: {
         Args: never
         Returns: {
@@ -2715,6 +2821,14 @@ export type Database = {
       issue_skillset_certificate: {
         Args: { p_enrollment_id: string; p_full_name: string }
         Returns: string
+      }
+      list_my_courses_being_deleted: {
+        Args: never
+        Returns: {
+          course_id: string
+          requested_at: string
+          title: string
+        }[]
       }
       log_audit_event: {
         Args: {

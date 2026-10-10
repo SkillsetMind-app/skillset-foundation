@@ -26,7 +26,8 @@ const { mockUser, state, data } = vi.hoisted(() => {
     // as chamadas a estas tres funcoes.
     data: {
       subscribeToTeacherCourses: vi.fn(
-        (_uid: string, onData: (courses: unknown[]) => void) => {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars -- a assinatura real tem o 3o argumento (erro)
+        (_uid: string, onData: (courses: unknown[]) => void, _onError?: (error: Error) => void) => {
           onData(state.courses);
           return () => undefined;
         },
@@ -136,31 +137,42 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("TeacherStudioDashboard", () => {
-  it("routes each viable format to the correct workflow", async () => {
+  // Os mesmos quatro tipos da tela de criacao. Gratis, assinatura e programa
+  // guiado deixaram de ser tipo.
+  it("routes each of the four product types to the creation screen", async () => {
     render(<TeacherStudioDashboard />);
 
-    await waitFor(() => {
-      expect(screen.getByRole("link", { name: /Online course/i })).toHaveAttribute(
-        "href",
-        "/teach/builder?newCourse=1&format=course"
-      );
-    });
-    expect(screen.getByRole("link", { name: /Subscription/i })).toHaveAttribute(
-      "href",
-      "/teach/builder?newCourse=1&format=subscription"
-    );
-    expect(screen.getByRole("link", { name: /Community/i })).toHaveAttribute(
-      "href",
-      "/teach/builder?newCourse=1&format=community"
-    );
-    expect(screen.getByRole("link", { name: /Online event/i })).toHaveAttribute(
-      "href",
-      "/teach/builder?newCourse=1&format=event"
-    );
-    expect(screen.getByRole("link", { name: /Guided program/i })).toHaveAttribute(
-      "href",
-      "/teach/builder?newCourse=1&format=program"
-    );
+    const formats = (
+      await screen.findByRole("heading", { name: "Choose a product format" })
+    ).closest("section") as HTMLElement;
+    const links = within(formats).getAllByRole("link");
+    expect(links.map((link) => link.querySelector("h3")?.textContent)).toEqual([
+      "Course",
+      "Community",
+      "Live event",
+      "E-book",
+    ]);
+    expect(links.map((link) => link.getAttribute("href"))).toEqual([
+      "/teach/builder?newCourse=1&format=course",
+      "/teach/builder?newCourse=1&format=community",
+      "/teach/builder?newCourse=1&format=live_event",
+      "/teach/builder?newCourse=1&format=ebook",
+    ]);
+    expect(within(formats).queryByText(/Guided program|Subscription|Free program/)).toBeNull();
+  });
+
+  // O painel com 0 produtos era uma faixa tracejada com "No products in this
+  // view yet.". Agora e a cena do primeiro produto e o unico botao latao.
+  it("sem produto: a cena do primeiro produto e o botao latao de criar", async () => {
+    render(<TeacherStudioDashboard />);
+
+    const heading = await screen.findByRole("heading", { name: "Your first product starts here." });
+    const box = heading.closest(".border-dashed") as HTMLElement;
+    expect(box.querySelector('svg[data-scene="firstProduct"]')).toHaveAttribute("aria-hidden", "true");
+    const create = within(box).getByRole("link", { name: "Create my first product" });
+    expect(create).toHaveClass("button-accent");
+    expect(create).toHaveAttribute("href", "/teach/builder?newCourse=1&format=course");
+    expect(screen.queryByText("No products in this view yet.")).toBeNull();
   });
 });
 
@@ -431,7 +443,7 @@ describe("Home do professor: uma manchete, o que aconteceu e a vitrine", () => {
       expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
     });
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
-      "Welcome back, Patrick",
+      "Welcome, Patrick",
     );
     expect(screen.queryByText("Producer home")).toBeNull();
   });
@@ -474,10 +486,208 @@ describe("Home do professor: uma manchete, o que aconteceu e a vitrine", () => {
       render(<TeacherStudioDashboard />);
 
       expect(await screen.findByRole("heading", { level: 1 })).toHaveTextContent(
-        "Welcome back, Mc$&Donald.",
+        "Welcome, Mc$&Donald.",
       );
     } finally {
       mockUser.displayName = "Patrick Simon";
     }
+  });
+});
+
+// --- Primeira visita: nada de "Welcome back" nem quadros de $0 ---------------
+
+describe("Home do professor: primeira visita", () => {
+  it("sem produto diz 'Welcome', nunca 'Welcome back'", async () => {
+    render(<TeacherStudioDashboard />);
+
+    const heading = await screen.findByRole("heading", { level: 1 });
+    expect(heading).toHaveTextContent("Welcome, Patrick.");
+    expect(heading).not.toHaveTextContent("Welcome back");
+  });
+
+  it("com um produto volta a dizer 'Welcome back'", async () => {
+    state.courses = [course({})];
+
+    render(<TeacherStudioDashboard />);
+
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
+        "Welcome back, Patrick.",
+      );
+    });
+  });
+
+  it("antes da 1a venda esconde os quadros de receita, alunos e nota", async () => {
+    state.courses = [course({ status: "published" })];
+    // Pedido que nao virou venda (nao pago) nao conta.
+    state.orders = [
+      {
+        id: "o1",
+        courseId: "c1",
+        courseTitle: "Breathwork Basics",
+        status: "pending",
+        amountMinor: 4900,
+        currency: "usd",
+        createdAt: new Date(),
+      },
+    ];
+
+    render(<TeacherStudioDashboard />);
+
+    await screen.findByRole("heading", { level: 1 });
+    expect(screen.queryByText("Revenue, 30d")).toBeNull();
+    expect(screen.queryByText("New students")).toBeNull();
+    expect(screen.queryByText("$0")).toBeNull();
+  });
+
+  it("com a 1a venda paga os quadros aparecem", async () => {
+    state.courses = [course({ status: "published" })];
+    state.orders = [
+      {
+        id: "o1",
+        courseId: "c1",
+        courseTitle: "Breathwork Basics",
+        status: "paid",
+        amountMinor: 4900,
+        currency: "usd",
+        createdAt: new Date(),
+      },
+    ];
+
+    render(<TeacherStudioDashboard />);
+
+    expect(await screen.findByText("Revenue, 30d")).toBeInTheDocument();
+    expect(screen.getByText("New students")).toBeInTheDocument();
+  });
+
+  it("so com matricula gratis (sem pedido pago) os quadros aparecem", async () => {
+    state.courses = [course({ status: "published", paymentType: "free", enrollmentCount: 3 })];
+    state.orders = [];
+
+    render(<TeacherStudioDashboard />);
+
+    expect(await screen.findByText("Revenue, 30d")).toBeInTheDocument();
+  });
+
+  it("com produto mas zero matriculas e zero pedidos pagos continua sem quadros", async () => {
+    state.courses = [course({ status: "published", enrollmentCount: 0 })];
+    state.orders = [];
+
+    render(<TeacherStudioDashboard />);
+
+    await screen.findByRole("heading", { level: 1 });
+    expect(screen.queryByText("Revenue, 30d")).toBeNull();
+  });
+
+  it("enquanto a lista de cursos carrega diz 'Hello', nunca 'Welcome' nem 'Welcome back'", async () => {
+    data.subscribeToTeacherCourses.mockImplementationOnce(() => () => undefined);
+
+    render(<TeacherStudioDashboard />);
+
+    const heading = await screen.findByRole("heading", { level: 1 });
+    expect(heading).toHaveTextContent("Hello, Patrick.");
+    expect(heading).not.toHaveTextContent("Welcome");
+  });
+
+  it("se a assinatura de cursos falhar, mantem 'Welcome back'", async () => {
+    data.subscribeToTeacherCourses.mockImplementationOnce(
+      (_uid: string, _onData: (courses: unknown[]) => void, onError?: (error: Error) => void) => {
+        onError?.(new Error("boom"));
+        return () => undefined;
+      },
+    );
+
+    render(<TeacherStudioDashboard />);
+
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
+        "Welcome back, Patrick.",
+      );
+    });
+  });
+});
+
+// --- Status dos cartoes: cada um com a sua cor, nenhum em latao ---------------
+
+describe("Home do professor: o selo do cartao e o tipo gravado", () => {
+  it("mostra o tipo do produto, e gratis ou assinatura nao viram tipo", async () => {
+    state.courses = [
+      course({ id: "c1", title: "Grupo", productFormat: "community", paymentType: "subscription_monthly" }),
+      course({ id: "c2", title: "Apostila", productFormat: "ebook", paymentType: "free", priceAmountMinor: 0 }),
+      course({ id: "c3", title: "Antigo", paymentType: "free", priceAmountMinor: 0 }),
+    ];
+
+    render(<TeacherStudioDashboard />);
+
+    const produtos = await screen.findByRole("region", { name: "Products in your workspace" });
+    const typeOf = (title: string) =>
+      within(produtos).getByRole("link", { name: new RegExp(title) }).querySelector("span.uppercase")?.textContent;
+    expect([typeOf("Grupo"), typeOf("Apostila"), typeOf("Antigo")]).toEqual(["Community", "E-book", "Course"]);
+    expect(produtos.textContent).not.toContain("creatorPanel.home.formats");
+  });
+});
+
+describe("Home do professor: status dos cartoes de produto", () => {
+  it("Published, Draft e Needs changes saem em StatusChip diferentes", async () => {
+    state.courses = [
+      course({ id: "c1", title: "No ar", status: "published" }),
+      course({ id: "c2", title: "Rascunho", status: "draft" }),
+      course({ id: "c3", title: "Com ajuste", status: "needs_changes" }),
+    ];
+
+    render(<TeacherStudioDashboard />);
+
+    const produtos = await screen.findByRole("region", {
+      name: "Products in your workspace",
+    });
+    const cardOf = (title: string) =>
+      within(produtos).getByRole("link", { name: new RegExp(title) });
+    const chipOf = (title: string) => cardOf(title).querySelector(".status-chip");
+
+    expect(chipOf("No ar")).toHaveClass("status-chip--success");
+    expect(chipOf("No ar")).toHaveTextContent("Published");
+    expect(chipOf("Rascunho")).toHaveClass("status-chip--draft");
+    expect(chipOf("Rascunho")).toHaveTextContent("Draft");
+    expect(chipOf("Com ajuste")).toHaveClass("status-chip--danger");
+    expect(chipOf("Com ajuste")).toHaveTextContent("Needs changes");
+    // O texto dourado de antes nao volta em nenhum cartao.
+    for (const title of ["No ar", "Rascunho", "Com ajuste"]) {
+      expect(cardOf(title).innerHTML).not.toContain("--color-accent-fg");
+    }
+  });
+});
+
+// Onda D na Home: os cartoes chegam em escada e sobem no hover; quem abre a
+// Home com tudo pronto ve o check e o selo parados (festa so na mudanca).
+describe("Home do professor: movimento", () => {
+  it("cartoes em escada (--i por cartao) e com o hover que sobe", async () => {
+    state.courses = [
+      course({ id: "c1", title: "Primeiro" }),
+      course({ id: "c2", title: "Segundo" }),
+    ];
+
+    render(<TeacherStudioDashboard />);
+
+    const produtos = await screen.findByRole("region", { name: "Products in your workspace" });
+    const list = produtos.querySelector("ul.motion-stagger")!;
+    expect(list).not.toBeNull();
+    const items = [...list.children] as HTMLElement[];
+    expect(items.map((item) => item.style.getPropertyValue("--i"))).toEqual(["0", "1"]);
+    expect(within(produtos).getByRole("link", { name: /Primeiro/ })).toHaveClass("motion-hover-lift");
+  });
+
+  it("abrir a Home com os passos prontos: check e selo de 100% parados", async () => {
+    state.courses = [course({ status: "published" })];
+    state.profile = {
+      stripeConnectChargesEnabled: true,
+      stripeConnectPayoutsEnabled: true,
+    };
+
+    const { container } = render(<TeacherStudioDashboard />);
+
+    await waitFor(() => expect(screen.getByText("3 of 3 complete")).toBeInTheDocument());
+    expect(container.querySelectorAll("[data-drawn-check]").length).toBeGreaterThan(0);
+    expect(container.querySelector(".drawn-check")).toBeNull();
+    expect(container.querySelector("[data-milestone-seal]")).not.toHaveClass("milestone-seal");
   });
 });

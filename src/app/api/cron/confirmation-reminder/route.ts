@@ -3,6 +3,11 @@ import { setTimeout as sleep } from "node:timers/promises";
 import type { User } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 
+import {
+  getAuthPathIntentFromSearchParams,
+  getSafeReturnTo,
+  getWelcomeRoute,
+} from "@/lib/auth/routing";
 import { isCronRequest } from "@/lib/cron/authorized";
 import { DEFAULT_LOCALE, isLocale, type Locale } from "@/lib/i18n/config";
 import { getAppUrl } from "@/lib/payments/server/app-url";
@@ -27,6 +32,13 @@ import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 // short on purpose because the same setting governs password-recovery links.
 // So the email also points to /login: an unconfirmed account that signs in
 // gets "Resend the link", and "Forgot password" confirms the address too.
+//
+// O curso: o cadastro guarda para onde a confirmacao leva
+// (user_metadata.signup_next, ex. /welcome?returnTo=/courses/x) e o link do
+// lembrete leva junto, para a pessoa cair no curso de onde veio, e nao num
+// inicio generico. A propria pessoa pode reescrever esses metadados, entao o
+// destino e remontado pela checagem de redirecionamento seguro, nunca copiado,
+// e o /auth/confirm confere de novo.
 //
 // Never twice: before the email goes out, the account gets
 // app_metadata.confirmation_reminder_sent_at (only the service role writes
@@ -54,6 +66,8 @@ const CAP = 25;
 // the pause keeps this job far below that.
 const SEND_GAP_MS = 600;
 const MARK = "confirmation_reminder_sent_at";
+// Teto de user_metadata.signup_next, o mesmo do cadastro (signUpWithEmail).
+const SIGNUP_NEXT_MAX = 300;
 const SUPPORT = "support@skillsetmind.com";
 
 type Due = User & { email: string };
@@ -131,7 +145,9 @@ export async function GET(request: Request) {
 
     if (sent > 0) await sleep(SEND_GAP_MS);
     const locale = isLocale(user.user_metadata?.locale) ? user.user_metadata.locale : DEFAULT_LOCALE;
-    const url = `${getAppUrl()}/auth/confirm?token_hash=${encodeURIComponent(hash)}&type=email`;
+    const next = signupDestination(user);
+    const url = `${getAppUrl()}/auth/confirm?token_hash=${encodeURIComponent(hash)}&type=email`
+      + (next === "/welcome" ? "" : `&next=${encodeURIComponent(next)}`);
     try {
       await sendResendEmail({ to: user.email, ...buildReminderEmail(locale, url), idempotencyKey: `confirmation-reminder:${user.id}` });
       sent += 1;
@@ -146,6 +162,15 @@ export async function GET(request: Request) {
   const result = { due: due.length, sent, failed };
   console.info("Confirmation reminder run", result);
   return NextResponse.json({ ok: failed === 0, ...result }, { status: failed ? 500 : 200 });
+}
+
+function signupDestination(user: User): string {
+  const saved = String(user.user_metadata?.signup_next ?? "");
+  // O mesmo teto do cadastro, aqui no servidor: a pessoa reescreve os proprios
+  // metadados, e o teto do navegador nao vale para ela.
+  if (saved.length > SIGNUP_NEXT_MAX) return "/welcome";
+  const params = new URLSearchParams(saved.startsWith("/welcome?") ? saved.slice("/welcome?".length) : "");
+  return getWelcomeRoute(getAuthPathIntentFromSearchParams(params), getSafeReturnTo(params));
 }
 
 const COPY: Record<Locale, {

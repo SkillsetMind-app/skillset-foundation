@@ -9,7 +9,9 @@ import { ExportTableButton } from "@/components/shared/export-table-button";
 import { StatusChip } from "@/components/shared/status-chip";
 import { PanelCard } from "@/components/teacher/course-commerce-panels";
 import { CourseAccessPanel } from "@/components/teacher/course-access-panel";
-import { Button, InlineAlert } from "@/components/ui";
+import { CourseShareLink } from "@/components/teacher/course-share-link";
+import { Button, EmptyState, InlineAlert } from "@/components/ui";
+import { SpotArt } from "@/components/ui/spot-art";
 import { isCourseStudentComplete } from "@/domain/course-overview";
 import { sendCourseMessage } from "@/lib/data/course-messages";
 import { getMyCourseStudents, type CourseStudent } from "@/lib/data/enrollments";
@@ -185,11 +187,14 @@ export function CourseStudentRosterView({
   students,
   courseId,
   now,
+  share,
 }: {
   state: "loading" | "ready" | "error";
   students: CourseStudent[];
   courseId: string;
   now?: Date;
+  /** Produto publicado: a lista vazia oferece "Copy my page link". */
+  share?: { title: string };
 }) {
   const { t, locale } = useTranslation();
   const [search, setSearch] = useState("");
@@ -269,9 +274,22 @@ export function CourseStudentRosterView({
   if (students.length === 0) {
     return (
       <PanelCard title={t("courseRoster.title")} description={t("courseRoster.description")}>
-        <p className="mt-5 text-sm leading-6 text-[var(--color-ink-soft)]">
-          {t("courseRoster.empty")}
-        </p>
+        <EmptyState
+          as="h3"
+          art={<SpotArt scene="noStudents" />}
+          title={t("courseRoster.emptyTitle")}
+          className="mt-5"
+        />
+        {/* O link da pagina so serve depois de publicar: rascunho nao tem
+            pagina aberta para mandar a ninguem. */}
+        {share ? (
+          <CourseShareLink
+            label={t("creatorPanel.hub.sections.page")}
+            path={`/courses/${encodeURIComponent(courseId)}`}
+            title={share.title}
+            copyLabel={t("creatorPanel.shareLink.copyMyPage")}
+          />
+        ) : null}
       </PanelCard>
     );
   }
@@ -442,7 +460,7 @@ export function CourseStudentRosterView({
   );
 }
 
-export function CourseStudentRoster({ courseId }: { courseId: string }) {
+export function CourseStudentRoster({ courseId, share }: { courseId: string; share?: { title: string } }) {
   const [revision, setRevision] = useState(0);
   const [state, setState] = useState<"loading" | "ready" | "error">("loading");
   const [students, setStudents] = useState<CourseStudent[]>([]);
@@ -469,6 +487,6 @@ export function CourseStudentRoster({ courseId }: { courseId: string }) {
 
   return <div className="grid min-w-0 gap-5">
     <CourseAccessPanel key={courseId} courseId={courseId} onChange={() => setRevision((value) => value + 1)} />
-    <CourseStudentRosterView state={state} students={students} courseId={courseId} />
+    <CourseStudentRosterView state={state} students={students} courseId={courseId} share={share} />
   </div>;
 }

@@ -1,64 +1,39 @@
-# SKILLSET DOCUMENTATION INDEX
-## Startup-grade documentation map
+# Índice da documentação
 
-> **Version:** 0.1.0
-> **Updated:** 2026-05-25
-> **Status:** Living documentation
+O que existe em `docs/`, uma linha por item. Para começar, leia o `README.md` da
+raiz e depois `docs/ARQUITETURA.md`.
 
----
+## Para começar
 
-## Purpose
+- `docs/COMO-TRABALHAR.md` — guia de entrada para um time novo: acessos, ambiente, fluxo de trabalho, convenções do código, migrations do banco, design system e o que não fazer.
 
-This folder is the source of truth for Skillset as a serious startup project.
-It is designed for four audiences:
+## Como o sistema funciona
 
-- Founders and operators who need clarity on product direction.
-- Engineers and AI coding agents who need implementation context.
-- Future investors who need a credible company narrative.
-- Future hires who need to understand how the platform works.
+- `docs/ARQUITETURA.md` — mapa do sistema: páginas, dados, banco, pagamentos, vídeo, e-mail, tarefas agendadas, traduções, testes e portões de segurança.
 
-This documentation should be updated while the product is being built, not only at the end.
+## Roteiros de operação
 
----
+- `docs/first-admin-setup.md` — como criar o primeiro administrador e promover os seguintes.
+- `docs/BACKUP.md` — como o backup diário funciona, como configurar e como restaurar.
+- `docs/teacher-advisor-setup.md` — como ligar o consultor de IA do professor (variáveis, base de conhecimento, reindexação).
+- `docs/operational-account-controls.md` — como suspender, bloquear e restaurar uma conta, e onde o banco garante isso.
+- `STRIPE_CHECKLIST.md` (na raiz) — configuração do Stripe campo por campo.
 
-## Core Documents
+## Design
 
-| Area | Document | Purpose |
-|------|----------|---------|
-| Company | [Product Vision](company/product-vision.md) | Defines the problem, solution, customer, and strategic position. |
-| Company | [Business Model](company/business-model.md) | Explains revenue model, plans, fees, and economic logic. |
-| Product | [MVP Scope](product/mvp-scope.md) | Defines what must work before launch and what stays out. |
-| Product | [Core Workflows](product/core-workflows.md) | Documents teacher, learner, marketplace, and admin flows. |
-| Technical | [Architecture](technical/architecture.md) | Explains stack, infrastructure, boundaries, and deployment model. |
-| Technical | [Data Model](technical/data-model.md) | Documents Firestore collections, entities, and ownership rules. |
-| Technical | [API Reference](technical/api-reference.md) | Lists callable functions, webhooks, request payloads, and outcomes. |
-| Technical | [Payments](technical/payments.md) | Documents Stripe Checkout, Stripe Connect, fees, payouts, and refunds. |
-| Technical | [Security and Compliance](technical/security-and-compliance.md) | Captures security posture, data handling, and open risks. |
-| Operations | [Local Development and Deploy](operations/local-development-and-deploy.md) | Documents how to run, test, build, and deploy. |
-| Operations | [Release Checklist](operations/release-checklist.md) | Defines launch readiness gates. |
-| Investor | [Investor One-Pager](investor/investor-one-pager.md) | Initial investor-facing company summary. |
-| Investor | [Risk Register](investor/risk-register.md) | Tracks strategic, technical, legal, and operational risks. |
+- `docs/design-system/skillset-design-system/` — o design system: cores, tipografia, botões, cartões e kits de tela.
+- `docs/design-v2/DESIGN-SYSTEM-V2.md` — especificação da segunda versão do design (tokens e componentes).
+- `docs/design-reference/skillset-design-v2-2/` — protótipos de tela usados como referência visual (não é código de produção).
 
----
+## Traduções
 
-## Documentation Rules
+- `docs/i18n-archive/` — o dicionário em português guardado para quando o site voltar a ter português, com o passo a passo para religar.
 
-- Keep documents factual. Do not claim traction, revenue, or partnerships that do not exist.
-- Mark assumptions explicitly.
-- Update technical documents when implementation changes.
-- Keep investor documents separate from operational documents.
-- Never place API keys, private tokens, live Stripe secrets, or Firebase service credentials in documentation.
+## Regras para manter isto vivo
 
----
-
-## Current Startup Priority
-
-The documentation supports the main product priority:
-
-1. Teacher can create a course.
-2. Teacher can create modules and lessons.
-3. Teacher can upload videos and supporting materials.
-4. Learner can enroll, access, and watch the course.
-5. Payments, platform fees, refunds, and payouts are clear and functional.
-6. The platform has enough operational documentation to be maintained by future engineers.
-
+- Documento novo entra neste índice.
+- Plano, relatório de sessão, estratégia de negócio, material de investidor e
+  achado de segurança **não** entram neste repositório: ele é público.
+- O teste `src/app/documentacao-caminhos.test.ts` confere que todo caminho entre
+  crases neste índice, no `README.md`, em `docs/ARQUITETURA.md` e em
+  `docs/COMO-TRABALHAR.md` existe.

@@ -1,31 +1,51 @@
-# First Admin Setup
+# Primeiro administrador
 
-> **Obsoleto:** descreve o fluxo da época do Firebase, que foi removido do projeto. Produção é https://www.skillsetmind.com; o banco agora é o Supabase.
+Ninguém vira administrador pelo site, de propósito. O **primeiro** admin é criado
+à mão no banco de dados. Depois dele, os próximos são promovidos pela tela de
+operações (`/ops`).
 
-Last updated: 2026-04-26
+## Como criar o primeiro admin
 
-Skillset does not allow a user to make themselves admin from the public app.
-That is intentional. The first admin must be promoted from Firebase Console.
+1. A pessoa cria a conta normalmente pelo site (`/signup`) e confirma o e-mail.
+2. No painel do Supabase (o serviço que guarda o banco e o login), abra o
+   **SQL Editor** (a tela onde se digitam comandos para o banco) do projeto de
+   produção.
+3. Rode o comando abaixo, trocando o e-mail:
 
-## Steps
+   ```sql
+   begin;
+   set local skillset.trusted_write = 'on';
+   update public.users
+      set roles = coalesce(roles, '[]'::jsonb) || '["admin"]'::jsonb
+    where lower(email) = lower('pessoa@exemplo.com');
+   commit;
+   ```
 
-1. Sign in once at `https://skillsetusaofficial.web.app/login` with the account that should become admin.
-2. Open Firebase Console for `skillsetusaofficial`.
-3. Go to Firestore Database.
-4. Open the `users` collection.
-5. Open the document matching that user's `uid`.
-6. Edit `roles` from `["student"]` or `["student", "teacher"]` to include `admin`.
-7. Recommended founder/admin roles:
+   O banco tem uma trava (o gatilho `users_field_guard`, um código que roda
+   sozinho a cada alteração na tabela `users`) que impede qualquer pessoa de se
+   dar um papel privilegiado. A linha `set local skillset.trusted_write = 'on'`
+   libera essa trava **só dentro desta transação** (o bloco entre `begin` e
+   `commit`). A versão atual da trava está em
+   `supabase/migrations/20260915030000_stripe_connect_country.sql`.
+4. A pessoa sai da conta e entra de novo.
+5. Ela liga a **verificação em duas etapas** (um código de 6 dígitos gerado por
+   um aplicativo autenticador no celular) em `/account/security`. Sem isso o
+   papel de admin não vale: as funções do banco que conferem papéis
+   (`is_admin()`, `is_ops()` e outras) exigem uma sessão confirmada com o
+   segundo fator. A tela só aparece com `NEXT_PUBLIC_AUTH_MFA_ENABLED=true` na
+   Vercel.
+6. Pronto: `/ops` abre.
 
-```json
-["student", "teacher", "admin"]
-```
+## Os próximos admins
 
-8. Save, then sign out and sign in again.
-9. Open `/ops`.
+Em `/ops`, a seção de papéis (`src/components/admin/role-manager.tsx`) chama a
+função do banco `admin_set_user_roles`
+(`supabase/migrations/20260819010000_admin_role_management.sql`). Ela só aceita
+pedidos de quem já é admin, não deixa um admin tirar o próprio papel e não deixa
+a plataforma ficar sem nenhum admin.
 
-## Rule
+## Regra
 
-Admin access must not be granted by normal onboarding. Onboarding can add only
-`student` and `teacher`. Admin remains a trust operation until an audited role
-management workflow exists.
+O cadastro comum só dá os papéis `student` (aluno) e `teacher` (professor).
+Qualquer outro papel (`admin`, `ops`, `support`, `moderator`) só existe por um
+dos dois caminhos acima.

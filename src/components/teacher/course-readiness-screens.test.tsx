@@ -6,9 +6,10 @@ import { CourseBuilderStudio } from "@/components/teacher/course-builder-studio"
 import { CourseManageHub } from "@/components/teacher/course-manage-hub";
 import { getCourseReadiness } from "@/domain/course-readiness";
 import type { CourseAsset } from "@/domain/course-asset";
+import type { CourseEvent } from "@/domain/course-event";
 import type { TeacherCourse } from "@/domain/teacher-course";
 import { publishTeacherCourse, subscribeToTeacherCourse, updateTeacherCourseBuilder } from "@/lib/data/teacher-courses";
-import { subscribeToCourseAssets, uploadCourseAsset } from "@/lib/data/course-assets";
+import { fetchCourseAssets, subscribeToCourseAssets, uploadCourseAsset } from "@/lib/data/course-assets";
 import { track } from "@/lib/posthog/events";
 
 const mocks = vi.hoisted(() => {
@@ -89,10 +90,28 @@ vi.mock("@/lib/data/user-profiles", () => ({
   subscribeToUserProfile: mocks.fused(
     "subscribeToUserProfile",
     (_uid: string, onData: (profile: unknown) => void) => {
-      onData({ creatorVerificationStatus: "none", currentPlanId: "free" });
+      const emit = () => onData({ creatorVerificationStatus: "none", currentPlanId: "free", ...profileExtra });
+      profileGate.onData = onData;
+      if (profileGate.hold) {
+        profileGate.release = emit;
+      } else {
+        emit();
+      }
       return () => undefined;
     },
   ),
+}));
+// Pais da conta Stripe do professor: so o parcelamento (Mexico) le.
+const profileExtra = vi.hoisted((): {
+  stripeConnectCountry?: string;
+  stripeConnectChargesEnabled?: boolean;
+  stripeConnectPayoutsEnabled?: boolean;
+} => ({}));
+// hold: o perfil (payouts, verificacao) so chega quando o teste chamar release.
+const profileGate = vi.hoisted(() => ({
+  hold: false,
+  release: null as null | (() => void),
+  onData: null as null | ((profile: unknown) => void),
 }));
 
 vi.mock("@/lib/data/creator-verification", () => ({
@@ -102,10 +121,28 @@ vi.mock("@/lib/data/creator-verification", () => ({
 const activation = vi.hoisted(() => ({ blocked: false }));
 
 vi.mock("@/lib/data/course-assets", () => ({
-  fetchCourseAssets: () => Promise.resolve([]),
+  fetchCourseAssets: vi.fn(() => Promise.resolve([])),
   subscribeToCourseAssets: vi.fn(() => () => undefined),
   syncLessonPreviewAssets: () => Promise.resolve(),
   uploadCourseAsset: vi.fn(),
+}));
+
+// As sessoes do evento ao vivo (construtor e Manage leem a mesma lista).
+// hold: a lista so chega quando o teste chamar `held` (uma ida a rede).
+const sessions = vi.hoisted(() => ({
+  list: [] as CourseEvent[],
+  hold: false,
+  held: null as null | ((events: CourseEvent[]) => void),
+}));
+vi.mock("@/lib/data/course-events", () => ({
+  subscribeToTeacherCourseEvents: (_uid: string, onEvents: (events: CourseEvent[]) => void) => {
+    if (sessions.hold) {
+      sessions.held = onEvents;
+    } else {
+      onEvents(sessions.list);
+    }
+    return () => undefined;
+  },
 }));
 
 // Upload de capa depende de APIs de browser que o jsdom nao tem e nao entra
@@ -149,6 +186,16 @@ function renderBuilder(tab = "details") {
   );
 }
 
+// Nenhum preco em Outros precos: a etapa de preco do construtor mostra os
+// cartoes. Sem a lista, ela nao mostra preco nenhum.
+beforeEach(() => {
+  vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ offers: [] }) })));
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
+
 // O professor via, para o mesmo curso, 71% no chip do construtor, 40% na
 // barra logo abaixo do chip e 50% no Manage. Cada tela tinha regra propria.
 // Agora as tres leem a mesma funcao e mostram o mesmo numero.
@@ -183,7 +230,7 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
 
   it.each([
     ["details", "Define las bases del curso."],
-    ["pricing", "Presenta la oferta."],
+    ["pricing", "Define el precio."],
     ["content", "Organiza el contenido."],
     ["members", "Personaliza el área de miembros."],
     ["review", "Publica en el marketplace."],
@@ -253,18 +300,15 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     expect(screen.getByRole("button", { name: "Publicar producto" })).toBeDisabled();
   });
 
-  it("keeps canonical price, currency and release values when their labels change", async () => {
+  it("keeps canonical price and currency values when their labels change", async () => {
     vi.useFakeTimers();
     renderBuilder("pricing");
     await act(async () => {});
     fireEvent.change(screen.getByRole("textbox", { name: "Price" }), { target: { value: "149,50" } });
     fireEvent.change(screen.getByRole("combobox", { name: "Currency" }), { target: { value: "BRL" } });
-    fireEvent.change(screen.getByRole("combobox", { name: "Content release" }), { target: { value: "time_drip_custom" } });
     fireEvent.click(screen.getByRole("button", { name: "Switch language" }));
     expect(screen.getByRole("textbox", { name: "Precio" })).toHaveValue("149,50");
     expect(screen.getByRole("combobox", { name: "Moneda" })).toHaveValue("BRL");
-    expect(screen.getByRole("combobox", { name: "Disponibilidad del contenido" })).toHaveValue("time_drip_custom");
-    expect(screen.getByRole("option", { name: "Calendario por lección" })).toHaveProperty("selected", true);
     const displayPrice = new Intl.NumberFormat("es", { style: "currency", currency: "BRL", maximumFractionDigits: 0 }).format(149.5);
     expect(screen.getByText((_content, element) => element?.tagName === "SPAN" && element.textContent === displayPrice)).toBeInTheDocument();
     expect(updateTeacherCourseBuilder).not.toHaveBeenCalled();
@@ -275,9 +319,33 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
       currency: "BRL",
       paymentType: "one_time",
       installmentsEnabled: false,
-      dripStrategy: "time_drip_custom",
     });
     expect(subscribeToTeacherCourse).toHaveBeenCalledOnce();
+  });
+
+  // A liberacao das aulas morava na aba de preco ("Interval days" ao lado da
+  // moeda). Agora fica onde as aulas sao montadas, com rotulo simples.
+  it("keeps the canonical release values in Curriculum when their labels change", async () => {
+    vi.useFakeTimers();
+    renderBuilder("content");
+    await act(async () => {});
+    const release = screen.getByRole("combobox", { name: "Lesson release" });
+    fireEvent.change(release, { target: { value: "time_drip_lesson" } });
+    fireEvent.change(screen.getByRole("textbox", { name: "Days between releases" }), { target: { value: "7" } });
+    fireEvent.click(screen.getByRole("button", { name: "Switch language" }));
+    expect(screen.getByRole("combobox", { name: "Liberación de las lecciones" })).toBe(release);
+    expect(release).toHaveValue("time_drip_lesson");
+    expect(screen.getByRole("option", { name: "Una lección cada pocos días" })).toHaveProperty("selected", true);
+    expect(screen.getByRole("textbox", { name: "Días entre cada liberación" })).toHaveValue("7");
+    fireEvent.change(release, { target: { value: "time_drip_module" } });
+    expect(screen.getByRole("textbox", { name: "Días entre cada liberación" })).toHaveValue("7");
+    fireEvent.change(release, { target: { value: "time_drip_custom" } });
+    expect(screen.queryByRole("textbox", { name: "Días entre cada liberación" })).not.toBeInTheDocument();
+    await act(async () => vi.advanceTimersByTime(1800));
+    expect(vi.mocked(updateTeacherCourseBuilder).mock.calls[0][1]).toMatchObject({
+      dripStrategy: "time_drip_custom",
+      dripIntervalDays: 7,
+    });
   });
 
   it.each([0, 1, 2])("keeps a module name literal and cancels its deletion with %i lessons in Spanish", async (count) => {
@@ -360,6 +428,43 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("Add a video, text or file to every lesson before publishing.");
     fireEvent.click(screen.getByRole("button", { name: "Switch language" }));
     expect(screen.getByRole("alert")).toHaveTextContent("Añade un video, texto o archivo a cada lección antes de publicar.");
+  });
+
+  // Os tipos novos tem recusas proprias no servidor: cada uma diz o que falta,
+  // em vez do generico "try again".
+  it.each([
+    [
+      "Schedule the live session before publishing.",
+      "session",
+      "Schedule the live session before publishing: the date has to be in the future.",
+      "Agenda la sesión en vivo antes de publicar: la fecha tiene que ser futura.",
+    ],
+    [
+      "Upload at least one file before publishing.",
+      "file",
+      "Upload at least one file (PDF, slides or workbook) before publishing.",
+      "Sube al menos un archivo (PDF, presentación o cuaderno) antes de publicar.",
+    ],
+    [
+      "Turn on the community before publishing.",
+      "community",
+      "Turn on the community before publishing: it is what members join.",
+      "Activa la comunidad antes de publicar: es lo que reciben los miembros.",
+    ],
+  ])("maps the server refusal \"%s\" to its own message", async (serverMessage, reason, english, spanish) => {
+    const blocked = vi.spyOn(track, "coursePublishBlocked");
+    vi.mocked(subscribeToTeacherCourse).mockImplementationOnce((_id, emit) => {
+      emit({ ...mocks.course, paymentType: "free", priceAmountMinor: 0, modules: [{ id: "m1", title: "Start here", lessons: [{ id: "l1", title: "Welcome", description: "", type: "text", contentText: "Read this first." }] }] });
+      return Object.assign(() => {}, { reload: async () => {} });
+    });
+    vi.mocked(publishTeacherCourse).mockRejectedValueOnce(new Error(serverMessage));
+    renderBuilder("review");
+    await screen.findByRole("heading", { name: mocks.course.title });
+    fireEvent.click(screen.getByRole("button", { name: "Publish product" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(english);
+    expect(blocked).toHaveBeenCalledWith({ course_id: "course-1", reason });
+    fireEvent.click(screen.getByRole("button", { name: "Switch language" }));
+    expect(screen.getByRole("alert")).toHaveTextContent(spanish);
   });
 
   it("translates a completed save without repeating it", async () => {
@@ -943,7 +1048,7 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
 
     // O proximo passo e o rodape vem da mesma lista.
     expect(screen.getAllByText("Add at least one lesson.").length).toBeGreaterThanOrEqual(2);
-    expect(screen.getByText("Set a paid price greater than $0, or choose Free.")).toBeInTheDocument();
+    expect(screen.getByText("Set a price above $0, or choose Free.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Publish product" })).toBeDisabled();
   });
 
@@ -985,7 +1090,7 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     const card = screen.getByText("Lista de publicación").closest("section")!;
     for (const [id, label, hint, optional, done, href] of [
       ["title", "Título del curso", "Dale al curso un título de al menos 3 caracteres.", false, true, "/teach/builder?courseId=course-1&tab=details"],
-      ["summary", "Resumen", "Escribe un resumen de al menos 20 caracteres.", false, true, "/teach/builder?courseId=course-1&tab=details"],
+      ["summary", "Descripción", "Escribe una descripción de al menos 20 caracteres.", false, true, "/teach/builder?courseId=course-1&tab=details"],
       ["category", "Categoría del marketplace", "Elige al menos una categoría del marketplace.", false, true, "/teach/builder?courseId=course-1&tab=details"],
       ["cover", "Imagen de portada", "Sube una portada. Aparece en la página del producto y en las tarjetas del marketplace.", true, false, "/teach/builder?courseId=course-1&tab=details"],
       ["module", "Módulo", "Añade al menos un módulo.", false, true, "/teach/builder?courseId=course-1&tab=content"],
@@ -1070,8 +1175,210 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     const list = screen.getByText("Publish checklist").closest("section") ?? document.body;
     expect(within(list).getByText("Add at least one lesson.")).toBeInTheDocument();
     expect(
-      within(list).getByText("Set a paid price greater than $0, or choose Free."),
+      within(list).getByText("Set a price above $0, or choose Free."),
     ).toBeInTheDocument();
+  });
+});
+
+// Corte 1 da criacao simples: quem escolhe Gratis nao passa pela aba de preco
+// inteira, o parcelamento morto some, a liberacao das aulas sai do preco e a
+// cobranca recorrente diz "cobrar todo mes / todo ano".
+describe("aba de preco sem o que nao se aplica", () => {
+  const freeCourse: TeacherCourse = { ...mocks.course, paymentType: "free", priceAmountMinor: 0 };
+
+  function emit(course: TeacherCourse) {
+    vi.mocked(subscribeToTeacherCourse).mockImplementationOnce((_id, onData) => {
+      onData(course);
+      return Object.assign(() => {}, { reload: async () => {} });
+    });
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.resetSubscriptionCounts();
+  });
+
+  afterEach(() => {
+    cleanup();
+    mocks.searchParams.delete("tab");
+    mocks.searchParams.delete("welcome");
+    delete profileExtra.stripeConnectCountry;
+    vi.unstubAllEnvs();
+    vi.restoreAllMocks();
+  });
+
+  it("produto gratis: a frase 'This product is free' toma o lugar dos campos de preco, nao dos cartoes", async () => {
+    emit(freeCourse);
+    renderBuilder("pricing");
+    await screen.findByRole("heading", { name: mocks.course.title, level: 1 });
+
+    expect(screen.getByText(/^This product is free\./)).toBeInTheDocument();
+    expect(screen.queryByRole("textbox", { name: "Price" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("combobox", { name: "Currency" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("checkbox", { name: "Let them split it into payments" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("combobox", { name: "Free preview lesson" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Free/ })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: /Monthly membership/ })).toBeInTheDocument();
+  });
+
+  // Teclado e leitor de tela: antes o grupo de cartoes inteiro desmontava ao
+  // escolher Gratis (e a frase ao voltar para pago), e o foco caia no <body>.
+  it("trocar entre Gratis e pago deixa o foco no cartao clicado e so os campos de preco somem e voltam", async () => {
+    renderBuilder("pricing");
+    await screen.findByRole("heading", { name: mocks.course.title, level: 1 });
+
+    const free = screen.getByRole("button", { name: /^Free/ });
+    free.focus();
+    fireEvent.click(free);
+    expect(free).toHaveAttribute("aria-pressed", "true");
+    expect(document.activeElement).toBe(free);
+    expect(screen.queryByRole("textbox", { name: "Price" })).not.toBeInTheDocument();
+    expect(screen.getByText(/^This product is free\./)).toBeInTheDocument();
+
+    const monthly = screen.getByRole("button", { name: /Monthly membership/ });
+    monthly.focus();
+    fireEvent.click(monthly);
+    expect(monthly).toHaveAttribute("aria-pressed", "true");
+    expect(document.activeElement).toBe(monthly);
+    expect(screen.queryByText(/^This product is free\./)).not.toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "Price per month" })).toHaveValue("");
+    expect(screen.getByRole("combobox", { name: "Currency" })).toBeInTheDocument();
+  });
+
+  it("produto gratis: o checklist de publicar nao pede preco", async () => {
+    emit(freeCourse);
+    renderBuilder("review");
+    await screen.findByRole("heading", { name: mocks.course.title, level: 1 });
+
+    expect(screen.queryByText(/Set a paid price/)).not.toBeInTheDocument();
+    expect(screen.queryByText("Pricing", { selector: "p" })).not.toBeInTheDocument();
+    // A venda sem item dizia "Sale available · 0 of 0"; os outros grupos
+    // continuam com a contagem.
+    expect(document.querySelector('[data-readiness-group="sale"] p')).toHaveTextContent(/^Sale available$/);
+    expect(document.querySelector('[data-readiness-group="content"] p')).toHaveTextContent(/^Content saved · \d+ of \d+$/);
+    expect(screen.queryByText(/0 of 0/)).not.toBeInTheDocument();
+  });
+
+  it("produto pago: uma pergunta, a mensalidade diz que se repete e a frase fixa separa parcelar de mensalidade", async () => {
+    renderBuilder("pricing");
+    await screen.findByRole("heading", { name: mocks.course.title, level: 1 });
+
+    expect(screen.getByRole("group", { name: /How will people pay\?/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Monthly membership/ })).toHaveTextContent("Charged every month until they cancel. Ex.: $29/month.");
+    expect(screen.getByRole("button", { name: /One payment/ })).toHaveTextContent("They pay once and keep access. Ex.: $300.");
+    expect(screen.getByText("Split payments = the same price divided; it ends on the last payment. Monthly membership = a charge that repeats until they cancel.")).toBeInTheDocument();
+    expect(screen.queryByText(/subscription|Payment model|Marketplace setup|billing interval/i)).not.toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "Price" })).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "Free preview lesson" })).toBeInTheDocument();
+  });
+
+  it.each([
+    ["flag desligada, conta do Mexico", undefined, "MX"],
+    ["flag ligada, conta dos EUA", "true", "US"],
+  ])("parcelamento fica escondido: %s", async (_case, flag, country) => {
+    if (flag) vi.stubEnv("NEXT_PUBLIC_PAYMENTS_CARD_INSTALLMENTS_ENABLED", flag);
+    profileExtra.stripeConnectCountry = country;
+    renderBuilder("pricing");
+    await screen.findByRole("heading", { name: mocks.course.title, level: 1 });
+
+    fireEvent.change(screen.getByRole("combobox", { name: "Currency" }), { target: { value: "MXN" } });
+    expect(screen.queryByRole("checkbox", { name: "Let them split it into payments" })).not.toBeInTheDocument();
+    expect(screen.queryByText(/installment/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Stripe requires/)).not.toBeInTheDocument();
+  });
+
+  // A mesma regra do checkout (canSplitPayments): flag, MXN e conta do
+  // Mexico. Com a conta certa e a moeda errada a opcao tambem nao existe, em
+  // vez de aparecer desligada pedindo para trocar a moeda.
+  it("parcelamento aparece so com flag ligada, conta do Mexico e MXN, com a previa das parcelas", async () => {
+    vi.stubEnv("NEXT_PUBLIC_PAYMENTS_CARD_INSTALLMENTS_ENABLED", "true");
+    profileExtra.stripeConnectCountry = "MX";
+    renderBuilder("pricing");
+    await screen.findByRole("heading", { name: mocks.course.title, level: 1 });
+
+    expect(screen.queryByRole("checkbox", { name: "Let them split it into payments" })).not.toBeInTheDocument();
+    fireEvent.change(screen.getByRole("combobox", { name: "Currency" }), { target: { value: "MXN" } });
+    fireEvent.change(screen.getByRole("textbox", { name: "Price" }), { target: { value: "300" } });
+    const split = screen.getByRole("checkbox", { name: "Let them split it into payments" });
+    expect(split).not.toBeChecked();
+    expect(screen.queryByRole("combobox", { name: "Up to how many payments" })).not.toBeInTheDocument();
+    fireEvent.click(split);
+    fireEvent.change(screen.getByRole("combobox", { name: "Up to how many payments" }), { target: { value: "3" } });
+    expect(screen.getByText(`3x of ${new Intl.NumberFormat("en", { style: "currency", currency: "MXN", maximumFractionDigits: 0 }).format(100)}`)).toBeInTheDocument();
+    expect(screen.queryByText(/Mexican card|card issuer|not a subscription/)).not.toBeInTheDocument();
+
+    // Mensalidade nao parcela: a opcao some.
+    fireEvent.click(screen.getByRole("button", { name: /Monthly membership/ }));
+    expect(screen.queryByRole("checkbox", { name: "Let them split it into payments" })).not.toBeInTheDocument();
+  });
+
+  it("a liberacao das aulas mora no conteudo, nao no preco", async () => {
+    renderBuilder("pricing");
+    await screen.findByRole("heading", { name: mocks.course.title, level: 1 });
+
+    expect(screen.queryByRole("combobox", { name: "Lesson release" })).not.toBeInTheDocument();
+    expect(screen.queryByText(/Interval days|Content release/)).not.toBeInTheDocument();
+    cleanup();
+
+    renderBuilder("content");
+    await screen.findByRole("heading", { name: mocks.course.title, level: 1 });
+    expect(screen.getByRole("heading", { name: "When lessons open" })).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "Lesson release" })).toHaveValue("instant");
+
+    // O intervalo padrao e 1: "Release lessons every 1 days" saia errado.
+    fireEvent.change(screen.getByRole("combobox", { name: "Lesson release" }), { target: { value: "time_drip_lesson" } });
+    expect(screen.getByRole("textbox", { name: "Days between releases" })).toHaveValue("1");
+    expect(screen.queryByText(/Release (lessons|modules) every/)).not.toBeInTheDocument();
+  });
+
+  // O atalho "Add a short welcome lesson" da Agenda chega com ?welcome=1: o
+  // primeiro modulo ja vem com o nome preenchido.
+  it("atalho da aula de boas-vindas: o primeiro modulo nasce com o nome Welcome", async () => {
+    emit({ ...mocks.course, modules: [] });
+    mocks.searchParams.set("welcome", "1");
+    renderBuilder("content");
+    await screen.findByRole("heading", { name: mocks.course.title, level: 1 });
+
+    expect(screen.getByRole("textbox", { name: "Module title" })).toHaveValue("Welcome");
+
+    // Preenchido uma vez, o parametro sai da URL (replace, sem nova entrada no
+    // historico). Recarregar a URL que ficou nao preenche outro "Welcome".
+    expect(mocks.router.replace).toHaveBeenCalledOnce();
+    const [href, options] = vi.mocked(mocks.router.replace).mock.calls[0];
+    const next = new URL(String(href), "https://app.test");
+    expect(next.pathname).toBe("/teach/builder");
+    expect(next.searchParams.get("welcome")).toBeNull();
+    expect(next.searchParams.get("courseId")).toBe("course-1");
+    expect(next.searchParams.get("tab")).toBe("content");
+    expect(options).toEqual({ scroll: false });
+
+    cleanup();
+    mocks.searchParams.delete("welcome");
+    emit({ ...mocks.course, modules: [] });
+    renderBuilder("content");
+    await screen.findByRole("heading", { name: mocks.course.title, level: 1 });
+    expect(screen.getByRole("textbox", { name: "Module title" })).toHaveValue("");
+    expect(mocks.router.replace).toHaveBeenCalledOnce();
+  });
+
+  it("detalhes chama o texto de Description", async () => {
+    renderBuilder("details");
+    await screen.findByRole("heading", { name: mocks.course.title, level: 1 });
+
+    expect(screen.getByRole("textbox", { name: /^Description/ })).toHaveValue(mocks.course.summary);
+    expect(screen.queryByText(/summary/i)).not.toBeInTheDocument();
+  });
+
+  it("rodape: Continue cheio, grande e com seta; Back contornado", async () => {
+    renderBuilder("pricing");
+    await screen.findByRole("heading", { name: mocks.course.title, level: 1 });
+
+    const next = screen.getByRole("button", { name: "Continue to Curriculum" });
+    const back = screen.getByRole("button", { name: "Back to Details" });
+    expect(next).toHaveClass("button-solid", "button-lg");
+    expect(next.querySelector("svg")).not.toBeNull();
+    expect(back).toHaveClass("button-outline", "button-lg");
+    expect(back).not.toHaveClass("button-solid");
   });
 });
 
@@ -1230,9 +1537,47 @@ describe("publicar sem surpresa", () => {
     vi.mocked(publishTeacherCourse).mockResolvedValueOnce(undefined as never);
     renderBuilder("review");
     fireEvent.click(await screen.findByRole("button", { name: "Publish product" }));
-    expect(await screen.findByText("Course published. Its product page is now live.")).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "It's live." })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Open Product page" })).toHaveAttribute("href", "https://www.skillsetmind.com/courses/course-1");
-    expect(screen.getByRole("button", { name: "Copy Product page link" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Copy my page link" })).toBeInTheDocument();
+  });
+
+  // O pico da jornada era um paragrafo cinza igual ao "Draft saved.". Agora e
+  // um painel com a cena "Publicado!" e o foco no botao latao de copiar.
+  describe("o painel Publicado!", () => {
+    beforeEach(() => {
+      window.localStorage.clear();
+    });
+
+    it("troca o paragrafo cinza pela cena e leva o foco ao 'Copy my page link'", async () => {
+      vi.mocked(publishTeacherCourse).mockResolvedValueOnce(undefined as never);
+      const { container } = renderBuilder("review");
+      fireEvent.click(await screen.findByRole("button", { name: "Publish product" }));
+
+      const copy = await screen.findByRole("button", { name: "Copy my page link" });
+      await waitFor(() => expect(copy).toHaveFocus());
+      expect(copy).toHaveClass("button-accent");
+      // O botao le o titulo e a frase do painel para quem chega pelo foco.
+      expect(copy).toHaveAccessibleDescription(/It's live\. Your product page is open to everyone/);
+
+      const panel = screen.getByRole("region", { name: "It's live." });
+      expect(panel).toHaveClass("published-panel", "is-celebrating");
+      expect(panel.querySelector('svg[data-scene="published"]')).toHaveAttribute("aria-hidden", "true");
+      expect(container.querySelector(".info-notice")).toBeNull();
+      // Um latao por tela: o "Publish product" sai enquanto o painel esta ali.
+      expect(screen.queryByRole("button", { name: "Publish product" })).toBeNull();
+    });
+
+    it("festeja uma vez por produto: publicar de novo mostra o painel parado", async () => {
+      window.localStorage.setItem("skillsetmind.publishedCelebrated.course-1", "1");
+      vi.mocked(publishTeacherCourse).mockResolvedValueOnce(undefined as never);
+      renderBuilder("review");
+      fireEvent.click(await screen.findByRole("button", { name: "Publish product" }));
+
+      const panel = await screen.findByRole("region", { name: "It's live." });
+      expect(panel).not.toHaveClass("is-celebrating");
+      expect(panel).toHaveClass("published-panel");
+    });
   });
 
   it("links the payouts error to Stripe setup and records why publishing was blocked", async () => {
@@ -1297,5 +1642,371 @@ describe("item de payouts no construtor", () => {
     await screen.findByRole("heading", { name: mocks.course.title });
     const item = screen.getAllByText("Stripe payouts")[0].closest("li")!;
     expect(within(item).getByRole("link", { name: "Finish payout onboarding" })).toHaveAttribute("href", "/account/payments#stripe-connect");
+  });
+});
+
+// O Manage chegava a 100% com o construtor dizendo "nao esta pronto": nao
+// conhecia a sessao do evento ao vivo nem o arquivo do e-book.
+describe("Manage: o que o tipo entrega entra na porcentagem", () => {
+  afterEach(() => {
+    cleanup();
+    sessions.list = [];
+    vi.clearAllMocks();
+  });
+
+  function renderHub(course: TeacherCourse) {
+    vi.mocked(subscribeToTeacherCourse).mockImplementationOnce((_id, emit) => {
+      emit(course);
+      return Object.assign(() => {}, { reload: async () => {} });
+    });
+    return render(
+      <I18nProvider initialLocale="en">
+        <CourseManageHub courseId="course-1" />
+      </I18nProvider>,
+    );
+  }
+
+  const row = (container: HTMLElement, id: string) =>
+    container.querySelector<HTMLElement>(`[data-readiness-item="${id}"]`);
+  const done = (element: HTMLElement | null) =>
+    Boolean(element?.classList.contains("bg-[var(--color-success-soft)]"));
+
+  const free = { paymentType: "free" as const, priceAmountMinor: 0 };
+
+  it("evento ao vivo: a sessao por vir e um item, pendente ate existir", async () => {
+    const event = { ...mocks.course, ...free, productFormat: "live_event" as const, modules: [], lessonCount: 0 };
+    const pending = renderHub(event);
+    await screen.findByRole("heading", { name: event.title });
+    await waitFor(() => expect(row(pending.container, "session")).not.toBeNull());
+    expect(done(row(pending.container, "session"))).toBe(false);
+    expect(row(pending.container, "lesson")).toBeNull();
+    cleanup();
+
+    sessions.list = [{
+      id: "event-1", courseId: "course-1", courseSlug: "course-1", courseTitle: event.title,
+      ownerId: "teacher-1", title: event.title, description: "", type: "live_class", status: "scheduled",
+      startsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), externalUrl: "",
+      recordingAssetId: null,
+    }];
+    const ready = renderHub(event);
+    await screen.findByRole("heading", { name: event.title });
+    await waitFor(() => expect(done(row(ready.container, "session"))).toBe(true));
+  });
+
+  it("e-book: o arquivo na aula do produto e um item", async () => {
+    const ebook = {
+      ...mocks.course,
+      ...free,
+      productFormat: "ebook" as const,
+      modules: [{ id: "m1", title: "Your file", lessons: [{ id: "l1", title: "Workbook", type: "download" as const, description: "" }] }],
+      lessonCount: 1,
+    };
+    const pending = renderHub(ebook);
+    await screen.findByRole("heading", { name: ebook.title });
+    await waitFor(() => expect(row(pending.container, "file")).not.toBeNull());
+    expect(done(row(pending.container, "file"))).toBe(false);
+    cleanup();
+
+    vi.mocked(fetchCourseAssets).mockResolvedValueOnce([{
+      id: "asset-1", courseId: "course-1", ownerId: "teacher-1", kind: "lesson_material",
+      fileName: "workbook.pdf", contentType: "application/pdf", size: 1024,
+      storagePath: "courses/course-1/workbook.pdf", isPreview: false, lessonId: "l1",
+    } as CourseAsset]);
+    const ready = renderHub(ebook);
+    await screen.findByRole("heading", { name: ebook.title });
+    await waitFor(() => expect(done(row(ready.container, "file"))).toBe(true));
+    expect(fetchCourseAssets).toHaveBeenCalledWith("course-1");
+  });
+});
+
+// Criar o produto redirecionava em silencio. Agora a tela de criar manda
+// ?created=1 e o construtor mostra a faixa de marco uma vez.
+describe("faixa de marco depois de criar (created=1)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.resetSubscriptionCounts();
+    mocks.searchParams.set("created", "1");
+  });
+
+  afterEach(() => {
+    cleanup();
+    mocks.searchParams.delete("created");
+    mocks.searchParams.delete("tab");
+    vi.useRealTimers();
+  });
+
+  it("aparece com o proximo passo do curso e tira o parametro da URL", async () => {
+    renderBuilder("content");
+
+    const text = await screen.findByText("Draft saved. Next: your first lesson.");
+    expect(text.closest(".created-strip")?.parentElement).toHaveAttribute("role", "status");
+    await waitFor(() =>
+      expect(mocks.router.replace).toHaveBeenCalledWith(
+        "/teach/builder?courseId=course-1&tab=content",
+        { scroll: false },
+      ),
+    );
+  });
+
+  it("fecha no X e nao volta", async () => {
+    renderBuilder("content");
+    await screen.findByText("Draft saved. Next: your first lesson.");
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    expect(screen.queryByText("Draft saved. Next: your first lesson.")).toBeNull();
+  });
+
+  const STRIP = "Draft saved. Next: your first lesson.";
+
+  it("some sozinha em 4 segundos", () => {
+    vi.useFakeTimers();
+    renderBuilder("content");
+    act(() => vi.advanceTimersByTime(0));
+    expect(screen.getByText(STRIP)).toBeInTheDocument();
+    act(() => vi.advanceTimersByTime(3999));
+    expect(screen.getByText(STRIP)).toBeInTheDocument();
+    act(() => vi.advanceTimersByTime(1));
+    expect(screen.queryByText(STRIP)).toBeNull();
+  });
+
+  // NVDA e JAWS nao anunciam uma regiao viva que ja nasce preenchida.
+  it("a regiao role=status ja esta montada, vazia, quando o texto entra", () => {
+    vi.useFakeTimers();
+    renderBuilder("content");
+    const region = screen.getAllByRole("status").find((node) => node.classList.contains("absolute"))!;
+    expect(region).toBeEmptyDOMElement();
+    act(() => vi.advanceTimersByTime(0));
+    expect(region).toHaveTextContent(STRIP);
+    // Fechada, a regiao continua ali, so sem conteudo.
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    expect(region).toBeInTheDocument();
+    expect(region).toBeEmptyDOMElement();
+  });
+
+  it("para o relogio com o ponteiro ou o foco na faixa", () => {
+    vi.useFakeTimers();
+    renderBuilder("content");
+    act(() => vi.advanceTimersByTime(0));
+    const strip = screen.getByText(STRIP).closest(".created-strip")!;
+
+    fireEvent.mouseEnter(strip);
+    act(() => vi.advanceTimersByTime(10_000));
+    expect(screen.getByText(STRIP)).toBeInTheDocument();
+    fireEvent.mouseLeave(strip);
+
+    // Foco no X: a faixa nao some debaixo dele (o foco cairia no <body>).
+    const close = screen.getByRole("button", { name: "Close" });
+    act(() => close.focus());
+    act(() => vi.advanceTimersByTime(10_000));
+    expect(close).toHaveFocus();
+    act(() => close.blur());
+
+    // Solto, o relogio recomeca: 4s inteiros.
+    act(() => vi.advanceTimersByTime(3999));
+    expect(screen.getByText(STRIP)).toBeInTheDocument();
+    act(() => vi.advanceTimersByTime(1));
+    expect(screen.queryByText(STRIP)).toBeNull();
+  });
+
+  // A comunidade nao tem "post de boas-vindas" no construtor; preco existe
+  // em todo tipo.
+  it("na comunidade, o proximo passo e o preco", async () => {
+    vi.mocked(subscribeToTeacherCourse).mockImplementationOnce((_id, emit) => {
+      emit({ ...mocks.course, productFormat: "community", communityEnabled: true });
+      return Object.assign(() => {}, { reload: async () => {} });
+    });
+    renderBuilder("content");
+    expect(await screen.findByText("Draft saved. Next: set your price.")).toBeInTheDocument();
+  });
+
+  // A frase do evento depende das sessoes, que chegam uma ida a rede depois
+  // do curso. Antes a faixa dizia "agende" a quem ja tinha agendado e trocava
+  // a frase na cara do leitor de tela.
+  describe("evento ao vivo: espera as sessoes antes de falar", () => {
+    const liveEvent = {
+      ...mocks.course,
+      paymentType: "free" as const,
+      priceAmountMinor: 0,
+      productFormat: "live_event" as const,
+      modules: [],
+      lessonCount: 0,
+    };
+    const session: CourseEvent = {
+      id: "event-1", courseId: "course-1", courseSlug: "course-1", courseTitle: liveEvent.title,
+      ownerId: "teacher-1", title: liveEvent.title, description: "", type: "live_class", status: "scheduled",
+      startsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), externalUrl: "",
+      recordingAssetId: null,
+    };
+
+    beforeEach(() => {
+      sessions.hold = true;
+      vi.mocked(subscribeToTeacherCourse).mockImplementationOnce((_id, emit) => {
+        emit(liveEvent);
+        return Object.assign(() => {}, { reload: async () => {} });
+      });
+    });
+
+    afterEach(() => {
+      sessions.hold = false;
+      sessions.held = null;
+    });
+
+    it("com sessao marcada: so fala depois da lista, e diz que ja esta no calendario", () => {
+      vi.useFakeTimers();
+      renderBuilder("content");
+      act(() => vi.advanceTimersByTime(0));
+      expect(screen.queryByText(/^Draft saved\./)).toBeNull();
+
+      act(() => sessions.held!([session]));
+      act(() => vi.advanceTimersByTime(0));
+      expect(screen.getByText("Draft saved. Your session is on the calendar.")).toBeInTheDocument();
+      expect(screen.queryByText("Draft saved. Next: schedule your session.")).toBeNull();
+    });
+
+    it("sem sessao: so fala depois da lista, e pede para agendar", () => {
+      vi.useFakeTimers();
+      renderBuilder("content");
+      act(() => vi.advanceTimersByTime(0));
+      expect(screen.queryByText(/^Draft saved\./)).toBeNull();
+
+      act(() => sessions.held!([]));
+      act(() => vi.advanceTimersByTime(0));
+      expect(screen.getByText("Draft saved. Next: schedule your session.")).toBeInTheDocument();
+    });
+  });
+});
+
+// Onda D, consertos da revisao: movimento so na MUDANCA, nunca na carga.
+describe("movimento so na mudanca", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.resetSubscriptionCounts();
+  });
+
+  afterEach(() => {
+    cleanup();
+    profileGate.hold = false;
+    profileGate.release = null;
+    profileGate.onData = null;
+    delete profileExtra.stripeConnectChargesEnabled;
+    delete profileExtra.stripeConnectPayoutsEnabled;
+    mocks.searchParams.delete("tab");
+    vi.restoreAllMocks();
+  });
+
+  const paid = () =>
+    vi.mocked(subscribeToTeacherCourse).mockImplementationOnce((_id, emit) => {
+      emit({ ...mocks.course, priceAmountMinor: 12000 });
+      return Object.assign(() => {}, { reload: async () => {} });
+    });
+  const payoutsRow = () => screen.getAllByText("Stripe payouts")[0].closest("li")!;
+  // As leituras por promessa (flag de verificacao, arquivos do curso) voltam.
+  const settle = () => act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  });
+
+  // P1: abrir ?tab=review com o perfil chegando depois do curso acendia
+  // "Stripe payouts" em latao sem ninguem ter feito nada.
+  it("o perfil que chega atrasado nao acende linha nem desenha check", async () => {
+    profileGate.hold = true;
+    Object.assign(profileExtra, { stripeConnectChargesEnabled: true, stripeConnectPayoutsEnabled: true });
+    paid();
+    const { container } = renderBuilder("review");
+    await screen.findByRole("heading", { name: mocks.course.title });
+    await settle();
+    expect(payoutsRow().querySelector("[data-drawn-check]")).toBeNull();
+
+    act(() => profileGate.release!());
+    await waitFor(() => expect(payoutsRow().querySelector("[data-drawn-check]")).not.toBeNull());
+    expect(container.querySelector(".is-just-done")).toBeNull();
+    expect(container.querySelector(".drawn-check")).toBeNull();
+  });
+
+  it("o que fica pronto com a aba aberta acende uma vez e o check se desenha", async () => {
+    paid();
+    const { container } = renderBuilder("review");
+    await screen.findByRole("heading", { name: mocks.course.title });
+    await settle();
+    expect(container.querySelector(".is-just-done")).toBeNull();
+
+    // O Stripe terminou o cadastro em outra aba: o perfil chega de novo.
+    act(() => profileGate.onData!({
+      creatorVerificationStatus: "none",
+      currentPlanId: "free",
+      stripeConnectChargesEnabled: true,
+      stripeConnectPayoutsEnabled: true,
+    }));
+    await waitFor(() => expect(payoutsRow()).toHaveClass("is-just-done"));
+    expect(payoutsRow().querySelector(".drawn-check")).not.toBeNull();
+  });
+
+  // P9: o painel entrava subindo na primeira carga tambem (e o check da
+  // trilha se redesenhava a cada visita).
+  it("o painel so entra subindo na troca de aba; a carga entra parada", async () => {
+    const view = renderBuilder("details");
+    await screen.findByRole("heading", { name: mocks.course.title });
+    await settle();
+    expect(view.container.querySelector(".motion-panel-in")).toBeNull();
+    expect(view.container.querySelector(".drawn-check")).toBeNull();
+
+    mocks.searchParams.set("tab", "pricing");
+    view.rerender(
+      <I18nProvider initialLocale="en">
+        <SwitchLanguage />
+        <CourseBuilderStudio />
+      </I18nProvider>,
+    );
+    expect(view.container.querySelector(".motion-panel-in")).not.toBeNull();
+  });
+
+  // P6: com 0 modulos o vazio dizia "Add your first lesson", mas a unica acao
+  // na tela e o formulario "Add your first module" (aberto sozinho).
+  it("curso sem modulo: o vazio diz o mesmo que a acao logo abaixo", async () => {
+    vi.mocked(subscribeToTeacherCourse).mockImplementationOnce((_id, emit) => {
+      emit({ ...mocks.course, modules: [] });
+      return Object.assign(() => {}, { reload: async () => {} });
+    });
+    renderBuilder("content");
+    expect(await screen.findByRole("heading", { name: "Add your first module.", level: 4 })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Add your first module", level: 5 })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Create module" })).toBeInTheDocument();
+    expect(screen.queryByText("Add your first lesson.")).toBeNull();
+  });
+
+  // C2: publicar espera a rede e os campos seguem editaveis. Quem voltou a
+  // digitar no titulo nao pode ter as teclas roubadas pelo botao latao.
+  it("publicar nao rouba o foco de quem voltou a digitar no titulo", async () => {
+    let finishPublish: () => void = () => undefined;
+    vi.mocked(publishTeacherCourse).mockImplementationOnce(
+      () => new Promise<never>((resolve) => { finishPublish = () => resolve(undefined as never); }),
+    );
+    // Gratis e com uma aula de texto: o Publish destrava.
+    vi.mocked(subscribeToTeacherCourse).mockImplementationOnce((_id, emit) => {
+      emit({
+        ...mocks.course,
+        paymentType: "free",
+        priceAmountMinor: 0,
+        modules: [{ id: "m1", title: "Start here", lessons: [{ id: "l1", title: "Welcome", description: "", type: "text", contentText: "Read this first." }] }],
+      });
+      return Object.assign(() => {}, { reload: async () => {} });
+    });
+    const view = renderBuilder("review");
+    fireEvent.click(await screen.findByRole("button", { name: "Publish product" }));
+    await waitFor(() => expect(publishTeacherCourse).toHaveBeenCalled());
+
+    // Enquanto a rede responde: aba Details, clique no titulo.
+    mocks.searchParams.set("tab", "details");
+    view.rerender(
+      <I18nProvider initialLocale="en">
+        <SwitchLanguage />
+        <CourseBuilderStudio />
+      </I18nProvider>,
+    );
+    const title = screen.getByRole("textbox", { name: "Course title" });
+    title.focus();
+    await act(async () => finishPublish());
+
+    const copy = await screen.findByRole("button", { name: "Copy my page link" });
+    expect(title).toHaveFocus();
+    expect(copy).not.toHaveFocus();
   });
 });

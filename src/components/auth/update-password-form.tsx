@@ -150,7 +150,7 @@ export function UpdatePasswordForm({
           className="field-input"
         />
         {showMismatch ? (
-          <span className="text-xs font-semibold text-[var(--color-accent-fg)]">
+          <span className="text-xs font-semibold text-[var(--color-danger-fg)]">
             {t("auth.signup.passwordsDontMatch")}
           </span>
         ) : null}

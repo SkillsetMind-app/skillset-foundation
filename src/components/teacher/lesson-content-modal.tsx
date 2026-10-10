@@ -12,6 +12,8 @@ import {
   type Ref,
 } from "react";
 import {
+  ArrowDown,
+  ArrowUp,
   CheckCircle2,
   FileText,
   Film,
@@ -35,7 +37,9 @@ import type { CourseAsset, CourseAssetKind } from "@/domain/course-asset";
 import {
   bunnyVideoMaxBytes,
   courseAssetAcceptTypes,
+  courseAssetTitleMaxLength,
   formatCourseAssetSize,
+  getCourseAssetTitle,
   getCourseAssetUploadErrorMessage,
   getPrimaryLessonVideoAsset,
   isAllowedBunnyVideoFile,
@@ -55,6 +59,8 @@ import {
 import {
   CourseAssetUploadCancelled,
   deleteCourseAsset,
+  renameCourseAsset,
+  saveCourseAssetOrder,
   subscribeToCourseAssets,
   uploadCourseAsset,
   uploadLessonVideoToBunny,
@@ -87,6 +93,9 @@ type LessonContentModalProps = {
   onAssetsChanged?: () => void;
   // Builder saindo da pagina: grava, sem prompt, o link digitado e sem blur.
   leaveFlushRef?: Ref<() => void>;
+  // E-book: so a lista de arquivos da aula, sem trilha, abas, video nem o
+  // "Done". O comprador baixa o arquivo nessa aula, que o criador nao ve.
+  filesOnly?: boolean;
   course: TeacherCourse;
   module: TeacherCourseModule;
   moduleIndex: number;
@@ -104,7 +113,7 @@ type LessonContentModalProps = {
 
 type LessonModalTab = "video" | "description" | "materials" | "settings";
 type LessonError =
-  | { kind: "load" | "delete" }
+  | { kind: "load" | "delete" | "save" }
   | { kind: "notVideo"; fileName: string }
   | { kind: "videoTooLarge"; size: number; limitBytes: number }
   | { kind: "videoLimit"; limitBytes: number }
@@ -221,6 +230,7 @@ export function LessonContentModal({
   crumbs,
   onUploadingChange,
   onAssetsChanged,
+  filesOnly = false,
 }: LessonContentModalProps) {
   const { t } = useTranslation();
   const uploadManager = useLessonUpload();
@@ -230,16 +240,15 @@ export function LessonContentModal({
     mountedRef.current = true;
     return () => { mountedRef.current = false; };
   }, []);
-  const [tab, setTab] = useState<LessonModalTab>("video");
+  const [tab, setTab] = useState<LessonModalTab>(filesOnly ? "materials" : "video");
   // Decidido uma vez ao abrir a aula (o builder monta uma instancia por aula):
   // se dependesse do valor vivo, apagar a nota desmontava o campo no mesmo
   // toque e o professor nao conseguia desfazer.
   const [hadOldNote] = useState(() => Boolean(lesson.description?.trim()));
   const [assets, setAssets] = useState<CourseAsset[]>([]);
-  const [uploadKind, setUploadKind] = useState<CourseAssetKind>("lesson_video");
+  const [uploadKind, setUploadKind] = useState<CourseAssetKind>(filesOnly ? "lesson_material" : "lesson_video");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [fileInputKey, setFileInputKey] = useState(0);
-  const [isPreviewAsset, setIsPreviewAsset] = useState(false);
   const [localUploading, setIsUploading] = useState(false);
   const isUploading = localUploading || lessonUploadIsBusy(sharedUpload);
   // Guarda o cancelador entregue pelo uploader enquanto o envio corre.
@@ -250,7 +259,8 @@ export function LessonContentModal({
   const [localUploadProgress, setUploadProgress] = useState<UploadCourseAssetProgress | null>(null);
   const uploadProgress = sharedUpload?.progress ?? localUploadProgress;
   const [error, setError] = useState<LessonError | null>(null);
-  const [success, setSuccess] = useState<"uploaded" | "deleted" | "oldLinkRemoved" | null>(null);
+  const [success, setSuccess] = useState<"uploaded" | "deleted" | "oldLinkRemoved" | "renamed" | "ordered" | null>(null);
+  const [isSavingOrder, setIsSavingOrder] = useState(false);
   const completedAssetId = sharedUpload?.status === "success" ? sharedUpload.assetId : undefined;
   const [handledAssetId, setHandledAssetId] = useState<string | undefined>();
   if (completedAssetId && completedAssetId !== handledAssetId) {
@@ -258,7 +268,6 @@ export function LessonContentModal({
     setError(null);
     setSelectedFile(null);
     setUploadProgress(null);
-    setIsPreviewAsset(false);
     setFileInputKey((current) => current + 1);
     setSuccess("uploaded");
   }
@@ -597,8 +606,11 @@ export function LessonContentModal({
     // único chamado de "prévia" — publicava com tudo verde no estúdio e via
     // "Video unavailable" na própria loja, sem nenhum sinal do que faltava.
     // Duas perguntas para a mesma decisão; agora o toggle da aula manda.
-    const uploadAsPreview =
-      isPreviewAsset || (isFreePreview && isVideoAssetKind(uploadKind));
+    //
+    // A caixa "Allow this file in the public preview" saiu: nenhuma regra lia
+    // is_preview de material (a RLS do bucket privado só olha matrícula e aula
+    // liberada), então ela marcava "Preview" num arquivo que continuava fechado.
+    const uploadAsPreview = isFreePreview && isVideoAssetKind(uploadKind);
     let failed = false;
 
     try {
@@ -643,7 +655,6 @@ export function LessonContentModal({
       setSuccess("uploaded");
       setSelectedFile(null);
       setUploadProgress(null);
-      setIsPreviewAsset(false);
       setFileInputKey((current) => current + 1);
       if (!uploadManager) {
         void assetsReloadRef.current?.();
@@ -715,6 +726,40 @@ export function LessonContentModal({
     }
   }
 
+  async function handleRenameAsset(asset: CourseAsset, title: string) {
+    if (!isEditable) return;
+    setError(null);
+    setSuccess(null);
+    try {
+      await renameCourseAsset(asset.id, title);
+      setSuccess("renamed");
+      void assetsReloadRef.current?.();
+    } catch {
+      setError({ kind: "save" });
+    }
+  }
+
+  // Troca o arquivo com o vizinho e grava a lista inteira na nova ordem
+  // (só as linhas que mudaram vão ao banco).
+  async function handleMoveMaterial(index: number, delta: -1 | 1) {
+    const target = index + delta;
+    if (!isEditable || isSavingOrder || target < 0 || target >= materialAssets.length) return;
+    const ordered = [...materialAssets];
+    [ordered[index], ordered[target]] = [ordered[target], ordered[index]];
+    setError(null);
+    setSuccess(null);
+    setIsSavingOrder(true);
+    try {
+      await saveCourseAssetOrder(ordered);
+      setSuccess("ordered");
+      await assetsReloadRef.current?.();
+    } catch {
+      setError({ kind: "save" });
+    } finally {
+      setIsSavingOrder(false);
+    }
+  }
+
   const isPage = variant === "page";
 
   // Sair pela trilha passa pelo mesmo cuidado de fechar: envio no ar segura, o
@@ -730,12 +775,12 @@ export function LessonContentModal({
         ref={dialogRef}
         tabIndex={-1}
         aria-modal={isPage ? undefined : "true"}
-        aria-labelledby="lesson-modal-title"
+        aria-labelledby={filesOnly ? undefined : "lesson-modal-title"}
         className={isPage ? "lesson-modal lesson-modal--page" : "lesson-modal"}
         role={isPage ? undefined : "dialog"}
         onMouseDown={isPage ? undefined : (event) => event.stopPropagation()}
       >
-        {isPage && crumbs ? (
+        {filesOnly ? null : isPage && crumbs ? (
           <nav className="lesson-modal__header" aria-label={t("creatorEditor.builder.curriculum.breadcrumb")}>
             <ol className="lesson-modal__trail">
               <li>
@@ -778,6 +823,7 @@ export function LessonContentModal({
           </header>
         )}
 
+        {filesOnly ? null : (
         <nav className="lesson-modal__tabs" aria-label={t("creatorEditor.lesson.setup")}>
           {lessonModalTabs.map((item) => {
             const Icon = item.icon;
@@ -811,8 +857,10 @@ export function LessonContentModal({
             );
           })}
         </nav>
+        )}
 
         <div className="lesson-modal__body">
+          {filesOnly ? null : (
           <div className="lesson-modal__context">
             <h3 id="lesson-modal-title" tabIndex={-1}>{lesson.title || t("creatorEditor.lesson.untitled")}</h3>
             <p className="lesson-modal__crumb">
@@ -822,6 +870,7 @@ export function LessonContentModal({
                 .replace("{moduleTitle}", () => module.title)}
             </p>
           </div>
+          )}
           {tab === "video" ? (
             <div className="grid gap-5">
 
@@ -901,9 +950,7 @@ export function LessonContentModal({
                   <LessonUploadForm
                     error={errorMessage}
                     isEditable={isEditable}
-                    isPreviewAsset={isPreviewAsset}
                     isUploading={isUploading}
-                    onChangePreview={setIsPreviewAsset}
                     onFileChange={(file) => {
                       setSelectedFile(file);
                       setUploadProgress(null);
@@ -1064,9 +1111,7 @@ export function LessonContentModal({
               <LessonUploadForm
                 error={errorMessage}
                 isEditable={isEditable}
-                isPreviewAsset={isPreviewAsset}
                 isUploading={isUploading}
-                onChangePreview={setIsPreviewAsset}
                 onFileChange={(file) => {
                   resetUploadState("lesson_thumbnail");
                   setSelectedFile(file);
@@ -1104,9 +1149,7 @@ export function LessonContentModal({
               <LessonUploadForm
                 error={errorMessage}
                 isEditable={isEditable}
-                isPreviewAsset={isPreviewAsset}
                 isUploading={isUploading}
-                onChangePreview={setIsPreviewAsset}
                 onFileChange={(file) => {
                   resetUploadState("lesson_material");
                   setSelectedFile(file);
@@ -1129,6 +1172,9 @@ export function LessonContentModal({
                 isEditable={isEditable}
                 deletingAssetId={deletingAssetId}
                 onDelete={handleDeleteAsset}
+                onRename={(asset, title) => void handleRenameAsset(asset, title)}
+                onMove={(index, delta) => void handleMoveMaterial(index, delta)}
+                isSavingOrder={isSavingOrder}
               />
             </div>
           ) : null}
@@ -1176,11 +1222,14 @@ export function LessonContentModal({
               ) : null}
             </div>
           ) : null}
+          {filesOnly ? null : (
           <p className="lesson-modal__guidance">
             {t("creatorEditor.lesson.contextHelp")}
           </p>
+          )}
         </div>
 
+        {filesOnly ? null : (
         <footer className="lesson-modal__footer">
           <p>
             <CheckCircle2 aria-hidden="true" size={14} />
@@ -1195,6 +1244,7 @@ export function LessonContentModal({
             {isUploading ? t("creatorEditor.lesson.file.uploading") : t("creatorEditor.lesson.state.done")}
           </button>
         </footer>
+        )}
       </section>
   );
 
@@ -1209,10 +1259,8 @@ function LessonUploadForm({
   error,
   fileInputKey,
   isEditable,
-  isPreviewAsset,
   isUploading,
   onCancel,
-  onChangePreview,
   onFileChange,
   onSubmit,
   progressLabel,
@@ -1225,11 +1273,9 @@ function LessonUploadForm({
   error: string;
   fileInputKey: number;
   isEditable: boolean;
-  isPreviewAsset: boolean;
   isUploading: boolean;
   /** Disponível só enquanto há bytes em voo; null fora disso. */
   onCancel?: (() => void) | null;
-  onChangePreview: (nextValue: boolean) => void;
   onFileChange: (file: File | null) => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
   progressLabel: string;
@@ -1346,15 +1392,6 @@ function LessonUploadForm({
           </select>
         </label>
       ) : null}
-      <label className="lesson-modal-upload__preview">
-        <input
-          type="checkbox"
-          checked={isPreviewAsset}
-          disabled={!isEditable || isUploading}
-          onChange={(event) => onChangePreview(event.target.checked)}
-        />
-        {t("creatorEditor.lesson.file.allowPreview")}
-      </label>
     </form>
   );
 }
@@ -1365,12 +1402,20 @@ function LessonAssetList({
   isEditable,
   deletingAssetId,
   onDelete,
+  onRename,
+  onMove,
+  isSavingOrder = false,
 }: {
   assets: CourseAsset[];
   emptyLabel: string;
   isEditable: boolean;
   deletingAssetId: string | null;
   onDelete: (asset: CourseAsset) => void;
+  /** Materiais: o nome que o aluno vê, gravado ao sair do campo. */
+  onRename?: (asset: CourseAsset, title: string) => void;
+  /** Materiais: sobe (-1) ou desce (+1) o arquivo na lista. */
+  onMove?: (index: number, delta: -1 | 1) => void;
+  isSavingOrder?: boolean;
 }) {
   const { t } = useTranslation();
   if (assets.length === 0) {
@@ -1379,24 +1424,78 @@ function LessonAssetList({
 
   return (
     <div className="lesson-modal-assets">
-      {assets.map((asset) => {
+      {assets.map((asset, index) => {
         const thumbnailUrl = asset.kind === "lesson_thumbnail"
           ? getSafeMediaUrl(asset.downloadUrl)
           : null;
+        const title = getCourseAssetTitle(asset);
         return (
         <article key={asset.id}>
-          <div>
+          <div className="min-w-0 flex-1">
             {thumbnailUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={thumbnailUrl} alt={t("creatorEditor.lesson.thumbnailAlt").replace("{fileName}", () => asset.fileName)} className="mb-2 max-h-32 max-w-full rounded-lg object-contain" />
             ) : null}
-            <strong>{asset.fileName}</strong>
+            {onRename ? (
+              <label className="grid gap-1">
+                <span>{t("creatorEditor.lesson.files.titleLabel")}</span>
+                <input
+                  // A chave muda quando o nome gravado muda: depois de salvar,
+                  // o campo mostra o que está no banco (aparado).
+                  key={title}
+                  defaultValue={title}
+                  maxLength={courseAssetTitleMaxLength}
+                  disabled={!isEditable}
+                  onBlur={(event) => {
+                    const next = event.target.value.trim();
+                    if (next !== title) onRename(asset, next);
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") event.currentTarget.blur();
+                  }}
+                  className="min-h-11 w-full rounded-md border border-[var(--color-line)] bg-white px-3 text-sm font-semibold text-[var(--color-ink)]"
+                />
+              </label>
+            ) : (
+              <strong>{title}</strong>
+            )}
             <span>
               {getCourseAssetKindLabel(asset.kind, t)} - {formatCourseAssetSize(asset.size)}
             </span>
+            {onRename && title !== asset.fileName ? (
+              <span>{t("creatorEditor.lesson.files.originalName").replace("{fileName}", () => asset.fileName)}</span>
+            ) : null}
           </div>
           <div className="flex items-center gap-3">
-            <small>{asset.isPreview ? t("creatorEditor.lesson.state.preview") : t("creatorEditor.lesson.enrolledOnly")}</small>
+            {onMove && isEditable ? (
+              // aria-disabled, não disabled: o botão desligado durante a gravação
+              // jogava o foco do teclado para o começo da página a cada movimento.
+              // O clique fora de hora (gravando, ou na ponta da lista) é ignorado
+              // por quem recebe onMove.
+              <div className="flex gap-1">
+                <button
+                  type="button"
+                  onClick={() => onMove(index, -1)}
+                  aria-disabled={index === 0 || isSavingOrder}
+                  aria-label={t("creatorEditor.lesson.files.moveUp").replace("{title}", () => title)}
+                  className="button-outline min-h-11 min-w-11 px-2 aria-disabled:opacity-40"
+                >
+                  <ArrowUp aria-hidden="true" size={16} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onMove(index, 1)}
+                  aria-disabled={index === assets.length - 1 || isSavingOrder}
+                  aria-label={t("creatorEditor.lesson.files.moveDown").replace("{title}", () => title)}
+                  className="button-outline min-h-11 min-w-11 px-2 aria-disabled:opacity-40"
+                >
+                  <ArrowDown aria-hidden="true" size={16} />
+                </button>
+              </div>
+            ) : null}
+            {/* "Preview" só existe para vídeo (a aula de amostra); material é
+                sempre só de matriculado, marcado ou não no passado. */}
+            <small>{asset.isPreview && isVideoAssetKind(asset.kind) ? t("creatorEditor.lesson.state.preview") : t("creatorEditor.lesson.enrolledOnly")}</small>
             {isEditable ? (
               <button
                 type="button"

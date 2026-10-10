@@ -61,6 +61,32 @@ export function isValidExternalEventUrl(value: string): boolean {
 
 // Defaults keep every existing caller on English; the classroom passes its
 // locale and an already-translated placeholder.
+/** A data no fuso de quem ensina, com o fuso escrito ("GMT-3"). Fuso ausente
+ *  ou invalido: o de quem le, tambem escrito. Data invalida: null. */
+export function formatEventDateTimeInZone(
+  value: string,
+  locale: string,
+  timeZone: string | null,
+): string | null {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+  const options: Intl.DateTimeFormatOptions = {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    timeZoneName: "short",
+  };
+  try {
+    return new Intl.DateTimeFormat(locale, { ...options, timeZone: timeZone ?? undefined }).format(date);
+  } catch {
+    return new Intl.DateTimeFormat(locale, options).format(date);
+  }
+}
+
 export function formatEventDateTime(
   value: string,
   locale = "en",

@@ -14,6 +14,9 @@ import {
 type CourseReviewPanelProps = {
   courseId: string;
   progressPercent: number;
+  /** A regra dos 50% so vale para curso com aula: comunidade, evento ao vivo,
+   *  e-book e curso sem aula avaliam sem progresso (submit_course_review). */
+  requiresProgress?: boolean;
   previewMode?: boolean;
 };
 
@@ -43,6 +46,7 @@ function reviewFailureKey(error: unknown): string {
 export function CourseReviewPanel({
   courseId,
   progressPercent,
+  requiresProgress = true,
   previewMode = false,
 }: CourseReviewPanelProps) {
   const { t } = useTranslation();
@@ -52,7 +56,8 @@ export function CourseReviewPanel({
   const [body, setBody] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState("");
-  const canReview = !previewMode && progressPercent >= 50 && Boolean(user);
+  const progressMissing = requiresProgress && progressPercent < 50;
+  const canReview = !previewMode && !progressMissing && Boolean(user);
 
   useEffect(() => {
     if (!user || previewMode) {
@@ -142,7 +147,7 @@ export function CourseReviewPanel({
           <p className="rounded-md bg-white px-3 py-2 text-xs font-semibold leading-5 text-[var(--color-ink-soft)]">
             {previewMode
               ? t("learn.classroom.review.preview")
-              : progressPercent < 50
+              : progressMissing
                 ? t("learn.classroom.review.progressRequired")
                 : t("learn.classroom.review.signIn")}
           </p>

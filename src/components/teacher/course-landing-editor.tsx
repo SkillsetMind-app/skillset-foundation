@@ -16,7 +16,7 @@
  */
 
 import { ChevronDown, ChevronUp, Loader2, Plus, Trash2 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { useAuth } from "@/components/auth/auth-provider";
@@ -225,7 +225,7 @@ function BlockFields({
                 onClick={() =>
                   onChange({ ...block, steps: block.steps.filter((_, i) => i !== index) })
                 }
-                className="justify-self-start text-xs font-semibold text-[var(--color-danger-fg)]"
+                className="min-h-6 justify-self-start text-xs font-semibold text-[var(--color-danger-fg)]"
               >
                 {t("teacherLanding.fields.removeStep")}
               </button>
@@ -283,7 +283,7 @@ function BlockFields({
                 onClick={() =>
                   onChange({ ...block, quotes: block.quotes.filter((_, i) => i !== index) })
                 }
-                className="justify-self-start text-xs font-semibold text-[var(--color-danger-fg)]"
+                className="min-h-6 justify-self-start text-xs font-semibold text-[var(--color-danger-fg)]"
               >
                 {t("teacherLanding.fields.remove")}
               </button>
@@ -438,7 +438,10 @@ export function CourseLandingEditor({ course }: { course: TeacherCourse }) {
     return () => window.clearTimeout(timer);
   }, [load]);
 
-  useEffect(() => {
+  // Layout, not passive: a passive effect can run after the new blocks are
+  // already on screen, and a link pasted in that gap was checked against the
+  // old list, taken for a removed block and dropped.
+  useLayoutEffect(() => {
     entriesRef.current = entries;
   }, [entries]);
 
@@ -552,7 +555,7 @@ export function CourseLandingEditor({ course }: { course: TeacherCourse }) {
         <button
           type="button"
           onClick={() => setEntries(suggestedBlocks(course.title, t).slice(0, limit).map(withId))}
-          className="mt-3 justify-self-start rounded-md border border-[var(--color-line)] bg-white px-4 py-2.5 text-sm font-semibold text-[var(--color-ink)]"
+          className="mt-3 min-h-11 justify-self-start rounded-md border border-[var(--color-line)] bg-white px-4 py-2.5 text-sm font-semibold text-[var(--color-ink)]"
         >
           {t("teacherLanding.suggested")}
         </button>
@@ -653,7 +656,7 @@ export function CourseLandingEditor({ course }: { course: TeacherCourse }) {
           type="button"
           onClick={handleSave}
           disabled={saving}
-          className="inline-flex items-center gap-2 rounded-md bg-[var(--color-primary)] px-5 py-2.5 text-sm font-bold text-[var(--color-on-primary)] disabled:opacity-50"
+          className="inline-flex min-h-11 items-center gap-2 rounded-md bg-[var(--color-primary)] px-5 py-2.5 text-sm font-bold text-[var(--color-on-primary)] disabled:opacity-50"
         >
           {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
           {t(saving ? "teacherLanding.saving" : "teacherLanding.save")}

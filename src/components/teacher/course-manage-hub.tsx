@@ -8,6 +8,7 @@ import type { ReactNode } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { ShortId } from "@/components/shared/short-id";
 import { StatusChip } from "@/components/shared/status-chip";
 import {
   CourseActionsMenu,
@@ -35,7 +36,12 @@ import {
   quotaStatus,
 } from "@/domain/entitlements";
 import { usePublishGates } from "@/components/teacher/use-publish-gates";
-import { getCourseReadiness, type CourseReadinessItem } from "@/domain/course-readiness";
+import {
+  countLessonFiles,
+  getCourseReadiness,
+  upcomingSessionsOf,
+  type CourseReadinessItem,
+} from "@/domain/course-readiness";
 import {
   getCoursePricingShape,
   type CoursePricingShape,
@@ -50,6 +56,8 @@ import {
   subscribeToTeacherCourse,
   subscribeToTeacherCourses,
 } from "@/lib/data/teacher-courses";
+import { fetchCourseAssets } from "@/lib/data/course-assets";
+import { subscribeToTeacherCourseEvents } from "@/lib/data/course-events";
 
 // Per-course management central (Hotmart-style "product hub"): one place with
 // the publish checklist, the course's real settings, and the commerce surfaces.
@@ -278,7 +286,7 @@ function MarketplaceHighlightPanel({
         </p>
       ) : null}
       {error ? (
-        <p className="mt-3 text-xs font-semibold text-[var(--color-accent-fg)]">
+        <p className="mt-3 text-xs font-semibold text-[var(--color-danger-fg)]">
           {"message" in error ? error.message : t(error.key)}
         </p>
       ) : null}
@@ -389,6 +397,40 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
     return subscribeToTeacherCourses(user.uid, setMyCourses, () => undefined);
   }, [user]);
 
+  // O que o tipo entrega, como o construtor le: a sessao por vir do evento ao
+  // vivo e o arquivo do e-book. Sem eles a porcentagem daqui chegava a 100%
+  // com o construtor dizendo "nao esta pronto". Lista que nao chega deixa o
+  // item de fora, como no construtor; o servidor segue cobrando.
+  const productFormat = course?.productFormat ?? "course";
+  const ownerUid = user?.uid;
+  const [sessionCount, setSessionCount] = useState<{ courseId: string; count: number } | null>(null);
+  useEffect(() => {
+    if (!ownerUid || productFormat !== "live_event") {
+      return;
+    }
+    return subscribeToTeacherCourseEvents(
+      ownerUid,
+      (events) => setSessionCount({ courseId, count: upcomingSessionsOf(events, courseId, Date.now()).length }),
+      () => {},
+    );
+  }, [ownerUid, courseId, productFormat]);
+  const ebookModules = productFormat === "ebook" ? course?.modules : undefined;
+  const [fileCount, setFileCount] = useState<{ courseId: string; count: number } | null>(null);
+  useEffect(() => {
+    if (!ebookModules) {
+      return;
+    }
+    let cancelled = false;
+    fetchCourseAssets(courseId)
+      .then((assets) => {
+        if (!cancelled) setFileCount({ courseId, count: countLessonFiles(ebookModules, assets) });
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [courseId, ebookModules]);
+
   const isOwner = Boolean(course && user && course.ownerId === user.uid);
   // Server-enforced by the commerce RPCs; surfaced here so the panels can
   // explain the gate instead of failing on click.
@@ -426,8 +468,26 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
   // diferir da do construtor. O aviso "aulas sem conteudo" do painel cobre o
   // mesmo caso com a mesma regra (getLessonIdsWithMedia). Antes o Manage tinha
   // regra propria e o mesmo curso aparecia com tres porcentagens diferentes.
-  const readiness = getCourseReadiness(course, account, t);
+  const readiness = getCourseReadiness(
+    {
+      ...course,
+      scheduledSessionCount:
+        productFormat === "live_event" && sessionCount?.courseId === course.id ? sessionCount.count : undefined,
+      lessonFileCount:
+        productFormat === "ebook" && fileCount?.courseId === course.id ? fileCount.count : undefined,
+    },
+    account,
+    t,
+  );
   const pricing = getCoursePricingShape(course);
+  // "Add the yearly plan" na etapa de preco chega com ?addPrice=yearly&amount=
+  // (em centavos): o formulario de outro preco ja abre com o plano anual.
+  const yearlyPrefillMinor = searchParams?.get("addPrice") === "yearly"
+    ? Number(searchParams.get("amount"))
+    : Number.NaN;
+  const yearlyPrefill = Number.isInteger(yearlyPrefillMinor) && yearlyPrefillMinor > 0
+    ? { paymentType: "subscription_yearly" as const, amountMinor: yearlyPrefillMinor }
+    : null;
   const paid = !pricing.free;
   const published = course.status === "published";
   const switchableCourses = myCourses.filter((candidate) => candidate.id !== course.id);
@@ -493,6 +553,9 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
                 <span className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-ink-muted)]">
                   {modulesLabel} - {lessonsLabel} - {priceLabel(pricing, t)}
                 </span>
+              </div>
+              <div className="mt-2">
+                <ShortId id={course.id} label={t("shortId.product")} />
               </div>
             </div>
           </div>
@@ -938,6 +1001,7 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
                 courseId={course.id}
                 courseTitle={courseTitle}
                 coursePricing={pricing}
+                prefill={yearlyPrefill}
               />
             </div>
           ) : null}
@@ -1030,7 +1094,12 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
             </PanelCard>
           ) : null}
 
-          {section === "students" ? <CourseStudentRoster courseId={course.id} /> : null}
+          {section === "students" ? (
+            <CourseStudentRoster
+              courseId={course.id}
+              share={course.status === "published" ? { title: course.title } : undefined}
+            />
+          ) : null}
 
           {section === "page" ? (
             <div className="grid gap-4">
@@ -1085,11 +1154,6 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
                     label: t("platform.nav.mediaLibrary"),
                     detail: t("creatorPanel.hub.tools.mediaDetail"),
                     href: "/teach/media",
-                  },
-                  {
-                    label: t("platform.nav.integrations"),
-                    detail: t("creatorPanel.hub.tools.integrationsDetail"),
-                    href: "/teach/integrations",
                   },
                   {
                     label: t("creatorPanel.hub.tools.verification"),

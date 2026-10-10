@@ -5,6 +5,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 
 import { formatNotificationTime } from "@/components/account/notification-row";
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { CommunityItemActions } from "@/components/learn/community-item-actions";
 import type { SkillsetUser } from "@/domain/auth";
 import { isAnswered, isInstructor, postKind, toMillis } from "@/domain/community-feed";
 import type { CommunityComment, CommunityPost } from "@/domain/community-post";
@@ -26,6 +27,9 @@ import { useModalFocus } from "@/lib/a11y/use-modal-focus";
 // resposta aceita fica em verde no topo, as demais embaixo, e a caixa de
 // resposta e fixa no rodape. A mesma gaveta serve para qualquer post.
 
+// Fora do componente: useModalFocus refaz o efeito se a funcao mudar.
+const focusCommunityHeading = () => document.querySelector<HTMLElement>("[data-community-heading]");
+
 export function CommunityPostDrawer({
   post,
   comments,
@@ -33,6 +37,7 @@ export function CommunityPostDrawer({
   instructorIds,
   canModerate,
   onClose,
+  onHide,
 }: {
   post: CommunityPost;
   comments: CommunityComment[];
@@ -40,6 +45,8 @@ export function CommunityPostDrawer({
   instructorIds: ReadonlySet<string>;
   canModerate: boolean;
   onClose: () => void;
+  /** Tira da tela o post ou a resposta que acabou de ser apagado. */
+  onHide: (id: string) => void;
 }) {
   const { t, locale } = useTranslation();
   const panelRef = useRef<HTMLDivElement>(null);
@@ -48,7 +55,9 @@ export function CommunityPostDrawer({
   // Chave do dicionario, nao texto: o idioma pode trocar com o erro na tela.
   const [error, setError] = useState("");
 
-  useModalFocus(panelRef, true);
+  // Fechou porque o post foi apagado: o botao que abriu a gaveta sumiu junto,
+  // e o foco vai para o titulo da lista.
+  useModalFocus(panelRef, true, focusCommunityHeading);
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -151,6 +160,17 @@ export function CommunityPostDrawer({
               ? ` · ${t("learn.community.card.fromLesson").replace("{lesson}", () => post.lessonTitle ?? "")}`
               : ""}
           </p>
+          <div className="mt-1 flex flex-wrap items-center gap-2">
+            <CommunityItemActions
+              post={post}
+              currentUser={currentUser}
+              canModerate={canModerate}
+              onDeleted={() => {
+                onHide(post.id);
+                onClose();
+              }}
+            />
+          </div>
           {kind === "question" ? (
             <span
               className={`mt-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-bold ${
@@ -179,6 +199,7 @@ export function CommunityPostDrawer({
                 return (
                   <li
                     key={reply.id}
+                    data-community-item
                     className={`rounded-lg p-3 text-sm ${
                       isAnswer
                         ? "border border-[rgba(22,163,74,0.35)] bg-[rgba(22,163,74,0.08)]"
@@ -197,15 +218,24 @@ export function CommunityPostDrawer({
                       {formatNotificationTime(reply.createdAt, t, locale)}
                     </p>
                     <p className="mt-1 whitespace-pre-wrap leading-6 text-[var(--color-ink)]">{reply.body}</p>
-                    {canMark ? (
-                      <button
-                        type="button"
-                        onClick={() => void markAnswer(isAnswer ? null : reply.id)}
-                        className="mt-2 min-h-11 text-xs font-semibold text-[var(--color-primary)] hover:underline"
-                      >
-                        {t(isAnswer ? "learn.community.drawer.unmark" : "learn.community.drawer.mark")}
-                      </button>
-                    ) : null}
+                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                      {canMark ? (
+                        <button
+                          type="button"
+                          onClick={() => void markAnswer(isAnswer ? null : reply.id)}
+                          className="min-h-11 text-xs font-semibold text-[var(--color-primary)] hover:underline"
+                        >
+                          {t(isAnswer ? "learn.community.drawer.unmark" : "learn.community.drawer.mark")}
+                        </button>
+                      ) : null}
+                      <CommunityItemActions
+                        post={post}
+                        comment={reply}
+                        currentUser={currentUser}
+                        canModerate={canModerate}
+                        onDeleted={() => onHide(reply.id)}
+                      />
+                    </div>
                   </li>
                 );
               })

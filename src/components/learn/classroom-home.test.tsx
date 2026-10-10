@@ -303,11 +303,11 @@ describe("sala de aula com matricula real", () => {
       size: 512, storagePath: "courses/course-1/assets/file-test.pdf", isPreview: false }]));
     expect(screen.getByText("1 archivo")).toBeInTheDocument();
     expect(screen.getByText("Worksheet $$50 $&.pdf")).toBeInTheDocument();
-    expect(screen.getByText(/Material de la lección/)).toBeInTheDocument();
-    expect(screen.getByText("Solo inscritos")).toBeInTheDocument();
+    // Arquivo sem aula (do curso inteiro) fica no grupo próprio.
+    expect(screen.getByRole("heading", { name: "Archivos del curso" })).toBeInTheDocument();
     act(() => emit([]));
     expect(screen.getByText("0 archivos")).toBeInTheDocument();
-    expect(screen.getByText("Este curso todavía no tiene recursos generales adjuntos.")).toBeInTheDocument();
+    expect(screen.getByText("Todavía no hay archivos para descargar.")).toBeInTheDocument();
   });
 
   it.each([false, true])("keeps the members cover in the hero, not Materials (preview=%s)", async (previewMode) => {
@@ -340,17 +340,19 @@ describe("sala de aula com matricula real", () => {
       { ...material, id: "lesson-only", lessonId: "l1", fileName: "lesson-only.png" },
       { ...material, id: "module-only", moduleId: "m1", fileName: "module-only.png" },
     ]));
-    expect(screen.getByText("1 file")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /^Materials\s*1$/ })).toBeInTheDocument();
+    // Materiais lista também o arquivo da aula liberada (l1), não só o do curso.
+    expect(screen.getByText("2 files")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /^Materials\s*2$/ })).toBeInTheDocument();
     expect(screen.getByText("Worksheet.png")).toBeInTheDocument();
-    for (const name of ["identity-only.png", "course-art.png", "lesson-only.png", "module-only.png"]) {
+    expect(screen.getByText("lesson-only.png")).toBeInTheDocument();
+    for (const name of ["identity-only.png", "course-art.png", "module-only.png"]) {
       expect(screen.queryByText(name)).not.toBeInTheDocument();
     }
 
     await act(async () => emit([cover]));
     expect(screen.getByText("0 files")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /^Materials$/ })).toBeInTheDocument();
-    expect(screen.getByText("No general course resources are attached yet.")).toBeInTheDocument();
+    expect(screen.getByText("No files to download yet.")).toBeInTheDocument();
 
     rerender(workspace("lesson"));
     await waitFor(() => expect(container.querySelector(".members-hero__cover")).toHaveAttribute("src", "blob:members-art"));

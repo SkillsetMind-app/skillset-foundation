@@ -47,8 +47,11 @@ export function SalesPageEditor({ course }: { course: TeacherCourse }) {
         categories: course.categories ?? [],
         learningOutcomes,
         modules: course.modules ?? [],
-        paymentType: course.paymentType ?? "one_time",
-        priceAmountMinor: course.priceAmountMinor ?? 0,
+        // Mesma leitura do construtor: sem forma gravada e sem valor e gratis.
+        // Mandar "pagamento unico a 0" num produto no ar era recusado
+        // (PAID_PRODUCT_NEEDS_PRICE) e o texto nao salvava.
+        paymentType: course.paymentType ?? (course.priceAmountMinor ? "one_time" : "free"),
+        priceAmountMinor: course.priceAmountMinor ?? null,
         currency: course.currency ?? "USD",
         installmentsEnabled: Boolean(course.installmentsEnabled),
         installmentsMax: course.installmentsMax ?? 1,

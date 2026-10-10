@@ -144,7 +144,7 @@ export function ActivationCheckoutPanel({ courseId = null }: { courseId?: string
     <div className="grid gap-5 lg:grid-cols-[1fr_360px]">
       <Card padding="none" className="overflow-hidden">
         {error ? (
-          <div role="alert" className="p-6 text-sm text-[var(--color-accent-fg)]">
+          <div role="alert" className="p-6 text-sm text-[var(--color-danger-fg)]">
             <p className="font-semibold">
               {error.verificationRequired
                 ? t("creatorPanel.activationGate.verificationTitle")

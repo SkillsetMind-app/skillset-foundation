@@ -316,7 +316,6 @@ export function CreatorOpsHub() {
               href: "/account/payments",
               label: t("teach.reports.linkEarnings"),
             },
-            { href: "/teach/coupons", label: t("teach.reports.linkCoupons") },
             { href: "/teach/builder", label: t("teach.reports.linkBuilder") },
           ].map((link) => (
             <Link

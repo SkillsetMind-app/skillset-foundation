@@ -28,8 +28,6 @@ The frame around all of them is the **Platform shell**: sticky sidebar nav with 
 The design language is reverse-engineered from these primary sources (read-only):
 
 - **Codebase:** `SkillsetUSA/` — Next.js 16 + React 19 + Tailwind v4 application (`skillset-foundation`). Token source: `SkillsetUSA/src/app/globals.css`. Brand metadata: `SkillsetUSA/src/data/brand.ts`. Logo: `SkillsetUSA/public/brand/skillset-logo.png`.
-- **GitHub mirror:** `opatricksimon/skillset-foundation` (private, default branch `main`). Same content as the local mount.
-- **Notes:** `SkillsetUSA/docs/skillset-alpha-execution-plan.md`, `vision/`, `marketplace-payments-plan.md` (read for product context only, not visuals).
 
 Nothing visual was invented — colors, type pairing, button system, card chrome, sidebar nav style, and copywriting tone all come directly from the existing codebase.
 

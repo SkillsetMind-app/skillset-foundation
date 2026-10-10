@@ -80,9 +80,9 @@ function rowToReport(row: CommunityReportRow): CommunityReport {
   };
 }
 
-// Pinned posts float above the rest; within each group newest-first. Sorting
-// client-side keeps the query a single course_slug filter (no composite index)
-// and stays correct for legacy posts that predate the `pinned` field.
+// Pinned posts float above the rest; within each group newest-first. A
+// consulta ja vem nessa ordem (para a janela de 200 ser a certa); ordenar aqui
+// de novo mantem o post legado com `pinned` nulo junto dos nao fixados.
 function compareFeedPosts(left: CommunityPost, right: CommunityPost): number {
   const leftPinned = left.pinned === true ? 1 : 0;
   const rightPinned = right.pinned === true ? 1 : 0;
@@ -146,12 +146,16 @@ export function subscribeToCommunityPosts(
 
   const load = async () => {
     // Bounded so one viral course community can't stream an unbounded
-    // collection to every viewer. Truncation past the cap is arbitrary; a
-    // cursor-based pagination path is the scale-up upgrade.
+    // collection to every viewer. A janela fica com os fixados e os MAIS
+    // NOVOS (sem order, o banco devolvia 200 quaisquer e o post de hoje podia
+    // sumir); usa o indice (course_slug, pinned, created_at desc). A pagina
+    // por cursor e o upgrade se 200 nao bastar.
     const { data, error } = await supabase
       .from("community_posts")
       .select("*")
       .eq("course_slug", courseSlug)
+      .order("pinned", { ascending: false, nullsFirst: false })
+      .order("created_at", { ascending: false, nullsFirst: false })
       .limit(200);
 
     if (error) {
@@ -194,8 +198,12 @@ export function subscribeToCommunityPosts(
  *  Uma leitura ao abrir a sala, so as duas colunas da regra. A regra em si
  *  mora no dominio (countOpenQuestions), nao aqui.
  *
- *  ponytail: leitura unica na montagem, sem realtime. Se o numero precisar
- *  mudar sem recarregar, o upgrade e trocar por uma inscricao. */
+ *  O banco ja filtra (pergunta sem resposta aceita) e manda as MAIS NOVAS:
+ *  sem isso a janela de 200 pegava 200 posts quaisquer e o numero da aba
+ *  saia errado num curso com mais posts. A regra continua no dominio.
+ *
+ *  ponytail: leitura unica na montagem, sem realtime, teto de 200. Se o numero
+ *  precisar mudar sem recarregar, o upgrade e trocar por uma inscricao. */
 export async function countOpenCommunityQuestions(courseSlug: string): Promise<number> {
   const supabase = getSupabaseBrowserClient();
 
@@ -203,6 +211,9 @@ export async function countOpenCommunityQuestions(courseSlug: string): Promise<n
     .from("community_posts")
     .select("category, accepted_comment_id")
     .eq("course_slug", courseSlug)
+    .eq("category", "question")
+    .is("accepted_comment_id", null)
+    .order("created_at", { ascending: false, nullsFirst: false })
     .limit(200);
 
   if (error) {
@@ -219,17 +230,51 @@ export async function countOpenCommunityQuestions(courseSlug: string): Promise<n
 
 // Teacher/admin moderation: toggle a post's pinned state. The write touches only
 // `pinned` + `updated_at`, which is exactly what the RLS teacher-pin path
-// allows (any other changed column would be rejected).
+// allows (any other changed column would be rejected). A RLS recusa em
+// SILENCIO (0 linhas), como no apagar: sem o count o botao nao mudava e
+// ninguem ficava sabendo.
 export async function setCommunityPostPinned(postId: string, pinned: boolean) {
   const supabase = getSupabaseBrowserClient();
 
-  const { error } = await supabase
+  const { error, count } = await supabase
     .from("community_posts")
-    .update({ pinned, updated_at: nowIso() })
+    .update({ pinned, updated_at: nowIso() }, { count: "exact" })
     .eq("id", postId);
 
   if (error) {
     throw error;
+  }
+  if (!count) {
+    throw new Error("community_pin_refused");
+  }
+}
+
+// Apagar post ou resposta: o autor, o dono do curso ou o admin (policies de
+// DELETE). As respostas do post (e as respostas de uma resposta) vao junto em
+// cascata. A RLS recusa em SILENCIO (0 linhas, sem erro): sem o count a tela
+// diria "apagado" com o post ainda la.
+export async function deleteCommunityPost(postId: string) {
+  await deleteCommunityRow("community_posts", postId);
+}
+
+export async function deleteCommunityComment(commentId: string) {
+  await deleteCommunityRow("community_comments", commentId);
+}
+
+async function deleteCommunityRow(
+  table: "community_posts" | "community_comments",
+  id: string,
+) {
+  const { error, count } = await getSupabaseBrowserClient()
+    .from(table)
+    .delete({ count: "exact" })
+    .eq("id", id);
+
+  if (error) {
+    throw error;
+  }
+  if (!count) {
+    throw new Error("community_delete_refused");
   }
 }
 
@@ -353,11 +398,14 @@ export function subscribeToCourseCommunityComments(
   const supabase = getSupabaseBrowserClient();
 
   const load = async () => {
+    // A janela guarda as respostas MAIS NOVAS (antes cortava justamente
+    // elas, passando de maxComments); a tela continua lendo da mais antiga
+    // para a mais nova.
     const { data, error } = await supabase
       .from("community_comments")
       .select("*")
       .eq("course_slug", courseSlug)
-      .order("created_at", { ascending: true })
+      .order("created_at", { ascending: false, nullsFirst: false })
       .limit(maxComments);
 
     if (error) {
@@ -365,7 +413,7 @@ export function subscribeToCourseCommunityComments(
       return;
     }
 
-    callback((data ?? []).map(rowToComment));
+    callback((data ?? []).map(rowToComment).reverse());
   };
 
   void load();
@@ -519,6 +567,76 @@ export async function getRecentCommunityQuestions(
     .eq("category", "question")
     .order("created_at", { ascending: false })
     .limit(limit);
+
+  if (error) throw error;
+  return (data ?? []).map(rowToPost);
+}
+
+/**
+ * Os ids das perguntas que esperam pelo professor nas comunidades dele: a
+ * mesma regra da caixa de cada curso (openQuestions) — sem resposta aceita e
+ * sem resposta de instrutor. Alimenta o numero ao lado de "Inbox" em toda
+ * pagina do professor, entao le so ids, nunca o texto.
+ *
+ * As mais NOVAS primeiro, com os filtros na consulta: a janela pegava as 200
+ * mais antigas, e perguntas ja respondidas sem "resposta aceita" ocupavam a
+ * janela ate a Caixa dizer "nada esperando" com aluno esperando. Das
+ * respostas, o banco devolve so as de instrutor, e so a coluna post_id.
+ *
+ * ponytail: duas leituras, tetos de 200 perguntas e 2000 respostas. Uma
+ * pergunta aberta mais velha que as 200 mais novas sem resposta aceita fica de
+ * fora; o upgrade e uma RPC que filtre "sem resposta de instrutor" no banco.
+ */
+export async function getOpenCommunityQuestions(
+  courseSlugs: string[],
+  instructorId: string,
+): Promise<string[]> {
+  if (!courseSlugs.length) {
+    return [];
+  }
+
+  const supabase = getSupabaseBrowserClient();
+  const { data, error } = await supabase
+    .from("community_posts")
+    .select("id")
+    .in("course_slug", courseSlugs)
+    .eq("category", "question")
+    .is("accepted_comment_id", null)
+    .order("created_at", { ascending: false })
+    .limit(200);
+
+  if (error) throw error;
+  const ids = (data ?? []).map((post) => post.id);
+  if (!ids.length) {
+    return [];
+  }
+
+  // A mesma regra de isInstructor (community-feed): papel de professor ou
+  // admin, ou o dono do curso.
+  const { data: replies, error: repliesError } = await supabase
+    .from("community_comments")
+    .select("post_id")
+    .in("post_id", ids)
+    .or(`author_role.in.(teacher,admin),author_id.eq.${instructorId}`)
+    .limit(2000);
+
+  if (repliesError) throw repliesError;
+  const answered = new Set((replies ?? []).map((reply) => reply.post_id));
+  return ids.filter((id) => !answered.has(id));
+}
+
+/** O texto das perguntas que a Caixa de entrada lista, da que espera ha mais
+ *  tempo para a mais nova. So a pagina Inbox le isto; a conta nao precisa. */
+export async function getCommunityPostsByIds(ids: string[]): Promise<CommunityPost[]> {
+  if (!ids.length) {
+    return [];
+  }
+
+  const { data, error } = await getSupabaseBrowserClient()
+    .from("community_posts")
+    .select("*")
+    .in("id", ids)
+    .order("created_at", { ascending: true });
 
   if (error) throw error;
   return (data ?? []).map(rowToPost);

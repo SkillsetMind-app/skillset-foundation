@@ -8,6 +8,7 @@ import { useEffect, useRef, type MouseEvent } from "react";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import type { TeacherCourse } from "@/domain/teacher-course";
 import { useModalFocus } from "@/lib/a11y/use-modal-focus";
+import { scrollBehavior } from "@/lib/ui/scroll-behavior";
 
 /**
  * Course cover with a designed fallback. A published course with no artwork
@@ -131,7 +132,7 @@ export function CourseUnlockModal({
     onClose();
     // Runs after the modal has handed focus back to its opener, so this wins.
     requestAnimationFrame(() => {
-      target?.scrollIntoView?.({ behavior: "smooth", block: "start" });
+      target?.scrollIntoView?.({ behavior: scrollBehavior(), block: "start" });
       const action = target?.querySelector<HTMLElement>("[data-cta-focus]:not([disabled])");
       (action ?? target)?.focus({ preventScroll: true });
     });

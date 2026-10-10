@@ -20,7 +20,8 @@ import { SessionCard } from "@/components/platform/session-card";
 import { LogoWordmark } from "@/components/shared/logo-wordmark";
 import type { PlatformNavCounts } from "@/data/site";
 import { useModalFocus } from "@/lib/a11y/use-modal-focus";
-import { getWorkspaceHomeHref } from "@/lib/auth/routing";
+import { getWorkspaceHomeHref, getWorkspaceSide } from "@/lib/auth/routing";
+import { hasPermission } from "@/lib/permissions";
 
 type MobileSidebarDrawerProps = {
   open: boolean;
@@ -31,9 +32,10 @@ type MobileSidebarDrawerProps = {
   navigationCounts?: PlatformNavCounts;
 };
 
+// Os itens da lista, nao o ☰ do topo da barra: o foco volta para um destino.
 function visibleNavigationControl() {
   return Array.from(document.querySelectorAll<HTMLElement>(
-    ".platform-sidebar .platform-nav-link, .platform-mobile-nav button",
+    ".platform-sidebar .platform-sidebar-nav .platform-nav-link, .platform-mobile-nav button",
   )).find((element) => element.getClientRects().length > 0) ?? null;
 }
 
@@ -53,13 +55,17 @@ export function MobileSidebarDrawer({
 
   useModalFocus(drawerRef, open, visibleNavigationControl);
   const homeHref = getWorkspaceHomeHref(pathname, user);
+  // O atalho e sempre o OUTRO lado: no lado do professor, "Learn"; no do
+  // aluno, "Teach" (so para quem ensina). Antes era sempre "Teach", e no
+  // estudio ele se fundia com o Home — nao havia como ir estudar pela barra.
+  const side = getWorkspaceSide(pathname, user);
   const workspaceItem = useMemo(() => {
-    const isTeacher = user?.roles.includes("teacher");
+    const canTeach = Boolean(user) && hasPermission({ roles: user?.roles ?? [] }, "teacherStudio.access");
 
-    return isTeacher
+    return canTeach && side !== "teacher"
       ? { href: "/teach", label: t("platform.mobile.teach"), icon: Presentation }
       : { href: "/learn", label: t("platform.mobile.learn"), icon: GraduationCap };
-  }, [user?.roles, t]);
+  }, [user, side, t]);
   const primaryItems = [
     { href: homeHref, label: t("platform.mobile.home"), icon: Home },
     { href: "/courses", label: t("platform.mobile.market"), icon: ShoppingBag },
@@ -81,7 +87,9 @@ export function MobileSidebarDrawer({
       }
     }
 
-    const desktop = window.matchMedia?.("(min-width: 1024px)");
+    // Abaixo de 1180px o rail recolhido abre esta gaveta; acima, o grupo abre a
+    // propria barra.
+    const desktop = window.matchMedia?.("(min-width: 1180px)");
     function handleDesktopChange() {
       if (desktop?.matches) onClose();
     }
@@ -129,7 +137,7 @@ export function MobileSidebarDrawer({
       </nav>
 
       {open ? (
-        <div className="fixed inset-0 z-[100] min-[1024px]:hidden">
+        <div className="fixed inset-0 z-[100] min-[1180px]:hidden">
           <button
             type="button"
             className="absolute inset-0 bg-[rgba(15,39,68,0.45)]"

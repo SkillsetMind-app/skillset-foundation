@@ -402,9 +402,17 @@ export function LearnDashboard() {
             {summaryParts.join(" · ")}
           </p>
         </div>
-        <Link href="/courses" className="button-outline px-4 text-sm">
-          {t("learn.dashboard.exploreCourses")}
-        </Link>
+        {/* A agenda saiu da barra lateral (o aluno tem quatro itens fixos):
+            o caminho ate ela fica aqui, sempre, com ou sem live marcada —
+            e em /learn/events que estao as lives que ja passaram. */}
+        <div className="flex flex-wrap items-center gap-2">
+          <Link href="/learn/events" className="button-outline px-4 text-sm">
+            {t("learn.dashboard.allEvents")}
+          </Link>
+          <Link href="/courses" className="button-outline px-4 text-sm">
+            {t("learn.dashboard.exploreCourses")}
+          </Link>
+        </div>
       </header>
 
       {showContinue ? (

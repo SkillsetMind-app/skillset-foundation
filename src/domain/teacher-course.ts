@@ -44,29 +44,53 @@ export type TeacherCoursePaymentType =
   | "subscription_yearly"
   | "free";
 
-export type TeacherCourseProductFormat =
-  | "course"
-  | "program"
-  | "subscription"
-  | "community"
-  | "event"
-  | "free";
+// O que o produto entrega, gravado em courses.product_format. Decide o que o
+// construtor mostra e o que publicar cobra (getCourseReadiness aqui e
+// publish_teacher_course no banco). "Programa guiado" virou a liberacao aos
+// poucos do curso; "Gratis" e "Assinatura" sao respostas da etapa de preco.
+export const teacherCourseProductFormats = ["course", "community", "live_event", "ebook"] as const;
 
-export type TeacherCourseSubscriptionInterval = "monthly" | "yearly";
+export type TeacherCourseProductFormat = (typeof teacherCourseProductFormats)[number];
 
-export function resolveTeacherCoursePaymentType(
+// Links antigos (?format=program, event, free, subscription) e linha sem a
+// coluna caem no tipo que os absorveu.
+export function parseTeacherCourseProductFormat(value: unknown): TeacherCourseProductFormat {
+  if (value === "event") {
+    return "live_event";
+  }
+
+  return teacherCourseProductFormats.includes(value as TeacherCourseProductFormat)
+    ? (value as TeacherCourseProductFormat)
+    : "course";
+}
+
+// Comunidade nasce como mensalidade; o resto como pagamento unico. A etapa de
+// preco troca depois (inclusive para Gratis).
+export function defaultPaymentTypeForProductFormat(
   format: TeacherCourseProductFormat,
-  interval: TeacherCourseSubscriptionInterval
 ): TeacherCoursePaymentType {
-  if (format === "free") {
-    return "free";
-  }
+  return format === "community" ? "subscription_monthly" : "one_time";
+}
 
-  if (format === "subscription" || format === "community") {
-    return interval === "yearly" ? "subscription_yearly" : "subscription_monthly";
-  }
+// As formas de pagar que cada tipo aceita. Evento e e-book nao cobram todo
+// mes; comunidade nao se vende por pagamento unico. O banco cobra a mesma
+// lista ao criar, salvar, publicar e criar preco extra
+// (course_payment_type_fits_format, 20261007030000_como_vao_pagar.sql).
+const paymentTypesByProductFormat: Record<
+  TeacherCourseProductFormat,
+  readonly TeacherCoursePaymentType[]
+> = {
+  course: ["free", "one_time", "subscription_monthly", "subscription_yearly"],
+  community: ["free", "subscription_monthly", "subscription_yearly"],
+  live_event: ["free", "one_time"],
+  ebook: ["free", "one_time"],
+};
 
-  return "one_time";
+export function paymentTypeFitsFormat(
+  format: TeacherCourseProductFormat,
+  paymentType: TeacherCoursePaymentType,
+): boolean {
+  return paymentTypesByProductFormat[format].includes(paymentType);
 }
 
 export type MembersTheme = "light" | "dark";
@@ -103,6 +127,7 @@ export type TeacherCourse = {
   category: string;
   categories?: string[];
   learningOutcomes?: string[];
+  productFormat?: TeacherCourseProductFormat;
   status: TeacherCourseStatus;
   modules: TeacherCourseModule[];
   lessonCount: number;
@@ -155,6 +180,11 @@ export type CreateTeacherCourseInput = {
   categories?: string[];
   paymentType?: TeacherCoursePaymentType;
   communityEnabled?: boolean;
+  productFormat?: TeacherCourseProductFormat;
+  // Curso e e-book nascem com o primeiro modulo e a primeira aula, com estes
+  // nomes (no idioma da pessoa).
+  moduleTitle?: string;
+  lessonTitle?: string;
 };
 
 export type UpdateTeacherCourseBuilderInput = {

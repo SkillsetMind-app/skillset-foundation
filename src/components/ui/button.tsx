@@ -1,9 +1,15 @@
-import type { ButtonHTMLAttributes } from "react";
+import { Loader2 } from "lucide-react";
+import type { ButtonHTMLAttributes, ReactNode } from "react";
 
 import { cn } from "@/lib/cn";
 
-export type ButtonVariant = "solid" | "outline" | "danger" | "ghost";
-export type ButtonSize = "sm" | "md";
+/**
+ * Papéis: navy (`solid`) age; latão (`accent`) só nos dois marcos da jornada,
+ * "Create product" e "Publish product". Latão nunca em erro, aviso ou apagar
+ * (isso é `danger`).
+ */
+export type ButtonVariant = "solid" | "outline" | "danger" | "ghost" | "accent";
+export type ButtonSize = "sm" | "md" | "lg";
 
 /**
  * As classes globais (.button-solid e companhia, globals.css:1006+) definem
@@ -16,18 +22,24 @@ const variantClass: Record<ButtonVariant, string> = {
   solid: "button-solid",
   outline: "button-outline",
   danger: "button-danger",
-  // Sem classe global: fundo transparente que só ganha cor no hover.
+  accent: "button-accent",
+  // Sem classe global: fundo transparente que só ganha cor no hover. A única
+  // variante que traz a própria transição (as outras vêm do CSS global).
   ghost:
-    "border border-transparent bg-transparent text-[var(--color-ink-soft)] hover:bg-[var(--color-surface-soft)] hover:text-[var(--color-ink)]",
+    "border border-transparent bg-transparent text-[var(--color-ink-soft)] transition-colors duration-200 hover:bg-[var(--color-surface-soft)] hover:text-[var(--color-ink)]",
 };
 
 const sizeClass: Record<ButtonSize, string> = {
   sm: "px-3 py-1.5 text-xs",
-  md: "px-4 py-2.5 text-sm",
+  md: "min-h-11 px-4 py-2.5 text-sm",
+  // 48px e 15px/600 vêm de .button-lg (camada components).
+  lg: "button-lg",
 };
 
+// Sem `transition` aqui: a utility (150ms) vencia a camada components e
+// brigava com o afundar de 120ms / soltar de 180ms do CSS global.
 const base =
-  "inline-flex items-center justify-center gap-2 rounded-md font-semibold transition disabled:cursor-not-allowed disabled:opacity-50";
+  "inline-flex items-center justify-center gap-2 rounded-md font-semibold disabled:cursor-not-allowed disabled:opacity-50";
 
 /**
  * A forma em texto, para quem precisa de <Link> vestido de botão — 40 arquivos
@@ -46,13 +58,21 @@ export type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: ButtonVariant;
   size?: ButtonSize;
   fullWidth?: boolean;
+  /** Ícone à esquerda do texto. Decorativo: o nome do botão é o texto. */
+  icon?: ReactNode;
+  /** Carregando: o spinner toma o lugar do ícone e o botão trava. */
+  loading?: boolean;
 };
 
 export function Button({
   variant = "solid",
   size = "md",
   fullWidth = false,
+  icon,
+  loading = false,
+  disabled,
   className,
+  children,
   type = "button",
   ...rest
 }: ButtonProps) {
@@ -61,7 +81,16 @@ export function Button({
       // Sem type explícito, todo botão dentro de <form> envia o formulário.
       type={type}
       className={buttonClasses({ variant, size, fullWidth }, className)}
+      disabled={disabled || loading}
+      aria-busy={loading || undefined}
       {...rest}
-    />
+    >
+      {loading ? (
+        <Loader2 aria-hidden="true" size={16} strokeWidth={2.2} className="shrink-0 animate-spin" />
+      ) : (
+        icon
+      )}
+      {children}
+    </button>
   );
 }

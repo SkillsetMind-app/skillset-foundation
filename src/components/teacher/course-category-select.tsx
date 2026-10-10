@@ -70,7 +70,7 @@ export function CourseCategorySelect({
         aria-controls={optionsId}
         aria-expanded={open}
         onClick={() => setOpen((current) => !current)}
-        className="flex min-h-11 w-full items-center gap-2 rounded-md border border-[var(--color-line)] bg-white px-3.5 py-2 text-left text-sm outline-none transition-colors focus-visible:border-[var(--color-primary-light)] focus-visible:ring-2 focus-visible:ring-[rgba(66,102,145,0.18)] disabled:bg-[var(--color-surface-soft)] disabled:opacity-60"
+        className="flex min-h-11 w-full items-center gap-2 rounded-md border border-[var(--color-field-border)] bg-white px-3.5 py-2 text-left text-sm outline-none transition-colors focus-visible:border-[var(--color-primary-light)] focus-visible:ring-2 focus-visible:ring-[rgba(66,102,145,0.18)] disabled:bg-[var(--color-surface-soft)] disabled:opacity-60"
       >
         <span className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
           {selected.length === 0 ? (

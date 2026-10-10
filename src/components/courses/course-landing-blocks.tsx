@@ -135,12 +135,15 @@ export function CourseLandingBlocks({
   template,
   priceLabel,
   onEnrol,
+  enrolDisabled = false,
 }: {
   blocks: ReadonlyArray<CourseLandingBlock>;
   template: CourseLandingTemplate;
   /** Already resolved by the page from offers + coupons. Never recomputed here. */
   priceLabel?: string;
   onEnrol?: () => void;
+  /** A request is in flight: the button waits instead of firing a second one. */
+  enrolDisabled?: boolean;
 }) {
   // Renders nothing at all when there is no page, so a course without one keeps
   // exactly the layout it has today.
@@ -258,7 +261,8 @@ export function CourseLandingBlocks({
                     <button
                       type="button"
                       onClick={onEnrol}
-                      className="mt-5 inline-flex items-center rounded-md bg-[var(--color-primary)] px-6 py-3 text-sm font-bold text-[var(--color-on-primary)]"
+                      disabled={enrolDisabled}
+                      className="mt-5 inline-flex items-center rounded-md bg-[var(--color-primary)] px-6 py-3 text-sm font-bold text-[var(--color-on-primary)] disabled:opacity-60"
                     >
                       {block.buttonLabel}
                     </button>

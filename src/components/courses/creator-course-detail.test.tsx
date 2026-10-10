@@ -7,6 +7,7 @@ import { startCourseCheckout, enrollInFreeCreatorCourse } from "@/lib/payments/c
 import { PaymentRequestError } from "@/lib/payments/client-fetch";
 import { getCourseLanding } from "@/lib/data/course-landings";
 import { getLessonContentDoc } from "@/lib/data/lesson-content";
+import { getLiveEventSession } from "@/lib/data/course-events";
 import { subscribeToEnrollment } from "@/lib/data/enrollments";
 import { getDictionary, translate } from "@/lib/i18n/dictionaries";
 import type { TeacherCourse } from "@/domain/teacher-course";
@@ -105,13 +106,21 @@ vi.mock("@/lib/data/lesson-content", () => ({
   ) => ({ contentText: lesson.contentText ?? null, externalUrl: lesson.externalUrl ?? null }),
 }));
 
+// A data da sessao do evento ao vivo (get_live_event_session).
+vi.mock("@/lib/data/course-events", () => ({
+  getLiveEventSession: vi.fn(async () => null),
+}));
+
 vi.mock("@/lib/payments/checkout", () => ({
   enrollInFreeCreatorCourse: vi.fn(),
   startCourseCheckout: vi.fn(),
 }));
 
+// The teacher's sales blocks: one button wired to onEnrol, like their CTA block.
 vi.mock("@/components/courses/course-landing-blocks", () => ({
-  CourseLandingBlocks: () => null,
+  CourseLandingBlocks: ({ onEnrol }: { onEnrol?: () => void }) => (
+    <button type="button" onClick={onEnrol}>Sales block CTA</button>
+  ),
 }));
 
 vi.mock("@/components/courses/course-social-proof", () => ({
@@ -430,6 +439,150 @@ const launchOffer = {
 function withOffers(offers: object[] = [launchOffer]) {
   vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ offers }) })));
 }
+
+// The sales blocks' button called checkout alone: for a visitor, a free course
+// or an enrolled learner it did nothing at all.
+describe("CreatorCourseDetail: the sales-page button does what the buy card does", () => {
+  const salesCta = () => screen.getByRole("button", { name: "Sales block CTA" });
+
+  it("a visitor goes to sign up and comes back to this course, like the card's link", async () => {
+    render(<CreatorCourseDetail courseIdOverride="course-1" />);
+    const cardLink = await screen.findByRole("link", { name: "Enroll — $149.00" });
+
+    fireEvent.click(salesCta());
+
+    expect(fixtures.router.push).toHaveBeenCalledWith("/auth?mode=signup&returnTo=%2Fcourses%2Fcourse-1");
+    expect(fixtures.router.push).toHaveBeenCalledWith(cardLink.getAttribute("href"));
+    expect(startCourseCheckout).not.toHaveBeenCalled();
+  });
+
+  it("a free course enrolls and opens the classroom", async () => {
+    fixtures.auth.status = "authenticated"; fixtures.auth.user = { uid: "buyer" };
+    Object.assign(fixtures.course, { paymentType: "free", priceAmountMinor: 0 });
+    withOffers([]);
+    render(<CreatorCourseDetail courseIdOverride="course-1" />);
+    await screen.findByRole("button", { name: "Enroll free" });
+
+    fireEvent.click(salesCta());
+
+    await waitFor(() => expect(fixtures.router.push).toHaveBeenCalledWith("/learn/courses/course-1"));
+    expect(enrollInFreeCreatorCourse).toHaveBeenCalledWith("course-1");
+    expect(startCourseCheckout).not.toHaveBeenCalled();
+  });
+
+  it("an enrolled learner goes to the classroom", async () => {
+    fixtures.auth.status = "authenticated"; fixtures.auth.user = { uid: "student-1" };
+    enrollmentState.current = { status: "active" };
+    try {
+      render(<CreatorCourseDetail courseIdOverride="course-1" />);
+      await screen.findAllByRole("link", { name: "Continue learning" });
+
+      fireEvent.click(salesCta());
+
+      expect(fixtures.router.push).toHaveBeenCalledWith("/learn/courses/course-1");
+      expect(startCourseCheckout).not.toHaveBeenCalled();
+    } finally {
+      enrollmentState.current = null;
+    }
+  });
+
+  it("a signed-in buyer of a paid course still opens checkout", async () => {
+    fixtures.auth.status = "authenticated"; fixtures.auth.user = { uid: "buyer" };
+    render(<CreatorCourseDetail courseIdOverride="course-1" />);
+    await screen.findAllByText("$149.00");
+
+    fireEvent.click(salesCta());
+
+    await waitFor(() => expect(startCourseCheckout).toHaveBeenCalledWith("course-1", {}));
+    expect(fixtures.router.push).not.toHaveBeenCalled();
+  });
+
+  describe("sem resposta visível", () => {
+    const scrollIntoView = vi.fn();
+    beforeEach(() => {
+      scrollIntoView.mockClear();
+      Element.prototype.scrollIntoView = scrollIntoView;
+    });
+    afterEach(() => {
+      // @ts-expect-error jsdom não define scrollIntoView; remove o stub do teste
+      delete Element.prototype.scrollIntoView;
+    });
+
+    it("when checkout cannot proceed, the click brings the buy card into view", async () => {
+      fixtures.auth.status = "authenticated"; fixtures.auth.user = { uid: "buyer" };
+      fixtures.query = "offer=MISSING";
+      withOffers();
+      render(<CreatorCourseDetail courseIdOverride="course-1" />);
+      await screen.findByText("The selected offer is no longer available.");
+
+      fireEvent.click(salesCta());
+
+      expect(startCourseCheckout).not.toHaveBeenCalled();
+      expect(scrollIntoView).toHaveBeenCalledTimes(1);
+      expect(scrollIntoView.mock.contexts[0]).toBe(document.getElementById("enroll-card"));
+      expect(scrollIntoView).toHaveBeenCalledWith({ behavior: "smooth", block: "center" });
+    });
+
+    it("after a checkout error, the click brings the buy card (with the error) into view", async () => {
+      fixtures.auth.status = "authenticated"; fixtures.auth.user = { uid: "buyer" };
+      vi.mocked(startCourseCheckout).mockRejectedValueOnce(new Error("boom"));
+      render(<CreatorCourseDetail courseIdOverride="course-1" />);
+      await screen.findAllByText("$149.00");
+
+      fireEvent.click(salesCta());
+
+      await waitFor(() => expect(scrollIntoView).toHaveBeenCalledTimes(1));
+    });
+  });
+
+  it("a second click while checkout is running does not open a second session", async () => {
+    fixtures.auth.status = "authenticated"; fixtures.auth.user = { uid: "buyer" };
+    vi.mocked(startCourseCheckout).mockReturnValueOnce(new Promise(() => {}));
+    render(<CreatorCourseDetail courseIdOverride="course-1" />);
+    await screen.findAllByText("$149.00");
+
+    fireEvent.click(salesCta());
+    fireEvent.click(salesCta());
+
+    await waitFor(() => expect(startCourseCheckout).toHaveBeenCalledTimes(1));
+  });
+
+  it("a second click while the free enrollment runs does not enroll twice", async () => {
+    fixtures.auth.status = "authenticated"; fixtures.auth.user = { uid: "buyer" };
+    Object.assign(fixtures.course, { paymentType: "free", priceAmountMinor: 0 });
+    withOffers([]);
+    vi.mocked(enrollInFreeCreatorCourse).mockReturnValueOnce(new Promise(() => {}));
+    render(<CreatorCourseDetail courseIdOverride="course-1" />);
+    await screen.findByRole("button", { name: "Enroll free" });
+
+    fireEvent.click(salesCta());
+    fireEvent.click(salesCta());
+
+    await waitFor(() => expect(enrollInFreeCreatorCourse).toHaveBeenCalledTimes(1));
+  });
+});
+
+// "Preview media can be attached by the educator..." is a note to the teacher.
+describe("CreatorCourseDetail: the empty-preview note", () => {
+  it.each([
+    ["a visitor", null, false],
+    ["a signed-in buyer", { uid: "buyer" }, false],
+    ["the course owner", { uid: "teacher-1" }, true],
+  ])("%s: shown only to the owner", async (_who, user, shown) => {
+    vi.mocked(getLessonContentDoc).mockResolvedValue(null);
+    if (user) { fixtures.auth.status = "authenticated"; fixtures.auth.user = user; }
+    const course = fixtures.course as TeacherCourse;
+    course.freePreviewLessonId = "lesson-1";
+    try {
+      render(<CreatorCourseDetail courseIdOverride="course-1" />);
+      await screen.findAllByText("$149.00");
+      expect(screen.getByRole("heading", { name: "Why focus breaks" })).toBeInTheDocument();
+      expect(Boolean(screen.queryByText(/Preview media can be attached/))).toBe(shown);
+    } finally {
+      delete course.freePreviewLessonId;
+    }
+  });
+});
 
 describe("permanent checkout", () => {
   it("shows identity and one purchase card without loading sales content", async () => {
@@ -815,6 +968,126 @@ describe("CreatorCourseDetail — padlocked lessons and the buy popup", () => {
       expect(screen.queryByText(/Enroll —/)).not.toBeInTheDocument();
     } finally {
       enrollmentState.current = null;
+    }
+  });
+});
+
+// Comunidade, evento ao vivo e e-book publicam sem grade de aulas. A pagina de
+// venda mostrava "previa ainda sendo preparada", "Enroll to open the remaining
+// 0 lessons" e "Lessons: 0". Agora diz o que o comprador recebe.
+describe("CreatorCourseDetail: o que cada tipo entrega", () => {
+  function renderAs(productFormat: TeacherCourse["productFormat"], modules: TeacherCourse["modules"] = []) {
+    const course = fixtures.course as TeacherCourse;
+    const saved = { modules: course.modules, lessonCount: course.lessonCount };
+    course.productFormat = productFormat;
+    course.modules = modules;
+    course.lessonCount = modules.reduce((total, item) => total + item.lessons.length, 0);
+    const view = render(<CreatorCourseDetail courseIdOverride="course-1" />);
+    return {
+      ...view,
+      restore: () => {
+        delete course.productFormat;
+        course.modules = saved.modules;
+        course.lessonCount = saved.lessonCount;
+      },
+    };
+  }
+
+  function expectNoCurriculum(container: HTMLElement) {
+    expect(container.querySelector("#free-preview")).toBeNull();
+    expect(container.querySelector("#curriculum")).toBeNull();
+    expect(screen.queryByText(/remaining \d+ lessons?/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/curriculum preview is still being prepared/)).not.toBeInTheDocument();
+    expect(screen.queryByText("Lessons")).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Curriculum" })).not.toBeInTheDocument();
+  }
+
+  it("comunidade: a pagina fala da comunidade, sem curriculo nem 'Lessons: 0'", async () => {
+    const { container, restore } = renderAs("community");
+    try {
+      await screen.findAllByText("$149.00");
+      expectNoCurriculum(container);
+      expect(
+        within(container.querySelector("#delivery") as HTMLElement).getByText(
+          "Members join the community: posts, answers and live calls.",
+        ),
+      ).toBeInTheDocument();
+      expect(screen.getByRole("link", { name: "What you get" })).toHaveAttribute("href", "#delivery");
+    } finally {
+      restore();
+    }
+  });
+
+  it("comunidade em espanhol", async () => {
+    fixtures.locale = "es";
+    const { restore } = renderAs("community");
+    try {
+      expect(
+        await screen.findByText(
+          "Los miembros entran a la comunidad: publicaciones, respuestas y encuentros en vivo.",
+        ),
+      ).toBeInTheDocument();
+    } finally {
+      restore();
+    }
+  });
+
+  it("e-book: um arquivo para baixar, mesmo com a aula do arquivo no produto", async () => {
+    const { container, restore } = renderAs("ebook", [
+      {
+        id: "module-1",
+        title: "Your file",
+        lessons: [{ id: "lesson-1", title: "Workbook", type: "download", description: "" }],
+      },
+    ]);
+    try {
+      await screen.findAllByText("$149.00");
+      expectNoCurriculum(container);
+      expect(screen.getByText("A file you download right after purchase.")).toBeInTheDocument();
+    } finally {
+      restore();
+    }
+  });
+
+  it("evento ao vivo: a data da sessao no fuso de quem ensina, com o fuso escrito", async () => {
+    vi.mocked(getLiveEventSession).mockResolvedValueOnce({
+      startsAt: "2026-11-20T22:30:00.000Z",
+      timeZone: "America/Sao_Paulo",
+    });
+    const { container, restore } = renderAs("live_event");
+    try {
+      expect(
+        await screen.findByText(/^Live session on November 20, 2026.*7:30\sPM GMT-3$/),
+      ).toBeInTheDocument();
+      expect(getLiveEventSession).toHaveBeenCalledWith("course-1");
+      expectNoCurriculum(container);
+    } finally {
+      restore();
+    }
+  });
+
+  it("evento ao vivo sem data conhecida diz que ela sera anunciada", async () => {
+    const { restore } = renderAs("live_event");
+    try {
+      expect(
+        await screen.findByText("Live session. The date will be announced here."),
+      ).toBeInTheDocument();
+    } finally {
+      restore();
+    }
+  });
+
+  it("curso segue com previa, curriculo e o numero de aulas", async () => {
+    const { container, restore } = renderAs("course", (fixtures.course as TeacherCourse).modules);
+    try {
+      await screen.findAllByText("$149.00");
+      expect(container.querySelector("#free-preview")).not.toBeNull();
+      expect(container.querySelector("#curriculum")).not.toBeNull();
+      expect(screen.getByText("Lessons")).toBeInTheDocument();
+      expect(container.querySelector("#delivery")).toBeNull();
+      expect(getLiveEventSession).not.toHaveBeenCalled();
+    } finally {
+      restore();
     }
   });
 });

@@ -23,6 +23,7 @@ import {
   resetPassword,
   sendSkillsetEmailVerification,
 } from "@/lib/auth/supabase-auth";
+import { scrollBehavior } from "@/lib/ui/scroll-behavior";
 
 export function SecuritySettingsPanel() {
   const { t } = useTranslation();
@@ -54,7 +55,7 @@ export function SecuritySettingsPanel() {
   // its await and writes after, so the paragraph genuinely unmounts and
   // remounts on every attempt and this callback ref fires each time.
   const revealFeedback = (node: HTMLParagraphElement | null) => {
-    node?.scrollIntoView({ block: "center", behavior: "smooth" });
+    node?.scrollIntoView({ block: "center", behavior: scrollBehavior() });
   };
   const passwordReady = isStrongPassword(nextPassword);
 
@@ -315,7 +316,7 @@ export function SecuritySettingsPanel() {
                 type="button"
                 onClick={handleSendPasswordReset}
                 disabled={isBusy || captchaPending}
-                className="mt-2 text-xs font-bold text-[var(--color-primary)] underline-offset-2 hover:underline disabled:opacity-60"
+                className="mt-2 min-h-6 text-xs font-bold text-[var(--color-primary)] underline-offset-2 hover:underline disabled:opacity-60"
               >
                 {t("accountSecurity.password.sendReset")}
               </button>

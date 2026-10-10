@@ -25,16 +25,9 @@
  * platform-hosted room is the paid, metered half of that split and is not
  * built yet; when it is, it gets three readable knobs — classes per month, max
  * duration, max room size — not the attendee-minute bucket this file used to
- * carry. See docs/plans/2026-08-08-plano-mestre-recursos-por-plano.md.
+ * carry.
  *
- * No bandwidth quota either — and unlike the live-session gap, that one has a
- * cost ceiling worth knowing. `videoStorageMinutes` caps the cheap resource
- * ($2/month of Bunny storage at the largest tier); the expensive one is hours
- * WATCHED, at ~$0.0066/hour on the Volume network. Pro caps `activeStudents`
- * at 3,000 for that reason (above it the teacher is sent to "Contact us", not
- * to a bigger plan), while Enterprise (id `plus`) keeps its `null`. Deliberately
- * unmetered for now: Bunny is not serving production video yet. D23 in
- * DECISIONS.md carries the math and the trigger for building the meter.
+ * No bandwidth quota yet: `videoStorageMinutes` limits stored video, not hours watched.
  */
 
 import type { PlanId } from "@/data/plans";

@@ -3,6 +3,7 @@ import { getDictionary, translate } from "@/lib/i18n/dictionaries";
 
 import type { CourseAsset } from "@/domain/course-asset";
 import {
+  countLessonFiles,
   getCourseReadiness,
   getLessonIdsWithMedia,
   groupCourseReadiness,
@@ -109,6 +110,39 @@ describe("getCourseReadiness", () => {
     expect(
       getCourseReadiness({ ...complete, priceAmountMinor: 0 }).pending.map((i) => i.id),
     ).toEqual(["pricing"]);
+  });
+
+  // Promise, Summary e Description eram o mesmo texto com tres nomes. O
+  // checklist usa o nome da tela de criacao e do construtor.
+  it.each([
+    ["en", "Description", "Write a description with at least 20 characters."],
+    ["es", "Descripción", "Escribe una descripción de al menos 20 caracteres."],
+  ] as const)("o item do resumo se chama Descricao (%s)", (locale, label, hint) => {
+    const readiness = getCourseReadiness(
+      { ...complete, summary: "short" },
+      undefined,
+      (key) => translate(getDictionary(locale), key),
+    );
+
+    expect(readiness.pending[0]).toMatchObject({ id: "summary", label, hint });
+  });
+
+  // A lista de quem escolheu Gratis nao fala de preco em lugar nenhum, nem
+  // como item feito: curso antigo sem paymentType e preco 0 conta como gratis.
+  it.each([
+    ["free", 0],
+    [undefined, 0],
+  ] as const)("produto gratis (paymentType %s) nao tem item de preco no checklist", (paymentType, priceAmountMinor) => {
+    const account = { payoutsReady: false, verificationRequired: false, verificationApproved: false };
+    const readiness = getCourseReadiness(
+      { ...complete, paymentType, priceAmountMinor },
+      account,
+      (key) => translate(getDictionary("en"), key),
+    );
+
+    expect(readiness.items.map((item) => item.id)).not.toContain("pricing");
+    expect(readiness.items.map((item) => `${item.label} ${item.hint}`).join(" ")).not.toMatch(/price/i);
+    expect(readiness.ready).toBe(true);
   });
 
   // Parcelamento so conta quando existe: listar "Payment model is ready" num
@@ -386,11 +420,138 @@ describe("groupCourseReadiness", () => {
     );
   });
 
-  it("sem conta e curso gratis, venda so tem preco e ja nasce pronta", () => {
+  // Produto gratis nao tem preco para definir: a linha "Pricing" (com a dica
+  // "Set a paid price greater than $0") era um "feito" de graca que so
+  // confundia quem escolheu Gratis. Sem conta, a venda fica vazia e pronta
+  // (total 0: a tela esconde a contagem em vez de dizer "0 of 0").
+  it("sem conta e curso gratis, venda nao lista preco e ja nasce pronta", () => {
     const readiness = getCourseReadiness({ ...complete, paymentType: "free", priceAmountMinor: 0 });
     const sale = groupCourseReadiness(readiness)[2];
 
-    expect(sale.items.map((item) => item.id)).toEqual(["pricing"]);
-    expect([sale.doneCount, sale.total, sale.ready]).toEqual([1, 1, true]);
+    expect(sale.items.map((item) => item.id)).toEqual([]);
+    expect([sale.doneCount, sale.total, sale.ready]).toEqual([0, 0, true]);
+  });
+});
+
+// O tipo gravado na criacao (courses.product_format) decide o que publicar
+// cobra. Mesma regra de publish_teacher_course (20261007010000).
+describe("o que cada tipo precisa entregar", () => {
+  const ids = (input: CourseReadinessInput) =>
+    getCourseReadiness(input).items.filter((item) => !item.optional).map((item) => item.id);
+  const empty = { ...complete, modules: [], paymentType: "free" as const, priceAmountMinor: 0 };
+
+  it("curso: modulo e aula, como antes (e sem tipo gravado, curso)", () => {
+    expect(ids({ ...empty, productFormat: "course" })).toEqual(["title", "summary", "category", "module", "lesson"]);
+    expect(getCourseReadiness({ ...empty, productFormat: "course" }).ready).toBe(false);
+    expect(ids(empty)).toEqual(ids({ ...empty, productFormat: "course" }));
+  });
+
+  it("comunidade: aula opcional, publica sem nenhuma", () => {
+    const readiness = getCourseReadiness({ ...empty, productFormat: "community", communityEnabled: true });
+    expect(readiness.items.map((item) => item.id)).not.toContain("module");
+    expect(readiness.items.map((item) => item.id)).not.toContain("lesson");
+    expect(readiness.ready).toBe(true);
+  });
+
+  it("comunidade: aula que existe continua precisando de conteudo", () => {
+    const readiness = getCourseReadiness({
+      ...complete,
+      productFormat: "community",
+      paymentType: "subscription_monthly",
+      communityEnabled: true,
+      lessonIdsWithMedia: new Set<string>(),
+    });
+    expect(readiness.pending.map((item) => item.id)).toEqual(["lessonMedia"]);
+  });
+
+  // Sem aula exigida, a comunidade desligada deixaria publicar um produto vazio.
+  it("comunidade: a comunidade precisa estar ligada", () => {
+    const readiness = getCourseReadiness({ ...empty, productFormat: "community", communityEnabled: false });
+    expect(readiness.pending.map((item) => item.id)).toEqual(["community"]);
+  });
+
+  it("evento ao vivo: a sessao agendada no lugar da aula", () => {
+    const base = { ...empty, productFormat: "live_event" as const };
+    expect(getCourseReadiness({ ...base, scheduledSessionCount: 0 }).pending.map((item) => item.id)).toEqual(["session"]);
+    expect(getCourseReadiness({ ...base, scheduledSessionCount: 1 }).ready).toBe(true);
+    // Sem a lista de sessoes (Manage), o item some, como lessonMedia.
+    expect(ids(base)).not.toContain("session");
+  });
+
+  it("e-book: ao menos um arquivo, sem cobrar modulo, aula nem conteudo de aula", () => {
+    const base = {
+      ...complete,
+      paymentType: "free" as const,
+      priceAmountMinor: 0,
+      productFormat: "ebook" as const,
+      lessonIdsWithMedia: new Set<string>(),
+    };
+    expect(getCourseReadiness({ ...base, lessonFileCount: 0 }).pending.map((item) => item.id)).toEqual(["file"]);
+    expect(getCourseReadiness({ ...base, lessonFileCount: 1 }).ready).toBe(true);
+  });
+
+  it("so conta arquivo preso a uma aula do produto", () => {
+    const modules = [{ id: "m1", title: "Download", lessons: [lesson] }];
+    const assets: Pick<CourseAsset, "kind" | "lessonId">[] = [
+      { kind: "lesson_material", lessonId: "l1" },
+      { kind: "lesson_material", lessonId: "deleted-lesson" },
+      { kind: "lesson_material", lessonId: null },
+      { kind: "lesson_video", lessonId: "l1" },
+    ];
+    expect(countLessonFiles(modules, assets)).toBe(1);
+  });
+
+  it("traduz os itens novos", () => {
+    const es = (key: string) => translate(getDictionary("es"), key);
+    const session = getCourseReadiness({ ...empty, productFormat: "live_event", scheduledSessionCount: 0 }, undefined, es)
+      .items.find((item) => item.id === "session");
+    const file = getCourseReadiness({ ...empty, productFormat: "ebook", lessonFileCount: 0 }, undefined, es)
+      .items.find((item) => item.id === "file");
+    const community = getCourseReadiness({ ...empty, productFormat: "community" }, undefined, es)
+      .items.find((item) => item.id === "community");
+    expect([session?.label, file?.label, community?.label])
+      .toEqual(["Sesión en vivo", "Archivo para descargar", "Comunidad activada"]);
+  });
+});
+
+// Cada tipo aceita so as suas formas de pagar (paymentTypeFitsFormat, o
+// espelho de course_payment_type_fits_format). Produto criado antes da regra
+// mostra o item de preco aberto, com o motivo, em vez de publicar e o banco
+// recusar.
+describe("forma de pagar que o tipo nao aceita", () => {
+  const pricing = (input: CourseReadinessInput, t?: (key: string) => string) =>
+    getCourseReadiness(input, undefined, t).items.find((item) => item.id === "pricing");
+
+  it.each([
+    ["community", "one_time"],
+    ["live_event", "subscription_monthly"],
+    ["ebook", "subscription_yearly"],
+  ] as const)("%s cobrando %s: o preco fica pendente", (productFormat, paymentType) => {
+    const item = pricing({ ...complete, productFormat, paymentType, communityEnabled: true });
+    expect(item?.done).toBe(false);
+    expect(item?.hint).toBe("This way of paying does not fit this type of product. Pick another one in Pricing.");
+    const es = pricing({ ...complete, productFormat, paymentType, communityEnabled: true }, (key) =>
+      translate(getDictionary("es"), key),
+    );
+    expect(es?.hint).toBe("Esta forma de pago no corresponde a este tipo de producto. Elige otra en Precios.");
+  });
+
+  it.each([
+    ["course", "subscription_yearly"],
+    ["community", "subscription_yearly"],
+    ["live_event", "one_time"],
+    ["ebook", "one_time"],
+  ] as const)("%s cobrando %s: o preco conta como feito", (productFormat, paymentType) => {
+    expect(pricing({ ...complete, productFormat, paymentType, communityEnabled: true })?.done).toBe(true);
+  });
+
+  // "$0" fixo dizia dolar para quem vende em real.
+  it("o zero da dica vem na moeda escolhida", () => {
+    const empty = { ...complete, priceAmountMinor: null, currency: "BRL" };
+    expect(pricing(empty)?.hint).toBe("Set a price above R$0, or choose Free.");
+    expect(pricing(empty, (key) => translate(getDictionary("es"), key))?.hint).toBe(
+      "Define un precio mayor que R$0 o elige Gratis.",
+    );
+    expect(pricing({ ...empty, currency: "USD" })?.hint).toBe("Set a price above $0, or choose Free.");
   });
 });

@@ -43,7 +43,7 @@ export function CreatorCourseWorkspace({
   const [checkoutGraceExpired, setCheckoutGraceExpired] = useState(false);
   const [enrollmentRecheck, setEnrollmentRecheck] = useState(0);
   const hasBackendConfig = Boolean(getSupabaseClientConfig());
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   const [enrollmentState, setEnrollmentState] = useState<{
     enrollment: Enrollment | null;
     key: string | null;
@@ -76,7 +76,6 @@ export function CreatorCourseWorkspace({
   const isLoadingCourse = Boolean(
     canOpenCourse && (!courseState.ready || courseState.key !== courseId),
   );
-
   const router = useRouter();
   // Once the paid enrollment has opened the course, the checkout marker has
   // done its job. Left in the URL it rode along into lesson links, bookmarks
@@ -217,6 +216,14 @@ export function CreatorCourseWorkspace({
     return <CreatorWorkspaceState title={t("learnWave2.workspace.unavailable")} detail={t(error)} whitelabel={whitelabel} />;
   }
 
+  // Sem acesso, a saída é a página pública do curso (e sair da conta, se for a conta errada).
+  const coursePage = {
+    href: `/courses/${encodeURIComponent(courseId)}`,
+    label: t("learnWave2.workspace.seeCourse"),
+  };
+  // Signed out, this same page asks to sign in and comes back here.
+  const onSignOut = () => void signOut();
+
   if (!enrollment) {
     if (cameFromCheckout) {
       return checkoutGraceExpired ? (
@@ -239,6 +246,8 @@ export function CreatorCourseWorkspace({
         title={t("learnWave2.workspace.required")}
         detail={t("learnWave2.workspace.requiredDetail")}
         whitelabel={whitelabel}
+        coursePage={coursePage}
+        onSignOut={onSignOut}
       />
     );
   }
@@ -249,6 +258,8 @@ export function CreatorCourseWorkspace({
         title={t("learnWave2.workspace.inactive")}
         detail={t("learnWave2.workspace.inactiveDetail").replace("{status}", () => t(`learnWave2.enrollmentStatus.${enrollment.status}`))}
         whitelabel={whitelabel}
+        coursePage={coursePage}
+        onSignOut={onSignOut}
       />
     );
   }
@@ -294,11 +305,16 @@ function CreatorWorkspaceState({
   title,
   detail,
   whitelabel = false,
+  coursePage,
+  onSignOut,
 }: {
   title: string;
   detail: string;
   /** Under a teacher's own brand nothing links back to our marketplace. */
   whitelabel?: boolean;
+  /** The course's own public page: the main way out when there is no access. */
+  coursePage?: { href: string; label: string };
+  onSignOut?: () => void;
 }) {
   const { t } = useTranslation();
   return (
@@ -319,7 +335,12 @@ function CreatorWorkspaceState({
         {detail}
       </p>
       <div className="mt-6 flex flex-wrap gap-3">
-        <Link href="/learn" className="button-solid px-4 py-2.5 text-sm">
+        {coursePage ? (
+          <Link href={coursePage.href} className="button-solid px-4 py-2.5 text-sm">
+            {coursePage.label}
+          </Link>
+        ) : null}
+        <Link href="/learn" className={`${coursePage ? "button-outline" : "button-solid"} px-4 py-2.5 text-sm`}>
           {t("learnWave2.workspace.back")}
         </Link>
         {whitelabel ? null : (
@@ -328,6 +349,15 @@ function CreatorWorkspaceState({
           </Link>
         )}
       </div>
+      {onSignOut ? (
+        <button
+          type="button"
+          onClick={onSignOut}
+          className="mt-4 inline-flex min-h-11 items-center text-sm font-semibold text-[var(--color-primary)] underline-offset-4 hover:underline"
+        >
+          {t("learnWave2.workspace.wrongAccount")}
+        </button>
+      ) : null}
     </section>
   );
 }

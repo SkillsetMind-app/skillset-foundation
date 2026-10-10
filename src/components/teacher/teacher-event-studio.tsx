@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { ArrowLeft, ArrowRight, CalendarDays, Plus, X } from "lucide-react";
 
@@ -16,7 +17,11 @@ import {
   type CourseEventType,
 } from "@/domain/course-event";
 import { getSafeExternalUrl } from "@/domain/external-url";
-import type { TeacherCourse } from "@/domain/teacher-course";
+import {
+  countCourseLessons,
+  teacherCanEditCourse,
+  type TeacherCourse,
+} from "@/domain/teacher-course";
 import {
   cancelCourseEvent,
   createCourseEvent,
@@ -100,6 +105,9 @@ export function TeacherEventStudio() {
     searchParams.get("newEvent") === "1",
   );
   const [formStep, setFormStep] = useState<1 | 2>(1);
+  // Produto da sessao recem-marcada. Antes a pessoa ficava na Agenda sem
+  // caminho para preco e publicacao.
+  const [nextStepCourseId, setNextStepCourseId] = useState<string | null>(null);
   const stepHeading = useRef<HTMLHeadingElement>(null);
   const [filter, setFilter] = useState<EventFilter>("upcoming");
   const [search, setSearch] = useState("");
@@ -280,6 +288,7 @@ export function TeacherEventStudio() {
 
         closeForm();
         setCourseId(selectedCourse.id);
+        setNextStepCourseId(selectedCourse.id);
       }
     } catch {
       setError("save");
@@ -355,6 +364,24 @@ export function TeacherEventStudio() {
     },
   ];
 
+  // Publicado nao precisa do passo; o status vem da inscricao, entao o aviso
+  // some sozinho quando o produto for publicado. Em revisao o construtor abre
+  // so para leitura: o atalho levaria a uma tela sem nada para fazer.
+  const nextStepCourse = courses.find(
+    (course) =>
+      course.id === nextStepCourseId
+      && teacherCanEditCourse(course.status)
+      && course.status !== "published",
+  );
+  // Gratis nao tem preco para definir: o passo e so publicar.
+  const nextStepIsFree = nextStepCourse?.paymentType === "free";
+  // So o curso exige aula para publicar (publish_teacher_course,
+  // 20261007010000). Evento ao vivo, comunidade e e-book publicam sem.
+  const nextStepNeedsLesson = nextStepCourse
+    ? (nextStepCourse.productFormat ?? "course") === "course"
+      && countCourseLessons(nextStepCourse.modules ?? []) === 0
+    : false;
+
   const countLine = t(`${copy}.${visible.length === 1 ? "countOne" : "count"}`)
     .replace("{count}", () => String(visible.length))
     .replace("{filter}", () => t(`${copy}.filter.${filter}`));
@@ -411,6 +438,39 @@ export function TeacherEventStudio() {
           <p role="alert" className="mt-4 rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
             {t(`${copy}.errors.${error}`)}
           </p>
+        ) : null}
+
+        {nextStepCourse ? (
+          <section
+            aria-labelledby="event-next-step-title"
+            className="mt-4 grid gap-3 rounded-lg border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-4"
+          >
+            <h4 id="event-next-step-title" className="text-base font-semibold text-[var(--color-ink)]">
+              {t(`${copy}.nextStep.${nextStepIsFree ? "titleFree" : "title"}`)}
+            </h4>
+            {nextStepNeedsLesson ? (
+              <p className="text-sm leading-6 text-[var(--color-ink-soft)]">
+                {t(`${copy}.nextStep.lessonHelp`)}
+              </p>
+            ) : null}
+            <div className="flex flex-wrap gap-3">
+              <Link
+                href={`/teach/builder?courseId=${encodeURIComponent(nextStepCourse.id)}&tab=${nextStepIsFree ? "review" : "pricing"}`}
+                className="button-solid button-lg w-full sm:w-auto"
+              >
+                {t(`${copy}.nextStep.${nextStepIsFree ? "publish" : "pricing"}`)}
+                <ArrowRight aria-hidden="true" size={16} strokeWidth={2} />
+              </Link>
+              {nextStepNeedsLesson ? (
+                <Link
+                  href={`/teach/builder?courseId=${encodeURIComponent(nextStepCourse.id)}&tab=content&welcome=1`}
+                  className="button-outline button-lg w-full sm:w-auto"
+                >
+                  {t(`${copy}.nextStep.addLesson`)}
+                </Link>
+              ) : null}
+            </div>
+          </section>
         ) : null}
 
         {isFormOpen ? (
@@ -724,7 +784,7 @@ function TeacherEventRsvpSummary({ eventId }: { eventId: string }) {
           {t(`${copy}.rsvpLoading`)}
         </p>
       ) : error ? (
-        <p className="mt-2 text-sm font-semibold text-[var(--color-accent-fg)]">
+        <p className="mt-2 text-sm font-semibold text-[var(--color-danger-fg)]">
           {t(`${copy}.rsvpError`)}
         </p>
       ) : (

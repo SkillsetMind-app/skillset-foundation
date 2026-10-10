@@ -28,11 +28,9 @@ const PAGINAS_COM_TITULO_PROPRIO = [
   "teach/activate/page.tsx",
   "teach/activate/return/page.tsx",
   "teach/builder/page.tsx",
-  "teach/coupons/page.tsx",
   "teach/courses/[courseId]/community/page.tsx",
   "teach/courses/[courseId]/manage/page.tsx",
   "teach/events/page.tsx",
-  "teach/integrations/page.tsx",
   "teach/marketing/page.tsx",
   "teach/media/page.tsx",
   "teach/members/page.tsx",
@@ -42,8 +40,8 @@ const PAGINAS_COM_TITULO_PROPRIO = [
   "teach/sales/[orderId]/page.tsx",
   "teach/sales/page.tsx",
   "teach/storefront/page.tsx",
+  "teach/students/page.tsx",
   "teach/subscriptions/page.tsx",
-  "teach/team/page.tsx",
   "teach/verification/page.tsx",
 ] as const;
 

@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { buildInstallmentPlan, normalizeInstallmentsMax } from "@/domain/installments";
+import {
+  buildInstallmentPlan,
+  canSplitPayments,
+  normalizeInstallmentsMax,
+} from "@/domain/installments";
 
 describe("installments", () => {
   it("normalizes max into 1..24", () => {
@@ -64,5 +68,36 @@ describe("installments", () => {
         stripeAccountCountry: "MX",
       }).stripeCardInstallmentsEligible,
     ).toBe(false);
+  });
+});
+
+// "Deixar pagar em parcelas" so aparece onde funciona: a mesma regra do
+// checkout (flag payments.cardInstallments + MXN + conta Stripe do Mexico).
+describe("canSplitPayments", () => {
+  it.each([
+    [true, "MXN", "MX", true],
+    [true, "mxn", "mx", true],
+    [false, "MXN", "MX", false],
+    [true, "USD", "MX", false],
+    [true, "MXN", "US", false],
+    [true, "MXN", null, false],
+    [true, "BRL", "BR", false],
+  ] as const)("flag %s, %s, conta %s: %s", (featureEnabled, currency, stripeAccountCountry, expected) => {
+    expect(canSplitPayments({ featureEnabled, currency, stripeAccountCountry })).toBe(expected);
+  });
+
+  it("concorda com a elegibilidade que o checkout le do plano", () => {
+    const plan = (currency: string, country: string) =>
+      buildInstallmentPlan({ amountMinor: 30000, installmentsEnabled: true, installmentsMax: 3, currency, stripeAccountCountry: country });
+    for (const [currency, country] of [["MXN", "MX"], ["USD", "MX"], ["MXN", "US"]]) {
+      expect(canSplitPayments({ featureEnabled: true, currency, stripeAccountCountry: country })).toBe(
+        plan(currency, country).stripeCardInstallmentsEligible,
+      );
+    }
+  });
+
+  it("a previa: 3x de 100 num preco de 300", () => {
+    expect(buildInstallmentPlan({ amountMinor: 30000, installmentsEnabled: true, installmentsMax: 3, currency: "MXN" }).options.at(-1))
+      .toMatchObject({ count: 3, amountMinor: 10000 });
   });
 });

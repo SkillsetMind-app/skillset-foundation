@@ -84,7 +84,7 @@ export function CertificateVerificationPanel() {
 
       {result?.valid === false ? (
         <div className="mt-6 rounded-lg border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.05)] p-5">
-          <h2 className="text-lg font-semibold text-[var(--color-accent-fg)]">
+          <h2 className="text-lg font-semibold text-[var(--color-danger-fg)]">
             {t(result.revoked ? "learnWave2.verification.revoked" : "learnWave2.verification.missing")}
           </h2>
           <p className="mt-2 text-sm leading-7 text-[var(--color-ink-soft)]">

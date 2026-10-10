@@ -76,15 +76,25 @@ describe("SaleList", () => {
     // A linha de contagem diz o recorte: "0 orders between <de> e <ate>".
     expect(screen.getByText(/^0 orders between .+ and .+$/)).toBeInTheDocument();
 
-    // Vazio de 2 linhas, sem o paragrafo de 5 linhas sobre o modelo Stripe.
+    // Nenhuma venda nunca: a cena do recibo e uma frase so, sem o paragrafo
+    // de 5 linhas sobre o modelo Stripe.
+    expect(screen.getByRole("heading", { name: "Your sales will show up here." })).toBeInTheDocument();
+    expect(document.querySelector('svg[data-scene="noSales"]')).toHaveAttribute("aria-hidden", "true");
+    expect(
+      screen.getByRole("link", { name: "Go to your products" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/settlement and payout timing/i)).toBeNull();
+  });
+
+  it("names the period when there were sales, just not in it", () => {
+    mocks.orders = [order({ id: "order-old", createdAt: new Date(Date.now() - 200 * DAY).toISOString() })];
+    render(<SaleList />);
+
     expect(screen.getByText("No sales in this period.")).toBeInTheDocument();
     expect(
       screen.getByText("When a learner completes checkout, the order appears here."),
     ).toBeInTheDocument();
-    expect(
-      screen.getByRole("link", { name: "Go to your courses" }),
-    ).toBeInTheDocument();
-    expect(screen.queryByText(/settlement and payout timing/i)).toBeNull();
+    expect(screen.queryByText("Your sales will show up here.")).toBeNull();
   });
 
   it("gives every order the refund deep link and shows the refunded chip", () => {

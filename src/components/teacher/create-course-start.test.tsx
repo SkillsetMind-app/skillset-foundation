@@ -1,10 +1,11 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { CreateCourseStart } from "@/components/teacher/create-course-start";
 
 const mocks = vi.hoisted(() => ({
   createTeacherCourse: vi.fn(),
+  createCourseEvent: vi.fn(),
   push: vi.fn(),
 }));
 
@@ -16,6 +17,20 @@ vi.mock("@/lib/data/teacher-courses", () => ({
   createTeacherCourse: mocks.createTeacherCourse,
 }));
 
+vi.mock("@/lib/data/course-events", () => ({
+  createCourseEvent: mocks.createCourseEvent,
+}));
+
+// O evento ao vivo recusa data passada: o relogio fica parado num dia antes
+// das datas dos testes, que assim nao vencem.
+beforeEach(() => {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date("2026-10-01T12:00:00"));
+});
+afterEach(() => {
+  vi.useRealTimers();
+});
+
 function selectPrimaryCategory() {
   fireEvent.click(screen.getByRole("button", { name: /Select up to 5 categories/i }));
   fireEvent.click(
@@ -25,237 +40,277 @@ function selectPrimaryCategory() {
   );
 }
 
-describe("CreateCourseStart", () => {
+function fillBasics(title = "Clinical performance foundations") {
+  fireEvent.change(screen.getByLabelText("Name"), { target: { value: title } });
+  fireEvent.change(screen.getByLabelText(/^Description/), {
+    target: { value: "Build a repeatable practice for evidence-informed performance work." },
+  });
+  selectPrimaryCategory();
+}
+
+describe("CreateCourseStart — tela 1: o que voce vai entregar", () => {
   beforeEach(() => {
-    mocks.createTeacherCourse.mockReset();
-    mocks.createTeacherCourse.mockResolvedValue("course-123");
+    mocks.createTeacherCourse.mockReset().mockResolvedValue("course-123");
+    mocks.createCourseEvent.mockReset().mockResolvedValue("event-1");
     mocks.push.mockReset();
   });
 
-  it.each([
-    ["Monthly", "subscription_monthly"],
-    ["Yearly", "subscription_yearly"],
-  ])("creates a %s subscription product and opens pricing", async (interval, paymentType) => {
+  it("mostra quatro tipos, cada um com a sua frase, e nada de grátis, assinatura ou programa", () => {
     render(<CreateCourseStart ownerId="teacher-1" />);
 
-    fireEvent.click(screen.getByRole("button", { name: /Subscription/i }));
-    fireEvent.click(screen.getByRole("button", { name: interval }));
-    fireEvent.change(screen.getByLabelText("Product title"), {
-      target: { value: "Clinical performance foundations" },
-    });
-    fireEvent.change(screen.getByLabelText(/Product promise/), {
-      target: {
-        value: "Build a repeatable practice for evidence-informed performance work.",
-      },
-    });
-    selectPrimaryCategory();
-    fireEvent.click(screen.getByRole("button", { name: /Create and set pricing/i }));
-
-    await waitFor(() => {
-      expect(mocks.createTeacherCourse).toHaveBeenCalledWith(
-        expect.objectContaining({
-          ownerId: "teacher-1",
-          paymentType,
-        })
-      );
-    });
-    expect(mocks.push).toHaveBeenCalledWith("/teach/builder?courseId=course-123&tab=pricing");
-  });
-
-  it("keeps free products out of the pricing step", async () => {
-    render(<CreateCourseStart ownerId="teacher-1" />);
-
-    fireEvent.click(screen.getByRole("button", { name: /Free program/i }));
-    fireEvent.change(screen.getByLabelText("Product title"), {
-      target: { value: "Open clinical toolkit" },
-    });
-    fireEvent.change(screen.getByLabelText(/Product promise/), {
-      target: { value: "Use a practical set of open exercises with your clients." },
-    });
-    selectPrimaryCategory();
-    fireEvent.click(screen.getByRole("button", { name: /Create and add content/i }));
-
-    await waitFor(() => {
-      expect(mocks.createTeacherCourse).toHaveBeenCalledWith(
-        expect.objectContaining({ paymentType: "free" })
-      );
-    });
-    expect(mocks.push).toHaveBeenCalledWith("/teach/builder?courseId=course-123&tab=content");
-  });
-
-  it("creates a recurring community product with its members community enabled", async () => {
-    render(<CreateCourseStart ownerId="teacher-1" />);
-
-    fireEvent.click(screen.getByRole("button", { name: /Community/i }));
-    fireEvent.change(screen.getByLabelText("Product title"), {
-      target: { value: "Clinical supervision community" },
-    });
-    fireEvent.change(screen.getByLabelText(/Product promise/), {
-      target: {
-        value: "Create a protected peer space for recurring clinical supervision.",
-      },
-    });
-    selectPrimaryCategory();
-    fireEvent.click(screen.getByRole("button", { name: /Create and set pricing/i }));
-
-    await waitFor(() => {
-      expect(mocks.createTeacherCourse).toHaveBeenCalledWith(
-        expect.objectContaining({
-          paymentType: "subscription_monthly",
-          communityEnabled: true,
-        })
-      );
-    });
-    expect(mocks.push).toHaveBeenCalledWith("/teach/builder?courseId=course-123&tab=pricing");
-  });
-
-  it("creates an event product before opening its linked scheduling form", async () => {
-    render(<CreateCourseStart ownerId="teacher-1" initialFormat="event" />);
-
-    expect(screen.getByRole("button", { name: /Online event/i })).toHaveAttribute(
-      "aria-pressed",
-      "true"
-    );
-    fireEvent.change(screen.getByLabelText("Product title"), {
-      target: { value: "Live clinical supervision intensive" },
-    });
-    fireEvent.change(screen.getByLabelText(/Product promise/), {
-      target: { value: "Practice advanced supervision methods in a live facilitated cohort." },
-    });
-    selectPrimaryCategory();
-    fireEvent.click(screen.getByRole("button", { name: /Create and schedule event/i }));
-
-    await waitFor(() => {
-      expect(mocks.createTeacherCourse).toHaveBeenCalledWith(
-        expect.objectContaining({
-          paymentType: "one_time",
-          communityEnabled: false,
-        })
-      );
-    });
-    expect(mocks.push).toHaveBeenCalledWith("/teach/events?courseId=course-123&newEvent=1");
-  });
-
-  it("creates a guided program as a structured paid-content preset", async () => {
-    render(<CreateCourseStart ownerId="teacher-1" />);
-
-    fireEvent.click(screen.getByRole("button", { name: /Guided program/i }));
-    fireEvent.change(screen.getByLabelText("Product title"), {
-      target: { value: "Eight-week resilience program" },
-    });
-    fireEvent.change(screen.getByLabelText(/Product promise/), {
-      target: { value: "Follow a sequenced eight-week path of learning, practice, and reflection." },
-    });
-    selectPrimaryCategory();
-    fireEvent.click(screen.getByRole("button", { name: /Create and set pricing/i }));
-
-    await waitFor(() => {
-      expect(mocks.createTeacherCourse).toHaveBeenCalledWith(
-        expect.objectContaining({ paymentType: "one_time" }),
-      );
-    });
-    expect(mocks.push).toHaveBeenCalledWith("/teach/builder?courseId=course-123&tab=pricing");
-  });
-
-  it("keeps categories collapsed until the teacher opens them", () => {
-    render(<CreateCourseStart ownerId="teacher-1" initialFormat="subscription" />);
-
-    expect(screen.getByRole("button", { name: /Subscription/i })).toHaveAttribute(
-      "aria-pressed",
-      "true"
-    );
-    expect(screen.queryByRole("group", { name: /Course categories/i })).toBeNull();
-
-    const categoryTrigger = screen.getByRole("button", {
-      name: /Select up to 5 categories/i,
-    });
-    expect(categoryTrigger).toHaveAttribute("aria-expanded", "false");
-    fireEvent.click(categoryTrigger);
-    expect(screen.getByRole("group", { name: /Course categories/i })).toBeInTheDocument();
-  });
-});
-
-describe("CreateCourseStart — uma tela so, cinco estagios", () => {
-  // Criar um produto pedia duas telas (formato -> informacoes). O rail
-  // prometia tres passos, o formulario dizia "passo 1 de 2" e o terceiro
-  // passo nunca acendia. Agora formato, titulo, promessa e categoria ficam no
-  // mesmo formulario, e o rail mostra os cinco estagios do fluxo inteiro,
-  // dizendo onde cada um acontece.
-  it("mostra formato e campos no mesmo formulario, sem contador de passos", () => {
-    render(<CreateCourseStart ownerId="teacher-1" />);
-
-    expect(screen.getByRole("button", { name: /Online course/i })).toBeInTheDocument();
-    expect(screen.getByLabelText("Product title")).toBeInTheDocument();
-    expect(screen.getByLabelText(/Product promise/)).toBeInTheDocument();
-    expect(screen.queryByText(/Step \d of \d/i)).toBeNull();
-    expect(screen.queryByRole("button", { name: /^Continue$/i })).toBeNull();
-    expect(screen.queryByRole("button", { name: /^Back$/i })).toBeNull();
-  });
-
-  it("o rail lista os cinco estagios e diz que os tres ultimos continuam no construtor", () => {
-    render(<CreateCourseStart ownerId="teacher-1" />);
-
-    const rail = screen.getByRole("list", { name: "Product creation progress" });
-    const stages = within(rail).getAllByRole("listitem");
-
-    expect(stages.map((stage) => within(stage).getByText(/^(Format|Basics|Pricing|Lessons|Publish)$/).textContent)).toEqual([
-      "Format",
-      "Basics",
-      "Pricing",
-      "Lessons",
-      "Publish",
+    expect(screen.getByRole("heading", { name: "What will you deliver?" })).toBeInTheDocument();
+    const cards = within(screen.getByRole("group", { name: "What will you deliver?" })).getAllByRole("button");
+    expect(cards.map((card) => card.querySelector("strong")?.textContent)).toEqual([
+      "Course",
+      "Community",
+      "Live event",
+      "E-book",
     ]);
-    expect(within(rail).getAllByText(/continues in the builder/i)).toHaveLength(3);
+    expect(screen.getByText("Recorded lessons people watch at their own pace.")).toBeInTheDocument();
+    expect(screen.getByText(/A members' space where you post, answer and run live calls/)).toBeInTheDocument();
+    expect(screen.getByText("A workshop or class on a set date, by Zoom or Meet.")).toBeInTheDocument();
+    expect(screen.getByText("A file people download: PDF, slides, workbook.")).toBeInTheDocument();
+    expect(screen.queryByText(/Guided program|Free program|Subscription/)).toBeNull();
+    // O nome vem na tela 2.
+    expect(screen.queryByLabelText("Name")).toBeNull();
   });
 
-  it("Format ja nasce feito; Basics acende quando titulo, promessa e categoria estao ok", async () => {
+  it("clicar num cartao escolhe, avanca e leva o foco ao titulo da tela 2", async () => {
+    render(<CreateCourseStart ownerId="teacher-1" />);
+
+    fireEvent.click(screen.getByRole("button", { name: /^Community/ }));
+
+    const heading = await screen.findByRole("heading", { name: "Name your community" });
+    await waitFor(() => expect(heading).toHaveFocus());
+    expect(screen.getByLabelText("Name")).toBeInTheDocument();
+  });
+
+  it("Continue avanca com o tipo ja marcado; Back volta e devolve o foco a tela 1", async () => {
+    render(<CreateCourseStart ownerId="teacher-1" initialFormat="ebook" />);
+
+    expect(screen.getByRole("button", { name: /^E-book/ })).toHaveAttribute("aria-pressed", "true");
+    // Na primeira pintura o foco nao e roubado.
+    expect(screen.getByRole("heading", { name: "What will you deliver?" })).not.toHaveFocus();
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    expect(await screen.findByRole("heading", { name: "Name your e-book" })).toHaveFocus();
+
+    fireEvent.click(screen.getByRole("button", { name: "Back" }));
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { name: "What will you deliver?" })).toHaveFocus();
+    });
+    expect(screen.getByRole("button", { name: /^E-book/ })).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("o rail marca Format feito ao passar para a tela 2", () => {
     render(<CreateCourseStart ownerId="teacher-1" />);
 
     const rail = screen.getByRole("list", { name: "Product creation progress" });
     const [format, basics] = within(rail).getAllByRole("listitem");
+    expect(format).toHaveAttribute("aria-current", "step");
+    expect(format.querySelector("svg")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
 
     expect(format.querySelector("svg")).not.toBeNull();
-    expect(basics.querySelector("svg")).toBeNull();
     expect(basics).toHaveAttribute("aria-current", "step");
-
-    fireEvent.change(screen.getByLabelText("Product title"), {
-      target: { value: "Clinical performance foundations" },
-    });
-    fireEvent.change(screen.getByLabelText(/Product promise/), {
-      target: { value: "A practical course about clinical performance." },
-    });
-    selectPrimaryCategory();
-
-    await waitFor(() => {
-      expect(basics.querySelector("svg")).not.toBeNull();
-    });
+    expect(within(rail).getAllByText(/continues in the builder/i)).toHaveLength(3);
   });
 });
 
-describe("CreateCourseStart — o que falta para continuar", () => {
-  // O botão ficava só cinza. Nada na tela dizia se faltava título, resumo ou
-  // categoria, e os mínimos (3 e 20 caracteres) não apareciam em lugar nenhum:
-  // quem escrevia um resumo de 15 caracteres via um botão morto sem motivo.
-  it("nomeia cada condição pendente, e some quando todas são atendidas", async () => {
+describe("CreateCourseStart — tela 2 grava o tipo", () => {
+  beforeEach(() => {
+    mocks.createTeacherCourse.mockReset().mockResolvedValue("course-123");
+    mocks.createCourseEvent.mockReset().mockResolvedValue("event-1");
+    mocks.push.mockReset();
+  });
+
+  it.each([
+    ["Course", "course", "one_time", false, "Module 1", "Lesson 1"],
+    ["Community", "community", "subscription_monthly", true, "Module 1", "Lesson 1"],
+    ["E-book", "ebook", "one_time", false, "Download", "Clinical performance foundations"],
+  ] as const)(
+    "%s: grava product_format e abre o conteudo",
+    async (card, productFormat, paymentType, communityEnabled, moduleTitle, lessonTitle) => {
+      render(<CreateCourseStart ownerId="teacher-1" />);
+
+      fireEvent.click(screen.getByRole("button", { name: new RegExp(`^${card}`) }));
+      fillBasics();
+      fireEvent.click(screen.getByRole("button", { name: /^Create/ }));
+
+      await waitFor(() => {
+        expect(mocks.createTeacherCourse).toHaveBeenCalledWith({
+          ownerId: "teacher-1",
+          title: "Clinical performance foundations",
+          summary: "Build a repeatable practice for evidence-informed performance work.",
+          category: "Applied Psychology & Behavior",
+          categories: ["Applied Psychology & Behavior"],
+          paymentType,
+          communityEnabled,
+          productFormat,
+          moduleTitle,
+          lessonTitle,
+        });
+      });
+      expect(mocks.createCourseEvent).not.toHaveBeenCalled();
+      expect(mocks.push).toHaveBeenCalledWith("/teach/builder?courseId=course-123&tab=content&created=1");
+    },
+  );
+
+  it("evento ao vivo: data e hora na mesma tela; o link pode ficar para depois", async () => {
     render(<CreateCourseStart ownerId="teacher-1" />);
 
-    fireEvent.click(screen.getByRole("button", { name: /One-time/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^Live event/ }));
+    expect(screen.getByRole("heading", { name: "Name your live event" })).toBeInTheDocument();
+    fillBasics("Live supervision intensive");
+
+    const create = screen.getByRole("button", { name: /^Create/ });
+    expect(create).toBeDisabled();
+    expect(screen.getByText(/Choose the date and time of the session/)).toBeInTheDocument();
+    expect(screen.getByText("Optional. You can add it later.")).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("Date"), { target: { value: "2026-11-20" } });
+    fireEvent.change(screen.getByLabelText("Time"), { target: { value: "19:30" } });
+    expect(create).toBeEnabled();
+    fireEvent.click(create);
+
+    await waitFor(() => {
+      expect(mocks.createTeacherCourse).toHaveBeenCalledWith(
+        expect.objectContaining({ productFormat: "live_event", paymentType: "one_time" }),
+      );
+    });
+    await waitFor(() => {
+      expect(mocks.createCourseEvent).toHaveBeenCalledWith({
+        courseId: "course-123",
+        courseSlug: "course-123",
+        courseTitle: "Live supervision intensive",
+        ownerId: "teacher-1",
+        title: "Live supervision intensive",
+        description: "",
+        type: "live_class",
+        startsAt: new Date("2026-11-20T19:30").toISOString(),
+        externalUrl: "",
+      });
+    });
+    expect(mocks.push).toHaveBeenCalledWith("/teach/builder?courseId=course-123&tab=content&created=1");
+  });
+
+  it("evento ao vivo: link digitado precisa ser um endereco completo", () => {
+    render(<CreateCourseStart ownerId="teacher-1" initialFormat="live_event" />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    fillBasics();
+    fireEvent.change(screen.getByLabelText("Date"), { target: { value: "2026-11-20" } });
+    fireEvent.change(screen.getByLabelText("Time"), { target: { value: "19:30" } });
+    fireEvent.change(screen.getByLabelText("Zoom or Meet link"), { target: { value: "meet.google" } });
+
+    expect(screen.getByRole("button", { name: /^Create/ })).toBeDisabled();
+    expect(screen.getByText(/Use a full link that starts with https/)).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("Zoom or Meet link"), {
+      target: { value: "https://meet.google.com/abc-defg-hij" },
+    });
+    expect(screen.getByRole("button", { name: /^Create/ })).toBeEnabled();
+  });
+
+  it("evento ao vivo: hora que ja passou trava o envio, e o campo de data comeca hoje", () => {
+    render(<CreateCourseStart ownerId="teacher-1" initialFormat="live_event" />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    fillBasics();
+    expect(screen.getByLabelText("Date")).toHaveAttribute("min", "2026-10-01");
+    fireEvent.change(screen.getByLabelText("Date"), { target: { value: "2026-10-01" } });
+    fireEvent.change(screen.getByLabelText("Time"), { target: { value: "09:00" } });
+
+    const create = screen.getByRole("button", { name: /^Create/ });
+    expect(create).toBeDisabled();
+    expect(screen.getByText(/Choose a date and time that has not passed yet/)).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("Time"), { target: { value: "18:00" } });
+    expect(create).toBeEnabled();
+  });
+
+  it("evento ao vivo: se a hora passa com a tela aberta, o envio confere de novo", async () => {
+    render(<CreateCourseStart ownerId="teacher-1" initialFormat="live_event" />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    fillBasics();
+    fireEvent.change(screen.getByLabelText("Date"), { target: { value: "2026-10-01" } });
+    fireEvent.change(screen.getByLabelText("Time"), { target: { value: "13:00" } });
+    vi.setSystemTime(new Date("2026-10-01T14:00:00"));
+    fireEvent.click(screen.getByRole("button", { name: /^Create/ }));
+
+    expect(await screen.findByText(/Choose a date and time that has not passed yet/)).toBeInTheDocument();
+    expect(mocks.createTeacherCourse).not.toHaveBeenCalled();
+    expect(mocks.createCourseEvent).not.toHaveBeenCalled();
+  });
+
+  it("so o evento pergunta data, hora e link", () => {
+    render(<CreateCourseStart ownerId="teacher-1" />);
+
+    fireEvent.click(screen.getByRole("button", { name: /^Course/ }));
+
+    expect(screen.queryByLabelText("Date")).toBeNull();
+    expect(screen.queryByLabelText("Zoom or Meet link")).toBeNull();
+  });
+
+  it("nomeia cada condicao pendente, e some quando todas sao atendidas", async () => {
+    render(<CreateCourseStart ownerId="teacher-1" />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
 
     expect(screen.getByText(/Before you continue:/i)).toBeInTheDocument();
-    expect(screen.getByText(/Give the course a title/i)).toBeInTheDocument();
+    expect(screen.getByText(/Give it a name \(3\+ characters\)/)).toBeInTheDocument();
     expect(screen.getByText(/at least 20 characters/i)).toBeInTheDocument();
     expect(screen.getByText(/Choose a marketplace category/i)).toBeInTheDocument();
 
-    fireEvent.change(screen.getByLabelText("Product title"), {
-      target: { value: "Clinical performance foundations" },
-    });
-    fireEvent.change(screen.getByLabelText(/Product promise/i), {
-      target: { value: "A practical course about clinical performance." },
-    });
-    selectPrimaryCategory();
+    fillBasics();
 
     await waitFor(() => {
       expect(screen.queryByText(/Before you continue:/i)).not.toBeInTheDocument();
     });
+  });
+
+  // Criar o produto e um dos dois marcos: latao (nao o navy de toda acao).
+  it("o botao de criar e o de latao grande com seta", () => {
+    render(<CreateCourseStart ownerId="teacher-1" />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+
+    const submit = screen.getByRole("button", { name: /^Create/ });
+    expect(submit).toHaveClass("button-accent", "button-lg");
+    expect(submit).not.toHaveClass("button-solid");
+    expect(submit.querySelector("svg")).not.toBeNull();
+  });
+
+  it("o campo de texto se chama Description; nada de promise", () => {
+    render(<CreateCourseStart ownerId="teacher-1" />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+
+    expect(screen.getByLabelText(/^Description/)).toBeInTheDocument();
+    expect(screen.queryByText(/promise/i)).not.toBeInTheDocument();
+  });
+});
+
+// A criacao pergunta so o tipo e o nome. "Como as pessoas vao pagar?" e uma
+// pergunta so, feita uma vez, na etapa de preco do construtor.
+describe("CreateCourseStart — sem pergunta de pagamento", () => {
+  it.each(["Course", "Community", "Live event", "E-book"])("%s: nenhuma das duas telas pergunta como pagar", (card) => {
+    render(<CreateCourseStart ownerId="teacher-1" />);
+    // A frase de apoio da tela 1 pode dizer que isso se decide em Preco; o
+    // que nao pode existir e a pergunta, nem um botao ou campo para responder.
+    const asksToPay = /how will people pay|how often to charge|charge every|billing interval|payment model/i;
+    const answersPayment = /free|paid|one payment|monthly|yearly|subscription/i;
+    const paymentControls = () => [
+      ...screen.queryAllByRole("button").filter((button) => answersPayment.test(button.textContent ?? "") && !/^(Course|Community|Live event|E-book)/.test(button.textContent ?? "")),
+      ...screen.queryAllByRole("radio"),
+      ...screen.queryAllByRole("checkbox"),
+    ];
+
+    expect(screen.queryByText(asksToPay)).toBeNull();
+    expect(paymentControls()).toEqual([]);
+    fireEvent.click(screen.getByRole("button", { name: new RegExp(`^${card}`) }));
+    expect(screen.queryByText(asksToPay)).toBeNull();
+    expect(paymentControls()).toEqual([]);
   });
 });

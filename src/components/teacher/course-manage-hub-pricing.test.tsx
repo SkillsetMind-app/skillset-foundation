@@ -53,7 +53,7 @@ vi.mock("@/lib/data/teacher-courses", () => ({
     return () => undefined;
   },
   deleteOrArchiveCourse: vi.fn(),
-  getCourseAudience: () => Promise.resolve({ enrollments: 0, orders: 0 }),
+  getCourseAudience: () => Promise.resolve({ enrollments: 0, orders: 0, subscriptions: 0 }),
   setOwnCourseFeatured: vi.fn(),
 }));
 
@@ -117,10 +117,10 @@ afterEach(() => {
 it("rascunho gratuito: o tipo de pagamento nao se aplica, nunca 'Monthly subscription'", async () => {
   render(<CourseManageHub courseId="course-1" />);
 
-  const paymentType = await screen.findByText("Payment type");
+  const paymentType = await screen.findByText("How people pay");
   const card = paymentType.parentElement as HTMLElement;
   expect(card).toHaveTextContent("—");
-  expect(screen.queryByText("Monthly subscription")).not.toBeInTheDocument();
+  expect(screen.queryByText(/Monthly (subscription|membership)/)).not.toBeInTheDocument();
   // E o preco continua dizendo a verdade: gratuito.
   expect(screen.getByText("Free")).toBeInTheDocument();
 });
@@ -137,7 +137,7 @@ it("precos tem uma unica camada visual, sem moldura envolvendo os quatro resumos
 
   const pricing = await screen.findByRole("region", { name: "Pricing & checkout" });
   expect(pricing.className).not.toMatch(/border|shadow|rounded/);
-  for (const label of ["Price", "Payment type", "Refund window", "Checkout"]) {
+  for (const label of ["Price", "How people pay", "Refund window", "Checkout"]) {
     const card = within(pricing).getByText(label).parentElement;
     expect(card).toHaveClass("border-0", "rounded-lg");
     expect(card?.className).not.toContain("shadow");

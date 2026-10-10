@@ -191,7 +191,7 @@ export function EmbeddedCheckoutPanel({
     <div className="grid gap-5 lg:grid-cols-[1fr_360px]">
       <div className="overflow-hidden rounded-lg border fine-rule bg-white shadow-[var(--shadow-soft)]">
         {error ? (
-          <div role="alert" className="p-6 text-sm text-[var(--color-accent-fg)]">
+          <div role="alert" className="p-6 text-sm text-[var(--color-danger-fg)]">
             <p className="font-semibold">{t("activationCheckout.errorTitle")}</p>
             <p className="mt-2 text-[var(--color-ink-soft)]">{t(`billingCheckout.error.${error.key}`)}</p>
             {error.status ? <p className="mt-2 text-xs">{t("activationCheckout.reference")} HTTP {error.status}</p> : null}

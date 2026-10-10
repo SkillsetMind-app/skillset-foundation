@@ -82,6 +82,23 @@ export async function createCourseEvent(input: CreateCourseEventInput) {
   return data.id;
 }
 
+export type LiveEventSession = { startsAt: string; timeZone: string | null };
+
+/**
+ * A sessao que a pagina de venda de um evento ao vivo mostra: so a data e o
+ * fuso de quem ensina (get_live_event_session), nunca o link. course_events so
+ * abre para dono e matriculado; a funcao abre essa parte ao visitante.
+ */
+export async function getLiveEventSession(courseId: string): Promise<LiveEventSession | null> {
+  const supabase = getSupabaseBrowserClient();
+  const { data, error } = await supabase.rpc("get_live_event_session", { p_course_id: courseId });
+
+  if (error) throw error;
+
+  const row = data?.[0];
+  return row ? { startsAt: row.starts_at, timeZone: row.timezone } : null;
+}
+
 export type UpdateCourseEventInput = {
   title: string;
   description: string;

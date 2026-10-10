@@ -8,6 +8,7 @@ import {
 } from "@/components/auth/turnstile-widget";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { isGoogleAuthEnabled } from "@/lib/auth/providers";
+import { scrollBehavior } from "@/lib/ui/scroll-behavior";
 import {
   getAuthErrorMessage,
   isEmailRateLimitError,
@@ -34,7 +35,7 @@ export function ResetPasswordForm() {
   // fold. Dropping focus closes the keyboard and the callback ref pulls the
   // box into view.
   const revealFeedback = (node: HTMLParagraphElement | null) => {
-    node?.scrollIntoView({ block: "center", behavior: "smooth" });
+    node?.scrollIntoView({ block: "center", behavior: scrollBehavior() });
   };
 
   async function handleReset(event: FormEvent<HTMLFormElement>) {
