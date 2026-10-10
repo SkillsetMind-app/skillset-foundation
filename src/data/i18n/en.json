@@ -2410,6 +2410,7 @@
         "off": "Not highlighted",
         "usage": "{used} of {limit} highlights used on the {plan} plan",
         "notIncluded": "Marketplace highlights are not included in the {plan} plan.",
+        "noSubscription": "Marketplace highlights require an eligible creator plan.",
         "saving": "Saving...",
         "remove": "Remove highlight",
         "add": "Highlight this course",
@@ -4633,6 +4634,7 @@
     }
   },
   "planTrial": {
+    "disclosurePublic": "{days} days free, then {price}. A card is required. Renews automatically until you cancel. Cancel in Billing before your trial ends to avoid the subscription charge.",
     "cta": "Start 14-day free trial",
     "disclosure": "{days} days free, then {price}. Renews automatically until you cancel. Cancel anytime in Billing before {date} and you won't be charged.",
     "disclosureNoTrial": "{price}, starting today. Renews automatically until you cancel. Cancel anytime in Billing to stop the next charge.",

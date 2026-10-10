@@ -30,7 +30,11 @@ type Row = Record<string, unknown>;
 
 /** Just the tables the plan path touches, with PostgREST's semantics. */
 function createDb() {
-  const failures = { reminderWrites: 0 };
+  const failures = { reminderWrites: 0, deliveryWrites: 0 };
+  const deliveries: Record<string, {
+    payload: string; state: string; firstAttempt: number | null; uncertain: boolean;
+    token: string; leaseUntil: number;
+  }> = {};
   const tables: Record<string, Row[]> = {
     subscriptions: [],
     users: [{ uid: "creator_1", current_plan_id: "free" }],
@@ -81,9 +85,44 @@ function createDb() {
 
   return {
     failures,
+    deliveries,
     tables,
     from: (table: string) => new Query(table),
-    rpc: vi.fn(async () => ({ data: null, error: null })),
+    rpc: vi.fn(async (name: string, args: Record<string, string>) => {
+      const key = args.p_key;
+      if (name === "claim_plan_trial_email") {
+        if (!deliveries[key] && args.p_payload) deliveries[key] = {
+          payload: args.p_payload, state: "ready", firstAttempt: null, uncertain: false, token: "", leaseUntil: 0,
+        };
+        const row = deliveries[key];
+        if (!row) return { data: { action: "missing" }, error: null };
+        if (row.state === "sent") return { data: { action: "done" }, error: null };
+        if (row.state === "sending" && row.leaseUntil > Date.now()) return { data: { action: "busy" }, error: null };
+        if (row.state === "sending") row.uncertain = true;
+        if (row.firstAttempt !== null && Date.now() >= row.firstAttempt + 86_100_000) row.state = "manual";
+        if (row.state === "manual") return { data: { action: "manual" }, error: null };
+        row.firstAttempt ??= Date.now();
+        row.state = "sending";
+        row.token = crypto.randomUUID();
+        row.leaseUntil = Date.now() + 60_000;
+        return { data: { action: "send", payload: row.payload, token: row.token,
+          send_before: new Date(Math.min(row.leaseUntil, row.firstAttempt + 86_100_000)).toISOString() }, error: null };
+      }
+      if (name === "finish_plan_trial_email") {
+        if (failures.deliveryWrites > 0) {
+          failures.deliveryWrites -= 1;
+          return { data: null, error: { message: "Delivery write unavailable" } };
+        }
+        const row = deliveries[key];
+        if (!row || row.state !== "sending" || row.token !== args.p_token) return { data: false, error: null };
+        if (args.p_outcome === "rejected" && !row.uncertain) row.firstAttempt = null;
+        row.uncertain ||= args.p_outcome === "uncertain";
+        row.state = args.p_outcome === "accepted" ? "sent" : "ready";
+        row.leaseUntil = 0;
+        return { data: true, error: null };
+      }
+      return { data: null, error: null };
+    }),
     auth: { admin: { getUserById: async () => ({ data: { user: { email: "creator@example.test" } }, error: null }) } },
   };
 }
@@ -338,17 +377,56 @@ describe("plan free trial through the Stripe webhook", () => {
     expect(db.tables.creator_plan_trials[0].reminder_sent_at).toEqual(expect.any(String));
   });
 
-  it("retries a failed delivery-marker write with the same provider idempotency key", async () => {
+  it("repairs the legacy reminder marker without sending an already confirmed email again", async () => {
     db.failures.reminderWrites = 1;
     const event = { id: "evt_marker_retry" };
     expect((await deliver("customer.subscription.trial_will_end", planSubscription(), event)).status).toBe(500);
     expect(db.tables.creator_plan_trials[0].reminder_sent_at).toBeUndefined();
     expect((await deliver("customer.subscription.trial_will_end", planSubscription(), event)).status).toBe(200);
-    expect(mocks.fetch).toHaveBeenCalledTimes(2);
+    expect(mocks.fetch).toHaveBeenCalledOnce();
     for (const [, init] of mocks.fetch.mock.calls) {
       expect(init.headers["Idempotency-Key"]).toBe("trial_will_end:sub_plan_1");
     }
-    expect(mocks.fetch.mock.calls[0][1].body).toBe(mocks.fetch.mock.calls[1][1].body);
+  });
+
+  it.each(["reminder", "acknowledgement"])("freezes the %s payload across an uncertain delivery and a changed discount", async (kind) => {
+    const key = `${kind === "reminder" ? "trial_will_end" : "trial_started"}:sub_plan_1`;
+    const send = () => kind === "reminder"
+      ? deliver("customer.subscription.trial_will_end", planSubscription(), { id: "evt_frozen" })
+      : checkoutCompleted("evt_frozen", planSubscription());
+    db.failures.deliveryWrites = 1;
+    expect((await send()).status).toBe(500);
+    db.deliveries[key].leaseUntil = 0;
+    mocks.preview.mockResolvedValue({ amount_due: 4450, currency: "usd" });
+    expect((await send()).status).toBe(200);
+    expect(mocks.preview).toHaveBeenCalledOnce();
+    expect(mocks.fetch.mock.calls[1][1].body).toBe(mocks.fetch.mock.calls[0][1].body);
+    expect(mocks.fetch.mock.calls[1][1].headers["Idempotency-Key"]).toBe(key);
+  });
+
+  it.each(["reminder", "acknowledgement"])("requires reconciliation for the %s after an uncertain send exceeds 24h", async (kind) => {
+    const key = `${kind === "reminder" ? "trial_will_end" : "trial_started"}:sub_plan_1`;
+    const send = () => kind === "reminder"
+      ? deliver("customer.subscription.trial_will_end", planSubscription(), { id: "evt_old_uncertain" })
+      : checkoutCompleted("evt_old_uncertain", planSubscription());
+    mocks.fetch.mockRejectedValueOnce(new Error("network interrupted"));
+    expect((await send()).status).toBe(500);
+    db.deliveries[key].firstAttempt = Date.now() - 86_400_000;
+    expect((await send()).status).toBe(500);
+    expect(db.deliveries[key].state).toBe("manual");
+    expect(mocks.fetch).toHaveBeenCalledOnce();
+  });
+
+  it.each(["reminder", "acknowledgement"])("still retries the %s after a definite rejection", async (kind) => {
+    const send = () => kind === "reminder"
+      ? deliver("customer.subscription.trial_will_end", planSubscription(), { id: "evt_rejected" })
+      : checkoutCompleted("evt_rejected", planSubscription());
+    mocks.fetch.mockResolvedValueOnce(new Response("{}", { status: 429 }));
+    expect((await send()).status).toBe(500);
+    expect(Object.values(db.deliveries)[0].firstAttempt).toBeNull();
+    expect((await send()).status).toBe(200);
+    expect(mocks.fetch).toHaveBeenCalledTimes(2);
+    expect(mocks.fetch.mock.calls[1][1].body).toBe(mocks.fetch.mock.calls[0][1].body);
   });
 
   it.each(["reminder", "acknowledgement"])("uses the discounted preview in the %s", async (kind) => {

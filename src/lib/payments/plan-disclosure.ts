@@ -47,6 +47,7 @@ export function planDisclosure({
   plan,
   cycle,
   trial,
+  publicOffer = false,
   now = new Date(),
 }: {
   t: Translate;
@@ -54,13 +55,15 @@ export function planDisclosure({
   plan: Plan;
   cycle: PlanBillingCycle;
   trial: boolean;
+  publicOffer?: boolean;
   now?: Date;
 }): string {
   const price = planPriceLabel(t, plan, cycle);
   if (!trial) {
     return t("planTrial.disclosureNoTrial").replace("{price}", () => price);
   }
-  return t("planTrial.disclosure")
+  // Public pages can be cached; no subscription deadline exists there yet.
+  return t(publicOffer ? "planTrial.disclosurePublic" : "planTrial.disclosure")
     .replace("{days}", String(PLAN_TRIAL_DAYS))
     .replace("{price}", () => price)
     .replace("{date}", () => formatTrialDate(planTrialEnd(now), locale));

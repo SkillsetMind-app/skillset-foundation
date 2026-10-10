@@ -1598,13 +1598,13 @@ describe("publicar sem surpresa", () => {
     renderBuilder("review");
     fireEvent.click(await screen.findByRole("button", { name: "Publish product" }));
     const alert = await screen.findByRole("alert");
-    expect(within(alert).getByRole("link", { name: "Manage plan" })).toHaveAttribute("href", "/account/billing");
+    expect(within(alert).getByRole("link", { name: "Manage plan" })).toHaveAttribute("href", "/account/billing?tab=subscriptions");
   });
 
   it("offers billing and disables publishing when the server requires a plan", async () => {
     plan.required = true;
     renderBuilder("review");
-    expect(await screen.findByRole("link", { name: "Manage plan" })).toHaveAttribute("href", "/account/billing");
+    expect(await screen.findByRole("link", { name: "Manage plan" })).toHaveAttribute("href", "/account/billing?tab=subscriptions");
     expect(screen.getByRole("button", { name: "Publish product" })).toBeDisabled();
     expect(publishTeacherCourse).not.toHaveBeenCalled();
   });

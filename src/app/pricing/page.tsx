@@ -144,10 +144,10 @@ export default async function PricingPage() {
                     pins this block to the bottom so both cards line up. */}
                 <div className="mt-auto grid gap-3">
                   <p className="text-xs leading-5 text-[var(--color-ink-soft)] group-has-[#billing-yearly:checked]:hidden">
-                    {planDisclosure({ t, locale, plan, cycle: "monthly", trial: true })}
+                    {planDisclosure({ t, locale, plan, cycle: "monthly", trial: true, publicOffer: true })}
                   </p>
                   <p className="hidden text-xs leading-5 text-[var(--color-ink-soft)] group-has-[#billing-yearly:checked]:block">
-                    {planDisclosure({ t, locale, plan, cycle: "yearly", trial: true })}
+                    {planDisclosure({ t, locale, plan, cycle: "yearly", trial: true, publicOffer: true })}
                   </p>
                   <Link
                     href="/auth?mode=signup&path=teacher"

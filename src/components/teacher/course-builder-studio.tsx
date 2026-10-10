@@ -3822,7 +3822,7 @@ export function CourseBuilderStudio() {
                       {/* Mesmo destino do Manage: sem ele a pessoa lia "termine
                           o cadastro" e nao tinha onde clicar. */}
                       {item.id === "plan" ? (
-                        <Link href="/account/billing" className="ml-1 font-semibold text-[var(--color-primary)] underline">
+                        <Link href="/account/billing?tab=subscriptions" className="ml-1 font-semibold text-[var(--color-primary)] underline">
                           {t("creatorEditor.builder.publish.managePlan")}
                         </Link>
                       ) : item.id === "payouts" ? (
@@ -3996,7 +3996,7 @@ export function CourseBuilderStudio() {
             >
               <p>{errorMessage}</p>
               {error.code === "plan" ? (
-                <Link href="/account/billing" className="button-solid mt-3 px-4 py-2 text-xs">
+                <Link href="/account/billing?tab=subscriptions" className="button-solid mt-3 px-4 py-2 text-xs">
                   {t("creatorEditor.builder.publish.managePlan")}
                 </Link>
               ) : error.code === "activation" ? (

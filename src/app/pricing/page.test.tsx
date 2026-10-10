@@ -85,7 +85,7 @@ describe("pricing page", () => {
     expect(cta.parentElement?.className).toContain("mt-auto");
     // The renewal terms sit next to the button, for each cycle.
     expect(cta.parentElement).toHaveTextContent(
-      /14 days free, then \$19\/month\. Renews automatically until you cancel\. Cancel anytime in Billing before .+ and you won't be charged\./,
+      "14 days free, then $19/month. A card is required. Renews automatically until you cancel. Cancel in Billing before your trial ends to avoid the subscription charge.",
     );
     expect(cta.parentElement).toHaveTextContent("14 days free, then $190/year.");
   });

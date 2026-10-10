@@ -51,7 +51,8 @@ select pg_temp.check_plan(not public.course_owner_can_sell(pg_temp.uid(1)), 'mis
 update public.subscriptions set current_period_end = now() + interval '1 day', plan_id = 'free' where id = 'smoke-plan-gate';
 select pg_temp.check_plan(not public.course_owner_can_sell(pg_temp.uid(1)), 'legacy free is not a paid plan');
 update public.subscriptions set plan_id = 'basic' where id = 'smoke-plan-gate';
-insert into public.account_controls(uid, suspended) values (pg_temp.uid(1), true), (pg_temp.uid(2), true);
+insert into public.account_controls(uid, suspended, sessions_revoked_before)
+values (pg_temp.uid(1), true, now()), (pg_temp.uid(2), true, now());
 select pg_temp.check_plan(not public.course_owner_can_sell(pg_temp.uid(1)), 'suspension wins over subscription');
 select pg_temp.check_plan(not public.course_owner_can_sell(pg_temp.uid(2)), 'suspension wins over admin');
 delete from public.account_controls where uid in (pg_temp.uid(1), pg_temp.uid(2));

@@ -186,8 +186,8 @@ function highlightCard(locale: "en" | "es") {
 function expectFreeHighlight(locale: "en" | "es") {
   const card = highlightCard(locale);
   expect(card.getByText(locale === "es"
-    ? "El plan Free no incluye destacados en el marketplace."
-    : "Marketplace highlights are not included in the Free plan."
+    ? "Los destacados en el marketplace requieren un plan de creador compatible."
+    : "Marketplace highlights require an eligible creator plan."
   )).toBeInTheDocument();
   expect(card.queryByText(/Not included|Unlimited|\b\d+\s+(?:of|de)\s/)).not.toBeInTheDocument();
   return card;

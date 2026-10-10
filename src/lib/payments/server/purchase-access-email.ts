@@ -168,7 +168,6 @@ export type PlanTrialEndingEmail = {
   currency: string;
   /** Billing page, where "Cancel plan" lives. */
   billingUrl: string;
-  idempotencyKey: string;
 };
 
 const TRIAL_COPY: Record<Locale, {
@@ -200,11 +199,6 @@ export function buildPlanTrialEndingEmail({ locale, trialEnd, amountMinor, curre
   const date = trialDate(locale, trialEnd);
   const price = trialAmount(locale, amountMinor, currency);
   return planTrialEmail(locale, copy.subject(date), copy.body(date, price), copy.cancel, billingUrl);
-}
-
-export async function sendPlanTrialEndingEmail(input: PlanTrialEndingEmail): Promise<void> {
-  if (!process.env.RESEND_API_KEY) throw new Error("Trial email delivery is not configured.");
-  await sendResendEmail({ to: input.email, ...buildPlanTrialEndingEmail(input), idempotencyKey: input.idempotencyKey });
 }
 
 export type PlanTrialStartedEmail = PlanTrialEndingEmail & { trialDays: number };
@@ -241,9 +235,9 @@ export function buildPlanTrialStartedEmail({ locale, trialDays, trialEnd, amount
   return planTrialEmail(locale, copy.subject(trialDays), body, copy.cancel, billingUrl);
 }
 
-export async function sendPlanTrialStartedEmail(input: PlanTrialStartedEmail): Promise<void> {
-  if (!process.env.RESEND_API_KEY) throw new Error("Trial email delivery is not configured.");
-  await sendResendEmail({ to: input.email, ...buildPlanTrialStartedEmail(input), idempotencyKey: input.idempotencyKey });
+export function buildPlanTrialEmailPayload(input: PlanTrialEndingEmail | PlanTrialStartedEmail): string {
+  const content = "trialDays" in input ? buildPlanTrialStartedEmail(input) : buildPlanTrialEndingEmail(input);
+  return JSON.stringify({ from: FROM, to: [input.email], ...content });
 }
 
 function trialDate(locale: Locale, date: Date): string {

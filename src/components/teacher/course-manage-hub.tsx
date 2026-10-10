@@ -247,7 +247,7 @@ function MarketplaceHighlightPanel({
           </p>
           <p className="mt-0.5 text-xs text-[var(--color-ink-muted)]">
             {(quota.lockedOnPlan
-              ? t("creatorPanel.hub.highlight.notIncluded")
+              ? t(planId === "free" ? "creatorPanel.hub.highlight.noSubscription" : "creatorPanel.hub.highlight.notIncluded")
               : t("creatorPanel.hub.highlight.usage"))
               .replace("{used}", () => String(quota.used))
               .replace("{limit}", () => formatLimit(limit))

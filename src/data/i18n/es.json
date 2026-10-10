@@ -2410,6 +2410,7 @@
         "off": "No destacado",
         "usage": "{used} de {limit} destacados usados en el plan {plan}",
         "notIncluded": "El plan {plan} no incluye destacados en el marketplace.",
+        "noSubscription": "Los destacados en el marketplace requieren un plan de creador compatible.",
         "saving": "Guardando...",
         "remove": "Quitar destacado",
         "add": "Destacar este curso",
@@ -4633,6 +4634,7 @@
     }
   },
   "planTrial": {
+    "disclosurePublic": "{days} días gratis, luego {price}. Se requiere tarjeta. Se renueva automáticamente hasta que canceles. Cancela en Facturación antes de que termine tu prueba para evitar el cobro de la suscripción.",
     "cta": "Empieza tu prueba gratis de 14 días",
     "disclosure": "{days} días gratis, luego {price}. Se renueva automáticamente hasta que canceles. Cancela cuando quieras en Facturación antes del {date} y no se te cobrará.",
     "disclosureNoTrial": "{price}, desde hoy. Se renueva automáticamente hasta que canceles. Cancela cuando quieras en Facturación para evitar el próximo cargo.",

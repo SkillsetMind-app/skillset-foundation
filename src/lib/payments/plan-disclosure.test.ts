@@ -21,6 +21,13 @@ function disclosure(locale: "en" | "es", planId: "basic" | "starter" | "pro", cy
 }
 
 describe("renewal disclosure (US ROSCA)", () => {
+  it("does not freeze a trial deadline into a cached public offer", () => {
+    const text = planDisclosure({ t: (key) => translate(getDictionary("en"), key), locale: "en", plan: planById("basic"), cycle: "monthly", trial: true, publicOffer: true, now });
+    expect(text).toContain("14 days free, then $5/month.");
+    expect(text).toContain("A card is required.");
+    expect(text).toContain("before your trial ends");
+    expect(text).not.toContain("2026");
+  });
   it.each([
     ["basic", "monthly", "14 days free, then $5/month."],
     ["basic", "yearly", "14 days free, then $50/year."],

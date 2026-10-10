@@ -34,10 +34,10 @@ import { fromStripeAmount, toStripeAmount } from "@/lib/payments/currencies";
 import { getAppUrl } from "@/lib/payments/server/app-url";
 import {
   sendCreatorSaleEmail,
-  sendPlanTrialEndingEmail,
-  sendPlanTrialStartedEmail,
+  buildPlanTrialEmailPayload,
   sendPurchaseAccessEmail,
 } from "@/lib/payments/server/purchase-access-email";
+import { deliverPlanTrialEmail } from "@/lib/payments/server/plan-trial-email-delivery";
 import { getStripeClient, isStripeConfigured } from "@/lib/payments/server/stripe";
 import {
   courseSubscriptionInterval,
@@ -1802,8 +1802,7 @@ async function previewPlanTrialPayment(subscriptionId: string): Promise<Stripe.I
   return invoice;
 }
 
-// Record confirmed delivery only. Resend's idempotency key covers concurrent
-// deliveries and retries after sending succeeds but the marker write fails.
+// The delivery RPC freezes the first payload and bounds uncertain retries.
 async function handlePlanTrialWillEnd(
   admin: Admin,
   subscription: Stripe.Subscription,
@@ -1833,18 +1832,19 @@ async function handlePlanTrialWillEnd(
   if (trialError) throw new Error("Could not read the trial reminder delivery marker.");
   if (!trial || trial.reminder_sent_at) return;
 
-  const invoice = await previewPlanTrialPayment(subscription.id);
-  const { data, error } = await admin.auth.admin.getUserById(uid);
-  const email = data?.user?.email;
-  if (error || !email) throw new Error("Subscriber account has no email for the trial reminder.");
-  await sendPlanTrialEndingEmail({
-    email,
-    locale: normalizeLocale(subscription.metadata?.locale),
-    trialEnd: new Date(subscription.trial_end * 1000),
-    amountMinor: invoice.amount_due,
-    currency: invoice.currency,
-    billingUrl: `${getAppUrl()}/account/billing?tab=subscriptions`,
-    idempotencyKey: `trial_will_end:${subscription.id}`,
+  await deliverPlanTrialEmail(admin, `trial_will_end:${subscription.id}`, async () => {
+    const invoice = await previewPlanTrialPayment(subscription.id);
+    const { data, error } = await admin.auth.admin.getUserById(uid);
+    const email = data?.user?.email;
+    if (error || !email) throw new Error("Subscriber account has no email for the trial reminder.");
+    return buildPlanTrialEmailPayload({
+      email,
+      locale: normalizeLocale(subscription.metadata?.locale),
+      trialEnd: new Date(subscription.trial_end! * 1000),
+      amountMinor: invoice.amount_due,
+      currency: invoice.currency,
+      billingUrl: `${getAppUrl()}/account/billing?tab=subscriptions`,
+    });
   });
   await requireSupabaseWrite(
     admin
@@ -1858,8 +1858,8 @@ async function handlePlanTrialWillEnd(
 // checkout.session.completed for a plan checkout that opened a trial: one
 // acknowledgement with the auto-renewal terms and how to cancel (California's
 // ARL; Stripe sends no receipt for the $0 trial invoice). Idempotent: the
-// event claim stops redeliveries of a processed event, and Resend's
-// Idempotency-Key covers a send that landed before the event was marked done.
+// event claim stops processed events; the delivery row freezes the payload
+// and prevents automatic replay after an uncertain send outlives deduplication.
 async function handlePlanCheckoutCompleted(
   admin: Admin,
   session: Stripe.Checkout.Session,
@@ -1880,19 +1880,20 @@ async function handlePlanCheckoutCompleted(
   const match = price?.id ? planAndCycleByStripePriceId(price.id) : undefined;
   if (!uid || !match || !price) return;
 
-  const invoice = await previewPlanTrialPayment(subscription.id);
-  const { data, error } = await admin.auth.admin.getUserById(uid);
-  const email = data?.user?.email;
-  if (error || !email) throw new Error("Subscriber account has no email for the trial acknowledgement.");
-  await sendPlanTrialStartedEmail({
-    email,
-    locale: normalizeLocale(subscription.metadata?.locale),
-    trialDays: PLAN_TRIAL_DAYS,
-    trialEnd: new Date(subscription.trial_end * 1000),
-    amountMinor: invoice.amount_due,
-    currency: invoice.currency,
-    billingUrl: `${getAppUrl()}/account/billing?tab=subscriptions`,
-    idempotencyKey: `trial_started:${subscription.id}`,
+  await deliverPlanTrialEmail(admin, `trial_started:${subscription.id}`, async () => {
+    const invoice = await previewPlanTrialPayment(subscription.id);
+    const { data, error } = await admin.auth.admin.getUserById(uid);
+    const email = data?.user?.email;
+    if (error || !email) throw new Error("Subscriber account has no email for the trial acknowledgement.");
+    return buildPlanTrialEmailPayload({
+      email,
+      locale: normalizeLocale(subscription.metadata?.locale),
+      trialDays: PLAN_TRIAL_DAYS,
+      trialEnd: new Date(subscription.trial_end! * 1000),
+      amountMinor: invoice.amount_due,
+      currency: invoice.currency,
+      billingUrl: `${getAppUrl()}/account/billing?tab=subscriptions`,
+    });
   });
 }
 
