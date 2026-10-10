@@ -1,0 +1,34 @@
+name: Advisor knowledge reindex
+
+# Manual button for /api/cron/advisor-knowledge (Vercel also runs it daily at
+# 07:00 UTC). Use it right after the knowledge doc changes, or to find out why
+# the advisor index is empty. The run is red unless the doc was indexed.
+#
+# Public log: only ok, chunk count and the reason CODE (the text before ':').
+# The route's detail can quote provider error text, so it never reaches stdout.
+
+permissions: {}
+
+on:
+  workflow_dispatch:
+
+jobs:
+  reindex:
+    name: Reindex the advisor knowledge doc
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Call the sync
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$CRON_SECRET" ]; then
+            echo "::error title=Not configured::Missing repository secret CRON_SECRET (same value as on Vercel)."
+            exit 1
+          fi
+          code=$(curl -sS -o body.json -w '%{http_code}' --max-time 90 \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            https://www.skillsetmind.com/api/cron/advisor-knowledge) || code=000
+          echo "HTTP $code"
+          jq -r '"ok=\(.ok) chunks=\(.chunks) skipped=\(.skipped) reason=\((.reason // "") | split(":")[0])"' body.json 2>/dev/null || echo "no JSON body"
+          jq -e '.ok == true and .chunks > 0' body.json >/dev/null 2>&1
