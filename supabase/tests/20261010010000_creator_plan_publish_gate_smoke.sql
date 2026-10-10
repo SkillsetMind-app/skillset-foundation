@@ -63,7 +63,7 @@ update public.platform_settings set value = 'false' where key = 'require_activat
 
 insert into public.courses(id, owner_id, slug, title, summary, category, status, payment_type, price_amount_minor, currency, modules)
 values ('smoke-plan-product', pg_temp.uid(1), 'smoke-plan-product', 'Plan smoke', 'A complete product for the plan smoke.',
-  'smoke', 'draft', 'free', 0, 'USD', '[{"id":"m1","title":"Module","lessons":[{"id":"l1","title":"Lesson","type":"text","contentText":"Lesson content."}]}]');
+  'smoke', 'draft', 'free', 0, 'USD', '[{"id":"m1","title":"Module","lessons":[{"id":"l1","title":"Lesson","type":"text","description":"Lesson content."}]}]');
 update public.subscriptions set current_period_end = now() where id = 'smoke-plan-gate';
 update public.courses set summary = 'Drafts remain editable without a plan.' where id = 'smoke-plan-product';
 -- The trigger also covers trusted writes, not only the browser RPC.
