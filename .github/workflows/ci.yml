@@ -82,7 +82,7 @@ jobs:
         with:
           node-version: 22
 
-      - uses: supabase/setup-cli@aa3515eac405eac768fa4a72147c22d88a283c7b
+      - uses: supabase/setup-cli@bea637206310b05056109c4ffab256b2c3c522af
         with:
           version: 2.39.2
 
