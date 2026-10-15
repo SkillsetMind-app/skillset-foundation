@@ -80,7 +80,7 @@ describe("www positioning", () => {
   it.each(dictionaries)("the %s home, footer and /for-creators copy names its audience", (_locale, dict) => {
     expect(JSON.stringify([dict.footer, dict.publicPages.creators])).not.toMatch(/psycholog|psicólog/i);
     expect(dict.home.hero.sub).toMatch(
-      /^(For psychologists and personal-development professionals who already teach live|Para psicólogos y profesionales del desarrollo personal que ya enseñan en vivo)/,
+      /^(For psychologists, coaches and personal-development professionals who already teach live|Para psicólogos, coaches y profesionales del desarrollo personal que ya enseñan en vivo)/,
     );
   });
 });

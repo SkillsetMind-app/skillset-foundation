@@ -35,12 +35,12 @@ const REGULATED_AUDIENCE = [
 const LOCALES = ["en", "es"];
 
 // "Psychologist" as the audience is blocked everywhere except ONE decision
-// (2026-09-25): the home may name "psychologists and personal-development
-// professionals" as its public, always in that exact pairing, never alone.
+// (2026-09-25): the home may name "psychologists, coaches and personal-development
+// professionals" as its public, always in that exact grouping, never alone.
 // The verification form keeps offering "Psychologist" as a profession to
 // verify, which names the seller's credential, not the audience.
 const PSYCHOLOGIST = /psychologists?\b|psic[oó]log[oa]s?\b/i;
-const HOME_AUDIENCE = /psychologists (?:&|and) personal-development professionals|psicólogos y profesionales del desarrollo personal/gi;
+const HOME_AUDIENCE = /psychologists, coaches (?:&|and) personal-development professionals|psicólogos, coaches y profesionales del desarrollo personal/gi;
 const PSYCHOLOGIST_ALLOWED_PATHS = ["professionalBadge.professions.psychologist"];
 
 function psychologistOutsideException(path: string, text: string): boolean {
@@ -90,12 +90,12 @@ describe("interface copy names no regulated audience", () => {
   });
 
   it("allows psychologists only in the home pairing and the verification form", () => {
-    expect(psychologistOutsideException("home.hero.eyebrow", "For psychologists & personal-development professionals")).toBe(false);
-    expect(psychologistOutsideException("home.hero.sub", "Para psicólogos y profesionales del desarrollo personal que ya enseñan")).toBe(false);
+    expect(psychologistOutsideException("home.hero.eyebrow", "For psychologists, coaches & personal-development professionals")).toBe(false);
+    expect(psychologistOutsideException("home.hero.sub", "Para psicólogos, coaches y profesionales del desarrollo personal que ya enseñan")).toBe(false);
     expect(psychologistOutsideException("professionalBadge.professions.psychologist", "Psychologist")).toBe(false);
     expect(psychologistOutsideException("home.hero.eyebrow", "For psychologists")).toBe(true);
-    expect(psychologistOutsideException("home.hero.sub", "For psychologists & personal-development professionals, and for psychologists")).toBe(true);
-    expect(psychologistOutsideException("pricing.title", "For psychologists & personal-development professionals")).toBe(true);
+    expect(psychologistOutsideException("home.hero.sub", "For psychologists, coaches & personal-development professionals, and for psychologists")).toBe(true);
+    expect(psychologistOutsideException("pricing.title", "For psychologists, coaches & personal-development professionals")).toBe(true);
     expect(psychologistOutsideException("help.faq", "Para psicólogas")).toBe(true);
   });
 

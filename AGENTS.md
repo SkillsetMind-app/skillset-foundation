@@ -109,9 +109,10 @@ document.documentElement.scrollWidth > document.documentElement.clientWidth  // 
   comes back.
 
   **One exception, decided by the owner on 2026-09-25:** the home page may
-  name "psychologists and personal-development professionals" ("psicólogos y
-  profesionales del desarrollo personal") as its audience — in that exact
-  pairing, only on the home (`home.*` keys), never psychologists alone and
+  name "psychologists, coaches and personal-development professionals"
+  ("psicólogos, coaches y profesionales del desarrollo personal") as its
+  audience (coaches added by the owner on 2026-10-15) — in that exact
+  grouping, only on the home (`home.*` keys), never psychologists alone and
   never on any other page. "Therapist", "psychotherapy" and "counselor" stay
   blocked everywhere. The test above enforces the exception narrowly; widening
   it needs a new owner decision, not a test edit.
