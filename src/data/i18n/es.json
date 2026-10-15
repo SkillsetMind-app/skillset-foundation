@@ -387,14 +387,14 @@
   },
   "home": {
     "metadata": {
-      "title": "Plataforma de cursos para psicólogos y profesionales del desarrollo personal",
-      "description": "Para psicólogos y profesionales del desarrollo personal que ya enseñan en vivo: vende tu curso y comunidad. Prueba 14 días gratis. Cobras en tu propio Stripe."
+      "title": "Plataforma de cursos para psicólogos, coaches y profesionales del desarrollo personal",
+      "description": "Para psicólogos, coaches y profesionales del desarrollo personal que ya enseñan en vivo: vende tu curso y comunidad. Prueba 14 días gratis. Cobras en tu Stripe."
     },
     "hero": {
-      "eyebrow": "Para psicólogos y profesionales del desarrollo personal",
+      "eyebrow": "Para psicólogos, coaches y profesionales del desarrollo personal",
       "title1": "Tu conocimiento cambia vidas.",
       "title2": "Ahora conviértelo en un curso.",
-      "sub": "Para psicólogos y profesionales del desarrollo personal que ya enseñan en vivo y quieren vender su método como un curso con comunidad de pago. Empieza con 14 días gratis; después Basic cuesta US$5 al mes. Se requiere tarjeta; cancela antes de terminar la prueba para evitar el cobro de la suscripción. Se aplican tarifas por venta. Nosotros manejamos el checkout y el aula — tus compradores pagan directo a tu cuenta de Stripe. Tú enseñas.",
+      "sub": "Para psicólogos, coaches y profesionales del desarrollo personal que ya enseñan en vivo y quieren vender su método como un curso con comunidad de pago. Empieza con 14 días gratis; después Basic cuesta US$5 al mes. Se requiere tarjeta; cancela antes de terminar la prueba para evitar el cobro de la suscripción. Se aplican tarifas por venta. Nosotros manejamos el checkout y el aula — tus compradores pagan directo a tu cuenta de Stripe. Tú enseñas.",
       "trust1Title": "Verificado",
       "trust1Desc": "Cuando se requiere, los profesionales se verifican antes de publicar, y los cursos que incumplan las normas del catálogo pueden pausarse o retirarse.",
       "trust2Title": "Global",
@@ -458,7 +458,7 @@
       "readFull": "Lee la Promesa completa"
     },
     "creators": {
-      "eyebrow": "Para psicólogos y profesionales del desarrollo personal",
+      "eyebrow": "Para psicólogos, coaches y profesionales del desarrollo personal",
       "title": "Enseña más allá de los límites de tus sesiones en vivo.",
       "ctaStart": "Empieza a enseñar",
       "ctaPromise": "Lee la Promesa al Creador",
