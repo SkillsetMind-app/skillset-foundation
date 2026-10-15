@@ -2,7 +2,7 @@
 
 ## In English
 
-SkillsetMind is an online course platform for psychologists and personal-development
+SkillsetMind is an online course platform for psychologists, coaches and personal-development
 professionals: creators build and sell courses, learners buy and watch them on the same site.
 - **Four areas:** visitor (`src/app/courses`), student (`src/app/learn`), teacher (`src/app/teach`) and operations (`src/app/ops`).
 - **Stack:** Next.js on Vercel, Supabase (Postgres database and login), Stripe Connect with direct charges, Bunny Stream for video, GitHub Actions for checks.
