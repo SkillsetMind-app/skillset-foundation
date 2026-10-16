@@ -2889,6 +2889,10 @@ export type Database = {
           uid: string
         }[]
       }
+      guest_buyer_account_blocked: {
+        Args: { p_uid: string }
+        Returns: boolean
+      }
       has_enrollment_for_course_slug: {
         Args: { p_slug: string }
         Returns: boolean

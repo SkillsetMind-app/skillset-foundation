@@ -171,6 +171,13 @@ async function completeUnfinishedGuestTerms(admin: Admin, userId: string): Promi
   await recordTermsAcceptance(admin, userId);
 }
 
+/** Suspended account (a blocked e-mail implies suspended): it could not sign in after paying. */
+export async function isBuyerAccountBlocked(admin: Admin, userId: string): Promise<boolean> {
+  const { data, error } = await admin.rpc("guest_buyer_account_blocked", { p_uid: userId });
+  if (error) throw new Error(error.message);
+  return data === true;
+}
+
 async function recordTermsAcceptance(admin: Admin, userId: string): Promise<void> {
   const now = new Date().toISOString();
   const { data, error } = await admin

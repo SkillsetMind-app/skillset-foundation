@@ -11,6 +11,7 @@ import {
   findOrCreateGuestBuyer,
   GUEST_CHECKOUT_COOKIE,
   guestCheckoutCookieOptions,
+  isBuyerAccountBlocked,
   isGuestCheckoutConfigured,
   isPlatformRequest,
   sendGuestAccessLink,
@@ -108,6 +109,12 @@ export async function POST(request: Request) {
       name,
       locale: await getServerLocale(),
     });
+
+    // A suspended account gets the same answer as a course that cannot be
+    // bought, before anything is sent or opened. A new account has no controls.
+    if (!buyer.created && (await isBuyerAccountBlocked(admin, buyer.userId))) {
+      throw new PaymentError("This course is not available for purchase right now.");
+    }
 
     // An account made here is removed only when the purchase was refused
     // before any checkout could exist for it. The answer to the browser stays

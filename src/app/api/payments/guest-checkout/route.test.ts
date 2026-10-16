@@ -60,6 +60,8 @@ type AdminInput = {
   /** The existing account was made by guest checkout. */
   existingGuest?: { confirmed?: boolean; terms?: boolean };
   signInLinkFails?: boolean;
+  /** The existing account is suspended (account_controls). */
+  blocked?: boolean;
 };
 
 function createAdmin(input: AdminInput = {}) {
@@ -133,6 +135,7 @@ function createAdmin(input: AdminInput = {}) {
         return { data: input.existingUserId ?? null, error: null };
       }
       if (name === "course_owner_can_sell") return { data: true, error: null };
+      if (name === "guest_buyer_account_blocked") return { data: input.blocked === true, error: null };
       if (name === "claim_checkout_lock") {
         return { data: [input.lockReply ?? { action: "claim", checkout_url: null }], error: null };
       }
@@ -396,6 +399,23 @@ describe("guest checkout", () => {
     expect(refused.status).toBe(400);
     expect(await refused.json()).toEqual(await unsellable.json());
     expect(mocks.createSession).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["without the course", {}],
+    ["already enrolled", { enrollment: { status: "active" } }],
+  ])("answers a suspended account %s like a course that cannot be bought", async (_label, extra) => {
+    admin = createAdmin({ existingUserId: "existing-user", blocked: true, ...extra });
+    const refused = await POST(guestRequest(validBody));
+
+    mocks.getCourseRow.mockResolvedValue({ id: "course", owner_id: "teacher", status: "draft" });
+    const unsellable = await POST(guestRequest(validBody));
+
+    expect(refused.status).toBe(400);
+    expect(await refused.json()).toEqual(await unsellable.json());
+    expect(admin.rpc).toHaveBeenCalledWith("guest_buyer_account_blocked", { p_uid: "existing-user" });
+    expect(mocks.createSession).not.toHaveBeenCalled();
+    expect(admin.auth.signInWithOtp).not.toHaveBeenCalled();
   });
 
   it("makes no account for a course that does not exist", async () => {
