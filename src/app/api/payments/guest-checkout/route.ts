@@ -20,6 +20,10 @@ import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import { rateLimitKeyFromIp, rateLimitKeyFromValue } from "@/lib/supabase/rate-limit";
 
 const HOUR_MS = 60 * 60 * 1000;
+// Platform-wide ceiling for this route, counted only for requests that passed
+// the CAPTCHA and the per-address limit.
+// ponytail: fixed number; raise it if real guest purchases ever come near it.
+const GLOBAL_PER_HOUR = 60;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const ACCESS_LINK_SENT = { status: "access_link_sent" } as const;
 const CHECKOUT_PENDING = {
@@ -79,12 +83,14 @@ export async function POST(request: Request) {
       throw invalidRequest();
     }
 
-    // Both limits fail closed. Per IP before the CAPTCHA call, per e-mail after.
+    // All limits fail closed. Per IP before the CAPTCHA call; per e-mail and
+    // the platform-wide ceiling after it.
     await enforceRateLimit(rateLimitKeyFromIp(request, "guest_checkout_ip"), 5, HOUR_MS);
     if (!(await verifyTurnstileToken(captchaToken, request.headers.get("x-real-ip")))) {
       throw new PaymentError("The security check failed. Please try again.", 400, "captcha_failed");
     }
     await enforceRateLimit(rateLimitKeyFromValue("guest_checkout_email", email), 3, HOUR_MS);
+    await enforceRateLimit("guest_checkout_global", GLOBAL_PER_HOUR, HOUR_MS);
 
     // No account is made for a course that cannot be bought.
     const course = await getCourseRow(courseId);

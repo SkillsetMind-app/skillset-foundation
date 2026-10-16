@@ -329,6 +329,21 @@ describe("guest checkout", () => {
     expect(mocks.createSession).not.toHaveBeenCalled();
   });
 
+  it("stops at the platform-wide hourly ceiling, before any account", async () => {
+    admin = createAdmin({ rateLimited: "guest_checkout_global" });
+
+    const response = await POST(guestRequest(validBody));
+
+    expect(response.status).toBe(429);
+    expect(admin.rpc).toHaveBeenCalledWith("enforce_rate_limit", {
+      p_key: "guest_checkout_global",
+      p_limit: 60,
+      p_window_ms: 3_600_000,
+    });
+    expect(admin.auth.admin.createUser).not.toHaveBeenCalled();
+    expect(mocks.createSession).not.toHaveBeenCalled();
+  });
+
   it("fails closed when the limiter itself is down", async () => {
     admin = createAdmin({ rateLimitDown: true });
 
@@ -597,6 +612,15 @@ describe("guest checkout access link (thank-you page)", () => {
     const response = await accessLinkPOST(linkRequest(cookie()));
 
     expect(response.status).toBe(404);
+    expect(admin.auth.signInWithOtp).not.toHaveBeenCalled();
+  });
+
+  it("stops at the platform-wide hourly ceiling", async () => {
+    admin = createAdmin({ rateLimited: "guest_access_link_global" });
+
+    const response = await accessLinkPOST(linkRequest(encodeGuestCheckoutCookie({ email: "ana@example.com", courseId: "course" })));
+
+    expect(response.status).toBe(429);
     expect(admin.auth.signInWithOtp).not.toHaveBeenCalled();
   });
 
