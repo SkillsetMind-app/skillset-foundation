@@ -561,3 +561,4 @@ describe("pagina da aula no builder", () => {
     expect(document.activeElement).toBe(within(card()).getByRole("button", { name: "Edit content" }));
   });
 });
+vi.mock("@/lib/data/creator-plan", () => ({ fetchCreatorPlanRequired: async () => false }));

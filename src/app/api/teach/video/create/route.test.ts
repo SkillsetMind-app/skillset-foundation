@@ -81,7 +81,7 @@ it("stops a Free-plan owner over the daily cap with a 429 that names no fee, bef
   const response = await create();
   expect(response.status).toBe(429);
   expect(await response.json()).toEqual({
-    error: "Daily upload limit on the Free plan. Try again tomorrow.",
+    error: "Daily upload limit without a plan. Try again tomorrow.",
     code: "free_plan_daily_limit",
   });
   expect(mocks.createVideo).not.toHaveBeenCalled();

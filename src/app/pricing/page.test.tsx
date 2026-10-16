@@ -2,7 +2,8 @@ import { cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import PricingPage from "@/app/pricing/page";
-import { plans } from "@/data/plans";
+import { publicPlans } from "@/data/plans";
+import { getDictionary, translate } from "@/lib/i18n/dictionaries";
 
 vi.mock("next/headers", () => ({ cookies: async () => ({ get: () => undefined }) }));
 
@@ -31,25 +32,43 @@ describe("pricing page", () => {
 
     expect(
       screen.getByText(
-        "Every plan can sell. Paid plans lower the commission and raise your limits.",
+        "Every plan publishes and sells, and each starts with 14 days free. Higher plans lower the commission and raise your limits.",
       ),
     ).toBeInTheDocument();
     expect(screen.queryByText("Which plan is for me?")).not.toBeInTheDocument();
+  });
+
+  // Enterprise is not a card; it is one line under them that goes to /contact
+  // with the subject already filled in.
+  it("offers Enterprise as a contact line below the plan cards", async () => {
+    render(await PricingPage());
+
+    expect(screen.getByRole("region", { name: "Plan comparison" }).querySelectorAll("article")).toHaveLength(3);
+    expect(
+      screen.getByRole("link", { name: "Selling more than US$10,000/month? Talk to us about Enterprise" }),
+    ).toHaveAttribute("href", "/contact?subject=enterprise");
+    expect(translate(getDictionary("es"), "publicPages.pricing.enterprise_talk_to_us")).toBe(
+      "¿Vendes más de US$10.000 al mes? Habla con nosotros sobre Enterprise",
+    );
   });
 
   it("leads every card with the commission and keeps the subscription small", async () => {
     render(await PricingPage());
 
     const grid = within(screen.getByRole("region", { name: "Plan comparison" }));
-    for (const plan of plans) {
+    for (const plan of publicPlans) {
       expect(grid.getByText(`${plan.commissionPercent}%`).className).toContain(
         "text-4xl",
       );
     }
-    expect(grid.getByText("$0/mo — no subscription").className).not.toContain(
-      "text-4xl",
-    );
-    expect(grid.getByText("$19/mo")).toBeInTheDocument();
+    expect(grid.getByText("$5/mo").className).not.toContain("text-4xl");
+    expect(grid.getByText("$89/mo")).toBeInTheDocument();
+    // Only the three plans on offer: no Free card, no Enterprise.
+    expect(grid.queryByText("Free")).not.toBeInTheDocument();
+    expect(grid.queryByText("Enterprise")).not.toBeInTheDocument();
+    expect(grid.getAllByText("+ $0.30 per sale")).toHaveLength(3);
+    expect(grid.queryByText(/no subscription/i)).not.toBeInTheDocument();
+    expect(grid.getByText("Recommended").closest("article")).toHaveTextContent("Starter");
   });
 
   it("stretches the cards and pins the button to the bottom", async () => {
@@ -57,13 +76,18 @@ describe("pricing page", () => {
 
     const grid = within(screen.getByRole("region", { name: "Plan comparison" }));
     const cards = grid.getAllByRole("article");
-    expect(cards).toHaveLength(plans.length);
+    expect(cards).toHaveLength(publicPlans.length);
     for (const card of cards) {
       expect(card.className).toContain("flex h-full flex-col");
     }
-    expect(grid.getByRole("link", { name: "Start on Free" }).className).toContain(
-      "mt-auto",
+    const cta = grid.getByRole("link", { name: "Start 14-day free trial — Starter" });
+    expect(cta).toHaveTextContent("Start 14-day free trial");
+    expect(cta.parentElement?.className).toContain("mt-auto");
+    // The renewal terms sit next to the button, for each cycle.
+    expect(cta.parentElement).toHaveTextContent(
+      "14 days free, then $19/month. A card is required. Renews automatically until you cancel. Cancel in Billing before your trial ends to avoid the subscription charge.",
     );
+    expect(cta.parentElement).toHaveTextContent("14 days free, then $190/year.");
   });
 
   it("keeps the no-JavaScript billing toggle, in 13px sentence case", async () => {

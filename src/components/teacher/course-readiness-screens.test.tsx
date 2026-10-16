@@ -119,6 +119,8 @@ vi.mock("@/lib/data/creator-verification", () => ({
   fetchCreatorActivationBlocked: () => Promise.resolve(activation.blocked),
 }));
 const activation = vi.hoisted(() => ({ blocked: false }));
+const plan = vi.hoisted(() => ({ required: false }));
+vi.mock("@/lib/data/creator-plan", () => ({ fetchCreatorPlanRequired: async () => plan.required }));
 
 vi.mock("@/lib/data/course-assets", () => ({
   fetchCourseAssets: vi.fn(() => Promise.resolve([])),
@@ -189,6 +191,7 @@ function renderBuilder(tab = "details") {
 // Nenhum preco em Outros precos: a etapa de preco do construtor mostra os
 // cartoes. Sem a lista, ela nao mostra preco nenhum.
 beforeEach(() => {
+  plan.required = false;
   vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ offers: [] }) })));
 });
 
@@ -1588,6 +1591,22 @@ describe("publicar sem surpresa", () => {
     const alert = await screen.findByRole("alert");
     expect(within(alert).getByRole("link", { name: "Finish payout onboarding" })).toHaveAttribute("href", "/account/payments#stripe-connect");
     expect(blocked).toHaveBeenCalledWith({ course_id: "course-1", reason: "payouts" });
+  });
+
+  it("links a server plan refusal to billing", async () => {
+    vi.mocked(publishTeacherCourse).mockRejectedValueOnce(new Error("creator_plan_required"));
+    renderBuilder("review");
+    fireEvent.click(await screen.findByRole("button", { name: "Publish product" }));
+    const alert = await screen.findByRole("alert");
+    expect(within(alert).getByRole("link", { name: "Manage plan" })).toHaveAttribute("href", "/account/billing?tab=subscriptions");
+  });
+
+  it("offers billing and disables publishing when the server requires a plan", async () => {
+    plan.required = true;
+    renderBuilder("review");
+    expect(await screen.findByRole("link", { name: "Manage plan" })).toHaveAttribute("href", "/account/billing?tab=subscriptions");
+    expect(screen.getByRole("button", { name: "Publish product" })).toBeDisabled();
+    expect(publishTeacherCourse).not.toHaveBeenCalled();
   });
 });
 

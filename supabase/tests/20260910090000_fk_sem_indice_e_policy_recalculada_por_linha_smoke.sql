@@ -40,6 +40,10 @@ insert into auth.users(id, aud, role, email, email_confirmed_at, raw_app_meta_da
 select pg_temp.uid(n), 'authenticated', 'authenticated', 'fk-idx-policy-' || n || '@example.test',
   now(), '{}', '{}', now(), now()
 from generate_series(1, 3) n;
+-- Keep both course owners subscribed without changing their roles.
+insert into public.subscriptions(id, user_id, plan_id, status, current_period_end)
+select 'smoke-plan-' || pg_temp.uid(n)::text, pg_temp.uid(n)::text, 'basic', 'active', now() + interval '1 day'
+from (values (1), (2)) owners(n);
 insert into public.courses(id, owner_id, slug, title, summary, category, status, community_enabled)
 values
   ('smoke-fk-idx-course-a', pg_temp.uid(1)::text, 'smoke-fk-idx-course-a-slug', 'Course A', 'Course for isolated FK/policy smoke tests.', 'smoke', 'published', false),

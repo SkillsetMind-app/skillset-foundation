@@ -25,6 +25,12 @@ const complete: CourseReadinessInput = {
 };
 
 describe("getCourseReadiness", () => {
+  it.each(["free", "one_time"] as const)("requires a creator plan even for a %s product", (paymentType) => {
+    const account = { payoutsReady: true, verificationRequired: false, verificationApproved: false, planRequired: true };
+    const input = { ...complete, paymentType };
+    expect(getCourseReadiness(input, account).pending.map((item) => item.id)).toContain("plan");
+    expect(getCourseReadiness(input, { ...account, planRequired: false }).pending.map((item) => item.id)).not.toContain("plan");
+  });
   it.each([false, true])("localizes every check without changing publication gates (paid: %s)", (paid) => {
     const input = {
       ...complete,

@@ -640,6 +640,109 @@ describe("course checkout subscription exclusivity", () => {
     expect(mocks.createSession.mock.calls[0][0].discounts).toBeUndefined();
   });
 
+  // Commission per tier: percent (basis points) + the fixed ~US$0.30, which is
+  // 30 cents on a USD sale. An account with no plan pays Basic's rate.
+  it.each([
+    ["free", 1000],
+    ["basic", 1000],
+    ["starter", 490],
+    ["pro", 290],
+    ["plus", 190],
+  ] as const)("charges the %s commission plus the fixed fee on a one-time sale", async (planId, bps) => {
+    const admin = createAdmin({ lockReplies: [{ action: "claim", checkout_url: null }] });
+    mocks.getAdmin.mockReturnValue(admin);
+    mocks.getCourseRow.mockResolvedValue(course("one_time"));
+    mocks.getUserRow.mockImplementation(async (id: string) => id === "teacher"
+      ? {
+          uid: "teacher",
+          current_plan_id: planId,
+          stripe_connected_account_id: "acct_teacher",
+          stripe_connect_charges_enabled: true,
+          stripe_connect_payouts_enabled: true,
+        }
+      : { uid: "buyer", email: "buyer@example.com" });
+    mocks.normalizePrice.mockReturnValue({
+      amountMinor: 12_000,
+      currency: "usd",
+      paymentType: "one_time",
+      source: "legacy",
+    });
+    mocks.createSession.mockResolvedValue({ id: "cs_payment", url: "https://checkout.example/payment" });
+
+    expect((await POST(request({ courseId: "course" }))).status).toBe(200);
+
+    const params = mocks.createSession.mock.calls[0][0];
+    expect(params.payment_intent_data.application_fee_amount).toBe(Math.floor((12_000 * bps) / 10_000) + 30);
+    expect(params.payment_intent_data.metadata.platformFeeBps).toBe(String(bps));
+    expect(params.metadata.platformFeeFixedMinor).toBe("30");
+    expect(admin.orderInserts[0]).toEqual(
+      expect.objectContaining({ platform_fee_bps: bps, platform_fee_fixed_minor: 30 }),
+    );
+  });
+
+  it("charges the fixed fee as its local equivalent and converts it for a zero-decimal currency", async () => {
+    const admin = createAdmin({ lockReplies: [{ action: "claim", checkout_url: null }] });
+    mocks.getAdmin.mockReturnValue(admin);
+    mocks.getCourseRow.mockResolvedValue({ ...course("one_time"), currency: "JPY" });
+    mocks.normalizePrice.mockReturnValue({
+      amountMinor: 300_000, // ¥3,000 stored as value x 100
+      currency: "jpy",
+      paymentType: "one_time",
+      source: "legacy",
+    });
+    mocks.createSession.mockResolvedValue({ id: "cs_payment", url: "https://checkout.example/payment" });
+
+    expect((await POST(request({ courseId: "course" }))).status).toBe(200);
+    // Stripe's unit for JPY is the yen: 10% of ¥3,000 (the default rate for
+    // this fixture's unknown plan) is ¥300, plus the ¥45 fixed part.
+    const fee = mocks.createSession.mock.calls[0][0].payment_intent_data.application_fee_amount;
+    expect(fee).toBe(300 + 45);
+    expect(admin.orderInserts[0]).toEqual(expect.objectContaining({ platform_fee_fixed_minor: 4_500 }));
+  });
+
+  it("omits the fee when the sale is too small to carry one (Stripe rejects 0)", async () => {
+    mocks.getAdmin.mockReturnValue(createAdmin({ lockReplies: [{ action: "claim", checkout_url: null }] }));
+    mocks.getCourseRow.mockResolvedValue(course("one_time"));
+    mocks.normalizePrice.mockReturnValue({
+      amountMinor: 1,
+      currency: "usd",
+      paymentType: "one_time",
+      source: "legacy",
+    });
+    mocks.createSession.mockResolvedValue({ id: "cs_payment", url: "https://checkout.example/payment" });
+
+    expect((await POST(request({ courseId: "course" }))).status).toBe(200);
+    expect(mocks.createSession.mock.calls[0][0].payment_intent_data).not.toHaveProperty("application_fee_amount");
+  });
+
+  it.each([
+    ["free", 1000],
+    ["basic", 1000],
+    ["starter", 490],
+    ["pro", 290],
+    ["plus", 190],
+  ] as const)("puts the %s percent plus the fixed fee on a student subscription's first invoice", async (planId, bps) => {
+    mocks.getAdmin.mockReturnValue(createAdmin({ lockReplies: [{ action: "claim", checkout_url: null }] }));
+    mocks.getUserRow.mockImplementation(async (id: string) => id === "teacher"
+      ? {
+          uid: "teacher",
+          current_plan_id: planId,
+          stripe_connected_account_id: "acct_teacher",
+          stripe_connect_charges_enabled: true,
+          stripe_connect_payouts_enabled: true,
+        }
+      : { uid: "buyer", email: "buyer@example.com" });
+
+    expect((await POST(request({ courseId: "course" }))).status).toBe(200);
+
+    const subscriptionData = mocks.createSession.mock.calls[0][0].subscription_data;
+    // $0.30 of a $120 price is 0.25%: Stripe takes only a percent on the first
+    // invoice; renewals get the exact amount from invoice.created.
+    expect(subscriptionData.application_fee_percent).toBe((bps + 25) / 100);
+    expect(subscriptionData.metadata.platformFeeBps).toBe(String(bps));
+    expect(subscriptionData.metadata.platformFeeFixedMinor).toBe("30");
+  });
+
   it("preserves the lock when Stripe may have created a session before losing the response", async () => {
     const admin = createAdmin({
       lockReplies: [{ action: "claim", checkout_url: null }],

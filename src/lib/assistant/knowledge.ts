@@ -1,5 +1,5 @@
 import { helpFaqCategories } from "@/data/help-faq";
-import { plans, refundWindowDays } from "@/data/plans";
+import { formatPlanCommission, PLAN_TRIAL_DAYS, publicPlans, refundWindowDays } from "@/data/plans";
 
 // Grounding context for the platform assistant. Built from the SAME sources
 // the site renders (help FAQ + plans.ts), so every fact the bot can state is
@@ -23,15 +23,12 @@ const PLATFORM_OVERVIEW = `SkillsetMind is an online course marketplace where ex
 - Support: the /support page, or email support@skillsetmind.com. We aim to reply within 2 business days (Mon–Fri); never promise a faster reply. Legal terms live at /legal/terms, /legal/privacy, /legal/teacher-terms, and /legal/copyright.`;
 
 function plansSection(): string {
-  const rows = plans.map((plan) => {
-    const price =
-      plan.monthlyUsd === 0
-        ? "no subscription"
-        : `$${plan.monthlyUsd}/month or $${plan.yearlyUsd}/year`;
-    return `- ${plan.name}: ${price}, ${plan.commissionPercent}% commission per paid sale. ${plan.tagline} For: ${plan.audience}`;
+  const rows = publicPlans.map((plan) => {
+    const price = `$${plan.monthlyUsd}/month or $${plan.yearlyUsd}/year`;
+    return `- ${plan.name}: ${price}, ${formatPlanCommission(plan)} commission per paid sale. ${plan.tagline} For: ${plan.audience}`;
   });
   return [
-    "Plans (every plan can publish and sell; paid plans lower the commission rate and add featured slots, custom domains, longer sales pages and branding controls; the Free plan has daily limits on video uploads, advisor questions and manual access grants, which paid plans raise; SkillsetMind charges only the plan price and its commission, and the Stripe processing fee is passed through to the creator on every sale):",
+    `Plans (three plans, Basic, Starter and Pro; every plan can publish and sell; there is no free plan: each starts with a ${PLAN_TRIAL_DAYS}-day free trial, one per account, card required, renewing automatically until cancelled; cancelling in Billing before the trial ends means no charge; the commission is a percent plus $0.30 per sale, charged as its local equivalent in other currencies; higher plans lower the percent and add featured slots, custom domains and branding controls; SkillsetMind charges only the plan price and its commission, and the Stripe processing fee is passed through to the creator on every sale; never mention any other plan):`,
     ...rows,
     `- Refund window: ${refundWindowDays} days from purchase (learner must have completed less than half the course and not received a certificate).`,
     "- Payouts: buyers pay the creator's own Stripe account directly (the creator is the merchant of record). SkillsetMind never holds or remits creator money, so there is no platform clearing period and we add zero days to a payout — Stripe pays out from the creator's own Stripe balance on that account's payout schedule. The timeline is entirely Stripe's and depends on the creator's country and the payment method; Stripe also applies a waiting period before the first payout on a new account, and the settlement of a charge is not the same event as a payout. Refunds and lost disputes are debited from the creator's Stripe balance, and SkillsetMind's application fee is returned to the creator with a refund.",

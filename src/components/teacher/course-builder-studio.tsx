@@ -334,7 +334,7 @@ function sanitizeModules(modules: TeacherCourseModule[]): TeacherCourseModule[] 
 type BuilderError = {
   code: "notFound" | "load" | "chooseModule" | "lessonTitle" | "moduleTitleMissing"
     | "lessonTitleMissing" | "price" | "livePrice" | "installmentsSave" | "category" | "paidPrice"
-    | "installmentsPublish" | "duplicateTitle" | "activation" | "save" | "preview"
+    | "installmentsPublish" | "duplicateTitle" | "activation" | "plan" | "save" | "preview"
     | "setup" | "verification" | "payouts" | "payment" | "lessonContent" | "publish"
     | "session" | "file" | "community";
   moduleIndex?: number;
@@ -2484,7 +2484,9 @@ export function CourseBuilderStudio() {
       const message = caughtError instanceof Error ? caughtError.message : "";
       // O que cada tipo cobra (publish_teacher_course) tem a sua mensagem: a
       // sessao do evento, o arquivo do e-book, a comunidade ligada.
-      const code = message.toLowerCase().includes("every lesson needs")
+      const code = message.includes("creator_plan_required")
+        ? "plan"
+        : message.toLowerCase().includes("every lesson needs")
         ? "lessonContent"
         : message.toLowerCase().includes("schedule the live session")
         ? "session"
@@ -3005,6 +3007,14 @@ export function CourseBuilderStudio() {
                         ? t("creatorEditor.builder.steps.pricing.help")
                         : t("creatorEditor.builder.steps.review.help")}
               </p>
+              {activeTab === "members" ? (
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--color-ink-soft)]">
+                  {t("creatorEditor.members.creatorAreaNote")}{" "}
+                  <Link href="/teach/member-area" className="font-semibold text-[var(--color-primary)] underline-offset-2 hover:underline">
+                    {t("creatorEditor.members.creatorAreaLink")}
+                  </Link>
+                </p>
+              ) : null}
             </div>
             <div className="grid gap-2 text-right text-xs font-semibold text-[var(--color-ink-soft)]">
               {/* O e-book nao mostra modulo nem aula. */}
@@ -3819,7 +3829,11 @@ export function CourseBuilderStudio() {
                       {item.hint}
                       {/* Mesmo destino do Manage: sem ele a pessoa lia "termine
                           o cadastro" e nao tinha onde clicar. */}
-                      {item.id === "payouts" ? (
+                      {item.id === "plan" ? (
+                        <Link href="/account/billing?tab=subscriptions" className="ml-1 font-semibold text-[var(--color-primary)] underline">
+                          {t("creatorEditor.builder.publish.managePlan")}
+                        </Link>
+                      ) : item.id === "payouts" ? (
                         <>
                           {" "}
                           <Link
@@ -3989,7 +4003,11 @@ export function CourseBuilderStudio() {
               className="mt-4 rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]"
             >
               <p>{errorMessage}</p>
-              {error.code === "activation" ? (
+              {error.code === "plan" ? (
+                <Link href="/account/billing?tab=subscriptions" className="button-solid mt-3 px-4 py-2 text-xs">
+                  {t("creatorEditor.builder.publish.managePlan")}
+                </Link>
+              ) : error.code === "activation" ? (
                 <Link
                   href={activateHref}
                   className="button-solid mt-3 px-4 py-2 text-xs"

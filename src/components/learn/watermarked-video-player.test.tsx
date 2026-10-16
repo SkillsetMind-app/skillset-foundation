@@ -5,7 +5,7 @@ import { VideoWatermark } from "@/components/learn/watermarked-video-player";
 import { I18nProvider, useTranslation } from "@/components/i18n/i18n-provider";
 
 const mocks = vi.hoisted(() => ({
-  auth: { user: { email: "student@example.com" } as { email: string } | null },
+  auth: { user: { uid: "4f3a92c1-0b7e-4d2a-9c11-2f6e8a1b3c4d", email: "student@example.com" } as { uid: string; email: string } | null },
   router: { refresh: vi.fn() },
 }));
 vi.mock("@/components/auth/auth-provider", () => ({
@@ -19,7 +19,7 @@ function ChangeLanguage() {
 }
 
 describe("VideoWatermark", () => {
-  beforeEach(() => { mocks.auth.user = { email: "student@example.com" }; });
+  beforeEach(() => { mocks.auth.user = { uid: "4f3a92c1-0b7e-4d2a-9c11-2f6e8a1b3c4d", email: "student@example.com" }; });
 
   it("translates the fallback and timestamp without remounting the player or restarting watermark timers", () => {
     vi.useFakeTimers();
@@ -63,9 +63,8 @@ describe("VideoWatermark", () => {
     );
 
     expect(screen.getByTitle("Lesson 1")).toBeInTheDocument();
-    expect(
-      screen.getByText(/student@example\.com/),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/ID 4F3A-92C1/)).toBeInTheDocument();
+    expect(screen.queryByText(/student@example\.com/)).toBeNull();
   });
 
   it("uma etiqueta so, pequena, que muda de canto a cada ~30 s", () => {
@@ -81,7 +80,8 @@ describe("VideoWatermark", () => {
       // "protected playback" embaixo). Agora e uma, com tudo dentro.
       const labels = container.querySelectorAll("[data-watermark-corner]");
       expect(labels).toHaveLength(1);
-      expect(labels[0].textContent).toMatch(/student@example\.com/);
+      expect(labels[0].textContent).toMatch(/ID 4F3A-92C1/);
+      expect(labels[0].textContent).not.toMatch(/@/);
       expect(labels[0].textContent).toMatch(/SkillsetMind/);
       const before = labels[0].getAttribute("data-watermark-corner");
 

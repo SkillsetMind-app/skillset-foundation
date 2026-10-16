@@ -9,6 +9,7 @@ import { NotificationRow } from "@/components/account/notification-row";
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { LearningPathsRows } from "@/components/learn/learning-paths-rows";
+import { MemberAreaLinks } from "@/components/learn/member-area-links";
 import { WelcomeTour } from "@/components/learn/welcome-tour";
 import { ListingSearchBar } from "@/components/shared/listing-search-bar";
 import { StatusChip } from "@/components/shared/status-chip";
@@ -406,6 +407,7 @@ export function LearnDashboard() {
             o caminho ate ela fica aqui, sempre, com ou sem live marcada —
             e em /learn/events que estao as lives que ja passaram. */}
         <div className="flex flex-wrap items-center gap-2">
+          <MemberAreaLinks courses={realCourses} enrollments={enrollments} />
           <Link href="/learn/events" className="button-outline px-4 text-sm">
             {t("learn.dashboard.allEvents")}
           </Link>

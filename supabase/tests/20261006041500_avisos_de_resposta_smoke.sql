@@ -70,6 +70,10 @@ insert into auth.users(id, aud, role, email, email_confirmed_at, raw_app_meta_da
 select pg_temp.uid(n), 'authenticated', 'authenticated', 'avisos-smoke-' || n || '@example.test',
   now(), '{}', '{}', now(), now()
 from generate_series(1, 6) n;
+-- Keep the creator plan current so this smoke exercises its original guard.
+insert into public.subscriptions(id, user_id, plan_id, status, current_period_end)
+select 'smoke-plan-' || pg_temp.uid(n)::text, pg_temp.uid(n)::text, 'basic', 'active', now() + interval '1 day'
+from (values (1)) owners(n);
 update public.users set display_name = 'Avisos ' || right(uid, 1)
   where uid in (select pg_temp.uid(n)::text from generate_series(1, 6) n);
 update public.users

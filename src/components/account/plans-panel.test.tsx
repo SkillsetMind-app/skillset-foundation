@@ -1,7 +1,7 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { PlansPanel } from "@/components/account/plans-panel";
 
@@ -24,9 +24,15 @@ vi.mock("@/components/auth/auth-provider", () => ({
   }),
 }));
 
+const state = vi.hoisted(() => ({
+  planId: "starter" as string,
+  billing: { trialEligible: true, subscription: null } as Record<string, unknown>,
+  cancel: vi.fn(),
+}));
+
 vi.mock("@/lib/data/user-profiles", () => ({
   subscribeToUserProfile: vi.fn((_uid, onNext) => {
-    onNext({ currentPlanId: "free" });
+    onNext({ currentPlanId: state.planId });
     return vi.fn();
   }),
 }));
@@ -34,21 +40,36 @@ vi.mock("@/lib/data/user-profiles", () => ({
 vi.mock("@/lib/payments/billing", () => ({
   isCheckoutClientConfigured: () => true,
   openBillingPortal: vi.fn(),
+  fetchPlanBillingState: () => Promise.resolve(state.billing),
+  cancelPlanSubscription: state.cancel,
 }));
+
+beforeEach(() => {
+  state.planId = "starter";
+  state.billing = { trialEligible: true, subscription: null };
+  state.cancel.mockReset();
+});
 
 vi.mock("@/components/account/upgrade-modal", () => ({
   UpgradeModal: () => null,
 }));
 
 describe("PlansPanel", () => {
+  it("does not describe an account without a subscription as a free plan", () => {
+    state.planId = "free";
+    render(<PlansPanel />);
+    expect(screen.getByText("No subscription")).toBeInTheDocument();
+    expect(screen.queryByText(/^Free$/)).not.toBeInTheDocument();
+  });
+
   it("diz o plano atual UMA vez, numa linha, sem manchete", () => {
     render(<PlansPanel />);
 
-    // A linha "Current plan: Free" existe...
+    // A linha "Current plan: Starter" existe...
     expect(screen.getByText("Current plan:")).toBeInTheDocument();
     // ...e nao ha mais a manchete grande nem o botao desabilitado "Your plan".
     expect(
-      screen.queryByRole("heading", { name: /^Free$/ }),
+      screen.queryByRole("heading", { name: /^Starter$/ }),
     ).not.toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: "Your plan" }),
@@ -76,6 +97,103 @@ describe("PlansPanel", () => {
     const monthly = screen.getByRole("radio", { name: "Monthly" });
     expect(monthly.className).toMatch(/text-\[13px\]/);
     expect(monthly.className).not.toMatch(/\buppercase\b/);
+  });
+});
+
+describe("PlansPanel com os 2 planos e o teste gratis", () => {
+  it("mostra so Basic, Starter e Pro, mesmo para quem ainda esta sem plano", () => {
+    state.planId = "free";
+    render(<PlansPanel />);
+
+    const names = screen.getAllByRole("article").map((card) => card.querySelector("p")?.textContent);
+    expect(names).toEqual(["Basic", "Starter", "Pro"]);
+    expect(screen.queryByText("Enterprise")).not.toBeInTheDocument();
+  });
+
+  it("oferece o teste de 14 dias com os termos de renovacao junto do botao", async () => {
+    state.planId = "free";
+    render(<PlansPanel />);
+
+    const pro = screen.getAllByRole("article")[2];
+    const cta = await within(pro).findByRole("button", { name: "Start 14-day free trial" });
+    expect(cta.parentElement).toHaveTextContent(
+      /14 days free, then \$89\/month\. Renews automatically until you cancel\. Cancel anytime in Billing before .+ and you won't be charged\./,
+    );
+
+    fireEvent.click(screen.getByRole("radio", { name: "Yearly" }));
+    expect(pro).toHaveTextContent("14 days free, then $890/year.");
+  });
+
+  it("depois do teste usado, o botao volta a ser Upgrade e os termos nao prometem teste", async () => {
+    state.planId = "free";
+    state.billing = { trialEligible: false, subscription: null };
+    render(<PlansPanel />);
+
+    const pro = screen.getAllByRole("article")[2];
+    expect(await within(pro).findByRole("button", { name: "Upgrade to Pro" })).toBeInTheDocument();
+    expect(pro).toHaveTextContent("$89/month, starting today. Renews automatically until you cancel.");
+    expect(pro).not.toHaveTextContent("days free");
+  });
+
+  it("durante o teste mostra quando ele termina e um Cancel plan que funciona", async () => {
+    state.planId = "pro";
+    state.billing = {
+      trialEligible: false,
+      subscription: {
+        planId: "pro",
+        cycle: "monthly",
+        status: "trialing",
+        trialEnd: "2026-10-20T12:00:00.000Z",
+        currentPeriodEnd: "2026-10-20T12:00:00.000Z",
+        cancelAtPeriodEnd: false,
+      },
+    };
+    state.cancel.mockResolvedValue({ ...(state.billing.subscription as object), cancelAtPeriodEnd: true });
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    render(<PlansPanel />);
+
+    expect(await screen.findByText("Free trial — ends October 20, 2026")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Cancel plan" }));
+    expect(window.confirm).toHaveBeenCalledWith(
+      "Cancel your plan? Your free trial runs until October 20, 2026 and you won't be charged.",
+    );
+    expect(await screen.findByText("Ends on October 20, 2026")).toBeInTheDocument();
+    expect(state.cancel).toHaveBeenCalledOnce();
+    expect(screen.queryByRole("button", { name: "Cancel plan" })).not.toBeInTheDocument();
+  });
+
+  it.each([
+    ["past_due", "Cancel your plan now? The unpaid invoice won't be retried and the plan ends immediately."],
+    ["unpaid", "Cancel your plan now? The unpaid invoice won't be retried and the plan ends immediately."],
+    ["active", "Cancel your plan? It stays active until November 3, 2026 and won't renew."],
+  ])("o Cancel plan de uma assinatura %s mostra o aviso certo", async (status, prompt) => {
+    state.planId = "pro";
+    state.billing = {
+      trialEligible: false,
+      subscription: {
+        planId: "pro",
+        cycle: "monthly",
+        status,
+        trialEnd: null,
+        currentPeriodEnd: "2026-11-03T12:00:00.000Z",
+        cancelAtPeriodEnd: false,
+      },
+    };
+    state.cancel.mockResolvedValue({ ...(state.billing.subscription as object), cancelAtPeriodEnd: true });
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    render(<PlansPanel />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Cancel plan" }));
+    expect(confirm).toHaveBeenLastCalledWith(prompt);
+  });
+
+  it("um assinante Enterprise (ex-Plus) ve o proprio plano, sem cartao Enterprise a venda", () => {
+    state.planId = "plus";
+    render(<PlansPanel />);
+
+    expect(screen.getByText("Current plan:").parentElement).toHaveTextContent("Enterprise");
+    expect(screen.getAllByRole("article")).toHaveLength(3);
+    expect(screen.queryByText("Current")).not.toBeInTheDocument();
   });
 });
 

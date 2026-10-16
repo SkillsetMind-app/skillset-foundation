@@ -691,3 +691,4 @@ describe("Home do professor: movimento", () => {
     expect(container.querySelector("[data-milestone-seal]")).not.toHaveClass("milestone-seal");
   });
 });
+vi.mock("@/lib/data/creator-plan", () => ({ fetchCreatorPlanRequired: async () => false }));

@@ -53,7 +53,7 @@ export async function POST(request: Request) {
         await enforceRateLimit(`course_access_daily_${user.id}`, FREE_DAILY_GRANTS, 86400000);
       } catch (error) {
         if (error instanceof PaymentError && error.status === 429) {
-          return NextResponse.json({ error: "Daily limit for manual access on the Free plan. Try again tomorrow.", code: "free_plan_daily_limit" }, { status: 429 });
+          return NextResponse.json({ error: "Daily limit for manual access without a plan. Try again tomorrow.", code: "free_plan_daily_limit" }, { status: 429 });
         }
         throw error;
       }

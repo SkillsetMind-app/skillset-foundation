@@ -153,3 +153,5 @@ it.each(["en", "es"] as const)("opens the shared Stripe action only on click in 
   await act(async () => {});
   expect(mocks.openStripe).toHaveBeenCalledTimes(1);
 });
+
+vi.mock("@/lib/data/creator-plan", () => ({ fetchCreatorPlanRequired: async () => false }));

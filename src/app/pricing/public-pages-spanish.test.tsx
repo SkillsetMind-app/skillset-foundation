@@ -48,8 +48,9 @@ it("refreshes pricing language without resetting the selected cycle or expanded 
   view.rerender(await PricingPage());
   expect(screen.getByLabelText(/Anual/)).toBeChecked();
   expect(screen.getByText("¿Qué ocurre si cambio a un plan inferior o cancelo?").closest("details")).toHaveAttribute("open");
-  expect(screen.getByRole("region", { name: "Comparación de planes" })).toHaveTextContent("$19/mes");
+  expect(screen.getByRole("region", { name: "Comparación de planes" })).toHaveTextContent("$5/mes");
   expect(screen.getByRole("columnheader", { name: "Comisión de la plataforma" })).toBeInTheDocument();
-  expect(screen.getByText("La comisión baja del 10% al 5%")).toBeInTheDocument();
-  expect(screen.getByRole("link", { name: "Empieza con Pro" })).toBeInTheDocument();
+  expect(screen.getByText("4.9% + $0.30 por venta")).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "Empieza tu prueba gratis de 14 días — Pro" })).toBeInTheDocument();
+  expect(screen.getByRole("region", { name: "Comparación de planes" })).toHaveTextContent("Se renueva automáticamente hasta que canceles.");
 });

@@ -344,3 +344,4 @@ describe("aba Curriculum: a lista de modulos vem primeiro", () => {
     }
   }, 10000);
 });
+vi.mock("@/lib/data/creator-plan", () => ({ fetchCreatorPlanRequired: async () => false }));

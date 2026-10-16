@@ -29,6 +29,7 @@ export function mapOrderRow(row: OrderRow): Order {
     status: row.status as OrderStatus,
     provider: (row.provider as Order["provider"] | null) ?? "stripe",
     platformFeeBps: row.platform_fee_bps ?? 0,
+    platformFeeFixedMinor: row.platform_fee_fixed_minor ?? 0,
     payoutModel,
     checkoutSessionId: row.checkout_session_id,
     paymentIntentId: row.payment_intent_id,

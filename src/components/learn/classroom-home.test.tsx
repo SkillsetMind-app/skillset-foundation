@@ -230,7 +230,7 @@ describe("sala de aula com matricula real", () => {
     mocks.pathname = "/learn/courses/demo-course";
     mocks.completed = [];
     render(<I18nProvider initialLocale="es"><EnrolledCourseWorkspace course={course} /></I18nProvider>);
-    expect(screen.getByRole("link", { name: "← Mis cursos" })).toHaveAttribute("href", "/learn");
+    expect(screen.getByRole("link", { name: "← Área de miembros de Ana Prof" })).toHaveAttribute("href", "/learn/areas/@ana");
     expect(screen.getByRole("progressbar", { name: "0% completado" })).toBeInTheDocument();
     expect(screen.getByText("Lección de texto")).toBeInTheDocument();
     expect(screen.getByText("Contenido de la lección")).toBeInTheDocument();
@@ -676,11 +676,12 @@ describe("sala de aula com matricula real", () => {
     expect(container.querySelector('img[src="/old.png"]')).toBeNull();
   });
 
-  it("em aula (?lesson=): cabecalho curto com '← My courses' no lugar da capa", () => {
+  it("em aula (?lesson=): cabecalho curto com o voltar no lugar da capa", () => {
     renderClassroom("lesson=l2");
 
     expect(document.querySelector(".members-hero")).toBeNull();
-    expect(screen.getByRole("link", { name: "← My courses" })).toHaveAttribute("href", "/learn");
+    // O professor tem perfil publico: o voltar leva para a area dele.
+    expect(screen.getByRole("link", { name: "← Ana Prof's members area" })).toHaveAttribute("href", "/learn/areas/@ana");
     expect(screen.getByRole("progressbar", { name: /complete/ })).toBeInTheDocument();
   });
 
@@ -865,10 +866,11 @@ describe("o voltar da sala sobe um nivel", () => {
     Element.prototype.scrollIntoView = vi.fn();
   });
 
-  it("na aula, volta para a lista de cursos", () => {
+  it("na aula, volta para a area do criador (uma saida so, sem a lista de cursos ao lado)", () => {
     renderClassroom("lesson=l2");
 
-    expect(screen.getByRole("link", { name: "← My courses" })).toHaveAttribute("href", "/learn");
+    expect(screen.getByRole("link", { name: "← Ana Prof's members area" })).toHaveAttribute("href", "/learn/areas/@ana");
+    expect(screen.queryByRole("link", { name: "← My courses" })).toBeNull();
   });
 
   it("numa aba, volta para a AULA — a mesma, pelo ?lesson=", () => {
