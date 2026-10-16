@@ -1,3 +1,5 @@
+import { randomBytes } from "node:crypto";
+
 import type { User } from "@supabase/supabase-js";
 
 import { notifyOps } from "@/lib/ops/alert";
@@ -22,6 +24,9 @@ const AUTH_EMAIL_PER_HOUR = 200;
 const HOUR_MS = 60 * 60 * 1000;
 
 export type GuestAccessLinkResult = "sent" | "limited" | "failed";
+
+/** app_metadata mark: the paid guest checkout sale replaced this account's password. */
+export const PAID_GUEST_RESET_MARK = "guest_password_reset_at";
 
 /**
  * Sign-in link to the course, same mechanism as the creator's manual access
@@ -55,29 +60,52 @@ export async function sendGuestAccessLink(admin: Admin, email: string, courseId:
   }
 }
 
+function reportLostSignInLink(courseId: string, userId: string, result: string): void {
+  // Ids only: never the buyer's address.
+  console.error("Guest checkout sign-in link failed after a paid sale", { courseId, userId, result });
+  notifyOps({
+    event: "stripe.webhook.guest_sign_in_link_failed",
+    severity: "warn",
+    summary:
+      "A guest checkout buyer paid but the sign-in link did not go out. The course is unlocked; they can use the resend on the thank-you page or password recovery.",
+    context: { courseId, userId, result },
+  });
+}
+
 /**
- * After every paid sale to an account guest checkout created: it may have no
- * password (confirmed or not, a later purchase can come from a new browser),
- * so the purchase email's plain course link can lead to a sign-in it cannot
- * complete. Such a buyer also gets the sign-in link, once per sale. Every
- * other account gets nothing more. Never throws; a failed send is logged.
+ * After every paid sale, from the Stripe webhook, once the course is unlocked:
+ * - an account guest checkout created gets the sign-in link (it may have no
+ *   password, so the purchase email's plain course link can lead nowhere);
+ * - a sale that came through guest checkout (checkout_origin "guest") to an
+ *   account made some other way that never confirmed its e-mail first gets a
+ *   new random password (marked in app_metadata), then the sign-in link: the
+ *   address is still unproven, so access goes by the link.
+ * Every other account gets nothing more. Never throws and never undoes the
+ * sale: a failure is logged and reported to operations with ids only.
  */
 export async function sendGuestSignInLinkAfterPurchase(
   admin: Admin,
-  buyer: Pick<User, "id" | "email" | "app_metadata"> | null,
+  buyer: Pick<User, "id" | "email" | "email_confirmed_at" | "app_metadata"> | null,
   courseId: string,
+  fromGuestCheckout = false,
 ): Promise<void> {
-  if (!buyer?.email || buyer.app_metadata?.created_via !== GUEST_CHECKOUT_ORIGIN) return;
-  const result = await sendGuestAccessLink(admin, buyer.email, courseId);
-  if (result !== "sent") {
-    // Ids only: never the buyer's address.
-    console.error("Guest checkout sign-in link failed after a paid sale", { courseId, userId: buyer.id, result });
-    notifyOps({
-      event: "stripe.webhook.guest_sign_in_link_failed",
-      severity: "warn",
-      summary:
-        "A guest checkout buyer paid but the sign-in link did not go out. The course is unlocked; they can use the resend on the thank-you page or password recovery.",
-      context: { courseId, userId: buyer.id, result },
-    });
+  if (!buyer?.email) return;
+  if (buyer.app_metadata?.created_via !== GUEST_CHECKOUT_ORIGIN) {
+    if (!fromGuestCheckout || buyer.email_confirmed_at) return;
+    try {
+      const { error } = await admin.auth.admin.updateUserById(buyer.id, {
+        password: randomBytes(32).toString("base64url"),
+        app_metadata: { [PAID_GUEST_RESET_MARK]: new Date().toISOString() },
+      });
+      if (error) {
+        reportLostSignInLink(courseId, buyer.id, "password_not_replaced");
+        return;
+      }
+    } catch {
+      reportLostSignInLink(courseId, buyer.id, "password_not_replaced");
+      return;
+    }
   }
+  const result = await sendGuestAccessLink(admin, buyer.email, courseId);
+  if (result !== "sent") reportLostSignInLink(courseId, buyer.id, result);
 }

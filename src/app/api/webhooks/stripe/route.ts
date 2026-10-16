@@ -225,6 +225,8 @@ type AccessEmailSale = {
   /** payout_ledger id: the order id, or the invoice id for a subscription. */
   ledgerId: string;
   locale: Locale;
+  /** The sale came through guest checkout (metadata.checkout_origin). */
+  fromGuestCheckout?: boolean;
 };
 
 // The one place a lost access email becomes visible. Ids only: never the
@@ -275,7 +277,7 @@ function queuePurchaseAccessEmail(admin: Admin, sale: AccessEmailSale): void {
     }
     // Guest checkout buyers (no password yet) also get the sign-in link. Same
     // place, same once-per-sale gate, same never-throws contract.
-    await sendGuestSignInLinkAfterPurchase(admin, buyer, sale.courseId);
+    await sendGuestSignInLinkAfterPurchase(admin, buyer, sale.courseId, sale.fromGuestCheckout);
   });
 }
 
@@ -631,6 +633,7 @@ async function handleCheckoutCompleted(
     courseTitle: course.title,
     ledgerId: orderId,
     locale: normalizeLocale(session.locale),
+    fromGuestCheckout: session.metadata?.checkout_origin === "guest",
   });
   queueCreatorSaleEmail(admin, {
     ownerId: course.owner_id,
@@ -896,6 +899,7 @@ async function handleCourseSubscriptionInvoicePaid(
         ledgerId: invoice.id,
         // Written by checkout on the subscription; older ones fall back to English.
         locale: normalizeLocale(typeof meta.locale === "string" ? meta.locale : null),
+        fromGuestCheckout: meta.checkout_origin === "guest",
       });
       queueCreatorSaleEmail(admin, {
         ownerId: course.owner_id,
