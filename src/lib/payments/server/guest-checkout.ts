@@ -115,7 +115,12 @@ export async function findOrCreateGuestBuyer(
 
   // A double submit or a signup created it between the lookup and here.
   const raced = await findAuthUserIdByEmail(admin, input.email);
-  if (raced) return { userId: raced, created: false };
+  if (raced) {
+    // The winner may still fail to record its terms; this request accepted
+    // them too, so the same check runs here.
+    await completeUnfinishedGuestTerms(admin, raced);
+    return { userId: raced, created: false };
+  }
   // The address cannot take an account here. Same answer as a course that
   // cannot be bought.
   console.error("[guest-checkout] account not created", { code: error?.code ?? null });

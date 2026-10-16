@@ -520,6 +520,18 @@ describe("guest checkout", () => {
     expect(mocks.createSession.mock.calls[0][0].client_reference_id).toBe("raced-user");
   });
 
+  it("records the terms on the race winner's guest account when it has none yet", async () => {
+    admin = createAdmin({ createUserFails: true, racedUserId: "raced-user", existingGuest: {} });
+
+    const response = await POST(guestRequest(validBody));
+
+    expect(response.status).toBe(200);
+    expect(admin.usersUpdates).toEqual([
+      expect.objectContaining({ terms_version: "2026-09-24", privacy_version: "2026-09-24" }),
+    ]);
+    expect(mocks.createSession.mock.calls[0][0].client_reference_id).toBe("raced-user");
+  });
+
   it("removes the new account when the purchase cannot go ahead, answering exactly the same", async () => {
     // The creator's Stripe account is not ready: the shared builder refuses.
     mocks.getUserRow.mockImplementation(async (id: string) => id === "teacher"
