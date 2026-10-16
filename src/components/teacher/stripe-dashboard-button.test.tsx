@@ -21,7 +21,7 @@ function copy(locale: Locale, key: string) {
 function mount(locale: Locale) {
   return render(<I18nProvider initialLocale={locale}><Language /><StripeDashboardButton /></I18nProvider>);
 }
-beforeEach(() => mocks.open.mockReset().mockResolvedValue(undefined));
+beforeEach(() => { mocks.open.mockReset().mockResolvedValue(undefined); });
 afterEach(cleanup);
 
 describe.each(["en", "es"] as const)("Stripe dashboard button (%s)", (locale) => {
