@@ -2,7 +2,7 @@ import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { I18nProvider } from "@/components/i18n/i18n-provider";
-import { MemberAreaBackLink, MemberAreaLinks } from "@/components/learn/member-area-links";
+import { MemberAreaLinks, useCreatorAreaLink } from "@/components/learn/member-area-links";
 import type { Enrollment } from "@/domain/enrollment";
 import type { TeacherCourse } from "@/domain/teacher-course";
 
@@ -49,26 +49,30 @@ describe("MemberAreaLinks", () => {
   });
 });
 
-describe("MemberAreaBackLink", () => {
+function AreaProbe({ ownerId }: { ownerId: string }) {
+  const area = useCreatorAreaLink(ownerId);
+  return <p>{area ? `${area.name} -> ${area.href}` : "sem area"}</p>;
+}
+
+describe("useCreatorAreaLink", () => {
   afterEach(cleanup);
 
-  it("volta para a área do criador, pelo uid quando não há @", async () => {
-    mocks.subscribeToPublicProfile.mockImplementation((_uid: string, next: (value: unknown) => void) => {
-      next(profile("u-1", "Eton Simon", null));
+  it("dá o endereço da área do criador, pelo uid quando não há @", async () => {
+    mocks.subscribeToPublicProfile.mockImplementation((uid: string, next: (value: unknown) => void) => {
+      next(profile(uid, "Eton Simon", null));
       return () => undefined;
     });
-    render(withLocale(<MemberAreaBackLink ownerId="u-1" />));
-    const link = await screen.findByRole("link", { name: "← Eton Simon's members area" });
-    expect(link.getAttribute("href")).toBe("/learn/areas/u-1");
+    render(withLocale(<AreaProbe ownerId="u-1" />));
+    expect(await screen.findByText("Eton Simon -> /learn/areas/u-1")).toBeTruthy();
   });
 
-  it("sem perfil público não aparece", async () => {
+  it("sem perfil público: null, e a sala volta para /learn", async () => {
     mocks.subscribeToPublicProfile.mockImplementation((_uid: string, next: (value: unknown) => void) => {
       next(null);
       return () => undefined;
     });
-    render(withLocale(<MemberAreaBackLink ownerId="u-9" />));
+    render(withLocale(<AreaProbe ownerId="u-9" />));
     await waitFor(() => expect(mocks.subscribeToPublicProfile).toHaveBeenCalledWith("u-9", expect.any(Function), expect.any(Function)));
-    expect(screen.queryByRole("link")).toBeNull();
+    expect(screen.getByText("sem area")).toBeTruthy();
   });
 });

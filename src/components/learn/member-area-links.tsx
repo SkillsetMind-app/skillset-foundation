@@ -63,25 +63,20 @@ export function MemberAreaLinks({
   );
 }
 
-/** Na sala do curso: "← Área de {nome}". Sem perfil público do criador, não aparece. */
-export function MemberAreaBackLink({ ownerId }: { ownerId: string | null | undefined }) {
-  const { t } = useTranslation();
+/**
+ * A área do criador para o "voltar" da sala: { href, nome } quando ele tem
+ * perfil público, senão null (a sala volta para /learn). Pela mesma leitura
+ * pública que a sala já faz para nomear o professor.
+ */
+export function useCreatorAreaLink(ownerId: string | null | undefined): { href: string; name: string } | null {
   const [profile, setProfile] = useState<PublicProfile | null>(null);
 
-  // A mesma leitura pública que a sala já faz para nomear o professor.
   useEffect(() => {
     if (!ownerId) return;
     return subscribeToPublicProfile(ownerId, setProfile, () => setProfile(null));
   }, [ownerId]);
 
-  const name = profile ? publicProfileName(profile) : null;
+  const name = profile && profile.uid === ownerId ? publicProfileName(profile) : null;
   if (!profile || !name) return null;
-  return (
-    <Link
-      href={memberAreaPath({ username: profile.username, ownerId: profile.uid })}
-      className="inline-flex min-h-11 items-center px-4 text-sm font-semibold text-[var(--ma-ink-soft)] hover:text-[var(--ma-ink)] md:px-0"
-    >
-      ← {t("learn.memberArea.backToArea").replace("{name}", () => name)}
-    </Link>
-  );
+  return { href: memberAreaPath({ username: profile.username, ownerId: profile.uid }), name };
 }

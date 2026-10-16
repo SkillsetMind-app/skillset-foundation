@@ -82,8 +82,10 @@ describe("MemberAreaHomeView", () => {
     expect(within(more).getByText("$97.00")).toBeTruthy();
     expect(within(more).getByRole("link", { name: "See details" }).getAttribute("href"))
       .toBe("/courses/leadership-blind-spots");
-    // O produto não comprado nunca leva à sala.
-    expect(within(more).queryByRole("link", { name: /learn\/courses/ })).toBeNull();
+    // O produto não comprado nunca leva à sala: todo link da vitrine é página de vendas.
+    for (const link of within(more).getAllByRole("link")) {
+      expect(link.getAttribute("href")).toMatch(/^\/courses\//);
+    }
   });
 
   it("quem não é aluno nem dono vai para a vitrine pública", async () => {

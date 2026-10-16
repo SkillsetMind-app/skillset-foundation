@@ -29,6 +29,8 @@ export interface MembersAreaHeroProps {
   /** Para onde o "voltar" leva. Na aba About da sala ele sobe UM nivel — para
    *  a aula — em vez de sair do curso inteiro. */
   backTo?: "courses" | "lesson";
+  /** Rotulo do "voltar" quando ele leva para outro lugar (a area do criador). */
+  backLabel?: string | null;
 }
 
 function deriveInitials(studioName?: string | null): string {
@@ -57,6 +59,7 @@ export function MembersAreaHero({
   backHref,
   primaryAction,
   backTo = "courses",
+  backLabel = null,
 }: MembersAreaHeroProps) {
   const { t } = useTranslation();
   const [showFullDescription, setShowFullDescription] = useState(false);
@@ -94,9 +97,10 @@ export function MembersAreaHero({
         {backHref ? (
           <Link className="members-hero__back" href={backHref}>
             <ArrowLeft size={17} aria-hidden="true" />{" "}
-            {backTo === "lesson"
-              ? t("learn.membersHero.backToLesson")
-              : t("learn.membersHero.back")}
+            {backLabel
+              ?? (backTo === "lesson"
+                ? t("learn.membersHero.backToLesson")
+                : t("learn.membersHero.back"))}
           </Link>
         ) : null}
 

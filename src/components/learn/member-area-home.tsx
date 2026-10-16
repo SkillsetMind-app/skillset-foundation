@@ -7,7 +7,7 @@ import { useEffect, useState } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { CourseCover } from "@/components/learn/course-unlock-modal";
-import { MemberAreaShell } from "@/components/learn/member-area-shell";
+import { MemberAreaShell, type MemberAreaBrand } from "@/components/learn/member-area-shell";
 import { classroomTabHref } from "@/domain/classroom-tabs";
 import {
   getMemberAreaHome,
@@ -49,7 +49,7 @@ function priceLabel(product: MemberAreaLockedProduct, locale: string, free: stri
 }
 
 /** /learn/areas/[criador]: a área do criador para o aluno. Não libera aula: cada produto abre a própria sala. */
-export function MemberAreaHomeView({ areaRef }: { areaRef: string }) {
+export function MemberAreaHomeView({ areaRef, brand = null }: { areaRef: string; brand?: MemberAreaBrand | null }) {
   const { t, locale } = useTranslation();
   const router = useRouter();
   const [state, setState] = useState<State>({ status: "loading" });
@@ -76,7 +76,7 @@ export function MemberAreaHomeView({ areaRef }: { areaRef: string }) {
 
   if (state.status !== "ready") {
     return (
-      <MemberAreaShell>
+      <MemberAreaShell brand={brand}>
         <div className="px-4 md:px-0">
           {state.status === "loading" ? (
             <p role="status" className="text-sm text-[var(--ma-ink-soft)]">{t("learn.memberArea.loading")}</p>
@@ -105,7 +105,7 @@ export function MemberAreaHomeView({ areaRef }: { areaRef: string }) {
   const free = t("learn.memberArea.free");
 
   return (
-    <MemberAreaShell theme={area.theme}>
+    <MemberAreaShell theme={area.theme} brand={brand}>
       <div className="grid gap-8 px-4 md:px-0">
         {area.isOwnerPreview ? (
           <p className="rounded-md border border-[var(--ma-line)] bg-[var(--ma-surface-2)] px-4 py-3 text-sm text-[var(--ma-ink-soft)]">
@@ -175,7 +175,10 @@ export function MemberAreaHomeView({ areaRef }: { areaRef: string }) {
             <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {myProducts.map((product) => (
                 <li key={product.courseId} className={cardClass}>
-                  <Link href={classroomPath(product.courseId)} className="flex min-w-0 flex-1 flex-col">
+                  <Link
+                    href={classroomPath(product.courseId)}
+                    className="flex min-w-0 flex-1 flex-col rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--ma-accent)]"
+                  >
                     <span className="relative block aspect-video overflow-hidden">
                       <CourseCover course={{ coverImageUrl: product.coverImageUrl, title: product.title }} sizes="(max-width: 640px) 100vw, 33vw" />
                     </span>
