@@ -101,6 +101,7 @@ import {
   subscribeToLessonContent,
   type LessonContent,
 } from "@/lib/data/lesson-content";
+import { MemberAreaBackLink } from "@/components/learn/member-area-links";
 import { track } from "@/lib/posthog/events";
 import { scrollBehavior } from "@/lib/ui/scroll-behavior";
 
@@ -1231,6 +1232,8 @@ export function EnrolledCourseWorkspace({
       className="member-classroom"
       data-members-theme={course.membersTheme ?? "light"}
     >
+      {/* De qualquer sala, o caminho de volta para a área do criador. */}
+      {previewMode ? null : <MemberAreaBackLink ownerId={course.instructorId} />}
       {isCourseHome ? (
         <MembersAreaHeroBand
           course={course}

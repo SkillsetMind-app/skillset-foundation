@@ -1281,6 +1281,27 @@
     "rejected": "Rechazado"
   },
   "learn": {
+    "memberArea": {
+      "loading": "Cargando el área de miembros...",
+      "loadError": "No pudimos cargar esta área de miembros. Inténtalo de nuevo.",
+      "ownerPreview": "Vista previa: así la ven tus estudiantes. Aquí solo aparecen los cambios guardados.",
+      "editArea": "Editar área de miembros",
+      "byCreator": "Por {name}",
+      "continueTitle": "Continúa donde te quedaste",
+      "continueEmpty": "Abre uno de tus productos abajo para empezar.",
+      "resumeLesson": "Retomar: {title}",
+      "resumeAt": "desde {time}",
+      "myProducts": "Mis productos",
+      "myProductsEmpty": "Todavía no tienes productos de este creador.",
+      "progress": "{percent}% completado",
+      "moreProducts": "Más de este creador",
+      "moreProductsEmpty": "Ya tienes todos los productos de este creador.",
+      "locked": "Bloqueado",
+      "viewProduct": "Ver detalles",
+      "free": "Gratis",
+      "openArea": "Abrir el área de miembros de {name}",
+      "backToArea": "Área de miembros de {name}"
+    },
     "classroom": {
       "workspace": {
         "enrollmentError": "No pudimos confirmar tu inscripción en este curso.",
