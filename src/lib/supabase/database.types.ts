@@ -2842,6 +2842,10 @@ export type Database = {
         Args: { p_order_id: string }
         Returns: undefined
       }
+      find_auth_user_id_by_email: {
+        Args: { p_email: string }
+        Returns: string
+      }
       get_my_course_students: {
         Args: never
         Returns: {
