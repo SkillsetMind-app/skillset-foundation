@@ -59,10 +59,13 @@ export function VideoWatermark({
     };
   }, []);
 
-  const viewerLabel =
-    user?.email
-    || user?.displayName
-    || t("courseMedia.watermark.learner").replace("{brandName}", () => brandName);
+  // Um código curto da conta, nunca o e-mail nem o nome: quem assiste não
+  // precisa ver o próprio dado pessoal na tela, e a equipe ainda acha a conta
+  // de quem vazou uma gravação pelo início do uid.
+  const viewerCode = viewerCodeFromUid(user?.uid);
+  const viewerLabel = viewerCode
+    ? `ID ${viewerCode}`
+    : t("courseMedia.watermark.learner").replace("{brandName}", () => brandName);
   const timestampLabel = timestamp === null
     ? t("courseMedia.watermark.protectedPlayback")
     : new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(timestamp);
@@ -83,6 +86,13 @@ export function VideoWatermark({
       </div>
     </div>
   );
+}
+
+/** "4f3a92c1-…" → "4F3A-92C1". */
+export function viewerCodeFromUid(uid: string | null | undefined): string | null {
+  const compact = (uid ?? "").replace(/[^a-z0-9]/gi, "").slice(0, 8).toUpperCase();
+  if (compact.length < 8) return null;
+  return `${compact.slice(0, 4)}-${compact.slice(4)}`;
 }
 
 const watermarkCorners = [
