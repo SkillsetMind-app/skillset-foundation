@@ -80,6 +80,13 @@ insert into public.enrollments(id, user_id, course_id, course_slug, course_title
 select pg_temp.uid(e.n)::text || '__' || pg_temp.course('a'), pg_temp.uid(e.n)::text, pg_temp.course('a'),
   pg_temp.course('a'), 'Smoke area a', 'smoke', '', e.status, 'admin', e.last_lesson
 from (values (2, 'active', 'a-1'), (5, 'active', 'a-1'), (6, 'refunded', null)) e(n, status, last_lesson);
+-- 5 tambem concluiu H e tocou uma aula dele por ultimo: curso concluido nao retoma.
+insert into public.enrollments(id, user_id, course_id, course_slug, course_title, course_category,
+  course_image, status, source)
+values (pg_temp.uid(5)::text || '__' || pg_temp.course('h'), pg_temp.uid(5)::text, pg_temp.course('h'),
+  pg_temp.course('h'), 'Smoke area h', 'smoke', '', 'completed', 'admin');
+insert into public.lesson_playback(enrollment_id, lesson_id, user_id, last_seen_at, position_seconds)
+values (pg_temp.uid(5)::text || '__' || pg_temp.course('h'), 'h-1', pg_temp.uid(5)::text, now() + interval '1 hour', 30);
 insert into auth.mfa_factors(id, user_id, factor_type, status, created_at, updated_at)
 values (gen_random_uuid(), pg_temp.uid(5), 'totp', 'verified', now(), now());
 insert into public.lesson_playback(enrollment_id, lesson_id, user_id, last_seen_at, position_seconds)
@@ -118,17 +125,20 @@ select pg_temp.assert_true(pg_temp.home('@ninguem-aqui') is null, 'unknown creat
 
 reset role;
 
--- Aluno com 2FA sem o segundo fator na sessao: null. Com ele, continuar cai na
--- ultima aula aberta, porque nenhuma foi tocada.
+-- Aluno com 2FA sem o segundo fator na sessao: null. Com ele, continuar vai
+-- para a aula seguinte a ultima concluida (a-1 -> a-2), nao para o curso concluido.
 select pg_temp.act_as(pg_temp.uid(5), 'authenticated', 'aal1');
 set local role authenticated;
 select pg_temp.assert_true(pg_temp.home('@smoke-area-eton') is null, 'second factor missing from session');
 reset role;
 select pg_temp.act_as(pg_temp.uid(5));
 set local role authenticated;
-select pg_temp.assert_true((select d #>> '{continue,lesson_id}' = 'a-1' and d #>> '{continue,lesson_title}' = 'Aula a 1'
+select pg_temp.assert_true((select d #>> '{continue,course_id}' = pg_temp.course('a')
+    and d #>> '{continue,lesson_id}' = 'a-2' and d #>> '{continue,lesson_title}' = 'Aula a 2'
     and (d #>> '{continue,position_seconds}')::int = 0
-  from (select pg_temp.home('@smoke-area-eton') as d) x), 'continue falls back to the last opened lesson');
+  from (select pg_temp.home('@smoke-area-eton') as d) x), 'continue: next after last completed, never a completed course');
+select pg_temp.assert_true(pg_temp.ids(pg_temp.home('@smoke-area-eton') -> 'my_products')
+  @> array[pg_temp.course('h')], 'completed course stays in my products');
 reset role;
 -- Reembolsado nao e aluno.
 select pg_temp.act_as(pg_temp.uid(6));

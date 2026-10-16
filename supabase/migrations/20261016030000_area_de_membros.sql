@@ -83,6 +83,35 @@ as $function$
 $function$;
 revoke all on function public.resolve_member_area_owner(text) from public, anon, authenticated, service_role;
 
+-- A aula para retomar sem nenhuma aula tocada. Mesma regra do painel
+-- (getResumeCourseLesson): enrollments.last_lesson_id e a ultima CONCLUIDA,
+-- entao vale a seguinte; na ultima do curso, ela mesma; sem nenhuma (ou id que
+-- sumiu do curso), a primeira.
+create function public.member_area_resume_lesson(p_modules jsonb, p_last_lesson_id text)
+returns text
+language sql
+immutable
+set search_path to 'public', 'pg_temp'
+as $function$
+  with entries as (
+    select l.value ->> 'id' as lesson_id, row_number() over (order by m.ord, l.ord) as n
+    from jsonb_array_elements(case when jsonb_typeof(p_modules) = 'array' then p_modules else '[]'::jsonb end)
+      with ordinality as m(value, ord)
+    cross join lateral jsonb_array_elements(
+      case when jsonb_typeof(m.value -> 'lessons') = 'array' then m.value -> 'lessons' else '[]'::jsonb end)
+      with ordinality as l(value, ord)
+  ),
+  last_done as (
+    select min(n) as n from entries where lesson_id = p_last_lesson_id
+  )
+  select e.lesson_id
+  from entries e, last_done
+  where e.n = coalesce(last_done.n + 1, 1) or e.n = last_done.n
+  order by e.n desc
+  limit 1;
+$function$;
+revoke all on function public.member_area_resume_lesson(jsonb, text) from public, anon, authenticated, service_role;
+
 -- Todos os produtos do criador com a ordem e a visibilidade da area. Produto
 -- fora da lista salva (ou area virtual) vai para o fim, visivel, do mais novo
 -- para o mais antigo. Funcao em vez de tabela temporaria: chamada de dentro de
@@ -142,7 +171,8 @@ begin
     join ordered o on o.course_id = e.course_id
     where e.user_id = v_me and e.status in ('active', 'completed')
   ),
-  -- Ultima aula tocada; sem nenhuma, a ultima aula aberta da matricula.
+  -- So matricula ativa retoma (canContinueEnrollment): a ultima aula tocada;
+  -- sem nenhuma, a seguinte a ultima concluida.
   resume as (
     select x.course_id, x.lesson_id, x.position_seconds, x.seen_at, x.pri, c.title as course_title,
       jsonb_path_query_first(c.modules, '$[*].lessons[*] ? (@.id == $id).title',
@@ -151,10 +181,12 @@ begin
       select m.course_id, p.lesson_id, p.position_seconds, p.last_seen_at as seen_at, 0 as pri
       from mine m
       join public.lesson_playback p on p.enrollment_id = m.enrollment_id and p.user_id = v_me
+      where m.status = 'active'
       union all
-      select m.course_id, m.last_lesson_id, 0, m.updated_at, 1
+      select m.course_id, public.member_area_resume_lesson(c.modules, m.last_lesson_id), 0, m.updated_at, 1
       from mine m
-      where m.last_lesson_id is not null
+      join public.courses c on c.id = m.course_id
+      where m.status = 'active'
     ) x
     join public.courses c on c.id = x.course_id
   )
