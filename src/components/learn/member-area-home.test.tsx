@@ -110,7 +110,22 @@ describe("MemberAreaHomeView", () => {
     expect(screen.getByRole("link", { name: "Edit members area" }).getAttribute("href")).toBe("/teach/member-area");
     expect(screen.getByText("Open one of your products below to start.")).toBeTruthy();
     expect(screen.getByText("You have no products from this creator yet.")).toBeTruthy();
-    expect(screen.getByText("You already have every product from this creator.")).toBeTruthy();
+    // Sem nada comprado, a vitrine vazia não diz "você já tem tudo".
+    expect(screen.getByText("This creator has no other products yet.")).toBeTruthy();
+    expect(screen.queryByText("You already have every product from this creator.")).toBeNull();
+  });
+
+  it("quem já tem tudo vê 'você já tem tudo'; assinatura diz que é assinatura", async () => {
+    mocks.getMemberAreaHome.mockResolvedValueOnce({ ...home, moreProducts: [] });
+    renderView();
+    expect(await screen.findByText("You already have every product from this creator.")).toBeTruthy();
+    cleanup();
+    mocks.getMemberAreaHome.mockResolvedValueOnce({
+      ...home,
+      moreProducts: [{ ...home.moreProducts[0], paymentType: "subscription", priceAmountMinor: 1900 }],
+    });
+    renderView();
+    expect(await screen.findByText("$19.00 · subscription")).toBeTruthy();
   });
 
   it("erro de leitura pede nova tentativa", async () => {

@@ -1282,6 +1282,9 @@
   },
   "learn": {
     "memberArea": {
+      "moreProductsNone": "This creator has no other products yet.",
+      "subscription": "subscription",
+      "tabTitle": "Members area",
       "loading": "Loading the members area...",
       "loadError": "We could not load this members area. Please try again.",
       "ownerPreview": "Preview: this is what your students see. Only saved changes appear here.",
