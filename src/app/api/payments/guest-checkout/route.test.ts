@@ -692,6 +692,18 @@ describe("guest checkout", () => {
     expect(mocks.createSession).not.toHaveBeenCalled();
   });
 
+  it("marks a subscription checkout as guest on the session and on the subscription", async () => {
+    mocks.subscriptionInterval.mockReturnValue("month");
+
+    const response = await POST(guestRequest(validBody));
+
+    expect(response.status).toBe(200);
+    const [params] = mocks.createSession.mock.calls[0];
+    expect(params.mode).toBe("subscription");
+    expect(params.metadata.checkout_origin).toBe("guest");
+    expect(params.subscription_data.metadata.checkout_origin).toBe("guest");
+  });
+
   it("opens the same Stripe session as the signed-in route for the same course and offer", async () => {
     const offer = { offerId: "offer-1", priceId: "price-1" };
     admin = createAdmin({ existingUserId: "buyer" });
@@ -704,7 +716,8 @@ describe("guest checkout", () => {
     }));
 
     expect(mocks.createSession).toHaveBeenCalledTimes(2);
-    // Per-attempt values (order id, expiry) and the return page differ by design.
+    // Per-attempt values (order id, expiry), the return page and the origin
+    // marker differ by design; nothing else (amount, fee, Connect account).
     type SessionParams = {
       success_url?: string;
       expires_at?: number;
@@ -716,11 +729,15 @@ describe("guest checkout", () => {
       delete copy.success_url;
       delete copy.expires_at;
       delete copy.metadata.orderId;
+      delete copy.metadata.checkout_origin;
       delete copy.payment_intent_data.metadata.orderId;
       return { params: copy, stripeAccount: options.stripeAccount };
     };
-    const [guest, signedIn] = mocks.createSession.mock.calls.map((call) =>
-      normalize(call as [SessionParams, { stripeAccount?: string }]));
+    const [guestCall, signedInCall] = mocks.createSession.mock.calls as [SessionParams, { stripeAccount?: string }][];
+    expect(guestCall[0].metadata.checkout_origin).toBe("guest");
+    expect(signedInCall[0].metadata).not.toHaveProperty("checkout_origin");
+    expect(guestCall[0].payment_intent_data.metadata).not.toHaveProperty("checkout_origin");
+    const [guest, signedIn] = [guestCall, signedInCall].map(normalize);
     expect(guest).toEqual(signedIn);
     expect(guest.params.metadata).toMatchObject({ userId: "buyer", offerId: "offer-1", priceId: "price-1", teacherId: "teacher" });
     expect(guest.stripeAccount).toBe("acct_teacher");

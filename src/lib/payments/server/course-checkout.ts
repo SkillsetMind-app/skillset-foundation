@@ -57,6 +57,11 @@ export type CourseCheckoutOptions = {
   successUrl?: string;
   /** Prefills the Stripe page. Default: the buyer's profile email. */
   customerEmail?: string;
+  /**
+   * Which checkout opened the session, recorded as metadata.checkout_origin
+   * (and on the subscription) for the webhook. Default: none (signed-in).
+   */
+  checkoutOrigin?: "guest";
 };
 
 // Opens a Stripe Checkout Session for a paid course. Shared by the signed-in
@@ -466,6 +471,7 @@ export async function createCourseCheckoutSession(
                 // The webhook only ever sees the subscription, so the
                 // reservation id has to live here to be finalizable.
                 ...couponMetadata,
+                ...(options.checkoutOrigin ? { checkout_origin: options.checkoutOrigin } : {}),
               },
             },
             metadata: {
@@ -480,6 +486,7 @@ export async function createCourseCheckoutSession(
               ...(priced.offerId ? { offerId: priced.offerId } : {}),
               ...(priced.priceId ? { priceId: priced.priceId } : {}),
               ...couponMetadata,
+              ...(options.checkoutOrigin ? { checkout_origin: options.checkoutOrigin } : {}),
             },
             expires_at: Math.floor(Date.now() / 1000) + checkoutSessionExpiresInSec,
             success_url: options.successUrl
@@ -758,6 +765,7 @@ export async function createCourseCheckoutSession(
         connectedAccountId,
         platformFeeBps: String(platformFeeBps),
         platformFeeFixedMinor: String(platformFeeFixedMinor),
+        ...(options.checkoutOrigin ? { checkout_origin: options.checkoutOrigin } : {}),
       },
       payment_intent_data: {
         // Our cut, deducted by Stripe from a charge that settles directly in the

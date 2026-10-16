@@ -166,6 +166,8 @@ async function answerForBuyer(
       // The address typed here, which found the account. Never the profile
       // email, which the account's owner can change.
       customerEmail: email,
+      // Read by the webhook after the paid sale (sign-in link).
+      checkoutOrigin: "guest",
     },
   );
 
