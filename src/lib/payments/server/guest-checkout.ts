@@ -28,7 +28,11 @@ export function isGuestCheckoutConfigured(): boolean {
     && Boolean(process.env.GUEST_CHECKOUT_COOKIE_SECRET);
 }
 
-/** Cloudflare Turnstile, checked server-side. Any failure (network, timeout, bad answer) is a "no". */
+/**
+ * Cloudflare Turnstile, checked server-side. Any failure (network, timeout,
+ * bad answer) is a "no", and so is a token solved on another hostname than
+ * this app's (www and the bare domain count as the same).
+ */
 export async function verifyTurnstileToken(token: string, ip: string | null): Promise<boolean> {
   const secret = process.env.TURNSTILE_SECRET_KEY;
   if (!secret || !token) return false;
@@ -41,11 +45,17 @@ export async function verifyTurnstileToken(token: string, ip: string | null): Pr
       signal: AbortSignal.timeout(8000),
     });
     if (!response.ok) return false;
-    const result = (await response.json()) as { success?: unknown };
-    return result.success === true;
+    const result = (await response.json()) as { success?: unknown; hostname?: unknown };
+    return result.success === true && isAppHostname(result.hostname);
   } catch {
     return false;
   }
+}
+
+function isAppHostname(hostname: unknown): boolean {
+  if (typeof hostname !== "string" || !hostname) return false;
+  const bare = (host: string) => host.toLowerCase().replace(/^www\./, "");
+  return bare(hostname) === bare(new URL(getAppUrl()).hostname);
 }
 
 /**

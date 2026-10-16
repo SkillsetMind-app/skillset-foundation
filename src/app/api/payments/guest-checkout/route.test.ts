@@ -159,8 +159,8 @@ function guestRequest(body: unknown, headers: Record<string, string> = {}) {
   });
 }
 
-function turnstileAnswers(success: boolean) {
-  mocks.fetch.mockImplementation(async () => new Response(JSON.stringify({ success })));
+function turnstileAnswers(success: boolean, hostname: string | undefined = "skillset.test") {
+  mocks.fetch.mockImplementation(async () => new Response(JSON.stringify({ success, hostname })));
 }
 
 describe("guest checkout", () => {
@@ -273,6 +273,26 @@ describe("guest checkout", () => {
     expect(form.get("remoteip")).toBe("203.0.113.7");
     expect(admin.auth.admin.createUser).not.toHaveBeenCalled();
     expect(mocks.createSession).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["another site", "evil.example"],
+    ["no hostname", undefined],
+  ])("refuses a Turnstile token solved on %s", async (_label, hostname) => {
+    turnstileAnswers(true, hostname);
+
+    const response = await POST(guestRequest(validBody));
+
+    expect((await response.json()).code).toBe("captcha_failed");
+    expect(admin.auth.admin.createUser).not.toHaveBeenCalled();
+  });
+
+  it("takes a token solved on the www host of this app", async () => {
+    turnstileAnswers(true, "www.skillset.test");
+
+    const response = await POST(guestRequest(validBody));
+
+    expect(response.status).toBe(200);
   });
 
   it("treats an unreachable Turnstile as a failed check", async () => {
