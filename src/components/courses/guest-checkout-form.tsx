@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useState, type FormEvent } from "react";
+import { useState, useSyncExternalStore, type FormEvent } from "react";
 
 import { GoogleMark } from "@/components/auth/google-mark";
 import { TurnstileWidget } from "@/components/auth/turnstile-widget";
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { isPlatformHost } from "@/domain/host-routing";
 import { isGoogleAuthEnabled } from "@/lib/auth/providers";
 import { getLoadingRoute } from "@/lib/auth/routing";
 import { signInWithGoogle } from "@/lib/auth/supabase-auth";
@@ -17,6 +18,18 @@ const fieldClass =
 const labelClass = "text-xs font-semibold uppercase tracking-[0.18em] text-[var(--color-ink-soft)]";
 const errorClass =
   "rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]";
+
+const noSubscription = () => () => {};
+
+/**
+ * Whether this page is served on the platform's own host. Guest checkout is
+ * offered only there: on a creator's own domain the page keeps sign-in and
+ * sign-up, like every identity surface (see domain/host-routing). False on the
+ * server render, so the form only appears once the browser knows its host.
+ */
+export function useOnPlatformHost(): boolean {
+  return useSyncExternalStore(noSubscription, () => isPlatformHost(window.location.hostname), () => false);
+}
 
 type GuestCheckoutFormProps = {
   courseId: string;

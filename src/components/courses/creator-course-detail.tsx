@@ -53,7 +53,7 @@ import {
   enrollInFreeCreatorCourse,
   startCourseCheckout,
 } from "@/lib/payments/checkout";
-import { GuestCheckoutForm } from "@/components/courses/guest-checkout-form";
+import { GuestCheckoutForm, useOnPlatformHost } from "@/components/courses/guest-checkout-form";
 import { isGuestCheckoutEnabled } from "@/lib/payments/guest-checkout";
 import { track } from "@/lib/posthog/events";
 import { CourseViewedTracker } from "@/lib/posthog/page-trackers";
@@ -129,6 +129,7 @@ export function CreatorCourseDetail({
   const hasRealCourses = useHasRealCourses();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const onPlatformHost = useOnPlatformHost();
   // URL segment: a course id on legacy links (and the Stripe checkout
   // redirects) or a title_key slug on pretty ones. Only route back to it;
   // every backend call below uses `resolvedCourseId`, the real primary key.
@@ -454,11 +455,13 @@ export function CreatorCourseDetail({
     && Boolean(user)
     && courseIsFree;
   // A visitor buys a paid course without signing in first (off by default; see
-  // isGuestCheckoutEnabled). Free courses still need an account.
+  // isGuestCheckoutEnabled). Free courses still need an account, and so does a
+  // creator's own domain.
   const guestCheckoutOn =
     authStatus !== "authenticated"
     && checkoutEnabled
     && !courseIsFree
+    && onPlatformHost
     && isGuestCheckoutEnabled();
   // The owner never sees padlocks on their own course.
   const viewerOwnsCourse = Boolean(user && course.ownerId === user.uid);

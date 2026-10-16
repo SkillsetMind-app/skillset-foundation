@@ -5,6 +5,7 @@ import {
   decodeGuestCheckoutCookie,
   GUEST_CHECKOUT_COOKIE,
   isGuestCheckoutConfigured,
+  isPlatformRequest,
   sendGuestAccessLink,
 } from "@/lib/payments/server/guest-checkout";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
@@ -19,7 +20,7 @@ const GLOBAL_PER_HOUR = 60;
 // sign-in link from the thank-you page. The address and course come only from
 // the signed cookie the guest checkout set; the request body is ignored.
 export async function POST(request: NextRequest) {
-  if (!isGuestCheckoutConfigured()) {
+  if (!isGuestCheckoutConfigured() || !isPlatformRequest(request)) {
     return NextResponse.json({ error: "Not found.", code: "guest_checkout_disabled" }, { status: 404 });
   }
   const pending = decodeGuestCheckoutCookie(request.cookies.get(GUEST_CHECKOUT_COOKIE)?.value);

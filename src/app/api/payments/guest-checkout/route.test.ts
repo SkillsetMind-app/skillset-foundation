@@ -257,6 +257,19 @@ describe("guest checkout", () => {
     expect(admin.auth.admin.createUser).not.toHaveBeenCalled();
   });
 
+  it("answers like the feature is off when the request comes through a creator's own domain", async () => {
+    const response = await POST(new Request("https://cursos.criador.example/api/payments/guest-checkout", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(validBody),
+    }));
+
+    expect(response.status).toBe(404);
+    expect((await response.json()).code).toBe("guest_checkout_disabled");
+    expect(mocks.fetch).not.toHaveBeenCalled();
+    expect(admin.auth.admin.createUser).not.toHaveBeenCalled();
+  });
+
   it.each([
     ["terms not accepted", { ...validBody, acceptTerms: false }],
     ["terms as a string", { ...validBody, acceptTerms: "true" }],
@@ -730,6 +743,17 @@ describe("guest checkout access link (thank-you page)", () => {
     vi.stubEnv("NEXT_PUBLIC_GUEST_CHECKOUT_ENABLED", "");
 
     const response = await accessLinkPOST(linkRequest(encodeGuestCheckoutCookie({ email: "ana@example.com", courseId: "course" })));
+
+    expect(response.status).toBe(404);
+    expect(admin.auth.signInWithOtp).not.toHaveBeenCalled();
+  });
+
+  it("is off on a creator's own domain", async () => {
+    const cookie = encodeGuestCheckoutCookie({ email: "ana@example.com", courseId: "course" });
+    const response = await accessLinkPOST(new NextRequest("https://cursos.criador.example/api/payments/guest-checkout/access-link", {
+      method: "POST",
+      headers: { cookie: `${GUEST_CHECKOUT_COOKIE}=${cookie}` },
+    }));
 
     expect(response.status).toBe(404);
     expect(admin.auth.signInWithOtp).not.toHaveBeenCalled();

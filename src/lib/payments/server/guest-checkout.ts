@@ -1,5 +1,6 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 
+import { isPlatformHost, normaliseHostHeader } from "@/domain/host-routing";
 import { currentPrivacyVersion, currentTermsVersion } from "@/lib/legal/versions";
 import { isGuestCheckoutEnabled } from "@/lib/payments/guest-checkout";
 import { getAppUrl } from "@/lib/payments/server/app-url";
@@ -27,6 +28,15 @@ export function isGuestCheckoutConfigured(): boolean {
   return isGuestCheckoutEnabled()
     && Boolean(process.env.TURNSTILE_SECRET_KEY)
     && Boolean(process.env.GUEST_CHECKOUT_COOKIE_SECRET);
+}
+
+/**
+ * Guest checkout runs only on the platform's own hosts. A request that comes
+ * through a creator's own domain is answered like the feature being off.
+ */
+export function isPlatformRequest(request: Request): boolean {
+  const host = normaliseHostHeader(request.headers.get("host") ?? new URL(request.url).host);
+  return host !== null && isPlatformHost(host);
 }
 
 /**

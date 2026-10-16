@@ -5,6 +5,7 @@ import { CreatorCourseDetail } from "@/components/courses/creator-course-detail"
 import { RealCoursesProvider } from "@/components/site/real-courses";
 import { startCourseCheckout, enrollInFreeCreatorCourse, startGuestCourseCheckout } from "@/lib/payments/checkout";
 import { getLoadingRoute } from "@/lib/auth/routing";
+import { isPlatformHost } from "@/domain/host-routing";
 import { signInWithGoogle } from "@/lib/auth/supabase-auth";
 import { PaymentRequestError } from "@/lib/payments/client-fetch";
 import { getCourseLanding } from "@/lib/data/course-landings";
@@ -132,6 +133,11 @@ vi.mock("@/components/auth/turnstile-widget", async () => {
 });
 vi.mock("@/lib/auth/providers", () => ({ isGoogleAuthEnabled: true }));
 vi.mock("@/lib/auth/supabase-auth", () => ({ signInWithGoogle: vi.fn(() => new Promise(() => {})) }));
+// Real host rule (jsdom runs on localhost, a platform host); one test swaps it.
+vi.mock("@/domain/host-routing", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/domain/host-routing")>();
+  return { ...actual, isPlatformHost: vi.fn(actual.isPlatformHost) };
+});
 
 // The teacher's sales blocks: one button wired to onEnrol, like their CTA block.
 vi.mock("@/components/courses/course-landing-blocks", () => ({
@@ -1266,6 +1272,21 @@ describe("CreatorCourseDetail: buying without an account", () => {
     expect(await screen.findByRole("link", { name: "Enroll — $149.00" }))
       .toHaveAttribute("href", `/auth?mode=signup&returnTo=${checkoutReturn}`);
     expect(screen.queryByRole("textbox", { name: "Email" })).not.toBeInTheDocument();
+  });
+
+  it("on a creator's own domain, a visitor keeps today's 'create an account to buy'", async () => {
+    const hostRule = vi.mocked(isPlatformHost);
+    const real = hostRule.getMockImplementation();
+    hostRule.mockReturnValue(false);
+    try {
+      render(<CreatorCourseDetail courseIdOverride="course-1" checkoutOnly />);
+
+      expect(await screen.findByRole("link", { name: "Enroll — $149.00" }))
+        .toHaveAttribute("href", `/auth?mode=signup&returnTo=${checkoutReturn}`);
+      expect(screen.queryByRole("textbox", { name: "Email" })).not.toBeInTheDocument();
+    } finally {
+      if (real) hostRule.mockImplementation(real);
+    }
   });
 
   it("a free course still needs an account", async () => {

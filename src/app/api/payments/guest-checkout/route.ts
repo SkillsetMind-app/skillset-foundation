@@ -12,6 +12,7 @@ import {
   GUEST_CHECKOUT_COOKIE,
   guestCheckoutCookieOptions,
   isGuestCheckoutConfigured,
+  isPlatformRequest,
   sendGuestAccessLink,
   verifyTurnstileToken,
 } from "@/lib/payments/server/guest-checkout";
@@ -56,7 +57,7 @@ function invalidRequest() {
 // the course (enrolled, subscribed or owner); or a 409 "checkout_pending" when
 // a checkout for the course is already open or starting for it.
 export async function POST(request: Request) {
-  if (!isGuestCheckoutConfigured()) {
+  if (!isGuestCheckoutConfigured() || !isPlatformRequest(request)) {
     return NextResponse.json({ error: "Not found.", code: "guest_checkout_disabled" }, { status: 404 });
   }
 
