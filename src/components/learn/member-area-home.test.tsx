@@ -115,17 +115,21 @@ describe("MemberAreaHomeView", () => {
     expect(screen.queryByText("You already have every product from this creator.")).toBeNull();
   });
 
-  it("quem já tem tudo vê 'você já tem tudo'; assinatura diz que é assinatura", async () => {
+  it("quem já tem tudo vê 'você já tem tudo'; assinatura mostra o intervalo", async () => {
     mocks.getMemberAreaHome.mockResolvedValueOnce({ ...home, moreProducts: [] });
     renderView();
     expect(await screen.findByText("You already have every product from this creator.")).toBeTruthy();
     cleanup();
     mocks.getMemberAreaHome.mockResolvedValueOnce({
       ...home,
-      moreProducts: [{ ...home.moreProducts[0], paymentType: "subscription", priceAmountMinor: 1900 }],
+      moreProducts: [
+        { ...home.moreProducts[0], paymentType: "subscription_monthly", priceAmountMinor: 1900 },
+        { ...home.moreProducts[0], courseId: "c-y", paymentType: "subscription_yearly", priceAmountMinor: 19000 },
+      ],
     });
     renderView();
-    expect(await screen.findByText("$19.00 · subscription")).toBeTruthy();
+    expect(await screen.findByText("$19.00 / month")).toBeTruthy();
+    expect(screen.getByText("$190.00 / year")).toBeTruthy();
   });
 
   it("erro de leitura pede nova tentativa", async () => {

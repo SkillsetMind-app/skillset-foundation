@@ -40,16 +40,17 @@ function formatTime(seconds: number): string {
 function priceLabel(
   product: MemberAreaLockedProduct,
   locale: string,
-  labels: { free: string; subscription: string },
+  labels: { free: string; month: string; year: string },
 ): string | null {
   if (product.paymentType === "free" || product.priceAmountMinor === 0) return labels.free;
   if (product.priceAmountMinor === null || !product.currency) return null;
   try {
     const amount = new Intl.NumberFormat(locale, { style: "currency", currency: product.currency.toUpperCase() })
       .format(product.priceAmountMinor / 100);
-    // ponytail: a área não sabe o intervalo da assinatura (mês ou ano); diz que é
-    // assinatura em vez de chutar "/mês". A página de vendas mostra o detalhe.
-    return product.paymentType === "subscription" ? `${amount} · ${labels.subscription}` : amount;
+    // Mesmo formato da página de vendas: "$19.00 / month".
+    if (product.paymentType === "subscription_monthly") return `${amount} / ${labels.month}`;
+    if (product.paymentType === "subscription_yearly") return `${amount} / ${labels.year}`;
+    return amount;
   } catch {
     return null;
   }
@@ -109,7 +110,11 @@ export function MemberAreaHomeView({ areaRef, brand = null }: { areaRef: string;
 
   const { area, continueWatching, myProducts, moreProducts } = state.home;
   const areaName = area.name ?? area.creatorName ?? "";
-  const priceLabels = { free: t("learn.memberArea.free"), subscription: t("learn.memberArea.subscription") };
+  const priceLabels = {
+    free: t("learn.memberArea.free"),
+    month: t("publicCourses.month"),
+    year: t("publicCourses.year"),
+  };
 
   return (
     <MemberAreaShell theme={area.theme} brand={brand}>

@@ -1283,7 +1283,6 @@
   "learn": {
     "memberArea": {
       "moreProductsNone": "Este creador todavía no tiene otros productos.",
-      "subscription": "suscripción",
       "tabTitle": "Área de miembros",
       "loading": "Cargando el área de miembros...",
       "loadError": "No pudimos cargar esta área de miembros. Inténtalo de nuevo.",
