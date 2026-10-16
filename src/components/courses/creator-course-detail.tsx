@@ -456,9 +456,10 @@ export function CreatorCourseDetail({
     && courseIsFree;
   // A visitor buys a paid course without signing in first (off by default; see
   // isGuestCheckoutEnabled). Free courses still need an account, and so does a
-  // creator's own domain.
+  // creator's own domain. Only once the session is known to be absent: while it
+  // loads, a signed-in buyer must not see the form.
   const guestCheckoutOn =
-    authStatus !== "authenticated"
+    authStatus === "unauthenticated"
     && checkoutEnabled
     && !courseIsFree
     && onPlatformHost

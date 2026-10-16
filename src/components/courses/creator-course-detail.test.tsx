@@ -1310,6 +1310,15 @@ describe("CreatorCourseDetail: buying without an account", () => {
     expect(card).not.toHaveClass("lg:overflow-y-auto");
   });
 
+  it("shows no form while the session is still loading", async () => {
+    fixtures.auth.status = "loading";
+    render(<CreatorCourseDetail courseIdOverride="course-1" checkoutOnly />);
+
+    expect(await screen.findByRole("link", { name: "Enroll — $149.00" }))
+      .toHaveAttribute("href", `/auth?mode=signup&returnTo=${checkoutReturn}`);
+    expect(screen.queryByRole("textbox", { name: "Email" })).not.toBeInTheDocument();
+  });
+
   it("a free course still needs an account", async () => {
     Object.assign(fixtures.course, { paymentType: "free", priceAmountMinor: 0 });
     withOffers([]);
