@@ -1289,6 +1289,27 @@ describe("CreatorCourseDetail: buying without an account", () => {
     }
   });
 
+  it("caps the sticky buy card to the screen and scrolls inside it while the form shows", async () => {
+    const { container } = render(<CreatorCourseDetail courseIdOverride="course-1" />);
+    await screen.findByRole("button", { name: "Enroll — $149.00" });
+
+    const card = container.querySelector("#enroll-card") as HTMLElement;
+    expect(card).toHaveClass("lg:sticky", "lg:top-24", "lg:max-h-[calc(100svh-7rem)]", "lg:overflow-y-auto");
+    // The corner buy bar still watches the card's main field.
+    expect(card.querySelector("[data-cta-focus]")).toBe(screen.getByRole("textbox", { name: "Full name" }));
+  });
+
+  it("keeps today's card classes for a signed-in buyer", async () => {
+    fixtures.auth.status = "authenticated"; fixtures.auth.user = { uid: "buyer" };
+    const { container } = render(<CreatorCourseDetail courseIdOverride="course-1" />);
+    await screen.findByRole("button", { name: "Enroll — $149.00" });
+
+    const card = container.querySelector("#enroll-card") as HTMLElement;
+    expect(card).toHaveClass("lg:sticky", "lg:top-24");
+    expect(card).not.toHaveClass("lg:max-h-[calc(100svh-7rem)]");
+    expect(card).not.toHaveClass("lg:overflow-y-auto");
+  });
+
   it("a free course still needs an account", async () => {
     Object.assign(fixtures.course, { paymentType: "free", priceAmountMinor: 0 });
     withOffers([]);

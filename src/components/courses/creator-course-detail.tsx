@@ -1003,7 +1003,12 @@ export function CreatorCourseDetail({
         id="enroll-card"
         // Focus fallback for the popup's button when no main action is enabled.
         tabIndex={-1}
-        className="min-w-0 h-fit scroll-mt-24 self-start rounded-lg border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)] lg:sticky lg:top-24"
+        // O formulario de visitante deixa o cartao mais alto que a tela: preso
+        // no topo, ele ganha teto e rola por dentro, para o botao nunca ficar
+        // abaixo da tela (regra 1 do AGENTS.md, em svh).
+        className={`min-w-0 h-fit scroll-mt-24 self-start rounded-lg border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)] lg:sticky lg:top-24${
+          guestCheckoutOn ? " lg:max-h-[calc(100svh-7rem)] lg:overflow-y-auto" : ""
+        }`}
       >
         {/* O preco era a quarta de seis linhas de uma lista "At a glance",
             entre "Status: Published" e "Access: Secure checkout" — vocabulario
