@@ -1,4 +1,4 @@
-import { createHmac, timingSafeEqual } from "node:crypto";
+import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 
 import { isPlatformHost, normaliseHostHeader } from "@/domain/host-routing";
 import { currentPrivacyVersion, currentTermsVersion } from "@/lib/legal/versions";
@@ -91,7 +91,7 @@ export async function findOrCreateGuestBuyer(
 ): Promise<{ userId: string; created: boolean }> {
   const existing = await findAuthUserIdByEmail(admin, input.email);
   if (existing) {
-    await completeUnfinishedGuestTerms(admin, existing);
+    await prepareExistingBuyer(admin, existing);
     return { userId: existing, created: false };
   }
 
@@ -118,7 +118,7 @@ export async function findOrCreateGuestBuyer(
   if (raced) {
     // The winner may still fail to record its terms; this request accepted
     // them too, so the same check runs here.
-    await completeUnfinishedGuestTerms(admin, raced);
+    await prepareExistingBuyer(admin, raced);
     return { userId: raced, created: false };
   }
   // The address cannot take an account here. Same answer as a course that
@@ -156,16 +156,26 @@ export async function discardNewGuestBuyer(admin: Admin, userId: string): Promis
 }
 
 /**
- * An account this flow created earlier, that never confirmed its e-mail and
- * has no terms on record (an earlier attempt stopped half-way), records them
- * now: the form requires the acceptance on every submission. Any other
- * account is left untouched. A failure stops the purchase with a retryable
- * error.
+ * Before guest checkout uses an existing account whose e-mail was never
+ * confirmed:
+ * - created by this flow, with no terms on record (an earlier attempt stopped
+ *   half-way): it records them now, since the form requires the acceptance on
+ *   every submission;
+ * - created any other way: it gets a new random password. The address is not
+ *   proven yet, and this buyer gets in by e-mail link or password recovery.
+ * A confirmed account is left untouched. A failure stops the purchase with a
+ * retryable error.
  */
-async function completeUnfinishedGuestTerms(admin: Admin, userId: string): Promise<void> {
+async function prepareExistingBuyer(admin: Admin, userId: string): Promise<void> {
   const { data, error } = await admin.auth.admin.getUserById(userId);
   if (error || !data?.user) throw new Error("Guest buyer account could not be read.");
-  if (data.user.app_metadata?.created_via !== GUEST_CHECKOUT_ORIGIN || data.user.email_confirmed_at) return;
+  if (data.user.email_confirmed_at) return;
+  if (data.user.app_metadata?.created_via !== GUEST_CHECKOUT_ORIGIN) {
+    const replacement = randomBytes(32).toString("base64url");
+    const { error: updateError } = await admin.auth.admin.updateUserById(userId, { password: replacement });
+    if (updateError) throw new Error(`Guest buyer account was not prepared (${updateError.code ?? "unknown"}).`);
+    return;
+  }
   const { data: profile, error: profileError } = await admin
     .from("users")
     .select("terms_accepted_at")

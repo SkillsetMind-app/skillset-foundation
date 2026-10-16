@@ -59,6 +59,9 @@ type AdminInput = {
   siblingLock?: boolean;
   /** The existing account was made by guest checkout. */
   existingGuest?: { confirmed?: boolean; terms?: boolean };
+  /** The existing account was made some other way and never confirmed its e-mail. */
+  existingUnconfirmed?: boolean;
+  updateUserFails?: boolean;
   signInLinkFails?: boolean;
   /** The existing account is suspended (account_controls). */
   blocked?: boolean;
@@ -147,12 +150,17 @@ function createAdmin(input: AdminInput = {}) {
           ? { data: { user: null }, error: { code: "email_exists", status: 422 } }
           : { data: { user: { id: "new-user" } }, error: null }),
         deleteUser: vi.fn(async () => ({ data: {}, error: null })),
+        updateUserById: vi.fn(async (_id: string, _attributes: Record<string, unknown>) => (input.updateUserFails
+          ? { data: { user: null }, error: { code: "unexpected_failure", status: 500 } }
+          : { data: { user: {} }, error: null })),
         getUserById: vi.fn(async (id: string) => ({
           data: {
             user: {
               id,
               app_metadata: input.existingGuest ? { created_via: "guest_checkout" } : { provider: "email" },
-              email_confirmed_at: input.existingGuest && !input.existingGuest.confirmed ? null : "2026-10-01T00:00:00.000Z",
+              email_confirmed_at: (input.existingGuest && !input.existingGuest.confirmed) || input.existingUnconfirmed
+                ? null
+                : "2026-10-01T00:00:00.000Z",
             },
           },
           error: null,
@@ -496,6 +504,42 @@ describe("guest checkout", () => {
     expect(await response.json()).toEqual({ error: "Something went wrong. Please try again." });
     expect(mocks.createSession).not.toHaveBeenCalled();
     expect(admin.auth.admin.deleteUser).not.toHaveBeenCalled();
+  });
+
+  it("gives an unconfirmed account made some other way a new random password before Stripe", async () => {
+    admin = createAdmin({ existingUserId: "existing-user", existingUnconfirmed: true });
+
+    const response = await POST(guestRequest(validBody));
+
+    expect(response.status).toBe(200);
+    expect(admin.auth.admin.updateUserById).toHaveBeenCalledTimes(1);
+    const [id, attributes] = admin.auth.admin.updateUserById.mock.calls[0];
+    expect(id).toBe("existing-user");
+    expect(Object.keys(attributes)).toEqual(["password"]);
+    expect(String(attributes.password)).toMatch(/^[A-Za-z0-9_-]{43}$/);
+    expect(admin.usersUpdates).toEqual([]);
+    expect(mocks.createSession).toHaveBeenCalledTimes(1);
+  });
+
+  it("stops with a retryable error, before Stripe, when that password cannot be replaced", async () => {
+    admin = createAdmin({ existingUserId: "existing-user", existingUnconfirmed: true, updateUserFails: true });
+
+    const response = await POST(guestRequest(validBody));
+
+    expect(response.status).toBe(500);
+    expect(await response.json()).toEqual({ error: "Something went wrong. Please try again." });
+    expect(mocks.createSession).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["a confirmed account", { existingUserId: "existing-user" }],
+    ["a guest checkout account", { existingUserId: "existing-user", existingGuest: {} }],
+  ])("never replaces the password of %s", async (_label, input) => {
+    admin = createAdmin(input);
+
+    await POST(guestRequest(validBody));
+
+    expect(admin.auth.admin.updateUserById).not.toHaveBeenCalled();
   });
 
   it.each([
