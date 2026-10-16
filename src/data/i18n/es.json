@@ -1733,7 +1733,6 @@
       "notPublished": "Sin publicar — aparece cuando lo publiques.",
       "visible": "Visible",
       "hidden": "Oculto",
-      "showLabel": "Mostrar {title} en el área de miembros",
       "moveUp": "Subir {title}",
       "moveDown": "Bajar {title}",
       "save": "Guardar área de miembros",
@@ -1745,6 +1744,7 @@
         "load": "No pudimos cargar tu área de miembros. Inténtalo de nuevo.",
         "courses": "No pudimos cargar tus productos. Recarga la página para intentarlo de nuevo.",
         "save": "No pudimos guardar tu área de miembros. Inténtalo de nuevo.",
+        "saveProducts": "Se guardaron el nombre, el tema, la portada y la bienvenida, pero no el orden de los productos. Guarda de nuevo.",
         "coverInvalid": "Usa una imagen JPG, PNG o WebP de menos de 5 MB.",
         "coverUpload": "No pudimos subir esta imagen. Inténtalo de nuevo."
       }
@@ -5805,7 +5805,7 @@
   "teacherMembers": {
     "creatorAreaTitle": "Tu área de miembros",
     "creatorAreaDescription": "Un solo lugar que reúne todos tus productos para tus estudiantes.",
-    "creatorAreaOpen": "Personalizar",
+    "creatorAreaOpen": "Configurar área de miembros",
     "pageTitle": "Áreas de miembros",
     "products": "Productos",
     "title": "Miembros y comunidades",
