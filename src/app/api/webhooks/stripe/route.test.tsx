@@ -56,6 +56,10 @@ type AdminState = {
   // Opt-in: o reembolso chegou ANTES de a fulfilment escrever a linha de
   // `payments` — o caso em que o handler caía no ramo de assinatura.
   paymentRowMissing?: boolean;
+  // Opt-in: the buyer (not the creator) is an unconfirmed guest checkout account.
+  guestBuyer?: boolean;
+  // Opt-in: the Auth sign-in link fails.
+  signInLinkFails?: boolean;
   doneEvents: Set<string>;
   refundClaims: Record<string, RefundClaim>;
   ledger: Record<string, unknown>;
@@ -437,11 +441,24 @@ function createAdmin(
       admin: {
         // The course owner (teacher_1) has their own address, so an email
         // that reaches the wrong person shows up as the wrong recipient.
-        getUserById: vi.fn(async (uid: string) => ({
-          data: { user: { id: uid, email: uid === "teacher_1" ? "creator@example.test" : "buyer@example.test" } },
-          error: null,
-        })),
+        getUserById: vi.fn(async (uid: string) => {
+          const guest = state.guestBuyer && uid !== "teacher_1";
+          return {
+            data: {
+              user: {
+                id: uid,
+                email: uid === "teacher_1" ? "creator@example.test" : "buyer@example.test",
+                app_metadata: guest ? { created_via: "guest_checkout" } : { provider: "email" },
+                email_confirmed_at: guest ? null : "2026-01-01T00:00:00.000Z",
+              },
+            },
+            error: null,
+          };
+        }),
       },
+      signInWithOtp: vi.fn(async () => (state.signInLinkFails
+        ? { data: {}, error: { message: "provider unavailable", status: 503 } }
+        : { data: {}, error: null })),
     },
     state,
   };
@@ -1563,6 +1580,51 @@ describe("Stripe webhook financial integrity", () => {
       expect(admin.state.doneEvents).toContain("evt_checkout");
       await vi.waitFor(() => expect(mocks.notifyOps).toHaveBeenCalledWith(lostEmailAlert));
       expect(buyerEmails()).toHaveLength(1);
+    });
+
+    it("also sends the sign-in link to an unconfirmed guest checkout buyer, after fulfilment", async () => {
+      const admin = createAdmin("checkout");
+      admin.state.guestBuyer = true;
+      mocks.getAdmin.mockReturnValue(admin);
+
+      expect((await postEvent(checkoutEvent())).status).toBe(200);
+
+      await vi.waitFor(() => expect(admin.auth.signInWithOtp).toHaveBeenCalledTimes(1));
+      expect(admin.auth.signInWithOtp).toHaveBeenCalledWith({
+        email: "buyer@example.test",
+        options: {
+          shouldCreateUser: false,
+          emailRedirectTo: `https://www.skillsetmind.com/auth/confirm?next=${encodeURIComponent("/learn/courses/course_1")}`,
+        },
+      });
+      expect(fulfillCalls(admin)).toHaveLength(1);
+      expect(buyerEmails()).toHaveLength(1);
+    });
+
+    it("keeps the enrollment and answers 2xx when the guest sign-in link fails", async () => {
+      const admin = createAdmin("checkout");
+      admin.state.guestBuyer = true;
+      admin.state.signInLinkFails = true;
+      mocks.getAdmin.mockReturnValue(admin);
+
+      const response = await postEvent(checkoutEvent());
+
+      expect(response.status).toBe(200);
+      expect(fulfillCalls(admin)).toHaveLength(1);
+      expect(admin.state.doneEvents).toContain("evt_checkout");
+      await vi.waitFor(() => expect(admin.auth.signInWithOtp).toHaveBeenCalledTimes(1));
+      expect(buyerEmails()).toHaveLength(1);
+    });
+
+    it("sends no sign-in link to a regular account", async () => {
+      const admin = createAdmin("checkout");
+      mocks.getAdmin.mockReturnValue(admin);
+
+      expect((await postEvent(checkoutEvent())).status).toBe(200);
+
+      await vi.waitFor(() => expect(buyerEmails()).toHaveLength(1));
+      await flush();
+      expect(admin.auth.signInWithOtp).not.toHaveBeenCalled();
     });
 
     it("skips without a Resend key: no request, no throw, one warning per email", async () => {

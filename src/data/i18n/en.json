@@ -4632,6 +4632,7 @@
     "thanks": {
       "title": "Payment received",
       "body": "Thank you for your purchase. Your course opens as soon as the payment is confirmed, usually within a minute.",
+      "waiting": "If your payment went through, your sign-in link is on its way to {email}.",
       "sending": "Sending your access link to {email}…",
       "sent": "We sent your access link to {email}. Open it to go straight to your course.",
       "failed": "We couldn't send the link to {email} right now. Please try again in a moment.",

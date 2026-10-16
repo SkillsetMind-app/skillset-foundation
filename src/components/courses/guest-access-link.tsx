@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
 
 const errorClass =
   "rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]";
 
-type LinkState = "sending" | "sent" | "failed" | "limited";
+type LinkState = "waiting" | "sending" | "sent" | "failed" | "limited";
 
 async function requestAccessLink(): Promise<LinkState> {
   try {
@@ -18,18 +18,12 @@ async function requestAccessLink(): Promise<LinkState> {
   }
 }
 
-// Thank-you page: sends the sign-in link once on arrival, then offers a resend.
-// The address and course come from the server-side cookie, not from here.
+// Thank-you page. The sign-in link goes out from the paid sale itself (Stripe
+// webhook), so this page only says where it goes and offers a resend. The
+// address and course come from the server-side cookie, not from here.
 export function GuestAccessLink({ maskedEmail }: { maskedEmail: string }) {
   const { t } = useTranslation();
-  const [state, setState] = useState<LinkState>("sending");
-  const started = useRef(false);
-
-  useEffect(() => {
-    if (started.current) return;
-    started.current = true;
-    void requestAccessLink().then(setState);
-  }, []);
+  const [state, setState] = useState<LinkState>("waiting");
 
   const message = t(`guestCheckout.thanks.${state}`).replace("{email}", () => maskedEmail);
   return (
@@ -40,7 +34,7 @@ export function GuestAccessLink({ maskedEmail }: { maskedEmail: string }) {
       >
         {message}
       </p>
-      {state === "sent" ? (
+      {state === "waiting" || state === "sent" ? (
         <p className="text-sm leading-6 text-[var(--color-ink-soft)]">{t("guestCheckout.thanks.checkSpam")}</p>
       ) : null}
       <button

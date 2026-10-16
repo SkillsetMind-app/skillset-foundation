@@ -11,7 +11,7 @@ import {
 import { isCronRequest } from "@/lib/cron/authorized";
 import { DEFAULT_LOCALE, isLocale, type Locale } from "@/lib/i18n/config";
 import { getAppUrl } from "@/lib/payments/server/app-url";
-import { GUEST_CHECKOUT_ORIGIN } from "@/lib/payments/server/guest-checkout";
+import { GUEST_CHECKOUT_ORIGIN } from "@/lib/payments/server/guest-access-link";
 import { sendResendEmail } from "@/lib/payments/server/purchase-access-email";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 

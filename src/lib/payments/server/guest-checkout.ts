@@ -4,14 +4,14 @@ import { currentPrivacyVersion, currentTermsVersion } from "@/lib/legal/versions
 import { isGuestCheckoutEnabled } from "@/lib/payments/guest-checkout";
 import { getAppUrl } from "@/lib/payments/server/app-url";
 import { PaymentError } from "@/lib/payments/server/auth";
+import { GUEST_CHECKOUT_ORIGIN } from "@/lib/payments/server/guest-access-link";
 import type { getSupabaseAdminClient } from "@/lib/supabase/admin";
 
 // Server side of guest checkout (see /api/payments/guest-checkout).
 
-type Admin = ReturnType<typeof getSupabaseAdminClient>;
+export { GUEST_CHECKOUT_ORIGIN, sendGuestAccessLink } from "@/lib/payments/server/guest-access-link";
 
-/** Marks accounts this flow created (user_metadata, and app_metadata, which only the server writes). */
-export const GUEST_CHECKOUT_ORIGIN = "guest_checkout";
+type Admin = ReturnType<typeof getSupabaseAdminClient>;
 
 /** Signed { email, courseId } so the thank-you page can name the address and resend the link. */
 export const GUEST_CHECKOUT_COOKIE = "sm_guest_checkout";
@@ -177,30 +177,6 @@ async function recordTermsAcceptance(admin: Admin, userId: string): Promise<void
   if (error) throw new Error(error.message);
   // handle_new_user creates the row with the auth user; none means no record.
   if (!data?.length) throw new Error("Guest buyer profile row is missing.");
-}
-
-/**
- * Sign-in link to the course, same mechanism as the creator's manual access
- * (admin signInWithOtp). Never creates an account. Returns whether the
- * provider accepted it; the caller decides what the person is told.
- */
-export async function sendGuestAccessLink(admin: Admin, email: string, courseId: string): Promise<boolean> {
-  const next = `/learn/courses/${encodeURIComponent(courseId)}`;
-  try {
-    const { error } = await admin.auth.signInWithOtp({
-      email,
-      options: {
-        shouldCreateUser: false,
-        emailRedirectTo: `${getAppUrl()}/auth/confirm?next=${encodeURIComponent(next)}`,
-      },
-    });
-    if (error) {
-      console.error("[guest-checkout] access link not sent", { status: error.status ?? null, code: error.code ?? null });
-    }
-    return !error;
-  } catch {
-    return false;
-  }
 }
 
 // Its own key (GUEST_CHECKOUT_COOKIE_SECRET), used for nothing else.

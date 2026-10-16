@@ -57,14 +57,13 @@ describe("guest checkout thank-you page", () => {
     expect(state.fetch).not.toHaveBeenCalled();
   });
 
-  it("sends the access link once and names the masked address", async () => {
+  it("sends nothing on arrival (the paid sale sends the link) and names the masked address", async () => {
     render(await Page({ searchParams: Promise.resolve({ course: "course-1" }) }));
 
     expect(screen.getByRole("heading", { name: "Payment received" })).toBeInTheDocument();
-    expect(await screen.findByText(/We sent your access link to a•••@example\.com/)).toBeInTheDocument();
+    expect(screen.getByText(/If your payment went through, your sign-in link is on its way to a•••@example\.com/)).toBeInTheDocument();
     expect(screen.queryByText(/ana@example\.com/)).not.toBeInTheDocument();
-    expect(state.fetch).toHaveBeenCalledTimes(1);
-    expect(state.fetch).toHaveBeenCalledWith("/api/payments/guest-checkout/access-link", { method: "POST" });
+    await waitFor(() => expect(state.fetch).not.toHaveBeenCalled());
     expect(screen.getByRole("link", { name: "Sign in" })).toHaveAttribute(
       "href",
       `/login?returnTo=${encodeURIComponent("/learn/courses/course-1")}`,
@@ -73,9 +72,12 @@ describe("guest checkout thank-you page", () => {
 
   it("resends on request and says when the limit is reached", async () => {
     render(await Page({}));
-    await screen.findByText(/We sent your access link/);
-    state.fetch.mockImplementation(async () => new Response("{}", { status: 429 }));
 
+    fireEvent.click(screen.getByRole("button", { name: "Send the link again" }));
+    expect(await screen.findByText(/We sent your access link to a•••@example\.com/)).toBeInTheDocument();
+    expect(state.fetch).toHaveBeenCalledWith("/api/payments/guest-checkout/access-link", { method: "POST" });
+
+    state.fetch.mockImplementation(async () => new Response("{}", { status: 429 }));
     fireEvent.click(screen.getByRole("button", { name: "Send the link again" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Too many requests for a•••@example.com");
@@ -101,6 +103,6 @@ describe("guest checkout thank-you page", () => {
     render(await Page({}));
 
     expect(screen.getByRole("heading", { name: "Pago recibido" })).toBeInTheDocument();
-    expect(await screen.findByText(/Enviamos tu enlace de acceso a a•••@example\.com/)).toBeInTheDocument();
+    expect(screen.getByText(/Si tu pago se completó, tu enlace para iniciar sesión va en camino a a•••@example\.com/)).toBeInTheDocument();
   });
 });
