@@ -57,6 +57,8 @@ type AdminInput = {
   termsFail?: boolean;
   subscription?: { id: string; status: string } | null;
   siblingLock?: boolean;
+  /** The existing account was made by guest checkout. */
+  existingGuest?: { confirmed?: boolean; terms?: boolean };
 };
 
 function createAdmin(input: AdminInput = {}) {
@@ -106,6 +108,7 @@ function createAdmin(input: AdminInput = {}) {
       if (this.table === "enrollments") return { data: input.enrollment ?? null, error: null };
       if (this.table === "course_subscriptions") return { data: input.subscription ?? null, error: null };
       if (this.table === "checkout_locks" && input.siblingLock) return { data: { lock_key: "lock", order_id: null }, error: null };
+      if (this.table === "users" && input.existingGuest?.terms) return { data: { terms_accepted_at: "2026-10-01T00:00:00.000Z" }, error: null };
       return { data: single ? null : [], error: null };
     }
   }
@@ -140,6 +143,16 @@ function createAdmin(input: AdminInput = {}) {
           ? { data: { user: null }, error: { code: "email_exists", status: 422 } }
           : { data: { user: { id: "new-user" } }, error: null }),
         deleteUser: vi.fn(async () => ({ data: {}, error: null })),
+        getUserById: vi.fn(async (id: string) => ({
+          data: {
+            user: {
+              id,
+              app_metadata: input.existingGuest ? { created_via: "guest_checkout" } : { provider: "email" },
+              email_confirmed_at: input.existingGuest && !input.existingGuest.confirmed ? null : "2026-10-01T00:00:00.000Z",
+            },
+          },
+          error: null,
+        })),
       },
       signInWithOtp: vi.fn(async () => ({ data: {}, error: null })),
     },
@@ -423,6 +436,42 @@ describe("guest checkout", () => {
     expect(admin.usersUpdates).toEqual([]);
     expect(admin.auth.signInWithOtp).not.toHaveBeenCalled();
     expect(mocks.createSession.mock.calls[0][0].client_reference_id).toBe("existing-user");
+  });
+
+  it("records the terms on an unfinished guest account (unconfirmed, none on record)", async () => {
+    admin = createAdmin({ existingUserId: "existing-user", existingGuest: {} });
+
+    const response = await POST(guestRequest(validBody));
+
+    expect(response.status).toBe(200);
+    expect(admin.usersUpdates).toEqual([
+      expect.objectContaining({ terms_version: "2026-09-24", privacy_version: "2026-09-24" }),
+    ]);
+    expect(admin.auth.admin.createUser).not.toHaveBeenCalled();
+    expect(mocks.createSession).toHaveBeenCalledTimes(1);
+  });
+
+  it("stops with a retryable error, before Stripe, when those terms cannot be recorded", async () => {
+    admin = createAdmin({ existingUserId: "existing-user", existingGuest: {}, termsFail: true });
+
+    const response = await POST(guestRequest(validBody));
+
+    expect(response.status).toBe(500);
+    expect(await response.json()).toEqual({ error: "Something went wrong. Please try again." });
+    expect(mocks.createSession).not.toHaveBeenCalled();
+    expect(admin.auth.admin.deleteUser).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["confirmed its e-mail", { confirmed: true }],
+    ["already has terms", { terms: true }],
+  ])("leaves a guest account that %s untouched", async (_label, existingGuest) => {
+    admin = createAdmin({ existingUserId: "existing-user", existingGuest });
+
+    const response = await POST(guestRequest(validBody));
+
+    expect(response.status).toBe(200);
+    expect(admin.usersUpdates).toEqual([]);
   });
 
   it("takes the account that won a creation race, without writing its terms", async () => {

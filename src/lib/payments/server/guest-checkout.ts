@@ -80,7 +80,10 @@ export async function findOrCreateGuestBuyer(
   input: { email: string; name: string; locale: string },
 ): Promise<{ userId: string; created: boolean }> {
   const existing = await findAuthUserIdByEmail(admin, input.email);
-  if (existing) return { userId: existing, created: false };
+  if (existing) {
+    await completeUnfinishedGuestTerms(admin, existing);
+    return { userId: existing, created: false };
+  }
 
   const { data, error } = await admin.auth.admin.createUser({
     email: input.email,
@@ -135,6 +138,27 @@ export async function discardNewGuestBuyer(admin: Admin, userId: string): Promis
   } catch {
     console.error("[guest-checkout] new account not removed");
   }
+}
+
+/**
+ * An account this flow created earlier, that never confirmed its e-mail and
+ * has no terms on record (an earlier attempt stopped half-way), records them
+ * now: the form requires the acceptance on every submission. Any other
+ * account is left untouched. A failure stops the purchase with a retryable
+ * error.
+ */
+async function completeUnfinishedGuestTerms(admin: Admin, userId: string): Promise<void> {
+  const { data, error } = await admin.auth.admin.getUserById(userId);
+  if (error || !data?.user) throw new Error("Guest buyer account could not be read.");
+  if (data.user.app_metadata?.created_via !== GUEST_CHECKOUT_ORIGIN || data.user.email_confirmed_at) return;
+  const { data: profile, error: profileError } = await admin
+    .from("users")
+    .select("terms_accepted_at")
+    .eq("uid", userId)
+    .maybeSingle();
+  if (profileError) throw new Error(profileError.message);
+  if (profile?.terms_accepted_at) return;
+  await recordTermsAcceptance(admin, userId);
 }
 
 async function recordTermsAcceptance(admin: Admin, userId: string): Promise<void> {
