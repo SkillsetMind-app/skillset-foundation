@@ -387,14 +387,14 @@
   },
   "home": {
     "metadata": {
-      "title": "Course platform for psychologists & personal-development professionals",
-      "description": "For psychologists and personal-development professionals who already teach live: sell your course and community. 14-day free trial. Buyers pay your own Stripe."
+      "title": "Course platform for psychologists, coaches & personal-development professionals",
+      "description": "For psychologists, coaches and personal-development professionals who already teach live: sell courses and community. 14-day free trial. Buyers pay your Stripe."
     },
     "hero": {
-      "eyebrow": "For psychologists & personal-development professionals",
+      "eyebrow": "For psychologists, coaches & personal-development professionals",
       "title1": "Your knowledge changes lives.",
       "title2": "Now turn it into a course.",
-      "sub": "For psychologists and personal-development professionals who already teach live and want to sell their method as a course with a paid community. Start with 14 days free, then Basic is US$5/month. A card is required; cancel before the trial ends to avoid the subscription charge. Sales fees apply. We run the checkout and the classroom — your buyers pay your own Stripe account. You teach.",
+      "sub": "For psychologists, coaches and personal-development professionals who already teach live and want to sell their method as a course with a paid community. Start with 14 days free, then Basic is US$5/month. A card is required; cancel before the trial ends to avoid the subscription charge. Sales fees apply. We run the checkout and the classroom — your buyers pay your own Stripe account. You teach.",
       "trust1Title": "Verified",
       "trust1Desc": "Where required, professionals are verified before they can publish, and courses that break marketplace standards can be paused or removed.",
       "trust2Title": "Global",
@@ -458,7 +458,7 @@
       "readFull": "Read the full Promise"
     },
     "creators": {
-      "eyebrow": "For psychologists & personal-development professionals",
+      "eyebrow": "For psychologists, coaches & personal-development professionals",
       "title": "Teach beyond the limits of your live sessions.",
       "ctaStart": "Start teaching",
       "ctaPromise": "Read the Creator Promise",
@@ -1281,6 +1281,29 @@
     "rejected": "Rejected"
   },
   "learn": {
+    "memberArea": {
+      "moreProductsNone": "This creator has no other products yet.",
+      "tabTitle": "Members area",
+      "loading": "Loading the members area...",
+      "loadError": "We could not load this members area. Please try again.",
+      "ownerPreview": "Preview: this is what your students see. Only saved changes appear here.",
+      "editArea": "Edit members area",
+      "byCreator": "By {name}",
+      "continueTitle": "Continue where you left off",
+      "continueEmpty": "Open one of your products below to start.",
+      "resumeLesson": "Resume: {title}",
+      "resumeAt": "from {time}",
+      "myProducts": "My products",
+      "myProductsEmpty": "You have no products from this creator yet.",
+      "progress": "{percent}% complete",
+      "moreProducts": "More from this creator",
+      "moreProductsEmpty": "You already have every product from this creator.",
+      "locked": "Locked",
+      "viewProduct": "See details",
+      "free": "Free",
+      "openArea": "Open {name}'s members area",
+      "backToArea": "{name}'s members area"
+    },
     "classroom": {
       "workspace": {
         "enrollmentError": "We could not confirm your enrollment for this course.",
@@ -1706,6 +1729,50 @@
     }
   },
   "teach": {
+    "memberAreaPage": {
+      "title": "Your members area.",
+      "description": "One home for everything you sell. Students pick up where they left off, see what they own and discover your other products."
+    },
+    "memberAreaEditor": {
+      "loading": "Loading your members area...",
+      "virtualNote": "You have not customized it yet. Students see your name, the light theme and every published product, newest first.",
+      "name": "Area name",
+      "nameHelp": "{length}/80 — leave empty to use your name.",
+      "theme": "Theme",
+      "light": "Light",
+      "dark": "Dark",
+      "cover": "Cover",
+      "coverHelp": "Banner at the top of the area. 16:9, JPG, PNG or WebP under 5 MB.",
+      "uploadCover": "Upload cover",
+      "replaceCover": "Replace cover",
+      "removeCover": "Remove cover",
+      "uploading": "Uploading...",
+      "welcome": "Welcome text",
+      "welcomePlaceholder": "A short note students read when they open the area.",
+      "welcomeHelp": "{length}/2000 — every student of yours sees this, including on free products. Do not put private links here.",
+      "products": "Products",
+      "productsHelp": "Set the order students see. A hidden product leaves the showcase but stays available to students who already bought it.",
+      "noProducts": "You have no products yet.",
+      "tooManyProducts": "Order and visibility are saved for the first {max} products. The rest show after them, newest first.",
+      "notPublished": "Not published — shows up after you publish it.",
+      "visible": "Visible",
+      "hidden": "Hidden",
+      "moveUp": "Move {title} up",
+      "moveDown": "Move {title} down",
+      "save": "Save members area",
+      "saving": "Saving...",
+      "saved": "Saved. Students see the changes the next time they open the area.",
+      "previewAsStudent": "View as student",
+      "previewHelp": "The student view shows the last saved version.",
+      "errors": {
+        "load": "We could not load your members area. Please try again.",
+        "courses": "We could not load your products. Reload the page to try again.",
+        "save": "We could not save your members area. Please try again.",
+        "saveProducts": "Name, theme, cover and welcome text were saved, but the product order was not. Please save again.",
+        "coverInvalid": "Use a JPG, PNG or WebP image under 5 MB.",
+        "coverUpload": "We could not upload this image. Please try again."
+      }
+    },
     "tour": {
       "welcome": "Welcome to your studio",
       "welcomeNamed": "Welcome to your studio, {name}",
@@ -3631,6 +3698,8 @@
       "protectionNote": "YouTube and Vimeo videos stay viewable by anyone with the link, even outside SkillsetMind. Upload the video here so playback goes through SkillsetMind's access check."
     },
     "members": {
+      "creatorAreaNote": "This step styles this product's classroom. The area that gathers all your products is set up separately.",
+      "creatorAreaLink": "Open your members area",
       "step": "Members Area",
       "stepHelp": "Theme, cover, title",
       "heading": "Customize the members area.",
@@ -5758,6 +5827,9 @@
     }
   },
   "teacherMembers": {
+    "creatorAreaTitle": "Your members area",
+    "creatorAreaDescription": "One home that gathers all your products for your students.",
+    "creatorAreaOpen": "Set up members area",
     "pageTitle": "Members areas",
     "products": "Products",
     "title": "Members & communities",
