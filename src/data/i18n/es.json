@@ -1747,7 +1747,7 @@
       "uploading": "Subiendo...",
       "welcome": "Texto de bienvenida",
       "welcomePlaceholder": "Una nota breve que tus estudiantes leen al abrir el área.",
-      "welcomeHelp": "{length}/2000",
+      "welcomeHelp": "{length}/2000 — lo ven todos tus estudiantes, también los de productos gratis. No pongas enlaces privados aquí.",
       "products": "Productos",
       "productsHelp": "Define el orden que ven tus estudiantes. Un producto oculto sale de la vitrina, pero sigue disponible para quien ya lo compró.",
       "noProducts": "Todavía no tienes productos.",

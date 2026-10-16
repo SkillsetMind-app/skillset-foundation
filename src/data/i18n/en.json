@@ -1747,7 +1747,7 @@
       "uploading": "Uploading...",
       "welcome": "Welcome text",
       "welcomePlaceholder": "A short note students read when they open the area.",
-      "welcomeHelp": "{length}/2000",
+      "welcomeHelp": "{length}/2000 — every student of yours sees this, including on free products. Do not put private links here.",
       "products": "Products",
       "productsHelp": "Set the order students see. A hidden product leaves the showcase but stays available to students who already bought it.",
       "noProducts": "You have no products yet.",
