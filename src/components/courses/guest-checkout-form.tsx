@@ -93,7 +93,9 @@ export function GuestCheckoutForm({
             ? "guestCheckout.form.invalid"
             : code === "checkout_pending"
               ? "guestCheckout.form.checkoutPending"
-              : errorKeyFor(error),
+              : code === "send_failed"
+                ? "guestCheckout.form.sendFailed"
+                : errorKeyFor(error),
       );
     }
     // A Turnstile token works once.

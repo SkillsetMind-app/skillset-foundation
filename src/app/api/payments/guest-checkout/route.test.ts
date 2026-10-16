@@ -59,6 +59,7 @@ type AdminInput = {
   siblingLock?: boolean;
   /** The existing account was made by guest checkout. */
   existingGuest?: { confirmed?: boolean; terms?: boolean };
+  signInLinkFails?: boolean;
 };
 
 function createAdmin(input: AdminInput = {}) {
@@ -154,7 +155,9 @@ function createAdmin(input: AdminInput = {}) {
           error: null,
         })),
       },
-      signInWithOtp: vi.fn(async () => ({ data: {}, error: null })),
+      signInWithOtp: vi.fn(async () => (input.signInLinkFails
+        ? { data: {}, error: { message: "provider unavailable", status: 503 } }
+        : { data: {}, error: null })),
     },
   };
 }
@@ -563,6 +566,20 @@ describe("guest checkout", () => {
         emailRedirectTo: "https://skillset.test/auth/confirm?next=%2Flearn%2Fcourses%2Fcourse",
       },
     });
+  });
+
+  it.each([
+    ["an enrollment", { enrollment: { status: "active" } }],
+    ["a subscription", { subscription: { id: "sub", status: "active" } }],
+  ])("answers a retryable error, not 'sent', when the link for %s cannot be sent", async (label, extra) => {
+    if (label === "a subscription") mocks.subscriptionInterval.mockReturnValue("month");
+    admin = createAdmin({ existingUserId: "existing-user", signInLinkFails: true, ...extra });
+
+    const response = await POST(guestRequest(validBody));
+
+    expect(response.status).toBe(502);
+    expect(await response.json()).toEqual({ error: "The link could not be sent. Please try again.", code: "send_failed" });
+    expect(mocks.createSession).not.toHaveBeenCalled();
   });
 
   it("sends the access link when the account already has a subscription to the course (409)", async () => {

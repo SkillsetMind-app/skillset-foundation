@@ -4624,6 +4624,7 @@
       "captchaFailed": "La verificación de seguridad falló. Vuelve a intentarlo.",
       "invalid": "Escribe tu nombre y un correo válido, y acepta las condiciones.",
       "checkoutPending": "Tienes un pago en curso para este curso. Termínalo o vuelve a intentarlo en unos minutos.",
+      "sendFailed": "No pudimos enviar el correo en este momento. Vuelve a intentarlo en un momento.",
       "googleFailed": "No se pudo iniciar sesión con Google. Vuelve a intentarlo.",
       "linkSent": "Si este correo puede acceder al curso, le enviamos un enlace para iniciar sesión.",
       "haveAccount": "¿Ya tienes una cuenta?",

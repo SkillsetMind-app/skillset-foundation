@@ -26,6 +26,7 @@ const HOUR_MS = 60 * 60 * 1000;
 const GLOBAL_PER_HOUR = 60;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const ACCESS_LINK_SENT = { status: "access_link_sent" } as const;
+const SEND_FAILED = { error: "The link could not be sent. Please try again.", code: "send_failed" } as const;
 const REFUSED_BEFORE_SESSION = new Set([400, 404, 422]);
 const CHECKOUT_PENDING = {
   error: "You have a payment in progress for this course. Finish it or try again in a few minutes.",
@@ -143,8 +144,7 @@ async function answerForBuyer(
     .maybeSingle();
   if (enrollmentError) throw new Error(enrollmentError.message);
   if (input.ownerId === userId || ["active", "completed"].includes(String(enrollment?.status))) {
-    await sendGuestAccessLink(admin, email, courseId);
-    return NextResponse.json(ACCESS_LINK_SENT);
+    return accessLinkAnswer(admin, email, courseId);
   }
 
   const response = await createCourseCheckoutSession(
@@ -169,8 +169,7 @@ async function answerForBuyer(
     const conflict = (await response.json().catch(() => ({}))) as { error?: unknown };
     // The account already holds the course: same answer as an enrollment above.
     if (HAS_ACCESS_CONFLICTS.has(String(conflict.error))) {
-      await sendGuestAccessLink(admin, email, courseId);
-      return NextResponse.json(ACCESS_LINK_SENT);
+      return accessLinkAnswer(admin, email, courseId);
     }
     // A checkout already open or starting for the course (another offer, a
     // double submit): one answer for every such case, and no e-mail.
@@ -184,4 +183,15 @@ async function answerForBuyer(
     );
   }
   return response;
+}
+
+// "Sent" only when the provider took the e-mail; otherwise a retryable error.
+async function accessLinkAnswer(
+  admin: ReturnType<typeof getSupabaseAdminClient>,
+  email: string,
+  courseId: string,
+): Promise<NextResponse> {
+  return (await sendGuestAccessLink(admin, email, courseId))
+    ? NextResponse.json(ACCESS_LINK_SENT)
+    : NextResponse.json(SEND_FAILED, { status: 502 });
 }

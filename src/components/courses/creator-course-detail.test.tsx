@@ -1225,6 +1225,15 @@ describe("CreatorCourseDetail: buying without an account", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("The security check failed. Please try again.");
   });
 
+  it("asks to try again when the access e-mail could not be sent", async () => {
+    vi.mocked(startGuestCourseCheckout).mockRejectedValue(new PaymentRequestError("x", 502, "send_failed"));
+    render(<CreatorCourseDetail courseIdOverride="course-1" checkoutOnly />);
+
+    await fillAndSubmit();
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("We couldn't send the email right now. Please try again in a moment.");
+  });
+
   it("says a payment is already in progress, without promising an e-mail", async () => {
     vi.mocked(startGuestCourseCheckout).mockRejectedValue(new PaymentRequestError("x", 409, "checkout_pending"));
     render(<CreatorCourseDetail courseIdOverride="course-1" checkoutOnly />);
