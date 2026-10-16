@@ -1191,6 +1191,16 @@ describe("CreatorCourseDetail: buying without an account", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("The security check failed. Please try again.");
   });
 
+  it("says a payment is already in progress, without promising an e-mail", async () => {
+    vi.mocked(startGuestCourseCheckout).mockRejectedValue(new PaymentRequestError("x", 409, "checkout_pending"));
+    render(<CreatorCourseDetail courseIdOverride="course-1" checkoutOnly />);
+
+    await fillAndSubmit();
+
+    expect(await screen.findByRole("alert"))
+      .toHaveTextContent("You have a payment in progress for this course. Finish it or try again in a few minutes.");
+  });
+
   it("a signed-in buyer keeps today's button and route", async () => {
     fixtures.auth.status = "authenticated"; fixtures.auth.user = { uid: "buyer" };
     render(<CreatorCourseDetail courseIdOverride="course-1" checkoutOnly />);

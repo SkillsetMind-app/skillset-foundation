@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
   getStripe: vi.fn(),
   createSession: vi.fn(),
   expireSession: vi.fn(),
+  subscriptionInterval: vi.fn(),
   fetch: vi.fn(),
 }));
 
@@ -27,7 +28,7 @@ vi.mock("@/lib/payments/server/stripe", async (importOriginal) => ({
   getStripeAccountCountry: vi.fn(async () => null),
 }));
 vi.mock("@/lib/payments/server/stripe-helpers", () => ({
-  courseSubscriptionInterval: () => null,
+  courseSubscriptionInterval: mocks.subscriptionInterval,
   getCourseRow: mocks.getCourseRow,
   getUserRow: mocks.getUserRow,
   getOrCreateAccountPercentOffCoupon: vi.fn(),
@@ -53,6 +54,7 @@ type AdminInput = {
   rateLimited?: string;
   rateLimitDown?: boolean;
   termsFail?: boolean;
+  subscription?: { id: string; status: string } | null;
 };
 
 function createAdmin(input: AdminInput = {}) {
@@ -100,6 +102,7 @@ function createAdmin(input: AdminInput = {}) {
         return { data: null, error: null };
       }
       if (this.table === "enrollments") return { data: input.enrollment ?? null, error: null };
+      if (this.table === "course_subscriptions") return { data: input.subscription ?? null, error: null };
       return { data: single ? null : [], error: null };
     }
   }
@@ -170,6 +173,7 @@ describe("guest checkout", () => {
     vi.stubEnv("TURNSTILE_SECRET_KEY", "turnstile-secret");
     vi.stubGlobal("fetch", mocks.fetch);
     turnstileAnswers(true);
+    mocks.subscriptionInterval.mockReturnValue(null);
     admin = createAdmin();
     mocks.getAdmin.mockImplementation(() => admin);
     mocks.getCourseRow.mockResolvedValue({
@@ -435,14 +439,33 @@ describe("guest checkout", () => {
     });
   });
 
-  it("answers the same way when the account has a checkout already starting (409)", async () => {
-    admin = createAdmin({ existingUserId: "existing-user", lockReply: { action: "wait", checkout_url: null } });
+  it("sends the access link when the account already has a subscription to the course (409)", async () => {
+    mocks.subscriptionInterval.mockReturnValue("month");
+    admin = createAdmin({ existingUserId: "existing-user", subscription: { id: "sub", status: "active" } });
 
     const response = await POST(guestRequest(validBody));
 
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ status: "access_link_sent" });
     expect(admin.auth.signInWithOtp).toHaveBeenCalledTimes(1);
+    expect(mocks.createSession).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["a checkout already starting", { action: "wait", checkout_url: null }],
+    ["a checkout open for another offer", { action: "reuse", checkout_url: "https://checkout.example/open" }],
+  ])("answers one neutral 'payment in progress', with no e-mail, for %s", async (_label, lockReply) => {
+    admin = createAdmin({ existingUserId: "existing-user", lockReply });
+
+    const response = await POST(guestRequest(validBody));
+
+    expect(response.status).toBe(409);
+    expect(await response.json()).toEqual({
+      error: "You have a payment in progress for this course. Finish it or try again in a few minutes.",
+      code: "checkout_pending",
+    });
+    expect(admin.auth.signInWithOtp).not.toHaveBeenCalled();
+    expect(mocks.createSession).not.toHaveBeenCalled();
   });
 
   it("answers the same way for the course owner's own e-mail", async () => {

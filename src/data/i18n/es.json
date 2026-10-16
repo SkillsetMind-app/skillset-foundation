@@ -4623,6 +4623,7 @@
       "captchaPending": "Espera a que termine la verificación de seguridad y vuelve a intentarlo.",
       "captchaFailed": "La verificación de seguridad falló. Vuelve a intentarlo.",
       "invalid": "Escribe tu nombre y un correo válido, y acepta las condiciones.",
+      "checkoutPending": "Tienes un pago en curso para este curso. Termínalo o vuelve a intentarlo en unos minutos.",
       "googleFailed": "No se pudo iniciar sesión con Google. Vuelve a intentarlo.",
       "linkSent": "Revisa tu correo: te enviamos el enlace para acceder a este curso.",
       "haveAccount": "¿Ya tienes una cuenta?",

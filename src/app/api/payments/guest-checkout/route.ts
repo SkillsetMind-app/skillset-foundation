@@ -22,6 +22,15 @@ import { rateLimitKeyFromIp, rateLimitKeyFromValue } from "@/lib/supabase/rate-l
 const HOUR_MS = 60 * 60 * 1000;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const ACCESS_LINK_SENT = { status: "access_link_sent" } as const;
+const CHECKOUT_PENDING = {
+  error: "You have a payment in progress for this course. Finish it or try again in a few minutes.",
+  code: "checkout_pending",
+} as const;
+// The shared builder's 409s that mean the account already has the course.
+const HAS_ACCESS_CONFLICTS = new Set([
+  "This course is already attached to your learning workspace.",
+  "You already have a subscription for this course.",
+]);
 
 function invalidRequest() {
   return new PaymentError("Check your name, e-mail and the terms box.", 400, "invalid_request");
@@ -37,8 +46,9 @@ function invalidRequest() {
 // unchanged. Nobody is signed in here: access comes by e-mail.
 //
 // The answer is the same whether or not the e-mail already had an account: a
-// Stripe url, or { status: "access_link_sent" } when that account has nothing
-// to buy here (it holds the course, owns it, or has a checkout open).
+// Stripe url; { status: "access_link_sent" } when that account already holds
+// the course (enrolled, subscribed or owner); or a 409 "checkout_pending" when
+// a checkout for the course is already open or starting for it.
 export async function POST(request: Request) {
   if (!isGuestCheckoutConfigured()) {
     return NextResponse.json({ error: "Not found.", code: "guest_checkout_disabled" }, { status: 404 });
@@ -140,11 +150,16 @@ async function answerForBuyer(
     },
   );
 
-  // 409: this account already has a subscription or a checkout open for the
-  // course. Same answer as an existing enrollment above.
   if (response.status === 409) {
-    await sendGuestAccessLink(admin, email, courseId);
-    return NextResponse.json(ACCESS_LINK_SENT);
+    const conflict = (await response.json().catch(() => ({}))) as { error?: unknown };
+    // The account already holds the course: same answer as an enrollment above.
+    if (HAS_ACCESS_CONFLICTS.has(String(conflict.error))) {
+      await sendGuestAccessLink(admin, email, courseId);
+      return NextResponse.json(ACCESS_LINK_SENT);
+    }
+    // A checkout already open or starting for the course (another offer, a
+    // double submit): one answer for every such case, and no e-mail.
+    return NextResponse.json(CHECKOUT_PENDING, { status: 409 });
   }
   if (response.ok) {
     response.cookies.set(
