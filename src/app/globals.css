@@ -3105,6 +3105,14 @@ select:focus-visible {
    exactly where a teacher asks the advisor how to structure the course: without
    the :not(:has()) guard, opening that menu display:none'd the whole widget and
    the open chat vanished mid-sentence. .advisor-panel only exists while open. */
+/* A barra flutuante de compra (página de vendas, desktop) dá a vez ao aviso de
+   cookies, que ocupa o rodapé inteiro: os dois juntos se cobririam. */
+@media (min-width: 64rem) {
+  body:has(.cookie-consent) .course-buy-float {
+    display: none;
+  }
+}
+
 body:has(.cookie-consent) .floating-action--advisor:not(:has(.advisor-panel)),
 body:has([aria-label="Course categories"])
   .floating-action--advisor:not(:has(.advisor-panel)) {
