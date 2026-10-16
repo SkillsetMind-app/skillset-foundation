@@ -1,4 +1,4 @@
-import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
+import { createHmac, timingSafeEqual } from "node:crypto";
 
 import { isPlatformHost, normaliseHostHeader } from "@/domain/host-routing";
 import { currentPrivacyVersion, currentTermsVersion } from "@/lib/legal/versions";
@@ -156,26 +156,17 @@ export async function discardNewGuestBuyer(admin: Admin, userId: string): Promis
 }
 
 /**
- * Before guest checkout uses an existing account whose e-mail was never
- * confirmed:
- * - created by this flow, with no terms on record (an earlier attempt stopped
- *   half-way): it records them now, since the form requires the acceptance on
- *   every submission;
- * - created any other way: it gets a new random password. The address is not
- *   proven yet, and this buyer gets in by e-mail link or password recovery.
- * A confirmed account is left untouched. A failure stops the purchase with a
- * retryable error.
+ * An account this flow created earlier, that never confirmed its e-mail and
+ * has no terms on record (an earlier attempt stopped half-way), records them
+ * now: the form requires the acceptance on every submission. Any other
+ * account is left untouched here (an unconfirmed account made some other way
+ * is handled by the paid sale, in the Stripe webhook). A failure stops the
+ * purchase with a retryable error.
  */
 async function prepareExistingBuyer(admin: Admin, userId: string): Promise<void> {
   const { data, error } = await admin.auth.admin.getUserById(userId);
   if (error || !data?.user) throw new Error("Guest buyer account could not be read.");
-  if (data.user.email_confirmed_at) return;
-  if (data.user.app_metadata?.created_via !== GUEST_CHECKOUT_ORIGIN) {
-    const replacement = randomBytes(32).toString("base64url");
-    const { error: updateError } = await admin.auth.admin.updateUserById(userId, { password: replacement });
-    if (updateError) throw new Error(`Guest buyer account was not prepared (${updateError.code ?? "unknown"}).`);
-    return;
-  }
+  if (data.user.email_confirmed_at || data.user.app_metadata?.created_via !== GUEST_CHECKOUT_ORIGIN) return;
   const { data: profile, error: profileError } = await admin
     .from("users")
     .select("terms_accepted_at")

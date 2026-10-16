@@ -503,35 +503,11 @@ describe("guest checkout", () => {
     expect(admin.auth.admin.deleteUser).not.toHaveBeenCalled();
   });
 
-  it("gives an unconfirmed account made some other way a new random password before Stripe", async () => {
-    admin = createAdmin({ existingUserId: "existing-user", existingUnconfirmed: true });
-
-    const response = await POST(guestRequest(validBody));
-
-    expect(response.status).toBe(200);
-    expect(admin.auth.admin.updateUserById).toHaveBeenCalledTimes(1);
-    const [id, attributes] = admin.auth.admin.updateUserById.mock.calls[0];
-    expect(id).toBe("existing-user");
-    expect(Object.keys(attributes)).toEqual(["password"]);
-    expect(String(attributes.password)).toMatch(/^[A-Za-z0-9_-]{43}$/);
-    expect(admin.usersUpdates).toEqual([]);
-    expect(mocks.createSession).toHaveBeenCalledTimes(1);
-  });
-
-  it("stops with a retryable error, before Stripe, when that password cannot be replaced", async () => {
-    admin = createAdmin({ existingUserId: "existing-user", existingUnconfirmed: true, updateUserFails: true });
-
-    const response = await POST(guestRequest(validBody));
-
-    expect(response.status).toBe(500);
-    expect(await response.json()).toEqual({ error: "Something went wrong. Please try again." });
-    expect(mocks.createSession).not.toHaveBeenCalled();
-  });
-
   it.each([
+    ["an unconfirmed account made some other way (nothing is paid yet)", { existingUserId: "existing-user", existingUnconfirmed: true }],
     ["a confirmed account", { existingUserId: "existing-user" }],
     ["a guest checkout account", { existingUserId: "existing-user", existingGuest: {} }],
-  ])("never replaces the password of %s", async (_label, input) => {
+  ])("never touches the password of %s when the checkout opens", async (_label, input) => {
     admin = createAdmin(input);
 
     await POST(guestRequest(validBody));
