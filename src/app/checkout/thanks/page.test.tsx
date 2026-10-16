@@ -28,6 +28,8 @@ import Page, { generateMetadata } from "./page";
 describe("guest checkout thank-you page", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.stubEnv("NEXT_PUBLIC_GUEST_CHECKOUT_ENABLED", "true");
+    vi.stubEnv("NEXT_PUBLIC_TURNSTILE_SITE_KEY", "site-key");
     vi.stubEnv("TURNSTILE_SECRET_KEY", "turnstile-secret");
     vi.stubGlobal("fetch", state.fetch);
     state.fetch.mockImplementation(async () => new Response(JSON.stringify({ status: "sent" })));
@@ -45,6 +47,13 @@ describe("guest checkout thank-you page", () => {
     const metadata = await generateMetadata();
     expect(metadata.robots).toEqual({ index: false, follow: false });
     expect(metadata.title).toContain("Payment received");
+  });
+
+  it("does not exist while guest checkout is off", async () => {
+    vi.stubEnv("NEXT_PUBLIC_GUEST_CHECKOUT_ENABLED", "false");
+
+    await expect(Page({})).rejects.toThrow();
+    expect(state.fetch).not.toHaveBeenCalled();
   });
 
   it("sends the access link once and names the masked address", async () => {

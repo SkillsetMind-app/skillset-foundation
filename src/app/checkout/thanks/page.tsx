@@ -1,12 +1,17 @@
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 
 import { GuestAccessLink } from "@/components/courses/guest-access-link";
 import { SiteNav } from "@/components/site/site-nav";
 import { getServerTranslation } from "@/lib/i18n/server";
 import { maskEmail } from "@/lib/payments/guest-checkout";
-import { decodeGuestCheckoutCookie, GUEST_CHECKOUT_COOKIE } from "@/lib/payments/server/guest-checkout";
+import {
+  decodeGuestCheckoutCookie,
+  GUEST_CHECKOUT_COOKIE,
+  isGuestCheckoutConfigured,
+} from "@/lib/payments/server/guest-checkout";
 
 export async function generateMetadata(): Promise<Metadata> {
   const { t } = await getServerTranslation();
@@ -24,6 +29,8 @@ type PageProps = {
 // access goes by e-mail: the address comes from the cookie the guest checkout
 // set (shown masked), and the sign-in link is sent from here.
 export default async function CheckoutThanksPage({ searchParams }: PageProps) {
+  // Same switch as the guest checkout routes: off means this page does not exist.
+  if (!isGuestCheckoutConfigured()) notFound();
   const { t } = await getServerTranslation();
   const pending = decodeGuestCheckoutCookie((await cookies()).get(GUEST_CHECKOUT_COOKIE)?.value);
   const params = (await searchParams) ?? {};
