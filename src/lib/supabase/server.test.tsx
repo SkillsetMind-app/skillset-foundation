@@ -166,13 +166,17 @@ describe("createSupabaseServerClient — sessao aal1 de conta com TOTP nao e log
     expect(response.error?.message).not.toContain("private");
   });
 
-  it("confere exatamente o JWT explicito, nao o cookie de outra sessao", async () => {
+  it("confere exatamente o JWT explicito nas duas consultas, nao o cookie de outra sessao", async () => {
     mocks.getUser.mockResolvedValue({ data: { user: withoutFactor }, error: null });
-    const query = Object.assign(Promise.resolve({ data: false, error: null }), { setHeader: vi.fn() });
-    mocks.rpc.mockReturnValue(query);
+    const strongQuery = Object.assign(Promise.resolve({ data: false, error: null }), { setHeader: vi.fn() });
+    const allowedQuery = Object.assign(Promise.resolve({ data: true, error: null }), { setHeader: vi.fn() });
+    mocks.rpc.mockImplementation((name: string) => (name === "session_is_strong" ? strongQuery : allowedQuery));
     const client = await createSupabaseServerClient();
-    expect((await client.auth.getUser("synthetic-token")).data.user).toBeNull();
-    expect(query.setHeader).toHaveBeenCalledWith("Authorization", "Bearer synthetic-token");
+    const { data, error } = await client.auth.getUser("synthetic-token");
+    expect(data.user).toBeNull();
+    expect(error).toMatchObject({ code: "mfa_required" });
+    expect(strongQuery.setHeader).toHaveBeenCalledWith("Authorization", "Bearer synthetic-token");
+    expect(allowedQuery.setHeader).toHaveBeenCalledWith("Authorization", "Bearer synthetic-token");
     expect(mocks.getSession).not.toHaveBeenCalled();
   });
 });

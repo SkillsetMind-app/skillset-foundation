@@ -321,16 +321,16 @@ describe("sessao aal1 sem a lista de fatores do Auth: o banco decide", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("conta bloqueada (fraca e nao liberada) nao vira pedido de codigo", async () => {
+  it("conta bloqueada (fraca e nao liberada) nao vira pedido de codigo: o servidor e quem barra", async () => {
     supabaseMocks.getSupabaseBrowserClient.mockReturnValue(hiddenFactors(false, false).client);
 
-    expect((await getCurrentAuthSession()).status).not.toBe("mfa_required");
+    expect((await getCurrentAuthSession()).status).toBe("authenticated");
   });
 
-  it("rota fora do ar: sem fator conhecido nao inventa desafio", async () => {
+  it("rota fora do ar: deve o codigo e o fator nao veio -> erro de rede, nunca segue como logado", async () => {
     supabaseMocks.getSupabaseBrowserClient.mockReturnValue(hiddenFactors(false).client);
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("", { status: 503 })));
 
-    await expect(getPendingSecondFactor()).resolves.toBeNull();
+    await expect(getPendingSecondFactor()).rejects.toThrow(/network/);
   });
 });

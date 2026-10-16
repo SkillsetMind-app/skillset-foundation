@@ -800,7 +800,12 @@ async function findPendingSecondFactor(
   }
 
   const factorId = await findVerifiedTotpId(supabase);
-  return factorId ? new MfaRequiredError(factorId) : null;
+  if (!factorId) {
+    // Deve o código, mas o fator não veio (rota fora do ar): nunca seguir como
+    // logado. Cai na mensagem de rede do login, e tentar de novo resolve.
+    throw new Error("Could not load your two-factor setup (network). Please try again.");
+  }
+  return new MfaRequiredError(factorId);
 }
 
 async function requireSecondFactorIfNeeded(
