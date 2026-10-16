@@ -4,7 +4,7 @@ import Link from "next/link";
 import { EmbeddedCheckoutPanel } from "@/components/account/embedded-checkout-panel";
 import { ProtectedSurface } from "@/components/auth/protected-surface";
 import { PlatformShell } from "@/components/platform/platform-shell";
-import type { PlanBillingCycle, PlanId } from "@/data/plans";
+import { isPublicPlanId, type PlanBillingCycle, type PlanId } from "@/data/plans";
 import { getServerTranslation } from "@/lib/i18n/server";
 import { privatePageMetadata } from "@/lib/seo/private-page-metadata";
 
@@ -22,9 +22,9 @@ function firstParam(value: SearchParamValue): string | undefined {
   return Array.isArray(value) ? value[0] : value;
 }
 
+// Plans on offer only; the retired Plus is not purchasable.
 function parsePlanId(value: string | undefined): Exclude<PlanId, "free"> | null {
-  if (value === "starter" || value === "pro" || value === "plus") return value;
-  return null;
+  return isPublicPlanId(value) ? value : null;
 }
 
 function parseCycle(value: string | undefined): PlanBillingCycle {
@@ -45,7 +45,7 @@ export default async function BillingUpgradePage({
         {planId ? (
             <Suspense
               fallback={
-                <div className="rounded-none border fine-rule bg-white p-8 text-sm text-[var(--color-ink-soft)] shadow-[var(--shadow-soft)]">
+                <div className="rounded-lg border fine-rule bg-white p-8 text-sm text-[var(--color-ink-soft)] shadow-[var(--shadow-soft)]">
                   {t("activationCheckout.preparing")}
                 </div>
               }
@@ -62,7 +62,7 @@ export default async function BillingUpgradePage({
 
 function MissingPlanState({ t }: { t: (key: string) => string }) {
   return (
-    <div className="rounded-none border border-dashed border-[var(--color-line-strong)] bg-[var(--color-surface-soft)] p-8 text-center">
+    <div className="rounded-lg border border-dashed border-[var(--color-line-strong)] bg-[var(--color-surface-soft)] p-8 text-center">
       <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
         {t("billingCheckout.pickPlan")}
       </p>

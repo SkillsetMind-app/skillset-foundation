@@ -378,7 +378,7 @@ describe("pagina da aula no builder", () => {
     vi.mocked(subscribeToTeacherCourse).mockImplementationOnce((_id, emit) => {
       emitCourse = emit;
       emit(mocks.course);
-      return () => undefined;
+      return Object.assign(() => {}, { reload: async () => {} });
     });
     openAt(moduleUrl);
     await renderBuilder();
@@ -561,3 +561,4 @@ describe("pagina da aula no builder", () => {
     expect(document.activeElement).toBe(within(card()).getByRole("button", { name: "Edit content" }));
   });
 });
+vi.mock("@/lib/data/creator-plan", () => ({ fetchCreatorPlanRequired: async () => false }));

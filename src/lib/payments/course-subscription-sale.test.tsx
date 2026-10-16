@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { buildCourseSubscriptionSaleRecords } from "@/lib/payments/course-subscription-sale";
+import { platformFeeForSale } from "@/lib/payments/rules";
 
 const invoice = {
   invoiceId: "in_renewal_123",
@@ -16,6 +17,7 @@ const invoice = {
   grossAmountMinor: 12900,
   currency: "BRL",
   platformFeeBps: 800,
+  platformFeeMinor: 1032 + 30,
   createdAt: "2026-07-15T10:00:00.000Z",
   paidAt: "2026-07-15T10:00:05.000Z",
   updatedAt: "2026-07-15T10:00:05.000Z",
@@ -37,6 +39,7 @@ describe("buildCourseSubscriptionSaleRecords", () => {
         status: "paid",
         provider: "stripe",
         platform_fee_bps: 800,
+        platform_fee_fixed_minor: 30,
         // Direct charge, not separate charges + transfers: SkillsetMind never
         // takes possession of the renewal, so the books must not claim a
         // transfer we never owe. Flipping this back is a policy regression.
@@ -81,5 +84,35 @@ describe("buildCourseSubscriptionSaleRecords", () => {
     expect(buildCourseSubscriptionSaleRecords(zeroValueInvoice).payment.id).toBe(
       "in_trial_123",
     );
+  });
+
+  // The ledger books the fee Stripe took (invoice.application_fee_amount);
+  // sale detail and ops recompute floor(gross × bps) + fixed from the order.
+  // A $19 renewal frozen at 5% but charged 4.9% + $0.30 = $1.23 must read
+  // $1.23 there too, not $0.95.
+  it("stores the fixed part so the order adds up to the fee Stripe took", () => {
+    const { order } = buildCourseSubscriptionSaleRecords({
+      ...invoice,
+      grossAmountMinor: 1900,
+      currency: "USD",
+      platformFeeBps: 500,
+      platformFeeMinor: 123,
+    });
+    expect(order.platform_fee_fixed_minor).toBe(28);
+    expect(Math.floor((1900 * order.platform_fee_bps!) / 10000) + order.platform_fee_fixed_minor!).toBe(123);
+  });
+
+  // Basic → Pro upgrade: the subscription keeps the frozen 11.58% (Basic's
+  // 1.9% + $0.30 on $19), but the renewal is charged 2.9% + $0.30 = $0.85.
+  it("keeps a negative fixed part so a renewal after an upgrade still reads the exact fee", () => {
+    const { order } = buildCourseSubscriptionSaleRecords({
+      ...invoice,
+      grossAmountMinor: 1900,
+      currency: "USD",
+      platformFeeBps: 1158,
+      platformFeeMinor: 85,
+    });
+    expect(order.platform_fee_fixed_minor).toBeLessThan(0);
+    expect(platformFeeForSale(1900, order.platform_fee_bps!, order.platform_fee_fixed_minor!)).toBe(85);
   });
 });

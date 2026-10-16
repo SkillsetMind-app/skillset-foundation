@@ -66,6 +66,8 @@ evento é confirmado e ignorado.
 - [ ] `charge.dispute.closed` — registra o resultado da disputa.
 
 **Assinatura** (curso recorrente + plano do professor):
+- [ ] `invoice.created` — **endpoint Connect**: grava na fatura de renovação da assinatura de curso a taxa exata (percentual + fixo), enquanto ela ainda é rascunho (`handleCourseSubscriptionInvoiceCreated`). Sem ele, a renovação cobra só o percentual da primeira fatura.
+- [ ] `customer.subscription.trial_will_end` — **endpoint da plataforma**: e-mail de fim do teste grátis do plano, um por assinatura (`handlePlanTrialWillEnd`).
 - [ ] `invoice.paid` — fulfillment do ciclo (`handleCourseSubscriptionInvoicePaid`).
 - [ ] `invoice.payment_failed` — falha de cobrança do ciclo (`handleInvoicePaymentFailed`).
 - [ ] `customer.subscription.created` — lifecycle (`handleCourseSubscriptionLifecycle` → fallback `syncSubscriptionFromStripe`).
@@ -81,6 +83,23 @@ evento é confirmado e ignorado.
 Depois de criar cada endpoint:
 - Abra o endpoint → **Signing secret** → **Reveal** → copie o `whsec_...`
 - Grave na variável de ambiente do projeto na Vercel correspondente (tabela acima) e faça redeploy.
+
+## 2b. Planos do professor (tabela de 2026-10-06)
+
+Fonte da verdade: `src/data/plans.ts` (preços) e `src/lib/payments/rules.ts` (comissão e taxa fixa).
+
+| Plano | Mensal | Anual | Comissão por venda | Price IDs |
+|---|---|---|---|---|
+| Basic | $5 | $50 | 10% + $0.30 | **criar** (lookup `skillset_basic_monthly` / `skillset_basic_yearly`) |
+| Starter (Recomendado) | $19 | $190 | 4,9% + $0.30 | já existem |
+| Pro | $89 | $890 | 2,9% + $0.30 | já existem |
+| Enterprise (fora da oferta, id `plus`) | $199 | $1990 | 1,9% + $0.30 | os do antigo Plus |
+
+- [ ] Criar o Product **Skillset Basic** com os dois Prices recorrentes em USD da tabela e colar os `price_...` em `src/data/plans.ts` (hoje `price_PLACEHOLDER_basic_*`). Enquanto houver placeholder, o cartão Basic mostra "Disponível em breve". Dá para criar pelo painel ou com `scripts/setup-stripe-billing.mjs` rodado pelo cofre, sem `STRIPE_WEBHOOK_URL` (o script só cria o Basic, reaproveita Price pela lookup key e nunca imprime segredo).
+- [ ] Opcional: renomear o Product "Skillset Plus" para "Skillset Enterprise" no painel (os Price IDs não mudam).
+- [ ] **Configuração própria do Customer portal** (Settings → Billing → Customer portal → nova configuração, não a padrão): cancelamento ligado, "no fim do período"; troca de plano só entre os Prices de Basic, Starter e Pro (mensal e anual), sem Enterprise. Colar o `bpc_...` em `STRIPE_PORTAL_CONFIGURATION_ID` (`src/data/plans.ts`). Enquanto for placeholder, "Gerenciar" responde 503 em vez de abrir o portal padrão.
+- [ ] **Enterprise só por admin:** criar a assinatura no painel, no customer do criador (`users.stripe_customer_id`), com a metadata `uid=<uid do criador>` e `enterprise_grant=admin`. Sem essa metadata o webhook não concede plano nenhum e avisa ops (`stripe.plan.enterprise_not_granted`).
+- [ ] Teste grátis: nada a configurar no painel. O checkout pede `trial_period_days: 14` e `payment_method_collection: always`; um teste por conta (`creator_plan_trials`).
 
 ## 3. Stripe Connect (pagamentos dos professores)
 

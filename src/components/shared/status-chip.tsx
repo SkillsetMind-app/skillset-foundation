@@ -7,6 +7,7 @@ export type StatusChipStatus =
   | "active"
   | "cancelled"
   | "completed"
+  | "deleting"
   | "dismissed"
   | "draft"
   | "expired"
@@ -39,6 +40,7 @@ const knownStatuses = new Set([
   "active",
   "cancelled",
   "completed",
+  "deleting",
   "dismissed",
   "draft",
   "expired",
@@ -70,6 +72,8 @@ const statusVariants: Record<string, string> = {
   succeeded: "success",
   draft: "draft",
   in_review: "warning",
+  // Produto apagado esperando a limpeza de arquivos e videos (fila pending).
+  deleting: "warning",
   needs_changes: "danger",
   rejected: "danger",
   failed: "danger",

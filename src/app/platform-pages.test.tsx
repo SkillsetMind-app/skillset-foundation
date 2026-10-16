@@ -154,9 +154,10 @@ describe("platform shells", () => {
 
     // As filas e seus contadores ficam na navegação principal, sem duas barras.
     const queues = screen.getByRole("navigation", { name: "Workspace" });
-    expect(queues).toHaveTextContent(/Creator verification\s*3/);
-    expect(queues).toHaveTextContent(/Support tickets\s*2/);
-    expect(queues).toHaveTextContent(/Community reports\s*1/);
+    // Rótulo com a contagem exata (lida pelo leitor de tela e mostrada na dica), depois o selo.
+    expect(queues).toHaveTextContent(/Creator verification, 3 pending\s*3/);
+    expect(queues).toHaveTextContent(/Support tickets, 2 pending\s*2/);
+    expect(queues).toHaveTextContent(/Community reports, 1 pending\s*1/);
 
     // "Access levels" deixou de ser um bloco solto no fim da página: é a
     // oitava fila, com endereço próprio (?tab=access).
@@ -190,8 +191,8 @@ describe("platform shells", () => {
     // studio context, but the menu now lists every workspace the account holds
     // and hides the current one, so it reads as a toggle — and a toggle that
     // opens a tab per press leaves you with a pile of them.
-    expect(screen.getByText("Switch view")).toBeInTheDocument();
-    const studentViewLink = screen.getByRole("link", { name: /Student view/i });
+    expect(screen.getByText("Switch area")).toBeInTheDocument();
+    const studentViewLink = screen.getByRole("link", { name: /Student area/i });
     expect(studentViewLink).toHaveAttribute("href", "/learn");
     expect(studentViewLink).not.toHaveAttribute("target");
     // A teacher should not see the learner-to-teacher upgrade prompt.

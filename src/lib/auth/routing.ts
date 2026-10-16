@@ -53,6 +53,21 @@ export function getWorkspaceHomeHref(
   return user ? getPrimaryWorkspaceHref(user) : "/platform";
 }
 
+export type WorkspaceSide = "student" | "teacher" | "ops";
+
+/**
+ * Which side of the platform a page belongs to — the top bar names it and
+ * offers the way to the other side, and the Help menu picks its choices by
+ * it. Same rule as the logo's home link, so the two never disagree.
+ */
+export function getWorkspaceSide(
+  pathname: string,
+  user: Pick<SkillsetUser, "roles"> | null | undefined,
+): WorkspaceSide {
+  const home = getWorkspaceHomeHref(pathname, user);
+  return home === "/teach" ? "teacher" : home === "/ops" ? "ops" : "student";
+}
+
 export function parseAuthPathIntent(value: string | null | undefined): AuthPathIntent | null {
   if (value === "student" || value === "teacher") {
     return value;
@@ -70,33 +85,52 @@ export function getAuthPathIntentFromSearchParams(
   );
 }
 
+const RETURN_TO_BASE = "https://base.invalid";
+const AUTH_ROUTES = ["/login", "/signup", "/auth", "/loading", "/welcome", "/logout"];
+
 /**
  * Validates a post-login destination so deep links survive the sign-in wall
  * without opening a redirect hole. Only same-origin absolute paths pass:
  * anything with a scheme/host ("https://evil", "//evil", "/\evil") or a
  * route that would loop the auth flow is rejected.
+ *
+ * Judged the way a browser will read it: resolved by the URL parser first
+ * (dot segments: "/..//evil" is "//evil") and then decoded ("/%2F%2Fevil",
+ * "/%5Cevil"). What is returned is that resolved path, never the raw text.
  */
 export function getSafeReturnTo(
   searchParams: URLSearchParams,
 ): string | null {
   const raw = searchParams.get("returnTo");
 
-  if (!raw || !raw.startsWith("/")) {
+  if (!raw?.startsWith("/") || hasUnsafeChar(raw)) {
     return null;
   }
 
-  // URL parsing removes TAB/LF/CR: /\n/host would become //host in the router.
-  if (raw.startsWith("//") || raw.startsWith("/\\") || /[\t\n\r]/.test(raw)) {
+  let target: URL;
+  let path: string;
+  try {
+    target = new URL(raw, RETURN_TO_BASE);
+    path = decodeURIComponent(target.pathname);
+  } catch {
     return null;
   }
 
-  const authRoutes = ["/login", "/signup", "/auth", "/loading", "/welcome", "/logout"];
-
-  if (authRoutes.some((route) => raw === route || raw.startsWith(`${route}?`) || raw.startsWith(`${route}/`))) {
+  if (target.origin !== RETURN_TO_BASE || !path.startsWith("/") || path.includes("//") || hasUnsafeChar(path)) {
     return null;
   }
 
-  return raw;
+  if (AUTH_ROUTES.some((route) => path === route || path.startsWith(`${route}/`))) {
+    return null;
+  }
+
+  return target.pathname + target.search + target.hash;
+}
+
+// URL parsing drops TAB/LF/CR and reads "\" as "/": /\n/host or /\host would
+// become //host in the router.
+function hasUnsafeChar(text: string): boolean {
+  return [...text].some((char) => char === "\\" || char < " " || char === "\u007f");
 }
 
 export function getAuthErrorRoute(reason: string, next: string): string {

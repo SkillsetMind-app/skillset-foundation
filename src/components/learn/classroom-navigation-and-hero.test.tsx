@@ -127,6 +127,7 @@ vi.mock("@/components/learn/community-feed", () => ({
 // daqui: so a contagem importa.
 vi.mock("@/components/shared/protected-asset-preview", () => ({
   ProtectedAssetPreview: () => null,
+  ProtectedAssetDownload: () => null,
 }));
 
 // Tres aulas em dois modulos: da para testar "primeira" (sem anterior),

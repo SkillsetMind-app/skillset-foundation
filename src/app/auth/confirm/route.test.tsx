@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   createServer: vi.fn(),
   verifyOtp: vi.fn(),
   exchangeCodeForSession: vi.fn(),
+  getUser: vi.fn(),
 }));
 
 vi.mock("@/lib/supabase/server", () => ({
@@ -26,10 +27,12 @@ describe("/auth/confirm", () => {
     vi.clearAllMocks();
     mocks.verifyOtp.mockResolvedValue({ error: null });
     mocks.exchangeCodeForSession.mockResolvedValue({ error: null });
+    mocks.getUser.mockResolvedValue({ data: { user: null }, error: null });
     mocks.createServer.mockResolvedValue({
       auth: {
         verifyOtp: mocks.verifyOtp,
         exchangeCodeForSession: mocks.exchangeCodeForSession,
+        getUser: mocks.getUser,
       },
     });
   });
@@ -150,5 +153,101 @@ describe("/auth/confirm", () => {
   it.each(["https://evil.test/loading?next=route", `${ORIGIN}/auth/confirm?next=${encodeURIComponent("//evil.test")}`, `${ORIGIN}/auth/confirm?next=${encodeURIComponent("/\\evil.test")}`])("refuses an unsafe email redirect %s", async (redirectTo) => {
     const response = await get(`?token_hash=abc&type=signup&redirect_to=${encodeURIComponent(redirectTo)}`);
     expect(response.headers.get("location")).toBe(`${ORIGIN}/welcome`);
+  });
+
+  // Onda F: o link de confirmacao vencido ou ja usado nao pode ser beco.
+  describe("expired or used signup confirmation", () => {
+    const course = "/welcome?path=student&returnTo=%2Fcourses%2Ffocus";
+    const signupLink = `?token_hash=abc&type=signup&redirect_to=${encodeURIComponent(`${ORIGIN}/auth/confirm?next=${encodeURIComponent(course)}`)}`;
+    const confirmed = { data: { user: { id: "u-1", email_confirmed_at: "2026-10-07T00:00:00Z" } }, error: null };
+
+    beforeEach(() => {
+      mocks.verifyOtp.mockResolvedValue({ error: { code: "otp_expired", message: "Token has expired or is invalid" } });
+    });
+
+    it.each([
+      ["nobody is signed in", { data: { user: null }, error: null }],
+      ["the session is not confirmed", { data: { user: { id: "u-1", email_confirmed_at: null } }, error: null }],
+    ])("opens the resend screen, keeping the course, when %s", async (_label, session) => {
+      mocks.getUser.mockResolvedValue(session);
+      const response = await get(signupLink);
+      expect(response.headers.get("location")).toBe(
+        `${ORIGIN}/login?error=confirm_expired&path=student&returnTo=%2Fcourses%2Ffocus`,
+      );
+      expect(response.cookies.get(PASSWORD_RECOVERY_COOKIE)).toBeUndefined();
+    });
+
+    it("sends the expired reminder link (type email, no destination) to the resend screen", async () => {
+      const response = await get("?token_hash=abc&type=email");
+      expect(response.headers.get("location")).toBe(`${ORIGIN}/login?error=confirm_expired`);
+    });
+
+    it("sends someone already confirmed and signed in straight to the course", async () => {
+      mocks.getUser.mockResolvedValue(confirmed);
+      const response = await get(signupLink);
+      expect(response.headers.get("location")).toBe(
+        `${ORIGIN}/loading?next=welcome&path=student&returnTo=%2Fcourses%2Ffocus`,
+      );
+    });
+
+    it("sends someone already confirmed and signed in home when the link had no course", async () => {
+      mocks.getUser.mockResolvedValue(confirmed);
+      const response = await get("?token_hash=abc&type=email");
+      expect(response.headers.get("location")).toBe(`${ORIGIN}/loading?next=welcome`);
+    });
+
+    it.each(["https://evil.test/x", "//evil.test", "/\\evil.test"])("never turns %s into a destination for a signed-in person", async (target) => {
+      mocks.getUser.mockResolvedValue(confirmed);
+      const next = `/welcome?returnTo=${encodeURIComponent(target)}`;
+      const response = await get(`?token_hash=abc&type=signup&redirect_to=${encodeURIComponent(`${ORIGIN}/auth/confirm?next=${encodeURIComponent(next)}`)}`);
+      expect(response.headers.get("location")).toBe(`${ORIGIN}/loading?next=welcome`);
+    });
+
+    // O acesso manual a curso manda um magic link (type=email) para /loading.
+    // Vencido, nao e cadastro: a tela de "reenviar confirmacao" nunca chegaria
+    // a quem ja tem conta confirmada. O link e montado como o do e-mail real.
+    it("leaves an expired course-access magic link out of the signup screen", async () => {
+      const source = readFileSync("src/app/api/teach/course-access/route.ts", "utf8");
+      const emailRedirectTo = source.match(/emailRedirectTo: "([^"]+)"/)?.[1];
+      expect(emailRedirectTo).toMatch(/\/loading\?next=route$/);
+      const template = readFileSync("supabase/templates/magic_link.html", "utf8");
+      expect(template).toContain("&amp;type=email&amp;next=/loading%3Fnext%3Droute&amp;redirect_to=");
+      const site = new URL(emailRedirectTo!).origin;
+      mocks.getUser.mockResolvedValue(confirmed);
+
+      const response = await GET(new NextRequest(
+        `${site}/auth/confirm?token_hash=abc&type=email&next=/loading%3Fnext%3Droute&redirect_to=${encodeURIComponent(emailRedirectTo!)}`,
+      ));
+
+      expect(response.headers.get("location")).toBe(`${site}/login?error=confirm`);
+      expect(mocks.getUser).not.toHaveBeenCalled();
+    });
+
+    it("leaves an expired invitation signup link out of the signup screen", async () => {
+      mocks.getUser.mockResolvedValue(confirmed);
+      const invitation = "/invitations/81000000-0000-4000-8000-000000000001";
+      const response = await get(`?token_hash=abc&type=signup&redirect_to=${encodeURIComponent(`${ORIGIN}/auth/confirm?next=${encodeURIComponent(invitation)}`)}`);
+      expect(response.headers.get("location")).toBe(`${ORIGIN}/login?error=confirm&returnTo=${encodeURIComponent(invitation)}`);
+      expect(mocks.getUser).not.toHaveBeenCalled();
+    });
+
+    // Troca de senha e troca de e-mail tem tela propria: nada de "entrar direto".
+    it.each([
+      ["recovery", "?token_hash=abc&type=recovery&next=/reset-password", `${ORIGIN}/login?error=confirm`],
+      ["email change", "?token_hash=abc&type=email_change&next=%2Faccount%3Ftab%3Dsecurity", `${ORIGIN}/login?error=confirm&returnTo=%2Faccount%3Ftab%3Dsecurity`],
+    ])("leaves a failed %s link as it was", async (_label, query, location) => {
+      mocks.getUser.mockResolvedValue(confirmed);
+      const response = await get(query);
+      expect(response.headers.get("location")).toBe(location);
+      expect(mocks.getUser).not.toHaveBeenCalled();
+    });
+  });
+
+  // O lembrete de 24 h leva o curso no link (next); a confirmacao respeita.
+  it("lands the reminder link on the course it carries", async () => {
+    const next = "/welcome?path=student&returnTo=%2Fcourses%2Ffocus";
+    const response = await get(`?token_hash=abc&type=email&next=${encodeURIComponent(next)}`);
+    expect(mocks.verifyOtp).toHaveBeenCalledWith({ type: "email", token_hash: "abc" });
+    expect(response.headers.get("location")).toBe(`${ORIGIN}${next}`);
   });
 });

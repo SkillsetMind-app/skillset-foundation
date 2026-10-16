@@ -11,9 +11,15 @@ import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { BrandName } from "@/components/shared/brand-name";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import type { Locale } from "@/lib/i18n/config";
-import { plans, type PlanBillingCycle, type PlanId } from "@/data/plans";
+import {
+  formatPlanCommission,
+  publicPlans,
+  type PlanBillingCycle,
+  type PlanId,
+} from "@/data/plans";
 import { formatUsdWhole } from "@/data/platform";
 import { createBillingCheckoutClientSecret } from "@/lib/payments/billing";
+import { planDisclosure } from "@/lib/payments/plan-disclosure";
 import { PaymentRequestError } from "@/lib/payments/client-fetch";
 import { track } from "@/lib/posthog/events";
 
@@ -53,7 +59,7 @@ function BillingUnavailableNotice({
 }) {
   const { t } = useTranslation();
   return (
-    <div className="rounded-none border border-dashed border-[var(--color-line-strong)] bg-[var(--color-surface-soft)] p-6 text-sm leading-7 text-[var(--color-ink)]">
+    <div className="rounded-lg border border-dashed border-[var(--color-line-strong)] bg-[var(--color-surface-soft)] p-6 text-sm leading-7 text-[var(--color-ink)]">
       <p className="font-semibold text-[var(--color-ink)]">{title}</p>
       <p className="mt-2 text-[var(--color-ink-soft)]">{detail}</p>
       {children}
@@ -81,10 +87,14 @@ export function EmbeddedCheckoutPanel({
   const { t, locale } = useTranslation();
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [error, setError] = useState<{ key: string; status?: number } | null>(null);
+  // Whether this checkout opens a trial is the server's call (one per
+  // account); the terms beside the card form follow its answer.
+  const [trialDays, setTrialDays] = useState<number | null>(null);
   // No live locale setter in Embedded Checkout: preserve Stripe and card input
   // for this mount, while the surrounding copy follows the current language.
   const [stripeLoader] = useState(() => getStripePromise(locale));
-  const plan = plans.find((candidate) => candidate.id === planId);
+  // Only plans on offer: a link to Enterprise or Free lands on "unknown plan".
+  const plan = publicPlans.find((candidate) => candidate.id === planId);
 
   // Stable options object — recreating it every render reboots the
   // EmbeddedCheckoutProvider and the user loses any half-typed card.
@@ -97,7 +107,9 @@ export function EmbeddedCheckoutPanel({
     let cancelled = false;
 
     async function load() {
-      if (!stripeLoader) return;
+      // A plan that is not on offer (Enterprise, Free, a typo) never reaches
+      // the server: the panel shows "unknown plan" below.
+      if (!stripeLoader || !publicPlans.some((candidate) => candidate.id === planId)) return;
       setError(null);
       setClientSecret(null);
 
@@ -105,7 +117,7 @@ export function EmbeddedCheckoutPanel({
       // course_id is reused for plan_id (the events taxonomy treats both as
       // commerce intents); price is sent in minor units to keep the schema
       // consistent with order/checkout completion events.
-      const planMeta = plans.find((p) => p.id === planId);
+      const planMeta = publicPlans.find((p) => p.id === planId);
       const priceUsd =
         cycle === "yearly"
           ? planMeta?.yearlyUsd ?? 0
@@ -120,6 +132,7 @@ export function EmbeddedCheckoutPanel({
         const result = await createBillingCheckoutClientSecret(planId, cycle);
         if (!cancelled) {
           setClientSecret(result.clientSecret);
+          setTrialDays(result.trialDays ?? 0);
         }
       } catch (cause) {
         if (!cancelled) {
@@ -176,9 +189,9 @@ export function EmbeddedCheckoutPanel({
 
   return (
     <div className="grid gap-5 lg:grid-cols-[1fr_360px]">
-      <div className="overflow-hidden rounded-none border fine-rule bg-white shadow-[var(--shadow-soft)]">
+      <div className="overflow-hidden rounded-lg border fine-rule bg-white shadow-[var(--shadow-soft)]">
         {error ? (
-          <div role="alert" className="p-6 text-sm text-[var(--color-accent-fg)]">
+          <div role="alert" className="p-6 text-sm text-[var(--color-danger-fg)]">
             <p className="font-semibold">{t("activationCheckout.errorTitle")}</p>
             <p className="mt-2 text-[var(--color-ink-soft)]">{t(`billingCheckout.error.${error.key}`)}</p>
             {error.status ? <p className="mt-2 text-xs">{t("activationCheckout.reference")} HTTP {error.status}</p> : null}
@@ -204,7 +217,7 @@ export function EmbeddedCheckoutPanel({
         )}
       </div>
 
-      <aside className="h-fit rounded-none border fine-rule bg-white p-5 shadow-[var(--shadow-soft)]">
+      <aside className="h-fit rounded-lg border fine-rule bg-white p-5 shadow-[var(--shadow-soft)]">
         <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
           {t("billingCheckout.subscribing")}
         </p>
@@ -214,7 +227,7 @@ export function EmbeddedCheckoutPanel({
         <p className="mt-2 text-sm text-[var(--color-ink-soft)]">
           {t(`publicPages.plans.${plan.id}.tagline`)}
         </p>
-        <div className="mt-4 rounded-none border fine-rule bg-[var(--color-surface-soft)] p-4">
+        <div className="mt-4 rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4">
           <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--color-ink-soft)]">
             {t(isYearly ? "billingCheckout.yearly" : "billingCheckout.monthly")}
           </p>
@@ -234,10 +247,15 @@ export function EmbeddedCheckoutPanel({
         <p className="mt-4 text-[11px] leading-5 text-[var(--color-ink-muted)]">
           {t("billingCheckout.commission").replace("{plan}", () => plan.name)}{" "}
           <strong className="text-[var(--color-ink)]">
-            {plan.commissionPercent}%
+            {formatPlanCommission(plan)}
           </strong>
           {t("billingCheckout.processing")}
         </p>
+        {trialDays !== null ? (
+          <p className="mt-2 text-[11px] font-semibold leading-5 text-[var(--color-ink)]">
+            {planDisclosure({ t, locale, plan, cycle, trial: trialDays > 0 })}
+          </p>
+        ) : null}
         <p className="mt-2 text-[11px] leading-5 text-[var(--color-ink-muted)]">
           {t("billingCheckout.cancel")}
         </p>

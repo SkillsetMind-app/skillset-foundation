@@ -43,6 +43,11 @@ UPDATE public.users SET roles='["student","teacher"]',teacher_terms_accepted_at=
 WHERE uid IN (:'teacher_uid',:'admin_uid',:'other_teacher_uid');
 UPDATE public.users SET roles='["student","teacher","admin"]' WHERE uid=:'admin_uid';
 
+-- Non-admin owners retain their roles; only the plan prerequisite is seeded.
+INSERT INTO public.subscriptions(id,user_id,plan_id,status,current_period_end)
+VALUES
+ ('smoke-plan-' || :'teacher_uid', :'teacher_uid', 'basic', 'active', now() + interval '1 day'),
+ ('smoke-plan-' || :'other_teacher_uid', :'other_teacher_uid', 'basic', 'active', now() + interval '1 day');
 INSERT INTO public.courses(id,owner_id,slug,title,title_key,summary,category,status,payment_type,price_amount_minor,currency,community_enabled)
 VALUES
  ('audit-boundaries-own',:'teacher_uid','audit-boundaries-own-slug','Own course','audit-boundaries-own','Course for isolated security tests.','smoke','published','one_time',100,'USD',true),
@@ -129,7 +134,18 @@ SELECT pg_temp.check_security('event prevents deleting a referenced course',pg_t
  $$DELETE FROM public.courses WHERE id='audit-retained-event'$$));
 SELECT pg_temp.check_security('event prevents changing a referenced course ID',pg_temp.foreign_key_denied(
  $$UPDATE public.courses SET id='audit-reused-event-id' WHERE id='audit-retained-event'$$));
-SELECT public.delete_teacher_course_draft('audit-empty-draft');
+-- 20261008030000 tirou o EXECUTE do cliente na delete_teacher_course_draft; o
+-- app apaga pela delete_or_archive_own_course. Este arquivo tambem roda ANTES
+-- de 20260908120000 (prova RED em scripts/build-test-db.sh), quando so a
+-- antiga existe: chama a que houver.
+SELECT pg_temp.assume_session(:'teacher_uid','authenticated','aal2');
+DO $$ BEGIN
+  EXECUTE format('SELECT public.%I(%L)',
+    CASE WHEN to_regprocedure('public.delete_or_archive_own_course(text)') IS NULL
+      THEN 'delete_teacher_course_draft' ELSE 'delete_or_archive_own_course' END,
+    'audit-empty-draft');
+END $$;
+SELECT pg_temp.assume_session(:'teacher_uid','authenticated');
 SELECT pg_temp.check_security('teacher retains deletion of an empty draft',
  NOT EXISTS(SELECT FROM public.courses WHERE id='audit-empty-draft'));
 SELECT pg_temp.check_security('RSVP cannot use enrollment in a different course',pg_temp.denied(format(

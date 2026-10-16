@@ -39,6 +39,10 @@ vi.mock("@/lib/i18n/server", () => ({
 }));
 vi.mock("@/components/auth/auth-provider", () => ({ useAuth: () => mocks.auth }));
 vi.mock("@/lib/learn/server/member-area", () => ({ getMemberArea: mocks.getMemberArea }));
+// A casca da sala agora tem sino e menu da conta tambem com a marca do
+// professor; aqui o assunto sao as abas da previa, nao esses dois.
+vi.mock("@/components/platform/notification-bell", () => ({ NotificationBell: () => null }));
+vi.mock("@/components/site/account-menu", () => ({ AccountMenu: () => null }));
 vi.mock("@/lib/supabase/config", () => ({
   getSupabaseClientConfig: () => ({ url: "https://storage.example.test", anonKey: "fixture-key" }),
 }));

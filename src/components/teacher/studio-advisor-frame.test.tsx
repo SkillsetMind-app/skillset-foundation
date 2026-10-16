@@ -1,9 +1,14 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
+import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import TeachLayout from "@/app/teach/layout";
 
 vi.mock("@/lib/advisor/config", () => ({ isAdvisorEnabled: true }));
+// O layout lê o cookie da barra no servidor (cookies() fora de pedido falha no jsdom).
+vi.mock("@/components/platform/sidebar-preference-layout", () => ({
+  default: ({ children }: { children: ReactNode }) => children,
+}));
 
 const state = vi.hoisted(() => ({
   roles: ["teacher"] as string[],

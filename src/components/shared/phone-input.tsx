@@ -104,7 +104,7 @@ export function PhoneInput({ value, onChange, label }: PhoneInputProps) {
       <label htmlFor={inputId}>{label ?? t("phoneInput.label")}</label>
       <div
         ref={wrapperRef}
-        className="relative flex h-11 rounded-none border border-[var(--color-line)] bg-white focus-within:border-[var(--color-primary-light)]"
+        className="relative flex h-11 rounded-md border border-[var(--color-line)] bg-white focus-within:border-[var(--color-primary-light)]"
       >
         <button
           type="button"
@@ -136,14 +136,14 @@ export function PhoneInput({ value, onChange, label }: PhoneInputProps) {
         />
 
         {open ? (
-          <div className="absolute left-0 top-[calc(100%+8px)] z-50 w-72 max-w-full rounded-none border border-[var(--color-line)] bg-white p-1.5 shadow-[var(--shadow-strong)]">
+          <div className="absolute left-0 top-[calc(100%+8px)] z-50 w-72 max-w-full rounded-lg border border-[var(--color-line)] bg-white p-1.5 shadow-[var(--shadow-strong)]">
             {countries.map((country) => (
               <button
                 key={country.code}
                 type="button"
                 onClick={() => handleCountryChange(country)}
                 aria-label={`${countryNames.of(country.code) ?? country.code} ${country.dialCode}`}
-                className="flex w-full items-center justify-between rounded-none px-3 py-2 text-left text-sm font-semibold text-[var(--color-ink-soft)] transition hover:bg-[var(--color-surface-soft)] hover:text-[var(--color-primary)]"
+                className="flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-sm font-semibold text-[var(--color-ink-soft)] transition hover:bg-[var(--color-surface-soft)] hover:text-[var(--color-primary)]"
               >
                 <span>{countryNames.of(country.code) ?? country.code}</span>
                 <span>{country.dialCode}</span>

@@ -57,7 +57,7 @@ export function ListingSearchBar({
   return (
     <label
       className={cn(
-        "relative flex h-10 w-full max-w-[360px] items-center overflow-hidden rounded-none border border-[var(--color-line)] bg-[var(--color-surface-soft)]",
+        "relative flex h-10 w-full max-w-[360px] items-center overflow-hidden rounded-md border border-[var(--color-line)] bg-[var(--color-surface-soft)]",
         className,
       )}
     >
@@ -80,7 +80,7 @@ export function ListingSearchBar({
           type="button"
           onClick={clearSearch}
           aria-label={t("platform.clearSearch")}
-          className="absolute right-2 grid size-6 place-items-center rounded-none text-[var(--color-ink-soft)] transition hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-primary)]"
+          className="absolute right-2 grid size-6 place-items-center rounded-md text-[var(--color-ink-soft)] transition hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-primary)]"
         >
           <X aria-hidden="true" size={14} strokeWidth={1.8} />
         </button>

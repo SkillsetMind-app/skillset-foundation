@@ -1,5 +1,9 @@
 import type { DripStrategy } from "@/domain/drip-policy";
-import type { LessonVideoSource, MembersTheme } from "@/domain/teacher-course";
+import type {
+  LessonVideoSource,
+  MembersTheme,
+  TeacherCourseProductFormat,
+} from "@/domain/teacher-course";
 
 export type CourseStatus = "draft" | "opening_soon" | "pilot" | "waitlist" | "published";
 
@@ -55,6 +59,9 @@ export type Course = {
   outcomes: string[];
   modules: CourseModule[];
   communityEnabled: boolean;
+  // O que o produto entrega (courses.product_format). Sem o campo (catalogo
+  // da plataforma), curso.
+  productFormat?: TeacherCourseProductFormat;
   // Quem publicou o curso (users.uid). So os cursos de professor tem; o
   // catalogo da plataforma nao. A comunidade usa para marcar as respostas do
   // professor e nomear o filtro "From <nome>".

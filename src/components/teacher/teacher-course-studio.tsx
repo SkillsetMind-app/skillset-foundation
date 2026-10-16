@@ -5,7 +5,6 @@ import {
   ArrowRight,
   BookOpen,
   CalendarDays,
-  Handshake,
   Layers3,
   Megaphone,
   MoreHorizontal,
@@ -13,11 +12,12 @@ import {
   UsersRound,
 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { ListingSearchBar } from "@/components/shared/listing-search-bar";
+import { ShortId } from "@/components/shared/short-id";
 import { StatusChip } from "@/components/shared/status-chip";
 import {
   CourseActionsMenu,
@@ -25,6 +25,7 @@ import {
 } from "@/components/teacher/course-actions";
 import { CreateCourseStart } from "@/components/teacher/create-course-start";
 import type { TeacherCourse, TeacherCourseProductFormat } from "@/domain/teacher-course";
+import { getMyCoursesBeingDeleted, type CourseBeingDeleted } from "@/lib/data/course-deletions";
 import { subscribeToTeacherCourses } from "@/lib/data/teacher-courses";
 import { getCourseCategoryLabel } from "@/lib/i18n/course-categories";
 
@@ -63,12 +64,8 @@ const workspaceShortcuts = [
     href: "/teach/marketing",
     icon: Megaphone,
   },
-  {
-    titleKey: "platform.nav.coupons",
-    detailKey: "creatorPanel.products.shortcuts.couponsDetail",
-    href: "/teach/coupons",
-    icon: Handshake,
-  },
+  // "Coupons" saiu: levava para /teach/coupons, que volta para esta mesma
+  // pagina. Os cupons ficam dentro de cada produto.
 ] as const;
 
 function filterMatches(course: TeacherCourse, filter: ProductFilter) {
@@ -89,7 +86,7 @@ function ProductActionsMenu({
   const { t } = useTranslation();
   const courseTitle = course.title || t("creatorPanel.untitledProduct");
   const itemClass =
-    "flex min-h-11 items-center rounded-none px-3 text-sm font-semibold text-[var(--color-ink)] hover:bg-[var(--color-surface-soft)]";
+    "flex min-h-11 items-center rounded-md px-3 text-sm font-semibold text-[var(--color-ink)] hover:bg-[var(--color-surface-soft)]";
 
   return (
     <CourseActionsMenu courseTitle={courseTitle} icon={MoreHorizontal}>
@@ -114,7 +111,7 @@ function ProductActionsMenu({
         type="button"
         role="menuitem"
         onClick={onRequestDelete}
-        className="flex min-h-11 w-full items-center rounded-none border-t border-[var(--color-line)] px-3 text-left text-sm font-semibold text-[var(--color-danger-fg)] hover:bg-[var(--color-danger-soft)]"
+        className="flex min-h-11 w-full items-center rounded-md border-t border-[var(--color-line)] px-3 text-left text-sm font-semibold text-[var(--color-danger-fg)] hover:bg-[var(--color-danger-soft)]"
       >
         {t("creatorPanel.products.actions.delete")}
       </button>
@@ -141,6 +138,7 @@ export function TeacherCourseStudio({
   const [errorKey, setErrorKey] = useState<string | null>(null);
   const [isLoadingCourses, setIsLoadingCourses] = useState(true);
   const [confirmingDeleteId, setConfirmingDeleteId] = useState<string | null>(null);
+  const [beingDeleted, setBeingDeleted] = useState<CourseBeingDeleted[]>([]);
   const normalizedCourseQuery = courseQuery.toLowerCase().trim();
   const visibleCourses = courses.filter((course) => {
     if (productView === "communities" && !course.communityEnabled) {
@@ -173,11 +171,31 @@ export function TeacherCourseStudio({
     );
   }, [user]);
 
+  // ponytail: rele quando a lista em tempo real muda, que e exatamente quando
+  // um produto some. Falhou: esconde a lista, que e so informativa.
+  useEffect(() => {
+    if (!user) {
+      return;
+    }
+
+    let live = true;
+    getMyCoursesBeingDeleted()
+      .then((next) => {
+        if (live) setBeingDeleted(next);
+      })
+      .catch(() => {
+        if (live) setBeingDeleted([]);
+      });
+    return () => {
+      live = false;
+    };
+  }, [user, courses]);
+
   if (autoOpenCreate) {
     return user ? (
       <CreateCourseStart ownerId={user.uid} initialFormat={initialFormat} />
     ) : (
-      <p className="rounded-none border border-[var(--color-line)] bg-white p-4 text-sm text-[var(--color-ink-soft)]">
+      <p className="rounded-lg border border-[var(--color-line)] bg-white p-4 text-sm text-[var(--color-ink-soft)]">
         {t("creatorPanel.products.signIn")}
       </p>
     );
@@ -216,7 +234,7 @@ export function TeacherCourseStudio({
       {errorKey ? (
         <p
           role="alert"
-          className="rounded-none border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]"
+          className="rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]"
         >
           {t(errorKey)}
         </p>
@@ -269,7 +287,7 @@ export function TeacherCourseStudio({
                     : "/teach/builder",
                 )
               }
-              className="min-h-11 rounded-none border border-[var(--color-line-strong)] bg-white px-3 text-sm font-semibold normal-case tracking-normal text-[var(--color-ink)] outline-none focus:border-[var(--color-primary-light)] focus:ring-2 focus:ring-[rgba(66,102,145,0.18)]"
+              className="min-h-11 rounded-md border border-[var(--color-line-strong)] bg-white px-3 text-sm font-semibold normal-case tracking-normal text-[var(--color-ink)] outline-none focus:border-[var(--color-primary-light)] focus:ring-2 focus:ring-[rgba(66,102,145,0.18)]"
             >
               <option value="products">{t("creatorPanel.products.eyebrow")}</option>
               <option value="communities">{t("platform.nav.communities")}</option>
@@ -281,7 +299,7 @@ export function TeacherCourseStudio({
               aria-label={t("creatorPanel.products.statusAria")}
               value={statusFilter}
               onChange={(event) => setStatusFilter(event.target.value as ProductFilter)}
-              className="min-h-11 rounded-none border border-[var(--color-line-strong)] bg-white px-3 text-sm font-semibold normal-case tracking-normal text-[var(--color-ink)] outline-none focus:border-[var(--color-primary-light)] focus:ring-2 focus:ring-[rgba(66,102,145,0.18)]"
+              className="min-h-11 rounded-md border border-[var(--color-line-strong)] bg-white px-3 text-sm font-semibold normal-case tracking-normal text-[var(--color-ink)] outline-none focus:border-[var(--color-primary-light)] focus:ring-2 focus:ring-[rgba(66,102,145,0.18)]"
             >
               {productFilters.map((filter) => (
                 <option key={filter.id} value={filter.id}>
@@ -291,6 +309,30 @@ export function TeacherCourseStudio({
             </select>
           </label>
         </div>
+
+        {/* Apagado, mas arquivos e videos ainda na fila (status pending). Nao e
+            clicavel: o produto ja nao existe. */}
+        {beingDeleted.length > 0 ? (
+          <ul
+            aria-label={t("creatorPanel.products.beingDeleted.aria")}
+            className="mt-5 divide-y divide-[var(--color-line)] border-y border-[var(--color-line)]"
+          >
+            {beingDeleted.map((item) => (
+              <li
+                key={item.courseId}
+                className="flex flex-wrap items-center gap-x-3 gap-y-1 bg-white px-3 py-3 sm:px-4"
+              >
+                <span className="min-w-0 truncate text-sm font-semibold text-[var(--color-ink-soft)]">
+                  {item.title || t("creatorPanel.untitledProduct")}
+                </span>
+                <StatusChip status="deleting" />
+                <span className="w-full text-xs text-[var(--color-ink-muted)] sm:w-auto">
+                  {t("creatorPanel.products.beingDeleted.note")}
+                </span>
+              </li>
+            ))}
+          </ul>
+        ) : null}
 
         <div className="mt-5">
           {isLoadingCourses ? (
@@ -306,7 +348,7 @@ export function TeacherCourseStudio({
             (productView === "communities" &&
               !courses.some((course) => course.communityEnabled)) ? (
             <div className="grid place-items-center border-y border-dashed border-[var(--color-line-strong)] px-5 py-14 text-center">
-              <span className="grid size-11 place-items-center rounded-none border border-[var(--color-line)] bg-white text-[var(--color-primary)]">
+              <span className="grid size-11 place-items-center rounded-md border border-[var(--color-line)] bg-white text-[var(--color-primary)]">
                 <BookOpen aria-hidden="true" size={20} strokeWidth={1.8} />
               </span>
               <h3 className="mt-4 text-lg font-semibold text-[var(--color-ink)]">
@@ -358,15 +400,19 @@ export function TeacherCourseStudio({
                   </th>
                 </tr>
               </thead>
-              <tbody className="block divide-y divide-[var(--color-line)] lg:table-row-group">
-                {visibleCourses.map((course) => (
+              {/* motion-stagger: as linhas sobem em escada quando a lista chega
+                  (a tabela so monta depois do esqueleto); da 6a em diante,
+                  juntas, para a entrada inteira caber em 400ms. */}
+              <tbody className="motion-stagger block divide-y divide-[var(--color-line)] lg:table-row-group">
+                {visibleCourses.map((course, index) => (
                   <tr
                     key={course.id}
+                    style={{ "--i": index } as CSSProperties}
                     className="block bg-white px-3 py-4 transition-colors hover:bg-[var(--color-surface-soft)] sm:px-4 lg:table-row lg:px-0 lg:py-0"
                   >
                     <td className="block pb-4 lg:table-cell lg:px-4 lg:py-4">
                       <div className="flex min-w-0 items-center gap-3">
-                        <div className="grid aspect-video w-24 shrink-0 place-items-center overflow-hidden rounded-none border border-[var(--color-line)] bg-[var(--color-surface-soft)] text-[var(--color-primary)]">
+                        <div className="grid aspect-video w-24 shrink-0 place-items-center overflow-hidden rounded-md border border-[var(--color-line)] bg-[var(--color-surface-soft)] text-[var(--color-primary)]">
                           {course.coverImageUrl ? (
                             // eslint-disable-next-line @next/next/no-img-element
                             <img
@@ -401,6 +447,9 @@ export function TeacherCourseStudio({
                             )}
                             {course.communityEnabled ? ` · ${t("creatorPanel.communityOn")}` : ""}
                           </p>
+                          <div className="mt-1">
+                            <ShortId id={course.id} label={t("shortId.product")} />
+                          </div>
                         </div>
                       </div>
                     </td>
@@ -450,7 +499,7 @@ export function TeacherCourseStudio({
 
       <nav
         aria-label={t("creatorPanel.products.shortcuts.label")}
-        className="grid overflow-hidden rounded-none border border-[var(--color-line)] sm:grid-cols-2 xl:grid-cols-4"
+        className="grid overflow-hidden rounded-md border border-[var(--color-line)] sm:grid-cols-3"
       >
         {workspaceShortcuts.map((item) => {
           const Icon = item.icon;
@@ -459,9 +508,9 @@ export function TeacherCourseStudio({
             <Link
               key={item.href}
               href={item.href}
-              className="group flex min-h-28 items-start gap-3 border-b border-[var(--color-line)] bg-white p-4 last:border-b-0 hover:bg-[var(--color-surface-soft)] sm:[&:nth-last-child(-n+2)]:border-b-0 xl:border-b-0 xl:border-r xl:last:border-r-0"
+              className="group flex min-h-28 items-start gap-3 border-b border-[var(--color-line)] bg-white p-4 last:border-b-0 hover:bg-[var(--color-surface-soft)] sm:border-b-0 sm:border-r sm:last:border-r-0"
             >
-              <span className="grid size-9 shrink-0 place-items-center rounded-none border border-[var(--color-line)] text-[var(--color-primary)]">
+              <span className="grid size-9 shrink-0 place-items-center rounded-md border border-[var(--color-line)] text-[var(--color-primary)]">
                 <Icon aria-hidden="true" size={17} strokeWidth={1.8} />
               </span>
               <span className="min-w-0">

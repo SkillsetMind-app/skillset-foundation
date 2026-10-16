@@ -5,7 +5,7 @@ import { CommunityFeed } from "@/components/learn/community-feed";
 import { I18nProvider, useTranslation } from "@/components/i18n/i18n-provider";
 import type { CommunityComment, CommunityPost } from "@/domain/community-post";
 import type { CommunitySpace } from "@/domain/learning";
-import { createCommunityPost, createCommunityComment, setCommunityPostAcceptedAnswer, setCommunityPostPinned, subscribeToCommunityPosts } from "@/lib/data/community-posts";
+import { createCommunityPost, createCommunityComment, createCommunityReport, deleteCommunityComment, deleteCommunityPost, setCommunityPostAcceptedAnswer, setCommunityPostPinned, subscribeToCommunityPosts } from "@/lib/data/community-posts";
 import { subscribeToEnrollment } from "@/lib/data/enrollments";
 import { setCommunityPostLike } from "@/lib/data/gamification";
 
@@ -87,6 +87,9 @@ vi.mock("@/lib/data/community-posts", () => ({
   createCommunityComment: vi.fn(() => Promise.resolve()),
   setCommunityPostPinned: vi.fn(() => Promise.resolve()),
   setCommunityPostAcceptedAnswer: vi.fn(() => Promise.resolve()),
+  deleteCommunityPost: vi.fn(() => Promise.resolve()),
+  deleteCommunityComment: vi.fn(() => Promise.resolve()),
+  createCommunityReport: vi.fn(() => Promise.resolve()),
 }));
 
 vi.mock("@/lib/data/community-presence", () => ({
@@ -597,6 +600,42 @@ describe("feed da comunidade (rodada 11)", () => {
     },
   );
 
+  it("o dono do curso desafixa e apaga o post de um aluno, que some sem esperar o realtime", async () => {
+    await renderFeed({ canModerate: true });
+
+    const [pinned] = screen.getAllByRole("article");
+    fireEvent.click(within(pinned).getByRole("button", { name: "Unpin" }));
+    expect(setCommunityPostPinned).toHaveBeenCalledExactlyOnceWith("pinned", false);
+
+    const open = screen.getByRole("article", { name: /Portuguese version/ });
+    fireEvent.click(within(open).getByRole("button", { name: "Delete" }));
+    await act(async () => { fireEvent.click(within(open).getByRole("button", { name: "Yes, delete" })); });
+
+    expect(deleteCommunityPost).toHaveBeenCalledExactlyOnceWith("open");
+    expect(screen.queryByRole("article", { name: /Portuguese version/ })).toBeNull();
+    expect(screen.getAllByRole("article")).toHaveLength(3);
+    expect(subscribeToCommunityPosts).toHaveBeenCalledTimes(1);
+  });
+
+  it("um membro denuncia o post de outra pessoa; nao ve Apagar nem Desafixar", async () => {
+    await renderFeed();
+
+    const open = screen.getByRole("article", { name: /Portuguese version/ });
+    expect(within(open).queryByRole("button", { name: "Delete" })).toBeNull();
+    expect(within(screen.getAllByRole("article")[0]).queryByRole("button", { name: "Unpin" })).toBeNull();
+    fireEvent.click(within(open).getByRole("button", { name: "Report" }));
+    await act(async () => { fireEvent.click(within(open).getByRole("button", { name: "Send report" })); });
+
+    expect(createCommunityReport).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({
+      courseSlug: "course-1",
+      postId: "open",
+      commentId: null,
+      targetType: "post",
+      targetAuthorId: "student-3",
+    }));
+    expect(within(open).getByRole("status")).toHaveTextContent("Thanks. Our team will review it.");
+  });
+
   it("preserves a valid HTTP live link and trims surrounding whitespace", async () => {
     await renderFeed();
     act(() => mocks.eventsCallback?.([{
@@ -722,6 +761,31 @@ describe("gaveta da pergunta (11b)", () => {
 
     fireEvent.click(within(drawer).getByRole("button", { name: "Back to feed" }));
     expect(mocks.push).toHaveBeenLastCalledWith("/learn/courses/course-1/community");
+  });
+
+  it("na gaveta o dono apaga a resposta aceita (some) e depois o post (a gaveta fecha)", async () => {
+    mocks.pathname = "/learn/courses/course-1/community/q/answered";
+    await renderFeed({ openPostId: "answered", canModerate: true });
+    const drawer = screen.getByRole("dialog", { name: /real deadline/ });
+
+    const [answer] = within(drawer).getAllByRole("listitem");
+    fireEvent.click(within(answer).getByRole("button", { name: "Delete" }));
+    expect(within(answer).getByRole("group", { name: /Delete this reply for everyone/ })).toBeInTheDocument();
+    await act(async () => { fireEvent.click(within(answer).getByRole("button", { name: "Yes, delete" })); });
+
+    expect(deleteCommunityComment).toHaveBeenCalledExactlyOnceWith("c-answer");
+    expect(within(drawer).getAllByRole("listitem")).toHaveLength(2);
+    expect(within(drawer).queryByText("Show the constraint, not the pressure.")).toBeNull();
+
+    // O primeiro "Delete" da gaveta e o do post (logo abaixo do autor).
+    fireEvent.click(within(drawer).getAllByRole("button", { name: "Delete" })[0]);
+    expect(within(drawer).getByRole("group", { name: /Delete this post for everyone/ })).toBeInTheDocument();
+    await act(async () => { fireEvent.click(within(drawer).getByRole("button", { name: "Yes, delete" })); });
+
+    expect(deleteCommunityPost).toHaveBeenCalledExactlyOnceWith("answered");
+    expect(mocks.push).toHaveBeenLastCalledWith("/learn/courses/course-1/community");
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(screen.queryByRole("article", { name: /real deadline/ })).toBeNull();
   });
 
   it("quem NAO e o autor nem modera nao marca resposta; quem modera desmarca e marca", async () => {

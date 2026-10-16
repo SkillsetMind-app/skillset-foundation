@@ -70,7 +70,7 @@ export function CourseCategorySelect({
         aria-controls={optionsId}
         aria-expanded={open}
         onClick={() => setOpen((current) => !current)}
-        className="flex min-h-11 w-full items-center gap-2 rounded-none border border-[var(--color-line)] bg-white px-3.5 py-2 text-left text-sm outline-none transition-colors focus-visible:border-[var(--color-primary-light)] focus-visible:ring-2 focus-visible:ring-[rgba(66,102,145,0.18)] disabled:bg-[var(--color-surface-soft)] disabled:opacity-60"
+        className="flex min-h-11 w-full items-center gap-2 rounded-md border border-[var(--color-field-border)] bg-white px-3.5 py-2 text-left text-sm outline-none transition-colors focus-visible:border-[var(--color-primary-light)] focus-visible:ring-2 focus-visible:ring-[rgba(66,102,145,0.18)] disabled:bg-[var(--color-surface-soft)] disabled:opacity-60"
       >
         <span className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
           {selected.length === 0 ? (
@@ -81,7 +81,7 @@ export function CourseCategorySelect({
             selected.map((item, index) => (
               <span
                 key={item}
-                className={`inline-flex items-center gap-1 rounded-none px-2 py-0.5 text-xs font-semibold ${
+                className={`inline-flex items-center gap-1 rounded-chip px-2 py-0.5 text-xs font-semibold ${
                   index === 0
                     ? "bg-[var(--color-primary)] text-[var(--color-base)]"
                     : "bg-[var(--color-surface-strong)] text-[var(--color-ink)]"
@@ -115,7 +115,7 @@ export function CourseCategorySelect({
           id={optionsId}
           role="group"
           aria-label={t("creatorEditor.categorySelect.label")}
-          className="course-category-menu absolute z-30 mt-2 max-h-64 w-full overflow-y-auto rounded-none border border-[var(--color-line)] bg-white p-1.5 shadow-[var(--shadow-strong)]"
+          className="course-category-menu absolute z-30 mt-2 max-h-64 w-full overflow-y-auto rounded-lg border border-[var(--color-line)] bg-white p-1.5 shadow-[var(--shadow-strong)]"
         >
           {visibleOptions.map((item) => {
             const isSelected = selected.includes(item);
@@ -137,7 +137,7 @@ export function CourseCategorySelect({
                       ? t("creatorEditor.categorySelect.maximum")
                       : undefined
                 }
-                className={`flex w-full items-center gap-2.5 rounded-none px-3 py-2 text-left text-sm transition-colors ${
+                className={`flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-left text-sm transition-colors ${
                   isSelected
                     ? "bg-[var(--color-surface-soft)] font-semibold text-[var(--color-primary)]"
                     : "text-[var(--color-ink)] hover:bg-[var(--color-surface-soft)]"
@@ -152,7 +152,7 @@ export function CourseCategorySelect({
                   className="peer sr-only"
                 />
                 <span
-                  className={`grid size-4 shrink-0 place-items-center rounded-none border transition-colors peer-focus-visible:ring-2 peer-focus-visible:ring-[rgba(66,102,145,0.28)] peer-focus-visible:ring-offset-2 ${
+                  className={`grid size-4 shrink-0 place-items-center rounded-sm border transition-colors peer-focus-visible:ring-2 peer-focus-visible:ring-[rgba(66,102,145,0.28)] peer-focus-visible:ring-offset-2 ${
                     isSelected
                       ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-[var(--color-base)]"
                       : "border-[var(--color-line-strong)] bg-white"

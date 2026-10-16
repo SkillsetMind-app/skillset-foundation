@@ -5,6 +5,7 @@ import { buildPageMetadata } from "@/lib/seo/page-metadata";
 const copy = "promiseChangelog";
 // Newest first. `{date}` in a line becomes the entry's own date.
 const entries = [
+  { date: "2026-10-06", title: "change4Title", lines: ["change4WhatChanged", "change4Why", "change4Effective"] },
   { date: "2026-10-06", title: "change3Title", lines: ["change3WhatChanged", "change3Why", "change3Effective"] },
   { date: "2026-09-15", title: "change2Title", lines: ["change2WhatChanged", "change2Why", "change2Effective"] },
   { date: "2026-07-24", title: "changeTitle", lines: ["whatChanged", "why", "effectiveNew", "effectiveExisting"] },
@@ -29,7 +30,7 @@ export default async function PromiseChangelogPage() {
       title={t(`${copy}.title`)}
       description={t(`${copy}.description`)}
     >
-      <section className="mt-10 rounded-none border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)] sm:p-8">
+      <section className="mt-10 rounded-lg border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)] sm:p-8">
         <h2 className="display-title text-3xl text-[var(--color-primary)]">
           {t(`${copy}.publishedOn`).replace("{date}", () => publishedAt)}
         </h2>
@@ -40,7 +41,7 @@ export default async function PromiseChangelogPage() {
         {entries.map((entry) => {
           const effectiveAt = dateFormat.format(new Date(`${entry.date}T00:00:00Z`));
           return (
-            <div key={entry.date} className="mt-8 rounded-none border border-[var(--color-line)] bg-white p-5">
+            <div key={entry.title} className="mt-8 rounded-lg border border-[var(--color-line)] bg-white p-5">
               <p className="text-sm font-bold text-[var(--color-ink)]">
                 {entry.date} — {t(`${copy}.${entry.title}`)}
               </p>
@@ -53,7 +54,7 @@ export default async function PromiseChangelogPage() {
           );
         })}
 
-        <div className="mt-8 rounded-none border border-dashed border-[var(--color-line-strong)] bg-[var(--color-surface-soft)] p-5">
+        <div className="mt-8 rounded-lg border border-dashed border-[var(--color-line-strong)] bg-[var(--color-surface-soft)] p-5">
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
             {t(`${copy}.futureFormat`)}
           </p>

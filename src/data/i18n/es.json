@@ -1,4 +1,11 @@
 {
+  "shortId": {
+    "product": "ID del producto",
+    "order": "ID del pedido",
+    "copy": "Copiar {id}",
+    "copied": "Copiado",
+    "failed": "No se pudo copiar. Selecciona el código y cópialo a mano."
+  },
   "lessonUpload": {
     "title": "Carga de la lección", "uploading": "Subiendo archivo...", "connecting": "Guardando el contenido...", "close": "Cerrar estado de carga",
     "success": "Archivo guardado.", "error": "La carga necesita atención. Abre la lección para revisarla.", "cancelled": "Carga cancelada.",
@@ -94,7 +101,7 @@
     "send": "Enviar mensaje",
     "notReady": "Estamos preparando el asesor. Estará disponible en breve.",
     "tooManyMessages": "Has enviado muchos mensajes. Espera un momento y vuelve a intentarlo.",
-    "freePlanDailyLimit": "Límite diario del asesor en el plan Free. Vuelve a intentarlo mañana.",
+    "freePlanDailyLimit": "Límite diario del asesor sin plan. Vuelve a intentarlo mañana.",
     "activationRequired": "El asesor del estudio se abre cuando activas tu tienda. Preparar cursos, subir videos y conectar Stripe no lo necesitan.",
     "sessionExpired": "Tu sesión ha caducado. Actualiza la página e inicia sesión de nuevo.",
     "somethingWrong": "Algo salió mal. Vuelve a intentarlo.",
@@ -273,7 +280,11 @@
       "confirmResent": "Enviado de nuevo. Dale un minuto.",
       "confirmChangeEmail": "¿Correo equivocado? Cámbialo",
       "confirmAlreadyDone": "¿Ya lo confirmaste?",
-      "existingAccountSignIn": "Inicia sesión en su lugar"
+      "existingAccountSignIn": "Inicia sesión en su lugar",
+      "expiredTitle": "Este enlace venció",
+      "expiredBody": "Los enlaces de nuestros correos sirven por 1 hora y una sola vez. Escribe tu correo y te enviamos un enlace nuevo.",
+      "expiredSend": "Envíame un enlace nuevo",
+      "expiredSent": "Listo. Si este correo todavía no está confirmado, te llega un enlace nuevo. Revisa tu bandeja de entrada y la carpeta de spam."
     },
     "guard": {
       "loadingTitle": "Preparando tu espacio de trabajo",
@@ -358,33 +369,32 @@
   "account": {
     "openMenu": "Abrir menú de cuenta",
     "memberFallback": "Miembro de SkillsetMind",
-    "switchView": "Cambiar de vista",
-    "studentView": "Vista de estudiante",
-    "teacherView": "Vista de profesor",
-    "opsView": "Vista de operaciones",
+    "switchView": "Cambiar de área",
+    "studentView": "Área del alumno",
+    "teacherView": "Área del profesor",
+    "opsView": "Área de operaciones",
     "viewAs": "Ver como…",
     "becomeTeacher": "Conviértete en profesor",
     "sectionAccount": "Cuenta",
     "creatorPlan": "Plan de creador",
     "subscription": "Suscripción",
     "settings": "Ajustes",
-    "payoutsTax": "Pagos e impuestos",
     "billing": "Facturación",
-    "myCredentials": "Mis credenciales",
+    "myCredentials": "Mis certificados",
     "wishlist": "Lista de deseos",
     "signOut": "Cerrar sesión",
     "opensNewTab": "(se abre en una pestaña nueva)"
   },
   "home": {
     "metadata": {
-      "title": "Plataforma de cursos para psicólogos y profesionales del desarrollo personal",
-      "description": "Para psicólogos y profesionales del desarrollo personal que ya enseñan en vivo: vende tu curso y comunidad de pago, sin mensualidad. Cobras en tu propio Stripe."
+      "title": "Plataforma de cursos para psicólogos, coaches y profesionales del desarrollo personal",
+      "description": "Para psicólogos, coaches y profesionales del desarrollo personal que ya enseñan en vivo: vende tu curso y comunidad. Prueba 14 días gratis. Cobras en tu Stripe."
     },
     "hero": {
-      "eyebrow": "Para psicólogos y profesionales del desarrollo personal",
+      "eyebrow": "Para psicólogos, coaches y profesionales del desarrollo personal",
       "title1": "Tu conocimiento cambia vidas.",
       "title2": "Ahora conviértelo en un curso.",
-      "sub": "Para psicólogos y profesionales del desarrollo personal que ya enseñan en vivo y quieren vender su método como un curso con comunidad de pago, sin mensualidad. Nosotros manejamos el checkout y el aula — tus compradores pagan directo a tu cuenta de Stripe, así que nunca retenemos tu dinero. Tú enseñas.",
+      "sub": "Para psicólogos, coaches y profesionales del desarrollo personal que ya enseñan en vivo y quieren vender su método como un curso con comunidad de pago. Empieza con 14 días gratis; después Basic cuesta US$5 al mes. Se requiere tarjeta; cancela antes de terminar la prueba para evitar el cobro de la suscripción. Se aplican tarifas por venta. Nosotros manejamos el checkout y el aula — tus compradores pagan directo a tu cuenta de Stripe. Tú enseñas.",
       "trust1Title": "Verificado",
       "trust1Desc": "Cuando se requiere, los profesionales se verifican antes de publicar, y los cursos que incumplan las normas del catálogo pueden pausarse o retirarse.",
       "trust2Title": "Global",
@@ -448,12 +458,12 @@
       "readFull": "Lee la Promesa completa"
     },
     "creators": {
-      "eyebrow": "Para psicólogos y profesionales del desarrollo personal",
+      "eyebrow": "Para psicólogos, coaches y profesionales del desarrollo personal",
       "title": "Enseña más allá de los límites de tus sesiones en vivo.",
       "ctaStart": "Empieza a enseñar",
       "ctaPromise": "Lee la Promesa al Creador",
-      "bullet1": "Quédate con {keep}% en Free, antes de las comisiones de procesamiento de Stripe. Sube a Plus y tu comisión puede bajar a 2%.",
-      "bullet2": "Tus compradores pagan directo a tu cuenta de Stripe. Sin retención de la plataforma y sin suscripción para empezar.",
+      "bullet1": "Basic cobra un {basic}% + $0.30 por venta, Starter un {starter}% + $0.30 y Pro un {pro}% + $0.30, antes de las comisiones de procesamiento de Stripe.",
+      "bullet2": "Tus compradores pagan directo a tu cuenta de Stripe. Sin retención de la plataforma y con 14 días gratis antes del primer cobro del plan.",
       "bullet3": "Liberación gradual y ventana de reembolso te protegen del abuso.",
       "bullet4": "Comunidad del curso, sesiones en vivo y certificados verificables en cada plan."
     },
@@ -472,18 +482,17 @@
     "searchDefaultPlaceholder": "Buscar en SkillsetMind...",
     "clearSearch": "Borrar búsqueda",
     "sidebarNavLabel": "Espacio de trabajo",
-    "expandSidebar": "Expandir barra lateral",
-    "collapseSidebar": "Contraer barra lateral",
+    "expandSidebar": "Expandir menú",
+    "collapseSidebar": "Contraer menú",
     "opensInNewTab": "(se abre en una pestaña nueva)",
     "breadcrumbLabel": "Ruta de navegación",
     "openMobileNav": "Abrir menú de navegación",
     "openSectionNav": "Abrir navegación de {section}",
     "nav": {
-      "classroom": "Aula",
       "communities": "Comunidades",
       "wishlist": "Lista de deseos",
       "agenda": "Agenda",
-      "credentials": "Credenciales",
+      "credentials": "Certificados",
       "myCourses": "Mis cursos",
       "studio": "Inicio",
       "courseBuilder": "Mis productos",
@@ -496,17 +505,17 @@
       "sales": "Ventas",
       "subscriptions": "Suscripciones",
       "coupons": "Cupones",
-      "team": "Colaboradores",
-      "integrations": "Integraciones",
       "operations": "Operaciones",
       "marketplace": "Marketplace",
       "settings": "Ajustes",
       "plansFees": "Planes y tarifas",
-      "payoutsTax": "Pagos e impuestos",
       "billing": "Facturación",
+      "myPurchases": "Mis compras",
       "reports": "Informes",
-      "earnings": "Ingresos",
-      "verification": "Verificación"
+      "earnings": "Ganancias",
+      "verification": "Verificación",
+      "students": "Alumnos",
+      "inbox": "Bandeja de entrada"
     },
     "ops": {
       "overview": "Resumen",
@@ -1138,16 +1147,13 @@
     "navSection": {
       "home": "Inicio",
       "products": "Productos",
-      "marketing": "Marketing",
       "sales": "Ventas",
-      "earnings": "Ingresos",
-      "reports": "Informes",
-      "tools": "Herramientas",
-      "myLearning": "Mi aprendizaje",
+      "earnings": "Ganancias",
       "discover": "Descubrir",
       "learn": "Aprender",
       "operations": "Operaciones",
-      "account": "Cuenta"
+      "account": "Cuenta",
+      "promote": "Promocionar"
     },
     "crumbs": {
       "learn": "Aprender",
@@ -1214,6 +1220,16 @@
         "minutes": "Hace {count} min",
         "hours": "Hace {count} h",
         "days": "Hace {count} d"
+      },
+      "types": {
+        "someone": "Alguien",
+        "communityQuestion": "{name} hizo una pregunta en tu curso",
+        "answeredQuestion": "{name} respondió tu pregunta",
+        "repliedPost": "{name} respondió tu publicación",
+        "repliedThread": "{name} respondió una publicación que comentaste",
+        "supportReply": "Soporte respondió tu solicitud",
+        "teacherMessage": "Nuevo mensaje de tu profesor",
+        "studentMessage": "Nuevo mensaje de un alumno"
       }
     },
     "session": {
@@ -1223,7 +1239,14 @@
     },
     "switchToLightMode": "Cambiar al modo claro",
     "switchToDarkMode": "Cambiar al modo oscuro",
-    "openSearch": "Abrir búsqueda"
+    "openSearch": "Abrir búsqueda",
+    "side": {
+      "student": "Alumno",
+      "teacher": "Profesor",
+      "ops": "Equipo",
+      "goStudent": "Ir al área del alumno",
+      "goTeacher": "Ir al área del profesor"
+    }
   },
   "roles": {
     "admin": "Administrador",
@@ -1236,6 +1259,7 @@
     "active": "Activo",
     "cancelled": "Cancelado",
     "completed": "Completado",
+    "deleting": "En eliminación",
     "dismissed": "Descartado",
     "draft": "Borrador",
     "expired": "Expirado",
@@ -1257,6 +1281,29 @@
     "rejected": "Rechazado"
   },
   "learn": {
+    "memberArea": {
+      "moreProductsNone": "Este creador todavía no tiene otros productos.",
+      "tabTitle": "Área de miembros",
+      "loading": "Cargando el área de miembros...",
+      "loadError": "No pudimos cargar esta área de miembros. Inténtalo de nuevo.",
+      "ownerPreview": "Vista previa: así la ven tus estudiantes. Aquí solo aparecen los cambios guardados.",
+      "editArea": "Editar área de miembros",
+      "byCreator": "Por {name}",
+      "continueTitle": "Continúa donde te quedaste",
+      "continueEmpty": "Abre uno de tus productos abajo para empezar.",
+      "resumeLesson": "Retomar: {title}",
+      "resumeAt": "desde {time}",
+      "myProducts": "Mis productos",
+      "myProductsEmpty": "Todavía no tienes productos de este creador.",
+      "progress": "{percent}% completado",
+      "moreProducts": "Más de este creador",
+      "moreProductsEmpty": "Ya tienes todos los productos de este creador.",
+      "locked": "Bloqueado",
+      "viewProduct": "Ver detalles",
+      "free": "Gratis",
+      "openArea": "Abrir el área de miembros de {name}",
+      "backToArea": "Área de miembros de {name}"
+    },
     "classroom": {
       "workspace": {
         "enrollmentError": "No pudimos confirmar tu inscripción en este curso.",
@@ -1271,6 +1318,7 @@
         "enrollmentDelayed": "Ya casi está: la inscripción está tardando más de lo habitual.",
         "openingCourse": "Abriendo tu curso...",
         "delayedDetails": "Tu pago se completó y está seguro en la cuenta de Stripe de tu instructor. Te vendió este curso directamente, por lo que su nombre puede aparecer en el extracto de tu tarjeta. Mantén esta página abierta: se abrirá automáticamente cuando se confirme tu inscripción. Si no ocurre nada en unos minutos, contacta con soporte y adjunta el recibo del pago.",
+        "noLessons": "Todavía no hay lecciones aquí.",
         "openingDetails": "Tu pago está confirmado. Tu instructor te vendió este curso directamente, por lo que su nombre, en lugar de \"SkillsetMind\", puede aparecer en el extracto de tu tarjeta. Estamos preparando tu acceso al curso; esta página se abrirá automáticamente en unos segundos.",
         "enrollmentRequired": "Inscripción necesaria",
         "enrollmentHeading": "Este espacio privado se abre después de la inscripción.",
@@ -1303,7 +1351,8 @@
         "mediaDetails": "El video se reproduce aquí cuando el instructor lo sube o conecta un contenido externo.",
         "content": "Contenido de la lección",
         "freePreview": "Vista previa gratuita",
-        "openResource": "Abrir recurso del instructor"
+        "openResource": "Abrir recurso del instructor",
+        "fileOnlyHint": "Esta lección es un archivo. Descárgalo para abrirlo o guardarlo en tu teléfono o computadora."
       },
       "curriculum": {
         "lessons": "Lecciones",
@@ -1327,11 +1376,12 @@
       },
       "resources": {
         "title": "Recursos del curso",
-        "heading": "Archivos e imágenes generales adjuntos a este curso",
+        "heading": "Archivos para descargar de tus lecciones",
         "fileOne": "{count} archivo",
         "fileMany": "{count} archivos",
         "loading": "Cargando recursos del curso...",
-        "empty": "Este curso todavía no tiene recursos generales adjuntos.",
+        "empty": "Todavía no hay archivos para descargar.",
+        "courseFiles": "Archivos del curso",
         "loadingLesson": "Cargando archivos de la lección...",
         "emptyLesson": "Esta lección todavía no tiene archivos adjuntos.",
         "preview": "Vista previa",
@@ -1418,6 +1468,7 @@
         "title": "Escribe a tu instructor",
         "heading": "Haz una pregunta privada sobre este curso",
         "description": "Solo tú y el instructor del curso pueden leer esta conversación. Las respuestas también llegan a tu campana de notificaciones.",
+        "descriptionWhitelabel": "Solo tú y el instructor del curso pueden leer esta conversación.",
         "you": "Tú",
         "teacher": "Instructor",
         "bodyLabel": "Tu mensaje privado",
@@ -1458,9 +1509,7 @@
       }
     },
     "page": {
-      "eyebrow": "Experiencia del estudiante",
-      "title": "Tu aprendizaje, en un solo lugar.",
-      "description": "Cursos, hitos, comunidad y certificados se reúnen en un espacio que hace fácil seguir tu progreso."
+      "title": "Mis cursos"
     },
     "dashboard": {
       "loading": "Cargando tu espacio de aprendizaje...",
@@ -1496,7 +1545,8 @@
       "filterInProgress": "En curso",
       "filterCompleted": "Completados",
       "refundsMoved": "Los reembolsos y recibos están en",
-      "refundsMovedLink": "Facturación → Compras"
+      "refundsMovedLink": "Mis compras",
+      "allEvents": "Ver todas las sesiones en vivo"
     },
     "membersHero": {
       "showMore": "Ver más",
@@ -1506,6 +1556,7 @@
       "backToLesson": "Lección",
       "progress": "{completed} de {total} lecciones · {percent}%",
       "start": "Empezar la lección 1",
+      "openFile": "Abrir tu archivo",
       "continue": "Continuar: {title}"
     },
     "paths": {
@@ -1642,10 +1693,86 @@
         "replyLabel": "Añade tu respuesta",
         "replyPlaceholder": "Añade tu respuesta…",
         "send": "Responder"
+      },
+      "actions": {
+        "delete": "Eliminar",
+        "deleteConfirmPost": "¿Eliminar esta publicación para todos? Sus respuestas también se eliminan.",
+        "deleteConfirmReply": "¿Eliminar esta respuesta para todos? Las respuestas a ella también se eliminan.",
+        "deleteYes": "Sí, eliminar",
+        "deleting": "Eliminando...",
+        "keep": "Mantener",
+        "deleteError": "No pudimos eliminarlo. Inténtalo de nuevo.",
+        "pinError": "No pudimos cambiar el fijado. Inténtalo de nuevo.",
+        "report": "Denunciar"
+      },
+      "report": {
+        "titlePost": "Denunciar esta publicación",
+        "titleReply": "Denunciar esta respuesta",
+        "intro": "Cuéntanos qué pasa. El equipo de SkillsetMind revisa cada denuncia. El autor no ve tu nombre.",
+        "reason": "Motivo",
+        "reasons": {
+          "spam": "Spam o venta",
+          "harassment": "Insultos o acoso",
+          "unsafe_content": "Contenido peligroso o explícito",
+          "off_topic": "Fuera de tema",
+          "other": "Otra cosa"
+        },
+        "detail": "¿Algo más? (opcional)",
+        "send": "Enviar denuncia",
+        "sending": "Enviando...",
+        "cancel": "Cancelar",
+        "done": "Gracias. Nuestro equipo lo revisará.",
+        "error": "No pudimos enviar tu denuncia. Inténtalo de nuevo.",
+        "duplicate": "Ya lo denunciaste. Nuestro equipo lo revisará.",
+        "rateLimit": "Enviaste muchas denuncias en la última hora. Espera un poco y vuelve a intentarlo."
       }
     }
   },
   "teach": {
+    "memberAreaPage": {
+      "title": "Tu área de miembros.",
+      "description": "Un solo lugar para todo lo que vendes. Tus estudiantes retoman donde se quedaron, ven lo que compraron y descubren tus otros productos."
+    },
+    "memberAreaEditor": {
+      "loading": "Cargando tu área de miembros...",
+      "virtualNote": "Todavía no la personalizaste. Tus estudiantes ven tu nombre, el tema claro y todos tus productos publicados, del más nuevo al más antiguo.",
+      "name": "Nombre del área",
+      "nameHelp": "{length}/80 — déjalo vacío para usar tu nombre.",
+      "theme": "Tema",
+      "light": "Claro",
+      "dark": "Oscuro",
+      "cover": "Portada",
+      "coverHelp": "Banner en la parte superior del área. 16:9, JPG, PNG o WebP de menos de 5 MB.",
+      "uploadCover": "Subir portada",
+      "replaceCover": "Cambiar portada",
+      "removeCover": "Quitar portada",
+      "uploading": "Subiendo...",
+      "welcome": "Texto de bienvenida",
+      "welcomePlaceholder": "Una nota breve que tus estudiantes leen al abrir el área.",
+      "welcomeHelp": "{length}/2000 — lo ven todos tus estudiantes, también los de productos gratis. No pongas enlaces privados aquí.",
+      "products": "Productos",
+      "productsHelp": "Define el orden que ven tus estudiantes. Un producto oculto sale de la vitrina, pero sigue disponible para quien ya lo compró.",
+      "noProducts": "Todavía no tienes productos.",
+      "tooManyProducts": "El orden y la visibilidad se guardan para los primeros {max} productos. El resto aparece después, del más nuevo al más antiguo.",
+      "notPublished": "Sin publicar — aparece cuando lo publiques.",
+      "visible": "Visible",
+      "hidden": "Oculto",
+      "moveUp": "Subir {title}",
+      "moveDown": "Bajar {title}",
+      "save": "Guardar área de miembros",
+      "saving": "Guardando...",
+      "saved": "Guardado. Tus estudiantes ven los cambios la próxima vez que abran el área.",
+      "previewAsStudent": "Ver como estudiante",
+      "previewHelp": "La vista de estudiante muestra la última versión guardada.",
+      "errors": {
+        "load": "No pudimos cargar tu área de miembros. Inténtalo de nuevo.",
+        "courses": "No pudimos cargar tus productos. Recarga la página para intentarlo de nuevo.",
+        "save": "No pudimos guardar tu área de miembros. Inténtalo de nuevo.",
+        "saveProducts": "Se guardaron el nombre, el tema, la portada y la bienvenida, pero no el orden de los productos. Guarda de nuevo.",
+        "coverInvalid": "Usa una imagen JPG, PNG o WebP de menos de 5 MB.",
+        "coverUpload": "No pudimos subir esta imagen. Inténtalo de nuevo."
+      }
+    },
     "tour": {
       "welcome": "Bienvenido a tu espacio",
       "welcomeNamed": "Bienvenido a tu espacio, {name}",
@@ -1654,8 +1781,8 @@
       "step2Body": "Elige un formato de producto y añade lecciones, vídeos y materiales de aprendizaje en el editor.",
       "step3Title": "Publica y vende",
       "step3Body": "Define el precio, revisa el contenido y las reglas de acceso, y publica. Comparte el enlace de venta cuando el producto esté listo.",
-      "step4Title": "Cobros y ayuda",
-      "step4Body": "Conecta tu cuenta de Stripe en Pagos para recibir ventas. Stripe gestiona la verificación y los plazos de pago. Abre Advisor en la barra superior cuando necesites ayuda.",
+      "step4Title": "Ganancias y ayuda",
+      "step4Body": "Conecta tu cuenta de Stripe en Ganancias para recibir ventas. Stripe gestiona la verificación y los plazos de pago. Usa Ayuda en el menú cuando necesites una mano.",
       "openStudio": "Abrir mi espacio"
     },
     "reports": {
@@ -1686,8 +1813,7 @@
       "shortcuts": "Atajos de operaciones",
       "linkSales": "Todas las ventas",
       "linkSubscriptions": "Suscripciones",
-      "linkEarnings": "Ganancias y Connect",
-      "linkCoupons": "Cupones",
+      "linkEarnings": "Ganancias",
       "linkBuilder": "Constructor de cursos"
     },
     "reportsPage": {
@@ -1712,7 +1838,11 @@
     },
     "dashboard": {
       "welcomeBackNamed": "Hola de nuevo, {name}.",
-      "welcomeBack": "Hola de nuevo."
+      "welcomeBack": "Hola de nuevo.",
+      "welcomeNamed": "Te damos la bienvenida, {name}.",
+      "welcome": "Te damos la bienvenida.",
+      "helloNamed": "Hola, {name}.",
+      "hello": "Hola."
     },
     "metrics": {
       "revenue30d": "Ingresos, 30 días",
@@ -1746,7 +1876,6 @@
       "courseMeta": "{lessons} lecciones - {orders} pedidos",
       "noCoursesTitle": "Aún no hay cursos.",
       "noCoursesDetail": "Tu primer curso aparecerá aquí cuando lo crees en el Creador de cursos.",
-      "activityEyebrow": "Actividad",
       "activityTitle": "Lo que necesita tu atención hoy.",
       "open": "Abrir",
       "actPayoutTitle": "Termina la configuración de Stripe",
@@ -1782,7 +1911,7 @@
       "learnMore": "Más información",
       "details": "Esta página es tu registro de ingresos: pedidos pagados, lo que cobró SkillsetMind y el estado de tu cuenta de Stripe Connect. Los plazos de pago son de Stripe y dependen de tu país, del método de pago y del calendario de pagos de tu cuenta de Stripe; una cuenta nueva espera la verificación antes de su primer pago. Stripe Connect debe tener los cobros y los pagos habilitados antes de que un producto de pago pueda publicarse. El perfil y la seguridad siguen en Ajustes.",
       "netHint": "Neto de ventas únicas y por suscripción, después de la comisión de SkillsetMind y las comisiones de Stripe.",
-      "title": "Tus ingresos, tu configuración de pagos.",
+      "title": "Tus ganancias, tu configuración de pagos.",
       "helpTopic": "Calendario de pagos",
       "helpBody": "Los compradores pagan directamente a tu cuenta de Stripe, así que la plataforma no retiene nada. Después Stripe liquida y transfiere a tu banco según sus propios plazos, que dependen de tu país y del método de pago, y una cuenta nueva espera la verificación antes de su primer pago. Stripe Connect debe tener los cobros y los pagos habilitados antes de que un producto de pago pueda publicarse.",
       "taxForms": "Stripe recoge tus datos fiscales",
@@ -1875,12 +2004,7 @@
       "coupons": {
         "title": "Cupones y promociones",
         "description": "Abre un producto para configurar sus códigos de descuento y reglas de oferta.",
-        "action": "Gestionar promociones"
-      },
-      "integrations": {
-        "title": "Integraciones",
-        "description": "Las herramientas de email, los webhooks y los destinos de analítica están en la hoja de ruta.",
-        "action": "Ver lo planificado"
+        "action": "Abrir tus productos"
       },
       "state": {
         "published": "Publicada",
@@ -1891,17 +2015,8 @@
         "awaitingReplyOne": "1 espera respuesta",
         "awaitingReplyMany": "{count} esperan respuesta",
         "noAwaitingReply": "Sin respuestas pendientes",
-        "couponsPerProduct": "Se configura por producto",
-        "planned": "Planificado"
+        "couponsPerProduct": "Se configura por producto"
       }
-    },
-    "integrationsPage": {
-      "title": "Las integraciones están previstas.",
-      "description": "Conecta herramientas de correo, webhooks y servicios de análisis: está previsto en SkillsetMind. Stripe ya está conectado, así que puedes abrir tu propia cuenta de Stripe desde Pagos e impuestos en cualquier momento."
-    },
-    "messagesPage": {
-      "title": "Responde a tus alumnos.",
-      "description": "Conversaciones privadas por curso con los alumnos inscritos. Las respuestas llegan al aula y a la campana de notificaciones del alumno."
     },
     "saleDetailPage": {
       "title": "Detalle de la venta.",
@@ -1966,13 +2081,6 @@
     },
     "subscriptionsPage": {
       "description": "Ingresos recurrentes, estado de las suscripciones, señales de cancelación y cada renovación en una sola vista de operaciones."
-    },
-    "teamPage": {
-      "title": "Los equipos y roles están previstos.",
-      "description": "Invita a colaboradores, asigna roles de editor o analista y comparte un catálogo de cursos con tu equipo: está previsto en SkillsetMind. Actualmente, cada estudio del profesor pertenece a una sola cuenta."
-    },
-    "comingSoon": {
-      "openBuilder": "Abre el constructor de cursos"
     },
     "storefrontPage": {
       "title": "Tu tienda.",
@@ -2110,6 +2218,25 @@
         "single_label": "Incluye la terminación, por ejemplo tunombre.com en lugar de tunombre",
         "reserved": "Ese dominio pertenece a la plataforma y no se puede registrar."
       }
+    },
+    "inboxPage": {
+      "description": "Mensajes de tus alumnos y preguntas de tus comunidades, en un solo lugar.",
+      "questionsTitle": "Preguntas que esperan tu respuesta",
+      "questionsEmpty": "No hay preguntas esperando. Cuando un alumno pregunte algo en una comunidad, aparecerá aquí.",
+      "questionsError": "No pudimos cargar las preguntas. Inténtalo de nuevo más tarde.",
+      "answer": "Responder",
+      "messagesTitle": "Mensajes"
+    },
+    "studentsPage": {
+      "description": "Todas las personas que entraron en alguno de tus productos.",
+      "loading": "Cargando tus alumnos...",
+      "error": "No pudimos cargar tus alumnos. Inténtalo de nuevo más tarde.",
+      "empty": "Todavía no hay alumnos. Cuando alguien entre en uno de tus productos, aparecerá aquí.",
+      "countOne": "1 alumno activo",
+      "countMany": "{count} alumnos activos",
+      "product": "Producto",
+      "seeInProduct": "Ver en el producto",
+      "community": "Comunidad"
     }
   },
   "creatorPanel": {
@@ -2143,7 +2270,8 @@
       "countAllOne": "1 pedido, todo el histórico",
       "emptyTitle": "Sin ventas en este periodo.",
       "emptyBody": "Cuando alguien complete el pago, el pedido aparece aquí.",
-      "emptyCta": "Ir a tus cursos",
+      "emptyCta": "Ir a tus productos",
+      "firstTitle": "Tus ventas aparecerán aquí.",
       "datePending": "Fecha pendiente",
       "refundInStripe": "Reembolsar en Stripe",
       "showMore": "Ver {count} más",
@@ -2154,6 +2282,14 @@
       "sectionTitle": "Sesiones programadas",
       "sectionEyebrow": "Agenda",
       "newSession": "Nueva sesión",
+      "nextStep": {
+        "title": "Sesión programada. Siguiente paso: define el precio y publica.",
+        "titleFree": "Sesión programada. Siguiente: publicar.",
+        "pricing": "Definir el precio y publicar",
+        "publish": "Revisar y publicar",
+        "lessonHelp": "Para publicar se necesita al menos una lección con contenido. Basta con una breve lección de bienvenida con los datos de la sesión.",
+        "addLesson": "Añadir una breve lección de bienvenida"
+      },
       "closeForm": "Cerrar",
       "formTitleNew": "Programar una sesión",
       "formTitleEdit": "Editar sesión",
@@ -2244,33 +2380,36 @@
     "paymentType": {
       "free": "Gratis",
       "one_time": "Pago único",
-      "subscription_monthly": "Suscripción mensual",
-      "subscription_yearly": "Suscripción anual"
+      "subscription_monthly": "Mensualidad",
+      "subscription_yearly": "Plan anual"
     },
     "offers": {
-      "title": "Ofertas y precios",
-      "description": "Crea paquetes de pago único o por suscripción. La oferta predeterminada rige la página principal; cada oferta activa tiene su propio enlace de compra exacto.",
-      "loading": "Cargando ofertas…",
-      "empty": "Todavía no hay ofertas: el checkout usa el precio anterior del curso hasta que crees una.",
-      "defaultBadge": "predeterminada",
+      "title": "Otros precios",
+      "description": "Otro precio para la misma forma de pago, como un precio de lanzamiento o un plan anual. Cada uno tiene su propio enlace.",
+      "loading": "Cargando precios…",
+      "empty": "Todavía no hay otros precios. Se paga el precio que definiste en Precios.",
+      "free": "Este producto es gratis, así que no tiene otros precios. Para cobrar, cambia cómo te van a pagar en Precios.",
+      "defaultBadge": "precio principal",
       "noPrice": "Sin precio",
       "code": "código {code}",
-      "inactive": "inactiva",
-      "checkoutLink": "checkout de {name}",
-      "defaultName": "Oferta estándar",
-      "name": "Nombre de la oferta",
-      "publicCode": "Código público (opcional)",
+      "inactive": "inactivo",
+      "checkoutLink": "página de pago de {name}",
+      "defaultName": "Otro precio",
+      "yearlyName": "Plan anual",
+      "firstIsMain": "Tu página sigue cobrando {price} ({model}): ese precio pasa a ser el principal primero, y este se agrega a su lado.",
+      "name": "Nombre de este precio",
+      "publicCode": "Código para el enlace (opcional)",
       "publicCodePlaceholder": "p. ej. LAUNCH",
       "amount": "Importe",
       "currency": "Moneda",
-      "paymentType": "Tipo de pago",
-      "isDefault": "Oferta predeterminada (rige el checkout y sincroniza el precio anterior)",
-      "submit": "Crear oferta",
-      "submitting": "Creando...",
-      "loadError": "No pudimos cargar las ofertas.",
-      "createError": "No pudimos crear la oferta.",
+      "paymentType": "Cada cuánto pagan",
+      "isDefault": "Usar como precio principal de tu página",
+      "submit": "Agregar precio",
+      "submitting": "Agregando...",
+      "loadError": "No pudimos cargar tus precios.",
+      "createError": "No pudimos agregar este precio.",
       "invalidAmount": "Introduce un precio válido.",
-      "created": "Oferta creada. Su enlace de compra ahora resuelve exactamente este precio."
+      "created": "Precio agregado. Su enlace cobra exactamente este precio."
     },
     "filters": {
       "all": "Todos",
@@ -2279,6 +2418,7 @@
     },
     "shareLink": {
       "copy": "Copiar enlace",
+      "copyMyPage": "Copiar el enlace de mi página",
       "copyAria": "Copiar enlace de {label}",
       "open": "Abrir página",
       "openAria": "Abrir {label}",
@@ -2337,6 +2477,7 @@
         "off": "No destacado",
         "usage": "{used} de {limit} destacados usados en el plan {plan}",
         "notIncluded": "El plan {plan} no incluye destacados en el marketplace.",
+        "noSubscription": "Los destacados en el marketplace requieren un plan de creador compatible.",
         "saving": "Guardando...",
         "remove": "Quitar destacado",
         "add": "Destacar este curso",
@@ -2345,6 +2486,7 @@
         "gatePlan": "Los destacados del marketplace empiezan en el plan {plan}.",
         "paidPlan": "de pago",
         "gateQuota": "Estás usando los {limit} destacados de tu plan. Quita uno de otro curso primero.",
+        "contactUs": "Escríbenos para ampliarlo",
         "updateError": "No se pudo actualizar el destacado del marketplace."
       },
       "loading": "Cargando curso...",
@@ -2387,7 +2529,7 @@
         "title": "Título",
         "category": "Categoría",
         "allCategories": "Todas las categorías",
-        "summary": "Resumen",
+        "summary": "Descripción",
         "outcomes": "Resultados de aprendizaje",
         "noneYet": "Todavía ninguno",
         "cover": "Imagen de portada",
@@ -2397,9 +2539,9 @@
       },
       "pricing": {
         "title": "Precios y checkout",
-        "description": "Define el modelo de acceso y las condiciones comerciales base, y luego crea ofertas específicas con enlaces distintos para cada comprador.",
+        "description": "Cómo te pagan se define en Precios. Otros precios, cada uno con su enlace, están abajo.",
         "price": "Precio",
-        "paymentType": "Tipo de pago",
+        "paymentType": "Cómo te pagan",
         "installments": "Cuotas",
         "installmentsUpTo": "Hasta {max} cuotas",
         "stripeCheckout": "Checkout seguro de Stripe",
@@ -2410,13 +2552,13 @@
         "finishOnboarding": "Completar la configuración de pagos",
         "notApplicable": "—",
         "installmentsHint": "Cuotas: {value}",
-        "paymentTypeHint": "Cómo se cobra a los compradores en el checkout.",
+        "paymentTypeHint": "Lo que se paga en tu página.",
         "paymentTypeFreeHint": "Curso gratuito: no se cobra nada en el checkout.",
         "refundWindow": "Plazo de reembolso",
         "refundWindowDays": "{days} días",
         "refundWindowHint": "Garantía de la plataforma en todos los cursos: menos de la mitad completada y sin certificado emitido.",
         "payoutsFreeHint": "Curso gratuito: no hay pagos que configurar.",
-        "newOffer": "Nueva oferta",
+        "newOffer": "Agregar otro precio",
         "newOfferCancel": "Cancelar"
       },
       "content": {
@@ -2451,7 +2593,6 @@
         "marketing": "Espacio de marketing",
         "marketingDetail": "Páginas, multimedia, mensajes de compradores y promociones",
         "mediaDetail": "Portadas de cursos y archivos de entrega",
-        "integrationsDetail": "Servicios de entrega y de negocio conectados",
         "verification": "Verificación profesional",
         "verificationDetail": "Credenciales y admisión en el marketplace"
       }
@@ -2514,7 +2655,7 @@
       "uncategorized": "Sin categoría",
       "signIn": "Inicia sesión como creador para empezar un producto.",
       "loadError": "No pudimos cargar tus productos. Actualiza la página o contacta con el soporte de SkillsetMind.",
-      "deleteError": "No pudimos eliminar este borrador. Inténtalo de nuevo o contacta con el soporte de SkillsetMind.",
+      "deleteError": "No pudimos eliminar este producto. No se borró nada. Inténtalo de nuevo o contacta con el soporte de SkillsetMind.",
       "actions": {
         "more": "Más acciones para {title}",
         "menu": "Acciones para {title}",
@@ -2529,7 +2670,19 @@
         "description": "Esto elimina de forma permanente el curso y todo su contenido. No se puede deshacer.",
         "cancel": "Cancelar",
         "busy": "Eliminando...",
-        "confirm": "Sí, eliminar"
+        "confirm": "Sí, eliminar",
+        "consequences": {
+          "lead": "También se elimina:",
+          "content": "Lecciones, textos y archivos",
+          "videos": "Los videos subidos",
+          "community": "Publicaciones y respuestas de la comunidad",
+          "events": "Sesiones en vivo e invitaciones pendientes"
+        },
+        "filesNote": "Los archivos y videos se quitan de nuestros servidores por lotes, cada hora, a partir de un día después de eliminarlo. Hasta entonces, el producto aparece como \"En eliminación\". Lo que otro producto todavía usa se conserva."
+      },
+      "beingDeleted": {
+        "aria": "Productos en eliminación",
+        "note": "Quitamos archivos y videos por lotes, cada hora, a partir de un día después de eliminarlo."
       },
       "archive": {
         "eyebrow": "Archivar producto",
@@ -2544,8 +2697,7 @@
         "label": "Atajos del espacio de productos",
         "membersDetail": "Personaliza la entrega y los espacios de los alumnos",
         "eventsDetail": "Programa talleres y sesiones en vivo",
-        "marketingDetail": "Páginas, multimedia, mensajes y promociones",
-        "couponsDetail": "Crea códigos de descuento para tus productos"
+        "marketingDetail": "Páginas, multimedia, mensajes y promociones"
       }
     },
     "home": {
@@ -2574,23 +2726,13 @@
         "filtersLabel": "Filtros de productos",
         "filterLiveSales": "En venta",
         "empty": "Todavía no hay productos en esta vista.",
+        "firstTitle": "Tu primer producto empieza aquí.",
+        "firstCta": "Crear mi primer producto",
         "manage": "Gestionar producto"
       },
       "formats": {
         "eyebrow": "¿Qué quieres vender?",
-        "title": "Elige un formato de producto",
-        "course": "Curso online",
-        "courseDetail": "Video, texto, descargas, certificados y lecciones estructuradas.",
-        "program": "Programa guiado",
-        "programDetail": "Un recorrido secuenciado de aprendizaje, práctica y encuentros en vivo opcionales.",
-        "subscription": "Suscripción",
-        "subscriptionDetail": "Acceso recurrente con cobro mensual o anual.",
-        "community": "Comunidad",
-        "communityDetail": "Un espacio recurrente para miembros con publicaciones e intercambio entre profesionales.",
-        "event": "Evento online",
-        "eventDetail": "Talleres en vivo, cohortes y sesiones grupales programadas.",
-        "free": "Programa gratuito",
-        "freeDetail": "Inscripción abierta sin checkout ni pago."
+        "title": "Elige un formato de producto"
       },
       "milestones": {
         "eyebrow": "Mi evolución",
@@ -2701,6 +2843,11 @@
     "lockedMany": "Inscríbete para acceder a las {count} lecciones restantes de este curso.",
     "structure": "Estructura del curso",
     "curriculumPending": "El curso está aprobado, pero la vista previa del contenido aún se está preparando.",
+    "deliveryCommunity": "Los miembros entran a la comunidad: publicaciones, respuestas y encuentros en vivo.",
+    "deliveryLiveEvent": "Sesión en vivo el {date}",
+    "deliveryLiveEventPending": "Sesión en vivo. La fecha se anunciará aquí.",
+    "deliveryEbook": "Un archivo que descargas justo después de comprar.",
+    "delivery": "Qué recibes",
     "access": "Acceso",
     "chooseOffer": "Elige una oferta",
     "unavailableShort": "No disponible",
@@ -2866,17 +3013,18 @@
   "publicPages": {
     "pricing": {
       "pricing": "Precios",
-      "four_plans_free_starts_at_10": "Cuatro planes. Free comienza con una comisión del 10% y sin suscripción. Starter la reduce al 5%, Pro al 3% y Plus al 2%. La tarifa de procesamiento de Stripe se muestra por separado para que las cuentas sean claras, y los compradores pagan directamente a tu cuenta de Stripe: sin retención ni plazo de liquidación de la plataforma.",
+      "plans_with_a_free_trial": "Tres planes, cada uno con una prueba gratis de 14 días. Basic cuesta $5 al mes con 10% + $0.30 por venta; Starter cuesta $19 al mes con 4.9% + $0.30; Pro cuesta $89 al mes con 2.9% + $0.30. La tarifa de procesamiento de Stripe se muestra por separado para que las cuentas sean claras, y los compradores pagan directamente a tu cuenta de Stripe: sin retención ni plazo de liquidación de la plataforma.",
       "pricing_that_lowers_as_you_grow": "Precios que bajan a medida que creces.",
-      "every_plan_can_sell_paid_plans": "Todos los planes permiten vender. Los planes de pago reducen la comisión y aumentan tus límites.",
+      "every_plan_can_sell_paid_plans": "Todos los planes permiten publicar y vender, y cada uno empieza con 14 días gratis. Los planes superiores bajan la comisión y aumentan tus límites.",
       "billing_cycle": "Ciclo de facturación",
       "monthly": "Mensual",
       "yearly": "Anual",
       "17_off": "~17% de descuento",
+      "enterprise_talk_to_us": "¿Vendes más de US$10.000 al mes? Habla con nosotros sobre Enterprise",
       "plan_comparison": "Comparación de planes",
       "recommended": "Recomendado",
       "per_sale": "por venta",
-      "mo_no_subscription": "/mes — sin suscripción",
+      "per_sale_with_fixed": "+ {fixed} por venta",
       "mo": "/mes",
       "mo_billed": "/mes, con un cobro de",
       "yearly_2": " al año",
@@ -2899,18 +3047,18 @@
       "payouts": "Transferencias",
       "buyers_pay_your_stripe_account_directly": "Los compradores pagan directamente a tu cuenta de Stripe. Nunca retenemos tu dinero, así que no hay nada que debamos liberar. Stripe liquida y transfiere a tu banco desde tu propio saldo de Stripe según sus plazos, que dependen de tu país y del método de pago. Una cuenta nueva debe esperar la verificación de Stripe antes de su primera transferencia.",
       "plan_changes": "Cambios de plan",
-      "upgrade_any_time_new_commission_applies": "Mejora tu plan cuando quieras: la nueva comisión se aplica a las ventas nuevas. Cambia a un plan inferior al final de tu ciclo de facturación. Cancela cuando quieras; conservas tu contenido y vuelves a Free.",
+      "upgrade_any_time_new_commission_applies": "Mejora tu plan cuando quieras: la nueva comisión se aplica a las ventas nuevas. Cambia a un plan inferior al final de tu ciclo de facturación. Cancela cuando quieras en Facturación; conservas tu contenido.",
       "common_questions": "Preguntas frecuentes",
       "what_happens_when_i_upgrade_a": "¿Qué ocurre cuando mejoro mi plan?",
       "upgrades_apply_immediately_and_the_new": "Las mejoras se aplican de inmediato y la nueva comisión entra en vigor para las ventas nuevas. Las ventas anteriores al cambio conservan la comisión del plan que tenías en ese momento. Stripe Billing prorratea la diferencia de suscripción para el ciclo actual.",
       "what_happens_when_i_downgrade_or": "¿Qué ocurre si cambio a un plan inferior o cancelo?",
-      "downgrades_and_cancellations_take_effect_at": "Los cambios a un plan inferior y las cancelaciones entran en vigor al final del período de facturación actual; hasta entonces conservas el plan que estás pagando. Si cancelas, conservas todo tu contenido y vuelves a Free ({value0}% de comisión, sin suscripción).",
+      "downgrades_and_cancellations_take_effect_at": "Los cambios a un plan inferior y las cancelaciones entran en vigor al final del período de facturación actual; hasta entonces conservas el plan que estás pagando. Si cancelas durante la prueba gratis de 14 días, no se te cobra. En cualquier caso, conservas todo tu contenido.",
       "how_do_the_fees_work_on": "¿Cómo funcionan las tarifas en una venta por suscripción?",
-      "two_fees_come_out_of_each": "De cada venta se deducen dos tarifas, que se muestran por separado para que las cuentas sean claras. SkillsetMind cobra la comisión de tu plan (del 10% en Free al 2% en Plus), y se te repercute la tarifa estándar de procesamiento de Stripe (2.9% + $0.30 para tarjetas en USD y un estimado del 5.4% + $0.30 para otras monedas). Todo lo que queda es tuyo.",
+      "two_fees_come_out_of_each": "De cada venta se deducen dos tarifas, que se muestran por separado para que las cuentas sean claras. SkillsetMind cobra la comisión de tu plan (de 10% + $0.30 en Basic a 2.9% + $0.30 en Pro; en otras monedas, los $0.30 se cobran en su equivalente local), y se te repercute la tarifa estándar de procesamiento de Stripe (2.9% + $0.30 para tarjetas en USD y un estimado del 5.4% + $0.30 para otras monedas). Todo lo que queda es tuyo.",
       "when_can_a_sale_be_refunded": "¿Cuándo se puede reembolsar una venta y cómo afecta a mi transferencia?",
       "learners_can_self_refund_within_days": "Los alumnos pueden solicitar el reembolso por su cuenta dentro de los {value0} días posteriores a la compra si completaron menos de la mitad del curso. Como el comprador pagó directamente a tu cuenta de Stripe, el reembolso se descuenta de tu propio saldo y se te devuelve la comisión de SkillsetMind de esa venta. Así no pagas una comisión por una venta que se anuló.",
       "ready_to_publish_on_skillsetmind": "¿Listo para publicar en SkillsetMind?",
-      "start_on_free_upgrade_only_when": "Empieza con Free y mejora tu plan solo cuando las cuentas te favorezcan.",
+      "start_with_a_free_trial": "Todos los planes empiezan con una prueba gratis de 14 días. Cancela cuando quieras en Facturación antes de que termine y no se te cobrará.",
       "creator_overview": "Información para creadores",
       "start_free": "Crear cuenta",
       "start_plan": "Empieza con {plan}"
@@ -2923,16 +3071,16 @@
       "professional_verification_up_front_then_automated": "Verificación profesional inicial cuando se requiere y después una publicación que nunca espera una revisión manual del curso.",
       "shareable_course_links_for_simple_launch": "Enlaces de cursos para compartir en campañas de lanzamiento sencillas.",
       "teach_on_skillsetmind": "Enseña en SkillsetMind",
-      "publish_professional_courses_to_a_global": "Publica cursos profesionales desde tu propio estudio. Empieza en el plan Free (sin mensualidad) con una comisión del {value0}%; los compradores pagan directamente a tu cuenta de Stripe. Comunidad del curso y certificados incluidos en todos los planes.",
+      "publish_professional_courses_to_a_global": "Publica cursos profesionales desde tu propio estudio. Empieza con una prueba gratis de 14 días; los compradores pagan directamente a tu cuenta de Stripe. Comunidad del curso y certificados incluidos en todos los planes.",
       "for_creators": "Para creadores",
       "teach_with_a_real_course_operating": "Enseña con un sistema completo para gestionar cursos.",
-      "skillsetmind_is_designed_for_experts_who": "Para coaches, facilitadores y mentores que ya enseñan en vivo y quieren vender su método como un curso con comunidad de pago, sin mensualidad.",
-      "commission_on_free": "Comisión en Free",
-      "to_start": "Mensualidad",
+      "skillsetmind_is_designed_for_experts_who": "Para coaches, facilitadores y mentores que ya enseñan en vivo y quieren vender su método como un curso con comunidad de pago, empezando con una prueba gratis de 14 días.",
+      "commission_on_pro": "Comisión en Pro, + $0.30 por venta",
+      "to_start": "Días de prueba gratis",
       "direct": "Directo",
       "buyer_pays_you": "El comprador te paga",
-      "buyers_are_charged_on_your_own": "Los compradores pagan en tu propia cuenta de Stripe: la plataforma no retiene tu dinero. Empieza en el plan Free (sin mensualidad) con una comisión del 10% y mejora tu plan para reducirla al 5%, 3% o 2%.",
-      "see_all_four_plans": "Ver los cuatro planes",
+      "buyers_are_charged_on_your_own": "Los compradores pagan en tu propia cuenta de Stripe: la plataforma no retiene tu dinero. Basic cobra un 10% + $0.30 por venta, Starter un 4.9% + $0.30 y Pro un 2.9% + $0.30; todos los planes empiezan con una prueba gratis de 14 días.",
+      "see_all_plans": "Ver todos los planes",
       "creator_path": "El camino del creador",
       "create_account": "Crear cuenta",
       "draft_then_publish": "Prepara y publica cuando tu curso supere los controles de lanzamiento.",
@@ -2940,11 +3088,11 @@
     },
     "promise": {
       "fee_lock_for_24_months": "Comisión fija durante 24 meses",
-      "the_commission_rate_of_the_plan": "La comisión del plan con el que te registras se mantiene durante los siguientes 24 meses, aunque SkillsetMind aumente los precios de los planes más adelante. Si SkillsetMind necesita cambiarla, recibirás un aviso con 90 días de antelación y tendrás derecho a exportarlo todo y marcharte sin trabas.",
-      "if_a_creator_joins_on_free": "Si un creador se registra en Free con un 10%, no se encontrará más adelante con un aumento de comisión inesperado.",
+      "the_commission_rate_of_the_plan": "La comisión y la tarifa fija por venta del plan al que te suscribes quedan fijas durante 24 meses desde la fecha de tu suscripción, aunque SkillsetMind suba los precios de los planes más adelante. Cualquier cambio llega con 90 días de aviso y con el derecho a exportarlo todo y marcharte sin trabas.",
+      "the_rate_you_subscribe_at_is_the_one_you_keep": "La comisión y la tarifa fija con las que te suscribes son las que conservas: ningún aumento inesperado durante esos 24 meses.",
       "no_plan_ever_blocks_you_from": "Todos los planes pueden publicar y vender",
-      "the_selling_engine_is_on_every": "Todos los planes, incluido Free, permiten publicar cursos, cobrar, liberar contenido gradualmente, gestionar una comunidad y sesiones en vivo, emitir certificados y crear cupones ilimitados. Los planes de pago reducen la comisión y añaden espacios destacados, dominios propios, páginas de venta más largas y controles de marca, como quitar la marca SkillsetMind o poner tu logo en los certificados. El plan Free tiene límites diarios de subidas de video, preguntas al asesor y accesos manuales. Mejorar el plan nunca es un requisito para poder vender.",
-      "a_creator_on_free_runs_a": "Free publica y vende. Mejorar el plan reduce la comisión; nunca compra el derecho a vender.",
+      "the_selling_engine_is_on_every": "Todos los planes, incluido Basic, permiten publicar cursos, cobrar, liberar contenido gradualmente, gestionar una comunidad y sesiones en vivo, emitir certificados con tu logo y crear cupones ilimitados. Los planes superiores reducen la comisión y añaden espacios destacados, dominios propios, páginas de venta más largas y, en Pro, la opción de quitar la marca SkillsetMind. Mejorar el plan nunca es un requisito para poder vender.",
+      "basic_publishes_and_sells": "Basic publica y vende. Mejorar el plan reduce la comisión; nunca compra el derecho a vender.",
       "data_portability_one_click": "Portabilidad de datos",
       "at_any_moment_you_can_export": "Tus cursos y tus datos son tuyos y puedes llevártelos. Hoy ya puedes descargar desde el estudio la lista de alumnos de cada curso en CSV. Para todo lo demás (cursos, materiales, historial de ventas, publicaciones de la comunidad), solicita una exportación desde tu Cuenta: procesamos las solicitudes verificadas en un plazo de 30 días, o antes si tu ley de privacidad lo exige. La exportación completa en autoservicio está en nuestra hoja de ruta. Sin llamadas ni intentos de retención.",
       "skillsetmind_can_host_your_business_but": "SkillsetMind aloja tus cursos, pero no es dueño de ellos.",
@@ -3050,27 +3198,35 @@
     },
     "plans": {
       "free": {
-        "tagline": "Empieza a vender sin suscripción.",
+        "tagline": "Elige un plan para publicar y vender.",
         "audience": "Nuevos creadores que están validando una idea.",
-        "highlight0": "Sin mensualidad: comisión solo cuando vendes",
+        "highlight0": "14 días gratis en tu primer plan; después se requiere suscripción",
         "highlight1": "Publica cuando tu curso supere los controles de lanzamiento",
         "highlight2": "Pagos con Stripe en 30 monedas",
         "highlight3": "Los compradores pagan a tu propia cuenta de Stripe: la plataforma no retiene tu dinero",
         "highlight4": "Certificados SkillsetMind Verified",
         "highlight5": "Comunidades de cursos y sesiones en vivo"
       },
+      "basic": {
+        "tagline": "Empieza a vender por una mensualidad baja.",
+        "audience": "Creadores que validan su primer curso.",
+        "highlight0": "10% + $0.30 por venta",
+        "highlight1": "Publica cuando tu curso supere los controles de lanzamiento",
+        "highlight2": "La facturación anual ahorra aproximadamente un 17%"
+      },
       "starter": {
-        "tagline": "La mitad de comisión por un pequeño costo mensual.",
+        "tagline": "Una comisión más baja cuando vendes todos los meses.",
         "audience": "Creadores que venden todos los meses.",
-        "highlight0": "Todo lo incluido en Free",
-        "highlight1": "La comisión baja del 10% al 5%",
+        "highlight0": "4.9% + $0.30 por venta",
+        "highlight1": "1 dominio propio y 1 destacado en el marketplace",
         "highlight2": "La facturación anual ahorra aproximadamente un 17%"
       },
       "pro": {
-        "tagline": "Una comisión más baja para catálogos consolidados.",
+        "tagline": "La comisión más baja de la oferta.",
         "audience": "Creadores con un catálogo consolidado.",
-        "highlight0": "Todo lo incluido en Starter",
-        "highlight1": "La comisión baja al 3%"
+        "highlight0": "2.9% + $0.30 por venta",
+        "highlight1": "5 dominios propios y 5 destacados en el marketplace",
+        "highlight2": "Quita la marca SkillsetMind"
       },
       "plus": {
         "tagline": "La comisión más baja para creadores con grandes volúmenes de ventas.",
@@ -3125,7 +3281,7 @@
       "you_get_paid_directly": "Cobras directamente",
       "learners_pay_your_stripe_account_not": "Los alumnos pagan a tu cuenta de Stripe, no a la nuestra. SkillsetMind nunca retiene tu dinero, nunca te lo remite ni intermedia entre tú y tu comprador. Tú eres el vendedor responsable de cada venta.",
       "platform_fee": "Comisión de la plataforma",
-      "plan_based_every_plan_includes_the": "Según el plan: {value0}. Todos los planes permiten publicar y vender; los planes de pago cobran una comisión menor por cada venta de pago, que Stripe descuenta en el momento del cobro, y aumentan los límites. El plan Free no tiene mensualidad; mejora tu plan cuando una comisión más baja te favorezca.",
+      "plan_based_every_plan_includes_the": "Según el plan: {value0}. Todos los planes permiten publicar y vender; Stripe descuenta la comisión en el momento del cobro, y en otras monedas los $0.30 se cobran en su equivalente local. Cada plan empieza con una prueba gratis de 14 días.",
       "stripe_processing_fee": "Tarifa de procesamiento de Stripe",
       "charged_by_stripe_to_your_account": "Stripe la cobra a tu cuenta en cada venta. Los precios de Stripe en Estados Unidos son del 2.9% + $0.30 para pagos con tarjeta en USD y un estimado del 5.4% + $0.30 para otras monedas. Tus tarifas son las que Stripe establece en el país donde está registrada tu cuenta. Nunca se oculta dentro del porcentaje de la plataforma.",
       "refund_window": "Plazo de reembolso",
@@ -3203,7 +3359,7 @@
           },
           "2": {
             "q": "¿Cómo fijo el precio de mi curso?",
-            "a": "El precio se configura por producto en Estudio → constructor de cursos. Elige inscripción gratuita, pago único o suscripción mensual o anual en una moneda admitida. La comisión de la plataforma (10% en Free, 5% en Starter, 3% en Pro y 2% en Plus), junto con la tarifa de procesamiento de Stripe, se muestra claramente en el registro de ingresos de cada venta."
+            "a": "El precio se configura por producto en Estudio → constructor de cursos. Elige inscripción gratuita, pago único o suscripción mensual o anual en una moneda admitida. La comisión de la plataforma (10% + $0.30 en Basic, 4.9% + $0.30 en Starter y 2.9% + $0.30 en Pro), junto con la tarifa de procesamiento de Stripe, se muestra claramente en el registro de ingresos de cada venta."
           },
           "3": {
             "q": "¿Qué es la publicación gradual y cuándo debo usarla?",
@@ -3220,7 +3376,7 @@
         "items": {
           "0": {
             "q": "¿Con qué plan debería empezar?",
-            "a": "Empieza con Free si estás validando una idea: no hay suscripción y conservas el 90% de cada venta de $100 antes de las tarifas de Stripe. Los planes de pago añaden una cuota mensual y bajan la comisión. La página de precios muestra lo que cada plan descuenta de una venta de ejemplo de $100."
+            "a": "Todos los planes empiezan con una prueba gratis de 14 días; se pide tarjeta y puedes cancelar en Facturación antes de que termine la prueba sin que se te cobre. Basic cuesta $5 al mes ($50 al año) con 10% + $0.30 por venta. Starter cuesta $19 al mes ($190 al año) con 4.9% + $0.30. Pro cuesta $89 al mes ($890 al año) con 2.9% + $0.30 y límites más altos. La página de precios muestra lo que cada plan descuenta de una venta de ejemplo de $100."
           },
           "1": {
             "q": "¿Qué ocurre cuando mejoro mi plan o cambio a uno inferior?",
@@ -3228,7 +3384,7 @@
           },
           "2": {
             "q": "¿Qué ocurre si cancelo mi plan?",
-            "a": "La cancelación te devuelve a Free al final del período pagado. Se conservan tus cursos, alumnos, contenido e historial; SkillsetMind nunca elimina los datos de un creador. La comisión vuelve al 10% (la tarifa de Free) en las ventas nuevas desde el momento del cambio."
+            "a": "Cancela cuando quieras desde Facturación con \"Cancelar plan\". Si cancelas durante la prueba gratis de 14 días, no se te cobra; si no, el plan sigue activo hasta el final del período que pagaste. Se conservan tus cursos, alumnos, contenido e historial; SkillsetMind nunca elimina los datos de un creador."
           }
         }
       },
@@ -3283,7 +3439,7 @@
   "authFlow": {
     "callback": {
       "sameBrowser": "Este enlace debe abrirse en el mismo navegador desde el que se solicitó. Ábrelo allí o solicita uno nuevo desde este navegador.",
-      "usedOrExpired": "Este enlace ya se usó o caducó. Los enlaces para restablecer la contraseña funcionan una sola vez. Solicita uno nuevo e inténtalo de nuevo.",
+      "usedOrExpired": "Este enlace ya se usó o caducó. Los enlaces de nuestros correos funcionan una sola vez. Solicita uno nuevo e inténtalo de nuevo.",
       "invalidOrExpired": "Este enlace no es válido o caducó. Solicita uno nuevo e inténtalo de nuevo."
     },
     "errors": {
@@ -3468,7 +3624,7 @@
       "descriptionPlaceholder": "Explica qué aprenderá el estudiante y por qué es útil.",
       "descriptionHelpPreview": "Esta es la lección de vista previa gratuita: cualquiera puede leer este texto en la página del curso. Los enlaces que empiezan con https:// se vuelven clicables.",
       "oldNote": "Nota pública antigua (los estudiantes la ven encima de la descripción; cualquiera puede leerla)",
-      "materialsHelp": "Los archivos complementarios se adjuntan a esta lección y se pueden descargar desde el aula.",
+      "materialsHelp": "Los estudiantes descargan estos archivos dentro de la lección. Puedes subir PDF, Word, PowerPoint, Excel, e-books (EPUB), mapas mentales (XMind, FreeMind), imágenes, audio o ZIP.",
       "noMaterials": "Todavía no hay materiales complementarios.",
       "type": "Tipo de lección",
       "duration": "Duración en minutos",
@@ -3489,7 +3645,6 @@
         "previewUnavailable": "Este navegador no puede reproducir la vista previa. Puedes subir el archivo igualmente.",
         "videoType": "Tipo de video",
         "select": "Elegir archivo",
-        "allowPreview": "Permitir este archivo en la vista previa pública cuando sea seguro.",
         "cancel": "Cancelar subida",
         "upload": "Subir archivo",
         "uploading": "Subiendo..."
@@ -3504,16 +3659,25 @@
         "videoTooLarge": "Este video ocupa {size}; el límite es {limit}.",
         "videoLimit": "Usa un archivo de video de menos de {limit}.",
         "invalidFile": "Usa un archivo válido de {kind} de menos de {limit}.",
-        "delete": "No pudimos eliminar este archivo. Revisa la titularidad del curso y los permisos actuales."
+        "delete": "No pudimos eliminar este archivo. Revisa la titularidad del curso y los permisos actuales.",
+        "save": "No pudimos guardar este cambio. Inténtalo de nuevo."
       },
       "success": {
         "uploaded": "Archivo subido a esta lección.",
         "deleted": "Archivo eliminado.",
-        "oldLinkRemoved": "Enlace antiguo quitado."
+        "oldLinkRemoved": "Enlace antiguo quitado.",
+        "renamed": "Nombre guardado.",
+        "ordered": "Orden guardado."
       },
       "deleteConfirm": "¿Eliminar \"{fileName}\"? El archivo se eliminará de forma permanente.",
       "thumbnailAlt": "Miniatura de la lección: {fileName}",
       "enrolledOnly": "Solo inscritos",
+      "files": {
+        "titleLabel": "Nombre que ven los estudiantes",
+        "originalName": "Archivo: {fileName}",
+        "moveUp": "Subir \"{title}\"",
+        "moveDown": "Bajar \"{title}\""
+      },
       "deleting": "Eliminando...",
       "delete": "Eliminar"
     },
@@ -3534,6 +3698,8 @@
       "protectionNote": "Cualquiera que tenga el enlace puede ver los videos de YouTube y Vimeo, incluso fuera de SkillsetMind. Sube el video aquí para que la reproducción pase por el control de acceso de SkillsetMind."
     },
     "members": {
+      "creatorAreaNote": "Este paso define el estilo del aula de este producto. El área que reúne todos tus productos se configura aparte.",
+      "creatorAreaLink": "Abrir tu área de miembros",
       "step": "Área de miembros",
       "stepHelp": "Tema, portada, título",
       "heading": "Personaliza el área de miembros.",
@@ -3605,18 +3771,18 @@
       "steps": {
         "details": {
           "tab": "Datos",
-          "tabHelp": "Título, categorías y propuesta",
+          "tabHelp": "Título, categorías y descripción",
           "stage": "Datos del curso",
-          "stageHelp": "Información, portada y propuesta",
+          "stageHelp": "Información, portada y descripción",
           "heading": "Define las bases del curso.",
           "help": "Esta información ayuda al estudiante a entender lo que ofrece el curso."
         },
         "pricing": {
           "tab": "Precios",
-          "tabHelp": "Pago, acceso gradual y vista previa",
-          "stageHelp": "Modelo de acceso",
-          "heading": "Presenta la oferta.",
-          "help": "Define el acceso, el precio, el calendario y la lección de vista previa gratuita antes de publicar."
+          "tabHelp": "Cómo te pagan",
+          "stageHelp": "Cómo te pagan",
+          "heading": "Define el precio.",
+          "help": "Elige cómo te van a pagar y define el precio."
         },
         "content": {
           "tab": "Contenido",
@@ -3643,42 +3809,16 @@
           "detail": "La siguiente lección se abre al completar la anterior."
         },
         "time_drip_lesson": {
-          "label": "Una lección por intervalo",
+          "label": "Una lección cada pocos días",
           "detail": "Libera las lecciones de forma gradual según la fecha de inscripción."
         },
         "time_drip_module": {
-          "label": "Un módulo por intervalo",
+          "label": "Un módulo cada pocos días",
           "detail": "Libera los módulos de forma gradual según la fecha de inscripción."
         },
         "time_drip_custom": {
           "label": "Calendario por lección",
           "detail": "Usa el campo de días de espera de cada lección para definir cuándo se abre."
-        }
-      },
-      "paymentModels": {
-        "one_time": {
-          "title": "Pago único",
-          "description": "El estudiante paga una vez y obtiene acceso de por vida.",
-          "feature1": "Ideal para cursos completos",
-          "feature2": "Acceso de por vida para estudiantes"
-        },
-        "free": {
-          "title": "Gratis",
-          "description": "Sin pago. Útil para captar contactos o probar un grupo piloto.",
-          "feature1": "Inscripción sin pasar por el pago",
-          "feature2": "Útil para muestras o pruebas piloto"
-        },
-        "subscription_monthly": {
-          "title": "Suscripción mensual",
-          "description": "Cobro recurrente cada mes.",
-          "feature1": "Acceso recurrente",
-          "feature2": "Controles de cancelación"
-        },
-        "subscription_yearly": {
-          "title": "Suscripción anual",
-          "description": "Cobro recurrente cada año.",
-          "feature1": "Acceso anual",
-          "feature2": "Recordatorios de renovación"
         }
       },
       "errors": {
@@ -3692,18 +3832,35 @@
         "price": "Usa un precio válido igual o mayor que cero, o deja el campo vacío.",
         "installmentsSave": "Define un límite de cuotas válido antes de guardar.",
         "category": "Elige al menos una categoría del marketplace antes de publicar.",
-        "paidPrice": "Define un precio mayor que $0 o elige Gratis como modelo de pago antes de publicar.",
+        "paidPrice": "Define un precio mayor que {zero} o elige Gratis antes de publicar.",
+        "livePrice": "Este producto está publicado. Define un precio mayor que {zero} o elige Gratis.",
         "installmentsPublish": "Define un límite de cuotas válido antes de publicar.",
         "duplicateTitle": "Ya existe un curso con este título. Elige otro nombre.",
         "activation": "Activa tu tienda para habilitar la publicación: una tarifa única de activación, que se cobra una sola vez por cuenta de creador, nunca por curso.",
+        "plan": "Necesitas un plan activo o una prueba vigente para publicar. Gestiona tu plan en facturación.",
         "save": "No pudimos guardar este curso. Inténtalo de nuevo.",
         "preview": "Quita la vista previa gratuita no válida o elige una lección de este curso.",
         "setup": "Completa la configuración del creador antes de publicar cursos.",
         "verification": "La verificación profesional debe estar aprobada antes de publicar.",
-        "payouts": "Completa la configuración de cobros de Stripe antes de publicar un curso de pago. Abre el panel Cobros en tu estudio.",
-        "payment": "Define un modelo de pago válido antes de publicar.",
+        "payouts": "Completa la configuración de cobros de Stripe antes de publicar un curso de pago. Abre Ganancias en tu estudio.",
+        "payment": "Revisa cómo te van a pagar, en Precios, antes de publicar.",
         "lessonContent": "Añade un video, texto o archivo a cada lección antes de publicar.",
+        "session": "Agenda la sesión en vivo antes de publicar: la fecha tiene que ser futura.",
+        "file": "Sube al menos un archivo (PDF, presentación o cuaderno) antes de publicar.",
+        "community": "Activa la comunidad antes de publicar: es lo que reciben los miembros.",
         "publish": "No pudimos publicar este curso. Inténtalo de nuevo."
+      },
+      "created": {
+        "course": "Borrador guardado. Siguiente: tu primera clase.",
+        "community": "Borrador guardado. Siguiente: define tu precio.",
+        "live_event": "Borrador guardado. Siguiente: programa tu sesión.",
+        "live_eventScheduled": "Borrador guardado. Tu sesión ya está en el calendario.",
+        "ebook": "Borrador guardado. Siguiente: sube tu archivo.",
+        "close": "Cerrar"
+      },
+      "publishedPanel": {
+        "title": "Ya está publicado.",
+        "detail": "Tu página de producto ya está abierta para todos. Comparte el enlace para que la gente la encuentre."
       },
       "success": {
         "lessonAdded": "Lección añadida. El editor se abrirá cuando termine el guardado automático…",
@@ -3728,7 +3885,7 @@
         "moduleDescription": "Descripción del módulo",
         "moduleDescriptionExample": "Descripción opcional del módulo. Ejemplo: Presenta los conceptos necesarios antes de las lecciones prácticas.",
         "helpTopic": "Acceso a las lecciones y disponibilidad gradual",
-        "help": "La vista previa gratuita es opcional y debe ser una lección de este curso; permite conocer el estilo de enseñanza antes de inscribirse. Los días de liberación por lección se definen al abrir la lección (Añadir vídeo o Editar contenido) > Ajustes, y solo aparecen cuando la Disponibilidad del contenido del curso es Calendario por lección.",
+        "help": "La vista previa gratuita es opcional y debe ser una lección de este curso; permite conocer el estilo de enseñanza antes de inscribirse. Los días de liberación por lección se definen al abrir la lección (Añadir vídeo o Editar contenido) > Ajustes, y solo aparecen cuando la Liberación de las lecciones del curso es Calendario por lección.",
         "moduleForLesson": "Módulo de esta lección",
         "chooseModule": "Elegir módulo",
         "lessonTitle": "Título de la lección",
@@ -3758,6 +3915,11 @@
         "markPreview": "Marcar como vista previa gratuita",
         "createModule": "Crear módulo",
         "addFirstModule": "Añade tu primer módulo",
+        "firstLessonTitle": "Agrega tu primera clase.",
+        "firstLessonDetail": "Basta un video, un texto o un archivo.",
+        "firstModuleTitle": "Añade tu primer módulo.",
+        "firstModuleDetail": "Luego añádele una clase: basta un video, un texto o un archivo.",
+        "welcomeModule": "Bienvenida",
         "addLessonToModule": "Añadir lección al módulo {index}",
         "moreOptions": "Más opciones",
         "cancel": "Cancelar",
@@ -3828,6 +3990,7 @@
         "passed": "Todos los requisitos de publicación están completos.",
         "activate": "Activar tienda",
         "activateAndPublish": "Activar y publicar",
+        "managePlan": "Gestionar plan",
         "publishing": "Publicando...",
         "submit": "Publicar producto"
       },
@@ -3835,7 +3998,7 @@
         "title": "Título del curso",
         "categories": "Categorías",
         "categoriesHelp": "Obligatorio. Elige hasta cinco. La primera será la categoría principal en el marketplace.",
-        "summary": "Resumen del curso",
+        "summary": "Descripción",
         "characters": "{count} caracteres",
         "minimumCharacters": "{count}/20 caracteres mínimos para publicar",
         "outcomes": "Lo que aprenderán los estudiantes",
@@ -3845,7 +4008,7 @@
         "outcomePlaceholder": "Ejemplo: Crear y lanzar un curso de pago por grupos",
         "noOutcomes": "Aún no hay resultados de aprendizaje. Añade los logros concretos que alcanzará el estudiante.",
         "addOutcome": "Añadir resultado de aprendizaje",
-        "help": "Usa un título específico, una categoría clara y un resumen centrado en lo que aprenderá el estudiante. Este texto aparecerá en el marketplace."
+        "help": "Usa un título específico, una categoría clara y una descripción centrada en lo que aprenderá el estudiante. Este texto aparecerá en el marketplace."
       },
       "community": {
         "title": "Comunidad del curso",
@@ -3854,27 +4017,58 @@
         "on": "La comunidad está activada. Los estudiantes ven la sección Comunidad en este curso.",
         "off": "La comunidad está desactivada. Los estudiantes solo ven lecciones y recursos."
       },
+      "release": {
+        "title": "Cuándo se abren las lecciones",
+        "strategy": "Liberación de las lecciones",
+        "interval": "Días entre cada liberación",
+        "customHelp": " Define los días de espera de cada lección al editarla."
+      },
       "pricing": {
-        "setup": "Configuración del marketplace",
-        "model": "Modelo de pago",
-        "helpTopic": "Precios del curso",
-        "help": "Elige acceso gratuito, pago único o una suscripción mensual o anual. Para publicar productos de pago, necesitas un precio mayor que cero y una cuenta de Stripe Connect lista para recibir cobros.",
+        "question": "¿Cómo van a pagar?",
+        "helpTopic": "Cómo te pagan",
+        "help": "Elige una opción. Para vender, define un precio y conecta tu cuenta de Stripe para que el dinero te llegue.",
+        "choices": {
+          "free": {
+            "title": "Gratis",
+            "description": "Cualquiera entra. Sin pago."
+          },
+          "one_payment": {
+            "title": "Pago único",
+            "description": "Pagan una vez y conservan el acceso. Ej.: {amount}."
+          },
+          "ticket": {
+            "title": "Entrada",
+            "description": "Pagan una vez para participar. Ej.: {amount}."
+          },
+          "membership": {
+            "title": "Mensualidad",
+            "description": "Se cobra cada mes hasta que cancelen. Ej.: {amount}/mes."
+          }
+        },
+        "rule": "Pagar en cuotas = el mismo precio dividido; termina en la última cuota. Mensualidad = un cobro que se repite hasta que cancelen.",
+        "notForType": "Esta opción no corresponde a este tipo de producto. Elige otra para publicar.",
         "price": "Precio",
+        "pricePerMonth": "Precio por mes",
+        "pricePerYear": "Precio por año",
         "currency": "Moneda",
-        "freePlaceholder": "Curso gratuito",
+        "freeLine": "Este producto es gratis. Para cobrar, elige una opción de pago arriba.",
         "pricePlaceholder": "Ejemplo: 149",
-        "installments": "Cuotas con tarjeta",
-        "installmentsOneTime": "Las cuotas solo se aplican a pagos únicos.",
-        "installmentsUnavailable": "No está disponible con la cuenta actual de Stripe. Stripe requiere una cuenta de plataforma de México y precios en MXN.",
-        "installmentsCurrency": "Elige MXN para configurar cuotas con tarjetas mexicanas compatibles.",
-        "installmentsEligible": "Las tarjetas compatibles pueden elegir entre los planes configurados en Stripe. Se aplican las reglas del emisor de la tarjeta y de importe mínimo.",
-        "enableInstallments": "Activar cuotas con tarjeta",
-        "release": "Disponibilidad del contenido",
-        "interval": "Días por intervalo",
-        "customHelp": " Define los días de espera de cada lección en el editor de contenido.",
+        "split": "Permitir pagar en cuotas",
+        "splitMax": "Hasta cuántas cuotas",
+        "splitPreview": "{count}x de {amount}",
+        "yearly": "Ofrecer también plan anual",
+        "yearlySaving": "Ahorran {amount} frente a 12 mensualidades.",
+        "yearlyNoSaving": "Cuesta lo mismo que 12 mensualidades, o más.",
+        "yearlyWhere": "Tu página muestra el precio mensual. El plan anual es un precio extra con su propio enlace.",
+        "yearlyAdd": "Agregar el plan anual",
+        "yearlyOnly": "Este producto cobra una vez al año hasta que cancelen.",
+        "switchToMonthly": "Cobrar cada mes",
+        "offerCharges": "Tu página cobra {price} ({model}).",
+        "offerChange": "Cámbialo en Otros precios.",
+        "offersFailed": "No pudimos cargar tus precios. Recarga la página.",
         "preview": "Lección de vista previa gratuita",
         "noPreview": "Aún no hay una vista previa seleccionada",
-        "listingHelp": "Estos campos preparan la página pública. Para inscribirse en un curso de pago, el estudiante debe completar el pago en Stripe."
+        "listingHelp": "Las personas pagan en una página segura antes de entrar."
       },
       "save": {
         "blocked": "No se guarda: {reason}",
@@ -3894,6 +4088,18 @@
         "alt": "Portada de {title}",
         "course": "Curso",
         "emptyHelp": "Añade una portada. Aparecerá en la tarjeta del marketplace, en la página del curso y en el aula."
+      },
+      "productTypes": {
+        "communityOptional": "Opcional: añade lecciones o archivos.",
+        "sessionTitle": "Sesión en vivo",
+        "sessionHelp": "La fecha es lo que la gente reserva. La grabación puede entrar después, como una lección de repetición opcional.",
+        "sessionNone": "Todavía no hay una sesión programada.",
+        "sessionNoLink": "Enlace aún no añadido",
+        "sessionSchedule": "Programar la sesión",
+        "sessionEdit": "Editar en la Agenda",
+        "replayTitle": "Repetición (opcional)",
+        "ebookTitle": "Archivo para descargar",
+        "ebookHelp": "Sube el archivo que la persona recibe al comprar o inscribirse: PDF, presentaciones o cuaderno de trabajo."
       }
     },
     "assets": {
@@ -3953,8 +4159,8 @@
           "hint": "Dale al curso un título de al menos 3 caracteres."
         },
         "summary": {
-          "label": "Resumen",
-          "hint": "Escribe un resumen de al menos 20 caracteres."
+          "label": "Descripción",
+          "hint": "Escribe una descripción de al menos 20 caracteres."
         },
         "category": {
           "label": "Categoría del marketplace",
@@ -3978,9 +4184,22 @@
           "missing": "Faltan: {lessons}.",
           "missingMore": "Faltan: {lessons} y {count} más."
         },
+        "community": {
+          "label": "Comunidad activada",
+          "hint": "Activa la comunidad en la pestaña Área de miembros: es lo que reciben los miembros."
+        },
+        "session": {
+          "label": "Sesión en vivo",
+          "hint": "Programa la fecha y la hora de la sesión en vivo."
+        },
+        "file": {
+          "label": "Archivo para descargar",
+          "hint": "Sube al menos un archivo: PDF, presentaciones o cuaderno de trabajo."
+        },
         "pricing": {
           "label": "Precios",
-          "hint": "Define un precio mayor que $0 o elige Gratis."
+          "hint": "Define un precio mayor que {zero} o elige Gratis.",
+          "notForType": "Esta forma de pago no corresponde a este tipo de producto. Elige otra en Precios."
         },
         "outcomes": {
           "label": "Resultados de aprendizaje",
@@ -4002,6 +4221,10 @@
         "activation": {
           "label": "Activación — US${amount}, pago único",
           "hint": "Se cobra una sola vez por cuenta de creador, nunca por curso. Al pagar se habilita la publicación."
+        },
+        "plan": {
+          "label": "Plan de creador",
+          "hint": "Inicia tu prueba de 14 días o renueva tu plan para publicar y vender."
         }
       },
       "groups": {
@@ -4038,7 +4261,7 @@
         "generic": "No pudimos subir este archivo. Revisa el tipo de archivo y los permisos del curso.",
         "invalidFile": "El tipo de archivo no es compatible o el archivo es demasiado grande.",
         "coverHost": "La URL de la portada no pertenece a un sitio de medios permitido.",
-        "freePlanDailyLimit": "Límite diario de subidas del plan Free. Vuelve a intentarlo mañana."
+        "freePlanDailyLimit": "Límite diario de subidas sin plan. Vuelve a intentarlo mañana."
       }
     },
     "preview": {
@@ -4046,6 +4269,8 @@
       "preparingAsset": "Preparando archivo protegido...",
       "openFile": "Abrir archivo",
       "download": "Descargar",
+      "downloadNamed": "Descargar {title}",
+      "openWith": { "xmind": "Para abrirlo, usa la app gratuita XMind.", "mm": "Para abrirlo, usa la app gratuita FreeMind o Freeplane." },
       "videoError": "No pudimos cargar este video. Actualiza la página e inténtalo de nuevo.",
       "unavailable": "Video no disponible",
       "loading": "Cargando video...",
@@ -4102,6 +4327,10 @@
       "marketingEmails": {
         "label": "Correos promocionales",
         "description": "Anuncios de lanzamientos, promociones y campañas editoriales."
+      },
+      "emailDigest": {
+        "label": "Resumen por correo",
+        "description": "Como máximo un correo por hora cuando tienes notificaciones sin ver, como respuestas a tus preguntas."
       }
     },
     "learning": {
@@ -4387,6 +4616,8 @@
   },
   "legalAcceptance": {
     "eyebrow": "Actualización legal",
+    "firstEyebrow": "Antes de empezar",
+    "firstBody": "Lee y acepta los términos de SkillsetMind para usar tu cuenta.",
     "title": "Revisa los términos de SkillsetMind para continuar.",
     "body": "SkillsetMind ha actualizado sus términos legales. Acepta las versiones vigentes que aparecen abajo para seguir usando tu cuenta.",
     "agreeTerms": "Acepto la versión vigente de las",
@@ -4471,6 +4702,23 @@
       "unknown": "No pudimos enviar tu solicitud de reembolso. Inténtalo de nuevo o contacta con soporte."
     }
   },
+  "planTrial": {
+    "disclosurePublic": "{days} días gratis, luego {price}. Se requiere tarjeta. Se renueva automáticamente hasta que canceles. Cancela en Facturación antes de que termine tu prueba para evitar el cobro de la suscripción.",
+    "cta": "Empieza tu prueba gratis de 14 días",
+    "disclosure": "{days} días gratis, luego {price}. Se renueva automáticamente hasta que canceles. Cancela cuando quieras en Facturación antes del {date} y no se te cobrará.",
+    "disclosureNoTrial": "{price}, desde hoy. Se renueva automáticamente hasta que canceles. Cancela cuando quieras en Facturación para evitar el próximo cargo.",
+    "pricePerMonth": "{amount} al mes",
+    "pricePerYear": "{amount} al año",
+    "trialEnds": "Prueba gratis — termina el {date}",
+    "endsOn": "Termina el {date}",
+    "cancel": "Cancelar plan",
+    "cancelling": "Cancelando…",
+    "cancelConfirmTrial": "¿Cancelar tu plan? Tu prueba gratis sigue hasta el {date} y no se te cobrará.",
+    "cancelConfirm": "¿Cancelar tu plan? Sigue activo hasta el {date} y no se renovará.",
+    "cancelConfirmNow": "¿Cancelar tu plan ahora? La factura pendiente no se volverá a cobrar y el plan termina de inmediato.",
+    "cancelError": "No pudimos cancelar el plan. Inténtalo de nuevo o usa Gestionar suscripción.",
+    "publicNote": "Todos los planes empiezan con una prueba gratis de 14 días, una por cuenta. Se pide tarjeta; cancela cuando quieras en Facturación antes de que termine la prueba y no se te cobrará."
+  },
   "accountPlans": {
     "signIn": "Inicia sesión para ver y gestionar tu plan.",
     "checkoutSoon": "El pago con tarjeta estará disponible pronto.",
@@ -4478,6 +4726,7 @@
     "checkoutSoonBody": "Los planes están listos y estamos activando el pago con tarjeta. Mientras tanto, Free sigue siendo el plan predeterminado; no tienes que hacer nada.",
     "setupPendingBody": "Todavía no puedes comprar planes de pago mientras terminamos la configuración de facturación. Free sigue disponible como plan predeterminado para todas las cuentas.",
     "currentPlan": "Plan actual:",
+    "withoutSubscription": "Sin suscripción",
     "loading": "Cargando…",
     "manage": "Gestionar suscripción",
     "cycle": "Ciclo de facturación",
@@ -4518,9 +4767,9 @@
     "payoutsBody": "Los compradores pagan directamente a tu cuenta de Stripe. La plataforma no retiene tu dinero; Stripe liquida y transfiere los fondos a tu banco según sus propios plazos, que dependen del país y del método de pago."
   },
   "accountBillingPage": {
-    "eyebrow": "Facturación y recibos",
+    "eyebrow": "Compras y recibos",
     "title": "Tus compras y recibos.",
-    "description": "Cada curso lo vende el educador que lo publica. El pago se realiza en su cuenta de Stripe, por lo que su nombre puede aparecer en el extracto de tu tarjeta. Los cursos de pago único siguen disponibles mientras los conserves; los cursos por suscripción, mientras esta esté activa. Tu plan de SkillsetMind, tus métodos de pago y tus facturas están en el portal seguro de Stripe. Los pagos a los creadores están en Pagos e impuestos."
+    "description": "Cada curso lo vende el educador que lo publica. El pago se realiza en su cuenta de Stripe, por lo que su nombre puede aparecer en el extracto de tu tarjeta. Los cursos de pago único siguen disponibles mientras los conserves; los cursos por suscripción, mientras esta esté activa. Los métodos de pago y las facturas están en tu portal seguro de Stripe."
   },
   "accountNotifications": {
     "title": "Notificaciones",
@@ -4575,7 +4824,7 @@
     "title": "Cada cambio en la Promesa debe ser público.",
     "description": "La promesa de SkillsetMind a los creadores se publicó con un historial público de cambios para que los creadores puedan revisar cualquier cambio futuro de las políticas antes de que afecte a su negocio.",
     "publishedOn": "Publicado el {date}",
-    "publication": "La promesa de SkillsetMind a los creadores se publicó el {date}. Desde su publicación se han realizado tres cambios, registrados a continuación. Cualquier cambio futuro se documentará aquí con su fecha, diferencias y motivo al menos 90 días antes de entrar en vigor para los creadores existentes.",
+    "publication": "La promesa de SkillsetMind a los creadores se publicó el {date}. Desde su publicación se han realizado cuatro cambios, registrados a continuación. Cualquier cambio futuro se documentará aquí con su fecha, diferencias y motivo al menos 90 días antes de entrar en vigor para los creadores existentes.",
     "changeTitle": "Promesa 05 sustituida: “Protección de fondos por contrato” pasó a ser “Nunca retenemos tu dinero”",
     "whatChanged": "Qué cambió: los pagos de cursos pasaron a utilizar cargos directos de Stripe. Ahora se cobra al comprador en la propia cuenta de Stripe del instructor, el instructor es el comerciante registrado (merchant of record) y SkillsetMind cobra su comisión de plataforma en el momento del cargo. Se eliminó el periodo anterior de liquidación de 30 días de la plataforma, porque SkillsetMind ya no recibe ni retiene en absoluto los ingresos de las ventas. También se eliminaron los repartos de ingresos con afiliados y coproductores: una plataforma que nunca toca el dinero no puede repartirlo.",
     "why": "Por qué: prometer proteger fondos retenidos por SkillsetMind es menos sólido que no retenerlos. Eliminar la custodia elimina el riesgo que la promesa anterior buscaba cubrir.",
@@ -4589,6 +4838,10 @@
     "change3WhatChanged": "Qué cambió: la promesa 02 se titulaba “Ningún plan te impide vender”. Ahora se titula “Todos los planes pueden publicar y vender”. Explica que los planes de pago reducen la comisión y añaden espacios destacados, dominios propios, páginas de venta más largas y controles de marca, y que el plan Free tiene límites diarios de subidas de video, preguntas al asesor y accesos manuales. Ya no enumera límites de plan que el producto no aplica. Las promesas 01, 02 y 03 hablan ahora de tus cursos y tus datos en lugar de “tu negocio”. La comisión fija de la promesa 01 no cambia.",
     "change3Why": "Por qué: una promesa pública tiene que describir lo que el producto hace hoy.",
     "change3Effective": "En vigor desde: {date} para creadores nuevos y existentes. Entra en vigor de inmediato, y no tras el plazo de aviso de 90 días, porque no sube ningún precio ni ninguna comisión.",
+    "change4Title": "Promesas 01 y 02 reescritas para los nuevos planes",
+    "change4WhatChanged": "Qué cambió: cada venta paga ahora el porcentaje del plan más una tarifa fija de unos US$0.30, ya no existe el plan Free y todos los planes empiezan con una prueba gratis de 14 días. La promesa 01 fija ahora tanto la comisión como la tarifa fija por venta del plan al que te suscribes, durante 24 meses desde la fecha de tu suscripción. La promesa 02 nombra ahora Basic en lugar de Free y ya no menciona los límites diarios del plan Free.",
+    "change4Why": "Por qué: la Promesa tiene que describir los planes que realmente se ofrecen.",
+    "change4Effective": "En vigor desde: {date} para creadores nuevos y existentes. Entra en vigor de inmediato, y no tras el plazo de aviso de 90 días, porque cuando se hizo ningún creador tenía una suscripción a un plan, un producto publicado ni una venta, así que no cambia ningún acuerdo en curso.",
     "futureFormat": "Formato de futuras entradas",
     "futureTitle": "Título del cambio",
     "futureChange": "Qué cambió: descripción.",
@@ -4612,8 +4865,8 @@
     "unlocks": "Desbloquea la publicación de tus cursos. Se cobra una sola vez por cuenta de creador, nunca por curso.",
     "oneTimeFee": "Tarifa única",
     "once": "una sola vez",
-    "noSubscription": "Sin suscripción mensual en Free",
-    "commissionBefore": "Después, el plan Free sigue sin costo mensual y cobra un",
+    "noSubscription": "Pago único, no es una suscripción",
+    "commissionBefore": "Después, Basic cobra un",
     "commissionAfter": "por venta. La tarifa de procesamiento de Stripe se te traslada en cada venta (2.9% + $0.30 USD / 5.4% + $0.30 estimado para monedas distintas del USD).",
     "poweredBy": "Con tecnología de Stripe",
     "returnTitle": "Activación de la tienda",
@@ -4724,43 +4977,34 @@
   },
   "courseCreation": {
     "format": "Formato",
-    "formatDetail": "Modelo de entrega",
+    "formatDetail": "Lo que entregas",
     "basics": "Datos básicos",
-    "basicsDetail": "Título, promesa, categorías",
+    "basicsDetail": "Nombre, descripción, categorías",
     "pricing": "Precio",
-    "pricingDetail": "Precio y modelo de acceso",
-    "lessons": "Lecciones",
-    "lessonsDetail": "Módulos y lecciones",
+    "pricingDetail": "Cómo van a pagar",
+    "lessons": "Contenido",
+    "lessonsDetail": "Lecciones, archivos o la sesión en vivo",
     "publish": "Publicar",
     "publishDetail": "Revisión final",
     "continues": "{detail} · continúa en el editor",
-    "titleRequired": "Dale un título al curso (3 caracteres como mínimo).",
-    "summaryRequired": "Escribe un resumen de al menos 20 caracteres.",
+    "titleRequired": "Ponle un nombre (3 caracteres como mínimo).",
+    "summaryRequired": "Escribe una descripción de al menos 20 caracteres.",
     "categoryRequired": "Elige una categoría del catálogo.",
-    "createEvent": "Crear y programar evento",
-    "createFree": "Crear y añadir contenido",
-    "createPaid": "Crear y definir precio",
-    "monthly": "Mensual",
-    "yearly": "Anual",
     "creating": "Creando...",
     "categoryError": "Elige al menos una categoría del catálogo.",
-    "duplicateError": "Ya existe un curso con este título. Elige un nombre más específico.",
+    "duplicateError": "Ya existe un producto con este nombre. Elige un nombre más específico.",
     "permissionError": "No puedes crear cursos hasta completar la configuración de creador. Verifica tu correo y acepta las Condiciones para educadores.",
-    "summaryError": "Añade un resumen del curso de al menos 20 caracteres.",
-    "createError": "No pudimos crear este curso. Inténtalo de nuevo.",
+    "summaryError": "Añade una descripción de al menos 20 caracteres.",
+    "createError": "No pudimos crear este producto. Inténtalo de nuevo.",
     "activationError": "Activa tu tienda para habilitar la publicación: una tarifa única de activación, que se cobra una sola vez por cuenta de creador, nunca por curso.",
-    "intro": "Elige aquí el modelo de acceso y la información esencial. El precio, las lecciones y la publicación continúan en el editor.",
+    "intro": "Elige lo que vas a entregar y ponle un nombre. El precio, el contenido y la publicación continúan en el editor.",
     "privateDraft": "Esto crea un borrador privado. Nada será visible ni estará a la venta antes de que publiques, y para publicar se necesita la verificación profesional cuando se requiere.",
-    "formatHelp": "El formato define cómo acceden los estudiantes. Las condiciones comerciales se pueden editar en Precio y ofertas.",
     "categoryHelp": "Las categorías deciden en qué parte del catálogo aparece el producto y cómo agrupa SkillsetMind los conocimientos relacionados. Elige primero la más específica: será la categoría principal del catálogo.",
     "products": "Mis productos",
     "newProduct": "Nuevo producto",
-    "title": "Define la base del producto.",
-    "setup": "Configura el producto",
-    "productFormat": "Formato del producto",
-    "interval": "Intervalo de facturación inicial",
-    "productTitle": "Título del producto",
-    "promise": "Promesa del producto",
+    "title": "Crea un producto.",
+    "productTitle": "Nombre",
+    "promise": "Descripción",
     "primaryCategory": "La primera selección es la categoría principal del catálogo.",
     "activate": "Activar tienda",
     "beforeContinue": "Antes de continuar:",
@@ -4769,19 +5013,46 @@
     "titlePlaceholder": "Ej.: Fundamentos del alto rendimiento",
     "promisePlaceholder": "Describe el resultado práctico que pueden esperar los estudiantes.",
     "categoryTopic": "Categorías del curso",
-    "courseLabel": "Curso en línea",
-    "courseHelp": "Compra única con acceso permanente o administrado.",
-    "programLabel": "Programa guiado",
-    "programHelp": "Un recorrido secuencial que combina aprendizaje, práctica y encuentros en vivo opcionales.",
-    "eventLabel": "Evento en línea",
-    "eventHelp": "Talleres en vivo, cohortes y sesiones grupales programadas.",
-    "subscriptionLabel": "Suscripción",
-    "subscriptionHelp": "Acceso continuo con facturación periódica.",
-    "communityLabel": "Comunidad",
-    "communityHelp": "Un espacio de membresía periódica para publicaciones e intercambio entre participantes.",
-    "freeLabel": "Programa gratuito",
-    "freeHelp": "Inscripción abierta sin proceso de compra ni pago.",
-    "characterCount": "{count}/1200 caracteres. Mínimo 20."
+    "characterCount": "{count}/1200 caracteres. Mínimo 20.",
+    "deliverTitle": "¿Qué vas a entregar?",
+    "deliverHelp": "Elige uno. Gratis o de pago, pago único o mensual: eso lo decides después, en Precio.",
+    "types": {
+      "course": {
+        "label": "Curso",
+        "help": "Clases grabadas que cada persona ve a su ritmo."
+      },
+      "community": {
+        "label": "Comunidad",
+        "help": "Un espacio de miembros donde publicas, respondes y haces encuentros en vivo. Normalmente se paga cada mes."
+      },
+      "live_event": {
+        "label": "Evento en vivo",
+        "help": "Un taller o clase en una fecha fija, por Zoom o Meet."
+      },
+      "ebook": {
+        "label": "E-book",
+        "help": "Un archivo que la persona descarga: PDF, presentaciones, cuaderno de trabajo."
+      }
+    },
+    "nameTitle": {
+      "course": "Ponle nombre a tu curso",
+      "community": "Ponle nombre a tu comunidad",
+      "live_event": "Ponle nombre a tu evento en vivo",
+      "ebook": "Ponle nombre a tu e-book"
+    },
+    "continue": "Continuar",
+    "back": "Volver",
+    "create": "Crear",
+    "eventDate": "Fecha",
+    "eventTime": "Hora",
+    "eventLink": "Enlace de Zoom o Meet",
+    "eventLinkHelp": "Opcional. Puedes añadirlo después.",
+    "whenRequired": "Elige la fecha y la hora de la sesión.",
+    "whenPast": "Elige una fecha y una hora que aún no hayan pasado.",
+    "linkInvalid": "Usa un enlace completo que empiece por https://.",
+    "starterModule": "Módulo 1",
+    "starterLesson": "Lección 1",
+    "ebookModule": "Descarga"
   },
   "courseAccess": {
     "pending": "Esperando confirmación del correo",
@@ -4797,7 +5068,7 @@
     "ownerError": "Solo el propietario del curso puede administrar el acceso a un curso publicado.",
     "emailError": "Introduce una dirección de correo válida.",
     "rateError": "Demasiados intentos. Espera antes de volver a intentarlo.",
-    "freePlanDailyLimit": "Límite diario de accesos manuales en el plan Free. Vuelve a intentarlo mañana.",
+    "freePlanDailyLimit": "Límite diario de accesos manuales sin plan. Vuelve a intentarlo mañana.",
     "signInError": "Inicia sesión para administrar el acceso al curso.",
     "courseError": "Elige un curso.",
     "requestLargeError": "La solicitud es demasiado grande.",
@@ -4977,7 +5248,7 @@
     "cancel": "Cancelar",
     "loading": "Cargando estudiantes...",
     "loadError": "No pudimos cargar la lista de estudiantes. Recarga la página; si el problema continúa, contacta con soporte.",
-    "empty": "Todavía no hay estudiantes inscritos. Los compradores aparecen aquí en cuanto se confirma la compra, con su nombre, correo y progreso, para que puedas ayudarlos sin salir del estudio.",
+    "emptyTitle": "Cuando alguien se inscriba, aparecerá aquí.",
     "search": "Buscar estudiantes por nombre o correo",
     "progressFilter": "Filtrar por progreso",
     "accessFilter": "Filtrar por acceso",
@@ -5017,14 +5288,16 @@
       "received": "Pago recibido: abriendo tu curso...",
       "receivedDetail": "Tu pago está confirmado. Estamos preparando tu acceso al curso; esta página se abrirá automáticamente en unos segundos.",
       "required": "Necesitas una matrícula.",
-      "requiredDetail": "Este espacio privado solo se abre después del pago, de una matrícula administrativa o de la aprobación del acceso.",
+      "requiredDetail": "Todavía no tienes acceso a este curso.",
       "inactive": "El acceso al curso está inactivo.",
       "inactiveDetail": "Esta matrícula está {status}. Las clases privadas se reabren solo después del pago, de la aprobación administrativa o de la restauración del acceso.",
       "missing": "No se encontró el registro del curso.",
       "missingDetail": "La matrícula existe, pero el registro del curso no está disponible o tiene acceso restringido.",
       "eyebrow": "Acceso al curso",
       "back": "Volver a Mi aprendizaje",
-      "marketplace": "Abrir catálogo"
+      "marketplace": "Abrir catálogo",
+      "seeCourse": "Ver el curso",
+      "wrongAccount": "¿Entraste con otra cuenta? Salir"
     },
     "enrollmentStatus": {
       "active": "activa",
@@ -5227,7 +5500,9 @@
       "open": "Abrir enlace de la sesión",
       "soon": "Enlace disponible pronto",
       "communityDescription": "Un espacio del curso para anuncios, preguntas, recursos y conversaciones entre estudiantes.",
-      "empty": "No hay sesiones en vivo programadas por ahora."
+      "empty": "No hay sesiones en vivo programadas por ahora.",
+      "happened": "La sesión ya ocurrió.",
+      "replay": "Ver la grabación"
     },
     "leaderboard": {
       "loadError": "No pudimos cargar la clasificación.",
@@ -5486,16 +5761,13 @@
     }
   },
   "teacherRouteResidual": {
-    "couponsTitle": "Los cupones se gestionan en el panel de cada curso.",
-    "couponsDescription": "Abre un curso, elige Gestionar y ve a la sección Cupones para crear códigos de descuento. Los compradores introducen el código en la página de tu curso y el descuento se aplica antes del pago.",
-    "openCourses": "Abrir mis cursos",
     "manageLoading": "Cargando la gestión del curso..."
   },
   "teacherSalesCopy": {
     "title": "Editor de la página de ventas",
-    "description": "Edita el título, la propuesta y los resultados que ven los compradores. Este editor se centra en esos campos; el constructor completo de páginas con arrastrar y soltar sigue previsto para más adelante.",
+    "description": "Edita el título, la descripción y los resultados que ven los compradores. Este editor se centra en esos campos; el constructor completo de páginas con arrastrar y soltar sigue previsto para más adelante.",
     "productTitle": "Título del producto",
-    "summary": "Propuesta de venta / resumen",
+    "summary": "Descripción",
     "outcomes": "Resultados (uno por línea)",
     "outcomesPlaceholder": "Define tu oferta\nRealiza una primera sesión\nSigue el progreso del cliente",
     "saved": "Textos de venta guardados. Abre la página pública del producto para ver la vista previa.",
@@ -5555,6 +5827,9 @@
     }
   },
   "teacherMembers": {
+    "creatorAreaTitle": "Tu área de miembros",
+    "creatorAreaDescription": "Un solo lugar que reúne todos tus productos para tus estudiantes.",
+    "creatorAreaOpen": "Configurar área de miembros",
     "pageTitle": "Áreas de miembros",
     "products": "Productos",
     "title": "Miembros y comunidades",
@@ -5642,6 +5917,16 @@
       "process": "Lo que hacemos, paso a paso",
       "firstStep": "Primer paso"
     },
+    "upload": {
+      "button": "Subir imagen",
+      "uploading": "Subiendo…",
+      "rules": "JPG, PNG o WebP, de hasta {limit}.",
+      "orLink": "O pega un enlace",
+      "previewAlt": "Vista previa de {label}",
+      "remove": "Quitar imagen",
+      "wrongType": "Ese archivo no es una imagen JPG, PNG o WebP.",
+      "tooLarge": "Esa imagen pesa {size}. Usa una de hasta {limit}."
+    },
     "fields": {
       "headline": "Título principal",
       "subheading": "Una línea debajo del título",
@@ -5704,6 +5989,11 @@
     "updatePlaceholder": "¿Qué debería saber el grupo esta semana?",
     "pin": "Fijar arriba",
     "postUpdate": "Publicar novedad",
+    "allPosts": "Todas las publicaciones",
+    "allPostsEmpty": "Todavía no hay publicaciones.",
+    "open": "Abrir",
+    "repliesOne": "{count} respuesta",
+    "repliesMany": "{count} respuestas",
     "waiting": {
       "minutes": {
         "one": "esperando {count} min",
@@ -5727,5 +6017,28 @@
   "siteMetadata": {
     "title": "SkillsetMind | Coaching, desarrollo personal y potencial humano",
     "description": "Una plataforma vertical de negocio y aprendizaje para coaching, desarrollo personal y potencial humano."
+  },
+  "helpMenu": {
+    "trigger": "Ayuda",
+    "title": "¿Con qué necesitas ayuda?",
+    "student": {
+      "lesson": "Duda sobre una clase",
+      "lessonCommunity": "Pregunta en la comunidad del curso.",
+      "lessonMessage": "Escribe a tu profesor.",
+      "private": "Asunto privado con el profesor",
+      "privateHint": "Envía un mensaje privado.",
+      "account": "Acceso, pago, reembolso o algo que no funciona",
+      "accountHint": "Pregunta primero a nuestro asistente de ayuda."
+    },
+    "person": "Hablar con una persona",
+    "teacher": {
+      "howTo": "Cómo hago algo en la plataforma",
+      "howToAdvisor": "Pregunta al Asesor, nuestro ayudante con IA.",
+      "howToCenter": "Lee el centro de ayuda.",
+      "students": "Mis alumnos",
+      "studentsHint": "Los mensajes y las preguntas están en tu bandeja de entrada.",
+      "account": "Cuenta, pago o error",
+      "accountHint": "Envía una solicitud a nuestro equipo."
+    }
   }
 }

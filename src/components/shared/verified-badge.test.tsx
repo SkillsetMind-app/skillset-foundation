@@ -36,12 +36,12 @@ function renderBadge(verification: ProfessionalVerification, { locale = "en", co
 }
 
 describe("o selo", () => {
-  it("é um quadrado com check: sem círculo, sem cantos arredondados, sem o BadgeCheck do Lucide", () => {
+  it("é um quadrado com check e canto de 4px: sem círculo, sem o BadgeCheck do Lucide", () => {
     const { container } = render(<VerifiedSeal label="Verified professional" />);
     const svg = container.querySelector("svg")!;
 
     expect(svg).toHaveClass("verified-seal");
-    expect(svg.querySelector("rect")).not.toHaveAttribute("rx");
+    expect(svg.querySelector("rect")).toHaveAttribute("rx", "4");
     expect(svg.querySelector("circle")).toBeNull();
     expect(svg.getAttribute("class")).not.toMatch(/lucide|badge-check/);
     // Na cor da marca (marinho/latão via .verified-seal), nunca um azul fixo.

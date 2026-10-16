@@ -5,7 +5,7 @@ import { getServerTranslation } from "@/lib/i18n/server";
 import { privatePageMetadata } from "@/lib/seo/private-page-metadata";
 
 export async function generateMetadata() {
-  return privatePageMetadata("account.payoutsTax");
+  return privatePageMetadata("platform.nav.earnings");
 }
 
 export default async function AccountPaymentsPage() {
@@ -16,12 +16,12 @@ export default async function AccountPaymentsPage() {
       {/* Sem `description`: as quatro frases que ficavam aqui empurravam o
           primeiro numero para baixo de tres paragrafos. O texto vive agora no
           "Learn more" recolhido do painel, em EN/ES.
-          `hideHeader`: o painel ja abre com "PAYOUTS & TAX" + "Your earnings,
+          `hideHeader`: o painel ja abre com "EARNINGS" + "Your earnings,
           your payout setup." — o titulo da casca repetia isso uma terceira vez,
           e em ingles fixo mesmo com a sessao em espanhol (QA visual em
           producao, 08/09). Quem carrega o <h1> da pagina agora e o painel; a
           casca ainda exige `title`, entao ele vem do dicionario. */}
-      <PlatformShell title={t("account.payoutsTax")} compact hideHeader>
+      <PlatformShell title={t("platform.nav.earnings")} compact hideHeader>
         <TeacherWalletPanel />
       </PlatformShell>
     </ProtectedSurface>

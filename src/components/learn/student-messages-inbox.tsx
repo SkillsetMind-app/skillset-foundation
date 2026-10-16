@@ -98,7 +98,7 @@ export function StudentMessagesInbox() {
       </Link>
 
       {threads.length === 0 ? (
-        <section className="rounded-none border fine-rule bg-white px-6 py-10 text-center">
+        <section className="rounded-lg border fine-rule bg-white px-6 py-10 text-center">
           <Inbox
             aria-hidden="true"
             className="mx-auto text-[var(--color-ink-muted)]"
@@ -128,7 +128,7 @@ export function StudentMessagesInbox() {
                   type="button"
                   onClick={() => openThread(thread.courseId)}
                   aria-current={isActive ? "true" : undefined}
-                  className={`min-h-11 rounded-none border px-4 py-3 text-left transition ${
+                  className={`min-h-11 rounded-md border px-4 py-3 text-left transition ${
                     isActive
                       ? "border-[var(--color-primary)] bg-[rgba(44,82,130,0.06)]"
                       : "fine-rule bg-white hover:border-[var(--color-primary)]"
@@ -152,7 +152,7 @@ export function StudentMessagesInbox() {
           {selectedThread ? (
             <section
               aria-label={t("learnWave2.messages.conversation").replace("{course}", () => selectedThread.courseTitle)}
-              className="rounded-none border fine-rule bg-white p-5"
+              className="rounded-lg border fine-rule bg-white p-5"
             >
               <div className="border-b fine-rule pb-3">
                 <h2 className="text-base font-semibold text-[var(--color-primary)]">
@@ -169,7 +169,7 @@ export function StudentMessagesInbox() {
                   return (
                     <li
                       key={message.id}
-                      className={`max-w-[85%] rounded-none px-4 py-3 ${
+                      className={`max-w-[85%] rounded-lg px-4 py-3 ${
                         isMine
                           ? "justify-self-end bg-[rgba(44,82,130,0.08)]"
                           : "justify-self-start bg-[var(--color-surface-soft)]"
@@ -198,11 +198,11 @@ export function StudentMessagesInbox() {
                   disabled={isSending}
                   maxLength={COURSE_MESSAGE_MAX_CHARS}
                   rows={3}
-                  className="min-h-20 rounded-none border border-[var(--color-line)] bg-white px-4 py-3 text-sm leading-6 text-[var(--color-ink)] outline-none transition focus:border-[var(--color-primary)]"
+                  className="min-h-20 rounded-md border border-[var(--color-line)] bg-white px-4 py-3 text-sm leading-6 text-[var(--color-ink)] outline-none transition focus:border-[var(--color-primary)]"
                   placeholder={t("learnWave2.messages.placeholder")}
                 />
                 {notice ? (
-                  <p role="alert" className="rounded-none bg-[var(--color-surface-soft)] px-3 py-2 text-xs font-semibold leading-5 text-[var(--color-primary)]">
+                  <p role="alert" className="rounded-md bg-[var(--color-surface-soft)] px-3 py-2 text-xs font-semibold leading-5 text-[var(--color-primary)]">
                     {t(notice)}
                   </p>
                 ) : null}
@@ -217,7 +217,7 @@ export function StudentMessagesInbox() {
               </form>
             </section>
           ) : (
-            <section className="rounded-none border fine-rule bg-white p-5 text-sm leading-6 text-[var(--color-ink-soft)]">
+            <section className="rounded-lg border fine-rule bg-white p-5 text-sm leading-6 text-[var(--color-ink-soft)]">
               {t("learnWave2.messages.pick")}
             </section>
           )}

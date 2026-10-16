@@ -2,6 +2,7 @@ import { Suspense } from "react";
 
 import { ProtectedSurface } from "@/components/auth/protected-surface";
 import { PlatformShell } from "@/components/platform/platform-shell";
+import { BuilderSkeleton } from "@/components/teacher/builder-skeleton";
 import { TeacherBuilderHub } from "@/components/teacher/teacher-builder-hub";
 import { getServerTranslation } from "@/lib/i18n/server";
 import { privatePageMetadata } from "@/lib/seo/private-page-metadata";
@@ -19,13 +20,7 @@ export default async function TeacherBuilderPage() {
         hideHeader
       >
         <Suspense
-          fallback={
-            <section className="rounded-none border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)]">
-              <p className="text-sm text-[var(--color-ink-soft)]">
-                {t("creatorEditor.builder.shell.loading")}
-              </p>
-            </section>
-          }
+          fallback={<BuilderSkeleton label={t("creatorEditor.builder.shell.loading")} />}
         >
           <TeacherBuilderHub />
         </Suspense>

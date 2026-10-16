@@ -48,7 +48,7 @@ export function VerifiedSeal({
       className={cn("verified-seal shrink-0", className)}
       {...(label ? { role: "img", "aria-label": label } : { "aria-hidden": true })}
     >
-      <rect width="16" height="16" fill="var(--seal-ground)" />
+      <rect width="16" height="16" rx="4" fill="var(--seal-ground)" />
       <path
         d="M4.2 8.3 6.9 11l4.9-5.6"
         fill="none"
@@ -67,7 +67,7 @@ export function VerifiedSeal({
  * qualquer utilitária de fonte posta no próprio <button>.
  */
 export const verifiedLabelClass =
-  "inline-flex min-h-8 items-center gap-1.5 whitespace-nowrap rounded-none border border-[var(--color-line)] bg-[var(--color-surface)] px-2 py-1 uppercase tracking-[0.14em] text-[var(--color-accent-fg)]";
+  "inline-flex min-h-8 items-center gap-1.5 whitespace-nowrap rounded-chip border border-[var(--color-line)] bg-[var(--color-surface)] px-2 py-1 uppercase tracking-[0.14em] text-[var(--color-accent-fg)]";
 export const verifiedLabelTextClass = "text-[11px] font-bold leading-none";
 
 /** Frase do popover: o que foi conferido, e quando (data no idioma da página). */
@@ -183,7 +183,7 @@ export function VerifiedBadge({
         }}
         className={
           compact
-            ? "grid size-7 place-items-center rounded-none"
+            ? "grid size-7 place-items-center rounded-sm"
             : cn(verifiedLabelClass, "transition-colors duration-[var(--duration-fast)] hover:border-[var(--color-accent)]")
         }
       >
@@ -197,7 +197,7 @@ export function VerifiedBadge({
           id={panelId}
           data-verified-popover=""
           style={{ transform: "translateX(-50%)" }}
-          className="absolute block left-1/2 top-full z-30 mt-2 w-72 max-w-[calc(100vw-1rem)] border border-[var(--color-line-strong)] border-t-2 border-t-[var(--color-accent)] bg-[var(--color-surface)] p-4 text-left shadow-[var(--shadow-strong)]"
+          className="absolute block left-1/2 top-full z-30 mt-2 w-72 max-w-[calc(100vw-1rem)] rounded-lg border border-[var(--color-line-strong)] border-t-2 border-t-[var(--color-accent)] bg-[var(--color-surface)] p-4 text-left shadow-[var(--shadow-strong)]"
         >
           <span className="flex items-center gap-2 text-sm font-bold text-[var(--color-primary)]">
             <VerifiedSeal size={16} />

@@ -5,6 +5,7 @@ import { DEFAULT_PLATFORM_FEE_BPS } from "@/lib/payments/rules";
 import type { TeacherCourse, TeacherCourseModule, TeacherCourseStatus, TeacherCoursePaymentType, MembersTheme } from "@/domain/teacher-course";
 import {
   isInternalSmokeCourse,
+  parseTeacherCourseProductFormat,
   normalizeLearningOutcomes,
   normalizeMembersText,
   normalizeMembersTheme,
@@ -43,6 +44,7 @@ export function rowToTeacherCourse(row: CourseRow): TeacherCourse {
     category: row.category,
     categories: (row.categories as string[] | null) ?? undefined,
     learningOutcomes: (row.learning_outcomes as string[] | null) ?? undefined,
+    productFormat: parseTeacherCourseProductFormat(row.product_format),
     status: row.status as TeacherCourseStatus,
     modules: (row.modules as unknown as TeacherCourseModule[]) ?? [],
     lessonCount: row.lesson_count,
@@ -108,22 +110,30 @@ export function subscribeToPublishedTeacherCourses(
 
   void load();
 
-  // Realtime server filters only support a single-column eq, not `in`, so watch
-  // the whole table and re-run the filtered query on any change.
-  // ponytail: table-wide change fan-in; fine for the public catalog list (status filter is applied in load()).
-  const channel = supabase
-    .channel("courses:published")
-    .on(
-      "postgres_changes",
-      { event: "*", schema: "public", table: coursesTable },
-      () => {
-        void load();
-      },
-    )
-    .subscribe();
+  // Visitante sem login fica so com a carga acima: o Realtime do projeto e
+  // "private only" e recusava este canal ~575 vezes por dia.
+  let channel: ReturnType<typeof supabase.channel> | null = null;
+  let closed = false;
+  void supabase.auth.getSession().then(({ data }) => {
+    if (!data.session || closed) return;
+    // Realtime server filters only support a single-column eq, not `in`, so watch
+    // the whole table and re-run the filtered query on any change.
+    // ponytail: table-wide change fan-in; fine for the public catalog list (status filter is applied in load()).
+    channel = supabase
+      .channel("courses:published")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: coursesTable },
+        () => {
+          void load();
+        },
+      )
+      .subscribe();
+  });
 
   return () => {
-    void supabase.removeChannel(channel);
+    closed = true;
+    if (channel) void supabase.removeChannel(channel);
   };
 }
 
@@ -398,6 +408,7 @@ export function teacherCourseToLearningCourse(course: TeacherCourse): Course {
       })),
     })),
     communityEnabled: course.communityEnabled ?? false,
+    productFormat: course.productFormat ?? "course",
     membersTheme: normalizeMembersTheme(course.membersTheme),
     membersCoverAssetId: normalizeMembersText(course.membersCoverAssetId, 160),
     membersTitle: normalizeMembersText(course.membersTitle, MAX_MEMBERS_TITLE_LENGTH),

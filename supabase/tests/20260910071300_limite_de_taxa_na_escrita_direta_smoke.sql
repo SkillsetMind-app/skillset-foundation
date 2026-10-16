@@ -29,6 +29,10 @@ insert into auth.users(id, aud, role, email, email_confirmed_at, raw_app_meta_da
 select pg_temp.uid(n), 'authenticated', 'authenticated', 'write-rate-' || n || '@example.test',
   now(), '{}', '{}', now(), now()
 from generate_series(1, 3) n;
+-- Keep the creator plan current so this smoke exercises its original guard.
+insert into public.subscriptions(id, user_id, plan_id, status, current_period_end)
+select 'smoke-plan-' || pg_temp.uid(n)::text, pg_temp.uid(n)::text, 'basic', 'active', now() + interval '1 day'
+from (values (1)) owners(n);
 update public.users
   set roles = '["student","teacher"]', teacher_terms_accepted_at = now(),
       teacher_terms_version = 'smoke', activation_fee_paid_at = now()
@@ -45,6 +49,12 @@ from generate_series(2, 3) n;
 insert into public.community_posts(id, course_slug, author_id, author_name, author_role, category, body)
 values ('write-rate-post', 'write-rate-course', pg_temp.uid(1)::text, 'Rate owner', 'teacher',
   'question', 'Target for replies and reports.');
+-- Um post por denúncia: a mesma pessoa não abre duas denúncias abertas do
+-- mesmo alvo (20261008010000), então cada denúncia do teste mira outro post.
+insert into public.community_posts(id, course_slug, author_id, author_name, author_role, category, body)
+select 'write-rate-report-' || n, 'write-rate-course', pg_temp.uid(1)::text, 'Rate owner', 'teacher',
+  'discussion', 'Target for report ' || n || '.'
+from generate_series(1, 21) n;
 
 -- Um INSERT por tabela, do jeito que o navegador grava; p_n só muda o texto.
 create function pg_temp.write_post(p_author uuid, p_n int) returns void language sql as $$
@@ -65,7 +75,7 @@ $$;
 create function pg_temp.write_report(p_author uuid, p_n int) returns void language sql as $$
   insert into public.community_reports(course_slug, post_id, target_type, target_author_id,
     target_author_name, reporter_id, reporter_name, reason, detail, status)
-  values ('write-rate-course', 'write-rate-post', 'post', pg_temp.uid(1)::text, 'Rate owner',
+  values ('write-rate-course', 'write-rate-report-' || p_n, 'post', pg_temp.uid(1)::text, 'Rate owner',
     p_author::text, 'Rate member', 'spam', 'Synthetic report ' || p_n || '.', 'open');
 $$;
 create function pg_temp.write_ticket(p_author uuid, p_n int) returns void language sql as $$
@@ -132,7 +142,11 @@ select pg_temp.check_rate('trusted database write is not limited',
 reset role;
 
 -- O servidor (service_role) não tem teto, nem gravando pelo aluno que estourou.
+-- Antes, a equipe fecha as denúncias abertas do aluno 2: a denúncia aberta
+-- repetida no mesmo alvo é recusada para todo mundo, servidor incluído.
 select pg_temp.act_as(pg_temp.uid(2), 'service_role');
+update public.community_reports set status = 'dismissed'
+  where reporter_id = pg_temp.uid(2)::text and status = 'open';
 set local role service_role;
 select pg_temp.check_rate('server posts past the learner limit',
   pg_temp.writes_before_limit('write_post', pg_temp.uid(2), 21) = 21);

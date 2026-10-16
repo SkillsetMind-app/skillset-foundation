@@ -170,15 +170,18 @@ describe("caixa de mensagens do aluno", () => {
   });
 });
 
-describe("grupo Account na barra lateral do aluno", () => {
-  it("Messages existe no grupo Account, so para o aluno", () => {
+// Mensagens subiu para os itens fixos do aluno (antes morava no grupo Account,
+// que vinha fechado para quem estava em "Learn"). Embaixo ficam so compras e
+// configuracoes; os avisos chegam pelo sino.
+describe("Mensagens entre os itens fixos do aluno", () => {
+  it("Messages fica na secao fixa, so para o aluno", () => {
     const item = platformNav.find((entry) => entry.href === "/learn/messages");
 
-    expect(item).toMatchObject({ sectionKey: "account", contexts: ["learner"] });
+    expect(item).toMatchObject({ sectionKey: "learn", contexts: ["learner"] });
   });
 
-  it("avisos, compras e configuracoes aparecem para o aluno (antes: so no menu do avatar)", () => {
-    for (const href of ["/account", "/account/billing", "/account/notifications"]) {
+  it("compras e configuracoes ficam embaixo, na secao da conta", () => {
+    for (const href of ["/account", "/account/billing"]) {
       const item = platformNav.find((entry) => entry.href === href);
       expect(item?.contexts, href).toContain("learner");
       expect(item?.sectionKey, href).toBe("account");

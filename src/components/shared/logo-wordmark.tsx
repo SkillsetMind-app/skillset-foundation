@@ -11,6 +11,8 @@ type LogoWordmarkProps = {
   tone?: "auto" | "light" | "dark";
   compact?: boolean;
   nav?: boolean;
+  /** false: sem pré-carga (lazy). Para a marca que o CSS esconde em algumas telas. */
+  priority?: boolean;
   className?: string;
 };
 
@@ -39,6 +41,7 @@ export function LogoWordmark({
   tone = "auto",
   compact = false,
   nav = false,
+  priority = true,
   className,
 }: LogoWordmarkProps) {
   const inner =
@@ -52,7 +55,7 @@ export function LogoWordmark({
           width={brand.logoMarkSize.width}
           height={brand.logoMarkSize.height}
           sizes={MARK_SIZES}
-          priority
+          priority={priority}
           className={`logo-wordmark__asset logo-wordmark__asset--light ${markSizeClass(nav, compact)} w-auto object-contain`}
         />
         <Image
@@ -61,7 +64,7 @@ export function LogoWordmark({
           width={brand.logoMarkSize.width}
           height={brand.logoMarkSize.height}
           sizes={MARK_SIZES}
-          priority
+          priority={priority}
           className={`logo-wordmark__asset logo-wordmark__asset--dark ${markSizeClass(nav, compact)} w-auto object-contain`}
         />
       </span>
@@ -75,7 +78,7 @@ export function LogoWordmark({
           width={brand.logoFullLightSize.width}
           height={brand.logoFullLightSize.height}
           sizes={FULL_SIZES}
-          priority
+          priority={priority}
           className={`logo-wordmark__asset logo-wordmark__asset--light ${fullSizeClass(nav, compact)} w-auto object-contain`}
         />
         <Image
@@ -84,7 +87,7 @@ export function LogoWordmark({
           width={brand.logoFullDarkSize.width}
           height={brand.logoFullDarkSize.height}
           sizes={FULL_SIZES}
-          priority
+          priority={priority}
           className={`logo-wordmark__asset logo-wordmark__asset--dark ${fullSizeClass(nav, compact)} w-auto object-contain`}
         />
       </span>

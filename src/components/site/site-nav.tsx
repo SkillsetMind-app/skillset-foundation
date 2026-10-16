@@ -134,7 +134,7 @@ export function SiteNav({ landingNav }: SiteNavProps = {}) {
           alvo é o <main id="conteudo"> de cada página pública. */}
       <a
         href="#conteudo"
-        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[60] focus:rounded-none focus:bg-white focus:px-4 focus:py-3 focus:text-sm focus:font-semibold focus:text-[var(--color-primary)] focus:shadow-[var(--shadow-soft)]"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[60] focus:rounded-md focus:bg-white focus:px-4 focus:py-3 focus:text-sm focus:font-semibold focus:text-[var(--color-primary)] focus:shadow-[var(--shadow-soft)]"
       >
         {t("nav.skipToContent")}
       </a>
@@ -206,7 +206,7 @@ export function SiteNav({ landingNav }: SiteNavProps = {}) {
             aria-expanded={mobileOpen}
             aria-controls="site-mobile-menu"
             onClick={() => setMobileOpen((open) => !open)}
-            className="grid size-11 shrink-0 place-items-center rounded-none border border-[var(--color-line)] bg-white text-[var(--color-primary)] transition-colors hover:bg-[var(--color-surface-soft)] xl:hidden"
+            className="grid size-11 shrink-0 place-items-center rounded-md border border-[var(--color-line)] bg-white text-[var(--color-primary)] transition-colors hover:bg-[var(--color-surface-soft)] xl:hidden"
           >
             {mobileOpen ? (
               <X aria-hidden="true" size={18} strokeWidth={1.8} />
@@ -230,12 +230,12 @@ export function SiteNav({ landingNav }: SiteNavProps = {}) {
             />
             <div
               id="site-mobile-menu"
-              className="absolute inset-x-0 top-[calc(100%+8px)] z-[46] max-h-[calc(100svh-88px)] scroll-py-2 overflow-y-auto rounded-none border border-[var(--color-line)] bg-white p-3 shadow-[0_24px_48px_rgba(15,39,68,0.16)] xl:hidden"
+              className="absolute inset-x-0 top-[calc(100%+8px)] z-[46] max-h-[calc(100svh-88px)] scroll-py-2 overflow-y-auto rounded-lg border border-[var(--color-line)] bg-white p-3 shadow-[0_24px_48px_rgba(15,39,68,0.16)] xl:hidden"
             >
               <nav aria-label={t("nav.mobileNavLabel")} className="grid gap-1">
                 {resolvedNav.map((item) => {
                   const baseClass =
-                    "rounded-none px-3 py-3 text-sm font-semibold transition-colors";
+                    "rounded-md px-3 py-3 text-sm font-semibold transition-colors";
 
                   if (item.isAnchor) {
                     return (

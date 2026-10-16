@@ -327,3 +327,25 @@ export function subscribeToEnrollment(
     void supabase.removeChannel(channel);
   };
 }
+
+/** Dos cursos informados, os que estao com a comunidade LIGADA. A lista
+ *  "Comunidades" do aluno mostrava cartao de curso com a comunidade desligada
+ *  (o cartao levava a uma aba que a sala nem mostra). O aluno le os cursos em
+ *  que esta matriculado (courses_select_enrolled), a mesma regra de matricula
+ *  aberta que a lista usa. */
+export async function getCommunityCourseIds(courseIds: string[]): Promise<Set<string>> {
+  if (!courseIds.length) {
+    return new Set();
+  }
+
+  const { data, error } = await getSupabaseBrowserClient()
+    .from("courses")
+    .select("id")
+    .in("id", courseIds)
+    .eq("community_enabled", true);
+
+  if (error) {
+    throw error;
+  }
+  return new Set((data ?? []).map((row) => row.id));
+}

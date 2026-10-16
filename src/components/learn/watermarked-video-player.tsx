@@ -59,30 +59,40 @@ export function VideoWatermark({
     };
   }, []);
 
-  const viewerLabel =
-    user?.email
-    || user?.displayName
-    || t("courseMedia.watermark.learner").replace("{brandName}", () => brandName);
+  // Um código curto da conta, nunca o e-mail nem o nome: quem assiste não
+  // precisa ver o próprio dado pessoal na tela, e a equipe ainda acha a conta
+  // de quem vazou uma gravação pelo início do uid.
+  const viewerCode = viewerCodeFromUid(user?.uid);
+  const viewerLabel = viewerCode
+    ? `ID ${viewerCode}`
+    : t("courseMedia.watermark.learner").replace("{brandName}", () => brandName);
   const timestampLabel = timestamp === null
     ? t("courseMedia.watermark.protectedPlayback")
     : new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(timestamp);
   const watermarkText = `${viewerLabel} · ${timestampLabel} · ${brandName}`;
 
   return (
-    <div className="relative overflow-hidden rounded-none bg-[var(--color-primary)]">
+    <div className="relative overflow-hidden rounded-md bg-[var(--color-primary)]">
       {children}
       {/* pointer-events-none so the overlay never steals a click from the
           player controls underneath — including the iframe ones. */}
       <div className="pointer-events-none absolute inset-0">
         <div
           data-watermark-corner={corner}
-          className={`absolute max-w-[70%] rounded-none bg-[rgba(15,39,68,0.38)] px-2 py-0.5 text-[10px] font-medium tracking-[0.04em] text-white/70 backdrop-blur-[2px] ${watermarkCorners[corner]}`}
+          className={`absolute max-w-[70%] rounded-chip bg-[rgba(15,39,68,0.38)] px-2 py-0.5 text-[10px] font-medium tracking-[0.04em] text-white/70 backdrop-blur-[2px] ${watermarkCorners[corner]}`}
         >
           {watermarkText}
         </div>
       </div>
     </div>
   );
+}
+
+/** "4f3a92c1-…" → "4F3A-92C1". */
+export function viewerCodeFromUid(uid: string | null | undefined): string | null {
+  const compact = (uid ?? "").replace(/[^a-z0-9]/gi, "").slice(0, 8).toUpperCase();
+  if (compact.length < 8) return null;
+  return `${compact.slice(0, 4)}-${compact.slice(4)}`;
 }
 
 const watermarkCorners = [

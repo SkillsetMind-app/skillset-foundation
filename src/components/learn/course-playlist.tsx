@@ -1,12 +1,13 @@
 "use client";
 
-import { CheckCircle2, ChevronDown, LockKeyhole, PlayCircle, Search } from "lucide-react";
+import { ChevronDown, LockKeyhole, PlayCircle, Search } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { formatUnlockDate, type LessonUnlockState } from "@/domain/drip-policy";
 import type { CourseModule } from "@/domain/learning";
 import { LessonThumbnail } from "@/components/learn/lesson-thumbnail";
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { DrawnCheck } from "@/components/ui/drawn-check";
 
 type CoursePlaylistProps = {
   thumbnailUrlByLessonId?: ReadonlyMap<string, string>;
@@ -18,6 +19,8 @@ type CoursePlaylistProps = {
   /** Só o check da aula concluída é clicável — para desfazer. Concluir mora
    *  num lugar só: o botão sob o vídeo (e o avanço automático). */
   onUncomplete?: (lessonId: string) => void;
+  /** Aulas concluidas com a sala aberta: o check delas se desenha. */
+  justCompletedIds?: ReadonlySet<string>;
 };
 
 // A playlist ao lado do vídeo.
@@ -37,6 +40,7 @@ export function CoursePlaylist({
   unlockStateById,
   onSelect,
   onUncomplete,
+  justCompletedIds,
 }: CoursePlaylistProps) {
   const { t, locale } = useTranslation();
   const [query, setQuery] = useState("");
@@ -181,12 +185,12 @@ export function CoursePlaylist({
                             title={t("learn.classroom.curriculum.markIncomplete")}
                             className="member-playlist__status member-playlist__status--button"
                           >
-                            <CheckCircle2 aria-hidden size={15} />
+                            <DrawnCheck size={14} strokeWidth={2.6} animate={justCompletedIds?.has(lesson.id)} />
                           </button>
                         ) : (
                           <span className="member-playlist__status" aria-hidden="true">
                             {isCompleted ? (
-                              <CheckCircle2 size={15} />
+                              <DrawnCheck size={14} strokeWidth={2.6} animate={justCompletedIds?.has(lesson.id)} />
                             ) : isSelected ? (
                               <PlayCircle size={15} />
                             ) : unlocked ? (

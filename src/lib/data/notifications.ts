@@ -19,6 +19,10 @@ function rowToNotification(row: NotificationRow): AppNotification {
     read: row.read,
     link: row.link,
     actorName: row.actor_name,
+    params:
+      row.params && typeof row.params === "object" && !Array.isArray(row.params)
+        ? row.params
+        : null,
     createdAt: row.created_at,
   };
 }

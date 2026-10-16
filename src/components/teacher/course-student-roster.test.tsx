@@ -96,15 +96,25 @@ describe("CourseStudentRosterView", () => {
   it("says nobody is enrolled instead of inventing a placeholder row", () => {
     renderRoster([]);
 
-    expect(screen.getByText(/No one is enrolled yet/)).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "When someone joins, you'll see them here." })).toBeInTheDocument();
+    // A cena "ainda sem alunos", escondida do leitor de tela.
+    expect(document.querySelector('svg[data-scene="noStudents"]')).toHaveAttribute("aria-hidden", "true");
     expect(screen.queryByRole("table")).not.toBeInTheDocument();
+    // Sem produto publicado nao ha pagina para mandar a ninguem.
+    expect(screen.queryByRole("button", { name: "Copy my page link" })).toBeNull();
+  });
+
+  it("offers the page link when the product is published", () => {
+    render(<CourseStudentRosterView state="ready" students={[]} courseId="course-1" share={{ title: "Group Work" }} />);
+
+    expect(screen.getByRole("button", { name: "Copy my page link" })).toBeInTheDocument();
   });
 
   it("reports a failed read rather than rendering an empty roster", () => {
     render(<CourseStudentRosterView state="error" students={[]} courseId="course-1" />);
 
     expect(screen.getByText(/could not load the roster/)).toBeInTheDocument();
-    expect(screen.queryByText(/No one is enrolled yet/)).not.toBeInTheDocument();
+    expect(screen.queryByText("When someone joins, you'll see them here.")).not.toBeInTheDocument();
   });
 
   it("sums the class up before the table so the numbers are not counted by hand", () => {

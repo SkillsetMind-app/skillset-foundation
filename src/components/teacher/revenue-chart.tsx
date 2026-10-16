@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 
+import { SpotArt } from "@/components/ui/spot-art";
 import type { RevenuePoint } from "@/domain/creator-reports";
 
 /**
@@ -136,6 +137,8 @@ export function RevenueChart({
 
         {!totalMinor ? (
           <div className="studio-chart-empty">
+            {/* A cena do recibo, sem moeda: nada aqui sugere quanto vai entrar. */}
+            <SpotArt scene="noSales" className="spot-art-in mx-auto mb-2 max-w-[6.5rem]" />
             <p>{emptyTitle}</p>
             <span>{emptyDetail}</span>
           </div>

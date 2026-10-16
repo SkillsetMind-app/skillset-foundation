@@ -73,7 +73,7 @@ export function OpsUserTable() {
   const to = Math.min(total, (page + 1) * OPS_USERS_PAGE_SIZE);
 
   return (
-    <section className="min-w-0 rounded-none border border-[var(--color-line)] bg-white p-4 shadow-[var(--shadow-soft)] sm:p-6">
+    <section className="min-w-0 rounded-lg border border-[var(--color-line)] bg-white p-4 shadow-[var(--shadow-soft)] sm:p-6">
       {target ? (
         <AccountControlDialog key={target.uid} uid={target.uid} label={target.email || target.displayName || target.uid}
           onClose={() => { setTarget(null); setReload((value) => value + 1); }} />
@@ -86,12 +86,12 @@ export function OpsUserTable() {
         <Field id="ops-user-search" label={t(`${table}.searchLabel`)}>
           {(a11y) => <input {...a11y} type="search" value={search} placeholder={t(`${table}.searchPlaceholder`)}
             onChange={(event) => { setSearch(event.target.value); setPage(0); }}
-            className="min-h-11 w-full rounded-none border border-[var(--color-line)] px-4 py-2.5 text-sm font-normal" />}
+            className="min-h-11 w-full rounded-md border border-[var(--color-line)] px-4 py-2.5 text-sm font-normal" />}
         </Field>
         <Field id="ops-user-status" label={t(`${table}.statusLabel`)}>
           {(a11y) => <select {...a11y} value={status}
             onChange={(event) => { setStatus(event.target.value as OpsUserStatus | ""); setPage(0); }}
-            className="min-h-11 w-full rounded-none border border-[var(--color-line)] bg-transparent px-3 text-sm">
+            className="min-h-11 w-full rounded-md border border-[var(--color-line)] bg-transparent px-3 text-sm">
             <option value="">{t(`${table}.all`)}</option>
             {STATUSES.map((value) => <option key={value} value={value}>{t(`${table}.status.${value}`)}</option>)}
           </select>}
@@ -99,7 +99,7 @@ export function OpsUserTable() {
         <Field id="ops-user-role" label={t(`${table}.roleLabel`)}>
           {(a11y) => <select {...a11y} value={role}
             onChange={(event) => { setRole(event.target.value as Role | ""); setPage(0); }}
-            className="min-h-11 w-full rounded-none border border-[var(--color-line)] bg-transparent px-3 text-sm">
+            className="min-h-11 w-full rounded-md border border-[var(--color-line)] bg-transparent px-3 text-sm">
             <option value="">{t(`${table}.all`)}</option>
             {ROLES.map((value) => <option key={value} value={value}>{t(roleLabelKeys[value])}</option>)}
           </select>}
@@ -135,7 +135,7 @@ export function OpsUserTable() {
               lastSignIn ? t(`${table}.lastSignIn`).replace("{date}", () => lastSignIn) : t(`${table}.neverSignedIn`),
             ].filter(Boolean).join(" · ");
             return (
-              <li key={user.uid} className="min-w-0 rounded-none border border-[var(--color-line)] p-4">
+              <li key={user.uid} className="min-w-0 rounded-lg border border-[var(--color-line)] p-4">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0">
                     <Link href={`/ops/users/${encodeURIComponent(user.uid)}`}

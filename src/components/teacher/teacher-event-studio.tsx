@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { ArrowLeft, ArrowRight, CalendarDays, Plus, X } from "lucide-react";
 
@@ -16,7 +17,11 @@ import {
   type CourseEventType,
 } from "@/domain/course-event";
 import { getSafeExternalUrl } from "@/domain/external-url";
-import type { TeacherCourse } from "@/domain/teacher-course";
+import {
+  countCourseLessons,
+  teacherCanEditCourse,
+  type TeacherCourse,
+} from "@/domain/teacher-course";
 import {
   cancelCourseEvent,
   createCourseEvent,
@@ -100,6 +105,9 @@ export function TeacherEventStudio() {
     searchParams.get("newEvent") === "1",
   );
   const [formStep, setFormStep] = useState<1 | 2>(1);
+  // Produto da sessao recem-marcada. Antes a pessoa ficava na Agenda sem
+  // caminho para preco e publicacao.
+  const [nextStepCourseId, setNextStepCourseId] = useState<string | null>(null);
   const stepHeading = useRef<HTMLHeadingElement>(null);
   const [filter, setFilter] = useState<EventFilter>("upcoming");
   const [search, setSearch] = useState("");
@@ -280,6 +288,7 @@ export function TeacherEventStudio() {
 
         closeForm();
         setCourseId(selectedCourse.id);
+        setNextStepCourseId(selectedCourse.id);
       }
     } catch {
       setError("save");
@@ -355,6 +364,24 @@ export function TeacherEventStudio() {
     },
   ];
 
+  // Publicado nao precisa do passo; o status vem da inscricao, entao o aviso
+  // some sozinho quando o produto for publicado. Em revisao o construtor abre
+  // so para leitura: o atalho levaria a uma tela sem nada para fazer.
+  const nextStepCourse = courses.find(
+    (course) =>
+      course.id === nextStepCourseId
+      && teacherCanEditCourse(course.status)
+      && course.status !== "published",
+  );
+  // Gratis nao tem preco para definir: o passo e so publicar.
+  const nextStepIsFree = nextStepCourse?.paymentType === "free";
+  // So o curso exige aula para publicar (publish_teacher_course,
+  // 20261007010000). Evento ao vivo, comunidade e e-book publicam sem.
+  const nextStepNeedsLesson = nextStepCourse
+    ? (nextStepCourse.productFormat ?? "course") === "course"
+      && countCourseLessons(nextStepCourse.modules ?? []) === 0
+    : false;
+
   const countLine = t(`${copy}.${visible.length === 1 ? "countOne" : "count"}`)
     .replace("{count}", () => String(visible.length))
     .replace("{filter}", () => t(`${copy}.filter.${filter}`));
@@ -375,7 +402,7 @@ export function TeacherEventStudio() {
                 {tile.value}
               </dd>
             ) : (
-              <dd className="mt-1 h-8 w-10 animate-pulse rounded-none bg-[var(--color-surface-strong)]" />
+              <dd className="mt-1 h-8 w-10 animate-pulse rounded bg-[var(--color-surface-strong)]" />
             )}
             <dd className="sr-only">
               {tile.hint}
@@ -408,9 +435,42 @@ export function TeacherEventStudio() {
         {/* Erro fora do formulario: cancelar e excluir tambem falham, e com o
             formulario fechado a mensagem ficava invisivel. */}
         {error ? (
-          <p role="alert" className="mt-4 rounded-none border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
+          <p role="alert" className="mt-4 rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
             {t(`${copy}.errors.${error}`)}
           </p>
+        ) : null}
+
+        {nextStepCourse ? (
+          <section
+            aria-labelledby="event-next-step-title"
+            className="mt-4 grid gap-3 rounded-lg border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-4"
+          >
+            <h4 id="event-next-step-title" className="text-base font-semibold text-[var(--color-ink)]">
+              {t(`${copy}.nextStep.${nextStepIsFree ? "titleFree" : "title"}`)}
+            </h4>
+            {nextStepNeedsLesson ? (
+              <p className="text-sm leading-6 text-[var(--color-ink-soft)]">
+                {t(`${copy}.nextStep.lessonHelp`)}
+              </p>
+            ) : null}
+            <div className="flex flex-wrap gap-3">
+              <Link
+                href={`/teach/builder?courseId=${encodeURIComponent(nextStepCourse.id)}&tab=${nextStepIsFree ? "review" : "pricing"}`}
+                className="button-solid button-lg w-full sm:w-auto"
+              >
+                {t(`${copy}.nextStep.${nextStepIsFree ? "publish" : "pricing"}`)}
+                <ArrowRight aria-hidden="true" size={16} strokeWidth={2} />
+              </Link>
+              {nextStepNeedsLesson ? (
+                <Link
+                  href={`/teach/builder?courseId=${encodeURIComponent(nextStepCourse.id)}&tab=content&welcome=1`}
+                  className="button-outline button-lg w-full sm:w-auto"
+                >
+                  {t(`${copy}.nextStep.addLesson`)}
+                </Link>
+              ) : null}
+            </div>
+          </section>
         ) : null}
 
         {isFormOpen ? (
@@ -440,7 +500,7 @@ export function TeacherEventStudio() {
                   value={selectedCourse?.id ?? ""}
                   onChange={(event) => setCourseId(event.target.value)}
                   disabled={courses.length === 0 || isLoading || Boolean(editingEventId)}
-                  className="min-w-0 w-full rounded-none border border-[var(--color-line)] bg-[var(--color-surface)] px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:opacity-60"
+                  className="min-w-0 w-full rounded-md border border-[var(--color-line)] bg-[var(--color-surface)] px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:opacity-60"
                 >
                   {!selectedCourse ? (
                     <option value="" disabled>{t(`${copy}.${courses.length ? "courseUnavailableOption" : "courseEmptyOption"}`)}</option>
@@ -459,7 +519,7 @@ export function TeacherEventStudio() {
                   <select
                     value={type}
                     onChange={(event) => setType(event.target.value as CourseEventType)}
-                    className="rounded-none border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
+                    className="rounded-md border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
                   >
                     {eventTypes.map((item) => (
                       <option key={item} value={item}>
@@ -475,7 +535,7 @@ export function TeacherEventStudio() {
                     onChange={(event) => setStartsAt(event.target.value)}
                     type="datetime-local"
                     required
-                    className="rounded-none border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
+                    className="rounded-md border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
                   />
                 </label>
               </div>
@@ -491,7 +551,7 @@ export function TeacherEventStudio() {
                   required
                   minLength={3}
                   placeholder={t(`${copy}.titlePlaceholder`)}
-                  className="rounded-none border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
+                  className="rounded-md border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
                 />
               </label>
 
@@ -502,7 +562,7 @@ export function TeacherEventStudio() {
                   onChange={(event) => setExternalUrl(event.target.value)}
                   required
                   placeholder={t(`${copy}.urlPlaceholder`)}
-                  className="rounded-none border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
+                  className="rounded-md border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
                 />
               </label>
 
@@ -515,7 +575,7 @@ export function TeacherEventStudio() {
                   minLength={12}
                   rows={4}
                   placeholder={t(`${copy}.descriptionPlaceholder`)}
-                  className="resize-none rounded-none border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
+                  className="resize-none rounded-md border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
                 />
               </label>
               </>}
@@ -570,7 +630,7 @@ export function TeacherEventStudio() {
             id="events-filter"
             value={filter}
             onChange={(event) => setFilter(event.target.value as EventFilter)}
-            className="min-h-11 rounded-none border border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2 text-sm font-semibold text-[var(--color-ink)]"
+            className="min-h-11 rounded-md border border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2 text-sm font-semibold text-[var(--color-ink)]"
           >
             {FILTERS.map((option) => (
               <option key={option} value={option}>
@@ -588,7 +648,7 @@ export function TeacherEventStudio() {
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             placeholder={t(`${copy}.searchPlaceholder`)}
-            className="min-h-11 min-w-[12rem] flex-1 rounded-none border border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-ink)]"
+            className="min-h-11 min-w-[12rem] flex-1 rounded-md border border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-ink)]"
           />
           <ExportTableButton rows={exportRows} filename="skillset-events" />
         </div>
@@ -597,7 +657,7 @@ export function TeacherEventStudio() {
 
         <div className="mt-4 grid gap-3">
           {!eventsLoaded ? (
-            <p className="rounded-none border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-7 text-[var(--color-ink-soft)]">
+            <p className="rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-7 text-[var(--color-ink-soft)]">
               {t(`${copy}.loading`)}
             </p>
           ) : visible.length === 0 ? (
@@ -618,7 +678,7 @@ export function TeacherEventStudio() {
             visible.map((event) => (
               <article
                 key={event.id}
-                className="rounded-none border fine-rule bg-[var(--color-surface-soft)] p-4"
+                className="rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4"
               >
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
@@ -629,7 +689,7 @@ export function TeacherEventStudio() {
                       {event.title}
                     </h4>
                   </div>
-                  <span className="rounded-none bg-white px-2.5 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-primary)]">
+                  <span className="rounded-md bg-white px-2.5 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-primary)]">
                     {t(`${copy}.status.${event.status}`)}
                   </span>
                 </div>
@@ -715,7 +775,7 @@ function TeacherEventRsvpSummary({ eventId }: { eventId: string }) {
   const notAttendingCount = rsvps.filter((rsvp) => rsvp.status === "not_attending").length;
 
   return (
-    <div className="mt-4 rounded-none border border-[var(--color-line)] bg-white p-3">
+    <div className="mt-4 rounded-lg border border-[var(--color-line)] bg-white p-3">
       <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--color-ink-soft)]">
         {t(`${copy}.rsvp`)}
       </p>
@@ -724,15 +784,15 @@ function TeacherEventRsvpSummary({ eventId }: { eventId: string }) {
           {t(`${copy}.rsvpLoading`)}
         </p>
       ) : error ? (
-        <p className="mt-2 text-sm font-semibold text-[var(--color-accent-fg)]">
+        <p className="mt-2 text-sm font-semibold text-[var(--color-danger-fg)]">
           {t(`${copy}.rsvpError`)}
         </p>
       ) : (
         <div className="mt-2 flex flex-wrap gap-2 text-sm">
-          <span className="rounded-none bg-[var(--color-surface-soft)] px-3 py-1 font-semibold text-[var(--color-primary)]">
+          <span className="rounded-md bg-[var(--color-surface-soft)] px-3 py-1 font-semibold text-[var(--color-primary)]">
             {t(`${copy}.going`).replace("{count}", () => String(attendingCount))}
           </span>
-          <span className="rounded-none bg-[var(--color-surface-soft)] px-3 py-1 font-semibold text-[var(--color-ink-soft)]">
+          <span className="rounded-md bg-[var(--color-surface-soft)] px-3 py-1 font-semibold text-[var(--color-ink-soft)]">
             {t(`${copy}.notGoing`).replace("{count}", () => String(notAttendingCount))}
           </span>
         </div>

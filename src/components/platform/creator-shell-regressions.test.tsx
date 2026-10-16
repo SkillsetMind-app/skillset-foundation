@@ -36,16 +36,15 @@ vi.mock("@/components/i18n/i18n-provider", () => ({
         "platform.openSectionNav": "Open {section} navigation",
         "platform.navSection.home": "Home",
         "platform.navSection.products": "Products",
-        "platform.navSection.marketing": "Marketing",
+        "platform.navSection.promote": "Promote",
         "platform.navSection.sales": "Sales",
         "platform.navSection.earnings": "Earnings",
-        "platform.navSection.reports": "Reports",
-        "platform.navSection.tools": "Tools",
-        "platform.navSection.myLearning": "My Learning",
         "platform.navSection.discover": "Discover",
         "platform.nav.studio": "Home",
         "platform.nav.courseBuilder": "My products",
-        "platform.nav.membersArea": "Members & communities",
+        "platform.nav.students": "Students",
+        "platform.nav.inbox": "Inbox",
+        "helpMenu.trigger": "Help",
         "platform.nav.marketingOverview": "Marketing overview",
         "platform.nav.storefrontPages": "Storefront & pages",
         "platform.nav.mediaLibrary": "Media library",
@@ -53,7 +52,6 @@ vi.mock("@/components/i18n/i18n-provider", () => ({
         "platform.nav.sales": "Sales orders",
         "platform.nav.subscriptions": "Subscriptions",
         "platform.nav.reports": "Reports",
-        "platform.nav.team": "Team",
         "platform.nav.verification": "Verification",
         "platform.nav.integrations": "Integrations",
         "platform.nav.messages": "Messages",
@@ -99,67 +97,65 @@ describe("creator shell regressions", () => {
     expect(activeLink).toHaveClass("h-11", "min-h-11");
   });
 
-  // Este teste afirmava que abrir um grupo FECHAVA o anterior. O objetivo
-  // declarado no nome era "lets the user switch groups" — fechar o outro era o
-  // mecanismo, e era o defeito. Agora os grupos acumulam; trocar continua
-  // possível, sem custo de esconder. Products e Sales viraram linhas diretas,
-  // então os dois grupos que sobraram (Marketing e Tools) fazem o teste.
-  it("abre a categoria ativa e deixa vários grupos abertos ao mesmo tempo", () => {
+  // Os grupos acumulam: abrir um nao fecha o outro. Sobraram dois grupos,
+  // Vendas (vendas, assinaturas, relatorios) e Promover; o primeiro vem aberto.
+  it("abre o primeiro grupo e deixa vários grupos abertos ao mesmo tempo", () => {
     render(<PlatformNav />);
 
-    const marketing = screen.getByRole("button", { name: "Marketing" });
-    const tools = screen.getByRole("button", { name: "Tools" });
+    const sales = screen.getByRole("button", { name: "Sales" });
+    const promote = screen.getByRole("button", { name: "Promote" });
 
-    expect(marketing).toHaveAttribute("aria-expanded", "true");
-    expect(tools).toHaveAttribute("aria-expanded", "false");
-    expect(screen.getByRole("link", { name: "Marketing overview" })).toBeInTheDocument();
+    expect(sales).toHaveAttribute("aria-expanded", "true");
+    expect(promote).toHaveAttribute("aria-expanded", "false");
+    expect(screen.getByRole("link", { name: "Subscriptions" })).toBeInTheDocument();
 
-    fireEvent.click(tools);
+    fireEvent.click(promote);
 
-    // O ponto do conserto: abrir Tools não custa perder Marketing de vista.
-    expect(marketing).toHaveAttribute("aria-expanded", "true");
-    expect(tools).toHaveAttribute("aria-expanded", "true");
+    expect(sales).toHaveAttribute("aria-expanded", "true");
+    expect(promote).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByRole("link", { name: "Subscriptions" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Marketing overview" })).toBeInTheDocument();
   });
 
   it("fecha um grupo ao clicar nele de novo", () => {
     render(<PlatformNav />);
 
-    const marketing = screen.getByRole("button", { name: "Marketing" });
-    expect(marketing).toHaveAttribute("aria-expanded", "true");
+    const sales = screen.getByRole("button", { name: "Sales" });
+    expect(sales).toHaveAttribute("aria-expanded", "true");
 
-    fireEvent.click(marketing);
+    fireEvent.click(sales);
 
-    expect(marketing).toHaveAttribute("aria-expanded", "false");
-    expect(screen.queryByRole("link", { name: "Marketing overview" })).toBeNull();
+    expect(sales).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByRole("link", { name: "Subscriptions" })).toBeNull();
   });
 
-  it("keeps the day-to-day work flat and only the long tails grouped", () => {
+  it("keeps the day-to-day work flat and only two groups", () => {
     render(<PlatformNav />);
 
     expect(screen.getByRole("link", { name: "Home" })).toHaveAttribute("href", "/teach");
     expect(screen.getByRole("link", { name: "My products" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Sales orders" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Subscriptions" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Reports" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Students" })).toHaveAttribute("href", "/teach/students");
+    expect(screen.getByRole("link", { name: "Inbox" })).toHaveAttribute("href", "/teach/messages");
+    expect(screen.getByRole("link", { name: "Earnings" })).toHaveAttribute("href", "/account/payments");
     expect(screen.queryByRole("button", { name: "Products" })).toBeNull();
-    expect(screen.queryByRole("button", { name: "Sales" })).toBeNull();
-    expect(screen.getByRole("button", { name: "Marketing" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Tools" })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Growth" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Sales" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Promote" })).toBeInTheDocument();
+    for (const gone of ["Marketing", "Tools", "Growth"]) {
+      expect(screen.queryByRole("button", { name: gone })).toBeNull();
+    }
   });
 
   it("uses category icons only in the collapsed rail", () => {
     const onRequestExpand = vi.fn();
     render(<PlatformNav collapsed onRequestExpand={onRequestExpand} />);
 
-    const marketing = screen.getByRole("button", {
-      name: "Open Marketing navigation",
+    const promote = screen.getByRole("button", {
+      name: "Open Promote navigation",
     });
 
     expect(screen.queryByRole("link", { name: "Marketing overview" })).toBeNull();
 
-    fireEvent.click(marketing);
+    fireEvent.click(promote);
     expect(onRequestExpand).toHaveBeenCalledOnce();
   });
 

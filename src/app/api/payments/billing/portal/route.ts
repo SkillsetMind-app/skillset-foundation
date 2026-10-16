@@ -8,7 +8,7 @@ import {
 } from "@/lib/payments/server/auth";
 import { getStripeClient } from "@/lib/payments/server/stripe";
 import { getAppUrl } from "@/lib/payments/server/app-url";
-import { getUserRow } from "@/lib/payments/server/stripe-helpers";
+import { getUserRow, resolvePortalConfigurationId } from "@/lib/payments/server/stripe-helpers";
 import { getServerLocale } from "@/lib/i18n/server";
 
 // Ports createBillingPortalSession: opens the Stripe billing portal for an
@@ -29,11 +29,15 @@ export async function POST() {
       );
     }
 
+    // Our configuration, never the Dashboard default: it switches only between
+    // Basic, Starter and Pro, so Enterprise cannot be self-served here.
+    const configuration = resolvePortalConfigurationId();
     const stripe = getStripeClient();
     const appUrl = getAppUrl();
     const locale = await getServerLocale();
     const portal = await stripe.billingPortal.sessions.create({
       customer: profile.stripe_customer_id,
+      configuration,
       locale,
       return_url: `${appUrl}/account/billing?tab=subscriptions`,
     });

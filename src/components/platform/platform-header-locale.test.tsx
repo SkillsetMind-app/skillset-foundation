@@ -17,7 +17,7 @@ import { PlatformHeader } from "@/components/platform/platform-header";
 // pelo mesmo caminho que a página inteira usa. AccountMenu tambem e real:
 // sua largura precisa sobreviver aos estilos genericos dos botoes de icone.
 
-const mocks = vi.hoisted(() => ({ pathname: "/teach" }));
+const mocks = vi.hoisted(() => ({ pathname: "/teach", roles: ["teacher"] as string[] }));
 
 vi.mock("next/navigation", () => ({
   usePathname: () => mocks.pathname,
@@ -33,7 +33,7 @@ vi.mock("@/components/auth/auth-provider", () => ({
       displayName: "Teacher",
       emailVerified: true,
       photoURL: null,
-      roles: ["teacher"],
+      roles: mocks.roles,
     },
     signOut: vi.fn(),
   }),
@@ -65,6 +65,7 @@ function renderHeader(pathname: string) {
 
 beforeEach(() => {
   mocks.pathname = "/teach";
+  mocks.roles = ["teacher"];
 });
 
 afterEach(() => {
@@ -160,5 +161,19 @@ describe("idioma na barra do topo da plataforma", () => {
     expect(screen.getByRole("button", { name: "Idioma: Español" })).toBeInTheDocument();
     expect(document.cookie).toContain("skillset.locale.v1=es");
     expect(document.documentElement.lang).toBe("es");
+  });
+});
+
+// O nome da pagina no topo: "My purchases" para o aluno, "Billing" para quem
+// ensina, a mesma pagina.
+describe("nome de /account/billing no topo", () => {
+  it.each([
+    [["student"], "My purchases"],
+    [["student", "teacher"], "Billing"],
+  ])("%j le %s", (roles, label) => {
+    mocks.roles = roles;
+    renderHeader("/account/billing");
+    const crumbs = screen.getByRole("navigation", { name: "Breadcrumb" });
+    expect(crumbs.querySelector(".cur")?.textContent).toBe(label);
   });
 });

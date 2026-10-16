@@ -197,9 +197,9 @@ export function LearningPathsRows({
                     .replace("{total}", String(path.courseIds.length))
                     .replace("{percent}", String(progress.progressPercent))}
                 </p>
-                <div className="mt-2 h-2 overflow-hidden rounded-none bg-[rgba(26,54,93,0.12)]">
+                <div className="mt-2 h-2 overflow-hidden rounded-full bg-[rgba(26,54,93,0.12)]">
                   <div
-                    className="h-full rounded-none bg-[var(--color-accent)]"
+                    className="h-full rounded-full bg-[var(--color-accent)]"
                     style={{ width: `${progress.progressPercent}%` }}
                   />
                 </div>
@@ -289,18 +289,18 @@ function CourseRowCard({
   const isLocked = !enrollment;
 
   return (
-    <li className="w-[240px] shrink-0 rounded-none border fine-rule bg-[var(--color-surface-soft)] p-3">
-      <div className="relative aspect-[16/10] overflow-hidden rounded-none">
+    <li className="w-[240px] shrink-0 rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-3">
+      <div className="relative aspect-[16/10] overflow-hidden rounded-md">
         <CourseCover course={course} sizes="240px" />
         {stepNumber ? (
-          <span className="absolute left-2 top-2 grid size-7 place-items-center rounded-none bg-[var(--color-primary)] text-xs font-bold text-[var(--color-on-primary)]">
+          <span className="absolute left-2 top-2 grid size-7 place-items-center rounded-full bg-[var(--color-primary)] text-xs font-bold text-[var(--color-on-primary)]">
             {stepNumber}
           </span>
         ) : null}
         {isLocked ? (
           <>
             <span className="absolute inset-0 bg-[rgba(15,39,68,0.45)]" />
-            <span className="absolute right-2 top-2 grid size-7 place-items-center rounded-none bg-[rgba(15,39,68,0.78)] text-white">
+            <span className="absolute right-2 top-2 grid size-7 place-items-center rounded-full bg-[rgba(15,39,68,0.78)] text-white">
               <Lock aria-hidden="true" size={13} />
             </span>
           </>

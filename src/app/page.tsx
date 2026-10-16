@@ -21,7 +21,7 @@ export async function generateMetadata() {
 
 // Single-page landing: header items scroll to these sections, listed in the
 // order the sections appear below so the menu reads as a map of the page.
-// "Pricing" stays a real route (no fabricated pricing section — DECISIONS D7).
+// "Pricing" stays a real route (no fabricated pricing section on the home).
 // ponytail: "Capabilities" has no header entry — six links plus the language
 // chip no longer fit a 1024px header; the section still sits between courses
 // and the promise.

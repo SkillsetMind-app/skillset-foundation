@@ -134,3 +134,4 @@ it("shows the load error, never the country picker, when the profile read fails"
   expect(screen.queryByLabelText(copy("connectOnboarding.countryLabel"))).toBeNull();
   expect(sessionCalls()).toHaveLength(0);
 });
+vi.mock("@/lib/data/creator-plan", () => ({ fetchCreatorPlanRequired: async () => false }));

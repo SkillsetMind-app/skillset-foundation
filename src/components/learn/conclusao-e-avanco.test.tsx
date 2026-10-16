@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, renderHook, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { EnrolledCourseWorkspace } from "@/components/learn/enrolled-course-workspace";
@@ -22,6 +22,8 @@ const mocks = vi.hoisted(() => ({
   searchParams: new URLSearchParams(),
   replace: vi.fn(),
   completed: [] as string[],
+  // A lista de concluidas chega de novo pelo realtime: o teste a reemite.
+  emitCompleted: null as null | ((lessonIds: string[]) => void),
   auth: {
     status: "authenticated",
     user: { uid: "student-1", email: "student@example.com", roles: ["student"] },
@@ -61,6 +63,7 @@ vi.mock("@/lib/data/lesson-progress", () => ({
   recordLessonProgress: vi.fn(),
   subscribeToCompletedLessons: vi.fn(
     (_enrollmentId: string, onNext: (lessonIds: string[]) => void) => {
+      mocks.emitCompleted = onNext;
       onNext(mocks.completed);
       return vi.fn();
     },
@@ -258,5 +261,66 @@ describe("concluir e seguir para a proxima aula", () => {
 
     expect(within(lessonBar()).queryByRole("link", { name: "Get certificate" })).not.toBeInTheDocument();
     expect(within(lessonBar()).getByRole("button", { name: "Completed" })).toBeDisabled();
+  });
+});
+
+// Onda D na sala: o check da aula, o selo de 100% e o painel da aba so se
+// mexem na MUDANCA. Quem chega ve tudo parado (e o que vira LCP nunca nasce
+// com opacidade 0).
+describe("movimento da sala: so na mudanca", () => {
+  beforeEach(() => {
+    Element.prototype.scrollIntoView = vi.fn();
+  });
+
+  const checks = () => [...playlist().querySelectorAll("[data-drawn-check]")];
+
+  it("chegar com as aulas concluidas: check e selo de 100% parados", () => {
+    open("l2", ["l1", "l2"]);
+    expect(checks()).toHaveLength(2);
+    expect(playlist().querySelector(".drawn-check")).toBeNull();
+    const seal = document.querySelector("[data-milestone-seal]");
+    expect(seal).not.toBeNull();
+    expect(seal).not.toHaveClass("milestone-seal");
+  });
+
+  it("concluir com a sala aberta: o check daquela aula se desenha e o selo de 100% cresce", () => {
+    open("l2", ["l1"]);
+    expect(document.querySelector("[data-milestone-seal]")).toBeNull();
+
+    act(() => mocks.emitCompleted!(["l1", "l2"]));
+    const drawing = playlist().querySelectorAll(".drawn-check");
+    expect(drawing).toHaveLength(1);
+    expect(drawing[0].closest("li")).toHaveTextContent("Lesson two");
+    expect(document.querySelector("[data-milestone-seal]")).toHaveClass("milestone-seal");
+    expect(screen.getByText("100%")).toBeInTheDocument();
+  });
+
+  it("o botao de concluir e o button-solid, que afunda ao apertar", () => {
+    open("l1");
+    expect(within(lessonBar()).getByRole("button", { name: "Mark complete & next" })).toHaveClass("button-solid");
+  });
+
+  it("carga nova entra parada; so a troca de aba anima", async () => {
+    vi.resetModules();
+    const { useTabChanged } = await import("@/components/learn/classroom-tabs");
+    const load = renderHook(() => useTabChanged("lesson"));
+    expect(load.result.current).toBe(false);
+    load.unmount();
+    const change = renderHook(() => useTabChanged("about"));
+    expect(change.result.current).toBe(true);
+    change.unmount();
+    const same = renderHook(() => useTabChanged("about"));
+    expect(same.result.current).toBe(false);
+  });
+
+  it("na troca de aba so o painel da aba entra subindo: titulo e abas ficam parados", () => {
+    const first = open("l1");
+    first.unmount();
+    render(<EnrolledCourseWorkspace course={course} tab="about" />);
+    const panel = document.querySelector(".motion-panel-in");
+    expect(panel).not.toBeNull();
+    expect(panel!.querySelector("h1")).toBeNull();
+    expect(panel!.querySelector(".member-classroom-tabs")).toBeNull();
+    expect(document.querySelector(".motion-panel-in .motion-panel-in")).toBeNull();
   });
 });

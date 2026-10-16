@@ -3,7 +3,7 @@ import { getServerTranslation } from "@/lib/i18n/server";
 import Link from "next/link";
 
 import { PublicPage } from "@/components/site/public-page";
-import { plans, refundWindowDays } from "@/data/plans";
+import { formatPlanCommission, publicPlans, refundWindowDays } from "@/data/plans";
 
 
 
@@ -21,8 +21,8 @@ export default async function FeesAndPayoutsPage() {
     ],
     [
       t("publicPages.fees.platform_fee"),
-      t("publicPages.fees.plan_based_every_plan_includes_the").replace("{value0}", String(plans
-        .map((plan) => `${plan.name} ${plan.commissionPercent}%`)
+      t("publicPages.fees.plan_based_every_plan_includes_the").replace("{value0}", String(publicPlans
+        .map((plan) => `${plan.name} ${formatPlanCommission(plan)}`)
         .join(" · "))),
     ],
     [
@@ -69,7 +69,7 @@ export default async function FeesAndPayoutsPage() {
         {policies.map(([title, detail]) => (
           <article
             key={title}
-            className="rounded-none border fine-rule bg-white p-5 shadow-[var(--shadow-soft)]"
+            className="rounded-lg border fine-rule bg-white p-5 shadow-[var(--shadow-soft)]"
           >
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
               {title}
@@ -81,7 +81,7 @@ export default async function FeesAndPayoutsPage() {
         ))}
       </section>
 
-      <div className="mt-10 rounded-none border fine-rule bg-[var(--color-surface-soft)] p-6">
+      <div className="mt-10 rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-6">
         <p className="text-sm leading-7 text-[var(--color-ink-soft)]">
           {t("publicPages.fees.full_plan_comparison_sample_breakdowns_and")}{" "}
           <Link

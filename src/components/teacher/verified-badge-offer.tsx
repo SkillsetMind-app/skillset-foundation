@@ -89,7 +89,7 @@ export function VerifiedBadgeOffer({
     <aside
       aria-labelledby={titleId}
       data-verified-badge-offer=""
-      className="mt-4 border border-[var(--color-line)] border-l-2 border-l-[var(--color-accent)] bg-[var(--color-surface)] p-4"
+      className="mt-4 rounded-lg border border-[var(--color-line)] border-l-2 border-l-[var(--color-accent)] bg-[var(--color-surface)] p-4"
     >
       <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--color-accent-fg)]">
         {t("verifiedBadge.offer.eyebrow")}
@@ -100,7 +100,7 @@ export function VerifiedBadgeOffer({
       <p className="mt-1 text-sm leading-6 text-[var(--color-ink-soft)]">{t("verifiedBadge.offer.body")}</p>
 
       {/* Prévia do cabeçalho do perfil: o próprio nome, já com o selo. */}
-      <figure className="mt-3 border border-dashed border-[var(--color-line-strong)] bg-[var(--color-surface-soft)] px-3 py-3">
+      <figure className="mt-3 rounded-md border border-dashed border-[var(--color-line-strong)] bg-[var(--color-surface-soft)] px-3 py-3">
         <figcaption className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--color-ink-muted)]">
           {t("verifiedBadge.offer.preview")}
         </figcaption>

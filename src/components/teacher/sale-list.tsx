@@ -7,7 +7,8 @@ import { useAuth } from "@/components/auth/auth-provider";
 import { ExportTableButton } from "@/components/shared/export-table-button";
 import { StatusChip } from "@/components/shared/status-chip";
 import { useTranslation } from "@/components/i18n/i18n-provider";
-import { Button, Card, InlineAlert, buttonClasses } from "@/components/ui";
+import { Button, Card, EmptyState, InlineAlert, buttonClasses } from "@/components/ui";
+import { SpotArt } from "@/components/ui/spot-art";
 import type { Order } from "@/domain/order";
 import { subscribeToTeacherOrders } from "@/lib/data/orders";
 import { toDate } from "@/lib/format-date";
@@ -199,7 +200,7 @@ export function SaleList() {
           id="sales-period"
           value={period}
           onChange={(event) => setPeriod(event.target.value as Period)}
-          className="min-h-11 rounded-none border border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2 text-sm font-semibold text-[var(--color-ink)]"
+          className="min-h-11 rounded-md border border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2 text-sm font-semibold text-[var(--color-ink)]"
         >
           {PERIODS.map((option) => (
             <option key={option} value={option}>
@@ -219,7 +220,7 @@ export function SaleList() {
           value={search}
           onChange={(event) => setSearch(event.target.value)}
           placeholder={t(`${copy}.searchPlaceholder`)}
-          className="min-h-11 min-w-[12rem] flex-1 rounded-none border border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-ink)]"
+          className="min-h-11 min-w-[12rem] flex-1 rounded-md border border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-ink)]"
         />
         <label htmlFor="sales-status" className="sr-only">
           {t(`${copy}.statusLabel`)}
@@ -228,7 +229,7 @@ export function SaleList() {
           id="sales-status"
           value={status}
           onChange={(event) => setStatus(event.target.value as StatusFilter)}
-          className="min-h-11 rounded-none border border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2 text-sm font-semibold text-[var(--color-ink)]"
+          className="min-h-11 rounded-md border border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2 text-sm font-semibold text-[var(--color-ink)]"
         >
           {STATUS_FILTERS.map((option) => (
             <option key={option} value={option}>
@@ -241,7 +242,20 @@ export function SaleList() {
 
       <p className="text-sm text-[var(--color-ink-soft)]">{countLine}</p>
 
-      {visibleOrders.length === 0 ? (
+      {orders.length === 0 ? (
+        // Nenhuma venda nunca: a cena do recibo, sem moeda e sem número. O
+        // "nenhuma venda neste período" fica para quando já houve venda.
+        <EmptyState
+          as="h2"
+          art={<SpotArt scene="noSales" />}
+          title={t(`${copy}.firstTitle`)}
+          action={
+            <Link href="/teach/builder" className={buttonClasses({ variant: "outline" })}>
+              {t(`${copy}.emptyCta`)}
+            </Link>
+          }
+        />
+      ) : visibleOrders.length === 0 ? (
         <Card as="div" padding="none" className="p-8 text-center">
           <h2 className="display-title text-2xl text-[var(--color-primary)]">
             {t(`${copy}.emptyTitle`)}
@@ -258,7 +272,7 @@ export function SaleList() {
           {visibleOrders.map((order) => (
             <li
               key={order.id}
-              className="flex flex-wrap items-center justify-between gap-4 rounded-none border border-[var(--color-line)] bg-white p-4 shadow-[var(--shadow-soft)] transition-colors hover:border-[var(--color-primary-light)]"
+              className="flex flex-wrap items-center justify-between gap-4 rounded-lg border border-[var(--color-line)] bg-white p-4 shadow-[var(--shadow-soft)] transition-colors hover:border-[var(--color-primary-light)]"
             >
               <div className="min-w-0">
                 <Link

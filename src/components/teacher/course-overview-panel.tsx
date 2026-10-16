@@ -161,7 +161,7 @@ export function CourseOverviewPanelView({
       {loading ? (
         <div
           data-testid="course-overview-loading"
-          className="h-28 animate-pulse rounded-[var(--radius-xl)] bg-[var(--color-surface-strong)]"
+          className="h-28 animate-pulse rounded-lg bg-[var(--color-surface-strong)]"
         />
       ) : stats.hasHistory ? (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -223,7 +223,7 @@ export function CourseOverviewPanelView({
             {issues.map((issue) => (
               <li
                 key={issue.id}
-                className="rounded-none border border-[var(--color-line)] bg-[var(--color-surface-soft)] px-4 py-3"
+                className="rounded-md border border-[var(--color-line)] bg-[var(--color-surface-soft)] px-4 py-3"
               >
                 <p className="text-sm font-semibold text-[var(--color-ink)]">{issue.title}</p>
                 <p className="mt-0.5 text-xs leading-5 text-[var(--color-ink-soft)]">

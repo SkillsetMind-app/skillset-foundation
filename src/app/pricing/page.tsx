@@ -5,7 +5,14 @@ import { Check, ChevronDown, HelpCircle } from "lucide-react";
 import { PublicPage } from "@/components/site/public-page";
 import { Tooltip } from "@/components/shared/tooltip";
 import { formatUsd, formatUsdWhole } from "@/data/platform";
-import { plans, refundWindowDays } from "@/data/plans";
+import {
+  formatPlanCommission,
+  PER_SALE_FIXED_FEE_USD,
+  publicPlans,
+  RECOMMENDED_PLAN_ID,
+  refundWindowDays,
+} from "@/data/plans";
+import { planDisclosure } from "@/lib/payments/plan-disclosure";
 import { buildPageMetadata } from "@/lib/seo/page-metadata";
 
 export async function generateMetadata() {
@@ -13,7 +20,7 @@ export async function generateMetadata() {
   return buildPageMetadata({
     title: t("publicPages.pricing.pricing"),
     description:
-      t("publicPages.pricing.four_plans_free_starts_at_10"),
+      t("publicPages.pricing.plans_with_a_free_trial"),
     path: "/pricing",
   });
 }
@@ -23,7 +30,7 @@ const sampleSaleUsd = 100;
 const sampleStripeFeeUsd = sampleSaleUsd * 0.029 + 0.3;
 
 export default async function PricingPage() {
-  const { t } = await getServerTranslation();
+  const { locale, t } = await getServerTranslation();
 
   return (
     <PublicPage
@@ -43,8 +50,8 @@ export default async function PricingPage() {
             reprice ever needs interactivity beyond show/hide. */}
         <fieldset className="mb-5">
           <legend className="sr-only">{t("publicPages.pricing.billing_cycle")}</legend>
-          <div className="inline-flex w-fit gap-1 rounded-none border fine-rule bg-[var(--color-surface-soft)] p-1">
-            <label className="inline-flex min-h-11 cursor-pointer items-center rounded-none px-3 py-1.5 text-[13px] font-semibold text-[var(--color-ink-soft)] transition-colors hover:text-[var(--color-primary)] has-[:checked]:bg-[var(--color-primary)] has-[:checked]:text-[var(--color-base)] has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-[var(--color-primary)]">
+          <div className="inline-flex w-fit gap-1 rounded-md border fine-rule bg-[var(--color-surface-soft)] p-1">
+            <label className="inline-flex min-h-11 cursor-pointer items-center rounded-sm px-3 py-1.5 text-[13px] font-semibold text-[var(--color-ink-soft)] transition-colors hover:text-[var(--color-primary)] has-[:checked]:bg-[var(--color-primary)] has-[:checked]:text-[var(--color-base)] has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-[var(--color-primary)]">
               <input
                 type="radio"
                 name="billing-cycle"
@@ -54,7 +61,7 @@ export default async function PricingPage() {
               />
               {t("publicPages.pricing.monthly")}
             </label>
-            <label className="inline-flex min-h-11 cursor-pointer items-center rounded-none px-3 py-1.5 text-[13px] font-semibold text-[var(--color-ink-soft)] transition-colors hover:text-[var(--color-primary)] has-[:checked]:bg-[var(--color-primary)] has-[:checked]:text-[var(--color-base)] has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-[var(--color-primary)]">
+            <label className="inline-flex min-h-11 cursor-pointer items-center rounded-sm px-3 py-1.5 text-[13px] font-semibold text-[var(--color-ink-soft)] transition-colors hover:text-[var(--color-primary)] has-[:checked]:bg-[var(--color-primary)] has-[:checked]:text-[var(--color-base)] has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-[var(--color-primary)]">
               <input
                 type="radio"
                 name="billing-cycle"
@@ -69,11 +76,11 @@ export default async function PricingPage() {
         </fieldset>
 
         <section
-          className="grid gap-4 lg:grid-cols-4"
+          className="grid gap-4 lg:grid-cols-3"
           aria-label={t("publicPages.pricing.plan_comparison")}
         >
-          {plans.map((plan, index) => {
-            const isHighlight = plan.id === "pro";
+          {publicPlans.map((plan, index) => {
+            const isHighlight = plan.id === RECOMMENDED_PLAN_ID;
             // Yearly figure billed annually; the /mo label shows the
             // annualized monthly-equivalent so the scannable number stays small.
             const yearlyMonthlyEquiv = plan.yearlyUsd / 12;
@@ -82,12 +89,12 @@ export default async function PricingPage() {
                 key={plan.id}
                 className={
                   isHighlight
-                    ? "relative flex h-full flex-col rounded-none border-2 border-[var(--color-primary)] bg-white p-6 shadow-[0_24px_48px_rgba(15,39,68,0.12)]"
-                    : "flex h-full flex-col rounded-none border fine-rule bg-white p-6 shadow-[var(--shadow-soft)]"
+                    ? "relative flex h-full flex-col rounded-lg border-2 border-[var(--color-primary)] bg-white p-6 shadow-[0_24px_48px_rgba(15,39,68,0.12)]"
+                    : "flex h-full flex-col rounded-lg border fine-rule bg-white p-6 shadow-[var(--shadow-soft)]"
                 }
               >
                 {isHighlight ? (
-                  <span className="absolute -top-3 left-6 rounded-none bg-[var(--color-accent)] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-white">
+                  <span className="absolute -top-3 left-6 rounded-full bg-[var(--color-accent)] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-white">
                     {t("publicPages.pricing.recommended")}
                   </span>
                 ) : null}
@@ -101,26 +108,18 @@ export default async function PricingPage() {
                     {plan.commissionPercent}%
                   </span>
                   <span className="text-sm text-[var(--color-ink-soft)]">
-                    {t("publicPages.pricing.per_sale")}
+                    {t("publicPages.pricing.per_sale_with_fixed").replace("{fixed}", () => formatUsd(PER_SALE_FIXED_FEE_USD))}
                   </span>
                 </p>
-                {plan.monthlyUsd === 0 ? (
-                  <p className="mt-1 text-sm text-[var(--color-ink-soft)]">
-                    {formatUsdWhole(0)}{t("publicPages.pricing.mo_no_subscription")}
-                  </p>
-                ) : (
-                  <>
-                    {/* Monthly line — hidden when the yearly radio is checked. */}
-                    <p className="mt-1 text-sm text-[var(--color-ink-soft)] group-has-[#billing-yearly:checked]:hidden">
-                      {formatUsdWhole(plan.monthlyUsd)}{t("publicPages.pricing.mo")}
-                    </p>
-                    {/* Yearly line — shown only when the yearly radio is checked. */}
-                    <p className="mt-1 hidden text-sm text-[var(--color-ink-soft)] group-has-[#billing-yearly:checked]:block">
-                      {formatUsd(yearlyMonthlyEquiv)}{t("publicPages.pricing.mo_billed")}{" "}
-                      {formatUsdWhole(plan.yearlyUsd)} {t("publicPages.pricing.yearly_2")}
-                    </p>
-                  </>
-                )}
+                {/* Monthly line — hidden when the yearly radio is checked. */}
+                <p className="mt-1 text-sm text-[var(--color-ink-soft)] group-has-[#billing-yearly:checked]:hidden">
+                  {formatUsdWhole(plan.monthlyUsd)}{t("publicPages.pricing.mo")}
+                </p>
+                {/* Yearly line — shown only when the yearly radio is checked. */}
+                <p className="mt-1 hidden text-sm text-[var(--color-ink-soft)] group-has-[#billing-yearly:checked]:block">
+                  {formatUsd(yearlyMonthlyEquiv)}{t("publicPages.pricing.mo_billed")}{" "}
+                  {formatUsdWhole(plan.yearlyUsd)} {t("publicPages.pricing.yearly_2")}
+                </p>
                 <p className="mt-4 text-sm leading-6 text-[var(--color-ink)]">
                   {t(`publicPages.plans.${plan.id}.tagline`)}
                 </p>
@@ -140,29 +139,50 @@ export default async function PricingPage() {
                     </li>
                   ))}
                 </ul>
-                {/* mt-auto pins the button to the bottom so the four cards
-                    line up whatever the length of their bullet lists. */}
-                <Link
-                  href="/auth?mode=signup&path=teacher"
-                  className={
-                    isHighlight
-                      ? "button-solid mt-auto w-full justify-center px-4 py-2.5 text-sm"
-                      : "button-outline mt-auto w-full justify-center px-4 py-2.5 text-sm"
-                  }
-                  aria-label={t("publicPages.pricing.start_plan").replace("{plan}", plan.name)}
-                  data-plan-position={index}
-                >
-                  {plan.monthlyUsd === 0 ? t("publicPages.pricing.start_free") : t("publicPages.pricing.start_plan").replace("{plan}", plan.name)}
-                </Link>
+                {/* Renewal terms next to the button, per cycle (US ROSCA): the
+                    same text the in-app card and Stripe Checkout show. mt-auto
+                    pins this block to the bottom so both cards line up. */}
+                <div className="mt-auto grid gap-3">
+                  <p className="text-xs leading-5 text-[var(--color-ink-soft)] group-has-[#billing-yearly:checked]:hidden">
+                    {planDisclosure({ t, locale, plan, cycle: "monthly", trial: true, publicOffer: true })}
+                  </p>
+                  <p className="hidden text-xs leading-5 text-[var(--color-ink-soft)] group-has-[#billing-yearly:checked]:block">
+                    {planDisclosure({ t, locale, plan, cycle: "yearly", trial: true, publicOffer: true })}
+                  </p>
+                  <Link
+                    href="/auth?mode=signup&path=teacher"
+                    className={
+                      isHighlight
+                        ? "button-solid w-full justify-center px-4 py-2.5 text-sm"
+                        : "button-outline w-full justify-center px-4 py-2.5 text-sm"
+                    }
+                    aria-label={`${t("planTrial.cta")} — ${plan.name}`}
+                    data-plan-position={index}
+                  >
+                    {t("planTrial.cta")}
+                  </Link>
+                </div>
               </article>
             );
           })}
         </section>
+        {/* Enterprise is not a card: it is set up by hand, so it is a contact. */}
+        <p className="mt-4 text-sm">
+          <Link
+            href="/contact?subject=enterprise"
+            className="font-semibold text-[var(--color-primary)] underline-offset-4 hover:underline"
+          >
+            {t("publicPages.pricing.enterprise_talk_to_us")}
+          </Link>
+        </p>
+        <p className="mt-4 text-xs leading-5 text-[var(--color-ink-muted)]">
+          {t("planTrial.publicNote")}
+        </p>
       </div>
 
-      {/* Breakdown — same $100 sale across all four tiers so the user can
-          see exactly where every cent goes. */}
-      <section className="mt-12 rounded-none border fine-rule bg-white p-6 shadow-[var(--shadow-soft)]">
+      {/* Breakdown — same $100 sale across every plan so the user can see
+          exactly where every cent goes. */}
+      <section className="mt-12 rounded-lg border fine-rule bg-white p-6 shadow-[var(--shadow-soft)]">
         <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
           {t("publicPages.pricing.the_math_on_a_100_usd")}
         </p>
@@ -174,7 +194,7 @@ export default async function PricingPage() {
           {t("publicPages.pricing.2_9_0_30_skillsetmind_takes")}
         </p>
 
-        <div className="mt-6 overflow-x-auto rounded-none border fine-rule">
+        <div className="mt-6 overflow-x-auto rounded-lg border fine-rule">
           <table className="w-full min-w-[520px] text-left text-sm">
             <thead className="bg-[var(--color-surface-soft)] text-[11px] uppercase tracking-[0.14em] text-[var(--color-ink-soft)]">
               <tr>
@@ -193,7 +213,7 @@ export default async function PricingPage() {
                       <button
                         type="button"
                         aria-label={t("publicPages.pricing.what_is_the_stripe_processing_fee")}
-                        className="inline-flex size-5 items-center justify-center rounded-none text-[var(--color-ink-muted)] transition hover:text-[var(--color-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus-ring)]"
+                        className="inline-flex size-5 items-center justify-center rounded-full text-[var(--color-ink-muted)] transition hover:text-[var(--color-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus-ring)]"
                       >
                         <HelpCircle
                           aria-hidden="true"
@@ -213,8 +233,9 @@ export default async function PricingPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--color-line)]">
-              {plans.map((plan) => {
-                const platformFee = (sampleSaleUsd * plan.commissionPercent) / 100;
+              {publicPlans.map((plan) => {
+                const platformFee =
+                  (sampleSaleUsd * plan.commissionPercent) / 100 + PER_SALE_FIXED_FEE_USD;
                 const net = sampleSaleUsd - platformFee - sampleStripeFeeUsd;
                 return (
                   <tr key={plan.id} className="bg-white">
@@ -227,7 +248,7 @@ export default async function PricingPage() {
                     <td className="px-4 py-3 text-right text-[var(--color-ink-soft)]">
                       −{formatUsd(platformFee)}
                       <span className="ml-1 text-xs text-[var(--color-ink-muted)]">
-                        ({plan.commissionPercent}%)
+                        ({formatPlanCommission(plan)})
                       </span>
                     </td>
                     <td className="px-4 py-3 text-right text-[var(--color-ink-soft)]">
@@ -250,7 +271,7 @@ export default async function PricingPage() {
 
       {/* Operational rules — refund window, direct payouts, plan changes. */}
       <section className="mt-8 grid gap-4 md:grid-cols-3">
-        <article className="rounded-none border fine-rule bg-[var(--color-surface-soft)] p-5">
+        <article className="rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-5">
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
             {t("publicPages.pricing.refund_window")}
           </p>
@@ -258,7 +279,7 @@ export default async function PricingPage() {
             {t("publicPages.pricing.learners_can_self_refund_within")}{refundWindowDays} {t("publicPages.pricing.days_of_purchase_if_they_ve")}
           </p>
         </article>
-        <article className="rounded-none border fine-rule bg-[var(--color-surface-soft)] p-5">
+        <article className="rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-5">
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
             {t("publicPages.pricing.payouts")}
           </p>
@@ -266,7 +287,7 @@ export default async function PricingPage() {
             {t("publicPages.pricing.buyers_pay_your_stripe_account_directly")}
           </p>
         </article>
-        <article className="rounded-none border fine-rule bg-[var(--color-surface-soft)] p-5">
+        <article className="rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-5">
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
             {t("publicPages.pricing.plan_changes")}
           </p>
@@ -295,7 +316,7 @@ export default async function PricingPage() {
             },
             {
               q: t("publicPages.pricing.what_happens_when_i_downgrade_or"),
-              a: t("publicPages.pricing.downgrades_and_cancellations_take_effect_at").replace("{value0}", String(plans[0].commissionPercent)),
+              a: t("publicPages.pricing.downgrades_and_cancellations_take_effect_at"),
             },
             {
               q: t("publicPages.pricing.how_do_the_fees_work_on"),
@@ -308,9 +329,9 @@ export default async function PricingPage() {
           ].map((item, index) => (
             <details
               key={index}
-              className="group rounded-none border fine-rule bg-white shadow-[var(--shadow-soft)] [&_summary::-webkit-details-marker]:hidden"
+              className="group rounded-lg border fine-rule bg-white shadow-[var(--shadow-soft)] [&_summary::-webkit-details-marker]:hidden"
             >
-              <summary className="flex cursor-pointer items-center justify-between gap-4 rounded-none px-5 py-4 text-sm font-semibold text-[var(--color-ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]">
+              <summary className="flex cursor-pointer items-center justify-between gap-4 rounded-lg px-5 py-4 text-sm font-semibold text-[var(--color-ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]">
                 {item.q}
                 <ChevronDown
                   aria-hidden="true"
@@ -327,13 +348,13 @@ export default async function PricingPage() {
         </div>
       </section>
 
-      <section className="mt-8 flex flex-wrap items-center justify-between gap-4 rounded-none border fine-rule bg-[var(--color-surface-soft)] p-6">
+      <section className="mt-8 flex flex-wrap items-center justify-between gap-4 rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-6">
         <div>
           <p className="text-sm font-semibold text-[var(--color-ink)]">
             {t("publicPages.pricing.ready_to_publish_on_skillsetmind")}
           </p>
           <p className="mt-1 text-sm text-[var(--color-ink-soft)]">
-            {t("publicPages.pricing.start_on_free_upgrade_only_when")}
+            {t("publicPages.pricing.start_with_a_free_trial")}
           </p>
         </div>
         <div className="flex flex-wrap gap-3">

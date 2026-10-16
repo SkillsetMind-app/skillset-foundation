@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown, ExternalLink } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useId, useRef, useState } from "react";
 import { useTranslation } from "@/components/i18n/i18n-provider";
@@ -51,11 +51,13 @@ export function PublicEntryMenu({ mobile = false }: { mobile?: boolean }) {
       {open ? (
         <div
           id={panelId}
-          className={`${mobile ? "mt-2 w-full" : "absolute right-0 top-full z-[60] mt-2 w-64 max-w-[calc(100vw-2rem)]"} grid gap-1 rounded-none border border-[var(--color-line)] bg-white p-2 shadow-[var(--shadow-soft)]`}
+          className={`${mobile ? "mt-2 w-full" : "absolute right-0 top-full z-[60] mt-2 w-64 max-w-[calc(100vw-2rem)]"} grid gap-1 rounded-lg border border-[var(--color-line)] bg-white p-2 shadow-[var(--shadow-soft)]`}
         >
           {/* Each intent enters through its own short host in production; the
               sign-in route and intent ride along unchanged, so the proxy's 307
-              lands on the same /auth?mode=signin&path=… the menu always used. */}
+              lands on the same /auth?mode=signin&path=… the menu always used.
+              Same tab: a new tab reads as "the site vanished" to people new
+              to the web. */}
           {([
             ["student", "consumer", "nav.myCourses"],
             ["teacher", "app", "nav.manageBusiness"],
@@ -63,12 +65,9 @@ export function PublicEntryMenu({ mobile = false }: { mobile?: boolean }) {
             <Link
               key={intent}
               href={entryUrl(entry, getAuthRoute("signin", intent), "", hostname)}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex min-h-11 items-center justify-between gap-3 rounded-none px-3 py-3 text-sm font-semibold text-[var(--color-primary)] hover:bg-[var(--color-surface-soft)] focus-visible:outline-2 focus-visible:outline-offset-2"
+              className="flex min-h-11 items-center justify-between gap-3 rounded-md px-3 py-3 text-sm font-semibold text-[var(--color-primary)] hover:bg-[var(--color-surface-soft)] focus-visible:outline-2 focus-visible:outline-offset-2"
             >
-              <span>{t(label)} <span className="sr-only">{t("account.opensNewTab")}</span></span>
-              <ExternalLink aria-hidden size={14} className="shrink-0" />
+              {t(label)}
             </Link>
           ))}
         </div>

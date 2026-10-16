@@ -2,18 +2,18 @@ import { getServerTranslation } from "@/lib/i18n/server";
 import Link from "next/link";
 
 import { PublicPage } from "@/components/site/public-page";
-import { planById } from "@/data/plans";
+import { PLAN_TRIAL_DAYS, planById } from "@/data/plans";
 import { buildPageMetadata } from "@/lib/seo/page-metadata";
 
 
 
-const freePlan = planById("free");
+const proPlan = planById("pro");
 
 export async function generateMetadata() {
   const { t } = await getServerTranslation();
   return buildPageMetadata({
     title: t("publicPages.creators.teach_on_skillsetmind"),
-    description: t("publicPages.creators.publish_professional_courses_to_a_global").replace("{value0}", String(freePlan.commissionPercent)),
+    description: t("publicPages.creators.publish_professional_courses_to_a_global"),
     path: "/for-creators",
   });
 }
@@ -35,20 +35,20 @@ export default async function ForCreatorsPage() {
       title={t("publicPages.creators.teach_with_a_real_course_operating")}
       description={t("publicPages.creators.skillsetmind_is_designed_for_experts_who")}
     >
-      <section className="mt-8 rounded-none border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-6 shadow-[var(--shadow-soft)]">
+      <section className="mt-8 rounded-lg border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-6 shadow-[var(--shadow-soft)]">
         <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
           <div className="grid grid-cols-3 gap-5 sm:flex sm:gap-8">
             <div>
               <p className="display-title text-3xl text-[var(--color-primary)]">
-                {freePlan.commissionPercent}%
+                {proPlan.commissionPercent}%
               </p>
               <p className="mt-1 text-xs font-semibold uppercase tracking-[0.16em] text-[var(--color-ink-soft)]">
-                {t("publicPages.creators.commission_on_free")}
+                {t("publicPages.creators.commission_on_pro")}
               </p>
             </div>
             <div>
               <p className="display-title text-3xl text-[var(--color-primary)]">
-                $0
+                {PLAN_TRIAL_DAYS}
               </p>
               <p className="mt-1 text-xs font-semibold uppercase tracking-[0.16em] text-[var(--color-ink-soft)]">
                 {t("publicPages.creators.to_start")}
@@ -71,7 +71,7 @@ export default async function ForCreatorsPage() {
               href="/pricing"
               className="mt-2 inline-flex text-sm font-semibold text-[var(--color-primary)] underline-offset-4 hover:underline"
             >
-              {t("publicPages.creators.see_all_four_plans")}
+              {t("publicPages.creators.see_all_plans")}
             </Link>
           </div>
         </div>
@@ -82,13 +82,13 @@ export default async function ForCreatorsPage() {
           {creatorTools.map((tool) => (
             <div
               key={tool}
-              className="rounded-none border fine-rule bg-white p-5 text-sm font-semibold leading-7 text-[var(--color-ink)] shadow-[var(--shadow-soft)]"
+              className="rounded-lg border fine-rule bg-white p-5 text-sm font-semibold leading-7 text-[var(--color-ink)] shadow-[var(--shadow-soft)]"
             >
               {tool}
             </div>
           ))}
         </div>
-        <aside className="primary-fill-card rounded-none border border-[var(--color-line)] bg-[var(--color-primary)] p-6 text-white shadow-[var(--shadow-soft)]">
+        <aside className="primary-fill-card rounded-lg border border-[var(--color-line)] bg-[var(--color-primary)] p-6 text-white shadow-[var(--shadow-soft)]">
           <p className="text-xs font-bold uppercase tracking-[0.2em] text-white/70">
             {t("publicPages.creators.creator_path")}
           </p>

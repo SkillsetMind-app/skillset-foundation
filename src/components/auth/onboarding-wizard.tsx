@@ -580,7 +580,7 @@ export function OnboardingWizard() {
             {t("authFlow.onboarding.completeDescription")}
           </p>
           {recap.length > 0 ? (
-            <dl className="mx-auto mt-8 max-w-md space-y-3 rounded-none border-[1.5px] border-[var(--color-line)] bg-white p-6 text-left">
+            <dl className="mx-auto mt-8 max-w-md space-y-3 rounded-lg border-[1.5px] border-[var(--color-line)] bg-white p-6 text-left">
               <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--color-ink-soft)]">
                 {t("authFlow.onboarding.yourAnswers")}
               </p>
@@ -634,7 +634,7 @@ export function OnboardingWizard() {
           type="button"
           onClick={goBack}
           disabled={currentIndex === 0 || isSaving}
-          className="rounded-none px-5 py-3 text-sm font-semibold text-[var(--color-ink-soft)] transition hover:bg-[var(--color-surface-soft)] hover:text-[var(--color-primary)] disabled:pointer-events-none disabled:opacity-40"
+          className="rounded-md px-5 py-3 text-sm font-semibold text-[var(--color-ink-soft)] transition hover:bg-[var(--color-surface-soft)] hover:text-[var(--color-primary)] disabled:pointer-events-none disabled:opacity-40"
         >
           {t("authFlow.onboarding.back")}
         </button>
@@ -809,14 +809,14 @@ export function OnboardingWizard() {
                     void updateAnswer({ ...answers, monthlyRevenue: option }, true)
                   }
                   className={[
-                    "flex items-center justify-between rounded-none border-[1.5px] bg-white px-5 py-4 text-left text-sm font-semibold transition hover:bg-[var(--color-surface-soft)]",
+                    "flex items-center justify-between rounded-lg border-[1.5px] bg-white px-5 py-4 text-left text-sm font-semibold transition hover:bg-[var(--color-surface-soft)]",
                     answers.monthlyRevenue === option
                       ? "border-[var(--color-accent-fg)] text-[var(--color-primary)]"
                       : "border-[var(--color-line)] text-[var(--color-ink)]",
                   ].join(" ")}
                 >
                   {optionLabel(option)}
-                  <span className="size-5 rounded-none border border-[var(--color-line)]" />
+                  <span className="size-5 rounded-full border border-[var(--color-line)]" />
                 </button>
               ))}
             </div>
@@ -857,7 +857,7 @@ export function OnboardingWizard() {
             }
             lead={t("authFlow.onboarding.instagramLead")}
           >
-            <div className="flex overflow-hidden rounded-none border-[1.5px] border-[var(--color-line)] bg-white focus-within:border-[var(--color-primary-light)]">
+            <div className="flex overflow-hidden rounded-md border-[1.5px] border-[var(--color-line)] bg-white focus-within:border-[var(--color-primary-light)]">
               <span className="grid place-items-center border-r border-[var(--color-line)] bg-[var(--color-surface-soft)] px-4 text-sm font-semibold text-[var(--color-ink-soft)]">
                 @
               </span>
@@ -889,7 +889,7 @@ export function OnboardingWizard() {
                     void updateAnswer({ ...answers, audienceSize: option }, true)
                   }
                   className={[
-                    "rounded-none border-[1.5px] bg-white px-5 py-4 text-left text-sm font-semibold transition hover:bg-[var(--color-surface-soft)]",
+                    "rounded-lg border-[1.5px] bg-white px-5 py-4 text-left text-sm font-semibold transition hover:bg-[var(--color-surface-soft)]",
                     answers.audienceSize === option
                       ? "border-[var(--color-accent-fg)] text-[var(--color-primary)]"
                       : "border-[var(--color-line)] text-[var(--color-ink)]",
@@ -926,7 +926,7 @@ function PathCard({
       type="button"
       onClick={onClick}
       className={[
-        "group rounded-none border-[1.5px] bg-white px-6 py-6 text-left transition duration-[200ms] hover:-translate-y-0.5 hover:border-[var(--color-accent-fg)] hover:shadow-[var(--shadow-strong)]",
+        "group rounded-lg border-[1.5px] bg-white px-6 py-6 text-left transition duration-[200ms] hover:-translate-y-0.5 hover:border-[var(--color-accent-fg)] hover:shadow-[var(--shadow-strong)]",
         selected
           ? "border-[var(--color-accent-fg)] bg-[rgba(178,34,52,0.04)]"
           : "border-[var(--color-line)]",
@@ -934,7 +934,7 @@ function PathCard({
     >
       <span
         className={[
-          "mb-5 grid size-12 place-items-center rounded-none bg-[var(--color-surface-strong)] transition",
+          "mb-5 grid size-12 place-items-center rounded-md bg-[var(--color-surface-strong)] transition",
           selected
             ? "text-[var(--color-accent-fg)]"
             : "text-[var(--color-primary)] group-hover:text-[var(--color-accent-fg)]",
@@ -968,7 +968,7 @@ function LargeRadio({
       type="button"
       onClick={onClick}
       className={[
-        "rounded-none border-[1.5px] bg-white p-5 text-left transition hover:-translate-y-0.5 hover:border-[var(--color-accent-fg)] hover:shadow-[var(--shadow-soft)]",
+        "rounded-lg border-[1.5px] bg-white p-5 text-left transition hover:-translate-y-0.5 hover:border-[var(--color-accent-fg)] hover:shadow-[var(--shadow-soft)]",
         selected
           ? "border-[var(--color-accent-fg)] bg-[rgba(178,34,52,0.04)]"
           : "border-[var(--color-line)]",
@@ -1008,7 +1008,7 @@ function OptionGrid({
             type="button"
             onClick={() => onSelect(option)}
             className={[
-              "rounded-none border-[1.5px] px-4 py-3 text-sm font-semibold transition hover:bg-[var(--color-surface-soft)]",
+              "rounded-md border-[1.5px] px-4 py-3 text-sm font-semibold transition hover:bg-[var(--color-surface-soft)]",
               isSelected
                 ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-[var(--color-base)]"
                 : "border-[var(--color-line)] bg-white text-[var(--color-ink)]",
@@ -1033,7 +1033,7 @@ function ErrorMessage({ error }: { error: string }) {
   }
 
   return (
-    <p className="mt-5 rounded-none border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-center text-sm font-semibold text-[var(--color-danger-fg)]">
+    <p className="mt-5 rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-center text-sm font-semibold text-[var(--color-danger-fg)]">
       {t(error)}
     </p>
   );

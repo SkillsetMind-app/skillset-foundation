@@ -61,7 +61,7 @@ describe("ES-09 editors with the shipped dictionaries", () => {
     mount(<SalesPageEditor course={course} />);
     expect(screen.getByRole("heading", { name: "Editor de la página de ventas" })).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText("Título del producto"), { target: { value: "Typed title $&" } });
-    expect(screen.getByLabelText("Propuesta de venta / resumen")).toHaveValue(course.summary);
+    expect(screen.getByLabelText("Descripción")).toHaveValue(course.summary);
     expect(screen.getByLabelText("Resultados (uno por línea)")).toHaveValue("Original outcome");
     expect(screen.getByRole("link", { name: "Vista previa de la página pública" }))
       .toHaveAttribute("href", "/courses/course%2F%24%26");
@@ -74,6 +74,20 @@ describe("ES-09 editors with the shipped dictionaries", () => {
     fireEvent.click(screen.getByRole("button", { name: "EN" }));
     expect(screen.getByRole("status")).toHaveTextContent("Sales page copy saved.");
     expect(screen.getByLabelText("Product title")).toHaveValue("Typed title $&");
+    expect(screen.getByLabelText("Description")).toHaveValue(course.summary);
+  });
+
+  // courses.summary e um campo so: criacao, construtor e checklist ja diziam
+  // Description; o editor da pagina de vendas e o Manage diziam "Sales promise
+  // / summary" e "Summary".
+  it("o mesmo campo se chama Description / Descripcion em toda parte, sem 'promise'", () => {
+    for (const [locale, label] of [["en", "Description"], ["es", "Descripción"]] as const) {
+      const dictionary = getDictionary(locale);
+      expect(translate(dictionary, "teacherSalesCopy.summary")).toBe(label);
+      expect(translate(dictionary, "creatorPanel.hub.basic.summary")).toBe(label);
+      expect(translate(dictionary, "teacherSalesCopy.description")).not.toMatch(/promise|propuesta/i);
+      expect(translate(dictionary, "creatorEditor.builder.steps.details.help")).not.toMatch(/promise|propuesta/i);
+    }
   });
 
   it("relocalizes sales errors and pending state while preserving the draft", async () => {
@@ -96,9 +110,33 @@ describe("ES-09 editors with the shipped dictionaries", () => {
     vi.mocked(updateTeacherCourseBuilder).mockRejectedValueOnce(new Error("A course with this title already exists. Choose a more specific name."));
     mount(<SalesPageEditor course={course} />);
     fireEvent.click(screen.getByRole("button", { name: "Guardar página de ventas" }));
-    expect(await screen.findByRole("alert")).toHaveTextContent("Ya existe un curso con este título. Elige un nombre más específico.");
+    expect(await screen.findByRole("alert")).toHaveTextContent("Ya existe un producto con este nombre. Elige un nombre más específico.");
     fireEvent.click(screen.getByRole("button", { name: "EN" }));
-    expect(screen.getByRole("alert")).toHaveTextContent("A course with this title already exists. Choose a more specific name.");
+    expect(screen.getByRole("alert")).toHaveTextContent("A product with this name already exists. Choose a more specific name.");
+  });
+
+  // Produto no ar de antes da forma de pagar: o texto salva pela mesma RPC do
+  // construtor, que regrava preco e forma. O banco (20261007030000) recusa
+  // trocar para "cobrado sem valor"; repetir o que esta gravado passa.
+  it.each([
+    ["sem forma e sem valor (gratis)", undefined, "free"],
+    ["pagamento unico sem valor", "one_time", "one_time"],
+  ] as const)("produto antigo no ar, %s: o texto salva sem mexer no preco", async (_label, paymentType, sent) => {
+    const legacy: TeacherCourse = { ...course, status: "published", paymentType, priceAmountMinor: null };
+    vi.mocked(updateTeacherCourseBuilder).mockImplementationOnce(async (_id, input) => {
+      const changed = input.paymentType !== (legacy.paymentType ?? null) || input.priceAmountMinor !== legacy.priceAmountMinor;
+      if (input.paymentType !== "free" && !(input.priceAmountMinor && input.priceAmountMinor > 0) && changed) {
+        throw new Error("PAID_PRODUCT_NEEDS_PRICE: a published product sold as one_time needs a price.");
+      }
+    });
+    mount(<SalesPageEditor course={legacy} />);
+    fireEvent.change(screen.getByLabelText("Descripción"), { target: { value: "Resumen nuevo" } });
+    fireEvent.click(screen.getByRole("button", { name: "Guardar página de ventas" }));
+
+    expect(await screen.findByRole("status")).toHaveTextContent("Textos de venta guardados.");
+    expect(updateTeacherCourseBuilder).toHaveBeenCalledWith(legacy.id, expect.objectContaining({
+      summary: "Resumen nuevo", paymentType: sent, priceAmountMinor: null,
+    }));
   });
 
   it("localizes every block field and action while preserving saved blocks on language changes", async () => {
@@ -116,11 +154,15 @@ describe("ES-09 editors with the shipped dictionaries", () => {
     mount(<CourseLandingEditor course={course} />);
     expect(screen.getByText("Cargando tu página de ventas…")).toBeInTheDocument();
     await screen.findByLabelText("Título principal");
-    for (const name of ["Una línea debajo del título", "URL de la imagen de fondo", "URL de tu foto",
+    for (const name of ["Una línea debajo del título",
       "Título del paso 1", "Qué ocurre en este paso", "Qué dijeron", "Quién lo dijo",
       "Pregunta", "Respuesta", "Texto del botón"]) {
       expect(screen.getByLabelText(name)).toBeInTheDocument();
     }
+    expect(screen.getByText("URL de la imagen de fondo")).toBeInTheDocument();
+    expect(screen.getByText("URL de tu foto")).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "Subir imagen" })).toHaveLength(2);
+    expect(screen.getAllByLabelText("O pega un enlace")).toHaveLength(2);
     expect(screen.getAllByRole("button", { name: "Subir" })).toHaveLength(7);
     expect(screen.getByText(/Atención: esta página usa/)).toHaveTextContent("therapist");
     fireEvent.click(screen.getByRole("button", { name: "Eliminar sección Sobre ti" }));

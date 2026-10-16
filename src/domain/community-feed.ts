@@ -224,3 +224,19 @@ export function toMillis(value: unknown): number {
   }
   return 0;
 }
+
+/** Tira da tela o que a pessoa acabou de apagar, sem esperar o realtime (o
+ *  DELETE nao chega pelo canal filtrado por curso). Como a cascata do banco,
+ *  as respostas de um post apagado e de uma resposta apagada somem junto. */
+export function withoutDeleted<T extends { id: string; postId?: string; parentId?: string | null }>(
+  items: T[],
+  deleted: ReadonlySet<string>,
+): T[] {
+  if (deleted.size === 0) return items;
+  return items.filter(
+    (item) =>
+      !deleted.has(item.id)
+      && !(item.postId && deleted.has(item.postId))
+      && !(item.parentId && deleted.has(item.parentId)),
+  );
+}

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ExternalLink, Store } from "lucide-react";
+import { Store } from "lucide-react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { VerifiedSeal } from "@/components/shared/verified-badge";
@@ -45,7 +45,7 @@ export function StudioStorefrontCard({
 
       <Card className="mt-4" padding="md">
         <div className="flex flex-wrap items-start gap-4">
-          <span className="grid size-10 shrink-0 place-items-center rounded-none border border-[var(--color-line)] text-[var(--color-primary)]">
+          <span className="grid size-10 shrink-0 place-items-center rounded-md border border-[var(--color-line)] text-[var(--color-primary)]">
             <Store aria-hidden="true" size={18} strokeWidth={1.8} />
           </span>
           <div className="min-w-0 flex-1">
@@ -69,13 +69,9 @@ export function StudioStorefrontCard({
         <div className="mt-4 flex flex-wrap gap-2">
           <Link
             href={path}
-            target="_blank"
-            rel="noopener noreferrer"
             className={buttonClasses({ variant: "outline", size: "sm" })}
           >
             {t("teach.storefrontCard.open")}
-            <ExternalLink aria-hidden="true" size={14} strokeWidth={1.9} />
-            <span className="sr-only">{t("platform.opensInNewTab")}</span>
           </Link>
           <Link
             href="/teach/storefront"

@@ -2,10 +2,10 @@
 import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const mocks = vi.hoisted(() => ({ verify: vi.fn(), exchange: vi.fn() }));
+const mocks = vi.hoisted(() => ({ verify: vi.fn(), exchange: vi.fn(), getUser: vi.fn() }));
 vi.mock("@/lib/supabase/server", () => ({
   createSupabaseServerClient: vi.fn(async () => ({
-    auth: { verifyOtp: mocks.verify, exchangeCodeForSession: mocks.exchange },
+    auth: { verifyOtp: mocks.verify, exchangeCodeForSession: mocks.exchange, getUser: mocks.getUser },
   })),
 }));
 
@@ -100,6 +100,7 @@ describe("email confirmation error context", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.verify.mockResolvedValue({ error: { message: "expired fixture" } });
+    mocks.getUser.mockResolvedValue({ data: { user: null }, error: null });
   });
 
   it.each(["loading", "confirm"])("preserves intent from the same-origin %s email redirect after verifyOtp fails", async (entry) => {
@@ -107,7 +108,8 @@ describe("email confirmation error context", () => {
     const redirect = entry === "loading" ? `${origin}${next}` : `${origin}/auth/confirm?next=${encodeURIComponent(next)}`;
     const params = new URLSearchParams({ token_hash: "email-fixture", type: "signup", redirect_to: redirect });
     const response = await confirm(new NextRequest(`${origin}/auth/confirm?${params}`));
-    expect(Object.fromEntries(new URL(response.headers.get("location")!).searchParams)).toEqual({ error: "confirm", path: "teacher", returnTo: target });
+    // confirm_expired: o login abre "este link venceu", com reenviar.
+    expect(Object.fromEntries(new URL(response.headers.get("location")!).searchParams)).toEqual({ error: "confirm_expired", path: "teacher", returnTo: target });
     expect(mocks.verify).toHaveBeenCalledWith({ token_hash: "email-fixture", type: "signup" });
     expect(mocks.exchange).not.toHaveBeenCalled();
     expect(response.cookies.get(PASSWORD_RECOVERY_COOKIE)).toBeUndefined();

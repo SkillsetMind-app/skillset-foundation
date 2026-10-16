@@ -104,7 +104,7 @@ export function LearnEventsHub() {
 
   if (isLoadingEnrollments || isLoadingEvents) {
     return (
-      <section className="rounded-none border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
+      <section className="rounded-lg border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
         <p className="text-sm text-[var(--color-ink-soft)]">{t("learnWave2.eventsHub.loading")}</p>
       </section>
     );
@@ -112,8 +112,8 @@ export function LearnEventsHub() {
 
   if (error) {
     return (
-      <section className="rounded-none border border-[rgba(178,34,52,0.2)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
-        <p role="alert" className="rounded-none bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
+      <section className="rounded-lg border border-[rgba(178,34,52,0.2)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
+        <p role="alert" className="rounded-md bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
           {t(error)}
         </p>
       </section>
@@ -122,7 +122,7 @@ export function LearnEventsHub() {
 
   if (enrollments.length === 0) {
     return (
-      <section className="rounded-none border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
+      <section className="rounded-lg border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
         <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
           {t("learnWave2.eventsHub.eyebrow")}
         </p>
@@ -143,7 +143,7 @@ export function LearnEventsHub() {
 
   if (events.length === 0) {
     return (
-      <section className="rounded-none border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
+      <section className="rounded-lg border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
         <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
           {t("learnWave2.eventsHub.schedule")}
         </p>
@@ -228,7 +228,7 @@ function LearnerEventCard({
   const safeJoinUrl = getSafeExternalUrl(event.externalUrl);
 
   return (
-    <article className="rounded-none border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
+    <article className="rounded-lg border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
@@ -238,7 +238,7 @@ function LearnerEventCard({
             {event.title}
           </h2>
         </div>
-        <span className="rounded-none bg-[var(--color-surface-soft)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-primary)]">
+        <span className="rounded-md bg-[var(--color-surface-soft)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-primary)]">
           {t(`creatorPanel.events.status.${event.status}`)}
         </span>
       </div>
@@ -252,7 +252,7 @@ function LearnerEventCard({
         {event.description}
       </p>
 
-      <div className="mt-6 rounded-none border fine-rule bg-[var(--color-surface-soft)] p-4">
+      <div className="mt-6 rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4">
         <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--color-ink-soft)]">
           {t("learnWave2.eventsHub.attendance")}
         </p>
@@ -264,7 +264,7 @@ function LearnerEventCard({
               : rsvpLabel}
         </p>
         {rsvpError ? (
-          <p role="alert" className="mt-3 rounded-none border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-3 py-2 text-sm font-semibold text-[var(--color-danger-fg)]">
+          <p role="alert" className="mt-3 rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-3 py-2 text-sm font-semibold text-[var(--color-danger-fg)]">
             {t(rsvpError)}
           </p>
         ) : null}
@@ -298,7 +298,7 @@ function LearnerEventCard({
           {t("learnWave2.eventsHub.join")}
         </a>
       ) : (
-        <p className="mt-6 rounded-none border fine-rule bg-[var(--color-surface-soft)] px-4 py-3 text-sm text-[var(--color-ink-soft)]">
+        <p className="mt-6 rounded-md border fine-rule bg-[var(--color-surface-soft)] px-4 py-3 text-sm text-[var(--color-ink-soft)]">
           {t("learnWave2.eventsHub.noLink")}
         </p>
       )}

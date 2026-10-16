@@ -5,6 +5,12 @@ already cost us a real defect in production, not general advice.
 
 Applies to every agent working in this repo — Claude Code, Codex, anything else.
 
+Where things are: `README.md` (what this is, how to run it, how a change ships),
+`docs/COMO-TRABALHAR.md` (onboarding: accesses, setup, flow, code conventions,
+migrations), `docs/ARQUITETURA.md` (map of the system) and `docs/README.md`
+(index of the rest). This repo is **public**: plans, session notes, business strategy,
+investor material and security findings do not belong in it.
+
 ---
 
 ## 1. Nothing may render outside the screen. Ever.
@@ -83,7 +89,12 @@ document.documentElement.scrollWidth > document.documentElement.clientWidth  // 
 
 ## 2. Other standing rules
 
-- **Never commit to `main`.** Branch, open a PR, let CI run.
+- **Never commit to `main`.** Branch, open a PR, let CI run. Five checks are
+  required to merge: `Lint, typecheck, test, build`, `RLS smoke tests (banco
+  efêmero)`, `Semgrep SAST`, `TruffleHog secrets scan` and `npm audit (high+)`.
+- **Database migrations are not applied by merging.** A file in
+  `supabase/migrations/` reaches production only when someone applies it by
+  hand; CI tests it against a throwaway database first.
 - **Money and auth writes fail closed; reads fail open.** A throw inside a
   Stripe webhook handler *is* the retry mechanism — do not swallow it.
 - **Psychology is a subject — never a seller identity, and never the
@@ -98,9 +109,10 @@ document.documentElement.scrollWidth > document.documentElement.clientWidth  // 
   comes back.
 
   **One exception, decided by the owner on 2026-09-25:** the home page may
-  name "psychologists and personal-development professionals" ("psicólogos y
-  profesionales del desarrollo personal") as its audience — in that exact
-  pairing, only on the home (`home.*` keys), never psychologists alone and
+  name "psychologists, coaches and personal-development professionals"
+  ("psicólogos, coaches y profesionales del desarrollo personal") as its
+  audience (coaches added by the owner on 2026-10-15) — in that exact
+  grouping, only on the home (`home.*` keys), never psychologists alone and
   never on any other page. "Therapist", "psychotherapy" and "counselor" stay
   blocked everywhere. The test above enforces the exception narrowly; widening
   it needs a new owner decision, not a test edit.

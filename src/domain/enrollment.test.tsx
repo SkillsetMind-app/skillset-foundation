@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   canContinueEnrollment,
+  communityEnrollmentCourseIds,
   createEnrollmentCommunityCards,
   canOpenEnrollment,
   canSelfEnrollCourse,
@@ -71,8 +72,8 @@ describe("enrollment helpers", () => {
     });
   });
 
-  it("creates course community cards only from open real enrollments", () => {
-    const cards = createEnrollmentCommunityCards([
+  it("creates course community cards only from open real enrollments with the community on", () => {
+    const enrollments: Parameters<typeof createEnrollmentCommunityCards>[0] = [
       {
         id: "enrollment-active",
         userId: "user-1",
@@ -112,7 +113,26 @@ describe("enrollment helpers", () => {
         progressPercent: 10,
         lastLessonId: null,
       },
-    ]);
+      {
+        id: "enrollment-community-off",
+        userId: "user-1",
+        courseId: "course-3",
+        courseSlug: "quiet-course",
+        courseTitle: "Quiet Course",
+        courseCategory: "Management",
+        courseImage: "https://example.com/quiet.jpg",
+        status: "active",
+        source: "payment",
+        progressPercent: 0,
+        lastLessonId: null,
+      },
+    ];
+
+    // So os cursos reais com matricula aberta vao ao banco perguntar.
+    expect(communityEnrollmentCourseIds(enrollments)).toEqual(["course-1", "course-3"]);
+
+    // course-3 esta com a comunidade desligada: nao entra no conjunto.
+    const cards = createEnrollmentCommunityCards(enrollments, new Set(["course-1"]));
 
     expect(cards).toEqual([
       {

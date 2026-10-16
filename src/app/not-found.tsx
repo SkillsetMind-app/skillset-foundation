@@ -7,7 +7,7 @@ export default function NotFound() {
   const { t } = useTranslation();
   return (
     <main className="page-shell flex min-h-screen items-center justify-center px-6">
-      <div className="surface-card max-w-2xl rounded-none p-8 text-center sm:p-10">
+      <div className="surface-card max-w-2xl rounded-lg p-8 text-center sm:p-10">
         <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[var(--color-accent-fg)]">
           {t("publicPages.notFound.eyebrow")}
         </p>

@@ -50,6 +50,7 @@ describe("getMemberArea", () => {
     await expect(getMemberArea("course-1")).resolves.toEqual({
       brand: null,
       theme: "dark",
+      communityEnabled: false,
     });
   });
 
@@ -77,6 +78,7 @@ describe("getMemberArea", () => {
         accentColor: "#a1b2c3",
       },
       theme: "dark",
+      communityEnabled: false,
     });
   });
 
@@ -94,6 +96,7 @@ describe("getMemberArea", () => {
     await expect(getMemberArea("course-1")).resolves.toEqual({
       brand: { name: "Instructor", logoUrl: null, accentColor: null },
       theme: "light",
+      communityEnabled: false,
     });
   });
 
@@ -108,6 +111,7 @@ describe("getMemberArea", () => {
     await expect(getMemberArea("course-1")).resolves.toEqual({
       brand: null,
       theme: "light",
+      communityEnabled: false,
     });
   });
 
@@ -119,6 +123,18 @@ describe("getMemberArea", () => {
     await expect(getMemberArea("course-1")).resolves.toEqual({
       brand: null,
       theme: "light",
+      communityEnabled: false,
     });
+  });
+
+  it("tells the shell whether the course community is on (the Help menu sends lesson questions there)", async () => {
+    mocks.createServer.mockResolvedValue(
+      supabaseReturning({
+        courses: { owner_id: "teacher-1", members_theme: "light", community_enabled: true },
+        public_profiles: null,
+      }),
+    );
+
+    await expect(getMemberArea("course-1")).resolves.toMatchObject({ communityEnabled: true });
   });
 });

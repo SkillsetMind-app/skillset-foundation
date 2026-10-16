@@ -88,13 +88,13 @@ function CopyableRecord({ label, value }: { label: string; value: string }) {
         {label}
       </Eyebrow>
       <div className="flex items-center gap-2">
-        <code className="min-w-0 flex-1 truncate rounded-none border border-[var(--color-line)] bg-white px-3 py-2 font-mono text-sm text-[var(--color-ink)]">
+        <code className="min-w-0 flex-1 truncate rounded-md border border-[var(--color-line)] bg-white px-3 py-2 font-mono text-sm text-[var(--color-ink)]">
           {value}
         </code>
         <button
           type="button"
           onClick={() => void copyValue()}
-          className="grid h-11 w-11 shrink-0 place-items-center rounded-none border border-[var(--color-line)] bg-white text-[var(--color-ink-soft)] transition hover:text-[var(--color-ink)]"
+          className="grid h-11 w-11 shrink-0 place-items-center rounded-md border border-[var(--color-line)] bg-white text-[var(--color-ink-soft)] transition hover:text-[var(--color-ink)]"
           aria-label={t("teach.customDomains.copyAria").replace("{label}", () => label)}
         >
           {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
@@ -401,7 +401,7 @@ export function CustomDomainsPanel() {
                     onChange={(event) => setHostname(event.target.value)}
                     placeholder={t("teach.customDomains.hostnamePlaceholder")}
                     disabled={atQuota || adding}
-                    className="min-w-0 flex-1 rounded-none border border-[var(--color-line)] bg-white px-3 py-2.5 font-mono text-sm text-[var(--color-ink)] disabled:opacity-50"
+                    className="min-w-0 flex-1 rounded-md border border-[var(--color-line)] bg-white px-3 py-2.5 font-mono text-sm text-[var(--color-ink)] disabled:opacity-50"
                   />
                   <Button type="submit" disabled={atQuota || adding || !hostname.trim()}>
                     {adding ? <Loader2 className="h-4 w-4 animate-spin" /> : null}

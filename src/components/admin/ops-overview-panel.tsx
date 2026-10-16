@@ -160,7 +160,7 @@ export function OpsOverviewPanel({ counts }: { counts: OpsQueueCounts }) {
             {copy("asOf").replace("{time}", () => timeFormat.format(range.end))}
           </p>
         </div>
-        <nav aria-label={copy("periodLabel")} className="flex rounded-none border border-[var(--color-line)]">
+        <nav aria-label={copy("periodLabel")} className="flex overflow-hidden rounded-md border border-[var(--color-line)]">
           {overviewPeriods.map((option) => (
             <Link
               key={option}
@@ -190,7 +190,7 @@ export function OpsOverviewPanel({ counts }: { counts: OpsQueueCounts }) {
       ) : access.status === "ready" && access.value ? (
         <OverviewNumbers range={range} counts={counts} fmt={fmt} />
       ) : (
-        <p role="alert" className="rounded-none border border-[var(--color-line)] bg-[var(--color-surface)] p-4 text-sm text-[var(--color-ink)]">
+        <p role="alert" className="rounded-md border border-[var(--color-line)] bg-[var(--color-surface)] p-4 text-sm text-[var(--color-ink)]">
           {copy(access.status === "error" ? "accessError" : "secondFactor")}
         </p>
       )}
@@ -312,7 +312,7 @@ function Tile<T>({
   children: (value: T) => ReactNode;
 }) {
   return (
-    <div data-tile className="min-w-0 rounded-none border border-[var(--color-line)] bg-[var(--color-surface)] p-4">
+    <div data-tile className="min-w-0 rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)] p-4">
       <p className="text-xs font-medium text-[var(--color-ink-soft)]">{label}</p>
       {read.status === "loading" ? (
         <p role="status" className="mt-2 text-2xl font-semibold text-[var(--color-ink-muted)]">
@@ -429,7 +429,7 @@ function QueueTile({ tab, label, value }: { tab: OpsQueue; label: string; value:
   return (
     <Link
       href={getOpsNavItem(tab).href}
-      className="block min-w-0 rounded-none border border-[var(--color-line)] bg-[var(--color-surface)] p-4 hover:border-[var(--color-line-strong)] hover:bg-[var(--color-surface-soft)]"
+      className="block min-w-0 rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)] p-4 hover:border-[var(--color-line-strong)] hover:bg-[var(--color-surface-soft)]"
     >
       <span className="block text-xs font-medium text-[var(--color-ink-soft)]">{label}</span>
       <span className="mt-2 block text-2xl font-semibold text-[var(--color-ink)]">

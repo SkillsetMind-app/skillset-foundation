@@ -206,7 +206,7 @@ export function ExportTableButton({
           role="menu"
           aria-labelledby={`${menuId}-trigger`}
           style={{ position: "fixed", visibility: "hidden" }}
-          className="z-[50] w-44 overflow-y-auto rounded-none border border-[var(--color-line)] bg-white p-1.5 shadow-[var(--shadow-strong)]"
+          className="z-[50] w-44 overflow-y-auto rounded-lg border border-[var(--color-line)] bg-white p-1.5 shadow-[var(--shadow-strong)]"
         >
           <button
             type="button"
@@ -214,7 +214,7 @@ export function ExportTableButton({
             tabIndex={-1}
             onClick={() => handleExport("csv")}
             onKeyDown={moveFocus}
-            className="w-full rounded-none px-3 py-2 text-left text-xs font-semibold text-[var(--color-ink)] hover:bg-[var(--color-surface-soft)]"
+            className="w-full rounded-md px-3 py-2 text-left text-xs font-semibold text-[var(--color-ink)] hover:bg-[var(--color-surface-soft)]"
           >
             {t("platform.ops.exportButton.csv")}
           </button>
@@ -224,7 +224,7 @@ export function ExportTableButton({
             tabIndex={-1}
             onClick={() => handleExport("json")}
             onKeyDown={moveFocus}
-            className="w-full rounded-none px-3 py-2 text-left text-xs font-semibold text-[var(--color-ink)] hover:bg-[var(--color-surface-soft)]"
+            className="w-full rounded-md px-3 py-2 text-left text-xs font-semibold text-[var(--color-ink)] hover:bg-[var(--color-surface-soft)]"
           >
             {t("platform.ops.exportButton.json")}
           </button>

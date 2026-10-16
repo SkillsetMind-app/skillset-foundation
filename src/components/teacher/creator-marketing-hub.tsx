@@ -5,10 +5,8 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   ArrowRight,
   BadgePercent,
-  ExternalLink,
   Image,
   MessageCircle,
-  Plug,
   Store,
   type LucideIcon,
 } from "lucide-react";
@@ -158,13 +156,9 @@ export function CreatorMarketingHub() {
           {uid ? (
             <Link
               href={storefrontPath}
-              target="_blank"
-              rel="noopener noreferrer"
               className="inline-flex items-center gap-1 text-xs font-semibold text-[var(--color-primary)] underline underline-offset-2"
             >
               {t("teach.marketing.state.openPublicPage")}
-              <ExternalLink aria-hidden="true" size={12} strokeWidth={1.9} />
-              <span className="sr-only">{t("platform.opensInNewTab")}</span>
             </Link>
           ) : null}
         </span>
@@ -212,30 +206,21 @@ export function CreatorMarketingHub() {
       key: "coupons",
       title: t("teach.marketing.coupons.title"),
       description: t("teach.marketing.coupons.description"),
-      href: "/teach/coupons",
+      // Cupom mora dentro de cada produto: o cartao leva para a lista de
+      // produtos e diz isso no botao. (/teach/coupons so redireciona.)
+      href: "/teach/builder",
       action: t("teach.marketing.coupons.action"),
       icon: BadgePercent,
-      // Cupom mora dentro de cada produto: nao existe cupom "do criador" para
-      // contar sem consulta nova. O cartao diz onde o ajuste vive, sem numero.
+      // Nao existe cupom "do criador" para contar sem consulta nova. O cartao
+      // diz onde o ajuste vive, sem numero.
       state: (
         <span className="text-xs text-[var(--color-ink-soft)]">
           {t("teach.marketing.state.couponsPerProduct")}
         </span>
       ),
     },
-    {
-      key: "integrations",
-      title: t("teach.marketing.integrations.title"),
-      description: t("teach.marketing.integrations.description"),
-      href: "/teach/integrations",
-      action: t("teach.marketing.integrations.action"),
-      icon: Plug,
-      state: (
-        <span className="status-chip status-chip--info">
-          {t("teach.marketing.state.planned")}
-        </span>
-      ),
-    },
+    // "Integrations — See what's planned" saiu: nao ha pagina de integracoes,
+    // e o endereco antigo cai em Ganhos.
   ];
 
   return (
@@ -259,7 +244,7 @@ export function CreatorMarketingHub() {
           {t("teach.marketing.sectionTitle")}
         </h2>
 
-        <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {tools.map((tool) => {
             const Icon = tool.icon;
 
@@ -270,7 +255,7 @@ export function CreatorMarketingHub() {
                 padding="md"
                 className="grid content-start gap-3"
               >
-                <span className="grid size-10 place-items-center rounded-none border border-[var(--color-line)] bg-[var(--color-surface-soft)] text-[var(--color-primary)]">
+                <span className="grid size-10 place-items-center rounded-md border border-[var(--color-line)] bg-[var(--color-surface-soft)] text-[var(--color-primary)]">
                   <Icon aria-hidden="true" size={18} strokeWidth={1.8} />
                 </span>
                 <div>

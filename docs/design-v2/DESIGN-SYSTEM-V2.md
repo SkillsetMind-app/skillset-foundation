@@ -63,7 +63,10 @@
 --shadow-button-strong: 0 14px 28px rgba(15,39,68,0.28)
 --shadow-avatar:        0 8px 18px rgba(26,54,93,0.14)
 ```
-**Radii** (`--radius-xs:6 sm:8 md:10 lg:12 xl:14 2xl:16 3xl:18 4xl:22` px)
+**Radii** (handoff: `--radius-xs:6 sm:8 md:10 lg:12 xl:14 2xl:16 3xl:18 4xl:22` px)
+
+> **Superseded in the app — founder decision of 2026-10-06.** #447 (2026-10-01) had zeroed every radius; it was reversed to *slightly* rounded corners, one radius per role, nothing above 16px. Tokens live in the `@theme` block of `src/app/globals.css` and feed Tailwind's `rounded-*`:
+> `--radius-sm 4px` (verified seal, tiny marks) · `--radius-chip 6px` (chips, badges) · `--radius-md 8px` (buttons, inputs, selects, textareas) · `--radius-lg 12px` (cards, panels, dropdowns) · `--radius-xl 16px` (dialogs, sheets); `2xl`/`3xl`/`4xl` are capped at 16px. Avatars, status dots, spinners, toggles and chips that were already pills stay `rounded-full`. The handoff's per-component radii in §6 (9/10/14/16/18/22/24px) map onto these roles; they are not used as written.
 **Spacing** (4px base): `--space-1:4 … --space-12:96` (1=4,2=8,3=12,4=16,5=20,6=24,7=32,8=40,9=48,10=64,11=80,12=96)
 **Layout:** `--container-max:1280px  --container-pad-mobile:20px  --container-pad-desktop:32px  --sidebar-width:252px`
 **Fonts**
@@ -135,13 +138,13 @@ Ad-hoc `.14s`–`.22s` transitions; keyframes `mbpulse mbslide mbtoast mbpop mbt
 | `--color-line` | `rgba(26,54,93,.28)` | `rgba(26,54,93,0.12)` | **much softer** hairlines |
 | `--color-line-strong` | `rgba(26,54,93,.40)` | `rgba(26,54,93,0.18)` | **much softer** strong lines |
 
-Unchanged and confirmed identical: `--color-brand/-primary/-primary-dark/-primary-light`, `--color-accent/-hover/-soft`, `--color-base/-surface`, `--color-ink/-ink-soft`, `--color-success #1f8a5b`, `--color-warning #c07b0a`, `--color-info #2c5282`, `--color-danger #b22234`, all three `--shadow-*` you listed, all radii (`sm8 md10 lg12 xl14 3xl18 4xl22`), Manrope + Cormorant fonts, `[data-theme="dark"]` mechanism.
+Unchanged and confirmed identical: `--color-brand/-primary/-primary-dark/-primary-light`, `--color-accent/-hover/-soft`, `--color-base/-surface`, `--color-ink/-ink-soft`, `--color-success #1f8a5b`, `--color-warning #c07b0a`, `--color-info #2c5282`, `--color-danger #b22234`, all three `--shadow-*` you listed, all radii (`sm8 md10 lg12 xl14 3xl18 4xl22` at handoff time — since 2026-10-06 the app uses `sm4 chip6 md8 lg12 xl16`, see §2a), Manrope + Cormorant fonts, `[data-theme="dark"]` mechanism.
 
 ### Tokens NET-NEW in V2 (add these)
 
 - `--color-accent-soft #f3d6dc`, `--color-success-soft #e4f3eb`, `--color-warning-soft #fcefd2`, `--color-danger-soft`, `--color-info-soft #ebf3fb`, `--color-on-primary`, `--color-on-accent`
 - `--shadow-button`, `--shadow-button-strong`
-- `--radius-xs 6px`, `--radius-2xl 16px`
+- `--radius-xs 6px`, `--radius-2xl 16px` (not adopted as such: the app's 6px is `--radius-chip`, and `2xl` is capped at 16px — see §2a)
 - Full `--space-1…12` scale, `--container-max/-pad-mobile/-pad-desktop`, `--sidebar-width 252px`
 - Full `--fs-10…72` raw scale; `--fw-*`; `--tracking-*`; `--leading-*`
 - `--font-num` (Inter) + `--font-mono`
@@ -197,6 +200,8 @@ None. Every current token is present (some renamed only in value). The current d
 ---
 
 ## 6. COMPONENT INVENTORY (marketplace, exact values)
+
+> Radii in this section are the handoff's. In the app they follow the role tokens in §2a (buttons/inputs 8, cards/dropdowns 12, dialogs 16, chips 6).
 
 **Buttons** (`.btn`, radius 9px, `font-size:13px`, `padding:11px 16px`, weight 600)
 - `.btn-primary` navy bg, inset red underline shadow `inset 0 -2px 0 rgba(178,34,52,0.32)` + soft navy drop; hover → `--color-primary-dark`, `translateY(-1px)`.
@@ -296,6 +301,6 @@ The V2 handoff is **two apps**. The marketplace/teach app (`App.jsx`) maps to mo
 4. **`color-mix(in srgb, …)`** is used throughout the member area — fine for modern browsers; confirm target support or provide fallbacks.
 5. **Per-instructor accent theming** (member area) sets `--mb-accent` at runtime from course data. If ported, needs a theming mechanism keyed on course/instructor.
 6. **Prototype is React-18-UMD + Babel-in-browser + `window.*` globals + mock `data.js`.** None of the JS architecture ports — only the CSS tokens, class styles, layout structure, and component semantics are the contract.
-7. **Radii nuance:** V2 course cards use `18px` (`--radius-3xl`) and generic `.card` uses `16px` (`--radius-2xl`, new). Current app tops out at `--radius-4xl:22`; confirm `2xl:16`/`xs:6` additions.
+7. **Radii nuance:** V2 course cards use `18px` (`--radius-3xl`) and generic `.card` uses `16px` (`--radius-2xl`, new). **Resolved 2026-10-06:** the app does not follow these; every card is 12px (`--radius-lg`) and nothing goes above 16px (see §2a).
 8. **Auth exists in both apps** (marketplace `screens/Auth.jsx` navy, member `membros/Auth.jsx` dark). Pick one canonical login per the theme decision in (1).
 9. **`screens/` folder = the marketplace surfaces**; skimmed for names/purposes only (structure matches Topbar route→title map). Deep component styles for each live in the corresponding `app.css` section (§ headers listed in file, e.g. `PRICING` L2214, `PAYOUTS` L2415, `SETTINGS` L2885, `BUILDER` L3037, `AUTH` L7601).

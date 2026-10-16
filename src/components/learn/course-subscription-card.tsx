@@ -103,7 +103,7 @@ export function CourseSubscriptionCard({
         <p
           key={error}
           role="alert"
-          className="mt-3 rounded-none border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-3 py-2 text-sm font-semibold text-[var(--color-danger-fg)]"
+          className="mt-3 rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-3 py-2 text-sm font-semibold text-[var(--color-danger-fg)]"
         >
           {t(`${copy}.${error}`)}
         </p>
@@ -122,7 +122,7 @@ export function CourseSubscriptionCard({
       ) : (
         <>
           {pastDue ? (
-            <p className="mt-3 rounded-none border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-3 py-2 text-sm font-semibold text-[var(--color-danger-fg)]">
+            <p className="mt-3 rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-3 py-2 text-sm font-semibold text-[var(--color-danger-fg)]">
               {t(`${copy}.paymentAttention`)}
             </p>
           ) : null}

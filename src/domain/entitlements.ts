@@ -25,16 +25,9 @@
  * platform-hosted room is the paid, metered half of that split and is not
  * built yet; when it is, it gets three readable knobs — classes per month, max
  * duration, max room size — not the attendee-minute bucket this file used to
- * carry. See docs/plans/2026-08-08-plano-mestre-recursos-por-plano.md.
+ * carry.
  *
- * No bandwidth quota either — and unlike the live-session gap, that one has a
- * cost ceiling worth knowing. `videoStorageMinutes` caps the cheap resource
- * ($2/month of Bunny storage at the largest tier); the expensive one is hours
- * WATCHED, at ~$0.0066/hour on the Volume network. Pro turns unprofitable past
- * roughly 640 students completing its catalog, and `activeStudents: null` on
- * Plus puts no ceiling on it at all. Deliberately unmetered for now: Bunny is
- * not serving production video yet. D23 in DECISIONS.md carries the math and
- * the trigger for building the meter.
+ * No bandwidth quota yet: `videoStorageMinutes` limits stored video, not hours watched.
  */
 
 import type { PlanId } from "@/data/plans";
@@ -92,6 +85,26 @@ export const planEntitlements: Record<PlanId, PlanEntitlements> = {
       storefrontTemplates: false,
     },
   },
+  // Basic takes Free's place on the offer and keeps its quotas. Its features
+  // follow the SQL, which treats every plan other than `free` as paid: own
+  // logo on certificates and storefront templates are on, whitelabel is not.
+  basic: {
+    quotas: {
+      publishedProducts: 1,
+      activeStudents: 50,
+      videoStorageMinutes: 60,
+      featuredSlots: 0,
+      customDomains: 0,
+      teamSeats: 1,
+      emailSendsPerMonth: 0,
+      landingBlocks: 4,
+    },
+    features: {
+      removePlatformBranding: false,
+      certificateOwnLogo: true,
+      storefrontTemplates: true,
+    },
+  },
   starter: {
     quotas: {
       publishedProducts: 5,
@@ -109,15 +122,16 @@ export const planEntitlements: Record<PlanId, PlanEntitlements> = {
       storefrontTemplates: true,
     },
   },
+  // Enterprise's limits, except a 3,000 cap on active students.
   pro: {
     quotas: {
-      publishedProducts: 25,
-      activeStudents: 2_000,
-      videoStorageMinutes: 3_000,
-      featuredSlots: 3,
-      customDomains: 3,
-      teamSeats: 5,
-      emailSendsPerMonth: 10_000,
+      publishedProducts: null,
+      activeStudents: 3_000,
+      videoStorageMinutes: 10_000,
+      featuredSlots: 5,
+      customDomains: 5,
+      teamSeats: 15,
+      emailSendsPerMonth: 50_000,
       landingBlocks: 20,
     },
     features: {
@@ -126,6 +140,7 @@ export const planEntitlements: Record<PlanId, PlanEntitlements> = {
       storefrontTemplates: true,
     },
   },
+  // Enterprise (id `plus`): not on the public offer, by arrangement only.
   plus: {
     quotas: {
       publishedProducts: null,
@@ -208,18 +223,24 @@ export function hasFeature(planId: PlanId, key: FeatureKey): boolean {
   return planEntitlements[planId].features[key];
 }
 
+// Plans a teacher can move to on their own, cheapest first. Enterprise is not
+// one of them: above Pro the answer is "Contact us", never "Upgrade".
+const UPGRADE_ORDER: PlanId[] = ["free", "basic", "starter", "pro"];
+
 /** The cheapest plan that includes a feature — powers "Upgrade to Pro" copy. */
 export function lowestPlanWithFeature(key: FeatureKey): PlanId | null {
-  const order: PlanId[] = ["free", "starter", "pro", "plus"];
-  return order.find((planId) => hasFeature(planId, key)) ?? null;
+  return UPGRADE_ORDER.find((planId) => hasFeature(planId, key)) ?? null;
 }
 
-/** The cheapest plan whose quota covers `needed`. Null when none does. */
+/**
+ * The cheapest plan whose quota covers `needed`. Null when none does — the
+ * teacher has outgrown the top tier, and the limit UI offers "Contact us".
+ */
 export function lowestPlanWithQuota(
   key: QuotaKey,
   needed: number,
 ): PlanId | null {
-  const order: PlanId[] = ["free", "starter", "pro", "plus"];
+  const order = UPGRADE_ORDER;
   return (
     order.find((planId) => {
       const limit = planEntitlements[planId].quotas[key];

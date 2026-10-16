@@ -1,5 +1,6 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
+import { resolveCoursePrice, type ProductOffer } from "@/domain/product-pricing";
 import { CourseOffersPanel } from "./course-offers-panel";
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 function stubOffers() {
@@ -15,8 +16,8 @@ function stubOffers() {
 it("shares checkout by public code or offer ID, never inactive offers", async () => {
   stubOffers();
   render(<CourseOffersPanel courseId="course-1" courseTitle="Launch course" />);
-  expect(await screen.findByRole("link", { name: "Open Launch checkout" })).toHaveAttribute("href", "/courses/course-1/checkout?offer=LAUNCH");
-  expect(screen.getByRole("link", { name: "Open Standard checkout" })).toHaveAttribute("href", "/courses/course-1/checkout?offerId=o2");
+  expect(await screen.findByRole("link", { name: "Open Launch payment page" })).toHaveAttribute("href", "/courses/course-1/checkout?offer=LAUNCH");
+  expect(screen.getByRole("link", { name: "Open Standard payment page" })).toHaveAttribute("href", "/courses/course-1/checkout?offerId=o2");
   expect(screen.queryByRole("link", { name: /Expired/ })).not.toBeInTheDocument();
   const section = screen.getByRole("heading", { level: 2 }).parentElement;
   expect(section?.tagName).toBe("SECTION");
@@ -26,8 +27,8 @@ it("publishes offer links on pay.skillsetmind.com in production, code and ID pre
   stubOffers();
   vi.stubGlobal("location", { ...window.location, hostname: "www.skillsetmind.com" });
   render(<CourseOffersPanel courseId="course-1" courseTitle="Launch course" />);
-  expect(await screen.findByRole("link", { name: "Open Launch checkout" })).toHaveAttribute("href", "https://pay.skillsetmind.com/courses/course-1/checkout?offer=LAUNCH");
-  expect(screen.getByRole("link", { name: "Open Standard checkout" })).toHaveAttribute("href", "https://pay.skillsetmind.com/courses/course-1/checkout?offerId=o2");
+  expect(await screen.findByRole("link", { name: "Open Launch payment page" })).toHaveAttribute("href", "https://pay.skillsetmind.com/courses/course-1/checkout?offer=LAUNCH");
+  expect(screen.getByRole("link", { name: "Open Standard payment page" })).toHaveAttribute("href", "https://pay.skillsetmind.com/courses/course-1/checkout?offerId=o2");
   expect(screen.queryByRole("link", { name: /Expired/ })).not.toBeInTheDocument();
 });
 
@@ -50,39 +51,136 @@ it("o formulario de oferta nasce com o preco do proprio curso", async () => {
   );
 
   expect(await screen.findByLabelText("Amount")).toHaveValue(29);
-  expect(screen.getByLabelText("Payment type")).toHaveValue("subscription_monthly");
+  expect(screen.getByLabelText("How often they pay")).toHaveValue("subscription_monthly");
   expect(screen.getByLabelText("Currency")).toHaveValue("BRL");
 });
 
-it("curso gratuito: a oferta nasce zerada e gratuita, nunca 97 USD", async () => {
+// "Adicionar outro preco" fica dentro da forma de pagar da etapa de preco:
+// nunca um segundo "Payment type" com as quatro respostas.
+function pricing(paymentType: "one_time" | "subscription_monthly" | "subscription_yearly" | null, amountMinor: number) {
+  return { free: paymentType === null, paymentType, amountMinor, currency: "USD", installmentsMax: null };
+}
+
+it("mensalidade: o outro preco e mensal ou o plano anual, nada de pagamento unico ou gratis", async () => {
+  vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ offers: [] }) })));
+  render(<CourseOffersPanel courseId="course-1" courseTitle="Launch course" coursePricing={pricing("subscription_monthly", 2900)} />);
+
+  const often = await screen.findByLabelText("How often they pay");
+  expect(Array.from(often.querySelectorAll("option")).map((option) => option.textContent)).toEqual([
+    "Monthly membership",
+    "Yearly plan",
+  ]);
+});
+
+it("pagamento unico: o outro preco e outro valor unico, sem escolher forma de pagar", async () => {
+  vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ offers: [] }) })));
+  render(<CourseOffersPanel courseId="course-1" courseTitle="Launch course" coursePricing={pricing("one_time", 9900)} />);
+
+  expect(await screen.findByLabelText("Amount")).toHaveValue(99);
+  expect(screen.queryByLabelText("How often they pay")).not.toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Add price" })).toBeInTheDocument();
+});
+
+it("curso gratuito: nao tem outro preco, e a tela diz onde mudar", async () => {
+  vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ offers: [] }) })));
+  render(<CourseOffersPanel courseId="course-1" courseTitle="Launch course" coursePricing={pricing(null, 0)} />);
+
+  expect(await screen.findByText(/This product is free, so it has no other prices/)).toBeInTheDocument();
+  expect(screen.queryByLabelText("Amount")).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Add another price" })).not.toBeInTheDocument();
+});
+
+// "Add the yearly plan" na etapa de preco abre o formulario ja pronto. O anual
+// e um preco a mais: nao vira o principal, e sem principal a tela avisa que o
+// preco atual vira o principal antes.
+it("plano anual vindo da etapa de preco: formulario aberto, anual e nao principal", async () => {
   vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ offers: [] }) })));
   render(
     <CourseOffersPanel
       courseId="course-1"
       courseTitle="Launch course"
-      coursePricing={{
-        free: true,
-        paymentType: null,
-        amountMinor: 0,
-        currency: "USD",
-        installmentsMax: null,
-      }}
+      coursePricing={pricing("subscription_monthly", 2900)}
+      prefill={{ paymentType: "subscription_yearly", amountMinor: 29000 }}
     />,
   );
 
-  expect(await screen.findByLabelText("Amount")).toHaveValue(0);
-  expect(screen.getByLabelText("Payment type")).toHaveValue("free");
+  expect(await screen.findByLabelText("Amount")).toHaveValue(290);
+  expect(screen.getByLabelText("Name of this price")).toHaveValue("Yearly plan");
+  expect(screen.getByLabelText("How often they pay")).toHaveValue("subscription_yearly");
+  expect(screen.getByLabelText("Make this the main price on your page")).not.toBeChecked();
+  // Com prefill o formulario ja nasce aberto, entao o findBy acima resolve antes
+  // de as ofertas carregarem; o aviso so aparece depois (!loading). getBy aqui
+  // dependia da corrida com o fetch e falhava no CI.
+  expect(await screen.findByText(/^Your page keeps charging \D*29[.,]00 \(Monthly membership\): that price becomes the main price first/)).toBeInTheDocument();
+});
+
+// O anual sozinho virava o preco da pagina: o checkout cobra o principal ou,
+// sem principal, o primeiro preco ativo (resolveCoursePrice). Enviar o
+// formulario pronto num produto sem preco nenhum aqui grava antes o mensal
+// atual como principal, e a pagina continua cobrando o mensal.
+it("plano anual sem preco principal: o mensal vira o principal antes e o checkout segue no mensal", async () => {
+  const saved: ProductOffer[] = [];
+  const posts: Record<string, unknown>[] = [];
+  vi.stubGlobal("fetch", vi.fn(async (_url: string, init?: RequestInit) => {
+    if (init?.method === "POST") {
+      const body = JSON.parse(String(init.body)) as Record<string, unknown>;
+      posts.push(body);
+      if (body.isDefault) saved.forEach((offer) => { offer.isDefault = false; });
+      const id = `o${saved.length + 1}`;
+      saved.push({
+        id, courseId: "course-1", name: String(body.name), isDefault: Boolean(body.isDefault), active: true,
+        prices: [{ id: `p-${id}`, offerId: id, amountMinor: Number(body.amountMinor), currency: String(body.currency),
+          paymentType: body.paymentType as ProductOffer["prices"][number]["paymentType"], active: true }],
+      });
+      return { ok: true, json: async () => ({ offerId: id }) };
+    }
+    return { ok: true, json: async () => ({ offers: saved.map((offer) => ({ ...offer })) }) };
+  }));
+  render(
+    <CourseOffersPanel
+      courseId="course-1"
+      courseTitle="Launch course"
+      coursePricing={pricing("subscription_monthly", 2900)}
+      prefill={{ paymentType: "subscription_yearly", amountMinor: 29000 }}
+    />,
+  );
+
+  const submit = await screen.findByRole("button", { name: "Add price" });
+  await waitFor(() => expect(submit).toBeEnabled());
+  fireEvent.click(submit);
+  await screen.findByText("Price added. Its link charges exactly this price.");
+
+  expect(posts).toHaveLength(2);
+  expect(posts[0]).toMatchObject({ isDefault: true, paymentType: "subscription_monthly", amountMinor: 2900, currency: "USD" });
+  expect(posts[1]).toMatchObject({ isDefault: false, paymentType: "subscription_yearly", amountMinor: 29000 });
+  const course = { id: "course-1", priceAmountMinor: 2900, currency: "USD", paymentType: "subscription_monthly" as const };
+  expect(resolveCoursePrice(course, saved)).toMatchObject({ amountMinor: 2900, paymentType: "subscription_monthly" });
+});
+
+it("plano anual num produto de pagamento unico: o pedido e ignorado", async () => {
+  vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ offers: [] }) })));
+  render(
+    <CourseOffersPanel
+      courseId="course-1"
+      courseTitle="Launch course"
+      coursePricing={pricing("one_time", 9900)}
+      prefill={{ paymentType: "subscription_yearly", amountMinor: 29000 }}
+    />,
+  );
+
+  expect(await screen.findByLabelText("Amount")).toHaveValue(99);
+  expect(screen.getByLabelText("Make this the main price on your page")).toBeChecked();
 });
 
 // Com oferta criada, o formulario empurrava a lista real para baixo.
-it("com ofertas, a lista vem antes e o formulario fica atras de New offer", async () => {
+it("com ofertas, a lista vem antes e o formulario fica atras de Add another price", async () => {
   stubOffers();
   render(<CourseOffersPanel courseId="course-1" courseTitle="Launch course" />);
 
   await screen.findByText("Launch");
   expect(screen.queryByLabelText("Amount")).not.toBeInTheDocument();
 
-  const toggle = screen.getByRole("button", { name: "New offer" });
+  const toggle = screen.getByRole("button", { name: "Add another price" });
   const list = screen.getByRole("list");
   // compareDocumentPosition: 4 = o segundo no vem DEPOIS do primeiro.
   expect(list.compareDocumentPosition(toggle)).toBe(Node.DOCUMENT_POSITION_PRECEDING);
@@ -93,10 +191,10 @@ it("com ofertas, a lista vem antes e o formulario fica atras de New offer", asyn
   expect(list.compareDocumentPosition(amount)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
 });
 
-it("sem nenhuma oferta, o formulario continua aberto e nao ha botao New offer", async () => {
+it("sem nenhuma oferta, o formulario continua aberto e nao ha botao Add another price", async () => {
   vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ offers: [] }) })));
   render(<CourseOffersPanel courseId="course-1" courseTitle="Launch course" />);
 
   expect(await screen.findByLabelText("Amount")).toBeInTheDocument();
-  expect(screen.queryByRole("button", { name: "New offer" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Add another price" })).not.toBeInTheDocument();
 });

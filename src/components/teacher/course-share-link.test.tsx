@@ -169,3 +169,53 @@ describe("CourseShareLink", () => {
     expect(screen.queryByRole("menu")).not.toBeInTheDocument();
   });
 });
+
+// O marco de publicar (painel "Publicado!") leva o foco ao botao latao. Mas
+// publicar espera duas idas a rede e os campos seguem editaveis: quem clicou
+// num campo e continuou digitando perdia as teclas para o botao, e um Espaco
+// copiava o link sem querer.
+describe("CourseShareLink no marco (focusCopy)", () => {
+  function Page({ published }: { published: boolean }) {
+    return (
+      <>
+        <input aria-label="Course title" />
+        {published ? (
+          <CourseShareLink
+            label="Product page"
+            path="/courses/course-1"
+            title={title}
+            copyLabel="Copy my page link"
+            accent
+            focusCopy
+          />
+        ) : null}
+      </>
+    );
+  }
+
+  it("leva o foco ao botao de copiar quando ninguem esta com ele", () => {
+    const { rerender } = render(<Page published={false} />);
+    expect(document.activeElement).toBe(document.body);
+    rerender(<Page published />);
+    expect(screen.getByRole("button", { name: "Copy my page link" })).toHaveFocus();
+  });
+
+  it("nao rouba o foco de quem esta digitando em outro campo", () => {
+    const { rerender } = render(<Page published={false} />);
+    const input = screen.getByLabelText("Course title");
+    input.focus();
+    rerender(<Page published />);
+    expect(input).toHaveFocus();
+    expect(screen.getByRole("button", { name: "Copy my page link" })).not.toHaveFocus();
+  });
+
+  it("no marco, Abrir e Compartilhar saem no tamanho do botao latao, e o menu cai", () => {
+    render(<Page published />);
+    expect(screen.getByRole("button", { name: "Copy my page link" })).toHaveClass("button-accent", "button-lg");
+    expect(screen.getByRole("link", { name: "Open Product page" })).toHaveClass("button-outline", "button-lg");
+    const share = screen.getByRole("button", { name: "Share Product page" });
+    expect(share).toHaveClass("button-outline", "button-lg");
+    fireEvent.click(share);
+    expect(screen.getByRole("menu")).toHaveClass("motion-drop-in");
+  });
+});

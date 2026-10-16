@@ -199,7 +199,7 @@ export function StudioRecentActivity({
       </h2>
 
       {!loaded ? (
-        <div className="mt-4 h-24 animate-pulse rounded-none bg-[var(--color-surface-strong)]" />
+        <div className="mt-4 h-24 animate-pulse rounded-md bg-[var(--color-surface-strong)]" />
       ) : events.length === 0 ? (
         // Professor novo não vê uma grade de zeros fingindo ser um painel.
         <EmptyState
@@ -219,7 +219,7 @@ export function StudioRecentActivity({
                   href={event.href}
                   className="flex min-h-11 items-center gap-3 px-1 py-3 text-sm transition-colors hover:bg-[var(--color-surface-soft)]"
                 >
-                  <span className="grid size-8 shrink-0 place-items-center rounded-none border border-[var(--color-line)] text-[var(--color-primary)]">
+                  <span className="grid size-8 shrink-0 place-items-center rounded-full border border-[var(--color-line)] text-[var(--color-primary)]">
                     <Icon aria-hidden="true" size={15} strokeWidth={1.9} />
                   </span>
                   <span className="min-w-0 flex-1 text-[var(--color-ink)]">{event.text}</span>

@@ -40,10 +40,10 @@ const templates: Record<CourseLandingTemplate, TemplateStyle> = {
     heading: "display-title text-2xl text-[var(--color-primary)]",
     body: "mt-3 whitespace-pre-line text-base leading-8 text-[var(--color-ink-soft)]",
     heroWrap:
-      "overflow-hidden rounded-none border border-[var(--color-line)] bg-[var(--color-surface-soft)] px-6 py-10 sm:px-10 sm:py-14",
+      "overflow-hidden rounded-lg border border-[var(--color-line)] bg-[var(--color-surface-soft)] px-6 py-10 sm:px-10 sm:py-14",
     heroHeading:
       "display-title text-3xl leading-tight text-[var(--color-primary)] sm:text-4xl",
-    card: "rounded-none border border-[var(--color-line)] bg-white p-5",
+    card: "rounded-lg border border-[var(--color-line)] bg-white p-5",
   },
   bold: {
     section: "mt-16 first:mt-0",
@@ -51,10 +51,10 @@ const templates: Record<CourseLandingTemplate, TemplateStyle> = {
       "display-title text-3xl uppercase tracking-tight text-[var(--color-primary)]",
     body: "mt-4 whitespace-pre-line text-lg leading-9 text-[var(--color-ink)]",
     heroWrap:
-      "overflow-hidden rounded-none bg-[#102a43] px-6 py-14 text-white sm:px-12 sm:py-20",
+      "overflow-hidden rounded-lg bg-[#102a43] px-6 py-14 text-white sm:px-12 sm:py-20",
     heroHeading:
       "display-title text-4xl leading-[1.05] text-white sm:text-6xl",
-    card: "rounded-none border-2 border-[var(--color-primary)] bg-white p-6",
+    card: "rounded-lg border-2 border-[var(--color-primary)] bg-white p-6",
   },
 };
 
@@ -121,7 +121,7 @@ function Prose({
           <img
             src={imageUrl}
             alt=""
-            className="h-44 w-44 rounded-none object-cover"
+            className="h-44 w-44 rounded-lg object-cover"
           />
         ) : null}
         {body ? <p className={style.body}>{body}</p> : null}
@@ -135,12 +135,15 @@ export function CourseLandingBlocks({
   template,
   priceLabel,
   onEnrol,
+  enrolDisabled = false,
 }: {
   blocks: ReadonlyArray<CourseLandingBlock>;
   template: CourseLandingTemplate;
   /** Already resolved by the page from offers + coupons. Never recomputed here. */
   priceLabel?: string;
   onEnrol?: () => void;
+  /** A request is in flight: the button waits instead of firing a second one. */
+  enrolDisabled?: boolean;
 }) {
   // Renders nothing at all when there is no page, so a course without one keeps
   // exactly the layout it has today.
@@ -182,7 +185,7 @@ export function CourseLandingBlocks({
                 <ol className="mt-5 grid gap-4">
                   {block.steps.map((step, stepIndex) => (
                     <li key={stepIndex} className={`${style.card} flex gap-4`}>
-                      <span className="grid h-8 w-8 shrink-0 place-items-center rounded-none bg-[var(--color-primary)] text-sm font-bold text-[var(--color-on-primary)]">
+                      <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[var(--color-primary)] text-sm font-bold text-[var(--color-on-primary)]">
                         {stepIndex + 1}
                       </span>
                       <span className="min-w-0">
@@ -258,7 +261,8 @@ export function CourseLandingBlocks({
                     <button
                       type="button"
                       onClick={onEnrol}
-                      className="mt-5 inline-flex items-center rounded-none bg-[var(--color-primary)] px-6 py-3 text-sm font-bold text-[var(--color-on-primary)]"
+                      disabled={enrolDisabled}
+                      className="mt-5 inline-flex items-center rounded-md bg-[var(--color-primary)] px-6 py-3 text-sm font-bold text-[var(--color-on-primary)] disabled:opacity-60"
                     >
                       {block.buttonLabel}
                     </button>

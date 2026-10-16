@@ -35,6 +35,8 @@ export type SignupInput = EmailPasswordCredentials & {
   displayName: string;
   /** UI language at signup, kept in the account metadata. */
   locale?: string;
+  /** Termos e Privacidade marcados no formulario: as versoes atuais vao com a conta. */
+  acceptedTerms?: boolean;
 };
 
 /**

@@ -35,10 +35,12 @@ export function ReadinessGroups({
             <span className={group.ready ? "text-[var(--color-primary)]" : "text-[var(--color-ink)]"}>
               {t(`creatorEditor.readiness.groups.${group.id}`)}
             </span>
-            {" · "}
-            {t("creatorEditor.readiness.groupCount")
-              .replace("{done}", () => String(group.doneCount))
-              .replace("{total}", () => String(group.total))}
+            {/* Grupo sem item (a venda de um produto gratis) dizia "0 of 0". */}
+            {group.total > 0
+              ? ` · ${t("creatorEditor.readiness.groupCount")
+                .replace("{done}", () => String(group.doneCount))
+                .replace("{total}", () => String(group.total))}`
+              : null}
           </p>
           <ul className="mt-3 grid grid-cols-1 gap-3">{group.items.map(renderItem)}</ul>
         </section>

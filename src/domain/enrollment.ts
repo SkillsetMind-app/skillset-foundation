@@ -70,11 +70,31 @@ export function createEnrollmentSnapshot(course: Course) {
   };
 }
 
+/** Cursos cuja comunidade a lista "Comunidades" pode mostrar: matricula
+ *  aberta (e o que a sala aceita) e comunidade ligada. */
+export function communityEnrollmentCourseIds(enrollments: Enrollment[]): string[] {
+  return [
+    ...new Set(
+      enrollments
+        .filter((enrollment) => canOpenEnrollment(enrollment.status) && enrollment.source !== "manual_demo")
+        .map((enrollment) => enrollment.courseId),
+    ),
+  ].sort();
+}
+
 export function createEnrollmentCommunityCards(
   enrollments: Enrollment[],
+  communityCourseIds: ReadonlySet<string>,
 ): EnrollmentCommunityCard[] {
   return enrollments
     .filter((enrollment) => canOpenEnrollment(enrollment.status))
+    // Comunidade desligada: a sala nem mostra a aba, entao o cartao nao
+    // aparece. ponytail: o catalogo de demonstracao (manual_demo) nao mora na
+    // tabela courses e nasce sempre com comunidade (src/data/demo/courses.ts).
+    .filter(
+      (enrollment) =>
+        enrollment.source === "manual_demo" || communityCourseIds.has(enrollment.courseId),
+    )
     .map((enrollment) => ({
       id: `community-${enrollment.id}`,
       categories: "course community",

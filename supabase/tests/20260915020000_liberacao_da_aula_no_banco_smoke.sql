@@ -64,6 +64,10 @@ insert into auth.users(id, aud, role, email, email_confirmed_at, raw_app_meta_da
 select pg_temp.uid(n), 'authenticated', 'authenticated', 'drip-release-' || n || '@example.test',
   now(), '{}', '{}', now(), now()
 from generate_series(1, 5) n;
+-- Keep the creator plan current so this smoke exercises its original guard.
+insert into public.subscriptions(id, user_id, plan_id, status, current_period_end)
+select 'smoke-plan-' || pg_temp.uid(n)::text, pg_temp.uid(n)::text, 'basic', 'active', now() + interval '1 day'
+from (values (1)) owners(n);
 update public.users
   set roles = '["student","teacher"]', teacher_terms_accepted_at = now(), teacher_terms_version = 'smoke',
       activation_fee_paid_at = now()

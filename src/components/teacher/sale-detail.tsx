@@ -12,6 +12,7 @@ import { buttonClasses, Card, Eyebrow, InlineAlert } from "@/components/ui";
 import type { Order } from "@/domain/order";
 import { subscribeToOrder } from "@/lib/data/orders";
 import { toDate } from "@/lib/format-date";
+import { platformFeeForSale } from "@/lib/payments/rules";
 
 type SaleDetailProps = {
   orderId: string;
@@ -64,7 +65,7 @@ function CopyIdButton({ value, label }: { value: string | null; label: string })
     <button
       type="button"
       onClick={handleCopy}
-      className="inline-flex items-center gap-2 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-surface)] px-2.5 py-1.5 text-xs font-semibold text-[var(--color-primary)] hover:bg-[var(--color-surface-soft)]"
+      className="inline-flex items-center gap-2 rounded-md border border-[var(--color-line)] bg-[var(--color-surface)] px-2.5 py-1.5 text-xs font-semibold text-[var(--color-primary)] hover:bg-[var(--color-surface-soft)]"
       aria-label={t("saleDetail.copy").replace("{label}", () => label)}
     >
       <Copy aria-hidden="true" size={13} strokeWidth={1.9} />
@@ -170,7 +171,12 @@ export function SaleDetail({ orderId }: SaleDetailProps) {
 
   const canView =
     user?.roles.includes("admin") || user?.uid === order.teacherId || user?.uid === order.userId;
-  const platformFeeMinor = Math.floor((order.amountMinor * order.platformFeeBps) / 10000);
+  // Same formula the checkout charged: percent + the order's fixed part.
+  const platformFeeMinor = platformFeeForSale(
+    order.amountMinor,
+    order.platformFeeBps,
+    order.platformFeeFixedMinor ?? 0,
+  );
   const creatorNetMinor = order.amountMinor - platformFeeMinor;
   const timeline = getTimeline(order, t, locale);
 

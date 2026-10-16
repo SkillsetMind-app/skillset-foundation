@@ -12,6 +12,7 @@ import type { UserProfile } from "@/domain/user-profile";
 import { getFirstTouch } from "@/lib/attribution/first-touch";
 import { assertPasswordNotBreached } from "@/lib/auth/pwned-password";
 import { getUserProfile, upsertUserProfile } from "@/lib/data/user-profiles";
+import { currentPrivacyVersion, currentTermsVersion } from "@/lib/legal/versions";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import type { Database } from "@/lib/supabase/database.types";
 
@@ -228,7 +229,7 @@ export type SignupResult = {
 };
 
 export async function signUpWithEmail(
-  { displayName, email, password, locale }: SignupInput,
+  { displayName, email, password, locale, acceptedTerms }: SignupInput,
   captchaToken?: string,
   // Where the confirmation link lands. Defaults to onboarding; a signup that
   // started from a deep link (a course page) passes /welcome with the returnTo
@@ -254,6 +255,19 @@ export async function signUpWithEmail(
         ...getFirstTouch(),
         ...(locale ? { locale } : {}),
         ...(trimmedName ? { display_name: trimmedName, name: trimmedName } : {}),
+        // Os termos marcados no formulario. Sem sessao (cadastro que espera a
+        // confirmacao) o perfil ainda nao pode ser gravado: as versoes esperam
+        // aqui e a porta dos termos grava na primeira pagina ja logada. Antes o
+        // tique se perdia e a pessoa via "Legal update" logo ao chegar.
+        ...(acceptedTerms
+          ? { terms_version: currentTermsVersion, privacy_version: currentPrivacyVersion }
+          : {}),
+        // Para onde a confirmacao leva (o curso, o caminho de professor), para
+        // o lembrete de 24 h nao cair no inicio generico. Com teto, como o
+        // first touch: os metadados viajam dentro do token da sessao.
+        ...(confirmNext !== "/welcome" && confirmNext.length <= 300
+          ? { signup_next: confirmNext }
+          : {}),
       },
       emailRedirectTo: authCallbackUrl(
         `/auth/confirm?next=${encodeURIComponent(confirmNext)}`,
@@ -395,6 +409,20 @@ export async function sendSkillsetEmailVerification(
   }
 }
 
+// Versoes dos termos marcadas no cadastro (ver signUpWithEmail). Lidas so
+// quando o perfil ainda nao tem nenhuma gravada. acceptedAt e a hora em que a
+// conta foi criada, pelo relogio do servidor: a hora do tique, nao a da
+// primeira pagina logada (que pode ser dias depois).
+export async function getSignupLegalVersions(): Promise<{ terms?: string; privacy?: string; acceptedAt?: string }> {
+  const { data } = await getSupabaseBrowserClient().auth.getUser();
+  const metadata = data.user?.user_metadata ?? {};
+  return {
+    terms: typeof metadata.terms_version === "string" ? metadata.terms_version : undefined,
+    privacy: typeof metadata.privacy_version === "string" ? metadata.privacy_version : undefined,
+    acceptedAt: data.user?.created_at || undefined,
+  };
+}
+
 export async function refreshCurrentUserEmailVerification(
   // When given, only a session for THIS address counts — a confirmed session
   // of another account signed in elsewhere is not this email being confirmed.
@@ -521,6 +549,13 @@ function authErrorMatcher(error: unknown) {
 export function isEmailRateLimitError(error: unknown): boolean {
   const { matches } = authErrorMatcher(error);
   return matches("rate_limit") || matches("rate limit");
+}
+
+// Falhas que acontecem antes de procurar a conta (a checagem de seguranca, a
+// conexao). Mostrar estas nao diz a ninguem se um e-mail tem cadastro.
+export function isAccountNeutralAuthError(error: unknown): boolean {
+  const { matches } = authErrorMatcher(error);
+  return matches("captcha") || matches("network") || matches("fetch");
 }
 
 // Signup can only fail this way because the account is already there, so the
@@ -687,7 +722,80 @@ async function isSecondFactorPending(
     return false;
   }
 
-  return data.nextLevel === "aal2" && data.currentLevel !== "aal2";
+  if (data.currentLevel === "aal2") {
+    return false;
+  }
+
+  if (data.nextLevel === "aal2") {
+    return true;
+  }
+
+  // O Auth do Supabase não manda `user.factors` para a sessão aal1, e então
+  // `nextLevel` sai "aal1" mesmo numa conta com TOTP. O banco sabe
+  // (session_is_strong lê auth.mfa_factors). "Fraca" só vira "deve o código"
+  // se a conta está liberada; conta bloqueada é outro caminho.
+  // Falha aqui não tranca ninguém: a tela segue, e o servidor e o banco, que
+  // decidem de verdade, continuam fechando a sessão que deve o código.
+  try {
+    const { data: strong, error: strongError } =
+      await supabase.rpc("session_is_strong");
+    if (strongError || strong !== false) {
+      return false;
+    }
+
+    const { data: allowed, error: allowedError } =
+      await supabase.rpc("account_session_allowed");
+    return !allowedError && allowed === true;
+  } catch {
+    return false;
+  }
+}
+
+type MyFactor = {
+  id: string;
+  factorType: string;
+  status: string;
+  friendlyName: string | null;
+  createdAt: string | null;
+  updatedAt: string | null;
+};
+
+/**
+ * Os fatores da própria conta pela rota do servidor (API de administração),
+ * porque a lista do cliente (`mfa.listFactors`) sai vazia na sessão aal1.
+ * null = rota indisponível; quem chama cai na lista do cliente.
+ */
+async function fetchMyFactors(): Promise<MyFactor[] | null> {
+  try {
+    const response = await fetch("/api/auth/second-factor", {
+      credentials: "same-origin",
+      cache: "no-store",
+    });
+    if (!response.ok) {
+      return null;
+    }
+    const body = (await response.json()) as { factors?: unknown };
+    return Array.isArray(body.factors) ? (body.factors as MyFactor[]) : null;
+  } catch {
+    return null;
+  }
+}
+
+async function findVerifiedTotpId(
+  supabase: SupabaseClient<Database>,
+): Promise<string | null> {
+  const { data: factors } = await supabase.auth.mfa.listFactors();
+  const fromClient = factors?.totp?.find(
+    (factor) => factor.status === "verified",
+  );
+  if (fromClient) {
+    return fromClient.id;
+  }
+
+  const fromServer = (await fetchMyFactors())?.find(
+    (factor) => factor.factorType === "totp" && factor.status === "verified",
+  );
+  return fromServer?.id ?? null;
 }
 
 async function findPendingSecondFactor(
@@ -697,12 +805,13 @@ async function findPendingSecondFactor(
     return null;
   }
 
-  const { data: factors } = await supabase.auth.mfa.listFactors();
-  const verifiedTotp = factors?.totp?.find(
-    (factor) => factor.status === "verified",
-  );
-
-  return verifiedTotp ? new MfaRequiredError(verifiedTotp.id) : null;
+  const factorId = await findVerifiedTotpId(supabase);
+  if (!factorId) {
+    // Deve o código, mas o fator não veio (rota fora do ar): nunca seguir como
+    // logado. Cai na mensagem de rede do login, e tentar de novo resolve.
+    throw new Error("Could not load your two-factor setup (network). Please try again.");
+  }
+  return new MfaRequiredError(factorId);
 }
 
 async function requireSecondFactorIfNeeded(
@@ -776,13 +885,16 @@ export async function startTotpEnrollment(): Promise<{
   }
 
   // Clear any stale unverified factor so re-enrollment never hits a limit clash.
-  const { data: existing } = await supabase.auth.mfa.listFactors();
-  const stale =
-    existing?.all?.filter(
-      (factor) => factor.factor_type === "totp" && factor.status !== "verified",
-    ) ?? [];
-  for (const factor of stale) {
-    await supabase.auth.mfa.unenroll({ factorId: factor.id });
+  const fromServer = await fetchMyFactors();
+  const staleIds = fromServer
+    ? fromServer
+        .filter((factor) => factor.factorType === "totp" && factor.status !== "verified")
+        .map((factor) => factor.id)
+    : ((await supabase.auth.mfa.listFactors()).data?.all ?? [])
+        .filter((factor) => factor.factor_type === "totp" && factor.status !== "verified")
+        .map((factor) => factor.id);
+  for (const factorId of staleIds) {
+    await supabase.auth.mfa.unenroll({ factorId });
   }
 
   const { data, error } = await supabase.auth.mfa.enroll({
@@ -839,6 +951,17 @@ export async function finishTotpEnrollment(
 }
 
 export async function listEnrolledTotpFactors(): Promise<EnrolledFactor[]> {
+  const fromServer = await fetchMyFactors();
+  if (fromServer) {
+    return fromServer
+      .filter((factor) => factor.factorType === "totp" && factor.status === "verified")
+      .map((factor) => ({
+        uid: factor.id,
+        displayName: factor.friendlyName ?? "Authenticator app",
+        enrolledAt: factor.updatedAt ?? factor.createdAt ?? null,
+      }));
+  }
+
   const supabase = getSupabaseBrowserClient();
   const { data, error } = await supabase.auth.mfa.listFactors();
 

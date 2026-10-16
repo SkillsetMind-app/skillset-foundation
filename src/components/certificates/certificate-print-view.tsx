@@ -144,7 +144,7 @@ function CertificateNotice({
   description: string;
 }) {
   return (
-    <section className="mx-auto max-w-2xl rounded-none border border-[var(--color-line)] bg-white keep-white p-6 text-center shadow-[var(--shadow-soft)] sm:p-8">
+    <section className="mx-auto max-w-2xl rounded-lg border border-[var(--color-line)] bg-white keep-white p-6 text-center shadow-[var(--shadow-soft)] sm:p-8">
       <h1 className="display-title text-3xl text-[var(--color-primary)]">
         {title}
       </h1>

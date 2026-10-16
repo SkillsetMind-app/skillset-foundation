@@ -64,11 +64,11 @@ export default async function HowItWorksPage() {
           return (
             <article
               key={step.title}
-              className="group rounded-none border fine-rule bg-white p-5 shadow-[var(--shadow-soft)] transition duration-[180ms] ease-out hover:-translate-y-0.5 hover:border-[rgba(26,54,93,0.18)] hover:shadow-[0_18px_36px_rgba(15,39,68,0.10)]"
+              className="group rounded-lg border fine-rule bg-white p-5 shadow-[var(--shadow-soft)] transition duration-[180ms] ease-out hover:-translate-y-0.5 hover:border-[rgba(26,54,93,0.18)] hover:shadow-[0_18px_36px_rgba(15,39,68,0.10)]"
             >
               <div className="flex items-center justify-between">
                 <span
-                  className="grid size-11 place-items-center rounded-none bg-[var(--color-primary)] text-[var(--color-base)] shadow-[0_10px_22px_rgba(26,54,93,0.18)]"
+                  className="grid size-11 place-items-center rounded-md bg-[var(--color-primary)] text-[var(--color-base)] shadow-[0_10px_22px_rgba(26,54,93,0.18)]"
                   aria-hidden="true"
                 >
                   <Icon size={20} strokeWidth={1.7} />

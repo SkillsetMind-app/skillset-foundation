@@ -21,24 +21,28 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 // anon-readable by design. Nothing here needs service_role.
 //
 // The same round trip also carries members_theme, so the shell and the
-// classroom card can never disagree about light/dark.
+// classroom card can never disagree about light/dark — and community_enabled,
+// so the Help menu in the shell knows where a lesson question goes (the
+// course community, or a message to the teacher when it is off).
 export async function getMemberArea(courseId: string): Promise<{
   brand: MemberAreaBrand | null;
   theme: MembersTheme;
+  communityEnabled: boolean;
 }> {
   try {
     const supabase = await createSupabaseServerClient();
 
     const { data: course } = await supabase
       .from("courses")
-      .select("owner_id, members_theme")
+      .select("owner_id, members_theme, community_enabled")
       .eq("id", courseId)
       .maybeSingle();
 
     const theme = normalizeMembersTheme(course?.members_theme) ?? "light";
+    const communityEnabled = course?.community_enabled === true;
 
     if (!course?.owner_id) {
-      return { brand: null, theme };
+      return { brand: null, theme, communityEnabled };
     }
 
     const { data: profile } = await supabase
@@ -47,23 +51,42 @@ export async function getMemberArea(courseId: string): Promise<{
       .eq("uid", course.owner_id)
       .maybeSingle();
 
-    const storefront = profile?.storefront as StorefrontConfig | null;
-
-    // The DB decides. Absent flag = plan does not include it = our mark stays.
-    if (storefront?.branding?.hidePlatformBrand !== true) {
-      return { brand: null, theme };
-    }
-
-    return {
-      brand: {
-        name: profile?.display_name?.trim() || "Instructor",
-        logoUrl: storefront.branding.logoUrl ?? null,
-        accentColor: storefront.branding.accentColor ?? null,
-      },
-      theme,
-    };
+    return { brand: brandFromProfile(profile), theme, communityEnabled };
   } catch {
     // A branding lookup must never keep a paying student out of their class.
-    return { brand: null, theme: "light" };
+    return { brand: null, theme: "light", communityEnabled: false };
+  }
+}
+
+type BrandProfile = { display_name: string | null; storefront: unknown } | null;
+
+// The DB decides. Absent flag = plan does not include it = our mark stays.
+function brandFromProfile(profile: BrandProfile): MemberAreaBrand | null {
+  const storefront = profile?.storefront as StorefrontConfig | null;
+  if (storefront?.branding?.hidePlatformBrand !== true) return null;
+  return {
+    name: profile?.display_name?.trim() || "Instructor",
+    logoUrl: storefront.branding.logoUrl ?? null,
+    accentColor: storefront.branding.accentColor ?? null,
+  };
+}
+
+/**
+ * A marca do criador para a área dele (/learn/areas/[criador]), pela mesma
+ * regra da sala: o aluno não troca de logo ao sair da aula para a área.
+ * `ref` é "@usuario" ou o uid. Falha = sem marca, nunca erro.
+ */
+export async function getCreatorBrand(ref: string): Promise<MemberAreaBrand | null> {
+  try {
+    const supabase = await createSupabaseServerClient();
+    const handle = ref.startsWith("@") ? ref.slice(1).toLowerCase() : null;
+    const { data: profile } = await supabase
+      .from("public_profiles")
+      .select("display_name, storefront")
+      .eq(handle === null ? "uid" : "username", handle ?? ref)
+      .maybeSingle();
+    return brandFromProfile(profile);
+  } catch {
+    return null;
   }
 }

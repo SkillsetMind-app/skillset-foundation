@@ -1,10 +1,17 @@
 /**
  * SkillsetMind pricing model — single source of truth.
  *
- * Four tiers. Every plan can publish and sell; a paid plan lowers the
- * commission SkillsetMind takes per paid sale, adds the extras in
- * domain/entitlements.ts, and lifts the Free plan's daily caps (video uploads,
- * advisor, manual access — enforced in their routes by plan, via isOnFreePlan).
+ * The public offer is three paid tiers, Basic, Starter and Pro (`publicPlans`),
+ * each opening with a 14-day free trial (card required, one per creator
+ * account). Every sale pays the plan's percent PLUS a fixed fee of about
+ * US$0.30 (`platformFixedFeeMinor` in lib/payments/rules.ts). Enterprise (id
+ * `plus`, kept so existing subscriptions resolve) is not on the public offer.
+ * `free` is no longer offered either: it stays in code only as the state of
+ * an account with no subscription, at Basic's rate and limits, with its daily
+ * caps (video uploads, advisor, manual access — enforced in their routes via
+ * isOnFreePlan), until the enforcement change blocks selling without a plan.
+ * A higher plan lowers the commission SkillsetMind takes per paid sale and
+ * adds the extras in domain/entitlements.ts.
  * Charges are Stripe DIRECT charges on the
  * creator's own connected account: the creator is the merchant of record,
  * Stripe bills them the processing fee, and SkillsetMind takes its commission
@@ -27,7 +34,7 @@
  * table). New sales after the change use the new rate.
  */
 
-export type PlanId = "free" | "starter" | "pro" | "plus";
+export type PlanId = "free" | "basic" | "starter" | "pro" | "plus";
 
 export type PlanBillingCycle = "monthly" | "yearly";
 
@@ -65,24 +72,75 @@ export type Plan = {
   audience: string;
   /** Headline bullets shown on the pricing page. */
   highlights: ReadonlyArray<string>;
+  /**
+   * Not on the public offer: hidden from the pricing page, selectors and
+   * upgrade flows, never sold through self-serve checkout. Subscriptions that
+   * exist (or that ops set up by hand) still resolve to this plan.
+   */
+  hidden?: boolean;
 };
+
+/**
+ * The fixed part of the per-sale fee, in USD, for copy ("4.9% + $0.30"). The
+ * amount actually charged in each currency is platformFixedFeeMinor().
+ */
+export const PER_SALE_FIXED_FEE_USD = 0.3;
 
 /** Placeholder marker — the runtime treats any Price ID starting with
  * this prefix as "not configured yet" and surfaces a clear error. */
 export const STRIPE_PRICE_PLACEHOLDER_PREFIX = "price_PLACEHOLDER_";
 
+/**
+ * Stripe Customer Portal configuration (`bpc_...`) every portal session uses:
+ * plan switching only between Basic, Starter and Pro, cancellation at the end
+ * of the period. Passed explicitly so the Dashboard's default configuration,
+ * which can still list Enterprise, is never what a creator sees. Until the
+ * real id is pasted here the portal route answers 503 instead of opening the
+ * default (see resolvePortalConfigurationId).
+ */
+export const STRIPE_PORTAL_CONFIGURATION_ID = "bpc_1UP4OGPvg1vJW0IjmbpVDwiT";
+
+/**
+ * Enterprise (`plus`) is never self-serve. Ops create the subscription in the
+ * Stripe Dashboard and set this metadata on it; the webhook grants Enterprise
+ * only then. A customer cannot set subscription metadata (neither Checkout nor
+ * the portal lets them), so a switch to an Enterprise Price without it grants
+ * no plan.
+ */
+export const ENTERPRISE_GRANT_METADATA = { key: "enterprise_grant", value: "admin" } as const;
+
+/**
+ * Checkout metadata discriminator for plan subscriptions, written by the plan
+ * checkout and read by the webhook (trial acknowledgement email).
+ */
+export const PLAN_SUBSCRIPTION_CHECKOUT_PURPOSE = "skillset_plan_subscription";
+
+/** Free-trial length on the first paid plan of a creator account. */
+export const PLAN_TRIAL_DAYS = 14;
+
+/**
+ * Subscription statuses that grant the plan. `trialing` is the plan working in
+ * full — limits and the lower commission — before the first charge.
+ */
+export const PLAN_ENTITLED_STATUSES = ["active", "trialing"] as const;
+
+export function isPlanEntitledStatus(status: string | null | undefined): boolean {
+  return (PLAN_ENTITLED_STATUSES as ReadonlyArray<string>).includes(String(status));
+}
+
 export const plans: ReadonlyArray<Plan> = [
   {
     id: "free",
-    name: "Free",
+    name: "No subscription",
     monthlyUsd: 0,
     yearlyUsd: 0,
     commissionPercent: 10,
     stripePriceIds: null,
-    tagline: "Start selling without a subscription.",
+    hidden: true,
+    tagline: "The default for accounts without a plan.",
     audience: "New creators validating an idea.",
     highlights: [
-      "No monthly fee — commission only when you sell",
+      "Choose a plan to publish and sell",
       "Publish once your course passes the launch checks",
       "Stripe checkout in 30 currencies",
       "Buyers pay your own Stripe account — no platform hold on your money",
@@ -91,20 +149,41 @@ export const plans: ReadonlyArray<Plan> = [
     ],
   },
   {
+    id: "basic",
+    name: "Basic",
+    monthlyUsd: 5,
+    yearlyUsd: 50,
+    commissionPercent: 10,
+    // Precos ativos conferidos na conta da plataforma: US$5/mes e US$50/ano.
+    stripePriceIds: {
+      monthlyId: "price_1UP4MvPvg1vJW0IjLNG6YeC9",
+      yearlyId: "price_1UP4MwPvg1vJW0IjKAq6kpd8",
+    },
+    tagline: "Start selling for a small monthly price.",
+    audience: "Creators validating their first course.",
+    highlights: [
+      "10% + $0.30 per sale",
+      "Publish once your course passes the launch checks",
+      "Annual billing saves ~17%",
+    ],
+  },
+  {
     id: "starter",
     name: "Starter",
     monthlyUsd: 19,
     yearlyUsd: 190,
-    commissionPercent: 5,
+    commissionPercent: 4.9,
     stripePriceIds: {
       monthlyId: "price_1TZFTmPvg1vJW0IjLAYWqZok",
       yearlyId: "price_1TZFTnPvg1vJW0IjjaQXBpDW",
     },
-    tagline: "Half the commission, small monthly cost.",
+    tagline: "A lower commission once you sell every month.",
     audience: "Creators who sell every month.",
     highlights: [
-      "Everything in Free",
-      "Commission drops from 10% to 5%",
+      "4.9% + $0.30 per sale",
+      // Enforced in SQL (claim_custom_domain, set_own_course_featured). Student
+      // and product counts are not enforced, so no public line sells them.
+      "1 custom domain and 1 marketplace highlight",
       "Annual billing saves ~17%",
     ],
   },
@@ -113,36 +192,55 @@ export const plans: ReadonlyArray<Plan> = [
     name: "Pro",
     monthlyUsd: 89,
     yearlyUsd: 890,
-    commissionPercent: 3,
+    commissionPercent: 2.9,
     stripePriceIds: {
       monthlyId: "price_1TZFTnPvg1vJW0IjHYe4yW9V",
       yearlyId: "price_1TZFToPvg1vJW0IjDHGPIzH0",
     },
-    tagline: "A lower commission for established catalogs.",
+    tagline: "The lowest commission on the offer.",
     audience: "Creators with an established catalog.",
     highlights: [
-      "Everything in Starter",
-      "Commission drops to 3%",
+      "2.9% + $0.30 per sale",
+      "5 custom domains and 5 marketplace highlights",
+      "Remove the SkillsetMind mark",
     ],
   },
   {
+    // Enterprise. The id stays `plus`: it is the old Plus slot, its Stripe
+    // Prices and every users.current_plan_id that already says so.
     id: "plus",
-    name: "Plus",
+    name: "Enterprise",
     monthlyUsd: 199,
     yearlyUsd: 1990,
-    commissionPercent: 2,
+    commissionPercent: 1.9,
     stripePriceIds: {
       monthlyId: "price_1TZFToPvg1vJW0Ijf35SQQzt",
       yearlyId: "price_1TZFTpPvg1vJW0IjgE9PQ5To",
     },
-    tagline: "The lowest commission for high-volume creators.",
+    tagline: "For catalogs above Pro's limits, by arrangement.",
     audience: "Creators with a large catalog and steady sales.",
     highlights: [
-      "Everything in Pro",
-      "Lowest commission — 2% per sale",
+      "1.9% + $0.30 per sale",
+      "No cap on active students",
     ],
+    hidden: true,
   },
 ];
+
+/** What the pricing page, plan selectors and upgrade flows offer. */
+export const publicPlans: ReadonlyArray<Plan> = plans.filter((plan) => !plan.hidden);
+
+/** "4.9% + $0.30": the plan's percent and the fixed part, as copy shows them. */
+export function formatPlanCommission(plan: Plan): string {
+  return `${plan.commissionPercent}% + $${PER_SALE_FIXED_FEE_USD.toFixed(2)}`;
+}
+
+/** The plan the pricing page badges "Recommended". Never "Most popular". */
+export const RECOMMENDED_PLAN_ID: PlanId = "starter";
+
+export function isPublicPlanId(id: unknown): id is Exclude<PlanId, "free"> {
+  return publicPlans.some((plan) => plan.id === id);
+}
 
 export function isPlaceholderStripePriceId(id: string): boolean {
   return id.startsWith(STRIPE_PRICE_PLACEHOLDER_PREFIX);
@@ -156,17 +254,28 @@ export function hasRealStripePriceIds(plan: Plan): boolean {
   );
 }
 
-/** Are at least the paid plans configured with real Stripe Price IDs? */
+export function hasRealPortalConfigurationId(id: string): boolean {
+  return !id.includes("PLACEHOLDER");
+}
+
+/** Real Stripe Price IDs and a real portal configuration, or "Manage" is a dead button. */
 export function isBillingConfigured(): boolean {
-  return plans.filter((plan) => plan.id !== "free").every(hasRealStripePriceIds);
+  return publicPlans.every(hasRealStripePriceIds) && hasRealPortalConfigurationId(STRIPE_PORTAL_CONFIGURATION_ID);
+}
+
+/** Plan and cycle of a Price. Undefined for unknown Prices. */
+export function planAndCycleByStripePriceId(
+  priceId: string,
+): { plan: Plan; cycle: PlanBillingCycle } | undefined {
+  for (const plan of plans) {
+    if (plan.stripePriceIds?.monthlyId === priceId) return { plan, cycle: "monthly" };
+    if (plan.stripePriceIds?.yearlyId === priceId) return { plan, cycle: "yearly" };
+  }
+  return undefined;
 }
 
 export function planByStripePriceId(priceId: string): Plan | undefined {
-  return plans.find(
-    (plan) =>
-      plan.stripePriceIds?.monthlyId === priceId ||
-      plan.stripePriceIds?.yearlyId === priceId,
-  );
+  return planAndCycleByStripePriceId(priceId)?.plan;
 }
 
 /**

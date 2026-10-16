@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { canonicalPlatformFeeBpsForPlan } from "@/lib/payments/rules";
 import {
   effectiveLimit,
   formatLimit,
@@ -13,12 +14,12 @@ import {
 describe("plan entitlements", () => {
   it("keeps the featured-slot quota in step with the SQL enforcement copy", () => {
     // Mirrors featured_slots_for_plan() in
-    // supabase/migrations/20260808120000_self_serve_course_featuring.sql.
+    // supabase/migrations/20261006040000_precos_novos_teste_gratis.sql.
     // If this fails, the teacher sees one number and the server enforces
     // another.
     expect(planEntitlements.free.quotas.featuredSlots).toBe(0);
     expect(planEntitlements.starter.quotas.featuredSlots).toBe(1);
-    expect(planEntitlements.pro.quotas.featuredSlots).toBe(3);
+    expect(planEntitlements.pro.quotas.featuredSlots).toBe(5);
     expect(planEntitlements.plus.quotas.featuredSlots).toBe(5);
   });
 
@@ -28,7 +29,7 @@ describe("plan entitlements", () => {
     // stamps the teacher's brand mark whenever current_plan_id <> 'free'.
     // Flipping any paid tier off here without touching the SQL would show a
     // locked feature in the UI while the server keeps printing the logo.
-    for (const planId of ["free", "starter", "pro", "plus"] as const) {
+    for (const planId of ["free", "basic", "starter", "pro", "plus"] as const) {
       expect(hasFeature(planId, "certificateOwnLogo")).toBe(planId !== "free");
     }
   });
@@ -39,7 +40,7 @@ describe("plan entitlements", () => {
     // returns null for `free` and the sanitized config for every other plan.
     // Turning a paid tier off here without touching the SQL would show a
     // locked feature while the public vitrine keeps rendering the theme.
-    for (const planId of ["free", "starter", "pro", "plus"] as const) {
+    for (const planId of ["free", "basic", "starter", "pro", "plus"] as const) {
       expect(hasFeature(planId, "storefrontTemplates")).toBe(planId !== "free");
     }
   });
@@ -57,13 +58,13 @@ describe("plan entitlements", () => {
 
   it("keeps the custom-domain quota in step with the SQL enforcement copy", () => {
     // Mirrors custom_domain_limit_for_plan() in
-    // supabase/migrations/20260820000000_custom_domains.sql. Free stays at 0
+    // supabase/migrations/20261006040000_precos_novos_teste_gratis.sql. Free stays at 0
     // deliberately: claim_custom_domain() refuses outright at 0, so raising it
     // here without touching the SQL would offer the teacher a button that the
     // server always rejects.
     expect(planEntitlements.free.quotas.customDomains).toBe(0);
     expect(planEntitlements.starter.quotas.customDomains).toBe(1);
-    expect(planEntitlements.pro.quotas.customDomains).toBe(3);
+    expect(planEntitlements.pro.quotas.customDomains).toBe(5);
     expect(planEntitlements.plus.quotas.customDomains).toBe(5);
   });
 
@@ -99,8 +100,10 @@ describe("plan entitlements", () => {
 
   it("reads the migration and refuses to let the two sides drift apart", async () => {
     const { readFileSync } = await import("node:fs");
+    // The newest definition: 20261006040000 replaced the one in
+    // 20260820000000_custom_domains.sql.
     const sql = readFileSync(
-      "supabase/migrations/20260820000000_custom_domains.sql",
+      "supabase/migrations/20261006040000_precos_novos_teste_gratis.sql",
       "utf8",
     );
 
@@ -128,10 +131,55 @@ describe("plan entitlements", () => {
     }
   });
 
+  it("reads the featured-slot and commission functions from the newest migration", async () => {
+    const { readFileSync } = await import("node:fs");
+    const sql = readFileSync("supabase/migrations/20261006040000_precos_novos_teste_gratis.sql", "utf8");
+    const branch = (fn: string, planId: string): number => {
+      const body = sql.slice(sql.indexOf(`function public.${fn}`));
+      const match = body.match(new RegExp(`when '${planId}'\\s+then\\s+(\\d+)`));
+      if (!match) throw new Error(`${fn} has no branch for ${planId}`);
+      return Number(match[1]);
+    };
+    for (const planId of ["starter", "pro", "plus"] as const) {
+      expect(branch("featured_slots_for_plan", planId)).toBe(planEntitlements[planId].quotas.featuredSlots);
+    }
+    for (const planId of ["free", "starter", "pro", "plus"] as const) {
+      expect(branch("platform_fee_bps_for_plan", planId)).toBe(canonicalPlatformFeeBpsForPlan(planId));
+    }
+  });
+
+  it("gives Pro the retired Plus limits except a 3,000 active-student cap", () => {
+    const { activeStudents: proStudents, ...proRest } = planEntitlements.pro.quotas;
+    const { activeStudents: plusStudents, ...plusRest } = planEntitlements.plus.quotas;
+    expect(proRest).toEqual(plusRest);
+    expect(planEntitlements.pro.features).toEqual(planEntitlements.plus.features);
+    expect(proStudents).toBe(3_000);
+    // Grandfathered: an existing Plus subscription keeps unlimited students.
+    expect(plusStudents).toBeNull();
+    expect(planEntitlements.starter.quotas).toMatchObject({
+      publishedProducts: 5,
+      activeStudents: 300,
+      videoStorageMinutes: 600,
+      customDomains: 1,
+      teamSeats: 2,
+      emailSendsPerMonth: 2_000,
+    });
+  });
+
+  it("stops Pro at 3,000 active students and sends the teacher to Contact us, not to a plan", () => {
+    expect(effectiveLimit("pro", "activeStudents")).toBe(3_000);
+    expect(quotaStatus(2_999, effectiveLimit("pro", "activeStudents")).canConsume).toBe(true);
+    expect(quotaStatus(3_000, effectiveLimit("pro", "activeStudents")).canConsume).toBe(false);
+    // No public plan covers the 3,001st student: null is the "Contact us" path.
+    expect(lowestPlanWithQuota("activeStudents", 3_001)).toBeNull();
+    // An approved expansion still lifts it, like any quota.
+    expect(effectiveLimit("pro", "activeStudents", 5_000)).toBe(5_000);
+  });
+
   it("raises a limit with an approved grant but never lowers one", () => {
     expect(effectiveLimit("starter", "featuredSlots", 4)).toBe(4);
-    expect(effectiveLimit("pro", "featuredSlots", 1)).toBe(3);
-    expect(effectiveLimit("pro", "featuredSlots", undefined)).toBe(3);
+    expect(effectiveLimit("pro", "featuredSlots", 1)).toBe(5);
+    expect(effectiveLimit("pro", "featuredSlots", undefined)).toBe(5);
   });
 
   it("treats unlimited as unbeatable, in both directions", () => {
@@ -172,16 +220,18 @@ describe("plan entitlements", () => {
   });
 
   it("names the cheapest plan that unlocks a feature", () => {
-    expect(lowestPlanWithFeature("certificateOwnLogo")).toBe("starter");
+    expect(lowestPlanWithFeature("certificateOwnLogo")).toBe("basic");
     expect(lowestPlanWithFeature("removePlatformBranding")).toBe("pro");
   });
 
   it("names the cheapest plan that covers a needed amount", () => {
     expect(lowestPlanWithQuota("featuredSlots", 1)).toBe("starter");
-    expect(lowestPlanWithQuota("featuredSlots", 4)).toBe("plus");
+    expect(lowestPlanWithQuota("featuredSlots", 4)).toBe("pro");
     expect(lowestPlanWithQuota("featuredSlots", 99)).toBeNull();
     // Unlimited covers any request.
-    expect(lowestPlanWithQuota("publishedProducts", 10_000)).toBe("plus");
+    expect(lowestPlanWithQuota("publishedProducts", 10_000)).toBe("pro");
+    // The retired Plus is never the answer, even where it alone would cover it.
+    expect(lowestPlanWithQuota("activeStudents", 1_000_000)).toBeNull();
   });
 
   it("gates whitelabel to the paid tiers that were sold on it", () => {
@@ -193,6 +243,7 @@ describe("plan entitlements", () => {
     // here without touching the SQL would sell the removal on a plan whose
     // certificates and classroom still print our mark.
     expect(hasFeature("free", "removePlatformBranding")).toBe(false);
+    expect(hasFeature("basic", "removePlatformBranding")).toBe(false);
     expect(hasFeature("starter", "removePlatformBranding")).toBe(false);
     expect(hasFeature("pro", "removePlatformBranding")).toBe(true);
     expect(hasFeature("plus", "removePlatformBranding")).toBe(true);

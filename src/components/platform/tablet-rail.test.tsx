@@ -100,7 +100,7 @@ describe("tablet (768–1023px) usa o rail, não a barra de baixo", () => {
 describe("a barra lateral no tablet", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
-    window.localStorage.clear();
+    document.cookie = "skillset_sidebar=; max-age=0; path=/";
   });
 
   it("na faixa do rail a barra vem recolhida, sem escrever preferência nenhuma", () => {
@@ -112,9 +112,23 @@ describe("a barra lateral no tablet", () => {
     const { result } = renderHook(() => useSidebarState());
 
     expect(result.current.isCollapsed).toBe(true);
-    // A preferência salva é do desktop: o rail é imposto, não escolhido.
-    expect(result.current.persistentState).toBe("expanded");
-    expect(window.localStorage.length).toBe(0);
+    // Sem escolha salva: o rail é o padrão da tela, não uma escolha gravada.
+    expect(result.current.isAuto).toBe(true);
+    expect(document.cookie).toBe("");
+  });
+
+  it("de 768 a 1023px o rail vale até para quem abriu a barra", () => {
+    vi.stubGlobal("matchMedia", (query: string) => ({
+      matches: query === "(min-width: 768px) and (width < 1024px)",
+      addEventListener() {},
+      removeEventListener() {},
+    }));
+    document.cookie = "skillset_sidebar=expanded; path=/";
+
+    const { result } = renderHook(() => useSidebarState());
+
+    expect(result.current.isCollapsed).toBe(true);
+    expect(result.current.isAuto).toBe(false);
   });
 
   it("sem matchMedia (jsdom cru, navegador antigo) não explode — cai no desenho de sempre", () => {

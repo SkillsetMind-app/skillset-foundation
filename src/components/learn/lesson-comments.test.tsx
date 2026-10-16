@@ -156,6 +156,7 @@ vi.mock("@/components/learn/community-feed", () => ({
 }));
 vi.mock("@/components/shared/protected-asset-preview", () => ({
   ProtectedAssetPreview: () => null,
+  ProtectedAssetDownload: () => null,
 }));
 
 const course = {

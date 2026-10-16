@@ -116,6 +116,24 @@ export async function getBunnyVideoStatus(videoId: string): Promise<BunnyVideoSt
   };
 }
 
+// Deletes one video from the library (Bunny "Delete Video"). Final: Bunny has
+// no backup. 404 = already gone, which is success for whoever is cleaning up.
+export async function deleteBunnyVideo(videoId: string): Promise<void> {
+  const libraryId = getLibraryId();
+  const apiKey = requireEnv("BUNNY_STREAM_API_KEY");
+
+  const res = await fetch(`${BUNNY_API_BASE}/library/${libraryId}/videos/${encodeURIComponent(videoId)}`, {
+    method: "DELETE",
+    headers: { AccessKey: apiKey, Accept: "application/json" },
+    cache: "no-store",
+    signal: AbortSignal.timeout(8000),
+  });
+
+  if (!res.ok && res.status !== 404) {
+    throw new Error(`Bunny delete video failed: ${res.status}`);
+  }
+}
+
 // TUS upload authorization, per Bunny docs:
 //   signature = SHA256(library_id + api_key + expiration + video_id)
 // The browser sends {signature, expires, libraryId, videoId} as TUS headers.

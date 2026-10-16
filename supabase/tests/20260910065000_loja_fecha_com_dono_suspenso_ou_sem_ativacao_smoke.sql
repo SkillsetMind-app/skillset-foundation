@@ -22,6 +22,10 @@ from generate_series(1, 7) n;
 select set_config('skillset.trusted_write', 'on', true);
 -- 1 pagou; 2 teve a taxa reembolsada; 3 pagou e está suspenso; 4 admin sem
 -- taxa; 5 isenção pronta; 6 isenção pendente; 7 admin que concede isenções.
+-- This smoke isolates activation/content; creator plans are already current.
+insert into public.subscriptions(id, user_id, plan_id, status, current_period_end)
+select 'plan-' || pg_temp.uid(n)::text, pg_temp.uid(n)::text, 'basic', 'active', now() + interval '1 day'
+from generate_series(1, 6) n;
 update public.users
   set roles = '["student","teacher"]', teacher_terms_accepted_at = now(), teacher_terms_version = 'smoke'
   where uid in (select pg_temp.uid(n)::text from generate_series(1, 6) n);

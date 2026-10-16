@@ -54,6 +54,16 @@ export function TeacherOverviewMetrics({
     (course) => course.status === "in_review",
   ).length;
   const paidOrders = orders.filter((order) => order.status === "paid");
+
+  // Antes da 1a venda os quatro quadros eram $0 / 0 / -- / --: so frase
+  // negativa na primeira visita. Aparecem com o primeiro pedido pago OU a
+  // primeira matricula: matricula gratis nao grava pedido, e quem so vende
+  // gratis tem numeros reais (nota media, matriculas) para ver.
+  const hasEnrollment = courses.some((course) => (course.enrollmentCount ?? 0) > 0);
+  if (paidOrders.length === 0 && !hasEnrollment) {
+    return null;
+  }
+
   const paidOrders30d = paidOrders.filter((order) => {
     const createdAt = getTimestampMillis(order.createdAt);
 
@@ -154,7 +164,7 @@ export function TeacherOverviewMetrics({
             {card.label}
           </p>
           {isLoading ? (
-            <div className="mt-3 h-8 w-24 animate-pulse rounded-none bg-[var(--color-surface-strong)]" />
+            <div className="mt-3 h-8 w-24 animate-pulse rounded bg-[var(--color-surface-strong)]" />
           ) : (
             <p className="mt-2 text-4xl font-bold tracking-[-0.04em] text-[var(--color-primary)]">
               {card.value}
@@ -165,7 +175,7 @@ export function TeacherOverviewMetrics({
               className={`mt-2 inline-flex items-center gap-1 text-xs font-bold ${
                 card.delta.up
                   ? "text-[var(--color-success-fg)]"
-                  : "text-[var(--color-accent-fg)]"
+                  : "text-[var(--color-danger-fg)]"
               }`}
             >
               {card.delta.up ? (

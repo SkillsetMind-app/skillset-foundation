@@ -8,9 +8,11 @@ import { useTranslation } from "@/components/i18n/i18n-provider";
 import { UpgradeModal } from "@/components/account/upgrade-modal";
 import { StatusChip } from "@/components/shared/status-chip";
 import {
+  formatPlanCommission,
   hasRealStripePriceIds,
   isBillingConfigured,
   plans,
+  publicPlans,
   type Plan,
   type PlanBillingCycle,
   type PlanId,
@@ -18,9 +20,13 @@ import {
 import { formatUsdWhole } from "@/data/platform";
 import { subscribeToUserProfile } from "@/lib/data/user-profiles";
 import {
+  cancelPlanSubscription,
+  fetchPlanBillingState,
   isCheckoutClientConfigured,
   openBillingPortal,
+  type PlanBillingState,
 } from "@/lib/payments/billing";
+import { formatTrialDate, planDisclosure } from "@/lib/payments/plan-disclosure";
 
 type UpgradeState = {
   planId: Exclude<PlanId, "free">;
@@ -51,6 +57,26 @@ export function PlansPanel() {
   const [busyAction, setBusyAction] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [upgrade, setUpgrade] = useState<UpgradeState>(null);
+  // Trial eligibility and the live subscription. null until loaded, and stays
+  // null if the read fails: the cards then show the no-trial terms, and the
+  // checkout itself still decides (and discloses) the trial on Stripe's page.
+  const [billing, setBilling] = useState<PlanBillingState | null>(null);
+  // Keyed on the uid, not the user object: a re-fetch on every new object
+  // would overwrite the state "Cancel plan" just wrote.
+  const uid = user?.uid ?? null;
+
+  useEffect(() => {
+    if (!uid) return;
+    let cancelled = false;
+    fetchPlanBillingState()
+      .then((state) => {
+        if (!cancelled) setBilling(state);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [uid]);
 
   useEffect(() => {
     if (!user) return;
@@ -93,6 +119,32 @@ export function PlansPanel() {
     setBusyAction(null);
   }
 
+  const subscription = billing?.subscription ?? null;
+  const trialEligible = billing?.trialEligible === true;
+  const formatDate = (iso: string | null) => (iso ? formatTrialDate(new Date(iso), locale) : "");
+
+  async function handleCancel() {
+    if (!subscription) return;
+    // past_due/unpaid are cancelled at once by the route, not at period end.
+    const prompt =
+      subscription.status === "past_due" || subscription.status === "unpaid"
+        ? t("planTrial.cancelConfirmNow")
+        : subscription.trialEnd
+          ? t("planTrial.cancelConfirmTrial").replace("{date}", () => formatDate(subscription.trialEnd))
+          : t("planTrial.cancelConfirm").replace("{date}", () => formatDate(subscription.currentPeriodEnd));
+    if (!window.confirm(prompt)) return;
+    setError(null);
+    setBusyAction("cancel");
+    try {
+      const updated = await cancelPlanSubscription();
+      setBilling((current) => (current ? { ...current, subscription: updated } : current));
+    } catch {
+      setError("planTrial.cancelError");
+    } finally {
+      setBusyAction(null);
+    }
+  }
+
   async function handleManage() {
     setError(null);
     setBusyAction("portal");
@@ -106,7 +158,7 @@ export function PlansPanel() {
 
   if (!user) {
     return (
-      <div className="rounded-none border border-dashed border-[var(--color-line-strong)] bg-[var(--color-surface-soft)] p-6 text-sm text-[var(--color-ink-soft)]">
+      <div className="rounded-lg border border-dashed border-[var(--color-line-strong)] bg-[var(--color-surface-soft)] p-6 text-sm text-[var(--color-ink-soft)]">
         {t("accountPlans.signIn")}
       </div>
     );
@@ -115,7 +167,7 @@ export function PlansPanel() {
   return (
     <section className="grid gap-5">
       {!checkoutReady ? (
-        <div className="rounded-none border border-dashed border-[rgba(178,34,52,0.32)] bg-[rgba(178,34,52,0.04)] p-4 text-sm leading-6 text-[var(--color-ink)]">
+        <div className="rounded-lg border border-dashed border-[rgba(178,34,52,0.32)] bg-[rgba(178,34,52,0.04)] p-4 text-sm leading-6 text-[var(--color-ink)]">
           <p className="font-semibold text-[var(--color-accent-fg)]">
             {t(priceIdsReady ? "accountPlans.checkoutSoon" : "accountPlans.setupPending")}
           </p>
@@ -140,9 +192,28 @@ export function PlansPanel() {
                 ? planLoadFailed
                   ? t("accountBilling.unavailable")
                   : t("accountPlans.loading")
-                : (plans.find((plan) => plan.id === currentPlanId)?.name ?? "Free")}
+                : currentPlanId === "free"
+                  ? t("accountPlans.withoutSubscription")
+                  : (plans.find((plan) => plan.id === currentPlanId)?.name ?? t("accountBilling.unavailable"))}
             </strong>
           </span>
+          {subscription?.trialEnd && !subscription.cancelAtPeriodEnd ? (
+            <>
+              <span aria-hidden="true">·</span>
+              <span className="font-semibold text-[var(--color-ink)]">
+                {t("planTrial.trialEnds").replace("{date}", () => formatDate(subscription.trialEnd))}
+              </span>
+            </>
+          ) : null}
+          {subscription?.cancelAtPeriodEnd ? (
+            <>
+              <span aria-hidden="true">·</span>
+              <span className="font-semibold text-[var(--color-ink)]">
+                {t("planTrial.endsOn").replace("{date}", () =>
+                  formatDate(subscription.trialEnd ?? subscription.currentPeriodEnd))}
+              </span>
+            </>
+          ) : null}
           {currentPlanId !== "free" ? (
             <>
               <span aria-hidden="true">·</span>
@@ -156,11 +227,26 @@ export function PlansPanel() {
               </button>
             </>
           ) : null}
+          {subscription && !subscription.cancelAtPeriodEnd ? (
+            <>
+              <span aria-hidden="true">·</span>
+              {/* Online cancellation in one click + confirm: cancel at period
+                  end, which during the trial means no charge at all. */}
+              <button
+                type="button"
+                onClick={() => void handleCancel()}
+                disabled={busyAction === "cancel"}
+                className="font-semibold text-[var(--color-accent-fg)] underline-offset-4 hover:underline disabled:opacity-60"
+              >
+                {t(busyAction === "cancel" ? "planTrial.cancelling" : "planTrial.cancel")}
+              </button>
+            </>
+          ) : null}
         </p>
         <div
           role="radiogroup"
           aria-label={t("accountPlans.cycle")}
-          className="inline-flex w-fit gap-1 rounded-none border fine-rule bg-[var(--color-surface-soft)] p-1"
+          className="inline-flex w-fit gap-1 rounded-md border fine-rule bg-[var(--color-surface-soft)] p-1"
         >
           {billingCycles.map((option) => {
             const active = cycle === option.value;
@@ -174,8 +260,8 @@ export function PlansPanel() {
                 title={t(`accountPlans.cycles.${option.value}.hint`)}
                 className={
                   active
-                    ? "rounded-none bg-[var(--color-primary)] px-3 py-1.5 text-[13px] font-semibold text-[var(--color-base)]"
-                    : "rounded-none px-3 py-1.5 text-[13px] font-semibold text-[var(--color-ink-soft)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-primary)]"
+                    ? "rounded-sm bg-[var(--color-primary)] px-3 py-1.5 text-[13px] font-semibold text-[var(--color-base)]"
+                    : "rounded-sm px-3 py-1.5 text-[13px] font-semibold text-[var(--color-ink-soft)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-primary)]"
                 }
               >
                 {t(`accountPlans.cycles.${option.value}.label`)}
@@ -193,26 +279,23 @@ export function PlansPanel() {
       {error ? (
         <p
           role="alert"
-          className="rounded-none border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]"
+          className="rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]"
         >
           {t(error)}
         </p>
       ) : null}
 
-      <div className="grid gap-4 lg:grid-cols-4">
-        {plans.map((plan) => {
+      {/* Only the plans on offer. An Enterprise subscriber sees "Enterprise"
+          in the line above and changes plan through Manage, like everyone. */}
+      <div className="grid gap-4 lg:grid-cols-3">
+        {publicPlans.map((plan) => {
           const isCurrent = plan.id === currentPlanId;
-          const isPaidPlan = plan.id !== "free";
-          const canPurchase =
-            isPaidPlan && hasRealStripePriceIds(plan) && checkoutClientReady;
+          const canPurchase = hasRealStripePriceIds(plan) && checkoutClientReady;
           const isYearly = cycle === "yearly";
           // Always lead with the monthly figure. In yearly mode that's the
           // annualized monthly-equivalent; the exact billed total drops to a
           // smaller line below so the easy-to-scan number stays primary.
-          const monthlyFigure =
-            isYearly && plan.yearlyUsd > 0
-              ? plan.yearlyUsd / 12
-              : plan.monthlyUsd;
+          const monthlyFigure = isYearly ? plan.yearlyUsd / 12 : plan.monthlyUsd;
 
           return (
             // Cartão em coluna flex com o botão em margin-top:auto: o Free
@@ -223,8 +306,8 @@ export function PlansPanel() {
               key={plan.id}
               className={
                 isCurrent
-                  ? "relative flex h-full flex-col rounded-none border-2 border-[var(--color-primary)] bg-white p-5 shadow-[0_18px_36px_rgba(15,39,68,0.10)]"
-                  : "flex h-full flex-col rounded-none border fine-rule bg-white p-5 shadow-[var(--shadow-soft)]"
+                  ? "relative flex h-full flex-col rounded-lg border-2 border-[var(--color-primary)] bg-white p-5 shadow-[0_18px_36px_rgba(15,39,68,0.10)]"
+                  : "flex h-full flex-col rounded-lg border fine-rule bg-white p-5 shadow-[var(--shadow-soft)]"
               }
             >
               <div className="flex items-start justify-between gap-2">
@@ -235,40 +318,34 @@ export function PlansPanel() {
               </div>
               <div className="mt-3 flex items-baseline gap-1">
                 <span className="text-3xl font-extrabold tabular-nums tracking-[-0.02em] text-[var(--color-primary)]">
-                  {isPaidPlan
-                    ? formatPrice(Math.round(monthlyFigure))
-                    : t("accountPlans.freePrice")}
+                  {formatPrice(Math.round(monthlyFigure))}
                 </span>
-                {isPaidPlan ? (
-                  <span className="text-xs font-semibold text-[var(--color-ink-soft)]">
-                    {t("accountPlans.perMonth")}
-                  </span>
-                ) : null}
+                <span className="text-xs font-semibold text-[var(--color-ink-soft)]">
+                  {t("accountPlans.perMonth")}
+                </span>
               </div>
-              {isPaidPlan ? (
-                <p className="mt-1 text-[11px] font-medium tabular-nums text-[var(--color-ink-muted)]">
-                  {isYearly
-                    ? t("accountPlans.billedYearly").replace("{price}", () => formatPrice(plan.yearlyUsd))
-                    : t("accountPlans.billedMonthly")}
-                </p>
-              ) : null}
+              <p className="mt-1 text-[11px] font-medium tabular-nums text-[var(--color-ink-muted)]">
+                {isYearly
+                  ? t("accountPlans.billedYearly").replace("{price}", () => formatPrice(plan.yearlyUsd))
+                  : t("accountPlans.billedMonthly")}
+              </p>
               <p className="mt-3 text-xs text-[var(--color-ink-soft)]">
                 {t(`publicPages.plans.${plan.id}.tagline`)}
               </p>
 
-              <div className="mt-4 rounded-none border fine-rule bg-[var(--color-surface-soft)] px-3 py-2 text-center">
+              <div className="mt-4 rounded-md border fine-rule bg-[var(--color-surface-soft)] px-3 py-2 text-center">
                 <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--color-ink-soft)]">
                   {t("accountPlans.commission")}
                 </p>
                 <p className="mt-0.5 text-2xl font-extrabold tabular-nums text-[var(--color-primary)]">
-                  {plan.commissionPercent}%
+                  {formatPlanCommission(plan)}
                 </p>
               </div>
 
               <ul className="mt-4 grid gap-1.5 text-xs leading-5 text-[var(--color-ink-soft)]">
                 {plan.highlights.map((highlight, index) => (
                   <li key={highlight} className="flex items-start gap-2">
-                    <span className="mt-0.5 grid size-4 shrink-0 place-items-center rounded-none bg-[var(--color-success-soft)]">
+                    <span className="mt-0.5 grid size-4 shrink-0 place-items-center rounded-full bg-[var(--color-success-soft)]">
                       <Check
                         aria-hidden="true"
                         size={10}
@@ -288,7 +365,7 @@ export function PlansPanel() {
                   <p className="text-center text-xs font-semibold text-[var(--color-ink-soft)]">
                     {t("accountPlans.yourPlan")}
                   </p>
-                ) : isPaidPlan && currentPlanId !== "free" ? (
+                ) : currentPlanId !== "free" ? (
                   // Checkout only opens the FIRST paid plan — a second session
                   // would bill both, so the API answers 409. Plan switches go
                   // through the portal, which prorates and swaps in place.
@@ -300,28 +377,37 @@ export function PlansPanel() {
                   >
                     {t(busyAction === "portal" ? "accountPlans.opening" : "accountPlans.change")}
                   </button>
-                ) : isPaidPlan ? (
-                  <button
-                    type="button"
-                    onClick={() => handleUpgrade(plan)}
-                    disabled={!canPurchase}
-                    className={
-                      canPurchase
-                        ? "button-solid w-full justify-center px-3 py-2 text-xs disabled:opacity-60"
-                        : "button-outline w-full justify-center px-3 py-2 text-xs disabled:opacity-60"
-                    }
-                    title={
-                      canPurchase
-                        ? undefined
-                        : t("accountPlans.unavailableHint")
-                    }
-                  >
-                    {canPurchase ? t("accountPlans.upgrade").replace("{plan}", () => plan.name) : t("accountPlans.activating")}
-                  </button>
                 ) : (
-                  <p className="text-center text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--color-ink-muted)]">
-                    {t("accountPlans.defaultTier")}
-                  </p>
+                  <>
+                    {/* Renewal terms right above the button that leads to the
+                        card form (US ROSCA): price, interval, trial and date. */}
+                    {canPurchase ? (
+                      <p className="mb-3 text-[11px] leading-5 text-[var(--color-ink-soft)]">
+                        {planDisclosure({ t, locale, plan, cycle, trial: trialEligible })}
+                      </p>
+                    ) : null}
+                    <button
+                      type="button"
+                      onClick={() => handleUpgrade(plan)}
+                      disabled={!canPurchase}
+                      className={
+                        canPurchase
+                          ? "button-solid w-full justify-center px-3 py-2 text-xs disabled:opacity-60"
+                          : "button-outline w-full justify-center px-3 py-2 text-xs disabled:opacity-60"
+                      }
+                      title={
+                        canPurchase
+                          ? undefined
+                          : t("accountPlans.unavailableHint")
+                      }
+                    >
+                      {!canPurchase
+                        ? t("accountPlans.activating")
+                        : trialEligible
+                          ? t("planTrial.cta")
+                          : t("accountPlans.upgrade").replace("{plan}", () => plan.name)}
+                    </button>
+                  </>
                 )}
               </div>
             </article>
@@ -329,7 +415,7 @@ export function PlansPanel() {
         })}
       </div>
 
-      <footer className="rounded-none border fine-rule bg-[var(--color-surface-soft)] p-4 text-xs leading-6 text-[var(--color-ink-soft)]">
+      <footer className="rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4 text-xs leading-6 text-[var(--color-ink-soft)]">
         {t("accountPlans.footer")}
       </footer>
 

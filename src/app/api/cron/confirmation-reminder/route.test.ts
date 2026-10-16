@@ -194,6 +194,54 @@ describe("confirmation reminder cron", () => {
     }
   });
 
+  // Onda F: o lembrete mandava o link sem o curso e a pessoa caia no inicio
+  // generico. O cadastro guarda o destino; o lembrete o leva no link.
+  it("carries the course the person signed up from in the link", async () => {
+    const next = "/welcome?path=student&returnTo=%2Fcourses%2Ffocus%3Foffer%3Dannual";
+    const buyer = user(30, { user_metadata: { signup_next: next } });
+    const teacher = user(40, { user_metadata: { signup_next: "/welcome?path=teacher" } });
+
+    await run();
+
+    const [teacherBody, buyerBody] = sentBodies();
+    const link = `${APP}/auth/confirm?token_hash=h_${buyer.id}&type=email&next=${encodeURIComponent(next)}`;
+    expect(buyerBody.text).toContain(link);
+    expect(buyerBody.html).toContain(`href="${link.replaceAll("&", "&amp;")}"`);
+    expect(teacherBody.text).toContain(`h_${teacher.id}&type=email&next=${encodeURIComponent("/welcome?path=teacher")}`);
+  });
+
+  it.each([
+    "/welcome?returnTo=https%3A%2F%2Fevil.test%2Fx",
+    "/welcome?returnTo=%2F%2Fevil.test",
+    "/welcome?returnTo=%2F%5Cevil.test",
+    "/welcome?path=admin&returnTo=%2Flogin",
+    "https://evil.test/welcome?returnTo=%2Fcourses%2Ffocus",
+    "//evil.test/welcome",
+  ])("never carries an unsafe destination (%s): the person can edit their own metadata", async (signupNext) => {
+    const person = user(30, { user_metadata: { signup_next: signupNext } });
+
+    await run();
+
+    const [body] = sentBodies();
+    expect(body.text).toContain(`${APP}/auth/confirm?token_hash=h_${person.id}&type=email\n`);
+    expect(`${body.html} ${body.text}`).not.toContain("evil");
+    expect(body.text).not.toContain("next=");
+  });
+
+  // O teto de 300 do cadastro vale tambem aqui: a pessoa pode gravar um
+  // signup_next enorme direto na API, e o link iria inteiro para o e-mail.
+  it("drops a destination longer than the signup cap and sends the plain link", async () => {
+    const huge = `/welcome?returnTo=${encodeURIComponent(`/${"b".repeat(5_000)}`)}`;
+    const person = user(30, { user_metadata: { signup_next: huge } });
+
+    await run();
+
+    const [body] = sentBodies();
+    expect(body.text).toContain(`${APP}/auth/confirm?token_hash=h_${person.id}&type=email\n`);
+    expect(body.text).not.toContain("next=");
+    expect(`${body.html} ${body.text}`).not.toContain("bbbb");
+  });
+
   it("points to the sign-in page for when the one-hour link has expired, with no address in any link", async () => {
     const english = user(40);
     const spanish = user(30, { user_metadata: { locale: "es" } });

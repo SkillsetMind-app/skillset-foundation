@@ -27,6 +27,10 @@ vi.mock("@/components/i18n/i18n-provider", () => ({
   }),
 }));
 
+vi.mock("@/lib/data/user-profiles", () => ({
+  subscribeToUserProfile: () => () => {},
+}));
+
 vi.mock("@/lib/data/notifications", () => ({
   subscribeToNotifications: vi.fn((_uid, onNext) => {
     onNext([]);
@@ -52,15 +56,16 @@ describe("o sino na barra da area de membros", () => {
     expect(screen.queryByText("Exit to dashboard")).toBeNull();
   });
 
-  it("fica fora da area com marca do professor: cada aviso e uma porta de volta para a plataforma", () => {
+  // Antes o sino ficava fora da area com marca do professor, e o aluno dela
+  // nunca sabia que o professor tinha respondido (o painel de mensagens diz
+  // que a resposta "cai no sino"). Agora aparece nos dois modos.
+  it("aparece tambem na area com marca do professor", () => {
     render(
       <MemberAreaShell brand={{ name: "Atelier Curie" }}>
         <p>Lesson</p>
       </MemberAreaShell>,
     );
 
-    expect(
-      screen.queryByRole("button", { name: bellName }),
-    ).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: bellName })).toBeInTheDocument();
   });
 });

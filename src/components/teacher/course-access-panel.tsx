@@ -19,7 +19,7 @@ const accessErrorKeys: Record<string, string> = {
   "Only the course owner can manage access to a published course.": "courseAccess.ownerError",
   "Enter a valid email address.": "courseAccess.emailError",
   "Too many attempts. Please wait before trying again.": "courseAccess.rateError",
-  "Daily limit for manual access on the Free plan. Try again tomorrow.": "courseAccess.freePlanDailyLimit",
+  "Daily limit for manual access without a plan. Try again tomorrow.": "courseAccess.freePlanDailyLimit",
   "Sign in to manage course access.": "courseAccess.signInError",
   "Choose a course.": "courseAccess.courseError",
   "Request is too large.": "courseAccess.requestLargeError",
@@ -92,14 +92,14 @@ export function CourseAccessPanel({ courseId, onChange }: { courseId: string; on
       <div className="min-w-0 flex-1 basis-60">
         <label htmlFor={inputId} className="mb-2 block text-sm font-semibold text-[var(--color-ink)]">{t("courseAccess.email")}</label>
         <input id={inputId} type="email" required maxLength={254} value={email} onChange={(event) => setEmail(event.target.value)} disabled={busy}
-          className="min-h-11 w-full min-w-0 rounded-none border border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-ink)]" />
+          className="min-h-11 w-full min-w-0 rounded-md border border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-ink)]" />
       </div>
       <Button type="submit" disabled={busy || !loaded || !email.trim()}>{t("courseAccess.grant")}</Button>
     </form>
     {error ? <p role="alert" className="mt-3 text-sm text-[var(--color-danger-fg)]">{t(error)}</p> : null}
     <p ref={statusRef} tabIndex={-1} role="status" aria-live="polite" className="mt-3 text-sm text-[var(--color-ink-soft)]">{message ? t(message).replace("{status}", () => t(statusLabels[messageStatus])) : ""}</p>
     <ul className="mt-4 grid min-w-0 gap-3">
-      {grants.map((grant) => <li key={grant.id} className="min-w-0 rounded-none border border-[var(--color-line)] p-3">
+      {grants.map((grant) => <li key={grant.id} className="min-w-0 rounded-md border border-[var(--color-line)] p-3">
         <p className="break-all text-sm font-semibold text-[var(--color-ink)]">{grant.learner_email}</p>
         <p className="mt-1 text-sm text-[var(--color-ink-soft)]">{t(statusLabels[grant.access_status])}</p>
         {!grant.revoked_at ? <div className="mt-3 flex flex-wrap gap-2" onKeyDown={(event) => {

@@ -97,7 +97,7 @@ export function CourseActionsMenu({
           }
           setOpen((current) => !current);
         }}
-        className="grid min-h-11 min-w-11 place-items-center rounded-none border border-[var(--color-line-strong)] bg-white text-[var(--color-primary)] transition-colors hover:bg-[var(--color-surface-soft)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]"
+        className="grid min-h-11 min-w-11 place-items-center rounded-md border border-[var(--color-line-strong)] bg-white text-[var(--color-primary)] transition-colors hover:bg-[var(--color-surface-soft)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]"
       >
         <Icon aria-hidden="true" size={19} strokeWidth={2} />
       </button>
@@ -114,7 +114,7 @@ export function CourseActionsMenu({
             triggerRef.current?.focus();
           }}
           style={menuLeftPx === null ? undefined : { left: menuLeftPx }}
-          className={`absolute top-[calc(100%+8px)] z-40 w-56 rounded-none border border-[var(--color-line)] bg-white p-1.5 shadow-[var(--shadow-strong)] ${menuLeftPx === null ? "right-0" : ""}`}
+          className={`absolute top-[calc(100%+8px)] z-40 w-56 rounded-lg border border-[var(--color-line)] bg-white p-1.5 shadow-[var(--shadow-strong)] ${menuLeftPx === null ? "right-0" : ""}`}
         >
           {children}
         </div>
@@ -143,7 +143,7 @@ export function DeleteOrArchiveCourseDialog({
 }) {
   const { t } = useTranslation();
   const dialogRef = useRef<HTMLDivElement>(null);
-  const [audience, setAudience] = useState<{ enrollments: number; orders: number } | null>(null);
+  const [audience, setAudience] = useState<{ enrollments: number; orders: number; subscriptions: number } | null>(null);
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
   useModalFocus(dialogRef, true);
@@ -176,7 +176,8 @@ export function DeleteOrArchiveCourseDialog({
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [busy, onCancel]);
 
-  const hasAudience = audience !== null && audience.enrollments + audience.orders > 0;
+  // Assinatura tambem e comprador: o servidor arquiva, entao o texto promete arquivar.
+  const hasAudience = audience !== null && audience.enrollments + audience.orders + audience.subscriptions > 0;
   const prefix = hasAudience ? "creatorPanel.products.archive" : "creatorPanel.products.delete";
 
   async function handleConfirm() {
@@ -205,7 +206,7 @@ export function DeleteOrArchiveCourseDialog({
         role="dialog"
         aria-modal="true"
         aria-label={t("creatorPanel.products.delete.aria").replace("{title}", () => courseTitle)}
-        className="modal-panel modal-panel-scroll w-full max-w-md rounded-none border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-strong)] outline-none"
+        className="modal-panel modal-panel-scroll w-full max-w-md rounded-xl border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-strong)] outline-none"
       >
         <p className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--color-danger-fg)]">
           {t(`${prefix}.eyebrow`)}
@@ -224,6 +225,23 @@ export function DeleteOrArchiveCourseDialog({
             <AlertTriangle aria-hidden="true" size={18} strokeWidth={1.9} className="mt-0.5 shrink-0" />
             <span>{t("creatorPanel.products.archive.callout")}</span>
           </InlineAlert>
+        ) : audience !== null ? (
+          // O que some junto, dito antes do clique: a migration 20261008030000
+          // apaga tudo isto, e a limpeza tira arquivos e videos a partir de um
+          // dia depois, de hora em hora, em lotes.
+          <>
+            <p className="mt-3 text-sm font-semibold text-[var(--color-ink)]">
+              {t("creatorPanel.products.delete.consequences.lead")}
+            </p>
+            <ul className="mt-1 list-disc pl-5 text-sm leading-6 text-[var(--color-ink-soft)]">
+              {(["content", "videos", "community", "events"] as const).map((item) => (
+                <li key={item}>{t(`creatorPanel.products.delete.consequences.${item}`)}</li>
+              ))}
+            </ul>
+            <p className="mt-3 text-sm leading-6 text-[var(--color-ink-soft)]">
+              {t("creatorPanel.products.delete.filesNote")}
+            </p>
+          </>
         ) : null}
 
         {failed ? (
@@ -245,7 +263,8 @@ export function DeleteOrArchiveCourseDialog({
             type="button"
             onClick={() => void handleConfirm()}
             disabled={busy || audience === null}
-            className={`${hasAudience ? "button-solid" : "button-danger"} px-4 text-sm disabled:opacity-60`}
+            // Apagar e para sempre: vermelho cheio. Arquivar volta atras: azul.
+            className={`${hasAudience ? "button-solid" : "button-danger button-danger-solid"} px-4 text-sm disabled:opacity-60`}
           >
             {busy ? t(`${prefix}.busy`) : t(`${prefix}.confirm`)}
           </button>

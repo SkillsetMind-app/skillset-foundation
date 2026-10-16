@@ -68,7 +68,7 @@ export function AccountControlDialog({ uid, label, onClose }: { uid: string; lab
 
   return <dialog ref={dialog} aria-labelledby="account-control-title" aria-describedby="account-control-person"
     onCancel={event => { if (pending.current) event.preventDefault(); }} onClose={onClose}
-    className="modal-panel modal-panel-scroll m-auto w-[calc(100%_-_2rem)] max-w-lg rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)] p-5 text-[var(--color-ink)] backdrop:bg-black/50">
+    className="modal-panel modal-panel-scroll m-auto w-[calc(100%_-_2rem)] max-w-lg rounded-xl border border-[var(--color-line)] bg-[var(--color-surface)] p-5 text-[var(--color-ink)] backdrop:bg-black/50">
     <div className="flex items-start justify-between gap-3">
       <h2 id="account-control-title" className="text-lg font-bold">{t("accountControls.title")}</h2>
       <Button variant="ghost" className="h-11 w-11 shrink-0 p-0" disabled={busy}
@@ -93,7 +93,7 @@ export function AccountControlDialog({ uid, label, onClose }: { uid: string; lab
         <Field id="account-control-reason" label={t("accountControls.reason")}>
           {a11y => <textarea {...a11y} required minLength={3} maxLength={500} rows={3} disabled={busy || control.isSelf}
             value={reason} onChange={event => setReason(event.target.value)}
-            className="w-full resize-y rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)] p-3 text-sm" />}
+            className="w-full resize-y rounded-md border border-[var(--color-line)] bg-[var(--color-surface)] p-3 text-sm" />}
         </Field>
         <Button type="submit" variant={action === "restore" ? "solid" : "danger"}
           className="min-h-11 w-full whitespace-normal" disabled={busy || control.isSelf || reason.trim().length < 3}>

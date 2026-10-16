@@ -21,6 +21,7 @@ afterEach(() => {
 
 // Os literais que a tela mostrava antes deste PR. Se algum voltar, a prova cai.
 const INGLES_ANTIGO_LISTA = [
+  "Other prices",
   "Offers & prices",
   "Create one-time or subscription packages. The default drives the main page; every active offer has an exact buyer link.",
   "default",
@@ -29,6 +30,11 @@ const INGLES_ANTIGO_LISTA = [
 ];
 
 const INGLES_ANTIGO_FORMULARIO = [
+  "Other prices",
+  "Name of this price",
+  "How often they pay",
+  "Make this the main price on your page",
+  "Add price",
   "Offers & prices",
   "No offers yet — checkout uses the legacy course price until you create one.",
   "Offer name",
@@ -102,7 +108,7 @@ describe("painel de ofertas em espanhol", () => {
     renderEs();
 
     // O titulo identifica a secao sem repetir um paragrafo de instrucoes.
-    expect(await screen.findByText("Ofertas y precios")).toBeInTheDocument();
+    expect(await screen.findByText("Otros precios")).toBeInTheDocument();
     expect(
       screen.queryByText(
         "Crea paquetes de pago único o por suscripción. La oferta predeterminada rige la página principal; cada oferta activa tiene su propio enlace de compra exacto.",
@@ -112,22 +118,22 @@ describe("painel de ofertas em espanhol", () => {
     // Marca da oferta padrao e o botao que abre o formulario. A lista chega
     // depois do fetch: esperar, senao a asserção corre na frente do carregamento
     // (falhava quando dois arquivos dividiam o mesmo fork).
-    expect(await screen.findByText("predeterminada")).toBeInTheDocument();
+    expect(await screen.findByText("precio principal")).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Nueva oferta" }),
+      screen.getByRole("button", { name: "Agregar otro precio" }),
     ).toBeInTheDocument();
 
     // Linha da oferta ativa: preco, tipo de pagamento e codigo publico.
-    const ativa = screen.getByText("predeterminada").closest("li");
+    const ativa = screen.getByText("precio principal").closest("li");
     expect(ativa?.textContent).toContain("Pago único");
     expect(ativa?.textContent).toContain("código LAUNCH");
 
     // Linha da oferta sem preco e inativa.
     const inativa = screen.getByText("Sin precio", { exact: false });
-    expect(inativa.textContent).toContain("inactiva");
+    expect(inativa.textContent).toContain("inactivo");
 
     // Rotulo do link de checkout da oferta.
-    expect(screen.getByText("checkout de Launch")).toBeInTheDocument();
+    expect(screen.getByText("página de pago de Launch")).toBeInTheDocument();
 
     semIngles(INGLES_ANTIGO_LISTA);
   });
@@ -141,40 +147,38 @@ describe("painel de ofertas em espanhol", () => {
     renderEs();
 
     // Sem oferta nenhuma o formulario ja vem aberto, junto do estado vazio.
-    const nome = await screen.findByLabelText("Nombre de la oferta");
-    expect(nome).toHaveValue("Oferta estándar");
+    const nome = await screen.findByLabelText("Nombre de este precio");
+    expect(nome).toHaveValue("Otro precio");
     expect(
       screen.getByText(
-        "Todavía no hay ofertas: el checkout usa el precio anterior del curso hasta que crees una.",
+        "Todavía no hay otros precios. Se paga el precio que definiste en Precios.",
       ),
     ).toBeInTheDocument();
 
-    expect(screen.getByLabelText("Código público (opcional)")).toHaveAttribute(
+    expect(screen.getByLabelText("Código para el enlace (opcional)")).toHaveAttribute(
       "placeholder",
       "p. ej. LAUNCH",
     );
     expect(screen.getByLabelText("Importe")).toBeInTheDocument();
     expect(screen.getByLabelText("Moneda")).toBeInTheDocument();
 
-    const tipoDePagamento = screen.getByLabelText("Tipo de pago");
+    const cadaCuanto = screen.getByLabelText("Cada cuánto pagan");
     expect(
-      Array.from(tipoDePagamento.querySelectorAll("option")).map(
+      Array.from(cadaCuanto.querySelectorAll("option")).map(
         (option) => option.textContent,
       ),
     ).toEqual([
       "Pago único",
-      "Suscripción mensual",
-      "Suscripción anual",
+      "Mensualidad",
+      "Plan anual",
       "Gratis",
     ]);
 
     expect(
-      screen.getByText(
-        "Oferta predeterminada (rige el checkout y sincroniza el precio anterior)",
-      ),
+      screen.getByText("Usar como precio principal de tu página"),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Crear oferta" }),
+      screen.getByRole("button", { name: "Agregar precio" }),
     ).toBeInTheDocument();
 
     // O nome inicial em ingles tambem sumiu do campo.

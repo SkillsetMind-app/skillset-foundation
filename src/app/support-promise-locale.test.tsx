@@ -48,7 +48,7 @@ describe("support and Promise server pages use the cookie and real dictionaries"
   });
 
   it("requires every changelog translation in the shipped dictionaries, without English fallback", () => {
-    for (const key of ["eyebrow", "title", "description", "publishedOn", "publication", "changeTitle", "whatChanged", "why", "effectiveNew", "effectiveExisting", "change2Title", "change2WhatChanged", "change2Why", "change2Effective", "futureFormat", "futureTitle", "futureChange", "futureWhy", "futureNew", "futureExisting"]) {
+    for (const key of ["eyebrow", "title", "description", "publishedOn", "publication", "changeTitle", "whatChanged", "why", "effectiveNew", "effectiveExisting", "change2Title", "change2WhatChanged", "change2Why", "change2Effective", "change4Title", "change4WhatChanged", "change4Why", "change4Effective", "futureFormat", "futureTitle", "futureChange", "futureWhy", "futureNew", "futureExisting"]) {
       const path = `promiseChangelog.${key}`;
       const english = translate(getDictionary("en"), path);
       const spanish = translate(getDictionary("es"), path);

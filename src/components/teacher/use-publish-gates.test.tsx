@@ -4,9 +4,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { usePublishGates } from "@/components/teacher/use-publish-gates";
 
 const mocks = vi.hoisted(() => ({
+  planRequired: vi.fn<() => Promise<boolean>>(),
   profile: null as null | { creatorVerificationStatus?: string },
   fail: false,
 }));
+vi.mock("@/lib/data/creator-plan", () => ({ fetchCreatorPlanRequired: mocks.planRequired }));
 
 vi.mock("@/lib/data/user-profiles", () => ({
   subscribeToUserProfile: (
@@ -26,6 +28,28 @@ vi.mock("@/lib/data/creator-verification", () => ({
 beforeEach(() => {
   mocks.profile = null;
   mocks.fail = false;
+  mocks.planRequired.mockReset().mockResolvedValue(false);
+});
+
+describe("creator plan gate", () => {
+  it("uses the server verdict and fails closed on read errors", async () => {
+    mocks.planRequired.mockRejectedValueOnce(new Error("offline"));
+    const { result } = renderHook(() => usePublishGates({ uid: "teacher-1" }));
+    expect(result.current.account.planRequired).toBe(true);
+    await waitFor(() => expect(result.current.loaded).toBe(true));
+    expect(result.current.account.planRequired).toBe(true);
+  });
+
+  it("does not carry another account's entitlement across a user switch", async () => {
+    const { result, rerender } = renderHook(({ uid }) => usePublishGates({ uid }), {
+      initialProps: { uid: "teacher-1" },
+    });
+    await waitFor(() => expect(result.current.account.planRequired).toBe(false));
+    mocks.planRequired.mockImplementationOnce(() => new Promise(() => {}));
+    rerender({ uid: "teacher-2" });
+    expect(result.current.account.planRequired).toBe(true);
+    expect(result.current.loaded).toBe(false);
+  });
 });
 
 // O status do selo decide a oferta e a linha do estúdio. Sem leitura não há

@@ -7,10 +7,9 @@ but **dormant** until you set the env vars below. This is the whole wiring guide
 > fronted DeepSeek. That is gone: the model call, the system prompt and the
 > failure behaviour now live in this repo, in version control, with tests.
 > `N8N_ADVISOR_WEBHOOK_URL` / `N8N_ADVISOR_WEBHOOK_SECRET` are no longer read by
-> any code, and [`docs/n8n/teacher-advisor.flow.json`](./n8n/teacher-advisor.flow.json)
-> plus the advisor half of [`docs/n8n/README.md`](./n8n/README.md) describe a
-> pipeline that no longer runs. The n8n vars that still matter belong to the
-> **public help assistant** (`/api/assistant`), which is a different feature.
+> any code, and the old n8n flow was removed from this repo. The n8n vars that
+> still matter belong to the **public help assistant** (`/api/assistant`), which
+> is a different feature.
 
 ## How it works
 
@@ -78,10 +77,8 @@ from the built-in corpus and the teacher's own data, only without the Doc.
 The long-form help corpus lives in a Google Doc you edit by hand, so correcting a
 wrong answer costs an edit instead of a commit and a deploy.
 
-1. Open the Doc. The owner's is
-   `1dtqZkhIXohjhXASjuFCU2DUbiLG47mEYYc5phL6PFDs`, on the `skillsetmind.com`
-   Workspace account. (An earlier draft of this file named a Doc on the owner's
-   personal account; that one was never shared and is not the corpus.)
+1. Open the Doc. It lives on the company Workspace account; its address is
+   the value of `ADVISOR_KNOWLEDGE_DOC_URL` in Vercel, not in this repo.
 2. **Share → General access → Anyone with the link → Viewer.** The sync reads the
    public export url; a Doc that is not shared answers with Google's sign-in page
    and the job reports `doc_not_public`.

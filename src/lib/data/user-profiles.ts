@@ -541,16 +541,20 @@ export async function completeUserOnboarding({
   }
 }
 
-export async function acceptUserTerms(uid: string, marketingConsent: boolean) {
+// acceptedAt: when the person ticked the box, if that was earlier than now. The
+// signup tick is recorded on the first signed-in page, so it passes the
+// account's creation time (server clock) instead of this browser's clock.
+export async function acceptUserTerms(uid: string, marketingConsent: boolean, acceptedAt?: string) {
   const supabase = getSupabaseBrowserClient();
   const timestamp = nowIso();
+  const accepted = acceptedAt ?? timestamp;
 
   const { data, error } = await supabase
     .from("users")
     .update({
-      terms_accepted_at: timestamp,
+      terms_accepted_at: accepted,
       terms_version: currentTermsVersion,
-      privacy_accepted_at: timestamp,
+      privacy_accepted_at: accepted,
       privacy_version: currentPrivacyVersion,
       marketing_consent: marketingConsent,
       updated_at: timestamp,

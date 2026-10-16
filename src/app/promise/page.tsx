@@ -27,17 +27,19 @@ export default async function PromisePage() {
       // published rate was raised on anyone. From launch on, this promise is
       // binding: any future ladder change requires either a signup-rate snapshot
       // in the engine or the 90-day notice below. Tracked in PR #18.
+      // 2026-10-06: the percent + fixed-fee plans replaced it the same way,
+      // with no plan subscription, published product or sale in production.
       title: t("publicPages.promise.fee_lock_for_24_months"),
       body: t("publicPages.promise.the_commission_rate_of_the_plan"),
       practice:
-        t("publicPages.promise.if_a_creator_joins_on_free"),
+        t("publicPages.promise.the_rate_you_subscribe_at_is_the_one_you_keep"),
     },
     {
       number: "02",
       title: t("publicPages.promise.no_plan_ever_blocks_you_from"),
       body: t("publicPages.promise.the_selling_engine_is_on_every"),
       practice:
-        t("publicPages.promise.a_creator_on_free_runs_a"),
+        t("publicPages.promise.basic_publishes_and_sells"),
     },
     {
       number: "03",
@@ -109,7 +111,7 @@ export default async function PromisePage() {
           {promises.map((promise) => (
             <article
               key={promise.number}
-              className="rounded-none border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)] sm:p-8"
+              className="rounded-lg border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)] sm:p-8"
             >
               <div className="grid gap-5 lg:grid-cols-[120px_1fr]">
                 <p className="display-title text-7xl leading-none text-[var(--color-accent-soft)]">
@@ -122,7 +124,7 @@ export default async function PromisePage() {
                   <p className="mt-4 text-sm leading-8 text-[var(--color-ink-soft)]">
                     {promise.body}
                   </p>
-                  <div className="mt-5 rounded-none border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-4">
+                  <div className="mt-5 rounded-lg border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-4">
                     <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
                       {t("publicPages.promise.what_this_means_in_practice")}
                     </p>
@@ -137,7 +139,7 @@ export default async function PromisePage() {
         </section>
 
         <section className="mx-auto w-full max-w-5xl px-6 pb-16 sm:px-8">
-          <div className="rounded-none border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-6 shadow-[var(--shadow-soft)] sm:p-8">
+          <div className="rounded-lg border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-6 shadow-[var(--shadow-soft)] sm:p-8">
             <p className="text-sm leading-7 text-[var(--color-ink-soft)]">
               {t("publicPages.promise.these_are_not_aspirations_they_are")}
             </p>

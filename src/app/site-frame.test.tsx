@@ -153,7 +153,7 @@ describe("rodapé", () => {
 
     expect(footerTag).toContain("border-t");
     expect(source).not.toContain("shadow-[var(--shadow-soft)]");
-    expect(source).not.toContain('rounded-[14px] border');
+    expect(source).not.toMatch(/\brounded-(?:lg|xl|\[\d+px\]) border/);
   });
 });
 

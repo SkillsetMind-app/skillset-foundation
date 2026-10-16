@@ -103,4 +103,19 @@ describe("caminho de suporte sem login", () => {
       screen.queryByRole("link", { name: /Open a support ticket/ }),
     ).not.toBeInTheDocument();
   });
+
+  it("Contact: o link Enterprise de /pricing chega com o assunto preenchido", async () => {
+    render(await ContactPage({ searchParams: Promise.resolve({ subject: "enterprise" }) }));
+    expect(screen.getByRole("link", { name: /Email the team/ })).toHaveAttribute(
+      "href",
+      "mailto:support@skillsetmind.com?subject=Enterprise",
+    );
+    cleanup();
+
+    render(await ContactPage({ searchParams: Promise.resolve({ subject: "<b>anything</b>" }) }));
+    expect(screen.getByRole("link", { name: /Email the team/ })).toHaveAttribute(
+      "href",
+      "mailto:support@skillsetmind.com?subject=General%20inquiry",
+    );
+  });
 });

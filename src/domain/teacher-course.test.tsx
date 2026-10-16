@@ -6,7 +6,8 @@ import {
   resolveLessonVideoSource,
   normalizeCourseCategories,
   normalizeInstallmentsMax,
-  resolveTeacherCoursePaymentType,
+  defaultPaymentTypeForProductFormat,
+  parseTeacherCourseProductFormat,
   adminCanRepublishCourse,
   adminCanUnpublishCourse,
   normalizeMembersText,
@@ -20,17 +21,21 @@ import {
 } from "./teacher-course";
 
 describe("teacher course domain", () => {
-  it("maps product format and billing interval to the stored payment type", () => {
-    expect(resolveTeacherCoursePaymentType("course", "monthly")).toBe("one_time");
-    expect(resolveTeacherCoursePaymentType("event", "monthly")).toBe("one_time");
-    expect(resolveTeacherCoursePaymentType("program", "monthly")).toBe("one_time");
-    expect(resolveTeacherCoursePaymentType("free", "yearly")).toBe("free");
-    expect(resolveTeacherCoursePaymentType("subscription", "monthly")).toBe(
-      "subscription_monthly",
-    );
-    expect(resolveTeacherCoursePaymentType("subscription", "yearly")).toBe(
-      "subscription_yearly",
-    );
+  it("starts a community as a monthly membership and every other type as one payment", () => {
+    expect(defaultPaymentTypeForProductFormat("course")).toBe("one_time");
+    expect(defaultPaymentTypeForProductFormat("community")).toBe("subscription_monthly");
+    expect(defaultPaymentTypeForProductFormat("live_event")).toBe("one_time");
+    expect(defaultPaymentTypeForProductFormat("ebook")).toBe("one_time");
+  });
+
+  it("reads the four product types and folds old links into the type that absorbed them", () => {
+    for (const format of ["course", "community", "live_event", "ebook"] as const) {
+      expect(parseTeacherCourseProductFormat(format)).toBe(format);
+    }
+    expect(parseTeacherCourseProductFormat("event")).toBe("live_event");
+    for (const legacy of ["program", "subscription", "free", null, undefined, "", "anything"]) {
+      expect(parseTeacherCourseProductFormat(legacy)).toBe("course");
+    }
   });
 
   it("counts lessons across modules", () => {

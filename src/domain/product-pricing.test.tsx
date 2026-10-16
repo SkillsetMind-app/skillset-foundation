@@ -3,9 +3,14 @@ import { describe, expect, it } from "vitest";
 import {
   getCoursePricingShape,
   isLegacyOnlyPricing,
+  paymentChoiceOf,
+  paymentChoicesFor,
+  paymentTypeOfChoice,
   resolveCoursePrice,
+  yearlySavingMinor,
   type ProductOffer,
 } from "@/domain/product-pricing";
+import { paymentTypeFitsFormat } from "@/domain/teacher-course";
 
 const course = {
   id: "course-1",
@@ -186,5 +191,59 @@ describe("getCoursePricingShape", () => {
     expect(shape.paymentType).toBe("one_time");
     expect(shape.installmentsMax).toBe(6);
     expect(shape.currency).toBe("USD");
+  });
+});
+
+// "Como as pessoas vao pagar?": tres cartoes lidos do que ja esta gravado.
+describe("os cartoes de pagamento", () => {
+  // Cada forma gravada hoje cai num cartao, sem mudar nada: o anual sozinho
+  // (produto antigo) fica em Mensalidade, como anual.
+  it.each([
+    ["free", "free"],
+    ["one_time", "one_payment"],
+    ["subscription_monthly", "membership"],
+    ["subscription_yearly", "membership"],
+  ] as const)("%s aparece no cartao %s", (paymentType, choice) => {
+    expect(paymentChoiceOf(paymentType)).toBe(choice);
+  });
+
+  it("escolher um cartao grava a forma dele; Mensalidade nasce mensal", () => {
+    expect(paymentTypeOfChoice("free")).toBe("free");
+    expect(paymentTypeOfChoice("one_payment")).toBe("one_time");
+    expect(paymentTypeOfChoice("membership")).toBe("subscription_monthly");
+  });
+
+  it("cada tipo mostra os seus cartoes, na ordem da tela", () => {
+    expect(paymentChoicesFor("course")).toEqual(["free", "one_payment", "membership"]);
+    expect(paymentChoicesFor("community")).toEqual(["free", "membership"]);
+    expect(paymentChoicesFor("live_event")).toEqual(["free", "one_payment"]);
+    expect(paymentChoicesFor("ebook")).toEqual(["free", "one_payment"]);
+  });
+
+  // Produto criado antes da regra: a tela mostra o que ele e.
+  it("o cartao ja gravado aparece mesmo fora da lista do tipo", () => {
+    expect(paymentChoicesFor("community", "one_payment")).toEqual(["free", "one_payment", "membership"]);
+    expect(paymentChoicesFor("live_event", "membership")).toEqual(["free", "one_payment", "membership"]);
+    expect(paymentChoicesFor("ebook", "one_payment")).toEqual(["free", "one_payment"]);
+  });
+
+  // Espelho de course_payment_type_fits_format (20261007030000).
+  it("as formas que cada tipo aceita", () => {
+    const types = ["free", "one_time", "subscription_monthly", "subscription_yearly"] as const;
+    const accepted = (format: Parameters<typeof paymentTypeFitsFormat>[0]) =>
+      types.filter((type) => paymentTypeFitsFormat(format, type));
+    expect(accepted("course")).toEqual(["free", "one_time", "subscription_monthly", "subscription_yearly"]);
+    expect(accepted("community")).toEqual(["free", "subscription_monthly", "subscription_yearly"]);
+    expect(accepted("live_event")).toEqual(["free", "one_time"]);
+    expect(accepted("ebook")).toEqual(["free", "one_time"]);
+  });
+});
+
+describe("economia do plano anual", () => {
+  it("compara com 12 mensalidades", () => {
+    expect(yearlySavingMinor(2900, 29000)).toBe(5800);
+    expect(yearlySavingMinor(2900, 34800)).toBe(0);
+    expect(yearlySavingMinor(2900, 40000)).toBe(-5200);
+    expect(yearlySavingMinor(1999, 19990)).toBe(3998);
   });
 });

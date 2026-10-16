@@ -1,13 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { useAuth } from "@/components/auth/auth-provider";
 import type { Enrollment, EnrollmentCommunityCard } from "@/domain/enrollment";
-import { createEnrollmentCommunityCards } from "@/domain/enrollment";
-import { subscribeToUserEnrollments } from "@/lib/data/enrollments";
+import { communityEnrollmentCourseIds, createEnrollmentCommunityCards } from "@/domain/enrollment";
+import { getCommunityCourseIds, subscribeToUserEnrollments } from "@/lib/data/enrollments";
+
+const NO_COURSES: ReadonlySet<string> = new Set();
 
 export function LearnCommunityHub() {
   const { t, locale } = useTranslation();
@@ -16,6 +18,10 @@ export function LearnCommunityHub() {
   const [search, setSearch] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+  // Quais cursos estao com a comunidade ligada, e para qual lista de cursos
+  // isso foi lido (a matricula chega pelo realtime e pode mudar).
+  const [community, setCommunity] = useState<{ courses: string; ids: ReadonlySet<string> } | null>(null);
+  const courses = useMemo(() => communityEnrollmentCourseIds(enrollments).join(" "), [enrollments]);
 
   useEffect(() => {
     if (!user) {
@@ -35,9 +41,31 @@ export function LearnCommunityHub() {
     );
   }, [user]);
 
-  if (isLoading) {
+  useEffect(() => {
+    if (!courses) {
+      return;
+    }
+    let active = true;
+    getCommunityCourseIds(courses.split(" ")).then(
+      (ids) => {
+        if (active) setCommunity({ courses, ids });
+      },
+      () => {
+        if (active) setError("learnWave2.communityHub.loadError");
+      },
+    );
+    return () => {
+      active = false;
+    };
+  }, [courses]);
+
+  // Sem curso real nao ha o que perguntar ao banco; com curso, espera a
+  // resposta para a lista atual (nada de cartao de comunidade desligada).
+  const communityIds = !courses ? NO_COURSES : community?.courses === courses ? community.ids : null;
+
+  if (isLoading || (!error && communityIds === null)) {
     return (
-      <section className="rounded-none border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
+      <section className="rounded-lg border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
         <p className="text-sm text-[var(--color-ink-soft)]">{t("learnWave2.communityHub.loading")}</p>
       </section>
     );
@@ -45,8 +73,8 @@ export function LearnCommunityHub() {
 
   if (error) {
     return (
-      <section className="rounded-none border border-[rgba(178,34,52,0.2)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
-        <p role="alert" className="rounded-none bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
+      <section className="rounded-lg border border-[rgba(178,34,52,0.2)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
+        <p role="alert" className="rounded-md bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
           {t(error)}
         </p>
       </section>
@@ -54,7 +82,7 @@ export function LearnCommunityHub() {
   }
 
   const communityCards: EnrollmentCommunityCard[] =
-    createEnrollmentCommunityCards(enrollments).map((space) => ({
+    createEnrollmentCommunityCards(enrollments, communityIds ?? NO_COURSES).map((space) => ({
       ...space,
       name: t("learnWave2.communityHub.name").replace("{course}", () => space.courseTitle),
       categories: t("learnWave2.communityHub.category"),
@@ -74,7 +102,7 @@ export function LearnCommunityHub() {
 
   if (communityCards.length === 0) {
     return (
-      <section className="rounded-none border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
+      <section className="rounded-lg border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
         <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
           {t("learnWave2.communityHub.eyebrow")}
         </p>
@@ -95,7 +123,7 @@ export function LearnCommunityHub() {
 
   return (
     <section className="space-y-5">
-      <div className="rounded-none border border-[var(--color-line)] bg-white p-5 shadow-[var(--shadow-soft)]">
+      <div className="rounded-lg border border-[var(--color-line)] bg-white p-5 shadow-[var(--shadow-soft)]">
         <div className="grid gap-3">
           <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
             {t("learnWave2.communityHub.search")}
@@ -104,7 +132,7 @@ export function LearnCommunityHub() {
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder={t("learnWave2.communityHub.placeholder")}
-              className="rounded-none border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
+              className="rounded-md border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
             />
           </label>
         </div>
@@ -116,7 +144,7 @@ export function LearnCommunityHub() {
       </div>
 
       {filteredCards.length === 0 ? (
-        <div className="rounded-none border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
+        <div className="rounded-lg border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
           <h2 className="display-title text-3xl text-[var(--color-ink)]">
             {t("learnWave2.communityHub.noMatch")}
           </h2>
@@ -130,12 +158,12 @@ export function LearnCommunityHub() {
       {filteredCards.map((space) => (
         <article
           key={space.id}
-          className="rounded-none border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]"
+          className="rounded-lg border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]"
         >
           <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
             {space.categories}
           </p>
-          <span className="mt-4 inline-flex rounded-none bg-[var(--color-surface-soft)] px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--color-primary)]">
+          <span className="mt-4 inline-flex rounded-chip bg-[var(--color-surface-soft)] px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--color-primary)]">
             {t("learnWave2.communityHub.enrolled")}
           </span>
           <h2 className="display-title mt-3 text-3xl text-[var(--color-ink)]">

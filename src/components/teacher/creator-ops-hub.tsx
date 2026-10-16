@@ -228,7 +228,7 @@ export function CreatorOpsHub() {
         {tiles.map((tile) => (
           <article
             key={tile.key}
-            className="rounded-2xl border border-[var(--color-line)] bg-[var(--color-surface)] p-5 shadow-[var(--shadow-soft)]"
+            className="rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)] p-5 shadow-[var(--shadow-soft)]"
           >
             <span className="text-xs font-semibold uppercase tracking-wide text-[var(--color-ink-soft)]">
               {tile.label}
@@ -254,7 +254,7 @@ export function CreatorOpsHub() {
         emptyDetail={t("teach.reports.noRevenueInPeriodDetail")}
       />
 
-      <div className="rounded-2xl border border-[var(--color-line)] bg-[var(--color-surface)] p-5">
+      <div className="rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)] p-5">
         <h2 className="text-sm font-semibold text-[var(--color-ink)]">
           {t("teach.reports.byProduct")}
         </h2>
@@ -301,7 +301,7 @@ export function CreatorOpsHub() {
         )}
       </div>
 
-      <div className="rounded-2xl border border-[var(--color-line)] bg-[var(--color-surface)] p-5">
+      <div className="rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)] p-5">
         <h2 className="text-sm font-semibold text-[var(--color-ink)]">
           {t("teach.reports.shortcuts")}
         </h2>
@@ -316,13 +316,12 @@ export function CreatorOpsHub() {
               href: "/account/payments",
               label: t("teach.reports.linkEarnings"),
             },
-            { href: "/teach/coupons", label: t("teach.reports.linkCoupons") },
             { href: "/teach/builder", label: t("teach.reports.linkBuilder") },
           ].map((link) => (
             <Link
               key={link.href}
               href={link.href}
-              className="rounded-none border border-[var(--color-line)] px-3 py-1.5 text-xs font-medium text-[var(--color-ink)] hover:border-[var(--color-primary)]"
+              className="rounded-full border border-[var(--color-line)] px-3 py-1.5 text-xs font-medium text-[var(--color-ink)] hover:border-[var(--color-primary)]"
             >
               {link.label}
             </Link>

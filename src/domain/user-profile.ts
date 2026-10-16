@@ -33,6 +33,8 @@ export type NotificationPreferences = {
   courseActivity: boolean;
   billingAlerts: boolean;
   marketingEmails: boolean;
+  /** Hourly "you have N new notifications" email (api/cron/notification-digest). */
+  emailDigest: boolean;
 };
 
 export type LearningPreferences = {
@@ -50,6 +52,7 @@ export const defaultNotificationPreferences: NotificationPreferences = {
   courseActivity: true,
   billingAlerts: true,
   marketingEmails: false,
+  emailDigest: true,
 };
 
 export const defaultLearningPreferences: LearningPreferences = {

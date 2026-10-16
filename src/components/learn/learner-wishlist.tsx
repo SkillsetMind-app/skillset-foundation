@@ -102,7 +102,7 @@ export function LearnerWishlist() {
   if (error) {
     return (
       <div className="dash-card dash-card--strong p-5">
-        <p role="alert" className="rounded-none bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
+        <p role="alert" className="rounded-md bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
           {t(error)}
         </p>
       </div>
@@ -179,7 +179,7 @@ export function LearnerWishlist() {
               </div>
             ) : (
               <div className="p-5">
-                <div className="grid size-12 place-items-center rounded-none bg-[var(--color-surface-soft)] text-[var(--color-primary)]">
+                <div className="grid size-12 place-items-center rounded-md bg-[var(--color-surface-soft)] text-[var(--color-primary)]">
                   <BookmarkX aria-hidden="true" size={22} />
                 </div>
                 <h3 className="display-title mt-4 text-3xl text-[var(--color-primary)]">

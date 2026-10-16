@@ -48,38 +48,43 @@ function viewport(initialWidth: number) {
   };
 }
 
-function openGroup(section: "Marketing" | "Tools") {
+function openGroup(section: "Sales" | "Promote") {
   const trigger = screen.getByRole("button", { name: `Open ${section} navigation` });
   trigger.focus();
   fireEvent.click(trigger);
   return trigger;
 }
 
+// A escolha da barra mora no cookie que o servidor le (onda E, parte 2).
+function savePreference(preference: string) {
+  document.cookie = `skillset_sidebar=${preference}; path=/`;
+}
+
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
-  localStorage.clear();
+  document.cookie = "skillset_sidebar=; max-age=0; path=/";
   mocks.pathname = "/teach";
 });
 
-it.each([768, 1023, 1023.5])("opens both requested groups with labels and working destinations at %s px", (width) => {
+// 1024-1179px: o rail passou a ser o padrao tambem ai, e o grupo abre a gaveta.
+it.each([768, 1023, 1023.5, 1100, 1179])("opens both requested groups with labels and working destinations at %s px", (width) => {
   viewport(width);
   render(<PlatformShell title="Home">Content</PlatformShell>);
   const groups = {
-    Marketing: [
+    Sales: [
+      ["Sales", "/teach/sales"],
+      ["Subscriptions", "/teach/subscriptions"],
+      ["Reports", "/teach/reports"],
+    ],
+    Promote: [
       ["Marketing overview", "/teach/marketing"],
       ["Storefront & pages", "/teach/storefront"],
       ["Media library", "/teach/media"],
-      ["Coupons", "/teach/coupons"],
-    ],
-    Tools: [
-      ["Collaborators", "/teach/team"],
-      ["Verification", "/teach/verification"],
-      ["Integrations", "/teach/integrations"],
     ],
   };
-  for (const section of ["Marketing", "Tools"] as const) {
+  for (const section of ["Sales", "Promote"] as const) {
     const trigger = openGroup(section);
     const drawer = screen.getByRole("dialog", { name: "Platform navigation" });
     expect(within(drawer).getByRole("button", { name: section }))
@@ -91,14 +96,14 @@ it.each([768, 1023, 1023.5])("opens both requested groups with labels and workin
     fireEvent.keyDown(document, { key: "Escape" });
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(trigger).toHaveFocus();
-    expect(localStorage.getItem("skillset_sidebar_state")).toBeNull();
+    expect(document.cookie).not.toContain("skillset_sidebar");
   }
 });
 
 it("keeps initial Shift+Tab and both focus boundaries inside the drawer", () => {
   viewport(768);
   render(<PlatformShell title="Home"><button>Page action</button></PlatformShell>);
-  openGroup("Tools");
+  openGroup("Promote");
   const drawer = screen.getByRole("dialog");
   const links = within(drawer).getAllByRole("link");
   const first = links[0];
@@ -121,11 +126,11 @@ it("keeps initial Shift+Tab and both focus boundaries inside the drawer", () => 
 
 it("closes when the current route is selected, even when the pathname does not change", () => {
   viewport(768);
-  mocks.pathname = "/teach/team";
-  render(<PlatformShell title="Collaborators">Content</PlatformShell>);
-  const trigger = openGroup("Tools");
-  const link = within(screen.getByRole("dialog")).getByRole("link", { name: "Collaborators" });
-  expect(link).toHaveAttribute("href", "/teach/team");
+  mocks.pathname = "/teach/media";
+  render(<PlatformShell title="Media library">Content</PlatformShell>);
+  const trigger = openGroup("Promote");
+  const link = within(screen.getByRole("dialog")).getByRole("link", { name: "Media library" });
+  expect(link).toHaveAttribute("href", "/teach/media");
   expect(link).toHaveAttribute("aria-current", "page");
   fireEvent.click(link);
   expect(screen.queryByRole("dialog")).toBeNull();
@@ -135,7 +140,7 @@ it("closes when the current route is selected, even when the pathname does not c
 it.each(["close button", "backdrop", "swipe"])("closes via %s and returns focus", (action) => {
   viewport(768);
   render(<PlatformShell title="Home">Content</PlatformShell>);
-  const trigger = openGroup("Marketing");
+  const trigger = openGroup("Promote");
   const drawer = screen.getByRole("dialog");
   if (action === "close button") {
     const closeButton = within(drawer).getByRole("button", { name: "Close navigation" });
@@ -156,7 +161,7 @@ it.each([767, 768])("returns focus to visible navigation after crossing the phon
   render(<PlatformShell title="Home">Content</PlatformShell>);
   const trigger = width === 767
     ? screen.getByRole("button", { name: "Open more navigation" })
-    : screen.getByRole("button", { name: "Open Tools navigation" });
+    : screen.getByRole("button", { name: "Open Promote navigation" });
   trigger.focus();
   fireEvent.click(trigger);
   const drawer = screen.getByRole("dialog");
@@ -173,47 +178,46 @@ it.each([767, 768])("returns focus to visible navigation after crossing the phon
 });
 
 it.each(["expanded", "collapsed"])("closes at desktop, releases Tab and preserves the saved %s preference", async (preference) => {
-  const resize = viewport(1024);
-  localStorage.setItem("skillset_sidebar_state", preference);
-  const writes = vi.spyOn(Storage.prototype, "setItem");
+  const resize = viewport(1180);
+  savePreference(preference);
+  const saved = document.cookie;
   const { container } = render(<PlatformShell title="Home"><button>Page action</button></PlatformShell>);
   const sidebar = container.querySelector(".platform-sidebar");
   await waitFor(() => expect(sidebar).toHaveClass(`sidebar-${preference}`));
   resize(768);
   expect(sidebar).toHaveClass("sidebar-collapsed");
-  const trigger = openGroup("Tools");
-  resize(1023);
+  const trigger = openGroup("Promote");
+  resize(1179);
   expect(screen.getByRole("dialog")).toBeInTheDocument();
-  resize(1024);
+  resize(1180);
   expect(screen.queryByRole("dialog")).toBeNull();
   expect(sidebar).toHaveClass(`sidebar-${preference}`);
   expect(trigger).toHaveFocus();
-  expect(localStorage.getItem("skillset_sidebar_state")).toBe(preference);
-  expect(writes).not.toHaveBeenCalled();
+  expect(document.cookie).toBe(saved);
 
   const outside = screen.getByRole("button", { name: "Page action" });
   outside.focus();
   expect(fireEvent.keyDown(outside, { key: "Tab" })).toBe(true);
-  resize(1023);
+  resize(1179);
   expect(screen.queryByRole("dialog")).toBeNull();
 });
 
 it("still expands a collapsed desktop sidebar when a group is requested", async () => {
-  viewport(1024);
-  localStorage.setItem("skillset_sidebar_state", "collapsed");
+  viewport(1180);
+  savePreference("collapsed");
   const { container } = render(<PlatformShell title="Home">Content</PlatformShell>);
   await waitFor(() => expect(container.querySelector(".platform-sidebar")).toHaveClass("sidebar-collapsed"));
-  openGroup("Tools");
+  openGroup("Promote");
   expect(screen.queryByRole("dialog")).toBeNull();
   expect(container.querySelector(".platform-sidebar")).toHaveClass("sidebar-expanded");
-  expect(screen.getByRole("button", { name: "Tools" })).toHaveAttribute("aria-expanded", "true");
-  expect(screen.getByRole("link", { name: "Collaborators" })).toHaveAttribute("href", "/teach/team");
-  expect(localStorage.getItem("skillset_sidebar_state")).toBe("expanded");
+  expect(screen.getByRole("button", { name: "Promote" })).toHaveAttribute("aria-expanded", "true");
+  expect(screen.getByRole("link", { name: "Media library" })).toHaveAttribute("href", "/teach/media");
+  expect(document.cookie).toContain("skillset_sidebar=expanded");
 });
 
 it("closes when resizing directly from phone to desktop without crossing the rail state", async () => {
   const resize = viewport(390);
-  localStorage.setItem("skillset_sidebar_state", "collapsed");
+  savePreference("collapsed");
   const { container } = render(<PlatformShell title="Home">Content</PlatformShell>);
   await waitFor(() => expect(container.querySelector(".platform-sidebar")).toHaveClass("sidebar-collapsed"));
   const trigger = screen.getByRole("button", { name: "Open more navigation" });
@@ -223,7 +227,7 @@ it("closes when resizing directly from phone to desktop without crossing the rai
 
   // The rail query is false on BOTH ends: no parent render can substitute
   // for the drawer's own breakpoint listener.
-  resize(1024);
+  resize(1180);
   expect(screen.queryByRole("dialog")).toBeNull();
   expect(document.activeElement?.getClientRects()).toHaveLength(1);
 });

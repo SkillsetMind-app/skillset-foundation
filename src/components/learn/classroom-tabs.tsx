@@ -2,9 +2,29 @@
 
 import { Award } from "lucide-react";
 import Link from "next/link";
+import { useEffect, useState } from "react";
 
 import { classroomTabHref, type ClassroomTab } from "@/domain/classroom-tabs";
 import { useTranslation } from "@/components/i18n/i18n-provider";
+
+// A ultima aba aberta nesta visita. Cada aba e uma rota, entao a sala remonta
+// a cada troca; o modulo continua carregado na navegacao do app e zera numa
+// carga nova. No servidor nada grava aqui (efeito nao roda), entao a primeira
+// pintura sai igual dos dois lados.
+let lastClassroomTab: ClassroomTab | null = null;
+
+/**
+ * true quando a sala abriu por TROCA de aba, nao por carga da pagina: so ai o
+ * painel entra com motion-panel-in. A carga entra parada, e o que vira LCP
+ * (capa, titulo, video) nunca nasce com opacidade 0.
+ */
+export function useTabChanged(tab: ClassroomTab): boolean {
+  const [changed] = useState(() => lastClassroomTab !== null && lastClassroomTab !== tab);
+  useEffect(() => {
+    lastClassroomTab = tab;
+  }, [tab]);
+  return changed;
+}
 
 export type ClassroomTabItem = {
   id: ClassroomTab;

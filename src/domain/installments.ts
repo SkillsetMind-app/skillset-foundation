@@ -28,11 +28,40 @@ export function normalizeInstallmentsMax(raw: unknown): number {
   return Math.min(24, Math.max(1, n));
 }
 
+/** Venda em MXN numa conta Stripe do Mexico: o unico lugar onde o parcelamento por cartao funciona. */
+export function isStripeCardInstallmentsEligible(
+  currency: string,
+  stripeAccountCountry?: string | null,
+): boolean {
+  return (
+    String(currency || "").toUpperCase() === "MXN"
+    && String(stripeAccountCountry || "").toUpperCase() === "MX"
+  );
+}
+
+/**
+ * A mesma regra do checkout (/api/payments/checkout): a flag
+ * payments.cardInstallments ligada e a venda elegivel. O construtor so oferece
+ * "deixar pagar em parcelas" quando isto e verdade; fora disso a opcao nao
+ * existe na tela, em vez de aparecer desligada com explicacao tecnica.
+ */
+export function canSplitPayments(input: {
+  featureEnabled: boolean;
+  currency: string;
+  stripeAccountCountry?: string | null;
+}): boolean {
+  return (
+    input.featureEnabled
+    && isStripeCardInstallmentsEligible(input.currency, input.stripeAccountCountry)
+  );
+}
+
 export function buildInstallmentPlan(input: InstallmentPlanInput): InstallmentPlan {
   const currency = String(input.currency || "USD").toUpperCase();
-  const stripeAccountCountry = String(input.stripeAccountCountry || "").toUpperCase();
-  const stripeCardInstallmentsEligible =
-    currency === "MXN" && stripeAccountCountry === "MX";
+  const stripeCardInstallmentsEligible = isStripeCardInstallmentsEligible(
+    currency,
+    input.stripeAccountCountry,
+  );
   const maxCount = normalizeInstallmentsMax(input.installmentsMax ?? 1);
   const enabled =
     Boolean(input.installmentsEnabled) &&

@@ -19,6 +19,8 @@ VALUES
 ('22222222-2222-4222-8222-222222222222','authenticated','authenticated','grant-learner@example.test',now(),'{}','{}',now(),now()),
 ('33333333-3333-4333-8333-333333333333','authenticated','authenticated','unconfirmed@example.test',null,'{}','{}',now(),now()),
 ('44444444-4444-4444-8444-444444444444','authenticated','authenticated','other@example.test',now(),'{}','{}',now(),now());
+INSERT INTO public.subscriptions(id,user_id,plan_id,status,current_period_end)
+VALUES ('smoke-other-plan','44444444-4444-4444-8444-444444444444','basic','active',now()+interval '1 day');
 UPDATE public.courses SET status = 'published' WHERE id = 'smoke-ci-course';
 SELECT pg_temp.actor('11111111-1111-4111-8111-111111111111');
 SELECT set_config('skillset.trusted_write','off',true);
