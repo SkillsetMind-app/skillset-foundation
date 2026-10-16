@@ -73,7 +73,7 @@ function isAppHostname(hostname: unknown): boolean {
  * The account id for an e-mail, from auth.users (what sign-in uses).
  * public.users.email is editable by its owner, so it is never the lookup.
  */
-async function findAuthUserIdByEmail(admin: Admin, email: string): Promise<string | null> {
+export async function findAuthUserIdByEmail(admin: Admin, email: string): Promise<string | null> {
   const { data, error } = await admin.rpc("find_auth_user_id_by_email", { p_email: email });
   if (error) throw new Error(error.message);
   return typeof data === "string" && data ? data : null;

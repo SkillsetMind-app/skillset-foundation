@@ -4636,6 +4636,7 @@
       "waiting": "Si tu pago se completó, tu enlace para iniciar sesión va en camino a {email}.",
       "sending": "Enviando tu enlace de acceso a {email}…",
       "sent": "Enviamos tu enlace de acceso a {email}. Ábrelo para ir directo a tu curso.",
+      "pending": "Tu pago todavía se está confirmando. Te enviaremos el enlace en cuanto se confirme.",
       "failed": "No pudimos enviar el enlace a {email} en este momento. Vuelve a intentarlo en un momento.",
       "limited": "Demasiadas solicitudes para {email}. Espera unos minutos y vuelve a intentarlo.",
       "checkSpam": "¿No está en tu bandeja de entrada? Revisa spam o promociones. El enlace vence después de un tiempo; aquí puedes pedir uno nuevo.",

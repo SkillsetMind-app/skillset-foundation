@@ -84,6 +84,16 @@ describe("guest checkout thank-you page", () => {
     expect(state.fetch).toHaveBeenCalledTimes(2);
   });
 
+  it("says the payment is still being confirmed when the course is not unlocked yet", async () => {
+    state.fetch.mockImplementation(async () => new Response("{}", { status: 409 }));
+    render(await Page({}));
+
+    fireEvent.click(screen.getByRole("button", { name: "Send the link again" }));
+
+    expect(await screen.findByText("Your payment is still being confirmed. Your link will be sent as soon as it is."))
+      .toBeInTheDocument();
+  });
+
   it("without the checkout cookie, sends nothing and points to sign-in", async () => {
     state.cookie = undefined;
 

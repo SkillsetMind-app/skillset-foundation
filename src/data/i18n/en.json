@@ -4636,6 +4636,7 @@
       "waiting": "If your payment went through, your sign-in link is on its way to {email}.",
       "sending": "Sending your access link to {email}…",
       "sent": "We sent your access link to {email}. Open it to go straight to your course.",
+      "pending": "Your payment is still being confirmed. Your link will be sent as soon as it is.",
       "failed": "We couldn't send the link to {email} right now. Please try again in a moment.",
       "limited": "Too many requests for {email}. Wait a few minutes and try again.",
       "checkSpam": "Not in your inbox? Check spam or promotions. The link expires after a while; you can ask for a new one here.",

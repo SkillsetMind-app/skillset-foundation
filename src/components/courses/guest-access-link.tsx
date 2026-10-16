@@ -7,12 +7,15 @@ import { useTranslation } from "@/components/i18n/i18n-provider";
 const errorClass =
   "rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]";
 
-type LinkState = "waiting" | "sending" | "sent" | "failed" | "limited";
+type LinkState = "waiting" | "sending" | "sent" | "pending" | "failed" | "limited";
 
 async function requestAccessLink(): Promise<LinkState> {
   try {
     const response = await fetch("/api/payments/guest-checkout/access-link", { method: "POST" });
-    return response.ok ? "sent" : response.status === 429 ? "limited" : "failed";
+    if (response.ok) return "sent";
+    // The paid sale has not unlocked the course yet.
+    if (response.status === 409) return "pending";
+    return response.status === 429 ? "limited" : "failed";
   } catch {
     return "failed";
   }

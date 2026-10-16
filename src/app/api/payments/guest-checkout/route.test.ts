@@ -763,13 +763,16 @@ describe("guest checkout access link (thank-you page)", () => {
     });
   }
 
+  // The webhook already unlocked the course for this account.
+  const paid = { existingUserId: "buyer-1", enrollment: { status: "active" } };
+
   beforeEach(() => {
     vi.clearAllMocks();
     vi.stubEnv("NEXT_PUBLIC_GUEST_CHECKOUT_ENABLED", "true");
     vi.stubEnv("NEXT_PUBLIC_TURNSTILE_SITE_KEY", "site-key");
     vi.stubEnv("TURNSTILE_SECRET_KEY", "turnstile-secret");
     vi.stubEnv("GUEST_CHECKOUT_COOKIE_SECRET", "cookie-secret");
-    admin = createAdmin();
+    admin = createAdmin(paid);
     mocks.getAdmin.mockImplementation(() => admin);
   });
 
@@ -804,8 +807,24 @@ describe("guest checkout access link (thank-you page)", () => {
     expect(admin.auth.signInWithOtp).not.toHaveBeenCalled();
   });
 
+  it.each([
+    ["the course is not unlocked yet", { existingUserId: "buyer-1", enrollment: null }],
+    ["no account has the address yet", { existingUserId: null }],
+  ])("answers 'payment pending' and sends nothing while %s", async (_label, input) => {
+    admin = createAdmin(input);
+
+    const response = await accessLinkPOST(linkRequest(encodeGuestCheckoutCookie({ email: "ana@example.com", courseId: "course" })));
+
+    expect(response.status).toBe(409);
+    expect(await response.json()).toEqual({
+      error: "Your payment is still being confirmed. Your link will be sent as soon as it is.",
+      code: "payment_pending",
+    });
+    expect(admin.auth.signInWithOtp).not.toHaveBeenCalled();
+  });
+
   it("stops at the shared Auth e-mail ceiling, counted right before the send", async () => {
-    admin = createAdmin({ rateLimited: "guest_auth_email_global" });
+    admin = createAdmin({ ...paid, rateLimited: "guest_auth_email_global" });
 
     const response = await accessLinkPOST(linkRequest(encodeGuestCheckoutCookie({ email: "ana@example.com", courseId: "course" })));
 
@@ -819,7 +838,7 @@ describe("guest checkout access link (thank-you page)", () => {
   });
 
   it("sends nothing when the limiter is down", async () => {
-    admin = createAdmin({ rateLimitDown: true });
+    admin = createAdmin({ ...paid, rateLimitDown: true });
 
     const response = await accessLinkPOST(linkRequest(encodeGuestCheckoutCookie({ email: "ana@example.com", courseId: "course" })));
 
@@ -828,7 +847,7 @@ describe("guest checkout access link (thank-you page)", () => {
   });
 
   it("is rate limited per e-mail", async () => {
-    admin = createAdmin({ rateLimited: "guest_access_link_email_" });
+    admin = createAdmin({ ...paid, rateLimited: "guest_access_link_email_" });
 
     const response = await accessLinkPOST(linkRequest(encodeGuestCheckoutCookie({ email: "ana@example.com", courseId: "course" })));
 
