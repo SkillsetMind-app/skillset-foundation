@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { enforceRateLimit, PaymentError, paymentErrorResponse } from "@/lib/payments/server/auth";
-import { GUEST_CHECKOUT_ORIGIN, PAID_GUEST_RESET_MARK } from "@/lib/payments/server/guest-access-link";
+import { reportLostSignInLink, secureForeignUnconfirmedAccount } from "@/lib/payments/server/guest-access-link";
 import {
   decodeGuestCheckoutCookie,
   findAuthUserIdByEmail,
@@ -48,13 +48,13 @@ export async function POST(request: NextRequest) {
     if (!["active", "completed"].includes(String(enrollment?.status))) {
       return NextResponse.json(PAYMENT_PENDING, { status: 409 });
     }
-    // An unconfirmed account made some other way gets the link only once the
-    // paid sale replaced its password (the webhook leaves the mark).
+    // An unconfirmed account made some other way gets a new random password
+    // (unless the paid sale already did it) before the link goes out.
     const { data: account, error: accountError } = await admin.auth.admin.getUserById(userId);
     if (accountError || !account?.user) throw new Error("Guest buyer account could not be read.");
-    const meta = account.user.app_metadata ?? {};
-    if (!account.user.email_confirmed_at && meta.created_via !== GUEST_CHECKOUT_ORIGIN && !meta[PAID_GUEST_RESET_MARK]) {
-      return NextResponse.json(PAYMENT_PENDING, { status: 409 });
+    if ((await secureForeignUnconfirmedAccount(admin, account.user)) === "failed") {
+      reportLostSignInLink("guest_checkout", pending.courseId, userId, "password_not_replaced");
+      return NextResponse.json({ error: "The link could not be sent. Please try again.", code: "send_failed" }, { status: 502 });
     }
     // The platform-wide ceiling is counted inside sendGuestAccessLink.
     const result = await sendGuestAccessLink(admin, pending.email, pending.courseId);

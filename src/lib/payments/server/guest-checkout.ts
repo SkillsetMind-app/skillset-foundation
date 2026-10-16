@@ -10,7 +10,12 @@ import type { getSupabaseAdminClient } from "@/lib/supabase/admin";
 
 // Server side of guest checkout (see /api/payments/guest-checkout).
 
-export { GUEST_CHECKOUT_ORIGIN, sendGuestAccessLink } from "@/lib/payments/server/guest-access-link";
+export {
+  GUEST_CHECKOUT_ORIGIN,
+  reportLostSignInLink,
+  secureForeignUnconfirmedAccount,
+  sendGuestAccessLink,
+} from "@/lib/payments/server/guest-access-link";
 
 type Admin = ReturnType<typeof getSupabaseAdminClient>;
 

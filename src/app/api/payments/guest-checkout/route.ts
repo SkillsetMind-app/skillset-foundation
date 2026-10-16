@@ -14,6 +14,8 @@ import {
   isBuyerAccountBlocked,
   isGuestCheckoutConfigured,
   isPlatformRequest,
+  reportLostSignInLink,
+  secureForeignUnconfirmedAccount,
   sendGuestAccessLink,
   verifyTurnstileToken,
 } from "@/lib/payments/server/guest-checkout";
@@ -148,7 +150,7 @@ async function answerForBuyer(
     .maybeSingle();
   if (enrollmentError) throw new Error(enrollmentError.message);
   if (input.ownerId === userId || ["active", "completed"].includes(String(enrollment?.status))) {
-    return accessLinkAnswer(admin, email, courseId);
+    return accessLinkAnswer(admin, userId, email, courseId);
   }
 
   const response = await createCourseCheckoutSession(
@@ -175,7 +177,7 @@ async function answerForBuyer(
     const conflict = (await response.json().catch(() => ({}))) as { error?: unknown };
     // The account already holds the course: same answer as an enrollment above.
     if (HAS_ACCESS_CONFLICTS.has(String(conflict.error))) {
-      return accessLinkAnswer(admin, email, courseId);
+      return accessLinkAnswer(admin, userId, email, courseId);
     }
     // A checkout already open or starting for the course (another offer, a
     // double submit): one answer for every such case, and no e-mail.
@@ -195,9 +197,18 @@ async function answerForBuyer(
 // (429 when the shared Auth e-mail ceiling is reached).
 async function accessLinkAnswer(
   admin: ReturnType<typeof getSupabaseAdminClient>,
+  userId: string,
   email: string,
   courseId: string,
 ): Promise<NextResponse> {
+  // An unconfirmed account made some other way gets a new random password
+  // before any link goes to it; if that fails, no link and a retryable answer.
+  const { data: account, error: accountError } = await admin.auth.admin.getUserById(userId);
+  if (accountError || !account?.user) return NextResponse.json(SEND_FAILED, { status: 502 });
+  if ((await secureForeignUnconfirmedAccount(admin, account.user)) === "failed") {
+    reportLostSignInLink("guest_checkout", courseId, userId, "password_not_replaced");
+    return NextResponse.json(SEND_FAILED, { status: 502 });
+  }
   const result = await sendGuestAccessLink(admin, email, courseId);
   if (result === "sent") return NextResponse.json(ACCESS_LINK_SENT);
   if (result === "limited") return paymentErrorResponse(new PaymentError("Too many attempts. Please wait before trying again.", 429));

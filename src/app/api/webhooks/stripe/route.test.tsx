@@ -1729,6 +1729,28 @@ describe("Stripe webhook financial integrity", () => {
       expect(admin.auth.admin.updateUserById).not.toHaveBeenCalled();
     });
 
+    it("on a guest checkout subscription's first invoice, replaces the password and sends the link; a renewal does neither", async () => {
+      const admin = createAdmin("checkout");
+      admin.state.buyerUnconfirmed = true;
+      mocks.getAdmin.mockReturnValue(admin);
+      mocks.subscriptionRetrieve.mockResolvedValue(subscription({ checkout_origin: "guest" }));
+
+      expect((await postEvent(firstInvoiceEvent())).status).toBe(200);
+      await vi.waitFor(() => expect(admin.auth.signInWithOtp).toHaveBeenCalledTimes(1));
+      expect(admin.auth.admin.updateUserById).toHaveBeenCalledTimes(1);
+      expect(admin.auth.admin.updateUserById.mock.invocationCallOrder[0])
+        .toBeLessThan(admin.auth.signInWithOtp.mock.invocationCallOrder[0]);
+
+      const renewal = paidInvoiceEvent();
+      renewal.id = "evt_invoice_renewal_guest";
+      Object.assign(renewal.data.object, { id: "in_paid_3", payment_intent: "pi_paid_3", billing_reason: "subscription_cycle" });
+      expect((await postEvent(renewal)).status).toBe(200);
+      await flush();
+
+      expect(admin.auth.admin.updateUserById).toHaveBeenCalledTimes(1);
+      expect(admin.auth.signInWithOtp).toHaveBeenCalledTimes(1);
+    });
+
     it("leaves an unconfirmed account alone when the sale did not come through guest checkout", async () => {
       const admin = createAdmin("checkout");
       admin.state.buyerUnconfirmed = true;

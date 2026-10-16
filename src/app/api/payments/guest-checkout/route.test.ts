@@ -13,9 +13,11 @@ const mocks = vi.hoisted(() => ({
   expireSession: vi.fn(),
   subscriptionInterval: vi.fn(),
   fetch: vi.fn(),
+  notifyOps: vi.fn(),
 }));
 
 vi.mock("@/lib/i18n/server", () => ({ getServerLocale: async () => "en" }));
+vi.mock("@/lib/ops/alert", () => ({ notifyOps: mocks.notifyOps }));
 vi.mock("@/lib/supabase/admin", () => ({ getSupabaseAdminClient: mocks.getAdmin }));
 vi.mock("@/lib/payments/server/auth", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/payments/server/auth")>()),
@@ -625,6 +627,8 @@ describe("guest checkout", () => {
     expect(await response.json()).toEqual({ status: "access_link_sent" });
     expect(mocks.createSession).not.toHaveBeenCalled();
     expect(admin.orderInserts).toEqual([]);
+    // A confirmed account is not touched.
+    expect(admin.auth.admin.updateUserById).not.toHaveBeenCalled();
     expect(admin.auth.signInWithOtp).toHaveBeenCalledWith({
       email: "ana@example.com",
       options: {
@@ -632,6 +636,47 @@ describe("guest checkout", () => {
         emailRedirectTo: "https://skillset.test/auth/confirm?next=%2Flearn%2Fcourses%2Fcourse",
       },
     });
+  });
+
+  it("gives an unconfirmed account made some other way that holds the course a new random password before the link", async () => {
+    admin = createAdmin({ existingUserId: "existing-user", existingUnconfirmed: true, enrollment: { status: "active" } });
+
+    const response = await POST(guestRequest(validBody));
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ status: "access_link_sent" });
+    expect(admin.auth.admin.updateUserById).toHaveBeenCalledTimes(1);
+    const [id, attributes] = admin.auth.admin.updateUserById.mock.calls[0];
+    expect(id).toBe("existing-user");
+    expect(String(attributes.password)).toMatch(/^[A-Za-z0-9_-]{43}$/);
+    expect(attributes.app_metadata).toEqual({ guest_password_reset_at: expect.any(String) });
+    expect(admin.auth.admin.updateUserById.mock.invocationCallOrder[0])
+      .toBeLessThan(admin.auth.signInWithOtp.mock.invocationCallOrder[0]);
+  });
+
+  it("sends no link, answers retryable and alerts with ids when that password cannot be replaced", async () => {
+    admin = createAdmin({ existingUserId: "existing-user", existingUnconfirmed: true, enrollment: { status: "active" }, updateUserFails: true });
+
+    const response = await POST(guestRequest(validBody));
+
+    expect(response.status).toBe(502);
+    expect(await response.json()).toEqual({ error: "The link could not be sent. Please try again.", code: "send_failed" });
+    expect(admin.auth.signInWithOtp).not.toHaveBeenCalled();
+    expect(mocks.notifyOps).toHaveBeenCalledWith(expect.objectContaining({
+      event: "guest_checkout.guest_sign_in_link_failed",
+      context: { courseId: "course", userId: "existing-user", result: "password_not_replaced" },
+    }));
+    expect(JSON.stringify(mocks.notifyOps.mock.calls)).not.toContain("ana@example.com");
+  });
+
+  it("does not touch a guest checkout account that holds the course", async () => {
+    admin = createAdmin({ existingUserId: "existing-user", existingGuest: {}, enrollment: { status: "active" } });
+
+    const response = await POST(guestRequest(validBody));
+
+    expect(response.status).toBe(200);
+    expect(admin.auth.admin.updateUserById).not.toHaveBeenCalled();
+    expect(admin.auth.signInWithOtp).toHaveBeenCalledTimes(1);
   });
 
   it.each([
@@ -820,21 +865,51 @@ describe("guest checkout access link (thank-you page)", () => {
     expect(admin.auth.signInWithOtp).not.toHaveBeenCalled();
   });
 
-  it("answers 'payment pending' for an unconfirmed account made some other way until the paid sale replaced its password", async () => {
+  it("with the course unlocked, gives an unmarked unconfirmed account made some other way a new password, then the link", async () => {
     admin = createAdmin({ ...paid, existingUnconfirmed: true });
-    const cookie = encodeGuestCheckoutCookie({ email: "ana@example.com", courseId: "course" });
 
-    const before = await accessLinkPOST(linkRequest(cookie));
+    const response = await accessLinkPOST(linkRequest(encodeGuestCheckoutCookie({ email: "ana@example.com", courseId: "course" })));
 
-    expect(before.status).toBe(409);
-    expect((await before.json()).code).toBe("payment_pending");
-    expect(admin.auth.signInWithOtp).not.toHaveBeenCalled();
+    expect(response.status).toBe(200);
+    expect(admin.auth.admin.updateUserById).toHaveBeenCalledTimes(1);
+    expect(admin.auth.admin.updateUserById.mock.invocationCallOrder[0])
+      .toBeLessThan(admin.auth.signInWithOtp.mock.invocationCallOrder[0]);
+  });
 
+  it("does not replace the password again once the paid sale marked the account", async () => {
     admin = createAdmin({ ...paid, existingUnconfirmed: true, paidReset: true });
-    const after = await accessLinkPOST(linkRequest(cookie));
 
-    expect(after.status).toBe(200);
+    const response = await accessLinkPOST(linkRequest(encodeGuestCheckoutCookie({ email: "ana@example.com", courseId: "course" })));
+
+    expect(response.status).toBe(200);
+    expect(admin.auth.admin.updateUserById).not.toHaveBeenCalled();
     expect(admin.auth.signInWithOtp).toHaveBeenCalledTimes(1);
+  });
+
+  it("sends no link, answers retryable and alerts when that password cannot be replaced", async () => {
+    admin = createAdmin({ ...paid, existingUnconfirmed: true, updateUserFails: true });
+
+    const response = await accessLinkPOST(linkRequest(encodeGuestCheckoutCookie({ email: "ana@example.com", courseId: "course" })));
+
+    expect(response.status).toBe(502);
+    expect((await response.json()).code).toBe("send_failed");
+    expect(admin.auth.signInWithOtp).not.toHaveBeenCalled();
+    expect(mocks.notifyOps).toHaveBeenCalledWith(expect.objectContaining({
+      event: "guest_checkout.guest_sign_in_link_failed",
+      context: { courseId: "course", userId: "buyer-1", result: "password_not_replaced" },
+    }));
+  });
+
+  it.each([
+    ["a confirmed account", {}],
+    ["a guest checkout account", { existingGuest: {} }],
+  ])("does not touch %s on resend", async (_label, extra) => {
+    admin = createAdmin({ ...paid, ...extra });
+
+    const response = await accessLinkPOST(linkRequest(encodeGuestCheckoutCookie({ email: "ana@example.com", courseId: "course" })));
+
+    expect(response.status).toBe(200);
+    expect(admin.auth.admin.updateUserById).not.toHaveBeenCalled();
   });
 
   it("stops at the shared Auth e-mail ceiling, counted right before the send", async () => {
