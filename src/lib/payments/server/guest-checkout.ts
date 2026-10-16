@@ -115,6 +115,14 @@ export async function findOrCreateGuestBuyer(
  */
 export async function discardNewGuestBuyer(admin: Admin, userId: string): Promise<void> {
   try {
+    // A sibling request may already be checking out with this account.
+    const [lock, order] = await Promise.all([
+      admin.from("checkout_locks").select("lock_key").eq("user_id", userId).limit(1).maybeSingle(),
+      admin.from("orders").select("id").eq("user_id", userId).limit(1).maybeSingle(),
+    ]);
+    if (lock.error || order.error || lock.data || order.data) return;
+    // ponytail: a sibling can still claim a lock between this read and the
+    // delete; a row lock per account if that window ever matters.
     const { error } = await admin.auth.admin.deleteUser(userId);
     if (error) {
       console.error("[guest-checkout] new account not removed", { status: error.status ?? null, code: error.code ?? null });

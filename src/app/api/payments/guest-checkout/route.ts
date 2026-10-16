@@ -26,6 +26,7 @@ const HOUR_MS = 60 * 60 * 1000;
 const GLOBAL_PER_HOUR = 60;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const ACCESS_LINK_SENT = { status: "access_link_sent" } as const;
+const REFUSED_BEFORE_SESSION = new Set([400, 404, 422]);
 const CHECKOUT_PENDING = {
   error: "You have a payment in progress for this course. Finish it or try again in a few minutes.",
   code: "checkout_pending",
@@ -106,16 +107,24 @@ export async function POST(request: Request) {
       locale: await getServerLocale(),
     });
 
-    // An account made here exists only for a purchase that goes ahead: any
-    // other outcome removes it. The answer to the browser stays the same.
+    // An account made here is removed only when the purchase was refused
+    // before any checkout could exist for it. The answer to the browser stays
+    // the same either way.
     let response: NextResponse;
     try {
       response = await answerForBuyer(admin, { userId: buyer.userId, courseId, ownerId: course.owner_id, email, body });
     } catch (error) {
+      // Thrown before the shared builder ran.
       if (buyer.created) await discardNewGuestBuyer(admin, buyer.userId);
       throw error;
     }
-    if (buyer.created && !response.ok) await discardNewGuestBuyer(admin, buyer.userId);
+    // 400/404/422 are the builder's refusals, all decided before a session is
+    // created. A 409 means a checkout for this account is open or starting
+    // (maybe a sibling request from the same buyer), and a 5xx may follow a
+    // created session: the account stays in both cases.
+    if (buyer.created && REFUSED_BEFORE_SESSION.has(response.status)) {
+      await discardNewGuestBuyer(admin, buyer.userId);
+    }
     return response;
   } catch (error) {
     return paymentErrorResponse(error);

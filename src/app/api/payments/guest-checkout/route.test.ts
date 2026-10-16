@@ -56,6 +56,7 @@ type AdminInput = {
   rateLimitDown?: boolean;
   termsFail?: boolean;
   subscription?: { id: string; status: string } | null;
+  siblingLock?: boolean;
 };
 
 function createAdmin(input: AdminInput = {}) {
@@ -104,6 +105,7 @@ function createAdmin(input: AdminInput = {}) {
       }
       if (this.table === "enrollments") return { data: input.enrollment ?? null, error: null };
       if (this.table === "course_subscriptions") return { data: input.subscription ?? null, error: null };
+      if (this.table === "checkout_locks" && input.siblingLock) return { data: { lock_key: "lock", order_id: null }, error: null };
       return { data: single ? null : [], error: null };
     }
   }
@@ -448,6 +450,30 @@ describe("guest checkout", () => {
     expect(admin.auth.admin.deleteUser).toHaveBeenCalledWith("new-user");
     expect(admin.usersDeletes).toEqual(["users"]);
     expect(response.cookies.get(GUEST_CHECKOUT_COOKIE)).toBeUndefined();
+  });
+
+  it("keeps the new account when a sibling checkout already holds it", async () => {
+    admin = createAdmin({ siblingLock: true });
+    mocks.getUserRow.mockImplementation(async (id: string) => id === "teacher"
+      ? { uid: "teacher", current_plan_id: "professional", stripe_connected_account_id: "acct_teacher", stripe_connect_charges_enabled: false, stripe_connect_payouts_enabled: false }
+      : { uid: id, email: "ana@example.com" });
+
+    const response = await POST(guestRequest(validBody));
+
+    expect(response.status).toBe(400);
+    expect(admin.auth.admin.deleteUser).not.toHaveBeenCalled();
+  });
+
+  it("never removes the new account on a 409: a sibling request may be paying with it", async () => {
+    // Double submit: this request created the account, the other one holds the lock.
+    admin = createAdmin({ lockReply: { action: "wait", checkout_url: null } });
+
+    const response = await POST(guestRequest(validBody));
+
+    expect(response.status).toBe(409);
+    expect(admin.auth.admin.createUser).toHaveBeenCalledTimes(1);
+    expect(admin.auth.admin.deleteUser).not.toHaveBeenCalled();
+    expect(admin.usersDeletes).toEqual([]);
   });
 
   it("keeps an existing account when its purchase cannot go ahead", async () => {
