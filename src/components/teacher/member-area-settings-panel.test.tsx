@@ -157,6 +157,22 @@ describe("MemberAreaSettingsPanel", () => {
     expect(await screen.findByRole("checkbox", { name: /Visible: Untitled product/ })).toBeTruthy();
   });
 
+  it("mais de 500 produtos: salva a ordem dos 500 primeiros e avisa", async () => {
+    const many = Array.from({ length: 501 }, (_, index) => ({
+      id: `c-${index}`, title: `Course ${index}`, status: "published",
+      createdAt: new Date(Date.UTC(2026, 0, 1) + index * 60_000).toISOString(),
+    }));
+    mocks.subscribeToTeacherCourses.mockImplementation((_uid: string, callback: (value: unknown) => void) => {
+      callback(many);
+      return () => undefined;
+    });
+    renderPanel();
+    expect(await screen.findByText(/saved for the first 500 products/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Save members area" }));
+    await waitFor(() => expect(mocks.saveMyMemberAreaProducts).toHaveBeenCalled());
+    expect(mocks.saveMyMemberAreaProducts.mock.calls[0][0]).toHaveLength(500);
+  });
+
   it("em espanhol", async () => {
     renderPanel("es");
     expect(await screen.findByText(/Todavía no la personalizaste/)).toBeTruthy();
