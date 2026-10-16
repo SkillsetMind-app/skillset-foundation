@@ -191,9 +191,20 @@ export function CreatorCourseDetail({
     enrollCardObserver.current?.disconnect();
     enrollCardObserver.current = null;
     if (!node || checkoutOnly || typeof IntersectionObserver === "undefined") return;
+    // Some só quando o BOTÃO do cartão está na tela, não no 1º pixel do
+    // cartão (o botão fica ~300 px abaixo do topo dele). Passos de 5% fazem o
+    // aviso chegar a cada ~40 px de rolagem sobre o cartão.
     const observer = new IntersectionObserver(
-      ([entry]) => setEnrollCardInView(entry.isIntersecting),
-      { threshold: 0.15 },
+      ([entry]) => {
+        const cta = node.querySelector("[data-cta-focus]");
+        if (!cta) {
+          setEnrollCardInView(entry.isIntersecting);
+          return;
+        }
+        const rect = cta.getBoundingClientRect();
+        setEnrollCardInView(entry.isIntersecting && rect.top < window.innerHeight && rect.bottom > 0);
+      },
+      { threshold: Array.from({ length: 21 }, (_, step) => step / 20) },
     );
     observer.observe(node);
     enrollCardObserver.current = observer;
@@ -1211,7 +1222,7 @@ export function CreatorCourseDetail({
         enquanto o cartao esta fora da tela (a capa da pagina de vendas vem
         antes das colunas), como um cartao no canto; com o cartao a vista, some. */}
     {!checkoutOnly ? <div
-      className={`pointer-events-none fixed inset-x-0 bottom-0 z-40 px-3 pb-3 ${
+      className={`course-buy-float pointer-events-none fixed inset-x-0 bottom-0 z-40 px-3 pb-3 ${
         enrollCardInView ? "lg:hidden" : "lg:inset-x-auto lg:right-6 lg:bottom-6 lg:w-[24rem] lg:px-0 lg:pb-0"
       }`}
     >

@@ -353,6 +353,15 @@ describe("CreatorCourseDetail: o cartão que vende", () => {
       expect(bar()).not.toHaveClass("lg:hidden");
       expect(bar()).toHaveClass("lg:right-6");
 
+      // Topo do cartão à vista, mas o botão ainda abaixo da dobra: a barra fica.
+      const cta = container.querySelector("#enroll-card [data-cta-focus]") as HTMLElement;
+      const rect = vi.spyOn(cta, "getBoundingClientRect");
+      rect.mockReturnValue({ top: window.innerHeight + 200, bottom: window.innerHeight + 244 } as DOMRect);
+      act(() => notify?.([{ isIntersecting: true }]));
+      expect(bar()).not.toHaveClass("lg:hidden");
+
+      // O botão entrou na tela: a barra some.
+      rect.mockReturnValue({ top: 300, bottom: 344 } as DOMRect);
       act(() => notify?.([{ isIntersecting: true }]));
       expect(bar()).toHaveClass("lg:hidden");
     } finally {
