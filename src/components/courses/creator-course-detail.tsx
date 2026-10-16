@@ -7,7 +7,7 @@ import { useTranslation } from "@/components/i18n/i18n-provider";
 import Link from "next/link";
 import { Lock, Star, Target } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { BunnyVideoPlayer } from "@/components/courses/bunny-video-player";
@@ -181,6 +181,34 @@ export function CreatorCourseDetail({
   // Padlocked lesson in the curriculum: opens the buy popup (cover, title and a
   // button to the buy card on this same page). Public course fields only.
   const [isUnlockOpen, setIsUnlockOpen] = useState(false);
+  // No desktop a capa da página de vendas vem antes das colunas, e o cartão de
+  // compra só aparece depois de quase duas telas. Enquanto ele está fora da
+  // tela, a barra de preço e compra (a mesma do celular) flutua no canto.
+  // Ref de callback: o cartão só nasce depois que o curso carrega.
+  const [enrollCardInView, setEnrollCardInView] = useState(true);
+  const enrollCardObserver = useRef<IntersectionObserver | null>(null);
+  const watchEnrollCard = useCallback((node: HTMLElement | null) => {
+    enrollCardObserver.current?.disconnect();
+    enrollCardObserver.current = null;
+    if (!node || checkoutOnly || typeof IntersectionObserver === "undefined") return;
+    // Some só quando o BOTÃO do cartão está na tela, não no 1º pixel do
+    // cartão (o botão fica ~300 px abaixo do topo dele). Passos de 5% fazem o
+    // aviso chegar a cada ~40 px de rolagem sobre o cartão.
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        const cta = node.querySelector("[data-cta-focus]");
+        if (!cta) {
+          setEnrollCardInView(entry.isIntersecting);
+          return;
+        }
+        const rect = cta.getBoundingClientRect();
+        setEnrollCardInView(entry.isIntersecting && rect.top < window.innerHeight && rect.bottom > 0);
+      },
+      { threshold: Array.from({ length: 21 }, (_, step) => step / 20) },
+    );
+    observer.observe(node);
+    enrollCardObserver.current = observer;
+  }, [checkoutOnly]);
   const closeUnlock = useCallback(() => setIsUnlockOpen(false), []);
   // A learner who already has access sees the curriculum like the owner: no
   // padlocks and no buy popup (checkout would refuse with alreadyEnrolled).
@@ -958,6 +986,7 @@ export function CreatorCourseDetail({
           preco e o botao seguem visiveis enquanto a pessoa le o curriculo.
           Antes o cartao subia com a pagina e sumia na primeira rolagem. */}
       <aside
+        ref={watchEnrollCard}
         id="enroll-card"
         // Focus fallback for the popup's button when no main action is enabled.
         tabIndex={-1}
@@ -1189,9 +1218,14 @@ export function CreatorCourseDetail({
 
     {/* No celular a coluna do cartao cai para o fim da pagina: para achar o
         preco e o botao era preciso rolar por todo o curriculo. Esta barra
-        mantem os dois a mao e leva ao cartao. Escondida a partir de lg, onde
-        o cartao ja acompanha a rolagem na coluna lateral. */}
-    {!checkoutOnly ? <div className="pointer-events-none fixed inset-x-0 bottom-0 z-40 px-3 pb-3 lg:hidden">
+        mantem os dois a mao e leva ao cartao. A partir de lg ela so aparece
+        enquanto o cartao esta fora da tela (a capa da pagina de vendas vem
+        antes das colunas), como um cartao no canto; com o cartao a vista, some. */}
+    {!checkoutOnly ? <div
+      className={`course-buy-float pointer-events-none fixed inset-x-0 bottom-0 z-40 px-3 pb-3 ${
+        enrollCardInView ? "lg:hidden" : "lg:inset-x-auto lg:right-6 lg:bottom-6 lg:w-[24rem] lg:px-0 lg:pb-0"
+      }`}
+    >
       <div className="pointer-events-auto flex items-center gap-3 rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)]/95 px-4 py-3 shadow-[0_-6px_30px_rgba(15,39,68,0.18)] backdrop-blur supports-[backdrop-filter]:bg-[var(--color-surface)]/85">
         <div className="min-w-0 flex-1">
           <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">{t("publicCourses.access")}</p>

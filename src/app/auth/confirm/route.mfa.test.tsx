@@ -47,6 +47,10 @@ function signedIn(aal: "aal1" | "aal2") {
     error: null,
   });
   mocks.getSession.mockResolvedValue({ data: { session: { access_token: token(aal) } }, error: null });
+  // O banco decide (session_is_strong): sem o codigo a sessao e fraca, e a conta esta liberada.
+  mocks.rpc.mockImplementation((name: string) =>
+    Promise.resolve({ data: name === "session_is_strong" ? aal === "aal2" : true, error: null }),
+  );
 }
 
 describe("/auth/confirm 'already confirmed, go inside' keeps the second factor", () => {

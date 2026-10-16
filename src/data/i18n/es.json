@@ -387,14 +387,14 @@
   },
   "home": {
     "metadata": {
-      "title": "Plataforma de cursos para psicólogos y profesionales del desarrollo personal",
-      "description": "Para psicólogos y profesionales del desarrollo personal que ya enseñan en vivo: vende tu curso y comunidad. Prueba 14 días gratis. Cobras en tu propio Stripe."
+      "title": "Plataforma de cursos para psicólogos, coaches y profesionales del desarrollo personal",
+      "description": "Para psicólogos, coaches y profesionales del desarrollo personal que ya enseñan en vivo: vende tu curso y comunidad. Prueba 14 días gratis. Cobras en tu Stripe."
     },
     "hero": {
-      "eyebrow": "Para psicólogos y profesionales del desarrollo personal",
+      "eyebrow": "Para psicólogos, coaches y profesionales del desarrollo personal",
       "title1": "Tu conocimiento cambia vidas.",
       "title2": "Ahora conviértelo en un curso.",
-      "sub": "Para psicólogos y profesionales del desarrollo personal que ya enseñan en vivo y quieren vender su método como un curso con comunidad de pago. Empieza con 14 días gratis; después Basic cuesta US$5 al mes. Se requiere tarjeta; cancela antes de terminar la prueba para evitar el cobro de la suscripción. Se aplican tarifas por venta. Nosotros manejamos el checkout y el aula — tus compradores pagan directo a tu cuenta de Stripe. Tú enseñas.",
+      "sub": "Para psicólogos, coaches y profesionales del desarrollo personal que ya enseñan en vivo y quieren vender su método como un curso con comunidad de pago. Empieza con 14 días gratis; después Basic cuesta US$5 al mes. Se requiere tarjeta; cancela antes de terminar la prueba para evitar el cobro de la suscripción. Se aplican tarifas por venta. Nosotros manejamos el checkout y el aula — tus compradores pagan directo a tu cuenta de Stripe. Tú enseñas.",
       "trust1Title": "Verificado",
       "trust1Desc": "Cuando se requiere, los profesionales se verifican antes de publicar, y los cursos que incumplan las normas del catálogo pueden pausarse o retirarse.",
       "trust2Title": "Global",
@@ -458,7 +458,7 @@
       "readFull": "Lee la Promesa completa"
     },
     "creators": {
-      "eyebrow": "Para psicólogos y profesionales del desarrollo personal",
+      "eyebrow": "Para psicólogos, coaches y profesionales del desarrollo personal",
       "title": "Enseña más allá de los límites de tus sesiones en vivo.",
       "ctaStart": "Empieza a enseñar",
       "ctaPromise": "Lee la Promesa al Creador",
@@ -1281,6 +1281,29 @@
     "rejected": "Rechazado"
   },
   "learn": {
+    "memberArea": {
+      "moreProductsNone": "Este creador todavía no tiene otros productos.",
+      "tabTitle": "Área de miembros",
+      "loading": "Cargando el área de miembros...",
+      "loadError": "No pudimos cargar esta área de miembros. Inténtalo de nuevo.",
+      "ownerPreview": "Vista previa: así la ven tus estudiantes. Aquí solo aparecen los cambios guardados.",
+      "editArea": "Editar área de miembros",
+      "byCreator": "Por {name}",
+      "continueTitle": "Continúa donde te quedaste",
+      "continueEmpty": "Abre uno de tus productos abajo para empezar.",
+      "resumeLesson": "Retomar: {title}",
+      "resumeAt": "desde {time}",
+      "myProducts": "Mis productos",
+      "myProductsEmpty": "Todavía no tienes productos de este creador.",
+      "progress": "{percent}% completado",
+      "moreProducts": "Más de este creador",
+      "moreProductsEmpty": "Ya tienes todos los productos de este creador.",
+      "locked": "Bloqueado",
+      "viewProduct": "Ver detalles",
+      "free": "Gratis",
+      "openArea": "Abrir el área de miembros de {name}",
+      "backToArea": "Área de miembros de {name}"
+    },
     "classroom": {
       "workspace": {
         "enrollmentError": "No pudimos confirmar tu inscripción en este curso.",
@@ -1706,6 +1729,50 @@
     }
   },
   "teach": {
+    "memberAreaPage": {
+      "title": "Tu área de miembros.",
+      "description": "Un solo lugar para todo lo que vendes. Tus estudiantes retoman donde se quedaron, ven lo que compraron y descubren tus otros productos."
+    },
+    "memberAreaEditor": {
+      "loading": "Cargando tu área de miembros...",
+      "virtualNote": "Todavía no la personalizaste. Tus estudiantes ven tu nombre, el tema claro y todos tus productos publicados, del más nuevo al más antiguo.",
+      "name": "Nombre del área",
+      "nameHelp": "{length}/80 — déjalo vacío para usar tu nombre.",
+      "theme": "Tema",
+      "light": "Claro",
+      "dark": "Oscuro",
+      "cover": "Portada",
+      "coverHelp": "Banner en la parte superior del área. 16:9, JPG, PNG o WebP de menos de 5 MB.",
+      "uploadCover": "Subir portada",
+      "replaceCover": "Cambiar portada",
+      "removeCover": "Quitar portada",
+      "uploading": "Subiendo...",
+      "welcome": "Texto de bienvenida",
+      "welcomePlaceholder": "Una nota breve que tus estudiantes leen al abrir el área.",
+      "welcomeHelp": "{length}/2000 — lo ven todos tus estudiantes, también los de productos gratis. No pongas enlaces privados aquí.",
+      "products": "Productos",
+      "productsHelp": "Define el orden que ven tus estudiantes. Un producto oculto sale de la vitrina, pero sigue disponible para quien ya lo compró.",
+      "noProducts": "Todavía no tienes productos.",
+      "tooManyProducts": "El orden y la visibilidad se guardan para los primeros {max} productos. El resto aparece después, del más nuevo al más antiguo.",
+      "notPublished": "Sin publicar — aparece cuando lo publiques.",
+      "visible": "Visible",
+      "hidden": "Oculto",
+      "moveUp": "Subir {title}",
+      "moveDown": "Bajar {title}",
+      "save": "Guardar área de miembros",
+      "saving": "Guardando...",
+      "saved": "Guardado. Tus estudiantes ven los cambios la próxima vez que abran el área.",
+      "previewAsStudent": "Ver como estudiante",
+      "previewHelp": "La vista de estudiante muestra la última versión guardada.",
+      "errors": {
+        "load": "No pudimos cargar tu área de miembros. Inténtalo de nuevo.",
+        "courses": "No pudimos cargar tus productos. Recarga la página para intentarlo de nuevo.",
+        "save": "No pudimos guardar tu área de miembros. Inténtalo de nuevo.",
+        "saveProducts": "Se guardaron el nombre, el tema, la portada y la bienvenida, pero no el orden de los productos. Guarda de nuevo.",
+        "coverInvalid": "Usa una imagen JPG, PNG o WebP de menos de 5 MB.",
+        "coverUpload": "No pudimos subir esta imagen. Inténtalo de nuevo."
+      }
+    },
     "tour": {
       "welcome": "Bienvenido a tu espacio",
       "welcomeNamed": "Bienvenido a tu espacio, {name}",
@@ -3631,6 +3698,8 @@
       "protectionNote": "Cualquiera que tenga el enlace puede ver los videos de YouTube y Vimeo, incluso fuera de SkillsetMind. Sube el video aquí para que la reproducción pase por el control de acceso de SkillsetMind."
     },
     "members": {
+      "creatorAreaNote": "Este paso define el estilo del aula de este producto. El área que reúne todos tus productos se configura aparte.",
+      "creatorAreaLink": "Abrir tu área de miembros",
       "step": "Área de miembros",
       "stepHelp": "Tema, portada, título",
       "heading": "Personaliza el área de miembros.",
@@ -5758,6 +5827,9 @@
     }
   },
   "teacherMembers": {
+    "creatorAreaTitle": "Tu área de miembros",
+    "creatorAreaDescription": "Un solo lugar que reúne todos tus productos para tus estudiantes.",
+    "creatorAreaOpen": "Configurar área de miembros",
     "pageTitle": "Áreas de miembros",
     "products": "Productos",
     "title": "Miembros y comunidades",

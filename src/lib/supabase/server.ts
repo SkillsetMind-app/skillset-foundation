@@ -1,11 +1,7 @@
 import { cookies } from "next/headers";
 
 import { createServerClient } from "@supabase/ssr";
-import {
-  AuthError,
-  type SupabaseClient,
-  type User,
-} from "@supabase/supabase-js";
+import { AuthError, type SupabaseClient } from "@supabase/supabase-js";
 
 import { assertSupabaseClientConfig } from "@/lib/supabase/config";
 import type { Database } from "@/lib/supabase/database.types";
@@ -55,11 +51,12 @@ export async function createSupabaseServerClient(): Promise<
  * ainda deve o segundo fator, `getUser()` responde como se não houvesse
  * sessão, com `error.code = "mfa_required"`. Toda rota já trata "sem usuário".
  *
- * O que é confiável em cada metade: os fatores vêm do usuário que o GoTrue
- * acabou de devolver (não do cookie, que o navegador escreve); o `aal` vem do
- * mesmo access token que o GoTrue acabou de validar — assinatura conferida,
- * claim autêntica. Nada aqui lê `session.user`. Token que não decodifica conta
- * como aal1: em dúvida, fecha.
+ * Quem decide é o banco: `session_is_strong()` lê o `aal` do mesmo JWT que o
+ * PostgREST validou e os fatores direto de `auth.mfa_factors`. A resposta do
+ * GoTrue não traz `user.factors` para a sessão aal1, então ela não serve para
+ * esta decisão. O caminho comum continua com uma consulta só (session_is_strong já inclui
+ * account_session_allowed); a segunda, só quando a sessão é fraca, separa
+ * "deve o código" de "conta bloqueada". Erro em qualquer uma: fecha.
  */
 function withSecondFactorGate(
   client: SupabaseClient<Database>,
@@ -73,29 +70,30 @@ function withSecondFactorGate(
       return response;
     }
 
-    if (hasVerifiedFactor(response.data.user)) {
-      const accessToken =
-        jwt ?? (await client.auth.getSession()).data.session?.access_token;
-      if (assuranceLevel(accessToken) !== "aal2") {
-        return {
-          data: { user: null },
-          error: new AuthError(
-            "Finish signing in with the code from your authenticator app.",
-            401,
-            "mfa_required",
-          ),
-        };
-      }
-    }
-
     // Live database verdict, including previously issued sessions. All route
     // callers (also those using service-role writes afterwards) pass here.
     // Check the same explicit JWT as getUser, not a different cookie session.
     try {
-      const check = client.rpc("account_session_allowed");
-      if (jwt) check.setHeader("Authorization", `Bearer ${jwt}`);
-      const { data: allowed, error } = await check;
-      if (!error && allowed === true) return response;
+      const strongCheck = client.rpc("session_is_strong");
+      if (jwt) strongCheck.setHeader("Authorization", `Bearer ${jwt}`);
+      const { data: strong, error: strongError } = await strongCheck;
+      if (!strongError && strong === true) return response;
+
+      if (!strongError && strong === false) {
+        const allowedCheck = client.rpc("account_session_allowed");
+        if (jwt) allowedCheck.setHeader("Authorization", `Bearer ${jwt}`);
+        const { data: allowed, error: allowedError } = await allowedCheck;
+        if (!allowedError && allowed === true) {
+          return {
+            data: { user: null },
+            error: new AuthError(
+              "Finish signing in with the code from your authenticator app.",
+              401,
+              "mfa_required",
+            ),
+          };
+        }
+      }
     } catch {
       // An unavailable status check is not permission to use the account.
     }
@@ -106,26 +104,4 @@ function withSecondFactorGate(
   };
 
   return client;
-}
-
-function hasVerifiedFactor(user: User): boolean {
-  return (user.factors ?? []).some((factor) => factor.status === "verified");
-}
-
-/** The `aal` claim of an access token, or null when it cannot be read. */
-function assuranceLevel(accessToken: string | undefined): string | null {
-  const payload = accessToken?.split(".")[1];
-
-  if (!payload) {
-    return null;
-  }
-
-  try {
-    const claims = JSON.parse(
-      Buffer.from(payload, "base64url").toString("utf8"),
-    ) as { aal?: unknown };
-    return typeof claims.aal === "string" ? claims.aal : null;
-  } catch {
-    return null;
-  }
 }
