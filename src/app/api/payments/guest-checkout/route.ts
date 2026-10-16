@@ -193,13 +193,15 @@ async function answerForBuyer(
   return response;
 }
 
-// "Sent" only when the provider took the e-mail; otherwise a retryable error.
+// "Sent" only when the provider took the e-mail; otherwise a retryable error
+// (429 when the shared Auth e-mail ceiling is reached).
 async function accessLinkAnswer(
   admin: ReturnType<typeof getSupabaseAdminClient>,
   email: string,
   courseId: string,
 ): Promise<NextResponse> {
-  return (await sendGuestAccessLink(admin, email, courseId))
-    ? NextResponse.json(ACCESS_LINK_SENT)
-    : NextResponse.json(SEND_FAILED, { status: 502 });
+  const result = await sendGuestAccessLink(admin, email, courseId);
+  if (result === "sent") return NextResponse.json(ACCESS_LINK_SENT);
+  if (result === "limited") return paymentErrorResponse(new PaymentError("Too many attempts. Please wait before trying again.", 429));
+  return NextResponse.json(SEND_FAILED, { status: 502 });
 }

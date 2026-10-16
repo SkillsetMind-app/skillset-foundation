@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-import { enforceRateLimit, paymentErrorResponse } from "@/lib/payments/server/auth";
+import { enforceRateLimit, PaymentError, paymentErrorResponse } from "@/lib/payments/server/auth";
 import {
   decodeGuestCheckoutCookie,
   GUEST_CHECKOUT_COOKIE,
@@ -12,9 +12,6 @@ import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import { rateLimitKeyFromIp, rateLimitKeyFromValue } from "@/lib/supabase/rate-limit";
 
 const HOUR_MS = 60 * 60 * 1000;
-// Platform-wide ceiling for this route, under the Auth e-mail quota.
-// ponytail: fixed number; tune it with the project's Auth e-mail rate limit.
-const GLOBAL_PER_HOUR = 60;
 
 // POST /api/payments/guest-checkout/access-link — sends (or resends) the
 // sign-in link from the thank-you page. The address and course come only from
@@ -31,9 +28,10 @@ export async function POST(request: NextRequest) {
   try {
     await enforceRateLimit(rateLimitKeyFromIp(request, "guest_access_link_ip"), 10, HOUR_MS);
     await enforceRateLimit(rateLimitKeyFromValue("guest_access_link_email", pending.email), 3, HOUR_MS);
-    await enforceRateLimit("guest_access_link_global", GLOBAL_PER_HOUR, HOUR_MS);
-    const sent = await sendGuestAccessLink(getSupabaseAdminClient(), pending.email, pending.courseId);
-    return sent
+    // The platform-wide ceiling is counted inside sendGuestAccessLink.
+    const result = await sendGuestAccessLink(getSupabaseAdminClient(), pending.email, pending.courseId);
+    if (result === "limited") throw new PaymentError("Too many attempts. Please wait before trying again.", 429);
+    return result === "sent"
       ? NextResponse.json({ status: "sent" })
       : NextResponse.json({ error: "The link could not be sent. Please try again.", code: "send_failed" }, { status: 502 });
   } catch (error) {

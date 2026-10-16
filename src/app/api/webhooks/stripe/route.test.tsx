@@ -62,6 +62,8 @@ type AdminState = {
   guestBuyerConfirmed?: boolean;
   // Opt-in: the Auth sign-in link fails.
   signInLinkFails?: boolean;
+  // Opt-in: the shared guest checkout Auth e-mail ceiling is reached.
+  authEmailLimited?: boolean;
   doneEvents: Set<string>;
   refundClaims: Record<string, RefundClaim>;
   ledger: Record<string, unknown>;
@@ -355,6 +357,9 @@ function createAdmin(
     from: vi.fn((table: string) => new Query(table)),
     rpc: vi.fn(async (name: string, args: Record<string, unknown>) => {
       state.rpcCalls.push({ name, args });
+      if (name === "enforce_rate_limit" && state.authEmailLimited && args.p_key === "guest_auth_email_global") {
+        return { data: null, error: { message: "RATE_LIMIT" } };
+      }
       if (name === "fulfill_paid_course_access" && state.failAt === name) {
         return { data: null, error: { message: "enrollment RPC unavailable" } };
       }
@@ -1633,6 +1638,21 @@ describe("Stripe webhook financial integrity", () => {
       expect(admin.state.doneEvents).toContain("evt_checkout");
       await vi.waitFor(() => expect(admin.auth.signInWithOtp).toHaveBeenCalledTimes(1));
       expect(buyerEmails()).toHaveLength(1);
+    });
+
+    it("sends no sign-in link over the shared Auth e-mail ceiling, and keeps the enrollment", async () => {
+      const admin = createAdmin("checkout");
+      admin.state.guestBuyer = true;
+      admin.state.authEmailLimited = true;
+      mocks.getAdmin.mockReturnValue(admin);
+
+      const response = await postEvent(checkoutEvent());
+
+      expect(response.status).toBe(200);
+      expect(fulfillCalls(admin)).toHaveLength(1);
+      await vi.waitFor(() => expect(buyerEmails()).toHaveLength(1));
+      await vi.waitFor(() => expect(admin.state.rpcCalls.some((call) => call.args.p_key === "guest_auth_email_global")).toBe(true));
+      expect(admin.auth.signInWithOtp).not.toHaveBeenCalled();
     });
 
     it("sends no sign-in link to a regular account", async () => {

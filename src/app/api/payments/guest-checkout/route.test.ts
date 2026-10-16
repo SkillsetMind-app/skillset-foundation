@@ -671,6 +671,16 @@ describe("guest checkout", () => {
     expect(mocks.createSession).not.toHaveBeenCalled();
   });
 
+  it("answers 429 and sends nothing for an existing course holder when the shared Auth e-mail ceiling is reached", async () => {
+    admin = createAdmin({ existingUserId: "existing-user", enrollment: { status: "active" }, rateLimited: "guest_auth_email_global" });
+
+    const response = await POST(guestRequest(validBody));
+
+    expect(response.status).toBe(429);
+    expect(admin.auth.signInWithOtp).not.toHaveBeenCalled();
+    expect(mocks.createSession).not.toHaveBeenCalled();
+  });
+
   it("sends the access link when the account already has a subscription to the course (409)", async () => {
     mocks.subscriptionInterval.mockReturnValue("month");
     admin = createAdmin({ existingUserId: "existing-user", subscription: { id: "sub", status: "active" } });
@@ -797,12 +807,26 @@ describe("guest checkout access link (thank-you page)", () => {
     expect(admin.auth.signInWithOtp).not.toHaveBeenCalled();
   });
 
-  it("stops at the platform-wide hourly ceiling", async () => {
-    admin = createAdmin({ rateLimited: "guest_access_link_global" });
+  it("stops at the shared Auth e-mail ceiling, counted right before the send", async () => {
+    admin = createAdmin({ rateLimited: "guest_auth_email_global" });
 
     const response = await accessLinkPOST(linkRequest(encodeGuestCheckoutCookie({ email: "ana@example.com", courseId: "course" })));
 
     expect(response.status).toBe(429);
+    expect(admin.rpc).toHaveBeenCalledWith("enforce_rate_limit", {
+      p_key: "guest_auth_email_global",
+      p_limit: 200,
+      p_window_ms: 3_600_000,
+    });
+    expect(admin.auth.signInWithOtp).not.toHaveBeenCalled();
+  });
+
+  it("sends nothing when the limiter is down", async () => {
+    admin = createAdmin({ rateLimitDown: true });
+
+    const response = await accessLinkPOST(linkRequest(encodeGuestCheckoutCookie({ email: "ana@example.com", courseId: "course" })));
+
+    expect(response.status).toBe(500);
     expect(admin.auth.signInWithOtp).not.toHaveBeenCalled();
   });
 
