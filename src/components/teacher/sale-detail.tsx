@@ -12,6 +12,7 @@ import { buttonClasses, Card, Eyebrow, InlineAlert } from "@/components/ui";
 import type { Order } from "@/domain/order";
 import { subscribeToOrder } from "@/lib/data/orders";
 import { toDate } from "@/lib/format-date";
+import { platformFeeForSale } from "@/lib/payments/rules";
 
 type SaleDetailProps = {
   orderId: string;
@@ -170,7 +171,12 @@ export function SaleDetail({ orderId }: SaleDetailProps) {
 
   const canView =
     user?.roles.includes("admin") || user?.uid === order.teacherId || user?.uid === order.userId;
-  const platformFeeMinor = Math.floor((order.amountMinor * order.platformFeeBps) / 10000);
+  // Same formula the checkout charged: percent + the order's fixed part.
+  const platformFeeMinor = platformFeeForSale(
+    order.amountMinor,
+    order.platformFeeBps,
+    order.platformFeeFixedMinor ?? 0,
+  );
   const creatorNetMinor = order.amountMinor - platformFeeMinor;
   const timeline = getTimeline(order, t, locale);
 

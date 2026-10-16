@@ -1189,6 +1189,30 @@ export type Database = {
         }
         Relationships: []
       }
+      creator_plan_trials: {
+        Row: {
+          created_at: string
+          reminder_sent_at: string | null
+          stripe_subscription_id: string
+          trial_end: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          reminder_sent_at?: string | null
+          stripe_subscription_id: string
+          trial_end?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          reminder_sent_at?: string | null
+          stripe_subscription_id?: string
+          trial_end?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       creator_verification_cases: {
         Row: {
           verification_kind: string
@@ -1592,6 +1616,77 @@ export type Database = {
           },
         ]
       }
+      // Added by hand for supabase/migrations/20261016030000_area_de_membros.sql.
+      // Writes go only through save_my_member_area(_products); no insert grant.
+      member_area_products: {
+        Row: {
+          area_id: string
+          course_id: string
+          position: number
+          visible: boolean
+        }
+        Insert: {
+          area_id: string
+          course_id: string
+          position: number
+          visible?: boolean
+        }
+        Update: {
+          area_id?: string
+          course_id?: string
+          position?: number
+          visible?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "member_area_products_area_id_fkey"
+            columns: ["area_id"]
+            isOneToOne: false
+            referencedRelation: "member_areas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "member_area_products_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: true
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      member_areas: {
+        Row: {
+          cover_path: string | null
+          created_at: string
+          id: string
+          name: string | null
+          owner_id: string
+          theme: string
+          updated_at: string
+          welcome_text: string | null
+        }
+        Insert: {
+          cover_path?: string | null
+          created_at?: string
+          id?: string
+          name?: string | null
+          owner_id: string
+          theme?: string
+          updated_at?: string
+          welcome_text?: string | null
+        }
+        Update: {
+          cover_path?: string | null
+          created_at?: string
+          id?: string
+          name?: string | null
+          owner_id?: string
+          theme?: string
+          updated_at?: string
+          welcome_text?: string | null
+        }
+        Relationships: []
+      }
       member_stats: {
         Row: {
           display_name: string
@@ -1696,6 +1791,7 @@ export type Database = {
           payment_intent_id: string | null
           payout_model: string | null
           platform_fee_bps: number | null
+          platform_fee_fixed_minor: number
           price_id: string | null
           provider: string | null
           receipt_url: string | null
@@ -1727,6 +1823,7 @@ export type Database = {
           payment_intent_id?: string | null
           payout_model?: string | null
           platform_fee_bps?: number | null
+          platform_fee_fixed_minor?: number
           price_id?: string | null
           provider?: string | null
           receipt_url?: string | null
@@ -1758,6 +1855,7 @@ export type Database = {
           payment_intent_id?: string | null
           payout_model?: string | null
           platform_fee_bps?: number | null
+          platform_fee_fixed_minor?: number
           price_id?: string | null
           provider?: string | null
           receipt_url?: string | null
@@ -2218,6 +2316,7 @@ export type Database = {
           stripe_customer_id: string | null
           stripe_price_id: string | null
           stripe_subscription_id: string | null
+          trial_end: string | null
           updated_at: string
           user_id: string
         }
@@ -2234,6 +2333,7 @@ export type Database = {
           stripe_customer_id?: string | null
           stripe_price_id?: string | null
           stripe_subscription_id?: string | null
+          trial_end?: string | null
           updated_at?: string
           user_id: string
         }
@@ -2250,6 +2350,7 @@ export type Database = {
           stripe_customer_id?: string | null
           stripe_price_id?: string | null
           stripe_subscription_id?: string | null
+          trial_end?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -2525,6 +2626,13 @@ export type Database = {
         Args: { p_blocks: Json; p_course_id: string; p_template: string }
         Returns: undefined
       }
+      // Added by hand for supabase/migrations/20261016030000_area_de_membros.sql.
+      get_member_area_home: { Args: { p_area_ref: string }; Returns: Json }
+      save_my_member_area: {
+        Args: { p_cover_path: string; p_name: string; p_theme: string; p_welcome_text: string }
+        Returns: undefined
+      }
+      save_my_member_area_products: { Args: { p_items: Json }; Returns: undefined }
       // Added by hand for supabase/migrations/20260820000000_custom_domains.sql.
       // This file is normally generated by `supabase gen types`, which needs the
       // migration applied to a live project first. Regenerating after that
@@ -2594,6 +2702,7 @@ export type Database = {
         Returns: Json
       }
       account_session_allowed: { Args: Record<PropertyKey, never>; Returns: boolean }
+      session_is_strong: { Args: Record<PropertyKey, never>; Returns: boolean }
       admin_get_account_control: { Args: { p_target_uid: string }; Returns: Json }
       admin_set_account_control: {
         Args: { p_target_uid: string; p_action: string; p_reason: string }
@@ -2631,6 +2740,8 @@ export type Database = {
         Returns: Json
       }
       course_owner_can_sell: { Args: { p_owner_uid: string }; Returns: boolean }
+      creator_plan_required: { Args: Record<PropertyKey, never>; Returns: boolean }
+      creator_has_current_plan: { Args: { p_uid: string }; Returns: boolean }
       course_title_key: { Args: { p_title: string }; Returns: string }
       create_course_coupon: {
         Args: {

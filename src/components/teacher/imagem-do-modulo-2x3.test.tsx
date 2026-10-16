@@ -158,3 +158,4 @@ describe("capa do módulo: 2:3 comprimida no navegador", () => {
     expect(vi.mocked(uploadCourseAsset).mock.calls[0][0].file).toBe(heic);
   });
 });
+vi.mock("@/lib/data/creator-plan", () => ({ fetchCreatorPlanRequired: async () => false }));

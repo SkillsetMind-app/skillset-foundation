@@ -101,6 +101,7 @@ import {
   subscribeToLessonContent,
   type LessonContent,
 } from "@/lib/data/lesson-content";
+import { useCreatorAreaLink } from "@/components/learn/member-area-links";
 import { track } from "@/lib/posthog/events";
 import { scrollBehavior } from "@/lib/ui/scroll-behavior";
 
@@ -175,6 +176,9 @@ export function EnrolledCourseWorkspace({
   const enrollment = parentEnrollment ?? ownEnrollment;
   const hasParentEnrollment = Boolean(parentEnrollment);
   const [isLoading, setIsLoading] = useState(!previewMode && !hasParentEnrollment);
+  // A area do criador, quando ele tem perfil publico: e para la que o
+  // "voltar" da aula leva (a saida continua uma so). Fora do preview.
+  const creatorArea = useCreatorAreaLink(previewMode ? null : course.instructorId);
   const [progressState, setProgressState] = useState<{
     key: string | null;
     lessonIds: string[];
@@ -1186,8 +1190,12 @@ export function EnrolledCourseWorkspace({
   const inClassroomTab = tab !== "lesson";
   const backHref = inClassroomTab
     ? classroomTabHref(basePath, "lesson", selectedLesson?.id ?? null)
-    : "/learn";
-  const backLabel = t(inClassroomTab ? "learn.membersHero.backToLesson" : "learn.membersHero.back");
+    : creatorArea?.href ?? "/learn";
+  const backLabel = inClassroomTab
+    ? t("learn.membersHero.backToLesson")
+    : creatorArea
+      ? t("learn.memberArea.backToArea").replace("{name}", () => creatorArea.name)
+      : t("learn.membersHero.back");
 
   // Sem aula, a sala abre no que o produto entrega: a comunidade, ou a aba
   // de lives do evento ao vivo. A aba Lessons sai da barra (repetiria a
@@ -1241,6 +1249,7 @@ export function EnrolledCourseWorkspace({
           certificateHref={previewMode ? null : certificateHref}
           backHref={backHref}
           backTo={inClassroomTab ? "lesson" : "courses"}
+          backLabel={backLabel}
           // A aula que a sala abriria (a do endereco, senao a primeira nao
           // concluida): o mesmo calculo de selectedLesson, sem leitura nova.
           primaryAction={
@@ -1774,6 +1783,7 @@ function MembersAreaHeroBand({
   certificateHref,
   backHref,
   backTo,
+  backLabel,
   primaryAction,
 }: {
   course: Course;
@@ -1786,6 +1796,7 @@ function MembersAreaHeroBand({
   primaryAction: { href: string; label: string } | null;
   /** Voltar sobe um nivel: da aba About, para a aula; da aula, para /learn. */
   backTo: "courses" | "lesson";
+  backLabel: string;
 }) {
   // Resolve the members_cover asset to a protected object URL with the same
   // mount guard and revoke-on-unmount pattern used by protected previews.
@@ -1844,6 +1855,7 @@ function MembersAreaHeroBand({
       certificateHref={certificateHref}
       backHref={backHref}
       backTo={backTo}
+      backLabel={backLabel}
       primaryAction={primaryAction}
     />
   );

@@ -387,3 +387,4 @@ describe("o que acontece depois da ação", () => {
     expect(screen.getByRole("link", { name: "Publish again" })).toBeInTheDocument();
   });
 });
+vi.mock("@/lib/data/creator-plan", () => ({ fetchCreatorPlanRequired: async () => false }));

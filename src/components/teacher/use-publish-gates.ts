@@ -7,6 +7,7 @@ import {
   fetchRequireCreatorVerification,
 } from "@/lib/data/creator-verification";
 import { subscribeToUserProfile } from "@/lib/data/user-profiles";
+import { fetchCreatorPlanRequired } from "@/lib/data/creator-plan";
 
 // As travas de publicacao que sao do professor, nao do curso: payouts do
 // Stripe e verificacao profissional. So o Manage as carregava, entao a
@@ -15,7 +16,7 @@ import { subscribeToUserProfile } from "@/lib/data/user-profiles";
 export function usePublishGates(user: { uid: string } | null | undefined): {
   account: CourseReadinessAccount;
   planId: PlanId;
-  // As duas leituras responderam (com dado ou erro). Antes disso `account`
+  // As leituras responderam (com dado ou erro). Antes disso `account`
   // traz os valores falsos iniciais, e quem conta passos pisca.
   loaded: boolean;
   /** null até a leitura chegar, e quando ela falha: sem status, sem oferta do selo. */
@@ -32,6 +33,20 @@ export function usePublishGates(user: { uid: string } | null | undefined): {
   const [flagLoaded, setFlagLoaded] = useState(false);
   const [activationBlocked, setActivationBlocked] = useState(false);
   const uid = user?.uid;
+  const [planGate, setPlanGate] = useState<{ uid: string; required: boolean } | null>(null);
+
+  useEffect(() => {
+    if (!uid) return;
+    let active = true;
+    const refresh = () => {
+      void fetchCreatorPlanRequired()
+        .then((required) => { if (active) setPlanGate({ uid, required }); })
+        .catch(() => { if (active) setPlanGate({ uid, required: true }); });
+    };
+    refresh();
+    window.addEventListener("focus", refresh);
+    return () => { active = false; window.removeEventListener("focus", refresh); };
+  }, [uid]);
 
   useEffect(() => {
     if (!uid) {
@@ -101,9 +116,10 @@ export function usePublishGates(user: { uid: string } | null | undefined): {
       verificationRequired: requireVerification,
       verificationApproved: verificationStatus === "approved",
       activationBlocked,
+      planRequired: planGate && planGate.uid === uid ? planGate.required : true,
     },
     planId,
-    loaded: profileLoaded && flagLoaded,
+    loaded: profileLoaded && flagLoaded && Boolean(planGate && planGate.uid === uid),
     verificationStatus,
     stripeConnectCountry,
   };

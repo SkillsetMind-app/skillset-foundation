@@ -110,6 +110,7 @@ export type CourseReadinessAccount = {
   // A taxa unica so aparecia como erro do banco depois do clique em Publish.
   // Vem do mesmo predicado do gatilho (creator_activation_blocked).
   activationBlocked?: boolean;
+  planRequired?: boolean;
 };
 
 export type CourseReadinessItemId =
@@ -128,7 +129,8 @@ export type CourseReadinessItemId =
   | "outcomes"
   | "payouts"
   | "verification"
-  | "activation";
+  | "activation"
+  | "plan";
 
 // Os tres estados que a Hotmart separa e a barra "N de M" misturava:
 // conteudo salvo (o que o aluno assiste), pagina preparada (o que o comprador
@@ -341,6 +343,16 @@ export function getCourseReadiness(
   }
 
   if (account) {
+    if (account.planRequired) {
+      items.push({
+        id: "plan",
+        group: "sale",
+        label: "Creator plan",
+        hint: "Start your 14-day trial or renew your plan to publish and sell.",
+        done: false,
+        optional: false,
+      });
+    }
     if (paid) {
       items.push({
         id: "payouts",

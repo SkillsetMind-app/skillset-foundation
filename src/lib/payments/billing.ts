@@ -8,6 +8,8 @@ type CreateBillingCheckoutResult = {
   clientSecret: string;
   /** Stripe Checkout Session id (useful for diagnostics + status polling). */
   sessionId: string;
+  /** 14 when this checkout opens a free trial, 0 when it starts paid. */
+  trialDays: number;
 };
 
 /**
@@ -68,6 +70,39 @@ export async function openBillingPortal() {
   }
 
   window.location.assign(url);
+}
+
+export type PlanSubscriptionView = {
+  planId: PlanId | null;
+  cycle: PlanBillingCycle | null;
+  status: string;
+  /** ISO date while trialing; null otherwise. */
+  trialEnd: string | null;
+  currentPeriodEnd: string | null;
+  cancelAtPeriodEnd: boolean;
+};
+
+export type PlanBillingState = {
+  /** No trial used on this account yet: the first paid plan opens with one. */
+  trialEligible: boolean;
+  subscription: PlanSubscriptionView | null;
+};
+
+/** Trial eligibility and the live plan subscription, for the Billing page. */
+export async function fetchPlanBillingState(): Promise<PlanBillingState> {
+  const response = await fetch("/api/payments/billing/subscription");
+  if (!response.ok) {
+    throw new Error(`Plan billing state answered ${response.status}.`);
+  }
+  return (await response.json()) as PlanBillingState;
+}
+
+/** "Cancel plan": ends at the current period's end; during a trial, nothing is charged. */
+export async function cancelPlanSubscription(): Promise<PlanSubscriptionView | null> {
+  const { subscription } = await postPaymentRoute<{ subscription: PlanSubscriptionView | null }>(
+    "/api/payments/billing/subscription",
+  );
+  return subscription;
 }
 
 /**

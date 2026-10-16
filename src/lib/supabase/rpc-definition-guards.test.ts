@@ -16,6 +16,34 @@ import { describe, expect, it } from "vitest";
  */
 const RAIZ = process.cwd();
 
+describe("creator plan gate - definer boundaries", () => {
+  const sql = readFileSync(join(RAIZ, "supabase/migrations/20261010010000_creator_plan_publish_gate.sql"), "utf8");
+
+  it.each([
+    ["creator_has_current_plan", "text", "service_role"],
+    ["creator_plan_required", "", "authenticated, service_role"],
+    ["course_owner_can_sell", "text", "service_role"],
+    ["enforce_creator_plan_on_publish", "", null],
+  ])("%s has a fixed path and explicit caller classification", (name, args, roles) => {
+    const definition = sql.match(new RegExp(`function public\\.${name}\\([^]*?\\$\\$;`))?.[0];
+    expect(definition).toMatch(/security definer set search_path = ''/);
+    expect(sql).toContain(`revoke all on function public.${name}(${args}) from public, anon, authenticated;`);
+    if (roles) {
+      expect(sql).toContain(`grant execute on function public.${name}(${args}) to ${roles};`);
+    } else {
+      // Trigger-only: the browser never invokes it as an RPC.
+      expect(sql).not.toContain(`grant execute on function public.${name}`);
+      expect(definition).toContain("returns trigger");
+    }
+  });
+
+  it("the browser verdict is self-only and requires a strong session", () => {
+    expect(sql).toContain("function public.creator_plan_required()");
+    expect(sql).toContain("perform public.require_strong_session();");
+    expect(sql).toContain("return not public.creator_has_current_plan(auth.uid()::text);");
+  });
+});
+
 /**
  * Corpo da ÚLTIMA definição de uma função na cadeia de migrations.
  *

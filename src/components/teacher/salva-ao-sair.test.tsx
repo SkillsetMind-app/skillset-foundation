@@ -302,3 +302,4 @@ describe("builder grava o rascunho pendente ao sair", () => {
     await act(async () => finishFlush());
   }, 10000);
 });
+vi.mock("@/lib/data/creator-plan", () => ({ fetchCreatorPlanRequired: async () => false }));

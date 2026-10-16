@@ -210,6 +210,16 @@ function StudioNextSteps({
   // plataforma exige. Antes o passo 2 cobrava verificacao APROVADA de todo
   // mundo, nao havia passo de publicar e a barra parava em 67%.
   const steps = [
+    ...(account.planRequired
+      ? [{
+          id: "plan",
+          label: t("creatorEditor.readiness.items.plan.label"),
+          detail: t("creatorEditor.readiness.items.plan.hint"),
+          href: "/account/billing",
+          done: false,
+          action: t("creatorEditor.builder.publish.managePlan"),
+        }]
+      : []),
     {
       id: "create",
       label: t("creatorPanel.home.steps.create"),

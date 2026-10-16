@@ -186,8 +186,8 @@ function highlightCard(locale: "en" | "es") {
 function expectFreeHighlight(locale: "en" | "es") {
   const card = highlightCard(locale);
   expect(card.getByText(locale === "es"
-    ? "El plan Free no incluye destacados en el marketplace."
-    : "Marketplace highlights are not included in the Free plan."
+    ? "Los destacados en el marketplace requieren un plan de creador compatible."
+    : "Marketplace highlights require an eligible creator plan."
   )).toBeInTheDocument();
   expect(card.queryByText(/Not included|Unlimited|\b\d+\s+(?:of|de)\s/)).not.toBeInTheDocument();
   return card;
@@ -354,11 +354,13 @@ describe("painel do criador em espanhol", () => {
   });
 
   it.each([
-    { planId: "starter", planName: "Starter", limit: 1 },
-    { planId: "pro", planName: "Pro", limit: 3 },
-    { planId: "plus", planName: "Plus", limit: 5 },
+    // Cheio: o Starter aponta para os planos; Pro (topo da oferta) e o Plus
+    // aposentado apontam para "Fale conosco", nunca para um beco sem saida.
+    { planId: "starter", planName: "Starter", limit: 1, next: "plans" },
+    { planId: "pro", planName: "Pro", limit: 5, next: "contact" },
+    { planId: "plus", planName: "Enterprise", limit: 5, next: "contact" },
   ] as const)("destaques no $planName: quota e idioma acompanham os dados sem escrita", async ({
-    planId, planName, limit,
+    planId, planName, limit, next,
   }) => {
     const literalTitle = "LOCAL QA $& $$ {plan} — Autor";
     mocks.course = { ...mocks.course, title: literalTitle, status: "published", featured: false };
@@ -399,6 +401,8 @@ describe("painel do criador em espanhol", () => {
     expect(highlightCard("en").getByText(
       `You're using all ${limit} highlights on your plan. Remove one from another course first.`
     )).toBeInTheDocument();
+    expect(highlightCard("en").getByRole("link", { name: next === "contact" ? "Contact us for more" : "See plans" }))
+      .toHaveAttribute("href", next === "contact" ? "/contact" : "/account/plans");
     expect(highlightCard("en").getByRole("button", { name: "Highlight this course" })).toBeDisabled();
 
     await changeLocale("es");
@@ -421,7 +425,7 @@ describe("painel do criador em espanhol", () => {
     mocks.profile = { ...mocks.profile, currentPlanId: "plus" };
     renderEs(<CourseManageHub courseId="course-1" />);
 
-    expect(await screen.findByText("1 de 5 destacados usados en el plan Plus")).toBeInTheDocument();
+    expect(await screen.findByText("1 de 5 destacados usados en el plan Enterprise")).toBeInTheDocument();
     expect(highlightCard("es").getByRole("button", { name: "Quitar destacado" })).toBeEnabled();
     expect(screen.getByRole("heading", { level: 1, name: literalTitle })).toBeInTheDocument();
     const initialSubscriptions = subscriptionCounts();
@@ -473,3 +477,4 @@ describe("painel do criador em espanhol", () => {
     expect(mocks.setOwnCourseFeatured).toHaveBeenCalledExactlyOnceWith("course-1", false);
   });
 });
+vi.mock("@/lib/data/creator-plan", () => ({ fetchCreatorPlanRequired: async () => false }));

@@ -519,3 +519,4 @@ describe("como as pessoas vao pagar", () => {
     expect(screen.getByText("This option does not fit this type of product. Pick another one to publish.")).toBeInTheDocument();
   });
 });
+vi.mock("@/lib/data/creator-plan", () => ({ fetchCreatorPlanRequired: async () => false }));

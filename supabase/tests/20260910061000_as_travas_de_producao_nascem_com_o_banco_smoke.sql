@@ -59,6 +59,10 @@ from generate_series(1, 2) n;
 select pg_temp.check_guard('signup creates the profile row',
   (select count(*) = 2 from public.users
     where uid in (pg_temp.uid(1)::text, pg_temp.uid(2)::text) and roles = '["student"]'::jsonb));
+-- Keep the creator plan current so this smoke exercises its original guard.
+insert into public.subscriptions(id, user_id, plan_id, status, current_period_end)
+select 'smoke-plan-' || pg_temp.uid(n)::text, pg_temp.uid(n)::text, 'basic', 'active', now() + interval '1 day'
+from (values (1)) owners(n);
 update public.users
   set roles = '["student","teacher"]', teacher_terms_accepted_at = now(),
       teacher_terms_version = 'smoke', activation_fee_paid_at = now()
