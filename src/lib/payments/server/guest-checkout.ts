@@ -18,9 +18,14 @@ const COOKIE_TTL_SECONDS = 2 * 60 * 60;
 
 const SITEVERIFY_URL = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
 
-/** The public switch plus the Turnstile secret. Any of them missing: the route is off. */
+/**
+ * The public switch plus the two server secrets (Turnstile, and the one that
+ * signs the thank-you cookie). Any of them missing: the routes are off.
+ */
 export function isGuestCheckoutConfigured(): boolean {
-  return isGuestCheckoutEnabled() && Boolean(process.env.TURNSTILE_SECRET_KEY);
+  return isGuestCheckoutEnabled()
+    && Boolean(process.env.TURNSTILE_SECRET_KEY)
+    && Boolean(process.env.GUEST_CHECKOUT_COOKIE_SECRET);
 }
 
 /** Cloudflare Turnstile, checked server-side. Any failure (network, timeout, bad answer) is a "no". */
@@ -152,10 +157,9 @@ export async function sendGuestAccessLink(admin: Admin, email: string, courseId:
   }
 }
 
-// Keyed with the Turnstile secret, which this flow cannot run without. The
-// prefix keeps this MAC apart from any other use of that key.
+// Its own key (GUEST_CHECKOUT_COOKIE_SECRET), used for nothing else.
 function sign(payload: string): string {
-  return createHmac("sha256", process.env.TURNSTILE_SECRET_KEY ?? "")
+  return createHmac("sha256", process.env.GUEST_CHECKOUT_COOKIE_SECRET ?? "")
     .update(`guest-checkout-cookie:${payload}`)
     .digest("base64url");
 }
@@ -171,7 +175,7 @@ export function decodeGuestCheckoutCookie(
   raw: string | undefined,
   now = Date.now(),
 ): { email: string; courseId: string } | null {
-  if (!raw || !process.env.TURNSTILE_SECRET_KEY) return null;
+  if (!raw || !process.env.GUEST_CHECKOUT_COOKIE_SECRET) return null;
   const [payload, signature, extra] = raw.split(".");
   if (!payload || !signature || extra !== undefined) return null;
   const expected = Buffer.from(sign(payload));

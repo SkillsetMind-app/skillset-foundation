@@ -31,6 +31,7 @@ describe("guest checkout thank-you page", () => {
     vi.stubEnv("NEXT_PUBLIC_GUEST_CHECKOUT_ENABLED", "true");
     vi.stubEnv("NEXT_PUBLIC_TURNSTILE_SITE_KEY", "site-key");
     vi.stubEnv("TURNSTILE_SECRET_KEY", "turnstile-secret");
+    vi.stubEnv("GUEST_CHECKOUT_COOKIE_SECRET", "cookie-secret");
     vi.stubGlobal("fetch", state.fetch);
     state.fetch.mockImplementation(async () => new Response(JSON.stringify({ status: "sent" })));
     state.locale = "en";

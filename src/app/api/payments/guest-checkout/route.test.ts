@@ -171,6 +171,7 @@ describe("guest checkout", () => {
     vi.stubEnv("NEXT_PUBLIC_GUEST_CHECKOUT_ENABLED", "true");
     vi.stubEnv("NEXT_PUBLIC_TURNSTILE_SITE_KEY", "site-key");
     vi.stubEnv("TURNSTILE_SECRET_KEY", "turnstile-secret");
+    vi.stubEnv("GUEST_CHECKOUT_COOKIE_SECRET", "cookie-secret");
     vi.stubGlobal("fetch", mocks.fetch);
     turnstileAnswers(true);
     mocks.subscriptionInterval.mockReturnValue(null);
@@ -224,6 +225,7 @@ describe("guest checkout", () => {
     ["the flag is off", "NEXT_PUBLIC_GUEST_CHECKOUT_ENABLED", "false"],
     ["the Turnstile secret is missing", "TURNSTILE_SECRET_KEY", ""],
     ["the Turnstile site key is missing", "NEXT_PUBLIC_TURNSTILE_SITE_KEY", ""],
+    ["the cookie secret is missing", "GUEST_CHECKOUT_COOKIE_SECRET", ""],
   ])("is off (404) when %s", async (_label, name, value) => {
     vi.stubEnv(name, value);
 
@@ -529,6 +531,7 @@ describe("guest checkout access link (thank-you page)", () => {
     vi.stubEnv("NEXT_PUBLIC_GUEST_CHECKOUT_ENABLED", "true");
     vi.stubEnv("NEXT_PUBLIC_TURNSTILE_SITE_KEY", "site-key");
     vi.stubEnv("TURNSTILE_SECRET_KEY", "turnstile-secret");
+    vi.stubEnv("GUEST_CHECKOUT_COOKIE_SECRET", "cookie-secret");
     admin = createAdmin();
     mocks.getAdmin.mockImplementation(() => admin);
   });
