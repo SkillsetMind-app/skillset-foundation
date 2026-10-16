@@ -4625,7 +4625,7 @@
       "invalid": "Escribe tu nombre y un correo válido, y acepta las condiciones.",
       "checkoutPending": "Tienes un pago en curso para este curso. Termínalo o vuelve a intentarlo en unos minutos.",
       "googleFailed": "No se pudo iniciar sesión con Google. Vuelve a intentarlo.",
-      "linkSent": "Revisa tu correo: te enviamos el enlace para acceder a este curso.",
+      "linkSent": "Si este correo puede acceder al curso, le enviamos un enlace para iniciar sesión.",
       "haveAccount": "¿Ya tienes una cuenta?",
       "signIn": "Inicia sesión"
     },

@@ -4625,7 +4625,7 @@
       "invalid": "Enter your name and a valid email, and accept the terms.",
       "checkoutPending": "You have a payment in progress for this course. Finish it or try again in a few minutes.",
       "googleFailed": "Google sign-in could not start. Please try again.",
-      "linkSent": "Check your email: we sent you the link to access this course.",
+      "linkSent": "If this email can access the course, we've sent a sign-in link to it.",
       "haveAccount": "Already have an account?",
       "signIn": "Sign in"
     },

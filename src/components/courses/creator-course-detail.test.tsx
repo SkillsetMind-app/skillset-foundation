@@ -1179,7 +1179,7 @@ describe("CreatorCourseDetail: buying without an account", () => {
 
     await fillAndSubmit();
 
-    expect(await screen.findByText("Check your email: we sent you the link to access this course.")).toBeInTheDocument();
+    expect(await screen.findByText("If this email can access the course, we've sent a sign-in link to it.")).toBeInTheDocument();
   });
 
   it("shows the security-check failure in its own words", async () => {
