@@ -3,6 +3,7 @@ import { platformAccessLevels, type PlatformInvite } from "@/domain/platform-inv
 import { caughtFailure, databaseFailure, failure, isSameOrigin, readSmallObject, uuidPattern } from "@/lib/operations/http";
 import { enforceRateLimit, requireAdminUserId } from "@/lib/payments/server/auth";
 import { getAppUrl } from "@/lib/payments/server/app-url";
+import { findAuthUserIdByEmail, secureForeignUnconfirmedAccount } from "@/lib/payments/server/guest-checkout";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { finishActivationWaiver } from "@/lib/payments/server/activation-waiver";
@@ -65,7 +66,19 @@ export async function POST(request: Request) {
     try {
       await enforceRateLimit(`platform_invite_email_${invite.id}`, 3, 3600000);
       const destination = `/invitations/${invite.id}`;
-      const { error } = await getSupabaseAdminClient().auth.signInWithOtp({
+      const admin = getSupabaseAdminClient();
+      // The confirmation trigger clears the password only while the invitation
+      // is still pending; the link outlives a revoke. So an existing account
+      // that never confirmed its e-mail gets a new random password first, as in
+      // the creator's manual access. If that fails, no link.
+      const accountId = await findAuthUserIdByEmail(admin, invite.email);
+      if (accountId) {
+        const { data: account, error: accountError } = await admin.auth.admin.getUserById(accountId);
+        if (accountError || !account?.user || (await secureForeignUnconfirmedAccount(admin, account.user)) === "failed") {
+          return NextResponse.json({ invite, emailStatus });
+        }
+      }
+      const { error } = await admin.auth.signInWithOtp({
         email: invite.email,
         options: { shouldCreateUser: true, emailRedirectTo: `${getAppUrl()}/auth/confirm?next=${encodeURIComponent(destination)}` },
       });
