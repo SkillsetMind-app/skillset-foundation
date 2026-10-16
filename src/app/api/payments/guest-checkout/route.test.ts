@@ -160,7 +160,8 @@ function guestRequest(body: unknown, headers: Record<string, string> = {}) {
   });
 }
 
-function turnstileAnswers(success: boolean, hostname: string | undefined = "skillset.test") {
+// null: Turnstile answered without a hostname.
+function turnstileAnswers(success: boolean, hostname: string | null = "skillset.test") {
   mocks.fetch.mockImplementation(async () => new Response(JSON.stringify({ success, hostname })));
 }
 
@@ -278,7 +279,7 @@ describe("guest checkout", () => {
 
   it.each([
     ["another site", "evil.example"],
-    ["no hostname", undefined],
+    ["no hostname", null],
   ])("refuses a Turnstile token solved on %s", async (_label, hostname) => {
     turnstileAnswers(true, hostname);
 
