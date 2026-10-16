@@ -734,15 +734,21 @@ async function isSecondFactorPending(
   // `nextLevel` sai "aal1" mesmo numa conta com TOTP. O banco sabe
   // (session_is_strong lê auth.mfa_factors). "Fraca" só vira "deve o código"
   // se a conta está liberada; conta bloqueada é outro caminho.
-  const { data: strong, error: strongError } =
-    await supabase.rpc("session_is_strong");
-  if (strongError || strong !== false) {
+  // Falha aqui não tranca ninguém: a tela segue, e o servidor e o banco, que
+  // decidem de verdade, continuam fechando a sessão que deve o código.
+  try {
+    const { data: strong, error: strongError } =
+      await supabase.rpc("session_is_strong");
+    if (strongError || strong !== false) {
+      return false;
+    }
+
+    const { data: allowed, error: allowedError } =
+      await supabase.rpc("account_session_allowed");
+    return !allowedError && allowed === true;
+  } catch {
     return false;
   }
-
-  const { data: allowed, error: allowedError } =
-    await supabase.rpc("account_session_allowed");
-  return !allowedError && allowed === true;
 }
 
 type MyFactor = {
