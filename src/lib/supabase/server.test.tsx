@@ -28,10 +28,13 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 //
 // O cookie de sessao aal1 e gravado antes do codigo TOTP, e cada rota decide
 // "esta logado?" com `auth.getUser()` do cliente criado aqui — onze rotas via
-// requireUserId, seis lendo getUser() direto. Nenhuma olhava o nivel de
-// garantia: o token aal1 era aceito igual ao aal2. Este e o unico ponto por
-// onde todas passam, entao e aqui que uma sessao que ainda deve o segundo
-// fator passa a responder como "sem usuario".
+// requireUserId, seis lendo getUser() direto. Este e o unico ponto por onde
+// todas passam, entao e aqui que uma sessao que ainda deve o segundo fator
+// passa a responder como "sem usuario".
+//
+// 16/10: o Auth do Supabase deixou de mandar `user.factors` para a sessao aal1.
+// O portao lia essa lista e passou a abrir a conta com TOTP so com a senha.
+// Agora quem decide e o banco (session_is_strong le auth.mfa_factors).
 
 function token(claims: Record<string, unknown>) {
   const payload = Buffer.from(JSON.stringify(claims)).toString("base64url");
@@ -49,6 +52,15 @@ const enrolled = {
 
 const withoutFactor = { id: "user-2", factors: [] };
 
+// Como o GoTrue responde hoje para a sessao aal1: sem a chave `factors`.
+const factorsHidden = { id: "user-3" };
+
+function verdicts({ strong, allowed }: { strong: unknown; allowed: unknown }) {
+  mocks.rpc.mockImplementation((name: string) =>
+    Promise.resolve({ data: name === "session_is_strong" ? strong : allowed, error: null }),
+  );
+}
+
 describe("createSupabaseServerClient — sessao aal1 de conta com TOTP nao e login", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -59,9 +71,9 @@ describe("createSupabaseServerClient — sessao aal1 de conta com TOTP nao e log
     });
   });
 
-  it("recusa aal1 quando a conta exige aal2", async () => {
+  it("recusa aal1 quando o banco diz que a conta deve o codigo", async () => {
     mocks.getUser.mockResolvedValue({ data: { user: enrolled }, error: null });
-    mocks.getSession.mockResolvedValue(sessionWith(token({ aal: "aal1" })));
+    verdicts({ strong: false, allowed: true });
 
     const supabase = await createSupabaseServerClient();
     const { data, error } = await supabase.auth.getUser();
@@ -70,15 +82,30 @@ describe("createSupabaseServerClient — sessao aal1 de conta com TOTP nao e log
     expect(error).toMatchObject({ code: "mfa_required", status: 401 });
   });
 
-  it("libera a mesma conta depois do codigo (aal2)", async () => {
+  it("GoTrue sem a lista de fatores nao abre a conta: o banco decide", async () => {
+    mocks.getUser.mockResolvedValue({ data: { user: factorsHidden }, error: null });
+    mocks.getSession.mockResolvedValue(sessionWith(token({ aal: "aal1" })));
+    verdicts({ strong: false, allowed: true });
+
+    const supabase = await createSupabaseServerClient();
+    const { data, error } = await supabase.auth.getUser();
+
+    expect(data.user).toBeNull();
+    expect(error).toMatchObject({ code: "mfa_required", status: 401 });
+    expect(mocks.rpc).toHaveBeenCalledWith("session_is_strong");
+  });
+
+  it("libera a mesma conta depois do codigo (sessao forte), com uma consulta so", async () => {
     mocks.getUser.mockResolvedValue({ data: { user: enrolled }, error: null });
-    mocks.getSession.mockResolvedValue(sessionWith(token({ aal: "aal2" })));
+    verdicts({ strong: true, allowed: true });
 
     const supabase = await createSupabaseServerClient();
     const { data, error } = await supabase.auth.getUser();
 
     expect(data.user).toEqual(enrolled);
     expect(error).toBeNull();
+    expect(mocks.rpc).toHaveBeenCalledTimes(1);
+    expect(mocks.rpc).toHaveBeenCalledWith("session_is_strong");
   });
 
   it("conta sem fator passa em aal1: quem nao usa MFA nao muda nada", async () => {
@@ -86,14 +113,15 @@ describe("createSupabaseServerClient — sessao aal1 de conta com TOTP nao e log
       data: { user: withoutFactor },
       error: null,
     });
+    verdicts({ strong: true, allowed: true });
 
     const supabase = await createSupabaseServerClient();
     const { data } = await supabase.auth.getUser();
 
     expect(data.user).toEqual(withoutFactor);
-    // Sem fator nao ha o que conferir: nem o token e lido.
+    // O banco responde pelo JWT: o token do cookie nem e lido aqui.
     expect(mocks.getSession).not.toHaveBeenCalled();
-    expect(mocks.rpc).toHaveBeenCalledWith("account_session_allowed");
+    expect(mocks.rpc).toHaveBeenCalledTimes(1);
   });
 
   it("resposta sem usuario passa intacta", async () => {
@@ -107,23 +135,12 @@ describe("createSupabaseServerClient — sessao aal1 de conta com TOTP nao e log
     expect(mocks.rpc).not.toHaveBeenCalled();
   });
 
-  it("token que nao decodifica conta como aal1: em duvida, fecha", async () => {
-    mocks.getUser.mockResolvedValue({ data: { user: enrolled }, error: null });
-    mocks.getSession.mockResolvedValue(sessionWith("not.a.jwt"));
-
-    const supabase = await createSupabaseServerClient();
-    const { data, error } = await supabase.auth.getUser();
-
-    expect(data.user).toBeNull();
-    expect(error).toMatchObject({ code: "mfa_required" });
-  });
-
   it.each([withoutFactor, enrolled])("recusa uma sessao validada pelo Auth mas bloqueada no banco ($id)", async user => {
     mocks.getUser.mockResolvedValue({ data: { user }, error: null });
-    mocks.getSession.mockResolvedValue(sessionWith(token({ aal: "aal2" })));
-    mocks.rpc.mockResolvedValue({ data: false, error: null });
+    verdicts({ strong: false, allowed: false });
     const client = await createSupabaseServerClient();
     const { data, error } = await client.auth.getUser();
+    expect(mocks.rpc).toHaveBeenCalledWith("session_is_strong");
     expect(mocks.rpc).toHaveBeenCalledWith("account_session_allowed");
     expect(data.user).toBeNull();
     expect(error).toMatchObject({ status: 403, code: "account_access_denied" });

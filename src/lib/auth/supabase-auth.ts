@@ -722,7 +722,75 @@ async function isSecondFactorPending(
     return false;
   }
 
-  return data.nextLevel === "aal2" && data.currentLevel !== "aal2";
+  if (data.currentLevel === "aal2") {
+    return false;
+  }
+
+  if (data.nextLevel === "aal2") {
+    return true;
+  }
+
+  // Desde 16/10 o Auth do Supabase não manda `user.factors` para a sessão
+  // aal1, e então `nextLevel` sai "aal1" mesmo numa conta com TOTP: a senha
+  // sozinha abria a conta. O banco sabe (session_is_strong lê
+  // auth.mfa_factors). "Fraca" só vira "deve o código" se a conta está
+  // liberada; conta bloqueada é outro caminho.
+  const { data: strong, error: strongError } =
+    await supabase.rpc("session_is_strong");
+  if (strongError || strong !== false) {
+    return false;
+  }
+
+  const { data: allowed, error: allowedError } =
+    await supabase.rpc("account_session_allowed");
+  return !allowedError && allowed === true;
+}
+
+type MyFactor = {
+  id: string;
+  factorType: string;
+  status: string;
+  friendlyName: string | null;
+  createdAt: string | null;
+  updatedAt: string | null;
+};
+
+/**
+ * Os fatores da própria conta pela rota do servidor (API de administração),
+ * porque a lista do cliente (`mfa.listFactors`) sai vazia na sessão aal1.
+ * null = rota indisponível; quem chama cai na lista do cliente.
+ */
+async function fetchMyFactors(): Promise<MyFactor[] | null> {
+  try {
+    const response = await fetch("/api/auth/second-factor", {
+      credentials: "same-origin",
+      cache: "no-store",
+    });
+    if (!response.ok) {
+      return null;
+    }
+    const body = (await response.json()) as { factors?: unknown };
+    return Array.isArray(body.factors) ? (body.factors as MyFactor[]) : null;
+  } catch {
+    return null;
+  }
+}
+
+async function findVerifiedTotpId(
+  supabase: SupabaseClient<Database>,
+): Promise<string | null> {
+  const { data: factors } = await supabase.auth.mfa.listFactors();
+  const fromClient = factors?.totp?.find(
+    (factor) => factor.status === "verified",
+  );
+  if (fromClient) {
+    return fromClient.id;
+  }
+
+  const fromServer = (await fetchMyFactors())?.find(
+    (factor) => factor.factorType === "totp" && factor.status === "verified",
+  );
+  return fromServer?.id ?? null;
 }
 
 async function findPendingSecondFactor(
@@ -732,12 +800,8 @@ async function findPendingSecondFactor(
     return null;
   }
 
-  const { data: factors } = await supabase.auth.mfa.listFactors();
-  const verifiedTotp = factors?.totp?.find(
-    (factor) => factor.status === "verified",
-  );
-
-  return verifiedTotp ? new MfaRequiredError(verifiedTotp.id) : null;
+  const factorId = await findVerifiedTotpId(supabase);
+  return factorId ? new MfaRequiredError(factorId) : null;
 }
 
 async function requireSecondFactorIfNeeded(
@@ -811,13 +875,16 @@ export async function startTotpEnrollment(): Promise<{
   }
 
   // Clear any stale unverified factor so re-enrollment never hits a limit clash.
-  const { data: existing } = await supabase.auth.mfa.listFactors();
-  const stale =
-    existing?.all?.filter(
-      (factor) => factor.factor_type === "totp" && factor.status !== "verified",
-    ) ?? [];
-  for (const factor of stale) {
-    await supabase.auth.mfa.unenroll({ factorId: factor.id });
+  const fromServer = await fetchMyFactors();
+  const staleIds = fromServer
+    ? fromServer
+        .filter((factor) => factor.factorType === "totp" && factor.status !== "verified")
+        .map((factor) => factor.id)
+    : ((await supabase.auth.mfa.listFactors()).data?.all ?? [])
+        .filter((factor) => factor.factor_type === "totp" && factor.status !== "verified")
+        .map((factor) => factor.id);
+  for (const factorId of staleIds) {
+    await supabase.auth.mfa.unenroll({ factorId });
   }
 
   const { data, error } = await supabase.auth.mfa.enroll({
@@ -874,6 +941,17 @@ export async function finishTotpEnrollment(
 }
 
 export async function listEnrolledTotpFactors(): Promise<EnrolledFactor[]> {
+  const fromServer = await fetchMyFactors();
+  if (fromServer) {
+    return fromServer
+      .filter((factor) => factor.factorType === "totp" && factor.status === "verified")
+      .map((factor) => ({
+        uid: factor.id,
+        displayName: factor.friendlyName ?? "Authenticator app",
+        enrolledAt: factor.updatedAt ?? factor.createdAt ?? null,
+      }));
+  }
+
   const supabase = getSupabaseBrowserClient();
   const { data, error } = await supabase.auth.mfa.listFactors();
 

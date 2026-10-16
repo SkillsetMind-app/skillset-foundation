@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { AuthSession } from "@/domain/auth";
 
@@ -253,6 +253,83 @@ describe("getPendingSecondFactor — a tela de login retoma o desafio abandonado
     supabaseMocks.getSupabaseBrowserClient.mockReturnValue(
       buildClient(NO_FACTOR).client,
     );
+
+    await expect(getPendingSecondFactor()).resolves.toBeNull();
+  });
+});
+
+describe("16/10: o Auth parou de mandar os fatores para a sessao aal1", () => {
+  // Sem `user.factors`, o Supabase responde nextLevel "aal1" mesmo numa conta
+  // com TOTP, e a lista do cliente sai vazia. Quem decide e o banco; o id do
+  // fator vem da rota do servidor.
+  function hiddenFactors(strong: boolean, allowed = true) {
+    const harness = buildClient(NO_FACTOR);
+    harness.client.rpc.mockImplementation((name: string) =>
+      Promise.resolve({
+        data: name === "session_is_strong" ? strong : name === "account_session_allowed" ? allowed : [],
+        error: null,
+      }),
+    );
+    harness.client.auth.mfa.listFactors = async () => ({ data: { totp: [] }, error: null });
+    return harness;
+  }
+
+  function serverFactors(factors: unknown[]) {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ factors }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    return fetchMock;
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    profileMocks.getUserProfile.mockResolvedValue(null);
+  });
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("banco diz fraca e liberada: mfa_required, e o fator vem da rota do servidor", async () => {
+    supabaseMocks.getSupabaseBrowserClient.mockReturnValue(hiddenFactors(false).client);
+    const fetchMock = serverFactors([
+      { id: "factor-old", factorType: "totp", status: "unverified" },
+      { id: "factor-9", factorType: "totp", status: "verified" },
+    ]);
+
+    expect((await getCurrentAuthSession()).status).toBe("mfa_required");
+    const pending = await getPendingSecondFactor();
+
+    expect(pending?.factorId).toBe("factor-9");
+    expect(fetchMock).toHaveBeenCalledWith("/api/auth/second-factor", expect.objectContaining({ cache: "no-store" }));
+  });
+
+  it("o listener tambem segura: nada da conta chega ao app antes do codigo", async () => {
+    const harness = hiddenFactors(false);
+    supabaseMocks.getSupabaseBrowserClient.mockReturnValue(harness.client);
+    const seen: AuthSession[] = [];
+    listenToAuthState((session) => seen.push(session));
+
+    harness.fire("SIGNED_IN", { user: supabaseUser });
+    await flush();
+
+    expect(statuses(seen)).toEqual(["mfa_required"]);
+    expect(profileMocks.getUserProfile).not.toHaveBeenCalled();
+  });
+
+  it("banco diz forte: entra direto e nem pergunta os fatores", async () => {
+    supabaseMocks.getSupabaseBrowserClient.mockReturnValue(hiddenFactors(true).client);
+    const fetchMock = serverFactors([]);
+
+    expect((await getCurrentAuthSession()).status).toBe("authenticated");
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("conta bloqueada (fraca e nao liberada) nao vira pedido de codigo", async () => {
+    supabaseMocks.getSupabaseBrowserClient.mockReturnValue(hiddenFactors(false, false).client);
+
+    expect((await getCurrentAuthSession()).status).not.toBe("mfa_required");
+  });
+
+  it("rota fora do ar: sem fator conhecido nao inventa desafio", async () => {
+    supabaseMocks.getSupabaseBrowserClient.mockReturnValue(hiddenFactors(false).client);
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("", { status: 503 })));
 
     await expect(getPendingSecondFactor()).resolves.toBeNull();
   });
