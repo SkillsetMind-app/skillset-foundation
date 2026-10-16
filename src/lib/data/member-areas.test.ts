@@ -2,16 +2,33 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   getMemberAreaHome,
+  getMyMemberAreaEditor,
   memberAreaPath,
+  orderMemberAreaProducts,
   parseMemberAreaHome,
   saveMyMemberArea,
   saveMyMemberAreaProducts,
+  uploadMemberAreaCover,
 } from "@/lib/data/member-areas";
 
 const rpc = vi.hoisted(() => vi.fn());
-vi.mock("@/lib/supabase/client", () => ({ getSupabaseBrowserClient: () => ({ rpc }) }));
+const from = vi.hoisted(() => vi.fn());
+const upload = vi.hoisted(() => vi.fn());
+vi.mock("@/lib/supabase/client", () => ({
+  getSupabaseBrowserClient: () => ({ rpc, from, storage: { from: () => ({ upload }) } }),
+}));
 
-beforeEach(() => rpc.mockReset());
+beforeEach(() => {
+  rpc.mockReset();
+  from.mockReset();
+  upload.mockReset();
+});
+
+// select().eq() → maybeSingle() ou a própria promessa, como o supabase-js.
+function table(result: { data: unknown; error: unknown }) {
+  const chain = { select: () => chain, eq: () => chain, maybeSingle: async () => result, then: (resolve: (value: unknown) => void) => resolve(result) };
+  return chain;
+}
 
 const home = {
   area: {
@@ -109,5 +126,53 @@ describe("saveMyMemberAreaProducts", () => {
     rpc.mockResolvedValue({ data: null, error: { message: "MEMBER_AREA_COURSE_NOT_OWNED" } });
     await expect(saveMyMemberAreaProducts([{ courseId: "x", visible: true }]))
       .rejects.toMatchObject({ message: "MEMBER_AREA_COURSE_NOT_OWNED" });
+  });
+});
+
+describe("orderMemberAreaProducts", () => {
+  it("lista salva primeiro; o resto do mais novo ao mais antigo", () => {
+    const courses = [
+      { id: "a", createdAt: "2026-01-01T00:00:00Z" },
+      { id: "b", createdAt: "2026-05-01T00:00:00Z" },
+      { id: "c", createdAt: "2026-09-01T00:00:00Z" },
+      { id: "d", createdAt: "2026-03-01T00:00:00Z" },
+    ];
+    const choices = new Map([["d", { position: 0, visible: false }], ["a", { position: 1, visible: true }]]);
+    expect(orderMemberAreaProducts(courses, choices).map((course) => course.id)).toEqual(["d", "a", "c", "b"]);
+    expect(orderMemberAreaProducts(courses, new Map()).map((course) => course.id)).toEqual(["c", "b", "d", "a"]);
+  });
+});
+
+describe("getMyMemberAreaEditor", () => {
+  it("sem linha: área virtual", async () => {
+    from.mockReturnValueOnce(table({ data: null, error: null }));
+    await expect(getMyMemberAreaEditor("u-1")).resolves.toEqual({ settings: null, choices: new Map() });
+  });
+
+  it("lê a configuração e as escolhas de cada produto", async () => {
+    from
+      .mockReturnValueOnce(table({ data: { id: "area-1", name: "Eton Academy", theme: "dark", cover_path: null, welcome_text: "Oi" }, error: null }))
+      .mockReturnValueOnce(table({ data: [{ course_id: "c-a", position: 0, visible: false }], error: null }));
+    const editor = await getMyMemberAreaEditor("u-1");
+    expect(from).toHaveBeenNthCalledWith(1, "member_areas");
+    expect(from).toHaveBeenNthCalledWith(2, "member_area_products");
+    expect(editor.settings).toEqual({ name: "Eton Academy", theme: "dark", coverPath: null, welcomeText: "Oi" });
+    expect(editor.choices.get("c-a")).toEqual({ position: 0, visible: false });
+  });
+});
+
+describe("uploadMemberAreaCover", () => {
+  it("sobe na pasta do criador com nome novo e devolve o caminho", async () => {
+    upload.mockResolvedValue({ error: null });
+    const file = new File(["x"], "capa.png", { type: "image/png" });
+    const path = await uploadMemberAreaCover("u-1", file);
+    expect(path).toMatch(/^users\/u-1\/member-area\/cover-\d+$/);
+    expect(upload).toHaveBeenCalledWith(path, file, { contentType: "image/png", upsert: false });
+  });
+
+  it("recusa formato fora da lista sem subir nada", async () => {
+    await expect(uploadMemberAreaCover("u-1", new File(["x"], "capa.gif", { type: "image/gif" })))
+      .rejects.toThrow("MEMBER_AREA_COVER_INVALID");
+    expect(upload).not.toHaveBeenCalled();
   });
 });

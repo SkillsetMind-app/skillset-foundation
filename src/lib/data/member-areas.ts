@@ -1,5 +1,6 @@
 "use client";
 
+import { isAllowedAvatarFile } from "@/lib/data/profile-media";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 
 /**
@@ -186,4 +187,83 @@ export async function saveMyMemberAreaProducts(choices: readonly MemberAreaProdu
     p_items: choices.map((choice) => ({ course_id: choice.courseId, visible: choice.visible })),
   });
   if (error) throw error;
+}
+
+// ---------------------------------------------------------------------------
+// Tela do criador (/teach/member-area)
+// ---------------------------------------------------------------------------
+
+const publicMediaBucket = "public-media";
+
+/** O que o criador já salvou. `settings` null = área virtual (nunca salvou). */
+export type MyMemberAreaEditor = {
+  settings: MemberAreaSettings | null;
+  choices: Map<string, { position: number; visible: boolean }>;
+};
+
+/** Lê a própria área pela RLS (só o dono enxerga as linhas). */
+export async function getMyMemberAreaEditor(uid: string): Promise<MyMemberAreaEditor> {
+  const supabase = getSupabaseBrowserClient();
+  const { data: area, error } = await supabase
+    .from("member_areas")
+    .select("id, name, theme, cover_path, welcome_text")
+    .eq("owner_id", uid)
+    .maybeSingle();
+  if (error) throw error;
+  if (!area) return { settings: null, choices: new Map() };
+
+  const { data: products, error: productsError } = await supabase
+    .from("member_area_products")
+    .select("course_id, position, visible")
+    .eq("area_id", area.id);
+  if (productsError) throw productsError;
+
+  return {
+    settings: {
+      name: area.name,
+      theme: area.theme === "dark" ? "dark" : "light",
+      coverPath: area.cover_path,
+      welcomeText: area.welcome_text,
+    },
+    choices: new Map((products ?? []).map((row) => [row.course_id, { position: row.position, visible: row.visible }])),
+  };
+}
+
+/**
+ * A mesma ordem do banco (member_area_product_order): primeiro a lista salva,
+ * depois o que ficou fora dela, do mais novo para o mais antigo.
+ */
+export function orderMemberAreaProducts<T extends { id: string; createdAt?: unknown }>(
+  courses: readonly T[],
+  choices: MyMemberAreaEditor["choices"],
+): T[] {
+  const createdAt = (course: T) => Date.parse(String(course.createdAt ?? "")) || 0;
+  return [...courses].sort((a, b) =>
+    (choices.get(a.id)?.position ?? 10000) - (choices.get(b.id)?.position ?? 10000)
+    || createdAt(b) - createdAt(a)
+    || a.id.localeCompare(b.id));
+}
+
+/**
+ * Sobe a capa para `users/{uid}/member-area/` e devolve o caminho. Nome novo a
+ * cada envio: a URL pública muda junto e nenhum cache mostra a capa velha.
+ */
+export async function uploadMemberAreaCover(uid: string, file: File): Promise<string> {
+  if (!isAllowedAvatarFile(file)) throw new Error("MEMBER_AREA_COVER_INVALID");
+  const path = `users/${uid}/member-area/cover-${Date.now()}`;
+  const { error } = await getSupabaseBrowserClient().storage
+    .from(publicMediaBucket)
+    .upload(path, file, { contentType: file.type, upsert: false });
+  if (error) throw error;
+  return path;
+}
+
+/** Apaga uma capa que deixou de ser usada. Falhar aqui só deixa um arquivo órfão. */
+export async function removeMemberAreaCover(path: string): Promise<void> {
+  const { error } = await getSupabaseBrowserClient().storage.from(publicMediaBucket).remove([path]);
+  if (error) throw error;
+}
+
+export function memberAreaCoverUrl(path: string): string {
+  return getSupabaseBrowserClient().storage.from(publicMediaBucket).getPublicUrl(path).data.publicUrl;
 }

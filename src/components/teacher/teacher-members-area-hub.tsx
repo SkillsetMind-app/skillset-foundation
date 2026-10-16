@@ -68,6 +68,17 @@ export function TeacherMembersAreaHub() {
 
       {error ? <InlineAlert tone="error">{t(error)}</InlineAlert> : null}
 
+      {/* A área do criador junta todos os produtos; os espaços abaixo são de cada produto. */}
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-[var(--color-line)] bg-[var(--color-surface-soft)] px-4 py-3">
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-[var(--color-ink)]">{t("teacherMembers.creatorAreaTitle")}</p>
+          <p className="text-sm text-[var(--color-ink-soft)]">{t("teacherMembers.creatorAreaDescription")}</p>
+        </div>
+        <Link href="/teach/member-area" className={buttonClasses({ variant: "outline", size: "sm" })}>
+          {t("teacherMembers.creatorAreaOpen")}
+        </Link>
+      </div>
+
       <section aria-labelledby="members-products-title">
         <div
           className="mb-5 inline-grid grid-cols-2 rounded-md border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-1"

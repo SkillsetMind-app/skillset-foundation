@@ -3007,6 +3007,14 @@ export function CourseBuilderStudio() {
                         ? t("creatorEditor.builder.steps.pricing.help")
                         : t("creatorEditor.builder.steps.review.help")}
               </p>
+              {activeTab === "members" ? (
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--color-ink-soft)]">
+                  {t("creatorEditor.members.creatorAreaNote")}{" "}
+                  <Link href="/teach/member-area" className="font-semibold text-[var(--color-primary)] underline-offset-2 hover:underline">
+                    {t("creatorEditor.members.creatorAreaLink")}
+                  </Link>
+                </p>
+              ) : null}
             </div>
             <div className="grid gap-2 text-right text-xs font-semibold text-[var(--color-ink-soft)]">
               {/* O e-book nao mostra modulo nem aula. */}
