@@ -52,10 +52,9 @@ export async function createSupabaseServerClient(): Promise<
  * sessão, com `error.code = "mfa_required"`. Toda rota já trata "sem usuário".
  *
  * Quem decide é o banco: `session_is_strong()` lê o `aal` do mesmo JWT que o
- * PostgREST validou e os fatores direto de `auth.mfa_factors`. Até 16/10 a
- * decisão usava `user.factors` da resposta do GoTrue — que deixou de trazer a
- * lista para a sessão aal1, e a conta com TOTP passava só com a senha. O
- * caminho comum continua com uma consulta só (session_is_strong já inclui
+ * PostgREST validou e os fatores direto de `auth.mfa_factors`. A resposta do
+ * GoTrue não traz `user.factors` para a sessão aal1, então ela não serve para
+ * esta decisão. O caminho comum continua com uma consulta só (session_is_strong já inclui
  * account_session_allowed); a segunda, só quando a sessão é fraca, separa
  * "deve o código" de "conta bloqueada". Erro em qualquer uma: fecha.
  */

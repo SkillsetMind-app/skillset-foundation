@@ -32,9 +32,9 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 // todas passam, entao e aqui que uma sessao que ainda deve o segundo fator
 // passa a responder como "sem usuario".
 //
-// 16/10: o Auth do Supabase deixou de mandar `user.factors` para a sessao aal1.
-// O portao lia essa lista e passou a abrir a conta com TOTP so com a senha.
-// Agora quem decide e o banco (session_is_strong le auth.mfa_factors).
+// O Auth do Supabase nao manda `user.factors` para a sessao aal1, entao a lista
+// nao serve para decidir. Quem decide e o banco (session_is_strong le
+// auth.mfa_factors).
 
 function token(claims: Record<string, unknown>) {
   const payload = Buffer.from(JSON.stringify(claims)).toString("base64url");

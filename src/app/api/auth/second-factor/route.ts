@@ -5,11 +5,11 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 // Os fatores de 2FA da PRÓPRIA conta, para a tela pedir o código.
 //
-// Por que existe: desde 16/10 o Auth do Supabase não devolve `user.factors`
-// para a sessão aal1, e a lista do cliente (`mfa.listFactors`) sai vazia. Sem
-// o id do fator, o login não pedia o código e a senha sozinha bastava. A API de
-// administração ainda devolve os fatores: aqui ela é chamada só para o dono do
-// token que o próprio GoTrue conferiu. Sai só id, tipo, estado e datas.
+// Por que existe: o Auth do Supabase não devolve `user.factors` para a sessão
+// aal1, e a lista do cliente (`mfa.listFactors`) sai vazia; sem o id do fator
+// não há como pedir o código. A API de administração devolve os fatores: aqui
+// ela é chamada só para o dono do token que o próprio GoTrue conferiu. Sai só
+// id, tipo, estado e datas.
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

@@ -730,11 +730,10 @@ async function isSecondFactorPending(
     return true;
   }
 
-  // Desde 16/10 o Auth do Supabase não manda `user.factors` para a sessão
-  // aal1, e então `nextLevel` sai "aal1" mesmo numa conta com TOTP: a senha
-  // sozinha abria a conta. O banco sabe (session_is_strong lê
-  // auth.mfa_factors). "Fraca" só vira "deve o código" se a conta está
-  // liberada; conta bloqueada é outro caminho.
+  // O Auth do Supabase não manda `user.factors` para a sessão aal1, e então
+  // `nextLevel` sai "aal1" mesmo numa conta com TOTP. O banco sabe
+  // (session_is_strong lê auth.mfa_factors). "Fraca" só vira "deve o código"
+  // se a conta está liberada; conta bloqueada é outro caminho.
   const { data: strong, error: strongError } =
     await supabase.rpc("session_is_strong");
   if (strongError || strong !== false) {

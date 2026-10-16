@@ -258,7 +258,7 @@ describe("getPendingSecondFactor — a tela de login retoma o desafio abandonado
   });
 });
 
-describe("16/10: o Auth parou de mandar os fatores para a sessao aal1", () => {
+describe("sessao aal1 sem a lista de fatores do Auth: o banco decide", () => {
   // Sem `user.factors`, o Supabase responde nextLevel "aal1" mesmo numa conta
   // com TOTP, e a lista do cliente sai vazia. Quem decide e o banco; o id do
   // fator vem da rota do servidor.
