@@ -1,6 +1,7 @@
--- A compra sem login pergunta se a conta achada pelo e-mail esta suspensa
--- (e-mail bloqueado implica suspensa: constraint de account_controls). Conta
--- suspensa nao compra: depois de pagar, nao conseguiria entrar.
+-- A compra sem login pergunta se a conta achada pelo e-mail esta impedida de
+-- entrar: suspensa em account_controls (e-mail bloqueado implica suspensa,
+-- pela constraint da tabela) ou banida no Auth (banned_until no futuro).
+-- Conta assim nao compra: depois de pagar, nao conseguiria entrar.
 -- O service_role nao le account_controls (de proposito, 20260910030000); esta
 -- funcao responde so sim ou nao, e so para ele.
 
@@ -13,6 +14,9 @@ as $$
   select exists (
     select 1 from public.account_controls c
     where c.uid = p_uid and c.suspended
+  ) or exists (
+    select 1 from auth.users u
+    where u.id::text = p_uid and u.banned_until > now()
   );
 $$;
 
