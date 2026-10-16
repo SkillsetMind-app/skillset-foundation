@@ -33,6 +33,7 @@ const PAGINAS_COM_TITULO_PROPRIO = [
   "teach/events/page.tsx",
   "teach/marketing/page.tsx",
   "teach/media/page.tsx",
+  "teach/member-area/page.tsx",
   "teach/members/page.tsx",
   "teach/messages/page.tsx",
   "teach/page.tsx",

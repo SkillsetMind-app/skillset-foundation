@@ -1706,6 +1706,49 @@
     }
   },
   "teach": {
+    "memberAreaPage": {
+      "title": "Tu área de miembros.",
+      "description": "Un solo lugar para todo lo que vendes. Tus estudiantes retoman donde se quedaron, ven lo que compraron y descubren tus otros productos."
+    },
+    "memberAreaEditor": {
+      "loading": "Cargando tu área de miembros...",
+      "virtualNote": "Todavía no la personalizaste. Tus estudiantes ven tu nombre, el tema claro y todos tus productos publicados, del más nuevo al más antiguo.",
+      "name": "Nombre del área",
+      "nameHelp": "{length}/80 — déjalo vacío para usar tu nombre.",
+      "theme": "Tema",
+      "light": "Claro",
+      "dark": "Oscuro",
+      "cover": "Portada",
+      "coverHelp": "Banner en la parte superior del área. 16:9, JPG, PNG o WebP de menos de 5 MB.",
+      "uploadCover": "Subir portada",
+      "replaceCover": "Cambiar portada",
+      "removeCover": "Quitar portada",
+      "uploading": "Subiendo...",
+      "welcome": "Texto de bienvenida",
+      "welcomePlaceholder": "Una nota breve que tus estudiantes leen al abrir el área.",
+      "welcomeHelp": "{length}/2000",
+      "products": "Productos",
+      "productsHelp": "Define el orden que ven tus estudiantes. Un producto oculto sale de la vitrina, pero sigue disponible para quien ya lo compró.",
+      "noProducts": "Todavía no tienes productos.",
+      "notPublished": "Sin publicar — aparece cuando lo publiques.",
+      "visible": "Visible",
+      "hidden": "Oculto",
+      "showLabel": "Mostrar {title} en el área de miembros",
+      "moveUp": "Subir {title}",
+      "moveDown": "Bajar {title}",
+      "save": "Guardar área de miembros",
+      "saving": "Guardando...",
+      "saved": "Guardado. Tus estudiantes ven los cambios la próxima vez que abran el área.",
+      "previewAsStudent": "Ver como estudiante",
+      "previewHelp": "La vista de estudiante muestra la última versión guardada.",
+      "errors": {
+        "load": "No pudimos cargar tu área de miembros. Inténtalo de nuevo.",
+        "courses": "No pudimos cargar tus productos. Recarga la página para intentarlo de nuevo.",
+        "save": "No pudimos guardar tu área de miembros. Inténtalo de nuevo.",
+        "coverInvalid": "Usa una imagen JPG, PNG o WebP de menos de 5 MB.",
+        "coverUpload": "No pudimos subir esta imagen. Inténtalo de nuevo."
+      }
+    },
     "tour": {
       "welcome": "Bienvenido a tu espacio",
       "welcomeNamed": "Bienvenido a tu espacio, {name}",
@@ -3631,6 +3674,8 @@
       "protectionNote": "Cualquiera que tenga el enlace puede ver los videos de YouTube y Vimeo, incluso fuera de SkillsetMind. Sube el video aquí para que la reproducción pase por el control de acceso de SkillsetMind."
     },
     "members": {
+      "creatorAreaNote": "Este paso define el estilo del aula de este producto. El área que reúne todos tus productos se configura aparte.",
+      "creatorAreaLink": "Abrir tu área de miembros",
       "step": "Área de miembros",
       "stepHelp": "Tema, portada, título",
       "heading": "Personaliza el área de miembros.",
@@ -5758,6 +5803,9 @@
     }
   },
   "teacherMembers": {
+    "creatorAreaTitle": "Tu área de miembros",
+    "creatorAreaDescription": "Un solo lugar que reúne todos tus productos para tus estudiantes.",
+    "creatorAreaOpen": "Personalizar",
     "pageTitle": "Áreas de miembros",
     "products": "Productos",
     "title": "Miembros y comunidades",
