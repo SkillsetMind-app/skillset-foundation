@@ -26,6 +26,8 @@ import { getUserProfile } from "@/lib/data/user-profiles";
 
 const maxName = 80;
 const maxWelcome = 2000;
+/** Teto de save_my_member_area_products: o resto segue a ordem padrão, visível. */
+const maxProducts = 500;
 
 type LoadState = "loading" | "ready" | "error";
 
@@ -167,7 +169,7 @@ export function MemberAreaSettingsPanel() {
     }
     try {
       await saveMyMemberAreaProducts(
-        orderedCourses.map((course) => ({ courseId: course.id, visible: !hidden.has(course.id) })),
+        orderedCourses.slice(0, maxProducts).map((course) => ({ courseId: course.id, visible: !hidden.has(course.id) })),
       );
       setFeedback("saved");
     } catch {
@@ -336,6 +338,11 @@ export function MemberAreaSettingsPanel() {
         <div>
           <p className="text-sm font-semibold text-[var(--color-ink)]">{t("teach.memberAreaEditor.products")}</p>
           <p className="mt-1 text-xs leading-5 text-[var(--color-ink-soft)]">{t("teach.memberAreaEditor.productsHelp")}</p>
+          {orderedCourses.length > maxProducts ? (
+            <p className="mt-1 text-xs leading-5 text-[var(--color-ink-soft)]">
+              {t("teach.memberAreaEditor.tooManyProducts").replace("{max}", () => String(maxProducts))}
+            </p>
+          ) : null}
         </div>
         {coursesFailed ? (
           <InlineAlert tone="error">{t("teach.memberAreaEditor.errors.courses")}</InlineAlert>

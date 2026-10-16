@@ -1751,6 +1751,7 @@
       "products": "Productos",
       "productsHelp": "Define el orden que ven tus estudiantes. Un producto oculto sale de la vitrina, pero sigue disponible para quien ya lo compró.",
       "noProducts": "Todavía no tienes productos.",
+      "tooManyProducts": "El orden y la visibilidad se guardan para los primeros {max} productos. El resto aparece después, del más nuevo al más antiguo.",
       "notPublished": "Sin publicar — aparece cuando lo publiques.",
       "visible": "Visible",
       "hidden": "Oculto",

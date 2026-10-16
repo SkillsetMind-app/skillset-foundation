@@ -1751,6 +1751,7 @@
       "products": "Products",
       "productsHelp": "Set the order students see. A hidden product leaves the showcase but stays available to students who already bought it.",
       "noProducts": "You have no products yet.",
+      "tooManyProducts": "Order and visibility are saved for the first {max} products. The rest show after them, newest first.",
       "notPublished": "Not published — shows up after you publish it.",
       "visible": "Visible",
       "hidden": "Hidden",
