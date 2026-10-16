@@ -1616,7 +1616,7 @@ export type Database = {
           },
         ]
       }
-      // Added by hand for supabase/migrations/20261016010000_area_de_membros.sql.
+      // Added by hand for supabase/migrations/20261016030000_area_de_membros.sql.
       // Writes go only through save_my_member_area(_products); no insert grant.
       member_area_products: {
         Row: {
@@ -2626,7 +2626,7 @@ export type Database = {
         Args: { p_blocks: Json; p_course_id: string; p_template: string }
         Returns: undefined
       }
-      // Added by hand for supabase/migrations/20261016010000_area_de_membros.sql.
+      // Added by hand for supabase/migrations/20261016030000_area_de_membros.sql.
       get_member_area_home: { Args: { p_area_ref: string }; Returns: Json }
       save_my_member_area: {
         Args: { p_cover_path: string; p_name: string; p_theme: string; p_welcome_text: string }

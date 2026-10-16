@@ -6,7 +6,7 @@ import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 /**
  * Área de membros por criador: uma por criador, juntando os produtos dele.
  *
- * Tudo passa pelas funções do banco (migration 20261016010000_area_de_membros):
+ * Tudo passa pelas funções do banco (migration 20261016030000_area_de_membros):
  * a leitura devolve null para quem não é aluno nem dono, e a vitrine ("mais
  * deste criador") só traz campos públicos. A área não libera aula nenhuma; o
  * acesso continua por curso.
@@ -67,11 +67,12 @@ export type MemberAreaHome = {
   moreProducts: MemberAreaLockedProduct[];
 };
 
+/** Os quatro de uma vez: salvar regrava todos, então nenhum é opcional. */
 export type MemberAreaSettings = {
-  name?: string | null;
-  theme?: MemberAreaTheme;
-  coverPath?: string | null;
-  welcomeText?: string | null;
+  name: string | null;
+  theme: MemberAreaTheme;
+  coverPath: string | null;
+  welcomeText: string | null;
 };
 
 export type MemberAreaProductChoice = { courseId: string; visible: boolean };
@@ -173,7 +174,7 @@ export async function getMemberAreaHome(ref: string): Promise<MemberAreaHome | n
 export async function saveMyMemberArea(settings: MemberAreaSettings): Promise<void> {
   const { error } = await getSupabaseBrowserClient().rpc("save_my_member_area", {
     p_name: settings.name ?? "",
-    p_theme: settings.theme ?? "light",
+    p_theme: settings.theme,
     p_cover_path: settings.coverPath ?? "",
     p_welcome_text: settings.welcomeText ?? "",
   });

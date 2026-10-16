@@ -83,7 +83,7 @@ describe("memberAreaPath", () => {
 describe("saveMyMemberArea", () => {
   it("manda vazio para o que volta ao padrão", async () => {
     rpc.mockResolvedValue({ data: null, error: null });
-    await saveMyMemberArea({ name: "Eton Academy", welcomeText: null });
+    await saveMyMemberArea({ name: "Eton Academy", theme: "light", coverPath: null, welcomeText: null });
     expect(rpc).toHaveBeenCalledWith("save_my_member_area", {
       p_name: "Eton Academy", p_theme: "light", p_cover_path: "", p_welcome_text: "",
     });
@@ -91,7 +91,8 @@ describe("saveMyMemberArea", () => {
 
   it("propaga o erro", async () => {
     rpc.mockResolvedValue({ data: null, error: { message: "MEMBER_AREA_FORBIDDEN" } });
-    await expect(saveMyMemberArea({ theme: "dark" })).rejects.toMatchObject({ message: "MEMBER_AREA_FORBIDDEN" });
+    await expect(saveMyMemberArea({ name: null, theme: "dark", coverPath: null, welcomeText: null }))
+      .rejects.toMatchObject({ message: "MEMBER_AREA_FORBIDDEN" });
   });
 });
 
