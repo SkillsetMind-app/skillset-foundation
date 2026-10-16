@@ -12,12 +12,13 @@ begin if not coalesce(ok, false) then raise exception 'MEMBER_AREA_REGRESSION: %
 create function pg_temp.uid(n int) returns uuid language sql immutable as $$
   select ('91016010-0000-4000-8000-' || lpad(n::text, 12, '0'))::uuid;
 $$;
-create function pg_temp.act_as(p_uid uuid, p_role text default 'authenticated') returns void language plpgsql as $$
+create function pg_temp.act_as(p_uid uuid, p_role text default 'authenticated', p_aal text default 'aal2')
+returns void language plpgsql as $$
 begin
   perform set_config('request.jwt.claim.sub', coalesce(p_uid::text, ''), true);
   perform set_config('request.jwt.claim.role', p_role, true);
   perform set_config('request.jwt.claims',
-    jsonb_build_object('sub', p_uid, 'role', p_role, 'aal', 'aal2')::text, true);
+    jsonb_build_object('sub', p_uid, 'role', p_role, 'aal', p_aal)::text, true);
   perform set_config('skillset.trusted_write', 'off', true);
 end $$;
 create function pg_temp.refused(statement text, state text, expected text default null) returns void language plpgsql as $$
@@ -43,13 +44,14 @@ create function pg_temp.file_path(k text) returns text language sql immutable as
   select 'courses/smoke-area-' || k || '/assets/' || pg_temp.uid(1)::text || '/smoke-area-asset-' || k || '/material.pdf';
 $$;
 
--- 1 criador (Eton), 2 aluno so de A, 3 ninguem, 4 outro criador.
+-- 1 criador (Eton), 2 aluno so de A, 3 ninguem, 4 outro criador, 5 aluno de A
+-- com 2FA e sem aula tocada, 6 reembolsado de A.
 select pg_temp.act_as(null, 'service_role');
 select set_config('skillset.trusted_write', 'on', true);
 insert into auth.users(id, aud, role, email, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
 select pg_temp.uid(n), 'authenticated', 'authenticated', 'member-area-' || n || '@example.test',
   now(), '{}', '{}', now(), now()
-from generate_series(1, 4) n;
+from generate_series(1, 6) n;
 insert into public.users(uid, email, roles, onboarding_completed)
 select id::text, email, '["student"]'::jsonb, true from auth.users where email like 'member-area-%@example.test'
 on conflict (uid) do nothing;
@@ -75,8 +77,11 @@ from (values ('a', 1, 'published', 4), ('b', 1, 'published', 3), ('h', 1, 'publi
   ('d', 1, 'draft', 1), ('c', 4, 'published', 1)) k(key, owner, status, age);
 insert into public.enrollments(id, user_id, course_id, course_slug, course_title, course_category,
   course_image, status, source, last_lesson_id)
-values (pg_temp.uid(2)::text || '__' || pg_temp.course('a'), pg_temp.uid(2)::text, pg_temp.course('a'),
-  pg_temp.course('a'), 'Smoke area a', 'smoke', '', 'active', 'admin', 'a-1');
+select pg_temp.uid(e.n)::text || '__' || pg_temp.course('a'), pg_temp.uid(e.n)::text, pg_temp.course('a'),
+  pg_temp.course('a'), 'Smoke area a', 'smoke', '', e.status, 'admin', e.last_lesson
+from (values (2, 'active', 'a-1'), (5, 'active', 'a-1'), (6, 'refunded', null)) e(n, status, last_lesson);
+insert into auth.mfa_factors(id, user_id, factor_type, status, created_at, updated_at)
+values (gen_random_uuid(), pg_temp.uid(5), 'totp', 'verified', now(), now());
 insert into public.lesson_playback(enrollment_id, lesson_id, user_id, last_seen_at, position_seconds)
 values (pg_temp.uid(2)::text || '__' || pg_temp.course('a'), 'a-2', pg_temp.uid(2)::text, now(), 42);
 -- O conteudo protegido de B: texto da aula, material e o arquivo no bucket privado.
@@ -111,7 +116,29 @@ select pg_temp.assert_true(pg_temp.home('@SMOKE-AREA-ETON') is not null
   and pg_temp.home(pg_temp.uid(1)::text) is not null, 'area resolves by @ in any case and by uid');
 select pg_temp.assert_true(pg_temp.home('@ninguem-aqui') is null, 'unknown creator is null');
 
+reset role;
+
+-- Aluno com 2FA sem o segundo fator na sessao: null. Com ele, continuar cai na
+-- ultima aula aberta, porque nenhuma foi tocada.
+select pg_temp.act_as(pg_temp.uid(5), 'authenticated', 'aal1');
+set local role authenticated;
+select pg_temp.assert_true(pg_temp.home('@smoke-area-eton') is null, 'second factor missing from session');
+reset role;
+select pg_temp.act_as(pg_temp.uid(5));
+set local role authenticated;
+select pg_temp.assert_true((select d #>> '{continue,lesson_id}' = 'a-1' and d #>> '{continue,lesson_title}' = 'Aula a 1'
+    and (d #>> '{continue,position_seconds}')::int = 0
+  from (select pg_temp.home('@smoke-area-eton') as d) x), 'continue falls back to the last opened lesson');
+reset role;
+-- Reembolsado nao e aluno.
+select pg_temp.act_as(pg_temp.uid(6));
+set local role authenticated;
+select pg_temp.assert_true(pg_temp.home('@smoke-area-eton') is null, 'refunded student gets null');
+reset role;
+
 -- 2) A area nao libera nada de B.
+select pg_temp.act_as(pg_temp.uid(2));
+set local role authenticated;
 select pg_temp.assert_true(not exists (select 1 from public.course_lesson_content
   where course_id = pg_temp.course('b')), 'student reads lesson text of B');
 select pg_temp.assert_true(not exists (select 1 from public.course_assets
@@ -148,7 +175,8 @@ select pg_temp.refused(format($q$select public.save_my_member_area_products('[{"
   to_jsonb(pg_temp.course('c')), to_jsonb(pg_temp.course('b'))), '42501', 'MEMBER_AREA_COURSE_NOT_OWNED');
 reset role;
 select pg_temp.assert_true(not exists (select 1 from public.member_areas where owner_id = pg_temp.uid(4)::text)
-  and not exists (select 1 from public.member_area_products), 'rejected save wrote something');
+  and not exists (select 1 from public.member_area_products where course_id like 'smoke-area-%'),
+  'rejected save wrote something');
 
 -- 5) O dono configura: nome, tema, ordem e H oculto. Capa fora da pasta dele e recusada.
 select pg_temp.act_as(pg_temp.uid(1));
@@ -182,6 +210,14 @@ select pg_temp.assert_true((select d #>> '{area,name}' = 'Eton Academy' and d #>
   from (select pg_temp.home('@smoke-area-eton') as d) x), 'student sees saved area, hidden and draft stay out');
 select pg_temp.assert_true(not exists (select 1 from public.member_areas)
   and not exists (select 1 from public.member_area_products), 'student reads area tables directly');
+reset role;
+
+-- Outro criador nao le a configuracao do Eton direto na tabela.
+select pg_temp.act_as(pg_temp.uid(4));
+set local role authenticated;
+select pg_temp.assert_true(not exists (select 1 from public.member_areas where owner_id = pg_temp.uid(1)::text)
+  and not exists (select 1 from public.member_area_products where course_id like 'smoke-area-%'),
+  'other creator reads area tables directly');
 reset role;
 
 -- Oculto continua em "meus produtos" para quem comprou.
