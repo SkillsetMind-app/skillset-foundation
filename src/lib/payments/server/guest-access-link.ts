@@ -77,7 +77,7 @@ export async function sendGuestAccessLink(admin: Admin, email: string, courseId:
  * the guest checkout routes.
  */
 export function reportLostSignInLink(
-  where: "stripe.webhook" | "guest_checkout",
+  where: "stripe.webhook" | "guest_checkout" | "teach.course_access",
   courseId: string,
   userId: string,
   result: string,
