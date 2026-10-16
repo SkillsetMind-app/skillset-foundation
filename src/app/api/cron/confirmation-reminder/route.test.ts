@@ -150,6 +150,16 @@ describe("confirmation reminder cron", () => {
     expect(sentTo()).toEqual([old.email, banLifted.email, young.email]);
   });
 
+  it("skips accounts made by guest checkout (server-written mark), not ones that only claim it", async () => {
+    user(30, { app_metadata: { provider: "email", created_via: "guest_checkout" } });
+    const selfClaimed = user(30, { user_metadata: { created_via: "guest_checkout" } });
+
+    const response = await run();
+
+    expect(await response.json()).toEqual({ ok: true, due: 1, sent: 1, failed: 0 });
+    expect(sentTo()).toEqual([selfClaimed.email]);
+  });
+
   it("marks the account before the email goes out and never sends twice", async () => {
     const pending = user(30);
 

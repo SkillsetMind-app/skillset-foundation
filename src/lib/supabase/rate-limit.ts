@@ -53,6 +53,14 @@ export function rateLimitKeyFromIp(request: Request, prefix: string): string {
   return `${prefix}_${hashIp(ip)}`;
 }
 
+/**
+ * Rate-limit key for a value that must not be stored in the clear (an email
+ * address). Same keyed hash as the IP key above.
+ */
+export function rateLimitKeyFromValue(prefix: string, value: string): string {
+  return `${prefix}_${hashIp(value)}`;
+}
+
 function hashIp(ip: string): string {
   const configured = process.env.RATE_LIMIT_PEPPER?.trim();
   if (!configured && process.env.NODE_ENV === "production" && !warnedAboutMissingPepper) {

@@ -1,0 +1,170 @@
+import { createHmac, timingSafeEqual } from "node:crypto";
+
+import { currentPrivacyVersion, currentTermsVersion } from "@/lib/legal/versions";
+import { isGuestCheckoutEnabled } from "@/lib/payments/guest-checkout";
+import { getAppUrl } from "@/lib/payments/server/app-url";
+import type { getSupabaseAdminClient } from "@/lib/supabase/admin";
+
+// Server side of guest checkout (see /api/payments/guest-checkout).
+
+type Admin = ReturnType<typeof getSupabaseAdminClient>;
+
+/** Marks accounts this flow created (user_metadata, and app_metadata, which only the server writes). */
+export const GUEST_CHECKOUT_ORIGIN = "guest_checkout";
+
+/** Signed { email, courseId } so the thank-you page can name the address and resend the link. */
+export const GUEST_CHECKOUT_COOKIE = "sm_guest_checkout";
+const COOKIE_TTL_SECONDS = 2 * 60 * 60;
+
+const SITEVERIFY_URL = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
+
+/** The public switch plus the Turnstile secret. Any of them missing: the route is off. */
+export function isGuestCheckoutConfigured(): boolean {
+  return isGuestCheckoutEnabled() && Boolean(process.env.TURNSTILE_SECRET_KEY);
+}
+
+/** Cloudflare Turnstile, checked server-side. Any failure (network, timeout, bad answer) is a "no". */
+export async function verifyTurnstileToken(token: string, ip: string | null): Promise<boolean> {
+  const secret = process.env.TURNSTILE_SECRET_KEY;
+  if (!secret || !token) return false;
+  try {
+    const form = new URLSearchParams({ secret, response: token });
+    if (ip) form.set("remoteip", ip);
+    const response = await fetch(SITEVERIFY_URL, {
+      method: "POST",
+      body: form,
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!response.ok) return false;
+    const result = (await response.json()) as { success?: unknown };
+    return result.success === true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * The account id for an e-mail, from auth.users (what sign-in uses).
+ * public.users.email is editable by its owner, so it is never the lookup.
+ */
+async function findAuthUserIdByEmail(admin: Admin, email: string): Promise<string | null> {
+  const { data, error } = await admin.rpc("find_auth_user_id_by_email", { p_email: email });
+  if (error) throw new Error(error.message);
+  return typeof data === "string" && data ? data : null;
+}
+
+/**
+ * The buyer's account: the existing one for this e-mail (untouched: no
+ * sign-in, no metadata, no terms), or a new one created silently: no password,
+ * unconfirmed, no e-mail sent. A new account records the terms and privacy
+ * acceptance the form required, like a normal signup.
+ */
+export async function findOrCreateGuestBuyer(
+  admin: Admin,
+  input: { email: string; name: string; locale: string },
+): Promise<{ userId: string; created: boolean }> {
+  const existing = await findAuthUserIdByEmail(admin, input.email);
+  if (existing) return { userId: existing, created: false };
+
+  const { data, error } = await admin.auth.admin.createUser({
+    email: input.email,
+    email_confirm: false,
+    user_metadata: { name: input.name, locale: input.locale, created_via: GUEST_CHECKOUT_ORIGIN },
+    app_metadata: { created_via: GUEST_CHECKOUT_ORIGIN },
+  });
+  if (data?.user) {
+    await recordTermsAcceptance(admin, data.user.id);
+    return { userId: data.user.id, created: true };
+  }
+
+  // A double submit or a signup created it between the lookup and here.
+  const raced = await findAuthUserIdByEmail(admin, input.email);
+  if (raced) return { userId: raced, created: false };
+  throw new Error(`Guest buyer account was not created (${error?.code ?? "unknown"}).`);
+}
+
+async function recordTermsAcceptance(admin: Admin, userId: string): Promise<void> {
+  const now = new Date().toISOString();
+  const { data, error } = await admin
+    .from("users")
+    .update({
+      terms_accepted_at: now,
+      terms_version: currentTermsVersion,
+      privacy_accepted_at: now,
+      privacy_version: currentPrivacyVersion,
+      updated_at: now,
+    })
+    .eq("uid", userId)
+    .select("uid");
+  if (error) throw new Error(error.message);
+  // handle_new_user creates the row with the auth user; none means no record.
+  if (!data?.length) throw new Error("Guest buyer profile row is missing.");
+}
+
+/**
+ * Sign-in link to the course, same mechanism as the creator's manual access
+ * (admin signInWithOtp). Never creates an account. Returns whether the
+ * provider accepted it; the caller decides what the person is told.
+ */
+export async function sendGuestAccessLink(admin: Admin, email: string, courseId: string): Promise<boolean> {
+  const next = `/learn/courses/${encodeURIComponent(courseId)}`;
+  try {
+    const { error } = await admin.auth.signInWithOtp({
+      email,
+      options: {
+        shouldCreateUser: false,
+        emailRedirectTo: `${getAppUrl()}/auth/confirm?next=${encodeURIComponent(next)}`,
+      },
+    });
+    if (error) {
+      console.error("[guest-checkout] access link not sent", { status: error.status ?? null, code: error.code ?? null });
+    }
+    return !error;
+  } catch {
+    return false;
+  }
+}
+
+// Keyed with the Turnstile secret, which this flow cannot run without. The
+// prefix keeps this MAC apart from any other use of that key.
+function sign(payload: string): string {
+  return createHmac("sha256", process.env.TURNSTILE_SECRET_KEY ?? "")
+    .update(`guest-checkout-cookie:${payload}`)
+    .digest("base64url");
+}
+
+export function encodeGuestCheckoutCookie(value: { email: string; courseId: string }, now = Date.now()): string {
+  const payload = Buffer.from(
+    JSON.stringify({ e: value.email, c: value.courseId, x: now + COOKIE_TTL_SECONDS * 1000 }),
+  ).toString("base64url");
+  return `${payload}.${sign(payload)}`;
+}
+
+export function decodeGuestCheckoutCookie(
+  raw: string | undefined,
+  now = Date.now(),
+): { email: string; courseId: string } | null {
+  if (!raw || !process.env.TURNSTILE_SECRET_KEY) return null;
+  const [payload, signature, extra] = raw.split(".");
+  if (!payload || !signature || extra !== undefined) return null;
+  const expected = Buffer.from(sign(payload));
+  const given = Buffer.from(signature);
+  if (expected.length !== given.length || !timingSafeEqual(expected, given)) return null;
+  try {
+    const data = JSON.parse(Buffer.from(payload, "base64url").toString("utf8")) as { e?: unknown; c?: unknown; x?: unknown };
+    if (typeof data.e !== "string" || typeof data.c !== "string" || !(Number(data.x) > now)) return null;
+    return { email: data.e, courseId: data.c };
+  } catch {
+    return null;
+  }
+}
+
+export function guestCheckoutCookieOptions() {
+  return {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax" as const,
+    path: "/",
+    maxAge: COOKIE_TTL_SECONDS,
+  };
+}
