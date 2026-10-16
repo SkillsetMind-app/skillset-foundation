@@ -3,6 +3,7 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import { currentPrivacyVersion, currentTermsVersion } from "@/lib/legal/versions";
 import { isGuestCheckoutEnabled } from "@/lib/payments/guest-checkout";
 import { getAppUrl } from "@/lib/payments/server/app-url";
+import { PaymentError } from "@/lib/payments/server/auth";
 import type { getSupabaseAdminClient } from "@/lib/supabase/admin";
 
 // Server side of guest checkout (see /api/payments/guest-checkout).
@@ -102,7 +103,10 @@ export async function findOrCreateGuestBuyer(
   // A double submit or a signup created it between the lookup and here.
   const raced = await findAuthUserIdByEmail(admin, input.email);
   if (raced) return { userId: raced, created: false };
-  throw new Error(`Guest buyer account was not created (${error?.code ?? "unknown"}).`);
+  // The address cannot take an account here. Same answer as a course that
+  // cannot be bought.
+  console.error("[guest-checkout] account not created", { code: error?.code ?? null });
+  throw new PaymentError("This course is not available for purchase right now.");
 }
 
 /**

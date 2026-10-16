@@ -50,6 +50,7 @@ type AdminInput = {
   existingUserId?: string | null;
   enrollment?: { status: string } | null;
   createUserFails?: boolean;
+  racedUserId?: string;
   lockReply?: { action: string; checkout_url: string | null };
   rateLimited?: string;
   rateLimitDown?: boolean;
@@ -122,7 +123,7 @@ function createAdmin(input: AdminInput = {}) {
       if (name === "find_auth_user_id_by_email") {
         lookups += 1;
         // A lost createUser race finds the account on the second lookup.
-        if (input.createUserFails && lookups > 1) return { data: "raced-user", error: null };
+        if (input.createUserFails && lookups > 1) return { data: input.racedUserId ?? null, error: null };
         return { data: input.existingUserId ?? null, error: null };
       }
       if (name === "course_owner_can_sell") return { data: true, error: null };
@@ -338,6 +339,18 @@ describe("guest checkout", () => {
     expect(mocks.createSession).not.toHaveBeenCalled();
   });
 
+  it("answers an address that cannot take an account like a course that cannot be bought", async () => {
+    admin = createAdmin({ createUserFails: true });
+    const refused = await POST(guestRequest(validBody));
+
+    mocks.getCourseRow.mockResolvedValue({ id: "course", owner_id: "teacher", status: "draft" });
+    const unsellable = await POST(guestRequest(validBody));
+
+    expect(refused.status).toBe(400);
+    expect(await refused.json()).toEqual(await unsellable.json());
+    expect(mocks.createSession).not.toHaveBeenCalled();
+  });
+
   it("makes no account for a course that does not exist", async () => {
     mocks.getCourseRow.mockResolvedValue(null);
 
@@ -395,7 +408,7 @@ describe("guest checkout", () => {
   });
 
   it("takes the account that won a creation race, without writing its terms", async () => {
-    admin = createAdmin({ createUserFails: true });
+    admin = createAdmin({ createUserFails: true, racedUserId: "raced-user" });
 
     const response = await POST(guestRequest(validBody));
 
