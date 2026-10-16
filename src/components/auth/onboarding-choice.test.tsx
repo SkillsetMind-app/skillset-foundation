@@ -157,6 +157,25 @@ describe("H3: pais na ativacao do professor", () => {
     await waitFor(() => expect(mocks.router.push).toHaveBeenCalledWith("/teach"));
   });
 
+  it("leitura do perfil falhou: conclui a ativacao sem gravar o pais por cima das respostas", async () => {
+    mocks.getUserProfile.mockRejectedValueOnce(new Error("offline"));
+    await mount();
+    expect(screen.getByText("onboarding.errorProfileLoad")).toBeInTheDocument();
+    fireEvent.click(screen.getByText("onboarding.pathTeachTitle"));
+    fireEvent.change(screen.getByLabelText("connectOnboarding.countryLabel"), { target: { value: "CA" } });
+    fireEvent.click(screen.getByRole("checkbox"));
+    fireEvent.click(screen.getByRole("button", { name: "onboarding.continue" }));
+    fireEvent.change(screen.getByPlaceholderText("onboarding.usernamePlaceholder"), { target: { value: "patrick" } });
+    fireEvent.click(screen.getByRole("button", { name: "onboarding.continue" }));
+    fireEvent.click(screen.getByText("onboarding.goalTeachLabel"));
+    fireEvent.click(screen.getByRole("button", { name: "onboarding.finishSetup" }));
+    await waitFor(() => expect(mocks.router.push).toHaveBeenCalledWith("/teach"));
+    expect(mocks.updateOnboardingAnswers).not.toHaveBeenCalled();
+    expect(mocks.completeUserOnboarding).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({
+      uid: "learner-1", roles: ["teacher"], acceptTeacherTerms: true,
+    }));
+  });
+
   it.each(["teacher", "student"])("fluxo direto %s mostra e grava pais somente para professor", async (path) => {
     mocks.searchParams = new URLSearchParams(`path=${path}`);
     mocks.getUserProfile.mockResolvedValue({ ...profile, onboardingCompleted: false });

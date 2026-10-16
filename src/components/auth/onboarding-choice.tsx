@@ -398,12 +398,10 @@ export function OnboardingChoice() {
     setIsSaving(true);
 
     try {
-      if (selectedPathIncludesTeacher) {
-        if (!answersLoaded) {
-          setError(t("onboarding.errorProfileLoad"));
-          setIsSaving(false);
-          return;
-        }
+      // Sem a leitura do perfil, gravar so o pais apagaria as outras respostas.
+      // O pais e so declarado: a carteira e o servidor decidem, entao a
+      // ativacao segue sem ele.
+      if (selectedPathIncludesTeacher && answersLoaded) {
         await updateOnboardingAnswers({
           uid,
           answers: { ...onboardingAnswers, payoutCountry },
