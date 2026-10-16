@@ -37,12 +37,20 @@ function formatTime(seconds: number): string {
   return `${minutes}:${String(seconds % 60).padStart(2, "0")}`;
 }
 
-function priceLabel(product: MemberAreaLockedProduct, locale: string, free: string): string | null {
-  if (product.paymentType === "free" || product.priceAmountMinor === 0) return free;
+function priceLabel(
+  product: MemberAreaLockedProduct,
+  locale: string,
+  labels: { free: string; month: string; year: string },
+): string | null {
+  if (product.paymentType === "free" || product.priceAmountMinor === 0) return labels.free;
   if (product.priceAmountMinor === null || !product.currency) return null;
   try {
-    return new Intl.NumberFormat(locale, { style: "currency", currency: product.currency.toUpperCase() })
+    const amount = new Intl.NumberFormat(locale, { style: "currency", currency: product.currency.toUpperCase() })
       .format(product.priceAmountMinor / 100);
+    // Mesmo formato da página de vendas: "$19.00 / month".
+    if (product.paymentType === "subscription_monthly") return `${amount} / ${labels.month}`;
+    if (product.paymentType === "subscription_yearly") return `${amount} / ${labels.year}`;
+    return amount;
   } catch {
     return null;
   }
@@ -102,7 +110,11 @@ export function MemberAreaHomeView({ areaRef, brand = null }: { areaRef: string;
 
   const { area, continueWatching, myProducts, moreProducts } = state.home;
   const areaName = area.name ?? area.creatorName ?? "";
-  const free = t("learn.memberArea.free");
+  const priceLabels = {
+    free: t("learn.memberArea.free"),
+    month: t("publicCourses.month"),
+    year: t("publicCourses.year"),
+  };
 
   return (
     <MemberAreaShell theme={area.theme} brand={brand}>
@@ -206,11 +218,13 @@ export function MemberAreaHomeView({ areaRef, brand = null }: { areaRef: string;
             {t("learn.memberArea.moreProducts")}
           </h2>
           {moreProducts.length === 0 ? (
-            <p className="text-sm text-[var(--ma-ink-soft)]">{t("learn.memberArea.moreProductsEmpty")}</p>
+            <p className="text-sm text-[var(--ma-ink-soft)]">
+              {t(myProducts.length > 0 ? "learn.memberArea.moreProductsEmpty" : "learn.memberArea.moreProductsNone")}
+            </p>
           ) : (
             <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {moreProducts.map((product) => {
-                const price = priceLabel(product, locale, free);
+                const price = priceLabel(product, locale, priceLabels);
                 return (
                   <li key={product.courseId} className={cardClass}>
                     <span className="relative block aspect-video overflow-hidden">
