@@ -1,7 +1,8 @@
 // @vitest-environment node
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const mocks = vi.hoisted(() => ({ client: vi.fn(), admin: vi.fn(), limit: vi.fn(), free: vi.fn() }));
+const mocks = vi.hoisted(() => ({ client: vi.fn(), admin: vi.fn(), limit: vi.fn(), free: vi.fn(), notify: vi.fn() }));
+vi.mock("@/lib/ops/alert", () => ({ notifyOps: mocks.notify }));
 vi.mock("@/lib/supabase/server", () => ({ createSupabaseServerClient: mocks.client }));
 vi.mock("@/lib/supabase/admin", () => ({ getSupabaseAdminClient: mocks.admin }));
 vi.mock("@/lib/payments/server/auth", async (importOriginal) => ({
@@ -15,6 +16,11 @@ import { GET, POST } from "./route";
 const grant = { id: "11111111-1111-4111-8111-111111111111", course_id: "course-1", learner_email: "learner@example.com", access_status: "pending", revoked_at: null };
 let rpc: ReturnType<typeof vi.fn>;
 let send: ReturnType<typeof vi.fn>;
+// The learner's existing account, as auth.users sees it (null: none yet).
+let account: { id: string; email_confirmed_at: string | null; app_metadata: Record<string, unknown> } | null;
+let adminRpc: ReturnType<typeof vi.fn>;
+let getUserById: ReturnType<typeof vi.fn>;
+let updateUserById: ReturnType<typeof vi.fn>;
 let query: Record<string, ReturnType<typeof vi.fn>>;
 function request(body: unknown) { return new Request("https://www.skillsetmind.com/api/teach/course-access", { method: "POST", body: JSON.stringify(body) }); }
 beforeEach(() => {
@@ -26,7 +32,11 @@ beforeEach(() => {
   query.limit.mockResolvedValue({ data: [grant], error: null });
   query.single.mockResolvedValue({ data: grant, error: null });
   mocks.client.mockResolvedValue({ auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: "teacher" } }, error: null }) }, rpc, from: vi.fn().mockReturnValue(query) });
-  mocks.admin.mockReturnValue({ auth: { signInWithOtp: send } });
+  account = null;
+  adminRpc = vi.fn(async (name: string) => ({ data: name === "find_auth_user_id_by_email" ? account?.id ?? null : null, error: null }));
+  getUserById = vi.fn(async () => ({ data: { user: account }, error: null }));
+  updateUserById = vi.fn(async () => ({ data: { user: account }, error: null }));
+  mocks.admin.mockReturnValue({ rpc: adminRpc, auth: { signInWithOtp: send, admin: { getUserById, updateUserById } } });
   mocks.limit.mockResolvedValue(undefined);
   mocks.free.mockResolvedValue(false);
 });
@@ -127,6 +137,60 @@ describe("manual course access route", () => {
     mocks.free.mockResolvedValue(true);
     await POST(request({ action, grantId: grant.id }));
     expect(mocks.limit).not.toHaveBeenCalledWith(...freeDaily);
+  });
+
+  describe("before the sign-in link", () => {
+    const grantRequest = () => request({ courseId: "course-1", email: grant.learner_email });
+
+    it("gives an unconfirmed account made some other way a new random password first", async () => {
+      account = { id: "learner-1", email_confirmed_at: null, app_metadata: { provider: "email" } };
+
+      const response = await POST(grantRequest());
+
+      expect(await response.json()).toMatchObject({ emailStatus: "sent" });
+      expect(adminRpc).toHaveBeenCalledWith("find_auth_user_id_by_email", { p_email: grant.learner_email });
+      expect(updateUserById).toHaveBeenCalledTimes(1);
+      const [id, attributes] = updateUserById.mock.calls[0] as [string, Record<string, unknown>];
+      expect(id).toBe("learner-1");
+      expect(typeof attributes.password).toBe("string");
+      expect(attributes.app_metadata).toEqual({ guest_password_reset_at: expect.any(String) });
+      expect(updateUserById.mock.invocationCallOrder[0]).toBeLessThan(send.mock.invocationCallOrder[0]);
+    });
+
+    it("sends no link, keeps the grant and alerts with ids when that password cannot be replaced", async () => {
+      account = { id: "learner-1", email_confirmed_at: null, app_metadata: { provider: "email" } };
+      updateUserById.mockResolvedValue({ data: { user: null }, error: { message: "rejected" } });
+
+      const response = await POST(grantRequest());
+
+      expect(response.status).toBe(200);
+      expect(await response.json()).toMatchObject({ grant, emailStatus: "failed" });
+      expect(send).not.toHaveBeenCalled();
+      expect(mocks.notify).toHaveBeenCalledWith(expect.objectContaining({
+        event: "teach.course_access.guest_sign_in_link_failed",
+        context: { courseId: "course-1", userId: "learner-1", result: "password_not_replaced" },
+      }));
+      expect(JSON.stringify(mocks.notify.mock.calls)).not.toContain(grant.learner_email);
+    });
+
+    it("leaves a confirmed account untouched", async () => {
+      account = { id: "learner-1", email_confirmed_at: "2026-10-01T00:00:00.000Z", app_metadata: { provider: "email" } };
+
+      const response = await POST(grantRequest());
+
+      expect(await response.json()).toMatchObject({ emailStatus: "sent" });
+      expect(updateUserById).not.toHaveBeenCalled();
+      expect(send).toHaveBeenCalledTimes(1);
+    });
+
+    it("sends as today when no account has the address yet", async () => {
+      const response = await POST(grantRequest());
+
+      expect(await response.json()).toMatchObject({ emailStatus: "sent" });
+      expect(getUserById).not.toHaveBeenCalled();
+      expect(updateUserById).not.toHaveBeenCalled();
+      expect(send).toHaveBeenCalledWith({ email: grant.learner_email, options: { shouldCreateUser: true, emailRedirectTo: "https://www.skillsetmind.com/loading?next=route" } });
+    });
   });
 
   it("leaves a paid-plan creator with the hourly limit only", async () => {

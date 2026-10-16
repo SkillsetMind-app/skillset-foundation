@@ -648,7 +648,7 @@ describe("guest checkout", () => {
     expect(admin.auth.admin.updateUserById).toHaveBeenCalledTimes(1);
     const [id, attributes] = admin.auth.admin.updateUserById.mock.calls[0];
     expect(id).toBe("existing-user");
-    expect(String(attributes.password)).toMatch(/^[A-Za-z0-9_-]{43}$/);
+    expect(String(attributes.password)).toMatch(/^[A-Za-z0-9_-]{43}aA1!$/);
     expect(attributes.app_metadata).toEqual({ guest_password_reset_at: expect.any(String) });
     expect(admin.auth.admin.updateUserById.mock.invocationCallOrder[0])
       .toBeLessThan(admin.auth.signInWithOtp.mock.invocationCallOrder[0]);

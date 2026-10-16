@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server";
 import { assertCreatorActivated, enforceRateLimit, isOnFreePlan, PaymentError, paymentErrorResponse } from "@/lib/payments/server/auth";
+import {
+  findAuthUserIdByEmail,
+  reportLostSignInLink,
+  secureForeignUnconfirmedAccount,
+} from "@/lib/payments/server/guest-checkout";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -72,7 +77,19 @@ export async function POST(request: Request) {
     try {
       // Record-bound + actor-bound limits are persistent, including failed sends.
       await enforceRateLimit(`course_access_email_${grant.id}`, 3, 3600000);
-      const { error } = await getSupabaseAdminClient().auth.signInWithOtp({
+      const admin = getSupabaseAdminClient();
+      // An existing account that never confirmed its e-mail and was made some
+      // other way gets a new random password before the link goes to it. If that
+      // fails, no link: the grant stays recorded and the creator can resend.
+      const accountId = await findAuthUserIdByEmail(admin, grant.learner_email);
+      if (accountId) {
+        const { data: account, error: accountError } = await admin.auth.admin.getUserById(accountId);
+        if (accountError || !account?.user || (await secureForeignUnconfirmedAccount(admin, account.user)) === "failed") {
+          reportLostSignInLink("teach.course_access", grant.course_id, accountId, "password_not_replaced");
+          return NextResponse.json({ grant, accessStatus: grant.access_status, emailStatus });
+        }
+      }
+      const { error } = await admin.auth.signInWithOtp({
         email: grant.learner_email,
         options: { shouldCreateUser: true, emailRedirectTo: "https://www.skillsetmind.com/loading?next=route" },
       });

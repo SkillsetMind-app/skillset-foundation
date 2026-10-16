@@ -25,6 +25,17 @@ const HOUR_MS = 60 * 60 * 1000;
 
 export type GuestAccessLinkResult = "sent" | "limited" | "failed";
 
+/**
+ * A random password the project's Auth password rules always accept: 256 random
+ * bits (base64url) plus one lowercase letter, one uppercase letter, one digit
+ * and one symbol, since the rules require all four classes and base64url
+ * alone does not always carry a symbol. Nobody is meant to know it; access
+ * goes by e-mail link or password recovery.
+ */
+export function randomStrongPassword(): string {
+  return `${randomBytes(32).toString("base64url")}aA1!`;
+}
+
 /** app_metadata mark: the paid guest checkout sale replaced this account's password. */
 export const PAID_GUEST_RESET_MARK = "guest_password_reset_at";
 
@@ -66,7 +77,7 @@ export async function sendGuestAccessLink(admin: Admin, email: string, courseId:
  * the guest checkout routes.
  */
 export function reportLostSignInLink(
-  where: "stripe.webhook" | "guest_checkout",
+  where: "stripe.webhook" | "guest_checkout" | "teach.course_access",
   courseId: string,
   userId: string,
   result: string,
@@ -96,7 +107,7 @@ export async function secureForeignUnconfirmedAccount(
   if (account.email_confirmed_at || meta.created_via === GUEST_CHECKOUT_ORIGIN || meta[PAID_GUEST_RESET_MARK]) return "ok";
   try {
     const { error } = await admin.auth.admin.updateUserById(account.id, {
-      password: randomBytes(32).toString("base64url"),
+      password: randomStrongPassword(),
       app_metadata: { [PAID_GUEST_RESET_MARK]: new Date().toISOString() },
     });
     return error ? "failed" : "ok";
