@@ -47,7 +47,7 @@ describe("guest checkout thank-you page", () => {
   it("is not indexed", async () => {
     const metadata = await generateMetadata();
     expect(metadata.robots).toEqual({ index: false, follow: false });
-    expect(metadata.title).toContain("Payment received");
+    expect(metadata.title).toContain("Check your email");
   });
 
   it("does not exist while guest checkout is off", async () => {
@@ -60,7 +60,7 @@ describe("guest checkout thank-you page", () => {
   it("sends nothing on arrival (the paid sale sends the link) and names the masked address", async () => {
     render(await Page({ searchParams: Promise.resolve({ course: "course-1" }) }));
 
-    expect(screen.getByRole("heading", { name: "Payment received" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Check your email" })).toBeInTheDocument();
     expect(screen.getByText(/If your payment went through, your sign-in link is on its way to a•••@example\.com/)).toBeInTheDocument();
     expect(screen.queryByText(/ana@example\.com/)).not.toBeInTheDocument();
     await waitFor(() => expect(state.fetch).not.toHaveBeenCalled());
@@ -102,7 +102,7 @@ describe("guest checkout thank-you page", () => {
 
     render(await Page({}));
 
-    expect(screen.getByRole("heading", { name: "Pago recibido" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Revisa tu correo" })).toBeInTheDocument();
     expect(screen.getByText(/Si tu pago se completó, tu enlace para iniciar sesión va en camino a a•••@example\.com/)).toBeInTheDocument();
   });
 });

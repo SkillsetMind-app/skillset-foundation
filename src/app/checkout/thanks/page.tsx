@@ -25,9 +25,11 @@ type PageProps = {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
 };
 
-// Where Stripe sends a guest buyer after paying. The buyer is not signed in, so
-// access goes by e-mail: the address comes from the cookie the guest checkout
-// set (shown masked), and the sign-in link is sent from here.
+// Where Stripe sends a guest buyer after checkout. The buyer is not signed in,
+// so access goes by e-mail: the paid sale sends the sign-in link (Stripe
+// webhook), and this page names the address from the cookie the guest checkout
+// set (masked) and offers a resend. It does not confirm the payment itself, so
+// its words never claim one.
 export default async function CheckoutThanksPage({ searchParams }: PageProps) {
   // Same switch as the guest checkout routes: off means this page does not exist.
   if (!isGuestCheckoutConfigured()) notFound();

@@ -4631,8 +4631,8 @@
       "signIn": "Inicia sesión"
     },
     "thanks": {
-      "title": "Pago recibido",
-      "body": "Gracias por tu compra. Tu curso se abre en cuanto se confirma el pago, normalmente en menos de un minuto.",
+      "title": "Revisa tu correo",
+      "body": "Tu curso se abre en cuanto se confirma el pago, normalmente en menos de un minuto.",
       "waiting": "Si tu pago se completó, tu enlace para iniciar sesión va en camino a {email}.",
       "sending": "Enviando tu enlace de acceso a {email}…",
       "sent": "Enviamos tu enlace de acceso a {email}. Ábrelo para ir directo a tu curso.",
