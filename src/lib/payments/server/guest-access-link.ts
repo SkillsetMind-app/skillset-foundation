@@ -1,5 +1,6 @@
 import type { User } from "@supabase/supabase-js";
 
+import { notifyOps } from "@/lib/ops/alert";
 import { getAppUrl } from "@/lib/payments/server/app-url";
 import type { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import { runRateLimit } from "@/lib/supabase/rate-limit";
@@ -67,7 +68,16 @@ export async function sendGuestSignInLinkAfterPurchase(
   courseId: string,
 ): Promise<void> {
   if (!buyer?.email || buyer.app_metadata?.created_via !== GUEST_CHECKOUT_ORIGIN) return;
-  if ((await sendGuestAccessLink(admin, buyer.email, courseId)) !== "sent") {
-    console.error("Guest checkout sign-in link failed after a paid sale", { courseId, userId: buyer.id });
+  const result = await sendGuestAccessLink(admin, buyer.email, courseId);
+  if (result !== "sent") {
+    // Ids only: never the buyer's address.
+    console.error("Guest checkout sign-in link failed after a paid sale", { courseId, userId: buyer.id, result });
+    notifyOps({
+      event: "stripe.webhook.guest_sign_in_link_failed",
+      severity: "warn",
+      summary:
+        "A guest checkout buyer paid but the sign-in link did not go out. The course is unlocked; they can use the resend on the thank-you page or password recovery.",
+      context: { courseId, userId: buyer.id, result },
+    });
   }
 }

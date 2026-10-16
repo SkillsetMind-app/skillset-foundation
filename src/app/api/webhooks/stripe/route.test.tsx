@@ -1638,6 +1638,11 @@ describe("Stripe webhook financial integrity", () => {
       expect(admin.state.doneEvents).toContain("evt_checkout");
       await vi.waitFor(() => expect(admin.auth.signInWithOtp).toHaveBeenCalledTimes(1));
       expect(buyerEmails()).toHaveLength(1);
+      await vi.waitFor(() => expect(mocks.notifyOps).toHaveBeenCalledWith(expect.objectContaining({
+        event: "stripe.webhook.guest_sign_in_link_failed",
+        context: { courseId: "course_1", userId: "user_1", result: "failed" },
+      })));
+      expect(JSON.stringify(mocks.notifyOps.mock.calls)).not.toContain("buyer@example.test");
     });
 
     it("sends no sign-in link over the shared Auth e-mail ceiling, and keeps the enrollment", async () => {
