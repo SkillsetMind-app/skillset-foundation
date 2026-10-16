@@ -6,6 +6,7 @@ import { getAppUrl } from "@/lib/payments/server/app-url";
 import { enforceRateLimit, PaymentError, paymentErrorResponse } from "@/lib/payments/server/auth";
 import { createCourseCheckoutSession } from "@/lib/payments/server/course-checkout";
 import {
+  discardNewGuestBuyer,
   encodeGuestCheckoutCookie,
   findOrCreateGuestBuyer,
   GUEST_CHECKOUT_COOKIE,
@@ -83,56 +84,74 @@ export async function POST(request: Request) {
     }
 
     const admin = getSupabaseAdminClient();
-    const { userId } = await findOrCreateGuestBuyer(admin, {
+    const buyer = await findOrCreateGuestBuyer(admin, {
       email,
       name,
       locale: await getServerLocale(),
     });
 
-    const { data: enrollment, error: enrollmentError } = await admin
-      .from("enrollments")
-      .select("status")
-      .eq("id", `${userId}__${courseId}`)
-      .maybeSingle();
-    if (enrollmentError) throw new Error(enrollmentError.message);
-    if (course.owner_id === userId || ["active", "completed"].includes(String(enrollment?.status))) {
-      await sendGuestAccessLink(admin, email, courseId);
-      return NextResponse.json(ACCESS_LINK_SENT);
+    // An account made here exists only for a purchase that goes ahead: any
+    // other outcome removes it. The answer to the browser stays the same.
+    let response: NextResponse;
+    try {
+      response = await answerForBuyer(admin, { userId: buyer.userId, courseId, ownerId: course.owner_id, email, body });
+    } catch (error) {
+      if (buyer.created) await discardNewGuestBuyer(admin, buyer.userId);
+      throw error;
     }
-
-    const response = await createCourseCheckoutSession(
-      userId,
-      {
-        courseId,
-        couponCode: body.couponCode,
-        offerId: body.offerId,
-        offerCode: body.offerCode,
-        priceId: body.priceId,
-      },
-      {
-        // Not the classroom: the buyer is not signed in.
-        successUrl: `${getAppUrl()}/checkout/thanks?course=${encodeURIComponent(courseId)}`,
-        // The address typed here, which found the account. Never the profile
-        // email, which the account's owner can change.
-        customerEmail: email,
-      },
-    );
-
-    // 409: this account already has a subscription or a checkout open for the
-    // course. Same answer as an existing enrollment above.
-    if (response.status === 409) {
-      await sendGuestAccessLink(admin, email, courseId);
-      return NextResponse.json(ACCESS_LINK_SENT);
-    }
-    if (response.ok) {
-      response.cookies.set(
-        GUEST_CHECKOUT_COOKIE,
-        encodeGuestCheckoutCookie({ email, courseId }),
-        guestCheckoutCookieOptions(),
-      );
-    }
+    if (buyer.created && !response.ok) await discardNewGuestBuyer(admin, buyer.userId);
     return response;
   } catch (error) {
     return paymentErrorResponse(error);
   }
+}
+
+async function answerForBuyer(
+  admin: ReturnType<typeof getSupabaseAdminClient>,
+  input: { userId: string; courseId: string; ownerId: string; email: string; body: Record<string, unknown> },
+): Promise<NextResponse> {
+  const { userId, courseId, email, body } = input;
+  const { data: enrollment, error: enrollmentError } = await admin
+    .from("enrollments")
+    .select("status")
+    .eq("id", `${userId}__${courseId}`)
+    .maybeSingle();
+  if (enrollmentError) throw new Error(enrollmentError.message);
+  if (input.ownerId === userId || ["active", "completed"].includes(String(enrollment?.status))) {
+    await sendGuestAccessLink(admin, email, courseId);
+    return NextResponse.json(ACCESS_LINK_SENT);
+  }
+
+  const response = await createCourseCheckoutSession(
+    userId,
+    {
+      courseId,
+      couponCode: body.couponCode,
+      offerId: body.offerId,
+      offerCode: body.offerCode,
+      priceId: body.priceId,
+    },
+    {
+      // Not the classroom: the buyer is not signed in.
+      successUrl: `${getAppUrl()}/checkout/thanks?course=${encodeURIComponent(courseId)}`,
+      // The address typed here, which found the account. Never the profile
+      // email, which the account's owner can change.
+      customerEmail: email,
+    },
+  );
+
+  // 409: this account already has a subscription or a checkout open for the
+  // course. Same answer as an existing enrollment above.
+  if (response.status === 409) {
+    await sendGuestAccessLink(admin, email, courseId);
+    return NextResponse.json(ACCESS_LINK_SENT);
+  }
+  if (response.ok) {
+    response.cookies.set(
+      GUEST_CHECKOUT_COOKIE,
+      encodeGuestCheckoutCookie({ email, courseId }),
+      guestCheckoutCookieOptions(),
+    );
+  }
+  return response;
 }

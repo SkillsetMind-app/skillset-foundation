@@ -52,10 +52,12 @@ type AdminInput = {
   lockReply?: { action: string; checkout_url: string | null };
   rateLimited?: string;
   rateLimitDown?: boolean;
+  termsFail?: boolean;
 };
 
 function createAdmin(input: AdminInput = {}) {
   const usersUpdates: Array<Record<string, unknown>> = [];
+  const usersDeletes: string[] = [];
   const orderInserts: Array<Record<string, unknown>> = [];
   let lookups = 0;
 
@@ -71,7 +73,11 @@ function createAdmin(input: AdminInput = {}) {
       if (this.table === "users") usersUpdates.push(values);
       return this;
     }
-    delete() { this.mode = "delete"; return this; }
+    delete() {
+      this.mode = "delete";
+      if (this.table === "users") usersDeletes.push(this.table);
+      return this;
+    }
     async insert(values: Record<string, unknown>) {
       if (this.table === "orders") orderInserts.push(values);
       return { error: null };
@@ -86,7 +92,9 @@ function createAdmin(input: AdminInput = {}) {
     private result(single: boolean) {
       if (this.mode === "delete") return { data: null, error: null };
       if (this.mode === "update") {
-        if (this.table === "users") return { data: [{ uid: "new-user" }], error: null };
+        if (this.table === "users") {
+          return input.termsFail ? { data: null, error: { message: "write failed" } } : { data: [{ uid: "new-user" }], error: null };
+        }
         if (this.table === "orders") return { data: { id: "order" }, error: null };
         if (this.table === "checkout_locks") return { data: { lock_key: "lock" }, error: null };
         return { data: null, error: null };
@@ -98,6 +106,7 @@ function createAdmin(input: AdminInput = {}) {
 
   return {
     usersUpdates,
+    usersDeletes,
     orderInserts,
     from: vi.fn((table: string) => new Query(table)),
     rpc: vi.fn(async (name: string, params: Record<string, unknown>) => {
@@ -124,6 +133,7 @@ function createAdmin(input: AdminInput = {}) {
         createUser: vi.fn(async () => input.createUserFails
           ? { data: { user: null }, error: { code: "email_exists", status: 422 } }
           : { data: { user: { id: "new-user" } }, error: null }),
+        deleteUser: vi.fn(async () => ({ data: {}, error: null })),
       },
       signInWithOtp: vi.fn(async () => ({ data: {}, error: null })),
     },
@@ -366,6 +376,45 @@ describe("guest checkout", () => {
     expect(response.status).toBe(200);
     expect(admin.usersUpdates).toEqual([]);
     expect(mocks.createSession.mock.calls[0][0].client_reference_id).toBe("raced-user");
+  });
+
+  it("removes the new account when the purchase cannot go ahead, answering exactly the same", async () => {
+    // The creator's Stripe account is not ready: the shared builder refuses.
+    mocks.getUserRow.mockImplementation(async (id: string) => id === "teacher"
+      ? { uid: "teacher", current_plan_id: "professional", stripe_connected_account_id: "acct_teacher", stripe_connect_charges_enabled: false, stripe_connect_payouts_enabled: false }
+      : { uid: id, email: "ana@example.com" });
+
+    const response = await POST(guestRequest(validBody));
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({
+      error: "This teacher must finish Stripe onboarding before paid checkout opens.",
+    });
+    expect(admin.auth.admin.deleteUser).toHaveBeenCalledWith("new-user");
+    expect(admin.usersDeletes).toEqual(["users"]);
+    expect(response.cookies.get(GUEST_CHECKOUT_COOKIE)).toBeUndefined();
+  });
+
+  it("keeps an existing account when its purchase cannot go ahead", async () => {
+    admin = createAdmin({ existingUserId: "existing-user" });
+    mocks.getUserRow.mockImplementation(async (id: string) => id === "teacher"
+      ? { uid: "teacher", current_plan_id: "professional", stripe_connected_account_id: null }
+      : { uid: id, email: "ana@example.com" });
+
+    const response = await POST(guestRequest(validBody));
+
+    expect(response.status).toBe(400);
+    expect(admin.auth.admin.deleteUser).not.toHaveBeenCalled();
+  });
+
+  it("removes the new account when its terms cannot be recorded", async () => {
+    admin = createAdmin({ termsFail: true });
+
+    const response = await POST(guestRequest(validBody));
+
+    expect(response.status).toBe(500);
+    expect(admin.auth.admin.deleteUser).toHaveBeenCalledWith("new-user");
+    expect(mocks.createSession).not.toHaveBeenCalled();
   });
 
   it.each(["active", "completed"])("sends the access link and opens no session when the account is already %s", async (status) => {

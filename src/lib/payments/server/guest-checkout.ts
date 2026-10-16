@@ -73,7 +73,14 @@ export async function findOrCreateGuestBuyer(
     app_metadata: { created_via: GUEST_CHECKOUT_ORIGIN },
   });
   if (data?.user) {
-    await recordTermsAcceptance(admin, data.user.id);
+    try {
+      await recordTermsAcceptance(admin, data.user.id);
+    } catch (termsError) {
+      // Without its terms the account would stay that way: the next attempt
+      // finds it as an existing one. Remove it so a retry starts clean.
+      await discardNewGuestBuyer(admin, data.user.id);
+      throw termsError;
+    }
     return { userId: data.user.id, created: true };
   }
 
@@ -81,6 +88,26 @@ export async function findOrCreateGuestBuyer(
   const raced = await findAuthUserIdByEmail(admin, input.email);
   if (raced) return { userId: raced, created: false };
   throw new Error(`Guest buyer account was not created (${error?.code ?? "unknown"}).`);
+}
+
+/**
+ * Removes an account this request created, when the purchase it was made for
+ * does not go ahead. Best effort: it never changes what the buyer is told.
+ */
+export async function discardNewGuestBuyer(admin: Admin, userId: string): Promise<void> {
+  try {
+    const { error } = await admin.auth.admin.deleteUser(userId);
+    if (error) {
+      console.error("[guest-checkout] new account not removed", { status: error.status ?? null, code: error.code ?? null });
+      return;
+    }
+    // public.users has no foreign key to auth.users, so its row goes separately.
+    // An order row that already points at it keeps it (orders.user_id).
+    const { error: profileError } = await admin.from("users").delete().eq("uid", userId);
+    if (profileError) console.error("[guest-checkout] profile row kept", { code: profileError.code ?? null });
+  } catch {
+    console.error("[guest-checkout] new account not removed");
+  }
 }
 
 async function recordTermsAcceptance(admin: Admin, userId: string): Promise<void> {
