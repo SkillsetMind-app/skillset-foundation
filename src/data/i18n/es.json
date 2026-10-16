@@ -4622,6 +4622,7 @@
       "acceptTerms": "Acepta las Condiciones de servicio y la Política de privacidad para continuar.",
       "captchaPending": "Espera a que termine la verificación de seguridad y vuelve a intentarlo.",
       "captchaFailed": "La verificación de seguridad falló. Vuelve a intentarlo.",
+      "captchaLoadError": "No se pudo cargar la verificación de seguridad, así que esta compra no puede continuar. Desactiva cualquier bloqueador de anuncios para este sitio o cambia de red y luego vuelve a cargar la página.",
       "invalid": "Escribe tu nombre y un correo válido, y acepta las condiciones.",
       "checkoutPending": "Tienes un pago en curso para este curso. Termínalo o vuelve a intentarlo en unos minutos.",
       "sendFailed": "No pudimos enviar el correo en este momento. Vuelve a intentarlo en un momento.",

@@ -4622,6 +4622,7 @@
       "acceptTerms": "Accept the Terms of Service and Privacy Policy to continue.",
       "captchaPending": "Wait for the security check to finish, then try again.",
       "captchaFailed": "The security check failed. Please try again.",
+      "captchaLoadError": "The security check could not load, so this purchase can't continue. Turn off any ad blocker for this site or switch networks, then reload the page.",
       "invalid": "Enter your name and a valid email, and accept the terms.",
       "checkoutPending": "You have a payment in progress for this course. Finish it or try again in a few minutes.",
       "sendFailed": "We couldn't send the email right now. Please try again in a moment.",

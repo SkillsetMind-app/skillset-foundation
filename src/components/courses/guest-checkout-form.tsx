@@ -179,7 +179,12 @@ export function GuestCheckoutForm({
         </label>
         {/* The purchase card can be narrower than the 300px normal widget on a
             phone: compact (150px) there, so nothing renders off screen. */}
-        <TurnstileWidget onToken={setCaptchaToken} resetSignal={captchaReset} size={turnstileSizeFor} />
+        <TurnstileWidget
+          onToken={setCaptchaToken}
+          resetSignal={captchaReset}
+          size={turnstileSizeFor}
+          loadErrorCopy="guestCheckout.form.captchaLoadError"
+        />
         <button
           type="submit"
           disabled={disabled || isSubmitting || isGoogleLoading}

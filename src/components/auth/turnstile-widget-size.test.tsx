@@ -37,3 +37,25 @@ it("picks the size from the container's width when asked", async () => {
   expect(sizeFor).toHaveBeenCalledWith(0);
   expect(turnstile.render.mock.calls[0][1]).toMatchObject({ size: "compact" });
 });
+
+// Last on purpose: it makes the module remember a failed script load.
+it("shows the caller's own words when the script cannot load", async () => {
+  delete window.turnstile;
+  const appendChild = document.head.appendChild.bind(document.head);
+  const spy = vi.spyOn(document.head, "appendChild").mockImplementation((node) => {
+    if (node instanceof HTMLScriptElement && node.src.startsWith("https://challenges.cloudflare.com/turnstile/")) {
+      queueMicrotask(() => node.dispatchEvent(new Event("error")));
+      return node;
+    }
+    return appendChild(node);
+  });
+  const { TurnstileWidget } = await import("@/components/auth/turnstile-widget");
+
+  try {
+    const { findByRole } = render(<TurnstileWidget onToken={vi.fn()} loadErrorCopy="guestCheckout.form.captchaLoadError" />);
+
+    expect(await findByRole("alert")).toHaveTextContent("guestCheckout.form.captchaLoadError");
+  } finally {
+    spy.mockRestore();
+  }
+});

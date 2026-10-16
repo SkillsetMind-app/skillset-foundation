@@ -74,15 +74,20 @@ function loadTurnstile(): Promise<boolean> {
  * `size` is optional and leaves Turnstile's default when absent (the sign-in
  * forms). It can be a function of the container's width, read once when the
  * widget renders, for cards narrower than the 300px normal widget.
+ *
+ * `loadErrorCopy` is the dictionary entry shown when the script cannot load;
+ * the default speaks of sign-in, so other forms pass their own.
  */
 export function TurnstileWidget({
   onToken,
   resetSignal = 0,
   size,
+  loadErrorCopy = "authCaptcha.loadError",
 }: {
   onToken: (token: string) => void;
   resetSignal?: number;
   size?: TurnstileSize | ((containerWidth: number) => TurnstileSize);
+  loadErrorCopy?: string;
 }) {
   const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -143,7 +148,7 @@ export function TurnstileWidget({
         aria-live="assertive"
         className="rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]"
       >
-        {t("authCaptcha.loadError")}
+        {t(loadErrorCopy)}
       </p>
     );
   }
