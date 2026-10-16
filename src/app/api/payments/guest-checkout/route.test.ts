@@ -372,19 +372,16 @@ describe("guest checkout", () => {
     expect(mocks.createSession).not.toHaveBeenCalled();
   });
 
-  it("stops at the platform-wide hourly ceiling, before any account", async () => {
-    admin = createAdmin({ rateLimited: "guest_checkout_global" });
-
+  it("counts no platform-wide ceiling for a purchase that goes to Stripe (it sends no e-mail)", async () => {
     const response = await POST(guestRequest(validBody));
 
-    expect(response.status).toBe(429);
-    expect(admin.rpc).toHaveBeenCalledWith("enforce_rate_limit", {
-      p_key: "guest_checkout_global",
-      p_limit: 60,
-      p_window_ms: 3_600_000,
-    });
-    expect(admin.auth.admin.createUser).not.toHaveBeenCalled();
-    expect(mocks.createSession).not.toHaveBeenCalled();
+    expect(response.status).toBe(200);
+    const keys = admin.rpc.mock.calls
+      .filter(([name]) => name === "enforce_rate_limit")
+      .map(([, params]) => String(params.p_key));
+    expect(keys.some((key) => key.startsWith("guest_checkout_ip_"))).toBe(true);
+    expect(keys.some((key) => key.startsWith("guest_checkout_email_"))).toBe(true);
+    expect(keys.filter((key) => key.endsWith("_global"))).toEqual([]);
   });
 
   it("fails closed when the limiter itself is down", async () => {
