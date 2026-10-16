@@ -329,10 +329,35 @@ describe("CreatorCourseDetail: o cartão que vende", () => {
     await screen.findAllByText("$149.00");
 
     expect(container.querySelector("#enroll-card")).toHaveClass("lg:sticky");
-    // Barra do celular: leva ao cartão e some no desktop.
+    // Barra do celular: leva ao cartão; no desktop some enquanto o cartão está à vista.
     const bar = container.querySelector('a[href="#enroll-card"]');
     expect(bar).not.toBeNull();
     expect(bar?.closest("div.fixed")).toHaveClass("lg:hidden");
+  });
+
+  it("no desktop, com o cartão fora da tela, a barra de compra flutua no canto", async () => {
+    let notify: ((entries: Array<{ isIntersecting: boolean }>) => void) | null = null;
+    const observe = vi.fn();
+    vi.stubGlobal("IntersectionObserver", class {
+      constructor(callback: (entries: Array<{ isIntersecting: boolean }>) => void) { notify = callback; }
+      observe = observe;
+      disconnect() {}
+    });
+    try {
+      const { container } = render(<CreatorCourseDetail courseIdOverride="course-1" hideHeader />);
+      await screen.findAllByText("$149.00");
+      await waitFor(() => expect(observe).toHaveBeenCalledWith(container.querySelector("#enroll-card")));
+      const bar = () => container.querySelector('a[href="#enroll-card"]')?.closest("div.fixed");
+
+      act(() => notify?.([{ isIntersecting: false }]));
+      expect(bar()).not.toHaveClass("lg:hidden");
+      expect(bar()).toHaveClass("lg:right-6");
+
+      act(() => notify?.([{ isIntersecting: true }]));
+      expect(bar()).toHaveClass("lg:hidden");
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   it("assina o curso com quem ensina, com credencial, nota e duração", async () => {
