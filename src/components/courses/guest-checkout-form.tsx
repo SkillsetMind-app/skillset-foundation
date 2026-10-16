@@ -31,6 +31,8 @@ export function useOnPlatformHost(): boolean {
   return useSyncExternalStore(noSubscription, () => isPlatformHost(window.location.hostname), () => false);
 }
 
+const turnstileSizeFor = (width: number) => (width < 300 ? "compact" : "normal");
+
 type GuestCheckoutFormProps = {
   courseId: string;
   offerId?: string;
@@ -175,7 +177,9 @@ export function GuestCheckoutForm({
             {t("auth.signup.agreeSuffix")}
           </span>
         </label>
-        <TurnstileWidget onToken={setCaptchaToken} resetSignal={captchaReset} />
+        {/* The purchase card can be narrower than the 300px normal widget on a
+            phone: compact (150px) there, so nothing renders off screen. */}
+        <TurnstileWidget onToken={setCaptchaToken} resetSignal={captchaReset} size={turnstileSizeFor} />
         <button
           type="submit"
           disabled={disabled || isSubmitting || isGoogleLoading}
