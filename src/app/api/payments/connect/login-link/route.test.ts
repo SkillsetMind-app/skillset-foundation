@@ -2,14 +2,14 @@ import Stripe from "stripe";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  getUser: vi.fn(), getSession: vi.fn(), rpc: vi.fn(), rateLimit: vi.fn(),
+  getUser: vi.fn(), rpc: vi.fn(), rateLimit: vi.fn(),
   getUserRow: vi.fn(), getStripe: vi.fn(), createLoginLink: vi.fn(),
   createAccount: vi.fn(),
 }));
 vi.mock("next/headers", () => ({ cookies: async () => ({ getAll: () => [], set: () => {} }) }));
 vi.mock("@supabase/ssr", () => ({
   createServerClient: () => ({
-    auth: { getUser: mocks.getUser, getSession: mocks.getSession }, rpc: mocks.rpc,
+    auth: { getUser: mocks.getUser }, rpc: mocks.rpc,
   }),
 }));
 vi.mock("@/lib/supabase/config", () => ({
@@ -32,13 +32,13 @@ function request(body: unknown = {}) {
     method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
   });
 }
-function factorSession(aal: string) {
-  mocks.getUser.mockResolvedValue({
-    data: { user: { id: "teacher-1", factors: [{ status: "verified" }] } }, error: null,
-  });
-  mocks.getSession.mockResolvedValue({ data: { session: {
-    access_token: `header.${Buffer.from(JSON.stringify({ aal })).toString("base64url")}.signature`,
-  } } });
+// Quem decide e o banco: session_is_strong (ja inclui conta ativa) e, quando a
+// sessao e fraca, account_session_allowed separa "deve o codigo" de "bloqueada".
+function sessionGate(strong: boolean, allowed: boolean) {
+  mocks.rpc.mockImplementation(async (name: string) => ({
+    data: name === "session_is_strong" ? strong : name === "account_session_allowed" ? allowed : null,
+    error: null,
+  }));
 }
 
 beforeEach(() => {
@@ -60,7 +60,7 @@ describe("POST connect/login-link", () => {
     expect(response.status).toBe(200);
     expect(response.headers.get("cache-control")).toBe("private, no-store");
     expect(await response.json()).toEqual({ url: loginUrl });
-    expect(mocks.rpc).toHaveBeenCalledWith("account_session_allowed");
+    expect(mocks.rpc).toHaveBeenCalledWith("session_is_strong");
     expect(mocks.getUserRow).toHaveBeenCalledWith("teacher-1");
     expect(mocks.rateLimit).toHaveBeenCalledWith("connect_login_teacher-1", 10, 3600000);
     expect(mocks.createLoginLink).toHaveBeenCalledExactlyOnceWith("acct_own");
@@ -74,7 +74,7 @@ describe("POST connect/login-link", () => {
     if (state === "invalid-session") mocks.getUser.mockResolvedValue({ data: { user: { id: "teacher-1" } }, error: { message: "invalid" } });
     if (state === "suspended") mocks.rpc.mockResolvedValue({ data: false, error: null });
     if (state === "status-unavailable") mocks.rpc.mockResolvedValue({ data: null, error: { message: "private detail" } });
-    if (state === "mfa-pending") factorSession("aal1");
+    if (state === "mfa-pending") sessionGate(false, true);
     const response = await handler(request());
     expect(response.status).toBe(401);
     expect(response.headers.get("cache-control")).toContain("no-store");
@@ -84,7 +84,7 @@ describe("POST connect/login-link", () => {
   });
 
   it("allows an active teacher after completing the required second factor", async () => {
-    factorSession("aal2");
+    sessionGate(true, true);
     expect((await handler(request())).status).toBe(200);
     expect(mocks.createLoginLink).toHaveBeenCalledExactlyOnceWith("acct_own");
   });
