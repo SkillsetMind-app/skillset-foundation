@@ -197,7 +197,7 @@ const publicMediaBucket = "public-media";
 
 /** O que o criador já salvou. `settings` null = área virtual (nunca salvou). */
 export type MyMemberAreaEditor = {
-  settings: Required<MemberAreaSettings> | null;
+  settings: MemberAreaSettings | null;
   choices: Map<string, { position: number; visible: boolean }>;
 };
 
