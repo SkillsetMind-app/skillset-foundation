@@ -61,6 +61,8 @@ type AdminInput = {
   existingGuest?: { confirmed?: boolean; terms?: boolean };
   /** The existing account was made some other way and never confirmed its e-mail. */
   existingUnconfirmed?: boolean;
+  /** The paid guest sale already replaced that account's password (webhook mark). */
+  paidReset?: boolean;
   updateUserFails?: boolean;
   signInLinkFails?: boolean;
   /** The existing account is suspended (account_controls). */
@@ -157,7 +159,9 @@ function createAdmin(input: AdminInput = {}) {
           data: {
             user: {
               id,
-              app_metadata: input.existingGuest ? { created_via: "guest_checkout" } : { provider: "email" },
+              app_metadata: input.existingGuest
+                ? { created_via: "guest_checkout" }
+                : { provider: "email", ...(input.paidReset ? { guest_password_reset_at: "2026-10-16T00:00:00.000Z" } : {}) },
               email_confirmed_at: (input.existingGuest && !input.existingGuest.confirmed) || input.existingUnconfirmed
                 ? null
                 : "2026-10-01T00:00:00.000Z",
@@ -814,6 +818,23 @@ describe("guest checkout access link (thank-you page)", () => {
       code: "payment_pending",
     });
     expect(admin.auth.signInWithOtp).not.toHaveBeenCalled();
+  });
+
+  it("answers 'payment pending' for an unconfirmed account made some other way until the paid sale replaced its password", async () => {
+    admin = createAdmin({ ...paid, existingUnconfirmed: true });
+    const cookie = encodeGuestCheckoutCookie({ email: "ana@example.com", courseId: "course" });
+
+    const before = await accessLinkPOST(linkRequest(cookie));
+
+    expect(before.status).toBe(409);
+    expect((await before.json()).code).toBe("payment_pending");
+    expect(admin.auth.signInWithOtp).not.toHaveBeenCalled();
+
+    admin = createAdmin({ ...paid, existingUnconfirmed: true, paidReset: true });
+    const after = await accessLinkPOST(linkRequest(cookie));
+
+    expect(after.status).toBe(200);
+    expect(admin.auth.signInWithOtp).toHaveBeenCalledTimes(1);
   });
 
   it("stops at the shared Auth e-mail ceiling, counted right before the send", async () => {

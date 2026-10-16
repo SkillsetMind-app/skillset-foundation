@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { enforceRateLimit, PaymentError, paymentErrorResponse } from "@/lib/payments/server/auth";
+import { GUEST_CHECKOUT_ORIGIN, PAID_GUEST_RESET_MARK } from "@/lib/payments/server/guest-access-link";
 import {
   decodeGuestCheckoutCookie,
   findAuthUserIdByEmail,
@@ -45,6 +46,14 @@ export async function POST(request: NextRequest) {
       .maybeSingle();
     if (enrollmentError) throw new Error(enrollmentError.message);
     if (!["active", "completed"].includes(String(enrollment?.status))) {
+      return NextResponse.json(PAYMENT_PENDING, { status: 409 });
+    }
+    // An unconfirmed account made some other way gets the link only once the
+    // paid sale replaced its password (the webhook leaves the mark).
+    const { data: account, error: accountError } = await admin.auth.admin.getUserById(userId);
+    if (accountError || !account?.user) throw new Error("Guest buyer account could not be read.");
+    const meta = account.user.app_metadata ?? {};
+    if (!account.user.email_confirmed_at && meta.created_via !== GUEST_CHECKOUT_ORIGIN && !meta[PAID_GUEST_RESET_MARK]) {
       return NextResponse.json(PAYMENT_PENDING, { status: 409 });
     }
     // The platform-wide ceiling is counted inside sendGuestAccessLink.
