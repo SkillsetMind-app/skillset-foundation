@@ -56,6 +56,18 @@ type AdminState = {
   // Opt-in: o reembolso chegou ANTES de a fulfilment escrever a linha de
   // `payments` — o caso em que o handler caía no ramo de assinatura.
   paymentRowMissing?: boolean;
+  // Opt-in: the buyer (not the creator) is a guest checkout account, unconfirmed
+  // unless guestBuyerConfirmed.
+  guestBuyer?: boolean;
+  guestBuyerConfirmed?: boolean;
+  // Opt-in: the Auth sign-in link fails.
+  signInLinkFails?: boolean;
+  // Opt-in: the shared guest checkout Auth e-mail ceiling is reached.
+  authEmailLimited?: boolean;
+  // Opt-in: the buyer is an unconfirmed account made some other way.
+  buyerUnconfirmed?: boolean;
+  // Opt-in: replacing that account's password fails.
+  passwordReplaceFails?: boolean;
   doneEvents: Set<string>;
   refundClaims: Record<string, RefundClaim>;
   ledger: Record<string, unknown>;
@@ -349,6 +361,9 @@ function createAdmin(
     from: vi.fn((table: string) => new Query(table)),
     rpc: vi.fn(async (name: string, args: Record<string, unknown>) => {
       state.rpcCalls.push({ name, args });
+      if (name === "enforce_rate_limit" && state.authEmailLimited && args.p_key === "guest_auth_email_global") {
+        return { data: null, error: { message: "RATE_LIMIT" } };
+      }
       if (name === "fulfill_paid_course_access" && state.failAt === name) {
         return { data: null, error: { message: "enrollment RPC unavailable" } };
       }
@@ -437,11 +452,30 @@ function createAdmin(
       admin: {
         // The course owner (teacher_1) has their own address, so an email
         // that reaches the wrong person shows up as the wrong recipient.
-        getUserById: vi.fn(async (uid: string) => ({
-          data: { user: { id: uid, email: uid === "teacher_1" ? "creator@example.test" : "buyer@example.test" } },
-          error: null,
-        })),
+        getUserById: vi.fn(async (uid: string) => {
+          const guest = state.guestBuyer && uid !== "teacher_1";
+          return {
+            data: {
+              user: {
+                id: uid,
+                email: uid === "teacher_1" ? "creator@example.test" : "buyer@example.test",
+                app_metadata: guest ? { created_via: "guest_checkout" } : { provider: "email" },
+                email_confirmed_at: (guest && !state.guestBuyerConfirmed) || (state.buyerUnconfirmed && uid !== "teacher_1")
+                  ? null
+                  : "2026-01-01T00:00:00.000Z",
+              },
+            },
+            error: null,
+          };
+        }),
+        updateUserById: vi.fn(async (_uid: string, _attributes: Record<string, unknown>) => (state.passwordReplaceFails
+          ? { data: { user: null }, error: { message: "update failed", status: 500 } }
+          : { data: { user: {} }, error: null })),
       },
+      // Typed loosely: the fake returns whatever a test asks for.
+      signInWithOtp: vi.fn(async () => (state.signInLinkFails
+        ? { data: {}, error: { message: "provider unavailable", status: 503 } }
+        : { data: {}, error: null })),
     },
     state,
   };
@@ -1563,6 +1597,160 @@ describe("Stripe webhook financial integrity", () => {
       expect(admin.state.doneEvents).toContain("evt_checkout");
       await vi.waitFor(() => expect(mocks.notifyOps).toHaveBeenCalledWith(lostEmailAlert));
       expect(buyerEmails()).toHaveLength(1);
+    });
+
+    it("also sends the sign-in link to an unconfirmed guest checkout buyer, after fulfilment", async () => {
+      const admin = createAdmin("checkout");
+      admin.state.guestBuyer = true;
+      mocks.getAdmin.mockReturnValue(admin);
+
+      expect((await postEvent(checkoutEvent())).status).toBe(200);
+
+      await vi.waitFor(() => expect(admin.auth.signInWithOtp).toHaveBeenCalledTimes(1));
+      expect(admin.auth.signInWithOtp).toHaveBeenCalledWith({
+        email: "buyer@example.test",
+        options: {
+          shouldCreateUser: false,
+          emailRedirectTo: `https://www.skillsetmind.com/auth/confirm?next=${encodeURIComponent("/learn/courses/course_1")}`,
+        },
+      });
+      expect(fulfillCalls(admin)).toHaveLength(1);
+      expect(buyerEmails()).toHaveLength(1);
+    });
+
+    it("sends the sign-in link once to a guest checkout buyer whose e-mail is already confirmed", async () => {
+      const admin = createAdmin("checkout");
+      admin.state.guestBuyer = true;
+      admin.state.guestBuyerConfirmed = true;
+      mocks.getAdmin.mockReturnValue(admin);
+      const event = checkoutEvent();
+
+      expect((await postEvent(event)).status).toBe(200);
+      await vi.waitFor(() => expect(admin.auth.signInWithOtp).toHaveBeenCalledTimes(1));
+      // A redelivery of the same sale sends nothing more.
+      expect((await postEvent(event)).status).toBe(200);
+      await flush();
+
+      expect(admin.auth.signInWithOtp).toHaveBeenCalledTimes(1);
+      expect(fulfillCalls(admin)).toHaveLength(1);
+    });
+
+    it("keeps the enrollment and answers 2xx when the guest sign-in link fails", async () => {
+      const admin = createAdmin("checkout");
+      admin.state.guestBuyer = true;
+      admin.state.signInLinkFails = true;
+      mocks.getAdmin.mockReturnValue(admin);
+
+      const response = await postEvent(checkoutEvent());
+
+      expect(response.status).toBe(200);
+      expect(fulfillCalls(admin)).toHaveLength(1);
+      expect(admin.state.doneEvents).toContain("evt_checkout");
+      await vi.waitFor(() => expect(admin.auth.signInWithOtp).toHaveBeenCalledTimes(1));
+      expect(buyerEmails()).toHaveLength(1);
+      await vi.waitFor(() => expect(mocks.notifyOps).toHaveBeenCalledWith(expect.objectContaining({
+        event: "stripe.webhook.guest_sign_in_link_failed",
+        context: { courseId: "course_1", userId: "user_1", result: "failed" },
+      })));
+      expect(JSON.stringify(mocks.notifyOps.mock.calls)).not.toContain("buyer@example.test");
+    });
+
+    it("sends no sign-in link over the shared Auth e-mail ceiling, and keeps the enrollment", async () => {
+      const admin = createAdmin("checkout");
+      admin.state.guestBuyer = true;
+      admin.state.authEmailLimited = true;
+      mocks.getAdmin.mockReturnValue(admin);
+
+      const response = await postEvent(checkoutEvent());
+
+      expect(response.status).toBe(200);
+      expect(fulfillCalls(admin)).toHaveLength(1);
+      await vi.waitFor(() => expect(buyerEmails()).toHaveLength(1));
+      await vi.waitFor(() => expect(admin.state.rpcCalls.some((call) => call.args.p_key === "guest_auth_email_global")).toBe(true));
+      expect(admin.auth.signInWithOtp).not.toHaveBeenCalled();
+    });
+
+    function guestCheckoutEvent() {
+      const event = checkoutEvent();
+      const session = event.data.object as unknown as { metadata: Record<string, string> };
+      session.metadata = { ...session.metadata, checkout_origin: "guest" };
+      return event;
+    }
+
+    it("after a guest checkout sale, replaces an unconfirmed account's password, marks it, then sends the link", async () => {
+      const admin = createAdmin("checkout");
+      admin.state.buyerUnconfirmed = true;
+      mocks.getAdmin.mockReturnValue(admin);
+
+      expect((await postEvent(guestCheckoutEvent())).status).toBe(200);
+
+      await vi.waitFor(() => expect(admin.auth.signInWithOtp).toHaveBeenCalledTimes(1));
+      expect(admin.auth.admin.updateUserById).toHaveBeenCalledTimes(1);
+      const [uid, attributes] = admin.auth.admin.updateUserById.mock.calls[0];
+      expect(uid).toBe("user_1");
+      expect(String(attributes.password)).toMatch(/^[A-Za-z0-9_-]{43}$/);
+      expect(attributes.app_metadata).toEqual({ guest_password_reset_at: expect.any(String) });
+      // The password goes first, the link after it.
+      expect(admin.auth.admin.updateUserById.mock.invocationCallOrder[0])
+        .toBeLessThan(admin.auth.signInWithOtp.mock.invocationCallOrder[0]);
+      expect(fulfillCalls(admin)).toHaveLength(1);
+    });
+
+    it("sends no link and alerts with ids, but keeps the enrollment, when that password cannot be replaced", async () => {
+      const admin = createAdmin("checkout");
+      admin.state.buyerUnconfirmed = true;
+      admin.state.passwordReplaceFails = true;
+      mocks.getAdmin.mockReturnValue(admin);
+
+      const response = await postEvent(guestCheckoutEvent());
+
+      expect(response.status).toBe(200);
+      expect(fulfillCalls(admin)).toHaveLength(1);
+      await vi.waitFor(() => expect(mocks.notifyOps).toHaveBeenCalledWith(expect.objectContaining({
+        event: "stripe.webhook.guest_sign_in_link_failed",
+        context: { courseId: "course_1", userId: "user_1", result: "password_not_replaced" },
+      })));
+      expect(admin.auth.signInWithOtp).not.toHaveBeenCalled();
+      expect(JSON.stringify(mocks.notifyOps.mock.calls)).not.toContain("buyer@example.test");
+    });
+
+    it.each([
+      ["a confirmed account", {}],
+      ["a guest checkout account (link only)", { guestBuyer: true }],
+    ])("never replaces the password of %s", async (_label, flags) => {
+      const admin = createAdmin("checkout");
+      Object.assign(admin.state, flags);
+      mocks.getAdmin.mockReturnValue(admin);
+
+      expect((await postEvent(guestCheckoutEvent())).status).toBe(200);
+
+      await vi.waitFor(() => expect(buyerEmails()).toHaveLength(1));
+      await flush();
+      expect(admin.auth.admin.updateUserById).not.toHaveBeenCalled();
+    });
+
+    it("leaves an unconfirmed account alone when the sale did not come through guest checkout", async () => {
+      const admin = createAdmin("checkout");
+      admin.state.buyerUnconfirmed = true;
+      mocks.getAdmin.mockReturnValue(admin);
+
+      expect((await postEvent(checkoutEvent())).status).toBe(200);
+
+      await vi.waitFor(() => expect(buyerEmails()).toHaveLength(1));
+      await flush();
+      expect(admin.auth.admin.updateUserById).not.toHaveBeenCalled();
+      expect(admin.auth.signInWithOtp).not.toHaveBeenCalled();
+    });
+
+    it("sends no sign-in link to a regular account", async () => {
+      const admin = createAdmin("checkout");
+      mocks.getAdmin.mockReturnValue(admin);
+
+      expect((await postEvent(checkoutEvent())).status).toBe(200);
+
+      await vi.waitFor(() => expect(buyerEmails()).toHaveLength(1));
+      await flush();
+      expect(admin.auth.signInWithOtp).not.toHaveBeenCalled();
     });
 
     it("skips without a Resend key: no request, no throw, one warning per email", async () => {

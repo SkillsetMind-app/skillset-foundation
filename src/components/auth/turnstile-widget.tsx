@@ -36,6 +36,9 @@ declare global {
   }
 }
 
+/** Turnstile's own sizes. "normal" is 300px wide, "compact" 150px. */
+export type TurnstileSize = "normal" | "compact" | "flexible";
+
 let scriptPromise: Promise<boolean> | null = null;
 
 // Resolves false when the script cannot load (ad blocker, network policy,
@@ -67,13 +70,24 @@ function loadTurnstile(): Promise<boolean> {
  * Renders the Turnstile challenge and reports its single-use token via onToken
  * ("" while pending/expired/errored). Bump `resetSignal` after a failed submit
  * to fetch a fresh token — Turnstile tokens are consumed once.
+ *
+ * `size` is optional and leaves Turnstile's default when absent (the sign-in
+ * forms). It can be a function of the container's width, read once when the
+ * widget renders, for cards narrower than the 300px normal widget.
+ *
+ * `loadErrorCopy` is the dictionary entry shown when the script cannot load;
+ * the default speaks of sign-in, so other forms pass their own.
  */
 export function TurnstileWidget({
   onToken,
   resetSignal = 0,
+  size,
+  loadErrorCopy = "authCaptcha.loadError",
 }: {
   onToken: (token: string) => void;
   resetSignal?: number;
+  size?: TurnstileSize | ((containerWidth: number) => TurnstileSize);
+  loadErrorCopy?: string;
 }) {
   const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -85,6 +99,8 @@ export function TurnstileWidget({
   useEffect(() => {
     onTokenRef.current = onToken;
   }, [onToken]);
+  // Read once, at render, like the widget itself.
+  const sizeRef = useRef(size);
 
   useEffect(() => {
     if (!SITE_KEY) return;
@@ -98,8 +114,10 @@ export function TurnstileWidget({
         setLoadFailed(true);
         return;
       }
+      const chosen = typeof sizeRef.current === "function" ? sizeRef.current(el.clientWidth) : sizeRef.current;
       widgetIdRef.current = window.turnstile.render(el, {
         sitekey: SITE_KEY,
+        ...(chosen ? { size: chosen } : {}),
         callback: (token: string) => onTokenRef.current(token),
         "expired-callback": () => onTokenRef.current(""),
         "error-callback": () => onTokenRef.current(""),
@@ -130,7 +148,7 @@ export function TurnstileWidget({
         aria-live="assertive"
         className="rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]"
       >
-        {t("authCaptcha.loadError")}
+        {t(loadErrorCopy)}
       </p>
     );
   }

@@ -4620,6 +4620,38 @@
   "authCaptcha": {
     "loadError": "The security check could not load, so sign-in is blocked. Turn off any ad blocker for this site or switch networks, then reload the page."
   },
+  "guestCheckout": {
+    "form": {
+      "name": "Full name",
+      "email": "Email",
+      "accessByEmail": "No password needed: after payment we email you the link to your course.",
+      "acceptTerms": "Accept the Terms of Service and Privacy Policy to continue.",
+      "captchaPending": "Wait for the security check to finish, then try again.",
+      "captchaFailed": "The security check failed. Please try again.",
+      "captchaLoadError": "The security check could not load, so this purchase can't continue. Turn off any ad blocker for this site or switch networks, then reload the page.",
+      "invalid": "Enter your name and a valid email, and accept the terms.",
+      "checkoutPending": "You have a payment in progress for this course. Finish it or try again in a few minutes.",
+      "sendFailed": "We couldn't send the email right now. Please try again in a moment.",
+      "googleFailed": "Google sign-in could not start. Please try again.",
+      "linkSent": "If this email can access the course, we've sent a sign-in link to it.",
+      "haveAccount": "Already have an account?",
+      "signIn": "Sign in"
+    },
+    "thanks": {
+      "title": "Check your email",
+      "body": "Your course opens as soon as the payment is confirmed, usually within a minute.",
+      "waiting": "If your payment went through, your sign-in link is on its way to {email}.",
+      "sending": "Sending your access link to {email}…",
+      "sent": "We sent your access link to {email}. Open it to go straight to your course.",
+      "pending": "Your payment is still being confirmed. Your link will be sent as soon as it is.",
+      "failed": "We couldn't send the link to {email} right now. Please try again in a moment.",
+      "limited": "Too many requests for {email}. Wait a few minutes and try again.",
+      "checkSpam": "Not in your inbox? Check spam or promotions. The link expires after a while; you can ask for a new one here.",
+      "resend": "Send the link again",
+      "noEmail": "Sign in with the email you used at checkout to open your course.",
+      "haveAccount": "Have a password?"
+    }
+  },
   "legalAcceptance": {
     "eyebrow": "Legal update",
     "firstEyebrow": "Before you start",
@@ -5572,7 +5604,7 @@
       "description": "How SkillsetMind collects, uses, and protects your data.",
       "text1": "This policy explains what personal information SkillsetMind collects, why, who it is shared with, and the rights you have over it. It applies to visitors, learners, and educators. The data controller is SKILLSET USA INC., 418 Broadway, Ste N, Albany, NY 12207, United States (\"SkillsetMind,\" \"we,\" \"us\").",
       "text2": "Short version: we collect what the platform needs to run — your account, your learning activity, your purchases — plus product analytics you can opt out of. We do not sell your personal information.",
-      "text3": "<strong>Account data</strong> — name, email address, password (stored hashed by Supabase Auth), and your role on the platform (learner and/or educator).",
+      "text3": "<strong>Account data</strong> — name, email address, password if you set one (stored hashed by Supabase Auth), and your role on the platform (learner and/or educator).",
       "text4": "<strong>Profile data</strong> — information you add to your profile, such as a photo, bio, or professional background (for educators).",
       "text5": "<strong>Learning activity</strong> — courses you enroll in, lesson progress, certificates you earn, reviews you write, and posts in course communities and live sessions.",
       "text6": "<strong>Transaction data</strong> — order history, amounts, currency, and refund status. Payments are processed by Stripe; we receive confirmation and receipt metadata but never your full card number.",
@@ -5595,7 +5627,7 @@
       "text23": "<strong>Moonshot AI</strong> — generates replies for the Studio advisor. It receives your current question, recent conversation messages, relevant platform help content, and a summary of your own educator account. This summary can include your display name, plan, payment and payout setup status, and details of up to 25 recent courses, including drafts: titles, status, prices and currencies, lesson and enrollment counts, ratings, course age, and whether a cover is missing. The automatic summary does not query individual learner records, card numbers, or bank account details. Text you enter, including messages and course titles, is sent without automatic removal of personal information.",
       "text24": "<strong>OpenAI</strong> — when knowledge search is configured, it receives the educator's current question to create a search vector (embedding), even if the advisor later fails to reply. It also receives the advisor's reference text when the knowledge base is synchronized, to make that content searchable.",
       "text25": "<strong>Bunny.net</strong> — where Bunny video hosting is used, it receives uploaded video files and titles to store and stream lessons. Loading its video player or uploading a video also sends connection and browser information, including your IP address and user agent.",
-      "text26": "<strong>Cloudflare Turnstile</strong> — when enabled on sign-in, sign-up, password reset or account security forms, it processes connection and browser signals, including your IP address and user agent, to detect bots. Cloudflare also uses these signals to improve its bot detection.",
+      "text26": "<strong>Cloudflare Turnstile</strong> — when enabled on sign-in, sign-up, password reset, account security or checkout-without-an-account forms, it processes connection and browser signals, including your IP address and user agent, to detect bots. Cloudflare also uses these signals to improve its bot detection.",
       "text27": "We may also disclose data when required by law, to protect the rights and safety of users, or as part of a corporate transaction (merger, acquisition), in which case this policy continues to apply to your data.",
       "text28": "Our service providers may process your data in the United States and in other countries where they operate. Using SkillsetMind may involve international transfers of your data.",
       "text29": "We keep personal data only as long as needed for the purposes above:",
@@ -5634,7 +5666,7 @@
       "text2": "SkillsetMind is an online course marketplace for coaches, facilitators, and personal-development professionals. Two additional documents form part of this agreement: the <privacy>Privacy Policy</privacy> and, if you publish courses, the <teacherTerms>Teacher Terms</teacherTerms>.",
       "text3": "By creating an account or using SkillsetMind you accept these Terms. If you do not agree, do not use the platform.",
       "text4": "You must be at least <strong>18 years old</strong> and legally capable of entering into contracts to use SkillsetMind. If you use SkillsetMind on behalf of an organization, you confirm you are authorized to bind that organization to these Terms.",
-      "text5": "SkillsetMind uses a single account with up to two roles: learner (enrolling in courses) and educator (publishing courses). You choose your role after registration and may hold both under the same account. Registration requires a valid email address and password; authentication is provided through our infrastructure provider, Supabase.",
+      "text5": "SkillsetMind uses a single account with up to two roles: learner (enrolling in courses) and educator (publishing courses). You choose your role after registration and may hold both under the same account. Registration requires a valid email address. You can sign in with a password, with Google, or with a one-time sign-in link sent to your email (for example, after buying a course without signing in); authentication is provided through our infrastructure provider, Supabase.",
       "text6": "You are responsible for all activity under your account and for keeping your credentials secure. Accounts are personal and non-transferable. Notify us promptly at <support>support@skillsetmind.com</support> if you believe your account has been accessed without authorization. You must provide accurate information and keep it current.",
       "text7": "SkillsetMind provides the technology to host and deliver courses: video classrooms, private per-course communities, live sessions, publicly verifiable certificates, and course reviews by enrolled learners. Courses are created by independent educators, not by SkillsetMind.",
       "text8": "Where SkillsetMind requires it, educators must complete professional verification before publishing. SkillsetMind may review content reported to it for policy compliance, and may pause or remove courses that break marketplace standards. Verification and review are not an endorsement, certification, or guarantee of any course's accuracy, effectiveness, or fitness for your needs.",

@@ -32,6 +32,7 @@ import {
 } from "@/lib/payments/rules";
 import { fromStripeAmount, toStripeAmount } from "@/lib/payments/currencies";
 import { getAppUrl } from "@/lib/payments/server/app-url";
+import { sendGuestSignInLinkAfterPurchase } from "@/lib/payments/server/guest-access-link";
 import {
   sendCreatorSaleEmail,
   buildPlanTrialEmailPayload,
@@ -224,6 +225,8 @@ type AccessEmailSale = {
   /** payout_ledger id: the order id, or the invoice id for a subscription. */
   ledgerId: string;
   locale: Locale;
+  /** The sale came through guest checkout (metadata.checkout_origin). */
+  fromGuestCheckout?: boolean;
 };
 
 // The one place a lost access email becomes visible. Ids only: never the
@@ -255,8 +258,10 @@ function afterResponse(task: () => Promise<void>): void {
 
 function queuePurchaseAccessEmail(admin: Admin, sale: AccessEmailSale): void {
   afterResponse(async () => {
+    let buyer: Parameters<typeof sendGuestSignInLinkAfterPurchase>[1] = null;
     try {
       const { data, error } = await admin.auth.admin.getUserById(sale.userId);
+      buyer = data?.user ?? null;
       const email = data?.user?.email;
       if (error || !email) throw new Error("Buyer account has no email to send access to.");
       await sendPurchaseAccessEmail({
@@ -270,6 +275,9 @@ function queuePurchaseAccessEmail(admin: Admin, sale: AccessEmailSale): void {
     } catch (error) {
       reportLostAccessEmail(sale, error);
     }
+    // Guest checkout buyers (no password yet) also get the sign-in link. Same
+    // place, same once-per-sale gate, same never-throws contract.
+    await sendGuestSignInLinkAfterPurchase(admin, buyer, sale.courseId, sale.fromGuestCheckout);
   });
 }
 
@@ -625,6 +633,7 @@ async function handleCheckoutCompleted(
     courseTitle: course.title,
     ledgerId: orderId,
     locale: normalizeLocale(session.locale),
+    fromGuestCheckout: session.metadata?.checkout_origin === "guest",
   });
   queueCreatorSaleEmail(admin, {
     ownerId: course.owner_id,
@@ -890,6 +899,7 @@ async function handleCourseSubscriptionInvoicePaid(
         ledgerId: invoice.id,
         // Written by checkout on the subscription; older ones fall back to English.
         locale: normalizeLocale(typeof meta.locale === "string" ? meta.locale : null),
+        fromGuestCheckout: meta.checkout_origin === "guest",
       });
       queueCreatorSaleEmail(admin, {
         ownerId: course.owner_id,

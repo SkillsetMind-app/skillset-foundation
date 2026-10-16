@@ -11,6 +11,7 @@ import {
 import { isCronRequest } from "@/lib/cron/authorized";
 import { DEFAULT_LOCALE, isLocale, type Locale } from "@/lib/i18n/config";
 import { getAppUrl } from "@/lib/payments/server/app-url";
+import { GUEST_CHECKOUT_ORIGIN } from "@/lib/payments/server/guest-access-link";
 import { sendResendEmail } from "@/lib/payments/server/purchase-access-email";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 
@@ -79,7 +80,10 @@ function isDue(user: User, oldest: number, newest: number, now: number): user is
     && !user.app_metadata?.[MARK]
     // Deleted, banned, or invited by an admin (that flow has its own email).
     && !user.deleted_at && !user.invited_at
-    && !(Date.parse(user.banned_until ?? "") > now);
+    && !(Date.parse(user.banned_until ?? "") > now)
+    // Made by guest checkout: nobody signed up, the buyer gets the access
+    // link instead. app_metadata, because only the server writes it.
+    && user.app_metadata?.created_via !== GUEST_CHECKOUT_ORIGIN;
 }
 
 export async function GET(request: Request) {

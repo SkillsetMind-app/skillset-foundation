@@ -3,7 +3,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { CreatorCourseDetail } from "@/components/courses/creator-course-detail";
 import { RealCoursesProvider } from "@/components/site/real-courses";
-import { startCourseCheckout, enrollInFreeCreatorCourse } from "@/lib/payments/checkout";
+import { startCourseCheckout, enrollInFreeCreatorCourse, startGuestCourseCheckout } from "@/lib/payments/checkout";
+import { getLoadingRoute } from "@/lib/auth/routing";
+import { isPlatformHost } from "@/domain/host-routing";
+import { signInWithGoogle } from "@/lib/auth/supabase-auth";
 import { PaymentRequestError } from "@/lib/payments/client-fetch";
 import { getCourseLanding } from "@/lib/data/course-landings";
 import { getLessonContentDoc } from "@/lib/data/lesson-content";
@@ -114,7 +117,27 @@ vi.mock("@/lib/data/course-events", () => ({
 vi.mock("@/lib/payments/checkout", () => ({
   enrollInFreeCreatorCourse: vi.fn(),
   startCourseCheckout: vi.fn(),
+  startGuestCourseCheckout: vi.fn(),
 }));
+
+// Guest checkout form: the bot check reports a token at once, like a passed
+// challenge; Google sign-in is on and never leaves the page here.
+vi.mock("@/components/auth/turnstile-widget", async () => {
+  const { useEffect } = await import("react");
+  return {
+    TurnstileWidget: ({ onToken }: { onToken: (token: string) => void }) => {
+      useEffect(() => onToken("turnstile-token"), [onToken]);
+      return null;
+    },
+  };
+});
+vi.mock("@/lib/auth/providers", () => ({ isGoogleAuthEnabled: true }));
+vi.mock("@/lib/auth/supabase-auth", () => ({ signInWithGoogle: vi.fn(() => new Promise(() => {})) }));
+// Real host rule (jsdom runs on localhost, a platform host); one test swaps it.
+vi.mock("@/domain/host-routing", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/domain/host-routing")>();
+  return { ...actual, isPlatformHost: vi.fn(actual.isPlatformHost) };
+});
 
 // The teacher's sales blocks: one button wired to onEnrol, like their CTA block.
 vi.mock("@/components/courses/course-landing-blocks", () => ({
@@ -1122,6 +1145,203 @@ describe("CreatorCourseDetail: o que cada tipo entrega", () => {
       expect(getLiveEventSession).not.toHaveBeenCalled();
     } finally {
       restore();
+    }
+  });
+});
+
+// Guest checkout (off by default): a signed-out visitor buys a paid course with
+// name, e-mail and the terms box; everyone else sees exactly today's card.
+describe("CreatorCourseDetail: buying without an account", () => {
+  const checkoutReturn = encodeURIComponent("/courses/course-1/checkout");
+  const nameField = () => screen.getByRole("textbox", { name: "Full name" });
+  const emailField = () => screen.getByRole("textbox", { name: "Email" });
+
+  beforeEach(() => {
+    vi.stubEnv("NEXT_PUBLIC_GUEST_CHECKOUT_ENABLED", "true");
+    vi.stubEnv("NEXT_PUBLIC_TURNSTILE_SITE_KEY", "site-key");
+  });
+  afterEach(() => vi.unstubAllEnvs());
+
+  async function fillAndSubmit(options: { accept?: boolean } = {}) {
+    const submit = await screen.findByRole("button", { name: /Enroll — \$/ });
+    fireEvent.change(nameField(), { target: { value: " Ana Prado " } });
+    fireEvent.change(emailField(), { target: { value: "ana@example.com" } });
+    if (options.accept !== false) fireEvent.click(screen.getByRole("checkbox"));
+    fireEvent.submit(submit.closest("form") as HTMLFormElement);
+  }
+
+  it("a signed-out visitor gets the short form, Google and a visible sign-in link", async () => {
+    render(<CreatorCourseDetail courseIdOverride="course-1" checkoutOnly />);
+
+    expect(await screen.findByRole("button", { name: "Enroll — $149.00" })).toHaveAttribute("type", "submit");
+    expect(nameField()).toBeRequired();
+    expect(emailField()).toHaveAttribute("type", "email");
+    expect(screen.getByRole("checkbox")).not.toBeChecked();
+    expect(screen.getByRole("link", { name: "Terms of service" })).toHaveAttribute("href", "/legal/terms");
+    expect(screen.getByRole("link", { name: "Privacy policy" })).toHaveAttribute("href", "/legal/privacy");
+    expect(screen.getByRole("link", { name: "Sign in" })).toHaveAttribute("href", `/login?returnTo=${checkoutReturn}`);
+    // Not today's "create an account to buy" link.
+    expect(screen.queryByRole("link", { name: "Enroll — $149.00" })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Continue with Google" }));
+    expect(signInWithGoogle).toHaveBeenCalledWith(getLoadingRoute("welcome", null, "/courses/course-1/checkout"));
+  });
+
+  it("sends name, e-mail, the check token and the chosen offer, and nothing without the terms", async () => {
+    fixtures.query = "offer=LAUNCH";
+    withOffers();
+    vi.mocked(startGuestCourseCheckout).mockResolvedValue("redirected");
+    render(<CreatorCourseDetail courseIdOverride="focus-slug" checkoutOnly />);
+
+    await fillAndSubmit({ accept: false });
+    expect(await screen.findByRole("alert")).toHaveTextContent("Accept the Terms of Service and Privacy Policy to continue.");
+    expect(startGuestCourseCheckout).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("checkbox"));
+    fireEvent.submit(nameField().closest("form") as HTMLFormElement);
+
+    await waitFor(() => expect(startGuestCourseCheckout).toHaveBeenCalledWith({
+      courseId: "course-1",
+      name: "Ana Prado",
+      email: "ana@example.com",
+      captchaToken: "turnstile-token",
+      offerId: "offer-1",
+      offerCode: "LAUNCH",
+      priceId: "price-1",
+    }));
+    expect(startCourseCheckout).not.toHaveBeenCalled();
+    expect(fixtures.router.push).not.toHaveBeenCalled();
+  });
+
+  it("says the access link went to the e-mail when there is nothing to pay", async () => {
+    vi.mocked(startGuestCourseCheckout).mockResolvedValue("access_link_sent");
+    render(<CreatorCourseDetail courseIdOverride="course-1" checkoutOnly />);
+
+    await fillAndSubmit();
+
+    expect(await screen.findByText("If this email can access the course, we've sent a sign-in link to it.")).toBeInTheDocument();
+  });
+
+  it("shows the security-check failure in its own words", async () => {
+    vi.mocked(startGuestCourseCheckout).mockRejectedValue(new PaymentRequestError("x", 400, "captcha_failed"));
+    render(<CreatorCourseDetail courseIdOverride="course-1" checkoutOnly />);
+
+    await fillAndSubmit();
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("The security check failed. Please try again.");
+  });
+
+  it("asks to try again when the access e-mail could not be sent", async () => {
+    vi.mocked(startGuestCourseCheckout).mockRejectedValue(new PaymentRequestError("x", 502, "send_failed"));
+    render(<CreatorCourseDetail courseIdOverride="course-1" checkoutOnly />);
+
+    await fillAndSubmit();
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("We couldn't send the email right now. Please try again in a moment.");
+  });
+
+  it("says a payment is already in progress, without promising an e-mail", async () => {
+    vi.mocked(startGuestCourseCheckout).mockRejectedValue(new PaymentRequestError("x", 409, "checkout_pending"));
+    render(<CreatorCourseDetail courseIdOverride="course-1" checkoutOnly />);
+
+    await fillAndSubmit();
+
+    expect(await screen.findByRole("alert"))
+      .toHaveTextContent("You have a payment in progress for this course. Finish it or try again in a few minutes.");
+  });
+
+  it("a signed-in buyer keeps today's button and route", async () => {
+    fixtures.auth.status = "authenticated"; fixtures.auth.user = { uid: "buyer" };
+    render(<CreatorCourseDetail courseIdOverride="course-1" checkoutOnly />);
+
+    const button = await screen.findByRole("button", { name: "Enroll — $149.00" });
+    expect(button).toHaveAttribute("type", "button");
+    expect(screen.queryByRole("textbox", { name: "Email" })).not.toBeInTheDocument();
+    fireEvent.click(button);
+    expect(startCourseCheckout).toHaveBeenCalledWith("course-1", {});
+    expect(startGuestCourseCheckout).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["the flag is off", "NEXT_PUBLIC_GUEST_CHECKOUT_ENABLED", "false"],
+    ["Turnstile has no site key", "NEXT_PUBLIC_TURNSTILE_SITE_KEY", ""],
+  ])("with %s, a visitor keeps today's 'create an account to buy'", async (_label, name, value) => {
+    vi.stubEnv(name, value);
+    render(<CreatorCourseDetail courseIdOverride="course-1" checkoutOnly />);
+
+    expect(await screen.findByRole("link", { name: "Enroll — $149.00" }))
+      .toHaveAttribute("href", `/auth?mode=signup&returnTo=${checkoutReturn}`);
+    expect(screen.queryByRole("textbox", { name: "Email" })).not.toBeInTheDocument();
+  });
+
+  it("on a creator's own domain, a visitor keeps today's 'create an account to buy'", async () => {
+    const hostRule = vi.mocked(isPlatformHost);
+    const real = hostRule.getMockImplementation();
+    hostRule.mockReturnValue(false);
+    try {
+      render(<CreatorCourseDetail courseIdOverride="course-1" checkoutOnly />);
+
+      expect(await screen.findByRole("link", { name: "Enroll — $149.00" }))
+        .toHaveAttribute("href", `/auth?mode=signup&returnTo=${checkoutReturn}`);
+      expect(screen.queryByRole("textbox", { name: "Email" })).not.toBeInTheDocument();
+    } finally {
+      if (real) hostRule.mockImplementation(real);
+    }
+  });
+
+  it("caps the sticky buy card to the screen and scrolls inside it while the form shows", async () => {
+    const { container } = render(<CreatorCourseDetail courseIdOverride="course-1" />);
+    await screen.findByRole("button", { name: "Enroll — $149.00" });
+
+    const card = container.querySelector("#enroll-card") as HTMLElement;
+    expect(card).toHaveClass("lg:sticky", "lg:top-24", "lg:max-h-[calc(100svh-7rem)]", "lg:overflow-y-auto");
+    // The corner buy bar still watches the card's main field.
+    expect(card.querySelector("[data-cta-focus]")).toBe(screen.getByRole("textbox", { name: "Full name" }));
+  });
+
+  it("keeps today's card classes for a signed-in buyer", async () => {
+    fixtures.auth.status = "authenticated"; fixtures.auth.user = { uid: "buyer" };
+    const { container } = render(<CreatorCourseDetail courseIdOverride="course-1" />);
+    await screen.findByRole("button", { name: "Enroll — $149.00" });
+
+    const card = container.querySelector("#enroll-card") as HTMLElement;
+    expect(card).toHaveClass("lg:sticky", "lg:top-24");
+    expect(card).not.toHaveClass("lg:max-h-[calc(100svh-7rem)]");
+    expect(card).not.toHaveClass("lg:overflow-y-auto");
+  });
+
+  it("shows no form while the session is still loading", async () => {
+    fixtures.auth.status = "loading";
+    render(<CreatorCourseDetail courseIdOverride="course-1" checkoutOnly />);
+
+    expect(await screen.findByRole("link", { name: "Enroll — $149.00" }))
+      .toHaveAttribute("href", `/auth?mode=signup&returnTo=${checkoutReturn}`);
+    expect(screen.queryByRole("textbox", { name: "Email" })).not.toBeInTheDocument();
+  });
+
+  it("a free course still needs an account", async () => {
+    Object.assign(fixtures.course, { paymentType: "free", priceAmountMinor: 0 });
+    withOffers([]);
+    render(<CreatorCourseDetail courseIdOverride="course-1" checkoutOnly />);
+
+    expect(await screen.findByRole("link", { name: "Enroll free" })).toBeInTheDocument();
+    expect(screen.queryByRole("textbox", { name: "Email" })).not.toBeInTheDocument();
+  });
+
+  it("the sales-page button brings the form into view instead of the signup page", async () => {
+    const scrollIntoView = vi.fn();
+    Element.prototype.scrollIntoView = scrollIntoView;
+    try {
+      render(<CreatorCourseDetail courseIdOverride="course-1" />);
+      await screen.findByRole("button", { name: "Enroll — $149.00" });
+
+      fireEvent.click(screen.getByRole("button", { name: "Sales block CTA" }));
+
+      expect(fixtures.router.push).not.toHaveBeenCalled();
+      expect(scrollIntoView.mock.contexts[0]).toBe(document.getElementById("enroll-card"));
+    } finally {
+      // @ts-expect-error jsdom não define scrollIntoView; remove o stub do teste
+      delete Element.prototype.scrollIntoView;
     }
   });
 });

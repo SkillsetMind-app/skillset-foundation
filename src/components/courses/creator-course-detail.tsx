@@ -53,6 +53,8 @@ import {
   enrollInFreeCreatorCourse,
   startCourseCheckout,
 } from "@/lib/payments/checkout";
+import { GuestCheckoutForm, useOnPlatformHost } from "@/components/courses/guest-checkout-form";
+import { isGuestCheckoutEnabled } from "@/lib/payments/guest-checkout";
 import { track } from "@/lib/posthog/events";
 import { CourseViewedTracker } from "@/lib/posthog/page-trackers";
 import { PaymentRequestError } from "@/lib/payments/client-fetch";
@@ -127,6 +129,7 @@ export function CreatorCourseDetail({
   const hasRealCourses = useHasRealCourses();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const onPlatformHost = useOnPlatformHost();
   // URL segment: a course id on legacy links (and the Stripe checkout
   // redirects) or a title_key slug on pretty ones. Only route back to it;
   // every backend call below uses `resolvedCourseId`, the real primary key.
@@ -451,6 +454,16 @@ export function CreatorCourseDetail({
     && authStatus === "authenticated"
     && Boolean(user)
     && courseIsFree;
+  // A visitor buys a paid course without signing in first (off by default; see
+  // isGuestCheckoutEnabled). Free courses still need an account, and so does a
+  // creator's own domain. Only once the session is known to be absent: while it
+  // loads, a signed-in buyer must not see the form.
+  const guestCheckoutOn =
+    authStatus === "unauthenticated"
+    && checkoutEnabled
+    && !courseIsFree
+    && onPlatformHost
+    && isGuestCheckoutEnabled();
   // The owner never sees padlocks on their own course.
   const viewerOwnsCourse = Boolean(user && course.ownerId === user.uid);
   const viewerHasAccess =
@@ -658,7 +671,8 @@ export function CreatorCourseDetail({
   function handleCardAction() {
     if (isEnrollingFree || isCheckingOut) return;
     if (authStatus !== "authenticated") {
-      router.push(signupHref);
+      if (guestCheckoutOn) revealBuyCard();
+      else router.push(signupHref);
     } else if (viewerIsLearner) {
       router.push(classroomHref);
     } else if (canEnrollFree) {
@@ -990,7 +1004,12 @@ export function CreatorCourseDetail({
         id="enroll-card"
         // Focus fallback for the popup's button when no main action is enabled.
         tabIndex={-1}
-        className="min-w-0 h-fit scroll-mt-24 self-start rounded-lg border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)] lg:sticky lg:top-24"
+        // O formulario de visitante deixa o cartao mais alto que a tela: preso
+        // no topo, ele ganha teto e rola por dentro, para o botao nunca ficar
+        // abaixo da tela (regra 1 do AGENTS.md, em svh).
+        className={`min-w-0 h-fit scroll-mt-24 self-start rounded-lg border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)] lg:sticky lg:top-24${
+          guestCheckoutOn ? " lg:max-h-[calc(100svh-7rem)] lg:overflow-y-auto" : ""
+        }`}
       >
         {/* O preco era a quarta de seis linhas de uma lista "At a glance",
             entre "Status: Published" e "Access: Secure checkout" — vocabulario
@@ -1096,7 +1115,28 @@ export function CreatorCourseDetail({
           </p>
         ) : null}
 
-        {authStatus !== "authenticated" ? (
+        {guestCheckoutOn ? (
+          // Visitante com a compra sem login ligada: nome, e-mail e termos,
+          // direto para o Stripe. Entrar continua a um clique.
+          <GuestCheckoutForm
+            courseId={course.id}
+            offerId={resolvedPrice?.offerId}
+            offerCode={requestedOfferCode || undefined}
+            priceId={resolvedPrice?.priceId}
+            returnTo={returnTo}
+            submitLabel={enrollLabel}
+            disabled={!hasPaidPrice}
+            errorKeyFor={getCheckoutErrorKey}
+            onSubmitStart={() => {
+              if (!resolvedPrice) return;
+              track.checkoutStarted({
+                course_id: course.id,
+                price_minor: resolvedPrice.amountMinor,
+                currency: resolvedPrice.currency,
+              });
+            }}
+          />
+        ) : authStatus !== "authenticated" ? (
           // Visitante: o botao principal diz o que ele faz e quanto custa, e
           // leva a criar conta. `returnTo` traz a pessoa de volta a ESTE curso
           // depois de entrar, em vez de deixa-la na home.
