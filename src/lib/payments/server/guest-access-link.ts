@@ -37,17 +37,18 @@ export async function sendGuestAccessLink(admin: Admin, email: string, courseId:
 }
 
 /**
- * After a paid sale: an account guest checkout created that has not confirmed
- * its e-mail has no password, so the purchase email's plain course link leads
- * to a sign-in it cannot complete. Such a buyer also gets the sign-in link.
- * Every other account gets nothing more. Never throws; a failed send is logged.
+ * After every paid sale to an account guest checkout created: it may have no
+ * password (confirmed or not, a later purchase can come from a new browser),
+ * so the purchase email's plain course link can lead to a sign-in it cannot
+ * complete. Such a buyer also gets the sign-in link, once per sale. Every
+ * other account gets nothing more. Never throws; a failed send is logged.
  */
 export async function sendGuestSignInLinkAfterPurchase(
   admin: Admin,
-  buyer: Pick<User, "id" | "email" | "email_confirmed_at" | "app_metadata"> | null,
+  buyer: Pick<User, "id" | "email" | "app_metadata"> | null,
   courseId: string,
 ): Promise<void> {
-  if (!buyer?.email || buyer.app_metadata?.created_via !== GUEST_CHECKOUT_ORIGIN || buyer.email_confirmed_at) return;
+  if (!buyer?.email || buyer.app_metadata?.created_via !== GUEST_CHECKOUT_ORIGIN) return;
   if (!(await sendGuestAccessLink(admin, buyer.email, courseId))) {
     console.error("Guest checkout sign-in link failed after a paid sale", { courseId, userId: buyer.id });
   }

@@ -56,8 +56,10 @@ type AdminState = {
   // Opt-in: o reembolso chegou ANTES de a fulfilment escrever a linha de
   // `payments` — o caso em que o handler caía no ramo de assinatura.
   paymentRowMissing?: boolean;
-  // Opt-in: the buyer (not the creator) is an unconfirmed guest checkout account.
+  // Opt-in: the buyer (not the creator) is a guest checkout account, unconfirmed
+  // unless guestBuyerConfirmed.
   guestBuyer?: boolean;
+  guestBuyerConfirmed?: boolean;
   // Opt-in: the Auth sign-in link fails.
   signInLinkFails?: boolean;
   doneEvents: Set<string>;
@@ -449,7 +451,7 @@ function createAdmin(
                 id: uid,
                 email: uid === "teacher_1" ? "creator@example.test" : "buyer@example.test",
                 app_metadata: guest ? { created_via: "guest_checkout" } : { provider: "email" },
-                email_confirmed_at: guest ? null : "2026-01-01T00:00:00.000Z",
+                email_confirmed_at: guest && !state.guestBuyerConfirmed ? null : "2026-01-01T00:00:00.000Z",
               },
             },
             error: null,
@@ -1599,6 +1601,23 @@ describe("Stripe webhook financial integrity", () => {
       });
       expect(fulfillCalls(admin)).toHaveLength(1);
       expect(buyerEmails()).toHaveLength(1);
+    });
+
+    it("sends the sign-in link once to a guest checkout buyer whose e-mail is already confirmed", async () => {
+      const admin = createAdmin("checkout");
+      admin.state.guestBuyer = true;
+      admin.state.guestBuyerConfirmed = true;
+      mocks.getAdmin.mockReturnValue(admin);
+      const event = checkoutEvent();
+
+      expect((await postEvent(event)).status).toBe(200);
+      await vi.waitFor(() => expect(admin.auth.signInWithOtp).toHaveBeenCalledTimes(1));
+      // A redelivery of the same sale sends nothing more.
+      expect((await postEvent(event)).status).toBe(200);
+      await flush();
+
+      expect(admin.auth.signInWithOtp).toHaveBeenCalledTimes(1);
+      expect(fulfillCalls(admin)).toHaveLength(1);
     });
 
     it("keeps the enrollment and answers 2xx when the guest sign-in link fails", async () => {
