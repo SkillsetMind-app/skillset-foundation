@@ -81,7 +81,7 @@ describe("MemberAreaSettingsPanel", () => {
     fireEvent.click(screen.getByLabelText("Dark"));
     fireEvent.change(screen.getByLabelText("Welcome text"), { target: { value: "Welcome!" } });
     fireEvent.click(screen.getByRole("button", { name: "Move Old course up" }));
-    fireEvent.click(screen.getByRole("button", { name: "Show Draft course in the members area" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: /Visible: Draft course/ }));
     fireEvent.click(screen.getByRole("button", { name: "Save members area" }));
 
     await waitFor(() => expect(mocks.saveMyMemberAreaProducts).toHaveBeenCalled());
@@ -106,11 +106,15 @@ describe("MemberAreaSettingsPanel", () => {
     await screen.findByRole("list");
     expect(screen.queryByText(/You have not customized it yet/)).toBeNull();
     expect(titles().map((text) => text.slice(1, 4))).toEqual(["Old", "New", "Dra"]);
-    expect(screen.getByRole("button", { name: "Show New course in the members area" }).getAttribute("aria-pressed")).toBe("false");
+    expect(screen.getByRole("checkbox", { name: /Visible: New course/ })).not.toBeChecked();
+    expect(screen.getByRole("checkbox", { name: /Visible: Old course/ })).toBeChecked();
 
     const file = new File(["x"], "capa.png", { type: "image/png" });
-    fireEvent.change(screen.getByLabelText("Upload cover"), { target: { files: [file] } });
+    fireEvent.change(screen.getByLabelText("Replace cover"), { target: { files: [file] } });
     await waitFor(() => expect(mocks.uploadMemberAreaCover).toHaveBeenCalledWith("teacher-1", file));
+    // A capa velha só sai depois que o banco grava a nova.
+    expect(mocks.removeMemberAreaCover).not.toHaveBeenCalled();
+    await waitFor(() => expect(screen.getByRole("button", { name: "Save members area" })).toBeEnabled());
     fireEvent.click(screen.getByRole("button", { name: "Save members area" }));
     await waitFor(() => expect(mocks.removeMemberAreaCover).toHaveBeenCalledWith("users/teacher-1/member-area/cover-1"));
     expect(mocks.saveMyMemberArea).toHaveBeenCalledWith(expect.objectContaining({ coverPath: "users/teacher-1/member-area/cover-2" }));
@@ -133,6 +137,24 @@ describe("MemberAreaSettingsPanel", () => {
     fireEvent.click(screen.getByRole("button", { name: "Save members area" }));
     expect(await screen.findByText(/We could not save your members area/)).toBeTruthy();
     expect(mocks.saveMyMemberAreaProducts).not.toHaveBeenCalled();
+  });
+
+  it("lista que falha depois da área salva avisa o que ficou e o que faltou", async () => {
+    mocks.saveMyMemberAreaProducts.mockRejectedValue(new Error("MEMBER_AREA_COURSE_NOT_OWNED"));
+    renderPanel();
+    await screen.findByRole("list");
+    fireEvent.click(screen.getByRole("button", { name: "Save members area" }));
+    expect(await screen.findByText(/were saved, but the product order was not/)).toBeTruthy();
+    expect(screen.queryByText(/You have not customized it yet/)).toBeNull();
+  });
+
+  it("produto sem título ganha nome de reserva", async () => {
+    mocks.subscribeToTeacherCourses.mockImplementation((_uid: string, callback: (value: unknown) => void) => {
+      callback([{ id: "x", title: "  ", status: "published", createdAt: "2026-10-01T00:00:00Z" }]);
+      return () => undefined;
+    });
+    renderPanel();
+    expect(await screen.findByRole("checkbox", { name: /Visible: Untitled product/ })).toBeTruthy();
   });
 
   it("em espanhol", async () => {

@@ -1733,7 +1733,6 @@
       "notPublished": "Not published — shows up after you publish it.",
       "visible": "Visible",
       "hidden": "Hidden",
-      "showLabel": "Show {title} in the members area",
       "moveUp": "Move {title} up",
       "moveDown": "Move {title} down",
       "save": "Save members area",
@@ -1745,6 +1744,7 @@
         "load": "We could not load your members area. Please try again.",
         "courses": "We could not load your products. Reload the page to try again.",
         "save": "We could not save your members area. Please try again.",
+        "saveProducts": "Name, theme, cover and welcome text were saved, but the product order was not. Please save again.",
         "coverInvalid": "Use a JPG, PNG or WebP image under 5 MB.",
         "coverUpload": "We could not upload this image. Please try again."
       }
@@ -5805,7 +5805,7 @@
   "teacherMembers": {
     "creatorAreaTitle": "Your members area",
     "creatorAreaDescription": "One home that gathers all your products for your students.",
-    "creatorAreaOpen": "Customize",
+    "creatorAreaOpen": "Set up members area",
     "pageTitle": "Members areas",
     "products": "Products",
     "title": "Members & communities",

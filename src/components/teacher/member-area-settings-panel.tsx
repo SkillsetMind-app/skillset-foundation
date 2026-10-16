@@ -57,7 +57,7 @@ export function MemberAreaSettingsPanel() {
   const [uploading, setUploading] = useState(false);
   const [coverError, setCoverError] = useState<"" | "invalid" | "upload">("");
   const [saving, setSaving] = useState(false);
-  const [feedback, setFeedback] = useState<"" | "saved" | "saveError">("");
+  const [feedback, setFeedback] = useState<"" | "saved" | "saveError" | "productsError">("");
 
   useEffect(() => {
     if (!uid) return;
@@ -133,9 +133,9 @@ export function MemberAreaSettingsPanel() {
     setCoverError("");
     setUploading(true);
     try {
+      // ponytail: capa enviada e trocada antes de salvar fica órfã no bucket.
+      // Apagar aqui arriscava apagar a que o banco ainda usa; limpar órfãs é outro trabalho.
       const path = await uploadMemberAreaCover(uid, file);
-      // Capa enviada e trocada antes de salvar: ninguém mais usa a anterior.
-      if (coverPath && coverPath !== savedCoverPath) void removeMemberAreaCover(coverPath).catch(() => undefined);
       setCoverPath(path);
       setFeedback("");
     } catch {
@@ -150,19 +150,28 @@ export function MemberAreaSettingsPanel() {
     if (!uid) return;
     setSaving(true);
     setFeedback("");
+    const previousCover = savedCoverPath;
     try {
       await saveMyMemberArea({ name, theme, coverPath, welcomeText: welcome });
+    } catch {
+      setFeedback("saveError");
+      setSaving(false);
+      return;
+    }
+    // O banco já aponta para a capa nova: a anterior pode sair, mesmo que a
+    // lista de produtos falhe logo abaixo.
+    setSavedCoverPath(coverPath);
+    setConfigured(true);
+    if (previousCover && previousCover !== coverPath) {
+      void removeMemberAreaCover(previousCover).catch(() => undefined);
+    }
+    try {
       await saveMyMemberAreaProducts(
         orderedCourses.map((course) => ({ courseId: course.id, visible: !hidden.has(course.id) })),
       );
-      if (savedCoverPath && savedCoverPath !== coverPath) {
-        void removeMemberAreaCover(savedCoverPath).catch(() => undefined);
-      }
-      setSavedCoverPath(coverPath);
-      setConfigured(true);
       setFeedback("saved");
     } catch {
-      setFeedback("saveError");
+      setFeedback("productsError");
     } finally {
       setSaving(false);
     }
@@ -194,6 +203,8 @@ export function MemberAreaSettingsPanel() {
 
   return (
     <form onSubmit={handleSubmit} className="grid gap-5">
+      {/* Travado enquanto salva: sem trocar capa nem texto no meio do envio. */}
+      <fieldset disabled={saving} className="grid min-w-0 gap-5">
       {!configured ? <p className="info-notice">{t("teach.memberAreaEditor.virtualNote")}</p> : null}
 
       <Card padding="sm" shadow={false} className="grid gap-4">
@@ -269,7 +280,6 @@ export function MemberAreaSettingsPanel() {
                   type="file"
                   accept={allowedAvatarTypes.join(",")}
                   disabled={uploading}
-                  aria-label={t("teach.memberAreaEditor.uploadCover")}
                   onChange={(event) => {
                     const file = event.target.files?.[0] ?? null;
                     event.target.value = "";
@@ -293,7 +303,7 @@ export function MemberAreaSettingsPanel() {
               ) : null}
             </div>
             {coverError ? (
-              <p role="alert" className="mt-2 text-xs text-[var(--color-danger)]">
+              <p role="alert" className="mt-2 text-xs text-[var(--color-danger-fg)]">
                 {t(`teach.memberAreaEditor.errors.${coverError === "invalid" ? "coverInvalid" : "coverUpload"}`)}
               </p>
             ) : null}
@@ -337,7 +347,8 @@ export function MemberAreaSettingsPanel() {
           <ol className="grid grid-cols-1 gap-2">
             {orderedCourses.map((course, index) => {
               const visible = !hidden.has(course.id);
-              const title = () => course.title;
+              const label = course.title.trim() || t("teacherMembers.untitled");
+              const title = () => label;
               return (
                 <li
                   key={course.id}
@@ -348,22 +359,23 @@ export function MemberAreaSettingsPanel() {
                   </span>
                   <span className="min-w-0 flex-1 basis-[calc(100%_-_2.25rem)] sm:basis-0">
                     <span className={`block truncate text-sm font-semibold ${visible ? "text-[var(--color-ink)]" : "text-[var(--color-ink-muted)]"}`}>
-                      {course.title}
+                      {label}
                     </span>
                     {course.status !== "published" ? (
                       <span className="block text-xs text-[var(--color-ink-soft)]">{t("teach.memberAreaEditor.notPublished")}</span>
                     ) : null}
                   </span>
-                  <button
-                    type="button"
-                    onClick={() => toggleVisible(course.id)}
-                    aria-pressed={visible}
-                    aria-label={t("teach.memberAreaEditor.showLabel").replace("{title}", title)}
-                    className={smallButtonClass}
-                  >
+                  <label className={`${smallButtonClass} cursor-pointer`}>
+                    <input
+                      type="checkbox"
+                      checked={visible}
+                      onChange={() => toggleVisible(course.id)}
+                      className="size-4 accent-[var(--color-primary)]"
+                    />
                     {visible ? <Eye aria-hidden="true" size={15} /> : <EyeOff aria-hidden="true" size={15} />}
-                    {t(`teach.memberAreaEditor.${visible ? "visible" : "hidden"}`)}
-                  </button>
+                    {t("teach.memberAreaEditor.visible")}
+                    <span className="sr-only">: {title()}</span>
+                  </label>
                   <div className="flex shrink-0 gap-1">
                     <button
                       type="button"
@@ -391,7 +403,13 @@ export function MemberAreaSettingsPanel() {
         )}
       </Card>
 
-      {feedback === "saveError" ? <InlineAlert tone="error">{t("teach.memberAreaEditor.errors.save")}</InlineAlert> : null}
+      </fieldset>
+
+      {feedback === "saveError" || feedback === "productsError" ? (
+        <InlineAlert tone="error">
+          {t(`teach.memberAreaEditor.errors.${feedback === "saveError" ? "save" : "saveProducts"}`)}
+        </InlineAlert>
+      ) : null}
       {feedback === "saved" ? <p role="status" className="info-notice">{t("teach.memberAreaEditor.saved")}</p> : null}
 
       <div className="flex flex-wrap items-center gap-3">
