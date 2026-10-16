@@ -2702,6 +2702,7 @@ export type Database = {
         Returns: Json
       }
       account_session_allowed: { Args: Record<PropertyKey, never>; Returns: boolean }
+      session_is_strong: { Args: Record<PropertyKey, never>; Returns: boolean }
       admin_get_account_control: { Args: { p_target_uid: string }; Returns: Json }
       admin_set_account_control: {
         Args: { p_target_uid: string; p_action: string; p_reason: string }
