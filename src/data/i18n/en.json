@@ -1281,6 +1281,27 @@
     "rejected": "Rejected"
   },
   "learn": {
+    "memberArea": {
+      "loading": "Loading the members area...",
+      "loadError": "We could not load this members area. Please try again.",
+      "ownerPreview": "Preview: this is what your students see. Only saved changes appear here.",
+      "editArea": "Edit members area",
+      "byCreator": "By {name}",
+      "continueTitle": "Continue where you left off",
+      "continueEmpty": "Open one of your products below to start.",
+      "resumeLesson": "Resume: {title}",
+      "resumeAt": "from {time}",
+      "myProducts": "My products",
+      "myProductsEmpty": "You have no products from this creator yet.",
+      "progress": "{percent}% complete",
+      "moreProducts": "More from this creator",
+      "moreProductsEmpty": "You already have every product from this creator.",
+      "locked": "Locked",
+      "viewProduct": "See details",
+      "free": "Free",
+      "openArea": "Open {name}'s members area",
+      "backToArea": "{name}'s members area"
+    },
     "classroom": {
       "workspace": {
         "enrollmentError": "We could not confirm your enrollment for this course.",
