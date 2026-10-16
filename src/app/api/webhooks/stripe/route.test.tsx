@@ -1688,7 +1688,7 @@ describe("Stripe webhook financial integrity", () => {
       expect(admin.auth.admin.updateUserById).toHaveBeenCalledTimes(1);
       const [uid, attributes] = admin.auth.admin.updateUserById.mock.calls[0];
       expect(uid).toBe("user_1");
-      expect(String(attributes.password)).toMatch(/^[A-Za-z0-9_-]{43}$/);
+      expect(String(attributes.password)).toMatch(/^[A-Za-z0-9_-]{43}aA1!$/);
       expect(attributes.app_metadata).toEqual({ guest_password_reset_at: expect.any(String) });
       // The password goes first, the link after it.
       expect(admin.auth.admin.updateUserById.mock.invocationCallOrder[0])
