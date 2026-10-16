@@ -4614,6 +4614,33 @@
   "authCaptcha": {
     "loadError": "The security check could not load, so sign-in is blocked. Turn off any ad blocker for this site or switch networks, then reload the page."
   },
+  "guestCheckout": {
+    "form": {
+      "name": "Full name",
+      "email": "Email",
+      "accessByEmail": "No password needed: after payment we email you the link to your course.",
+      "acceptTerms": "Accept the Terms of Service and Privacy Policy to continue.",
+      "captchaPending": "Wait for the security check to finish, then try again.",
+      "captchaFailed": "The security check failed. Please try again.",
+      "invalid": "Enter your name and a valid email, and accept the terms.",
+      "googleFailed": "Google sign-in could not start. Please try again.",
+      "linkSent": "Check your email: we sent you the link to access this course.",
+      "haveAccount": "Already have an account?",
+      "signIn": "Sign in"
+    },
+    "thanks": {
+      "title": "Payment received",
+      "body": "Thank you for your purchase. Your course opens as soon as the payment is confirmed, usually within a minute.",
+      "sending": "Sending your access link to {email}…",
+      "sent": "We sent your access link to {email}. Open it to go straight to your course.",
+      "failed": "We couldn't send the link to {email} right now. Please try again in a moment.",
+      "limited": "Too many requests for {email}. Wait a few minutes and try again.",
+      "checkSpam": "Not in your inbox? Check spam or promotions. The link expires after a while; you can ask for a new one here.",
+      "resend": "Send the link again",
+      "noEmail": "Sign in with the email you used at checkout to open your course.",
+      "haveAccount": "Have a password?"
+    }
+  },
   "legalAcceptance": {
     "eyebrow": "Legal update",
     "firstEyebrow": "Before you start",

@@ -4614,6 +4614,33 @@
   "authCaptcha": {
     "loadError": "No se pudo cargar la verificación de seguridad, por lo que el inicio de sesión está bloqueado. Desactiva cualquier bloqueador de anuncios para este sitio o cambia de red y luego vuelve a cargar la página."
   },
+  "guestCheckout": {
+    "form": {
+      "name": "Nombre completo",
+      "email": "Correo electrónico",
+      "accessByEmail": "No necesitas contraseña: después del pago te enviamos por correo el enlace a tu curso.",
+      "acceptTerms": "Acepta las Condiciones de servicio y la Política de privacidad para continuar.",
+      "captchaPending": "Espera a que termine la verificación de seguridad y vuelve a intentarlo.",
+      "captchaFailed": "La verificación de seguridad falló. Vuelve a intentarlo.",
+      "invalid": "Escribe tu nombre y un correo válido, y acepta las condiciones.",
+      "googleFailed": "No se pudo iniciar sesión con Google. Vuelve a intentarlo.",
+      "linkSent": "Revisa tu correo: te enviamos el enlace para acceder a este curso.",
+      "haveAccount": "¿Ya tienes una cuenta?",
+      "signIn": "Inicia sesión"
+    },
+    "thanks": {
+      "title": "Pago recibido",
+      "body": "Gracias por tu compra. Tu curso se abre en cuanto se confirma el pago, normalmente en menos de un minuto.",
+      "sending": "Enviando tu enlace de acceso a {email}…",
+      "sent": "Enviamos tu enlace de acceso a {email}. Ábrelo para ir directo a tu curso.",
+      "failed": "No pudimos enviar el enlace a {email} en este momento. Vuelve a intentarlo en un momento.",
+      "limited": "Demasiadas solicitudes para {email}. Espera unos minutos y vuelve a intentarlo.",
+      "checkSpam": "¿No está en tu bandeja de entrada? Revisa spam o promociones. El enlace vence después de un tiempo; aquí puedes pedir uno nuevo.",
+      "resend": "Enviar el enlace otra vez",
+      "noEmail": "Inicia sesión con el correo que usaste en el pago para abrir tu curso.",
+      "haveAccount": "¿Tienes contraseña?"
+    }
+  },
   "legalAcceptance": {
     "eyebrow": "Actualización legal",
     "firstEyebrow": "Antes de empezar",

@@ -53,6 +53,8 @@ import {
   enrollInFreeCreatorCourse,
   startCourseCheckout,
 } from "@/lib/payments/checkout";
+import { GuestCheckoutForm } from "@/components/courses/guest-checkout-form";
+import { isGuestCheckoutEnabled } from "@/lib/payments/guest-checkout";
 import { track } from "@/lib/posthog/events";
 import { CourseViewedTracker } from "@/lib/posthog/page-trackers";
 import { PaymentRequestError } from "@/lib/payments/client-fetch";
@@ -423,6 +425,13 @@ export function CreatorCourseDetail({
     && authStatus === "authenticated"
     && Boolean(user)
     && courseIsFree;
+  // A visitor buys a paid course without signing in first (off by default; see
+  // isGuestCheckoutEnabled). Free courses still need an account.
+  const guestCheckoutOn =
+    authStatus !== "authenticated"
+    && checkoutEnabled
+    && !courseIsFree
+    && isGuestCheckoutEnabled();
   // The owner never sees padlocks on their own course.
   const viewerOwnsCourse = Boolean(user && course.ownerId === user.uid);
   const viewerHasAccess =
@@ -630,7 +639,8 @@ export function CreatorCourseDetail({
   function handleCardAction() {
     if (isEnrollingFree || isCheckingOut) return;
     if (authStatus !== "authenticated") {
-      router.push(signupHref);
+      if (guestCheckoutOn) revealBuyCard();
+      else router.push(signupHref);
     } else if (viewerIsLearner) {
       router.push(classroomHref);
     } else if (canEnrollFree) {
@@ -1067,7 +1077,28 @@ export function CreatorCourseDetail({
           </p>
         ) : null}
 
-        {authStatus !== "authenticated" ? (
+        {guestCheckoutOn ? (
+          // Visitante com a compra sem login ligada: nome, e-mail e termos,
+          // direto para o Stripe. Entrar continua a um clique.
+          <GuestCheckoutForm
+            courseId={course.id}
+            offerId={resolvedPrice?.offerId}
+            offerCode={requestedOfferCode || undefined}
+            priceId={resolvedPrice?.priceId}
+            returnTo={returnTo}
+            submitLabel={enrollLabel}
+            disabled={!hasPaidPrice}
+            errorKeyFor={getCheckoutErrorKey}
+            onSubmitStart={() => {
+              if (!resolvedPrice) return;
+              track.checkoutStarted({
+                course_id: course.id,
+                price_minor: resolvedPrice.amountMinor,
+                currency: resolvedPrice.currency,
+              });
+            }}
+          />
+        ) : authStatus !== "authenticated" ? (
           // Visitante: o botao principal diz o que ele faz e quanto custa, e
           // leva a criar conta. `returnTo` traz a pessoa de volta a ESTE curso
           // depois de entrar, em vez de deixa-la na home.
