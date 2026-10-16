@@ -438,6 +438,7 @@ export function TeacherWalletPanel() {
               </p>
             ) : (
               <TeacherConnectOnboarding
+                initialPayoutCountry={profile?.onboardingAnswers?.payoutCountry}
                 needsCountry={!connected}
                 onComplete={handleOnboardingComplete}
                 onAvailabilityChange={setPlatformPayoutsUnavailable}

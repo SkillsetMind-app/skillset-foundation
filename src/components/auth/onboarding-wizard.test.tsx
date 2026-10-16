@@ -275,6 +275,7 @@ describe("boas-vindas: o fim leva de volta para onde a pessoa estava", () => {
         profession: "Coach",
         primaryGoal: ["Business"],
         alreadySold: "no",
+        payoutCountry: "US",
         audienceSize: "100,000+ followers",
         instagramHandle: "patrick",
       },
@@ -307,6 +308,7 @@ describe("boas-vindas: o professor tambem diz onde nos conheceu", () => {
         profession: "Coach",
         primaryGoal: ["Business"],
         alreadySold: "no",
+        payoutCountry: "US",
       },
     };
     mocks.getUserProfile.mockImplementation(() => Promise.resolve(mocks.profile));
@@ -398,6 +400,99 @@ describe("boas-vindas: retoma o checkout depois de perder a sessão", () => {
     expect(destination.searchParams.get("path")).toBe("student");
     expect(destination.searchParams.get("returnTo")).toBe(checkout);
     expect(mocks.updateUserIdentity).not.toHaveBeenCalled();
+    expect(mocks.updateOnboardingAnswers).not.toHaveBeenCalled();
+  });
+});
+
+describe("H3: pais declarado do professor", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.searchParams = new URLSearchParams("path=teacher");
+    mocks.profile = {
+      displayName: "Patrick Simon",
+      phoneNumber: "+1 555 123 4567",
+      onboardingAnswers: {
+        profileConfirmed: true, path: "teacher", profession: "Coach",
+        primaryGoal: ["Business"], alreadySold: "no",
+      },
+    };
+    mocks.getUserProfile.mockImplementation(() => Promise.resolve(mocks.profile));
+    mocks.updateOnboardingAnswers.mockResolvedValue(undefined);
+  });
+  afterEach(cleanup);
+
+  it("exige uma escolha sem inferir pais do idioma ou do telefone", async () => {
+    render(<OnboardingWizard />);
+    expect(await screen.findByLabelText("Payout country")).toHaveValue("");
+    expect(screen.queryByRole("button", { name: "Skip for now" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    expect(screen.getByText("Answer this question before continuing.")).toBeInTheDocument();
+    expect(mocks.updateOnboardingAnswers).not.toHaveBeenCalled();
+  });
+
+  it.each(["CA", "other"])("persiste %s apenas nas respostas, conserva as anteriores e retoma sem perder o pais", async (country) => {
+    const view = render(<OnboardingWizard />);
+    fireEvent.change(await screen.findByLabelText("Payout country"), { target: { value: country } });
+    if (country === "other") {
+      expect(screen.getByRole("status")).toHaveTextContent(/cannot sell or receive payments/);
+    }
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    await screen.findByText("Do you already have an audience?");
+    expect(mocks.updateOnboardingAnswers).toHaveBeenLastCalledWith({
+      uid: "u-1", path: "teacher", completed: false,
+      answers: { ...mocks.profile.onboardingAnswers, payoutCountry: country },
+    });
+    expect(mocks.updateUserIdentity).not.toHaveBeenCalled();
+    mocks.profile.onboardingAnswers = mocks.updateOnboardingAnswers.mock.calls.at(-1)![0].answers;
+    view.unmount();
+    render(<OnboardingWizard />);
+    await screen.findByText(/Instagram handle/);
+    for (let index = 0; index < 3; index += 1) {
+      fireEvent.click(screen.getByRole("button", { name: "Back" }));
+    }
+    expect(screen.getByLabelText("Payout country")).toHaveValue(country);
+  });
+
+  it("nao avanca quando a persistencia falha e permite tentar de novo", async () => {
+    mocks.updateOnboardingAnswers.mockRejectedValueOnce(new Error("offline"));
+    render(<OnboardingWizard />);
+    fireEvent.change(await screen.findByLabelText("Payout country"), { target: { value: "GB" } });
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    expect(await screen.findByText(/Could not save this answer/)).toBeInTheDocument();
+    expect(screen.getByLabelText("Payout country")).toHaveValue("GB");
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    await screen.findByText("Do you already have an audience?");
+  });
+
+  it("aluno nao recebe a pergunta mesmo com declaracao antiga", async () => {
+    mocks.profile.onboardingAnswers = { profileConfirmed: true, path: "student", payoutCountry: "other" };
+    render(<OnboardingWizard />);
+    await screen.findByText("What do you want to learn first?");
+    expect(screen.queryByLabelText("Payout country")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Personal Development" }));
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    await screen.findByText("Where did you hear about SkillsetMind?");
+    expect(screen.queryByLabelText("Payout country")).toBeNull();
+  });
+
+  it("troca de aluno para professor passa a exigir a pergunta", async () => {
+    mocks.searchParams = new URLSearchParams();
+    mocks.profile.onboardingAnswers = { profileConfirmed: true, primaryGoal: ["Business"], profession: "Coach", alreadySold: "no" };
+    render(<OnboardingWizard />);
+    fireEvent.click(await screen.findByRole("button", { name: /I want to teach/ }));
+    await screen.findByText("What best describes your work?");
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    expect(await screen.findByLabelText("Payout country")).toHaveValue("");
+  });
+
+  it("Enter no seletor nao salva nem avanca antes de confirmar a escolha", async () => {
+    render(<OnboardingWizard />);
+    const select = await screen.findByLabelText("Payout country");
+    fireEvent.change(select, { target: { value: "CA" } });
+    fireEvent.keyDown(select, { key: "Enter" });
+    expect(screen.getByLabelText("Payout country")).toHaveValue("CA");
     expect(mocks.updateOnboardingAnswers).not.toHaveBeenCalled();
   });
 });

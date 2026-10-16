@@ -97,16 +97,16 @@ it("mounts nothing that can create an account while the profile is loading", asy
 
 it("asks a creator without an account for the country and calls Connect only after Continue", async () => {
   mocks.profile.mode = "data";
-  mocks.profile.value = { uid: "teacher-1", stripeConnectedAccountId: null };
+  mocks.profile.value = { uid: "teacher-1", stripeConnectedAccountId: null, onboardingAnswers: { payoutCountry: "CA" } };
   mount();
-  expect(screen.getByLabelText(copy("connectOnboarding.countryLabel"))).toBeInTheDocument();
+  expect(screen.getByLabelText(copy("connectOnboarding.countryLabel"))).toHaveValue("CA");
   await act(async () => {});
   expect(sessionCalls()).toHaveLength(0);
 
   fireEvent.click(screen.getByRole("button", { name: copy("connectOnboarding.countryContinue") }));
   await screen.findByTestId("connect-onboarding-fixture");
   expect(sessionCalls()).toHaveLength(1);
-  expect(JSON.parse(String(sessionCalls()[0][1].body))).toEqual({ country: "US" });
+  expect(JSON.parse(String(sessionCalls()[0][1].body))).toEqual({ country: "CA" });
 });
 
 it("sends a creator with an account straight to onboarding and shows the payout country", async () => {
@@ -115,6 +115,7 @@ it("sends a creator with an account straight to onboarding and shows the payout 
     uid: "teacher-1",
     stripeConnectedAccountId: "acct_teacher_1",
     stripeConnectCountry: "GB",
+    onboardingAnswers: { payoutCountry: "other" },
   };
   mount();
   await screen.findByTestId("connect-onboarding-fixture");

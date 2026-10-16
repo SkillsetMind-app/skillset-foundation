@@ -19,6 +19,7 @@ import {
 import { isValidPhoneNumber } from "@/domain/user-profile";
 import { validateDisplayName } from "@/lib/auth/profile-validation";
 import { getCourseCategoryLabel } from "@/lib/i18n/course-categories";
+import { CONNECT_PAYOUT_COUNTRIES, isConnectPayoutCountry } from "@/lib/payments/connect-countries";
 import {
   getUserProfile,
   updateOnboardingAnswers,
@@ -31,6 +32,7 @@ type QuestionId =
   | "profession"
   | "sourceOfDiscovery"
   | "alreadySold"
+  | "payoutCountry"
   | "monthlyRevenue"
   | "primaryGoal"
   | "instagramHandle"
@@ -142,6 +144,7 @@ function getVisibleQuestions(
         { id: "profession", required: true },
         { id: "primaryGoal", required: true },
         { id: "alreadySold", required: true },
+        { id: "payoutCountry", required: true },
         ...(answers.alreadySold === "yes"
           ? [{ id: "monthlyRevenue" as const, required: false }]
           : []),
@@ -173,6 +176,10 @@ function isAnswered(question: QuestionDefinition, answers: OnboardingAnswers) {
     return Boolean(answers.profileConfirmed);
   }
 
+  if (question.id === "payoutCountry") {
+    return answers.payoutCountry === "other" || isConnectPayoutCountry(answers.payoutCountry);
+  }
+
   const value = answers[question.id];
 
   return Array.isArray(value) ? value.length > 0 : Boolean(value);
@@ -193,6 +200,10 @@ function compactAnswers(input: OnboardingAnswers): OnboardingAnswers {
 
   if (input.path) {
     output.path = input.path;
+  }
+
+  if (input.payoutCountry === "other" || isConnectPayoutCountry(input.payoutCountry)) {
+    output.payoutCountry = input.payoutCountry;
   }
 
   if (input.profession) {
@@ -231,7 +242,7 @@ function compactAnswers(input: OnboardingAnswers): OnboardingAnswers {
 }
 
 export function OnboardingWizard() {
-  const { t } = useTranslation();
+  const { locale, t } = useTranslation();
   const router = useRouter();
   const searchParams = useSearchParams();
   const { status, user } = useAuth();
@@ -329,7 +340,7 @@ export function OnboardingWizard() {
       if (event.key === "Enter") {
         const target = event.target as HTMLElement | null;
 
-        if (target?.tagName === "TEXTAREA") {
+        if (target?.tagName === "TEXTAREA" || target?.tagName === "SELECT") {
           return;
         }
 
@@ -464,6 +475,20 @@ export function OnboardingWizard() {
 
     if (validationError) {
       setError(validationError);
+      return;
+    }
+
+    if (activeQuestion?.id === "payoutCountry") {
+      setIsSaving(true);
+      try {
+        await persistAnswers(answers);
+        setError("");
+        advance();
+      } catch {
+        setError("authFlow.onboarding.answerSaveError");
+      } finally {
+        setIsSaving(false);
+      }
       return;
     }
 
@@ -665,6 +690,36 @@ export function OnboardingWizard() {
 
   function renderQuestion(question: QuestionDefinition) {
     switch (question.id) {
+      case "payoutCountry": {
+        const regionNames = new Intl.DisplayNames(locale, { type: "region" });
+        return (
+          <OnboardingQuestion number={question.number} title={t("onboarding.payoutCountryTitle")} lead={t("onboarding.payoutCountryHint")}>
+            <label htmlFor="onboarding-payout-country" className="block text-sm font-semibold text-[var(--color-ink)]">
+              {t("connectOnboarding.countryLabel")}
+            </label>
+            <select
+              id="onboarding-payout-country"
+              value={answers.payoutCountry ?? ""}
+              disabled={isSaving}
+              onChange={(event) => setAnswers({ ...answers, payoutCountry: event.target.value })}
+              aria-describedby={answers.payoutCountry === "other" ? "onboarding-payout-warning" : undefined}
+              className="field-input mt-2 w-full"
+            >
+              <option value="">{t("onboarding.payoutCountryPlaceholder")}</option>
+              {CONNECT_PAYOUT_COUNTRIES.map((code) => ({ code, label: regionNames.of(code) ?? code }))
+                .sort((a, b) => a.label.localeCompare(b.label, locale))
+                .map(({ code, label }) => <option key={code} value={code}>{label}</option>)}
+              <option value="other">{t("onboarding.payoutCountryOther")}</option>
+            </select>
+            {answers.payoutCountry === "other" ? (
+              <p id="onboarding-payout-warning" role="status" className="mt-3 text-sm leading-6 text-[var(--color-ink-soft)]">
+                {t("onboarding.payoutCountryUnavailable")}
+              </p>
+            ) : null}
+            <ErrorMessage error={error} />
+          </OnboardingQuestion>
+        );
+      }
       case "profile":
         return (
           <OnboardingQuestion
@@ -1033,7 +1088,7 @@ function ErrorMessage({ error }: { error: string }) {
   }
 
   return (
-    <p className="mt-5 rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-center text-sm font-semibold text-[var(--color-danger-fg)]">
+    <p role="alert" className="mt-5 rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-center text-sm font-semibold text-[var(--color-danger-fg)]">
       {t(error)}
     </p>
   );
