@@ -74,6 +74,22 @@ export async function refreshTeacherStripeAccountStatus() {
   );
 }
 
+export async function openTeacherStripeDashboard() {
+  const { url } = await postPaymentRoute<{ url: unknown }>(
+    "/api/payments/connect/login-link",
+  );
+  if (typeof url !== "string") throw new Error("Stripe dashboard URL missing.");
+  const destination = new URL(url);
+  if (
+    destination.origin !== "https://connect.stripe.com"
+    || destination.username || destination.password
+    || !destination.pathname.startsWith("/express/")
+  ) {
+    throw new Error("Invalid Stripe dashboard URL.");
+  }
+  window.location.assign(destination.href);
+}
+
 /**
  * Mints a Stripe Connect Account Session client_secret that the embedded
  * onboarding component uses to render KYC / bank / identity flow inside

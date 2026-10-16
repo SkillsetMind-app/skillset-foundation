@@ -9,6 +9,7 @@ import { StatusChip } from "@/components/shared/status-chip";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { Button, Card, EmptyState, InlineAlert, buttonClasses } from "@/components/ui";
 import { SpotArt } from "@/components/ui/spot-art";
+import { StripeDashboardButton } from "@/components/teacher/stripe-dashboard-button";
 import type { Order } from "@/domain/order";
 import { subscribeToTeacherOrders } from "@/lib/data/orders";
 import { toDate } from "@/lib/format-date";
@@ -33,8 +34,6 @@ const PERIOD_DAYS: Record<Exclude<Period, "all">, number> = {
 const STATUS_FILTERS = ["all", "paid", "refunded"] as const;
 type StatusFilter = (typeof STATUS_FILTERS)[number];
 
-const STRIPE_PAYMENTS_URL = "https://dashboard.stripe.com/payments";
-
 function formatMoney(amountMinor: number, currency: string, locale: string) {
   return new Intl.NumberFormat(locale, {
     style: "currency",
@@ -52,18 +51,6 @@ function formatDate(value: Date | null, locale: string, fallback: string) {
 
 function toMillis(value: unknown): number {
   return toDate(value)?.getTime() ?? 0;
-}
-
-/**
- * Deep link para o pagamento na Dashboard da Stripe do proprio criador. A
- * cobranca nasce na conta conectada dele, entao o reembolso acontece la — nao
- * ha nada para a SkillsetMind estornar. Pedido sem payment intent (pendente,
- * falho, ou anterior a captura do id) cai na lista de pagamentos.
- */
-function stripeRefundUrl(order: Order) {
-  return order.paymentIntentId
-    ? `${STRIPE_PAYMENTS_URL}/${order.paymentIntentId}`
-    : STRIPE_PAYMENTS_URL;
 }
 
 const PAGE = 50;
@@ -192,6 +179,13 @@ export function SaleList() {
 
   return (
     <section className="grid gap-4">
+      <StripeDashboardButton />
+      <p className="text-sm leading-6 text-[var(--color-ink-soft)]">
+        {t("stripeDashboard.refundGuidance")}{" "}
+        <Link href="/support" className="underline underline-offset-4">
+          {t("stripeDashboard.refundSupport")}
+        </Link>
+      </p>
       <div className="flex flex-wrap items-center gap-3">
         <label htmlFor="sales-period" className="sr-only">
           {t(`${copy}.periodLabel`)}
@@ -294,14 +288,12 @@ export function SaleList() {
                 <span className="text-sm font-bold text-[var(--color-primary)]">
                   {formatMoney(order.amountMinor, order.currency, locale)}
                 </span>
-                <a
-                  href={stripeRefundUrl(order)}
-                  target="_blank"
-                  rel="noreferrer"
+                <Link
+                  href={`/teach/sales/${order.id}#sale-refund`}
                   className="text-xs font-semibold text-[var(--color-primary)] underline underline-offset-4"
                 >
-                  {t(`${copy}.refundInStripe`)}
-                </a>
+                  {t("stripeDashboard.refundHelp")}
+                </Link>
               </div>
             </li>
           ))}

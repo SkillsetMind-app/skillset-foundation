@@ -1,7 +1,9 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { Order } from "@/domain/order";
+import { I18nProvider } from "@/components/i18n/i18n-provider";
+import { getDictionary, translate } from "@/lib/i18n/dictionaries";
 
 import { SaleList } from "./sale-list";
 
@@ -19,7 +21,10 @@ const mocks = vi.hoisted(() => ({
   // efeito e entra em laco.
   user: { uid: "teacher-1", displayName: "Patricia", roles: ["teacher"] },
   orders: [] as Order[],
+  openStripe: vi.fn(),
 }));
+
+vi.mock("@/lib/payments/connect", () => ({ openTeacherStripeDashboard: mocks.openStripe }));
 
 vi.mock("@/components/auth/auth-provider", () => ({
   useAuth: () => ({ user: mocks.user, status: "authenticated" }),
@@ -58,6 +63,7 @@ function order(overrides: Partial<Order>): Order {
 afterEach(() => {
   cleanup();
   mocks.orders = [];
+  mocks.openStripe.mockReset();
 });
 
 describe("SaleList", () => {
@@ -97,7 +103,7 @@ describe("SaleList", () => {
     expect(screen.queryByText("Your sales will show up here.")).toBeNull();
   });
 
-  it("gives every order the refund deep link and shows the refunded chip", () => {
+  it("takes each order to its refund guidance instead of the wrong Stripe dashboard", () => {
     mocks.orders = [
       order({
         id: "order-1",
@@ -117,11 +123,11 @@ describe("SaleList", () => {
 
     expect(screen.getByText(/^2 orders between .+ and .+$/)).toBeInTheDocument();
 
-    const refundLinks = screen.getAllByRole("link", { name: "Refund in Stripe" });
+    const refundLinks = screen.getAllByRole("link", { name: "Refund options" });
     expect(refundLinks).toHaveLength(2);
     expect(refundLinks.map((link) => link.getAttribute("href"))).toEqual([
-      "https://dashboard.stripe.com/payments/pi_456",
-      "https://dashboard.stripe.com/payments/pi_123",
+      "/teach/sales/order-2#sale-refund",
+      "/teach/sales/order-1#sale-refund",
     ]);
 
     // O chip, nao a opcao "Refunded" do filtro de status.
@@ -129,5 +135,16 @@ describe("SaleList", () => {
       screen.getByText("Refunded", { selector: "span.status-chip" }),
     ).toHaveAttribute("data-status", "refunded");
     expect(screen.getByRole("button", { name: /export/i })).toBeEnabled();
+  });
+
+  it.each(["en", "es"] as const)("opens the shared Stripe action only on click, with conditional refund guidance (%s)", async (locale) => {
+    const dictionary = getDictionary(locale);
+    render(<I18nProvider initialLocale={locale}><SaleList /></I18nProvider>);
+    expect(mocks.openStripe).not.toHaveBeenCalled();
+    expect(screen.getByText(translate(dictionary, "stripeDashboard.refundGuidance"))).toBeVisible();
+    expect(screen.getByRole("link", { name: translate(dictionary, "stripeDashboard.refundSupport") })).toHaveAttribute("href", "/support");
+    expect(document.querySelector('a[href^="https://dashboard.stripe.com"]')).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: translate(dictionary, "stripeDashboard.open") }));
+    await waitFor(() => expect(mocks.openStripe).toHaveBeenCalledTimes(1));
   });
 });

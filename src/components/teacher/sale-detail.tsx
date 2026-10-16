@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { StatusChip } from "@/components/shared/status-chip";
+import { StripeDashboardButton } from "@/components/teacher/stripe-dashboard-button";
 import { buttonClasses, Card, Eyebrow, InlineAlert } from "@/components/ui";
 import type { Order } from "@/domain/order";
 import { subscribeToOrder } from "@/lib/data/orders";
@@ -171,6 +172,7 @@ export function SaleDetail({ orderId }: SaleDetailProps) {
 
   const canView =
     user?.roles.includes("admin") || user?.uid === order.teacherId || user?.uid === order.userId;
+  const isOwnSale = Boolean(user && user.uid === order.teacherId && user.roles.includes("teacher"));
   // Same formula the checkout charged: percent + the order's fixed part.
   const platformFeeMinor = platformFeeForSale(
     order.amountMinor,
@@ -289,9 +291,15 @@ export function SaleDetail({ orderId }: SaleDetailProps) {
           </div>
         </section>
 
-        <section className="settings-section-card">
+        <section id="sale-refund" className="settings-section-card scroll-mt-24">
           <Eyebrow>{t("saleDetail.actions")}</Eyebrow>
+          {isOwnSale ? (
+            <p className="mt-3 text-sm leading-6 text-[var(--color-ink-soft)]">
+              {t("stripeDashboard.refundGuidance")}
+            </p>
+          ) : null}
           <div className="mt-5 flex flex-wrap gap-3">
+            {isOwnSale ? <StripeDashboardButton /> : null}
             <Link
               href={`/learn/courses/${order.courseSlug}`}
               className={buttonClasses({ variant: "outline", size: "sm" })}
@@ -314,7 +322,7 @@ export function SaleDetail({ orderId }: SaleDetailProps) {
               className={buttonClasses({ variant: "outline", size: "sm" })}
             >
               <RotateCcw aria-hidden="true" size={14} />
-              {t("saleDetail.refund")}
+              {t(isOwnSale ? "stripeDashboard.refundSupport" : "saleDetail.refund")}
             </a>
           </div>
         </section>
