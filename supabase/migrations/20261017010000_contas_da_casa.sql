@@ -19,6 +19,10 @@ create table if not exists public.plan_grants (
 
 alter table public.plan_grants enable row level security;
 revoke all on table public.plan_grants from public, anon, authenticated;
+-- A trava de sessão que toda tabela com RLS carrega (smoke 20260910030000).
+create policy account_access_guard on public.plan_grants as restrictive for all to authenticated
+  using ((select public.account_session_allowed()))
+  with check ((select public.account_session_allowed()));
 
 -- A trava de publicação lia só assinaturas. Mesma função da 20261010010000,
 -- copiada inteira; a ÚNICA mudança é aceitar a concessão.
