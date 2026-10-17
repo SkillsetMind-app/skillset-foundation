@@ -44,6 +44,23 @@ describe("creator plan gate - definer boundaries", () => {
   });
 });
 
+describe("contas da casa — plan_grants", () => {
+  // Conta da casa publica sem assinatura. A lista só se escreve por SQL: uma
+  // policy nela abriria a porta para qualquer conta se dar o Enterprise.
+  it("a trava de publicação aceita a concessão e continua aceitando assinatura", () => {
+    const corpo = definicaoEfetiva("creator_has_current_plan").split("$$;")[0];
+    expect(corpo).toMatch(/from\s+public\.plan_grants/i);
+    expect(corpo).toMatch(/from\s+public\.subscriptions/i);
+    expect(corpo).toMatch(/security definer set search_path = ''/);
+  });
+
+  it("plan_grants tem RLS ligada e nenhuma policy", () => {
+    const todas = textoDasMigrations();
+    expect(todas).toMatch(/alter table public\.plan_grants enable row level security/i);
+    expect(todas).not.toMatch(/policy\s+\S+\s+on\s+public\.plan_grants/i);
+  });
+});
+
 /**
  * Corpo da ÚLTIMA definição de uma função na cadeia de migrations.
  *

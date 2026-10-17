@@ -268,6 +268,27 @@ describe("plan free trial through the Stripe webhook", () => {
     }));
   });
 
+  // Contas da casa: plan_grants holds a plan with no subscription behind it.
+  it("keeps a house account on its granted plan when no subscription is live", async () => {
+    db.tables.plan_grants = [{ uid: "creator_1", plan_id: "plus", reason: "conta da casa" }];
+    db.tables.users[0].current_plan_id = "plus";
+    const ended = planSubscription({ status: "canceled" });
+    expect((await deliver("customer.subscription.deleted", ended)).status).toBe(200);
+    expect(db.tables.users[0].current_plan_id).toBe("plus");
+  });
+
+  it("drops an account without a grant to free when its subscription ends, as before", async () => {
+    db.tables.users[0].current_plan_id = "pro";
+    await deliver("customer.subscription.deleted", planSubscription({ status: "canceled" }));
+    expect(db.tables.users[0].current_plan_id).toBe("free");
+  });
+
+  it("lets a live plan above the grant win", async () => {
+    db.tables.plan_grants = [{ uid: "creator_1", plan_id: "starter", reason: "conta da casa" }];
+    await deliver("customer.subscription.created", planSubscription());
+    expect(db.tables.users[0].current_plan_id).toBe("pro");
+  });
+
   it("sends the trial_will_end reminder once per subscription", async () => {
     await deliver("customer.subscription.created", planSubscription());
     expect((await deliver("customer.subscription.trial_will_end", planSubscription())).status).toBe(200);

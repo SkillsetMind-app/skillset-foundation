@@ -1694,12 +1694,21 @@ async function syncSubscriptionFromStripe(
     .in("status", [...PLAN_ENTITLED_STATUSES]);
   if (liveSubscriptionsError) throw new Error(liveSubscriptionsError.message);
 
+  // A house account (plan_grants, written only by SQL) keeps its granted plan
+  // with no subscription; a paid plan above the grant still wins.
+  const { data: grant, error: grantError } = await admin
+    .from("plan_grants")
+    .select("plan_id")
+    .eq("uid", uid)
+    .maybeSingle();
+  if (grantError) throw new Error(grantError.message);
+
   const tier = (id: string) => plans.findIndex((plan) => plan.id === id);
   const effectivePlanId = (liveSubscriptions ?? []).reduce<string>((best, row) => {
     const candidate = row.plan_id as string | null;
     if (!candidate) return best;
     return tier(candidate) > tier(best) ? candidate : best;
-  }, "free");
+  }, grant?.plan_id ?? "free");
 
   await requireSupabaseWrite(
     admin
