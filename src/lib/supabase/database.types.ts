@@ -2069,6 +2069,27 @@ export type Database = {
           },
         ]
       }
+      plan_grants: {
+        Row: {
+          granted_at: string
+          plan_id: string
+          reason: string
+          uid: string
+        }
+        Insert: {
+          granted_at?: string
+          plan_id: string
+          reason: string
+          uid: string
+        }
+        Update: {
+          granted_at?: string
+          plan_id?: string
+          reason?: string
+          uid?: string
+        }
+        Relationships: []
+      }
       platform_config: {
         Row: {
           doc_id: string

@@ -44,6 +44,27 @@ describe("creator plan gate - definer boundaries", () => {
   });
 });
 
+describe("contas da casa — plan_grants", () => {
+  // Conta da casa publica sem assinatura. A lista só se escreve por SQL: uma
+  // policy nela abriria a porta para qualquer conta se dar o Enterprise.
+  it("a trava de publicação aceita a concessão e continua aceitando assinatura", () => {
+    const corpo = definicaoEfetiva("creator_has_current_plan").split("$$;")[0];
+    expect(corpo).toMatch(/from\s+public\.plan_grants/i);
+    expect(corpo).toMatch(/from\s+public\.subscriptions/i);
+    expect(corpo).toMatch(/security definer set search_path = ''/);
+  });
+
+  // Só a trava de sessão (restrictive) é aceita: ela só estreita. Sem policy
+  // permissiva, o PostgREST não lê nem escreve nada nesta tabela.
+  it("plan_grants tem RLS ligada e nenhuma policy permissiva", () => {
+    const todas = textoDasMigrations();
+    expect(todas).toMatch(/alter table public\.plan_grants enable row level security/i);
+    const policies = [...todas.matchAll(/policy\s+\S+\s+on\s+public\.plan_grants\b[^;]*/gi)].map((m) => m[0]);
+    expect(policies.length).toBeGreaterThan(0);
+    for (const policy of policies) expect(policy).toMatch(/\bas\s+restrictive\b/i);
+  });
+});
+
 /**
  * Corpo da ÚLTIMA definição de uma função na cadeia de migrations.
  *
