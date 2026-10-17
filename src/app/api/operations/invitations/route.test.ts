@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   client: vi.fn(), getUser: vi.fn(), getAssurance: vi.fn(), rpc: vi.fn(),
   admin: vi.fn(), send: vi.fn(), rate: vi.fn(), notify: vi.fn(), finishWaiver: vi.fn(),
+  adminRpc: vi.fn(), getUserById: vi.fn(), updateUserById: vi.fn(),
 }));
 vi.mock("@/lib/supabase/server", () => ({ createSupabaseServerClient: mocks.client }));
 vi.mock("@/lib/supabase/admin", () => ({ getSupabaseAdminClient: mocks.admin }));
@@ -71,7 +72,11 @@ beforeEach(() => {
     }
   });
   mocks.rate.mockResolvedValue({ data: null, error: null });
-  mocks.admin.mockReturnValue({ auth: { signInWithOtp: mocks.send } });
+  mocks.admin.mockReturnValue({
+    rpc: mocks.adminRpc,
+    auth: { signInWithOtp: mocks.send, admin: { getUserById: mocks.getUserById, updateUserById: mocks.updateUserById } },
+  });
+  mocks.adminRpc.mockResolvedValue({ data: null, error: null });
   mocks.send.mockResolvedValue({ data: { user: null, session: null }, error: null });
   mocks.finishWaiver.mockResolvedValue(undefined);
 });
@@ -319,5 +324,55 @@ describe("operations invitation scoped RPCs and delivery", () => {
     expect(inviteCalls().map(([name]) => name)).toEqual(["admin_create_platform_invite", "admin_list_platform_invites"]);
     expect(mocks.send).toHaveBeenCalledTimes(1);
     expect(mocks.send.mock.calls[0][0].email).toBe(invite.email);
+  });
+});
+
+describe("operations invitation existing account", () => {
+  const accountId = "33333333-3333-4333-8333-333333333333";
+  function existing(account: { email_confirmed_at: string | null; app_metadata: Record<string, unknown> }) {
+    mocks.adminRpc.mockResolvedValue({ data: accountId, error: null });
+    mocks.getUserById.mockResolvedValue({ data: { user: { id: accountId, ...account } }, error: null });
+    mocks.updateUserById.mockResolvedValue({ data: { user: null }, error: null });
+  }
+
+  it.each([create, { action: "resend", inviteId }])("gives an unconfirmed account made elsewhere a new random password before the $action link", async (body) => {
+    existing({ email_confirmed_at: null, app_metadata: { provider: "email" } });
+    const response = await POST(request(body));
+    expect(await response.json()).toEqual({ invite, emailStatus: "sent" });
+    expect(mocks.adminRpc).toHaveBeenCalledWith("find_auth_user_id_by_email", { p_email: invite.email });
+    expect(mocks.getUserById).toHaveBeenCalledWith(accountId);
+    expect(mocks.updateUserById).toHaveBeenCalledTimes(1);
+    const [id, attributes] = mocks.updateUserById.mock.calls[0] as [string, Record<string, unknown>];
+    expect(id).toBe(accountId);
+    expect(typeof attributes.password).toBe("string");
+    expect(attributes.app_metadata).toEqual({ guest_password_reset_at: expect.any(String) });
+    expect(mocks.updateUserById.mock.invocationCallOrder[0]).toBeLessThan(mocks.send.mock.invocationCallOrder[0]);
+  });
+
+  it.each(["update-error", "update-throws", "lookup-error", "account-error"])("sends no link and keeps the invitation when the account cannot be prepared: %s", async (state) => {
+    existing({ email_confirmed_at: null, app_metadata: { provider: "email" } });
+    if (state === "update-error") mocks.updateUserById.mockResolvedValue({ data: { user: null }, error: { message: "private auth diagnostic" } });
+    if (state === "update-throws") mocks.updateUserById.mockRejectedValue(new Error("private auth diagnostic"));
+    if (state === "lookup-error") mocks.adminRpc.mockResolvedValue({ data: null, error: { message: "private database diagnostic" } });
+    if (state === "account-error") mocks.getUserById.mockResolvedValue({ data: { user: null }, error: { message: "private auth diagnostic" } });
+    const response = await POST(request(create));
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ invite, emailStatus: "failed" });
+    expect(mocks.send).not.toHaveBeenCalled();
+  });
+
+  it("leaves a confirmed account untouched", async () => {
+    existing({ email_confirmed_at: "2026-09-01T00:00:00Z", app_metadata: { provider: "email" } });
+    expect(await (await POST(request(create))).json()).toEqual({ invite, emailStatus: "sent" });
+    expect(mocks.updateUserById).not.toHaveBeenCalled();
+    expect(mocks.send).toHaveBeenCalledTimes(1);
+  });
+
+  it("sends to an address with no account as before", async () => {
+    expect(await (await POST(request(create))).json()).toEqual({ invite, emailStatus: "sent" });
+    expect(mocks.adminRpc).toHaveBeenCalledWith("find_auth_user_id_by_email", { p_email: invite.email });
+    expect(mocks.getUserById).not.toHaveBeenCalled();
+    expect(mocks.updateUserById).not.toHaveBeenCalled();
+    expect(mocks.send.mock.calls[0][0].options.shouldCreateUser).toBe(true);
   });
 });
