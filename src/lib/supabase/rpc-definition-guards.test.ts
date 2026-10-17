@@ -54,10 +54,14 @@ describe("contas da casa — plan_grants", () => {
     expect(corpo).toMatch(/security definer set search_path = ''/);
   });
 
-  it("plan_grants tem RLS ligada e nenhuma policy", () => {
+  // Só a trava de sessão (restrictive) é aceita: ela só estreita. Sem policy
+  // permissiva, o PostgREST não lê nem escreve nada nesta tabela.
+  it("plan_grants tem RLS ligada e nenhuma policy permissiva", () => {
     const todas = textoDasMigrations();
     expect(todas).toMatch(/alter table public\.plan_grants enable row level security/i);
-    expect(todas).not.toMatch(/policy\s+\S+\s+on\s+public\.plan_grants/i);
+    const policies = [...todas.matchAll(/policy\s+\S+\s+on\s+public\.plan_grants\b[^;]*/gi)].map((m) => m[0]);
+    expect(policies.length).toBeGreaterThan(0);
+    for (const policy of policies) expect(policy).toMatch(/\bas\s+restrictive\b/i);
   });
 });
 
