@@ -421,6 +421,25 @@ async function handleActivationFeePaid(
   if (auditError) throw new Error(auditError.message);
 }
 
+function sessionBelongsToOrder(
+  order: {
+    checkout_session_id: string | null;
+    payout_model: string | null;
+    teacher_stripe_connected_account_id: string | null;
+  },
+  sessionId: string,
+  connectedAccountId: string | null,
+): boolean {
+  const accountMatches = order.payout_model === "direct_charge"
+    ? Boolean(order.teacher_stripe_connected_account_id)
+      && connectedAccountId === order.teacher_stripe_connected_account_id
+    : ["separate_charges_and_transfers", "destination_charge"].includes(order.payout_model ?? "")
+      && connectedAccountId === null;
+  return Boolean(order.checkout_session_id)
+    && order.checkout_session_id === sessionId
+    && accountMatches;
+}
+
 async function handleCheckoutCompleted(
   admin: Admin,
   session: Stripe.Checkout.Session,
@@ -443,18 +462,12 @@ async function handleCheckoutCompleted(
 
   const courseId = order.course_id;
   const userId = order.user_id;
-  const accountMatches = order.payout_model === "direct_charge"
-    ? Boolean(order.teacher_stripe_connected_account_id)
-      && connectedAccountId === order.teacher_stripe_connected_account_id
-    : ["separate_charges_and_transfers", "destination_charge"].includes(order.payout_model ?? "")
-      && connectedAccountId === null;
   const amountMinor = Number(order.amount_minor);
   // The server attaches this session before returning its URL. Metadata is a
   // reference to that saved sale, never authority to replace its buyer or course.
   if (
-    !order.checkout_session_id || order.checkout_session_id !== session.id
+    !sessionBelongsToOrder(order, session.id, connectedAccountId)
     || metadata.courseId !== courseId || metadata.userId !== userId
-    || !accountMatches
     || typeof order.currency !== "string"
     || session.currency?.toUpperCase() !== order.currency.toUpperCase()
     || !Number.isSafeInteger(amountMinor) || amountMinor < 0
@@ -1574,15 +1587,17 @@ async function handleDisputeClosed(
 // --- terminal order status (expired / failed) with lock release + B2 guard --
 async function markOrderStatus(
   admin: Admin,
-  orderId: string | null | undefined,
+  session: Stripe.Checkout.Session,
+  connectedAccountId: string | null,
   status: "failed" | "cancelled",
 ): Promise<void> {
+  const orderId = session.metadata?.orderId;
   if (!orderId) return;
   const ts = nowIso();
 
   const { data: order, error: orderError } = await admin
     .from("orders")
-    .select("status,user_id,course_id")
+    .select("status,user_id,course_id,checkout_session_id,payout_model,teacher_stripe_connected_account_id")
     .eq("id", orderId)
     .maybeSingle();
   if (orderError) throw new Error(orderError.message);
@@ -1591,6 +1606,11 @@ async function markOrderStatus(
   // order means a bogus id — nothing to mark. ponytail: no partial insert (it
   // would violate NOT NULL on amount_minor/currency/user_id anyway).
   if (!order) return;
+
+  // Retry if the session is not attached yet; metadata alone cannot authorize cleanup.
+  if (!sessionBelongsToOrder(order, session.id, connectedAccountId)) {
+    throw new Error("Terminal checkout event does not match its saved order.");
+  }
 
   // Release the checkout lock only if it still belongs to THIS order. [B3]
   if (order.user_id && order.course_id) {
@@ -2143,11 +2163,11 @@ export async function POST(request: Request) {
         break;
       }
       case "checkout.session.async_payment_failed":
-        await markOrderStatus(admin, event.data.object.metadata?.orderId, "failed");
+        await markOrderStatus(admin, event.data.object, eventAccountId, "failed");
         await releaseAbandonedSubscriptionCoupon(admin, event.data.object);
         break;
       case "checkout.session.expired":
-        await markOrderStatus(admin, event.data.object.metadata?.orderId, "cancelled");
+        await markOrderStatus(admin, event.data.object, eventAccountId, "cancelled");
         await releaseAbandonedSubscriptionCoupon(admin, event.data.object);
         break;
       case "payment_intent.payment_failed":
