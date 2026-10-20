@@ -157,7 +157,7 @@ async function run() {
         'public.settle_paid_course_order(text,text,text,text,text)'].map((fn) => ({ fn,
         body: sql('read-function', `select pg_get_functiondef(${quote(fn)}::regprocedure);`) }));
       const mutations = originals.map(({ body }) => withoutOrderRowLock(body));
-      sql('remove-order-lock', mutations.join('\n'));
+      sql('remove-order-lock', mutations.join(';\n'));
     }
     const pair = JSON.parse(sql('fixture-pair', `select json_build_object('course', c.id, 'buyer', c.owner_id)
       from public.courses c join public.users u on u.uid = c.owner_id
@@ -234,7 +234,7 @@ async function run() {
     if (writers.length) sql('stop-backends', `select pg_terminate_backend(pid) from pg_stat_activity
       where application_name=any(array[${writers.map(({ name }) => quote(name)).join(',')}]::text[]);`);
     if (originals) {
-      sql('restore-functions', originals.map(({ body }) => body).join('\n'));
+      sql('restore-functions', originals.map(({ body }) => body).join(';\n'));
       for (const { fn, body } of originals) assert(sql('verify-restore',
         `select pg_get_functiondef(${quote(fn)}::regprocedure);`) === body);
       check('functions-restored', true);
