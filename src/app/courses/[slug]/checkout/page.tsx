@@ -31,7 +31,8 @@ export default async function CourseCheckoutPage({ params }: PageProps) {
   const { t } = await getServerTranslation();
   const { slug } = await params;
   const course = await getPublicCourseByRef(slug);
-  const lessonCount = course?.lessonCount ?? 0;
+  // Comunidade, e-book e evento ao vivo não são aulas: o número só vale para curso.
+  const lessonCount = (course?.productFormat ?? "course") === "course" ? course?.lessonCount ?? 0 : 0;
   return (
     <div className="page-shell">
       <CheckoutHeader secureLabel={t("publicCourses.checkoutSecure")} />

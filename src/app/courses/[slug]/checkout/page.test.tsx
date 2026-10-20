@@ -9,7 +9,7 @@ vi.mock("@/lib/data/server/public-course", () => ({ getPublicCourseByRef: async 
 vi.mock("@/components/site/checkout-header", () => ({ CheckoutHeader: ({ secureLabel }: { secureLabel: string }) => <header data-testid="checkout-header">{secureLabel}</header> }));
 vi.mock("@/components/courses/creator-course-detail", () => ({ CreatorCourseDetail: (props: { checkoutOnly?: boolean; courseIdOverride?: string; hideHeader?: boolean }) => <div data-testid="checkout" data-compact={props.checkoutOnly} data-course={props.courseIdOverride} data-hide-header={props.hideHeader} /> }));
 afterEach(cleanup);
-const focus = () => ({ title: "Focus", summary: "Build focus", coverImageUrl: null, urlSlug: "focus", lessonCount: 17 });
+const focus = () => ({ title: "Focus", summary: "Build focus", coverImageUrl: null, urlSlug: "focus", lessonCount: 17, productFormat: "course" });
 it("renders public title and compact checkout with the route reference", async () => {
   render(await Page({ params: Promise.resolve({ slug: "focus" }) }));
   expect(screen.getByRole("heading", { name: "Focus" })).toBeInTheDocument();
@@ -25,6 +25,15 @@ it("shows the order summary next to the form, with a way to the full course page
   expect(within(summary).getByRole("link", { name: "Ver todos los detalles del curso" })).toHaveAttribute("href", "/courses/focus");
   // Sem capa, sem imagem: não se inventa arte.
   expect(summary.querySelector("img")).toBeNull();
+});
+it.each(["community", "ebook", "live_event"])("a %s product does not talk about lessons in the summary", async (productFormat) => {
+  state.course = { ...focus(), productFormat };
+  try {
+    const { container } = render(await Page({ params: Promise.resolve({ slug: "focus" }) }));
+    expect(container.querySelector("[data-checkout-summary]")).not.toHaveTextContent("lecciones");
+  } finally {
+    state.course = focus();
+  }
 });
 it("shows the cover in the summary when the course has one", async () => {
   state.course = { ...focus(), coverImageUrl: "https://ijtikldtjvsbtwszokvs.supabase.co/storage/v1/object/public/c.png" };

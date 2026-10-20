@@ -61,6 +61,7 @@ describe("sitemap", () => {
         category: null,
         coverImageUrl: null,
         lessonCount: 3,
+        productFormat: "course",
         updatedAt: null,
       },
     ];

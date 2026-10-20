@@ -56,6 +56,7 @@ const published: PublicCourseSummary = {
   category: "Performance",
   coverImageUrl: COVER,
   lessonCount: 12,
+  productFormat: "course",
   updatedAt: null,
 };
 
