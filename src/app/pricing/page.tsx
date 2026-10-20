@@ -213,7 +213,7 @@ export default async function PricingPage() {
                       <button
                         type="button"
                         aria-label={t("publicPages.pricing.what_is_the_stripe_processing_fee")}
-                        className="inline-flex size-5 items-center justify-center rounded-full text-[var(--color-ink-muted)] transition hover:text-[var(--color-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus-ring)]"
+                        className="relative inline-flex size-5 items-center justify-center rounded-full text-[var(--color-ink-muted)] after:absolute after:-inset-3 after:content-[''] transition hover:text-[var(--color-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus-ring)]"
                       >
                         <HelpCircle
                           aria-hidden="true"
