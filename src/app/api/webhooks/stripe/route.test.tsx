@@ -342,7 +342,9 @@ function createAdmin(
       const rows = state.saleRows?.[this.table];
       if (rows) {
         const matches = rows.filter((row) => this.filters.every(({ column, value }) => row[column] === value));
-        return { data: single ? matches[0] ?? null : matches, error: null };
+        // A SELECT response is a snapshot, not a reference to a later committed row.
+        const snapshots = matches.map((row) => ({ ...row }));
+        return { data: single ? snapshots[0] ?? null : snapshots, error: null };
       }
       if (this.table === "subscriptions") {
         const statuses = this.filterValue("status") as unknown[] | undefined;
@@ -964,6 +966,45 @@ describe("Stripe webhook financial integrity", () => {
       expect(admin.state.rpcCalls).not.toContainEqual(expect.objectContaining({
         name: "release_course_coupon_reservation",
       }));
+    });
+
+    it.each(["paid", "refunded"])(
+      "preserves %s committed after the pending order was read",
+      async (settledStatus) => {
+        const admin = pendingCheckout();
+        admin.state.saleRows = { orders: [admin.state.orderRow] };
+        let concurrentCommit = false;
+        admin.state.afterCheckoutLockRead = () => {
+          // Model another handler committing after this handler's pending snapshot.
+          admin.state.orderRow.status = settledStatus;
+          admin.state.couponReservation = "redeemed";
+          concurrentCommit = true;
+        };
+        const event = terminalEvent();
+
+        const response = await postEvent(event);
+
+        expect(concurrentCommit).toBe(true);
+        expect(admin.state.orderRow.status).toBe(settledStatus);
+        expect(admin.state.couponReservation).toBe("redeemed");
+        expect(admin.state.orderWrites).toEqual([]);
+        expect(admin.state.paymentWrites).toEqual([]);
+        expect(fulfillCalls(admin)).toHaveLength(0);
+        expect(response.status).toBe(200);
+        expect(admin.state.doneEvents.has(event.id)).toBe(true);
+      },
+    );
+
+    it("still closes an unchanged pending order with a persisted row", async () => {
+      const admin = pendingCheckout();
+      admin.state.saleRows = { orders: [admin.state.orderRow] };
+
+      expect((await postEvent(terminalEvent())).status).toBe(200);
+
+      expect(admin.state.orderRow.status).toBe(status);
+      expect(admin.state.couponReservation).toBe("released");
+      expect(admin.state.checkoutLock).toBeNull();
+      expect(admin.state.orderWrites).toEqual([expect.objectContaining({ status })]);
     });
   });
 
