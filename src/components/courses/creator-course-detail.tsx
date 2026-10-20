@@ -5,7 +5,7 @@ import { getCourseCategoryLabel } from "@/lib/i18n/course-categories";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 
 import Link from "next/link";
-import { Lock, Star, Target } from "lucide-react";
+import { Lock, ShieldCheck, Star, Target } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -536,9 +536,12 @@ export function CreatorCourseDetail({
           : t("publicCourses.curriculumPending");
   const hasRating = Boolean(course.ratingCount && course.ratingAverage);
   const learningOutcomes = normalizeLearningOutcomes(course.learningOutcomes);
-  // Duracao real do curso, somada das aulas. Sem minuto declarado em nenhuma
-  // aula o dado simplesmente nao aparece — nao se estima tempo de curso.
-  const totalMinutes = course.modules.reduce(
+  // Duracao real do curso, somada das aulas. So aparece quando TODAS as aulas
+  // declaram minutos: com parte delas sem o dado, a soma vira um total menor
+  // que o curso (17 aulas exibidas como "10 min"). Nao se estima tempo de curso.
+  const everyLessonTimed = course.modules.every((module) =>
+    module.lessons.every((lesson) => (lesson.durationMinutes ?? 0) > 0));
+  const totalMinutes = !everyLessonTimed ? 0 : course.modules.reduce(
     (sum, module) =>
       sum
       + module.lessons.reduce(
@@ -709,7 +712,7 @@ export function CreatorCourseDetail({
         currency={resolvedPrice?.currency}
       />
     ) : null}
-    <div className={checkoutOnly ? "mx-auto grid w-full min-w-0 max-w-2xl gap-6" : "grid gap-8 pb-24 lg:grid-cols-[1.15fr_0.85fr] lg:pb-0"}>
+    <div className={checkoutOnly ? "grid w-full min-w-0 gap-6" : "grid gap-8 pb-24 lg:grid-cols-[1.15fr_0.85fr] lg:pb-0"}>
       <section className="min-w-0">
         {hideHeader ? null : (
           <div
@@ -1007,8 +1010,10 @@ export function CreatorCourseDetail({
         // O formulario de visitante deixa o cartao mais alto que a tela: preso
         // no topo, ele ganha teto e rola por dentro, para o botao nunca ficar
         // abaixo da tela (regra 1 do AGENTS.md, em svh).
-        className={`min-w-0 h-fit scroll-mt-24 self-start rounded-lg border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)] lg:sticky lg:top-24${
-          guestCheckoutOn ? " lg:max-h-[calc(100svh-7rem)] lg:overflow-y-auto" : ""
+        // Na pagina de compra o cartao E a coluna principal: nem preso no topo
+        // nem com rolagem propria, que escondia o formulario numa caixa.
+        className={`min-w-0 h-fit scroll-mt-24 self-start rounded-lg border border-[var(--color-line)] bg-white p-5 shadow-[var(--shadow-soft)] sm:p-6${
+          checkoutOnly ? "" : ` lg:sticky lg:top-24${guestCheckoutOn ? " lg:max-h-[calc(100svh-7rem)] lg:overflow-y-auto" : ""}`
         }`}
       >
         {/* O preco era a quarta de seis linhas de uma lista "At a glance",
@@ -1075,7 +1080,9 @@ export function CreatorCourseDetail({
             "Secure checkout" e como a plataforma cobra — nenhum dos dois ajuda
             a decidir. O preco virou o numero grande acima, e a nota subiu para
             a assinatura do instrutor. */}
-        <dl className="mt-5 grid gap-4">
+        {/* Na pagina de compra quem decide ja leu o curso: categoria e contagem
+            de aulas ficam no resumo do pedido, nao entre o preco e o formulario. */}
+        {checkoutOnly ? null : <dl className="mt-5 grid gap-4">
           {[
             [t("publicCourses.category"), getCourseCategoryLabel(course.category, t)],
             ...(showsCurriculum ? [[t("publicCourses.lessons"), String(course.lessonCount)]] : []),
@@ -1093,7 +1100,7 @@ export function CreatorCourseDetail({
               </dd>
             </div>
           ))}
-        </dl>
+        </dl>}
 
         {checkoutStatus === "cancelled" ? (
           <p className="mt-5 rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">{t("publicCourses.cancelled")}</p>
@@ -1179,7 +1186,7 @@ export function CreatorCourseDetail({
                 data-cta-focus
                 onClick={handleCheckout}
                 disabled={!canCheckout || isCheckingOut}
-                className="button-solid mt-6 w-full px-5 py-2.5 text-sm disabled:opacity-60"
+                className="button-solid mt-6 min-h-12 w-full px-5 py-3 text-base font-semibold disabled:opacity-60"
               >
                 {cardActionLabel}
               </button>
@@ -1229,10 +1236,19 @@ export function CreatorCourseDetail({
             (automaticRefundWindowDays = 7, progress < 50% — see requestRefund),
             never an invented "30-day guarantee" the platform doesn't honor. */}
         {!courseIsFree ? (
-          <p className="mt-3 rounded-md border border-[rgba(26,54,93,0.12)] bg-[var(--color-surface-soft)] px-4 py-3 text-xs leading-6 text-[var(--color-ink-soft)]">
-            <strong className="text-[var(--color-ink)]">{t("publicCourses.refundTitle")}</strong>{" "}
-            {t("publicCourses.refundBody")}
-          </p>
+          <>
+            <p className="mt-3 flex items-center gap-2 text-xs font-semibold text-[var(--color-ink-soft)]">
+              <Lock aria-hidden="true" size={14} strokeWidth={2} className="shrink-0 text-[var(--color-success-fg)]" />
+              {t("publicCourses.securePayment")}
+            </p>
+            <p className="mt-3 flex gap-3 rounded-md border border-[var(--color-success-fg)]/25 bg-[var(--color-success-soft)] px-4 py-3 text-xs leading-6 text-[var(--color-ink-soft)]">
+              <ShieldCheck aria-hidden="true" size={20} strokeWidth={1.8} className="mt-0.5 shrink-0 text-[var(--color-success-fg)]" />
+              <span>
+                <strong className="text-[var(--color-ink)]">{t("publicCourses.refundTitle")}</strong>{" "}
+                {t("publicCourses.refundBody")}
+              </span>
+            </p>
+          </>
         ) : null}
 
         {/* Direct charges: the buyer's counterparty is the EDUCATOR, not
@@ -1248,11 +1264,14 @@ export function CreatorCourseDetail({
           </p>
         ) : null}
 
-        {/* Loja vazia não é destino: a volta leva ao início. */}
-        <Link
-          href={hasRealCourses ? "/courses" : "/"}
-          className="mt-4 inline-flex min-h-11 w-full items-center justify-center text-sm font-semibold text-[var(--color-primary)]"
-        >{t(hasRealCourses ? "publicCourses.backCourses" : "publicPages.notFound.home")}</Link>
+        {/* Loja vazia não é destino: a volta leva ao início. Na página de
+            compra não há volta ao catálogo: o resumo do pedido leva ao curso. */}
+        {checkoutOnly ? null : (
+          <Link
+            href={hasRealCourses ? "/courses" : "/"}
+            className="mt-4 inline-flex min-h-11 w-full items-center justify-center text-sm font-semibold text-[var(--color-primary)]"
+          >{t(hasRealCourses ? "publicCourses.backCourses" : "publicPages.notFound.home")}</Link>
+        )}
       </aside>
     </div>
 

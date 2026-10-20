@@ -188,7 +188,7 @@ export function GuestCheckoutForm({
         <button
           type="submit"
           disabled={disabled || isSubmitting || isGoogleLoading}
-          className="button-solid w-full justify-center px-5 py-2.5 text-sm disabled:opacity-60"
+          className="button-solid min-h-12 w-full justify-center px-5 py-3 text-base font-semibold disabled:opacity-60"
         >
           {isSubmitting ? t("publicCourses.openingCheckout") : submitLabel}
         </button>
