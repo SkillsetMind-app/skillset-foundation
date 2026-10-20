@@ -77,6 +77,8 @@ type AdminState = {
   enrollmentInserts: Array<Record<string, unknown>>;
   planSubscriptions: Array<Record<string, unknown>>;
   orderRow: Record<string, unknown>;
+  couponReservation?: "reserved" | "released" | "redeemed";
+  checkoutLock?: { lock_key: string; order_id: string } | null;
   paymentWrites: Array<Record<string, unknown>>;
   orderWrites: Array<Record<string, unknown>>;
   // payout_ledger ids written in checkout mode, so a redelivery meets the
@@ -277,6 +279,10 @@ function createAdmin(
 
         if (this.table === "payments") state.paymentWrites.push({ ...this.values });
         if (this.table === "orders") state.orderWrites.push({ ...this.values });
+        if (this.table === "checkout_locks" && this.operation === "delete"
+          && this.filterValue("lock_key") === state.checkoutLock?.lock_key) {
+          state.checkoutLock = null;
+        }
 
         if (this.table === "subscriptions" && this.operation === "upsert") {
           const existing = state.planSubscriptions.find((row) => row.id === this.values.id);
@@ -317,6 +323,9 @@ function createAdmin(
       }
       if (this.table === "orders") {
         data = this.filterValue("id") === state.orderRow.id ? { ...state.orderRow } : null;
+      } else if (this.table === "checkout_locks") {
+        data = this.filterValue("lock_key") === state.checkoutLock?.lock_key
+          ? state.checkoutLock ?? null : null;
       } else if (this.table === "courses") {
         data = {
           id: "course_1",
@@ -361,6 +370,16 @@ function createAdmin(
     from: vi.fn((table: string) => new Query(table)),
     rpc: vi.fn(async (name: string, args: Record<string, unknown>) => {
       state.rpcCalls.push({ name, args });
+      if (name === "release_course_coupon_reservation" && state.couponReservation === "reserved") {
+        state.couponReservation = "released";
+      }
+      if (name === "finalize_course_coupon_reservation" && state.couponReservation) {
+        // Mirror the SQL guard: a released reservation cannot be redeemed.
+        if (state.couponReservation === "released") {
+          return { data: null, error: { message: "COUPON_RESERVATION_RELEASED" } };
+        }
+        state.couponReservation = "redeemed";
+      }
       if (name === "enforce_rate_limit" && state.authEmailLimited && args.p_key === "guest_auth_email_global") {
         return { data: null, error: { message: "RATE_LIMIT" } };
       }
@@ -682,6 +701,85 @@ describe("Stripe webhook financial integrity", () => {
     delete process.env.STRIPE_CONNECT_WEBHOOK_SECRET;
     vi.restoreAllMocks();
     vi.unstubAllEnvs();
+  });
+
+  describe("recoverable card declines", () => {
+    function declinedPaymentEvent() {
+      return {
+        id: "evt_card_declined",
+        type: "payment_intent.payment_failed",
+        account: "acct_teacher",
+        data: { object: {
+          id: "pi_1",
+          status: "requires_payment_method",
+          metadata: { orderId: "order_1" },
+        } },
+      };
+    }
+
+    function pendingCouponCheckout() {
+      const admin = createAdmin("checkout");
+      admin.state.couponReservation = "reserved";
+      admin.state.checkoutLock = { lock_key: "user_1__course_1", order_id: "order_1" };
+      mocks.getAdmin.mockReturnValue(admin);
+      return admin;
+    }
+
+    it("keeps the order, lock and coupon reservation when the card can be retried", async () => {
+      const admin = pendingCouponCheckout();
+
+      expect((await postEvent(declinedPaymentEvent())).status).toBe(200);
+
+      expect(admin.state.orderWrites).toEqual([]);
+      expect(admin.state.couponReservation).toBe("reserved");
+      expect(admin.state.checkoutLock?.order_id).toBe("order_1");
+      expect(admin.state.rpcCalls).not.toContainEqual(expect.objectContaining({
+        name: "release_course_coupon_reservation",
+      }));
+      expect(fulfillCalls(admin)).toHaveLength(0);
+      expect(admin.state.doneEvents.has("evt_card_declined")).toBe(true);
+    });
+
+    it("fulfills the same session once after a decline followed by successful payment", async () => {
+      const admin = pendingCouponCheckout();
+
+      expect((await postEvent(declinedPaymentEvent())).status).toBe(200);
+      expect((await postEvent(checkoutEvent())).status).toBe(200);
+      expect(admin.state.couponReservation).toBe("redeemed");
+      expect(admin.state.orderWrites).toContainEqual(expect.objectContaining({ status: "paid" }));
+      expect(fulfillCalls(admin)).toHaveLength(1);
+
+      // Out-of-order delivery of the decline must not undo a later success.
+      expect((await postEvent({ ...declinedPaymentEvent(), id: "evt_late_decline" })).status).toBe(200);
+      expect((await postEvent({ ...checkoutEvent(), id: "evt_completed_again" })).status).toBe(200);
+      expect(admin.state.couponReservation).toBe("redeemed");
+      expect(admin.state.orderWrites.every((write) => write.status === "paid")).toBe(true);
+      expect(fulfillCalls(admin)).toHaveLength(1);
+    });
+
+    it.each([
+      ["checkout.session.expired", "cancelled"],
+      ["checkout.session.async_payment_failed", "failed"],
+    ])("still releases the abandoned checkout on %s", async (type, status) => {
+      const admin = pendingCouponCheckout();
+      await postEvent(declinedPaymentEvent());
+
+      const completed = checkoutEvent();
+      const response = await postEvent({
+        ...completed,
+        id: "evt_terminal",
+        type,
+        data: { object: { ...completed.data.object, payment_status: "unpaid" } },
+      });
+
+      expect(response.status).toBe(200);
+      expect(admin.state.couponReservation).toBe("released");
+      expect(admin.state.checkoutLock).toBeNull();
+      expect(admin.state.orderWrites).toEqual([
+        expect.objectContaining({ status }),
+      ]);
+      expect(fulfillCalls(admin)).toHaveLength(0);
+    });
   });
 
   it.each([
