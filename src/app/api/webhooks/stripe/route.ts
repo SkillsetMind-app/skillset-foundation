@@ -1187,7 +1187,30 @@ async function handleChargeRefunded(
       );
     }
 
-    if (!ledger) return;
+    if (!ledger) {
+      const stripe = getStripeClient();
+      const options = connectedAccountId ? { stripeAccount: connectedAccountId } : undefined;
+      // Invoice refunds can precede invoice.paid; distinguish our course from unrelated charges before acknowledging it.
+      for await (const invoicePayment of stripe.invoicePayments.list({
+        payment: { type: "payment_intent", payment_intent: paymentIntentId },
+        expand: ["data.invoice"],
+      }, options)) {
+        const invoice = typeof invoicePayment.invoice === "string"
+          ? await stripe.invoices.retrieve(invoicePayment.invoice, undefined, options)
+          : invoicePayment.invoice;
+        const subscriptionId = resolveInvoiceSubscriptionId(invoice);
+        if (!subscriptionId) continue;
+        // Prefer the immutable invoice snapshot; mutable subscription metadata is only a legacy fallback.
+        const metadata = invoice.parent?.subscription_details?.metadata
+          ?? (await stripe.subscriptions.retrieve(subscriptionId, undefined, options)).metadata;
+        if (metadata?.purpose !== "course_subscription") continue;
+        if (!metadata.courseId || !metadata.userId || !metadata.teacherId) {
+          throw new Error("Refunded course subscription is missing required metadata.");
+        }
+        throw new Error("Course subscription refund arrived before its sale records; retry this refund.");
+      }
+      return;
+    }
     await requireSupabaseWrite(
       admin
         .from("payout_ledger")

@@ -8,6 +8,8 @@ const mocks = vi.hoisted(() => ({
   subscriptionRetrieve: vi.fn(),
   subscriptionCancel: vi.fn(),
   paymentIntentRetrieve: vi.fn(),
+  invoicePaymentsList: vi.fn(),
+  invoiceRetrieve: vi.fn(),
   disputesList: vi.fn(),
   notifyOps: vi.fn(),
 }));
@@ -79,6 +81,7 @@ type AdminState = {
   orderRow: Record<string, unknown>;
   couponReservation?: "reserved" | "released" | "redeemed";
   checkoutLock?: { lock_key: string; order_id: string } | null;
+  saleRows?: Record<string, Array<Record<string, unknown>>>;
   paymentWrites: Array<Record<string, unknown>>;
   orderWrites: Array<Record<string, unknown>>;
   // payout_ledger ids written in checkout mode, so a redelivery meets the
@@ -151,6 +154,7 @@ function createAdmin(
       "select";
     private values: Record<string, unknown> = {};
     private filters: Filter[] = [];
+    private ignoreDuplicates = false;
 
     constructor(private readonly table: string) {}
 
@@ -158,9 +162,10 @@ function createAdmin(
       return this;
     }
 
-    upsert(values: Record<string, unknown>) {
+    upsert(values: Record<string, unknown>, options?: { ignoreDuplicates?: boolean }) {
       this.operation = "upsert";
       this.values = values;
+      this.ignoreDuplicates = Boolean(options?.ignoreDuplicates);
       return this;
     }
 
@@ -234,10 +239,22 @@ function createAdmin(
           return {
             data:
               this.operation === "upsert"
-                ? [{ stripe_event_id: eventId }]
+                ? state.saleRows && state.doneEvents.has(eventId) ? [] : [{ stripe_event_id: eventId }]
                 : null,
             error: null,
           };
+        }
+
+        const rows = state.saleRows?.[this.table];
+        if (rows) {
+          if (this.operation === "update") {
+            rows.filter((row) => this.filters.every(({ column, value }) => row[column] === value))
+              .forEach((row) => Object.assign(row, this.values));
+          } else if (this.operation === "insert" || this.operation === "upsert") {
+            const existing = rows.find((row) => row.id === this.values.id);
+            if (!existing) rows.push({ ...this.values });
+            else if (!this.ignoreDuplicates) Object.assign(existing, this.values);
+          }
         }
 
         if (
@@ -312,6 +329,17 @@ function createAdmin(
       }
 
       let data: Record<string, unknown> | null = null;
+      if (state.saleRows && this.table === "processed_stripe_events") {
+        return {
+          data: { status: state.doneEvents.has(String(this.filterValue("stripe_event_id"))) ? "done" : "failed" },
+          error: null,
+        };
+      }
+      const rows = state.saleRows?.[this.table];
+      if (rows) {
+        const matches = rows.filter((row) => this.filters.every(({ column, value }) => row[column] === value));
+        return { data: single ? matches[0] ?? null : matches, error: null };
+      }
       if (this.table === "subscriptions") {
         const statuses = this.filterValue("status") as unknown[] | undefined;
         return {
@@ -385,6 +413,12 @@ function createAdmin(
       }
       if (name === "fulfill_paid_course_access" && state.failAt === name) {
         return { data: null, error: { message: "enrollment RPC unavailable" } };
+      }
+      if (name === "fulfill_paid_course_access" && state.saleRows) {
+        state.enrollmentRow = {
+          status: "active", source: args.p_source, subscription_id: args.p_subscription_id,
+          progress_percent: 0,
+        };
       }
       if (name === "claim_payout_transfer_reversal") {
         const claimKey = String(args.p_claim_key);
@@ -677,6 +711,8 @@ describe("Stripe webhook financial integrity", () => {
     mocks.paymentIntentRetrieve
       .mockReset()
       .mockResolvedValue({ latest_charge: null });
+    mocks.invoicePaymentsList.mockReset().mockImplementation(async function* () {});
+    mocks.invoiceRetrieve.mockReset();
     mocks.getStripe.mockReset().mockReturnValue({
       webhooks: {
         constructEvent: (rawBody: string) => JSON.parse(rawBody),
@@ -684,6 +720,8 @@ describe("Stripe webhook financial integrity", () => {
       paymentIntents: {
         retrieve: mocks.paymentIntentRetrieve,
       },
+      invoicePayments: { list: mocks.invoicePaymentsList },
+      invoices: { retrieve: mocks.invoiceRetrieve },
       transfers: {
         createReversal: mocks.reversalCreate,
       },
@@ -1572,6 +1610,181 @@ describe("Stripe webhook financial integrity", () => {
       // Nao-200: o Stripe reenvia depois que a fulfilment terminar, em vez de o
       // reembolso ser perdido para sempre.
       expect(response.status).not.toBe(200);
+    });
+  });
+
+  describe("subscription refunds before local sale records", () => {
+    const metadata = {
+      purpose: "course_subscription", courseId: "course_1", userId: "user_1",
+      teacherId: "teacher_1", connectedAccountId: "acct_untrusted_metadata",
+    };
+    const invoice = {
+      id: "in_paid_1",
+      parent: { subscription_details: { subscription: "sub_1", metadata } },
+    };
+    const subscription = {
+      id: "sub_1", metadata, status: "active", customer: "cus_1",
+      items: { data: [{ current_period_end: 1_800_000_000 }] },
+      cancel_at_period_end: false,
+    };
+
+    function listedInvoices(...invoices: unknown[]) {
+      mocks.invoicePaymentsList.mockImplementation(async function* () {
+        for (const item of invoices) yield { invoice: item };
+      });
+    }
+
+    function earlyRefund(full = true) {
+      const event = refundEvent("evt_early_subscription_refund", full ? 10000 : 3000);
+      return {
+        ...event, account: "acct_teacher",
+        data: { object: { ...event.data.object, payment_intent: "pi_paid_1", refunded: full } },
+      };
+    }
+
+    beforeEach(() => {
+      mocks.subscriptionRetrieve.mockResolvedValue(subscription);
+      listedInvoices(invoice);
+    });
+
+    function emptySale() {
+      const admin = createAdmin("checkout");
+      admin.state.saleRows = { orders: [], payments: [], payout_ledger: [] };
+      mocks.getAdmin.mockReturnValue(admin);
+      return admin;
+    }
+
+    it.each([true, false])("retries an early refund (full=%s), then records it after the invoice and ignores duplicates", async (full) => {
+      const admin = emptySale();
+      const refund = earlyRefund(full);
+      expect((await postEvent(refund)).status).toBe(500);
+      expect(admin.state.doneEvents).not.toContain(refund.id);
+      expect(admin.state.saleRows?.payments).toEqual([]);
+      expect(fulfillCalls(admin)).toHaveLength(0);
+
+      expect((await postEvent(paidInvoiceEvent())).status).toBe(200);
+      expect(admin.state.saleRows?.payments).toEqual([
+        expect.objectContaining({ id: "pi_paid_1", order_id: "in_paid_1", status: "succeeded" }),
+      ]);
+      expect(admin.state.enrollmentRow?.status).toBe("active");
+      expect((await postEvent(refund)).status).toBe(200);
+      const status = full ? "refunded" : "partially_refunded";
+      for (const table of ["orders", "payments"]) {
+        expect(admin.state.saleRows?.[table]).toEqual([
+          expect.objectContaining({ status, refunded_amount_minor: full ? 10000 : 3000 }),
+        ]);
+      }
+      expect(admin.state.saleRows?.payout_ledger).toEqual([
+        expect.objectContaining({
+          id: "in_paid_1", kind: "course_subscription", subscription_id: "sub_1",
+          refunded_amount_minor: full ? 10000 : 3000,
+        }),
+      ]);
+      expect(mocks.subscriptionCancel).toHaveBeenCalledTimes(full ? 1 : 0);
+      if (full) {
+        expect(mocks.subscriptionCancel).toHaveBeenCalledWith(
+          "sub_1", {}, { stripeAccount: "acct_teacher" },
+        );
+      }
+      expect(admin.state.doneEvents).toContain(refund.id);
+      const writes = admin.state.orderWrites.length;
+      expect(await (await postEvent(refund)).json()).toMatchObject({ duplicate: true });
+      expect(admin.state.orderWrites).toHaveLength(writes);
+      expect(mocks.subscriptionCancel).toHaveBeenCalledTimes(full ? 1 : 0);
+      expect(mocks.invoicePaymentsList).toHaveBeenCalledTimes(1);
+      expect(mocks.invoicePaymentsList).toHaveBeenCalledWith(
+        { payment: { type: "payment_intent", payment_intent: "pi_paid_1" }, expand: ["data.invoice"] },
+        { stripeAccount: "acct_teacher" },
+      );
+      if (full) {
+        const canceled = { ...subscription, status: "canceled" };
+        mocks.subscriptionRetrieve.mockResolvedValue(canceled);
+        expect((await postEvent({
+          id: "evt_refund_cancellation", type: "customer.subscription.deleted", account: "acct_teacher",
+          data: { object: canceled },
+        })).status).toBe(200);
+        expect(admin.state.enrollmentRow?.status).toBe("revoked");
+      } else {
+        expect(admin.state.enrollmentRow?.status).toBe("active");
+      }
+    });
+
+    it.each([
+      ["unknown payment", []],
+      ["standalone invoice", [{ id: "in_manual", parent: null }]],
+      ["platform plan", [{ ...invoice, parent: { subscription_details: { subscription: "sub_plan", metadata: { purpose: "plan_subscription" } } } }]],
+      ["empty snapshot", [{ ...invoice, parent: { subscription_details: { subscription: "sub_1", metadata: {} } } }]],
+    ])("ignores %s without treating current subscription metadata as authority", async (_name, invoices) => {
+      const admin = emptySale();
+      listedInvoices(...invoices as unknown[]);
+      expect((await postEvent(earlyRefund())).status).toBe(200);
+      expect(admin.state.doneEvents).toContain("evt_early_subscription_refund");
+      expect(admin.state.saleRows).toEqual({ orders: [], payments: [], payout_ledger: [] });
+      expect(mocks.subscriptionCancel).not.toHaveBeenCalled();
+      expect(mocks.subscriptionRetrieve).not.toHaveBeenCalled();
+    });
+
+    it("finds a course after an unrelated invoice and uses the event account for fallback reads", async () => {
+      const admin = emptySale();
+      listedInvoices({ id: "in_manual", parent: null }, "in_paid_1");
+      mocks.invoiceRetrieve.mockResolvedValue({
+        id: "in_paid_1", parent: { subscription_details: { subscription: "sub_1", metadata: null } },
+      });
+      expect((await postEvent(earlyRefund())).status).toBe(500);
+      expect(mocks.invoiceRetrieve).toHaveBeenCalledWith("in_paid_1", undefined, { stripeAccount: "acct_teacher" });
+      expect(mocks.subscriptionRetrieve).toHaveBeenCalledWith("sub_1", undefined, { stripeAccount: "acct_teacher" });
+      expect(admin.state.doneEvents).not.toContain("evt_early_subscription_refund");
+    });
+
+    it("recognizes a legacy platform course without changing account from metadata", async () => {
+      emptySale();
+      expect((await postEvent({ ...earlyRefund(), account: undefined })).status).toBe(500);
+      expect(mocks.invoicePaymentsList).toHaveBeenCalledWith(expect.any(Object), undefined);
+      expect(mocks.subscriptionRetrieve).not.toHaveBeenCalled();
+    });
+
+    it("ignores a legacy non-course subscription after reading it in the event account", async () => {
+      const admin = emptySale();
+      listedInvoices({ id: "in_plan", subscription: "sub_plan" });
+      mocks.subscriptionRetrieve.mockResolvedValue({ metadata: { uid: "user_1" } });
+      expect((await postEvent(earlyRefund())).status).toBe(200);
+      expect(mocks.subscriptionRetrieve).toHaveBeenCalledWith("sub_plan", undefined, { stripeAccount: "acct_teacher" });
+      expect(admin.state.orderWrites).toEqual([]);
+      expect(mocks.subscriptionCancel).not.toHaveBeenCalled();
+    });
+
+    it("does not acknowledge a known course with incomplete invoice metadata", async () => {
+      const admin = emptySale();
+      listedInvoices({
+        ...invoice, parent: { subscription_details: {
+          subscription: "sub_1", metadata: { ...metadata, teacherId: "" },
+        } },
+      });
+      expect((await postEvent(earlyRefund())).status).toBe(500);
+      expect(admin.state.doneEvents).not.toContain("evt_early_subscription_refund");
+      expect(mocks.subscriptionRetrieve).not.toHaveBeenCalled();
+      expect(mocks.subscriptionCancel).not.toHaveBeenCalled();
+    });
+
+    it.each(["list", "invoice", "subscription"])("keeps the event retryable after a %s API failure", async (failure) => {
+      const admin = emptySale();
+      if (failure === "list") {
+        mocks.invoicePaymentsList.mockImplementationOnce(async function* () { throw new Error("Stripe unavailable"); });
+      } else {
+        listedInvoices("in_paid_1");
+        if (failure === "invoice") mocks.invoiceRetrieve.mockRejectedValueOnce(new Error("Stripe timeout"));
+        else {
+          mocks.invoiceRetrieve.mockResolvedValue({ id: "in_paid_1", subscription: "sub_1" });
+          mocks.subscriptionRetrieve.mockRejectedValueOnce(new Error("Stripe rate limited"));
+        }
+      }
+      expect((await postEvent(earlyRefund())).status).toBe(500);
+      expect(admin.state.doneEvents).not.toContain("evt_early_subscription_refund");
+      expect(admin.state.saleRows?.payments).toEqual([]);
+      listedInvoices(invoice);
+      expect((await postEvent(paidInvoiceEvent())).status).toBe(200);
+      expect((await postEvent(earlyRefund())).status).toBe(200);
+      expect(admin.state.doneEvents).toContain("evt_early_subscription_refund");
     });
   });
 
