@@ -24,7 +24,6 @@ import {
   resolveInvoicePaymentIntentId,
   sanitizeStripeSecret,
   shouldCancelCourseSubscriptionForRefund,
-  shouldApplyOrderStatusTransition,
   shouldMarkEnrollmentRefundedAfterChargeRefund,
   shouldReleaseCheckoutLock,
   stripeFeeMinorFromBalanceTransaction,
@@ -327,6 +326,36 @@ function queueCreatorSaleEmail(admin: Admin, sale: CreatorSale): void {
 }
 
 // --- one-time checkout fulfilment -------------------------------------------
+// Resgata o cupom e marca o pedido paid numa transacao so, com o pedido
+// travado. O retorno e o status fresco: 'settled' acabou de virar paid; 'paid'
+// ja era paid com este pagamento; 'refunded' ja devolveu o dinheiro; 'closed'
+// foi fechado (expired/failed) antes de o pagamento chegar.
+type PaidOrderOutcome = "settled" | "paid" | "refunded" | "closed";
+
+async function settlePaidCourseOrder(
+  admin: Admin,
+  args: {
+    orderId: string;
+    sessionId: string;
+    paymentIntentId: string;
+    connectedAccountId: string | null;
+    receiptUrl: string | null;
+  },
+): Promise<PaidOrderOutcome> {
+  const { data, error } = await admin.rpc("settle_paid_course_order", {
+    p_order_id: args.orderId,
+    p_session_id: args.sessionId,
+    p_payment_intent_id: args.paymentIntentId,
+    p_connected_account_id: args.connectedAccountId,
+    p_receipt_url: args.receiptUrl,
+  });
+  if (error) throw new Error(`Settle checkout order: ${error.message}`);
+  if (data !== "settled" && data !== "paid" && data !== "refunded" && data !== "closed") {
+    throw new Error("Settle checkout order returned an unknown outcome.");
+  }
+  return data;
+}
+
 async function finalizeCourseCouponReservation(
   admin: Admin,
   orderId: string,
@@ -479,36 +508,10 @@ async function handleCheckoutCompleted(
     throw new Error("Checkout does not match its saved order.");
   }
 
-  await finalizeCourseCouponReservation(admin, orderId);
-
   const paymentIntentId =
     typeof session.payment_intent === "string"
       ? session.payment_intent
       : session.payment_intent?.id || session.id;
-
-  // Re-arm guard: the ledger row is created exactly once per order (LAST,
-  // below). If it already exists this order was fully fulfilled — a redelivery
-  // / async event / replay must NOT re-run fulfilment.
-  const { data: existingLedger } = await admin
-    .from("payout_ledger")
-    .select("id")
-    .eq("id", orderId)
-    .maybeSingle();
-  if (existingLedger) {
-    // Fulfilment is complete, but a failed lock cleanup still needs its retry.
-    await requireSupabaseWrite(
-      admin.from("checkout_locks").delete().eq("lock_key", `${userId}__${courseId}`).eq("order_id", orderId),
-      "Release settled checkout lock",
-    );
-    return;
-  }
-
-  const { data: course } = await admin
-    .from("courses")
-    .select("*")
-    .eq("id", courseId)
-    .maybeSingle();
-  if (!course) throw new Error(`Course ${courseId} not found.`);
 
   // Best-effort receipt url off the PaymentIntent's latest charge. Never blocks.
   let receiptUrl: string | null = null;
@@ -548,6 +551,55 @@ async function handleCheckoutCompleted(
       // ponytail: receipt lookup is best-effort; never blocks fulfilment.
     }
   }
+
+  // Cupom e status paid mudam juntos, sobre a linha fresca, antes de qualquer
+  // escrita de pagamento ou matricula.
+  const outcome = await settlePaidCourseOrder(admin, {
+    orderId,
+    sessionId: session.id,
+    paymentIntentId,
+    connectedAccountId,
+    receiptUrl,
+  });
+  if (outcome === "closed") {
+    // Contencao, nao recuperacao: o cupom deste pedido ja foi solto e o lock
+    // pode ser de outra tentativa. Nada e concedido; o evento falha ate alguem
+    // reconciliar o pagamento a mao.
+    notifyOps({
+      event: "stripe.webhook.paid_after_close",
+      severity: "critical",
+      summary:
+        "A one-time checkout was paid after its order was closed (expired/failed). Nothing was granted; the event keeps retrying until the payment is reconciled by hand.",
+      context: { orderId, checkoutSessionId: session.id },
+    });
+    throw new Error("Paid checkout arrived after its order was closed.");
+  }
+
+  // Re-arm guard: the ledger row is created exactly once per order (LAST,
+  // below). If it already exists this order was fully fulfilled — a redelivery
+  // / async event / replay must NOT re-run fulfilment.
+  const { data: existingLedger } = await admin
+    .from("payout_ledger")
+    .select("id")
+    .eq("id", orderId)
+    .maybeSingle();
+  if (existingLedger) {
+    // Fulfilment is complete, but a failed lock cleanup still needs its retry.
+    await requireSupabaseWrite(
+      admin.from("checkout_locks").delete().eq("lock_key", `${userId}__${courseId}`).eq("order_id", orderId),
+      "Release settled checkout lock",
+    );
+    return;
+  }
+  // Reembolsado: o dinheiro ja voltou. Nada de acesso nem registro novo.
+  if (outcome === "refunded") return;
+
+  const { data: course } = await admin
+    .from("courses")
+    .select("*")
+    .eq("id", courseId)
+    .maybeSingle();
+  if (!course) throw new Error(`Course ${courseId} not found.`);
 
   const grossAmountMinor = Number(order.amount_minor || 0);
   // ?? not || so an explicitly snapshotted 0-bps fee survives.
@@ -590,21 +642,6 @@ async function handleCheckoutCompleted(
       { onConflict: "id" },
     ),
     "Persist checkout payment",
-  );
-
-  await requireSupabaseWrite(
-    admin
-      .from("orders")
-      .update({
-        status: "paid",
-        checkout_session_id: session.id,
-        payment_intent_id: paymentIntentId,
-        ...(receiptUrl ? { receipt_url: receiptUrl } : {}),
-        paid_at: ts,
-        updated_at: ts,
-      })
-      .eq("id", orderId),
-    "Mark checkout order paid",
   );
 
   // The UPSERT serializes with creator revocation and preserves progress.
@@ -1593,7 +1630,6 @@ async function markOrderStatus(
 ): Promise<void> {
   const orderId = session.metadata?.orderId;
   if (!orderId) return;
-  const ts = nowIso();
 
   const { data: order, error: orderError } = await admin
     .from("orders")
@@ -1612,29 +1648,18 @@ async function markOrderStatus(
     throw new Error("Terminal checkout event does not match its saved order.");
   }
 
-  // Release the checkout lock only if it still belongs to THIS order. [B3]
-  if (order.user_id && order.course_id) {
-    const lockKey = `${order.user_id}__${order.course_id}`;
-    const { data: lock } = await admin
-      .from("checkout_locks")
-      .select("order_id")
-      .eq("lock_key", lockKey)
-      .maybeSingle();
-    if (lock && shouldReleaseCheckoutLock(lock.order_id, orderId)) {
-      await requireSupabaseWrite(
-        admin.from("checkout_locks").delete().eq("lock_key", lockKey).eq("order_id", orderId),
-        "Release failed checkout lock",
-      );
-    }
-  }
-
-  // Never overwrite a settled money outcome (paid/refunded). [B2]
-  if (!shouldApplyOrderStatusTransition(order.status)) return;
-
-  await releaseCourseCouponReservation(admin, orderId);
+  // A leitura acima so falha cedo. Quem decide e a RPC, com o pedido travado:
+  // pago/reembolsado nunca desce [B2], pedido com cupom ja resgatado esta
+  // liquidando e fica como esta, e cupom reservado, lock DESTE pedido [B3] e
+  // status mudam juntos ou nao mudam.
   await requireSupabaseWrite(
-    admin.from("orders").update({ status, updated_at: ts }).eq("id", orderId),
-    "Mark checkout order terminal",
+    admin.rpc("close_unpaid_course_order", {
+      p_order_id: orderId,
+      p_session_id: session.id,
+      p_status: status,
+      p_connected_account_id: connectedAccountId,
+    }),
+    "Close unpaid checkout order",
   );
 }
 

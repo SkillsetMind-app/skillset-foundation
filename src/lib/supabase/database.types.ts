@@ -2752,6 +2752,15 @@ export type Database = {
         }
         Returns: Json
       }
+      close_unpaid_course_order: {
+        Args: {
+          p_connected_account_id: string | null
+          p_order_id: string
+          p_session_id: string
+          p_status: string
+        }
+        Returns: string
+      }
       complete_payout_transfer_reversal: {
         Args: {
           p_claim_key: string
@@ -3020,6 +3029,16 @@ export type Database = {
       set_own_course_featured: {
         Args: { p_course_id: string; p_featured: boolean }
         Returns: Json
+      }
+      settle_paid_course_order: {
+        Args: {
+          p_connected_account_id: string | null
+          p_order_id: string
+          p_payment_intent_id: string
+          p_receipt_url: string | null
+          p_session_id: string
+        }
+        Returns: string
       }
       submit_course_review: {
         Args: { p_body: string; p_course_id: string; p_rating: number }
