@@ -45,6 +45,13 @@ describe("stripe attention cron", () => {
     vi.stubEnv("CRON_SECRET", CRON_TOKEN);
     vi.stubEnv("OPS_ALERT_WEBHOOK_URL", RELAY);
     vi.stubEnv("OPS_ALERT_WEBHOOK_SECRET", "");
+    vi.stubEnv("NEXT_PUBLIC_GUEST_CHECKOUT_ENABLED", "");
+    vi.stubEnv("NEXT_PUBLIC_PAYMENTS_CHECKOUT_ENABLED", "");
+    vi.stubEnv("NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY", "");
+    vi.stubEnv("NEXT_PUBLIC_TURNSTILE_SITE_KEY", "");
+    vi.stubEnv("TURNSTILE_SECRET_KEY", "");
+    vi.stubEnv("GUEST_CHECKOUT_COOKIE_SECRET", "");
+    vi.stubEnv("STRIPE_SECRET_KEY", "");
     vi.stubGlobal("fetch", mocks.fetch);
     mocks.fetch.mockResolvedValue(new Response("ok"));
     mocks.from.mockReturnValue({ select: mocks.select });
@@ -208,5 +215,186 @@ describe("stripe attention cron", () => {
 
     expect(response.status).toBe(500);
     expect(await response.json()).toEqual({ ok: false, reason: "service_role_missing" });
+  });
+
+  describe("payment configuration readiness", () => {
+    function enableGuest() {
+      vi.stubEnv("NEXT_PUBLIC_GUEST_CHECKOUT_ENABLED", "true");
+      vi.stubEnv("NEXT_PUBLIC_TURNSTILE_SITE_KEY", "test-public-site-key");
+      vi.stubEnv("TURNSTILE_SECRET_KEY", "test-turnstile-private");
+      vi.stubEnv("GUEST_CHECKOUT_COOKIE_SECRET", "test-cookie-private");
+      vi.stubEnv("STRIPE_SECRET_KEY", "sk_test_readiness_fixture");
+    }
+
+    it.each([
+      "NEXT_PUBLIC_TURNSTILE_SITE_KEY",
+      "TURNSTILE_SECRET_KEY",
+      "GUEST_CHECKOUT_COOKIE_SECRET",
+      "STRIPE_SECRET_KEY",
+    ])("fails and alerts with no stuck events when %s is missing", async (name) => {
+      enableGuest();
+      vi.stubEnv(name, "");
+
+      const response = await call(`Bearer ${CRON_TOKEN}`);
+
+      expect(response.status).toBe(503);
+      expect(await response.json()).toMatchObject({
+        ok: false, reason: "payments_not_configured", count: 0,
+        configuration_alerted: true, alerted: false,
+      });
+      expect(mocks.from).toHaveBeenCalledWith("stripe_events_needing_attention");
+      expect(mocks.fetch).toHaveBeenCalledOnce();
+      expect(sentBody()).toMatchObject({
+        event: "payments.configuration.unavailable",
+        severity: "critical",
+        context: { status: 503 },
+      });
+      const body = JSON.stringify(sentBody());
+      expect(body).not.toContain("test-turnstile-private");
+      expect(body).not.toContain("test-cookie-private");
+      expect(body).not.toContain("sk_test_readiness_fixture");
+    });
+
+    it("sends only one configuration alert when several dependencies are missing", async () => {
+      vi.stubEnv("NEXT_PUBLIC_GUEST_CHECKOUT_ENABLED", "true");
+
+      const response = await call(`Bearer ${CRON_TOKEN}`);
+
+      expect(response.status).toBe(503);
+      expect(mocks.fetch).toHaveBeenCalledOnce();
+    });
+
+    it("detects a malformed Stripe secret, not just its presence", async () => {
+      enableGuest();
+      vi.stubEnv("STRIPE_SECRET_KEY", "sk_test_invalid embedded space");
+
+      const response = await call(`Bearer ${CRON_TOKEN}`);
+
+      expect(response.status).toBe(503);
+      expect(mocks.fetch).toHaveBeenCalledOnce();
+    });
+
+    it("does not require the Stripe publishable key for hosted guest checkout", async () => {
+      enableGuest();
+
+      const response = await call(`Bearer ${CRON_TOKEN}`);
+
+      expect(response.status).toBe(200);
+      expect(await response.json()).toEqual({ ok: true, count: 0, alerted: false });
+      expect(mocks.fetch).not.toHaveBeenCalled();
+    });
+
+    it("also detects Stripe missing behind the billing and Connect public gate", async () => {
+      vi.stubEnv("NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY", "pk_test_readiness_fixture");
+
+      const response = await call(`Bearer ${CRON_TOKEN}`);
+
+      expect(response.status).toBe(503);
+      expect(mocks.fetch).toHaveBeenCalledOnce();
+    });
+
+    it.each(["", "sk_test_invalid embedded space"])(
+      "detects unavailable Stripe for authenticated checkout without guest or embedded billing",
+      async (secret) => {
+        vi.stubEnv("NEXT_PUBLIC_PAYMENTS_CHECKOUT_ENABLED", "true");
+        vi.stubEnv("STRIPE_SECRET_KEY", secret);
+
+        const response = await call(`Bearer ${CRON_TOKEN}`);
+
+        expect(response.status).toBe(503);
+        expect(mocks.fetch).toHaveBeenCalledOnce();
+      },
+    );
+
+    it("does not require disabled guest dependencies when billing is ready", async () => {
+      vi.stubEnv("NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY", "pk_test_readiness_fixture");
+      vi.stubEnv("STRIPE_SECRET_KEY", "sk_test_readiness_fixture");
+
+      const response = await call(`Bearer ${CRON_TOKEN}`);
+
+      expect(response.status).toBe(200);
+      expect(mocks.fetch).not.toHaveBeenCalled();
+    });
+
+    it("does not reveal or alert missing configuration to an unauthorized caller", async () => {
+      vi.stubEnv("NEXT_PUBLIC_GUEST_CHECKOUT_ENABLED", "true");
+
+      const response = await call();
+
+      expect(response.status).toBe(401);
+      expect(mocks.fetch).not.toHaveBeenCalled();
+      expect(mocks.getAdmin).not.toHaveBeenCalled();
+    });
+
+    it("still alerts for stuck events when configuration is also incomplete", async () => {
+      vi.stubEnv("NEXT_PUBLIC_GUEST_CHECKOUT_ENABLED", "true");
+      stuckFor(0.5);
+
+      const response = await call(`Bearer ${CRON_TOKEN}`);
+
+      expect(response.status).toBe(503);
+      expect(await response.json()).toMatchObject({
+        reason: "payments_not_configured", count: 1, alerted: true,
+        configuration_alerted: true,
+      });
+      expect(mocks.fetch).toHaveBeenCalledTimes(2);
+      expect(sentBody(1).event).toBe("stripe.events.needing_attention");
+    });
+
+    it("does not hide the configuration failure behind old events outside the reminder hour", async () => {
+      vi.stubEnv("NEXT_PUBLIC_GUEST_CHECKOUT_ENABLED", "true");
+      stuckFor(30);
+
+      const response = await call(`Bearer ${CRON_TOKEN}`);
+
+      expect(response.status).toBe(503);
+      expect(await response.json()).toMatchObject({
+        reason: "payments_not_configured", count: 1, oldest_hours: 30,
+        alerted: false, configuration_alerted: true,
+      });
+      expect(mocks.fetch).toHaveBeenCalledOnce();
+    });
+
+    it.each([
+      ["missing", () => vi.stubEnv("OPS_ALERT_WEBHOOK_URL", "")],
+      ["refused", () => mocks.fetch.mockResolvedValue(new Response("no", { status: 403 }))],
+      ["unreachable", () => mocks.fetch.mockRejectedValue(new Error("relay down"))],
+    ])("never claims delivery when the configuration alert relay is %s", async (_name, arrange) => {
+      vi.stubEnv("NEXT_PUBLIC_GUEST_CHECKOUT_ENABLED", "true");
+      arrange();
+
+      const response = await call(`Bearer ${CRON_TOKEN}`);
+
+      expect(response.status).toBe(503);
+      expect(await response.json()).toMatchObject({
+        ok: false, reason: "payments_not_configured", configuration_alerted: false,
+      });
+      expect(mocks.from).toHaveBeenCalledWith("stripe_events_needing_attention");
+    });
+
+    it("still checks events if the configuration alert is refused", async () => {
+      vi.stubEnv("NEXT_PUBLIC_GUEST_CHECKOUT_ENABLED", "true");
+      mocks.fetch.mockResolvedValueOnce(new Response("no", { status: 403 }));
+      stuckFor(0.5);
+
+      const response = await call(`Bearer ${CRON_TOKEN}`);
+
+      expect(response.status).toBe(503);
+      expect(await response.json()).toMatchObject({
+        count: 1, alerted: true, configuration_alerted: false,
+      });
+      expect(mocks.fetch).toHaveBeenCalledTimes(2);
+    });
+
+    it("reports a database failure even after the configuration alert was accepted", async () => {
+      vi.stubEnv("NEXT_PUBLIC_GUEST_CHECKOUT_ENABLED", "true");
+      mocks.getAdmin.mockImplementation(() => { throw new Error("not configured"); });
+
+      const response = await call(`Bearer ${CRON_TOKEN}`);
+
+      expect(response.status).toBe(500);
+      expect(await response.json()).toMatchObject({ ok: false, reason: "service_role_missing" });
+      expect(mocks.fetch).toHaveBeenCalledOnce();
+    });
   });
 });
