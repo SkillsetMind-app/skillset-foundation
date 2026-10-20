@@ -753,6 +753,28 @@ describe("guest checkout", () => {
     expect(params.subscription_data.metadata.checkout_origin).toBe("guest");
   });
 
+  it.each([null, "month", "year"])(
+    "preserves the guest offer on the %s checkout return without exposing identity",
+    async (interval) => {
+      mocks.subscriptionInterval.mockReturnValue(interval);
+      const response = await POST(guestRequest({
+        ...validBody, offerId: "offer-guest", priceId: "price-guest",
+      }));
+      expect(response.status).toBe(200);
+      const [params, options] = mocks.createSession.mock.calls[0];
+      const cancel = new URL(params.cancel_url);
+      expect(cancel.origin).toBe("https://skillset.test");
+      expect(cancel.pathname).toBe("/courses/course/checkout");
+      expect(Object.fromEntries(cancel.searchParams)).toEqual({
+        checkout: "cancelled", offerId: "offer-guest", priceId: "price-guest",
+      });
+      expect(params.success_url).toBe("https://skillset.test/checkout/thanks?course=course");
+      expect(params.mode).toBe(interval ? "subscription" : "payment");
+      expect(params.metadata.checkout_origin).toBe("guest");
+      expect(options.stripeAccount).toBe("acct_teacher");
+    },
+  );
+
   it("opens the same Stripe session as the signed-in route for the same course and offer", async () => {
     const offer = { offerId: "offer-1", priceId: "price-1" };
     admin = createAdmin({ existingUserId: "buyer" });

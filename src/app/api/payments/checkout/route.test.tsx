@@ -55,6 +55,7 @@ vi.mock("@/lib/payments/server/stripe-helpers", () => ({
 
 import { POST } from "@/app/api/payments/checkout/route";
 import { getStripeAccountCountry } from "@/lib/payments/server/stripe";
+import { resolveCoursePrice, type ProductOffer, type ProductPriceSelection } from "@/domain/product-pricing";
 
 type ExistingRow = { id?: string; status: string } | null;
 type LockReply = { action: string; checkout_url: string | null };
@@ -301,6 +302,116 @@ describe("course checkout subscription exclusivity", () => {
 
     expect(response.status).toBe(200);
     expect(mocks.createSession.mock.calls[0][0].currency).toBe("usd");
+  });
+
+  it.each(["one_time", "subscription_monthly", "subscription_yearly"] as const)(
+    "resumes the selected %s offer after returning from Stripe without another session",
+    async (paymentType) => {
+      const selectedCourse = course(paymentType);
+      const offers: ProductOffer[] = [
+        {
+          id: "offer-default", courseId: "course", name: "Default", isDefault: true,
+          prices: [{ id: "price-default", offerId: "offer-default", amountMinor: 12_000, currency: "USD", paymentType }],
+        },
+        {
+          id: "offer-special", courseId: "course", name: "Special", publicCode: "RETURN",
+          prices: [
+            { id: "price-first", offerId: "offer-special", amountMinor: 10_000, currency: "USD", paymentType },
+            { id: "price-selected", offerId: "offer-special", amountMinor: 7_500, currency: "USD", paymentType },
+          ],
+        },
+      ];
+      mocks.getCourseRow.mockResolvedValue(selectedCourse);
+      mocks.loadOffers.mockResolvedValue(offers);
+      mocks.normalizePrice.mockImplementation(
+        (_course: unknown, loadedOffers: ProductOffer[], selection: ProductPriceSelection) => {
+          const resolved = resolveCoursePrice(
+            { id: "course", priceAmountMinor: 12_000, currency: "USD", paymentType },
+            loadedOffers,
+            selection,
+          );
+          if (!resolved) throw new Error("Invalid test offer");
+          return { ...resolved, currency: resolved.currency.toLowerCase() };
+        },
+      );
+      const admin = createAdmin({
+        lockReplies: [
+          { action: "claim", checkout_url: null },
+          { action: "reuse", checkout_url: "https://checkout.example/subscription" },
+        ],
+        checkoutLock: { order_id: "order", checkout_session_id: "cs_subscription" },
+        existingOrder: {
+          offer_id: "offer-special", price_id: "price-selected",
+          teacher_stripe_connected_account_id: "acct_teacher",
+        },
+      });
+      mocks.getAdmin.mockReturnValue(admin);
+
+      const response = await POST(request({
+        courseId: "course", offerCode: "return", priceId: "price-selected",
+      }));
+      expect(response.status).toBe(200);
+      const params = mocks.createSession.mock.calls[0][0];
+      mocks.retrieveSession.mockResolvedValue({ id: "cs_subscription", metadata: params.metadata });
+      const cancel = new URL(params.cancel_url);
+      expect(cancel.origin).toBe("https://skillset.test");
+      expect(cancel.pathname).toBe("/courses/course/checkout");
+      expect(Object.fromEntries(cancel.searchParams)).toEqual({
+        checkout: "cancelled", offerId: "offer-special", priceId: "price-selected",
+      });
+
+      const resumed = await POST(request({
+        courseId: "course",
+        offerId: cancel.searchParams.get("offerId"),
+        priceId: cancel.searchParams.get("priceId"),
+      }));
+      expect(resumed.status).toBe(200);
+      expect(await resumed.json()).toEqual({ url: "https://checkout.example/subscription" });
+      expect(mocks.createSession).toHaveBeenCalledTimes(1);
+      expect(mocks.createSession.mock.calls[0][1]).toMatchObject({
+        stripeAccount: "acct_teacher", idempotencyKey: expect.any(String),
+      });
+      expect(params.mode).toBe(paymentType === "one_time" ? "payment" : "subscription");
+      expect(params.success_url).toBe("https://skillset.test/learn/courses/course?checkout=success");
+    },
+  );
+
+  it.each(["one_time", "subscription_monthly", "subscription_yearly"])(
+    "returns legacy %s checkout to the dedicated page without invented selectors",
+    async (paymentType) => {
+      mocks.getCourseRow.mockResolvedValue(course(paymentType));
+      mocks.normalizePrice.mockReturnValue({
+        amountMinor: 12_000, currency: "usd", paymentType, source: "legacy",
+      });
+      mocks.getAdmin.mockReturnValue(createAdmin({
+        lockReplies: [{ action: "claim", checkout_url: null }],
+      }));
+      const response = await POST(request({ courseId: "course" }));
+      expect(response.status).toBe(200);
+      expect(mocks.createSession.mock.calls[0][0].cancel_url)
+        .toBe("https://skillset.test/courses/course/checkout?checkout=cancelled");
+    },
+  );
+
+  it("encodes the resolved default offer without copying buyer-controlled return parameters", async () => {
+    mocks.normalizePrice.mockReturnValue({
+      amountMinor: 12_000, currency: "usd", paymentType: "one_time", source: "offer",
+      offerId: "offer&checkout=success", priceId: "price#one",
+    });
+    mocks.getAdmin.mockReturnValue(createAdmin({
+      lockReplies: [{ action: "claim", checkout_url: null }],
+    }));
+    const response = await POST(request({
+      courseId: "course", returnTo: "https://other.example", email: "private@example.com",
+    }));
+    expect(response.status).toBe(200);
+    const cancel = new URL(mocks.createSession.mock.calls[0][0].cancel_url);
+    expect(cancel.origin).toBe("https://skillset.test");
+    expect(cancel.pathname).toBe("/courses/course/checkout");
+    expect(cancel.hash).toBe("");
+    expect(Object.fromEntries(cancel.searchParams)).toEqual({
+      checkout: "cancelled", offerId: "offer&checkout=success", priceId: "price#one",
+    });
   });
 
   it.each([

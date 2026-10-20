@@ -266,6 +266,11 @@ export async function createCourseCheckoutSession(
     const userEmail = options.customerEmail ?? buyer?.email ?? undefined;
     const appUrl = getAppUrl();
     const stripe = getStripeClient();
+    // Voltar da Stripe nao pode trocar a oferta pela padrao do curso.
+    const cancelParams = new URLSearchParams({ checkout: "cancelled" });
+    if (priced.offerId) cancelParams.set("offerId", priced.offerId);
+    if (priced.priceId) cancelParams.set("priceId", priced.priceId);
+    const cancelUrl = `${appUrl}/courses/${encodeURIComponent(courseId)}/checkout?${cancelParams}`;
 
     const owner = await getUserRow(course.owner_id);
     const platformFeeBps = canonicalPlatformFeeBpsForPlan(owner?.current_plan_id);
@@ -491,7 +496,7 @@ export async function createCourseCheckoutSession(
             expires_at: Math.floor(Date.now() / 1000) + checkoutSessionExpiresInSec,
             success_url: options.successUrl
               ?? `${appUrl}/learn/courses/${encodeURIComponent(courseId)}?checkout=success`,
-            cancel_url: `${appUrl}/courses/${encodeURIComponent(courseId)}?checkout=cancelled`,
+            cancel_url: cancelUrl,
           },
           {
             idempotencyKey: `course_sub_checkout_${checkoutAttemptId}`,
@@ -803,7 +808,7 @@ export async function createCourseCheckoutSession(
       expires_at: Math.floor(Date.now() / 1000) + checkoutSessionExpiresInSec,
       success_url: options.successUrl
         ?? `${appUrl}/learn/courses/${encodeURIComponent(courseId)}?checkout=success`,
-      cancel_url: `${appUrl}/courses/${encodeURIComponent(courseId)}?checkout=cancelled`,
+      cancel_url: cancelUrl,
     };
 
     // Same rollback contract as the subscription branch above: a failure after
