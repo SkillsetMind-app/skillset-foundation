@@ -38,11 +38,13 @@ export type PublicCourseSummary = {
   category: string | null;
   coverImageUrl: string | null;
   lessonCount: number | null;
+  /** "course", "community", "ebook" ou "live_event": só curso fala em aulas. */
+  productFormat: string | null;
   updatedAt: string | null;
 };
 
 const PUBLIC_FIELDS =
-  "id, title, title_key, slug, summary, category, cover_image_url, lesson_count, status, updated_at";
+  "id, title, title_key, slug, summary, category, cover_image_url, lesson_count, product_format, status, updated_at";
 
 type CourseRow = {
   id: string;
@@ -53,6 +55,7 @@ type CourseRow = {
   category: string | null;
   cover_image_url: string | null;
   lesson_count: number | null;
+  product_format?: string | null;
   status: string | null;
   updated_at: string | null;
 };
@@ -75,6 +78,7 @@ function toSummary(row: CourseRow): PublicCourseSummary {
     category: row.category,
     coverImageUrl: row.cover_image_url,
     lessonCount: row.lesson_count,
+    productFormat: row.product_format ?? null,
     updatedAt: row.updated_at,
   };
 }

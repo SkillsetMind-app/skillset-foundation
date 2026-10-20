@@ -162,7 +162,8 @@ export function GuestCheckoutForm({
             type="checkbox"
             checked={accepted}
             onChange={(event) => setAccepted(event.target.checked)}
-            className="mt-0.5"
+            // 13 px no celular era pequeno demais para o dedo.
+            className="mt-0.5 size-5 shrink-0 accent-[var(--color-primary)]"
             required
           />
           <span>
@@ -188,7 +189,7 @@ export function GuestCheckoutForm({
         <button
           type="submit"
           disabled={disabled || isSubmitting || isGoogleLoading}
-          className="button-solid w-full justify-center px-5 py-2.5 text-sm disabled:opacity-60"
+          className="button-solid min-h-12 w-full justify-center px-5 py-3 text-base font-semibold disabled:opacity-60"
         >
           {isSubmitting ? t("publicCourses.openingCheckout") : submitLabel}
         </button>

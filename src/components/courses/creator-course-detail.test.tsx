@@ -405,6 +405,20 @@ describe("CreatorCourseDetail: o cartão que vende", () => {
     expect(screen.getAllByText("1h 30m")).toHaveLength(2);
   });
 
+  it("sem minutos em todas as aulas, não mostra uma duração menor que o curso", async () => {
+    const course = fixtures.course as TeacherCourse;
+    const modules = course.modules;
+    course.modules = [{ ...modules[0], lessons: [...modules[0].lessons, { id: "lesson-2", title: "Second", type: "video", description: "" }] }];
+    try {
+      render(<CreatorCourseDetail courseIdOverride="course-1" hideHeader />);
+      await screen.findAllByText("$149.00");
+      expect(screen.queryByText("1h 30m")).not.toBeInTheDocument();
+      expect(screen.queryByText("Duration")).not.toBeInTheDocument();
+    } finally {
+      course.modules = modules;
+    }
+  });
+
   // A 320 px a assinatura quebra linha: o selo vai junto com o nome, sem
   // margem negativa puxando o ícone para cima de outro item.
   it("selo verificado: só o ícone, preso ao nome do instrutor", async () => {
@@ -663,6 +677,36 @@ describe("permanent checkout", () => {
     expect(new URL(enroll.getAttribute("href")!, "https://test.local").searchParams.get("returnTo")).toBe(destination);
     const signin = screen.getByRole("link", { name: /Sign in/ });
     expect(new URL(signin.getAttribute("href")!, "https://test.local").searchParams.get("returnTo")).toBe(destination);
+  });
+
+  it("keeps the decision by the price: no detail list, no way back to the catalog, trust marks by the button", async () => {
+    const { container } = render(<CreatorCourseDetail courseIdOverride="course-1" checkoutOnly hideHeader />);
+    await screen.findByText("$149.00");
+    expect(screen.queryByText("Category")).not.toBeInTheDocument();
+    expect(container.querySelector('#enroll-card a[href="/"], #enroll-card a[href="/courses"]')).toBeNull();
+    expect(screen.getByText("Secure payment processed by Stripe.")).toBeInTheDocument();
+    expect(screen.getByText("7-day refund guarantee.")).toBeInTheDocument();
+  });
+
+  it("without the server's order summary, the card itself leads back to the course", async () => {
+    render(<CreatorCourseDetail courseIdOverride="course-1" checkoutOnly />);
+    await screen.findByText("$149.00");
+    expect(screen.getByRole("link", { name: "See full course details" })).toHaveAttribute("href", "/courses/course-1");
+  });
+
+  it("no secure-payment mark while there is no paid price to process", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: false, json: async () => ({ error: "unavailable" }) })));
+    render(<CreatorCourseDetail courseIdOverride="course-1" checkoutOnly hideHeader />);
+    expect(await screen.findByText("Pricing unavailable")).toBeInTheDocument();
+    expect(screen.queryByText("Secure payment processed by Stripe.")).not.toBeInTheDocument();
+  });
+
+  it("the sales page keeps its detail list and its way back", async () => {
+    const { container } = render(<CreatorCourseDetail courseIdOverride="course-1" hideHeader />);
+    await screen.findAllByText("$149.00");
+    expect(screen.getByText("Category")).toBeInTheDocument();
+    // Sem curso real na loja, a volta leva ao início.
+    expect(container.querySelector('#enroll-card a[href="/"]')).not.toBeNull();
   });
 
   it("keeps offer selection on the checkout surface", async () => {
@@ -1297,6 +1341,16 @@ describe("CreatorCourseDetail: buying without an account", () => {
     expect(card).toHaveClass("lg:sticky", "lg:top-24", "lg:max-h-[calc(100svh-7rem)]", "lg:overflow-y-auto");
     // The corner buy bar still watches the card's main field.
     expect(card.querySelector("[data-cta-focus]")).toBe(screen.getByRole("textbox", { name: "Full name" }));
+  });
+
+  it("on the checkout page the card is the main column: not stuck to the top, no scrolling box", async () => {
+    const { container } = render(<CreatorCourseDetail courseIdOverride="course-1" checkoutOnly hideHeader />);
+    await screen.findByRole("button", { name: "Enroll — $149.00" });
+
+    const card = container.querySelector("#enroll-card") as HTMLElement;
+    expect(card).not.toHaveClass("lg:sticky");
+    expect(card).not.toHaveClass("lg:max-h-[calc(100svh-7rem)]");
+    expect(card).not.toHaveClass("lg:overflow-y-auto");
   });
 
   it("keeps today's card classes for a signed-in buyer", async () => {
