@@ -83,6 +83,11 @@ type AdminState = {
   couponReservation?: "reserved" | "released" | "redeemed";
   checkoutLock?: { lock_key: string; order_id: string } | null;
   afterCheckoutLockRead?: () => void;
+  // Outra transacao commita depois da leitura do handler e antes de a RPC
+  // atomica (close_unpaid_course_order/settle_paid_course_order) travar o pedido.
+  beforeOrderTransaction?: () => void;
+  // Quantas reservas viraram 'redeemed' (o redeemed_count do cupom).
+  couponRedemptions: number;
   saleRows?: Record<string, Array<Record<string, unknown>>>;
   paymentWrites: Array<Record<string, unknown>>;
   orderWrites: Array<Record<string, unknown>>;
@@ -146,6 +151,7 @@ function createAdmin(
     },
     paymentWrites: [],
     orderWrites: [],
+    couponRedemptions: 0,
     ledgerIds: new Set(),
     certificate: { enrollment_id: "user_1__course_1", status: "issued" },
     certificateWrites: 0,
@@ -342,7 +348,9 @@ function createAdmin(
       const rows = state.saleRows?.[this.table];
       if (rows) {
         const matches = rows.filter((row) => this.filters.every(({ column, value }) => row[column] === value));
-        return { data: single ? matches[0] ?? null : matches, error: null };
+        // A SELECT response is a snapshot, not a reference to a later committed row.
+        const snapshots = matches.map((row) => ({ ...row }));
+        return { data: single ? snapshots[0] ?? null : snapshots, error: null };
       }
       if (this.table === "subscriptions") {
         const statuses = this.filterValue("status") as unknown[] | undefined;
@@ -402,10 +410,95 @@ function createAdmin(
     }
   }
 
+  type RpcResult = { data: unknown; error: { message: string } | null };
+
+  // O pedido commitado que a RPC trava: a linha persistida quando ha saleRows.
+  function committedOrder(id: unknown): Record<string, unknown> | null {
+    const rows = state.saleRows?.orders;
+    if (rows) return rows.find((row) => row.id === id) ?? null;
+    return state.orderRow.id === id ? state.orderRow : null;
+  }
+
+  // A mesma amarracao que as duas RPCs conferem na linha travada.
+  function lockedOrderMatches(row: Record<string, unknown>, args: Record<string, unknown>): boolean {
+    const saved = row.teacher_stripe_connected_account_id;
+    const accountMatches = row.payout_model === "direct_charge"
+      ? typeof saved === "string" && saved !== "" && args.p_connected_account_id === saved
+      : (row.payout_model === "separate_charges_and_transfers" || row.payout_model === "destination_charge")
+        && args.p_connected_account_id === null;
+    return typeof row.checkout_session_id === "string" && row.checkout_session_id !== ""
+      && row.checkout_session_id === args.p_session_id && accountMatches;
+  }
+
+  // Cada RPC e uma transacao inteira: decide sobre a linha fresca e grava tudo
+  // ou nada. Falha forcada no meio devolve erro sem nenhum efeito.
+  function closeUnpaidOrder(args: Record<string, unknown>): RpcResult {
+    const row = committedOrder(args.p_order_id);
+    if (!row) return { data: "missing", error: null };
+    if (!lockedOrderMatches(row, args)) return { data: null, error: { message: "CHECKOUT_ORDER_MISMATCH" } };
+    if (!["pending", "failed", "cancelled"].includes(String(row.status))) return { data: "settled", error: null };
+    if (state.couponReservation === "redeemed") return { data: "settling", error: null };
+    if (state.failAt === "checkout_locks.delete" || state.failAt === "orders.update") {
+      return { data: null, error: { message: `forced ${state.failAt} failure` } };
+    }
+    if (state.couponReservation === "reserved") state.couponReservation = "released";
+    const lock = state.checkoutLock;
+    if (lock && lock.lock_key === `${row.user_id}__${row.course_id}` && lock.order_id === row.id) {
+      state.checkoutLock = null;
+    }
+    const write = { status: args.p_status, updated_at: new Date().toISOString() };
+    Object.assign(row, write);
+    state.orderWrites.push({ ...write });
+    return { data: "closed", error: null };
+  }
+
+  function settlePaidOrder(args: Record<string, unknown>): RpcResult {
+    const row = committedOrder(args.p_order_id);
+    if (!row) return { data: null, error: { message: "CHECKOUT_ORDER_NOT_FOUND" } };
+    if (!lockedOrderMatches(row, args)) return { data: null, error: { message: "CHECKOUT_ORDER_MISMATCH" } };
+    if (row.status === "refunded" || row.status === "partially_refunded") return { data: "refunded", error: null };
+    if (row.status === "paid") {
+      const saved = row.payment_intent_id;
+      if (typeof saved === "string" && saved !== "" && saved !== args.p_payment_intent_id) {
+        return { data: null, error: { message: "ORDER_PAYMENT_CONFLICT" } };
+      }
+      return { data: "paid", error: null };
+    }
+    if (row.status === "failed" || row.status === "cancelled") return { data: "closed", error: null };
+    if (row.status !== "pending") return { data: null, error: { message: "ORDER_STATUS_UNEXPECTED" } };
+    // Mirror the SQL guard: a released reservation cannot be redeemed.
+    if (state.couponReservation === "released") {
+      return { data: null, error: { message: "COUPON_RESERVATION_RELEASED" } };
+    }
+    if (state.failAt === "orders.update") return { data: null, error: { message: "forced orders.update failure" } };
+    if (state.couponReservation === "reserved") {
+      state.couponReservation = "redeemed";
+      state.couponRedemptions += 1;
+    }
+    const ts = new Date().toISOString();
+    const write = {
+      status: "paid",
+      checkout_session_id: args.p_session_id,
+      payment_intent_id: args.p_payment_intent_id,
+      ...(args.p_receipt_url ? { receipt_url: args.p_receipt_url } : {}),
+      paid_at: ts,
+      updated_at: ts,
+    };
+    Object.assign(row, write);
+    state.orderWrites.push({ ...write });
+    return { data: "settled", error: null };
+  }
+
   const admin = {
     from: vi.fn((table: string) => new Query(table)),
     rpc: vi.fn(async (name: string, args: Record<string, unknown>) => {
       state.rpcCalls.push({ name, args });
+      if (name === "close_unpaid_course_order" || name === "settle_paid_course_order") {
+        const concurrent = state.beforeOrderTransaction;
+        state.beforeOrderTransaction = undefined;
+        concurrent?.();
+        return name === "close_unpaid_course_order" ? closeUnpaidOrder(args) : settlePaidOrder(args);
+      }
       if (name === "release_course_coupon_reservation" && state.couponReservation === "reserved") {
         state.couponReservation = "released";
       }
@@ -965,6 +1058,45 @@ describe("Stripe webhook financial integrity", () => {
         name: "release_course_coupon_reservation",
       }));
     });
+
+    it.each(["paid", "refunded"])(
+      "preserves %s committed after the pending order was read",
+      async (settledStatus) => {
+        const admin = pendingCheckout();
+        admin.state.saleRows = { orders: [admin.state.orderRow] };
+        let concurrentCommit = false;
+        admin.state.beforeOrderTransaction = () => {
+          // Model another handler committing after this handler's pending snapshot.
+          admin.state.orderRow.status = settledStatus;
+          admin.state.couponReservation = "redeemed";
+          concurrentCommit = true;
+        };
+        const event = terminalEvent();
+
+        const response = await postEvent(event);
+
+        expect(concurrentCommit).toBe(true);
+        expect(admin.state.orderRow.status).toBe(settledStatus);
+        expect(admin.state.couponReservation).toBe("redeemed");
+        expect(admin.state.orderWrites).toEqual([]);
+        expect(admin.state.paymentWrites).toEqual([]);
+        expect(fulfillCalls(admin)).toHaveLength(0);
+        expect(response.status).toBe(200);
+        expect(admin.state.doneEvents.has(event.id)).toBe(true);
+      },
+    );
+
+    it("still closes an unchanged pending order with a persisted row", async () => {
+      const admin = pendingCheckout();
+      admin.state.saleRows = { orders: [admin.state.orderRow] };
+
+      expect((await postEvent(terminalEvent())).status).toBe(200);
+
+      expect(admin.state.orderRow.status).toBe(status);
+      expect(admin.state.couponReservation).toBe("released");
+      expect(admin.state.checkoutLock).toBeNull();
+      expect(admin.state.orderWrites).toEqual([expect.objectContaining({ status })]);
+    });
   });
 
   describe("checkout lock ownership at the write", () => {
@@ -992,7 +1124,9 @@ describe("Stripe webhook financial integrity", () => {
       admin.state.checkoutLock = { ...originalLock };
       const newerLock = { ...originalLock, order_id: "order_newer" };
       const supersede = vi.fn(() => { admin.state.checkoutLock = { ...newerLock }; });
-      admin.state.afterCheckoutLockRead = supersede;
+      // O pago le o lock no app; o fechamento decide dentro da RPC.
+      if (type === "checkout.session.completed") admin.state.afterCheckoutLockRead = supersede;
+      else admin.state.beforeOrderTransaction = supersede;
       mocks.getAdmin.mockReturnValue(admin);
       const event = terminalEvent(type);
 
@@ -1057,6 +1191,171 @@ describe("Stripe webhook financial integrity", () => {
       expect(fulfillCalls(admin)).toHaveLength(type === "checkout.session.completed" ? 1 : 0);
       expect(admin.state.paymentWrites).toHaveLength(type === "checkout.session.completed" ? 1 : 0);
     });
+  });
+
+  describe("pedido avulso fecha ou liquida numa transacao so", () => {
+    const ownLock = { lock_key: "user_1__course_1", order_id: "order_1" };
+
+    function couponCheckout() {
+      const admin = createAdmin("checkout");
+      admin.state.couponReservation = "reserved";
+      admin.state.checkoutLock = { ...ownLock };
+      mocks.getAdmin.mockReturnValue(admin);
+      return admin;
+    }
+
+    function closingEvent(type: string) {
+      const event = checkoutEvent();
+      return { ...event, id: "evt_terminal", type, data: { object: { ...event.data.object, payment_status: "unpaid" } } };
+    }
+
+    it.each([
+      ["checkout.session.expired", "cancelled"],
+      ["checkout.session.async_payment_failed", "failed"],
+    ])("rolls back the coupon release and lock removal when %s fails at the last write", async (type, status) => {
+      const admin = couponCheckout();
+      admin.state.failAt = "orders.update";
+      const event = closingEvent(type);
+
+      expect((await postEvent(event)).status).toBe(500);
+      expect(admin.state.orderRow.status).toBe("pending");
+      expect(admin.state.couponReservation).toBe("reserved");
+      expect(admin.state.checkoutLock).toEqual(ownLock);
+      expect(admin.state.orderWrites).toEqual([]);
+      expect(admin.state.doneEvents.has(event.id)).toBe(false);
+
+      admin.state.failAt = undefined;
+      expect((await postEvent(event)).status).toBe(200);
+      expect(admin.state.orderRow.status).toBe(status);
+      expect(admin.state.couponReservation).toBe("released");
+      expect(admin.state.checkoutLock).toBeNull();
+    });
+
+    it.each([
+      ["checkout.session.expired", { checkout_session_id: "cs_reattached" }],
+      ["checkout.session.expired", { teacher_stripe_connected_account_id: "acct_other" }],
+      ["checkout.session.completed", { checkout_session_id: "cs_reattached" }],
+      ["checkout.session.completed", { teacher_stripe_connected_account_id: "acct_other" }],
+    ] as const)("rechecks the saved binding on the locked row for %s: %j", async (type, patch) => {
+      const admin = couponCheckout();
+      admin.state.beforeOrderTransaction = () => { Object.assign(admin.state.orderRow, patch); };
+      const event = type === "checkout.session.completed" ? checkoutEvent() : closingEvent(type);
+
+      expect((await postEvent(event)).status).toBe(500);
+      expect(admin.state.orderRow.status).toBe("pending");
+      expect(admin.state.couponReservation).toBe("reserved");
+      expect(admin.state.couponRedemptions).toBe(0);
+      expect(admin.state.checkoutLock).toEqual(ownLock);
+      expect(admin.state.orderWrites).toEqual([]);
+      expect(admin.state.paymentWrites).toEqual([]);
+      expect(fulfillCalls(admin)).toHaveLength(0);
+      expect(admin.state.doneEvents.has(event.id)).toBe(false);
+    });
+
+    it("keeps a paid order, its coupon and a newer lock when the terminal event arrives later", async () => {
+      const admin = couponCheckout();
+      expect((await postEvent(checkoutEvent())).status).toBe(200);
+      admin.state.checkoutLock = { lock_key: "user_1__course_1", order_id: "order_newer" };
+
+      expect((await postEvent(closingEvent("checkout.session.expired"))).status).toBe(200);
+      expect(admin.state.orderRow.status).toBe("paid");
+      expect(admin.state.couponReservation).toBe("redeemed");
+      expect(admin.state.couponRedemptions).toBe(1);
+      expect(admin.state.checkoutLock?.order_id).toBe("order_newer");
+      expect(admin.state.orderWrites).toEqual([expect.objectContaining({ status: "paid" })]);
+      expect(fulfillCalls(admin)).toHaveLength(1);
+    });
+
+    it("alerts and keeps retrying a payment that arrives after the order was closed", async () => {
+      const admin = couponCheckout();
+      expect((await postEvent(closingEvent("checkout.session.expired"))).status).toBe(200);
+      const paid = { ...checkoutEvent(), id: "evt_paid_late" };
+
+      expect((await postEvent(paid)).status).toBe(500);
+      expect((await postEvent(paid)).status).toBe(500);
+
+      expect(mocks.notifyOps).toHaveBeenCalledWith(expect.objectContaining({
+        event: "stripe.webhook.paid_after_close",
+        severity: "critical",
+      }));
+      expect(admin.state.orderRow.status).toBe("cancelled");
+      expect(admin.state.couponReservation).toBe("released");
+      expect(admin.state.couponRedemptions).toBe(0);
+      expect(admin.state.orderWrites).toEqual([expect.objectContaining({ status: "cancelled" })]);
+      expect(admin.state.paymentWrites).toEqual([]);
+      expect(fulfillCalls(admin)).toHaveLength(0);
+      expect(admin.state.doneEvents.has(paid.id)).toBe(false);
+    });
+
+    it.each([false, true])("does not resurrect a refunded order from a paid replay (ledger written: %s)", async (ledgerWritten) => {
+      const admin = couponCheckout();
+      Object.assign(admin.state.orderRow, { status: "refunded", payment_intent_id: "pi_1" });
+      admin.state.couponReservation = "redeemed";
+      if (ledgerWritten) admin.state.ledgerIds.add("order_1");
+
+      expect((await postEvent(checkoutEvent())).status).toBe(200);
+      expect(admin.state.orderRow.status).toBe("refunded");
+      expect(admin.state.orderWrites).toEqual([]);
+      expect(admin.state.paymentWrites).toEqual([]);
+      expect(fulfillCalls(admin)).toHaveLength(0);
+      expect(admin.state.couponRedemptions).toBe(0);
+    });
+
+    it("rejects a paid replay carrying a different payment identity", async () => {
+      const admin = couponCheckout();
+      Object.assign(admin.state.orderRow, {
+        status: "paid", payment_intent_id: "pi_original", paid_at: "2026-01-01T00:00:00.000Z",
+      });
+      admin.state.couponReservation = "redeemed";
+
+      expect((await postEvent(checkoutEvent())).status).toBe(500);
+      expect(admin.state.orderRow).toMatchObject({
+        status: "paid", payment_intent_id: "pi_original", paid_at: "2026-01-01T00:00:00.000Z",
+      });
+      expect(admin.state.orderWrites).toEqual([]);
+      expect(admin.state.paymentWrites).toEqual([]);
+      expect(fulfillCalls(admin)).toHaveLength(0);
+      expect(admin.state.doneEvents.has("evt_checkout")).toBe(false);
+    });
+
+    it("finishes an interrupted fulfilment without moving paid_at or counting the coupon twice", async () => {
+      const admin = couponCheckout();
+      admin.state.failAt = "fulfill_paid_course_access";
+      expect((await postEvent(checkoutEvent())).status).toBe(500);
+      expect(admin.state.orderRow.status).toBe("paid");
+      expect(admin.state.couponRedemptions).toBe(1);
+      const paidAt = admin.state.orderRow.paid_at;
+
+      admin.state.failAt = undefined;
+      expect((await postEvent(checkoutEvent())).status).toBe(200);
+      expect(admin.state.orderRow.paid_at).toBe(paidAt);
+      expect(admin.state.orderRow.payment_intent_id).toBe("pi_1");
+      expect(admin.state.couponReservation).toBe("redeemed");
+      expect(admin.state.couponRedemptions).toBe(1);
+      expect(admin.state.orderWrites).toHaveLength(1);
+      expect(fulfillCalls(admin)).toHaveLength(2);
+      expect(admin.state.ledgerIds.has("order_1")).toBe(true);
+      expect(admin.state.checkoutLock).toBeNull();
+    });
+
+    it.each(["checkout.session.expired", "checkout.session.async_payment_failed"])(
+      "leaves a pending order whose coupon was already redeemed to its settlement on %s", async (type) => {
+        const admin = couponCheckout();
+        admin.state.couponReservation = "redeemed";
+
+        expect((await postEvent(closingEvent(type))).status).toBe(200);
+        expect(admin.state.orderRow.status).toBe("pending");
+        expect(admin.state.couponReservation).toBe("redeemed");
+        expect(admin.state.checkoutLock).toEqual(ownLock);
+        expect(admin.state.orderWrites).toEqual([]);
+
+        expect((await postEvent(checkoutEvent())).status).toBe(200);
+        expect(admin.state.orderRow.status).toBe("paid");
+        expect(admin.state.couponRedemptions).toBe(0);
+        expect(fulfillCalls(admin)).toHaveLength(1);
+        expect(admin.state.checkoutLock).toBeNull();
+      },
+    );
   });
 
   it.each([
@@ -1133,6 +1432,9 @@ describe("Stripe webhook financial integrity", () => {
     expect(response.status).toBe(500);
     expect(admin.state.rpcCalls).not.toContainEqual(expect.objectContaining({
       name: "finalize_course_coupon_reservation",
+    }));
+    expect(admin.state.rpcCalls).not.toContainEqual(expect.objectContaining({
+      name: "settle_paid_course_order",
     }));
     expect(admin.state.paymentWrites).toEqual([]);
     expect(admin.state.orderWrites).toEqual([]);
@@ -2408,6 +2710,28 @@ describe("Stripe webhook financial integrity", () => {
       await flush();
       expect(buyerEmails()).toHaveLength(1);
       expect(fulfillCalls(admin)).toHaveLength(2);
+    });
+
+    // The handler re-runs on redelivery; the reservation only redeems once.
+    it("redeems a first invoice coupon once and still delivers", async () => {
+      const admin = createAdmin("checkout");
+      mocks.getAdmin.mockReturnValue(admin);
+      admin.state.couponReservation = "reserved";
+      mocks.subscriptionRetrieve.mockResolvedValue(subscription({ couponReservationId: "res_1" }));
+      const finalizeCalls = () => admin.state.rpcCalls.filter((call) => call.name === "finalize_course_coupon_reservation");
+
+      expect((await postEvent(firstInvoiceEvent())).status).toBe(200);
+      await vi.waitFor(() => expect(buyerEmails()).toHaveLength(1));
+      expect(admin.state.couponReservation).toBe("redeemed");
+      expect(finalizeCalls().map((call) => call.args)).toEqual([{ p_order_id: "res_1" }]);
+      expect(fulfillCalls(admin)).toHaveLength(1);
+
+      expect((await postEvent(firstInvoiceEvent())).status).toBe(200);
+      await flush();
+      expect(admin.state.couponReservation).toBe("redeemed");
+      expect(finalizeCalls().every((call) => call.args.p_order_id === "res_1")).toBe(true);
+      expect(admin.state.rpcCalls.some((call) => call.name === "release_course_coupon_reservation")).toBe(false);
+      expect(buyerEmails()).toHaveLength(1);
     });
 
     // A failed renewal loses no purchase email; alerting on it would be noise
