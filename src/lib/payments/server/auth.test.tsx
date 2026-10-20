@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   createServer: vi.fn(),
@@ -25,8 +25,91 @@ import {
   assertCreatorActivated,
   enforceRateLimit,
   isOnFreePlan,
+  PaymentError,
+  paymentErrorResponse,
   requireAdminUserId,
 } from "@/lib/payments/server/auth";
+import { StripeConfigError } from "@/lib/payments/server/stripe";
+
+describe("safe payment error alerts", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.stubEnv("NEXT_PUBLIC_GUEST_CHECKOUT_ENABLED", "");
+    vi.stubEnv("NEXT_PUBLIC_PAYMENTS_CHECKOUT_ENABLED", "");
+    vi.stubEnv("NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY", "");
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.restoreAllMocks();
+  });
+
+  it("alerts on unexpected errors without logging private exception details", async () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    const error = new Error("private-customer@example.test private-token-fixture");
+
+    const response = paymentErrorResponse(error);
+
+    expect(response.status).toBe(500);
+    expect(await response.json()).toEqual({ error: "Something went wrong. Please try again." });
+    expect(mocks.notify).toHaveBeenCalledExactlyOnceWith({
+      event: "payments.request.failed",
+      severity: "critical",
+      summary: expect.any(String),
+      context: { status: 500 },
+    });
+    expect(log).toHaveBeenCalledWith("Unhandled payment route error");
+    expect(JSON.stringify([...mocks.notify.mock.calls, ...log.mock.calls])).not.toContain(error.message);
+  });
+
+  it.each(["missing", "malformed"] as const)(
+    "keeps dormant Stripe %s configuration silent and preserves the response",
+    async (reason) => {
+      const error = new StripeConfigError(reason);
+      const response = paymentErrorResponse(error);
+
+      expect(response.status).toBe(503);
+      expect(await response.json()).toEqual({
+        error: error.message, code: "payments_not_configured",
+      });
+      expect(mocks.notify).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([
+    ["NEXT_PUBLIC_GUEST_CHECKOUT_ENABLED", "true"],
+    ["NEXT_PUBLIC_PAYMENTS_CHECKOUT_ENABLED", "true"],
+    ["NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY", "pk_test_readiness_fixture"],
+  ])("alerts when Stripe is unavailable but %s enables payments", async (name, value) => {
+    vi.stubEnv(name, value);
+    const response = paymentErrorResponse(new StripeConfigError("missing"));
+
+    expect(response.status).toBe(503);
+    expect(mocks.notify).toHaveBeenCalledExactlyOnceWith({
+      event: "payments.configuration.unavailable",
+      severity: "critical",
+      summary: expect.any(String),
+      context: { status: 503 },
+    });
+  });
+
+  it("also alerts on malformed Stripe behind authenticated checkout", () => {
+    vi.stubEnv("NEXT_PUBLIC_PAYMENTS_CHECKOUT_ENABLED", "true");
+    expect(paymentErrorResponse(new StripeConfigError("malformed")).status).toBe(503);
+    expect(mocks.notify).toHaveBeenCalledOnce();
+  });
+
+  it.each([400, 401, 403, 409, 429, 502])(
+    "preserves known %s errors without a duplicate generic alert",
+    async (status) => {
+      const response = paymentErrorResponse(new PaymentError("Safe public message.", status, "known_error"));
+
+      expect(response.status).toBe(status);
+      expect(await response.json()).toEqual({ error: "Safe public message.", code: "known_error" });
+      expect(mocks.notify).not.toHaveBeenCalled();
+    },
+  );
+});
 
 describe("administrative authorization", () => {
   beforeEach(() => {

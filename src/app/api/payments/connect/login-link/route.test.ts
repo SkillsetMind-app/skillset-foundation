@@ -4,8 +4,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   getUser: vi.fn(), rpc: vi.fn(), rateLimit: vi.fn(),
   getUserRow: vi.fn(), getStripe: vi.fn(), createLoginLink: vi.fn(),
-  createAccount: vi.fn(),
+  createAccount: vi.fn(), notify: vi.fn(),
 }));
+vi.mock("@/lib/ops/alert", () => ({ notifyOps: mocks.notify }));
 vi.mock("next/headers", () => ({ cookies: async () => ({ getAll: () => [], set: () => {} }) }));
 vi.mock("@supabase/ssr", () => ({
   createServerClient: () => ({
@@ -138,5 +139,13 @@ describe("POST connect/login-link", () => {
     expect(warn).not.toHaveBeenCalled();
     expect(mocks.createLoginLink).toHaveBeenCalledTimes(1);
     expect(mocks.createAccount).not.toHaveBeenCalled();
+    expect(mocks.notify).toHaveBeenCalledExactlyOnceWith({
+      event: "payments.dashboard.unavailable",
+      severity: "warn",
+      summary: expect.any(String),
+      context: { status: 502 },
+    });
+    expect(JSON.stringify(mocks.notify.mock.calls)).not.toContain(message);
+    expect(JSON.stringify(mocks.notify.mock.calls)).not.toContain("acct_own");
   });
 });
