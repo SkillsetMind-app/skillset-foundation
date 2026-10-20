@@ -231,6 +231,78 @@ describe("learner wave 2 with real provider and dictionaries", () => {
     expect(screen.queryByText("Internal transport detail")).not.toBeInTheDocument();
   });
 
+  it("opens the paid course when an enrollment retry recovers from a transient error", () => {
+    vi.useFakeTimers();
+    mocks.params = new URLSearchParams("checkout=success");
+    mocks.enrollment
+      .mockImplementationOnce((_uid, _id, _next, fail) => {
+        fail(new Error("Temporary failure"));
+        return () => {};
+      })
+      .mockImplementation((_uid, _id, next) => { next(enrollment); return () => {}; });
+    mocks.course.mockImplementation((_id, next) => {
+      next({ id: "course-es", title: enrollment.courseTitle });
+      return () => {};
+    });
+    show(<CreatorCourseWorkspace initialCourseId="course-es" />);
+    expect(screen.getByText("No pudimos confirmar tu matrícula en este curso.")).toBeVisible();
+
+    act(() => { vi.advanceTimersByTime(5_000); });
+
+    expect(screen.getByRole("heading", { name: enrollment.courseTitle })).toBeVisible();
+    expect(screen.getByTestId("purchase-completed-tracker")).toBeInTheDocument();
+    expect(mocks.router.replace).toHaveBeenCalledTimes(1);
+    act(() => { vi.advanceTimersByTime(20_000); });
+    expect(mocks.enrollment).toHaveBeenCalledTimes(2);
+  });
+
+  it("opens the course when its content subscription recovers from a transient error", () => {
+    mocks.enrollment.mockImplementation((_uid, _id, next) => { next(enrollment); return () => {}; });
+    mocks.course.mockImplementation((_id, _next, fail) => {
+      fail(new Error("Temporary failure"));
+      return () => {};
+    });
+    show(<CreatorCourseWorkspace initialCourseId="course-es" />);
+    expect(screen.queryByRole("heading", { name: enrollment.courseTitle })).not.toBeInTheDocument();
+
+    act(() => {
+      mocks.course.mock.calls[0][1]({ id: "course-es", title: enrollment.courseTitle });
+    });
+
+    expect(screen.getByRole("heading", { name: enrollment.courseTitle })).toBeVisible();
+  });
+
+  it("a successful course read cannot clear an unresolved enrollment error", () => {
+    mocks.enrollment.mockImplementation((_uid, _id, next) => { next(enrollment); return () => {}; });
+    mocks.course.mockImplementation(() => () => {});
+    show(<CreatorCourseWorkspace initialCourseId="course-es" />);
+
+    act(() => { mocks.enrollment.mock.calls[0][3](new Error("Enrollment unavailable")); });
+    act(() => {
+      mocks.course.mock.calls[0][1]({ id: "course-es", title: enrollment.courseTitle });
+    });
+
+    expect(screen.getByText("No pudimos confirmar tu matrícula en este curso.")).toBeVisible();
+    expect(screen.queryByRole("heading", { name: enrollment.courseTitle })).not.toBeInTheDocument();
+    expect(screen.queryByTestId("purchase-completed-tracker")).not.toBeInTheDocument();
+  });
+
+  it("a successful enrollment read cannot clear an unresolved course error", () => {
+    mocks.enrollment.mockImplementation((_uid, _id, next) => { next(enrollment); return () => {}; });
+    mocks.course.mockImplementation((_id, _next, fail) => {
+      fail(new Error("Course unavailable"));
+      return () => {};
+    });
+    show(<CreatorCourseWorkspace initialCourseId="course-es" />);
+    const courseError = translate(getDictionary("es"), "learnWave2.workspace.courseError");
+    expect(screen.getByText(courseError)).toBeVisible();
+
+    act(() => { mocks.enrollment.mock.calls[0][2](enrollment); });
+
+    expect(screen.getByText(courseError)).toBeVisible();
+    expect(screen.queryByRole("heading", { name: enrollment.courseTitle })).not.toBeInTheDocument();
+  });
+
   it("preserves authored messages, ARIA interpolation and draft during pending send and errors", async () => {
     mocks.params = new URLSearchParams("course=course-es");
     mocks.messages.mockImplementation((_uid, next) => { next([message]); return () => {}; });
