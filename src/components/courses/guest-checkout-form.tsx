@@ -162,7 +162,8 @@ export function GuestCheckoutForm({
             type="checkbox"
             checked={accepted}
             onChange={(event) => setAccepted(event.target.checked)}
-            className="mt-0.5"
+            // 13 px no celular era pequeno demais para o dedo.
+            className="mt-0.5 size-5 shrink-0 accent-[var(--color-primary)]"
             required
           />
           <span>
