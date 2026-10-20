@@ -378,7 +378,7 @@ export function SignupForm() {
               type="checkbox"
               checked={legalAccepted}
               onChange={(event) => setLegalAccepted(event.target.checked)}
-              className="mt-0.5"
+              className="mt-0.5 size-5 shrink-0 accent-[var(--color-primary)]"
               required
             />
             <span>
