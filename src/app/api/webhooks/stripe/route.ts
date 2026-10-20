@@ -2118,7 +2118,7 @@ export async function POST(request: Request) {
         await releaseAbandonedSubscriptionCoupon(admin, event.data.object);
         break;
       case "payment_intent.payment_failed":
-        await markOrderStatus(admin, event.data.object.metadata?.orderId, "failed");
+        // A declined card can be retried in the same session; only terminal session events release it.
         break;
       case "charge.refunded":
         await handleChargeRefunded(admin, event.data.object, eventAccountId);
