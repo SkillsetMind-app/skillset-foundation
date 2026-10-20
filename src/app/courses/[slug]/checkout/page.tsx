@@ -36,8 +36,10 @@ export default async function CourseCheckoutPage({ params }: PageProps) {
   return (
     <div className="page-shell">
       <CheckoutHeader secureLabel={t("publicCourses.checkoutSecure")} skipLabel={t("nav.skipToContent")} />
-      <main id="conteudo" className="mx-auto w-full max-w-5xl px-4 py-6 sm:px-8 sm:py-10">
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start lg:gap-10">
+      {/* No celular cada pixel conta para o botão de comprar caber na
+          primeira tela (375×812): margens menores e o resumo sem o link. */}
+      <main id="conteudo" className="mx-auto w-full max-w-5xl px-4 py-4 sm:px-8 sm:py-10">
+        <div className="grid gap-4 sm:gap-6 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start lg:gap-10">
           {course ? (
             <aside
               data-checkout-summary
@@ -78,7 +80,7 @@ export default async function CourseCheckoutPage({ params }: PageProps) {
               ) : null}
               <Link
                 href={`/courses/${encodeURIComponent(course.urlSlug)}`}
-                className="mt-3 inline-flex min-h-11 items-center text-sm font-semibold text-[var(--color-primary)] underline-offset-4 hover:underline"
+                className="mt-3 hidden min-h-11 items-center text-sm font-semibold text-[var(--color-primary)] underline-offset-4 hover:underline lg:inline-flex"
               >
                 {t("publicCourses.checkoutCourseDetails")}
               </Link>
