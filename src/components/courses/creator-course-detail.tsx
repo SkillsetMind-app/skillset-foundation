@@ -575,6 +575,8 @@ export function CreatorCourseDetail({
   if (requestedPriceId) returnParams.set("priceId", requestedPriceId);
   const returnTo = `${coursePath}${returnParams.size ? `?${returnParams}` : ""}`;
   const signupHref = `/auth?mode=signup&returnTo=${encodeURIComponent(returnTo)}`;
+  // A página de compra dedicada, com a mesma oferta, código e preço escolhidos.
+  const checkoutHref = `/courses/${encodeURIComponent(courseRef)}/checkout${returnParams.size ? `?${returnParams}` : ""}`;
   const enrollLabel = courseIsFree
     ? t("publicCourses.enrollFree")
     : pricingReady && hasPaidPrice
@@ -1308,8 +1310,11 @@ export function CreatorCourseDetail({
             className="button-solid inline-flex min-h-11 shrink-0 items-center px-3.5 py-2 text-xs"
           >{t("publicCourses.continueLearning")}</Link>
         ) : (
+          // Como nos checkouts que o comprador conhece: o botão da página de
+          // vendas abre a página de compra, com o formulário na primeira tela,
+          // em vez de rolar até o cartão no fim da página.
           <Link
-            href="#enroll-card"
+            href={checkoutHref}
             className="button-solid inline-flex min-h-11 shrink-0 items-center px-3.5 py-2 text-xs"
           >{t("publicCourses.enroll")}</Link>
         )}
