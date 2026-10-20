@@ -1198,6 +1198,9 @@ async function handleChargeRefunded(
         const invoice = typeof invoicePayment.invoice === "string"
           ? await stripe.invoices.retrieve(invoicePayment.invoice, undefined, options)
           : invoicePayment.invoice;
+        if (invoice.deleted) {
+          throw new Error("Refund invoice was deleted; cannot verify its course subscription.");
+        }
         const subscriptionId = resolveInvoiceSubscriptionId(invoice);
         if (!subscriptionId) continue;
         // Prefer the immutable invoice snapshot; mutable subscription metadata is only a legacy fallback.

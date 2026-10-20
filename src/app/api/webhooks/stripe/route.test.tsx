@@ -1766,6 +1766,15 @@ describe("Stripe webhook financial integrity", () => {
       expect(mocks.subscriptionCancel).not.toHaveBeenCalled();
     });
 
+    it("does not discard a refund when its invoice was deleted", async () => {
+      const admin = emptySale();
+      listedInvoices({ id: "in_deleted", deleted: true });
+      expect((await postEvent(earlyRefund())).status).toBe(500);
+      expect(admin.state.doneEvents).not.toContain("evt_early_subscription_refund");
+      expect(mocks.subscriptionRetrieve).not.toHaveBeenCalled();
+      expect(mocks.subscriptionCancel).not.toHaveBeenCalled();
+    });
+
     it.each(["list", "invoice", "subscription"])("keeps the event retryable after a %s API failure", async (failure) => {
       const admin = emptySale();
       if (failure === "list") {
