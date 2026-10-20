@@ -688,6 +688,19 @@ describe("permanent checkout", () => {
     expect(screen.getByText("7-day refund guarantee.")).toBeInTheDocument();
   });
 
+  it("without the server's order summary, the card itself leads back to the course", async () => {
+    render(<CreatorCourseDetail courseIdOverride="course-1" checkoutOnly />);
+    await screen.findByText("$149.00");
+    expect(screen.getByRole("link", { name: "See full course details" })).toHaveAttribute("href", "/courses/course-1");
+  });
+
+  it("no secure-payment mark while there is no paid price to process", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: false, json: async () => ({ error: "unavailable" }) })));
+    render(<CreatorCourseDetail courseIdOverride="course-1" checkoutOnly hideHeader />);
+    expect(await screen.findByText("Pricing unavailable")).toBeInTheDocument();
+    expect(screen.queryByText("Secure payment processed by Stripe.")).not.toBeInTheDocument();
+  });
+
   it("the sales page keeps its detail list and its way back", async () => {
     const { container } = render(<CreatorCourseDetail courseIdOverride="course-1" hideHeader />);
     await screen.findAllByText("$149.00");

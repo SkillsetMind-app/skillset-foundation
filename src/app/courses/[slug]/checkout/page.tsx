@@ -35,7 +35,7 @@ export default async function CourseCheckoutPage({ params }: PageProps) {
   const lessonCount = (course?.productFormat ?? "course") === "course" ? course?.lessonCount ?? 0 : 0;
   return (
     <div className="page-shell">
-      <CheckoutHeader secureLabel={t("publicCourses.checkoutSecure")} />
+      <CheckoutHeader secureLabel={t("publicCourses.checkoutSecure")} skipLabel={t("nav.skipToContent")} />
       <main id="conteudo" className="mx-auto w-full max-w-5xl px-4 py-6 sm:px-8 sm:py-10">
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start lg:gap-10">
           {course ? (

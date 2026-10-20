@@ -1237,10 +1237,14 @@ export function CreatorCourseDetail({
             never an invented "30-day guarantee" the platform doesn't honor. */}
         {!courseIsFree ? (
           <>
-            <p className="mt-3 flex items-center gap-2 text-xs font-semibold text-[var(--color-ink-soft)]">
-              <Lock aria-hidden="true" size={14} strokeWidth={2} className="shrink-0 text-[var(--color-success-fg)]" />
-              {t("publicCourses.securePayment")}
-            </p>
+            {/* Só com um preço pago resolvido: com o preço carregando ou
+                indisponível não há pagamento a processar. */}
+            {hasPaidPrice ? (
+              <p className="mt-3 flex items-center gap-2 text-xs font-semibold text-[var(--color-ink-soft)]">
+                <Lock aria-hidden="true" size={14} strokeWidth={2} className="shrink-0 text-[var(--color-success-fg)]" />
+                {t("publicCourses.securePayment")}
+              </p>
+            ) : null}
             <p className="mt-3 flex gap-3 rounded-md border border-[var(--color-success-fg)]/25 bg-[var(--color-success-soft)] px-4 py-3 text-xs leading-6 text-[var(--color-ink-soft)]">
               <ShieldCheck aria-hidden="true" size={20} strokeWidth={1.8} className="mt-0.5 shrink-0 text-[var(--color-success-fg)]" />
               <span>
@@ -1265,8 +1269,14 @@ export function CreatorCourseDetail({
         ) : null}
 
         {/* Loja vazia não é destino: a volta leva ao início. Na página de
-            compra não há volta ao catálogo: o resumo do pedido leva ao curso. */}
-        {checkoutOnly ? null : (
+            compra não há volta ao catálogo: o resumo do pedido leva ao curso.
+            Sem o resumo (a leitura do servidor falhou), o cartão leva. */}
+        {checkoutOnly ? (hideHeader ? null : (
+          <Link
+            href={`/courses/${encodeURIComponent(courseRef)}`}
+            className="mt-4 inline-flex min-h-11 w-full items-center justify-center text-sm font-semibold text-[var(--color-primary)]"
+          >{t("publicCourses.checkoutCourseDetails")}</Link>
+        )) : (
           <Link
             href={hasRealCourses ? "/courses" : "/"}
             className="mt-4 inline-flex min-h-11 w-full items-center justify-center text-sm font-semibold text-[var(--color-primary)]"
