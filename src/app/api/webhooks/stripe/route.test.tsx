@@ -874,6 +874,25 @@ describe("Stripe webhook financial integrity", () => {
       expect((await postEvent(event)).status).toBe(200);
       expect(admin.state.checkoutLock).toBeNull();
       expect(admin.state.doneEvents).toContain(event.id);
+      expect(fulfillCalls(admin)).toHaveLength(type === "checkout.session.completed" ? 1 : 0);
+      expect(admin.state.paymentWrites).toHaveLength(type === "checkout.session.completed" ? 1 : 0);
+    });
+
+    it.each([
+      { lock_key: "user_1__course_1", order_id: "order_newer" },
+      { lock_key: "user_1__course_other", order_id: "order_1" },
+    ])("keeps another lock when fulfilment already exists: %j", async (otherLock) => {
+      const admin = createAdmin("checkout");
+      admin.state.ledgerIds.add("order_1");
+      admin.state.checkoutLock = { ...otherLock };
+      mocks.getAdmin.mockReturnValue(admin);
+      const event = checkoutEvent();
+
+      expect((await postEvent(event)).status).toBe(200);
+      expect(admin.state.checkoutLock).toEqual(otherLock);
+      expect(admin.state.doneEvents).toContain(event.id);
+      expect(fulfillCalls(admin)).toHaveLength(0);
+      expect(admin.state.paymentWrites).toHaveLength(0);
     });
 
     it.each(terminalEvents)("retries when the matching lock cannot be deleted on %s", async (type) => {
@@ -890,6 +909,8 @@ describe("Stripe webhook financial integrity", () => {
       expect((await postEvent(event)).status).toBe(200);
       expect(admin.state.checkoutLock).toBeNull();
       expect(admin.state.doneEvents).toContain(event.id);
+      expect(fulfillCalls(admin)).toHaveLength(type === "checkout.session.completed" ? 1 : 0);
+      expect(admin.state.paymentWrites).toHaveLength(type === "checkout.session.completed" ? 1 : 0);
     });
   });
 

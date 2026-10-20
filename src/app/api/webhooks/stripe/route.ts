@@ -481,7 +481,14 @@ async function handleCheckoutCompleted(
     .select("id")
     .eq("id", orderId)
     .maybeSingle();
-  if (existingLedger) return;
+  if (existingLedger) {
+    // Fulfilment is complete, but a failed lock cleanup still needs its retry.
+    await requireSupabaseWrite(
+      admin.from("checkout_locks").delete().eq("lock_key", `${userId}__${courseId}`).eq("order_id", orderId),
+      "Release settled checkout lock",
+    );
+    return;
+  }
 
   const { data: course } = await admin
     .from("courses")
@@ -654,7 +661,7 @@ async function handleCheckoutCompleted(
     .maybeSingle();
   if (lock && shouldReleaseCheckoutLock(lock.order_id, orderId)) {
     await requireSupabaseWrite(
-      admin.from("checkout_locks").delete().eq("lock_key", lockKey),
+      admin.from("checkout_locks").delete().eq("lock_key", lockKey).eq("order_id", orderId),
       "Release settled checkout lock",
     );
   }
@@ -1595,7 +1602,7 @@ async function markOrderStatus(
       .maybeSingle();
     if (lock && shouldReleaseCheckoutLock(lock.order_id, orderId)) {
       await requireSupabaseWrite(
-        admin.from("checkout_locks").delete().eq("lock_key", lockKey),
+        admin.from("checkout_locks").delete().eq("lock_key", lockKey).eq("order_id", orderId),
         "Release failed checkout lock",
       );
     }
