@@ -828,6 +828,145 @@ describe("Stripe webhook financial integrity", () => {
     });
   });
 
+  describe.each([
+    ["checkout.session.expired", "cancelled"],
+    ["checkout.session.async_payment_failed", "failed"],
+  ])("saved order binding for %s", (type, status) => {
+    function terminalEvent() {
+      const event = checkoutEvent();
+      event.type = type;
+      event.data.object.payment_status = "unpaid";
+      return event;
+    }
+
+    function pendingCheckout() {
+      const admin = createAdmin("checkout");
+      admin.state.couponReservation = "reserved";
+      admin.state.checkoutLock = { lock_key: "user_1__course_1", order_id: "order_1" };
+      mocks.getAdmin.mockReturnValue(admin);
+      return admin;
+    }
+
+    it.each([
+      ["another session", { checkout_session_id: "cs_other" }],
+      ["unattached session", { checkout_session_id: null }],
+      ["another account", { teacher_stripe_connected_account_id: "acct_other" }],
+      ["missing direct account", { teacher_stripe_connected_account_id: null }],
+      ["unknown payout model", { payout_model: "unknown" }],
+      ["connected event for a platform charge", { payout_model: "destination_charge" }],
+    ])("rejects %s without releasing the order, coupon or lock", async (_label, patch) => {
+      const admin = pendingCheckout();
+      Object.assign(admin.state.orderRow, patch);
+      const event = terminalEvent();
+
+      expect((await postEvent(event)).status).toBe(500);
+
+      expect(admin.state.orderWrites).toEqual([]);
+      expect(admin.state.couponReservation).toBe("reserved");
+      expect(admin.state.checkoutLock?.order_id).toBe("order_1");
+      expect(admin.state.rpcCalls).not.toContainEqual(expect.objectContaining({
+        name: "release_course_coupon_reservation",
+      }));
+      expect(admin.state.paymentWrites).toEqual([]);
+      expect(fulfillCalls(admin)).toHaveLength(0);
+      expect(admin.state.doneEvents.has(event.id)).toBe(false);
+    });
+
+    it("rejects a platform event for a direct charge", async () => {
+      const admin = pendingCheckout();
+      const event = terminalEvent();
+      delete (event as { account?: string }).account;
+
+      expect((await postEvent(event)).status).toBe(500);
+      expect(admin.state.orderWrites).toEqual([]);
+      expect(admin.state.couponReservation).toBe("reserved");
+      expect(admin.state.checkoutLock?.order_id).toBe("order_1");
+      expect(admin.state.doneEvents.has(event.id)).toBe(false);
+    });
+
+    it("does not bypass the order binding for a subscription session carrying an order ID", async () => {
+      const admin = pendingCheckout();
+      const event = terminalEvent();
+      event.data.object.mode = "subscription";
+      event.data.object.id = "cs_unrelated_subscription";
+
+      expect((await postEvent(event)).status).toBe(500);
+      expect(admin.state.orderWrites).toEqual([]);
+      expect(admin.state.couponReservation).toBe("reserved");
+      expect(admin.state.checkoutLock?.order_id).toBe("order_1");
+      expect(admin.state.doneEvents.has(event.id)).toBe(false);
+    });
+
+    it("does not require a settled amount or currency to release an unpaid session", async () => {
+      const admin = pendingCheckout();
+      Object.assign(admin.state.orderRow, { amount_minor: 20000, currency: "EUR" });
+
+      expect((await postEvent(terminalEvent())).status).toBe(200);
+      expect(admin.state.orderWrites).toEqual([expect.objectContaining({ status })]);
+      expect(admin.state.couponReservation).toBe("released");
+      expect(admin.state.checkoutLock).toBeNull();
+    });
+
+    it("retries after the server attaches the saved session", async () => {
+      const admin = pendingCheckout();
+      admin.state.orderRow.checkout_session_id = null;
+      const event = terminalEvent();
+
+      expect((await postEvent(event)).status).toBe(500);
+      expect(admin.state.couponReservation).toBe("reserved");
+      expect(admin.state.checkoutLock?.order_id).toBe("order_1");
+      expect(admin.state.doneEvents.has(event.id)).toBe(false);
+
+      admin.state.orderRow.checkout_session_id = event.data.object.id;
+      expect((await postEvent(event)).status).toBe(200);
+      expect(admin.state.orderWrites).toEqual([expect.objectContaining({ status })]);
+      expect(admin.state.couponReservation).toBe("released");
+      expect(admin.state.checkoutLock).toBeNull();
+      expect(admin.state.doneEvents.has(event.id)).toBe(true);
+    });
+
+    it.each(["separate_charges_and_transfers", "destination_charge"])(
+      "preserves a legitimate %s checkout without optional metadata", async (payoutModel) => {
+        const admin = pendingCheckout();
+        admin.state.orderRow.payout_model = payoutModel;
+        const event = terminalEvent();
+        delete (event as { account?: string }).account;
+        delete event.data.object.metadata.teacherId;
+        delete event.data.object.metadata.connectedAccountId;
+
+        expect((await postEvent(event)).status).toBe(200);
+        expect(admin.state.orderWrites).toEqual([expect.objectContaining({ status })]);
+        expect(admin.state.couponReservation).toBe("released");
+        expect(admin.state.checkoutLock).toBeNull();
+      },
+    );
+
+    it("uses the account saved on the order, not mutable account metadata", async () => {
+      const admin = pendingCheckout();
+      admin.state.orderRow.teacher_stripe_connected_account_id = "acct_original";
+      const event = terminalEvent();
+      event.account = "acct_original";
+
+      expect((await postEvent(event)).status).toBe(200);
+      expect(admin.state.orderWrites).toEqual([expect.objectContaining({ status })]);
+      expect(admin.state.couponReservation).toBe("released");
+      expect(admin.state.checkoutLock).toBeNull();
+    });
+
+    it.each(["paid", "refunded"])("preserves a saved %s order and its redeemed coupon", async (savedStatus) => {
+      const admin = pendingCheckout();
+      admin.state.orderRow.status = savedStatus;
+      admin.state.couponReservation = "redeemed";
+
+      expect((await postEvent(terminalEvent())).status).toBe(200);
+      expect(admin.state.orderWrites).toEqual([]);
+      expect(admin.state.couponReservation).toBe("redeemed");
+      expect(admin.state.rpcCalls).not.toContainEqual(expect.objectContaining({
+        name: "release_course_coupon_reservation",
+      }));
+    });
+  });
+
   describe("checkout lock ownership at the write", () => {
     const terminalEvents = [
       ["checkout.session.completed", "paid"],
