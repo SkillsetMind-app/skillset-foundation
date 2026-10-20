@@ -905,6 +905,12 @@ describe("Stripe webhook financial integrity", () => {
       expect(admin.state.checkoutLock).toEqual(originalLock);
       expect(admin.state.doneEvents).not.toContain(event.id);
 
+      expect((await postEvent(event)).status).toBe(500);
+      expect(admin.state.checkoutLock).toEqual(originalLock);
+      expect(admin.state.doneEvents).not.toContain(event.id);
+      expect(fulfillCalls(admin)).toHaveLength(type === "checkout.session.completed" ? 1 : 0);
+      expect(admin.state.paymentWrites).toHaveLength(type === "checkout.session.completed" ? 1 : 0);
+
       admin.state.failAt = undefined;
       expect((await postEvent(event)).status).toBe(200);
       expect(admin.state.checkoutLock).toBeNull();
