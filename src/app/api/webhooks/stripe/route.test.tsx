@@ -37,6 +37,7 @@ type FailurePoint =
   | "orders.update"
   | "fulfill_paid_course_access"
   | "payout_ledger.insert"
+  | "checkout_locks.delete"
   | "course_subscriptions.update"
   | "certificates.update";
 
@@ -81,6 +82,7 @@ type AdminState = {
   orderRow: Record<string, unknown>;
   couponReservation?: "reserved" | "released" | "redeemed";
   checkoutLock?: { lock_key: string; order_id: string } | null;
+  afterCheckoutLockRead?: () => void;
   saleRows?: Record<string, Array<Record<string, unknown>>>;
   paymentWrites: Array<Record<string, unknown>>;
   orderWrites: Array<Record<string, unknown>>;
@@ -296,9 +298,11 @@ function createAdmin(
 
         if (this.table === "payments") state.paymentWrites.push({ ...this.values });
         if (this.table === "orders") state.orderWrites.push({ ...this.values });
-        if (this.table === "checkout_locks" && this.operation === "delete"
-          && this.filterValue("lock_key") === state.checkoutLock?.lock_key) {
-          state.checkoutLock = null;
+        if (this.table === "checkout_locks" && this.operation === "delete" && state.checkoutLock) {
+          const row: Record<string, unknown> = state.checkoutLock;
+          if (this.filters.every(({ column, value }) => row[column] === value)) {
+            state.checkoutLock = null;
+          }
         }
 
         if (this.table === "subscriptions" && this.operation === "upsert") {
@@ -352,8 +356,12 @@ function createAdmin(
       if (this.table === "orders") {
         data = this.filterValue("id") === state.orderRow.id ? { ...state.orderRow } : null;
       } else if (this.table === "checkout_locks") {
-        data = this.filterValue("lock_key") === state.checkoutLock?.lock_key
-          ? state.checkoutLock ?? null : null;
+        data = state.checkoutLock && this.filterValue("lock_key") === state.checkoutLock.lock_key
+          ? { ...state.checkoutLock } : null;
+        // A new attempt can claim the key after this snapshot, before DELETE.
+        const afterRead = state.afterCheckoutLockRead;
+        state.afterCheckoutLockRead = undefined;
+        afterRead?.();
       } else if (this.table === "courses") {
         data = {
           id: "course_1",
@@ -817,6 +825,98 @@ describe("Stripe webhook financial integrity", () => {
         expect.objectContaining({ status }),
       ]);
       expect(fulfillCalls(admin)).toHaveLength(0);
+    });
+  });
+
+  describe("checkout lock ownership at the write", () => {
+    const terminalEvents = [
+      ["checkout.session.completed", "paid"],
+      ["checkout.session.expired", "cancelled"],
+      ["checkout.session.async_payment_failed", "failed"],
+    ] as const;
+    const originalLock = { lock_key: "user_1__course_1", order_id: "order_1" };
+
+    function terminalEvent(type: string) {
+      const event = checkoutEvent();
+      return {
+        ...event,
+        type,
+        data: { object: {
+          ...event.data.object,
+          payment_status: type === "checkout.session.completed" ? "paid" : "unpaid",
+        } },
+      };
+    }
+
+    it.each(terminalEvents)("keeps a newer attempt that claims between SELECT and DELETE on %s", async (type, status) => {
+      const admin = createAdmin("checkout");
+      admin.state.checkoutLock = { ...originalLock };
+      const newerLock = { ...originalLock, order_id: "order_newer" };
+      const supersede = vi.fn(() => { admin.state.checkoutLock = { ...newerLock }; });
+      admin.state.afterCheckoutLockRead = supersede;
+      mocks.getAdmin.mockReturnValue(admin);
+      const event = terminalEvent(type);
+
+      expect((await postEvent(event)).status).toBe(200);
+
+      expect(supersede).toHaveBeenCalledOnce();
+      expect(admin.state.checkoutLock).toEqual(newerLock);
+      expect(admin.state.doneEvents).toContain(event.id);
+      expect(admin.state.orderWrites).toContainEqual(expect.objectContaining({ status }));
+    });
+
+    it.each(terminalEvents)("still removes this attempt's own lock on %s", async (type) => {
+      const admin = createAdmin("checkout");
+      admin.state.checkoutLock = { ...originalLock };
+      mocks.getAdmin.mockReturnValue(admin);
+      const event = terminalEvent(type);
+
+      expect((await postEvent(event)).status).toBe(200);
+      expect(admin.state.checkoutLock).toBeNull();
+      expect(admin.state.doneEvents).toContain(event.id);
+      expect(fulfillCalls(admin)).toHaveLength(type === "checkout.session.completed" ? 1 : 0);
+      expect(admin.state.paymentWrites).toHaveLength(type === "checkout.session.completed" ? 1 : 0);
+    });
+
+    it.each([
+      { lock_key: "user_1__course_1", order_id: "order_newer" },
+      { lock_key: "user_1__course_other", order_id: "order_1" },
+    ])("keeps another lock when fulfilment already exists: %j", async (otherLock) => {
+      const admin = createAdmin("checkout");
+      admin.state.ledgerIds.add("order_1");
+      admin.state.checkoutLock = { ...otherLock };
+      mocks.getAdmin.mockReturnValue(admin);
+      const event = checkoutEvent();
+
+      expect((await postEvent(event)).status).toBe(200);
+      expect(admin.state.checkoutLock).toEqual(otherLock);
+      expect(admin.state.doneEvents).toContain(event.id);
+      expect(fulfillCalls(admin)).toHaveLength(0);
+      expect(admin.state.paymentWrites).toHaveLength(0);
+    });
+
+    it.each(terminalEvents)("retries when the matching lock cannot be deleted on %s", async (type) => {
+      const admin = createAdmin("checkout", "checkout_locks.delete");
+      admin.state.checkoutLock = { ...originalLock };
+      mocks.getAdmin.mockReturnValue(admin);
+      const event = terminalEvent(type);
+
+      expect((await postEvent(event)).status).toBe(500);
+      expect(admin.state.checkoutLock).toEqual(originalLock);
+      expect(admin.state.doneEvents).not.toContain(event.id);
+
+      expect((await postEvent(event)).status).toBe(500);
+      expect(admin.state.checkoutLock).toEqual(originalLock);
+      expect(admin.state.doneEvents).not.toContain(event.id);
+      expect(fulfillCalls(admin)).toHaveLength(type === "checkout.session.completed" ? 1 : 0);
+      expect(admin.state.paymentWrites).toHaveLength(type === "checkout.session.completed" ? 1 : 0);
+
+      admin.state.failAt = undefined;
+      expect((await postEvent(event)).status).toBe(200);
+      expect(admin.state.checkoutLock).toBeNull();
+      expect(admin.state.doneEvents).toContain(event.id);
+      expect(fulfillCalls(admin)).toHaveLength(type === "checkout.session.completed" ? 1 : 0);
+      expect(admin.state.paymentWrites).toHaveLength(type === "checkout.session.completed" ? 1 : 0);
     });
   });
 
