@@ -119,8 +119,17 @@ vi.mock("@/lib/data/creator-verification", () => ({
   fetchCreatorActivationBlocked: () => Promise.resolve(activation.blocked),
 }));
 const activation = vi.hoisted(() => ({ blocked: false }));
-const plan = vi.hoisted(() => ({ required: false }));
-vi.mock("@/lib/data/creator-plan", () => ({ fetchCreatorPlanRequired: async () => plan.required }));
+const plan = vi.hoisted(() => ({
+  required: false,
+  hold: false,
+  release: null as null | (() => void),
+}));
+vi.mock("@/lib/data/creator-plan", () => ({
+  fetchCreatorPlanRequired: async () => {
+    if (plan.hold) await new Promise<void>((resolve) => { plan.release = resolve; });
+    return plan.required;
+  },
+}));
 
 vi.mock("@/lib/data/course-assets", () => ({
   fetchCourseAssets: vi.fn(() => Promise.resolve([])),
@@ -188,10 +197,18 @@ function renderBuilder(tab = "details") {
   );
 }
 
+async function publishProduct() {
+  const button = await screen.findByRole("button", { name: "Publish product" });
+  await waitFor(() => expect(button).toBeEnabled());
+  fireEvent.click(button);
+}
+
 // Nenhum preco em Outros precos: a etapa de preco do construtor mostra os
 // cartoes. Sem a lista, ela nao mostra preco nenhum.
 beforeEach(() => {
   plan.required = false;
+  plan.hold = false;
+  plan.release = null;
   vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ offers: [] }) })));
 });
 
@@ -1036,8 +1053,8 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
 
     await screen.findByRole("heading", { name: "Clinical performance foundations" });
 
-    // Chip no cabecalho e "% ready" do rodape.
-    const chips = screen.getAllByText(`${expected.percent}% ready`);
+    // O titulo chega antes da consulta do plano; esperar a porcentagem final.
+    const chips = await screen.findAllByText(`${expected.percent}% ready`);
     expect(chips.length).toBeGreaterThanOrEqual(2);
 
     // Texto do stepper e a barra logo abaixo dele.
@@ -1053,6 +1070,22 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     expect(screen.getAllByText("Add at least one lesson.").length).toBeGreaterThanOrEqual(2);
     expect(screen.getByText("Set a price above $0, or choose Free.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Publish product" })).toBeDisabled();
+  });
+
+  it("waits for the plan response before reading the final builder readiness", async () => {
+    plan.hold = true;
+    render(<CourseBuilderStudio />);
+    await screen.findByRole("heading", { name: mocks.course.title });
+    expect(screen.getAllByText("57% ready")).toHaveLength(2);
+    expect(screen.queryByText(`${expected.percent}% ready`)).toBeNull();
+
+    const settled = screen.findAllByText(`${expected.percent}% ready`);
+    plan.release!();
+    expect((await settled).length).toBeGreaterThanOrEqual(2);
+    expect(screen.getByText(`${expected.doneCount} of ${expected.total} checks ready`)).toBeInTheDocument();
+    expect(screen.getByTestId("publish-readiness-bar")).toHaveStyle({
+      width: `${expected.percent}%`,
+    });
   });
 
   it.each(["en", "es"] as const)("localizes the real manage checklist from %s without changing publication gates or edit destinations", async (initialLocale) => {
@@ -1081,8 +1114,8 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
       done: row.classList.contains("bg-[var(--color-success-soft)]"),
       hrefs: [...row.querySelectorAll("a")].map((link) => link.getAttribute("href")),
     }));
+    await waitFor(() => expect(rows()).toHaveLength(11));
     const initialState = state();
-    expect(rows()).toHaveLength(11);
     expect(screen.getByTestId("publish-readiness-bar")).toHaveStyle({ width: "75%" });
     if (initialLocale === "en") {
       expect(screen.getByRole("link", { name: "Edit Course title" })).toBeInTheDocument();
@@ -1152,7 +1185,7 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     const hint = "Add a video, text or file to every lesson. Missing: Empty lesson.";
     const publish = screen.getByRole("button", { name: "Publish product" });
     if (filled) {
-      expect(publish).toBeEnabled();
+      await waitFor(() => expect(publish).toBeEnabled());
       expect(screen.queryByText(hint)).not.toBeInTheDocument();
     } else {
       expect((await screen.findAllByText(hint)).length).toBeGreaterThan(0);
@@ -1167,7 +1200,7 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     await screen.findByText("Publish checklist");
 
     expect(
-      screen.getByText(
+      await screen.findByText(
         `${expected.doneCount} of ${expected.total} required steps done · ${expected.percent}% ready`,
       ),
     ).toBeInTheDocument();
@@ -1505,7 +1538,7 @@ describe("publicar sem surpresa", () => {
     renderBuilder("review");
     const button = await screen.findByRole("button", { name: "Activate and publish" });
     expect(screen.getAllByText("Activation — US$25, one time").length).toBeGreaterThan(0);
-    expect(button).toBeEnabled();
+    await waitFor(() => expect(button).toBeEnabled());
 
     fireEvent.click(button);
     await waitFor(() => expect(mocks.router.push).toHaveBeenCalledWith("/teach/activate?courseId=course-1"));
@@ -1520,8 +1553,22 @@ describe("publicar sem surpresa", () => {
 
   it("keeps Publish product for a creator who does not owe the fee", async () => {
     renderBuilder("review");
-    expect(await screen.findByRole("button", { name: "Publish product" })).toBeEnabled();
+    const button = await screen.findByRole("button", { name: "Publish product" });
+    await waitFor(() => expect(button).toBeEnabled());
     expect(screen.queryByText("Activation — US$25, one time")).toBeNull();
+  });
+
+  it("keeps a complete course blocked until the plan response allows publishing", async () => {
+    plan.hold = true;
+    renderBuilder("review");
+    const button = await screen.findByRole("button", { name: "Publish product" });
+    expect(button).toBeDisabled();
+    fireEvent.click(button);
+    expect(publishTeacherCourse).not.toHaveBeenCalled();
+
+    await act(async () => plan.release!());
+    await waitFor(() => expect(button).toBeEnabled());
+    expect(publishTeacherCourse).not.toHaveBeenCalled();
   });
 
   it("Manage: the activation row leads to checkout for this course", async () => {
@@ -1539,7 +1586,7 @@ describe("publicar sem surpresa", () => {
   it("shows the product link to share right after publishing", async () => {
     vi.mocked(publishTeacherCourse).mockResolvedValueOnce(undefined as never);
     renderBuilder("review");
-    fireEvent.click(await screen.findByRole("button", { name: "Publish product" }));
+    await publishProduct();
     expect(await screen.findByRole("heading", { name: "It's live." })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Open Product page" })).toHaveAttribute("href", "https://www.skillsetmind.com/courses/course-1");
     expect(screen.getByRole("button", { name: "Copy my page link" })).toBeInTheDocument();
@@ -1555,7 +1602,7 @@ describe("publicar sem surpresa", () => {
     it("troca o paragrafo cinza pela cena e leva o foco ao 'Copy my page link'", async () => {
       vi.mocked(publishTeacherCourse).mockResolvedValueOnce(undefined as never);
       const { container } = renderBuilder("review");
-      fireEvent.click(await screen.findByRole("button", { name: "Publish product" }));
+      await publishProduct();
 
       const copy = await screen.findByRole("button", { name: "Copy my page link" });
       await waitFor(() => expect(copy).toHaveFocus());
@@ -1575,7 +1622,7 @@ describe("publicar sem surpresa", () => {
       window.localStorage.setItem("skillsetmind.publishedCelebrated.course-1", "1");
       vi.mocked(publishTeacherCourse).mockResolvedValueOnce(undefined as never);
       renderBuilder("review");
-      fireEvent.click(await screen.findByRole("button", { name: "Publish product" }));
+      await publishProduct();
 
       const panel = await screen.findByRole("region", { name: "It's live." });
       expect(panel).not.toHaveClass("is-celebrating");
@@ -1587,7 +1634,7 @@ describe("publicar sem surpresa", () => {
     const blocked = vi.spyOn(track, "coursePublishBlocked");
     vi.mocked(publishTeacherCourse).mockRejectedValueOnce(new Error("Finish Stripe payout onboarding before publishing a paid course."));
     renderBuilder("review");
-    fireEvent.click(await screen.findByRole("button", { name: "Publish product" }));
+    await publishProduct();
     const alert = await screen.findByRole("alert");
     expect(within(alert).getByRole("link", { name: "Finish payout onboarding" })).toHaveAttribute("href", "/account/payments#stripe-connect");
     expect(blocked).toHaveBeenCalledWith({ course_id: "course-1", reason: "payouts" });
@@ -1596,7 +1643,7 @@ describe("publicar sem surpresa", () => {
   it("links a server plan refusal to billing", async () => {
     vi.mocked(publishTeacherCourse).mockRejectedValueOnce(new Error("creator_plan_required"));
     renderBuilder("review");
-    fireEvent.click(await screen.findByRole("button", { name: "Publish product" }));
+    await publishProduct();
     const alert = await screen.findByRole("alert");
     expect(within(alert).getByRole("link", { name: "Manage plan" })).toHaveAttribute("href", "/account/billing?tab=subscriptions");
   });
@@ -1639,7 +1686,7 @@ describe("motivo do bloqueio no analytics", () => {
     const blocked = vi.spyOn(track, "coursePublishBlocked");
     arrange();
     renderBuilder("review");
-    fireEvent.click(await screen.findByRole("button", { name: "Publish product" }));
+    await publishProduct();
     await screen.findByRole("alert");
     expect(blocked).toHaveBeenCalledExactlyOnceWith({ course_id: "course-1", reason });
   });
@@ -2009,7 +2056,7 @@ describe("movimento so na mudanca", () => {
       return Object.assign(() => {}, { reload: async () => {} });
     });
     const view = renderBuilder("review");
-    fireEvent.click(await screen.findByRole("button", { name: "Publish product" }));
+    await publishProduct();
     await waitFor(() => expect(publishTeacherCourse).toHaveBeenCalled());
 
     // Enquanto a rede responde: aba Details, clique no titulo.
