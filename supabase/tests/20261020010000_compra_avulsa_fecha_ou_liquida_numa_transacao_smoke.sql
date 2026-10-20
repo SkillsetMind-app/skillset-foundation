@@ -1,7 +1,7 @@
 \set ON_ERROR_STOP on
 
--- Seguro contra banco vivo: pedidos, cupom, locks e o gatilho de falha nascem
--- dentro desta transacao e somem no ROLLBACK.
+-- Somente no banco descartavel de testes: cria dados e um gatilho de falha.
+-- ROLLBACK limpa o fixture, mas nao torna a execucao segura em producao.
 BEGIN;
 
 CREATE OR REPLACE FUNCTION pg_temp.assert_true(
@@ -25,7 +25,7 @@ $$;
 -- O que NAO prova: duas transacoes concorrentes de verdade. psql numa sessao
 -- so nao agenda concorrencia e este runner nao tem um segundo cliente. A
 -- ordem dos locks fica conferida por definicao na migration; a disputa real
--- continua sem prova executada.
+-- e exercitada separadamente em scripts/check-order-concurrency.mjs.
 
 SELECT c.id AS course_id, c.owner_id AS buyer_id
   FROM public.courses c

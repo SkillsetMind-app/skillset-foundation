@@ -117,6 +117,26 @@ jobs:
       - name: RLS smoke tests (supabase/tests)
         run: npm run test:db
 
+      - name: Compra avulsa concorrente (duas conexoes reais)
+        timeout-minutes: 3
+        run: node scripts/check-order-concurrency.mjs
+
+      - name: Prova por reversao da trava do pedido
+        timeout-minutes: 3
+        run: |
+          set +e
+          output=$(WITHOUT_ORDER_ROW_LOCK=1 node scripts/check-order-concurrency.mjs 2>&1)
+          status=$?
+          set -e
+          printf '%s\n' "$output"
+          test "$status" -ne 0
+          printf '%s\n' "$output" | grep -Fqx '[order-concurrency] PASS paid-wins-no-coupon-overlap'
+          printf '%s\n' "$output" | grep -Fqx '[order-concurrency] PASS functions-restored'
+          printf '%s\n' "$output" | grep -Fqx '[order-concurrency] PASS cleanup'
+          expected=$(printf '%s\n' '[order-concurrency] FAIL paid-wins-no-coupon-outcome' '[order-concurrency] FAIL paid-wins-no-coupon-state' '[order-concurrency] FAIL assertions')
+          actual=$(printf '%s\n' "$output" | grep -F '[order-concurrency] FAIL')
+          test "$actual" = "$expected"
+
       - name: Real Auth invite security (GoTrue ephemeral)
         timeout-minutes: 5
         run: node scripts/check-invite-auth.mjs
