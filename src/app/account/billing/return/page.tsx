@@ -35,7 +35,7 @@ function firstParam(value: SearchParamValue): string | undefined {
  * gross_minor, platform_fee_bps, platform_fee_minor). We deliberately
  * DO NOT track the event here without those fields: platform_fee_bps is
  * the C1-leak detector — its absence makes the event noise. The richer
- * server-side capture should land in functions/src/index.ts inside the
+ * server-side capture should land in src/app/api/webhooks/stripe/route.ts inside the
  * customer.subscription.created webhook handler.
  */
 export default async function BillingReturnPage({
