@@ -46,27 +46,33 @@ export function CreatorCourseWorkspace({
   const { user, signOut } = useAuth();
   const [enrollmentState, setEnrollmentState] = useState<{
     enrollment: Enrollment | null;
+    error: string;
     key: string | null;
     ready: boolean;
   }>({
     enrollment: null,
+    error: "",
     key: null,
     ready: false,
   });
   const [courseState, setCourseState] = useState<{
     course: TeacherCourse | null;
+    error: string;
     key: string | null;
     ready: boolean;
   }>({
     course: null,
+    error: "",
     key: null,
     ready: false,
   });
-  const [error, setError] = useState("");
   const enrollment =
     enrollmentState.key === courseId ? enrollmentState.enrollment : null;
   const canOpenCourse = enrollment ? canOpenEnrollment(enrollment.status) : false;
   const course = courseState.key === courseId ? courseState.course : null;
+  const error =
+    (enrollmentState.key === courseId ? enrollmentState.error : "") ||
+    (canOpenCourse && courseState.key === courseId ? courseState.error : "");
   const isLoadingEnrollment = Boolean(
     user
       && courseId
@@ -148,14 +154,15 @@ export function CreatorCourseWorkspace({
       (nextEnrollment) => {
         setEnrollmentState({
           enrollment: nextEnrollment,
+          error: "",
           key: courseId,
           ready: true,
         });
       },
       () => {
-        setError("learnWave2.workspace.enrollmentError");
         setEnrollmentState({
           enrollment: null,
+          error: "learnWave2.workspace.enrollmentError",
           key: courseId,
           ready: true,
         });
@@ -173,14 +180,15 @@ export function CreatorCourseWorkspace({
       (nextCourse) => {
         setCourseState({
           course: nextCourse,
+          error: "",
           key: courseId,
           ready: true,
         });
       },
       () => {
-        setError("learnWave2.workspace.courseError");
         setCourseState({
           course: null,
+          error: "learnWave2.workspace.courseError",
           key: courseId,
           ready: true,
         });
