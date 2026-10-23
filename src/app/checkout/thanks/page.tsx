@@ -1,10 +1,11 @@
+import { MailCheck } from "lucide-react";
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { GuestAccessLink } from "@/components/courses/guest-access-link";
-import { SiteNav } from "@/components/site/site-nav";
+import { CheckoutHeader } from "@/components/site/checkout-header";
 import { getServerTranslation } from "@/lib/i18n/server";
 import { maskEmail } from "@/lib/payments/guest-checkout";
 import {
@@ -42,9 +43,14 @@ export default async function CheckoutThanksPage({ searchParams }: PageProps) {
 
   return (
     <div className="page-shell">
-      <SiteNav />
+      {/* O mesmo cabeçalho da página de compra: quem acabou de pagar continua
+          no mesmo lugar, e o próximo passo é o e-mail, não o menu do site. */}
+      <CheckoutHeader secureLabel={t("publicCourses.checkoutSecure")} skipLabel={t("nav.skipToContent")} />
       <main id="conteudo" className="mx-auto w-full max-w-xl px-6 py-10 sm:px-8 sm:py-14">
-        <h1 className="display-title page-title break-words text-[var(--color-ink)]">
+        <span className="grid size-14 place-items-center rounded-full bg-[var(--color-success-soft)] text-[var(--color-success-fg)]">
+          <MailCheck aria-hidden="true" size={28} strokeWidth={1.8} />
+        </span>
+        <h1 className="display-title page-title mt-5 break-words text-[var(--color-ink)]">
           {t("guestCheckout.thanks.title")}
         </h1>
         <p className="mt-4 text-base leading-7 text-[var(--color-ink-soft)]">{t("guestCheckout.thanks.body")}</p>
