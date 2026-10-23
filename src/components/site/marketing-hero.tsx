@@ -60,9 +60,15 @@ export async function MarketingHero() {
       <div className="mx-auto w-full max-w-7xl px-5 py-12 sm:px-8 sm:py-14 lg:py-16">
         <div className="relative z-10 flex flex-col gap-10 lg:flex-row lg:items-center">
           <div className="hero-copy-rise mx-auto flex max-w-xl flex-col items-center text-center lg:mx-0 lg:max-w-[min(36rem,48%)] lg:items-start lg:text-left">
-            <div className="inline-flex w-fit rounded-chip border border-white/20 bg-white/10 px-3.5 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-white">
-              {t("home.hero.eyebrow")}
-            </div>
+            {/* Slogan da marca (decisão do dono, 22/10/2026): o benefício vem
+                primeiro e o meio logo depois. Ocupa o lugar do antigo selo do
+                público, que continua no parágrafo: uma linha a mais acima do
+                título empurrava o botão principal para trás do aviso de
+                cookies a 1280×800 e 375×667. */}
+            <p className="max-w-[34rem] text-[17px] font-medium leading-[1.4] text-white/85 sm:text-[19px]">
+              <strong className="font-bold text-[var(--color-accent)]">{t("home.hero.sloganBenefit")}</strong>{" "}
+              {t("home.hero.sloganMeans")}
+            </p>
             {/* flex + gap, não space-y: no celular o parágrafo (8 linhas a
                 375px) desce para depois dos botões, senão o botão principal
                 cai embaixo do banner de cookies na 1ª visita. Do `sm` para
