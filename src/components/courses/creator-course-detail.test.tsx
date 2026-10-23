@@ -352,8 +352,8 @@ describe("CreatorCourseDetail: o cartão que vende", () => {
     await screen.findAllByText("$149.00");
 
     expect(container.querySelector("#enroll-card")).toHaveClass("lg:sticky");
-    // Barra do celular: leva ao cartão; no desktop some enquanto o cartão está à vista.
-    const bar = container.querySelector('a[href="#enroll-card"]');
+    // Barra do celular: leva à página de compra; no desktop some enquanto o cartão está à vista.
+    const bar = container.querySelector('a[href="/courses/course-1/checkout"]');
     expect(bar).not.toBeNull();
     expect(bar?.closest("div.fixed")).toHaveClass("lg:hidden");
   });
@@ -370,7 +370,7 @@ describe("CreatorCourseDetail: o cartão que vende", () => {
       const { container } = render(<CreatorCourseDetail courseIdOverride="course-1" hideHeader />);
       await screen.findAllByText("$149.00");
       await waitFor(() => expect(observe).toHaveBeenCalledWith(container.querySelector("#enroll-card")));
-      const bar = () => container.querySelector('a[href="#enroll-card"]')?.closest("div.fixed");
+      const bar = () => container.querySelector('a[href="/courses/course-1/checkout"]')?.closest("div.fixed");
 
       act(() => notify?.([{ isIntersecting: false }]));
       expect(bar()).not.toHaveClass("lg:hidden");
@@ -707,6 +707,16 @@ describe("permanent checkout", () => {
     expect(screen.getByText("Category")).toBeInTheDocument();
     // Sem curso real na loja, a volta leva ao início.
     expect(container.querySelector('#enroll-card a[href="/"]')).not.toBeNull();
+  });
+
+  it("the sales page's buy bar opens the checkout page with the same offer and price", async () => {
+    fixtures.query = "offer=LAUNCH&priceId=price-1";
+    withOffers();
+    const { container } = render(<CreatorCourseDetail courseIdOverride="focus-slug" hideHeader />);
+    await screen.findByRole("link", { name: /Enroll — \$49.00/ });
+    const bar = container.querySelector("div.fixed a") as HTMLAnchorElement;
+    expect(bar).toHaveTextContent("Enroll");
+    expect(bar.getAttribute("href")).toBe("/courses/focus-slug/checkout?offer=LAUNCH&priceId=price-1");
   });
 
   it("keeps offer selection on the checkout surface", async () => {
@@ -1065,7 +1075,7 @@ describe("CreatorCourseDetail — padlocked lessons and the buy popup", () => {
       const links = screen.getAllByRole("link", { name: "Continue learning" });
       expect(links).toHaveLength(2);
       for (const link of links) expect(link).toHaveAttribute("href", "/learn/courses/course-1");
-      expect(container.querySelector('a[href="#enroll-card"]')).toBeNull();
+      expect(container.querySelector('a[href^="/courses/course-1/checkout"]')).toBeNull();
       expect(screen.queryByText(/Enroll —/)).not.toBeInTheDocument();
     } finally {
       enrollmentState.current = null;
