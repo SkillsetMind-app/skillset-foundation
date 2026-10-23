@@ -50,12 +50,17 @@ update public.users
   set roles = '["student","teacher"]', teacher_terms_accepted_at = now(), teacher_terms_version = 'smoke',
       activation_fee_paid_at = now(), current_plan_id = 'basic'
   where uid = pg_temp.uid(2)::text;
+-- Publicar exige plano vigente, então o criador Free real é o que publicou
+-- assinando e deixou a assinatura caducar: os dois publicam com assinatura e a
+-- do 1 some em seguida (current_plan_id dele já é null).
 insert into public.subscriptions(id, user_id, plan_id, status, current_period_end)
-values ('smoke-free-cap-plan', pg_temp.uid(2)::text, 'basic', 'active', now() + interval '1 day');
+select 'smoke-free-cap-plan-' || n, pg_temp.uid(n)::text, 'basic', 'active', now() + interval '1 day'
+from generate_series(1, 2) n;
 insert into public.courses(id, owner_id, slug, title, summary, category, status, currency, price_amount_minor)
 select 'smoke-free-cap-' || n, pg_temp.uid(n)::text, 'smoke-free-cap-' || n,
   'Smoke free cap ' || n, 'Curso usado só por este smoke.', 'smoke', 'published', 'brl', 0
 from generate_series(1, 2) n;
+delete from public.subscriptions where id = 'smoke-free-cap-plan-1';
 delete from public.platform_settings where key in ('require_activation_fee', 'require_creator_verification');
 insert into public.platform_settings(key, value) values
   ('require_activation_fee', 'false'::jsonb), ('require_creator_verification', 'false'::jsonb);
