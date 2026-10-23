@@ -59,6 +59,8 @@ type AdminInput = {
   termsFail?: boolean;
   subscription?: { id: string; status: string } | null;
   siblingLock?: boolean;
+  /** A live one-time checkout for the same offer holds the lock (reuse). */
+  openOrder?: boolean;
   /** The existing account was made by guest checkout. */
   existingGuest?: { confirmed?: boolean; terms?: boolean };
   /** The existing account was made some other way and never confirmed its e-mail. */
@@ -118,6 +120,10 @@ function createAdmin(input: AdminInput = {}) {
       if (this.table === "enrollments") return { data: input.enrollment ?? null, error: null };
       if (this.table === "course_subscriptions") return { data: input.subscription ?? null, error: null };
       if (this.table === "checkout_locks" && input.siblingLock) return { data: { lock_key: "lock", order_id: null }, error: null };
+      if (this.table === "checkout_locks" && input.openOrder) return { data: { lock_key: "lock", order_id: "open-order" }, error: null };
+      if (this.table === "orders" && input.openOrder) {
+        return { data: { offer_id: null, price_id: null, teacher_stripe_connected_account_id: "acct_teacher" }, error: null };
+      }
       if (this.table === "users" && input.existingGuest?.terms) return { data: { terms_accepted_at: "2026-10-01T00:00:00.000Z" }, error: null };
       return { data: single ? null : [], error: null };
     }
@@ -188,7 +194,7 @@ const validBody = {
 };
 
 function guestRequest(body: unknown, headers: Record<string, string> = {}) {
-  return new Request("http://localhost/api/payments/guest-checkout", {
+  return new NextRequest("http://localhost/api/payments/guest-checkout", {
     method: "POST",
     headers: { "Content-Type": "application/json", "x-real-ip": "203.0.113.7", ...headers },
     body: typeof body === "string" ? body : JSON.stringify(body),
@@ -275,7 +281,7 @@ describe("guest checkout", () => {
   });
 
   it("answers like the feature is off when the request comes through a creator's own domain", async () => {
-    const response = await POST(new Request("https://cursos.criador.example/api/payments/guest-checkout", {
+    const response = await POST(new NextRequest("https://cursos.criador.example/api/payments/guest-checkout", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(validBody),
@@ -729,6 +735,31 @@ describe("guest checkout", () => {
       code: "checkout_pending",
     });
     expect(admin.auth.signInWithOtp).not.toHaveBeenCalled();
+    expect(mocks.createSession).not.toHaveBeenCalled();
+  });
+
+  it("never hands another browser the open checkout of the e-mail typed", async () => {
+    // Someone types a buyer's address while that buyer's Stripe page is open.
+    admin = createAdmin({ existingUserId: "existing-user", openOrder: true, lockReply: { action: "reuse", checkout_url: "https://checkout.example/open" } });
+
+    const response = await POST(guestRequest(validBody));
+
+    expect(response.status).toBe(409);
+    expect(await response.json()).toEqual({
+      error: "You have a payment in progress for this course. Finish it or try again in a few minutes.",
+      code: "checkout_pending",
+    });
+    expect(response.cookies.get(GUEST_CHECKOUT_COOKIE)).toBeUndefined();
+  });
+
+  it("gives the same browser its own open checkout back", async () => {
+    admin = createAdmin({ existingUserId: "existing-user", openOrder: true, lockReply: { action: "reuse", checkout_url: "https://checkout.example/open" } });
+    const cookie = encodeGuestCheckoutCookie({ email: "ana@example.com", courseId: "course" });
+
+    const response = await POST(guestRequest(validBody, { cookie: `${GUEST_CHECKOUT_COOKIE}=${cookie}` }));
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ url: "https://checkout.example/open" });
     expect(mocks.createSession).not.toHaveBeenCalled();
   });
 

@@ -62,6 +62,13 @@ export type CourseCheckoutOptions = {
    * (and on the subscription) for the webhook. Default: none (signed-in).
    */
   checkoutOrigin?: "guest";
+  /**
+   * false: a live checkout already open for this buyer and course is never
+   * handed back (409 instead). The guest route sets it for a browser that did
+   * not open that checkout, so typing someone's e-mail never returns their
+   * Stripe page. Default: handed back (signed-in buyer, double click).
+   */
+  reuseOpenCheckout?: boolean;
 };
 
 // Opens a Stripe Checkout Session for a paid course. Shared by the signed-in
@@ -316,6 +323,9 @@ export async function createCourseCheckoutSession(
 
       const lock = lockRows?.[0];
       if (lock?.action === "reuse" && lock.checkout_url) {
+        if (options.reuseOpenCheckout === false) {
+          throw new PaymentError("A subscription checkout for this course is already open.", 409);
+        }
         // Same guard as the one-time path below. The lock is per buyer+course,
         // so without this a request for a DIFFERENT offer is handed the first
         // offer's URL and the buyer checks out expecting the offer they picked.
@@ -588,6 +598,9 @@ export async function createCourseCheckoutSession(
     const lock = lockRows?.[0];
 
     if (lock?.action === "reuse" && lock.checkout_url) {
+      if (options.reuseOpenCheckout === false) {
+        throw new PaymentError("A checkout for this course is already open.", 409);
+      }
       // A sibling request already has a live session — hand back the SAME url.
       const { data: existingLock, error: existingLockError } = await admin
         .from("checkout_locks")
