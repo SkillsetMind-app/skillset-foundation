@@ -434,3 +434,20 @@ describe("creator path order and conditions", () => {
     );
   });
 });
+
+// The brand slogan is the owner's phrase (decided 2026-10-22): the benefit
+// first, the means right after, opening the home hero above the headline, in
+// every locale. No income figure or deadline next to it.
+describe("home hero opens with the brand slogan", () => {
+  it.each([
+    ["en", "Turn your knowledge into cash by creating your own digital business with SkillsetMind."],
+    ["es", "Convierte tu conocimiento en dinero creando tu propio negocio digital con SkillsetMind."],
+  ] as const)("%s", async (locale, slogan) => {
+    state.locale = locale;
+    const text = render(await MarketingHero()).container.textContent ?? "";
+    const dict = locale === "en" ? en : es;
+    expect(text).toContain(slogan);
+    expect(text.indexOf(slogan)).toBeLessThan(text.indexOf(dict.home.hero.title1));
+    expect(text).not.toMatch(incomeClaims);
+  });
+});

@@ -397,7 +397,8 @@
       "description": "For psychologists, coaches and personal-development professionals who already teach live: sell courses and community. 14-day free trial. Buyers pay your Stripe."
     },
     "hero": {
-      "eyebrow": "For psychologists, coaches & personal-development professionals",
+      "sloganBenefit": "Turn your knowledge into cash",
+      "sloganMeans": "by creating your own digital business with SkillsetMind.",
       "title1": "Your knowledge changes lives.",
       "title2": "Now turn it into a course.",
       "sub": "For psychologists, coaches and personal-development professionals who already teach live and want to sell their method as a course with a paid community. Start with 14 days free, then Basic is US$5/month. A card is required; cancel before the trial ends to avoid the subscription charge. Sales fees apply. We run the checkout and the classroom — your buyers pay your own Stripe account. You teach.",
