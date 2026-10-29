@@ -97,7 +97,7 @@ async function chrome(args, url) {
 }
 const report = [];
 let driver;
-let mobileSession;
+const sessions = new Map();
 let driverPort;
 async function webdriver(method, path, body) {
   const response = await fetch(`http://127.0.0.1:${driverPort}${path}`, {
@@ -108,9 +108,8 @@ async function webdriver(method, path, body) {
   assert(response.ok && !data.value?.error, `WebDriver: ${data.value?.message || response.status}`);
   return data.value;
 }
-async function mobile(url, name) {
-  if (!mobileSession) {
-    assert(!driver, "Mobile browser initialization failed; not retrying");
+async function browser(url, name, width) {
+  if (!driver) {
     const socket = createServer();
     await new Promise((done) => socket.listen(0, "127.0.0.1", done));
     driverPort = socket.address().port;
@@ -124,28 +123,31 @@ async function mobile(url, name) {
       try { await webdriver("GET", "/status"); break; }
       catch { await new Promise((done) => setTimeout(done, 100)); }
     }
+  }
+  if (!sessions.has(width)) {
     const session = await webdriver("POST", "/session", { capabilities: { alwaysMatch: {
       browserName: "chrome",
       "goog:chromeOptions": {
-        args: ["--headless", "--disable-gpu", "--disable-background-networking", "--no-first-run",
+        args: ["--headless", "--disable-gpu", "--disable-background-networking", "--no-first-run", `--window-size=${width},1600`,
           "--host-resolver-rules=MAP * ~NOTFOUND, EXCLUDE 127.0.0.1"],
-        mobileEmulation: { deviceMetrics: { width: 390, height: 1600, pixelRatio: 1 }, clientHints: { platform: "Android", mobile: true } },
+        ...(width === 390 ? { mobileEmulation: { deviceMetrics: { width: 390, height: 1600, pixelRatio: 1 }, clientHints: { platform: "Android", mobile: true } } } : {}),
       },
     } } });
-    mobileSession = session.sessionId;
+    sessions.set(width, session.sessionId);
   }
-  await webdriver("POST", `/session/${mobileSession}/url`, { url });
+  const sessionId = sessions.get(width);
+  await webdriver("POST", `/session/${sessionId}/url`, { url });
   let source;
   for (let attempt = 0; attempt < 50; attempt++) {
-    source = await webdriver("GET", `/session/${mobileSession}/source`);
+    source = await webdriver("GET", `/session/${sessionId}/source`);
     const dom = new JSDOM(source);
     const ready = dom.window.document.querySelector("#qa-metrics")?.textContent;
     dom.window.close();
     if (ready) break;
     await new Promise((done) => setTimeout(done, 100));
   }
-  const png = await webdriver("GET", `/session/${mobileSession}/screenshot`);
-  await writeFile(join(directory, `${name}-390.png`), Buffer.from(png, "base64"));
+  const png = await webdriver("GET", `/session/${sessionId}/screenshot`);
+  await writeFile(join(directory, `${name}-${width}.png`), Buffer.from(png, "base64"));
   return source;
 }
 async function inspect(name, check) {
@@ -158,12 +160,11 @@ try {
     const url = `http://127.0.0.1:${port}${path}`;
     for (const width of [1280, 390]) {
       await inspect(`${name}-${width}`, async () => {
-      const stdout = width === 390 ? await mobile(url, name) : (await chrome([`--window-size=${width},1600`, "--dump-dom"], url)).stdout;
+      const stdout = await browser(url, name, width);
       const dom = new JSDOM(stdout);
       const metrics = JSON.parse(dom.window.document.querySelector("#qa-metrics")?.textContent || "null");
       dom.window.close();
       await writeFile(join(directory, `${name}-${width}-dom.html`), stdout);
-      if (width !== 390) await chrome([`--window-size=${width},1600`, `--screenshot=${join(directory, `${name}-${width}.png`)}`], url);
       assert(metrics && !metrics.error && metrics.images && metrics.fonts > 0, `${name}: images/fonts not loaded (${JSON.stringify(metrics)})`);
       assert(metrics.visible && metrics.sections, `${name}: invisible/overlapping content`);
       assert.equal(metrics.width, width, `${name}: browser did not honor requested viewport`);
@@ -216,7 +217,7 @@ print(json.dumps({"families": families, "displayText": "".join(display_text)}))
     }
   }
 } finally {
-  if (mobileSession) await webdriver("DELETE", `/session/${mobileSession}`).catch(() => {});
+  for (const sessionId of sessions.values()) await webdriver("DELETE", `/session/${sessionId}`).catch(() => {});
   if (driver) driver.kill();
   await writeFile(join(directory, "visual-report.json"), JSON.stringify(report, null, 2));
   await new Promise((done) => server.close(done));
