@@ -45,6 +45,7 @@ jobs:
         run: npx tsc --noEmit
 
       - name: Unit tests (vitest)
+        id: unit
         run: npx vitest run
 
       # .env.production is tracked and carries ONLY publishable NEXT_PUBLIC_*
@@ -59,7 +60,7 @@ jobs:
           node scripts/check-certificate-visual.mjs
 
       - name: Certificate visual fixtures (synthetic only)
-        if: always()
+        if: always() && steps.unit.outcome == 'success'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: certificate-visual-fixtures

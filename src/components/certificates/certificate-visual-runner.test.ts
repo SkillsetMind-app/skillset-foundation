@@ -4,7 +4,7 @@ import { expect, it } from "vitest";
 
 it("refuses to launch a browser or server outside GitHub CI", () => {
   const result = spawnSync(process.execPath, [join(process.cwd(), "scripts/check-certificate-visual.mjs")], {
-    env: { PATH: process.env.PATH, GITHUB_ACTIONS: "false" },
+    env: { PATH: process.env.PATH, NODE_ENV: "test", GITHUB_ACTIONS: "false" },
     encoding: "utf8",
     timeout: 10000,
   });
