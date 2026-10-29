@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { brand } from "@/data/brand";
 
 import type { Certificate } from "@/domain/certificate";
 
@@ -62,7 +63,7 @@ export function CertificateDocument({
             ) : (
               <span className="relative block h-9 w-36">
                 <Image
-                  src="/brand/logo-full-dark.png"
+                  src={brand.logoFullLight}
                   alt="SkillsetMind"
                   fill
                   sizes="160px"

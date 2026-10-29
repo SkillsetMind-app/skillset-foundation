@@ -35,6 +35,7 @@ describe("certificate document snapshot", () => {
     expect(screen.getByAltText("Taylor Rivera signature")).toHaveAttribute("src", certificate.teacherSignatureUrl);
     expect(screen.getByAltText("Taylor Rivera")).toHaveAttribute("src", certificate.sponsorLogoUrl);
     expect(screen.getByAltText("SkillsetMind")).toBeInTheDocument();
+    expect(screen.getByAltText("SkillsetMind")).toHaveAttribute("src", "/brand/logo-full-navy.svg");
     expect(screen.getByText(certificate.verificationCode)).toBeInTheDocument();
     expect(screen.getByText("Verify at skillsetmind.com/verify")).toBeInTheDocument();
   });
@@ -96,6 +97,7 @@ describe("document presentation contract (not browser layout proof)", () => {
     expect(documentCss).toContain("color-scheme: light");
     expect(documentCss).toContain("background: #ffffff");
     expect(documentCss).toContain("--cert-ink: #102a43");
+    expect(documentCss).toContain("var(--font-cormorant, Georgia)");
     expect(documentCss).not.toMatch(/var\(--color-/);
     const { container } = show();
     expect(container.innerHTML).not.toMatch(/var\(--color-/);
@@ -107,12 +109,13 @@ describe("document presentation contract (not browser layout proof)", () => {
     expect(documentCss).toContain("overflow-wrap: anywhere");
     expect(documentCss).toContain("minmax(0, 1fr)");
     expect(documentCss).toContain("print-color-adjust: exact");
+    expect(documentCss).toContain("html:has(.cert-doc), body:has(.cert-doc)");
     expect(documentCss).not.toMatch(/overflow:\s*hidden|text-overflow|line-clamp/);
   });
 
   it("exports inspectable synthetic SSR fixtures from the real component and project CSS", async () => {
     const directory = mkdtempSync(join(tmpdir(), "skillsetmind-certificate-ssr-"));
-    const logo = `data:image/png;base64,${readFileSync(join(process.cwd(), "public/brand/logo-full-dark.png")).toString("base64")}`;
+    const logo = `data:image/svg+xml;base64,${readFileSync(join(process.cwd(), "public/brand/logo-full-navy.svg")).toString("base64")}`;
     const sampleImage = `data:image/svg+xml;base64,${Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="300" height="80"><rect width="300" height="80" fill="#edf2f7"/><text x="15" y="48" font-size="24" fill="#102a43">SYNTHETIC SAMPLE</text></svg>').toString("base64")}`;
     const variants: Record<string, Partial<Certificate>> = {
       standard: {},
@@ -124,7 +127,7 @@ describe("document presentation contract (not browser layout proof)", () => {
     for (const [name, overrides] of Object.entries(variants)) {
       const markup = renderToStaticMarkup(<CertificateDocument certificate={{ ...certificate, teacherSignatureUrl: null, sponsorLogoUrl: null, ...overrides }} />)
         .replace(/srcset="[^"]*"/gi, "")
-        .replace(/src="\/_next\/image[^"]*"/g, `src="${logo}"`);
+        .replace(/src="(?:\/_next\/image[^"]*|\/brand\/logo-full-navy\.svg)"/g, `src="${logo}"`);
       expect(markup).toContain("SK-SYNTHETIC-ONLY");
       markups.push(markup);
       for (const theme of ["light", "dark"]) {
