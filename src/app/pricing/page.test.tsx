@@ -61,7 +61,7 @@ describe("pricing page", () => {
         "text-4xl",
       );
     }
-    expect(grid.getByText("$5/mo").className).not.toContain("text-4xl");
+    expect(grid.getByText("$9/mo").className).not.toContain("text-4xl");
     expect(grid.getByText("$89/mo")).toBeInTheDocument();
     // Only the three plans on offer: no Free card, no Enterprise.
     expect(grid.queryByText("Free")).not.toBeInTheDocument();

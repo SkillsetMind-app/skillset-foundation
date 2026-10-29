@@ -197,6 +197,29 @@ export function PlansPanel() {
                   : (plans.find((plan) => plan.id === currentPlanId)?.name ?? t("accountBilling.unavailable"))}
             </strong>
           </span>
+          {subscription ? (
+            <>
+              <span aria-hidden="true">·</span>
+              <span>
+                {t("planTrial.contractedPrice").replace("{price}", () => subscription.contractedPrice
+                  ? t(subscription.contractedPrice.cycle === "yearly" ? "planTrial.pricePerYear" : "planTrial.pricePerMonth")
+                    .replace("{amount}", () => new Intl.NumberFormat(locale, { style: "currency", currency: subscription.contractedPrice!.currency })
+                      .format(subscription.contractedPrice!.amountMinor / 100))
+                  : t("accountBilling.unavailable"))}
+              </span>
+            </>
+          ) : null}
+          {subscription && !subscription.cancelAtPeriodEnd && ["active", "trialing"].includes(subscription.status) ? (
+            <>
+              <span aria-hidden="true">·</span>
+              <span>
+                {t("planTrial.nextPayment").replace("{amount}", () => subscription.nextPayment
+                  ? new Intl.NumberFormat(locale, { style: "currency", currency: subscription.nextPayment.currency })
+                    .format(subscription.nextPayment.amountMinor / 100)
+                  : t("accountBilling.unavailable"))}
+              </span>
+            </>
+          ) : null}
           {subscription?.trialEnd && !subscription.cancelAtPeriodEnd ? (
             <>
               <span aria-hidden="true">·</span>
@@ -314,7 +337,7 @@ export function PlansPanel() {
                 <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
                   {plan.name}
                 </p>
-                {isCurrent ? <StatusChip status="active" label={t("accountPlans.current")} /> : null}
+                {isCurrent ? <StatusChip status="active" label={t("planTrial.yourTier")} /> : null}
               </div>
               <div className="mt-3 flex items-baseline gap-1">
                 <span className="text-3xl font-extrabold tabular-nums tracking-[-0.02em] text-[var(--color-primary)]">
@@ -363,7 +386,7 @@ export function PlansPanel() {
                   // O chip "Current" no topo do cartão já marca o plano; um
                   // botão desabilitado dizendo "Your plan" era a terceira vez.
                   <p className="text-center text-xs font-semibold text-[var(--color-ink-soft)]">
-                    {t("accountPlans.yourPlan")}
+                    {t("planTrial.currentOffer")}
                   </p>
                 ) : currentPlanId !== "free" ? (
                   // Checkout only opens the FIRST paid plan — a second session

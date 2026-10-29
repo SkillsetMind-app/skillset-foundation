@@ -151,13 +151,13 @@ export const plans: ReadonlyArray<Plan> = [
   {
     id: "basic",
     name: "Basic",
-    monthlyUsd: 5,
-    yearlyUsd: 50,
+    monthlyUsd: 9,
+    yearlyUsd: 90,
     commissionPercent: 10,
-    // Precos ativos conferidos na conta da plataforma: US$5/mes e US$50/ano.
+    // Novas assinaturas; os precos anteriores continuam reconhecidos abaixo.
     stripePriceIds: {
-      monthlyId: "price_1UP4MvPvg1vJW0IjLNG6YeC9",
-      yearlyId: "price_1UP4MwPvg1vJW0IjKAq6kpd8",
+      monthlyId: "price_1UVi6QPvg1vJW0IjKHYmUE09",
+      yearlyId: "price_1UVi6RPvg1vJW0Ijz87nmj5D",
     },
     tagline: "Start selling for a small monthly price.",
     audience: "Creators validating their first course.",
@@ -267,6 +267,9 @@ export function isBillingConfigured(): boolean {
 export function planAndCycleByStripePriceId(
   priceId: string,
 ): { plan: Plan; cycle: PlanBillingCycle } | undefined {
+  // Webhooks historicos e assinaturas legadas nao mudam de plano/preco.
+  if (priceId === "price_1UP4MvPvg1vJW0IjLNG6YeC9") return { plan: planById("basic"), cycle: "monthly" };
+  if (priceId === "price_1UP4MwPvg1vJW0IjKAq6kpd8") return { plan: planById("basic"), cycle: "yearly" };
   for (const plan of plans) {
     if (plan.stripePriceIds?.monthlyId === priceId) return { plan, cycle: "monthly" };
     if (plan.stripePriceIds?.yearlyId === priceId) return { plan, cycle: "yearly" };
@@ -276,6 +279,14 @@ export function planAndCycleByStripePriceId(
 
 export function planByStripePriceId(priceId: string): Plan | undefined {
   return planAndCycleByStripePriceId(priceId)?.plan;
+}
+
+/** Tarifa do Price contratado, antes de descontos, impostos e saldo da fatura. */
+export function planUsdByStripePriceId(priceId: string): number | undefined {
+  if (priceId === "price_1UP4MvPvg1vJW0IjLNG6YeC9") return 5;
+  if (priceId === "price_1UP4MwPvg1vJW0IjKAq6kpd8") return 50;
+  const match = planAndCycleByStripePriceId(priceId);
+  return match ? (match.cycle === "yearly" ? match.plan.yearlyUsd : match.plan.monthlyUsd) : undefined;
 }
 
 /**

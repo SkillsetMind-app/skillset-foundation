@@ -401,7 +401,7 @@ describe("creator path order and conditions", () => {
 
   it.each(dictionaries)("the %s home discloses the Basic price after the trial", (_locale, dict) => {
     expect(dict.home.hero.sub).toContain("14");
-    expect(dict.home.hero.sub).toContain("US$5");
+    expect(dict.home.hero.sub).toContain("US$9");
     expect(dict.home.hero.sub).toMatch(/card|tarjeta/i);
     expect(dict.home.hero.sub).toMatch(/cancel/i);
     expect(dict.home.hero.sub).not.toMatch(/no monthly fee|sin mensualidad/i);

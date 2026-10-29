@@ -23,14 +23,14 @@ function disclosure(locale: "en" | "es", planId: "basic" | "starter" | "pro", cy
 describe("renewal disclosure (US ROSCA)", () => {
   it("does not freeze a trial deadline into a cached public offer", () => {
     const text = planDisclosure({ t: (key) => translate(getDictionary("en"), key), locale: "en", plan: planById("basic"), cycle: "monthly", trial: true, publicOffer: true, now });
-    expect(text).toContain("14 days free, then $5/month.");
+    expect(text).toContain("14 days free, then $9/month.");
     expect(text).toContain("A card is required.");
     expect(text).toContain("before your trial ends");
     expect(text).not.toContain("2026");
   });
   it.each([
-    ["basic", "monthly", "14 days free, then $5/month."],
-    ["basic", "yearly", "14 days free, then $50/year."],
+    ["basic", "monthly", "14 days free, then $9/month."],
+    ["basic", "yearly", "14 days free, then $90/year."],
     ["starter", "monthly", "14 days free, then $19/month."],
     ["starter", "yearly", "14 days free, then $190/year."],
     ["pro", "monthly", "14 days free, then $89/month."],
@@ -42,8 +42,8 @@ describe("renewal disclosure (US ROSCA)", () => {
   });
 
   it.each([
-    ["basic", "monthly", "14 días gratis, luego $5 al mes."],
-    ["basic", "yearly", "14 días gratis, luego $50 al año."],
+    ["basic", "monthly", "14 días gratis, luego $9 al mes."],
+    ["basic", "yearly", "14 días gratis, luego $90 al año."],
     ["starter", "monthly", "14 días gratis, luego $19 al mes."],
     ["starter", "yearly", "14 días gratis, luego $190 al año."],
     ["pro", "monthly", "14 días gratis, luego $89 al mes."],
@@ -57,7 +57,7 @@ describe("renewal disclosure (US ROSCA)", () => {
 
   it("drops the trial and the date when the account already used its trial", () => {
     expect(disclosure("en", "basic", "monthly", false)).toBe(
-      "$5/month, starting today. Renews automatically until you cancel. Cancel anytime in Billing to stop the next charge.",
+      "$9/month, starting today. Renews automatically until you cancel. Cancel anytime in Billing to stop the next charge.",
     );
     expect(disclosure("es", "pro", "yearly", false)).toContain("$890 al año, desde hoy.");
   });
