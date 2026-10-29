@@ -94,11 +94,16 @@ async function chrome(args, url) {
   { env: childEnv, timeout: 30000, maxBuffer: 4 * 1024 * 1024 });
 }
 const report = [];
+async function inspect(name, check) {
+  try { await check(); }
+  catch (error) { report.push({ name, error: error.message }); }
+}
 try {
   for (const path of pages.keys()) {
     const name = path.slice(1, -5);
     const url = `http://127.0.0.1:${port}${path}`;
     for (const width of [1280, 390]) {
+      await inspect(`${name}-${width}`, async () => {
       const { stdout } = await chrome([`--window-size=${width},1600`, "--dump-dom"], url);
       const dom = new JSDOM(stdout);
       const metrics = JSON.parse(dom.window.document.querySelector("#qa-metrics")?.textContent || "null");
@@ -110,10 +115,13 @@ try {
       assert.equal(metrics.width, width, `${name}: browser did not honor requested viewport`);
       assert(metrics.scroll <= metrics.width + 1 && !metrics.overflow, `${name}: text or viewport overflow`);
       report.push({ name, requestedWidth: width, ...metrics });
+      });
     }
     if (!name.startsWith("seal-")) {
+      await inspect(`${name}-print`, async () => {
       const pdf = join(directory, `${name}.pdf`);
       await chrome(["--no-pdf-header-footer", `--print-to-pdf=${pdf}`], url);
+      await run("pdftoppm", ["-scale-to", "1400", "-singlefile", "-png", pdf, join(directory, `${name}-print`)], { env: childEnv, timeout: 10000 });
       const { stdout } = await run("pdfinfo", [pdf], { env: childEnv, timeout: 10000 });
       assert(/^Pages:\s+1\s*$/m.test(stdout), `${name}: PDF is not exactly one page`);
       assert(/^Page size:\s+595\.\d+ x 841\.\d+ pts \(A4\)/m.test(stdout), `${name}: PDF is not A4 portrait`);
@@ -122,12 +130,13 @@ try {
       assert(name.startsWith("long-") ? text.replace(/\s/g, "").includes("A".repeat(120)) : text.includes("Alex Morgan"), `${name}: PDF missing learner name`);
       const course = name.startsWith("long-") ? "Emotional intelligence and professional development ".repeat(6) : "Emotional Intelligence: Foundations and Practice";
       assert(text.replace(/\s/g, "").includes(course.replace(/\s/g, "")), `${name}: PDF missing course title`);
-      await run("pdftoppm", ["-scale-to", "1400", "-singlefile", "-png", pdf, join(directory, `${name}-print`)], { env: childEnv, timeout: 10000 });
       report.push({ name, pages: 1, paper: "A4 portrait" });
+      });
     }
   }
 } finally {
   await writeFile(join(directory, "visual-report.json"), JSON.stringify(report, null, 2));
   await new Promise((done) => server.close(done));
 }
+assert(!report.some((item) => item.error), JSON.stringify(report.filter((item) => item.error)));
 console.info(`Certificate visual QA passed: ${report.length} checks; synthetic artifacts only.`);
