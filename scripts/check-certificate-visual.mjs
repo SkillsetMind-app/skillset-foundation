@@ -37,20 +37,22 @@ for (const file of cssFiles) {
 }
 assert.equal(fontClasses.size, 3, "Actual Next font bindings missing");
 const audit = `addEventListener("load", async () => {
+  const out = document.createElement("output"); out.id = "qa-metrics"; out.hidden = true;
+  document.body.append(out);
+  try {
   await document.fonts.ready;
   const box = document.querySelector(".cert-doc")?.getBoundingClientRect();
   const sections = [...document.querySelectorAll(".cert-doc-header,.cert-doc-award,.cert-doc-footer")].map(e => e.getBoundingClientRect());
   const headings = [...document.querySelectorAll(".cert-doc h1,.cert-doc h2")];
-  const out = document.createElement("output"); out.id = "qa-metrics"; out.hidden = true;
   out.textContent = JSON.stringify({ width: innerWidth, scroll: document.documentElement.scrollWidth,
     images: [...document.images].every(i => i.complete && i.naturalWidth > 0),
     fonts: [...document.fonts].filter(f => f.status === "loaded").length,
-    displayFont: headings.every(e => /cormorant/i.test(getComputedStyle(e).fontFamily) && document.fonts.check(getComputedStyle(e).font, e.textContent)),
+    displayFont: headings.every(e => { const s = getComputedStyle(e); return /cormorant/i.test(s.fontFamily) && document.fonts.check(s.fontWeight + " " + s.fontSize + " " + s.fontFamily, e.textContent); }),
     visible: (!box || (document.querySelectorAll(".cert-doc h1").length === 1 && document.querySelectorAll(".cert-doc h2").length === 1 && sections.length === 3)) && headings.every(e => e.getBoundingClientRect().height > 0 && getComputedStyle(e).visibility === "visible"),
     sections: sections.every((r,i) => r.width > 0 && r.height > 0 && (!i || r.top >= sections[i-1].bottom - 1)),
     documentWidth: box?.width, documentHeight: box?.height,
     overflow: [...document.querySelectorAll(".cert-doc h1,.cert-doc h2,.cert-doc p")].some(e => e.scrollWidth > e.clientWidth + 1) });
-  document.body.append(out);
+  } catch (error) { out.textContent = JSON.stringify({ error: error.message }); }
 });`;
 const hash = createHash("sha256").update(audit).digest("base64");
 const pages = new Map();
@@ -101,11 +103,12 @@ try {
       const dom = new JSDOM(stdout);
       const metrics = JSON.parse(dom.window.document.querySelector("#qa-metrics")?.textContent || "null");
       dom.window.close();
-      assert(metrics && metrics.images && metrics.fonts > 0, `${name}: images/fonts not loaded`);
+      await writeFile(join(directory, `${name}-${width}-dom.html`), stdout);
+      await chrome([`--window-size=${width},1600`, `--screenshot=${join(directory, `${name}-${width}.png`)}`], url);
+      assert(metrics && !metrics.error && metrics.images && metrics.fonts > 0, `${name}: images/fonts not loaded (${JSON.stringify(metrics)})`);
       assert(metrics.displayFont && metrics.visible && metrics.sections, `${name}: missing display font or invisible/overlapping content`);
       assert.equal(metrics.width, width, `${name}: browser did not honor requested viewport`);
       assert(metrics.scroll <= metrics.width + 1 && !metrics.overflow, `${name}: text or viewport overflow`);
-      await chrome([`--window-size=${width},1600`, `--screenshot=${join(directory, `${name}-${width}.png`)}`], url);
       report.push({ name, requestedWidth: width, ...metrics });
     }
     if (!name.startsWith("seal-")) {
