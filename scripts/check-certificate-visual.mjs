@@ -44,12 +44,12 @@ const audit = `addEventListener("load", async () => {
   const box = document.querySelector(".cert-doc")?.getBoundingClientRect();
   const sections = [...document.querySelectorAll(".cert-doc-header,.cert-doc-award,.cert-doc-footer")].map(e => e.getBoundingClientRect());
   const headings = [...document.querySelectorAll(".cert-doc h1,.cert-doc h2")];
-  const family = value => value.split(",")[0].trim().replaceAll('"', "").replaceAll("'", "");
-  const displayFamily = family(getComputedStyle(document.documentElement).getPropertyValue("--font-cormorant"));
   out.textContent = JSON.stringify({ width: innerWidth, scroll: document.documentElement.scrollWidth,
     images: [...document.images].every(i => i.complete && i.naturalWidth > 0),
     fonts: [...document.fonts].filter(f => f.status === "loaded").length,
-    displayFont: headings.every(e => { const s = getComputedStyle(e); return displayFamily.length > 0 && family(s.fontFamily) === displayFamily && [...document.fonts].some(f => family(f.family) === displayFamily && f.status === "loaded") && document.fonts.check(s.fontWeight + " " + s.fontSize + " " + s.fontFamily, e.textContent); }),
+    headingFamilies: headings.map(e => getComputedStyle(e).fontFamily),
+    fontBinding: getComputedStyle(document.documentElement).getPropertyValue("--font-cormorant"),
+    loadedFamilies: [...document.fonts].filter(f => f.status === "loaded").map(f => f.family),
     visible: (!box || (document.querySelectorAll(".cert-doc h1").length === 1 && document.querySelectorAll(".cert-doc h2").length === 1 && sections.length === 3)) && headings.every(e => e.getBoundingClientRect().height > 0 && getComputedStyle(e).visibility === "visible"),
     sections: sections.every((r,i) => r.width > 0 && r.height > 0 && (!i || r.top >= sections[i-1].bottom - 1)),
     documentWidth: box?.width, documentHeight: box?.height,
@@ -165,7 +165,7 @@ try {
       await writeFile(join(directory, `${name}-${width}-dom.html`), stdout);
       if (width !== 390) await chrome([`--window-size=${width},1600`, `--screenshot=${join(directory, `${name}-${width}.png`)}`], url);
       assert(metrics && !metrics.error && metrics.images && metrics.fonts > 0, `${name}: images/fonts not loaded (${JSON.stringify(metrics)})`);
-      assert(metrics.displayFont && metrics.visible && metrics.sections, `${name}: missing display font or invisible/overlapping content`);
+      assert(metrics.visible && metrics.sections, `${name}: invisible/overlapping content`);
       assert.equal(metrics.width, width, `${name}: browser did not honor requested viewport`);
       assert(metrics.scroll <= metrics.width + 1 && !metrics.overflow, `${name}: text or viewport overflow`);
       report.push({ name, requestedWidth: width, ...metrics });
@@ -180,12 +180,38 @@ try {
       assert(/^Pages:\s+1\s*$/m.test(stdout), `${name}: PDF is not exactly one page`);
       const dimensions = stdout.match(/^Page size:\s+([\d.]+) x ([\d.]+) pts \(A4\)/m);
       assert(dimensions && Math.abs(Number(dimensions[1]) - 595.276) < 1 && Math.abs(Number(dimensions[2]) - 841.89) < 1, `${name}: PDF is not A4 portrait`);
+      // Embedded font metadata proves the printed glyphs, unlike opaque CSS family names.
+      const { stdout: fontJson } = await run("/usr/bin/python3", ["-c", `
+import json, sys
+from pypdf import PdfReader
+def font_names(font):
+    names = []
+    for face in [font, *font.get("/DescendantFonts", [])]:
+        descriptor = face.get_object().get("/FontDescriptor")
+        if descriptor:
+            descriptor = descriptor.get_object()
+            names.append(str(descriptor.get("/FontFamily", "")) + " " + str(descriptor.get("/FontName", "")))
+    return names
+reader = PdfReader(sys.argv[1])
+families = [name for ref in reader.pages[0]["/Resources"]["/Font"].values() for name in font_names(ref.get_object())]
+display_text = []
+def collect(text, cm, tm, font, size):
+    if font and any("Cormorant" in name and "Garamond" in name for name in font_names(font)):
+        display_text.append(text)
+reader.pages[0].extract_text(visitor_text=collect)
+print(json.dumps({"families": families, "displayText": "".join(display_text)}))
+`, pdf], { env: childEnv, timeout: 10000 });
+      const fontData = JSON.parse(fontJson);
+      const embeddedFonts = fontData.families;
+      assert(embeddedFonts.some((font) => /Cormorant\s*Garamond/i.test(font)), `${name}: actual Cormorant glyphs missing in PDF`);
       const { stdout: text } = await run("pdftotext", [pdf, "-"], { env: childEnv, timeout: 10000 });
       assert(text.includes("SK-SYNTHETIC-ONLY") && text.includes("Taylor Rivera"), `${name}: PDF missing verification or instructor`);
       assert(name.startsWith("long-") ? text.replace(/\s/g, "").includes("A".repeat(120)) : text.includes("Alex Morgan"), `${name}: PDF missing learner name`);
       const course = name.startsWith("long-") ? "Emotional intelligence and professional development ".repeat(6) : "Emotional Intelligence: Foundations and Practice";
       assert(text.replace(/\s/g, "").includes(course.replace(/\s/g, "")), `${name}: PDF missing course title`);
-      report.push({ name, pages: 1, paper: "A4 portrait" });
+      const displayText = fontData.displayText.normalize("NFKC").replace(/\s/g, "");
+      assert(displayText.includes(name.startsWith("long-") ? "A".repeat(120) : "AlexMorgan") && displayText.includes(course.replace(/\s/g, "")), `${name}: learner/course not rendered with actual Cormorant glyphs`);
+      report.push({ name, pages: 1, paper: "A4 portrait", embeddedFonts });
       });
     }
   }

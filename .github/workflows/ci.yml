@@ -56,7 +56,7 @@ jobs:
       - name: Certificate browser and A4 checks (synthetic only)
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends poppler-utils
+          sudo apt-get install -y --no-install-recommends poppler-utils python3-pypdf
           node scripts/check-certificate-visual.mjs
 
       - name: Certificate visual fixtures (synthetic only)
