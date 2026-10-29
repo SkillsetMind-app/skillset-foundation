@@ -47,6 +47,14 @@ jobs:
       - name: Unit tests (vitest)
         run: npx vitest run
 
+      - name: Certificate visual fixtures (synthetic only)
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: certificate-visual-fixtures
+          path: /tmp/skillsetmind-certificate-ssr-*/
+          if-no-files-found: error
+          retention-days: 3
+
       # .env.production is tracked and carries ONLY publishable NEXT_PUBLIC_*
       # values, so the production build works in CI without extra secrets.
       - name: Build (next)

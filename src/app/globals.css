@@ -7433,12 +7433,156 @@ button:hover > .dash-card,
   }
 }
 
+/* Document palette is intentionally independent of the application theme. */
+.cert-doc {
+  --cert-ink: #102a43;
+  --cert-soft: #4a6278;
+  --cert-accent: #795615;
+  --cert-rule: #c99a46;
+  color-scheme: light;
+  color: var(--cert-ink);
+  background: #ffffff;
+  max-width: 186mm;
+  font-family: Arial, Helvetica, sans-serif;
+  line-height: 1.5;
+  letter-spacing: 0;
+  box-shadow: 0 8px 32px rgb(16 42 67 / 10%);
+}
+
+.cert-doc *,
+.cert-doc *::before,
+.cert-doc *::after {
+  box-sizing: border-box;
+  letter-spacing: 0;
+}
+
+.cert-doc-frame {
+  position: relative;
+  border: 2px solid var(--cert-ink);
+  padding: 36px;
+}
+
+.cert-doc-rule {
+  position: absolute;
+  inset: 7px;
+  border: 1px solid var(--cert-rule);
+  pointer-events: none;
+}
+
+.cert-doc-content {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 850px;
+  gap: 24px;
+}
+
+.cert-doc-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--cert-rule);
+}
+
+.cert-doc-heading { text-align: right; }
+.cert-doc .cert-doc-authority {
+  color: var(--cert-accent);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.cert-doc .cert-doc-type {
+  margin-top: 4px;
+  color: var(--cert-ink);
+  font-size: 14px;
+  font-weight: 600;
+}
+.cert-doc .cert-doc-caption {
+  color: var(--cert-soft);
+  font-size: 11px;
+  text-transform: uppercase;
+}
+.cert-doc-cobrand { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.cert-doc-award {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  justify-content: center;
+  padding-block: 28px;
+  text-align: center;
+}
+.cert-doc .cert-doc-name,
+.cert-doc .cert-doc-course,
+.cert-doc-wordmark,
+.cert-doc-signature-fallback {
+  font-family: var(--font-display, Georgia), Georgia, serif;
+  font-weight: 500;
+  color: var(--cert-ink);
+  overflow-wrap: anywhere;
+}
+.cert-doc .cert-doc-name { margin-top: 16px; font-size: 44px; line-height: 1.12; }
+.cert-doc .cert-doc-name-long { font-size: 30px; }
+.cert-doc .cert-doc-completion { margin-top: 28px; color: var(--cert-soft); font-size: 14px; }
+.cert-doc .cert-doc-course { margin-top: 16px; font-size: 30px; line-height: 1.2; }
+.cert-doc .cert-doc-course-long { font-size: 22px; }
+.cert-doc .cert-doc-category { margin-top: 12px; color: var(--cert-accent); font-size: 12px; }
+.cert-doc-wordmark { font-size: 22px; }
+.cert-doc-footer {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: end;
+  gap: 28px;
+  padding-top: 24px;
+}
+.cert-doc-footer > *, .cert-doc-header > * { min-width: 0; max-width: 100%; }
+.cert-doc-signature { display: flex; min-height: 56px; align-items: end; }
+.cert-doc-signature-fallback { font-size: 26px; line-height: 1.15; font-style: italic; }
+.cert-doc-signatory { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--cert-ink); }
+.cert-doc .cert-doc-teacher, .cert-doc .cert-doc-issued { font-size: 13px; font-weight: 600; }
+.cert-doc-verification { text-align: right; }
+.cert-doc-verification .cert-doc-caption { margin-top: 12px; }
+.cert-doc .cert-doc-code { margin-top: 4px; font: 600 13px/1.5 monospace; }
+.cert-doc .cert-doc-verify-url { margin-top: 4px; color: var(--cert-soft); font-size: 11px; }
+.cert-doc p, .cert-doc-wordmark { overflow-wrap: anywhere; }
+
+@media screen and (max-width: 480px) {
+  .cert-doc-frame { padding: 24px; }
+  .cert-doc-content { min-height: 0; }
+  .cert-doc-heading { text-align: left; }
+  .cert-doc .cert-doc-name { font-size: 34px; }
+  .cert-doc .cert-doc-name-long { font-size: 26px; }
+  .cert-doc .cert-doc-course { font-size: 26px; }
+  .cert-doc .cert-doc-course-long { font-size: 20px; }
+  .cert-doc-footer { grid-template-columns: minmax(0, 1fr); }
+  .cert-doc-verification { text-align: left; }
+}
+
 /* Clean print/PDF output for certificates: controlled page margin and faithful
    brand colors (browsers drop colored borders and fills from print by default). */
 @media print {
   @page {
     margin: 12mm;
   }
+  @page skillset-certificate {
+    size: A4 portrait;
+    margin: 12mm;
+  }
+
+  .cert-doc {
+    page: skillset-certificate;
+    width: 186mm;
+    max-width: 100%;
+    box-shadow: none;
+    break-inside: avoid;
+  }
+  .cert-doc-frame { padding: 10mm; }
+  .cert-doc-content { min-height: 248mm; gap: 6mm; }
+  .cert-doc-header { padding-bottom: 6mm; }
+  .cert-doc-award { padding-block: 6mm; }
+  .cert-doc-footer { padding-top: 6mm; }
 
   .cert-doc,
   .cert-doc * {
@@ -8198,9 +8342,7 @@ button:hover > .dash-card,
   display: none;
 }
 
-/* Selo de profissional verificado: quadrado, como os cantos da marca (só o
-   avatar é redondo), e nunca o azul do Instagram. Claro: marinho com check de
-   latão (5,7:1). Escuro: o marinho vira claro, e o check vira o fundo. */
+/* Lucide BadgeCheck: brand-colored seal and check, with a theme-aware contrast. */
 .verified-seal {
   --seal-ground: var(--color-primary);
   --seal-mark: var(--color-accent);
