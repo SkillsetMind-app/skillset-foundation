@@ -47,18 +47,25 @@ jobs:
       - name: Unit tests (vitest)
         run: npx vitest run
 
+      # .env.production is tracked and carries ONLY publishable NEXT_PUBLIC_*
+      # values, so the production build works in CI without extra secrets.
+      - name: Build (next)
+        run: npm run build
+
+      - name: Certificate browser and A4 checks (synthetic only)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends poppler-utils
+          node scripts/check-certificate-visual.mjs
+
       - name: Certificate visual fixtures (synthetic only)
+        if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: certificate-visual-fixtures
           path: /tmp/skillsetmind-certificate-ssr-*/
           if-no-files-found: error
           retention-days: 3
-
-      # .env.production is tracked and carries ONLY publishable NEXT_PUBLIC_*
-      # values, so the production build works in CI without extra secrets.
-      - name: Build (next)
-        run: npm run build
 
   # Os smoke tests de RLS em supabase/tests/ existem desde julho e nunca foram
   # executados. Até aqui eles dependiam do secret STAGING_DATABASE_URL, que

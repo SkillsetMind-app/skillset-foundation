@@ -7,6 +7,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { CertificateDocument } from "@/components/certificates/certificate-document";
+import { VerifiedSeal } from "@/components/shared/verified-badge";
 import type { Certificate } from "@/domain/certificate";
 
 afterEach(cleanup);
@@ -112,10 +113,12 @@ describe("document presentation contract (not browser layout proof)", () => {
   it("exports inspectable synthetic SSR fixtures from the real component and project CSS", async () => {
     const directory = mkdtempSync(join(tmpdir(), "skillsetmind-certificate-ssr-"));
     const logo = `data:image/png;base64,${readFileSync(join(process.cwd(), "public/brand/logo-full-dark.png")).toString("base64")}`;
+    const sampleImage = `data:image/svg+xml;base64,${Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="300" height="80"><rect width="300" height="80" fill="#edf2f7"/><text x="15" y="48" font-size="24" fill="#102a43">SYNTHETIC SAMPLE</text></svg>').toString("base64")}`;
     const variants: Record<string, Partial<Certificate>> = {
       standard: {},
+      images: { teacherSignatureUrl: sampleImage, sponsorLogoUrl: sampleImage },
       long: { studentFullName: "A".repeat(120), courseTitle: "Emotional intelligence and professional development ".repeat(6) },
-      whitelabel: { hidePlatformBrand: true, teacherSignatureUrl: null, sponsorLogoUrl: null },
+      whitelabel: { hidePlatformBrand: true, teacherSignatureUrl: null, sponsorLogoUrl: sampleImage },
     };
     const markups: string[] = [];
     for (const [name, overrides] of Object.entries(variants)) {
@@ -128,12 +131,21 @@ describe("document presentation contract (not browser layout proof)", () => {
         writeFileSync(join(directory, `${name}-${theme}.html`), `<!doctype html><html lang="en" data-theme="${theme}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Synthetic certificate: ${name}</title><link rel="stylesheet" href="preview.css"></head><body>${markup}</body></html>`);
       }
     }
+    const seals = renderToStaticMarkup(<div style={{ padding: 32, display: "flex", flexWrap: "wrap", gap: 24 }}>
+      {[12, 14, 16, 24].map((size) => <span key={size} style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+        Alex Morgan <VerifiedSeal size={size} />
+      </span>)}
+    </div>);
+    markups.push(seals);
+    for (const theme of ["light", "dark"]) {
+      writeFileSync(join(directory, `seal-${theme}.html`), `<!doctype html><html lang="en" data-theme="${theme}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Synthetic verified seals</title><link rel="stylesheet" href="preview.css"></head><body>${seals}</body></html>`);
+    }
     const require = createRequire(import.meta.url);
     const { compile } = require("@tailwindcss/node");
     const compiler = await compile(css, { base: join(process.cwd(), "src/app"), onDependency() {} });
     const candidates = [...markups.join(" ").matchAll(/class="([^"]+)"/g)].flatMap((match) => match[1].split(/\s+/));
     writeFileSync(join(directory, "preview.css"), compiler.build(candidates));
-    writeFileSync(join(directory, "README.txt"), "Synthetic SSR of the REAL CertificateDocument plus real globals.css compiled with installed Tailwind (only fixture utility candidates). Open standard-light.html, long-dark.html and whitelabel-light.html directly in CUA; no server needed. Platform logo is inlined from the real public asset; Next image transport is removed only in exported HTML. Signature uses the existing text fallback; no approved signature is fabricated. Next-managed webfonts are absent, so Georgia is the fallback. No browser layout, image loading, PDF or print result is asserted by this artifact. Parent should measure long names/titles at mobile/desktop, check themes and A4 print page count via CUA/preview.\n");
+    writeFileSync(join(directory, "README.txt"), "Synthetic SSR of the real CertificateDocument and VerifiedSeal. Platform logo is inlined from the real public asset; no signature is fabricated. preview.css is a fallback without Next-managed fonts. CI browser QA instead serves the actual compiled build CSS and fonts in an isolated runner, checks overflow/image loading and one-page A4 PDFs, and exports PNG/PDF plus visual-report.json. No production route, credentials or customer data are used.\n");
     console.info(`Certificate SSR fixtures: ${directory}`);
   });
 });
