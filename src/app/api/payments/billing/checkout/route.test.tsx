@@ -460,6 +460,21 @@ describe("POST /api/payments/billing/checkout", () => {
   });
 
   // --- 14-day free trial: first plan only, card up front, terms on Stripe's page.
+  it.each([
+    ["monthly", "price_1UVi6QPvg1vJW0IjKHYmUE09", "$9/month"],
+    ["yearly", "price_1UVi6RPvg1vJW0Ijz87nmj5D", "$90/year"],
+  ])("opens Basic %s at the new price with the same trial and promo support", async (cycle, price, label) => {
+    const helpers = await vi.importActual<typeof import("@/lib/payments/server/stripe-helpers")>("@/lib/payments/server/stripe-helpers");
+    mocks.resolvePriceId.mockImplementation(helpers.resolvePriceId);
+    mocks.getAdmin.mockImplementation(adminReturning(null));
+    mocks.listSubscriptions.mockResolvedValue({ data: [] });
+    expect((await POST(request({ planId: "basic", cycle }))).status).toBe(200);
+    const params = mocks.createSession.mock.calls[0][0];
+    expect(params.line_items).toEqual([{ price, quantity: 1 }]);
+    expect(params.subscription_data.trial_period_days).toBe(14);
+    expect(params.allow_promotion_codes).toBe(true);
+    expect(params.custom_text.submit.message).toContain(`14 days free, then ${label}.`);
+  });
   it("opens the first plan with a 14-day trial, a card and the renewal terms above the button", async () => {
     mocks.getAdmin.mockImplementation(adminReturning(null));
     mocks.listSubscriptions.mockResolvedValue({ data: [] });

@@ -400,7 +400,7 @@
       "eyebrow": "For psychologists, coaches & personal-development professionals",
       "title1": "Your knowledge changes lives.",
       "title2": "Now turn it into a course.",
-      "sub": "For psychologists, coaches and personal-development professionals who already teach live and want to sell their method as a course with a paid community. Start with 14 days free, then Basic is US$5/month. A card is required; cancel before the trial ends to avoid the subscription charge. Sales fees apply. We run the checkout and the classroom — your buyers pay your own Stripe account. You teach.",
+      "sub": "For psychologists, coaches and personal-development professionals who already teach live and want to sell their method as a course with a paid community. Start with 14 days free, then Basic is US$9/month. A card is required; cancel before the trial ends to avoid the subscription charge. Sales fees apply. We run the checkout and the classroom — your buyers pay your own Stripe account. You teach.",
       "trust1Title": "Verified",
       "trust1Desc": "Where required, professionals are verified before they can publish, and courses that break marketplace standards can be paused or removed.",
       "trust2Title": "Global",
@@ -3023,7 +3023,7 @@
   "publicPages": {
     "pricing": {
       "pricing": "Pricing",
-      "plans_with_a_free_trial": "Three plans, each starting with a 14-day free trial. Basic is $5/month with 10% + $0.30 per sale; Starter is $19/month with 4.9% + $0.30; Pro is $89/month with 2.9% + $0.30. Stripe's processing fee is shown separately so the math is never hidden, and buyers pay your own Stripe account directly — no platform hold, no platform clearing period.",
+      "plans_with_a_free_trial": "Three plans, each starting with a 14-day free trial. Basic is $9/month with 10% + $0.30 per sale; Starter is $19/month with 4.9% + $0.30; Pro is $89/month with 2.9% + $0.30. Stripe's processing fee is shown separately so the math is never hidden, and buyers pay your own Stripe account directly — no platform hold, no platform clearing period.",
       "pricing_that_lowers_as_you_grow": "Pricing that lowers as you grow.",
       "every_plan_can_sell_paid_plans": "Every plan publishes and sells, and each starts with 14 days free. Higher plans lower the commission and raise your limits.",
       "billing_cycle": "Billing cycle",
@@ -3386,7 +3386,7 @@
         "items": {
           "0": {
             "q": "Which plan should I start on?",
-            "a": "Every plan starts with a 14-day free trial; a card is required, and you can cancel in Billing before the trial ends without being charged. Basic is $5/month ($50/year) with 10% + $0.30 per sale. Starter is $19/month ($190/year) with 4.9% + $0.30. Pro is $89/month ($890/year) with 2.9% + $0.30 and higher limits. The pricing page shows what each plan takes from a sample $100 sale."
+            "a": "Every plan starts with a 14-day free trial; a card is required, and you can cancel in Billing before the trial ends without being charged. Basic is $9/month ($90/year) with 10% + $0.30 per sale. Starter is $19/month ($190/year) with 4.9% + $0.30. Pro is $89/month ($890/year) with 2.9% + $0.30 and higher limits. The pricing page shows what each plan takes from a sample $100 sale."
           },
           "1": {
             "q": "What happens when I upgrade or downgrade?",
@@ -4745,6 +4745,10 @@
     }
   },
   "planTrial": {
+    "contractedPrice": "Subscription price before discounts and tax: {price}",
+    "yourTier": "Your plan tier",
+    "currentOffer": "Current offer for new subscriptions. Your subscription price is shown above.",
+    "nextPayment": "Next payment: {amount}",
     "disclosurePublic": "{days} days free, then {price}. A card is required. Renews automatically until you cancel. Cancel in Billing before your trial ends to avoid the subscription charge.",
     "cta": "Start 14-day free trial",
     "disclosure": "{days} days free, then {price}. Renews automatically until you cancel. Cancel anytime in Billing before {date} and you won't be charged.",

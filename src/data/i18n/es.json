@@ -400,7 +400,7 @@
       "eyebrow": "Para psicólogos, coaches y profesionales del desarrollo personal",
       "title1": "Tu conocimiento cambia vidas.",
       "title2": "Ahora conviértelo en un curso.",
-      "sub": "Para psicólogos, coaches y profesionales del desarrollo personal que ya enseñan en vivo y quieren vender su método como un curso con comunidad de pago. Empieza con 14 días gratis; después Basic cuesta US$5 al mes. Se requiere tarjeta; cancela antes de terminar la prueba para evitar el cobro de la suscripción. Se aplican tarifas por venta. Nosotros manejamos el checkout y el aula — tus compradores pagan directo a tu cuenta de Stripe. Tú enseñas.",
+      "sub": "Para psicólogos, coaches y profesionales del desarrollo personal que ya enseñan en vivo y quieren vender su método como un curso con comunidad de pago. Empieza con 14 días gratis; después Basic cuesta US$9 al mes. Se requiere tarjeta; cancela antes de terminar la prueba para evitar el cobro de la suscripción. Se aplican tarifas por venta. Nosotros manejamos el checkout y el aula — tus compradores pagan directo a tu cuenta de Stripe. Tú enseñas.",
       "trust1Title": "Verificado",
       "trust1Desc": "Cuando se requiere, los profesionales se verifican antes de publicar, y los cursos que incumplan las normas del catálogo pueden pausarse o retirarse.",
       "trust2Title": "Global",
@@ -3023,7 +3023,7 @@
   "publicPages": {
     "pricing": {
       "pricing": "Precios",
-      "plans_with_a_free_trial": "Tres planes, cada uno con una prueba gratis de 14 días. Basic cuesta $5 al mes con 10% + $0.30 por venta; Starter cuesta $19 al mes con 4.9% + $0.30; Pro cuesta $89 al mes con 2.9% + $0.30. La tarifa de procesamiento de Stripe se muestra por separado para que las cuentas sean claras, y los compradores pagan directamente a tu cuenta de Stripe: sin retención ni plazo de liquidación de la plataforma.",
+      "plans_with_a_free_trial": "Tres planes, cada uno con una prueba gratis de 14 días. Basic cuesta $9 al mes con 10% + $0.30 por venta; Starter cuesta $19 al mes con 4.9% + $0.30; Pro cuesta $89 al mes con 2.9% + $0.30. La tarifa de procesamiento de Stripe se muestra por separado para que las cuentas sean claras, y los compradores pagan directamente a tu cuenta de Stripe: sin retención ni plazo de liquidación de la plataforma.",
       "pricing_that_lowers_as_you_grow": "Precios que bajan a medida que creces.",
       "every_plan_can_sell_paid_plans": "Todos los planes permiten publicar y vender, y cada uno empieza con 14 días gratis. Los planes superiores bajan la comisión y aumentan tus límites.",
       "billing_cycle": "Ciclo de facturación",
@@ -3386,7 +3386,7 @@
         "items": {
           "0": {
             "q": "¿Con qué plan debería empezar?",
-            "a": "Todos los planes empiezan con una prueba gratis de 14 días; se pide tarjeta y puedes cancelar en Facturación antes de que termine la prueba sin que se te cobre. Basic cuesta $5 al mes ($50 al año) con 10% + $0.30 por venta. Starter cuesta $19 al mes ($190 al año) con 4.9% + $0.30. Pro cuesta $89 al mes ($890 al año) con 2.9% + $0.30 y límites más altos. La página de precios muestra lo que cada plan descuenta de una venta de ejemplo de $100."
+            "a": "Todos los planes empiezan con una prueba gratis de 14 días; se pide tarjeta y puedes cancelar en Facturación antes de que termine la prueba sin que se te cobre. Basic cuesta $9 al mes ($90 al año) con 10% + $0.30 por venta. Starter cuesta $19 al mes ($190 al año) con 4.9% + $0.30. Pro cuesta $89 al mes ($890 al año) con 2.9% + $0.30 y límites más altos. La página de precios muestra lo que cada plan descuenta de una venta de ejemplo de $100."
           },
           "1": {
             "q": "¿Qué ocurre cuando mejoro mi plan o cambio a uno inferior?",
@@ -4745,6 +4745,10 @@
     }
   },
   "planTrial": {
+    "contractedPrice": "Precio de tu suscripción antes de descuentos e impuestos: {price}",
+    "yourTier": "Tu nivel de plan",
+    "currentOffer": "Oferta actual para nuevas suscripciones. El precio de tu suscripción aparece arriba.",
+    "nextPayment": "Próximo pago: {amount}",
     "disclosurePublic": "{days} días gratis, luego {price}. Se requiere tarjeta. Se renueva automáticamente hasta que canceles. Cancela en Facturación antes de que termine tu prueba para evitar el cobro de la suscripción.",
     "cta": "Empieza tu prueba gratis de 14 días",
     "disclosure": "{days} días gratis, luego {price}. Se renueva automáticamente hasta que canceles. Cancela cuando quieras en Facturación antes del {date} y no se te cobrará.",

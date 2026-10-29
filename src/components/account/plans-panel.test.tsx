@@ -55,6 +55,17 @@ vi.mock("@/components/account/upgrade-modal", () => ({
 }));
 
 describe("PlansPanel", () => {
+  it.each([500, 5000, 900, 9000, 0, 350])("shows actual next payment %s separately from new offers", async (amount) => {
+    state.planId = "basic";
+    state.billing = { trialEligible: false, subscription: {
+      planId: "basic", cycle: "monthly", status: "active", trialEnd: null,
+      currentPeriodEnd: "2026-11-03T12:00:00.000Z", cancelAtPeriodEnd: false,
+      nextPayment: { amountMinor: amount, currency: "usd" },
+    } };
+    render(<PlansPanel />);
+    expect(await screen.findByText(`Next payment: $${(amount / 100).toFixed(2)}`)).toBeInTheDocument();
+    expect(screen.getAllByRole("article")[0]).toHaveTextContent("$9");
+  });
   it("does not describe an account without a subscription as a free plan", () => {
     state.planId = "free";
     render(<PlansPanel />);
@@ -75,7 +86,7 @@ describe("PlansPanel", () => {
       screen.queryByRole("button", { name: "Your plan" }),
     ).not.toBeInTheDocument();
     // O cartao marca o plano com o chip, e so.
-    expect(screen.getByText("Current")).toBeInTheDocument();
+    expect(screen.getByText("Your plan tier")).toBeInTheDocument();
   });
 
   it("alinha os botoes: cartao em coluna flex, acao empurrada para baixo", () => {
@@ -101,6 +112,27 @@ describe("PlansPanel", () => {
 });
 
 describe("PlansPanel com os 2 planos e o teste gratis", () => {
+  it.each([
+    [500, "monthly", false], [5000, "yearly", false],
+    [500, "monthly", true], [5000, "yearly", true],
+  ])("separates legacy tariff %s/%s from current offers (cancelled %s)", async (amount, cycle, cancelled) => {
+    state.planId = "basic";
+    state.billing = { trialEligible: false, subscription: {
+      planId: "basic", cycle, status: "active", trialEnd: null,
+      currentPeriodEnd: "2026-11-03T12:00:00.000Z", cancelAtPeriodEnd: cancelled,
+      contractedPrice: { amountMinor: amount, currency: "usd", cycle }, nextPayment: null,
+    } };
+    render(<PlansPanel />);
+    expect(await screen.findByText(`Subscription price before discounts and tax: $${(Number(amount) / 100).toFixed(2)}/${cycle === "yearly" ? "year" : "month"}`)).toBeInTheDocument();
+    const card = screen.getAllByRole("article")[0];
+    expect(card).toHaveTextContent("Current offer for new subscriptions.");
+    expect(within(card).queryByText("Current")).not.toBeInTheDocument();
+    expect(within(card).queryByText("Your plan")).not.toBeInTheDocument();
+    if (cancelled) expect(screen.queryByText(/^Next payment:/)).not.toBeInTheDocument();
+    else expect(screen.getByText(/^Next payment:/)).not.toHaveTextContent("$9");
+    fireEvent.click(screen.getByRole("radio", { name: "Yearly" }));
+    expect(card).toHaveTextContent("$90");
+  });
   it("mostra so Basic, Starter e Pro, mesmo para quem ainda esta sem plano", () => {
     state.planId = "free";
     render(<PlansPanel />);

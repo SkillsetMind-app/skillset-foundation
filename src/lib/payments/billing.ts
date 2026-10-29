@@ -80,6 +80,8 @@ export type PlanSubscriptionView = {
   trialEnd: string | null;
   currentPeriodEnd: string | null;
   cancelAtPeriodEnd: boolean;
+  nextPayment?: { amountMinor: number; currency: string } | null;
+  contractedPrice?: { amountMinor: number; currency: string; cycle: PlanBillingCycle } | null;
 };
 
 export type PlanBillingState = {

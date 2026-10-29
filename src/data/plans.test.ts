@@ -24,7 +24,7 @@ describe("the 2026-10 price table", () => {
   });
 
   it("prices and commissions match the founder's table", () => {
-    expect(planById("basic")).toMatchObject({ monthlyUsd: 5, yearlyUsd: 50, commissionPercent: 10 });
+    expect(planById("basic")).toMatchObject({ monthlyUsd: 9, yearlyUsd: 90, commissionPercent: 10 });
     expect(planById("starter")).toMatchObject({ monthlyUsd: 19, yearlyUsd: 190, commissionPercent: 4.9 });
     expect(planById("pro")).toMatchObject({ monthlyUsd: 89, yearlyUsd: 890, commissionPercent: 2.9 });
     expect(planById("plus")).toMatchObject({ name: "Enterprise", monthlyUsd: 199, commissionPercent: 1.9 });
@@ -66,6 +66,18 @@ describe("the 2026-10 price table", () => {
 });
 
 describe("the billing portal gate", () => {
+  it.each([
+    ["price_1UP4MvPvg1vJW0IjLNG6YeC9", "monthly"],
+    ["price_1UP4MwPvg1vJW0IjKAq6kpd8", "yearly"],
+    ["price_1UVi6QPvg1vJW0IjKHYmUE09", "monthly"],
+    ["price_1UVi6RPvg1vJW0Ijz87nmj5D", "yearly"],
+  ])("recognizes Basic price %s without offering legacy prices", (id, cycle) => {
+    expect(planAndCycleByStripePriceId(id)).toEqual({ plan: planById("basic"), cycle });
+    expect(planById("basic").stripePriceIds).toEqual({
+      monthlyId: "price_1UVi6QPvg1vJW0IjKHYmUE09",
+      yearlyId: "price_1UVi6RPvg1vJW0Ijz87nmj5D",
+    });
+  });
   it("rejects a placeholder portal configuration id and accepts a real one", () => {
     expect(hasRealPortalConfigurationId("bpc_PLACEHOLDER_basic_starter_pro")).toBe(false);
     expect(hasRealPortalConfigurationId("bpc_1Qabc123")).toBe(true);
