@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   getStripe: vi.fn(),
   isStripeConfigured: vi.fn(() => true),
   reversalCreate: vi.fn(),
+  refundCreate: vi.fn(),
   subscriptionRetrieve: vi.fn(),
   subscriptionCancel: vi.fn(),
   paymentIntentRetrieve: vi.fn(),
@@ -280,6 +281,14 @@ function createAdmin(
             .filter(({ column }) => column === "source" || column === "subscription_id")
             .every(({ column, value }) => state.enrollmentRow?.[column] === value);
           if (matches) {
+            // Modelo do trigger SQL; atomicidade real e provada no smoke SQL.
+            if (this.values.status === "refunded" && state.certificate.status === "issued") {
+              if (state.failAt === "certificates.update") {
+                return { data: null, error: { message: "forced certificate trigger failure" } };
+              }
+              Object.assign(state.certificate, { status: "refund_revoked" });
+              state.certificateWrites += 1;
+            }
             state.enrollmentUpdates.push({ ...this.values, id: this.filterValue("id") });
             if (state.enrollmentRow) Object.assign(state.enrollmentRow, this.values);
           }
@@ -798,6 +807,7 @@ describe("Stripe webhook financial integrity", () => {
     process.env.STRIPE_CONNECT_WEBHOOK_SECRET = "whsec_connect_test";
     mocks.getAdmin.mockReset();
     mocks.reversalCreate.mockReset().mockResolvedValue({ id: "trr_1" });
+    mocks.refundCreate.mockReset();
     mocks.subscriptionRetrieve.mockReset().mockResolvedValue({
       metadata: { purpose: "course_subscription" },
     });
@@ -826,6 +836,7 @@ describe("Stripe webhook financial integrity", () => {
       transfers: {
         createReversal: mocks.reversalCreate,
       },
+      refunds: { create: mocks.refundCreate },
       subscriptions: {
         retrieve: mocks.subscriptionRetrieve,
         cancel: mocks.subscriptionCancel,
@@ -2937,20 +2948,44 @@ describe("Stripe webhook financial integrity", () => {
       expect(admin.state.certificateWrites).toBe(0);
     });
 
-    it("keeps the refund and the access revocation when the certificate write fails", async () => {
+    it.each(["refund", "lost dispute"])("retries %s after an atomic certificate failure without financial effects", async (kind) => {
       const admin = createAdmin("refund", "certificates.update");
+      if (kind === "lost dispute") admin.state.ledger.status = "disputed";
+      // Leituras posteriores veem as escritas ja commitadas, inclusive no retry.
+      admin.state.saleRows = {
+        orders: [admin.state.orderRow],
+        payments: [{ id: "pi_1", order_id: "order_1", status: "succeeded" }],
+        payout_ledger: [admin.state.ledger],
+      };
       mocks.getAdmin.mockReturnValue(admin);
+      const event = kind === "refund"
+        ? fullRefundEvent("evt_full_refund_certificate_down")
+        : connectedDispute("evt_lost_certificate_down", "lost");
 
-      expect((await postEvent(fullRefundEvent("evt_full_refund_certificate_down"))).status).toBe(200);
+      expect((await postEvent(event)).status).toBe(500);
+      expect(admin.state.doneEvents).not.toContain(event.id);
+      expect(admin.state.enrollmentUpdates).not.toContainEqual(
+        expect.objectContaining({ status: "refunded" }),
+      );
+      expect(admin.state.certificate.status).toBe("issued");
+      expect(admin.state.ledger.status).toBe("refunded");
+      if (kind === "refund") {
+        expect(admin.state.orderRow.status).toBe("refunded");
+        expect(admin.state.saleRows.payments[0].status).toBe("refunded");
+      }
 
+      admin.state.failAt = undefined;
+      expect((await postEvent(event)).status).toBe(200);
+      expect(admin.state.doneEvents).toContain(event.id);
+      expect(admin.state.certificate.status).toBe("refund_revoked");
       expect(admin.state.enrollmentUpdates).toContainEqual(
         expect.objectContaining({ id: "user_1__course_1", status: "refunded" }),
       );
-      expect(admin.state.doneEvents).toContain("evt_full_refund_certificate_down");
-      expect(mocks.notifyOps).toHaveBeenCalledWith(expect.objectContaining({
-        event: "stripe.webhook.certificate_revoke_failed",
-        context: { courseId: "course_1", userId: "user_1" },
-      }));
+      expect((await postEvent(event)).status).toBe(200);
+      expect(admin.state.certificateWrites).toBe(1);
+      expect(mocks.reversalCreate).not.toHaveBeenCalled();
+      expect(mocks.subscriptionCancel).not.toHaveBeenCalled();
+      expect(mocks.refundCreate).not.toHaveBeenCalled();
     });
   });
 });

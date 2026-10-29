@@ -137,6 +137,26 @@ jobs:
           actual=$(printf '%s\n' "$output" | grep -F '[order-concurrency] FAIL')
           test "$actual" = "$expected"
 
+      - name: Certificado e reembolso concorrentes (duas conexoes reais)
+        timeout-minutes: 3
+        run: node scripts/check-certificate-concurrency.mjs
+
+      - name: Prova por reversao da trava da matricula
+        timeout-minutes: 3
+        run: |
+          set +e
+          output=$(WITHOUT_CERTIFICATE_ENROLLMENT_LOCK=1 node scripts/check-certificate-concurrency.mjs 2>&1)
+          status=$?
+          set -e
+          printf '%s\n' "$output"
+          test "$status" -ne 0
+          printf '%s\n' "$output" | grep -Fqx '[certificate-concurrency] PASS refund-first-overlap'
+          printf '%s\n' "$output" | grep -Fqx '[certificate-concurrency] PASS function-restored'
+          printf '%s\n' "$output" | grep -Fqx '[certificate-concurrency] PASS cleanup'
+          expected=$(printf '%s\n' '[certificate-concurrency] FAIL refund-first-state' '[certificate-concurrency] FAIL refund-first-rejected' '[certificate-concurrency] FAIL assertions')
+          actual=$(printf '%s\n' "$output" | grep -F '[certificate-concurrency] FAIL')
+          test "$actual" = "$expected"
+
       - name: Real Auth invite security (GoTrue ephemeral)
         timeout-minutes: 5
         run: node scripts/check-invite-auth.mjs
