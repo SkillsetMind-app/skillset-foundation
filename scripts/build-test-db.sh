@@ -240,3 +240,8 @@ prova_red "convite preserva senha anterior a prova do email" \
   'PLATFORM_INVITE_REGRESSION: pre-registered password does not survive the acceptance' -- \
   psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -v without_invite_password_guard=1 -q \
     -f "supabase/tests/20260910064000_convite_nao_herda_senha_de_terceiro_smoke.sql"
+
+prova_red "reembolso sem trigger atomico de certificado" \
+  'CERTIFICATE_REFUND_REGRESSION: refund left issued certificate' -- \
+  psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -v without_certificate_refund_trigger=1 -q \
+    -f "supabase/tests/20261029010000_certificado_reembolso_atomico_smoke.sql"
