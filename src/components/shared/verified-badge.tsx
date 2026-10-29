@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { BadgeCheck } from "lucide-react";
 import { useEffect, useId, useLayoutEffect, useRef, useState, type FocusEvent, type KeyboardEvent } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
@@ -22,8 +23,7 @@ export function SelfReportedTag() {
 }
 
 /**
- * O selo em si: quadrado com check. Desenho próprio de propósito — nada do
- * círculo recortado do Instagram nem do BadgeCheck do Lucide. Cores em
+ * O selo em si: contorno recortado com check, usando o BadgeCheck. Cores em
  * `.verified-seal` (globals.css), que troca no tema escuro.
  *
  * Com `label` vira imagem com nome acessível (cartões, onde o selo está dentro
@@ -39,24 +39,17 @@ export function VerifiedSeal({
   className?: string;
 }) {
   return (
-    <svg
-      viewBox="0 0 16 16"
+    <BadgeCheck
       width={size}
       height={size}
       focusable="false"
+      fill="var(--seal-ground)"
+      stroke="var(--seal-mark)"
+      strokeWidth={2}
       data-verified-seal=""
       className={cn("verified-seal shrink-0", className)}
       {...(label ? { role: "img", "aria-label": label } : { "aria-hidden": true })}
-    >
-      <rect width="16" height="16" rx="4" fill="var(--seal-ground)" />
-      <path
-        d="M4.2 8.3 6.9 11l4.9-5.6"
-        fill="none"
-        stroke="var(--seal-mark)"
-        strokeWidth="2"
-        strokeLinecap="square"
-      />
-    </svg>
+    />
   );
 }
 
