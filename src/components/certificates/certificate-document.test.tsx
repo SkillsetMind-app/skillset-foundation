@@ -97,7 +97,6 @@ describe("document presentation contract (not browser layout proof)", () => {
     expect(documentCss).toContain("color-scheme: light");
     expect(documentCss).toContain("background: #ffffff");
     expect(documentCss).toContain("--cert-ink: #102a43");
-    expect(documentCss).toContain("var(--font-cormorant, Georgia)");
     expect(documentCss).not.toMatch(/var\(--color-/);
     const { container } = show();
     expect(container.innerHTML).not.toMatch(/var\(--color-/);

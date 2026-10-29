@@ -44,10 +44,12 @@ const audit = `addEventListener("load", async () => {
   const box = document.querySelector(".cert-doc")?.getBoundingClientRect();
   const sections = [...document.querySelectorAll(".cert-doc-header,.cert-doc-award,.cert-doc-footer")].map(e => e.getBoundingClientRect());
   const headings = [...document.querySelectorAll(".cert-doc h1,.cert-doc h2")];
+  const family = value => value.split(",")[0].trim().replaceAll('"', "").replaceAll("'", "");
+  const displayFamily = family(getComputedStyle(document.documentElement).getPropertyValue("--font-cormorant"));
   out.textContent = JSON.stringify({ width: innerWidth, scroll: document.documentElement.scrollWidth,
     images: [...document.images].every(i => i.complete && i.naturalWidth > 0),
     fonts: [...document.fonts].filter(f => f.status === "loaded").length,
-    displayFont: headings.every(e => { const s = getComputedStyle(e); return /cormorant/i.test(s.fontFamily) && document.fonts.check(s.fontWeight + " " + s.fontSize + " " + s.fontFamily, e.textContent); }),
+    displayFont: headings.every(e => { const s = getComputedStyle(e); return displayFamily.length > 0 && family(s.fontFamily) === displayFamily && [...document.fonts].some(f => family(f.family) === displayFamily && f.status === "loaded") && document.fonts.check(s.fontWeight + " " + s.fontSize + " " + s.fontFamily, e.textContent); }),
     visible: (!box || (document.querySelectorAll(".cert-doc h1").length === 1 && document.querySelectorAll(".cert-doc h2").length === 1 && sections.length === 3)) && headings.every(e => e.getBoundingClientRect().height > 0 && getComputedStyle(e).visibility === "visible"),
     sections: sections.every((r,i) => r.width > 0 && r.height > 0 && (!i || r.top >= sections[i-1].bottom - 1)),
     documentWidth: box?.width, documentHeight: box?.height,
