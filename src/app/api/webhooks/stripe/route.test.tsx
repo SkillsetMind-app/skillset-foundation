@@ -2951,6 +2951,7 @@ describe("Stripe webhook financial integrity", () => {
     it.each(["refund", "lost dispute"])("retries %s after an atomic certificate failure without financial effects", async (kind) => {
       const admin = createAdmin("refund", "certificates.update");
       if (kind === "lost dispute") admin.state.ledger.status = "disputed";
+      admin.state.ledger.payment_id = "pi_1";
       // Leituras posteriores veem as escritas ja commitadas, inclusive no retry.
       admin.state.saleRows = {
         orders: [admin.state.orderRow],
