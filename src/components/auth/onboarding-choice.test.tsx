@@ -12,7 +12,12 @@ const mocks = vi.hoisted(() => ({
   getUserProfile: vi.fn(),
   updateOnboardingAnswers: vi.fn(),
   completeUserOnboarding: vi.fn(),
+  refreshUser: vi.fn(),
   listeners: [] as Array<(session: unknown) => void>,
+}));
+
+vi.mock("@/components/auth/auth-provider", () => ({
+  useAuth: () => ({ refreshUser: mocks.refreshUser }),
 }));
 
 vi.mock("next/navigation", () => ({

@@ -29,16 +29,16 @@ export function LoadingScreen() {
   const [hasError, setHasError] = useState(false);
 
   useEffect(() => {
+    const timer = window.setTimeout(() => setIsLongWait(true), LONG_WAIT_MS);
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
     if (status === "loading") {
       return;
     }
 
     let cancelled = false;
-    const longWaitTimer = window.setTimeout(() => {
-      if (!cancelled) {
-        setIsLongWait(true);
-      }
-    }, LONG_WAIT_MS);
 
     async function resolveDestination() {
       const startedAt = performance.now();
@@ -91,7 +91,6 @@ export function LoadingScreen() {
 
     return () => {
       cancelled = true;
-      window.clearTimeout(longWaitTimer);
     };
   }, [router, searchParams, status, user]);
 
@@ -105,7 +104,7 @@ export function LoadingScreen() {
         <p className="mt-1 text-[13px] text-[var(--color-ink-soft)]">
           {t("authFlow.loading.description")}
         </p>
-        {isLongWait ? (
+        {isLongWait || hasError ? (
           <button
             type="button"
             onClick={() => window.location.reload()}
@@ -115,7 +114,7 @@ export function LoadingScreen() {
           </button>
         ) : null}
         {hasError ? (
-          <p className="mt-4 rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
+          <p role="alert" className="mt-4 rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
             {t("authFlow.loading.error")}
           </p>
         ) : null}

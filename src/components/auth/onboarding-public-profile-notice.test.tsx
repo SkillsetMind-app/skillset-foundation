@@ -13,6 +13,10 @@ const mocks = vi.hoisted(() => ({
   listeners: [] as Array<(session: unknown) => void>,
 }));
 
+vi.mock("@/components/auth/auth-provider", () => ({
+  useAuth: () => ({ refreshUser: vi.fn().mockResolvedValue(undefined) }),
+}));
+
 vi.mock("next/navigation", () => ({
   useRouter: () => mocks.router,
   useSearchParams: () => mocks.searchParams,

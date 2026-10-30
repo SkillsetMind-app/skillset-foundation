@@ -66,6 +66,7 @@ export function listenToAuthState(callback: (session: AuthSession) => void) {
   // Monotonic sequence so a slow profile read for an older auth event can never
   // overwrite the state produced by a newer one.
   let eventSeq = 0;
+  let active = true;
 
   // Última sessão realmente emitida, para não emitir de novo o que não mudou.
   //
@@ -88,8 +89,10 @@ export function listenToAuthState(callback: (session: AuthSession) => void) {
   // de papéis, então comparar o JSON é confiável e barato. Um falso "mudou"
   // apenas repete o comportamento antigo — o erro seguro é para este lado.
   let lastEmitted: string | null = null;
+  let currentSession: AuthSession = { status: "loading", user: null };
 
   function emit(next: AuthSession) {
+    if (!active) return;
     const signature = JSON.stringify({
       status: next.status,
       user: next.user,
@@ -100,17 +103,25 @@ export function listenToAuthState(callback: (session: AuthSession) => void) {
     }
 
     lastEmitted = signature;
+    currentSession = next;
     callback(next);
   }
 
-  const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+  const { data } = supabase.auth.onAuthStateChange((event, session) => {
+    if (!active) return;
     const user = session?.user ?? null;
     const seq = ++eventSeq;
 
-    if (!user) {
+    if (event === "SIGNED_OUT" || !user) {
       emit({ status: "unauthenticated", user: null });
       return;
     }
+
+    if (currentSession.user && currentSession.user.uid !== user.id) {
+      // A conta anterior nao fica acessivel enquanto a nova e verificada.
+      emit({ status: "loading", user: null });
+    }
+    let mfaApproved = false;
 
     // Supabase holds its internal auth lock while notifying subscribers, and
     // awaiting other Supabase calls inside this callback can deadlock — the app
@@ -122,18 +133,21 @@ export function listenToAuthState(callback: (session: AuthSession) => void) {
       // "authenticated" aqui era o que tornava o TOTP decorativo (A-17): todo
       // guard do app só olhava `user`. O estado próprio, com user nulo, faz o
       // app inteiro se comportar como deslogado; só a tela do código sabe sair.
-      if (await isSecondFactorPending(supabase)) {
+      if (await isSecondFactorPending(supabase, true)) {
         if (seq === eventSeq) {
           emit({ status: "mfa_required", user: null });
         }
         return;
       }
 
+      if (!active || seq !== eventSeq) return;
+      mfaApproved = true;
       await claimCourseAccess(supabase);
       // The on_auth_user_created trigger provisions the profile row
       // at signup, so this only repairs a MISSING row (defensive).
       let profile = await getUserProfile(currentUser.id);
 
+      if (!active || seq !== eventSeq) return;
       if (!profile) {
         await upsertUserProfile({
           uid: currentUser.id,
@@ -156,13 +170,51 @@ export function listenToAuthState(callback: (session: AuthSession) => void) {
     }
 
     window.setTimeout(() => {
-      void resolveProfile(user);
+      if (!active || seq !== eventSeq) return;
+      void resolveProfile(user).catch(() => {
+        // Renovacao e retomada de foco podem conservar a mesma sessao valida.
+        // Falha de MFA, troca de conta e login inicial continuam fechados.
+        if (active && seq === eventSeq) {
+          if ((event === "TOKEN_REFRESHED" || event === "SIGNED_IN") && mfaApproved
+            && currentSession.status === "authenticated"
+            && currentSession.user?.uid === user.id) return;
+          emit({ status: "unauthenticated", user: null });
+        }
+      });
     }, 0);
   });
 
-  return () => {
+  async function refreshUser() {
+    if (!active) throw new Error("Auth subscription is inactive");
+    // Eventos e refreshes disputam a mesma sequencia e a mesma deduplicacao.
+    const seq = ++eventSeq;
+    try {
+      const next = await getCurrentAuthSession((uid) => {
+        if (!active || seq !== eventSeq) throw new Error("Auth refresh was superseded");
+        if (currentSession.user && currentSession.user.uid !== uid) {
+          emit({ status: "loading", user: null });
+        }
+      });
+      if (!active || seq !== eventSeq) throw new Error("Auth refresh was superseded");
+      emit(next);
+    } catch (error) {
+      // A troca de uid ja fechou a conta anterior. Sem sessao valida, sair do
+      // loading permite tentar login; uma geracao antiga nao pode interferir.
+      if (active && seq === eventSeq
+        && (currentSession.status !== "authenticated" || !currentSession.user)) {
+        emit({ status: "unauthenticated", user: null });
+      }
+      throw error;
+    }
+  }
+
+  function unsubscribe() {
+    active = false;
+    eventSeq += 1;
     data.subscription.unsubscribe();
-  };
+  }
+
+  return Object.assign(unsubscribe, { refreshUser });
 }
 
 /**
@@ -171,18 +223,26 @@ export function listenToAuthState(callback: (session: AuthSession) => void) {
  * montar "authenticated" aqui à mão era um caminho paralelo que voltava a
  * tratar uma sessão aal1 como login.
  */
-export async function getCurrentAuthSession(): Promise<AuthSession> {
+export async function getCurrentAuthSession(
+  onIdentity?: (uid: string) => void,
+): Promise<AuthSession> {
   const supabase = getSupabaseBrowserClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  let user: User;
+  try {
+    const result = await supabase.auth.getUser();
+    if (result.error || !result.data.user) {
+      return { status: "unauthenticated", user: null };
+    }
+    user = result.data.user;
+    // Fecha a conta anterior antes de aguardar o perfil de outra identidade.
+    onIdentity?.(user.id);
 
-  if (!user) {
+    if (await isSecondFactorPending(supabase, true)) {
+      return { status: "mfa_required", user: null };
+    }
+  } catch {
+    // Sem confirmar autenticacao/MFA, nenhum snapshot pode liberar a tela.
     return { status: "unauthenticated", user: null };
-  }
-
-  if (await isSecondFactorPending(supabase)) {
-    return { status: "mfa_required", user: null };
   }
 
   await claimCourseAccess(supabase);
@@ -714,11 +774,13 @@ export function isMultiFactorRequiredError(
  */
 async function isSecondFactorPending(
   supabase: SupabaseClient<Database>,
+  failClosed = false,
 ): Promise<boolean> {
   const { data, error } =
     await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
 
   if (error || !data) {
+    if (failClosed) throw new Error("Auth assurance unavailable");
     return false;
   }
 
@@ -734,19 +796,27 @@ async function isSecondFactorPending(
   // `nextLevel` sai "aal1" mesmo numa conta com TOTP. O banco sabe
   // (session_is_strong lê auth.mfa_factors). "Fraca" só vira "deve o código"
   // se a conta está liberada; conta bloqueada é outro caminho.
-  // Falha aqui não tranca ninguém: a tela segue, e o servidor e o banco, que
-  // decidem de verdade, continuam fechando a sessão que deve o código.
+  // Chamadores legados mantem o fallback; listener e snapshot exigem prova
+  // positiva e fecham a interface se esta verificacao falhar.
   try {
     const { data: strong, error: strongError } =
       await supabase.rpc("session_is_strong");
+    if (failClosed && (strongError || typeof strong !== "boolean")) {
+      throw new Error("Auth assurance unavailable");
+    }
     if (strongError || strong !== false) {
       return false;
     }
 
     const { data: allowed, error: allowedError } =
       await supabase.rpc("account_session_allowed");
+    if (failClosed && (allowedError || typeof allowed !== "boolean")) {
+      throw new Error("Auth assurance unavailable");
+    }
+    if (failClosed && !allowed) throw new Error("Auth session is not allowed");
     return !allowedError && allowed === true;
   } catch {
+    if (failClosed) throw new Error("Auth assurance unavailable");
     return false;
   }
 }

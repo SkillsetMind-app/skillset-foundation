@@ -1,9 +1,10 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { AuthSession } from "@/domain/auth";
 
 const supabaseMocks = vi.hoisted(() => ({
   getSupabaseBrowserClient: vi.fn(),
+  fetch: vi.fn(),
 }));
 
 const profileMocks = vi.hoisted(() => ({
@@ -44,12 +45,14 @@ function buildClient() {
   let unsubscribed = false;
 
   const client = {
+    rpc: vi.fn().mockResolvedValue({ data: true, error: null }),
     auth: {
+      getUser: vi.fn().mockResolvedValue({ data: { user: supabaseUser }, error: null }),
       mfa: {
         // Conta sem segundo fator: o Supabase responde aal1/aal1 e o listener
         // segue para o perfil. O portão em si é provado em
         // second-factor-gate.test.tsx.
-        getAuthenticatorAssuranceLevel: async () => ({
+        getAuthenticatorAssuranceLevel: vi.fn().mockResolvedValue({
           data: { currentLevel: "aal1", nextLevel: "aal1" },
           error: null,
         }),
@@ -104,8 +107,157 @@ async function flush() {
 
 describe("listenToAuthState — renovar a sessao nao pode apagar o que a pessoa digitou", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    vi.resetAllMocks();
+    supabaseMocks.fetch.mockRejectedValue(new Error("Network forbidden"));
+    vi.stubGlobal("fetch", supabaseMocks.fetch);
     profileMocks.upsertUserProfile.mockResolvedValue(undefined);
+  });
+
+  afterEach(() => {
+    expect(supabaseMocks.fetch).not.toHaveBeenCalled();
+    vi.unstubAllGlobals();
+  });
+
+  it.each(["profile", "repair-write", "repair-read", "assurance"])(
+    "contains a rejected %s read and emits only a closed session",
+    async (stage) => {
+      const harness = buildClient();
+      supabaseMocks.getSupabaseBrowserClient.mockReturnValue(harness.client);
+      profileMocks.getUserProfile.mockResolvedValue(profile("Teacher"));
+      if (stage === "assurance") {
+        harness.client.auth.mfa.getAuthenticatorAssuranceLevel.mockRejectedValue(new Error("private assurance failure"));
+      } else if (stage === "profile") {
+        profileMocks.getUserProfile.mockRejectedValue(new Error("private profile failure"));
+      } else {
+        profileMocks.getUserProfile.mockResolvedValueOnce(null);
+        if (stage === "repair-write") profileMocks.upsertUserProfile.mockRejectedValue(new Error("private repair failure"));
+        else profileMocks.getUserProfile.mockRejectedValueOnce(new Error("private reread failure"));
+      }
+      const seen: AuthSession[] = [];
+      const unsubscribe = listenToAuthState((session) => seen.push(session));
+      harness.fire("INITIAL_SESSION", { user: supabaseUser });
+      await flush();
+      expect(seen).toEqual([
+        { status: "loading", user: null },
+        { status: "unauthenticated", user: null },
+      ]);
+      expect(JSON.stringify(seen)).not.toContain("private");
+      unsubscribe();
+    },
+  );
+
+  it.each(["TOKEN_REFRESHED", "SIGNED_IN"])("preserves an earlier authenticated user after a same-user %s profile failure", async (event) => {
+    const harness = buildClient();
+    supabaseMocks.getSupabaseBrowserClient.mockReturnValue(harness.client);
+    profileMocks.getUserProfile.mockResolvedValue(profile("Teacher"));
+    const seen: AuthSession[] = [];
+    const unsubscribe = listenToAuthState((session) => seen.push(session));
+    harness.fire("SIGNED_IN", { user: supabaseUser });
+    await flush();
+    profileMocks.getUserProfile.mockRejectedValueOnce(new Error("private outage"));
+    harness.fire(event, { user: supabaseUser });
+    await flush();
+    expect(seen.at(-1)?.status).toBe("authenticated");
+    harness.fire("SIGNED_IN", { user: supabaseUser });
+    await flush();
+    expect(seen.map((session) => session.status)).toEqual([
+      "loading", "authenticated",
+    ]);
+    unsubscribe();
+  });
+
+  it.each(["unsubscribe", "logout", "mfa", "newer-user"])("a rejected refresh emits nothing after %s", async (next) => {
+    const harness = buildClient();
+    supabaseMocks.getSupabaseBrowserClient.mockReturnValue(harness.client);
+    profileMocks.getUserProfile.mockResolvedValue(profile("Teacher"));
+    const seen: AuthSession[] = [];
+    const unsubscribe = listenToAuthState((session) => seen.push(session));
+    // Sem sessao previa no unsubscribe: o catch teria motivo para emitir se
+    // esquecesse a guarda de atividade, mesmo depois da tela desmontada.
+    if (next !== "unsubscribe") {
+      harness.fire("SIGNED_IN", { user: supabaseUser });
+      await flush();
+    }
+    let rejectProfile!: (reason: Error) => void;
+    profileMocks.getUserProfile.mockImplementationOnce(() => new Promise((_, reject) => { rejectProfile = reject; }));
+    const refresh = unsubscribe.refreshUser();
+    void refresh.catch(() => {});
+    await flush();
+    if (next === "unsubscribe") unsubscribe();
+    else if (next === "logout") harness.fire("SIGNED_OUT", null);
+    else if (next === "mfa") {
+      harness.client.auth.mfa.getAuthenticatorAssuranceLevel.mockResolvedValue({
+        data: { currentLevel: "aal1", nextLevel: "aal2" }, error: null,
+      });
+      harness.fire("SIGNED_IN", { user: supabaseUser });
+    } else {
+      profileMocks.getUserProfile.mockResolvedValue({ ...profile("Second"), uid: "user-2" });
+      harness.fire("SIGNED_IN", { user: { ...supabaseUser, id: "user-2" } });
+    }
+    await flush();
+    const before = [...seen];
+    rejectProfile(new Error("private superseded failure"));
+    await expect(refresh).rejects.toThrow("private superseded failure");
+    await flush();
+    expect(seen).toEqual(before);
+    if (next !== "unsubscribe") unsubscribe();
+  });
+
+  it.each(["signout", "newer-user"])("ignores an older rejection after %s", async (next) => {
+    const harness = buildClient();
+    supabaseMocks.getSupabaseBrowserClient.mockReturnValue(harness.client);
+    let rejectOld!: (error: Error) => void;
+    profileMocks.getUserProfile.mockImplementationOnce(() => new Promise((_, reject) => { rejectOld = reject; }));
+    const seen: AuthSession[] = [];
+    const unsubscribe = listenToAuthState((session) => seen.push(session));
+    harness.fire("SIGNED_IN", { user: supabaseUser });
+    await flush();
+    if (next === "signout") harness.fire("SIGNED_OUT", null);
+    else {
+      profileMocks.getUserProfile.mockResolvedValue({ ...profile("Second"), uid: "user-2" });
+      harness.fire("SIGNED_IN", { user: { ...supabaseUser, id: "user-2" } });
+    }
+    await flush();
+    const before = [...seen];
+    rejectOld(new Error("private stale failure"));
+    await flush();
+    expect(seen).toEqual(before);
+    expect(seen.at(-1)?.user?.uid ?? null).toBe(next === "signout" ? null : "user-2");
+    unsubscribe();
+  });
+
+  it("does not read a queued profile after unsubscribe", async () => {
+    const harness = buildClient();
+    supabaseMocks.getSupabaseBrowserClient.mockReturnValue(harness.client);
+    profileMocks.getUserProfile.mockResolvedValue(profile("Teacher"));
+    const seen: AuthSession[] = [];
+    const unsubscribe = listenToAuthState((session) => seen.push(session));
+    harness.fire("SIGNED_IN", { user: supabaseUser });
+    unsubscribe();
+    await flush();
+    expect(profileMocks.getUserProfile).not.toHaveBeenCalled();
+    expect(seen).toEqual([{ status: "loading", user: null }]);
+  });
+
+  it.each(["resolve", "reject"])("does not emit when an in-flight profile settles after unsubscribe: %s", async (result) => {
+    const harness = buildClient();
+    supabaseMocks.getSupabaseBrowserClient.mockReturnValue(harness.client);
+    let resolveProfile!: (value: unknown) => void;
+    let rejectProfile!: (error: Error) => void;
+    profileMocks.getUserProfile.mockImplementation(() => new Promise((resolve, reject) => {
+      resolveProfile = resolve;
+      rejectProfile = reject;
+    }));
+    const seen: AuthSession[] = [];
+    const unsubscribe = listenToAuthState((session) => seen.push(session));
+    harness.fire("SIGNED_IN", { user: supabaseUser });
+    await flush();
+    unsubscribe();
+    if (result === "resolve") resolveProfile(profile("Teacher"));
+    else rejectProfile(new Error("private late failure"));
+    await flush();
+    expect(seen).toEqual([{ status: "loading", user: null }]);
+    expect(harness.wasUnsubscribed()).toBe(true);
   });
 
   it("nao reemite quando o conteudo da sessao e identico", async () => {
