@@ -263,9 +263,6 @@ export function SignupForm() {
           {" "}
           <Link
             href="/pricing"
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label={t("auth.signup.plansLinkLabel")}
             className="font-semibold text-[var(--color-primary)] underline underline-offset-4"
           >
             {t("auth.signup.plansLink")}

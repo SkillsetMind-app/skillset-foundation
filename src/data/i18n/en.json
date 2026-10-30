@@ -249,7 +249,6 @@
       "introLearner": "This starts you as a learner. You can add the educator side later from your profile.",
       "introEducator": "Creating an account does not start a paid plan. Publishing and selling require a plan: {days} days free on your first plan, card required, then automatic renewal. Cancel in Billing before the trial ends to avoid the subscription charge. Sales fees apply.",
       "plansLink": "Plans and pricing",
-      "plansLinkLabel": "Plans and pricing (opens in a new tab)",
       "roleQuestion": "What brings you to SkillsetMind?",
       "roleLearn": "I want to learn",
       "roleTeach": "I want to teach",

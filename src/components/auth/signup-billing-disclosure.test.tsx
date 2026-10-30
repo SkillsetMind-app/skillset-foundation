@@ -46,7 +46,7 @@ const expected = {
     renewal: "automatic renewal",
     cancellation: "Cancel in Billing before the trial ends",
     fees: "Sales fees apply.",
-    link: "Plans and pricing (opens in a new tab)",
+    link: "Plans and pricing",
   },
   es: {
     account: "Crear una cuenta no inicia un plan de pago.",
@@ -55,7 +55,7 @@ const expected = {
     renewal: "renovación automática",
     cancellation: "Cancela en Facturación antes de que termine la prueba",
     fees: "Se aplican comisiones por venta.",
-    link: "Planes y precios (se abre en otra pestaña)",
+    link: "Planes y precios",
   },
 };
 
@@ -89,8 +89,7 @@ function disclosure(locale: "en" | "es") {
   }
   expect(notice).not.toHaveTextContent("{days}");
   expect(link).toHaveAttribute("href", "/pricing");
-  expect(link).toHaveAttribute("target", "_blank");
-  expect(link).toHaveAttribute("rel", "noopener noreferrer");
+  expect(link).not.toHaveAttribute("target");
   return notice!;
 }
 
