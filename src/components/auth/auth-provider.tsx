@@ -8,6 +8,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -19,7 +20,6 @@ import {
   getUserProfile,
 } from "@/lib/data/user-profiles";
 import {
-  getCurrentAuthSession,
   getSignupLegalVersions,
   listenToAuthState,
   signOutOfSkillsetMind,
@@ -58,6 +58,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     status: "loading",
     user: null,
   });
+  const subscription = useRef<ReturnType<typeof listenToAuthState> | null>(null);
 
   // Read once during the first render rather than in an effect: an effect would
   // paint the un-previewed product first and then swap it, and this base treats
@@ -82,7 +83,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    return listenToAuthState(setSession);
+    const listener = listenToAuthState(setSession);
+    subscription.current = listener;
+    return () => {
+      subscription.current = null;
+      listener();
+    };
   }, []);
 
   // Mounted on every page, once per full load: the landing's utm_*/referrer,
@@ -107,11 +113,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [session.status, session.user]);
 
   async function refreshUser() {
-    // getUser() hits the server, so email_confirmed_at/roles reflect the latest
-    // state (the Supabase equivalent of Firebase's currentUser.reload()). Passa
-    // pelo mesmo portão de segundo fator do listener: montar a sessão aqui à
-    // mão era um caminho paralelo que voltava a marcar aal1 como logado.
-    setSession(await getCurrentAuthSession());
+    // O listener coordena tambem o snapshot: uma leitura atrasada nao pode
+    // desfazer onboarding, logout, troca de conta ou exigencia de MFA.
+    if (!subscription.current) throw new Error("Auth subscription is inactive");
+    await subscription.current.refreshUser();
   }
 
   const isRealAdmin = session.user?.roles?.includes("admin") ?? false;

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
+import { useAuth } from "@/components/auth/auth-provider";
 import {
   TurnstileWidget,
   isCaptchaEnabled,
@@ -105,6 +106,7 @@ const timezoneOptions = [
 
 export function OnboardingChoice() {
   const router = useRouter();
+  const { refreshUser } = useAuth();
   const { locale, t } = useTranslation();
   const searchParams = useSearchParams();
   const pathIntent = useMemo(
@@ -420,6 +422,7 @@ export function OnboardingChoice() {
         },
       });
 
+      await refreshUser();
       router.push(selectedPath.href);
     } catch {
       setError(t("onboarding.errorFinish"));

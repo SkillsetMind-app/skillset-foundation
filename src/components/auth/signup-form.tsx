@@ -12,6 +12,7 @@ import {
   isCaptchaEnabled,
 } from "@/components/auth/turnstile-widget";
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { PLAN_TRIAL_DAYS } from "@/data/plans";
 import { isGoogleAuthEnabled } from "@/lib/auth/providers";
 import {
   isStrongPassword,
@@ -80,7 +81,7 @@ export function SignupForm() {
     intent === "teacher"
       ? "auth.signup.introEducator"
       : "auth.signup.introLearner",
-  );
+  ).replace("{days}", String(PLAN_TRIAL_DAYS));
   const signinHref = getAuthRoute("signin", intent, returnTo);
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
@@ -254,6 +255,23 @@ export function SignupForm() {
     }
   }
 
+  const introNode = (
+    <p className="text-xs leading-5 text-[var(--color-ink-soft)]">
+      {intro}
+      {intent === "teacher" ? (
+        <>
+          {" "}
+          <Link
+            href="/pricing"
+            className="font-semibold text-[var(--color-primary)] underline underline-offset-4"
+          >
+            {t("auth.signup.plansLink")}
+          </Link>
+        </>
+      ) : null}
+    </p>
+  );
+
   const errorNode = error ? (
     <p
       role="alert"
@@ -342,7 +360,7 @@ export function SignupForm() {
             </div>
           </fieldset>
 
-          <p className="text-xs leading-5 text-[var(--color-ink-soft)]">{intro}</p>
+          {introNode}
 
           <div className="grid gap-3">
             <label className="grid gap-1.5 text-sm font-semibold text-[var(--color-ink)]">
@@ -432,6 +450,7 @@ export function SignupForm() {
         </>
       ) : (
         <>
+          {intent === "teacher" ? introNode : null}
           <label className="grid gap-1.5 text-sm font-semibold text-[var(--color-ink)]">
             {t("auth.password")}
             <span className="relative block">
