@@ -398,7 +398,8 @@
       "description": "Para psicólogos, coaches y profesionales del desarrollo personal que ya enseñan en vivo: vende tu curso y comunidad. Prueba 14 días gratis. Cobras en tu Stripe."
     },
     "hero": {
-      "eyebrow": "Para psicólogos, coaches y profesionales del desarrollo personal",
+      "sloganBenefit": "Convierte tu conocimiento en dinero",
+      "sloganMeans": "creando tu propio negocio digital con SkillsetMind.",
       "title1": "Tu conocimiento cambia vidas.",
       "title2": "Ahora conviértelo en un curso.",
       "sub": "Para psicólogos, coaches y profesionales del desarrollo personal que ya enseñan en vivo y quieren vender su método como un curso con comunidad de pago. Empieza con 14 días gratis; después Basic cuesta US$9 al mes. Se requiere tarjeta; cancela antes de terminar la prueba para evitar el cobro de la suscripción. Se aplican tarifas por venta. Nosotros manejamos el checkout y el aula — tus compradores pagan directo a tu cuenta de Stripe. Tú enseñas.",
