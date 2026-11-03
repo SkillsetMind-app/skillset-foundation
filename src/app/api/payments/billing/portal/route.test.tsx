@@ -118,10 +118,8 @@ describe("POST /api/payments/billing/portal", () => {
     expect(mocks.createPortalSession.mock.calls[0][0].locale).toBe("es");
   });
 
-  // Control: a real subscriber opens the portal on THEIR customer and returns
-  // to the subscriptions tab, not the site root.
-  it("opens the portal on the stored customer and returns to billing", async () => {
-    mocks.getUserRow.mockResolvedValue({ stripe_customer_id: "cus_1" });
+  it.each(["student", "teacher"])("keeps history accessible without an active plan and returns a %s to billing overview", async (role) => {
+    mocks.getUserRow.mockResolvedValue({ stripe_customer_id: "cus_1", current_plan_id: "free", roles: [role] });
 
     const response = await POST();
     const body = await response.json();
@@ -130,7 +128,15 @@ describe("POST /api/payments/billing/portal", () => {
     expect(body.url).toBe("https://billing.stripe.test/session/live");
     expect(mocks.createPortalSession.mock.calls[0][0].customer).toBe("cus_1");
     expect(mocks.createPortalSession.mock.calls[0][0].return_url).toBe(
-      "https://skillset.test/account/billing?tab=subscriptions",
+      "https://skillset.test/account/billing?tab=overview",
     );
+  });
+
+  it("preserves the authentication and MFA rejection before creating a portal", async () => {
+    mocks.requireUserId.mockRejectedValue(new PaymentError("Second factor required.", 403));
+    expect((await POST()).status).toBe(403);
+    expect(mocks.enforceRateLimit).not.toHaveBeenCalled();
+    expect(mocks.getUserRow).not.toHaveBeenCalled();
+    expect(mocks.createPortalSession).not.toHaveBeenCalled();
   });
 });

@@ -138,7 +138,7 @@ describe("billing locale with real dictionaries", () => {
     mocks.user.roles = ["student", "teacher"];
     mount(<BillingTabs />);
     expect(screen.getByRole("button", { name: "Suscripción" })).toBeTruthy();
-    expect(screen.getByText("Suscripción activa")).toBeTruthy();
+    expect(screen.getByText("Plan del creador")).toBeTruthy();
     cleanup();
     mocks.tab = "subscriptions";
     mount(<BillingTabs />);
