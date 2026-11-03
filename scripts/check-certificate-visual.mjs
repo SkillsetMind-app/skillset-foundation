@@ -40,6 +40,8 @@ const audit = `addEventListener("load", async () => {
   const out = document.createElement("output"); out.id = "qa-metrics"; out.hidden = true;
   document.body.append(out);
   try {
+  // Lazy images can finish after window.load; a failed decode must still fail QA.
+  await Promise.all([...document.images].map(image => image.decode()));
   await document.fonts.ready;
   const box = document.querySelector(".cert-doc")?.getBoundingClientRect();
   const sections = [...document.querySelectorAll(".cert-doc-header,.cert-doc-award,.cert-doc-footer")].map(e => e.getBoundingClientRect());
