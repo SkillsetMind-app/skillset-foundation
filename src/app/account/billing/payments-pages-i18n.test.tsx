@@ -61,8 +61,8 @@ it.each(["en", "es"] as const)("does not treat an unverified session reference a
   render(await BillingReturnPage({ searchParams: Promise.resolve({ session_id: "session-reference-fixture" }) }));
   expect(screen.getByRole("heading", { name: locale === "es" ? "Revisa el estado de tu suscripción." : "Review your subscription status." })).toBeInTheDocument();
   expect(screen.getByText(locale === "es"
-    ? "Revisa tu plan actual en Facturación. Si acabas de completar el proceso de pago, espera unos momentos a que se actualicen los datos. No inicies otro proceso de pago mientras los revisas."
-    : "Review your current plan in Billing. If you just completed checkout, allow a few moments for the details to update. Do not start another checkout while checking.")).toBeInTheDocument();
+    ? "Revisa tu plan actual en Facturación. Si acabas de completar el proceso de pago, espera unos momentos y selecciona Actualizar estado de facturación. No inicies otro proceso de pago mientras lo compruebas."
+    : "Review your current plan in Billing. If you just completed checkout, allow a few moments, then select Refresh billing status. Do not start another checkout while checking.")).toBeInTheDocument();
   expect(screen.queryByText(/Checkout complete|Pago completado|Stripe finished|Stripe completó/)).toBeNull();
   expect(document.querySelector(".lucide-check")).toBeNull();
   expect(screen.queryByText(/session-reference-fixture/)).toBeNull();
