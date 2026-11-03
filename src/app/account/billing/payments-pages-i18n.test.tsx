@@ -56,13 +56,18 @@ it.each(["en", "es"] as const)("uses real server dictionaries for upgrade parame
   expect(mocks.checkout).not.toHaveBeenCalled();
 });
 
-it.each(["en", "es"] as const)("keeps the original checkout-complete message and never echoes the session reference in %s", async (locale) => {
+it.each(["en", "es"] as const)("does not treat an unverified session reference as checkout or payment confirmation in %s", async (locale) => {
   mocks.locale = locale;
   render(await BillingReturnPage({ searchParams: Promise.resolve({ session_id: "session-reference-fixture" }) }));
-  expect(screen.getByRole("heading", { name: locale === "es" ? "Pago completado." : "Checkout complete." })).toBeInTheDocument();
-  expect(screen.getByText(locale === "es" ? /Stripe completó tu pago/ : /Stripe finished your checkout/)).toBeInTheDocument();
+  expect(screen.getByRole("heading", { name: locale === "es" ? "Revisa el estado de tu suscripción." : "Review your subscription status." })).toBeInTheDocument();
+  expect(screen.getByText(locale === "es"
+    ? "Revisa tu plan actual en Facturación. Si acabas de completar el proceso de pago, espera unos momentos y selecciona Actualizar estado de facturación. No inicies otro proceso de pago mientras lo compruebas."
+    : "Review your current plan in Billing. If you just completed checkout, allow a few moments, then select Refresh billing status. Do not start another checkout while checking.")).toBeInTheDocument();
+  expect(screen.queryByText(/Checkout complete|Pago completado|Stripe finished|Stripe completó/)).toBeNull();
+  expect(document.querySelector(".lucide-check")).toBeNull();
   expect(screen.queryByText(/session-reference-fixture/)).toBeNull();
-  expect(screen.getByRole("link", { name: locale === "es" ? "Volver a la facturación" : "Back to billing" })).toHaveAttribute("href", "/account/billing?tab=subscriptions");
+  expect(screen.getByRole("link", { name: locale === "es" ? "Volver a la facturación" : "Back to billing" })).toHaveAttribute("href", "/account/billing?tab=overview");
+  expect(document.querySelector('a[href="/teach"]')).toBeNull();
   expect(mocks.guard).toHaveBeenCalledWith(["auth.signOut"]);
   expect(mocks.checkout).not.toHaveBeenCalled();
 });
@@ -70,8 +75,19 @@ it.each(["en", "es"] as const)("keeps the original checkout-complete message and
 it.each(["en", "es"] as const)("handles a return without session reference in %s", async (locale) => {
   mocks.locale = locale;
   render(await BillingReturnPage({}));
-  expect(screen.getByRole("heading", { name: locale === "es" ? "No hay ningún pago reciente." : "No recent checkout." })).toBeInTheDocument();
-  expect(screen.getByRole("link", { name: locale === "es" ? "Ir a la facturación" : "Go to billing" })).toHaveAttribute("href", "/account/billing?tab=subscriptions");
+  expect(screen.getByRole("heading", { name: locale === "es" ? "Estado del pago sin verificar." : "Checkout status not verified." })).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: locale === "es" ? "Volver a la facturación" : "Back to billing" })).toHaveAttribute("href", "/account/billing?tab=overview");
+});
+
+it.each([
+  { session_id: "" }, { session_id: "   " }, { session_id: ["forged-reference", "another-reference"] },
+])("does not confirm checkout from arbitrary return parameters: $session_id", async ({ session_id }) => {
+  mocks.locale = "en";
+  render(await BillingReturnPage({ searchParams: Promise.resolve({ session_id }) }));
+  expect(screen.queryByText(/Checkout complete|Stripe finished/)).toBeNull();
+  expect(screen.queryByText(/forged-reference|another-reference/)).toBeNull();
+  expect(screen.getByRole("link", { name: "Back to billing" })).toHaveAttribute("href", "/account/billing?tab=overview");
+  expect(mocks.checkout).not.toHaveBeenCalled();
 });
 
 it.each(["en", "es"] as const)("localizes activation pages on the server and preserves creator authorization in %s", async (locale) => {

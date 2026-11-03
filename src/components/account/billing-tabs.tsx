@@ -2,6 +2,7 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { startTransition, useEffect, useMemo, useRef, useState } from "react";
+import { RefreshCw } from "lucide-react";
 
 import { PlansPanel } from "@/components/account/plans-panel";
 import { useTranslation } from "@/components/i18n/i18n-provider";
@@ -9,7 +10,7 @@ import { useAuth } from "@/components/auth/auth-provider";
 import { HorizontalTabs } from "@/components/shared/horizontal-tabs";
 import { ShortId } from "@/components/shared/short-id";
 import { StatusChip } from "@/components/shared/status-chip";
-import { planById, type PlanId } from "@/data/plans";
+import { plans } from "@/data/plans";
 import type { Order } from "@/domain/order";
 import type { UserProfile } from "@/domain/user-profile";
 import { subscribeToUserOrders } from "@/lib/data/orders";
@@ -17,7 +18,7 @@ import { subscribeToUserProfile } from "@/lib/data/user-profiles";
 import { useModalFocus } from "@/lib/a11y/use-modal-focus";
 import { hasPermission } from "@/lib/permissions";
 import { toDate } from "@/lib/format-date";
-import { openBillingPortal, requestOrderRefund } from "@/lib/payments/billing";
+import { fetchPlanBillingState, openBillingPortal, requestOrderRefund, type PlanBillingState } from "@/lib/payments/billing";
 
 const billingTabs = [
   { value: "overview", label: "Overview" },
@@ -25,6 +26,13 @@ const billingTabs = [
   { value: "payment-methods", label: "Payment methods" },
   { value: "subscriptions", label: "Subscription" },
 ];
+
+const subscriptionStatusKeys: Record<string, string> = {
+  active: "statusChip.active",
+  trialing: "teach.subscriptions.statusTrialing",
+  past_due: "teach.subscriptions.statusPastDue",
+  unpaid: "teach.subscriptions.statusUnpaid",
+};
 
 function formatMoney(amountMinor: number, currency: string, locale: string) {
   return new Intl.NumberFormat(locale, {
@@ -53,18 +61,14 @@ export function BillingTabs() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { status, user } = useAuth();
-  // The Subscription tab and the plan line are the creator's plan, which only
-  // a teacher pays for (same gate as /teach). A learner sees what they bought.
+  // Acesso do criador pode vir de concessao, sem assinatura paga.
   const canTeach = hasPermission({ roles: user?.roles }, "teacherStudio.access");
   const requestedTab = searchParams.get("tab") ?? "overview";
   const activeTab = requestedTab === "subscriptions" && !canTeach ? "overview" : requestedTab;
 
   const [orders, setOrders] = useState<Order[]>([]);
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  // "loading" until the first profile snapshot resolves. The Overview waits on
-  // this so it never flashes "Free subscription" from a still-null profile
-  // during the orders-vs-profile load race; "error" lets it show plan/portal as
-  // unknown instead of asserting Free when the listener fails.
+  // Perfil ausente ou ilegivel nao comprova acesso gratuito.
   const [profileStatus, setProfileStatus] = useState<
     "loading" | "ready" | "error"
   >("loading");
@@ -96,9 +100,7 @@ export function BillingTabs() {
     );
   }, [user]);
 
-  // Profile feeds the current plan + whether a Stripe customer exists (so the
-  // portal button is only offered when it can actually open). Failure is
-  // non-fatal — the overview just falls back to the Free plan label.
+  // Customer permite consultar historico; nao comprova uma assinatura.
   useEffect(() => {
     if (!user) {
       return;
@@ -166,6 +168,7 @@ export function BillingTabs() {
         ) : (
           <OverviewTab
             orders={sortedOrders}
+            userId={user?.uid ?? null}
             profile={profile}
             profileStatus={profileStatus}
             isLoading={isLoading}
@@ -174,6 +177,7 @@ export function BillingTabs() {
             authResolving={authResolving}
             showPlan={canTeach}
             onSeePurchases={() => handleTabChange("purchases")}
+            onSeePlans={() => handleTabChange("subscriptions")}
           />
         )}
       </div>
@@ -220,6 +224,7 @@ function summarisePurchases(orders: Order[]) {
 
 function OverviewTab({
   orders,
+  userId,
   profile,
   profileStatus,
   isLoading,
@@ -228,15 +233,41 @@ function OverviewTab({
   authResolving,
   showPlan,
   onSeePurchases,
+  onSeePlans,
 }: OrderTabProps & {
+  userId: string | null;
   profile: UserProfile | null;
   profileStatus: "loading" | "ready" | "error";
   showPlan: boolean;
   onSeePurchases: () => void;
+  onSeePlans: () => void;
 }) {
   const { t, locale } = useTranslation();
-  // Wait on the profile too, so the plan/portal block never renders a default
-  // "Free" from a not-yet-loaded profile during the orders-vs-profile race.
+  const [refreshVersion, setRefreshVersion] = useState(0);
+  const profilePlanId = profile?.currentPlanId;
+  const profileCustomerId = profile?.stripeCustomerId;
+  const profileUpdatedAt = profile?.updatedAt;
+  const billingRequest = useMemo(() => ({
+    userId, profileStatus, profilePlanId, profileCustomerId, profileUpdatedAt, refreshVersion,
+  }), [userId, profileStatus, profilePlanId, profileCustomerId, profileUpdatedAt, refreshVersion]);
+  const [billingRead, setBillingRead] = useState<{
+    request: typeof billingRequest;
+    state: PlanBillingState | null;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!isSignedIn || !showPlan || !billingRequest.userId || billingRequest.profileStatus === "loading") return;
+    let cancelled = false;
+    fetchPlanBillingState()
+      .then((state) => {
+        if (!cancelled) setBillingRead({ request: billingRequest, state });
+      })
+      .catch(() => {
+        if (!cancelled) setBillingRead({ request: billingRequest, state: null });
+      });
+    return () => { cancelled = true; };
+  }, [isSignedIn, showPlan, billingRequest]);
+
   if (authResolving || isLoading || profileStatus === "loading") {
     return <BillingNotice>{t("accountBilling.loadingOverview")}</BillingNotice>;
   }
@@ -251,11 +282,30 @@ function OverviewTab({
 
   const { courseCount, refundCount, spentMinor, currency } =
     summarisePurchases(orders);
-  // Profile listener failed: we don't know the plan, so show it as unknown
-  // rather than asserting "Free" (which would misstate a paying user's plan).
   const profileFailed = profileStatus === "error";
-  const planId: PlanId = profile?.currentPlanId ?? "free";
-  const planName = profileFailed ? t("accountBilling.unavailable") : planId === "free" ? t("accountPlans.withoutSubscription") : planById(planId).name;
+  // Cada leitura pertence ao snapshot do perfil; resposta antiga nao vale como atual.
+  const billing = billingRead?.request === billingRequest ? billingRead.state : undefined;
+  const subscription = billing?.subscription;
+  const accessPlanName = profileFailed || !profilePlanId
+    ? t("accountBilling.unavailable")
+    : profilePlanId === "free"
+      ? t("accountBilling.defaultAccess")
+      : plans.find((plan) => plan.id === profilePlanId)?.name ?? t("accountBilling.unavailable");
+  const planName = subscription
+    ? plans.find((plan) => plan.id === subscription.planId)?.name ?? t("accountBilling.unavailable")
+    : billing
+      ? t("accountBilling.noStripeSubscription")
+      : t(billing === null ? "accountBilling.unavailable" : "accountPlans.loading");
+  const planDetails = showPlan ? [
+    [t("accountBilling.accessPlan"), accessPlanName],
+    [t("accountBilling.subscriptionLabel"), planName],
+    ...(subscription ? [
+      [t("accountBilling.subscriptionStatus"), t(subscriptionStatusKeys[subscription.status] ?? "accountBilling.unavailable")],
+      [t("accountPlans.cycle"), t(subscription.cycle === "monthly" || subscription.cycle === "yearly"
+        ? `accountPlans.cycles.${subscription.cycle}.label`
+        : "accountBilling.unavailable")],
+    ] : []),
+  ] : [];
   const hasCustomer = Boolean(profile?.stripeCustomerId);
 
   return (
@@ -270,24 +320,47 @@ function OverviewTab({
         </p>
         <p className="mt-1 text-sm text-[var(--color-ink-soft)]">
           {t(courseCount === 1 ? "accountBilling.coursePurchased" : "accountBilling.coursesPurchased").replace("{count}", () => String(courseCount))}
-          {profileFailed || !showPlan ? "" : ` · ${t("accountBilling.planSubscription").replace("{plan}", () => planName)}`}
         </p>
 
         <dl className="mt-5 grid gap-px overflow-hidden rounded-md border fine-rule bg-[var(--color-line)]">
           {[
             [t("accountBilling.coursesLabel"), String(courseCount)],
-            ...(showPlan ? [[t("accountBilling.subscriptionLabel"), planName]] : []),
+            ...planDetails,
             [t("accountBilling.refunds"), String(refundCount)],
           ].map(([label, value]) => (
             <div
               key={label}
-              className="flex items-center justify-between gap-4 bg-white px-4 py-3 text-sm"
+              className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 bg-white px-4 py-3 text-sm"
             >
               <dt className="text-[var(--color-ink-soft)]">{label}</dt>
-              <dd className="font-semibold text-[var(--color-ink)]">{value}</dd>
+              <dd className="min-w-0 break-words font-semibold text-[var(--color-ink)]">{value}</dd>
             </div>
           ))}
         </dl>
+
+        {showPlan && subscription?.cancelAtPeriodEnd ? (
+          <p className="mt-3 text-sm text-[var(--color-ink-soft)]">
+            {t("accountBilling.cancellationScheduled")}
+          </p>
+        ) : null}
+        {showPlan && billing === null ? (
+          <p role="status" className="mt-3 text-sm text-[var(--color-ink-soft)]">
+            {t("accountBilling.detailsError")}
+          </p>
+        ) : null}
+
+        {showPlan ? (
+          <button
+            type="button"
+            onClick={() => setRefreshVersion((version) => version + 1)}
+            disabled={billing === undefined}
+            aria-busy={billing === undefined}
+            className="button-outline mt-3 max-w-full gap-2 whitespace-normal px-4 py-2 text-sm disabled:opacity-60"
+          >
+            <RefreshCw size={16} aria-hidden="true" className="shrink-0" />
+            {t("accountBilling.refreshStatus")}
+          </button>
+        ) : null}
 
         <button
           type="button"
@@ -306,8 +379,15 @@ function OverviewTab({
         <p className="mt-2 text-sm leading-7 text-[var(--color-ink-soft)]">
           {t("accountBilling.portalBody")}
         </p>
+        {showPlan && billing?.subscription === null ? (
+          <button type="button" onClick={onSeePlans} className="button-solid mt-3 px-4 py-2 text-sm">
+            {t("accountBilling.reviewPlans")}
+          </button>
+        ) : null}
         {hasCustomer ? (
-          <PortalButton label={t("accountBilling.openPortal")} />
+          <PortalButton label={t(showPlan
+            ? subscription ? "accountPlans.manage" : "accountBilling.billingHistory"
+            : "accountBilling.openPortal")} />
         ) : (
           <p className="mt-3 rounded-md border fine-rule bg-[var(--color-surface-soft)] px-4 py-3 text-sm leading-6 text-[var(--color-ink-soft)]">
             {t(profileFailed ? "accountBilling.detailsError" : "accountBilling.portalAfterPurchase")}

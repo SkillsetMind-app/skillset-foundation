@@ -123,7 +123,8 @@ describe("billing locale with real dictionaries", () => {
   it("a learner sees what they bought, with no creator plan", () => {
     mount(<BillingTabs />);
     expect(screen.queryByRole("button", { name: "Suscripción" })).toBeNull();
-    expect(screen.queryByText("Suscripción activa")).toBeNull();
+    expect(screen.queryByText("Acceso actual")).toBeNull();
+    expect(screen.queryByText("Suscripción de Stripe")).toBeNull();
     expect(screen.queryByText(/suscripción Free/i)).toBeNull();
     expect(screen.getByText("Cursos comprados")).toBeTruthy();
     cleanup();
@@ -138,7 +139,8 @@ describe("billing locale with real dictionaries", () => {
     mocks.user.roles = ["student", "teacher"];
     mount(<BillingTabs />);
     expect(screen.getByRole("button", { name: "Suscripción" })).toBeTruthy();
-    expect(screen.getByText("Suscripción activa")).toBeTruthy();
+    expect(screen.getByText("Acceso actual")).toBeTruthy();
+    expect(screen.getByText("Suscripción de Stripe")).toBeTruthy();
     cleanup();
     mocks.tab = "subscriptions";
     mount(<BillingTabs />);
