@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { RotateCw } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
 
@@ -93,6 +94,7 @@ export function TurnstileWidget({
   const containerRef = useRef<HTMLDivElement | null>(null);
   const widgetIdRef = useRef<string | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
+  const [challengeFailed, setChallengeFailed] = useState(false);
   // Keep the latest onToken without making it a mount-effect dep (which would
   // re-render the widget on every parent render).
   const onTokenRef = useRef(onToken);
@@ -115,12 +117,24 @@ export function TurnstileWidget({
         return;
       }
       const chosen = typeof sizeRef.current === "function" ? sizeRef.current(el.clientWidth) : sizeRef.current;
+      const failChallenge = () => {
+        if (!cancelled) {
+          onTokenRef.current("");
+          setChallengeFailed(true);
+        }
+        return true;
+      };
       widgetIdRef.current = window.turnstile.render(el, {
         sitekey: SITE_KEY,
         ...(chosen ? { size: chosen } : {}),
-        callback: (token: string) => onTokenRef.current(token),
+        callback: (token: string) => {
+          if (cancelled) return;
+          setChallengeFailed(false);
+          onTokenRef.current(token);
+        },
         "expired-callback": () => onTokenRef.current(""),
-        "error-callback": () => onTokenRef.current(""),
+        "error-callback": failChallenge,
+        "timeout-callback": failChallenge,
       });
     });
 
@@ -133,10 +147,22 @@ export function TurnstileWidget({
     };
   }, []);
 
+  const retryChallenge = useCallback(() => {
+    if (window.turnstile && widgetIdRef.current) {
+      setChallengeFailed(false);
+      onTokenRef.current("");
+      try {
+        window.turnstile.reset(widgetIdRef.current);
+      } catch {
+        setChallengeFailed(true);
+      }
+    }
+  }, []);
+
   useEffect(() => {
     if (resetSignal > 0 && window.turnstile && widgetIdRef.current) {
-      window.turnstile.reset(widgetIdRef.current);
       onTokenRef.current("");
+      window.turnstile.reset(widgetIdRef.current);
     }
   }, [resetSignal]);
 
@@ -152,5 +178,21 @@ export function TurnstileWidget({
       </p>
     );
   }
-  return <div ref={containerRef} className="flex justify-center" />;
+  return (
+    <div className="grid min-w-0 gap-3">
+      {/* Manter o widget montado permite recuperacao sem apagar o formulario. */}
+      <div ref={containerRef} className="flex justify-center" />
+      {challengeFailed ? (
+        <div className="rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] p-3">
+          <p role="alert" className="text-sm leading-5 text-[var(--color-danger-fg)]">
+            {t("authCaptcha.challengeError")}
+          </p>
+          <button type="button" onClick={retryChallenge} className="button-outline mt-3 min-h-11 gap-2 px-3 py-2 text-sm">
+            <RotateCw size={16} aria-hidden="true" />
+            {t("authCaptcha.retry")}
+          </button>
+        </div>
+      ) : null}
+    </div>
+  );
 }

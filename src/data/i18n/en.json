@@ -4623,6 +4623,8 @@
     "default": "Profile picture"
   },
   "authCaptcha": {
+    "challengeError": "The security check could not finish. Try again below. If it keeps failing, reload this page or contact support.",
+    "retry": "Retry security check",
     "loadError": "The security check could not load, so sign-in is blocked. Turn off any ad blocker for this site or switch networks, then reload the page."
   },
   "guestCheckout": {

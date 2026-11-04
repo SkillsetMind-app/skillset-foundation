@@ -4623,6 +4623,8 @@
     "default": "Foto de perfil"
   },
   "authCaptcha": {
+    "challengeError": "No se pudo completar la verificaci\u00f3n de seguridad. Vuelve a intentarlo abajo. Si sigue fallando, recarga esta p\u00e1gina o contacta con soporte.",
+    "retry": "Reintentar verificaci\u00f3n",
     "loadError": "No se pudo cargar la verificación de seguridad, por lo que el inicio de sesión está bloqueado. Desactiva cualquier bloqueador de anuncios para este sitio o cambia de red y luego vuelve a cargar la página."
   },
   "guestCheckout": {
