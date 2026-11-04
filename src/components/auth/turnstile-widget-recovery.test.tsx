@@ -67,6 +67,9 @@ it("keeps external resets and teardown scoped to this widget", async () => {
   act(() => (options["error-callback"] as () => void)());
   rerender(<TurnstileWidget onToken={onToken} resetSignal={1} />);
   expect(api.reset).toHaveBeenCalledExactlyOnceWith("widget-1");
+  // A redefinicao externa nao prova recuperacao: so o callback pode limpa-la.
+  expect(screen.getByRole("alert")).toBeInTheDocument();
+  act(() => (options.callback as (token: string) => void)("test-token"));
   expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   unmount();
   expect(api.remove).toHaveBeenCalledExactlyOnceWith("widget-1");

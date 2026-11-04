@@ -160,8 +160,11 @@ export function TurnstileWidget({
   }, []);
 
   useEffect(() => {
-    if (resetSignal > 0) retryChallenge();
-  }, [resetSignal, retryChallenge]);
+    if (resetSignal > 0 && window.turnstile && widgetIdRef.current) {
+      onTokenRef.current("");
+      window.turnstile.reset(widgetIdRef.current);
+    }
+  }, [resetSignal]);
 
   if (!SITE_KEY) return null;
   if (loadFailed) {
