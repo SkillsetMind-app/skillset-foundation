@@ -1,3 +1,6 @@
+import Link from "next/link";
+import { ArrowRight } from "lucide-react";
+
 import { CapabilitiesGrid } from "@/components/site/capabilities-grid";
 import { FeaturedCourses } from "@/components/site/featured-courses";
 import { ForCreatorsBand } from "@/components/site/for-creators-band";
@@ -6,7 +9,7 @@ import { MarketingHero } from "@/components/site/marketing-hero";
 import { PromisePreviewBand } from "@/components/site/promise-preview-band";
 import { SiteFooter } from "@/components/site/site-footer";
 import { SiteNav } from "@/components/site/site-nav";
-import { hasRealPublishedCourse } from "@/lib/data/server/public-course";
+import { isMarketplaceOpen } from "@/lib/data/server/public-course";
 import { buildPageMetadata } from "@/lib/seo/page-metadata";
 import { getServerTranslation } from "@/lib/i18n/server";
 
@@ -19,44 +22,55 @@ export async function generateMetadata() {
   });
 }
 
-// Single-page landing: header items scroll to these sections, listed in the
-// order the sections appear below so the menu reads as a map of the page.
-// "Pricing" stays a real route (no fabricated pricing section on the home).
-// ponytail: "Capabilities" has no header entry — six links plus the language
-// chip no longer fit a 1024px header; the section still sits between courses
-// and the promise.
-const landingNav = [
-  { labelKey: "home.nav.howItWorks", anchorId: "how-it-works" },
-  { labelKey: "home.nav.courses", anchorId: "courses" },
-  { labelKey: "home.nav.promise", anchorId: "promise" },
-  { labelKey: "home.nav.forCreators", anchorId: "for-creators" },
-  { labelKey: "home.nav.pricing", href: "/pricing" },
-] as const;
+// O curso real que a home mostra enquanto a vitrine está fechada: o do
+// fundador. ponytail: id fixo; se esse curso sair do ar, trocar aqui (ou ler
+// o curso publicado mais recente, se a troca virar rotina).
+const SHOWCASE_COURSE_PATH = "/courses/1a280dc6-acce-4f1f-9e95-56df095131ae";
 
 export default async function Home() {
-  // Loja vazia: a faixa de cursos dizia "o marketplace abre em breve" no meio
-  // da home. Sem curso real publicado, some a seção e o item do menu que rola
-  // até ela. Leitura anônima, em cache de 5 min e com prazo curto; falha conta
-  // como vazio — a home nunca quebra por isso.
-  const hasRealCourses = await hasRealPublishedCourse();
-  const nav = hasRealCourses
-    ? landingNav
-    : landingNav.filter((item) => !("anchorId" in item && item.anchorId === "courses"));
+  // Vitrine fechada (menos de 12 cursos de 5 professores): a faixa "The
+  // marketplace" dá lugar a um cartão que leva a UM curso real. O menu é o
+  // mesmo das outras páginas e esconde "Courses" pela mesma regra (layout).
+  const marketplaceOpen = await isMarketplaceOpen();
+  const { t } = await getServerTranslation();
 
   return (
     <div className="page-shell">
-      <SiteNav landingNav={nav} />
+      <SiteNav />
       {/* Um <main> por página, alvo do "Skip to content" da barra. */}
       <main id="conteudo">
         <MarketingHero />
         <section id="how-it-works" className="scroll-mt-28">
           <HowItWorksStrip />
         </section>
-        {hasRealCourses ? (
+        {marketplaceOpen ? (
           <section id="courses" className="scroll-mt-28">
             <FeaturedCourses />
           </section>
-        ) : null}
+        ) : (
+          <section id="real-course" className="mx-auto w-full max-w-7xl px-5 sm:px-8">
+            <Link
+              href={SHOWCASE_COURSE_PATH}
+              className="group flex flex-col gap-3 rounded-lg border fine-rule bg-white p-6 shadow-[var(--shadow-soft)] transition hover:border-[var(--color-primary)] sm:flex-row sm:items-center sm:justify-between sm:p-8"
+            >
+              <span>
+                <span className="block text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
+                  {t("home.realCourse.kicker")}
+                </span>
+                <span className="display-title mt-2 block text-2xl text-[var(--color-primary)] sm:text-3xl">
+                  {t("home.realCourse.title")}
+                </span>
+                <span className="mt-2 block max-w-2xl text-sm leading-6 text-[var(--color-ink-soft)]">
+                  {t("home.realCourse.body")}
+                </span>
+              </span>
+              <span className="inline-flex shrink-0 items-center gap-2 text-sm font-semibold text-[var(--color-primary)]">
+                {t("home.realCourse.cta")}
+                <ArrowRight aria-hidden="true" size={16} strokeWidth={2} className="transition-transform group-hover:translate-x-0.5" />
+              </span>
+            </Link>
+          </section>
+        )}
         <section id="capabilities" className="scroll-mt-28">
           <CapabilitiesGrid />
         </section>

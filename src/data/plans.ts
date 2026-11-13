@@ -2,9 +2,12 @@
  * SkillsetMind pricing model — single source of truth.
  *
  * The public offer is three paid tiers, Basic, Starter and Pro (`publicPlans`),
- * each opening with a 14-day free trial (card required, one per creator
- * account). Every sale pays the plan's percent PLUS a fixed fee of about
- * US$0.30 (`platformFixedFeeMinor` in lib/payments/rules.ts). Enterprise (id
+ * each opening with a 14-day trial (card required, one per creator
+ * account). Every sale on Basic and Starter pays the plan's percent PLUS a
+ * fixed fee of about US$0.30 (`platformFixedFeeMinor` in lib/payments/rules.ts);
+ * Pro and Enterprise pay neither since 2026-11-13 (0% commission, owner's
+ * decision). Stripe's
+ * own card processing fee still applies on every plan. Enterprise (id
  * `plus`, kept so existing subscriptions resolve) is not on the public offer.
  * `free` is no longer offered either: it stays in code only as the state of
  * an account with no subscription, at Basic's rate and limits, with its daily
@@ -192,15 +195,15 @@ export const plans: ReadonlyArray<Plan> = [
     name: "Pro",
     monthlyUsd: 89,
     yearlyUsd: 890,
-    commissionPercent: 2.9,
+    commissionPercent: 0,
     stripePriceIds: {
       monthlyId: "price_1TZFTnPvg1vJW0IjHYe4yW9V",
       yearlyId: "price_1TZFToPvg1vJW0IjDHGPIzH0",
     },
-    tagline: "The lowest commission on the offer.",
+    tagline: "0% commission on Pro. Card processing by Stripe still applies.",
     audience: "Creators with an established catalog.",
     highlights: [
-      "2.9% + $0.30 per sale",
+      "0% commission (card processing by Stripe still applies)",
       "5 custom domains and 5 marketplace highlights",
       "Remove the SkillsetMind mark",
     ],
@@ -212,7 +215,7 @@ export const plans: ReadonlyArray<Plan> = [
     name: "Enterprise",
     monthlyUsd: 199,
     yearlyUsd: 1990,
-    commissionPercent: 1.9,
+    commissionPercent: 0,
     stripePriceIds: {
       monthlyId: "price_1TZFToPvg1vJW0Ijf35SQQzt",
       yearlyId: "price_1TZFTpPvg1vJW0IjgE9PQ5To",
@@ -220,7 +223,7 @@ export const plans: ReadonlyArray<Plan> = [
     tagline: "For catalogs above Pro's limits, by arrangement.",
     audience: "Creators with a large catalog and steady sales.",
     highlights: [
-      "1.9% + $0.30 per sale",
+      "0% commission (card processing by Stripe still applies)",
       "No cap on active students",
     ],
     hidden: true,
@@ -230,8 +233,12 @@ export const plans: ReadonlyArray<Plan> = [
 /** What the pricing page, plan selectors and upgrade flows offer. */
 export const publicPlans: ReadonlyArray<Plan> = plans.filter((plan) => !plan.hidden);
 
-/** "4.9% + $0.30": the plan's percent and the fixed part, as copy shows them. */
+/**
+ * "4.9% + $0.30": the plan's percent and the fixed part, as copy shows them.
+ * A 0% plan (Pro) pays no fixed part either: "0%".
+ */
 export function formatPlanCommission(plan: Plan): string {
+  if (plan.commissionPercent === 0) return "0%";
   return `${plan.commissionPercent}% + $${PER_SALE_FIXED_FEE_USD.toFixed(2)}`;
 }
 

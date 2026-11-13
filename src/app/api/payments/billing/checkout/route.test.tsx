@@ -473,7 +473,7 @@ describe("POST /api/payments/billing/checkout", () => {
     expect(params.line_items).toEqual([{ price, quantity: 1 }]);
     expect(params.subscription_data.trial_period_days).toBe(14);
     expect(params.allow_promotion_codes).toBe(true);
-    expect(params.custom_text.submit.message).toContain(`14 days free, then ${label}.`);
+    expect(params.custom_text.submit.message).toContain(`14-day trial, then ${label}.`);
   });
   it("opens the first plan with a 14-day trial, a card and the renewal terms above the button", async () => {
     mocks.getAdmin.mockImplementation(adminReturning(null));
@@ -487,7 +487,7 @@ describe("POST /api/payments/billing/checkout", () => {
     expect(params.subscription_data.trial_period_days).toBe(14);
     expect(params.payment_method_collection).toBe("always");
     expect(params.custom_text.submit.message).toMatch(
-      /^14 days free, then \$89\/month\. Renews automatically until you cancel\. Cancel anytime in Billing before .+ and you won't be charged\.$/,
+      /^14-day trial, then \$89\/month\. Renews automatically until you cancel\. Cancel anytime in Billing before .+ and you won't be charged\.$/,
     );
     expect(params.metadata.trialDays).toBe("14");
     // The reminder email is written from the webhook, in this language.

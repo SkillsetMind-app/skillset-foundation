@@ -108,7 +108,9 @@ export default async function PricingPage() {
                     {plan.commissionPercent}%
                   </span>
                   <span className="text-sm text-[var(--color-ink-soft)]">
-                    {t("publicPages.pricing.per_sale_with_fixed").replace("{fixed}", () => formatUsd(PER_SALE_FIXED_FEE_USD))}
+                    {plan.commissionPercent === 0
+                      ? t("publicPages.pricing.zero_commission_note")
+                      : t("publicPages.pricing.per_sale_with_fixed").replace("{fixed}", () => formatUsd(PER_SALE_FIXED_FEE_USD))}
                   </span>
                 </p>
                 {/* Monthly line — hidden when the yearly radio is checked. */}
@@ -234,8 +236,10 @@ export default async function PricingPage() {
             </thead>
             <tbody className="divide-y divide-[var(--color-line)]">
               {publicPlans.map((plan) => {
-                const platformFee =
-                  (sampleSaleUsd * plan.commissionPercent) / 100 + PER_SALE_FIXED_FEE_USD;
+                // A 0% plan (Pro) pays no fixed part either.
+                const platformFee = plan.commissionPercent === 0
+                  ? 0
+                  : (sampleSaleUsd * plan.commissionPercent) / 100 + PER_SALE_FIXED_FEE_USD;
                 const net = sampleSaleUsd - platformFee - sampleStripeFeeUsd;
                 return (
                   <tr key={plan.id} className="bg-white">

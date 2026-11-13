@@ -64,7 +64,7 @@ describe("CreateCourseStart — tela 1: o que voce vai entregar", () => {
       "Course",
       "Community",
       "Live event",
-      "E-book",
+      "Digital download",
     ]);
     expect(screen.getByText("Recorded lessons people watch at their own pace.")).toBeInTheDocument();
     expect(screen.getByText(/A members' space where you post, answer and run live calls/)).toBeInTheDocument();
@@ -88,17 +88,17 @@ describe("CreateCourseStart — tela 1: o que voce vai entregar", () => {
   it("Continue avanca com o tipo ja marcado; Back volta e devolve o foco a tela 1", async () => {
     render(<CreateCourseStart ownerId="teacher-1" initialFormat="ebook" />);
 
-    expect(screen.getByRole("button", { name: /^E-book/ })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: /^Digital download/ })).toHaveAttribute("aria-pressed", "true");
     // Na primeira pintura o foco nao e roubado.
     expect(screen.getByRole("heading", { name: "What will you deliver?" })).not.toHaveFocus();
     fireEvent.click(screen.getByRole("button", { name: "Continue" }));
-    expect(await screen.findByRole("heading", { name: "Name your e-book" })).toHaveFocus();
+    expect(await screen.findByRole("heading", { name: "Name your digital download" })).toHaveFocus();
 
     fireEvent.click(screen.getByRole("button", { name: "Back" }));
     await waitFor(() => {
       expect(screen.getByRole("heading", { name: "What will you deliver?" })).toHaveFocus();
     });
-    expect(screen.getByRole("button", { name: /^E-book/ })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: /^Digital download/ })).toHaveAttribute("aria-pressed", "true");
   });
 
   it("o rail marca Format feito ao passar para a tela 2", () => {
@@ -127,7 +127,7 @@ describe("CreateCourseStart — tela 2 grava o tipo", () => {
   it.each([
     ["Course", "course", "one_time", false, "Module 1", "Lesson 1"],
     ["Community", "community", "subscription_monthly", true, "Module 1", "Lesson 1"],
-    ["E-book", "ebook", "one_time", false, "Download", "Clinical performance foundations"],
+    ["Digital download", "ebook", "one_time", false, "Download", "Clinical performance foundations"],
   ] as const)(
     "%s: grava product_format e abre o conteudo",
     async (card, productFormat, paymentType, communityEnabled, moduleTitle, lessonTitle) => {
@@ -295,14 +295,14 @@ describe("CreateCourseStart — tela 2 grava o tipo", () => {
 // A criacao pergunta so o tipo e o nome. "Como as pessoas vao pagar?" e uma
 // pergunta so, feita uma vez, na etapa de preco do construtor.
 describe("CreateCourseStart — sem pergunta de pagamento", () => {
-  it.each(["Course", "Community", "Live event", "E-book"])("%s: nenhuma das duas telas pergunta como pagar", (card) => {
+  it.each(["Course", "Community", "Live event", "Digital download"])("%s: nenhuma das duas telas pergunta como pagar", (card) => {
     render(<CreateCourseStart ownerId="teacher-1" />);
     // A frase de apoio da tela 1 pode dizer que isso se decide em Preco; o
     // que nao pode existir e a pergunta, nem um botao ou campo para responder.
     const asksToPay = /how will people pay|how often to charge|charge every|billing interval|payment model/i;
     const answersPayment = /free|paid|one payment|monthly|yearly|subscription/i;
     const paymentControls = () => [
-      ...screen.queryAllByRole("button").filter((button) => answersPayment.test(button.textContent ?? "") && !/^(Course|Community|Live event|E-book)/.test(button.textContent ?? "")),
+      ...screen.queryAllByRole("button").filter((button) => answersPayment.test(button.textContent ?? "") && !/^(Course|Community|Live event|Digital download)/.test(button.textContent ?? "")),
       ...screen.queryAllByRole("radio"),
       ...screen.queryAllByRole("checkbox"),
     ];

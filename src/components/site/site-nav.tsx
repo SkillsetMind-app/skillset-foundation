@@ -24,53 +24,23 @@ const navItems = [
   { href: "/help", labelKey: "nav.help" },
 ];
 
-// On the single-page landing the header scrolls to in-page sections instead
-// of navigating away. Other pages don't pass `landingNav` and keep the route
-// links above (zero behavior change off the homepage).
-type LandingNavItem =
-  | { labelKey: string; anchorId: string }
-  | { labelKey: string; href: string };
-
-type SiteNavProps = {
-  landingNav?: readonly LandingNavItem[];
-};
-
+// The same menu on every page, the home included (2026-11-13: the home used to
+// scroll to its own sections and had no "Help").
 type ResolvedNavItem = {
   key: string;
   label: string;
   target: string;
-  isAnchor: boolean;
 };
 
 function resolveNavItems(
   t: (key: string) => string,
-  hasRealCourses: boolean,
-  landingNav?: readonly LandingNavItem[],
+  marketplaceOpen: boolean,
 ): ResolvedNavItem[] {
-  if (landingNav) {
-    return landingNav.map((item) =>
-      "anchorId" in item
-        ? {
-            key: item.anchorId,
-            label: t(item.labelKey),
-            target: `#${item.anchorId}`,
-            isAnchor: true,
-          }
-        : {
-            key: item.href,
-            label: t(item.labelKey),
-            target: item.href,
-            isAnchor: false,
-          },
-    );
-  }
-
-  // Loja sem curso real publicado não ganha porta no menu.
-  return navItems.filter((item) => hasRealCourses || item.href !== "/courses").map((item) => ({
+  // Vitrine fechada (menos de 12 cursos de 5 professores) não ganha porta no menu.
+  return navItems.filter((item) => marketplaceOpen || item.href !== "/courses").map((item) => ({
     key: item.href,
     label: t(item.labelKey),
     target: item.href,
-    isAnchor: false,
   }));
 }
 
@@ -78,14 +48,14 @@ function isActiveNav(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-export function SiteNav({ landingNav }: SiteNavProps = {}) {
+export function SiteNav() {
   const { status, user, signOut } = useAuth();
   const { t } = useTranslation();
   const pathname = usePathname() ?? "";
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const mobileToggleRef = useRef<HTMLButtonElement>(null);
-  const resolvedNav = resolveNavItems(t, useHasRealCourses(), landingNav);
+  const resolvedNav = resolveNavItems(t, useHasRealCourses());
   const isAuthenticated = status === "authenticated" && user;
 
   useEffect(() => {
@@ -151,18 +121,6 @@ export function SiteNav({ landingNav }: SiteNavProps = {}) {
           className="site-header__links"
         >
           {resolvedNav.map((item) => {
-            if (item.isAnchor) {
-              return (
-                <a
-                  key={item.key}
-                  href={item.target}
-                  className="site-header__link"
-                >
-                  {item.label}
-                </a>
-              );
-            }
-
             const active = isActiveNav(pathname, item.target);
 
             return (
@@ -236,19 +194,6 @@ export function SiteNav({ landingNav }: SiteNavProps = {}) {
                 {resolvedNav.map((item) => {
                   const baseClass =
                     "rounded-md px-3 py-3 text-sm font-semibold transition-colors";
-
-                  if (item.isAnchor) {
-                    return (
-                      <a
-                        key={`mobile-${item.key}`}
-                        href={item.target}
-                        onClick={() => setMobileOpen(false)}
-                        className={`${baseClass} text-[var(--color-ink-soft)] hover:bg-[var(--color-surface-soft)] hover:text-[var(--color-primary)]`}
-                      >
-                        {item.label}
-                      </a>
-                    );
-                  }
 
                   const active = isActiveNav(pathname, item.target);
 

@@ -1794,9 +1794,16 @@ async function handleCourseSubscriptionInvoiceCreated(
   const fee = platformFeeForSale(
     amountDue,
     canonicalPlatformFeeBpsForPlan(owner?.current_plan_id),
-    toStripeAmount(platformFixedFeeMinor(currency), currency),
+    toStripeAmount(platformFixedFeeMinor(currency, owner?.current_plan_id), currency),
   );
-  if (fee <= 0) return;
+  if (fee <= 0) {
+    // Only a 0% plan clears the subscription's percent: a tiny renewal on a
+    // paid-commission plan also floors to 0, and must keep its percent.
+    if (canonicalPlatformFeeBpsForPlan(owner?.current_plan_id) === 0) {
+      await clearInheritedRenewalFee(subscription, invoice, eventAccountId);
+    }
+    return;
+  }
   try {
     await getStripeClient().invoices.update(
       invoice.id!,
@@ -1818,6 +1825,42 @@ async function handleCourseSubscriptionInvoiceCreated(
     console.warn(
       `[stripe webhook] invoice.created: ${invoice.id} is no longer editable; the renewal keeps the subscription's percent.`,
     );
+  }
+}
+
+// A 0% plan (Pro, Enterprise) adds nothing to a renewal. But a student
+// subscription sold while the teacher was on a paid-commission plan still
+// carries that plan's percent: clear it on the subscription (this and every
+// later renewal, and invoice.paid then books the plan's 0) and zero this draft.
+// Never a retry loop — a refusal would hold the renewal up to 72 h — so a
+// failure is logged and sent to ops, who can run scripts/plan-repricing.mjs.
+async function clearInheritedRenewalFee(
+  subscription: Stripe.Subscription,
+  invoice: Stripe.Invoice,
+  eventAccountId: string,
+): Promise<void> {
+  if (!(Number(subscription.application_fee_percent) > 0)) return;
+  const stripe = getStripeClient();
+  try {
+    await stripe.subscriptions.update(
+      subscription.id,
+      { application_fee_percent: "" },
+      { stripeAccount: eventAccountId },
+    );
+    await stripe.invoices.update(
+      invoice.id!,
+      { application_fee_amount: 0 },
+      { stripeAccount: eventAccountId },
+    );
+  } catch (error) {
+    console.warn(`[stripe webhook] invoice.created: could not clear the inherited fee on ${subscription.id}.`, error);
+    notifyOps({
+      event: "stripe.webhook.zero_plan_fee_not_cleared",
+      severity: "warn",
+      summary:
+        "A 0% plan teacher's student renewal kept the old plan's fee. Run scripts/plan-repricing.mjs for this account.",
+      context: { subscriptionId: subscription.id, invoiceId: invoice.id ?? null },
+    });
   }
 }
 

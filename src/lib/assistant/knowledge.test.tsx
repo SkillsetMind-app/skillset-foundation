@@ -19,7 +19,7 @@ describe("buildAssistantKnowledge", () => {
       expect(knowledge).toContain(`${formatPlanCommission(plan)} commission`);
       expect(knowledge).toContain(`$${plan.monthlyUsd}/month`);
     }
-    expect(knowledge).toContain("14-day free trial");
+    expect(knowledge).toContain("14-day trial");
     expect(knowledge).not.toContain("- Free:");
     expect(knowledge).not.toContain("- Plus:");
   });

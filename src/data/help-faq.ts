@@ -31,7 +31,7 @@ export const helpFaqCategories: ReadonlyArray<HelpFaqCategory> = [
       },
       {
         q: "How do I create my SkillsetMind account?",
-        a: "Click Create account at the top of any page; creating an account is free. You can sign up as a learner, or go straight to the creator sign-up from the For creators page. The same account works for learning and teaching.",
+        a: "Click Create account at the top of any page. You can sign up as a learner, or go straight to the creator sign-up from the For creators page. The same account works for learning and teaching.",
       },
     ],
   },
@@ -51,7 +51,7 @@ export const helpFaqCategories: ReadonlyArray<HelpFaqCategory> = [
       {
         id: "course-pricing",
         q: "How do I set pricing for my course?",
-        a: "Pricing is set per product inside Studio → course builder. Choose free enrollment, a one-time price, or a monthly or yearly subscription in a supported currency. The platform commission (10% + $0.30 on Basic, 4.9% + $0.30 on Starter, 2.9% + $0.30 on Pro) plus the Stripe processing fee are shown clearly in the earnings ledger for every sale.",
+        a: "Pricing is set per product inside Studio → course builder. Choose free enrollment, a one-time price, or a monthly or yearly subscription in a supported currency. The platform commission (10% + $0.30 on Basic, 4.9% + $0.30 on Starter, 0% on Pro) plus the Stripe processing fee, which applies on every plan, are shown clearly in the earnings ledger for every sale.",
       },
       {
         id: "drip-release",
@@ -71,7 +71,7 @@ export const helpFaqCategories: ReadonlyArray<HelpFaqCategory> = [
     items: [
       {
         q: "Which plan should I start on?",
-        a: "Every plan starts with a 14-day free trial; a card is required, and you can cancel in Billing before the trial ends without being charged. Basic is $9/month ($90/year) with 10% + $0.30 per sale. Starter is $19/month ($190/year) with 4.9% + $0.30. Pro is $89/month ($890/year) with 2.9% + $0.30 and higher limits. The pricing page shows what each plan takes from a sample $100 sale.",
+        a: "Every plan starts with a 14-day trial; a card is required, and you can cancel in Billing before the trial ends without being charged. Basic is $9/month ($90/year) with 10% + $0.30 per sale. Starter is $19/month ($190/year) with 4.9% + $0.30. Pro is $89/month ($890/year) with 0% commission and higher limits. Card processing by Stripe still applies. The pricing page shows what each plan takes from a sample $100 sale.",
       },
       {
         q: "What happens when I upgrade or downgrade?",
@@ -79,7 +79,7 @@ export const helpFaqCategories: ReadonlyArray<HelpFaqCategory> = [
       },
       {
         q: "What if I cancel my plan?",
-        a: "Cancel anytime from Billing with \"Cancel plan\". If you cancel during the 14-day free trial, you are not charged; otherwise the plan stays active until the end of the period you paid for. Your courses, students, content, and history are preserved — SkillsetMind never deletes a creator's data.",
+        a: "Cancel anytime from Billing with \"Cancel plan\". If you cancel during the 14-day trial, you are not charged; otherwise the plan stays active until the end of the period you paid for. Your courses, students, content, and history are preserved — SkillsetMind never deletes a creator's data.",
       },
     ],
   },

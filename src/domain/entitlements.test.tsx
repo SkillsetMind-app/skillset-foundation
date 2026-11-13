@@ -143,8 +143,11 @@ describe("plan entitlements", () => {
     for (const planId of ["starter", "pro", "plus"] as const) {
       expect(branch("featured_slots_for_plan", planId)).toBe(planEntitlements[planId].quotas.featuredSlots);
     }
-    for (const planId of ["free", "starter", "pro", "plus"] as const) {
-      expect(branch("platform_fee_bps_for_plan", planId)).toBe(canonicalPlatformFeeBpsForPlan(planId));
+    // The commission function moved on: Pro 0% lives in the newer migration.
+    const feeSql = readFileSync("supabase/migrations/20261113010000_pro_sem_comissao.sql", "utf8");
+    for (const planId of ["free", "basic", "starter", "pro", "plus"] as const) {
+      const match = feeSql.match(new RegExp(`when '${planId}'\\s+then\\s+(\\d+)`));
+      expect(Number(match?.[1]), planId).toBe(canonicalPlatformFeeBpsForPlan(planId));
     }
   });
 

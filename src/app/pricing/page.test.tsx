@@ -32,7 +32,7 @@ describe("pricing page", () => {
 
     expect(
       screen.getByText(
-        "Every plan publishes and sells, and each starts with 14 days free. Higher plans lower the commission and raise your limits.",
+        "Every plan publishes and sells, and each starts with a 14-day trial, card required. Higher plans lower the commission, down to 0% on Pro, and raise your limits.",
       ),
     ).toBeInTheDocument();
     expect(screen.queryByText("Which plan is for me?")).not.toBeInTheDocument();
@@ -66,7 +66,9 @@ describe("pricing page", () => {
     // Only the three plans on offer: no Free card, no Enterprise.
     expect(grid.queryByText("Free")).not.toBeInTheDocument();
     expect(grid.queryByText("Enterprise")).not.toBeInTheDocument();
-    expect(grid.getAllByText("+ $0.30 per sale")).toHaveLength(3);
+    // Pro is 0%: no fixed part, and the Stripe caveat instead.
+    expect(grid.getAllByText("+ $0.30 per sale")).toHaveLength(2);
+    expect(grid.getByText("commission. Card processing by Stripe still applies.").closest("article")).toHaveTextContent("Pro");
     expect(grid.queryByText(/no subscription/i)).not.toBeInTheDocument();
     expect(grid.getByText("Recommended").closest("article")).toHaveTextContent("Starter");
   });
@@ -80,14 +82,14 @@ describe("pricing page", () => {
     for (const card of cards) {
       expect(card.className).toContain("flex h-full flex-col");
     }
-    const cta = grid.getByRole("link", { name: "Start 14-day free trial — Starter" });
-    expect(cta).toHaveTextContent("Start 14-day free trial");
+    const cta = grid.getByRole("link", { name: "Start your 14-day trial — Starter" });
+    expect(cta).toHaveTextContent("Start your 14-day trial");
     expect(cta.parentElement?.className).toContain("mt-auto");
     // The renewal terms sit next to the button, for each cycle.
     expect(cta.parentElement).toHaveTextContent(
-      "14 days free, then $19/month. A card is required. Renews automatically until you cancel. Cancel in Billing before your trial ends to avoid the subscription charge.",
+      "14-day trial, then $19/month. A card is required. Renews automatically until you cancel. Cancel in Billing before your trial ends to avoid the subscription charge.",
     );
-    expect(cta.parentElement).toHaveTextContent("14 days free, then $190/year.");
+    expect(cta.parentElement).toHaveTextContent("14-day trial, then $190/year.");
   });
 
   it("keeps the no-JavaScript billing toggle, in 13px sentence case", async () => {

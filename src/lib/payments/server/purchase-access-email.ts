@@ -176,19 +176,19 @@ const TRIAL_COPY: Record<Locale, {
   cancel: string;
 }> = {
   en: {
-    subject: (date) => `Your free trial ends on ${date}`,
-    body: (date, price) => `Your free trial ends on ${date}. Your next payment is ${price}.`,
+    subject: (date) => `Your trial ends on ${date}`,
+    body: (date, price) => `Your trial ends on ${date}. Your next payment is ${price}.`,
     cancel: "Cancel here",
   },
   es: {
-    subject: (date) => `Tu prueba gratis termina el ${date}`,
-    body: (date, price) => `Tu prueba gratis termina el ${date}. Tu próximo pago es de ${price}.`,
+    subject: (date) => `Tu prueba termina el ${date}`,
+    body: (date, price) => `Tu prueba termina el ${date}. Tu próximo pago es de ${price}.`,
     cancel: "Cancela aquí",
   },
 };
 
 /**
- * The reminder before a plan trial converts: "Your free trial ends on {date}.
+ * The reminder before a plan trial converts: "Your trial ends on {date}.
  * Your next payment is {price}. Cancel here: {link}". The date uses the same
  * UTC−12 calendar as the checkout disclosure, so it is never later than the
  * real conversion anywhere. The preview describes only the next payment:
@@ -209,15 +209,15 @@ const TRIAL_STARTED_COPY: Record<Locale, {
   cancel: string;
 }> = {
   en: {
-    subject: (days) => `Your ${days}-day free trial started`,
+    subject: (days) => `Your ${days}-day trial started`,
     body: (days, date, price) =>
-      `Your ${days}-day free trial started. It ends on ${date}. Your next payment is ${price}. Your subscription renews until you cancel.`,
+      `Your ${days}-day trial started. It ends on ${date}. Your next payment is ${price}. Your subscription renews until you cancel.`,
     cancel: "Cancel anytime",
   },
   es: {
-    subject: (days) => `Tu prueba gratis de ${days} días empezó`,
+    subject: (days) => `Tu prueba de ${days} días empezó`,
     body: (days, date, price) =>
-      `Tu prueba gratis de ${days} días empezó. Termina el ${date}. Tu próximo pago es de ${price}. Tu suscripción se renueva automáticamente hasta que canceles.`,
+      `Tu prueba de ${days} días empezó. Termina el ${date}. Tu próximo pago es de ${price}. Tu suscripción se renueva automáticamente hasta que canceles.`,
     cancel: "Cancela cuando quieras",
   },
 };

@@ -15,8 +15,8 @@ vi.mock("@/lib/i18n/server", () => ({
 
 describe("public entry metadata follows the selected language", () => {
   it.each([
-    ["en", "Course platform for psychologists, coaches & personal-development professionals | SkillsetMind", "For psychologists, coaches and personal-development professionals who already teach live"],
-    ["es", "Plataforma de cursos para psicólogos, coaches y profesionales del desarrollo personal | SkillsetMind", "Para psicólogos, coaches y profesionales del desarrollo personal que ya enseñan en vivo"],
+    ["en", "Course and community platform for coaches & personal-development professionals | SkillsetMind", "Turn your knowledge into cash through a digital business\\."],
+    ["es", "Plataforma de cursos y comunidad para coaches y profesionales del desarrollo personal | SkillsetMind", "Convierte tu conocimiento en dinero con un negocio digital"],
   ] as const)("translates the home title and sharing cards in %s", async (locale, title, descriptionStart) => {
     state.locale = locale;
     const metadata = await homeMetadata();

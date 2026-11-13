@@ -147,13 +147,13 @@ describe("PlansPanel com os 2 planos e o teste gratis", () => {
     render(<PlansPanel />);
 
     const pro = screen.getAllByRole("article")[2];
-    const cta = await within(pro).findByRole("button", { name: "Start 14-day free trial" });
+    const cta = await within(pro).findByRole("button", { name: "Start your 14-day trial" });
     expect(cta.parentElement).toHaveTextContent(
-      /14 days free, then \$89\/month\. Renews automatically until you cancel\. Cancel anytime in Billing before .+ and you won't be charged\./,
+      /14-day trial, then \$89\/month\. Renews automatically until you cancel\. Cancel anytime in Billing before .+ and you won't be charged\./,
     );
 
     fireEvent.click(screen.getByRole("radio", { name: "Yearly" }));
-    expect(pro).toHaveTextContent("14 days free, then $890/year.");
+    expect(pro).toHaveTextContent("14-day trial, then $890/year.");
   });
 
   it("depois do teste usado, o botao volta a ser Upgrade e os termos nao prometem teste", async () => {
@@ -164,7 +164,7 @@ describe("PlansPanel com os 2 planos e o teste gratis", () => {
     const pro = screen.getAllByRole("article")[2];
     expect(await within(pro).findByRole("button", { name: "Upgrade to Pro" })).toBeInTheDocument();
     expect(pro).toHaveTextContent("$89/month, starting today. Renews automatically until you cancel.");
-    expect(pro).not.toHaveTextContent("days free");
+    expect(pro).not.toHaveTextContent("day trial");
   });
 
   it("durante o teste mostra quando ele termina e um Cancel plan que funciona", async () => {
@@ -184,10 +184,10 @@ describe("PlansPanel com os 2 planos e o teste gratis", () => {
     vi.spyOn(window, "confirm").mockReturnValue(true);
     render(<PlansPanel />);
 
-    expect(await screen.findByText("Free trial — ends October 20, 2026")).toBeInTheDocument();
+    expect(await screen.findByText("Trial — ends October 20, 2026")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Cancel plan" }));
     expect(window.confirm).toHaveBeenCalledWith(
-      "Cancel your plan? Your free trial runs until October 20, 2026 and you won't be charged.",
+      "Cancel your plan? Your trial runs until October 20, 2026 and you won't be charged.",
     );
     expect(await screen.findByText("Ends on October 20, 2026")).toBeInTheDocument();
     expect(state.cancel).toHaveBeenCalledOnce();

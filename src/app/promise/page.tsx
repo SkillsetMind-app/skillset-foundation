@@ -9,7 +9,7 @@ import { buildPageMetadata } from "@/lib/seo/page-metadata";
 export async function generateMetadata() {
   const { t } = await getServerTranslation();
   return buildPageMetadata({
-    title: t("publicPages.promise.the_skillsetmind_promise"),
+    title: t("publicPages.promise.the_skillsetmind_creator_promise"),
     description:
       t("publicPages.promise.skillsetmind_commitments_to_creators_and_learners"),
     path: "/promise",
@@ -95,10 +95,10 @@ export default async function PromisePage() {
           />
           <div className="relative z-10 mx-auto w-full max-w-7xl px-6 py-16 sm:px-8 lg:py-24">
             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-white/78">
-              {t("publicPages.promise.the_skillsetmind_creator_promise")}
+              {t("publicPages.promise.six_commitments_in_writing_public")}
             </p>
             <h1 className="display-title mt-5 max-w-4xl text-5xl leading-none text-white sm:text-7xl">
-              {t("publicPages.promise.six_commitments_in_writing_public")}
+              {t("publicPages.promise.the_skillsetmind_creator_promise")}
             </h1>
             <p className="mt-6 max-w-2xl text-base leading-8 text-white/78 sm:text-lg">
               {t("publicPages.promise.these_promises_are_contractual_product_rules")}

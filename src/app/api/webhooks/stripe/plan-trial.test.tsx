@@ -318,8 +318,8 @@ describe("plan free trial through the Stripe webhook", () => {
     expect((init.headers as Record<string, string>)["Idempotency-Key"]).toBe("trial_will_end:sub_plan_1");
     const body = JSON.parse(String(init.body));
     expect(body.to).toEqual(["creator@example.test"]);
-    expect(body.subject).toBe("Your free trial ends on October 20, 2026");
-    expect(body.text).toContain("Your free trial ends on October 20, 2026. Your next payment is $89.00.");
+    expect(body.subject).toBe("Your trial ends on October 20, 2026");
+    expect(body.text).toContain("Your trial ends on October 20, 2026. Your next payment is $89.00.");
     expect(body.text).toContain("Cancel here: https://app.skillset.test/account/billing?tab=subscriptions");
     expect(db.tables.creator_plan_trials[0].reminder_sent_at).toEqual(expect.any(String));
   });
@@ -329,7 +329,7 @@ describe("plan free trial through the Stripe webhook", () => {
     await deliver("customer.subscription.trial_will_end", spanish);
 
     const body = JSON.parse(String(mocks.fetch.mock.calls[0][1].body));
-    expect(body.subject).toBe("Tu prueba gratis termina el 20 de octubre de 2026");
+    expect(body.subject).toBe("Tu prueba termina el 20 de octubre de 2026");
     expect(body.text).toContain("Tu próximo pago es de");
     expect(body.text).toContain("Cancela aquí: https://app.skillset.test/account/billing?tab=subscriptions");
   });
@@ -381,9 +381,9 @@ describe("plan free trial through the Stripe webhook", () => {
     expect((init.headers as Record<string, string>)["Idempotency-Key"]).toBe("trial_started:sub_plan_1");
     const body = JSON.parse(String(init.body));
     expect(body.to).toEqual(["creator@example.test"]);
-    expect(body.subject).toBe("Your 14-day free trial started");
+    expect(body.subject).toBe("Your 14-day trial started");
     expect(body.text).toContain(
-      "Your 14-day free trial started. It ends on October 20, 2026. Your next payment is $89.00. Your subscription renews until you cancel.",
+      "Your 14-day trial started. It ends on October 20, 2026. Your next payment is $89.00. Your subscription renews until you cancel.",
     );
     expect(body.text).toContain("Cancel anytime: https://app.skillset.test/account/billing?tab=subscriptions");
   });
@@ -393,8 +393,8 @@ describe("plan free trial through the Stripe webhook", () => {
       metadata: { uid: "creator_1", planId: "pro", cycle: "monthly", locale: "es" },
     }));
     const body = JSON.parse(String(mocks.fetch.mock.calls[0][1].body));
-    expect(body.subject).toBe("Tu prueba gratis de 14 días empezó");
-    expect(body.text).toContain("Tu prueba gratis de 14 días empezó. Termina el 20 de octubre de 2026.");
+    expect(body.subject).toBe("Tu prueba de 14 días empezó");
+    expect(body.text).toContain("Tu prueba de 14 días empezó. Termina el 20 de octubre de 2026.");
     expect(body.text).toMatch(/Tu próximo pago es de .*89,00/);
     expect(body.text).toContain("Cancela cuando quieras: https://app.skillset.test/account/billing?tab=subscriptions");
   });

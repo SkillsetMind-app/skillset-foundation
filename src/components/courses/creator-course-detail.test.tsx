@@ -1144,7 +1144,7 @@ describe("CreatorCourseDetail: o que cada tipo entrega", () => {
     try {
       await screen.findAllByText("$149.00");
       expectNoCurriculum(container);
-      expect(screen.getByText("A file you download right after purchase.")).toBeInTheDocument();
+      expect(screen.getByText("Digital download: a file you get right after purchase.")).toBeInTheDocument();
     } finally {
       restore();
     }

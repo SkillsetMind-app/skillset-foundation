@@ -48,7 +48,7 @@ describe("support and Promise server pages use the cookie and real dictionaries"
   });
 
   it("requires every changelog translation in the shipped dictionaries, without English fallback", () => {
-    for (const key of ["eyebrow", "title", "description", "publishedOn", "publication", "changeTitle", "whatChanged", "why", "effectiveNew", "effectiveExisting", "change2Title", "change2WhatChanged", "change2Why", "change2Effective", "change4Title", "change4WhatChanged", "change4Why", "change4Effective", "futureFormat", "futureTitle", "futureChange", "futureWhy", "futureNew", "futureExisting"]) {
+    for (const key of ["eyebrow", "title", "description", "publishedOn", "publication", "changeTitle", "whatChanged", "why", "effectiveNew", "effectiveExisting", "change2Title", "change2WhatChanged", "change2Why", "change2Effective", "change4Title", "change4WhatChanged", "change4Why", "change4Effective", "change5Title", "change5WhatChanged", "change5Why", "change5Effective"]) {
       const path = `promiseChangelog.${key}`;
       const english = translate(getDictionary("en"), path);
       const spanish = translate(getDictionary("es"), path);
@@ -82,7 +82,7 @@ describe("support and Promise server pages use the cookie and real dictionaries"
     expect(screen.getByText(t("publication").replace("{date}", published))).toHaveTextContent("90");
     expect(screen.getByText(t("effectiveNew").replace("{date}", effective))).toBeInTheDocument();
     expect(screen.getByText(t("effectiveExisting").replace("{date}", effective))).toHaveTextContent("90");
-    for (const key of ["eyebrow", "description", "whatChanged", "why", "change2WhatChanged", "change2Why", "futureFormat", "futureChange", "futureWhy", "futureNew", "futureExisting"]) {
+    for (const key of ["eyebrow", "description", "whatChanged", "why", "change2WhatChanged", "change2Why", "change5WhatChanged", "change5Why"]) {
       expect(t(key)).not.toBe(`promiseChangelog.${key}`);
       expect(screen.getByText(t(key))).toBeInTheDocument();
     }
@@ -93,7 +93,10 @@ describe("support and Promise server pages use the cookie and real dictionaries"
     // Immediate effect is only honest because nothing a creator received was taken away.
     expect(t("change2Effective")).toContain(locale === "en" ? "removes no service a creator was receiving" : "no elimina ningún servicio que un creador estuviera recibiendo");
     expect(t("change2Effective")).toContain(locale === "en" ? "were never actually delivered" : "nunca llegaron a prestarse");
-    expect(screen.getByText((_text, element) => element?.tagName === "STRONG" && element.textContent?.startsWith("YYYY-MM-DD") === true)).toHaveTextContent(t("futureTitle"));
+    // The newest entry: Pro to 0% takes effect at once, because it lowers a fee.
+    expect(screen.getByText((_text, element) => element?.tagName === "P" && element.textContent?.startsWith("2026-11-13") === true)).toHaveTextContent(t("change5Title"));
+    // The "future entry format" template is gone: the page lists only real changes.
+    expect(screen.queryByText((_text, element) => element?.tagName === "STRONG" && element.textContent?.startsWith("YYYY-MM-DD") === true)).toBeNull();
     const body = screen.getByRole("main").textContent ?? "";
     expect(body).not.toMatch(/promiseChangelog\.|\{date\}/);
     expect(body).toContain("30");

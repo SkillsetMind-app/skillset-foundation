@@ -41,8 +41,8 @@ export default async function OpengraphImage() {
           alt=""
         />
         <div style={{ display: "flex", flexDirection: "column", marginTop: 56, fontSize: 60, lineHeight: 1.15 }}>
-          <span>{translate(en, "home.hero.title1")}</span>
-          <span style={{ color: "#c99a46" }}>{translate(en, "home.hero.title2")}</span>
+          {/* A frase da marca (do Eton), a mesma que abre a home. */}
+          <span>{translate(en, "home.hero.brand")}</span>
         </div>
       </div>
     ),

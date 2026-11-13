@@ -7,17 +7,19 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   getAdmin: vi.fn(),
   retrieve: vi.fn(),
+  updateSubscription: vi.fn(),
+  notifyOps: vi.fn(),
   updateInvoice: vi.fn(),
   retrieveInvoice: vi.fn(),
 }));
 
 vi.mock("@/lib/supabase/admin", () => ({ getSupabaseAdminClient: mocks.getAdmin }));
-vi.mock("@/lib/ops/alert", () => ({ notifyOps: vi.fn() }));
+vi.mock("@/lib/ops/alert", () => ({ notifyOps: mocks.notifyOps }));
 vi.mock("@/lib/payments/server/stripe", () => ({
   isStripeConfigured: () => true,
   getStripeClient: () => ({
     webhooks: { constructEvent: (raw: string) => JSON.parse(raw) },
-    subscriptions: { retrieve: mocks.retrieve },
+    subscriptions: { retrieve: mocks.retrieve, update: mocks.updateSubscription },
     invoices: { update: mocks.updateInvoice, retrieve: mocks.retrieveInvoice },
   }),
 }));
@@ -76,6 +78,8 @@ describe("invoice.created on a student-subscription renewal", () => {
       metadata: { purpose: "course_subscription", teacherId: "teacher_1" },
     });
     mocks.updateInvoice.mockReset().mockResolvedValue({});
+    mocks.updateSubscription.mockReset().mockResolvedValue({});
+    mocks.notifyOps.mockReset();
     mocks.retrieveInvoice.mockReset();
     vi.spyOn(console, "error").mockImplementation(() => undefined);
   });
@@ -87,7 +91,6 @@ describe("invoice.created on a student-subscription renewal", () => {
 
   it.each([
     ["starter", Math.floor((2_000 * 490) / 10_000) + 30],
-    ["pro", Math.floor((2_000 * 290) / 10_000) + 30],
     ["basic", Math.floor((2_000 * 1_000) / 10_000) + 30],
   ])("charges the %s percent plus the fixed fee, on the teacher's plan today", async (planId, fee) => {
     mocks.getAdmin.mockReturnValue(createDb(planId));
@@ -99,6 +102,51 @@ describe("invoice.created on a student-subscription renewal", () => {
       { application_fee_amount: fee },
       { stripeAccount: "acct_teacher" },
     );
+  });
+
+  // Pro is 0% since 2026-11-13: no percent and no fixed part.
+  it("adds no fee on a Pro teacher's renewal", async () => {
+    mocks.getAdmin.mockReturnValue(createDb("pro"));
+    expect((await deliver(renewal())).status).toBe(200);
+    expect(mocks.updateInvoice).not.toHaveBeenCalled();
+  });
+
+  // Sold on Starter, teacher now on Pro: the subscription still carries the
+  // Starter percent, so the draft comes with a fee. The renewal follows the plan.
+  it("zeroes the fee a renewal inherited from the teacher's old plan", async () => {
+    mocks.getAdmin.mockReturnValue(createDb("pro"));
+    mocks.retrieve.mockResolvedValue({
+      id: "sub_student_1",
+      application_fee_percent: 6.4,
+      metadata: { purpose: "course_subscription", teacherId: "teacher_1" },
+    });
+    expect((await deliver(renewal())).status).toBe(200);
+    // The subscription stops carrying the old percent, so later renewals and
+    // the ledger follow the plan; this draft is zeroed too.
+    expect(mocks.updateSubscription).toHaveBeenCalledWith(
+      "sub_student_1",
+      { application_fee_percent: "" },
+      { stripeAccount: "acct_teacher" },
+    );
+    expect(mocks.updateInvoice).toHaveBeenCalledWith(
+      "in_renewal_1",
+      { application_fee_amount: 0 },
+      { stripeAccount: "acct_teacher" },
+    );
+  });
+
+  it("never holds the renewal when Stripe refuses to zero the fee, and tells ops", async () => {
+    mocks.getAdmin.mockReturnValue(createDb("pro"));
+    mocks.updateInvoice.mockRejectedValue(Object.assign(new Error("invalid"), { code: "parameter_invalid_integer" }));
+    mocks.retrieveInvoice.mockResolvedValue({ id: "in_renewal_1", status: "draft" });
+    mocks.retrieve.mockResolvedValue({
+      id: "sub_student_1",
+      application_fee_percent: 6.4,
+      metadata: { purpose: "course_subscription", teacherId: "teacher_1" },
+    });
+    vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    expect((await deliver(renewal())).status).toBe(200);
+    expect(mocks.notifyOps).toHaveBeenCalledWith(expect.objectContaining({ event: "stripe.webhook.zero_plan_fee_not_cleared" }));
   });
 
   it.each([

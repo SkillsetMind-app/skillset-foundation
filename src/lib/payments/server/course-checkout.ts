@@ -282,7 +282,8 @@ export async function createCourseCheckoutSession(
     const owner = await getUserRow(course.owner_id);
     const platformFeeBps = canonicalPlatformFeeBpsForPlan(owner?.current_plan_id);
     // The fixed part of the fee (~US$0.30), in the stored unit of this currency.
-    const platformFeeFixedMinor = platformFixedFeeMinor(currency);
+    // Zero on a 0% plan (Pro): SkillsetMind takes nothing from that sale.
+    const platformFeeFixedMinor = platformFixedFeeMinor(currency, owner?.current_plan_id);
     // Course fields are caches; only the owner's protected Connect profile
     // can authorize the account that receives a new payment.
     const connectedAccountId = owner?.stripe_connected_account_id ?? null;

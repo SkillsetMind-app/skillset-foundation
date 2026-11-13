@@ -77,11 +77,27 @@ describe("public pricing makes no earnings claims", () => {
 });
 
 describe("www positioning", () => {
-  it.each(dictionaries)("the %s home, footer and /for-creators copy names its audience", (_locale, dict) => {
+  // 2026-11-13: one audience line everywhere — coaches and personal-development
+  // professionals — and the brand phrase (the founder's) opens the home.
+  const audience = /coaches (and|y) (personal-development professionals|profesionales del desarrollo personal)/;
+  it.each(dictionaries)("the %s home, footer and /for-creators copy names the same audience", (_locale, dict) => {
     expect(JSON.stringify([dict.footer, dict.publicPages.creators])).not.toMatch(/psycholog|psicólog/i);
-    expect(dict.home.hero.sub).toMatch(
-      /^(For psychologists, coaches and personal-development professionals who already teach live|Para psicólogos, coaches y profesionales del desarrollo personal que ya enseñan en vivo)/,
-    );
+    for (const text of [dict.home.hero.support, dict.footer.tagline, dict.publicPages.creators.skillsetmind_is_designed_for_experts_who]) {
+      expect(text).toMatch(audience);
+      expect(text).not.toMatch(/facilitators and mentors|facilitadores y mentores/);
+    }
+    expect(dict.footer.tagline).toMatch(/Education, not therapy\.|Educación, no terapia\./);
+    expect(dict.home.hero.alsoFor).toMatch(/Education, not therapy\.$|Educación, no terapia\.$/);
+  });
+
+  it.each([
+    ["en", "Turn your knowledge into cash through a digital business."],
+    ["es", "Convierte tu conocimiento en dinero a través de un negocio digital."],
+  ] as const)("the %s home opens with the brand phrase as its headline", async (locale, brand) => {
+    state.locale = locale;
+    const { container } = render(await MarketingHero());
+    expect(container.querySelector("h1")?.textContent).toBe(brand);
+    expect(container.textContent).not.toMatch(incomeClaims);
   });
 });
 
@@ -134,7 +150,8 @@ describe("plan copy states only rules the product applies", () => {
     const knowledge = buildAssistantKnowledge();
     expect(knowledge).not.toMatch(sameFeatures);
     expect(knowledge).not.toMatch(unenforcedLimits);
-    expect(knowledge).toMatch(/14-day free trial/);
+    expect(knowledge).toMatch(/14-day trial/);
+    expect(knowledge).not.toMatch(/free trial/i);
     expect(knowledge).not.toMatch(/Free plan|- Free:|Plus/);
   });
 });
@@ -167,7 +184,7 @@ describe("creator payout-country disclosure", () => {
       expect(text).not.toMatch(/draft courses immediately|preparar cursos de inmediato|Start free|Empieza gratis/i);
     }
     expect(container.textContent).not.toMatch(/no monthly fee|sin mensualidad/);
-    expect(container.textContent).toMatch(/14-day free trial|prueba gratis de 14 días/);
+    expect(container.textContent).toMatch(/14-day trial|prueba de 14 días/);
   });
 });
 
@@ -191,6 +208,12 @@ describe("public copy guard: home, /pricing, /fees-and-payouts, /for-creators, /
     [
       "a free start",
       /\bstart(ing)? (teaching )?free\b|get started free|teach(ing)? free|free to start|free, takes minutes|empieza (a enseñar )?gratis|enseñar gratis|gratis para empezar|es gratis y toma/i,
+    ],
+    // House rule since 2026-11-13: SkillsetMind never calls itself free. The
+    // trial is "a 14-day trial, card required".
+    [
+      "calling the platform free",
+      /free trial|\d+ days free|days of free|account is free|free preview slot|prueba gratis|días gratis|cuenta es gratis/i,
     ],
   ];
 
@@ -399,12 +422,18 @@ describe("creator path order and conditions", () => {
     });
   });
 
-  it.each(dictionaries)("the %s home discloses the Basic price after the trial", (_locale, dict) => {
-    expect(dict.home.hero.sub).toContain("14");
-    expect(dict.home.hero.sub).toContain("US$9");
-    expect(dict.home.hero.sub).toMatch(/card|tarjeta/i);
-    expect(dict.home.hero.sub).toMatch(/cancel/i);
-    expect(dict.home.hero.sub).not.toMatch(/no monthly fee|sin mensualidad/i);
+  // The home lists the three plans with their monthly and yearly price, the
+  // trial with its card, and Pro at 0% with the Stripe caveat.
+  it.each(["en", "es"] as const)("the %s home shows the three plans with prices", async (locale) => {
+    state.locale = locale;
+    const dict = locale === "en" ? en : es;
+    const text = render(await ForCreatorsBand()).container.textContent ?? "";
+    for (const price of ["$9", "$90", "$19", "$190", "$89", "$890"]) expect(text).toContain(price);
+    expect(text).toContain(dict.home.creators.planFeeZero);
+    expect(text).toContain(dict.home.creators.plansNote);
+    expect(dict.home.creators.plansNote).toMatch(/card|tarjeta/i);
+    expect(dict.home.creators.plansNote).toMatch(/Stripe/);
+    expect(text).not.toMatch(/no monthly fee|sin mensualidad/i);
   });
 
   it("the help FAQ answer shared with the assistant says verification applies where required", () => {
