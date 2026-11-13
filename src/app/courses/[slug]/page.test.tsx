@@ -8,7 +8,7 @@ import type { CourseRefAccess, PublicCourseSummary } from "@/lib/data/server/pub
 const mocks = vi.hoisted(() => ({
   getPublicCourseByRef: vi.fn<() => Promise<PublicCourseSummary | null>>(),
   getCourseRefAccess: vi.fn<() => Promise<CourseRefAccess>>(),
-  hasRealPublishedCourse: vi.fn(async () => true),
+  isMarketplaceOpen: vi.fn(async () => true),
   // Como o Next: notFound() interrompe a renderizacao lancando.
   notFound: vi.fn(() => {
     throw new Error("NEXT_NOT_FOUND");
@@ -18,8 +18,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@/lib/data/server/public-course", () => ({
   getPublicCourseByRef: mocks.getPublicCourseByRef,
   getCourseRefAccess: mocks.getCourseRefAccess,
-  hasRealPublishedCourse: mocks.hasRealPublishedCourse,
-  isMarketplaceOpen: async () => false,
+  isMarketplaceOpen: mocks.isMarketplaceOpen,
 }));
 
 vi.mock("next/navigation", () => ({ notFound: mocks.notFound }));
@@ -140,7 +139,7 @@ describe("volta da página de amostra", () => {
     [true, "Volver a todos los cursos", "/courses"],
     [false, "Ir al inicio", "/"],
   ])("loja com curso real: %s", async (value, name, href) => {
-    mocks.hasRealPublishedCourse.mockResolvedValue(value);
+    mocks.isMarketplaceOpen.mockResolvedValue(value);
     render(await CourseDetailPage({ params: Promise.resolve({ slug: "leadership-development" }) }));
 
     expect(screen.getByRole("link", { name })).toHaveAttribute("href", href);

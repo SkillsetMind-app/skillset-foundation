@@ -66,7 +66,9 @@ describe("pricing page", () => {
     // Only the three plans on offer: no Free card, no Enterprise.
     expect(grid.queryByText("Free")).not.toBeInTheDocument();
     expect(grid.queryByText("Enterprise")).not.toBeInTheDocument();
-    expect(grid.getAllByText("+ $0.30 per sale")).toHaveLength(3);
+    // Pro is 0%: no fixed part, and the Stripe caveat instead.
+    expect(grid.getAllByText("+ $0.30 per sale")).toHaveLength(2);
+    expect(grid.getByText("commission. Card processing by Stripe still applies.").closest("article")).toHaveTextContent("Pro");
     expect(grid.queryByText(/no subscription/i)).not.toBeInTheDocument();
     expect(grid.getByText("Recommended").closest("article")).toHaveTextContent("Starter");
   });

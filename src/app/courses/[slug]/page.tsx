@@ -13,7 +13,7 @@ import { JsonLd } from "@/components/seo/json-ld";
 import { SiteNav } from "@/components/site/site-nav";
 import { isInternalSmokeCourse } from "@/domain/teacher-course";
 import { getCourseBySlug, getCourseSlugs } from "@/lib/data/catalog";
-import { getCourseRefAccess, getPublicCourseByRef, hasRealPublishedCourse } from "@/lib/data/server/public-course";
+import { getCourseRefAccess, getPublicCourseByRef, isMarketplaceOpen } from "@/lib/data/server/public-course";
 import { buildCourseJsonLd } from "@/lib/seo/course-jsonld";
 import { buildPageMetadata } from "@/lib/seo/page-metadata";
 
@@ -181,7 +181,7 @@ export default async function CourseDetailPage({
   const priceLabel = course.priceAmountMinor == null ? t("publicCourses.priceAnnounced")
     : new Intl.NumberFormat(locale, { style: "currency", currency: course.currency }).format(course.priceAmountMinor / 100);
   const levelKeys = { Foundation: "foundation", Professional: "professional", Advanced: "advanced" };
-  const hasRealCourses = await hasRealPublishedCourse();
+  const hasRealCourses = await isMarketplaceOpen();
 
   return (
     <div className="page-shell">

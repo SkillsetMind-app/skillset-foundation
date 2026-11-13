@@ -27,7 +27,7 @@ it("localizes profile metadata without changing its canonical reference", async 
 it.each([
   [PricingPage, pricingMetadata, "Precios que bajan a medida que creces.", "Precios"],
   [CreatorsPage, creatorsMetadata, "Enseña con un sistema completo para gestionar cursos.", "Enseña en SkillsetMind"],
-  [PromisePage, promiseMetadata, "Seis compromisos. Por escrito. Públicos.", "La promesa de SkillsetMind"],
+  [PromisePage, promiseMetadata, "La promesa de SkillsetMind a los creadores", "La promesa de SkillsetMind a los creadores"],
   [AboutPage, aboutMetadata, "SkillsetMind es un espacio público para aprender, enseñar y crecer con confianza.", "Acerca de nosotros"],
   [ContactPage, contactMetadata, "Contacta con el equipo adecuado para soporte, enseñanza y colaboraciones.", "Contacto"],
   [InstructorsPage, instructorsMetadata, "Aprende de expertos independientes.", "Instructores"],
