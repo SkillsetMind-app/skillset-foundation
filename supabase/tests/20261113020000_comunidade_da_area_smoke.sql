@@ -31,13 +31,14 @@ begin
   raise exception 'AREA_COMMUNITY_REGRESSION: %', 'refused call succeeded: ' || statement;
 end $$;
 
--- 1 professor, 2 aluno so de A, 3 ninguem, 4 outro professor.
+-- 1 professor, 2 aluno so de A, 3 ninguem, 4 outro professor, 5 so pegou o
+-- brinde gratis F do professor 1.
 select pg_temp.act_as(null, 'service_role');
 select set_config('skillset.trusted_write', 'on', true);
 insert into auth.users(id, aud, role, email, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
 select pg_temp.uid(n), 'authenticated', 'authenticated', 'area-community-' || n || '@example.test',
   now(), '{}', '{}', now(), now()
-from generate_series(1, 4) n;
+from generate_series(1, 5) n;
 insert into public.users(uid, email, roles, onboarding_completed)
 select id::text, email, '["student"]'::jsonb, true from auth.users where email like 'area-community-%@example.test'
 on conflict (uid) do nothing;
@@ -57,11 +58,17 @@ values
   ('smoke-ac-c', pg_temp.uid(1)::text, 'smoke-ac-c', 'Smoke area community C', 'Comunidade deste smoke.', 'smoke',
     'published', 'usd', 0, 'free', '[]'::jsonb, 'community', true),
   ('smoke-ac-x', pg_temp.uid(4)::text, 'smoke-ac-x', 'Smoke area community X', 'Do outro professor.', 'smoke',
-    'published', 'usd', 0, 'free', '[]'::jsonb, 'community', true);
+    'published', 'usd', 0, 'free', '[]'::jsonb, 'community', true),
+  ('smoke-ac-f', pg_temp.uid(1)::text, 'smoke-ac-f', 'Smoke area community F', 'Brinde gratis.', 'smoke',
+    'published', 'usd', 0, 'free', '[]'::jsonb, 'course', true),
+  ('smoke-ac-d', pg_temp.uid(1)::text, 'smoke-ac-d', 'Smoke area community D', 'Comunidade em rascunho.', 'smoke',
+    'draft', 'usd', 0, 'free', '[]'::jsonb, 'community', true);
 insert into public.enrollments(id, user_id, course_id, course_slug, course_title, course_category,
   course_image, status, source)
 values (pg_temp.uid(2)::text || '__smoke-ac-a', pg_temp.uid(2)::text, 'smoke-ac-a', 'smoke-ac-a',
-  'Smoke area community A', 'smoke', '', 'active', 'admin');
+  'Smoke area community A', 'smoke', '', 'active', 'admin'),
+  (pg_temp.uid(5)::text || '__smoke-ac-f', pg_temp.uid(5)::text, 'smoke-ac-f', 'smoke-ac-f',
+  'Smoke area community F', 'smoke', '', 'active', 'free_course');
 insert into public.community_posts(id, course_slug, author_id, author_name, author_role, category, body)
 values ('smoke-ac-post', 'smoke-ac-c', pg_temp.uid(1)::text, 'Teacher', 'teacher', 'discussion', 'Welcome to the area.');
 insert into public.public_profiles(uid, display_name, username)
@@ -83,6 +90,7 @@ reset role;
 select pg_temp.act_as(pg_temp.uid(1));
 set local role authenticated;
 select pg_temp.refused($$select public.set_my_member_area_community('smoke-ac-a')$$, '22023');
+select pg_temp.refused($$select public.set_my_member_area_community('smoke-ac-d')$$, '22023');
 select public.set_my_member_area_community('smoke-ac-c');
 reset role;
 
@@ -108,6 +116,13 @@ select pg_temp.assert_true(not public.has_community_access('smoke-ac-c'), 'outsi
 select pg_temp.assert_true((select count(*) = 0 from public.community_posts where course_slug = 'smoke-ac-c'),
   'outsider reads nothing');
 select pg_temp.assert_true(public.get_member_area_community('@smoke-area-community') is null, 'outsider gets no community');
+reset role;
+
+-- 4b) Brinde gratis nao abre a comunidade da area.
+select pg_temp.act_as(pg_temp.uid(5));
+set local role authenticated;
+select pg_temp.assert_true(not public.has_community_access('smoke-ac-c'), 'a free enrollment does not open the area community');
+select pg_temp.assert_true(public.get_member_area_community('@smoke-area-community') is null, 'free-only member gets no community');
 reset role;
 
 -- 5) As regras da comunidade usam has_community_access; as de aula e evento nao.

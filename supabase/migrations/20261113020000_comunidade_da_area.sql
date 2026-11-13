@@ -1,10 +1,12 @@
 -- Comunidade da área inteira (área de membros, pacote 2 — decisão do dono,
 -- 13/11/2026).
 --
--- O professor escolhe UM produto do tipo community como comunidade da área.
--- Quem tem matrícula ativa ou concluída em QUALQUER produto desse professor
--- entra nela: lê, posta, comenta, curte, denuncia e aparece em "online". As
--- comunidades por produto continuam como estão.
+-- O professor escolhe UM produto do tipo community, publicado e com a
+-- comunidade ligada, como comunidade da área. Quem tem matrícula ativa ou
+-- concluída em QUALQUER produto desse professor entra nela: lê, posta, comenta,
+-- curte, denuncia e aparece em "online". Matrícula gratuita (source
+-- 'free_course') NÃO abre: senão um brinde grátis daria a comunidade paga a
+-- qualquer um. As comunidades por produto continuam como estão.
 --
 -- A comunidade da área NÃO abre aula: courses_select_enrolled, course_events_*,
 -- course_event_rsvps_* e lesson_is_released seguem em
@@ -23,7 +25,8 @@ alter table public.member_areas
 
 -- 2. Quem entra ------------------------------------------------------------------
 -- Dono da área = dono do produto comunidade: se o produto mudar de dono, a
--- escolha deixa de valer em vez de abrir a comunidade de outra pessoa.
+-- escolha deixa de valer em vez de abrir a comunidade de outra pessoa. Produto
+-- despublicado ou com a comunidade desligada também deixa de valer.
 create or replace function public.has_member_area_community_access(p_slug text)
 returns boolean
 language sql
@@ -35,21 +38,24 @@ as $function$
     select 1
     from public.member_areas a
     join public.courses cc on cc.id = a.community_course_id and cc.owner_id = a.owner_id
+      and cc.status = 'published' and cc.community_enabled
     join public.courses c on c.owner_id = a.owner_id
     join public.enrollments e on e.course_id = c.id
     where a.community_course_id = public.resolve_course_reference(p_slug)
       and e.user_id = (select auth.uid())::text
       and e.status in ('active', 'completed')
+      and e.source is distinct from 'free_course'
   );
 $function$;
 revoke all on function public.has_member_area_community_access(text) from public;
 grant execute on function public.has_member_area_community_access(text) to anon, authenticated, service_role;
 
+-- invoker: as duas que ela chama já são definer e já checam a sessão.
 create or replace function public.has_community_access(p_slug text)
 returns boolean
 language sql
 stable
-security definer
+security invoker
 set search_path to 'public', 'pg_temp'
 as $function$
   select public.has_enrollment_for_course_slug(p_slug)
@@ -207,7 +213,7 @@ $function$;
 
 -- 4. Escolher e ler -------------------------------------------------------------
 -- Vazio = sem comunidade da área. Só um produto community do próprio professor,
--- com a comunidade ligada. Cria a área se ainda for virtual.
+-- publicado e com a comunidade ligada. Cria a área se ainda for virtual.
 create or replace function public.set_my_member_area_community(p_course_id text)
 returns void
 language plpgsql
@@ -225,7 +231,7 @@ begin
   if v_course is not null and not exists (
     select 1 from public.courses c
     where c.id = v_course and c.owner_id = v_me
-      and c.product_format = 'community' and c.community_enabled
+      and c.product_format = 'community' and c.community_enabled and c.status = 'published'
   ) then
     raise exception 'MEMBER_AREA_COMMUNITY_INVALID' using errcode = '22023';
   end if;
@@ -263,6 +269,7 @@ begin
   select c.id, c.title into v_course, v_title
   from public.member_areas a
   join public.courses c on c.id = a.community_course_id and c.owner_id = a.owner_id
+    and c.status = 'published' and c.community_enabled
   where a.owner_id = v_owner;
   if v_course is null then
     return null;

@@ -1795,7 +1795,7 @@
         "saveCommunity": "The area and products were saved, but the area community was not. Try again."
       },
       "community": "Community for the whole area",
-      "communityHelp": "Anyone enrolled in any of your products joins this community. Each product's own community stays as it is.",
+      "communityHelp": "Anyone enrolled in a paid product of yours, or given access by you, joins this community. Free products do not open it. Each product's own community stays as it is.",
       "communityEmpty": "Create a Community product to use it as the community for the whole area.",
       "communityNone": "No area community"
     },

@@ -1795,7 +1795,7 @@
         "saveCommunity": "El área y los productos se guardaron, pero la comunidad del área no. Inténtalo de nuevo."
       },
       "community": "Comunidad de toda el área",
-      "communityHelp": "Quien esté inscrito en cualquiera de tus productos entra en esta comunidad. La comunidad de cada producto sigue igual.",
+      "communityHelp": "Entra en esta comunidad quien esté inscrito en un producto de pago tuyo o tenga acceso dado por ti. Los productos gratuitos no la abren. La comunidad de cada producto sigue igual.",
       "communityEmpty": "Crea un producto de tipo Comunidad para usarlo como comunidad de toda el área.",
       "communityNone": "Sin comunidad del área"
     },

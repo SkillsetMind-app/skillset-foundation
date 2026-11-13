@@ -111,6 +111,13 @@ export function MemberAreaSettingsPanel() {
     return [...base].sort((a, b) => (rank.get(a.id) ?? order.length) - (rank.get(b.id) ?? order.length));
   }, [courses, choices, order]);
 
+  // Só produto community publicado e com a comunidade ligada. Uma escolha que
+  // deixou de valer (despublicada, comunidade desligada) aparece e salva como nenhuma.
+  const communityProducts = (courses ?? []).filter(
+    (course) => course.productFormat === "community" && course.communityEnabled !== false && course.status === "published",
+  );
+  const chosenCommunity = communityProducts.some((course) => course.id === communityCourseId) ? communityCourseId : "";
+
   function move(index: number, direction: -1 | 1) {
     const ids = orderedCourses.map((course) => course.id);
     const target = index + direction;
@@ -181,7 +188,7 @@ export function MemberAreaSettingsPanel() {
       return;
     }
     try {
-      await setMyMemberAreaCommunity(communityCourseId || null);
+      await setMyMemberAreaCommunity(chosenCommunity || null);
       setFeedback("saved");
     } catch {
       setFeedback("communityError");
@@ -213,9 +220,6 @@ export function MemberAreaSettingsPanel() {
   }
 
   const coverUrl = coverPath ? memberAreaCoverUrl(coverPath) : "";
-  const communityProducts = (courses ?? []).filter(
-    (course) => course.productFormat === "community" && course.communityEnabled !== false,
-  );
 
   return (
     <form onSubmit={handleSubmit} className="grid gap-5">
@@ -434,7 +438,7 @@ export function MemberAreaSettingsPanel() {
           {(a11y) => (
             <select
               {...a11y}
-              value={communityCourseId}
+              value={chosenCommunity}
               disabled={courses === null}
               onChange={(event) => {
                 setCommunityCourseId(event.target.value);
