@@ -2,12 +2,9 @@ import Link from "next/link";
 import { ArrowRight, Check } from "lucide-react";
 
 import { RevealSection } from "@/components/shared/reveal-section";
-import { planById } from "@/data/plans";
+import { formatUsdWhole } from "@/data/platform";
+import { formatPlanCommission, publicPlans } from "@/data/plans";
 import { getServerTranslation } from "@/lib/i18n/server";
-
-const basicPlan = planById("basic");
-const starterPlan = planById("starter");
-const proPlan = planById("pro");
 
 // Server component: só texto traduzido, nenhum estado. Sai do bundle do
 // navegador; o que precisa do cliente aqui é o RevealSection, que continua
@@ -16,10 +13,6 @@ export async function ForCreatorsBand() {
   const { t } = await getServerTranslation();
 
   const trustBullets = [
-    t("home.creators.bullet1")
-      .replace("{basic}", String(basicPlan.commissionPercent))
-      .replace("{starter}", String(starterPlan.commissionPercent))
-      .replace("{pro}", String(proPlan.commissionPercent)),
     t("home.creators.bullet2"),
     t("home.creators.bullet3"),
     t("home.creators.bullet4"),
@@ -60,6 +53,31 @@ export async function ForCreatorsBand() {
               </div>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
+              {/* Os 3 planos com preço, mensal e anual, nas letras miúdas da
+                  home (decisão de 13/11/2026). */}
+              <div className="rounded-lg border border-white/16 bg-white/10 p-4 text-sm leading-6 text-white/85 sm:col-span-2">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/75">
+                  {t("home.creators.plansLabel")}
+                </p>
+                <ul className="mt-2 grid gap-2 sm:grid-cols-3">
+                  {publicPlans.map((plan) => (
+                    <li key={plan.id}>
+                      <span className="block font-bold text-white">{plan.name}</span>
+                      <span className="block">
+                        {t("home.creators.planPrice")
+                          .replace("{monthly}", () => formatUsdWhole(plan.monthlyUsd))
+                          .replace("{yearly}", () => formatUsdWhole(plan.yearlyUsd))}
+                      </span>
+                      <span className="block text-white/70">
+                        {plan.commissionPercent === 0
+                          ? t("home.creators.planFeeZero")
+                          : t("home.creators.planFee").replace("{fee}", () => formatPlanCommission(plan))}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+                <p className="mt-2 text-xs leading-5 text-white/70">{t("home.creators.plansNote")}</p>
+              </div>
               {trustBullets.map((bullet) => (
                 <RevealSection key={bullet}>
                   <div className="flex h-full items-start gap-3 rounded-lg border border-white/16 bg-white/10 p-4 text-sm leading-6 text-white/85">

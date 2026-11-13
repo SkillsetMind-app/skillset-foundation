@@ -41,7 +41,7 @@ vi.mock("@/components/auth/turnstile-widget", () => ({
 const expected = {
   en: {
     account: "Creating an account does not start a paid plan.",
-    trial: `${PLAN_TRIAL_DAYS} days free on your first plan`,
+    trial: `a ${PLAN_TRIAL_DAYS}-day trial on your first plan`,
     card: "card required",
     renewal: "automatic renewal",
     cancellation: "Cancel in Billing before the trial ends",
@@ -50,7 +50,7 @@ const expected = {
   },
   es: {
     account: "Crear una cuenta no inicia un plan de pago.",
-    trial: `${PLAN_TRIAL_DAYS} días gratis en tu primer plan`,
+    trial: `una prueba de ${PLAN_TRIAL_DAYS} días en tu primer plan`,
     card: "requiere tarjeta",
     renewal: "renovación automática",
     cancellation: "Cancela en Facturación antes de que termine la prueba",

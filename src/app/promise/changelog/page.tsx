@@ -5,6 +5,7 @@ import { buildPageMetadata } from "@/lib/seo/page-metadata";
 const copy = "promiseChangelog";
 // Newest first. `{date}` in a line becomes the entry's own date.
 const entries = [
+  { date: "2026-11-13", title: "change5Title", lines: ["change5WhatChanged", "change5Why", "change5Effective"] },
   { date: "2026-10-06", title: "change4Title", lines: ["change4WhatChanged", "change4Why", "change4Effective"] },
   { date: "2026-10-06", title: "change3Title", lines: ["change3WhatChanged", "change3Why", "change3Effective"] },
   { date: "2026-09-15", title: "change2Title", lines: ["change2WhatChanged", "change2Why", "change2Effective"] },
@@ -54,22 +55,6 @@ export default async function PromiseChangelogPage() {
           );
         })}
 
-        <div className="mt-8 rounded-lg border border-dashed border-[var(--color-line-strong)] bg-[var(--color-surface-soft)] p-5">
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
-            {t(`${copy}.futureFormat`)}
-          </p>
-          <div className="mt-4 grid gap-2 text-sm leading-7 text-[var(--color-ink-soft)]">
-            <p>
-              <strong className="text-[var(--color-ink)]">
-                YYYY-MM-DD — {t(`${copy}.futureTitle`)}
-              </strong>
-            </p>
-            <p>{t(`${copy}.futureChange`)}</p>
-            <p>{t(`${copy}.futureWhy`)}</p>
-            <p>{t(`${copy}.futureNew`)}</p>
-            <p>{t(`${copy}.futureExisting`)}</p>
-          </div>
-        </div>
       </section>
     </PublicPage>
   );

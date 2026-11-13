@@ -1794,9 +1794,12 @@ async function handleCourseSubscriptionInvoiceCreated(
   const fee = platformFeeForSale(
     amountDue,
     canonicalPlatformFeeBpsForPlan(owner?.current_plan_id),
-    toStripeAmount(platformFixedFeeMinor(currency), currency),
+    toStripeAmount(platformFixedFeeMinor(currency, owner?.current_plan_id), currency),
   );
-  if (fee <= 0) return;
+  // A 0% plan (Pro) adds nothing — but a subscription sold while the teacher
+  // was on a paid-commission plan still carries that plan's percent, so its
+  // draft renewal comes with a fee: zero it, the renewal follows the plan now.
+  if (fee <= 0 && !(Number(invoice.application_fee_amount) > 0)) return;
   try {
     await getStripeClient().invoices.update(
       invoice.id!,
@@ -1807,7 +1810,10 @@ async function handleCourseSubscriptionInvoiceCreated(
     // A redelivery can land after Stripe finalized the invoice (the snapshot
     // above still says draft). Retrying cannot help, and a 500 would loop for
     // three days: log it and let the renewal keep the subscription's percent.
-    if ((error as { code?: string }).code !== "invoice_not_editable") {
+    // ponytail: zeroing (fee 0) never retries either — a refusal holds the
+    // renewal up to 72 h, worse than one renewal at the old percent. Upgrade
+    // path: clear the subscription's application_fee_percent on plan change.
+    if (fee > 0 && (error as { code?: string }).code !== "invoice_not_editable") {
       const current = await getStripeClient().invoices.retrieve(
         invoice.id!,
         undefined,

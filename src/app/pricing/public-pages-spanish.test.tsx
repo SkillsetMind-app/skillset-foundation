@@ -51,6 +51,6 @@ it("refreshes pricing language without resetting the selected cycle or expanded 
   expect(screen.getByRole("region", { name: "Comparación de planes" })).toHaveTextContent("$9/mes");
   expect(screen.getByRole("columnheader", { name: "Comisión de la plataforma" })).toBeInTheDocument();
   expect(screen.getByText("4.9% + $0.30 por venta")).toBeInTheDocument();
-  expect(screen.getByRole("link", { name: "Empieza tu prueba gratis de 14 días — Pro" })).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "Empieza tu prueba de 14 días — Pro" })).toBeInTheDocument();
   expect(screen.getByRole("region", { name: "Comparación de planes" })).toHaveTextContent("Se renueva automáticamente hasta que canceles.");
 });

@@ -5,13 +5,15 @@ export const automaticRefundProgressCap = 50;
 
 export const DEFAULT_PLATFORM_FEE_BPS = 1000;
 // Mirrors platform_fee_bps_for_plan() in
-// supabase/migrations/20261006040000_precos_novos_teste_gratis.sql.
+// supabase/migrations/20261113010000_pro_sem_comissao.sql.
 // `free` (an account with no plan) pays Basic's rate; `plus` is Enterprise.
+// Pro is 0% since 2026-11-13 (owner's decision), and a 0% plan pays no fixed
+// part either (platformFixedFeeMinor): SkillsetMind takes nothing per sale.
 const PLAN_PLATFORM_FEE_BPS: Record<SkillsetPlanId, number> = {
   free: 1000,
   basic: 1000,
   starter: 490,
-  pro: 290,
+  pro: 0,
   plus: 190,
 };
 
@@ -55,8 +57,13 @@ const PLATFORM_FIXED_FEE_MINOR: Record<string, number> = {
   XCD: 80,
 };
 
-/** The fixed part of the per-sale fee in `currency`, stored unit. USD's for an unknown currency. */
-export function platformFixedFeeMinor(currency?: string | null): number {
+/**
+ * The fixed part of the per-sale fee in `currency`, stored unit. USD's for an
+ * unknown currency. Pass the seller's plan: a plan with a 0% commission (Pro)
+ * pays no fixed part either. Without a plan, the fixed part applies.
+ */
+export function platformFixedFeeMinor(currency?: string | null, planId?: string | null): number {
+  if (planId != null && canonicalPlatformFeeBpsForPlan(planId) === 0) return 0;
   return PLATFORM_FIXED_FEE_MINOR[String(currency || "USD").toUpperCase()] ?? PLATFORM_FIXED_FEE_MINOR.USD;
 }
 

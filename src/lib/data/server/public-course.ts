@@ -268,6 +268,38 @@ export const hasRealPublishedCourse = cache(async (): Promise<boolean> => {
   }
 });
 
+// Vitrine aberta (decisão do dono, 13/11/2026): a seção "The marketplace" da
+// home e as portas para a loja (menu, rodapé, atalhos) só aparecem com uma
+// vitrine de verdade. Abaixo disso, somem sozinhas; /courses segue no ar.
+export const MARKETPLACE_MIN_COURSES = 12;
+export const MARKETPLACE_MIN_TEACHERS = 5;
+
+export function marketplaceIsOpen(ownerIds: ReadonlyArray<string | null>): boolean {
+  return ownerIds.length >= MARKETPLACE_MIN_COURSES && new Set(ownerIds).size >= MARKETPLACE_MIN_TEACHERS;
+}
+
+/**
+ * A loja tem cursos reais publicados suficientes para virar vitrine? Mesma
+ * leitura anônima e em cache de hasRealPublishedCourse; falha conta como
+ * fechada — a home nunca quebra por isso.
+ */
+export const isMarketplaceOpen = cache(async (): Promise<boolean> => {
+  try {
+    const { data, error } = await anonymousReadClient({ timeoutMs: 1_500, revalidate: 300 })
+      .from("courses")
+      .select("owner_id")
+      .eq("status", "published")
+      .not("id", "like", `${INTERNAL_COURSE_ID_PREFIX}%`)
+      .not("title", "like", `${INTERNAL_COURSE_TITLE_PREFIX}%`)
+      .limit(1000);
+    if (error) throw error;
+    return marketplaceIsOpen((data ?? []).map((row) => row.owner_id));
+  } catch (error) {
+    console.error("[public-course] isMarketplaceOpen failed", error);
+    return false;
+  }
+});
+
 /**
  * Cursos reais publicados, um por URL do sitemap. Os internos de teste saem
  * pelo MESMO predicado que a loja usa; a página deles segue no ar.

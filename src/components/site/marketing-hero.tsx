@@ -60,22 +60,23 @@ export async function MarketingHero() {
       <div className="mx-auto w-full max-w-7xl px-5 py-12 sm:px-8 sm:py-14 lg:py-16">
         <div className="relative z-10 flex flex-col gap-10 lg:flex-row lg:items-center">
           <div className="hero-copy-rise mx-auto flex max-w-xl flex-col items-center text-center lg:mx-0 lg:max-w-[min(36rem,48%)] lg:items-start lg:text-left">
-            <div className="inline-flex w-fit rounded-chip border border-white/20 bg-white/10 px-3.5 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-white">
-              {t("home.hero.eyebrow")}
-            </div>
-            {/* flex + gap, não space-y: no celular o parágrafo (8 linhas a
-                375px) desce para depois dos botões, senão o botão principal
-                cai embaixo do banner de cookies na 1ª visita. Do `sm` para
-                cima a ordem volta a ser título → parágrafo → botões. */}
-            <div className="mt-5 flex flex-col gap-4 lg:mt-6">
-              {/* One sentence, two lines — short and direct. */}
+            {/* flex + gap, não space-y: no celular o texto de apoio desce
+                para depois dos botões, senão o botão principal cai embaixo do
+                banner de cookies na 1ª visita. Do `sm` para cima a ordem volta
+                a ser título → apoio → botões. */}
+            <div className="flex flex-col gap-4">
+              {/* A frase da marca vem primeiro (frase do Eton, obrigatória). */}
               <h1 className="display-title text-[clamp(2.3rem,4.6vw,3.6rem)] leading-[1.07] text-white">
-                {t("home.hero.title1")}
-                <span className="block">{t("home.hero.title2")}</span>
+                {t("home.hero.brand")}
               </h1>
-              <p className="order-last max-w-[34rem] text-[15px] leading-[1.6] text-white/82 sm:order-none sm:text-base">
-                {t("home.hero.sub")}
-              </p>
+              <div className="order-last max-w-[34rem] sm:order-none">
+                <p className="text-[15px] leading-[1.6] text-white/82 sm:text-base">
+                  {t("home.hero.support")}
+                </p>
+                <p className="mt-2 text-[13px] leading-5 text-white/70">
+                  {t("home.hero.alsoFor")}
+                </p>
+              </div>
               <HeroCtas />
             </div>
             {/* Keep trust signals below the CTA on tablet/desktop; mobile prioritizes the primary action. */}

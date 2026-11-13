@@ -2,7 +2,7 @@
 -- Banco descartável apenas. Nada fica: tudo volta no ROLLBACK.
 --
 -- Preços novos + teste grátis (20261006040000_precos_novos_teste_gratis.sql):
---   - comissão: free 1000, basic 1000, starter 490, pro 290, plus (Enterprise) 190;
+--   - comissão: free 1000, basic 1000, starter 490, pro 0 (era 290; 20261113010000), plus (Enterprise) 190;
 --   - basic sem destaque nem domínio (cai no else);
 --   - orders.platform_fee_fixed_minor existe, com default 0;
 --   - pro com os destaques e domínios do Plus (5 e 5); landing segue 20;
@@ -24,7 +24,7 @@ select pg_temp.assert_true(
   public.platform_fee_bps_for_plan('free') = 1000
     and public.platform_fee_bps_for_plan('basic') = 1000
     and public.platform_fee_bps_for_plan('starter') = 490
-    and public.platform_fee_bps_for_plan('pro') = 290
+    and public.platform_fee_bps_for_plan('pro') = 0
     and public.platform_fee_bps_for_plan('plus') = 190
     and public.platform_fee_bps_for_plan(null) = 1000,
   'platform_fee_bps_for_plan fora da tabela nova'

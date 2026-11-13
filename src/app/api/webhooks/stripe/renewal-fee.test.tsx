@@ -87,7 +87,6 @@ describe("invoice.created on a student-subscription renewal", () => {
 
   it.each([
     ["starter", Math.floor((2_000 * 490) / 10_000) + 30],
-    ["pro", Math.floor((2_000 * 290) / 10_000) + 30],
     ["basic", Math.floor((2_000 * 1_000) / 10_000) + 30],
   ])("charges the %s percent plus the fixed fee, on the teacher's plan today", async (planId, fee) => {
     mocks.getAdmin.mockReturnValue(createDb(planId));
@@ -99,6 +98,33 @@ describe("invoice.created on a student-subscription renewal", () => {
       { application_fee_amount: fee },
       { stripeAccount: "acct_teacher" },
     );
+  });
+
+  // Pro is 0% since 2026-11-13: no percent and no fixed part.
+  it("adds no fee on a Pro teacher's renewal", async () => {
+    mocks.getAdmin.mockReturnValue(createDb("pro"));
+    expect((await deliver(renewal())).status).toBe(200);
+    expect(mocks.updateInvoice).not.toHaveBeenCalled();
+  });
+
+  // Sold on Starter, teacher now on Pro: the subscription still carries the
+  // Starter percent, so the draft comes with a fee. The renewal follows the plan.
+  it("zeroes the fee a renewal inherited from the teacher's old plan", async () => {
+    mocks.getAdmin.mockReturnValue(createDb("pro"));
+    expect((await deliver(renewal({ application_fee_amount: 128 }))).status).toBe(200);
+    expect(mocks.updateInvoice).toHaveBeenCalledWith(
+      "in_renewal_1",
+      { application_fee_amount: 0 },
+      { stripeAccount: "acct_teacher" },
+    );
+  });
+
+  it("never holds the renewal when Stripe refuses to zero the fee", async () => {
+    mocks.getAdmin.mockReturnValue(createDb("pro"));
+    mocks.updateInvoice.mockRejectedValue(Object.assign(new Error("invalid"), { code: "parameter_invalid_integer" }));
+    mocks.retrieveInvoice.mockResolvedValue({ id: "in_renewal_1", status: "draft" });
+    vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    expect((await deliver(renewal({ application_fee_amount: 128 }))).status).toBe(200);
   });
 
   it.each([

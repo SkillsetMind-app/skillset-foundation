@@ -150,7 +150,7 @@ describe("TeacherStudioDashboard", () => {
       "Course",
       "Community",
       "Live event",
-      "E-book",
+      "Digital download",
     ]);
     expect(links.map((link) => link.getAttribute("href"))).toEqual([
       "/teach/builder?newCourse=1&format=course",
@@ -622,7 +622,7 @@ describe("Home do professor: o selo do cartao e o tipo gravado", () => {
     const produtos = await screen.findByRole("region", { name: "Products in your workspace" });
     const typeOf = (title: string) =>
       within(produtos).getByRole("link", { name: new RegExp(title) }).querySelector("span.uppercase")?.textContent;
-    expect([typeOf("Grupo"), typeOf("Apostila"), typeOf("Antigo")]).toEqual(["Community", "E-book", "Course"]);
+    expect([typeOf("Grupo"), typeOf("Apostila"), typeOf("Antigo")]).toEqual(["Community", "Digital download", "Course"]);
     expect(produtos.textContent).not.toContain("creatorPanel.home.formats");
   });
 });

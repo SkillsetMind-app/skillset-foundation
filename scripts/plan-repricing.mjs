@@ -32,7 +32,7 @@ import { pathToFileURL } from "node:url";
 
 // Mirrors canonicalPlatformFeeBpsForPlan in src/lib/payments/rules.ts
 // (src/lib/payments/plan-repricing-script.test.ts fails if the two drift).
-export const RATE_BPS = { free: 1000, basic: 1000, starter: 490, pro: 290, plus: 190 };
+export const RATE_BPS = { free: 1000, basic: 1000, starter: 490, pro: 0, plus: 190 };
 
 // Enterprise's Prices (the old Plus Prices, src/data/plans.ts).
 export const ENTERPRISE_PRICES = [

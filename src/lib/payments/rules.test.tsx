@@ -45,6 +45,14 @@ describe("fixed per-sale fee (~US$0.30)", () => {
     expect(platformFixedFeeMinor("XXX")).toBe(30);
   });
 
+  it("is zero on the 0% plan (Pro) and charged on every other plan", () => {
+    expect(platformFixedFeeMinor("USD", "pro")).toBe(0);
+    expect(platformFixedFeeMinor("BRL", "pro")).toBe(0);
+    for (const planId of ["free", "basic", "starter", "plus", null, undefined, "unknown"]) {
+      expect(platformFixedFeeMinor("USD", planId), String(planId)).toBe(30);
+    }
+  });
+
   it("adds the fixed part to the floored percent and stays below the sale", () => {
     expect(platformFeeForSale(10_000, 490, 30)).toBe(490 + 30);
     expect(platformFeeForSale(999, 290, 30)).toBe(28 + 30);

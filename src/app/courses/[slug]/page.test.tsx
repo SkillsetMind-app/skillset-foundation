@@ -19,6 +19,7 @@ vi.mock("@/lib/data/server/public-course", () => ({
   getPublicCourseByRef: mocks.getPublicCourseByRef,
   getCourseRefAccess: mocks.getCourseRefAccess,
   hasRealPublishedCourse: mocks.hasRealPublishedCourse,
+  isMarketplaceOpen: async () => false,
 }));
 
 vi.mock("next/navigation", () => ({ notFound: mocks.notFound }));

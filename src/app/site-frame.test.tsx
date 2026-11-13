@@ -124,7 +124,8 @@ describe("hero", () => {
     const { container } = render(await MarketingHero());
     const title = container.querySelector("h1");
     const copy = title?.parentElement;
-    const lead = copy?.querySelector(":scope > p");
+    // O apoio (linha de público + "Education, not therapy") é o 1º bloco depois do título.
+    const lead = copy?.querySelector(":scope > div");
 
     expect(copy?.className).toContain("flex-col");
     // `space-y-*` é margem por posição no DOM: com `order` ela sairia errada.
@@ -192,7 +193,7 @@ describe("seções de marketing viraram servidor", () => {
   });
 
   it.each([
-    ["hero", MarketingHero, "Your knowledge changes lives."],
+    ["hero", MarketingHero, "Turn your knowledge into cash through a digital business."],
     ["how it works", HowItWorksStrip, "Three steps from your method to a published program."],
     ["capabilities", CapabilitiesGrid, "Everything your program needs is already built in."],
     ["promise", PromisePreviewBand, "Six commitments. Written down. Public."],
