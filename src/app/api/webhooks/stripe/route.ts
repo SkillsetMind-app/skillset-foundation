@@ -1797,7 +1797,11 @@ async function handleCourseSubscriptionInvoiceCreated(
     toStripeAmount(platformFixedFeeMinor(currency, owner?.current_plan_id), currency),
   );
   if (fee <= 0) {
-    await clearInheritedRenewalFee(subscription, invoice, eventAccountId);
+    // Only a 0% plan clears the subscription's percent: a tiny renewal on a
+    // paid-commission plan also floors to 0, and must keep its percent.
+    if (canonicalPlatformFeeBpsForPlan(owner?.current_plan_id) === 0) {
+      await clearInheritedRenewalFee(subscription, invoice, eventAccountId);
+    }
     return;
   }
   try {
