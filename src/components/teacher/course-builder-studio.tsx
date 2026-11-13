@@ -2013,7 +2013,8 @@ export function CourseBuilderStudio() {
     const isLessonFormOpen = lessonFormModuleId === module.id;
     const moduleName = module.title || t("creatorEditor.builder.curriculum.untitledModule");
     // Primeira aula JÁ SALVA do módulo: a rota de IA confere o dono por ela.
-    const savedFirstLessonId = course.modules.find((saved) => saved.id === module.id)?.lessons[0]?.id;
+    const savedCourseId = course?.id;
+    const savedFirstLessonId = course?.modules.find((saved) => saved.id === module.id)?.lessons[0]?.id;
 
     return (
       <div className="grid gap-4">
@@ -2081,9 +2082,9 @@ export function CourseBuilderStudio() {
               />
             </label>
             {/* A rota confere o dono por uma aula JÁ SALVA do módulo. */}
-            {isTeacherAiEnabled && isEditable && savedFirstLessonId ? (
+            {isTeacherAiEnabled && isEditable && savedCourseId && savedFirstLessonId ? (
               <AiSuggest
-                courseId={course.id}
+                courseId={savedCourseId}
                 lessonId={savedFirstLessonId}
                 moduleId={module.id}
                 target="module"

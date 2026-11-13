@@ -46,7 +46,7 @@ export async function extractAudioChunks(
   videoUrl: string,
   referer: string,
   signal?: AbortSignal,
-): Promise<{ data: Uint8Array; offset: number; fileName: string }[]> {
+): Promise<{ data: Uint8Array<ArrayBuffer>; offset: number; fileName: string }[]> {
   if (!ffmpegPath) throw new AudioExtractError("ffmpeg_missing");
   const dir = await mkdtemp(join(tmpdir(), "aula-audio-"));
   try {

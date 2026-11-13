@@ -56,7 +56,7 @@ async function failure(response: Response, key: string): Promise<OpenAIError> {
 
 /** Transcreve um pedaço de áudio (até 25 MB) e devolve o WebVTT do Whisper. */
 export async function transcribeToVtt(opts: {
-  audio: Uint8Array;
+  audio: Uint8Array<ArrayBuffer>;
   fileName: string;
   language: string;
   signal?: AbortSignal;

@@ -57,7 +57,7 @@ describe("openai client", () => {
     fetchMock.mockResolvedValue(
       new Response(`{"error":{"code":"credit_balance_exhausted","message":"key ${KEY}"}}`, { status: 429 }),
     );
-    const error = await askJson({ system: "s", user: "u", schemaName: "x", schema: {} }).catch((e) => e);
+    const error = await askJson<never>({ system: "s", user: "u", schemaName: "x", schema: {} }).catch((e: OpenAIError) => e);
     expect(error).toBeInstanceOf(OpenAIError);
     expect(error.code).toBe("no_credit");
     expect(error.message).not.toContain(KEY);
@@ -65,7 +65,7 @@ describe("openai client", () => {
 
   it("treats a reply that is not JSON as a bad reply", async () => {
     fetchMock.mockResolvedValue(Response.json({ choices: [{ message: { content: "sure!" } }] }));
-    const error = await askJson({ system: "s", user: "u", schemaName: "x", schema: {} }).catch((e) => e);
+    const error = await askJson<never>({ system: "s", user: "u", schemaName: "x", schema: {} }).catch((e: OpenAIError) => e);
     expect(error.code).toBe("bad_reply");
   });
 });
