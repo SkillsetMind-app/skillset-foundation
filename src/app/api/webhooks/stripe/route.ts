@@ -1799,7 +1799,7 @@ async function handleCourseSubscriptionInvoiceCreated(
   // A 0% plan (Pro) adds nothing — but a subscription sold while the teacher
   // was on a paid-commission plan still carries that plan's percent, so its
   // draft renewal comes with a fee: zero it, the renewal follows the plan now.
-  if (fee <= 0 && !(Number(invoice.application_fee_amount) > 0)) return;
+  if (fee <= 0 && !(Number(subscription.application_fee_percent) > 0)) return;
   try {
     await getStripeClient().invoices.update(
       invoice.id!,

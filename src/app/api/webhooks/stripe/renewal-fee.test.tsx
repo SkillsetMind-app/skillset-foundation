@@ -111,7 +111,12 @@ describe("invoice.created on a student-subscription renewal", () => {
   // Starter percent, so the draft comes with a fee. The renewal follows the plan.
   it("zeroes the fee a renewal inherited from the teacher's old plan", async () => {
     mocks.getAdmin.mockReturnValue(createDb("pro"));
-    expect((await deliver(renewal({ application_fee_amount: 128 }))).status).toBe(200);
+    mocks.retrieve.mockResolvedValue({
+      id: "sub_student_1",
+      application_fee_percent: 6.4,
+      metadata: { purpose: "course_subscription", teacherId: "teacher_1" },
+    });
+    expect((await deliver(renewal())).status).toBe(200);
     expect(mocks.updateInvoice).toHaveBeenCalledWith(
       "in_renewal_1",
       { application_fee_amount: 0 },
@@ -123,8 +128,13 @@ describe("invoice.created on a student-subscription renewal", () => {
     mocks.getAdmin.mockReturnValue(createDb("pro"));
     mocks.updateInvoice.mockRejectedValue(Object.assign(new Error("invalid"), { code: "parameter_invalid_integer" }));
     mocks.retrieveInvoice.mockResolvedValue({ id: "in_renewal_1", status: "draft" });
+    mocks.retrieve.mockResolvedValue({
+      id: "sub_student_1",
+      application_fee_percent: 6.4,
+      metadata: { purpose: "course_subscription", teacherId: "teacher_1" },
+    });
     vi.spyOn(console, "warn").mockImplementation(() => undefined);
-    expect((await deliver(renewal({ application_fee_amount: 128 }))).status).toBe(200);
+    expect((await deliver(renewal())).status).toBe(200);
   });
 
   it.each([
