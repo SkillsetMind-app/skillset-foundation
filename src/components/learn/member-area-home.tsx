@@ -1,6 +1,6 @@
 "use client";
 
-import { Lock, PlayCircle } from "lucide-react";
+import { Lock, MessagesSquare, PlayCircle } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -10,13 +10,18 @@ import { CourseCover } from "@/components/learn/course-unlock-modal";
 import { MemberAreaShell, type MemberAreaBrand } from "@/components/learn/member-area-shell";
 import { classroomTabHref } from "@/domain/classroom-tabs";
 import {
+  getMemberAreaCommunity,
   getMemberAreaHome,
   memberAreaCoverUrl,
+  type MemberAreaCommunity,
   type MemberAreaHome,
   type MemberAreaLockedProduct,
 } from "@/lib/data/member-areas";
 
-type State = { status: "loading" } | { status: "error" } | { status: "ready"; home: MemberAreaHome };
+type State =
+  | { status: "loading" }
+  | { status: "error" }
+  | { status: "ready"; home: MemberAreaHome; community: MemberAreaCommunity | null };
 
 const cardClass =
   "group flex min-w-0 flex-col overflow-hidden rounded-lg border border-[var(--ma-line)] bg-[var(--ma-surface)] shadow-[var(--ma-shadow)]";
@@ -65,14 +70,15 @@ export function MemberAreaHomeView({ areaRef, brand = null }: { areaRef: string;
 
   useEffect(() => {
     let cancelled = false;
-    getMemberAreaHome(areaRef)
-      .then((home) => {
+    // A comunidade da área é um extra: se ela falhar, a área abre sem o cartão.
+    Promise.all([getMemberAreaHome(areaRef), getMemberAreaCommunity(areaRef).catch(() => null)])
+      .then(([home, community]) => {
         if (cancelled) return;
         if (!home) {
           router.replace(memberAreaStorefrontPath(areaRef));
           return;
         }
-        setState({ status: "ready", home });
+        setState({ status: "ready", home, community });
       })
       .catch(() => {
         if (!cancelled) setState({ status: "error" });
@@ -109,6 +115,7 @@ export function MemberAreaHomeView({ areaRef, brand = null }: { areaRef: string;
   }
 
   const { area, continueWatching, myProducts, moreProducts } = state.home;
+  const { community } = state;
   const areaName = area.name ?? area.creatorName ?? "";
   const priceLabels = {
     free: t("learn.memberArea.free"),
@@ -149,6 +156,26 @@ export function MemberAreaHomeView({ areaRef, brand = null }: { areaRef: string;
             ) : null}
           </div>
         </header>
+
+        {community ? (
+          <Link
+            href={`/learn/areas/${encodeURIComponent(areaRef)}/community`}
+            className="flex min-w-0 items-center gap-4 rounded-lg border border-[var(--ma-line)] bg-[var(--ma-surface)] p-4 hover:border-[var(--ma-accent)]"
+          >
+            <MessagesSquare aria-hidden="true" size={32} className="shrink-0 text-[var(--ma-accent)]" />
+            <span className="min-w-0">
+              <span className="block truncate text-base font-semibold text-[var(--ma-ink)]">
+                {t("learn.memberArea.communityTitle")}
+              </span>
+              <span className="block truncate text-sm text-[var(--ma-ink-soft)]">
+                {t("learn.memberArea.communityBody").replace("{name}", () => area.creatorName ?? areaName)}
+              </span>
+            </span>
+            <span className="ml-auto hidden shrink-0 text-sm font-semibold text-[var(--ma-accent)] sm:inline">
+              {t("learn.memberArea.communityOpen")}
+            </span>
+          </Link>
+        ) : null}
 
         <section aria-labelledby="area-continue-title" className="grid gap-3">
           <h2 id="area-continue-title" className="text-xl font-semibold text-[var(--ma-ink)]">
@@ -195,6 +222,9 @@ export function MemberAreaHomeView({ areaRef, brand = null }: { areaRef: string;
                       <CourseCover course={{ coverImageUrl: product.coverImageUrl, title: product.title }} sizes="(max-width: 640px) 100vw, 33vw" />
                     </span>
                     <span className="grid gap-2 p-4">
+                      <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--ma-ink-soft)]">
+                        {t(`courseCreation.types.${product.productFormat ?? "course"}.label`)}
+                      </span>
                       <span className="line-clamp-2 break-words text-base font-semibold text-[var(--ma-ink)]">{product.title}</span>
                       <span className="h-1.5 overflow-hidden rounded-full bg-[var(--ma-surface-2)]" aria-hidden="true">
                         <span

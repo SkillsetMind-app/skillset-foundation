@@ -16,6 +16,7 @@ import {
   removeMemberAreaCover,
   saveMyMemberArea,
   saveMyMemberAreaProducts,
+  setMyMemberAreaCommunity,
   uploadMemberAreaCover,
   type MemberAreaTheme,
   type MyMemberAreaEditor,
@@ -59,7 +60,9 @@ export function MemberAreaSettingsPanel() {
   const [uploading, setUploading] = useState(false);
   const [coverError, setCoverError] = useState<"" | "invalid" | "upload">("");
   const [saving, setSaving] = useState(false);
-  const [feedback, setFeedback] = useState<"" | "saved" | "saveError" | "productsError">("");
+  const [feedback, setFeedback] = useState<"" | "saved" | "saveError" | "productsError" | "communityError">("");
+  // A comunidade da área inteira: um produto community do próprio professor.
+  const [communityCourseId, setCommunityCourseId] = useState<string>("");
 
   useEffect(() => {
     if (!uid) return;
@@ -75,6 +78,7 @@ export function MemberAreaSettingsPanel() {
         setSavedCoverPath(editor.settings?.coverPath ?? null);
         setWelcome(editor.settings?.welcomeText ?? "");
         setChoices(editor.choices);
+        setCommunityCourseId(editor.communityCourseId ?? "");
         setHidden(new Set([...editor.choices].filter(([, choice]) => !choice.visible).map(([id]) => id)));
         setLoadState("ready");
       })
@@ -106,6 +110,13 @@ export function MemberAreaSettingsPanel() {
     const rank = new Map(order.map((id, index) => [id, index]));
     return [...base].sort((a, b) => (rank.get(a.id) ?? order.length) - (rank.get(b.id) ?? order.length));
   }, [courses, choices, order]);
+
+  // Só produto community publicado e com a comunidade ligada. Uma escolha que
+  // deixou de valer (despublicada, comunidade desligada) aparece e salva como nenhuma.
+  const communityProducts = (courses ?? []).filter(
+    (course) => course.productFormat === "community" && course.communityEnabled !== false && course.status === "published",
+  );
+  const chosenCommunity = communityProducts.some((course) => course.id === communityCourseId) ? communityCourseId : "";
 
   function move(index: number, direction: -1 | 1) {
     const ids = orderedCourses.map((course) => course.id);
@@ -171,9 +182,16 @@ export function MemberAreaSettingsPanel() {
       await saveMyMemberAreaProducts(
         orderedCourses.slice(0, maxProducts).map((course) => ({ courseId: course.id, visible: !hidden.has(course.id) })),
       );
-      setFeedback("saved");
     } catch {
       setFeedback("productsError");
+      setSaving(false);
+      return;
+    }
+    try {
+      await setMyMemberAreaCommunity(chosenCommunity || null);
+      setFeedback("saved");
+    } catch {
+      setFeedback("communityError");
     } finally {
       setSaving(false);
     }
@@ -368,9 +386,10 @@ export function MemberAreaSettingsPanel() {
                     <span className={`block truncate text-sm font-semibold ${visible ? "text-[var(--color-ink)]" : "text-[var(--color-ink-muted)]"}`}>
                       {label}
                     </span>
-                    {course.status !== "published" ? (
-                      <span className="block text-xs text-[var(--color-ink-soft)]">{t("teach.memberAreaEditor.notPublished")}</span>
-                    ) : null}
+                    <span className="block text-xs text-[var(--color-ink-soft)]">
+                      {t(`courseCreation.types.${course.productFormat ?? "course"}.label`)}
+                      {course.status !== "published" ? ` · ${t("teach.memberAreaEditor.notPublished")}` : ""}
+                    </span>
                   </span>
                   <label className={`${smallButtonClass} cursor-pointer`}>
                     <input
@@ -410,11 +429,41 @@ export function MemberAreaSettingsPanel() {
         )}
       </Card>
 
+      <Card padding="sm" shadow={false} className="grid gap-3">
+        <Field
+          id="member-area-community"
+          label={t("teach.memberAreaEditor.community")}
+          hint={t(communityProducts.length > 0 ? "teach.memberAreaEditor.communityHelp" : "teach.memberAreaEditor.communityEmpty")}
+        >
+          {(a11y) => (
+            <select
+              {...a11y}
+              value={chosenCommunity}
+              disabled={courses === null}
+              onChange={(event) => {
+                setCommunityCourseId(event.target.value);
+                setFeedback("");
+              }}
+              className={fieldClass}
+            >
+              <option value="">{t("teach.memberAreaEditor.communityNone")}</option>
+              {communityProducts.map((course) => (
+                <option key={course.id} value={course.id}>
+                  {course.title.trim() || t("teacherMembers.untitled")}
+                </option>
+              ))}
+            </select>
+          )}
+        </Field>
+      </Card>
+
       </fieldset>
 
-      {feedback === "saveError" || feedback === "productsError" ? (
+      {feedback === "saveError" || feedback === "productsError" || feedback === "communityError" ? (
         <InlineAlert tone="error">
-          {t(`teach.memberAreaEditor.errors.${feedback === "saveError" ? "save" : "saveProducts"}`)}
+          {t(`teach.memberAreaEditor.errors.${
+            feedback === "saveError" ? "save" : feedback === "productsError" ? "saveProducts" : "saveCommunity"
+          }`)}
         </InlineAlert>
       ) : null}
       {feedback === "saved" ? <p role="status" className="info-notice">{t("teach.memberAreaEditor.saved")}</p> : null}

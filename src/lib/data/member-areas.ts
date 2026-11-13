@@ -67,6 +67,9 @@ export type MemberAreaHome = {
   moreProducts: MemberAreaLockedProduct[];
 };
 
+/** A comunidade da área inteira: um produto community do professor. */
+export type MemberAreaCommunity = { courseId: string; title: string; isOwner: boolean };
+
 /** Os quatro de uma vez: salvar regrava todos, então nenhum é opcional. */
 export type MemberAreaSettings = {
   name: string | null;
@@ -170,6 +173,27 @@ export async function getMemberAreaHome(ref: string): Promise<MemberAreaHome | n
   return parseMemberAreaHome(data);
 }
 
+/**
+ * A comunidade da área de `ref` ("@usuario" ou uid). null: a área não tem
+ * comunidade escolhida, ou quem pede não é aluno nem dono.
+ */
+export async function getMemberAreaCommunity(ref: string): Promise<MemberAreaCommunity | null> {
+  const { data, error } = await getSupabaseBrowserClient().rpc("get_member_area_community", { p_area_ref: ref });
+  if (error) throw error;
+  const row = asRow(data);
+  const courseId = text(row?.course_id);
+  if (!row || !courseId) return null;
+  return { courseId, title: text(row.title) ?? "", isOwner: row.is_owner === true };
+}
+
+/** Escolhe (ou tira, com null) a comunidade da área de quem chama. */
+export async function setMyMemberAreaCommunity(courseId: string | null): Promise<void> {
+  const { error } = await getSupabaseBrowserClient().rpc("set_my_member_area_community", {
+    p_course_id: courseId ?? "",
+  });
+  if (error) throw error;
+}
+
 /** Salva a área de quem chama. Vazio ou null volta ao padrão. */
 export async function saveMyMemberArea(settings: MemberAreaSettings): Promise<void> {
   const { error } = await getSupabaseBrowserClient().rpc("save_my_member_area", {
@@ -199,6 +223,8 @@ const publicMediaBucket = "public-media";
 export type MyMemberAreaEditor = {
   settings: MemberAreaSettings | null;
   choices: Map<string, { position: number; visible: boolean }>;
+  /** O produto community escolhido como comunidade da área inteira. */
+  communityCourseId: string | null;
 };
 
 /** Lê a própria área pela RLS (só o dono enxerga as linhas). */
@@ -206,11 +232,11 @@ export async function getMyMemberAreaEditor(uid: string): Promise<MyMemberAreaEd
   const supabase = getSupabaseBrowserClient();
   const { data: area, error } = await supabase
     .from("member_areas")
-    .select("id, name, theme, cover_path, welcome_text")
+    .select("id, name, theme, cover_path, welcome_text, community_course_id")
     .eq("owner_id", uid)
     .maybeSingle();
   if (error) throw error;
-  if (!area) return { settings: null, choices: new Map() };
+  if (!area) return { settings: null, choices: new Map(), communityCourseId: null };
 
   const { data: products, error: productsError } = await supabase
     .from("member_area_products")
@@ -226,6 +252,7 @@ export async function getMyMemberAreaEditor(uid: string): Promise<MyMemberAreaEd
       welcomeText: area.welcome_text,
     },
     choices: new Map((products ?? []).map((row) => [row.course_id, { position: row.position, visible: row.visible }])),
+    communityCourseId: area.community_course_id ?? null,
   };
 }
 
