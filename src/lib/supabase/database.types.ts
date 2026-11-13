@@ -153,6 +153,44 @@ export type Database = {
           },
         ]
       }
+      ai_usage: {
+        Row: {
+          course_id: string
+          created_at: string
+          id: number
+          kind: string
+          lesson_id: string
+          owner_id: string
+          seconds: number
+        }
+        Insert: {
+          course_id: string
+          created_at?: string
+          id?: number
+          kind: string
+          lesson_id: string
+          owner_id: string
+          seconds: number
+        }
+        Update: {
+          course_id?: string
+          created_at?: string
+          id?: number
+          kind?: string
+          lesson_id?: string
+          owner_id?: string
+          seconds?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_usage_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["uid"]
+          },
+        ]
+      }
       audit_log: {
         Row: {
           action: string
@@ -1549,6 +1587,54 @@ export type Database = {
           },
         ]
       }
+      lesson_captions: {
+        Row: {
+          course_id: string
+          language: string
+          lesson_id: string
+          owner_id: string
+          published_at: string | null
+          updated_at: string
+          video_id: string
+          vtt: string
+        }
+        Insert: {
+          course_id: string
+          language: string
+          lesson_id: string
+          owner_id: string
+          published_at?: string | null
+          updated_at?: string
+          video_id: string
+          vtt: string
+        }
+        Update: {
+          course_id?: string
+          language?: string
+          lesson_id?: string
+          owner_id?: string
+          published_at?: string | null
+          updated_at?: string
+          video_id?: string
+          vtt?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lesson_captions_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lesson_captions_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["uid"]
+          },
+        ]
+      }
       lesson_progress: {
         Row: {
           completed_at: string
@@ -1575,6 +1661,48 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "enrollments"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      lesson_quizzes: {
+        Row: {
+          course_id: string
+          lesson_id: string
+          owner_id: string
+          questions: Json
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          course_id: string
+          lesson_id: string
+          owner_id: string
+          questions: Json
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          course_id?: string
+          lesson_id?: string
+          owner_id?: string
+          questions?: Json
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lesson_quizzes_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lesson_quizzes_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["uid"]
           },
         ]
       }
@@ -2597,6 +2725,16 @@ export type Database = {
           notification_ids: string[]
           notification_count: number
         }[]
+      }
+      ai_plan_for: { Args: { p_uid: string }; Returns: string }
+      ai_video_seconds_limit_for_plan: { Args: { p_plan_id: string }; Returns: number }
+      ai_video_usage: {
+        Args: { p_uid: string }
+        Returns: { used_seconds: number; limit_seconds: number }[]
+      }
+      claim_ai_video_seconds: {
+        Args: { p_uid: string; p_course_id: string; p_lesson_id: string; p_seconds: number }
+        Returns: { usage_id: number | null; used_seconds: number; limit_seconds: number }[]
       }
       claim_welcome_tour: {
         Args: { p_uid: string; p_surface: string }

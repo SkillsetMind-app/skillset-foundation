@@ -104,6 +104,8 @@ import {
 import { useCreatorAreaLink } from "@/components/learn/member-area-links";
 import { track } from "@/lib/posthog/events";
 import { scrollBehavior } from "@/lib/ui/scroll-behavior";
+import { LessonQuiz } from "@/components/learn/lesson-quiz";
+import { isTeacherAiEnabled } from "@/lib/ai/config";
 
 // Liberação de aula pelo calendário (migration 20260915020000).
 // Folga depois do prazo: o relógio do aparelho pode estar à frente do banco.
@@ -2176,6 +2178,7 @@ function LessonContentPanel({
             {t("learn.classroom.lesson.openResource")}
           </a>
         ) : null}
+        {isTeacherAiEnabled && !locked && !fileOnly ? <LessonQuiz key={lesson.id} lessonId={lesson.id} /> : null}
         {fileOnly ? (
           <>
             <p className="mt-3 text-sm leading-7 text-[var(--color-ink-soft)]">

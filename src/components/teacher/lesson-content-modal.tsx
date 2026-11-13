@@ -67,6 +67,10 @@ import {
   type UploadCourseAssetProgress,
 } from "@/lib/data/course-assets";
 import { isBunnyConfigured } from "@/lib/bunny/config";
+import { isTeacherAiEnabled } from "@/lib/ai/config";
+import { LessonAiCaptions } from "@/components/teacher/lesson-ai-captions";
+import { LessonAiQuiz } from "@/components/teacher/lesson-ai-quiz";
+import { AiSuggest } from "@/components/teacher/ai-suggest";
 import { useModalFocus } from "@/lib/a11y/use-modal-focus";
 import { useLessonUpload, startLessonUpload, cancelLessonUpload } from "@/components/teacher/lesson-upload-provider";
 import { lessonUploadIsBusy } from "@/lib/data/lesson-upload";
@@ -1050,6 +1054,15 @@ export function LessonContentModal({
                 </section>
               ) : null}
 
+              {/* Legenda com IA: só para vídeo enviado à Bunny (é dela que sai
+                  o áudio e é nela que a legenda publicada aparece). */}
+              {isTeacherAiEnabled && isEditable && resolvedSource === "upload" && primaryVideo?.bunnyVideoId ? (
+                <>
+                  <LessonAiCaptions key={primaryVideo.id} courseId={course.id} lessonId={lesson.id} assetId={primaryVideo.id} />
+                  <LessonAiQuiz key={`quiz-${primaryVideo.id}`} courseId={course.id} lessonId={lesson.id} assetId={primaryVideo.id} />
+                </>
+              ) : null}
+
               <p className="lesson-modal__guidance">
                 {t("creatorEditor.lesson.videoHelp")}
               </p>
@@ -1066,6 +1079,17 @@ export function LessonContentModal({
                   disabled={!isEditable}
                 />
               </label>
+              {/* Sugestão com IA: lê a legenda da aula; "Use" só preenche o campo. */}
+              {isTeacherAiEnabled && isEditable && primaryVideo?.bunnyVideoId ? (
+                <AiSuggest
+                  courseId={course.id}
+                  lessonId={lesson.id}
+                  assetId={primaryVideo.id}
+                  target="lesson"
+                  onUseTitle={(title) => onUpdateLesson({ title })}
+                  onUseDescription={(contentText) => onUpdateLesson({ contentText })}
+                />
+              ) : null}
               {/* Um campo so, em texto simples, no campo PROTEGIDO (contentText:
                   course_lesson_content, fora do JSON publico). Links viram
                   clicaveis na area de membros (decisao de 14/09). */}
