@@ -7,14 +7,15 @@ export const DEFAULT_PLATFORM_FEE_BPS = 1000;
 // Mirrors platform_fee_bps_for_plan() in
 // supabase/migrations/20261113010000_pro_sem_comissao.sql.
 // `free` (an account with no plan) pays Basic's rate; `plus` is Enterprise.
-// Pro is 0% since 2026-11-13 (owner's decision), and a 0% plan pays no fixed
-// part either (platformFixedFeeMinor): SkillsetMind takes nothing per sale.
+// Pro and Enterprise are 0% since 2026-11-13 (owner's decision), and a 0% plan
+// pays no fixed part either (platformFixedFeeMinor): SkillsetMind takes nothing
+// per sale.
 const PLAN_PLATFORM_FEE_BPS: Record<SkillsetPlanId, number> = {
   free: 1000,
   basic: 1000,
   starter: 490,
   pro: 0,
-  plus: 190,
+  plus: 0,
 };
 
 // The fixed part of every sale's fee, on every plan: about US$0.30 in each

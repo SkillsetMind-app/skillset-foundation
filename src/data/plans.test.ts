@@ -28,7 +28,7 @@ describe("the 2026-10 price table", () => {
     expect(planById("starter")).toMatchObject({ monthlyUsd: 19, yearlyUsd: 190, commissionPercent: 4.9 });
     // Pro 0% since 2026-11-13 (owner's decision; it undid the old "never 0%").
     expect(planById("pro")).toMatchObject({ monthlyUsd: 89, yearlyUsd: 890, commissionPercent: 0 });
-    expect(planById("plus")).toMatchObject({ name: "Enterprise", monthlyUsd: 199, commissionPercent: 1.9 });
+    expect(planById("plus")).toMatchObject({ name: "Enterprise", monthlyUsd: 199, commissionPercent: 0 });
     // ~17% off: two months free on the yearly price.
     for (const plan of publicPlans) expect(plan.yearlyUsd).toBe(plan.monthlyUsd * 10);
     expect(formatPlanCommission(planById("starter"))).toBe("4.9% + $0.30");
@@ -39,10 +39,10 @@ describe("the 2026-10 price table", () => {
     for (const plan of plans) {
       expect(Math.round(plan.commissionPercent * 100)).toBe(canonicalPlatformFeeBpsForPlan(plan.id));
     }
-    // An account with no plan pays Basic's rate; only Pro is 0%.
+    // An account with no plan pays Basic's rate; only Pro and Enterprise are 0%.
     expect(canonicalPlatformFeeBpsForPlan("free")).toBe(canonicalPlatformFeeBpsForPlan("basic"));
     for (const plan of plans) {
-      if (plan.id === "pro") expect(canonicalPlatformFeeBpsForPlan(plan.id)).toBe(0);
+      if (plan.id === "pro" || plan.id === "plus") expect(canonicalPlatformFeeBpsForPlan(plan.id)).toBe(0);
       else expect(canonicalPlatformFeeBpsForPlan(plan.id)).toBeGreaterThan(0);
     }
   });

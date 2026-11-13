@@ -45,10 +45,11 @@ describe("fixed per-sale fee (~US$0.30)", () => {
     expect(platformFixedFeeMinor("XXX")).toBe(30);
   });
 
-  it("is zero on the 0% plan (Pro) and charged on every other plan", () => {
+  it("is zero on the 0% plans (Pro, Enterprise) and charged on every other plan", () => {
     expect(platformFixedFeeMinor("USD", "pro")).toBe(0);
     expect(platformFixedFeeMinor("BRL", "pro")).toBe(0);
-    for (const planId of ["free", "basic", "starter", "plus", null, undefined, "unknown"]) {
+    expect(platformFixedFeeMinor("USD", "plus")).toBe(0);
+    for (const planId of ["free", "basic", "starter", null, undefined, "unknown"]) {
       expect(platformFixedFeeMinor("USD", planId), String(planId)).toBe(30);
     }
   });
