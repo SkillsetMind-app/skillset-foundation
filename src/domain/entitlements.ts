@@ -54,10 +54,10 @@ export type QuotaKey =
    */
   | "landingBlocks"
   /**
-   * Minutes of lesson video the AI tools may transcribe per calendar month
-   * (UTC): captions, then translation, quiz and title/description built on the
-   * transcript. Every plan gets some (promise 02: no tool is sold per plan,
-   * only its size). Enforced by claim_ai_video_seconds in the database.
+   * Minutos de vídeo de aula que as ferramentas de IA podem transcrever por mês
+   * (UTC): a legenda, e sobre ela a tradução, o quiz e as sugestões. Todo plano
+   * tem (promessa 02: nenhuma ferramenta é vendida por plano, só o tamanho). A
+   * trava de verdade é claim_ai_video_seconds, no banco.
    */
   | "aiVideoMinutesPerMonth";
 

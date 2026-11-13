@@ -3,7 +3,8 @@ import { NextResponse } from "next/server";
 import { captionLanguageName, isCaptionLanguage } from "@/domain/caption-languages";
 import { AudioExtractError } from "@/lib/ai/audio";
 import { transcribeLessonVideo, translateVtt } from "@/lib/ai/captions";
-import { cleanQuiz, generateQuiz, suggestTitleAndDescription } from "@/lib/ai/lesson-text";
+import { isTeacherAiEnabled } from "@/lib/ai/config";
+import { cleanQuiz, generateQuiz, suggestTitleAndDescription, type QuizQuestion } from "@/lib/ai/lesson-text";
 import { OpenAIConfigError, OpenAIError } from "@/lib/ai/openai";
 import { MAX_VTT_CHARS, buildVtt, parseVtt, vttToText } from "@/lib/ai/vtt";
 import {
@@ -31,13 +32,14 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 //     removeQuiz      apaga o quiz
 //     suggest         3 títulos e 3 descrições para a aula ou o módulo (nada é gravado)
 //
-// Ordem dos portões, a mesma do conselheiro: sessão, papel de professor,
-// ativação, limite de pedidos, dono do curso. Tudo antes de gastar IA.
-// As tabelas novas só aceitam service_role: a rota confere o dono e grava.
+// Ordem dos portões, a mesma do conselheiro: chave ligada, sessão, papel de
+// professor, ativação, limite de pedidos, dono do curso. Tudo antes de gastar IA.
+// As tabelas novas só aceitam service_role: a rota confere o dono e grava,
+// sempre com course_id na chave (o id da aula nasce no browser e é público).
 
 export const runtime = "nodejs";
-// A transcrição de uma aula longa leva ~1 a 2 minutos (ffmpeg + Whisper em
-// paralelo). O teto da plataforma fica alto e o nosso prazo decide antes.
+// A transcrição de uma aula longa leva ~1 a 2 minutos (download, ffmpeg e
+// Whisper em paralelo). O teto da plataforma fica alto e o nosso prazo decide antes.
 export const maxDuration = 300;
 const WORK_DEADLINE_MS = 270_000;
 
@@ -47,11 +49,16 @@ const MAX_LESSON_SECONDS = 2 * 60 * 60;
 const BUNNY_FINISHED = 4;
 // A CDN da biblioteca recusa pedido sem Referer.
 const CDN_REFERER = "https://skillsetmind.com/";
+// Pedidos de texto por dia (tradução, quiz, sugestões): segura repetição em laço.
+const TEXT_DAILY_LIMIT = 40;
+
+const CAPTION_COLUMNS = "language, vtt, video_id, translated_from, updated_at, published_at";
 
 type CaptionRow = {
   language: string;
   vtt: string;
   video_id: string;
+  translated_from: string | null;
   updated_at: string;
   published_at: string | null;
 };
@@ -76,11 +83,18 @@ function captionView(row: CaptionRow, currentVideoId: string | null) {
   return {
     language: row.language,
     vtt: row.vtt,
+    translatedFrom: row.translated_from,
     updatedAt: row.updated_at,
     publishedAt: row.published_at,
     // Feita para outro vídeo (o professor trocou o vídeo da aula).
     stale: currentVideoId !== null && row.video_id !== currentVideoId,
   };
+}
+
+// Nome do idioma nele mesmo ("Español"), que é o que o aluno procura no CC.
+function nativeLabel(language: string): string {
+  const name = captionLanguageName(language, language);
+  return name.charAt(0).toLocaleUpperCase(language) + name.slice(1);
 }
 
 async function usageOf(uid: string) {
@@ -98,6 +112,8 @@ type Gate = {
 };
 
 async function openGate(courseId: unknown, lessonId: unknown, rateKey: string): Promise<Gate | NextResponse> {
+  // Desligada, a rota não existe: o OPENAI_API_KEY é o mesmo do conselheiro.
+  if (!isTeacherAiEnabled) return fail(404, "not_found", "Not found.");
   const supabase = await createSupabaseServerClient();
   const { data: auth, error: authError } = await supabase.auth.getUser();
   if (authError || !auth.user) return fail(401, "unauthenticated", "You must be signed in.");
@@ -147,12 +163,36 @@ async function lessonVideoId(gate: Gate, assetId: unknown): Promise<string | nul
 async function loadCaption(gate: Gate, language: string): Promise<CaptionRow | null> {
   const { data, error } = await getSupabaseAdminClient()
     .from("lesson_captions")
-    .select("language, vtt, video_id, updated_at, published_at")
-    .eq("lesson_id", gate.lessonId)
+    .select(CAPTION_COLUMNS)
     .eq("course_id", gate.courseId)
+    .eq("lesson_id", gate.lessonId)
     .eq("language", language)
     .maybeSingle();
   if (error) throw new Error("caption_unavailable");
+  return data;
+}
+
+async function saveCaptionRow(gate: Gate, row: { language: string; video_id: string; vtt: string; translated_from: string | null }) {
+  // Legenda publicada para OUTRO vídeo não vale para este (a Bunny guarda
+  // legenda por vídeo): volta a ser rascunho. Mesmo vídeo: a publicada
+  // continua no player até o professor publicar a nova.
+  const previous = await loadCaption(gate, row.language);
+  const { data, error } = await getSupabaseAdminClient()
+    .from("lesson_captions")
+    .upsert(
+      {
+        course_id: gate.courseId,
+        lesson_id: gate.lessonId,
+        owner_id: gate.uid,
+        ...row,
+        updated_at: new Date().toISOString(),
+        ...(previous && previous.video_id !== row.video_id ? { published_at: null } : {}),
+      },
+      { onConflict: "course_id,lesson_id,language" },
+    )
+    .select(CAPTION_COLUMNS)
+    .single();
+  if (error || !data) throw new Error("caption_save_failed");
   return data;
 }
 
@@ -172,35 +212,55 @@ async function loadQuiz(gate: Gate) {
   const { data, error } = await getSupabaseAdminClient()
     .from("lesson_quizzes")
     .select("questions, status, updated_at")
-    .eq("lesson_id", gate.lessonId)
     .eq("course_id", gate.courseId)
+    .eq("lesson_id", gate.lessonId)
     .maybeSingle();
   if (error) throw new Error("quiz_unavailable");
   return data ? { questions: data.questions, status: data.status, updatedAt: data.updated_at } : null;
 }
 
-// Transcrição da aula: o texto da legenda do vídeo atual no idioma que o
-// professor diz ser o falado (o seletor da tela); sem ela, qualquer uma.
-async function lessonTranscript(gate: Gate, assetId: unknown, language: unknown): Promise<string | null> {
+async function saveQuizRow(gate: Gate, questions: QuizQuestion[], status: "draft" | "published") {
+  const { data, error } = await getSupabaseAdminClient()
+    .from("lesson_quizzes")
+    .upsert(
+      {
+        course_id: gate.courseId,
+        lesson_id: gate.lessonId,
+        owner_id: gate.uid,
+        questions,
+        status,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "course_id,lesson_id" },
+    )
+    .select("questions, status, updated_at")
+    .single();
+  if (error || !data) throw new Error("quiz_save_failed");
+  return { questions: data.questions, status: data.status, updatedAt: data.updated_at };
+}
+
+// A transcrição da aula: a legenda do vídeo atual que NÃO é tradução (o
+// idioma falado). Sem ela, nada: quiz de tradução sairia no idioma errado.
+async function lessonTranscript(gate: Gate, assetId: unknown): Promise<string | null> {
   const videoId = await lessonVideoId(gate, assetId);
   if (!videoId) return null;
   const { data, error } = await getSupabaseAdminClient()
     .from("lesson_captions")
-    .select("language, vtt")
-    .eq("lesson_id", gate.lessonId)
+    .select("vtt")
     .eq("course_id", gate.courseId)
+    .eq("lesson_id", gate.lessonId)
     .eq("video_id", videoId)
-    .order("language");
+    .is("translated_from", null)
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
   if (error) throw new Error("caption_unavailable");
-  const pick = data?.find((row) => row.language === language) ?? data?.[0];
-  return pick ? vttToText(pick.vtt) : null;
+  return data ? vttToText(data.vtt) : null;
 }
 
-// Material de um módulo: título e começo da transcrição de cada aula dele.
+// Material de um módulo: título e começo da transcrição (não tradução) de cada aula.
 async function moduleMaterial(gate: Gate, moduleId: unknown): Promise<string | null> {
-  const modules = Array.isArray(gate.modules)
-    ? (gate.modules as { id?: unknown; lessons?: unknown }[])
-    : [];
+  const modules = Array.isArray(gate.modules) ? (gate.modules as { id?: unknown; lessons?: unknown }[]) : [];
   const target = modules.find((module) => module?.id === moduleId);
   const lessons = Array.isArray(target?.lessons) ? (target.lessons as { id?: unknown; title?: unknown }[]) : [];
   const ids = lessons.map((lesson) => lesson?.id).filter((id): id is string => typeof id === "string");
@@ -209,7 +269,8 @@ async function moduleMaterial(gate: Gate, moduleId: unknown): Promise<string | n
     .from("lesson_captions")
     .select("lesson_id, vtt")
     .eq("course_id", gate.courseId)
-    .in("lesson_id", ids);
+    .in("lesson_id", ids)
+    .is("translated_from", null);
   if (error) throw new Error("caption_unavailable");
   const textOf = new Map<string, string>();
   for (const row of data ?? []) {
@@ -236,13 +297,15 @@ function aiFailure(error: unknown) {
     console.error("teacher_ai_audio_failed", error.message);
     return fail(502, "audio_unavailable", "We couldn't read this video's audio. Try again in a few minutes.");
   }
-  if ((error as Error)?.message === "vtt_empty") {
-    return fail(422, "no_speech", "We couldn't hear any speech in this video.");
+  const message = (error as Error)?.message;
+  if (message === "vtt_empty") return fail(422, "no_speech", "We couldn't hear any speech in this video.");
+  if (message === "translation_too_long") {
+    return fail(422, "too_long", "These captions are too long to translate. Trim them and try again.");
   }
-  if ((error as Error)?.message === "quiz_empty" || (error as Error)?.message === "suggest_empty") {
+  if (message === "quiz_empty" || message === "suggest_empty") {
     return fail(422, "nothing_usable", "The AI didn't write anything usable this time. Try again, or write your own.");
   }
-  console.error("teacher_ai_failed", (error as Error)?.message?.slice(0, 200));
+  console.error("teacher_ai_failed", message?.slice(0, 200));
   return fail(502, "ai_failed", "The AI could not finish. Please try again.");
 }
 
@@ -256,9 +319,9 @@ export async function GET(request: Request) {
       lessonVideoId(gate, params.get("assetId")),
       getSupabaseAdminClient()
         .from("lesson_captions")
-        .select("language, vtt, video_id, updated_at, published_at")
-        .eq("lesson_id", gate.lessonId)
+        .select(CAPTION_COLUMNS)
         .eq("course_id", gate.courseId)
+        .eq("lesson_id", gate.lessonId)
         .order("language"),
       loadQuiz(gate),
       usageOf(gate.uid),
@@ -273,7 +336,9 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   let body: Record<string, unknown>;
   try {
-    body = await request.json();
+    const parsed: unknown = await request.json();
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("not_object");
+    body = parsed as Record<string, unknown>;
   } catch {
     return fail(400, "bad_request", "Invalid request body.");
   }
@@ -287,6 +352,11 @@ export async function POST(request: Request) {
     const language = body.language;
     const videoId = await lessonVideoId(gate, body.assetId);
     if (!videoId) return fail(404, "no_video", "This lesson has no uploaded video.");
+    // Sem o host da CDN não há de onde ler o áudio: falha antes de cobrar.
+    if (!process.env.BUNNY_STREAM_CDN_HOSTNAME) {
+      console.error("teacher_ai_unavailable", "cdn_hostname_missing");
+      return fail(503, "ai_unavailable", "AI tools are temporarily unavailable. Please try again later.");
+    }
 
     let seconds: number;
     try {
@@ -318,37 +388,30 @@ export async function POST(request: Request) {
       });
     }
 
+    let spent = false;
     try {
-      // Legenda publicada para OUTRO vídeo não vale para este (a Bunny guarda
-      // legenda por vídeo): volta a ser rascunho. Mesmo vídeo: a publicada
-      // continua no player até o professor publicar a nova.
-      const previous = await loadCaption(gate, language);
       const vtt = await transcribeLessonVideo({
         videoUrl: bunnyLowestMp4Url(videoId),
         referer: CDN_REFERER,
         language,
+        maxSeconds: seconds,
         deadline: AbortSignal.timeout(WORK_DEADLINE_MS),
+        onSpend: () => {
+          spent = true;
+        },
       });
-      const now = new Date().toISOString();
-      const { data: saved, error: saveError } = await admin
-        .from("lesson_captions")
-        .upsert({
-          lesson_id: gate.lessonId,
-          language,
-          course_id: gate.courseId,
-          owner_id: gate.uid,
-          video_id: videoId,
-          vtt,
-          updated_at: now,
-          ...(previous && previous.video_id !== videoId ? { published_at: null } : {}),
-        })
-        .select("language, vtt, video_id, updated_at, published_at")
-        .single();
-      if (saveError || !saved) throw new Error("caption_save_failed");
+      const saved = await saveCaptionRow(gate, { language, video_id: videoId, vtt, translated_from: null });
       return reply({ caption: captionView(saved, videoId), usage: { usedSeconds, limitSeconds } });
     } catch (error) {
-      // Não saiu legenda: o tempo volta para o saldo do mês.
-      await admin.from("ai_usage").delete().eq("id", usageId);
+      // O tempo volta ao saldo só se a OpenAI não cobrou nada: falha antes do
+      // primeiro pedido, ou conta sem chave/saldo. Depois disso o uso fica,
+      // senão um vídeo mudo transcrito em laço gastaria sem tocar o teto.
+      const noCharge = !spent || error instanceof OpenAIConfigError
+        || (error instanceof OpenAIError && error.code === "no_credit");
+      if (noCharge) {
+        const { error: refundError } = await admin.from("ai_usage").delete().eq("id", usageId);
+        if (refundError) console.error("teacher_ai_refund_failed", refundError.message);
+      }
       return aiFailure(error);
     }
   }
@@ -360,10 +423,10 @@ export async function POST(request: Request) {
     const { data, error } = await admin
       .from("lesson_captions")
       .update({ vtt, updated_at: new Date().toISOString() })
-      .eq("lesson_id", gate.lessonId)
       .eq("course_id", gate.courseId)
+      .eq("lesson_id", gate.lessonId)
       .eq("language", body.language)
-      .select("language, vtt, video_id, updated_at, published_at")
+      .select(CAPTION_COLUMNS)
       .maybeSingle();
     if (error) return fail(503, "unavailable", "Could not save. Please try again.");
     if (!data) return fail(404, "no_caption", "These captions no longer exist.");
@@ -387,8 +450,9 @@ export async function POST(request: Request) {
       } catch {
         return fail(503, "unavailable", "Video host unavailable. Please try again.");
       }
-      await admin.from("lesson_captions").delete()
-        .eq("lesson_id", gate.lessonId).eq("course_id", gate.courseId).eq("language", language);
+      const { error } = await admin.from("lesson_captions").delete()
+        .eq("course_id", gate.courseId).eq("lesson_id", gate.lessonId).eq("language", language);
+      if (error) return fail(503, "unavailable", "Could not remove. Please try again.");
       return reply({ removed: language });
     }
 
@@ -397,20 +461,28 @@ export async function POST(request: Request) {
       return fail(409, "stale_caption", "These captions were made for a different video. Generate them again.");
     }
     try {
-      await putBunnyCaption(videoId, language, captionLanguageName(language), caption.vtt);
+      await putBunnyCaption(videoId, language, nativeLabel(language), caption.vtt);
     } catch {
       return fail(503, "unavailable", "Video host unavailable. Please try again.");
     }
     const { data, error } = await admin
       .from("lesson_captions")
       .update({ published_at: new Date().toISOString() })
-      .eq("lesson_id", gate.lessonId)
       .eq("course_id", gate.courseId)
+      .eq("lesson_id", gate.lessonId)
       .eq("language", language)
-      .select("language, vtt, video_id, updated_at, published_at")
+      .select(CAPTION_COLUMNS)
       .maybeSingle();
     if (error || !data) return fail(503, "unavailable", "Published, but could not record it. Refresh to check.");
     return reply({ caption: captionView(data, videoId) });
+  }
+
+  if (action === "translate" || action === "generateQuiz" || action === "suggest") {
+    try {
+      await enforceRateLimit(`teach_ai_text_daily_${gate.uid}`, TEXT_DAILY_LIMIT, 86_400_000);
+    } catch (error) {
+      return paymentErrorResponse(error);
+    }
   }
 
   if (action === "translate") {
@@ -418,13 +490,6 @@ export async function POST(request: Request) {
       return fail(400, "bad_language", "Choose a different language to translate to.");
     }
     const { from, to } = body;
-    try {
-      // Teto diário de pedidos de texto: cada um depende de uma legenda que já
-      // gastou do teto mensal, então isto só segura repetição em laço.
-      await enforceRateLimit(`teach_ai_text_daily_${gate.uid}`, 40, 86_400_000);
-    } catch (error) {
-      return paymentErrorResponse(error);
-    }
     let source: CaptionRow | null;
     try {
       source = await loadCaption(gate, from);
@@ -439,41 +504,20 @@ export async function POST(request: Request) {
     }
 
     try {
-      const previous = await loadCaption(gate, to);
       const vtt = await translateVtt({ vtt: source.vtt, from, to, deadline: AbortSignal.timeout(WORK_DEADLINE_MS) });
-      const { data, error } = await admin
-        .from("lesson_captions")
-        .upsert({
-          lesson_id: gate.lessonId,
-          language: to,
-          course_id: gate.courseId,
-          owner_id: gate.uid,
-          video_id: source.video_id,
-          vtt,
-          updated_at: new Date().toISOString(),
-          ...(previous && previous.video_id !== source.video_id ? { published_at: null } : {}),
-        })
-        .select("language, vtt, video_id, updated_at, published_at")
-        .single();
-      if (error || !data) throw new Error("caption_save_failed");
-      return reply({ caption: captionView(data, null) });
+      if (vtt.length > MAX_VTT_CHARS) throw new Error("translation_too_long");
+      const saved = await saveCaptionRow(gate, { language: to, video_id: source.video_id, vtt, translated_from: from });
+      return reply({ caption: captionView(saved, null) });
     } catch (error) {
       return aiFailure(error);
     }
   }
 
   if (action === "generateQuiz" || action === "suggest") {
-    try {
-      await enforceRateLimit(`teach_ai_text_daily_${gate.uid}`, 40, 86_400_000);
-    } catch (error) {
-      return paymentErrorResponse(error);
-    }
     const forModule = action === "suggest" && body.target === "module";
     let material: string | null;
     try {
-      material = forModule
-        ? await moduleMaterial(gate, body.moduleId)
-        : await lessonTranscript(gate, body.assetId, body.language);
+      material = forModule ? await moduleMaterial(gate, body.moduleId) : await lessonTranscript(gate, body.assetId);
     } catch {
       return fail(503, "unavailable", "Could not load the lesson. Please try again.");
     }
@@ -488,21 +532,8 @@ export async function POST(request: Request) {
       if (action === "suggest") {
         return reply({ suggestions: await suggestTitleAndDescription(forModule ? "module" : "lesson", material, deadline) });
       }
-      const questions = await generateQuiz(material, deadline);
-      const { data, error } = await admin
-        .from("lesson_quizzes")
-        .upsert({
-          lesson_id: gate.lessonId,
-          course_id: gate.courseId,
-          owner_id: gate.uid,
-          questions,
-          status: "draft",
-          updated_at: new Date().toISOString(),
-        })
-        .select("questions, status, updated_at")
-        .single();
-      if (error || !data) throw new Error("quiz_save_failed");
-      return reply({ quiz: { questions: data.questions, status: data.status, updatedAt: data.updated_at } });
+      // Quiz novo entra como rascunho: o professor revisa antes de o aluno ver.
+      return reply({ quiz: await saveQuizRow(gate, await generateQuiz(material, deadline), "draft") });
     } catch (error) {
       return aiFailure(error);
     }
@@ -515,25 +546,16 @@ export async function POST(request: Request) {
     } catch {
       return fail(422, "bad_quiz", "Each question needs text, 2 to 5 different options, one correct answer and an explanation.");
     }
-    const { data, error } = await admin
-      .from("lesson_quizzes")
-      .upsert({
-        lesson_id: gate.lessonId,
-        course_id: gate.courseId,
-        owner_id: gate.uid,
-        questions,
-        status: body.publish === true ? "published" : "draft",
-        updated_at: new Date().toISOString(),
-      })
-      .select("questions, status, updated_at")
-      .single();
-    if (error || !data) return fail(503, "unavailable", "Could not save. Please try again.");
-    return reply({ quiz: { questions: data.questions, status: data.status, updatedAt: data.updated_at } });
+    try {
+      return reply({ quiz: await saveQuizRow(gate, questions, body.publish === true ? "published" : "draft") });
+    } catch {
+      return fail(503, "unavailable", "Could not save. Please try again.");
+    }
   }
 
   if (action === "removeQuiz") {
     const { error } = await admin.from("lesson_quizzes").delete()
-      .eq("lesson_id", gate.lessonId).eq("course_id", gate.courseId);
+      .eq("course_id", gate.courseId).eq("lesson_id", gate.lessonId);
     if (error) return fail(503, "unavailable", "Could not remove. Please try again.");
     return reply({ quiz: null });
   }

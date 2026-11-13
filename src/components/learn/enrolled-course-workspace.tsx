@@ -1356,6 +1356,7 @@ export function EnrolledCourseWorkspace({
         {selectedLesson && resolvedSelectedLesson ? (
           <LessonContentPanel
             assets={selectedLessonAssets}
+            courseId={course.id}
             enrollmentId={workspaceEnrollment?.id ?? null}
             enableFirestoreAssets={enableFirestoreAssets}
             isLoadingAssets={
@@ -2030,6 +2031,7 @@ function LessonInfo({
 function LessonContentPanel({
   assets,
   autoplay = false,
+  courseId,
   enrollmentId,
   enableFirestoreAssets,
   isLoadingAssets,
@@ -2047,6 +2049,8 @@ function LessonContentPanel({
   unlockState,
 }: {
   assets: CourseAsset[];
+  /** Curso da aula: o quiz é lido por curso + aula (o id da aula sozinho não é único). */
+  courseId: string;
   /** A aula abriu pelo cartão "Próxima aula": começa a tocar sozinha. */
   autoplay?: boolean;
   /** A matricula do aluno: sem ela (preview do professor) a posicao do video
@@ -2178,7 +2182,7 @@ function LessonContentPanel({
             {t("learn.classroom.lesson.openResource")}
           </a>
         ) : null}
-        {isTeacherAiEnabled && !locked && !fileOnly ? <LessonQuiz key={lesson.id} lessonId={lesson.id} /> : null}
+        {isTeacherAiEnabled && !locked && !fileOnly ? <LessonQuiz key={lesson.id} courseId={courseId} lessonId={lesson.id} /> : null}
         {fileOnly ? (
           <>
             <p className="mt-3 text-sm leading-7 text-[var(--color-ink-soft)]">

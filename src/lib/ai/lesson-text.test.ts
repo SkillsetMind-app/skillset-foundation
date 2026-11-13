@@ -27,7 +27,11 @@ describe("cleanQuiz", () => {
 });
 
 describe("generateQuiz", () => {
-  beforeEach(() => askJson.mockReset());
+  // Chaves: mockReset devolve o mock, e uma função devolvida pelo beforeEach
+  // vira limpeza no Vitest 5 (seria chamada sem argumentos depois do teste).
+  beforeEach(() => {
+    askJson.mockReset();
+  });
 
   it("drops questions that break the text rules or come malformed", async () => {
     askJson.mockResolvedValue({
@@ -37,7 +41,16 @@ describe("generateQuiz", () => {
         { ...good, answer: 9 },
       ],
     });
-    await expect(generateQuiz("transcript", deadline)).resolves.toEqual([good]);
+    // random 0.99: nenhuma troca, a ordem do modelo fica.
+    await expect(generateQuiz("transcript", deadline, () => 0.99)).resolves.toEqual([good]);
+  });
+
+  it("shuffles the options and keeps the right answer pointing at the same text", async () => {
+    askJson.mockResolvedValue({ questions: [{ ...good, options: ["Right", "B", "C"], answer: 0 }] });
+    const [question] = await generateQuiz("transcript", deadline, () => 0);
+    expect(question.options).toHaveLength(3);
+    expect(question.options[question.answer]).toBe("Right");
+    expect(question.options[0]).not.toBe("Right");
   });
 
   it("fails when nothing usable is left", async () => {
@@ -47,7 +60,9 @@ describe("generateQuiz", () => {
 });
 
 describe("suggestTitleAndDescription", () => {
-  beforeEach(() => askJson.mockReset());
+  beforeEach(() => {
+    askJson.mockReset();
+  });
 
   it("keeps up to three clean suggestions of each kind", async () => {
     askJson.mockResolvedValue({

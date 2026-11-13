@@ -15,7 +15,9 @@ import { parseVtt } from "./vtt";
 const deadline = new AbortController().signal;
 
 describe("transcribeLessonVideo", () => {
-  beforeEach(() => Object.values(mocks).forEach((mock) => mock.mockReset()));
+  beforeEach(() => {
+    Object.values(mocks).forEach((mock) => mock.mockReset());
+  });
 
   it("transcribes every chunk in the teacher's language and stitches them in time", async () => {
     mocks.extractAudioChunks.mockResolvedValue([
@@ -25,14 +27,19 @@ describe("transcribeLessonVideo", () => {
     mocks.transcribeToVtt.mockImplementation(async ({ fileName }: { fileName: string }) =>
       `WEBVTT\n\n00:00:01.000 --> 00:00:02.000\n${fileName}\n`,
     );
-    const vtt = await transcribeLessonVideo({ videoUrl: "u", referer: "r", language: "es", deadline });
+    const onSpend = vi.fn();
+    const vtt = await transcribeLessonVideo({ videoUrl: "u", referer: "r", language: "es", maxSeconds: 1300, deadline, onSpend });
+    expect(mocks.extractAudioChunks).toHaveBeenCalledWith(expect.objectContaining({ maxSeconds: 1300 }));
+    expect(onSpend).toHaveBeenCalledTimes(1);
     expect(mocks.transcribeToVtt.mock.calls.every(([opts]) => opts.language === "es")).toBe(true);
     expect(parseVtt(vtt).map((cue) => [cue.start, cue.text])).toEqual([[1, "part000.ogg"], [1201, "part001.ogg"]]);
   });
 });
 
 describe("translateVtt", () => {
-  beforeEach(() => Object.values(mocks).forEach((mock) => mock.mockReset()));
+  beforeEach(() => {
+    Object.values(mocks).forEach((mock) => mock.mockReset());
+  });
   const source = "WEBVTT\n\n00:00:01.000 --> 00:00:02.000\nHello\n\n00:00:02.000 --> 00:00:03.000\nBye\n";
 
   it("keeps every timing and swaps only the text", async () => {
@@ -45,10 +52,24 @@ describe("translateVtt", () => {
     expect(mocks.askJson.mock.calls[0][0].system).toContain("from English to Spanish");
   });
 
+  it("refuses a source far longer than a 2-hour lesson before spending", async () => {
+    const huge = "WEBVTT
+
+" + Array.from({ length: 2001 }, (_, i) =>
+      `00:00:${String(i % 60).padStart(2, "0")}.000 --> 00:00:${String(i % 60).padStart(2, "0")}.500
+x`).join("
+
+");
+    await expect(translateVtt({ vtt: huge, from: "en", to: "es", deadline })).rejects.toThrow("translation_too_long");
+    expect(mocks.askJson).not.toHaveBeenCalled();
+  });
+
   it("fails instead of shifting lines when the model drops one", async () => {
     mocks.askJson.mockResolvedValue({ lines: ["Hola"] });
     await expect(translateVtt({ vtt: source, from: "en", to: "es", deadline })).rejects.toThrow(
       "translation_line_mismatch",
     );
+    // Uma segunda tentativa antes de desistir.
+    expect(mocks.askJson).toHaveBeenCalledTimes(2);
   });
 });

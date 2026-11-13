@@ -1,7 +1,20 @@
 // Chamada do estúdio à rota /api/teach/ai. Uma função para as três telas
-// (legenda, quiz, sugestões): o erro vem com o texto da rota, que já é para o
-// professor ler; sem texto, quem chama mostra o genérico.
-export type TeachAiResult = { ok: boolean; status: number; body: Record<string, unknown> & { error?: string } };
+// (legenda, quiz, sugestões). O erro vira texto pelo `code` da rota, no idioma
+// da tela; código desconhecido cai no genérico.
+export type TeachAiResult = { ok: boolean; status: number; body: Record<string, unknown> & { error?: string; code?: string } };
+
+const KNOWN_ERRORS = new Set([
+  "forbidden", "lesson_not_found", "unavailable", "no_video", "video_processing", "too_long", "monthly_limit",
+  "ai_unavailable", "audio_unavailable", "no_speech", "bad_vtt", "no_caption", "stale_caption", "no_transcript",
+  "nothing_usable", "bad_quiz", "activation_required",
+]);
+
+export function teachAiErrorText(result: TeachAiResult, t: (key: string) => string): string {
+  const code = typeof result.body.code === "string" ? result.body.code : "";
+  if (KNOWN_ERRORS.has(code)) return t(`creatorEditor.lesson.ai.errors.${code}`);
+  if (result.status === 429) return t("creatorEditor.lesson.ai.errors.rate_limited");
+  return t("creatorEditor.lesson.ai.errorGeneric");
+}
 
 export async function callTeachAi(payload: Record<string, unknown>): Promise<TeachAiResult> {
   try {

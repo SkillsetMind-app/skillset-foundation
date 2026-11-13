@@ -3,17 +3,23 @@
 import { useEffect, useState } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
-import { CAPTION_LANGUAGES, captionLanguageName } from "@/domain/caption-languages";
+import { CAPTION_LANGUAGES, captionLanguageName, isCaptionLanguage } from "@/domain/caption-languages";
+import { callTeachAi, loadTeachAi, teachAiErrorText } from "@/lib/ai/teach-ai-client";
 
 // Legendas com IA no estúdio da aula (aba Vídeo, só vídeo enviado para a Bunny).
 // A IA escreve um rascunho a partir do áudio; o professor lê, corrige e publica.
 // O aluno só vê a legenda publicada, no botão CC do player da Bunny.
 
-type Caption = { language: string; vtt: string; updatedAt: string; publishedAt: string | null; stale: boolean };
+type Caption = {
+  language: string;
+  vtt: string;
+  translatedFrom: string | null;
+  updatedAt: string;
+  publishedAt: string | null;
+  stale: boolean;
+};
 type Usage = { usedSeconds: number; limitSeconds: number };
 type Notice = { kind: "ok" | "error"; text: string } | null;
-
-const hours = (seconds: number) => (seconds / 3600).toFixed(1);
 
 function captionState(caption: Caption): "stale" | "draft" | "changed" | "published" {
   if (caption.stale) return "stale";
@@ -25,34 +31,30 @@ export function LessonAiCaptions({ courseId, lessonId, assetId }: { courseId: st
   const { t, locale } = useTranslation();
   const [captions, setCaptions] = useState<Caption[] | null>(null);
   const [texts, setTexts] = useState<Record<string, string>>({});
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [usage, setUsage] = useState<Usage | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [notice, setNotice] = useState<Notice>(null);
-  const [spoken, setSpoken] = useState("en");
+  const [spoken, setSpoken] = useState<string>(isCaptionLanguage(locale) ? locale : "en");
   const [target, setTarget] = useState("");
 
   useEffect(() => {
     let live = true;
-    const query = new URLSearchParams({ courseId, lessonId, assetId });
-    fetch(`/api/teach/ai?${query}`, { cache: "no-store" })
-      .then(async (response) => {
-        const body = await response.json().catch(() => ({}));
-        if (!live) return;
-        if (!response.ok) {
-          setCaptions([]);
-          setNotice({ kind: "error", text: body.error ?? t("creatorEditor.lesson.ai.errorGeneric") });
-          return;
-        }
-        setCaptions(body.captions);
-        setTexts(Object.fromEntries(body.captions.map((caption: Caption) => [caption.language, caption.vtt])));
-        setUsage(body.usage);
-      })
-      .catch(() => {
-        if (live) {
-          setCaptions([]);
-          setNotice({ kind: "error", text: t("creatorEditor.lesson.ai.errorGeneric") });
-        }
-      });
+    void loadTeachAi({ courseId, lessonId, assetId }).then((result) => {
+      if (!live) return;
+      if (!result.ok) {
+        setCaptions([]);
+        setNotice({ kind: "error", text: teachAiErrorText(result, t) });
+        return;
+      }
+      const loaded = result.body.captions as Caption[];
+      setCaptions(loaded);
+      setTexts(Object.fromEntries(loaded.map((caption) => [caption.language, caption.vtt])));
+      setUsage(result.body.usage as Usage);
+      // O idioma falado é o da legenda que não é tradução, se já houver uma.
+      const original = loaded.find((caption) => !caption.stale && !caption.translatedFrom);
+      if (original) setSpoken(original.language);
+    });
     return () => {
       live = false;
     };
@@ -66,38 +68,47 @@ export function LessonAiCaptions({ courseId, lessonId, assetId }: { courseId: st
     setTexts((current) => ({ ...current, [caption.language]: caption.vtt }));
   }
 
-  async function run(action: string, extra: Record<string, unknown>, busyKey: string, okText: string) {
+  async function run(action: string, extra: Record<string, unknown>, busyKey: string, okText: string): Promise<boolean> {
     setBusy(busyKey);
     setNotice(null);
-    try {
-      const response = await fetch("/api/teach/ai", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action, courseId, lessonId, assetId, ...extra }),
-      });
-      const body = await response.json().catch(() => ({}));
-      if (body.usage) setUsage(body.usage);
-      if (!response.ok) {
-        setNotice({ kind: "error", text: body.error ?? t("creatorEditor.lesson.ai.errorGeneric") });
-        return;
-      }
-      if (body.caption) keep({ ...body.caption, stale: false });
-      if (body.removed) {
-        setCaptions((current) => (current ?? []).filter((item) => item.language !== body.removed));
-        setTexts((current) => Object.fromEntries(Object.entries(current).filter(([code]) => code !== body.removed)));
-      }
-      setNotice({ kind: "ok", text: okText });
-    } catch {
-      setNotice({ kind: "error", text: t("creatorEditor.lesson.ai.errorGeneric") });
-    } finally {
-      setBusy(null);
+    const result = await callTeachAi({ action, courseId, lessonId, assetId, ...extra });
+    setBusy(null);
+    if (result.body.usage) setUsage(result.body.usage as Usage);
+    if (!result.ok) {
+      setNotice({ kind: "error", text: teachAiErrorText(result, t) });
+      return false;
     }
+    if (result.body.caption) keep({ ...(result.body.caption as Caption), stale: false });
+    if (typeof result.body.removed === "string") {
+      const removed = result.body.removed;
+      setCaptions((current) => (current ?? []).filter((item) => item.language !== removed));
+      setTexts((current) => Object.fromEntries(Object.entries(current).filter(([code]) => code !== removed)));
+    }
+    setNotice({ kind: "ok", text: okText });
+    return true;
+  }
+
+  // Publicar com texto editado grava antes: o professor não precisa adivinhar
+  // que "Save" vem primeiro.
+  async function publish(caption: Caption) {
+    const edited = texts[caption.language] !== caption.vtt;
+    if (edited && !(await run("saveCaption", { language: caption.language, vtt: texts[caption.language] },
+      `publish-${caption.language}`, t("creatorEditor.lesson.ai.saved")))) {
+      return;
+    }
+    await run("publishCaption", { language: caption.language }, `publish-${caption.language}`,
+      t("creatorEditor.lesson.ai.publishedNotice"));
   }
 
   const name = (code: string) => captionLanguageName(code, locale);
+  const hours = (seconds: number) =>
+    new Intl.NumberFormat(locale, { maximumFractionDigits: 1, minimumFractionDigits: 1 }).format(seconds / 3600);
   const fresh = (captions ?? []).filter((caption) => !caption.stale);
-  const source = fresh.find((caption) => caption.language === spoken) ?? fresh[0];
+  const source = fresh.find((caption) => caption.language === spoken && !caption.translatedFrom)
+    ?? fresh.find((caption) => !caption.translatedFrom)
+    ?? fresh[0];
   const targets = CAPTION_LANGUAGES.filter((code) => !fresh.some((caption) => caption.language === code));
+  const spokenExists = fresh.some((caption) => caption.language === spoken);
   const working = busy !== null;
 
   return (
@@ -129,22 +140,33 @@ export function LessonAiCaptions({ courseId, lessonId, assetId }: { courseId: st
               type="button"
               className="button-solid min-h-11 px-4 py-2.5 text-sm disabled:opacity-60"
               disabled={working}
-              onClick={() => run("transcribe", { language: spoken }, "transcribe", t("creatorEditor.lesson.ai.generated"))}
+              onClick={() => {
+                // Gerar de novo apaga as correções e gasta as horas do vídeo outra vez.
+                if (spokenExists && !window.confirm(t("creatorEditor.lesson.ai.confirmRegenerate"))) return;
+                void run("transcribe", { language: spoken }, "transcribe", t("creatorEditor.lesson.ai.generated"));
+              }}
             >
               {busy === "transcribe"
                 ? t("creatorEditor.lesson.ai.generating")
-                : t(fresh.some((caption) => caption.language === spoken)
-                  ? "creatorEditor.lesson.ai.regenerate"
-                  : "creatorEditor.lesson.ai.generate")}
+                : t(spokenExists ? "creatorEditor.lesson.ai.regenerate" : "creatorEditor.lesson.ai.generate")}
             </button>
           </div>
 
           {captions.map((caption) => {
             const state = captionState(caption);
+            const edited = (texts[caption.language] ?? caption.vtt) !== caption.vtt;
             return (
-              <details key={caption.language} className="lesson-modal-field" open={state !== "published" && state !== "stale"}>
+              <details
+                key={caption.language}
+                className="lesson-modal-field"
+                open={expanded[caption.language] ?? (state === "draft" || state === "changed")}
+                onToggle={(event) => {
+                  const open = event.currentTarget.open;
+                  setExpanded((current) => ({ ...current, [caption.language]: open }));
+                }}
+              >
                 <summary>
-                  {name(caption.language)} · {t(`creatorEditor.lesson.ai.state.${state}`)}
+                  {name(caption.language)} · {t(edited ? "creatorEditor.lesson.ai.unsaved" : `creatorEditor.lesson.ai.state.${state}`)}
                 </summary>
                 {state === "stale" ? null : (
                   <textarea
@@ -161,9 +183,9 @@ export function LessonAiCaptions({ courseId, lessonId, assetId }: { courseId: st
                     <>
                       <button
                         type="button"
-                        className="button-outline min-h-11 px-3 text-sm"
-                        disabled={working || texts[caption.language] === caption.vtt}
-                        onClick={() => run("saveCaption", { language: caption.language, vtt: texts[caption.language] },
+                        className="button-outline min-h-11 px-3 text-sm disabled:opacity-60"
+                        disabled={working || !edited}
+                        onClick={() => void run("saveCaption", { language: caption.language, vtt: texts[caption.language] },
                           `save-${caption.language}`, t("creatorEditor.lesson.ai.saved"))}
                       >
                         {t("creatorEditor.lesson.ai.save")}
@@ -171,9 +193,8 @@ export function LessonAiCaptions({ courseId, lessonId, assetId }: { courseId: st
                       <button
                         type="button"
                         className="button-solid min-h-11 px-4 py-2.5 text-sm disabled:opacity-60"
-                        disabled={working || texts[caption.language] !== caption.vtt || state === "published"}
-                        onClick={() => run("publishCaption", { language: caption.language },
-                          `publish-${caption.language}`, t("creatorEditor.lesson.ai.publishedNotice"))}
+                        disabled={working || (state === "published" && !edited)}
+                        onClick={() => void publish(caption)}
                       >
                         {t("creatorEditor.lesson.ai.publish")}
                       </button>
@@ -183,8 +204,11 @@ export function LessonAiCaptions({ courseId, lessonId, assetId }: { courseId: st
                     type="button"
                     className="button-danger px-3.5 py-2 text-xs disabled:opacity-60"
                     disabled={working}
-                    onClick={() => run("removeCaption", { language: caption.language },
-                      `remove-${caption.language}`, t("creatorEditor.lesson.ai.removed"))}
+                    onClick={() => {
+                      if (!window.confirm(t("creatorEditor.lesson.ai.confirmRemove"))) return;
+                      void run("removeCaption", { language: caption.language },
+                        `remove-${caption.language}`, t("creatorEditor.lesson.ai.removed"));
+                    }}
                   >
                     {t("creatorEditor.lesson.ai.remove")}
                   </button>
@@ -208,9 +232,9 @@ export function LessonAiCaptions({ courseId, lessonId, assetId }: { courseId: st
               </label>
               <button
                 type="button"
-                className="button-outline min-h-11 px-3 text-sm"
+                className="button-outline min-h-11 px-3 text-sm disabled:opacity-60"
                 disabled={working || !target}
-                onClick={() => run("translate", { from: source.language, to: target }, "translate",
+                onClick={() => void run("translate", { from: source.language, to: target }, "translate",
                   t("creatorEditor.lesson.ai.translated"))}
               >
                 {busy === "translate" ? t("creatorEditor.lesson.ai.translating") : t("creatorEditor.lesson.ai.translate")}

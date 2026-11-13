@@ -43,6 +43,11 @@ describe("vtt", () => {
     expect(parseVtt(merged)).toHaveLength(3);
   });
 
+  it("drops a zero-length cue from Whisper instead of failing the whole lesson", () => {
+    const merged = mergeVtt([{ vtt: "WEBVTT\n\n00:00:01.000 --> 00:00:01.000\nUh\n\n00:00:02.000 --> 00:00:03.000\nOk\n", offset: 0 }]);
+    expect(parseVtt(merged)).toEqual([{ start: 2, end: 3, text: "Ok" }]);
+  });
+
   it("formats hours past 99 minutes", () => {
     expect(formatVttTime(3725.5)).toBe("01:02:05.500");
   });

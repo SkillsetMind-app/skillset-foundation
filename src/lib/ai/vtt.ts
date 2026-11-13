@@ -35,8 +35,10 @@ export function formatVttTime(totalSeconds: number): string {
  * Falas de um WebVTT. Lança se o texto não começa com "WEBVTT" ou se uma linha
  * de tempo não fecha (fim antes do começo, formato inválido): o professor vê o
  * erro em vez de publicar uma legenda que o player descarta em silêncio.
+ * `lenient` (só para a saída do Whisper, que às vezes devolve fala de duração
+ * zero perto de silêncio) pula a fala quebrada em vez de perder a aula inteira.
  */
-export function parseVtt(vtt: string): VttCue[] {
+export function parseVtt(vtt: string, { lenient = false } = {}): VttCue[] {
   const text = vtt.replace(/^﻿/, "").replace(/\r\n?/g, "\n");
   if (!/^WEBVTT(?:[ \t].*)?(?:\n|$)/.test(text)) throw new Error("vtt_header");
 
@@ -49,7 +51,10 @@ export function parseVtt(vtt: string): VttCue[] {
     const [rawStart, rawRest = ""] = lines[timingIndex].split("-->");
     const start = parseTime(rawStart);
     const end = parseTime(rawRest.trim().split(/\s+/)[0] ?? "");
-    if (start === null || end === null || end <= start) throw new Error("vtt_timing");
+    if (start === null || end === null || end <= start) {
+      if (lenient) continue;
+      throw new Error("vtt_timing");
+    }
     const cueText = lines.slice(timingIndex + 1).join("\n").trim();
     if (cueText) cues.push({ start, end, text: cueText });
   }
@@ -69,7 +74,7 @@ export function mergeVtt(parts: { vtt: string; offset: number }[]): string {
   const cues = parts.flatMap(({ vtt, offset }) => {
     // Pedaço só de silêncio: o Whisper devolve "WEBVTT" sem falas. Não é erro.
     try {
-      return parseVtt(vtt).map((cue) => ({ ...cue, start: cue.start + offset, end: cue.end + offset }));
+      return parseVtt(vtt, { lenient: true }).map((cue) => ({ ...cue, start: cue.start + offset, end: cue.end + offset }));
     } catch (error) {
       if ((error as Error).message === "vtt_empty") return [];
       throw error;

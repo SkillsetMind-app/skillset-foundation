@@ -85,7 +85,26 @@ export function cleanQuiz(raw: unknown): QuizQuestion[] {
   return questions;
 }
 
-export async function generateQuiz(transcript: string, deadline: AbortSignal): Promise<QuizQuestion[]> {
+// Embaralha as opções e acompanha a resposta: o modelo tende a pôr a certa
+// sempre na mesma posição, e o aluno aprenderia a posição, não a aula.
+function shuffleOptions(question: QuizQuestion, random: () => number): QuizQuestion {
+  const order = question.options.map((_, index) => index);
+  for (let i = order.length - 1; i > 0; i--) {
+    const j = Math.floor(random() * (i + 1));
+    [order[i], order[j]] = [order[j], order[i]];
+  }
+  return {
+    ...question,
+    options: order.map((index) => question.options[index]),
+    answer: order.indexOf(question.answer),
+  };
+}
+
+export async function generateQuiz(
+  transcript: string,
+  deadline: AbortSignal,
+  random: () => number = Math.random,
+): Promise<QuizQuestion[]> {
   const reply = await askJson<{ questions: unknown[] }>({
     system: [
       "You write a short multiple-choice quiz that checks whether a student understood one lesson of an online course.",
@@ -104,7 +123,7 @@ export async function generateQuiz(transcript: string, deadline: AbortSignal): P
     try {
       const [question] = cleanQuiz([item]);
       const words = [question.question, ...question.options, question.explanation].join(" ");
-      return breaksTextRules(words) ? [] : [question];
+      return breaksTextRules(words) ? [] : [shuffleOptions(question, random)];
     } catch {
       return [];
     }

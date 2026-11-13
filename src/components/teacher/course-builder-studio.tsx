@@ -2088,6 +2088,7 @@ export function CourseBuilderStudio() {
                 lessonId={savedFirstLessonId}
                 moduleId={module.id}
                 target="module"
+                currentDescription={module.summary}
                 onUseTitle={(title) => updateModuleTitle(module.id, title)}
                 onUseDescription={(summary) => updateModuleSummary(module.id, summary)}
               />

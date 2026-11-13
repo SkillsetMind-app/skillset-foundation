@@ -48,7 +48,7 @@ vi.mock("@/lib/supabase/admin", () => ({
       const call = { table, ops: [] as [string, unknown[]][] };
       mocks.adminCalls.push(call);
       const query: Record<string, unknown> = {};
-      for (const op of ["select", "eq", "in", "order", "update", "upsert", "delete"]) {
+      for (const op of ["select", "eq", "in", "is", "order", "limit", "update", "upsert", "delete"]) {
         query[op] = (...args: unknown[]) => {
           call.ops.push([op, args]);
           return query;
@@ -63,6 +63,7 @@ vi.mock("@/lib/supabase/admin", () => ({
     },
   }),
 }));
+vi.mock("@/lib/ai/config", () => ({ isTeacherAiEnabled: true }));
 vi.mock("@/lib/ai/captions", () => ({ transcribeLessonVideo: mocks.transcribe, translateVtt: mocks.translate }));
 vi.mock("@/lib/ai/lesson-text", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/ai/lesson-text")>()),
@@ -84,7 +85,8 @@ import { GET, POST } from "./route";
 const VTT = "WEBVTT\n\n00:00:01.000 --> 00:00:02.000\nHello\n";
 const quizQuestion = { question: "What is a habit loop?", options: ["Cue, routine, reward", "A list"], answer: 0, explanation: "Said at the start." };
 const row = (over: Record<string, unknown> = {}) => ({
-  language: "en", vtt: VTT, video_id: "vid-1", updated_at: "2026-11-14T00:00:00Z", published_at: null, ...over,
+  language: "en", vtt: VTT, video_id: "vid-1", translated_from: null, updated_at: "2026-11-14T00:00:00Z",
+  published_at: null, ...over,
 });
 const post = (body: Record<string, unknown>) =>
   POST(new Request("https://example.test/api/teach/ai", {
@@ -128,6 +130,11 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllEnvs());
 
 describe("gates", () => {
+  it("answers 400 to a body that is not an object", async () => {
+    const response = await POST(new Request("https://example.test/api/teach/ai", { method: "POST", body: "null" }));
+    expect(response.status).toBe(400);
+  });
+
   it("answers 401 without a session and spends nothing", async () => {
     mocks.user.mockResolvedValue({ data: { user: null }, error: null });
     expect((await post({ action: "transcribe", language: "en" })).status).toBe(401);
@@ -159,11 +166,16 @@ describe("transcribe", () => {
       videoUrl: "https://vz-test.b-cdn.net/vid-1/play_240p.mp4",
       referer: "https://skillsetmind.com/",
       language: "es",
+      maxSeconds: 126,
     }));
     const upsert = mocks.adminCalls.find((c) => c.ops.some(([op]) => op === "upsert"));
-    expect(upsert?.ops.find(([op]) => op === "upsert")?.[1][0]).toMatchObject({
-      lesson_id: "l1", language: "es", owner_id: "owner-1", video_id: "vid-1", vtt: VTT,
+    const upsertArgs = upsert?.ops.find(([op]) => op === "upsert")?.[1];
+    expect(upsertArgs?.[0]).toMatchObject({
+      course_id: "course-1", lesson_id: "l1", language: "es", owner_id: "owner-1", video_id: "vid-1", vtt: VTT,
+      translated_from: null,
     });
+    // A chave tem o curso: um id de aula copiado para outro curso não toma esta linha.
+    expect(upsertArgs?.[1]).toEqual({ onConflict: "course_id,lesson_id,language" });
     const body = await response.json();
     expect(body.usage).toEqual({ usedSeconds: 126, limitSeconds: 7200 });
   });
@@ -183,6 +195,22 @@ describe("transcribe", () => {
     expect((await response.json()).code).toBe("ai_unavailable");
     const refund = mocks.adminCalls.find((c) => c.table === "ai_usage");
     expect(refund?.ops).toEqual([["delete", []], ["eq", ["id", 7]]]);
+  });
+
+  it("keeps the hours once OpenAI has been paid, even when the video turns out silent", async () => {
+    mocks.transcribe.mockImplementation(async ({ onSpend }: { onSpend: () => void }) => {
+      onSpend();
+      throw new Error("vtt_empty");
+    });
+    const response = await post({ action: "transcribe", language: "en" });
+    expect(response.status).toBe(422);
+    expect(mocks.adminCalls.some((c) => c.table === "ai_usage")).toBe(false);
+  });
+
+  it("does not claim hours when the CDN host is not configured", async () => {
+    vi.stubEnv("BUNNY_STREAM_CDN_HOSTNAME", "");
+    expect((await post({ action: "transcribe", language: "en" })).status).toBe(503);
+    expect(mocks.adminRpc).not.toHaveBeenCalled();
   });
 
   it("refuses a video id copied from another course and a video still processing", async () => {
@@ -269,16 +297,19 @@ describe("quiz and suggestions", () => {
   });
 
   it("writes the quiz from the current video's captions and saves it as a draft", async () => {
-    mocks.adminResult.mockImplementation(({ table, ops }: { table: string; ops: [string, unknown[]][] }) => {
+    mocks.adminResult.mockImplementation(({ table }: { table: string }) => {
       if (table === "lesson_quizzes") return { data: { questions: [quizQuestion], status: "draft", updated_at: "t" }, error: null };
-      return { data: ops.some(([op]) => op === "order") ? [row()] : row(), error: null };
+      return { data: row(), error: null };
     });
     mocks.generateQuiz.mockResolvedValue([quizQuestion]);
     const response = await post({ action: "generateQuiz" });
     expect(response.status).toBe(200);
     expect(mocks.generateQuiz).toHaveBeenCalledWith("Hello", expect.anything());
+    const captions = mocks.adminCalls.find((c) => c.table === "lesson_captions");
+    expect(captions?.ops).toContainEqual(["is", ["translated_from", null]]);
     const upsert = mocks.adminCalls.find((c) => c.table === "lesson_quizzes")?.ops.find(([op]) => op === "upsert");
-    expect(upsert?.[1][0]).toMatchObject({ lesson_id: "l1", owner_id: "owner-1", status: "draft", questions: [quizQuestion] });
+    expect(upsert?.[1][0]).toMatchObject({ course_id: "course-1", lesson_id: "l1", owner_id: "owner-1", status: "draft", questions: [quizQuestion] });
+    expect(upsert?.[1][1]).toEqual({ onConflict: "course_id,lesson_id" });
   });
 
   it("refuses an edited quiz with no right answer, and publishes a valid one", async () => {

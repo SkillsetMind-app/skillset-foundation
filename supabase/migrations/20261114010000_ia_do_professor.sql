@@ -45,27 +45,14 @@ create index if not exists ai_usage_owner_created_idx on public.ai_usage (owner_
 alter table public.ai_usage enable row level security;
 alter table public.ai_usage force row level security;
 revoke all on table public.ai_usage from public, anon, authenticated;
+grant select, insert, delete on table public.ai_usage to service_role;
 create policy account_access_guard on public.ai_usage as restrictive for all to authenticated
   using ((select public.account_session_allowed()))
   with check ((select public.account_session_allowed()));
 
--- Plano de quem pede: a concessão (contas da casa) vale antes da assinatura,
--- como em creator_has_current_plan.
-create or replace function public.ai_plan_for(p_uid text)
-returns text
-language sql
-stable
-security definer
-set search_path = ''
-as $$
-  select coalesce(
-    (select g.plan_id from public.plan_grants g where g.uid = p_uid),
-    (select u.current_plan_id from public.users u where u.uid = p_uid),
-    'free'
-  );
-$$;
-
--- Uso do mês corrente (UTC) e o teto.
+-- Uso do mês corrente (UTC) e o teto. O teto é o MAIOR entre o plano pago
+-- (users.current_plan_id) e a concessão (plan_grants, contas da casa): o
+-- webhook do Stripe já deixa o plano pago maior vencer a concessão.
 create or replace function public.ai_video_usage(p_uid text)
 returns table (used_seconds integer, limit_seconds integer)
 language sql
@@ -79,13 +66,17 @@ as $$
        where a.owner_id = p_uid
          and a.created_at >= date_trunc('month', now() at time zone 'utc') at time zone 'utc'
     ), 0),
-    public.ai_video_seconds_limit_for_plan(public.ai_plan_for(p_uid));
+    greatest(
+      public.ai_video_seconds_limit_for_plan((select u.current_plan_id from public.users u where u.uid = p_uid)),
+      public.ai_video_seconds_limit_for_plan((select g.plan_id from public.plan_grants g where g.uid = p_uid))
+    );
 $$;
 
 -- Reserva os segundos de uma transcrição se couberem no teto do mês. Atômica:
 -- segura a linha do professor, então dois pedidos ao mesmo tempo não passam os
 -- dois pelo mesmo saldo. Sem saldo, usage_id volta null e nada é gravado. Se a
--- transcrição falhar, a rota apaga a linha pelo usage_id (o uso é devolvido).
+-- transcrição falhar ANTES de chegar à OpenAI, a rota apaga a linha pelo
+-- usage_id (o uso é devolvido); depois de a OpenAI cobrar, o uso fica.
 create or replace function public.claim_ai_video_seconds(
   p_uid text, p_course_id text, p_lesson_id text, p_seconds integer
 )
@@ -121,36 +112,40 @@ end;
 $$;
 
 revoke all on function public.ai_video_seconds_limit_for_plan(text) from public, anon, authenticated;
-revoke all on function public.ai_plan_for(text) from public, anon, authenticated;
 revoke all on function public.ai_video_usage(text) from public, anon, authenticated;
 revoke all on function public.claim_ai_video_seconds(text, text, text, integer) from public, anon, authenticated;
 grant execute on function public.ai_video_seconds_limit_for_plan(text) to service_role;
-grant execute on function public.ai_plan_for(text) to service_role;
 grant execute on function public.ai_video_usage(text) to service_role;
 grant execute on function public.claim_ai_video_seconds(text, text, text, integer) to service_role;
 
 -- 3. Legendas ------------------------------------------------------------------
+-- Chave com course_id: o id da aula nasce no browser e o currículo é público;
+-- o mesmo id copiado para outro curso vira OUTRA linha, nunca toma a do dono.
 create table if not exists public.lesson_captions (
+  course_id text not null references public.courses(id) on delete cascade,
   lesson_id text not null,
   language text not null check (language ~ '^[a-z]{2}$'),
-  course_id text not null references public.courses(id) on delete cascade,
   owner_id text not null references public.users(uid) on delete cascade,
   -- Vídeo da Bunny para o qual a legenda foi feita: trocou o vídeo da aula,
   -- a legenda antiga deixa de valer para o novo.
   video_id text not null,
   vtt text not null check (char_length(vtt) <= 500000),
+  -- Idioma de origem quando a legenda é tradução; null = transcrição do áudio.
+  -- Quiz e sugestões leem a transcrição, não a tradução.
+  translated_from text check (translated_from ~ '^[a-z]{2}$'),
   updated_at timestamptz not null default now(),
   -- Última vez que o texto subiu para a Bunny. Null = nunca publicada;
   -- updated_at depois dele = há mudança ainda não publicada (a versão da
   -- Bunny continua valendo até o professor publicar de novo).
   published_at timestamptz,
-  primary key (lesson_id, language)
+  primary key (course_id, lesson_id, language)
 );
-create index if not exists lesson_captions_course_idx on public.lesson_captions (course_id);
+create index if not exists lesson_captions_owner_idx on public.lesson_captions (owner_id);
 
 alter table public.lesson_captions enable row level security;
 alter table public.lesson_captions force row level security;
 revoke all on table public.lesson_captions from public, anon, authenticated;
+grant select, insert, update, delete on table public.lesson_captions to service_role;
 create policy account_access_guard on public.lesson_captions as restrictive for all to authenticated
   using ((select public.account_session_allowed()))
   with check ((select public.account_session_allowed()));
@@ -159,8 +154,8 @@ create policy account_access_guard on public.lesson_captions as restrictive for 
 -- questions: [{ "question": text, "options": [text x 2..5], "answer": índice, "explanation": text }]
 -- A forma fina é validada na rota; aqui só o que não pode faltar.
 create table if not exists public.lesson_quizzes (
-  lesson_id text primary key,
   course_id text not null references public.courses(id) on delete cascade,
+  lesson_id text not null,
   owner_id text not null references public.users(uid) on delete cascade,
   questions jsonb not null check (
     jsonb_typeof(questions) = 'array'
@@ -168,14 +163,16 @@ create table if not exists public.lesson_quizzes (
     and pg_column_size(questions) <= 100000
   ),
   status text not null default 'draft' check (status in ('draft', 'published')),
-  updated_at timestamptz not null default now()
+  updated_at timestamptz not null default now(),
+  primary key (course_id, lesson_id)
 );
-create index if not exists lesson_quizzes_course_idx on public.lesson_quizzes (course_id);
+create index if not exists lesson_quizzes_owner_idx on public.lesson_quizzes (owner_id);
 
 alter table public.lesson_quizzes enable row level security;
 alter table public.lesson_quizzes force row level security;
 revoke all on table public.lesson_quizzes from public, anon, authenticated;
 grant select on table public.lesson_quizzes to authenticated;
+grant select, insert, update, delete on table public.lesson_quizzes to service_role;
 create policy account_access_guard on public.lesson_quizzes as restrictive for all to authenticated
   using ((select public.account_session_allowed()))
   with check ((select public.account_session_allowed()));

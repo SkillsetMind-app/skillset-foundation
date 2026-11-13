@@ -1594,6 +1594,7 @@ export type Database = {
           lesson_id: string
           owner_id: string
           published_at: string | null
+          translated_from: string | null
           updated_at: string
           video_id: string
           vtt: string
@@ -1604,6 +1605,7 @@ export type Database = {
           lesson_id: string
           owner_id: string
           published_at?: string | null
+          translated_from?: string | null
           updated_at?: string
           video_id: string
           vtt: string
@@ -1614,6 +1616,7 @@ export type Database = {
           lesson_id?: string
           owner_id?: string
           published_at?: string | null
+          translated_from?: string | null
           updated_at?: string
           video_id?: string
           vtt?: string
@@ -2726,7 +2729,6 @@ export type Database = {
           notification_count: number
         }[]
       }
-      ai_plan_for: { Args: { p_uid: string }; Returns: string }
       ai_video_seconds_limit_for_plan: { Args: { p_plan_id: string }; Returns: number }
       ai_video_usage: {
         Args: { p_uid: string }

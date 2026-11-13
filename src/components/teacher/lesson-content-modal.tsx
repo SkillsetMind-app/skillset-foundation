@@ -1086,6 +1086,7 @@ export function LessonContentModal({
                   lessonId={lesson.id}
                   assetId={primaryVideo.id}
                   target="lesson"
+                  currentDescription={lesson.contentText}
                   onUseTitle={(title) => onUpdateLesson({ title })}
                   onUseDescription={(contentText) => onUpdateLesson({ contentText })}
                 />
