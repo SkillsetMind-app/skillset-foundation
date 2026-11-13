@@ -16,9 +16,8 @@ export function LessonQuiz({ lessonId }: { lessonId: string }) {
   const [picked, setPicked] = useState<Record<number, number>>({});
 
   useEffect(() => {
+    // Sem reset aqui: a sala de aula monta um LessonQuiz por aula (key={lesson.id}).
     let live = true;
-    setQuestions([]);
-    setPicked({});
     void getSupabaseBrowserClient()
       .from("lesson_quizzes")
       .select("questions")
