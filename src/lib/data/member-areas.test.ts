@@ -146,18 +146,19 @@ describe("orderMemberAreaProducts", () => {
 describe("getMyMemberAreaEditor", () => {
   it("sem linha: área virtual", async () => {
     from.mockReturnValueOnce(table({ data: null, error: null }));
-    await expect(getMyMemberAreaEditor("u-1")).resolves.toEqual({ settings: null, choices: new Map() });
+    await expect(getMyMemberAreaEditor("u-1")).resolves.toEqual({ settings: null, choices: new Map(), communityCourseId: null });
   });
 
   it("lê a configuração e as escolhas de cada produto", async () => {
     from
-      .mockReturnValueOnce(table({ data: { id: "area-1", name: "Eton Academy", theme: "dark", cover_path: null, welcome_text: "Oi" }, error: null }))
+      .mockReturnValueOnce(table({ data: { id: "area-1", name: "Eton Academy", theme: "dark", cover_path: null, welcome_text: "Oi", community_course_id: "c-com" }, error: null }))
       .mockReturnValueOnce(table({ data: [{ course_id: "c-a", position: 0, visible: false }], error: null }));
     const editor = await getMyMemberAreaEditor("u-1");
     expect(from).toHaveBeenNthCalledWith(1, "member_areas");
     expect(from).toHaveBeenNthCalledWith(2, "member_area_products");
     expect(editor.settings).toEqual({ name: "Eton Academy", theme: "dark", coverPath: null, welcomeText: "Oi" });
     expect(editor.choices.get("c-a")).toEqual({ position: 0, visible: false });
+    expect(editor.communityCourseId).toBe("c-com");
   });
 });
 

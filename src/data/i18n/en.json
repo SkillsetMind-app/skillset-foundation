@@ -1318,7 +1318,12 @@
       "viewProduct": "See details",
       "free": "Free",
       "openArea": "Open {name}'s members area",
-      "backToArea": "{name}'s members area"
+      "backToArea": "{name}'s members area",
+      "communityTitle": "Community",
+      "communityBody": "Talk with everyone learning with {name}.",
+      "communityOpen": "Open the community",
+      "communityBack": "Back to the area",
+      "communityDescription": "The community for everyone enrolled in any product of this area."
     },
     "classroom": {
       "workspace": {
@@ -1786,8 +1791,13 @@
         "save": "We could not save your members area. Please try again.",
         "saveProducts": "Name, theme, cover and welcome text were saved, but the product order was not. Please save again.",
         "coverInvalid": "Use a JPG, PNG or WebP image under 5 MB.",
-        "coverUpload": "We could not upload this image. Please try again."
-      }
+        "coverUpload": "We could not upload this image. Please try again.",
+        "saveCommunity": "The area and products were saved, but the area community was not. Try again."
+      },
+      "community": "Community for the whole area",
+      "communityHelp": "Anyone enrolled in any of your products joins this community. Each product's own community stays as it is.",
+      "communityEmpty": "Create a Community product to use it as the community for the whole area.",
+      "communityNone": "No area community"
     },
     "tour": {
       "welcome": "Welcome to your studio",

@@ -1318,7 +1318,12 @@
       "viewProduct": "Ver detalles",
       "free": "Gratis",
       "openArea": "Abrir el área de miembros de {name}",
-      "backToArea": "Área de miembros de {name}"
+      "backToArea": "Área de miembros de {name}",
+      "communityTitle": "Comunidad",
+      "communityBody": "Conversa con todas las personas que aprenden con {name}.",
+      "communityOpen": "Abrir la comunidad",
+      "communityBack": "Volver al área",
+      "communityDescription": "La comunidad de todas las personas inscritas en algún producto de esta área."
     },
     "classroom": {
       "workspace": {
@@ -1786,8 +1791,13 @@
         "save": "No pudimos guardar tu área de miembros. Inténtalo de nuevo.",
         "saveProducts": "Se guardaron el nombre, el tema, la portada y la bienvenida, pero no el orden de los productos. Guarda de nuevo.",
         "coverInvalid": "Usa una imagen JPG, PNG o WebP de menos de 5 MB.",
-        "coverUpload": "No pudimos subir esta imagen. Inténtalo de nuevo."
-      }
+        "coverUpload": "No pudimos subir esta imagen. Inténtalo de nuevo.",
+        "saveCommunity": "El área y los productos se guardaron, pero la comunidad del área no. Inténtalo de nuevo."
+      },
+      "community": "Comunidad de toda el área",
+      "communityHelp": "Quien esté inscrito en cualquiera de tus productos entra en esta comunidad. La comunidad de cada producto sigue igual.",
+      "communityEmpty": "Crea un producto de tipo Comunidad para usarlo como comunidad de toda el área.",
+      "communityNone": "Sin comunidad del área"
     },
     "tour": {
       "welcome": "Bienvenido a tu espacio",

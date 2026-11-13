@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   removeMemberAreaCover: vi.fn(),
   saveMyMemberArea: vi.fn(),
   saveMyMemberAreaProducts: vi.fn(),
+  setMyMemberAreaCommunity: vi.fn(),
   subscribeToTeacherCourses: vi.fn(),
   uploadMemberAreaCover: vi.fn(),
   user: { uid: "teacher-1" },
@@ -28,6 +29,7 @@ vi.mock("@/lib/data/member-areas", async (importOriginal) => {
     removeMemberAreaCover: mocks.removeMemberAreaCover,
     saveMyMemberArea: mocks.saveMyMemberArea,
     saveMyMemberAreaProducts: mocks.saveMyMemberAreaProducts,
+    setMyMemberAreaCommunity: mocks.setMyMemberAreaCommunity,
     uploadMemberAreaCover: mocks.uploadMemberAreaCover,
   };
 });
@@ -52,7 +54,8 @@ describe("MemberAreaSettingsPanel", () => {
   beforeEach(() => {
     for (const mock of Object.values(mocks)) if (typeof mock === "function") mock.mockReset();
     mocks.getUserProfile.mockResolvedValue({ displayName: "Eton Simon", username: "eton" });
-    mocks.getMyMemberAreaEditor.mockResolvedValue({ settings: null, choices: new Map() });
+    mocks.getMyMemberAreaEditor.mockResolvedValue({ settings: null, choices: new Map(), communityCourseId: null });
+    mocks.setMyMemberAreaCommunity.mockResolvedValue(undefined);
     mocks.subscribeToTeacherCourses.mockImplementation((_uid: string, callback: (value: unknown) => void) => {
       callback(courses);
       return () => undefined;
@@ -171,6 +174,25 @@ describe("MemberAreaSettingsPanel", () => {
     fireEvent.click(screen.getByRole("button", { name: "Save members area" }));
     await waitFor(() => expect(mocks.saveMyMemberAreaProducts).toHaveBeenCalled());
     expect(mocks.saveMyMemberAreaProducts.mock.calls[0][0]).toHaveLength(500);
+  });
+
+  // Comunidade da área inteira: só produto community do professor entra na lista.
+  it("escolhe a comunidade da área entre os produtos community e salva", async () => {
+    mocks.subscribeToTeacherCourses.mockImplementation((_uid: string, callback: (value: unknown) => void) => {
+      callback([
+        ...courses,
+        { id: "club", title: "Inner circle", status: "published", productFormat: "community", communityEnabled: true, createdAt: "2026-10-02T00:00:00Z" },
+      ]);
+      return () => undefined;
+    });
+    renderPanel();
+    const select = await screen.findByRole("combobox", { name: "Community for the whole area" });
+    expect(within(select).getAllByRole("option").map((option) => option.textContent)).toEqual(["No area community", "Inner circle"]);
+    expect(titles().some((title) => title.includes("Inner circle") && title.includes("Community"))).toBe(true);
+    fireEvent.change(select, { target: { value: "club" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save members area" }));
+    await waitFor(() => expect(mocks.setMyMemberAreaCommunity).toHaveBeenCalledWith("club"));
+    expect(await screen.findByText(/^Saved. Students see the changes/)).toBeTruthy();
   });
 
   it("em espanhol", async () => {
