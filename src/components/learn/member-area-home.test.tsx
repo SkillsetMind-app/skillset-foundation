@@ -28,7 +28,7 @@ vi.mock("@/lib/data/member-areas", async (importOriginal) => ({
 
 const home: MemberAreaHome = {
   area: {
-    ownerId: "u-1", username: "eton", creatorName: "Eton Simon", creatorPhotoUrl: null,
+    ownerId: "u-1", username: "eton", slug: null, creatorName: "Eton Simon", creatorPhotoUrl: null,
     name: "Eton Academy", theme: "dark", coverPath: "users/u-1/member-area/cover-1",
     welcomeText: "Welcome to the academy.", configured: true, isOwnerPreview: false,
   },
@@ -86,7 +86,7 @@ describe("MemberAreaHomeView", () => {
     mocks.getMemberAreaHome.mockResolvedValue(home);
     renderView();
     expect(await screen.findByRole("heading", { level: 1, name: "Eton Academy" })).toBeTruthy();
-    expect(mocks.getMemberAreaHome).toHaveBeenCalledWith("@eton");
+    expect(mocks.getMemberAreaHome).toHaveBeenCalledWith("@eton", null);
     expect(screen.getByTestId("shell").getAttribute("data-members-theme")).toBe("dark");
     expect(screen.getByText("By Eton Simon")).toBeTruthy();
     expect(screen.getByText("Welcome to the academy.")).toBeTruthy();

@@ -52,7 +52,12 @@ export type QuotaKey =
    * kilobytes of jsonb. It is a shape quota: how much page the plan buys. Free
    * gets a complete short page rather than a crippled long one.
    */
-  | "landingBlocks";
+  | "landingBlocks"
+  /**
+   * Member areas, counting the main one. Mirrors member_area_limit_for_plan()
+   * in 20261113230000_tres_areas_no_pro.sql.
+   */
+  | "memberAreas";
 
 export type FeatureKey =
   | "removePlatformBranding"
@@ -78,6 +83,7 @@ export const planEntitlements: Record<PlanId, PlanEntitlements> = {
       teamSeats: 1,
       emailSendsPerMonth: 0,
       landingBlocks: 4,
+      memberAreas: 1,
     },
     features: {
       removePlatformBranding: false,
@@ -98,6 +104,7 @@ export const planEntitlements: Record<PlanId, PlanEntitlements> = {
       teamSeats: 1,
       emailSendsPerMonth: 0,
       landingBlocks: 4,
+      memberAreas: 1,
     },
     features: {
       removePlatformBranding: false,
@@ -115,6 +122,7 @@ export const planEntitlements: Record<PlanId, PlanEntitlements> = {
       teamSeats: 2,
       emailSendsPerMonth: 2_000,
       landingBlocks: 8,
+      memberAreas: 1,
     },
     features: {
       removePlatformBranding: false,
@@ -133,6 +141,7 @@ export const planEntitlements: Record<PlanId, PlanEntitlements> = {
       teamSeats: 15,
       emailSendsPerMonth: 50_000,
       landingBlocks: 20,
+      memberAreas: 3,
     },
     features: {
       removePlatformBranding: true,
@@ -151,6 +160,7 @@ export const planEntitlements: Record<PlanId, PlanEntitlements> = {
       teamSeats: 15,
       emailSendsPerMonth: 50_000,
       landingBlocks: 20,
+      memberAreas: 3,
     },
     features: {
       removePlatformBranding: true,

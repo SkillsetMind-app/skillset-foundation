@@ -178,7 +178,7 @@ export function EnrolledCourseWorkspace({
   const [isLoading, setIsLoading] = useState(!previewMode && !hasParentEnrollment);
   // A area do criador, quando ele tem perfil publico: e para la que o
   // "voltar" da aula leva (a saida continua uma so). Fora do preview.
-  const creatorArea = useCreatorAreaLink(previewMode ? null : course.instructorId);
+  const creatorArea = useCreatorAreaLink(previewMode ? null : course.instructorId, course.id);
   const [progressState, setProgressState] = useState<{
     key: string | null;
     lessonIds: string[];
