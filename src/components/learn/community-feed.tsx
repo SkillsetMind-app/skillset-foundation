@@ -452,12 +452,15 @@ export function CommunityFeed({
           >
             {t("learn.community.rules")}
           </button>
-          <Link
-            href={pathname.replace(/\/community(\/.*)?$/, "") + "/lives"}
-            className="flex min-h-11 items-center rounded-md px-3 text-[var(--color-ink)] hover:bg-[var(--color-surface-soft)]"
-          >
-            {t("learn.community.recordings")}
-          </Link>
+          {/* A comunidade da área (/learn/areas/...) não tem aba de gravações. */}
+          {pathname.startsWith("/learn/areas/") ? null : (
+            <Link
+              href={pathname.replace(/\/community(\/.*)?$/, "") + "/lives"}
+              className="flex min-h-11 items-center rounded-md px-3 text-[var(--color-ink)] hover:bg-[var(--color-surface-soft)]"
+            >
+              {t("learn.community.recordings")}
+            </Link>
+          )}
         </nav>
 
         {asideView === "members" ? (

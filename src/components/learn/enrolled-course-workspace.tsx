@@ -104,6 +104,8 @@ import {
 import { useCreatorAreaLink } from "@/components/learn/member-area-links";
 import { track } from "@/lib/posthog/events";
 import { scrollBehavior } from "@/lib/ui/scroll-behavior";
+import { LessonQuiz } from "@/components/learn/lesson-quiz";
+import { isTeacherAiEnabled } from "@/lib/ai/config";
 
 // Liberação de aula pelo calendário (migration 20260915020000).
 // Folga depois do prazo: o relógio do aparelho pode estar à frente do banco.
@@ -178,7 +180,7 @@ export function EnrolledCourseWorkspace({
   const [isLoading, setIsLoading] = useState(!previewMode && !hasParentEnrollment);
   // A area do criador, quando ele tem perfil publico: e para la que o
   // "voltar" da aula leva (a saida continua uma so). Fora do preview.
-  const creatorArea = useCreatorAreaLink(previewMode ? null : course.instructorId);
+  const creatorArea = useCreatorAreaLink(previewMode ? null : course.instructorId, course.id);
   const [progressState, setProgressState] = useState<{
     key: string | null;
     lessonIds: string[];
@@ -1354,6 +1356,7 @@ export function EnrolledCourseWorkspace({
         {selectedLesson && resolvedSelectedLesson ? (
           <LessonContentPanel
             assets={selectedLessonAssets}
+            courseId={course.id}
             enrollmentId={workspaceEnrollment?.id ?? null}
             enableFirestoreAssets={enableFirestoreAssets}
             isLoadingAssets={
@@ -2028,6 +2031,7 @@ function LessonInfo({
 function LessonContentPanel({
   assets,
   autoplay = false,
+  courseId,
   enrollmentId,
   enableFirestoreAssets,
   isLoadingAssets,
@@ -2045,6 +2049,8 @@ function LessonContentPanel({
   unlockState,
 }: {
   assets: CourseAsset[];
+  /** Curso da aula: o quiz é lido por curso + aula (o id da aula sozinho não é único). */
+  courseId: string;
   /** A aula abriu pelo cartão "Próxima aula": começa a tocar sozinha. */
   autoplay?: boolean;
   /** A matricula do aluno: sem ela (preview do professor) a posicao do video
@@ -2176,6 +2182,7 @@ function LessonContentPanel({
             {t("learn.classroom.lesson.openResource")}
           </a>
         ) : null}
+        {isTeacherAiEnabled && !locked && !fileOnly ? <LessonQuiz key={lesson.id} courseId={courseId} lessonId={lesson.id} /> : null}
         {fileOnly ? (
           <>
             <p className="mt-3 text-sm leading-7 text-[var(--color-ink-soft)]">

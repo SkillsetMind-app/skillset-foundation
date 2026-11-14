@@ -116,6 +116,46 @@ export async function getBunnyVideoStatus(videoId: string): Promise<BunnyVideoSt
   };
 }
 
+// MP4 de 240p de um vídeo (o "MP4 fallback", ligado na biblioteca desde o
+// envio). É a menor versão com áudio: a transcrição lê só a voz dele. O host da
+// CDN não sai da API da biblioteca com a chave que temos aqui, por isso vem de
+// variável (BUNNY_STREAM_CDN_HOSTNAME, ex.: vz-xxxx.b-cdn.net).
+export function bunnyLowestMp4Url(videoId: string): string {
+  return `https://${requireEnv("BUNNY_STREAM_CDN_HOSTNAME")}/${encodeURIComponent(videoId)}/play_240p.mp4`;
+}
+
+// Publica (ou substitui) a legenda de um idioma no vídeo (Bunny "Add Caption").
+// O player da Bunny passa a mostrar o botão CC com esse idioma.
+export async function putBunnyCaption(videoId: string, language: string, label: string, vtt: string): Promise<void> {
+  const libraryId = getLibraryId();
+  const res = await fetch(
+    `${BUNNY_API_BASE}/library/${libraryId}/videos/${encodeURIComponent(videoId)}/captions/${encodeURIComponent(language)}`,
+    {
+      method: "POST",
+      headers: { AccessKey: requireEnv("BUNNY_STREAM_API_KEY"), "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify({ srclang: language, label, captionsFile: Buffer.from(vtt, "utf8").toString("base64") }),
+      cache: "no-store",
+      signal: AbortSignal.timeout(20_000),
+    },
+  );
+  if (!res.ok) throw new Error(`Bunny add caption failed: ${res.status}`);
+}
+
+// Tira a legenda de um idioma do vídeo. 404 = já não estava lá.
+export async function deleteBunnyCaption(videoId: string, language: string): Promise<void> {
+  const libraryId = getLibraryId();
+  const res = await fetch(
+    `${BUNNY_API_BASE}/library/${libraryId}/videos/${encodeURIComponent(videoId)}/captions/${encodeURIComponent(language)}`,
+    {
+      method: "DELETE",
+      headers: { AccessKey: requireEnv("BUNNY_STREAM_API_KEY"), Accept: "application/json" },
+      cache: "no-store",
+      signal: AbortSignal.timeout(8000),
+    },
+  );
+  if (!res.ok && res.status !== 404) throw new Error(`Bunny delete caption failed: ${res.status}`);
+}
+
 // Deletes one video from the library (Bunny "Delete Video"). Final: Bunny has
 // no backup. 404 = already gone, which is success for whoever is cleaning up.
 export async function deleteBunnyVideo(videoId: string): Promise<void> {

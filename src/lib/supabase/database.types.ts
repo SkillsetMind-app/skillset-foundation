@@ -153,6 +153,44 @@ export type Database = {
           },
         ]
       }
+      ai_usage: {
+        Row: {
+          course_id: string
+          created_at: string
+          id: number
+          kind: string
+          lesson_id: string
+          owner_id: string
+          seconds: number
+        }
+        Insert: {
+          course_id: string
+          created_at?: string
+          id?: number
+          kind: string
+          lesson_id: string
+          owner_id: string
+          seconds: number
+        }
+        Update: {
+          course_id?: string
+          created_at?: string
+          id?: number
+          kind?: string
+          lesson_id?: string
+          owner_id?: string
+          seconds?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_usage_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["uid"]
+          },
+        ]
+      }
       audit_log: {
         Row: {
           action: string
@@ -1549,6 +1587,57 @@ export type Database = {
           },
         ]
       }
+      lesson_captions: {
+        Row: {
+          course_id: string
+          language: string
+          lesson_id: string
+          owner_id: string
+          published_at: string | null
+          translated_from: string | null
+          updated_at: string
+          video_id: string
+          vtt: string
+        }
+        Insert: {
+          course_id: string
+          language: string
+          lesson_id: string
+          owner_id: string
+          published_at?: string | null
+          translated_from?: string | null
+          updated_at?: string
+          video_id: string
+          vtt: string
+        }
+        Update: {
+          course_id?: string
+          language?: string
+          lesson_id?: string
+          owner_id?: string
+          published_at?: string | null
+          translated_from?: string | null
+          updated_at?: string
+          video_id?: string
+          vtt?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lesson_captions_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lesson_captions_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["uid"]
+          },
+        ]
+      }
       lesson_progress: {
         Row: {
           completed_at: string
@@ -1575,6 +1664,48 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "enrollments"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      lesson_quizzes: {
+        Row: {
+          course_id: string
+          lesson_id: string
+          owner_id: string
+          questions: Json
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          course_id: string
+          lesson_id: string
+          owner_id: string
+          questions: Json
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          course_id?: string
+          lesson_id?: string
+          owner_id?: string
+          questions?: Json
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lesson_quizzes_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lesson_quizzes_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["uid"]
           },
         ]
       }
@@ -1656,31 +1787,37 @@ export type Database = {
       }
       member_areas: {
         Row: {
+          community_course_id: string | null
           cover_path: string | null
           created_at: string
           id: string
           name: string | null
           owner_id: string
+          slug: string | null
           theme: string
           updated_at: string
           welcome_text: string | null
         }
         Insert: {
+          community_course_id?: string | null
           cover_path?: string | null
           created_at?: string
           id?: string
           name?: string | null
           owner_id: string
+          slug?: string | null
           theme?: string
           updated_at?: string
           welcome_text?: string | null
         }
         Update: {
+          community_course_id?: string | null
           cover_path?: string | null
           created_at?: string
           id?: string
           name?: string | null
           owner_id?: string
+          slug?: string | null
           theme?: string
           updated_at?: string
           welcome_text?: string | null
@@ -2598,6 +2735,15 @@ export type Database = {
           notification_count: number
         }[]
       }
+      ai_video_seconds_limit_for_plan: { Args: { p_plan_id: string }; Returns: number }
+      ai_video_usage: {
+        Args: { p_uid: string }
+        Returns: { used_seconds: number; limit_seconds: number }[]
+      }
+      claim_ai_video_seconds: {
+        Args: { p_uid: string; p_course_id: string; p_lesson_id: string; p_seconds: number }
+        Returns: { usage_id: number | null; used_seconds: number; limit_seconds: number }[]
+      }
       claim_welcome_tour: {
         Args: { p_uid: string; p_surface: string }
         Returns: boolean
@@ -2648,12 +2794,26 @@ export type Database = {
         Returns: undefined
       }
       // Added by hand for supabase/migrations/20261016030000_area_de_membros.sql.
-      get_member_area_home: { Args: { p_area_ref: string }; Returns: Json }
+      // 20261113230000_tres_areas_no_pro.sql (hand-added until the next regen):
+      // p_area_id/p_slug omitted = the main area.
+      get_member_area_home: { Args: { p_area_ref: string; p_slug?: string }; Returns: Json }
       save_my_member_area: {
-        Args: { p_cover_path: string; p_name: string; p_theme: string; p_welcome_text: string }
+        Args: { p_cover_path: string; p_name: string; p_theme: string; p_welcome_text: string; p_area_id?: string }
         Returns: undefined
       }
-      save_my_member_area_products: { Args: { p_items: Json }; Returns: undefined }
+      save_my_member_area_products: { Args: { p_items: Json; p_area_id?: string }; Returns: undefined }
+      create_my_member_area: { Args: { p_name: string; p_slug: string }; Returns: string }
+      delete_my_member_area: { Args: { p_area_id: string }; Returns: undefined }
+      get_member_area_slugs: {
+        Args: { p_course_ids: string[] }
+        Returns: { course_id: string; name: string | null; slug: string }[]
+      }
+      member_area_limit_for_plan: { Args: { p_plan_id: string }; Returns: number }
+      // 20261113020000_comunidade_da_area.sql (hand-added until the next regen).
+      set_my_member_area_community: { Args: { p_course_id: string; p_area_id?: string }; Returns: undefined }
+      get_member_area_community: { Args: { p_area_ref: string; p_slug?: string }; Returns: Json }
+      has_community_access: { Args: { p_slug: string }; Returns: boolean }
+      has_member_area_community_access: { Args: { p_slug: string }; Returns: boolean }
       // Added by hand for supabase/migrations/20260820000000_custom_domains.sql.
       // This file is normally generated by `supabase gen types`, which needs the
       // migration applied to a live project first. Regenerating after that

@@ -1,9 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+  createMyMemberArea,
   getMemberAreaHome,
-  getMyMemberAreaEditor,
+  getMemberAreaSlugs,
+  getMyMemberAreas,
+  isValidMemberAreaSlug,
   memberAreaPath,
+  memberAreaProductsOf,
   orderMemberAreaProducts,
   parseMemberAreaHome,
   saveMyMemberArea,
@@ -26,7 +30,14 @@ beforeEach(() => {
 
 // select().eq() → maybeSingle() ou a própria promessa, como o supabase-js.
 function table(result: { data: unknown; error: unknown }) {
-  const chain = { select: () => chain, eq: () => chain, maybeSingle: async () => result, then: (resolve: (value: unknown) => void) => resolve(result) };
+  const chain = {
+    select: () => chain,
+    eq: () => chain,
+    in: () => chain,
+    order: () => chain,
+    maybeSingle: async () => result,
+    then: (resolve: (value: unknown) => void) => resolve(result),
+  };
   return chain;
 }
 
@@ -143,21 +154,88 @@ describe("orderMemberAreaProducts", () => {
   });
 });
 
-describe("getMyMemberAreaEditor", () => {
-  it("sem linha: área virtual", async () => {
-    from.mockReturnValueOnce(table({ data: null, error: null }));
-    await expect(getMyMemberAreaEditor("u-1")).resolves.toEqual({ settings: null, choices: new Map() });
+describe("getMyMemberAreas", () => {
+  it("sem linha: só a principal, virtual", async () => {
+    from.mockReturnValueOnce(table({ data: [], error: null }));
+    await expect(getMyMemberAreas("u-1")).resolves.toEqual({
+      areas: [{ id: null, slug: null, settings: null, communityCourseId: null }],
+      placement: new Map(),
+    });
+    expect(from).toHaveBeenCalledTimes(1);
   });
 
-  it("lê a configuração e as escolhas de cada produto", async () => {
+  it("principal primeiro, extras depois, e onde cada produto mora", async () => {
     from
-      .mockReturnValueOnce(table({ data: { id: "area-1", name: "Eton Academy", theme: "dark", cover_path: null, welcome_text: "Oi" }, error: null }))
-      .mockReturnValueOnce(table({ data: [{ course_id: "c-a", position: 0, visible: false }], error: null }));
-    const editor = await getMyMemberAreaEditor("u-1");
-    expect(from).toHaveBeenNthCalledWith(1, "member_areas");
+      .mockReturnValueOnce(table({ data: [
+        { id: "area-2", slug: "vip", name: "VIP", theme: "light", cover_path: null, welcome_text: null, community_course_id: null },
+        { id: "area-1", slug: null, name: "Eton Academy", theme: "dark", cover_path: null, welcome_text: "Oi", community_course_id: "c-com" },
+      ], error: null }))
+      .mockReturnValueOnce(table({ data: [{ area_id: "area-2", course_id: "c-a", position: 0, visible: false }], error: null }));
+    const editor = await getMyMemberAreas("u-1");
     expect(from).toHaveBeenNthCalledWith(2, "member_area_products");
-    expect(editor.settings).toEqual({ name: "Eton Academy", theme: "dark", coverPath: null, welcomeText: "Oi" });
-    expect(editor.choices.get("c-a")).toEqual({ position: 0, visible: false });
+    expect(editor.areas.map((area) => area.slug)).toEqual([null, "vip"]);
+    expect(editor.areas[0].settings).toEqual({ name: "Eton Academy", theme: "dark", coverPath: null, welcomeText: "Oi" });
+    expect(editor.areas[0].communityCourseId).toBe("c-com");
+    expect(editor.placement.get("c-a")).toEqual({ areaId: "area-2", position: 0, visible: false });
+  });
+});
+
+describe("memberAreaProductsOf", () => {
+  const editor = {
+    areas: [
+      { id: "main", slug: null, settings: null, communityCourseId: null },
+      { id: "vip", slug: "vip", settings: null, communityCourseId: null },
+    ],
+    placement: new Map([
+      ["a", { areaId: "main", position: 0, visible: true }],
+      ["b", { areaId: "vip", position: 0, visible: false }],
+    ]),
+  };
+  const courses = [{ id: "a" }, { id: "b" }, { id: "c" }];
+
+  it("principal: a lista dela e o que não está em extra; extra: só a lista dela", () => {
+    const main = memberAreaProductsOf(courses, editor, editor.areas[0]);
+    expect(main.courses.map((course) => course.id)).toEqual(["a", "c"]);
+    expect([...main.choices.keys()]).toEqual(["a"]);
+    const vip = memberAreaProductsOf(courses, editor, editor.areas[1]);
+    expect(vip.courses.map((course) => course.id)).toEqual(["b"]);
+    expect(vip.choices.get("b")).toEqual({ position: 0, visible: false });
+  });
+});
+
+describe("áreas extras", () => {
+  it("endereço da extra e regra do slug", () => {
+    expect(memberAreaPath({ username: "eton", ownerId: "u-1", slug: "vip" })).toBe("/learn/areas/@eton/vip");
+    expect(isValidMemberAreaSlug("turma-2")).toBe(true);
+    for (const bad of ["community", "-x", "x-", "Turma", "a b", "", "a".repeat(41)]) {
+      expect(isValidMemberAreaSlug(bad), bad).toBe(false);
+    }
+  });
+
+  it("pede a extra pelo slug; a principal nem manda o parâmetro", async () => {
+    rpc.mockResolvedValue({ data: null, error: null });
+    await getMemberAreaHome("@eton", "vip");
+    expect(rpc).toHaveBeenLastCalledWith("get_member_area_home", { p_area_ref: "@eton", p_slug: "vip" });
+    await getMemberAreaHome("@eton");
+    expect(rpc).toHaveBeenLastCalledWith("get_member_area_home", { p_area_ref: "@eton" });
+  });
+
+  it("criar: traduz limite, endereço em uso e inválido", async () => {
+    rpc.mockResolvedValueOnce({ data: null, error: { message: "MEMBER_AREA_LIMIT", code: "P0001" } });
+    await expect(createMyMemberArea("x", "vip")).rejects.toThrow("limit");
+    rpc.mockResolvedValueOnce({ data: null, error: { message: "duplicate key", code: "23505" } });
+    await expect(createMyMemberArea("x", "vip")).rejects.toThrow("slugTaken");
+    rpc.mockResolvedValueOnce({ data: null, error: { message: "MEMBER_AREA_SLUG_INVALID", code: "22023" } });
+    await expect(createMyMemberArea("x", "vip")).rejects.toThrow("slugInvalid");
+    rpc.mockResolvedValueOnce({ data: "area-2", error: null });
+    await expect(createMyMemberArea("VIP", "vip")).resolves.toBe("area-2");
+  });
+
+  it("slugs dos produtos: lista vazia não vai ao banco", async () => {
+    await expect(getMemberAreaSlugs([])).resolves.toEqual(new Map());
+    expect(rpc).not.toHaveBeenCalled();
+    rpc.mockResolvedValueOnce({ data: [{ course_id: "c-b", slug: "vip", name: "VIP" }], error: null });
+    await expect(getMemberAreaSlugs(["c-a", "c-b"])).resolves.toEqual(new Map([["c-b", { slug: "vip", name: "VIP" }]]));
   });
 });
 

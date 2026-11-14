@@ -5,11 +5,13 @@ import { I18nProvider } from "@/components/i18n/i18n-provider";
 import { MemberAreaSettingsPanel } from "@/components/teacher/member-area-settings-panel";
 
 const mocks = vi.hoisted(() => ({
-  getMyMemberAreaEditor: vi.fn(),
+  createMyMemberArea: vi.fn(),
+  getMyMemberAreas: vi.fn(),
   getUserProfile: vi.fn(),
   removeMemberAreaCover: vi.fn(),
   saveMyMemberArea: vi.fn(),
   saveMyMemberAreaProducts: vi.fn(),
+  setMyMemberAreaCommunity: vi.fn(),
   subscribeToTeacherCourses: vi.fn(),
   uploadMemberAreaCover: vi.fn(),
   user: { uid: "teacher-1" },
@@ -23,11 +25,13 @@ vi.mock("@/lib/data/member-areas", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/data/member-areas")>();
   return {
     ...actual,
-    getMyMemberAreaEditor: mocks.getMyMemberAreaEditor,
+    createMyMemberArea: mocks.createMyMemberArea,
+    getMyMemberAreas: mocks.getMyMemberAreas,
     memberAreaCoverUrl: (path: string) => `https://media.test/${path}`,
     removeMemberAreaCover: mocks.removeMemberAreaCover,
     saveMyMemberArea: mocks.saveMyMemberArea,
     saveMyMemberAreaProducts: mocks.saveMyMemberAreaProducts,
+    setMyMemberAreaCommunity: mocks.setMyMemberAreaCommunity,
     uploadMemberAreaCover: mocks.uploadMemberAreaCover,
   };
 });
@@ -46,13 +50,20 @@ function renderPanel(locale: "en" | "es" = "en") {
   );
 }
 
+const virtualMain = { id: null, slug: null, settings: null, communityCourseId: null };
+const editorOf = (areas: unknown[], placement: [string, { areaId: string; position: number; visible: boolean }][] = []) => ({
+  areas,
+  placement: new Map(placement),
+});
+
 const titles = () => within(screen.getByRole("list")).getAllByRole("listitem").map((item) => item.textContent ?? "");
 
 describe("MemberAreaSettingsPanel", () => {
   beforeEach(() => {
     for (const mock of Object.values(mocks)) if (typeof mock === "function") mock.mockReset();
     mocks.getUserProfile.mockResolvedValue({ displayName: "Eton Simon", username: "eton" });
-    mocks.getMyMemberAreaEditor.mockResolvedValue({ settings: null, choices: new Map() });
+    mocks.getMyMemberAreas.mockResolvedValue(editorOf([virtualMain]));
+    mocks.setMyMemberAreaCommunity.mockResolvedValue(undefined);
     mocks.subscribeToTeacherCourses.mockImplementation((_uid: string, callback: (value: unknown) => void) => {
       callback(courses);
       return () => undefined;
@@ -87,20 +98,22 @@ describe("MemberAreaSettingsPanel", () => {
     await waitFor(() => expect(mocks.saveMyMemberAreaProducts).toHaveBeenCalled());
     expect(mocks.saveMyMemberArea).toHaveBeenCalledWith({
       name: "Eton Academy", theme: "dark", coverPath: null, welcomeText: "Welcome!",
-    });
+    }, null);
     expect(mocks.saveMyMemberAreaProducts).toHaveBeenCalledWith([
       { courseId: "draft", visible: false },
       { courseId: "old", visible: true },
       { courseId: "new", visible: true },
-    ]);
+    ], null);
     expect(await screen.findByText(/Saved\. Students see the changes/)).toBeTruthy();
   });
 
   it("carrega o que já foi salvo: ordem, oculto e capa; trocar a capa apaga a antiga ao salvar", async () => {
-    mocks.getMyMemberAreaEditor.mockResolvedValue({
+    mocks.getMyMemberAreas.mockResolvedValue(editorOf([{
+      id: "area-main",
+      slug: null,
       settings: { name: "Eton Academy", theme: "dark", coverPath: "users/teacher-1/member-area/cover-1", welcomeText: "Hi" },
-      choices: new Map([["old", { position: 0, visible: true }], ["new", { position: 1, visible: false }]]),
-    });
+      communityCourseId: null,
+    }], [["old", { areaId: "area-main", position: 0, visible: true }], ["new", { areaId: "area-main", position: 1, visible: false }]]));
     mocks.uploadMemberAreaCover.mockResolvedValue("users/teacher-1/member-area/cover-2");
     renderPanel();
     await screen.findByRole("list");
@@ -117,7 +130,7 @@ describe("MemberAreaSettingsPanel", () => {
     await waitFor(() => expect(screen.getByRole("button", { name: "Save members area" })).toBeEnabled());
     fireEvent.click(screen.getByRole("button", { name: "Save members area" }));
     await waitFor(() => expect(mocks.removeMemberAreaCover).toHaveBeenCalledWith("users/teacher-1/member-area/cover-1"));
-    expect(mocks.saveMyMemberArea).toHaveBeenCalledWith(expect.objectContaining({ coverPath: "users/teacher-1/member-area/cover-2" }));
+    expect(mocks.saveMyMemberArea).toHaveBeenCalledWith(expect.objectContaining({ coverPath: "users/teacher-1/member-area/cover-2" }), "area-main");
   });
 
   it("imagem fora do formato não sobe", async () => {
@@ -171,6 +184,95 @@ describe("MemberAreaSettingsPanel", () => {
     fireEvent.click(screen.getByRole("button", { name: "Save members area" }));
     await waitFor(() => expect(mocks.saveMyMemberAreaProducts).toHaveBeenCalled());
     expect(mocks.saveMyMemberAreaProducts.mock.calls[0][0]).toHaveLength(500);
+  });
+
+  // Comunidade da área inteira: só produto community do professor entra na lista.
+  it("escolhe a comunidade da área entre os produtos community e salva", async () => {
+    mocks.subscribeToTeacherCourses.mockImplementation((_uid: string, callback: (value: unknown) => void) => {
+      callback([
+        ...courses,
+        { id: "club", title: "Inner circle", status: "published", productFormat: "community", communityEnabled: true, createdAt: "2026-10-02T00:00:00Z" },
+      ]);
+      return () => undefined;
+    });
+    renderPanel();
+    const select = await screen.findByRole("combobox", { name: "Community for the whole area" });
+    expect(within(select).getAllByRole("option").map((option) => option.textContent)).toEqual(["No area community", "Inner circle"]);
+    expect(titles().some((title) => title.includes("Inner circle") && title.includes("Community"))).toBe(true);
+    fireEvent.change(select, { target: { value: "club" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save members area" }));
+    await waitFor(() => expect(mocks.setMyMemberAreaCommunity).toHaveBeenCalledWith("club", null));
+    expect(await screen.findByText(/^Saved. Students see the changes/)).toBeTruthy();
+  });
+
+  it("Starter: só a principal, sem botão de nova área", async () => {
+    mocks.getUserProfile.mockResolvedValue({ displayName: "Eton Simon", username: "eton", currentPlanId: "starter" });
+    renderPanel();
+    expect(await screen.findByText(/Your plan includes 1 area\. Pro includes up to 3/)).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "New area" })).toBeNull();
+    expect(screen.getByText("1 of 1 areas on your plan.")).toBeTruthy();
+  });
+
+  it("Pro: cria uma área extra e abre nela", async () => {
+    mocks.getUserProfile.mockResolvedValue({ displayName: "Eton Simon", username: "eton", currentPlanId: "pro" });
+    mocks.createMyMemberArea.mockResolvedValue("area-2");
+    mocks.getMyMemberAreas
+      .mockResolvedValueOnce(editorOf([virtualMain]))
+      .mockResolvedValue(editorOf([virtualMain, {
+        id: "area-2", slug: "vip", settings: { name: "VIP", theme: "light", coverPath: null, welcomeText: null }, communityCourseId: null,
+      }]));
+    renderPanel();
+    fireEvent.click(await screen.findByRole("button", { name: "New area" }));
+    fireEvent.change(screen.getByLabelText("Name of the new area"), { target: { value: "VIP" } });
+    fireEvent.change(screen.getByLabelText("Address"), { target: { value: "VIP Room" } });
+    expect(screen.getByText(/\/learn\/areas\/@eton\/vip-room/)).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("Address"), { target: { value: "vip" } });
+    fireEvent.click(screen.getByRole("button", { name: "Create area" }));
+    await waitFor(() => expect(mocks.createMyMemberArea).toHaveBeenCalledWith("VIP", "vip"));
+    expect(await screen.findByRole("tab", { name: "VIP", selected: true })).toBeTruthy();
+    expect(screen.getByText(/No products in this area yet/)).toBeTruthy();
+    expect(screen.getByRole("link", { name: /View as student/ }).getAttribute("href")).toBe("/learn/areas/@eton/vip");
+  });
+
+  it("endereço inválido nem chega ao banco", async () => {
+    mocks.getUserProfile.mockResolvedValue({ displayName: "Eton Simon", username: "eton", currentPlanId: "pro" });
+    renderPanel();
+    fireEvent.click(await screen.findByRole("button", { name: "New area" }));
+    fireEvent.change(screen.getByLabelText("Address"), { target: { value: "community" } });
+    fireEvent.click(screen.getByRole("button", { name: "Create area" }));
+    expect(await screen.findByText(/"community" is reserved/)).toBeTruthy();
+    expect(mocks.createMyMemberArea).not.toHaveBeenCalled();
+  });
+
+  it("extra: lista só os produtos dela, traz um da principal e devolve outro", async () => {
+    mocks.getUserProfile.mockResolvedValue({ displayName: "Eton Simon", username: "eton", currentPlanId: "pro" });
+    mocks.getMyMemberAreas.mockResolvedValue(editorOf([virtualMain, {
+      id: "area-2", slug: "vip", settings: { name: "VIP", theme: "light", coverPath: null, welcomeText: null }, communityCourseId: null,
+    }], [["old", { areaId: "area-2", position: 0, visible: true }]]));
+    renderPanel();
+    await screen.findByRole("list");
+    // Principal: tudo menos o que está na VIP.
+    expect(titles().join("|")).not.toContain("Old course");
+    fireEvent.click(screen.getByRole("tab", { name: "VIP" }));
+    expect(titles()).toHaveLength(1);
+    expect(titles()[0]).toContain("Old course");
+    fireEvent.change(screen.getByLabelText("Add a product to this area"), { target: { value: "new" } });
+    fireEvent.click(screen.getByRole("button", { name: "Remove Old course from this area" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save members area" }));
+    await waitFor(() => expect(mocks.saveMyMemberAreaProducts).toHaveBeenCalledWith([{ courseId: "new", visible: true }], "area-2"));
+    expect(mocks.saveMyMemberArea).toHaveBeenCalledWith(expect.objectContaining({ name: "VIP" }), "area-2");
+  });
+
+  it("plano caiu: a extra fica travada, só dá para apagar", async () => {
+    mocks.getUserProfile.mockResolvedValue({ displayName: "Eton Simon", username: "eton", currentPlanId: "starter" });
+    mocks.getMyMemberAreas.mockResolvedValue(editorOf([virtualMain, {
+      id: "area-2", slug: "vip", settings: { name: "VIP", theme: "light", coverPath: null, welcomeText: null }, communityCourseId: null,
+    }]));
+    renderPanel();
+    fireEvent.click(await screen.findByRole("tab", { name: "VIP" }));
+    expect(screen.getByText(/your current plan does not include it/)).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Save members area" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Delete area" })).toBeEnabled();
   });
 
   it("em espanhol", async () => {
