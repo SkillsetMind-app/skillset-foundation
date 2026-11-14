@@ -8,6 +8,13 @@ const nextConfig: NextConfig = {
   // fingerprinting with no functional value and, on a public repo, points
   // scanners straight at the framework version. (Security audit 2026-06-18.)
   poweredByHeader: false,
+  // Legenda com IA: a rota chama o binário do ffmpeg (src/lib/ai/audio.ts). O
+  // pacote só exporta o CAMINHO do binário, então o rastreio de arquivos não o
+  // vê sozinho: fica fora do bundle e entra à mão na função dessa rota.
+  serverExternalPackages: ["ffmpeg-static"],
+  outputFileTracingIncludes: {
+    "/api/teach/ai": ["./node_modules/ffmpeg-static/ffmpeg"],
+  },
   images: {
     qualities: [75, 90, 95],
     // AVIF first, WebP as fallback: the portraits are served from their

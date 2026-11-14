@@ -52,7 +52,14 @@ export type QuotaKey =
    * kilobytes of jsonb. It is a shape quota: how much page the plan buys. Free
    * gets a complete short page rather than a crippled long one.
    */
-  | "landingBlocks";
+  | "landingBlocks"
+  /**
+   * Minutos de vídeo de aula que as ferramentas de IA podem transcrever por mês
+   * (UTC): a legenda, e sobre ela a tradução, o quiz e as sugestões. Todo plano
+   * tem (promessa 02: nenhuma ferramenta é vendida por plano, só o tamanho). A
+   * trava de verdade é claim_ai_video_seconds, no banco.
+   */
+  | "aiVideoMinutesPerMonth";
 
 export type FeatureKey =
   | "removePlatformBranding"
@@ -78,6 +85,7 @@ export const planEntitlements: Record<PlanId, PlanEntitlements> = {
       teamSeats: 1,
       emailSendsPerMonth: 0,
       landingBlocks: 4,
+      aiVideoMinutesPerMonth: 120,
     },
     features: {
       removePlatformBranding: false,
@@ -98,6 +106,7 @@ export const planEntitlements: Record<PlanId, PlanEntitlements> = {
       teamSeats: 1,
       emailSendsPerMonth: 0,
       landingBlocks: 4,
+      aiVideoMinutesPerMonth: 120,
     },
     features: {
       removePlatformBranding: false,
@@ -115,6 +124,7 @@ export const planEntitlements: Record<PlanId, PlanEntitlements> = {
       teamSeats: 2,
       emailSendsPerMonth: 2_000,
       landingBlocks: 8,
+      aiVideoMinutesPerMonth: 600,
     },
     features: {
       removePlatformBranding: false,
@@ -133,6 +143,7 @@ export const planEntitlements: Record<PlanId, PlanEntitlements> = {
       teamSeats: 15,
       emailSendsPerMonth: 50_000,
       landingBlocks: 20,
+      aiVideoMinutesPerMonth: 1_800,
     },
     features: {
       removePlatformBranding: true,
@@ -151,6 +162,7 @@ export const planEntitlements: Record<PlanId, PlanEntitlements> = {
       teamSeats: 15,
       emailSendsPerMonth: 50_000,
       landingBlocks: 20,
+      aiVideoMinutesPerMonth: 1_800,
     },
     features: {
       removePlatformBranding: true,
