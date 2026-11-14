@@ -99,7 +99,7 @@ export function useCreatorAreaLink(
   courseId: string | null = null,
 ): { href: string; name: string } | null {
   const [profile, setProfile] = useState<PublicProfile | null>(null);
-  // A área do produto: slug null = principal. Enquanto não chega, sem link.
+  // A área do produto: slug null = principal.
   const [area, setArea] = useState<{ courseId: string; slug: string | null; name: string | null } | null>(null);
 
   useEffect(() => {
@@ -126,8 +126,8 @@ export function useCreatorAreaLink(
 
   const creatorName = profile && profile.uid === ownerId ? publicProfileName(profile) : null;
   if (!profile || !creatorName) return null;
-  if (courseId && area?.courseId !== courseId) return null;
-  const extra = courseId && area?.slug ? area : null;
+  // Enquanto pergunta, a principal: o "voltar" aparece já no primeiro desenho.
+  const extra = courseId && area?.courseId === courseId && area.slug ? area : null;
   return {
     href: memberAreaPath({ username: profile.username, ownerId: profile.uid, slug: extra?.slug }),
     name: extra ? extra.name?.trim() || creatorName : creatorName,
