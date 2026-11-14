@@ -53,13 +53,8 @@ describe("translateVtt", () => {
   });
 
   it("refuses a source far longer than a 2-hour lesson before spending", async () => {
-    const huge = "WEBVTT
-
-" + Array.from({ length: 2001 }, (_, i) =>
-      `00:00:${String(i % 60).padStart(2, "0")}.000 --> 00:00:${String(i % 60).padStart(2, "0")}.500
-x`).join("
-
-");
+    const huge = "WEBVTT\n\n" + Array.from({ length: 2001 }, (_, i) =>
+      `00:00:${String(i % 60).padStart(2, "0")}.000 --> 00:00:${String(i % 60).padStart(2, "0")}.500\nx`).join("\n\n");
     await expect(translateVtt({ vtt: huge, from: "en", to: "es", deadline })).rejects.toThrow("translation_too_long");
     expect(mocks.askJson).not.toHaveBeenCalled();
   });
