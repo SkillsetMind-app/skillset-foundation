@@ -325,8 +325,13 @@ security definer
 set search_path to 'public', 'pg_temp'
 as $function$
 declare
-  v_area uuid := public.member_area_for_write(p_area_id);
+  v_me text := auth.uid()::text;
+  v_area uuid;
 begin
+  if v_me is null or not public.is_teacher() or not public.session_is_strong() then
+    raise exception 'MEMBER_AREA_FORBIDDEN' using errcode = '42501';
+  end if;
+  v_area := public.member_area_for_write(p_area_id);
   update public.member_areas
   set name = nullif(btrim(p_name), ''),
     theme = coalesce(nullif(btrim(p_theme), ''), 'light'),
@@ -339,9 +344,11 @@ $function$;
 revoke all on function public.save_my_member_area(text, text, text, text, uuid) from public, anon, service_role;
 grant execute on function public.save_my_member_area(text, text, text, text, uuid) to authenticated;
 
--- A lista inteira da área, na ordem: [{course_id, visible}]. Produto que estava
--- em outra área do professor muda para esta; o que sai da lista de uma extra
--- volta para a principal. Não tira produto de área travada.
+-- A lista inteira da área, na ordem: [{course_id, visible}]. Numa extra, produto
+-- que estava em outra área do professor muda para ela (menos de área travada);
+-- o que sai da lista de uma extra volta para a principal. Na principal, produto
+-- que mora numa extra fica onde está e é pulado: uma aba velha (ou o app de
+-- antes desta migration, que manda todos os produtos) não esvazia as extras.
 drop function public.save_my_member_area_products(jsonb);
 create function public.save_my_member_area_products(p_items jsonb, p_area_id uuid default null)
 returns void
@@ -352,8 +359,15 @@ set search_path to 'public', 'pg_temp'
 as $function$
 declare
   v_me text := auth.uid()::text;
-  v_area uuid := public.member_area_for_write(p_area_id);
+  v_area uuid;
+  v_is_main boolean;
+  v_items jsonb;
 begin
+  if v_me is null or not public.is_teacher() or not public.session_is_strong() then
+    raise exception 'MEMBER_AREA_FORBIDDEN' using errcode = '42501';
+  end if;
+  v_area := public.member_area_for_write(p_area_id);
+  v_is_main := (select a.slug is null from public.member_areas a where a.id = v_area);
   if p_items is null or jsonb_typeof(p_items) <> 'array' or jsonb_array_length(p_items) > 500
     or exists (
       select 1 from jsonb_array_elements(p_items) i
@@ -374,21 +388,28 @@ begin
   if exists (
     select 1 from public.member_area_products mp
     join public.member_areas a on a.id = mp.area_id and a.owner_id = v_me
-    where mp.area_id <> v_area
+    where not v_is_main and mp.area_id <> v_area
       and mp.course_id in (select i ->> 'course_id' from jsonb_array_elements(p_items) i)
       and not public.member_area_editable(mp.area_id, v_me)
   ) then
     raise exception 'MEMBER_AREA_LOCKED' using errcode = '42501';
   end if;
+  select coalesce(jsonb_agg(t.i order by t.n), '[]'::jsonb) into v_items
+  from jsonb_array_elements(p_items) with ordinality as t(i, n)
+  where not v_is_main
+    or not exists (
+      select 1 from public.member_area_products mp
+      join public.member_areas a on a.id = mp.area_id and a.owner_id = v_me and a.slug is not null
+      where mp.course_id = t.i ->> 'course_id');
 
   -- Inclui linha de outra área (deste ou de outro dono) para produto que agora
   -- é desta lista.
   delete from public.member_area_products mp
   where mp.area_id = v_area
-    or mp.course_id in (select i ->> 'course_id' from jsonb_array_elements(p_items) i);
+    or mp.course_id in (select i ->> 'course_id' from jsonb_array_elements(v_items) i);
   insert into public.member_area_products(area_id, course_id, position, visible)
   select v_area, t.i ->> 'course_id', (t.n - 1)::int, coalesce((t.i ->> 'visible')::boolean, true)
-  from jsonb_array_elements(p_items) with ordinality as t(i, n);
+  from jsonb_array_elements(v_items) with ordinality as t(i, n);
 end;
 $function$;
 revoke all on function public.save_my_member_area_products(jsonb, uuid) from public, anon, service_role;
@@ -404,9 +425,13 @@ set search_path to 'public', 'pg_temp'
 as $function$
 declare
   v_me text := auth.uid()::text;
-  v_area uuid := public.member_area_for_write(p_area_id);
+  v_area uuid;
   v_course text := nullif(btrim(coalesce(p_course_id, '')), '');
 begin
+  if v_me is null or not public.is_teacher() or not public.session_is_strong() then
+    raise exception 'MEMBER_AREA_FORBIDDEN' using errcode = '42501';
+  end if;
+  v_area := public.member_area_for_write(p_area_id);
   if v_course is not null and not exists (
     select 1 from public.courses c
     where c.id = v_course and c.owner_id = v_me

@@ -37,7 +37,8 @@ export function MemberAreaLinks({
       .join(",");
   }, [courses, enrollments]);
   const [profiles, setProfiles] = useState<PublicProfile[]>([]);
-  const [slugs, setSlugs] = useState<Awaited<ReturnType<typeof getMemberAreaSlugs>>>(new Map());
+  // null = ainda perguntando: sem atalho, para não mandar o aluno de uma extra à principal.
+  const [slugs, setSlugs] = useState<{ key: string; map: Awaited<ReturnType<typeof getMemberAreaSlugs>> } | null>(null);
 
   useEffect(() => {
     if (!ownedKey) return;
@@ -50,11 +51,13 @@ export function MemberAreaLinks({
       // Atalho é conveniência: sem o perfil, o painel segue sem ele.
       .catch(() => undefined);
     getMemberAreaSlugs(pairs.map(([courseId]) => courseId))
-      .then((next) => {
-        if (!cancelled) setSlugs(next);
+      .then((map) => {
+        if (!cancelled) setSlugs({ key: ownedKey, map });
       })
       // Sem a resposta, todo atalho leva à principal, como antes das extras.
-      .catch(() => undefined);
+      .catch(() => {
+        if (!cancelled) setSlugs({ key: ownedKey, map: new Map() });
+      });
     return () => {
       cancelled = true;
     };
@@ -62,12 +65,13 @@ export function MemberAreaLinks({
 
   // Uma entrada por (criador, área), na ordem dos produtos.
   const links = new Map<string, { href: string; name: string }>();
-  for (const pair of ownedKey ? ownedKey.split(",") : []) {
+  const resolved = slugs?.key === ownedKey ? slugs.map : null;
+  for (const pair of ownedKey && resolved ? ownedKey.split(",") : []) {
     const [courseId, ownerId] = pair.split(":");
     const profile = profiles.find((candidate) => candidate.uid === ownerId);
     const creatorName = profile ? publicProfileName(profile) : null;
     if (!profile || !creatorName) continue;
-    const extra = slugs.get(courseId) ?? null;
+    const extra = resolved?.get(courseId) ?? null;
     links.set(`${ownerId}/${extra?.slug ?? ""}`, {
       href: memberAreaPath({ username: profile.username, ownerId, slug: extra?.slug }),
       name: extra ? extra.name?.trim() || creatorName : creatorName,
@@ -95,7 +99,8 @@ export function useCreatorAreaLink(
   courseId: string | null = null,
 ): { href: string; name: string } | null {
   const [profile, setProfile] = useState<PublicProfile | null>(null);
-  const [extra, setExtra] = useState<{ courseId: string; slug: string; name: string | null } | null>(null);
+  // A área do produto: slug null = principal. Enquanto não chega, sem link.
+  const [area, setArea] = useState<{ courseId: string; slug: string | null; name: string | null } | null>(null);
 
   useEffect(() => {
     if (!ownerId) return;
@@ -108,10 +113,12 @@ export function useCreatorAreaLink(
     getMemberAreaSlugs([courseId])
       .then((slugs) => {
         const found = slugs.get(courseId);
-        if (!cancelled) setExtra(found ? { courseId, ...found } : null);
+        if (!cancelled) setArea({ courseId, slug: found?.slug ?? null, name: found?.name ?? null });
       })
       // Sem a resposta, volta para a principal.
-      .catch(() => undefined);
+      .catch(() => {
+        if (!cancelled) setArea({ courseId, slug: null, name: null });
+      });
     return () => {
       cancelled = true;
     };
@@ -119,9 +126,10 @@ export function useCreatorAreaLink(
 
   const creatorName = profile && profile.uid === ownerId ? publicProfileName(profile) : null;
   if (!profile || !creatorName) return null;
-  const area = extra && extra.courseId === courseId ? extra : null;
+  if (courseId && area?.courseId !== courseId) return null;
+  const extra = courseId && area?.slug ? area : null;
   return {
-    href: memberAreaPath({ username: profile.username, ownerId: profile.uid, slug: area?.slug }),
-    name: area ? area.name?.trim() || creatorName : creatorName,
+    href: memberAreaPath({ username: profile.username, ownerId: profile.uid, slug: extra?.slug }),
+    name: extra ? extra.name?.trim() || creatorName : creatorName,
   };
 }
