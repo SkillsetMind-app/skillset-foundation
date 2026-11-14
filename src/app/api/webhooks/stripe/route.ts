@@ -758,6 +758,25 @@ async function handleCourseSubscriptionInvoicePaid(
     .eq("uid", teacherId)
     .maybeSingle();
 
+  // Full-Dashboard creators hold their own API keys, so subscription metadata on
+  // a connected account is creator-controlled. Grant only when the course belongs
+  // to the named teacher AND the money moved on that teacher's own account.
+  if (
+    eventAccountId
+    && (course.owner_id !== teacherId
+      || (eventAccountId !== course.stripe_connected_account_id
+        && eventAccountId !== owner?.stripe_connected_account_id))
+  ) {
+    notifyOps({
+      event: "stripe.course_subscription.foreign_account",
+      severity: "critical",
+      summary:
+        "A paid course subscription invoice came from an account that does not own the course. No access was granted.",
+      context: { subscriptionId, eventAccountId },
+    });
+    return;
+  }
+
   // ?? / isFinite, not || — legacy metadata "0" (old 0-bps Plus subscriptions)
   // is a valid snapshotted fee and must not coerce to the default.
   const metaBps = Number(meta.platformFeeBps || NaN); // "" / undefined -> NaN, "0" -> 0
@@ -1176,6 +1195,9 @@ async function handleChargeRefunded(
   // A LOST DISPUTE on the fee does not fire charge.refunded; that path lives in
   // handleDisputeClosed, which reads the same metadata off the PaymentIntent.
   if (charge.metadata?.purpose === ACTIVATION_FEE_CHECKOUT_PURPOSE) {
+    // Platform charge only: on a connected account this metadata is creator-made
+    // and must never revoke someone else's storefront.
+    if (connectedAccountId) return;
     const activationUid = charge.metadata?.uid;
     // Partial refund does not revoke: they still paid for the storefront.
     if (activationUid && charge.refunded === true) {
@@ -2174,7 +2196,9 @@ export async function POST(request: Request) {
           // handleCheckoutCompleted: that handler requires orderId/courseId/
           // userId metadata and throws without them, which would 500 the webhook
           // and leave Stripe retrying the event forever.
-          await handleActivationFeePaid(admin, session);
+          // The fee is a PLATFORM charge. Full-Dashboard creators hold their own
+          // API keys, so the same metadata on a connected account is creator-made.
+          if (!eventAccountId) await handleActivationFeePaid(admin, session);
         } else if (session.mode !== "subscription") {
           await handleCheckoutCompleted(admin, session, eventAccountId);
         } else if (
