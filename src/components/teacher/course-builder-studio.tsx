@@ -133,6 +133,8 @@ import {
 import { formatEventDateTime, type CourseEvent } from "@/domain/course-event";
 import { subscribeToTeacherCourseEvents } from "@/lib/data/course-events";
 import { moveLessonTo } from "@/domain/curriculum-move";
+import { AiSuggest } from "@/components/teacher/ai-suggest";
+import { isTeacherAiEnabled } from "@/lib/ai/config";
 
 const builderTabs = [
   { value: "details", label: "creatorEditor.builder.steps.details.tab", sub: "creatorEditor.builder.steps.details.tabHelp" },
@@ -2010,6 +2012,9 @@ export function CourseBuilderStudio() {
   function renderModulePage(module: TeacherCourseModule, moduleIndex: number) {
     const isLessonFormOpen = lessonFormModuleId === module.id;
     const moduleName = module.title || t("creatorEditor.builder.curriculum.untitledModule");
+    // Primeira aula JÁ SALVA do módulo: a rota de IA confere o dono por ela.
+    const savedCourseId = course?.id;
+    const savedFirstLessonId = course?.modules.find((saved) => saved.id === module.id)?.lessons[0]?.id;
 
     return (
       <div className="grid gap-4">
@@ -2076,6 +2081,18 @@ export function CourseBuilderStudio() {
                 className="w-full resize-none rounded-md border border-[var(--color-field-border)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
               />
             </label>
+            {/* A rota confere o dono por uma aula JÁ SALVA do módulo. */}
+            {isTeacherAiEnabled && isEditable && savedCourseId && savedFirstLessonId ? (
+              <AiSuggest
+                courseId={savedCourseId}
+                lessonId={savedFirstLessonId}
+                moduleId={module.id}
+                target="module"
+                currentDescription={module.summary}
+                onUseTitle={(title) => updateModuleTitle(module.id, title)}
+                onUseDescription={(summary) => updateModuleSummary(module.id, summary)}
+              />
+            ) : null}
           </div>
         </div>
 
