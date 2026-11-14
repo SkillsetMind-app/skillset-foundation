@@ -752,11 +752,18 @@ async function handleCourseSubscriptionInvoicePaid(
     .eq("id", courseId)
     .maybeSingle();
   if (!course) throw new Error(`Course ${courseId} not found for subscription invoice.`);
-  const { data: owner } = await admin
+  const { data: owner, error: ownerError } = await admin
     .from("users")
     .select("current_plan_id,stripe_connected_account_id")
     .eq("uid", teacherId)
     .maybeSingle();
+  // A transient read error must retry, never drop a real renewal as "foreign".
+  if (ownerError) throw new Error(ownerError.message);
+
+  if (isForeignCourseAccount(eventAccountId, teacherId, course, owner)) {
+    reportForeignCourseSubscription(subscriptionId, eventAccountId);
+    return;
+  }
 
   // ?? / isFinite, not || — legacy metadata "0" (old 0-bps Plus subscriptions)
   // is a valid snapshotted fee and must not coerce to the default.
@@ -1006,9 +1013,37 @@ async function handleCourseSubscriptionInvoicePaid(
 }
 
 // --- course-subscription lifecycle ------------------------------------------
+// Full-Dashboard creators hold their own API keys, so course-subscription
+// metadata on a connected account is creator-controlled. It counts only when the
+// course belongs to the named teacher AND the event came from that teacher's
+// account (the course's saved one or the owner's current one). Platform-level
+// events (no account) are ours and always trusted.
+function isForeignCourseAccount(
+  eventAccountId: string | null,
+  teacherId: string | null,
+  course: { owner_id?: unknown; stripe_connected_account_id?: unknown } | null,
+  owner: { stripe_connected_account_id?: unknown } | null,
+): boolean {
+  if (!eventAccountId) return false;
+  return !course || !teacherId || course.owner_id !== teacherId
+    || (eventAccountId !== course.stripe_connected_account_id
+      && eventAccountId !== owner?.stripe_connected_account_id);
+}
+
+function reportForeignCourseSubscription(subscriptionId: string, eventAccountId: string | null): void {
+  notifyOps({
+    event: "stripe.course_subscription.foreign_account",
+    severity: "critical",
+    summary:
+      "A course subscription event came from an account that does not own the course. Nothing was granted or recorded.",
+    context: { subscriptionId, eventAccountId },
+  });
+}
+
 async function handleCourseSubscriptionLifecycle(
   admin: Admin,
   subscription: Stripe.Subscription,
+  eventAccountId: string | null,
 ): Promise<boolean> {
   const meta = subscription.metadata ?? {};
   if (meta.purpose !== "course_subscription") return false;
@@ -1017,6 +1052,23 @@ async function handleCourseSubscriptionLifecycle(
   const userId = typeof meta.userId === "string" ? meta.userId : null;
   const teacherId = typeof meta.teacherId === "string" ? meta.teacherId : null;
   if (!courseId || !userId) return true; // ours; swallow so plan handler isn't called
+
+  if (eventAccountId) {
+    const { data: course, error: courseError } = await admin
+      .from("courses")
+      .select("owner_id,stripe_connected_account_id")
+      .eq("id", courseId)
+      .maybeSingle();
+    if (courseError) throw new Error(courseError.message);
+    const { data: owner, error: ownerError } = teacherId
+      ? await admin.from("users").select("stripe_connected_account_id").eq("uid", teacherId).maybeSingle()
+      : { data: null, error: null };
+    if (ownerError) throw new Error(ownerError.message);
+    if (isForeignCourseAccount(eventAccountId, teacherId, course, owner)) {
+      reportForeignCourseSubscription(subscription.id, eventAccountId);
+      return true; // swallow: never upsert a creator-forged row, never run the plan handler
+    }
+  }
 
   const status = subscription.status;
   const entitled = status === "active" || status === "trialing";
@@ -1176,6 +1228,9 @@ async function handleChargeRefunded(
   // A LOST DISPUTE on the fee does not fire charge.refunded; that path lives in
   // handleDisputeClosed, which reads the same metadata off the PaymentIntent.
   if (charge.metadata?.purpose === ACTIVATION_FEE_CHECKOUT_PURPOSE) {
+    // Platform charge only: on a connected account this metadata is creator-made
+    // and must never revoke someone else's storefront.
+    if (connectedAccountId) return;
     const activationUid = charge.metadata?.uid;
     // Partial refund does not revoke: they still paid for the storefront.
     if (activationUid && charge.refunded === true) {
@@ -2174,7 +2229,9 @@ export async function POST(request: Request) {
           // handleCheckoutCompleted: that handler requires orderId/courseId/
           // userId metadata and throws without them, which would 500 the webhook
           // and leave Stripe retrying the event forever.
-          await handleActivationFeePaid(admin, session);
+          // The fee is a PLATFORM charge. Full-Dashboard creators hold their own
+          // API keys, so the same metadata on a connected account is creator-made.
+          if (!eventAccountId) await handleActivationFeePaid(admin, session);
         } else if (session.mode !== "subscription") {
           await handleCheckoutCompleted(admin, session, eventAccountId);
         } else if (
@@ -2221,6 +2278,7 @@ export async function POST(request: Request) {
         const handledAsCourse = await handleCourseSubscriptionLifecycle(
           admin,
           subscriptionObject,
+          eventAccountId,
         );
         if (!handledAsCourse) {
           await syncSubscriptionFromStripe(admin, subscriptionObject);

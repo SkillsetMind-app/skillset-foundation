@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   getUser: vi.fn(), rpc: vi.fn(), rateLimit: vi.fn(),
   getUserRow: vi.fn(), getStripe: vi.fn(), createLoginLink: vi.fn(),
-  createAccount: vi.fn(), notify: vi.fn(),
+  createAccount: vi.fn(), retrieveAccount: vi.fn(), notify: vi.fn(),
 }));
 vi.mock("@/lib/ops/alert", () => ({ notifyOps: mocks.notify }));
 vi.mock("next/headers", () => ({ cookies: async () => ({ getAll: () => [], set: () => {} }) }));
@@ -49,7 +49,10 @@ beforeEach(() => {
   mocks.rateLimit.mockResolvedValue({ error: null });
   mocks.getUserRow.mockResolvedValue(teacher);
   mocks.createLoginLink.mockResolvedValue({ url: loginUrl });
-  mocks.getStripe.mockReturnValue({ accounts: { createLoginLink: mocks.createLoginLink, create: mocks.createAccount } });
+  mocks.retrieveAccount.mockResolvedValue({ controller: { stripe_dashboard: { type: "express" } } });
+  mocks.getStripe.mockReturnValue({ accounts: {
+    createLoginLink: mocks.createLoginLink, create: mocks.createAccount, retrieve: mocks.retrieveAccount,
+  } });
 });
 afterEach(() => vi.restoreAllMocks());
 
@@ -82,6 +85,16 @@ describe("POST connect/login-link", () => {
     expect(mocks.getUserRow).not.toHaveBeenCalled();
     expect(mocks.rateLimit).not.toHaveBeenCalled();
     expect(mocks.getStripe).not.toHaveBeenCalled();
+  });
+
+  it("sends a full-Dashboard account to Stripe's own sign-in without a login link", async () => {
+    mocks.retrieveAccount.mockResolvedValue({ controller: { stripe_dashboard: { type: "full" } } });
+    const response = await handler(request());
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ url: "https://dashboard.stripe.com/" });
+    expect(mocks.retrieveAccount).toHaveBeenCalledExactlyOnceWith("acct_own");
+    expect(mocks.createLoginLink).not.toHaveBeenCalled();
+    expect(mocks.createAccount).not.toHaveBeenCalled();
   });
 
   it("allows an active teacher after completing the required second factor", async () => {

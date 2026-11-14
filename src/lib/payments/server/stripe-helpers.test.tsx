@@ -226,6 +226,14 @@ describe("idempotency keys on first-use creates", () => {
 
     expect(create.mock.calls[0][0].country).toBe("GB");
     expect(create.mock.calls[0][0].business_type).toBe("individual");
+    // New creators: full Dashboard, Stripe charges its fees to them and owns losses.
+    expect(create.mock.calls[0][0].controller).toEqual({
+      stripe_dashboard: { type: "full" },
+      fees: { payer: "account" },
+      losses: { payments: "stripe" },
+      requirement_collection: "stripe",
+    });
+    expect(create.mock.calls[0][0]).not.toHaveProperty("type");
     expect(create.mock.calls[0][1].idempotencyKey).toBe("connect_account_uid_1_initial_GB");
     expect(userUpdates[0]).toMatchObject({
       stripe_connected_account_id: "acct_gb",

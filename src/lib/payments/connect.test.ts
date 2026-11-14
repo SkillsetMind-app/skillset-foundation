@@ -18,7 +18,15 @@ describe("openTeacherStripeDashboard", () => {
     expect(mocks.assign).toHaveBeenCalledExactlyOnceWith(url);
   });
 
+  it("opens Stripe's own sign-in for a full-Dashboard account", async () => {
+    mocks.post.mockResolvedValue({ url: "https://dashboard.stripe.com/" });
+    await openTeacherStripeDashboard();
+    expect(mocks.assign).toHaveBeenCalledExactlyOnceWith("https://dashboard.stripe.com/");
+  });
+
   it.each([
+    "https://dashboard.stripe.com.evil.test/", "https://user@dashboard.stripe.com/",
+    "http://dashboard.stripe.com/", "https://dashboard.stripe.com/?next=https://evil.test",
     undefined, null, 42, "", "/express/login", "javascript:alert(1)",
     "http://connect.stripe.com/express/login", "https://connect.stripe.com.evil.test/express/login",
     "https://connect.stripe.com@evil.test/express/login", "https://user@connect.stripe.com/express/login",

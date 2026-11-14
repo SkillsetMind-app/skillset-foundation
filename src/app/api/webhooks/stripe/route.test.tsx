@@ -1721,6 +1721,55 @@ describe("Stripe webhook financial integrity", () => {
     expect(admin.state.doneEvents).toContain("evt_invoice_paid");
   });
 
+  // Full-Dashboard creators hold their own API keys: metadata on objects in a
+  // connected account is creator-controlled and must not grant or revoke across accounts.
+  it.each([
+    ["another creator's account", "acct_other", "teacher_1"],
+    ["a teacher who does not own the course", "acct_teacher", "teacher_2"],
+  ])("never grants a course renewal paid on %s", async (_label, account, teacherId) => {
+    const admin = createAdmin("checkout");
+    mocks.getAdmin.mockReturnValue(admin);
+    mocks.notifyOps.mockReset();
+    mocks.subscriptionRetrieve.mockResolvedValueOnce({
+      metadata: { purpose: "course_subscription", courseId: "course_1", userId: "user_1", teacherId },
+      items: { data: [{ current_period_end: 1_800_000_000 }] }, customer: "cus_1", status: "active", cancel_at_period_end: false,
+    });
+    const response = await postEvent({ ...paidInvoiceEvent(), account });
+    expect(response.status).toBe(200);
+    expect(admin.state.rpcCalls.map((c: { name: string }) => c.name)).not.toContain("fulfill_paid_course_access");
+    expect(mocks.notifyOps).toHaveBeenCalledWith(expect.objectContaining({
+      event: "stripe.course_subscription.foreign_account",
+    }));
+  });
+
+  it("never records a course subscription forged on another creator's account", async () => {
+    const admin = createAdmin("checkout");
+    mocks.getAdmin.mockReturnValue(admin);
+    mocks.notifyOps.mockReset();
+    const forged = {
+      id: "sub_forged", status: "active", customer: "cus_x", cancel_at_period_end: false,
+      metadata: { purpose: "course_subscription", courseId: "course_1", userId: "user_1", teacherId: "teacher_1" },
+      items: { data: [{ price: { recurring: { interval: "month" } }, current_period_end: 1_900_000_000 }] },
+    };
+    mocks.subscriptionRetrieve.mockResolvedValueOnce(forged);
+    const response = await postEvent({
+      id: "evt_forged_sub", type: "customer.subscription.created", account: "acct_other", data: { object: forged },
+    });
+    expect(response.status).toBe(200);
+    expect(admin.from).not.toHaveBeenCalledWith("course_subscriptions");
+    expect(mocks.notifyOps).toHaveBeenCalledWith(expect.objectContaining({
+      event: "stripe.course_subscription.foreign_account",
+    }));
+  });
+
+  it("ignores activation-fee metadata on a connected account (payment and refund)", async () => {
+    const admin = createAdmin("checkout");
+    mocks.getAdmin.mockReturnValue(admin);
+    expect((await postEvent({ ...activationFeeEvent(), account: "acct_teacher" })).status).toBe(200);
+    expect((await postEvent({ ...activationRefundEvent(), account: "acct_teacher" })).status).toBe(200);
+    expect(admin.state.userUpdates).toHaveLength(0);
+  });
+
   it("a purchase uses atomic fulfillment instead of a stale enrollment snapshot", async () => {
     const admin = createAdmin("checkout");
     admin.state.enrollmentRow = { status: "completed", source: "creator", creator_grant_id: "grant-1", progress_percent: 100 };
