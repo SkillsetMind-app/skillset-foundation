@@ -8,7 +8,7 @@ import { useTranslation } from "@/components/i18n/i18n-provider";
 import { CommunityFeed } from "@/components/learn/community-feed";
 import { MemberAreaShell, type MemberAreaBrand } from "@/components/learn/member-area-shell";
 import type { CommunitySpace } from "@/domain/learning";
-import { getMemberAreaCommunity, type MemberAreaCommunity } from "@/lib/data/member-areas";
+import { getMemberAreaCommunity, memberAreaRoutePath, type MemberAreaCommunity } from "@/lib/data/member-areas";
 
 type State = { status: "loading" } | { status: "error" } | { status: "ready"; community: MemberAreaCommunity };
 
@@ -20,21 +20,24 @@ type State = { status: "loading" } | { status: "error" } | { status: "ready"; co
  */
 export function MemberAreaCommunityView({
   areaRef,
+  slug = null,
   brand = null,
   openPostId = null,
 }: {
   areaRef: string;
+  /** Área extra; null = a principal. */
+  slug?: string | null;
   brand?: MemberAreaBrand | null;
   openPostId?: string | null;
 }) {
   const { t } = useTranslation();
   const router = useRouter();
   const [state, setState] = useState<State>({ status: "loading" });
-  const areaPath = `/learn/areas/${encodeURIComponent(areaRef)}`;
+  const areaPath = memberAreaRoutePath(areaRef, slug);
 
   useEffect(() => {
     let cancelled = false;
-    getMemberAreaCommunity(areaRef)
+    getMemberAreaCommunity(areaRef, slug)
       .then((community) => {
         if (cancelled) return;
         // Sem comunidade escolhida, ou quem pede não é membro: volta à área,
@@ -51,7 +54,7 @@ export function MemberAreaCommunityView({
     return () => {
       cancelled = true;
     };
-  }, [areaPath, areaRef, router]);
+  }, [areaPath, areaRef, slug, router]);
 
   if (state.status !== "ready") {
     return (

@@ -4,7 +4,9 @@ import { isAllowedAvatarFile } from "@/lib/data/profile-media";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 
 /**
- * Área de membros por criador: uma por criador, juntando os produtos dele.
+ * Área de membros por criador: a principal junta os produtos dele; no Pro há
+ * até 2 extras (migration 20261113230000_tres_areas_no_pro), cada uma com os
+ * produtos que o professor pôs nela e endereço próprio (slug).
  *
  * Tudo passa pelas funções do banco (migration 20261016030000_area_de_membros):
  * a leitura devolve null para quem não é aluno nem dono, e a vitrine ("mais
@@ -17,6 +19,8 @@ export type MemberAreaTheme = "light" | "dark";
 export type MemberArea = {
   ownerId: string;
   username: string | null;
+  /** null = a área principal; senão o endereço da extra. */
+  slug: string | null;
   creatorName: string | null;
   creatorPhotoUrl: string | null;
   /** Já com o padrão aplicado: o nome do criador enquanto a área é virtual. */
@@ -96,6 +100,7 @@ function parseArea(value: unknown): MemberArea | null {
   return {
     ownerId,
     username: text(row.username),
+    slug: text(row.slug),
     creatorName: text(row.creator_name),
     creatorPhotoUrl: text(row.creator_photo_url),
     name: text(row.name),
@@ -159,26 +164,54 @@ export function parseMemberAreaHome(value: unknown): MemberAreaHome | null {
   };
 }
 
-/** `/learn/areas/@usuario`, ou o uid quando o criador não tem @. */
-export function memberAreaPath(area: Pick<MemberArea, "username" | "ownerId">): string {
-  return area.username
+/**
+ * `/learn/areas/@usuario` (ou o uid quando o criador não tem @), mais
+ * `/{slug}` numa área extra.
+ */
+export function memberAreaPath(area: Pick<MemberArea, "username" | "ownerId"> & { slug?: string | null }): string {
+  const base = area.username
     ? `/learn/areas/@${encodeURIComponent(area.username)}`
     : `/learn/areas/${encodeURIComponent(area.ownerId)}`;
+  return area.slug ? `${base}/${encodeURIComponent(area.slug)}` : base;
 }
 
-/** `ref` = "@usuario" ou uid. null: o criador não existe ou quem pede não é aluno nem dono. */
-export async function getMemberAreaHome(ref: string): Promise<MemberAreaHome | null> {
-  const { data, error } = await getSupabaseBrowserClient().rpc("get_member_area_home", { p_area_ref: ref });
+/** A área na rota: `/learn/areas/{ref}` (o "@usuario" ou uid como veio na URL), mais `/{slug}` numa extra. */
+export function memberAreaRoutePath(ref: string, slug: string | null = null): string {
+  const base = `/learn/areas/${encodeURIComponent(ref)}`;
+  return slug ? `${base}/${encodeURIComponent(slug)}` : base;
+}
+
+/** Endereço de área extra: minúsculas, números e hífen, até 40. Mesma regra do banco. */
+export function isValidMemberAreaSlug(slug: string): boolean {
+  return /^[a-z0-9]([a-z0-9-]{0,38}[a-z0-9])?$/.test(slug) && slug !== "community";
+}
+
+/** `areaId`/`slug` vazio = a área principal: o parâmetro nem vai, e o banco usa o padrão. */
+const areaArg = (areaId: string | null | undefined) => (areaId ? { p_area_id: areaId } : {});
+const slugArg = (slug: string | null | undefined) => (slug ? { p_slug: slug } : {});
+
+/**
+ * `ref` = "@usuario" ou uid; `slug` = área extra (null = principal). null: o
+ * criador ou a área não existe, ou quem pede não é aluno da área nem dono.
+ */
+export async function getMemberAreaHome(ref: string, slug: string | null = null): Promise<MemberAreaHome | null> {
+  const { data, error } = await getSupabaseBrowserClient().rpc("get_member_area_home", {
+    p_area_ref: ref,
+    ...slugArg(slug),
+  });
   if (error) throw error;
   return parseMemberAreaHome(data);
 }
 
 /**
- * A comunidade da área de `ref` ("@usuario" ou uid). null: a área não tem
- * comunidade escolhida, ou quem pede não é aluno nem dono.
+ * A comunidade da área de `ref` ("@usuario" ou uid; `slug` = extra). null: a
+ * área não tem comunidade escolhida, ou quem pede não é aluno nem dono.
  */
-export async function getMemberAreaCommunity(ref: string): Promise<MemberAreaCommunity | null> {
-  const { data, error } = await getSupabaseBrowserClient().rpc("get_member_area_community", { p_area_ref: ref });
+export async function getMemberAreaCommunity(ref: string, slug: string | null = null): Promise<MemberAreaCommunity | null> {
+  const { data, error } = await getSupabaseBrowserClient().rpc("get_member_area_community", {
+    p_area_ref: ref,
+    ...slugArg(slug),
+  });
   if (error) throw error;
   const row = asRow(data);
   const courseId = text(row?.course_id);
@@ -186,31 +219,82 @@ export async function getMemberAreaCommunity(ref: string): Promise<MemberAreaCom
   return { courseId, title: text(row.title) ?? "", isOwner: row.is_owner === true };
 }
 
-/** Escolhe (ou tira, com null) a comunidade da área de quem chama. */
-export async function setMyMemberAreaCommunity(courseId: string | null): Promise<void> {
+/** Escolhe (ou tira, com null) a comunidade de uma área de quem chama. */
+export async function setMyMemberAreaCommunity(courseId: string | null, areaId: string | null = null): Promise<void> {
   const { error } = await getSupabaseBrowserClient().rpc("set_my_member_area_community", {
     p_course_id: courseId ?? "",
+    ...areaArg(areaId),
   });
   if (error) throw error;
 }
 
-/** Salva a área de quem chama. Vazio ou null volta ao padrão. */
-export async function saveMyMemberArea(settings: MemberAreaSettings): Promise<void> {
+/** Salva uma área de quem chama. Vazio ou null volta ao padrão. */
+export async function saveMyMemberArea(settings: MemberAreaSettings, areaId: string | null = null): Promise<void> {
   const { error } = await getSupabaseBrowserClient().rpc("save_my_member_area", {
     p_name: settings.name ?? "",
     p_theme: settings.theme,
     p_cover_path: settings.coverPath ?? "",
     p_welcome_text: settings.welcomeText ?? "",
+    ...areaArg(areaId),
   });
   if (error) throw error;
 }
 
-/** Troca a lista inteira, na ordem dada. O banco recusa tudo se um produto não for de quem chama. */
-export async function saveMyMemberAreaProducts(choices: readonly MemberAreaProductChoice[]): Promise<void> {
+/**
+ * Troca a lista inteira de uma área, na ordem dada. Produto de outra área muda
+ * para esta; o que sai da lista de uma extra volta para a principal. O banco
+ * recusa tudo se um produto não for de quem chama.
+ */
+export async function saveMyMemberAreaProducts(
+  choices: readonly MemberAreaProductChoice[],
+  areaId: string | null = null,
+): Promise<void> {
   const { error } = await getSupabaseBrowserClient().rpc("save_my_member_area_products", {
     p_items: choices.map((choice) => ({ course_id: choice.courseId, visible: choice.visible })),
+    ...areaArg(areaId),
   });
   if (error) throw error;
+}
+
+/** O que a tela explica quando criar falha. */
+export type CreateMemberAreaError = "limit" | "slugInvalid" | "slugTaken" | "other";
+
+/** Cria uma área extra e devolve o id. O banco confere o plano (Pro: até 3 com a principal). */
+export async function createMyMemberArea(name: string, slug: string): Promise<string> {
+  const { data, error } = await getSupabaseBrowserClient().rpc("create_my_member_area", { p_name: name, p_slug: slug });
+  if (error) {
+    const message = error.message ?? "";
+    const reason: CreateMemberAreaError = message.includes("MEMBER_AREA_LIMIT")
+      ? "limit"
+      : error.code === "23505"
+        ? "slugTaken"
+        : message.includes("MEMBER_AREA_SLUG_INVALID")
+          ? "slugInvalid"
+          : "other";
+    throw new Error(reason);
+  }
+  return data;
+}
+
+/** Apaga uma área extra. Os produtos dela voltam para a principal. */
+export async function deleteMyMemberArea(areaId: string): Promise<void> {
+  const { error } = await getSupabaseBrowserClient().rpc("delete_my_member_area", { p_area_id: areaId });
+  if (error) throw error;
+}
+
+/**
+ * Quais destes produtos (comprados ou do próprio professor) moram numa área
+ * extra: courseId -> { slug, nome }. Fora do mapa = área principal.
+ */
+export async function getMemberAreaSlugs(
+  courseIds: readonly string[],
+): Promise<Map<string, { slug: string; name: string | null }>> {
+  if (courseIds.length === 0) return new Map();
+  const { data, error } = await getSupabaseBrowserClient().rpc("get_member_area_slugs", {
+    p_course_ids: [...courseIds],
+  });
+  if (error) throw error;
+  return new Map((data ?? []).map((row) => [row.course_id, { slug: row.slug, name: row.name }]));
 }
 
 // ---------------------------------------------------------------------------
@@ -219,41 +303,93 @@ export async function saveMyMemberAreaProducts(choices: readonly MemberAreaProdu
 
 const publicMediaBucket = "public-media";
 
-/** O que o criador já salvou. `settings` null = área virtual (nunca salvou). */
-export type MyMemberAreaEditor = {
+/** Uma área do criador. `id` null = a principal ainda virtual (nunca salvou). */
+export type MyMemberAreaEditorArea = {
+  id: string | null;
+  /** null = a principal. */
+  slug: string | null;
+  /** null = nunca salvou: valem os padrões. */
   settings: MemberAreaSettings | null;
-  choices: Map<string, { position: number; visible: boolean }>;
-  /** O produto community escolhido como comunidade da área inteira. */
+  /** O produto community escolhido como comunidade desta área. */
   communityCourseId: string | null;
 };
 
-/** Lê a própria área pela RLS (só o dono enxerga as linhas). */
-export async function getMyMemberAreaEditor(uid: string): Promise<MyMemberAreaEditor> {
+/** O que o criador já salvou: as áreas (a principal primeiro) e onde cada produto mora. */
+export type MyMemberAreas = {
+  areas: MyMemberAreaEditorArea[];
+  /** Produto numa lista salva: área, posição e visibilidade. Fora do mapa = principal, no fim, visível. */
+  placement: Map<string, { areaId: string; position: number; visible: boolean }>;
+};
+
+/** Posição e visibilidade dos produtos que a lista de uma área já tem. */
+export type MemberAreaChoices = Map<string, { position: number; visible: boolean }>;
+
+/** Lê as próprias áreas pela RLS (só o dono enxerga as linhas). */
+export async function getMyMemberAreas(uid: string): Promise<MyMemberAreas> {
   const supabase = getSupabaseBrowserClient();
-  const { data: area, error } = await supabase
+  const { data: rows, error } = await supabase
     .from("member_areas")
-    .select("id, name, theme, cover_path, welcome_text, community_course_id")
+    .select("id, slug, name, theme, cover_path, welcome_text, community_course_id")
     .eq("owner_id", uid)
-    .maybeSingle();
+    .order("created_at", { ascending: true })
+    .order("id", { ascending: true });
   if (error) throw error;
-  if (!area) return { settings: null, choices: new Map(), communityCourseId: null };
 
-  const { data: products, error: productsError } = await supabase
-    .from("member_area_products")
-    .select("course_id, position, visible")
-    .eq("area_id", area.id);
-  if (productsError) throw productsError;
+  const areaIds = (rows ?? []).map((row) => row.id);
+  let products: { area_id: string; course_id: string; position: number; visible: boolean }[] = [];
+  if (areaIds.length > 0) {
+    const { data, error: productsError } = await supabase
+      .from("member_area_products")
+      .select("area_id, course_id, position, visible")
+      .in("area_id", areaIds);
+    if (productsError) throw productsError;
+    products = data ?? [];
+  }
 
-  return {
+  const toArea = (row: NonNullable<typeof rows>[number]): MyMemberAreaEditorArea => ({
+    id: row.id,
+    slug: row.slug,
     settings: {
-      name: area.name,
-      theme: area.theme === "dark" ? "dark" : "light",
-      coverPath: area.cover_path,
-      welcomeText: area.welcome_text,
+      name: row.name,
+      theme: row.theme === "dark" ? "dark" : "light",
+      coverPath: row.cover_path,
+      welcomeText: row.welcome_text,
     },
-    choices: new Map((products ?? []).map((row) => [row.course_id, { position: row.position, visible: row.visible }])),
-    communityCourseId: area.community_course_id ?? null,
+    communityCourseId: row.community_course_id ?? null,
+  });
+  const main = (rows ?? []).find((row) => row.slug === null);
+  return {
+    areas: [
+      main ? toArea(main) : { id: null, slug: null, settings: null, communityCourseId: null },
+      ...(rows ?? []).filter((row) => row.slug !== null).map(toArea),
+    ],
+    placement: new Map(products.map((row) => [row.course_id, { areaId: row.area_id, position: row.position, visible: row.visible }])),
   };
+}
+
+/**
+ * Os produtos que moram numa área e o recorte salvo deles. Mesma regra do banco
+ * (member_area_product_order): a principal tem a lista dela e tudo o que não
+ * está na lista de uma extra; a extra, só a lista dela.
+ */
+export function memberAreaProductsOf<T extends { id: string }>(
+  courses: readonly T[],
+  editor: MyMemberAreas,
+  area: Pick<MyMemberAreaEditorArea, "id" | "slug">,
+): { courses: T[]; choices: MemberAreaChoices } {
+  const extraIds = new Set(editor.areas.filter((other) => other.slug !== null).map((other) => other.id));
+  const inArea = courses.filter((course) => {
+    const place = editor.placement.get(course.id);
+    return area.slug === null ? !place || !extraIds.has(place.areaId) : place?.areaId === area.id;
+  });
+  const choices: MemberAreaChoices = new Map();
+  for (const course of inArea) {
+    const place = editor.placement.get(course.id);
+    if (place && (area.slug !== null || place.areaId === area.id)) {
+      choices.set(course.id, { position: place.position, visible: place.visible });
+    }
+  }
+  return { courses: inArea, choices };
 }
 
 /**
@@ -262,7 +398,7 @@ export async function getMyMemberAreaEditor(uid: string): Promise<MyMemberAreaEd
  */
 export function orderMemberAreaProducts<T extends { id: string; createdAt?: unknown }>(
   courses: readonly T[],
-  choices: MyMemberAreaEditor["choices"],
+  choices: MemberAreaChoices,
 ): T[] {
   const createdAt = (course: T) => Date.parse(String(course.createdAt ?? "")) || 0;
   return [...courses].sort((a, b) =>

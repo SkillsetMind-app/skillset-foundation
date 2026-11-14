@@ -13,6 +13,7 @@ import {
   getMemberAreaCommunity,
   getMemberAreaHome,
   memberAreaCoverUrl,
+  memberAreaRoutePath,
   type MemberAreaCommunity,
   type MemberAreaHome,
   type MemberAreaLockedProduct,
@@ -61,8 +62,19 @@ function priceLabel(
   }
 }
 
-/** /learn/areas/[criador]: a área do criador para o aluno. Não libera aula: cada produto abre a própria sala. */
-export function MemberAreaHomeView({ areaRef, brand = null }: { areaRef: string; brand?: MemberAreaBrand | null }) {
+/**
+ * /learn/areas/[criador] (e /[area] numa extra): a área do criador para o
+ * aluno. Não libera aula: cada produto abre a própria sala.
+ */
+export function MemberAreaHomeView({
+  areaRef,
+  slug = null,
+  brand = null,
+}: {
+  areaRef: string;
+  slug?: string | null;
+  brand?: MemberAreaBrand | null;
+}) {
   const { t, locale } = useTranslation();
   const router = useRouter();
   const [state, setState] = useState<State>({ status: "loading" });
@@ -71,7 +83,7 @@ export function MemberAreaHomeView({ areaRef, brand = null }: { areaRef: string;
   useEffect(() => {
     let cancelled = false;
     // A comunidade da área é um extra: se ela falhar, a área abre sem o cartão.
-    Promise.all([getMemberAreaHome(areaRef), getMemberAreaCommunity(areaRef).catch(() => null)])
+    Promise.all([getMemberAreaHome(areaRef, slug), getMemberAreaCommunity(areaRef, slug).catch(() => null)])
       .then(([home, community]) => {
         if (cancelled) return;
         if (!home) {
@@ -86,7 +98,7 @@ export function MemberAreaHomeView({ areaRef, brand = null }: { areaRef: string;
     return () => {
       cancelled = true;
     };
-  }, [areaRef, retryKey, router]);
+  }, [areaRef, slug, retryKey, router]);
 
   if (state.status !== "ready") {
     return (
@@ -159,7 +171,7 @@ export function MemberAreaHomeView({ areaRef, brand = null }: { areaRef: string;
 
         {community ? (
           <Link
-            href={`/learn/areas/${encodeURIComponent(areaRef)}/community`}
+            href={`${memberAreaRoutePath(areaRef, slug)}/community`}
             className="flex min-w-0 items-center gap-4 rounded-lg border border-[var(--ma-line)] bg-[var(--ma-surface)] p-4 hover:border-[var(--ma-accent)]"
           >
             <MessagesSquare aria-hidden="true" size={32} className="shrink-0 text-[var(--ma-accent)]" />

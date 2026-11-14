@@ -1793,6 +1793,7 @@ export type Database = {
           id: string
           name: string | null
           owner_id: string
+          slug: string | null
           theme: string
           updated_at: string
           welcome_text: string | null
@@ -1804,6 +1805,7 @@ export type Database = {
           id?: string
           name?: string | null
           owner_id: string
+          slug?: string | null
           theme?: string
           updated_at?: string
           welcome_text?: string | null
@@ -1815,6 +1817,7 @@ export type Database = {
           id?: string
           name?: string | null
           owner_id?: string
+          slug?: string | null
           theme?: string
           updated_at?: string
           welcome_text?: string | null
@@ -2791,15 +2794,24 @@ export type Database = {
         Returns: undefined
       }
       // Added by hand for supabase/migrations/20261016030000_area_de_membros.sql.
-      get_member_area_home: { Args: { p_area_ref: string }; Returns: Json }
+      // 20261113230000_tres_areas_no_pro.sql (hand-added until the next regen):
+      // p_area_id/p_slug omitted = the main area.
+      get_member_area_home: { Args: { p_area_ref: string; p_slug?: string }; Returns: Json }
       save_my_member_area: {
-        Args: { p_cover_path: string; p_name: string; p_theme: string; p_welcome_text: string }
+        Args: { p_cover_path: string; p_name: string; p_theme: string; p_welcome_text: string; p_area_id?: string }
         Returns: undefined
       }
-      save_my_member_area_products: { Args: { p_items: Json }; Returns: undefined }
+      save_my_member_area_products: { Args: { p_items: Json; p_area_id?: string }; Returns: undefined }
+      create_my_member_area: { Args: { p_name: string; p_slug: string }; Returns: string }
+      delete_my_member_area: { Args: { p_area_id: string }; Returns: undefined }
+      get_member_area_slugs: {
+        Args: { p_course_ids: string[] }
+        Returns: { course_id: string; name: string | null; slug: string }[]
+      }
+      member_area_limit_for_plan: { Args: { p_plan_id: string }; Returns: number }
       // 20261113020000_comunidade_da_area.sql (hand-added until the next regen).
-      set_my_member_area_community: { Args: { p_course_id: string }; Returns: undefined }
-      get_member_area_community: { Args: { p_area_ref: string }; Returns: Json }
+      set_my_member_area_community: { Args: { p_course_id: string; p_area_id?: string }; Returns: undefined }
+      get_member_area_community: { Args: { p_area_ref: string; p_slug?: string }; Returns: Json }
       has_community_access: { Args: { p_slug: string }; Returns: boolean }
       has_member_area_community_access: { Args: { p_slug: string }; Returns: boolean }
       // Added by hand for supabase/migrations/20260820000000_custom_domains.sql.

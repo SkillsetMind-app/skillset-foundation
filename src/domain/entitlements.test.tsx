@@ -151,6 +151,21 @@ describe("plan entitlements", () => {
     }
   });
 
+  it("reads member_area_limit_for_plan from its migration", async () => {
+    const { readFileSync } = await import("node:fs");
+    const sql = readFileSync("supabase/migrations/20261113230000_tres_areas_no_pro.sql", "utf8");
+    const body = sql.slice(sql.indexOf("function public.member_area_limit_for_plan"));
+    // free, basic and starter are the else branch: only the main area.
+    expect(body).toMatch(/else\s+1\b/);
+    for (const planId of ["free", "basic", "starter"] as const) {
+      expect(planEntitlements[planId].quotas.memberAreas).toBe(1);
+    }
+    for (const planId of ["pro", "plus"] as const) {
+      const match = body.match(new RegExp(`when '${planId}'\\s+then\\s+(\\d+)`));
+      expect(Number(match?.[1]), planId).toBe(planEntitlements[planId].quotas.memberAreas);
+    }
+  });
+
   it("gives Pro the retired Plus limits except a 3,000 active-student cap", () => {
     const { activeStudents: proStudents, ...proRest } = planEntitlements.pro.quotas;
     const { activeStudents: plusStudents, ...plusRest } = planEntitlements.plus.quotas;

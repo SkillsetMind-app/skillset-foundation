@@ -54,6 +54,11 @@ export type QuotaKey =
    */
   | "landingBlocks"
   /**
+   * Member areas, counting the main one. Mirrors member_area_limit_for_plan()
+   * in 20261113230000_tres_areas_no_pro.sql.
+   */
+  | "memberAreas"
+  /**
    * Minutos de vídeo de aula que as ferramentas de IA podem transcrever por mês
    * (UTC): a legenda, e sobre ela a tradução, o quiz e as sugestões. Todo plano
    * tem (promessa 02: nenhuma ferramenta é vendida por plano, só o tamanho). A
@@ -85,6 +90,7 @@ export const planEntitlements: Record<PlanId, PlanEntitlements> = {
       teamSeats: 1,
       emailSendsPerMonth: 0,
       landingBlocks: 4,
+      memberAreas: 1,
       aiVideoMinutesPerMonth: 120,
     },
     features: {
@@ -106,6 +112,7 @@ export const planEntitlements: Record<PlanId, PlanEntitlements> = {
       teamSeats: 1,
       emailSendsPerMonth: 0,
       landingBlocks: 4,
+      memberAreas: 1,
       aiVideoMinutesPerMonth: 120,
     },
     features: {
@@ -124,6 +131,7 @@ export const planEntitlements: Record<PlanId, PlanEntitlements> = {
       teamSeats: 2,
       emailSendsPerMonth: 2_000,
       landingBlocks: 8,
+      memberAreas: 1,
       aiVideoMinutesPerMonth: 600,
     },
     features: {
@@ -143,6 +151,7 @@ export const planEntitlements: Record<PlanId, PlanEntitlements> = {
       teamSeats: 15,
       emailSendsPerMonth: 50_000,
       landingBlocks: 20,
+      memberAreas: 3,
       aiVideoMinutesPerMonth: 1_800,
     },
     features: {
@@ -162,6 +171,7 @@ export const planEntitlements: Record<PlanId, PlanEntitlements> = {
       teamSeats: 15,
       emailSendsPerMonth: 50_000,
       landingBlocks: 20,
+      memberAreas: 3,
       aiVideoMinutesPerMonth: 1_800,
     },
     features: {
