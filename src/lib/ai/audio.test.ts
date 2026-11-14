@@ -67,7 +67,7 @@ describe("extractAudioChunks", () => {
 
   it("stops before ffmpeg when the CDN refuses the video", async () => {
     fetchMock.mockResolvedValue(new Response("", { status: 403 }));
-    const error = await extractAudioChunks(options).catch((e: AudioExtractError) => e);
+    const error = (await extractAudioChunks(options).catch((e: unknown) => e)) as AudioExtractError;
     expect(error).toBeInstanceOf(AudioExtractError);
     expect(error.message).toBe("video_fetch_403");
     expect(spawnMock).not.toHaveBeenCalled();
@@ -75,7 +75,7 @@ describe("extractAudioChunks", () => {
 
   it("fails with ffmpeg's last words and still cleans up", async () => {
     fakeFfmpeg(1);
-    const error = await extractAudioChunks(options).catch((e: AudioExtractError) => e);
+    const error = (await extractAudioChunks(options).catch((e: unknown) => e)) as AudioExtractError;
     expect(error).toBeInstanceOf(AudioExtractError);
     expect(error.message).toContain("Invalid data");
     const args: string[] = spawnMock.mock.calls[0][1];
