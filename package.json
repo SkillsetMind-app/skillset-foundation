@@ -12,20 +12,20 @@
     "test:db": "node scripts/run-supabase-tests.mjs supabase/tests"
   },
   "dependencies": {
-    "@stripe/connect-js": "^3.4.6",
-    "@stripe/react-connect-js": "^3.4.4",
+    "@stripe/connect-js": "^3.5.0",
+    "@stripe/react-connect-js": "^3.5.0",
     "@stripe/react-stripe-js": "^6.11.0",
     "@stripe/stripe-js": "^9.7.0",
     "@supabase/ssr": "^0.12.7",
-    "@supabase/supabase-js": "^2.117.2",
+    "@supabase/supabase-js": "^2.119.0",
     "@vercel/analytics": "^2.0.1",
     "@vercel/sdk": "^1.28.38",
-    "@vercel/speed-insights": "^2.0.0",
+    "@vercel/speed-insights": "^2.1.0",
     "clsx": "^2.1.1",
     "ffmpeg-static": "5.3.0",
     "lucide-react": "^0.553.0",
     "next": "^16.4.2",
-    "posthog-js": "^1.434.14",
+    "posthog-js": "^1.447.10",
     "react": "19.3.1",
     "react-dom": "19.3.1",
     "tailwind-merge": "^3.7.0",
@@ -48,7 +48,7 @@
     "typescript": "^5",
     "vite": "^7.3.7",
     "vite-tsconfig-paths": "^5.1.4",
-    "vitest": "^5.0.3"
+    "vitest": "^5.1.0"
   },
   "overrides": {
     "fflate": "0.4.9",
