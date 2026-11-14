@@ -1742,6 +1742,26 @@ describe("Stripe webhook financial integrity", () => {
     }));
   });
 
+  it("never records a course subscription forged on another creator's account", async () => {
+    const admin = createAdmin("checkout");
+    mocks.getAdmin.mockReturnValue(admin);
+    mocks.notifyOps.mockReset();
+    const forged = {
+      id: "sub_forged", status: "active", customer: "cus_x", cancel_at_period_end: false,
+      metadata: { purpose: "course_subscription", courseId: "course_1", userId: "user_1", teacherId: "teacher_1" },
+      items: { data: [{ price: { recurring: { interval: "month" } }, current_period_end: 1_900_000_000 }] },
+    };
+    mocks.subscriptionRetrieve.mockResolvedValueOnce(forged);
+    const response = await postEvent({
+      id: "evt_forged_sub", type: "customer.subscription.created", account: "acct_other", data: { object: forged },
+    });
+    expect(response.status).toBe(200);
+    expect(admin.from).not.toHaveBeenCalledWith("course_subscriptions");
+    expect(mocks.notifyOps).toHaveBeenCalledWith(expect.objectContaining({
+      event: "stripe.course_subscription.foreign_account",
+    }));
+  });
+
   it("ignores activation-fee metadata on a connected account (payment and refund)", async () => {
     const admin = createAdmin("checkout");
     mocks.getAdmin.mockReturnValue(admin);

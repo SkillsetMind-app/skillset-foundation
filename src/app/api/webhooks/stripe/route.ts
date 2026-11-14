@@ -752,28 +752,16 @@ async function handleCourseSubscriptionInvoicePaid(
     .eq("id", courseId)
     .maybeSingle();
   if (!course) throw new Error(`Course ${courseId} not found for subscription invoice.`);
-  const { data: owner } = await admin
+  const { data: owner, error: ownerError } = await admin
     .from("users")
     .select("current_plan_id,stripe_connected_account_id")
     .eq("uid", teacherId)
     .maybeSingle();
+  // A transient read error must retry, never drop a real renewal as "foreign".
+  if (ownerError) throw new Error(ownerError.message);
 
-  // Full-Dashboard creators hold their own API keys, so subscription metadata on
-  // a connected account is creator-controlled. Grant only when the course belongs
-  // to the named teacher AND the money moved on that teacher's own account.
-  if (
-    eventAccountId
-    && (course.owner_id !== teacherId
-      || (eventAccountId !== course.stripe_connected_account_id
-        && eventAccountId !== owner?.stripe_connected_account_id))
-  ) {
-    notifyOps({
-      event: "stripe.course_subscription.foreign_account",
-      severity: "critical",
-      summary:
-        "A paid course subscription invoice came from an account that does not own the course. No access was granted.",
-      context: { subscriptionId, eventAccountId },
-    });
+  if (isForeignCourseAccount(eventAccountId, teacherId, course, owner)) {
+    reportForeignCourseSubscription(subscriptionId, eventAccountId);
     return;
   }
 
@@ -1025,9 +1013,37 @@ async function handleCourseSubscriptionInvoicePaid(
 }
 
 // --- course-subscription lifecycle ------------------------------------------
+// Full-Dashboard creators hold their own API keys, so course-subscription
+// metadata on a connected account is creator-controlled. It counts only when the
+// course belongs to the named teacher AND the event came from that teacher's
+// account (the course's saved one or the owner's current one). Platform-level
+// events (no account) are ours and always trusted.
+function isForeignCourseAccount(
+  eventAccountId: string | null,
+  teacherId: string | null,
+  course: { owner_id?: unknown; stripe_connected_account_id?: unknown } | null,
+  owner: { stripe_connected_account_id?: unknown } | null,
+): boolean {
+  if (!eventAccountId) return false;
+  return !course || !teacherId || course.owner_id !== teacherId
+    || (eventAccountId !== course.stripe_connected_account_id
+      && eventAccountId !== owner?.stripe_connected_account_id);
+}
+
+function reportForeignCourseSubscription(subscriptionId: string, eventAccountId: string | null): void {
+  notifyOps({
+    event: "stripe.course_subscription.foreign_account",
+    severity: "critical",
+    summary:
+      "A course subscription event came from an account that does not own the course. Nothing was granted or recorded.",
+    context: { subscriptionId, eventAccountId },
+  });
+}
+
 async function handleCourseSubscriptionLifecycle(
   admin: Admin,
   subscription: Stripe.Subscription,
+  eventAccountId: string | null,
 ): Promise<boolean> {
   const meta = subscription.metadata ?? {};
   if (meta.purpose !== "course_subscription") return false;
@@ -1036,6 +1052,23 @@ async function handleCourseSubscriptionLifecycle(
   const userId = typeof meta.userId === "string" ? meta.userId : null;
   const teacherId = typeof meta.teacherId === "string" ? meta.teacherId : null;
   if (!courseId || !userId) return true; // ours; swallow so plan handler isn't called
+
+  if (eventAccountId) {
+    const { data: course, error: courseError } = await admin
+      .from("courses")
+      .select("owner_id,stripe_connected_account_id")
+      .eq("id", courseId)
+      .maybeSingle();
+    if (courseError) throw new Error(courseError.message);
+    const { data: owner, error: ownerError } = teacherId
+      ? await admin.from("users").select("stripe_connected_account_id").eq("uid", teacherId).maybeSingle()
+      : { data: null, error: null };
+    if (ownerError) throw new Error(ownerError.message);
+    if (isForeignCourseAccount(eventAccountId, teacherId, course, owner)) {
+      reportForeignCourseSubscription(subscription.id, eventAccountId);
+      return true; // swallow: never upsert a creator-forged row, never run the plan handler
+    }
+  }
 
   const status = subscription.status;
   const entitled = status === "active" || status === "trialing";
@@ -2245,6 +2278,7 @@ export async function POST(request: Request) {
         const handledAsCourse = await handleCourseSubscriptionLifecycle(
           admin,
           subscriptionObject,
+          eventAccountId,
         );
         if (!handledAsCourse) {
           await syncSubscriptionFromStripe(admin, subscriptionObject);
