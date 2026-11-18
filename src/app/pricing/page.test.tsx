@@ -52,17 +52,15 @@ describe("pricing page", () => {
     );
   });
 
-  it("leads every card with the commission and keeps the subscription small", async () => {
+  it("leads every card with the dollar price and keeps the commission small", async () => {
     render(await PricingPage());
 
     const grid = within(screen.getByRole("region", { name: "Plan comparison" }));
     for (const plan of publicPlans) {
-      expect(grid.getByText(`${plan.commissionPercent}%`).className).toContain(
-        "text-4xl",
-      );
+      expect(grid.getByText(`$${plan.monthlyUsd}`).className).toContain("text-4xl");
+      expect(grid.getByText(`${plan.commissionPercent}%`).className).not.toContain("text-4xl");
     }
-    expect(grid.getByText("$9/mo").className).not.toContain("text-4xl");
-    expect(grid.getByText("$89/mo")).toBeInTheDocument();
+    expect(grid.getByText("$89")).toBeInTheDocument();
     // Only the three plans on offer: no Free card, no Enterprise.
     expect(grid.queryByText("Free")).not.toBeInTheDocument();
     expect(grid.queryByText("Enterprise")).not.toBeInTheDocument();

@@ -101,26 +101,40 @@ export default async function PricingPage() {
                 <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
                   {plan.name}
                 </p>
-                {/* The commission is what a plan actually changes, so it is the
-                    big number; the subscription is the small line under it. */}
-                <p className="mt-3 flex items-baseline gap-1.5">
+                {/* The dollar price is the big number (what the buyer decides
+                    on); the commission is the small secondary line under it. */}
+                {/* Monthly price — hidden when the yearly radio is checked. */}
+                <p className="mt-3 flex items-baseline gap-1 group-has-[#billing-yearly:checked]:hidden">
                   <span className="display-title text-4xl text-[var(--color-primary)]">
-                    {plan.commissionPercent}%
+                    {formatUsdWhole(plan.monthlyUsd)}
                   </span>
                   <span className="text-sm text-[var(--color-ink-soft)]">
+                    {t("publicPages.pricing.mo")}
+                  </span>
+                </p>
+                {/* Yearly price — shown only when the yearly radio is checked. */}
+                <div className="mt-3 hidden group-has-[#billing-yearly:checked]:block">
+                  <p className="flex items-baseline gap-1">
+                    <span className="display-title text-4xl text-[var(--color-primary)]">
+                      {formatUsd(yearlyMonthlyEquiv)}
+                    </span>
+                    <span className="text-sm text-[var(--color-ink-soft)]">
+                      {t("publicPages.pricing.mo")}
+                    </span>
+                  </p>
+                  <p className="mt-0.5 text-xs text-[var(--color-ink-soft)]">
+                    {formatUsdWhole(plan.yearlyUsd)} {t("publicPages.pricing.yearly_2")}
+                  </p>
+                </div>
+                <p className="mt-2 text-sm text-[var(--color-ink-soft)]">
+                  <span className="font-semibold text-[var(--color-ink)]">
+                    {plan.commissionPercent}%
+                  </span>{" "}
+                  <span>
                     {plan.commissionPercent === 0
                       ? t("publicPages.pricing.zero_commission_note")
                       : t("publicPages.pricing.per_sale_with_fixed").replace("{fixed}", () => formatUsd(PER_SALE_FIXED_FEE_USD))}
                   </span>
-                </p>
-                {/* Monthly line — hidden when the yearly radio is checked. */}
-                <p className="mt-1 text-sm text-[var(--color-ink-soft)] group-has-[#billing-yearly:checked]:hidden">
-                  {formatUsdWhole(plan.monthlyUsd)}{t("publicPages.pricing.mo")}
-                </p>
-                {/* Yearly line — shown only when the yearly radio is checked. */}
-                <p className="mt-1 hidden text-sm text-[var(--color-ink-soft)] group-has-[#billing-yearly:checked]:block">
-                  {formatUsd(yearlyMonthlyEquiv)}{t("publicPages.pricing.mo_billed")}{" "}
-                  {formatUsdWhole(plan.yearlyUsd)} {t("publicPages.pricing.yearly_2")}
                 </p>
                 <p className="mt-4 text-sm leading-6 text-[var(--color-ink)]">
                   {t(`publicPages.plans.${plan.id}.tagline`)}
