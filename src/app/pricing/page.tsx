@@ -165,18 +165,27 @@ export default async function PricingPage() {
                   <p className="hidden text-xs leading-5 text-[var(--color-ink-soft)] group-has-[#billing-yearly:checked]:block">
                     {planDisclosure({ t, locale, plan, cycle: "yearly", trial: true, publicOffer: true })}
                   </p>
-                  <Link
-                    href="/auth?mode=signup&path=teacher"
-                    className={
-                      isHighlight
-                        ? "button-solid w-full justify-center px-4 py-2.5 text-sm"
-                        : "button-outline w-full justify-center px-4 py-2.5 text-sm"
-                    }
-                    aria-label={`${t("planTrial.cta")} — ${plan.name}`}
-                    data-plan-position={index}
-                  >
-                    {t("planTrial.cta")}
-                  </Link>
+                  {/* One link per cycle, shown by the same CSS toggle as the
+                      prices: the button carries the plan and the cycle to the
+                      card screen, still with no client JS. The hidden one is
+                      display:none, so it is out of the tab order too. */}
+                  {(["monthly", "yearly"] as const).map((cycle) => (
+                    <Link
+                      key={cycle}
+                      href={`/auth?mode=signup&path=teacher&plan=${plan.id}&cycle=${cycle}`}
+                      className={[
+                        isHighlight ? "button-solid" : "button-outline",
+                        "w-full justify-center px-4 py-2.5 text-sm",
+                        cycle === "monthly"
+                          ? "group-has-[#billing-yearly:checked]:hidden"
+                          : "hidden group-has-[#billing-yearly:checked]:inline-flex",
+                      ].join(" ")}
+                      aria-label={`${t("planTrial.cta")} — ${plan.name}`}
+                      data-plan-position={index}
+                    >
+                      {t("planTrial.cta")}
+                    </Link>
+                  ))}
                 </div>
               </article>
             );

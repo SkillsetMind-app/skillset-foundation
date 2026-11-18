@@ -134,6 +134,45 @@ describe("H3: pais na ativacao do professor", () => {
       .toBeLessThan(mocks.completeUserOnboarding.mock.invocationCallOrder[0]);
   });
 
+  // O plano escolhido em /pricing chega aqui como returnTo. Antes o fim era
+  // sempre /teach e o professor tinha de achar os planos e escolher de novo.
+  async function ativar(query: string) {
+    mocks.searchParams = new URLSearchParams(query);
+    await mount();
+    fireEvent.change(screen.getByLabelText("connectOnboarding.countryLabel"), { target: { value: "US" } });
+    fireEvent.click(screen.getByRole("button", { name: "onboarding.activateTeaching" }));
+    await waitFor(() => expect(mocks.router.push).toHaveBeenCalledTimes(1));
+    expect(mocks.completeUserOnboarding).toHaveBeenCalledTimes(1);
+    return mocks.router.push.mock.calls[0][0];
+  }
+  const cartao = "/account/billing/upgrade?plan=starter&cycle=yearly";
+
+  it("com plano escolhido em /pricing, o fim abre a tela de cartao desse plano", async () => {
+    expect(await ativar(new URLSearchParams({ path: "teacher", returnTo: cartao }).toString())).toBe(cartao);
+  });
+
+  it("sem plano escolhido, o fim continua em /teach", async () => {
+    expect(await ativar("path=teacher")).toBe("/teach");
+  });
+
+  it.each([
+    "/account/billing/upgrade?plan=plus&cycle=monthly",
+    "/account/billing/upgrade?plan=starter&cycle=weekly",
+    "/account/billing/upgrade?plan=starter",
+    "/courses/focus",
+    "https://evil.example/account/billing/upgrade?plan=pro&cycle=yearly",
+  ])("destino que nao e um plano publico e ignorado: %s", async (returnTo) => {
+    expect(await ativar(new URLSearchParams({ path: "teacher", returnTo }).toString())).toBe("/teach");
+  });
+
+  it("quem pula a ativacao nao abre o cartao", async () => {
+    mocks.searchParams = new URLSearchParams({ path: "teacher", returnTo: cartao });
+    await mount();
+    fireEvent.click(screen.getByRole("button", { name: "onboarding.skipForNow" }));
+    expect(mocks.router.push).toHaveBeenCalledExactlyOnceWith("/learn");
+    expect(mocks.completeUserOnboarding).not.toHaveBeenCalled();
+  });
+
   it("retoma outro pais com aviso, sem alterar a resposta num evento de autenticacao", async () => {
     mocks.getUserProfile.mockResolvedValue({ ...profile, onboardingAnswers: { ...previousAnswers, payoutCountry: "other" } });
     await mount();
@@ -204,5 +243,23 @@ describe("H3: pais na ativacao do professor", () => {
     } else {
       expect(mocks.updateOnboardingAnswers).not.toHaveBeenCalled();
     }
+  });
+
+  // O cadastro completo (3 passos) termina no mesmo lugar que a ativacao curta;
+  // o aluno nao abre cartao de plano mesmo que o endereco traga um.
+  it.each([
+    ["teacher", cartao],
+    ["student", "/learn"],
+  ])("fluxo direto %s com plano escolhido termina em %s", async (path, destino) => {
+    mocks.searchParams = new URLSearchParams({ path, returnTo: cartao });
+    mocks.getUserProfile.mockResolvedValue({ ...profile, onboardingCompleted: false });
+    await mount();
+    if (path === "teacher") {
+      fireEvent.change(screen.getByLabelText("connectOnboarding.countryLabel"), { target: { value: "US" } });
+    }
+    fireEvent.click(screen.getByRole("button", { name: "onboarding.continue" }));
+    fireEvent.click(screen.getByRole("button", { name: "onboarding.continue" }));
+    fireEvent.click(screen.getByRole("button", { name: "onboarding.finishSetup" }));
+    await waitFor(() => expect(mocks.router.push).toHaveBeenCalledExactlyOnceWith(destino));
   });
 });

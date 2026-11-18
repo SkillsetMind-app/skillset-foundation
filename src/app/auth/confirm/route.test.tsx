@@ -135,6 +135,15 @@ describe("/auth/confirm", () => {
     expect(response.headers.get("location")).toBe(`${ORIGIN}${next}`);
   });
 
+  // The plan picked on /pricing rides in the confirmation email like a course
+  // does: the link opened on a phone still knows which card screen comes last.
+  it("preserves the plan picked on /pricing from the email on a fresh device", async () => {
+    const next = "/welcome?path=teacher&returnTo=%2Faccount%2Fbilling%2Fupgrade%3Fplan%3Dstarter%26cycle%3Dyearly";
+    const redirectTo = `${ORIGIN}/auth/confirm?next=${encodeURIComponent(next)}`;
+    const response = await get(`?token_hash=abc&type=signup&redirect_to=${encodeURIComponent(redirectTo)}`);
+    expect(response.headers.get("location")).toBe(`${ORIGIN}${next}`);
+  });
+
   it("sends a manual OTP invitation to normal post-auth routing", async () => {
     const response = await get(`?token_hash=abc&type=email&redirect_to=${encodeURIComponent(`${ORIGIN}/loading?next=route`)}`);
     expect(response.headers.get("location")).toBe(`${ORIGIN}/loading?next=route`);

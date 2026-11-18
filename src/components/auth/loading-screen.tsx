@@ -4,6 +4,7 @@ import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import {
   getAuthRoute,
+  getOnboardedReturnTo,
   getPostAuthRoute,
   getSafeReturnTo,
   getWelcomeRoute,
@@ -65,13 +66,15 @@ export function LoadingScreen() {
           // a first-timer who came from a course page finishes the wizard back
           // on that course.
           destination = getWelcomeRoute(intent, returnTo);
-        } else if (returnTo && profile?.onboardingCompleted) {
+        } else {
           // The deep link the sign-in wall captured, carried here by Google
           // sign-in. Onboarded accounts only — first-timers went to /welcome
-          // above, the same rule the email login applies.
-          destination = returnTo;
-        } else {
-          destination = getPostAuthRoute(profile, intent);
+          // above, the same rule the email login applies. A plan picked on
+          // /pricing opens its card screen only for a teacher with no plan yet.
+          destination =
+            (profile?.onboardingCompleted
+              ? getOnboardedReturnTo(profile, returnTo, intent)
+              : null) ?? getPostAuthRoute(profile, intent);
         }
       }
 

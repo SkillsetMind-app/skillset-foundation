@@ -7,8 +7,8 @@ import { SignupForm } from "@/components/auth/signup-form";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import {
   getAuthPathIntentFromSearchParams,
+  getEntryReturnTo,
   getLoadingRoute,
-  getSafeReturnTo,
 } from "@/lib/auth/routing";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef } from "react";
@@ -46,7 +46,7 @@ export function AuthPage() {
     // completed inside the form already owns its confirmation and navigation.
     entrySessionHandled.current = true;
     if (status === "authenticated" && user?.emailVerified && !searchParams.has("error")) {
-      router.replace(getLoadingRoute("welcome", pathIntent, getSafeReturnTo(searchParams)));
+      router.replace(getLoadingRoute("welcome", pathIntent, getEntryReturnTo(searchParams)));
     }
   }, [pathIntent, router, searchParams, status, user]);
 

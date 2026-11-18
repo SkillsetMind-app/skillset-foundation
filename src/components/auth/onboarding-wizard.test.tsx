@@ -291,6 +291,52 @@ describe("boas-vindas: o fim leva de volta para onde a pessoa estava", () => {
       { timeout: 4000 },
     );
   });
+
+  // A unica coisa que segue com o professor para /onboarding e o plano que ele
+  // escolheu em /pricing: la, o ultimo botao abre o cartao desse plano.
+  const cartao = "/account/billing/upgrade?plan=pro&cycle=monthly";
+
+  it("professor que escolheu um plano em /pricing leva o plano para o cadastro de professor", async () => {
+    mocks.searchParams = new URLSearchParams({ path: "teacher", returnTo: cartao });
+    mocks.profile = {
+      displayName: "Patrick Simon",
+      phoneNumber: "+1 555 123 4567",
+      onboardingAnswers: {
+        profileConfirmed: true,
+        path: "teacher",
+        profession: "Coach",
+        primaryGoal: ["Business"],
+        alreadySold: "no",
+        payoutCountry: "US",
+        audienceSize: "100,000+ followers",
+        instagramHandle: "patrick",
+      },
+    };
+
+    render(<OnboardingWizard />);
+    expect(await screen.findByText(/Instagram handle/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+
+    await waitFor(
+      () =>
+        expect(mocks.router.replace).toHaveBeenCalledWith(
+          "/onboarding?path=teacher&returnTo=%2Faccount%2Fbilling%2Fupgrade%3Fplan%3Dpro%26cycle%3Dmonthly",
+        ),
+      { timeout: 4000 },
+    );
+  });
+
+  // Plano e de quem ensina: quem terminou como aluno nao cai na tela de cartao.
+  it("aluno com um plano no endereco termina em /learn, nao no cartao", async () => {
+    mocks.searchParams = new URLSearchParams({ returnTo: cartao });
+
+    await terminar();
+
+    await waitFor(
+      () => expect(mocks.router.replace).toHaveBeenCalledWith("/learn"),
+      { timeout: 4000 },
+    );
+  });
 });
 
 // So o caminho do aluno perguntava "onde conheceu a SkillsetMind"; do professor

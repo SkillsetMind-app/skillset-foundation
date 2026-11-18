@@ -30,7 +30,10 @@ import {
   updateOnboardingAnswers,
 } from "@/lib/data/user-profiles";
 import type { Role } from "@/lib/permissions";
-import { getAuthPathIntentFromSearchParams } from "@/lib/auth/routing";
+import {
+  getAuthPathIntentFromSearchParams,
+  getPlanCheckoutReturnTo,
+} from "@/lib/auth/routing";
 
 const paths = [
   {
@@ -111,6 +114,12 @@ export function OnboardingChoice() {
   const searchParams = useSearchParams();
   const pathIntent = useMemo(
     () => getAuthPathIntentFromSearchParams(searchParams),
+    [searchParams],
+  );
+  // The plan picked on /pricing, when the visitor came from one of its
+  // buttons. Only that card screen counts: any other returnTo is ignored here.
+  const planCheckout = useMemo(
+    () => getPlanCheckoutReturnTo(searchParams.get("returnTo")),
     [searchParams],
   );
   const [step, setStep] = useState(0);
@@ -423,7 +432,11 @@ export function OnboardingChoice() {
       });
 
       await refreshUser();
-      router.push(selectedPath.href);
+      // A new teacher who chose a plan on /pricing goes straight to its card
+      // screen; without that choice, the workspace as before.
+      router.push(
+        (selectedPathIncludesTeacher && planCheckout) || selectedPath.href,
+      );
     } catch {
       setError(t("onboarding.errorFinish"));
       setIsSaving(false);
