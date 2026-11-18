@@ -14,7 +14,9 @@ import type { OnboardingAnswers } from "@/domain/user-profile";
 import {
   getAuthPathIntentFromSearchParams,
   getAuthRoute,
+  getPlanCheckoutReturnTo,
   getSafeReturnTo,
+  getTeacherOnboardingRoute,
 } from "@/lib/auth/routing";
 import { isValidPhoneNumber } from "@/domain/user-profile";
 import { validateDisplayName } from "@/lib/auth/profile-validation";
@@ -530,11 +532,13 @@ export function OnboardingWizard() {
       await wait(1800);
       // Fim da linha do deep link: quem chegou aqui vindo de um curso volta
       // para ELE, nao para o painel. O professor e a excecao — /onboarding e
-      // um passo obrigatorio da conta, nao um destino que da para trocar.
+      // um passo obrigatorio da conta, nao um destino que da para trocar. So o
+      // plano escolhido em /pricing segue com ele, para abrir o cartao no fim.
+      // Plano e de quem ensina: no caminho de aluno essa tela nao abre.
       router.replace(
         answers.path === "teacher"
-          ? "/onboarding?path=teacher"
-          : returnTo ?? "/learn",
+          ? getTeacherOnboardingRoute(returnTo)
+          : (getPlanCheckoutReturnTo(returnTo) ? null : returnTo) ?? "/learn",
       );
     } catch {
       setError("authFlow.onboarding.finishError");

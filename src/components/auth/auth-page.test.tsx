@@ -123,6 +123,36 @@ describe("AuthPage continues an existing verified session", () => {
     expect(mocks.signInWithEmail).not.toHaveBeenCalled();
   });
 
+  // A /pricing button: `plan` and `cycle` in the link. Signed in already, the
+  // teacher with no plan lands on that plan's card screen.
+  it("takes a signed-in teacher from a /pricing plan button to that plan's card screen", async () => {
+    mocks.auth = { status: "authenticated", user: { ...sessionUser, roles: ["teacher"] } };
+    mocks.searchParams = new URLSearchParams("mode=signup&path=teacher&plan=starter&cycle=yearly");
+    mocks.getUserProfile.mockResolvedValue({ onboardingCompleted: true, roles: ["teacher"] });
+    const view = renderAuth();
+
+    await continueThroughLoading(view, "teacher");
+
+    await waitFor(() => expect(mocks.router.replace).toHaveBeenLastCalledWith(
+      "/account/billing/upgrade?plan=starter&cycle=yearly",
+    ), ROUTED);
+  });
+
+  it.each([
+    ["a plan that is not on offer", "mode=signup&path=teacher&plan=plus&cycle=yearly", {}],
+    ["a cycle that does not exist", "mode=signup&path=teacher&plan=starter&cycle=weekly", {}],
+    ["a teacher who already has a plan", "mode=signup&path=teacher&plan=starter&cycle=yearly", { currentPlanId: "basic" }],
+  ])("keeps the studio as the destination for %s", async (_label, query, plan) => {
+    mocks.auth = { status: "authenticated", user: { ...sessionUser, roles: ["teacher"] } };
+    mocks.searchParams = new URLSearchParams(query);
+    mocks.getUserProfile.mockResolvedValue({ onboardingCompleted: true, roles: ["teacher"], ...plan });
+    const view = renderAuth();
+
+    await continueThroughLoading(view, "teacher");
+
+    await waitFor(() => expect(mocks.router.replace).toHaveBeenLastCalledWith("/teach"), ROUTED);
+  });
+
   it("keeps required onboarding and its checkout destination for a new profile", async () => {
     mocks.searchParams = new URLSearchParams({ mode: "signin", path: "student", returnTo: checkout });
     mocks.getUserProfile.mockResolvedValue({ onboardingCompleted: false, roles: ["student"] });

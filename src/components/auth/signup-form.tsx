@@ -33,8 +33,9 @@ import {
 import {
   getAuthRoute,
   getAuthPathIntentFromSearchParams,
+  getEntryReturnTo,
   getLoadingRoute,
-  getSafeReturnTo,
+  getOnboardedReturnTo,
   getWelcomeRoute,
 } from "@/lib/auth/routing";
 import { markSignupTerms } from "@/lib/auth/signup-terms-mark";
@@ -65,8 +66,9 @@ export function SignupForm() {
   // Where the visitor was headed when the wall stopped them — the course they
   // pressed "enroll" on. Sign-in already honoured it; signup dropped it, so the
   // buyer landed on a dashboard and the sale evaporated. Validated (same-origin
-  // path only) before it is carried anywhere.
-  const returnTo = useMemo(() => getSafeReturnTo(searchParams), [searchParams]);
+  // path only) before it is carried anywhere. A /pricing button arrives the
+  // same way: its plan and cycle become the card screen as the destination.
+  const returnTo = useMemo(() => getEntryReturnTo(searchParams), [searchParams]);
 
   function chooseIntent(next: "student" | "teacher") {
     setIntent(next);
@@ -239,7 +241,7 @@ export function SignupForm() {
       }
       router.push(
         profile?.onboardingCompleted
-          ? returnTo ?? getLoadingRoute("route", intent)
+          ? getOnboardedReturnTo(profile, returnTo) ?? getLoadingRoute("route", intent)
           : getWelcomeRoute(intent, returnTo),
       );
     } catch (caughtError) {

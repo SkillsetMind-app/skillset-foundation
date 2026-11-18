@@ -420,3 +420,81 @@ describe("SignupForm leva o curso junto para o cadastro", () => {
     expect(mocks.updateUserIdentity).not.toHaveBeenCalled();
   });
 });
+
+// O botao de um plano em /pricing chega aqui com ?plan= e ?cycle=. Antes a
+// escolha morria nesta tela e o professor escolhia o plano de novo la dentro.
+// Agora ela vira o destino (a tela de cartao) e viaja como qualquer returnTo.
+describe("SignupForm leva o plano de /pricing ate o cartao", () => {
+  const doBotao = "path=teacher&plan=starter&cycle=yearly";
+  const cartao = "%2Faccount%2Fbilling%2Fupgrade%3Fplan%3Dstarter%26cycle%3Dyearly";
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.signUpWithEmail.mockResolvedValue({ user: { uid: "u-1" }, needsEmailConfirmation: false });
+    mocks.acceptUserTerms.mockResolvedValue(undefined);
+    mocks.updateUserIdentity.mockResolvedValue(undefined);
+    mocks.signInWithGoogle.mockReturnValue(new Promise(() => {}));
+  });
+
+  afterEach(() => {
+    cleanup();
+    mocks.searchParams = new URLSearchParams();
+  });
+
+  it("poe o plano no link do e-mail de confirmacao e na ida para o onboarding", async () => {
+    mocks.searchParams = new URLSearchParams(doBotao);
+    render(<SignupForm />);
+
+    submitSignup();
+
+    const paraOnboarding = `/welcome?path=teacher&returnTo=${cartao}`;
+    await waitFor(() => expect(mocks.router.push).toHaveBeenCalledWith(paraOnboarding));
+    expect(mocks.signUpWithEmail).toHaveBeenCalledWith(expect.anything(), undefined, paraOnboarding);
+  });
+
+  it("leva o plano pela volta do Google", () => {
+    mocks.searchParams = new URLSearchParams(doBotao);
+    render(<SignupForm />);
+
+    fireEvent.click(screen.getByRole("checkbox"));
+    fireEvent.click(screen.getByRole("button", { name: /auth\.continueWithGoogle/ }));
+
+    expect(mocks.signInWithGoogle).toHaveBeenCalledWith(`/loading?next=welcome&path=teacher&returnTo=${cartao}`);
+  });
+
+  it("leva o plano para quem ja tem conta e prefere entrar", () => {
+    mocks.searchParams = new URLSearchParams(doBotao);
+    render(<SignupForm />);
+
+    expect(screen.getByRole("link", { name: "auth.signup.alreadyHaveAccount" })).toHaveAttribute(
+      "href",
+      `/auth?mode=signin&path=teacher&returnTo=${cartao}`,
+    );
+  });
+
+  it.each([
+    "path=teacher&plan=plus&cycle=monthly",
+    "path=teacher&plan=free&cycle=monthly",
+    "path=teacher&plan=starter&cycle=weekly",
+    "path=teacher&plan=starter",
+    "path=teacher&cycle=yearly",
+    "path=teacher&plan=https%3A%2F%2Foutro.com&cycle=monthly",
+  ])("ignora o que nao e um plano publico com ciclo valido: %s", async (query) => {
+    mocks.searchParams = new URLSearchParams(query);
+    render(<SignupForm />);
+
+    submitSignup();
+
+    await waitFor(() => expect(mocks.router.push).toHaveBeenCalledWith("/welcome?path=teacher"));
+    expect(mocks.signUpWithEmail).toHaveBeenCalledWith(expect.anything(), undefined, "/welcome?path=teacher");
+  });
+
+  it("sem plano no endereco, o cadastro de professor segue como sempre", async () => {
+    mocks.searchParams = new URLSearchParams("path=teacher");
+    render(<SignupForm />);
+
+    submitSignup();
+
+    await waitFor(() => expect(mocks.router.push).toHaveBeenCalledWith("/welcome?path=teacher"));
+  });
+});

@@ -30,8 +30,9 @@ import {
 import {
   getAuthRoute,
   getAuthPathIntentFromSearchParams,
+  getEntryReturnTo,
   getLoadingRoute,
-  getSafeReturnTo,
+  getOnboardedReturnTo,
 } from "@/lib/auth/routing";
 import { getUserProfile } from "@/lib/data/user-profiles";
 
@@ -47,7 +48,7 @@ export function LoginForm() {
   );
   // Deep link the sign-in wall captured (e.g. /learn/courses/x). Honored only
   // for onboarded accounts — first-time users still go through /welcome.
-  const returnTo = useMemo(() => getSafeReturnTo(searchParams), [searchParams]);
+  const returnTo = useMemo(() => getEntryReturnTo(searchParams), [searchParams]);
   const signupHref = getAuthRoute("signup", pathIntent, returnTo);
   // Quem chegou pela entrada errada troca de papel aqui, levando junto o
   // destino que a porta de login capturou.
@@ -130,7 +131,7 @@ export function LoginForm() {
     const profile = await getUserProfile(uid);
     router.push(
       profile?.onboardingCompleted
-        ? returnTo ?? getLoadingRoute("route", pathIntent)
+        ? getOnboardedReturnTo(profile, returnTo) ?? getLoadingRoute("route", pathIntent)
         // Not onboarded yet: the deep link goes with them through the wizard
         // instead of dying at its door.
         : getLoadingRoute("welcome", pathIntent, returnTo),

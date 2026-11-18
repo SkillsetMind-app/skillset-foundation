@@ -110,6 +110,23 @@ describe("LoadingScreen after a Google sign-in", () => {
     await waitFor(() => expect(mocks.router.replace).toHaveBeenCalledWith(checkout), ROUTED);
   });
 
+  // A signed-in visitor pressed a plan button on /pricing: /auth hands that
+  // choice here as the returnTo. Only a teacher with no plan opens the card.
+  const planCard = "/account/billing/upgrade?plan=pro&cycle=yearly";
+  const withPlanCard = "returnTo=%2Faccount%2Fbilling%2Fupgrade%3Fplan%3Dpro%26cycle%3Dyearly";
+  it.each([
+    ["a teacher with no plan to the card screen", { onboardingCompleted: true, roles: ["teacher"] }, planCard],
+    ["a teacher who already has a plan to the studio", { onboardingCompleted: true, roles: ["teacher"], currentPlanId: "starter" }, "/teach"],
+    ["a learner to teacher activation, with the plan", { onboardingCompleted: true, roles: ["student"] }, `/onboarding?path=teacher&${withPlanCard}`],
+    ["a new account to onboarding, with the plan", { onboardingCompleted: false, roles: ["student"] }, `/welcome?path=teacher&${withPlanCard}`],
+  ])("with a plan picked on /pricing, sends %s", async (_label, profile, expected) => {
+    mocks.searchParams = new URLSearchParams({ next: "welcome", path: "teacher", returnTo: planCard });
+    mocks.getUserProfile.mockResolvedValue(profile);
+    render(<LoadingScreen />);
+    await waitFor(() => expect(mocks.router.replace).toHaveBeenCalledWith(expected), ROUTED);
+    expect(mocks.router.replace).toHaveBeenCalledTimes(1);
+  });
+
   it("takes intent and checkout back to sign-in when the session is gone", async () => {
     const checkout = "/courses/focus/checkout?offer=LAUNCH&priceId=price-1";
     mocks.auth = { status: "unauthenticated", user: null };

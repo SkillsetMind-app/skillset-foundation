@@ -80,14 +80,45 @@ describe("pricing page", () => {
     for (const card of cards) {
       expect(card.className).toContain("flex h-full flex-col");
     }
-    const cta = grid.getByRole("link", { name: "Start your 14-day trial — Starter" });
+    // One link per cycle; CSS shows the one for the selected cycle.
+    const [cta, yearlyCta] = grid.getAllByRole("link", { name: "Start your 14-day trial — Starter" });
     expect(cta).toHaveTextContent("Start your 14-day trial");
+    expect(yearlyCta.parentElement).toBe(cta.parentElement);
     expect(cta.parentElement?.className).toContain("mt-auto");
     // The renewal terms sit next to the button, for each cycle.
     expect(cta.parentElement).toHaveTextContent(
       "14-day trial, then $19/month. A card is required. Renews automatically until you cancel. Cancel in Billing before your trial ends to avoid the subscription charge.",
     );
     expect(cta.parentElement).toHaveTextContent("14-day trial, then $190/year.");
+  });
+
+  // The plan used to be lost on the way to signup: all three buttons went to
+  // the same /auth link and the teacher had to pick the plan again after
+  // onboarding. Each button now says which plan and which cycle.
+  it("sends each plan button to signup with its plan and the selected cycle", async () => {
+    render(await PricingPage());
+
+    const grid = within(screen.getByRole("region", { name: "Plan comparison" }));
+    expect(publicPlans.map((plan) => plan.id)).toEqual(["basic", "starter", "pro"]);
+    for (const plan of publicPlans) {
+      const links = grid.getAllByRole("link", { name: `Start your 14-day trial — ${plan.name}` });
+      expect(links.map((link) => link.getAttribute("href"))).toEqual([
+        `/auth?mode=signup&path=teacher&plan=${plan.id}&cycle=monthly`,
+        `/auth?mode=signup&path=teacher&plan=${plan.id}&cycle=yearly`,
+      ]);
+      // Same toggle as the prices: exactly one of the two is displayed.
+      const [monthly, yearly] = links.map((link) => link.className.split(" "));
+      expect(monthly).toContain("group-has-[#billing-yearly:checked]:hidden");
+      expect(monthly).not.toContain("hidden");
+      expect(yearly).toContain("hidden");
+      expect(yearly).toContain("group-has-[#billing-yearly:checked]:inline-flex");
+    }
+    // The closing button names no plan and stays as it was.
+    const closing = screen.getByText("Ready to publish on SkillsetMind?").closest("section")!;
+    expect(within(closing).getByRole("link", { name: "Create account" })).toHaveAttribute(
+      "href",
+      "/auth?mode=signup&path=teacher",
+    );
   });
 
   it("keeps the no-JavaScript billing toggle, in 13px sentence case", async () => {
