@@ -736,7 +736,8 @@ export function CreatorCourseDetail({
             barra lateral, depois do preco e dos avisos de pagamento. A nota
             tambem sobe para ca: era a quinta linha de uma lista neutra. */}
         {instructorName || hasRating || durationLabel ? (
-          <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-[var(--color-ink-soft)]">
+          // Na página de compra com resumo, a assinatura abre a coluna: sem margem no topo.
+          <div className={`${checkoutOnly && hideHeader ? "" : "mt-5 "}flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-[var(--color-ink-soft)]`}>
             {/* Nome e selo num grupo só: numa tela estreita a quebra de linha
                 leva os dois juntos. O selo fica fora do link porque é botão. */}
             {instructorName ? (
