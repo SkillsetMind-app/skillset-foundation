@@ -73,7 +73,7 @@ export function LoadingScreen() {
           // /pricing opens its card screen only for a teacher with no plan yet.
           destination =
             (profile?.onboardingCompleted
-              ? getOnboardedReturnTo(profile, returnTo)
+              ? getOnboardedReturnTo(profile, returnTo, intent)
               : null) ?? getPostAuthRoute(profile, intent);
         }
       }

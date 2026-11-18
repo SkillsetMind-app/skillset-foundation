@@ -131,7 +131,7 @@ export function LoginForm() {
     const profile = await getUserProfile(uid);
     router.push(
       profile?.onboardingCompleted
-        ? getOnboardedReturnTo(profile, returnTo) ?? getLoadingRoute("route", pathIntent)
+        ? getOnboardedReturnTo(profile, returnTo, pathIntent) ?? getLoadingRoute("route", pathIntent)
         // Not onboarded yet: the deep link goes with them through the wizard
         // instead of dying at its door.
         : getLoadingRoute("welcome", pathIntent, returnTo),

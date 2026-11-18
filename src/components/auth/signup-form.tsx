@@ -241,7 +241,7 @@ export function SignupForm() {
       }
       router.push(
         profile?.onboardingCompleted
-          ? getOnboardedReturnTo(profile, returnTo) ?? getLoadingRoute("route", intent)
+          ? getOnboardedReturnTo(profile, returnTo, intent) ?? getLoadingRoute("route", intent)
           : getWelcomeRoute(intent, returnTo),
       );
     } catch (caughtError) {

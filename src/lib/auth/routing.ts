@@ -204,16 +204,22 @@ export function getTeacherOnboardingRoute(returnTo: string | null = null): strin
  * straight through except the card screen of a plan picked on /pricing: someone
  * who does not teach yet activates teaching first and reaches the card from
  * there, and an account that already has a plan gets null (its usual route),
- * because that screen only opens a first plan.
+ * because that screen only opens a first plan. So does anyone who came in
+ * through the learner entry: a plan is for teaching.
  */
 export function getOnboardedReturnTo(
   profile: Pick<UserProfile, "roles" | "currentPlanId">,
   returnTo: string | null,
+  intent: AuthPathIntent | null = null,
 ): string | null {
   const planCheckout = getPlanCheckoutReturnTo(returnTo);
 
   if (!planCheckout) {
     return returnTo;
+  }
+
+  if (intent === "student") {
+    return null;
   }
 
   if (!profile.roles.includes("teacher")) {

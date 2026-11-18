@@ -462,6 +462,20 @@ describe("SignupForm leva o plano de /pricing ate o cartao", () => {
     expect(mocks.signInWithGoogle).toHaveBeenCalledWith(`/loading?next=welcome&path=teacher&returnTo=${cartao}`);
   });
 
+  // Trocar ensinar por aprender reescreve o endereco: o plano segue nele como
+  // returnTo, entao voltar para "ensinar" nao perde a escolha.
+  it("nao perde o plano quando a pessoa troca ensinar por aprender", () => {
+    mocks.searchParams = new URLSearchParams(doBotao);
+    render(<SignupForm />);
+
+    fireEvent.click(screen.getByRole("radio", { name: "auth.signup.roleLearn" }));
+
+    expect(mocks.router.replace).toHaveBeenCalledWith(
+      `/auth?mode=signup&path=student&returnTo=${cartao}`,
+      { scroll: false },
+    );
+  });
+
   it("leva o plano para quem ja tem conta e prefere entrar", () => {
     mocks.searchParams = new URLSearchParams(doBotao);
     render(<SignupForm />);

@@ -211,12 +211,26 @@ describe("plan picked on /pricing", () => {
     expect(getOnboardedReturnTo({ roles: ["teacher"], currentPlanId: "plus" }, choice)).toBeNull();
     // Not teaching yet: activation first, with the choice.
     expect(getOnboardedReturnTo({ roles: ["student"] }, choice)).toBe(getTeacherOnboardingRoute(choice));
+    expect(getOnboardedReturnTo({ roles: ["student"] }, choice, "teacher")).toBe(getTeacherOnboardingRoute(choice));
+    // Through the learner entry nobody opens a plan: null, the usual route.
+    expect(getOnboardedReturnTo({ roles: ["teacher"] }, choice, "student")).toBeNull();
+    expect(getOnboardedReturnTo({ roles: ["student"] }, choice, "student")).toBeNull();
+  });
+
+  // A repeated parameter is read the way the card screen reads it (the first
+  // one), and the route that comes out carries a single plan and cycle.
+  it("reads a repeated parameter by its first value only", () => {
+    expect(getPlanCheckoutRoute(new URLSearchParams("plan=pro&plan=plus&cycle=yearly&cycle=weekly")))
+      .toBe(card("pro", "yearly"));
+    expect(getPlanCheckoutRoute(new URLSearchParams("plan=plus&plan=pro&cycle=yearly"))).toBeNull();
+    expect(getPlanCheckoutReturnTo("/account/billing/upgrade?plan=plus&plan=pro&cycle=yearly")).toBeNull();
   });
 
   it("leaves every other deep link exactly as it was", () => {
     expect(getOnboardedReturnTo({ roles: ["student"] }, "/courses/focus/checkout?offer=LAUNCH"))
       .toBe("/courses/focus/checkout?offer=LAUNCH");
     expect(getOnboardedReturnTo({ roles: ["teacher"], currentPlanId: "pro" }, "/teach/courses")).toBe("/teach/courses");
+    expect(getOnboardedReturnTo({ roles: ["student"] }, "/courses/focus", "student")).toBe("/courses/focus");
     expect(getOnboardedReturnTo({ roles: ["student"] }, null)).toBeNull();
   });
 });
