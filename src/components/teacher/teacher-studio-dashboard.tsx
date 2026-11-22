@@ -17,6 +17,8 @@ import { useEffect, useRef, useState, type CSSProperties } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { PlatformPageHeader } from "@/components/platform/platform-page-header";
+import { HorizontalTabs } from "@/components/shared/horizontal-tabs";
 import { StatusChip } from "@/components/shared/status-chip";
 import { TeacherOverviewMetrics } from "@/components/teacher/teacher-overview-metrics";
 import { StudioRecentActivity } from "@/components/teacher/studio-recent-activity";
@@ -154,40 +156,39 @@ export function TeacherStudioDashboard() {
           hasProducts={courses.length > 0}
         />
       ) : null}
-      <header className="flex flex-wrap items-end justify-between gap-5 border-b border-[var(--color-line)] pb-5">
-        <div>
-          {/* Uma manchete por tela. O olho da pagina era "Producer home" em
-              versalete APOIADO por "Welcome back, {name}" logo abaixo: dois
-              titulos disputando a mesma linha de leitura, e o de cima nem
-              nomeava a tela ("Home" ja esta na barra e na trilha do topo). */}
-          {/* "Welcome back" so para quem ja tem produto: na 1a visita a frase
-              era falsa. Enquanto a lista carrega vale "Welcome", que nunca
-              mente. Antes de a lista chegar nao da para saber qual das duas e
-              verdade: vale "Hello", que nao afirma nada. Se a assinatura de
-              cursos falhar, fica o "Welcome back" de antes. */}
-          <h1 className="text-3xl font-semibold leading-tight text-[var(--color-primary)] sm:text-4xl">
-            {firstName
-              ? t(`teach.dashboard.${greetingKey}Named`).replace("{name}", () => firstName)
-              : t(`teach.dashboard.${greetingKey}`)}
-          </h1>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--color-ink-soft)]">
-            {t("creatorPanel.home.description")}
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Link href="/teach/storefront" className="button-outline px-4 text-sm">
-            <Store aria-hidden="true" size={16} strokeWidth={1.9} />
-            {t("creatorPanel.home.storefront")}
-          </Link>
-          <Link
-            href="/teach/builder?newCourse=1&format=course"
-            className={`${noProducts ? "button-outline" : "button-solid"} px-4 text-sm`}
-          >
-            <Plus aria-hidden="true" size={16} strokeWidth={2} />
-            {t("creatorPanel.newProduct")}
-          </Link>
-        </div>
-      </header>
+      {/* Uma manchete por tela. O olho da pagina era "Producer home" em
+          versalete APOIADO por "Welcome back, {name}" logo abaixo: dois
+          titulos disputando a mesma linha de leitura, e o de cima nem
+          nomeava a tela ("Home" ja esta na barra e na trilha do topo). */}
+      {/* "Welcome back" so para quem ja tem produto: na 1a visita a frase
+          era falsa. Enquanto a lista carrega vale "Welcome", que nunca
+          mente. Antes de a lista chegar nao da para saber qual das duas e
+          verdade: vale "Hello", que nao afirma nada. Se a assinatura de
+          cursos falhar, fica o "Welcome back" de antes. */}
+      {/* O mesmo cabecalho das telas irmas (era 36px sem serifa so aqui). */}
+      <PlatformPageHeader
+        title={
+          firstName
+            ? t(`teach.dashboard.${greetingKey}Named`).replace("{name}", () => firstName)
+            : t(`teach.dashboard.${greetingKey}`)
+        }
+        description={t("creatorPanel.home.description")}
+        actions={
+          <>
+            <Link href="/teach/storefront" className="button-outline px-4 text-sm">
+              <Store aria-hidden="true" size={16} strokeWidth={1.9} />
+              {t("creatorPanel.home.storefront")}
+            </Link>
+            <Link
+              href="/teach/builder?newCourse=1&format=course"
+              className={`${noProducts ? "button-outline" : "button-solid"} px-4 text-sm`}
+            >
+              <Plus aria-hidden="true" size={16} strokeWidth={2} />
+              {t("creatorPanel.newProduct")}
+            </Link>
+          </>
+        }
+      />
 
       {readFailed ? (
         <div className="grid gap-3">
@@ -434,8 +435,10 @@ function StudioNextSteps({
                 <li key={step.id} aria-current={current ? "step" : undefined}>
                   {/* Criar o 1o produto nao ganha botao aqui: o vazio da lista
                       de produtos, logo abaixo, ja e o botao forte da tela. */}
+                  {/* Linha no topo, nao na esquerda: borda colorida de lado e
+                      o cartao que o padrao do desenho proibe. */}
                   {current && step.id !== "create" ? (
-                    <div className={`flex h-full min-h-24 flex-col items-start border-l-2 px-3 py-2 ${rule}`}>
+                    <div className={`flex h-full min-h-24 flex-col items-start border-t-2 px-3 pb-2 pt-3 ${rule}`}>
                       {body}
                       <Link href={step.href} className="button-solid mt-3 max-w-full px-4 text-sm">
                         {step.action}
@@ -445,7 +448,7 @@ function StudioNextSteps({
                   ) : (
                     <Link
                       href={step.href}
-                      className={`flex h-full min-h-24 flex-col border-l-2 px-3 py-2 transition-colors hover:border-[var(--color-primary)] ${rule}`}
+                      className={`flex h-full min-h-24 flex-col border-t-2 px-3 pb-2 pt-3 transition-colors hover:border-[var(--color-primary)] ${rule}`}
                     >
                       {body}
                     </Link>
@@ -509,29 +512,16 @@ function StudioProductsSection({
       </div>
 
       {/* Cinco filtros sobre uma lista vazia so faziam barulho na 1a visita. */}
+      {/* As abas da casa (setas, Home/End, a ativa na ordem do Tab), no lugar
+          da barra feita a mao so aqui. */}
       {courses.length > 0 ? (
-      <div
-        className="mt-4 flex gap-1 overflow-x-auto border-b border-[var(--color-line)]"
-        role="tablist"
-        aria-label={t("creatorPanel.home.products.filtersLabel")}
-      >
-        {filters.map((item) => (
-          <button
-            key={item.id}
-            type="button"
-            role="tab"
-            aria-selected={filter === item.id}
-            onClick={() => setFilter(item.id)}
-            className={`min-h-11 shrink-0 border-b-2 px-3 text-sm font-semibold transition-colors ${
-              filter === item.id
-                ? "border-[var(--color-primary)] text-[var(--color-primary)]"
-                : "border-transparent text-[var(--color-ink-soft)] hover:text-[var(--color-ink)]"
-            }`}
-          >
-            {item.label}
-          </button>
-        ))}
-      </div>
+        <HorizontalTabs
+          className="mt-4"
+          tabs={filters.map((item) => ({ value: item.id, label: item.label }))}
+          activeValue={filter}
+          onChange={(value) => setFilter(value as ProductFilter)}
+          ariaLabel={t("creatorPanel.home.products.filtersLabel")}
+        />
       ) : null}
 
       {!coursesLoaded ? (

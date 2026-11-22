@@ -24,6 +24,9 @@ const agenda = vi.hoisted(() => ({
   productStatus: "draft",
   productPaymentType: "one_time",
   productFormat: undefined as string | undefined,
+  // A primeira leitura da agenda falha; o "Try again" le de novo pelo canal.
+  eventsFail: false,
+  reload: vi.fn(),
 }));
 
 // O I18nProvider chama useRouter() para o refresh ao trocar de idioma.
@@ -75,9 +78,14 @@ vi.mock("@/lib/data/course-events", () => ({
   createCourseEvent: vi.fn(),
   deleteCourseEvent: vi.fn(),
   subscribeToCourseEventRsvps: vi.fn(() => vi.fn()),
-  subscribeToTeacherCourseEvents: (_ownerId: string, onData: (events: CourseEvent[]) => void) => {
-    onData(agenda.events);
-    return vi.fn();
+  subscribeToTeacherCourseEvents: (
+    _ownerId: string,
+    onData: (events: CourseEvent[]) => void,
+    onError: (error: Error) => void,
+  ) => {
+    if (agenda.eventsFail) onError(new Error("agenda down"));
+    else onData(agenda.events);
+    return Object.assign(vi.fn(), { reload: agenda.reload });
   },
   updateCourseEvent: vi.fn(),
 }));
@@ -90,7 +98,23 @@ describe("TeacherEventStudio", () => {
     agenda.productStatus = "draft";
     agenda.productPaymentType = "one_time";
     agenda.productFormat = undefined;
+    agenda.eventsFail = false;
     vi.clearAllMocks();
+  });
+
+  // Leitura que falhou nao e agenda vazia: nada de "No sessions" com o convite
+  // a marcar uma, nem "0" nos quadros. Fica o erro e o "Try again".
+  it("agenda que nao carregou mostra o erro e Try again, nunca o vazio", async () => {
+    agenda.eventsFail = true;
+    agenda.params = "";
+    render(<TeacherEventStudio />);
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("We could not load your scheduled sessions.");
+    expect(screen.queryByText("No sessions in this view.")).toBeNull();
+    expect(screen.getAllByText("—")).toHaveLength(3);
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(agenda.reload).toHaveBeenCalledTimes(1);
+    expect(screen.getByText("Loading scheduled sessions...")).toBeInTheDocument();
   });
 
   async function scheduleSession() {

@@ -100,6 +100,30 @@ export function AdvisorSidebar({ children }: { children?: ReactNode } = {}) {
     triggerRef.current?.focus({ preventScroll: true });
   }
 
+  // Com o gatilho na barra do topo (768px+), a conversa cai 8px abaixo dele,
+  // alinhada a direita do botao (como o painel do sino), e nao no rodape, a
+  // ~500px do clique. So posicao: medida ao abrir e quando a janela muda, e
+  // presa para o painel inteiro caber na tela.
+  const floatRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const float = floatRef.current;
+    if (!open || !header || !float) return;
+    const place = () => {
+      const box = header.getBoundingClientRect();
+      const panelWidth = Math.min(380, window.innerWidth - 40);
+      const right = Math.min(window.innerWidth - box.right, window.innerWidth - panelWidth - 16);
+      float.style.setProperty("--advisor-top", `${Math.round(box.bottom + 8)}px`);
+      float.style.setProperty("--advisor-right", `${Math.max(16, Math.round(right))}px`);
+    };
+    place();
+    window.addEventListener("resize", place);
+    return () => {
+      window.removeEventListener("resize", place);
+      float.style.removeProperty("--advisor-top");
+      float.style.removeProperty("--advisor-right");
+    };
+  }, [open, header]);
+
   useEffect(() => {
     if (open) {
       inputRef.current?.focus();
@@ -311,7 +335,9 @@ export function AdvisorSidebar({ children }: { children?: ReactNode } = {}) {
       aria-label={open ? t("advisor.close") : t("advisor.open")}
       aria-expanded={open}
       title={open ? t("advisor.close") : t("advisor.open")}
-      className={"advisor-trigger flex items-center gap-2 rounded-md bg-[var(--color-primary)] px-4 py-3 text-sm font-semibold text-[var(--color-base)] shadow-[0_10px_30px_rgba(15,31,58,0.3)] transition-transform hover:scale-[1.03]" + (header ? " advisor-trigger--header" : "")}
+      // Passar o mouse sobe 1px, como os outros botoes (crescer 3% nao e o
+      // gesto da casa).
+      className={"advisor-trigger flex items-center gap-2 rounded-md bg-[var(--color-primary)] px-4 py-3 text-sm font-semibold text-[var(--color-base)] shadow-[0_10px_30px_rgba(15,31,58,0.3)] transition-transform duration-[180ms] motion-safe:hover:-translate-y-px" + (header ? " advisor-trigger--header" : "")}
     >
       <Sparkles className="h-4 w-4" aria-hidden="true" />
       <span className="advisor-trigger-label">{open ? t("advisor.closeLabel") : t("advisor.trigger")}</span>
@@ -322,12 +348,15 @@ export function AdvisorSidebar({ children }: { children?: ReactNode } = {}) {
     <AdvisorHeaderContext.Provider value={canUseAdvisor ? registerHeader : null}>
       {children}
       {canUseAdvisor ? <>
-      <div className="floating-action floating-action--advisor flex flex-col items-end gap-3">
+      <div
+        ref={floatRef}
+        className={`floating-action floating-action--advisor flex flex-col items-end gap-3${header ? " floating-action--anchored" : ""}`}
+      >
       {open ? (
         <section
           role="dialog"
           aria-label={t("advisor.title")}
-          className="advisor-panel flex w-[min(380px,calc(100vw-2.5rem))] flex-col overflow-hidden rounded-lg border border-[var(--color-line)] bg-white shadow-[0_18px_50px_rgba(15,31,58,0.22)]"
+          className={`advisor-panel flex w-[min(380px,calc(100vw-2.5rem))] flex-col overflow-hidden rounded-lg border border-[var(--color-line)] bg-white shadow-[0_18px_50px_rgba(15,31,58,0.22)]${header ? " motion-drop-in" : ""}`}
         >
           <header className="flex items-center justify-between gap-3 border-b border-[var(--color-line)] bg-[var(--color-surface-soft)] px-4 py-3">
             <span className="flex items-center gap-2 text-sm font-semibold text-[var(--color-primary)]">

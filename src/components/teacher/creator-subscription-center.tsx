@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { HorizontalTabs } from "@/components/shared/horizontal-tabs";
 import { StatusChip } from "@/components/shared/status-chip";
 import { buttonClasses, Card, InlineAlert } from "@/components/ui";
 import type { CourseSubscription } from "@/domain/course-subscription";
@@ -276,14 +277,18 @@ export function CreatorSubscriptionCenterView({
 
       <section className="border-y border-[var(--color-line)] py-5">
         <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="inline-flex rounded-md border border-[var(--color-line)] bg-[var(--color-surface)] p-1" role="tablist">
-            <TabButton active={tab === "subscribers"} onClick={() => setTab("subscribers")}>
-              {t(`${copy}.subscribers`)}
-            </TabButton>
-            <TabButton active={tab === "renewals"} onClick={() => setTab("renewals")}>
-              {t(`${copy}.renewals`)}
-            </TabButton>
-          </div>
+          {/* As abas da casa (setas, Home/End, a ativa na ordem do Tab), no
+              lugar dos dois botoes azuis cheios feitos so aqui. */}
+          <HorizontalTabs
+            className="min-w-0"
+            tabs={[
+              { value: "subscribers", label: t(`${copy}.subscribers`) },
+              { value: "renewals", label: t(`${copy}.renewals`) },
+            ]}
+            activeValue={tab}
+            onChange={(value) => setTab(value as typeof tab)}
+            ariaLabel={t("platform.nav.subscriptions")}
+          />
           <Link href="/teach/sales" className="inline-flex min-h-11 items-center text-sm font-semibold text-[var(--color-primary)] hover:underline">
             {t("teach.reports.linkSales")}
           </Link>
@@ -469,20 +474,6 @@ function MetricCard({ label, value, detail, icon: Icon }: { label: string; value
       <p className="mt-3 text-2xl font-bold text-[var(--color-primary)]">{value}</p>
       <p className="mt-2 text-xs leading-5 text-[var(--color-ink-soft)]">{detail}</p>
     </Card>
-  );
-}
-
-function TabButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
-  return (
-    <button
-      type="button"
-      role="tab"
-      aria-selected={active}
-      onClick={onClick}
-      className={`min-h-11 rounded-sm px-3 text-sm font-bold sm:px-4 ${active ? "bg-[var(--color-primary)] text-[var(--color-on-primary)]" : "text-[var(--color-ink-soft)] hover:text-[var(--color-primary)]"}`}
-    >
-      {children}
-    </button>
   );
 }
 

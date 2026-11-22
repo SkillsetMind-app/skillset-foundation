@@ -200,7 +200,9 @@ describe("neutral dark actions", () => {
   // These utility-only fills are outside the stylesheet's color/background
   // guard below. Read the real classes, not a mocked component's styling.
   it.each([
-    "teacher/teacher-members-area-hub.tsx",
+    // teacher-members-area-hub.tsx saiu da lista: o unico controle cheio dele
+    // era o seletor espacos/comunidades, que virou o seletor segmentado da
+    // casa (PeriodTabs, sem fundo navy; o contraste dele e conferido pela folha).
     // teacher-studio-dashboard.tsx saiu da lista: o unico controle cheio dele
     // eram os marcos ("Creator milestones"), que repetiam os passos e sairam.
     // course-manage-hub.tsx saiu tambem: o unico preenchimento dele era a

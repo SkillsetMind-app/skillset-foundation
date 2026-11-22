@@ -22,6 +22,9 @@ const mocks = vi.hoisted(() => ({
   user: { uid: "teacher-1", displayName: "Patricia", roles: ["teacher"] },
   orders: [] as Order[],
   openStripe: vi.fn(),
+  // A primeira leitura falha; o "Try again" le de novo pelo mesmo canal.
+  ordersFail: false,
+  reload: vi.fn(),
 }));
 
 vi.mock("@/lib/payments/connect", () => ({ openTeacherStripeDashboard: mocks.openStripe }));
@@ -34,9 +37,11 @@ vi.mock("@/lib/data/orders", () => ({
   subscribeToTeacherOrders: (
     _uid: string,
     onData: (orders: Order[]) => void,
+    onError: (error: Error) => void,
   ) => {
-    onData(mocks.orders);
-    return () => undefined;
+    if (mocks.ordersFail) onError(new Error("orders down"));
+    else onData(mocks.orders);
+    return Object.assign(() => undefined, { reload: mocks.reload });
   },
 }));
 
@@ -64,9 +69,24 @@ afterEach(() => {
   cleanup();
   mocks.orders = [];
   mocks.openStripe.mockReset();
+  mocks.ordersFail = false;
+  mocks.reload.mockReset();
 });
 
 describe("SaleList", () => {
+  // Falha nao e "sem vendas": o erro com "Try again", que le de novo pelo
+  // mesmo canal (antes a saida era recarregar a pagina).
+  it("a failed read shows the error with Try again, never the empty state", () => {
+    mocks.ordersFail = true;
+    render(<SaleList />);
+
+    expect(screen.getByRole("alert")).toHaveTextContent("We could not load your sales.");
+    expect(screen.queryByLabelText("Filter by period")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(mocks.reload).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
   it("keeps the operating frame and names the period with zero orders", () => {
     render(<SaleList />);
 

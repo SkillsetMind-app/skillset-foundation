@@ -14,7 +14,6 @@ export default async function TeacherMemberAreaPage() {
   return (
     <ProtectedSurface permissions={["teacherStudio.manageCourses"]}>
       <PlatformShell
-        eyebrow={t("teach.page.eyebrow")}
         title={t("teach.memberAreaPage.title")}
         description={t("teach.memberAreaPage.description")}
       >

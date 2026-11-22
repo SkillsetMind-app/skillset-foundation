@@ -184,6 +184,27 @@ describe("Advisor no cabecalho sem cobrir o conteudo", () => {
     expect(fetchMock).toHaveBeenCalledOnce();
   });
 
+  // O painel abria no rodape, a ~500px do botao no topo. Com o gatilho no
+  // cabecalho ele cai 8px abaixo do botao, preso a direita dele; no celular,
+  // onde o botao flutua embaixo, segue embaixo.
+  it.each([[1024, true], [390, false]])("em %i px o painel abre junto do botao do topo: %s", async (currentWidth, anchored) => {
+    width = currentWidth;
+    await renderStudio();
+    const trigger = screen.getByRole("button", { name: "Open studio advisor" });
+    vi.spyOn(trigger.parentElement!, "getBoundingClientRect").mockReturnValue(DOMRect.fromRect({ x: 700, y: 10, width: 44, height: 44 }));
+    await openAdvisor();
+    const panel = screen.getByRole("dialog", { name: "Studio advisor" });
+    const float = panel.parentElement!;
+    expect(float.classList.contains("floating-action--anchored")).toBe(anchored);
+    expect(panel.classList.contains("motion-drop-in")).toBe(anchored);
+    if (anchored) {
+      expect(float.style.getPropertyValue("--advisor-top")).toBe("62px");
+      expect(float.style.getPropertyValue("--advisor-right")).toBe(`${window.innerWidth - 744}px`);
+    } else {
+      expect(float.style.getPropertyValue("--advisor-top")).toBe("");
+    }
+  });
+
   it("preserva foco do gatilho fechado quando ele muda entre cabecalho e celular", async () => {
     await renderStudio();
     act(() => screen.getByRole("button", { name: "Open studio advisor" }).focus());

@@ -1,4 +1,4 @@
-import { act, cleanup, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { TeacherStudioDashboard } from "@/components/teacher/teacher-studio-dashboard";
@@ -232,6 +232,23 @@ describe("TeacherStudioDashboard", () => {
     expect(await screen.findByRole("tablist")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Show all/ })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "New product" })).toHaveClass("button-solid");
+  });
+
+  // Os filtros sao as abas da casa (HorizontalTabs): a ativa e a unica na ordem
+  // do Tab e as setas andam entre elas, coisa que a barra feita a mao nao fazia.
+  it("filtros de produto andam pelas setas e so a ativa entra no Tab", async () => {
+    state.courses = [course({})];
+    render(<TeacherStudioDashboard />);
+
+    const tablist = await screen.findByRole("tablist", { name: "Product filters" });
+    const all = within(tablist).getByRole("tab", { name: "All" });
+    expect(all).toHaveAttribute("aria-selected", "true");
+    expect(all).toHaveAttribute("tabindex", "0");
+    fireEvent.keyDown(all, { key: "ArrowRight" });
+    const drafts = within(tablist).getByRole("tab", { name: "Drafts" });
+    expect(drafts).toHaveAttribute("aria-selected", "true");
+    expect(drafts).toHaveFocus();
+    expect(all).toHaveAttribute("tabindex", "-1");
   });
 });
 
@@ -597,7 +614,7 @@ describe("Home do professor: uma manchete, o que aconteceu e a vitrine", () => {
       render(<TeacherStudioDashboard />);
 
       expect(await screen.findByRole("heading", { level: 1 })).toHaveTextContent(
-        "Welcome, Mc$&Donald.",
+        "Welcome, Mc$&Donald",
       );
     } finally {
       mockUser.displayName = "Patrick Simon";
@@ -612,7 +629,8 @@ describe("Home do professor: primeira visita", () => {
     render(<TeacherStudioDashboard />);
 
     const heading = await screen.findByRole("heading", { level: 1 });
-    expect(heading).toHaveTextContent("Welcome, Patrick.");
+    // Sem ponto final: o titulo da Home segue o cabecalho das telas irmas.
+    expect(heading).toHaveTextContent(/^Welcome, Patrick$/);
     expect(heading).not.toHaveTextContent("Welcome back");
   });
 
@@ -623,7 +641,7 @@ describe("Home do professor: primeira visita", () => {
 
     await waitFor(() => {
       expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
-        "Welcome back, Patrick.",
+        "Welcome back, Patrick",
       );
     });
   });
@@ -699,7 +717,7 @@ describe("Home do professor: primeira visita", () => {
     render(<TeacherStudioDashboard />);
 
     const heading = await screen.findByRole("heading", { level: 1 });
-    expect(heading).toHaveTextContent("Hello, Patrick.");
+    expect(heading).toHaveTextContent(/^Hello, Patrick$/);
     expect(heading).not.toHaveTextContent("Welcome");
   });
 
@@ -715,7 +733,7 @@ describe("Home do professor: primeira visita", () => {
 
     await waitFor(() => {
       expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
-        "Welcome back, Patrick.",
+        "Welcome back, Patrick",
       );
     });
     // Falha nao e "sem produto": nada de convidar a criar um produto repetido.

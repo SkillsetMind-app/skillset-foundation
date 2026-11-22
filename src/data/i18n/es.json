@@ -1819,7 +1819,7 @@
   },
   "teach": {
     "memberAreaPage": {
-      "title": "Tu área de miembros.",
+      "title": "Tu área de miembros",
       "description": "Un solo lugar para todo lo que vendes. Tus estudiantes retoman donde se quedaron, ven lo que compraron y descubren tus otros productos."
     },
     "memberAreaEditor": {
@@ -1941,17 +1941,17 @@
     },
     "reportsPage": {
       "eyebrow": "Estudio del Profesor",
-      "title": "Informes.",
+      "title": "Informes",
       "description": "Ventas, ingresos recurrentes y ganancias registradas de un vistazo. Cada cobro se creó en tu propia cuenta de Stripe: SkillsetMind nunca lo retiene. Después se aplican los plazos de liquidación y pago de Stripe."
     },
     "salesPage": {
       "eyebrow": "Estudio del Profesor",
-      "title": "Tus ventas.",
+      "title": "Tus ventas",
       "description": "Cada pedido pagado de tus cursos."
     },
     "eventsPage": {
       "eyebrow": "Agenda del curso",
-      "title": "Programa clases en vivo.",
+      "title": "Programa clases en vivo",
       "description": "Crea clases en vivo, mentorías, masterclasses, horas de consulta, webinars y plazos vinculados al curso. Los estudiantes ven la misma agenda en su espacio."
     },
     "page": {
@@ -1960,13 +1960,13 @@
       "description": "La preparación de cursos está abierta desde el principio. Para publicar necesitas la verificación profesional (cuando se requiere) y superar los controles de lanzamiento."
     },
     "dashboard": {
-      "welcomeBackNamed": "Hola de nuevo, {name}.",
+      "welcomeBackNamed": "Hola de nuevo, {name}",
       "loadError": "No pudimos cargar tus productos o tus ventas.",
-      "welcomeBack": "Hola de nuevo.",
-      "welcomeNamed": "Te damos la bienvenida, {name}.",
-      "welcome": "Te damos la bienvenida.",
-      "helloNamed": "Hola, {name}.",
-      "hello": "Hola."
+      "welcomeBack": "Hola de nuevo",
+      "welcomeNamed": "Te damos la bienvenida, {name}",
+      "welcome": "Te damos la bienvenida",
+      "helloNamed": "Hola, {name}",
+      "hello": "Hola"
     },
     "metrics": {
       "revenue30d": "Ingresos, 30 días",
@@ -2146,7 +2146,7 @@
       }
     },
     "saleDetailPage": {
-      "title": "Detalle de la venta.",
+      "title": "Detalle de la venta",
       "description": "Revisa una transacción, su historial de pago, el curso y las acciones de gestión."
     },
     "subscriptions": {
@@ -2210,7 +2210,7 @@
       "description": "Ingresos recurrentes, estado de las suscripciones, señales de cancelación y cada renovación en una sola vista de operaciones."
     },
     "storefrontPage": {
-      "title": "Tu tienda.",
+      "title": "Tu tienda",
       "description": "Personaliza la página pública que te presenta a ti y a cada curso que publicas.",
       "previewLabel": "Vista previa de la tienda",
       "openPublicPage": "Abrir página pública",
@@ -2352,14 +2352,15 @@
       "description": "Mensajes de tus alumnos y preguntas de tus comunidades, en un solo lugar.",
       "questionsTitle": "Preguntas que esperan tu respuesta",
       "questionsEmpty": "No hay preguntas esperando. Cuando un alumno pregunte algo en una comunidad, aparecerá aquí.",
-      "questionsError": "No pudimos cargar las preguntas. Inténtalo de nuevo más tarde.",
+      "questionsError": "No pudimos cargar las preguntas.",
+      "questionsLoading": "Cargando preguntas...",
       "answer": "Responder",
       "messagesTitle": "Mensajes"
     },
     "studentsPage": {
       "description": "Todas las personas que entraron en alguno de tus productos.",
       "loading": "Cargando tus alumnos...",
-      "error": "No pudimos cargar tus alumnos. Inténtalo de nuevo más tarde.",
+      "error": "No pudimos cargar tus alumnos.",
       "empty": "Todavía no hay alumnos. Cuando alguien entre en uno de tus productos, aparecerá aquí.",
       "countOne": "1 alumno activo",
       "countMany": "{count} alumnos activos",
@@ -2379,7 +2380,7 @@
     },
     "sales": {
       "loading": "Cargando tus ventas...",
-      "error": "No pudimos cargar tus ventas. Actualiza para intentarlo de nuevo.",
+      "error": "No pudimos cargar tus ventas.",
       "periodLabel": "Filtrar por periodo",
       "period": {
         "7d": "Últimos 7 días",
