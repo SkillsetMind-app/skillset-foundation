@@ -857,25 +857,6 @@ p {
   font-size: 0.6875rem;
 }
 
-/* I-15, prévia "ver como" do admin (view-as.tsx): a faixa fixa (camada 70)
-   cobria a barra da plataforma (camada 60). Enquanto ela aparece, a página
-   desce a altura medida da faixa; a casca da plataforma tem altura fixa e
-   desconta a mesma medida, senão o pé dela sairia da tela. */
-html[data-view-as] body {
-  padding-top: var(--view-as-offset, 0px);
-}
-
-html[data-view-as] .platform-shell-root {
-  height: calc(100dvh - var(--view-as-offset, 0px));
-  min-height: calc(100dvh - var(--view-as-offset, 0px));
-}
-
-/* O site público também é visto na prévia: a barra dele é fixa (camada 40) e
-   desce para baixo da faixa, como a da plataforma. */
-html[data-view-as] .site-header {
-  top: var(--view-as-offset, 0px);
-}
-
 .status-chip__dot {
   width: 0.375rem;
   height: 0.375rem;
@@ -1407,6 +1388,12 @@ html[data-view-as] .site-header {
 
 .site-header.scrolled {
   box-shadow: 0 8px 24px rgba(15, 39, 68, 0.1);
+}
+
+/* O site público também é visto na prévia: a barra dele é fixa (camada 40) e
+   desce para baixo da faixa, como a da plataforma. */
+html[data-view-as] .site-header {
+  top: var(--view-as-offset, 0px);
 }
 
 /* A barra saiu do fluxo, então o SiteNav monta esta faixa logo abaixo dela
@@ -2473,6 +2460,19 @@ select:focus-visible {
    .page-shell::before treatment. */
 [data-theme="dark"] .platform-shell-root {
   background: linear-gradient(180deg, var(--color-base) 0%, var(--color-surface-soft) 100%);
+}
+
+/* I-15, prévia "ver como" do admin (view-as.tsx): a faixa fixa (camada 70)
+   cobria a barra da plataforma (camada 60). Enquanto ela aparece, a página
+   desce a altura medida da faixa; a casca da plataforma tem altura fixa e
+   desconta a mesma medida, senão o pé dela sairia da tela. */
+html[data-view-as] body {
+  padding-top: var(--view-as-offset, 0px);
+}
+
+html[data-view-as] .platform-shell-root {
+  height: calc(100dvh - var(--view-as-offset, 0px));
+  min-height: calc(100dvh - var(--view-as-offset, 0px));
 }
 
 .platform-shell-root > header,
