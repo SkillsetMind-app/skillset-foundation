@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 // Esqueleto da página de venda enquanto o curso carrega, no servidor (fallback
 // do Suspense) e no cliente (antes da assinatura do curso responder). No lugar
 // dele havia um cartão com um segundo título "Loading course..." e um botão que
@@ -8,10 +10,16 @@
 export function CourseDetailSkeleton({
   label,
   checkoutOnly = false,
+  lead = null,
 }: {
   label: string;
   /** Na página de compra o cartão é a coluna inteira: só ele. */
   checkoutOnly?: boolean;
+  /**
+   * Capa, título e resumo do servidor: já são o conteúdo de verdade (o único
+   * h1), então ficam fora do pulso e à vista do leitor de tela.
+   */
+  lead?: ReactNode;
 }) {
   const bar = "rounded-md bg-[var(--color-surface-strong)]";
   const buyCard = (
@@ -38,19 +46,26 @@ export function CourseDetailSkeleton({
       <p role="status" className="sr-only">{label}</p>
       {checkoutOnly ? buyCard : (
         <div className="grid gap-8 lg:grid-cols-[1.15fr_0.85fr]">
-          <div aria-hidden="true" className="min-w-0 animate-pulse">
-            {/* Assinatura do instrutor, menu das seções e os primeiros blocos. */}
-            <div className="mt-5 flex min-h-11 items-center gap-2.5">
-              <div className="size-8 shrink-0 rounded-full bg-[var(--color-surface-strong)]" />
+          <div className="min-w-0">
+            {/* A volta ao catálogo, no alto da coluna, como na página pronta. */}
+            <div aria-hidden="true" className="mb-2 flex min-h-11 animate-pulse items-center">
               <div className={`h-3.5 w-36 ${bar}`} />
             </div>
-            <div className="mt-6 flex gap-4 border-b border-[var(--color-line)] pb-4 pt-3">
-              {[0, 1, 2, 3].map((index) => (
-                <div key={index} className={`h-3.5 w-16 ${bar}`} />
-              ))}
+            {lead}
+            <div aria-hidden="true" className="animate-pulse">
+              {/* Assinatura do instrutor, menu das seções e os primeiros blocos. */}
+              <div className="mt-5 flex min-h-11 items-center gap-2.5">
+                <div className="size-8 shrink-0 rounded-full bg-[var(--color-surface-strong)]" />
+                <div className={`h-3.5 w-36 ${bar}`} />
+              </div>
+              <div className="mt-6 flex gap-4 border-b border-[var(--color-line)] pb-4 pt-3">
+                {[0, 1, 2, 3].map((index) => (
+                  <div key={index} className={`h-3.5 w-16 ${bar}`} />
+                ))}
+              </div>
+              <div className="mt-8 h-40 rounded-lg border border-[var(--color-line)] bg-white" />
+              <div className="mt-8 h-40 rounded-lg border border-[var(--color-line)] bg-white" />
             </div>
-            <div className="mt-8 h-40 rounded-lg border border-[var(--color-line)] bg-white" />
-            <div className="mt-8 h-40 rounded-lg border border-[var(--color-line)] bg-white" />
           </div>
           {buyCard}
         </div>

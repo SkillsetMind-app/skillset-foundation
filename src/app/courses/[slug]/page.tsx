@@ -5,7 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import { Target } from "lucide-react";
+import { ChevronDown, Target } from "lucide-react";
 
 import { CourseDetailSkeleton } from "@/components/courses/course-detail-skeleton";
 import { CourseEnrollmentCta } from "@/components/courses/course-enrollment-cta";
@@ -13,7 +13,7 @@ import { CreatorCourseDetail } from "@/components/courses/creator-course-detail"
 import { JsonLd } from "@/components/seo/json-ld";
 import { SiteFooter } from "@/components/site/site-footer";
 import { SiteNav } from "@/components/site/site-nav";
-import { isInternalSmokeCourse } from "@/domain/teacher-course";
+import { formatTotalMinutes, isInternalSmokeCourse } from "@/domain/teacher-course";
 import { getCourseBySlug, getCourseSlugs } from "@/lib/data/catalog";
 import { getCourseRefAccess, getPublicCourseByRef, isMarketplaceOpen } from "@/lib/data/server/public-course";
 import { buildCourseJsonLd } from "@/lib/seo/course-jsonld";
@@ -95,66 +95,69 @@ export default async function CourseDetailPage({
       notFound();
     }
 
+    // Título e resumo saem daqui, do SERVER COMPONENT. Motivo concreto:
+    // CreatorCourseDetail chama useSearchParams(), então numa rota
+    // prerenderizada o Next entrega apenas o FALLBACK do Suspense no HTML e joga
+    // a subárvore inteira para o cliente. Passar os DADOS como prop para o
+    // client component não colocaria uma palavra no HTML. É por isso que
+    // buscador e scraper de link viam "Loading course..." e o card saía vazio.
+    //
+    // O que vai como prop é o ELEMENTO já desenhado aqui (`lead`), e ele entra
+    // também no fallback: com ou sem o Suspense resolvido no servidor, o HTML
+    // traz o h1, a capa e o resumo. Ele vira o topo da coluna da esquerda, e o
+    // cartão de compra começa no alto da página, ao lado da capa; antes a capa
+    // vinha sozinha acima das colunas e empurrava preço e botão para baixo da
+    // primeira tela. No celular a ordem segue: capa, título, resumo, conteúdo,
+    // cartão.
+    const lead = published ? (
+      <header id="overview" className="mb-8 scroll-mt-24">
+        {/* A capa que o cartão do marketplace já mostra. Sem capa, nada:
+            não se inventa arte. */}
+        {published.coverImageUrl ? (
+          <div className="relative mb-8 aspect-[16/9] overflow-hidden rounded-lg shadow-[var(--shadow-soft)] lg:max-w-3xl">
+            <Image
+              src={published.coverImageUrl}
+              alt={published.title}
+              fill
+              priority
+              sizes="(min-width: 1024px) 60vw, 100vw"
+              className="object-cover"
+            />
+          </div>
+        ) : null}
+        <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
+          {published.category ? getCourseCategoryLabel(published.category, t) : t("publicCourses.course")}
+        </p>
+        <h1 className="display-title page-title mt-3 text-[var(--color-ink)]">
+          {published.title}
+        </h1>
+        {published.summary ? (
+          <p className="mt-4 max-w-2xl text-base leading-7 text-[var(--color-ink-soft)]">
+            {published.summary}
+          </p>
+        ) : null}
+        {published.lessonCount ? (
+          <p className="mt-3 text-sm text-[var(--color-ink-muted)]">
+            {t(published.lessonCount === 1 ? "publicCourses.lessonOne" : "publicCourses.lessonMany").replace("{count}", String(published.lessonCount))}
+          </p>
+        ) : null}
+      </header>
+    ) : null;
+
     return (
       <div className="page-shell">
         <SiteNav />
         <main id="conteudo" className="mx-auto w-full max-w-7xl px-5 py-10 sm:px-8 sm:py-14">
-          {/* Título e resumo saem daqui, do SERVER COMPONENT, e não de dentro do
-              Suspense abaixo. Motivo concreto: CreatorCourseDetail chama
-              useSearchParams(), então numa rota prerenderizada o Next entrega
-              apenas o FALLBACK no HTML e joga a subárvore inteira para o
-              cliente. Passar os dados como prop para o client component não
-              colocaria uma palavra no HTML — só aceleraria o primeiro paint.
-              É por isso que buscador e scraper de link viam "Loading course..."
-              e o card saía vazio.
-
-              Aqui o texto é HTML de servidor de verdade. O componente cliente
-              segue montando por cima com o conteúdo interativo (preço, ofertas,
-              currículo, checkout), que depende de sessão e de dados que mudam. */}
-          {published ? (
-            <header id="overview" className="mb-8 scroll-mt-24">
-              {/* A capa que o cartão do marketplace já mostra. Sem capa, nada:
-                  não se inventa arte. */}
-              {published.coverImageUrl ? (
-                <div className="relative mb-8 aspect-[16/9] overflow-hidden rounded-lg shadow-[var(--shadow-soft)] lg:max-w-3xl">
-                  <Image
-                    src={published.coverImageUrl}
-                    alt={published.title}
-                    fill
-                    priority
-                    sizes="(min-width: 1024px) 60vw, 100vw"
-                    className="object-cover"
-                  />
-                </div>
-              ) : null}
-              <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
-                {published.category ? getCourseCategoryLabel(published.category, t) : t("publicCourses.course")}
-              </p>
-              <h1 className="display-title page-title mt-3 text-[var(--color-ink)]">
-                {published.title}
-              </h1>
-              {published.summary ? (
-                <p className="mt-4 max-w-2xl text-base leading-7 text-[var(--color-ink-soft)]">
-                  {published.summary}
-                </p>
-              ) : null}
-              {published.lessonCount ? (
-                <p className="mt-3 text-sm text-[var(--color-ink-muted)]">
-                  {t(published.lessonCount === 1 ? "publicCourses.lessonOne" : "publicCourses.lessonMany").replace("{count}", String(published.lessonCount))}
-                </p>
-              ) : null}
-            </header>
-          ) : null}
-
           {/* O mesmo esqueleto que o cliente mostra enquanto carrega: do HTML do
               servidor até o curso chegar, a página não troca de forma. */}
-          <Suspense fallback={<CourseDetailSkeleton label={t("publicCourses.loadingCourse")} />}>
-            {/* hideHeader: o cabeçalho acima já tem título e resumo; sem isto o
+          <Suspense fallback={<CourseDetailSkeleton label={t("publicCourses.loadingCourse")} lead={lead} />}>
+            {/* hideHeader: o `lead` já tem título e resumo; sem isto o
                 componente cliente desenhava um segundo h1 com o mesmo texto
                 logo abaixo. */}
             <CreatorCourseDetail
               courseIdOverride={slug}
               hideHeader={Boolean(published)}
+              lead={lead}
             />
           </Suspense>
         </main>
@@ -302,32 +305,58 @@ export default async function CourseDetailPage({
 
             <section id="curriculum" className="mt-8 scroll-mt-24">
               <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">{t("publicCourses.structure")}</p>
-              <div className="mt-5 grid gap-4">
-                {course.modules.map((module) => (
-                  <div key={module.id} className="rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4">
-                    <h3 className="text-sm font-semibold text-[var(--color-ink)]">
-                      {module.title}
-                    </h3>
-                    <p className="mt-2 text-sm leading-6 text-[var(--color-ink-soft)]">
+              {/* O mesmo currículo da página de um curso de verdade: um módulo
+                  por sanfona (o primeiro aberto), aulas e duração na linha do
+                  módulo, linhas de 44px e dados em caixa normal com " · ". */}
+              <div className="mt-5 grid gap-3">
+                {course.modules.map((module, moduleIndex) => (
+                  <details
+                    key={module.id}
+                    open={moduleIndex === 0}
+                    className="group rounded-lg border fine-rule bg-[var(--color-surface-soft)] [&_summary::-webkit-details-marker]:hidden"
+                  >
+                    <summary className="grid min-h-14 cursor-pointer list-none grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 rounded-lg px-4 py-3">
+                      <h3 className="text-base font-bold text-[var(--color-ink)]">
+                        {module.title}
+                      </h3>
+                      <span className="mt-0.5 text-xs text-[var(--color-ink-soft)]">
+                        {[
+                          t(module.lessons.length === 1 ? "publicCourses.lessonOne" : "publicCourses.lessonMany")
+                            .replace("{count}", String(module.lessons.length)),
+                          // A amostra guarda a duração como texto ("12 min").
+                          formatTotalMinutes(module.lessons.map((lesson) => Number(/^(\d+) min$/.exec(lesson.duration)?.[1]))),
+                        ].filter(Boolean).join(" · ")}
+                      </span>
+                      <ChevronDown
+                        aria-hidden="true"
+                        size={18}
+                        strokeWidth={2.2}
+                        className="col-start-2 row-span-2 row-start-1 text-[var(--color-primary)] group-open:rotate-180 motion-safe:transition-transform motion-safe:duration-[180ms]"
+                      />
+                    </summary>
+                    <p className="px-4 pb-3 text-sm leading-6 text-[var(--color-ink-soft)]">
                       {module.summary}
                     </p>
-                    <div className="mt-4 grid gap-2">
+                    <div className="grid gap-2 px-3 pb-3">
                       {module.lessons.map((lesson) => (
                         <div
                           key={lesson.id}
-                          className="flex items-center justify-between gap-3 rounded-md bg-white px-3 py-2 text-xs text-[var(--color-ink-soft)]"
+                          className="flex min-h-11 items-center justify-between gap-3 rounded-md bg-white px-3 py-2.5 text-sm text-[var(--color-ink-soft)]"
                         >
                           <span className="font-semibold text-[var(--color-ink)]">
                             {lesson.title}
                           </span>
-                          <span className="shrink-0 uppercase tracking-[0.16em]">
-                            {lesson.isPreview ? t("publicCourses.previewShort") : t("publicCourses.locked")} -{" "}
-                            {t(`publicCourses.lessonTypes.${lesson.type}`)} - {lesson.duration}
+                          <span className="shrink-0 text-right text-xs">
+                            {[
+                              t(`publicCourses.lessonTypes.${lesson.type}`),
+                              lesson.duration,
+                              t(lesson.isPreview ? "publicCourses.previewShort" : "publicCourses.locked"),
+                            ].filter(Boolean).join(" · ")}
                           </span>
                         </div>
                       ))}
                     </div>
-                  </div>
+                  </details>
                 ))}
               </div>
             </section>

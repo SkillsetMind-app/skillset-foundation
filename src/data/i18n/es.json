@@ -3035,6 +3035,7 @@
     "refundBody": "¿No es lo que buscabas? Solicita un reembolso dentro de los 7 días, siempre que hayas completado menos de la mitad del curso.",
     "sellerTitle": "Vendido por tu instructor, no por SkillsetMind.",
     "sellerBody": "Este curso lo vende directamente el educador independiente que lo publica. El pago va a su propia cuenta de Stripe, por lo que en el estado de cuenta de tu tarjeta puede aparecer su nombre o el de su negocio, en lugar de “SkillsetMind”.",
+    "sellerLearnMore": "Más información",
     "backCourses": "Volver a todos los cursos",
     "checkoutSecure": "Compra segura",
     "checkoutYourOrder": "Tu pedido",

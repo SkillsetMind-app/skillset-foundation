@@ -5,9 +5,9 @@ import { getCourseCategoryLabel } from "@/lib/i18n/course-categories";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 
 import Link from "next/link";
-import { Clock, Lock, Receipt, ShieldCheck, Star, Target } from "lucide-react";
+import { ArrowLeft, ChevronDown, Clock, Lock, Receipt, ShieldCheck, Star, Target } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { BunnyVideoPlayer } from "@/components/courses/bunny-video-player";
@@ -35,6 +35,7 @@ import {
 } from "@/domain/product-pricing";
 import type { TeacherCourse, TeacherCourseStatus } from "@/domain/teacher-course";
 import {
+  formatTotalMinutes,
   isCoursePubliclySellable,
   normalizeLearningOutcomes,
   resolveLessonVideoSource,
@@ -66,6 +67,11 @@ type CreatorCourseDetailProps = {
   /** A página já renderizou título e resumo no servidor (mesmo padrão de PlatformShell). */
   hideHeader?: boolean;
   checkoutOnly?: boolean;
+  /**
+   * Capa, título e resumo que o servidor desenhou. Entram no topo da coluna da
+   * esquerda, para o cartão de compra começar no alto da página, ao lado deles.
+   */
+  lead?: ReactNode;
 };
 
 // The checkout API has public codes for auth/configuration, but its business
@@ -125,6 +131,7 @@ export function CreatorCourseDetail({
   courseIdOverride,
   hideHeader = false,
   checkoutOnly = false,
+  lead = null,
 }: CreatorCourseDetailProps = {}) {
   const { t, locale } = useTranslation();
   const { status: authStatus, user } = useAuth();
@@ -186,9 +193,9 @@ export function CreatorCourseDetail({
   // Padlocked lesson in the curriculum: opens the buy popup (cover, title and a
   // button to the buy card on this same page). Public course fields only.
   const [isUnlockOpen, setIsUnlockOpen] = useState(false);
-  // No desktop a capa da página de vendas vem antes das colunas, e o cartão de
-  // compra só aparece depois de quase duas telas. Enquanto ele está fora da
-  // tela, a barra de preço e compra (a mesma do celular) flutua no canto.
+  // Enquanto o botão do cartão de compra está fora da tela, a barra de preço e
+  // compra aparece (no celular, no pé da tela; no desktop, no canto). Com ele à
+  // vista, ela some: seria um segundo "Enroll" ao lado do primeiro.
   // Ref de callback: o cartão só nasce depois que o curso carrega.
   const [enrollCardInView, setEnrollCardInView] = useState(true);
   const enrollCardObserver = useRef<IntersectionObserver | null>(null);
@@ -358,6 +365,7 @@ export function CreatorCourseDetail({
         title={t("publicCourses.notSelected")}
         detail={t("publicCourses.chooseCourse")}
         nested={hideHeader}
+        lead={lead}
       />
     );
   }
@@ -368,6 +376,7 @@ export function CreatorCourseDetail({
         title={t("publicCourses.detailsUnavailable")}
         detail={t("publicCourses.connectionError")}
         nested={hideHeader}
+        lead={lead}
       />
     );
   }
@@ -378,12 +387,13 @@ export function CreatorCourseDetail({
       <CourseDetailSkeleton
         label={t(checkoutOnly ? "publicCourses.loadingCheckout" : "publicCourses.loadingCourse")}
         checkoutOnly={checkoutOnly}
+        lead={lead}
       />
     );
   }
 
   if (error) {
-    return <CourseDetailState title={t("publicCourses.unavailable")} detail={t(error)} nested={hideHeader} />;
+    return <CourseDetailState title={t("publicCourses.unavailable")} detail={t(error)} nested={hideHeader} lead={lead} />;
   }
 
   if (!course) {
@@ -392,6 +402,7 @@ export function CreatorCourseDetail({
         title={t("publicCourses.notFound")}
         detail={t("publicCourses.notListed")}
         nested={hideHeader}
+        lead={lead}
       />
     );
   }
@@ -405,6 +416,7 @@ export function CreatorCourseDetail({
       <CourseDetailState
         {...getUnpublishedCourseState(course.status, { isOwner, isAdmin }, t)}
         nested={hideHeader}
+        lead={lead}
       />
     );
   }
@@ -545,26 +557,10 @@ export function CreatorCourseDetail({
           : t("publicCourses.curriculumPending");
   const hasRating = Boolean(course.ratingCount && course.ratingAverage);
   const learningOutcomes = normalizeLearningOutcomes(course.learningOutcomes);
-  // Duracao real do curso, somada das aulas. So aparece quando TODAS as aulas
-  // declaram minutos: com parte delas sem o dado, a soma vira um total menor
-  // que o curso (17 aulas exibidas como "10 min"). Nao se estima tempo de curso.
-  const everyLessonTimed = course.modules.every((module) =>
-    module.lessons.every((lesson) => (lesson.durationMinutes ?? 0) > 0));
-  const totalMinutes = !everyLessonTimed ? 0 : course.modules.reduce(
-    (sum, module) =>
-      sum
-      + module.lessons.reduce(
-        (lessonSum, lesson) => lessonSum + (lesson.durationMinutes ?? 0),
-        0,
-      ),
-    0,
+  // Duracao real do curso, somada das aulas (so com todas as aulas medidas).
+  const durationLabel = formatTotalMinutes(
+    course.modules.flatMap((module) => module.lessons.map((lesson) => lesson.durationMinutes)),
   );
-  const durationLabel =
-    totalMinutes >= 60
-      ? `${Math.floor(totalMinutes / 60)}h${totalMinutes % 60 ? ` ${totalMinutes % 60}m` : ""}`
-      : totalMinutes > 0
-        ? `${totalMinutes} min`
-        : null;
   const instructorName = instructorProfile?.displayName || null;
   // Como se cobra, ao lado do numero grande. Nunca inventado: sai do proprio
   // tipo de pagamento que o checkout vai usar.
@@ -728,6 +724,20 @@ export function CreatorCourseDetail({
     ) : null}
     <div className={checkoutOnly ? "grid w-full min-w-0 gap-6" : "grid gap-8 pb-24 lg:grid-cols-[1.15fr_0.85fr] lg:pb-0"}>
       <section className="min-w-0">
+        {/* A volta ao catálogo saiu do cartão de compra (era a última linha
+            dele, disputando com o botão) e fica aqui, no alto da coluna, como
+            caminho de volta. Loja vazia não é destino: leva ao início. Na
+            página de compra a volta é o "ver detalhes" do cartão. */}
+        {checkoutOnly ? null : (
+          <Link
+            href={hasRealCourses ? "/courses" : "/"}
+            className="mb-2 flex min-h-11 w-fit items-center gap-1.5 text-sm font-semibold text-[var(--color-ink-soft)] underline-offset-4 hover:text-[var(--color-primary)] hover:underline"
+          >
+            <ArrowLeft aria-hidden="true" size={16} strokeWidth={2} />
+            {t(hasRealCourses ? "publicCourses.backCourses" : "publicPages.notFound.home")}
+          </Link>
+        )}
+        {lead}
         {hideHeader ? null : (
           <div
             id="overview"
@@ -937,19 +947,41 @@ export function CreatorCourseDetail({
           className="mt-8 scroll-mt-24 rounded-lg border border-[var(--color-line)] bg-white p-5 shadow-[var(--shadow-soft)]"
         >
           <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">{t("publicCourses.structure")}</p>
-          <div className="mt-5 grid gap-4">
+          <div className="mt-5 grid gap-3">
             {course.modules.length === 0 ? (
               <p className="rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-7 text-[var(--color-ink-soft)]">{t("publicCourses.curriculumPending")}</p>
             ) : (
-              course.modules.map((module) => (
-                <div
+              course.modules.map((module, moduleIndex) => (
+                // Um módulo por sanfona (<details> nativo, sem JS): com tudo
+                // aberto, um curso de 10 módulos virava uma coluna enorme e, no
+                // celular, o cartão de compra só vinha depois dela. O primeiro
+                // abre sozinho; os outros mostram nome, aulas e duração.
+                <details
                   key={module.id}
-                  className="rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4"
+                  open={moduleIndex === 0}
+                  className="group rounded-lg border fine-rule bg-[var(--color-surface-soft)] [&_summary::-webkit-details-marker]:hidden"
                 >
-                  <h2 className="text-base font-bold text-[var(--color-ink)]">
-                    {module.title}
-                  </h2>
-                  <div className="mt-4 grid gap-2">
+                  {/* Grade em vez de caixas aninhadas: o <summary> só aceita
+                      texto e título como filhos diretos. */}
+                  <summary className="grid min-h-14 cursor-pointer list-none grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 rounded-lg px-4 py-3">
+                    <h2 className="text-base font-bold text-[var(--color-ink)]">
+                      {module.title}
+                    </h2>
+                    <span className="mt-0.5 text-xs text-[var(--color-ink-soft)]">
+                      {[
+                        t(module.lessons.length === 1 ? "publicCourses.lessonOne" : "publicCourses.lessonMany")
+                          .replace("{count}", String(module.lessons.length)),
+                        formatTotalMinutes(module.lessons.map((lesson) => lesson.durationMinutes)),
+                      ].filter(Boolean).join(" · ")}
+                    </span>
+                    <ChevronDown
+                      aria-hidden="true"
+                      size={18}
+                      strokeWidth={2.2}
+                      className="col-start-2 row-span-2 row-start-1 text-[var(--color-primary)] group-open:rotate-180 motion-safe:transition-transform motion-safe:duration-[180ms]"
+                    />
+                  </summary>
+                  <div className="grid gap-2 px-3 pb-3">
                     {module.lessons.map((lesson) => {
                       const isPreview = course.freePreviewLessonId === lesson.id;
                       // 44px de altura: a aula trancada é botão (abre a compra)
@@ -993,7 +1025,7 @@ export function CreatorCourseDetail({
                       );
                     })}
                   </div>
-                </div>
+                </details>
               ))
             )}
           </div>
@@ -1050,6 +1082,10 @@ export function CreatorCourseDetail({
               <span aria-hidden="true" className="block h-9 w-[150px] max-w-full animate-pulse rounded-md bg-[var(--color-surface-strong)]" />
               <span className="sr-only">{priceLabel}</span>
             </>
+          ) : offerLoadError ? (
+            // Falhou: o aviso vermelho logo abaixo diz o que houve. Aqui, só
+            // um traço discreto, e não "Pricing unavailable" em 36px repetindo.
+            <span aria-hidden="true" className="text-[var(--color-ink-muted)]">—</span>
           ) : (
             <span>{priceLabel}</span>
           )}
@@ -1289,47 +1325,66 @@ export function CreatorCourseDetail({
             {!courseIsFree ? (
               <li className="flex gap-2.5">
                 <Receipt aria-hidden="true" size={14} strokeWidth={2} className="mt-0.5 shrink-0 text-[var(--color-primary)]" />
-                <span>
-                  <strong className="text-[var(--color-ink)]">{t("publicCourses.sellerTitle")}</strong>{" "}
-                  {t("publicCourses.sellerBody")}
-                </span>
+                {/* Na página de venda, uma linha e "Learn more": o parágrafo
+                    de três linhas empurrava o cartão. A frase inteira segue na
+                    página (no <details>, sem sair dela); o alvo do toque cresce
+                    para 44px sem afastar as outras linhas. Na página de compra,
+                    logo antes de pagar, ela fica aberta. */}
+                {checkoutOnly ? (
+                  <span>
+                    <strong className="text-[var(--color-ink)]">{t("publicCourses.sellerTitle")}</strong>{" "}
+                    {t("publicCourses.sellerBody")}
+                  </span>
+                ) : (
+                  <details className="group/seller min-w-0 [&_summary::-webkit-details-marker]:hidden">
+                    <summary className="-my-3 cursor-pointer list-none py-3">
+                      <strong className="text-[var(--color-ink)]">{t("publicCourses.sellerTitle")}</strong>{" "}
+                      <span className="font-semibold text-[var(--color-primary)] underline underline-offset-2 group-open/seller:hidden">{t("publicCourses.sellerLearnMore")}</span>
+                    </summary>
+                    <p className="mt-1">{t("publicCourses.sellerBody")}</p>
+                  </details>
+                )}
               </li>
             ) : null}
           </ul> : null}
         </div>}
 
-        {/* Loja vazia não é destino: a volta leva ao início. Na página de
-            compra não há volta ao catálogo: o resumo do pedido leva ao curso.
-            Sem o resumo (a leitura do servidor falhou), o cartão leva. */}
-        {checkoutOnly ? (hideHeader ? null : (
+        {/* Na página de compra não há volta ao catálogo: o resumo do pedido
+            leva ao curso. Sem o resumo (a leitura do servidor falhou), o
+            cartão leva. Na página de venda a volta mora no alto da coluna. */}
+        {checkoutOnly && !hideHeader ? (
           <Link
             href={`/courses/${encodeURIComponent(courseRef)}`}
             className="mt-4 inline-flex min-h-11 w-full items-center justify-center text-sm font-semibold text-[var(--color-primary)]"
           >{t("publicCourses.checkoutCourseDetails")}</Link>
-        )) : (
-          <Link
-            href={hasRealCourses ? "/courses" : "/"}
-            className="mt-4 inline-flex min-h-11 w-full items-center justify-center text-sm font-semibold text-[var(--color-primary)]"
-          >{t(hasRealCourses ? "publicCourses.backCourses" : "publicPages.notFound.home")}</Link>
-        )}
+        ) : null}
       </aside>
     </div>
 
     {/* No celular a coluna do cartao cai para o fim da pagina: para achar o
         preco e o botao era preciso rolar por todo o curriculo. Esta barra
-        mantem os dois a mao e leva ao cartao. A partir de lg ela so aparece
-        enquanto o cartao esta fora da tela (a capa da pagina de vendas vem
-        antes das colunas), como um cartao no canto; com o cartao a vista, some. */}
+        mantem os dois a mao e leva ao cartao. Em qualquer largura ela so
+        aparece enquanto o botao do cartao esta fora da tela (no desktop, como
+        um cartao no canto); com ele a vista, some: dois "Enroll" ao mesmo
+        tempo, e a barra cobrindo o pe do cartao. `hidden` tira a barra da
+        ordem do Tab; o pb-24 da pagina continua reservando o lugar dela. */}
     {!checkoutOnly ? <div
       className={`course-buy-float pointer-events-none fixed inset-x-0 bottom-0 z-40 px-3 pb-3 ${
-        enrollCardInView ? "lg:hidden" : "lg:inset-x-auto lg:right-6 lg:bottom-6 lg:w-[24rem] lg:px-0 lg:pb-0"
+        enrollCardInView ? "hidden" : "lg:inset-x-auto lg:right-6 lg:bottom-6 lg:w-[24rem] lg:px-0 lg:pb-0"
       }`}
     >
       <div className="pointer-events-auto flex items-center gap-3 rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)]/95 px-4 py-3 shadow-[0_-6px_30px_rgba(15,39,68,0.18)] backdrop-blur supports-[backdrop-filter]:bg-[var(--color-surface)]/85">
         <div className="min-w-0 flex-1">
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">{t("publicCourses.priceEyebrow")}</p>
           <p className="display-title truncate text-xl leading-none text-[var(--color-primary)]">
-            {priceLabel}
+            {/* Carregando: a mesma barra pulsante do cartão, na altura da
+                linha do preço (a barra não muda de altura quando ele chega). */}
+            {pricePending ? (
+              <>
+                <span aria-hidden="true" className="block h-5 w-20 animate-pulse rounded-md bg-[var(--color-surface-strong)]" />
+                <span className="sr-only">{priceLabel}</span>
+              </>
+            ) : priceLabel}
           </p>
         </div>
         {viewerIsLearner ? (
@@ -1374,12 +1429,15 @@ function CourseDetailState({
   detail,
   action,
   nested = false,
+  lead = null,
 }: {
   title: string;
   detail: string;
   action?: CourseDetailAction;
   /** O servidor já pôs o h1 do curso na página: este título vira h2. */
   nested?: boolean;
+  /** O cabeçalho do servidor (o único h1) segue no alto, acima do aviso. */
+  lead?: ReactNode;
 }) {
   const { t } = useTranslation();
   const hasRealCourses = useHasRealCourses();
@@ -1390,6 +1448,8 @@ function CourseDetailState({
 
   // Sem o sobretítulo "Creator course": era vocabulário interno.
   return (
+    <>
+    {lead}
     <section className="rounded-lg border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)]">
       <Heading className="display-title text-4xl text-[var(--color-ink)]">
         {title}
@@ -1404,6 +1464,7 @@ function CourseDetailState({
         {resolvedAction.label}
       </Link>
     </section>
+    </>
   );
 }
 
