@@ -406,6 +406,14 @@ export function OnboardingChoice() {
       return;
     }
 
+    // O botao "Activate teaching" nao fica mais apagado por falta do aceite:
+    // o clique explica o que falta, em vez de nao fazer nada.
+    if (selectedPathIncludesTeacher && !teacherTermsAccepted) {
+      setStep(0);
+      setError(t("onboarding.errorAcceptTerms"));
+      return;
+    }
+
     setIsSaving(true);
 
     try {
@@ -554,7 +562,7 @@ export function OnboardingChoice() {
           <button
             type="button"
             onClick={handleFinish}
-            disabled={isSaving || !emailVerified || !teacherTermsAccepted || !payoutCountryAnswered}
+            disabled={isSaving || !emailVerified || !payoutCountryAnswered}
             className="button-solid px-4 py-2.5 text-sm disabled:opacity-60"
           >
             {isSaving ? t("onboarding.activating") : t("onboarding.activateTeaching")}

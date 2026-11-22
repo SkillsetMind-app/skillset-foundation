@@ -49,6 +49,12 @@ const activationFee =
 
 const dictionaries = [["en", en], ["es", es]] as const;
 
+// O unico "free" que a casa aceita: o nome do teste de 14 dias, EN e ES. Na
+// /for-creators o numero vem num paragrafo e o rotulo no seguinte ("14" +
+// "Day free trial, card required"), por isso o rotulo entra inteiro.
+const freeTrialWording =
+  /(\d+|\{days\})-day free trial|Day free trial, card required|prueba gratis de (\d+|\{days\}) días|Días de prueba gratis, con tarjeta/gi;
+
 describe("public pricing makes no earnings claims", () => {
   it.each(["en", "es"])("the %s /pricing page shows fees, never income bands or break-even points", async (locale) => {
     state.locale = locale;
@@ -150,8 +156,8 @@ describe("plan copy states only rules the product applies", () => {
     const knowledge = buildAssistantKnowledge();
     expect(knowledge).not.toMatch(sameFeatures);
     expect(knowledge).not.toMatch(unenforcedLimits);
-    expect(knowledge).toMatch(/14-day trial/);
-    expect(knowledge).not.toMatch(/free trial/i);
+    expect(knowledge).toMatch(/14-day free trial/);
+    expect(knowledge.replace(freeTrialWording, "")).not.toMatch(/free trial/i);
     expect(knowledge).not.toMatch(/Free plan|- Free:|Plus/);
   });
 });
@@ -175,7 +181,7 @@ describe("creator payout-country disclosure", () => {
 
   // "Immediately" and "start free" oversell: publishing needs the launch checks
   // and, where required, verification. Since 2026-10-06 no public plan is
-  // free of a monthly fee: the page offers the 14-day trial instead.
+  // free of a monthly fee: the page offers the 14-day free trial instead.
   it.each(["en", "es"])("%s /for-creators never promises immediate drafting or a free start", async (locale) => {
     state.locale = locale;
     const { container } = render(await CreatorsPage());
@@ -184,7 +190,7 @@ describe("creator payout-country disclosure", () => {
       expect(text).not.toMatch(/draft courses immediately|preparar cursos de inmediato|Start free|Empieza gratis/i);
     }
     expect(container.textContent).not.toMatch(/no monthly fee|sin mensualidad/);
-    expect(container.textContent).toMatch(/14-day trial|prueba de 14 días/);
+    expect(container.textContent).toMatch(/14-day free trial|prueba gratis de 14 días/);
   });
 });
 
@@ -209,8 +215,10 @@ describe("public copy guard: home, /pricing, /fees-and-payouts, /for-creators, /
       "a free start",
       /\bstart(ing)? (teaching )?free\b|get started free|teach(ing)? free|free to start|free, takes minutes|empieza (a enseñar )?gratis|enseñar gratis|gratis para empezar|es gratis y toma/i,
     ],
-    // House rule since 2026-11-13: SkillsetMind never calls itself free. The
-    // trial is "a 14-day trial, card required".
+    // House rule since 2026-11-13: SkillsetMind never calls itself free. Desde
+    // 2026-11-21 ha uma unica excecao, decidida pelo dono: o teste de 14 dias se
+    // chama sempre "14-day free trial" (freeTrialWording, tirado do texto antes
+    // desta conferencia). Qualquer outro "free" continua barrado.
     [
       "calling the platform free",
       /free trial|\d+ days free|days of free|account is free|free preview slot|prueba gratis|días gratis|cuenta es gratis/i,
@@ -218,10 +226,19 @@ describe("public copy guard: home, /pricing, /fees-and-payouts, /for-creators, /
   ];
 
   function expectNoFalseClaim(where: string, text: string) {
+    const withoutTrialName = text.replace(freeTrialWording, "");
     for (const [claim, pattern] of falseClaims) {
-      expect(text, `${where} carries ${claim}`).not.toMatch(pattern);
+      expect(withoutTrialName, `${where} carries ${claim}`).not.toMatch(pattern);
     }
   }
+
+  // Regra do dono (2026-11-21): toda mencao aos 14 dias leva a palavra "free".
+  // O webinar promete "14-day free trial"; a tela nao pode dizer so "trial".
+  it.each(dictionaries)("the %s dictionary never names the trial without the word free", (_locale, dict) => {
+    expect(JSON.stringify(dict)).not.toMatch(
+      /(\d+|\{days\})-day trial|prueba de (\d+|\{days\}) días|"Day trial|"Días de prueba,|"Trial — ends|"Prueba — termina/i,
+    );
+  });
 
   // Since 2026-09-25 the home names psychologists as part of its audience (a
   // decision of the owner). Every other public entry page still does not.

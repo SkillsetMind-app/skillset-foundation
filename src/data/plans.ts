@@ -2,7 +2,7 @@
  * SkillsetMind pricing model — single source of truth.
  *
  * The public offer is three paid tiers, Basic, Starter and Pro (`publicPlans`),
- * each opening with a 14-day trial (card required, one per creator
+ * each opening with a 14-day free trial (card required, one per creator
  * account). Every sale on Basic and Starter pays the plan's percent PLUS a
  * fixed fee of about US$0.30 (`platformFixedFeeMinor` in lib/payments/rules.ts);
  * Pro and Enterprise pay neither since 2026-11-13 (0% commission, owner's

@@ -348,7 +348,7 @@ export function getCourseReadiness(
         id: "plan",
         group: "sale",
         label: "Creator plan",
-        hint: "Start your 14-day trial or renew your plan to publish and sell.",
+        hint: "Start your 14-day free trial or renew your plan to publish and sell.",
         done: false,
         optional: false,
       });
