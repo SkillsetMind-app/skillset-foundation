@@ -3,6 +3,7 @@ import { useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { I18nProvider, useTranslation } from "@/components/i18n/i18n-provider";
+import { clickConfirm, stubDialogs } from "@/components/teacher/confirm-test-helpers";
 import type { CourseAsset } from "@/domain/course-asset";
 import type { DripStrategy } from "@/domain/drip-policy";
 import { resolveLessonVideoSource, type TeacherCourse, type TeacherLesson } from "@/domain/teacher-course";
@@ -278,14 +279,17 @@ describe("LessonContentModal — um video por aula", () => {
   const youtube = "https://www.youtube.com/watch?v=abc";
   const vimeo = "https://vimeo.com/123456";
 
+  let restoreDialogs = () => {};
   beforeEach(() => {
     currentAssets = [];
     bunnyConfig.isBunnyConfigured = false;
     vi.clearAllMocks();
+    restoreDialogs = stubDialogs();
   });
   afterEach(() => {
     vi.restoreAllMocks();
     subscribeOutcome = "emit";
+    restoreDialogs();
   });
 
   it("com video enviado, o campo de link so aparece depois de Replace with link", () => {
@@ -330,8 +334,7 @@ describe("LessonContentModal — um video por aula", () => {
     expect(screen.getByRole("button", { name: /delete/i })).toBeInTheDocument();
   });
 
-  it("link antigo que nao e video aparece so leitura como Old link", () => {
-    const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
+  it("link antigo que nao e video aparece so leitura como Old link", async () => {
     const { onUpdateLesson } = renderModal({ externalUrl: drive }, "Módulo 1", true);
 
     const old = screen.getByRole("region", { name: "Old link" });
@@ -347,22 +350,26 @@ describe("LessonContentModal — um video por aula", () => {
     expect(onUpdateLesson).not.toHaveBeenCalled();
 
     fireEvent.click(within(old).getByRole("button", { name: "Remove old link" }));
-    expect(confirm).toHaveBeenCalledOnce();
+    const asking = screen.getByRole("dialog", { name: "Remove this link?" });
+    expect(asking).toHaveAccessibleDescription("Remove the old link? Students will lose the button that opens it.");
+    expect(onUpdateLesson).not.toHaveBeenCalled();
+    clickConfirm(asking, "Remove old link");
     expect(onUpdateLesson).toHaveBeenCalledExactlyOnceWith({ externalUrl: null });
     // A secao some com o link: o foco vai para um botao que fica e o aviso
     // sai pelo role="status".
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Remove this link?" })).toBeNull());
     expect(screen.queryByRole("region", { name: "Old link" })).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Replace with upload" })).toHaveFocus();
+    await waitFor(() => expect(screen.getByRole("button", { name: "Replace with upload" })).toHaveFocus());
     expect(screen.getByRole("status")).toHaveTextContent("Old link removed.");
   });
 
   it("recusar a confirmacao de tirar o link antigo nao muda nada", () => {
-    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
     const { onUpdateLesson } = renderModal({ externalUrl: drive }, "Módulo 1", true);
 
     fireEvent.click(screen.getByRole("button", { name: "Remove old link" }));
+    fireEvent.click(within(screen.getByRole("dialog", { name: "Remove this link?" })).getByRole("button", { name: "Cancel" }));
 
-    expect(confirm).toHaveBeenCalledOnce();
+    expect(screen.queryByRole("dialog", { name: "Remove this link?" })).toBeNull();
     expect(onUpdateLesson).not.toHaveBeenCalled();
     expect(screen.getByRole("region", { name: "Old link" })).toHaveTextContent(drive);
     expect(screen.getByRole("status")).toBeEmptyDOMElement();
@@ -407,7 +414,9 @@ describe("LessonContentModal — um video por aula", () => {
   });
 
   it("o aviso de link nao salvo some depois de tirar o link antigo e ao trocar de aba", () => {
-    vi.spyOn(window, "confirm").mockReturnValueOnce(false).mockReturnValueOnce(true);
+    // A troca pelo link (no blur) ainda pergunta no confirm nativo: ela mora no
+    // protocolo sincrono do flushLink. Tirar o link antigo pergunta na janela.
+    vi.spyOn(window, "confirm").mockReturnValueOnce(false);
     renderModal({ externalUrl: drive }, "Módulo 1", true);
     fireEvent.click(screen.getByRole("button", { name: "Replace with link" }));
     fireEvent.change(linkField(), { target: { value: vimeo } });
@@ -415,6 +424,7 @@ describe("LessonContentModal — um video por aula", () => {
     expect(screen.getByRole("status")).toHaveTextContent("Link not saved. The old link stays.");
 
     fireEvent.click(screen.getByRole("button", { name: "Remove old link" }));
+    clickConfirm(screen.getByRole("dialog", { name: "Remove this link?" }), "Remove old link");
     expect(screen.getByRole("status")).toHaveTextContent("Old link removed.");
     fireEvent.click(screen.getByRole("button", { name: /^Description/ }));
     fireEvent.click(screen.getByRole("button", { name: /^Video/ }));
@@ -679,6 +689,7 @@ describe("LessonContentModal — um video por aula", () => {
 });
 
 describe("LessonContentModal — video tab", () => {
+  let restoreDialogs = () => {};
   beforeEach(() => {
     currentAssets = [];
     bunnyConfig.isBunnyConfigured = false;
@@ -687,10 +698,12 @@ describe("LessonContentModal — video tab", () => {
       static createObjectURL = vi.fn((file: File) => `blob:local-${file.name}`);
       static revokeObjectURL = vi.fn();
     });
+    restoreDialogs = stubDialogs();
   });
   afterEach(() => {
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
+    restoreDialogs();
   });
 
   // Tirar o link antigo no meio de um envio sumia com o botao focado e o foco
@@ -1256,7 +1269,6 @@ describe("LessonContentModal — video tab", () => {
   // deixava `videoSource` prometendo um arquivo que não existe mais.
   it("clears the declared upload source when the last video asset is deleted", async () => {
     currentAssets = [videoAsset()];
-    vi.spyOn(window, "confirm").mockReturnValue(true);
 
     const { onUpdateLesson } = renderModal({
       videoSource: "upload",
@@ -1264,6 +1276,10 @@ describe("LessonContentModal — video tab", () => {
     });
 
     fireEvent.click(screen.getByRole("button", { name: /delete/i }));
+    // Nada sai antes do confirmar na janela; confirmar apaga uma vez.
+    const asking = screen.getByRole("dialog", { name: "Delete this file?" });
+    expect(deleteCourseAsset).not.toHaveBeenCalled();
+    clickConfirm(asking, "Delete file");
 
     await waitFor(() => {
       expect(deleteCourseAsset).toHaveBeenCalledTimes(1);
@@ -1274,11 +1290,11 @@ describe("LessonContentModal — video tab", () => {
 
   it("keeps the source when another video asset survives the delete", async () => {
     currentAssets = [videoAsset(), videoAsset({ id: "asset-2" })];
-    vi.spyOn(window, "confirm").mockReturnValue(true);
 
     const { onUpdateLesson } = renderModal({ videoSource: "upload" });
 
     fireEvent.click(screen.getAllByRole("button", { name: /delete/i })[0]);
+    clickConfirm(screen.getByRole("dialog", { name: "Delete this file?" }), "Delete file");
 
     await waitFor(() => {
       expect(deleteCourseAsset).toHaveBeenCalledTimes(1);

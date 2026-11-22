@@ -11,7 +11,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
@@ -27,6 +27,7 @@ import type { PayoutLedgerEntry } from "@/domain/payout-ledger";
 import type { UserProfile } from "@/domain/user-profile";
 import { subscribeToTeacherPayoutLedger } from "@/lib/data/payout-ledger";
 import { subscribeToUserProfile } from "@/lib/data/user-profiles";
+import { getSafeReturnTo } from "@/lib/auth/routing";
 import { toDate } from "@/lib/format-date";
 import {
   isConnectNotEnabledError,
@@ -39,6 +40,15 @@ import {
 const PAYOUTS_UNAVAILABLE_KEY = "teach.earnings.payoutsUnavailable";
 
 type LedgerReadState = "loading" | "ready" | "error";
+
+// O construtor manda ?returnTo= para a volta cair na aba Publish do curso.
+// So um caminho do proprio construtor passa (getSafeReturnTo ja barra outro
+// site e "//host"); qualquer outra coisa nao vira botao.
+function readBuilderReturnTo(): string | null {
+  const target = getSafeReturnTo(new URLSearchParams(window.location.search));
+  return target?.startsWith("/teach/builder?") ? target : null;
+}
+const noSubscribe = () => () => {};
 
 type Translate = (key: string) => string;
 
@@ -57,6 +67,8 @@ export function TeacherWalletPanel() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [isRefreshingStripe, setIsRefreshingStripe] = useState(false);
+  // Lido no cliente: no servidor (e na hidratacao) nao ha botao de volta.
+  const returnTo = useSyncExternalStore(noSubscribe, readBuilderReturnTo, () => null);
   const [ledgerEntries, setLedgerEntries] = useState<PayoutLedgerEntry[]>([]);
   const [ledgerState, setLedgerState] = useState<LedgerReadState>("loading");
   // Platform-level truth reported by the onboarding component: when Stripe
@@ -263,6 +275,13 @@ export function TeacherWalletPanel() {
         <p className="rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
           {error}
         </p>
+      ) : null}
+      {/* Veio do Publish do construtor: pagamentos prontos, o caminho de volta
+          para publicar e um botao, nao a barra lateral. */}
+      {ready && returnTo ? (
+        <Link href={returnTo} className="button-solid button-lg w-full sm:w-fit">
+          {t("teach.earnings.backToCourse")}
+        </Link>
       ) : null}
 
       <div className="payouts-grid">

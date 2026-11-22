@@ -71,6 +71,7 @@ import { isTeacherAiEnabled } from "@/lib/ai/config";
 import { LessonAiCaptions } from "@/components/teacher/lesson-ai-captions";
 import { LessonAiQuiz } from "@/components/teacher/lesson-ai-quiz";
 import { AiSuggest } from "@/components/teacher/ai-suggest";
+import { useConfirm } from "@/components/teacher/use-confirm";
 import { useModalFocus } from "@/lib/a11y/use-modal-focus";
 import { useLessonUpload, startLessonUpload, cancelLessonUpload } from "@/components/teacher/lesson-upload-provider";
 import { lessonUploadIsBusy } from "@/lib/data/lesson-upload";
@@ -237,6 +238,7 @@ export function LessonContentModal({
   filesOnly = false,
 }: LessonContentModalProps) {
   const { t } = useTranslation();
+  const { ask, asking, dialog: confirmDialog } = useConfirm();
   const uploadManager = useLessonUpload();
   const sharedUpload = uploadManager?.job?.courseId === course.id && uploadManager.job.lessonId === lesson.id ? uploadManager.job : null;
   const mountedRef = useRef(true);
@@ -523,7 +525,8 @@ export function LessonContentModal({
     }
 
     function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape" && !isUploading && flushLinkAllowsClose(linkHandleRef.current)) {
+      // Com a confirmacao aberta, o Esc e dela: fecha so a pergunta.
+      if (event.key === "Escape" && !asking && !isUploading && flushLinkAllowsClose(linkHandleRef.current)) {
         onClose();
       }
     }
@@ -531,7 +534,7 @@ export function LessonContentModal({
     document.addEventListener("keydown", handleKeyDown);
 
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [isUploading, onClose, variant]);
+  }, [asking, isUploading, onClose, variant]);
 
   // Na pagina, o voltar do navegador desmonta so esta pagina (o builder fica):
   // o link digitado e ainda sem blur e gravado antes, sem perguntar. Efeito de
@@ -702,19 +705,23 @@ export function LessonContentModal({
     }
   }
 
-  async function handleDeleteAsset(asset: CourseAsset) {
+  function handleDeleteAsset(asset: CourseAsset) {
     if (!isEditable) {
       return;
     }
 
-    const confirmed = window.confirm(
-      t("creatorEditor.lesson.deleteConfirm").replace("{fileName}", () => asset.fileName),
-    );
+    // A janela espera o apagar terminar; o erro sai na pagina, como antes.
+    ask({
+      title: t("creatorEditor.lesson.deleteTitle"),
+      body: t("creatorEditor.lesson.deleteConfirm").replace("{fileName}", () => asset.fileName),
+      confirmLabel: t("creatorEditor.lesson.deleteFile"),
+      cancelLabel: t("creatorEditor.lesson.keepFile"),
+      danger: true,
+      run: () => deleteAsset(asset),
+    });
+  }
 
-    if (!confirmed) {
-      return;
-    }
-
+  async function deleteAsset(asset: CourseAsset) {
     setError(null);
     setSuccess(null);
     setDeletingAssetId(asset.id);
@@ -1029,16 +1036,21 @@ export function LessonContentModal({
                     // Durante o envio o botao de troca fica desabilitado: o
                     // foco nao teria para onde ir e o aviso se perdia.
                     disabled={!isEditable || isUploading}
-                    onClick={() => {
-                      if (window.confirm(t("creatorEditor.lesson.removeOldLinkConfirm"))) {
+                    onClick={() => ask({
+                      title: t("creatorEditor.lesson.removeOldLinkTitle"),
+                      body: t("creatorEditor.lesson.removeOldLinkConfirm"),
+                      confirmLabel: t("creatorEditor.lesson.removeOldLink"),
+                      danger: true,
+                      run: () => {
                         onUpdateLesson({ externalUrl: null });
                         // Esta secao some junto com o link: o foco vai para um
                         // botao que fica, e o aviso sai pelo role="status".
+                        // Depois de a janela fechar (ate la a pagina e inerte).
                         setSuccess("oldLinkRemoved");
                         setLinkNotSaved(null);
-                        replaceButtonRef.current?.focus();
-                      }
-                    }}
+                        window.setTimeout(() => replaceButtonRef.current?.focus(), 0);
+                      },
+                    })}
                   >
                     {t("creatorEditor.lesson.removeOldLink")}
                   </button>
@@ -1316,6 +1328,7 @@ export function LessonContentModal({
           </button>
         </footer>
         )}
+        {confirmDialog}
       </section>
   );
 

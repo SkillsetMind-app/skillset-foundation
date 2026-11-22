@@ -179,6 +179,9 @@ export function DeleteOrArchiveCourseDialog({
   // Assinatura tambem e comprador: o servidor arquiva, entao o texto promete arquivar.
   const hasAudience = audience !== null && audience.enrollments + audience.orders + audience.subscriptions > 0;
   const prefix = hasAudience ? "creatorPanel.products.archive" : "creatorPanel.products.delete";
+  // Sem a contagem, nem "apagar" nem "arquivar": o modal abria em vermelho
+  // dizendo Delete e virava Archive em azul quando a resposta chegava.
+  const known = audience !== null;
 
   async function handleConfirm() {
     setBusy(true);
@@ -208,15 +211,26 @@ export function DeleteOrArchiveCourseDialog({
         aria-label={t("creatorPanel.products.delete.aria").replace("{title}", () => courseTitle)}
         className="modal-panel modal-panel-scroll w-full max-w-md rounded-xl border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-strong)] outline-none"
       >
-        <p className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--color-danger-fg)]">
-          {t(`${prefix}.eyebrow`)}
+        <p className={`text-xs font-bold uppercase tracking-[0.2em] ${known ? "text-[var(--color-danger-fg)]" : "text-[var(--color-ink-muted)]"}`}>
+          {known ? t(`${prefix}.eyebrow`) : t("creatorPanel.products.removeEyebrow")}
         </p>
         <h2 className="mt-2 text-2xl font-semibold text-[var(--color-primary)]">
-          {t(`${prefix}.title`).replace("{title}", () => courseTitle)}
+          {known ? t(`${prefix}.title`).replace("{title}", () => courseTitle) : courseTitle}
         </h2>
-        <p className="mt-3 text-sm leading-6 text-[var(--color-ink-soft)]">
-          {t(`${prefix}.description`)}
-        </p>
+        {/* Altura minima de um texto final: os botoes nao pulam quando a
+            contagem chega e o placeholder sai. */}
+        <div className="min-h-[15rem]">
+        {known ? (
+          <p className="mt-3 text-sm leading-6 text-[var(--color-ink-soft)]">
+            {t(`${prefix}.description`)}
+          </p>
+        ) : failed ? null : (
+          <div aria-hidden="true" className="mt-4 grid animate-pulse gap-2">
+            <span className="h-3 w-full rounded bg-[var(--color-surface-strong)]" />
+            <span className="h-3 w-11/12 rounded bg-[var(--color-surface-strong)]" />
+            <span className="h-3 w-2/3 rounded bg-[var(--color-surface-strong)]" />
+          </div>
+        )}
 
         {hasAudience ? (
           // O "Importante" da Hotmart: a frase que o professor precisa ler
@@ -249,6 +263,7 @@ export function DeleteOrArchiveCourseDialog({
             {t("creatorPanel.products.deleteError")}
           </InlineAlert>
         ) : null}
+        </div>
 
         <div className="mt-6 flex flex-wrap justify-end gap-3">
           <button
@@ -262,11 +277,12 @@ export function DeleteOrArchiveCourseDialog({
           <button
             type="button"
             onClick={() => void handleConfirm()}
-            disabled={busy || audience === null}
+            disabled={busy || !known}
             // Apagar e para sempre: vermelho cheio. Arquivar volta atras: azul.
-            className={`${hasAudience ? "button-solid" : "button-danger button-danger-solid"} px-4 text-sm disabled:opacity-60`}
+            // Antes da contagem, contorno neutro: nem um nem outro.
+            className={`${!known ? "button-outline" : hasAudience ? "button-solid" : "button-danger button-danger-solid"} px-4 text-sm disabled:opacity-60`}
           >
-            {busy ? t(`${prefix}.busy`) : t(`${prefix}.confirm`)}
+            {!known && !failed ? t("creatorPanel.products.removeChecking") : busy ? t(`${prefix}.busy`) : t(`${prefix}.confirm`)}
           </button>
         </div>
       </div>

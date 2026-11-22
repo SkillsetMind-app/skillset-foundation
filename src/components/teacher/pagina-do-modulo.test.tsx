@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { I18nProvider } from "@/components/i18n/i18n-provider";
 import { CourseBuilderStudio } from "@/components/teacher/course-builder-studio";
+import { clickConfirm, stubDialogs } from "@/components/teacher/confirm-test-helpers";
 import type { TeacherCourse } from "@/domain/teacher-course";
 import { subscribeToTeacherCourse, updateTeacherCourseBuilder } from "@/lib/data/teacher-courses";
 
@@ -155,11 +156,24 @@ describe("pagina do modulo dentro do builder", () => {
       "Protect the hours that matter.",
     );
 
-    // As acoes que ja existiam na aula continuam na pagina do modulo.
+    // As acoes que ja existiam na aula continuam na pagina do modulo: na
+    // linha, a principal (em contorno) e subir/descer; o resto em "Mais acoes".
     expect(within(card).getByRole("textbox", { name: "Lesson title" })).toHaveValue("Focus blocks");
-    for (const name of ["Add video", "Up", "Down", "Mark free preview", "Delete lesson"]) {
+    for (const name of ["Add video", "Up", "Down"]) {
       expect(within(card).getByRole("button", { name })).toBeInTheDocument();
     }
+    expect(within(card).getByRole("button", { name: "Add video" })).toHaveClass("button-outline");
+    expect(within(card).queryByRole("button", { name: "Delete lesson" })).toBeNull();
+    const more = within(card).getByRole("button", { name: 'More actions for "Focus blocks"' });
+    expect(more).toHaveAttribute("aria-expanded", "false");
+    fireEvent.click(more);
+    expect(more).toHaveAttribute("aria-expanded", "true");
+    for (const name of ["Mark free preview", "Delete lesson"]) {
+      expect(within(card).getByRole("button", { name })).toBeInTheDocument();
+    }
+    // A previa gratis marcada aparece na propria linha.
+    fireEvent.click(within(card).getByRole("button", { name: "Mark free preview" }));
+    expect(within(card).getByText("Free preview")).toBeInTheDocument();
     // So este modulo: o outro fica na lista do curso.
     expect(within(card).queryByText("Start here")).not.toBeInTheDocument();
     // Abrir o builder ja num modulo (link direto, recarga) nao rouba o foco.
@@ -331,7 +345,7 @@ describe("pagina do modulo dentro do builder", () => {
       emit(mocks.course);
       return Object.assign(() => {}, { reload: async () => {} });
     });
-    const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
+    const restoreDialogs = stubDialogs();
     try {
       openAt("courseId=course-1&tab=content&module=m1");
       const card = await renderBuilder();
@@ -345,7 +359,12 @@ describe("pagina do modulo dentro do builder", () => {
       await waitFor(() => expect(updateTeacherCourseBuilder).toHaveBeenCalledTimes(1), { timeout: 5000 });
       const first = vi.mocked(updateTeacherCourseBuilder).mock.calls[0][1];
 
+      fireEvent.click(within(card).getByRole("button", { name: 'More actions for "Lesson L"' }));
       fireEvent.click(within(card).getByRole("button", { name: "Delete lesson" }));
+      const asking = screen.getByRole("dialog", { name: "Delete this lesson?" });
+      expect(asking).toHaveAccessibleDescription('Delete lesson "Lesson L"? This cannot be undone after autosave.');
+      clickConfirm(asking, "Delete lesson");
+      await waitFor(() => expect(screen.queryByRole("dialog", { name: "Delete this lesson?" })).toBeNull());
       act(() => emitCourse({ ...mocks.course, ...first }));
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 
@@ -361,7 +380,7 @@ describe("pagina do modulo dentro do builder", () => {
       followPush();
       expect(screen.getByRole("dialog")).toHaveTextContent("m1:Lesson M");
     } finally {
-      confirm.mockRestore();
+      restoreDialogs();
     }
   }, 15000);
 
