@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { I18nProvider } from "@/components/i18n/i18n-provider";
@@ -38,7 +38,12 @@ const mocks = vi.hoisted(() => {
     { ...base, id: "event-1", title: "Live Q&A", startsAt },
     { ...base, id: "event-2", title: "Sin fecha", startsAt: "not a date" },
   ];
-  return { user: { uid: "student-1", roles: ["student"] }, startsAt, enrollment, events };
+  return {
+    user: { uid: "student-1", roles: ["student"] }, startsAt, enrollment, events, base,
+    rsvp: null as { status: "attending" | "not_attending" } | null,
+    // Os eventos que abriram um canal de presenca.
+    rsvpEvents: [] as string[],
+  };
 });
 
 // O I18nProvider chama useRouter() para o refresh ao trocar de idioma.
@@ -61,11 +66,13 @@ vi.mock("@/lib/data/enrollments", () => ({
 
 vi.mock("@/lib/data/course-events", () => ({
   subscribeToCourseEvents: (_slug: string, onData: (events: CourseEvent[]) => void) => {
-    onData(mocks.events);
+    // Em ordem de inicio, como a fonte devolve.
+    onData([...mocks.events].sort((a, b) => a.startsAt.localeCompare(b.startsAt)));
     return () => undefined;
   },
-  subscribeToCourseEventRsvp: (_eventId: string, _uid: string, onData: (rsvp: null) => void) => {
-    onData(null);
+  subscribeToCourseEventRsvp: (eventId: string, _uid: string, onData: (rsvp: unknown) => void) => {
+    mocks.rsvpEvents.push(eventId);
+    onData(mocks.rsvp);
     return () => undefined;
   },
   saveCourseEventRsvp: vi.fn(),
@@ -81,5 +88,74 @@ describe("LearnEventsHub", () => {
       new Intl.DateTimeFormat("es", { dateStyle: "medium", timeStyle: "short" }).format(new Date(mocks.startsAt)),
     )).toBeInTheDocument();
     expect(screen.getByText("Fecha pendiente")).toBeInTheDocument();
+  });
+
+  it("as proximas primeiro; as que ja passaram ficam numa parte 'Past' fechada, sem pedir presenca", () => {
+    const saved = mocks.events;
+    const hour = 3_600_000;
+    mocks.events = [
+      { ...mocks.base, id: "old", title: "Old session", startsAt: "2026-03-14T15:30:00.000Z" },
+      { ...mocks.base, id: "next", title: "Next session", startsAt: new Date(Date.now() + 48 * hour).toISOString() },
+      // Comecou ha 1h: pode estar rolando, fica em Upcoming com o link de entrar.
+      { ...mocks.base, id: "running", title: "Running session", startsAt: new Date(Date.now() - hour).toISOString() },
+    ];
+    try {
+      render(<LearnEventsHub />);
+
+      const upcoming = screen.getByRole("region", { name: "Upcoming" });
+      const titles = within(upcoming).getAllByRole("heading", { level: 3 }).map((h) => h.textContent);
+      expect(titles).toEqual(["Running session", "Next session"]);
+
+      const old = screen.getByRole("heading", { name: "Old session" });
+      const past = old.closest("details") as HTMLElement;
+      expect(past).not.toHaveAttribute("open");
+      // Cabecalho proprio: os cartoes passados nao ficam sob "Upcoming".
+      expect(within(past).getByRole("heading", { level: 2, name: /Past/ })).toBeInTheDocument();
+      expect(within(past).queryByRole("button", { name: "I will attend" })).not.toBeInTheDocument();
+      expect(within(past).queryByRole("link", { name: "Join external session" })).not.toBeInTheDocument();
+      // Nem um canal de presenca por cartao passado.
+      expect(mocks.rsvpEvents).not.toContain("old");
+    } finally {
+      mocks.events = saved;
+    }
+  });
+
+  it("a resposta escolhida fica marcada no proprio botao (aria-pressed)", () => {
+    const saved = mocks.events;
+    mocks.events = [
+      { ...mocks.base, id: "next", title: "Next session", startsAt: new Date(Date.now() + 48 * 3_600_000).toISOString() },
+    ];
+    mocks.rsvp = { status: "not_attending" };
+    try {
+      render(<LearnEventsHub />);
+
+      const group = screen.getByRole("group", { name: "Attendance" });
+      expect(within(group).getByRole("button", { name: "I will attend" })).toHaveAttribute("aria-pressed", "false");
+      expect(within(group).getByRole("button", { name: "I cannot attend" })).toHaveAttribute("aria-pressed", "true");
+      // O texto "Not going" num quadro a parte saiu.
+      expect(screen.queryByText("Not going")).not.toBeInTheDocument();
+    } finally {
+      mocks.events = saved;
+      mocks.rsvp = null;
+    }
+  });
+
+  it("a resposta salva fica marcada na hora, sem esperar o tempo real", async () => {
+    const saved = mocks.events;
+    mocks.events = [
+      { ...mocks.base, id: "next", title: "Next session", startsAt: new Date(Date.now() + 48 * 3_600_000).toISOString() },
+    ];
+    try {
+      render(<LearnEventsHub />);
+      const attend = screen.getByRole("button", { name: "I will attend" });
+      expect(attend).toHaveAttribute("aria-pressed", "false");
+
+      await act(async () => {
+        fireEvent.click(attend);
+      });
+      expect(screen.getByRole("button", { name: "I will attend" })).toHaveAttribute("aria-pressed", "true");
+    } finally {
+      mocks.events = saved;
+    }
   });
 });

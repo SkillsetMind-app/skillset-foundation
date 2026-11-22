@@ -3,7 +3,6 @@
 import Link from "next/link";
 import {
   ArrowRight,
-  BadgeCheck,
   BookOpenCheck,
   CalendarDays,
   Circle,
@@ -12,10 +11,9 @@ import {
   Plus,
   Store,
   UsersRound,
-  Wallet,
   type LucideIcon,
 } from "lucide-react";
-import { useEffect, useState, type CSSProperties } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
@@ -28,6 +26,7 @@ import { TeacherWelcomeTour } from "@/components/teacher/teacher-welcome-tour";
 import { usePublishGates } from "@/components/teacher/use-publish-gates";
 import { EmptyState, buttonClasses } from "@/components/ui";
 import { DrawnCheck, MilestoneSeal, useJustDone } from "@/components/ui/drawn-check";
+import { InlineAlert } from "@/components/ui/inline-alert";
 import { SpotArt } from "@/components/ui/spot-art";
 import { activationFeeUsd } from "@/data/plans";
 import type { CourseReadinessAccount } from "@/domain/course-readiness";
@@ -49,20 +48,27 @@ export function TeacherStudioDashboard() {
   const [coursesLoaded, setCoursesLoaded] = useState(false);
   const [coursesFailed, setCoursesFailed] = useState(false);
   const [orders, setOrders] = useState<Order[]>([]);
+  // Leitura que falhou nao pode parecer receita zero: os quadros dizem
+  // "Unavailable" (como Ganhos), e enquanto carrega ficam no esqueleto.
+  const [ordersState, setOrdersState] = useState<"loading" | "ready" | "error">("loading");
   const firstName = user?.displayName?.trim().split(/\s+/)[0] ?? "";
   // A taxa unica de ativacao vem do mesmo hook (o MESMO predicado que o
   // servidor aplica no publish, falha aberta): uma leitura so por visita.
   const activationBlocked = account.activationBlocked ?? false;
+
+  const coursesSubscription = useRef<{ reload: () => Promise<void> } | null>(null);
+  const ordersSubscription = useRef<{ reload: () => Promise<void> } | null>(null);
 
   useEffect(() => {
     if (!user) {
       return;
     }
 
-    return subscribeToTeacherCourses(
+    const current = subscribeToTeacherCourses(
       user.uid,
       (nextCourses) => {
         setCourses(nextCourses);
+        setCoursesFailed(false);
         setCoursesLoaded(true);
       },
       (error) => {
@@ -71,6 +77,11 @@ export function TeacherStudioDashboard() {
         setCoursesLoaded(true);
       }
     );
+    coursesSubscription.current = current;
+    return () => {
+      coursesSubscription.current = null;
+      current();
+    };
   }, [user]);
 
   useEffect(() => {
@@ -80,12 +91,39 @@ export function TeacherStudioDashboard() {
 
     // Cursos, pedidos e perfil eram lidos 3x, 3x e 2x por /teach: cada bloco
     // da Home abria a propria leitura. Agora a Home le uma vez e repassa.
-    return subscribeToTeacherOrders(
+    const current = subscribeToTeacherOrders(
       user.uid,
-      setOrders,
-      logSubscriptionError("TeacherStudioDashboard.orders")
+      (nextOrders) => {
+        setOrders(nextOrders);
+        setOrdersState("ready");
+      },
+      (error) => {
+        logSubscriptionError("TeacherStudioDashboard.orders")(error);
+        setOrdersState("error");
+      }
     );
+    ordersSubscription.current = current;
+    return () => {
+      ordersSubscription.current = null;
+      current();
+    };
   }, [user]);
+
+  // A leitura que falhou ganha "Try again" (antes a saida era recarregar a
+  // pagina): le de novo pelo mesmo canal, so o que falhou, e enquanto isso o
+  // bloco volta ao esqueleto.
+  const readFailed = coursesFailed || ordersState === "error";
+  function retryLoad() {
+    if (coursesFailed) {
+      setCoursesFailed(false);
+      setCoursesLoaded(false);
+      void coursesSubscription.current?.reload();
+    }
+    if (ordersState === "error") {
+      setOrdersState("loading");
+      void ordersSubscription.current?.reload();
+    }
+  }
 
   // "inactive" e um curso que ja esteve no ar (o admin tirou): ja houve publish.
   const launched = courses.some(
@@ -95,7 +133,11 @@ export function TeacherStudioDashboard() {
   const needsStripe = courses.some(
     (course) => course.status !== "inactive" && sellsPaid(course)
   );
-  const payoutsPending = needsStripe && !account.payoutsReady;
+  // Primeira visita, sem produto: o vazio da lista guarda o UNICO botao forte.
+  // Filtros, formatos e o "New product" solido disputavam com ele.
+  // Leitura que falhou nao e "sem produto": nada de convite a criar um
+  // produto repetido embaixo do erro.
+  const noProducts = coursesLoaded && courses.length === 0 && !coursesFailed;
   const greetingKey = !coursesLoaded
     ? "hello"
     : courses.length > 0 || coursesFailed
@@ -104,7 +146,14 @@ export function TeacherStudioDashboard() {
 
   return (
     <div className="grid gap-8">
-      {user ? <TeacherWelcomeTour key={user.uid} userId={user.uid} firstName={firstName} /> : null}
+      {user ? (
+        <TeacherWelcomeTour
+          key={user.uid}
+          userId={user.uid}
+          firstName={firstName}
+          hasProducts={courses.length > 0}
+        />
+      ) : null}
       <header className="flex flex-wrap items-end justify-between gap-5 border-b border-[var(--color-line)] pb-5">
         <div>
           {/* Uma manchete por tela. O olho da pagina era "Producer home" em
@@ -132,13 +181,22 @@ export function TeacherStudioDashboard() {
           </Link>
           <Link
             href="/teach/builder?newCourse=1&format=course"
-            className="button-solid px-4 text-sm"
+            className={`${noProducts ? "button-outline" : "button-solid"} px-4 text-sm`}
           >
             <Plus aria-hidden="true" size={16} strokeWidth={2} />
             {t("creatorPanel.newProduct")}
           </Link>
         </div>
       </header>
+
+      {readFailed ? (
+        <div className="grid gap-3">
+          <InlineAlert tone="error">{t("teach.dashboard.loadError")}</InlineAlert>
+          <button type="button" onClick={retryLoad} className="button-outline justify-self-start px-4 text-sm">
+            {t("appErrors.retry")}
+          </button>
+        </div>
+      ) : null}
 
       <StudioNextSteps
         courses={courses}
@@ -150,7 +208,7 @@ export function TeacherStudioDashboard() {
         launched={launched}
       />
 
-      <StudioProductsSection courses={courses} coursesLoaded={coursesLoaded} />
+      <StudioProductsSection courses={courses} coursesLoaded={coursesLoaded} coursesFailed={coursesFailed} />
 
       <div className="grid gap-8 lg:grid-cols-2">
         <StudioRecentActivity courses={courses} orders={orders} />
@@ -164,23 +222,20 @@ export function TeacherStudioDashboard() {
         ) : null}
       </div>
 
-      <StudioSellFormatsSection />
+      {/* Os formatos sao atalhos para quem ja tem produto; o primeiro produto
+          ja escolhe o formato na tela de criacao. */}
+      {courses.length > 0 ? <StudioSellFormatsSection /> : null}
 
-      {/* Antes do 1o publish a lista de passos e o unico guia: os marcos e a
-          lista de atencao repetiam os mesmos passos em outra ordem. */}
-      {launched ? (
-        <StudioEvolution
-          courses={courses}
-          coursesLoaded={coursesLoaded}
-          payoutsReady={account.payoutsReady}
-          verificationApproved={account.verificationApproved}
-        />
-      ) : null}
-
-      <TeacherOverviewMetrics courses={courses} orders={orders} isLoading={!coursesLoaded} />
-      {launched ? (
-        <TeacherStudioInsights courses={courses} orders={orders} payoutsPending={payoutsPending} />
-      ) : null}
+      {/* Os marcos ("Creator milestones") repetiam os mesmos passos da lista
+          acima, e o cartao "Finish your Stripe setup" da lista de atencao
+          repetia o passo do Stripe: a pendencia agora aparece uma vez so. */}
+      <TeacherOverviewMetrics
+        courses={courses}
+        orders={orders}
+        isLoading={!coursesLoaded || ordersState === "loading"}
+        ordersFailed={ordersState === "error"}
+      />
+      {launched ? <TeacherStudioInsights courses={courses} orders={orders} /> : null}
     </div>
   );
 }
@@ -195,8 +250,8 @@ function StudioNextSteps({
   launched,
 }: {
   courses: TeacherCourse[];
-  // Cursos e travas carregados. Antes disso a lista ainda pode ganhar um passo
-  // (verificacao exigida) e a porcentagem pularia: contagem e % ficam neutras.
+  // Cursos e travas carregados. Antes disso a lista ainda pode ganhar ou perder
+  // passos (verificacao exigida, plano, Stripe): o bloco nao aparece.
   ready: boolean;
   account: CourseReadinessAccount;
   verificationStatus: string | null;
@@ -290,17 +345,28 @@ function StudioNextSteps({
   ];
   const completeCount = steps.filter((step) => step.done).length;
   const progress = Math.round((completeCount / steps.length) * 100);
-  const nextStep = steps.find((step) => !step.done) ?? steps[steps.length - 1];
+  // O passo aberto ganha o destaque e o botao, no proprio lugar. Antes um
+  // painel ao lado ("Recommended now") repetia o titulo e a frase dele, e com
+  // tudo feito recomendava "Publish your product" a quem ja tinha publicado.
+  const openStep = steps.find((step) => !step.done);
   // O check se desenha e o selo cresce so no passo que ficou pronto com a
   // Home aberta; quem chega com tudo pronto ve tudo parado.
   const justDone = useJustDone(steps.filter((step) => step.done).map((step) => step.id), ready);
+
+  // Antes de cursos e travas chegarem a lista vazia abria "Create a product" e,
+  // para quem ja tem tudo pronto, o bloco aparecia e sumia a cada visita: nada
+  // ate `ready`. Tudo pronto ao abrir a Home: o bloco sai da tela. Se o ultimo
+  // passo ficou pronto com a Home aberta, ele fica ate a proxima visita.
+  if (!ready || (!openStep && justDone.size === 0)) {
+    return null;
+  }
 
   return (
     <section
       aria-labelledby="next-steps-title"
       className="border-y border-[var(--color-line)] bg-white"
     >
-      <div className="grid lg:grid-cols-[minmax(0,1.5fr)_minmax(260px,0.65fr)]">
+      <div>
         <div className="px-4 py-5 sm:px-5">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
@@ -316,14 +382,12 @@ function StudioNextSteps({
             </div>
             <div className="text-right">
               <p className="text-2xl font-semibold tabular-nums text-[var(--color-primary)]">
-                {ready ? `${progress}%` : "-"}
+                {`${progress}%`}
               </p>
               <p className="text-xs text-[var(--color-ink-muted)]">
-                {ready
-                  ? t("creatorPanel.home.nextSteps.progress")
-                      .replace("{done}", () => String(completeCount))
-                      .replace("{total}", () => String(steps.length))
-                  : "-"}
+                {t("creatorPanel.home.nextSteps.progress")
+                  .replace("{done}", () => String(completeCount))
+                  .replace("{total}", () => String(steps.length))}
               </p>
             </div>
           </div>
@@ -335,23 +399,22 @@ function StudioNextSteps({
               <div
                 data-testid="studio-next-steps-bar"
                 className="h-full rounded-full bg-[var(--color-accent)] transition-[width] duration-300 ease-out"
-                style={{ width: ready ? `${progress}%` : "0%" }}
+                style={{ width: `${progress}%` }}
               />
             </div>
             {/* O marco: a barra chegou ao fim. */}
-            {ready && progress === 100 ? <MilestoneSeal animate={justDone.size > 0} /> : null}
+            {progress === 100 ? <MilestoneSeal animate={justDone.size > 0} /> : null}
           </div>
 
           <ol
             className="mt-4 grid gap-2 sm:auto-cols-fr sm:grid-flow-col"
             aria-label={t("creatorPanel.home.nextSteps.listLabel")}
           >
-            {steps.map((step, index) => (
-              <li key={step.label}>
-                <Link
-                  href={step.href}
-                  className="flex h-full min-h-24 flex-col border-l-2 border-[var(--color-line)] px-3 py-2 transition-colors hover:border-[var(--color-primary)]"
-                >
+            {steps.map((step, index) => {
+              const current = step.id === openStep?.id;
+              const rule = current ? "border-[var(--color-primary)]" : "border-[var(--color-line)]";
+              const body = (
+                <>
                   <span className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.12em] text-[var(--color-ink-muted)]">
                     {step.done ? (
                       <DrawnCheck size={15} animate={justDone.has(step.id)} />
@@ -364,25 +427,34 @@ function StudioNextSteps({
                   <small className="mt-1 text-xs leading-5 text-[var(--color-ink-soft)]">
                     {step.detail}
                   </small>
-                </Link>
-              </li>
-            ))}
+                </>
+              );
+
+              return (
+                <li key={step.id} aria-current={current ? "step" : undefined}>
+                  {/* Criar o 1o produto nao ganha botao aqui: o vazio da lista
+                      de produtos, logo abaixo, ja e o botao forte da tela. */}
+                  {current && step.id !== "create" ? (
+                    <div className={`flex h-full min-h-24 flex-col items-start border-l-2 px-3 py-2 ${rule}`}>
+                      {body}
+                      <Link href={step.href} className="button-solid mt-3 max-w-full px-4 text-sm">
+                        {step.action}
+                        <ArrowRight aria-hidden="true" size={15} strokeWidth={1.9} />
+                      </Link>
+                    </div>
+                  ) : (
+                    <Link
+                      href={step.href}
+                      className={`flex h-full min-h-24 flex-col border-l-2 px-3 py-2 transition-colors hover:border-[var(--color-primary)] ${rule}`}
+                    >
+                      {body}
+                    </Link>
+                  )}
+                </li>
+              );
+            })}
           </ol>
         </div>
-
-        <aside className="border-t border-[var(--color-line)] bg-[var(--color-surface-soft)] px-5 py-6 lg:border-l lg:border-t-0">
-          <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--color-ink-muted)]">
-            {t("creatorPanel.home.nextSteps.recommended")}
-          </p>
-          <h3 className="mt-2 text-lg font-semibold text-[var(--color-primary)]">
-            {nextStep.label}
-          </h3>
-          <p className="mt-2 text-sm leading-6 text-[var(--color-ink-soft)]">{nextStep.detail}</p>
-          <Link href={nextStep.href} className="button-solid mt-5 px-4 text-sm">
-            {nextStep.action}
-            <ArrowRight aria-hidden="true" size={15} strokeWidth={1.9} />
-          </Link>
-        </aside>
       </div>
     </section>
   );
@@ -391,9 +463,11 @@ function StudioNextSteps({
 function StudioProductsSection({
   courses,
   coursesLoaded,
+  coursesFailed,
 }: {
   courses: TeacherCourse[];
   coursesLoaded: boolean;
+  coursesFailed: boolean;
 }) {
   const { t } = useTranslation();
   const [filter, setFilter] = useState<ProductFilter>("all");
@@ -426,12 +500,16 @@ function StudioProductsSection({
             {t("creatorPanel.home.products.title")}
           </h2>
         </div>
-        <Link href="/teach/builder" className="button-outline px-4 text-sm">
-          {t("creatorPanel.home.products.showAll")}
-          <ArrowRight aria-hidden="true" size={15} strokeWidth={1.9} />
-        </Link>
+        {courses.length > 0 ? (
+          <Link href="/teach/builder" className="button-outline px-4 text-sm">
+            {t("creatorPanel.home.products.showAll")}
+            <ArrowRight aria-hidden="true" size={15} strokeWidth={1.9} />
+          </Link>
+        ) : null}
       </div>
 
+      {/* Cinco filtros sobre uma lista vazia so faziam barulho na 1a visita. */}
+      {courses.length > 0 ? (
       <div
         className="mt-4 flex gap-1 overflow-x-auto border-b border-[var(--color-line)]"
         role="tablist"
@@ -454,6 +532,7 @@ function StudioProductsSection({
           </button>
         ))}
       </div>
+      ) : null}
 
       {!coursesLoaded ? (
         <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -464,6 +543,9 @@ function StudioProductsSection({
             />
           ))}
         </div>
+      ) : courses.length === 0 && coursesFailed ? (
+        // A leitura falhou: o erro com "Try again" acima basta (como na Midia).
+        null
       ) : courses.length === 0 ? (
         // Nenhum produto ainda: a cena do primeiro produto e o unico botao
         // latao da Home (o marco), no lugar da faixa tracejada de uma frase.
@@ -484,15 +566,11 @@ function StudioProductsSection({
         />
       ) : filtered.length === 0 ? (
         <div className="mt-3 border-y border-dashed border-[var(--color-line-strong)] px-5 py-10 text-center">
+          {/* So a frase: o "New product" do cabecalho ja cria, e um segundo
+              botao solido aqui disputava com ele. */}
           <p className="text-sm font-semibold text-[var(--color-ink)]">
             {t("creatorPanel.home.products.empty")}
           </p>
-          <Link
-            href="/teach/builder?newCourse=1&format=course"
-            className="button-solid mt-4 px-4 text-sm"
-          >
-            {t("creatorPanel.createProduct")}
-          </Link>
         </div>
       ) : (
         // motion-stagger: os cartoes sobem em escada (40ms cada) quando os
@@ -618,94 +696,6 @@ function StudioSellFormatsSection() {
           );
         })}
       </ul>
-    </section>
-  );
-}
-
-function StudioEvolution({
-  courses,
-  coursesLoaded,
-  payoutsReady,
-  verificationApproved,
-}: {
-  courses: TeacherCourse[];
-  coursesLoaded: boolean;
-  payoutsReady: boolean;
-  verificationApproved: boolean;
-}) {
-  const { t } = useTranslation();
-  const milestones = [
-    {
-      label: t("creatorPanel.home.milestones.firstProduct"),
-      done: courses.length > 0,
-      icon: BookOpenCheck,
-    },
-    {
-      label: t("creatorPanel.home.milestones.verified"),
-      done: verificationApproved,
-      icon: BadgeCheck,
-    },
-    {
-      label: t("creatorPanel.home.milestones.payouts"),
-      done: payoutsReady,
-      icon: Wallet,
-    },
-    {
-      label: t("creatorPanel.home.milestones.firstLive"),
-      done: courses.some((course) => course.status === "published"),
-      icon: Store,
-    },
-  ];
-  const achieved = milestones.filter((milestone) => milestone.done).length;
-
-  return (
-    <section aria-labelledby="evolution-title">
-      <div className="flex flex-wrap items-baseline justify-between gap-3">
-        <div>
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
-            {t("creatorPanel.home.milestones.eyebrow")}
-          </p>
-          <h2
-            id="evolution-title"
-            className="mt-1 text-xl font-semibold text-[var(--color-primary)]"
-          >
-            {t("creatorPanel.home.milestones.title")}
-          </h2>
-        </div>
-        <span className="text-sm font-semibold tabular-nums text-[var(--color-ink-soft)]">
-          {coursesLoaded ? `${achieved}/${milestones.length}` : "-"}
-        </span>
-      </div>
-      <ol className="mt-4 grid border-y border-[var(--color-line)] sm:grid-cols-2 xl:grid-cols-4">
-        {milestones.map((milestone, index) => {
-          const Icon = milestone.icon;
-
-          return (
-            <li
-              key={milestone.label}
-              className="flex items-center gap-3 border-b border-[var(--color-line)] px-3 py-4 last:border-b-0 sm:[&:nth-last-child(-n+2)]:border-b-0 xl:border-b-0 xl:border-r xl:last:border-r-0"
-            >
-              <span
-                className={`grid size-9 place-items-center rounded-full ${
-                  milestone.done
-                    ? "bg-[var(--color-primary)] text-[var(--color-on-primary)]"
-                    : "border border-[var(--color-line)] text-[var(--color-ink-muted)]"
-                }`}
-              >
-                <Icon aria-hidden="true" size={17} strokeWidth={1.9} />
-              </span>
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--color-ink-muted)]">
-                  {t("creatorPanel.home.milestones.item").replace("{number}", () => `0${index + 1}`)}
-                </p>
-                <p className="mt-1 text-sm font-semibold text-[var(--color-ink)]">
-                  {milestone.label}
-                </p>
-              </div>
-            </li>
-          );
-        })}
-      </ol>
     </section>
   );
 }

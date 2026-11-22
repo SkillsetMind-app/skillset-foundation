@@ -94,7 +94,7 @@ export default async function PricingPage() {
                 }
               >
                 {isHighlight ? (
-                  <span className="absolute -top-3 left-6 rounded-full bg-[var(--color-accent)] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-white">
+                  <span className="absolute -top-3 left-6 rounded-chip bg-[var(--color-accent)] px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--color-on-accent)]">
                     {t("publicPages.pricing.recommended")}
                   </span>
                 ) : null}
@@ -249,9 +249,13 @@ export default async function PricingPage() {
                     </Tooltip>
                   </span>
                 </th>
+                {/* "You receive" é a resposta da tabela: fica presa à direita
+                    enquanto o resto rola dentro da caixa. Num celular de 360px
+                    ela ficava toda fora da tela, atrás de uma barra de rolagem
+                    fina. */}
                 <th
                   scope="col"
-                  className="px-4 py-3 text-right font-bold text-[var(--color-primary)]"
+                  className="sticky right-0 bg-[var(--color-surface-soft)] px-4 py-3 text-right font-bold text-[var(--color-primary)] shadow-[-10px_0_12px_-10px_rgba(15,39,68,0.3)] sm:shadow-none"
                 >
                   {t("publicPages.pricing.you_receive")}
                 </th>
@@ -281,7 +285,7 @@ export default async function PricingPage() {
                     <td className="px-4 py-3 text-right text-[var(--color-ink-soft)]">
                       −{formatUsd(sampleStripeFeeUsd)}
                     </td>
-                    <td className="px-4 py-3 text-right font-bold text-[var(--color-primary)]">
+                    <td className="sticky right-0 bg-white px-4 py-3 text-right font-bold text-[var(--color-primary)] shadow-[-10px_0_12px_-10px_rgba(15,39,68,0.3)] sm:shadow-none">
                       {formatUsd(net)}
                     </td>
                   </tr>

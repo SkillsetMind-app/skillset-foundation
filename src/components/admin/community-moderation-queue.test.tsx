@@ -58,8 +58,10 @@ describe("community report presentation", () => {
     fireEvent.click(screen.getByRole("button", { name: label }));
     expect(mocks.update).toHaveBeenCalledWith(report, status);
     expect(screen.getByText("Abierto")).toBeInTheDocument();
-    expect(screen.getAllByRole("button", { name: "Guardando..." })).toHaveLength(3);
-    for (const button of screen.getAllByRole("button", { name: "Guardando..." })) expect(button).toBeDisabled();
+    // Só o botão apertado gira; os três travam e mantêm o nome (I-08).
+    expect(screen.getByRole("button", { name: label })).toHaveAttribute("aria-busy", "true");
+    for (const name of ["Revisado", "Resuelto", "Descartado"]) expect(screen.getByRole("button", { name })).toBeDisabled();
+    expect(screen.getAllByRole("button").filter((button) => button.getAttribute("aria-busy") === "true")).toHaveLength(1);
     language();
     await act(async () => finish());
     expect(screen.getByText("Open")).toBeInTheDocument();

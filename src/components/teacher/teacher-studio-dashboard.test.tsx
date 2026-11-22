@@ -1,4 +1,4 @@
-import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { TeacherStudioDashboard } from "@/components/teacher/teacher-studio-dashboard";
@@ -15,6 +15,7 @@ const { mockUser, state, data } = vi.hoisted(() => {
     activationBlocked: false,
     // Sem plano ativo nem teste em curso: o passo do plano entra na lista.
     planRequired: false,
+    ordersFail: false,
   };
 
   return {
@@ -35,9 +36,14 @@ const { mockUser, state, data } = vi.hoisted(() => {
         },
       ),
       subscribeToTeacherOrders: vi.fn(
-        (_uid: string, onData: (orders: unknown[]) => void) => {
-          onData(state.orders);
-          return () => undefined;
+        (_uid: string, onData: (orders: unknown[]) => void, onError?: (error: Error) => void) => {
+          const read = () => {
+            if (state.ordersFail) onError?.(new Error("offline"));
+            else onData(state.orders);
+          };
+          read();
+          // Como o de verdade: `reload` le de novo sem mexer no canal.
+          return Object.assign(() => undefined, { reload: async () => read() });
         },
       ),
       subscribeToUserProfile: vi.fn(
@@ -122,8 +128,12 @@ async function stepLabels() {
     .map((item) => item.querySelector("strong")?.textContent);
 }
 
-function recommended() {
-  return screen.getByText("Recommended now").closest("aside") as HTMLElement;
+// O passo aberto: destacado no proprio lugar da lista, com o botao. Era o
+// painel "Recommended now", que repetia o titulo e a frase do mesmo passo.
+function currentStep() {
+  const step = document.querySelector<HTMLElement>('li[aria-current="step"]');
+  if (!step) throw new Error("nenhum passo aberto");
+  return step;
 }
 
 beforeEach(() => {
@@ -134,15 +144,33 @@ beforeEach(() => {
   state.verificationFlag = null;
   state.activationBlocked = false;
   state.planRequired = false;
+  state.ordersFail = false;
   vi.clearAllMocks();
 });
 
 afterEach(cleanup);
 
 describe("TeacherStudioDashboard", () => {
+  it("leitura de vendas que falha: erro com 'Try again', que le de novo sem abrir outra inscricao", async () => {
+    state.courses = [course({ status: "published" })];
+    state.ordersFail = true;
+    render(<TeacherStudioDashboard />);
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("We could not load your products or sales.");
+    state.ordersFail = false;
+    await act(async () => {
+      screen.getByRole("button", { name: "Try again" }).click();
+    });
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Try again" })).toBeNull();
+    expect(data.subscribeToTeacherOrders).toHaveBeenCalledTimes(1);
+  });
+
   // Os mesmos quatro tipos da tela de criacao. Gratis, assinatura e programa
   // guiado deixaram de ser tipo.
   it("routes each of the four product types to the creation screen", async () => {
+    // Os formatos sao atalhos de quem ja tem produto (na 1a visita saem).
+    state.courses = [course({})];
     render(<TeacherStudioDashboard />);
 
     const formats = (
@@ -177,6 +205,34 @@ describe("TeacherStudioDashboard", () => {
     expect(create).toHaveAttribute("href", "/teach/builder?newCourse=1&format=course");
     expect(screen.queryByText("No products in this view yet.")).toBeNull();
   });
+
+  // 1a visita: quatro botoes fortes, cinco filtros sobre lista vazia e quatro
+  // formatos disputavam com o "Create my first product". Agora ele e o unico.
+  it("sem produto: some filtro, 'Show all' e formatos; o vazio guarda o unico botao forte", async () => {
+    render(<TeacherStudioDashboard />);
+
+    await screen.findByRole("heading", { name: "Your first product starts here." });
+    expect(screen.queryByRole("tablist", { name: "Product filters" })).toBeNull();
+    expect(screen.queryByRole("tab")).toBeNull();
+    expect(screen.queryByRole("link", { name: /Show all/ })).toBeNull();
+    expect(screen.queryByRole("heading", { name: "Choose a product format" })).toBeNull();
+    expect(screen.queryByText("Revenue, 30d")).toBeNull();
+    expect(screen.getByRole("link", { name: "New product" })).toHaveClass("button-outline");
+    expect(screen.getByRole("link", { name: "Edit storefront" })).not.toHaveClass("button-solid");
+    // O passo "criar" fica destacado, mas sem botao proprio: o do vazio basta.
+    await waitFor(() => expect(currentStep()).toHaveTextContent("Create a product"));
+    expect(currentStep().querySelector(".button-solid")).toBeNull();
+    expect(document.querySelectorAll(".button-solid")).toHaveLength(0);
+  });
+
+  it("com produto: filtros, 'Show all' e o 'New product' solido voltam", async () => {
+    state.courses = [course({})];
+    render(<TeacherStudioDashboard />);
+
+    expect(await screen.findByRole("tablist")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Show all/ })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "New product" })).toHaveClass("button-solid");
+  });
 });
 
 // O que a pessoa sofria: o passo 2 so fechava com verificacao APROVADA e
@@ -189,9 +245,10 @@ describe("Inicio do professor: os passos sao as travas reais do publish", () => 
 
     expect(await stepLabels()).toEqual(["Create a product", "Publish your product"]);
     expect(screen.getByText("0 of 2 complete")).toBeInTheDocument();
-    expect(
-      within(recommended()).getByRole("heading", { name: "Create a product" }),
-    ).toBeInTheDocument();
+    expect(currentStep()).toHaveTextContent("Create a product");
+    // A frase do passo aparece uma vez so (o painel ao lado a repetia).
+    expect(screen.getAllByText(/Choose the delivery and access model/)).toHaveLength(1);
+    expect(screen.queryByText("Recommended now")).toBeNull();
   });
 
   // O cartao so e pedido depois de criar: o teste gratis e exigido para
@@ -203,9 +260,7 @@ describe("Inicio do professor: os passos sao as travas reais do publish", () => 
     await waitFor(async () =>
       expect(await stepLabels()).toEqual(["Create a product", "Creator plan", "Publish your product"]),
     );
-    expect(
-      within(recommended()).getByRole("heading", { name: "Create a product" }),
-    ).toBeInTheDocument();
+    expect(currentStep()).toHaveTextContent("Create a product");
   });
 
   it("sem plano e com produto: o recomendado e o plano, em /account/plans", async () => {
@@ -213,10 +268,8 @@ describe("Inicio do professor: os passos sao as travas reais do publish", () => 
     state.courses = [course({ paymentType: "free", priceAmountMinor: 0 })];
     render(<TeacherStudioDashboard />);
 
-    await waitFor(() =>
-      expect(within(recommended()).getByRole("heading", { name: "Creator plan" })).toBeInTheDocument(),
-    );
-    expect(within(recommended()).getByRole("link", { name: "See plans" })).toHaveAttribute(
+    await waitFor(() => expect(currentStep()).toHaveTextContent("Creator plan"));
+    expect(within(currentStep()).getByRole("link", { name: "See plans" })).toHaveAttribute(
       "href",
       "/account/plans",
     );
@@ -236,10 +289,11 @@ describe("Inicio do professor: os passos sao as travas reais do publish", () => 
     // A frase que MOROU na faixa amarela permanente do topo do /teach.
     expect(within(steps).getByText(/buyers are charged on it directly/i)).toBeInTheDocument();
     expect(screen.getByText("1 of 3 complete")).toBeInTheDocument();
-    expect(
-      within(recommended()).getByRole("heading", { name: "Connect Stripe" }),
-    ).toBeInTheDocument();
-    expect(within(recommended()).getByRole("link", { name: /Connect Stripe/ })).toHaveAttribute(
+    expect(currentStep()).toHaveTextContent("Connect Stripe");
+    expect(within(currentStep()).getByRole("link", { name: /Connect Stripe/ })).toHaveClass("button-solid");
+    // A frase do Stripe aparece uma vez so na tela.
+    expect(screen.getAllByText(/buyers are charged on it directly/i)).toHaveLength(1);
+    expect(within(currentStep()).getByRole("link", { name: /Connect Stripe/ })).toHaveAttribute(
       "href",
       "/account/payments#stripe-connect",
     );
@@ -258,10 +312,8 @@ describe("Inicio do professor: os passos sao as travas reais do publish", () => 
     await waitFor(() => {
       expect(screen.getByText("2 of 3 complete")).toBeInTheDocument();
     });
-    expect(
-      within(recommended()).getByRole("heading", { name: "Publish your product" }),
-    ).toBeInTheDocument();
-    expect(within(recommended()).getByRole("link", { name: /Review and publish/ })).toHaveAttribute(
+    expect(currentStep()).toHaveTextContent("Publish your product");
+    expect(within(currentStep()).getByRole("link", { name: /Review and publish/ })).toHaveAttribute(
       "href",
       "/teach/builder?courseId=c1&tab=review",
     );
@@ -293,7 +345,9 @@ describe("Inicio do professor: os passos sao as travas reais do publish", () => 
     ).toHaveAttribute("href", "/teach/verification");
   });
 
-  it("publicado: o passo de publicar esta feito", async () => {
+  // Com tudo feito, o bloco ficava em 100% recomendando "Publish your product"
+  // a quem ja tinha publicado e vendido.
+  it("publicado e com Stripe: chegando com tudo feito, o bloco de passos sai da tela", async () => {
     state.courses = [course({ status: "published" })];
     state.profile = {
       stripeConnectChargesEnabled: true,
@@ -303,9 +357,11 @@ describe("Inicio do professor: os passos sao as travas reais do publish", () => 
     render(<TeacherStudioDashboard />);
 
     await waitFor(() => {
-      expect(screen.getByText("3 of 3 complete")).toBeInTheDocument();
+      expect(screen.queryByRole("list", { name: "Creator next steps" })).toBeNull();
     });
-    expect(screen.getByText("100%")).toBeInTheDocument();
+    expect(screen.queryByText("100%")).toBeNull();
+    expect(screen.queryByText("Get ready for your first sale")).toBeNull();
+    expect(screen.queryByText(/Review and publish/)).toBeNull();
   });
 
   // Com a taxa exigida e nao paga, a Home mandava "Review and publish" e o
@@ -317,10 +373,12 @@ describe("Inicio do professor: os passos sao as travas reais do publish", () => 
 
     render(<TeacherStudioDashboard />);
 
-    expect(
-      await within(recommended()).findByRole("link", { name: /Activate and publish/ }),
-    ).toHaveAttribute("href", "/teach/builder?courseId=c1&tab=review");
-    expect(within(recommended()).getByText(/one-time US\$25 activation fee/)).toBeInTheDocument();
+    await waitFor(() =>
+      expect(
+        within(currentStep()).getByRole("link", { name: /Activate and publish/ }),
+      ).toHaveAttribute("href", "/teach/builder?courseId=c1&tab=review"),
+    );
+    expect(within(currentStep()).getByText(/one-time US\$25 activation fee/)).toBeInTheDocument();
   });
 
   it("taxa paga ou nao exigida: publish sem aviso de taxa", async () => {
@@ -329,9 +387,11 @@ describe("Inicio do professor: os passos sao as travas reais do publish", () => 
 
     render(<TeacherStudioDashboard />);
 
-    expect(
-      await within(recommended()).findByRole("link", { name: /Review and publish/ }),
-    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(
+        within(currentStep()).getByRole("link", { name: /Review and publish/ }),
+      ).toBeInTheDocument(),
+    );
     expect(screen.queryByText(/activation fee/)).toBeNull();
   });
 
@@ -341,14 +401,21 @@ describe("Inicio do professor: os passos sao as travas reais do publish", () => 
 
     render(<TeacherStudioDashboard />);
 
-    expect(await stepLabels()).toEqual(["Create a product", "Publish your product"]);
+    // Sem passo do Stripe, criar e publicar ja estao feitos: o bloco sai.
+    await waitFor(() =>
+      expect(screen.queryByRole("list", { name: "Creator next steps" })).toBeNull(),
+    );
+    expect(screen.queryByText(/Connect Stripe/)).toBeNull();
     expect(
       await screen.findByRole("heading", { name: "What needs your attention today." }),
     ).toBeInTheDocument();
     expect(screen.queryByText("Finish your Stripe setup")).toBeNull();
   });
 
-  it("enquanto as travas carregam, contagem e porcentagem ficam neutras", async () => {
+  // Antes de as travas chegarem a lista ainda muda: "1 of 2" e "50%" virariam
+  // "1 of 3", e para quem ja tem tudo pronto o bloco aparecia e sumia. Agora o
+  // bloco so entra com os dados prontos, ja com a contagem certa.
+  it("enquanto as travas carregam, o bloco de passos nao aparece", async () => {
     let resolveFlag: (value: boolean) => void = () => undefined;
     state.verificationFlag = new Promise<boolean>((resolve) => {
       resolveFlag = resolve;
@@ -357,16 +424,17 @@ describe("Inicio do professor: os passos sao as travas reais do publish", () => 
 
     render(<TeacherStudioDashboard />);
 
-    const section = (await screen.findByRole("list", { name: "Creator next steps" })).closest(
-      "section",
-    ) as HTMLElement;
-    // Sem o ajuste de verificacao, "1 of 2" e "50%" mudariam para "1 of 3".
-    expect(within(section).queryByText(/of \d complete/)).toBeNull();
-    expect(within(section).queryByText(/%$/)).toBeNull();
+    await screen.findByRole("heading", { name: "Products in your workspace" });
+    expect(screen.queryByRole("list", { name: "Creator next steps" })).toBeNull();
+    expect(screen.queryByText(/of \d complete/)).toBeNull();
+    expect(screen.queryByText("Create a product", { selector: "strong" })).toBeNull();
 
     resolveFlag(true);
 
-    expect(await within(section).findByText("1 of 3 complete")).toBeInTheDocument();
+    const section = (await screen.findByRole("list", { name: "Creator next steps" })).closest(
+      "section",
+    ) as HTMLElement;
+    expect(within(section).getByText("1 of 3 complete")).toBeInTheDocument();
     expect(within(section).getByText("33%")).toBeInTheDocument();
   });
 
@@ -382,9 +450,11 @@ describe("Inicio do professor: os passos sao as travas reais do publish", () => 
 
     render(<TeacherStudioDashboard />);
 
-    expect(
-      await within(recommended()).findByRole("link", { name: new RegExp(action) }),
-    ).toHaveAttribute("href", "/teach/verification");
+    await waitFor(() =>
+      expect(
+        within(currentStep()).getByRole("link", { name: new RegExp(action) }),
+      ).toHaveAttribute("href", "/teach/verification"),
+    );
   });
 });
 
@@ -410,27 +480,37 @@ describe("Inicio do professor: antes do 1o publish so a lista de passos guia", (
     expect(screen.getByRole("heading", { name: "Choose a product format" })).toBeInTheDocument();
   });
 
-  it("depois do 1o publish os marcos e a lista de atencao voltam", async () => {
+  // Os marcos ("Creator milestones") eram a mesma lista de passos outra vez.
+  it("depois do 1o publish a lista de atencao volta; os marcos nao existem mais", async () => {
     state.courses = [course({ status: "published", paymentType: "free", priceAmountMinor: 0 })];
 
     render(<TeacherStudioDashboard />);
 
     expect(
-      await screen.findByRole("heading", { name: "Creator milestones" }),
+      await screen.findByRole("heading", { name: "What needs your attention today." }),
     ).toBeInTheDocument();
-    expect(
-      screen.getByRole("heading", { name: "What needs your attention today." }),
-    ).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Creator milestones" })).toBeNull();
     // So produto gratis: nada de Stripe "urgente".
     expect(screen.queryByText("Finish your Stripe setup")).toBeNull();
   });
 
-  it("produto pago no ar sem Stripe: a lista de atencao cobra o Stripe", async () => {
+  // "Connect Stripe" aparecia 4 vezes: no passo, no painel ao lado, nos marcos
+  // e no cartao urgente "Finish your Stripe setup". Fica so o passo aberto.
+  it("produto pago no ar sem Stripe: a pendencia aparece uma vez, no passo aberto", async () => {
     state.courses = [course({ status: "published" })];
 
     render(<TeacherStudioDashboard />);
 
-    expect(await screen.findByText("Finish your Stripe setup")).toBeInTheDocument();
+    await waitFor(() => expect(currentStep()).toHaveTextContent("Connect Stripe"));
+    expect(within(currentStep()).getByRole("link", { name: /Connect Stripe/ })).toHaveAttribute(
+      "href",
+      "/account/payments#stripe-connect",
+    );
+    expect(
+      await screen.findByRole("heading", { name: "What needs your attention today." }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Finish your Stripe setup")).toBeNull();
+    expect(screen.queryByText("Payouts ready")).toBeNull();
   });
 });
 
@@ -589,6 +669,9 @@ describe("Home do professor: primeira visita", () => {
 
     expect(await screen.findByText("Revenue, 30d")).toBeInTheDocument();
     expect(screen.getByText("New students")).toBeInTheDocument();
+    // "Completion" era sempre "--": o valor nao e medido, o quadro saiu.
+    expect(screen.queryByText("Completion")).toBeNull();
+    expect(screen.queryByText("Appears once learners finish lessons")).toBeNull();
   });
 
   it("so com matricula gratis (sem pedido pago) os quadros aparecem", async () => {
@@ -635,6 +718,10 @@ describe("Home do professor: primeira visita", () => {
         "Welcome back, Patrick.",
       );
     });
+    // Falha nao e "sem produto": nada de convidar a criar um produto repetido.
+    expect(screen.getByRole("alert")).toHaveTextContent("We could not load your products or sales.");
+    expect(screen.queryByRole("heading", { name: "Your first product starts here." })).toBeNull();
+    expect(screen.getByRole("link", { name: "New product" })).toHaveClass("button-solid");
   });
 });
 
@@ -707,19 +794,227 @@ describe("Home do professor: movimento", () => {
     expect(within(produtos).getByRole("link", { name: /Primeiro/ })).toHaveClass("motion-hover-lift");
   });
 
-  it("abrir a Home com os passos prontos: check e selo de 100% parados", async () => {
+  // Quem chega com tudo pronto nao ve o bloco (teste acima). Se o ultimo passo
+  // fica pronto com a Home aberta, o bloco fica, com a festa: check e selo.
+  it("o ultimo passo fica pronto com a Home aberta: o bloco fica e o check e o selo se desenham", async () => {
+    let pushProfile: (profile: unknown) => void = () => undefined;
+    data.subscribeToUserProfile.mockImplementationOnce((_uid, onData) => {
+      pushProfile = onData;
+      onData(state.profile);
+      return () => undefined;
+    });
     state.courses = [course({ status: "published" })];
-    state.profile = {
-      stripeConnectChargesEnabled: true,
-      stripeConnectPayoutsEnabled: true,
-    };
 
     const { container } = render(<TeacherStudioDashboard />);
 
-    await waitFor(() => expect(screen.getByText("3 of 3 complete")).toBeInTheDocument());
-    expect(container.querySelectorAll("[data-drawn-check]").length).toBeGreaterThan(0);
+    await waitFor(() => expect(currentStep()).toHaveTextContent("Connect Stripe"));
     expect(container.querySelector(".drawn-check")).toBeNull();
-    expect(container.querySelector("[data-milestone-seal]")).not.toHaveClass("milestone-seal");
+
+    act(() => pushProfile({ stripeConnectChargesEnabled: true, stripeConnectPayoutsEnabled: true }));
+
+    await waitFor(() => expect(screen.getByText("3 of 3 complete")).toBeInTheDocument());
+    expect(screen.getByText("100%")).toBeInTheDocument();
+    expect(container.querySelectorAll(".drawn-check")).toHaveLength(1);
+    expect(container.querySelector("[data-milestone-seal]")).toHaveClass("milestone-seal");
+    expect(document.querySelector('li[aria-current="step"]')).toBeNull();
   });
 });
 vi.mock("@/lib/data/creator-plan", () => ({ fetchCreatorPlanRequired: async () => state.planRequired }));
+
+// --- Receita por moeda: nada soma reais com dolares --------------------------
+
+function paidOrder(fields: Record<string, unknown>) {
+  return {
+    id: "o1",
+    courseId: "c1",
+    courseTitle: "Breathwork Basics",
+    status: "paid",
+    amountMinor: 4900,
+    currency: "usd",
+    createdAt: new Date(),
+    ...fields,
+  };
+}
+
+function revenueTile() {
+  return screen.getByText("Revenue, 30d").nextElementSibling as HTMLElement;
+}
+
+describe("Home do professor: receita nunca soma moedas", () => {
+  it("uma moeda so (USD): quadro e grafico como sempre", async () => {
+    state.courses = [course({ status: "published" })];
+    state.orders = [paidOrder({})];
+
+    render(<TeacherStudioDashboard />);
+
+    await screen.findByText("Revenue, 30d");
+    expect(revenueTile()).toHaveTextContent(/^\$49$/);
+    expect(screen.getByText("$49", { selector: "strong.num" })).toBeInTheDocument();
+    expect(screen.queryByText(/not in this chart/)).toBeNull();
+  });
+
+  // R$100 e $20 viravam "$120" no quadro e no grafico.
+  it("duas moedas: cada uma no proprio valor, o grafico desenha uma e diz as outras", async () => {
+    state.courses = [course({ status: "published" })];
+    state.orders = [
+      paidOrder({ id: "brl", currency: "BRL", amountMinor: 10_000 }),
+      paidOrder({ id: "usd", currency: "USD", amountMinor: 2_000 }),
+    ];
+
+    render(<TeacherStudioDashboard />);
+
+    await screen.findByText("Revenue, 30d");
+    // Lado a lado, a maior primeiro.
+    expect(revenueTile()).toHaveTextContent("R$100 · $20");
+    // Empate em pedidos: o grafico fica com a primeira em ordem alfabetica.
+    expect(screen.getByText("R$100", { selector: "strong.num" })).toBeInTheDocument();
+    expect(screen.getByText("Other currencies are not in this chart: $20.")).toBeInTheDocument();
+    expect(screen.getAllByText("R$0").length).toBeGreaterThan(0);
+    // Nenhuma soma das duas em lugar nenhum da Home.
+    expect(document.body.textContent).not.toMatch(/\$120|R\$120/);
+  });
+
+  it("reembolso nao entra na receita, nem na moeda dele", async () => {
+    state.courses = [course({ status: "published" })];
+    state.orders = [
+      paidOrder({ id: "usd" }),
+      paidOrder({ id: "brl", currency: "BRL", amountMinor: 10_000, status: "refunded" }),
+    ];
+
+    render(<TeacherStudioDashboard />);
+
+    await screen.findByText("Revenue, 30d");
+    expect(revenueTile()).toHaveTextContent(/^\$49$/);
+    expect(document.body.textContent).not.toContain("R$");
+  });
+
+  // Linha antiga sem moeda: o Intl recusa o codigo; a Home abre com o valor.
+  it("moeda vazia: cai no texto simples, sem derrubar a Home", async () => {
+    state.courses = [course({ status: "published" })];
+    state.orders = [paidOrder({ currency: "" })];
+
+    render(<TeacherStudioDashboard />);
+
+    await screen.findByText("Revenue, 30d");
+    expect(revenueTile()).toHaveTextContent("UNSPECIFIED 49.00");
+    expect(screen.getByRole("img", { name: "Teacher revenue chart" })).toBeInTheDocument();
+  });
+
+  it("sem pedido pago (so matricula gratis): zero sem inventar moeda", async () => {
+    state.courses = [course({ status: "published", paymentType: "free", enrollmentCount: 3 })];
+    state.orders = [];
+
+    render(<TeacherStudioDashboard />);
+
+    await screen.findByText("Revenue, 30d");
+    expect(revenueTile()).toHaveTextContent(/^0$/);
+    expect(screen.queryByRole("img", { name: "Teacher revenue chart" })).toBeNull();
+  });
+});
+
+describe("Home do professor: variacao, Top courses, reembolso parcial e leitura falha", () => {
+  const DAY = 24 * 60 * 60 * 1000;
+  const revenueCard = () => revenueTile().closest(".studio-kpi-card") as HTMLElement;
+
+  it("variacao so moeda com moeda: $60 agora contra $50 antes = +20.0%", async () => {
+    state.courses = [course({ status: "published" })];
+    state.orders = [
+      paidOrder({ id: "now", amountMinor: 6_000, createdAt: new Date(Date.now() - 10 * DAY) }),
+      paidOrder({ id: "before", amountMinor: 5_000, createdAt: new Date(Date.now() - 40 * DAY) }),
+    ];
+
+    render(<TeacherStudioDashboard />);
+
+    await screen.findByText("Revenue, 30d");
+    expect(revenueCard()).toHaveTextContent("+20.0%");
+  });
+
+  it("BRL agora e USD antes: nenhuma variacao de receita", async () => {
+    state.courses = [course({ status: "published" })];
+    state.orders = [
+      paidOrder({ id: "now", currency: "BRL", amountMinor: 6_000, createdAt: new Date(Date.now() - 10 * DAY) }),
+      paidOrder({ id: "before", currency: "USD", amountMinor: 5_000, createdAt: new Date(Date.now() - 40 * DAY) }),
+    ];
+
+    render(<TeacherStudioDashboard />);
+
+    await screen.findByText("Revenue, 30d");
+    expect(revenueCard().textContent).not.toMatch(/%|NaN|Infinity|∞/);
+  });
+
+  it("sem periodo anterior: a variacao some, nunca NaN nem infinito", async () => {
+    state.courses = [course({ status: "published" })];
+    state.orders = [paidOrder({ amountMinor: 6_000, createdAt: new Date(Date.now() - 10 * DAY) })];
+
+    render(<TeacherStudioDashboard />);
+
+    await screen.findByText("Revenue, 30d");
+    expect(revenueCard().textContent).not.toMatch(/%|NaN|Infinity|∞/);
+  });
+
+  // Grafico em BRL; o produto que fez $5,000 em USD caia abaixo de produtos
+  // que nunca venderam mas tinham mais aulas.
+  it("Top courses: quem vendeu em outra moeda nao cai abaixo de quem nunca vendeu", async () => {
+    state.courses = [
+      course({ id: "brl", title: "Reais", status: "published", lessonCount: 1 }),
+      course({ id: "usd", title: "Dolares", status: "published", lessonCount: 1 }),
+      course({ id: "empty-1", title: "Vazio Um", status: "published", lessonCount: 20 }),
+      course({ id: "empty-2", title: "Vazio Dois", status: "published", lessonCount: 30 }),
+    ];
+    state.orders = [
+      paidOrder({ id: "b1", courseId: "brl", currency: "BRL", amountMinor: 10_000 }),
+      paidOrder({ id: "b2", courseId: "brl", currency: "BRL", amountMinor: 10_000 }),
+      paidOrder({ id: "u1", courseId: "usd", currency: "USD", amountMinor: 500_000 }),
+    ];
+
+    render(<TeacherStudioDashboard />);
+
+    const top = (await screen.findByRole("heading", { name: "Top courses" })).closest(".dash-card") as HTMLElement;
+    const rows = within(top).getAllByRole("link").filter((link) => link.className.includes("studio-course-row"));
+    expect(rows.map((row) => row.querySelector("strong")?.textContent)).toEqual(["Reais", "Dolares", "Vazio Dois"]);
+    // Cada produto no proprio valor: "$5,000", nunca o "R$0" da moeda do grafico.
+    expect(within(rows[1]).getByText("$5,000")).toBeInTheDocument();
+    expect(within(rows[1]).queryByText("R$0")).toBeNull();
+  });
+
+  it("reembolso parcial: $100 com $30 devolvidos conta $70 no quadro, no grafico e no Top courses", async () => {
+    state.courses = [course({ status: "published" })];
+    state.orders = [paidOrder({ status: "partially_refunded", amountMinor: 10_000, refundedAmountMinor: 3_000 })];
+
+    render(<TeacherStudioDashboard />);
+
+    await screen.findByText("Revenue, 30d");
+    expect(revenueTile()).toHaveTextContent(/^\$70$/);
+    expect(screen.getByText("$70", { selector: "strong.num" })).toBeInTheDocument();
+    const top = screen.getByRole("heading", { name: "Top courses" }).closest(".dash-card") as HTMLElement;
+    expect(within(top).getByText("$70")).toBeInTheDocument();
+  });
+
+  it("leitura dos pedidos falhou: os quadros dizem Unavailable, nunca 0", async () => {
+    data.subscribeToTeacherOrders.mockImplementationOnce(
+      (_uid: string, _onData: (orders: unknown[]) => void, onError?: (error: Error) => void) => {
+        onError?.(new Error("boom"));
+        return Object.assign(() => undefined, { reload: async () => {} });
+      },
+    );
+    state.courses = [course({ status: "published", paymentType: "free", enrollmentCount: 3 })];
+
+    render(<TeacherStudioDashboard />);
+
+    await screen.findByText("Revenue, 30d");
+    expect(revenueTile()).toHaveTextContent("Unavailable");
+    expect(screen.getByText("New students").nextElementSibling).toHaveTextContent("Unavailable");
+  });
+
+  it("pedidos ainda carregando: esqueleto, nunca 0", async () => {
+    data.subscribeToTeacherOrders.mockImplementationOnce(() => Object.assign(() => undefined, { reload: async () => {} }));
+    state.courses = [course({ status: "published", paymentType: "free", enrollmentCount: 3 })];
+
+    render(<TeacherStudioDashboard />);
+
+    const card = (await screen.findByText("Revenue, 30d")).closest(".studio-kpi-card") as HTMLElement;
+    expect(card.querySelector(".animate-pulse")).not.toBeNull();
+    expect(card.textContent).not.toMatch(/\$0/);
+    expect(within(card).queryByText("0")).toBeNull();
+  });
+});

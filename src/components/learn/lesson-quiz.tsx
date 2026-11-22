@@ -1,5 +1,6 @@
 "use client";
 
+import { CheckCircle2, XCircle } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
@@ -54,19 +55,47 @@ export function LessonQuiz({ courseId, lessonId }: { courseId: string; lessonId:
         return (
           <fieldset key={index} className="grid gap-2">
             <legend className="mb-1 text-sm font-semibold text-[var(--color-ink)]">{question.question}</legend>
-            {question.options.map((option, optionIndex) => (
-              <label key={optionIndex} className="flex min-h-11 items-center gap-3 text-sm text-[var(--color-ink)]">
-                <input
-                  type="radio"
-                  name={`lesson-quiz-${lessonId}-${index}`}
-                  checked={choice === optionIndex}
-                  disabled={isChecked}
-                  onChange={() => setChosen((current) => ({ ...current, [index]: optionIndex }))}
-                  className="h-5 w-5 shrink-0"
-                />
-                {option}
-              </label>
-            ))}
+            {question.options.map((option, optionIndex) => {
+              // Conferida, a pergunta marca a certa (borda e check) e, se a
+              // escolha foi outra, a escolhida (borda e X). Antes so mudava uma
+              // palavra cinza embaixo. Cores da paleta do curso, com reserva
+              // na da plataforma.
+              const mark = !isChecked
+                ? null
+                : optionIndex === question.answer
+                  ? "right"
+                  : optionIndex === choice
+                    ? "wrong"
+                    : null;
+              return (
+                <label
+                  key={optionIndex}
+                  data-quiz-mark={mark ?? undefined}
+                  className={`flex min-h-11 items-center gap-3 rounded-md border px-2 text-sm text-[var(--color-ink)] ${
+                    mark === "right"
+                      ? "border-[var(--ma-success-ink,var(--color-success-fg))]"
+                      : mark === "wrong"
+                        ? "border-[var(--ma-accent-ink,var(--color-danger-fg))]"
+                        : "border-transparent"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name={`lesson-quiz-${lessonId}-${index}`}
+                    checked={choice === optionIndex}
+                    disabled={isChecked}
+                    onChange={() => setChosen((current) => ({ ...current, [index]: optionIndex }))}
+                    className="h-5 w-5 shrink-0 accent-[var(--ma-accent,var(--color-primary))]"
+                  />
+                  {option}
+                  {mark === "right" ? (
+                    <CheckCircle2 size={16} aria-hidden className="ml-auto shrink-0 text-[var(--ma-success-ink,var(--color-success-fg))]" />
+                  ) : mark === "wrong" ? (
+                    <XCircle size={16} aria-hidden className="ml-auto shrink-0 text-[var(--ma-accent-ink,var(--color-danger-fg))]" />
+                  ) : null}
+                </label>
+              );
+            })}
             {isChecked ? null : (
               <button
                 type="button"

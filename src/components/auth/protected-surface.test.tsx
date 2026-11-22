@@ -95,6 +95,24 @@ describe("ProtectedSurface — senha aceita, codigo ainda nao", () => {
     expect(screen.queryByText("conteudo protegido")).toBeNull();
   });
 
+  // O-16: o professor que pulou a ativacao e barrado no /teach; o botao tem
+  // de levar a ativacao de professor, nao ao cadastro antigo de aluno.
+  it.each([
+    [["teacherStudio.access"], "/onboarding?path=teacher"],
+    [["users.manage"], "/onboarding"],
+  ] as const)("limited wall for %s points to %s", (permissions, href) => {
+    mocks.session = { status: "authenticated", user: learner };
+
+    render(
+      <ProtectedSurface permissions={permissions}>
+        <p>conteudo protegido</p>
+      </ProtectedSurface>,
+    );
+
+    expect(screen.queryByText("conteudo protegido")).toBeNull();
+    expect(screen.getByRole("link", { name: "auth.guard.updateOnboarding" }).getAttribute("href")).toBe(href);
+  });
+
   it("keeps account creation on every other signed-out wall", () => {
     mocks.session = { status: "unauthenticated", user: null };
 

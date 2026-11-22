@@ -17,12 +17,14 @@ export function ClassroomLoading({ label }: { label: string }) {
       <p role="status" className="text-sm text-[var(--ma-ink-soft,var(--color-ink-soft))]">
         {label}
       </p>
-      <div className={`h-32 ${block}`} />
+      {/* Os cantos dos cartoes de verdade (12px; 8px nas linhas da lista):
+          com canto reto, tudo "mudava de forma" quando o curso chegava. */}
+      <div className={`h-32 rounded-lg ${block}`} />
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
-        <div className={`aspect-video ${block}`} />
+        <div className={`aspect-video rounded-lg ${block}`} />
         <div className="grid gap-3">
           {[0, 1, 2, 3].map((item) => (
-            <div key={item} className={`h-16 ${block}`} />
+            <div key={item} className={`h-16 rounded-md ${block}`} />
           ))}
         </div>
       </div>

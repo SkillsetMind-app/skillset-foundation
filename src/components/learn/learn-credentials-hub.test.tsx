@@ -63,6 +63,23 @@ describe("credentials hub eligibility", () => {
   });
 });
 
+describe("credentials hub hierarchy", () => {
+  it("one header (the shell's), and each card states its progress once", () => {
+    show({ ...finished, status: "active", progressPercent: 40 });
+    // The hero and the section title are gone; the filters carry the counts.
+    expect(screen.queryByText("Credentials from real course progress.")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "In progress 1" })).toBeVisible();
+    const title = screen.getByRole("heading", { name: "Finished course" });
+    expect(title).not.toHaveClass("display-title");
+    // Status pill + a bar with the percentage; no "Progress" box, no sentence.
+    expect(screen.getByText("In progress", { selector: "span" })).toBeVisible();
+    expect(screen.getByRole("progressbar", { name: "Progress" })).toHaveAttribute("aria-valuenow", "40");
+    expect(screen.getAllByText("40%")).toHaveLength(1);
+    expect(screen.queryByText("Complete the course to become eligible for your SkillsetMind Verified certificate.")).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Continue course" })).toBeVisible();
+  });
+});
+
 describe("credentials hub issuance errors", () => {
   async function claimAndFail(error: unknown) {
     mocks.issue.mockRejectedValue(error);

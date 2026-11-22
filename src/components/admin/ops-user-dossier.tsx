@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, useState, type ReactNode } from "react";
 
 import { AccountControlDialog } from "@/components/admin/account-control-dialog";
+import { formatAuditAction } from "@/components/admin/audit-labels";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { StatusChip } from "@/components/shared/status-chip";
 import { Button, InlineAlert } from "@/components/ui";
@@ -72,11 +73,15 @@ function plainValue(value: unknown): string | null {
   return null;
 }
 
-function Section({ title, children }: { title: string; children: ReactNode }) {
+// `list`: a seção é uma lista só (linha do tempo, pedidos de privacidade). Antes
+// ela repetia o próprio título como rótulo do único campo (I-03).
+function Section({ title, list = false, children }: { title: string; list?: boolean; children: ReactNode }) {
   return (
     <section className="min-w-0 rounded-lg border border-[var(--color-line)] bg-white p-4 shadow-[var(--shadow-soft)] sm:p-6">
       <h3 className="text-base font-bold text-[var(--color-ink)]">{title}</h3>
-      <dl className="mt-4 grid min-w-0 gap-x-6 gap-y-4 text-sm sm:grid-cols-2">{children}</dl>
+      {list
+        ? <div className="mt-4 min-w-0 break-words text-sm text-[var(--color-ink)]">{children}</div>
+        : <dl className="mt-4 grid min-w-0 gap-x-6 gap-y-4 text-sm sm:grid-cols-2">{children}</dl>}
     </section>
   );
 }
@@ -91,6 +96,10 @@ function Fact({ label, children }: { label: string; children: ReactNode }) {
 }
 
 const listClass = "mt-2 grid gap-1 text-xs text-[var(--color-ink-soft)]";
+// Linha de lista: status vira etiqueta e valor ausente não deixa " ·  · " (I-10).
+const rowClass = "flex flex-wrap items-center gap-x-2 gap-y-1 break-words";
+const joined = (...parts: (string | null | undefined | false)[]) => parts.filter(Boolean).join(" · ");
+const REQUEST_TYPES = new Set(["data_export", "account_deletion"]);
 
 export function OpsUserDossierPanel({ uid }: { uid: string }) {
   const { t, locale } = useTranslation();
@@ -193,7 +202,8 @@ export function OpsUserDossierPanel({ uid }: { uid: string }) {
   const evidence = verificationCase ? plainValue(verificationCase.evidence_links) : null;
 
   return (
-    <div className="grid min-w-0 gap-5">
+    // ops-surface: escopo das regras de CSS só do /ops (globals.css).
+    <div className="ops-surface grid min-w-0 gap-5">
       {controlOpen ? (
         <AccountControlDialog uid={identity.uid} label={identity.email || identity.display_name || identity.uid}
           onClose={() => { setControlOpen(false); setReload((value) => value + 1); }} />
@@ -218,54 +228,7 @@ export function OpsUserDossierPanel({ uid }: { uid: string }) {
         </div>
       </header>
 
-      <Section title={s("onboarding")}>
-        <Fact label={f("path")}>{path}</Fact>
-        <Fact label={f("onboardingCompleted")}>{onboarding.completed ? date(onboarding.completed_at) : yesNo(false)}</Fact>
-        {ANSWER_ORDER.map((key) => <Fact key={key} label={t(`${copy}.answers.${key}`)}>{answer(key)}</Fact>)}
-        <Fact label={f("goals")}>{plainValue(onboarding.goals) ?? none}</Fact>
-        <Fact label={f("credentials")}>{plainValue(onboarding.credentials) ?? none}</Fact>
-        <Fact label={f("bio")}>{onboarding.bio || none}</Fact>
-        <Fact label={f("phone")}>{onboarding.phone_number || none}</Fact>
-        <Fact label={f("timezone")}>{onboarding.timezone || none}</Fact>
-        <Fact label={f("marketingConsent")}>{yesNo(onboarding.marketing_consent)}</Fact>
-        <Fact label={f("termsAccepted")}>{accepted(onboarding.terms_accepted_at, onboarding.terms_version)}</Fact>
-        <Fact label={f("privacyAccepted")}>{accepted(onboarding.privacy_accepted_at, onboarding.privacy_version)}</Fact>
-        <Fact label={f("teacherTermsAccepted")}>{accepted(onboarding.teacher_terms_accepted_at, onboarding.teacher_terms_version)}</Fact>
-      </Section>
-
-      <Section title={s("behavior")}>
-        <Fact label={f("lastActivity")}>{date(behavior.last_activity_at, true)}</Fact>
-        <Fact label={f("last30Days")}>{last30}</Fact>
-        <Fact label={f("lessonsCompleted")}>{behavior.lessons_completed}</Fact>
-        <Fact label={f("lessonsOpened")}>{behavior.lessons_opened}</Fact>
-        <Fact label={f("messagesSent")}>{behavior.messages_sent}</Fact>
-        <Fact label={f("wishlist")}>{behavior.wishlist}</Fact>
-        <Fact label={f("points")}>{behavior.points ?? none}</Fact>
-        <Fact label={f("advisor")}>
-          {behavior.advisor.conversations > 0
-            ? `${t(`${copy}.advisorSummary`)
-              .replace("{conversations}", () => String(behavior.advisor.conversations))
-              .replace("{messages}", () => String(behavior.advisor.messages))} · ${date(behavior.advisor.last_used_at)}`
-            : none}
-        </Fact>
-      </Section>
-
-      <Section title={s("timeline")}>
-        <Fact label={s("timeline")}>
-          {timeline.length ? (
-            <ul className="grid gap-2">
-              {timeline.map((event, index) => (
-                <li key={`${event.kind}-${event.at}-${index}`} className="break-words">
-                  {date(event.at, true)} · {t(`${copy}.timelineKinds.${event.kind}`)}{event.label ? ` · ${event.label}` : ""}
-                </li>
-              ))}
-            </ul>
-          ) : none}
-        </Fact>
-      </Section>
-
       <Section title={s("access")}>
-        <Fact label={f("accountStatus")}>{statusChip}</Fact>
         {access.blocked_email ? <Fact label={f("blockedEmail")}>{access.blocked_email}</Fact> : null}
         <Fact label={f("username")}>{identity.username ?? none}</Fact>
         <Fact label={f("joined")}>{date(identity.created_at)}</Fact>
@@ -276,14 +239,42 @@ export function OpsUserDossierPanel({ uid }: { uid: string }) {
         <Fact label={f("sessions")}>{access.sessions_since_cutoff}</Fact>
       </Section>
 
+      <Section title={s("purchases")}>
+        <Fact label={f("orders")}>
+          {money(purchases.orders)}
+          {purchases.recent_orders.length ? (
+            <ul className={listClass}>
+              {purchases.recent_orders.map((order) => (
+                <li key={order.id} className={rowClass}>
+                  {order.course_title ?? order.id}
+                  {order.status ? <StatusChip status={order.status} /> : null}
+                  <span className="tabular-nums">{joined(formatMinor(order.amount_minor ?? 0, order.currency, locale), date(order.created_at))}</span>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </Fact>
+        <Fact label={f("plan")}>
+          {purchases.plan_subscription ? (
+            <span className={rowClass}>
+              {purchases.plan_subscription.plan_id ? <span className="break-all">{purchases.plan_subscription.plan_id}</span> : null}
+              {purchases.plan_subscription.status ? <StatusChip status={purchases.plan_subscription.status} /> : null}
+            </span>
+          ) : none}
+        </Fact>
+        <Fact label={f("stripeCustomer")}>{purchases.stripe_customer_id ?? none}</Fact>
+      </Section>
+
       <Section title={s("learning")}>
         <Fact label={f("enrollments")}>
           {counts(learning.enrollments_by_status)}
           {learning.recent_enrollments.length ? (
             <ul className={listClass}>
               {learning.recent_enrollments.map((entry) => (
-                <li key={entry.id} className="break-words">
-                  {entry.course_title ?? entry.course_id ?? entry.id} · {entry.status ?? ""} · {Math.round(Number(entry.progress_percent ?? 0))}%
+                <li key={entry.id} className={rowClass}>
+                  {entry.course_title ?? entry.course_id ?? entry.id}
+                  {entry.status ? <StatusChip status={entry.status} /> : null}
+                  <span className="tabular-nums">{Math.round(Number(entry.progress_percent ?? 0))}%</span>
                 </li>
               ))}
             </ul>
@@ -293,27 +284,6 @@ export function OpsUserDossierPanel({ uid }: { uid: string }) {
         <Fact label={f("courseSubscriptions")}>{counts(learning.course_subscriptions_by_status)}</Fact>
       </Section>
 
-      <Section title={s("purchases")}>
-        <Fact label={f("orders")}>
-          {money(purchases.orders)}
-          {purchases.recent_orders.length ? (
-            <ul className={listClass}>
-              {purchases.recent_orders.map((order) => (
-                <li key={order.id} className="break-words">
-                  {order.course_title ?? order.id} · {order.status ?? ""} · {formatMinor(order.amount_minor ?? 0, order.currency, locale)} · {date(order.created_at)}
-                </li>
-              ))}
-            </ul>
-          ) : null}
-        </Fact>
-        <Fact label={f("plan")}>
-          {purchases.plan_subscription
-            ? `${purchases.plan_subscription.plan_id ?? ""} · ${purchases.plan_subscription.status ?? ""}`
-            : none}
-        </Fact>
-        <Fact label={f("stripeCustomer")}>{purchases.stripe_customer_id ?? none}</Fact>
-      </Section>
-
       <Section title={s("creator")}>
         <Fact label={f("verification")}>{creator.verification_status ? <StatusChip status={creator.verification_status} /> : none}</Fact>
         <Fact label={f("activation")}>{activation}</Fact>
@@ -321,7 +291,7 @@ export function OpsUserDossierPanel({ uid }: { uid: string }) {
           {verificationCase ? (
             <span className="grid gap-1">
               <span className="flex flex-wrap items-center gap-2">
-                <StatusChip status={verificationCase.status ?? "pending"} /> {verificationCase.profession ?? ""} · {date(verificationCase.created_at)}
+                <StatusChip status={verificationCase.status ?? "pending"} /> {joined(verificationCase.profession, date(verificationCase.created_at))}
               </span>
               {verificationCase.registration_id ? (
                 <span className="text-xs text-[var(--color-ink-soft)]">
@@ -336,17 +306,22 @@ export function OpsUserDossierPanel({ uid }: { uid: string }) {
           ) : none}
         </Fact>
         <Fact label={f("connect")}>
-          {creator.connect.account_id
-            ? `${creator.connect.status ?? ""} · ${f("charges")}: ${yesNo(creator.connect.charges_enabled)} · ${f("payouts")}: ${yesNo(creator.connect.payouts_enabled)}`
-            : none}
+          {creator.connect.account_id ? (
+            <span className={rowClass}>
+              {creator.connect.status ? <StatusChip status={creator.connect.status} /> : null}
+              {`${f("charges")}: ${yesNo(creator.connect.charges_enabled)} · ${f("payouts")}: ${yesNo(creator.connect.payouts_enabled)}`}
+            </span>
+          ) : none}
         </Fact>
         <Fact label={f("courses")}>
           {counts(creator.courses_by_status)}
           {creator.courses.length ? (
             <ul className={listClass}>
               {creator.courses.map((course) => (
-                <li key={course.id} className="break-words">
-                  {course.title ?? course.slug ?? course.id} · {course.status ?? ""} · {course.enrollment_count ?? 0}
+                <li key={course.id} className={rowClass}>
+                  {course.title ?? course.slug ?? course.id}
+                  {course.status ? <StatusChip status={course.status} /> : null}
+                  <span className="tabular-nums">{course.enrollment_count ?? 0}</span>
                 </li>
               ))}
             </ul>
@@ -366,25 +341,30 @@ export function OpsUserDossierPanel({ uid }: { uid: string }) {
           {support.recent_tickets.length ? (
             <ul className={listClass}>
               {support.recent_tickets.map((ticket) => (
-                <li key={ticket.id} className="break-words">{ticket.subject ?? ticket.id} · {ticket.status ?? ""} · {date(ticket.created_at)}</li>
+                <li key={ticket.id} className={rowClass}>
+                  {ticket.subject ?? ticket.id}
+                  {ticket.status ? <StatusChip status={ticket.status} /> : null}
+                  {date(ticket.created_at)}
+                </li>
               ))}
             </ul>
           ) : null}
         </Fact>
       </Section>
 
-      <Section title={s("privacy")}>
-        <Fact label={s("privacy")}>
-          {privacy.length ? (
-            <ul className="grid gap-2">
-              {privacy.map((request) => (
-                <li key={request.id} className="flex flex-wrap items-center gap-2">
-                  {request.type ?? ""} <StatusChip status={request.status ?? "pending"} /> {date(request.requested_at)}
-                </li>
-              ))}
-            </ul>
-          ) : none}
-        </Fact>
+      <Section title={s("privacy")} list>
+        {privacy.length ? (
+          <ul className="grid gap-2">
+            {privacy.map((request) => (
+              <li key={request.id} className={rowClass}>
+                {request.type && REQUEST_TYPES.has(request.type)
+                  ? t(`platform.ops.accountRequestsPanel.types.${request.type}`)
+                  : request.type}
+                <StatusChip status={request.status ?? "pending"} /> {date(request.requested_at)}
+              </li>
+            ))}
+          </ul>
+        ) : none}
       </Section>
 
       <Section title={s("audit")}>
@@ -393,7 +373,7 @@ export function OpsUserDossierPanel({ uid }: { uid: string }) {
             <ul className="grid gap-2">
               {audit.on_user.map((entry) => (
                 <li key={entry.id} className="break-words">
-                  {entry.action ?? entry.summary} · {entry.actor_email ?? ""} · {date(entry.created_at, true)}
+                  {joined(entry.action ? formatAuditAction(entry.action, t) : entry.summary, entry.actor_email, date(entry.created_at, true))}
                   {entry.reason ? ` · ${f("reason")}: ${entry.reason}` : ""}
                 </li>
               ))}
@@ -405,12 +385,57 @@ export function OpsUserDossierPanel({ uid }: { uid: string }) {
             <ul className="grid gap-2">
               {audit.by_user.map((entry) => (
                 <li key={entry.id} className="break-words">
-                  {entry.action ?? entry.summary} · {entry.target_type ?? ""} {entry.target_id ?? ""} · {date(entry.created_at, true)}
+                  {joined(entry.action ? formatAuditAction(entry.action, t) : entry.summary,
+                    [entry.target_type, entry.target_id].filter(Boolean).join(" "), date(entry.created_at, true))}
                 </li>
               ))}
             </ul>
           ) : none}
         </Fact>
+      </Section>
+
+      <Section title={s("timeline")} list>
+        {timeline.length ? (
+          <ul className="grid gap-2">
+            {timeline.map((event, index) => (
+              <li key={`${event.kind}-${event.at}-${index}`} className="break-words">
+                {date(event.at, true)} · {t(`${copy}.timelineKinds.${event.kind}`)}{event.label ? ` · ${event.label}` : ""}
+              </li>
+            ))}
+          </ul>
+        ) : none}
+      </Section>
+
+      <Section title={s("behavior")}>
+        <Fact label={f("lastActivity")}>{date(behavior.last_activity_at, true)}</Fact>
+        <Fact label={f("last30Days")}>{last30}</Fact>
+        <Fact label={f("lessonsCompleted")}>{behavior.lessons_completed}</Fact>
+        <Fact label={f("lessonsOpened")}>{behavior.lessons_opened}</Fact>
+        <Fact label={f("messagesSent")}>{behavior.messages_sent}</Fact>
+        <Fact label={f("wishlist")}>{behavior.wishlist}</Fact>
+        <Fact label={f("points")}>{behavior.points ?? none}</Fact>
+        <Fact label={f("advisor")}>
+          {behavior.advisor.conversations > 0
+            ? `${t(`${copy}.advisorSummary`)
+              .replace("{conversations}", () => String(behavior.advisor.conversations))
+              .replace("{messages}", () => String(behavior.advisor.messages))} · ${date(behavior.advisor.last_used_at)}`
+            : none}
+        </Fact>
+      </Section>
+
+      <Section title={s("onboarding")}>
+        <Fact label={f("path")}>{path}</Fact>
+        <Fact label={f("onboardingCompleted")}>{onboarding.completed ? date(onboarding.completed_at) : yesNo(false)}</Fact>
+        {ANSWER_ORDER.map((key) => <Fact key={key} label={t(`${copy}.answers.${key}`)}>{answer(key)}</Fact>)}
+        <Fact label={f("goals")}>{plainValue(onboarding.goals) ?? none}</Fact>
+        <Fact label={f("credentials")}>{plainValue(onboarding.credentials) ?? none}</Fact>
+        <Fact label={f("bio")}>{onboarding.bio || none}</Fact>
+        <Fact label={f("phone")}>{onboarding.phone_number || none}</Fact>
+        <Fact label={f("timezone")}>{onboarding.timezone || none}</Fact>
+        <Fact label={f("marketingConsent")}>{yesNo(onboarding.marketing_consent)}</Fact>
+        <Fact label={f("termsAccepted")}>{accepted(onboarding.terms_accepted_at, onboarding.terms_version)}</Fact>
+        <Fact label={f("privacyAccepted")}>{accepted(onboarding.privacy_accepted_at, onboarding.privacy_version)}</Fact>
+        <Fact label={f("teacherTermsAccepted")}>{accepted(onboarding.teacher_terms_accepted_at, onboarding.teacher_terms_version)}</Fact>
       </Section>
     </div>
   );

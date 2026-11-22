@@ -167,6 +167,8 @@ const { mockUser, fixtures, fuse } = vi.hoisted(() => {
     realCourses: [] as Course[],
     fetchedIds: [] as string[][],
     emitEnrollments: (() => undefined) as (next: Enrollment[]) => void,
+    enrollmentsFail: false,
+    reloads: 0,
     calls: 0,
   };
 
@@ -223,11 +225,22 @@ vi.mock("@/lib/data/enrollments", () => ({
   subscribeToUserEnrollments: (
     _uid: string,
     onData: (enrollments: Enrollment[]) => void,
+    onError: (error: Error) => void,
   ) => {
     fuse();
     fixtures.emitEnrollments = onData;
-    onData(fixtures.enrollments);
-    return () => undefined;
+    const read = () => {
+      if (fixtures.enrollmentsFail) onError(new Error("offline"));
+      else onData(fixtures.enrollments);
+    };
+    read();
+    // Como o de verdade: `reload` le de novo sem mexer no canal.
+    return Object.assign(() => undefined, {
+      reload: async () => {
+        fixtures.reloads += 1;
+        read();
+      },
+    });
   },
 }));
 
@@ -273,6 +286,26 @@ describe("LearnDashboard", () => {
     fixtures.enrollments = fixtures.base;
     fixtures.realCourses = [];
     fixtures.fetchedIds = [];
+    fixtures.enrollmentsFail = false;
+    fixtures.reloads = 0;
+  });
+
+  it("se as matriculas nao carregam: erro anunciado e 'Try again' como acao principal, que le de novo", async () => {
+    fixtures.enrollmentsFail = true;
+    render(<LearnDashboard />);
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("We could not load your enrolled courses.");
+    const retry = screen.getByRole("button", { name: "Try again" });
+    expect(retry).toHaveClass("button-solid");
+    expect(screen.getByRole("link", { name: "Explore courses" })).toHaveClass("button-outline");
+
+    fixtures.enrollmentsFail = false;
+    await act(async () => {
+      fireEvent.click(retry);
+    });
+    expect(fixtures.reloads).toBe(1);
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(await screen.findByRole("heading", { name: "My courses" })).toBeInTheDocument();
   });
 
   it("sauda uma vez so: um h1 e nenhum 'Welcome back'", async () => {
@@ -323,8 +356,8 @@ describe("LearnDashboard", () => {
     // O mesmo curso em "My courses" leva ao mesmo lugar, nao a capa.
     const card = within(screen.getByRole("region", { name: "My courses" }))
       .getByRole("heading", { level: 3, name: "Effective Communication" })
-      .closest("article") as HTMLElement;
-    expect(within(card).getByRole("link", { name: "Open" })).toHaveAttribute(
+      .closest("a") as HTMLElement;
+    expect(card).toHaveAttribute(
       "href",
       "/learn/courses/effective-communication?lesson=l4",
     );
@@ -340,11 +373,56 @@ describe("LearnDashboard", () => {
     // O cartao de "My courses" herda o destino de retomar.
     const card = within(region)
       .getByRole("heading", { level: 3, name: "Effective Communication" })
-      .closest("article") as HTMLElement;
-    expect(within(card).getByRole("link", { name: "Open" })).toHaveAttribute(
+      .closest("a") as HTMLElement;
+    expect(card).toHaveAttribute(
       "href",
       "/learn/courses/effective-communication?lesson=l4",
     );
+  });
+
+  it("o cartao inteiro e o link: sem botao 'Open', progresso dito uma vez, selo so fora do normal", async () => {
+    render(<LearnDashboard />);
+
+    const region = await screen.findByRole("region", { name: "My courses" });
+    // Antes: um botao cheio "Open" por cartao.
+    expect(within(region).queryByRole("link", { name: "Open" })).not.toBeInTheDocument();
+
+    const active = within(region)
+      .getByRole("heading", { level: 3, name: "Effective Communication" })
+      .closest("a") as HTMLElement;
+    // "50%" uma vez (o numero ao lado da barra), sem "50% COMPLETE" visivel.
+    expect(within(active).getAllByText("50%")).toHaveLength(1);
+    // Ativo e o normal: sem selo "Active"; no lugar, onde a pessoa parou.
+    expect(within(active).queryByText("Active")).not.toBeInTheDocument();
+    expect(within(active).getByText("Module 2 · Lesson 2")).toBeInTheDocument();
+
+    const done = within(region)
+      .getByRole("heading", { level: 3, name: "Brand Design Atelier" })
+      .closest("a") as HTMLElement;
+    expect(within(done).getByText("Completed")).toBeInTheDocument();
+  });
+
+  it("matricula estornada nao vira link: cartao parado com o selo do status", async () => {
+    fixtures.enrollments = [{ ...fixtures.base[0], status: "refunded" }];
+    render(<LearnDashboard />);
+
+    const region = await screen.findByRole("region", { name: "My courses" });
+    const title = within(region).getByRole("heading", { level: 3, name: "Effective Communication" });
+    expect(title.closest("a")).toBeNull();
+    expect(within(title.closest("article") as HTMLElement).getByText("Refunded")).toBeInTheDocument();
+  });
+
+  it("'What's new' vazio nao aparece e nao empurra 'My courses' para baixo", async () => {
+    const saved = fixtures.notifications;
+    fixtures.notifications = [];
+    try {
+      render(<LearnDashboard />);
+      await screen.findByRole("region", { name: "My courses" });
+      expect(screen.queryByRole("region", { name: "What's new" })).not.toBeInTheDocument();
+      expect(screen.queryByText("Nothing new yet.")).not.toBeInTheDocument();
+    } finally {
+      fixtures.notifications = saved;
+    }
   });
 
   it("um curso fora do catalogo publico ainda retoma na aula: o painel busca so os cursos da pessoa, por id, uma vez", async () => {
@@ -382,7 +460,7 @@ describe("LearnDashboard", () => {
 
     const region = await screen.findByRole("region", { name: "My courses" });
     await waitFor(() =>
-      expect(within(region).getByRole("link", { name: "Open" })).toHaveAttribute(
+      expect(within(region).getByRole("link", { name: /Private Coaching Lab/ })).toHaveAttribute(
         "href",
         "/learn/courses/course-real?lesson=r2",
       ),
@@ -496,7 +574,7 @@ describe("LearnDashboard", () => {
     render(<LearnDashboard />);
 
     const region = await screen.findByRole("region", { name: "My courses" });
-    expect(within(region).getByRole("link", { name: "Open" })).toHaveAttribute(
+    expect(within(region).getByRole("link", { name: /Effective Communication/ })).toHaveAttribute(
       "href",
       "/learn/courses/effective-communication",
     );

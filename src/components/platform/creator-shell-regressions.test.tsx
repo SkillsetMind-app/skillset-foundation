@@ -182,6 +182,35 @@ describe("creator shell regressions", () => {
     expect(onClose).toHaveBeenCalledOnce();
   });
 
+  // So a cor (dois azuis escuros) nao dizia onde a pessoa esta: a aba atual
+  // leva aria-current, e numa pagina que so existe dentro de "More" a marca
+  // fica no "More".
+  it("marks the current tab of the bottom bar, or More when no tab is the page", () => {
+    mocks.pathname = "/teach";
+    const home = render(<MobileSidebarDrawer open={false} onOpen={vi.fn()} onClose={vi.fn()} />);
+    const bar = screen.getByRole("navigation", { name: "platform.mobile.navLabel" });
+    const current = [...bar.querySelectorAll('[aria-current="page"]')];
+    expect(current).toHaveLength(1);
+    expect(current[0].getAttribute("href")).toBe("/teach");
+    expect(bar.querySelector("button")).not.toHaveAttribute("data-current");
+    home.unmount();
+
+    // /teach/reports so se alcanca pelo "More": "Home" nao e essa pagina.
+    mocks.pathname = "/teach/reports";
+    const inner = render(<MobileSidebarDrawer open={false} onOpen={vi.fn()} onClose={vi.fn()} />);
+    const other = screen.getByRole("navigation", { name: "platform.mobile.navLabel" });
+    expect(other.querySelector('[aria-current="page"]')).toBeNull();
+    expect(other.querySelector("button")).toHaveAttribute("data-current", "true");
+    inner.unmount();
+
+    // As outras abas valem para as paginas dentro delas.
+    mocks.pathname = "/account/billing";
+    render(<MobileSidebarDrawer open={false} onOpen={vi.fn()} onClose={vi.fn()} />);
+    const account = screen.getByRole("navigation", { name: "platform.mobile.navLabel" });
+    expect(account.querySelector('[aria-current="page"]')?.getAttribute("href")).toBe("/account");
+    expect(account.querySelector("button")).not.toHaveAttribute("data-current");
+  });
+
   it("keeps My products active inside a product management route", () => {
     mocks.pathname = "/teach/courses/course-1/manage";
 

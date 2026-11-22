@@ -472,6 +472,7 @@ export function SignupForm() {
                 minLength={8}
                 required
                 autoFocus
+                aria-describedby="signup-password-rules"
                 className="field-input pr-11"
               />
               <button
@@ -488,8 +489,14 @@ export function SignupForm() {
                 )}
               </button>
             </span>
-            {password ? <PasswordStrengthChecklist password={password} /> : null}
           </label>
+          {/* As regras aparecem desde o inicio (as que faltam, apagadas): antes
+              surgiam no 1o caractere e empurravam o resto do formulario. Fora
+              do <label>, para o nome do campo continuar sendo so "Password";
+              o campo aponta para elas como descricao. */}
+          <div id="signup-password-rules">
+            <PasswordStrengthChecklist password={password} />
+          </div>
 
           <label className="grid gap-1.5 text-sm font-semibold text-[var(--color-ink)]">
             {t("auth.signup.confirmPassword")}
@@ -521,7 +528,7 @@ export function SignupForm() {
               </button>
             </span>
             {showMismatch ? (
-              <span className="text-xs font-semibold text-[var(--color-accent-fg)]">
+              <span className="text-xs font-semibold text-[var(--color-danger-fg)]">
                 {t("auth.signup.passwordsDontMatch")}
               </span>
             ) : null}

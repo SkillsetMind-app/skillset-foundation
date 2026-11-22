@@ -3,7 +3,7 @@
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import type { Locale } from "@/lib/i18n/config";
 import { MessageSquare } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 
 import { ExportTableButton } from "@/components/shared/export-table-button";
 import { StatusChip } from "@/components/shared/status-chip";
@@ -120,6 +120,19 @@ function MessageComposer({
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
   const [sent, setSent] = useState(false);
+  const fieldRef = useRef<HTMLTextAreaElement>(null);
+
+  // Abriu, o foco vai para a caixa: antes ela aparecia sem aviso e o teclado
+  // continuava no botao "Message".
+  useEffect(() => {
+    fieldRef.current?.focus();
+  }, []);
+
+  // Enviou: o "Send" some da tela e o foco cairia no corpo da pagina, onde o
+  // Esc da caixa ja nao chega. Vai para o "Close".
+  useEffect(() => {
+    if (sent) document.getElementById(`message-close-${student.enrollmentId}`)?.focus();
+  }, [sent, student.enrollmentId]);
 
   const handleSend = async () => {
     setSending(true);
@@ -138,7 +151,7 @@ function MessageComposer({
   if (sent) {
     return (
       <InlineAlert tone="success" title={t("courseRoster.sent").replace("{name}", () => student.displayName || t("courseRoster.theStudent"))}>
-        <Button variant="outline" size="sm" onClick={onClose}>
+        <Button id={`message-close-${student.enrollmentId}`} variant="outline" size="sm" onClick={onClose}>
           {t("courseRoster.close")}
         </Button>
       </InlineAlert>
@@ -154,6 +167,7 @@ function MessageComposer({
         {t("courseRoster.messageLabel").replace("{name}", () => student.displayName || t("courseRoster.student"))}
       </label>
       <textarea
+        ref={fieldRef}
         id={`message-${student.enrollmentId}`}
         value={body}
         onChange={(event) => setBody(event.target.value)}
@@ -201,6 +215,12 @@ export function CourseStudentRosterView({
   const [progress, setProgress] = useState<ProgressFilter>("all");
   const [status, setStatus] = useState<StatusFilter>("all");
   const [openThread, setOpenThread] = useState<string | null>(null);
+  // Fechar (Cancel, Close ou Esc) devolve o foco ao "Message" daquele aluno,
+  // que continua na tela: o teclado nao cai no topo da pagina.
+  const closeComposer = (enrollmentId: string) => {
+    setOpenThread(null);
+    document.getElementById(`message-toggle-${enrollmentId}`)?.focus();
+  };
   // Um unico "agora" por montagem: `new Date()` no valor padrao da prop cria
   // uma dependencia nova a cada render, e a janela de "esta semana" andava
   // sozinha entre um render e o seguinte.
@@ -391,7 +411,8 @@ export function CourseStudentRosterView({
             </thead>
             <tbody>
               {visible.map((student) => (
-                <tr key={student.enrollmentId} className="border-b fine-rule last:border-b-0">
+                <Fragment key={student.enrollmentId}>
+                <tr className="border-b fine-rule last:border-b-0">
                   <td className="py-3 pr-4">
                     <strong className="block font-medium text-[var(--color-ink)]">
                       {student.displayName || t("courseRoster.unnamed")}
@@ -403,15 +424,6 @@ export function CourseStudentRosterView({
                       >
                         {student.email}
                       </a>
-                    ) : null}
-                    {openThread === student.enrollmentId ? (
-                      <div className="mt-3 max-w-md">
-                        <MessageComposer
-                          courseId={courseId}
-                          student={student}
-                          onClose={() => setOpenThread(null)}
-                        />
-                      </div>
                     ) : null}
                   </td>
                   <td className="py-3 pr-4">
@@ -434,12 +446,15 @@ export function CourseStudentRosterView({
                   </td>
                   <td className="py-3 pr-4">
                     <Button
+                      id={`message-toggle-${student.enrollmentId}`}
                       variant="outline"
                       size="sm"
                       // O nome do aluno entra no rotulo, nao no texto visivel:
                       // numa lista de 40 linhas, "Message" sozinho deixa 40
                       // botoes com o mesmo nome acessivel.
                       aria-label={t("courseRoster.messageLabel").replace("{name}", () => student.displayName || t("courseRoster.student"))}
+                      aria-expanded={openThread === student.enrollmentId}
+                      aria-controls={openThread === student.enrollmentId ? `message-row-${student.enrollmentId}` : undefined}
                       onClick={() =>
                         setOpenThread((current) =>
                           current === student.enrollmentId ? null : student.enrollmentId,
@@ -451,6 +466,32 @@ export function CourseStudentRosterView({
                     </Button>
                   </td>
                 </tr>
+                {/* A caixa numa linha propria, logo abaixo do aluno: dentro da
+                    celula do nome ela esticava a linha ~170px, soltava as outras
+                    colunas e, no celular, ficava meio escondida atras da rolagem
+                    lateral. O `sticky` a prende no canto visivel da tabela. */}
+                {openThread === student.enrollmentId ? (
+                  <tr id={`message-row-${student.enrollmentId}`} className="border-b fine-rule last:border-b-0">
+                    <td colSpan={7} className="bg-[var(--color-surface-soft)] px-4 py-3">
+                      <div
+                        className="sticky left-4 w-full max-w-[min(28rem,calc(100vw_-_6rem))]"
+                        onKeyDown={(event) => {
+                          if (event.key === "Escape") {
+                            event.stopPropagation();
+                            closeComposer(student.enrollmentId);
+                          }
+                        }}
+                      >
+                        <MessageComposer
+                          courseId={courseId}
+                          student={student}
+                          onClose={() => closeComposer(student.enrollmentId)}
+                        />
+                      </div>
+                    </td>
+                  </tr>
+                ) : null}
+                </Fragment>
               ))}
             </tbody>
           </table>

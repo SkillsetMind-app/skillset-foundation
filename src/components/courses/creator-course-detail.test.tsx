@@ -20,6 +20,10 @@ const fixtures = vi.hoisted(() => ({
   query: "",
   locale: "en" as "en" | "es",
   subscriptions: 0,
+  // true: a assinatura do curso não responde, como uma leitura ainda a caminho.
+  holdCourse: false,
+  // As chaves públicas (payments.checkout): ligadas, salvo no teste que as desliga.
+  flagsOn: true,
   router: { push: vi.fn(), replace: vi.fn() },
   course: {
     id: "course-1",
@@ -77,7 +81,7 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(fixtures.query),
 }));
 
-vi.mock("@/lib/feature-flags", () => ({ isPublicFeatureEnabled: () => true }));
+vi.mock("@/lib/feature-flags", () => ({ isPublicFeatureEnabled: () => fixtures.flagsOn }));
 
 vi.mock("@/lib/supabase/config", () => ({
   getSupabaseClientConfig: () => ({}),
@@ -90,7 +94,7 @@ vi.mock("@/lib/data/published-courses", () => ({
     onNext: (course: TeacherCourse) => void,
   ) => {
     fixtures.subscriptions += 1;
-    onNext(fixtures.course);
+    if (!fixtures.holdCourse) onNext(fixtures.course);
     return () => {};
   },
 }));
@@ -177,6 +181,8 @@ beforeEach(() => {
   fixtures.query = "";
   fixtures.locale = "en";
   fixtures.subscriptions = 0;
+  fixtures.holdCourse = false;
+  fixtures.flagsOn = true;
   fixtures.auth.status = "unauthenticated";
   fixtures.auth.user = null;
   fixtures.course.paymentType = "one_time";
@@ -239,6 +245,77 @@ describe("CreatorCourseDetail", () => {
     expect(screen.queryByText("Deep Focus Systems")).not.toBeInTheDocument();
     // O resto do conteúdo interativo continua no lugar.
     expect(container.querySelector("#free-preview")).not.toBeNull();
+  });
+});
+
+// Carregar não é erro: antes, um segundo h1 "Loading course..." e um botão que
+// levava o comprador para fora da página; depois, "Loading pricing..." em 36px
+// e "Checkout not available yet" para quem já tinha conta.
+describe("CreatorCourseDetail: enquanto carrega", () => {
+  it.each([false, true])("o curso a caminho mostra o esqueleto: sem título, sem botão de saída (compra: %s)", (checkoutOnly) => {
+    fixtures.holdCourse = true;
+    render(<CreatorCourseDetail courseIdOverride="course-1" hideHeader checkoutOnly={checkoutOnly} />);
+
+    expect(screen.getByRole("status")).toHaveTextContent(checkoutOnly ? "Loading course checkout..." : "Loading course...");
+    expect(screen.queryByRole("heading")).not.toBeInTheDocument();
+    expect(screen.queryByRole("link")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+  });
+
+  it("um erro de verdade segue com o aviso, e vira h2 sob o h1 que o servidor já pôs", () => {
+    render(<CreatorCourseDetail hideHeader />);
+
+    expect(screen.getByRole("heading", { level: 2, name: "Course not selected." })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { level: 1 })).not.toBeInTheDocument();
+    expect(screen.queryByText("Creator course")).not.toBeInTheDocument();
+  });
+
+  it("o preço a caminho guarda o lugar, e o botão de quem tem conta diz Enroll, desligado", async () => {
+    fixtures.auth.status = "authenticated";
+    fixtures.auth.user = { uid: "buyer" };
+    vi.stubGlobal("fetch", vi.fn(() => new Promise(() => {})));
+    const { container } = render(<CreatorCourseDetail courseIdOverride="course-1" hideHeader />);
+
+    const button = await waitFor(() => {
+      const found = container.querySelector<HTMLButtonElement>("#enroll-card button[data-cta-focus]");
+      expect(found).not.toBeNull();
+      return found!;
+    });
+    expect(button).toHaveTextContent(/^Enroll$/);
+    expect(button).toBeDisabled();
+    expect(button).toHaveAttribute("aria-busy", "true");
+    expect(screen.queryByText("Checkout not available yet")).not.toBeInTheDocument();
+    // O texto só para o leitor de tela; na tela, a barra do tamanho do preço.
+    expect(within(container.querySelector<HTMLElement>("#enroll-card")!).getByText("Loading pricing...")).toHaveClass("sr-only");
+  });
+
+  // Com a compra desligada o botão não diz "Enroll" para virar o aviso depois.
+  it("com a compra desligada, o aviso vem direto, sem o rótulo de espera", async () => {
+    fixtures.flagsOn = false;
+    fixtures.auth.status = "authenticated";
+    fixtures.auth.user = { uid: "buyer" };
+    vi.stubGlobal("fetch", vi.fn(() => new Promise(() => {})));
+    const { container } = render(<CreatorCourseDetail courseIdOverride="course-1" hideHeader />);
+
+    const button = await waitFor(() => {
+      const found = container.querySelector<HTMLButtonElement>("#enroll-card button[data-cta-focus]");
+      expect(found).not.toBeNull();
+      return found!;
+    });
+    expect(button).toHaveTextContent("Checkout not available yet");
+    expect(button).not.toHaveAttribute("aria-busy");
+  });
+
+  it("o cancelamento da compra é aviso neutro, e o erro de checkout é anunciado", async () => {
+    fixtures.query = "checkout=cancelled";
+    fixtures.auth.status = "authenticated";
+    fixtures.auth.user = { uid: "buyer" };
+    vi.mocked(startCourseCheckout).mockRejectedValue(new Error("network"));
+    render(<CreatorCourseDetail courseIdOverride="course-1" hideHeader />);
+
+    expect(await screen.findByRole("status")).toHaveTextContent("Checkout was cancelled.");
+    fireEvent.click(await screen.findByRole("button", { name: /Enroll — \$149\.00/ }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("We could not start secure checkout");
   });
 });
 

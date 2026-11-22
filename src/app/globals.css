@@ -849,6 +849,14 @@ p {
   white-space: nowrap;
 }
 
+/* I-16, só no /ops: etiqueta com 6px de raio e 11px no lugar da pílula de
+   10px. O resto do produto fica como está até cada tela ser conferida no
+   navegador. `.ops-surface` está no conteúdo de /ops e da ficha da pessoa. */
+.ops-surface .status-chip {
+  border-radius: var(--radius-chip);
+  font-size: 0.6875rem;
+}
+
 .status-chip__dot {
   width: 0.375rem;
   height: 0.375rem;
@@ -1604,6 +1612,17 @@ p {
   background: rgba(255, 255, 255, 0.14);
 }
 
+/* Botão desligado não reage: um "Publish product" apagado ainda subia e
+   ganhava sombra com o mouse e afundava no clique, como se fosse clicável.
+   Fica chato (sem sombra), parado e com o cursor de bloqueado. Vem DEPOIS de
+   todos os :hover e :active acima, que têm a mesma especificidade: é a ordem
+   que faz esta regra valer. */
+:is(.button-solid, .button-outline, .button-accent, .button-danger, .button-solid-light, .button-outline-light):is(:disabled, [aria-disabled="true"]) {
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
 /* Hero conversion card — an always-light surface sitting on the always-navy
    hero, so every color is FIXED (not a theme token): theme tokens invert in
    dark mode and would wreck contrast on this white card (same rationale as the
@@ -1726,16 +1745,13 @@ p {
    wash across the top of the page (the gradient is an arbitrary value, so the
    global .bg-white dark override never reached it) — give it a muted dark-amber
    surface with warm light text so it still reads as a warning without glaring. */
+/* A faixa usa as cores de aviso da plataforma (as mesmas do InlineAlert).
+   Era o único degradê do produto, em âmbar do Tailwind; os tokens já trocam
+   no tema escuro, então a regra própria do escuro saiu. */
 .account-status-banner {
-  background: linear-gradient(90deg, #fef3c7 0%, #fde68a 100%);
-  border-bottom: 1px solid #f59e0b;
-  color: #78350f;
-}
-
-[data-theme="dark"] .account-status-banner {
-  background: linear-gradient(90deg, rgba(192, 123, 10, 0.18) 0%, rgba(192, 123, 10, 0.26) 100%);
-  border-bottom-color: rgba(245, 158, 11, 0.42);
-  color: #fad79f;
+  background: var(--color-warning-soft);
+  border-bottom: 1px solid var(--color-warning);
+  color: var(--color-warning-fg);
 }
 
 /* Active account-nav pill. Light = navy fill with white text (correct). In dark
@@ -2533,9 +2549,22 @@ p {
     scroll-snap-type: x mandatory;
   }
 
+  /* Abaixo de 1024px as abas viravam cartões de 220px com ícone e descrição:
+     cabia uma aba e meia e os ajustes começavam abaixo da primeira tela. Aqui
+     são só o rótulo, numa fileira de 44px que rola de lado. */
   .account-settings-tab {
-    min-width: 220px;
+    display: flex;
+    flex: none;
+    width: auto;
+    min-height: 44px;
+    align-items: center;
+    padding: 0.5rem 0.9rem;
     scroll-snap-align: start;
+  }
+
+  .account-settings-tab__icon,
+  .account-settings-tab__description {
+    display: none;
   }
 }
 
@@ -2656,8 +2685,31 @@ select:focus-visible {
     linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
 }
 
-.welcome-question {
-  animation: welcome-question-in 320ms ease-out both;
+/* Celular: "Continue" preso ao pe da tela. A barra rolava junto com a pagina
+   e ficava abaixo da dobra (e atras do teclado no passo do telefone). No
+   tablet e no computador ela volta a ser a barra comum do fim da pagina. */
+@media (max-width: 639.98px) {
+  .onboarding-footer {
+    position: sticky;
+    bottom: 0;
+    z-index: 10;
+    border-top: 1px solid var(--color-line);
+    background: var(--color-base);
+    padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  /* Campo focado e aviso de erro nunca param atras da barra presa. */
+  html:has(.onboarding-footer) {
+    scroll-padding-bottom: 6rem;
+  }
+}
+
+/* Cada pergunta entra com a mesma subida curta (180ms do sistema), so para
+   quem nao pediu menos movimento. */
+@media (prefers-reduced-motion: no-preference) {
+  .welcome-question {
+    animation: welcome-question-in var(--duration-base) var(--ease-standard) both;
+  }
 }
 
 @keyframes welcome-question-in {
@@ -3690,13 +3742,19 @@ body:has([aria-label="Course categories"])
   max-width: 440px;
 }
 
-/* Full-width row below the editing panel: course-structure recap + the
-   review/submit action card, with the asset uploader spanning underneath. */
+/* Linha abaixo do painel: o cartao de publicar (360 px, a direita; abaixo de
+   1180 px ocupa a largura) e a biblioteca de midia embaixo. O cartao "Course
+   structure" que ficava a esquerda saiu. */
 .course-builder-footer {
   display: grid;
   gap: 1.25rem;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 360px);
+  grid-template-columns: minmax(0, 1fr);
   align-items: start;
+}
+
+.course-builder-footer > .settings-section-card {
+  justify-self: end;
+  width: min(100%, 360px);
 }
 
 .course-builder-footer__full {
@@ -4081,7 +4139,22 @@ body:has([aria-label="Course categories"])
   max-height: none;
   overflow: visible;
   border-color: var(--color-line);
+  /* Pagina, nao janela: sem o canto de 16 px e sem o brilho vermelho do canto
+     (radial e so do hero). */
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
   box-shadow: none;
+}
+
+/* A 1920 px a aula esticava ate 1.450 px: previa do video de 1.474 x 829 px e
+   campos de ponta a ponta. Uma coluna de leitura, como nas pranchas. */
+.lesson-modal--page .lesson-modal__body > * {
+  max-width: 48rem;
+}
+
+/* O titulo da aula ficava em 37,6 px, maior que o h1 do curso (30 px). */
+.lesson-modal--page .lesson-modal__context h3 {
+  font-size: 1.5rem;
 }
 
 .lesson-modal__trail {
@@ -4217,16 +4290,54 @@ body:has([aria-label="Course categories"])
   color: var(--color-primary);
 }
 
-.lesson-modal__tabs span {
-  border: 1px solid var(--color-line);
-  border-radius: 999px;
+/* Estado da aba em tamanho fixo: a palavra trocava a largura e a fileira
+   pulava. Marca de 10 px (a palavra fica no title e em sr-only) e, em
+   Materials, o numero. */
+.lesson-modal__tab-count {
+  min-width: 1.25rem;
+  border-radius: var(--radius-sm);
   background: var(--color-surface-soft);
-  padding: 0.125rem 0.45rem;
+  padding: 0.0625rem 0.375rem;
   color: var(--color-primary);
-  font-size: 0.625rem;
-  font-weight: 900;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+/* A forma diz o estado, nao so a cor: anel vazio (off), meio cheio (busy),
+   cheio (done/on). Todas as cores passam de 3:1 sobre a barra das abas nos dois
+   temas (o cinza de linha e o latao claro davam ~2,5:1). */
+.lesson-modal__tab-dot {
+  box-sizing: border-box;
+  width: 0.625rem;
+  height: 0.625rem;
+  flex: none;
+  border: 1.5px solid var(--color-ink-muted);
+  border-radius: 999px;
+  background: transparent;
+}
+
+.lesson-modal__tab-dot[data-tone="busy"] {
+  border-color: var(--color-accent-fg);
+  background: linear-gradient(90deg, var(--color-accent-fg) 50%, transparent 50%);
+}
+
+.lesson-modal__tab-dot[data-tone="done"] {
+  border-color: var(--color-success-fg);
+  background: var(--color-success-fg);
+}
+
+.lesson-modal__tab-dot[data-tone="on"] {
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+}
+
+.lesson-modal__tabs-note {
+  margin-bottom: 1rem;
+  color: var(--color-ink-soft);
+  font-size: 0.75rem;
+  font-weight: 600;
 }
 
 .lesson-modal__body {
@@ -4250,6 +4361,7 @@ body:has([aria-label="Course categories"])
 
 .lesson-video-source-picker__options {
   display: grid;
+  max-width: 48rem;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
   gap: 0.75rem;
 }
@@ -4331,7 +4443,6 @@ body:has([aria-label="Course categories"])
 
 .lesson-video-source-picker__url.is-active {
   border-color: var(--color-brass);
-  box-shadow: inset 3px 0 0 var(--color-brass);
 }
 
 .lesson-video-source-picker__url-label {
@@ -4521,14 +4632,45 @@ body:has([aria-label="Course categories"])
   background: var(--color-surface-soft);
 }
 
+/* Cartao de envio compacto: era grid sem limite, e o botao "Upload file" e
+   a previa local esticavam ate a largura da pagina. Agora a previa 16:9 fica
+   ao lado (vai para cima no celular) e os botoes tem a largura do texto. */
 .lesson-modal-upload {
-  display: grid;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
   min-width: 0;
-  gap: 0.85rem;
+  max-width: 48rem;
+  gap: 1.25rem;
   border: 1px solid var(--color-line);
   border-radius: var(--radius-lg);
   background: #ffffff;
-  padding: 1rem;
+  padding: 1.25rem;
+}
+
+.lesson-modal-upload__video {
+  width: 13rem;
+  max-width: 100%;
+  flex: none;
+  aspect-ratio: 16 / 9;
+  border-radius: var(--radius-md);
+  background: #000000;
+  object-fit: contain;
+}
+
+.lesson-modal-upload__body {
+  display: grid;
+  flex: 1 1 16rem;
+  min-width: 0;
+  justify-items: start;
+  gap: 0.75rem;
+}
+
+.lesson-modal-upload__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.75rem;
 }
 
 .lesson-modal-upload label:has(> input[type="file"]) {
@@ -4559,6 +4701,16 @@ body:has([aria-label="Course categories"])
   color: var(--color-primary);
   font-size: 0.75rem;
   font-weight: 800;
+}
+
+/* O nome do arquivo e o titulo do cartao, nao mais uma caixa azul. */
+.lesson-modal-upload__file {
+  max-width: 100%;
+  background: none;
+  padding: 0;
+  color: var(--color-ink);
+  font-size: 0.9375rem;
+  font-weight: 700;
 }
 
 .lesson-modal-upload__error {
@@ -4740,9 +4892,22 @@ body:has([aria-label="Course categories"])
 [data-theme="dark"] .lesson-modal-assets article,
 [data-theme="dark"] .lesson-video-source-picker__dropzone,
 [data-theme="dark"] .lesson-video-source-picker__url,
-[data-theme="dark"] .lesson-video-source-picker__url input,
 [data-theme="dark"] .lesson-modal-setting {
   background: var(--color-surface-strong);
+}
+
+/* No escuro o campo de link e a chave desligada tinham a cor do proprio
+   cartao e so se liam pela linha fina: um degrau mais fundo que o cartao. */
+[data-theme="dark"] .lesson-video-source-picker__url input {
+  background: var(--color-surface);
+}
+
+[data-theme="dark"] .lesson-modal-setting button:not(.is-on) {
+  background: var(--color-base);
+}
+
+[data-theme="dark"] .lesson-modal--page {
+  background: var(--color-surface);
 }
 
 /* On-toggle track inverts to light blue in dark; flip the knob to dark ink so it
@@ -4794,7 +4959,8 @@ body:has([aria-label="Course categories"])
 
   .lesson-modal__tabs button {
     display: grid;
-    grid-template-columns: 0.875rem minmax(0, 1fr);
+    grid-template-columns: 0.875rem minmax(0, 1fr) auto;
+    align-items: center;
     min-width: 0;
     gap: 0 0.375rem;
     padding: 0.25rem 0.5rem;
@@ -4803,13 +4969,6 @@ body:has([aria-label="Course categories"])
     text-align: left;
     white-space: normal;
     overflow-wrap: anywhere;
-  }
-
-  .lesson-modal__tabs span {
-    grid-column: 2;
-    justify-self: start;
-    min-width: 0;
-    max-width: 100%;
   }
 }
 
@@ -5033,8 +5192,9 @@ body:has([aria-label="Course categories"])
   gap: 14px;
   border: 0;
   box-shadow: none;
-  /* A playlist rola dentro da lateral; o vídeo fica parado. */
-  max-height: calc(100vh - 108px);
+  /* A playlist rola dentro da lateral; o vídeo fica parado. top 92px = barra
+     do topo da área de membros (~68px) + 24px; 108px deixa 16px embaixo. */
+  max-height: calc(100svh - 108px);
   overflow-y: auto;
 }
 
@@ -5548,6 +5708,16 @@ body:has([aria-label="Course categories"])
   color: #ffffff;
 }
 
+/* Esperando o vídeo: a caixa já tem o 16:9 do player (o iframe é
+   aspect-video). Com a altura do clamp acima ela media 260-520px e a aula
+   pulava 50-110px quando o vídeo chegava. O clamp fica para trancada e sem
+   mídia, que têm texto e botão. */
+.member-video-empty--loading {
+  aspect-ratio: 16 / 9;
+  min-height: 0;
+  padding: 0;
+}
+
 .member-video-empty svg {
   color: rgba(255, 255, 255, 0.82);
 }
@@ -6030,8 +6200,20 @@ body:has([aria-label="Course categories"])
     grid-template-columns: auto minmax(0, 1fr) auto;
   }
 
+  /* Linha 1: a seta de voltar (só ícone, 44px) e o título com as setas de
+     aula. Linha 2: barra e porcentagem juntas. Antes a barra ocupava a linha
+     2 inteira e o "40%" caía sozinho numa terceira. */
+  .member-classroom-head__back {
+    min-width: 44px;
+    justify-content: center;
+  }
+
+  .member-classroom-head__main {
+    grid-column: 2 / -1;
+  }
+
   .member-classroom-head__progress {
-    grid-column: 1 / -1;
+    grid-column: 1 / 3;
   }
 }
 
@@ -6070,13 +6252,26 @@ body:has([aria-label="Course categories"])
 }
 
 .member-classroom[data-members-theme] {
+  /* clip, e não hidden: hidden faz da sala um contêiner de rolagem, e tudo o
+     que é sticky dentro dela (barra "Mark complete & next", lista de aulas,
+     aviso de posts novos) grudava nela e rolava junto com a página. clip
+     corta os cantos igual e deixa o sticky grudar na tela. hidden fica como
+     reserva para navegador sem clip. */
   overflow: hidden;
+  overflow: clip;
   gap: 0;
   border: 1px solid var(--ma-line);
   border-radius: var(--radius-lg);
   background: var(--ma-bg);
   color: var(--ma-ink);
   box-shadow: var(--ma-shadow);
+}
+
+/* Com a barra "Mark complete & next" presa no pé da tela (~69px: 44 do botão,
+   24 de respiro, 1 de borda), o navegador levava o item focado pelo Tab até a
+   borda de baixo, atrás dela. Só na página que tem a aula aberta. */
+html:has(#member-lesson-player) {
+  scroll-padding-bottom: 88px;
 }
 
 .member-classroom[data-members-theme] > .members-hero {
@@ -6097,13 +6292,32 @@ body:has([aria-label="Course categories"])
   box-shadow: none;
 }
 
-.member-classroom[data-members-theme] > .member-classroom-layout {
-  margin: 24px;
+/* Respiro entre a moldura da sala e o que vai dentro dela. Os painéis moram
+   no invólucro da aba (.member-classroom-body, enrolled-course-workspace.tsx);
+   as margens antigas miravam filhos diretos da sala, deixaram de casar quando
+   o invólucro entrou, e os cartões passaram a encostar na borda. Cabeçalho
+   curto e abas recuam o mesmo tanto, para as bordas esquerdas alinharem. */
+.member-classroom[data-members-theme] > .member-classroom-body {
+  padding: 0 24px 24px;
 }
 
-.member-classroom[data-members-theme] > .member-module-deck,
-.member-classroom[data-members-theme] > .member-resource-panel {
-  margin: 0 24px 24px;
+.member-classroom[data-members-theme] > .member-classroom-head {
+  margin-inline: 24px;
+  padding-inline: 0;
+}
+
+/* A barra rola de lado (overflow-x), e isso corta o que passa da borda dela:
+   o anel de foco (2px + 3px de afastamento) da primeira aba sumia à
+   esquerda. 6px de folga por dentro, descontados da margem, e o texto segue
+   alinhado com os painéis. */
+.member-classroom[data-members-theme] > .member-classroom-tabs {
+  margin-inline: 18px;
+  padding-inline: 6px;
+}
+
+/* O texto da primeira aba começa na mesma linha dos painéis. */
+.member-classroom[data-members-theme] > .member-classroom-tabs > a:first-child {
+  padding-inline-start: 0;
 }
 
 .member-classroom[data-members-theme] [class*="border-[var(--color-line)]"],
@@ -6130,6 +6344,34 @@ body:has([aria-label="Course categories"])
 
 .member-classroom[data-members-theme] [class*="text-[var(--color-accent-fg)]"] {
   color: var(--ma-accent-ink) !important;
+}
+
+/* A gaveta da pergunta não sai da sala (não é portal), então o texto dela já
+   vem na cor do CURSO pelas regras acima. Fundo, divisórias e os tons que as
+   regras acima não trocam passam a ler a mesma paleta: sem isso a gaveta era
+   branca num curso escuro, com o texto claro por cima. Fora da sala (área do
+   criador, caixa do professor) ela segue os tokens da plataforma. */
+.member-classroom[data-members-theme] .community-drawer {
+  --color-surface: var(--ma-surface);
+  --color-surface-soft: var(--ma-surface-2);
+  --color-line: var(--ma-line);
+  --color-ink: var(--ma-ink);
+  --color-ink-soft: var(--ma-ink-soft);
+  /* --ma-ink-muted não chega a 4.5:1 no escuro; o meta (autor, hora) é
+     leitura, então usa o tom suave. */
+  --color-ink-muted: var(--ma-ink-soft);
+}
+
+/* Erro e "respondida" na gaveta e nos cartões do feed da sala (o fundo dos
+   cartões já é --ma-surface pela regra do bg-white). O vermelho e o verde da
+   plataforma davam ~2.7:1 num curso escuro, e o vermelho do modo escuro
+   ~2.7:1 sobre o branco de um curso claro. Os -ink do curso existem para
+   isso: no claro 5.5:1 e 7:1 sobre branco; no escuro 5.6:1 e 5.3:1 sobre
+   #141923. */
+.member-classroom[data-members-theme] .community-drawer,
+.member-classroom[data-members-theme] [data-community-item] {
+  --color-danger-fg: var(--ma-accent-ink);
+  --color-success-fg: var(--ma-success-ink);
 }
 
 .member-classroom[data-members-theme] .member-preview-banner,
@@ -6414,6 +6656,17 @@ body:has([aria-label="Course categories"])
   box-shadow: 0 16px 32px rgba(178, 34, 52, 0.34);
 }
 
+/* O ícone dentro do botão (o Play de "Watch now") segue o rótulo. Sem isto
+   a regra da plataforma para `.button-solid *` pintava o ícone escuro no modo
+   escuro, ou branco sobre uma cor clara do professor, com o texto de outra
+   cor ao lado. */
+.member-classroom[data-members-theme] .button-solid *,
+.member-classroom[data-members-theme] .button-solid:hover *,
+.member-classroom[data-members-theme] .button-accent *,
+.member-classroom[data-members-theme] .button-accent:hover * {
+  color: var(--ma-on-accent) !important;
+}
+
 .member-classroom[data-members-theme] .button-outline {
   border-color: var(--ma-line-2);
   background: transparent;
@@ -6437,18 +6690,18 @@ body:has([aria-label="Course categories"])
   }
 
   .member-classroom[data-members-theme] > .member-classroom-head,
-  .member-classroom[data-members-theme] > .member-preview-banner,
-  .member-classroom[data-members-theme] > .member-classroom-layout,
-  .member-classroom[data-members-theme] > .member-module-deck,
-  .member-classroom[data-members-theme] > .member-resource-panel {
+  .member-classroom[data-members-theme] > .member-preview-banner {
     margin-right: 14px;
     margin-left: 14px;
   }
 
-  .member-classroom[data-members-theme] > .member-classroom-layout,
-  .member-classroom[data-members-theme] > .member-module-deck,
-  .member-classroom[data-members-theme] > .member-resource-panel {
-    margin-bottom: 14px;
+  /* 14px menos os 6px de folga do anel de foco (regra de cima). */
+  .member-classroom[data-members-theme] > .member-classroom-tabs {
+    margin-inline: 8px;
+  }
+
+  .member-classroom[data-members-theme] > .member-classroom-body {
+    padding: 0 14px 14px;
   }
 
   .member-classroom[data-members-theme] > .member-preview-banner {
@@ -6464,8 +6717,8 @@ body:has([aria-label="Course categories"])
   }
 
   /* Phone: the lesson video runs edge to edge. Stacked side insets left it
-     ~280px wide on a 375px screen. The dock pulls out through the layout
-     margin (14px), the player border (1px) and its padding (16px) above; the
+     ~280px wide on a 375px screen. The dock pulls out through the body
+     padding (14px), the player border (1px) and its padding (16px) above; the
      text around the video keeps those 31px. The dock, not the stage, takes
      the margin: in the mini player the stage sits in a fixed bar. */
   .member-classroom[data-members-theme] .member-video-dock {
@@ -6581,12 +6834,13 @@ body:has([aria-label="Course categories"])
   gap: 0.25rem;
 }
 
+/* Sales e Promote sao itens do primeiro nivel como os outros: a altura (44px),
+   o texto (14px) e o chip (32px) vem do mesmo lugar dos links diretos. Antes
+   este bloco os encolhia para 38px, 11,5px em MAIUSCULAS e 66% de branco, e
+   eles pareciam titulos de secao. */
 .platform-sidebar .platform-nav-link.platform-nav-section-trigger {
-  min-height: 38px;
-  gap: 0.5rem;
   border-color: transparent !important;
   background: transparent !important;
-  color: rgba(255, 255, 255, 0.66) !important;
   box-shadow: none !important;
 }
 
@@ -6594,19 +6848,6 @@ body:has([aria-label="Course categories"])
 .platform-sidebar .platform-nav-link.platform-nav-section-trigger.platform-nav-section-active {
   background: rgba(255, 255, 255, 0.06) !important;
   color: #ffffff !important;
-}
-
-.platform-nav-section-trigger .platform-nav-icon-chip {
-  width: 28px;
-  height: 28px;
-  flex-basis: 28px;
-}
-
-.platform-nav-section-trigger .platform-sidebar-label {
-  font-size: 0.72rem;
-  font-weight: 800;
-  letter-spacing: 0;
-  text-transform: uppercase;
 }
 
 .platform-nav-section-chevron {
@@ -7316,13 +7557,15 @@ button:hover > .dash-card,
   background: transparent;
   color: var(--color-ink-soft);
   cursor: pointer;
-  font-size: 0.75rem;
-  font-weight: 800;
-  padding: 0.55rem 0.75rem;
+  /* Alvo de 44px (antes ~33px, abaixo do mínimo de toque). */
+  min-height: 44px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  padding: 0 0.875rem;
   transition:
-    background 180ms ease,
-    color 180ms ease,
-    box-shadow 180ms ease;
+    background var(--duration-base) var(--ease-standard),
+    color var(--duration-base) var(--ease-standard),
+    box-shadow var(--duration-base) var(--ease-standard);
 }
 
 .credential-filter-tabs button:hover,
@@ -7356,8 +7599,9 @@ button:hover > .dash-card,
 
 .member-review-star {
   display: grid;
-  width: 2.5rem;
-  height: 2.5rem;
+  /* 44px: alvo de toque mínimo (era 40px). */
+  width: 2.75rem;
+  height: 2.75rem;
   place-items: center;
   border: 1px solid var(--color-line);
   border-radius: var(--radius-md);
@@ -7411,8 +7655,8 @@ button:hover > .dash-card,
     grid-template-columns: 1fr;
   }
 
-  .course-builder-footer {
-    grid-template-columns: minmax(0, 1fr);
+  .course-builder-footer > .settings-section-card {
+    width: 100%;
   }
 
   .course-builder-step.is-active::before {
@@ -7499,6 +7743,12 @@ button:hover > .dash-card,
 
   .course-builder-steps {
     grid-template-columns: 1fr;
+  }
+
+  /* No celular os cinco passos empilhados empurravam o primeiro campo para
+     ~800 px do topo: a linha de apoio de cada passo sai, o nome fica. */
+  .course-builder-step__sub {
+    display: none;
   }
 }
 
@@ -7594,6 +7844,14 @@ button:hover > .dash-card,
   border-top: 1px solid var(--color-line);
   background: #ffffff;
   box-shadow: var(--shadow-strong);
+}
+
+/* Onde a pessoa está: a aba atual ganha um traço em cima, além da cor. Só a
+   cor (dois azuis escuros) não dava para distinguir. */
+.platform-mobile-nav [aria-current="page"],
+.platform-mobile-nav [data-current="true"] {
+  box-shadow: inset 0 2px 0 var(--color-primary);
+  color: var(--color-primary);
 }
 
 /* TELAS MÉDIAS (768–1179px): o rail de 64px é o padrão, e o conteúdo fica
@@ -8839,9 +9097,10 @@ button:hover > .dash-card,
   color: var(--color-accent-fg);
 }
 
+/* Tinta escura sobre o dourado: branco ali dá 2,6:1 (ícone pede 3:1). */
 .marketplace-card__wishlist.is-active {
   background: var(--color-accent);
-  color: #ffffff;
+  color: var(--color-on-accent);
 }
 
 .marketplace-card__body {
@@ -9027,11 +9286,17 @@ button:hover > .dash-card,
    input, que é (0,1,1) — o comentário anterior errava essa conta. Um !important
    de folha de estilo ainda atropelaria todo `style={{ fontSize }}` inline da
    aplicação, e obrigaria o próximo override legítimo a nascer com outro.
-   (Auditoria de produto de 2026-08-30, achado P-11.) */
+   (Auditoria de produto de 2026-08-30, achado P-11.)
+
+   `textarea` e `select` sozinhos são (0,0,1) e perdem para `.field-input`
+   (0,1,0, 14px), que vem antes no arquivo mas tem mais peso: Bio e Fuso do
+   perfil davam zoom. `textarea.field-input` (0,1,1) devolve o piso a eles. */
 @media (hover: none) and (pointer: coarse) {
   input:not([type="checkbox"]):not([type="radio"]),
   textarea,
-  select {
+  select,
+  textarea.field-input,
+  select.field-input {
     font-size: 16px;
   }
 }
@@ -9070,7 +9335,16 @@ button:hover > .dash-card,
     font-size: 13px;
     font-weight: 600;
     white-space: nowrap;
-    transition: color 0.15s ease, border-color 0.15s ease;
+    transition:
+      color var(--duration-base) var(--ease-standard),
+      border-color var(--duration-base) var(--ease-standard);
+  }
+
+  /* Há aba escondida à direita (classroom-tabs.tsx marca data-more): a borda
+     esmaece, sinal de que a barra rola. Sem isso a barra de rolagem oculta
+     fazia "Review" e "About" parecerem não existir. */
+  .member-classroom-tabs[data-more="true"] {
+    mask-image: linear-gradient(90deg, #000 calc(100% - 48px), transparent);
   }
 
   .member-classroom-tabs > a:hover {
@@ -9098,16 +9372,28 @@ button:hover > .dash-card,
     margin-left: auto;
     color: var(--ma-accent-ink);
   }
+
+  /* No celular "Get certificate" ficava no fim da barra que rola, fora da
+     tela. Ele já está na capa do curso e no botão da última aula. */
+  @media (max-width: 767.98px) {
+    .member-classroom-tabs > .member-classroom-tabs__action {
+      display: none;
+    }
+  }
 }
 
 /* ── A gaveta da pergunta (mockup 5, 11b) ───────────────────────────────────
    Desliza da direita (560px) por cima do feed escurecido; no celular sobe como
-   folha inferior. A caixa de resposta fica fixa no rodapé da gaveta. ─────── */
+   folha inferior. A caixa de resposta fica fixa no rodapé da gaveta.
+   Fundo pelo token de superfície, não #ffffff: o texto segue o tema e, no
+   escuro, ficava quase branco sobre branco. Camada 70, a dos popups: na 60 o
+   menu lateral (65), o assistente (68) e o aviso de cookies (69) passavam por
+   cima da gaveta. ─────────────────────────────────────────────────────────── */
 @layer components {
   .community-drawer-backdrop {
     position: fixed;
     inset: 0;
-    z-index: 60;
+    z-index: 70;
     display: flex;
     justify-content: flex-end;
     background: rgba(16, 42, 67, 0.45);
@@ -9118,7 +9404,7 @@ button:hover > .dash-card,
     width: min(560px, 100%);
     height: 100%;
     flex-direction: column;
-    background: #ffffff;
+    background: var(--color-surface);
     box-shadow: -12px 0 32px rgba(16, 42, 67, 0.18);
   }
 
@@ -9134,7 +9420,7 @@ button:hover > .dash-card,
     align-items: center;
     gap: 8px;
     border-top: 1px solid var(--color-line);
-    background: #ffffff;
+    background: var(--color-surface);
     padding: 12px 16px;
   }
 
@@ -9146,10 +9432,49 @@ button:hover > .dash-card,
     .community-drawer {
       width: 100%;
       height: auto;
-      max-height: 90vh;
+      max-height: 90svh;
       border-radius: var(--radius-xl) var(--radius-xl) 0 0;
       box-shadow: 0 -12px 32px rgba(16, 42, 67, 0.18);
     }
+  }
+
+  /* Entrada: o fundo escurece e a gaveta chega 16px da direita (no celular,
+     de baixo), em 180ms. Só opacity e transform; fill backwards, então fora da
+     animação nada fica preso nem invisível. */
+  @media (prefers-reduced-motion: no-preference) {
+    .community-drawer-backdrop {
+      animation: community-drawer-fade var(--duration-base) var(--ease-standard) backwards;
+    }
+
+    .community-drawer {
+      animation: community-drawer-in var(--duration-base) var(--ease-standard) backwards;
+    }
+
+    @media (max-width: 767px) {
+      .community-drawer {
+        animation-name: community-sheet-in;
+      }
+    }
+  }
+}
+
+@keyframes community-drawer-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes community-drawer-in {
+  from {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+}
+
+@keyframes community-sheet-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
   }
 }
 

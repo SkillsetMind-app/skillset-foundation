@@ -180,6 +180,15 @@ describe("SectionHeader", () => {
     expect(screen.getByText("Media library")).toBeInTheDocument();
     expect(screen.getByText("Revise o que foi enviado.")).toBeInTheDocument();
   });
+
+  // A serifa fica para a manchete da pagina; titulo de cartao e o sans.
+  it("em size=card, o titulo e o sans do cartao, nao a serifa da pagina", () => {
+    render(<SectionHeader title="Your own domain" size="card" />);
+
+    const heading = screen.getByRole("heading", { level: 2, name: "Your own domain" });
+    expect(heading).not.toHaveClass("display-title");
+    expect(heading).toHaveClass("text-lg", "font-semibold");
+  });
 });
 
 describe("EmptyState", () => {

@@ -107,6 +107,9 @@ describe("support queue search, states and language", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("No pudimos actualizar este ticket de soporte.");
     expect(mocks.update).toHaveBeenLastCalledWith("ticket-a", "in_review");
     fireEvent.click(screen.getByRole("button", { name: "En revisión" }));
+    // Só o status apertado gira; o nome dele não vira "Actualizando..." (I-08).
+    expect(screen.getByRole("button", { name: "En revisión" })).toHaveAttribute("aria-busy", "true");
+    expect(screen.getAllByRole("button").filter((button) => button.getAttribute("aria-busy") === "true")).toHaveLength(1);
     await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("Estado del ticket actualizado."));
     expect(mocks.update).toHaveBeenCalledTimes(2);
   });

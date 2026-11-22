@@ -2,7 +2,7 @@
 
 import { Award } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { classroomTabHref, type ClassroomTab } from "@/domain/classroom-tabs";
 import { useTranslation } from "@/components/i18n/i18n-provider";
@@ -52,8 +52,35 @@ export function ClassroomTabs({
   certificateHref?: string | null;
 }) {
   const { t } = useTranslation();
+  const navRef = useRef<HTMLElement>(null);
+
+  // No celular a barra rola de lado com a barra de rolagem escondida: "Review"
+  // e "About" pareciam nao existir. A aba aberta vem para o meio da barra, e a
+  // borda direita esmaece enquanto houver aba escondida para a direita.
+  // So mexe no scrollLeft da propria barra, nunca na rolagem da pagina.
+  useEffect(() => {
+    const nav = navRef.current;
+    if (!nav) return;
+    const current = nav.querySelector<HTMLElement>('[aria-current="page"]');
+    if (current && nav.scrollWidth > nav.clientWidth) {
+      const bar = nav.getBoundingClientRect();
+      const tab = current.getBoundingClientRect();
+      nav.scrollLeft += tab.left - bar.left - (bar.width - tab.width) / 2;
+    }
+    const mark = () => {
+      nav.dataset.more = String(nav.scrollLeft + nav.clientWidth < nav.scrollWidth - 1);
+    };
+    mark();
+    nav.addEventListener("scroll", mark, { passive: true });
+    window.addEventListener("resize", mark);
+    return () => {
+      nav.removeEventListener("scroll", mark);
+      window.removeEventListener("resize", mark);
+    };
+  }, [active]);
+
   return (
-    <nav aria-label={t("creatorEditor.preview.sections")} className="member-classroom-tabs">
+    <nav ref={navRef} aria-label={t("creatorEditor.preview.sections")} className="member-classroom-tabs">
       {tabs.map((tab) => (
         <Link
           key={tab.id}

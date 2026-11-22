@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
-import { Field, InlineAlert } from "@/components/ui";
+import { ConfirmDialog, Field, InlineAlert } from "@/components/ui";
 import type { Enrollment } from "@/domain/enrollment";
 import type { TeacherCourse } from "@/domain/teacher-course";
 import type { UserProfile } from "@/domain/user-profile";
@@ -31,6 +31,7 @@ export function AdminEnrollmentPanel() {
   const [grantedEnrollments, setGrantedEnrollments] = useState<Enrollment[]>([]);
   const [isLoadingGranted, setIsLoadingGranted] = useState(true);
   const [revokingId, setRevokingId] = useState<string | null>(null);
+  const [asking, setAsking] = useState<Enrollment | null>(null);
 
   useEffect(() => {
     return subscribeToAdminUserProfiles(
@@ -74,6 +75,12 @@ export function AdminEnrollmentPanel() {
     );
   }, []);
 
+  // O mesmo rótulo da linha da lista e da janela de revogar.
+  function learnerLabel(userId: string) {
+    const learner = users.find((user) => user.uid === userId);
+    return learner?.displayName || learner?.email || userId;
+  }
+
   const selectedCourse = useMemo(
     () => courses.find((course) => course.id === courseId) ?? null,
     [courseId, courses],
@@ -99,15 +106,8 @@ export function AdminEnrollmentPanel() {
     }
   }
 
+  // Roda só pelo confirmar da janela, que antes era o OK do window.confirm.
   async function handleRevoke(enrollment: Enrollment) {
-    const confirmed = window.confirm(
-      t(`${copy}.confirmRevoke`).replace("{title}", () => enrollment.courseTitle),
-    );
-
-    if (!confirmed) {
-      return;
-    }
-
     setError("");
     setSuccess("");
     setRevokingId(enrollment.id);
@@ -215,8 +215,6 @@ export function AdminEnrollmentPanel() {
             readErrors.grants ? null : <p className="rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">{t(`${copy}.empty`)}</p>
           ) : (
             grantedEnrollments.map((enrollment) => {
-              const learner = users.find((user) => user.uid === enrollment.userId);
-
               return (
                 <article
                   key={enrollment.id}
@@ -227,14 +225,14 @@ export function AdminEnrollmentPanel() {
                       {enrollment.courseTitle}
                     </p>
                     <p className="mt-1 break-words text-xs leading-5 text-[var(--color-ink-soft)]">
-                      {learner?.displayName || learner?.email || enrollment.userId}
+                      {learnerLabel(enrollment.userId)}
                       {" - "}
                       {t(`${copy}.${enrollment.source === "admin" ? "adminGrant" : "demoGrant"}`)}
                     </p>
                   </div>
                   <button
                     type="button"
-                    onClick={() => handleRevoke(enrollment)}
+                    onClick={() => setAsking(enrollment)}
                     disabled={revokingId === enrollment.id}
                     className="button-outline min-h-11 px-4 py-2 text-xs disabled:opacity-60"
                   >
@@ -246,6 +244,27 @@ export function AdminEnrollmentPanel() {
           )}
         </div>
       </div>
+
+      {/* A frase é a mesma do antigo window.confirm; o resultado continua no
+          aviso do painel. */}
+      {asking ? (
+        <ConfirmDialog
+          title={t(`${copy}.revokeTitle`)}
+          confirmLabel={t(`${copy}.revoke`)}
+          pendingLabel={t(`${copy}.revoking`)}
+          cancelLabel={t("platform.ops.confirmDialog.cancel")}
+          danger
+          onConfirm={() => handleRevoke(asking)}
+          onClose={() => setAsking(null)}
+        >
+          <p>{t(`${copy}.confirmRevoke`).replace("{title}", () => asking.courseTitle)}</p>
+          {/* Dois estudantes no mesmo curso: sem o nome, não dá para conferir
+              quem perde o acesso. */}
+          <p className="mt-2 break-words font-semibold text-[var(--color-ink)]">
+            {t(`${copy}.revokeLearner`).replace("{person}", () => learnerLabel(asking.userId))}
+          </p>
+        </ConfirmDialog>
+      ) : null}
     </section>
   );
 }

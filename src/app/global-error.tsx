@@ -17,17 +17,18 @@ function crashLocale() {
 // CSS and design tokens are NOT available here — styles must be inline. That
 // also means data-theme is never set, so the crash page can't read the user's
 // stored theme; it falls back to the OS preference via this self-contained
-// block. Values mirror the platform palette (:root / [data-theme="dark"] in
-// globals.css) so a crash still looks like the product.
+// block. The light values are the platform's (:root in globals.css) so a
+// crash still looks like the product; the dark button uses a lighter navy
+// picked for contrast on the dark page, not the dark --color-primary.
 const CRASH_THEME_CSS = `
 :root {
   color-scheme: light;
-  --ge-bg: #fafaf9;
-  --ge-ink: #1c1917;
-  --ge-muted: #57534e;
-  --ge-line: #d6d3d1;
-  --ge-danger: #b22234;
-  --ge-on-danger: #ffffff;
+  --ge-bg: #ffffff;
+  --ge-ink: #102a43;
+  --ge-muted: #4a6278;
+  --ge-line: rgba(16, 42, 67, 0.28);
+  --ge-primary: #102a43;
+  --ge-on-primary: #ffffff;
 }
 @media (prefers-color-scheme: dark) {
   :root {
@@ -36,8 +37,8 @@ const CRASH_THEME_CSS = `
     --ge-ink: #e8edf5;
     --ge-muted: #a4b3c8;
     --ge-line: rgba(255, 255, 255, 0.34);
-    --ge-danger: #e8808c;
-    --ge-on-danger: #0a0f1a;
+    --ge-primary: #c7d8ec;
+    --ge-on-primary: #0a0f1a;
   }
 }
 `;
@@ -91,7 +92,7 @@ export default function GlobalError({
               fontWeight: 600,
               letterSpacing: "0.28em",
               textTransform: "uppercase",
-              color: "var(--ge-danger)",
+              color: "var(--ge-muted)",
               margin: 0,
             }}
           >
@@ -115,14 +116,17 @@ export default function GlobalError({
             <button
               type="button"
               onClick={reset}
+              // Azul da marca, não vermelho: vermelho é para apagar, e
+              // "Try again" não apaga nada. 44px de altura para o toque.
               style={{
+                minHeight: 44,
                 padding: "10px 18px",
                 fontSize: 14,
                 fontWeight: 600,
                 borderRadius: 8,
                 border: "none",
-                background: "var(--ge-danger)",
-                color: "var(--ge-on-danger)",
+                background: "var(--ge-primary)",
+                color: "var(--ge-on-primary)",
                 cursor: "pointer",
               }}
             >
@@ -132,6 +136,10 @@ export default function GlobalError({
             <a
               href="/"
               style={{
+                minHeight: 44,
+                boxSizing: "border-box",
+                display: "inline-flex",
+                alignItems: "center",
                 padding: "10px 18px",
                 fontSize: 14,
                 fontWeight: 600,

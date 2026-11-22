@@ -14,6 +14,7 @@ const mocks = vi.hoisted(() => ({
   getMyCoursesBeingDeleted: vi.fn(),
   push: vi.fn(),
   subscribeCalls: 0,
+  params: {} as Record<string, string>,
 }));
 
 const courses: TeacherCourse[] = [
@@ -57,7 +58,7 @@ const courses: TeacherCourse[] = [
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: mocks.push }),
-  useSearchParams: () => ({ get: () => null }),
+  useSearchParams: () => ({ get: (key: string) => mocks.params[key] ?? null }),
 }));
 
 vi.mock("@/components/auth/auth-provider", () => ({
@@ -99,6 +100,27 @@ describe("TeacherCourseStudio — lista de produtos", () => {
     mocks.getMyCoursesBeingDeleted.mockReset();
     mocks.getMyCoursesBeingDeleted.mockResolvedValue([]);
     mocks.subscribeCalls = 0;
+    mocks.params = {};
+  });
+
+  // A busca do topo do professor ("Search your products") recarregava a Home
+  // igual. Agora cai aqui com ?q= e a lista ja chega filtrada; uma busca nova
+  // com a lista aberta troca o filtro sem remontar a tela.
+  it("chega filtrada pelo ?q= da busca do topo e acompanha uma busca nova", async () => {
+    mocks.params = { q: "mentoring" };
+    const { rerender } = render(<TeacherCourseStudio />);
+    const table = await screen.findByRole("table", { name: "Products" });
+
+    expect(screen.getByRole("searchbox")).toHaveValue("mentoring");
+    expect(within(table).getAllByRole("row").slice(1)).toHaveLength(1);
+    expect(within(table).getByText("Mentoring essentials")).toBeInTheDocument();
+
+    mocks.params = { q: "community" };
+    rerender(<TeacherCourseStudio />);
+
+    expect(screen.getByRole("searchbox")).toHaveValue("community");
+    expect(within(table).getByText("Community leadership")).toBeInTheDocument();
+    expect(within(table).queryByText("Mentoring essentials")).toBeNull();
   });
 
   // A pessoa recebia tres colunas sem nome e quarenta botoes em dez produtos.

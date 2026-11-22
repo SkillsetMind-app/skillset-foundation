@@ -40,7 +40,9 @@ export function LegalArticle({
         </>
       }
     >
-      <div className="mt-10 space-y-10 border-t border-[var(--color-line)] pt-10 text-sm leading-8 text-[var(--color-ink-soft)]">
+      {/* 16px com entrelinha de 28px, igual à introdução do PublicPage logo
+          acima: 14px com 32px separava as linhas em fragmentos soltos. */}
+      <div className="mt-10 space-y-10 border-t border-[var(--color-line)] pt-10 text-base leading-7 text-[var(--color-ink-soft)]">
         {children}
       </div>
     </PublicPage>

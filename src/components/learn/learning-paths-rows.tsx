@@ -181,7 +181,7 @@ export function LearningPathsRows({
                 <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
                   {t("learn.paths.eyebrow")}
                 </p>
-                <h2 className="display-title mt-2 text-3xl text-[var(--color-primary)]">
+                <h2 className="mt-2 text-lg font-semibold text-[var(--color-primary)]">
                   {path.title}
                 </h2>
                 {path.description ? (
@@ -236,7 +236,7 @@ export function LearningPathsRows({
           <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
             {t("learn.paths.instructorEyebrow")}
           </p>
-          <h2 className="display-title mt-2 text-3xl text-[var(--color-primary)]">
+          <h2 className="mt-2 text-lg font-semibold text-[var(--color-primary)]">
             {ownerNames.get(row.ownerId)
               ? t("learn.paths.instructorTitle").replace(
                   "{name}",

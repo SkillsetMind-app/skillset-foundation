@@ -1,4 +1,5 @@
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -197,6 +198,93 @@ describe("SiteNav", () => {
     expect(menu).toHaveClass("right-0", "top-full");
     expect(within(menu).getByRole("option", { name: "English" })).toHaveAttribute("aria-selected", "true");
     expect(within(menu).getByRole("option", { name: "Español" })).toHaveAttribute("aria-selected", "false");
+  });
+
+  // O menu do celular soltava o foco no X, deixava o Tab ir para a página
+  // escurecida atrás, e a página rolava por baixo dele.
+  it("moves focus into the mobile menu, locks the page scroll and gives both back on close", () => {
+    render(<RealCoursesProvider value><SiteNav /></RealCoursesProvider>);
+    const toggle = screen.getByRole("button", { name: "Open menu" });
+
+    fireEvent.click(toggle);
+    const mobile = screen.getByRole("navigation", { name: "Mobile navigation" });
+    expect(within(mobile).getAllByRole("link")[0]).toHaveFocus();
+    expect(document.body.style.overflow).toBe("hidden");
+    // O escuro não é mais um botão "Close menu" no caminho do Tab.
+    expect(screen.getAllByRole("button", { name: "Close menu" })).toHaveLength(1);
+    expect(document.getElementById("site-mobile-menu")).toHaveClass("motion-drop-in");
+
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(document.body.style.overflow).toBe("");
+    expect(toggle).toHaveFocus();
+  });
+
+  // Tablet girado ou janela maximizada com o menu aberto: o painel, o escuro e
+  // o X somem a partir de 1280px, e a página ficava travada sem como soltar.
+  it("closes the mobile menu and frees the page when the window grows past 1280px", () => {
+    const listeners = new Set<(event: { matches: boolean }) => void>();
+    const desktop = {
+      matches: false,
+      addEventListener: (_type: string, listener: (event: { matches: boolean }) => void) => listeners.add(listener),
+      removeEventListener: (_type: string, listener: (event: { matches: boolean }) => void) => listeners.delete(listener),
+    };
+    const matchMedia = vi.fn(() => desktop);
+    vi.stubGlobal("matchMedia", matchMedia);
+    render(<SiteNav />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Open menu" }));
+    expect(document.getElementById("site-mobile-menu")).toBeInTheDocument();
+    expect(document.body.style.overflow).toBe("hidden");
+    expect(matchMedia).toHaveBeenCalledWith("(min-width: 1280px)");
+
+    desktop.matches = true;
+    act(() => listeners.forEach((listener) => listener({ matches: true })));
+    expect(document.getElementById("site-mobile-menu")).toBeNull();
+    expect(document.body.style.overflow).toBe("");
+    expect(listeners.size).toBe(0);
+  });
+
+  it("does not open the mobile menu when the window is already desktop-wide", () => {
+    vi.stubGlobal("matchMedia", vi.fn(() => ({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() })));
+    render(<SiteNav />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Open menu" }));
+    expect(document.getElementById("site-mobile-menu")).toBeNull();
+    expect(document.body.style.overflow).toBe("");
+  });
+
+  it("keeps Tab inside the header row while the mobile menu is open", () => {
+    // jsdom não faz layout: aqui todo elemento conta como visível.
+    const rects = vi.spyOn(Element.prototype, "getClientRects").mockReturnValue([{}] as unknown as DOMRectList);
+    try {
+      render(<SiteNav />);
+      fireEvent.click(screen.getByRole("button", { name: "Open menu" }));
+      const row = document.querySelector<HTMLElement>(".site-header__inner")!;
+      const panel = document.getElementById("site-mobile-menu")!;
+      const panelItems = within(panel).getAllByRole("link");
+      const last = panelItems[panelItems.length - 1];
+
+      last.focus();
+      fireEvent.keyDown(document, { key: "Tab" });
+      expect(row.contains(document.activeElement)).toBe(true);
+      expect(document.activeElement).not.toBe(last);
+
+      fireEvent.keyDown(document, { key: "Tab", shiftKey: true });
+      expect(last).toHaveFocus();
+    } finally {
+      rects.mockRestore();
+    }
+  });
+
+  it("closes the mobile menu from the dimmed page, which starts below the header", () => {
+    render(<SiteNav />);
+    fireEvent.click(screen.getByRole("button", { name: "Open menu" }));
+    const scrim = document.querySelector<HTMLElement>("header ~ div.fixed[aria-hidden='true']")!;
+    expect(scrim.className).toContain("top-[var(--site-header-height)]");
+    expect(scrim.closest("header")).toBeNull();
+
+    fireEvent.click(scrim);
+    expect(document.getElementById("site-mobile-menu")).toBeNull();
   });
 
   it("keeps the mobile menu in the same order and closes on Escape", () => {

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { useConfirm } from "@/components/teacher/use-confirm";
 import { CAPTION_LANGUAGES, captionLanguageName, isCaptionLanguage } from "@/domain/caption-languages";
 import { callTeachAi, loadTeachAi, teachAiErrorText } from "@/lib/ai/teach-ai-client";
 
@@ -29,6 +30,7 @@ function captionState(caption: Caption): "stale" | "draft" | "changed" | "publis
 
 export function LessonAiCaptions({ courseId, lessonId, assetId }: { courseId: string; lessonId: string; assetId: string }) {
   const { t, locale } = useTranslation();
+  const { ask, dialog: confirmDialog } = useConfirm();
   const [captions, setCaptions] = useState<Caption[] | null>(null);
   const [texts, setTexts] = useState<Record<string, string>>({});
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
@@ -141,9 +143,18 @@ export function LessonAiCaptions({ courseId, lessonId, assetId }: { courseId: st
               className="button-solid min-h-11 px-4 py-2.5 text-sm disabled:opacity-60"
               disabled={working}
               onClick={() => {
+                const generate = () => {
+                  void run("transcribe", { language: spoken }, "transcribe", t("creatorEditor.lesson.ai.generated"));
+                };
                 // Gerar de novo apaga as correções e gasta as horas do vídeo outra vez.
-                if (spokenExists && !window.confirm(t("creatorEditor.lesson.ai.confirmRegenerate"))) return;
-                void run("transcribe", { language: spoken }, "transcribe", t("creatorEditor.lesson.ai.generated"));
+                if (!spokenExists) return generate();
+                ask({
+                  title: t("creatorEditor.lesson.ai.confirmRegenerateTitle"),
+                  body: t("creatorEditor.lesson.ai.confirmRegenerate"),
+                  confirmLabel: t("creatorEditor.lesson.ai.regenerate"),
+                  danger: true,
+                  run: generate,
+                });
               }}
             >
               {busy === "transcribe"
@@ -204,11 +215,16 @@ export function LessonAiCaptions({ courseId, lessonId, assetId }: { courseId: st
                     type="button"
                     className="button-danger px-3.5 py-2 text-xs disabled:opacity-60"
                     disabled={working}
-                    onClick={() => {
-                      if (!window.confirm(t("creatorEditor.lesson.ai.confirmRemove"))) return;
-                      void run("removeCaption", { language: caption.language },
-                        `remove-${caption.language}`, t("creatorEditor.lesson.ai.removed"));
-                    }}
+                    onClick={() => ask({
+                      title: t("creatorEditor.lesson.ai.confirmRemoveTitle"),
+                      body: t("creatorEditor.lesson.ai.confirmRemove"),
+                      confirmLabel: t("creatorEditor.lesson.ai.remove"),
+                      danger: true,
+                      run: () => {
+                        void run("removeCaption", { language: caption.language },
+                          `remove-${caption.language}`, t("creatorEditor.lesson.ai.removed"));
+                      },
+                    })}
                   >
                     {t("creatorEditor.lesson.ai.remove")}
                   </button>
@@ -247,6 +263,7 @@ export function LessonAiCaptions({ courseId, lessonId, assetId }: { courseId: st
       <p role="status" aria-live="polite" className={notice?.kind === "error" ? "text-sm font-semibold text-[var(--color-danger-fg)]" : "text-sm text-[var(--color-ink-soft)]"}>
         {notice?.text ?? ""}
       </p>
+      {confirmDialog}
     </section>
   );
 }

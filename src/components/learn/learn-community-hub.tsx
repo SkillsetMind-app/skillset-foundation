@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { useAuth } from "@/components/auth/auth-provider";
@@ -22,13 +22,16 @@ export function LearnCommunityHub() {
   // isso foi lido (a matricula chega pelo realtime e pode mudar).
   const [community, setCommunity] = useState<{ courses: string; ids: ReadonlySet<string> } | null>(null);
   const courses = useMemo(() => communityEnrollmentCourseIds(enrollments).join(" "), [enrollments]);
+  // Cada "Try again" conta uma tentativa: a leitura das comunidades roda de novo.
+  const [attempt, setAttempt] = useState(0);
+  const subscription = useRef<{ reload: () => Promise<void> } | null>(null);
 
   useEffect(() => {
     if (!user) {
       return;
     }
 
-    return subscribeToUserEnrollments(
+    const current = subscribeToUserEnrollments(
       user.uid,
       (nextEnrollments) => {
         setEnrollments(nextEnrollments);
@@ -39,6 +42,11 @@ export function LearnCommunityHub() {
         setIsLoading(false);
       },
     );
+    subscription.current = current;
+    return () => {
+      subscription.current = null;
+      current();
+    };
   }, [user]);
 
   useEffect(() => {
@@ -57,7 +65,17 @@ export function LearnCommunityHub() {
     return () => {
       active = false;
     };
-  }, [courses]);
+  }, [courses, attempt]);
+
+  // Le as matriculas de novo pelo mesmo canal (sem religar) e as comunidades
+  // outra vez. Ate a resposta vale o "carregando", nunca o vazio.
+  function retryLoad() {
+    setError("");
+    setIsLoading(true);
+    setCommunity(null);
+    setAttempt((value) => value + 1);
+    void subscription.current?.reload();
+  }
 
   // Sem curso real nao ha o que perguntar ao banco; com curso, espera a
   // resposta para a lista atual (nada de cartao de comunidade desligada).
@@ -77,6 +95,9 @@ export function LearnCommunityHub() {
         <p role="alert" className="rounded-md bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
           {t(error)}
         </p>
+        <button type="button" onClick={retryLoad} className="button-outline mt-4 px-4 text-sm">
+          {t("appErrors.retry")}
+        </button>
       </section>
     );
   }
@@ -106,7 +127,7 @@ export function LearnCommunityHub() {
         <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
           {t("learnWave2.communityHub.eyebrow")}
         </p>
-        <h2 className="display-title mt-3 text-3xl text-[var(--color-ink)]">
+        <h2 className="mt-3 text-lg font-semibold text-[var(--color-primary)]">
           {t("learnWave2.communityHub.emptyTitle")}
         </h2>
         <p className="mt-4 max-w-2xl text-sm leading-7 text-[var(--color-ink-soft)]">
@@ -145,7 +166,7 @@ export function LearnCommunityHub() {
 
       {filteredCards.length === 0 ? (
         <div className="rounded-lg border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
-          <h2 className="display-title text-3xl text-[var(--color-ink)]">
+          <h2 className="text-lg font-semibold text-[var(--color-primary)]">
             {t("learnWave2.communityHub.noMatch")}
           </h2>
           <p className="mt-4 text-sm leading-7 text-[var(--color-ink-soft)]">
@@ -166,7 +187,7 @@ export function LearnCommunityHub() {
           <span className="mt-4 inline-flex rounded-chip bg-[var(--color-surface-soft)] px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--color-primary)]">
             {t("learnWave2.communityHub.enrolled")}
           </span>
-          <h2 className="display-title mt-3 text-3xl text-[var(--color-ink)]">
+          <h2 className="mt-3 text-lg font-semibold text-[var(--color-primary)]">
             {space.name}
           </h2>
           <p className="mt-4 text-sm leading-7 text-[var(--color-ink-soft)]">

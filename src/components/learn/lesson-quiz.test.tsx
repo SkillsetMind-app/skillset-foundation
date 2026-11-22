@@ -51,6 +51,10 @@ it("lets the student change the choice, checks on demand, shows the right answer
   fireEvent.click(first.querySelector("button")!);
   expect(first).toHaveTextContent("Not quite. The answer: A cue. The cue comes first.");
   expect(firstRadios[0]).toBeDisabled();
+  // A certa e a escolhida ficam marcadas na propria opcao, nao so no texto.
+  expect(firstRadios[0].closest("label")).toHaveAttribute("data-quiz-mark", "right");
+  expect(firstRadios[1].closest("label")).toHaveAttribute("data-quiz-mark", "wrong");
+  expect(first.querySelectorAll("[data-quiz-mark]")).toHaveLength(2);
 
   fireEvent.click(second.querySelectorAll("input")[1]);
   fireEvent.click(second.querySelector("button")!);

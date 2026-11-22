@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, CheckCircle2, HelpCircle, X } from "lucide-react";
+import { CheckCircle2, HelpCircle, X } from "lucide-react";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 
 import { formatNotificationTime } from "@/components/account/notification-row";
@@ -23,7 +23,7 @@ import { useModalFocus } from "@/lib/a11y/use-modal-focus";
 // Abrir uma pergunta trocava de pagina e perdia o feed; sem endereco, nao
 // dava para compartilhar nem voltar. Agora a pergunta desliza da direita
 // (560px) por cima do feed escurecido; no celular sobe como folha inferior.
-// A URL muda (.../community/q/<post>), Esc ou "Back to feed" fecham. A
+// A URL muda (.../community/q/<post>), Esc ou o X fecham. A
 // resposta aceita fica em verde no topo, as demais embaixo, e a caixa de
 // resposta e fixa no rodape. A mesma gaveta serve para qualquer post.
 
@@ -123,23 +123,20 @@ export function CommunityPostDrawer({
 
   return (
     <div className="community-drawer-backdrop" onClick={onClose} data-testid="drawer-backdrop">
+      {/* tabIndex -1: useModalFocus poe o foco no proprio painel ao abrir;
+          sem ele o foco ficava no cartao do feed, atras da gaveta. */}
       <div
         ref={panelRef}
         role="dialog"
         aria-modal="true"
         aria-label={post.title ?? post.body.slice(0, 60)}
-        className="community-drawer"
+        tabIndex={-1}
+        className="community-drawer outline-none"
         onClick={(event) => event.stopPropagation()}
       >
-        <header className="flex items-center justify-between gap-2 border-b border-[var(--color-line)] px-4 py-3">
-          <button
-            type="button"
-            onClick={onClose}
-            className="inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-[var(--color-primary)]"
-          >
-            <ArrowLeft size={16} aria-hidden="true" />
-            {t("learn.community.drawer.back")}
-          </button>
+        {/* Um jeito so de fechar, o X (e o Esc), como nas outras gavetas. O
+            "Back to feed" ao lado fazia a mesma coisa. */}
+        <header className="flex items-center justify-end gap-2 border-b border-[var(--color-line)] px-4 py-3">
           <button
             type="button"
             onClick={onClose}
@@ -175,7 +172,7 @@ export function CommunityPostDrawer({
             <span
               className={`mt-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-bold ${
                 answered
-                  ? "bg-[rgba(22,163,74,0.1)] text-[rgb(21,128,61)]"
+                  ? "bg-[rgba(22,163,74,0.1)] text-[var(--color-success-fg)]"
                   : "bg-[var(--color-surface-soft)] text-[var(--color-ink-soft)]"
               }`}
             >
@@ -210,7 +207,7 @@ export function CommunityPostDrawer({
                       <span className="font-semibold text-[var(--color-ink)]">{reply.authorName}</span>
                       {isInstructor(reply, instructorIds) ? ` · ${t("learn.community.card.instructor")}` : ""}
                       {isAnswer ? (
-                        <span className="ml-1 inline-flex items-center gap-0.5 font-bold text-[rgb(21,128,61)]">
+                        <span className="ml-1 inline-flex items-center gap-0.5 font-bold text-[var(--color-success-fg)]">
                           <CheckCircle2 size={11} aria-hidden /> {t("learn.community.card.answer")}
                         </span>
                       ) : null}
@@ -259,7 +256,7 @@ export function CommunityPostDrawer({
               disabled={isSending}
               className="button-solid min-h-11 px-4 text-sm disabled:opacity-60"
             >
-              {isSending ? "…" : t("learn.community.drawer.send")}
+              {t(isSending ? "learn.community.drawer.sending" : "learn.community.drawer.send")}
             </button>
             {error ? (
               <p role="alert" className="basis-full text-xs font-semibold text-[var(--color-danger-fg)]">

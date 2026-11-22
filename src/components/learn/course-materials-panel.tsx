@@ -1,9 +1,10 @@
 "use client";
 
 import { FileText } from "lucide-react";
+import { useState } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
-import { ProtectedAssetDownload } from "@/components/shared/protected-asset-preview";
+import { ProtectedAssetDownload, ProtectedAssetPreview } from "@/components/shared/protected-asset-preview";
 import type { CourseAsset } from "@/domain/course-asset";
 import { compareCourseAssets, formatCourseAssetSize, getCourseAssetTitle } from "@/domain/course-asset";
 import type { CourseModule, Lesson } from "@/domain/learning";
@@ -62,6 +63,7 @@ export function CourseMaterialsPanel({
   return (
     <section className="member-resource-panel">
       <div className="flex flex-wrap items-start justify-between gap-3">
+        {/* Sem o selo "N files": a aba "Materials N" logo acima já diz. */}
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
             {t("learn.classroom.resources.title")}
@@ -70,10 +72,6 @@ export function CourseMaterialsPanel({
             {t("learn.classroom.resources.heading")}
           </h2>
         </div>
-        <span className="member-meta-chip">
-          <FileText size={14} aria-hidden />
-          {t(`learn.classroom.resources.${groups.count === 1 ? "fileOne" : "fileMany"}`).replace("{count}", () => String(groups.count))}
-        </span>
       </div>
       {isLoading ? (
         <p className="mt-4 rounded-md bg-white px-3 py-2 text-sm text-[var(--color-ink-soft)]">
@@ -132,15 +130,69 @@ export function MaterialFileList({ files, large = false }: { files: CourseAsset[
                 <MaterialAppHint fileName={asset.fileName} />
               </div>
             </div>
+            {/* Botão cheio só na aula que é só o arquivo (`large`). Na lista,
+                contorno: dez arquivos eram dez botões cheios iguais. */}
             <ProtectedAssetDownload
               asset={asset}
               label={t("courseMedia.preview.downloadNamed").replace("{title}", () => title)}
-              className={large ? "button-solid button-lg w-full sm:w-auto" : "button-solid px-4 text-sm"}
+              className={large ? "button-solid button-lg w-full sm:w-auto" : "button-outline px-4 text-sm"}
             />
           </li>
         );
       })}
     </ul>
+  );
+}
+
+/**
+ * Ações de um anexo dentro da aula: "Preview" e "Download", discretos. A
+ * prévia (PDF de 320px, imagem, vídeo extra) só monta quando a pessoa pede:
+ * antes cada anexo já vinha aberto e três PDFs somavam ~1.100px de documento
+ * embutido, além de um pedido de link por arquivo ao abrir a aula.
+ *
+ * Um botão só, que troca o rótulo e o aria-expanded: trocar de elemento
+ * tirava o foco do teclado e o leitor de tela perdia o lugar.
+ */
+export function LessonAssetActions({ asset }: { asset: CourseAsset }) {
+  const { t } = useTranslation();
+  const [open, setOpen] = useState(false);
+  const title = getCourseAssetTitle(asset);
+  const type = asset.contentType;
+  const isVideo = type.startsWith("video/");
+  // Áudio e texto não têm prévia embutida: aberta, ela mostra "Open file" (o
+  // mp3 toca no navegador) e "Download", como antes.
+  const previewable = /^(video|image|audio|text)\//.test(type) || type === "application/pdf";
+
+  // Os outros tipos (docx, mapa mental...) ficam como eram: "Open file" e
+  // "Download" logo de cara. Nada do que a pessoa fazia antes some.
+  if (!previewable) {
+    return <ProtectedAssetPreview asset={asset} />;
+  }
+
+  return (
+    <div className="mt-3">
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          aria-expanded={open}
+          aria-label={t(open ? "courseMedia.preview.hideNamed" : "courseMedia.preview.showNamed").replace("{title}", () => title)}
+          onClick={() => setOpen((current) => !current)}
+          className="button-outline px-4 py-2 text-xs"
+        >
+          {t(open ? "courseMedia.preview.hide" : "courseMedia.preview.show")}
+        </button>
+        {/* Aberta, a prévia de imagem, PDF, áudio e texto já traz o próprio
+            "Download"; a de vídeo (só o player) não. */}
+        {open && !isVideo ? null : (
+          <ProtectedAssetDownload
+            asset={asset}
+            label={t("courseMedia.preview.downloadNamed").replace("{title}", () => title)}
+            className="button-outline px-4 py-2 text-xs"
+          />
+        )}
+      </div>
+      {open ? <ProtectedAssetPreview asset={asset} /> : null}
+    </div>
   );
 }
 

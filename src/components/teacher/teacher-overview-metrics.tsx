@@ -4,15 +4,11 @@ import { TrendingDown, TrendingUp } from "lucide-react";
 import { useState } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
-import type { Order } from "@/domain/order";
+import { groupPaidOrdersByCurrency } from "@/domain/creator-reports";
+import { isRevenueOrder, type Order } from "@/domain/order";
 import type { TeacherCourse } from "@/domain/teacher-course";
 import { toDate } from "@/lib/format-date";
-
-const money = new Intl.NumberFormat("en", {
-  style: "currency",
-  currency: "USD",
-  maximumFractionDigits: 0,
-});
+import { formatMoneyBreakdown } from "@/lib/format-money";
 
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 
@@ -39,12 +35,15 @@ export function TeacherOverviewMetrics({
   courses,
   orders,
   isLoading,
+  ordersFailed = false,
 }: {
   courses: TeacherCourse[];
   orders: Order[];
   isLoading: boolean;
+  /** A leitura dos pedidos falhou: receita e alunos dizem "Unavailable", nunca 0. */
+  ordersFailed?: boolean;
 }) {
-  const { t } = useTranslation();
+  const { locale, t } = useTranslation();
   const [now] = useState(() => Date.now());
 
   const approvedCount = courses.filter(
@@ -53,7 +52,8 @@ export function TeacherOverviewMetrics({
   const inReviewCount = courses.filter(
     (course) => course.status === "in_review",
   ).length;
-  const paidOrders = orders.filter((order) => order.status === "paid");
+  // Pago ou com reembolso parcial (conta o que ficou).
+  const paidOrders = orders.filter(isRevenueOrder);
 
   // Antes da 1a venda os quatro quadros eram $0 / 0 / -- / --: so frase
   // negativa na primeira visita. Aparecem com o primeiro pedido pago OU a
@@ -76,10 +76,14 @@ export function TeacherOverviewMetrics({
 
     return now - createdAt <= 30 * 24 * 60 * 60 * 1000;
   });
-  const gross30dMinor = paidOrders30d.reduce(
-    (sum, order) => sum + order.amountMinor,
-    0,
-  );
+  // Receita POR MOEDA: R$100 e $20 eram somados e escritos "$120". Uma moeda
+  // sai nela; varias saem lado a lado, a maior primeiro; nenhuma, zero na
+  // unica moeda que o professor ja vendeu (ou "0" puro).
+  const revenue30d = groupPaidOrdersByCurrency(paidOrders30d)
+    .map((group) => ({ currency: group.currency, amountMinor: group.totalMinor }))
+    .sort((left, right) => right.amountMinor - left.amountMinor);
+  const knownCurrencies = groupPaidOrdersByCurrency(paidOrders);
+  const zeroCurrency = knownCurrencies.length === 1 ? knownCurrencies[0].currency : null;
 
   // Prior 30-day window (days 31-60), real timestamps only, so the deltas
   // below compare against an actual baseline rather than a fabricated one.
@@ -92,10 +96,16 @@ export function TeacherOverviewMetrics({
       now - createdAt <= 2 * THIRTY_DAYS_MS
     );
   });
-  const grossPrev30dMinor = prevWindow.reduce(
-    (sum, order) => sum + order.amountMinor,
-    0,
-  );
+  // A variacao so compara moeda com moeda: com mais de uma moeda nas duas
+  // janelas nao ha numero honesto, e a seta some.
+  const comparable = groupPaidOrdersByCurrency([...paidOrders30d, ...prevWindow]);
+  const revenueDelta =
+    comparable.length === 1
+      ? percentDelta(
+          revenue30d[0]?.amountMinor ?? 0,
+          groupPaidOrdersByCurrency(prevWindow)[0]?.totalMinor ?? 0,
+        )
+      : null;
   const newStudentsPrev30d = prevWindow.length;
 
   const ratingCount = courses.reduce(
@@ -117,28 +127,28 @@ export function TeacherOverviewMetrics({
   }[] = [
     {
       label: t("teach.metrics.revenue30d"),
-      value: money.format(gross30dMinor / 100),
+      value: ordersFailed
+        ? t("teach.reports.unavailable")
+        : formatMoneyBreakdown(revenue30d, locale, zeroCurrency, {
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 0,
+          }),
       hint: paidOrders30d.length
         ? t("teach.metrics.revenueHintPaid")
         : t("teach.metrics.revenueHintEmpty"),
-      delta: percentDelta(gross30dMinor, grossPrev30dMinor),
+      delta: ordersFailed ? null : revenueDelta,
     },
     {
       label: t("teach.metrics.newStudents"),
-      value: String(paidOrders30d.length),
+      value: ordersFailed ? t("teach.reports.unavailable") : String(paidOrders30d.length),
       hint: paidOrders30d.length
         ? t("teach.metrics.newStudentsHintPaid")
         : t("teach.metrics.newStudentsHintEmpty"),
-      delta: percentDelta(paidOrders30d.length, newStudentsPrev30d),
+      delta: ordersFailed ? null : percentDelta(paidOrders30d.length, newStudentsPrev30d),
     },
-    {
-      // Completion is not measured yet: show an honest placeholder, never 0%
-      // (which would read as a real measurement of zero progress).
-      label: t("teach.metrics.completion"),
-      value: "--",
-      hint: t("teach.metrics.completionHint"),
-      delta: null,
-    },
+    // O quadro "Completion" saiu: o valor era fixo em "--", com a dica
+    // "Appears once learners finish lessons", que nunca se cumpria. Volta
+    // quando a Home tiver a conclusao medida.
     {
       label: t("teach.metrics.avgRating"),
       value: averageRating ? averageRating.toFixed(1) : "--",
@@ -154,7 +164,7 @@ export function TeacherOverviewMetrics({
   ];
 
   return (
-    <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <section className="grid gap-4 md:grid-cols-3">
       {cards.map((card) => (
         <div
           key={card.label}

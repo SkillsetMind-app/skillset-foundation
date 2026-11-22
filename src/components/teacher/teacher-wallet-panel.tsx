@@ -11,7 +11,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
@@ -27,7 +27,9 @@ import type { PayoutLedgerEntry } from "@/domain/payout-ledger";
 import type { UserProfile } from "@/domain/user-profile";
 import { subscribeToTeacherPayoutLedger } from "@/lib/data/payout-ledger";
 import { subscribeToUserProfile } from "@/lib/data/user-profiles";
+import { getSafeReturnTo } from "@/lib/auth/routing";
 import { toDate } from "@/lib/format-date";
+import { formatMoney, formatMoneyBreakdown } from "@/lib/format-money";
 import {
   isConnectNotEnabledError,
   refreshTeacherStripeAccountStatus,
@@ -39,6 +41,15 @@ import {
 const PAYOUTS_UNAVAILABLE_KEY = "teach.earnings.payoutsUnavailable";
 
 type LedgerReadState = "loading" | "ready" | "error";
+
+// O construtor manda ?returnTo= para a volta cair na aba Publish do curso.
+// So um caminho do proprio construtor passa (getSafeReturnTo ja barra outro
+// site e "//host"); qualquer outra coisa nao vira botao.
+function readBuilderReturnTo(): string | null {
+  const target = getSafeReturnTo(new URLSearchParams(window.location.search));
+  return target?.startsWith("/teach/builder?") ? target : null;
+}
+const noSubscribe = () => () => {};
 
 type Translate = (key: string) => string;
 
@@ -57,6 +68,8 @@ export function TeacherWalletPanel() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [isRefreshingStripe, setIsRefreshingStripe] = useState(false);
+  // Lido no cliente: no servidor (e na hidratacao) nao ha botao de volta.
+  const returnTo = useSyncExternalStore(noSubscribe, readBuilderReturnTo, () => null);
   const [ledgerEntries, setLedgerEntries] = useState<PayoutLedgerEntry[]>([]);
   const [ledgerState, setLedgerState] = useState<LedgerReadState>("loading");
   // Platform-level truth reported by the onboarding component: when Stripe
@@ -180,9 +193,24 @@ export function TeacherWalletPanel() {
     () => summarizeCreatorWallet(ledgerEntries),
     [ledgerEntries],
   );
+  // Um total vazio sai como zero na moeda das outras somas quando ha uma so.
+  // Com nenhuma ou varias, "0" puro: "$0.00" ao lado de "R$100.00" de
+  // reembolso diria que o neto e de outra moeda.
+  const currencies = new Set(
+    [
+      financials.grossPaidByCurrency,
+      financials.platformFeeByCurrency,
+      financials.stripeFeeByCurrency,
+      financials.teacherNetByCurrency,
+      financials.refundedByCurrency,
+    ]
+      .flat()
+      .map((value) => value.currency),
+  );
+  const zeroCurrency = currencies.size === 1 ? [...currencies][0] : null;
   const money = (values: CurrencyAmount[]) =>
     ledgerState === "ready"
-      ? formatCurrencyBreakdown(values)
+      ? formatMoneyBreakdown(values, locale, zeroCurrency)
       : ledgerState === "error"
         ? t("teach.earnings.unavailable")
         : "—";
@@ -249,13 +277,20 @@ export function TeacherWalletPanel() {
           {error}
         </p>
       ) : null}
+      {/* Veio do Publish do construtor: pagamentos prontos, o caminho de volta
+          para publicar e um botao, nao a barra lateral. */}
+      {ready && returnTo ? (
+        <Link href={returnTo} className="button-solid button-lg w-full sm:w-fit">
+          {t("teach.earnings.backToCourse")}
+        </Link>
+      ) : null}
 
       <div className="payouts-grid">
         <article className="payout-balance-card">
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-[rgba(255,255,255,0.66)]">
             {t("teach.earnings.netEstimate")}
           </p>
-          <p className="display-title mt-3 break-words text-3xl leading-tight text-white sm:text-4xl">
+          <p className="num mt-3 break-words text-3xl font-bold leading-tight text-white sm:text-4xl">
             {money(financials.teacherNetByCurrency)}
           </p>
           {/* Uma linha ao lado do numero grande. O resto (cobranca na conta do
@@ -300,8 +335,10 @@ export function TeacherWalletPanel() {
               <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
                 {t("teach.earnings.destination")}
               </p>
-              <h3 className="display-title mt-2 text-2xl text-[var(--color-primary)]">
-                Stripe Connect
+              {/* "Stripe Connect" e o nome do produto da Stripe, nao do que a
+                  pessoa tem: para quem nao e tecnico, e a conta dela. */}
+              <h3 className="mt-2 text-lg font-semibold text-[var(--color-ink)]">
+                {t("teach.earnings.stripeAccount")}
               </h3>
             </div>
             <StatusChip
@@ -371,9 +408,13 @@ export function TeacherWalletPanel() {
             />
           </div>
 
-          <div className="mt-5">
-            <StripeDashboardButton />
-          </div>
+          {/* Sem conta conectada o botao so devolvia o erro "conecte o
+              Stripe", com o passo de conectar logo ao lado. */}
+          {connected && !platformPayoutsUnavailable ? (
+            <div className="mt-5">
+              <StripeDashboardButton />
+            </div>
+          ) : null}
           <button
             type="button"
             onClick={refreshStripeStatus}
@@ -422,7 +463,7 @@ export function TeacherWalletPanel() {
                   ? t("teach.earnings.connectContinue")
                   : t("teach.earnings.connectStart")}
               </p>
-              <h3 className="display-title mt-2 text-2xl text-[var(--color-primary)]">
+              <h3 className="mt-2 text-lg font-semibold text-[var(--color-ink)]">
                 {t("teach.earnings.connectTitle")}
               </h3>
               <p className="mt-2 max-w-3xl text-sm leading-7 text-[var(--color-ink-soft)]">
@@ -458,16 +499,16 @@ export function TeacherWalletPanel() {
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
               {t("teach.earnings.statements")}
             </p>
-            <h3 className="display-title mt-2 text-3xl text-[var(--color-primary)]">
+            <h3 className="mt-2 text-lg font-semibold text-[var(--color-ink)]">
               {t("teach.earnings.statementsTitle")}
             </h3>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--color-ink-soft)]">
               {t("teach.earnings.statementsBody")}
             </p>
           </div>
-          <button type="button" disabled className="button-outline px-4 py-2.5 text-sm opacity-60">
-            {t("teach.earnings.export")}
-          </button>
+          {/* Aqui havia "Export after first payout", desligado para sempre:
+              nem depois do primeiro repasse ele ligava. O extrato de vendas
+              exporta em Vendas. */}
         </div>
 
         <div className="mt-5 overflow-hidden rounded-lg border border-[var(--color-line)]">
@@ -501,7 +542,7 @@ export function TeacherWalletPanel() {
                 })
                 .slice(0, 6)
                 .map((entry) => (
-                  <LedgerRow key={entry.id} entry={entry} t={t} />
+                  <LedgerRow key={entry.id} entry={entry} t={t} locale={locale} />
                 ))}
             </div>
           )}
@@ -513,7 +554,7 @@ export function TeacherWalletPanel() {
           <FileText aria-hidden="true" size={22} strokeWidth={2} />
         </span>
         <div className="min-w-0 flex-1">
-          <h3 className="display-title text-2xl text-[var(--color-primary)]">
+          <h3 className="text-lg font-semibold text-[var(--color-ink)]">
             {t("teach.earnings.taxCenter")}
           </h3>
           <p className="mt-1 text-sm leading-6 text-[var(--color-ink-soft)]">
@@ -573,14 +614,14 @@ function PayoutStatusRow({
   );
 }
 
-function LedgerRow({ entry, t }: { entry: PayoutLedgerEntry; t: Translate }) {
+function LedgerRow({ entry, t, locale }: { entry: PayoutLedgerEntry; t: Translate; locale: string }) {
   return (
     <Link
       href={`/teach/sales/${entry.orderId}`}
       className="grid gap-3 bg-white p-4 transition hover:bg-[var(--color-surface-soft)] md:grid-cols-[140px_1fr_150px_120px_auto]"
     >
       <span className="text-xs font-semibold text-[var(--color-ink-soft)]">
-        {formatDate(entry.createdAt ?? entry.releaseAt, t("teach.earnings.datePending"))}
+        {formatDate(entry.createdAt ?? entry.releaseAt, t("teach.earnings.datePending"), locale)}
       </span>
       <span className="min-w-0">
         <span className="block truncate text-sm font-bold text-[var(--color-ink)]">
@@ -595,34 +636,24 @@ function LedgerRow({ entry, t }: { entry: PayoutLedgerEntry; t: Translate }) {
         label={t(ledgerStatusKey(entry.status))}
       />
       <span className="text-right text-sm font-black text-[var(--color-primary)] md:text-left">
-        {formatMoney(entry.netAmountMinor, entry.currency)}
+        {formatMoney(entry.netAmountMinor, entry.currency, locale)}
       </span>
       <ArrowRight aria-hidden="true" size={15} strokeWidth={2} className="hidden text-[var(--color-ink-muted)] md:block" />
     </Link>
   );
 }
 
-function formatMoney(amountMinor: number, currency = "USD") {
-  return new Intl.NumberFormat("en", {
-    style: "currency",
-    currency,
-  }).format(amountMinor / 100);
-}
-
-function formatCurrencyBreakdown(values: CurrencyAmount[]): string {
-  if (!values.length) return "0";
-  return values
-    .map((value) => `${value.currency} ${(value.amountMinor / 100).toFixed(2)}`)
-    .join(" + ");
-}
-
-function formatDate(value: unknown, pendingLabel: string) {
+// Dinheiro e data na lingua da tela, como em Vendas. O maior numero de Ganhos
+// saia "0" sem moeda para professor novo, e "USD 49.00 + EUR 10.00" depois;
+// as datas saiam sempre em ingles, inclusive na tela em espanhol. O dinheiro
+// (com o recuo para moeda que o Intl recusa) mora em @/lib/format-money.
+function formatDate(value: unknown, pendingLabel: string, locale: string) {
   const date = toDate(value);
   if (!date) {
     return pendingLabel;
   }
 
-  return new Intl.DateTimeFormat("en", {
+  return new Intl.DateTimeFormat(locale, {
     dateStyle: "medium",
   }).format(date);
 }

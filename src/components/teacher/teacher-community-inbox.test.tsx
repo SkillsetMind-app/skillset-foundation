@@ -354,7 +354,7 @@ describe("'All posts': o professor modera a propria comunidade", () => {
     expect(deleteCommunityComment).toHaveBeenCalledExactlyOnceWith("c-student");
     expect(within(drawer).getByText("No replies yet. Be the first.")).toBeInTheDocument();
 
-    fireEvent.click(within(drawer).getByRole("button", { name: "Back to feed" }));
+    fireEvent.click(within(drawer).getByRole("button", { name: "Close" }));
     expect(screen.queryByRole("dialog")).toBeNull();
   });
 });

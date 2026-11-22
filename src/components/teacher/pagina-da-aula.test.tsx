@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { I18nProvider } from "@/components/i18n/i18n-provider";
 import { CourseBuilderStudio } from "@/components/teacher/course-builder-studio";
+import { clickConfirm, stubDialogs } from "@/components/teacher/confirm-test-helpers";
 import { LessonUploadProvider } from "@/components/teacher/lesson-upload-provider";
 import type { CourseAsset } from "@/domain/course-asset";
 import type { TeacherCourse } from "@/domain/teacher-course";
@@ -177,18 +178,24 @@ const linkField = () => screen.getByRole("textbox", { name: "YouTube or Vimeo UR
 const lastPayload = () => vi.mocked(updateTeacherCourseBuilder).mock.calls.at(-1)?.[1];
 
 describe("pagina da aula no builder", () => {
+  let restoreDialogs = () => {};
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.bunnyConfigured = false;
     mocks.course = courseFixture();
     mocks.assets = [];
     openAt("/teach/builder?courseId=course-1&tab=content");
+    restoreDialogs = stubDialogs();
   });
 
   afterEach(() => {
     cleanup();
     vi.restoreAllMocks();
+    restoreDialogs();
   });
+
+  // O aviso do envio em curso: janela da plataforma (era o window.alert).
+  const uploadNotice = () => screen.queryByRole("dialog", { name: "Upload in progress" });
 
   it("keeps upload status and original lesson persistence after the entire editor unmounts", async () => {
     mocks.course = withIntro();
@@ -306,7 +313,6 @@ describe("pagina da aula no builder", () => {
       mocks.bunnyConfigured = bunnyConfigured;
       const transport = bunnyConfigured ? uploadLessonVideoToBunny : uploadCourseAsset;
       vi.mocked(transport).mockImplementationOnce(() => new Promise<string>(() => {}));
-      const alert = vi.spyOn(window, "alert").mockImplementation(() => {});
       openAt(introUrl);
       await renderBuilder();
       startUpload();
@@ -315,21 +321,27 @@ describe("pagina da aula no builder", () => {
       leave.href = href;
       view.container.appendChild(leave);
       expect(fireEvent.click(leave)).toBe(false);
-      expect(alert).toHaveBeenCalledOnce();
+      expect(uploadNotice()).toHaveAccessibleDescription(
+        "An upload is in progress. Wait for it to finish before leaving this page.",
+      );
+      // Aviso de um botao so, que vale no primeiro toque; a pagina fica e o
+      // envio segue.
+      expect(within(uploadNotice()!).getAllByRole("button")).toHaveLength(1);
+      fireEvent.click(within(uploadNotice()!).getByRole("button", { name: "OK, I'll wait" }));
+      await waitFor(() => expect(uploadNotice()).toBeNull());
       expect(screen.getByRole("heading", { name: "Intro" })).toBeInTheDocument();
       expect(transport).toHaveBeenCalledTimes(1);
       expect(bunnyConfigured ? uploadCourseAsset : uploadLessonVideoToBunny).not.toHaveBeenCalled();
 
-      alert.mockClear();
       leave.target = "_blank";
       expect(fireEvent.click(leave)).toBe(true);
-      expect(alert).not.toHaveBeenCalled();
+      expect(uploadNotice()).toBeNull();
     } finally {
       window.history.replaceState(null, "", previousUrl);
     }
   });
 
-  it("?module=M&lesson=L mostra Curso > Modulo > Aula e a aba de video, sem dialogo", async () => {
+  it("?module=M&lesson=L mostra Curso > Modulo, o nome da aula uma vez e a aba de video, sem dialogo", async () => {
     openAt(lessonUrl);
     await renderBuilder();
 
@@ -337,7 +349,16 @@ describe("pagina da aula no builder", () => {
     expect(within(trail).getByRole("link", { name: "Clinical performance foundations" }))
       .toHaveAttribute("href", "/teach/builder?courseId=course-1&tab=content");
     expect(within(trail).getByRole("link", { name: "Start here" })).toHaveAttribute("href", moduleUrl);
-    expect(within(trail).getByText("Welcome").closest("[aria-current='page']")).not.toBeNull();
+    // O nome da aula aparecia tres vezes na tela: trilha, titulo e a linha
+    // "Module 1 - ... / Lesson 1". Agora so o titulo e visivel; na trilha a aula
+    // fica para o leitor de tela, como item atual.
+    const current = within(trail).getByText("Welcome");
+    expect(current.closest("[aria-current='page']")).toBe(current);
+    expect(current).toHaveClass("sr-only");
+    const visible = within(card()).getAllByText("Welcome").filter((element) => !element.closest(".sr-only"));
+    expect(visible).toEqual([within(card()).getByRole("heading", { name: "Welcome" })]);
+    // O cabecalho da aba Curriculum nao fica entre o construtor e a aula.
+    expect(screen.queryByRole("heading", { name: "Build the curriculum." })).not.toBeInTheDocument();
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(linkField()).toHaveValue(youtube);
   });
@@ -469,7 +490,6 @@ describe("pagina da aula no builder", () => {
   it("apagar o video na pagina da aula tira a aula da prontidao do Publish", async () => {
     mocks.course = withIntro();
     mocks.assets = [introVideo()];
-    vi.spyOn(window, "confirm").mockReturnValue(true);
     openAt(introUrl);
     await renderBuilder();
     await waitFor(() => expect(fetchCourseAssets).toHaveBeenCalled());
@@ -482,6 +502,9 @@ describe("pagina da aula no builder", () => {
       .map((element) => element.closest("article"))
       .find((article): article is HTMLElement => article instanceof HTMLElement);
     fireEvent.click(within(file as HTMLElement).getByRole("button"));
+    const asking = screen.getByRole("dialog", { name: "Delete this file?" });
+    expect(asking).toHaveAccessibleDescription('Delete "aula.mp4"? This permanently removes the file.');
+    clickConfirm(asking, "Delete file");
 
     await waitFor(() => expect(screen.getAllByText(missingIntro).length).toBeGreaterThan(0));
     expect(screen.getByRole("button", { name: "Publish product" })).toBeDisabled();
@@ -492,7 +515,6 @@ describe("pagina da aula no builder", () => {
   it("durante um envio, link para fora do builder nao navega", async () => {
     mocks.course = withIntro();
     vi.mocked(uploadCourseAsset).mockImplementationOnce(() => new Promise<string>(() => {}));
-    const alert = vi.spyOn(window, "alert").mockImplementation(() => {});
     openAt(introUrl);
     await renderBuilder();
     startUpload();
@@ -503,7 +525,11 @@ describe("pagina da aula no builder", () => {
     view.container.appendChild(leave);
 
     expect(fireEvent.click(leave)).toBe(false);
-    expect(alert).toHaveBeenCalledOnce();
+    expect(uploadNotice()).toBeInTheDocument();
+    // Fechar o aviso (Esc) nao solta a saida: o clique ja parou.
+    fireEvent(uploadNotice()!, new Event("cancel", { cancelable: true }));
+    expect(uploadNotice()).toBeNull();
+    expect(screen.getByRole("heading", { name: "Intro" })).toBeInTheDocument();
     expect(uploadCourseAsset).toHaveBeenCalledTimes(1);
   });
 
@@ -548,13 +574,15 @@ describe("pagina da aula no builder", () => {
     expect(document.activeElement).toBe(screen.getByRole("heading", { name: "Welcome" }));
   });
 
-  it("sair pelo Done troca a entrada do historico e devolve o foco ao botao da aula", async () => {
+  it("sair por Back to module troca a entrada do historico e devolve o foco ao botao da aula", async () => {
     openAt(moduleUrl);
     await renderBuilder();
     fireEvent.click(within(card()).getByRole("button", { name: "Edit content" }));
     navigateTo(lessonUrl);
 
-    fireEvent.click(screen.getByRole("button", { name: "Done" }));
+    // "Done" era tambem o estado da aba Description: o botao diz para onde leva.
+    expect(screen.queryByRole("button", { name: "Done" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Back to module" }));
     expect(mocks.router.replace).toHaveBeenLastCalledWith(moduleUrl, { scroll: false });
     navigateTo(moduleUrl);
 

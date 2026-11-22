@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { useConfirm } from "@/components/teacher/use-confirm";
 import { callTeachAi, teachAiErrorText } from "@/lib/ai/teach-ai-client";
 
 // "Suggest with AI" para título e descrição da aula ou do módulo. A IA lê a
@@ -31,6 +32,7 @@ export function AiSuggest({
   onUseDescription: (description: string) => void;
 }) {
   const { t } = useTranslation();
+  const { ask, dialog: confirmDialog } = useConfirm();
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [suggestions, setSuggestions] = useState<{ titles: string[]; descriptions: string[] } | null>(null);
@@ -49,10 +51,18 @@ export function AiSuggest({
   }
 
   function applyDescription(value: string) {
+    const apply = () => {
+      onUseDescription(value);
+      setMessage(t("creatorEditor.lesson.ai.used"));
+    };
     // A descrição da aula é o texto inteiro dela: não some sem o professor querer.
-    if (currentDescription?.trim() && !window.confirm(t("creatorEditor.lesson.ai.confirmReplaceDescription"))) return;
-    onUseDescription(value);
-    setMessage(t("creatorEditor.lesson.ai.used"));
+    if (!currentDescription?.trim()) return apply();
+    ask({
+      title: t("creatorEditor.lesson.ai.confirmReplaceDescriptionTitle"),
+      body: t("creatorEditor.lesson.ai.confirmReplaceDescription"),
+      confirmLabel: t("creatorEditor.lesson.ai.replaceDescription"),
+      run: apply,
+    });
   }
 
   const list = (items: string[], label: string, pick: (value: string) => void) =>
@@ -97,6 +107,7 @@ export function AiSuggest({
         </>
       ) : null}
       <p role="status" aria-live="polite" className="text-sm text-[var(--color-ink-soft)]">{message}</p>
+      {confirmDialog}
     </div>
   );
 }

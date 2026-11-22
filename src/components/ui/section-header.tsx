@@ -17,6 +17,12 @@ export type SectionHeaderProps = {
   as?: "h2" | "h3" | "h4";
   actions?: ReactNode;
   className?: string;
+  /**
+   * "card": titulo de cartao dentro de uma pagina que ja tem a manchete em
+   * serifa. Sem isto a Vitrine tinha tres manchetes (48, 30 e 30px) sob o
+   * mesmo rotulo. O padrao continua "display" para os outros usos.
+   */
+  size?: "display" | "card";
 };
 
 export function SectionHeader({
@@ -26,6 +32,7 @@ export function SectionHeader({
   as: Heading = "h2",
   actions,
   className,
+  size = "display",
 }: SectionHeaderProps) {
   return (
     <div
@@ -38,7 +45,9 @@ export function SectionHeader({
         {eyebrow ? <Eyebrow>{eyebrow}</Eyebrow> : null}
         <Heading
           className={cn(
-            "display-title text-3xl text-[var(--color-primary)]",
+            size === "card"
+              ? "text-lg font-semibold text-[var(--color-ink)]"
+              : "display-title text-3xl text-[var(--color-primary)]",
             eyebrow && "mt-3",
           )}
         >

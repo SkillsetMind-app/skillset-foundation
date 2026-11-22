@@ -15,6 +15,7 @@ const mocks = vi.hoisted(() => ({
   ledgers: [] as unknown[],
   subscriptions: [] as unknown[],
   courses: [] as unknown[],
+  ordersRead: "ready" as "ready" | "loading" | "error",
 }));
 
 vi.mock("@/components/auth/auth-provider", () => ({
@@ -24,8 +25,13 @@ vi.mock("@/components/auth/auth-provider", () => ({
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 
 vi.mock("@/lib/data/orders", () => ({
-  subscribeToTeacherOrders: (_uid: string, onData: (rows: unknown[]) => void) => {
-    onData(mocks.orders);
+  subscribeToTeacherOrders: (
+    _uid: string,
+    onData: (rows: unknown[]) => void,
+    onError?: (error: Error) => void,
+  ) => {
+    if (mocks.ordersRead === "error") onError?.(new Error("boom"));
+    else if (mocks.ordersRead === "ready") onData(mocks.orders);
     return () => undefined;
   },
 }));
@@ -78,7 +84,6 @@ function HomeInsights() {
     <TeacherStudioInsights
       courses={mocks.courses as TeacherCourse[]}
       orders={mocks.orders as Order[]}
-      payoutsPending={false}
     />
   );
 }
@@ -98,6 +103,7 @@ function order(fields: Record<string, unknown>) {
 }
 
 beforeEach(() => {
+  mocks.ordersRead = "ready";
   // Tres pagos + um reembolsado dentro dos 30 dias, e um pago velho fora deles.
   mocks.orders = [
     order({
@@ -207,10 +213,10 @@ describe("Relatorios do professor", () => {
     // Receita liquida do razao do periodo: 39.000 minor. Os 800.000 do
     // lancamento velho nao entram.
     expect(screen.getByText("Net revenue")).toBeInTheDocument();
-    expect(screen.getByText("USD 390")).toBeInTheDocument();
+    expect(screen.getByText("$390")).toBeInTheDocument();
 
     expect(screen.getByText("MRR")).toBeInTheDocument();
-    expect(screen.getByText("USD 30")).toBeInTheDocument();
+    expect(screen.getByText("$30")).toBeInTheDocument();
   });
 
   it("o grafico de receita esta nos relatorios e continua na home", async () => {
@@ -241,10 +247,58 @@ describe("Relatorios do professor", () => {
           .map((cell) => cell.textContent),
       ),
     ).toEqual([
-      ["Deep Hypnosis", "2", "USD 400", "0"],
+      ["Deep Hypnosis", "2", "$400", "0"],
       // Breathwork rende menos e vem depois, com o reembolso contado a parte.
-      ["Breathwork Basics", "1", "USD 50", "1"],
+      ["Breathwork Basics", "1", "$50", "1"],
     ]);
+  });
+
+  // R$100 e $20 viravam um "$120" no grafico dos relatorios.
+  it("duas moedas: o grafico desenha uma, diz as outras e a tabela separa as linhas", async () => {
+    mocks.orders = [
+      order({ id: "b1", status: "paid", courseId: "c1", courseTitle: "Deep Hypnosis", amountMinor: 10_000, currency: "BRL", createdAt: daysAgo(2) }),
+      order({ id: "b2", status: "paid", courseId: "c1", courseTitle: "Deep Hypnosis", amountMinor: 10_000, currency: "BRL", createdAt: daysAgo(3) }),
+      order({ id: "u1", status: "paid", courseId: "c1", courseTitle: "Deep Hypnosis", amountMinor: 2_000, currency: "USD", createdAt: daysAgo(2) }),
+    ];
+
+    render(<CreatorOpsHub />);
+
+    // BRL tem mais pedidos no periodo: e a moeda do grafico.
+    const chart = (await screen.findByRole("img", { name: "Teacher revenue chart" })).closest<HTMLElement>(".studio-chart-card")!;
+    expect(within(chart).getByText("R$200", { selector: "strong" })).toBeInTheDocument();
+    expect(within(chart).getByText("Other currencies are not in this chart: $20.")).toBeInTheDocument();
+    const rows = within(screen.getByRole("table")).getAllByRole("row").slice(1);
+    expect(rows.map((row) => within(row).getAllByRole("cell")[2].textContent)).toEqual(["R$200", "$20"]);
+    expect(document.body.textContent).not.toMatch(/\$220|R\$220|BRL 220|USD 220/);
+    // As moedas lado a lado com " · ": o " + " de antes lia como soma.
+    expect(document.body.textContent).not.toMatch(/\d \+ /);
+  });
+
+  it("reembolso parcial: $100 com $30 devolvidos conta $70 no grafico e na tabela", async () => {
+    mocks.orders = [
+      order({ id: "p1", status: "partially_refunded", courseId: "c1", courseTitle: "Deep Hypnosis", amountMinor: 10_000, refundedAmountMinor: 3_000, createdAt: daysAgo(2) }),
+    ];
+
+    render(<CreatorOpsHub />);
+
+    const chart = (await screen.findByRole("img", { name: "Teacher revenue chart" })).closest<HTMLElement>(".studio-chart-card")!;
+    expect(within(chart).getByText("$70", { selector: "strong" })).toBeInTheDocument();
+    const row = within(screen.getByRole("table")).getAllByRole("row")[1];
+    expect(within(row).getAllByRole("cell").map((cell) => cell.textContent)).toEqual(["Deep Hypnosis", "1", "$70", "1"]);
+  });
+
+  // Carregando ou com erro, o grafico dizia "No revenue in this period".
+  it.each([
+    ["loading", "Loading..."],
+    ["error", "Unavailable"],
+  ] as const)("pedidos em '%s': o grafico nao afirma receita zero", async (read, label) => {
+    mocks.ordersRead = read;
+
+    render(<CreatorOpsHub />);
+
+    const chart = (await screen.findByRole("img", { name: "Teacher revenue chart" })).closest<HTMLElement>(".studio-chart-card")!;
+    expect(within(chart).getByRole("status")).toHaveTextContent(label);
+    expect(within(chart).queryByText("No revenue in this period")).toBeNull();
   });
 
   it("sem nenhuma linha, o export nao fica clicavel", async () => {
@@ -285,7 +339,9 @@ describe("datas dos gráficos no idioma da pessoa", () => {
     render(<I18nProvider initialLocale="es"><Component /></I18nProvider>);
     fireEvent.click(screen.getByRole("button", { name: period }));
 
-    const chart = screen.getByRole("img");
+    // Os rotulos do eixo moram em HTML em volta do SVG (12px em qualquer
+    // largura), dentro do mesmo quadro do grafico.
+    const chart = screen.getByRole("img").closest<HTMLElement>(".studio-chart-canvas")!;
     expect(within(chart).getByText(spanishLabel)).toBeInTheDocument();
     expect(within(chart).queryByText(englishLabel)).not.toBeInTheDocument();
     expect(within(chart.closest<HTMLElement>(".studio-chart-card")!).getByText("$200", { selector: "strong" })).toBeVisible();
@@ -295,10 +351,12 @@ describe("datas dos gráficos no idioma da pessoa", () => {
     render(<I18nProvider initialLocale="en"><ChangeLanguage /><Component /></I18nProvider>);
     fireEvent.click(screen.getByRole("button", { name: period }));
 
-    const chart = screen.getByRole("img");
+    const chart = screen.getByRole("img").closest<HTMLElement>(".studio-chart-canvas")!;
     expect(within(chart).getByText(englishLabel)).toBeInTheDocument();
     const geometry = [...chart.querySelectorAll("path")].map((path) => path.getAttribute("d"));
-    const points = chart.querySelectorAll("circle").length;
+    // Os pontos sao HTML (no desenho esticado um circulo viraria elipse).
+    const points = chart.querySelectorAll("span.rounded-full").length;
+    expect(points).toBeGreaterThan(0);
     fireEvent.click(screen.getByRole("button", { name: "Cambiar a español" }));
 
     expect(within(chart).getByText(spanishLabel)).toBeInTheDocument();
@@ -306,7 +364,7 @@ describe("datas dos gráficos no idioma da pessoa", () => {
     expect(within(chart.closest<HTMLElement>(".studio-chart-card")!).getByText("$200", { selector: "strong" })).toBeVisible();
     expect(screen.getByRole("button", { name: period })).toHaveAttribute("aria-pressed", "true");
     expect([...chart.querySelectorAll("path")].map((path) => path.getAttribute("d"))).toEqual(geometry);
-    expect(chart.querySelectorAll("circle")).toHaveLength(points);
+    expect(chart.querySelectorAll("span.rounded-full")).toHaveLength(points);
     expect(screen.getAllByText("Deep Hypnosis").length).toBeGreaterThan(0);
   });
 

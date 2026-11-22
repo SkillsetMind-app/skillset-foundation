@@ -2,6 +2,7 @@
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { AuthFrame } from "@/components/auth/auth-frame";
+import { ConfirmGateContext } from "@/components/auth/confirm-email-gate";
 import { LoginForm } from "@/components/auth/login-form";
 import { SignupForm } from "@/components/auth/signup-form";
 import { useTranslation } from "@/components/i18n/i18n-provider";
@@ -11,7 +12,7 @@ import {
   getLoadingRoute,
 } from "@/lib/auth/routing";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 type AuthMode = "signup" | "signin";
 
@@ -36,6 +37,8 @@ export function AuthPage() {
   // quem entrava pela porta errada nao percebia.
   const modeKey = isSignup ? "Signup" : "Signin";
   const roleKey = pathIntent === "teacher" ? "Educator" : "Learner";
+  // Com a porta "confirme seu e-mail" na tela, o titulo vira a instrucao.
+  const [confirmGateOpen, setConfirmGateOpen] = useState(false);
 
   useEffect(() => {
     if (status === "loading" || entrySessionHandled.current) {
@@ -53,9 +56,11 @@ export function AuthPage() {
   return (
     <AuthFrame homeLabel={t("auth.page.backToHome")}>
       <h1 className="auth-title display-title">
-        {t(`auth.page.title${modeKey}${roleKey}`)}
+        {t(confirmGateOpen ? "auth.signup.checkEmailTitle" : `auth.page.title${modeKey}${roleKey}`)}
       </h1>
-      {isSignup ? <SignupForm /> : <LoginForm />}
+      <ConfirmGateContext.Provider value={setConfirmGateOpen}>
+        {isSignup ? <SignupForm /> : <LoginForm />}
+      </ConfirmGateContext.Provider>
     </AuthFrame>
   );
 }

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { I18nProvider } from "@/components/i18n/i18n-provider";
@@ -18,7 +18,12 @@ const mocks = vi.hoisted(() => ({
   searchParams: new URLSearchParams(),
   push: vi.fn(),
   messages: [] as unknown[],
+  // "data": a leitura chega na hora; "pending": ainda nao chegou; "error": falhou.
+  mode: "data" as "data" | "pending" | "error",
   subscriptions: 0,
+  // O que o canal entrega depois de inscrito: uma leitura nova (tempo real) ou uma falha.
+  emit: (() => undefined) as (messages: unknown[]) => void,
+  fail: (() => undefined) as () => void,
   // Um objeto de usuario para a sessao inteira (objeto novo por render
   // reinscreve o efeito e entra em laco).
   auth: { status: "authenticated", user: { uid: "student-1", email: "s@example.com", roles: ["student"] } },
@@ -36,13 +41,20 @@ vi.mock("@/components/auth/auth-provider", () => ({
 
 vi.mock("@/lib/data/course-messages", () => ({
   subscribeToStudentMessages: vi.fn(
-    (_studentId: string, onNext: (messages: unknown[]) => void) => {
+    (_studentId: string, onNext: (messages: unknown[]) => void, onError: (error: Error) => void) => {
       mocks.subscriptions += 1;
       if (mocks.subscriptions > 20) {
         throw new Error("subscribeToStudentMessages chamado mais de 20 vezes: laco de render");
       }
-      onNext(mocks.messages);
-      return vi.fn();
+      const read = () => {
+        if (mocks.mode === "data") onNext(mocks.messages);
+        if (mocks.mode === "error") onError(new Error("offline"));
+      };
+      mocks.emit = onNext;
+      mocks.fail = () => onError(new Error("offline"));
+      read();
+      // Como o de verdade: desligar o canal, e `reload` que le de novo sem mexer nele.
+      return Object.assign(vi.fn(), { reload: vi.fn(async () => read()) });
     },
   ),
   sendCourseMessage: vi.fn(() => Promise.resolve({ success: true, messageId: "m-new" })),
@@ -85,7 +97,71 @@ describe("caixa de mensagens do aluno", () => {
   beforeEach(() => {
     mocks.push.mockReset();
     mocks.subscriptions = 0;
+    mocks.mode = "data";
     vi.mocked(sendCourseMessage).mockClear();
+  });
+
+  it("antes da primeira leitura mostra carregando, nao 'No conversations yet'", () => {
+    mocks.mode = "pending";
+    renderInbox("", []);
+
+    expect(screen.getByRole("status")).toHaveTextContent("Loading your conversations...");
+    expect(screen.queryByText("No conversations yet")).not.toBeInTheDocument();
+  });
+
+  it("se a primeira leitura falha: erro com 'Try again' no lugar do vazio, e o retry le de novo", async () => {
+    mocks.mode = "error";
+    renderInbox("", []);
+
+    expect(screen.getByRole("alert")).toHaveTextContent("We could not load your messages.");
+    expect(screen.queryByText("No conversations yet")).not.toBeInTheDocument();
+
+    mocks.mode = "data";
+    mocks.messages = twoCourses;
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    });
+
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(screen.getByRole("navigation", { name: "Conversations" })).toBeInTheDocument();
+  });
+
+  it("'Try again' nao religa o canal: a mensagem que chega depois em tempo real entra na lista", async () => {
+    mocks.mode = "error";
+    renderInbox("", []);
+    mocks.mode = "data";
+    mocks.messages = twoCourses;
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    });
+    // Religar com o mesmo nome devolvia o canal antigo, saindo: nada mais chegava.
+    expect(mocks.subscriptions).toBe(1);
+
+    act(() => mocks.emit([
+      ...twoCourses,
+      message({ id: "m4", courseId: "course-3", courseTitle: "Mindset", body: "New reply", createdAt: "2026-09-03T09:00:00.000Z" }),
+    ]));
+    const list = screen.getByRole("navigation", { name: "Conversations" });
+    expect(within(list).getByText("Mindset")).toBeInTheDocument();
+  });
+
+  it("releitura que falha com a lista na tela: aviso visivel sem conversa aberta, que some na leitura seguinte", () => {
+    renderInbox();
+
+    act(() => mocks.fail());
+    expect(screen.getByRole("alert")).toHaveTextContent("We could not load your messages.");
+    expect(screen.getByRole("navigation", { name: "Conversations" })).toBeInTheDocument();
+
+    act(() => mocks.emit(twoCourses));
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("no celular, com uma conversa aberta, a lista sai (so volta no computador)", () => {
+    renderInbox("course=course-1");
+
+    const list = screen.getByRole("navigation", { name: "Conversations", hidden: true });
+    expect(list).toHaveClass("hidden", "lg:grid");
+    expect(screen.getByRole("region", { name: "Conversation: Leadership" })).toBeInTheDocument();
   });
 
   it("uma conversa por curso, a mais recente primeiro, dizendo quem falou por ultimo", () => {

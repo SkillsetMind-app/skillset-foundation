@@ -185,7 +185,9 @@ export function TeacherMembersAreaHub() {
                 <div className="flex flex-wrap gap-2 lg:justify-end">
                   <Link
                     href={`/teach/builder/${encodeURIComponent(course.id)}/preview`}
-                    className={buttonClasses({ size: "sm" })}
+                    // Acao de linha em contorno: com um "Preview" solido por
+                    // produto, a lista tinha um botao forte em cada linha.
+                    className={buttonClasses({ variant: "outline", size: "sm" })}
                   >
                     <ExternalLink aria-hidden="true" size={14} strokeWidth={1.8} />
                     {t("teacherMembers.preview")}

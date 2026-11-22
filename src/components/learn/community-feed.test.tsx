@@ -281,9 +281,9 @@ describe("feed da comunidade (rodada 11)", () => {
     expect(question).toHaveValue("Question literal $$50 $&");
     expect(screen.getByText("Sobre la lección 3")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Publicar pregunta" }));
-    expect(screen.getByRole("button", { name: "Publicando…" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Publicando..." })).toBeDisabled();
     fireEvent.click(screen.getByRole("button", { name: "Change language" }));
-    expect(screen.getByRole("button", { name: "Posting…" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Posting..." })).toBeDisabled();
     expect(question).toHaveValue("Question literal $$50 $&");
     expect(createCommunityPost).toHaveBeenCalledExactlyOnceWith({
       courseSlug: space.courseSlug, category: "question", title: "Question literal $$50 $&", body: "Details $$ $&",
@@ -371,7 +371,7 @@ describe("feed da comunidade (rodada 11)", () => {
     vi.mocked(createCommunityComment).mockReturnValueOnce(new Promise((done) => { resolve = done; }));
     fireEvent.click(within(card).getByRole("button", { name: "Publicar respuesta" }));
     fireEvent.click(screen.getByRole("button", { name: "Change language" }));
-    expect(within(card).getByRole("button", { name: "Posting…" })).toBeDisabled();
+    expect(within(card).getByRole("button", { name: "Posting..." })).toBeDisabled();
     expect(field).toHaveValue("Reply literal $$50 $&");
     expect(createCommunityComment).toHaveBeenCalledExactlyOnceWith({ postId: "open", courseSlug: space.courseSlug, body: "Reply literal $$50 $&", user: mocks.auth.user });
     await act(async () => resolve({ id: "reply-test" }));
@@ -652,7 +652,7 @@ describe("feed da comunidade (rodada 11)", () => {
 /**
  * 11b — a gaveta da pergunta: abre por cima do feed com URL propria
  * (.../community/q/<post>), a resposta aceita em verde no topo, Esc e
- * "Back to feed" fecham (voltando ao endereco da aba), e quem pode marca
+ * o X ("Close") fecham (voltando ao endereco da aba), e quem pode marca
  * "Mark as the answer".
  */
 describe("gaveta da pergunta (11b)", () => {
@@ -703,7 +703,8 @@ describe("gaveta da pergunta (11b)", () => {
     vi.mocked(createCommunityComment).mockReturnValueOnce(new Promise((done) => { resolve = done; }));
     fireEvent.click(within(drawer).getByRole("button", { name: "Reply" }));
     fireEvent.click(screen.getByRole("button", { name: "Change language" }));
-    expect(within(drawer).getByRole("button", { name: "…" })).toBeDisabled();
+    // Enviando diz o que faz, em palavra, e acompanha o idioma.
+    expect(within(drawer).getByRole("button", { name: "Enviando..." })).toBeDisabled();
     expect(field).toHaveValue("Draft $$ $&");
     expect(createCommunityComment).toHaveBeenCalledExactlyOnceWith({ postId: "answered", courseSlug: space.courseSlug, body: "Draft $$ $&", user: mocks.auth.user });
     await act(async () => resolve({ id: "drawer-reply" }));
@@ -750,6 +751,8 @@ describe("gaveta da pergunta (11b)", () => {
     await renderFeed({ openPostId: "answered" });
 
     const drawer = screen.getByRole("dialog", { name: /real deadline/ });
+    // O foco entra na gaveta (tabIndex -1), nao fica no feed atras dela.
+    expect(drawer).toHaveFocus();
     const replies = within(drawer).getAllByRole("listitem");
     expect(replies[0]).toHaveTextContent("Show the constraint, not the pressure.");
     expect(replies[0]).toHaveTextContent("answer");
@@ -759,7 +762,9 @@ describe("gaveta da pergunta (11b)", () => {
     fireEvent.keyDown(document, { key: "Escape" });
     expect(mocks.push).toHaveBeenCalledWith("/learn/courses/course-1/community");
 
-    fireEvent.click(within(drawer).getByRole("button", { name: "Back to feed" }));
+    // Um fechar so: o X. O "Back to feed" duplicado saiu do cabecalho.
+    expect(within(drawer).queryByRole("button", { name: "Back to feed" })).toBeNull();
+    fireEvent.click(within(drawer).getByRole("button", { name: "Close" }));
     expect(mocks.push).toHaveBeenLastCalledWith("/learn/courses/course-1/community");
   });
 

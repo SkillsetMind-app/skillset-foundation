@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 
 import { AccountActionRequestsPanel } from "@/components/admin/account-action-requests-panel";
 import { AdminEnrollmentPanel } from "@/components/admin/admin-enrollment-panel";
+import { formatAuditAction, formatAuditTarget } from "@/components/admin/audit-labels";
 import { CommunityModerationQueue } from "@/components/admin/community-moderation-queue";
 import { CreatorVerificationQueue } from "@/components/admin/creator-verification-queue";
 import { ManagedCoursePanel } from "@/components/admin/managed-course-panel";
@@ -41,10 +42,22 @@ export function OpsDashboard() {
   const searchHref = canOpenQueue && (activeTab === "verification" || activeTab === "support")
     ? `/ops?${queueSearchParams.toString()}`
     : null;
+  // O selo de "Users" conta estes pedidos; com algum aberto, eles vêm antes da
+  // lista de 50 pessoas em vez de ficarem embaixo dela (I-01). A ordem é
+  // decidida UMA vez, quando a contagem chega: mudar depois moveria o nó da
+  // tabela no DOM, e um <dialog> aberto lá dentro sairia da camada do topo
+  // (perde fundo, foco preso e Esc). Mesmo padrão de estado derivado no render
+  // de ops-overview-metrics.tsx, sem setState em efeito.
+  const [privacyFirst, setPrivacyFirst] = useState<boolean | null>(null);
+  if (privacyFirst === null && counts.openPrivacyRequests !== "loading") {
+    setPrivacyFirst(typeof counts.openPrivacyRequests === "number" && counts.openPrivacyRequests > 0);
+  }
 
   return (
     <PlatformShell
-      title={t("platform.nav.operations")}
+      // O título é a fila aberta; "Operations" em todas as nove abas não dizia onde se está (I-07).
+      eyebrow={t("platform.nav.operations")}
+      title={t(currentItem.labelKey)}
       compact
       currentNavigationHref={currentItem.href}
       searchHref={searchHref}
@@ -55,7 +68,8 @@ export function OpsDashboard() {
         [getOpsNavItem("users").href]: counts.openPrivacyRequests,
       }}
     >
-      <div className="grid min-w-0 gap-5">
+      {/* ops-surface: escopo das regras de CSS só do /ops (globals.css). */}
+      <div className="ops-surface grid min-w-0 gap-5">
         {!canOpenQueue ? (
           <section className="rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)] p-4 sm:p-6">
             <p role="alert" className="text-sm text-[var(--color-ink)]">
@@ -93,8 +107,11 @@ export function OpsDashboard() {
           <SupportTicketQueue query={query} />
         ) : activeTab === "users" ? (
           <>
-            <OpsUserTable />
-            <AccountActionRequestsPanel />
+            {/* Enquanto a contagem carrega, só a tabela: o painel de pedidos entra
+                depois, acima ou abaixo, sem mover a tabela (ela nunca muda de lugar). */}
+            {privacyFirst === true ? <AccountActionRequestsPanel key="requests" /> : null}
+            <OpsUserTable key="users" />
+            {privacyFirst === false ? <AccountActionRequestsPanel key="requests" /> : null}
           </>
         ) : activeTab === "audit" ? (
           <AuditLogPanel />
@@ -102,23 +119,6 @@ export function OpsDashboard() {
       </div>
     </PlatformShell>
   );
-}
-
-const auditActionLabels: Record<string, string> = {
-  "refund.requested": "actions.refundRequested",
-  "refund.issued": "actions.refundIssued",
-  "account.deletion_requested": "actions.deletionRequested",
-  "account.data_export_requested": "actions.exportRequested",
-};
-
-const auditTargetLabels: Record<string, string> = {
-  order: "targets.order",
-  user: "targets.user",
-  course: "targets.course",
-};
-
-function formatAuditLabel(value: string, labels: Record<string, string>, t: (key: string) => string) {
-  return Object.hasOwn(labels, value) ? t(`platform.ops.auditPanel.${labels[value]}`) : value.replace(/[._]/g, " ");
 }
 
 function formatAuditTimestamp(entry: AuditLogEntry, locale: string, pending: string) {
@@ -157,12 +157,8 @@ function AuditLogPanel() {
 
   return (
     <section className="rounded-lg border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
-      {/* Era mais uma camada de título antes da tabela: sobretítulo, manchete
-          de 30px em serifa e parágrafo. Título de 16px e a lista. */}
-      <h3 className="text-base font-bold text-[var(--color-ink)]">
-        {t("platform.ops.audit")}
-      </h3>
-      <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--color-ink-soft)]">
+      {/* O título da página já diz "Audit log" (I-07); aqui fica só a explicação e a lista. */}
+      <p className="max-w-2xl text-sm leading-6 text-[var(--color-ink-soft)]">
         {t(`${copy}.description`)}
       </p>
 
@@ -186,14 +182,14 @@ function AuditLogPanel() {
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p className="text-sm font-bold text-[var(--color-ink)]">
-                    {formatAuditLabel(entry.action, auditActionLabels, t)}
+                    {formatAuditAction(entry.action, t)}
                   </p>
                   <p className="mt-1 break-words text-xs leading-5 text-[var(--color-ink-soft)]">
                     {entry.summary}
                   </p>
                 </div>
-                <span className="rounded-chip bg-white px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--color-primary)]">
-                  {formatAuditLabel(entry.targetType, auditTargetLabels, t)}
+                <span className="rounded-chip bg-white px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--color-primary)]">
+                  {formatAuditTarget(entry.targetType, t)}
                 </span>
               </div>
               <p className="mt-3 break-words text-xs leading-5 text-[var(--color-ink-soft)]">

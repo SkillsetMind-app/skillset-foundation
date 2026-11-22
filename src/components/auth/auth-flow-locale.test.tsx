@@ -279,8 +279,8 @@ describe("auth flow follows the selected language without resetting state", () =
     mocks.searchParams = new URLSearchParams("path=teacher");
     renderSpanish(<OnboardingWizard />);
     expect(await screen.findByRole("heading", { name: "Primero, cuéntanos quién eres." })).toBeInTheDocument();
-    expect(screen.getByText("Pregunta 01")).toBeInTheDocument();
-    expect(screen.getByLabelText("Pregunta 1 de 8")).toBeInTheDocument();
+    expect(screen.getByText("Pregunta 1 de 8")).toBeInTheDocument();
+    expect(screen.getByRole("progressbar", { name: "Pregunta 1 de 8" })).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText("Nombre completo"), { target: { value: "Alex Edited" } });
     fireEvent.change(screen.getByLabelText("Teléfono"), { target: { value: "12" } });
     fireEvent.click(screen.getByRole("button", { name: "Continuar" }));
@@ -320,12 +320,12 @@ describe("auth flow follows the selected language without resetting state", () =
       onboardingAnswers: { profileConfirmed: true, path: "teacher", profession: "Coach", primaryGoal: ["Business"], alreadySold: "no" },
     });
     renderSpanish(<OnboardingWizard />);
-    const select = await screen.findByLabelText("País de cobro");
+    const select = await screen.findByLabelText("País de tu cuenta bancaria");
     expect(screen.getByRole("option", { name: "Alemania" })).toHaveValue("DE");
     fireEvent.change(select, { target: { value: "other" } });
     expect(screen.getByRole("status")).toHaveTextContent(/no puedes vender ni recibir pagos/);
     fireEvent.click(screen.getByRole("button", { name: "Change language" }));
-    expect(screen.getByLabelText("Payout country")).toHaveValue("other");
+    expect(screen.getByLabelText("Country of your bank account")).toHaveValue("other");
     expect(screen.getByRole("status")).toHaveTextContent(/cannot sell or receive payments/);
     fireEvent.click(screen.getByRole("button", { name: "Continue" }));
     await waitFor(() => expect(mocks.updateOnboardingAnswers).toHaveBeenLastCalledWith(expect.objectContaining({

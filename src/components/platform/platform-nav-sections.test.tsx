@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
+
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -118,5 +121,40 @@ describe("Conta do aluno: compras, sem plano de criador", () => {
 
     expect(screen.getByRole("link", { name: "Billing" })).toHaveAttribute("href", "/account/billing");
     expect(screen.queryByRole("link", { name: "My purchases" })).toBeNull();
+  });
+});
+
+// Sales e Promote pareciam titulos de secao (38px, 11,5px em MAIUSCULAS); na
+// gaveta do celular tinham 30px e borda na cor do texto, e a pagina atual so
+// ganhava um contorno claro.
+describe("primeiro nivel: grupos com a mesma linha dos links, e a pagina atual a vista", () => {
+  it("o grupo tem 44px, 14px e borda transparente; a pagina atual tem fundo na gaveta", () => {
+    mocks.pathname = "/teach/sales";
+    render(<PlatformNav />);
+
+    const group = screen.getByRole("button", { name: "Promote" });
+    expect(group).toHaveClass("h-11", "min-h-11", "px-2.5", "text-sm", "border-transparent");
+    expect(group.querySelector(".platform-nav-icon-chip")).toBeInTheDocument();
+
+    const current = document.querySelector('a[aria-current="page"]');
+    expect(current).toHaveAttribute("href", "/teach/sales");
+    // O fundo mais forte (o claro de antes perdia para o hover) e o filete.
+    expect(current).toHaveClass(
+      "bg-[var(--color-surface-strong)]",
+      "text-[var(--color-primary)]",
+      "before:bg-[var(--color-accent)]",
+    );
+    expect(document.querySelectorAll('[aria-current="page"]')).toHaveLength(1);
+
+    // A Ajuda abre no lugar como os grupos: com a setinha.
+    expect(screen.getByRole("button", { name: "Help" }).querySelector(".platform-nav-section-chevron")).toBeInTheDocument();
+  });
+
+  it("no CSS, o gatilho do grupo nao encolhe nem vira MAIUSCULAS", () => {
+    const css = readFileSync(path.join(process.cwd(), "src/app/globals.css"), "utf8");
+    expect(css).not.toMatch(/\.platform-nav-section-trigger \.platform-sidebar-label\s*\{[^}]*uppercase/);
+    expect(css).not.toMatch(/\.platform-nav-section-trigger \.platform-nav-icon-chip\s*\{[^}]*28px/);
+    const trigger = css.slice(css.indexOf(".platform-sidebar .platform-nav-link.platform-nav-section-trigger {"));
+    expect(trigger.slice(0, trigger.indexOf("}"))).not.toMatch(/min-height|color: rgba/);
   });
 });

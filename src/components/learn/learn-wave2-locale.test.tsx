@@ -71,7 +71,8 @@ const enrollment: Enrollment = {
 const event: CourseEvent = {
   id: "event-es", courseId: "course-es", courseSlug: "course-es", courseTitle: enrollment.courseTitle,
   ownerId: "teacher", title: "Original session $&", description: "Original event text",
-  type: "live_class", status: "scheduled", startsAt: "2026-09-10T12:00:00Z",
+  // Futura: sessao que ja passou vai para a parte "Past", fechada e sem presenca.
+  type: "live_class", status: "scheduled", startsAt: new Date(Date.now() + 3 * 24 * 3_600_000).toISOString(),
   externalUrl: "https://example.test/live", recordingAssetId: null,
 };
 const message: CourseMessage = {
@@ -340,6 +341,22 @@ describe("learner wave 2 with real provider and dictionaries", () => {
     expect(mocks.enrollments).toHaveBeenCalledTimes(1);
   });
 
+  it("se as comunidades não carregam, 'Intentar de nuevo' lê de novo sem religar o canal", async () => {
+    const reload = vi.fn();
+    mocks.enrollments.mockImplementation((_uid, next) => {
+      next([enrollment]);
+      return Object.assign(() => {}, { reload: async () => { reload(); next([enrollment]); } });
+    });
+    mocks.communityIds.mockRejectedValueOnce(new Error("offline"));
+    show(<LearnCommunityHub />);
+    expect(await screen.findByRole("alert")).toHaveTextContent("No pudimos cargar las comunidades de tus cursos.");
+    fireEvent.click(screen.getByRole("button", { name: "Intentar de nuevo" }));
+    expect(await screen.findByRole("heading", { name: "Comunidad de Original course $&" })).toBeVisible();
+    expect(reload).toHaveBeenCalledOnce();
+    expect(mocks.enrollments).toHaveBeenCalledTimes(1);
+    expect(mocks.communityIds).toHaveBeenCalledTimes(2);
+  });
+
   it("hides the card of a course whose community is turned off", async () => {
     const quiet: Enrollment = { ...enrollment, id: "enrollment-quiet", courseId: "course-quiet", courseSlug: "course-quiet", courseTitle: "Quiet course" };
     mocks.enrollments.mockImplementation((_uid, next) => { next([enrollment, quiet]); return () => {}; });
@@ -375,7 +392,9 @@ describe("learner wave 2 with real provider and dictionaries", () => {
     mocks.enrollments.mockImplementation((_uid, next) => { next([enrollment]); return () => {}; });
     mocks.rsvp.mockImplementation((_event, _uid, next) => { next({ status }); return () => {}; });
     show(<LearnEventsHub />);
-    expect(screen.getByText(status === "attending" ? "Asistirás" : "No asistirás")).toBeVisible();
+    // A resposta salva aparece no proprio botao (aria-pressed), nao num quadro de texto.
+    expect(screen.getByRole("button", { name: "Asistiré" })).toHaveAttribute("aria-pressed", String(status === "attending"));
+    expect(screen.getByRole("button", { name: "No puedo asistir" })).toHaveAttribute("aria-pressed", String(status === "not_attending"));
     expect(screen.getByRole("link", { name: "Unirse a la sesión externa" })).toHaveAttribute("href", event.externalUrl);
   });
 

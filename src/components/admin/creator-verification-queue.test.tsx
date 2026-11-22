@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { CreatorVerificationQueue } from "@/components/admin/creator-verification-queue";
@@ -29,6 +29,9 @@ function deliver(rows = cases) { act(() => mocks.subscribe.mock.calls[0][0](rows
 
 beforeEach(() => {
   vi.clearAllMocks();
+  // jsdom não tem showModal/close; o mesmo arranjo do teste da janela de conta.
+  HTMLDialogElement.prototype.showModal = function showModal() { this.setAttribute("open", ""); };
+  HTMLDialogElement.prototype.close = function close() { this.removeAttribute("open"); this.dispatchEvent(new Event("close")); };
   mocks.subscribe.mockImplementation(() => vi.fn());
   mocks.review.mockResolvedValue(undefined);
 });
@@ -109,6 +112,11 @@ describe("verification queue search, states and language", () => {
     fireEvent.click(screen.getByRole("button", { name: "Change language" }));
     const label = { approved: "Aprobar", needs_changes: "Solicitar cambios", rejected: "Rechazar" }[decision];
     fireEvent.click(screen.getByRole("button", { name: label }));
+    // Recusar pergunta antes e só grava depois da confirmação na janela.
+    if (decision === "rejected") {
+      expect(mocks.review).not.toHaveBeenCalled();
+      fireEvent.click(within(screen.getByRole("dialog", { name: "¿Rechazar esta solicitud?" })).getByRole("button", { name: label }));
+    }
     expect(await screen.findByRole("status")).toHaveTextContent(/creador|solicitud/i);
     expect(mocks.review).toHaveBeenCalledWith("case-a", decision, "Nota autoral da revisão.");
     expect(screen.queryByRole("heading", { name: "Ana Rivera" })).toBeNull();
@@ -140,11 +148,27 @@ describe("verification queue search, states and language", () => {
     expect(screen.getByRole("heading", { name: "Ana Rivera" })).toBeInTheDocument();
     expect(screen.queryByRole("status")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Change language" }));
-    expect(screen.getAllByRole("button", { name: "Actualizando..." })).toHaveLength(3);
-    for (const button of screen.getAllByRole("button", { name: "Actualizando..." })) expect(button).toBeDisabled();
+    // Só o botão apertado gira; os outros travam e mantêm o nome (I-08).
+    expect(screen.getByRole("button", { name: "Aprobar" })).toHaveAttribute("aria-busy", "true");
+    for (const name of ["Aprobar", "Solicitar cambios", "Rechazar"]) expect(screen.getByRole("button", { name })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Rechazar" })).not.toHaveAttribute("aria-busy");
     await act(async () => finishReview());
     expect(screen.queryByRole("heading", { name: "Ana Rivera" })).toBeNull();
     expect(screen.getByRole("status")).toHaveTextContent("Creador aprobado");
     expect(mocks.review).toHaveBeenCalledWith("case-a", "approved", null);
+  });
+
+  it("asks before rejecting, keeps Reject apart from Request changes, and cancel records nothing", () => {
+    render(queue("REG-100"));
+    deliver();
+    fireEvent.change(screen.getByRole("textbox", { name: "Review note to creator" }), { target: { value: "Registro não confere com o órgão." } });
+    expect(screen.getByRole("button", { name: "Reject" })).toHaveClass("button-danger");
+    expect(screen.getByRole("button", { name: "Request changes" })).not.toHaveClass("button-danger");
+    fireEvent.click(screen.getByRole("button", { name: "Reject" }));
+    const dialog = screen.getByRole("dialog", { name: "Reject this application?" });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(mocks.review).not.toHaveBeenCalled();
+    expect(screen.getByRole("heading", { name: "Ana Rivera" })).toBeInTheDocument();
   });
 });

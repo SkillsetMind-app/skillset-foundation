@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { StatusChip } from "@/components/shared/status-chip";
-import { InlineAlert } from "@/components/ui";
+import { Button, InlineAlert } from "@/components/ui";
 import type { CommunityReport, CommunityReportStatus } from "@/domain/community-report";
 import { communityReportReasonLabels } from "@/domain/community-report";
 import {
@@ -26,6 +26,8 @@ export function CommunityModerationQueue() {
   const [reports, setReports] = useState<CommunityReport[]>([]);
   const [ready, setReady] = useState(!hasBackendConfig);
   const [activeReportId, setActiveReportId] = useState<string | null>(null);
+  // Qual status foi apertado: só ele gira; os outros só travam (I-08).
+  const [activeStatus, setActiveStatus] = useState<CommunityReportStatus | null>(null);
   const [error, setError] = useState(false);
   const [loadError, setLoadError] = useState(false);
 
@@ -52,6 +54,7 @@ export function CommunityModerationQueue() {
     status: CommunityReportStatus,
   ) {
     setActiveReportId(report.id);
+    setActiveStatus(status);
     setError(false);
 
     try {
@@ -60,6 +63,7 @@ export function CommunityModerationQueue() {
       setError(true);
     } finally {
       setActiveReportId(null);
+      setActiveStatus(null);
     }
   }
 
@@ -69,10 +73,7 @@ export function CommunityModerationQueue() {
     <section className="rounded-lg border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-            {t(`${copy}.eyebrow`)}
-          </p>
-          <h3 className="mt-2 text-base font-semibold text-[var(--color-ink)]">
+          <h3 className="text-base font-semibold text-[var(--color-ink)]">
             {t(`${copy}.title`)}
           </h3>
           <p className="mt-1 max-w-2xl text-sm leading-6 text-[var(--color-ink-soft)]">
@@ -130,17 +131,17 @@ export function CommunityModerationQueue() {
               </div>
               <div className="mt-4 flex flex-wrap gap-2">
                 {reviewStatuses.map((status) => (
-                  <button
+                  <Button
                     key={status}
-                    type="button"
+                    variant="outline"
+                    size="sm"
                     disabled={activeReportId === report.id}
+                    loading={activeReportId === report.id && activeStatus === status}
                     onClick={() => handleStatusChange(report, status)}
-                    className="button-outline min-h-11 px-3 py-2 text-xs disabled:opacity-60"
+                    className="min-h-11 px-3 py-2"
                   >
-                    {activeReportId === report.id
-                      ? t(`${copy}.saving`)
-                      : t(`statusChip.${status}`)}
-                  </button>
+                    {t(`statusChip.${status}`)}
+                  </Button>
                 ))}
               </div>
             </article>

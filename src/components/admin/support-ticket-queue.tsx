@@ -6,7 +6,7 @@ import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { ExportTableButton } from "@/components/shared/export-table-button";
 import { StatusChip } from "@/components/shared/status-chip";
-import { Field, InlineAlert } from "@/components/ui";
+import { Button, Field, InlineAlert } from "@/components/ui";
 import {
   supportTicketCategoryLabels,
   supportTicketStatusLabels,
@@ -28,6 +28,8 @@ export function SupportTicketQueue({ query = "" }: { query?: string }) {
   const [tickets, setTickets] = useState<SupportTicket[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTicketId, setActiveTicketId] = useState<string | null>(null);
+  // Qual status foi apertado: só ele gira; os outros só travam (I-08).
+  const [activeStatus, setActiveStatus] = useState<SupportTicketStatus | null>(null);
   const [replyDrafts, setReplyDrafts] = useState<Record<string, string>>({});
   const [replyingTicketId, setReplyingTicketId] = useState<string | null>(null);
   const [loadError, setLoadError] = useState(false);
@@ -73,6 +75,7 @@ export function SupportTicketQueue({ query = "" }: { query?: string }) {
     setError(null);
     setSuccess(null);
     setActiveTicketId(ticketId);
+    setActiveStatus(status);
 
     try {
       await updateSupportTicketStatus(ticketId, status);
@@ -81,6 +84,7 @@ export function SupportTicketQueue({ query = "" }: { query?: string }) {
       setError("statusError");
     } finally {
       setActiveTicketId(null);
+      setActiveStatus(null);
     }
   }
 
@@ -110,10 +114,7 @@ export function SupportTicketQueue({ query = "" }: { query?: string }) {
     <section className="min-w-0 break-words rounded-lg border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-            {t("platform.ops.support")}
-          </p>
-          <h3 className="mt-2 text-base font-semibold text-[var(--color-ink)]">
+          <h3 className="text-base font-semibold text-[var(--color-ink)]">
             {t(`${copy}.title`)}
           </h3>
           <p className="mt-1 max-w-2xl text-sm leading-6 text-[var(--color-ink-soft)]">
@@ -214,15 +215,17 @@ export function SupportTicketQueue({ query = "" }: { query?: string }) {
               </div>
               <div className="mt-4 flex flex-wrap gap-2">
                 {nextStatuses.map((status) => (
-                  <button
+                  <Button
                     key={status}
-                    type="button"
+                    variant="outline"
+                    size="sm"
                     onClick={() => handleStatusUpdate(ticket.id, status)}
                     disabled={activeTicketId === ticket.id || ticket.status === status}
-                    className="button-outline px-4 py-2 text-xs disabled:opacity-60"
+                    loading={activeTicketId === ticket.id && activeStatus === status}
+                    className="min-h-11 px-4 py-2"
                   >
-                    {activeTicketId === ticket.id ? t(`${copy}.updating`) : t(`statusChip.${status}`)}
-                  </button>
+                    {t(`statusChip.${status}`)}
+                  </Button>
                 ))}
               </div>
             </article>
