@@ -8926,9 +8926,10 @@ button:hover > .dash-card,
   }
 }
 
-/* Abaixo de 768px a grade já tem uma coluna e a lista só muda a partir de
-   768px: o seletor de grade/lista não mudava nada e gastava uns 80px. */
-@media (max-width: 767.98px) {
+/* Abaixo de 640px a grade e a lista são a mesma coluna única: o seletor de
+   grade/lista não mudava nada e gastava uns 80px. De 640 a 767px ele fica,
+   porque lá a grade tem duas colunas e a lista uma. */
+@media (max-width: 639.98px) {
   .marketplace-view {
     display: none;
   }

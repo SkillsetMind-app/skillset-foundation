@@ -446,6 +446,31 @@ describe("CreatorCourseDetail: o cartão que vende", () => {
     expect(within(list).getByText("7-day refund guarantee.")).toBeInTheDocument();
     expect(within(list).getByText("Sold by your instructor, not by SkillsetMind.")).toBeInTheDocument();
     expect(card.querySelector('[class*="success-soft"]')).toBeNull();
+    // A barra fixa do celular usa o mesmo rótulo do cartão.
+    expect(container.querySelector('a[href="#enroll-card"]')?.closest("div.fixed")).toHaveTextContent(/^Price/);
+  });
+
+  // Até o preço chegar o curso ainda não "é grátis": um curso grátis lia
+  // "Paid access opens…", o reembolso e o vendedor enquanto o preço carregava.
+  it.each([
+    ["carregando", () => new Promise(() => {})],
+    ["com a leitura falhando", async () => ({ ok: false, json: async () => ({ error: "unavailable" }) })],
+  ])("curso grátis com o preço %s: nenhuma frase de compra paga no cartão", async (_state, respond) => {
+    Object.assign(fixtures.course, { paymentType: "free", priceAmountMinor: 0 });
+    vi.stubGlobal("fetch", vi.fn(respond));
+    const { container } = render(<CreatorCourseDetail courseIdOverride="course-1" hideHeader />);
+    await waitFor(() => expect(container.querySelector("#enroll-card")).not.toBeNull());
+    const card = container.querySelector("#enroll-card") as HTMLElement;
+
+    for (const text of [
+      "Paid access opens automatically once your payment is confirmed — usually within seconds.",
+      "7-day refund guarantee.",
+      "Sold by your instructor, not by SkillsetMind.",
+    ]) {
+      expect(within(card).queryByText(text)).not.toBeInTheDocument();
+    }
+    // A ficha do curso segue no lugar.
+    expect(within(card).getByText("Category")).toBeInTheDocument();
   });
 
   it("mantém o cartão à vista: gruda na rolagem e ganha barra fixa no celular", async () => {

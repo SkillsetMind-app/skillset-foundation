@@ -1236,7 +1236,7 @@ export function CreatorCourseDetail({
             Agora e UM bloco discreto, num estilo so: o que o curso inclui e,
             em lista, acesso, pagamento seguro, reembolso e quem vende. As
             frases sao as mesmas de antes (mesmas chaves), so reagrupadas. */}
-        <div className="mt-5 grid gap-4 border-t border-[var(--color-line)] pt-5">
+        {checkoutOnly && !pricingReady ? null : <div className="mt-5 grid gap-4 border-t border-[var(--color-line)] pt-5">
           {/* Na pagina de compra quem decide ja leu o curso: categoria e contagem
               de aulas ficam no resumo do pedido, nao junto do formulario. */}
           {checkoutOnly ? null : <dl className="grid gap-2 text-sm">
@@ -1252,7 +1252,10 @@ export function CreatorCourseDetail({
             ))}
           </dl>}
 
-          <ul className="grid gap-3 text-xs leading-5 text-[var(--color-ink-soft)]">
+          {/* Só com o preço resolvido: até lá `courseIsFree` é falso, e um curso
+              grátis lia "Paid access opens…", reembolso e vendedor enquanto o
+              preço carregava (ou se a leitura falhasse). */}
+          {pricingReady ? <ul className="grid gap-3 text-xs leading-5 text-[var(--color-ink-soft)]">
             <li className="flex gap-2.5">
               <Clock aria-hidden="true" size={14} strokeWidth={2} className="mt-0.5 shrink-0 text-[var(--color-primary)]" />
               <span>{courseIsFree ? t("publicCourses.freeAccess") : t("publicCourses.paidAccess")}</span>
@@ -1292,8 +1295,8 @@ export function CreatorCourseDetail({
                 </span>
               </li>
             ) : null}
-          </ul>
-        </div>
+          </ul> : null}
+        </div>}
 
         {/* Loja vazia não é destino: a volta leva ao início. Na página de
             compra não há volta ao catálogo: o resumo do pedido leva ao curso.
@@ -1324,7 +1327,7 @@ export function CreatorCourseDetail({
     >
       <div className="pointer-events-auto flex items-center gap-3 rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)]/95 px-4 py-3 shadow-[0_-6px_30px_rgba(15,39,68,0.18)] backdrop-blur supports-[backdrop-filter]:bg-[var(--color-surface)]/85">
         <div className="min-w-0 flex-1">
-          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">{t("publicCourses.access")}</p>
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">{t("publicCourses.priceEyebrow")}</p>
           <p className="display-title truncate text-xl leading-none text-[var(--color-primary)]">
             {priceLabel}
           </p>

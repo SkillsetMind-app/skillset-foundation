@@ -35,6 +35,8 @@ describe("CourseLandingBlocks: as peças do site, abaixo do título da página",
 
     const button = screen.getByRole("button", { name: "Enrol now" });
     expect(button).toHaveClass("button-solid", "button-lg");
+    // O rótulo do professor (até 200 caracteres) quebra em linhas que não se encostam.
+    expect(button).toHaveClass("whitespace-normal", "text-center", "leading-snug");
     fireEvent.click(button);
     expect(onEnrol).toHaveBeenCalledTimes(1);
   });

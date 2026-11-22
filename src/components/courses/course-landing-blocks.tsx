@@ -281,8 +281,10 @@ export function CourseLandingBlocks({
                       onClick={onEnrol}
                       disabled={enrolDisabled}
                       // O botão da casa (o mesmo do cartão de compra), e não um
-                      // feito à mão que não reagia ao passar o mouse.
-                      className="button-solid button-lg mt-5 disabled:opacity-60"
+                      // feito à mão que não reagia ao passar o mouse. O rótulo do
+                      // professor pode ter até 200 caracteres: quebra em linhas
+                      // centradas que não se encostam (o botão traz line-height 1).
+                      className="button-solid button-lg mt-5 whitespace-normal text-center leading-snug disabled:opacity-60"
                     >
                       {block.buttonLabel}
                     </button>
