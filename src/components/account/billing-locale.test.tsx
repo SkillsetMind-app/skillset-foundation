@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { BillingTabs } from "./billing-tabs";
 import { PlansPanel } from "./plans-panel";
@@ -103,6 +103,36 @@ describe("billing locale with real dictionaries", () => {
     expect(mocks.refund).toHaveBeenCalledWith("learner-1__course-1");
     expect(within(modal).getByText(order.courseTitle)).toBeTruthy();
     fireEvent.click(within(modal).getByRole("button", { name: "Listo" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  // O X do cabeçalho é o Cancelar: fecha sem pedir nada e some enquanto o
+  // pedido está indo (o Cancelar trava nessa hora).
+  it("closes the refund dialog from the X without requesting, and nothing closes it while submitting", async () => {
+    mocks.tab = "purchases"; mocks.orders = [order];
+    let finish!: () => void;
+    mocks.refund.mockReturnValue(new Promise<void>((resolve) => { finish = resolve; }));
+    mount(<BillingTabs />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Solicitar un reembolso" }));
+    let modal = screen.getByRole("dialog", { name: "Solicitar un reembolso" });
+    expect(within(modal).getByRole("button", { name: "Cerrar" })).toHaveClass("button-icon");
+    fireEvent.click(within(modal).getByRole("button", { name: "Cerrar" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(mocks.refund).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: "Solicitar un reembolso" }));
+    modal = screen.getByRole("dialog", { name: "Solicitar un reembolso" });
+    fireEvent.click(within(modal).getByRole("button", { name: "Solicitar reembolso" }));
+    expect(within(modal).getByRole("button", { name: "Cancelar" })).toBeDisabled();
+    expect(within(modal).queryByRole("button", { name: "Cerrar" })).toBeNull();
+    // Esc e o clique no fundo (a própria camada do diálogo) também não fecham.
+    fireEvent.keyDown(document, { key: "Escape" });
+    fireEvent.click(modal);
+    expect(screen.getByRole("dialog", { name: "Solicitar un reembolso" })).toBe(modal);
+    await act(async () => finish());
+    expect(await within(modal).findByRole("button", { name: "Cerrar" })).toBeInTheDocument();
+    fireEvent.keyDown(document, { key: "Escape" });
     expect(screen.queryByRole("dialog")).toBeNull();
   });
 

@@ -96,7 +96,7 @@ export function LessonListOverlay({
     >
       <button
         type="button"
-        className="absolute inset-0 bg-[rgba(15,39,68,0.62)] backdrop-blur-[2px]"
+        className="dialog-backdrop absolute inset-0"
         aria-label={t("learn.classroom.curriculum.close")}
         onClick={onClose}
       />

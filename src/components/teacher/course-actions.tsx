@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { ComponentType, ReactNode } from "react";
 
@@ -134,7 +134,7 @@ export function CourseActionsMenu({
             triggerRef.current?.focus();
           }}
           style={menuLeftPx === null ? undefined : { left: menuLeftPx }}
-          className={`absolute top-[calc(100%+8px)] z-40 w-56 rounded-lg border border-[var(--color-line)] bg-white p-1.5 shadow-[var(--shadow-strong)] ${menuLeftPx === null ? "right-0" : ""}`}
+          className={`motion-drop-in absolute top-[calc(100%+8px)] z-40 w-56 rounded-lg border border-[var(--color-line)] bg-white p-1.5 shadow-[var(--shadow-strong)] ${menuLeftPx === null ? "right-0" : ""}`}
         >
           {children}
         </div>
@@ -229,12 +229,24 @@ export function DeleteOrArchiveCourseDialog({
         role="dialog"
         aria-modal="true"
         aria-label={t("creatorPanel.products.delete.aria").replace("{title}", () => courseTitle)}
-        className="modal-panel modal-panel-scroll w-full max-w-md rounded-xl border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-strong)] outline-none"
+        className="modal-panel modal-panel-scroll relative w-full max-w-md rounded-xl border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-strong)] outline-none"
       >
-        <p className={`text-xs font-bold uppercase tracking-[0.2em] ${known ? "text-[var(--color-danger-fg)]" : "text-[var(--color-ink-muted)]"}`}>
+        {/* O X é o Cancelar: some enquanto apaga ou arquiva, quando o
+            Cancelar também trava. */}
+        {busy ? null : (
+          <button
+            type="button"
+            onClick={onCancel}
+            aria-label={t("creatorPanel.products.delete.close")}
+            className="button-icon absolute right-3 top-3"
+          >
+            <X aria-hidden="true" size={18} />
+          </button>
+        )}
+        <p className={`pr-10 text-xs font-bold uppercase tracking-[0.2em] ${known ? "text-[var(--color-danger-fg)]" : "text-[var(--color-ink-muted)]"}`}>
           {known ? t(`${prefix}.eyebrow`) : t("creatorPanel.products.removeEyebrow")}
         </p>
-        <h2 className="mt-2 text-2xl font-semibold text-[var(--color-primary)]">
+        <h2 className="mt-2 pr-10 text-2xl font-semibold text-[var(--color-primary)]">
           {known ? t(`${prefix}.title`).replace("{title}", () => courseTitle) : courseTitle}
         </h2>
         {/* Altura do texto mais longo (o de apagar, com a lista e o aviso dos

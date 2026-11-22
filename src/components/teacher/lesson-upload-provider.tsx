@@ -43,7 +43,13 @@ export function LessonUploadProvider({ children }: { children: ReactNode }) {
     <Context.Provider value={actorId ? { actorId, job } : null}>
       {children}
       {job && (
-        <aside aria-label={t("lessonUpload.title")} className="fixed bottom-4 left-4 z-[90] max-h-[calc(100svh-2rem)] w-[min(24rem,calc(100vw-2rem))] overflow-y-auto rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)] p-4 text-[var(--color-ink)] shadow-lg">
+        // Camada de status (66): abaixo das janelas (em 90 o cartão ficava
+        // claro e clicável por cima de qualquer popup escurecido) e também do
+        // Advisor e do menu de categoria, que no celular ele cobriria. Por trás
+        // de uma janela o cartão some; só a janela da MESMA aula mostra o envio
+        // no rodapé dela. No celular, globals.css o sobe acima da barra de
+        // baixo (.lesson-upload-card).
+        <aside aria-label={t("lessonUpload.title")} className="lesson-upload-card fixed bottom-4 left-4 z-[var(--z-status)] max-h-[calc(100svh-2rem)] w-[min(24rem,calc(100vw-2rem))] overflow-y-auto rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)] p-4 text-[var(--color-ink)] shadow-lg">
           <div className="flex items-start gap-3">
             <div className="min-w-0 flex-1">
               <p className="break-words text-sm font-semibold">{job.fileName}</p>
