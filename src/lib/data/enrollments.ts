@@ -180,7 +180,7 @@ export function subscribeToUserEnrollments(
   userId: string,
   callback: (enrollments: Enrollment[]) => void,
   onError: (error: Error) => void,
-): () => void {
+): (() => void) & { reload: () => Promise<void> } {
   const supabase = getSupabaseBrowserClient();
 
   const load = async () => {
@@ -218,9 +218,15 @@ export function subscribeToUserEnrollments(
     )
     .subscribe();
 
-  return () => {
-    void supabase.removeChannel(channel);
-  };
+  // `reload()` le de novo SEM mexer no canal (o "Try again" do painel e da
+  // comunidade): religar um canal com o mesmo nome devolve o antigo, ainda
+  // saindo, e as matriculas novas deixam de chegar.
+  return Object.assign(
+    () => {
+      void supabase.removeChannel(channel);
+    },
+    { reload: load },
+  );
 }
 
 export function subscribeToAdminGrantedEnrollments(

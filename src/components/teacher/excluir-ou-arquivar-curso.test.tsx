@@ -280,7 +280,7 @@ describe("modal de excluir/arquivar — o texto segue o dado", () => {
 
     expect(within(dialog).getByText("Remove product")).toBeInTheDocument();
     expect(within(dialog).getByRole("heading", { level: 2 })).toHaveTextContent("Facilitation foundations");
-    const waiting = within(dialog).getByRole("button", { name: "Checking for buyers…" });
+    const waiting = within(dialog).getByRole("button", { name: "Checking for buyers..." });
     expect(waiting).toBeDisabled();
     expect(waiting).not.toHaveClass("button-danger-solid");
     expect(within(dialog).queryByText("Delete this course?")).toBeNull();

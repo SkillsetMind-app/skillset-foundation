@@ -80,10 +80,19 @@ describe("ES-11 communication with real locale state", () => {
   it("localizes empty inbox and relocalizes its load error", () => {
     state.messagesError = true;
     mount(<TeacherMessagesInbox />);
-    expect(screen.getByText("Aún no hay mensajes de alumnos")).toBeInTheDocument();
-    expect(screen.getByText("No pudimos cargar los mensajes de tus alumnos.")).toBeInTheDocument();
+    // Falha não é "você não tem mensagens": o vazio só aparece quando a
+    // leitura respondeu vazia.
+    expect(screen.queryByText("Aún no hay mensajes de alumnos")).not.toBeInTheDocument();
+    expect(screen.getByRole("alert")).toHaveTextContent("No pudimos cargar los mensajes de tus alumnos.");
+    expect(screen.getByRole("button", { name: "Intentar de nuevo" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "EN" }));
     expect(screen.getByText("We could not load your student messages.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Try again" })).toBeInTheDocument();
+  });
+
+  it("localizes the empty inbox once the read answered empty", () => {
+    mount(<TeacherMessagesInbox />);
+    expect(screen.getByText("Aún no hay mensajes de alumnos")).toBeInTheDocument();
   });
 
   it("preserves names, message, draft, payload and pending state when language changes", async () => {

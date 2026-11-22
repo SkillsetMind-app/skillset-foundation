@@ -341,6 +341,22 @@ describe("learner wave 2 with real provider and dictionaries", () => {
     expect(mocks.enrollments).toHaveBeenCalledTimes(1);
   });
 
+  it("se as comunidades não carregam, 'Intentar de nuevo' lê de novo sem religar o canal", async () => {
+    const reload = vi.fn();
+    mocks.enrollments.mockImplementation((_uid, next) => {
+      next([enrollment]);
+      return Object.assign(() => {}, { reload: async () => { reload(); next([enrollment]); } });
+    });
+    mocks.communityIds.mockRejectedValueOnce(new Error("offline"));
+    show(<LearnCommunityHub />);
+    expect(await screen.findByRole("alert")).toHaveTextContent("No pudimos cargar las comunidades de tus cursos.");
+    fireEvent.click(screen.getByRole("button", { name: "Intentar de nuevo" }));
+    expect(await screen.findByRole("heading", { name: "Comunidad de Original course $&" })).toBeVisible();
+    expect(reload).toHaveBeenCalledOnce();
+    expect(mocks.enrollments).toHaveBeenCalledTimes(1);
+    expect(mocks.communityIds).toHaveBeenCalledTimes(2);
+  });
+
   it("hides the card of a course whose community is turned off", async () => {
     const quiet: Enrollment = { ...enrollment, id: "enrollment-quiet", courseId: "course-quiet", courseSlug: "course-quiet", courseTitle: "Quiet course" };
     mocks.enrollments.mockImplementation((_uid, next) => { next([enrollment, quiet]); return () => {}; });

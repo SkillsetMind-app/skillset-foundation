@@ -15,6 +15,7 @@ const { mockUser, state, data } = vi.hoisted(() => {
     activationBlocked: false,
     // Sem plano ativo nem teste em curso: o passo do plano entra na lista.
     planRequired: false,
+    ordersFail: false,
   };
 
   return {
@@ -35,9 +36,14 @@ const { mockUser, state, data } = vi.hoisted(() => {
         },
       ),
       subscribeToTeacherOrders: vi.fn(
-        (_uid: string, onData: (orders: unknown[]) => void) => {
-          onData(state.orders);
-          return () => undefined;
+        (_uid: string, onData: (orders: unknown[]) => void, onError?: (error: Error) => void) => {
+          const read = () => {
+            if (state.ordersFail) onError?.(new Error("offline"));
+            else onData(state.orders);
+          };
+          read();
+          // Como o de verdade: `reload` le de novo sem mexer no canal.
+          return Object.assign(() => undefined, { reload: async () => read() });
         },
       ),
       subscribeToUserProfile: vi.fn(
@@ -138,12 +144,28 @@ beforeEach(() => {
   state.verificationFlag = null;
   state.activationBlocked = false;
   state.planRequired = false;
+  state.ordersFail = false;
   vi.clearAllMocks();
 });
 
 afterEach(cleanup);
 
 describe("TeacherStudioDashboard", () => {
+  it("leitura de vendas que falha: erro com 'Try again', que le de novo sem abrir outra inscricao", async () => {
+    state.courses = [course({ status: "published" })];
+    state.ordersFail = true;
+    render(<TeacherStudioDashboard />);
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("We could not load your products or sales.");
+    state.ordersFail = false;
+    await act(async () => {
+      screen.getByRole("button", { name: "Try again" }).click();
+    });
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Try again" })).toBeNull();
+    expect(data.subscribeToTeacherOrders).toHaveBeenCalledTimes(1);
+  });
+
   // Os mesmos quatro tipos da tela de criacao. Gratis, assinatura e programa
   // guiado deixaram de ser tipo.
   it("routes each of the four product types to the creation screen", async () => {
@@ -968,7 +990,7 @@ describe("Home do professor: variacao, Top courses, reembolso parcial e leitura 
     data.subscribeToTeacherOrders.mockImplementationOnce(
       (_uid: string, _onData: (orders: unknown[]) => void, onError?: (error: Error) => void) => {
         onError?.(new Error("boom"));
-        return () => undefined;
+        return Object.assign(() => undefined, { reload: async () => {} });
       },
     );
     state.courses = [course({ status: "published", paymentType: "free", enrollmentCount: 3 })];
@@ -981,7 +1003,7 @@ describe("Home do professor: variacao, Top courses, reembolso parcial e leitura 
   });
 
   it("pedidos ainda carregando: esqueleto, nunca 0", async () => {
-    data.subscribeToTeacherOrders.mockImplementationOnce(() => () => undefined);
+    data.subscribeToTeacherOrders.mockImplementationOnce(() => Object.assign(() => undefined, { reload: async () => {} }));
     state.courses = [course({ status: "published", paymentType: "free", enrollmentCount: 3 })];
 
     render(<TeacherStudioDashboard />);

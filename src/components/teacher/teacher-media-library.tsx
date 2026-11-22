@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { isVideoAssetKind, type CourseAsset, type CourseAssetKind } from "@/domain/course-asset";
@@ -45,46 +45,83 @@ export function TeacherMediaLibrary() {
   const [assets, setAssets] = useState<CourseAsset[]>([]);
   const [kindFilter, setKindFilter] = useState<CourseAssetKind | "all">("all");
   const [search, setSearch] = useState("");
-  const [error, setError] = useState("");
+  const [coursesFailed, setCoursesFailed] = useState(false);
   const [isLoadingCourses, setIsLoadingCourses] = useState(true);
+  // Para qual curso a lista de arquivos chegou (ou falhou). Antes a lista
+  // dizia "no files" antes de os arquivos chegarem e, ao trocar de curso,
+  // mostrava os do curso anterior ate a lista nova vir.
+  const [assetsFor, setAssetsFor] = useState<string | null>(null);
+  const [assetsFailedFor, setAssetsFailedFor] = useState<string | null>(null);
+  const [retrying, setRetrying] = useState(false);
+  const coursesSubscription = useRef<{ reload: () => Promise<void> } | null>(null);
+  const assetsSubscription = useRef<{ reload: () => Promise<void> } | null>(null);
 
+  // So o usuario nas dependencias: escolher outro curso desligava e religava
+  // o canal dos cursos com o mesmo nome, e ele parava de receber mudancas.
   useEffect(() => {
     if (!user) {
       return;
     }
 
-    return subscribeToTeacherCourses(
+    const current = subscribeToTeacherCourses(
       user.uid,
       (nextCourses) => {
         setCourses(nextCourses);
+        setCoursesFailed(false);
         setIsLoadingCourses(false);
-
-        if (!selectedCourseId && nextCourses[0]) {
-          setSelectedCourseId(nextCourses[0].id);
-        }
+        setSelectedCourseId((selected) => selected || nextCourses[0]?.id || "");
       },
       () => {
-        setError("teacherMedia.coursesError");
+        setCoursesFailed(true);
         setIsLoadingCourses(false);
       },
     );
-  }, [selectedCourseId, user]);
+    coursesSubscription.current = current;
+    return () => {
+      coursesSubscription.current = null;
+      current();
+    };
+  }, [user]);
 
   useEffect(() => {
     if (!selectedCourseId) {
       return;
     }
 
-    return subscribeToCourseAssets(
+    const current = subscribeToCourseAssets(
       selectedCourseId,
       (nextAssets) => {
         setAssets(nextAssets);
+        setAssetsFor(selectedCourseId);
+        setAssetsFailedFor(null);
       },
       () => {
-        setError("teacherMedia.assetsError");
+        setAssetsFailedFor(selectedCourseId);
       },
     );
+    assetsSubscription.current = current;
+    return () => {
+      assetsSubscription.current = null;
+      current();
+    };
   }, [selectedCourseId]);
+
+  const assetsFailed = Boolean(selectedCourseId) && assetsFailedFor === selectedCourseId;
+  const error = coursesFailed
+    ? "teacherMedia.coursesError"
+    : assetsFailed
+      ? "teacherMedia.assetsError"
+      : "";
+
+  // "Try again" le de novo pelos mesmos canais. A releitura dos arquivos e
+  // silenciosa quando falha (o aviso fica), por isso o botao espera a resposta.
+  function retryLoad() {
+    setRetrying(true);
+    void Promise.allSettled([
+      coursesFailed ? coursesSubscription.current?.reload() : undefined,
+      assetsFailed ? assetsSubscription.current?.reload() : undefined,
+    ]).finally(() => setRetrying(false));
+  }
 
   const selectedCourse = courses.find((course) => course.id === selectedCourseId) ?? null;
   const filteredAssets = useMemo(() => {
@@ -192,9 +229,18 @@ export function TeacherMediaLibrary() {
       ) : null}
 
       {error ? (
-        <InlineAlert tone="error" className="mt-5">
-          {t(error)}
-        </InlineAlert>
+        <div className="mt-5 grid gap-3">
+          <InlineAlert tone="error">{t(error)}</InlineAlert>
+          <button
+            type="button"
+            onClick={retryLoad}
+            disabled={retrying}
+            aria-busy={retrying}
+            className={`${buttonClasses({ variant: "outline" })} justify-self-start`}
+          >
+            {t("appErrors.retry")}
+          </button>
+        </div>
       ) : null}
 
       <div className="mt-6 grid gap-3">
@@ -203,7 +249,8 @@ export function TeacherMediaLibrary() {
             {t("teacherMedia.loading")}
           </p>
         ) : courses.length === 0 ? (
-          <EmptyState
+          // Falha nao e "voce nao tem curso": o erro acima com "Try again" basta.
+          coursesFailed ? null : <EmptyState
             eyebrow={t("teacherMedia.noCourse")}
             title={t("teacherMedia.createFirst")}
             description={t("teacherMedia.noCourseDescription")}
@@ -218,6 +265,14 @@ export function TeacherMediaLibrary() {
               </>
             }
           />
+        ) : assetsFor !== selectedCourseId ? (
+          // Os arquivos deste curso ainda nao chegaram (ou falharam: o erro
+          // acima diz). Nada de "no files" antes de saber.
+          assetsFailed ? null : (
+            <p role="status" className="rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
+              {t("teacherMedia.loadingAssets")}
+            </p>
+          )
         ) : filteredAssets.length === 0 ? (
           <EmptyState
             eyebrow={t("teacherMedia.ready")}

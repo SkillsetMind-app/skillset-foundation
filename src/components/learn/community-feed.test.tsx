@@ -281,9 +281,9 @@ describe("feed da comunidade (rodada 11)", () => {
     expect(question).toHaveValue("Question literal $$50 $&");
     expect(screen.getByText("Sobre la lección 3")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Publicar pregunta" }));
-    expect(screen.getByRole("button", { name: "Publicando…" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Publicando..." })).toBeDisabled();
     fireEvent.click(screen.getByRole("button", { name: "Change language" }));
-    expect(screen.getByRole("button", { name: "Posting…" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Posting..." })).toBeDisabled();
     expect(question).toHaveValue("Question literal $$50 $&");
     expect(createCommunityPost).toHaveBeenCalledExactlyOnceWith({
       courseSlug: space.courseSlug, category: "question", title: "Question literal $$50 $&", body: "Details $$ $&",
@@ -371,7 +371,7 @@ describe("feed da comunidade (rodada 11)", () => {
     vi.mocked(createCommunityComment).mockReturnValueOnce(new Promise((done) => { resolve = done; }));
     fireEvent.click(within(card).getByRole("button", { name: "Publicar respuesta" }));
     fireEvent.click(screen.getByRole("button", { name: "Change language" }));
-    expect(within(card).getByRole("button", { name: "Posting…" })).toBeDisabled();
+    expect(within(card).getByRole("button", { name: "Posting..." })).toBeDisabled();
     expect(field).toHaveValue("Reply literal $$50 $&");
     expect(createCommunityComment).toHaveBeenCalledExactlyOnceWith({ postId: "open", courseSlug: space.courseSlug, body: "Reply literal $$50 $&", user: mocks.auth.user });
     await act(async () => resolve({ id: "reply-test" }));

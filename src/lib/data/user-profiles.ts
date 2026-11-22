@@ -46,24 +46,27 @@ export function subscribeToUserProfile(
   uid: string,
   callback: (profile: UserProfile | null) => void,
   onError: (error: Error) => void,
-): () => void {
+): (() => void) & { reload: () => Promise<void> } {
   const supabase = getSupabaseBrowserClient();
 
   // Fire once with the current value (like Firestore onSnapshot), then keep the
   // caller in sync via Realtime. RLS scopes postgres_changes to the caller's
   // own row, so no cross-user leakage.
-  void supabase
-    .from("users")
-    .select("*")
-    .eq("uid", uid)
-    .maybeSingle()
-    .then(({ data, error }) => {
-      if (error) {
-        onError(error instanceof Error ? error : new Error(String(error)));
-        return;
-      }
-      callback(data ? rowToUserProfile(data) : null);
-    });
+  const load = () =>
+    supabase
+      .from("users")
+      .select("*")
+      .eq("uid", uid)
+      .maybeSingle()
+      .then(({ data, error }) => {
+        if (error) {
+          onError(error instanceof Error ? error : new Error(String(error)));
+          return;
+        }
+        callback(data ? rowToUserProfile(data) : null);
+      });
+
+  void load();
 
   const channel = supabase
     .channel(`users:${uid}`)
@@ -80,9 +83,15 @@ export function subscribeToUserProfile(
     )
     .subscribe();
 
-  return () => {
-    void supabase.removeChannel(channel);
-  };
+  // `reload()` le de novo SEM mexer no canal (o "Try again" das preferencias):
+  // o canal `users:<uid>` e o mesmo do aviso de status da plataforma, e
+  // religar um canal com o mesmo nome devolve o antigo, ainda saindo.
+  return Object.assign(
+    () => {
+      void supabase.removeChannel(channel);
+    },
+    { reload: async () => { await load(); } },
+  );
 }
 
 export async function getPublicProfile(

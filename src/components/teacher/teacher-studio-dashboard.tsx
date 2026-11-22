@@ -13,7 +13,7 @@ import {
   UsersRound,
   type LucideIcon,
 } from "lucide-react";
-import { useEffect, useState, type CSSProperties } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
@@ -26,6 +26,7 @@ import { TeacherWelcomeTour } from "@/components/teacher/teacher-welcome-tour";
 import { usePublishGates } from "@/components/teacher/use-publish-gates";
 import { EmptyState, buttonClasses } from "@/components/ui";
 import { DrawnCheck, MilestoneSeal, useJustDone } from "@/components/ui/drawn-check";
+import { InlineAlert } from "@/components/ui/inline-alert";
 import { SpotArt } from "@/components/ui/spot-art";
 import { activationFeeUsd } from "@/data/plans";
 import type { CourseReadinessAccount } from "@/domain/course-readiness";
@@ -55,15 +56,19 @@ export function TeacherStudioDashboard() {
   // servidor aplica no publish, falha aberta): uma leitura so por visita.
   const activationBlocked = account.activationBlocked ?? false;
 
+  const coursesSubscription = useRef<{ reload: () => Promise<void> } | null>(null);
+  const ordersSubscription = useRef<{ reload: () => Promise<void> } | null>(null);
+
   useEffect(() => {
     if (!user) {
       return;
     }
 
-    return subscribeToTeacherCourses(
+    const current = subscribeToTeacherCourses(
       user.uid,
       (nextCourses) => {
         setCourses(nextCourses);
+        setCoursesFailed(false);
         setCoursesLoaded(true);
       },
       (error) => {
@@ -72,6 +77,11 @@ export function TeacherStudioDashboard() {
         setCoursesLoaded(true);
       }
     );
+    coursesSubscription.current = current;
+    return () => {
+      coursesSubscription.current = null;
+      current();
+    };
   }, [user]);
 
   useEffect(() => {
@@ -81,7 +91,7 @@ export function TeacherStudioDashboard() {
 
     // Cursos, pedidos e perfil eram lidos 3x, 3x e 2x por /teach: cada bloco
     // da Home abria a propria leitura. Agora a Home le uma vez e repassa.
-    return subscribeToTeacherOrders(
+    const current = subscribeToTeacherOrders(
       user.uid,
       (nextOrders) => {
         setOrders(nextOrders);
@@ -92,7 +102,28 @@ export function TeacherStudioDashboard() {
         setOrdersState("error");
       }
     );
+    ordersSubscription.current = current;
+    return () => {
+      ordersSubscription.current = null;
+      current();
+    };
   }, [user]);
+
+  // A leitura que falhou ganha "Try again" (antes a saida era recarregar a
+  // pagina): le de novo pelo mesmo canal, so o que falhou, e enquanto isso o
+  // bloco volta ao esqueleto.
+  const readFailed = coursesFailed || ordersState === "error";
+  function retryLoad() {
+    if (coursesFailed) {
+      setCoursesFailed(false);
+      setCoursesLoaded(false);
+      void coursesSubscription.current?.reload();
+    }
+    if (ordersState === "error") {
+      setOrdersState("loading");
+      void ordersSubscription.current?.reload();
+    }
+  }
 
   // "inactive" e um curso que ja esteve no ar (o admin tirou): ja houve publish.
   const launched = courses.some(
@@ -155,6 +186,15 @@ export function TeacherStudioDashboard() {
           </Link>
         </div>
       </header>
+
+      {readFailed ? (
+        <div className="grid gap-3">
+          <InlineAlert tone="error">{t("teach.dashboard.loadError")}</InlineAlert>
+          <button type="button" onClick={retryLoad} className="button-outline justify-self-start px-4 text-sm">
+            {t("appErrors.retry")}
+          </button>
+        </div>
+      ) : null}
 
       <StudioNextSteps
         courses={courses}

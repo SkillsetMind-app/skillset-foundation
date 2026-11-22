@@ -398,7 +398,7 @@ export function subscribeToTeacherCourses(
   ownerId: string,
   callback: (courses: TeacherCourse[]) => void,
   onError: (error: Error) => void
-): () => void {
+): (() => void) & { reload: () => Promise<void> } {
   const supabase = getSupabaseBrowserClient();
 
   const load = async () => {
@@ -430,9 +430,14 @@ export function subscribeToTeacherCourses(
     )
     .subscribe();
 
-  return () => {
-    void supabase.removeChannel(channel);
-  };
+  // `reload()` le de novo SEM mexer no canal (o "Try again" da Home e da
+  // Midia): religar um canal com o mesmo nome devolve o antigo, ainda saindo.
+  return Object.assign(
+    () => {
+      void supabase.removeChannel(channel);
+    },
+    { reload: load },
+  );
 }
 
 export function subscribeToCoursesInReview(

@@ -55,7 +55,7 @@ describe("LandingImageField", () => {
     const onChange = setup();
     const file = new File(["x"], "foto.png", { type: "image/png" });
     pick(file);
-    expect(await screen.findByText("Uploading…")).toBeInTheDocument();
+    expect(await screen.findByText("Uploading...")).toBeInTheDocument();
     finish(publicUrl);
     await waitFor(() => expect(onChange).toHaveBeenCalledWith(publicUrl));
     expect(mocks.uploadLandingImage).toHaveBeenCalledWith("c1", file);

@@ -9,7 +9,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 
 import { AccountDataPanel } from "@/components/account/account-data-panel";
 import { ProfileSettingsPanel } from "@/components/account/profile-settings-panel";
@@ -22,6 +22,7 @@ import {
   defaultNotificationPreferences,
   type LearningPreferences,
   type NotificationPreferences,
+  type UserProfile,
 } from "@/domain/user-profile";
 import {
   subscribeToUserProfile,
@@ -179,36 +180,75 @@ function useRowStatus() {
   return [status, setStatus] as const;
 }
 
-function NotificationPreferencesPanel() {
-  const { t } = useTranslation();
+// A escolha salva da pessoa. `null` enquanto nao chegou: as chaves nao mostram
+// posicao nenhuma (antes mostravam o padrao e pulavam para o salvo). Se a
+// leitura falha elas ficam travadas, com o erro e "Try again": antes ficavam
+// livres mostrando o padrao, e um toque gravava o padrao por cima do salvo.
+function useSavedPreferences<T>(read: (profile: UserProfile | null) => T) {
   const { user } = useAuth();
-  const [prefs, setPrefs] = useState<NotificationPreferences>(
-    defaultNotificationPreferences,
-  );
-  const [loaded, setLoaded] = useState(false);
-  const [status, setStatus] = useRowStatus();
+  const [prefs, setPrefs] = useState<T | null>(null);
+  const [failed, setFailed] = useState(false);
+  const subscription = useRef<{ reload: () => Promise<void> } | null>(null);
 
   useEffect(() => {
     if (!user) {
       return;
     }
 
-    return subscribeToUserProfile(
+    const current = subscribeToUserProfile(
       user.uid,
       (profile) => {
-        setPrefs({
-          ...defaultNotificationPreferences,
-          ...(profile?.preferences?.notifications ?? {}),
-        });
-        setLoaded(true);
+        setPrefs(read(profile));
+        setFailed(false);
       },
-      // Couldn't load saved preferences: keep defaults but let the user act.
-      () => setLoaded(true),
+      () => setFailed(true),
     );
-  }, [user]);
+    subscription.current = current;
+    return () => {
+      subscription.current = null;
+      current();
+    };
+  }, [user, read]);
+
+  // Le de novo pelo mesmo canal (ver subscribeToUserProfile).
+  function retry() {
+    setFailed(false);
+    void subscription.current?.reload();
+  }
+
+  return { prefs, setPrefs, loadFailed: failed && prefs === null, retry };
+}
+
+const readNotificationPreferences = (profile: UserProfile | null): NotificationPreferences => ({
+  ...defaultNotificationPreferences,
+  ...(profile?.preferences?.notifications ?? {}),
+});
+
+const readLearningPreferences = (profile: UserProfile | null): LearningPreferences => ({
+  ...defaultLearningPreferences,
+  ...(profile?.preferences?.learning ?? {}),
+});
+
+function PreferencesLoadError({ onRetry }: { onRetry: () => void }) {
+  const { t } = useTranslation();
+  return (
+    <div className="mt-4 grid gap-3">
+      <InlineAlert tone="error">{t("accountSettings.loadError")}</InlineAlert>
+      <button type="button" onClick={onRetry} className="button-outline min-h-11 justify-self-start px-4 text-sm">
+        {t("appErrors.retry")}
+      </button>
+    </div>
+  );
+}
+
+function NotificationPreferencesPanel() {
+  const { t } = useTranslation();
+  const { user } = useAuth();
+  const { prefs, setPrefs, loadFailed, retry } = useSavedPreferences(readNotificationPreferences);
+  const [status, setStatus] = useRowStatus();
 
   function toggle(key: keyof NotificationPreferences) {
-    if (!user) {
+    if (!user || !prefs) {
       return;
     }
 
@@ -236,14 +276,15 @@ function NotificationPreferencesPanel() {
         {t("accountSettings.notifications.description")}
       </p>
 
-      <div className="mt-4 divide-y divide-[var(--color-line)]">
+      {loadFailed ? <PreferencesLoadError onRetry={retry} /> : null}
+
+      <div aria-busy={!prefs && !loadFailed} className="mt-4 divide-y divide-[var(--color-line)]">
         {notificationRows.map((key) => (
           <ToggleRow
             key={key}
             label={t(`accountSettings.notifications.${key}.label`)}
             description={t(`accountSettings.notifications.${key}.description`)}
-            checked={prefs[key]}
-            disabled={!loaded}
+            checked={prefs ? prefs[key] : null}
             saved={status?.row === key ? status.saved : undefined}
             onChange={() => toggle(key)}
           />
@@ -256,32 +297,11 @@ function NotificationPreferencesPanel() {
 function LearningPreferencesPanel() {
   const { t } = useTranslation();
   const { user } = useAuth();
-  const [prefs, setPrefs] = useState<LearningPreferences>(
-    defaultLearningPreferences,
-  );
-  const [loaded, setLoaded] = useState(false);
+  const { prefs, setPrefs, loadFailed, retry } = useSavedPreferences(readLearningPreferences);
   const [status, setStatus] = useRowStatus();
 
-  useEffect(() => {
-    if (!user) {
-      return;
-    }
-
-    return subscribeToUserProfile(
-      user.uid,
-      (profile) => {
-        setPrefs({
-          ...defaultLearningPreferences,
-          ...(profile?.preferences?.learning ?? {}),
-        });
-        setLoaded(true);
-      },
-      () => setLoaded(true),
-    );
-  }, [user]);
-
   function toggle(key: keyof LearningPreferences) {
-    if (!user) {
+    if (!user || !prefs) {
       return;
     }
 
@@ -307,14 +327,15 @@ function LearningPreferencesPanel() {
         {t("accountSettings.learning.description")}
       </p>
 
-      <div className="mt-4 divide-y divide-[var(--color-line)]">
+      {loadFailed ? <PreferencesLoadError onRetry={retry} /> : null}
+
+      <div aria-busy={!prefs && !loadFailed} className="mt-4 divide-y divide-[var(--color-line)]">
         {learningRows.map((key) => (
           <ToggleRow
             key={key}
             label={t(`accountSettings.learning.${key}.label`)}
             description={t(`accountSettings.learning.${key}.description`)}
-            checked={prefs[key]}
-            disabled={!loaded}
+            checked={prefs ? prefs[key] : null}
             saved={status?.row === key ? status.saved : undefined}
             onChange={() => toggle(key)}
           />
@@ -327,14 +348,13 @@ function LearningPreferencesPanel() {
 function ToggleRow({
   checked,
   description,
-  disabled = false,
   label,
   onChange,
   saved,
 }: {
-  checked: boolean;
+  /** null = a escolha salva ainda não chegou (ou não carregou). */
+  checked: boolean | null;
   description: string;
-  disabled?: boolean;
   label: string;
   onChange: () => void;
   /** true = acabou de salvar; false = falhou; undefined = nada a dizer. */
@@ -345,6 +365,30 @@ function ToggleRow({
   // leitor de tela nunca lia o que cada chave faz.
   const labelId = useId();
   const descriptionId = useId();
+  const text = (
+    <span>
+      <span id={labelId} className="block text-sm font-bold text-[var(--color-ink)]">
+        {label}
+      </span>
+      <span id={descriptionId} className="mt-1 block max-w-2xl text-sm leading-6 text-[var(--color-ink-soft)]">
+        {description}
+      </span>
+    </span>
+  );
+
+  // Sem a escolha salva não há chave para mostrar: o texto e um trilho cinza
+  // do mesmo tamanho, sem posição (nem ligada, nem desligada).
+  if (checked === null) {
+    return (
+      <div className="py-1">
+        <div className="-mx-3 flex min-h-11 w-[calc(100%_+_1.5rem)] items-center justify-between gap-4 px-3 py-3">
+          {text}
+          <span aria-hidden="true" className="h-[26px] w-[46px] shrink-0 rounded-full bg-[var(--color-surface-strong)]" />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="py-1">
       {/* A linha inteira é a chave. Antes só o trilho de 46×26 respondia ao
@@ -356,18 +400,10 @@ function ToggleRow({
         aria-checked={checked}
         aria-labelledby={labelId}
         aria-describedby={descriptionId}
-        disabled={disabled}
         onClick={onChange}
         className="-mx-3 flex min-h-11 w-[calc(100%_+_1.5rem)] items-center justify-between gap-4 rounded-md px-3 py-3 text-left hover:bg-[var(--color-surface-soft)] disabled:cursor-not-allowed disabled:opacity-50"
       >
-        <span>
-          <span id={labelId} className="block text-sm font-bold text-[var(--color-ink)]">
-            {label}
-          </span>
-          <span id={descriptionId} className="mt-1 block max-w-2xl text-sm leading-6 text-[var(--color-ink-soft)]">
-            {description}
-          </span>
-        </span>
+        {text}
         <span
           aria-hidden="true"
           className={`settings-toggle ${checked ? "settings-toggle--on" : ""}`}

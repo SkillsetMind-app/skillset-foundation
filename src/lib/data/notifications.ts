@@ -31,7 +31,11 @@ export function subscribeToNotifications(
   userId: string,
   callback: (notifications: AppNotification[]) => void,
   onError: (error: Error) => void,
-): () => void {
+): (() => void) & { reload: () => Promise<void> } {
+  // `reload()` le de novo SEM mexer no canal (o "Try again" do sino). Desligar
+  // e religar o canal com o mesmo nome devolve o canal antigo, ainda saindo, e
+  // o sino para de receber os avisos novos (o mesmo defeito de course-messages).
+  //
   // createdAt is server-written on every notification (clients never create
   // them), so there is no pending-write null to corrupt the ordering — sorting
   // by created_at desc is safe.
@@ -81,12 +85,20 @@ export function subscribeToNotifications(
       )
       .subscribe();
 
-    return () => {
-      void supabase.removeChannel(channel);
-    };
+    return Object.assign(
+      () => {
+        void supabase.removeChannel(channel);
+      },
+      { reload: load },
+    );
   } catch (error) {
-    onError(error instanceof Error ? error : new Error(String(error)));
-    return () => {};
+    const failure = error instanceof Error ? error : new Error(String(error));
+    onError(failure);
+    // Sem cliente nao ha o que reler: o "Try again" devolve a mesma falha em
+    // vez de deixar o sino carregando para sempre.
+    return Object.assign(() => {}, {
+      reload: async () => onError(failure),
+    });
   }
 }
 
