@@ -1157,7 +1157,9 @@ p {
     .home-scroll .home-hero__copy {
       animation: motion-scroll-hero-copy 1ms linear both;
       animation-timeline: --home-hero;
-      animation-range: exit 20% exit 85%;
+      /* No celular o texto de apoio fica embaixo do hero: ele só começa a
+         sumir quando metade do hero já saiu, para dar tempo de ler. */
+      animation-range: exit 45% exit 95%;
     }
 
     /* 4. Títulos de seção. */
@@ -1313,6 +1315,10 @@ p {
     }
 
     @media (min-width: 1024px) {
+      .home-scroll .home-hero__copy {
+        animation-range: exit 20% exit 85%;
+      }
+
       /* Três colunas lado a lado: a linha do tempo passa a ser a da grade
          inteira, e a linha dourada percorre um passo de cada vez, do 01 ao
          03, como um caminho que se desenha. */
