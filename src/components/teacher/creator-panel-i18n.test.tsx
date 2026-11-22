@@ -221,12 +221,12 @@ beforeEach(() => {
   mocks.subscribeToTeacherCourses.mockImplementation((_uid, onData) => {
     mocks.onCourses = onData;
     onData(mocks.courses);
-    return () => undefined;
+    return Object.assign(() => undefined, { reload: async () => {} });
   });
   mocks.subscribeToUserProfile.mockImplementation((_uid, onData) => {
     mocks.onProfile = onData;
     onData(mocks.profile);
-    return () => undefined;
+    return Object.assign(() => undefined, { reload: async () => {} });
   });
   mocks.setOwnCourseFeatured.mockReset().mockResolvedValue(undefined);
   previousHtmlLang = document.documentElement.getAttribute("lang");

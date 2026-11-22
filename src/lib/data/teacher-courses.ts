@@ -398,12 +398,20 @@ export function subscribeToTeacherCourses(
   ownerId: string,
   callback: (courses: TeacherCourse[]) => void,
   onError: (error: Error) => void
-): () => void {
+): (() => void) & { reload: () => Promise<void> } {
   const supabase = getSupabaseBrowserClient();
+  // So a leitura mais nova entrega: um "Try again" que volta depois da
+  // releitura de um curso alterado traria a lista velha.
+  let active = true;
+  let latestLoad = 0;
 
   const load = async () => {
+    const thisLoad = ++latestLoad;
     const { data, error } = await supabase.from(coursesTable).select("*").eq("owner_id", ownerId);
 
+    if (!active || thisLoad !== latestLoad) {
+      return;
+    }
     if (error) {
       onError(error instanceof Error ? error : new Error(String(error)));
       return;
@@ -430,9 +438,15 @@ export function subscribeToTeacherCourses(
     )
     .subscribe();
 
-  return () => {
-    void supabase.removeChannel(channel);
-  };
+  // `reload()` le de novo SEM mexer no canal (o "Try again" da Home e da
+  // Midia): sem o intervalo entre sair e entrar de novo no Realtime.
+  return Object.assign(
+    () => {
+      active = false;
+      void supabase.removeChannel(channel);
+    },
+    { reload: load },
+  );
 }
 
 export function subscribeToCoursesInReview(

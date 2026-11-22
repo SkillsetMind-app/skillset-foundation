@@ -108,9 +108,9 @@ describe("ES-09 editors with the shipped dictionaries", () => {
     vi.mocked(updateTeacherCourseBuilder).mockImplementationOnce(() => new Promise((_, fail) => { reject = fail; }));
     mount(<SalesPageEditor course={course} />, "en");
     fireEvent.click(screen.getByRole("button", { name: "Save sales page" }));
-    expect(screen.getByRole("button", { name: "Saving…" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Saving..." })).toBeDisabled();
     fireEvent.click(screen.getByRole("button", { name: "ES" }));
-    expect(screen.getByRole("button", { name: "Guardando…" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Guardando..." })).toBeDisabled();
     reject(new Error("Internal English backend failure"));
     expect(await screen.findByRole("alert")).toHaveTextContent("No se pudo guardar la página de ventas.");
     expect(screen.queryByText("Internal English backend failure")).not.toBeInTheDocument();
@@ -164,7 +164,7 @@ describe("ES-09 editors with the shipped dictionaries", () => {
     ] };
     const original = structuredClone(state.landing);
     mount(<CourseLandingEditor course={course} />);
-    expect(screen.getByText("Cargando tu página de ventas…")).toBeInTheDocument();
+    expect(screen.getByText("Cargando tu página de ventas...")).toBeInTheDocument();
     await screen.findByLabelText("Título principal");
     for (const name of ["Una línea debajo del título",
       "Título del paso 1", "Qué ocurre en este paso", "Qué dijeron", "Quién lo dijo",

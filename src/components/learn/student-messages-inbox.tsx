@@ -84,9 +84,8 @@ export function StudentMessagesInbox() {
     };
   }, [user]);
 
-  // "Try again" lê de novo pelo mesmo canal. Desligar e religar o canal (com o
-  // mesmo nome) deixava a caixa sem as mensagens novas: a enviada não aparecia
-  // e a resposta do professor não chegava.
+  // "Try again" lê de novo pelo mesmo canal, sem sair e entrar de novo no
+  // Realtime (no intervalo, uma mensagem nova se perderia).
   function retryLoad() {
     setLoadFailed(false);
     void subscription.current?.reload();

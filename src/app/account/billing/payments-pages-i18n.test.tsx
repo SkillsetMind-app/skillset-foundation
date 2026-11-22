@@ -73,7 +73,7 @@ it.each(["en", "es"] as const)("does not treat an unverified session reference a
   render(<I18nProvider initialLocale={locale} initialDictionary={getDictionary(locale)}>{page}</I18nProvider>);
   // Enquanto confere e depois de desistir (~45 s sem assinatura), nada confirma.
   await act(async () => { await vi.advanceTimersByTimeAsync(0); });
-  expect(screen.getByRole("heading", { name: locale === "es" ? "Confirmando tu plan…" : "Confirming your plan…" })).toBeInTheDocument();
+  expect(screen.getByRole("heading", { name: locale === "es" ? "Confirmando tu plan..." : "Confirming your plan..." })).toBeInTheDocument();
   expect(document.querySelector(".lucide-circle-check")).toBeNull();
   expect(document.querySelector('a[href="/teach"]')).toBeNull();
   await act(async () => { await vi.advanceTimersByTimeAsync(3000 * 15); });

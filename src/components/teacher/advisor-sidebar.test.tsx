@@ -165,7 +165,7 @@ describe("AdvisorSidebar", () => {
 
     const suggestion = await screen.findByRole("button", { name: SUGGESTION });
     // Silently: an unreachable transcript is not the teacher's problem to read.
-    expect(screen.queryByText("Loading your conversation…")).toBeNull();
+    expect(screen.queryByText("Loading your conversation...")).toBeNull();
 
     fireEvent.click(suggestion);
 
@@ -189,7 +189,7 @@ describe("AdvisorSidebar", () => {
     fireEvent.change(composer(), { target: { value: "Draft that must survive" } });
     fireEvent.keyDown(composer(), { key: "Enter" });
 
-    expect(screen.getByText("Loading your conversation…")).toBeInTheDocument();
+    expect(screen.getByText("Loading your conversation...")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: SUGGESTION })).toBeNull();
     expect(screen.getByRole("button", { name: "Send message" })).toBeDisabled();
     // Only the GET. The turn was refused outright, not queued.

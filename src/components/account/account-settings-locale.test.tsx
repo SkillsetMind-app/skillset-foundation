@@ -1,16 +1,28 @@
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { I18nProvider, useTranslation } from "@/components/i18n/i18n-provider";
 import { CONFIRM_GUARD_MS } from "@/components/ui/confirm-dialog";
 import { AccountSettingsHub } from "./account-settings-hub";
 
-const mocks = vi.hoisted(() => ({ user: { uid: "creator-test" }, tab: "notifications", replace: vi.fn(), save: vi.fn(), export: vi.fn(), remove: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  user: { uid: "creator-test" }, tab: "notifications", replace: vi.fn(), save: vi.fn(), export: vi.fn(), remove: vi.fn(),
+  // "data": o perfil chega na hora; "pending": ainda não chegou; "error": a leitura falhou.
+  profileMode: "data" as "data" | "pending" | "error",
+  profile: { preferences: {} } as unknown,
+  receive: (() => undefined) as (profile: unknown) => void,
+  reload: vi.fn(),
+}));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ replace: mocks.replace, refresh: vi.fn() }), useSearchParams: () => new URLSearchParams({ tab: mocks.tab }) }));
 vi.mock("@/components/auth/auth-provider", () => ({ useAuth: () => ({ user: mocks.user }) }));
 vi.mock("./profile-settings-panel", () => ({ ProfileSettingsPanel: () => null }));
 vi.mock("./security-settings-panel", () => ({ SecuritySettingsPanel: () => null }));
 vi.mock("@/lib/data/user-profiles", () => ({
-  subscribeToUserProfile: (_: string, receive: (profile: unknown) => void) => { receive({ preferences: {} }); return () => {}; },
+  subscribeToUserProfile: (_: string, receive: (profile: unknown) => void, fail: (error: Error) => void) => {
+    mocks.receive = receive;
+    if (mocks.profileMode === "data") receive(mocks.profile);
+    if (mocks.profileMode === "error") fail(new Error("offline"));
+    return Object.assign(() => {}, { reload: mocks.reload });
+  },
   updateUserPreferences: mocks.save,
 }));
 vi.mock("@/lib/data/account-actions", () => ({ requestDataExportAction: mocks.export, requestAccountDeletionAction: mocks.remove }));
@@ -38,8 +50,31 @@ function show() {
 }
 
 describe("account settings locale", () => {
-  beforeEach(() => { vi.clearAllMocks(); stubDialog(); mocks.tab = "notifications"; mocks.save.mockResolvedValue(undefined); mocks.export.mockResolvedValue(undefined); mocks.remove.mockResolvedValue(undefined); });
+  beforeEach(() => { vi.clearAllMocks(); stubDialog(); mocks.tab = "notifications"; mocks.profileMode = "data"; mocks.profile = { preferences: {} }; mocks.save.mockResolvedValue(undefined); mocks.export.mockResolvedValue(undefined); mocks.remove.mockResolvedValue(undefined); });
   afterEach(() => { cleanup(); restoreDialog(); vi.useRealTimers(); });
+
+  it("antes do perfil chegar as chaves não mostram posição; depois entram já na escolha salva", () => {
+    mocks.profileMode = "pending";
+    show();
+    // O texto já aparece, mas nenhuma chave com o padrão fingindo ser o salvo.
+    expect(screen.getByText("Actividad del curso")).toBeVisible();
+    expect(screen.queryByRole("switch")).toBeNull();
+    act(() => mocks.receive({ preferences: { notifications: { courseActivity: false } } }));
+    expect(screen.getByRole("switch", { name: "Actividad del curso" })).toHaveAttribute("aria-checked", "false");
+  });
+
+  it("se a leitura falha: erro com 'Intentar de nuevo' e nenhuma chave para gravar o padrão por cima", () => {
+    mocks.profileMode = "error";
+    show();
+    expect(screen.getByRole("alert")).toHaveTextContent("No pudimos cargar tus preferencias guardadas.");
+    expect(screen.queryByRole("switch")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Intentar de nuevo" }));
+    expect(mocks.reload).toHaveBeenCalledOnce();
+    expect(screen.queryByRole("alert")).toBeNull();
+    act(() => mocks.receive({ preferences: {} }));
+    expect(screen.getByRole("switch", { name: "Actividad del curso" })).toBeEnabled();
+    expect(mocks.save).not.toHaveBeenCalled();
+  });
 
   it("renders Spanish navigation and notification controls with untranslated route identifiers", async () => {
     show();

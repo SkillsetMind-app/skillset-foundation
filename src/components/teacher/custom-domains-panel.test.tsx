@@ -323,12 +323,12 @@ describe("CustomDomainsPanel", () => {
     fetchMock.mockReturnValue(pending.promise);
     renderWithLocale();
     await waitFor(() => expect(requestCount()).toBe(1));
-    expect(screen.getByText("Loading your domains…")).toBeInTheDocument();
+    expect(screen.getByText("Loading your domains...")).toBeInTheDocument();
     expect(screen.queryByText(/Your plan does not include a custom domain/)).not.toBeInTheDocument();
     expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
 
     await changeLocale("es");
-    expect(screen.getByText("Cargando tus dominios…")).toBeInTheDocument();
+    expect(screen.getByText("Cargando tus dominios...")).toBeInTheDocument();
     expect(requestCount()).toBe(1);
     await act(async () => {
       if (failure === "HTTP") pending.resolve(jsonResponse({ error: "local-qa-load-failure" }, 503));
@@ -358,7 +358,7 @@ describe("CustomDomainsPanel", () => {
     const retryButton = screen.getByRole("button", { name: "Try again" });
     retryButton.focus();
     fireEvent.click(retryButton);
-    expect(screen.getByRole("status")).toHaveTextContent("Loading your domains…");
+    expect(screen.getByRole("status")).toHaveTextContent("Loading your domains...");
     expect(screen.getByRole("status").closest("section")).toHaveAttribute("aria-busy", "true");
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Try again" })).toBe(retryButton);
@@ -367,7 +367,7 @@ describe("CustomDomainsPanel", () => {
     expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
     expect(requestCount()).toBe(2);
     await changeLocale("es");
-    expect(screen.getByRole("status")).toHaveTextContent("Cargando tus dominios…");
+    expect(screen.getByRole("status")).toHaveTextContent("Cargando tus dominios...");
     expect(requestCount()).toBe(2);
     await act(async () => retry.resolve(jsonResponse(domainPayload([domains[1]]))));
     expect(await screen.findByText(domains[1].hostname)).toBeInTheDocument();
@@ -840,7 +840,7 @@ describe("CustomDomainsPanel", () => {
         await waitFor(() => expect(requestCount()).toBe(3));
         for (const locale of ["en", "es"] as const) {
           await changeLocale(locale);
-          expect(screen.getByRole("status")).toHaveTextContent(locale === "es" ? "Cargando tus dominios…" : "Loading your domains…");
+          expect(screen.getByRole("status")).toHaveTextContent(locale === "es" ? "Cargando tus dominios..." : "Loading your domains...");
           expect(hostname.closest("section")).toHaveAttribute("aria-busy", "true");
           expect(screen.getByRole("textbox", { name: locale === "es" ? "Añadir un dominio" : "Add a domain" })).toBe(hostname);
           expect(hostname).toHaveValue(retainedDraft);
@@ -893,7 +893,7 @@ describe("CustomDomainsPanel", () => {
       expect(retryButton).not.toBeDisabled();
       expect(retryButton).toHaveAttribute("aria-disabled", "true");
       expect(panel).toHaveAttribute("aria-busy", "true");
-      expect(screen.getByRole("status")).toHaveTextContent(locale === "es" ? "Cargando tus dominios…" : "Loading your domains…");
+      expect(screen.getByRole("status")).toHaveTextContent(locale === "es" ? "Cargando tus dominios..." : "Loading your domains...");
       fireEvent.click(retryButton);
       fireEvent.click(retryButton);
       expectDomainTraffic(3, [write]);
@@ -987,7 +987,7 @@ describe("CustomDomainsPanel", () => {
       fireEvent.click(domainCard(domains[0].hostname).getByRole("button", { name: "Check again" }));
       expect(await screen.findByRole("alert")).toHaveTextContent(refreshCopy.en);
       fireEvent.click(screen.getByRole("button", { name: "Try again" }));
-      expect(screen.getByRole("status")).toHaveTextContent("Loading your domains…");
+      expect(screen.getByRole("status")).toHaveTextContent("Loading your domains...");
       expectDomainTraffic(3, [write]);
       await act(async () => failedRetry.reject(new Error("local-qa-retry-unreachable")));
       expect(await screen.findByRole("alert")).toHaveTextContent(refreshCopy.en);
