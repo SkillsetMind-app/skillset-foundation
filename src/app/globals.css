@@ -1125,7 +1125,10 @@ p {
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  @supports (animation-timeline: view()) {
+  /* Só entra quem entende a coreografia inteira: um navegador que conheça
+     a linha do tempo mas não os trechos (animation-range) deixaria o texto
+     meio apagado no meio da tela. */
+  @supports (animation-timeline: view()) and (animation-range: entry 0% cover 30%) and (view-timeline: --x block) {
     /* 1. Barra de leitura: um fio dourado no topo que enche conforme a página
        desce. Fica acima da barra do site (40) e abaixo de menus e janelas. */
     .home-scroll-progress {
@@ -1168,6 +1171,12 @@ p {
       /* No celular o texto de apoio fica embaixo do hero: ele só começa a
          sumir quando metade do hero já saiu, para dar tempo de ler. */
       animation-range: exit 45% exit 95%;
+    }
+
+    /* Quem volta ao topo pelo teclado não pode achar o botão focado quase
+       invisível: com foco dentro, o texto do topo não some. */
+    .home-scroll .home-hero__copy:has(:focus-visible) {
+      animation: none;
     }
 
     /* 4. Títulos de seção. */
@@ -1292,6 +1301,14 @@ p {
       animation-range: entry 30% cover 30%;
     }
 
+    /* O título fica no começo da faixa. Num celular pequeno com letra
+       grande a faixa passa de duas telas, e medido pela faixa inteira ele
+       chegava ao meio da tela a 75%. Ele termina de entrar ainda na
+       primeira tela da faixa. */
+    .home-scroll .home-creators__lead {
+      animation-range: entry 10% entry 60%;
+    }
+
     .home-scroll .home-creators__item:nth-child(2) {
       animation-range: entry 45% cover 34%;
     }
@@ -1372,6 +1389,24 @@ p {
         animation-range: cover 44% cover 56%;
       }
     }
+  }
+}
+
+/* No papel não há rolagem: nada fica parado no meio de uma entrada, e a
+   barra de leitura não se repete em cada folha. */
+@media print {
+  .home-scroll *,
+  .home-scroll *::before {
+    animation: none !important;
+  }
+
+  html.js .home-scroll .reveal-on-view:not(.reveal-on-view--in) {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  .home-scroll-progress {
+    display: none !important;
   }
 }
 
