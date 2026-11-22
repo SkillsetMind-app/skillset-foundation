@@ -40,14 +40,23 @@ function useResendCooldown() {
   return [cooldown, () => setCooldown(RESEND_COOLDOWN_SECONDS)] as const;
 }
 
-// O numero que corre no botao fica fora de qualquer regiao viva, entao o
-// leitor de tela nao le "59s... 58s...". A espera fala duas vezes: "enviado"
-// (a linha de status) e, quando acaba, "ja pode pedir outro", acrescentado a
-// MESMA linha, que ja esta na tela (regiao nova que nasce cheia costuma nao
-// ser anunciada).
-function ResendReadyNotice({ cooldown }: { cooldown: number }) {
+// A linha "enviado" fica sempre montada (vazia e fora do fluxo antes do
+// envio) e so o TEXTO entra e sai: regiao viva que ja nasce cheia costuma nao
+// ser lida. O numero que corre no botao fica fora dela, entao o leitor de tela
+// nao le "59s... 58s..."; quando a espera acaba, "ja pode pedir outro" entra
+// na mesma linha.
+function ResendStatus({ sent, cooldown, message }: { sent: boolean; cooldown: number; message: string }) {
   const { t } = useTranslation();
-  return cooldown > 0 ? null : <span className="sr-only"> {t("auth.signup.confirmResendReady")}</span>;
+  return (
+    <p role="status" className={sent ? "text-sm font-semibold text-[var(--color-primary)]" : "sr-only"}>
+      {sent ? (
+        <>
+          {message}
+          {cooldown > 0 ? null : <span className="sr-only"> {t("auth.signup.confirmResendReady")}</span>}
+        </>
+      ) : null}
+    </p>
+  );
 }
 
 // O titulo grande da pagina (/auth) seguia "Crie sua conta" em cima da porta de
@@ -214,12 +223,7 @@ export function ConfirmEmailGate({
         ) : null}
       </div>
 
-      {sent ? (
-        <p role="status" className="text-sm font-semibold text-[var(--color-primary)]">
-          {t("auth.signup.confirmResent")}
-          <ResendReadyNotice cooldown={cooldown} />
-        </p>
-      ) : null}
+      <ResendStatus sent={sent} cooldown={cooldown} message={t("auth.signup.confirmResent")} />
       {error ? (
         <p role="alert" className="text-xs font-semibold text-[var(--color-danger-fg)]">
           {getAuthErrorMessage(error.cause, t)}
@@ -335,12 +339,7 @@ export function ExpiredConfirmationLink({
             : t("auth.signup.expiredSend")}
       </button>
 
-      {sent ? (
-        <p role="status" className="text-sm font-semibold text-[var(--color-primary)]">
-          {t("auth.signup.expiredSent")}
-          <ResendReadyNotice cooldown={cooldown} />
-        </p>
-      ) : null}
+      <ResendStatus sent={sent} cooldown={cooldown} message={t("auth.signup.expiredSent")} />
       {error ? (
         <p role="alert" className="text-sm font-semibold text-[var(--color-danger-fg)]">
           {getAuthErrorMessage(error.cause, t)}

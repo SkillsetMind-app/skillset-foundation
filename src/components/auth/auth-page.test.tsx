@@ -201,7 +201,8 @@ describe("AuthPage continues an existing verified session", () => {
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
     // So promete seguir sozinha no mesmo aparelho: e o unico caso que a
     // checagem desta aba enxerga.
-    expect(screen.getByRole("status")).toHaveTextContent("If you open the link on this device, this page continues by itself.");
+    // (A linha "enviado" tambem e status, sempre montada e vazia ate o envio.)
+    expect(screen.getByText("If you open the link on this device, this page continues by itself.")).toHaveAttribute("role", "status");
     // O contador do reenvio nao fica dentro de regiao anunciada.
     expect(screen.getByRole("button", { name: "Resend the link" }).closest("[aria-live]")).toBeNull();
     expect(mocks.router.replace).not.toHaveBeenCalled();

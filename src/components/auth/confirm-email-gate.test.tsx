@@ -132,11 +132,16 @@ describe("ConfirmEmailGate resend countdown for screen readers", () => {
   it("keeps the ticking number out of live regions and announces once when resend is back", async () => {
     render(<ConfirmEmailGate email="learner@example.com" />);
 
+    // A regiao ja existe, vazia, antes do primeiro envio: regiao que nasce
+    // cheia costuma nao ser lida.
+    const status = screen.getAllByRole("status").find((element) => element.textContent === "");
+    expect(status).toBeDefined();
+
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "auth.signup.confirmResend" }));
     });
-    const status = screen.getByText("auth.signup.confirmResent");
-    expect(status).toHaveAttribute("role", "status");
+    // O texto entra no MESMO elemento.
+    expect(screen.getByText("auth.signup.confirmResent")).toBe(status);
     expect(status).not.toHaveTextContent("auth.signup.confirmResendReady");
     const countdown = screen.getByRole("button", { name: "auth.signup.confirmResendIn" });
     expect(countdown).toBeDisabled();
