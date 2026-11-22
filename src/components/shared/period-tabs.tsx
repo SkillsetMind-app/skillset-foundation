@@ -16,6 +16,7 @@ export function PeriodTabs<Option extends string>({
   onChange,
   label,
   renderLabel,
+  wrap = false,
 }: {
   options: readonly Option[];
   value: Option;
@@ -24,9 +25,12 @@ export function PeriodTabs<Option extends string>({
   // ReactNode, nao so string: o ciclo de cobranca mostra o desconto do anual
   // num trecho menor dentro do proprio botao.
   renderLabel: (option: Option) => ReactNode;
+  // Quebra a linha em vez de rolar por dentro (opcoes com numero, que na
+  // tela estreita ficavam escondidas atras da rolagem). Padrao: uma linha.
+  wrap?: boolean;
 }) {
   return (
-    <div className="studio-range-tabs" role="group" aria-label={label}>
+    <div className={wrap ? "studio-range-tabs studio-range-tabs--wrap" : "studio-range-tabs"} role="group" aria-label={label}>
       {options.map((option) => (
         <button
           key={option}

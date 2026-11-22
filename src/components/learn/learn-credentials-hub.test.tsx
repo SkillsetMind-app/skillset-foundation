@@ -69,7 +69,8 @@ describe("credentials hub hierarchy", () => {
   it("os filtros sao o seletor segmentado da casa e filtram a lista", () => {
     show({ ...finished, status: "active", progressPercent: 40 });
     const group = screen.getByRole("group", { name: "Credential filters" });
-    expect(group).toHaveClass("studio-range-tabs");
+    // Quebra a linha: a 360px em espanhol os quatro ficam a vista, sem rolagem.
+    expect(group).toHaveClass("studio-range-tabs", "studio-range-tabs--wrap");
     expect(within(group).getByRole("button", { name: "All 1" })).toHaveAttribute("aria-pressed", "true");
 
     fireEvent.click(within(group).getByRole("button", { name: "Issued 0" }));

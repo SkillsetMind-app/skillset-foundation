@@ -197,6 +197,25 @@ describe("neutral dark actions", () => {
     }
   });
 
+  // O seletor segmentado (PeriodTabs) decide o ciclo que o professor paga. No
+  // escuro a pastilha escolhida e a moldura quase se confundem, entao ela
+  // ganha um contorno em --color-primary: ele tem de passar de 3:1 (limite de
+  // elemento nao textual) contra a moldura e contra a propria pastilha.
+  it("keeps the selected segmented option distinct from its track in dark theme", () => {
+    const ring = block('[data-theme="dark"] .studio-range-tabs button[aria-pressed="true"]');
+    expect(ring).toMatch(/inset 0 0 0 1\.5px var\(--color-primary\)/);
+    // A regra do escuro vem depois da base (que segue igual no claro).
+    expect(css.indexOf('[data-theme="dark"] .studio-range-tabs button[aria-pressed="true"] {')).toBeGreaterThan(
+      css.indexOf('.studio-range-tabs button[aria-pressed="true"] {'),
+    );
+    expect(block('.studio-range-tabs button[aria-pressed="true"]')).toContain("box-shadow: var(--shadow-soft);");
+    const chip = /background:\s*([^;]+);/.exec(block('.studio-range-tabs button[aria-pressed="true"]'))?.[1];
+    const track = /background:\s*([^;]+);/.exec(block(".studio-range-tabs"))?.[1];
+    for (const backdrop of [chip!, track!]) {
+      expect(ratio("var(--color-primary)", backdrop, dark), backdrop).toBeGreaterThanOrEqual(3);
+    }
+  });
+
   // These utility-only fills are outside the stylesheet's color/background
   // guard below. Read the real classes, not a mocked component's styling.
   it.each([

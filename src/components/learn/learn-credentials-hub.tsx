@@ -178,6 +178,7 @@ export function LearnCredentialsHub() {
           value={activeFilter}
           onChange={setActiveFilter}
           label={t("learnWave2.credentials.filters")}
+          wrap
           renderLabel={(value) =>
             t(credentialFilterKeys[value]).replace("{count}", () => new Intl.NumberFormat(locale).format(filterCounts[value]))
           }

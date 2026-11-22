@@ -7335,10 +7335,11 @@ button:hover > .dash-card,
 }
 
 /* ── Seletor segmentado do estudio (PeriodTabs): uma entre poucas opcoes ──
-   O unico desenho para filtro no professor (periodo dos relatorios e da Home,
-   espacos/comunidades em Membros). Texto normal, sem versalete; 36px de botao
-   + 4px de moldura = 44px de toque. Passar o mouse nao pinta igual a ativa
-   (antes as duas regras eram a mesma e nao se sabia qual estava escolhida). */
+   O unico desenho para filtro (periodo dos relatorios e da Home,
+   espacos/comunidades em Membros, cursos e credenciais do aluno, ciclo dos
+   planos). Texto normal, sem versalete; 36px de botao no mouse e 44px no toque
+   (regra logo abaixo). Passar o mouse nao pinta igual a ativa (antes as duas
+   regras eram a mesma e nao se sabia qual estava escolhida). */
 .studio-range-tabs {
   display: inline-flex;
   max-width: 100%;
@@ -7382,6 +7383,34 @@ button:hover > .dash-card,
   background: var(--color-surface);
   color: var(--color-primary);
   box-shadow: var(--shadow-soft);
+}
+
+/* No escuro a pastilha escolhida (#0f1626) e a moldura (#141d33) quase se
+   confundem e a sombra some no fundo escuro: sobrava so a cor do texto, e
+   este seletor decide o que a pessoa paga (Mensal/Anual). Um contorno por
+   dentro em --color-primary passa de 3:1 contra a moldura e nao mexe no
+   tamanho do botao. O claro fica como esta. */
+[data-theme="dark"] .studio-range-tabs button[aria-pressed="true"] {
+  box-shadow:
+    inset 0 0 0 1.5px var(--color-primary),
+    var(--shadow-soft);
+}
+
+/* A moldura de 4px e do grupo, nao do botao: tocar nela nao escolhe nada.
+   Publico de 55+ no celular: um toque que erra "Yearly" deixa o professor no
+   Mensal. No toque o botao tem os 44px inteiros. */
+@media (pointer: coarse) {
+  .studio-range-tabs button {
+    min-height: 44px;
+  }
+}
+
+/* Variante que quebra a linha (credenciais: quatro filtros com numero). A
+   rolagem por dentro escondia "En curso N" atras dela a 360px em espanhol;
+   quebrando, os quatro ficam a vista e seguem na mesma moldura. */
+.studio-range-tabs--wrap {
+  flex-wrap: wrap;
+  overflow-x: visible;
 }
 
 .studio-chart-canvas {
