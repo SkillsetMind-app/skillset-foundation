@@ -73,9 +73,11 @@ export function StudioStorefrontCard({
           >
             {t("teach.storefrontCard.open")}
           </Link>
+          {/* Contorno, nao solido: na Home o botao forte e o da proxima acao
+              (o passo aberto ou o "Create my first product"), nao a vitrine. */}
           <Link
             href="/teach/storefront"
-            className={buttonClasses({ variant: "solid", size: "sm" })}
+            className={buttonClasses({ variant: "outline", size: "sm" })}
           >
             {t("teach.storefrontCard.edit")}
           </Link>

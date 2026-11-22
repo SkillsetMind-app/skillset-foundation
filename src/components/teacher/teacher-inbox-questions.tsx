@@ -104,7 +104,8 @@ export function TeacherInboxQuestions() {
               </div>
               <Link
                 href={`/teach/courses/${encodeURIComponent(post.courseSlug)}/community`}
-                className="button-solid min-h-11 px-4 text-sm"
+                // Contorno: dez perguntas eram dez botoes fortes na mesma tela.
+                className="button-outline min-h-11 px-4 text-sm"
               >
                 {t("teach.inboxPage.answer")}
                 <span className="sr-only">: {(post.title ?? post.body).slice(0, 80)}</span>

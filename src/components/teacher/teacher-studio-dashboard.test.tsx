@@ -1,4 +1,4 @@
-import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { TeacherStudioDashboard } from "@/components/teacher/teacher-studio-dashboard";
@@ -122,8 +122,12 @@ async function stepLabels() {
     .map((item) => item.querySelector("strong")?.textContent);
 }
 
-function recommended() {
-  return screen.getByText("Recommended now").closest("aside") as HTMLElement;
+// O passo aberto: destacado no proprio lugar da lista, com o botao. Era o
+// painel "Recommended now", que repetia o titulo e a frase do mesmo passo.
+function currentStep() {
+  const step = document.querySelector<HTMLElement>('li[aria-current="step"]');
+  if (!step) throw new Error("nenhum passo aberto");
+  return step;
 }
 
 beforeEach(() => {
@@ -143,6 +147,8 @@ describe("TeacherStudioDashboard", () => {
   // Os mesmos quatro tipos da tela de criacao. Gratis, assinatura e programa
   // guiado deixaram de ser tipo.
   it("routes each of the four product types to the creation screen", async () => {
+    // Os formatos sao atalhos de quem ja tem produto (na 1a visita saem).
+    state.courses = [course({})];
     render(<TeacherStudioDashboard />);
 
     const formats = (
@@ -177,6 +183,34 @@ describe("TeacherStudioDashboard", () => {
     expect(create).toHaveAttribute("href", "/teach/builder?newCourse=1&format=course");
     expect(screen.queryByText("No products in this view yet.")).toBeNull();
   });
+
+  // 1a visita: quatro botoes fortes, cinco filtros sobre lista vazia e quatro
+  // formatos disputavam com o "Create my first product". Agora ele e o unico.
+  it("sem produto: some filtro, 'Show all' e formatos; o vazio guarda o unico botao forte", async () => {
+    render(<TeacherStudioDashboard />);
+
+    await screen.findByRole("heading", { name: "Your first product starts here." });
+    expect(screen.queryByRole("tablist", { name: "Product filters" })).toBeNull();
+    expect(screen.queryByRole("tab")).toBeNull();
+    expect(screen.queryByRole("link", { name: /Show all/ })).toBeNull();
+    expect(screen.queryByRole("heading", { name: "Choose a product format" })).toBeNull();
+    expect(screen.queryByText("Revenue, 30d")).toBeNull();
+    expect(screen.getByRole("link", { name: "New product" })).toHaveClass("button-outline");
+    expect(screen.getByRole("link", { name: "Edit storefront" })).not.toHaveClass("button-solid");
+    // O passo "criar" fica destacado, mas sem botao proprio: o do vazio basta.
+    expect(currentStep()).toHaveTextContent("Create a product");
+    expect(currentStep().querySelector(".button-solid")).toBeNull();
+    expect(document.querySelectorAll(".button-solid")).toHaveLength(0);
+  });
+
+  it("com produto: filtros, 'Show all' e o 'New product' solido voltam", async () => {
+    state.courses = [course({})];
+    render(<TeacherStudioDashboard />);
+
+    expect(await screen.findByRole("tablist")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Show all/ })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "New product" })).toHaveClass("button-solid");
+  });
 });
 
 // O que a pessoa sofria: o passo 2 so fechava com verificacao APROVADA e
@@ -189,9 +223,10 @@ describe("Inicio do professor: os passos sao as travas reais do publish", () => 
 
     expect(await stepLabels()).toEqual(["Create a product", "Publish your product"]);
     expect(screen.getByText("0 of 2 complete")).toBeInTheDocument();
-    expect(
-      within(recommended()).getByRole("heading", { name: "Create a product" }),
-    ).toBeInTheDocument();
+    expect(currentStep()).toHaveTextContent("Create a product");
+    // A frase do passo aparece uma vez so (o painel ao lado a repetia).
+    expect(screen.getAllByText(/Choose the delivery and access model/)).toHaveLength(1);
+    expect(screen.queryByText("Recommended now")).toBeNull();
   });
 
   // O cartao so e pedido depois de criar: o teste gratis e exigido para
@@ -203,9 +238,7 @@ describe("Inicio do professor: os passos sao as travas reais do publish", () => 
     await waitFor(async () =>
       expect(await stepLabels()).toEqual(["Create a product", "Creator plan", "Publish your product"]),
     );
-    expect(
-      within(recommended()).getByRole("heading", { name: "Create a product" }),
-    ).toBeInTheDocument();
+    expect(currentStep()).toHaveTextContent("Create a product");
   });
 
   it("sem plano e com produto: o recomendado e o plano, em /account/plans", async () => {
@@ -213,10 +246,8 @@ describe("Inicio do professor: os passos sao as travas reais do publish", () => 
     state.courses = [course({ paymentType: "free", priceAmountMinor: 0 })];
     render(<TeacherStudioDashboard />);
 
-    await waitFor(() =>
-      expect(within(recommended()).getByRole("heading", { name: "Creator plan" })).toBeInTheDocument(),
-    );
-    expect(within(recommended()).getByRole("link", { name: "See plans" })).toHaveAttribute(
+    await waitFor(() => expect(currentStep()).toHaveTextContent("Creator plan"));
+    expect(within(currentStep()).getByRole("link", { name: "See plans" })).toHaveAttribute(
       "href",
       "/account/plans",
     );
@@ -236,10 +267,11 @@ describe("Inicio do professor: os passos sao as travas reais do publish", () => 
     // A frase que MOROU na faixa amarela permanente do topo do /teach.
     expect(within(steps).getByText(/buyers are charged on it directly/i)).toBeInTheDocument();
     expect(screen.getByText("1 of 3 complete")).toBeInTheDocument();
-    expect(
-      within(recommended()).getByRole("heading", { name: "Connect Stripe" }),
-    ).toBeInTheDocument();
-    expect(within(recommended()).getByRole("link", { name: /Connect Stripe/ })).toHaveAttribute(
+    expect(currentStep()).toHaveTextContent("Connect Stripe");
+    expect(within(currentStep()).getByRole("link", { name: /Connect Stripe/ })).toHaveClass("button-solid");
+    // A frase do Stripe aparece uma vez so na tela.
+    expect(screen.getAllByText(/buyers are charged on it directly/i)).toHaveLength(1);
+    expect(within(currentStep()).getByRole("link", { name: /Connect Stripe/ })).toHaveAttribute(
       "href",
       "/account/payments#stripe-connect",
     );
@@ -258,10 +290,8 @@ describe("Inicio do professor: os passos sao as travas reais do publish", () => 
     await waitFor(() => {
       expect(screen.getByText("2 of 3 complete")).toBeInTheDocument();
     });
-    expect(
-      within(recommended()).getByRole("heading", { name: "Publish your product" }),
-    ).toBeInTheDocument();
-    expect(within(recommended()).getByRole("link", { name: /Review and publish/ })).toHaveAttribute(
+    expect(currentStep()).toHaveTextContent("Publish your product");
+    expect(within(currentStep()).getByRole("link", { name: /Review and publish/ })).toHaveAttribute(
       "href",
       "/teach/builder?courseId=c1&tab=review",
     );
@@ -293,7 +323,9 @@ describe("Inicio do professor: os passos sao as travas reais do publish", () => 
     ).toHaveAttribute("href", "/teach/verification");
   });
 
-  it("publicado: o passo de publicar esta feito", async () => {
+  // Com tudo feito, o bloco ficava em 100% recomendando "Publish your product"
+  // a quem ja tinha publicado e vendido.
+  it("publicado e com Stripe: chegando com tudo feito, o bloco de passos sai da tela", async () => {
     state.courses = [course({ status: "published" })];
     state.profile = {
       stripeConnectChargesEnabled: true,
@@ -303,9 +335,11 @@ describe("Inicio do professor: os passos sao as travas reais do publish", () => 
     render(<TeacherStudioDashboard />);
 
     await waitFor(() => {
-      expect(screen.getByText("3 of 3 complete")).toBeInTheDocument();
+      expect(screen.queryByRole("list", { name: "Creator next steps" })).toBeNull();
     });
-    expect(screen.getByText("100%")).toBeInTheDocument();
+    expect(screen.queryByText("100%")).toBeNull();
+    expect(screen.queryByText("Get ready for your first sale")).toBeNull();
+    expect(screen.queryByText(/Review and publish/)).toBeNull();
   });
 
   // Com a taxa exigida e nao paga, a Home mandava "Review and publish" e o
@@ -317,10 +351,12 @@ describe("Inicio do professor: os passos sao as travas reais do publish", () => 
 
     render(<TeacherStudioDashboard />);
 
-    expect(
-      await within(recommended()).findByRole("link", { name: /Activate and publish/ }),
-    ).toHaveAttribute("href", "/teach/builder?courseId=c1&tab=review");
-    expect(within(recommended()).getByText(/one-time US\$25 activation fee/)).toBeInTheDocument();
+    await waitFor(() =>
+      expect(
+        within(currentStep()).getByRole("link", { name: /Activate and publish/ }),
+      ).toHaveAttribute("href", "/teach/builder?courseId=c1&tab=review"),
+    );
+    expect(within(currentStep()).getByText(/one-time US\$25 activation fee/)).toBeInTheDocument();
   });
 
   it("taxa paga ou nao exigida: publish sem aviso de taxa", async () => {
@@ -329,9 +365,11 @@ describe("Inicio do professor: os passos sao as travas reais do publish", () => 
 
     render(<TeacherStudioDashboard />);
 
-    expect(
-      await within(recommended()).findByRole("link", { name: /Review and publish/ }),
-    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(
+        within(currentStep()).getByRole("link", { name: /Review and publish/ }),
+      ).toBeInTheDocument(),
+    );
     expect(screen.queryByText(/activation fee/)).toBeNull();
   });
 
@@ -341,7 +379,11 @@ describe("Inicio do professor: os passos sao as travas reais do publish", () => 
 
     render(<TeacherStudioDashboard />);
 
-    expect(await stepLabels()).toEqual(["Create a product", "Publish your product"]);
+    // Sem passo do Stripe, criar e publicar ja estao feitos: o bloco sai.
+    await waitFor(() =>
+      expect(screen.queryByRole("list", { name: "Creator next steps" })).toBeNull(),
+    );
+    expect(screen.queryByText(/Connect Stripe/)).toBeNull();
     expect(
       await screen.findByRole("heading", { name: "What needs your attention today." }),
     ).toBeInTheDocument();
@@ -382,9 +424,11 @@ describe("Inicio do professor: os passos sao as travas reais do publish", () => 
 
     render(<TeacherStudioDashboard />);
 
-    expect(
-      await within(recommended()).findByRole("link", { name: new RegExp(action) }),
-    ).toHaveAttribute("href", "/teach/verification");
+    await waitFor(() =>
+      expect(
+        within(currentStep()).getByRole("link", { name: new RegExp(action) }),
+      ).toHaveAttribute("href", "/teach/verification"),
+    );
   });
 });
 
@@ -410,27 +454,37 @@ describe("Inicio do professor: antes do 1o publish so a lista de passos guia", (
     expect(screen.getByRole("heading", { name: "Choose a product format" })).toBeInTheDocument();
   });
 
-  it("depois do 1o publish os marcos e a lista de atencao voltam", async () => {
+  // Os marcos ("Creator milestones") eram a mesma lista de passos outra vez.
+  it("depois do 1o publish a lista de atencao volta; os marcos nao existem mais", async () => {
     state.courses = [course({ status: "published", paymentType: "free", priceAmountMinor: 0 })];
 
     render(<TeacherStudioDashboard />);
 
     expect(
-      await screen.findByRole("heading", { name: "Creator milestones" }),
+      await screen.findByRole("heading", { name: "What needs your attention today." }),
     ).toBeInTheDocument();
-    expect(
-      screen.getByRole("heading", { name: "What needs your attention today." }),
-    ).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Creator milestones" })).toBeNull();
     // So produto gratis: nada de Stripe "urgente".
     expect(screen.queryByText("Finish your Stripe setup")).toBeNull();
   });
 
-  it("produto pago no ar sem Stripe: a lista de atencao cobra o Stripe", async () => {
+  // "Connect Stripe" aparecia 4 vezes: no passo, no painel ao lado, nos marcos
+  // e no cartao urgente "Finish your Stripe setup". Fica so o passo aberto.
+  it("produto pago no ar sem Stripe: a pendencia aparece uma vez, no passo aberto", async () => {
     state.courses = [course({ status: "published" })];
 
     render(<TeacherStudioDashboard />);
 
-    expect(await screen.findByText("Finish your Stripe setup")).toBeInTheDocument();
+    await waitFor(() => expect(currentStep()).toHaveTextContent("Connect Stripe"));
+    expect(within(currentStep()).getByRole("link", { name: /Connect Stripe/ })).toHaveAttribute(
+      "href",
+      "/account/payments#stripe-connect",
+    );
+    expect(
+      await screen.findByRole("heading", { name: "What needs your attention today." }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Finish your Stripe setup")).toBeNull();
+    expect(screen.queryByText("Payouts ready")).toBeNull();
   });
 });
 
@@ -589,6 +643,9 @@ describe("Home do professor: primeira visita", () => {
 
     expect(await screen.findByText("Revenue, 30d")).toBeInTheDocument();
     expect(screen.getByText("New students")).toBeInTheDocument();
+    // "Completion" era sempre "--": o valor nao e medido, o quadro saiu.
+    expect(screen.queryByText("Completion")).toBeNull();
+    expect(screen.queryByText("Appears once learners finish lessons")).toBeNull();
   });
 
   it("so com matricula gratis (sem pedido pago) os quadros aparecem", async () => {
@@ -707,19 +764,29 @@ describe("Home do professor: movimento", () => {
     expect(within(produtos).getByRole("link", { name: /Primeiro/ })).toHaveClass("motion-hover-lift");
   });
 
-  it("abrir a Home com os passos prontos: check e selo de 100% parados", async () => {
+  // Quem chega com tudo pronto nao ve o bloco (teste acima). Se o ultimo passo
+  // fica pronto com a Home aberta, o bloco fica, com a festa: check e selo.
+  it("o ultimo passo fica pronto com a Home aberta: o bloco fica e o check e o selo se desenham", async () => {
+    let pushProfile: (profile: unknown) => void = () => undefined;
+    data.subscribeToUserProfile.mockImplementationOnce((_uid, onData) => {
+      pushProfile = onData;
+      onData(state.profile);
+      return () => undefined;
+    });
     state.courses = [course({ status: "published" })];
-    state.profile = {
-      stripeConnectChargesEnabled: true,
-      stripeConnectPayoutsEnabled: true,
-    };
 
     const { container } = render(<TeacherStudioDashboard />);
 
-    await waitFor(() => expect(screen.getByText("3 of 3 complete")).toBeInTheDocument());
-    expect(container.querySelectorAll("[data-drawn-check]").length).toBeGreaterThan(0);
+    await waitFor(() => expect(currentStep()).toHaveTextContent("Connect Stripe"));
     expect(container.querySelector(".drawn-check")).toBeNull();
-    expect(container.querySelector("[data-milestone-seal]")).not.toHaveClass("milestone-seal");
+
+    act(() => pushProfile({ stripeConnectChargesEnabled: true, stripeConnectPayoutsEnabled: true }));
+
+    await waitFor(() => expect(screen.getByText("3 of 3 complete")).toBeInTheDocument());
+    expect(screen.getByText("100%")).toBeInTheDocument();
+    expect(container.querySelectorAll(".drawn-check")).toHaveLength(1);
+    expect(container.querySelector("[data-milestone-seal]")).toHaveClass("milestone-seal");
+    expect(document.querySelector('li[aria-current="step"]')).toBeNull();
   });
 });
 vi.mock("@/lib/data/creator-plan", () => ({ fetchCreatorPlanRequired: async () => state.planRequired }));

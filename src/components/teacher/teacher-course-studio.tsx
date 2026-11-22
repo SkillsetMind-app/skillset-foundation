@@ -131,7 +131,16 @@ export function TeacherCourseStudio({
   const router = useRouter();
   const searchParams = useSearchParams();
   const productView = searchParams.get("view") === "communities" ? "communities" : "products";
-  const [courseQuery, setCourseQuery] = useState("");
+  // A busca do topo manda para /teach/builder?q=: a lista ja chega filtrada.
+  // Uma busca nova com a lista aberta troca o ?q= sem remontar a tela, por
+  // isso o campo acompanha a URL quando ela muda (e so entao).
+  const urlQuery = searchParams.get("q") ?? "";
+  const [seededQuery, setSeededQuery] = useState(urlQuery);
+  const [courseQuery, setCourseQuery] = useState(urlQuery);
+  if (seededQuery !== urlQuery) {
+    setSeededQuery(urlQuery);
+    setCourseQuery(urlQuery);
+  }
   const [statusFilter, setStatusFilter] = useState<ProductFilter>("all");
   const [courses, setCourses] = useState<TeacherCourse[]>([]);
   // Kept as a dictionary key so the message follows a locale switch.
@@ -266,6 +275,9 @@ export function TeacherCourseStudio({
 
         <div className="mt-4 grid gap-3 md:grid-cols-[minmax(220px,1fr)_minmax(150px,auto)_minmax(170px,auto)] md:items-end">
           <ListingSearchBar
+            // O campo guarda o rascunho dele; uma busca nova pelo topo o remonta
+            // com o texto novo.
+            key={seededQuery}
             value={courseQuery}
             onChange={setCourseQuery}
             placeholder={

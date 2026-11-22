@@ -179,7 +179,10 @@ export function SaleList() {
 
   return (
     <section className="grid gap-4">
-      <StripeDashboardButton />
+      {/* O comprador paga na conta Stripe do professor: com pedido, a conta
+          existe. Sem nenhum pedido o botao so podia dar o erro "conecte o
+          Stripe" (o aviso de conectar ja esta logo acima). */}
+      {orders.length > 0 ? <StripeDashboardButton /> : null}
       <p className="text-sm leading-6 text-[var(--color-ink-soft)]">
         {t("stripeDashboard.refundGuidance")}{" "}
         <Link href="/support" className="underline underline-offset-4">

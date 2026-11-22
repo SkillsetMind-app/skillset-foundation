@@ -8,12 +8,6 @@ import type { Order } from "@/domain/order";
 import type { TeacherCourse } from "@/domain/teacher-course";
 import { toDate } from "@/lib/format-date";
 
-const money = new Intl.NumberFormat("en", {
-  style: "currency",
-  currency: "USD",
-  maximumFractionDigits: 0,
-});
-
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 
 // A delta is shown ONLY when there is a real prior-period baseline to compare
@@ -44,8 +38,14 @@ export function TeacherOverviewMetrics({
   orders: Order[];
   isLoading: boolean;
 }) {
-  const { t } = useTranslation();
+  const { locale, t } = useTranslation();
   const [now] = useState(() => Date.now());
+  // Na lingua da tela, como Vendas e Ganhos (era sempre "en").
+  const money = new Intl.NumberFormat(locale, {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0,
+  });
 
   const approvedCount = courses.filter(
     (course) => course.status === "published",
@@ -131,14 +131,9 @@ export function TeacherOverviewMetrics({
         : t("teach.metrics.newStudentsHintEmpty"),
       delta: percentDelta(paidOrders30d.length, newStudentsPrev30d),
     },
-    {
-      // Completion is not measured yet: show an honest placeholder, never 0%
-      // (which would read as a real measurement of zero progress).
-      label: t("teach.metrics.completion"),
-      value: "--",
-      hint: t("teach.metrics.completionHint"),
-      delta: null,
-    },
+    // O quadro "Completion" saiu: o valor era fixo em "--", com a dica
+    // "Appears once learners finish lessons", que nunca se cumpria. Volta
+    // quando a Home tiver a conclusao medida.
     {
       label: t("teach.metrics.avgRating"),
       value: averageRating ? averageRating.toFixed(1) : "--",
@@ -154,7 +149,7 @@ export function TeacherOverviewMetrics({
   ];
 
   return (
-    <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <section className="grid gap-4 md:grid-cols-3">
       {cards.map((card) => (
         <div
           key={card.label}

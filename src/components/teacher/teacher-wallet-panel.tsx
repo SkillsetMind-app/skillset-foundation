@@ -182,7 +182,7 @@ export function TeacherWalletPanel() {
   );
   const money = (values: CurrencyAmount[]) =>
     ledgerState === "ready"
-      ? formatCurrencyBreakdown(values)
+      ? formatCurrencyBreakdown(values, locale)
       : ledgerState === "error"
         ? t("teach.earnings.unavailable")
         : "—";
@@ -371,9 +371,13 @@ export function TeacherWalletPanel() {
             />
           </div>
 
-          <div className="mt-5">
-            <StripeDashboardButton />
-          </div>
+          {/* Sem conta conectada o botao so devolvia o erro "conecte o
+              Stripe", com o passo de conectar logo ao lado. */}
+          {connected ? (
+            <div className="mt-5">
+              <StripeDashboardButton />
+            </div>
+          ) : null}
           <button
             type="button"
             onClick={refreshStripeStatus}
@@ -465,9 +469,9 @@ export function TeacherWalletPanel() {
               {t("teach.earnings.statementsBody")}
             </p>
           </div>
-          <button type="button" disabled className="button-outline px-4 py-2.5 text-sm opacity-60">
-            {t("teach.earnings.export")}
-          </button>
+          {/* Aqui havia "Export after first payout", desligado para sempre:
+              nem depois do primeiro repasse ele ligava. O extrato de vendas
+              exporta em Vendas. */}
         </div>
 
         <div className="mt-5 overflow-hidden rounded-lg border border-[var(--color-line)]">
@@ -501,7 +505,7 @@ export function TeacherWalletPanel() {
                 })
                 .slice(0, 6)
                 .map((entry) => (
-                  <LedgerRow key={entry.id} entry={entry} t={t} />
+                  <LedgerRow key={entry.id} entry={entry} t={t} locale={locale} />
                 ))}
             </div>
           )}
@@ -573,14 +577,14 @@ function PayoutStatusRow({
   );
 }
 
-function LedgerRow({ entry, t }: { entry: PayoutLedgerEntry; t: Translate }) {
+function LedgerRow({ entry, t, locale }: { entry: PayoutLedgerEntry; t: Translate; locale: string }) {
   return (
     <Link
       href={`/teach/sales/${entry.orderId}`}
       className="grid gap-3 bg-white p-4 transition hover:bg-[var(--color-surface-soft)] md:grid-cols-[140px_1fr_150px_120px_auto]"
     >
       <span className="text-xs font-semibold text-[var(--color-ink-soft)]">
-        {formatDate(entry.createdAt ?? entry.releaseAt, t("teach.earnings.datePending"))}
+        {formatDate(entry.createdAt ?? entry.releaseAt, t("teach.earnings.datePending"), locale)}
       </span>
       <span className="min-w-0">
         <span className="block truncate text-sm font-bold text-[var(--color-ink)]">
@@ -595,34 +599,37 @@ function LedgerRow({ entry, t }: { entry: PayoutLedgerEntry; t: Translate }) {
         label={t(ledgerStatusKey(entry.status))}
       />
       <span className="text-right text-sm font-black text-[var(--color-primary)] md:text-left">
-        {formatMoney(entry.netAmountMinor, entry.currency)}
+        {formatMoney(entry.netAmountMinor, entry.currency, locale)}
       </span>
       <ArrowRight aria-hidden="true" size={15} strokeWidth={2} className="hidden text-[var(--color-ink-muted)] md:block" />
     </Link>
   );
 }
 
-function formatMoney(amountMinor: number, currency = "USD") {
-  return new Intl.NumberFormat("en", {
+// Dinheiro e data na lingua da tela, como em Vendas. O maior numero de Ganhos
+// saia "0" sem moeda para professor novo, e "USD 49.00 + EUR 10.00" depois;
+// as datas saiam sempre em ingles, inclusive na tela em espanhol.
+function formatMoney(amountMinor: number, currency: string, locale: string) {
+  return new Intl.NumberFormat(locale, {
     style: "currency",
     currency,
   }).format(amountMinor / 100);
 }
 
-function formatCurrencyBreakdown(values: CurrencyAmount[]): string {
-  if (!values.length) return "0";
+function formatCurrencyBreakdown(values: CurrencyAmount[], locale: string): string {
+  if (!values.length) return formatMoney(0, "USD", locale);
   return values
-    .map((value) => `${value.currency} ${(value.amountMinor / 100).toFixed(2)}`)
-    .join(" + ");
+    .map((value) => formatMoney(value.amountMinor, value.currency, locale))
+    .join(" · ");
 }
 
-function formatDate(value: unknown, pendingLabel: string) {
+function formatDate(value: unknown, pendingLabel: string, locale: string) {
   const date = toDate(value);
   if (!date) {
     return pendingLabel;
   }
 
-  return new Intl.DateTimeFormat("en", {
+  return new Intl.DateTimeFormat(locale, {
     dateStyle: "medium",
   }).format(date);
 }

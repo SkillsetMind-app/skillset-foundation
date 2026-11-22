@@ -505,7 +505,7 @@
   },
   "platform": {
     "searchLearnPlaceholder": "Search lessons, courses...",
-    "searchTeachPlaceholder": "Search courses, students...",
+    "searchTeachPlaceholder": "Search your products",
     "searchOpsPlaceholder": "Search users, reviews...",
     "searchDefaultPlaceholder": "Search SkillsetMind...",
     "clearSearch": "Clear search",

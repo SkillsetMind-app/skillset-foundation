@@ -90,6 +90,8 @@ describe("SaleList", () => {
       screen.getByRole("link", { name: "Go to your products" }),
     ).toBeInTheDocument();
     expect(screen.queryByText(/settlement and payout timing/i)).toBeNull();
+    // Sem nenhum pedido, "Open my Stripe" so podia devolver "conecte o Stripe".
+    expect(screen.queryByRole("button", { name: "Open my Stripe" })).toBeNull();
   });
 
   it("names the period when there were sales, just not in it", () => {
@@ -139,6 +141,7 @@ describe("SaleList", () => {
 
   it.each(["en", "es"] as const)("opens the shared Stripe action only on click, with conditional refund guidance (%s)", async (locale) => {
     const dictionary = getDictionary(locale);
+    mocks.orders = [order({})];
     render(<I18nProvider initialLocale={locale}><SaleList /></I18nProvider>);
     expect(mocks.openStripe).not.toHaveBeenCalled();
     expect(screen.getByText(translate(dictionary, "stripeDashboard.refundGuidance"))).toBeVisible();

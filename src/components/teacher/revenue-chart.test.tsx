@@ -4,7 +4,7 @@ import { cleanup, render, screen } from "@testing-library/react";
 import postcss from "postcss";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { RevenueChart } from "@/components/teacher/revenue-chart";
+import { niceStep, RevenueChart } from "@/components/teacher/revenue-chart";
 
 // O que a pessoa sofria: sem venda, Relatorios mostrava a caixa "No revenue in
 // this period" encostada no canto inferior direito do grafico — em cima dos
@@ -66,6 +66,44 @@ describe("grafico de receita sem venda", () => {
   });
 });
 
+// Com $490, $980, $1.470 e $2.450, o eixo escrevia "$613", "$1k" para 1.225 e
+// "$2k" duas vezes, com o texto dentro do SVG (~4px no celular).
+describe("eixo do grafico de receita", () => {
+  const sales = [49000, 98000, 147000, 245000].map((grossMinor, index) => ({
+    key: `2026-0${index + 1}`,
+    label: ["Jan", "Feb", "Mar", "Apr"][index],
+    grossMinor,
+  }));
+
+  it("sobe o topo para um valor redondo e escreve cada linha uma vez, pelo formatador", () => {
+    renderChart(539000, "$5,390", sales);
+
+    const axis = ["$0", "$1K", "$2K", "$3K"];
+    for (const label of axis) expect(screen.getAllByText(label)).toHaveLength(1);
+    expect(screen.queryByText(/\$613|\$2k/)).toBeNull();
+  });
+
+  it("escreve os rotulos fora do SVG, em HTML de 12px", () => {
+    renderChart(539000, "$5,390", sales);
+
+    const chart = screen.getByRole("img", { name: "Revenue chart" });
+    expect(chart.querySelectorAll("text")).toHaveLength(0);
+    expect(screen.getByText("$1K")).toHaveClass("text-xs");
+    expect(screen.getByText("Feb")).toHaveClass("text-xs");
+    expect(chart).toHaveAttribute("preserveAspectRatio", "none");
+  });
+
+  it.each([
+    [612.5, 1000],
+    [375, 500],
+    [2500, 2500],
+    [5000, 5000],
+    [130, 200],
+  ])("passo redondo para %d: %d", (value, expected) => {
+    expect(niceStep(value)).toBe(expected);
+  });
+});
+
 describe("total de receita sem recortes", () => {
   const paidPoints = [
     { key: "2026-09-01", label: "Sep 1", grossMinor: 5000 },
@@ -108,8 +146,10 @@ describe("total de receita sem recortes", () => {
       expect.soft(Number(label.getAttribute("y"))).toBeLessThanOrEqual(height!);
     }
 
-    // O total não pode ser resolvido encolhendo ou deslocando a série.
-    expect(chart.querySelector('path[stroke]')).toHaveAttribute("d", "M48,160.5 L624,18");
+    // O total não pode ser resolvido encolhendo ou deslocando a série. Com o
+    // eixo escrito fora do desenho, a série ocupa a largura toda (0 a 640) e o
+    // pico (US$200, já um topo redondo) chega ao teto.
+    expect(chart.querySelector('path[stroke]')).toHaveAttribute("d", "M0,148 L640,10");
     expect(screen.getByText("$250")).toBeVisible();
   });
 

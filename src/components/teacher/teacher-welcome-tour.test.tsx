@@ -62,7 +62,17 @@ describe("saídas do tour de boas-vindas", () => {
     expect(screen.getByText(locale === "en" ? /Help in the menu/ : /Ayuda en el menú/)).toBeInTheDocument();
     // The advisor is open on every account: the tour no longer ties it to a fee.
     expect(screen.queryByText(/active storefront|tienda activa/)).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: locale === "en" ? "Open your studio" : "Abrir mi espacio" }));
+    // Sem produto, a ultima pagina leva a criar o primeiro, em vez de so fechar.
+    expect(screen.getByRole("link", { name: locale === "en" ? "Create my first product" : "Crear mi primer producto" })).toHaveAttribute("href", "/teach/builder?newCourse=1&format=course");
+    expect(screen.queryByRole("button", { name: locale === "en" ? "Open your studio" : "Abrir mi espacio" })).not.toBeInTheDocument();
+  });
+
+  it("com produto, a ultima pagina so fecha o tour ('Open your studio')", async () => {
+    render(<TeacherWelcomeTour userId="teacher-with-product" firstName="Ana" hasProducts />);
+    await screen.findByRole("dialog");
+    for (let step = 0; step < 3; step += 1) fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    expect(screen.queryByRole("link", { name: "Create my first product" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Open your studio" }));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
