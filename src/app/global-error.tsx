@@ -17,8 +17,9 @@ function crashLocale() {
 // CSS and design tokens are NOT available here — styles must be inline. That
 // also means data-theme is never set, so the crash page can't read the user's
 // stored theme; it falls back to the OS preference via this self-contained
-// block. Values mirror the platform palette (:root / [data-theme="dark"] in
-// globals.css) so a crash still looks like the product.
+// block. The light values are the platform's (:root in globals.css) so a
+// crash still looks like the product; the dark button uses a lighter navy
+// picked for contrast on the dark page, not the dark --color-primary.
 const CRASH_THEME_CSS = `
 :root {
   color-scheme: light;
