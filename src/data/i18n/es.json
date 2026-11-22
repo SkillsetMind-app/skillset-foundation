@@ -1974,6 +1974,7 @@
       "rangeAllTab": "Todo",
       "rangeGroupLabel": "Rango de ingresos",
       "chartAria": "Gráfico de ingresos del profesor",
+      "otherCurrencies": "Las otras monedas no están en este gráfico: {totals}.",
       "noRevenue": "Aún no hay ingresos",
       "noRevenueDetail": "Crea, sube contenido, previsualiza, conecta Stripe y publica.",
       "topCourses": "Cursos destacados",

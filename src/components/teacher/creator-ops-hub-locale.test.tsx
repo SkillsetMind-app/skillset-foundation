@@ -49,15 +49,28 @@ beforeEach(() => {
 });
 afterEach(cleanup);
 
+// Valores de KPI e da tabela pelo formatador da lingua ("$12,346" /
+// "12.346 US$"), fora o total do grafico (STRONG, sempre en-US). Intl pode
+// emitir NBSP: o texto exato evita a normalizacao de espaco do Testing Library.
+function kpiMoney(locale: "en" | "es", value: number, currency: string) {
+  const expected = new Intl.NumberFormat(locale, {
+    style: "currency",
+    currency,
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(value);
+  return (_text: string, element: Element | null) =>
+    element?.tagName !== "STRONG" && element?.children.length === 0 && element?.textContent === expected;
+}
+
 describe("report currency follows the provider without changing amounts or exports", () => {
   it.each(["en", "es"] as const)("formats KPIs and product revenue in %s and keeps the chart total in en-US", locale => {
     render(hub(locale));
-    const number = new Intl.NumberFormat(locale, { maximumFractionDigits: 0 });
-    // Same as creator-reports.test: the chart total matches the shared chart's en-US axis.
+    // Same as creator-reports.test: the chart total stays en-US.
     const chart = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
-    expect(screen.getAllByText(`USD ${number.format(12345.67)}`)).toHaveLength(2);
-    expect(screen.getByText(`USD ${number.format(11011.10)}`)).toBeInTheDocument();
-    expect(screen.getByText(`EUR ${number.format(23456.78)}`)).toBeInTheDocument();
+    expect(screen.getAllByText(kpiMoney(locale, 12345.67, "USD"))).toHaveLength(2);
+    expect(screen.getByText(kpiMoney(locale, 11011.10, "USD"))).toBeInTheDocument();
+    expect(screen.getByText(kpiMoney(locale, 23456.78, "EUR"))).toBeInTheDocument();
     // Intl may emit NBSP; exact textContent checks avoid Testing Library whitespace normalization.
     expect(screen.getByText((_text, element) => element?.tagName === "STRONG" && element.textContent === chart.format(12345.67))).toBeInTheDocument();
     expect(within(screen.getByRole("table")).getByText("Course title $&")).toBeInTheDocument();
@@ -65,11 +78,11 @@ describe("report currency follows the provider without changing amounts or expor
 
   it("relocalizes KPI and table money without restarting the streams or localizing numeric CSV cells", () => {
     render(hub("en"));
-    expect(screen.getAllByText("USD 12,346")).toHaveLength(2);
+    expect(screen.getAllByText(kpiMoney("en", 12345.67, "USD"))).toHaveLength(2);
     fireEvent.click(screen.getByRole("button", { name: "Change language" }));
-    expect(screen.getAllByText("USD 12.346")).toHaveLength(2);
-    expect(screen.getByText("USD 11.011")).toBeInTheDocument();
-    expect(screen.getByText("EUR 23.457")).toBeInTheDocument();
+    expect(screen.getAllByText(kpiMoney("es", 12345.67, "USD"))).toHaveLength(2);
+    expect(screen.getByText(kpiMoney("es", 11011.10, "USD"))).toBeInTheDocument();
+    expect(screen.getByText(kpiMoney("es", 23456.78, "EUR"))).toBeInTheDocument();
     expect(screen.getByText("$12,346", { selector: "strong" })).toBeInTheDocument();
     const props = mocks.exportTable.mock.lastCall?.[0];
     expect(props).toMatchObject({

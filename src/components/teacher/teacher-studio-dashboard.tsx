@@ -47,6 +47,9 @@ export function TeacherStudioDashboard() {
   const [coursesLoaded, setCoursesLoaded] = useState(false);
   const [coursesFailed, setCoursesFailed] = useState(false);
   const [orders, setOrders] = useState<Order[]>([]);
+  // Leitura que falhou nao pode parecer receita zero: os quadros dizem
+  // "Unavailable" (como Ganhos), e enquanto carrega ficam no esqueleto.
+  const [ordersState, setOrdersState] = useState<"loading" | "ready" | "error">("loading");
   const firstName = user?.displayName?.trim().split(/\s+/)[0] ?? "";
   // A taxa unica de ativacao vem do mesmo hook (o MESMO predicado que o
   // servidor aplica no publish, falha aberta): uma leitura so por visita.
@@ -80,8 +83,14 @@ export function TeacherStudioDashboard() {
     // da Home abria a propria leitura. Agora a Home le uma vez e repassa.
     return subscribeToTeacherOrders(
       user.uid,
-      setOrders,
-      logSubscriptionError("TeacherStudioDashboard.orders")
+      (nextOrders) => {
+        setOrders(nextOrders);
+        setOrdersState("ready");
+      },
+      (error) => {
+        logSubscriptionError("TeacherStudioDashboard.orders")(error);
+        setOrdersState("error");
+      }
     );
   }, [user]);
 
@@ -178,7 +187,12 @@ export function TeacherStudioDashboard() {
       {/* Os marcos ("Creator milestones") repetiam os mesmos passos da lista
           acima, e o cartao "Finish your Stripe setup" da lista de atencao
           repetia o passo do Stripe: a pendencia agora aparece uma vez so. */}
-      <TeacherOverviewMetrics courses={courses} orders={orders} isLoading={!coursesLoaded} />
+      <TeacherOverviewMetrics
+        courses={courses}
+        orders={orders}
+        isLoading={!coursesLoaded || ordersState === "loading"}
+        ordersFailed={ordersState === "error"}
+      />
       {launched ? <TeacherStudioInsights courses={courses} orders={orders} /> : null}
     </div>
   );

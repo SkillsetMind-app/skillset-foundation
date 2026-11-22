@@ -16,10 +16,18 @@ const points = [
   { key: "2026-09-02", label: "Sep 2", grossMinor: 0 },
 ];
 
-function renderChart(totalMinor: number, totalLabel: string, chartPoints = points) {
+function renderChart(
+  totalMinor: number,
+  totalLabel: string,
+  chartPoints = points,
+  extra: { currency?: string; note?: string; unavailableLabel?: string } = {},
+) {
   return render(
     <RevenueChart
       points={chartPoints}
+      currency={extra.currency ?? "USD"}
+      note={extra.note}
+      unavailableLabel={extra.unavailableLabel}
       totalMinor={totalMinor}
       totalLabel={totalLabel}
       title="Revenue"
@@ -34,6 +42,14 @@ function renderChart(totalMinor: number, totalLabel: string, chartPoints = point
 afterEach(cleanup);
 
 describe("grafico de receita sem venda", () => {
+  // Carregando ou com erro, "sem receita" afirmaria zero: so o rotulo.
+  it("com dados indisponiveis mostra o rotulo, nunca 'sem receita'", () => {
+    renderChart(0, "$0", points, { unavailableLabel: "Unavailable" });
+
+    expect(screen.getByRole("status")).toHaveTextContent("Unavailable");
+    expect(screen.queryByText("No revenue in this period")).toBeNull();
+  });
+
   it("nao repete o total quando a caixa ja informa que nao ha receita", () => {
     renderChart(0, "$0.00");
 
@@ -91,6 +107,29 @@ describe("eixo do grafico de receita", () => {
     expect(screen.getByText("$1K")).toHaveClass("text-xs");
     expect(screen.getByText("Feb")).toHaveClass("text-xs");
     expect(chart).toHaveAttribute("preserveAspectRatio", "none");
+  });
+
+  // O eixo era USD fixo: quem vende em reais via "$" no eixo.
+  it("escreve o eixo na moeda do grafico e a linha de nota embaixo", () => {
+    renderChart(539000, "R$5,390", sales, {
+      currency: "BRL",
+      note: "Other currencies are not in this chart: $20.",
+    });
+
+    for (const label of ["R$0", "R$1K", "R$2K", "R$3K"]) {
+      expect(screen.getAllByText(label)).toHaveLength(1);
+    }
+    expect(screen.queryByText("$1K")).toBeNull();
+    expect(screen.getByText("Other currencies are not in this chart: $20.")).toBeInTheDocument();
+  });
+
+  // Linha antiga sem moeda: o Intl recusa "UNSPECIFIED"; o eixo cai no texto
+  // simples em vez de derrubar a Home.
+  it("com moeda desconhecida o eixo cai no texto simples, sem quebrar", () => {
+    renderChart(539000, "UNSPECIFIED 5390.00", sales, { currency: "UNSPECIFIED" });
+
+    expect(screen.getByRole("img", { name: "Revenue chart" })).toBeInTheDocument();
+    expect(screen.getByText("UNSPECIFIED 1000.00")).toBeInTheDocument();
   });
 
   it.each([

@@ -1974,6 +1974,7 @@
       "rangeAllTab": "All",
       "rangeGroupLabel": "Revenue range",
       "chartAria": "Teacher revenue chart",
+      "otherCurrencies": "Other currencies are not in this chart: {totals}.",
       "noRevenue": "No revenue yet",
       "noRevenueDetail": "Create, upload, preview, connect Stripe, then publish.",
       "topCourses": "Top courses",

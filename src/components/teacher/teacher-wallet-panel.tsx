@@ -29,6 +29,7 @@ import { subscribeToTeacherPayoutLedger } from "@/lib/data/payout-ledger";
 import { subscribeToUserProfile } from "@/lib/data/user-profiles";
 import { getSafeReturnTo } from "@/lib/auth/routing";
 import { toDate } from "@/lib/format-date";
+import { formatMoney, formatMoneyBreakdown } from "@/lib/format-money";
 import {
   isConnectNotEnabledError,
   refreshTeacherStripeAccountStatus,
@@ -209,7 +210,7 @@ export function TeacherWalletPanel() {
   const zeroCurrency = currencies.size === 1 ? [...currencies][0] : null;
   const money = (values: CurrencyAmount[]) =>
     ledgerState === "ready"
-      ? formatCurrencyBreakdown(values, locale, zeroCurrency)
+      ? formatMoneyBreakdown(values, locale, zeroCurrency)
       : ledgerState === "error"
         ? t("teach.earnings.unavailable")
         : "—";
@@ -642,31 +643,8 @@ function LedgerRow({ entry, t, locale }: { entry: PayoutLedgerEntry; t: Translat
 
 // Dinheiro e data na lingua da tela, como em Vendas. O maior numero de Ganhos
 // saia "0" sem moeda para professor novo, e "USD 49.00 + EUR 10.00" depois;
-// as datas saiam sempre em ingles, inclusive na tela em espanhol.
-function formatMoney(amountMinor: number, currency: string | null | undefined, locale: string) {
-  try {
-    return new Intl.NumberFormat(locale, {
-      style: "currency",
-      currency: currency ?? "",
-    }).format(amountMinor / 100);
-  } catch {
-    // Linha antiga do ledger sem moeda vira "UNSPECIFIED" no dominio, e o Intl
-    // recusa codigo invalido com RangeError: derrubaria a pagina inteira.
-    return `${currency ?? ""} ${(amountMinor / 100).toFixed(2)}`.trim();
-  }
-}
-
-function formatCurrencyBreakdown(
-  values: CurrencyAmount[],
-  locale: string,
-  zeroCurrency: string | null,
-): string {
-  if (!values.length) return zeroCurrency ? formatMoney(0, zeroCurrency, locale) : "0";
-  return values
-    .map((value) => formatMoney(value.amountMinor, value.currency, locale))
-    .join(" · ");
-}
-
+// as datas saiam sempre em ingles, inclusive na tela em espanhol. O dinheiro
+// (com o recuo para moeda que o Intl recusa) mora em @/lib/format-money.
 function formatDate(value: unknown, pendingLabel: string, locale: string) {
   const date = toDate(value);
   if (!date) {
