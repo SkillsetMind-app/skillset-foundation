@@ -3241,7 +3241,6 @@
       "when_can_a_sale_be_refunded": "When can a sale be refunded, and does it affect my payout?",
       "learners_can_self_refund_within_days": "Learners can self-refund within {value0} days of purchase if they've completed less than half the course. Because the buyer paid your Stripe account directly, the refund is debited from your own balance — and SkillsetMind's commission on that sale is returned to you with it, so you never pay a fee on a sale that was undone.",
       "ready_to_publish_on_skillsetmind": "Ready to publish on SkillsetMind?",
-      "start_with_a_free_trial": "Every plan starts with a 14-day free trial, card required. Cancel anytime in Billing before it ends and you won't be charged.",
       "creator_overview": "Creator overview",
       "start_free": "Create account",
       "start_plan": "Start on {plan}",

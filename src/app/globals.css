@@ -1008,8 +1008,11 @@ p {
 }
 
 /* Visible by default: without JavaScript nothing would ever add --in, so
-   the page used to render its sections invisible. The inline head script
-   stamps html.js before first paint; only then does a section start hidden. */
+   the page used to render its sections invisible. Também não some antes da
+   hidratação: o html.js chega antes da primeira pintura, e esconder só por ele
+   deixava a home em branco num celular lento (ou para sempre, se o JavaScript
+   falhasse). Só a seção que o useRevealOnView armou, já montada e ainda abaixo
+   da tela, começa escondida. */
 .reveal-on-view {
   transition:
     opacity 300ms ease,
@@ -1017,10 +1020,12 @@ p {
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  html.js .reveal-on-view:not(.reveal-on-view--in) {
+  html.js .reveal-on-view--armed:not(.reveal-on-view--in) {
     opacity: 0;
     transform: translateY(12px);
     will-change: opacity, transform;
+    /* Some de uma vez (está fora da tela); a entrada usa a transição acima. */
+    transition: none;
   }
 }
 
@@ -1934,7 +1939,16 @@ html[data-view-as] .site-header {
   display: flex;
   align-items: center;
   gap: 16px;
-  padding: 8px 20px;
+  /* A mesma margem das páginas em toda largura: 20px no celular, 32px a
+     partir de 640px (px-5 sm:px-8 do PublicPage e das faixas da home). De 640
+     a 1279px a barra ficava com 20px e o título logo abaixo com 32px. */
+  padding: 8px var(--container-pad-mobile);
+}
+
+@media (min-width: 640px) {
+  .site-header__inner {
+    padding-inline: var(--container-pad-desktop);
+  }
 }
 
 .site-header__links {
@@ -2969,15 +2983,10 @@ select:focus-visible {
 }
 
 @media (width < 1280px) {
+  /* Os links ficam no menu até 1279px: a conta em barra-do-topo-cabe.test.ts
+     mostra que em 1024px eles e os botões não cabem (logado, ou em espanhol). */
   .site-header__links {
     display: none;
-  }
-
-  /* 20px, a mesma margem das páginas no celular (--container-pad-mobile):
-     com 14px a marca ficava fora da linha do título logo abaixo. */
-  .site-header__inner {
-    padding-right: var(--container-pad-mobile);
-    padding-left: var(--container-pad-mobile);
   }
 
   .btn-signin,

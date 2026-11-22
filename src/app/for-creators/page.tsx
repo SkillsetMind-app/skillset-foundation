@@ -1,5 +1,6 @@
 import { getServerTranslation } from "@/lib/i18n/server";
 import Link from "next/link";
+import { Check } from "lucide-react";
 
 import { PublicPage } from "@/components/site/public-page";
 import { PLAN_TRIAL_DAYS, planById } from "@/data/plans";
@@ -78,16 +79,21 @@ export default async function ForCreatorsPage() {
       </section>
 
       <section className="mt-6 grid gap-5 lg:grid-cols-[1fr_0.8fr]">
-        <div className="grid gap-3">
+        {/* Uma lista num cartão só, com o check dos cartões de preço: eram
+            seis caixas com sombra, cada uma com uma frase. */}
+        <ul className="grid content-start gap-3 rounded-lg border fine-rule bg-white p-6 text-sm leading-7 text-[var(--color-ink)] shadow-[var(--shadow-soft)]">
           {creatorTools.map((tool) => (
-            <div
-              key={tool}
-              className="rounded-lg border fine-rule bg-white p-5 text-sm font-semibold leading-7 text-[var(--color-ink)] shadow-[var(--shadow-soft)]"
-            >
-              {tool}
-            </div>
+            <li key={tool} className="flex items-start gap-3">
+              <Check
+                aria-hidden="true"
+                size={16}
+                strokeWidth={2.4}
+                className="mt-1.5 shrink-0 text-[var(--color-primary)]"
+              />
+              <span>{tool}</span>
+            </li>
           ))}
-        </div>
+        </ul>
         <aside className="primary-fill-card rounded-lg border border-[var(--color-line)] bg-[var(--color-primary)] p-6 text-white shadow-[var(--shadow-soft)]">
           <p className="text-xs font-bold uppercase tracking-[0.2em] text-white/70">
             {t("publicPages.creators.creator_path")}

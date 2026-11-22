@@ -1,11 +1,11 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { act, cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { FeaturedCourses } from "@/components/site/featured-courses";
 
 const mocks = vi.hoisted(() => ({
   getSupabaseClientConfig: vi.fn(),
-  subscribeToPublishedTeacherCourses: vi.fn(() => () => {}),
+  subscribeToPublishedTeacherCourses: vi.fn<(next: (courses: unknown[]) => void, onError: () => void) => () => void>(() => () => {}),
 }));
 
 vi.mock("@/lib/supabase/config", () => ({
@@ -55,5 +55,23 @@ describe("FeaturedCourses", () => {
       screen.queryByText(/Professional programs across coaching/),
     ).not.toBeInTheDocument();
     expect(screen.queryByRole("list")).not.toBeInTheDocument();
+  });
+
+  // Os 6 cartões chegavam de uma vez e empurravam a página para baixo:
+  // agora o molde do catálogo guarda o lugar até a primeira resposta.
+  it("holds the cards' place with the catalog skeleton until the first answer", () => {
+    mocks.getSupabaseClientConfig.mockReturnValue({ url: "https://example.test", anonKey: "anon" });
+    let answer: (courses: unknown[]) => void = () => {};
+    mocks.subscribeToPublishedTeacherCourses.mockImplementationOnce((next) => {
+      answer = next;
+      return () => {};
+    });
+
+    const { container } = render(<FeaturedCourses />);
+
+    const skeleton = container.querySelector(".marketplace-course-grid[aria-hidden='true']");
+    expect(skeleton?.querySelectorAll(".marketplace-card.animate-pulse")).toHaveLength(6);
+    act(() => answer([]));
+    expect(container.querySelector(".animate-pulse")).toBeNull();
   });
 });
