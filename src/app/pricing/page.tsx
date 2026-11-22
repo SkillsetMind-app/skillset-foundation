@@ -94,7 +94,7 @@ export default async function PricingPage() {
                 }
               >
                 {isHighlight ? (
-                  <span className="absolute -top-3 left-6 rounded-full bg-[var(--color-accent)] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-white">
+                  <span className="absolute -top-3 left-6 rounded-chip bg-[var(--color-accent)] px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--color-on-accent)]">
                     {t("publicPages.pricing.recommended")}
                   </span>
                 ) : null}

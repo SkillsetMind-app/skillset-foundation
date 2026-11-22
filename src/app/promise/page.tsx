@@ -114,7 +114,9 @@ export default async function PromisePage() {
               className="rounded-lg border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)] sm:p-8"
             >
               <div className="grid gap-5 lg:grid-cols-[120px_1fr]">
-                <p className="display-title text-7xl leading-none text-[var(--color-accent-soft)]">
+                {/* Numero de enfeite: creme sobre branco dava ~1,2:1 e ainda era
+                    lido pelo leitor de tela antes do titulo da promessa. */}
+                <p aria-hidden="true" className="display-title text-5xl leading-none text-[var(--color-ink-muted)]">
                   {promise.number}
                 </p>
                 <div>
