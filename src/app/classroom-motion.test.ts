@@ -81,6 +81,27 @@ describe("a moldura da sala", () => {
 
   // A caixa de espera tinha 260-520px e o player que chega é 16:9: a aula
   // pulava quando o vídeo aparecia.
+  // A barra presa no pé (~69px) escondia o item focado pelo Tab (WCAG 2.4.11).
+  it("com a aula aberta, a rolagem do foco para acima da barra presa", () => {
+    const [, padding] = css.match(/html:has\(#member-lesson-player\) \{\s*scroll-padding-bottom: (\d+)px;/)!;
+    expect(Number(padding)).toBeGreaterThanOrEqual(69);
+  });
+
+  // A barra rola de lado e corta o que passa da borda: o anel de foco (2px
+  // + 3px de afastamento) da primeira aba sumia à esquerda.
+  it("a barra de abas tem folga por dentro para o anel de foco", () => {
+    const [, padding] = block(".member-classroom[data-members-theme] > .member-classroom-tabs").match(/padding-inline: (\d+)px;/)!;
+    expect(Number(padding)).toBeGreaterThanOrEqual(5);
+  });
+
+  // "Watch now": o ícone pegava a cor da regra da plataforma e o rótulo a do
+  // curso, cada um de um jeito.
+  it("ícone e rótulo do botão cheio da sala usam a mesma cor do curso", () => {
+    expect(css).toMatch(
+      /\.member-classroom\[data-members-theme\] \.button-solid \*,[\s\S]{0,200}?\{\s*color: var\(--ma-on-accent\) !important;/,
+    );
+  });
+
   it("a caixa de espera do vídeo já tem o 16:9 do player", () => {
     const loading = block(".member-video-empty--loading");
     expect(loading).toContain("aspect-ratio: 16 / 9;");
@@ -100,6 +121,11 @@ describe("a gaveta da pergunta", () => {
     expect(rule).toContain("--color-surface: var(--ma-surface);");
     expect(rule).toContain("--color-ink: var(--ma-ink);");
     expect(rule).toContain("--color-line: var(--ma-line);");
+    // Erro e "respondida": no curso escuro o vermelho e o verde da plataforma
+    // davam ~2.7:1. Vale para a gaveta e para os cartões do feed da sala.
+    expect(css).toMatch(
+      /\.member-classroom\[data-members-theme\] \.community-drawer,\s*\.member-classroom\[data-members-theme\] \[data-community-item\] \{\s*--color-danger-fg: var\(--ma-accent-ink\);\s*--color-success-fg: var\(--ma-success-ink\);/,
+    );
   });
 
   it("entra deslizando, só em no-preference", () => {

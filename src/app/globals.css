@@ -5722,6 +5722,13 @@ body:has([aria-label="Course categories"])
   box-shadow: var(--ma-shadow);
 }
 
+/* Com a barra "Mark complete & next" presa no pé da tela (~69px: 44 do botão,
+   24 de respiro, 1 de borda), o navegador levava o item focado pelo Tab até a
+   borda de baixo, atrás dela. Só na página que tem a aula aberta. */
+html:has(#member-lesson-player) {
+  scroll-padding-bottom: 88px;
+}
+
 .member-classroom[data-members-theme] > .members-hero {
   border-bottom: 1px solid var(--ma-line);
 }
@@ -5754,8 +5761,13 @@ body:has([aria-label="Course categories"])
   padding-inline: 0;
 }
 
+/* A barra rola de lado (overflow-x), e isso corta o que passa da borda dela:
+   o anel de foco (2px + 3px de afastamento) da primeira aba sumia à
+   esquerda. 6px de folga por dentro, descontados da margem, e o texto segue
+   alinhado com os painéis. */
 .member-classroom[data-members-theme] > .member-classroom-tabs {
-  margin-inline: 24px;
+  margin-inline: 18px;
+  padding-inline: 6px;
 }
 
 /* O texto da primeira aba começa na mesma linha dos painéis. */
@@ -5803,6 +5815,18 @@ body:has([aria-label="Course categories"])
   /* --ma-ink-muted não chega a 4.5:1 no escuro; o meta (autor, hora) é
      leitura, então usa o tom suave. */
   --color-ink-muted: var(--ma-ink-soft);
+}
+
+/* Erro e "respondida" na gaveta e nos cartões do feed da sala (o fundo dos
+   cartões já é --ma-surface pela regra do bg-white). O vermelho e o verde da
+   plataforma davam ~2.7:1 num curso escuro, e o vermelho do modo escuro
+   ~2.7:1 sobre o branco de um curso claro. Os -ink do curso existem para
+   isso: no claro 5.5:1 e 7:1 sobre branco; no escuro 5.6:1 e 5.3:1 sobre
+   #141923. */
+.member-classroom[data-members-theme] .community-drawer,
+.member-classroom[data-members-theme] [data-community-item] {
+  --color-danger-fg: var(--ma-accent-ink);
+  --color-success-fg: var(--ma-success-ink);
 }
 
 .member-classroom[data-members-theme] .member-preview-banner,
@@ -6087,6 +6111,17 @@ body:has([aria-label="Course categories"])
   box-shadow: 0 16px 32px rgba(178, 34, 52, 0.34);
 }
 
+/* O ícone dentro do botão (o Play de "Watch now") segue o rótulo. Sem isto
+   a regra da plataforma para `.button-solid *` pintava o ícone escuro no modo
+   escuro, ou branco sobre uma cor clara do professor, com o texto de outra
+   cor ao lado. */
+.member-classroom[data-members-theme] .button-solid *,
+.member-classroom[data-members-theme] .button-solid:hover *,
+.member-classroom[data-members-theme] .button-accent *,
+.member-classroom[data-members-theme] .button-accent:hover * {
+  color: var(--ma-on-accent) !important;
+}
+
 .member-classroom[data-members-theme] .button-outline {
   border-color: var(--ma-line-2);
   background: transparent;
@@ -6110,10 +6145,14 @@ body:has([aria-label="Course categories"])
   }
 
   .member-classroom[data-members-theme] > .member-classroom-head,
-  .member-classroom[data-members-theme] > .member-classroom-tabs,
   .member-classroom[data-members-theme] > .member-preview-banner {
     margin-right: 14px;
     margin-left: 14px;
+  }
+
+  /* 14px menos os 6px de folga do anel de foco (regra de cima). */
+  .member-classroom[data-members-theme] > .member-classroom-tabs {
+    margin-inline: 8px;
   }
 
   .member-classroom[data-members-theme] > .member-classroom-body {

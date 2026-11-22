@@ -172,7 +172,7 @@ export function CommunityPostDrawer({
             <span
               className={`mt-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-bold ${
                 answered
-                  ? "bg-[rgba(22,163,74,0.1)] text-[rgb(21,128,61)]"
+                  ? "bg-[rgba(22,163,74,0.1)] text-[var(--color-success-fg)]"
                   : "bg-[var(--color-surface-soft)] text-[var(--color-ink-soft)]"
               }`}
             >
@@ -207,7 +207,7 @@ export function CommunityPostDrawer({
                       <span className="font-semibold text-[var(--color-ink)]">{reply.authorName}</span>
                       {isInstructor(reply, instructorIds) ? ` · ${t("learn.community.card.instructor")}` : ""}
                       {isAnswer ? (
-                        <span className="ml-1 inline-flex items-center gap-0.5 font-bold text-[rgb(21,128,61)]">
+                        <span className="ml-1 inline-flex items-center gap-0.5 font-bold text-[var(--color-success-fg)]">
                           <CheckCircle2 size={11} aria-hidden /> {t("learn.community.card.answer")}
                         </span>
                       ) : null}
