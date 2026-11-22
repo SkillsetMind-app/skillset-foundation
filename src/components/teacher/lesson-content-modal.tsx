@@ -1344,7 +1344,7 @@ export function LessonContentModal({
   );
 
   return isPage ? content : (
-    <div className="lesson-modal-overlay" role="presentation" onMouseDown={requestClose}>
+    <div className="dialog-backdrop lesson-modal-overlay" role="presentation" onMouseDown={requestClose}>
       {content}
     </div>
   );

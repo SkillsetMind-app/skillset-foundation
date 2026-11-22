@@ -1,6 +1,6 @@
 "use client";
 
-import { ShieldCheck } from "lucide-react";
+import { ShieldCheck, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
@@ -297,11 +297,23 @@ export function TotpMfaSection({ emailVerified }: { emailVerified: boolean }) {
             role="dialog"
             aria-modal="true"
             aria-labelledby="totp-setup-title"
-            className="modal-panel modal-panel-scroll w-full max-w-md rounded-xl border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-strong)] outline-none"
+            className="modal-panel modal-panel-scroll relative w-full max-w-md rounded-xl border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-strong)] outline-none"
           >
+            {/* O X é o mesmo Cancelar do rodapé, e some enquanto ele trava
+                (conferindo o código). */}
+            {busy ? null : (
+              <button
+                type="button"
+                onClick={closeSetup}
+                aria-label={t("accountSecurity.mfa.close")}
+                className="button-icon absolute right-3 top-3"
+              >
+                <X aria-hidden="true" size={18} />
+              </button>
+            )}
             <h2
               id="totp-setup-title"
-              className="text-xl font-semibold text-[var(--color-primary)]"
+              className="pr-10 text-xl font-semibold text-[var(--color-primary)]"
             >
               {t("accountSecurity.mfa.dialogTitle")}
             </h2>

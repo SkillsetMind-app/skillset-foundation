@@ -46,3 +46,61 @@ describe("camadas das janelas de tela cheia", () => {
     expect(z).toBeGreaterThan(sidebarZ);
   });
 });
+
+// O teste acima só lê "fixed inset-0 z-" escrito no componente. Ficavam de
+// fora as camadas feitas por classe do CSS (estúdio da aula, gaveta da
+// comunidade, faixa "Rascunho salvo") e o que não cobre a tela inteira, como
+// o cartão de envio do vídeo, que em z 90 ficava por cima de toda janela.
+// Aqui a escala com nome do :root é a régua, e cada camada é lida no CSS.
+describe("escala de camadas com nome", () => {
+  // Sem comentários: o do topo cita "z-index: 1" no meio do texto.
+  const css = readFileSync(join(process.cwd(), "src", "app", "globals.css"), "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
+  const rootBlock = css.slice(css.indexOf(":root {"), css.indexOf("\n}", css.indexOf(":root {")));
+  const layers: Record<string, number> = Object.fromEntries(
+    [...rootBlock.matchAll(/--z-([a-z-]+):\s*(\d+);/g)].map((m) => [m[1], Number(m[2])]),
+  );
+
+  // z-index da 1ª regra do seletor; aceita número ou var(--z-...).
+  function zOf(selector: string): number {
+    const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const body = css.match(new RegExp(`^\\s*${escaped} \\{([^}]*)\\}`, "m"))?.[1] ?? "";
+    const value = body.match(/z-index:\s*([^;]+);/)?.[1]?.trim() ?? "";
+    const named = value.match(/^var\(--z-([a-z-]+)\)$/)?.[1];
+    return named ? layers[named] : Number(value);
+  }
+
+  it("lê a escala no :root, de baixo para cima", () => {
+    const order = ["dropdown", "topbar", "rail", "float", "banner", "modal", "modal-studio", "modal-top", "tooltip"];
+    const values = order.map((name) => layers[name]);
+    expect(values.every((value) => Number.isFinite(value))).toBe(true);
+    expect([...values].sort((a, b) => a - b)).toEqual(values);
+  });
+
+  it.each([
+    [".platform-topbar", "topbar"],
+    [".platform-sidebar", "rail"],
+    [".floating-action", "float"],
+    [".created-strip", "float"],
+    [".cookie-consent", "banner"],
+    [".community-drawer-backdrop", "modal"],
+    [".lesson-modal-overlay", "modal-studio"],
+  ])("%s está na camada %s", (selector, layer) => {
+    expect(zOf(selector)).toBe(layers[layer]);
+  });
+
+  it("a barra lateral lida pelo teste de cima é a mesma da escala", () => {
+    expect(sidebarZ).toBe(layers.rail);
+  });
+
+  it("o cartão de envio do vídeo fica acima do menu lateral e abaixo de toda janela", () => {
+    const source = readFileSync(join(root, "teacher", "lesson-upload-provider.tsx"), "utf8");
+    const named = source.match(/<aside[^>]*className="[^"]*\bfixed\b[^"]*\bz-\[var\(--z-([a-z-]+)\)\]/)?.[1];
+    expect(named).toBeDefined();
+    const z = layers[named!];
+    expect(z).toBeGreaterThan(layers.rail);
+    expect(z).toBeLessThan(layers.modal);
+    // No celular ele sobe acima da barra de baixo, como o aviso de cookies.
+    expect(source).toContain("lesson-upload-card");
+    expect(css).toMatch(/body:has\(\.platform-mobile-nav\) \.lesson-upload-card \{\s*bottom: calc\(60px \+ 1rem/);
+  });
+});

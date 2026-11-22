@@ -39,6 +39,34 @@ describe("moldura das janelas", () => {
     );
   });
 
+  it("as janelas que pintavam um fundo próprio usam o do token, sem desfoque", () => {
+    for (const file of [
+      "learn/course-unlock-modal.tsx",
+      "learn/lesson-list-overlay.tsx",
+      "learn/welcome-tour.tsx",
+      "auth/auth-provider.tsx",
+      "teacher/lesson-content-modal.tsx",
+    ]) {
+      const source = readFileSync(join(process.cwd(), "src", "components", file), "utf8");
+      expect(source, file).toContain("dialog-backdrop");
+      expect(source, file).not.toContain("backdrop-blur");
+    }
+    // A camada do estúdio da aula não repinta o fundo por cima do token.
+    const studio = css.slice(css.indexOf("\n.lesson-modal-overlay {"), css.indexOf("}", css.indexOf("\n.lesson-modal-overlay {")));
+    expect(studio).toContain("position: fixed;");
+    expect(studio).not.toMatch(/background|backdrop-filter/);
+    // A folha de ajuda é um <dialog> nativo: mesma reserva do dialog.modal-panel.
+    expect(css).toMatch(
+      /\n\.contextual-help-dialog::backdrop \{\s*background: var\(--color-scrim, rgba\(15, 39, 68, 0\.62\)\);/,
+    );
+  });
+
+  it("num curso escuro, dentro da sala, o fundo também escurece", () => {
+    const start = css.indexOf('\n[data-members-theme="dark"] {');
+    expect(start).toBeGreaterThan(-1);
+    expect(css.slice(start, css.indexOf("\n}", start))).toContain("--color-scrim: rgba(0, 0, 0, 0.6);");
+  });
+
   it("no tema escuro o fundo escurece (preto), em vez de tingir de navy", () => {
     const start = css.indexOf('[data-theme="dark"] {');
     const dark = css.slice(start, css.indexOf("\n}", start));

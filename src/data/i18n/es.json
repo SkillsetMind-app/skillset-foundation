@@ -2817,6 +2817,7 @@
         "title": "¿Eliminar este curso?",
         "description": "Esto elimina de forma permanente el curso y todo su contenido. No se puede deshacer.",
         "cancel": "Cancelar",
+        "close": "Cerrar",
         "busy": "Eliminando...",
         "confirm": "Sí, eliminar",
         "consequences": {
@@ -4760,6 +4761,7 @@
       "verifying": "Verificando...",
       "enable": "Activar 2FA",
       "cancel": "Cancelar",
+      "close": "Cerrar",
       "preparing": "Preparando...",
       "setup": "Configurar autenticador",
       "codeRequired": "Introduce el código de 6 dígitos de tu aplicación de autenticación.",
@@ -4993,6 +4995,7 @@
     "purchased": "Fecha de compra",
     "amount": "Importe",
     "cancel": "Cancelar",
+    "closeDialog": "Cerrar",
     "submitting": "Enviando...",
     "submitRefund": "Solicitar reembolso",
     "refundErrors": {

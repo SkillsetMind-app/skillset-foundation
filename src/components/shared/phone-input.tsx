@@ -165,7 +165,7 @@ export function PhoneInput({ value, onChange, label }: PhoneInputProps) {
             role="listbox"
             aria-label={t("phoneInput.countryList")}
             onKeyDown={(event) => moveFocusByKey(event, '[role="option"]')}
-            className="absolute left-0 top-[calc(100%+8px)] z-50 max-h-72 w-72 max-w-full overflow-y-auto rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)] p-1.5 shadow-[var(--shadow-strong)]"
+            className="motion-drop-in absolute left-0 top-[calc(100%+8px)] z-50 max-h-72 w-72 max-w-full overflow-y-auto rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)] p-1.5 shadow-[var(--shadow-strong)]"
           >
             {countries.map((country) => {
               const selected = country.code === selectedCountry.code;

@@ -381,6 +381,32 @@ describe("modal de excluir/arquivar — o texto segue o dado", () => {
   });
 });
 
+describe("modal de excluir/arquivar — o X do cabeçalho", () => {
+  it("fecha como o Cancelar, sem apagar nada", async () => {
+    const dialog = await abreModalDoHub();
+    const close = within(dialog).getByRole("button", { name: "Close" });
+    expect(close).toHaveClass("button-icon");
+
+    fireEvent.click(close);
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(mocks.deleteOrArchiveCourse).not.toHaveBeenCalled();
+  });
+
+  it("some enquanto apaga, quando o Cancelar também trava", async () => {
+    let fail!: (reason: unknown) => void;
+    mocks.deleteOrArchiveCourse.mockReturnValue(new Promise((_, reject) => { fail = reject; }));
+    const dialog = await abreModalDoHub();
+    fireEvent.click(within(dialog).getByRole("button", { name: "Yes, delete" }));
+
+    await waitFor(() => expect(within(dialog).getByRole("button", { name: "Cancel" })).toBeDisabled());
+    expect(within(dialog).queryByRole("button", { name: "Close" })).toBeNull();
+
+    fail(new Error("23503"));
+    expect(await within(dialog).findByRole("button", { name: "Close" })).toBeInTheDocument();
+  });
+});
+
 describe("o que acontece depois da ação", () => {
   it("apagado, o hub sai de cena e volta para a lista", async () => {
     const dialog = await abreModalDoHub();

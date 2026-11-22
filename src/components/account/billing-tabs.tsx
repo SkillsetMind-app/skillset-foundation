@@ -2,7 +2,7 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { startTransition, useEffect, useMemo, useRef, useState } from "react";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, X } from "lucide-react";
 
 import { PlansPanel } from "@/components/account/plans-panel";
 import { useTranslation } from "@/components/i18n/i18n-provider";
@@ -668,15 +668,27 @@ function RefundModal({
       onClick={onClose}
     >
       <div
-        className="modal-panel modal-panel-scroll w-full max-w-md rounded-xl border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-strong)]"
+        className="modal-panel modal-panel-scroll relative w-full max-w-md rounded-xl border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-strong)]"
         onClick={(event) => event.stopPropagation()}
       >
+        {/* O X faz o mesmo que o Cancelar (e o Concluído): some enquanto o
+            pedido de reembolso está indo, quando o Cancelar também trava. */}
+        {busy ? null : (
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label={t("accountBilling.closeDialog")}
+            className="button-icon absolute right-3 top-3"
+          >
+            <X aria-hidden="true" size={18} />
+          </button>
+        )}
         {done ? (
           <>
-            <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-success-fg)]">
+            <p className="pr-10 text-xs uppercase tracking-[0.22em] text-[var(--color-success-fg)]">
               {t("accountBilling.refundRequested")}
             </p>
-            <h2 className="display-title mt-2 text-2xl text-[var(--color-primary)]">
+            <h2 className="display-title mt-2 pr-10 text-2xl text-[var(--color-primary)]">
               {t("accountBilling.refundReceived")}
             </h2>
             <p className="mt-3 text-sm leading-7 text-[var(--color-ink-soft)]">
@@ -694,10 +706,10 @@ function RefundModal({
           </>
         ) : (
           <>
-            <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
+            <p className="pr-10 text-xs uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
               {t("accountBilling.refundRequest")}
             </p>
-            <h2 className="display-title mt-2 text-2xl text-[var(--color-primary)]">
+            <h2 className="display-title mt-2 pr-10 text-2xl text-[var(--color-primary)]">
               {t("accountBilling.requestRefund")}.
             </h2>
             <p className="mt-3 text-sm leading-7 text-[var(--color-ink-soft)]">

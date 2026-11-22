@@ -109,6 +109,37 @@ describe("TOTP setup dialog", () => {
     expect(document.activeElement).toBe(trigger);
   });
 
+  // O X do cabeçalho é o mesmo Cancelar: fecha sem ativar e devolve o foco.
+  it("closes on the X like Cancel, without enrolling", async () => {
+    renderSection();
+    const { trigger, dialog } = await openDialog();
+
+    const close = within(dialog).getByRole("button", { name: "Close" });
+    expect(close).toHaveClass("button-icon");
+    fireEvent.click(close);
+
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(document.activeElement).toBe(trigger);
+    expect(mocks.calls.finishTotpEnrollment).not.toHaveBeenCalled();
+  });
+
+  it("hides the X while the code is being checked, as Cancel is locked then", async () => {
+    let fail!: (reason: unknown) => void;
+    mocks.calls.finishTotpEnrollment.mockReturnValue(new Promise((_, reject) => { fail = reject; }));
+    renderSection();
+    const { dialog } = await openDialog();
+
+    fireEvent.change(within(dialog).getByLabelText("Authenticator code"), { target: { value: "000000" } });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Turn on 2FA" }));
+
+    expect(await within(dialog).findByRole("button", { name: "Verifying..." })).toBeDisabled();
+    expect(within(dialog).getByRole("button", { name: "Cancel" })).toBeDisabled();
+    expect(within(dialog).queryByRole("button", { name: "Close" })).toBeNull();
+
+    await act(async () => fail({ code: "invalid_otp", message: "detail" }));
+    expect(within(screen.getByRole("dialog")).getByRole("button", { name: "Close" })).toBeInTheDocument();
+  });
+
   it("keeps Tab focus inside the dialog", async () => {
     renderSection();
     const { dialog } = await openDialog();

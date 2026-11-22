@@ -2817,6 +2817,7 @@
         "title": "Delete this course?",
         "description": "This permanently deletes the course and all its content. It can't be undone.",
         "cancel": "Cancel",
+        "close": "Close",
         "busy": "Deleting...",
         "confirm": "Yes, delete",
         "consequences": {
@@ -4760,6 +4761,7 @@
       "verifying": "Verifying...",
       "enable": "Turn on 2FA",
       "cancel": "Cancel",
+      "close": "Close",
       "preparing": "Preparing...",
       "setup": "Set up authenticator",
       "codeRequired": "Enter the 6-digit code from your authenticator app.",
@@ -4993,6 +4995,7 @@
     "purchased": "Purchased",
     "amount": "Amount",
     "cancel": "Cancel",
+    "closeDialog": "Close",
     "submitting": "Submitting...",
     "submitRefund": "Request refund",
     "refundErrors": {
