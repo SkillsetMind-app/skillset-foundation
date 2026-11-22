@@ -22,6 +22,8 @@ const fixtures = vi.hoisted(() => ({
   subscriptions: 0,
   // true: a assinatura do curso não responde, como uma leitura ainda a caminho.
   holdCourse: false,
+  // O último onNext da assinatura do curso, para entregar o curso mais tarde.
+  courseNext: null as ((course: TeacherCourse) => void) | null,
   // As chaves públicas (payments.checkout): ligadas, salvo no teste que as desliga.
   flagsOn: true,
   router: { push: vi.fn(), replace: vi.fn() },
@@ -94,6 +96,7 @@ vi.mock("@/lib/data/published-courses", () => ({
     onNext: (course: TeacherCourse) => void,
   ) => {
     fixtures.subscriptions += 1;
+    fixtures.courseNext = onNext;
     if (!fixtures.holdCourse) onNext(fixtures.course);
     return () => {};
   },
@@ -324,10 +327,15 @@ describe("CreatorCourseDetail: links para a loja", () => {
   it.each([
     [true, "Back to all courses", "/courses"],
     [false, "Go home", "/"],
-  ])("a volta do cartão de compra (loja com curso real: %s)", async (value, name, href) => {
-    render(<RealCoursesProvider value={value}><CreatorCourseDetail courseIdOverride="course-1" hideHeader /></RealCoursesProvider>);
+  ])("a volta ao catálogo, no alto da página e fora do cartão de compra (loja com curso real: %s)", async (value, name, href) => {
+    const { container } = render(<RealCoursesProvider value={value}><CreatorCourseDetail courseIdOverride="course-1" hideHeader /></RealCoursesProvider>);
 
-    expect(await screen.findByRole("link", { name })).toHaveAttribute("href", href);
+    const back = await screen.findByRole("link", { name });
+    expect(back).toHaveAttribute("href", href);
+    expect(back.closest("#enroll-card")).toBeNull();
+    // Antes da capa, do título e das seções: é o primeiro item da coluna.
+    expect(back.parentElement?.firstElementChild).toBe(back);
+    expect(back.compareDocumentPosition(container.querySelector("#enroll-card")!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it.each([
@@ -480,13 +488,16 @@ describe("CreatorCourseDetail: o cartão que vende", () => {
     await screen.findAllByText("$149.00");
 
     expect(container.querySelector("#enroll-card")).toHaveClass("lg:sticky");
-    // Barra do celular: leva ao cartão; no desktop some enquanto o cartão está à vista.
+    // Barra de compra: leva ao cartão. Sem IntersectionObserver (jsdom), ou
+    // antes do primeiro aviso dele, nada foi medido: a barra fica à vista no
+    // celular, como sempre foi. Só a medição a esconde.
     const bar = container.querySelector('a[href="#enroll-card"]');
     expect(bar).not.toBeNull();
     expect(bar?.closest("div.fixed")).toHaveClass("lg:hidden");
+    expect(bar?.closest("div.fixed")).not.toHaveClass("hidden");
   });
 
-  it("no desktop, com o cartão fora da tela, a barra de compra flutua no canto", async () => {
+  it("com o cartão fora da tela a barra de compra aparece (no desktop, no canto); com o botão à vista, some", async () => {
     let notify: ((entries: Array<{ isIntersecting: boolean }>) => void) | null = null;
     const observe = vi.fn();
     vi.stubGlobal("IntersectionObserver", class {
@@ -499,9 +510,12 @@ describe("CreatorCourseDetail: o cartão que vende", () => {
       await screen.findAllByText("$149.00");
       await waitFor(() => expect(observe).toHaveBeenCalledWith(container.querySelector("#enroll-card")));
       const bar = () => container.querySelector('a[href="#enroll-card"]')?.closest("div.fixed");
+      // Antes do primeiro aviso: à vista no celular.
+      expect(bar()).toHaveClass("lg:hidden");
+      expect(bar()).not.toHaveClass("hidden");
 
       act(() => notify?.([{ isIntersecting: false }]));
-      expect(bar()).not.toHaveClass("lg:hidden");
+      expect(bar()).not.toHaveClass("hidden");
       expect(bar()).toHaveClass("lg:right-6");
 
       // Topo do cartão à vista, mas o botão ainda abaixo da dobra: a barra fica.
@@ -509,12 +523,18 @@ describe("CreatorCourseDetail: o cartão que vende", () => {
       const rect = vi.spyOn(cta, "getBoundingClientRect");
       rect.mockReturnValue({ top: window.innerHeight + 200, bottom: window.innerHeight + 244 } as DOMRect);
       act(() => notify?.([{ isIntersecting: true }]));
-      expect(bar()).not.toHaveClass("lg:hidden");
+      expect(bar()).not.toHaveClass("hidden");
 
-      // O botão entrou na tela: a barra some.
+      // O botão entrou na tela: a barra some em qualquer largura (display
+      // none: fora da ordem do Tab), e não só a partir de lg.
       rect.mockReturnValue({ top: 300, bottom: 344 } as DOMRect);
       act(() => notify?.([{ isIntersecting: true }]));
-      expect(bar()).toHaveClass("lg:hidden");
+      expect(bar()).toHaveClass("hidden");
+      expect(bar()).not.toHaveClass("lg:right-6");
+
+      // Saiu de novo: a barra volta.
+      act(() => notify?.([{ isIntersecting: false }]));
+      expect(bar()).not.toHaveClass("hidden");
     } finally {
       vi.unstubAllGlobals();
     }
@@ -825,7 +845,9 @@ describe("permanent checkout", () => {
   it("no secure-payment mark while there is no paid price to process", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => ({ ok: false, json: async () => ({ error: "unavailable" }) })));
     render(<CreatorCourseDetail courseIdOverride="course-1" checkoutOnly hideHeader />);
-    expect(await screen.findByText("Pricing unavailable")).toBeInTheDocument();
+    // Um aviso só (o vermelho): o lugar do preço não repete "Pricing unavailable".
+    expect(await screen.findByRole("alert")).toHaveTextContent("Offers are temporarily unavailable.");
+    expect(screen.queryByText("Pricing unavailable")).not.toBeInTheDocument();
     expect(screen.queryByText("Secure payment processed by Stripe.")).not.toBeInTheDocument();
   });
 
@@ -833,8 +855,10 @@ describe("permanent checkout", () => {
     const { container } = render(<CreatorCourseDetail courseIdOverride="course-1" hideHeader />);
     await screen.findAllByText("$149.00");
     expect(screen.getByText("Category")).toBeInTheDocument();
-    // Sem curso real na loja, a volta leva ao início.
-    expect(container.querySelector('#enroll-card a[href="/"]')).not.toBeNull();
+    // Sem curso real na loja, a volta leva ao início. Ela fica no alto da
+    // coluna da esquerda, fora do cartão de compra.
+    expect(screen.getByRole("link", { name: "Go home" })).toHaveAttribute("href", "/");
+    expect(container.querySelector('#enroll-card a[href="/"]')).toBeNull();
   });
 
   it("keeps offer selection on the checkout surface", async () => {
@@ -1525,5 +1549,161 @@ describe("CreatorCourseDetail: buying without an account", () => {
       // @ts-expect-error jsdom não define scrollIntoView; remove o stub do teste
       delete Element.prototype.scrollIntoView;
     }
+  });
+});
+
+// A capa sozinha acima das colunas empurrava preço e "Enroll" para baixo da
+// primeira tela. Agora o cabeçalho do servidor (`lead`) é o topo da coluna da
+// esquerda e o cartão de compra é a coluna da direita desde o alto.
+describe("CreatorCourseDetail: o cabeçalho do servidor no topo da coluna", () => {
+  const lead = (
+    <header id="overview">
+      <h1>Deep Focus Systems</h1>
+      <p>Server summary</p>
+    </header>
+  );
+
+  it("o cabeçalho abre a coluna da esquerda, e o cartão de compra é a coluna ao lado", async () => {
+    const { container } = render(<CreatorCourseDetail courseIdOverride="course-1" hideHeader lead={lead} />);
+    await screen.findAllByText("$149.00");
+
+    const title = screen.getByRole("heading", { level: 1, name: "Deep Focus Systems" });
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+    const column = title.closest("section") as HTMLElement;
+    // Mesma grade: a coluna do cabeçalho e o cartão são irmãos.
+    expect(column.nextElementSibling).toBe(container.querySelector("#enroll-card"));
+    // Antes da assinatura do instrutor e do menu das seções.
+    const nav = screen.getByRole("navigation", { name: "Course sections" });
+    expect(title.compareDocumentPosition(nav) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("enquanto o curso carrega, o cabeçalho segue à vista (fora do pulso e do aria-hidden)", () => {
+    fixtures.holdCourse = true;
+    render(<CreatorCourseDetail courseIdOverride="course-1" hideHeader lead={lead} />);
+
+    expect(screen.getByRole("status")).toHaveTextContent("Loading course...");
+    const title = screen.getByRole("heading", { level: 1, name: "Deep Focus Systems" });
+    expect(title.closest('[aria-hidden="true"]')).toBeNull();
+    expect(title.closest(".animate-pulse")).toBeNull();
+    expect(screen.queryByRole("link")).not.toBeInTheDocument();
+  });
+
+  it("quando o curso chega, o cabeçalho é o MESMO nó: não desmonta (a capa não pisca)", async () => {
+    fixtures.holdCourse = true;
+    render(<CreatorCourseDetail courseIdOverride="course-1" hideHeader lead={lead} />);
+    const before = screen.getByRole("heading", { level: 1, name: "Deep Focus Systems" });
+
+    act(() => fixtures.courseNext?.(fixtures.course));
+    await screen.findAllByText("$149.00");
+
+    expect(screen.queryByText("Loading course...")).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: "Deep Focus Systems" })).toBe(before);
+    expect(before.isConnected).toBe(true);
+  });
+
+  it("num estado de erro, o cabeçalho fica no alto e o aviso vira h2", () => {
+    render(<CreatorCourseDetail hideHeader lead={lead} />);
+
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+    const state = screen.getByRole("heading", { level: 2, name: "Course not selected." });
+    const title = screen.getByRole("heading", { level: 1 });
+    expect(title.compareDocumentPosition(state) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+});
+
+describe("CreatorCourseDetail: preço que falha e quem vende", () => {
+  it("com a leitura do preço falhando, o cartão diz uma vez só: o aviso vermelho", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: false, json: async () => ({ error: "unavailable" }) })));
+    const { container } = render(<CreatorCourseDetail courseIdOverride="course-1" hideHeader />);
+    const card = await waitFor(() => {
+      const found = container.querySelector<HTMLElement>("#enroll-card");
+      expect(found).not.toBeNull();
+      return found!;
+    });
+
+    expect(await within(card).findByRole("alert")).toHaveTextContent("Offers are temporarily unavailable.");
+    expect(within(card).queryByText("Pricing unavailable")).not.toBeInTheDocument();
+  });
+
+  it("na página de venda, quem vende é uma linha com 'Learn more'; a frase inteira segue na página", async () => {
+    const { container } = render(<CreatorCourseDetail courseIdOverride="course-1" hideHeader />);
+    await screen.findAllByText("$149.00");
+    const card = container.querySelector("#enroll-card") as HTMLElement;
+
+    const details = within(card).getByText("Sold by your instructor, not by SkillsetMind.").closest("details") as HTMLElement;
+    expect(details).not.toBeNull();
+    expect(details).not.toHaveAttribute("open");
+    expect(details.querySelector("summary")).toHaveTextContent("Learn more");
+    // Mesma chave, mesmo texto, sem navegar para outra página.
+    expect(within(details).getByText(/This course is sold directly by the independent educator/)).toBeInTheDocument();
+  });
+
+  it("na página de compra, logo antes de pagar, a frase de quem vende fica inteira e aberta", async () => {
+    render(<CreatorCourseDetail courseIdOverride="course-1" checkoutOnly hideHeader />);
+    await screen.findByText("$149.00");
+
+    expect(screen.getByText(/This course is sold directly by the independent educator/).closest("details")).toBeNull();
+    expect(screen.queryByText("Learn more")).not.toBeInTheDocument();
+  });
+
+  it("com o preço a caminho, a barra de compra guarda o lugar com a mesma barra pulsante", async () => {
+    vi.stubGlobal("fetch", vi.fn(() => new Promise(() => {})));
+    const { container } = render(<CreatorCourseDetail courseIdOverride="course-1" hideHeader />);
+    const bar = await waitFor(() => {
+      const found = container.querySelector('a[href="#enroll-card"]')?.closest<HTMLElement>("div.fixed");
+      expect(found).toBeTruthy();
+      return found!;
+    });
+
+    expect(within(bar).getByText("Loading pricing...")).toHaveClass("sr-only");
+    expect(bar.querySelector('[aria-hidden="true"].animate-pulse')).not.toBeNull();
+  });
+});
+
+// Um curso de 10 módulos era uma coluna enorme, tudo aberto.
+describe("CreatorCourseDetail: um módulo por sanfona", () => {
+  const mutable = fixtures.course as TeacherCourse;
+  const original = mutable.modules;
+  afterEach(() => {
+    mutable.modules = original;
+  });
+
+  it("o primeiro módulo abre sozinho, os outros fecham; aulas e duração na linha do módulo", async () => {
+    mutable.modules = [
+      original[0],
+      {
+        id: "module-2",
+        title: "Practice",
+        lessons: [
+          { id: "lesson-2", title: "Morning block", type: "video", description: "", durationMinutes: 20 },
+          { id: "lesson-3", title: "Shutdown ritual", type: "text", description: "" },
+        ],
+      },
+    ];
+    const { container } = render(<CreatorCourseDetail courseIdOverride="course-1" hideHeader />);
+    await screen.findAllByText("$149.00");
+
+    // Cada módulo é um título (navegável por títulos, também no VoiceOver)
+    // com o botão de abrir dentro: o padrão de sanfona.
+    const curriculum = container.querySelector("#curriculum") as HTMLElement;
+    const toggles = Array.from(curriculum.querySelectorAll<HTMLButtonElement>("h2 > button[aria-expanded]"));
+    expect(toggles).toHaveLength(2);
+    expect(within(curriculum).getByRole("heading", { level: 2, name: /^Foundations 1 lesson · 1h 30m$/ })).toContainElement(toggles[0]);
+    expect(toggles[0]).toHaveAttribute("aria-expanded", "true");
+    expect(toggles[1]).toHaveAttribute("aria-expanded", "false");
+    // Sem minutos em todas as aulas, a duração não aparece (nada se estima).
+    expect(within(toggles[1]).getByText("2 lessons")).toBeInTheDocument();
+    const panel = (toggle: HTMLButtonElement) => document.getElementById(toggle.getAttribute("aria-controls")!) as HTMLElement;
+    expect(panel(toggles[0])).not.toHaveAttribute("hidden");
+    expect(panel(toggles[1])).toHaveAttribute("hidden");
+    // Nada sai da página: as aulas do módulo fechado seguem no DOM, e a trancada
+    // continua abrindo a compra.
+    expect(within(panel(toggles[1])).getByText("Shutdown ritual").closest("button")).toHaveAttribute("aria-haspopup", "dialog");
+
+    fireEvent.click(toggles[1]);
+    expect(toggles[1]).toHaveAttribute("aria-expanded", "true");
+    expect(panel(toggles[1])).not.toHaveAttribute("hidden");
+    fireEvent.click(toggles[0]);
+    expect(panel(toggles[0])).toHaveAttribute("hidden");
   });
 });

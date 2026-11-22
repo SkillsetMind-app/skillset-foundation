@@ -1,6 +1,7 @@
 import { getDictionary, translate } from "@/lib/i18n/dictionaries";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { ReactNode } from "react";
 
 import CourseDetailPage, { generateMetadata } from "@/app/courses/[slug]/page";
 import type { CourseRefAccess, PublicCourseSummary } from "@/lib/data/server/public-course";
@@ -13,6 +14,9 @@ const mocks = vi.hoisted(() => ({
   notFound: vi.fn(() => {
     throw new Error("NEXT_NOT_FOUND");
   }),
+  // true: o componente cliente "suspende", e o Suspense mostra o fallback.
+  suspendClient: false,
+  pending: new Promise(() => {}),
 }));
 
 vi.mock("@/lib/data/server/public-course", () => ({
@@ -28,11 +32,18 @@ beforeEach(() => {
 });
 
 // O componente cliente de verdade abre assinatura no Supabase; aqui só
-// interessa o contrato: a página avisa quando o cabeçalho já saiu do servidor.
+// interessa o contrato: a página avisa quando o cabeçalho já saiu do servidor e
+// entrega o cabeçalho (`lead`) para o topo da coluna da esquerda.
 vi.mock("@/components/courses/creator-course-detail", () => ({
-  CreatorCourseDetail: ({ hideHeader }: { hideHeader?: boolean }) => (
-    <div>{hideHeader ? "client header hidden" : "client header shown"}</div>
-  ),
+  CreatorCourseDetail: ({ hideHeader, lead }: { hideHeader?: boolean; lead?: ReactNode }) => {
+    if (mocks.suspendClient) throw mocks.pending;
+    return (
+      <div data-testid="client-detail">
+        {lead}
+        {hideHeader ? "client header hidden" : "client header shown"}
+      </div>
+    );
+  },
 }));
 
 vi.mock("@/components/site/site-nav", () => ({
@@ -81,7 +92,11 @@ describe("página do curso de criador", () => {
     const title = screen.getByRole("heading", { level: 1, name: "Deep Focus Systems" });
     expect(title).toHaveClass("page-title");
     expect(title.className).not.toMatch(/text-(4|5|6)xl/);
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
     expect(screen.getByText("client header hidden")).toBeInTheDocument();
+    // O cabeçalho vai para dentro da página do cliente (topo da coluna da
+    // esquerda, ao lado do cartão de compra), e não mais sozinho acima dela.
+    expect(screen.getByTestId("client-detail")).toContainElement(title);
     expect(screen.getByText("12 lecciones")).toBeInTheDocument();
 
     // A capa que o cartão do marketplace já mostrava.
@@ -94,6 +109,24 @@ describe("página do curso de criador", () => {
     expect(mocks.notFound).not.toHaveBeenCalled();
     // Termos e política de reembolso ao alcance de quem vai pagar.
     expect(screen.getByTestId("site-footer")).toBeInTheDocument();
+  });
+
+  // Se a parte do cliente não resolve no servidor, o HTML leva o fallback: ele
+  // também traz o cabeçalho, então título, capa e resumo nunca somem do HTML.
+  it("enquanto o cliente não chega, o esqueleto já traz o h1, a capa e o resumo", async () => {
+    mocks.getPublicCourseByRef.mockResolvedValue(published);
+    mocks.suspendClient = true;
+    try {
+      await renderPage();
+
+      expect(screen.getByRole("status")).toHaveTextContent("Cargando curso...");
+      expect(screen.getAllByRole("heading", { level: 1, name: "Deep Focus Systems" })).toHaveLength(1);
+      expect(screen.getByText("Build a repeatable focus practice.")).toBeInTheDocument();
+      expect(screen.getByRole("img", { name: "Deep Focus Systems" })).toBeInTheDocument();
+      expect(screen.queryByTestId("client-detail")).not.toBeInTheDocument();
+    } finally {
+      mocks.suspendClient = false;
+    }
   });
 
   // Link para curso nao publicado, removido ou slug invalido respondia 200 com
@@ -151,6 +184,27 @@ describe("volta da página de amostra", () => {
 
     expect(screen.getByRole("link", { name })).toHaveAttribute("href", href);
     expect(screen.getByTestId("site-footer")).toBeInTheDocument();
+  });
+});
+
+// A amostra tinha linhas de 32px em caixa alta com hífens ("PREVIEW - VIDEO -
+// 8 MIN") e tudo aberto: agora o mesmo currículo da página de um curso real.
+describe("currículo da página de amostra", () => {
+  const es = (key: string) => translate(getDictionary("es"), key);
+
+  it("um módulo por sanfona, o primeiro aberto, aulas e duração na linha do módulo", async () => {
+    const { container } = render(await CourseDetailPage({ params: Promise.resolve({ slug: "leadership-development" }) }));
+
+    const toggles = Array.from(container.querySelectorAll<HTMLButtonElement>("#curriculum h3 > button[aria-expanded]"));
+    expect(toggles).toHaveLength(2);
+    expect(toggles[0]).toHaveAttribute("aria-expanded", "true");
+    expect(toggles[1]).toHaveAttribute("aria-expanded", "false");
+    expect(within(toggles[0]).getByText(`${es("publicCourses.lessonMany").replace("{count}", "2")} · 20 min`)).toBeInTheDocument();
+
+    const panel = document.getElementById(toggles[0].getAttribute("aria-controls")!) as HTMLElement;
+    const meta = within(panel).getByText(`${es("publicCourses.lessonTypes.video")} · 8 min · ${es("publicCourses.previewShort")}`);
+    expect(meta).not.toHaveClass("uppercase");
+    expect(meta.parentElement).toHaveClass("min-h-11");
   });
 });
 

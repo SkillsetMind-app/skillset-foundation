@@ -215,6 +215,16 @@ export function countCourseLessons(modules: TeacherCourseModule[]): number {
   return modules.reduce((total, module) => total + module.lessons.length, 0);
 }
 
+// Duração somada das aulas, no formato da página de venda ("1h 30m", "25 min").
+// Só quando TODAS as aulas declaram minutos: com parte delas sem o dado, a soma
+// vira um total menor que o curso (17 aulas exibidas como "10 min"). Não se
+// estima tempo de curso. Serve ao curso inteiro e a cada módulo.
+export function formatTotalMinutes(minutes: Array<number | null | undefined>): string | null {
+  if (minutes.length === 0 || minutes.some((value) => !value || value <= 0)) return null;
+  const total = minutes.reduce<number>((sum, value) => sum + (value ?? 0), 0);
+  return total >= 60 ? `${Math.floor(total / 60)}h${total % 60 ? ` ${total % 60}m` : ""}` : `${total} min`;
+}
+
 export function normalizeCourseCategories(categories: string[] = []): string[] {
   const seen = new Set<string>();
 
