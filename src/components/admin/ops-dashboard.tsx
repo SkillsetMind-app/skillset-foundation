@@ -192,11 +192,21 @@ function AuditLogPanel() {
                   {formatAuditTarget(entry.targetType, t)}
                 </span>
               </div>
-              <p className="mt-3 break-words text-xs leading-5 text-[var(--color-ink-soft)]">
-                {t(`${copy}.actor`)} {entry.actorEmail ?? entry.actorId} - {formatAuditTimestamp(entry, locale, t(`${copy}.pendingTimestamp`))}
-                {" - "}{t(`${copy}.target`)}{" "}
-                {entry.targetId}
-              </p>
+              {/* Quando, quem e o alvo em partes com rótulo, não numa frase só (I-06). */}
+              <dl className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-xs leading-5 text-[var(--color-ink-soft)]">
+                <div className="flex gap-1.5">
+                  <dt>{t(`${copy}.when`)}</dt>
+                  <dd className="tabular-nums text-[var(--color-ink)]">{formatAuditTimestamp(entry, locale, t(`${copy}.pendingTimestamp`))}</dd>
+                </div>
+                <div className="flex min-w-0 gap-1.5">
+                  <dt>{t(`${copy}.actor`)}</dt>
+                  <dd className="min-w-0 break-all text-[var(--color-ink)]">{entry.actorEmail ?? entry.actorId}</dd>
+                </div>
+                <div className="flex min-w-0 gap-1.5">
+                  <dt>{t(`${copy}.target`)}</dt>
+                  <dd className="min-w-0 break-all font-mono text-[var(--color-ink)]">{entry.targetId}</dd>
+                </div>
+              </dl>
             </article>
           ))
         )}

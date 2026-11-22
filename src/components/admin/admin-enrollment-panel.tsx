@@ -21,6 +21,7 @@ export function AdminEnrollmentPanel() {
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [courses, setCourses] = useState<TeacherCourse[]>([]);
   const [userId, setUserId] = useState("");
+  const [learnerFilter, setLearnerFilter] = useState("");
   const [courseId, setCourseId] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [isLoadingUsers, setIsLoadingUsers] = useState(true);
@@ -86,6 +87,17 @@ export function AdminEnrollmentPanel() {
     [courseId, courses],
   );
 
+  // Filtro local sobre as contas que o painel já carregou: achar a pessoa
+  // digitando, em vez de rolar a lista do navegador com todas as contas
+  // (I-13). Quem já está escolhido fica na lista, senão o select perderia o valor.
+  const term = learnerFilter.trim().toLowerCase();
+  const matches = (user: UserProfile) =>
+    [user.displayName, user.email, user.uid].join(" ").toLowerCase().includes(term);
+  const learnerOptions = term ? users.filter((user) => user.uid === userId || matches(user)) : users;
+  const noLearnerMatch = term !== "" && !users.some(matches);
+  const missingChoice = !userId || !selectedCourse;
+  const showChoiceHint = missingChoice && !readErrors.users && !readErrors.courses;
+
   async function handleCreateEnrollment() {
     if (!userId || !selectedCourse) {
       setError("choose");
@@ -143,22 +155,33 @@ export function AdminEnrollmentPanel() {
 
       <div className="mt-6 grid gap-4 md:grid-cols-2">
         <Field id="ops-enrollment-user" label={t(`${copy}.learner`)} error={readErrors.users ? t(`${copy}.readErrors.users`) : undefined}>
-          {a11y => <select
-            {...a11y}
-            value={userId}
-            onChange={(event) => setUserId(event.target.value)}
-            disabled={isLoadingUsers || users.length === 0 || readErrors.users}
-            className="min-h-11 min-w-0 w-full rounded-md border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
-          >
-            <option value="">
-              {t(`${copy}.${isLoadingUsers ? "loadingUsers" : "chooseUser"}`)}
-            </option>
-            {users.map((user) => (
-              <option key={user.uid} value={user.uid}>
-                {user.displayName || user.email || user.uid}
+          {a11y => <>
+            <input
+              type="search"
+              value={learnerFilter}
+              onChange={(event) => setLearnerFilter(event.target.value)}
+              aria-label={t(`${copy}.filterLabel`)}
+              placeholder={t(`${copy}.filterPlaceholder`)}
+              disabled={isLoadingUsers || users.length === 0 || readErrors.users}
+              className="min-h-11 min-w-0 w-full rounded-md border border-[var(--color-line)] bg-white px-4 py-2.5 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
+            />
+            <select
+              {...a11y}
+              value={userId}
+              onChange={(event) => setUserId(event.target.value)}
+              disabled={isLoadingUsers || users.length === 0 || readErrors.users}
+              className="min-h-11 min-w-0 w-full rounded-md border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
+            >
+              <option value="">
+                {t(`${copy}.${isLoadingUsers ? "loadingUsers" : noLearnerMatch ? "noMatch" : "chooseUser"}`)}
               </option>
-            ))}
-          </select>}
+              {learnerOptions.map((user) => (
+                <option key={user.uid} value={user.uid}>
+                  {user.displayName && user.email ? `${user.displayName} · ${user.email}` : user.displayName || user.email || user.uid}
+                </option>
+              ))}
+            </select>
+          </>}
         </Field>
 
         <Field id="ops-enrollment-course" label={t(`${copy}.course`)} error={readErrors.courses ? t(`${copy}.readErrors.courses`) : undefined}>
@@ -187,11 +210,19 @@ export function AdminEnrollmentPanel() {
       <button
         type="button"
         onClick={handleCreateEnrollment}
-        disabled={isSaving || !userId || !selectedCourse || readErrors.users || readErrors.courses}
+        disabled={isSaving || missingChoice || readErrors.users || readErrors.courses}
+        aria-describedby={showChoiceHint ? "ops-enrollment-create-hint" : undefined}
         className="button-solid min-h-11 mt-6 px-4 py-2.5 text-sm disabled:opacity-60"
       >
         {t(`${copy}.${isSaving ? "creating" : "create"}`)}
       </button>
+      {/* O botão cinza diz o que falta, logo abaixo dele (I-13). Falha de leitura
+          já tem o próprio aviso acima. */}
+      {showChoiceHint ? (
+        <p id="ops-enrollment-create-hint" className="mt-2 text-xs text-[var(--color-ink-soft)]">
+          {t(`${copy}.errors.choose`)}
+        </p>
+      ) : null}
 
       <div className="mt-8 border-t border-[var(--color-line)] pt-6">
         <div className="flex flex-wrap items-center justify-between gap-3">

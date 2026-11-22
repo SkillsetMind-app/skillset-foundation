@@ -194,16 +194,18 @@ export function CreatorVerificationQueue({ query = "" }: { query?: string }) {
                     </p>
                   ) : null}
                 </div>
-                <span className="rounded-md bg-white px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-primary)]">
-                  {formatSubmittedAt(verificationCase.createdAt, locale, t(`${copy}.pendingTimestamp`))}
-                </span>
+                {/* Data em texto simples: a pílula em caixa alta, no lugar onde as
+                    outras filas põem o status, era lida como status (I-17). */}
+                <p className="text-xs tabular-nums text-[var(--color-ink-soft)]">
+                  {t(`${copy}.submitted`).replace("{date}", () => formatSubmittedAt(verificationCase.createdAt, locale, t(`${copy}.pendingTimestamp`)))}
+                </p>
               </div>
 
               <div className="mt-4 grid min-w-0 gap-2 rounded-lg border fine-rule bg-white p-4">
+                {/* Só as partes preenchidas: sem região a linha acabava em "()" (I-17). */}
                 {verificationCase.registrationId ? <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--color-ink-soft)]">
-                  {verificationCase.registrationType} —{" "}
-                  {verificationCase.registrationId} (
-                  {verificationCase.registrationRegion})
+                  {[verificationCase.registrationType, verificationCase.registrationId, verificationCase.registrationRegion]
+                    .filter(Boolean).join(" · ")}
                 </p> : null}
                 {verificationCase.documentPath ? <EvidenceDocument path={verificationCase.documentPath} /> : null}
                 {verificationCase.evidenceLinks.length > 0 ? (

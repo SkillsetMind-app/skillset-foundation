@@ -1,6 +1,6 @@
 "use client";
 
-import { Shield } from "lucide-react";
+import { Loader2, Shield } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
@@ -34,6 +34,11 @@ const roleLabelKeys = {
 
 type LoadError = "mfaRequired" | "loadError";
 
+// Que busca a tela pediu: comparar com a última que voltou diz se há uma em curso.
+function requestKey(...parts: unknown[]): string {
+  return JSON.stringify(parts);
+}
+
 function formatDate(value: string | null, locale: string): string | null {
   if (!value) return null;
   const date = new Date(value);
@@ -56,15 +61,20 @@ export function OpsUserTable() {
   const [error, setError] = useState<LoadError | null>(null);
   const [reload, setReload] = useState(0);
   const [target, setTarget] = useState<OpsUserRow | null>(null);
+  const [answeredKey, setAnsweredKey] = useState<string | null>(null);
+  // Durante o atraso de 300ms e a consulta, a lista antiga fica no lugar, apagada
+  // e marcada como ocupada, em vez de parada sem sinal nenhum (I-12).
+  const searching = result !== null && answeredKey !== requestKey(search, status, role, page, reload);
 
   useEffect(() => {
     let current = true;
+    const key = requestKey(search, status, role, page, reload);
     // Debounce: digitar um nome não dispara uma consulta por tecla.
     const timer = window.setTimeout(() => {
       setError(null);
       searchOpsUsers({ search, status: status || null, role: role || null, page })
-        .then((next) => { if (current) setResult(next); })
-        .catch((caught) => { if (current) { setResult(null); setError(errorKey(caught)); } });
+        .then((next) => { if (current) { setResult(next); setAnsweredKey(key); } })
+        .catch((caught) => { if (current) { setResult(null); setError(errorKey(caught)); setAnsweredKey(key); } });
     }, 300);
     return () => { current = false; window.clearTimeout(timer); };
   }, [search, status, role, page, reload]);
@@ -84,9 +94,13 @@ export function OpsUserTable() {
 
       <div className="mt-5 grid min-w-0 gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,10rem)_minmax(0,10rem)]">
         <Field id="ops-user-search" label={t(`${table}.searchLabel`)}>
-          {(a11y) => <input {...a11y} type="search" value={search} placeholder={t(`${table}.searchPlaceholder`)}
-            onChange={(event) => { setSearch(event.target.value); setPage(0); }}
-            className="min-h-11 w-full rounded-md border border-[var(--color-line)] px-4 py-2.5 text-sm font-normal" />}
+          {(a11y) => <div className="relative">
+            <input {...a11y} type="search" value={search} placeholder={t(`${table}.searchPlaceholder`)}
+              onChange={(event) => { setSearch(event.target.value); setPage(0); }}
+              className="min-h-11 w-full rounded-md border border-[var(--color-line)] py-2.5 pl-4 pr-10 text-sm font-normal" />
+            {searching ? <Loader2 size={16} aria-hidden="true" data-searching=""
+              className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[var(--color-ink-muted)] motion-safe:animate-spin" /> : null}
+          </div>}
         </Field>
         <Field id="ops-user-status" label={t(`${table}.statusLabel`)}>
           {(a11y) => <select {...a11y} value={status}
@@ -127,7 +141,8 @@ export function OpsUserTable() {
       {result && result.users.length > 0 ? (
         // Tabela no lugar de 50 cartões altos (~9.400px): datas em coluna, dez
         // linhas por tela. Rola de lado dentro do próprio quadro no celular (I-01).
-        <div role="region" aria-label={t(`${copy}.title`)} tabIndex={0} className="mt-5 min-w-0 overflow-x-auto">
+        <div role="region" aria-label={t(`${copy}.title`)} tabIndex={0} aria-busy={searching || undefined}
+          className={`mt-5 min-w-0 overflow-x-auto ${searching ? "opacity-60" : ""}`}>
           <table className="w-full min-w-[720px] border-collapse text-left text-sm">
             <thead>
               <tr className="border-b fine-rule">

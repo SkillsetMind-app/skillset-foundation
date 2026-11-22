@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { OpsUserTable } from "@/components/admin/ops-user-table";
@@ -64,6 +64,24 @@ describe("OpsUserTable", () => {
     await waitFor(() => expect(mocks.search).toHaveBeenLastCalledWith({ search: "", status: null, role: null, page: 1 }));
     fireEvent.change(screen.getByRole("combobox", { name: "Status" }), { target: { value: "suspended" } });
     await waitFor(() => expect(mocks.search).toHaveBeenLastCalledWith({ search: "", status: "suspended", role: null, page: 0 }));
+  });
+
+  it("busca nova deixa a lista antiga no lugar, apagada e ocupada, até a resposta (I-12)", async () => {
+    render(table());
+    await screen.findByRole("link", { name: "Ana" });
+    expect(screen.getByRole("region")).not.toHaveAttribute("aria-busy");
+    let finish!: (page: unknown) => void;
+    mocks.search.mockReturnValueOnce(new Promise((resolve) => { finish = resolve; }));
+    fireEvent.change(screen.getByRole("searchbox", { name: "Find someone" }), { target: { value: "ana" } });
+    // Desde a primeira tecla, antes do atraso de 300ms.
+    expect(screen.getByRole("link", { name: "Ana" })).toBeInTheDocument();
+    expect(screen.getByRole("region")).toHaveAttribute("aria-busy", "true");
+    expect(screen.getByRole("region")).toHaveClass("opacity-60");
+    expect(document.querySelector("[data-searching]")).not.toBeNull();
+    await waitFor(() => expect(mocks.search).toHaveBeenCalledTimes(2));
+    await act(async () => finish({ total: 1, users: [ana] }));
+    expect(screen.getByRole("region")).not.toHaveAttribute("aria-busy");
+    expect(document.querySelector("[data-searching]")).toBeNull();
   });
 
   it("sem 2FA mostra o caminho para ativar, não um erro genérico", async () => {

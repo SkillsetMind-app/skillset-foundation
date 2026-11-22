@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ManagedCoursePanel } from "@/components/admin/managed-course-panel";
 import { I18nProvider, useTranslation } from "@/components/i18n/i18n-provider";
+import { CONFIRM_GUARD_MS } from "@/components/ui/confirm-dialog";
 import type { TeacherCourse } from "@/domain/teacher-course";
 
 const mocks = vi.hoisted(() => ({ subscribe: vi.fn(), remove: vi.fn(), review: vi.fn(), feature: vi.fn() }));
@@ -22,6 +23,8 @@ function deliver(courses = [course]) { act(() => mocks.subscribe.mock.calls[0][0
 
 beforeEach(() => {
   vi.clearAllMocks();
+  // Só o Date é falso: o confirmar ignora cliques nos primeiros CONFIRM_GUARD_MS.
+  vi.useFakeTimers({ toFake: ["Date"] });
   // jsdom não tem showModal/close; o mesmo arranjo do teste da janela de conta.
   HTMLDialogElement.prototype.showModal = function showModal() { this.setAttribute("open", ""); };
   HTMLDialogElement.prototype.close = function close() { this.removeAttribute("open"); this.dispatchEvent(new Event("close")); };
@@ -30,7 +33,7 @@ beforeEach(() => {
   mocks.review.mockResolvedValue(undefined);
   mocks.feature.mockResolvedValue(undefined);
 });
-afterEach(cleanup);
+afterEach(() => { cleanup(); vi.useRealTimers(); });
 
 describe("catalog presentation and language", () => {
   it.each([0, 1, 2])("translates known counts for %i courses and preserves authored categories", count => {
@@ -93,7 +96,10 @@ describe("catalog presentation and language", () => {
     language();
     fireEvent.click(screen.getByRole("button", { name: button }));
     // Retirar do ar pergunta antes; publicar de novo segue direto.
-    if (status === "published") fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: button }));
+    if (status === "published") {
+      vi.advanceTimersByTime(CONFIRM_GUARD_MS);
+      fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: button }));
+    }
     expect(await screen.findByRole("status")).toHaveTextContent(/Curso/);
     expect(mocks.review).toHaveBeenCalledWith("course-a", next, note);
     expect(mocks.review).toHaveBeenCalledTimes(1);
@@ -114,6 +120,7 @@ describe("catalog presentation and language", () => {
     expect(mocks.review).not.toHaveBeenCalled();
     fireEvent.click(unpublish);
     const confirm = within(screen.getByRole("dialog")).getByRole("button", { name: "Unpublish" });
+    vi.advanceTimersByTime(CONFIRM_GUARD_MS);
     // Duplo clique: grava uma vez e a janela segue aberta, sem soltar o 2º clique no "Feature" de baixo.
     fireEvent.click(confirm);
     fireEvent.click(confirm);

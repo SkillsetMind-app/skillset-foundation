@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { SupportTicketQueue } from "@/components/admin/support-ticket-queue";
@@ -74,13 +74,17 @@ describe("support queue search, states and language", () => {
   it("keeps the labelled reply draft through filtering, language and failure, then confirms success", async () => {
     const { rerender } = render(queue("Alpha"));
     deliver();
+    // A caixa abre por "Reply" (I-09).
+    expect(screen.queryByRole("textbox")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Reply" }));
     fireEvent.change(screen.getByRole("textbox", { name: "Reply to user" }), { target: { value: "  Resposta autoral preservada.  " } });
     rerender(queue("Beta"));
     rerender(queue("Alpha"));
     fireEvent.click(screen.getByRole("button", { name: "Change language" }));
     expect(screen.getByRole("textbox", { name: "Respuesta al usuario" })).toHaveValue("  Resposta autoral preservada.  ");
     expect(screen.getByText("Curso")).toBeInTheDocument();
-    expect(screen.getAllByText("Abierto")).toHaveLength(2);
+    // O status aparece uma vez, na etiqueta; o botão do status atual sumiu (I-09).
+    expect(screen.getAllByText("Abierto")).toHaveLength(1);
     mocks.reply.mockRejectedValueOnce(new Error("Internal operation detail"));
     fireEvent.click(screen.getByRole("button", { name: "Enviar respuesta y resolver" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("No pudimos enviar esta respuesta.");
@@ -91,6 +95,9 @@ describe("support queue search, states and language", () => {
     fireEvent.click(screen.getByRole("button", { name: "Send reply and resolve" }));
     expect(await screen.findByRole("status")).toHaveTextContent("Reply sent and ticket resolved.");
     expect(mocks.reply).toHaveBeenLastCalledWith("ticket-a", "Resposta autoral preservada.", "operator");
+    // Enviada, a caixa fecha; reaberta, vem vazia.
+    expect(screen.queryByRole("textbox")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Reply" }));
     expect(screen.getByRole("textbox", { name: "Reply to user" })).toHaveValue("");
     fireEvent.click(screen.getByRole("button", { name: "Change language" }));
     expect(screen.getByRole("status")).toHaveTextContent("Respuesta enviada y ticket resuelto.");
@@ -114,11 +121,33 @@ describe("support queue search, states and language", () => {
     expect(mocks.update).toHaveBeenCalledTimes(2);
   });
 
+  it("offers only the other statuses and opens one reply box on demand (I-09)", () => {
+    render(queue());
+    deliver();
+    const [open, resolved] = screen.getAllByRole("article");
+    const moves = (card: HTMLElement) => within(within(card).getByRole("group", { name: "Move to" })).getAllByRole("button").map((button) => button.textContent);
+    expect(moves(open)).toEqual(["In review", "Resolved"]);
+    expect(moves(resolved)).toEqual(["Open", "In review"]);
+    expect(screen.queryAllByRole("textbox")).toHaveLength(0);
+    fireEvent.click(within(resolved).getByRole("button", { name: "Reply" }));
+    expect(screen.getAllByRole("textbox")).toHaveLength(1);
+    expect(within(resolved).getByRole("textbox", { name: "Reply to user" })).toHaveFocus();
+    fireEvent.change(within(resolved).getByRole("textbox"), { target: { value: "Rascunho guardado." } });
+    fireEvent.click(within(resolved).getByRole("button", { name: "Cancel" }));
+    expect(screen.queryAllByRole("textbox")).toHaveLength(0);
+    expect(within(resolved).getByRole("button", { name: "Reply" })).toHaveFocus();
+    fireEvent.click(within(resolved).getByRole("button", { name: "Reply" }));
+    expect(within(resolved).getByRole("textbox")).toHaveValue("Rascunho guardado.");
+    expect(mocks.reply).not.toHaveBeenCalled();
+    expect(mocks.update).not.toHaveBeenCalled();
+  });
+
   it("announces success only after a pending reply has completed", async () => {
     let finishReply!: () => void;
     mocks.reply.mockReturnValue(new Promise<void>(resolve => { finishReply = resolve; }));
     render(queue("Alpha"));
     deliver();
+    fireEvent.click(screen.getByRole("button", { name: "Reply" }));
     fireEvent.change(screen.getByRole("textbox", { name: "Reply to user" }), { target: { value: "This is the original reply." } });
     fireEvent.click(screen.getByRole("button", { name: "Send reply and resolve" }));
     expect(screen.getByRole("button", { name: "Sending..." })).toBeDisabled();

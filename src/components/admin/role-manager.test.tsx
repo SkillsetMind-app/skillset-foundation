@@ -336,6 +336,23 @@ describe("RoleManager", () => {
     expect(mocks.listPlatformUsers).toHaveBeenCalledTimes(1);
   });
 
+  it("keeps the current roster on screen, dimmed and busy, while a new search runs (I-12)", async () => {
+    mocks.listPlatformUsers.mockResolvedValueOnce(roster(["student"]));
+    render(translatedRoster());
+    const list = (await screen.findByText("Test Person")).closest("ul")!;
+    expect(list).not.toHaveAttribute("aria-busy");
+    let finish!: (people: ReturnType<typeof roster>) => void;
+    mocks.listPlatformUsers.mockReturnValueOnce(new Promise(resolve => { finish = resolve; }));
+    fireEvent.change(screen.getByRole("searchbox", { name: "Find someone" }), { target: { value: "Test" } });
+    await waitFor(() => expect(mocks.listPlatformUsers).toHaveBeenLastCalledWith("Test"));
+    expect(screen.getByText("Test Person").closest("ul")).toHaveAttribute("aria-busy", "true");
+    expect(screen.getByText("Test Person").closest("ul")).toHaveClass("opacity-60");
+    expect(screen.queryByRole("status")).toBeNull();
+    await act(async () => finish(roster(["student"])));
+    expect(screen.getByText("Test Person").closest("ul")).not.toHaveAttribute("aria-busy");
+    expect(mocks.setUserRoles).not.toHaveBeenCalled();
+  });
+
   it.each([0, 1, 2])("renders %i roster entries without altering names in Spanish", async count => {
     mocks.listPlatformUsers.mockResolvedValue(Array.from({ length: count }, (_, index) => ({ ...roster([])[0], uid: `u-${index}`, displayName: `Nombre $$ $& ${index}` })));
     render(translatedRoster());

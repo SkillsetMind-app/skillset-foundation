@@ -315,10 +315,16 @@ function Tile<T>({
     <div data-tile className="min-w-0 rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)] p-4">
       <p className="text-xs font-medium text-[var(--color-ink-soft)]">{label}</p>
       {read.status === "loading" ? (
-        <p role="status" className="mt-2 text-2xl font-semibold text-[var(--color-ink-muted)]">
-          <span aria-hidden="true">…</span>
-          <span className="sr-only">{text.loading}</span>
-        </p>
+        // Já com a altura do cartão pronto (número, variação e o gráfico de
+        // 24px): a grade não pula quando os números chegam (I-12).
+        <div role="status">
+          <p className="mt-2 text-2xl font-semibold text-[var(--color-ink-muted)]">
+            <span aria-hidden="true">…</span>
+            <span className="sr-only">{text.loading}</span>
+          </p>
+          <span aria-hidden="true" className="mt-1 block h-4" />
+          <span aria-hidden="true" className="mt-3 block h-6 rounded-sm bg-[var(--color-surface-soft)]" />
+        </div>
       ) : read.status === "error" ? (
         <p className="mt-2 text-sm text-[var(--color-danger-fg)]">{text.loadError}</p>
       ) : (

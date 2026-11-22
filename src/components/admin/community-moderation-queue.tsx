@@ -18,6 +18,7 @@ const reviewStatuses: CommunityReportStatus[] = [
   "resolved",
   "dismissed",
 ];
+const PAGE = 12;
 
 export function CommunityModerationQueue() {
   const { t } = useTranslation();
@@ -68,6 +69,12 @@ export function CommunityModerationQueue() {
   }
 
   const openReports = reports.filter((report) => report.status === "open");
+  // Abertas primeiro (a ordem de chegada se mantém dentro de cada grupo) e de
+  // 12 em 12: antes a lista parava na 12ª, abertas e fechadas misturadas, sem
+  // aviso, enquanto o selo contava todas as abertas (I-09).
+  const [shown, setShown] = useState(PAGE);
+  const ordered = [...openReports, ...reports.filter((report) => report.status !== "open")];
+  const hidden = ordered.length - shown;
 
   return (
     <section className="rounded-lg border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
@@ -98,7 +105,7 @@ export function CommunityModerationQueue() {
         loadError ? null : <p className="mt-5 rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm text-[var(--color-ink-soft)]">{t(`${copy}.empty`)}</p>
       ) : (
         <div className="mt-5 grid gap-3">
-          {reports.slice(0, 12).map((report) => (
+          {ordered.slice(0, shown).map((report) => (
             <article
               key={report.id}
               className="rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4"
@@ -129,8 +136,12 @@ export function CommunityModerationQueue() {
                 </p>
                 {report.detail ? <p>{t(`${copy}.context`)} {report.detail}</p> : null}
               </div>
-              <div className="mt-4 flex flex-wrap gap-2">
-                {reviewStatuses.map((status) => (
+              {/* O status atual fica só na etiqueta; os botões oferecem os outros (I-09). */}
+              <div role="group" aria-labelledby={`report-move-${report.id}`} className="mt-4 flex flex-wrap items-center gap-2">
+                <span id={`report-move-${report.id}`} className="text-xs font-semibold text-[var(--color-ink-soft)]">
+                  {t(`${copy}.moveTo`)}
+                </span>
+                {reviewStatuses.filter((status) => status !== report.status).map((status) => (
                   <Button
                     key={status}
                     variant="outline"
@@ -146,6 +157,11 @@ export function CommunityModerationQueue() {
               </div>
             </article>
           ))}
+          {hidden > 0 ? (
+            <Button variant="outline" className="w-fit" onClick={() => setShown((count) => count + PAGE)}>
+              {t(`${copy}.showMore`).replace("{count}", () => String(Math.min(PAGE, hidden)))}
+            </Button>
+          ) : null}
         </div>
       )}
     </section>

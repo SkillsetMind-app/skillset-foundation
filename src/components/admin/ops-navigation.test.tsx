@@ -376,9 +376,14 @@ describe("audit presentation inside the protected Operations page", () => {
       expect(article).toHaveTextContent(entry.actorEmail ?? entry.actorId);
     }
     expect(screen.getByText("future target")).toBeInTheDocument();
-    expect(screen.getByText(/Responsable actor-\$\$-\$& - Fecha pendiente - Destino target-\$\$-\$&-4/)).toBeInTheDocument();
+    // Cada parte com o próprio rótulo, não uma frase corrida (I-06).
+    const parts = (index: number) => {
+      const article = screen.getByText(entries[index].summary).closest("article")!;
+      return [...article.querySelectorAll("dt")].map((term) => [term.textContent, term.nextElementSibling?.textContent]);
+    };
+    expect(parts(4)).toEqual([["Cuándo", "Fecha pendiente"], ["Responsable", "actor-$$-$&"], ["Destino", "target-$$-$&-4"]]);
     const date = new Intl.DateTimeFormat("es", { dateStyle: "medium", timeStyle: "short" }).format(new Date(entries[0].createdAt!));
-    expect(screen.getByText(`Responsable actor@example.test - ${date} - Destino target-$$-$&-0`)).toBeInTheDocument();
+    expect(parts(0)).toEqual([["Cuándo", date], ["Responsable", "actor@example.test"], ["Destino", "target-$$-$&-0"]]);
     // O título da página é o nome da fila (I-07); o painel é achado pela explicação dele.
     expect(screen.getByRole("heading", { level: 1, name: "Registro de auditoría" })).toBeInTheDocument();
     const panel = screen.getByText(/Los reembolsos y las solicitudes de cuenta se registran aquí/).closest("section")!;

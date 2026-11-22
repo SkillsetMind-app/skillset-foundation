@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { CommunityModerationQueue } from "@/components/admin/community-moderation-queue";
@@ -70,6 +70,24 @@ describe("community report presentation", () => {
     expect(screen.getByText(label, { selector: "span[data-status]" })).toHaveAttribute("data-status", status);
     expect(mocks.update).toHaveBeenCalledTimes(1);
     expect(mocks.subscribe).toHaveBeenCalledTimes(1);
+  });
+
+  it("lists open reports first, twelve at a time, and offers only the other statuses (I-09)", () => {
+    render(panel());
+    const closed = [0, 1].map((index): CommunityReport => ({ ...report, id: `closed-${index}`, status: "reviewed", reporterName: `Fechada ${index}` }));
+    const open = Array.from({ length: 12 }, (_, index): CommunityReport => ({ ...report, id: `open-${index}`, reporterName: `Aberta ${index}` }));
+    deliver([...closed, ...open]);
+    const reporters = () => screen.getAllByRole("article").map((card) => within(card).getByText(/^(Aberta|Fechada) \d+$/).textContent);
+    expect(reporters()).toEqual(open.map((entry) => entry.reporterName));
+    const moves = (card: HTMLElement) => within(within(card).getByRole("group", { name: "Move to" })).getAllByRole("button").map((button) => button.textContent);
+    expect(moves(screen.getAllByRole("article")[0])).toEqual(["Reviewed", "Resolved", "Dismissed"]);
+    fireEvent.click(screen.getByRole("button", { name: "Show 2 more" }));
+    expect(reporters()).toEqual([...open, ...closed].map((entry) => entry.reporterName));
+    expect(moves(screen.getAllByRole("article")[13])).toEqual(["Resolved", "Dismissed"]);
+    expect(screen.queryByRole("button", { name: /Show \d+ more/ })).toBeNull();
+    language();
+    expect(screen.getAllByRole("group", { name: "Mover a" })).toHaveLength(14);
+    expect(mocks.update).not.toHaveBeenCalled();
   });
 
   it("does not show a rejected action as resolved or expose provider details", async () => {

@@ -857,6 +857,19 @@ p {
   font-size: 0.6875rem;
 }
 
+/* I-15, prévia "ver como" do admin (view-as.tsx): a faixa fixa (camada 70)
+   cobria a barra da plataforma (camada 60). Enquanto ela aparece, a página
+   desce a altura medida da faixa; a casca da plataforma tem altura fixa e
+   desconta a mesma medida, senão o pé dela sairia da tela. */
+html[data-view-as] body {
+  padding-top: var(--view-as-offset, 0px);
+}
+
+html[data-view-as] .platform-shell-root {
+  height: calc(100dvh - var(--view-as-offset, 0px));
+  min-height: calc(100dvh - var(--view-as-offset, 0px));
+}
+
 .status-chip__dot {
   width: 0.375rem;
   height: 0.375rem;

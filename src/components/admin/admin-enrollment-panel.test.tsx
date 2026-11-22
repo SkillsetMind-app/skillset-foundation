@@ -85,6 +85,34 @@ describe("administrative enrollment presentation", () => {
     for (const subscribe of [mocks.users, mocks.courses, mocks.grants]) expect(subscribe).toHaveBeenCalledTimes(1);
   });
 
+  // I-13: achar a pessoa digitando, sem perder quem já foi escolhido, e o
+  // botão cinza dizendo o que falta.
+  it("filters learners by name or email, keeps the chosen one and says why create is blocked", () => {
+    const other: UserProfile = { ...user, uid: "learner-b", displayName: "Bruno Silva", email: "bruno@example.test" };
+    render(panel());
+    act(() => { mocks.users.mock.calls[0][0]([user, other]); mocks.courses.mock.calls[0][0]([course]); mocks.grants.mock.calls[0][0]([]); });
+    const create = screen.getByRole("button", { name: "Create admin enrollment" });
+    expect(create).toBeDisabled();
+    expect(create).toHaveAccessibleDescription("Choose a user and a published creator course.");
+    const learner = screen.getByRole("combobox", { name: "Learner" });
+    const filter = screen.getByRole("searchbox", { name: "Filter learners" });
+    const options = () => within(learner).getAllByRole("option").map(option => option.textContent);
+    fireEvent.change(filter, { target: { value: " BRUNO@example " } });
+    expect(options()).toEqual(["Choose user", "Bruno Silva · bruno@example.test"]);
+    fireEvent.change(learner, { target: { value: other.uid } });
+    fireEvent.change(filter, { target: { value: "nobody" } });
+    expect(learner).toHaveValue(other.uid);
+    expect(options()).toEqual(["No account matches this search", "Bruno Silva · bruno@example.test"]);
+    fireEvent.change(screen.getByRole("combobox", { name: "Published creator course" }), { target: { value: course.id } });
+    expect(create).toBeEnabled();
+    expect(screen.queryByText("Choose a user and a published creator course.")).toBeNull();
+    fireEvent.change(filter, { target: { value: "" } });
+    expect(options()).toHaveLength(3);
+    language();
+    expect(screen.getByRole("searchbox", { name: "Filtrar estudiantes" })).toBeInTheDocument();
+    expect(mocks.create).not.toHaveBeenCalled();
+  });
+
   it.each([0, 1, 2])("shows %i confirmed grants with translated sources", count => {
     render(panel());
     expect(screen.queryByText("0 active")).toBeNull();

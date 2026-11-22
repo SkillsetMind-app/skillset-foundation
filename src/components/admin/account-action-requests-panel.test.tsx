@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AccountActionRequestsPanel } from "@/components/admin/account-action-requests-panel";
 import { I18nProvider, useTranslation } from "@/components/i18n/i18n-provider";
+import { CONFIRM_GUARD_MS } from "@/components/ui/confirm-dialog";
 import type { AccountActionRequest } from "@/lib/data/account-actions";
 
 const mocks = vi.hoisted(() => ({ subscribe: vi.fn(), resolve: vi.fn(), user: { uid: "admin-$$-$&" } as { uid: string } | null }));
@@ -18,13 +19,18 @@ function panel() { return <I18nProvider initialLocale="en"><ChangeLanguage /><Ac
 function language() { fireEvent.click(screen.getByRole("button", { name: "Change language" })); }
 function deliver(rows = [request]) { act(() => mocks.subscribe.mock.calls[0][0](rows)); }
 // Concluir e recusar passam pela janela de confirmação; em processo segue direto.
-function confirmIn(label: string) { fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: label })); }
+// O confirmar ignora cliques nos primeiros CONFIRM_GUARD_MS (só o Date é falso).
+function confirmIn(label: string) {
+  vi.advanceTimersByTime(CONFIRM_GUARD_MS);
+  fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: label }));
+}
 beforeEach(() => {
+  vi.useFakeTimers({ toFake: ["Date"] });
   HTMLDialogElement.prototype.showModal = function showModal() { this.setAttribute("open", ""); };
   HTMLDialogElement.prototype.close = function close() { this.removeAttribute("open"); this.dispatchEvent(new Event("close")); };
 });
 beforeEach(() => { vi.clearAllMocks(); mocks.user = { uid: "admin-$$-$&" }; mocks.subscribe.mockImplementation(() => vi.fn()); mocks.resolve.mockResolvedValue(undefined); });
-afterEach(cleanup);
+afterEach(() => { cleanup(); vi.useRealTimers(); });
 
 describe("account request presentation and canonical actions", () => {
   it("shows how far an open request is into its 30-day window, and nothing once it is closed", () => {
