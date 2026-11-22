@@ -1406,7 +1406,6 @@
         "locked": "Lección bloqueada",
         "closeMiniPlayer": "Cerrar mini reproductor",
         "loading": "Cargando contenido de la lección...",
-        "loadingDetails": "Cargando los medios y las notas de esta lección.",
         "mediaMissing": "Todavía no hay medios adjuntos",
         "mediaDetails": "El video se reproduce aquí cuando el instructor lo sube o conecta un contenido externo.",
         "content": "Contenido de la lección",
@@ -1442,7 +1441,6 @@
         "loading": "Cargando recursos del curso...",
         "empty": "Todavía no hay archivos para descargar.",
         "courseFiles": "Archivos del curso",
-        "loadingLesson": "Cargando archivos de la lección...",
         "emptyLesson": "Esta lección todavía no tiene archivos adjuntos.",
         "preview": "Vista previa",
         "enrolled": "Solo inscritos"
@@ -1743,7 +1741,6 @@
         "joinLater": "Únete cuando empiece"
       },
       "drawer": {
-        "back": "Volver al feed",
         "close": "Cerrar",
         "replies": "Respuestas",
         "noReplies": "Todavía no hay respuestas. Sé el primero.",
@@ -1752,7 +1749,8 @@
         "markError": "No pudimos guardar la respuesta marcada. Inténtalo de nuevo.",
         "replyLabel": "Añade tu respuesta",
         "replyPlaceholder": "Añade tu respuesta…",
-        "send": "Responder"
+        "send": "Responder",
+        "sending": "Enviando..."
       },
       "actions": {
         "delete": "Eliminar",

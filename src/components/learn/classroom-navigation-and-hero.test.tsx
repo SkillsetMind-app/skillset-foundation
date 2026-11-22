@@ -438,6 +438,27 @@ describe("hero da home do curso", () => {
     expect(screen.getByText("3 of 3 lessons · 100%")).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: /certificate/i })).toBeNull();
   });
+
+  // O titulo da area de membros e a saudacao da capa; muito professor poe o
+  // proprio nome ali, e a sala inteira ficava sem dizer que curso era.
+  it("com titulo proprio na capa, o nome do curso aparece na capa e no cabecalho da aula", () => {
+    const named = { ...course, membersTitle: "Patrick Simon" } as Course;
+    const { unmount } = renderClassroom("", [], { course: named });
+    const hero = document.querySelector(".members-hero") as HTMLElement;
+    expect(within(hero).getByRole("heading", { level: 1 })).toHaveTextContent("Patrick Simon");
+    expect(within(hero).getByText("Demo course")).toBeInTheDocument();
+    unmount();
+
+    renderClassroom("lesson=l2", ["l1"], { course: named });
+    expect(within(head()).getByRole("heading", { level: 1 })).toHaveTextContent("Demo course");
+    expect(screen.queryByText("Patrick Simon")).toBeNull();
+  });
+
+  it("o subtitulo do professor continua no lugar dele", () => {
+    renderClassroom("", [], { course: { ...course, membersTitle: "Patrick Simon", membersSubtitle: "Live cohort" } as Course });
+    const hero = document.querySelector(".members-hero") as HTMLElement;
+    expect(within(hero).getByText("Live cohort")).toBeInTheDocument();
+  });
 });
 
 describe("EN <-> ES com a sala aberta", () => {

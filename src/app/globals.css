@@ -4678,8 +4678,9 @@ body:has([aria-label="Course categories"])
   gap: 14px;
   border: 0;
   box-shadow: none;
-  /* A playlist rola dentro da lateral; o vídeo fica parado. */
-  max-height: calc(100vh - 108px);
+  /* A playlist rola dentro da lateral; o vídeo fica parado. top 92px = barra
+     do topo da área de membros (~68px) + 24px; 108px deixa 16px embaixo. */
+  max-height: calc(100svh - 108px);
   overflow-y: auto;
 }
 
@@ -5193,6 +5194,16 @@ body:has([aria-label="Course categories"])
   color: #ffffff;
 }
 
+/* Esperando o vídeo: a caixa já tem o 16:9 do player (o iframe é
+   aspect-video). Com a altura do clamp acima ela media 260-520px e a aula
+   pulava 50-110px quando o vídeo chegava. O clamp fica para trancada e sem
+   mídia, que têm texto e botão. */
+.member-video-empty--loading {
+  aspect-ratio: 16 / 9;
+  min-height: 0;
+  padding: 0;
+}
+
 .member-video-empty svg {
   color: rgba(255, 255, 255, 0.82);
 }
@@ -5675,8 +5686,20 @@ body:has([aria-label="Course categories"])
     grid-template-columns: auto minmax(0, 1fr) auto;
   }
 
+  /* Linha 1: a seta de voltar (só ícone, 44px) e o título com as setas de
+     aula. Linha 2: barra e porcentagem juntas. Antes a barra ocupava a linha
+     2 inteira e o "40%" caía sozinho numa terceira. */
+  .member-classroom-head__back {
+    min-width: 44px;
+    justify-content: center;
+  }
+
+  .member-classroom-head__main {
+    grid-column: 2 / -1;
+  }
+
   .member-classroom-head__progress {
-    grid-column: 1 / -1;
+    grid-column: 1 / 3;
   }
 }
 
@@ -5715,13 +5738,26 @@ body:has([aria-label="Course categories"])
 }
 
 .member-classroom[data-members-theme] {
+  /* clip, e não hidden: hidden faz da sala um contêiner de rolagem, e tudo o
+     que é sticky dentro dela (barra "Mark complete & next", lista de aulas,
+     aviso de posts novos) grudava nela e rolava junto com a página. clip
+     corta os cantos igual e deixa o sticky grudar na tela. hidden fica como
+     reserva para navegador sem clip. */
   overflow: hidden;
+  overflow: clip;
   gap: 0;
   border: 1px solid var(--ma-line);
   border-radius: var(--radius-lg);
   background: var(--ma-bg);
   color: var(--ma-ink);
   box-shadow: var(--ma-shadow);
+}
+
+/* Com a barra "Mark complete & next" presa no pé da tela (~69px: 44 do botão,
+   24 de respiro, 1 de borda), o navegador levava o item focado pelo Tab até a
+   borda de baixo, atrás dela. Só na página que tem a aula aberta. */
+html:has(#member-lesson-player) {
+  scroll-padding-bottom: 88px;
 }
 
 .member-classroom[data-members-theme] > .members-hero {
@@ -5742,13 +5778,32 @@ body:has([aria-label="Course categories"])
   box-shadow: none;
 }
 
-.member-classroom[data-members-theme] > .member-classroom-layout {
-  margin: 24px;
+/* Respiro entre a moldura da sala e o que vai dentro dela. Os painéis moram
+   no invólucro da aba (.member-classroom-body, enrolled-course-workspace.tsx);
+   as margens antigas miravam filhos diretos da sala, deixaram de casar quando
+   o invólucro entrou, e os cartões passaram a encostar na borda. Cabeçalho
+   curto e abas recuam o mesmo tanto, para as bordas esquerdas alinharem. */
+.member-classroom[data-members-theme] > .member-classroom-body {
+  padding: 0 24px 24px;
 }
 
-.member-classroom[data-members-theme] > .member-module-deck,
-.member-classroom[data-members-theme] > .member-resource-panel {
-  margin: 0 24px 24px;
+.member-classroom[data-members-theme] > .member-classroom-head {
+  margin-inline: 24px;
+  padding-inline: 0;
+}
+
+/* A barra rola de lado (overflow-x), e isso corta o que passa da borda dela:
+   o anel de foco (2px + 3px de afastamento) da primeira aba sumia à
+   esquerda. 6px de folga por dentro, descontados da margem, e o texto segue
+   alinhado com os painéis. */
+.member-classroom[data-members-theme] > .member-classroom-tabs {
+  margin-inline: 18px;
+  padding-inline: 6px;
+}
+
+/* O texto da primeira aba começa na mesma linha dos painéis. */
+.member-classroom[data-members-theme] > .member-classroom-tabs > a:first-child {
+  padding-inline-start: 0;
 }
 
 .member-classroom[data-members-theme] [class*="border-[var(--color-line)]"],
@@ -5775,6 +5830,34 @@ body:has([aria-label="Course categories"])
 
 .member-classroom[data-members-theme] [class*="text-[var(--color-accent-fg)]"] {
   color: var(--ma-accent-ink) !important;
+}
+
+/* A gaveta da pergunta não sai da sala (não é portal), então o texto dela já
+   vem na cor do CURSO pelas regras acima. Fundo, divisórias e os tons que as
+   regras acima não trocam passam a ler a mesma paleta: sem isso a gaveta era
+   branca num curso escuro, com o texto claro por cima. Fora da sala (área do
+   criador, caixa do professor) ela segue os tokens da plataforma. */
+.member-classroom[data-members-theme] .community-drawer {
+  --color-surface: var(--ma-surface);
+  --color-surface-soft: var(--ma-surface-2);
+  --color-line: var(--ma-line);
+  --color-ink: var(--ma-ink);
+  --color-ink-soft: var(--ma-ink-soft);
+  /* --ma-ink-muted não chega a 4.5:1 no escuro; o meta (autor, hora) é
+     leitura, então usa o tom suave. */
+  --color-ink-muted: var(--ma-ink-soft);
+}
+
+/* Erro e "respondida" na gaveta e nos cartões do feed da sala (o fundo dos
+   cartões já é --ma-surface pela regra do bg-white). O vermelho e o verde da
+   plataforma davam ~2.7:1 num curso escuro, e o vermelho do modo escuro
+   ~2.7:1 sobre o branco de um curso claro. Os -ink do curso existem para
+   isso: no claro 5.5:1 e 7:1 sobre branco; no escuro 5.6:1 e 5.3:1 sobre
+   #141923. */
+.member-classroom[data-members-theme] .community-drawer,
+.member-classroom[data-members-theme] [data-community-item] {
+  --color-danger-fg: var(--ma-accent-ink);
+  --color-success-fg: var(--ma-success-ink);
 }
 
 .member-classroom[data-members-theme] .member-preview-banner,
@@ -6059,6 +6142,17 @@ body:has([aria-label="Course categories"])
   box-shadow: 0 16px 32px rgba(178, 34, 52, 0.34);
 }
 
+/* O ícone dentro do botão (o Play de "Watch now") segue o rótulo. Sem isto
+   a regra da plataforma para `.button-solid *` pintava o ícone escuro no modo
+   escuro, ou branco sobre uma cor clara do professor, com o texto de outra
+   cor ao lado. */
+.member-classroom[data-members-theme] .button-solid *,
+.member-classroom[data-members-theme] .button-solid:hover *,
+.member-classroom[data-members-theme] .button-accent *,
+.member-classroom[data-members-theme] .button-accent:hover * {
+  color: var(--ma-on-accent) !important;
+}
+
 .member-classroom[data-members-theme] .button-outline {
   border-color: var(--ma-line-2);
   background: transparent;
@@ -6082,18 +6176,18 @@ body:has([aria-label="Course categories"])
   }
 
   .member-classroom[data-members-theme] > .member-classroom-head,
-  .member-classroom[data-members-theme] > .member-preview-banner,
-  .member-classroom[data-members-theme] > .member-classroom-layout,
-  .member-classroom[data-members-theme] > .member-module-deck,
-  .member-classroom[data-members-theme] > .member-resource-panel {
+  .member-classroom[data-members-theme] > .member-preview-banner {
     margin-right: 14px;
     margin-left: 14px;
   }
 
-  .member-classroom[data-members-theme] > .member-classroom-layout,
-  .member-classroom[data-members-theme] > .member-module-deck,
-  .member-classroom[data-members-theme] > .member-resource-panel {
-    margin-bottom: 14px;
+  /* 14px menos os 6px de folga do anel de foco (regra de cima). */
+  .member-classroom[data-members-theme] > .member-classroom-tabs {
+    margin-inline: 8px;
+  }
+
+  .member-classroom[data-members-theme] > .member-classroom-body {
+    padding: 0 14px 14px;
   }
 
   .member-classroom[data-members-theme] > .member-preview-banner {
@@ -6109,8 +6203,8 @@ body:has([aria-label="Course categories"])
   }
 
   /* Phone: the lesson video runs edge to edge. Stacked side insets left it
-     ~280px wide on a 375px screen. The dock pulls out through the layout
-     margin (14px), the player border (1px) and its padding (16px) above; the
+     ~280px wide on a 375px screen. The dock pulls out through the body
+     padding (14px), the player border (1px) and its padding (16px) above; the
      text around the video keeps those 31px. The dock, not the stage, takes
      the margin: in the mini player the stage sits in a fixed bar. */
   .member-classroom[data-members-theme] .member-video-dock {
@@ -8716,7 +8810,16 @@ button:hover > .dash-card,
     font-size: 13px;
     font-weight: 600;
     white-space: nowrap;
-    transition: color 0.15s ease, border-color 0.15s ease;
+    transition:
+      color var(--duration-base) var(--ease-standard),
+      border-color var(--duration-base) var(--ease-standard);
+  }
+
+  /* Há aba escondida à direita (classroom-tabs.tsx marca data-more): a borda
+     esmaece, sinal de que a barra rola. Sem isso a barra de rolagem oculta
+     fazia "Review" e "About" parecerem não existir. */
+  .member-classroom-tabs[data-more="true"] {
+    mask-image: linear-gradient(90deg, #000 calc(100% - 48px), transparent);
   }
 
   .member-classroom-tabs > a:hover {
@@ -8744,16 +8847,28 @@ button:hover > .dash-card,
     margin-left: auto;
     color: var(--ma-accent-ink);
   }
+
+  /* No celular "Get certificate" ficava no fim da barra que rola, fora da
+     tela. Ele já está na capa do curso e no botão da última aula. */
+  @media (max-width: 767.98px) {
+    .member-classroom-tabs > .member-classroom-tabs__action {
+      display: none;
+    }
+  }
 }
 
 /* ── A gaveta da pergunta (mockup 5, 11b) ───────────────────────────────────
    Desliza da direita (560px) por cima do feed escurecido; no celular sobe como
-   folha inferior. A caixa de resposta fica fixa no rodapé da gaveta. ─────── */
+   folha inferior. A caixa de resposta fica fixa no rodapé da gaveta.
+   Fundo pelo token de superfície, não #ffffff: o texto segue o tema e, no
+   escuro, ficava quase branco sobre branco. Camada 70, a dos popups: na 60 o
+   menu lateral (65), o assistente (68) e o aviso de cookies (69) passavam por
+   cima da gaveta. ─────────────────────────────────────────────────────────── */
 @layer components {
   .community-drawer-backdrop {
     position: fixed;
     inset: 0;
-    z-index: 60;
+    z-index: 70;
     display: flex;
     justify-content: flex-end;
     background: rgba(16, 42, 67, 0.45);
@@ -8764,7 +8879,7 @@ button:hover > .dash-card,
     width: min(560px, 100%);
     height: 100%;
     flex-direction: column;
-    background: #ffffff;
+    background: var(--color-surface);
     box-shadow: -12px 0 32px rgba(16, 42, 67, 0.18);
   }
 
@@ -8780,7 +8895,7 @@ button:hover > .dash-card,
     align-items: center;
     gap: 8px;
     border-top: 1px solid var(--color-line);
-    background: #ffffff;
+    background: var(--color-surface);
     padding: 12px 16px;
   }
 
@@ -8792,10 +8907,49 @@ button:hover > .dash-card,
     .community-drawer {
       width: 100%;
       height: auto;
-      max-height: 90vh;
+      max-height: 90svh;
       border-radius: var(--radius-xl) var(--radius-xl) 0 0;
       box-shadow: 0 -12px 32px rgba(16, 42, 67, 0.18);
     }
+  }
+
+  /* Entrada: o fundo escurece e a gaveta chega 16px da direita (no celular,
+     de baixo), em 180ms. Só opacity e transform; fill backwards, então fora da
+     animação nada fica preso nem invisível. */
+  @media (prefers-reduced-motion: no-preference) {
+    .community-drawer-backdrop {
+      animation: community-drawer-fade var(--duration-base) var(--ease-standard) backwards;
+    }
+
+    .community-drawer {
+      animation: community-drawer-in var(--duration-base) var(--ease-standard) backwards;
+    }
+
+    @media (max-width: 767px) {
+      .community-drawer {
+        animation-name: community-sheet-in;
+      }
+    }
+  }
+}
+
+@keyframes community-drawer-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes community-drawer-in {
+  from {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+}
+
+@keyframes community-sheet-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
   }
 }
 

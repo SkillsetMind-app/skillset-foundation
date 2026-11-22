@@ -233,7 +233,7 @@ export function CommunityItemActions({
         </button>
       ) : null}
       {reported ? (
-        <p role="status" className="basis-full text-xs font-semibold text-[rgb(21,128,61)]">
+        <p role="status" className="basis-full text-xs font-semibold text-[var(--color-success-fg)]">
           {t(reported === "duplicate" ? "learn.community.report.duplicate" : "learn.community.report.done")}
         </p>
       ) : null}

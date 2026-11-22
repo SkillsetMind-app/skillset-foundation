@@ -10,6 +10,7 @@ import {
   Clock,
   FileText,
   Info,
+  Loader2,
   LockKeyhole,
   PlayCircle,
 } from "lucide-react";
@@ -165,7 +166,7 @@ export function EnrolledCourseWorkspace({
   openPostId = null,
   enrollment: parentEnrollment,
 }: EnrolledCourseWorkspaceProps) {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const { user } = useAuth();
   const searchParams = useSearchParams();
   // Stripe's success_url carries ?checkout=success while the webhook is still
@@ -955,6 +956,15 @@ export function EnrolledCourseWorkspace({
     selectedLessonNumber > 1 ? allLessons[selectedLessonNumber - 2] : null;
   const nextInOrder =
     selectedLessonNumber > 0 ? allLessons[selectedLessonNumber] ?? null : null;
+  // A próxima abre numa DATA (drip por prazo): concluir esta não a destranca.
+  // O botão de baixo dizia "Next lesson" e não fazia nada; agora diz quando
+  // ela abre. (Sequencial não entra aqui: concluir esta é o que abre a
+  // próxima, e completeAndFindNext já trata isso.)
+  const nextUnlockState = nextInOrder ? lessonUnlockStateById.get(nextInOrder.id) : undefined;
+  const nextOpensAt =
+    nextUnlockState && !nextUnlockState.unlocked && nextUnlockState.reason === "scheduled"
+      ? nextUnlockState.unlocksAt
+      : null;
   // Members-area hero cover: the teacher's chosen members_cover CourseAsset
   // (resolved to a protected object URL inside the hero band). Only available
   // once the course assets are streamed (enableFirestoreAssets); otherwise the
@@ -1271,12 +1281,18 @@ export function EnrolledCourseWorkspace({
         />
       ) : (
         <header className="member-classroom-head">
+          {/* No celular so a seta fica a vista (o rotulo continua sendo o
+              nome do link): "← Maria Fernanda's members area" espremia o nome
+              do curso ate sumir. */}
           <Link href={backHref} className="member-classroom-head__back">
-            ← {backLabel}
+            ← <span className="max-[640px]:sr-only">{backLabel}</span>
           </Link>
           <div className="member-classroom-head__main">
+            {/* O nome do CURSO, nao o titulo da area de membros: esse e a
+                saudacao da capa, e quem o preenche com o proprio nome deixava
+                a sala inteira sem dizer que curso era. */}
             <h1 className="member-classroom-head__title">
-              {course.membersTitle ?? course.title}
+              {course.title}
             </h1>
             {activeTab === "lesson" && selectedLesson ? (
               <LessonStepper
@@ -1337,8 +1353,11 @@ export function EnrolledCourseWorkspace({
       />
 
       {/* Um item so da grade para a aba aberta: na troca de aba ele entra
-          subindo 8px (motion-panel-in); na carga da pagina, parado. */}
-      <div className={tabChanged ? "motion-panel-in" : undefined}>
+          subindo 8px (motion-panel-in); na carga da pagina, parado. A classe
+          fixa leva o respiro de 24px ate a moldura da sala (globals.css): sem
+          ela os paineis encostavam na borda e o video passava da tela no
+          celular. */}
+      <div className={tabChanged ? "member-classroom-body motion-panel-in" : "member-classroom-body"}>
       {activeTab === "lesson" && totalLessonCount === 0 ? (
         <section className="member-resource-panel">
           <p className="text-sm text-[var(--color-ink-soft)]">{t("learn.classroom.workspace.noLessons")}</p>
@@ -1404,9 +1423,12 @@ export function EnrolledCourseWorkspace({
           // already uses keeps pinned to the bottom.
           // bg-inherit picks up the player surface, which the members theme
           // repaints, so the bar follows the course theme with no fork.
+          // As margens negativas anulam o padding do cartao (16px no celular,
+          // 24px acima de 768): presa no pe da tela, a barra cobre o cartao de
+          // borda a borda, sem o texto passando pelos lados.
           <nav
             aria-label={t("creatorEditor.preview.lessonNavigation")}
-            className="sticky bottom-0 z-20 mt-5 flex flex-wrap items-center justify-center gap-3 border-t border-[var(--color-line)] bg-inherit py-3"
+            className="sticky bottom-0 z-20 -mx-4 mt-5 flex flex-wrap items-center justify-center gap-3 border-t border-[var(--color-line)] bg-inherit px-4 py-3 md:-mx-6 md:px-6"
           >
             {/* "Anterior" morava aqui, sozinho, sem "proxima" ao lado. Os dois
                 agora ficam junto do titulo (LessonStepper), uma vez so. */}
@@ -1448,7 +1470,7 @@ export function EnrolledCourseWorkspace({
                       && !selectedLessonUnlockState.unlocked,
                   )
                   || activeLessonId === selectedLesson.id
-                  || (!nextInOrder && completedLessonIds.includes(selectedLesson.id))
+                  || ((!nextInOrder || Boolean(nextOpensAt)) && completedLessonIds.includes(selectedLesson.id))
                 }
                 className="button-solid flex-1 px-4 py-2.5 text-sm disabled:opacity-60 sm:flex-none"
               >
@@ -1461,9 +1483,13 @@ export function EnrolledCourseWorkspace({
                       ? t("learn.classroom.workspace.saving")
                       : completedLessonIds.includes(selectedLesson.id)
                         ? nextInOrder
-                          ? t("learn.classroom.nextLesson.title")
+                          ? nextOpensAt
+                            // "Next lesson · Unlocks Nov 24, 2026": a mesma frase
+                            // da playlist, dita de qual aula se trata.
+                            ? `${t("learn.classroom.nextLesson.title")} · ${t("learn.classroom.lesson.unlocks").replace("{date}", () => formatUnlockDate(nextOpensAt, locale))}`
+                            : t("learn.classroom.nextLesson.title")
                           : t("learn.classroom.curriculum.completed")
-                        : nextInOrder
+                        : nextInOrder && !nextOpensAt
                           ? t("learn.classroom.workspace.completeAndNext")
                           : t("learn.classroom.workspace.complete")}
               </button>
@@ -1850,7 +1876,13 @@ function MembersAreaHeroBand({
       theme={course.membersTheme ?? "light"}
       coverUrl={objectUrl ?? course.image ?? null}
       title={course.membersTitle ?? course.title}
-      subtitle={course.membersSubtitle ?? null}
+      // Titulo proprio na capa (muitas vezes o nome do professor) e sem
+      // subtitulo: o nome do curso entra na linha de baixo, senao a capa nao
+      // dizia em nenhum lugar que curso e este.
+      subtitle={
+        course.membersSubtitle
+          ?? (course.membersTitle && course.membersTitle !== course.title ? course.title : null)
+      }
       description={course.membersDescription ?? course.summary ?? null}
       progressPercent={progressPercent}
       completedCount={completedCount}
@@ -2136,6 +2168,15 @@ function LessonContentPanel({
   const contentReady = !locked && !hasPlayableVideo && !isLoadingContent && !isLoadingAssets;
   const fileOnly = contentReady && lessonFiles.length > 0;
   const textOnly = contentReady && (isTextFirstLesson || fileOnly);
+  // O tipo dito pelo que a aula mostra, nao pelo campo: aula nova nasce
+  // "video" (acima), e uma aula so de leitura ou so de arquivo dizia "VIDEO
+  // LESSON" no topo e em "Informacoes da aula".
+  const shownType: LessonType =
+    lesson.type === "video" && fileOnly
+      ? "download"
+      : lesson.type === "video" && textOnly
+        ? "text"
+        : lesson.type;
   // No preview do professor não se guarda posição: ele não é o aluno.
   // Memoizado porque a referência é objeto: uma nova a cada render reabriria
   // a aula (e o evento "abriu" do funil) a cada quadro.
@@ -2162,11 +2203,9 @@ function LessonContentPanel({
             {lesson.description}
           </p>
         ) : null}
-        {!locked && lessonContentPending ? (
-          <p className="mt-3 text-sm leading-7 text-[var(--color-ink-soft)]">
-            {t("learn.classroom.lesson.loading")}
-          </p>
-        ) : null}
+        {/* Traços no lugar de um segundo "Loading lesson content...": o
+            aviso de carregando e um so, o da caixa do video. */}
+        {!locked && lessonContentPending ? <SkeletonLines /> : null}
         {!locked && lesson.contentText ? (
           <div className="mt-4 whitespace-pre-line rounded-lg border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-4 text-sm leading-7 text-[var(--color-ink-soft)]">
             {linkify(lesson.contentText)}
@@ -2204,7 +2243,7 @@ function LessonContentPanel({
       <div className="member-lesson-panel__head">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
-            {t(lessonTypeLabels[lesson.type])}
+            {t(lessonTypeLabels[shownType])}
           </p>
           <h4 className="display-title mt-2 text-3xl text-[var(--color-ink)]">
             {lesson.title}
@@ -2278,10 +2317,13 @@ function LessonContentPanel({
         ) : isLoadingContent || isLoadingAssets ? (
           // Com os anexos ainda chegando, a aula de video piscava "Media not
           // attached yet" antes do player aparecer.
-          <div className="member-video-empty">
-            <PlayCircle size={34} aria-hidden />
-            <h5>{t("learn.classroom.lesson.loading")}</h5>
-            <p>{t("learn.classroom.lesson.loadingDetails")}</p>
+          // Carregando = palco no formato 16:9 do player que vem (nada pula
+          // quando ele chega) e so um anel girando. O icone de play e a frase
+          // ficam para "Media not attached yet": antes as duas caixas eram
+          // iguais. O texto segue para o leitor de tela, num aviso so.
+          <div className="member-video-empty member-video-empty--loading" role="status">
+            <Loader2 size={32} aria-hidden className="motion-safe:animate-spin" />
+            <h5 className="sr-only">{t("learn.classroom.lesson.loading")}</h5>
           </div>
         ) : (
           <div className="member-video-empty">
@@ -2295,7 +2337,7 @@ function LessonContentPanel({
       )}
 
       <LessonInfo
-        lesson={lesson}
+        lesson={shownType === lesson.type ? lesson : { ...lesson, type: shownType }}
         moduleTitle={moduleTitle}
         materialsCount={
           enableFirestoreAssets && !isLoadingAssets ? supportingAssets.length : null
@@ -2303,12 +2345,31 @@ function LessonContentPanel({
         unlocksAt={unlockState?.unlocksAt ?? null}
       />
 
-      {textOnly ? lessonBody : null}
+      {/* O material do professor (descricao, notas, arquivos, quiz) vem logo
+          sob a aula, e os comentarios por ultimo. Na aula de video o corpo
+          ficava embaixo de uma lista de comentarios sem fim. */}
+      {lessonBody}
 
       {/* Aula trancada: sem comentarios. */}
       {!locked ? lessonComments : null}
+    </div>
+  );
+}
 
-      {textOnly ? null : lessonBody}
+// Linhas de espera do corpo da aula e dos arquivos. Escondidas do leitor de
+// tela: o aviso de carregando e um so, o da caixa do video. Cor da paleta do
+// curso com reserva na da plataforma, a mesma da ClassroomLoading.
+const skeletonWidths = ["w-full", "w-[92%]", "w-3/5"];
+
+function SkeletonLines({ count = 3 }: { count?: number }) {
+  return (
+    <div aria-hidden="true" className="mt-4 grid gap-2">
+      {skeletonWidths.slice(0, count).map((width) => (
+        <span
+          key={width}
+          className={`block h-3 ${width} rounded-sm bg-[var(--ma-line,var(--color-surface-strong))] motion-safe:animate-pulse`}
+        />
+      ))}
     </div>
   );
 }
@@ -2322,11 +2383,9 @@ function LessonAssetList({
 }) {
   const { t } = useTranslation();
   if (isLoading) {
-    return (
-      <p className="mt-4 rounded-md bg-[var(--color-surface-soft)] px-3 py-2 text-sm text-[var(--color-ink-soft)]">
-        {t("learn.classroom.resources.loadingLesson")}
-      </p>
-    );
+    // Traço, nao a pilula "Loading lesson assets...": ela era identica a
+    // "No files are attached" e somava mais um "Loading" na tela.
+    return <SkeletonLines count={1} />;
   }
 
   if (assets.length === 0) {
