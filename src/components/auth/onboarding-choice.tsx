@@ -10,6 +10,7 @@ import {
   isCaptchaEnabled,
 } from "@/components/auth/turnstile-widget";
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { SkillsetSpinner } from "@/components/shared/skillset-spinner";
 import type { OnboardingAnswers, UserGoal } from "@/domain/user-profile";
 import { CONNECT_PAYOUT_COUNTRIES, isConnectPayoutCountry } from "@/lib/payments/connect-countries";
 import {
@@ -522,11 +523,9 @@ export function OnboardingChoice() {
   }
 
   if (isBootstrapping) {
-    return (
-      <div className="mt-6 rounded-lg border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-5 text-sm font-semibold text-[var(--color-ink-soft)]">
-        {t("onboarding.preparing")}
-      </div>
-    );
+    // O mesmo giro e a mesma frase do fallback de /onboarding, que vem logo
+    // antes: antes eram duas esperas seguidas com cara e texto diferentes.
+    return <SkillsetSpinner fullscreen={false} title={t("authFlow.loading.title")} />;
   }
 
   if (streamlinedTeacherActivation) {

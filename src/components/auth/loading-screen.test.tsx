@@ -27,7 +27,7 @@ vi.mock("@/components/i18n/i18n-provider", () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
 
-// /loading keeps the spinner up for 1.4s before routing; wait past it.
+// /loading keeps the spinner up for 400ms before routing; wait past it.
 const ROUTED = { timeout: 4000 };
 const GOOGLE_RETURN =
   "next=welcome&path=student&returnTo=%2Flearn%2Fcourses%2Fx";
@@ -171,6 +171,20 @@ describe("LoadingScreen recovery without granting access", () => {
     expect(document.body).not.toHaveTextContent("private profile failure");
     await act(async () => { await vi.advanceTimersByTimeAsync(6000); });
     expect(mocks.router.replace).not.toHaveBeenCalled();
+  });
+
+  // O-18/A-14: todo login esperava 1400ms aqui mesmo com o destino pronto.
+  // Agora só o bastante para não piscar, e a frase é lida pelo leitor de tela.
+  it("routes a ready destination after 400ms, not 1400ms", async () => {
+    mocks.auth = { status: "authenticated", user: { uid: "u-1" } };
+    mocks.getUserProfile.mockResolvedValue({ onboardingCompleted: true, roles: ["teacher"] });
+    render(<LoadingScreen />);
+    expect(screen.getByRole("status")).toHaveTextContent("authFlow.loading.title");
+    // O Vitest falsifica também performance.now(): a espera é exatamente 400ms.
+    await act(async () => { await vi.advanceTimersByTimeAsync(350); });
+    expect(mocks.router.replace).not.toHaveBeenCalled();
+    await act(async () => { await vi.advanceTimersByTimeAsync(50); });
+    expect(mocks.router.replace).toHaveBeenCalledExactlyOnceWith("/teach");
   });
 
   it("cleans up the initial wait timer on unmount", async () => {

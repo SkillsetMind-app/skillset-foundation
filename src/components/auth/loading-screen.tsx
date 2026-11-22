@@ -2,6 +2,7 @@
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { SkillsetSpinner } from "@/components/shared/skillset-spinner";
 import {
   getAuthRoute,
   getOnboardedReturnTo,
@@ -14,7 +15,9 @@ import { getUserProfile } from "@/lib/data/user-profiles";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
-const MINIMUM_LOADING_MS = 1400;
+// Só o bastante para a tela não piscar quando o destino sai na hora. Eram
+// 1400ms em todo login e toda volta do Google, mesmo com o destino pronto.
+const MINIMUM_LOADING_MS = 400;
 const LONG_WAIT_MS = 5000;
 
 function wait(ms: number) {
@@ -98,30 +101,21 @@ export function LoadingScreen() {
   }, [router, searchParams, status, user]);
 
   return (
-    <main className="grid min-h-screen place-items-center bg-[var(--color-base)] px-5">
-      <section className="text-center">
-        <div className="mx-auto mb-5 size-14 rounded-full border-[3px] border-[rgba(26,54,93,0.12)] border-t-[var(--color-accent-fg)] motion-safe:animate-spin" />
-        <h1 className="display-title text-[22px] font-semibold text-[var(--color-primary)]">
-          {t("authFlow.loading.title")}
-        </h1>
-        <p className="mt-1 text-[13px] text-[var(--color-ink-soft)]">
-          {t("authFlow.loading.description")}
+    <SkillsetSpinner title={t("authFlow.loading.title")}>
+      {isLongWait || hasError ? (
+        <button
+          type="button"
+          onClick={() => window.location.reload()}
+          className="button-outline mt-5 px-4 py-2 text-sm"
+        >
+          {t("authFlow.loading.retry")}
+        </button>
+      ) : null}
+      {hasError ? (
+        <p role="alert" className="mt-4 rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
+          {t("authFlow.loading.error")}
         </p>
-        {isLongWait || hasError ? (
-          <button
-            type="button"
-            onClick={() => window.location.reload()}
-            className="button-outline mt-5 px-4 py-2 text-sm"
-          >
-            {t("authFlow.loading.retry")}
-          </button>
-        ) : null}
-        {hasError ? (
-          <p role="alert" className="mt-4 rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
-            {t("authFlow.loading.error")}
-          </p>
-        ) : null}
-      </section>
-    </main>
+      ) : null}
+    </SkillsetSpinner>
   );
 }

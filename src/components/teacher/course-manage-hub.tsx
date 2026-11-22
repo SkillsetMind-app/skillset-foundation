@@ -19,6 +19,7 @@ import {
   PanelCard,
   TaxPanel,
 } from "@/components/teacher/course-commerce-panels";
+import { BuilderSkeleton } from "@/components/teacher/builder-skeleton";
 import { CourseShareLink } from "@/components/teacher/course-share-link";
 import { CourseOffersPanel } from "@/components/teacher/course-offers-panel";
 import { CourseOverviewPanel, StatCard } from "@/components/teacher/course-overview-panel";
@@ -439,11 +440,9 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
   const activationBlocked = account.verificationRequired && !account.verificationApproved;
 
   if (!courseLoaded) {
-    return (
-      <section className="rounded-lg border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)]">
-        <p className="text-sm text-[var(--color-ink-soft)]">{t("creatorPanel.hub.loading")}</p>
-      </section>
-    );
+    // Igual ao fallback da rota (F-03): blocos no lugar do cabeçalho, da
+    // fileira e do painel, e uma frase só para o leitor de tela.
+    return <BuilderSkeleton label={t("teacherRouteResidual.manageLoading")} />;
   }
 
   // ProtectedSurface guarantees a signed-in user here, so a null user is

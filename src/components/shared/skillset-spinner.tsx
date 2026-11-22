@@ -1,30 +1,42 @@
+import type { ReactNode } from "react";
+
 type SkillsetSpinnerProps = {
-  title?: string;
-  description?: string;
+  title: string;
   /** When true, fills the viewport (centered). Otherwise inline-centered. */
   fullscreen?: boolean;
+  /** Fica abaixo do aviso (ex.: "Try again" de uma espera longa), fora da região lida. */
+  children?: ReactNode;
 };
 
 /**
  * The single canonical SkillsetMind loading visual: an animated circular
- * spinner with a calm title/description. Used everywhere a loading
- * state is shown so the experience is consistent (no second style).
+ * spinner with one short line. Used everywhere a loading state is shown so the
+ * experience is consistent (no second style).
+ *
+ * Da entrada ao estúdio a pessoa passa por até cinco telas de espera seguidas
+ * (/loading, a montagem do roteador, /welcome, a entrevista, a área protegida).
+ * Todas usam este componente com a mesma frase: sem título em serifa de 22px
+ * nem descrição que muda, a troca de uma tela para a outra não aparece. O
+ * `role="status"` faz o leitor de tela ler a frase, o que nenhuma delas fazia.
  */
 export function SkillsetSpinner({
-  title = "Preparing your workspace",
-  description = "One moment. SkillsetMind is getting things ready.",
+  title,
   fullscreen = true,
+  children,
 }: SkillsetSpinnerProps) {
   const Title = fullscreen ? "h1" : "p";
   const content = (
     <section className="text-center">
-      <div className="mx-auto mb-5 size-14 rounded-full border-[3px] border-[rgba(26,54,93,0.12)] border-t-[var(--color-accent-fg)] motion-safe:animate-spin" />
-      <Title className="display-title text-[22px] font-semibold text-[var(--color-primary)]">
-        {title}
-      </Title>
-      <p className="mt-1 text-[13px] text-[var(--color-ink-soft)]">
-        {description}
-      </p>
+      <div role="status">
+        <div
+          aria-hidden="true"
+          className="mx-auto mb-5 size-14 rounded-full border-[3px] border-[rgba(26,54,93,0.12)] border-t-[var(--color-accent-fg)] motion-safe:animate-spin"
+        />
+        <Title className="text-base font-semibold text-[var(--color-primary)]">
+          {title}
+        </Title>
+      </div>
+      {children}
     </section>
   );
 

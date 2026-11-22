@@ -265,11 +265,11 @@ describe("auth flow follows the selected language without resetting state", () =
   it("translates loading and its saved failure without fetching the profile again", async () => {
     mocks.getUserProfile.mockRejectedValue(new Error("Profile unavailable"));
     renderSpanish(<LoadingScreen />);
-    expect(await screen.findByRole("heading", { name: "Preparando tu espacio de trabajo" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Abriendo SkillsetMind..." })).toBeInTheDocument();
     expect(await screen.findByText("No se pudo cargar tu espacio de trabajo. Actualiza la página para intentarlo de nuevo.")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Change language" }));
-    expect(screen.getByRole("heading", { name: "Preparing your workspace" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Opening SkillsetMind..." })).toBeInTheDocument();
     expect(screen.getByText("Could not load your workspace. Refresh the page to try again.")).toBeInTheDocument();
     expect(mocks.getUserProfile).toHaveBeenCalledTimes(1);
     expect(mocks.router.replace).not.toHaveBeenCalled();
