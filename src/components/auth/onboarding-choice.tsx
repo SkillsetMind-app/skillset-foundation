@@ -532,9 +532,17 @@ export function OnboardingChoice() {
   if (streamlinedTeacherActivation) {
     return (
       <div className="mt-6 grid gap-5">
-        {/* O titulo da pagina ja diz "One last step to open Teacher Studio"
-            (app/onboarding/page.tsx); a caixa que repetia a frase saiu. */}
         {askPayoutCountry ? payoutCountryField : null}
+        <div className="rounded-lg border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
+          <p className="font-semibold text-[var(--color-ink)]">
+            {t("onboarding.streamlinedTitle")}
+          </p>
+          {/* Sem o cartao do e-mail (ja verificado), "verifique seu e-mail"
+              seria um pedido sem botao. */}
+          <p className="mt-1">
+            {t(askEmailVerification ? "onboarding.streamlinedDesc" : "onboarding.streamlinedDescVerified")}
+          </p>
+        </div>
 
         {askEmailVerification ? emailVerificationCard : null}
 

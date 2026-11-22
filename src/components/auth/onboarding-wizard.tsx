@@ -2,11 +2,14 @@
 
 import { Check, GraduationCap, Loader2, Presentation } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { OnboardingProgress } from "@/components/auth/onboarding-progress";
-import { OnboardingQuestion } from "@/components/auth/onboarding-question";
+import {
+  ONBOARDING_QUESTION_TITLE_ID,
+  OnboardingQuestion,
+} from "@/components/auth/onboarding-question";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { LogoWordmark } from "@/components/shared/logo-wordmark";
 import { skillsetCourseCategories } from "@/domain/teacher-course";
@@ -22,6 +25,7 @@ import { isValidPhoneNumber } from "@/domain/user-profile";
 import { validateDisplayName } from "@/lib/auth/profile-validation";
 import { getCourseCategoryLabel } from "@/lib/i18n/course-categories";
 import { CONNECT_PAYOUT_COUNTRIES, isConnectPayoutCountry } from "@/lib/payments/connect-countries";
+import { scrollBehavior } from "@/lib/ui/scroll-behavior";
 import {
   getUserProfile,
   updateOnboardingAnswers,
@@ -355,6 +359,22 @@ export function OnboardingWizard() {
     return () => window.removeEventListener("keydown", handleKeydown);
   });
 
+  // A troca de pergunta remonta a tela e o botao focado some: o foco caia no
+  // <body> e nada anunciava a pergunta nova. Leva o foco ao titulo dela, a
+  // partir da segunda pergunta vista (na chegada a pagina o foco fica onde
+  // o navegador o pos).
+  const activeQuestionId = activeQuestion?.id ?? null;
+  const shownQuestionId = useRef<QuestionId | null>(null);
+  useEffect(() => {
+    if (isBootstrapping || isComplete || !activeQuestionId) {
+      return;
+    }
+    if (shownQuestionId.current && shownQuestionId.current !== activeQuestionId) {
+      document.getElementById(ONBOARDING_QUESTION_TITLE_ID)?.focus();
+    }
+    shownQuestionId.current = activeQuestionId;
+  }, [activeQuestionId, isBootstrapping, isComplete]);
+
   async function persistAnswers(nextAnswers: OnboardingAnswers, completed = false) {
     if (!user) {
       throw new Error("No authenticated user.");
@@ -370,6 +390,10 @@ export function OnboardingWizard() {
 
   async function updateAnswer(nextAnswers: OnboardingAnswers, autoAdvance = false) {
     const cleanedAnswers = compactAnswers(nextAnswers);
+    // A pergunta em que a resposta foi dada. Dois toques rapidos na mesma
+    // opcao (ou Enter duas vezes) avancavam duas vezes e pulavam a proxima
+    // pergunta obrigatoria; so avanca quem ainda esta nesta pergunta.
+    const from = currentIndex;
 
     setError("");
     setAnswers(cleanedAnswers);
@@ -379,7 +403,7 @@ export function OnboardingWizard() {
 
       if (autoAdvance) {
         await wait(240);
-        advance(cleanedAnswers);
+        advance(cleanedAnswers, from);
       }
     } catch {
       setError("authFlow.onboarding.answerSaveError");
@@ -400,9 +424,11 @@ export function OnboardingWizard() {
     setCurrentIndex((index) => Math.max(index - 1, 0));
   }
 
-  function advance(nextAnswers = answers) {
+  function advance(nextAnswers = answers, from = currentIndex) {
     const nextQuestions = getVisibleQuestions(nextAnswers, pathKnown);
-    setCurrentIndex((index) => Math.min(index + 1, nextQuestions.length - 1));
+    setCurrentIndex((index) =>
+      index === from ? Math.min(index + 1, nextQuestions.length - 1) : index,
+    );
   }
 
   function validateCurrentQuestion() {
@@ -1131,12 +1157,23 @@ function OptionGrid({
 
 function ErrorMessage({ error }: { error: string }) {
   const { t } = useTranslation();
+  const ref = useRef<HTMLParagraphElement>(null);
+  // No celular a barra do "Continue" fica presa embaixo e o aviso nascia atras
+  // dela (ou abaixo da dobra): o toque nao mudava nada visivel. Leva o aviso
+  // ao meio da tela quando ele aparece; sem animacao para quem pediu menos
+  // movimento.
+  useEffect(() => {
+    if (error) {
+      ref.current?.scrollIntoView?.({ block: "center", behavior: scrollBehavior() });
+    }
+  }, [error]);
+
   if (!error) {
     return null;
   }
 
   return (
-    <p role="alert" className="mt-5 rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-center text-sm font-semibold text-[var(--color-danger-fg)]">
+    <p ref={ref} role="alert" className="mt-5 rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-center text-sm font-semibold text-[var(--color-danger-fg)]">
       {t(error)}
     </p>
   );

@@ -90,7 +90,7 @@ async function mount() {
   });
   expect(screen.getByTestId("session")).toHaveTextContent("authenticated:student");
   expect(screen.queryByText("Teacher workspace")).not.toBeInTheDocument();
-  await screen.findByRole("button", { name: "onboarding.activateTeaching" });
+  await screen.findByText("onboarding.streamlinedTitle");
 }
 
 function activate() {

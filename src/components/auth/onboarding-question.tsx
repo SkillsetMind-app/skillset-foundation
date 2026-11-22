@@ -3,6 +3,9 @@
 import type { ReactNode } from "react";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 
+// O titulo recebe o foco quando a pergunta muda (onboarding-wizard.tsx).
+export const ONBOARDING_QUESTION_TITLE_ID = "onboarding-question-title";
+
 type OnboardingQuestionProps = {
   number: number;
   total: number;
@@ -28,7 +31,13 @@ export function OnboardingQuestion({
           .replace("{current}", String(number))
           .replace("{total}", String(total))}
       </p>
-      <h1 className="display-title mt-4 text-3xl font-semibold leading-[1.15] text-[var(--color-primary)] sm:text-4xl">
+      {/* tabIndex -1: focavel por codigo, fora da ordem do Tab. O anel so
+          aparece pelo :focus-visible global, nao para quem usa o mouse. */}
+      <h1
+        id={ONBOARDING_QUESTION_TITLE_ID}
+        tabIndex={-1}
+        className="display-title mt-4 text-3xl font-semibold leading-[1.15] text-[var(--color-primary)] sm:text-4xl"
+      >
         {title}
       </h1>
       {lead ? (

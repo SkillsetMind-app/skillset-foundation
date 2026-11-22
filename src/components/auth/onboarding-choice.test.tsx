@@ -116,12 +116,13 @@ describe("H3: pais na ativacao do professor", () => {
   it.each(["teacher", "student"])("quem terminou como %s ativa ensino sem repetir o questionario", async (path) => {
     mocks.getUserProfile.mockResolvedValue({ ...profile, onboardingPath: path });
     await mount();
-    // O titulo "One last step" e da pagina (app/onboarding/page.tsx), nao
-    // repetido numa caixa aqui dentro.
-    expect(screen.queryByText("onboarding.streamlinedTitle")).toBeNull();
+    expect(screen.getByText("onboarding.streamlinedTitle")).toBeInTheDocument();
     expect(screen.queryByLabelText("onboarding.publicName")).toBeNull();
-    // E-mail ja verificado: o cartao de verificacao nao aparece de novo.
+    // E-mail ja verificado: o cartao de verificacao nao aparece de novo, e o
+    // texto da caixa nao pede para verificar o que ja esta verificado.
     expect(screen.queryByText("onboarding.emailVerificationTitle")).toBeNull();
+    expect(screen.getByText("onboarding.streamlinedDescVerified")).toBeInTheDocument();
+    expect(screen.queryByText("onboarding.streamlinedDesc")).toBeNull();
     const finish = screen.getByRole("button", { name: "onboarding.activateTeaching" });
     expect(finish).toBeDisabled();
     fireEvent.change(screen.getByLabelText("connectOnboarding.countryLabel"), { target: { value: "CA" } });

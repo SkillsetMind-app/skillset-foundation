@@ -109,7 +109,7 @@ describe("OnboardingChoice verification resend with CAPTCHA protection on", () =
     render(<OnboardingChoice />);
     await signInUnverified();
 
-    await screen.findByRole("button", { name: "onboarding.activateTeaching" });
+    await screen.findByText("onboarding.streamlinedTitle");
     fireEvent.click(screen.getByRole("button", { name: "onboarding.sendVerification" }));
 
     await waitFor(() =>

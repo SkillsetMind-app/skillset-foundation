@@ -2290,6 +2290,11 @@ select:focus-visible {
     background: var(--color-base);
     padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
   }
+
+  /* Campo focado e aviso de erro nunca param atras da barra presa. */
+  html:has(.onboarding-footer) {
+    scroll-padding-bottom: 6rem;
+  }
 }
 
 /* Cada pergunta entra com a mesma subida curta (180ms do sistema), so para
