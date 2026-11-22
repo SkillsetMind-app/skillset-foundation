@@ -8,7 +8,7 @@ import { ArrowLeft, ArrowRight, CalendarDays, Plus, X } from "lucide-react";
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { ExportTableButton } from "@/components/shared/export-table-button";
-import { EmptyState } from "@/components/ui";
+import { ConfirmDialog, EmptyState } from "@/components/ui";
 import {
   formatEventDateTime,
   isValidExternalEventUrl,
@@ -98,6 +98,10 @@ export function TeacherEventStudio() {
   const [error, setError] = useState("");
   const [editingEventId, setEditingEventId] = useState<string | null>(null);
   const [actioningEventId, setActioningEventId] = useState<string | null>(null);
+  // Pergunta aberta (cancelar ou excluir) e o aviso de que deu certo: antes a
+  // sessao sumia ou mudava de estado sem nenhuma frase dizendo o que houve.
+  const [asking, setAsking] = useState<{ action: "cancel" | "delete"; event: CourseEvent } | null>(null);
+  const [notice, setNotice] = useState<"cancelledNotice" | "deletedNotice" | null>(null);
   // O formulario e um pedido, nao a pagina. Quem chega pelo fluxo de criacao de
   // produto (`?newEvent=1`, create-course-start.tsx) ja pediu, e so para essa
   // pessoa ele nasce aberto.
@@ -149,6 +153,7 @@ export function TeacherEventStudio() {
       () => {
         setEventsLoaded(true);
         setError("events");
+        setNotice(null);
       },
     );
   }, [user]);
@@ -223,11 +228,15 @@ export function TeacherEventStudio() {
     setExternalUrl(event.externalUrl);
     setDescription(event.description);
     setError("");
+    setNotice(null);
     setIsFormOpen(true);
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    // Antes das checagens: um "Session deleted." antigo não pode ficar ao
+    // lado do erro novo do formulário.
+    setNotice(null);
 
     if (!user || isSaving || !event.currentTarget.reportValidity()) {
       return;
@@ -297,20 +306,16 @@ export function TeacherEventStudio() {
     }
   }
 
+  // Roda só pelo confirmar da janela, que antes era o OK do window.confirm.
+  // O pedido em si não mudou.
   async function handleCancelEvent(event: CourseEvent) {
-    const confirmed = window.confirm(
-      t(`${copy}.confirmCancel`).replace("{title}", () => event.title),
-    );
-
-    if (!confirmed) {
-      return;
-    }
-
     setError("");
+    setNotice(null);
     setActioningEventId(event.id);
 
     try {
       await cancelCourseEvent(event.id);
+      setNotice("cancelledNotice");
     } catch {
       setError("cancel");
     } finally {
@@ -319,15 +324,8 @@ export function TeacherEventStudio() {
   }
 
   async function handleDeleteEvent(event: CourseEvent) {
-    const confirmed = window.confirm(
-      t(`${copy}.confirmDelete`).replace("{title}", () => event.title),
-    );
-
-    if (!confirmed) {
-      return;
-    }
-
     setError("");
+    setNotice(null);
     setActioningEventId(event.id);
 
     try {
@@ -336,6 +334,7 @@ export function TeacherEventStudio() {
       if (editingEventId === event.id) {
         closeForm();
       }
+      setNotice("deletedNotice");
     } catch {
       setError("delete");
     } finally {
@@ -437,6 +436,11 @@ export function TeacherEventStudio() {
         {error ? (
           <p role="alert" className="mt-4 rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
             {t(`${copy}.errors.${error}`)}
+          </p>
+        ) : null}
+        {notice ? (
+          <p role="status" className="info-notice mt-4">
+            {t(`${copy}.${notice}`)}
           </p>
         ) : null}
 
@@ -724,7 +728,7 @@ export function TeacherEventStudio() {
                   {event.status === "scheduled" ? (
                     <button
                       type="button"
-                      onClick={() => handleCancelEvent(event)}
+                      onClick={() => setAsking({ action: "cancel", event })}
                       disabled={actioningEventId === event.id}
                       className="button-outline px-3.5 py-2 text-xs disabled:opacity-60"
                     >
@@ -735,7 +739,7 @@ export function TeacherEventStudio() {
                   ) : null}
                   <button
                     type="button"
-                    onClick={() => handleDeleteEvent(event)}
+                    onClick={() => setAsking({ action: "delete", event })}
                     disabled={actioningEventId === event.id}
                     className="button-danger px-3.5 py-2 text-xs disabled:opacity-60"
                   >
@@ -747,6 +751,28 @@ export function TeacherEventStudio() {
           )}
         </div>
       </div>
+
+      {/* A frase é a mesma do antigo window.confirm; o que muda é a caixa. */}
+      {asking ? (
+        <ConfirmDialog
+          title={t(`${copy}.${asking.action === "cancel" ? "cancelTitle" : "deleteTitle"}`)}
+          confirmLabel={t(`${copy}.${asking.action === "cancel" ? "cancelSession" : "deleteSession"}`)}
+          pendingLabel={t(`${copy}.working`)}
+          cancelLabel={t(`${copy}.keepSession`)}
+          danger
+          onConfirm={() =>
+            asking.action === "cancel"
+              ? handleCancelEvent(asking.event)
+              : handleDeleteEvent(asking.event)
+          }
+          onClose={() => setAsking(null)}
+        >
+          {t(`${copy}.${asking.action === "cancel" ? "confirmCancel" : "confirmDelete"}`).replace(
+            "{title}",
+            () => asking.event.title,
+          )}
+        </ConfirmDialog>
+      ) : null}
     </section>
   );
 }

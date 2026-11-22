@@ -8,6 +8,7 @@ import { StatusChip } from "@/components/shared/status-chip";
 import {
   Button,
   Card,
+  ConfirmDialog,
   Eyebrow,
   Field,
   InlineAlert,
@@ -124,6 +125,7 @@ function DomainCard({
   errorMessage?: string;
 }) {
   const { t } = useTranslation();
+  const [asking, setAsking] = useState(false);
   const action = domain.status === "active" ? null : t(`teach.customDomains.nextAction.${domain.status}`);
   const dns = dnsInstructionFor(domain.hostname);
 
@@ -182,20 +184,32 @@ function DomainCard({
         <Button
           variant="danger"
           disabled={busy}
-          onClick={() => {
-            const confirmed = window.confirm(
-              t("teach.customDomains.confirmDisconnect").replace("{hostname}", () => domain.hostname),
-            );
-            if (confirmed) {
-              onRemove(domain.id);
-            }
-          }}
+          onClick={() => setAsking(true)}
           className="ml-auto"
         >
           <Trash2 className="h-4 w-4" />
           {t("teach.customDomains.disconnect")}
         </Button>
       </div>
+
+      {/* A janela NÃO espera o DELETE: a rota espera a API da Vercel sem
+          prazo, e esperar ali travaria a página inteira (Esc e Cancel
+          incluídos). Fecha na hora; o botão do cartão fica ocupado pelo
+          busyId e o erro continua aparecendo no cartão, como antes. */}
+      {asking ? (
+        <ConfirmDialog
+          title={t("teach.customDomains.disconnectTitle")}
+          confirmLabel={t("teach.customDomains.disconnectDomain")}
+          cancelLabel={t("teach.customDomains.keepDomain")}
+          danger
+          onConfirm={() => {
+            onRemove(domain.id);
+          }}
+          onClose={() => setAsking(false)}
+        >
+          {t("teach.customDomains.confirmDisconnect").replace("{hostname}", () => domain.hostname)}
+        </ConfirmDialog>
+      ) : null}
     </Card>
   );
 }

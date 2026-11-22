@@ -20,6 +20,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { useAuth } from "@/components/auth/auth-provider";
+import { ConfirmDialog } from "@/components/ui";
 
 import {
   courseLandingBlockKinds,
@@ -415,6 +416,8 @@ export function CourseLandingEditor({ course }: { course: TeacherCourse }) {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  // Seção que pediu para sair, enquanto a pergunta está aberta.
+  const [removing, setRemoving] = useState<{ id: number; kind: CourseLandingBlockKind } | null>(null);
 
   const load = useCallback(async () => {
     const [landing, profile] = await Promise.all([
@@ -598,14 +601,7 @@ export function CourseLandingEditor({ course }: { course: TeacherCourse }) {
                   trabalho todo. */}
               <button
                 type="button"
-                onClick={() => {
-                  const confirmed = window.confirm(
-                    t("teacherLanding.confirmRemove").replace("{section}", () => t(`teacherLanding.blocks.${block.kind}`)),
-                  );
-                  if (confirmed) {
-                    setEntries((c) => c.filter((entry) => entry.id !== id));
-                  }
-                }}
+                onClick={() => setRemoving({ id, kind: block.kind })}
                 aria-label={t("teacherLanding.removeSection").replace("{section}", () => t(`teacherLanding.blocks.${block.kind}`))}
                 title={t("teacherLanding.removeSection").replace("{section}", () => t(`teacherLanding.blocks.${block.kind}`))}
                 className="ml-2 grid h-8 w-8 place-items-center rounded-md border border-[var(--color-line)] bg-white text-[var(--color-danger-fg)]"
@@ -666,6 +662,21 @@ export function CourseLandingEditor({ course }: { course: TeacherCourse }) {
         {message ? <span role="status" className="text-sm text-[var(--color-success-fg)]">{t(message)}</span> : null}
         {error ? <span role="alert" className="text-sm text-[var(--color-danger-fg)]">{t(error)}</span> : null}
       </div>
+
+      {/* A frase é a mesma do antigo window.confirm. Tirar a seção continua
+          sendo só no rascunho: nada é gravado até "Save page". */}
+      {removing ? (
+        <ConfirmDialog
+          title={t("teacherLanding.removeTitle")}
+          confirmLabel={t("teacherLanding.removeConfirmLabel")}
+          cancelLabel={t("teacherLanding.keepSection")}
+          danger
+          onConfirm={() => setEntries((c) => c.filter((entry) => entry.id !== removing.id))}
+          onClose={() => setRemoving(null)}
+        >
+          {t("teacherLanding.confirmRemove").replace("{section}", () => t(`teacherLanding.blocks.${removing.kind}`))}
+        </ConfirmDialog>
+      ) : null}
     </section>
   );
 }

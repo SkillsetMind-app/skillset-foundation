@@ -5,11 +5,13 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { RoleManager } from "@/components/admin/role-manager";
 import { I18nProvider, useTranslation } from "@/components/i18n/i18n-provider";
+import { CONFIRM_GUARD_MS } from "@/components/ui/confirm-dialog";
 import { getDictionary, translate } from "@/lib/i18n/dictionaries";
 import { allPermissionDefinitions } from "@/lib/permissions";
 
@@ -33,15 +35,35 @@ function translatedRoster() {
   return <I18nProvider initialLocale="en"><ChangeLanguage /><RoleManager /></I18nProvider>;
 }
 
-// Admin changes ask first; the existing cases answer "OK".
+// Mudar o nível admin pergunta na janela da plataforma (não mais no
+// window.confirm). O jsdom não tem showModal/close: o stub faz o mínimo que o
+// navegador faz. Só o Date é falso: o confirmar ignora cliques nos primeiros
+// CONFIRM_GUARD_MS (toque duplo), e os setTimeout reais servem o findBy.
+const originalShow = Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype, "showModal");
+const originalClose = Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype, "close");
+
 beforeEach(() => {
-  vi.spyOn(window, "confirm").mockReturnValue(true);
+  vi.useFakeTimers({ toFake: ["Date"] });
+  Object.defineProperty(HTMLDialogElement.prototype, "showModal", { configurable: true, value() { this.setAttribute("open", ""); } });
+  Object.defineProperty(HTMLDialogElement.prototype, "close", { configurable: true, value() { if (!this.hasAttribute("open")) return; this.removeAttribute("open"); this.dispatchEvent(new Event("close")); } });
 });
 
 afterEach(() => {
   cleanup();
+  vi.useRealTimers();
   vi.resetAllMocks();
+  if (originalShow) Object.defineProperty(HTMLDialogElement.prototype, "showModal", originalShow);
+  else Reflect.deleteProperty(HTMLDialogElement.prototype, "showModal");
+  if (originalClose) Object.defineProperty(HTMLDialogElement.prototype, "close", originalClose);
+  else Reflect.deleteProperty(HTMLDialogElement.prototype, "close");
 });
+
+// Responde a pergunta aberta, depois da trava do toque duplo.
+function answer(button: string) {
+  const dialog = screen.getByRole("dialog");
+  vi.advanceTimersByTime(CONFIRM_GUARD_MS);
+  fireEvent.click(within(dialog).getByRole("button", { name: button }));
+}
 
 function roster(roles: string[]) {
   return [
@@ -123,31 +145,65 @@ describe("RoleManager", () => {
   });
 
   it("asks before granting admin and writes nothing when the operator cancels", async () => {
-    vi.mocked(window.confirm).mockReturnValue(false);
+    const nativeConfirm = vi.spyOn(window, "confirm");
     mocks.listPlatformUsers.mockResolvedValue(roster(["student"]));
     render(translatedRoster());
 
     fireEvent.click(await screen.findByLabelText("Admin"));
 
-    expect(window.confirm).toHaveBeenCalledExactlyOnceWith(expect.stringContaining("Make Test Person an administrator?"));
+    // (a) a frase de sempre, agora na janela da plataforma;
+    const dialog = screen.getByRole("dialog", { name: "Make this person an administrator?" });
+    expect(dialog).toHaveTextContent("Make Test Person an administrator? Admins can change anyone's access, issue refunds and see every account.");
+    expect(nativeConfirm).not.toHaveBeenCalled();
+    // (b) desistir não grava nada.
+    answer("Cancel");
+    expect(screen.queryByRole("dialog")).toBeNull();
     expect(mocks.setUserRoles).not.toHaveBeenCalled();
     expect(screen.getByLabelText("Admin")).not.toBeChecked();
   });
 
-  it("grants admin only after the operator confirms", async () => {
+  it("grants admin only after the operator confirms, once, over the roles current at confirmation", async () => {
     mocks.listPlatformUsers.mockResolvedValue(roster(["student"]));
-    mocks.setUserRoles.mockResolvedValue(["student", "admin"]);
+    mocks.setUserRoles.mockResolvedValue(["student", "teacher", "admin"]);
     render(translatedRoster());
 
     fireEvent.click(await screen.findByLabelText("Admin"));
 
-    expect(window.confirm).toHaveBeenCalledTimes(1);
-    expect(mocks.setUserRoles).toHaveBeenCalledWith("u-1", ["student", "admin"]);
+    const dialog = screen.getByRole("dialog", { name: "Make this person an administrator?" });
+    expect(mocks.setUserRoles).not.toHaveBeenCalled();
+    // Um clique colado na abertura (toque duplo) é descartado.
+    fireEvent.click(within(dialog).getByRole("button", { name: "Make administrator" }));
+    expect(mocks.setUserRoles).not.toHaveBeenCalled();
+    // Com a pergunta aberta, a busca com atraso traz papéis mais novos (alguém
+    // virou instrutor). Gravar os do clique apagaria essa mudança.
+    mocks.listPlatformUsers.mockResolvedValue(roster(["student", "teacher"]));
+    fireEvent.change(screen.getByRole("searchbox", { name: "Find someone" }), { target: { value: "Test" } });
+    await waitFor(() => expect(mocks.listPlatformUsers).toHaveBeenLastCalledWith("Test"));
+    await waitFor(() => expect(screen.getByLabelText("Instructor")).toBeChecked());
+    // (c) confirmar grava uma vez: o admin entra sobre os papéis de agora.
+    answer("Make administrator");
+    fireEvent.click(within(dialog).getByRole("button", { name: "Make administrator" }));
+    expect(mocks.setUserRoles).toHaveBeenCalledExactlyOnceWith("u-1", ["student", "teacher", "admin"]);
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     expect(await screen.findByLabelText("Admin")).toBeChecked();
   });
 
+  it("writes nothing when the person left the list while the question was open", async () => {
+    mocks.listPlatformUsers.mockResolvedValue(roster(["student"]));
+    render(translatedRoster());
+
+    fireEvent.click(await screen.findByLabelText("Admin"));
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    mocks.listPlatformUsers.mockResolvedValue([]);
+    fireEvent.change(screen.getByRole("searchbox", { name: "Find someone" }), { target: { value: "Someone else" } });
+    expect(await screen.findByText("No one matches that search.")).toBeInTheDocument();
+
+    answer("Make administrator");
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(mocks.setUserRoles).not.toHaveBeenCalled();
+  });
+
   it("asks before removing admin, in the operator's language", async () => {
-    vi.mocked(window.confirm).mockReturnValue(false);
     mocks.listPlatformUsers.mockResolvedValue(roster(["admin"]));
     render(translatedRoster());
     await screen.findByLabelText("Admin");
@@ -155,9 +211,24 @@ describe("RoleManager", () => {
 
     fireEvent.click(screen.getByLabelText("Administrador"));
 
-    expect(window.confirm).toHaveBeenCalledExactlyOnceWith(expect.stringContaining("¿Quitar el acceso de administrador a Test Person?"));
+    expect(screen.getByRole("dialog", { name: "¿Quitar el acceso de administrador?" }))
+      .toHaveTextContent("¿Quitar el acceso de administrador a Test Person?");
+    answer("Cancelar");
     expect(mocks.setUserRoles).not.toHaveBeenCalled();
     expect(screen.getByLabelText("Administrador")).toBeChecked();
+  });
+
+  it("removes admin after the operator confirms, keeping the other roles", async () => {
+    mocks.listPlatformUsers.mockResolvedValue(roster(["teacher", "admin"]));
+    mocks.setUserRoles.mockResolvedValue(["teacher"]);
+    render(translatedRoster());
+
+    fireEvent.click(await screen.findByLabelText("Admin"));
+    answer("Remove administrator");
+
+    expect(mocks.setUserRoles).toHaveBeenCalledExactlyOnceWith("u-1", ["teacher"]);
+    await waitFor(() => expect(screen.getByLabelText("Admin")).not.toBeChecked());
+    expect(screen.getByLabelText("Instructor")).toBeChecked();
   });
 
   it("does not ask for levels below admin", async () => {
@@ -167,7 +238,7 @@ describe("RoleManager", () => {
 
     fireEvent.click(await screen.findByLabelText("Instructor"));
 
-    expect(window.confirm).not.toHaveBeenCalled();
+    expect(screen.queryByRole("dialog")).toBeNull();
     expect(mocks.setUserRoles).toHaveBeenCalledWith("u-1", ["student", "teacher"]);
   });
 
@@ -184,6 +255,7 @@ describe("RoleManager", () => {
 
     const admin = await screen.findByLabelText("Admin");
     fireEvent.click(admin);
+    answer("Remove administrator");
 
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveTextContent("You cannot remove your own admin role.");
@@ -229,6 +301,7 @@ describe("RoleManager", () => {
     mocks.setUserRoles.mockRejectedValue({ message, code: "42501" });
     render(translatedRoster());
     fireEvent.click(await screen.findByLabelText("Admin"));
+    answer("Remove administrator");
     expect(await screen.findByRole("alert")).toHaveTextContent(message);
     expect(screen.getByLabelText("Admin")).toBeChecked();
     fireEvent.click(screen.getByRole("button", { name: "Change language" }));

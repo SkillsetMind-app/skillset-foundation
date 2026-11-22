@@ -1,8 +1,9 @@
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AdminEnrollmentPanel } from "@/components/admin/admin-enrollment-panel";
 import { I18nProvider, useTranslation } from "@/components/i18n/i18n-provider";
+import { CONFIRM_GUARD_MS } from "@/components/ui/confirm-dialog";
 import type { Enrollment } from "@/domain/enrollment";
 import type { TeacherCourse } from "@/domain/teacher-course";
 import type { UserProfile } from "@/domain/user-profile";
@@ -30,13 +31,35 @@ function select() {
   fireEvent.change(screen.getByRole("combobox", { name: "Published creator course" }), { target: { value: course.id } });
 }
 
+// Revogar pergunta na janela da plataforma (não mais no window.confirm). O
+// jsdom não tem showModal/close: o stub faz o mínimo que o navegador faz. Só o
+// Date é falso: o confirmar ignora cliques nos primeiros CONFIRM_GUARD_MS.
+const originalShow = Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype, "showModal");
+const originalClose = Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype, "close");
+function answer(button: string) {
+  const dialog = screen.getByRole("dialog");
+  vi.advanceTimersByTime(CONFIRM_GUARD_MS);
+  fireEvent.click(within(dialog).getByRole("button", { name: button }));
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.useFakeTimers({ toFake: ["Date"] });
   for (const subscribe of [mocks.users, mocks.courses, mocks.grants]) subscribe.mockImplementation(() => vi.fn());
   mocks.create.mockResolvedValue(undefined);
   mocks.revoke.mockResolvedValue(undefined);
+  Object.defineProperty(HTMLDialogElement.prototype, "showModal", { configurable: true, value() { this.setAttribute("open", ""); } });
+  Object.defineProperty(HTMLDialogElement.prototype, "close", { configurable: true, value() { if (!this.hasAttribute("open")) return; this.removeAttribute("open"); this.dispatchEvent(new Event("close")); } });
 });
-afterEach(() => { cleanup(); vi.restoreAllMocks(); });
+afterEach(() => {
+  cleanup();
+  vi.useRealTimers();
+  vi.restoreAllMocks();
+  if (originalShow) Object.defineProperty(HTMLDialogElement.prototype, "showModal", originalShow);
+  else Reflect.deleteProperty(HTMLDialogElement.prototype, "showModal");
+  if (originalClose) Object.defineProperty(HTMLDialogElement.prototype, "close", originalClose);
+  else Reflect.deleteProperty(HTMLDialogElement.prototype, "close");
+});
 
 describe("administrative enrollment presentation", () => {
   it("keeps selected identities and the pending grant while changing language", async () => {
@@ -74,25 +97,35 @@ describe("administrative enrollment presentation", () => {
   });
 
   it.each([false, true])("preserves literal titles and honors revoke confirmation=%s", async confirm => {
-    const confirmDialog = vi.spyOn(window, "confirm").mockReturnValue(confirm);
     let finish!: () => void;
     mocks.revoke.mockReturnValue(new Promise<void>(resolve => { finish = resolve; }));
     render(panel());
     deliver();
     language();
     fireEvent.click(screen.getByRole("button", { name: "Revocar acceso" }));
-    expect(confirmDialog).toHaveBeenCalledWith(`¿Revocar el acceso a "${course.title}" de este estudiante? Perderá el acceso de inmediato.`);
+    const dialog = screen.getByRole("dialog", { name: "¿Revocar este acceso?" });
+    expect(dialog).toHaveTextContent(`¿Revocar el acceso a "${course.title}" de este estudiante? Perderá el acceso de inmediato.`);
+    // Quem perde o acesso, com o nome literal ($$ e $& não viram padrão).
+    expect(dialog).toHaveTextContent(`Estudiante: ${user.displayName}`);
+    expect(mocks.revoke).not.toHaveBeenCalled();
     if (!confirm) {
+      answer("Cancelar");
+      expect(screen.queryByRole("dialog")).toBeNull();
       expect(mocks.revoke).not.toHaveBeenCalled();
       expect(screen.queryByRole("status")).toBeNull();
       return;
     }
+    answer("Revocar acceso");
     expect(mocks.revoke).toHaveBeenCalledWith("grant-a");
     expect(screen.queryByRole("status")).toBeNull();
-    expect(screen.getByRole("button", { name: "Revocando..." })).toBeDisabled();
+    // O botão da lista e o da janela travam enquanto o pedido roda.
+    const pending = screen.getAllByRole("button", { name: "Revocando..." });
+    expect(pending).toHaveLength(2);
+    for (const button of pending) expect(button).toBeDisabled();
     language();
     await act(async () => finish());
     expect(screen.getByRole("status")).toHaveTextContent("Enrollment revoked.");
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     expect(mocks.revoke).toHaveBeenCalledTimes(1);
   });
 
@@ -114,12 +147,14 @@ describe("administrative enrollment presentation", () => {
 
   it.each(["create", "revoke"] as const)("does not show success for a rejected %s", async action => {
     mocks[action].mockRejectedValue(new Error("Private write detail"));
-    vi.spyOn(window, "confirm").mockReturnValue(true);
     render(panel());
     deliver();
     select();
     fireEvent.click(screen.getByRole("button", { name: action === "create" ? "Create admin enrollment" : "Revoke access" }));
+    if (action === "revoke") answer("Revoke access");
     await screen.findByRole("alert");
+    // O erro fica no painel, onde já aparecia; a janela fecha.
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     language();
     expect(screen.getByRole("alert")).toHaveTextContent(action === "create" ? "No pudimos crear esta inscripción." : "No pudimos revocar esta inscripción.");
     expect(screen.queryByRole("status")).toBeNull();

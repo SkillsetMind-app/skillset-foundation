@@ -1,8 +1,9 @@
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { I18nProvider } from "@/components/i18n/i18n-provider";
 import { CourseLandingEditor } from "@/components/teacher/course-landing-editor";
+import { CONFIRM_GUARD_MS } from "@/components/ui/confirm-dialog";
 import type { CourseLandingBlock } from "@/domain/course-landing";
 import type { TeacherCourse } from "@/domain/teacher-course";
 import type { CourseLanding } from "@/lib/data/course-landings";
@@ -108,15 +109,28 @@ async function save() {
   return vi.mocked(saveCourseLanding).mock.calls[0][1].blocks;
 }
 
+const originalShow = Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype, "showModal");
+const originalClose = Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype, "close");
+
 beforeEach(() => {
   sb.uploads.length = 0;
   sb.removed.length = 0;
   sb.tables.length = 0;
   sb.rows.length = 0;
   slowRender.on = false;
-  vi.spyOn(window, "confirm").mockReturnValue(true);
+  // Tirar uma seção pergunta na janela da plataforma (não mais no
+  // window.confirm). O jsdom não tem showModal/close: o stub faz o mínimo.
+  Object.defineProperty(HTMLDialogElement.prototype, "showModal", { configurable: true, value() { this.setAttribute("open", ""); } });
+  Object.defineProperty(HTMLDialogElement.prototype, "close", { configurable: true, value() { if (!this.hasAttribute("open")) return; this.removeAttribute("open"); this.dispatchEvent(new Event("close")); } });
 });
-afterEach(() => vi.restoreAllMocks());
+afterEach(() => {
+  vi.useRealTimers();
+  vi.restoreAllMocks();
+  if (originalShow) Object.defineProperty(HTMLDialogElement.prototype, "showModal", originalShow);
+  else Reflect.deleteProperty(HTMLDialogElement.prototype, "showModal");
+  if (originalClose) Object.defineProperty(HTMLDialogElement.prototype, "close", originalClose);
+  else Reflect.deleteProperty(HTMLDialogElement.prototype, "close");
+});
 
 describe("sales page image upload while the creator keeps editing", () => {
   it("keeps the title typed while the image was uploading", async () => {
@@ -147,10 +161,21 @@ describe("sales page image upload while the creator keeps editing", () => {
   });
 
   it("drops and deletes the upload when its section was removed meanwhile", async () => {
+    // Só o Date é falso: o confirmar ignora cliques nos primeiros 500ms.
+    vi.useFakeTimers({ toFake: ["Date"] });
     await mountEditor([hero(), about()]);
     pick(1);
     await waitFor(() => expect(sb.uploads).toHaveLength(1));
     fireEvent.click(screen.getByRole("button", { name: "Remove About you section" }));
+    const dialog = screen.getByRole("dialog", { name: "Remove this section?" });
+    expect(dialog).toHaveTextContent('Remove the "About you" section and everything written in it?');
+    // Desistir mantém a seção; confirmar a tira do rascunho.
+    fireEvent.click(within(dialog).getByRole("button", { name: "Keep section" }));
+    expect(screen.getByRole("button", { name: "Remove About you section" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Remove About you section" }));
+    vi.advanceTimersByTime(CONFIRM_GUARD_MS);
+    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Remove section" }));
+    expect(screen.queryByRole("button", { name: "Remove About you section" })).not.toBeInTheDocument();
     await finishUpload();
 
     await waitFor(() => expect(sb.removed).toEqual([sb.uploads[0].path]));

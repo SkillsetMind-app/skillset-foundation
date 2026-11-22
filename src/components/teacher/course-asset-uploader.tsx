@@ -9,6 +9,7 @@ import {
 
 import type { CourseAsset, CourseAssetKind } from "@/domain/course-asset";
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { ConfirmDialog } from "@/components/ui";
 import { getCourseAssetKindLabel } from "@/lib/i18n/course-assets";
 import {
   courseAssetAcceptTypes,
@@ -76,6 +77,8 @@ export function CourseAssetUploader({ course, isEditable, onModuleCoverUploaded,
   >(null);
   const [success, setSuccess] = useState<"uploaded" | "deleted" | null>(null);
   const [deletingAssetId, setDeletingAssetId] = useState<string | null>(null);
+  // Arquivo que pediu para ser apagado, enquanto a pergunta está aberta.
+  const [askingAsset, setAskingAsset] = useState<CourseAsset | null>(null);
   const allLessons = course.modules.flatMap((module) =>
     module.lessons.map((lesson) => ({
       ...lesson,
@@ -199,16 +202,9 @@ export function CourseAssetUploader({ course, isEditable, onModuleCoverUploaded,
     }
   }
 
+  // Roda só pelo confirmar da janela, que antes era o OK do window.confirm.
   async function handleDeleteAsset(asset: CourseAsset) {
     if (!isEditable) {
-      return;
-    }
-
-    const confirmed = window.confirm(
-      t("creatorEditor.lesson.deleteConfirm").replace("{fileName}", () => asset.fileName),
-    );
-
-    if (!confirmed) {
       return;
     }
 
@@ -391,7 +387,7 @@ export function CourseAssetUploader({ course, isEditable, onModuleCoverUploaded,
         ) : null}
 
         {success ? (
-          <p className="info-notice">
+          <p role="status" className="info-notice">
             {success === "uploaded" ? t("creatorEditor.assets.uploaded") : t("creatorEditor.lesson.success.deleted")}
           </p>
         ) : null}
@@ -424,7 +420,7 @@ export function CourseAssetUploader({ course, isEditable, onModuleCoverUploaded,
               allLessons={allLessons}
               isEditable={isEditable}
               deletingAssetId={deletingAssetId}
-              onDelete={handleDeleteAsset}
+              onDelete={setAskingAsset}
             />
             <AssetGroup
               title={t("creatorEditor.assets.moduleGroup")}
@@ -433,7 +429,7 @@ export function CourseAssetUploader({ course, isEditable, onModuleCoverUploaded,
               allLessons={allLessons}
               isEditable={isEditable}
               deletingAssetId={deletingAssetId}
-              onDelete={handleDeleteAsset}
+              onDelete={setAskingAsset}
             />
             <AssetGroup
               title={t("creatorEditor.assets.lessonGroup")}
@@ -442,11 +438,26 @@ export function CourseAssetUploader({ course, isEditable, onModuleCoverUploaded,
               allLessons={allLessons}
               isEditable={isEditable}
               deletingAssetId={deletingAssetId}
-              onDelete={handleDeleteAsset}
+              onDelete={setAskingAsset}
             />
           </>
         )}
       </div>
+
+      {/* A frase é a mesma do antigo window.confirm; o que muda é a caixa. */}
+      {askingAsset ? (
+        <ConfirmDialog
+          title={t("creatorEditor.lesson.deleteTitle")}
+          confirmLabel={t("creatorEditor.lesson.deleteFile")}
+          pendingLabel={t("creatorEditor.lesson.deleting")}
+          cancelLabel={t("creatorEditor.lesson.keepFile")}
+          danger
+          onConfirm={() => handleDeleteAsset(askingAsset)}
+          onClose={() => setAskingAsset(null)}
+        >
+          {t("creatorEditor.lesson.deleteConfirm").replace("{fileName}", () => askingAsset.fileName)}
+        </ConfirmDialog>
+      ) : null}
     </section>
   );
 }
