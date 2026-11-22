@@ -43,8 +43,15 @@ export function OpsDashboard() {
     ? `/ops?${queueSearchParams.toString()}`
     : null;
   // O selo de "Users" conta estes pedidos; com algum aberto, eles vêm antes da
-  // lista de 50 pessoas em vez de ficarem embaixo dela (I-01).
-  const privacyFirst = typeof counts.openPrivacyRequests === "number" && counts.openPrivacyRequests > 0;
+  // lista de 50 pessoas em vez de ficarem embaixo dela (I-01). A ordem é
+  // decidida UMA vez, quando a contagem chega: mudar depois moveria o nó da
+  // tabela no DOM, e um <dialog> aberto lá dentro sairia da camada do topo
+  // (perde fundo, foco preso e Esc). Mesmo padrão de estado derivado no render
+  // de ops-overview-metrics.tsx, sem setState em efeito.
+  const [privacyFirst, setPrivacyFirst] = useState<boolean | null>(null);
+  if (privacyFirst === null && counts.openPrivacyRequests !== "loading") {
+    setPrivacyFirst(typeof counts.openPrivacyRequests === "number" && counts.openPrivacyRequests > 0);
+  }
 
   return (
     <PlatformShell
@@ -61,7 +68,8 @@ export function OpsDashboard() {
         [getOpsNavItem("users").href]: counts.openPrivacyRequests,
       }}
     >
-      <div className="grid min-w-0 gap-5">
+      {/* ops-surface: escopo das regras de CSS só do /ops (globals.css). */}
+      <div className="ops-surface grid min-w-0 gap-5">
         {!canOpenQueue ? (
           <section className="rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)] p-4 sm:p-6">
             <p role="alert" className="text-sm text-[var(--color-ink)]">
@@ -99,10 +107,11 @@ export function OpsDashboard() {
           <SupportTicketQueue query={query} />
         ) : activeTab === "users" ? (
           <>
-            {/* Chaves fixas: trocar a ordem move o painel sem remontar nem reabrir a assinatura. */}
-            {privacyFirst ? <AccountActionRequestsPanel key="requests" /> : null}
+            {/* Enquanto a contagem carrega, só a tabela: o painel de pedidos entra
+                depois, acima ou abaixo, sem mover a tabela (ela nunca muda de lugar). */}
+            {privacyFirst === true ? <AccountActionRequestsPanel key="requests" /> : null}
             <OpsUserTable key="users" />
-            {privacyFirst ? null : <AccountActionRequestsPanel key="requests" />}
+            {privacyFirst === false ? <AccountActionRequestsPanel key="requests" /> : null}
           </>
         ) : activeTab === "audit" ? (
           <AuditLogPanel />

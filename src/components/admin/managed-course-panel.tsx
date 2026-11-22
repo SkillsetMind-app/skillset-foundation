@@ -119,7 +119,7 @@ export function ManagedCoursePanel() {
           title={t(`${copy}.unpublishTitle`).replace("{title}", () => confirmingUnpublish.title)}
           body={t(`${copy}.unpublishBody`)}
           confirmLabel={t(`${copy}.unpublish`)}
-          onConfirm={() => void handleUnpublish(confirmingUnpublish.id)}
+          onConfirm={() => handleUnpublish(confirmingUnpublish.id)}
           onClose={() => setConfirmingUnpublish(null)}
         />
       ) : null}

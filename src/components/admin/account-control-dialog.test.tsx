@@ -59,7 +59,14 @@ describe("AccountControlDialog", () => {
     await waitFor(() => expect(mocks.set).toHaveBeenCalledTimes(1));
     expect(mocks.set).toHaveBeenCalledWith("user-2", "block", "Documented operational reason");
     expect(await screen.findByText(t("saved"))).toBeVisible();
-    expect(screen.getByText(t("suspended"))).toBeVisible();
+    // Depois do bloqueio a etiqueta diz "blocked" em vermelho, como na tabela e na ficha.
+    expect(screen.getByText(t("blocked"))).toHaveClass("status-chip--danger");
+  });
+
+  it("shows a suspended account without email block as amber suspended", async () => {
+    mocks.get.mockResolvedValue({ suspended: true, blockedEmail: null, isSelf: false });
+    mount();
+    expect(await screen.findByText("Access suspended")).toHaveClass("status-chip--warning");
   });
 
   it("offers only the actions that change an active account and names the action on the button", async () => {
@@ -81,6 +88,7 @@ describe("AccountControlDialog", () => {
     mocks.get.mockResolvedValue({ suspended: true, blockedEmail: "person@example.test", isSelf: false });
     mount();
     const restore = await screen.findByRole("radio", { name: "Restore access and email registration" });
+    expect(screen.getByText("Access suspended, email blocked")).toHaveClass("status-chip--danger");
     expect(restore).not.toBeChecked();
     expect(screen.queryByRole("radio", { name: "Suspend access" })).toBeNull();
     fireEvent.click(restore);

@@ -202,7 +202,8 @@ export function OpsUserDossierPanel({ uid }: { uid: string }) {
   const evidence = verificationCase ? plainValue(verificationCase.evidence_links) : null;
 
   return (
-    <div className="grid min-w-0 gap-5">
+    // ops-surface: escopo das regras de CSS só do /ops (globals.css).
+    <div className="ops-surface grid min-w-0 gap-5">
       {controlOpen ? (
         <AccountControlDialog uid={identity.uid} label={identity.email || identity.display_name || identity.uid}
           onClose={() => { setControlOpen(false); setReload((value) => value + 1); }} />

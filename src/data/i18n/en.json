@@ -24,6 +24,7 @@
     "loading": "Loading account status...",
     "active": "Access enabled",
     "suspended": "Access suspended",
+    "blocked": "Access suspended, email blocked",
     "blockedEmail": "Registration blocked for",
     "action": "What do you want to do?",
     "suspend": "Suspend access",

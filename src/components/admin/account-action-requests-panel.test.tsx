@@ -82,7 +82,9 @@ describe("account request presentation and canonical actions", () => {
       confirmIn(label);
     }
     expect(mocks.resolve).toHaveBeenCalledWith(request.id, status, "admin-$$-$&");
-    expect(screen.getByRole("button", { name: label })).toHaveAttribute("aria-busy", "true");
+    expect(within(screen.getByRole("article")).getByRole("button", { name: label })).toHaveAttribute("aria-busy", "true");
+    // A janela de confirmação só fecha quando a gravação termina.
+    if (status !== "processing") expect(screen.getByRole("dialog")).toBeInTheDocument();
     expect(screen.getByText("Pendiente")).toBeInTheDocument();
     expect(screen.queryByText(statusLabel, { exact: true })).toBeNull();
     for (const button of screen.getAllByRole("button").filter(button => button.textContent !== "Change language")) expect(button).toBeDisabled();

@@ -26,6 +26,10 @@ const confirmKeys: Record<AccountAction, string> = {
   restore: "confirmRestore",
 };
 
+function accountState(control: AccountControl) {
+  return control.blockedEmail ? "blocked" : control.suspended ? "suspended" : "active";
+}
+
 export function AccountControlDialog({ uid, label, onClose }: { uid: string; label: string; onClose: () => void }) {
   const { t } = useTranslation();
   const dialog = useRef<HTMLDialogElement>(null);
@@ -91,8 +95,8 @@ export function AccountControlDialog({ uid, label, onClose }: { uid: string; lab
     </div>
     <div className="mt-1 flex flex-wrap items-center gap-2">
       <p id="account-control-person" className="min-w-0 break-all text-sm text-[var(--color-ink-soft)]">{label}</p>
-      {control ? <StatusChip status={control.suspended ? "suspended" : "active"}
-        label={t(`accountControls.${control.suspended ? "suspended" : "active"}`)} /> : null}
+      {/* Mesma regra da tabela e da ficha: e-mail bloqueado é "blocked" (vermelho). */}
+      {control ? <StatusChip status={accountState(control)} label={t(`accountControls.${accountState(control)}`)} /> : null}
     </div>
     {error ? <InlineAlert tone="error" className="mt-4">{t(`accountControls.${error}`)}</InlineAlert> : null}
     {!control ? error ? <Button variant="outline" className="mt-4 min-h-11" onClick={() => { setError(null); setReload(value => value + 1); }}>{t("authFlow.loading.retry")}</Button>

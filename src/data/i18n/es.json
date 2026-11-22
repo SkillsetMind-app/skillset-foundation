@@ -24,6 +24,7 @@
     "loading": "Cargando el estado de la cuenta...",
     "active": "Acceso habilitado",
     "suspended": "Acceso suspendido",
+    "blocked": "Acceso suspendido, correo bloqueado",
     "blockedEmail": "Registro bloqueado para",
     "action": "¿Qué quieres hacer?",
     "suspend": "Suspender acceso",

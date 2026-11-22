@@ -192,6 +192,33 @@ describe("filas de Operações na barra", () => {
     expect(order()).toBe("requests first");
   });
 
+  it.each([
+    ["0 to 1", [], "people first"],
+    ["1 to 0", ["pending"], "requests first"],
+  ] as const)("keeps the first order when the live request count goes %s, so the people table never moves", (_change, initial, expected) => {
+    mocks.query = "tab=users";
+    const row = (status: string) => ({ id: `r-${status}`, type: "account_deletion", requestedBy: "u-1", email: null, status, requestedAt: null, updatedAt: null, resolvedBy: null, resolvedAt: null });
+    let rows: unknown[] = initial.map(row);
+    // O contador e o painel assinam a mesma fonte; cada inscrição recebe a lista atual.
+    mocks.accounts.mockImplementation((next: (value: unknown[]) => void) => { next(rows); return vi.fn(); });
+    const order = () => {
+      const requests = screen.getByRole("heading", { name: "Export and deletion requests." });
+      const people = screen.getByRole("heading", { name: "Find learners and educators." });
+      return requests.compareDocumentPosition(people) & Node.DOCUMENT_POSITION_FOLLOWING ? "requests first" : "people first";
+    };
+    render(<OpsPage />);
+    const table = screen.getByRole("heading", { name: "Find learners and educators." }).closest("section");
+    expect(order()).toBe(expected);
+    rows = initial.length ? [] : [row("pending")];
+    act(() => { for (const [next] of mocks.accounts.mock.calls) (next as (value: unknown[]) => void)(rows); });
+    // A contagem mudou de fato (o selo acompanha), mas a ordem não.
+    if (initial.length) expect(sidebar()).not.toHaveTextContent(/Users, 1 pending/);
+    else expect(sidebar()).toHaveTextContent(/Users, 1 pending/);
+    expect(order()).toBe(expected);
+    // O mesmo nó da tabela continua no lugar (um <dialog> aberto nela não sai da camada do topo).
+    expect(screen.getByRole("heading", { name: "Find learners and educators." }).closest("section")).toBe(table);
+  });
+
   it.each(["", "tab=unknown", "tab="])("lands an admin on Overview for query %s", (query) => {
     mocks.query = query;
     render(<OpsPage />);

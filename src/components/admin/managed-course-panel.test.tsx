@@ -113,13 +113,21 @@ describe("catalog presentation and language", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(mocks.review).not.toHaveBeenCalled();
     fireEvent.click(unpublish);
-    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Unpublish" }));
+    const confirm = within(screen.getByRole("dialog")).getByRole("button", { name: "Unpublish" });
+    // Duplo clique: grava uma vez e a janela segue aberta, sem soltar o 2º clique no "Feature" de baixo.
+    fireEvent.click(confirm);
+    fireEvent.click(confirm);
     expect(mocks.review).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(confirm).toHaveAttribute("aria-busy", "true");
     // Só o botão apertado gira; os vizinhos travam com o próprio nome.
-    expect(screen.getByRole("button", { name: "Unpublish" })).toHaveAttribute("aria-busy", "true");
-    expect(screen.getByRole("button", { name: "Feature" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Feature" })).not.toHaveAttribute("aria-busy");
+    const card = screen.getByRole("article");
+    expect(within(card).getByRole("button", { name: "Unpublish" })).toHaveAttribute("aria-busy", "true");
+    expect(within(card).getByRole("button", { name: "Feature" })).toBeDisabled();
+    expect(within(card).getByRole("button", { name: "Feature" })).not.toHaveAttribute("aria-busy");
     await act(async () => finish());
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(mocks.review).toHaveBeenCalledTimes(1);
   });
 
   it.each([false, true])("keeps featured=%s canonical and does not translate course content", async featured => {

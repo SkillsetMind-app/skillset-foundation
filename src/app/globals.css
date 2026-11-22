@@ -838,16 +838,23 @@ p {
   display: inline-flex;
   align-items: center;
   gap: 0.375rem;
-  /* I-16: era pílula de 10px; etiqueta da plataforma é 6px de raio e 11px no mínimo. */
-  border-radius: var(--radius-chip);
+  border-radius: 999px;
   padding: 0.25rem 0.625rem;
   border: 1px solid var(--color-line);
-  font-size: 0.6875rem;
+  font-size: 0.625rem;
   font-weight: 700;
   letter-spacing: 0.14em;
   line-height: 1;
   text-transform: uppercase;
   white-space: nowrap;
+}
+
+/* I-16, só no /ops: etiqueta com 6px de raio e 11px no lugar da pílula de
+   10px. O resto do produto fica como está até cada tela ser conferida no
+   navegador. `.ops-surface` está no conteúdo de /ops e da ficha da pessoa. */
+.ops-surface .status-chip {
+  border-radius: var(--radius-chip);
+  font-size: 0.6875rem;
 }
 
 .status-chip__dot {

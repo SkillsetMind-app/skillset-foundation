@@ -140,7 +140,7 @@ export function CreatorVerificationQueue({ query = "" }: { query?: string }) {
           title={t(`${copy}.rejectTitle`)}
           body={t(`${copy}.rejectBody`)}
           confirmLabel={t(`${copy}.decisions.rejected`)}
-          onConfirm={() => void handleReview(confirmingRejectId, "rejected", true)}
+          onConfirm={() => handleReview(confirmingRejectId, "rejected", true)}
           onClose={() => setConfirmingRejectId(null)}
         />
       ) : null}

@@ -87,7 +87,7 @@ export function AccountActionRequestsPanel() {
           title={t(`${copy}.confirm.${confirming.status}Title`)}
           body={t(`${copy}.confirm.${confirming.status}Body`)}
           confirmLabel={t(`${copy}.actions.${confirming.status}`)}
-          onConfirm={() => void handleResolve(confirming.id, confirming.status)}
+          onConfirm={() => handleResolve(confirming.id, confirming.status)}
           onClose={() => setConfirming(null)}
         />
       ) : null}
