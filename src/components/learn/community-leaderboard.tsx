@@ -5,6 +5,8 @@ import { Trophy } from "lucide-react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { LevelBadge } from "@/components/learn/level-badge";
+import { InlineAlert } from "@/components/ui/inline-alert";
+import { ProgressBar } from "@/components/ui/progress-bar";
 import type {
   Leaderboard,
   LeaderboardWindow,
@@ -123,12 +125,9 @@ export function CommunityLeaderboard({
                   .replace("{level}", () => number.format(progress.level + 1))}
             </p>
           </div>
-          <div
-            role="progressbar"
-            aria-valuenow={progress.percentToNext}
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-label={
+          <ProgressBar
+            value={progress.percentToNext}
+            label={
               progress.isMax
                 ? t("learnWave2.leaderboard.progressTop").replace("{level}", () => number.format(progress.level))
                 : t("learnWave2.leaderboard.progress")
@@ -136,13 +135,8 @@ export function CommunityLeaderboard({
                   .replace("{percent}", () => number.format(progress.percentToNext))
                   .replace("{next}", () => number.format(progress.level + 1))
             }
-            className="mt-2 h-1.5 overflow-hidden rounded-full bg-[var(--color-line)]"
-          >
-            <div
-              className="h-full rounded-full bg-[var(--color-primary)] transition-[width] duration-300"
-              style={{ width: `${progress.percentToNext}%` }}
-            />
-          </div>
+            className="mt-2"
+          />
         </div>
       ) : null}
 
@@ -200,9 +194,9 @@ export function CommunityLeaderboard({
       ) : null}
 
       {error ? (
-        <p role="alert" className="mt-3 text-xs font-semibold text-[var(--color-danger-fg)]">
+        <InlineAlert tone="error" className="mt-3 px-3 py-2 text-xs leading-5">
           {t(error)}
-        </p>
+        </InlineAlert>
       ) : null}
     </section>
   );

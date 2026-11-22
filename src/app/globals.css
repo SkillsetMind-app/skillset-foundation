@@ -6556,6 +6556,33 @@ html:has(#member-lesson-player) {
   color: var(--ma-accent-ink) !important;
 }
 
+/* Avisos de erro da sala (InlineAlert e linhas de erro): o vermelho da
+   plataforma dava ~2.7:1 num curso escuro. Troca a variável, não a cor, para o
+   ícone e o texto da caixa seguirem juntos. */
+.member-classroom[data-members-theme] [class*="text-[var(--color-danger-fg)]"] {
+  --color-danger-fg: var(--ma-accent-ink);
+}
+
+/* Avisos (âmbar) da sala: a sala segue o tema do CURSO, não o da plataforma.
+   Com a plataforma escura num curso claro, o âmbar claro do escuro (#e6b24f)
+   ficava 1.59:1 sobre o fundo claro do aviso. O par certo vem do tema do curso:
+   claro 5.2:1, escuro 6.7:1 ou mais nas superfícies da sala. */
+.member-classroom[data-members-theme="light"] [class*="text-[var(--color-warning-fg)]"] {
+  --color-warning-fg: #8a5d08;
+  --color-warning-soft: #fcefd2;
+}
+
+.member-classroom[data-members-theme="dark"] [class*="text-[var(--color-warning-fg)]"] {
+  --color-warning-fg: #e6b24f;
+  --color-warning-soft: rgba(192, 123, 10, 0.18);
+}
+
+/* Borda forte (a tracejada do EmptyState) na sala: a da plataforma é navy a
+   40% e some num curso escuro; a regra de --color-line acima não a alcança. */
+.member-classroom[data-members-theme] [class*="border-[var(--color-line-strong)]"] {
+  border-color: var(--ma-line-2) !important;
+}
+
 /* A gaveta da pergunta não sai da sala (não é portal), então o texto dela já
    vem na cor do CURSO pelas regras acima. Fundo, divisórias e os tons que as
    regras acima não trocam passam a ler a mesma paleta: sem isso a gaveta era

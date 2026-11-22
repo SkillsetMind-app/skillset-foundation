@@ -3,6 +3,7 @@
 import { useEffect, useId, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { InlineAlert } from "@/components/ui/inline-alert";
 import type { SkillsetUser } from "@/domain/auth";
 import type { CommunityComment, CommunityPost } from "@/domain/community-post";
 import type { CommunityReportReason } from "@/domain/community-report";
@@ -320,9 +321,9 @@ export function CommunityItemActions({
       ) : null}
 
       {error ? (
-        <p role="alert" className="basis-full text-xs font-semibold text-[var(--color-danger-fg)]">
+        <InlineAlert tone="error" className="basis-full px-3 py-2 text-xs leading-5">
           {t(error)}
-        </p>
+        </InlineAlert>
       ) : null}
     </>
   );

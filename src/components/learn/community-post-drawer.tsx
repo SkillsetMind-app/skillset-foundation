@@ -6,6 +6,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { formatNotificationTime } from "@/components/account/notification-row";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { CommunityItemActions } from "@/components/learn/community-item-actions";
+import { InlineAlert } from "@/components/ui/inline-alert";
 import type { SkillsetUser } from "@/domain/auth";
 import { isAnswered, isInstructor, postKind, toMillis } from "@/domain/community-feed";
 import type { CommunityComment, CommunityPost } from "@/domain/community-post";
@@ -261,9 +262,9 @@ export function CommunityPostDrawer({
               {t(isSending ? "learn.community.drawer.sending" : "learn.community.drawer.send")}
             </button>
             {error ? (
-              <p role="alert" className="basis-full text-xs font-semibold text-[var(--color-danger-fg)]">
+              <InlineAlert tone="error" className="basis-full px-3 py-2 text-xs leading-5">
                 {t(error)}
-              </p>
+              </InlineAlert>
             ) : null}
           </form>
         ) : null}

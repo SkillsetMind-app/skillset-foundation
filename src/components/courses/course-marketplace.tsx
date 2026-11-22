@@ -15,7 +15,9 @@ import { startTransition, useDeferredValue, useEffect, useState } from "react";
 import { useAuth } from "@/components/auth/auth-provider";
 import { CourseGridSkeleton } from "@/components/courses/course-grid-skeleton";
 import { CourseTile } from "@/components/courses/course-tile";
+import { EmptyState } from "@/components/ui/empty-state";
 import { InlineAlert } from "@/components/ui/inline-alert";
+import { ProgressBar } from "@/components/ui/progress-bar";
 import { useInstructorNames } from "@/components/courses/use-instructor-names";
 import type { TeacherCourse } from "@/domain/teacher-course";
 import type { CourseCard } from "@/lib/data/catalog";
@@ -395,13 +397,14 @@ export function CourseMarketplace({ courses = [] }: CourseMarketplaceProps) {
                     <p className="marketplace-continue-card__title">
                       {course.title}
                     </p>
-                    <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[rgba(26,54,93,0.12)]">
-                      <div
-                        className="h-full rounded-full bg-[var(--color-accent)]"
-                        style={{ width: `${progress}%` }}
-                      />
-                    </div>
-                    <p className="mt-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--color-ink-soft)]">
+                    <ProgressBar
+                      value={progress}
+                      label={t("publicCourses.complete").replace("{count}", String(progress))}
+                      className="mt-2"
+                    />
+                    {/* A barra já diz "40% complete" ao leitor de tela: a linha
+                        visível fica calada para o número não ser lido duas vezes. */}
+                    <p aria-hidden="true" className="mt-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--color-ink-soft)]">
                       {t("publicCourses.complete").replace("{count}", String(progress))}
                     </p>
                   </div>
@@ -434,44 +437,37 @@ export function CourseMarketplace({ courses = [] }: CourseMarketplaceProps) {
         </>
       ) : visibleCourses.length === 0 ? (
         hasAnyCourses && isFiltering ? (
-          <div className="marketplace-empty">
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">{t("publicCourses.noMatches")}</p>
-            <h2 className="display-title mt-3 text-3xl text-[var(--color-ink)]">{t("publicCourses.noSearchMatches")}</h2>
-            <p className="mx-auto mt-3 max-w-md text-sm leading-7 text-[var(--color-ink-soft)]">{t("publicCourses.trySearch")}</p>
-            <button
-              type="button"
-              onClick={() => {
-                setActiveCategory(allCategoriesLabel);
-                setQuery("");
-              }}
-              className="button-outline mt-5 px-4 py-2.5 text-sm"
-            >{t("publicCourses.clearFilters")}</button>
-          </div>
+          // O vazio da plataforma (EmptyState): o h1 serifado da página continua
+          // sendo a única manchete; antes este h2 era outra serifa de 30px.
+          <EmptyState
+            as="h2"
+            eyebrow={t("publicCourses.noMatches")}
+            title={t("publicCourses.noSearchMatches")}
+            description={t("publicCourses.trySearch")}
+            action={
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveCategory(allCategoriesLabel);
+                  setQuery("");
+                }}
+                className="button-outline px-4 py-2.5 text-sm"
+              >{t("publicCourses.clearFilters")}</button>
+            }
+          />
         ) : (
-          <div className="marketplace-empty">
-            <div className="mx-auto grid size-14 place-items-center rounded-lg bg-[var(--color-surface-soft)] text-[var(--color-primary)]">
-              <svg
-                aria-hidden="true"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={1.8}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="size-7"
-              >
-                <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
-                <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
-              </svg>
-            </div>
-            <p className="mt-5 text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">{t("publicCourses.openingSoon")}</p>
-            <h2 className="display-title mt-3 text-3xl text-[var(--color-ink)] sm:text-4xl">{t("publicCourses.firstCourses")}</h2>
-            <p className="mx-auto mt-4 max-w-xl text-sm leading-7 text-[var(--color-ink-soft)]">{t("publicCourses.openingBody")}</p>
-            <div className="mt-6 flex flex-wrap justify-center gap-3">
-              <Link href="/auth?mode=signup&path=teacher" className="button-solid px-4 py-2.5 text-sm">{t("publicCourses.startTeaching")}</Link>
-              <Link href="/for-creators" className="button-outline px-4 py-2.5 text-sm">{t("publicCourses.creatorOverview")}</Link>
-            </div>
-          </div>
+          <EmptyState
+            as="h2"
+            eyebrow={t("publicCourses.openingSoon")}
+            title={t("publicCourses.firstCourses")}
+            description={t("publicCourses.openingBody")}
+            action={
+              <>
+                <Link href="/auth?mode=signup&path=teacher" className="button-solid px-4 py-2.5 text-sm">{t("publicCourses.startTeaching")}</Link>
+                <Link href="/for-creators" className="button-outline px-4 py-2.5 text-sm">{t("publicCourses.creatorOverview")}</Link>
+              </>
+            }
+          />
         )
       ) : (
         <div

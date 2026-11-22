@@ -9,6 +9,8 @@ import { CourseTile } from "@/components/courses/course-tile";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { UserAvatar } from "@/components/shared/user-avatar";
 import { SelfReportedTag, VerifiedBadge } from "@/components/shared/verified-badge";
+import { EmptyState } from "@/components/ui/empty-state";
+import { InlineAlert } from "@/components/ui/inline-alert";
 import { brand } from "@/data/brand";
 import {
   isStorefrontHexColor,
@@ -132,18 +134,17 @@ export function InstructorProfileView({
           {t("publicPages.profile.courses_heading")}
         </h2>
         {courses === null ? (
-          <p className="mt-4 rounded-md border border-[var(--color-danger)] bg-[var(--color-danger-soft)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
+          <InlineAlert tone="error" className="mt-4">
             {t("publicPages.profile.courses_error")}
-          </p>
+          </InlineAlert>
         ) : ordered.length === 0 ? (
-          <div className="mt-4 rounded-lg border border-dashed border-[var(--color-line-strong)] p-6 text-center">
-            <p className="text-sm font-bold text-[var(--color-primary)]">
-              {t("publicPages.profile.no_public_courses_yet")}
-            </p>
-            <p className="mt-2 text-sm leading-6 text-[var(--color-ink-soft)]">
-              {t("publicPages.profile.this_instructor_s_first_courses_will")}
-            </p>
-          </div>
+          // O vazio da plataforma; h3 sob o h2 "Courses".
+          <EmptyState
+            as="h3"
+            className="mt-4"
+            title={t("publicPages.profile.no_public_courses_yet")}
+            description={t("publicPages.profile.this_instructor_s_first_courses_will")}
+          />
         ) : (
           <ul className="mt-4 grid gap-3">
             {ordered.map((course) => (

@@ -2,13 +2,15 @@
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
 
-import { ArrowRight, GraduationCap } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { UserAvatar } from "@/components/shared/user-avatar";
 import { SelfReportedTag, VerifiedBadge } from "@/components/shared/verified-badge";
 import { useHasRealCourses } from "@/components/site/real-courses";
+import { EmptyState } from "@/components/ui/empty-state";
+import { InlineAlert } from "@/components/ui/inline-alert";
 import { instructorPagePath, type PublicProfile } from "@/domain/user-profile";
 import { listPublicProfiles } from "@/lib/data/user-profiles";
 
@@ -70,54 +72,46 @@ export function InstructorsDirectory() {
 
   if (hasError) {
     return (
-      // role="alert": o erro é anunciado ao leitor de tela, e não só pintado.
-      <section role="alert" className="mt-12 rounded-lg border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] p-6">
-        <p className="text-sm font-semibold text-[var(--color-danger-fg)]">
-          {t("publicPages.directory.instructor_profiles_could_not_load_right")}
-        </p>
-        <p className="mt-2 text-sm leading-6 text-[var(--color-ink-soft)]">
+      // InlineAlert: anunciado ao leitor de tela, com o ícone do erro. A frase
+      // de apoio fica no cinza de sempre, abaixo da do erro.
+      <InlineAlert tone="error" className="mt-12 p-6">
+        <p>{t("publicPages.directory.instructor_profiles_could_not_load_right")}</p>
+        <p className="mt-2 font-normal text-[var(--color-ink-soft)]">
           {t("publicPages.directory.course_pages_still_show_verified_instructor")}
         </p>
-      </section>
+      </InlineAlert>
     );
   }
 
   if (profiles.length === 0) {
     return (
-      <section className="mt-12 rounded-lg border border-dashed border-[var(--color-line-strong)] bg-[var(--color-surface-soft)] p-8 sm:p-10">
-        <div className="flex max-w-3xl flex-col gap-5 sm:flex-row sm:items-start">
-          <span className="grid size-11 shrink-0 place-items-center rounded-full bg-white text-[var(--color-primary)] shadow-[var(--shadow-soft)]">
-            <GraduationCap aria-hidden="true" size={22} strokeWidth={1.8} />
-          </span>
-          <div>
-            <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-              {t("publicPages.directory.first_cohort")}
-            </p>
-            <h2 className="display-title mt-3 text-3xl text-[var(--color-primary)]">
-              {t("publicPages.directory.public_instructor_profiles_appear_after_review")}
-            </h2>
-            <p className="mt-3 text-sm leading-7 text-[var(--color-ink-soft)]">
-              {t("publicPages.directory.skillsetmind_only_lists_real_published_profiles")}
-            </p>
-            <div className="mt-6 flex flex-wrap gap-3">
+      // O vazio da plataforma (EmptyState): o título em sans, sem disputar com
+      // o h1 serifado da página.
+      <EmptyState
+        as="h2"
+        className="mt-12"
+        eyebrow={t("publicPages.directory.first_cohort")}
+        title={t("publicPages.directory.public_instructor_profiles_appear_after_review")}
+        description={t("publicPages.directory.skillsetmind_only_lists_real_published_profiles")}
+        action={
+          <>
+            <Link
+              href="/auth?mode=signup&path=teacher"
+              className="button-solid px-4 py-2.5 text-sm"
+            >
+              {t("publicPages.directory.start_teaching")}
+            </Link>
+            {hasRealCourses ? (
               <Link
-                href="/auth?mode=signup&path=teacher"
-                className="button-solid px-4 py-2.5 text-sm"
+                href="/courses"
+                className="button-outline px-4 py-2.5 text-sm"
               >
-                {t("publicPages.directory.start_teaching")}
+                {t("publicPages.directory.browse_courses")}
               </Link>
-              {hasRealCourses ? (
-                <Link
-                  href="/courses"
-                  className="button-outline px-4 py-2.5 text-sm"
-                >
-                  {t("publicPages.directory.browse_courses")}
-                </Link>
-              ) : null}
-            </div>
-          </div>
-        </div>
-      </section>
+            ) : null}
+          </>
+        }
+      />
     );
   }
 

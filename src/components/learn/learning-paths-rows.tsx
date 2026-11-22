@@ -5,6 +5,7 @@ import { CheckCircle2, Lock, PlayCircle } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { ProgressBar } from "@/components/ui/progress-bar";
 import {
   CourseCover,
   CourseUnlockModal,
@@ -170,6 +171,10 @@ export function LearningPathsRows({
     <>
       {renderablePaths.map((path) => {
         const progress = computePathProgress(path.courseIds, enrollments);
+        const progressLabel = t("learn.paths.progress")
+          .replace("{completed}", String(progress.completedCount))
+          .replace("{total}", String(path.courseIds.length))
+          .replace("{percent}", String(progress.progressPercent));
 
         return (
           <section
@@ -191,18 +196,12 @@ export function LearningPathsRows({
                 ) : null}
               </div>
               <div className="w-full max-w-[260px]">
-                <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--color-primary)]">
-                  {t("learn.paths.progress")
-                    .replace("{completed}", String(progress.completedCount))
-                    .replace("{total}", String(path.courseIds.length))
-                    .replace("{percent}", String(progress.progressPercent))}
+                {/* Uma leitura só: a barra leva a frase inteira ("2/5 completed
+                    · 40%") e a linha visível fica calada para o leitor de tela. */}
+                <p aria-hidden="true" className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--color-primary)]">
+                  {progressLabel}
                 </p>
-                <div className="mt-2 h-2 overflow-hidden rounded-full bg-[rgba(26,54,93,0.12)]">
-                  <div
-                    className="h-full rounded-full bg-[var(--color-accent)]"
-                    style={{ width: `${progress.progressPercent}%` }}
-                  />
-                </div>
+                <ProgressBar value={progress.progressPercent} label={progressLabel} className="mt-2" />
               </div>
             </div>
 

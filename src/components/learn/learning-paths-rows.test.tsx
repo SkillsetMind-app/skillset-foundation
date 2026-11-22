@@ -107,5 +107,12 @@ describe("LearningPathsRows", () => {
       "/learn/courses/own-course",
     );
     expect(fixtures.rowCalls.at(-1)).toEqual([["own-course", "path-course"], ["teacher-1"]]);
+
+    // O progresso é lido uma vez só: a barra leva a frase inteira e a linha
+    // visível com o mesmo texto fica calada para o leitor de tela.
+    const bar = within(path).getByRole("progressbar");
+    const label = bar.getAttribute("aria-label")!;
+    expect(label).toMatch(/^\d+\/2 completed · \d+%$/);
+    expect(within(path).getByText(label)).toHaveAttribute("aria-hidden", "true");
   });
 });

@@ -276,6 +276,24 @@ describe.each([["light", light], ["dark", dark]] as const)("semantic success con
   );
 });
 
+// As quatro caixas do InlineAlert (ui/inline-alert.tsx): o texto de cada tom
+// sobre o próprio fundo, em qualquer superfície onde a caixa caia. O fundo do
+// erro é translúcido, então a conta compõe sobre a superfície.
+describe.each([["light", light], ["dark", dark]] as const)("InlineAlert tone contrast — %s", (_theme, vars) => {
+  it.each([
+    ["--color-danger-fg", "--color-danger-soft"],
+    ["--color-warning-fg", "--color-warning-soft"],
+    ["--color-success-fg", "--color-success-soft"],
+    ["--color-ink-soft", "--color-info-soft"],
+  ])("keeps %s at AA on %s over every surface", (foreground, background) => {
+    for (const surface of ["--color-base", "--color-surface", "--color-surface-soft", "--color-surface-strong"]) {
+      const contrast = ratio(`var(${foreground})`, `var(${background})`, vars, surface);
+      expect(contrast, `${background} over ${surface} must resolve`).not.toBeNull();
+      expect(contrast!, `${background} over ${surface}`).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+});
+
 /**
  * First top-level token of a background shorthand (`#fff url(...) no-repeat`).
  *
@@ -601,5 +619,46 @@ describe("certificado no tema escuro", () => {
     ]) {
       expect(css, `${selector} ausente`).toContain(selector);
     }
+  });
+});
+
+// O ProgressBar (ui/progress-bar.tsx): o preenchimento --color-accent-fg contra
+// o trilho --color-line, composto sobre as superfícies onde as barras ficam
+// (cartões brancos e claros). O latão de fundo dava 1.44:1 no tema claro.
+describe.each([["light", light], ["dark", dark]] as const)("ProgressBar fill contrast — %s", (_theme, vars) => {
+  it.each(["--color-base", "--color-surface", "--color-surface-soft"])("keeps the fill at 3:1 against the track on %s", (surface) => {
+    const contrast = ratio("var(--color-accent-fg)", "var(--color-line)", vars, surface);
+    expect(contrast, `track over ${surface} must resolve`).not.toBeNull();
+    expect(contrast!, `fill vs track over ${surface}`).toBeGreaterThanOrEqual(3);
+  });
+});
+
+// Os avisos do InlineAlert dentro da sala: a sala pinta o fundo pelo tema do
+// CURSO, e a plataforma tem o próprio tema. Nas quatro misturas, erro e aviso
+// precisam ler a 4.5:1 sobre o próprio fundo, em qualquer superfície da sala.
+// Com a plataforma escura num curso claro, o âmbar do escuro dava 1.59:1.
+describe.each(COMBOS)("InlineAlert inside the classroom — %s", (_name, vars, courseTheme) => {
+  const danger = palette('.member-classroom[data-members-theme] [class*="text-[var(--color-danger-fg)]"]');
+  const warning = palette(`.member-classroom[data-members-theme="${courseTheme}"] [class*="text-[var(--color-warning-fg)]"]`);
+
+  it.each([
+    ["--color-danger-fg", "--color-danger-soft", danger],
+    ["--color-warning-fg", "--color-warning-soft", warning],
+  ] as const)("keeps %s on %s at AA over every classroom surface", (foreground, background, remap) => {
+    expect(Object.keys(remap).length, "classroom remap not found").toBeGreaterThan(0);
+    const merged = { ...vars, ...remap };
+    for (const surface of ["--ma-bg", "--ma-elev", "--ma-surface", "--ma-surface-2"]) {
+      const contrast = ratio(`var(${foreground})`, `var(${background})`, merged, surface);
+      expect(contrast, `${background} over ${surface} must resolve`).not.toBeNull();
+      expect(contrast!, `${background} over ${surface}`).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+
+  // A borda tracejada do EmptyState usa --color-line-strong, que a sala não
+  // trocava: navy a 40% sumia num curso escuro.
+  it("remaps the strong border to the course line", () => {
+    expect(block('.member-classroom[data-members-theme] [class*="border-[var(--color-line-strong)]"]')).toContain(
+      "border-color: var(--ma-line-2) !important;",
+    );
   });
 });

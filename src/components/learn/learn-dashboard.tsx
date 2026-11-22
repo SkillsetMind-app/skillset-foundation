@@ -9,6 +9,7 @@ import { NotificationRow } from "@/components/account/notification-row";
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { InlineAlert } from "@/components/ui/inline-alert";
+import { ProgressBar } from "@/components/ui/progress-bar";
 import { LearningPathsRows } from "@/components/learn/learning-paths-rows";
 import { MemberAreaLinks } from "@/components/learn/member-area-links";
 import { WelcomeTour } from "@/components/learn/welcome-tour";
@@ -282,7 +283,7 @@ export function LearnDashboard() {
     return (
       <div className="grid gap-8">
         {greeting}
-        <div className="rounded-lg border border-[rgba(178,34,52,0.2)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
+        <div className="rounded-lg border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
           <InlineAlert tone="error">{t("learn.dashboard.loadError")}</InlineAlert>
           {/* "Try again" e a acao principal; explorar e suporte ficam ao lado. */}
           <div className="mt-4 flex flex-wrap gap-3">
@@ -486,12 +487,16 @@ export function LearnDashboard() {
                       <span className="absolute inset-0 grid place-items-center bg-[rgba(15,39,68,0.28)] text-white transition group-hover:bg-[rgba(15,39,68,0.4)]">
                         <PlayCircle aria-hidden="true" size={40} strokeWidth={1.6} />
                       </span>
-                      <span className="absolute inset-x-0 bottom-0 h-1.5 bg-[rgba(255,255,255,0.4)]">
-                        <span
-                          className="block h-full bg-[var(--color-accent)]"
-                          style={{ width: `${percent}%` }}
+                      {/* Sobre a foto: a barra da plataforma, recuada e com cantos
+                          redondos (antes colada na borda e reta). O número vai
+                          em texto no fim do cartão, então a barra fica calada. */}
+                      <div aria-hidden="true" className="absolute inset-x-3 bottom-3">
+                        <ProgressBar
+                          value={percent}
+                          label={t("learn.dashboard.percentComplete").replace("{percent}", String(percent))}
+                          className="bg-[rgba(255,255,255,0.22)]"
                         />
-                      </span>
+                      </div>
                     </div>
                     <p className="mt-3 line-clamp-1 text-sm font-semibold text-[var(--color-primary)]">
                       {enrollment.courseTitle}
@@ -697,17 +702,14 @@ export function LearnDashboard() {
                         Antes "40% COMPLETE", o selo "ACTIVE" e a barra diziam
                         a mesma coisa três vezes. */}
                     <div className="mt-2.5 flex items-center gap-2.5">
-                      <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-[rgba(26,54,93,0.12)]">
-                        <div
-                          className="h-full rounded-full bg-[var(--color-accent)]"
-                          style={{ width: `${percent}%` }}
-                        />
-                      </div>
+                      <ProgressBar
+                        value={percent}
+                        label={t("learn.dashboard.percentComplete").replace("{percent}", String(percent))}
+                        className="flex-1"
+                      />
+                      {/* O leitor de tela ouve o valor pela própria barra. */}
                       <span aria-hidden="true" className="text-xs font-bold tabular-nums text-[var(--color-primary)]">
                         {percent}%
-                      </span>
-                      <span className="sr-only">
-                        {t("learn.dashboard.percentComplete").replace("{percent}", String(percent))}
                       </span>
                     </div>
                     {/* O selo só aparece quando há algo a dizer (concluído,

@@ -29,5 +29,7 @@ export { Field } from "@/components/ui/field";
 export type { FieldA11y, FieldProps } from "@/components/ui/field";
 export { InlineAlert } from "@/components/ui/inline-alert";
 export type { InlineAlertProps } from "@/components/ui/inline-alert";
+export { ProgressBar } from "@/components/ui/progress-bar";
+export type { ProgressBarProps } from "@/components/ui/progress-bar";
 export { SectionHeader } from "@/components/ui/section-header";
 export type { SectionHeaderProps } from "@/components/ui/section-header";

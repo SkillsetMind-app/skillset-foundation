@@ -7,6 +7,8 @@ import { useEffect, useMemo, useState } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { useAuth } from "@/components/auth/auth-provider";
+import { EmptyState } from "@/components/ui/empty-state";
+import { InlineAlert } from "@/components/ui/inline-alert";
 import type { WishlistItem } from "@/domain/wishlist";
 import { getFeaturedCourseCards, type CourseCard } from "@/lib/data/catalog";
 import {
@@ -102,29 +104,25 @@ export function LearnerWishlist() {
   if (error) {
     return (
       <div className="dash-card dash-card--strong p-5">
-        <p role="alert" className="rounded-md bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
-          {t(error)}
-        </p>
+        <InlineAlert tone="error">{t(error)}</InlineAlert>
       </div>
     );
   }
 
+  // O vazio da plataforma (EmptyState), em h2 logo abaixo do h1 do shell.
   if (items.length === 0) {
     return (
-      <section className="dash-card dash-card--strong p-5 sm:p-7">
-        <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-          {t("learnWave2.wishlistHub.eyebrow")}
-        </p>
-        <h2 className="mt-3 max-w-2xl text-lg font-semibold text-[var(--color-primary)]">
-          {t("learnWave2.wishlistHub.emptyTitle")}
-        </h2>
-        <p className="mt-4 max-w-2xl text-sm leading-7 text-[var(--color-ink-soft)]">
-          {t("learnWave2.wishlistHub.emptyDetail")}
-        </p>
-        <Link href="/courses" className="button-solid mt-6 inline-flex px-4 py-2.5 text-sm">
-          {t("learnWave2.wishlistHub.explore")}
-        </Link>
-      </section>
+      <EmptyState
+        as="h2"
+        eyebrow={t("learnWave2.wishlistHub.eyebrow")}
+        title={t("learnWave2.wishlistHub.emptyTitle")}
+        description={t("learnWave2.wishlistHub.emptyDetail")}
+        action={
+          <Link href="/courses" className="button-solid inline-flex px-4 py-2.5 text-sm">
+            {t("learnWave2.wishlistHub.explore")}
+          </Link>
+        }
+      />
     );
   }
 
@@ -153,9 +151,11 @@ export function LearnerWishlist() {
                   <p className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--color-accent-fg)]">
                     {course.category}
                   </p>
-                  <h3 className="mt-3 text-lg font-semibold leading-6 text-[var(--color-primary)]">
+                  {/* h2: os cartões ficam logo abaixo do h1 do shell (antes o h2
+                      do vazio vinha primeiro no arquivo e escondia o salto). */}
+                  <h2 className="mt-3 text-lg font-semibold leading-6 text-[var(--color-primary)]">
                     {course.title}
-                  </h3>
+                  </h2>
                   <p className="mt-3 text-sm leading-7 text-[var(--color-ink-soft)]">
                     {course.summary}
                   </p>
@@ -182,9 +182,9 @@ export function LearnerWishlist() {
                 <div className="grid size-12 place-items-center rounded-md bg-[var(--color-surface-soft)] text-[var(--color-primary)]">
                   <BookmarkX aria-hidden="true" size={22} />
                 </div>
-                <h3 className="mt-4 text-lg font-semibold text-[var(--color-primary)]">
+                <h2 className="mt-4 text-lg font-semibold text-[var(--color-primary)]">
                   {t("learnWave2.wishlistHub.unavailable")}
-                </h3>
+                </h2>
                 <p className="mt-3 text-sm leading-7 text-[var(--color-ink-soft)]">
                   {t("learnWave2.wishlistHub.unavailableDetail")}
                 </p>

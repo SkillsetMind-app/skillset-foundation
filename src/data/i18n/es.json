@@ -1754,6 +1754,7 @@
         "unpin": "Desfijar",
         "pin": "Fijar",
         "clap": "Me gusta · {count}",
+        "clapOwn": "No puedes dar me gusta a tu propia publicación.",
         "reply": "Responder",
         "viewReplies": "Ver {count} respuestas",
         "answer": "respuesta",

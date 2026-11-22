@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { CalendarClock, Repeat } from "lucide-react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { InlineAlert } from "@/components/ui/inline-alert";
 import type { CourseSubscription } from "@/domain/course-subscription";
 import { subscribeToCourseSubscription } from "@/lib/data/course-subscriptions";
 import { toDate } from "@/lib/format-date";
@@ -100,13 +101,9 @@ export function CourseSubscriptionCard({
       </div>
 
       {[readError ? "loadError" : null, actionError].map((error) => error ? (
-        <p
-          key={error}
-          role="alert"
-          className="mt-3 rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-3 py-2 text-sm font-semibold text-[var(--color-danger-fg)]"
-        >
+        <InlineAlert key={error} tone="error" className="mt-3 px-3 py-2">
           {t(`${copy}.${error}`)}
-        </p>
+        </InlineAlert>
       ) : null)}
 
       {!ready ? (
@@ -122,9 +119,11 @@ export function CourseSubscriptionCard({
       ) : (
         <>
           {pastDue ? (
-            <p className="mt-3 rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-3 py-2 text-sm font-semibold text-[var(--color-danger-fg)]">
+            // Aviso, não erro: é um estado da assinatura que pede ação, e não
+            // pode interromper o leitor de tela a cada vez que o cartão abre.
+            <InlineAlert tone="warning" className="mt-3 px-3 py-2">
               {t(`${copy}.paymentAttention`)}
-            </p>
+            </InlineAlert>
           ) : null}
           <p className="mt-3 text-sm leading-6 text-[var(--color-ink-soft)]">
             {cycleText}

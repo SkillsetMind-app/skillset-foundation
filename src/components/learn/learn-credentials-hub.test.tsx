@@ -106,3 +106,44 @@ describe("credentials hub issuance errors", () => {
     expect(screen.getByRole("alert")).not.toHaveTextContent("duplicate key");
   });
 });
+
+describe("credentials hub load errors", () => {
+  // A falha de leitura era um beco: a única saída era recarregar o navegador.
+  it("a falha das matrículas oferece Try again, que relê pelo mesmo canal", async () => {
+    const reload = vi.fn(async () => undefined);
+    let next: (rows: Enrollment[]) => void = () => {};
+    mocks.enrollments.mockImplementation((_uid, onData, onError) => {
+      next = onData;
+      onError(new Error("network"));
+      return Object.assign(() => {}, { reload });
+    });
+    mocks.certificates.mockImplementation((_uid, onData) => { onData([]); return () => {}; });
+    render(<I18nProvider initialLocale="en"><LearnCredentialsHub /></I18nProvider>);
+
+    expect(screen.getByRole("alert")).toHaveTextContent("We could not load your credential records.");
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(reload).toHaveBeenCalledTimes(1);
+    expect(mocks.enrollments).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    // O botão some com o clique: o foco fica na moldura do painel, não no <body>.
+    const frame = document.activeElement as HTMLElement;
+    expect(frame).not.toBe(document.body);
+    expect(frame).toHaveAttribute("tabindex", "-1");
+    expect(frame).toHaveTextContent("Loading credentials");
+
+    act(() => next([finished]));
+    expect(screen.getByRole("heading", { name: "Finished course" })).toBeVisible();
+    expect(document.activeElement).toBe(frame);
+    expect(frame).toContainElement(screen.getByRole("heading", { name: "Finished course" }));
+  });
+
+  // Os certificados não têm releitura: sem botão, e o erro deles não some.
+  it("a falha dos certificados não oferece Try again", () => {
+    mocks.enrollments.mockImplementation((_uid, onData) => { onData([finished]); return () => {}; });
+    mocks.certificates.mockImplementation((_uid, _next, onError) => { onError(new Error("network")); return () => {}; });
+    render(<I18nProvider initialLocale="en"><LearnCredentialsHub /></I18nProvider>);
+
+    expect(screen.getByRole("alert")).toHaveTextContent("We could not load your issued certificate records.");
+    expect(screen.queryByRole("button", { name: "Try again" })).not.toBeInTheDocument();
+  });
+});
