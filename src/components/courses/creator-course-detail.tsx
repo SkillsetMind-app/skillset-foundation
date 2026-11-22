@@ -5,13 +5,14 @@ import { getCourseCategoryLabel } from "@/lib/i18n/course-categories";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 
 import Link from "next/link";
-import { ArrowLeft, ChevronDown, Clock, Lock, Receipt, ShieldCheck, Star, Target } from "lucide-react";
+import { ArrowLeft, Clock, Lock, Receipt, ShieldCheck, Star, Target } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { BunnyVideoPlayer } from "@/components/courses/bunny-video-player";
-import { CourseDetailSkeleton } from "@/components/courses/course-detail-skeleton";
+import { renderCourseDetailSkeleton } from "@/components/courses/course-detail-skeleton";
+import { CourseModuleDisclosure } from "@/components/courses/course-module-disclosure";
 import { CourseUnlockModal } from "@/components/learn/course-unlock-modal";
 import { InlineAlert } from "@/components/ui/inline-alert";
 import {
@@ -196,8 +197,10 @@ export function CreatorCourseDetail({
   // Enquanto o botão do cartão de compra está fora da tela, a barra de preço e
   // compra aparece (no celular, no pé da tela; no desktop, no canto). Com ele à
   // vista, ela some: seria um segundo "Enroll" ao lado do primeiro.
+  // null = ainda não medido (sem IntersectionObserver, ou antes do 1º aviso):
+  // vale o desenho antigo, barra à vista no celular. Só a medição esconde.
   // Ref de callback: o cartão só nasce depois que o curso carrega.
-  const [enrollCardInView, setEnrollCardInView] = useState(true);
+  const [enrollCardInView, setEnrollCardInView] = useState<boolean | null>(null);
   const enrollCardObserver = useRef<IntersectionObserver | null>(null);
   const watchEnrollCard = useCallback((node: HTMLElement | null) => {
     enrollCardObserver.current?.disconnect();
@@ -383,13 +386,14 @@ export function CreatorCourseDetail({
 
   if (isLoading) {
     // Carregar não é erro: o esqueleto da página, sem título nem saída.
-    return (
-      <CourseDetailSkeleton
-        label={t(checkoutOnly ? "publicCourses.loadingCheckout" : "publicCourses.loadingCourse")}
-        checkoutOnly={checkoutOnly}
-        lead={lead}
-      />
-    );
+    // Chamado como função, e não como <CourseDetailSkeleton />: a árvore sai
+    // com a mesma forma do retorno abaixo, e o `lead` (capa e h1 do servidor)
+    // continua montado quando o curso chega, sem piscar.
+    return renderCourseDetailSkeleton({
+      label: t(checkoutOnly ? "publicCourses.loadingCheckout" : "publicCourses.loadingCourse"),
+      checkoutOnly,
+      lead,
+    });
   }
 
   if (error) {
@@ -727,7 +731,9 @@ export function CreatorCourseDetail({
         {/* A volta ao catálogo saiu do cartão de compra (era a última linha
             dele, disputando com o botão) e fica aqui, no alto da coluna, como
             caminho de volta. Loja vazia não é destino: leva ao início. Na
-            página de compra a volta é o "ver detalhes" do cartão. */}
+            página de compra a volta é o "ver detalhes" do cartão.
+            O `lead` fica na 2ª posição desta section, como no esqueleto: é o
+            que o mantém montado na troca (course-detail-skeleton.tsx). */}
         {checkoutOnly ? null : (
           <Link
             href={hasRealCourses ? "/courses" : "/"}
@@ -952,35 +958,20 @@ export function CreatorCourseDetail({
               <p className="rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-7 text-[var(--color-ink-soft)]">{t("publicCourses.curriculumPending")}</p>
             ) : (
               course.modules.map((module, moduleIndex) => (
-                // Um módulo por sanfona (<details> nativo, sem JS): com tudo
-                // aberto, um curso de 10 módulos virava uma coluna enorme e, no
-                // celular, o cartão de compra só vinha depois dela. O primeiro
-                // abre sozinho; os outros mostram nome, aulas e duração.
-                <details
+                // Um módulo por sanfona: com tudo aberto, um curso de 10 módulos
+                // virava uma coluna enorme e, no celular, o cartão de compra só
+                // vinha depois dela. O primeiro abre sozinho; os outros mostram
+                // nome, aulas e duração.
+                <CourseModuleDisclosure
                   key={module.id}
-                  open={moduleIndex === 0}
-                  className="group rounded-lg border fine-rule bg-[var(--color-surface-soft)] [&_summary::-webkit-details-marker]:hidden"
+                  title={module.title}
+                  meta={[
+                    t(module.lessons.length === 1 ? "publicCourses.lessonOne" : "publicCourses.lessonMany")
+                      .replace("{count}", String(module.lessons.length)),
+                    formatTotalMinutes(module.lessons.map((lesson) => lesson.durationMinutes)),
+                  ].filter(Boolean).join(" · ")}
+                  defaultOpen={moduleIndex === 0}
                 >
-                  {/* Grade em vez de caixas aninhadas: o <summary> só aceita
-                      texto e título como filhos diretos. */}
-                  <summary className="grid min-h-14 cursor-pointer list-none grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 rounded-lg px-4 py-3">
-                    <h2 className="text-base font-bold text-[var(--color-ink)]">
-                      {module.title}
-                    </h2>
-                    <span className="mt-0.5 text-xs text-[var(--color-ink-soft)]">
-                      {[
-                        t(module.lessons.length === 1 ? "publicCourses.lessonOne" : "publicCourses.lessonMany")
-                          .replace("{count}", String(module.lessons.length)),
-                        formatTotalMinutes(module.lessons.map((lesson) => lesson.durationMinutes)),
-                      ].filter(Boolean).join(" · ")}
-                    </span>
-                    <ChevronDown
-                      aria-hidden="true"
-                      size={18}
-                      strokeWidth={2.2}
-                      className="col-start-2 row-span-2 row-start-1 text-[var(--color-primary)] group-open:rotate-180 motion-safe:transition-transform motion-safe:duration-[180ms]"
-                    />
-                  </summary>
                   <div className="grid gap-2 px-3 pb-3">
                     {module.lessons.map((lesson) => {
                       const isPreview = course.freePreviewLessonId === lesson.id;
@@ -1025,7 +1016,7 @@ export function CreatorCourseDetail({
                       );
                     })}
                   </div>
-                </details>
+                </CourseModuleDisclosure>
               ))
             )}
           </div>
@@ -1367,10 +1358,13 @@ export function CreatorCourseDetail({
         aparece enquanto o botao do cartao esta fora da tela (no desktop, como
         um cartao no canto); com ele a vista, some: dois "Enroll" ao mesmo
         tempo, e a barra cobrindo o pe do cartao. `hidden` tira a barra da
-        ordem do Tab; o pb-24 da pagina continua reservando o lugar dela. */}
+        ordem do Tab; o pb-24 da pagina continua reservando o lugar dela.
+        Antes da primeira medicao, a barra fica como era: a vista no celular. */}
     {!checkoutOnly ? <div
       className={`course-buy-float pointer-events-none fixed inset-x-0 bottom-0 z-40 px-3 pb-3 ${
-        enrollCardInView ? "hidden" : "lg:inset-x-auto lg:right-6 lg:bottom-6 lg:w-[24rem] lg:px-0 lg:pb-0"
+        enrollCardInView === null
+          ? "lg:hidden"
+          : enrollCardInView ? "hidden" : "lg:inset-x-auto lg:right-6 lg:bottom-6 lg:w-[24rem] lg:px-0 lg:pb-0"
       }`}
     >
       <div className="pointer-events-auto flex items-center gap-3 rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)]/95 px-4 py-3 shadow-[0_-6px_30px_rgba(15,39,68,0.18)] backdrop-blur supports-[backdrop-filter]:bg-[var(--color-surface)]/85">

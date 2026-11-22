@@ -22,6 +22,8 @@ const fixtures = vi.hoisted(() => ({
   subscriptions: 0,
   // true: a assinatura do curso não responde, como uma leitura ainda a caminho.
   holdCourse: false,
+  // O último onNext da assinatura do curso, para entregar o curso mais tarde.
+  courseNext: null as ((course: TeacherCourse) => void) | null,
   // As chaves públicas (payments.checkout): ligadas, salvo no teste que as desliga.
   flagsOn: true,
   router: { push: vi.fn(), replace: vi.fn() },
@@ -94,6 +96,7 @@ vi.mock("@/lib/data/published-courses", () => ({
     onNext: (course: TeacherCourse) => void,
   ) => {
     fixtures.subscriptions += 1;
+    fixtures.courseNext = onNext;
     if (!fixtures.holdCourse) onNext(fixtures.course);
     return () => {};
   },
@@ -485,12 +488,13 @@ describe("CreatorCourseDetail: o cartão que vende", () => {
     await screen.findAllByText("$149.00");
 
     expect(container.querySelector("#enroll-card")).toHaveClass("lg:sticky");
-    // Barra de compra: leva ao cartão e, em qualquer largura (não só no
-    // desktop), some enquanto o botão do cartão está à vista. Sem
-    // IntersectionObserver (jsdom), o cartão conta como à vista.
+    // Barra de compra: leva ao cartão. Sem IntersectionObserver (jsdom), ou
+    // antes do primeiro aviso dele, nada foi medido: a barra fica à vista no
+    // celular, como sempre foi. Só a medição a esconde.
     const bar = container.querySelector('a[href="#enroll-card"]');
     expect(bar).not.toBeNull();
-    expect(bar?.closest("div.fixed")).toHaveClass("hidden");
+    expect(bar?.closest("div.fixed")).toHaveClass("lg:hidden");
+    expect(bar?.closest("div.fixed")).not.toHaveClass("hidden");
   });
 
   it("com o cartão fora da tela a barra de compra aparece (no desktop, no canto); com o botão à vista, some", async () => {
@@ -506,6 +510,9 @@ describe("CreatorCourseDetail: o cartão que vende", () => {
       await screen.findAllByText("$149.00");
       await waitFor(() => expect(observe).toHaveBeenCalledWith(container.querySelector("#enroll-card")));
       const bar = () => container.querySelector('a[href="#enroll-card"]')?.closest("div.fixed");
+      // Antes do primeiro aviso: à vista no celular.
+      expect(bar()).toHaveClass("lg:hidden");
+      expect(bar()).not.toHaveClass("hidden");
 
       act(() => notify?.([{ isIntersecting: false }]));
       expect(bar()).not.toHaveClass("hidden");
@@ -1581,6 +1588,19 @@ describe("CreatorCourseDetail: o cabeçalho do servidor no topo da coluna", () =
     expect(screen.queryByRole("link")).not.toBeInTheDocument();
   });
 
+  it("quando o curso chega, o cabeçalho é o MESMO nó: não desmonta (a capa não pisca)", async () => {
+    fixtures.holdCourse = true;
+    render(<CreatorCourseDetail courseIdOverride="course-1" hideHeader lead={lead} />);
+    const before = screen.getByRole("heading", { level: 1, name: "Deep Focus Systems" });
+
+    act(() => fixtures.courseNext?.(fixtures.course));
+    await screen.findAllByText("$149.00");
+
+    expect(screen.queryByText("Loading course...")).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: "Deep Focus Systems" })).toBe(before);
+    expect(before.isConnected).toBe(true);
+  });
+
   it("num estado de erro, o cabeçalho fica no alto e o aviso vira h2", () => {
     render(<CreatorCourseDetail hideHeader lead={lead} />);
 
@@ -1663,17 +1683,27 @@ describe("CreatorCourseDetail: um módulo por sanfona", () => {
     const { container } = render(<CreatorCourseDetail courseIdOverride="course-1" hideHeader />);
     await screen.findAllByText("$149.00");
 
-    const modules = Array.from(container.querySelectorAll<HTMLDetailsElement>("#curriculum details"));
-    expect(modules).toHaveLength(2);
-    expect(modules[0]).toHaveAttribute("open");
-    expect(modules[1]).not.toHaveAttribute("open");
-    const summaries = modules.map((module) => module.querySelector("summary") as HTMLElement);
-    expect(within(summaries[0]).getByRole("heading", { level: 2, name: "Foundations" })).toBeInTheDocument();
-    expect(within(summaries[0]).getByText("1 lesson · 1h 30m")).toBeInTheDocument();
+    // Cada módulo é um título (navegável por títulos, também no VoiceOver)
+    // com o botão de abrir dentro: o padrão de sanfona.
+    const curriculum = container.querySelector("#curriculum") as HTMLElement;
+    const toggles = Array.from(curriculum.querySelectorAll<HTMLButtonElement>("h2 > button[aria-expanded]"));
+    expect(toggles).toHaveLength(2);
+    expect(within(curriculum).getByRole("heading", { level: 2, name: /^Foundations 1 lesson · 1h 30m$/ })).toContainElement(toggles[0]);
+    expect(toggles[0]).toHaveAttribute("aria-expanded", "true");
+    expect(toggles[1]).toHaveAttribute("aria-expanded", "false");
     // Sem minutos em todas as aulas, a duração não aparece (nada se estima).
-    expect(within(summaries[1]).getByText("2 lessons")).toBeInTheDocument();
+    expect(within(toggles[1]).getByText("2 lessons")).toBeInTheDocument();
+    const panel = (toggle: HTMLButtonElement) => document.getElementById(toggle.getAttribute("aria-controls")!) as HTMLElement;
+    expect(panel(toggles[0])).not.toHaveAttribute("hidden");
+    expect(panel(toggles[1])).toHaveAttribute("hidden");
     // Nada sai da página: as aulas do módulo fechado seguem no DOM, e a trancada
     // continua abrindo a compra.
-    expect(within(modules[1]).getByText("Shutdown ritual").closest("button")).toHaveAttribute("aria-haspopup", "dialog");
+    expect(within(panel(toggles[1])).getByText("Shutdown ritual").closest("button")).toHaveAttribute("aria-haspopup", "dialog");
+
+    fireEvent.click(toggles[1]);
+    expect(toggles[1]).toHaveAttribute("aria-expanded", "true");
+    expect(panel(toggles[1])).not.toHaveAttribute("hidden");
+    fireEvent.click(toggles[0]);
+    expect(panel(toggles[0])).toHaveAttribute("hidden");
   });
 });

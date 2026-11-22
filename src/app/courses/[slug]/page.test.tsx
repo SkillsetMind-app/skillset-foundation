@@ -195,14 +195,14 @@ describe("currículo da página de amostra", () => {
   it("um módulo por sanfona, o primeiro aberto, aulas e duração na linha do módulo", async () => {
     const { container } = render(await CourseDetailPage({ params: Promise.resolve({ slug: "leadership-development" }) }));
 
-    const modules = Array.from(container.querySelectorAll<HTMLElement>("#curriculum details"));
-    expect(modules).toHaveLength(2);
-    expect(modules[0]).toHaveAttribute("open");
-    expect(modules[1]).not.toHaveAttribute("open");
-    const summary = modules[0].querySelector("summary") as HTMLElement;
-    expect(within(summary).getByText(`${es("publicCourses.lessonMany").replace("{count}", "2")} · 20 min`)).toBeInTheDocument();
+    const toggles = Array.from(container.querySelectorAll<HTMLButtonElement>("#curriculum h3 > button[aria-expanded]"));
+    expect(toggles).toHaveLength(2);
+    expect(toggles[0]).toHaveAttribute("aria-expanded", "true");
+    expect(toggles[1]).toHaveAttribute("aria-expanded", "false");
+    expect(within(toggles[0]).getByText(`${es("publicCourses.lessonMany").replace("{count}", "2")} · 20 min`)).toBeInTheDocument();
 
-    const meta = within(modules[0]).getByText(`${es("publicCourses.lessonTypes.video")} · 8 min · ${es("publicCourses.previewShort")}`);
+    const panel = document.getElementById(toggles[0].getAttribute("aria-controls")!) as HTMLElement;
+    const meta = within(panel).getByText(`${es("publicCourses.lessonTypes.video")} · 8 min · ${es("publicCourses.previewShort")}`);
     expect(meta).not.toHaveClass("uppercase");
     expect(meta.parentElement).toHaveClass("min-h-11");
   });

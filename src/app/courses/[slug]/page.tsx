@@ -5,10 +5,11 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import { ChevronDown, Target } from "lucide-react";
+import { Target } from "lucide-react";
 
 import { CourseDetailSkeleton } from "@/components/courses/course-detail-skeleton";
 import { CourseEnrollmentCta } from "@/components/courses/course-enrollment-cta";
+import { CourseModuleDisclosure } from "@/components/courses/course-module-disclosure";
 import { CreatorCourseDetail } from "@/components/courses/creator-course-detail";
 import { JsonLd } from "@/components/seo/json-ld";
 import { SiteFooter } from "@/components/site/site-footer";
@@ -310,30 +311,18 @@ export default async function CourseDetailPage({
                   módulo, linhas de 44px e dados em caixa normal com " · ". */}
               <div className="mt-5 grid gap-3">
                 {course.modules.map((module, moduleIndex) => (
-                  <details
+                  <CourseModuleDisclosure
                     key={module.id}
-                    open={moduleIndex === 0}
-                    className="group rounded-lg border fine-rule bg-[var(--color-surface-soft)] [&_summary::-webkit-details-marker]:hidden"
+                    title={module.title}
+                    meta={[
+                      t(module.lessons.length === 1 ? "publicCourses.lessonOne" : "publicCourses.lessonMany")
+                        .replace("{count}", String(module.lessons.length)),
+                      // A amostra guarda a duração como texto ("12 min").
+                      formatTotalMinutes(module.lessons.map((lesson) => Number(/^(\d+) min$/.exec(lesson.duration)?.[1]))),
+                    ].filter(Boolean).join(" · ")}
+                    defaultOpen={moduleIndex === 0}
+                    headingLevel={3}
                   >
-                    <summary className="grid min-h-14 cursor-pointer list-none grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 rounded-lg px-4 py-3">
-                      <h3 className="text-base font-bold text-[var(--color-ink)]">
-                        {module.title}
-                      </h3>
-                      <span className="mt-0.5 text-xs text-[var(--color-ink-soft)]">
-                        {[
-                          t(module.lessons.length === 1 ? "publicCourses.lessonOne" : "publicCourses.lessonMany")
-                            .replace("{count}", String(module.lessons.length)),
-                          // A amostra guarda a duração como texto ("12 min").
-                          formatTotalMinutes(module.lessons.map((lesson) => Number(/^(\d+) min$/.exec(lesson.duration)?.[1]))),
-                        ].filter(Boolean).join(" · ")}
-                      </span>
-                      <ChevronDown
-                        aria-hidden="true"
-                        size={18}
-                        strokeWidth={2.2}
-                        className="col-start-2 row-span-2 row-start-1 text-[var(--color-primary)] group-open:rotate-180 motion-safe:transition-transform motion-safe:duration-[180ms]"
-                      />
-                    </summary>
                     <p className="px-4 pb-3 text-sm leading-6 text-[var(--color-ink-soft)]">
                       {module.summary}
                     </p>
@@ -356,7 +345,7 @@ export default async function CourseDetailPage({
                         </div>
                       ))}
                     </div>
-                  </details>
+                  </CourseModuleDisclosure>
                 ))}
               </div>
             </section>
