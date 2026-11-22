@@ -304,3 +304,19 @@ describe("SiteNav", () => {
     expect(screen.getByRole("button", { name: "Open menu" })).toHaveFocus();
   });
 });
+// A entrada usava três sistemas de botão: dourado na barra, navy no menu do
+// celular. Agora a ação principal é o mesmo .button-solid nos dois lugares.
+describe("SiteNav: os mesmos dois botões na barra e no menu do celular", () => {
+  it("'Create account' é o mesmo botão principal na barra e no menu", () => {
+    render(<SiteNav />);
+    fireEvent.click(screen.getByRole("button", { name: "Open menu" }));
+    const panel = document.getElementById("site-mobile-menu")!;
+
+    const [bar, menu] = screen.getAllByRole("link", { name: "Create account" });
+    expect(within(panel).getByRole("link", { name: "Create account" })).toBe(menu);
+    for (const link of [bar, menu]) {
+      expect(link).toHaveClass("button-solid");
+      expect(link).not.toHaveClass("btn-cta-hero");
+    }
+  });
+});

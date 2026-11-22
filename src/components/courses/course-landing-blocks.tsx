@@ -17,6 +17,8 @@
  * they will be charged.
  */
 
+import { ChevronDown } from "lucide-react";
+
 import type { CourseLandingBlock, CourseLandingTemplate } from "@/domain/course-landing";
 
 type TemplateStyle = {
@@ -33,27 +35,32 @@ type TemplateStyle = {
  * blocks in the same order read as two different pages — which is what a teacher
  * choosing a "model" actually wants — without doubling the surface that can
  * break.
+ *
+ * Os títulos dos blocos ficam ABAIXO do título da página (o h1 do curso, de 30
+ * a 56px): o bloco de abertura era um segundo h1 de até 60px, maior que o
+ * título, e cada bloco usava a serifa de destaque. Agora são h2 em Manrope,
+ * 20px no clássico e 24px no forte; a serifa fica para o h1 e para o preço.
  */
 const templates: Record<CourseLandingTemplate, TemplateStyle> = {
   classic: {
     section: "mt-12 first:mt-0",
-    heading: "display-title text-2xl text-[var(--color-primary)]",
+    heading: "text-xl font-bold leading-tight text-[var(--color-primary)]",
     body: "mt-3 whitespace-pre-line text-base leading-8 text-[var(--color-ink-soft)]",
     heroWrap:
       "overflow-hidden rounded-lg border border-[var(--color-line)] bg-[var(--color-surface-soft)] px-6 py-10 sm:px-10 sm:py-14",
     heroHeading:
-      "display-title text-3xl leading-tight text-[var(--color-primary)] sm:text-4xl",
+      "text-2xl font-bold leading-tight text-[var(--color-primary)] sm:text-[1.75rem]",
     card: "rounded-lg border border-[var(--color-line)] bg-white p-5",
   },
   bold: {
     section: "mt-16 first:mt-0",
     heading:
-      "display-title text-3xl uppercase tracking-tight text-[var(--color-primary)]",
+      "text-2xl font-extrabold uppercase leading-tight tracking-tight text-[var(--color-primary)]",
     body: "mt-4 whitespace-pre-line text-lg leading-9 text-[var(--color-ink)]",
     heroWrap:
       "overflow-hidden rounded-lg bg-[#102a43] px-6 py-14 text-white sm:px-12 sm:py-20",
     heroHeading:
-      "display-title text-4xl leading-[1.05] text-white sm:text-6xl",
+      "text-2xl font-extrabold leading-tight text-white sm:text-[1.75rem]",
     card: "rounded-lg border-2 border-[var(--color-primary)] bg-white p-6",
   },
 };
@@ -83,9 +90,9 @@ function Hero({
           </>
         ) : null}
         <div className="relative">
-          <h1 className={block.imageUrl ? `${style.heroHeading} text-white` : style.heroHeading}>
+          <h2 className={block.imageUrl ? `${style.heroHeading} text-white` : style.heroHeading}>
             {block.heading}
-          </h1>
+          </h2>
           {block.subheading ? (
             <p
               className={`mt-4 max-w-2xl text-lg leading-8 ${
@@ -229,14 +236,25 @@ export function CourseLandingBlocks({
             return (
               <section key={key} className={style.section}>
                 {block.heading ? <h2 className={style.heading}>{block.heading}</h2> : null}
+                {/* A mesma pergunta que abre e fecha das perguntas de /pricing: seta
+                    que gira, sem o triângulo padrão do navegador. */}
                 <div className="mt-5 grid gap-3">
                   {block.items.map((item, itemIndex) => (
-                    <details key={itemIndex} className={style.card}>
-                      <summary className="cursor-pointer font-semibold text-[var(--color-ink)]">
+                    <details
+                      key={itemIndex}
+                      className="group rounded-lg border fine-rule bg-white shadow-[var(--shadow-soft)] [&_summary::-webkit-details-marker]:hidden"
+                    >
+                      <summary className="flex cursor-pointer list-none items-center justify-between gap-4 rounded-lg px-5 py-4 text-sm font-semibold text-[var(--color-ink)]">
                         {item.question}
+                        <ChevronDown
+                          aria-hidden="true"
+                          size={18}
+                          strokeWidth={2.2}
+                          className="shrink-0 text-[var(--color-primary)] group-open:rotate-180"
+                        />
                       </summary>
                       {item.answer ? (
-                        <p className="mt-3 whitespace-pre-line text-sm leading-7 text-[var(--color-ink-soft)]">
+                        <p className="whitespace-pre-line px-5 pb-5 text-sm leading-7 text-[var(--color-ink-soft)]">
                           {item.answer}
                         </p>
                       ) : null}
@@ -262,7 +280,11 @@ export function CourseLandingBlocks({
                       type="button"
                       onClick={onEnrol}
                       disabled={enrolDisabled}
-                      className="mt-5 inline-flex items-center rounded-md bg-[var(--color-primary)] px-6 py-3 text-sm font-bold text-[var(--color-on-primary)] disabled:opacity-60"
+                      // O botão da casa (o mesmo do cartão de compra), e não um
+                      // feito à mão que não reagia ao passar o mouse. O rótulo do
+                      // professor pode ter até 200 caracteres: quebra em linhas
+                      // centradas que não se encostam (o botão traz line-height 1).
+                      className="button-solid button-lg mt-5 whitespace-normal text-center leading-snug disabled:opacity-60"
                     >
                       {block.buttonLabel}
                     </button>
