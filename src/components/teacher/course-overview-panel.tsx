@@ -280,7 +280,9 @@ export function CourseOverviewPanel({ course }: { course: TeacherCourse }) {
     const logError = logSubscriptionError("CourseOverviewPanel.students");
     void getMyCourseStudents()
       .then((next) => {
-        if (alive) setStudents(next);
+        if (!alive) return;
+        setStudents(next);
+        setStudentsFailed(false);
       })
       .catch((error: unknown) => {
         logError(error);
@@ -333,8 +335,10 @@ export function CourseOverviewPanel({ course }: { course: TeacherCourse }) {
       stats={stats}
       issues={issues}
       loading={students === null}
+      // Só sem números na tela: uma releitura que falha não apaga os que já
+      // estão ali (eles seguem valendo até a próxima leitura boa).
       onRetryStudents={
-        studentsFailed
+        studentsFailed && students === null
           ? () => {
               setStudentsFailed(false);
               setStudentsAttempt((current) => current + 1);

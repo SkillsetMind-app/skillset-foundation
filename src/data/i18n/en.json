@@ -2554,6 +2554,7 @@
       "loadError": "Could not load your prices.",
       "createError": "Could not add this price.",
       "activationError": "Pay the one-time activation fee before adding a price.",
+      "rateError": "Too many attempts in a row. Wait a moment and try again.",
       "invalidAmount": "Enter a valid price.",
       "created": "Price added. Its link charges exactly this price."
     },

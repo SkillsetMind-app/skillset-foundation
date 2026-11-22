@@ -2554,6 +2554,7 @@
       "loadError": "No pudimos cargar tus precios.",
       "createError": "No pudimos agregar este precio.",
       "activationError": "Paga la tarifa única de activación antes de agregar un precio.",
+      "rateError": "Demasiados intentos seguidos. Espera un momento y vuelve a intentarlo.",
       "invalidAmount": "Introduce un precio válido.",
       "created": "Precio agregado. Su enlace cobra exactamente este precio."
     },

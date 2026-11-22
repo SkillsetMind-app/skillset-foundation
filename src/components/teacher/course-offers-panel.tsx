@@ -47,6 +47,8 @@ const offerErrorKeys: Record<string, string> = {
   "A paid offer must have a positive price.": "creatorPanel.offers.invalidAmount",
   "A free offer must have a zero price.": "creatorPanel.offers.invalidAmount",
   "amountMinor must be a non-negative whole number.": "creatorPanel.offers.invalidAmount",
+  // O limite de tentativas (429): a pessoa precisa saber que é para esperar.
+  "Too many attempts. Please wait before trying again.": "creatorPanel.offers.rateError",
 };
 
 function offerErrorKey(error: unknown, fallback: string): string {

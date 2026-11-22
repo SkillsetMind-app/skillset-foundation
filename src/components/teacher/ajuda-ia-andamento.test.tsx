@@ -103,4 +103,59 @@ describe("ajudas de IA: andamento, erro e tentar de novo", () => {
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Try again" })).not.toBeInTheDocument();
   });
+
+  // Trocar o idioma depois da falha: o "Try again" refaria o pedido no idioma
+  // antigo (e gastaria as horas de IA nele). Vale para os dois seletores.
+  it("legenda: trocar o idioma falado ou o de destino tira o Try again do pedido antigo", async () => {
+    vi.mocked(loadTeachAi).mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      body: {
+        captions: [{ language: "en", vtt: "WEBVTT", translatedFrom: null, updatedAt: "2026-11-01", publishedAt: null, stale: false }],
+        usage: { usedSeconds: 0, limitSeconds: 3600 },
+      },
+    });
+    vi.mocked(callTeachAi).mockResolvedValue(failed);
+    mount(<LessonAiCaptions {...ids} />);
+    const translateTo = await screen.findByLabelText("Translate the English captions to");
+
+    for (const change of [
+      () => fireEvent.change(screen.getByLabelText("Language spoken in the video"), { target: { value: "pt" } }),
+      () => fireEvent.change(translateTo, { target: { value: "fr" } }),
+    ]) {
+      fireEvent.change(translateTo, { target: { value: "es" } });
+      fireEvent.click(screen.getByRole("button", { name: "Translate" }));
+      expect(await screen.findByRole("button", { name: "Try again" })).toBeInTheDocument();
+      change();
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Try again" })).not.toBeInTheDocument();
+    }
+  });
+
+  // Publicar com texto editado grava e depois publica: o "Try again" de uma
+  // gravacao que falhou refaz os dois passos, nao so o primeiro.
+  it("legenda: Try again de um Publish que falhou ao gravar refaz gravar e publicar", async () => {
+    vi.mocked(loadTeachAi).mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      body: {
+        captions: [{ language: "en", vtt: "WEBVTT", translatedFrom: null, updatedAt: "2026-11-01", publishedAt: null, stale: false }],
+        usage: { usedSeconds: 0, limitSeconds: 3600 },
+      },
+    });
+    mount(<LessonAiCaptions {...ids} />);
+    fireEvent.change(await screen.findByLabelText("Captions in English"), { target: { value: "WEBVTT\n\nedited" } });
+    vi.mocked(callTeachAi).mockResolvedValueOnce(failed);
+    fireEvent.click(screen.getByRole("button", { name: "Publish" }));
+    expect(await screen.findByRole("alert")).toBeInTheDocument();
+
+    vi.mocked(callTeachAi).mockResolvedValue({ ok: true, status: 200, body: {} });
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(await screen.findByText("Published. Students see these captions in the player.")).toBeInTheDocument();
+    expect(vi.mocked(callTeachAi).mock.calls.map(([payload]) => payload.action)).toEqual([
+      "saveCaption",
+      "saveCaption",
+      "publishCaption",
+    ]);
+  });
 });

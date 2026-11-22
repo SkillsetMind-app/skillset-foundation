@@ -216,6 +216,8 @@ it("sem nenhuma oferta, o formulario continua aberto e nao ha botao Add another 
 it.each([
   ["Pay the one-time activation fee to activate your creator account.", "Pay the one-time activation fee before adding a price."],
   ["A paid offer must have a positive price.", "Enter a valid price."],
+  // O limite de tentativas diz para esperar, nao "nao deu".
+  ["Too many attempts. Please wait before trying again.", "Too many attempts in a row. Wait a moment and try again."],
   ["duplicate key value violates unique constraint", "Could not add this price."],
 ])("criar falha com %s: frase da casa, anunciada", async (raw, shown) => {
   vi.stubGlobal("fetch", vi.fn(async (_url: string, init?: RequestInit) =>

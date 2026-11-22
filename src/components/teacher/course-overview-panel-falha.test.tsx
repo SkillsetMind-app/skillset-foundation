@@ -1,5 +1,5 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, expect, it, vi } from "vitest";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 import { CourseOverviewPanel } from "@/components/teacher/course-overview-panel";
 import type { TeacherCourse } from "@/domain/teacher-course";
@@ -8,8 +8,9 @@ import { getMyCourseStudents } from "@/lib/data/enrollments";
 // A leitura dos alunos falhava em silencio (so log): o esqueleto do painel
 // pulsava para sempre. Agora a falha vira erro com "Try again", que le de novo.
 
-const user = { uid: "teacher-1" };
-vi.mock("@/components/auth/auth-provider", () => ({ useAuth: () => ({ user }) }));
+// Trocar o objeto do usuario rele os alunos (o efeito depende dele).
+const viewer = vi.hoisted(() => ({ current: { uid: "teacher-1" } }));
+vi.mock("@/components/auth/auth-provider", () => ({ useAuth: () => ({ user: viewer.current }) }));
 vi.mock("@/components/teacher/studio-recent-activity", () => ({ StudioRecentActivity: () => null }));
 vi.mock("@/lib/data/orders", () => ({ subscribeToTeacherOrders: () => () => undefined }));
 vi.mock("@/lib/data/course-commerce", () => ({ subscribeToCourseCoupons: () => () => undefined }));
@@ -17,11 +18,15 @@ vi.mock("@/lib/data/course-assets", () => ({ fetchCourseAssets: async () => [] }
 vi.mock("@/lib/data/enrollments", () => ({ getMyCourseStudents: vi.fn() }));
 
 const course = { id: "course-1", title: "Hypnosis Basics", status: "published", modules: [] } as unknown as TeacherCourse;
+const emptyLine = "No one has bought this product yet.";
 
+beforeEach(() => {
+  vi.mocked(getMyCourseStudents).mockReset();
+  vi.spyOn(console, "warn").mockImplementation(() => undefined);
+});
 afterEach(cleanup);
 
 it("a failed students read ends in an error with Try again, never an endless skeleton", async () => {
-  vi.spyOn(console, "warn").mockImplementation(() => undefined);
   vi.mocked(getMyCourseStudents).mockRejectedValueOnce(new Error("network"));
   render(<CourseOverviewPanel course={course} />);
 
@@ -30,7 +35,29 @@ it("a failed students read ends in an error with Try again, never an endless ske
 
   vi.mocked(getMyCourseStudents).mockResolvedValueOnce([]);
   fireEvent.click(screen.getByRole("button", { name: "Try again" }));
-  expect(await screen.findByText("No one has bought this product yet.")).toBeInTheDocument();
+  expect(await screen.findByText(emptyLine)).toBeInTheDocument();
   expect(screen.queryByRole("alert")).toBeNull();
   expect(getMyCourseStudents).toHaveBeenCalledTimes(2);
+});
+
+// Uma leitura boa limpa a falha anterior, e uma releitura que falha nao troca
+// os numeros que ja estao na tela pelo erro.
+it("a later good read clears the error, and a later failed read keeps the numbers", async () => {
+  vi.mocked(getMyCourseStudents).mockRejectedValueOnce(new Error("network"));
+  const { rerender } = render(<CourseOverviewPanel course={course} />);
+  await screen.findByRole("alert");
+
+  vi.mocked(getMyCourseStudents).mockResolvedValueOnce([]);
+  viewer.current = { uid: "teacher-1" };
+  rerender(<CourseOverviewPanel course={course} />);
+  expect(await screen.findByText(emptyLine)).toBeInTheDocument();
+  expect(screen.queryByRole("alert")).toBeNull();
+
+  vi.mocked(getMyCourseStudents).mockRejectedValueOnce(new Error("network"));
+  viewer.current = { uid: "teacher-1" };
+  rerender(<CourseOverviewPanel course={course} />);
+  await waitFor(() => expect(getMyCourseStudents).toHaveBeenCalledTimes(3));
+  await act(async () => undefined);
+  expect(screen.getByText(emptyLine)).toBeInTheDocument();
+  expect(screen.queryByRole("alert")).toBeNull();
 });

@@ -73,7 +73,8 @@ describe("CourseShareLink", () => {
   });
 
   // Copiar e acao secundaria: contorno. O "copiado" aparece no proprio botao
-  // por 2s (a caixa nao cresce) e o nome do botao nao muda.
+  // por 2s (a caixa nao cresce), e o nome do botao acompanha o texto: um
+  // aria-label fixo de "Copy ..." contradiria o "Link copied." da tela.
   it("copy is an outline button whose own label says copied for two seconds", async () => {
     vi.stubGlobal("navigator", { clipboard: { writeText: vi.fn().mockResolvedValue(undefined) } });
     render(<CourseShareLink label="Checkout" path="/courses/course-1/checkout" title={title} />);
@@ -84,9 +85,11 @@ describe("CourseShareLink", () => {
     try {
       await act(async () => fireEvent.click(copy));
       expect(copy).toHaveTextContent("Link copied.");
+      expect(copy).toHaveAccessibleName("Link copied.");
       expect(screen.getByRole("status")).toHaveClass("sr-only");
       act(() => vi.advanceTimersByTime(2000));
       expect(copy).toHaveTextContent("Copy link");
+      expect(copy).toHaveAccessibleName("Copy Checkout link");
       expect(screen.queryByRole("status")).not.toBeInTheDocument();
     } finally {
       vi.useRealTimers();

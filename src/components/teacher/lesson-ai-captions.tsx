@@ -83,7 +83,15 @@ export function LessonAiCaptions({ courseId, lessonId, assetId }: { courseId: st
     setTexts((current) => ({ ...current, [caption.language]: caption.vtt }));
   }
 
-  async function run(action: string, extra: Record<string, unknown>, busyKey: string, okText: string): Promise<boolean> {
+  // `retry`: o que o "Try again" refaz. Sem ele, o mesmo pedido; o Publish
+  // passa a ação inteira (gravar e publicar), não só o passo que falhou.
+  async function run(
+    action: string,
+    extra: Record<string, unknown>,
+    busyKey: string,
+    okText: string,
+    retry?: () => void,
+  ): Promise<boolean> {
     setBusy(busyKey);
     setNotice(null);
     const result = await callTeachAi({ action, courseId, lessonId, assetId, ...extra });
@@ -93,7 +101,7 @@ export function LessonAiCaptions({ courseId, lessonId, assetId }: { courseId: st
       setNotice({
         kind: "error",
         text: teachAiErrorText(result, t),
-        retry: () => void run(action, extra, busyKey, okText),
+        retry: retry ?? (() => void run(action, extra, busyKey, okText)),
       });
       return false;
     }
@@ -110,13 +118,21 @@ export function LessonAiCaptions({ courseId, lessonId, assetId }: { courseId: st
   // Publicar com texto editado grava antes: o professor não precisa adivinhar
   // que "Save" vem primeiro.
   async function publish(caption: Caption) {
+    const again = () => void publish(caption);
     const edited = texts[caption.language] !== caption.vtt;
     if (edited && !(await run("saveCaption", { language: caption.language, vtt: texts[caption.language] },
-      `publish-${caption.language}`, t("creatorEditor.lesson.ai.saved")))) {
+      `publish-${caption.language}`, t("creatorEditor.lesson.ai.saved"), again))) {
       return;
     }
     await run("publishCaption", { language: caption.language }, `publish-${caption.language}`,
-      t("creatorEditor.lesson.ai.publishedNotice"));
+      t("creatorEditor.lesson.ai.publishedNotice"), again);
+  }
+
+  // Mudou o texto ou um idioma depois da falha: o "Try again" refaria o pedido
+  // antigo (texto velho por cima, ou outro idioma gastando as horas de IA). O
+  // erro sai; o botão da ação usa o que está na tela.
+  function dropStaleRetry() {
+    setNotice((current) => (current?.kind === "error" ? null : current));
   }
 
   const name = (code: string) => captionLanguageName(code, locale);
@@ -149,7 +165,14 @@ export function LessonAiCaptions({ courseId, lessonId, assetId }: { courseId: st
           <div className="flex flex-wrap items-end gap-3">
             <label className="lesson-modal-field min-w-0 flex-1">
               <span>{t("creatorEditor.lesson.ai.spokenLanguage")}</span>
-              <select value={spoken} disabled={working} onChange={(event) => setSpoken(event.target.value)}>
+              <select
+                value={spoken}
+                disabled={working}
+                onChange={(event) => {
+                  setSpoken(event.target.value);
+                  dropStaleRetry();
+                }}
+              >
                 {CAPTION_LANGUAGES.map((code) => (
                   <option key={code} value={code}>{name(code)}</option>
                 ))}
@@ -200,9 +223,7 @@ export function LessonAiCaptions({ courseId, lessonId, assetId }: { courseId: st
                     value={texts[caption.language] ?? caption.vtt}
                     onChange={(event) => {
                       setTexts((current) => ({ ...current, [caption.language]: event.target.value }));
-                      // Editou depois da falha: repetir o pedido antigo gravaria o
-                      // texto velho por cima. O erro sai; o Save usa o texto novo.
-                      setNotice((current) => (current?.kind === "error" ? null : current));
+                      dropStaleRetry();
                     }}
                     disabled={working}
                     rows={10}
@@ -262,7 +283,14 @@ export function LessonAiCaptions({ courseId, lessonId, assetId }: { courseId: st
                 <span>
                   {t("creatorEditor.lesson.ai.translateTo").replace("{language}", () => name(source.language))}
                 </span>
-                <select value={target} disabled={working} onChange={(event) => setTarget(event.target.value)}>
+                <select
+                  value={target}
+                  disabled={working}
+                  onChange={(event) => {
+                    setTarget(event.target.value);
+                    dropStaleRetry();
+                  }}
+                >
                   <option value="">{t("creatorEditor.lesson.ai.chooseLanguage")}</option>
                   {targets.map((code) => (
                     <option key={code} value={code}>{name(code)}</option>

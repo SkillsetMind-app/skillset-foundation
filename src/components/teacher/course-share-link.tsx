@@ -139,9 +139,9 @@ export function CourseShareLink({
       ref={copyRef}
       type="button"
       onClick={() => void copyLink()}
-      // Nome fixo: o texto visível vira "Link copied." por 2s, e quem está no
-      // botão com o leitor de tela continua sabendo qual botão é.
-      aria-label={copyLabel ?? forLabel("creatorPanel.shareLink.copyAria")}
+      // O nome acompanha o texto: por 2s o botão diz "Link copied." e o nome
+      // é esse mesmo (um aria-label fixo de "Copy ..." contradiria a tela).
+      aria-label={copyLabel || copied ? undefined : forLabel("creatorPanel.shareLink.copyAria")}
       aria-describedby={copyDescribedBy}
       // O marco sai no tamanho do fluxo (48px, 15px/600), não no 12px da fileira.
       // Fora dele copiar é ação secundária: contorno, nunca o azul cheio.
