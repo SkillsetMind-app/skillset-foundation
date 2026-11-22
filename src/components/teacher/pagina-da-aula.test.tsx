@@ -337,10 +337,14 @@ describe("pagina da aula no builder", () => {
     expect(within(trail).getByRole("link", { name: "Clinical performance foundations" }))
       .toHaveAttribute("href", "/teach/builder?courseId=course-1&tab=content");
     expect(within(trail).getByRole("link", { name: "Start here" })).toHaveAttribute("href", moduleUrl);
-    // O nome da aula aparecia tres vezes: trilha, titulo e a linha "Module 1 - ... / Lesson 1".
-    expect(trail).not.toHaveTextContent("Welcome");
-    expect(within(card()).getAllByText("Welcome")).toHaveLength(1);
-    expect(within(card()).getByRole("heading", { name: "Welcome" })).toBeInTheDocument();
+    // O nome da aula aparecia tres vezes na tela: trilha, titulo e a linha
+    // "Module 1 - ... / Lesson 1". Agora so o titulo e visivel; na trilha a aula
+    // fica para o leitor de tela, como item atual.
+    const current = within(trail).getByText("Welcome");
+    expect(current.closest("[aria-current='page']")).toBe(current);
+    expect(current).toHaveClass("sr-only");
+    const visible = within(card()).getAllByText("Welcome").filter((element) => !element.closest(".sr-only"));
+    expect(visible).toEqual([within(card()).getByRole("heading", { name: "Welcome" })]);
     // O cabecalho da aba Curriculum nao fica entre o construtor e a aula.
     expect(screen.queryByRole("heading", { name: "Build the curriculum." })).not.toBeInTheDocument();
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();

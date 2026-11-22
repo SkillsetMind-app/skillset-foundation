@@ -529,10 +529,20 @@ describe("pagina do modulo dentro do builder", () => {
     const form = card.querySelector("form") as HTMLElement;
     fireEvent.click(within(form).getByRole("button", { name: "Add lesson" }));
 
+    const title = within(form).getByRole("textbox", { name: "Lesson title" });
     expect(within(form).getByRole("alert")).toHaveTextContent("Add a lesson title before creating the lesson.");
-    expect(within(form).getByRole("textbox", { name: "Lesson title" })).toHaveAttribute("aria-invalid", "true");
+    expect(title).toHaveAttribute("aria-invalid", "true");
+    expect(title).toHaveAccessibleDescription("Add a lesson title before creating the lesson.");
     expect(screen.getAllByRole("alert")).toHaveLength(1);
 
+    // Digitou o titulo: o aviso sai sem esperar outro clique.
+    fireEvent.change(title, { target: { value: "Primeira aula" } });
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(title).not.toHaveAttribute("aria-invalid");
+
+    fireEvent.change(title, { target: { value: "" } });
+    fireEvent.click(within(form).getByRole("button", { name: "Add lesson" }));
+    expect(within(form).getByRole("alert")).toBeInTheDocument();
     fireEvent.click(within(form).getByRole("button", { name: "Cancel" }));
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });

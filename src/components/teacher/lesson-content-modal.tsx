@@ -364,6 +364,17 @@ export function LessonContentModal({
 
   useModalFocus(dialogRef, variant === "dialog");
 
+  // Envio cancelado numa aula sem video: o cartao de envio sai com o botao
+  // Cancelar focado e volta a area de soltar. O foco vai para o campo dela em
+  // vez de cair no body. Com o cartao ainda na tela, ele mesmo cuida do foco.
+  const refocusUploadRef = useRef(false);
+  useEffect(() => {
+    if (!refocusUploadRef.current || isUploading) return;
+    refocusUploadRef.current = false;
+    if (document.activeElement && document.activeElement !== document.body) return;
+    dialogRef.current?.querySelector<HTMLInputElement>('.lesson-video-source-picker input[type="file"]')?.focus();
+  });
+
   // Closing mid-upload would drop the progress UI while bytes are still
   // flying — every close affordance funnels through requestClose so an
   // in-flight upload can't be dismissed by accident.
@@ -673,6 +684,7 @@ export function LessonContentModal({
         setUploadProgress(null);
         setSelectedFile(null);
         setFileInputKey((current) => current + 1);
+        refocusUploadRef.current = true;
       } else {
         // Show the real blocker (413 size cap, 403 permission, ...) instead of a
         // generic message that made failures look random. E sem deixar o
@@ -816,8 +828,10 @@ export function LessonContentModal({
                   {crumbs.moduleLabel}
                 </Link>
               </li>
-              {/* O nome da aula nao entra na trilha: ele e o h3 logo abaixo.
-                  Antes aparecia tres vezes (trilha, titulo e linha do modulo). */}
+              {/* Na tela o nome da aula nao entra na trilha: ele e o h3 logo
+                  abaixo (antes aparecia tres vezes). Para o leitor de tela a
+                  trilha continua dizendo onde se esta. */}
+              <li aria-current="page" className="sr-only">{lesson.title || t("creatorEditor.lesson.untitled")}</li>
             </ol>
           </nav>
         ) : (
@@ -837,18 +851,26 @@ export function LessonContentModal({
             const active = tab === item.value;
             // Etiqueta de largura fixa: a palavra do estado mudava a largura da
             // aba enquanto o professor trabalhava ("Empty" > "Uploading" >
-            // "Uploaded") e a fileira pulava. Agora e um ponto de cor, com a
-            // palavra so para o leitor de tela; Materials mostra so o numero.
+            // "Uploaded") e a fileira pulava. Agora e uma marca de 10 px que
+            // muda de FORMA (anel vazio, meio cheio, cheio), nao so de cor; a
+            // palavra fica no title e para o leitor de tela. Materials mostra
+            // so o numero.
             const descriptionDone = lesson.description.trim().length > 0 || Boolean(lesson.contentText?.trim());
             const dot =
               item.value === "video"
-                ? { label: videoStatus, tone: videoBusy ? "busy" : assetStatus === "empty" ? "empty" : "done" }
+                ? { label: videoStatus, tone: videoBusy ? "busy" : assetStatus === "empty" ? "off" : "done" }
                 : item.value === "description"
                   ? {
                       label: t(`creatorEditor.lesson.state.${descriptionDone ? "done" : "empty"}`),
-                      tone: descriptionDone ? "done" : "empty",
+                      tone: descriptionDone ? "done" : "off",
                     }
-                  : null;
+                  : item.value === "settings"
+                    ? {
+                        // Previa gratis e publica: o professor precisa ver sem abrir a aba.
+                        label: t(`creatorEditor.lesson.state.${isFreePreview ? "preview" : "private"}`),
+                        tone: isFreePreview ? "on" : "off",
+                      }
+                    : null;
 
             return (
               <button
@@ -864,7 +886,7 @@ export function LessonContentModal({
                 {item.value === "materials" ? (
                   <span className="lesson-modal__tab-count">{materialAssets.length}</span>
                 ) : dot ? (
-                  <span className="lesson-modal__tab-dot" data-tone={dot.tone}>
+                  <span className="lesson-modal__tab-dot" data-tone={dot.tone} title={dot.label}>
                     <span className="sr-only">{dot.label}</span>
                   </span>
                 ) : null}
@@ -1354,6 +1376,31 @@ function LessonUploadForm({
     };
   }, [selectedFile]);
 
+  // Foco no teclado: o "Upload file" focado some quando o envio comeca, e o
+  // foco caia no body (Cancelar ficava a uma volta inteira de Tab). Vai para
+  // Cancelar (ou para o andamento, enquanto Cancelar nao existe) e, no fim,
+  // volta ao botao de envio ou ao campo de arquivo. So mexe se o foco estava
+  // neste cartao ou perdido.
+  const formRef = useRef<HTMLFormElement>(null);
+  const statusRef = useRef<HTMLParagraphElement>(null);
+  const cancelRef = useRef<HTMLButtonElement>(null);
+  const submitRef = useRef<HTMLButtonElement>(null);
+  const wasUploadingRef = useRef(isUploading);
+  const hasCancel = Boolean(onCancel);
+  useEffect(() => {
+    const wasUploading = wasUploadingRef.current;
+    wasUploadingRef.current = isUploading;
+    const form = formRef.current;
+    const active = document.activeElement;
+    if (active && active !== document.body && !form?.contains(active)) return;
+    if (isUploading && (!wasUploading || active === statusRef.current)) {
+      (cancelRef.current ?? statusRef.current)?.focus();
+    } else if (!isUploading && wasUploading) {
+      const submit = submitRef.current;
+      (submit && !submit.disabled ? submit : form?.querySelector<HTMLInputElement>('input[type="file"]'))?.focus();
+    }
+  }, [isUploading, hasCancel]);
+
   // Cartao compacto (prancha "Estados"): a previa 16:9 do lado, e do outro o
   // nome, o andamento, UMA barra e Cancelar. O form era grid sem limite e o
   // botao "Upload file" ocupava a largura da pagina (1.453 px a 1920 px).
@@ -1362,6 +1409,7 @@ function LessonUploadForm({
     : isUploading ? uploadingFileName : undefined;
   return (
     <form
+      ref={formRef}
       className="lesson-modal-upload"
       onSubmit={onSubmit}
       onDragOver={(event) => { if (isVideo) event.preventDefault(); }}
@@ -1388,7 +1436,7 @@ function LessonUploadForm({
       <div className="lesson-modal-upload__body">
       {fileLabel ? <p className="lesson-modal-upload__file">{fileLabel}</p> : null}
       {error ? <p role="alert" className="lesson-modal-upload__error">{error}</p> : null}
-      <p role="status" className={success ? "lesson-modal-upload__success" : "text-sm text-[var(--color-ink-soft)]"}>
+      <p ref={statusRef} tabIndex={-1} role="status" className={success ? "lesson-modal-upload__success" : "text-sm text-[var(--color-ink-soft)]"}>
         {isUploading ? progressLabel || t("creatorEditor.lesson.file.uploading")
           : success || (selectedFile ? t("creatorEditor.lesson.file.selectedHelp") : "")}
       </p>
@@ -1396,7 +1444,7 @@ function LessonUploadForm({
         <>
           <progress className="h-2 w-full accent-[var(--color-ink)]" max={100} value={progressPercent ?? undefined} aria-label={t("creatorEditor.lesson.file.uploading")} />
           {onCancel ? (
-            <button type="button" onClick={onCancel} className="button-outline min-h-11 px-3 text-sm">
+            <button ref={cancelRef} type="button" onClick={onCancel} className="button-outline min-h-11 px-3 text-sm">
               {t("creatorEditor.lesson.file.cancel")}
             </button>
           ) : null}
@@ -1410,6 +1458,7 @@ function LessonUploadForm({
           o campo de arquivo nao ser recriado no meio do envio. */}
       <div className="lesson-modal-upload__actions" hidden={isUploading}>
       <button
+        ref={submitRef}
         type="submit"
         autoFocus={isVideo && Boolean(selectedFile)}
         disabled={!isEditable || isUploading || !selectedFile}

@@ -2133,16 +2133,23 @@ export function CourseBuilderStudio() {
             </h5>
             <input
               value={lessonTitle}
-              onChange={(event) => setLessonTitle(event.target.value)}
+              onChange={(event) => {
+                setLessonTitle(event.target.value);
+                // O aviso sai assim que ha titulo, sem esperar outro clique.
+                if (error?.code === "lessonTitle" && event.target.value.trim()) {
+                  setError(null);
+                }
+              }}
               disabled={!isEditable}
               aria-label={t("creatorEditor.builder.curriculum.lessonTitle")}
               aria-invalid={error?.code === "lessonTitle" || undefined}
+              aria-describedby={error?.code === "lessonTitle" ? `lesson-title-error-${module.id}` : undefined}
               placeholder={t("creatorEditor.builder.curriculum.lessonTitle")}
               className="min-w-0 rounded-md border border-[var(--color-field-border)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--color-primary-light)] aria-[invalid=true]:border-[var(--color-danger-fg)] disabled:bg-[var(--color-surface-soft)]"
             />
             {/* Como no formulario do modulo: o aviso sai aqui, nao no rodape. */}
             {error?.code === "lessonTitle" ? (
-              <p role="alert" className="text-xs font-semibold text-[var(--color-danger-fg)]">
+              <p id={`lesson-title-error-${module.id}`} role="alert" className="text-xs font-semibold text-[var(--color-danger-fg)]">
                 {errorMessage}
               </p>
             ) : null}

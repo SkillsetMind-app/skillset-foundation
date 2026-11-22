@@ -3861,7 +3861,8 @@ body:has([aria-label="Course categories"])
 }
 
 /* Estado da aba em tamanho fixo: a palavra trocava a largura e a fileira
-   pulava. Ponto de 8 px (a palavra fica em sr-only) e, em Materials, o numero. */
+   pulava. Marca de 10 px (a palavra fica no title e em sr-only) e, em
+   Materials, o numero. */
 .lesson-modal__tab-count {
   min-width: 1.25rem;
   border-radius: var(--radius-sm);
@@ -3874,20 +3875,32 @@ body:has([aria-label="Course categories"])
   text-align: center;
 }
 
+/* A forma diz o estado, nao so a cor: anel vazio (off), meio cheio (busy),
+   cheio (done/on). Todas as cores passam de 3:1 sobre a barra das abas nos dois
+   temas (o cinza de linha e o latao claro davam ~2,5:1). */
 .lesson-modal__tab-dot {
-  width: 0.5rem;
-  height: 0.5rem;
+  box-sizing: border-box;
+  width: 0.625rem;
+  height: 0.625rem;
   flex: none;
+  border: 1.5px solid var(--color-ink-muted);
   border-radius: 999px;
-  background: var(--color-line-strong);
+  background: transparent;
 }
 
 .lesson-modal__tab-dot[data-tone="busy"] {
-  background: var(--color-brass);
+  border-color: var(--color-accent-fg);
+  background: linear-gradient(90deg, var(--color-accent-fg) 50%, transparent 50%);
 }
 
 .lesson-modal__tab-dot[data-tone="done"] {
+  border-color: var(--color-success-fg);
   background: var(--color-success-fg);
+}
+
+.lesson-modal__tab-dot[data-tone="on"] {
+  border-color: var(--color-primary);
+  background: var(--color-primary);
 }
 
 .lesson-modal__tabs-note {
