@@ -198,7 +198,7 @@ describe("TeacherStudioDashboard", () => {
     expect(screen.getByRole("link", { name: "New product" })).toHaveClass("button-outline");
     expect(screen.getByRole("link", { name: "Edit storefront" })).not.toHaveClass("button-solid");
     // O passo "criar" fica destacado, mas sem botao proprio: o do vazio basta.
-    expect(currentStep()).toHaveTextContent("Create a product");
+    await waitFor(() => expect(currentStep()).toHaveTextContent("Create a product"));
     expect(currentStep().querySelector(".button-solid")).toBeNull();
     expect(document.querySelectorAll(".button-solid")).toHaveLength(0);
   });
@@ -390,7 +390,10 @@ describe("Inicio do professor: os passos sao as travas reais do publish", () => 
     expect(screen.queryByText("Finish your Stripe setup")).toBeNull();
   });
 
-  it("enquanto as travas carregam, contagem e porcentagem ficam neutras", async () => {
+  // Antes de as travas chegarem a lista ainda muda: "1 of 2" e "50%" virariam
+  // "1 of 3", e para quem ja tem tudo pronto o bloco aparecia e sumia. Agora o
+  // bloco so entra com os dados prontos, ja com a contagem certa.
+  it("enquanto as travas carregam, o bloco de passos nao aparece", async () => {
     let resolveFlag: (value: boolean) => void = () => undefined;
     state.verificationFlag = new Promise<boolean>((resolve) => {
       resolveFlag = resolve;
@@ -399,16 +402,17 @@ describe("Inicio do professor: os passos sao as travas reais do publish", () => 
 
     render(<TeacherStudioDashboard />);
 
-    const section = (await screen.findByRole("list", { name: "Creator next steps" })).closest(
-      "section",
-    ) as HTMLElement;
-    // Sem o ajuste de verificacao, "1 of 2" e "50%" mudariam para "1 of 3".
-    expect(within(section).queryByText(/of \d complete/)).toBeNull();
-    expect(within(section).queryByText(/%$/)).toBeNull();
+    await screen.findByRole("heading", { name: "Products in your workspace" });
+    expect(screen.queryByRole("list", { name: "Creator next steps" })).toBeNull();
+    expect(screen.queryByText(/of \d complete/)).toBeNull();
+    expect(screen.queryByText("Create a product", { selector: "strong" })).toBeNull();
 
     resolveFlag(true);
 
-    expect(await within(section).findByText("1 of 3 complete")).toBeInTheDocument();
+    const section = (await screen.findByRole("list", { name: "Creator next steps" })).closest(
+      "section",
+    ) as HTMLElement;
+    expect(within(section).getByText("1 of 3 complete")).toBeInTheDocument();
     expect(within(section).getByText("33%")).toBeInTheDocument();
   });
 

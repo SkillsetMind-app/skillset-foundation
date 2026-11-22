@@ -225,7 +225,9 @@ describe("carteira do professor em espanhol", () => {
     expect(screen.getByText("Centro fiscal")).toBeInTheDocument();
   });
 
-  it("sem nenhuma venda, o neto estimado traz a moeda: nunca um '0' solto", () => {
+  // Sem nenhum movimento nao ha moeda para afirmar: o neto diz so "0" (com
+  // movimento numa moeda so, o zero sai nela; ver creator-ops.test).
+  it("sem nenhuma venda, o neto estimado diz 0 sem inventar moeda", () => {
     const ledger = mocks.ledger;
     mocks.ledger = [];
     try {
@@ -236,7 +238,8 @@ describe("carteira do professor em espanhol", () => {
       );
 
       const net = screen.getByText("Neto estimado del creador").nextElementSibling;
-      expect(net).toHaveTextContent(/^0,00\sUS\$$/);
+      expect(net).toHaveTextContent(/^0$/);
+      expect(screen.queryByText(/^0,00\sUS\$$/)).toBeNull();
     } finally {
       mocks.ledger = ledger;
     }

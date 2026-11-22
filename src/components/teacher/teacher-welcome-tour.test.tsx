@@ -63,8 +63,12 @@ describe("saídas do tour de boas-vindas", () => {
     // The advisor is open on every account: the tour no longer ties it to a fee.
     expect(screen.queryByText(/active storefront|tienda activa/)).not.toBeInTheDocument();
     // Sem produto, a ultima pagina leva a criar o primeiro, em vez de so fechar.
-    expect(screen.getByRole("link", { name: locale === "en" ? "Create my first product" : "Crear mi primer producto" })).toHaveAttribute("href", "/teach/builder?newCourse=1&format=course");
+    const create = screen.getByRole("link", { name: locale === "en" ? "Create my first product" : "Crear mi primer producto" });
+    expect(create).toHaveAttribute("href", "/teach/builder?newCourse=1&format=course");
     expect(screen.queryByRole("button", { name: locale === "en" ? "Open your studio" : "Abrir mi espacio" })).not.toBeInTheDocument();
+    // O link leva a criar E fecha o tour na hora.
+    fireEvent.click(create);
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
   it("com produto, a ultima pagina so fecha o tour ('Open your studio')", async () => {

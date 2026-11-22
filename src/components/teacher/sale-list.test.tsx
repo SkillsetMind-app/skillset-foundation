@@ -92,6 +92,8 @@ describe("SaleList", () => {
     expect(screen.queryByText(/settlement and payout timing/i)).toBeNull();
     // Sem nenhum pedido, "Open my Stripe" so podia devolver "conecte o Stripe".
     expect(screen.queryByRole("button", { name: "Open my Stripe" })).toBeNull();
+    // E a frase que manda abrir o Stripe sai junto com o botao.
+    expect(screen.queryByText(/Open your Stripe dashboard to find the payment/)).toBeNull();
   });
 
   it("names the period when there were sales, just not in it", () => {

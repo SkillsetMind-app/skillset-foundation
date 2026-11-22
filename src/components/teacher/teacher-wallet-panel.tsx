@@ -180,9 +180,24 @@ export function TeacherWalletPanel() {
     () => summarizeCreatorWallet(ledgerEntries),
     [ledgerEntries],
   );
+  // Um total vazio sai como zero na moeda das outras somas quando ha uma so.
+  // Com nenhuma ou varias, "0" puro: "$0.00" ao lado de "R$100.00" de
+  // reembolso diria que o neto e de outra moeda.
+  const currencies = new Set(
+    [
+      financials.grossPaidByCurrency,
+      financials.platformFeeByCurrency,
+      financials.stripeFeeByCurrency,
+      financials.teacherNetByCurrency,
+      financials.refundedByCurrency,
+    ]
+      .flat()
+      .map((value) => value.currency),
+  );
+  const zeroCurrency = currencies.size === 1 ? [...currencies][0] : null;
   const money = (values: CurrencyAmount[]) =>
     ledgerState === "ready"
-      ? formatCurrencyBreakdown(values, locale)
+      ? formatCurrencyBreakdown(values, locale, zeroCurrency)
       : ledgerState === "error"
         ? t("teach.earnings.unavailable")
         : "—";
@@ -373,7 +388,7 @@ export function TeacherWalletPanel() {
 
           {/* Sem conta conectada o botao so devolvia o erro "conecte o
               Stripe", com o passo de conectar logo ao lado. */}
-          {connected ? (
+          {connected && !platformPayoutsUnavailable ? (
             <div className="mt-5">
               <StripeDashboardButton />
             </div>
@@ -609,15 +624,25 @@ function LedgerRow({ entry, t, locale }: { entry: PayoutLedgerEntry; t: Translat
 // Dinheiro e data na lingua da tela, como em Vendas. O maior numero de Ganhos
 // saia "0" sem moeda para professor novo, e "USD 49.00 + EUR 10.00" depois;
 // as datas saiam sempre em ingles, inclusive na tela em espanhol.
-function formatMoney(amountMinor: number, currency: string, locale: string) {
-  return new Intl.NumberFormat(locale, {
-    style: "currency",
-    currency,
-  }).format(amountMinor / 100);
+function formatMoney(amountMinor: number, currency: string | null | undefined, locale: string) {
+  try {
+    return new Intl.NumberFormat(locale, {
+      style: "currency",
+      currency: currency ?? "",
+    }).format(amountMinor / 100);
+  } catch {
+    // Linha antiga do ledger sem moeda vira "UNSPECIFIED" no dominio, e o Intl
+    // recusa codigo invalido com RangeError: derrubaria a pagina inteira.
+    return `${currency ?? ""} ${(amountMinor / 100).toFixed(2)}`.trim();
+  }
 }
 
-function formatCurrencyBreakdown(values: CurrencyAmount[], locale: string): string {
-  if (!values.length) return formatMoney(0, "USD", locale);
+function formatCurrencyBreakdown(
+  values: CurrencyAmount[],
+  locale: string,
+  zeroCurrency: string | null,
+): string {
+  if (!values.length) return zeroCurrency ? formatMoney(0, zeroCurrency, locale) : "0";
   return values
     .map((value) => formatMoney(value.amountMinor, value.currency, locale))
     .join(" · ");

@@ -194,8 +194,8 @@ function StudioNextSteps({
   launched,
 }: {
   courses: TeacherCourse[];
-  // Cursos e travas carregados. Antes disso a lista ainda pode ganhar um passo
-  // (verificacao exigida) e a porcentagem pularia: contagem e % ficam neutras.
+  // Cursos e travas carregados. Antes disso a lista ainda pode ganhar ou perder
+  // passos (verificacao exigida, plano, Stripe): o bloco nao aparece.
   ready: boolean;
   account: CourseReadinessAccount;
   verificationStatus: string | null;
@@ -297,9 +297,11 @@ function StudioNextSteps({
   // Home aberta; quem chega com tudo pronto ve tudo parado.
   const justDone = useJustDone(steps.filter((step) => step.done).map((step) => step.id), ready);
 
-  // Tudo pronto ao abrir a Home: o bloco sai da tela. Se o ultimo passo
-  // ficou pronto com a Home aberta, ele fica ate a proxima visita, com o selo.
-  if (ready && !openStep && justDone.size === 0) {
+  // Antes de cursos e travas chegarem a lista vazia abria "Create a product" e,
+  // para quem ja tem tudo pronto, o bloco aparecia e sumia a cada visita: nada
+  // ate `ready`. Tudo pronto ao abrir a Home: o bloco sai da tela. Se o ultimo
+  // passo ficou pronto com a Home aberta, ele fica ate a proxima visita.
+  if (!ready || (!openStep && justDone.size === 0)) {
     return null;
   }
 
@@ -324,14 +326,12 @@ function StudioNextSteps({
             </div>
             <div className="text-right">
               <p className="text-2xl font-semibold tabular-nums text-[var(--color-primary)]">
-                {ready ? `${progress}%` : "-"}
+                {`${progress}%`}
               </p>
               <p className="text-xs text-[var(--color-ink-muted)]">
-                {ready
-                  ? t("creatorPanel.home.nextSteps.progress")
-                      .replace("{done}", () => String(completeCount))
-                      .replace("{total}", () => String(steps.length))
-                  : "-"}
+                {t("creatorPanel.home.nextSteps.progress")
+                  .replace("{done}", () => String(completeCount))
+                  .replace("{total}", () => String(steps.length))}
               </p>
             </div>
           </div>
@@ -343,11 +343,11 @@ function StudioNextSteps({
               <div
                 data-testid="studio-next-steps-bar"
                 className="h-full rounded-full bg-[var(--color-accent)] transition-[width] duration-300 ease-out"
-                style={{ width: ready ? `${progress}%` : "0%" }}
+                style={{ width: `${progress}%` }}
               />
             </div>
             {/* O marco: a barra chegou ao fim. */}
-            {ready && progress === 100 ? <MilestoneSeal animate={justDone.size > 0} /> : null}
+            {progress === 100 ? <MilestoneSeal animate={justDone.size > 0} /> : null}
           </div>
 
           <ol

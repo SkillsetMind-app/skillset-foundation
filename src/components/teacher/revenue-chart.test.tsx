@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import postcss from "postcss";
 import { afterEach, describe, expect, it } from "vitest";
 
@@ -119,32 +119,35 @@ describe("total de receita sem recortes", () => {
     renderChart(25000, "$250", paidPoints);
 
     const chart = screen.getByRole("img", { name: "Revenue chart" });
-    const [, , width, height] = chart.getAttribute("viewBox")!.split(" ").map(Number);
+    const canvas = chart.closest<HTMLElement>(".studio-chart-canvas")!;
+    const percentOf = (value: string) => Number(value.replace("%", ""));
 
-    // A etiqueta original ia de y=-20 a 4 e de x=585 a 663 em um SVG
-    // 640x240. jsdom não pinta: estes limites medem a geometria emitida;
-    // a legibilidade do texto e a quebra de linha exigem QA no navegador.
-    for (const rect of chart.querySelectorAll("rect")) {
-      const x = Number(rect.getAttribute("x"));
-      const y = Number(rect.getAttribute("y"));
-      expect.soft(x).toBeGreaterThanOrEqual(0);
-      expect.soft(y).toBeGreaterThanOrEqual(0);
-      expect.soft(x + Number(rect.getAttribute("width"))).toBeLessThanOrEqual(width!);
-      expect.soft(y + Number(rect.getAttribute("height"))).toBeLessThanOrEqual(height!);
+    // A etiqueta original ia de y=-20 a 4 e de x=585 a 663 em um SVG 640x240.
+    // Agora pontos e rotulos sao HTML posicionados em % da area do desenho:
+    // jsdom nao pinta, entao a prova e a posicao emitida (0% a 100%).
+    expect(chart.querySelectorAll("circle, text, rect")).toHaveLength(0);
+    const dots = [...canvas.querySelectorAll<HTMLElement>("span.rounded-full")];
+    expect(dots).toHaveLength(paidPoints.length);
+    for (const dot of dots) {
+      expect.soft(percentOf(dot.style.left)).toBeGreaterThanOrEqual(0);
+      expect.soft(percentOf(dot.style.left)).toBeLessThanOrEqual(100);
+      expect.soft(percentOf(dot.style.top)).toBeGreaterThanOrEqual(0);
+      expect.soft(percentOf(dot.style.top)).toBeLessThanOrEqual(100);
     }
-    for (const circle of chart.querySelectorAll("circle")) {
-      const x = Number(circle.getAttribute("cx"));
-      const y = Number(circle.getAttribute("cy"));
-      const radius = Number(circle.getAttribute("r"));
-      expect.soft(x - radius).toBeGreaterThanOrEqual(0);
-      expect.soft(y - radius).toBeGreaterThanOrEqual(0);
-      expect.soft(x + radius).toBeLessThanOrEqual(width!);
-      expect.soft(y + radius).toBeLessThanOrEqual(height!);
+    // O ultimo ponto (o pico) e o dourado.
+    expect(dots.at(-1)).toHaveClass("bg-[var(--color-accent)]");
+
+    // Rotulos do eixo Y: dentro da altura e sem repetir texto.
+    const yLabels = [...canvas.querySelectorAll<HTMLElement>("span.tabular-nums")];
+    expect(yLabels.length).toBeGreaterThan(1);
+    expect(new Set(yLabels.map((label) => label.textContent)).size).toBe(yLabels.length);
+    for (const label of yLabels) {
+      expect.soft(percentOf(label.style.top)).toBeGreaterThanOrEqual(0);
+      expect.soft(percentOf(label.style.top)).toBeLessThanOrEqual(100);
     }
-    for (const label of chart.querySelectorAll("text")) {
-      expect.soft(Number(label.getAttribute("y"))).toBeGreaterThanOrEqual(0);
-      expect.soft(Number(label.getAttribute("y"))).toBeLessThanOrEqual(height!);
-    }
+    // Rotulos do eixo X: um por ponto aqui (dois pontos), na ordem da serie.
+    expect(within(canvas).getByText("Sep 1")).toBeInTheDocument();
+    expect(within(canvas).getByText("Sep 2")).toBeInTheDocument();
 
     // O total não pode ser resolvido encolhendo ou deslocando a série. Com o
     // eixo escrito fora do desenho, a série ocupa a largura toda (0 a 640) e o

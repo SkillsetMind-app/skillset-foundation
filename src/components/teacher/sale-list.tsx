@@ -182,13 +182,17 @@ export function SaleList() {
       {/* O comprador paga na conta Stripe do professor: com pedido, a conta
           existe. Sem nenhum pedido o botao so podia dar o erro "conecte o
           Stripe" (o aviso de conectar ja esta logo acima). */}
-      {orders.length > 0 ? <StripeDashboardButton /> : null}
-      <p className="text-sm leading-6 text-[var(--color-ink-soft)]">
-        {t("stripeDashboard.refundGuidance")}{" "}
-        <Link href="/support" className="underline underline-offset-4">
-          {t("stripeDashboard.refundSupport")}
-        </Link>
-      </p>
+      {orders.length > 0 ? (
+        <>
+          <StripeDashboardButton />
+          <p className="text-sm leading-6 text-[var(--color-ink-soft)]">
+            {t("stripeDashboard.refundGuidance")}{" "}
+            <Link href="/support" className="underline underline-offset-4">
+              {t("stripeDashboard.refundSupport")}
+            </Link>
+          </p>
+        </>
+      ) : null}
       <div className="flex flex-wrap items-center gap-3">
         <label htmlFor="sales-period" className="sr-only">
           {t(`${copy}.periodLabel`)}
