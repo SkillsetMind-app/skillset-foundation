@@ -7,7 +7,7 @@
  * periodos diferentes.
  */
 import { normalizeCurrency } from "@/domain/creator-ops";
-import { isPaidOrder, type Order, type OrderStatus } from "@/domain/order";
+import { isPaidOrder, orderRevenueMinor, type Order, type OrderStatus } from "@/domain/order";
 import { toDate } from "@/lib/format-date";
 
 export type ReportPeriod = "7d" | "30d" | "90d" | "12m" | "all";
@@ -34,6 +34,8 @@ export type RevenuePoint = {
 export type CurrencyOrderGroup = {
   currency: string;
   orders: number;
+  /** Pedidos com dinheiro (> 0): sao eles que escolhem a moeda do grafico. */
+  earningOrders: number;
   totalMinor: number;
 };
 
@@ -153,23 +155,29 @@ function bucketKey(date: Date, bucket: RevenueBucket): string {
 }
 
 /**
- * Os pedidos pagos agrupados por moeda: nada converte, nada soma moedas
- * diferentes (o grafico somava R$100 com $20 e escrevia "$120"). A moeda com
- * mais pedidos vem primeiro (empate: ordem alfabetica); e a que o grafico
- * desenha.
+ * Os pedidos com receita agrupados por moeda: nada converte, nada soma moedas
+ * diferentes (o grafico somava R$100 com $20 e escrevia "$120"). Cada pedido
+ * conta o que ficou dele (`orderRevenueMinor`); quem nao e receita fica fora.
+ * Primeiro vem a moeda com mais pedidos COM dinheiro (empate: ordem
+ * alfabetica), a que o grafico desenha: cinco pedidos de $0 nao podem
+ * esconder um de R$100.
  */
 export function groupPaidOrdersByCurrency(paidOrders: Order[]): CurrencyOrderGroup[] {
   const groups = new Map<string, CurrencyOrderGroup>();
   for (const order of paidOrders) {
+    const revenue = orderRevenueMinor(order);
+    if (revenue === null) continue;
     const currency = normalizeCurrency(order.currency);
-    const group = groups.get(currency) ?? { currency, orders: 0, totalMinor: 0 };
+    const group = groups.get(currency) ?? { currency, orders: 0, earningOrders: 0, totalMinor: 0 };
     group.orders += 1;
-    group.totalMinor += order.amountMinor;
+    if (revenue > 0) group.earningOrders += 1;
+    group.totalMinor += revenue;
     groups.set(currency, group);
   }
   return [...groups.values()].sort(
     (left, right) =>
-      right.orders - left.orders || left.currency.localeCompare(right.currency),
+      right.earningOrders - left.earningOrders ||
+      left.currency.localeCompare(right.currency),
   );
 }
 
@@ -200,11 +208,12 @@ export function buildRevenueSeries(
   const byKey = new Map(points.map((point) => [point.key, point]));
 
   for (const order of paidOrders) {
-    if (normalizeCurrency(order.currency) !== currency) continue;
+    const revenue = orderRevenueMinor(order);
+    if (revenue === null || normalizeCurrency(order.currency) !== currency) continue;
     const millis = getTimestampMillis(order.createdAt);
     const date = millis === null ? now : new Date(millis);
     const point = byKey.get(bucketKey(date, window.bucket));
-    if (point) point.grossMinor += order.amountMinor;
+    if (point) point.grossMinor += revenue;
   }
 
   return points;
@@ -252,10 +261,13 @@ export function buildReportProductRows(orders: Order[]): ReportProductRow[] {
       refunds: 0,
     };
 
-    if (isPaid) {
+    // Reembolso parcial: a venda conta (com o que ficou) E o reembolso conta.
+    const revenue = orderRevenueMinor(order);
+    if (revenue !== null) {
       row.orders += 1;
-      row.grossMinor += order.amountMinor;
-    } else {
+      row.grossMinor += revenue;
+    }
+    if (isRefund) {
       row.refunds += 1;
     }
 

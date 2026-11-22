@@ -44,8 +44,8 @@ describe("receita por moeda", () => {
   it("agrupa por moeda, sem converter nem somar moedas diferentes", () => {
     expect(groupPaidOrdersByCurrency(mixed)).toEqual([
       // Mais pedidos primeiro: e a moeda que o grafico desenha.
-      { currency: "USD", orders: 2, totalMinor: 2_500 },
-      { currency: "BRL", orders: 1, totalMinor: 10_000 },
+      { currency: "USD", orders: 2, earningOrders: 2, totalMinor: 2_500 },
+      { currency: "BRL", orders: 1, earningOrders: 1, totalMinor: 10_000 },
     ]);
   });
 
@@ -56,7 +56,36 @@ describe("receita por moeda", () => {
 
   it("sem moeda gravada vira UNSPECIFIED, em grupo proprio", () => {
     expect(groupPaidOrdersByCurrency([order({ currency: "" })])).toEqual([
-      { currency: "UNSPECIFIED", orders: 1, totalMinor: 2_000 },
+      { currency: "UNSPECIFIED", orders: 1, earningOrders: 1, totalMinor: 2_000 },
+    ]);
+  });
+
+  // Cinco pedidos de $0 e um de R$100: o grafico desenhava USD, dizia "sem
+  // receita" e o R$100 so aparecia na nota.
+  it("so pedidos com dinheiro escolhem a moeda do grafico", () => {
+    const orders = [
+      ...Array.from({ length: 5 }, (_, index) => order({ id: `free-${index}`, currency: "USD", amountMinor: 0 })),
+      order({ id: "brl", currency: "BRL", amountMinor: 10_000 }),
+    ];
+    expect(groupPaidOrdersByCurrency(orders)).toEqual([
+      { currency: "BRL", orders: 1, earningOrders: 1, totalMinor: 10_000 },
+      { currency: "USD", orders: 5, earningOrders: 0, totalMinor: 0 },
+    ]);
+  });
+
+  // O webhook muda o status para "partially_refunded" e grava o acumulado
+  // devolvido: $100 com $30 devolvidos sumiam da receita em vez de contar $70.
+  it("reembolso parcial conta o que ficou, na moeda do pedido", () => {
+    const partial = order({ status: "partially_refunded", amountMinor: 10_000, refundedAmountMinor: 3_000 });
+    const full = order({ id: "full", status: "refunded", amountMinor: 5_000, refundedAmountMinor: 5_000 });
+
+    expect(groupPaidOrdersByCurrency([partial, full])).toEqual([
+      { currency: "USD", orders: 1, earningOrders: 1, totalMinor: 7_000 },
+    ]);
+    const series = buildRevenueSeries([partial, full], window, () => "m", "USD", now);
+    expect(series.reduce((sum, point) => sum + point.grossMinor, 0)).toBe(7_000);
+    expect(buildReportProductRows([partial, full])).toMatchObject([
+      { currency: "USD", orders: 1, grossMinor: 7_000, refunds: 2 },
     ]);
   });
 

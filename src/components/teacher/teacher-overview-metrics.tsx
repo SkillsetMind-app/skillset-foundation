@@ -5,7 +5,7 @@ import { useState } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { groupPaidOrdersByCurrency } from "@/domain/creator-reports";
-import type { Order } from "@/domain/order";
+import { isRevenueOrder, type Order } from "@/domain/order";
 import type { TeacherCourse } from "@/domain/teacher-course";
 import { toDate } from "@/lib/format-date";
 import { formatMoneyBreakdown } from "@/lib/format-money";
@@ -35,10 +35,13 @@ export function TeacherOverviewMetrics({
   courses,
   orders,
   isLoading,
+  ordersFailed = false,
 }: {
   courses: TeacherCourse[];
   orders: Order[];
   isLoading: boolean;
+  /** A leitura dos pedidos falhou: receita e alunos dizem "Unavailable", nunca 0. */
+  ordersFailed?: boolean;
 }) {
   const { locale, t } = useTranslation();
   const [now] = useState(() => Date.now());
@@ -49,7 +52,8 @@ export function TeacherOverviewMetrics({
   const inReviewCount = courses.filter(
     (course) => course.status === "in_review",
   ).length;
-  const paidOrders = orders.filter((order) => order.status === "paid");
+  // Pago ou com reembolso parcial (conta o que ficou).
+  const paidOrders = orders.filter(isRevenueOrder);
 
   // Antes da 1a venda os quatro quadros eram $0 / 0 / -- / --: so frase
   // negativa na primeira visita. Aparecem com o primeiro pedido pago OU a
@@ -123,22 +127,24 @@ export function TeacherOverviewMetrics({
   }[] = [
     {
       label: t("teach.metrics.revenue30d"),
-      value: formatMoneyBreakdown(revenue30d, locale, zeroCurrency, {
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 0,
-      }),
+      value: ordersFailed
+        ? t("teach.reports.unavailable")
+        : formatMoneyBreakdown(revenue30d, locale, zeroCurrency, {
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 0,
+          }),
       hint: paidOrders30d.length
         ? t("teach.metrics.revenueHintPaid")
         : t("teach.metrics.revenueHintEmpty"),
-      delta: revenueDelta,
+      delta: ordersFailed ? null : revenueDelta,
     },
     {
       label: t("teach.metrics.newStudents"),
-      value: String(paidOrders30d.length),
+      value: ordersFailed ? t("teach.reports.unavailable") : String(paidOrders30d.length),
       hint: paidOrders30d.length
         ? t("teach.metrics.newStudentsHintPaid")
         : t("teach.metrics.newStudentsHintEmpty"),
-      delta: percentDelta(paidOrders30d.length, newStudentsPrev30d),
+      delta: ordersFailed ? null : percentDelta(paidOrders30d.length, newStudentsPrev30d),
     },
     // O quadro "Completion" saiu: o valor era fixo em "--", com a dica
     // "Appears once learners finish lessons", que nunca se cumpria. Volta

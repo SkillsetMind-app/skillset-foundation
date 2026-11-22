@@ -18,6 +18,7 @@ export function RevenueChart({
   points,
   currency,
   note,
+  unavailableLabel,
   totalMinor,
   totalLabel,
   title,
@@ -31,6 +32,11 @@ export function RevenueChart({
   currency: string;
   /** Uma linha sob o grafico (ex.: as outras moedas, que nao estao nele). */
   note?: string;
+  /**
+   * Dados ainda carregando ou leitura que falhou: no lugar de "sem receita"
+   * (que afirmaria zero), so este rotulo.
+   */
+  unavailableLabel?: string;
   totalMinor: number;
   totalLabel: string;
   title: string;
@@ -185,7 +191,11 @@ export function RevenueChart({
           <p className="mt-3 text-xs leading-5 text-[var(--color-ink-soft)]">{note}</p>
         ) : null}
 
-        {!totalMinor ? (
+        {unavailableLabel ? (
+          <div className="studio-chart-empty" role="status">
+            <p>{unavailableLabel}</p>
+          </div>
+        ) : !totalMinor ? (
           <div className="studio-chart-empty">
             {/* A cena do recibo, sem moeda: nada aqui sugere quanto vai entrar. */}
             <SpotArt scene="noSales" className="spot-art-in mx-auto mb-2 max-w-[6.5rem]" />

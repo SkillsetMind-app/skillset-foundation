@@ -111,6 +111,18 @@ describe("creator-ops rollup", () => {
     });
   });
 
+  // Reembolso parcial: a venda de $100 com $30 devolvidos conta $70.
+  it("counts a partially refunded sale for what the teacher kept", () => {
+    const orders = [
+      { id: "1", status: "partially_refunded", amountMinor: 10_000, refundedAmountMinor: 3_000, currency: "USD" },
+      { id: "2", status: "refunded", amountMinor: 9_999, refundedAmountMinor: 9_999, currency: "USD" },
+    ] as Order[];
+    expect(summarizeCreatorSales(orders)).toEqual({
+      salesCount: 1,
+      salesGrossByCurrency: [{ currency: "USD", amountMinor: 7_000 }],
+    });
+  });
+
   it("counts a settled row — the only status direct charges write — in net and sales", () => {
     const ledgers = [
       {

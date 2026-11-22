@@ -3,7 +3,7 @@
  * Pure domain helpers for the Teacher Operations hub (P5).
  */
 import type { CreatorSubscriptionMetrics } from "@/domain/creator-subscriptions";
-import { isPaidOrder, type Order } from "@/domain/order";
+import { orderRevenueMinor, type Order } from "@/domain/order";
 import type { PayoutLedgerEntry } from "@/domain/payout-ledger";
 
 export type CurrencyAmount = {
@@ -37,11 +37,12 @@ export type CreatorOpsSnapshot = {
 export function summarizeCreatorSales(
   orders: Order[],
 ): Pick<CreatorOpsSnapshot, "salesCount" | "salesGrossByCurrency"> {
-  const paid = orders.filter((order) => isPaidOrder(order.status));
+  // Pago inteiro ou com reembolso parcial: conta o que ficou com o professor.
+  const paid = orders.filter((order) => orderRevenueMinor(order) !== null);
   const grossByCurrency = new Map<string, number>();
 
   for (const order of paid) {
-    addCurrencyAmount(grossByCurrency, order.currency, order.amountMinor);
+    addCurrencyAmount(grossByCurrency, order.currency, orderRevenueMinor(order));
   }
 
   return {

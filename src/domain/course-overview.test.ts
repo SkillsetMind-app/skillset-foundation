@@ -93,6 +93,31 @@ describe("getCourseOverviewStats", () => {
     ]);
   });
 
+  // O reembolso parcial muda o status: o pedido sumia da receita do produto.
+  it("counts a partially refunded order for what the teacher kept", () => {
+    const stats = getCourseOverviewStats({
+      course,
+      students: [],
+      orders: [order({ status: "partially_refunded", amountMinor: 10_000, refundedAmountMinor: 3_000 })],
+      now: NOW,
+    });
+
+    expect(stats.paidOrderCount).toBe(1);
+    expect(stats.revenue).toEqual([{ currency: "USD", netMinor: 7_000 }]);
+  });
+
+  // Mesmo nome da Home e de Ganhos: sem moeda nao vira "USD" aqui.
+  it("files an order without currency under UNSPECIFIED", () => {
+    const stats = getCourseOverviewStats({
+      course,
+      students: [],
+      orders: [order({ currency: "" })],
+      now: NOW,
+    });
+
+    expect(stats.revenue).toEqual([{ currency: "UNSPECIFIED", netMinor: 9900 }]);
+  });
+
   it("ignores orders that were never paid", () => {
     const stats = getCourseOverviewStats({
       course,

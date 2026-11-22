@@ -885,3 +885,110 @@ describe("Home do professor: receita nunca soma moedas", () => {
     expect(screen.queryByRole("img", { name: "Teacher revenue chart" })).toBeNull();
   });
 });
+
+describe("Home do professor: variacao, Top courses, reembolso parcial e leitura falha", () => {
+  const DAY = 24 * 60 * 60 * 1000;
+  const revenueCard = () => revenueTile().closest(".studio-kpi-card") as HTMLElement;
+
+  it("variacao so moeda com moeda: $60 agora contra $50 antes = +20.0%", async () => {
+    state.courses = [course({ status: "published" })];
+    state.orders = [
+      paidOrder({ id: "now", amountMinor: 6_000, createdAt: new Date(Date.now() - 10 * DAY) }),
+      paidOrder({ id: "before", amountMinor: 5_000, createdAt: new Date(Date.now() - 40 * DAY) }),
+    ];
+
+    render(<TeacherStudioDashboard />);
+
+    await screen.findByText("Revenue, 30d");
+    expect(revenueCard()).toHaveTextContent("+20.0%");
+  });
+
+  it("BRL agora e USD antes: nenhuma variacao de receita", async () => {
+    state.courses = [course({ status: "published" })];
+    state.orders = [
+      paidOrder({ id: "now", currency: "BRL", amountMinor: 6_000, createdAt: new Date(Date.now() - 10 * DAY) }),
+      paidOrder({ id: "before", currency: "USD", amountMinor: 5_000, createdAt: new Date(Date.now() - 40 * DAY) }),
+    ];
+
+    render(<TeacherStudioDashboard />);
+
+    await screen.findByText("Revenue, 30d");
+    expect(revenueCard().textContent).not.toMatch(/%|NaN|Infinity|∞/);
+  });
+
+  it("sem periodo anterior: a variacao some, nunca NaN nem infinito", async () => {
+    state.courses = [course({ status: "published" })];
+    state.orders = [paidOrder({ amountMinor: 6_000, createdAt: new Date(Date.now() - 10 * DAY) })];
+
+    render(<TeacherStudioDashboard />);
+
+    await screen.findByText("Revenue, 30d");
+    expect(revenueCard().textContent).not.toMatch(/%|NaN|Infinity|∞/);
+  });
+
+  // Grafico em BRL; o produto que fez $5,000 em USD caia abaixo de produtos
+  // que nunca venderam mas tinham mais aulas.
+  it("Top courses: quem vendeu em outra moeda nao cai abaixo de quem nunca vendeu", async () => {
+    state.courses = [
+      course({ id: "brl", title: "Reais", status: "published", lessonCount: 1 }),
+      course({ id: "usd", title: "Dolares", status: "published", lessonCount: 1 }),
+      course({ id: "empty-1", title: "Vazio Um", status: "published", lessonCount: 20 }),
+      course({ id: "empty-2", title: "Vazio Dois", status: "published", lessonCount: 30 }),
+    ];
+    state.orders = [
+      paidOrder({ id: "b1", courseId: "brl", currency: "BRL", amountMinor: 10_000 }),
+      paidOrder({ id: "b2", courseId: "brl", currency: "BRL", amountMinor: 10_000 }),
+      paidOrder({ id: "u1", courseId: "usd", currency: "USD", amountMinor: 500_000 }),
+    ];
+
+    render(<TeacherStudioDashboard />);
+
+    const top = (await screen.findByRole("heading", { name: "Top courses" })).closest(".dash-card") as HTMLElement;
+    const rows = within(top).getAllByRole("link").filter((link) => link.className.includes("studio-course-row"));
+    expect(rows.map((row) => row.querySelector("strong")?.textContent)).toEqual(["Reais", "Dolares", "Vazio Dois"]);
+    // Cada produto no proprio valor: "$5,000", nunca o "R$0" da moeda do grafico.
+    expect(within(rows[1]).getByText("$5,000")).toBeInTheDocument();
+    expect(within(rows[1]).queryByText("R$0")).toBeNull();
+  });
+
+  it("reembolso parcial: $100 com $30 devolvidos conta $70 no quadro, no grafico e no Top courses", async () => {
+    state.courses = [course({ status: "published" })];
+    state.orders = [paidOrder({ status: "partially_refunded", amountMinor: 10_000, refundedAmountMinor: 3_000 })];
+
+    render(<TeacherStudioDashboard />);
+
+    await screen.findByText("Revenue, 30d");
+    expect(revenueTile()).toHaveTextContent(/^\$70$/);
+    expect(screen.getByText("$70", { selector: "strong.num" })).toBeInTheDocument();
+    const top = screen.getByRole("heading", { name: "Top courses" }).closest(".dash-card") as HTMLElement;
+    expect(within(top).getByText("$70")).toBeInTheDocument();
+  });
+
+  it("leitura dos pedidos falhou: os quadros dizem Unavailable, nunca 0", async () => {
+    data.subscribeToTeacherOrders.mockImplementationOnce(
+      (_uid: string, _onData: (orders: unknown[]) => void, onError?: (error: Error) => void) => {
+        onError?.(new Error("boom"));
+        return () => undefined;
+      },
+    );
+    state.courses = [course({ status: "published", paymentType: "free", enrollmentCount: 3 })];
+
+    render(<TeacherStudioDashboard />);
+
+    await screen.findByText("Revenue, 30d");
+    expect(revenueTile()).toHaveTextContent("Unavailable");
+    expect(screen.getByText("New students").nextElementSibling).toHaveTextContent("Unavailable");
+  });
+
+  it("pedidos ainda carregando: esqueleto, nunca 0", async () => {
+    data.subscribeToTeacherOrders.mockImplementationOnce(() => () => undefined);
+    state.courses = [course({ status: "published", paymentType: "free", enrollmentCount: 3 })];
+
+    render(<TeacherStudioDashboard />);
+
+    const card = (await screen.findByText("Revenue, 30d")).closest(".studio-kpi-card") as HTMLElement;
+    expect(card.querySelector(".animate-pulse")).not.toBeNull();
+    expect(card.textContent).not.toMatch(/\$0/);
+    expect(within(card).queryByText("0")).toBeNull();
+  });
+});

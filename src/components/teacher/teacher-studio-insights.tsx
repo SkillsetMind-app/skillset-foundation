@@ -22,7 +22,7 @@ import {
   resolveRevenueRangeWindow,
   type RevenueRange,
 } from "@/domain/creator-reports";
-import type { Order } from "@/domain/order";
+import { isRevenueOrder, type Order } from "@/domain/order";
 import type { TeacherCourse } from "@/domain/teacher-course";
 import { formatMoney, formatMoneyBreakdown } from "@/lib/format-money";
 
@@ -61,7 +61,9 @@ export function TeacherStudioInsights({
   const { locale, t } = useTranslation();
   const [revenueRange, setRevenueRange] = useState<RevenueRange>("12m");
 
-  const paidOrders = orders.filter((order) => order.status === "paid");
+  // Pago ou com reembolso parcial (conta o que ficou): o reembolso parcial
+  // sumia da receita.
+  const paidOrders = orders.filter(isRevenueOrder);
   // Historico de venda = existe pedido pago, nao "entrou dinheiro": um pedido
   // pago de valor zero (produto gratis) ja e historico e merece o grafico.
   const hasSales = paidOrders.length > 0;
@@ -84,8 +86,9 @@ export function TeacherStudioInsights({
         // O total segue sendo o de sempre (todo o historico), so que da moeda
         // desenhada.
         totalMinor: allTime.find((group) => group.currency === charted)?.totalMinor ?? 0,
+        // So moedas com dinheiro: um "$0" na linha das outras moedas nao diz nada.
         others: allTime
-          .filter((group) => group.currency !== charted)
+          .filter((group) => group.currency !== charted && group.totalMinor !== 0)
           .map((group) => ({ currency: group.currency, amountMinor: group.totalMinor }))
           .sort((left, right) => right.amountMinor - left.amountMinor),
       };
@@ -242,7 +245,12 @@ function buildTopCourses(courses: TeacherCourse[], paidOrders: Order[], chartedC
         chartedMinor: groups.find((group) => group.currency === chartedCurrency)?.totalMinor ?? 0,
       };
     })
-    .sort((a, b) => b.chartedMinor - a.chartedMinor || b.lessonCount - a.lessonCount)
+    // Pedidos antes de aulas: um produto que so vendeu em outra moeda nao cai
+    // abaixo de um que nunca vendeu.
+    .sort(
+      (a, b) =>
+        b.chartedMinor - a.chartedMinor || b.orders - a.orders || b.lessonCount - a.lessonCount,
+    )
     .slice(0, 3);
 }
 

@@ -20,13 +20,14 @@ function renderChart(
   totalMinor: number,
   totalLabel: string,
   chartPoints = points,
-  extra: { currency?: string; note?: string } = {},
+  extra: { currency?: string; note?: string; unavailableLabel?: string } = {},
 ) {
   return render(
     <RevenueChart
       points={chartPoints}
       currency={extra.currency ?? "USD"}
       note={extra.note}
+      unavailableLabel={extra.unavailableLabel}
       totalMinor={totalMinor}
       totalLabel={totalLabel}
       title="Revenue"
@@ -41,6 +42,14 @@ function renderChart(
 afterEach(cleanup);
 
 describe("grafico de receita sem venda", () => {
+  // Carregando ou com erro, "sem receita" afirmaria zero: so o rotulo.
+  it("com dados indisponiveis mostra o rotulo, nunca 'sem receita'", () => {
+    renderChart(0, "$0", points, { unavailableLabel: "Unavailable" });
+
+    expect(screen.getByRole("status")).toHaveTextContent("Unavailable");
+    expect(screen.queryByText("No revenue in this period")).toBeNull();
+  });
+
   it("nao repete o total quando a caixa ja informa que nao ha receita", () => {
     renderChart(0, "$0.00");
 
