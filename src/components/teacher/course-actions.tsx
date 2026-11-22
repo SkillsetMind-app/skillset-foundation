@@ -196,6 +196,17 @@ export function DeleteOrArchiveCourseDialog({
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [busy, onCancel]);
 
+  // A pagina de tras nao rola enquanto a janela esta aberta. No estudio quem
+  // rola e o .platform-content, nao o body: travar o body nao segurava nada.
+  useEffect(() => {
+    const scroller = document.querySelector<HTMLElement>(".platform-content") ?? document.body;
+    const previousOverflow = scroller.style.overflow;
+    scroller.style.overflow = "hidden";
+    return () => {
+      scroller.style.overflow = previousOverflow;
+    };
+  }, []);
+
   // Assinatura tambem e comprador: o servidor arquiva, entao o texto promete arquivar.
   const hasAudience = audience !== null && audience.enrollments + audience.orders + audience.subscriptions > 0;
   const prefix = hasAudience ? "creatorPanel.products.archive" : "creatorPanel.products.delete";
@@ -246,7 +257,9 @@ export function DeleteOrArchiveCourseDialog({
         <p className={`pr-10 text-xs font-bold uppercase tracking-[0.2em] ${known ? "text-[var(--color-danger-fg)]" : "text-[var(--color-ink-muted)]"}`}>
           {known ? t(`${prefix}.eyebrow`) : t("creatorPanel.products.removeEyebrow")}
         </p>
-        <h2 className="mt-2 pr-10 text-2xl font-semibold text-[var(--color-primary)]">
+        {/* Título no desenho das outras janelas (serifa, 24px), como no
+            ConfirmDialog; era Manrope semibold só aqui e no 2FA. */}
+        <h2 className="display-title mt-2 pr-10 text-2xl leading-tight text-[var(--color-primary)]">
           {known ? t(`${prefix}.title`).replace("{title}", () => courseTitle) : courseTitle}
         </h2>
         {/* Altura do texto mais longo (o de apagar, com a lista e o aviso dos

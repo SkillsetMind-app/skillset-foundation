@@ -115,7 +115,7 @@ export function CourseCategorySelect({
           id={optionsId}
           role="group"
           aria-label={t("creatorEditor.categorySelect.label")}
-          className="course-category-menu absolute z-30 mt-2 max-h-64 w-full overflow-y-auto rounded-lg border border-[var(--color-line)] bg-white p-1.5 shadow-[var(--shadow-strong)]"
+          className="course-category-menu motion-drop-in absolute z-30 mt-2 max-h-64 w-full overflow-y-auto rounded-lg border border-[var(--color-line)] bg-white p-1.5 shadow-[var(--shadow-strong)]"
         >
           {visibleOptions.map((item) => {
             const isSelected = selected.includes(item);

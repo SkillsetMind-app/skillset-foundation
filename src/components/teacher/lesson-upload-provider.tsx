@@ -55,13 +55,17 @@ export function LessonUploadProvider({ children }: { children: ReactNode }) {
               <p className="break-words text-sm font-semibold">{job.fileName}</p>
               <p role={job.status === "error" ? "alert" : "status"} className="mt-1 text-sm">{t(`lessonUpload.${job.status}`)}</p>
             </div>
-            {(!lessonUploadIsBusy(job) || (job.status === "uploading" && job.canCancel)) && (
-              <button type="button" className="grid size-11 shrink-0 place-items-center" onClick={job.status === "uploading" ? cancelLessonUpload : dismissLessonUpload} aria-label={t(job.status === "uploading" ? "lessonUpload.cancel" : "lessonUpload.close")} title={t(job.status === "uploading" ? "lessonUpload.cancel" : "lessonUpload.close")}><X size={18} aria-hidden="true" /></button>
+            {/* O X só fecha o cartão, e só quando nada está correndo. Antes o
+                mesmo X também cancelava o envio: cancelar agora é um botão
+                escrito "Cancel upload", embaixo. */}
+            {!lessonUploadIsBusy(job) && (
+              <button type="button" className="button-icon" onClick={dismissLessonUpload} aria-label={t("lessonUpload.close")} title={t("lessonUpload.close")}><X size={18} aria-hidden="true" /></button>
             )}
           </div>
           {job.status === "uploading" && <progress className="mt-2 h-1.5 w-full accent-[var(--color-ink)]" max={100} value={job.progress?.percent ?? undefined} aria-label={t("lessonUpload.uploading")} />}
-          <div className="mt-2 flex items-center justify-between gap-3">
+          <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
             <Link className="inline-flex min-h-11 items-center text-sm underline" href={href}>{t("lessonUpload.open")}</Link>
+            {job.status === "uploading" && job.canCancel && <button type="button" className="button-danger px-3 py-2 text-xs" onClick={cancelLessonUpload}>{t("lessonUpload.cancel")}</button>}
             {job.status === "error" && job.assetId && <button type="button" className="inline-flex min-h-11 items-center gap-2 text-sm" onClick={() => void retryLessonVideoConnection()}><RotateCcw size={16} aria-hidden="true" />{t("lessonUpload.retry")}</button>}
           </div>
         </aside>

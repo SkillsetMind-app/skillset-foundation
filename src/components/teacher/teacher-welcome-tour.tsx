@@ -1,6 +1,5 @@
 "use client";
 
-import { X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
@@ -57,10 +56,26 @@ export function TeacherWelcomeTour({
   const { t } = useTranslation();
   const { open, dismiss } = useWelcomeTour(userId, "teacher");
   const [stepIndex, setStepIndex] = useState(0);
+  // O mesmo do tour do aluno (learn/welcome-tour.tsx): só depois da primeira
+  // troca de passo o texto e a cena entram subindo. Na abertura a janela já
+  // entra pelo .modal-panel; os dois juntos davam a animação duas vezes.
+  const [stepChanged, setStepChanged] = useState(false);
   const dialogRef = useRef<HTMLDivElement>(null);
+  const titleRef = useRef<HTMLHeadingElement>(null);
   const steps = buildSteps(firstName, t);
 
   useModalFocus(dialogRef, open);
+
+  function goToStep(next: number) {
+    setStepChanged(true);
+    setStepIndex(Math.max(0, Math.min(steps.length - 1, next)));
+  }
+
+  // Trocou de passo: o foco vai para o título novo. Voltar ao passo 1 tira o
+  // "Back" da tela com o foco nele, e o foco caía atrás da janela.
+  useEffect(() => {
+    if (stepChanged) titleRef.current?.focus();
+  }, [stepIndex, stepChanged]);
 
   useEffect(() => {
     if (!open) {
@@ -97,39 +112,49 @@ export function TeacherWelcomeTour({
         className="modal-panel modal-panel-scroll w-full max-w-md overflow-hidden rounded-xl border border-[var(--color-line)] bg-white shadow-[0_24px_60px_rgba(15,31,58,0.28)] outline-none"
         onMouseDown={(event) => event.stopPropagation()}
       >
-        {/* Faixa estreita de gravura com a cena do passo. key: trocar de
-            passo remonta a cena e ela entra de novo (subir 6px, 280ms). */}
-        <div className="relative border-b border-[var(--color-line)] bg-[var(--color-surface-soft)] px-6 py-3">
-          <SpotArt key={step.scene} scene={step.scene} className="spot-art-in mx-auto h-20 w-auto" />
-          <button
-            type="button"
-            onClick={dismiss}
-            aria-label={t("learn.tour.skipTour")}
-            className="absolute right-2 top-2 grid h-11 w-11 place-items-center rounded-full text-[var(--color-ink-muted)] transition-colors hover:bg-[var(--color-surface)] hover:text-[var(--color-ink)]"
-          >
-            <X className="h-4 w-4" aria-hidden="true" />
-          </button>
+        {/* Faixa estreita de gravura com a cena do passo (altura fixa, h-20).
+            key: trocar de passo remonta a cena e ela entra de novo. Um
+            controle de pular só, o "Skip" do rodapé (e o Esc): o X do topo
+            ("Skip the tour") fazia a mesma coisa. */}
+        <div className="border-b border-[var(--color-line)] bg-[var(--color-surface-soft)] px-6 py-3">
+          <SpotArt key={step.scene} scene={step.scene} className={`mx-auto h-20 w-auto ${stepChanged ? "spot-art-in" : ""}`} />
         </div>
 
-        <div className="px-6 pb-2 pt-4">
-          <h2
-            id="teacher-welcome-tour-title"
-            className="display-title text-3xl leading-tight text-[var(--color-primary)]"
-          >
-            {step.title}
-          </h2>
-          <p className="mt-3 text-sm leading-7 text-[var(--color-ink-soft)]">{step.body}</p>
+        {/* Os quatro passos na mesma célula da grade: a caixa tem a altura do
+            passo mais longo, então trocar de passo não mexe nos botões de
+            baixo. Só o atual aparece (e existe para o leitor de tela). */}
+        <div className="grid px-6 pb-2 pt-4">
+          {steps.map((item, index) => {
+            const current = index === stepIndex;
+            return (
+              <div
+                key={item.title}
+                aria-hidden={current ? undefined : true}
+                className={`[grid-area:1/1] ${current ? (stepChanged ? "motion-panel-in" : "") : "invisible"}`}
+              >
+                <h2
+                  id={current ? "teacher-welcome-tour-title" : undefined}
+                  ref={current ? titleRef : undefined}
+                  tabIndex={current ? -1 : undefined}
+                  className="display-title text-3xl leading-tight text-[var(--color-primary)] outline-none"
+                >
+                  {item.title}
+                </h2>
+                <p className="mt-3 text-sm leading-7 text-[var(--color-ink-soft)]">{item.body}</p>
+              </div>
+            );
+          })}
         </div>
 
+        {/* Traços de largura fixa: só a cor do atual muda (antes o ativo
+            crescia de 6 para 24px e refazia o layout). */}
         <div className="flex items-center gap-2 px-6 py-3" aria-hidden="true">
           {steps.map((item, index) => (
             <span
               key={item.title}
               className={[
-                "h-1.5 rounded-full transition-all",
-                index === stepIndex
-                  ? "w-6 bg-[var(--color-primary)]"
-                  : "w-1.5 bg-[var(--color-line)]",
+                "h-1.5 w-6 rounded-full transition-colors duration-[var(--duration-base)]",
+                index === stepIndex ? "bg-[var(--color-primary)]" : "bg-[var(--color-line)]",
               ].join(" ")}
             />
           ))}
@@ -147,7 +172,7 @@ export function TeacherWelcomeTour({
             {stepIndex > 0 ? (
               <button
                 type="button"
-                onClick={() => setStepIndex((index) => Math.max(0, index - 1))}
+                onClick={() => goToStep(stepIndex - 1)}
                 className="button-outline shrink-0 px-4 py-2 text-sm"
               >
                 {t("learn.tour.back")}
@@ -171,7 +196,7 @@ export function TeacherWelcomeTour({
             ) : (
               <button
                 type="button"
-                onClick={() => setStepIndex((index) => Math.min(steps.length - 1, index + 1))}
+                onClick={() => goToStep(stepIndex + 1)}
                 className="button-solid shrink-0 px-4 py-2 text-sm"
               >
                 {t("learn.tour.next")}

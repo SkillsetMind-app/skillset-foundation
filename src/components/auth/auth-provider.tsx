@@ -7,6 +7,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useId,
   useMemo,
   useRef,
   useState,
@@ -35,6 +36,7 @@ import { previewRoles, ViewAsBanner } from "@/components/admin/view-as";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { isRole, type Role } from "@/lib/permissions";
 import { identifyUser, resetUser } from "@/lib/posthog/client";
+import { useModalFocus } from "@/lib/a11y/use-modal-focus";
 
 type AuthContextValue = AuthSession & {
   refreshUser: () => Promise<void>;
@@ -272,6 +274,18 @@ function LegalAcceptanceGate() {
     || pathname.startsWith("/loading")
     || pathname.startsWith("/signup")
     || pathname.startsWith("/welcome");
+  const showGate = needsAcceptance && !onExemptRoute;
+
+  // A janela já cobria a página, mas o Tab saía para o sino e a conta atrás
+  // do escuro e o leitor de tela não sabia que era uma janela. O foco fica
+  // preso dentro e começa na primeira caixa de marcar (sem marcar nada). Sem
+  // Esc, sem clique fora e sem X: aceitar é obrigatório.
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const titleId = useId();
+  useModalFocus(dialogRef, showGate);
+  useEffect(() => {
+    if (showGate) dialogRef.current?.querySelector<HTMLInputElement>('input[type="checkbox"]')?.focus();
+  }, [showGate]);
 
   async function handleAccept() {
     if (!user || !canAccept) {
@@ -300,17 +314,24 @@ function LegalAcceptanceGate() {
     }
   }
 
-  if (!needsAcceptance || onExemptRoute) {
+  if (!showGate) {
     return null;
   }
 
   return (
     <div className="dialog-backdrop fixed inset-0 z-[85] grid place-items-center px-4">
-      <div className="modal-panel modal-panel-scroll w-full max-w-xl rounded-xl border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-strong)]">
+      <div
+        ref={dialogRef}
+        tabIndex={-1}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        className="modal-panel modal-panel-scroll w-full max-w-xl rounded-xl border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-strong)] outline-none"
+      >
         <p className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--color-accent-fg)]">
           {t(firstAcceptance ? "legalAcceptance.firstEyebrow" : "legalAcceptance.eyebrow")}
         </p>
-        <h2 className="display-title mt-3 text-4xl text-[var(--color-primary)]">
+        <h2 id={titleId} className="display-title mt-3 text-4xl text-[var(--color-primary)]">
           {t("legalAcceptance.title")}
         </h2>
         <p className="mt-3 text-sm leading-7 text-[var(--color-ink-soft)]">
@@ -390,7 +411,7 @@ function LegalAcceptanceGate() {
         </div>
 
         {error ? (
-          <p className="mt-4 rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
+          <p role="alert" className="mt-4 rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
             {t(error)}
           </p>
         ) : null}

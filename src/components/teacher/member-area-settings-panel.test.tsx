@@ -2,10 +2,12 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-li
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { I18nProvider } from "@/components/i18n/i18n-provider";
+import { clickConfirm, stubDialogs } from "@/components/teacher/confirm-test-helpers";
 import { MemberAreaSettingsPanel } from "@/components/teacher/member-area-settings-panel";
 
 const mocks = vi.hoisted(() => ({
   createMyMemberArea: vi.fn(),
+  deleteMyMemberArea: vi.fn(),
   getMyMemberAreas: vi.fn(),
   getUserProfile: vi.fn(),
   removeMemberAreaCover: vi.fn(),
@@ -26,6 +28,7 @@ vi.mock("@/lib/data/member-areas", async (importOriginal) => {
   return {
     ...actual,
     createMyMemberArea: mocks.createMyMemberArea,
+    deleteMyMemberArea: mocks.deleteMyMemberArea,
     getMyMemberAreas: mocks.getMyMemberAreas,
     memberAreaCoverUrl: (path: string) => `https://media.test/${path}`,
     removeMemberAreaCover: mocks.removeMemberAreaCover,
@@ -278,6 +281,37 @@ describe("MemberAreaSettingsPanel", () => {
     expect(screen.getByText(/your current plan does not include it/)).toBeTruthy();
     expect(screen.getByRole("button", { name: "Save members area" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Delete area" })).toBeEnabled();
+  });
+
+  // B-10: apagar era um clique duplo no mesmo botão de contorno. Agora a
+  // janela da plataforma diz o nome da área e só o confirmar apaga, com a
+  // mesma chamada de antes.
+  it("apagar a extra pergunta na janela, com o nome da área, e só apaga no confirmar", async () => {
+    const restoreDialogs = stubDialogs();
+    try {
+      mocks.getUserProfile.mockResolvedValue({ displayName: "Eton Simon", username: "eton", currentPlanId: "starter" });
+      mocks.getMyMemberAreas.mockResolvedValue(editorOf([virtualMain, {
+        id: "area-2", slug: "vip", settings: { name: "VIP", theme: "light", coverPath: null, welcomeText: null }, communityCourseId: null,
+      }]));
+      mocks.deleteMyMemberArea.mockResolvedValue(undefined);
+      renderPanel();
+      fireEvent.click(await screen.findByRole("tab", { name: "VIP" }));
+      const trigger = screen.getByRole("button", { name: "Delete area" });
+      expect(trigger).toHaveClass("button-danger");
+
+      fireEvent.click(trigger);
+      const asking = screen.getByRole("dialog", { name: "Delete this area?" });
+      expect(asking).toHaveAccessibleDescription('Delete the area "VIP"? Its products go back to the main area. Nobody loses access.');
+      fireEvent.click(within(asking).getByRole("button", { name: "Keep area" }));
+      expect(screen.queryByRole("dialog", { name: "Delete this area?" })).toBeNull();
+      expect(mocks.deleteMyMemberArea).not.toHaveBeenCalled();
+
+      fireEvent.click(screen.getByRole("button", { name: "Delete area" }));
+      clickConfirm(screen.getByRole("dialog", { name: "Delete this area?" }), "Yes, delete this area");
+      await waitFor(() => expect(mocks.deleteMyMemberArea).toHaveBeenCalledExactlyOnceWith("area-2"));
+    } finally {
+      restoreDialogs();
+    }
   });
 
   it("em espanhol", async () => {

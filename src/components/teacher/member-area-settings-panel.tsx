@@ -8,6 +8,7 @@ import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { HorizontalTabs } from "@/components/shared/horizontal-tabs";
 import { SavedNote } from "@/components/teacher/save-status-line";
+import { useConfirm } from "@/components/teacher/use-confirm";
 import { Button, Card, Field, InlineAlert, buttonClasses } from "@/components/ui";
 import type { PlanId } from "@/data/plans";
 import { planEntitlements } from "@/domain/entitlements";
@@ -321,6 +322,7 @@ function MemberAreaForm({
   onDeleted: () => void;
 }) {
   const { t } = useTranslation();
+  const { ask, dialog: confirmDialog } = useConfirm();
   const isExtra = area.slug !== null;
 
   const [name, setName] = useState(area.settings?.name ?? "");
@@ -342,7 +344,6 @@ function MemberAreaForm({
   const [communityCourseId, setCommunityCourseId] = useState<string>(area.communityCourseId ?? "");
   const [savedOnce, setSavedOnce] = useState(false);
   const configured = area.settings !== null || savedOnce;
-  const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleteFailed, setDeleteFailed] = useState(false);
 
   const own = useMemo(() => memberAreaProductsOf(courses ?? [], editor, area), [courses, editor, area]);
@@ -799,18 +800,30 @@ function MemberAreaForm({
       {isExtra && area.id ? (
         <div className="grid justify-items-start gap-2 border-t border-[var(--color-line)] pt-4">
           <p className="text-xs text-[var(--color-ink-soft)]">{t("teach.memberAreaEditor.deleteAreaHelp")}</p>
+          {/* Apagar era um clique duplo no mesmo botão de contorno ("Delete
+              area" virava "Yes, delete this area" no lugar). Agora pergunta
+              na janela da plataforma, dizendo o nome da área; o apagar é o
+              mesmo, e o erro continua aqui embaixo. */}
           <Button
             type="button"
-            variant="outline"
+            variant="danger"
             disabled={saving}
-            onClick={() => (confirmDelete ? void handleDelete() : setConfirmDelete(true))}
+            onClick={() => ask({
+              title: t("teach.memberAreaEditor.deleteAreaTitle"),
+              body: t("teach.memberAreaEditor.deleteAreaBody").replace("{name}", () => areaLabel(area)),
+              confirmLabel: t("teach.memberAreaEditor.deleteAreaConfirm"),
+              cancelLabel: t("teach.memberAreaEditor.deleteAreaKeep"),
+              danger: true,
+              run: handleDelete,
+            })}
           >
             <Trash2 aria-hidden="true" size={15} />
-            {t(`teach.memberAreaEditor.${confirmDelete ? "deleteAreaConfirm" : "deleteArea"}`)}
+            {t("teach.memberAreaEditor.deleteArea")}
           </Button>
           {deleteFailed ? <InlineAlert tone="error">{t("teach.memberAreaEditor.errors.delete")}</InlineAlert> : null}
         </div>
       ) : null}
+      {confirmDialog}
     </form>
   );
 }

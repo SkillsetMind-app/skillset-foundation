@@ -25,13 +25,49 @@ describe("saídas do tour de boas-vindas", () => {
     cleanup();
   });
 
-  it("no tour do professor, X e Skip têm alvo de 44px", async () => {
+  // C-17: no tour do professor também ficou só o "Skip" do rodapé (e o Esc);
+  // o X ("Skip the tour") fazia a mesma coisa. A saída que resta tem nome
+  // visível e alvo de 44px.
+  it("no tour do professor, a única saída (Skip) tem nome e alvo de 44px", async () => {
     render(<TeacherWelcomeTour userId="teacher-1" firstName="Ana" />);
 
-    await screen.findByRole("dialog");
+    const dialog = await screen.findByRole("dialog");
 
-    expect(screen.getByRole("button", { name: "Skip the tour" })).toHaveClass("h-11", "w-11");
-    expect(screen.getByRole("button", { name: "Skip" })).toHaveClass("min-h-11");
+    expect(within(dialog).queryByRole("button", { name: "Skip the tour" })).toBeNull();
+    expect(within(dialog).getAllByRole("button", { name: /skip/i })).toHaveLength(1);
+    expect(within(dialog).getByRole("button", { name: "Skip" })).toHaveClass("min-h-11");
+  });
+
+  // C-17: trocar de passo não muda a altura (os quatro passos na mesma célula
+  // da grade), o foco vai para o título novo e só o passo atual existe para o
+  // leitor de tela. Os traços não animam largura.
+  it("no tour do professor, a altura não pula e o foco vai ao título do passo", async () => {
+    render(<TeacherWelcomeTour userId="teacher-steady" firstName="Ana" />);
+    const dialog = await screen.findByRole("dialog");
+    const titles = dialog.querySelectorAll("h2");
+    expect(titles).toHaveLength(4);
+    const stack = titles[0].parentElement!.parentElement!;
+    expect(stack).toHaveClass("grid");
+    for (const title of titles) expect(title.parentElement).toHaveClass("[grid-area:1/1]");
+    // Na abertura quem entra é a janela; o texto não sobe junto.
+    expect(titles[0].parentElement).not.toHaveClass("motion-panel-in");
+
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    const current = screen.getByRole("heading", { name: "Create your first product" });
+    expect(current).toHaveFocus();
+    expect(current.parentElement).toHaveClass("motion-panel-in");
+    expect(screen.getAllByRole("heading")).toHaveLength(1);
+    expect(dialog).toHaveAccessibleName("Create your first product");
+    const dots = dialog.querySelectorAll("[aria-hidden='true'] > span.rounded-full");
+    expect(dots).toHaveLength(4);
+    for (const dot of dots) {
+      expect(dot).toHaveClass("w-6");
+      expect(dot.className).not.toContain("transition-all");
+    }
+
+    // Voltar ao passo 1 tira o "Back" da tela: o foco não cai atrás da janela.
+    fireEvent.click(screen.getByRole("button", { name: "Back" }));
+    expect(screen.getByRole("heading", { name: "Welcome to your studio, Ana" })).toHaveFocus();
   });
 
   // C-17: no tour do aluno o X ("Skip the tour") e o "Skip" faziam a mesma

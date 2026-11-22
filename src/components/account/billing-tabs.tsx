@@ -561,13 +561,16 @@ function PurchasesTab({
                 <span className="rounded-md bg-white px-3 py-1 text-sm font-bold text-[var(--color-primary)]">
                   {formatMoney(order.amountMinor, order.currency, locale)}
                 </span>
+                {/* Recibo: link de texto com alvo de 44px. Pedir reembolso é
+                    dinheiro: botão de contorno, não link dourado (o latão é
+                    só de marco, ui/button.tsx). */}
                 <div className="flex flex-wrap items-center justify-end gap-3">
                   {order.receiptUrl ? (
                     <a
                       href={order.receiptUrl}
                       target="_blank"
                       rel="noreferrer"
-                      className="text-xs font-semibold text-[var(--color-primary)] hover:underline"
+                      className="inline-flex min-h-11 items-center text-xs font-semibold text-[var(--color-primary)] hover:underline"
                     >
                       {t("accountBilling.receipt")} &rarr;
                     </a>
@@ -576,7 +579,7 @@ function PurchasesTab({
                     <button
                       type="button"
                       onClick={() => setRefundFor(order)}
-                      className="min-h-6 text-xs font-semibold text-[var(--color-accent-fg)] hover:underline"
+                      className="button-outline px-3 py-2 text-xs"
                     >
                       {t("accountBilling.requestRefund")}
                     </button>
@@ -642,6 +645,17 @@ function RefundModal({
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [busy, onClose]);
+
+  // A página de trás não rola enquanto a janela está aberta. Na conta quem
+  // rola é o .platform-content (fora do painel, o body).
+  useEffect(() => {
+    const scroller = document.querySelector<HTMLElement>(".platform-content") ?? document.body;
+    const previousOverflow = scroller.style.overflow;
+    scroller.style.overflow = "hidden";
+    return () => {
+      scroller.style.overflow = previousOverflow;
+    };
+  }, []);
 
   async function handleSubmit() {
     setSubmitError("");

@@ -140,7 +140,9 @@ export function InlineHelp({ topic, children, href, className }: InlineHelpProps
               }}
               className="contextual-help-dialog"
             >
-              <section className="contextual-help-panel">
+              {/* O fundo já acendia; a folha aparecia num corte seco. Entra
+                  como as outras janelas (só sem "reduzir movimento"). */}
+              <section className="contextual-help-panel motion-panel-in">
                 <header className="flex items-start justify-between gap-4 border-b border-[var(--color-line)] px-5 py-5 sm:px-6">
                   <div>
                     <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--color-ink-muted)]">

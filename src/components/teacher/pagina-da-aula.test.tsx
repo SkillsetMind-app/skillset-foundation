@@ -241,11 +241,17 @@ describe("pagina da aula no builder", () => {
     const panel = screen.getByRole("complementary", { name: "Lesson upload" });
     expect(panel).toHaveClass("max-h-[calc(100svh-2rem)]", "overflow-y-auto");
     expect(screen.queryByRole("button", { name: /Cancel upload/i })).not.toBeInTheDocument();
+    // C-12: com o envio correndo, nada de X que fecha; cancelar é um botão
+    // que diz o que faz. O X ("Dismiss upload status") só sem envio no ar.
+    expect(within(panel).queryByRole("button", { name: "Dismiss upload status" })).toBeNull();
     if (bunnyConfigured) {
       act(() => vi.mocked(uploadLessonVideoToBunny).mock.calls[0][0].onCancelAvailable?.(vi.fn()));
-      expect(within(panel).getByRole("button", { name: "Cancel upload" })).toBeInTheDocument();
+      expect(within(panel).getByRole("button", { name: "Cancel upload" })).toHaveTextContent("Cancel upload");
+      expect(within(panel).queryByRole("button", { name: "Dismiss upload status" })).toBeNull();
     }
     await act(async () => finish("asset-intro"));
+    await waitFor(() => expect(within(panel).getByRole("button", { name: "Dismiss upload status" })).toBeInTheDocument());
+    expect(within(panel).queryByRole("button", { name: "Cancel upload" })).toBeNull();
   });
 
   it("successful connection retry clears the lesson error and file and refreshes readiness without reuploading", async () => {

@@ -123,7 +123,9 @@ export function VerifiedBadge({
     const shift = rect.left < gutter
       ? gutter - rect.left
       : rect.right > width - gutter ? width - gutter - rect.right : 0;
-    panel.style.transform = `translateX(calc(-50% + ${shift}px))`;
+    // Em `translate`, não em `transform`: a entrada (motion-drop-in) anima o
+    // transform e, se o centro morasse nele, o painel pularia de lado.
+    panel.style.translate = `calc(-50% + ${shift}px) 0`;
   }, [open]);
 
   useEffect(() => {
@@ -189,8 +191,8 @@ export function VerifiedBadge({
           ref={panelRef}
           id={panelId}
           data-verified-popover=""
-          style={{ transform: "translateX(-50%)" }}
-          className="absolute block left-1/2 top-full z-30 mt-2 w-72 max-w-[calc(100vw-1rem)] rounded-lg border border-[var(--color-line-strong)] border-t-2 border-t-[var(--color-accent)] bg-[var(--color-surface)] p-4 text-left shadow-[var(--shadow-strong)]"
+          style={{ translate: "-50% 0" }}
+          className="motion-drop-in absolute block left-1/2 top-full z-30 mt-2 w-72 max-w-[calc(100vw-1rem)] rounded-lg border border-[var(--color-line-strong)] border-t-2 border-t-[var(--color-accent)] bg-[var(--color-surface)] p-4 text-left shadow-[var(--shadow-strong)]"
         >
           <span className="flex items-center gap-2 text-sm font-bold text-[var(--color-primary)]">
             <VerifiedSeal size={16} />

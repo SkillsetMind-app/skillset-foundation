@@ -159,7 +159,9 @@ export function CourseUnlockModal({
           <button
             type="button"
             onClick={onClose}
-            className="absolute right-3 top-3 grid size-11 place-items-center rounded-full bg-[rgba(15,39,68,0.62)] text-white transition hover:bg-[#102a43] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+            // O X de todas as janelas (.button-icon, 44px, canto de 8px), com
+            // fundo claro por estar em cima da capa. Era um círculo navy só aqui.
+            className="button-icon absolute right-3 top-3 bg-[var(--color-surface)] shadow-[var(--shadow-soft)] hover:bg-[var(--color-surface-soft)]"
             aria-label={t("learn.paths.close")}
           >
             <X aria-hidden="true" size={18} strokeWidth={1.8} />

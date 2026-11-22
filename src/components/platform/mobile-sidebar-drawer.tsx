@@ -152,9 +152,12 @@ export function MobileSidebarDrawer({
 
       {open ? (
         <div className="fixed inset-0 z-[100] min-[1180px]:hidden">
+          {/* Fundo e entrada das outras janelas: o fundo acende e a gaveta
+              sobe 8px (só sem "reduzir movimento"). Antes aparecia num corte
+              seco, com um navy próprio. */}
           <button
             type="button"
-            className="absolute inset-0 bg-[rgba(15,39,68,0.45)]"
+            className="dialog-backdrop absolute inset-0"
             aria-label={t("platform.mobile.close")}
             onClick={onClose}
           />
@@ -164,7 +167,7 @@ export function MobileSidebarDrawer({
             role="dialog"
             aria-modal="true"
             aria-label={t("platform.mobile.drawerLabel")}
-            className="relative z-[1] flex h-svh w-[280px] max-w-full flex-col bg-white shadow-[0_0_60px_rgba(15,39,68,0.25)] outline-none"
+            className="motion-panel-in relative z-[1] flex h-svh w-[280px] max-w-full flex-col bg-white shadow-[0_0_60px_rgba(15,39,68,0.25)] outline-none"
             onClick={(event) => {
               if (event.target instanceof Element && event.target.closest("a[href]")) {
                 onClose();

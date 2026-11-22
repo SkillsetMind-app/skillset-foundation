@@ -4,6 +4,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -123,6 +124,32 @@ describe("LegalAcceptanceGate as the signup recovery path", () => {
     expect(screen.getByText("Could not update your legal acceptance. Please try again.")).toBeTruthy();
     expect(screen.getAllByRole("checkbox").every((input) => (input as HTMLInputElement).checked)).toBe(true);
     expect(screen.getByRole("button", { name: ACCEPT })).toHaveProperty("disabled", false);
+  });
+
+  // C-06: a janela cobria a página, mas o Tab saía para a página de trás e o
+  // leitor de tela não sabia que era uma janela. Ela segue sem saída: Esc não
+  // fecha, e o foco começa na primeira caixa sem marcar nada.
+  it("is a real modal: named, focus inside on the first box, Escape does not close it, error announced", async () => {
+    mocks.getUserProfile.mockResolvedValue({ termsVersion: null, privacyVersion: null, marketingConsent: false });
+    mocks.acceptUserTerms.mockRejectedValue(new Error("transport details"));
+    renderSignedIn();
+
+    const dialog = await screen.findByRole("dialog", { name: "Review SkillsetMind terms to continue." });
+    expect(dialog).toHaveAttribute("aria-modal", "true");
+    const [terms, privacy] = screen.getAllByRole("checkbox");
+    await waitFor(() => expect(terms).toHaveFocus());
+    expect(dialog.contains(document.activeElement)).toBe(true);
+    expect((terms as HTMLInputElement).checked).toBe(false);
+
+    fireEvent.keyDown(document.activeElement!, { key: "Escape" });
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(screen.getByRole("dialog", { name: "Review SkillsetMind terms to continue." })).toBe(dialog);
+    expect(within(dialog).queryByRole("button", { name: /close/i })).toBeNull();
+
+    fireEvent.click(terms);
+    fireEvent.click(privacy);
+    fireEvent.click(screen.getByRole("button", { name: ACCEPT }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Could not update your legal acceptance. Please try again.");
   });
 
   it("asks for the terms again when the profile has none and records them", async () => {

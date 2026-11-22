@@ -195,7 +195,13 @@ describe("TOTP setup dialog", () => {
     mocks.calls.unenrollTotpFactor.mockResolvedValue(undefined);
     renderSection();
 
-    fireEvent.click(await screen.findByRole("button", { name: "Turn off" }));
+    const turnOff = await screen.findByRole("button", { name: "Turn off" });
+    // A-15 / A-22: botões do sistema (44px), vermelho no que desliga; antes
+    // eram 32px feitos à mão.
+    expect(turnOff).toHaveClass("button-danger");
+    fireEvent.click(turnOff);
+    expect(screen.getByRole("button", { name: "Yes, turn off" })).toHaveClass("button-danger", "button-danger-solid");
+    expect(screen.getByRole("button", { name: "Keep it on" })).toHaveClass("button-outline");
     mocks.calls.listEnrolledTotpFactors.mockResolvedValue([]);
     await act(async () => fireEvent.click(screen.getByRole("button", { name: "Yes, turn off" })));
 
