@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { getDictionary, translate } from "@/lib/i18n/dictionaries";
 import type { TeacherCourse } from "@/domain/teacher-course";
@@ -122,4 +122,27 @@ it("a falha ao carregar a lista é anunciada ao leitor de tela", () => {
   render(<CourseMarketplace />);
 
   expect(screen.getByRole("alert")).toHaveTextContent(translate(getDictionary("en"), "publicCourses.loadCoursesError"));
+});
+
+// No celular, cabeçalho e filtros abertos davam uns 800px antes do primeiro
+// curso. Os filtros ficam atrás de um botão (o CSS só os esconde abaixo de
+// 640px) e o botão diz quantos estão valendo; cada filtro segue funcionando.
+it("os filtros ficam atrás de um botão que abre e fecha e diz quantos estão valendo", () => {
+  state.subscribe.mockImplementation(() => () => {});
+  render(<CourseMarketplace />);
+
+  const toggle = screen.getByRole("button", { name: /^Filters/ });
+  expect(toggle).toHaveAttribute("aria-expanded", "false");
+  expect(toggle).toHaveAccessibleName("Filters Active filters: 2");
+  const panel = document.getElementById(toggle.getAttribute("aria-controls")!)!;
+  expect(panel).not.toHaveClass("is-open");
+
+  fireEvent.click(toggle);
+  expect(toggle).toHaveAttribute("aria-expanded", "true");
+  expect(panel).toHaveClass("is-open");
+
+  fireEvent.click(within(panel).getByRole("button", { name: "All courses" }));
+  expect(toggle).toHaveAccessibleName("Filters Active filters: 1");
+  fireEvent.change(within(panel).getByPlaceholderText("Search skill, category, or outcome"), { target: { value: "" } });
+  expect(toggle).toHaveAccessibleName("Filters");
 });

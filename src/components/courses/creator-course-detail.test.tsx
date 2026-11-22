@@ -422,6 +422,32 @@ describe("CreatorCourseDetail: o cartão que vende", () => {
     expect(labels).toContain("Category");
   });
 
+  // Antes: rótulo "Access" no preço e cinco blocos depois do botão, dois em
+  // caixas de cores diferentes. Agora: "Price", o botão e um só bloco de fatos.
+  it("rotula o preço como 'Price' e junta os fatos num bloco só, depois do botão", async () => {
+    fixtures.auth.status = "authenticated"; fixtures.auth.user = { uid: "buyer" };
+    const { container } = render(<CreatorCourseDetail courseIdOverride="course-1" hideHeader />);
+    const button = await screen.findByRole("button", { name: "Enroll — $149.00" });
+    const card = container.querySelector("#enroll-card") as HTMLElement;
+
+    expect(card.firstElementChild).toHaveTextContent(/^Price$/);
+    const facts = [
+      "Category",
+      "Paid access opens automatically once your payment is confirmed — usually within seconds.",
+      "Secure payment processed by Stripe.",
+      "7-day refund guarantee.",
+      "Sold by your instructor, not by SkillsetMind.",
+    ].map((text) => within(card).getByText(text));
+    for (const fact of facts) {
+      expect(button.compareDocumentPosition(fact) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    }
+    // Nenhuma caixa colorida própria: o reembolso e o vendedor são linhas da mesma lista.
+    const list = within(card).getByRole("list");
+    expect(within(list).getByText("7-day refund guarantee.")).toBeInTheDocument();
+    expect(within(list).getByText("Sold by your instructor, not by SkillsetMind.")).toBeInTheDocument();
+    expect(card.querySelector('[class*="success-soft"]')).toBeNull();
+  });
+
   it("mantém o cartão à vista: gruda na rolagem e ganha barra fixa no celular", async () => {
     const { container } = render(
       <CreatorCourseDetail courseIdOverride="course-1" hideHeader />,

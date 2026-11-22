@@ -9,7 +9,7 @@ import { useTranslation } from "@/components/i18n/i18n-provider";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Bookmark, BookmarkCheck, LayoutGrid, List, Search } from "lucide-react";
+import { Bookmark, BookmarkCheck, ChevronDown, LayoutGrid, List, Search, SlidersHorizontal } from "lucide-react";
 import { startTransition, useDeferredValue, useEffect, useState } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
@@ -61,6 +61,9 @@ export function CourseMarketplace({ courses = [] }: CourseMarketplaceProps) {
   const [sortKey, setSortKey] = useState<CourseSortKey>("featured");
   // Layout preference only (not URL-synced): grid is the long-standing default.
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  // So no celular (CSS abaixo de 640px): os filtros fechados atras de um botao.
+  // Abertos, eram uns 800px de cabecalho e filtros antes do primeiro curso.
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [activeEnrollments, setActiveEnrollments] = useState<Enrollment[]>([]);
   const [publishedCourses, setPublishedCourses] = useState<TeacherCourse[]>([]);
   const [publishedCoursesError, setPublishedCoursesError] = useState("");
@@ -223,6 +226,10 @@ export function CourseMarketplace({ courses = [] }: CourseMarketplaceProps) {
   const hasAnyCourses = marketplaceCourses.length > 0;
   const isFiltering =
     activeCategory !== allCategoriesLabel || deferredQuery.length > 0;
+  // Quantos filtros estao valendo (categoria e busca), no botao "Filters" do
+  // celular: com o painel fechado, a pessoa ainda ve que a lista esta filtrada.
+  const activeFilterCount =
+    (activeCategory !== allCategoriesLabel ? 1 : 0) + (query.trim() ? 1 : 0);
 
   // Real per-category counts from the loaded courses (All = total).
   const categoryCounts = new Map<string, number>();
@@ -251,90 +258,110 @@ export function CourseMarketplace({ courses = [] }: CourseMarketplaceProps) {
   return (
     <section className="marketplace-section">
       <div className="marketplace-filter-panel">
-        <div className="marketplace-filter-list">
-          {categories.map((filter) => {
-            const isActive = activeCategory === filter;
+        <button
+          type="button"
+          aria-expanded={filtersOpen}
+          aria-controls="marketplace-filters"
+          onClick={() => setFiltersOpen((open) => !open)}
+          className="marketplace-filters-toggle"
+        >
+          <SlidersHorizontal aria-hidden="true" size={16} strokeWidth={2} />
+          <span>{t("publicCourses.filters")}</span>
+          {activeFilterCount > 0 ? (
+            <>
+              <span aria-hidden="true" className="marketplace-filters-toggle__count">{activeFilterCount}</span>
+              {" "}
+              <span className="sr-only">{t("publicCourses.filtersActive").replace("{count}", String(activeFilterCount))}</span>
+            </>
+          ) : null}
+          <ChevronDown aria-hidden="true" size={16} strokeWidth={2} className="marketplace-filters-toggle__chevron" />
+        </button>
+        <div id="marketplace-filters" className={`marketplace-filter-body${filtersOpen ? " is-open" : ""}`}>
+          <div className="marketplace-filter-list">
+            {categories.map((filter) => {
+              const isActive = activeCategory === filter;
 
-            return (
-              <button
-                key={filter}
-                type="button"
-                aria-pressed={isActive}
-                onClick={() => setActiveCategory(filter)}
-                className={`marketplace-filter-button ${
-                  isActive ? "is-active" : ""
-                }`}
+              return (
+                <button
+                  key={filter}
+                  type="button"
+                  aria-pressed={isActive}
+                  onClick={() => setActiveCategory(filter)}
+                  className={`marketplace-filter-button ${
+                    isActive ? "is-active" : ""
+                  }`}
+                >
+                  <span>{filter === allCategoriesLabel ? t("publicCourses.all") : getCourseCategoryLabel(filter, t)}</span>
+                  {/* Sem número até a lista chegar: "All courses 0" lia como loja vazia. */}
+                  {isLoadingPublishedCourses ? null : (
+                    <span className="marketplace-filter-button__count">
+                      {categoryCount(filter)}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+          <div className="marketplace-controls">
+            <label className="marketplace-field">
+              <span>{t("publicCourses.search")}</span>
+              <span className="marketplace-searchbox">
+                <Search aria-hidden="true" size={15} strokeWidth={2} />
+                <input
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  placeholder={t("publicCourses.searchHint")}
+                />
+              </span>
+            </label>
+            <label className="marketplace-field">
+              <span>{t("publicCourses.sort")}</span>
+              <select
+                value={sortKey}
+                onChange={(event) => setSortKey(event.target.value as CourseSortKey)}
+                className="marketplace-select"
               >
-                <span>{filter === allCategoriesLabel ? t("publicCourses.all") : getCourseCategoryLabel(filter, t)}</span>
-                {/* Sem número até a lista chegar: "All courses 0" lia como loja vazia. */}
-                {isLoadingPublishedCourses ? null : (
-                  <span className="marketplace-filter-button__count">
-                    {categoryCount(filter)}
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </div>
-        <div className="marketplace-controls">
-          <label className="marketplace-field">
-            <span>{t("publicCourses.search")}</span>
-            <span className="marketplace-searchbox">
-              <Search aria-hidden="true" size={15} strokeWidth={2} />
-              <input
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder={t("publicCourses.searchHint")}
-              />
-            </span>
-          </label>
-          <label className="marketplace-field">
-            <span>{t("publicCourses.sort")}</span>
-            <select
-              value={sortKey}
-              onChange={(event) => setSortKey(event.target.value as CourseSortKey)}
-              className="marketplace-select"
-            >
-              {courseSortOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {t(option.labelKey)}
-                </option>
-              ))}
-            </select>
-          </label>
-          <div className="marketplace-view">
-            <span className="marketplace-view-label">{t("publicCourses.view")}</span>
-            <div
-              className="marketplace-view-toggle"
-              role="group"
-              aria-label={t("publicCourses.viewLayout")}
-            >
-              <button
-                type="button"
-                aria-pressed={viewMode === "grid"}
-                aria-label={t("publicCourses.gridView")}
-                title={t("publicCourses.gridView")}
-                onClick={() => setViewMode("grid")}
-                className={`marketplace-icon-button ${
-                  viewMode === "grid" ? "is-active" : ""
-                }`}
+                {courseSortOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {t(option.labelKey)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <div className="marketplace-view">
+              <span className="marketplace-view-label">{t("publicCourses.view")}</span>
+              <div
+                className="marketplace-view-toggle"
+                role="group"
+                aria-label={t("publicCourses.viewLayout")}
               >
-                <LayoutGrid aria-hidden="true" size={16} strokeWidth={2} />
-                <span className="sr-only">{t("publicCourses.grid")}</span>
-              </button>
-              <button
-                type="button"
-                aria-pressed={viewMode === "list"}
-                aria-label={t("publicCourses.listView")}
-                title={t("publicCourses.listView")}
-                onClick={() => setViewMode("list")}
-                className={`marketplace-icon-button ${
-                  viewMode === "list" ? "is-active" : ""
-                }`}
-              >
-                <List aria-hidden="true" size={16} strokeWidth={2} />
-                <span className="sr-only">{t("publicCourses.list")}</span>
-              </button>
+                <button
+                  type="button"
+                  aria-pressed={viewMode === "grid"}
+                  aria-label={t("publicCourses.gridView")}
+                  title={t("publicCourses.gridView")}
+                  onClick={() => setViewMode("grid")}
+                  className={`marketplace-icon-button ${
+                    viewMode === "grid" ? "is-active" : ""
+                  }`}
+                >
+                  <LayoutGrid aria-hidden="true" size={16} strokeWidth={2} />
+                  <span className="sr-only">{t("publicCourses.grid")}</span>
+                </button>
+                <button
+                  type="button"
+                  aria-pressed={viewMode === "list"}
+                  aria-label={t("publicCourses.listView")}
+                  title={t("publicCourses.listView")}
+                  onClick={() => setViewMode("list")}
+                  className={`marketplace-icon-button ${
+                    viewMode === "list" ? "is-active" : ""
+                  }`}
+                >
+                  <List aria-hidden="true" size={16} strokeWidth={2} />
+                  <span className="sr-only">{t("publicCourses.list")}</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>

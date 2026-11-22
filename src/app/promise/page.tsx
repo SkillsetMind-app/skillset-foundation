@@ -81,7 +81,7 @@ export default async function PromisePage() {
             className="absolute inset-0 opacity-[0.1]"
             style={{
               backgroundImage:
-                "radial-gradient(circle at 18% 28%, rgba(255,255,255,0.45), transparent 32%), radial-gradient(circle at 86% 64%, rgba(178,34,52,0.46), transparent 34%)",
+                "radial-gradient(circle at 18% 28%, rgba(255,255,255,0.45), transparent 32%), radial-gradient(circle at 86% 64%, rgba(201,154,70,0.46), transparent 34%)",
             }}
           />
           {/* Engraved-editorial security texture — the same certificate/banknote
@@ -93,7 +93,7 @@ export default async function PromisePage() {
             aria-hidden="true"
             className="absolute inset-0 bg-[url(/brand/hero-engraving-mobile.webp)] bg-cover bg-center bg-no-repeat opacity-[0.5] mix-blend-screen lg:bg-[url(/brand/hero-engraving-desktop.webp)]"
           />
-          <div className="relative z-10 mx-auto w-full max-w-7xl px-6 py-16 sm:px-8 lg:py-24">
+          <div className="relative z-10 mx-auto w-full max-w-7xl px-5 py-16 sm:px-8 lg:py-24">
             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-white/78">
               {t("publicPages.promise.six_commitments_in_writing_public")}
             </p>
@@ -107,7 +107,7 @@ export default async function PromisePage() {
           <div className="absolute bottom-0 left-0 right-0 h-1 bg-[var(--color-accent)]" />
         </section>
 
-        <section className="mx-auto grid w-full max-w-5xl gap-5 px-6 py-14 sm:px-8 lg:py-20">
+        <section className="mx-auto grid w-full max-w-5xl gap-5 px-5 py-14 sm:px-8 lg:py-20">
           {promises.map((promise) => (
             <article
               key={promise.number}

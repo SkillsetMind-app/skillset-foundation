@@ -31,7 +31,7 @@ export default async function CoursesPage() {
     return (
       <div className="page-shell">
         <SiteNav />
-        <main id="conteudo" className="mx-auto w-full max-w-7xl px-6 py-10 sm:px-8 sm:py-14">
+        <main id="conteudo" className="mx-auto w-full max-w-7xl px-5 py-10 sm:px-8 sm:py-14">
           <section className="marketplace-empty">
             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">{t("publicCourses.openingSoon")}</p>
             <h1 className="display-title mt-3 text-3xl text-[var(--color-ink)] sm:text-4xl">{t("publicCourses.firstCourses")}</h1>
@@ -50,7 +50,7 @@ export default async function CoursesPage() {
   return (
     <div className="page-shell">
       <SiteNav />
-      <main id="conteudo" className="mx-auto w-full max-w-7xl px-6 py-10 sm:px-8 sm:py-14">
+      <main id="conteudo" className="mx-auto w-full max-w-7xl px-5 py-10 sm:px-8 sm:py-14">
         <div className="marketplace-page-header mb-8">
           <div className="marketplace-page-header__grid">
             <div>
@@ -81,22 +81,29 @@ function MarketplaceSkeleton({ label }: { label: string }) {
     <section className="marketplace-section">
       <p role="status" className="sr-only">{label}</p>
       <div className="marketplace-filter-panel" aria-hidden="true">
-        <div className="marketplace-filter-list">
-          {[110, 120, 96, 104].map((width, index) => (
-            <div
-              key={index}
-              className="h-11 animate-pulse rounded-md bg-[var(--color-surface-strong)]"
-              style={{ width }}
-            />
-          ))}
+        {/* No celular o painel real abre fechado, atrás do botão "Filters":
+            a espera desenha o mesmo botão, para nada pular quando ele chega. */}
+        <div className="marketplace-filters-toggle">
+          <div className="h-4 w-20 animate-pulse rounded bg-[var(--color-surface-strong)]" />
         </div>
-        <div className="marketplace-controls">
-          {[0, 1].map((index) => (
-            <div key={index} className="grid gap-2">
-              <div className="h-3 w-12 animate-pulse rounded bg-[var(--color-surface-strong)]" />
-              <div className="h-11 animate-pulse rounded-md bg-[var(--color-surface-soft)]" />
-            </div>
-          ))}
+        <div className="marketplace-filter-body">
+          <div className="marketplace-filter-list">
+            {[110, 120, 96, 104].map((width, index) => (
+              <div
+                key={index}
+                className="h-11 animate-pulse rounded-md bg-[var(--color-surface-strong)]"
+                style={{ width }}
+              />
+            ))}
+          </div>
+          <div className="marketplace-controls">
+            {[0, 1].map((index) => (
+              <div key={index} className="grid gap-2">
+                <div className="h-3 w-12 animate-pulse rounded bg-[var(--color-surface-strong)]" />
+                <div className="h-11 animate-pulse rounded-md bg-[var(--color-surface-soft)]" />
+              </div>
+            ))}
+          </div>
         </div>
       </div>
       <CourseGridSkeleton />
