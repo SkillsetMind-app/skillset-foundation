@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import Link from "next/link";
 
-import { AuthShell } from "@/components/auth/auth-shell";
+import { AuthFrame } from "@/components/auth/auth-frame";
 import { UpdatePasswordForm } from "@/components/auth/update-password-form";
 import { getServerTranslation } from "@/lib/i18n/server";
 import { PASSWORD_RECOVERY_COOKIE } from "@/lib/auth/recovery-cookie";
@@ -21,23 +21,20 @@ export default async function ResetPasswordPage() {
   const cookieStore = await cookies();
   const recoveryVerified = cookieStore.has(PASSWORD_RECOVERY_COOKIE);
 
+  // A moldura do AuthShell, mas o titulo vem do formulario: so ele sabe se o
+  // link venceu, se a senha esta sendo escolhida ou se ja foi trocada.
   return (
-    <AuthShell
-      title={t("authFlow.recovery.choosePassword")}
-      description={t("authFlow.recovery.pageDescription")}
-      footer={
-        <>
-          {t("auth.forgot.footerPrompt")}{" "}
-          <Link
-            href="/auth?mode=signin"
-            className="font-semibold text-[var(--color-primary)]"
-          >
-            {t("auth.forgot.footerLink")}
-          </Link>
-        </>
-      }
-    >
+    <AuthFrame homeLabel={t("auth.page.backToHome")}>
       <UpdatePasswordForm recoveryVerified={recoveryVerified} />
-    </AuthShell>
+      <div className="auth-footer">
+        {t("auth.forgot.footerPrompt")}{" "}
+        <Link
+          href="/auth?mode=signin"
+          className="font-semibold text-[var(--color-primary)]"
+        >
+          {t("auth.forgot.footerLink")}
+        </Link>
+      </div>
+    </AuthFrame>
   );
 }

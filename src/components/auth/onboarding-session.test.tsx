@@ -90,7 +90,9 @@ async function mount() {
   });
   expect(screen.getByTestId("session")).toHaveTextContent("authenticated:student");
   expect(screen.queryByText("Teacher workspace")).not.toBeInTheDocument();
-  await screen.findByText("onboarding.streamlinedTitle");
+  // O titulo da ativacao subiu para o h1 da pagina; a tela curta se reconhece
+  // pelo botao que so ela tem.
+  await screen.findByRole("button", { name: "onboarding.activateTeaching" });
 }
 
 function activate() {

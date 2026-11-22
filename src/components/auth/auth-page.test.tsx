@@ -1,4 +1,5 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { renderToString } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AuthPage } from "@/components/auth/auth-page";
@@ -211,6 +212,31 @@ describe("AuthPage continues an existing verified session", () => {
     fireEvent.click(screen.getByRole("button", { name: "Wrong email? Change it" }));
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Sign in as a learner.");
     expect(mocks.getUserProfile).not.toHaveBeenCalled();
+  });
+
+  // A-12: "Sign in as a learner." seguia em cima de "This link has expired",
+  // que vinha num cartao com um segundo titulo.
+  it("turns an expired confirmation link into the page heading, and back", async () => {
+    mocks.auth = { status: "unauthenticated", user: null };
+    mocks.searchParams = new URLSearchParams("mode=signin&error=confirm_expired&path=student");
+    renderAuth();
+
+    expect(screen.getByRole("heading", { level: 1, name: "This link has expired" })).toBeInTheDocument();
+    expect(screen.getAllByRole("heading")).toHaveLength(1);
+
+    fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Sign in as a learner.");
+    await waitFor(() => expect(mocks.getPendingSecondFactor).toHaveBeenCalledTimes(1));
+  });
+
+  // Antes do JavaScript (HTML do servidor) o titulo da pagina ainda e o do
+  // formulario: a tela do link vencido mantem o seu ate a pagina assumir.
+  it("keeps the expired-link heading in the server HTML, before the page heading switches", () => {
+    mocks.auth = { status: "unauthenticated", user: null };
+    mocks.searchParams = new URLSearchParams("mode=signin&error=confirm_expired&path=student");
+    const html = renderToString(<I18nProvider initialLocale="en"><AuthPage /></I18nProvider>);
+
+    expect(html).toMatch(/<h2[^>]*>This link has expired<\/h2>/);
   });
 
   it("keeps callback errors visible even when another verified session exists", async () => {

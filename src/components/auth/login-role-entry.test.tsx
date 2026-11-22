@@ -73,8 +73,8 @@ describe("entrada de login por papel", () => {
     ],
     [
       "mode=signin&path=teacher",
-      "Sign in as an educator.",
-      "Entra como educador.",
+      "Sign in as a teacher.",
+      "Entra como profesor.",
     ],
     [
       "mode=signup&path=student",
@@ -83,8 +83,8 @@ describe("entrada de login por papel", () => {
     ],
     [
       "mode=signup&path=teacher",
-      "Create your educator account.",
-      "Crea tu cuenta de educador.",
+      "Create your teacher account.",
+      "Crea tu cuenta de profesor.",
     ],
   ])("o titulo diz o papel em %s (EN e ES)", (query, emIngles, emEspanhol) => {
     renderAt(query);
@@ -98,7 +98,7 @@ describe("entrada de login por papel", () => {
   });
 
   it.each([
-    ["student", "teacher", "Are you an educator? Sign in here"],
+    ["student", "teacher", "Are you a teacher? Sign in here"],
     ["teacher", "student", "Are you a learner? Sign in here"],
   ])(
     "de %s oferece a troca para %s sem perder o destino capturado",
@@ -126,15 +126,20 @@ describe("entrada de login por papel", () => {
     expect(mocks.signInWithGoogle).not.toHaveBeenCalled();
   });
 
-  it("com a flag ligada, o Google abre o formulario e leva papel e destino", () => {
+  // A mesma ordem do cadastro: e-mail primeiro, "ou", Google por ultimo.
+  it("com a flag ligada, o Google vem depois do e-mail e leva papel e destino", () => {
     mocks.googleEnabled = true;
     const view = renderAt(`mode=signin&path=teacher&returnTo=${checkoutEncoded}`);
 
     const google = screen.getByRole("button", { name: /Continue with Google/ });
     const email = view.container.querySelector('input[type="email"]')!;
+    const signIn = screen.getByRole("button", { name: "Sign in" });
     expect(screen.getByText("or")).toBeInTheDocument();
     expect(
-      google.compareDocumentPosition(email) & Node.DOCUMENT_POSITION_FOLLOWING,
+      email.compareDocumentPosition(google) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      signIn.compareDocumentPosition(google) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
 
     fireEvent.click(google);
@@ -142,5 +147,19 @@ describe("entrada de login por papel", () => {
     expect(mocks.signInWithGoogle).toHaveBeenCalledWith(
       `/loading?next=welcome&path=teacher&returnTo=${checkoutEncoded}`,
     );
+  });
+
+  // So o botao clicado diz que esta trabalhando; os dois seguem travados.
+  it("clicar no Google muda so o rotulo do Google e trava os dois botoes", () => {
+    mocks.googleEnabled = true;
+    renderAt("mode=signin&path=student");
+
+    fireEvent.click(screen.getByRole("button", { name: /Continue with Google/ }));
+
+    const google = screen.getByRole("button", { name: "Opening Google..." });
+    const signIn = screen.getByRole("button", { name: "Sign in" });
+    expect(google).toBeDisabled();
+    expect(signIn).toBeDisabled();
+    expect(screen.queryByRole("button", { name: "Signing in..." })).toBeNull();
   });
 });

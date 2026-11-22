@@ -182,10 +182,10 @@ describe("payment checkout localization with real dictionaries", () => {
     const view = mount(<UpgradeModal open planId="pro" cycle="monthly" onClose={onClose} />);
     await screen.findByTestId("embedded-checkout-fixture");
     const initial = mocks.provider.mock.calls.at(-1)![0];
-    expect(screen.getByRole("dialog", { name: "Confirma la mejora de tu plan" })).toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: "Confirma tu plan" })).toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: "Cerrar" })).toHaveLength(2);
     fireEvent.click(screen.getByText("EN"));
-    expect(screen.getByRole("dialog", { name: "Confirm your upgrade" })).toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: "Confirm your plan" })).toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: "Close upgrade" })).toHaveLength(2);
     expect(mocks.provider.mock.calls.at(-1)![0].options).toBe(initial.options);
     expect(mocks.fetch).toHaveBeenCalledTimes(1);

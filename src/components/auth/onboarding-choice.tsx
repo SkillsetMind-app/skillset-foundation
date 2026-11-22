@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
+import { usePageHeading } from "@/components/auth/page-heading";
 import {
   TurnstileWidget,
   isCaptchaEnabled,
@@ -309,11 +310,13 @@ export function OnboardingChoice() {
           </p>
           <p className="mt-1">{t("onboarding.emailVerificationDesc")}</p>
         </div>
+        {/* "Required" e aviso, nao erro: as cores de aviso da plataforma (como
+            na aba Seguranca), no lugar do rosa do vermelho antigo com dourado. */}
         <span
           className={`shrink-0 rounded-chip px-2 py-1 text-[10px] font-bold uppercase tracking-[0.14em] ${
             emailVerified
               ? "bg-[rgba(26,54,93,0.08)] text-[var(--color-primary)]"
-              : "bg-[rgba(178,34,52,0.08)] text-[var(--color-accent-fg)]"
+              : "bg-[var(--color-warning-soft)] text-[var(--color-warning-fg)]"
           }`}
         >
           {emailVerified ? t("onboarding.verified") : t("onboarding.required")}
@@ -329,11 +332,13 @@ export function OnboardingChoice() {
               />
             </div>
           ) : null}
+          {/* Os dois em contorno e 14px: o botao cheio da tela e o que ativa
+              (ou continua). "I verified my email" cheio competia com ele. */}
           <button
             type="button"
             onClick={handleSendVerification}
             disabled={isSendingVerification || captchaPending}
-            className="button-outline px-4 py-2 text-xs disabled:opacity-60"
+            className="button-outline px-4 py-2 text-sm disabled:opacity-60"
           >
             {t("onboarding.sendVerification")}
           </button>
@@ -341,7 +346,7 @@ export function OnboardingChoice() {
             type="button"
             onClick={handleRefreshVerification}
             disabled={isSendingVerification}
-            className="button-solid px-4 py-2 text-xs disabled:opacity-60"
+            className="button-outline px-4 py-2 text-sm disabled:opacity-60"
           >
             {t("onboarding.iVerified")}
           </button>
@@ -522,6 +527,20 @@ export function OnboardingChoice() {
     }
   }
 
+  // A ativacao curta assume o titulo e a descricao da pagina: o padrao de
+  // /onboarding ("Set up your SkillsetMind profile.") fala de montar um perfil
+  // que ela nao monta. Decidido pelo perfil carregado, nao pelo endereco: o
+  // cadastro de 3 passos tambem abre com ?path=teacher. Sem o cartao do e-mail
+  // (ja verificado), "verifique seu e-mail" seria um pedido sem botao.
+  const streamlinedDescriptionKey = askEmailVerification
+    ? "onboarding.streamlinedDesc"
+    : "onboarding.streamlinedDescVerified";
+  const headingOnPage = usePageHeading(
+    !isBootstrapping && streamlinedTeacherActivation
+      ? { titleKey: "onboarding.streamlinedTitle", descriptionKey: streamlinedDescriptionKey }
+      : null,
+  );
+
   if (isBootstrapping) {
     // O mesmo giro e a mesma frase do fallback de /onboarding, que vem logo
     // antes: antes eram duas esperas seguidas com cara e texto diferentes.
@@ -529,19 +548,24 @@ export function OnboardingChoice() {
   }
 
   if (streamlinedTeacherActivation) {
+    // Por que "Activate teaching" esta apagado. A trava continua a mesma; so
+    // passa a ser dita, na mesma frase que o clique mostraria.
+    const activateBlockedReason = !emailVerified
+      ? t("onboarding.errorVerifyEmail")
+      : !payoutCountryAnswered
+        ? t("onboarding.payoutCountryRequired")
+        : "";
+
     return (
       <div className="mt-6 grid gap-5">
+        {/* O titulo e a descricao moram no topo da pagina (o cartao que os
+            repetia saiu); solta, sem a pagina, a tela mostra a descricao. */}
+        {headingOnPage ? null : (
+          <p className="text-sm leading-6 text-[var(--color-ink-soft)]">
+            {t(streamlinedDescriptionKey)}
+          </p>
+        )}
         {askPayoutCountry ? payoutCountryField : null}
-        <div className="rounded-lg border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
-          <p className="font-semibold text-[var(--color-ink)]">
-            {t("onboarding.streamlinedTitle")}
-          </p>
-          {/* Sem o cartao do e-mail (ja verificado), "verifique seu e-mail"
-              seria um pedido sem botao. */}
-          <p className="mt-1">
-            {t(askEmailVerification ? "onboarding.streamlinedDesc" : "onboarding.streamlinedDescVerified")}
-          </p>
-        </div>
 
         {askEmailVerification ? emailVerificationCard : null}
 
@@ -587,11 +611,20 @@ export function OnboardingChoice() {
             type="button"
             onClick={handleFinish}
             disabled={isSaving || !emailVerified || !payoutCountryAnswered}
+            aria-describedby={activateBlockedReason ? "activation-blocked-reason" : undefined}
             className="button-solid button-lg disabled:opacity-60"
           >
             {isSaving ? t("onboarding.activating") : t("onboarding.activateTeaching")}
           </button>
         </div>
+        {activateBlockedReason ? (
+          <p
+            id="activation-blocked-reason"
+            className="-mt-2 text-sm leading-6 text-[var(--color-ink-soft)]"
+          >
+            {activateBlockedReason}
+          </p>
+        ) : null}
       </div>
     );
   }
@@ -688,13 +721,13 @@ export function OnboardingChoice() {
                 value={displayName}
                 onChange={(event) => setDisplayName(event.target.value)}
                 placeholder={t("onboarding.publicNamePlaceholder")}
-                className="rounded-md border border-[var(--color-line)] bg-white px-3.5 py-2.5 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
+                className="field-input"
               />
             </label>
 
             <label className="grid gap-1.5 text-sm font-semibold text-[var(--color-ink)]">
               {t("onboarding.username")}
-              <div className="flex overflow-hidden rounded-md border border-[var(--color-line)] bg-white focus-within:border-[var(--color-primary-light)]">
+              <div className="flex overflow-hidden rounded-md border-[1.5px] border-[var(--color-field-border)] bg-[var(--color-surface-soft)] focus-within:border-[var(--color-primary)] focus-within:bg-[var(--color-surface)]">
                 <span className="grid place-items-center border-r border-[var(--color-line)] px-3 text-sm font-semibold text-[var(--color-ink-soft)]">
                   @
                 </span>
@@ -704,7 +737,7 @@ export function OnboardingChoice() {
                   onChange={(event) => setUsername(normalizeUsername(event.target.value))}
                   placeholder={t("onboarding.usernamePlaceholder")}
                   maxLength={32}
-                  className="min-w-0 flex-1 px-3.5 py-2.5 text-sm font-normal outline-none"
+                  className="min-w-0 flex-1 bg-transparent px-3.5 py-2.5 text-sm font-normal outline-none"
                 />
               </div>
             </label>
@@ -717,7 +750,7 @@ export function OnboardingChoice() {
               onChange={(event) => setBio(event.target.value)}
               placeholder={t("onboarding.bioPlaceholder")}
               rows={3}
-              className="resize-none rounded-md border border-[var(--color-line)] bg-white px-3.5 py-2.5 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
+              className="field-input resize-none"
             />
             <span className="text-xs font-normal text-[var(--color-ink-soft)]">
               {t("onboarding.bioCount").replace("{count}", String(bio.trim().length))}
@@ -729,7 +762,7 @@ export function OnboardingChoice() {
             <select
               value={timezone}
               onChange={(event) => setTimezone(event.target.value)}
-              className="rounded-md border border-[var(--color-line)] bg-white px-3.5 py-2.5 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
+              className="field-input"
             >
               {safeTimezoneOptions.map((option) => (
                 <option key={option} value={option}>
