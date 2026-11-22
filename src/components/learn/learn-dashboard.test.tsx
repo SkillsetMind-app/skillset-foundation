@@ -323,8 +323,8 @@ describe("LearnDashboard", () => {
     // O mesmo curso em "My courses" leva ao mesmo lugar, nao a capa.
     const card = within(screen.getByRole("region", { name: "My courses" }))
       .getByRole("heading", { level: 3, name: "Effective Communication" })
-      .closest("article") as HTMLElement;
-    expect(within(card).getByRole("link", { name: "Open" })).toHaveAttribute(
+      .closest("a") as HTMLElement;
+    expect(card).toHaveAttribute(
       "href",
       "/learn/courses/effective-communication?lesson=l4",
     );
@@ -340,11 +340,56 @@ describe("LearnDashboard", () => {
     // O cartao de "My courses" herda o destino de retomar.
     const card = within(region)
       .getByRole("heading", { level: 3, name: "Effective Communication" })
-      .closest("article") as HTMLElement;
-    expect(within(card).getByRole("link", { name: "Open" })).toHaveAttribute(
+      .closest("a") as HTMLElement;
+    expect(card).toHaveAttribute(
       "href",
       "/learn/courses/effective-communication?lesson=l4",
     );
+  });
+
+  it("o cartao inteiro e o link: sem botao 'Open', progresso dito uma vez, selo so fora do normal", async () => {
+    render(<LearnDashboard />);
+
+    const region = await screen.findByRole("region", { name: "My courses" });
+    // Antes: um botao cheio "Open" por cartao.
+    expect(within(region).queryByRole("link", { name: "Open" })).not.toBeInTheDocument();
+
+    const active = within(region)
+      .getByRole("heading", { level: 3, name: "Effective Communication" })
+      .closest("a") as HTMLElement;
+    // "50%" uma vez (o numero ao lado da barra), sem "50% COMPLETE" visivel.
+    expect(within(active).getAllByText("50%")).toHaveLength(1);
+    // Ativo e o normal: sem selo "Active"; no lugar, onde a pessoa parou.
+    expect(within(active).queryByText("Active")).not.toBeInTheDocument();
+    expect(within(active).getByText("Module 2 · Lesson 2")).toBeInTheDocument();
+
+    const done = within(region)
+      .getByRole("heading", { level: 3, name: "Brand Design Atelier" })
+      .closest("a") as HTMLElement;
+    expect(within(done).getByText("Completed")).toBeInTheDocument();
+  });
+
+  it("matricula estornada nao vira link: cartao parado com o selo do status", async () => {
+    fixtures.enrollments = [{ ...fixtures.base[0], status: "refunded" }];
+    render(<LearnDashboard />);
+
+    const region = await screen.findByRole("region", { name: "My courses" });
+    const title = within(region).getByRole("heading", { level: 3, name: "Effective Communication" });
+    expect(title.closest("a")).toBeNull();
+    expect(within(title.closest("article") as HTMLElement).getByText("Refunded")).toBeInTheDocument();
+  });
+
+  it("'What's new' vazio nao aparece e nao empurra 'My courses' para baixo", async () => {
+    const saved = fixtures.notifications;
+    fixtures.notifications = [];
+    try {
+      render(<LearnDashboard />);
+      await screen.findByRole("region", { name: "My courses" });
+      expect(screen.queryByRole("region", { name: "What's new" })).not.toBeInTheDocument();
+      expect(screen.queryByText("Nothing new yet.")).not.toBeInTheDocument();
+    } finally {
+      fixtures.notifications = saved;
+    }
   });
 
   it("um curso fora do catalogo publico ainda retoma na aula: o painel busca so os cursos da pessoa, por id, uma vez", async () => {
@@ -382,7 +427,7 @@ describe("LearnDashboard", () => {
 
     const region = await screen.findByRole("region", { name: "My courses" });
     await waitFor(() =>
-      expect(within(region).getByRole("link", { name: "Open" })).toHaveAttribute(
+      expect(within(region).getByRole("link", { name: /Private Coaching Lab/ })).toHaveAttribute(
         "href",
         "/learn/courses/course-real?lesson=r2",
       ),
@@ -496,7 +541,7 @@ describe("LearnDashboard", () => {
     render(<LearnDashboard />);
 
     const region = await screen.findByRole("region", { name: "My courses" });
-    expect(within(region).getByRole("link", { name: "Open" })).toHaveAttribute(
+    expect(within(region).getByRole("link", { name: /Effective Communication/ })).toHaveAttribute(
       "href",
       "/learn/courses/effective-communication",
     );

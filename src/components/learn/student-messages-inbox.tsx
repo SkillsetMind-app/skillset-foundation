@@ -8,6 +8,7 @@ import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useAuth } from "@/components/auth/auth-provider";
 import { formatNotificationTime } from "@/components/account/notification-row";
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { InlineAlert } from "@/components/ui/inline-alert";
 import type { CourseMessage } from "@/domain/course-message";
 import {
   COURSE_MESSAGE_MAX_CHARS,
@@ -37,6 +38,13 @@ export function StudentMessagesInbox() {
   const courseParam = searchParams?.get("course") ?? null;
 
   const [messages, setMessages] = useState<CourseMessage[]>([]);
+  // Até a primeira leitura chegar a lista está "carregando", não "vazia":
+  // antes toda visita mostrava "No conversations yet" e depois trocava pelas
+  // conversas. Se a primeira leitura falha, o erro com "Try again" fica no
+  // lugar do vazio (uma falha não é "você não tem conversas").
+  const [ready, setReady] = useState(false);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [attempt, setAttempt] = useState(0);
   const [draft, setDraft] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [notice, setNotice] = useState("");
@@ -46,10 +54,30 @@ export function StudentMessagesInbox() {
       return;
     }
 
-    return subscribeToStudentMessages(user.uid, setMessages, () => {
-      setNotice("learnWave2.messages.loadError");
-    });
-  }, [user]);
+    let loaded = false;
+    return subscribeToStudentMessages(
+      user.uid,
+      (next) => {
+        loaded = true;
+        setMessages(next);
+        setReady(true);
+      },
+      () => {
+        // Falha numa releitura (o canal em tempo real recarrega) não apaga a
+        // lista que já está na tela: vira só o aviso.
+        if (loaded) {
+          setNotice("learnWave2.messages.loadError");
+        } else {
+          setLoadFailed(true);
+        }
+      },
+    );
+  }, [user, attempt]);
+
+  function retryLoad() {
+    setLoadFailed(false);
+    setAttempt((current) => current + 1);
+  }
 
   // Para o aluno, cada thread e um curso (a chave e curso + o proprio aluno).
   const threads = useMemo(() => groupCourseMessageThreads(messages), [messages]);
@@ -97,7 +125,25 @@ export function StudentMessagesInbox() {
         {backLabel}
       </Link>
 
-      {threads.length === 0 ? (
+      {loadFailed ? (
+        <section className="rounded-lg border fine-rule bg-white p-5">
+          <InlineAlert tone="error">{t("learnWave2.messages.loadError")}</InlineAlert>
+          <button type="button" onClick={retryLoad} className="button-outline mt-4 px-4 text-sm">
+            {t("learnWave2.messages.retry")}
+          </button>
+        </section>
+      ) : !ready ? (
+        <div aria-busy="true" className="grid gap-5 lg:grid-cols-[minmax(240px,320px)_1fr]">
+          <p className="sr-only" role="status">
+            {t("learnWave2.messages.loading")}
+          </p>
+          <div aria-hidden="true" className="grid content-start gap-2">
+            {[0, 1, 2].map((row) => (
+              <div key={row} className="h-[84px] animate-pulse rounded-md bg-[var(--color-surface-soft)]" />
+            ))}
+          </div>
+        </div>
+      ) : threads.length === 0 ? (
         <section className="rounded-lg border fine-rule bg-white px-6 py-10 text-center">
           <Inbox
             aria-hidden="true"
@@ -110,15 +156,16 @@ export function StudentMessagesInbox() {
           <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-[var(--color-ink-soft)]">
             {t("learnWave2.messages.emptyDetail")}
           </p>
-          {notice ? (
-            <p role="alert" className="mt-4 text-xs font-semibold text-[var(--color-primary)]">
-              {t(notice)}
-            </p>
-          ) : null}
         </section>
       ) : (
         <div className="grid gap-5 lg:grid-cols-[minmax(240px,320px)_1fr]">
-          <nav aria-label={t("learnWave2.messages.conversations")} className="grid content-start gap-2">
+          {/* No celular a lista ou a conversa: com uma aberta, a lista sai e a
+              conversa sobe (antes ela ficava embaixo de todas as outras). A
+              seta "All conversations" lá em cima volta para a lista. */}
+          <nav
+            aria-label={t("learnWave2.messages.conversations")}
+            className={`${selectedThread ? "hidden lg:grid" : "grid"} content-start gap-2`}
+          >
             {threads.map((thread) => {
               const isActive = selectedThread?.key === thread.key;
               const lastFromMe = user ? thread.lastMessage.senderId === user.uid : false;
@@ -202,9 +249,9 @@ export function StudentMessagesInbox() {
                   placeholder={t("learnWave2.messages.placeholder")}
                 />
                 {notice ? (
-                  <p role="alert" className="rounded-md bg-[var(--color-surface-soft)] px-3 py-2 text-xs font-semibold leading-5 text-[var(--color-primary)]">
+                  <InlineAlert tone="error" className="px-3 py-2 text-xs leading-5">
                     {t(notice)}
-                  </p>
+                  </InlineAlert>
                 ) : null}
                 <button
                   type="submit"
@@ -217,7 +264,8 @@ export function StudentMessagesInbox() {
               </form>
             </section>
           ) : (
-            <section className="rounded-lg border fine-rule bg-white p-5 text-sm leading-6 text-[var(--color-ink-soft)]">
+            // "Escolha à esquerda" só faz sentido com a lista ao lado.
+            <section className="hidden rounded-lg border fine-rule bg-white p-5 text-sm leading-6 text-[var(--color-ink-soft)] lg:block">
               {t("learnWave2.messages.pick")}
             </section>
           )}

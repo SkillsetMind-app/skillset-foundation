@@ -18,6 +18,8 @@ const mocks = vi.hoisted(() => ({
   searchParams: new URLSearchParams(),
   push: vi.fn(),
   messages: [] as unknown[],
+  // "data": a leitura chega na hora; "pending": ainda nao chegou; "error": falhou.
+  mode: "data" as "data" | "pending" | "error",
   subscriptions: 0,
   // Um objeto de usuario para a sessao inteira (objeto novo por render
   // reinscreve o efeito e entra em laco).
@@ -36,12 +38,13 @@ vi.mock("@/components/auth/auth-provider", () => ({
 
 vi.mock("@/lib/data/course-messages", () => ({
   subscribeToStudentMessages: vi.fn(
-    (_studentId: string, onNext: (messages: unknown[]) => void) => {
+    (_studentId: string, onNext: (messages: unknown[]) => void, onError: (error: Error) => void) => {
       mocks.subscriptions += 1;
       if (mocks.subscriptions > 20) {
         throw new Error("subscribeToStudentMessages chamado mais de 20 vezes: laco de render");
       }
-      onNext(mocks.messages);
+      if (mocks.mode === "data") onNext(mocks.messages);
+      if (mocks.mode === "error") onError(new Error("offline"));
       return vi.fn();
     },
   ),
@@ -85,7 +88,39 @@ describe("caixa de mensagens do aluno", () => {
   beforeEach(() => {
     mocks.push.mockReset();
     mocks.subscriptions = 0;
+    mocks.mode = "data";
     vi.mocked(sendCourseMessage).mockClear();
+  });
+
+  it("antes da primeira leitura mostra carregando, nao 'No conversations yet'", () => {
+    mocks.mode = "pending";
+    renderInbox("", []);
+
+    expect(screen.getByRole("status")).toHaveTextContent("Loading your conversations...");
+    expect(screen.queryByText("No conversations yet")).not.toBeInTheDocument();
+  });
+
+  it("se a primeira leitura falha: erro com 'Try again' no lugar do vazio, e o retry le de novo", () => {
+    mocks.mode = "error";
+    renderInbox("", []);
+
+    expect(screen.getByRole("alert")).toHaveTextContent("We could not load your messages.");
+    expect(screen.queryByText("No conversations yet")).not.toBeInTheDocument();
+
+    mocks.mode = "data";
+    mocks.messages = twoCourses;
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(screen.getByRole("navigation", { name: "Conversations" })).toBeInTheDocument();
+  });
+
+  it("no celular, com uma conversa aberta, a lista sai (so volta no computador)", () => {
+    renderInbox("course=course-1");
+
+    const list = screen.getByRole("navigation", { name: "Conversations", hidden: true });
+    expect(list).toHaveClass("hidden", "lg:grid");
+    expect(screen.getByRole("region", { name: "Conversation: Leadership" })).toBeInTheDocument();
   });
 
   it("uma conversa por curso, a mais recente primeiro, dizendo quem falou por ultimo", () => {

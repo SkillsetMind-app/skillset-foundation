@@ -1,9 +1,10 @@
 "use client";
 
 import { FileText } from "lucide-react";
+import { useState } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
-import { ProtectedAssetDownload } from "@/components/shared/protected-asset-preview";
+import { ProtectedAssetDownload, ProtectedAssetPreview } from "@/components/shared/protected-asset-preview";
 import type { CourseAsset } from "@/domain/course-asset";
 import { compareCourseAssets, formatCourseAssetSize, getCourseAssetTitle } from "@/domain/course-asset";
 import type { CourseModule, Lesson } from "@/domain/learning";
@@ -62,6 +63,7 @@ export function CourseMaterialsPanel({
   return (
     <section className="member-resource-panel">
       <div className="flex flex-wrap items-start justify-between gap-3">
+        {/* Sem o selo "N files": a aba "Materials N" logo acima já diz. */}
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
             {t("learn.classroom.resources.title")}
@@ -70,10 +72,6 @@ export function CourseMaterialsPanel({
             {t("learn.classroom.resources.heading")}
           </h2>
         </div>
-        <span className="member-meta-chip">
-          <FileText size={14} aria-hidden />
-          {t(`learn.classroom.resources.${groups.count === 1 ? "fileOne" : "fileMany"}`).replace("{count}", () => String(groups.count))}
-        </span>
       </div>
       {isLoading ? (
         <p className="mt-4 rounded-md bg-white px-3 py-2 text-sm text-[var(--color-ink-soft)]">
@@ -132,15 +130,67 @@ export function MaterialFileList({ files, large = false }: { files: CourseAsset[
                 <MaterialAppHint fileName={asset.fileName} />
               </div>
             </div>
+            {/* Botão cheio só na aula que é só o arquivo (`large`). Na lista,
+                contorno: dez arquivos eram dez botões cheios iguais. */}
             <ProtectedAssetDownload
               asset={asset}
               label={t("courseMedia.preview.downloadNamed").replace("{title}", () => title)}
-              className={large ? "button-solid button-lg w-full sm:w-auto" : "button-solid px-4 text-sm"}
+              className={large ? "button-solid button-lg w-full sm:w-auto" : "button-outline px-4 text-sm"}
             />
           </li>
         );
       })}
     </ul>
+  );
+}
+
+/**
+ * Ações de um anexo dentro da aula: "Preview" e "Download", discretos. A
+ * prévia (PDF de 320px, imagem, vídeo extra) só monta quando a pessoa pede:
+ * antes cada anexo já vinha aberto e três PDFs somavam ~1.100px de documento
+ * embutido, além de um pedido de link por arquivo ao abrir a aula.
+ */
+export function LessonAssetActions({ asset }: { asset: CourseAsset }) {
+  const { t } = useTranslation();
+  const [open, setOpen] = useState(false);
+  const title = getCourseAssetTitle(asset);
+  const previewable = /^(video|image)\//.test(asset.contentType) || asset.contentType === "application/pdf";
+
+  if (open) {
+    return (
+      <>
+        <button
+          type="button"
+          aria-expanded="true"
+          onClick={() => setOpen(false)}
+          className="button-outline mt-3 px-4 py-2 text-xs"
+        >
+          {t("courseMedia.preview.hide")}
+        </button>
+        <ProtectedAssetPreview asset={asset} />
+      </>
+    );
+  }
+
+  return (
+    <div className="mt-3 flex flex-wrap gap-2">
+      {previewable ? (
+        <button
+          type="button"
+          aria-expanded="false"
+          aria-label={t("courseMedia.preview.showNamed").replace("{title}", () => title)}
+          onClick={() => setOpen(true)}
+          className="button-outline px-4 py-2 text-xs"
+        >
+          {t("courseMedia.preview.show")}
+        </button>
+      ) : null}
+      <ProtectedAssetDownload
+        asset={asset}
+        label={t("courseMedia.preview.downloadNamed").replace("{title}", () => title)}
+        className="button-outline px-4 py-2 text-xs"
+      />
+    </div>
   );
 }
 

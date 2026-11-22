@@ -100,7 +100,7 @@ describe("certificate interface locale does not rewrite issued documents", () =>
 
   it("keeps CertificateDocument HTML identical across locale changes while translating controls", async () => {
     const view = show(<CertificatePrintView certificateId={certificate.id} />);
-    expect(await screen.findByRole("button", { name: "Descargar PDF" })).toBeVisible();
+    expect(await screen.findByRole("button", { name: "Imprimir o guardar como PDF" })).toBeVisible();
     const document = view.container.querySelector(".cert-doc")!;
     const originalHtml = document.outerHTML;
     expect(document).toHaveTextContent("Certificate of Completion");
@@ -111,10 +111,26 @@ describe("certificate interface locale does not rewrite issued documents", () =>
     expect(new URL(linkedIn).searchParams.get("name")).toBe(certificate.courseTitle);
     expect(new URL(linkedIn).searchParams.get("certId")).toBe(certificate.verificationCode);
     changeLanguage();
-    expect(screen.getByRole("button", { name: "Download PDF" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Print or save as PDF" })).toBeVisible();
     expect(view.container.querySelector(".cert-doc")!.outerHTML).toBe(originalHtml);
     expect(screen.getByRole("link", { name: "Add to LinkedIn" })).toHaveAttribute("href", linkedIn);
     expect(mocks.get).toHaveBeenCalledTimes(1);
+  });
+
+  it("copies the public verification link with a visible confirmation, and reserves the document's space while loading", async () => {
+    const writeText = vi.fn((_text: string) => Promise.resolve());
+    Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+    let resolve!: (value: Certificate) => void;
+    mocks.get.mockReturnValue(new Promise((done) => { resolve = done; }));
+    const view = show(<CertificatePrintView certificateId={certificate.id} />);
+    // Loading: the certificate paper is already there (same box), no jump when it arrives.
+    expect(screen.getByRole("status")).toHaveTextContent("Preparando tu certificado...");
+    expect(view.container.querySelector(".cert-doc .cert-doc-content")).not.toBeNull();
+    await act(async () => { resolve(certificate); });
+
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Copiar enlace de verificación" })); });
+    expect(writeText.mock.calls[0][0].endsWith(`/verify?code=${encodeURIComponent(certificate.verificationCode)}`)).toBe(true);
+    expect(screen.getByRole("status")).toHaveTextContent("Enlace copiado");
   });
 
   it.each(["missing", "revoked", "foreign", "error"])("localizes %s print state and does not show a document", async (state) => {
@@ -123,7 +139,7 @@ describe("certificate interface locale does not rewrite issued documents", () =>
     const view = show(<CertificatePrintView certificateId={certificate.id} />);
     expect(await screen.findByRole("heading", { name: state === "error" ? "No pudimos cargar este certificado." : "Certificado no disponible." })).toBeVisible();
     expect(view.container.querySelector(".cert-doc")).toBeNull();
-    expect(screen.queryByRole("button", { name: "Descargar PDF" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Imprimir o guardar como PDF" })).not.toBeInTheDocument();
   });
 
   it("localizes public verification validation and preserves typed codes", async () => {

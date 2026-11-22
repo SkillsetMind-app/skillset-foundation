@@ -25,6 +25,7 @@ import { CourseMessagesPanel } from "@/components/learn/course-messages-panel";
 import {
   CourseMaterialsPanel,
   groupReleasedMaterials,
+  LessonAssetActions,
   MaterialAppHint,
   MaterialFileList,
 } from "@/components/learn/course-materials-panel";
@@ -2414,14 +2415,16 @@ function LessonAssetList({
               </div>
               <MaterialAppHint fileName={asset.fileName} />
             </div>
-            {/* "Preview" só vale para vídeo (a aula de amostra). Material
-                marcado no passado continua só de matriculado. */}
-            <span className="rounded-chip bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--color-primary)]">
-              {t(asset.isPreview && isVideoAssetKind(asset.kind) ? "learn.classroom.resources.preview" : "learn.classroom.resources.enrolled")}
-            </span>
+            {/* "Preview" só vale para vídeo (a aula de amostra). O selo
+                "Enrolled" saiu: valia para todo anexo e não dizia nada. */}
+            {asset.isPreview && isVideoAssetKind(asset.kind) ? (
+              <span className="rounded-chip bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--color-primary)]">
+                {t("learn.classroom.resources.preview")}
+              </span>
+            ) : null}
           </div>
 
-          <ProtectedAssetPreview asset={asset} />
+          <LessonAssetActions asset={asset} />
         </div>
       ))}
     </div>

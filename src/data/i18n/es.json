@@ -4464,6 +4464,9 @@
       "openFile": "Abrir archivo",
       "download": "Descargar",
       "downloadNamed": "Descargar {title}",
+      "show": "Vista previa",
+      "showNamed": "Vista previa de {title}",
+      "hide": "Ocultar vista previa",
       "openWith": {
         "xmind": "Para abrirlo, usa la app gratuita XMind.",
         "mm": "Para abrirlo, usa la app gratuita FreeMind o Freeplane."
@@ -5626,7 +5629,10 @@
     "print": {
       "back": "← Volver a credenciales",
       "linkedIn": "Añadir a LinkedIn",
-      "download": "Descargar PDF",
+      "download": "Imprimir o guardar como PDF",
+      "copyLink": "Copiar enlace de verificación",
+      "copied": "Enlace copiado",
+      "copyFailed": "No se pudo copiar el enlace.",
       "loading": "Preparando tu certificado...",
       "loadingDetail": "SkillsetMind está cargando el registro de esta credencial.",
       "missing": "Certificado no disponible.",
@@ -5654,7 +5660,9 @@
       "placeholder": "Escribe a tu profesor...",
       "sending": "Enviando...",
       "send": "Enviar",
-      "pick": "Elige un curso a la izquierda para leer la conversación."
+      "pick": "Elige un curso a la izquierda para leer la conversación.",
+      "loading": "Cargando tus conversaciones...",
+      "retry": "Reintentar"
     },
     "events": {
       "eyebrow": "Agenda del curso",

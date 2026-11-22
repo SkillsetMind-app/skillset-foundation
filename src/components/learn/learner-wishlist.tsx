@@ -115,7 +115,7 @@ export function LearnerWishlist() {
         <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
           {t("learnWave2.wishlistHub.eyebrow")}
         </p>
-        <h2 className="display-title mt-3 max-w-2xl text-4xl leading-tight text-[var(--color-primary)]">
+        <h2 className="mt-3 max-w-2xl text-lg font-semibold text-[var(--color-primary)]">
           {t("learnWave2.wishlistHub.emptyTitle")}
         </h2>
         <p className="mt-4 max-w-2xl text-sm leading-7 text-[var(--color-ink-soft)]">
@@ -153,7 +153,7 @@ export function LearnerWishlist() {
                   <p className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--color-accent-fg)]">
                     {course.category}
                   </p>
-                  <h3 className="display-title mt-3 text-3xl leading-tight text-[var(--color-primary)]">
+                  <h3 className="mt-3 text-lg font-semibold leading-6 text-[var(--color-primary)]">
                     {course.title}
                   </h3>
                   <p className="mt-3 text-sm leading-7 text-[var(--color-ink-soft)]">
@@ -182,7 +182,7 @@ export function LearnerWishlist() {
                 <div className="grid size-12 place-items-center rounded-md bg-[var(--color-surface-soft)] text-[var(--color-primary)]">
                   <BookmarkX aria-hidden="true" size={22} />
                 </div>
-                <h3 className="display-title mt-4 text-3xl text-[var(--color-primary)]">
+                <h3 className="mt-4 text-lg font-semibold text-[var(--color-primary)]">
                   {t("learnWave2.wishlistHub.unavailable")}
                 </h3>
                 <p className="mt-3 text-sm leading-7 text-[var(--color-ink-soft)]">

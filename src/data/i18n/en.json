@@ -4464,6 +4464,9 @@
       "openFile": "Open file",
       "download": "Download",
       "downloadNamed": "Download {title}",
+      "show": "Preview",
+      "showNamed": "Preview {title}",
+      "hide": "Hide preview",
       "openWith": {
         "xmind": "To open it, use the free app XMind.",
         "mm": "To open it, use the free app FreeMind or Freeplane."
@@ -5626,7 +5629,10 @@
     "print": {
       "back": "← Back to credentials",
       "linkedIn": "Add to LinkedIn",
-      "download": "Download PDF",
+      "download": "Print or save as PDF",
+      "copyLink": "Copy verification link",
+      "copied": "Link copied",
+      "copyFailed": "Could not copy the link.",
       "loading": "Preparing your certificate...",
       "loadingDetail": "SkillsetMind is loading this credential record.",
       "missing": "Certificate not available.",
@@ -5654,7 +5660,9 @@
       "placeholder": "Write to your teacher...",
       "sending": "Sending...",
       "send": "Send",
-      "pick": "Pick a course on the left to read the conversation."
+      "pick": "Pick a course on the left to read the conversation.",
+      "loading": "Loading your conversations...",
+      "retry": "Try again"
     },
     "events": {
       "eyebrow": "Course agenda",

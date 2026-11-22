@@ -2,13 +2,6 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import {
-  Award,
-  CheckCircle2,
-  Clock3,
-  ShieldCheck,
-  type LucideIcon,
-} from "lucide-react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { useAuth } from "@/components/auth/auth-provider";
@@ -110,7 +103,7 @@ export function LearnCredentialsHub() {
         <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
           {t("learnWave2.credentials.brand")}
         </p>
-        <h2 className="display-title mt-3 text-3xl text-[var(--color-ink)]">
+        <h2 className="mt-3 text-lg font-semibold text-[var(--color-primary)]">
           {t("learnWave2.credentials.emptyTitle")}
         </h2>
         <p className="mt-4 max-w-2xl text-sm leading-7 text-[var(--color-ink-soft)]">
@@ -125,106 +118,48 @@ export function LearnCredentialsHub() {
     );
   }
 
+  // Um cabeçalho só, o do shell (o h1 da página). Antes vinham mais dois por
+  // cima dos cartões: um destaque com três quadros de números e o título da
+  // seção, e os filtros logo abaixo repetiam as mesmas contagens.
   return (
-    <div className="grid gap-8">
-      <section className="credential-hero dash-card dash-card--strong p-5 sm:p-7">
-        <div className="relative z-[1] flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-[0.24em] text-[var(--color-accent-fg)]">
-              {t("learnWave2.credentials.brand")}
-            </p>
-            <h2 className="display-title mt-3 max-w-3xl text-3xl leading-[1.03] text-[var(--color-primary)] sm:text-4xl">
-              {t("learnWave2.credentials.title")}
-            </h2>
-            <p className="mt-4 max-w-2xl text-base leading-8 text-[var(--color-ink-soft)]">
-              {t("learnWave2.credentials.description")}
-            </p>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-3 lg:min-w-[420px]">
-            <CredentialMetric
-              icon={Award}
-              label={t("learnWave2.credentials.tracks")}
-              value={new Intl.NumberFormat(locale).format(candidates.length)}
-            />
-            <CredentialMetric
-              icon={Clock3}
-              label={t("learnWave2.credentials.ready")}
-              value={new Intl.NumberFormat(locale).format(eligibleCount)}
-            />
-            <CredentialMetric
-              icon={ShieldCheck}
-              label={t("learnWave2.credentials.issued")}
-              value={new Intl.NumberFormat(locale).format(issuedCount)}
-            />
-          </div>
+    <div className="grid gap-5">
+      <div>
+        <div className="credential-filter-tabs" role="group" aria-label={t("learnWave2.credentials.filters")}>
+          {[
+            ["all", t("learnWave2.credentials.all").replace("{count}", () => new Intl.NumberFormat(locale).format(candidates.length))],
+            ["issued", t("learnWave2.credentials.issuedCount").replace("{count}", () => new Intl.NumberFormat(locale).format(issuedCount))],
+            ["eligible", t("learnWave2.credentials.readyCount").replace("{count}", () => new Intl.NumberFormat(locale).format(eligibleCount))],
+            ["in_progress", t("learnWave2.credentials.progressCount").replace("{count}", () => new Intl.NumberFormat(locale).format(inProgressCount))],
+          ].map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              aria-pressed={activeFilter === value}
+              className={activeFilter === value ? "is-active" : undefined}
+              onClick={() => setActiveFilter(value as typeof activeFilter)}
+            >
+              {label}
+            </button>
+          ))}
         </div>
-      </section>
+      </div>
 
-      <section className="dash-card dash-card--strong p-5 sm:p-6">
-        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[var(--color-line)] pb-5">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-              {t("learnWave2.credentials.tracksTitle")}
+      <div className="grid gap-4 lg:grid-cols-2">
+        {visibleCandidates.length ? (
+          visibleCandidates.map((candidate) => (
+            <CredentialCard key={candidate.enrollmentId} candidate={candidate} />
+          ))
+        ) : (
+          <div className="rounded-lg border border-dashed border-[var(--color-line-strong)] bg-[var(--color-surface-soft)] p-6 lg:col-span-2">
+            <p className="text-sm font-semibold text-[var(--color-ink)]">
+              {t("learnWave2.credentials.noMatch")}
             </p>
-            <h2 className="display-title mt-2 text-3xl text-[var(--color-primary)]">
-              {t("learnWave2.credentials.progressTitle")}
-            </h2>
+            <p className="mt-2 text-sm leading-7 text-[var(--color-ink-soft)]">
+              {t("learnWave2.credentials.noMatchDetail")}
+            </p>
           </div>
-          <div className="credential-filter-tabs" role="group" aria-label={t("learnWave2.credentials.filters")}>
-            {[
-              ["all", t("learnWave2.credentials.all").replace("{count}", () => new Intl.NumberFormat(locale).format(candidates.length))],
-              ["issued", t("learnWave2.credentials.issuedCount").replace("{count}", () => new Intl.NumberFormat(locale).format(issuedCount))],
-              ["eligible", t("learnWave2.credentials.readyCount").replace("{count}", () => new Intl.NumberFormat(locale).format(eligibleCount))],
-              ["in_progress", t("learnWave2.credentials.progressCount").replace("{count}", () => new Intl.NumberFormat(locale).format(inProgressCount))],
-            ].map(([value, label]) => (
-              <button
-                key={value}
-                type="button"
-                aria-pressed={activeFilter === value}
-                className={activeFilter === value ? "is-active" : undefined}
-                onClick={() => setActiveFilter(value as typeof activeFilter)}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="mt-5 grid gap-4 lg:grid-cols-2">
-          {visibleCandidates.length ? (
-            visibleCandidates.map((candidate) => (
-              <CredentialCard key={candidate.enrollmentId} candidate={candidate} />
-            ))
-          ) : (
-            <div className="rounded-lg border border-dashed border-[var(--color-line-strong)] bg-[var(--color-surface-soft)] p-6 lg:col-span-2">
-              <p className="text-sm font-semibold text-[var(--color-ink)]">
-                {t("learnWave2.credentials.noMatch")}
-              </p>
-              <p className="mt-2 text-sm leading-7 text-[var(--color-ink-soft)]">
-                {t("learnWave2.credentials.noMatchDetail")}
-              </p>
-            </div>
-          )}
-        </div>
-      </section>
-    </div>
-  );
-}
-
-function CredentialMetric({
-  icon: Icon,
-  label,
-  value,
-}: {
-  icon: LucideIcon;
-  label: string;
-  value: string;
-}) {
-  return (
-    <div className="credential-metric-card">
-      <Icon aria-hidden="true" size={16} strokeWidth={2} />
-      <span>{label}</span>
-      <strong>{value}</strong>
+        )}
+      </div>
     </div>
   );
 }
@@ -277,54 +212,48 @@ function CredentialCard({ candidate }: { candidate: CredentialCandidate }) {
     }
   }
 
+  // O estado uma vez: um selo e a barra com o número no fim da linha. Antes o
+  // cartão dizia o progresso três ou quatro vezes (selo, frase, quadro
+  // "PROGRESS" com ícone, barra e um "40%" de 24px). A frase só fica quando há
+  // algo a fazer ou a explicar: pronto para emitir, revogado, sem acesso.
+  const percent = Math.max(0, Math.min(100, candidate.progressPercent));
+  const detailKey = isEligible
+    ? "learnWave2.credentials.eligibleDetail"
+    : candidate.status === "revoked"
+      ? "learnWave2.credentials.revokedDetail"
+      : isUnavailable
+        ? "learnWave2.credentials.unavailableDetail"
+        : null;
+
   return (
-    <article className="credential-card rounded-lg border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-            {candidate.authorityLabel}
-          </p>
-          <h2 className="display-title mt-3 text-3xl text-[var(--color-ink)]">
-            {candidate.courseTitle}
-          </h2>
-        </div>
-        <span className="rounded-md bg-[var(--color-surface-soft)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-primary)]">
+    <article className="rounded-lg border border-[var(--color-line)] bg-white p-4 shadow-[var(--shadow-soft)] sm:p-5">
+      <div className="flex items-start justify-between gap-3">
+        <h2 className="text-lg font-semibold leading-6 text-[var(--color-primary)]">
+          {candidate.courseTitle}
+        </h2>
+        <span className="shrink-0 rounded-md bg-[var(--color-surface-soft)] px-2 py-1 text-[11px] font-bold uppercase tracking-[0.06em] text-[var(--color-primary)]">
           {t(`learnWave2.credentialStatus.${candidate.status}`)}
         </span>
       </div>
-      <p className="mt-4 text-sm leading-7 text-[var(--color-ink-soft)]">
-        {isEligible
-          ? t("learnWave2.credentials.eligibleDetail")
-          : isIssued
-            ? t("learnWave2.credentials.issuedDetail")
-          : candidate.status === "revoked"
-            ? t("learnWave2.credentials.revokedDetail")
-          : isUnavailable
-            ? t("learnWave2.credentials.unavailableDetail")
-          : t("learnWave2.credentials.progressDetail")}
-      </p>
-      <div className="mt-5 rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4">
-        <div className="flex items-center justify-between gap-4">
-          <p className="text-xs uppercase tracking-[0.14em] text-[var(--color-ink-soft)]">
-            {t("learnWave2.credentials.progress")}
-          </p>
-          <CheckCircle2
-            aria-hidden="true"
-            size={16}
-            className={isIssued ? "text-[var(--color-success-fg)]" : "text-[var(--color-primary-light)]"}
-          />
+      <div className="mt-4 flex items-center gap-2.5">
+        <div
+          role="progressbar"
+          aria-label={t("learnWave2.credentials.progress")}
+          aria-valuenow={percent}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          className="h-1.5 flex-1 overflow-hidden rounded-full bg-[rgba(26,54,93,0.12)]"
+        >
+          <div className="h-full rounded-full bg-[var(--color-accent)]" style={{ width: `${percent}%` }} />
         </div>
-        <div className="mt-3 h-2 overflow-hidden rounded-full bg-[rgba(26,54,93,0.12)]">
-          <div
-            className="h-full rounded-full bg-[var(--color-accent)]"
-            style={{ width: `${Math.max(0, Math.min(100, candidate.progressPercent))}%` }}
-          />
-        </div>
-        <p className="mt-3 text-2xl font-semibold text-[var(--color-primary)]">
+        <span className="text-xs font-bold tabular-nums text-[var(--color-ink-soft)]">
           {new Intl.NumberFormat(locale, { style: "percent", maximumFractionDigits: 2 }).format(candidate.progressPercent / 100)}
-        </p>
+        </span>
       </div>
-      <div className="mt-5 flex flex-wrap gap-3">
+      {detailKey ? (
+        <p className="mt-4 text-sm leading-6 text-[var(--color-ink-soft)]">{t(detailKey)}</p>
+      ) : null}
+      <div className="mt-4 flex flex-wrap gap-3">
         {/* Access ended: the classroom would refuse the learner anyway. */}
         {isUnavailable ? null : (
           <Link

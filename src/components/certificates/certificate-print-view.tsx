@@ -21,6 +21,23 @@ export function CertificatePrintView({
   const { user } = useAuth();
   const [certificate, setCertificate] = useState<Certificate | null>(null);
   const [state, setState] = useState<LoadState>("loading");
+  const [copyResult, setCopyResult] = useState<"copied" | "failed" | null>(null);
+
+  // "Link copied" some sozinho; a falha fica, para a pessoa saber que não foi.
+  useEffect(() => {
+    if (copyResult !== "copied") return;
+    const timer = setTimeout(() => setCopyResult(null), 2000);
+    return () => clearTimeout(timer);
+  }, [copyResult]);
+
+  async function copyVerificationLink(value: Certificate) {
+    try {
+      await navigator.clipboard.writeText(buildVerifyUrl(value));
+      setCopyResult("copied");
+    } catch {
+      setCopyResult("failed");
+    }
+  }
 
   useEffect(() => {
     // ProtectedSurface only mounts this view for a signed-in account with the
@@ -67,6 +84,22 @@ export function CertificatePrintView({
         </Link>
         {state === "ready" && certificate ? (
           <div className="flex flex-wrap items-center gap-3">
+            {/* O link público de verificação, o mesmo que vai para o LinkedIn:
+                antes só dava para compartilhar pelo LinkedIn. */}
+            <span
+              role="status"
+              aria-live="polite"
+              className={`text-xs font-semibold ${copyResult === "failed" ? "text-[var(--color-danger-fg)]" : "text-[var(--color-ink-soft)]"}`}
+            >
+              {copyResult ? t(copyResult === "copied" ? "learnWave2.print.copied" : "learnWave2.print.copyFailed") : ""}
+            </span>
+            <button
+              type="button"
+              onClick={() => void copyVerificationLink(certificate)}
+              className="button-outline px-4 py-2.5 text-sm"
+            >
+              {t("learnWave2.print.copyLink")}
+            </button>
             <a
               href={buildLinkedInAddUrl(certificate)}
               target="_blank"
@@ -75,6 +108,8 @@ export function CertificatePrintView({
             >
               {t("learnWave2.print.linkedIn")}
             </a>
+            {/* Abre a janela de imprimir do navegador (onde fica "Salvar como
+                PDF"): o rótulo diz isso, não "Download PDF". */}
             <button
               type="button"
               onClick={() => window.print()}
@@ -87,11 +122,18 @@ export function CertificatePrintView({
       </div>
 
       <div className="mt-6 print:mt-0">
+        {/* Enquanto carrega, o papel do certificado já ocupa o lugar dele
+            (mesmas classes do documento): antes um cartão pequeno virava um
+            documento de ~850px e a página inteira pulava. */}
         {state === "loading" ? (
-          <CertificateNotice
-            title={t("learnWave2.print.loading")}
-            description={t("learnWave2.print.loadingDetail")}
-          />
+          <div aria-busy="true">
+            <p role="status" className="sr-only">{t("learnWave2.print.loading")}</p>
+            <div aria-hidden="true" className="cert-doc mx-auto min-h-[70svh] w-full max-w-4xl animate-pulse">
+              <div className="cert-doc-frame">
+                <div className="cert-doc-content" />
+              </div>
+            </div>
+          </div>
         ) : null}
 
         {/* The certificate is the issued record: it stays in English in every interface
@@ -120,10 +162,12 @@ export function CertificatePrintView({
 
 // LinkedIn "Add to Profile" deep link for the Licenses & Certifications section.
 // Points at the public verification URL so anyone (recruiters included) can confirm it.
+function buildVerifyUrl(certificate: Certificate): string {
+  return `${SITE_URL}/verify?code=${encodeURIComponent(certificate.verificationCode)}`;
+}
+
 function buildLinkedInAddUrl(certificate: Certificate): string {
-  const verifyUrl = `${SITE_URL}/verify?code=${encodeURIComponent(
-    certificate.verificationCode,
-  )}`;
+  const verifyUrl = buildVerifyUrl(certificate);
 
   const params = new URLSearchParams({
     startTask: "CERTIFICATION_NAME",
@@ -145,7 +189,7 @@ function CertificateNotice({
 }) {
   return (
     <section className="mx-auto max-w-2xl rounded-lg border border-[var(--color-line)] bg-white keep-white p-6 text-center shadow-[var(--shadow-soft)] sm:p-8">
-      <h1 className="display-title text-3xl text-[var(--color-primary)]">
+      <h1 className="text-xl font-semibold text-[var(--color-primary)]">
         {title}
       </h1>
       <p className="mt-3 text-sm leading-7 text-[var(--color-ink-soft)]">

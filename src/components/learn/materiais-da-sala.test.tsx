@@ -283,9 +283,33 @@ describe("anexos da aula com vídeo", () => {
     const slides = (await screen.findByText("Slides")).closest("div.rounded-lg") as HTMLElement;
     expect(within(slides).queryByText("zz-slides.pdf")).toBeNull();
     const map = screen.getByText("mapa.xmind").closest("div.rounded-lg") as HTMLElement;
-    expect(within(map).getByText("Enrolled")).toBeInTheDocument();
+    // Nem "Enrolled" (valia para todo anexo) nem o selo "Preview" em material;
+    // mapa mental nao tem previa, so o botao de baixar.
+    expect(within(map).queryByText("Enrolled")).toBeNull();
     expect(within(map).queryByText("Preview")).toBeNull();
+    expect(within(map).getByRole("button", { name: "Download mapa.xmind" })).toBeInTheDocument();
     expect(within(map).getByText("To open it, use the free app XMind.")).toBeInTheDocument();
     expect(screen.getByText("To open it, use the free app FreeMind or Freeplane.")).toBeInTheDocument();
+  });
+
+  it("a previa do anexo so monta quando a pessoa pede: abrir a aula nao pede link por arquivo", async () => {
+    mocks.searchParams = new URLSearchParams("lesson=l1");
+    mocks.assets = [
+      file("video", "l1", "aula-1.mp4", { kind: "lesson_video", contentType: "video/mp4" }),
+      file("slides", "l1", "zz-slides.pdf", { title: "Slides", position: 0 }),
+    ];
+    render(<EnrolledCourseWorkspace course={course} enableFirestoreAssets />);
+
+    const preview = await screen.findByRole("button", { name: "Preview Slides" });
+    await act(async () => {});
+    expect(signedAssetIds()).not.toContain("slides");
+    expect(preview).toHaveAttribute("aria-expanded", "false");
+    expect(screen.getByRole("button", { name: "Download Slides" })).toHaveClass("button-outline");
+
+    await act(async () => {
+      fireEvent.click(preview);
+    });
+    expect(signedAssetIds()).toContain("slides");
+    expect(screen.getByRole("button", { name: "Hide preview" })).toHaveAttribute("aria-expanded", "true");
   });
 });
