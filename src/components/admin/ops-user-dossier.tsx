@@ -6,9 +6,11 @@ import { useEffect, useState, type ReactNode } from "react";
 
 import { AccountControlDialog } from "@/components/admin/account-control-dialog";
 import { formatAuditAction } from "@/components/admin/audit-labels";
+import { roleLabelKeys } from "@/components/admin/ops-user-table";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { StatusChip } from "@/components/shared/status-chip";
 import { Button, InlineAlert } from "@/components/ui";
+import { plans } from "@/data/plans";
 import { getOpsNavItem } from "@/data/site";
 import {
   getOpsUserDossier,
@@ -78,7 +80,7 @@ function plainValue(value: unknown): string | null {
 function Section({ title, list = false, children }: { title: string; list?: boolean; children: ReactNode }) {
   return (
     <section className="min-w-0 rounded-lg border border-[var(--color-line)] bg-white p-4 shadow-[var(--shadow-soft)] sm:p-6">
-      <h3 className="text-base font-bold text-[var(--color-ink)]">{title}</h3>
+      <h2 className="text-base font-bold text-[var(--color-ink)]">{title}</h2>
       {list
         ? <div className="mt-4 min-w-0 break-words text-sm text-[var(--color-ink)]">{children}</div>
         : <dl className="mt-4 grid min-w-0 gap-x-6 gap-y-4 text-sm sm:grid-cols-2">{children}</dl>}
@@ -99,6 +101,18 @@ const listClass = "mt-2 grid gap-1 text-xs text-[var(--color-ink-soft)]";
 // Linha de lista: status vira etiqueta e valor ausente não deixa " ·  · " (I-10).
 const rowClass = "flex flex-wrap items-center gap-x-2 gap-y-1 break-words";
 const joined = (...parts: (string | null | undefined | false)[]) => parts.filter(Boolean).join(" · ");
+
+// O cabeçalho da página mora aqui, e não na casca: o h1 é o nome da pessoa,
+// que só chega depois da leitura (I-03). Mesmas classes do cabeçalho compacto
+// da casca, para nada mudar de lugar. Carregando ou com erro, o h1 é o genérico.
+function PageHeading({ eyebrow, title }: { eyebrow: string; title: string }) {
+  return (
+    <div className="platform-page-heading platform-page-heading--compact">
+      <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">{eyebrow}</p>
+      <h1 className="display-title max-w-4xl break-words text-xl leading-tight text-[var(--color-primary)] sm:text-2xl lg:text-3xl">{title}</h1>
+    </div>
+  );
+}
 const REQUEST_TYPES = new Set(["data_export", "account_deletion"]);
 
 export function OpsUserDossierPanel({ uid }: { uid: string }) {
@@ -123,10 +137,13 @@ export function OpsUserDossierPanel({ uid }: { uid: string }) {
     </Link>
   );
 
+  const genericHeading = <PageHeading eyebrow={t("platform.nav.operations")} title={t(`${copy}.pageTitle`)} />;
+
   if (error) {
     return (
       <div className="grid min-w-0 gap-4">
         {back}
+        {genericHeading}
         <InlineAlert tone="error" className="flex flex-wrap items-center justify-between gap-3">
           <span>{t(`${copy}.${error}`)}</span>
           {error === "mfaRequired" ? (
@@ -147,6 +164,7 @@ export function OpsUserDossierPanel({ uid }: { uid: string }) {
     return (
       <div className="grid min-w-0 gap-4">
         {back}
+        {genericHeading}
         <p role="status" className="text-sm text-[var(--color-ink-soft)]">{t(`${copy}.loading`)}</p>
       </div>
     );
@@ -200,6 +218,11 @@ export function OpsUserDossierPanel({ uid }: { uid: string }) {
   const last30 = LAST_30_ORDER.map((key) => `${behavior.last_30_days?.[key] ?? 0} ${t(`${copy}.last30.${key}`)}`).join(" · ");
   const verificationCase = creator.verification_case;
   const evidence = verificationCase ? plainValue(verificationCase.evidence_links) : null;
+  // O nome do plano como a área da conta mostra (billing-tabs.tsx); o código
+  // cru fica só como detalhe, para copiar (I-10).
+  const plan = purchases.plan_subscription;
+  const planName = plan?.plan_id ? plans.find((entry) => entry.id === plan.plan_id)?.name ?? null : null;
+  const levels = identity.roles.length ? identity.roles.map((role) => t(roleLabelKeys[role])).join(", ") : none;
 
   return (
     // ops-surface: escopo das regras de CSS só do /ops (globals.css).
@@ -209,16 +232,19 @@ export function OpsUserDossierPanel({ uid }: { uid: string }) {
           onClose={() => { setControlOpen(false); setReload((value) => value + 1); }} />
       ) : null}
       {back}
+      <PageHeading eyebrow={t(`${copy}.pageTitle`)} title={identity.display_name || t(`${copy}.unnamed`)} />
 
       <header className="min-w-0 rounded-lg border border-[var(--color-line)] bg-white p-4 shadow-[var(--shadow-soft)] sm:p-6">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="min-w-0">
-            <h2 className="break-words text-xl font-bold text-[var(--color-ink)]">{identity.display_name || t(`${copy}.unnamed`)}</h2>
-            <p className="mt-1 break-all text-sm text-[var(--color-ink-soft)]">{identity.email ?? none}</p>
-            <p className="mt-1 break-all text-xs text-[var(--color-ink-soft)]">UID: {identity.uid}</p>
-          </div>
-          {statusChip}
-        </div>
+        <p className="break-all text-sm text-[var(--color-ink-soft)]">{identity.email ?? none}</p>
+        <p className="mt-1 break-all text-xs text-[var(--color-ink-soft)]">UID: {identity.uid}</p>
+        {/* Faixa de resumo: status (uma vez só), nível, plano e entrada, sem
+            rolar até os cartões (I-03). */}
+        <dl className="mt-4 flex flex-wrap gap-x-8 gap-y-3 border-t border-[var(--color-line)] pt-4 text-sm">
+          <Fact label={t("platform.ops.userTable.statusLabel")}>{statusChip}</Fact>
+          <Fact label={t("platform.ops.userTable.roleLabel")}>{levels}</Fact>
+          <Fact label={f("plan")}>{planName ?? plan?.plan_id ?? none}</Fact>
+          <Fact label={f("joined")}>{date(identity.created_at)}</Fact>
+        </dl>
         {identity.is_self ? <InlineAlert tone="warning" className="mt-4">{t(`${copy}.self`)}</InlineAlert> : null}
         <div className="mt-4 flex flex-wrap gap-2">
           <Button variant="outline" className="min-h-11 max-w-full whitespace-normal" disabled={identity.is_self}
@@ -231,7 +257,6 @@ export function OpsUserDossierPanel({ uid }: { uid: string }) {
       <Section title={s("access")}>
         {access.blocked_email ? <Fact label={f("blockedEmail")}>{access.blocked_email}</Fact> : null}
         <Fact label={f("username")}>{identity.username ?? none}</Fact>
-        <Fact label={f("joined")}>{date(identity.created_at)}</Fact>
         <Fact label={f("lastSignIn")}>{date(access.last_sign_in_at, true)}</Fact>
         <Fact label={f("emailConfirmed")}>{date(access.email_confirmed_at)}</Fact>
         <Fact label={f("providers")}>{access.providers.length ? access.providers.join(", ") : none}</Fact>
@@ -255,10 +280,13 @@ export function OpsUserDossierPanel({ uid }: { uid: string }) {
           ) : null}
         </Fact>
         <Fact label={f("plan")}>
-          {purchases.plan_subscription ? (
-            <span className={rowClass}>
-              {purchases.plan_subscription.plan_id ? <span className="break-all">{purchases.plan_subscription.plan_id}</span> : null}
-              {purchases.plan_subscription.status ? <StatusChip status={purchases.plan_subscription.status} /> : null}
+          {plan ? (
+            <span className="grid gap-1">
+              <span className={rowClass}>
+                {planName ?? (plan.plan_id ? <span className="break-all">{plan.plan_id}</span> : null)}
+                {plan.status ? <StatusChip status={plan.status} /> : null}
+              </span>
+              {planName ? <span className="select-all break-all font-mono text-xs text-[var(--color-ink-soft)]">{plan.plan_id}</span> : null}
             </span>
           ) : none}
         </Fact>

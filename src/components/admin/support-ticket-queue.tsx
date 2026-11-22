@@ -208,7 +208,7 @@ export function SupportTicketQueue({ query = "" }: { query?: string }) {
                         }
                         rows={3}
                         placeholder={t(`${copy}.replyPlaceholder`)}
-                        className="min-w-0 resize-none rounded-md border border-[var(--color-line)] bg-white px-3 py-2.5 text-sm outline-none focus:border-[var(--color-primary-light)]"
+                        className="field-input min-w-0 resize-none"
                       />
                     )}
                   </Field>

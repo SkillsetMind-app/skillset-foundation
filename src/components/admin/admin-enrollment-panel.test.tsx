@@ -160,6 +160,8 @@ describe("administrative enrollment presentation", () => {
     render(panel());
     deliver();
     language();
+    // Tirar o acesso é o botão vermelho pequeno das outras filas (I-04).
+    expect(screen.getByRole("button", { name: "Revocar acceso" })).toHaveClass("button-danger", "min-h-11");
     fireEvent.click(screen.getByRole("button", { name: "Revocar acceso" }));
     const dialog = screen.getByRole("dialog", { name: "¿Revocar este acceso?" });
     expect(dialog).toHaveTextContent(`¿Revocar el acceso a "${course.title}" de este estudiante? Perderá el acceso de inmediato.`);
