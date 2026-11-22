@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "@/components/auth/auth-provider";
 import { isVideoAssetKind, type CourseAsset, type CourseAssetKind } from "@/domain/course-asset";
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { PlatformPageHeader } from "@/components/platform/platform-page-header";
 import { getCourseAssetKindLabel } from "@/lib/i18n/course-assets";
 import type { TeacherCourse } from "@/domain/teacher-course";
 import { subscribeToCourseAssets } from "@/lib/data/course-assets";
@@ -14,7 +15,6 @@ import {
   EmptyState,
   Field,
   InlineAlert,
-  SectionHeader,
   buttonClasses,
 } from "@/components/ui";
 
@@ -139,44 +139,42 @@ export function TeacherMediaLibrary() {
   }, [assets, kindFilter, search, t, locale]);
 
   return (
+    <div className="grid gap-6">
+      {/* O titulo da pagina era um h3 dentro do cartao (a tela nao tinha
+          h1). Agora e o cabecalho das telas irmas, fora do cartao. */}
+      <PlatformPageHeader
+        title={t("teacherMedia.title")}
+        description={t("teacherMedia.description")}
+        actions={
+          selectedCourse ? (
+            <Link
+              href={`/teach/builder?courseId=${selectedCourse.id}`}
+              // Contorno: o vazio da biblioteca ja tem o botao forte para o
+              // mesmo lugar.
+              className={buttonClasses({ variant: "outline" })}
+            >
+              {t("teacherMedia.upload")}
+            </Link>
+          ) : null
+        }
+      />
     <section className="settings-section-card">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <SectionHeader
-            as="h3"
-            eyebrow={t("teacherMedia.eyebrow")}
-            title={t("teacherMedia.title")}
-            description={t("teacherMedia.description")}
-          />
-          <p className="mt-3 max-w-2xl rounded-md border fine-rule bg-[var(--color-surface-soft)] px-4 py-3 text-sm font-semibold leading-6 text-[var(--color-ink)]">
-            {t("teacherMedia.videosInBuilder")}
-            {selectedCourse ? (
-              <>
-                {" — "}
-                <Link
-                  href={`/teach/builder?courseId=${selectedCourse.id}&tab=content`}
-                  className="underline underline-offset-2"
-                >
-                  {t("teacherMedia.openBuilder")}
-                </Link>
-              </>
-            ) : (
-              t("teacherMedia.createToAdd")
-            )}
-          </p>
-        </div>
+      <p className="max-w-2xl rounded-md border fine-rule bg-[var(--color-surface-soft)] px-4 py-3 text-sm font-semibold leading-6 text-[var(--color-ink)]">
+        {t("teacherMedia.videosInBuilder")}
         {selectedCourse ? (
-          <Link
-            href={`/teach/builder?courseId=${selectedCourse.id}`}
-            // Contorno: o vazio da biblioteca ja tem o botao forte para o
-            // mesmo lugar.
-            className={buttonClasses({ variant: "outline" })}
-          >
-            {t("teacherMedia.upload")}
-          </Link>
-        ) : null}
-      </div>
-
+          <>
+            {" — "}
+            <Link
+              href={`/teach/builder?courseId=${selectedCourse.id}&tab=content`}
+              className="underline underline-offset-2"
+            >
+              {t("teacherMedia.openBuilder")}
+            </Link>
+          </>
+        ) : (
+          t("teacherMedia.createToAdd")
+        )}
+      </p>
       {courses.length > 0 ? (
         <div className="mt-6 grid gap-3 lg:grid-cols-[1fr_180px_220px]">
           <Field id="media-search" label={t("teacherMedia.search")}>
@@ -251,6 +249,7 @@ export function TeacherMediaLibrary() {
         ) : courses.length === 0 ? (
           // Falha nao e "voce nao tem curso": o erro acima com "Try again" basta.
           coursesFailed ? null : <EmptyState
+            as="h2"
             eyebrow={t("teacherMedia.noCourse")}
             title={t("teacherMedia.createFirst")}
             description={t("teacherMedia.noCourseDescription")}
@@ -273,8 +272,26 @@ export function TeacherMediaLibrary() {
               {t("teacherMedia.loadingAssets")}
             </p>
           )
+        ) : assets.length > 0 && filteredAssets.length === 0 ? (
+          // Ha arquivos, so nenhum bate com a busca ou o tipo: nao e a
+          // primeira vez ("Upload from the builder."), e "nenhum resultado"
+          // com o caminho de volta.
+          <div className="grid justify-items-start gap-3 rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4">
+            <p role="status" className="text-sm leading-6 text-[var(--color-ink-soft)]">{t("teacherMedia.noMatches")}</p>
+            <button
+              type="button"
+              onClick={() => {
+                setSearch("");
+                setKindFilter("all");
+              }}
+              className="button-outline px-4 text-sm"
+            >
+              {t("teacherMedia.clearFilters")}
+            </button>
+          </div>
         ) : filteredAssets.length === 0 ? (
           <EmptyState
+            as="h2"
             eyebrow={t("teacherMedia.ready")}
             title={t("teacherMedia.emptyTitle")}
             description={t("teacherMedia.emptyDescription")}
@@ -335,5 +352,6 @@ export function TeacherMediaLibrary() {
         )}
       </div>
     </section>
+    </div>
   );
 }

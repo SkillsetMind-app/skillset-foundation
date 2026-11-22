@@ -102,13 +102,14 @@ describe("privatePageMetadata — cabeçalho de página logada", () => {
     });
   });
 
-  // O cabeçalho termina em ponto por estilo ("Reports."); na aba, o ponto antes
-  // do separador parece erro de digitação.
+  // Um título que termina em ponto ("Build, ship, get paid."): na aba, o ponto
+  // antes do separador parece erro de digitação. (Os cabeçalhos das telas do
+  // professor perderam o ponto; este rótulo ainda o tem.)
   it.each([
-    ["en", "Reports | SkillsetMind"],
-    ["es", "Informes | SkillsetMind"],
+    ["en", "Build, ship, get paid | SkillsetMind"],
+    ["es", "Crea, publica, cobra | SkillsetMind"],
   ])("tira o ponto final do cabeçalho no título da aba (%s)", async (locale, title) => {
     state.locale = locale as "en" | "es";
-    expect((await privatePageMetadata("teach.reportsPage.title")).title).toBe(title);
+    expect((await privatePageMetadata("teach.page.title")).title).toBe(title);
   });
 });

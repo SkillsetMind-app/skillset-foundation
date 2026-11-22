@@ -2,7 +2,7 @@
 
 import { ChevronRight } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { ExportTableButton } from "@/components/shared/export-table-button";
@@ -56,6 +56,10 @@ export function SaleList() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(false);
+  // Uma releitura que falha com a tabela na tela nao apaga as vendas: o aviso
+  // com "Try again" vai por cima delas. So sem nenhuma leitura boa a tela
+  // inteira vira o erro.
+  const [loaded, setLoaded] = useState(false);
   const [period, setPeriod] = useState<Period>("30d");
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<StatusFilter>("all");
@@ -64,16 +68,19 @@ export function SaleList() {
   // sliced at 50. Growing a window costs one number; a real paginated query
   // would cost a round trip we do not need.
   const [visibleCount, setVisibleCount] = useState(PAGE);
+  const subscription = useRef<{ reload: () => Promise<void> } | null>(null);
 
   useEffect(() => {
     if (!user) {
       return;
     }
 
-    return subscribeToTeacherOrders(
+    const current = subscribeToTeacherOrders(
       user.uid,
       (nextOrders) => {
         setOrders(nextOrders);
+        setError(false);
+        setLoaded(true);
         setIsLoading(false);
       },
       () => {
@@ -81,7 +88,19 @@ export function SaleList() {
         setIsLoading(false);
       },
     );
+    subscription.current = current;
+    return () => {
+      subscription.current = null;
+      current();
+    };
   }, [user]);
+
+  // "Try again" le de novo pelo mesmo canal, sem desligar e religar.
+  function retryLoad() {
+    setError(false);
+    if (!loaded) setIsLoading(true);
+    void subscription.current?.reload();
+  }
 
   const range = useMemo(() => {
     if (period === "all") {
@@ -150,13 +169,18 @@ export function SaleList() {
     );
   }
 
-  if (error) {
+  if (error && !loaded) {
     // Era uma caixa vermelha muda: a lista sumia, aparecia vermelho, e nada
     // era anunciado.
     return (
-      <InlineAlert tone="error" className="p-6">
-        {t(`${copy}.error`)}
-      </InlineAlert>
+      <div className="grid gap-3">
+        <InlineAlert tone="error" className="p-6">
+          {t(`${copy}.error`)}
+        </InlineAlert>
+        <button type="button" onClick={retryLoad} className="button-outline justify-self-start px-4 text-sm">
+          {t("appErrors.retry")}
+        </button>
+      </div>
     );
   }
 
@@ -176,6 +200,14 @@ export function SaleList() {
 
   return (
     <section className="grid gap-4">
+      {error ? (
+        <div className="grid gap-3">
+          <InlineAlert tone="error">{t(`${copy}.error`)}</InlineAlert>
+          <button type="button" onClick={retryLoad} className="button-outline justify-self-start px-4 text-sm">
+            {t("appErrors.retry")}
+          </button>
+        </div>
+      ) : null}
       {/* O comprador paga na conta Stripe do professor: com pedido, a conta
           existe. Sem nenhum pedido o botao so podia dar o erro "conecte o
           Stripe" (o aviso de conectar ja esta logo acima). */}

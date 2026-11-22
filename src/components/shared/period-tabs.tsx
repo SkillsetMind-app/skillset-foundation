@@ -1,8 +1,10 @@
 "use client";
 
 /**
- * O unico seletor de periodo do Studio. A home usa 3M/6M/12M/All; a pagina de
- * relatorios usa 7d/30d/90d/12M/All. Mesma marcacao, mesmo estado pressionado.
+ * O unico seletor segmentado do Studio (uma entre poucas opcoes, um filtro, nao
+ * abas de secao). A home usa 3M/6M/12M/All; a pagina de relatorios usa
+ * 7d/30d/90d/12M/All; Membros troca espacos/comunidades. Mesma marcacao, mesmo
+ * estado pressionado. Abas que trocam de secao sao o HorizontalTabs.
  */
 export function PeriodTabs<Option extends string>({
   options,

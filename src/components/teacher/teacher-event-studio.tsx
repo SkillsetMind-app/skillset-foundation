@@ -92,6 +92,10 @@ export function TeacherEventStudio() {
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [eventsLoaded, setEventsLoaded] = useState(false);
+  // Leitura da agenda que falhou nao e agenda vazia: no lugar do "No sessions"
+  // (com o convite a criar uma) fica o erro com "Try again".
+  const [eventsFailed, setEventsFailed] = useState(false);
+  const eventsSubscription = useRef<{ reload: () => Promise<void> } | null>(null);
   // Guarda o CODIGO do erro, nao a frase: o efeito de inscricao nao pode
   // depender de `t` (fora do provider ele e uma funcao nova a cada render, e o
   // efeito reinscreveria em laco) e a frase troca de idioma na hora.
@@ -144,19 +148,41 @@ export function TeacherEventStudio() {
       return;
     }
 
-    return subscribeToTeacherCourseEvents(
+    // Releitura que falha com a agenda na tela mantem a lista (so o aviso).
+    let loaded = false;
+    const current = subscribeToTeacherCourseEvents(
       user.uid,
       (nextEvents) => {
+        loaded = true;
         setEvents(nextEvents);
         setEventsLoaded(true);
+        setEventsFailed(false);
+        setError((currentError) => (currentError === "events" ? "" : currentError));
       },
       () => {
         setEventsLoaded(true);
+        setEventsFailed(!loaded);
         setError("events");
         setNotice(null);
       },
     );
+    eventsSubscription.current = current;
+    return () => {
+      eventsSubscription.current = null;
+      current();
+    };
   }, [user]);
+
+  // "Try again" le de novo pelo mesmo canal. Sem agenda na tela, a lista volta
+  // ao "carregando"; com agenda (a releitura e que falhou), ela fica.
+  function retryEvents() {
+    if (eventsFailed) {
+      setEventsFailed(false);
+      setEventsLoaded(false);
+    }
+    setError((currentError) => (currentError === "events" ? "" : currentError));
+    void eventsSubscription.current?.reload();
+  }
 
   const selectedCourse = useMemo(
     () => courseId ? courses.find((course) => course.id === courseId) : courses[0],
@@ -397,8 +423,9 @@ export function TeacherEventStudio() {
               {tile.label}
             </dt>
             {eventsLoaded ? (
+              // Leitura que falhou nao e "0 sessoes": fica o traco.
               <dd className="mt-1 text-2xl font-semibold text-[var(--color-ink)]">
-                {tile.value}
+                {eventsFailed ? "—" : tile.value}
               </dd>
             ) : (
               <dd className="mt-1 h-8 w-10 animate-pulse rounded bg-[var(--color-surface-strong)]" />
@@ -657,13 +684,26 @@ export function TeacherEventStudio() {
           <ExportTableButton rows={exportRows} filename="skillset-events" />
         </div>
 
-        <p className="mt-3 text-sm text-[var(--color-ink-soft)]">{countLine}</p>
+        {eventsFailed ? null : <p className="mt-3 text-sm text-[var(--color-ink-soft)]">{countLine}</p>}
 
         <div className="mt-4 grid gap-3">
+          {/* Releitura que falhou com a agenda na tela: a lista fica, e o
+              "Try again" vem antes dela (o aviso ja esta no topo). */}
+          {eventsLoaded && !eventsFailed && error === "events" ? (
+            <button type="button" onClick={retryEvents} className="button-outline justify-self-start px-4 text-sm">
+              {t("appErrors.retry")}
+            </button>
+          ) : null}
           {!eventsLoaded ? (
             <p className="rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-7 text-[var(--color-ink-soft)]">
               {t(`${copy}.loading`)}
             </p>
+          ) : eventsFailed ? (
+            // O erro ja esta anunciado no aviso do topo; aqui fica o caminho
+            // de volta, no lugar onde a lista apareceria.
+            <button type="button" onClick={retryEvents} className="button-outline justify-self-start px-4 text-sm">
+              {t("appErrors.retry")}
+            </button>
           ) : visible.length === 0 ? (
             <EmptyState
               title={t(`${copy}.emptyTitle`)}

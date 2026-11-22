@@ -25,6 +25,9 @@ export function TeacherStudentsList() {
   const { t, locale } = useTranslation();
   const [state, setState] = useState<State>({ status: "loading" });
   const [search, setSearch] = useState("");
+  // "Try again" pede a mesma leitura de novo (antes a saida era recarregar a
+  // pagina inteira).
+  const [attempt, setAttempt] = useState(0);
   const uid = user?.uid ?? null;
 
   useEffect(() => {
@@ -54,7 +57,7 @@ export function TeacherStudentsList() {
     return () => {
       alive = false;
     };
-  }, [uid]);
+  }, [uid, attempt]);
 
   if (state.status === "loading") {
     return (
@@ -65,7 +68,21 @@ export function TeacherStudentsList() {
   }
 
   if (state.status === "error") {
-    return <InlineAlert tone="error">{t("teach.studentsPage.error")}</InlineAlert>;
+    return (
+      <div className="grid gap-3">
+        <InlineAlert tone="error">{t("teach.studentsPage.error")}</InlineAlert>
+        <button
+          type="button"
+          onClick={() => {
+            setState({ status: "loading" });
+            setAttempt((current) => current + 1);
+          }}
+          className="button-outline justify-self-start px-4 text-sm"
+        >
+          {t("appErrors.retry")}
+        </button>
+      </div>
+    );
   }
 
   if (state.students.length === 0) {

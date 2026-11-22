@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { Order } from "@/domain/order";
@@ -22,6 +22,11 @@ const mocks = vi.hoisted(() => ({
   user: { uid: "teacher-1", displayName: "Patricia", roles: ["teacher"] },
   orders: [] as Order[],
   openStripe: vi.fn(),
+  // A primeira leitura falha; o "Try again" le de novo pelo mesmo canal.
+  ordersFail: false,
+  reload: vi.fn(),
+  // O canal ao vivo: uma releitura posterior que falha chega por aqui.
+  failLater: null as ((error: Error) => void) | null,
 }));
 
 vi.mock("@/lib/payments/connect", () => ({ openTeacherStripeDashboard: mocks.openStripe }));
@@ -34,9 +39,12 @@ vi.mock("@/lib/data/orders", () => ({
   subscribeToTeacherOrders: (
     _uid: string,
     onData: (orders: Order[]) => void,
+    onError: (error: Error) => void,
   ) => {
-    onData(mocks.orders);
-    return () => undefined;
+    mocks.failLater = onError;
+    if (mocks.ordersFail) onError(new Error("orders down"));
+    else onData(mocks.orders);
+    return Object.assign(() => undefined, { reload: mocks.reload });
   },
 }));
 
@@ -64,9 +72,43 @@ afterEach(() => {
   cleanup();
   mocks.orders = [];
   mocks.openStripe.mockReset();
+  mocks.ordersFail = false;
+  mocks.reload.mockReset();
 });
 
 describe("SaleList", () => {
+  // Falha nao e "sem vendas": o erro com "Try again", que le de novo pelo
+  // mesmo canal (antes a saida era recarregar a pagina).
+  it("a failed read shows the error with Try again, never the empty state", () => {
+    mocks.ordersFail = true;
+    render(<SaleList />);
+
+    expect(screen.getByRole("alert")).toHaveTextContent("We could not load your sales.");
+    expect(screen.queryByLabelText("Filter by period")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(mocks.reload).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  // Uma releitura que falha com a tabela na tela nao apaga as vendas boas: o
+  // aviso com "Try again" vem por cima delas.
+  it("a failed background re-read keeps the rows, with the alert and Try again above them", () => {
+    mocks.orders = [order({})];
+    render(<SaleList />);
+    expect(screen.getAllByText("Facilitation Fundamentals").length).toBeGreaterThan(0);
+
+    act(() => mocks.failLater?.(new Error("re-read down")));
+
+    expect(screen.getByRole("alert")).toHaveTextContent("We could not load your sales.");
+    expect(screen.getAllByText("Facilitation Fundamentals").length).toBeGreaterThan(0);
+    expect(screen.getByLabelText("Filter by period")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(mocks.reload).toHaveBeenCalledTimes(1);
+    // A tabela fica na tela enquanto le de novo (nada de voltar ao "carregando").
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.getAllByText("Facilitation Fundamentals").length).toBeGreaterThan(0);
+  });
+
   it("keeps the operating frame and names the period with zero orders", () => {
     render(<SaleList />);
 

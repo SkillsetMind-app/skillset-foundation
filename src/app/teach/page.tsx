@@ -14,7 +14,6 @@ export default async function TeachPage() {
   return (
     <ProtectedSurface permissions={["teacherStudio.access"]}>
       <PlatformShell
-        eyebrow={t("teach.page.eyebrow")}
         title={t("teach.page.title")}
         description={t("teach.page.description")}
         hideHeader

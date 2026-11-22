@@ -1819,7 +1819,7 @@
   },
   "teach": {
     "memberAreaPage": {
-      "title": "Your members area.",
+      "title": "Your members area",
       "description": "One home for everything you sell. Students pick up where they left off, see what they own and discover your other products."
     },
     "memberAreaEditor": {
@@ -1940,33 +1940,30 @@
       "linkBuilder": "Course builder"
     },
     "reportsPage": {
-      "eyebrow": "Teacher Studio",
-      "title": "Reports.",
+      "title": "Reports",
       "description": "Sales, recurring revenue, and recorded earnings at a glance. Every charge was created on your own Stripe account — SkillsetMind never holds it. Stripe's own settlement and payout timing then applies."
     },
     "salesPage": {
-      "eyebrow": "Teacher Studio",
-      "title": "Your sales.",
+      "title": "Your sales",
       "description": "Every paid order for your courses."
     },
     "eventsPage": {
       "eyebrow": "Course agenda",
-      "title": "Schedule live learning.",
+      "title": "Schedule live learning",
       "description": "Create course-linked live classes, mentorships, masterclasses, office hours, webinars, and deadlines. Learners see the same agenda in their workspace."
     },
     "page": {
-      "eyebrow": "Teacher Studio",
       "title": "Build, ship, get paid.",
       "description": "Drafting is open from the start. Publishing needs professional verification (where required) and passing the launch checks."
     },
     "dashboard": {
-      "welcomeBackNamed": "Welcome back, {name}.",
+      "welcomeBackNamed": "Welcome back, {name}",
       "loadError": "We could not load your products or sales.",
-      "welcomeBack": "Welcome back.",
-      "welcomeNamed": "Welcome, {name}.",
-      "welcome": "Welcome.",
-      "helloNamed": "Hello, {name}.",
-      "hello": "Hello."
+      "welcomeBack": "Welcome back",
+      "welcomeNamed": "Welcome, {name}",
+      "welcome": "Welcome",
+      "helloNamed": "Hello, {name}",
+      "hello": "Hello"
     },
     "metrics": {
       "revenue30d": "Revenue, 30d",
@@ -2146,7 +2143,7 @@
       }
     },
     "saleDetailPage": {
-      "title": "Sale detail.",
+      "title": "Sale detail",
       "description": "Review a single transaction, payment trail, course context, and operational actions."
     },
     "subscriptions": {
@@ -2210,7 +2207,7 @@
       "description": "Recurring revenue, subscriber health, cancellation signals, and every renewal in one operational view."
     },
     "storefrontPage": {
-      "title": "Your storefront.",
+      "title": "Your storefront",
       "description": "Brand the public page that showcases you and every course you publish.",
       "previewLabel": "Live storefront preview",
       "openPublicPage": "Open public page",
@@ -2352,14 +2349,15 @@
       "description": "Messages from your students and questions from your communities, in one place.",
       "questionsTitle": "Questions waiting for you",
       "questionsEmpty": "No questions waiting. When a student asks something in a community, it shows up here.",
-      "questionsError": "We couldn't load the questions. Please try again later.",
+      "questionsError": "We couldn't load the questions.",
+      "questionsLoading": "Loading questions...",
       "answer": "Answer",
       "messagesTitle": "Messages"
     },
     "studentsPage": {
       "description": "Everyone who joined one of your products.",
       "loading": "Loading your students...",
-      "error": "We couldn't load your students. Please try again later.",
+      "error": "We couldn't load your students.",
       "empty": "No students yet. When someone joins one of your products, they show up here.",
       "countOne": "1 active student",
       "countMany": "{count} active students",
@@ -2379,7 +2377,7 @@
     },
     "sales": {
       "loading": "Loading your sales...",
-      "error": "We could not load your sales. Refresh to try again.",
+      "error": "We could not load your sales.",
       "periodLabel": "Filter by period",
       "period": {
         "7d": "Last 7 days",
@@ -6148,6 +6146,8 @@
     "emptyTitle": "Upload from the builder.",
     "emptyDescription": "Add a course cover, module cover, lesson video, PDF, slide deck, worksheet, audio file, or replay from the selected course builder.",
     "openUploads": "Open builder upload area",
+    "noMatches": "No file matches this search or type.",
+    "clearFilters": "Clear filters",
     "preview": "Preview",
     "private": "Private",
     "lessonAsset": "Lesson asset",

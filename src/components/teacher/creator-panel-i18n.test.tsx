@@ -331,8 +331,9 @@ describe("painel do criador em espanhol", () => {
     expect(within(steps).getByRole("link", { name: /Conectar Stripe/ })).toHaveClass("button-solid");
     expect(within(steps).getByText("Publica tu producto")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Productos en tu espacio" })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "Borradores" })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "En venta" })).toBeInTheDocument();
+    // Filtro, nao abas: o seletor segmentado (botoes com aria-pressed).
+    expect(screen.getByRole("button", { name: "Borradores" })).toHaveAttribute("aria-pressed", "false");
+    expect(screen.getByRole("button", { name: "En venta" })).toBeInTheDocument();
     // A prova olha so a secao de formatos: os quatro tipos da criacao.
     const formats = screen
       .getByRole("heading", { name: "Elige un formato de producto" })

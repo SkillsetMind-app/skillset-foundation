@@ -162,6 +162,19 @@ describe("Alunos: todos os produtos numa lista", () => {
 
     expect(await screen.findByRole("heading", { name: /No students yet/ })).toBeInTheDocument();
   });
+
+  // Falha nao e "nenhum aluno": o erro com "Try again", que pede a mesma
+  // leitura de novo.
+  it("leitura que falha mostra o erro e Try again le de novo", async () => {
+    mocks.getMyCourseStudents.mockRejectedValueOnce(new Error("down"));
+    render(<TeacherStudentsList />);
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("We couldn't load your students.");
+    expect(screen.queryByRole("heading", { name: /No students yet/ })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(await screen.findByText("2 active students")).toBeInTheDocument();
+    expect(mocks.getMyCourseStudents).toHaveBeenCalledTimes(2);
+  });
 });
 
 describe("Caixa de entrada: perguntas que esperam pelo professor", () => {
@@ -185,6 +198,19 @@ describe("Caixa de entrada: perguntas que esperam pelo professor", () => {
     render(<TeacherInboxQuestions />);
 
     expect(await screen.findByText(/No questions waiting/)).toBeInTheDocument();
+  });
+
+  // Enquanto le, o cartao mostra a forma das linhas (antes ficava so o titulo);
+  // falha nao e "nada esperando": erro com "Try again".
+  it("carregando mostra a espera; falha mostra o erro e Try again le de novo", async () => {
+    mocks.getOpenCommunityQuestions.mockRejectedValueOnce(new Error("down"));
+    render(<TeacherInboxQuestions />);
+
+    expect(screen.getByRole("status")).toHaveTextContent("Loading questions...");
+    expect(await screen.findByRole("alert")).toHaveTextContent("We couldn't load the questions.");
+    expect(screen.queryByText(/No questions waiting/)).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(await screen.findAllByRole("link", { name: /Answer/ })).toHaveLength(2);
   });
 
   // Na pagina Inbox a casca (numero da barra) e a lista pedem juntas: uma

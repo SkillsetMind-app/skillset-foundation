@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState, type FormEvent } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { HorizontalTabs } from "@/components/shared/horizontal-tabs";
 import { Button, Card, Field, InlineAlert, buttonClasses } from "@/components/ui";
 import type { PlanId } from "@/data/plans";
 import { planEntitlements } from "@/domain/entitlements";
@@ -157,30 +158,19 @@ export function MemberAreaSettingsPanel() {
               .replace("{limit}", () => String(limit))}
           </p>
         </div>
-        <div role="tablist" aria-label={t("teach.memberAreaEditor.areas")} className="flex flex-wrap gap-2">
-          {editor.areas.map((candidate) => {
-            const key = areaKey(candidate);
-            const active = key === areaKey(area);
-            return (
-              <button
-                key={key}
-                type="button"
-                role="tab"
-                aria-selected={active}
-                onClick={() => {
-                  setSelected(key);
-                  setCreating(false);
-                }}
-                className={`inline-flex min-h-11 items-center gap-2 rounded-md border px-3 py-2 text-sm font-semibold ${
-                  active
-                    ? "border-[var(--color-primary)] text-[var(--color-primary)]"
-                    : "border-[var(--color-line)] text-[var(--color-ink-soft)]"
-                }`}
-              >
-                {areaLabel(candidate)}
-              </button>
-            );
-          })}
+        {/* As abas da casa (setas, Home/End). O "New area" saiu de dentro da
+            lista de abas: e um botao, nao uma aba. */}
+        <div className="flex flex-wrap items-end gap-2">
+          <HorizontalTabs
+            className="min-w-0 max-w-full"
+            tabs={editor.areas.map((candidate) => ({ value: areaKey(candidate), label: areaLabel(candidate) }))}
+            activeValue={areaKey(area)}
+            onChange={(key) => {
+              setSelected(key);
+              setCreating(false);
+            }}
+            ariaLabel={t("teach.memberAreaEditor.areas")}
+          />
           {!atLimit ? (
             <button
               type="button"

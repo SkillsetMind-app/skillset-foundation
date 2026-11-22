@@ -1,4 +1,4 @@
-import { act, cleanup, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { TeacherStudioDashboard } from "@/components/teacher/teacher-studio-dashboard";
@@ -212,7 +212,8 @@ describe("TeacherStudioDashboard", () => {
     render(<TeacherStudioDashboard />);
 
     await screen.findByRole("heading", { name: "Your first product starts here." });
-    expect(screen.queryByRole("tablist", { name: "Product filters" })).toBeNull();
+    expect(screen.queryByRole("group", { name: "Product filters" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Drafts" })).toBeNull();
     expect(screen.queryByRole("tab")).toBeNull();
     expect(screen.queryByRole("link", { name: /Show all/ })).toBeNull();
     expect(screen.queryByRole("heading", { name: "Choose a product format" })).toBeNull();
@@ -229,9 +230,26 @@ describe("TeacherStudioDashboard", () => {
     state.courses = [course({})];
     render(<TeacherStudioDashboard />);
 
-    expect(await screen.findByRole("tablist")).toBeInTheDocument();
+    expect(await screen.findByRole("group", { name: "Product filters" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Show all/ })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "New product" })).toHaveClass("button-solid");
+  });
+
+  // Os filtros de produto sao um filtro, nao abas de secao: o seletor
+  // segmentado da casa (aria-pressed), o mesmo do periodo.
+  it("filtros de produto marcam a escolha com aria-pressed e filtram a lista", async () => {
+    state.courses = [course({ title: "Draft course", status: "draft" }), course({ id: "live", title: "Live course", status: "published" })];
+    render(<TeacherStudioDashboard />);
+
+    const group = await screen.findByRole("group", { name: "Product filters" });
+    const all = within(group).getByRole("button", { name: "All" });
+    expect(all).toHaveAttribute("aria-pressed", "true");
+    fireEvent.click(within(group).getByRole("button", { name: "Drafts" }));
+    expect(within(group).getByRole("button", { name: "Drafts" })).toHaveAttribute("aria-pressed", "true");
+    expect(all).toHaveAttribute("aria-pressed", "false");
+    const products = screen.getByRole("region", { name: "Products in your workspace" });
+    expect(within(products).queryByText("Live course")).toBeNull();
+    expect(within(products).getByText("Draft course")).toBeInTheDocument();
   });
 });
 
@@ -597,7 +615,7 @@ describe("Home do professor: uma manchete, o que aconteceu e a vitrine", () => {
       render(<TeacherStudioDashboard />);
 
       expect(await screen.findByRole("heading", { level: 1 })).toHaveTextContent(
-        "Welcome, Mc$&Donald.",
+        "Welcome, Mc$&Donald",
       );
     } finally {
       mockUser.displayName = "Patrick Simon";
@@ -612,7 +630,8 @@ describe("Home do professor: primeira visita", () => {
     render(<TeacherStudioDashboard />);
 
     const heading = await screen.findByRole("heading", { level: 1 });
-    expect(heading).toHaveTextContent("Welcome, Patrick.");
+    // Sem ponto final: o titulo da Home segue o cabecalho das telas irmas.
+    expect(heading).toHaveTextContent(/^Welcome, Patrick$/);
     expect(heading).not.toHaveTextContent("Welcome back");
   });
 
@@ -623,7 +642,7 @@ describe("Home do professor: primeira visita", () => {
 
     await waitFor(() => {
       expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
-        "Welcome back, Patrick.",
+        "Welcome back, Patrick",
       );
     });
   });
@@ -699,7 +718,7 @@ describe("Home do professor: primeira visita", () => {
     render(<TeacherStudioDashboard />);
 
     const heading = await screen.findByRole("heading", { level: 1 });
-    expect(heading).toHaveTextContent("Hello, Patrick.");
+    expect(heading).toHaveTextContent(/^Hello, Patrick$/);
     expect(heading).not.toHaveTextContent("Welcome");
   });
 
@@ -715,7 +734,7 @@ describe("Home do professor: primeira visita", () => {
 
     await waitFor(() => {
       expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
-        "Welcome back, Patrick.",
+        "Welcome back, Patrick",
       );
     });
     // Falha nao e "sem produto": nada de convidar a criar um produto repetido.

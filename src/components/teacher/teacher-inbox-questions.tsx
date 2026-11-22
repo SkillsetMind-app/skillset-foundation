@@ -31,6 +31,8 @@ export function TeacherInboxQuestions() {
   const { user } = useAuth();
   const { t, locale } = useTranslation();
   const [state, setState] = useState<State>({ status: "loading" });
+  // "Try again" pede a mesma leitura de novo.
+  const [attempt, setAttempt] = useState(0);
   const uid = user?.uid ?? null;
 
   useEffect(() => {
@@ -58,7 +60,7 @@ export function TeacherInboxQuestions() {
     return () => {
       alive = false;
     };
-  }, [uid]);
+  }, [uid, attempt]);
 
   const count = state.status === "ready" ? state.questions.length : null;
 
@@ -76,15 +78,36 @@ export function TeacherInboxQuestions() {
         ) : null}
       </h2>
 
-      {state.status === "error" ? (
-        <InlineAlert tone="error" className="mt-3">
-          {t("teach.inboxPage.questionsError")}
-        </InlineAlert>
-      ) : state.status === "ready" && state.questions.length === 0 ? (
+      {/* Enquanto le, o cartao mostra a forma das linhas (antes ficava so o
+          titulo, sem numero nem frase, ate a lista pular para dentro). */}
+      {state.status === "loading" ? (
+        <div aria-busy="true" className="mt-3 grid gap-2">
+          <p role="status" className="sr-only">
+            {t("teach.inboxPage.questionsLoading")}
+          </p>
+          {[0, 1].map((row) => (
+            <div key={row} aria-hidden="true" className="h-16 animate-pulse rounded-md bg-[var(--color-surface-soft)]" />
+          ))}
+        </div>
+      ) : state.status === "error" ? (
+        <div className="mt-3 grid gap-3">
+          <InlineAlert tone="error">{t("teach.inboxPage.questionsError")}</InlineAlert>
+          <button
+            type="button"
+            onClick={() => {
+              setState({ status: "loading" });
+              setAttempt((current) => current + 1);
+            }}
+            className="button-outline justify-self-start px-4 text-sm"
+          >
+            {t("appErrors.retry")}
+          </button>
+        </div>
+      ) : state.questions.length === 0 ? (
         <p className="mt-3 text-sm leading-6 text-[var(--color-ink-soft)]">
           {t("teach.inboxPage.questionsEmpty")}
         </p>
-      ) : state.status === "ready" ? (
+      ) : (
         <ul className="mt-3 grid gap-2">
           {state.questions.map(({ post, courseTitle }) => (
             <li
@@ -113,7 +136,7 @@ export function TeacherInboxQuestions() {
             </li>
           ))}
         </ul>
-      ) : null}
+      )}
     </section>
   );
 }

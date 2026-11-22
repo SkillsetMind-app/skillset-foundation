@@ -809,9 +809,9 @@ p {
 
 /* Selected tabs keep their white "selected" affordance (like .platform-nav-active)
    but their label used var(--color-primary) -> light blue on white (~2.16:1).
-   Pin the label to the same dark ink the nav chip uses (~15:1). Covers hover. */
-[data-theme="dark"] .studio-range-tabs button:hover,
-[data-theme="dark"] .studio-range-tabs button.is-active,
+   Pin the label to the same dark ink the nav chip uses (~15:1). Covers hover.
+   (O seletor do estudio, .studio-range-tabs, saiu daqui: ele usa os tokens de
+   superficie e de texto, que ja trocam no tema escuro.) */
 [data-theme="dark"] .credential-filter-tabs button:hover,
 [data-theme="dark"] .credential-filter-tabs button.is-active {
   color: #0f2744;
@@ -3169,7 +3169,9 @@ html[data-view-as] .platform-shell-root {
 .platform-topbar__actions .account-menu-trigger {
   width: auto !important;
   min-height: 44px;
-  border-radius: 999px !important;
+  /* Canto de 8px como os vizinhos: botao com texto nao e pilula. O avatar
+     dentro continua redondo. */
+  border-radius: var(--radius-md) !important;
   background: #ffffff !important;
   padding: 5px 14px 5px 6px;
   box-shadow: 0 8px 18px rgba(15, 39, 68, 0.06);
@@ -3243,6 +3245,28 @@ html[data-view-as] .platform-shell-root {
 [data-theme="dark"] .help-menu-trigger {
   background: var(--color-surface);
   color: var(--color-ink);
+}
+
+/* ── Barra do topo da plataforma: uma moldura so ──────────────────────────
+   Eram quatro formas na mesma linha: a troca de lado em pilula (um circulo
+   abaixo de 1280px), quadrados brancos com borda, a conta em pilula comprida
+   e o idioma sem borda nem fundo, que parecia texto solto. Agora todos: 44px,
+   borda de 1px, fundo branco, canto de 8px. Fora da barra (site, Ajuda da
+   sala) nada muda. */
+.platform-topbar__actions .platform-topbar__switch {
+  border-radius: var(--radius-md);
+}
+
+.platform-topbar__actions .locale-switcher-compact {
+  border: 1px solid var(--color-line);
+  background: var(--color-surface);
+  color: var(--color-primary);
+  box-shadow: 0 8px 18px rgba(15, 39, 68, 0.06);
+}
+
+.platform-topbar__actions .locale-switcher-compact:hover {
+  border-color: var(--color-line-strong);
+  background: var(--color-surface-soft);
 }
 
 .platform-topbar__side {
@@ -3363,19 +3387,8 @@ html[data-view-as] .platform-shell-root {
   box-shadow: 18px 0 44px rgba(7, 23, 42, 0.1);
 }
 
-.platform-sidebar-panel::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background-image:
-    linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
-  background-size: 28px 28px;
-  mask-image: radial-gradient(circle at 30% 18%, #000 0%, transparent 70%);
-  opacity: 0.6;
-}
-
+/* A trama quadriculada de 28px do rail saiu: textura repetida e um dos
+   padroes que o desenho da casa proibe. O degrade navy fica. */
 .platform-sidebar-panel > * {
   position: relative;
 }
@@ -3687,6 +3700,22 @@ html[data-view-as] .platform-shell-root {
 
 .advisor-panel {
   height: min(560px, calc(100dvh - 7rem));
+}
+
+/* Gatilho na barra do topo (advisor-sidebar.tsx mede o botao): a conversa
+   abre logo abaixo dele, e nao no rodape. A altura desconta o topo medido,
+   para o painel inteiro caber na janela. No celular nada muda. */
+.floating-action--advisor.floating-action--anchored {
+  /* Logo abaixo da camada da barra do topo (60): o painel do sino e o menu da
+     conta, que moram nela, abrem POR CIMA da conversa, nao escondidos atras. */
+  z-index: 59;
+  top: var(--advisor-top, 4.5rem);
+  bottom: auto;
+  inset-inline-end: var(--advisor-right, 1.5rem);
+}
+
+.floating-action--anchored .advisor-panel {
+  height: min(560px, calc(100dvh - var(--advisor-top, 4.5rem) - 1rem));
 }
 
 /* Get the floating trigger out of the way when the cookie banner or the course
@@ -7234,9 +7263,16 @@ button:hover > .dash-card,
   min-height: 390px;
 }
 
+/* ── Seletor segmentado do estudio (PeriodTabs): uma entre poucas opcoes ──
+   O unico desenho para filtro no professor (periodo dos relatorios e da Home,
+   espacos/comunidades em Membros). Texto normal, sem versalete; 36px de botao
+   + 4px de moldura = 44px de toque. Passar o mouse nao pinta igual a ativa
+   (antes as duas regras eram a mesma e nao se sabia qual estava escolhida). */
 .studio-range-tabs {
   display: inline-flex;
-  overflow: hidden;
+  max-width: 100%;
+  overflow-x: auto;
+  gap: 0.25rem;
   border: 1px solid var(--color-line);
   border-radius: var(--radius-lg);
   background: var(--color-surface-soft);
@@ -7244,27 +7280,37 @@ button:hover > .dash-card,
 }
 
 .studio-range-tabs button {
+  flex: 0 0 auto;
+  min-height: 36px;
   border: 0;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-sm);
   background: transparent;
   color: var(--color-ink-soft);
   cursor: pointer;
-  font-size: 0.75rem;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  padding: 0.55rem 0.85rem;
-  text-transform: uppercase;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  padding: 0 0.875rem;
+  white-space: nowrap;
   transition:
     background 180ms ease,
     color 180ms ease,
     box-shadow 180ms ease;
 }
 
-.studio-range-tabs button:hover,
-.studio-range-tabs button.is-active {
-  background: #ffffff;
+.studio-range-tabs button:hover {
+  background: var(--color-surface-strong);
+  color: var(--color-ink);
+}
+
+.studio-range-tabs button:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.studio-range-tabs button[aria-pressed="true"] {
+  background: var(--color-surface);
   color: var(--color-primary);
-  box-shadow: 0 6px 14px rgba(15, 39, 68, 0.06);
+  box-shadow: var(--shadow-soft);
 }
 
 .studio-chart-canvas {
@@ -7274,9 +7320,8 @@ button:hover > .dash-card,
   overflow: hidden;
   border: 1px solid var(--color-line);
   border-radius: var(--radius-lg);
-  background:
-    radial-gradient(circle at 80% 24%, rgba(178, 34, 52, 0.08), transparent 11rem),
-    linear-gradient(180deg, #ffffff 0%, var(--color-surface-soft) 100%);
+  /* Sem o brilho vermelho da marca antiga no canto. */
+  background: linear-gradient(180deg, #ffffff 0%, var(--color-surface-soft) 100%);
   padding: 1rem;
 }
 
@@ -7304,20 +7349,12 @@ button:hover > .dash-card,
    tokens. (The SVG gridlines + axis labels are tokenized inline in
    teacher-studio-insights.tsx, so they theme themselves.) */
 [data-theme="dark"] .studio-chart-canvas {
-  background:
-    radial-gradient(circle at 80% 24%, rgba(178, 34, 52, 0.12), transparent 11rem),
-    linear-gradient(180deg, var(--color-surface) 0%, var(--color-base) 100%);
+  background: linear-gradient(180deg, var(--color-surface) 0%, var(--color-base) 100%);
 }
 
 [data-theme="dark"] .studio-chart-empty {
   border-color: var(--color-line);
   background: var(--color-surface);
-}
-
-[data-theme="dark"] .studio-range-tabs button:hover,
-[data-theme="dark"] .studio-range-tabs button.is-active {
-  background: var(--color-surface-strong);
-  color: var(--color-ink);
 }
 
 .studio-chart-empty p {
@@ -7446,9 +7483,7 @@ button:hover > .dash-card,
   height: 2.75rem;
   place-items: center;
   border-radius: var(--radius-md);
-  background:
-    radial-gradient(circle at 75% 20%, rgba(178, 34, 52, 0.28), transparent 1.5rem),
-    var(--color-primary);
+  background: var(--color-primary);
   color: var(--color-on-primary);
   font-size: 0.75rem;
   font-weight: 900;
@@ -7519,9 +7554,11 @@ button:hover > .dash-card,
   color: var(--color-primary);
 }
 
+/* Urgente e vermelho de verdade (fundo e texto de perigo), nao vermelho com
+   letra latao. */
 .studio-activity-card__icon.is-urgent {
-  background: rgba(178, 34, 52, 0.1);
-  color: var(--color-accent-fg);
+  background: var(--color-danger-soft);
+  color: var(--color-danger-fg);
 }
 
 .studio-activity-card__icon.is-success {
