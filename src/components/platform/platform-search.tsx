@@ -55,8 +55,10 @@ export function PlatformSearch({
       return;
     }
 
+    // A busca do professor ia para /teach?query=, que ninguem le: o Enter
+    // recarregava a Home igual. A lista de produtos ja filtra por ?q=.
     const target = pathname.startsWith("/teach")
-      ? `/teach?query=${encodeURIComponent(query)}`
+      ? `/teach/builder?q=${encodeURIComponent(query)}`
       : `/courses?q=${encodeURIComponent(query)}`;
 
     router.push(target);

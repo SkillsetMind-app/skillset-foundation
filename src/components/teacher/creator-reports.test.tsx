@@ -78,7 +78,6 @@ function HomeInsights() {
     <TeacherStudioInsights
       courses={mocks.courses as TeacherCourse[]}
       orders={mocks.orders as Order[]}
-      payoutsPending={false}
     />
   );
 }
@@ -285,7 +284,9 @@ describe("datas dos gráficos no idioma da pessoa", () => {
     render(<I18nProvider initialLocale="es"><Component /></I18nProvider>);
     fireEvent.click(screen.getByRole("button", { name: period }));
 
-    const chart = screen.getByRole("img");
+    // Os rotulos do eixo moram em HTML em volta do SVG (12px em qualquer
+    // largura), dentro do mesmo quadro do grafico.
+    const chart = screen.getByRole("img").closest<HTMLElement>(".studio-chart-canvas")!;
     expect(within(chart).getByText(spanishLabel)).toBeInTheDocument();
     expect(within(chart).queryByText(englishLabel)).not.toBeInTheDocument();
     expect(within(chart.closest<HTMLElement>(".studio-chart-card")!).getByText("$200", { selector: "strong" })).toBeVisible();
@@ -295,10 +296,12 @@ describe("datas dos gráficos no idioma da pessoa", () => {
     render(<I18nProvider initialLocale="en"><ChangeLanguage /><Component /></I18nProvider>);
     fireEvent.click(screen.getByRole("button", { name: period }));
 
-    const chart = screen.getByRole("img");
+    const chart = screen.getByRole("img").closest<HTMLElement>(".studio-chart-canvas")!;
     expect(within(chart).getByText(englishLabel)).toBeInTheDocument();
     const geometry = [...chart.querySelectorAll("path")].map((path) => path.getAttribute("d"));
-    const points = chart.querySelectorAll("circle").length;
+    // Os pontos sao HTML (no desenho esticado um circulo viraria elipse).
+    const points = chart.querySelectorAll("span.rounded-full").length;
+    expect(points).toBeGreaterThan(0);
     fireEvent.click(screen.getByRole("button", { name: "Cambiar a español" }));
 
     expect(within(chart).getByText(spanishLabel)).toBeInTheDocument();
@@ -306,7 +309,7 @@ describe("datas dos gráficos no idioma da pessoa", () => {
     expect(within(chart.closest<HTMLElement>(".studio-chart-card")!).getByText("$200", { selector: "strong" })).toBeVisible();
     expect(screen.getByRole("button", { name: period })).toHaveAttribute("aria-pressed", "true");
     expect([...chart.querySelectorAll("path")].map((path) => path.getAttribute("d"))).toEqual(geometry);
-    expect(chart.querySelectorAll("circle")).toHaveLength(points);
+    expect(chart.querySelectorAll("span.rounded-full")).toHaveLength(points);
     expect(screen.getAllByText("Deep Hypnosis").length).toBeGreaterThan(0);
   });
 

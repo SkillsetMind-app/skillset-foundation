@@ -273,10 +273,14 @@ describe("TeacherWalletPanel money integrity", () => {
 
     render(<TeacherWalletPanel />);
 
+    // Cada moeda no proprio valor, formatada na lingua da tela e nunca
+    // convertida nem somada: R$100 do BRL e US$20 do USD, lado a lado.
     expect(
-      await screen.findByText("BRL 100.00 + USD 20.00"),
+      await screen.findByText("R$100.00 · $20.00"),
     ).toBeInTheDocument();
     expect(screen.queryByText("USD 120.00")).not.toBeInTheDocument();
+    expect(screen.queryByText("$120.00")).not.toBeInTheDocument();
+    expect(screen.queryByText("R$120.00")).not.toBeInTheDocument();
   });
 
   it("does not turn a failed ledger read into zero balances", async () => {
@@ -290,6 +294,91 @@ describe("TeacherWalletPanel money integrity", () => {
     render(<TeacherWalletPanel />);
 
     expect((await screen.findAllByText("Unavailable")).length).toBeGreaterThan(0);
+    expect(screen.queryByText("$0.00")).not.toBeInTheDocument();
+  });
+
+  // Linha antiga do ledger sem moeda: o dominio a soma sob "UNSPECIFIED", que o
+  // Intl recusa com RangeError. Sem o recuo, /account/payments inteira caia na
+  // tela de erro. A pagina abre e mostra cada valor.
+  it("renders legacy rows with an unknown or empty currency instead of crashing", async () => {
+    dataMocks.subscribeToTeacherPayoutLedger.mockImplementation(
+      (_teacherId, callback) => {
+        callback([
+          {
+            id: "legacy",
+            status: "released",
+            grossAmountMinor: 1_200,
+            skillsetFeeMinor: 100,
+            stripeFeeMinor: 0,
+            netAmountMinor: 1_100,
+            refundedAmountMinor: 0,
+            currency: "UNSPECIFIED",
+          },
+          {
+            id: "blank",
+            status: "released",
+            grossAmountMinor: 600,
+            skillsetFeeMinor: 50,
+            stripeFeeMinor: 0,
+            netAmountMinor: 550,
+            refundedAmountMinor: 0,
+            currency: "",
+          },
+        ]);
+        return () => undefined;
+      },
+    );
+
+    render(<TeacherWalletPanel />);
+
+    // "" e "UNSPECIFIED" caem na mesma soma do dominio (moeda desconhecida).
+    const net = (await screen.findByText("Creator net estimate")).nextElementSibling;
+    expect(net).toHaveTextContent(/^UNSPECIFIED 16\.50$/);
+    // Cada linha do extrato com o proprio valor.
+    expect(screen.getByText("UNSPECIFIED 11.00")).toBeInTheDocument();
+    expect(screen.getByText("5.50")).toBeInTheDocument();
+  });
+
+  // So reembolso em BRL: o neto vazio dizia "$0.00" ao lado de "R$100.00".
+  it("writes an empty total in the one currency the teacher uses", async () => {
+    dataMocks.subscribeToTeacherPayoutLedger.mockImplementation(
+      (_teacherId, callback) => {
+        callback([
+          {
+            id: "refund",
+            status: "refunded",
+            grossAmountMinor: 10_000,
+            skillsetFeeMinor: 0,
+            stripeFeeMinor: 0,
+            netAmountMinor: 10_000,
+            refundedAmountMinor: 10_000,
+            currency: "BRL",
+          },
+        ]);
+        return () => undefined;
+      },
+    );
+
+    render(<TeacherWalletPanel />);
+
+    const net = (await screen.findByText("Creator net estimate")).nextElementSibling;
+    expect(net).toHaveTextContent(/^R\$0\.00$/);
+    expect(screen.getAllByText("R$100.00").length).toBeGreaterThan(0);
+    expect(screen.queryByText("$0.00")).not.toBeInTheDocument();
+  });
+
+  it("with no ledger at all, an empty total reads 0 without assuming a currency", async () => {
+    dataMocks.subscribeToTeacherPayoutLedger.mockImplementation(
+      (_teacherId, callback) => {
+        callback([]);
+        return () => undefined;
+      },
+    );
+
+    render(<TeacherWalletPanel />);
+
+    const net = (await screen.findByText("Creator net estimate")).nextElementSibling;
+    expect(net).toHaveTextContent(/^0$/);
     expect(screen.queryByText("$0.00")).not.toBeInTheDocument();
   });
 });

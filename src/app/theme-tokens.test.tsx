@@ -201,7 +201,8 @@ describe("neutral dark actions", () => {
   // guard below. Read the real classes, not a mocked component's styling.
   it.each([
     "teacher/teacher-members-area-hub.tsx",
-    "teacher/teacher-studio-dashboard.tsx",
+    // teacher-studio-dashboard.tsx saiu da lista: o unico controle cheio dele
+    // eram os marcos ("Creator milestones"), que repetiam os passos e sairam.
     "teacher/course-manage-hub.tsx",
     "teacher/course-landing-editor.tsx",
     "learn/learning-paths-rows.tsx",

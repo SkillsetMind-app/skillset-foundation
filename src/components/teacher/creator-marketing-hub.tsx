@@ -253,7 +253,7 @@ export function CreatorMarketingHub() {
                 key={tool.key}
                 as="article"
                 padding="md"
-                className="grid content-start gap-3"
+                className="flex flex-col gap-3"
               >
                 <span className="grid size-10 place-items-center rounded-md border border-[var(--color-line)] bg-[var(--color-surface-soft)] text-[var(--color-primary)]">
                   <Icon aria-hidden="true" size={18} strokeWidth={1.8} />
@@ -265,9 +265,12 @@ export function CreatorMarketingHub() {
                   </p>
                 </div>
                 {tool.state ? <div>{tool.state}</div> : null}
+                {/* mt-auto: os quatro botoes da fileira ficam na mesma linha,
+                    no pe do cartao, em vez de uma escada logo abaixo de cada
+                    texto. */}
                 <Link
                   href={tool.href}
-                  className={`${buttonClasses({ variant: "outline", size: "sm" })} justify-self-start`}
+                  className={`${buttonClasses({ variant: "outline", size: "sm" })} mt-auto self-start`}
                 >
                   {tool.action}
                   <ArrowRight aria-hidden="true" size={14} strokeWidth={1.8} />

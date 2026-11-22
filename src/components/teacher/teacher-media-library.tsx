@@ -131,7 +131,9 @@ export function TeacherMediaLibrary() {
         {selectedCourse ? (
           <Link
             href={`/teach/builder?courseId=${selectedCourse.id}`}
-            className={buttonClasses()}
+            // Contorno: o vazio da biblioteca ja tem o botao forte para o
+            // mesmo lugar.
+            className={buttonClasses({ variant: "outline" })}
           >
             {t("teacherMedia.upload")}
           </Link>

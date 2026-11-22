@@ -326,7 +326,9 @@ describe("painel do criador em espanhol", () => {
     ).toBeInTheDocument();
     expect(within(steps).getByText("Crea un producto")).toBeInTheDocument();
     // Rascunho de venda avulsa: o Stripe e trava do publish.
-    expect(within(steps).getByText("Conectar Stripe")).toBeInTheDocument();
+    // O passo aberto traz o proprio botao, com o mesmo nome do passo.
+    expect(within(steps).getByText("Conectar Stripe", { selector: "strong" })).toBeInTheDocument();
+    expect(within(steps).getByRole("link", { name: /Conectar Stripe/ })).toHaveClass("button-solid");
     expect(within(steps).getByText("Publica tu producto")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Productos en tu espacio" })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Borradores" })).toBeInTheDocument();
@@ -344,13 +346,14 @@ describe("painel do criador em espanhol", () => {
       "/teach/builder?newCourse=1&format=live_event",
     );
     expect(within(formats).queryByRole("link", { name: /Programa guiado/ })).toBeNull();
-    // Marcos so depois do 1o publish: antes, a lista de passos e o unico guia.
+    // Os marcos repetiam a lista de passos: sairam, antes e depois do publish.
     expect(screen.queryByRole("heading", { name: "Hitos del creador" })).toBeNull();
     view.unmount();
 
     mocks.courses = [{ ...mocks.course, status: "published" }];
     renderEs(<TeacherStudioDashboard />);
-    expect(await screen.findByRole("heading", { name: "Hitos del creador" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Productos en tu espacio" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Hitos del creador" })).toBeNull();
   });
 
   it.each([

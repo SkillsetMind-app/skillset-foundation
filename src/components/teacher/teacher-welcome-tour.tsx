@@ -1,6 +1,7 @@
 "use client";
 
 import { X } from "lucide-react";
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
@@ -44,7 +45,15 @@ function buildSteps(firstName: string, t: (key: string) => string): TourStep[] {
   ];
 }
 
-export function TeacherWelcomeTour({ userId, firstName }: { userId: string; firstName: string }) {
+export function TeacherWelcomeTour({
+  userId,
+  firstName,
+  hasProducts = false,
+}: {
+  userId: string;
+  firstName: string;
+  hasProducts?: boolean;
+}) {
   const { t } = useTranslation();
   const { open, dismiss } = useWelcomeTour(userId, "teacher");
   const [stepIndex, setStepIndex] = useState(0);
@@ -144,7 +153,18 @@ export function TeacherWelcomeTour({ userId, firstName }: { userId: string; firs
                 {t("learn.tour.back")}
               </button>
             ) : null}
-            {isLast ? (
+            {/* O tour so descrevia e terminava em "Open your studio", que so
+                fechava. Sem produto ainda, a ultima pagina leva a acao que ele
+                descreveu: criar o primeiro produto. */}
+            {isLast && !hasProducts ? (
+              <Link
+                href="/teach/builder?newCourse=1&format=course"
+                onClick={dismiss}
+                className="button-solid shrink-0 px-4 py-2 text-sm"
+              >
+                {t("creatorPanel.home.products.firstCta")}
+              </Link>
+            ) : isLast ? (
               <button type="button" onClick={dismiss} className="button-solid shrink-0 px-4 py-2 text-sm">
                 {t("teach.tour.openStudio")}
               </button>

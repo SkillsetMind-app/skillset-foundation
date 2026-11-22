@@ -204,16 +204,45 @@ describe("carteira do professor em espanhol", () => {
     expect(
       screen.getByRole("heading", { name: "Registro de ingresos reciente." }),
     ).toBeInTheDocument();
+    // O "Exportar tras el primer pago" era desligado para sempre: saiu.
     expect(
-      screen.getByRole("button", { name: "Exportar tras el primer pago" }),
-    ).toBeInTheDocument();
+      screen.queryByRole("button", { name: "Exportar tras el primer pago" }),
+    ).toBeNull();
+    // Sem conta Stripe conectada, "Abrir mi Stripe" so dava erro: nao aparece.
+    expect(screen.queryByRole("button", { name: "Abrir mi Stripe" })).toBeNull();
 
     // A linha do proprio movimento: pedido, pagamento e situacao.
     expect(screen.getByText("Pedido ord-1")).toBeInTheDocument();
     expect(screen.getByText("Pago pay-1")).toBeInTheDocument();
     expect(screen.getByText("Registrado")).toBeInTheDocument();
+    // Data e valor na lingua da tela: a data saia sempre em ingles e o neto
+    // como "USD 42.38".
+    expect(screen.queryByText("Sep 1, 2026")).toBeNull();
+    expect(screen.getByText(/^1 sept?\.? 2026$/)).toBeInTheDocument();
+    expect(screen.getAllByText(/^42,38\sUS\$$/).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/USD 42\.38/)).toBeNull();
 
     expect(screen.getByText("Centro fiscal")).toBeInTheDocument();
+  });
+
+  // Sem nenhum movimento nao ha moeda para afirmar: o neto diz so "0" (com
+  // movimento numa moeda so, o zero sai nela; ver creator-ops.test).
+  it("sem nenhuma venda, o neto estimado diz 0 sem inventar moeda", () => {
+    const ledger = mocks.ledger;
+    mocks.ledger = [];
+    try {
+      render(
+        <I18nProvider initialLocale="es">
+          <TeacherWalletPanel />
+        </I18nProvider>,
+      );
+
+      const net = screen.getByText("Neto estimado del creador").nextElementSibling;
+      expect(net).toHaveTextContent(/^0$/);
+      expect(screen.queryByText(/^0,00\sUS\$$/)).toBeNull();
+    } finally {
+      mocks.ledger = ledger;
+    }
   });
 });
 vi.mock("@/lib/data/creator-plan", () => ({ fetchCreatorPlanRequired: async () => false }));

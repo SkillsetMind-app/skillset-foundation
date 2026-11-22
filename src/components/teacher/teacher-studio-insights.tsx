@@ -48,16 +48,14 @@ type ActivityItem = {
 
 // The Home loads courses, orders and the profile once and passes them down;
 // this block used to open its own three subscriptions on top of the Home's.
-// `payoutsPending`: a paid product is waiting on Stripe. Before, any creator
-// without Stripe got it as URGENT, even with no course or only free ones.
+// O Stripe pendente saiu daqui: era a 4a vez que a mesma pendencia aparecia na
+// Home. O passo "Connect Stripe" da lista de passos e o dono dela.
 export function TeacherStudioInsights({
   courses,
   orders,
-  payoutsPending,
 }: {
   courses: TeacherCourse[];
   orders: Order[];
-  payoutsPending: boolean;
 }) {
   const { locale, t } = useTranslation();
   const [revenueRange, setRevenueRange] = useState<RevenueRange>("12m");
@@ -82,7 +80,7 @@ export function TeacherStudioInsights({
     () => buildTopCourses(courses, paidOrders),
     [courses, paidOrders],
   );
-  const activity = buildActivity(courses, payoutsPending, t);
+  const activity = buildActivity(courses, t);
 
   return (
     <div className="grid gap-8">
@@ -221,7 +219,6 @@ function buildTopCourses(courses: TeacherCourse[], paidOrders: Order[]) {
 
 function buildActivity(
   courses: TeacherCourse[],
-  payoutsPending: boolean,
   t: (key: string) => string,
 ): ActivityItem[] {
   const items: ActivityItem[] = [];
@@ -229,16 +226,6 @@ function buildActivity(
   const reviewReadyDraft = courses.find((course) => course.status === "draft" && course.lessonCount > 0);
   const needsChanges = courses.find((course) => course.status === "needs_changes");
   const inReview = courses.find((course) => course.status === "in_review");
-
-  if (payoutsPending) {
-    items.push({
-      title: t("teach.insights.actPayoutTitle"),
-      detail: t("teach.insights.actPayoutDetail"),
-      href: "/account/payments#stripe-connect",
-      kind: "urgent",
-      icon: "alert",
-    });
-  }
 
   if (needsChanges) {
     items.push({
