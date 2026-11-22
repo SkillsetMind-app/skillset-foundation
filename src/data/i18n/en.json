@@ -309,8 +309,6 @@
       "expiredSent": "Done. If this email still needs to be confirmed, a new link is on its way. Check your inbox and your spam folder."
     },
     "guard": {
-      "loadingTitle": "Preparing your workspace",
-      "loadingDescription": "SkillsetMind is checking your account session before opening this area.",
       "signInEyebrow": "Sign in required",
       "signInTitle": "This area needs an account.",
       "signInDescription": "Sign in or create an account to continue into the learning, teaching, or operations workspace.",
@@ -330,7 +328,6 @@
     "payoutCountryOther": "Another country",
     "payoutCountryUnavailable": "Payouts are not available for another country in this setup. You can prepare your products, but you cannot sell or receive payments until you have an eligible payout account.",
     "payoutCountryRequired": "Choose the country of your bank account, or select another country, before continuing.",
-    "preparing": "Preparing your account setup...",
     "stepPath": "Path",
     "stepProfile": "Profile",
     "stepGoals": "Goals",
@@ -3614,15 +3611,13 @@
       "unknown": "Something went wrong. Please try again."
     },
     "loading": {
-      "title": "Preparing your workspace",
-      "description": "One moment. SkillsetMind is getting things ready.",
+      "title": "Opening SkillsetMind...",
       "retry": "Try again",
       "error": "Could not load your workspace. Refresh the page to try again."
     },
     "onboarding": {
       "question": "Question {number}",
       "progress": "Question {current} of {total}",
-      "preparing": "Preparing onboarding",
       "back": "Back",
       "skip": "Skip for now",
       "saving": "Saving...",
@@ -5103,7 +5098,6 @@
     "globalBody": "The issue has been logged. Try reloading, or head back to the homepage.",
     "retry": "Try again",
     "home": "Go home",
-    "preparingAccess": "Preparing account access...",
     "preparingMetadataTitle": "Preparing your workspace | SkillsetMind"
   },
   "supportCenter": {
@@ -5741,9 +5735,7 @@
       "description": "Save programs from the marketplace and return here before you enroll."
     },
     "onboarding": {
-      "metadataTitle": "Set up your account | SkillsetMind",
-      "title": "Preparing onboarding",
-      "description": "One moment. SkillsetMind is getting things ready."
+      "metadataTitle": "Set up your account | SkillsetMind"
     },
     "communityHub": {
       "loadError": "We could not load your enrolled community spaces.",

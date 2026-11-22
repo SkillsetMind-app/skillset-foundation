@@ -309,8 +309,6 @@
       "expiredSent": "Listo. Si este correo todavía no está confirmado, te llega un enlace nuevo. Revisa tu bandeja de entrada y la carpeta de spam."
     },
     "guard": {
-      "loadingTitle": "Preparando tu espacio de trabajo",
-      "loadingDescription": "SkillsetMind está verificando tu sesión antes de abrir esta área.",
       "signInEyebrow": "Inicio de sesión requerido",
       "signInTitle": "Esta área requiere una cuenta.",
       "signInDescription": "Inicia sesión o crea una cuenta para continuar al espacio de aprendizaje, enseñanza u operaciones.",
@@ -330,7 +328,6 @@
     "payoutCountryOther": "Otro país",
     "payoutCountryUnavailable": "Los cobros no están disponibles para otro país en esta configuración. Puedes preparar tus productos, pero no puedes vender ni recibir pagos hasta tener una cuenta de cobro elegible.",
     "payoutCountryRequired": "Elige el país de tu cuenta bancaria, u otro país, antes de continuar.",
-    "preparing": "Preparando la configuración de tu cuenta...",
     "stepPath": "Camino",
     "stepProfile": "Perfil",
     "stepGoals": "Objetivos",
@@ -3614,15 +3611,13 @@
       "unknown": "Algo salió mal. Inténtalo de nuevo."
     },
     "loading": {
-      "title": "Preparando tu espacio de trabajo",
-      "description": "Un momento. SkillsetMind lo está preparando todo.",
+      "title": "Abriendo SkillsetMind...",
       "retry": "Intentar de nuevo",
       "error": "No se pudo cargar tu espacio de trabajo. Actualiza la página para intentarlo de nuevo."
     },
     "onboarding": {
       "question": "Pregunta {number}",
       "progress": "Pregunta {current} de {total}",
-      "preparing": "Preparando la bienvenida",
       "back": "Atrás",
       "skip": "Omitir por ahora",
       "saving": "Guardando...",
@@ -5103,7 +5098,6 @@
     "globalBody": "El problema se ha registrado. Intenta recargar la página o vuelve al inicio.",
     "retry": "Intentar de nuevo",
     "home": "Ir al inicio",
-    "preparingAccess": "Preparando el acceso a tu cuenta...",
     "preparingMetadataTitle": "Preparando tu espacio de trabajo | SkillsetMind"
   },
   "supportCenter": {
@@ -5741,9 +5735,7 @@
       "description": "Guarda programas del catálogo y vuelve aquí antes de matricularte."
     },
     "onboarding": {
-      "metadataTitle": "Configura tu cuenta | SkillsetMind",
-      "title": "Preparando la configuración inicial",
-      "description": "Un momento. SkillsetMind está preparando todo."
+      "metadataTitle": "Configura tu cuenta | SkillsetMind"
     },
     "communityHub": {
       "loadError": "No pudimos cargar las comunidades de tus cursos.",

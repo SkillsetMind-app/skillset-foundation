@@ -17,12 +17,7 @@ export default async function WelcomePage() {
   const { t } = await getServerTranslation();
   return (
     <Suspense
-      fallback={
-        <SkillsetSpinner
-          title={t("learnWave2.onboarding.title")}
-          description={t("learnWave2.onboarding.description")}
-        />
-      }
+      fallback={<SkillsetSpinner title={t("authFlow.loading.title")} />}
     >
       <OnboardingWizard />
     </Suspense>

@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, GraduationCap, Loader2, Presentation } from "lucide-react";
+import { Check, GraduationCap, Presentation } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 
@@ -12,6 +12,7 @@ import {
 } from "@/components/auth/onboarding-question";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { LogoWordmark } from "@/components/shared/logo-wordmark";
+import { SkillsetSpinner } from "@/components/shared/skillset-spinner";
 import { skillsetCourseCategories } from "@/domain/teacher-course";
 import type { OnboardingAnswers } from "@/domain/user-profile";
 import {
@@ -269,7 +270,10 @@ export function OnboardingWizard() {
   const [profilePhone, setProfilePhone] = useState("");
   const [isBootstrapping, setIsBootstrapping] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [isComplete, setIsComplete] = useState(false);
+  // Destino do fim da entrevista; preenchido = a tela "You're all set".
+  const [doneHref, setDoneHref] = useState<string | null>(null);
+  const isComplete = doneHref !== null;
+  const leftRef = useRef(false);
   const [error, setError] = useState("");
 
   const questions = useMemo(
@@ -554,22 +558,33 @@ export function OnboardingWizard() {
 
     try {
       await persistAnswers(answers, true);
-      setIsComplete(true);
-      await wait(1800);
       // Fim da linha do deep link: quem chegou aqui vindo de um curso volta
       // para ELE, nao para o painel. O professor e a excecao — /onboarding e
       // um passo obrigatorio da conta, nao um destino que da para trocar. So o
       // plano escolhido em /pricing segue com ele, para abrir o cartao no fim.
       // Plano e de quem ensina: no caminho de aluno essa tela nao abre.
-      router.replace(
+      const destination =
         answers.path === "teacher"
           ? getTeacherOnboardingRoute(returnTo)
-          : (getPlanCheckoutReturnTo(returnTo) ? null : returnTo) ?? "/learn",
-      );
+          : (getPlanCheckoutReturnTo(returnTo) ? null : returnTo) ?? "/learn";
+      setDoneHref(destination);
+      // Eram 1800ms presos na tela, sem botao. Agora uma pausa curta para o
+      // resumo ser visto; o "Continue" da tela vai na hora.
+      await wait(800);
+      leaveTo(destination);
     } catch {
       setError("authFlow.onboarding.finishError");
       setIsSaving(false);
     }
+  }
+
+  // O "Continue" e a pausa automatica chegam aqui; so a primeira navega.
+  function leaveTo(href: string | null) {
+    if (!href || leftRef.current) {
+      return;
+    }
+    leftRef.current = true;
+    router.replace(href);
   }
 
   function toggleGoal(goal: string) {
@@ -582,16 +597,8 @@ export function OnboardingWizard() {
   }
 
   if (isBootstrapping || status === "loading") {
-    return (
-      <main className="grid min-h-screen place-items-center bg-[var(--color-base)] px-5">
-        <div className="text-center">
-          <div className="mx-auto mb-5 size-14 rounded-full border-[3px] border-[rgba(26,54,93,0.12)] border-t-[var(--color-accent-fg)] motion-safe:animate-spin" />
-          <p className="text-sm font-semibold text-[var(--color-primary)]">
-            {t("authFlow.onboarding.preparing")}
-          </p>
-        </div>
-      </main>
-    );
+    // Igual ao fallback de /welcome que vem logo antes: uma espera só.
+    return <SkillsetSpinner title={t("authFlow.loading.title")} />;
   }
 
   if (isComplete) {
@@ -631,7 +638,7 @@ export function OnboardingWizard() {
           <h1 className="display-title mt-4 text-[38px] font-semibold leading-[1.1] text-[var(--color-primary)]">
             {name ? t("authFlow.onboarding.allSet").replace("{name}", () => name) : t("authFlow.onboarding.allSetAnonymous")}
           </h1>
-          <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-[var(--color-ink-soft)]">
+          <p role="status" className="mx-auto mt-3 max-w-md text-sm leading-6 text-[var(--color-ink-soft)]">
             {t("authFlow.onboarding.completeDescription")}
           </p>
           {recap.length > 0 ? (
@@ -660,11 +667,15 @@ export function OnboardingWizard() {
               ))}
             </dl>
           ) : null}
-          <Loader2
-            aria-hidden="true"
-            className="mx-auto mt-8 size-14 animate-spin text-[var(--color-accent-fg)]"
-            strokeWidth={1.6}
-          />
+          {/* Antes um giro sem texto e 1,8s sem nenhum controle. A pausa curta
+              continua (dá para ler o resumo); o botão leva ao mesmo destino já. */}
+          <button
+            type="button"
+            onClick={() => leaveTo(doneHref)}
+            className="button-solid mt-8 px-4 py-2.5 text-sm"
+          >
+            {t("authFlow.onboarding.continue")}
+          </button>
         </section>
       </main>
     );

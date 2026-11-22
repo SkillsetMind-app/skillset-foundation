@@ -251,6 +251,24 @@ describe("boas-vindas: o fim leva de volta para onde a pessoa estava", () => {
     );
   });
 
+  // O-18/F-10: o "You're all set" segurava a pessoa 1,8s sem nenhum botao.
+  // Agora o "Continue" vai na hora para o MESMO destino, e a pausa automatica
+  // nao navega uma segunda vez depois do clique.
+  it("'Continue' no fim vai na hora para o mesmo destino, uma vez so", async () => {
+    mocks.searchParams = new URLSearchParams("returnTo=/courses/focus");
+
+    await terminar();
+
+    await screen.findByRole("heading", { level: 1, name: /all set/ });
+    expect(screen.getByRole("status")).toHaveTextContent("Taking you there now.");
+    expect(mocks.router.replace).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    expect(mocks.router.replace).toHaveBeenCalledExactlyOnceWith("/courses/focus");
+
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    expect(mocks.router.replace).toHaveBeenCalledTimes(1);
+  });
+
   it("descarta destino de outro dominio", async () => {
     mocks.searchParams = new URLSearchParams("returnTo=https://outro.com/pego");
 
