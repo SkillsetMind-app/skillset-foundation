@@ -366,15 +366,23 @@ export function subscribeToCourseEvents(
   courseSlug: string,
   callback: (events: CourseEvent[]) => void,
   onError: (error: Error) => void,
-): () => void {
+): (() => void) & { reload: () => Promise<void> } {
   const supabase = getSupabaseBrowserClient();
+  // So a leitura mais nova entrega: um "Try again" que volta depois da
+  // releitura de uma sessao nova traria a agenda sem ela.
+  let active = true;
+  let latestLoad = 0;
 
   const load = async () => {
+    const thisLoad = ++latestLoad;
     const { data, error } = await supabase
       .from("course_events")
       .select("*")
       .eq("course_slug", courseSlug);
 
+    if (!active || thisLoad !== latestLoad) {
+      return;
+    }
     if (error) {
       onError(error instanceof Error ? error : new Error(String(error)));
       return;
@@ -406,7 +414,12 @@ export function subscribeToCourseEvents(
     )
     .subscribe();
 
-  return () => {
-    void supabase.removeChannel(channel);
-  };
+  // `reload()` le de novo SEM mexer no canal (o "Try again" de Eventos).
+  return Object.assign(
+    () => {
+      active = false;
+      void supabase.removeChannel(channel);
+    },
+    { reload: load },
+  );
 }

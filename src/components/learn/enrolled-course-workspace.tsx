@@ -45,6 +45,7 @@ import {
 import { ProtectedAssetPreview } from "@/components/shared/protected-asset-preview";
 import { MilestoneSeal, useJustDone } from "@/components/ui/drawn-check";
 import { InlineAlert } from "@/components/ui/inline-alert";
+import { RetryAlert } from "@/components/ui/retry-alert";
 import type { CourseAsset } from "@/domain/course-asset";
 import {
   formatCourseAssetSize,
@@ -305,6 +306,13 @@ export function EnrolledCourseWorkspace({
     ready: false,
   });
   const [error, setError] = useState("");
+  // "Try again" do cartão de erro: relê só a leitura que falhou, pelo mesmo
+  // canal. Cada leitura boa tira só o PRÓPRIO erro (a de outra não o apaga).
+  const enrollmentSubscription = useRef<ReloadableSubscription | null>(null);
+  const progressSubscription = useRef<ReloadableSubscription | null>(null);
+  const errorCardRef = useRef<HTMLElement>(null);
+  const roomRef = useRef<HTMLDivElement>(null);
+  const focusRoomAfterRetry = useRef(false);
   // Erro de uma AÇÃO (concluir/desfazer aula): aviso dentro do player, a sala
   // fica. `error` acima é de carga e troca a sala inteira pelo cartão de erro —
   // uma falha momentânea ao salvar tirava o aluno da aula.
@@ -409,11 +417,12 @@ export function EnrolledCourseWorkspace({
       return;
     }
 
-    return subscribeToEnrollment(
+    const current = subscribeToEnrollment(
       user.uid,
       course.slug,
       (nextEnrollment) => {
         setEnrollment(nextEnrollment);
+        setError((previous) => (previous === "learn.classroom.workspace.enrollmentError" ? "" : previous));
         setIsLoading(false);
         // Matrícula que chega depois da montagem (checkout): o relógio da
         // montagem ficou para trás e a aula 1 apareceria fechada.
@@ -424,6 +433,11 @@ export function EnrolledCourseWorkspace({
         setIsLoading(false);
       },
     );
+    enrollmentSubscription.current = current;
+    return () => {
+      enrollmentSubscription.current = null;
+      current();
+    };
   }, [course.slug, enrollmentRecheck, hasParentEnrollment, previewMode, user]);
 
   useEffect(() => {
@@ -431,7 +445,7 @@ export function EnrolledCourseWorkspace({
       return;
     }
 
-    return subscribeToCompletedLessons(
+    const current = subscribeToCompletedLessons(
       enrollmentId,
       (lessonIds) => {
         setProgressState({
@@ -439,6 +453,7 @@ export function EnrolledCourseWorkspace({
           lessonIds,
           ready: true,
         });
+        setError((previous) => (previous === "learn.classroom.workspace.progressLoadError" ? "" : previous));
         setClockNow(Date.now());
       },
       () => {
@@ -451,6 +466,11 @@ export function EnrolledCourseWorkspace({
         setClockNow(Date.now());
       },
     );
+    progressSubscription.current = current;
+    return () => {
+      progressSubscription.current = null;
+      current();
+    };
   }, [enrollmentId, previewMode]);
 
   // Liberação pelo calendário (migration 20260915020000). A RLS só entrega o
@@ -664,6 +684,7 @@ export function EnrolledCourseWorkspace({
           key: course.id,
           ready: true,
         });
+        setError((previous) => (previous === "learn.classroom.workspace.assetsError" ? "" : previous));
       },
       () => {
         setError("learn.classroom.workspace.assetsError");
@@ -764,6 +785,20 @@ export function EnrolledCourseWorkspace({
   // Painel novo so na troca de aba (ver useTabChanged).
   const tabChanged = useTabChanged(tab);
 
+  // O cartão de erro some quando o "Try again" dá certo: o foco vai para o
+  // título da sala, em vez de cair no <body>.
+  useEffect(() => {
+    if (error || isLoading || !focusRoomAfterRetry.current) {
+      return;
+    }
+    focusRoomAfterRetry.current = false;
+    const title = roomRef.current?.querySelector<HTMLElement>("h1");
+    if (title) {
+      title.tabIndex = -1;
+      title.focus();
+    }
+  }, [error, isLoading]);
+
   if (isLoading) {
     // The classroom's one loading state, the same the route file and the
     // creator workspace paint, so a student never sees the wait change look.
@@ -771,9 +806,24 @@ export function EnrolledCourseWorkspace({
   }
 
   if (error) {
+    // "Try again" relê só a leitura que falhou, pelo mesmo canal (sem religar).
+    const failed =
+      error === "learn.classroom.workspace.enrollmentError"
+        ? enrollmentSubscription
+        : error === "learn.classroom.workspace.progressLoadError"
+          ? progressSubscription
+          : assetsSubscription;
     return (
-      <section className="rounded-lg border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
-        <InlineAlert tone="error">{t(error)}</InlineAlert>
+      <section ref={errorCardRef} tabIndex={-1} className="rounded-lg border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
+        <RetryAlert
+          focusRef={errorCardRef}
+          onRetry={() => {
+            focusRoomAfterRetry.current = true;
+            return failed.current?.reload?.();
+          }}
+        >
+          {t(error)}
+        </RetryAlert>
         <div className="mt-4 flex flex-wrap gap-3">
           <Link href="/learn" className="button-solid px-4 py-2.5 text-sm">
             {t("learn.classroom.workspace.backToLearning")}
@@ -1248,6 +1298,7 @@ export function EnrolledCourseWorkspace({
 
   return (
     <div
+      ref={roomRef}
       className="member-classroom"
       data-members-theme={course.membersTheme ?? "light"}
     >

@@ -8,15 +8,23 @@ export function subscribeToCompletedLessons(
   enrollmentId: string,
   callback: (lessonIds: string[]) => void,
   onError: (error: Error) => void,
-): () => void {
+): (() => void) & { reload: () => Promise<void> } {
   const supabase = getSupabaseBrowserClient();
+  // So a leitura mais nova entrega: um "Try again" que volta depois da
+  // releitura de uma aula concluida agora traria o progresso velho.
+  let active = true;
+  let latestLoad = 0;
 
   const load = async () => {
+    const thisLoad = ++latestLoad;
     const { data, error } = await supabase
       .from(lessonProgressTable)
       .select("lesson_id")
       .eq("enrollment_id", enrollmentId);
 
+    if (!active || thisLoad !== latestLoad) {
+      return;
+    }
     if (error) {
       onError(error instanceof Error ? error : new Error(String(error)));
       return;
@@ -43,9 +51,14 @@ export function subscribeToCompletedLessons(
     )
     .subscribe();
 
-  return () => {
-    void supabase.removeChannel(channel);
-  };
+  // `reload()` le de novo SEM mexer no canal (o "Try again" da sala).
+  return Object.assign(
+    () => {
+      active = false;
+      void supabase.removeChannel(channel);
+    },
+    { reload: load },
+  );
 }
 
 export type LessonProgressResult = {

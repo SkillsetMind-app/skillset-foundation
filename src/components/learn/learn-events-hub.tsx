@@ -37,10 +37,13 @@ export function LearnEventsHub() {
   const [loadedSlugs, setLoadedSlugs] = useState<string[]>([]);
   const [isLoadingEnrollments, setIsLoadingEnrollments] = useState(true);
   const [error, setError] = useState("");
-  // As sessões não têm releitura: se alguma falhou, o "Try again" das
-  // matrículas não pode apagar esse erro e mostrar a agenda vazia.
-  const [eventsFailed, setEventsFailed] = useState(false);
+  // Uma falha por leitura: o "Try again" relê só o que falhou (as matrículas,
+  // as agendas que falharam ou os dois), e a agenda nunca aparece vazia por
+  // causa de uma agenda que não chegou.
+  const [enrollmentsFailed, setEnrollmentsFailed] = useState(false);
+  const [failedSlugs, setFailedSlugs] = useState<string[]>([]);
   const enrollmentsSubscription = useRef<{ reload?: () => Promise<void> } | null>(null);
+  const eventSubscriptions = useRef(new Map<string, { reload?: () => Promise<void> }>());
 
   useEffect(() => {
     if (!user) {
@@ -51,10 +54,12 @@ export function LearnEventsHub() {
       user.uid,
       (nextEnrollments) => {
         setEnrollments(nextEnrollments);
+        setEnrollmentsFailed(false);
         setIsLoadingEnrollments(false);
       },
       () => {
         setError("learnWave2.eventsHub.loadError");
+        setEnrollmentsFailed(true);
         setIsLoadingEnrollments(false);
       },
     );
@@ -74,14 +79,16 @@ export function LearnEventsHub() {
       new Set(enrollments.map((enrollment) => enrollment.courseSlug)),
     );
 
-    const unsubscribes = uniqueSlugs.map((courseSlug) =>
-      subscribeToCourseEvents(
+    const subscriptions = eventSubscriptions.current;
+    const unsubscribes = uniqueSlugs.map((courseSlug) => {
+      const current = subscribeToCourseEvents(
         courseSlug,
         (events) => {
           setEventBuckets((currentBuckets) => ({
             ...currentBuckets,
             [courseSlug]: events,
           }));
+          setFailedSlugs((slugs) => slugs.filter((slug) => slug !== courseSlug));
           setLoadedSlugs((currentSlugs) =>
             currentSlugs.includes(courseSlug)
               ? currentSlugs
@@ -90,15 +97,20 @@ export function LearnEventsHub() {
         },
         () => {
           setError("learnWave2.eventsHub.eventsError");
-          setEventsFailed(true);
+          setFailedSlugs((slugs) => (slugs.includes(courseSlug) ? slugs : [...slugs, courseSlug]));
           setLoadedSlugs((currentSlugs) =>
             currentSlugs.includes(courseSlug)
               ? currentSlugs
               : [...currentSlugs, courseSlug],
           );
         },
-      ),
-    );
+      );
+      subscriptions.set(courseSlug, current);
+      return () => {
+        subscriptions.delete(courseSlug);
+        current();
+      };
+    });
 
     return () => unsubscribes.forEach((unsubscribe) => unsubscribe());
   }, [enrollments]);
@@ -154,24 +166,29 @@ export function LearnEventsHub() {
     );
   }
 
-  // Lê as matrículas de novo pelo mesmo canal (sem religar). Até a resposta
+  // Lê de novo o que falhou pelos mesmos canais (sem religar). Até a resposta
   // vale o "carregando", nunca o vazio.
   function retryLoad() {
     frameRef.current?.focus();
     setError("");
-    setIsLoadingEnrollments(true);
-    void enrollmentsSubscription.current?.reload?.();
+    if (enrollmentsFailed) {
+      setIsLoadingEnrollments(true);
+      void enrollmentsSubscription.current?.reload?.();
+    }
+    if (failedSlugs.length > 0) {
+      setFailedSlugs([]);
+      setLoadedSlugs((slugs) => slugs.filter((slug) => !failedSlugs.includes(slug)));
+      failedSlugs.forEach((slug) => void eventSubscriptions.current.get(slug)?.reload?.());
+    }
   }
 
   if (error) {
     return frame(
       <section className="rounded-lg border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
         <InlineAlert tone="error">{t(error)}</InlineAlert>
-        {error === "learnWave2.eventsHub.loadError" && !eventsFailed ? (
-          <button type="button" onClick={retryLoad} className="button-outline mt-4 px-4 text-sm">
-            {t("appErrors.retry")}
-          </button>
-        ) : null}
+        <button type="button" onClick={retryLoad} className="button-outline mt-4 px-4 text-sm">
+          {t("appErrors.retry")}
+        </button>
       </section>
     );
   }

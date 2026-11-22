@@ -5,6 +5,7 @@ import { CommunityFeed } from "@/components/learn/community-feed";
 import { I18nProvider, useTranslation } from "@/components/i18n/i18n-provider";
 import type { CommunityComment, CommunityPost } from "@/domain/community-post";
 import type { CommunitySpace } from "@/domain/learning";
+import type { Enrollment } from "@/domain/enrollment";
 import { createCommunityPost, createCommunityComment, createCommunityReport, deleteCommunityComment, deleteCommunityPost, setCommunityPostAcceptedAnswer, setCommunityPostPinned, subscribeToCommunityPosts } from "@/lib/data/community-posts";
 import { subscribeToEnrollment } from "@/lib/data/enrollments";
 import { setCommunityPostLike } from "@/lib/data/gamification";
@@ -215,6 +216,12 @@ function ChangeLanguage() {
   return <button onClick={() => setLocale(locale === "en" ? "es" : "en")}>Change language</button>;
 }
 
+const enrollmentFixture: Enrollment = {
+  id: "enr-1", userId: "student-1", courseId: "course-1", courseSlug: "course-1",
+  courseTitle: "Leading Teams Through Change", courseCategory: "", courseImage: "",
+  status: "active", source: "payment", progressPercent: 10, lastLessonId: null,
+};
+
 async function renderFeed(props: Partial<Parameters<typeof CommunityFeed>[0]> = {}, locale?: "en" | "es") {
   const feed = <CommunityFeed space={space} instructorName="Patrick" {...props} />;
   const view = render(locale ? <I18nProvider initialLocale={locale}><ChangeLanguage />{feed}</I18nProvider> : feed);
@@ -363,13 +370,66 @@ describe("feed da comunidade (rodada 11)", () => {
   it("shows the localized access-load failure without opening the community gate", () => {
     vi.mocked(subscribeToEnrollment).mockImplementationOnce((_uid, _slug, _next, onError) => {
       onError(new Error("private cause"));
-      return vi.fn();
+      return Object.assign(vi.fn(), { reload: vi.fn(async () => undefined) });
     });
     render(<I18nProvider initialLocale="es"><CommunityFeed space={space} /></I18nProvider>);
     expect(screen.getByText("No pudimos confirmar tu acceso a la comunidad.")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Esta comunidad está vinculada a la inscripción en el curso." })).toBeInTheDocument();
     expect(subscribeToCommunityPosts).not.toHaveBeenCalled();
     expect(createCommunityPost).not.toHaveBeenCalled();
+  });
+
+  // As falhas de leitura eram becos: "Try again" relê pelo mesmo canal, sem
+  // reinscrever, e o aviso só sai quando a leitura volta.
+  it("a falha do acesso oferece Try again; quando a matrícula chega o feed abre com o foco no título", async () => {
+    let deliver: (enrollment: Enrollment | null) => void = () => {};
+    const reload = vi.fn(async () => deliver(enrollmentFixture));
+    vi.mocked(subscribeToEnrollment).mockImplementationOnce((_uid, _slug, next, onError) => {
+      deliver = next;
+      onError(new Error("private cause"));
+      return Object.assign(vi.fn(), { reload });
+    });
+    render(<I18nProvider initialLocale="en"><CommunityFeed space={space} /></I18nProvider>);
+    expect(screen.getByRole("alert")).toHaveTextContent("We could not confirm your community access.");
+
+    await act(async () => fireEvent.click(screen.getByRole("button", { name: "Try again" })));
+    expect(reload).toHaveBeenCalledTimes(1);
+    expect(subscribeToEnrollment).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(subscribeToCommunityPosts).toHaveBeenCalledTimes(1);
+    expect(document.activeElement).toHaveAttribute("data-community-heading");
+  });
+
+  it("a falha dos posts oferece Try again sem o vazio, e os posts entram direto quando chegam", async () => {
+    let onError: (error: Error) => void = () => {};
+    const reload = vi.fn(async () => undefined);
+    vi.mocked(subscribeToCommunityPosts).mockImplementationOnce((_slug, next, fail) => {
+      mocks.postsCallback = next;
+      onError = fail;
+      return Object.assign(vi.fn(), { reload });
+    });
+    render(<I18nProvider initialLocale="en"><CommunityFeed space={space} instructorName="Patrick" /></I18nProvider>);
+    await waitFor(() => expect(mocks.postsCallback).not.toBeNull());
+    act(() => onError(new Error("offline")));
+
+    expect(screen.getByRole("alert")).toHaveTextContent("We could not load community posts.");
+    expect(screen.queryByText("Loading community feed...")).not.toBeInTheDocument();
+    expect(screen.queryByText(/No posts yet/)).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(reload).toHaveBeenCalledTimes(1);
+    expect(subscribeToCommunityPosts).toHaveBeenCalledTimes(1);
+
+    await act(async () => mocks.postsCallback?.(posts));
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    // A primeira leitura boa entra na lista, não na pílula "N new posts".
+    expect(screen.getAllByRole("article")).toHaveLength(posts.length);
+    expect(screen.queryByRole("button", { name: /new post/ })).not.toBeInTheDocument();
+    expect(document.activeElement).toHaveAttribute("data-community-heading");
+
+    // Uma releitura do canal que falhe depois não tira os posts da tela.
+    act(() => onError(new Error("offline")));
+    expect(screen.getByRole("alert")).toHaveTextContent("We could not load community posts.");
+    expect(screen.getAllByRole("article")).toHaveLength(posts.length);
   });
 
   it("keeps an inline reply and its focused field until the pending response settles across locales", async () => {

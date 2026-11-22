@@ -3,14 +3,15 @@
 import { ArrowRight, Star } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import type { CSSProperties } from "react";
+import { useRouter } from "next/navigation";
+import { useRef, useTransition, type CSSProperties } from "react";
 
 import { CourseTile } from "@/components/courses/course-tile";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { UserAvatar } from "@/components/shared/user-avatar";
 import { SelfReportedTag, VerifiedBadge } from "@/components/shared/verified-badge";
 import { EmptyState } from "@/components/ui/empty-state";
-import { InlineAlert } from "@/components/ui/inline-alert";
+import { RetryAlert } from "@/components/ui/retry-alert";
 import { brand } from "@/data/brand";
 import {
   isStorefrontHexColor,
@@ -41,6 +42,9 @@ export function InstructorProfileView({
   courses: CreatorCourse[] | null;
 }) {
   const { t, locale } = useTranslation();
+  const router = useRouter();
+  const [refreshing, startRefresh] = useTransition();
+  const coursesRef = useRef<HTMLElement>(null);
   const name = publicProfileName(profile)
     ?? t("publicPages.profile.fallback_name").replace("{brand}", () => brand.name);
   const showcase = profile.storefront?.showcase;
@@ -126,7 +130,7 @@ export function InstructorProfileView({
         </Link>
       ) : null}
 
-      <section data-section="courses" aria-labelledby="creator-courses-heading">
+      <section ref={coursesRef} tabIndex={-1} data-section="courses" aria-labelledby="creator-courses-heading">
         <h2
           id="creator-courses-heading"
           className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--color-accent-fg)]"
@@ -134,9 +138,16 @@ export function InstructorProfileView({
           {t("publicPages.profile.courses_heading")}
         </h2>
         {courses === null ? (
-          <InlineAlert tone="error" className="mt-4">
+          // Os cursos chegam do servidor: "Try again" pede a página de novo
+          // (router.refresh), sem recarregar o navegador nem perder a rolagem.
+          <RetryAlert
+            className="mt-4"
+            focusRef={coursesRef}
+            busy={refreshing}
+            onRetry={() => startRefresh(() => router.refresh())}
+          >
             {t("publicPages.profile.courses_error")}
-          </InlineAlert>
+          </RetryAlert>
         ) : ordered.length === 0 ? (
           // O vazio da plataforma; h3 sob o h2 "Courses".
           <EmptyState

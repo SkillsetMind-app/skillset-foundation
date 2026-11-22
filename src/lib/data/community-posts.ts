@@ -141,10 +141,15 @@ export function subscribeToCommunityPosts(
   courseSlug: string,
   callback: (posts: CommunityPost[]) => void,
   onError: (error: Error) => void,
-): () => void {
+): (() => void) & { reload: () => Promise<void> } {
   const supabase = getSupabaseBrowserClient();
+  // So a leitura mais nova entrega: um "Try again" que volta depois da
+  // releitura de um post novo traria o feed sem ele.
+  let active = true;
+  let latestLoad = 0;
 
   const load = async () => {
+    const thisLoad = ++latestLoad;
     // Bounded so one viral course community can't stream an unbounded
     // collection to every viewer. A janela fica com os fixados e os MAIS
     // NOVOS (sem order, o banco devolvia 200 quaisquer e o post de hoje podia
@@ -158,6 +163,9 @@ export function subscribeToCommunityPosts(
       .order("created_at", { ascending: false, nullsFirst: false })
       .limit(200);
 
+    if (!active || thisLoad !== latestLoad) {
+      return;
+    }
     if (error) {
       onError(error instanceof Error ? error : new Error(String(error)));
       return;
@@ -184,9 +192,15 @@ export function subscribeToCommunityPosts(
     )
     .subscribe();
 
-  return () => {
-    void supabase.removeChannel(channel);
-  };
+  // `reload()` le de novo SEM mexer no canal (o "Try again" do feed e dos
+  // comentarios da aula).
+  return Object.assign(
+    () => {
+      active = false;
+      void supabase.removeChannel(channel);
+    },
+    { reload: load },
+  );
 }
 
 /** So o NUMERO para o contador da aba Community — quantas perguntas do curso

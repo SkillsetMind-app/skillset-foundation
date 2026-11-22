@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { CommunityFeed } from "@/components/learn/community-feed";
@@ -63,6 +63,28 @@ export function MemberAreaCommunityView({
     };
   }, [areaPath, areaRef, slug, router]);
 
+  // "Try again" chama a mesma leitura; o aviso só sai quando ela dá certo, e
+  // o botão trava enquanto ela corre. O foco vai para a moldura (o botão
+  // travado o perde, e some se der certo).
+  const [retrying, setRetrying] = useState(false);
+  const frameRef = useRef<HTMLDivElement>(null);
+  async function retryLoad() {
+    frameRef.current?.focus();
+    setRetrying(true);
+    try {
+      const community = await getMemberAreaCommunity(areaRef, slug);
+      if (!community) {
+        router.replace(areaPath);
+        return;
+      }
+      setState({ status: "ready", community });
+    } catch {
+      // O aviso fica, com o botão de novo.
+    } finally {
+      setRetrying(false);
+    }
+  }
+
   // A leitura da comunidade não traz o tema da área; vale o último visto na
   // área (gravado quando ela abre). Antes a comunidade nunca recebia o tema:
   // a mesma área era escura na capa e clara aqui. Sem tema guardado, espera
@@ -85,11 +107,23 @@ export function MemberAreaCommunityView({
   const theme = remembered ?? "light";
 
   if (state.status === "error") {
+    // Nos tons do tema da área, como o erro da capa da área (member-area-home).
     return (
       <MemberAreaShell brand={brand} theme={theme}>
-        <p role="alert" className="px-4 text-sm text-[var(--ma-ink-soft)] md:px-0">
-          {t("learn.memberArea.loadError")}
-        </p>
+        <div ref={frameRef} tabIndex={-1} className="grid justify-items-start gap-3 px-4 md:px-0">
+          <p role="alert" className="text-sm text-[var(--ma-ink-soft)]">
+            {t("learn.memberArea.loadError")}
+          </p>
+          <button
+            type="button"
+            onClick={() => void retryLoad()}
+            disabled={retrying}
+            aria-busy={retrying || undefined}
+            className="inline-flex min-h-11 items-center justify-center rounded-md border border-[var(--ma-line)] px-4 text-sm font-semibold text-[var(--ma-ink)] disabled:opacity-60"
+          >
+            {t(retrying ? "appErrors.retrying" : "appErrors.retry")}
+          </button>
+        </div>
       </MemberAreaShell>
     );
   }
@@ -106,7 +140,8 @@ export function MemberAreaCommunityView({
 
   return (
     <MemberAreaShell brand={brand} theme={theme}>
-      <div className="grid gap-4 px-4 md:px-0">
+      {/* O mesmo nó da moldura do erro: depois do "Try again" o foco fica aqui. */}
+      <div ref={frameRef} tabIndex={-1} className="grid gap-4 px-4 md:px-0">
         <Link href={areaPath} className="text-sm font-semibold text-[var(--ma-accent)] underline-offset-2 hover:underline">
           ← {t("learn.memberArea.communityBack")}
         </Link>

@@ -2942,8 +2942,8 @@
     "openingBody": "Cada curso de aquí viene de un profesional independiente, verificado cuando se requiere. ¿Quieres estar entre los primeros educadores en publicar aquí? Puedes empezar hoy.",
     "startTeaching": "Empieza a enseñar",
     "creatorOverview": "Información para creadores",
-    "loadCoursesError": "No se pudieron cargar los cursos. Actualiza la página para intentarlo de nuevo.",
-    "loadWishlistError": "No se pudo cargar tu lista de favoritos. Actualiza la página para intentarlo de nuevo.",
+    "loadCoursesError": "No se pudieron cargar los cursos.",
+    "loadWishlistError": "No se pudo cargar tu lista de favoritos.",
     "updateWishlistError": "No se pudieron actualizar tus cursos guardados. Inténtalo de nuevo.",
     "removeWishlist": "Quitar de favoritos",
     "saveWishlist": "Guardar en favoritos",
@@ -5118,6 +5118,7 @@
     "globalTitle": "La aplicación encontró un error inesperado.",
     "globalBody": "El problema se ha registrado. Intenta recargar la página o vuelve al inicio.",
     "retry": "Intentar de nuevo",
+    "retrying": "Intentando de nuevo...",
     "home": "Ir al inicio",
     "preparingMetadataTitle": "Preparando tu espacio de trabajo | SkillsetMind"
   },

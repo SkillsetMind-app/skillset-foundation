@@ -112,21 +112,32 @@ export function subscribeToCourseSubscription(
   subscriptionId: string,
   callback: (subscription: CourseSubscription | null) => void,
   onError: (error: Error) => void,
-): () => void {
+): (() => void) & { reload: () => Promise<void> } {
   const supabase = getSupabaseBrowserClient();
+  // So a leitura mais nova entrega, e nada depois de desligar: dois "Try
+  // again" seguidos nao podem trocar o cartao pela resposta mais velha.
+  let active = true;
+  let latestLoad = 0;
 
-  void supabase
-    .from("course_subscriptions")
-    .select("*")
-    .eq("id", subscriptionId)
-    .maybeSingle()
-    .then(({ data, error }) => {
-      if (error) {
-        onError(error instanceof Error ? error : new Error(String(error)));
-        return;
-      }
-      callback(data ? rowToCourseSubscription(data) : null);
-    });
+  const load = async () => {
+    const thisLoad = ++latestLoad;
+    const { data, error } = await supabase
+      .from("course_subscriptions")
+      .select("*")
+      .eq("id", subscriptionId)
+      .maybeSingle();
+
+    if (!active || thisLoad !== latestLoad) {
+      return;
+    }
+    if (error) {
+      onError(error instanceof Error ? error : new Error(String(error)));
+      return;
+    }
+    callback(data ? rowToCourseSubscription(data) : null);
+  };
+
+  void load();
 
   const channel = supabase
     .channel(`course_subscriptions:one:${subscriptionId}`)
@@ -152,7 +163,13 @@ export function subscribeToCourseSubscription(
     )
     .subscribe();
 
-  return () => {
-    void supabase.removeChannel(channel);
-  };
+  // `reload()` le de novo SEM mexer no canal (o "Try again" do cartao da
+  // assinatura na sala).
+  return Object.assign(
+    () => {
+      active = false;
+      void supabase.removeChannel(channel);
+    },
+    { reload: load },
+  );
 }

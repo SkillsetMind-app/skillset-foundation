@@ -31,15 +31,23 @@ export function subscribeToUserWishlist(
   userId: string,
   callback: (items: WishlistItem[]) => void,
   onError: (error: Error) => void,
-): () => void {
+): (() => void) & { reload: () => Promise<void> } {
   const supabase = getSupabaseBrowserClient();
+  // So a leitura mais nova entrega: um "Try again" que volta depois da
+  // releitura disparada por uma mudanca traria a lista velha.
+  let active = true;
+  let latestLoad = 0;
 
   const load = async () => {
+    const thisLoad = ++latestLoad;
     const { data, error } = await supabase
       .from("wishlists")
       .select("*")
       .eq("user_id", userId);
 
+    if (!active || thisLoad !== latestLoad) {
+      return;
+    }
     if (error) {
       onError(error instanceof Error ? error : new Error(String(error)));
       return;
@@ -66,16 +74,22 @@ export function subscribeToUserWishlist(
     )
     .subscribe();
 
-  return () => {
-    void supabase.removeChannel(channel);
-  };
+  // `reload()` le de novo SEM mexer no canal (o "Try again" da lista de
+  // desejos e do catalogo).
+  return Object.assign(
+    () => {
+      active = false;
+      void supabase.removeChannel(channel);
+    },
+    { reload: load },
+  );
 }
 
 export function subscribeToUserWishlistCourseIds(
   userId: string,
   callback: (courseIds: Set<string>) => void,
   onError: (error: Error) => void,
-): () => void {
+): (() => void) & { reload: () => Promise<void> } {
   return subscribeToUserWishlist(
     userId,
     (items) => callback(new Set(items.map((item) => item.courseId))),

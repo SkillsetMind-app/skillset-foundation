@@ -2,12 +2,13 @@
 
 import { MessageCircle } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 
 import { formatNotificationTime } from "@/components/account/notification-row";
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { InlineAlert } from "@/components/ui/inline-alert";
+import { RetryAlert } from "@/components/ui/retry-alert";
 import { filterPosts, groupCommentsByPost } from "@/domain/community-feed";
 import type { CommunityComment, CommunityPost } from "@/domain/community-post";
 import type { Course } from "@/domain/learning";
@@ -83,19 +84,30 @@ function LessonCommentsPanel({
   const [isSubmitting, setIsSubmitting] = useState(false);
   // Chave do dicionario, nao texto: o idioma pode trocar com o erro na tela.
   const [error, setError] = useState("");
+  // A falha da leitura à parte do erro do formulário: tem "Try again", que
+  // relê pelo mesmo canal; o aviso só sai quando os comentários chegam, e os
+  // que já estão na tela ficam. O foco vai para a seção (o botão some).
+  const [postsFailed, setPostsFailed] = useState(false);
+  const postsSubscription = useRef<{ reload: () => Promise<void> } | null>(null);
+  const sectionRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     if (!canRead) {
       return;
     }
-    return subscribeToCommunityPosts(
+    const current = subscribeToCommunityPosts(
       courseSlug,
-      (posts) => setFeed({ posts, ready: true }),
-      () => {
-        setError("learn.community.postsError");
-        setFeed({ posts: [], ready: true });
+      (posts) => {
+        setFeed({ posts, ready: true });
+        setPostsFailed(false);
       },
+      () => setPostsFailed(true),
     );
+    postsSubscription.current = current;
+    return () => {
+      postsSubscription.current = null;
+      current();
+    };
   }, [canRead, courseSlug]);
 
   useEffect(() => {
@@ -157,6 +169,8 @@ function LessonCommentsPanel({
 
   return (
     <section
+      ref={sectionRef}
+      tabIndex={-1}
       aria-labelledby="member-lesson-comments-title"
       className="rounded-lg border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-4"
     >
@@ -216,6 +230,12 @@ function LessonCommentsPanel({
         </button>
       )}
 
+      {postsFailed && canRead ? (
+        <RetryAlert className="mt-3" focusRef={sectionRef} onRetry={() => postsSubscription.current?.reload()}>
+          {t("learn.community.postsError")}
+        </RetryAlert>
+      ) : null}
+
       {error ? (
         <InlineAlert tone="error" className="mt-3 px-3 py-2">
           {t(error)}
@@ -224,10 +244,13 @@ function LessonCommentsPanel({
 
       {canRead ? (
         <div className="mt-3 grid gap-2" aria-live="polite">
-          {!feed.ready ? (
-            <p className="text-sm text-[var(--color-ink-soft)]">
-              {t("learn.classroom.lessonComments.loading")}
-            </p>
+          {/* Com a leitura em erro, nem "carregando" nem o vazio: só o aviso. */}
+          {!feed.ready || (postsFailed && lessonPosts.length === 0) ? (
+            postsFailed ? null : (
+              <p className="text-sm text-[var(--color-ink-soft)]">
+                {t("learn.classroom.lessonComments.loading")}
+              </p>
+            )
           ) : lessonPosts.length === 0 ? (
             <p className="text-sm text-[var(--color-ink-soft)]">
               {t("learn.classroom.lessonComments.empty")}

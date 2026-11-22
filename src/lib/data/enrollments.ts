@@ -300,22 +300,33 @@ export function subscribeToEnrollment(
   courseSlug: string,
   callback: (enrollment: Enrollment | null) => void,
   onError: (error: Error) => void,
-): () => void {
+): (() => void) & { reload: () => Promise<void> } {
   const supabase = getSupabaseBrowserClient();
   const enrollmentId = getEnrollmentId(userId, courseSlug);
+  // So a leitura mais nova entrega, e nada depois de desligar: dois "Try
+  // again" seguidos nao podem trocar a matricula pela resposta mais velha.
+  let active = true;
+  let latestLoad = 0;
 
-  void supabase
-    .from("enrollments")
-    .select("*")
-    .eq("id", enrollmentId)
-    .maybeSingle()
-    .then(({ data, error }) => {
-      if (error) {
-        onError(error instanceof Error ? error : new Error(String(error)));
-        return;
-      }
-      callback(data ? rowToEnrollment(data) : null);
-    });
+  const load = async () => {
+    const thisLoad = ++latestLoad;
+    const { data, error } = await supabase
+      .from("enrollments")
+      .select("*")
+      .eq("id", enrollmentId)
+      .maybeSingle();
+
+    if (!active || thisLoad !== latestLoad) {
+      return;
+    }
+    if (error) {
+      onError(error instanceof Error ? error : new Error(String(error)));
+      return;
+    }
+    callback(data ? rowToEnrollment(data) : null);
+  };
+
+  void load();
 
   const channel = supabase
     .channel(`enrollments:one:${enrollmentId}`)
@@ -337,9 +348,15 @@ export function subscribeToEnrollment(
     )
     .subscribe();
 
-  return () => {
-    void supabase.removeChannel(channel);
-  };
+  // `reload()` le de novo SEM mexer no canal (o "Try again" da sala e da
+  // comunidade).
+  return Object.assign(
+    () => {
+      active = false;
+      void supabase.removeChannel(channel);
+    },
+    { reload: load },
+  );
 }
 
 /** Dos cursos informados, os que estao com a comunidade LIGADA. A lista

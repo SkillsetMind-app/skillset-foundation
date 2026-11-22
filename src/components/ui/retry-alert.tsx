@@ -1,0 +1,55 @@
+"use client";
+
+import { useState, type ReactNode, type RefObject } from "react";
+
+import { useTranslation } from "@/components/i18n/i18n-provider";
+import { Button } from "@/components/ui/button";
+import { InlineAlert } from "@/components/ui/inline-alert";
+import { cn } from "@/lib/cn";
+
+export type RetryAlertProps = {
+  children: ReactNode;
+  /** Lê de novo. O aviso só sai quando a tela recebe os dados: quem decide é ela. */
+  onRetry: () => Promise<unknown> | void;
+  /** Nó que fica na tela nos dois desfechos e recebe o foco ao clicar. */
+  focusRef: RefObject<HTMLElement | null>;
+  /** Releitura que a tela acompanha por conta própria (router.refresh). */
+  busy?: boolean;
+  className?: string;
+};
+
+/**
+ * Erro de LEITURA com saída: o aviso e um "Try again" que lê de novo. Eram
+ * umas 39 mensagens "could not load" e só 7 com botão; o único jeito de sair
+ * era recarregar a página no navegador.
+ *
+ * O botão trava enquanto a releitura corre (aria-busy, "Trying again...").
+ * Travado ele perde o foco, e some quando a leitura dá certo: por isso o foco
+ * vai antes para `focusRef`, senão caía no <body>.
+ */
+export function RetryAlert({ children, onRetry, focusRef, busy = false, className }: RetryAlertProps) {
+  const { t } = useTranslation();
+  const [retrying, setRetrying] = useState(false);
+  const locked = busy || retrying;
+
+  async function retry() {
+    focusRef.current?.focus();
+    setRetrying(true);
+    try {
+      await onRetry();
+    } catch {
+      // A falha da releitura já volta como erro na própria tela; o aviso fica.
+    } finally {
+      setRetrying(false);
+    }
+  }
+
+  return (
+    <div className={cn("grid gap-3", className)}>
+      <InlineAlert tone="error">{children}</InlineAlert>
+      <Button variant="outline" className="justify-self-start" loading={locked} onClick={() => void retry()}>
+        {t(locked ? "appErrors.retrying" : "appErrors.retry")}
+      </Button>
+    </div>
+  );
+}

@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { getDictionary, translate } from "@/lib/i18n/dictionaries";
 import type { TeacherCourse } from "@/domain/teacher-course";
@@ -122,6 +122,41 @@ it("a falha ao carregar a lista é anunciada ao leitor de tela", () => {
   render(<CourseMarketplace />);
 
   expect(screen.getByRole("alert")).toHaveTextContent(translate(getDictionary("en"), "publicCourses.loadCoursesError"));
+});
+
+// A falha era um beco ("Refresh the page"): agora "Try again" relê pela mesma
+// inscrição, e o vazio "Marketplace opening soon" não aparece junto do erro.
+it("a falha da lista oferece Try again, que relê sem reinscrever e só tira o aviso quando os cursos chegam", async () => {
+  state.query = new URLSearchParams("");
+  let next: (courses: TeacherCourse[]) => void = () => {};
+  let finish: () => void = () => {};
+  const reload = vi.fn(() => new Promise<void>((resolve) => { finish = resolve; }));
+  state.subscribe.mockImplementation((onData: (courses: TeacherCourse[]) => void, onError: () => void) => {
+    next = onData;
+    onError();
+    return Object.assign(() => {}, { reload });
+  });
+  render(<CourseMarketplace />);
+
+  expect(screen.getByRole("alert")).toHaveTextContent("Courses could not load right now.");
+  expect(screen.queryByText("Marketplace opening soon")).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+  expect(reload).toHaveBeenCalledTimes(1);
+  expect(state.subscribe).toHaveBeenCalledTimes(1);
+  // Travado enquanto lê; o aviso fica até a resposta.
+  const busy = screen.getByRole("button", { name: "Trying again..." });
+  expect(busy).toBeDisabled();
+  expect(busy).toHaveAttribute("aria-busy", "true");
+  expect(screen.getByRole("alert")).toBeInTheDocument();
+
+  await act(async () => {
+    next([{ id: "focus", ownerId: "teacher", title: "Deep focus", summary: "", category: "Performance", status: "published", modules: [], lessonCount: 3, priceAmountMinor: 9900, currency: "USD" }]);
+    finish();
+  });
+  expect(await screen.findByRole("link", { name: "Deep focus" })).toBeInTheDocument();
+  expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  // O botão sumiu: o foco ficou na seção do catálogo, não no <body>.
+  expect(document.activeElement).toHaveClass("marketplace-section");
 });
 
 // No celular, cabeçalho e filtros abertos davam uns 800px antes do primeiro

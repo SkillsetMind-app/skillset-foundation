@@ -80,7 +80,7 @@ export function rowToTeacherCourse(row: CourseRow): TeacherCourse {
 export function subscribeToPublishedTeacherCourses(
   callback: (courses: TeacherCourse[]) => void,
   onError: (error: Error) => void,
-): () => void {
+): (() => void) & { reload: () => Promise<void> } {
   // Only approved courses are public. Draft and review states stay in Studio.
   // Bounded: every public catalog visitor streams this query, and each row
   // carries the FULL course (modules + lesson contentText), so an unbounded
@@ -88,14 +88,22 @@ export function subscribeToPublishedTeacherCourses(
   // the foreseeable horizon; past that the fix is a slim "courseCards"
   // projection + pagination, not a bigger limit.
   const supabase = getSupabaseBrowserClient();
+  // So a leitura mais nova entrega, e nada depois de desligar (`closed`): um
+  // "Try again" que volta depois da releitura do canal traria o catalogo velho.
+  let closed = false;
+  let latestLoad = 0;
 
   const load = async () => {
+    const thisLoad = ++latestLoad;
     const { data, error } = await supabase
       .from(coursesTable)
       .select("*")
       .eq("status", "published")
       .limit(200);
 
+    if (closed || thisLoad !== latestLoad) {
+      return;
+    }
     if (error) {
       onError(error instanceof Error ? error : new Error(String(error)));
       return;
@@ -113,7 +121,6 @@ export function subscribeToPublishedTeacherCourses(
   // Visitante sem login fica so com a carga acima: o Realtime do projeto e
   // "private only" e recusava este canal ~575 vezes por dia.
   let channel: ReturnType<typeof supabase.channel> | null = null;
-  let closed = false;
   void supabase.auth.getSession().then(({ data }) => {
     if (!data.session || closed) return;
     // Realtime server filters only support a single-column eq, not `in`, so watch
@@ -131,10 +138,15 @@ export function subscribeToPublishedTeacherCourses(
       .subscribe();
   });
 
-  return () => {
-    closed = true;
-    if (channel) void supabase.removeChannel(channel);
-  };
+  // `reload()` le de novo SEM mexer no canal (o "Try again" do catalogo e da
+  // lista de desejos).
+  return Object.assign(
+    () => {
+      closed = true;
+      if (channel) void supabase.removeChannel(channel);
+    },
+    { reload: load },
+  );
 }
 
 // The student dashboard's projection: enough to name a course, draw its cover
