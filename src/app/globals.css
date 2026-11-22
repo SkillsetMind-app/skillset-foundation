@@ -1973,18 +1973,21 @@ html[data-view-as] .site-header {
   margin-left: auto;
 }
 
+/* "Sign in" da barra com a mesma cara do .button-outline do menu do celular
+   (contorno navy, 14px). Era um contorno dourado de 13px que, no hover, tingia
+   o fundo com o vermelho antigo da marca. */
 .btn-signin {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   min-height: 44px;
   padding: 9px 16px;
-  border: 1.5px solid var(--color-accent-fg);
+  border: 1px solid var(--color-line-strong);
   border-radius: var(--radius-md);
   background: var(--color-surface);
-  color: var(--color-accent-fg);
+  color: var(--color-primary);
   cursor: pointer;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   line-height: 1;
   transition:
@@ -1994,7 +1997,7 @@ html[data-view-as] .site-header {
 }
 
 .btn-signin:hover {
-  background: rgba(178, 34, 52, 0.04);
+  background: var(--color-surface-soft);
 }
 
 .btn-signin:focus-visible {
@@ -2017,7 +2020,8 @@ html[data-view-as] .site-header {
   font-weight: 600;
   line-height: 1;
   text-decoration: none;
-  box-shadow: 0 6px 16px rgba(178, 34, 52, 0.22);
+  /* Sombra navy: o brilho vermelho era resto da marca antiga. */
+  box-shadow: 0 6px 16px rgba(26, 54, 93, 0.18);
   transition:
     background-color 180ms ease,
     box-shadow 180ms ease,
@@ -2027,7 +2031,7 @@ html[data-view-as] .site-header {
 .btn-cta-hero:hover {
   background: var(--color-accent-hover);
   transform: translateY(-1px);
-  box-shadow: 0 10px 22px rgba(178, 34, 52, 0.28);
+  box-shadow: 0 10px 22px rgba(26, 54, 93, 0.22);
 }
 
 .btn-cta-hero:focus-visible {
@@ -2949,9 +2953,11 @@ select:focus-visible {
     display: none;
   }
 
+  /* 20px, a mesma margem das páginas no celular (--container-pad-mobile):
+     com 14px a marca ficava fora da linha do título logo abaixo. */
   .site-header__inner {
-    padding-right: 14px;
-    padding-left: 14px;
+    padding-right: var(--container-pad-mobile);
+    padding-left: var(--container-pad-mobile);
   }
 
   .btn-signin,
@@ -8710,7 +8716,8 @@ button:hover > .dash-card,
   overflow: hidden;
   border: 1px solid var(--color-line);
   border-radius: var(--radius-lg);
-  background: linear-gradient(135deg, #ffffff 0%, #f5f9ff 70%, #fff7f9 100%);
+  /* Termina no mesmo azul-claro: o rosa (#fff7f9) era resto do vermelho antigo. */
+  background: linear-gradient(135deg, #ffffff 0%, #f5f9ff 70%, #f5f9ff 100%);
   box-shadow: var(--shadow-soft);
   padding: clamp(1.5rem, 3vw, 2.25rem);
 }
@@ -8940,6 +8947,82 @@ button:hover > .dash-card,
 
 .marketplace-icon-button:hover {
   transform: translateY(-1px);
+}
+
+/* Catálogo no celular: cabeçalho e filtros abertos davam uns 800px antes do
+   primeiro curso. Abaixo de 640px os filtros ficam atrás de um botão "Filters"
+   (com o número de filtros valendo); a partir de 640px o botão some e o painel
+   fica sempre aberto, como antes. */
+.marketplace-filters-toggle {
+  display: none;
+}
+
+.marketplace-filters-toggle__count {
+  display: inline-grid;
+  min-width: 1.375rem;
+  height: 1.375rem;
+  place-items: center;
+  border-radius: var(--radius-chip);
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  font-family: var(--font-num);
+  font-size: 0.75rem;
+  padding-inline: 0.3rem;
+}
+
+.marketplace-filters-toggle__chevron {
+  margin-left: auto;
+  color: var(--color-ink-muted);
+}
+
+.marketplace-filters-toggle[aria-expanded="true"] .marketplace-filters-toggle__chevron {
+  transform: rotate(180deg);
+}
+
+@media (max-width: 639.98px) {
+  .marketplace-filters-toggle {
+    display: flex;
+    width: 100%;
+    min-height: 3rem;
+    align-items: center;
+    gap: 0.6rem;
+    border: 0;
+    background: transparent;
+    color: var(--color-ink);
+    cursor: pointer;
+    font-size: 0.95rem;
+    font-weight: 800;
+    padding: 0.75rem 0.9rem;
+    text-align: left;
+  }
+
+  /* O painel corta o que passa da borda (overflow: hidden): o anel de foco
+     vai para dentro do botão. */
+  .marketplace-filters-toggle:focus-visible {
+    outline-offset: -3px;
+  }
+
+  .marketplace-filter-body:not(.is-open) {
+    display: none;
+  }
+
+  .marketplace-filter-body.is-open {
+    border-top: 1px solid var(--color-line);
+  }
+
+  /* O título fica; o parágrafo de cinco linhas sai do celular. */
+  .marketplace-page-copy {
+    display: none;
+  }
+}
+
+/* Abaixo de 640px a grade e a lista são a mesma coluna única: o seletor de
+   grade/lista não mudava nada e gastava uns 80px. De 640 a 767px ele fica,
+   porque lá a grade tem duas colunas e a lista uma. */
+@media (max-width: 639.98px) {
+  .marketplace-view {
+    display: none;
+  }
 }
 
 .marketplace-continue {
@@ -9182,7 +9265,8 @@ button:hover > .dash-card,
   inset: 0;
   background:
     linear-gradient(180deg, rgba(7, 23, 42, 0.12), rgba(7, 23, 42, 0.72)),
-    linear-gradient(135deg, transparent 0%, transparent 58%, rgba(178, 34, 52, 0.22) 100%);
+    /* Canto navy, não o vermelho da marca antiga (hoje o vermelho é cor de erro). */
+    linear-gradient(135deg, transparent 0%, transparent 58%, rgba(26, 54, 93, 0.22) 100%);
   pointer-events: none;
 }
 
@@ -9949,5 +10033,33 @@ button:hover > .dash-card,
 @keyframes motion-lift {
   from {
     transform: translateY(6px);
+  }
+}
+
+/* ── Carregamento: envio de arquivo sem porcentagem (F-20) ─────────────────
+   O Storage não informa o andamento; um trecho de 30% desliza pelo trilho
+   para a espera não parecer travada. Parado, um trecho parcial se leria como
+   "30% feito": com "reduzir movimento" o trilho fica inteiro preenchido e
+   apagado, sem número nenhum. Só transform (regra do catálogo de movimento). */
+.upload-indeterminate-fill {
+  width: 100%;
+  opacity: 0.35;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .upload-indeterminate-fill {
+    width: 30%;
+    opacity: 1;
+    animation: motion-track-slide 1.2s ease-in-out infinite;
+  }
+}
+
+@keyframes motion-track-slide {
+  from {
+    transform: translateX(-100%);
+  }
+
+  to {
+    transform: translateX(340%);
   }
 }

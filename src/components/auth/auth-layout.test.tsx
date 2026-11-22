@@ -72,8 +72,8 @@ describe("the auth frame stays consistent during recovery and loading", () => {
 
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(translate(getDictionary("en"), "auth.onboardingShell.title"));
-    expect(screen.getByText("Preparing onboarding")).toBeInTheDocument();
-    expect(screen.queryByRole("heading", { name: "Preparing onboarding" })).not.toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("Opening SkillsetMind...");
+    expect(screen.queryByRole("heading", { name: "Opening SkillsetMind..." })).not.toBeInTheDocument();
     expect(screen.getAllByRole("main")).toHaveLength(1);
     expect(screen.getByRole("link", { name: translate(getDictionary("en"), "auth.onboardingShell.footerLink") })).toHaveAttribute("href", "/courses");
   });
@@ -82,7 +82,9 @@ describe("the auth frame stays consistent during recovery and loading", () => {
     render(await WelcomePage());
 
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
-    expect(within(screen.getByRole("main")).getByRole("heading", { level: 1, name: "Preparing onboarding" })).toBeInTheDocument();
+    expect(within(screen.getByRole("main")).getByRole("heading", { level: 1, name: "Opening SkillsetMind..." })).toBeInTheDocument();
+    // F-10: a mesma espera do /loading e da área protegida, lida pelo leitor de tela.
+    expect(screen.getByRole("status")).toHaveTextContent("Opening SkillsetMind...");
   });
 
   it("allows a tall form to grow and reserves a narrow column without imposing viewport height on its content", () => {

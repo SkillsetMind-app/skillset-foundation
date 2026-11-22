@@ -5,7 +5,7 @@ import { getCourseCategoryLabel } from "@/lib/i18n/course-categories";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 
 import Link from "next/link";
-import { Lock, ShieldCheck, Star, Target } from "lucide-react";
+import { Clock, Lock, Receipt, ShieldCheck, Star, Target } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -873,7 +873,9 @@ export function CreatorCourseDetail({
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--color-ink-soft)]">
                   {previewLesson.moduleTitle}
                 </p>
-                <h2 className="display-title mt-2 text-4xl leading-tight text-[var(--color-primary)]">
+                {/* 20px em Manrope: em 36px de serifa, o nome da aula grátis
+                    competia com o título do curso. */}
+                <h2 className="mt-2 text-xl font-bold leading-tight text-[var(--color-primary)]">
                   {previewLesson.title}
                 </h2>
                 <p className="mt-3 text-sm leading-7 text-[var(--color-ink-soft)]">
@@ -1037,8 +1039,9 @@ export function CreatorCourseDetail({
         {/* O preco era a quarta de seis linhas de uma lista "At a glance",
             entre "Status: Published" e "Access: Secure checkout" — vocabulario
             interno que o comprador nao precisa ler. Agora ele e o numero
-            grande no topo do cartao. */}
-        <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">{t("publicCourses.access")}</p>
+            grande no topo do cartao. O rotulo dizia "Access" (o comprador
+            procurava o preco e lia outra coisa) em 10px; agora diz "Price" em 12px. */}
+        <p className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--color-accent-fg)]">{t("publicCourses.priceEyebrow")}</p>
         <p className="display-title mt-1 flex flex-wrap items-baseline gap-2 text-4xl leading-none text-[var(--color-primary)]">
           {/* Carregando: uma barra da altura do preço, e não "Loading
               pricing..." em 36px quebrando em duas linhas. */}
@@ -1057,7 +1060,6 @@ export function CreatorCourseDetail({
           ) : null}
         </p>
 
-        <div className="mt-5 h-px bg-[var(--color-line)]" />
         {offers.length > 1 ? (
           <fieldset className="mt-5 border-y border-[var(--color-line)] py-4">
             <legend className="px-1 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--color-ink-soft)]">{t("publicCourses.chooseOffer")}</legend>
@@ -1103,32 +1105,6 @@ export function CreatorCourseDetail({
             </div>
           </fieldset>
         ) : null}
-        {/* Status e Access sairam: "Published" e o estado interno do curso e
-            "Secure checkout" e como a plataforma cobra — nenhum dos dois ajuda
-            a decidir. O preco virou o numero grande acima, e a nota subiu para
-            a assinatura do instrutor. */}
-        {/* Na pagina de compra quem decide ja leu o curso: categoria e contagem
-            de aulas ficam no resumo do pedido, nao entre o preco e o formulario. */}
-        {checkoutOnly ? null : <dl className="mt-5 grid gap-4">
-          {[
-            [t("publicCourses.category"), getCourseCategoryLabel(course.category, t)],
-            ...(showsCurriculum ? [[t("publicCourses.lessons"), String(course.lessonCount)]] : []),
-            ...(durationLabel ? [[t("publicCourses.duration"), durationLabel]] : []),
-          ].map(([label, value]) => (
-            <div
-              key={label}
-              className="border-b border-[var(--color-line)] pb-4 last:border-b-0 last:pb-0"
-            >
-              <dt className="text-xs uppercase tracking-[0.18em] text-[var(--color-ink-soft)]">
-                {label}
-              </dt>
-              <dd className="mt-1 text-sm font-semibold text-[var(--color-ink)]">
-                {value}
-              </dd>
-            </div>
-          ))}
-        </dl>}
-
         {/* Compra cancelada é um fato neutro ("nada foi cobrado"), não erro:
             tom de informação, anunciado sem interromper. */}
         {checkoutStatus === "cancelled" ? (
@@ -1250,52 +1226,77 @@ export function CreatorCourseDetail({
               )
             ) : null}
             {!checkoutEnabled ? (
-              <p className="mt-3 rounded-md border border-[rgba(24,58,94,0.12)] bg-[var(--color-surface-soft)] px-4 py-3 text-xs leading-6 text-[var(--color-ink-soft)]">{t("publicCourses.checkoutLater")}</p>
+              <p className="mt-3 rounded-md border border-[var(--color-line)] bg-[var(--color-surface-soft)] px-4 py-3 text-xs leading-6 text-[var(--color-ink-soft)]">{t("publicCourses.checkoutLater")}</p>
             ) : null}
           </>
         )}
 
-        <p className="mt-3 text-xs leading-6 text-[var(--color-ink-soft)]">
-          {courseIsFree
-            ? t("publicCourses.freeAccess")
-            : t("publicCourses.paidAccess")}
-        </p>
+        {/* Depois do botao vinham cinco blocos soltos, dois em caixas de cores
+            diferentes (verde e cinza), e o botao se perdia no meio do cartao.
+            Agora e UM bloco discreto, num estilo so: o que o curso inclui e,
+            em lista, acesso, pagamento seguro, reembolso e quem vende. As
+            frases sao as mesmas de antes (mesmas chaves), so reagrupadas. */}
+        {checkoutOnly && !pricingReady ? null : <div className="mt-5 grid gap-4 border-t border-[var(--color-line)] pt-5">
+          {/* Na pagina de compra quem decide ja leu o curso: categoria e contagem
+              de aulas ficam no resumo do pedido, nao junto do formulario. */}
+          {checkoutOnly ? null : <dl className="grid gap-2 text-sm">
+            {[
+              [t("publicCourses.category"), getCourseCategoryLabel(course.category, t)],
+              ...(showsCurriculum ? [[t("publicCourses.lessons"), String(course.lessonCount)]] : []),
+              ...(durationLabel ? [[t("publicCourses.duration"), durationLabel]] : []),
+            ].map(([label, value]) => (
+              <div key={label} className="flex items-baseline justify-between gap-4">
+                <dt className="shrink-0 text-[var(--color-ink-soft)]">{label}</dt>
+                <dd className="min-w-0 text-right font-semibold text-[var(--color-ink)]">{value}</dd>
+              </div>
+            ))}
+          </dl>}
 
-        {/* Risk reversal at the point of purchase. States the REAL policy
-            (automaticRefundWindowDays = 7, progress < 50% — see requestRefund),
-            never an invented "30-day guarantee" the platform doesn't honor. */}
-        {!courseIsFree ? (
-          <>
+          {/* Só com o preço resolvido: até lá `courseIsFree` é falso, e um curso
+              grátis lia "Paid access opens…", reembolso e vendedor enquanto o
+              preço carregava (ou se a leitura falhasse). */}
+          {pricingReady ? <ul className="grid gap-3 text-xs leading-5 text-[var(--color-ink-soft)]">
+            <li className="flex gap-2.5">
+              <Clock aria-hidden="true" size={14} strokeWidth={2} className="mt-0.5 shrink-0 text-[var(--color-primary)]" />
+              <span>{courseIsFree ? t("publicCourses.freeAccess") : t("publicCourses.paidAccess")}</span>
+            </li>
             {/* Só com um preço pago resolvido: com o preço carregando ou
                 indisponível não há pagamento a processar. */}
-            {hasPaidPrice ? (
-              <p className="mt-3 flex items-center gap-2 text-xs font-semibold text-[var(--color-ink-soft)]">
-                <Lock aria-hidden="true" size={14} strokeWidth={2} className="shrink-0 text-[var(--color-success-fg)]" />
-                {t("publicCourses.securePayment")}
-              </p>
+            {!courseIsFree && hasPaidPrice ? (
+              <li className="flex gap-2.5">
+                <Lock aria-hidden="true" size={14} strokeWidth={2} className="mt-0.5 shrink-0 text-[var(--color-primary)]" />
+                <span>{t("publicCourses.securePayment")}</span>
+              </li>
             ) : null}
-            <p className="mt-3 flex gap-3 rounded-md border border-[var(--color-success-fg)]/25 bg-[var(--color-success-soft)] px-4 py-3 text-xs leading-6 text-[var(--color-ink-soft)]">
-              <ShieldCheck aria-hidden="true" size={20} strokeWidth={1.8} className="mt-0.5 shrink-0 text-[var(--color-success-fg)]" />
-              <span>
-                <strong className="text-[var(--color-ink)]">{t("publicCourses.refundTitle")}</strong>{" "}
-                {t("publicCourses.refundBody")}
-              </span>
-            </p>
-          </>
-        ) : null}
-
-        {/* Direct charges: the buyer's counterparty is the EDUCATOR, not
-            SkillsetMind. The charge is created on the educator's own connected
-            account (see /api/payments/checkout, `stripeAccount`) and we set no
-            statement_descriptor override, so THEIR descriptor reaches the card
-            statement. A buyer who does not expect that name disputes it, and
-            the chargeback lands on the educator's balance. */}
-        {!courseIsFree ? (
-          <p className="mt-3 rounded-md border border-[rgba(26,54,93,0.12)] bg-[var(--color-surface-soft)] px-4 py-3 text-xs leading-6 text-[var(--color-ink-soft)]">
-            <strong className="text-[var(--color-ink)]">{t("publicCourses.sellerTitle")}</strong>{" "}
-            {t("publicCourses.sellerBody")}
-          </p>
-        ) : null}
+            {/* Risk reversal at the point of purchase. States the REAL policy
+                (automaticRefundWindowDays = 7, progress < 50% — see requestRefund),
+                never an invented "30-day guarantee" the platform doesn't honor. */}
+            {!courseIsFree ? (
+              <li className="flex gap-2.5">
+                <ShieldCheck aria-hidden="true" size={14} strokeWidth={2} className="mt-0.5 shrink-0 text-[var(--color-primary)]" />
+                <span>
+                  <strong className="text-[var(--color-ink)]">{t("publicCourses.refundTitle")}</strong>{" "}
+                  {t("publicCourses.refundBody")}
+                </span>
+              </li>
+            ) : null}
+            {/* Direct charges: the buyer's counterparty is the EDUCATOR, not
+                SkillsetMind. The charge is created on the educator's own connected
+                account (see /api/payments/checkout, `stripeAccount`) and we set no
+                statement_descriptor override, so THEIR descriptor reaches the card
+                statement. A buyer who does not expect that name disputes it, and
+                the chargeback lands on the educator's balance. */}
+            {!courseIsFree ? (
+              <li className="flex gap-2.5">
+                <Receipt aria-hidden="true" size={14} strokeWidth={2} className="mt-0.5 shrink-0 text-[var(--color-primary)]" />
+                <span>
+                  <strong className="text-[var(--color-ink)]">{t("publicCourses.sellerTitle")}</strong>{" "}
+                  {t("publicCourses.sellerBody")}
+                </span>
+              </li>
+            ) : null}
+          </ul> : null}
+        </div>}
 
         {/* Loja vazia não é destino: a volta leva ao início. Na página de
             compra não há volta ao catálogo: o resumo do pedido leva ao curso.
@@ -1326,7 +1327,7 @@ export function CreatorCourseDetail({
     >
       <div className="pointer-events-auto flex items-center gap-3 rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)]/95 px-4 py-3 shadow-[0_-6px_30px_rgba(15,39,68,0.18)] backdrop-blur supports-[backdrop-filter]:bg-[var(--color-surface)]/85">
         <div className="min-w-0 flex-1">
-          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">{t("publicCourses.access")}</p>
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">{t("publicCourses.priceEyebrow")}</p>
           <p className="display-title truncate text-xl leading-none text-[var(--color-primary)]">
             {priceLabel}
           </p>

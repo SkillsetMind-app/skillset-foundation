@@ -9,6 +9,7 @@ import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { CommunityItemActions } from "@/components/learn/community-item-actions";
 import { CommunityPostDrawer } from "@/components/learn/community-post-drawer";
+import { BuilderSkeleton } from "@/components/teacher/builder-skeleton";
 import {
   groupCommentsByPost,
   isInstructor,
@@ -115,7 +116,8 @@ export function TeacherCommunityInbox({ courseId }: { courseId: string }) {
   );
 
   if (!courseReady) {
-    return <p className="text-sm text-[var(--color-ink-soft)]">{t("teacherCommunity.loading")}</p>;
+    // Igual ao fallback da rota (F-03): a espera não muda de cara no meio.
+    return <BuilderSkeleton label={t("teacherCommunity.loading")} />;
   }
 
   if (!course || !user) {

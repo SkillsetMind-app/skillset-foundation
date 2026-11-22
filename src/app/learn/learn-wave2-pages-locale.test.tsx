@@ -77,15 +77,14 @@ describe("learner routes read the real locale cookie", () => {
 
   it("localizes welcome Suspense and metadata without changing indexing policy", async () => {
     render(<I18nProvider initialLocale="es">{await WelcomePage()}</I18nProvider>);
-    expect(screen.getByRole("heading", { name: "Preparando la configuración inicial" })).toBeVisible();
-    expect(screen.getByText("Un momento. SkillsetMind está preparando todo.")).toBeVisible();
+    expect(screen.getByRole("heading", { name: "Abriendo SkillsetMind..." })).toBeVisible();
     expect(await generateMetadata()).toEqual({ title: "Configura tu cuenta | SkillsetMind", robots: { index: false, follow: false } });
   });
 
   it("localizes onboarding Suspense without adding another page heading", async () => {
     render(<I18nProvider initialLocale="es">{await OnboardingPage()}</I18nProvider>);
-    expect(screen.getByText("Preparando la configuración inicial")).toBeVisible();
-    expect(screen.queryByRole("heading", { name: "Preparando la configuración inicial" })).not.toBeInTheDocument();
+    expect(screen.getByText("Abriendo SkillsetMind...")).toBeVisible();
+    expect(screen.queryByRole("heading", { name: "Abriendo SkillsetMind..." })).not.toBeInTheDocument();
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
   });
 

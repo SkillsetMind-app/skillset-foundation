@@ -25,11 +25,7 @@ export default async function OnboardingPage() {
     >
       <Suspense
         fallback={
-          <SkillsetSpinner
-            fullscreen={false}
-            title={t("learnWave2.onboarding.title")}
-            description={t("learnWave2.onboarding.description")}
-          />
+          <SkillsetSpinner fullscreen={false} title={t("authFlow.loading.title")} />
         }
       >
         <OnboardingChoice />

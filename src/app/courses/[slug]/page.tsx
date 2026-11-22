@@ -98,7 +98,7 @@ export default async function CourseDetailPage({
     return (
       <div className="page-shell">
         <SiteNav />
-        <main id="conteudo" className="mx-auto w-full max-w-7xl px-6 py-10 sm:px-8 sm:py-14">
+        <main id="conteudo" className="mx-auto w-full max-w-7xl px-5 py-10 sm:px-8 sm:py-14">
           {/* Título e resumo saem daqui, do SERVER COMPONENT, e não de dentro do
               Suspense abaixo. Motivo concreto: CreatorCourseDetail chama
               useSearchParams(), então numa rota prerenderizada o Next entrega

@@ -84,7 +84,7 @@ export function InstructorsDirectory() {
 
   if (profiles.length === 0) {
     return (
-      <section className="mt-12 rounded-lg border border-dashed border-[rgba(26,54,93,0.22)] bg-[var(--color-surface-soft)] p-8 sm:p-10">
+      <section className="mt-12 rounded-lg border border-dashed border-[var(--color-line-strong)] bg-[var(--color-surface-soft)] p-8 sm:p-10">
         <div className="flex max-w-3xl flex-col gap-5 sm:flex-row sm:items-start">
           <span className="grid size-11 shrink-0 place-items-center rounded-full bg-white text-[var(--color-primary)] shadow-[var(--shadow-soft)]">
             <GraduationCap aria-hidden="true" size={22} strokeWidth={1.8} />

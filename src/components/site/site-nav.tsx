@@ -172,13 +172,17 @@ export function SiteNav() {
             );
           })}
         </nav>
+        {/* Dois estilos só, iguais na barra e no menu do celular: a ação
+            principal em .button-solid (navy) e "Sign in" em contorno. Antes a
+            barra usava o botão dourado e o menu o navy, e na home o dourado da
+            barra ficava logo acima do dourado do hero (dois primários iguais). */}
         <div className="site-header__actions">
           {isAuthenticated ? (
             <>
               <div className="hidden lg:block">
                 <Link
                   href={getPrimaryWorkspaceHref(user)}
-                  className="btn-cta-hero items-center gap-2"
+                  className="button-solid gap-2 px-3 xl:px-4"
                 >
                   <LayoutDashboard aria-hidden="true" size={16} strokeWidth={1.9} />
                   {t("nav.dashboard")}
@@ -189,7 +193,7 @@ export function SiteNav() {
           ) : (
             <div className="hidden items-center gap-2 sm:flex">
               <PublicEntryMenu />
-              <Link href="/auth?mode=signup" className="btn-cta-hero">
+              <Link href="/auth?mode=signup" className="button-solid px-3 xl:px-4">
                 {t("nav.getStarted")}
               </Link>
             </div>

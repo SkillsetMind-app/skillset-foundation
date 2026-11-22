@@ -309,8 +309,6 @@
       "expiredSent": "Done. If this email still needs to be confirmed, a new link is on its way. Check your inbox and your spam folder."
     },
     "guard": {
-      "loadingTitle": "Preparing your workspace",
-      "loadingDescription": "SkillsetMind is checking your account session before opening this area.",
       "signInEyebrow": "Sign in required",
       "signInTitle": "This area needs an account.",
       "signInDescription": "Sign in or create an account to continue into the learning, teaching, or operations workspace.",
@@ -330,7 +328,6 @@
     "payoutCountryOther": "Another country",
     "payoutCountryUnavailable": "Payouts are not available for another country in this setup. You can prepare your products, but you cannot sell or receive payments until you have an eligible payout account.",
     "payoutCountryRequired": "Choose the country of your bank account, or select another country, before continuing.",
-    "preparing": "Preparing your account setup...",
     "stepPath": "Path",
     "stepProfile": "Profile",
     "stepGoals": "Goals",
@@ -2259,7 +2256,6 @@
         "removeLogo": "Remove storefront logo",
         "removeHero": "Remove storefront hero image",
         "upload": "Upload",
-        "uploading": "Uploading...",
         "replace": "Replace",
         "remove": "Remove",
         "errors": {
@@ -2634,7 +2630,6 @@
         "contactUs": "Contact us for more",
         "updateError": "Could not update the marketplace highlight."
       },
-      "loading": "Loading course...",
       "notFound": {
         "title": "This course isn't in your studio.",
         "description": "It may have been deleted, or it belongs to another creator.",
@@ -2906,6 +2901,8 @@
     "search": "Search",
     "searchHint": "Search skill, category, or outcome",
     "sort": "Sort by",
+    "filters": "Filters",
+    "filtersActive": "Active filters: {count}",
     "view": "View",
     "viewLayout": "View layout",
     "gridView": "Grid view",
@@ -2995,6 +2992,7 @@
     "deliveryEbook": "Digital download: a file you get right after purchase.",
     "delivery": "What you get",
     "access": "Access",
+    "priceEyebrow": "Price",
     "chooseOffer": "Choose an offer",
     "unavailableShort": "Unavailable",
     "category": "Category",
@@ -3614,15 +3612,13 @@
       "unknown": "Something went wrong. Please try again."
     },
     "loading": {
-      "title": "Preparing your workspace",
-      "description": "One moment. SkillsetMind is getting things ready.",
+      "title": "Opening SkillsetMind...",
       "retry": "Try again",
       "error": "Could not load your workspace. Refresh the page to try again."
     },
     "onboarding": {
       "question": "Question {number}",
       "progress": "Question {current} of {total}",
-      "preparing": "Preparing onboarding",
       "back": "Back",
       "skip": "Skip for now",
       "saving": "Saving...",
@@ -4633,7 +4629,6 @@
     "phone": "Phone number",
     "timezone": "Timezone",
     "goalsTitle": "Goals",
-    "uploading": "Uploading...",
     "saving": "Saving...",
     "save": "Save profile",
     "photo": {
@@ -5104,7 +5099,6 @@
     "globalBody": "The issue has been logged. Try reloading, or head back to the homepage.",
     "retry": "Try again",
     "home": "Go home",
-    "preparingAccess": "Preparing account access...",
     "preparingMetadataTitle": "Preparing your workspace | SkillsetMind"
   },
   "supportCenter": {
@@ -5742,9 +5736,7 @@
       "description": "Save programs from the marketplace and return here before you enroll."
     },
     "onboarding": {
-      "metadataTitle": "Set up your account | SkillsetMind",
-      "title": "Preparing onboarding",
-      "description": "One moment. SkillsetMind is getting things ready."
+      "metadataTitle": "Set up your account | SkillsetMind"
     },
     "communityHub": {
       "loadError": "We could not load your enrolled community spaces.",
