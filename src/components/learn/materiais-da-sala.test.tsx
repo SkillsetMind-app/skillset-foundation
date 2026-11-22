@@ -283,9 +283,51 @@ describe("anexos da aula com vídeo", () => {
     const slides = (await screen.findByText("Slides")).closest("div.rounded-lg") as HTMLElement;
     expect(within(slides).queryByText("zz-slides.pdf")).toBeNull();
     const map = screen.getByText("mapa.xmind").closest("div.rounded-lg") as HTMLElement;
-    expect(within(map).getByText("Enrolled")).toBeInTheDocument();
+    // Nem "Enrolled" (valia para todo anexo) nem o selo "Preview" em material.
+    // Mapa mental nao tem previa: fica como era, "Open file" e "Download".
+    expect(within(map).queryByText("Enrolled")).toBeNull();
     expect(within(map).queryByText("Preview")).toBeNull();
+    expect(await within(map).findByRole("link", { name: "Open file" })).toBeInTheDocument();
+    expect(within(map).getByRole("button", { name: "Download" })).toBeInTheDocument();
     expect(within(map).getByText("To open it, use the free app XMind.")).toBeInTheDocument();
     expect(screen.getByText("To open it, use the free app FreeMind or Freeplane.")).toBeInTheDocument();
+  });
+
+  it("a previa do anexo so monta quando a pessoa pede: abrir a aula nao pede link por arquivo", async () => {
+    mocks.searchParams = new URLSearchParams("lesson=l1");
+    mocks.assets = [
+      file("video", "l1", "aula-1.mp4", { kind: "lesson_video", contentType: "video/mp4" }),
+      file("slides", "l1", "zz-slides.pdf", { title: "Slides", position: 0 }),
+    ];
+    render(<EnrolledCourseWorkspace course={course} enableFirestoreAssets />);
+
+    const preview = await screen.findByRole("button", { name: "Preview Slides" });
+    await act(async () => {});
+    expect(signedAssetIds()).not.toContain("slides");
+    expect(preview).toHaveAttribute("aria-expanded", "false");
+    expect(screen.getByRole("button", { name: "Download Slides" })).toHaveClass("button-outline");
+
+    await act(async () => {
+      fireEvent.click(preview);
+    });
+    expect(signedAssetIds()).toContain("slides");
+    // O MESMO botao troca de rotulo (o foco do teclado nao se perde), com o nome do arquivo.
+    const hide = screen.getByRole("button", { name: "Hide preview of Slides" });
+    expect(hide).toBe(preview);
+    expect(hide).toHaveAttribute("aria-expanded", "true");
+  });
+
+  it("audio na aula ganha 'Preview', que abre o 'Open file' para tocar no navegador", async () => {
+    mocks.searchParams = new URLSearchParams("lesson=l1");
+    mocks.assets = [
+      file("video", "l1", "aula-1.mp4", { kind: "lesson_video", contentType: "video/mp4" }),
+      file("talk", "l1", "talk.mp3", { contentType: "audio/mpeg" }),
+    ];
+    render(<EnrolledCourseWorkspace course={course} enableFirestoreAssets />);
+
+    await act(async () => {
+      fireEvent.click(await screen.findByRole("button", { name: "Preview talk.mp3" }));
+    });
+    expect(await screen.findByRole("link", { name: "Open file" })).toBeInTheDocument();
   });
 });

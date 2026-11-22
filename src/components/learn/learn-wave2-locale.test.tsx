@@ -71,7 +71,8 @@ const enrollment: Enrollment = {
 const event: CourseEvent = {
   id: "event-es", courseId: "course-es", courseSlug: "course-es", courseTitle: enrollment.courseTitle,
   ownerId: "teacher", title: "Original session $&", description: "Original event text",
-  type: "live_class", status: "scheduled", startsAt: "2026-09-10T12:00:00Z",
+  // Futura: sessao que ja passou vai para a parte "Past", fechada e sem presenca.
+  type: "live_class", status: "scheduled", startsAt: new Date(Date.now() + 3 * 24 * 3_600_000).toISOString(),
   externalUrl: "https://example.test/live", recordingAssetId: null,
 };
 const message: CourseMessage = {
@@ -375,7 +376,9 @@ describe("learner wave 2 with real provider and dictionaries", () => {
     mocks.enrollments.mockImplementation((_uid, next) => { next([enrollment]); return () => {}; });
     mocks.rsvp.mockImplementation((_event, _uid, next) => { next({ status }); return () => {}; });
     show(<LearnEventsHub />);
-    expect(screen.getByText(status === "attending" ? "Asistirás" : "No asistirás")).toBeVisible();
+    // A resposta salva aparece no proprio botao (aria-pressed), nao num quadro de texto.
+    expect(screen.getByRole("button", { name: "Asistiré" })).toHaveAttribute("aria-pressed", String(status === "attending"));
+    expect(screen.getByRole("button", { name: "No puedo asistir" })).toHaveAttribute("aria-pressed", String(status === "not_attending"));
     expect(screen.getByRole("link", { name: "Unirse a la sesión externa" })).toHaveAttribute("href", event.externalUrl);
   });
 

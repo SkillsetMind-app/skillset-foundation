@@ -301,12 +301,13 @@ describe("sala de aula com matricula real", () => {
     act(() => emit([{ id: "file-test", courseId: course.id, ownerId: "teacher-1", lessonId: null,
       kind: "lesson_material", fileName: "Worksheet $$50 $&.pdf", contentType: "application/pdf",
       size: 512, storagePath: "courses/course-1/assets/file-test.pdf", isPreview: false }]));
-    expect(screen.getByText("1 archivo")).toBeInTheDocument();
+    // A contagem localizada fica na aba; o painel nao repete "1 archivo".
+    expect(screen.getByRole("link", { name: /^Materiales\s*1$/ })).toBeInTheDocument();
+    expect(screen.queryByText("1 archivo")).not.toBeInTheDocument();
     expect(screen.getByText("Worksheet $$50 $&.pdf")).toBeInTheDocument();
     // Arquivo sem aula (do curso inteiro) fica no grupo próprio.
     expect(screen.getByRole("heading", { name: "Archivos del curso" })).toBeInTheDocument();
     act(() => emit([]));
-    expect(screen.getByText("0 archivos")).toBeInTheDocument();
     expect(screen.getByText("Todavía no hay archivos para descargar.")).toBeInTheDocument();
   });
 
@@ -341,8 +342,9 @@ describe("sala de aula com matricula real", () => {
       { ...material, id: "module-only", moduleId: "m1", fileName: "module-only.png" },
     ]));
     // Materiais lista também o arquivo da aula liberada (l1), não só o do curso.
-    expect(screen.getByText("2 files")).toBeInTheDocument();
+    // A contagem fica só na aba ("Materials 2"); o selo "2 files" do painel saiu.
     expect(screen.getByRole("link", { name: /^Materials\s*2$/ })).toBeInTheDocument();
+    expect(screen.queryByText("2 files")).not.toBeInTheDocument();
     expect(screen.getByText("Worksheet.png")).toBeInTheDocument();
     expect(screen.getByText("lesson-only.png")).toBeInTheDocument();
     for (const name of ["identity-only.png", "course-art.png", "module-only.png"]) {
@@ -350,7 +352,6 @@ describe("sala de aula com matricula real", () => {
     }
 
     await act(async () => emit([cover]));
-    expect(screen.getByText("0 files")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /^Materials$/ })).toBeInTheDocument();
     expect(screen.getByText("No files to download yet.")).toBeInTheDocument();
 

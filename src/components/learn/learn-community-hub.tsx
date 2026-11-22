@@ -106,7 +106,7 @@ export function LearnCommunityHub() {
         <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
           {t("learnWave2.communityHub.eyebrow")}
         </p>
-        <h2 className="display-title mt-3 text-3xl text-[var(--color-ink)]">
+        <h2 className="mt-3 text-lg font-semibold text-[var(--color-primary)]">
           {t("learnWave2.communityHub.emptyTitle")}
         </h2>
         <p className="mt-4 max-w-2xl text-sm leading-7 text-[var(--color-ink-soft)]">
@@ -145,7 +145,7 @@ export function LearnCommunityHub() {
 
       {filteredCards.length === 0 ? (
         <div className="rounded-lg border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
-          <h2 className="display-title text-3xl text-[var(--color-ink)]">
+          <h2 className="text-lg font-semibold text-[var(--color-primary)]">
             {t("learnWave2.communityHub.noMatch")}
           </h2>
           <p className="mt-4 text-sm leading-7 text-[var(--color-ink-soft)]">
@@ -166,7 +166,7 @@ export function LearnCommunityHub() {
           <span className="mt-4 inline-flex rounded-chip bg-[var(--color-surface-soft)] px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--color-primary)]">
             {t("learnWave2.communityHub.enrolled")}
           </span>
-          <h2 className="display-title mt-3 text-3xl text-[var(--color-ink)]">
+          <h2 className="mt-3 text-lg font-semibold text-[var(--color-primary)]">
             {space.name}
           </h2>
           <p className="mt-4 text-sm leading-7 text-[var(--color-ink-soft)]">

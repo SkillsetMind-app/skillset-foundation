@@ -7172,13 +7172,15 @@ button:hover > .dash-card,
   background: transparent;
   color: var(--color-ink-soft);
   cursor: pointer;
-  font-size: 0.75rem;
-  font-weight: 800;
-  padding: 0.55rem 0.75rem;
+  /* Alvo de 44px (antes ~33px, abaixo do mínimo de toque). */
+  min-height: 44px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  padding: 0 0.875rem;
   transition:
-    background 180ms ease,
-    color 180ms ease,
-    box-shadow 180ms ease;
+    background var(--duration-base) var(--ease-standard),
+    color var(--duration-base) var(--ease-standard),
+    box-shadow var(--duration-base) var(--ease-standard);
 }
 
 .credential-filter-tabs button:hover,
@@ -7212,8 +7214,9 @@ button:hover > .dash-card,
 
 .member-review-star {
   display: grid;
-  width: 2.5rem;
-  height: 2.5rem;
+  /* 44px: alvo de toque mínimo (era 40px). */
+  width: 2.75rem;
+  height: 2.75rem;
   place-items: center;
   border: 1px solid var(--color-line);
   border-radius: var(--radius-md);
