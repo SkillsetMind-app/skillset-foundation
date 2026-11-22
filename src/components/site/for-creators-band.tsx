@@ -20,11 +20,11 @@ export async function ForCreatorsBand() {
 
   return (
     <section className="mx-auto w-full max-w-7xl px-5 py-16 sm:px-8 sm:py-20 lg:py-24">
-      <RevealSection>
+      <RevealSection className="home-creators">
         <div className="relative overflow-hidden rounded-lg bg-[var(--color-primary)] p-6 text-white shadow-[var(--shadow-strong)] sm:p-8 lg:p-10">
           <div className="absolute inset-0 bg-gradient-to-br from-[#07172a] via-[#102944] to-[#1a365d]" />
           <div className="relative z-10 grid gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-end">
-            <div>
+            <div className="home-creators__lead">
               <p className="text-xs font-semibold uppercase tracking-[0.22em] text-white/75">
                 {t("home.creators.eyebrow")}
               </p>
@@ -55,7 +55,7 @@ export async function ForCreatorsBand() {
             <div className="grid gap-3 sm:grid-cols-2">
               {/* Os 3 planos com preço, mensal e anual, nas letras miúdas da
                   home (decisão de 13/11/2026). */}
-              <div className="rounded-lg border border-white/16 bg-white/10 p-4 text-sm leading-6 text-white/85 sm:col-span-2">
+              <div className="home-creators__item rounded-lg border border-white/16 bg-white/10 p-4 text-sm leading-6 text-white/85 sm:col-span-2">
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/75">
                   {t("home.creators.plansLabel")}
                 </p>
@@ -79,7 +79,7 @@ export async function ForCreatorsBand() {
                 <p className="mt-2 text-xs leading-5 text-white/70">{t("home.creators.plansNote")}</p>
               </div>
               {trustBullets.map((bullet) => (
-                <RevealSection key={bullet}>
+                <RevealSection key={bullet} className="home-creators__item">
                   <div className="flex h-full items-start gap-3 rounded-lg border border-white/16 bg-white/10 p-4 text-sm leading-6 text-white/85">
                     <span
                       aria-hidden="true"

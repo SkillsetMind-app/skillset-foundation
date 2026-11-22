@@ -978,6 +978,438 @@ p {
   }
 }
 
+/* ─── Home: coreografia de rolagem ───────────────────────────────────────
+   A home entra junto com a rolagem, e não de uma vez só: cada peça anda no
+   ritmo do dedo (ou da roda do mouse) e volta se a pessoa sobe a página.
+   É CSS puro (animation-timeline), sem JavaScript e sem biblioteca: o
+   navegador roda tudo fora da thread principal e só mexe em transform e
+   opacity. Três redes de segurança:
+   - só vale dentro de prefers-reduced-motion: no-preference;
+   - só vale onde o navegador entende animation-timeline (@supports); nos
+     outros a home segue com a entrada antiga do RevealSection;
+   - tudo é escopado em .home-scroll, a classe que só a home põe na moldura.
+   Os quadros (@keyframes motion-scroll-*) ficam fora do @media, como os
+   demais do catálogo, e só animam transform e opacity. */
+@keyframes motion-scroll-progress {
+  from {
+    transform: scaleX(0);
+  }
+
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@keyframes motion-scroll-rise {
+  from {
+    opacity: 0;
+    transform: translateY(2.5rem);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes motion-scroll-unfold {
+  from {
+    opacity: 0;
+    transform: perspective(900px) translateY(3rem) rotateX(12deg) scale(0.96);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes motion-scroll-line {
+  from {
+    transform: scaleX(0);
+  }
+
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@keyframes motion-scroll-drift {
+  from {
+    transform: translateY(1.75rem);
+  }
+
+  to {
+    transform: translateY(-1rem);
+  }
+}
+
+@keyframes motion-scroll-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.5) rotate(-12deg);
+  }
+
+  70% {
+    opacity: 1;
+    transform: scale(1.08) rotate(0deg);
+  }
+
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes motion-scroll-zoom {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes motion-scroll-from-left {
+  from {
+    opacity: 0;
+    transform: translateX(-2.5rem);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes motion-scroll-from-right {
+  from {
+    opacity: 0;
+    transform: translateX(2.5rem) rotate(1.5deg);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes motion-scroll-hero-photo {
+  from {
+    transform: scale(1) translateY(0);
+  }
+
+  to {
+    transform: scale(1.1) translateY(6%);
+  }
+}
+
+@keyframes motion-scroll-hero-copy {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  to {
+    opacity: 0;
+    transform: translateY(-4rem);
+  }
+}
+
+/* Sem suporte ou com movimento reduzido a barra de leitura não existe. */
+.home-scroll-progress {
+  display: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* Só entra quem entende a coreografia inteira: um navegador que conheça
+     a linha do tempo mas não os trechos (animation-range) deixaria o texto
+     meio apagado no meio da tela. */
+  @supports (animation-timeline: view()) and (animation-range: entry 0% cover 30%) and (view-timeline: --x block) {
+    /* 1. Barra de leitura: um fio dourado no topo que enche conforme a página
+       desce. Fica acima da barra do site (40) e abaixo de menus e janelas. */
+    .home-scroll-progress {
+      display: block;
+      position: fixed;
+      inset-inline: 0;
+      top: 0;
+      z-index: 41;
+      height: 3px;
+      background: var(--color-accent);
+      transform-origin: 0 50%;
+      pointer-events: none;
+      animation: motion-scroll-progress 1ms linear both;
+      animation-timeline: scroll(root block);
+    }
+
+    /* 2. A entrada antiga (de uma vez, por IntersectionObserver) sai de cena
+       aqui: quem conduz é a rolagem. Sem isto as duas brigariam. */
+    html.js .home-scroll .reveal-on-view:not(.reveal-on-view--in) {
+      opacity: 1;
+      transform: none;
+    }
+
+    /* 3. Topo: ao sair, a foto recua devagar (profundidade) e o texto sobe e
+       some. O hero corta o que passa dele (overflow hidden), então a linha do
+       tempo tem nome e é declarada no próprio hero. */
+    .home-scroll .home-hero {
+      view-timeline: --home-hero block;
+    }
+
+    .home-scroll .home-hero .hero-portrait-layer {
+      animation: motion-scroll-hero-photo 1ms linear both;
+      animation-timeline: --home-hero;
+      animation-range: exit 0% exit 100%;
+    }
+
+    .home-scroll .home-hero__copy {
+      animation: motion-scroll-hero-copy 1ms linear both;
+      animation-timeline: --home-hero;
+      /* No celular o texto de apoio fica embaixo do hero: ele só começa a
+         sumir quando metade do hero já saiu, para dar tempo de ler. */
+      animation-range: exit 45% exit 95%;
+    }
+
+    /* Quem volta ao topo pelo teclado não pode achar o botão focado quase
+       invisível: com foco dentro, o texto do topo não some. */
+    .home-scroll .home-hero__copy:has(:focus-visible) {
+      animation: none;
+    }
+
+    /* 4. Títulos de seção. */
+    .home-scroll .home-heading {
+      animation: motion-scroll-rise 1ms var(--ease-standard) both;
+      animation-timeline: view();
+      animation-range: entry 0% cover 30%;
+    }
+
+    /* 5. Os três passos: cada um sobe, o ícone gira para o lugar, o número
+       grande desliza mais devagar que o resto e uma linha dourada percorre o
+       topo do passo. */
+    .home-scroll .home-steps {
+      view-timeline: --home-steps block;
+    }
+
+    .home-scroll .home-step {
+      animation: motion-scroll-rise 1ms var(--ease-standard) both;
+      animation-timeline: view();
+      animation-range: entry 0% cover 26%;
+    }
+
+    .home-scroll .home-step__line {
+      position: relative;
+    }
+
+    .home-scroll .home-step__line::before {
+      content: "";
+      position: absolute;
+      inset-inline: 0;
+      top: -2px;
+      height: 2px;
+      background: var(--color-accent);
+      transform-origin: 0 50%;
+      animation: motion-scroll-line 1ms linear both;
+      animation-timeline: view();
+      animation-range: entry 60% cover 42%;
+    }
+
+    .home-scroll .home-step__icon {
+      animation: motion-scroll-pop 1ms linear both;
+      animation-timeline: view();
+      animation-range: entry 30% cover 32%;
+    }
+
+    .home-scroll .home-step__number {
+      animation: motion-scroll-drift 1ms linear both;
+      animation-timeline: view();
+      animation-range: cover 0% cover 100%;
+    }
+
+    /* 6. Cartão do curso de verdade. */
+    .home-scroll .home-feature > a {
+      animation: motion-scroll-zoom 1ms var(--ease-standard) both;
+      animation-timeline: view();
+      animation-range: entry 0% cover 30%;
+    }
+
+    /* 7. Os seis recursos: cada cartão se desdobra de baixo para cima. */
+    .home-scroll .home-card {
+      transform-origin: 50% 100%;
+      animation: motion-scroll-unfold 1ms var(--ease-standard) both;
+      animation-timeline: view();
+      animation-range: entry 0% cover 28%;
+    }
+
+    /* 8. A promessa: o texto chega pela esquerda, a carta pela direita, e as
+       seis cláusulas entram uma a uma. A carta corta o que passa dela, então
+       as cláusulas usam a linha do tempo com nome declarada na carta. */
+    .home-scroll .home-promise__text {
+      animation: motion-scroll-from-left 1ms var(--ease-standard) both;
+      animation-timeline: view();
+      animation-range: entry 0% cover 30%;
+    }
+
+    .home-scroll .home-promise__charter {
+      view-timeline: --home-charter block;
+      animation: motion-scroll-from-right 1ms var(--ease-standard) both;
+      animation-timeline: view();
+      animation-range: entry 0% cover 30%;
+    }
+
+    .home-scroll .home-promise__clause {
+      animation: motion-scroll-rise 1ms var(--ease-standard) both;
+      animation-timeline: --home-charter;
+      animation-range: entry 40% cover 34%;
+    }
+
+    .home-scroll .home-promise__clause:nth-child(2) {
+      animation-range: entry 48% cover 37%;
+    }
+
+    .home-scroll .home-promise__clause:nth-child(3) {
+      animation-range: entry 56% cover 40%;
+    }
+
+    .home-scroll .home-promise__clause:nth-child(4) {
+      animation-range: entry 64% cover 43%;
+    }
+
+    .home-scroll .home-promise__clause:nth-child(5) {
+      animation-range: entry 72% cover 46%;
+    }
+
+    .home-scroll .home-promise__clause:nth-child(6) {
+      animation-range: entry 80% cover 49%;
+    }
+
+    /* 9. Faixa final: o bloco azul cresce para o lugar e o conteúdo dele
+       entra em seguida, um item depois do outro. */
+    .home-scroll .home-creators {
+      view-timeline: --home-creators block;
+      animation: motion-scroll-zoom 1ms var(--ease-standard) both;
+      animation-timeline: view();
+      animation-range: entry 0% cover 24%;
+    }
+
+    .home-scroll .home-creators__lead,
+    .home-scroll .home-creators__item {
+      animation: motion-scroll-rise 1ms var(--ease-standard) both;
+      animation-timeline: --home-creators;
+      animation-range: entry 30% cover 30%;
+    }
+
+    /* O título fica no começo da faixa. Num celular pequeno com letra
+       grande a faixa passa de duas telas, e medido pela faixa inteira ele
+       chegava ao meio da tela a 75%. Ele termina de entrar ainda na
+       primeira tela da faixa. */
+    .home-scroll .home-creators__lead {
+      animation-range: entry 10% entry 60%;
+    }
+
+    .home-scroll .home-creators__item:nth-child(2) {
+      animation-range: entry 45% cover 34%;
+    }
+
+    .home-scroll .home-creators__item:nth-child(3) {
+      animation-range: entry 55% cover 37%;
+    }
+
+    .home-scroll .home-creators__item:nth-child(4) {
+      animation-range: entry 65% cover 40%;
+    }
+
+    /* Do tablet para cima as peças vizinhas entram em escada, da esquerda
+       para a direita, em vez de todas juntas. */
+    @media (min-width: 768px) and (max-width: 1279.98px) {
+      .home-scroll .home-card:nth-child(2n) {
+        animation-range: entry 14% cover 34%;
+      }
+    }
+
+    @media (min-width: 1280px) {
+      .home-scroll .home-card:nth-child(3n + 2) {
+        animation-range: entry 12% cover 33%;
+      }
+
+      .home-scroll .home-card:nth-child(3n) {
+        animation-range: entry 24% cover 38%;
+      }
+    }
+
+    @media (min-width: 1024px) {
+      .home-scroll .home-hero__copy {
+        animation-range: exit 20% exit 85%;
+      }
+
+      /* Três colunas lado a lado: a linha do tempo passa a ser a da grade
+         inteira, e a linha dourada percorre um passo de cada vez, do 01 ao
+         03, como um caminho que se desenha. */
+      .home-scroll .home-step,
+      .home-scroll .home-step__icon,
+      .home-scroll .home-step__line::before {
+        animation-timeline: --home-steps;
+      }
+
+      .home-scroll .home-step:nth-child(1) {
+        animation-range: entry 0% cover 24%;
+      }
+
+      .home-scroll .home-step:nth-child(2) {
+        animation-range: entry 25% cover 30%;
+      }
+
+      .home-scroll .home-step:nth-child(3) {
+        animation-range: entry 50% cover 36%;
+      }
+
+      .home-scroll .home-step:nth-child(1) .home-step__icon {
+        animation-range: entry 30% cover 28%;
+      }
+
+      .home-scroll .home-step:nth-child(2) .home-step__icon {
+        animation-range: entry 55% cover 34%;
+      }
+
+      .home-scroll .home-step:nth-child(3) .home-step__icon {
+        animation-range: entry 80% cover 40%;
+      }
+
+      .home-scroll .home-step:nth-child(1) .home-step__line::before {
+        animation-range: cover 20% cover 32%;
+      }
+
+      .home-scroll .home-step:nth-child(2) .home-step__line::before {
+        animation-range: cover 32% cover 44%;
+      }
+
+      .home-scroll .home-step:nth-child(3) .home-step__line::before {
+        animation-range: cover 44% cover 56%;
+      }
+    }
+  }
+}
+
+/* No papel não há rolagem: nada fica parado no meio de uma entrada, e a
+   barra de leitura não se repete em cada folha. */
+@media print {
+  .home-scroll *,
+  .home-scroll *::before {
+    animation: none !important;
+  }
+
+  html.js .home-scroll .reveal-on-view:not(.reveal-on-view--in) {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  .home-scroll-progress {
+    display: none !important;
+  }
+}
+
 /* Os DEFAULTS de tamanho dos botões vivem na camada `components` para que as
    utilities de tamanho escritas ao lado da classe (text-xs, px-3.5, py-2,
    min-h-10...) valham de verdade. O Tailwind v4 coloca toda utility dentro de

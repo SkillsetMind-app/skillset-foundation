@@ -35,7 +35,10 @@ export default async function Home() {
   const { t } = await getServerTranslation();
 
   return (
-    <div className="page-shell">
+    <div className="page-shell home-scroll">
+      {/* .home-scroll liga a coreografia de rolagem (globals.css, "Home:
+          coreografia de rolagem"); o fio abaixo é a barra de leitura. */}
+      <div aria-hidden="true" className="home-scroll-progress" />
       <SiteNav />
       {/* Um <main> por página, alvo do "Skip to content" da barra. */}
       <main id="conteudo">
@@ -48,7 +51,7 @@ export default async function Home() {
             <FeaturedCourses />
           </section>
         ) : (
-          <section id="real-course" className="mx-auto w-full max-w-7xl px-5 sm:px-8">
+          <section id="real-course" className="home-feature mx-auto w-full max-w-7xl px-5 sm:px-8">
             <Link
               href={SHOWCASE_COURSE_PATH}
               className="group flex flex-col gap-3 rounded-lg border fine-rule bg-white p-6 shadow-[var(--shadow-soft)] transition hover:border-[var(--color-primary)] sm:flex-row sm:items-center sm:justify-between sm:p-8"

@@ -17,7 +17,7 @@ export async function MarketingHero() {
   // A altura mínima é um clamp: em janela baixa (560px) o botão principal
   // ainda cabe na primeira tela, em telão ela para de crescer aos 900px.
   return (
-    <section className="relative flex min-h-[clamp(560px,92svh,900px)] items-center overflow-hidden bg-[var(--color-primary)] text-white">
+    <section className="home-hero relative flex min-h-[clamp(560px,92svh,900px)] items-center overflow-hidden bg-[var(--color-primary)] text-white">
       <div className="absolute inset-0 bg-gradient-to-br from-[#071523] via-[#102a43] to-[#173a59]" />
 
       {/* Starts on the visit's face and crossfades through the others every
@@ -58,7 +58,7 @@ export async function MarketingHero() {
       />
 
       <div className="mx-auto w-full max-w-7xl px-5 py-12 sm:px-8 sm:py-14 lg:py-16">
-        <div className="relative z-10 flex flex-col gap-10 lg:flex-row lg:items-center">
+        <div className="home-hero__copy relative z-10 flex flex-col gap-10 lg:flex-row lg:items-center">
           <div className="hero-copy-rise mx-auto flex max-w-xl flex-col items-center text-center lg:mx-0 lg:max-w-[min(36rem,48%)] lg:items-start lg:text-left">
             {/* flex + gap, não space-y: no celular o texto de apoio desce
                 para depois dos botões, senão o botão principal cai embaixo do
