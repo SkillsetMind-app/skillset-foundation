@@ -176,9 +176,13 @@ describe("CreatorSubscriptionCenterView", () => {
     );
 
     fireEvent.click(screen.getByRole("tab", { name: "Renewals" }));
-    // Pelo produto e pela data, nao pelo id cru da renovacao.
+    // Pelo produto e pela data; o id fica recolhido em "Details for support",
+    // selecionavel, para a Stripe e o suporte.
     expect(screen.getByText("Clinical Focus renewal · Jul 15, 2026")).toBeInTheDocument();
-    expect(screen.queryByText(/in-1/)).toBeNull();
+    const renewalId = screen.getByText("Renewal ID: in-1");
+    expect(renewalId).toHaveClass("select-all");
+    expect(renewalId.closest("details")).not.toHaveAttribute("open");
+    expect(renewalId.closest("details")).toHaveTextContent("Details for support");
     expect(screen.getByText(/Maria Silva/)).toBeInTheDocument();
     expect(screen.getByText(`Gross ${money("en", 99, "BRL")}`)).toBeInTheDocument();
   });
@@ -307,6 +311,7 @@ describe("jornada de assinaturas no idioma da pessoa", () => {
     expect(screen.getAllByText("Estudiante ...rner-1")).toHaveLength(2);
     fireEvent.click(screen.getByRole("tab", { name: "Renovaciones" }));
     expect(screen.getByText("Renovación de course-$&-{date} · Fecha pendiente")).toBeVisible();
+    expect(screen.getByText("ID de la renovación: in-$&-{id}")).toBeInTheDocument();
     expect(screen.getByText("Suscriptor histórico")).toBeVisible();
   });
 

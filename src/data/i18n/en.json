@@ -910,7 +910,8 @@
         "export": "Export",
         "csv": "Export as CSV",
         "json": "Export as JSON",
-        "nothingToExport": "Nothing to export in this view yet."
+        "nothingToExport": "Nothing to export in this view yet.",
+        "loadFailed": "Export is off because this data could not be loaded."
       },
       "userTable": {
         "searchLabel": "Find someone",
@@ -2212,6 +2213,7 @@
       "renewalsError": "Renewal history is unavailable.",
       "renewalsEmpty": "Renewal history appears after the first recurring invoice is paid.",
       "renewalLabel": "{plan} renewal · {date}",
+      "renewalId": "Renewal ID: {id}",
       "historicalSubscriber": "Historical subscriber",
       "statusTrialing": "Trialing",
       "statusPastDue": "Past due",
@@ -2652,7 +2654,14 @@
         "paidPlan": "paid",
         "gateQuota": "You're using all {limit} highlights on your plan. Remove one from another course first.",
         "contactUs": "Contact us for more",
-        "updateError": "Could not update the marketplace highlight."
+        "updateError": "Could not update the marketplace highlight.",
+        "refused": {
+          "signIn": "Your session expired. Sign in again to manage your highlights.",
+          "notPublished": "Only a published course can be highlighted. Publish this course first.",
+          "plan": "Marketplace highlights are not included in your current plan. See plans to add them.",
+          "quota": "You're using all the highlights on your plan. Remove one from another course first.",
+          "other": "Refresh the page and try again. If it continues, contact support."
+        }
       },
       "notFound": {
         "title": "This course isn't in your studio.",

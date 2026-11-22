@@ -9,6 +9,7 @@ import { useTranslation } from "@/components/i18n/i18n-provider";
 import { HorizontalTabs } from "@/components/shared/horizontal-tabs";
 import { StatusChip } from "@/components/shared/status-chip";
 import { MetricCard } from "@/components/teacher/metric-card";
+import { SupportDetails } from "@/components/teacher/support-details";
 import { buttonClasses, InlineAlert } from "@/components/ui";
 import type { CourseSubscription } from "@/domain/course-subscription";
 import {
@@ -446,6 +447,12 @@ export function CreatorSubscriptionCenterView({
                     <p className="mt-1 text-xs text-[var(--color-ink-soft)]">
                       {profile?.displayName || (renewal.userId ? maskLearner(renewal.userId, t("roles.learner")) : t(`${copy}.historicalSubscriber`))}
                     </p>
+                    {/* O id e a unica referencia da renovacao para a Stripe e o
+                        suporte (uma falha e a nova tentativa do mesmo dia so
+                        diferem por ele): recolhido e selecionavel. */}
+                    <SupportDetails>
+                      <p className="select-all">{t(`${copy}.renewalId`).replace("{id}", () => renewal.id)}</p>
+                    </SupportDetails>
                   </div>
                   <div className="flex items-center gap-3">
                     <StatusChip status={renewal.status} label={formatStatus(renewal.status, t)} />

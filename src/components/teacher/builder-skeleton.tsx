@@ -165,11 +165,12 @@ export function CardPageSkeleton({ label, header = true }: { label: string; head
  * O lugar do formulario da Stripe (assinatura, ativacao, repasses) enquanto
  * ele nao chega: a caixa ja nasce com a altura do formulario e um esqueleto
  * dentro. Antes era "Preparing..." numa caixa de ~90px que pulava para ~600px
- * quando o iframe chegava, empurrando a pagina.
+ * quando o iframe chegava, empurrando a pagina. Sem aria-busy junto do
+ * role="status": alguns leitores de tela seguram o anuncio enquanto ele vale.
  */
 export function StripeFrameSkeleton({ label }: { label: string }) {
   return (
-    <div role="status" aria-busy="true" data-skeleton="stripe" className="min-h-[560px] p-6">
+    <div role="status" data-skeleton="stripe" className="min-h-[560px] p-6">
       <span className="sr-only">{label}</span>
       <div aria-hidden="true" className="grid animate-pulse gap-4">
         <div className={`h-4 w-32 rounded-sm ${block}`} />

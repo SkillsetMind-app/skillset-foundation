@@ -231,7 +231,14 @@ export function CreatorOpsHub() {
             option === "all" ? t("teach.insights.rangeAllTab") : option
           }
         />
-        <ExportTableButton rows={exportRows} filename="skillset-reports" />
+        {/* As linhas saem dos pedidos: sem a leitura pronta, zero linhas nao
+            quer dizer "nada vendido". */}
+        <ExportTableButton
+          rows={exportRows}
+          filename="skillset-reports"
+          disabled={ordersState !== "ready"}
+          disabledReason={ordersState === "error" ? t("platform.ops.exportButton.loadFailed") : undefined}
+        />
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

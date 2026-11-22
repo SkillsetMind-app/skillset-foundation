@@ -75,7 +75,8 @@ describe("payment checkout localization with real dictionaries", () => {
     mount(kind === "activation" ? <ActivationCheckoutPanel /> : <EmbeddedCheckoutPanel planId="pro" cycle="yearly" />);
     // A espera guarda o lugar do formulario (esqueleto) e anuncia a frase.
     const waiting = screen.getByRole("status");
-    expect(waiting).toHaveAttribute("aria-busy", "true");
+    // Status sem aria-busy: alguns leitores seguram o anuncio com os dois juntos.
+    expect(waiting).not.toHaveAttribute("aria-busy");
     expect(waiting).toHaveAttribute("data-skeleton", "stripe");
     expect(waiting).toHaveTextContent(copy("es", "activationCheckout.preparing"));
     fireEvent.click(screen.getByText("EN"));

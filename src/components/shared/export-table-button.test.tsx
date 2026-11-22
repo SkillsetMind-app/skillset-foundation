@@ -303,7 +303,11 @@ describe("menu de exportacao dentro da tela", () => {
       "Todavía no hay nada para exportar en esta vista.",
     );
     unmount();
-    render(<ExportTableButton rows={[{ id: "fixture" }]} disabled filename="fixture" />);
+    // Leitura que falhou chega com zero linhas: nao pode dizer "nada para exportar".
+    const failed = render(<ExportTableButton rows={[]} disabled filename="fixture" />);
     expect(screen.getByRole("button", { name: "Export" })).not.toHaveAttribute("aria-describedby");
+    failed.unmount();
+    render(<ExportTableButton rows={[]} disabled disabledReason="This data could not be loaded." filename="fixture" />);
+    expect(screen.getByRole("button", { name: "Export" })).toHaveAccessibleDescription("This data could not be loaded.");
   });
 });

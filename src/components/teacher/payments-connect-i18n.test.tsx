@@ -100,7 +100,8 @@ it("uses the latest locale after a pending preflight without repeating it", asyn
   mocks.fetch.mockReturnValue(new Promise<Response>((done) => { resolve = done; }));
   mount();
   const waiting = screen.getByRole("status");
-  expect(waiting).toHaveAttribute("aria-busy", "true");
+  expect(waiting).toHaveAttribute("data-skeleton", "stripe");
+  expect(waiting).not.toHaveAttribute("aria-busy");
   expect(waiting).toHaveTextContent(copy("es", "connectOnboarding.preparing"));
   fireEvent.click(screen.getByText("EN"));
   expect(screen.getByRole("status")).toHaveTextContent(copy("en", "connectOnboarding.preparing"));

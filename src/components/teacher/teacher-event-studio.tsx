@@ -674,7 +674,13 @@ export function TeacherEventStudio() {
             placeholder={t(`${copy}.searchPlaceholder`)}
             className="min-h-11 min-w-[12rem] flex-1 rounded-md border border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-ink)]"
           />
-          <ExportTableButton rows={exportRows} filename="skillset-events" />
+          {/* Sem a leitura das sessoes, zero linhas nao quer dizer "agenda vazia". */}
+          <ExportTableButton
+            rows={exportRows}
+            filename="skillset-events"
+            disabled={!eventsLoaded || eventsFailed}
+            disabledReason={eventsFailed ? t("platform.ops.exportButton.loadFailed") : undefined}
+          />
         </div>
 
         {eventsFailed ? null : <p className="mt-3 text-sm text-[var(--color-ink-soft)]">{countLine}</p>}
