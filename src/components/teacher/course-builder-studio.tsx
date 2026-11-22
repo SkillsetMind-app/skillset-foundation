@@ -46,11 +46,12 @@ import {
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
-import { PlanSelectorCards } from "@/components/shared/plan-selector-cards";
+import { PlanSelectorCards, planGridColumns } from "@/components/shared/plan-selector-cards";
 import { InlineHelp } from "@/components/shared/inline-help";
 import { StatusChip } from "@/components/shared/status-chip";
 import { MembersAreaHero } from "@/components/learn/members-area-hero";
 import { BuilderSkeleton } from "@/components/teacher/builder-skeleton";
+import { RetryAlert } from "@/components/teacher/save-status-line";
 import { CourseAssetUploader } from "@/components/teacher/course-asset-uploader";
 import { CourseCategorySelect } from "@/components/teacher/course-category-select";
 import { CourseShareLink } from "@/components/teacher/course-share-link";
@@ -609,6 +610,9 @@ export function CourseBuilderStudio() {
   // Move aplica (no Chrome/Edge as setas do teclado disparam change na hora).
   const [moveTargets, setMoveTargets] = useState<Record<string, string>>({});
   const [moveStatus, setMoveStatus] = useState<{ moduleId: string; text: string } | null>(null);
+  // Lista de modulos: o anuncio do Up/Down e a linha que recebe a aula arrastada.
+  const [reorderStatus, setReorderStatus] = useState("");
+  const [dragOverModuleId, setDragOverModuleId] = useState<string | null>(null);
   // "Mais acoes" aberto (uma aula por vez) na pagina do modulo.
   const [lessonMenuId, setLessonMenuId] = useState<string | null>(null);
   const [isMediaLibraryOpen, setIsMediaLibraryOpen] = useState(false);
@@ -949,6 +953,8 @@ export function CourseBuilderStudio() {
   // voltar para a aba: outra aba pode ter criado o preco principal.
   const [checkoutOffers, setCheckoutOffers] = useState<ProductOffer[] | null>(null);
   const [offersFailed, setOffersFailed] = useState(false);
+  // "Try again" da falha: a mesma leitura, de novo (antes só recarregando a página).
+  const [offersAttempt, setOffersAttempt] = useState(0);
   useEffect(() => {
     if (!courseId) {
       return;
@@ -989,7 +995,7 @@ export function CourseBuilderStudio() {
       window.removeEventListener("focus", load);
       document.removeEventListener("visibilitychange", loadWhenVisible);
     };
-  }, [courseId]);
+  }, [courseId, offersAttempt]);
   const offerPrice = course && checkoutOffers ? resolveCoursePrice(course, checkoutOffers) : null;
   const chargedByOffer = offerPrice?.source === "offer" ? offerPrice : null;
   const paymentChoice = paymentChoiceOf(paymentType);
@@ -1639,11 +1645,24 @@ export function CourseBuilderStudio() {
       });
   }
 
+  // "Moved X to position N": Up/Down trocavam as linhas sem movimento e sem
+  // anuncio (so mover para outro modulo anunciava).
+  function movedTo(title: string, position: number) {
+    return t("creatorEditor.builder.curriculum.movedTo")
+      .replace("{title}", () => title)
+      .replace("{position}", () => String(position));
+  }
+
   function moveModule(moduleId: string, direction: "up" | "down") {
     if (!isEditable) {
       return;
     }
 
+    const index = modules.findIndex((module) => module.id === moduleId);
+    const target = direction === "up" ? index - 1 : index + 1;
+    if (index >= 0 && target >= 0 && target < modules.length) {
+      setReorderStatus(movedTo(modules[index].title || t("creatorEditor.builder.curriculum.untitledModule"), target + 1));
+    }
     setModules((currentModules) => {
       const currentIndex = currentModules.findIndex((module) => module.id === moduleId);
       const nextIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1;
@@ -1735,6 +1754,13 @@ export function CourseBuilderStudio() {
       return;
     }
 
+    const lessons = modules.find((module) => module.id === moduleId)?.lessons ?? [];
+    const index = lessons.findIndex((lesson) => lesson.id === lessonId);
+    const target = direction === "up" ? index - 1 : index + 1;
+    if (index >= 0 && target >= 0 && target < lessons.length) {
+      // A regiao da pagina do modulo que ja anuncia o "Move to module".
+      setMoveStatus({ moduleId, text: movedTo(lessons[index].title || t("creatorEditor.lesson.untitled"), target + 1) });
+    }
     setModules((currentModules) =>
       currentModules.map((module) => {
         if (module.id !== moduleId) {
@@ -3510,12 +3536,28 @@ export function CourseBuilderStudio() {
           >
             {!checkoutOffers ? (
               // Sem a lista de precos, o preco principal e desconhecido: nada
-              // de cartoes por cima dele.
+              // de cartoes por cima dele. Enquanto ela chega, blocos do tamanho
+              // dos cartoes guardam o lugar (antes o painel ficava so com a nota
+              // de rodape e os cartoes entravam empurrando tudo).
               offersFailed ? (
-                <p role="alert" className="text-sm font-semibold text-[var(--color-danger-fg)]">
-                  {t("creatorEditor.builder.pricing.offersFailed")}
-                </p>
-              ) : null
+                <RetryAlert
+                  text={t("creatorEditor.builder.pricing.offersFailed")}
+                  onRetry={() => {
+                    setOffersFailed(false);
+                    setOffersAttempt((current) => current + 1);
+                  }}
+                />
+              ) : (
+                <div role="status" className="grid gap-4">
+                  <span className="sr-only">{t("creatorPanel.offers.loading")}</span>
+                  <div aria-hidden="true" className="h-5 w-48 animate-pulse rounded-sm bg-[var(--color-surface-strong)]" />
+                  <div aria-hidden="true" className={`grid animate-pulse gap-4 ${planGridColumns(paymentChoices.length)}`}>
+                    {paymentChoices.map((choice) => (
+                      <div key={choice} className="h-28 rounded-lg bg-[var(--color-surface-strong)]" />
+                    ))}
+                  </div>
+                </div>
+              )
             ) : chargedByOffer ? (
               // A pagina cobra a oferta principal: cartoes e campos aqui
               // mudariam so o construtor, e o checkout seguiria cobrando ela.
@@ -3848,6 +3890,9 @@ export function CourseBuilderStudio() {
               </form>
             ) : null}
 
+            {/* Sempre montada: o leitor de tela so anuncia mudanca numa regiao
+                que ja existia. */}
+            <p role="status" className="sr-only">{reorderStatus}</p>
             <div className="mt-4 grid gap-2">
               {modules.map((module, moduleIndex) => {
                 const coverUrl = getSafeMediaUrl(getModuleCoverAsset(module, courseAssets)?.downloadUrl);
@@ -3859,16 +3904,28 @@ export function CourseBuilderStudio() {
                       // So aceita o arrastar de uma aula; texto ou arquivo nao.
                       if (isEditable && Array.from(event.dataTransfer.types).includes(lessonDragType)) {
                         event.preventDefault();
+                        setDragOverModuleId(module.id);
+                      }
+                    }}
+                    onDragLeave={(event) => {
+                      if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+                        setDragOverModuleId((current) => (current === module.id ? null : current));
                       }
                     }}
                     onDrop={(event) => {
+                      setDragOverModuleId(null);
                       const lessonId = event.dataTransfer.getData(lessonDragType);
                       if (lessonId) {
                         event.preventDefault();
                         moveLessonToModule(lessonId, module.id);
                       }
                     }}
-                    className="flex flex-wrap items-center gap-3 rounded-lg border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-3"
+                    // A linha que vai receber a aula se marca (antes nada mudava).
+                    className={`flex flex-wrap items-center gap-3 rounded-lg border border-[var(--color-line)] p-3 ${
+                      dragOverModuleId === module.id
+                        ? "bg-white outline-2 outline-offset-2 outline-dashed outline-[color:var(--color-brass)]"
+                        : "bg-[var(--color-surface-soft)]"
+                    }`}
                   >
                     <Link
                       href={builderModuleHref(module.id)}
@@ -3940,6 +3997,8 @@ export function CourseBuilderStudio() {
                                 event.dataTransfer.setData(lessonDragType, lesson.id);
                                 event.dataTransfer.effectAllowed = "move";
                               }}
+                              // Arrasto cancelado (Esc, soltou fora): a marca sai.
+                              onDragEnd={() => setDragOverModuleId(null)}
                               title={t("creatorEditor.builder.curriculum.dragLessonHint")}
                               className="inline-flex cursor-grab rounded-md border border-[var(--color-line)] bg-white px-2 py-1 text-xs text-[var(--color-ink-soft)]"
                             >

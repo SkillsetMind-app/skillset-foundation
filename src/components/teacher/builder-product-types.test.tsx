@@ -298,14 +298,14 @@ describe("como as pessoas vao pagar", () => {
     return within(group)
       .getAllByRole("button")
       .filter((button) => button.hasAttribute("aria-pressed"))
-      .map((button) => button.querySelector(".display-title")?.textContent);
+      .map((button) => button.querySelector(".plan-card-title")?.textContent);
   }
 
   function pressed() {
     const group = screen.getByRole("group", { name: /How will people pay\?/ });
     return within(group)
       .getAllByRole("button", { pressed: true })
-      .map((button) => button.querySelector(".display-title")?.textContent);
+      .map((button) => button.querySelector(".plan-card-title")?.textContent);
   }
 
   afterEach(() => {
@@ -479,15 +479,41 @@ describe("como as pessoas vao pagar", () => {
     it.each([
       ["a leitura falha", { ok: false, json: async () => ({}) }],
       ["a rota avisa que nao leu", { ok: true, json: async () => ({ offers: [], warning: "Offers are unavailable." }) }],
-    ])("quando %s: sem cartoes, pede para recarregar", async (_label, response) => {
+    ])("quando %s: sem cartoes, e Try again le de novo", async (_label, response) => {
       vi.stubGlobal("fetch", vi.fn(async () => response));
       mocks.course = paid("course", "one_time", 9700, { status: "published" });
       renderBuilder("pricing");
 
-      expect(await screen.findByText("Couldn't load your prices. Reload the page.")).toHaveAttribute("role", "alert");
+      expect(await screen.findByText("Couldn't load your prices.")).toHaveAttribute("role", "alert");
       expect(screen.queryByRole("group", { name: /How will people pay\?/ })).toBeNull();
       expect(screen.queryByRole("textbox", { name: /Price/ })).toBeNull();
       expect(screen.queryByText("$97")).toBeNull();
+
+      // A mesma leitura, de novo, sem recarregar a pagina.
+      stubOffers([]);
+      fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+      expect(await screen.findByRole("group", { name: /How will people pay\?/ })).toBeInTheDocument();
+      expect(screen.queryByRole("alert")).toBeNull();
+    });
+
+    // Enquanto a lista chega: um bloco por cartao, no lugar deles, e os tres
+    // cartoes do curso numa linha so (em duas colunas o terceiro sobrava).
+    it("carregando: blocos no lugar dos cartoes; carregado: tres colunas", async () => {
+      let answer!: (value: unknown) => void;
+      vi.stubGlobal("fetch", vi.fn(() => new Promise((resolve) => { answer = resolve; })));
+      mocks.course = paid("course", "one_time", 9700);
+      renderBuilder("pricing");
+
+      const waiting = await screen.findByText("Loading prices...");
+      const skeleton = waiting.closest('[role="status"]')!;
+      expect(skeleton.querySelectorAll(".h-28")).toHaveLength(3);
+      expect(skeleton.querySelector(".md\\:grid-cols-3")).not.toBeNull();
+
+      await act(async () => answer({ ok: true, json: async () => ({ offers: [] }) }));
+      const group = await screen.findByRole("group", { name: /How will people pay\?/ });
+      expect(group.querySelector(".md\\:grid-cols-3")).not.toBeNull();
+      expect(screen.queryByText("Loading prices...")).toBeNull();
+      expect(group.querySelector(".display-title")).toBeNull();
     });
 
     // Aba aberta antes do preco principal: outra aba cria o preco, e ao voltar

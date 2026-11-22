@@ -1,11 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { FormEvent } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { CourseShareLink } from "@/components/teacher/course-share-link";
 import { CurrencySelect } from "@/components/teacher/currency-select";
+import { isActivationRequiredError } from "@/domain/creator-verification";
 import { paymentChoiceOf, type CoursePricingShape } from "@/domain/product-pricing";
 import type { TeacherCoursePaymentType } from "@/domain/teacher-course";
 
@@ -38,6 +39,23 @@ const KNOWN_PAYMENT_TYPES = new Set([
   "subscription_monthly",
   "subscription_yearly",
 ]);
+
+// Os motivos da rota que a pessoa consegue resolver viram frase da casa; o
+// resto cai na frase geral. A mensagem crua do servidor (em inglês, às vezes
+// técnica) nunca vai para a tela. Mesmo molde do toMessageKey dos cupons.
+const offerErrorKeys: Record<string, string> = {
+  "A paid offer must have a positive price.": "creatorPanel.offers.invalidAmount",
+  "A free offer must have a zero price.": "creatorPanel.offers.invalidAmount",
+  "amountMinor must be a non-negative whole number.": "creatorPanel.offers.invalidAmount",
+  // O limite de tentativas (429): a pessoa precisa saber que é para esperar.
+  "Too many attempts. Please wait before trying again.": "creatorPanel.offers.rateError",
+};
+
+function offerErrorKey(error: unknown, fallback: string): string {
+  const message = error instanceof Error ? error.message : "";
+  if (isActivationRequiredError(message)) return "creatorPanel.offers.activationError";
+  return Object.hasOwn(offerErrorKeys, message) ? offerErrorKeys[message] : fallback;
+}
 
 function money(amountMinor: number, currency: string): string {
   try {
@@ -89,11 +107,8 @@ export function CourseOffersPanel({
   const { t } = useTranslation();
   // `t` fica fora das dependencias dos efeitos: com ele la, um provider que
   // devolva funcao nova por render reinscreve tudo em laco (a suite do CI
-  // ficou muda 16 min). A ref le sempre o `t` atual sem reinscrever nada.
-  const tRef = useRef(t);
-  useEffect(() => {
-    tRef.current = t;
-  }, [t]);
+  // ficou muda 16 min). Por isso erro e aviso guardam a CHAVE e o texto sai
+  // no render, no idioma da hora.
   const [offers, setOffers] = useState<OfferRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -156,18 +171,16 @@ export function CourseOffersPanel({
       );
       const data = (await res.json()) as { offers?: OfferRow[]; error?: string; warning?: string };
       if (!res.ok) {
-        throw new Error(data.error || tRef.current("creatorPanel.offers.loadError"));
+        throw new Error(data.error);
       }
       setOffers(data.offers ?? []);
+      // A rota responde 200 com aviso quando não leu a lista: é falha de
+      // leitura, não "nenhum preço" (e o aviso vinha em inglês, cru).
       if (data.warning) {
-        setNotice(data.warning);
+        setError("creatorPanel.offers.loadError");
       }
     } catch (loadError) {
-      setError(
-        loadError instanceof Error
-          ? loadError.message
-          : tRef.current("creatorPanel.offers.loadError"),
-      );
+      setError(offerErrorKey(loadError, "creatorPanel.offers.loadError"));
       setOffers([]);
     } finally {
       setLoading(false);
@@ -190,7 +203,7 @@ export function CourseOffersPanel({
     setNotice("");
     const amountMinor = Math.round(Number(amount) * 100);
     if (!Number.isFinite(amountMinor) || amountMinor < 0) {
-      setError(t("creatorPanel.offers.invalidAmount"));
+      setError("creatorPanel.offers.invalidAmount");
       setSaving(false);
       return;
     }
@@ -203,7 +216,7 @@ export function CourseOffersPanel({
       });
       const data = (await res.json()) as { error?: string };
       if (!res.ok) {
-        throw new Error(data.error || t("creatorPanel.offers.createError"));
+        throw new Error(data.error);
       }
     };
     try {
@@ -224,16 +237,12 @@ export function CourseOffersPanel({
         await reload();
       }
       await postOffer({ name, amountMinor, currency, paymentType, isDefault, publicCode });
-      setNotice(t("creatorPanel.offers.created"));
+      setNotice("creatorPanel.offers.created");
       setPublicCode("");
       setCreating(false);
       await reload();
     } catch (createError) {
-      setError(
-        createError instanceof Error
-          ? createError.message
-          : t("creatorPanel.offers.createError"),
-      );
+      setError(offerErrorKey(createError, "creatorPanel.offers.createError"));
     } finally {
       setSaving(false);
     }
@@ -306,6 +315,7 @@ export function CourseOffersPanel({
                     )}
                     title={courseTitle}
                     entry="pay"
+                    compact
                     path={`/courses/${encodeURIComponent(courseId)}/checkout?${
                       offer.publicCode
                         ? `offer=${encodeURIComponent(offer.publicCode)}`
@@ -431,11 +441,12 @@ export function CourseOffersPanel({
         </form>
       ) : null}
 
+      {/* Anunciados: criar um preço e falhar não acontecia de modo audível. */}
       {error ? (
-        <p className="mt-3 text-sm text-[var(--color-danger-fg)]">{error}</p>
+        <p role="alert" className="mt-3 text-sm font-semibold text-[var(--color-danger-fg)]">{t(error)}</p>
       ) : null}
       {notice ? (
-        <p className="mt-3 text-sm text-[var(--color-ink-soft)]">{notice}</p>
+        <p role="status" className="mt-3 text-sm text-[var(--color-ink-soft)]">{t(notice)}</p>
       ) : null}
 
     </section>

@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { I18nProvider } from "@/components/i18n/i18n-provider";
@@ -70,6 +70,41 @@ describe("CourseShareLink", () => {
     vi.stubGlobal("location", { ...window.location, hostname: "www.skillsetmind.com" });
     render(<CourseShareLink label="Product page" path="/courses/course-1" title={title} />);
     expect(screen.getByRole("link", { name: "Open Product page" })).toHaveAttribute("href", "https://www.skillsetmind.com/courses/course-1");
+  });
+
+  // Copiar e acao secundaria: contorno. O "copiado" aparece no proprio botao
+  // por 2s (a caixa nao cresce), e o nome do botao acompanha o texto: um
+  // aria-label fixo de "Copy ..." contradiria o "Link copied." da tela.
+  it("copy is an outline button whose own label says copied for two seconds", async () => {
+    vi.stubGlobal("navigator", { clipboard: { writeText: vi.fn().mockResolvedValue(undefined) } });
+    render(<CourseShareLink label="Checkout" path="/courses/course-1/checkout" title={title} />);
+    const copy = screen.getByRole("button", { name: "Copy Checkout link" });
+    expect(copy).toHaveClass("button-outline");
+    expect(copy).not.toHaveClass("button-solid");
+    vi.useFakeTimers();
+    try {
+      await act(async () => fireEvent.click(copy));
+      expect(copy).toHaveTextContent("Link copied.");
+      expect(copy).toHaveAccessibleName("Link copied.");
+      expect(screen.getByRole("status")).toHaveClass("sr-only");
+      act(() => vi.advanceTimersByTime(2000));
+      expect(copy).toHaveTextContent("Copy link");
+      expect(copy).toHaveAccessibleName("Copy Checkout link");
+      expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("compact: only the copy button, and the URL appears if copying fails", async () => {
+    vi.stubGlobal("navigator", { clipboard: { writeText: vi.fn().mockRejectedValue(new Error("denied")) } });
+    render(<CourseShareLink label="Checkout" path="/courses/course-1/checkout" title={title} compact />);
+    expect(screen.queryByRole("link")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Share Checkout" })).not.toBeInTheDocument();
+    expect(screen.queryByText("https://www.skillsetmind.com/courses/course-1/checkout")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Copy Checkout link" }));
+    expect(await screen.findByRole("alert")).toBeInTheDocument();
+    expect(screen.getByText("https://www.skillsetmind.com/courses/course-1/checkout")).toBeInTheDocument();
   });
 
   it("announces denied clipboard permission and keeps the URL available", async () => {

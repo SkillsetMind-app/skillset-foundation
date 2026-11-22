@@ -1180,7 +1180,7 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     const rows = () => [...container.querySelectorAll<HTMLElement>("[data-readiness-item]")];
     const state = () => rows().map((row) => ({
       id: row.dataset.readinessItem,
-      done: row.classList.contains("bg-[var(--color-success-soft)]"),
+      done: row.querySelector("[data-drawn-check]") !== null,
       hrefs: [...row.querySelectorAll("a")].map((link) => link.getAttribute("href")),
     }));
     await waitFor(() => expect(rows()).toHaveLength(11));
@@ -1210,7 +1210,7 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
       expect(within(row).getByText(label)).toBeInTheDocument();
       expect(within(row).getByText(hint)).toBeInTheDocument();
       expect(Boolean(within(row).queryByText("Opcional"))).toBe(optional);
-      expect(row.classList.contains("bg-[var(--color-success-soft)]")).toBe(done);
+      expect(row.querySelector("[data-drawn-check]") !== null).toBe(done);
       expect(within(row).getByRole("link", {
         name: id === "verification" ? "Abrir verificación" : `Editar ${label}`,
       })).toHaveAttribute("href", href);
@@ -1560,16 +1560,22 @@ describe("Painel: o que falta para publicar vem primeiro e cada linha leva a alg
     expect(within(card).queryByLabelText(/^Edit Professional verification$/)).toBeNull();
   });
 
-  it("linha concluida fica verde; linha pendente fica neutra", async () => {
+  // O mesmo desenho do construtor: check desenhado verde (com "Done" para o
+  // leitor de tela) e circulo vazio, e a mesma barra de latao. Antes era um
+  // "✓" digitado numa bolinha azul e uma barra azul mais grossa.
+  it("linha concluida tem o check verde do construtor; linha pendente, o circulo vazio", async () => {
     render(<CourseManageHub courseId="course-1" />);
     await screen.findByText("Publish checklist");
     const card = checklistCard();
 
     // "Module" esta feito (o curso tem um modulo); "Lesson" nao.
-    const done = card.querySelector('[data-readiness-item="module"]');
-    const pending = card.querySelector('[data-readiness-item="lesson"]');
-    expect(done?.className).toContain("bg-[var(--color-success-soft)]");
-    expect(pending?.className).not.toContain("bg-[var(--color-success-soft)]");
+    const done = card.querySelector<HTMLElement>('[data-readiness-item="module"]')!;
+    const pending = card.querySelector<HTMLElement>('[data-readiness-item="lesson"]')!;
+    expect(done.querySelector("[data-drawn-check]")).not.toBeNull();
+    expect(done).toHaveTextContent(/^Done: /);
+    expect(done).not.toHaveTextContent("✓");
+    expect(pending.querySelector("[data-drawn-check]")).toBeNull();
+    expect(screen.getByTestId("publish-readiness-bar")).toHaveClass("bg-[var(--color-accent)]");
   });
 });
 
@@ -1858,7 +1864,7 @@ describe("Manage: o que o tipo entrega entra na porcentagem", () => {
   const row = (container: HTMLElement, id: string) =>
     container.querySelector<HTMLElement>(`[data-readiness-item="${id}"]`);
   const done = (element: HTMLElement | null) =>
-    Boolean(element?.classList.contains("bg-[var(--color-success-soft)]"));
+    Boolean(element?.querySelector("[data-drawn-check]"));
 
   const free = { paymentType: "free" as const, priceAmountMinor: 0 };
 

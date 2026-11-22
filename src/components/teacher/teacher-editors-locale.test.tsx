@@ -231,3 +231,28 @@ describe("ES-09 editors with the shipped dictionaries", () => {
     expect(screen.getByRole("button", { name: "Sobre ti" })).toBeDisabled();
   });
 });
+
+describe("sales copy save status", () => {
+  it("drops the saved line as soon as the copy differs from what was saved", async () => {
+    mount(<SalesPageEditor course={course} />, "en");
+    const summary = screen.getByLabelText("Description");
+    fireEvent.change(summary, { target: { value: "Edited summary" } });
+    expect(screen.getByRole("status")).toHaveTextContent("Unsaved changes");
+    fireEvent.click(screen.getByRole("button", { name: "Save sales page" }));
+    expect(await screen.findByRole("status")).toHaveTextContent("Sales page copy saved.");
+    fireEvent.change(summary, { target: { value: "Edited summary, more" } });
+    expect(screen.getByRole("status")).toHaveTextContent("Unsaved changes");
+    expect(screen.queryByText(/Sales page copy saved/)).not.toBeInTheDocument();
+  });
+
+  it("Try again repeats the same save after a failure", async () => {
+    vi.mocked(updateTeacherCourseBuilder).mockRejectedValueOnce(new Error("Internal English backend failure"));
+    mount(<SalesPageEditor course={course} />, "en");
+    fireEvent.click(screen.getByRole("button", { name: "Save sales page" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Could not save sales page.");
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(await screen.findByRole("status")).toHaveTextContent("Sales page copy saved.");
+    expect(updateTeacherCourseBuilder).toHaveBeenCalledTimes(2);
+    expect(vi.mocked(updateTeacherCourseBuilder).mock.calls[1]).toEqual(vi.mocked(updateTeacherCourseBuilder).mock.calls[0]);
+  });
+});

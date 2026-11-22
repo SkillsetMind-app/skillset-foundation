@@ -20,6 +20,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { useAuth } from "@/components/auth/auth-provider";
+import { PanelCard } from "@/components/teacher/course-commerce-panels";
 import { ConfirmDialog } from "@/components/ui";
 
 import {
@@ -39,6 +40,7 @@ import { removeLandingImages } from "@/lib/data/landing-images";
 import { getUserProfile } from "@/lib/data/user-profiles";
 
 import { LandingImageField } from "./landing-image-field";
+import { SaveStatusLine } from "./save-status-line";
 
 function blankBlock(kind: CourseLandingBlockKind, t: (key: string) => string): CourseLandingBlock {
   switch (kind) {
@@ -416,6 +418,10 @@ export function CourseLandingEditor({ course }: { course: TeacherCourse }) {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  // A página na tela contra a última que o servidor confirmou (a lida ao
+  // abrir ou a última gravada): "Saved." só enquanto as duas são iguais.
+  const draft = useMemo(() => JSON.stringify({ template, blocks }), [template, blocks]);
+  const [savedDraft, setSavedDraft] = useState<string | null>(null);
   // Seção que pediu para sair, enquanto a pergunta está aberta.
   const [removing, setRemoving] = useState<{ id: number; kind: CourseLandingBlockKind } | null>(null);
 
@@ -431,6 +437,7 @@ export function CourseLandingEditor({ course }: { course: TeacherCourse }) {
     ]);
     setTemplate(landing.template);
     setEntries(landing.blocks.map(withId));
+    setSavedDraft(JSON.stringify({ template: landing.template, blocks: landing.blocks }));
     setPlanId(profile?.currentPlanId ?? "free");
     setLoading(false);
   }, [course.id, uid]);
@@ -490,12 +497,14 @@ export function CourseLandingEditor({ course }: { course: TeacherCourse }) {
   }
 
   async function handleSave() {
+    const sent = draft;
     setSaving(true);
     setError("");
     setMessage("");
     try {
       const result = await saveCourseLanding(course.id, { template, blocks: trimImageUrls(blocks) });
       if (result.ok) {
+        setSavedDraft(sent);
         setMessage("teacherLanding.saved");
       } else {
         setError(landingSaveErrorKeys[result.reason] ?? "teacherLanding.errors.save");
@@ -507,25 +516,22 @@ export function CourseLandingEditor({ course }: { course: TeacherCourse }) {
     }
   }
 
+  // A mesma moldura e o mesmo título (h3, 16px) dos outros cartões da seção
+  // Page: era um cartão branco com sombra e um h2 em letra de destaque entre
+  // dois cartões suaves, e os títulos iam h3 → h2 → h3.
   if (loading) {
     return (
-      <section className="settings-section-card">
-        <p className="flex items-center gap-2 text-sm text-[var(--color-ink-soft)]">
+      <PanelCard title={t("teacherLanding.title")}>
+        <p className="mt-3 flex items-center gap-2 text-sm text-[var(--color-ink-soft)]">
           <Loader2 className="h-4 w-4 animate-spin" />
           {t("teacherLanding.loading")}
         </p>
-      </section>
+      </PanelCard>
     );
   }
 
   return (
-    <section className="settings-section-card">
-      <h2 className="display-title text-2xl text-[var(--color-primary)]">
-        {t("teacherLanding.title")}
-      </h2>
-      <p className="mt-2 max-w-2xl text-sm leading-7 text-[var(--color-ink-soft)]">
-        {t("teacherLanding.description")}
-      </p>
+    <PanelCard title={t("teacherLanding.title")} description={t("teacherLanding.description")}>
 
       <div className="mt-5 grid gap-2">
         <span className={labelClass}>{t("teacherLanding.template")}</span>
@@ -659,8 +665,13 @@ export function CourseLandingEditor({ course }: { course: TeacherCourse }) {
           {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
           {t(saving ? "teacherLanding.saving" : "teacherLanding.save")}
         </button>
-        {message ? <span role="status" className="text-sm text-[var(--color-success-fg)]">{t(message)}</span> : null}
-        {error ? <span role="alert" className="text-sm text-[var(--color-danger-fg)]">{t(error)}</span> : null}
+        <SaveStatusLine
+          saving={saving}
+          dirty={savedDraft !== null && draft !== savedDraft}
+          savedText={message ? t(message) : undefined}
+          errorText={error ? t(error) : undefined}
+          onRetry={() => void handleSave()}
+        />
       </div>
 
       {/* A frase é a mesma do antigo window.confirm. Tirar a seção continua
@@ -677,6 +688,6 @@ export function CourseLandingEditor({ course }: { course: TeacherCourse }) {
           {t("teacherLanding.confirmRemove").replace("{section}", () => t(`teacherLanding.blocks.${removing.kind}`))}
         </ConfirmDialog>
       ) : null}
-    </section>
+    </PanelCard>
   );
 }

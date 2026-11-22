@@ -44,7 +44,6 @@ describe("localized preview entry without reconnecting the course", () => {
   it.each([
     ["", true, "Course not selected.", "Curso no seleccionado.", "Vuelve al editor y abre la vista previa de un curso específico."],
     ["course-1", false, "Preview is not connected.", "La vista previa no está conectada.", "La conexión con la plataforma debe estar disponible para cargar la vista previa."],
-    ["course-1", true, "Loading preview...", "Cargando vista previa...", "Preparando el área de miembros que verán tus alumnos."],
   ] as const)("translates the entry state for %s / connected=%s", (courseId, connected, english, spanish, detail) => {
     mocks.connected = connected;
     renderPreview(courseId);
@@ -56,6 +55,18 @@ describe("localized preview entry without reconnecting the course", () => {
     expect(screen.getByText("Modo de vista previa")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Volver al estudio del creador" })).toHaveAttribute("href", "/teach");
     expect(mocks.subscribe).toHaveBeenCalledTimes(subscriptions);
+  });
+
+  // Carregando: o mesmo cartao escuro e a mesma frase do fallback da rota,
+  // sem titulo de 30px nem "Back to Teacher Studio" para uma espera.
+  it("keeps the route's themed loading card while the course loads", () => {
+    renderPreview();
+    expect(screen.getByRole("status")).toHaveTextContent("Loading course preview...");
+    expect(screen.getByRole("status").className).toContain("bg-[var(--ma-surface)]");
+    expect(screen.queryByRole("heading")).not.toBeInTheDocument();
+    expect(screen.queryByRole("link")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Switch language" }));
+    expect(screen.getByRole("status")).toHaveTextContent("Cargando vista previa del curso...");
   });
 
   it("translates an already-visible failure without subscribing again, then recovers on the same channel", () => {

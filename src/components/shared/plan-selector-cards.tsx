@@ -22,6 +22,14 @@ type PlanSelectorCardsProps<TValue extends string> = {
   className?: string;
 };
 
+/**
+ * Três opções numa linha só: em duas colunas a terceira ficava sozinha, com
+ * metade da largura. O esqueleto da aba de preço usa a mesma regra.
+ */
+export function planGridColumns(count: number) {
+  return count === 3 ? "md:grid-cols-3" : "md:grid-cols-2";
+}
+
 export function PlanSelectorCards<TValue extends string>({
   label,
   options,
@@ -35,7 +43,7 @@ export function PlanSelectorCards<TValue extends string>({
       <legend className="text-sm font-semibold text-[var(--color-ink)]">
         {label}
       </legend>
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className={cn("grid gap-4", planGridColumns(options.length))}>
         {options.map((option) => {
           const Icon = option.icon;
           const isSelected = option.value === value;
@@ -61,7 +69,9 @@ export function PlanSelectorCards<TValue extends string>({
             >
               <span className="flex items-start justify-between gap-3">
                 <span>
-                  <span className="display-title block text-xl font-semibold leading-tight text-[var(--color-primary)]">
+                  {/* Título de cartão do construtor (16px, o mesmo do PanelCard):
+                      a letra de destaque fica só no título da tela. */}
+                  <span className="plan-card-title block text-base font-semibold leading-tight text-[var(--color-primary)]">
                     {option.title}
                   </span>
                   <span className="mt-2 block text-sm leading-6 text-[var(--color-ink-soft)]">
