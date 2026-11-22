@@ -50,13 +50,11 @@ export function CookieConsent() {
           </Link>
           .
         </p>
+        {/* So duas escolhas, com o mesmo peso. "Manage preferences" era um
+            link vestido de botao para a politica de privacidade, o mesmo
+            destino do link do texto: nao gerenciava nada e, no celular,
+            ocupava uma linha inteira do aviso. */}
         <div className="cookie-consent__actions">
-          <Link
-            href="/legal/privacy"
-            className="button-outline px-4 py-2 text-sm"
-          >
-            {t("publicPages.cookies.manage_preferences")}
-          </Link>
           <button
             type="button"
             onClick={() => decide("rejected")}
