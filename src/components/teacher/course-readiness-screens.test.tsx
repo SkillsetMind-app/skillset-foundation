@@ -637,6 +637,24 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
   });
 
+  // O link saiu da tela enquanto a janela estava aberta: confirmado, a saida
+  // vai pelo endereco dele, uma vez.
+  it("confirmar a saida com o link fora da tela navega pelo endereco", async () => {
+    mocks.router.push.mockClear();
+    const { container } = renderBuilder();
+    await screen.findByRole("heading", { name: mocks.course.title });
+    fireEvent.change(screen.getByRole("textbox", { name: "Course title" }), { target: { value: "Edited course title" } });
+    const leave = document.createElement("a");
+    leave.href = "/teach/sales?view=all#top";
+    leave.textContent = "Leave fixture";
+    container.appendChild(leave);
+    fireEvent.click(leave);
+    leave.remove();
+    clickConfirm(screen.getByRole("dialog", { name: "Leave without saving?" }), "Leave anyway");
+    await waitFor(() => expect(mocks.router.push).toHaveBeenCalledOnce());
+    expect(mocks.router.push).toHaveBeenCalledWith("/teach/sales?view=all#top");
+  });
+
   it("translates a read failure and recovers through the original subscription", async () => {
     let recover: (course: TeacherCourse | null) => void = () => {};
     const unsubscribe = vi.fn();
@@ -1996,6 +2014,34 @@ describe("faixa de marco depois de criar (created=1)", () => {
     expect(mocks.router.push).toHaveBeenCalledWith(
       expect.stringMatching(/^\/teach\/builder\?courseId=course-1&.*tab=content&module=m1&lesson=l1$/),
       { scroll: false },
+    );
+    expect(screen.queryByText(STRIP)).toBeNull();
+  });
+
+  // Presa no pe da tela, a faixa cobria o "Continue to…" e o rodape das
+  // outras abas: fora da aba de conteudo ela sai.
+  it("sai ao trocar para outra aba", async () => {
+    vi.mocked(subscribeToTeacherCourse).mockImplementationOnce((_id, emit) => {
+      emit({ ...mocks.course, modules: [{ id: "m1", title: "Module 1", lessons: [{ id: "l1", title: "Lesson 1", description: "", type: "video" }] }] });
+      return Object.assign(() => {}, { reload: async () => {} });
+    });
+    const view = renderBuilder("content");
+    await screen.findByText(STRIP);
+    mocks.searchParams.set("tab", "pricing");
+    view.rerender(
+      <I18nProvider initialLocale="en">
+        <SwitchLanguage />
+        <CourseBuilderStudio />
+      </I18nProvider>,
+    );
+    expect(screen.queryByText(STRIP)).toBeNull();
+    // E nao volta ao retornar para o conteudo.
+    mocks.searchParams.set("tab", "content");
+    view.rerender(
+      <I18nProvider initialLocale="en">
+        <SwitchLanguage />
+        <CourseBuilderStudio />
+      </I18nProvider>,
     );
     expect(screen.queryByText(STRIP)).toBeNull();
   });

@@ -4086,6 +4086,7 @@
         "leave": "This course has unsaved changes. Leave and lose them?",
         "uploadInProgress": "An upload is in progress. Wait for it to finish before leaving this page.",
         "uploadTitle": "Upload in progress",
+        "uploadOk": "OK, I'll wait",
         "stay": "Stay on this page",
         "leaveTitle": "Leave without saving?",
         "leaveAction": "Leave anyway",

@@ -10,7 +10,8 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
  * do window.confirm (a caixa cinza do navegador, sem a marca, com "OK /
  * Cancel" que não diz o que acontece). `ask` guarda a pergunta; a janela monta
  * só enquanto ela existe e `run` roda uma vez, no confirmar: é o mesmo código
- * que rodava quando o confirm() devolvia true.
+ * que rodava quando o confirm() devolvia true. `acknowledge`: aviso de um
+ * botão só (era o window.alert).
  */
 export type ConfirmRequest = {
   title: string;
@@ -19,6 +20,7 @@ export type ConfirmRequest = {
   confirmLabel: string;
   cancelLabel?: string;
   danger?: boolean;
+  acknowledge?: boolean;
   run: () => unknown;
 };
 
@@ -36,7 +38,9 @@ export function useConfirm(): {
       <ConfirmDialog
         title={request.title}
         confirmLabel={request.confirmLabel}
-        cancelLabel={request.cancelLabel ?? t("creatorEditor.builder.curriculum.cancel")}
+        {...(request.acknowledge
+          ? { acknowledge: true as const }
+          : { cancelLabel: request.cancelLabel ?? t("creatorEditor.builder.curriculum.cancel") })}
         danger={request.danger}
         onConfirm={request.run}
         onClose={() => setRequest(null)}

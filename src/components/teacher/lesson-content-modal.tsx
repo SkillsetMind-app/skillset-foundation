@@ -742,6 +742,9 @@ export function LessonContentModal({
       }
 
       setSuccess("deleted");
+      // O botao de apagar some com o arquivo: o foco vai para o titulo da aula
+      // (ou a propria pagina, no e-book), depois de a janela fechar.
+      window.setTimeout(() => (document.getElementById("lesson-modal-title") ?? dialogRef.current)?.focus(), 0);
       void assetsReloadRef.current?.();
       onAssetsChanged?.();
     } catch {

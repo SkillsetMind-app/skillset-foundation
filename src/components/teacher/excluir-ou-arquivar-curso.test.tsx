@@ -143,6 +143,7 @@ async function abreModalDoHub() {
   const dialog = await screen.findByRole("dialog", { name: "Delete Facilitation foundations" });
   // O modal so libera a confirmacao depois de saber quantos compradores existem.
   await waitFor(() => expect(mocks.getCourseAudience).toHaveBeenCalledWith("course-1"));
+  await waitFor(() => expect(within(dialog).queryByText("Remove product")).toBeNull());
   return dialog;
 }
 
@@ -268,6 +269,28 @@ describe("o menu abre para dentro da tela", () => {
 });
 
 describe("modal de excluir/arquivar — o texto segue o dado", () => {
+  // O modal abria dizendo "Delete" em vermelho e virava "Archive" em azul
+  // quando a contagem chegava. Antes dela: texto neutro e confirmar travado.
+  it("enquanto a contagem nao chega, nao promete apagar nem arquivar", async () => {
+    let answer!: (audience: { enrollments: number; orders: number; subscriptions: number }) => void;
+    mocks.getCourseAudience.mockReturnValue(new Promise((resolve) => { answer = resolve; }));
+    const menu = await abreMenuDoHub();
+    fireEvent.click(within(menu).getByRole("menuitem", { name: "Delete course" }));
+    const dialog = await screen.findByRole("dialog", { name: "Delete Facilitation foundations" });
+
+    expect(within(dialog).getByText("Remove product")).toBeInTheDocument();
+    expect(within(dialog).getByRole("heading", { level: 2 })).toHaveTextContent("Facilitation foundations");
+    const waiting = within(dialog).getByRole("button", { name: "Checking for buyers…" });
+    expect(waiting).toBeDisabled();
+    expect(waiting).not.toHaveClass("button-danger-solid");
+    expect(within(dialog).queryByText("Delete this course?")).toBeNull();
+    expect(within(dialog).queryByText("This course has students")).toBeNull();
+
+    answer({ enrollments: 1, orders: 0, subscriptions: 0 });
+    expect(await within(dialog).findByRole("button", { name: "Archive course" })).toBeEnabled();
+    expect(within(dialog).queryByText("Remove product")).toBeNull();
+  });
+
   it("sem comprador, avisa que a exclusão é permanente", async () => {
     const dialog = await abreModalDoHub();
 

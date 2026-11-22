@@ -324,8 +324,10 @@ describe("pagina da aula no builder", () => {
       expect(uploadNotice()).toHaveAccessibleDescription(
         "An upload is in progress. Wait for it to finish before leaving this page.",
       );
-      // Os dois botoes ficam na pagina: o envio segue.
-      clickConfirm(uploadNotice()!, "Stay on this page");
+      // Aviso de um botao so, que vale no primeiro toque; a pagina fica e o
+      // envio segue.
+      expect(within(uploadNotice()!).getAllByRole("button")).toHaveLength(1);
+      fireEvent.click(within(uploadNotice()!).getByRole("button", { name: "OK, I'll wait" }));
       await waitFor(() => expect(uploadNotice()).toBeNull());
       expect(screen.getByRole("heading", { name: "Intro" })).toBeInTheDocument();
       expect(transport).toHaveBeenCalledTimes(1);
@@ -524,8 +526,8 @@ describe("pagina da aula no builder", () => {
 
     expect(fireEvent.click(leave)).toBe(false);
     expect(uploadNotice()).toBeInTheDocument();
-    // Fechar o aviso nao solta a saida: o clique ja parou.
-    fireEvent.click(within(uploadNotice()!).getByRole("button", { name: "Close" }));
+    // Fechar o aviso (Esc) nao solta a saida: o clique ja parou.
+    fireEvent(uploadNotice()!, new Event("cancel", { cancelable: true }));
     expect(uploadNotice()).toBeNull();
     expect(screen.getByRole("heading", { name: "Intro" })).toBeInTheDocument();
     expect(uploadCourseAsset).toHaveBeenCalledTimes(1);

@@ -51,8 +51,16 @@ export const CONFIRM_GUARD_MS = 500;
  *   quem chamou mostra o resultado na tela (é o que planos e privacidade fazem);
  * - o `onConfirm` rejeita: a janela FICA aberta, destrava os botões e mostra
  *   `errorLabel` (ou uma frase genérica) para tentar de novo ou desistir.
+ *
+ * Aviso sem escolha (`acknowledge`): um botão só, o `confirmLabel`, sem
+ * vermelho e sem a trava do toque duplo, porque dar ciência não desfaz nada.
+ * Dois botões que fazem a mesma coisa (o "Close" ao lado de "Stay") eram lidos
+ * como "sair mesmo assim", e o toque rápido caía na trava. Sem `cancelLabel`.
  */
-export type ConfirmDialogProps = {
+export type ConfirmDialogProps = ConfirmDialogBaseProps &
+  ({ acknowledge?: false; cancelLabel: string } | { acknowledge: true; cancelLabel?: never });
+
+type ConfirmDialogBaseProps = {
   title: string;
   /** Rótulo pequeno acima do título. Opcional. */
   eyebrow?: string;
@@ -61,7 +69,6 @@ export type ConfirmDialogProps = {
   confirmLabel: string;
   /** Texto do botão enquanto o `onConfirm` roda. Sem ele, fica o confirmLabel. */
   pendingLabel?: string;
-  cancelLabel: string;
   /** Vermelho cheio no botão de confirmar (apagar, cancelar o que é pago). */
   danger?: boolean;
   onConfirm: () => unknown;
@@ -82,6 +89,7 @@ export function ConfirmDialog({
   onConfirm,
   errorLabel,
   onClose,
+  acknowledge = false,
 }: ConfirmDialogProps) {
   const { t } = useTranslation();
   const dialogRef = useRef<HTMLDialogElement>(null);
@@ -108,7 +116,7 @@ export function ConfirmDialog({
   }, []);
 
   async function confirm() {
-    if (pendingRef.current || Date.now() - openedAt.current < CONFIRM_GUARD_MS) return;
+    if (pendingRef.current || (!acknowledge && Date.now() - openedAt.current < CONFIRM_GUARD_MS)) return;
     pendingRef.current = true;
     setPending(true);
     setFailed(false);
@@ -166,17 +174,21 @@ export function ConfirmDialog({
       {/* No celular os botões empilham com o de confirmar em cima; do sm em
           diante ficam à direita, o seguro primeiro. */}
       <div className="flex flex-col-reverse gap-3 border-t border-[var(--color-line)] px-6 py-4 sm:flex-row sm:justify-end">
+        {acknowledge ? null : (
+          <Button
+            variant="outline"
+            data-confirm-cancel=""
+            disabled={pending}
+            onClick={() => dialogRef.current?.close()}
+          >
+            {cancelLabel}
+          </Button>
+        )}
+        {/* No aviso sem escolha, o foco inicial vem para o botão único. */}
         <Button
-          variant="outline"
-          data-confirm-cancel=""
-          disabled={pending}
-          onClick={() => dialogRef.current?.close()}
-        >
-          {cancelLabel}
-        </Button>
-        <Button
-          variant={danger ? "danger" : "solid"}
-          className={danger ? "button-danger-solid" : undefined}
+          variant={danger && !acknowledge ? "danger" : "solid"}
+          className={danger && !acknowledge ? "button-danger-solid" : undefined}
+          data-confirm-cancel={acknowledge ? "" : undefined}
           loading={pending}
           onClick={() => void confirm()}
         >

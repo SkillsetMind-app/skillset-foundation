@@ -82,6 +82,53 @@ describe("ajudas de IA: confirmar na janela da plataforma", () => {
     expect(callTeachAi).toHaveBeenCalledWith(expect.objectContaining({ action: "removeQuiz" }));
   });
 
+  // Os dois caminhos que gastam: gerar de novo conta as horas de IA outra vez.
+  it("gerar as legendas de novo nao manda nada antes do confirmar e manda uma vez depois", async () => {
+    vi.mocked(loadTeachAi).mockResolvedValue({
+      ok: true,
+      status: 200,
+      body: {
+        captions: [{ language: "en", vtt: "WEBVTT", translatedFrom: null, updatedAt: "2026-11-01", publishedAt: null, stale: false }],
+        usage: { usedSeconds: 0, limitSeconds: 3600 },
+      },
+    });
+    vi.mocked(callTeachAi).mockResolvedValue({ ok: true, status: 200, body: {} });
+    mount(<LessonAiCaptions {...ids} />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Generate again" }));
+    const dialog = screen.getByRole("dialog", { name: "Generate the captions again?" });
+    expect(dialog).toHaveAccessibleDescription(
+      "Generate the captions again? Your edits in this language are replaced, and the video's length counts again toward your monthly AI hours.",
+    );
+    fireEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
+    expect(callTeachAi).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: "Generate again" }));
+    clickConfirm(screen.getByRole("dialog", { name: "Generate the captions again?" }), "Generate again");
+    await waitFor(() => expect(callTeachAi).toHaveBeenCalledOnce());
+    expect(callTeachAi).toHaveBeenCalledWith(expect.objectContaining({ action: "transcribe", language: "en" }));
+  });
+
+  it("escrever um quiz novo por cima nao manda nada antes do confirmar e manda uma vez depois", async () => {
+    vi.mocked(loadTeachAi).mockResolvedValue({
+      ok: true,
+      status: 200,
+      body: { quiz: { status: "published", questions: [{ question: "Q?", options: ["a", "b", "c", "d"], answer: 0, explanation: "" }] } },
+    });
+    vi.mocked(callTeachAi).mockResolvedValue({ ok: true, status: 200, body: { quiz: null } });
+    mount(<LessonAiQuiz {...ids} />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Write new questions" }));
+    const dialog = screen.getByRole("dialog", { name: "Write new questions?" });
+    expect(dialog).toHaveAccessibleDescription(
+      "Write new questions? Your current quiz is replaced and hidden from students until you publish again.",
+    );
+    expect(callTeachAi).not.toHaveBeenCalled();
+    clickConfirm(dialog, "Write new questions");
+    await waitFor(() => expect(callTeachAi).toHaveBeenCalledOnce());
+    expect(callTeachAi).toHaveBeenCalledWith(expect.objectContaining({ action: "generateQuiz" }));
+  });
+
   it("tirar a legenda pergunta antes e chama a IA uma vez so no confirmar", async () => {
     vi.mocked(loadTeachAi).mockResolvedValue({
       ok: true,

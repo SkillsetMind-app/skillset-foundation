@@ -4086,6 +4086,7 @@
         "leave": "Este curso tiene cambios sin guardar. ¿Quieres salir y perderlos?",
         "uploadInProgress": "Hay un envío en curso. Espera a que termine antes de salir de esta página.",
         "uploadTitle": "Envío en curso",
+        "uploadOk": "Entendido, espero",
         "stay": "Quedarme en esta página",
         "leaveTitle": "¿Salir sin guardar?",
         "leaveAction": "Salir de todos modos",

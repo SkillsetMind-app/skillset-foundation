@@ -217,15 +217,15 @@ export function DeleteOrArchiveCourseDialog({
         <h2 className="mt-2 text-2xl font-semibold text-[var(--color-primary)]">
           {known ? t(`${prefix}.title`).replace("{title}", () => courseTitle) : courseTitle}
         </h2>
-        {/* Altura minima de um texto final: os botoes nao pulam quando a
-            contagem chega e o placeholder sai. */}
-        <div className="min-h-[15rem]">
+        {/* Altura do texto mais longo (o de apagar, com a lista e o aviso dos
+            arquivos): os botoes nao pulam quando a contagem chega. */}
+        <div className="min-h-[27rem] sm:min-h-[21rem]">
         {known ? (
           <p className="mt-3 text-sm leading-6 text-[var(--color-ink-soft)]">
             {t(`${prefix}.description`)}
           </p>
         ) : failed ? null : (
-          <div aria-hidden="true" className="mt-4 grid animate-pulse gap-2">
+          <div aria-hidden="true" className="mt-4 grid gap-2 motion-safe:animate-pulse">
             <span className="h-3 w-full rounded bg-[var(--color-surface-strong)]" />
             <span className="h-3 w-11/12 rounded bg-[var(--color-surface-strong)]" />
             <span className="h-3 w-2/3 rounded bg-[var(--color-surface-strong)]" />

@@ -678,8 +678,9 @@ export function CourseBuilderStudio() {
   }
   const activeLessonId = activeLessonStudio?.lessonId ?? null;
   // A faixa "proximo: sua primeira aula" sai quando uma aula abre, por
-  // qualquer caminho: ali ela ja cumpriu o papel.
-  if (createdStripOpen && activeLessonId) {
+  // qualquer caminho (ali ela ja cumpriu o papel), e fora da aba de conteudo:
+  // presa no pe da tela, ela cobria o "Continue to…" e os botoes do rodape.
+  if (createdStripOpen && (activeLessonId || activeTab !== "content")) {
     setCreatedStripOpen(false);
   }
   // Abre a pagina da aula recem-criada quando o eco confirma o save. Refeita a
@@ -1677,20 +1678,17 @@ export function CourseBuilderStudio() {
     });
   }
 
+  // Roda depois da janela de confirmar: le o estado de agora (atualizacoes
+  // funcionais), nao o capturado no clique.
   function removeModule(moduleId: string) {
     setModules((currentModules) => {
       const deletedModule = currentModules.find((module) => module.id === moduleId);
       const nextModules = currentModules.filter((module) => module.id !== moduleId);
 
-      if (lessonModuleId === moduleId) {
-        setLessonModuleId(nextModules[0]?.id ?? "");
-      }
-
-      if (
-        deletedModule?.lessons.some((lesson) => lesson.id === freePreviewLessonId)
-      ) {
-        setFreePreviewLessonId("");
-      }
+      setLessonModuleId((current) => (current === moduleId ? nextModules[0]?.id ?? "" : current));
+      setFreePreviewLessonId((current) =>
+        deletedModule?.lessons.some((lesson) => lesson.id === current) ? "" : current,
+      );
 
       return nextModules;
     });
@@ -1698,6 +1696,8 @@ export function CourseBuilderStudio() {
       pendingLessonStudioRef.current = null;
     }
     setSuccess(null);
+    // A linha (e o botao que tinha o foco) some: o foco vai para o titulo da aba.
+    window.setTimeout(() => document.getElementById("builder-panel-heading")?.focus(), 0);
   }
 
   function updateLesson(
@@ -1845,9 +1845,8 @@ export function CourseBuilderStudio() {
       ),
     );
 
-    if (freePreviewLessonId === lessonId) {
-      setFreePreviewLessonId("");
-    }
+    // Depois da janela: o estado de agora, nao o capturado no clique.
+    setFreePreviewLessonId((current) => (current === lessonId ? "" : current));
 
     // Aula apagada antes do eco do save que a levou: o eco nao pode abrir o
     // estudio dela.
@@ -1856,6 +1855,8 @@ export function CourseBuilderStudio() {
     }
 
     setSuccess(null);
+    // A linha (e o botao que tinha o foco) some: o foco vai para o titulo do modulo.
+    window.setTimeout(() => document.getElementById("builder-module-heading")?.focus(), 0);
   }
 
   // Autosave e o botao Salvar podem estar no ar ao mesmo tempo. O selo so vira
@@ -2289,7 +2290,9 @@ export function CourseBuilderStudio() {
                   }
                   disabled={!isEditable}
                   aria-label={t("creatorEditor.builder.curriculum.lessonTitle")}
-                  className="min-h-11 min-w-0 flex-1 basis-48 rounded-md border border-transparent bg-transparent px-2 text-sm font-semibold text-[var(--color-ink)] outline-none hover:border-[var(--color-field-border)] focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
+                  // Borda clara em repouso: sem ela o titulo parecia texto
+                  // solto, nao um campo que se edita ali mesmo.
+                  className="min-h-11 min-w-0 flex-1 basis-48 rounded-md border border-[var(--color-line)] bg-white px-2 text-sm font-semibold text-[var(--color-ink)] outline-none hover:border-[var(--color-field-border)] focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
                 />
                 {freePreviewLessonId === lesson.id ? (
                   <span className="rounded-md bg-[rgba(26,54,93,0.08)] px-2 py-1 text-[11px] font-bold uppercase tracking-[0.08em] text-[var(--color-primary)]">
@@ -2826,12 +2829,12 @@ export function CourseBuilderStudio() {
       if (uploadingLesson) {
         event.preventDefault();
         event.stopPropagation();
-        // So avisa: os dois botoes ficam na pagina, o envio segue.
+        // So avisa, com um botao: a saida continua bloqueada e o envio segue.
         ask({
           title: t("creatorEditor.builder.confirm.uploadTitle"),
           body: t("creatorEditor.builder.confirm.uploadInProgress"),
-          confirmLabel: t("creatorEditor.builder.confirm.stay"),
-          cancelLabel: t("creatorEditor.builder.created.close"),
+          confirmLabel: t("creatorEditor.builder.confirm.uploadOk"),
+          acknowledge: true,
           run: () => undefined,
         });
         return;
@@ -3198,7 +3201,8 @@ export function CourseBuilderStudio() {
               <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
                 {activeTab === "members" ? t("creatorEditor.members.step") : t(builderTabs[selectedTabIndex]?.label ?? "creatorEditor.builder.shell.shortTitle")}
               </p>
-              <h3 className="mt-2 text-xl font-semibold leading-tight text-[var(--color-ink)]">
+              {/* Alvo do foco quando a linha que o tinha some (modulo apagado). */}
+              <h3 id="builder-panel-heading" tabIndex={-1} className="mt-2 text-xl font-semibold leading-tight text-[var(--color-ink)] outline-none">
                 {activeTab === "details"
                   ? t("creatorEditor.builder.steps.details.heading")
                   : activeTab === "members"
