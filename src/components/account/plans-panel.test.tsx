@@ -1,7 +1,7 @@
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { PlansPanel } from "@/components/account/plans-panel";
 
@@ -44,10 +44,24 @@ vi.mock("@/lib/payments/billing", () => ({
   cancelPlanSubscription: state.cancel,
 }));
 
+// O "Cancel plan" pergunta num <dialog> da plataforma (não mais no
+// window.confirm). O jsdom não tem showModal/close: o stub faz o mínimo que o
+// navegador faz.
+const originalShow = Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype, "showModal");
+const originalClose = Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype, "close");
+
 beforeEach(() => {
   state.planId = "starter";
   state.billing = { trialEligible: true, subscription: null };
   state.cancel.mockReset();
+  Object.defineProperty(HTMLDialogElement.prototype, "showModal", { configurable: true, value() { this.setAttribute("open", ""); } });
+  Object.defineProperty(HTMLDialogElement.prototype, "close", { configurable: true, value() { if (!this.hasAttribute("open")) return; this.removeAttribute("open"); this.dispatchEvent(new Event("close")); } });
+});
+afterEach(() => {
+  if (originalShow) Object.defineProperty(HTMLDialogElement.prototype, "showModal", originalShow);
+  else Reflect.deleteProperty(HTMLDialogElement.prototype, "showModal");
+  if (originalClose) Object.defineProperty(HTMLDialogElement.prototype, "close", originalClose);
+  else Reflect.deleteProperty(HTMLDialogElement.prototype, "close");
 });
 
 vi.mock("@/components/account/upgrade-modal", () => ({
@@ -130,7 +144,7 @@ describe("PlansPanel com os 2 planos e o teste gratis", () => {
     expect(within(card).queryByText("Your plan")).not.toBeInTheDocument();
     if (cancelled) expect(screen.queryByText(/^Next payment:/)).not.toBeInTheDocument();
     else expect(screen.getByText(/^Next payment:/)).not.toHaveTextContent("$9");
-    fireEvent.click(screen.getByRole("radio", { name: "Yearly" }));
+    fireEvent.click(screen.getByRole("radio", { name: /^Yearly/ }));
     expect(card).toHaveTextContent("$90");
   });
   it("mostra so Basic, Starter e Pro, mesmo para quem ainda esta sem plano", () => {
@@ -152,7 +166,11 @@ describe("PlansPanel com os 2 planos e o teste gratis", () => {
       /14-day free trial, then \$89\/month\. Renews automatically until you cancel\. Cancel anytime in Billing before .+ and you won't be charged\./,
     );
 
-    fireEvent.click(screen.getByRole("radio", { name: "Yearly" }));
+    // O desconto do anual está no próprio botão, não num title invisível.
+    const yearly = screen.getByRole("radio", { name: /^Yearly/ });
+    expect(yearly).toHaveTextContent("~17% off");
+    expect(yearly).not.toHaveAttribute("title");
+    fireEvent.click(yearly);
     expect(pro).toHaveTextContent("14-day free trial, then $890/year.");
   });
 
@@ -181,16 +199,26 @@ describe("PlansPanel com os 2 planos e o teste gratis", () => {
       },
     };
     state.cancel.mockResolvedValue({ ...(state.billing.subscription as object), cancelAtPeriodEnd: true });
-    vi.spyOn(window, "confirm").mockReturnValue(true);
     render(<PlansPanel />);
 
     expect(await screen.findByText("Free trial — ends October 20, 2026")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Cancel plan" }));
-    expect(window.confirm).toHaveBeenCalledWith(
+    // Botão de verdade, no vermelho de perigo, e não um link dourado.
+    const trigger = screen.getByRole("button", { name: "Cancel plan" });
+    expect(trigger).toHaveClass("button-danger");
+    fireEvent.click(trigger);
+
+    // (a) a frase de sempre, agora dentro da janela da plataforma;
+    const dialog = screen.getByRole("dialog", { name: "Cancel plan" });
+    expect(dialog).toHaveTextContent(
       "Cancel your plan? Your free trial runs until October 20, 2026 and you won't be charged.",
     );
+    // (b) abrir a pergunta não cancela nada;
+    expect(state.cancel).not.toHaveBeenCalled();
+    // (c) confirmar chama o cancelamento uma vez.
+    fireEvent.click(within(dialog).getByRole("button", { name: "Cancel plan" }));
     expect(await screen.findByText("Ends on October 20, 2026")).toBeInTheDocument();
     expect(state.cancel).toHaveBeenCalledOnce();
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
     expect(screen.queryByRole("button", { name: "Cancel plan" })).not.toBeInTheDocument();
   });
 
@@ -212,11 +240,17 @@ describe("PlansPanel com os 2 planos e o teste gratis", () => {
       },
     };
     state.cancel.mockResolvedValue({ ...(state.billing.subscription as object), cancelAtPeriodEnd: true });
-    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    const nativeConfirm = vi.spyOn(window, "confirm");
     render(<PlansPanel />);
 
     fireEvent.click(await screen.findByRole("button", { name: "Cancel plan" }));
-    expect(confirm).toHaveBeenLastCalledWith(prompt);
+    expect(screen.getByRole("dialog", { name: "Cancel plan" })).toHaveTextContent(prompt);
+    expect(nativeConfirm).not.toHaveBeenCalled();
+    // Desistir ("Keep plan") fecha sem enviar o pedido.
+    fireEvent.click(screen.getByRole("button", { name: "Keep plan" }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(state.cancel).not.toHaveBeenCalled();
+    nativeConfirm.mockRestore();
   });
 
   it("um assinante Enterprise (ex-Plus) ve o proprio plano, sem cartao Enterprise a venda", () => {

@@ -2155,9 +2155,22 @@ p {
     scroll-snap-type: x mandatory;
   }
 
+  /* Abaixo de 1024px as abas viravam cartões de 220px com ícone e descrição:
+     cabia uma aba e meia e os ajustes começavam abaixo da primeira tela. Aqui
+     são só o rótulo, numa fileira de 44px que rola de lado. */
   .account-settings-tab {
-    min-width: 220px;
+    display: flex;
+    flex: none;
+    width: auto;
+    min-height: 44px;
+    align-items: center;
+    padding: 0.5rem 0.9rem;
     scroll-snap-align: start;
+  }
+
+  .account-settings-tab__icon,
+  .account-settings-tab__description {
+    display: none;
   }
 }
 
