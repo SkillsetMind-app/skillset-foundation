@@ -11,7 +11,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { BunnyVideoPlayer } from "@/components/courses/bunny-video-player";
+import { CourseDetailSkeleton } from "@/components/courses/course-detail-skeleton";
 import { CourseUnlockModal } from "@/components/learn/course-unlock-modal";
+import { InlineAlert } from "@/components/ui/inline-alert";
 import {
   CourseInstructorCard,
   CourseReviewsSection,
@@ -355,6 +357,7 @@ export function CreatorCourseDetail({
       <CourseDetailState
         title={t("publicCourses.notSelected")}
         detail={t("publicCourses.chooseCourse")}
+        nested={hideHeader}
       />
     );
   }
@@ -364,21 +367,23 @@ export function CreatorCourseDetail({
       <CourseDetailState
         title={t("publicCourses.detailsUnavailable")}
         detail={t("publicCourses.connectionError")}
+        nested={hideHeader}
       />
     );
   }
 
   if (isLoading) {
+    // Carregar não é erro: o esqueleto da página, sem título nem saída.
     return (
-      <CourseDetailState
-        title={t("publicCourses.loadingCourse")}
-        detail={t("publicCourses.checkingCourse")}
+      <CourseDetailSkeleton
+        label={t(checkoutOnly ? "publicCourses.loadingCheckout" : "publicCourses.loadingCourse")}
+        checkoutOnly={checkoutOnly}
       />
     );
   }
 
   if (error) {
-    return <CourseDetailState title={t("publicCourses.unavailable")} detail={t(error)} />;
+    return <CourseDetailState title={t("publicCourses.unavailable")} detail={t(error)} nested={hideHeader} />;
   }
 
   if (!course) {
@@ -386,6 +391,7 @@ export function CreatorCourseDetail({
       <CourseDetailState
         title={t("publicCourses.notFound")}
         detail={t("publicCourses.notListed")}
+        nested={hideHeader}
       />
     );
   }
@@ -398,6 +404,7 @@ export function CreatorCourseDetail({
     return (
       <CourseDetailState
         {...getUnpublishedCourseState(course.status, { isOwner, isAdmin }, t)}
+        nested={hideHeader}
       />
     );
   }
@@ -415,6 +422,8 @@ export function CreatorCourseDetail({
       })
     : null;
   const pricingReady = offersLoaded && !offerLoadError;
+  // O preço ainda está a caminho (não falhou): o cartão guarda o lugar dele.
+  const pricePending = !pricingReady && !offerLoadError;
   const courseIsFree =
     resolvedPrice?.paymentType === "free" || resolvedPrice?.amountMinor === 0;
   const subscriptionInterval =
@@ -581,7 +590,9 @@ export function CreatorCourseDetail({
       ? `${subscriptionInterval ? t("publicCourses.subscribe") : t("publicCourses.enroll")} — ${priceLabel}`
       : t("publicCourses.enroll");
   // The text of the buy card's main button. The popup uses this same value, so
-  // the two never disagree, including "Checkout not available yet".
+  // the two never disagree, including "Checkout not available yet". Enquanto o
+  // preço só carrega o botão diz "Enroll": "not available" ali parecia curso
+  // fora de venda nos segundos antes do preço chegar.
   const cardActionLabel = authStatus !== "authenticated"
     ? enrollLabel
     : canEnrollFree
@@ -590,7 +601,10 @@ export function CreatorCourseDetail({
         ? t("publicCourses.openingCheckout")
         : checkoutEnabled && hasPaidPrice
           ? enrollLabel
-          : t("publicCourses.checkoutUnavailable");
+          // Com a compra desligada não há o que esperar: o aviso sai direto.
+          : checkoutEnabled && pricePending
+            ? t("publicCourses.enroll")
+            : t("publicCourses.checkoutUnavailable");
   // Secoes que EXISTEM nesta pagina. Um menu que oferece "Reviews" para um
   // curso sem resenha leva a pessoa para lugar nenhum, entao cada item so
   // entra quando a secao correspondente vai ser desenhada.
@@ -930,19 +944,23 @@ export function CreatorCourseDetail({
                   key={module.id}
                   className="rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4"
                 >
-                  <h2 className="text-sm font-semibold text-[var(--color-ink)]">
+                  <h2 className="text-base font-bold text-[var(--color-ink)]">
                     {module.title}
                   </h2>
                   <div className="mt-4 grid gap-2">
                     {module.lessons.map((lesson) => {
                       const isPreview = course.freePreviewLessonId === lesson.id;
+                      // 44px de altura: a aula trancada é botão (abre a compra)
+                      // e tinha 32px, abaixo do alvo de toque mínimo.
                       const rowClass =
-                        "flex items-center justify-between gap-3 rounded-md bg-white px-3 py-2 text-xs text-[var(--color-ink-soft)]";
+                        "flex min-h-11 items-center justify-between gap-3 rounded-md bg-white px-3 py-2.5 text-sm text-[var(--color-ink-soft)]";
+                      // 12px em caixa normal, com " · ": as maiúsculas
+                      // espaçadas e os hífens ("VIDEO - 12 MIN") liam como código.
                       const meta = (
-                        <span className="shrink-0 text-right uppercase tracking-[0.16em]">
+                        <span className="shrink-0 text-right text-xs">
                           {t(`publicCourses.lessonTypes.${lesson.type}`)}
-                          {lesson.durationMinutes ? ` - ${lesson.durationMinutes} min` : ""}
-                          {isPreview ? ` - ${t("publicCourses.previewShort")}` : ""}
+                          {lesson.durationMinutes ? ` · ${lesson.durationMinutes} min` : ""}
+                          {isPreview ? ` · ${t("publicCourses.previewShort")}` : ""}
                         </span>
                       );
                       // The free preview (and every lesson, for the owner or
@@ -1022,7 +1040,16 @@ export function CreatorCourseDetail({
             grande no topo do cartao. */}
         <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">{t("publicCourses.access")}</p>
         <p className="display-title mt-1 flex flex-wrap items-baseline gap-2 text-4xl leading-none text-[var(--color-primary)]">
-          <span>{priceLabel}</span>
+          {/* Carregando: uma barra da altura do preço, e não "Loading
+              pricing..." em 36px quebrando em duas linhas. */}
+          {pricePending ? (
+            <>
+              <span aria-hidden="true" className="block h-9 w-[150px] max-w-full animate-pulse rounded-md bg-[var(--color-surface-strong)]" />
+              <span className="sr-only">{priceLabel}</span>
+            </>
+          ) : (
+            <span>{priceLabel}</span>
+          )}
           {billingSuffix ? (
             <span className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-ink-soft)] [font-family:var(--font-sans)]">
               · {billingSuffix}
@@ -1102,24 +1129,25 @@ export function CreatorCourseDetail({
           ))}
         </dl>}
 
+        {/* Compra cancelada é um fato neutro ("nada foi cobrado"), não erro:
+            tom de informação, anunciado sem interromper. */}
         {checkoutStatus === "cancelled" ? (
-          <p className="mt-5 rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">{t("publicCourses.cancelled")}</p>
+          <InlineAlert tone="info" className="mt-5">{t("publicCourses.cancelled")}</InlineAlert>
         ) : null}
 
         {checkoutStatus === "success" ? (
           <p className="mt-5 info-notice">{t("publicCourses.paymentReceived")}</p>
         ) : null}
 
+        {/* InlineAlert: o erro é anunciado ao leitor de tela, e não só pintado. */}
         {checkoutError ? (
-          <p className="mt-5 rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
-            {t(checkoutError)}
-          </p>
+          <InlineAlert tone="error" className="mt-5">{t(checkoutError)}</InlineAlert>
         ) : null}
 
         {offerLoadError || (pricingReady && hasExplicitOffer && !resolvedPrice) ? (
-          <p className="mt-5 rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
+          <InlineAlert tone="error" className="mt-5">
             {offerLoadError ? t(offerLoadError) : t("publicCourses.selectedOfferUnavailable")}
-          </p>
+          </InlineAlert>
         ) : null}
 
         {guestCheckoutOn ? (
@@ -1186,6 +1214,7 @@ export function CreatorCourseDetail({
                 data-cta-focus
                 onClick={handleCheckout}
                 disabled={!canCheckout || isCheckingOut}
+                aria-busy={(checkoutEnabled && pricePending) || undefined}
                 className="button-solid mt-6 min-h-12 w-full px-5 py-3 text-base font-semibold disabled:opacity-60"
               >
                 {cardActionLabel}
@@ -1338,27 +1367,32 @@ type CourseDetailAction = {
   href: string;
 };
 
+// Só para erro de verdade ou curso fora do ar; carregar usa o esqueleto.
 function CourseDetailState({
   title,
   detail,
   action,
+  nested = false,
 }: {
   title: string;
   detail: string;
   action?: CourseDetailAction;
+  /** O servidor já pôs o h1 do curso na página: este título vira h2. */
+  nested?: boolean;
 }) {
   const { t } = useTranslation();
   const hasRealCourses = useHasRealCourses();
   const resolvedAction = action ?? (hasRealCourses
     ? { label: t("publicCourses.openMarketplace"), href: "/courses" }
     : { label: t("publicPages.notFound.home"), href: "/" });
+  const Heading = nested ? "h2" : "h1";
 
+  // Sem o sobretítulo "Creator course": era vocabulário interno.
   return (
     <section className="rounded-lg border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)]">
-      <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">{t("publicCourses.creatorCourse")}</p>
-      <h1 className="display-title mt-3 text-4xl text-[var(--color-ink)]">
+      <Heading className="display-title text-4xl text-[var(--color-ink)]">
         {title}
-      </h1>
+      </Heading>
       <p className="mt-4 max-w-2xl text-sm leading-7 text-[var(--color-ink-soft)]">
         {detail}
       </p>

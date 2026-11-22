@@ -95,7 +95,9 @@ export function HelpCenter({ categories }: HelpCenterProps) {
             <a
               key={category.id}
               href={`#${category.id}`}
-              className="rounded-full border fine-rule bg-white px-3.5 py-1.5 text-xs font-semibold text-[var(--color-ink-soft)] transition-colors hover:bg-[var(--color-surface-soft)] hover:text-[var(--color-primary)]"
+              // 44px de alvo de toque (eram ~28px) e o raio de chip do sistema,
+              // em vez da pílula que nenhum outro link usa.
+              className="inline-flex min-h-11 items-center rounded-chip border fine-rule bg-white px-3.5 text-sm font-semibold text-[var(--color-ink-soft)] transition-colors hover:bg-[var(--color-surface-soft)] hover:text-[var(--color-primary)]"
             >
               {category.label}
             </a>

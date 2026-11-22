@@ -7,9 +7,11 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { Target } from "lucide-react";
 
+import { CourseDetailSkeleton } from "@/components/courses/course-detail-skeleton";
 import { CourseEnrollmentCta } from "@/components/courses/course-enrollment-cta";
 import { CreatorCourseDetail } from "@/components/courses/creator-course-detail";
 import { JsonLd } from "@/components/seo/json-ld";
+import { SiteFooter } from "@/components/site/site-footer";
 import { SiteNav } from "@/components/site/site-nav";
 import { isInternalSmokeCourse } from "@/domain/teacher-course";
 import { getCourseBySlug, getCourseSlugs } from "@/lib/data/catalog";
@@ -144,15 +146,9 @@ export default async function CourseDetailPage({
             </header>
           ) : null}
 
-          <Suspense
-            fallback={
-              <section className="rounded-lg border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)]">
-                <p className="text-sm text-[var(--color-ink-soft)]">
-                  {t("publicCourses.loadingCourse")}
-                </p>
-              </section>
-            }
-          >
+          {/* O mesmo esqueleto que o cliente mostra enquanto carrega: do HTML do
+              servidor até o curso chegar, a página não troca de forma. */}
+          <Suspense fallback={<CourseDetailSkeleton label={t("publicCourses.loadingCourse")} />}>
             {/* hideHeader: o cabeçalho acima já tem título e resumo; sem isto o
                 componente cliente desenhava um segundo h1 com o mesmo texto
                 logo abaixo. */}
@@ -162,6 +158,13 @@ export default async function CourseDetailPage({
             />
           </Suspense>
         </main>
+        {/* A página com preço é a que mais precisa do rodapé: termos, política
+            de reembolso e contato. Antes ela acabava no currículo. O pb-24
+            deixa o fim dele acima da barra de compra fixa (no celular, no pé
+            da tela; no desktop, o cartão do canto quando o da coluna sai). */}
+        <div className="pb-24">
+          <SiteFooter />
+        </div>
       </div>
     );
   }
@@ -371,6 +374,10 @@ export default async function CourseDetailPage({
           </aside>
         </div>
       </main>
+      {/* pb-24: o rodapé termina acima da barra fixa de inscrição do celular. */}
+      <div className="pb-24 lg:pb-0">
+        <SiteFooter />
+      </div>
 
       {/* Mobile sticky enroll bar: on phones the aside lives at the bottom
           of the grid (single column), so a buyer has to scroll past every

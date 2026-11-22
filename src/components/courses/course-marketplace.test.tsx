@@ -100,3 +100,26 @@ it("um título com $& na etiqueta da lista de desejos aparece literal, sem virar
   render(<CourseMarketplace />);
   expect(await screen.findByRole("button", { name: "Save Deep $& focus to wishlist" })).toBeInTheDocument();
 });
+
+// "All courses 0" enquanto a lista carregava lia como loja vazia; e os cartões
+// de espera não tinham a linha de preço, então a página pulava ao carregar.
+it("enquanto carrega, a categoria fica sem número e os cartões de espera têm o rodapé do cartão real", () => {
+  state.query = new URLSearchParams("");
+  state.subscribe.mockImplementation(() => () => {});
+  const { container } = render(<CourseMarketplace />);
+
+  expect(screen.getByRole("button", { name: "All courses" })).toBeInTheDocument();
+  expect(screen.getByRole("status")).toHaveTextContent("Loading courses...");
+  expect(container.querySelectorAll(".marketplace-card")).toHaveLength(6);
+  expect(container.querySelectorAll(".marketplace-card .marketplace-card__footer")).toHaveLength(6);
+});
+
+it("a falha ao carregar a lista é anunciada ao leitor de tela", () => {
+  state.subscribe.mockImplementation((_next: unknown, onError: () => void) => {
+    onError();
+    return () => {};
+  });
+  render(<CourseMarketplace />);
+
+  expect(screen.getByRole("alert")).toHaveTextContent(translate(getDictionary("en"), "publicCourses.loadCoursesError"));
+});
