@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { I18nProvider, useTranslation } from "@/components/i18n/i18n-provider";
 import { AccountSettingsHub } from "./account-settings-hub";
@@ -91,10 +91,10 @@ describe("account settings locale", () => {
     expect(mocks.remove).not.toHaveBeenCalled();
     // A confirmação mora numa janela, não no lugar do primeiro botão: um
     // clique duplo em "Eliminar cuenta" não pede mais a exclusão.
-    expect(screen.queryByRole("button", { name: "Confirmar solicitud de eliminación" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Eliminar cuenta" })).toBeInTheDocument();
     const dialog = screen.getByRole("dialog", { name: "¿Eliminar tu cuenta?" });
     expect(dialog).toHaveTextContent("Las solicitudes se gestionan manualmente");
-    fireEvent.click(screen.getByRole("button", { name: "Confirmar solicitud de eliminación" }));
+    fireEvent.click(within(dialog).getByRole("button", { name: "Confirmar solicitud de eliminación" }));
     await waitFor(() => expect(mocks.remove).toHaveBeenCalledOnce());
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     expect(await screen.findByText("Solicitud de eliminación de cuenta recibida. SkillsetMind la procesará en un plazo de 30 días una vez verificada la solicitud.")).toBeVisible();
