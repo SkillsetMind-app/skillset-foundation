@@ -2,7 +2,7 @@
 
 import { Check, ChevronDown } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
@@ -136,8 +136,18 @@ export function LearnEventsHub() {
     currentCourseSlugs.length > 0
     && currentCourseSlugs.some((courseSlug) => !loadedSlugs.includes(courseSlug));
 
+  // Uma moldura em volta de todos os estados (espera, erro, vazio, lista): o
+  // "Try again" some ao ser clicado, e o foco vai para ela, que é o mesmo nó do
+  // carregando ao resultado. Sem isso o foco caía no <body>.
+  const frameRef = useRef<HTMLDivElement>(null);
+  const frame = (content: ReactNode) => (
+    <div ref={frameRef} tabIndex={-1}>
+      {content}
+    </div>
+  );
+
   if (isLoadingEnrollments || isLoadingEvents) {
-    return (
+    return frame(
       <section className="rounded-lg border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
         <p className="text-sm text-[var(--color-ink-soft)]">{t("learnWave2.eventsHub.loading")}</p>
       </section>
@@ -147,13 +157,14 @@ export function LearnEventsHub() {
   // Lê as matrículas de novo pelo mesmo canal (sem religar). Até a resposta
   // vale o "carregando", nunca o vazio.
   function retryLoad() {
+    frameRef.current?.focus();
     setError("");
     setIsLoadingEnrollments(true);
     void enrollmentsSubscription.current?.reload?.();
   }
 
   if (error) {
-    return (
+    return frame(
       <section className="rounded-lg border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
         <InlineAlert tone="error">{t(error)}</InlineAlert>
         {error === "learnWave2.eventsHub.loadError" && !eventsFailed ? (
@@ -167,7 +178,7 @@ export function LearnEventsHub() {
 
   // Os dois vazios no EmptyState da plataforma: h2 logo abaixo do h1 do shell.
   if (enrollments.length === 0) {
-    return (
+    return frame(
       <EmptyState
         as="h2"
         eyebrow={t("learnWave2.eventsHub.eyebrow")}
@@ -183,7 +194,7 @@ export function LearnEventsHub() {
   }
 
   if (events.length === 0) {
-    return (
+    return frame(
       <EmptyState
         as="h2"
         eyebrow={t("learnWave2.eventsHub.schedule")}
@@ -193,7 +204,7 @@ export function LearnEventsHub() {
     );
   }
 
-  return (
+  return frame(
     <div className="grid gap-6">
       <section aria-labelledby="events-upcoming-title" className="grid gap-4">
         <h2 id="events-upcoming-title" className="text-lg font-semibold text-[var(--color-primary)]">

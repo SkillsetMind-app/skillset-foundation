@@ -402,7 +402,9 @@ export function CourseMarketplace({ courses = [] }: CourseMarketplaceProps) {
                       label={t("publicCourses.complete").replace("{count}", String(progress))}
                       className="mt-2"
                     />
-                    <p className="mt-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--color-ink-soft)]">
+                    {/* A barra já diz "40% complete" ao leitor de tela: a linha
+                        visível fica calada para o número não ser lido duas vezes. */}
+                    <p aria-hidden="true" className="mt-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--color-ink-soft)]">
                       {t("publicCourses.complete").replace("{count}", String(progress))}
                     </p>
                   </div>

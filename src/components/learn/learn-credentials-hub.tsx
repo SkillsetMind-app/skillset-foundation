@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { useAuth } from "@/components/auth/auth-provider";
@@ -92,8 +92,18 @@ export function LearnCredentialsHub() {
     ? candidates
     : candidates.filter((candidate) => candidate.status === activeFilter);
 
+  // Uma moldura em volta de todos os estados (espera, erro, vazio, lista): o
+  // "Try again" some ao ser clicado, e o foco vai para ela, que é o mesmo nó do
+  // carregando ao resultado. Sem isso o foco caía no <body>.
+  const frameRef = useRef<HTMLDivElement>(null);
+  const frame = (content: ReactNode) => (
+    <div ref={frameRef} tabIndex={-1}>
+      {content}
+    </div>
+  );
+
   if (isLoading || !certificatesReady) {
-    return (
+    return frame(
       <section className="rounded-lg border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
         <p className="text-sm text-[var(--color-ink-soft)]">{t("learnWave2.credentials.loading")}</p>
       </section>
@@ -103,13 +113,14 @@ export function LearnCredentialsHub() {
   // Lê as matrículas de novo pelo mesmo canal (sem religar). Até a resposta
   // vale o "carregando", nunca o vazio.
   function retryLoad() {
+    frameRef.current?.focus();
     setError("");
     setIsLoading(true);
     void enrollmentsSubscription.current?.reload?.();
   }
 
   if (error) {
-    return (
+    return frame(
       <section className="rounded-lg border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
         <InlineAlert tone="error">{t(error)}</InlineAlert>
         {error === "learnWave2.credentials.loadError" && !certificatesFailed ? (
@@ -123,7 +134,7 @@ export function LearnCredentialsHub() {
 
   // O vazio da plataforma (EmptyState), em h2 logo abaixo do h1 do shell.
   if (candidates.length === 0) {
-    return (
+    return frame(
       <EmptyState
         as="h2"
         eyebrow={t("learnWave2.credentials.brand")}
@@ -141,7 +152,7 @@ export function LearnCredentialsHub() {
   // Um cabeçalho só, o do shell (o h1 da página). Antes vinham mais dois por
   // cima dos cartões: um destaque com três quadros de números e o título da
   // seção, e os filtros logo abaixo repetiam as mesmas contagens.
-  return (
+  return frame(
     <div className="grid gap-5">
       <div>
         <div className="credential-filter-tabs" role="group" aria-label={t("learnWave2.credentials.filters")}>

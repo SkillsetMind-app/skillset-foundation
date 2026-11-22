@@ -171,6 +171,10 @@ export function LearningPathsRows({
     <>
       {renderablePaths.map((path) => {
         const progress = computePathProgress(path.courseIds, enrollments);
+        const progressLabel = t("learn.paths.progress")
+          .replace("{completed}", String(progress.completedCount))
+          .replace("{total}", String(path.courseIds.length))
+          .replace("{percent}", String(progress.progressPercent));
 
         return (
           <section
@@ -192,17 +196,12 @@ export function LearningPathsRows({
                 ) : null}
               </div>
               <div className="w-full max-w-[260px]">
-                <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--color-primary)]">
-                  {t("learn.paths.progress")
-                    .replace("{completed}", String(progress.completedCount))
-                    .replace("{total}", String(path.courseIds.length))
-                    .replace("{percent}", String(progress.progressPercent))}
+                {/* Uma leitura só: a barra leva a frase inteira ("2/5 completed
+                    · 40%") e a linha visível fica calada para o leitor de tela. */}
+                <p aria-hidden="true" className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--color-primary)]">
+                  {progressLabel}
                 </p>
-                <ProgressBar
-                  value={progress.progressPercent}
-                  label={t("learn.paths.percentComplete").replace("{percent}", () => String(progress.progressPercent))}
-                  className="mt-2"
-                />
+                <ProgressBar value={progress.progressPercent} label={progressLabel} className="mt-2" />
               </div>
             </div>
 

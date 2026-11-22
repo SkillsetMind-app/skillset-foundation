@@ -457,9 +457,15 @@ describe("agenda do aluno: erro de leitura", () => {
     expect(reload).toHaveBeenCalledTimes(1);
     expect(mocks.enrollments).toHaveBeenCalledTimes(1);
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    // O botão some com o clique: o foco fica na moldura da agenda, não no <body>.
+    const frame = document.activeElement as HTMLElement;
+    expect(frame).not.toBe(document.body);
+    expect(frame).toHaveAttribute("tabindex", "-1");
 
     act(() => next([enrollment]));
     expect(screen.getByRole("heading", { name: event.title })).toBeVisible();
+    expect(document.activeElement).toBe(frame);
+    expect(frame).toContainElement(screen.getByRole("heading", { name: event.title }));
   });
 
   // As agendas não têm releitura: sem botão, para o erro delas não sumir.

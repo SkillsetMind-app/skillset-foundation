@@ -225,7 +225,8 @@ describe("ProgressBar", () => {
     const bar = screen.getByRole("progressbar", { name: "Curso" });
     expect(bar).toHaveClass("h-1.5", "rounded-full", "overflow-hidden", "bg-[var(--color-line)]");
     const fill = bar.firstElementChild as HTMLElement;
-    expect(fill).toHaveClass("bg-[var(--color-accent)]", "motion-safe:transition-transform");
+    // Latão de TEXTO: o de fundo (--color-accent) dava 1.44:1 contra o trilho.
+    expect(fill).toHaveClass("bg-[var(--color-accent-fg)]", "motion-safe:transition-transform");
     expect(fill.className).not.toMatch(/transition-\[width\]|transition-all/);
     expect(fill.style.transform).toBe("translateX(-75%)");
   });
@@ -244,7 +245,7 @@ describe("ProgressBar", () => {
     expect(bar).toHaveClass("bg-[var(--ma-surface-2)]");
     expect(bar).not.toHaveClass("bg-[var(--color-line)]");
     expect(bar.firstElementChild).toHaveClass("bg-[var(--ma-accent)]");
-    expect(bar.firstElementChild).not.toHaveClass("bg-[var(--color-accent)]");
+    expect(bar.firstElementChild).not.toHaveClass("bg-[var(--color-accent-fg)]");
   });
 });
 

@@ -125,9 +125,16 @@ describe("credentials hub load errors", () => {
     expect(reload).toHaveBeenCalledTimes(1);
     expect(mocks.enrollments).toHaveBeenCalledTimes(1);
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    // O botão some com o clique: o foco fica na moldura do painel, não no <body>.
+    const frame = document.activeElement as HTMLElement;
+    expect(frame).not.toBe(document.body);
+    expect(frame).toHaveAttribute("tabindex", "-1");
+    expect(frame).toHaveTextContent("Loading credentials");
 
     act(() => next([finished]));
     expect(screen.getByRole("heading", { name: "Finished course" })).toBeVisible();
+    expect(document.activeElement).toBe(frame);
+    expect(frame).toContainElement(screen.getByRole("heading", { name: "Finished course" }));
   });
 
   // Os certificados não têm releitura: sem botão, e o erro deles não some.
