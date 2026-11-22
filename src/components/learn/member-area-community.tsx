@@ -64,11 +64,15 @@ export function MemberAreaCommunityView({
   }, [areaPath, areaRef, slug, router]);
 
   // "Try again" chama a mesma leitura; o aviso só sai quando ela dá certo, e
-  // o botão trava enquanto ela corre. O foco vai para a moldura (o botão
+  // o botão trava enquanto ela corre (a função também: um segundo clique antes
+  // de redesenhar não abre outra leitura). O foco vai para a moldura (o botão
   // travado o perde, e some se der certo).
   const [retrying, setRetrying] = useState(false);
+  const retryInFlight = useRef(false);
   const frameRef = useRef<HTMLDivElement>(null);
   async function retryLoad() {
+    if (retryInFlight.current) return;
+    retryInFlight.current = true;
     frameRef.current?.focus();
     setRetrying(true);
     try {
@@ -81,6 +85,7 @@ export function MemberAreaCommunityView({
     } catch {
       // O aviso fica, com o botão de novo.
     } finally {
+      retryInFlight.current = false;
       setRetrying(false);
     }
   }

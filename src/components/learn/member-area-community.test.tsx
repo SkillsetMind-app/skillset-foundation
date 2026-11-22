@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -71,6 +71,18 @@ describe("MemberAreaCommunityView", () => {
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     expect(mocks.getMemberAreaCommunity).toHaveBeenCalledTimes(2);
     expect(document.activeElement).toBe(screen.getByRole("heading", { level: 1 }).parentElement);
+  });
+
+  it("dois cliques antes de redesenhar abrem uma releitura só", async () => {
+    mocks.getMemberAreaCommunity.mockRejectedValueOnce(new Error("offline"));
+    renderView();
+    const button = await screen.findByRole("button", { name: "Try again" });
+    act(() => {
+      button.click();
+      button.click();
+    });
+    expect(await screen.findByRole("heading", { level: 1, name: "Eton Circle" })).toBeTruthy();
+    expect(mocks.getMemberAreaCommunity).toHaveBeenCalledTimes(2);
   });
 
   it("sem tema guardado: espera neutra e abre no claro padrão", async () => {

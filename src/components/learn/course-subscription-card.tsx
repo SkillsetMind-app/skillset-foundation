@@ -5,7 +5,7 @@ import { CalendarClock, Repeat } from "lucide-react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { InlineAlert } from "@/components/ui/inline-alert";
-import { RetryAlert } from "@/components/ui/retry-alert";
+import { LoadErrorAlert } from "@/components/ui/load-error-alert";
 import type { CourseSubscription } from "@/domain/course-subscription";
 import { subscribeToCourseSubscription } from "@/lib/data/course-subscriptions";
 import { toDate } from "@/lib/format-date";
@@ -110,9 +110,14 @@ export function CourseSubscriptionCard({
       </div>
 
       {readError ? (
-        <RetryAlert className="mt-3" focusRef={cardRef} onRetry={() => readSubscription.current?.reload()}>
+        <LoadErrorAlert
+          className="mt-3"
+          alertClassName="px-3 py-2"
+          focusRef={cardRef}
+          onRetry={() => readSubscription.current?.reload()}
+        >
           {t(`${copy}.loadError`)}
-        </RetryAlert>
+        </LoadErrorAlert>
       ) : null}
       {actionError ? (
         <InlineAlert tone="error" className="mt-3 px-3 py-2">

@@ -39,19 +39,23 @@ export function subscribeToUserCertificates(
   onError: (error: Error) => void,
 ): (() => void) & { reload: () => Promise<void> } {
   const supabase = getSupabaseBrowserClient();
-  // So a leitura mais nova entrega: um "Try again" que volta depois da
-  // releitura de um certificado recem-emitido traria a lista sem ele.
+  // `reload()` (o "Try again") repete esta leitura sem mexer no canal. As de
+  // sempre (a inicial e as do canal) entregam como antes, so cedem a um reload
+  // mais novo; o que o reload comecou nao entrega depois de desligar nem por
+  // cima de uma leitura mais nova (traria a lista sem o recem-emitido).
   let active = true;
   let latestLoad = 0;
+  let latestReload = 0;
 
-  const load = async () => {
+  const load = async (fromReload = false) => {
     const thisLoad = ++latestLoad;
+    if (fromReload) latestReload = thisLoad;
     const { data, error } = await supabase
       .from(certificatesTable)
       .select("*")
       .eq("user_id", userId);
 
-    if (!active || thisLoad !== latestLoad) {
+    if (fromReload ? !active || thisLoad !== latestLoad : thisLoad < latestReload) {
       return;
     }
     if (error) {
@@ -86,7 +90,7 @@ export function subscribeToUserCertificates(
       active = false;
       void supabase.removeChannel(channel);
     },
-    { reload: load },
+    { reload: () => load(true) },
   );
 }
 

@@ -88,20 +88,24 @@ export function subscribeToPublishedTeacherCourses(
   // the foreseeable horizon; past that the fix is a slim "courseCards"
   // projection + pagination, not a bigger limit.
   const supabase = getSupabaseBrowserClient();
-  // So a leitura mais nova entrega, e nada depois de desligar (`closed`): um
-  // "Try again" que volta depois da releitura do canal traria o catalogo velho.
+  // `reload()` (o "Try again") repete esta leitura sem mexer no canal. As de
+  // sempre (a inicial e as do canal) entregam como antes, so cedem a um reload
+  // mais novo; o que o reload comecou nao entrega depois de desligar (`closed`)
+  // nem por cima de uma leitura mais nova (traria o catalogo velho).
   let closed = false;
   let latestLoad = 0;
+  let latestReload = 0;
 
-  const load = async () => {
+  const load = async (fromReload = false) => {
     const thisLoad = ++latestLoad;
+    if (fromReload) latestReload = thisLoad;
     const { data, error } = await supabase
       .from(coursesTable)
       .select("*")
       .eq("status", "published")
       .limit(200);
 
-    if (closed || thisLoad !== latestLoad) {
+    if (fromReload ? closed || thisLoad !== latestLoad : thisLoad < latestReload) {
       return;
     }
     if (error) {
@@ -145,7 +149,7 @@ export function subscribeToPublishedTeacherCourses(
       closed = true;
       if (channel) void supabase.removeChannel(channel);
     },
-    { reload: load },
+    { reload: () => load(true) },
   );
 }
 

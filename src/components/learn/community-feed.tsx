@@ -12,7 +12,7 @@ import { CommunityItemActions } from "@/components/learn/community-item-actions"
 import { CommunityPostDrawer } from "@/components/learn/community-post-drawer";
 import { EmptyState } from "@/components/ui/empty-state";
 import { InlineAlert } from "@/components/ui/inline-alert";
-import { RetryAlert } from "@/components/ui/retry-alert";
+import { LoadErrorAlert } from "@/components/ui/load-error-alert";
 import type { SkillsetUser } from "@/domain/auth";
 import {
   countOpenQuestions,
@@ -170,6 +170,8 @@ export function CommunityFeed({
         setEnrollmentReady(true);
       },
       () => {
+        // Falhou de novo: o foco não pula sozinho numa leitura boa mais tarde.
+        focusFeedOnOpen.current = false;
         setAccessFailed(true);
         setEnrollmentReady(true);
       },
@@ -319,9 +321,9 @@ export function CommunityFeed({
           {t("learn.community.gateDetails")}
         </p>
         {accessFailed ? (
-          <RetryAlert className="mt-4" focusRef={gateRef} onRetry={retryAccess}>
+          <LoadErrorAlert className="mt-4" focusRef={gateRef} onRetry={retryAccess}>
             {t("learn.community.accessError")}
-          </RetryAlert>
+          </LoadErrorAlert>
         ) : null}
       </section>
     );
@@ -415,9 +417,9 @@ export function CommunityFeed({
         ) : null}
 
         {postsFailed ? (
-          <RetryAlert focusRef={headingRef} onRetry={() => postsSubscription.current?.reload()}>
+          <LoadErrorAlert focusRef={headingRef} onRetry={() => postsSubscription.current?.reload()}>
             {t("learn.community.postsError")}
-          </RetryAlert>
+          </LoadErrorAlert>
         ) : null}
 
         {error ? <InlineAlert tone="error">{t(error)}</InlineAlert> : null}

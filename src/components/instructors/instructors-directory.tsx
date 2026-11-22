@@ -10,7 +10,7 @@ import { UserAvatar } from "@/components/shared/user-avatar";
 import { SelfReportedTag, VerifiedBadge } from "@/components/shared/verified-badge";
 import { useHasRealCourses } from "@/components/site/real-courses";
 import { EmptyState } from "@/components/ui/empty-state";
-import { RetryAlert } from "@/components/ui/retry-alert";
+import { LoadErrorAlert } from "@/components/ui/load-error-alert";
 import { instructorPagePath, type PublicProfile } from "@/domain/user-profile";
 import { listPublicProfiles } from "@/lib/data/user-profiles";
 
@@ -49,15 +49,24 @@ export function InstructorsDirectory() {
     };
   }, []);
 
-  // "Try again" chama a mesma leitura; o aviso só sai quando ela dá certo.
-  async function retryLoad() {
-    try {
-      const nextProfiles = await listPublicProfiles();
-      setProfiles(nextProfiles);
-      setHasError(false);
-    } catch {
-      // O aviso fica, com o botão de novo.
+  // "Try again" chama a mesma leitura; o aviso só sai quando ela dá certo. Um
+  // segundo clique enquanto ela corre devolve a mesma leitura, não abre outra.
+  const retryInFlight = useRef<Promise<void> | null>(null);
+  function retryLoad() {
+    if (!retryInFlight.current) {
+      retryInFlight.current = listPublicProfiles()
+        .then((nextProfiles) => {
+          setProfiles(nextProfiles);
+          setHasError(false);
+        })
+        .catch(() => {
+          // O aviso fica, com o botão de novo.
+        })
+        .finally(() => {
+          retryInFlight.current = null;
+        });
     }
+    return retryInFlight.current;
   }
 
   // Uma moldura em volta dos estados: o botão some quando a leitura dá certo
@@ -94,12 +103,12 @@ export function InstructorsDirectory() {
     return frame(
       // Anunciado ao leitor de tela, com o ícone do erro e "Try again". A frase
       // de apoio fica no cinza de sempre, abaixo da do erro.
-      <RetryAlert className="mt-12" focusRef={frameRef} onRetry={retryLoad}>
+      <LoadErrorAlert className="mt-12" alertClassName="p-6" focusRef={frameRef} onRetry={retryLoad}>
         <p>{t("publicPages.directory.instructor_profiles_could_not_load_right")}</p>
         <p className="mt-2 font-normal text-[var(--color-ink-soft)]">
           {t("publicPages.directory.course_pages_still_show_verified_instructor")}
         </p>
-      </RetryAlert>
+      </LoadErrorAlert>
     );
   }
 

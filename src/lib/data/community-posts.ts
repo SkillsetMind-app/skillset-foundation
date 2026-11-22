@@ -143,13 +143,17 @@ export function subscribeToCommunityPosts(
   onError: (error: Error) => void,
 ): (() => void) & { reload: () => Promise<void> } {
   const supabase = getSupabaseBrowserClient();
-  // So a leitura mais nova entrega: um "Try again" que volta depois da
-  // releitura de um post novo traria o feed sem ele.
+  // `reload()` (o "Try again") repete esta leitura sem mexer no canal. As de
+  // sempre (a inicial e as do canal) entregam como antes, so cedem a um reload
+  // mais novo; o que o reload comecou nao entrega depois de desligar nem por
+  // cima de uma leitura mais nova (traria o feed sem o post novo).
   let active = true;
   let latestLoad = 0;
+  let latestReload = 0;
 
-  const load = async () => {
+  const load = async (fromReload = false) => {
     const thisLoad = ++latestLoad;
+    if (fromReload) latestReload = thisLoad;
     // Bounded so one viral course community can't stream an unbounded
     // collection to every viewer. A janela fica com os fixados e os MAIS
     // NOVOS (sem order, o banco devolvia 200 quaisquer e o post de hoje podia
@@ -163,7 +167,7 @@ export function subscribeToCommunityPosts(
       .order("created_at", { ascending: false, nullsFirst: false })
       .limit(200);
 
-    if (!active || thisLoad !== latestLoad) {
+    if (fromReload ? !active || thisLoad !== latestLoad : thisLoad < latestReload) {
       return;
     }
     if (error) {
@@ -199,7 +203,7 @@ export function subscribeToCommunityPosts(
       active = false;
       void supabase.removeChannel(channel);
     },
-    { reload: load },
+    { reload: () => load(true) },
   );
 }
 

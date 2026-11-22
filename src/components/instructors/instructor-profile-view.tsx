@@ -11,7 +11,7 @@ import { useTranslation } from "@/components/i18n/i18n-provider";
 import { UserAvatar } from "@/components/shared/user-avatar";
 import { SelfReportedTag, VerifiedBadge } from "@/components/shared/verified-badge";
 import { EmptyState } from "@/components/ui/empty-state";
-import { RetryAlert } from "@/components/ui/retry-alert";
+import { LoadErrorAlert } from "@/components/ui/load-error-alert";
 import { brand } from "@/data/brand";
 import {
   isStorefrontHexColor,
@@ -140,14 +140,14 @@ export function InstructorProfileView({
         {courses === null ? (
           // Os cursos chegam do servidor: "Try again" pede a página de novo
           // (router.refresh), sem recarregar o navegador nem perder a rolagem.
-          <RetryAlert
+          <LoadErrorAlert
             className="mt-4"
             focusRef={coursesRef}
             busy={refreshing}
             onRetry={() => startRefresh(() => router.refresh())}
           >
             {t("publicPages.profile.courses_error")}
-          </RetryAlert>
+          </LoadErrorAlert>
         ) : ordered.length === 0 ? (
           // O vazio da plataforma; h3 sob o h2 "Courses".
           <EmptyState

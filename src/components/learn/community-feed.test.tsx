@@ -400,6 +400,27 @@ describe("feed da comunidade (rodada 11)", () => {
     expect(document.activeElement).toHaveAttribute("data-community-heading");
   });
 
+  it("um Try again do acesso que falha de novo desarma o foco: a matrícula que chega depois não o puxa", async () => {
+    let deliver: (enrollment: Enrollment | null) => void = () => {};
+    let fail: (error: Error) => void = () => {};
+    const reload = vi.fn(async () => fail(new Error("still down")));
+    vi.mocked(subscribeToEnrollment).mockImplementationOnce((_uid, _slug, next, onError) => {
+      deliver = next;
+      fail = onError;
+      onError(new Error("private cause"));
+      return Object.assign(vi.fn(), { reload });
+    });
+    render(<I18nProvider initialLocale="en"><CommunityFeed space={space} /></I18nProvider>);
+
+    await act(async () => fireEvent.click(screen.getByRole("button", { name: "Try again" })));
+    expect(reload).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("alert")).toHaveTextContent("We could not confirm your community access.");
+
+    act(() => deliver(enrollmentFixture));
+    expect(subscribeToCommunityPosts).toHaveBeenCalledTimes(1);
+    expect(document.activeElement).not.toHaveAttribute("data-community-heading");
+  });
+
   it("a falha dos posts oferece Try again sem o vazio, e os posts entram direto quando chegam", async () => {
     let onError: (error: Error) => void = () => {};
     const reload = vi.fn(async () => undefined);

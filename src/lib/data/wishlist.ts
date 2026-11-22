@@ -33,19 +33,23 @@ export function subscribeToUserWishlist(
   onError: (error: Error) => void,
 ): (() => void) & { reload: () => Promise<void> } {
   const supabase = getSupabaseBrowserClient();
-  // So a leitura mais nova entrega: um "Try again" que volta depois da
-  // releitura disparada por uma mudanca traria a lista velha.
+  // `reload()` (o "Try again") repete esta leitura sem mexer no canal. As de
+  // sempre (a inicial e as do canal) entregam como antes, so cedem a um reload
+  // mais novo; o que o reload comecou nao entrega depois de desligar nem por
+  // cima de uma leitura mais nova (traria a lista velha).
   let active = true;
   let latestLoad = 0;
+  let latestReload = 0;
 
-  const load = async () => {
+  const load = async (fromReload = false) => {
     const thisLoad = ++latestLoad;
+    if (fromReload) latestReload = thisLoad;
     const { data, error } = await supabase
       .from("wishlists")
       .select("*")
       .eq("user_id", userId);
 
-    if (!active || thisLoad !== latestLoad) {
+    if (fromReload ? !active || thisLoad !== latestLoad : thisLoad < latestReload) {
       return;
     }
     if (error) {
@@ -81,7 +85,7 @@ export function subscribeToUserWishlist(
       active = false;
       void supabase.removeChannel(channel);
     },
-    { reload: load },
+    { reload: () => load(true) },
   );
 }
 

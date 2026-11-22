@@ -9,7 +9,7 @@ import { useTranslation } from "@/components/i18n/i18n-provider";
 import { useAuth } from "@/components/auth/auth-provider";
 import { EmptyState } from "@/components/ui/empty-state";
 import { InlineAlert } from "@/components/ui/inline-alert";
-import { RetryAlert } from "@/components/ui/retry-alert";
+import { LoadErrorAlert } from "@/components/ui/load-error-alert";
 import type { WishlistItem } from "@/domain/wishlist";
 import { getFeaturedCourseCards, type CourseCard } from "@/lib/data/catalog";
 import {
@@ -144,9 +144,9 @@ export function LearnerWishlist() {
   const alerts = loadErrorKey || removeFailed ? (
     <div className="grid gap-3">
       {loadErrorKey ? (
-        <RetryAlert focusRef={frameRef} onRetry={retryLoad}>
+        <LoadErrorAlert focusRef={frameRef} onRetry={retryLoad}>
           {t(loadErrorKey)}
-        </RetryAlert>
+        </LoadErrorAlert>
       ) : null}
       {removeFailed ? (
         <InlineAlert tone="error">{t("learnWave2.wishlistHub.removeError")}</InlineAlert>

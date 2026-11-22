@@ -303,27 +303,34 @@ export function subscribeToEnrollment(
 ): (() => void) & { reload: () => Promise<void> } {
   const supabase = getSupabaseBrowserClient();
   const enrollmentId = getEnrollmentId(userId, courseSlug);
-  // So a leitura mais nova entrega, e nada depois de desligar: dois "Try
-  // again" seguidos nao podem trocar a matricula pela resposta mais velha.
+  // `reload()` (o "Try again") repete esta leitura sem mexer no canal. A
+  // inicial sai como antes (a mesma cadeia, no mesmo instante) e entrega como
+  // antes, so cedendo a um reload mais novo; o que o reload comecou nao
+  // entrega depois de desligar nem por cima de uma leitura mais nova.
   let active = true;
   let latestLoad = 0;
+  let latestReload = 0;
 
-  const load = async () => {
+  const load = (fromReload = false): Promise<void> => {
     const thisLoad = ++latestLoad;
-    const { data, error } = await supabase
-      .from("enrollments")
-      .select("*")
-      .eq("id", enrollmentId)
-      .maybeSingle();
-
-    if (!active || thisLoad !== latestLoad) {
-      return;
-    }
-    if (error) {
-      onError(error instanceof Error ? error : new Error(String(error)));
-      return;
-    }
-    callback(data ? rowToEnrollment(data) : null);
+    if (fromReload) latestReload = thisLoad;
+    return Promise.resolve(
+      supabase
+        .from("enrollments")
+        .select("*")
+        .eq("id", enrollmentId)
+        .maybeSingle()
+        .then(({ data, error }) => {
+          if (fromReload ? !active || thisLoad !== latestLoad : thisLoad < latestReload) {
+            return;
+          }
+          if (error) {
+            onError(error instanceof Error ? error : new Error(String(error)));
+            return;
+          }
+          callback(data ? rowToEnrollment(data) : null);
+        }),
+    );
   };
 
   void load();
@@ -355,7 +362,7 @@ export function subscribeToEnrollment(
       active = false;
       void supabase.removeChannel(channel);
     },
-    { reload: load },
+    { reload: () => load(true) },
   );
 }
 

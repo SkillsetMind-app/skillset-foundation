@@ -8,7 +8,7 @@ import { formatNotificationTime } from "@/components/account/notification-row";
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { InlineAlert } from "@/components/ui/inline-alert";
-import { RetryAlert } from "@/components/ui/retry-alert";
+import { LoadErrorAlert } from "@/components/ui/load-error-alert";
 import { filterPosts, groupCommentsByPost } from "@/domain/community-feed";
 import type { CommunityComment, CommunityPost } from "@/domain/community-post";
 import type { Course } from "@/domain/learning";
@@ -231,9 +231,9 @@ function LessonCommentsPanel({
       )}
 
       {postsFailed && canRead ? (
-        <RetryAlert className="mt-3" focusRef={sectionRef} onRetry={() => postsSubscription.current?.reload()}>
+        <LoadErrorAlert className="mt-3" focusRef={sectionRef} onRetry={() => postsSubscription.current?.reload()}>
           {t("learn.community.postsError")}
-        </RetryAlert>
+        </LoadErrorAlert>
       ) : null}
 
       {error ? (

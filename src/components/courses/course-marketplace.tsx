@@ -18,7 +18,7 @@ import { CourseTile } from "@/components/courses/course-tile";
 import { EmptyState } from "@/components/ui/empty-state";
 import { InlineAlert } from "@/components/ui/inline-alert";
 import { ProgressBar } from "@/components/ui/progress-bar";
-import { RetryAlert } from "@/components/ui/retry-alert";
+import { LoadErrorAlert } from "@/components/ui/load-error-alert";
 import { useInstructorNames } from "@/components/courses/use-instructor-names";
 import type { TeacherCourse } from "@/domain/teacher-course";
 import type { CourseCard } from "@/lib/data/catalog";
@@ -70,6 +70,9 @@ export function CourseMarketplace({ courses = [] }: CourseMarketplaceProps) {
   const [activeEnrollments, setActiveEnrollments] = useState<Enrollment[]>([]);
   const [publishedCourses, setPublishedCourses] = useState<TeacherCourse[]>([]);
   const [publishedCoursesError, setPublishedCoursesError] = useState("");
+  // A falha de LER os favoritos (com "Try again") e a de salvar um favorito
+  // (só o aviso) ficam à parte: salvar outro não apaga a primeira.
+  const [wishlistLoadFailed, setWishlistLoadFailed] = useState(false);
   const [wishlistError, setWishlistError] = useState("");
   const [wishlistCourseIds, setWishlistCourseIds] = useState<Set<string>>(
     () => new Set(),
@@ -155,10 +158,11 @@ export function CourseMarketplace({ courses = [] }: CourseMarketplaceProps) {
       user.uid,
       (nextCourseIds) => {
         setWishlistCourseIds(nextCourseIds);
+        setWishlistLoadFailed(false);
         setWishlistError("");
       },
       () => {
-        setWishlistError("publicCourses.loadWishlistError");
+        setWishlistLoadFailed(true);
       },
     );
     wishlistSubscription.current = current;
@@ -440,24 +444,26 @@ export function CourseMarketplace({ courses = [] }: CourseMarketplaceProps) {
       {/* Erro de leitura com "Try again"; o aviso só sai quando a leitura
           volta. A falha ao salvar um favorito segue sendo só o aviso. */}
       {publishedCoursesError ? (
-        <RetryAlert
+        <LoadErrorAlert
           className="mb-5"
           focusRef={sectionRef}
           onRetry={() => coursesSubscription.current?.reload()}
         >
           {t(publishedCoursesError)}
-        </RetryAlert>
+        </LoadErrorAlert>
       ) : null}
 
-      {wishlistError === "publicCourses.loadWishlistError" ? (
-        <RetryAlert
+      {wishlistLoadFailed ? (
+        <LoadErrorAlert
           className="mb-5"
           focusRef={sectionRef}
           onRetry={() => wishlistSubscription.current?.reload()}
         >
-          {t(wishlistError)}
-        </RetryAlert>
-      ) : wishlistError ? (
+          {t("publicCourses.loadWishlistError")}
+        </LoadErrorAlert>
+      ) : null}
+
+      {wishlistError ? (
         <InlineAlert tone="error" className="mb-5">{t(wishlistError)}</InlineAlert>
       ) : null}
 

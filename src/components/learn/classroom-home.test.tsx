@@ -9,7 +9,7 @@ import type { CourseAsset } from "@/domain/course-asset";
 import { subscribeToCourseAssets, getProtectedCourseAssetObjectUrl } from "@/lib/data/course-assets";
 import { countOpenCommunityQuestions } from "@/lib/data/community-posts";
 import { subscribeToCourseEvents } from "@/lib/data/course-events";
-import { recordLessonProgress } from "@/lib/data/lesson-progress";
+import { recordLessonProgress, subscribeToCompletedLessons } from "@/lib/data/lesson-progress";
 import { subscribeToEnrollment } from "@/lib/data/enrollments";
 import { subscribeToLessonContent } from "@/lib/data/lesson-content";
 
@@ -294,6 +294,82 @@ describe("sala de aula com matricula real", () => {
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     expect(screen.getByText("One")).toBeInTheDocument();
     expect(document.activeElement?.tagName).toBe("H1");
+  });
+
+  // Uma falha por leitura: a sala nunca abre com o progresso vazio ou sem os
+  // materiais que a leitura que falhou deixou no lugar.
+  function failProgressAndAssets() {
+    type Read<T> = { next: (value: T) => void; fail: (error: Error) => void; reload: () => Promise<void> };
+    const progress: Read<string[]> = { next: () => {}, fail: () => {}, reload: vi.fn(async () => undefined) };
+    const assets: Read<CourseAsset[]> = { next: () => {}, fail: () => {}, reload: vi.fn(async () => undefined) };
+    vi.mocked(subscribeToCompletedLessons).mockImplementationOnce((_id, next, fail) => {
+      Object.assign(progress, { next, fail });
+      return Object.assign(vi.fn(), { reload: progress.reload });
+    });
+    vi.mocked(subscribeToCourseAssets).mockImplementationOnce((_id, next, fail) => {
+      Object.assign(assets, { next, fail });
+      return Object.assign(vi.fn(), { reload: assets.reload });
+    });
+    mocks.searchParams = new URLSearchParams("lesson=l1");
+    mocks.completed = [];
+    render(<I18nProvider initialLocale="en"><EnrolledCourseWorkspace course={course} enableFirestoreAssets /></I18nProvider>);
+    return { progress, assets };
+  }
+
+  it.each(["progress", "assets"] as const)("a falha de %s primeiro e depois a outra: o cartão fica até as duas voltarem, e o Try again relê as duas", async (first) => {
+    const { progress, assets } = failProgressAndAssets();
+    act(() => {
+      if (first === "progress") {
+        progress.fail(new Error("down"));
+        assets.fail(new Error("down"));
+      } else {
+        assets.fail(new Error("down"));
+        progress.fail(new Error("down"));
+      }
+    });
+    expect(screen.getByRole("alert")).toBeInTheDocument();
+
+    await act(async () => fireEvent.click(screen.getByRole("button", { name: "Try again" })));
+    expect(progress.reload).toHaveBeenCalledTimes(1);
+    expect(assets.reload).toHaveBeenCalledTimes(1);
+
+    // Só a primeira que falhou voltou: a sala segue fechada.
+    act(() => (first === "progress" ? progress.next(["l1"]) : assets.next([])));
+    expect(screen.getByRole("alert")).toBeInTheDocument();
+    expect(screen.queryByText("One")).not.toBeInTheDocument();
+
+    act(() => (first === "progress" ? assets.next([]) : progress.next(["l1"])));
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(screen.getByText("One")).toBeInTheDocument();
+    expect(document.activeElement?.tagName).toBe("H1");
+  });
+
+  it("uma releitura boa dos materiais pelo canal, sem clique, não abre a sala com o progresso que falhou", () => {
+    const { progress, assets } = failProgressAndAssets();
+    act(() => {
+      progress.fail(new Error("down"));
+      assets.fail(new Error("down"));
+    });
+    // O canal dos materiais relê sozinho e dá certo: o progresso segue falhando.
+    act(() => assets.next([]));
+    expect(screen.getByRole("alert")).toHaveTextContent("We could not load lesson progress for this course.");
+    expect(screen.queryByText("One")).not.toBeInTheDocument();
+    expect(progress.reload).not.toHaveBeenCalled();
+  });
+
+  it("um Try again que falha de novo desarma o foco: a leitura boa que vem depois não o puxa", async () => {
+    const { progress, assets } = failProgressAndAssets();
+    act(() => {
+      assets.next([]);
+      progress.fail(new Error("down"));
+    });
+    await act(async () => fireEvent.click(screen.getByRole("button", { name: "Try again" })));
+    act(() => progress.fail(new Error("still down")));
+    expect(screen.getByRole("alert")).toBeInTheDocument();
+
+    act(() => progress.next(["l1"]));
+    expect(screen.getByText("One")).toBeInTheDocument();
+    expect(document.activeElement?.tagName).not.toBe("H1");
   });
 
   it("whitelabel: the enrollment error does not link to our public course page", () => {
