@@ -329,7 +329,7 @@ describe("pagina da aula no builder", () => {
     }
   });
 
-  it("?module=M&lesson=L mostra Curso > Modulo > Aula e a aba de video, sem dialogo", async () => {
+  it("?module=M&lesson=L mostra Curso > Modulo, o nome da aula uma vez e a aba de video, sem dialogo", async () => {
     openAt(lessonUrl);
     await renderBuilder();
 
@@ -337,7 +337,12 @@ describe("pagina da aula no builder", () => {
     expect(within(trail).getByRole("link", { name: "Clinical performance foundations" }))
       .toHaveAttribute("href", "/teach/builder?courseId=course-1&tab=content");
     expect(within(trail).getByRole("link", { name: "Start here" })).toHaveAttribute("href", moduleUrl);
-    expect(within(trail).getByText("Welcome").closest("[aria-current='page']")).not.toBeNull();
+    // O nome da aula aparecia tres vezes: trilha, titulo e a linha "Module 1 - ... / Lesson 1".
+    expect(trail).not.toHaveTextContent("Welcome");
+    expect(within(card()).getAllByText("Welcome")).toHaveLength(1);
+    expect(within(card()).getByRole("heading", { name: "Welcome" })).toBeInTheDocument();
+    // O cabecalho da aba Curriculum nao fica entre o construtor e a aula.
+    expect(screen.queryByRole("heading", { name: "Build the curriculum." })).not.toBeInTheDocument();
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(linkField()).toHaveValue(youtube);
   });
@@ -548,13 +553,15 @@ describe("pagina da aula no builder", () => {
     expect(document.activeElement).toBe(screen.getByRole("heading", { name: "Welcome" }));
   });
 
-  it("sair pelo Done troca a entrada do historico e devolve o foco ao botao da aula", async () => {
+  it("sair por Back to module troca a entrada do historico e devolve o foco ao botao da aula", async () => {
     openAt(moduleUrl);
     await renderBuilder();
     fireEvent.click(within(card()).getByRole("button", { name: "Edit content" }));
     navigateTo(lessonUrl);
 
-    fireEvent.click(screen.getByRole("button", { name: "Done" }));
+    // "Done" era tambem o estado da aba Description: o botao diz para onde leva.
+    expect(screen.queryByRole("button", { name: "Done" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Back to module" }));
     expect(mocks.router.replace).toHaveBeenLastCalledWith(moduleUrl, { scroll: false });
     navigateTo(moduleUrl);
 

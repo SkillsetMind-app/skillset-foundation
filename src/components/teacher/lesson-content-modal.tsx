@@ -346,11 +346,13 @@ export function LessonContentModal({
   // Link antigo que nao e video (Drive etc.): so leitura, com botao de tirar.
   // O aluno continua com o botao "Open resource".
   const oldLink = lesson.externalUrl?.trim() && !trustedEmbed ? lesson.externalUrl : null;
+  const assetStatus = getAssetStatus(lessonAssets, lesson);
+  const videoBusy = tab === "video" && (isUploading || Boolean(selectedFile));
   const videoStatus = tab === "video" && isUploading
     ? t("creatorEditor.lesson.file.uploading")
     : tab === "video" && selectedFile
       ? t("creatorEditor.lesson.file.selected")
-      : t(`creatorEditor.lesson.state.${getAssetStatus(lessonAssets, lesson)}`);
+      : t(`creatorEditor.lesson.state.${assetStatus}`);
   // So vale antes da primeira carga boa: depois dela, um recarregamento em
   // tempo real que falha deixava o alerta fixo ao lado de uma lista que
   // continua na tela.
@@ -814,7 +816,8 @@ export function LessonContentModal({
                   {crumbs.moduleLabel}
                 </Link>
               </li>
-              <li aria-current="page">{lesson.title || t("creatorEditor.lesson.untitled")}</li>
+              {/* O nome da aula nao entra na trilha: ele e o h3 logo abaixo.
+                  Antes aparecia tres vezes (trilha, titulo e linha do modulo). */}
             </ol>
           </nav>
         ) : (
@@ -832,18 +835,20 @@ export function LessonContentModal({
           {lessonModalTabs.map((item) => {
             const Icon = item.icon;
             const active = tab === item.value;
-            const badge =
+            // Etiqueta de largura fixa: a palavra do estado mudava a largura da
+            // aba enquanto o professor trabalhava ("Empty" > "Uploading" >
+            // "Uploaded") e a fileira pulava. Agora e um ponto de cor, com a
+            // palavra so para o leitor de tela; Materials mostra so o numero.
+            const descriptionDone = lesson.description.trim().length > 0 || Boolean(lesson.contentText?.trim());
+            const dot =
               item.value === "video"
-                ? videoStatus
+                ? { label: videoStatus, tone: videoBusy ? "busy" : assetStatus === "empty" ? "empty" : "done" }
                 : item.value === "description"
-                  ? lesson.description.trim().length > 0 || lesson.contentText?.trim()
-                    ? t("creatorEditor.lesson.state.done")
-                    : t("creatorEditor.lesson.state.empty")
-                  : item.value === "materials"
-                    ? String(materialAssets.length)
-                    : isFreePreview
-                      ? t("creatorEditor.lesson.state.preview")
-                      : t("creatorEditor.lesson.state.private");
+                  ? {
+                      label: t(`creatorEditor.lesson.state.${descriptionDone ? "done" : "empty"}`),
+                      tone: descriptionDone ? "done" : "empty",
+                    }
+                  : null;
 
             return (
               <button
@@ -856,7 +861,13 @@ export function LessonContentModal({
               >
                 <Icon aria-hidden="true" size={14} />
                 {t(`creatorEditor.lesson.tabs.${item.value}`)}
-                <span>{badge}</span>
+                {item.value === "materials" ? (
+                  <span className="lesson-modal__tab-count">{materialAssets.length}</span>
+                ) : dot ? (
+                  <span className="lesson-modal__tab-dot" data-tone={dot.tone}>
+                    <span className="sr-only">{dot.label}</span>
+                  </span>
+                ) : null}
               </button>
             );
           })}
@@ -864,15 +875,22 @@ export function LessonContentModal({
         )}
 
         <div className="lesson-modal__body">
+          {/* As abas travam durante o envio; sem esta frase pareciam quebradas. */}
+          {isUploading && !filesOnly ? (
+            <p className="lesson-modal__tabs-note">{t("creatorEditor.lesson.tabsLocked")}</p>
+          ) : null}
           {filesOnly ? null : (
           <div className="lesson-modal__context">
             <h3 id="lesson-modal-title" tabIndex={-1}>{lesson.title || t("creatorEditor.lesson.untitled")}</h3>
+            {/* Na pagina a trilha ja diz curso e modulo: a linha repetia o modulo. */}
+            {isPage && crumbs ? null : (
             <p className="lesson-modal__crumb">
               {t("creatorEditor.lesson.context")
                 .replace("{moduleIndex}", () => String(moduleIndex + 1))
                 .replace("{lessonIndex}", () => String(lessonIndex + 1))
                 .replace("{moduleTitle}", () => module.title)}
             </p>
+            )}
           </div>
           )}
           {tab === "video" ? (
@@ -966,6 +984,7 @@ export function LessonContentModal({
                     progressPercent={uploadProgress?.percent}
                     onCancel={cancelUpload}
                     selectedFile={selectedFile}
+                    uploadingFileName={sharedUpload?.fileName}
                     fileInputKey={fileInputKey}
                     success={successMessage}
                     uploadKind={uploadKind}
@@ -1247,7 +1266,8 @@ export function LessonContentModal({
               ) : null}
             </div>
           ) : null}
-          {filesOnly ? null : (
+          {/* Na aba de video a frase do video ja fecha a aba: eram duas seguidas. */}
+          {filesOnly || tab === "video" ? null : (
           <p className="lesson-modal__guidance">
             {t("creatorEditor.lesson.contextHelp")}
           </p>
@@ -1266,7 +1286,11 @@ export function LessonContentModal({
             onClick={requestClose}
             disabled={isUploading}
           >
-            {isUploading ? t("creatorEditor.lesson.file.uploading") : t("creatorEditor.lesson.state.done")}
+            {/* "Done" era tambem o estado da aba Description; na pagina o botao
+                diz para onde leva. */}
+            {isUploading
+              ? t("creatorEditor.lesson.file.uploading")
+              : t(isPage ? "creatorEditor.lesson.backToModule" : "creatorEditor.lesson.state.done")}
           </button>
         </footer>
         )}
@@ -1291,6 +1315,7 @@ function LessonUploadForm({
   progressLabel,
   progressPercent,
   selectedFile,
+  uploadingFileName,
   success,
   uploadKind,
   onKindChange,
@@ -1306,6 +1331,8 @@ function LessonUploadForm({
   progressLabel: string;
   progressPercent?: number | null;
   selectedFile: File | null;
+  /** Envio que segue de outra montagem da aula: so o nome, sem o arquivo. */
+  uploadingFileName?: string;
   success: string;
   uploadKind: CourseAssetKind;
   onKindChange?: (kind: CourseAssetKind) => void;
@@ -1327,6 +1354,12 @@ function LessonUploadForm({
     };
   }, [selectedFile]);
 
+  // Cartao compacto (prancha "Estados"): a previa 16:9 do lado, e do outro o
+  // nome, o andamento, UMA barra e Cancelar. O form era grid sem limite e o
+  // botao "Upload file" ocupava a largura da pagina (1.453 px a 1920 px).
+  const fileLabel = selectedFile
+    ? `${selectedFile.name} - ${formatCourseAssetSize(selectedFile.size)}`
+    : isUploading ? uploadingFileName : undefined;
   return (
     <form
       className="lesson-modal-upload"
@@ -1340,26 +1373,42 @@ function LessonUploadForm({
         if (file) onFileChange(file);
       }}
     >
-      {selectedFile ? (
-        <p className="lesson-modal-upload__file">
-          {selectedFile.name} - {formatCourseAssetSize(selectedFile.size)}
-        </p>
+      {isVideo && selectedFile?.type.startsWith("video/") ? (
+        <video
+          ref={localVideoRef}
+          controls
+          playsInline
+          preload="metadata"
+          aria-label={t("creatorEditor.lesson.file.localPreview")}
+          className="lesson-modal-upload__video"
+          hidden={unpreviewableFile === selectedFile}
+          onError={() => setUnpreviewableFile(selectedFile)}
+        />
       ) : null}
+      <div className="lesson-modal-upload__body">
+      {fileLabel ? <p className="lesson-modal-upload__file">{fileLabel}</p> : null}
       {error ? <p role="alert" className="lesson-modal-upload__error">{error}</p> : null}
       <p role="status" className={success ? "lesson-modal-upload__success" : "text-sm text-[var(--color-ink-soft)]"}>
         {isUploading ? progressLabel || t("creatorEditor.lesson.file.uploading")
           : success || (selectedFile ? t("creatorEditor.lesson.file.selectedHelp") : "")}
       </p>
       {isUploading ? (
-        <div className="grid min-w-0 gap-2">
+        <>
           <progress className="h-2 w-full accent-[var(--color-ink)]" max={100} value={progressPercent ?? undefined} aria-label={t("creatorEditor.lesson.file.uploading")} />
           {onCancel ? (
             <button type="button" onClick={onCancel} className="button-outline min-h-11 px-3 text-sm">
               {t("creatorEditor.lesson.file.cancel")}
             </button>
           ) : null}
-        </div>
+        </>
       ) : null}
+      {isVideo && selectedFile && unpreviewableFile === selectedFile ? (
+        <p className="text-sm text-[var(--color-ink-soft)]">{t("creatorEditor.lesson.file.previewUnavailable")}</p>
+      ) : null}
+      {/* Durante o envio estes controles ja ficavam desligados e so repetiam
+          o andamento ("Uploading..."): saem da vista, mas ficam montados para
+          o campo de arquivo nao ser recriado no meio do envio. */}
+      <div className="lesson-modal-upload__actions" hidden={isUploading}>
       <button
         type="submit"
         autoFocus={isVideo && Boolean(selectedFile)}
@@ -1368,23 +1417,6 @@ function LessonUploadForm({
       >
         {t(`creatorEditor.lesson.file.${isUploading ? "uploading" : "upload"}`)}
       </button>
-      {isVideo && selectedFile?.type.startsWith("video/") ? (
-        <>
-          <video
-            ref={localVideoRef}
-            controls
-            playsInline
-            preload="metadata"
-            aria-label={t("creatorEditor.lesson.file.localPreview")}
-            className="aspect-video max-h-48 w-full rounded-md bg-black object-contain"
-            hidden={unpreviewableFile === selectedFile}
-            onError={() => setUnpreviewableFile(selectedFile)}
-          />
-          {unpreviewableFile === selectedFile ? (
-            <p className="text-sm text-[var(--color-ink-soft)]">{t("creatorEditor.lesson.file.previewUnavailable")}</p>
-          ) : null}
-        </>
-      ) : null}
       <label>
         <span>{getCourseAssetKindLabel(uploadKind, t)}</span>
         <input
@@ -1407,8 +1439,9 @@ function LessonUploadForm({
           {t(`creatorEditor.lesson.file.${selectedFile ? "selectAnother" : "select"}`)}
         </span>
       </label>
+      </div>
       {onKindChange ? (
-        <label className="lesson-modal-field">
+        <label className="lesson-modal-field" hidden={isUploading}>
           <span>{t("creatorEditor.lesson.file.videoType")}</span>
           <select value={uploadKind} disabled={!isEditable || isUploading}
             onChange={(event) => onKindChange(event.target.value as "lesson_video" | "live_recording")}>
@@ -1417,6 +1450,7 @@ function LessonUploadForm({
           </select>
         </label>
       ) : null}
+      </div>
     </form>
   );
 }

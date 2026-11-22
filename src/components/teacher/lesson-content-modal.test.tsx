@@ -765,6 +765,36 @@ describe("LessonContentModal — video tab", () => {
     expect(URL.revokeObjectURL).toHaveBeenCalledWith("blob:local-aula.mp4");
   });
 
+  // A queixa do dono: ao enviar, um bloco enorme tomava a tela (botao de
+  // 1.453 px, previa de ponta a ponta). Durante o envio o cartao fica com nome,
+  // andamento, uma barra e Cancelar; as abas dizem por que travaram.
+  it("durante o envio o cartao fica compacto e a frase explica as abas travadas", async () => {
+    let finish!: () => void;
+    uploadCourseAsset.mockImplementationOnce(() => new Promise<void>((resolve) => { finish = resolve; }));
+    renderModal();
+    chooseVideoFile("minha aula.mp4");
+    const videoTab = screen.getByRole("button", { name: /^Video/ });
+    expect(videoTab.querySelector(".lesson-modal__tab-dot")).toHaveAttribute("data-tone", "busy");
+    expect(screen.queryByText("Tabs unlock when the upload finishes.")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Upload file" }));
+
+    const progress = await screen.findByRole("progressbar", { name: "Uploading..." });
+    const form = progress.closest("form")!;
+    expect(within(form).getByText(/minha aula\.mp4/)).toBeInTheDocument();
+    expect(within(form).getAllByRole("progressbar")).toHaveLength(1);
+    // O botao de enviar so repetia "Uploading...": sai da vista, o campo fica montado.
+    expect(within(form).queryByRole("button", { name: "Uploading..." })).not.toBeInTheDocument();
+    expect(within(form).queryByRole("combobox", { name: "Video type" })).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Lesson video")).toBeInTheDocument();
+    expect(screen.getByText("Tabs unlock when the upload finishes.")).toBeInTheDocument();
+    // A etiqueta da aba nao troca mais de palavra visivel (e de largura).
+    expect(within(videoTab).queryByText("Uploading...")?.className).toBe("sr-only");
+
+    await act(async () => { finish(); });
+    expect(screen.queryByText("Tabs unlock when the upload finishes.")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Upload file" })).toBeVisible();
+  });
+
   it("retains the selected file when choosing live recording", async () => {
     renderModal();
     const file = chooseVideoFile();

@@ -3312,13 +3312,19 @@ body:has([aria-label="Course categories"])
   max-width: 440px;
 }
 
-/* Full-width row below the editing panel: course-structure recap + the
-   review/submit action card, with the asset uploader spanning underneath. */
+/* Linha abaixo do painel: o cartao de publicar (360 px, a direita; abaixo de
+   1180 px ocupa a largura) e a biblioteca de midia embaixo. O cartao "Course
+   structure" que ficava a esquerda saiu. */
 .course-builder-footer {
   display: grid;
   gap: 1.25rem;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 360px);
+  grid-template-columns: minmax(0, 1fr);
   align-items: start;
+}
+
+.course-builder-footer > .settings-section-card {
+  justify-self: end;
+  width: min(100%, 360px);
 }
 
 .course-builder-footer__full {
@@ -3703,7 +3709,22 @@ body:has([aria-label="Course categories"])
   max-height: none;
   overflow: visible;
   border-color: var(--color-line);
+  /* Pagina, nao janela: sem o canto de 16 px e sem o brilho vermelho do canto
+     (radial e so do hero). */
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
   box-shadow: none;
+}
+
+/* A 1920 px a aula esticava ate 1.450 px: previa do video de 1.474 x 829 px e
+   campos de ponta a ponta. Uma coluna de leitura, como nas pranchas. */
+.lesson-modal--page .lesson-modal__body > * {
+  max-width: 48rem;
+}
+
+/* O titulo da aula ficava em 37,6 px, maior que o h1 do curso (30 px). */
+.lesson-modal--page .lesson-modal__context h3 {
+  font-size: 1.5rem;
 }
 
 .lesson-modal__trail {
@@ -3839,16 +3860,41 @@ body:has([aria-label="Course categories"])
   color: var(--color-primary);
 }
 
-.lesson-modal__tabs span {
-  border: 1px solid var(--color-line);
-  border-radius: 999px;
+/* Estado da aba em tamanho fixo: a palavra trocava a largura e a fileira
+   pulava. Ponto de 8 px (a palavra fica em sr-only) e, em Materials, o numero. */
+.lesson-modal__tab-count {
+  min-width: 1.25rem;
+  border-radius: var(--radius-sm);
   background: var(--color-surface-soft);
-  padding: 0.125rem 0.45rem;
+  padding: 0.0625rem 0.375rem;
   color: var(--color-primary);
-  font-size: 0.625rem;
-  font-weight: 900;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.lesson-modal__tab-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  flex: none;
+  border-radius: 999px;
+  background: var(--color-line-strong);
+}
+
+.lesson-modal__tab-dot[data-tone="busy"] {
+  background: var(--color-brass);
+}
+
+.lesson-modal__tab-dot[data-tone="done"] {
+  background: var(--color-success-fg);
+}
+
+.lesson-modal__tabs-note {
+  margin-bottom: 1rem;
+  color: var(--color-ink-soft);
+  font-size: 0.75rem;
+  font-weight: 600;
 }
 
 .lesson-modal__body {
@@ -3872,6 +3918,7 @@ body:has([aria-label="Course categories"])
 
 .lesson-video-source-picker__options {
   display: grid;
+  max-width: 48rem;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
   gap: 0.75rem;
 }
@@ -3953,7 +4000,6 @@ body:has([aria-label="Course categories"])
 
 .lesson-video-source-picker__url.is-active {
   border-color: var(--color-brass);
-  box-shadow: inset 3px 0 0 var(--color-brass);
 }
 
 .lesson-video-source-picker__url-label {
@@ -4143,14 +4189,45 @@ body:has([aria-label="Course categories"])
   background: var(--color-surface-soft);
 }
 
+/* Cartao de envio compacto: era grid sem limite, e o botao "Upload file" e
+   a previa local esticavam ate a largura da pagina. Agora a previa 16:9 fica
+   ao lado (vai para cima no celular) e os botoes tem a largura do texto. */
 .lesson-modal-upload {
-  display: grid;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
   min-width: 0;
-  gap: 0.85rem;
+  max-width: 48rem;
+  gap: 1.25rem;
   border: 1px solid var(--color-line);
   border-radius: var(--radius-lg);
   background: #ffffff;
-  padding: 1rem;
+  padding: 1.25rem;
+}
+
+.lesson-modal-upload__video {
+  width: 13rem;
+  max-width: 100%;
+  flex: none;
+  aspect-ratio: 16 / 9;
+  border-radius: var(--radius-md);
+  background: #000000;
+  object-fit: contain;
+}
+
+.lesson-modal-upload__body {
+  display: grid;
+  flex: 1 1 16rem;
+  min-width: 0;
+  justify-items: start;
+  gap: 0.75rem;
+}
+
+.lesson-modal-upload__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.75rem;
 }
 
 .lesson-modal-upload label:has(> input[type="file"]) {
@@ -4181,6 +4258,16 @@ body:has([aria-label="Course categories"])
   color: var(--color-primary);
   font-size: 0.75rem;
   font-weight: 800;
+}
+
+/* O nome do arquivo e o titulo do cartao, nao mais uma caixa azul. */
+.lesson-modal-upload__file {
+  max-width: 100%;
+  background: none;
+  padding: 0;
+  color: var(--color-ink);
+  font-size: 0.9375rem;
+  font-weight: 700;
 }
 
 .lesson-modal-upload__error {
@@ -4362,9 +4449,22 @@ body:has([aria-label="Course categories"])
 [data-theme="dark"] .lesson-modal-assets article,
 [data-theme="dark"] .lesson-video-source-picker__dropzone,
 [data-theme="dark"] .lesson-video-source-picker__url,
-[data-theme="dark"] .lesson-video-source-picker__url input,
 [data-theme="dark"] .lesson-modal-setting {
   background: var(--color-surface-strong);
+}
+
+/* No escuro o campo de link e a chave desligada tinham a cor do proprio
+   cartao e so se liam pela linha fina: um degrau mais fundo que o cartao. */
+[data-theme="dark"] .lesson-video-source-picker__url input {
+  background: var(--color-surface);
+}
+
+[data-theme="dark"] .lesson-modal-setting button:not(.is-on) {
+  background: var(--color-base);
+}
+
+[data-theme="dark"] .lesson-modal--page {
+  background: var(--color-surface);
 }
 
 /* On-toggle track inverts to light blue in dark; flip the knob to dark ink so it
@@ -4416,7 +4516,8 @@ body:has([aria-label="Course categories"])
 
   .lesson-modal__tabs button {
     display: grid;
-    grid-template-columns: 0.875rem minmax(0, 1fr);
+    grid-template-columns: 0.875rem minmax(0, 1fr) auto;
+    align-items: center;
     min-width: 0;
     gap: 0 0.375rem;
     padding: 0.25rem 0.5rem;
@@ -4425,13 +4526,6 @@ body:has([aria-label="Course categories"])
     text-align: left;
     white-space: normal;
     overflow-wrap: anywhere;
-  }
-
-  .lesson-modal__tabs span {
-    grid-column: 2;
-    justify-self: start;
-    min-width: 0;
-    max-width: 100%;
   }
 }
 
@@ -7033,8 +7127,8 @@ button:hover > .dash-card,
     grid-template-columns: 1fr;
   }
 
-  .course-builder-footer {
-    grid-template-columns: minmax(0, 1fr);
+  .course-builder-footer > .settings-section-card {
+    width: 100%;
   }
 
   .course-builder-step.is-active::before {

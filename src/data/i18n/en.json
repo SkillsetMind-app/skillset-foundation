@@ -3814,6 +3814,8 @@
       "noThumbnail": "No lesson thumbnail yet.",
       "contextHelp": "Configure the exact lesson students will watch, read, download, and discuss.",
       "saveHelp": "Uploads save immediately. Text and settings save with the course draft.",
+      "tabsLocked": "Tabs unlock when the upload finishes.",
+      "backToModule": "Back to module",
       "file": {
         "selectAnother": "Choose a different file",
         "selected": "Selected",
@@ -4117,19 +4119,12 @@
         "month": " / month",
         "year": " / year",
         "setPrice": "Set price",
-        "checks": "{done} of {total} checks ready",
-        "publishPercent": "Publish readiness {percent}%",
-        "percent": "{percent}% ready",
+        "checks": "{done} of {total} checks · {percent}%",
         "modulesOne": "1 module",
         "modules": "{count} modules",
         "lessonsOne": "1 lesson",
         "lessons": "{count} lessons",
-        "duration": "{duration} total",
-        "structure": "Course structure",
-        "empty": "Start with one module, then add the lessons learners should complete.",
-        "noLessons": "No lessons yet.",
-        "preview": " - preview",
-        "structureCount": "{modules}, {lessons}"
+        "duration": "{duration} total"
       },
       "shell": {
         "chooseCourse": "Choose a course from Teacher Studio before opening the builder.",
@@ -4140,13 +4135,11 @@
         "legacy": "This course carries a legacy review status. Complete the checks and publish it directly from this workspace.",
         "published": "This course is live. You can keep improving its content and learner experience without creating a new review cycle.",
         "reviewNote": "SkillsetMind review note",
-        "unpublished": "This product is not published yet. Students only see it after you publish.",
-        "unpublishedLink": "Open the product panel"
+        "unpublished": "Students see it after you publish."
       },
       "navigation": {
         "studio": "Back to Teacher Studio",
         "manage": "Manage product",
-        "saving": "Saving...",
         "save": "Save draft",
         "steps": "Course creation steps",
         "creation": "Course creation",
@@ -4158,7 +4151,6 @@
       "publish": {
         "ready": "Course is ready to publish.",
         "title": "Publish readiness",
-        "heading": "Ready the product for launch",
         "helpTopic": "Course publishing",
         "help": "SkillsetMind verifies the professional, where required, rather than manually approving every course. Once these product checks pass (and your professional verification is approved, where required), you publish directly and the marketplace link opens right away.",
         "optional": "Optional",

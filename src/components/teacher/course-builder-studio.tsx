@@ -57,7 +57,6 @@ import { clearLessonVideoSelection, reconcileLessonVideoSelections } from "@/lib
 import type { DripStrategy } from "@/domain/drip-policy";
 import { DEFAULT_PLATFORM_FEE_BPS } from "@/lib/payments/rules";
 import type {
-  LessonType,
   MembersTheme,
   TeacherCourse,
   TeacherLesson,
@@ -109,7 +108,7 @@ import {
 import { compressImage, MAX_SOURCE_IMAGE_BYTES } from "@/lib/media/compress-image";
 import { ReadinessGroups } from "@/components/teacher/readiness-groups";
 import { UploadProgressNote } from "@/components/teacher/upload-progress-note";
-import { Button, buttonClasses, EmptyState, InlineAlert } from "@/components/ui";
+import { Button, buttonClasses, EmptyState } from "@/components/ui";
 import { DrawnCheck, MilestoneSeal, useJustDone } from "@/components/ui/drawn-check";
 import { SpotArt } from "@/components/ui/spot-art";
 import type { CourseAsset } from "@/domain/course-asset";
@@ -300,10 +299,6 @@ function normalizeDripDelayDays(value: string): number | null {
   }
 
   return Math.round(parsedValue);
-}
-
-function getLessonTypeLabel(type: LessonType, t: (key: string) => string) {
-  return t(`publicCourses.lessonTypes.${type}`);
 }
 
 function moveArrayItem<T>(items: T[], fromIndex: number, toIndex: number): T[] {
@@ -607,6 +602,9 @@ export function CourseBuilderStudio() {
   const [moveStatus, setMoveStatus] = useState<{ moduleId: string; text: string } | null>(null);
   const [isMediaLibraryOpen, setIsMediaLibraryOpen] = useState(false);
   const [error, setError] = useState<BuilderError | null>(null);
+  // Onde o erro aparece: perto do botao que o causou. Num cartao so, no fim
+  // da pagina, o "Save draft" do topo parecia nao fazer nada.
+  const [errorSlot, setErrorSlot] = useState<"hero" | "footer" | "publish">("footer");
   const [success, setSuccess] = useState<"lessonAdded" | "draftSaved" | "published" | null>(null);
   const errorMessage = error
     ? t(`creatorEditor.builder.errors.${error.code}`)
@@ -1190,6 +1188,8 @@ export function CourseBuilderStudio() {
   const activeLessonStudioModuleIndex = activeLessonStudioModule
     ? modules.findIndex((module) => module.id === activeLessonStudioModule.id)
     : -1;
+  // Mesma condicao que escolhe renderLessonPage() na aba Curriculum.
+  const isLessonPage = activeTab === "content" && !(ebookLesson && ebookModule) && Boolean(activeLessonStudioLesson);
   const activeLessonStudioLessonIndex =
     activeLessonStudioModule && activeLessonStudioLesson
       ? activeLessonStudioModule.lessons.findIndex(
@@ -2136,9 +2136,16 @@ export function CourseBuilderStudio() {
               onChange={(event) => setLessonTitle(event.target.value)}
               disabled={!isEditable}
               aria-label={t("creatorEditor.builder.curriculum.lessonTitle")}
+              aria-invalid={error?.code === "lessonTitle" || undefined}
               placeholder={t("creatorEditor.builder.curriculum.lessonTitle")}
-              className="min-w-0 rounded-md border border-[var(--color-field-border)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
+              className="min-w-0 rounded-md border border-[var(--color-field-border)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--color-primary-light)] aria-[invalid=true]:border-[var(--color-danger-fg)] disabled:bg-[var(--color-surface-soft)]"
             />
+            {/* Como no formulario do modulo: o aviso sai aqui, nao no rodape. */}
+            {error?.code === "lessonTitle" ? (
+              <p role="alert" className="text-xs font-semibold text-[var(--color-danger-fg)]">
+                {errorMessage}
+              </p>
+            ) : null}
             {/* Previa gratis e a minoria dos casos: fica a um clique daqui. */}
             <details className="rounded-md border fine-rule bg-[var(--color-surface-soft)] px-4 py-3">
               <summary className="cursor-pointer text-xs font-semibold text-[var(--color-ink-soft)]">
@@ -2165,7 +2172,12 @@ export function CourseBuilderStudio() {
               </button>
               <button
                 type="button"
-                onClick={() => setLessonFormModuleId("")}
+                onClick={() => {
+                  setLessonFormModuleId("");
+                  if (error?.code === "lessonTitle") {
+                    setError(null);
+                  }
+                }}
                 className="button-outline px-4 py-2.5 text-sm"
               >
                 {t("creatorEditor.builder.curriculum.cancel")}
@@ -2823,7 +2835,10 @@ export function CourseBuilderStudio() {
       size="lg"
       icon={<Send aria-hidden="true" size={16} strokeWidth={2} />}
       loading={isSubmitting}
-      onClick={publishCourse}
+      onClick={() => {
+        setErrorSlot(activeTab === "review" ? "publish" : "footer");
+        void publishCourse();
+      }}
       disabled={!canPublish || !readyToPublish || !priceFieldIsValid}
       className="w-full disabled:opacity-60 sm:w-auto"
     >
@@ -2835,32 +2850,52 @@ export function CourseBuilderStudio() {
     </Button>
   );
 
+  // Um alerta so, renderizado no lugar de errorSlot. O titulo vazio da aula
+  // nova fica no proprio formulario dela.
+  const builderErrorAlert = error && error.code !== "lessonTitle" ? (
+    <div
+      role="alert"
+      className="rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]"
+    >
+      <p>{errorMessage}</p>
+      {error.code === "plan" ? (
+        <Link href="/account/billing?tab=subscriptions" className="button-solid mt-3 px-4 py-2 text-xs">
+          {t("creatorEditor.builder.publish.managePlan")}
+        </Link>
+      ) : error.code === "activation" ? (
+        <Link
+          href={activateHref}
+          className="button-solid mt-3 px-4 py-2 text-xs"
+        >
+          {t("creatorEditor.builder.publish.activate")}
+        </Link>
+      ) : error.code === "payouts" ? (
+        <Link
+          href="/account/payments#stripe-connect"
+          className="button-solid mt-3 px-4 py-2 text-xs"
+        >
+          {t("creatorPanel.hub.pricing.finishOnboarding")}
+        </Link>
+      ) : null}
+    </div>
+  ) : null;
+  const footerShowsError = errorSlot === "footer" || (errorSlot === "publish" && activeTab !== "review");
+
   return (
     <div className="course-builder-shell">
-      {/* A Hotmart mostra "esse produto nao esta publicado" no topo do editor
-          enquanto e rascunho. Aqui o chip de status ficava escondido entre
-          outros dois, e quem entrava pelo construtor nao sabia se o aluno ja
-          via o curso. Rascunho e "ajustes pedidos" nunca chegaram ao
-          marketplace; "inativo" pode ter aluno matriculado, entao a frase
-          "so veem depois de publicar" seria falsa e ele fica de fora. */}
-      {course?.status === "draft" || course?.status === "needs_changes" ? (
-        <InlineAlert tone="info" className="flex flex-wrap items-center gap-x-4 gap-y-1">
-          <span>{t("creatorEditor.builder.shell.unpublished")}</span>
-          <Link
-            href={`/teach/courses/${encodeURIComponent(courseId ?? "")}/manage`}
-            className="inline-flex min-h-11 items-center font-bold text-[var(--color-primary)] underline underline-offset-2"
-          >
-            {t("creatorEditor.builder.shell.unpublishedLink")}
-          </Link>
-        </InlineAlert>
-      ) : null}
       <section className="course-builder-hero">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <StatusChip status={course?.status ?? "draft"} />
-            <span className="rounded-chip border border-[var(--color-line)] bg-[var(--color-surface)]/70 px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--color-ink-soft)]">
-              {t("creatorEditor.builder.summary.percent").replace("{percent}", () => String(readiness.percent))}
-            </span>
+            {/* Cada estado uma vez: a faixa azul repetia o "Draft" do selo e o
+                "% ready" repetia o stepper. Fica a frase curta ao lado do selo.
+                Rascunho e "ajustes pedidos" nunca chegaram ao marketplace;
+                "inativo" pode ter aluno matriculado e fica de fora. */}
+            {course?.status === "draft" || course?.status === "needs_changes" ? (
+              <span className="text-xs font-semibold text-[var(--color-ink-soft)]">
+                {t("creatorEditor.builder.shell.unpublished")}
+              </span>
+            ) : null}
             {isEditable ? (
               <BuilderSaveStatus
                 state={displayedSaveStatus}
@@ -2900,16 +2935,22 @@ export function CourseBuilderStudio() {
             {t("creatorEditor.preview.open")}
             <span className="sr-only"> {t("account.opensNewTab")}</span>
           </Link>
-          <button
-            type="button"
-            onClick={saveDraft}
-            disabled={!isEditable || isSaving}
-            className="button-solid px-4 py-2.5 text-sm disabled:opacity-60"
+          {/* Contorno, nao navy: o curso ja salva sozinho e o selo ao lado diz
+              o estado. O rotulo nao vira "Saving..." (o selo ja diz). */}
+          <Button
+            variant="outline"
+            loading={isSaving}
+            onClick={() => {
+              setErrorSlot("hero");
+              void saveDraft();
+            }}
+            disabled={!isEditable}
           >
-            {isSaving ? t("creatorEditor.builder.navigation.saving") : t("creatorEditor.builder.navigation.save")}
-          </button>
+            {t("creatorEditor.builder.navigation.save")}
+          </Button>
         </div>
       </section>
+      {errorSlot === "hero" ? builderErrorAlert : null}
 
       <nav className="course-builder-stepper" aria-label={t("creatorEditor.builder.navigation.steps")}>
         <div className="course-builder-stepper__head">
@@ -2925,12 +2966,14 @@ export function CourseBuilderStudio() {
             </p>
           </div>
           <div className="course-builder-stepper__meter">
-            <div className="flex items-center justify-between gap-4 text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--color-ink-soft)]">
-              <span>{t("creatorEditor.builder.summary.checks").replace("{done}", () => String(readiness.doneCount)).replace("{total}", () => String(readiness.total))}</span>
-              <span className="text-[var(--color-primary)]">
-                {t("creatorEditor.builder.summary.publishPercent").replace("{percent}", () => String(readiness.percent))}
-              </span>
-            </div>
+            {/* A prontidao mora so aqui, numa linha: o "71%" aparecia tres
+                vezes (chip do topo, esta linha e o cartao do rodape). */}
+            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--color-ink-soft)]">
+              {t("creatorEditor.builder.summary.checks")
+                .replace("{done}", () => String(readiness.doneCount))
+                .replace("{total}", () => String(readiness.total))
+                .replace("{percent}", () => String(readiness.percent))}
+            </p>
             {/* A barra media estagios (5) e o chip media checks (7): 40% e
                 71% no mesmo cabecalho para o mesmo curso. Agora os tres leem
                 o mesmo numero. */}
@@ -2986,7 +3029,10 @@ export function CourseBuilderStudio() {
       </nav>
 
       <section className="course-builder-panel">
-          {/* key: trocar de aba remonta o cabecalho e a animacao roda de novo. */}
+          {/* key: trocar de aba remonta o cabecalho e a animacao roda de novo.
+              Na pagina da aula ele sai: "Build the curriculum." e as contagens
+              ficavam entre o construtor e a aula, e a trilha ja diz onde se esta. */}
+          {isLessonPage ? null : (
           <div key={activeTab} className={`${panelIn} flex flex-wrap items-start justify-between gap-4 pb-4`}>
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
@@ -3047,6 +3093,7 @@ export function CourseBuilderStudio() {
               <span>{formattedPrice}</span>
             </div>
           </div>
+          )}
 
         {course?.status === "in_review" ? (
           <p className="mt-5 rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
@@ -3804,18 +3851,17 @@ export function CourseBuilderStudio() {
             id="builder-sec-review"
             className={`${panelIn} mt-6 scroll-mt-24 rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-5`}
           >
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
+            {/* O titulo do painel ja diz "Publish to the marketplace.": um
+                segundo titulo de 30 px logo abaixo repetia a mesma coisa. */}
+            <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
               {t("creatorEditor.builder.publish.title")}
-            </p>
-            <h4 className="display-title mt-3 flex items-center gap-2 text-3xl text-[var(--color-ink)]">
-              {t("creatorEditor.builder.publish.heading")}
               <InlineHelp
                 topic={t("creatorEditor.builder.publish.helpTopic")}
                 href="/help#course-publishing"
               >
                 {t("creatorEditor.builder.publish.help")}
               </InlineHelp>
-            </h4>
+            </p>
             <ReadinessGroups
               readiness={readiness}
               className="mt-5 grid gap-6"
@@ -3873,6 +3919,11 @@ export function CourseBuilderStudio() {
           </div>
         ) : null}
 
+        {/* Aba Publish: a recusa do Publish sai logo acima do botao. */}
+        {errorSlot === "publish" && activeTab === "review" && builderErrorAlert ? (
+          <div className="mt-6">{builderErrorAlert}</div>
+        ) : null}
+
         <div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-[var(--color-line)] pt-6">
           <button
             type="button"
@@ -3924,89 +3975,15 @@ export function CourseBuilderStudio() {
       </section>
 
       <div className="course-builder-footer">
-        {/* O e-book nao tem estrutura de modulos e aulas para mostrar. */}
-        {productFormat === "ebook" ? null : (
-        <section className="settings-section-card">
-          <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-            {t("creatorEditor.builder.summary.structure")}
-          </p>
-          <h3 className="display-title mt-3 text-3xl text-[var(--color-ink)]">
-            {t("creatorEditor.builder.summary.structureCount").replace("{modules}", () => modulesLabel).replace("{lessons}", () => lessonsLabel)}
-          </h3>
-          <div className="mt-5 grid gap-3">
-            {modules.length === 0 ? (
-              <p className="rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
-                {t("creatorEditor.builder.summary.empty")}
-              </p>
-            ) : (
-              modules.map((module, index) => (
-                <article
-                  key={module.id}
-                  className="rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4"
-                >
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
-                    {t("creatorEditor.builder.curriculum.moduleNumber").replace("{index}", () => String(index + 1))}
-                  </p>
-                  <h4 className="mt-2 text-sm font-semibold text-[var(--color-ink)]">
-                    {module.title}
-                  </h4>
-                  <div className="mt-3 grid gap-2">
-                    {module.lessons.length === 0 ? (
-                      <p className="text-xs leading-5 text-[var(--color-ink-soft)]">
-                        {t("creatorEditor.builder.summary.noLessons")}
-                      </p>
-                    ) : (
-                      module.lessons.map((lesson) => (
-                        <div
-                          key={lesson.id}
-                          className="rounded-md bg-white px-3 py-2"
-                        >
-                          <p className="text-xs font-semibold text-[var(--color-ink)]">
-                            {lesson.title}
-                          </p>
-                          <p className="mt-1 text-[11px] uppercase tracking-[0.12em] text-[var(--color-ink-soft)]">
-                            {getLessonTypeLabel(lesson.type, t)}
-                            {lesson.durationMinutes ? ` - ${lesson.durationMinutes} min` : ""}
-                            {typeof lesson.dripDelayDays === "number"
-                              ? ` - D+${lesson.dripDelayDays}`
-                              : ""}
-                            {freePreviewLessonId === lesson.id ? t("creatorEditor.builder.summary.preview") : ""}
-                          </p>
-                          {lesson.description ? (
-                            <p className="mt-2 text-xs leading-5 text-[var(--color-ink-soft)]">
-                              {lesson.description}
-                            </p>
-                          ) : null}
-                          {lesson.contentText ? (
-                            <p className="mt-2 line-clamp-2 text-xs leading-5 text-[var(--color-ink-soft)]">
-                              {lesson.contentText}
-                            </p>
-                          ) : null}
-                          {lesson.externalUrl ? (
-                            <p className="mt-2 break-all text-[11px] leading-5 text-[var(--color-primary)]">
-                              {lesson.externalUrl}
-                            </p>
-                          ) : null}
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </article>
-              ))
-            )}
-          </div>
-        </section>
-        )}
-
+        {/* O cartao "Course structure" saiu: repetia, embaixo de toda aba, a
+            lista inteira de modulos e aulas que a aba Curriculum ja e. */}
         <section className="settings-section-card">
           <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
             {t("creatorEditor.builder.publish.title")}
           </p>
           {/* Era uma segunda lista, escrita a mao com regra diferente da aba
-              Publish (sem parcelas, outro texto de preco). Mesma fonte agora. */}
-          <p className="mt-2 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-ink-muted)]">
-            {t("creatorEditor.builder.summary.percent").replace("{percent}", () => String(readiness.percent))}
-          </p>
+              Publish (sem parcelas, outro texto de preco). Mesma fonte agora.
+              A porcentagem fica so no stepper. */}
           <div className="mt-4 grid gap-2 text-sm text-[var(--color-ink-soft)]">
             {readiness.pending.length === 0 ? (
               <p>{t("creatorEditor.builder.publish.passed")}</p>
@@ -4014,33 +3991,7 @@ export function CourseBuilderStudio() {
               readiness.pending.map((item) => <p key={item.id}>{item.hint}</p>)
             )}
           </div>
-          {error ? (
-            <div
-              role="alert"
-              className="mt-4 rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]"
-            >
-              <p>{errorMessage}</p>
-              {error.code === "plan" ? (
-                <Link href="/account/billing?tab=subscriptions" className="button-solid mt-3 px-4 py-2 text-xs">
-                  {t("creatorEditor.builder.publish.managePlan")}
-                </Link>
-              ) : error.code === "activation" ? (
-                <Link
-                  href={activateHref}
-                  className="button-solid mt-3 px-4 py-2 text-xs"
-                >
-                  {t("creatorEditor.builder.publish.activate")}
-                </Link>
-              ) : error.code === "payouts" ? (
-                <Link
-                  href="/account/payments#stripe-connect"
-                  className="button-solid mt-3 px-4 py-2 text-xs"
-                >
-                  {t("creatorPanel.hub.pricing.finishOnboarding")}
-                </Link>
-              ) : null}
-            </div>
-          ) : null}
+          {builderErrorAlert && footerShowsError ? <div className="mt-4">{builderErrorAlert}</div> : null}
           {success && success !== "published" ? (
             <p key={success} className="motion-rise-in mt-4 info-notice">
               {t(`creatorEditor.builder.success.${success}`)}
@@ -4067,14 +4018,18 @@ export function CourseBuilderStudio() {
             />
           ) : null}
           <div className="mt-5 grid gap-3">
-            <button
-              type="button"
-              onClick={saveDraft}
-              disabled={!isEditable || isSaving}
-              className="button-outline button-lg disabled:opacity-60"
+            <Button
+              variant="outline"
+              size="lg"
+              loading={isSaving}
+              onClick={() => {
+                setErrorSlot("footer");
+                void saveDraft();
+              }}
+              disabled={!isEditable}
             >
-              {isSaving ? t("creatorEditor.builder.navigation.saving") : t("creatorEditor.builder.navigation.save")}
-            </button>
+              {t("creatorEditor.builder.navigation.save")}
+            </Button>
             {activeTab === "review" || success === "published" ? null : publishButton}
             <Link href="/teach" className="button-outline px-4 py-2.5 text-sm">
               {t("creatorEditor.builder.navigation.studio")}

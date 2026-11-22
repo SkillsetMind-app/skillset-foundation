@@ -519,6 +519,24 @@ describe("pagina do modulo dentro do builder", () => {
     expect(within(card).getByRole("button", { name: "Add module" })).toBeInTheDocument();
   });
 
+  // O aviso caia no cartao do rodape, telas abaixo do botao: "Add lesson" sem
+  // titulo parecia nao fazer nada.
+  it("aula nova sem titulo: o aviso sai no formulario dela, uma vez so", async () => {
+    openAt("courseId=course-1&tab=content&module=m1");
+    const card = await renderBuilder();
+
+    fireEvent.click(within(card).getByRole("button", { name: "Add lesson to module 1" }));
+    const form = card.querySelector("form") as HTMLElement;
+    fireEvent.click(within(form).getByRole("button", { name: "Add lesson" }));
+
+    expect(within(form).getByRole("alert")).toHaveTextContent("Add a lesson title before creating the lesson.");
+    expect(within(form).getByRole("textbox", { name: "Lesson title" })).toHaveAttribute("aria-invalid", "true");
+    expect(screen.getAllByRole("alert")).toHaveLength(1);
+
+    fireEvent.click(within(form).getByRole("button", { name: "Cancel" }));
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
   it("id de modulo desconhecido ou apagado cai na lista, nao em tela vazia", async () => {
     openAt("courseId=course-1&tab=content&module=ghost");
     const card = await renderBuilder();

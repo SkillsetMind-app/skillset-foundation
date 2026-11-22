@@ -3814,6 +3814,8 @@
       "noThumbnail": "Todavía no hay miniatura de la lección.",
       "contextHelp": "Configura la lección que los estudiantes verán, leerán, descargarán y comentarán.",
       "saveHelp": "Los archivos se guardan al subirlos. El texto y la configuración se guardan con el borrador del curso.",
+      "tabsLocked": "Las pestañas se desbloquean cuando termina la subida.",
+      "backToModule": "Volver al módulo",
       "file": {
         "selectAnother": "Elegir otro archivo",
         "selected": "Seleccionado",
@@ -4117,19 +4119,12 @@
         "month": " / mes",
         "year": " / año",
         "setPrice": "Definir precio",
-        "checks": "{done} de {total} requisitos completos",
-        "publishPercent": "Preparación para publicar: {percent}%",
-        "percent": "{percent}% listo",
+        "checks": "{done} de {total} requisitos · {percent}%",
         "modulesOne": "1 módulo",
         "modules": "{count} módulos",
         "lessonsOne": "1 lección",
         "lessons": "{count} lecciones",
-        "duration": "{duration} en total",
-        "structure": "Estructura del curso",
-        "empty": "Empieza con un módulo y añade las lecciones que deben completar los estudiantes.",
-        "noLessons": "Aún no hay lecciones.",
-        "preview": " - vista previa",
-        "structureCount": "{modules}, {lessons}"
+        "duration": "{duration} en total"
       },
       "shell": {
         "chooseCourse": "Elige un curso en el estudio del creador antes de abrir el constructor.",
@@ -4140,13 +4135,11 @@
         "legacy": "Este curso conserva un estado de revisión anterior. Completa los requisitos y publícalo directamente desde este espacio.",
         "published": "Este curso está publicado. Puedes seguir mejorando su contenido y la experiencia del estudiante sin iniciar otra revisión.",
         "reviewNote": "Nota de revisión de SkillsetMind",
-        "unpublished": "Este producto todavía no está publicado. Los estudiantes solo lo verán después de publicarlo.",
-        "unpublishedLink": "Abrir el panel del producto"
+        "unpublished": "Los estudiantes lo ven después de publicarlo."
       },
       "navigation": {
         "studio": "Volver al estudio del creador",
         "manage": "Gestionar producto",
-        "saving": "Guardando...",
         "save": "Guardar borrador",
         "steps": "Pasos para crear el curso",
         "creation": "Creación del curso",
@@ -4158,7 +4151,6 @@
       "publish": {
         "ready": "El curso está listo para publicar.",
         "title": "Preparación para publicar",
-        "heading": "Prepara el producto para el lanzamiento",
         "helpTopic": "Publicación del curso",
         "help": "SkillsetMind verifica al profesional, cuando se requiere, en lugar de aprobar manualmente cada curso. Al completar estos requisitos (y con tu verificación profesional aprobada, cuando se requiere), publicas directamente y el enlace del marketplace se abre en ese momento.",
         "optional": "Opcional",
