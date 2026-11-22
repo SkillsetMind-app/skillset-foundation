@@ -30,7 +30,8 @@ describe("C1: o chip de status quebra de linha em vez de sair do cartao", () => 
 describe("C2: botoes sem .button-* mantem o piso de 44px (min-h-11)", () => {
   const sites: [string, string][] = [
     ["components/auth/confirm-email-gate.tsx", "min-h-11 rounded-md bg-[var(--color-primary)]"],
-    ["components/auth/confirm-email-gate.tsx", "min-h-11 rounded-md border border-[var(--color-line)] bg-white px-4"],
+    // "Wrong email? Change it" virou link de texto, mas segue com 44px de alvo.
+    ["components/auth/confirm-email-gate.tsx", "min-h-11 rounded-md px-4 text-sm font-semibold text-[var(--color-primary)]"],
     ["components/auth/signup-form.tsx", '"min-h-11 rounded-md border-[1.5px]'],
     ["components/account/profile-settings-panel.tsx", "min-h-11 shrink-0 rounded-md border"],
     ["components/teacher/course-landing-editor.tsx", "inline-flex min-h-11 items-center gap-2 rounded-md bg-[var(--color-primary)]"],

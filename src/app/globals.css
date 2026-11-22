@@ -2278,8 +2278,31 @@ select:focus-visible {
     linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
 }
 
-.welcome-question {
-  animation: welcome-question-in 320ms ease-out both;
+/* Celular: "Continue" preso ao pe da tela. A barra rolava junto com a pagina
+   e ficava abaixo da dobra (e atras do teclado no passo do telefone). No
+   tablet e no computador ela volta a ser a barra comum do fim da pagina. */
+@media (max-width: 639.98px) {
+  .onboarding-footer {
+    position: sticky;
+    bottom: 0;
+    z-index: 10;
+    border-top: 1px solid var(--color-line);
+    background: var(--color-base);
+    padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  /* Campo focado e aviso de erro nunca param atras da barra presa. */
+  html:has(.onboarding-footer) {
+    scroll-padding-bottom: 6rem;
+  }
+}
+
+/* Cada pergunta entra com a mesma subida curta (180ms do sistema), so para
+   quem nao pediu menos movimento. */
+@media (prefers-reduced-motion: no-preference) {
+  .welcome-question {
+    animation: welcome-question-in var(--duration-base) var(--ease-standard) both;
+  }
 }
 
 @keyframes welcome-question-in {

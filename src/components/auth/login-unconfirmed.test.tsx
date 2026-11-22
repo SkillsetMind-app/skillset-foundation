@@ -69,7 +69,7 @@ describe("LoginForm: e-mail nunca confirmado", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "auth.signIn" }));
 
-    expect(await screen.findByText("auth.signup.confirmTitle")).toBeInTheDocument();
+    expect(await screen.findByText("auth.signup.confirmWaiting")).toBeInTheDocument();
     expect(screen.queryByRole("alert")).toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: "auth.signup.confirmResend" }));

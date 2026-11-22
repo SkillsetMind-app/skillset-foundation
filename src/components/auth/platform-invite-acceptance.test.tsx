@@ -58,6 +58,16 @@ describe("PlatformInviteAcceptance", () => {
     expect(mocks.assign).not.toHaveBeenCalled();
   });
 
+  // O-19: o convite abria numa pagina solta, sem logo nem caminho de volta.
+  it("opens inside the sign-in frame, with one page title and a way home", () => {
+    mocks.useAuth.mockReturnValue({ status: "unauthenticated", user: null });
+    render(<PlatformInviteAcceptance id={invitation.id} />);
+    expect(screen.getAllByRole("main")).toHaveLength(1);
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("SkillsetMind invitation");
+    expect(screen.getByRole("link", { name: "Back to home" })).toHaveAttribute("href", "/");
+  });
+
   it("waits for auth and preserves the invitation on both sign-in and signup links", () => {
     mocks.useAuth.mockReturnValue({ status: "loading", user: null });
     const view = render(<PlatformInviteAcceptance id={invitation.id} />);

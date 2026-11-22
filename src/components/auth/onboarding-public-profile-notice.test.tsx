@@ -70,6 +70,25 @@ describe("OnboardingChoice: o perfil de professor é público", () => {
     )).toBeInTheDocument();
   });
 
+  // O-22: a ativação rápida não tem campo de @. Sem um, o exemplo "@your-name"
+  // parecia o endereço da pessoa; o aviso de que o perfil é público continua.
+  it("ativação rápida sem @: diz que é público sem inventar o endereço", async () => {
+    mocks.getUserProfile.mockResolvedValue({
+      onboardingCompleted: true,
+      onboardingPath: "teacher",
+      roles: ["student"],
+      goals: [],
+      username: null,
+    });
+    render(<OnboardingChoice />);
+    await signIn();
+
+    expect(await screen.findByText(
+      "Your teacher profile (name, photo, bio and credentials) is public on SkillsetMind.",
+    )).toBeInTheDocument();
+    expect(screen.queryByText(/@your-name/)).toBeNull();
+  });
+
   it("fluxo completo, antes de escolher o @: mostra o formato do endereço", async () => {
     mocks.getUserProfile.mockResolvedValue(null);
     render(<OnboardingChoice />);

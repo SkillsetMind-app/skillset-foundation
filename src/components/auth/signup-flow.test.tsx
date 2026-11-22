@@ -117,7 +117,7 @@ describe("SignupForm: o olhinho e a porta de confirmacao", () => {
     fillStepOne();
     fillStepTwoAndSubmit();
 
-    expect(await screen.findByText("auth.signup.confirmTitle")).toBeInTheDocument();
+    expect(await screen.findByText("auth.signup.confirmWaiting")).toBeInTheDocument();
     expect(screen.getByText("patrick@example.com")).toBeInTheDocument();
     expect(mocks.router.push).not.toHaveBeenCalled();
 
