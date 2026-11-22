@@ -87,6 +87,27 @@ describe("SecuritySettingsPanel feedback", () => {
     expect(screen.getByLabelText("New email address")).toHaveClass("field-input");
   });
 
+  // A-10: as regras so surgiam na 1a letra (e empurravam o botao), e aqui nao
+  // havia o olho que o login e o cadastro tem.
+  it("mostra as regras antes de digitar, ligadas ao campo, e o olho nas duas senhas", () => {
+    render(<SecuritySettingsPanel />);
+
+    const next = screen.getByLabelText("New password");
+    const rules = screen.getByText("Your password must include:").closest("[id]")!;
+    expect(rules).toHaveTextContent("At least 8 characters");
+    expect(next).toHaveAttribute("aria-describedby", rules.id);
+
+    const eyes = screen.getAllByRole("button", { name: "Show password" });
+    expect(eyes).toHaveLength(2);
+    fireEvent.click(eyes[1]);
+    expect(next).toHaveAttribute("type", "text");
+    expect(screen.getByLabelText("Current password")).toHaveAttribute("type", "password");
+    // Um nome so; o estado vem do aria-pressed. O nome do campo e so o rotulo.
+    expect(eyes[1]).toHaveAttribute("aria-pressed", "true");
+    expect(eyes[0]).toHaveAttribute("aria-pressed", "false");
+    expect(screen.getByRole("textbox", { name: "New password" })).toBe(next);
+  });
+
   it("treats the email send limit as reassurance, not an error", async () => {
     mockedResetPassword.mockRejectedValue({
       code: "over_email_send_rate_limit",

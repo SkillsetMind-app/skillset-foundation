@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 
+import { AuthFrame } from "@/components/auth/auth-frame";
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { SkillsetSpinner } from "@/components/shared/skillset-spinner";
@@ -112,35 +113,32 @@ function AccessPanel({
   cta?: { href: string; label: string };
   secondary?: { href: string; label: string };
 }) {
+  const { t } = useTranslation();
+
+  // A mesma moldura e o mesmo tamanho de titulo das telas de entrada (logo,
+  // idioma, volta ao inicio). Antes era um cartao solto, sem logo, com um
+  // titulo de 48px que gritava.
   return (
-    <main className="page-shell min-h-screen">
-      <section className="mx-auto flex min-h-screen w-full max-w-3xl items-center px-5 py-12 sm:px-8">
-        <div className="w-full rounded-lg border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)] sm:p-8">
-          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-            {eyebrow}
-          </p>
-          <h1 className="display-title mt-3 text-5xl leading-none text-[var(--color-primary)]">
-            {title}
-          </h1>
-          <p className="mt-4 text-sm leading-7 text-[var(--color-ink-soft)]">
-            {description}
-          </p>
-          {(cta || secondary) ? (
-            <div className="mt-6 flex flex-wrap gap-3">
-              {cta ? (
-                <Link href={cta.href} className="button-solid px-4 py-2.5 text-sm">
-                  {cta.label}
-                </Link>
-              ) : null}
-              {secondary ? (
-                <Link href={secondary.href} className="button-outline px-4 py-2.5 text-sm">
-                  {secondary.label}
-                </Link>
-              ) : null}
-            </div>
+    <AuthFrame homeLabel={t("auth.page.backToHome")}>
+      <p className="mb-3 text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
+        {eyebrow}
+      </p>
+      <h1 className="auth-title display-title">{title}</h1>
+      <p className="auth-description">{description}</p>
+      {(cta || secondary) ? (
+        <div className="mt-6 flex flex-wrap gap-3">
+          {cta ? (
+            <Link href={cta.href} className="button-solid px-4 py-2.5 text-sm">
+              {cta.label}
+            </Link>
+          ) : null}
+          {secondary ? (
+            <Link href={secondary.href} className="button-outline px-4 py-2.5 text-sm">
+              {secondary.label}
+            </Link>
           ) : null}
         </div>
-      </section>
-    </main>
+      ) : null}
+    </AuthFrame>
   );
 }

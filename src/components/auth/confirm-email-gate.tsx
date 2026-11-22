@@ -1,19 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useLayoutEffect,
-  useState,
-  type FormEvent,
-} from "react";
+import { useEffect, useState, type FormEvent } from "react";
 
 import {
   TurnstileWidget,
   isCaptchaEnabled,
 } from "@/components/auth/turnstile-widget";
+import { usePageHeading } from "@/components/auth/page-heading";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { getAuthRoute, getLoadingRoute, getSafeReturnTo, type AuthPathIntent } from "@/lib/auth/routing";
 import {
@@ -59,11 +53,6 @@ function ResendStatus({ sent, cooldown, message }: { sent: boolean; cooldown: nu
   );
 }
 
-// O titulo grande da pagina (/auth) seguia "Crie sua conta" em cima da porta de
-// confirmar. A porta avisa a pagina enquanto esta na tela, e a pagina troca o
-// titulo por "Check your email". Sem provedor (porta solta), nao faz nada.
-export const ConfirmGateContext = createContext<((open: boolean) => void) | null>(null);
-
 // A porta "confirme seu e-mail", logo depois de criar a conta (e tambem quando
 // alguem tenta entrar sem ter confirmado).
 //
@@ -88,14 +77,9 @@ export function ConfirmEmailGate({
   onChangeEmail?: () => void;
 }) {
   const { t } = useTranslation();
-  const setGateOpen = useContext(ConfirmGateContext);
-  // Antes da pintura, para o titulo antigo nao piscar sobre a porta. A porta
-  // so existe no cliente (depois de criar a conta ou de um login sem
-  // confirmar), entao o layout effect nunca roda no servidor.
-  useLayoutEffect(() => {
-    setGateOpen?.(true);
-    return () => setGateOpen?.(false);
-  }, [setGateOpen]);
+  // O titulo grande da pagina (/auth) seguia "Crie sua conta" em cima da
+  // porta de confirmar: com ela na tela, vira "Check your email".
+  usePageHeading({ titleKey: "auth.signup.checkEmailTitle" });
   const [cooldown, startCooldown] = useResendCooldown();
   const [isSending, setIsSending] = useState(false);
   const [sent, setSent] = useState(false);
@@ -260,6 +244,10 @@ export function ExpiredConfirmationLink({
   onSignIn: (email: string) => void;
 }) {
   const { t } = useTranslation();
+  // Em /auth o aviso vira o titulo da pagina ("Sign in as a learner." ficava
+  // em cima dele). O titulo proprio so sai depois que a pagina ja mostra o
+  // dela: no HTML do servidor e solta, a tela segue com o seu.
+  const titleOnPage = usePageHeading({ titleKey: "auth.signup.expiredTitle" });
   const [email, setEmail] = useState("");
   const [cooldown, startCooldown] = useResendCooldown();
   const [isSending, setIsSending] = useState(false);
@@ -302,13 +290,16 @@ export function ExpiredConfirmationLink({
   }
 
   return (
+    // Sem o cartao tingido: a tela e a propria pagina, nao um quadro dentro dela.
     <form
       onSubmit={(event) => void handleSend(event)}
-      className="mt-5 grid gap-3 rounded-lg border border-[var(--color-line)] bg-[var(--color-surface-soft)] px-5 py-6"
+      className="mt-5 grid gap-3"
     >
-      <h2 className="text-lg font-semibold text-[var(--color-ink)]">
-        {t("auth.signup.expiredTitle")}
-      </h2>
+      {titleOnPage ? null : (
+        <h2 className="text-lg font-semibold text-[var(--color-ink)]">
+          {t("auth.signup.expiredTitle")}
+        </h2>
+      )}
       <p className="text-sm leading-6 text-[var(--color-ink-soft)]">
         {t("auth.signup.expiredBody")}
       </p>

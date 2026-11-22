@@ -58,11 +58,13 @@ export function PlanSelectorCards<TValue extends string>({
               onClick={() => onChange(option.value)}
               className={cn(
                 "group grid gap-4 rounded-lg border-2 bg-white p-5 text-left transition duration-[180ms] ease-out",
-                "hover:-translate-y-0.5 hover:border-[rgba(26,54,93,0.22)] hover:shadow-[var(--shadow-soft)]",
-                "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[3px] focus-visible:outline-[rgba(26,54,93,0.28)]",
+                "hover:-translate-y-0.5 hover:shadow-[var(--shadow-soft)]",
+                "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[3px] focus-visible:outline-[var(--focus-ring)]",
+                // Escolhido na cor principal, sem o rosa do vermelho antigo; o
+                // hover so reforca a borda de quem nao esta escolhido.
                 isSelected
-                  ? "border-[var(--color-accent-fg)] bg-[rgba(178,34,52,0.04)]"
-                  : "border-[var(--color-line)]",
+                  ? "border-[var(--color-primary)] bg-[var(--color-surface-soft)]"
+                  : "border-[var(--color-line)] hover:border-[var(--color-line-strong)]",
                 isDisabled &&
                   "cursor-not-allowed opacity-55 hover:translate-y-0 hover:border-[var(--color-line)] hover:shadow-none",
               )}
@@ -84,7 +86,7 @@ export function PlanSelectorCards<TValue extends string>({
                     // motion-select: o selo da escolha cresce de 0,6 para 1
                     // (catálogo de movimento, item 2).
                     isSelected &&
-                      "motion-select bg-[rgba(178,34,52,0.08)] text-[var(--color-accent-fg)]",
+                      "motion-select bg-[var(--color-primary)] text-[var(--color-on-primary)]",
                   )}
                 >
                   <Icon aria-hidden="true" size={18} />

@@ -63,6 +63,18 @@ describe("ProtectedSurface — senha aceita, codigo ainda nao", () => {
     expect(screen.getByText("conteudo protegido")).toBeTruthy();
   });
 
+  // A-21: o muro era um cartao solto, sem logo, com titulo de 48px.
+  it("o muro usa a moldura e o titulo das telas de entrada", () => {
+    mocks.session = { status: "unauthenticated", user: null };
+    const { container } = renderGuarded();
+
+    expect(container.querySelector(".auth-split .auth-card")).toBeInTheDocument();
+    const heading = screen.getByRole("heading", { level: 1, name: "auth.guard.signInTitle" });
+    expect(heading).toHaveClass("auth-title");
+    expect(heading).not.toHaveClass("text-5xl");
+    expect(screen.getAllByRole("main")).toHaveLength(1);
+  });
+
   it("carries the guarded path and query into both sign-in and account creation", () => {
     mocks.session = { status: "unauthenticated", user: null };
     const originalUrl = window.location.href;

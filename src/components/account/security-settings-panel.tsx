@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import { TotpMfaSection } from "@/components/account/totp-mfa-section";
 import { useAuth } from "@/components/auth/auth-provider";
+import { PasswordVisibilityToggle } from "@/components/auth/password-visibility-toggle";
 import {
   isStrongPassword,
   PasswordStrengthChecklist,
@@ -45,6 +46,8 @@ export function SecuritySettingsPanel() {
   const [newEmail, setNewEmail] = useState("");
   const [currentPassword, setCurrentPassword] = useState("");
   const [nextPassword, setNextPassword] = useState("");
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNextPassword, setShowNextPassword] = useState(false);
   // Qual ação está em andamento, para só o botão apertado trocar o texto.
   // Todos continuam travados juntos: o token do CAPTCHA abaixo é de uso único
   // e é dividido entre as três ações que vão ao GoTrue.
@@ -299,31 +302,48 @@ export function SecuritySettingsPanel() {
           <div className="mt-4 grid gap-3">
             <Field id="security-current-password" label={t("accountSecurity.password.current")}>
               {(a11y) => (
-                <input
-                  {...a11y}
-                  type="password"
-                  value={currentPassword}
-                  onChange={(event) => setCurrentPassword(event.target.value)}
-                  autoComplete="current-password"
-                  className="field-input"
-                />
+                <span className="relative block">
+                  <input
+                    {...a11y}
+                    type={showCurrentPassword ? "text" : "password"}
+                    value={currentPassword}
+                    onChange={(event) => setCurrentPassword(event.target.value)}
+                    autoComplete="current-password"
+                    className="field-input pr-11"
+                  />
+                  <PasswordVisibilityToggle
+                    visible={showCurrentPassword}
+                    onToggle={() => setShowCurrentPassword((visible) => !visible)}
+                  />
+                </span>
               )}
             </Field>
             <Field id="security-new-password" label={t("accountSecurity.password.next")}>
               {(a11y) => (
-                <input
-                  {...a11y}
-                  type="password"
-                  value={nextPassword}
-                  onChange={(event) => setNextPassword(event.target.value)}
-                  autoComplete="new-password"
-                  className="field-input"
-                />
+                <span className="relative block">
+                  <input
+                    {...a11y}
+                    // As regras abaixo sao a descricao do campo (o Field nao
+                    // tem dica aqui, entao nao ha outra a perder).
+                    aria-describedby="security-password-rules"
+                    type={showNextPassword ? "text" : "password"}
+                    value={nextPassword}
+                    onChange={(event) => setNextPassword(event.target.value)}
+                    autoComplete="new-password"
+                    className="field-input pr-11"
+                  />
+                  <PasswordVisibilityToggle
+                    visible={showNextPassword}
+                    onToggle={() => setShowNextPassword((visible) => !visible)}
+                  />
+                </span>
               )}
             </Field>
-            {nextPassword ? (
+            {/* Visiveis desde o inicio (as que faltam, apagadas): antes so
+                surgiam na 1a letra e empurravam o botao para baixo. */}
+            <div id="security-password-rules">
               <PasswordStrengthChecklist password={nextPassword} />
-            ) : null}
+            </div>
             <TurnstileWidget
               onToken={setCaptchaToken}
               resetSignal={captchaResetSignal}

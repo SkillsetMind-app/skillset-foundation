@@ -165,6 +165,47 @@ describe("LoginForm with Google", () => {
   });
 });
 
+describe("LoginForm: campo de senha e botao de e-mail", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.getPendingSecondFactor.mockResolvedValue(null);
+    mocks.searchParams = new URLSearchParams();
+  });
+
+  afterEach(cleanup);
+
+  // A-10: com o link dentro do <label>, o leitor de tela lia o campo como
+  // "Password Forgot password?".
+  it("o campo se chama so 'Password', o link fica fora do rotulo e o olho alterna o tipo", () => {
+    render(<LoginForm />);
+
+    const field = screen.getByLabelText("auth.password");
+    expect(field).toHaveAttribute("autocomplete", "current-password");
+    expect(screen.getByRole("link", { name: "auth.forgotPassword" }).closest("label")).toBeNull();
+
+    const eye = screen.getByRole("button", { name: "auth.showPassword" });
+    fireEvent.click(eye);
+    expect(field).toHaveAttribute("type", "text");
+    // Um nome so; o estado vem do aria-pressed.
+    expect(eye).toHaveAttribute("aria-pressed", "true");
+    expect(eye).toHaveAccessibleName("auth.showPassword");
+    expect(screen.getByRole("textbox", { name: "auth.password" })).toBe(field);
+  });
+
+  // A-09: o rotulo de espera so no botao apertado; os dois seguem travados.
+  it("entrar com e-mail muda so o rotulo do botao de e-mail", async () => {
+    vi.mocked(signInWithEmail).mockReturnValue(new Promise(() => {}) as never);
+    const view = render(<LoginForm />);
+    fireEvent.change(view.container.querySelector('input[type="email"]')!, { target: { value: "alex@example.test" } });
+    fireEvent.change(screen.getByLabelText("auth.password"), { target: { value: "fixture-password" } });
+    fireEvent.submit(view.container.querySelector("form")!);
+
+    expect(await screen.findByRole("button", { name: "auth.signingIn" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /auth\.continueWithGoogle/ })).toBeDisabled();
+    expect(screen.queryByRole("button", { name: /auth\.openingGoogle/ })).toBeNull();
+  });
+});
+
 // A-17: quem fechava a tela do codigo ficava com a sessao aal1 no cookie. O
 // provider agora expoe isso como `mfa_required` e manda para ca — entao esta
 // tela tem que (1) retomar o desafio sozinha, sem pedir a senha de novo, e
