@@ -273,10 +273,14 @@ describe("TeacherWalletPanel money integrity", () => {
 
     render(<TeacherWalletPanel />);
 
+    // Cada moeda no proprio valor, formatada na lingua da tela e nunca
+    // convertida nem somada: R$100 do BRL e US$20 do USD, lado a lado.
     expect(
-      await screen.findByText("BRL 100.00 + USD 20.00"),
+      await screen.findByText("R$100.00 · $20.00"),
     ).toBeInTheDocument();
     expect(screen.queryByText("USD 120.00")).not.toBeInTheDocument();
+    expect(screen.queryByText("$120.00")).not.toBeInTheDocument();
+    expect(screen.queryByText("R$120.00")).not.toBeInTheDocument();
   });
 
   it("does not turn a failed ledger read into zero balances", async () => {

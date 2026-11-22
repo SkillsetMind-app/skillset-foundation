@@ -35,11 +35,13 @@ export function RevenueChart({
   const { locale } = useTranslation();
   const chart = buildChart(points);
   // Eixo pelo formatador da lingua ("$1.5K"): o "$2k" feito a mao arredondava
-  // $1.500 para $2k e escrevia "$2k" em duas linhas.
+  // $1.500 para $2k e escrevia "$2k" em duas linhas. O minimo de casas vai
+  // explicito: sem ele, versoes do ICU escrevem "$1.0K" e "$0.0".
   const axisMoney = new Intl.NumberFormat(locale, {
     style: "currency",
     currency: "USD",
     notation: "compact",
+    minimumFractionDigits: 0,
     maximumFractionDigits: 1,
   });
   // 90 baldes diarios (ou 24 mensais) escreviam 90 rotulos e viravam borrao.
