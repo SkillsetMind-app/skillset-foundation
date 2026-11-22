@@ -2,6 +2,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testi
 import { StrictMode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { LegalGateContext } from "@/components/auth/legal-gate-state";
 import { WelcomeTour } from "@/components/learn/welcome-tour";
 import { TeacherWelcomeTour } from "@/components/teacher/teacher-welcome-tour";
 import { I18nProvider } from "@/components/i18n/i18n-provider";
@@ -150,6 +151,22 @@ describe.each([
     expect(actions.parentElement).toHaveClass("flex-wrap");
     expect(actions).toHaveClass("flex-wrap", "max-w-full");
     for (const button of within(actions).getAllByRole("button")) expect(button).toHaveClass("shrink-0");
+  });
+
+  // A janela dos termos vem antes: com as duas abertas, o Tab preso no tour
+  // deixava o foco atrás dela. Enquanto ela espera, o tour nem pede o "visto".
+  it("waits for the legal window: no claim and no dialog while it is open, then opens", async () => {
+    const gated = (waiting: boolean) => (
+      <LegalGateContext.Provider value={waiting}><Tour userId="legal-first" firstName="Ana" /></LegalGateContext.Provider>
+    );
+    const { rerender } = render(gated(true));
+    await act(async () => {});
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(rpc).not.toHaveBeenCalled();
+
+    rerender(gated(false));
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+    expect(rpc).toHaveBeenCalledExactlyOnceWith("claim_welcome_tour", { p_uid: "legal-first", p_surface: surface });
   });
 
   it("waits for the account claim before interrupting the page", async () => {

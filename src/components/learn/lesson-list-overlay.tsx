@@ -100,10 +100,13 @@ export function LessonListOverlay({
         aria-label={t("learn.classroom.curriculum.close")}
         onClick={onClose}
       />
-      {/* .modal-panel: o teto em svh (o 86vh contava a barra do navegador
-          do celular) e a entrada única das janelas; antes aparecia num corte
-          seco. A lista rola por dentro. */}
-      <div className="modal-panel relative z-[75] flex w-full max-w-3xl flex-col overflow-hidden bg-white shadow-[0_30px_80px_rgba(15,39,68,0.32)] sm:rounded-xl">
+      {/* No celular o painel ocupa a altura toda, como antes (um teto em
+          100svh deixava uma faixa de fundo embaixo com a barra do Safari
+          recolhida, e tocar nela fechava a lista). Do sm em diante, o teto
+          das janelas em svh (o 86vh contava a barra do navegador). A entrada
+          (motion-panel-in) só sem "reduzir movimento"; antes aparecia num
+          corte seco. A lista rola por dentro. */}
+      <div className="motion-panel-in relative z-[75] flex w-full max-w-3xl flex-col overflow-hidden bg-white shadow-[0_30px_80px_rgba(15,39,68,0.32)] sm:max-h-[calc(100svh-3rem)] sm:rounded-xl">
         <header className="flex items-start justify-between gap-3 border-b border-[var(--color-line)] px-5 py-4 sm:px-6">
           <div className="min-w-0">
             <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">

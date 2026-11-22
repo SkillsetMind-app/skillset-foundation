@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
+import { useLegalGateWaiting } from "@/components/auth/legal-gate-state";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { SpotArt, type SpotArtScene } from "@/components/ui/spot-art";
 import { useModalFocus } from "@/lib/a11y/use-modal-focus";
@@ -44,15 +45,23 @@ function buildSteps(firstName: string, t: (key: string) => string): TourStep[] {
   ];
 }
 
-export function TeacherWelcomeTour({
-  userId,
-  firstName,
-  hasProducts = false,
-}: {
+type TeacherWelcomeTourProps = {
   userId: string;
   firstName: string;
   hasProducts?: boolean;
-}) {
+};
+
+// A janela dos termos vem antes (o mesmo do tour do aluno): enquanto ela está
+// na tela, ou ainda não se sabe, o tour nem monta e não marca "visto".
+export function TeacherWelcomeTour(props: TeacherWelcomeTourProps) {
+  return useLegalGateWaiting() ? null : <TeacherWelcomeTourDialog {...props} />;
+}
+
+function TeacherWelcomeTourDialog({
+  userId,
+  firstName,
+  hasProducts = false,
+}: TeacherWelcomeTourProps) {
   const { t } = useTranslation();
   const { open, dismiss } = useWelcomeTour(userId, "teacher");
   const [stepIndex, setStepIndex] = useState(0);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -22,6 +22,8 @@ export type ConfirmRequest = {
   danger?: boolean;
   acknowledge?: boolean;
   run: () => unknown;
+  /** Fechou sem confirmar (Cancelar, Esc). Opcional. */
+  onCancel?: () => void;
 };
 
 export function useConfirm(): {
@@ -31,6 +33,10 @@ export function useConfirm(): {
 } {
   const { t } = useTranslation();
   const [request, setRequest] = useState<ConfirmRequest | null>(null);
+  // A janela chama onClose nos dois desfechos; isto separa o "confirmou" do
+  // "desistiu". Só vira true quando o run termina sem erro (com erro a
+  // janela fica aberta).
+  const confirmedRef = useRef(false);
   return {
     ask: setRequest,
     asking: request !== null,
@@ -42,8 +48,15 @@ export function useConfirm(): {
           ? { acknowledge: true as const }
           : { cancelLabel: request.cancelLabel ?? t("creatorEditor.builder.curriculum.cancel") })}
         danger={request.danger}
-        onConfirm={request.run}
-        onClose={() => setRequest(null)}
+        onConfirm={async () => {
+          await request.run();
+          confirmedRef.current = true;
+        }}
+        onClose={() => {
+          if (!confirmedRef.current) request.onCancel?.();
+          confirmedRef.current = false;
+          setRequest(null);
+        }}
       >
         {request.body}
       </ConfirmDialog>

@@ -392,6 +392,9 @@ describe("LessonContentModal — um video por aula", () => {
     expect(replaceAsk()).toHaveAccessibleDescription("Remove the old link? Students will lose the button that opens it.");
     expect(onUpdateLesson).not.toHaveBeenCalled();
     expect(screen.getByRole("region", { name: "Old link" })).toHaveTextContent(drive);
+    // Com a pergunta aberta o aviso "nao salvo" ainda nao sai: o leitor de
+    // tela o lia enquanto o professor era perguntado.
+    expect(screen.getByRole("status")).toBeEmptyDOMElement();
     declineReplace();
     expect(replaceAsk()).toBeNull();
     expect(onUpdateLesson).not.toHaveBeenCalled();
@@ -562,17 +565,20 @@ describe("LessonContentModal — um video por aula", () => {
     fireEvent.click(screen.getByRole("button", { name: "Replace with link" }));
     fireEvent.change(linkField(), { target: { value: vimeo } });
 
-    fireEvent.keyDown(linkField(), { key: "Escape" });
+    // O Esc que abriu a pergunta sai cancelado (preventDefault): no navegador,
+    // sem isso, o mesmo Esc fechava a janela recem-aberta.
+    expect(fireEvent.keyDown(linkField(), { key: "Escape" })).toBe(false);
     expect(replaceAsk()).not.toBeNull();
     expect(onClose).not.toHaveBeenCalled();
     expect(onUpdateLesson).not.toHaveBeenCalled();
-    expect(screen.getByRole("status")).toHaveTextContent("Link not saved. The old link stays.");
+    expect(screen.getByRole("status")).toBeEmptyDOMElement();
     // Com a pergunta aberta, o Esc e dela: o estudio nao fecha por baixo.
     fireEvent.keyDown(linkField(), { key: "Escape" });
     expect(onClose).not.toHaveBeenCalled();
     declineReplace();
     expect(replaceAsk()).toBeNull();
     expect(onUpdateLesson).not.toHaveBeenCalled();
+    expect(screen.getByRole("status")).toHaveTextContent("Link not saved. The old link stays.");
 
     // O campo voltou ao salvo: nada mais a perder, o Esc seguinte fecha.
     fireEvent.keyDown(linkField(), { key: "Escape" });

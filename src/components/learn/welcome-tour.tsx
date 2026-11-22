@@ -3,6 +3,7 @@
 import { Award, GraduationCap, LifeBuoy, PlayCircle, type LucideIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
+import { useLegalGateWaiting } from "@/components/auth/legal-gate-state";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { useModalFocus } from "@/lib/a11y/use-modal-focus";
 import { useWelcomeTour } from "@/lib/ui/use-welcome-tour";
@@ -47,7 +48,16 @@ function buildSteps(
   ];
 }
 
-export function WelcomeTour({ userId, firstName }: { userId: string; firstName: string }) {
+type WelcomeTourProps = { userId: string; firstName: string };
+
+// A janela dos termos vem antes: com as duas abertas, dois Tabs presos
+// brigavam e o foco podia ficar no tour, atrás dela. Enquanto ela está na tela
+// (ou ainda não se sabe), o tour nem monta, então também não marca "visto".
+export function WelcomeTour(props: WelcomeTourProps) {
+  return useLegalGateWaiting() ? null : <WelcomeTourDialog {...props} />;
+}
+
+function WelcomeTourDialog({ userId, firstName }: WelcomeTourProps) {
   const { t } = useTranslation();
   const { open, dismiss } = useWelcomeTour(userId, "student");
   const [stepIndex, setStepIndex] = useState(0);
