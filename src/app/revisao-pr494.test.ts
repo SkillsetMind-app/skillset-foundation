@@ -97,7 +97,8 @@ describe("C3: latao fora de erro, aviso e exclusao", () => {
 
 describe("Plausivel 5: botao-texto com pelo menos 24px de area", () => {
   it.each([
-    ["components/account/security-settings-panel.tsx", "min-h-6 text-xs font-bold"],
+    // O "Email me a reset link" da Seguranca passou a 44px e 14px.
+    ["components/account/security-settings-panel.tsx", "min-h-11 text-sm font-bold"],
     ["components/account/totp-mfa-section.tsx", "min-h-6 shrink-0 text-xs"],
     ["components/account/totp-mfa-section.tsx", "min-h-6 text-xs font-semibold"],
     ["components/account/billing-tabs.tsx", "min-h-6 text-xs font-semibold"],
@@ -116,7 +117,6 @@ describe("Plausivel 5: botao-texto com pelo menos 24px de area", () => {
 
 describe("Plausivel 6: rolagem em JS respeita reduzir movimento", () => {
   it.each([
-    "components/account/security-settings-panel.tsx",
     "components/auth/reset-password-form.tsx",
     "components/learn/course-unlock-modal.tsx",
     "components/learn/enrolled-course-workspace.tsx",
@@ -124,5 +124,11 @@ describe("Plausivel 6: rolagem em JS respeita reduzir movimento", () => {
     const src = read(file);
     expect(src).toContain("scrollBehavior()");
     expect(src).not.toMatch(/behavior: "smooth"/);
+  });
+
+  // A Seguranca deixou de rolar: cada resposta nasce logo abaixo do botao que
+  // a pediu, entao nao ha rolagem para respeitar (nem para voltar sem freio).
+  it("components/account/security-settings-panel.tsx nao rola a pagina", () => {
+    expect(read("components/account/security-settings-panel.tsx")).not.toContain("scrollIntoView");
   });
 });

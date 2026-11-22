@@ -270,13 +270,10 @@ export function ProfileSettingsPanel() {
 
   return (
     <section className="settings-section-card">
-      <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-        {t("accountProfile.identity")}
-      </p>
-      <h3 className="display-title mt-3 text-3xl text-[var(--color-primary)]">
+      <h2 className="text-lg font-bold text-[var(--color-ink)]">
         {t("accountProfile.title")}
-      </h3>
-      <p className="mt-4 max-w-2xl text-sm leading-7 text-[var(--color-ink-soft)]">
+      </h2>
+      <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--color-ink-soft)]">
         {t("accountProfile.description")}
       </p>
 
@@ -331,20 +328,20 @@ export function ProfileSettingsPanel() {
           <input
             value={displayName}
             onChange={(event) => setDisplayName(event.target.value)}
-            className="min-w-0 rounded-md border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
+            className="min-w-0 field-input"
           />
         </label>
 
         <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
           {t("accountProfile.username")}
-          <div className="flex overflow-hidden rounded-md border border-[var(--color-line)] bg-white focus-within:border-[var(--color-primary-light)]">
+          <div className="flex overflow-hidden rounded-md border-[1.5px] border-[var(--color-field-border)] bg-[var(--color-surface-soft)] focus-within:border-[var(--color-primary)] focus-within:bg-white">
             <span className="grid place-items-center border-r border-[var(--color-line)] px-3 text-sm font-semibold text-[var(--color-ink-soft)]">
               @
             </span>
             <input
               value={username}
               onChange={(event) => setUsername(normalizeUsername(event.target.value))}
-              className="min-w-0 flex-1 px-4 py-3 text-sm font-normal outline-none"
+              className="min-w-0 flex-1 bg-transparent px-4 py-3 text-sm font-normal outline-none"
             />
           </div>
         </label>
@@ -355,7 +352,7 @@ export function ProfileSettingsPanel() {
             value={bio}
             onChange={(event) => setBio(event.target.value)}
             rows={4}
-            className="min-w-0 resize-none rounded-md border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
+            className="min-w-0 resize-none field-input"
           />
           <span className="text-xs font-normal text-[var(--color-ink-soft)]">
             {t("accountProfile.bioCount").replace("{count}", String(bio.trim().length))}
@@ -387,7 +384,7 @@ export function ProfileSettingsPanel() {
                         updateCredential(index, event.target.value)
                       }
                       placeholder={t("accountProfile.credentials.placeholder")}
-                      className="min-w-0 flex-1 rounded-md border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
+                      className="min-w-0 flex-1 field-input"
                     />
                     <button
                       type="button"
@@ -481,7 +478,7 @@ export function ProfileSettingsPanel() {
           <select
             value={timezone}
             onChange={(event) => setTimezone(event.target.value)}
-            className="min-w-0 rounded-md border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
+            className="min-w-0 field-input"
           >
             {safeTimezoneOptions.map((option) => (
               <option key={option} value={option}>

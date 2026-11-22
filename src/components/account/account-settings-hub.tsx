@@ -9,13 +9,14 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 
 import { AccountDataPanel } from "@/components/account/account-data-panel";
 import { ProfileSettingsPanel } from "@/components/account/profile-settings-panel";
 import { SecuritySettingsPanel } from "@/components/account/security-settings-panel";
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { InlineAlert } from "@/components/ui/inline-alert";
 import {
   defaultLearningPreferences,
   defaultNotificationPreferences,
@@ -71,20 +72,12 @@ export function AccountSettingsHub() {
     router.replace(`/account?tab=${nextTab}`, { scroll: false });
   }
 
+  // Sem cartão de abertura: o título curto ("Settings" + uma linha) vem do
+  // PlatformShell, como nas outras telas. O cartão com faixa dourada e brilho
+  // vermelho, mais uma manchete em serifa por aba, empurrava os ajustes para
+  // baixo da primeira tela no celular.
   return (
     <div className="space-y-6">
-      <header className="platform-hero-card rounded-lg border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)] sm:p-8">
-        <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-          {t("accountSettings.label")}
-        </p>
-        <h1 className="display-title mt-3 text-4xl leading-tight text-[var(--color-primary)] lg:text-5xl">
-          {t("accountSettings.title")}
-        </h1>
-        <p className="mt-4 max-w-3xl text-sm leading-7 text-[var(--color-ink-soft)]">
-          {t("accountSettings.description")}
-        </p>
-      </header>
-
       <div className="account-settings-grid">
         <nav className="account-settings-tabs" aria-label={t("accountSettings.navigation")}>
           {tabs.map((tab) => (
@@ -150,12 +143,40 @@ function SettingsTabButton({
       </span>
       <span className="min-w-0">
         <span className="block truncate text-sm font-bold">{label}</span>
-        <span className="mt-1 block text-left text-[11px] font-medium leading-4">
+        <span className="account-settings-tab__description mt-1 block text-left text-[11px] font-medium leading-4">
           {description}
         </span>
       </span>
     </button>
   );
+}
+
+const notificationRows = [
+  "productEmails",
+  "courseActivity",
+  "billingAlerts",
+  "marketingEmails",
+  "emailDigest",
+] as const satisfies ReadonlyArray<keyof NotificationPreferences>;
+
+const learningRows = [
+  "autoCaptions",
+  "dailyDigest",
+] as const satisfies ReadonlyArray<keyof LearningPreferences>;
+
+// O retorno do salvar mora na linha que mudou: "Saved" por 2s, ou o erro logo
+// embaixo da chave. Antes o sucesso não dizia nada e a falha era uma linha
+// vermelha no topo do cartão, longe do dedo que tocou.
+type RowStatus = { row: string; saved: boolean } | null;
+
+function useRowStatus() {
+  const [status, setStatus] = useState<RowStatus>(null);
+  useEffect(() => {
+    if (!status?.saved) return;
+    const timer = window.setTimeout(() => setStatus(null), 2000);
+    return () => window.clearTimeout(timer);
+  }, [status]);
+  return [status, setStatus] as const;
 }
 
 function NotificationPreferencesPanel() {
@@ -165,7 +186,7 @@ function NotificationPreferencesPanel() {
     defaultNotificationPreferences,
   );
   const [loaded, setLoaded] = useState(false);
-  const [saveFailed, setSaveFailed] = useState(false);
+  const [status, setStatus] = useRowStatus();
 
   useEffect(() => {
     if (!user) {
@@ -194,69 +215,39 @@ function NotificationPreferencesPanel() {
     const previous = prefs;
     const next = { ...prefs, [key]: !prefs[key] };
     setPrefs(next);
-    setSaveFailed(false);
-    updateUserPreferences(user.uid, { notifications: next }).catch(() => {
-      // Roll back the optimistic flip so the UI never claims a save that
-      // did not land.
-      setPrefs(previous);
-      setSaveFailed(true);
-    });
+    setStatus(null);
+    updateUserPreferences(user.uid, { notifications: next }).then(
+      () => setStatus({ row: key, saved: true }),
+      () => {
+        // Roll back the optimistic flip so the UI never claims a save that
+        // did not land.
+        setPrefs(previous);
+        setStatus({ row: key, saved: false });
+      },
+    );
   }
 
   return (
     <section className="settings-section-card">
-      <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-        {t("accountSettings.tabs.notifications.label")}
-      </p>
-      <h2 className="display-title mt-3 text-3xl text-[var(--color-primary)]">
+      <h2 className="text-lg font-bold text-[var(--color-ink)]">
         {t("accountSettings.notifications.title")}
       </h2>
-      <p className="mt-3 max-w-2xl text-sm leading-7 text-[var(--color-ink-soft)]">
+      <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--color-ink-soft)]">
         {t("accountSettings.notifications.description")}
       </p>
 
-      {saveFailed ? (
-        <p className="mt-4 rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
-          {t("accountSettings.saveError")}
-        </p>
-      ) : null}
-
-      <div className="mt-6 divide-y divide-[var(--color-line)]">
-        <ToggleRow
-          label={t("accountSettings.notifications.productEmails.label")}
-          description={t("accountSettings.notifications.productEmails.description")}
-          checked={prefs.productEmails}
-          disabled={!loaded}
-          onChange={() => toggle("productEmails")}
-        />
-        <ToggleRow
-          label={t("accountSettings.notifications.courseActivity.label")}
-          description={t("accountSettings.notifications.courseActivity.description")}
-          checked={prefs.courseActivity}
-          disabled={!loaded}
-          onChange={() => toggle("courseActivity")}
-        />
-        <ToggleRow
-          label={t("accountSettings.notifications.billingAlerts.label")}
-          description={t("accountSettings.notifications.billingAlerts.description")}
-          checked={prefs.billingAlerts}
-          disabled={!loaded}
-          onChange={() => toggle("billingAlerts")}
-        />
-        <ToggleRow
-          label={t("accountSettings.notifications.marketingEmails.label")}
-          description={t("accountSettings.notifications.marketingEmails.description")}
-          checked={prefs.marketingEmails}
-          disabled={!loaded}
-          onChange={() => toggle("marketingEmails")}
-        />
-        <ToggleRow
-          label={t("accountSettings.notifications.emailDigest.label")}
-          description={t("accountSettings.notifications.emailDigest.description")}
-          checked={prefs.emailDigest}
-          disabled={!loaded}
-          onChange={() => toggle("emailDigest")}
-        />
+      <div className="mt-4 divide-y divide-[var(--color-line)]">
+        {notificationRows.map((key) => (
+          <ToggleRow
+            key={key}
+            label={t(`accountSettings.notifications.${key}.label`)}
+            description={t(`accountSettings.notifications.${key}.description`)}
+            checked={prefs[key]}
+            disabled={!loaded}
+            saved={status?.row === key ? status.saved : undefined}
+            onChange={() => toggle(key)}
+          />
+        ))}
       </div>
     </section>
   );
@@ -269,7 +260,7 @@ function LearningPreferencesPanel() {
     defaultLearningPreferences,
   );
   const [loaded, setLoaded] = useState(false);
-  const [saveFailed, setSaveFailed] = useState(false);
+  const [status, setStatus] = useRowStatus();
 
   useEffect(() => {
     if (!user) {
@@ -297,46 +288,37 @@ function LearningPreferencesPanel() {
     const previous = prefs;
     const next = { ...prefs, [key]: !prefs[key] };
     setPrefs(next);
-    setSaveFailed(false);
-    updateUserPreferences(user.uid, { learning: next }).catch(() => {
-      setPrefs(previous);
-      setSaveFailed(true);
-    });
+    setStatus(null);
+    updateUserPreferences(user.uid, { learning: next }).then(
+      () => setStatus({ row: key, saved: true }),
+      () => {
+        setPrefs(previous);
+        setStatus({ row: key, saved: false });
+      },
+    );
   }
 
   return (
     <section className="settings-section-card">
-      <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-        {t("accountSettings.tabs.learning.label")}
-      </p>
-      <h2 className="display-title mt-3 text-3xl text-[var(--color-primary)]">
+      <h2 className="text-lg font-bold text-[var(--color-ink)]">
         {t("accountSettings.learning.title")}
       </h2>
-      <p className="mt-3 max-w-2xl text-sm leading-7 text-[var(--color-ink-soft)]">
+      <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--color-ink-soft)]">
         {t("accountSettings.learning.description")}
       </p>
 
-      {saveFailed ? (
-        <p className="mt-4 rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
-          {t("accountSettings.saveError")}
-        </p>
-      ) : null}
-
-      <div className="mt-6 divide-y divide-[var(--color-line)]">
-        <ToggleRow
-          label={t("accountSettings.learning.autoCaptions.label")}
-          description={t("accountSettings.learning.autoCaptions.description")}
-          checked={prefs.autoCaptions}
-          disabled={!loaded}
-          onChange={() => toggle("autoCaptions")}
-        />
-        <ToggleRow
-          label={t("accountSettings.learning.dailyDigest.label")}
-          description={t("accountSettings.learning.dailyDigest.description")}
-          checked={prefs.dailyDigest}
-          disabled={!loaded}
-          onChange={() => toggle("dailyDigest")}
-        />
+      <div className="mt-4 divide-y divide-[var(--color-line)]">
+        {learningRows.map((key) => (
+          <ToggleRow
+            key={key}
+            label={t(`accountSettings.learning.${key}.label`)}
+            description={t(`accountSettings.learning.${key}.description`)}
+            checked={prefs[key]}
+            disabled={!loaded}
+            saved={status?.row === key ? status.saved : undefined}
+            onChange={() => toggle(key)}
+          />
+        ))}
       </div>
     </section>
   );
@@ -348,34 +330,61 @@ function ToggleRow({
   disabled = false,
   label,
   onChange,
+  saved,
 }: {
   checked: boolean;
   description: string;
   disabled?: boolean;
   label: string;
   onChange: () => void;
+  /** true = acabou de salvar; false = falhou; undefined = nada a dizer. */
+  saved?: boolean;
 }) {
+  const { t } = useTranslation();
+  // Nome = só o rótulo; a descrição entra como descrição. Com aria-label o
+  // leitor de tela nunca lia o que cada chave faz.
+  const labelId = useId();
+  const descriptionId = useId();
   return (
-    <div className="flex items-center justify-between gap-4 py-4">
-      <span>
-        <span className="block text-sm font-bold text-[var(--color-ink)]">
-          {label}
-        </span>
-        <span className="mt-1 block max-w-2xl text-sm leading-6 text-[var(--color-ink-soft)]">
-          {description}
-        </span>
-      </span>
+    <div className="py-1">
+      {/* A linha inteira é a chave. Antes só o trilho de 46×26 respondia ao
+          toque e o texto ao lado não era clicável. As margens negativas
+          alinham o texto ao título e deixam o fundo do hover respirar. */}
       <button
         type="button"
         role="switch"
         aria-checked={checked}
-        aria-label={label}
+        aria-labelledby={labelId}
+        aria-describedby={descriptionId}
         disabled={disabled}
         onClick={onChange}
-        className={`settings-toggle ${checked ? "settings-toggle--on" : ""} disabled:cursor-not-allowed disabled:opacity-50`}
+        className="-mx-3 flex min-h-11 w-[calc(100%_+_1.5rem)] items-center justify-between gap-4 rounded-md px-3 py-3 text-left hover:bg-[var(--color-surface-soft)] disabled:cursor-not-allowed disabled:opacity-50"
       >
-        <span />
+        <span>
+          <span id={labelId} className="block text-sm font-bold text-[var(--color-ink)]">
+            {label}
+          </span>
+          <span id={descriptionId} className="mt-1 block max-w-2xl text-sm leading-6 text-[var(--color-ink-soft)]">
+            {description}
+          </span>
+        </span>
+        <span
+          aria-hidden="true"
+          className={`settings-toggle ${checked ? "settings-toggle--on" : ""}`}
+        >
+          <span />
+        </span>
       </button>
+      {saved === true ? (
+        <p role="status" className="motion-rise-in pb-2 text-xs font-semibold text-[var(--color-success-fg)]">
+          {t("accountSettings.saved")}
+        </p>
+      ) : null}
+      {saved === false ? (
+        <InlineAlert tone="error" className="mb-3">
+          {t("accountSettings.saveError")}
+        </InlineAlert>
+      ) : null}
     </div>
   );
 }

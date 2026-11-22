@@ -97,8 +97,8 @@ describe("security settings localization with real dictionaries", () => {
     click("Change language");
     expect(screen.getByRole("heading", { name: "Account protection" })).toBeInTheDocument();
     expect(screen.getByLabelText("New email address")).toHaveValue("New$&@example.test");
-    expect(screen.getByPlaceholderText("Current password")).toHaveValue("OldPassword42!");
-    expect(screen.getByPlaceholderText("New password")).toHaveValue("NewPassword42!");
+    expect(screen.getByLabelText("Current password")).toHaveValue("OldPassword42!");
+    expect(screen.getByLabelText("New password")).toHaveValue("NewPassword42!");
     expect(mocks.calls.changeSkillsetPassword).not.toHaveBeenCalled();
     expect(mocks.calls.listEnrolledTotpFactors).not.toHaveBeenCalled();
   });
@@ -111,7 +111,7 @@ describe("security settings localization with real dictionaries", () => {
     expect(screen.getByRole("status")).toHaveTextContent(mocks.user.email);
     expect(screen.getByRole("status")).toHaveAttribute("aria-live", "polite");
     expect(screen.queryByRole("alert")).toBeNull();
-    expect(Element.prototype.scrollIntoView).toHaveBeenCalled();
+    expect(screen.getByRole("status").closest(".border-t")).toContainElement(screen.getByRole("button", { name: "Enviarme un enlace de restablecimiento" }));
     click("Change language");
     expect(screen.getByRole("status")).toHaveTextContent(limited ? "We already sent a reset link" : "Reset link sent to");
     expect(screen.getByRole("status")).toHaveTextContent(mocks.user.email);

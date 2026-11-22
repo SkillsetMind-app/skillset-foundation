@@ -6,6 +6,9 @@
     "copied": "Copied",
     "failed": "Could not copy. Select the code and copy it by hand."
   },
+  "confirmDialog": {
+    "error": "That didn't go through. Try again in a moment."
+  },
   "lessonUpload": {
     "title": "Lesson upload",
     "uploading": "Uploading file...",
@@ -4461,6 +4464,7 @@
     "description": "Profile, login email, password, alerts, learning defaults, and privacy controls live here. Billing and creator payouts stay in their own money sections.",
     "navigation": "Settings sections",
     "saveError": "We could not save that change. Check your connection and try again.",
+    "saved": "Saved",
     "tabs": {
       "profile": {
         "label": "Profile",
@@ -4528,6 +4532,7 @@
     "export": "Export everything",
     "delete": "Delete account",
     "confirmDelete": "Confirm delete request",
+    "deleteTitle": "Delete your account?",
     "cancel": "Cancel",
     "processing": "Requests are handled manually: we process verified requests within 30 days. Automated one-click export and deletion are on the roadmap.",
     "exportSuccess": "Data export request received. SkillsetMind will process it within 30 days once the request is verified.",
@@ -4604,6 +4609,9 @@
     "label": "Security",
     "title": "Account protection",
     "description": "Verify your email before opening creator tools, keep your sign-in details current, and add two-factor authentication to protect your account.",
+    "sending": "Sending…",
+    "updating": "Updating…",
+    "checking": "Checking…",
     "verification": {
       "title": "Email verification",
       "description": "Required for creators before publishing tools are enabled.",
@@ -4933,6 +4941,7 @@
     "endsOn": "Ends on {date}",
     "cancel": "Cancel plan",
     "cancelling": "Cancelling…",
+    "keepPlan": "Keep plan",
     "cancelConfirmTrial": "Cancel your plan? Your free trial runs until {date} and you won't be charged.",
     "cancelConfirm": "Cancel your plan? It stays active until {date} and won't renew.",
     "cancelConfirmNow": "Cancel your plan now? The unpaid invoice won't be retried and the plan ends immediately.",

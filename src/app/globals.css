@@ -2155,9 +2155,22 @@ p {
     scroll-snap-type: x mandatory;
   }
 
+  /* Abaixo de 1024px as abas viravam cartões de 220px com ícone e descrição:
+     cabia uma aba e meia e os ajustes começavam abaixo da primeira tela. Aqui
+     são só o rótulo, numa fileira de 44px que rola de lado. */
   .account-settings-tab {
-    min-width: 220px;
+    display: flex;
+    flex: none;
+    width: auto;
+    min-height: 44px;
+    align-items: center;
+    padding: 0.5rem 0.9rem;
     scroll-snap-align: start;
+  }
+
+  .account-settings-tab__icon,
+  .account-settings-tab__description {
+    display: none;
   }
 }
 
@@ -8880,11 +8893,17 @@ button:hover > .dash-card,
    input, que é (0,1,1) — o comentário anterior errava essa conta. Um !important
    de folha de estilo ainda atropelaria todo `style={{ fontSize }}` inline da
    aplicação, e obrigaria o próximo override legítimo a nascer com outro.
-   (Auditoria de produto de 2026-08-30, achado P-11.) */
+   (Auditoria de produto de 2026-08-30, achado P-11.)
+
+   `textarea` e `select` sozinhos são (0,0,1) e perdem para `.field-input`
+   (0,1,0, 14px), que vem antes no arquivo mas tem mais peso: Bio e Fuso do
+   perfil davam zoom. `textarea.field-input` (0,1,1) devolve o piso a eles. */
 @media (hover: none) and (pointer: coarse) {
   input:not([type="checkbox"]):not([type="radio"]),
   textarea,
-  select {
+  select,
+  textarea.field-input,
+  select.field-input {
     font-size: 16px;
   }
 }

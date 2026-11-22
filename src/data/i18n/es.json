@@ -6,6 +6,9 @@
     "copied": "Copiado",
     "failed": "No se pudo copiar. Selecciona el código y cópialo a mano."
   },
+  "confirmDialog": {
+    "error": "No se pudo completar. Inténtalo de nuevo en un momento."
+  },
   "lessonUpload": {
     "title": "Carga de la lección",
     "uploading": "Subiendo archivo...",
@@ -4461,6 +4464,7 @@
     "description": "Aquí puedes gestionar tu perfil, correo de acceso, contraseña, alertas, preferencias de aprendizaje y privacidad. La facturación y los cobros de los creadores tienen sus propias secciones.",
     "navigation": "Secciones de configuración",
     "saveError": "No pudimos guardar el cambio. Revisa tu conexión e inténtalo de nuevo.",
+    "saved": "Guardado",
     "tabs": {
       "profile": {
         "label": "Perfil",
@@ -4528,6 +4532,7 @@
     "export": "Exportar todos los datos",
     "delete": "Eliminar cuenta",
     "confirmDelete": "Confirmar solicitud de eliminación",
+    "deleteTitle": "¿Eliminar tu cuenta?",
     "cancel": "Cancelar",
     "processing": "Las solicitudes se gestionan manualmente: procesamos las solicitudes verificadas en un plazo de 30 días. La exportación y la eliminación automáticas con un clic están en nuestra hoja de ruta.",
     "exportSuccess": "Solicitud de exportación de datos recibida. SkillsetMind la procesará en un plazo de 30 días una vez verificada la solicitud.",
@@ -4604,6 +4609,9 @@
     "label": "Seguridad",
     "title": "Protección de la cuenta",
     "description": "Verifica tu correo antes de acceder a las herramientas de creador, mantén tus datos de acceso actualizados y añade la autenticación de dos factores para proteger tu cuenta.",
+    "sending": "Enviando…",
+    "updating": "Actualizando…",
+    "checking": "Comprobando…",
     "verification": {
       "title": "Verificación del correo electrónico",
       "description": "Obligatoria para los creadores antes de habilitar las herramientas de publicación.",
@@ -4933,6 +4941,7 @@
     "endsOn": "Termina el {date}",
     "cancel": "Cancelar plan",
     "cancelling": "Cancelando…",
+    "keepPlan": "Mantener el plan",
     "cancelConfirmTrial": "¿Cancelar tu plan? Tu prueba gratis sigue hasta el {date} y no se te cobrará.",
     "cancelConfirm": "¿Cancelar tu plan? Sigue activo hasta el {date} y no se renovará.",
     "cancelConfirmNow": "¿Cancelar tu plan ahora? La factura pendiente no se volverá a cobrar y el plan termina de inmediato.",

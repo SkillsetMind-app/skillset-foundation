@@ -89,7 +89,7 @@ describe("profile settings locale", () => {
     mocks.updateUserIdentity.mockReturnValue(new Promise<void>((resolve) => { complete = resolve; }));
     const { container } = renderProfile();
     expect(await screen.findByRole("heading", { name: "Ajustes del perfil" })).toBeInTheDocument();
-    for (const text of ["Identidad de la cuenta", "Foto de perfil", "Credenciales", "Sin firma", "Objetivos"]) {
+    for (const text of ["Foto de perfil", "Credenciales", "Sin firma", "Objetivos"]) {
       expect(screen.getByText(text)).toBeInTheDocument();
     }
     expect(screen.getByText(/Usa una imagen cuadrada/)).toHaveTextContent("JPG, PNG o WebP de menos de 5 MB");
