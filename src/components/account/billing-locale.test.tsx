@@ -108,7 +108,7 @@ describe("billing locale with real dictionaries", () => {
 
   // O X do cabeçalho é o Cancelar: fecha sem pedir nada e some enquanto o
   // pedido está indo (o Cancelar trava nessa hora).
-  it("closes the refund dialog from the X without requesting, and hides it while submitting", async () => {
+  it("closes the refund dialog from the X without requesting, and nothing closes it while submitting", async () => {
     mocks.tab = "purchases"; mocks.orders = [order];
     let finish!: () => void;
     mocks.refund.mockReturnValue(new Promise<void>((resolve) => { finish = resolve; }));
@@ -126,8 +126,14 @@ describe("billing locale with real dictionaries", () => {
     fireEvent.click(within(modal).getByRole("button", { name: "Solicitar reembolso" }));
     expect(within(modal).getByRole("button", { name: "Cancelar" })).toBeDisabled();
     expect(within(modal).queryByRole("button", { name: "Cerrar" })).toBeNull();
+    // Esc e o clique no fundo (a própria camada do diálogo) também não fecham.
+    fireEvent.keyDown(document, { key: "Escape" });
+    fireEvent.click(modal);
+    expect(screen.getByRole("dialog", { name: "Solicitar un reembolso" })).toBe(modal);
     await act(async () => finish());
     expect(await within(modal).findByRole("button", { name: "Cerrar" })).toBeInTheDocument();
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(screen.queryByRole("dialog")).toBeNull();
   });
 
   // O número que o aluno manda ao suporte quando "comprei e não entrou".

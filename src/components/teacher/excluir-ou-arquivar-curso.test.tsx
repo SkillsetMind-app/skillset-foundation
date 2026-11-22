@@ -401,6 +401,10 @@ describe("modal de excluir/arquivar — o X do cabeçalho", () => {
 
     await waitFor(() => expect(within(dialog).getByRole("button", { name: "Cancel" })).toBeDisabled());
     expect(within(dialog).queryByRole("button", { name: "Close" })).toBeNull();
+    // Esc e o clique no fundo seguem o Cancelar travado.
+    fireEvent.keyDown(document, { key: "Escape" });
+    fireEvent.mouseDown(dialog.parentElement!);
+    expect(screen.getByRole("dialog", { name: "Delete Facilitation foundations" })).toBe(dialog);
 
     fail(new Error("23503"));
     expect(await within(dialog).findByRole("button", { name: "Close" })).toBeInTheDocument();

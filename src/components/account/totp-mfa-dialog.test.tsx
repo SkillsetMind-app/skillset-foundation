@@ -135,6 +135,8 @@ describe("TOTP setup dialog", () => {
     expect(await within(dialog).findByRole("button", { name: "Verifying..." })).toBeDisabled();
     expect(within(dialog).getByRole("button", { name: "Cancel" })).toBeDisabled();
     expect(within(dialog).queryByRole("button", { name: "Close" })).toBeNull();
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(screen.getByRole("dialog")).toBe(dialog);
 
     await act(async () => fail({ code: "invalid_otp", message: "detail" }));
     expect(within(screen.getByRole("dialog")).getByRole("button", { name: "Close" })).toBeInTheDocument();

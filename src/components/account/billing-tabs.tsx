@@ -629,20 +629,23 @@ function RefundModal({
   const dialogRef = useRef<HTMLDivElement>(null);
   useModalFocus(dialogRef, true);
 
+  const [busy, setBusy] = useState(false);
+  const [submitError, setSubmitError] = useState("");
+  const [done, setDone] = useState(false);
+
+  // Enquanto o pedido de reembolso está indo, nenhuma saída fecha a janela:
+  // o Cancelar trava e o X some; Esc e o clique fora seguem a mesma regra
+  // (antes fechavam e o resultado do pedido chegava numa janela já fechada).
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") {
+      if (event.key === "Escape" && !busy) {
         onClose();
       }
     }
 
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [onClose]);
-
-  const [busy, setBusy] = useState(false);
-  const [submitError, setSubmitError] = useState("");
-  const [done, setDone] = useState(false);
+  }, [busy, onClose]);
 
   async function handleSubmit() {
     setSubmitError("");
@@ -665,7 +668,7 @@ function RefundModal({
       role="dialog"
       aria-modal="true"
       aria-label={t("accountBilling.requestRefund")}
-      onClick={onClose}
+      onClick={busy ? undefined : onClose}
     >
       <div
         className="modal-panel modal-panel-scroll relative w-full max-w-md rounded-xl border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-strong)]"

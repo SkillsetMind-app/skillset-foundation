@@ -163,6 +163,10 @@
   --z-dropdown: 50;
   --z-topbar: 60;
   --z-rail: 65;
+  /* Avisos de andamento que não pedem ação: cartão de envio e faixa
+     "Rascunho salvo". Abaixo do menu de categoria do celular (67) e do
+     Advisor (68), que eles cobririam no celular. */
+  --z-status: 66;
   --z-float: 68;
   --z-banner: 69;
   --z-modal: 70;
@@ -3511,6 +3515,9 @@ html[data-view-as] .platform-shell-root {
      e mantém os 16px de respiro. */
   body:has(.platform-mobile-nav) .lesson-upload-card {
     bottom: calc(60px + 1rem + env(safe-area-inset-bottom, 0px));
+    /* O teto do componente (100svh - 2rem) não conta a subida: num celular
+       deitado o topo do cartão saía da tela. */
+    max-height: calc(100svh - 60px - 2rem - env(safe-area-inset-bottom, 0px));
   }
 }
 
@@ -9893,8 +9900,9 @@ button:hover > .dash-card,
   right: max(1rem, env(safe-area-inset-right, 0px));
   bottom: max(1rem, env(safe-area-inset-bottom, 0px));
   left: max(1rem, env(safe-area-inset-left, 0px));
-  /* Flutuante, como o Advisor: em 60 passava por baixo do menu lateral (65). */
-  z-index: var(--z-float);
+  /* Status: em 60 passava por baixo do menu lateral (65); acima dele, mas
+     abaixo do menu de categoria do celular (67) e do Advisor (68). */
+  z-index: var(--z-status);
   display: flex;
   align-items: center;
   gap: 0.75rem;

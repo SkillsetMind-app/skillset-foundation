@@ -70,7 +70,7 @@ describe("escala de camadas com nome", () => {
   }
 
   it("lê a escala no :root, de baixo para cima", () => {
-    const order = ["dropdown", "topbar", "rail", "float", "banner", "modal", "modal-studio", "modal-top", "tooltip"];
+    const order = ["dropdown", "topbar", "rail", "status", "float", "banner", "modal", "modal-studio", "modal-top", "tooltip"];
     const values = order.map((name) => layers[name]);
     expect(values.every((value) => Number.isFinite(value))).toBe(true);
     expect([...values].sort((a, b) => a - b)).toEqual(values);
@@ -80,7 +80,7 @@ describe("escala de camadas com nome", () => {
     [".platform-topbar", "topbar"],
     [".platform-sidebar", "rail"],
     [".floating-action", "float"],
-    [".created-strip", "float"],
+    [".created-strip", "status"],
     [".cookie-consent", "banner"],
     [".community-drawer-backdrop", "modal"],
     [".lesson-modal-overlay", "modal-studio"],
@@ -92,15 +92,25 @@ describe("escala de camadas com nome", () => {
     expect(sidebarZ).toBe(layers.rail);
   });
 
-  it("o cartão de envio do vídeo fica acima do menu lateral e abaixo de toda janela", () => {
+  // Avisos de andamento não cobrem o que a pessoa está usando: no celular o
+  // cartão subido sentava em cima da caixa de mensagem do Advisor (68) e do
+  // menu de categoria (67), e a faixa cobria o menu por 4s.
+  it("a camada de status fica acima do menu lateral e abaixo do menu de categoria e do Advisor", () => {
+    expect(layers.status).toBeGreaterThan(layers.rail);
+    expect(layers.status).toBeLessThan(zOf(".course-category-menu"));
+    expect(layers.status).toBeLessThan(zOf(".floating-action"));
+  });
+
+  it("o cartão de envio do vídeo fica na camada de status, abaixo de toda janela", () => {
     const source = readFileSync(join(root, "teacher", "lesson-upload-provider.tsx"), "utf8");
     const named = source.match(/<aside[^>]*className="[^"]*\bfixed\b[^"]*\bz-\[var\(--z-([a-z-]+)\)\]/)?.[1];
-    expect(named).toBeDefined();
-    const z = layers[named!];
-    expect(z).toBeGreaterThan(layers.rail);
-    expect(z).toBeLessThan(layers.modal);
-    // No celular ele sobe acima da barra de baixo, como o aviso de cookies.
+    expect(named).toBe("status");
+    expect(layers.status).toBeLessThan(layers.modal);
+    // No celular ele sobe acima da barra de baixo, como o aviso de cookies, e
+    // o teto desconta a subida para o topo não sair da tela.
     expect(source).toContain("lesson-upload-card");
-    expect(css).toMatch(/body:has\(\.platform-mobile-nav\) \.lesson-upload-card \{\s*bottom: calc\(60px \+ 1rem/);
+    const lifted = css.match(/body:has\(\.platform-mobile-nav\) \.lesson-upload-card \{([^}]*)\}/)?.[1] ?? "";
+    expect(lifted).toContain("bottom: calc(60px + 1rem + env(safe-area-inset-bottom, 0px));");
+    expect(lifted).toContain("max-height: calc(100svh - 60px - 2rem - env(safe-area-inset-bottom, 0px));");
   });
 });
