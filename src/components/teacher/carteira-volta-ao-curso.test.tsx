@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { I18nProvider } from "@/components/i18n/i18n-provider";
 import { TeacherWalletPanel } from "@/components/teacher/teacher-wallet-panel";
 
-// O professor saia do Publish para "Finish payout onboarding", passava pelas
+// O professor saia do Publish para "Set up how you get paid" (antes "Finish payout onboarding"), passava pelas
 // telas da Stripe e caia numa linha de status, sem caminho de volta para o
 // curso. O construtor manda ?returnTo=; com pagamentos prontos, vira botao.
 

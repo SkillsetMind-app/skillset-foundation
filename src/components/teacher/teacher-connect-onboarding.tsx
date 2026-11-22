@@ -345,7 +345,7 @@ function ConnectOnboardingFlow({
     return (
       <Card tone="soft" padding="none" className="p-5">
         <Eyebrow tone="muted">{t("connectOnboarding.setup")}</Eyebrow>
-        <h4 className="display-title mt-2 text-2xl text-[var(--color-primary)]">
+        <h4 className="mt-2 text-lg font-semibold text-[var(--color-ink)]">
           {t("connectOnboarding.unavailableTitle")}
         </h4>
         <p className="mt-2 text-sm leading-7 text-[var(--color-ink-soft)]">
@@ -373,7 +373,7 @@ function ConnectOnboardingFlow({
     return (
       <Card padding="none" className="p-5">
         <Eyebrow>{t("connectOnboarding.setup")}</Eyebrow>
-        <h4 className="display-title mt-2 text-2xl text-[var(--color-primary)]">
+        <h4 className="mt-2 text-lg font-semibold text-[var(--color-ink)]">
           {t("connectOnboarding.hostedTitle")}
         </h4>
         <p className="mt-2 text-sm leading-7 text-[var(--color-ink-soft)]">
@@ -480,7 +480,7 @@ function StripeConnectFallback({
   return (
     <div className="rounded-lg border border-[rgba(178,34,52,0.18)] bg-[rgba(178,34,52,0.04)] p-5">
       <Eyebrow>{t("connectOnboarding.fallbackEyebrow")}</Eyebrow>
-      <h4 className="display-title mt-2 text-2xl text-[var(--color-primary)]">
+      <h4 className="mt-2 text-lg font-semibold text-[var(--color-ink)]">
         {t("connectOnboarding.fallbackTitle")}
       </h4>
       <p role="alert" className="mt-2 text-sm leading-7 text-[var(--color-ink-soft)]">

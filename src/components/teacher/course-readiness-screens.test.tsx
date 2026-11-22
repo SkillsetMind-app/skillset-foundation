@@ -1705,7 +1705,7 @@ describe("publicar sem surpresa", () => {
     renderBuilder("review");
     await publishProduct();
     const alert = await screen.findByRole("alert");
-    expect(within(alert).getByRole("link", { name: "Finish payout onboarding" })).toHaveAttribute("href", PAYOUTS_WITH_RETURN);
+    expect(within(alert).getByRole("link", { name: "Set up how you get paid" })).toHaveAttribute("href", PAYOUTS_WITH_RETURN);
     expect(blocked).toHaveBeenCalledWith({ course_id: "course-1", reason: "payouts" });
   });
 
@@ -1776,7 +1776,7 @@ describe("item de payouts no construtor", () => {
     renderBuilder("review");
     await screen.findByRole("heading", { name: mocks.course.title });
     const item = screen.getAllByText("Stripe payouts")[0].closest("li")!;
-    expect(within(item).getByRole("link", { name: "Finish payout onboarding" })).toHaveAttribute("href", PAYOUTS_WITH_RETURN);
+    expect(within(item).getByRole("link", { name: "Set up how you get paid" })).toHaveAttribute("href", PAYOUTS_WITH_RETURN);
   });
 });
 

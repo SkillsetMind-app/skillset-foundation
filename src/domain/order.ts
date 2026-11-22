@@ -91,3 +91,9 @@ export function orderRevenueMinor(order: RevenueFields): number | null {
 export function isRevenueOrder(order: RevenueFields): boolean {
   return orderRevenueMinor(order) !== null;
 }
+
+/** Codigo curto do pedido ("#1A2B3C4D"), o mesmo na lista e na venda. */
+export function formatOrderRef(id: string): string {
+  const tail = id.slice(-8).toUpperCase();
+  return tail ? `#${tail}` : `#${id.toUpperCase()}`;
+}

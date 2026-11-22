@@ -24,6 +24,7 @@ export function TeacherStudentsList() {
   const { user } = useAuth();
   const { t, locale } = useTranslation();
   const [state, setState] = useState<State>({ status: "loading" });
+  const [search, setSearch] = useState("");
   const uid = user?.uid ?? null;
 
   useEffect(() => {
@@ -82,20 +83,46 @@ export function TeacherStudentsList() {
   const people = new Set(
     state.students.filter((student) => isActiveEnrollment(student.status)).map((student) => student.uid),
   ).size;
+  // Busca so no que ja veio (sem consulta nova): com 300 alunos, achar um
+  // nome era rolar 300 linhas.
+  const needle = search.trim().toLowerCase();
+  const visible = needle
+    ? state.students.filter((student) =>
+        `${student.displayName} ${student.email} ${student.courseTitle}`.toLowerCase().includes(needle),
+      )
+    : state.students;
 
   return (
     <section className="rounded-lg border border-[var(--color-line)] bg-white p-5 shadow-[var(--shadow-soft)]">
-      <p className="text-sm font-semibold text-[var(--color-ink)]">
-        {people === 1
-          ? t("teach.studentsPage.countOne")
-          : t("teach.studentsPage.countMany").replace("{count}", () => new Intl.NumberFormat(locale).format(people))}
-      </p>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm font-semibold text-[var(--color-ink)]">
+          {people === 1
+            ? t("teach.studentsPage.countOne")
+            : t("teach.studentsPage.countMany").replace("{count}", () => new Intl.NumberFormat(locale).format(people))}
+        </p>
+        <label htmlFor="students-search" className="sr-only">
+          {t("teach.studentsPage.searchLabel")}
+        </label>
+        <input
+          id="students-search"
+          type="search"
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          placeholder={t("teach.studentsPage.searchPlaceholder")}
+          className="min-h-11 w-full rounded-md border border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-ink)] sm:w-72"
+        />
+      </div>
+      {visible.length === 0 ? (
+        <p role="status" className="mt-4 text-sm leading-6 text-[var(--color-ink-soft)]">
+          {t("teach.studentsPage.noMatches")}
+        </p>
+      ) : (
       <div className="mt-4 overflow-x-auto">
         <table className="w-full min-w-[720px] border-collapse text-left text-sm">
           <thead>
             <tr className="border-b fine-rule">
-              {[t("courseRoster.studentHead"), t("teach.studentsPage.product"), t("courseRoster.access"), t("courseRoster.progress"), t("courseRoster.joined")].map((head) => (
-                <th key={head} className="py-2 pr-4 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-ink-muted)]">
+              {[t("courseRoster.studentHead"), t("teach.studentsPage.product"), t("courseRoster.access"), t("courseRoster.progress"), t("courseRoster.joined")].map((head, index) => (
+                <th key={head} className={`py-2 pr-4 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-ink-muted)]${index === 3 ? " text-right" : ""}`}>
                   {head}
                 </th>
               ))}
@@ -105,13 +132,22 @@ export function TeacherStudentsList() {
             </tr>
           </thead>
           <tbody>
-            {state.students.map((student) => {
+            {visible.map((student) => {
               const name = student.displayName || t("courseRoster.unnamed");
               const course = encodeURIComponent(student.courseId);
               return (
                 <tr key={student.enrollmentId} className="border-b fine-rule last:border-b-0">
                   <td className="py-3 pr-4">
-                    <strong className="block font-medium text-[var(--color-ink)]">{name}</strong>
+                    {/* O nome abre o aluno na lista do produto. Antes eram um ou
+                        dois botoes de 44px iguais em toda linha: uma parede na
+                        ultima coluna. */}
+                    <Link
+                      href={`/teach/courses/${course}/manage?section=students`}
+                      className="block font-semibold text-[var(--color-primary)] underline decoration-[var(--color-line-strong)] underline-offset-4 hover:decoration-current"
+                    >
+                      {name}
+                      <span className="sr-only">: {t("teach.studentsPage.seeInProduct")}, {student.courseTitle}</span>
+                    </Link>
                     {student.email ? (
                       <span className="text-xs text-[var(--color-ink-soft)]">{student.email}</span>
                     ) : null}
@@ -120,27 +156,18 @@ export function TeacherStudentsList() {
                   <td className="py-3 pr-4">
                     <StatusChip status={student.status} />
                   </td>
-                  <td className="py-3 pr-4 tabular-nums text-[var(--color-ink)]">{student.progressPercent}%</td>
+                  <td className="py-3 pr-4 text-right tabular-nums text-[var(--color-ink)]">{student.progressPercent}%</td>
                   <td className="py-3 pr-4 text-xs text-[var(--color-ink-soft)]">{formatDate(student.enrolledAt, locale)}</td>
                   <td className="py-3 pr-4">
-                    <div className="flex flex-wrap gap-2">
+                    {state.communities.has(student.courseId) ? (
                       <Link
-                        href={`/teach/courses/${course}/manage?section=students`}
-                        className="button-outline min-h-11 px-3 text-xs"
+                        href={`/teach/courses/${course}/community`}
+                        className="inline-flex min-h-11 items-center text-xs font-semibold text-[var(--color-primary)] underline underline-offset-4"
                       >
-                        {t("teach.studentsPage.seeInProduct")}
-                        <span className="sr-only">: {name}, {student.courseTitle}</span>
+                        {t("teach.studentsPage.community")}
+                        <span className="sr-only">: {student.courseTitle}</span>
                       </Link>
-                      {state.communities.has(student.courseId) ? (
-                        <Link
-                          href={`/teach/courses/${course}/community`}
-                          className="button-outline min-h-11 px-3 text-xs"
-                        >
-                          {t("teach.studentsPage.community")}
-                          <span className="sr-only">: {student.courseTitle}</span>
-                        </Link>
-                      ) : null}
-                    </div>
+                    ) : null}
                   </td>
                 </tr>
               );
@@ -148,6 +175,7 @@ export function TeacherStudentsList() {
           </tbody>
         </table>
       </div>
+      )}
     </section>
   );
 }

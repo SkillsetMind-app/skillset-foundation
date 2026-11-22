@@ -290,7 +290,7 @@ export function TeacherWalletPanel() {
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-[rgba(255,255,255,0.66)]">
             {t("teach.earnings.netEstimate")}
           </p>
-          <p className="display-title mt-3 break-words text-3xl leading-tight text-white sm:text-4xl">
+          <p className="num mt-3 break-words text-3xl font-bold leading-tight text-white sm:text-4xl">
             {money(financials.teacherNetByCurrency)}
           </p>
           {/* Uma linha ao lado do numero grande. O resto (cobranca na conta do
@@ -335,8 +335,10 @@ export function TeacherWalletPanel() {
               <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
                 {t("teach.earnings.destination")}
               </p>
-              <h3 className="display-title mt-2 text-2xl text-[var(--color-primary)]">
-                Stripe Connect
+              {/* "Stripe Connect" e o nome do produto da Stripe, nao do que a
+                  pessoa tem: para quem nao e tecnico, e a conta dela. */}
+              <h3 className="mt-2 text-lg font-semibold text-[var(--color-ink)]">
+                {t("teach.earnings.stripeAccount")}
               </h3>
             </div>
             <StatusChip
@@ -461,7 +463,7 @@ export function TeacherWalletPanel() {
                   ? t("teach.earnings.connectContinue")
                   : t("teach.earnings.connectStart")}
               </p>
-              <h3 className="display-title mt-2 text-2xl text-[var(--color-primary)]">
+              <h3 className="mt-2 text-lg font-semibold text-[var(--color-ink)]">
                 {t("teach.earnings.connectTitle")}
               </h3>
               <p className="mt-2 max-w-3xl text-sm leading-7 text-[var(--color-ink-soft)]">
@@ -497,7 +499,7 @@ export function TeacherWalletPanel() {
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
               {t("teach.earnings.statements")}
             </p>
-            <h3 className="display-title mt-2 text-3xl text-[var(--color-primary)]">
+            <h3 className="mt-2 text-lg font-semibold text-[var(--color-ink)]">
               {t("teach.earnings.statementsTitle")}
             </h3>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--color-ink-soft)]">
@@ -552,7 +554,7 @@ export function TeacherWalletPanel() {
           <FileText aria-hidden="true" size={22} strokeWidth={2} />
         </span>
         <div className="min-w-0 flex-1">
-          <h3 className="display-title text-2xl text-[var(--color-primary)]">
+          <h3 className="text-lg font-semibold text-[var(--color-ink)]">
             {t("teach.earnings.taxCenter")}
           </h3>
           <p className="mt-1 text-sm leading-6 text-[var(--color-ink-soft)]">

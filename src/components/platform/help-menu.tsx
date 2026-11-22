@@ -1,6 +1,6 @@
 "use client";
 
-import { LifeBuoy } from "lucide-react";
+import { ChevronDown, LifeBuoy } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useId, useRef, useState } from "react";
 
@@ -230,6 +230,16 @@ export function HelpMenu({
           <LifeBuoy aria-hidden="true" size={18} strokeWidth={1.9} className="shrink-0" />
         )}
         <span className={labelClass[variant]}>{label}</span>
+        {/* Na barra, a Ajuda abre uma lista no lugar como Sales e Promote:
+            sem a setinha ela parecia um link. */}
+        {variant === "nav" && !collapsed ? (
+          <ChevronDown
+            aria-hidden="true"
+            size={15}
+            strokeWidth={2}
+            className={`platform-nav-section-chevron ${open ? "is-open" : ""}`}
+          />
+        ) : null}
       </button>
 
       {open && !collapsed ? (

@@ -1,5 +1,6 @@
 "use client";
 
+import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
@@ -10,9 +11,10 @@ import { useTranslation } from "@/components/i18n/i18n-provider";
 import { Button, Card, EmptyState, InlineAlert, buttonClasses } from "@/components/ui";
 import { SpotArt } from "@/components/ui/spot-art";
 import { StripeDashboardButton } from "@/components/teacher/stripe-dashboard-button";
-import type { Order } from "@/domain/order";
+import { formatOrderRef, type Order } from "@/domain/order";
 import { subscribeToTeacherOrders } from "@/lib/data/orders";
 import { toDate } from "@/lib/format-date";
+import { formatMoney } from "@/lib/format-money";
 
 // A moldura de operacao (periodo, busca, status, exportar) e desenhada com ou
 // sem pedidos. Antes, zero pedidos trocava a pagina inteira por um card de
@@ -33,13 +35,6 @@ const PERIOD_DAYS: Record<Exclude<Period, "all">, number> = {
 
 const STATUS_FILTERS = ["all", "paid", "refunded"] as const;
 type StatusFilter = (typeof STATUS_FILTERS)[number];
-
-function formatMoney(amountMinor: number, currency: string, locale: string) {
-  return new Intl.NumberFormat(locale, {
-    style: "currency",
-    currency,
-  }).format(amountMinor / 100);
-}
 
 function formatDate(value: Date | null, locale: string, fallback: string) {
   if (!value) {
@@ -100,7 +95,9 @@ export function SaleList() {
   }, [period]);
 
   const visible = useMemo(() => {
-    const needle = search.trim().toLowerCase();
+    // A tabela mostra o codigo como "#1A2B3C4D", mas o id guardado nao tem
+    // "#": colar o codigo da tela nao achava nada. O codigo e o fim do id.
+    const needle = search.trim().replace(/^#/, "").toLowerCase();
     const fromMs = range?.from.getTime() ?? 0;
 
     return orders
@@ -258,7 +255,7 @@ export function SaleList() {
         />
       ) : visibleOrders.length === 0 ? (
         <Card as="div" padding="none" className="p-8 text-center">
-          <h2 className="display-title text-2xl text-[var(--color-primary)]">
+          <h2 className="text-lg font-semibold text-[var(--color-ink)]">
             {t(`${copy}.emptyTitle`)}
           </h2>
           <p className="mx-auto mt-3 max-w-md text-sm leading-7 text-[var(--color-ink-soft)]">
@@ -269,42 +266,112 @@ export function SaleList() {
           </Link>
         </Card>
       ) : (
-        <ul className="grid gap-3">
-          {visibleOrders.map((order) => (
-            <li
-              key={order.id}
-              className="flex flex-wrap items-center justify-between gap-4 rounded-lg border border-[var(--color-line)] bg-white p-4 shadow-[var(--shadow-soft)] transition-colors hover:border-[var(--color-primary-light)]"
-            >
-              <div className="min-w-0">
-                <Link
-                  href={`/teach/sales/${order.id}`}
-                  className="truncate text-sm font-semibold text-[var(--color-primary)] hover:underline"
-                >
-                  {order.courseTitle}
-                </Link>
-                <p className="mt-1 text-xs text-[var(--color-ink-soft)]">
-                  {formatDate(
-                    toDate(order.createdAt),
-                    locale,
-                    t(`${copy}.datePending`),
-                  )}
-                </p>
-              </div>
-              <div className="flex flex-wrap items-center gap-4">
-                <StatusChip status={order.status} />
-                <span className="text-sm font-bold text-[var(--color-primary)]">
+        // Uma tabela num cartao so: antes eram ate 50 cartoes soltos, sem
+        // colunas, com o valor andando para os lados conforme a largura do
+        // selo de status. Cartao estreito (celular, ou barra lateral aberta
+        // num tablet): cada venda vira um bloco curto, com o valor a vista,
+        // em vez de uma tabela que esconderia valor e link na rolagem lateral.
+        <Card as="div" padding="none" className="@container overflow-hidden">
+          <ul className="@2xl:hidden">
+            {visibleOrders.map((order) => (
+              <li
+                key={order.id}
+                className="flex items-start justify-between gap-3 border-b fine-rule px-4 py-3 last:border-b-0"
+              >
+                <div className="min-w-0">
+                  <Link
+                    href={`/teach/sales/${order.id}`}
+                    className="block truncate text-sm font-semibold text-[var(--color-primary)] hover:underline"
+                  >
+                    {order.courseTitle}
+                  </Link>
+                  <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-[var(--color-ink-soft)]">
+                    <StatusChip status={order.status} />
+                    <span>{formatDate(toDate(order.createdAt), locale, t(`${copy}.datePending`))}</span>
+                  </div>
+                </div>
+                <span className="num shrink-0 whitespace-nowrap text-right text-sm font-bold text-[var(--color-primary)]">
                   {formatMoney(order.amountMinor, order.currency, locale)}
                 </span>
-                <Link
-                  href={`/teach/sales/${order.id}#sale-refund`}
-                  className="text-xs font-semibold text-[var(--color-primary)] underline underline-offset-4"
-                >
-                  {t("stripeDashboard.refundHelp")}
-                </Link>
-              </div>
-            </li>
-          ))}
-        </ul>
+              </li>
+            ))}
+          </ul>
+          <div className="hidden overflow-x-auto @2xl:block">
+            <table className="w-full min-w-[640px] border-collapse text-left text-sm">
+              <caption className="sr-only">{t(`${copy}.tableCaption`)}</caption>
+              <thead>
+                <tr className="border-b fine-rule">
+                  {(["colProduct", "colOrder", "colStatus", "colDate"] as const).map((head) => (
+                    <th
+                      key={head}
+                      scope="col"
+                      className="px-4 py-3 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-ink-muted)]"
+                    >
+                      {t(`${copy}.${head}`)}
+                    </th>
+                  ))}
+                  <th
+                    scope="col"
+                    className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-ink-muted)]"
+                  >
+                    {t(`${copy}.colAmount`)}
+                  </th>
+                  <th scope="col" className="px-4 py-3">
+                    <span className="sr-only">{t(`${copy}.colActions`)}</span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {visibleOrders.map((order) => {
+                  const ref = formatOrderRef(order.id);
+                  return (
+                    <tr
+                      key={order.id}
+                      className="border-b fine-rule last:border-b-0 hover:bg-[var(--color-surface-soft)]"
+                    >
+                      <th scope="row" className="max-w-[16rem] px-4 py-3 font-semibold">
+                        <Link
+                          href={`/teach/sales/${order.id}`}
+                          title={order.courseTitle}
+                          className="block truncate text-[var(--color-primary)] hover:underline"
+                        >
+                          {order.courseTitle}
+                        </Link>
+                      </th>
+                      <td className="num px-4 py-3 text-xs text-[var(--color-ink-soft)]">{ref}</td>
+                      <td className="px-4 py-3">
+                        <StatusChip status={order.status} />
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-3 text-xs text-[var(--color-ink-soft)]">
+                        {formatDate(
+                          toDate(order.createdAt),
+                          locale,
+                          t(`${copy}.datePending`),
+                        )}
+                      </td>
+                      {/* O valor do pedido, na moeda DELE (nada soma moedas
+                          aqui). Reembolso parcial: o valor cobrado e o selo
+                          dizem o que aconteceu; o que sobrou fica na venda. */}
+                      <td className="num whitespace-nowrap px-4 py-3 text-right font-bold text-[var(--color-primary)]">
+                        {formatMoney(order.amountMinor, order.currency, locale)}
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <Link
+                          href={`/teach/sales/${order.id}`}
+                          className="inline-flex min-h-11 items-center gap-1 whitespace-nowrap text-xs font-semibold text-[var(--color-primary)] hover:underline"
+                        >
+                          {t(`${copy}.view`)}
+                          <span className="sr-only">: {order.courseTitle}, {ref}</span>
+                          <ChevronRight aria-hidden="true" size={14} strokeWidth={2} />
+                        </Link>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </Card>
       )}
 
       {hiddenCount > 0 ? (

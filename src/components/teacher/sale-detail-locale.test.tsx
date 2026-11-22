@@ -69,6 +69,77 @@ describe("sale detail with real EN/ES dictionaries", () => {
     expect(screen.getByText("Refund recorded")).toBeVisible();
   });
 
+  // Antes o codigo do pedido era a maior letra da tela e o liquido tinha o
+  // tamanho do valor e da taxa; e nao havia volta para Vendas.
+  it("makes the net the strongest figure, keeps the order code small and links back to sales", () => {
+    mount();
+    const net = screen.getByText("Neto antes de la comisión de Stripe").parentElement!.querySelector("p:last-child")!;
+    expect(net.textContent).toBe(new Intl.NumberFormat("es", { style: "currency", currency: "USD" }).format(111.11));
+    expect(net).toHaveClass("text-3xl");
+    const amount = screen.getByText("Importe").parentElement!.querySelector("p:last-child")!;
+    expect(amount).not.toHaveClass("text-3xl");
+    expect(screen.getByRole("heading", { name: "Pedido #12345678" })).toHaveClass("text-sm");
+    expect(screen.getByRole("link", { name: "Volver a ventas" })).toHaveAttribute("href", "/teach/sales");
+    switchLanguage();
+    expect(screen.getByRole("link", { name: "Back to sales" })).toHaveAttribute("href", "/teach/sales");
+  });
+
+  // O numero grande nao pode mostrar dinheiro que nao ficou: reembolso parcial
+  // conta o valor menos o devolvido (como os Ganhos), e o que nao e receita
+  // (reembolsada inteira, pendente) nao tem numero grande.
+  describe("money by order state (EN)", () => {
+    function show(overrides: Partial<Order>) {
+      mocks.subscribe.mockImplementation((_id, callback) => { callback({ ...order, ...overrides }); return () => {}; });
+      render(<I18nProvider initialLocale="en"><SaleDetail orderId={order.id} /></I18nProvider>);
+    }
+    const figure = (label: string) =>
+      screen.getByText(label, { selector: "p" }).parentElement!.querySelector("p:last-child")!.textContent;
+    const headline = () => document.querySelector("p.text-3xl");
+
+    it("paid: the net is the headline", () => {
+      show({ status: "paid" });
+      expect(headline()).toHaveTextContent("$111.11");
+      expect(figure("Net before Stripe fee")).toBe("$111.11");
+      expect(figure("Amount")).toBe("$123.45");
+      expect(figure("SkillsetMind fee")).toBe("$12.34");
+      expect(screen.queryByText("Refunded", { selector: "p" })).toBeNull();
+    });
+
+    it("partially refunded $120 - $30: headline from what was kept, fee as charged, refund shown", () => {
+      show({ status: "partially_refunded", amountMinor: 12000, refundedAmountMinor: 3000 });
+      expect(headline()).toHaveTextContent("$78.00");
+      expect(figure("Net after refund, before Stripe fee")).toBe("$78.00");
+      expect(figure("Amount")).toBe("$120.00");
+      expect(figure("Refunded")).toBe("−$30.00");
+      expect(figure("SkillsetMind fee")).toBe("$12.00");
+      expect(screen.queryByText("Net before Stripe fee")).toBeNull();
+    });
+
+    it("fully refunded: no headline, the three small figures plus the refund", () => {
+      show({ status: "refunded", amountMinor: 12000, refundedAmountMinor: 12000 });
+      expect(headline()).toBeNull();
+      expect(figure("Amount")).toBe("$120.00");
+      expect(figure("Refunded")).toBe("−$120.00");
+      expect(figure("SkillsetMind fee")).toBe("$12.00");
+      expect(figure("Net before Stripe fee")).toBe("$108.00");
+    });
+
+    it("pending: no headline and no refund line", () => {
+      show({ status: "pending", amountMinor: 12000 });
+      expect(headline()).toBeNull();
+      expect(figure("Amount")).toBe("$120.00");
+      expect(figure("SkillsetMind fee")).toBe("$12.00");
+      expect(figure("Net before Stripe fee")).toBe("$108.00");
+      expect(screen.queryByText("Refunded", { selector: "p" })).toBeNull();
+    });
+  });
+
+  it("sends a missing sale back to the sales list", () => {
+    mocks.subscribe.mockImplementation((_id, callback) => { callback(null); return () => {}; });
+    mount();
+    expect(screen.getByRole("link", { name: "Volver a ventas" })).toHaveAttribute("href", "/teach/sales");
+  });
+
   it("translates pending dates and unavailable identifiers", () => {
     mocks.subscribe.mockImplementation((_id, callback) => { callback({ ...order, status: "pending", createdAt: undefined, updatedAt: undefined, checkoutSessionId: null, paymentIntentId: null }); return () => {}; });
     mount();
