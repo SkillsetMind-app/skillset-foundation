@@ -372,6 +372,10 @@ export function TeacherCourseStudio({
         <div className="mt-5">
           {isLoadingCourses ? (
             <ProductRowsSkeleton label={t("creatorPanel.products.loadingAria")} />
+          ) : errorKey && courses.length === 0 ? (
+            // A leitura falhou e nada chegou: o erro com "Try again" acima
+            // basta. "No products yet" embaixo dele afirmava o que nao se sabe.
+            null
           ) : courses.length === 0 ||
             (productView === "communities" &&
               !courses.some((course) => course.communityEnabled)) ? (

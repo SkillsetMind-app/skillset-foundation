@@ -848,7 +848,9 @@ function TeacherEventRsvpSummary({ eventId }: { eventId: string }) {
           {t(`${copy}.rsvpLoading`)}
         </p>
       ) : error ? (
-        <InlineAlert tone="error" className="mt-2">{t(`${copy}.rsvpError`)}</InlineAlert>
+        // Aviso (polite), não erro: a linha se repete em cada cartão de evento,
+        // e oito erros assertivos interrompiam o leitor de tela oito vezes.
+        <InlineAlert tone="warning" className="mt-2">{t(`${copy}.rsvpError`)}</InlineAlert>
       ) : (
         <div className="mt-2 flex flex-wrap gap-2 text-sm">
           <span className="rounded-md bg-[var(--color-surface-soft)] px-3 py-1 font-semibold text-[var(--color-primary)]">

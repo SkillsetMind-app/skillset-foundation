@@ -122,6 +122,11 @@ describe("TeacherCourseStudio — lista de produtos", () => {
     render(<TeacherCourseStudio />);
 
     expect(await screen.findByRole("alert")).toHaveTextContent("We could not load your products.");
+    // Sem lista lida, "No products yet" afirmaria o que não se sabe.
+    expect(screen.queryByText("No products yet")).toBeNull();
+    expect(screen.queryByRole("link", { name: /Create product/ })).toBeNull();
+    // A frase não manda mais recarregar a página: o botão está ao lado.
+    expect(screen.getByRole("alert")).not.toHaveTextContent(/refresh/i);
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));
 
     expect(await screen.findByRole("table", { name: "Products" })).toBeInTheDocument();

@@ -740,7 +740,8 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
               {/* A mesma barra do construtor (a compartilhada): as duas telas
                   desenhavam a mesma prontidão de jeitos diferentes. */}
               <ProgressBar value={readiness.percent} label={readinessText} className="mt-4" />
-              <p className="mt-2 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-ink-muted)]">
+              {/* aria-hidden: a barra acima já diz esta frase (é o nome dela). */}
+              <p aria-hidden="true" className="mt-2 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-ink-muted)]">
                 {readinessText}
               </p>
               <ReadinessGroups

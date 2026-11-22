@@ -130,12 +130,18 @@ export function ProfileSettingsPanel() {
     return [timezone, ...timezoneOptions];
   }, [timezone]);
 
+  // Qualquer edição depois de salvar tira o "Profile updated.": a frase só vale
+  // para o que foi gravado. Campos de texto chegam pelo onChange do form; os
+  // botões (objetivos, credenciais) chamam aqui.
+  const clearSuccess = () => setSuccess("");
+
   function toggleGoal(goal: UserGoal) {
     setGoals((currentGoals) =>
       currentGoals.includes(goal)
         ? currentGoals.filter((currentGoal) => currentGoal !== goal)
         : normalizeGoals([...currentGoals, goal]),
     );
+    clearSuccess();
   }
 
   function updateCredential(index: number, value: string) {
@@ -148,12 +154,14 @@ export function ProfileSettingsPanel() {
     setCredentials((current) =>
       current.length >= maxCredentialEntries ? current : [...current, ""],
     );
+    clearSuccess();
   }
 
   function removeCredential(index: number) {
     setCredentials((current) =>
       current.filter((_, position) => position !== index),
     );
+    clearSuccess();
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -309,7 +317,7 @@ export function ProfileSettingsPanel() {
     <section className="settings-section-card">
       {header}
 
-      <form className="mt-6 grid grid-cols-1 gap-4" onSubmit={handleSubmit}>
+      <form className="mt-6 grid grid-cols-1 gap-4" onSubmit={handleSubmit} onChange={clearSuccess}>
         <div className="flex flex-col gap-4 rounded-lg border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-4 sm:flex-row sm:items-center">
           <UserAvatar
             name={displayName || user?.email}

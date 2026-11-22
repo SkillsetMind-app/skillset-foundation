@@ -3155,7 +3155,9 @@ export function CourseBuilderStudio() {
           <div className="course-builder-stepper__meter">
             {/* A prontidao mora so aqui, numa linha: o "71%" aparecia tres
                 vezes (chip do topo, esta linha e o cartao do rodape). */}
-            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--color-ink-soft)]">
+            {/* aria-hidden: a barra logo abaixo já diz esta frase (é o nome
+                dela) e o valor; sem isso o leitor de tela lia tudo duas vezes. */}
+            <p aria-hidden="true" className="text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--color-ink-soft)]">
               {readinessText}
             </p>
             {/* A barra media estagios (5) e o chip media checks (7): 40% e

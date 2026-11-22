@@ -123,6 +123,8 @@ describe("CourseStudentRosterView", () => {
     const { rerender } = render(<CourseStudentRosterView state="error" students={[]} courseId="course-1" onRetry={onRetry} />);
 
     expect(screen.getByRole("alert")).toHaveTextContent(/could not load the roster/);
+    // A frase não manda mais recarregar a página: o botão está ao lado.
+    expect(screen.getByRole("alert")).not.toHaveTextContent(/reload/i);
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));
     expect(onRetry).toHaveBeenCalledTimes(1);
 

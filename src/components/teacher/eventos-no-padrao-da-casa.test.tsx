@@ -37,6 +37,7 @@ const mocks = vi.hoisted(() => ({
   router: { push: vi.fn(), replace: vi.fn(), refresh: vi.fn() },
   searchParams: new URLSearchParams(""),
   events: [] as unknown[],
+  rsvpFails: false,
 }));
 
 vi.mock("next/navigation", () => ({
@@ -73,8 +74,9 @@ vi.mock("@/lib/data/course-events", () => ({
   cancelCourseEvent: vi.fn(),
   createCourseEvent: vi.fn(),
   deleteCourseEvent: vi.fn(),
-  subscribeToCourseEventRsvps: (_id: string, onData: (rsvps: unknown[]) => void) => {
-    onData([]);
+  subscribeToCourseEventRsvps: (_id: string, onData: (rsvps: unknown[]) => void, onError?: (error: Error) => void) => {
+    if (mocks.rsvpFails) onError?.(new Error("rsvp read failed"));
+    else onData([]);
     return () => undefined;
   },
   subscribeToTeacherCourseEvents: (
@@ -109,6 +111,22 @@ describe("agenda de eventos no padrao da casa", () => {
   beforeEach(() => {
     mocks.searchParams = new URLSearchParams("");
     mocks.events = [];
+    mocks.rsvpFails = false;
+  });
+
+  // Um resumo de RSVP por cartao: com a leitura falhando, oito eventos eram
+  // oito alertas assertivos interrompendo o leitor de tela. Agora e aviso.
+  it("a falha do resumo de RSVP avisa sem interromper (status, nunca alert)", () => {
+    mocks.rsvpFails = true;
+    mocks.events = [makeEvent({ id: "a" }), makeEvent({ id: "b", title: "Case clinic" })];
+    renderStudio();
+
+    const notes = screen.getAllByText("RSVP summary unavailable.");
+    expect(notes).toHaveLength(2);
+    for (const note of notes) {
+      expect(note.closest('[role="status"]')).not.toBeNull();
+    }
+    expect(screen.queryByRole("alert")).toBeNull();
   });
 
   afterEach(() => {

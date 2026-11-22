@@ -1132,6 +1132,11 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
       await screen.findByText(`${expected.doneCount} of ${expected.total} checks · ${expected.percent}%`),
     ).toBeInTheDocument();
     expect(screen.queryAllByText(new RegExp(`${expected.percent}%`))).toHaveLength(1);
+    // Uma leitura so: a frase e o nome da barra; a linha visivel fica fora da
+    // arvore de acessibilidade para o leitor de tela nao repeti-la.
+    const checksLine = screen.getByText(`${expected.doneCount} of ${expected.total} checks · ${expected.percent}%`);
+    expect(checksLine).toHaveAttribute("aria-hidden", "true");
+    expect(screen.getByRole("progressbar", { name: checksLine.textContent! })).toBeInTheDocument();
     expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", String(expected.percent));
 
     // O proximo passo e o rodape vem da mesma lista.
@@ -1270,6 +1275,10 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
       ),
     ).toBeInTheDocument();
     expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", String(expected.percent));
+    // Uma leitura so: a frase e o nome da barra, e a linha visivel fica escondida.
+    const stepsLine = screen.getByText(`${expected.doneCount} of ${expected.total} required steps done · ${expected.percent}% ready`);
+    expect(stepsLine).toHaveAttribute("aria-hidden", "true");
+    expect(screen.getByRole("progressbar", { name: stepsLine.textContent! })).toBeInTheDocument();
 
     const list = screen.getByText("Publish checklist").closest("section") ?? document.body;
     expect(within(list).getByText("Add at least one lesson.")).toBeInTheDocument();

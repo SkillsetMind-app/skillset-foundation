@@ -144,6 +144,24 @@ describe("profile settings locale", () => {
       credentials: ["My English credential $&"],
       goals: ["teach_online", "career_growth", "skill_certification", "build_community", "live_mentorship", "business_training"],
     });
+
+    // Editar de novo tira o "salvo": a frase não pode valer para texto que já
+    // não é o gravado. Nada é gravado por isso.
+    fireEvent.change(screen.getByLabelText("Public name"), { target: { value: "Ana again" } });
+    expect(screen.queryByText("Profile updated.")).toBeNull();
+    expect(screen.queryByRole("status")).toBeNull();
+    expect(mocks.updateUserIdentity).toHaveBeenCalledTimes(1);
+  });
+
+  it("a toggled goal also clears the saved line", async () => {
+    const { container } = renderProfile();
+    await screen.findByDisplayValue(profile.displayName);
+    await act(async () => { fireEvent.submit(container.querySelector("form")!); });
+    expect(await screen.findByText("Perfil actualizado.")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Enseñar en línea" }));
+    expect(screen.queryByText("Perfil actualizado.")).toBeNull();
+    expect(mocks.updateUserIdentity).toHaveBeenCalledTimes(1);
   });
 
   it.each([

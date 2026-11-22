@@ -384,7 +384,9 @@ function StudioNextSteps({
                 {t("creatorPanel.home.nextSteps.title")}
               </h2>
             </div>
-            <div className="text-right">
+            {/* aria-hidden: a barra abaixo diz o "2 of 3" (nome) e a
+                porcentagem (valor); sem isso o leitor de tela lia duas vezes. */}
+            <div aria-hidden="true" className="text-right">
               <p className="text-2xl font-semibold tabular-nums text-[var(--color-primary)]">
                 {`${progress}%`}
               </p>

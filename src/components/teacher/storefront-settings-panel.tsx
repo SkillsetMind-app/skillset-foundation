@@ -206,6 +206,10 @@ export function StorefrontSettingsPanel() {
   >({});
   const [error, setError] = useState<StorefrontError>("");
   const [success, setSuccess] = useState<StorefrontSuccess>("");
+  // Qualquer edição depois de salvar tira o "Storefront saved.": a frase só
+  // vale para o que foi gravado. Os avisos neutros ("salve para publicar")
+  // continuam verdadeiros e ficam.
+  const clearSaved = () => setSuccess((current) => (current === "saved" ? "" : current));
 
   function setImageError(kind: StorefrontImageKind, message: StorefrontImageError) {
     setImageErrors((current) => ({ ...current, [kind]: message }));
@@ -325,6 +329,7 @@ export function StorefrontSettingsPanel() {
   function reorder(index: number, direction: -1 | 1) {
     const ids = orderedCourses.map((course) => course.id);
     setOrderedCourseIds(moveItem(ids, index, direction));
+    clearSaved();
   }
 
   async function handleStorefrontImageChange(
@@ -610,7 +615,9 @@ export function StorefrontSettingsPanel() {
         <div className="h-1.5" style={{ background: previewAccent }} />
       </section>
 
-      <form className="mt-6 grid gap-5" onSubmit={handleSubmit}>
+      {/* onChange no form: pega a mudança de qualquer campo (cor, tema, frase,
+          imagem) sem mexer no que cada campo grava. */}
+      <form className="mt-6 grid gap-5" onSubmit={handleSubmit} onChange={clearSaved}>
         <Card tone="soft" padding="sm" shadow={false} className="grid gap-4">
           <p className="text-sm font-semibold text-[var(--color-ink)]">
             {t("teach.storefrontEditor.brand")}
@@ -753,9 +760,10 @@ export function StorefrontSettingsPanel() {
                     </span>
                     <button
                       type="button"
-                      onClick={() =>
-                        setFeaturedCourseId(isFeatured ? null : course.id)
-                      }
+                      onClick={() => {
+                        setFeaturedCourseId(isFeatured ? null : course.id);
+                        clearSaved();
+                      }}
                       aria-pressed={isFeatured}
                       className={`min-h-11 shrink-0 rounded-md border px-2.5 py-1.5 text-xs font-semibold ${
                         isFeatured
