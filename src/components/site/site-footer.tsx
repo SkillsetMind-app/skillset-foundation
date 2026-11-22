@@ -76,14 +76,15 @@ export async function SiteFooter() {
                 <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
                   {t(column.titleKey)}
                 </p>
-                {/* No celular cada link é uma linha de toque inteira (44 px); a
-                    partir de sm a lista volta a ser compacta. */}
-                <div className="mt-2 grid sm:mt-3 sm:gap-2">
+                {/* No celular e no tablet cada link é uma linha de toque inteira
+                    (44 px); só no desktop, com mouse, a lista volta a ser
+                    compacta. A partir de sm ela caía para ~20 px no tablet. */}
+                <div className="mt-2 grid lg:mt-3 lg:gap-2">
                   {column.links.filter(([, href]) => hasRealCourses || !hiddenWithoutRealCourses.has(href)).map(([labelKey, href]) => (
                     <Link
                       key={`${column.titleKey}-${href}`}
                       href={href}
-                      className="flex min-h-11 items-center text-sm font-semibold text-[var(--color-ink-soft)] transition-colors hover:text-[var(--color-primary)] sm:block sm:min-h-0"
+                      className="flex min-h-11 items-center text-sm font-semibold text-[var(--color-ink-soft)] transition-colors hover:text-[var(--color-primary)] lg:block lg:min-h-0"
                     >
                       {t(labelKey)}
                     </Link>

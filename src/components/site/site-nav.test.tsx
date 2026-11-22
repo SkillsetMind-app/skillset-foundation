@@ -199,6 +199,59 @@ describe("SiteNav", () => {
     expect(within(menu).getByRole("option", { name: "Español" })).toHaveAttribute("aria-selected", "false");
   });
 
+  // O menu do celular soltava o foco no X, deixava o Tab ir para a página
+  // escurecida atrás, e a página rolava por baixo dele.
+  it("moves focus into the mobile menu, locks the page scroll and gives both back on close", () => {
+    render(<RealCoursesProvider value><SiteNav /></RealCoursesProvider>);
+    const toggle = screen.getByRole("button", { name: "Open menu" });
+
+    fireEvent.click(toggle);
+    const mobile = screen.getByRole("navigation", { name: "Mobile navigation" });
+    expect(within(mobile).getAllByRole("link")[0]).toHaveFocus();
+    expect(document.body.style.overflow).toBe("hidden");
+    // O escuro não é mais um botão "Close menu" no caminho do Tab.
+    expect(screen.getAllByRole("button", { name: "Close menu" })).toHaveLength(1);
+    expect(document.getElementById("site-mobile-menu")).toHaveClass("motion-drop-in");
+
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(document.body.style.overflow).toBe("");
+    expect(toggle).toHaveFocus();
+  });
+
+  it("keeps Tab inside the header row while the mobile menu is open", () => {
+    // jsdom não faz layout: aqui todo elemento conta como visível.
+    const rects = vi.spyOn(Element.prototype, "getClientRects").mockReturnValue([{}] as unknown as DOMRectList);
+    try {
+      render(<SiteNav />);
+      fireEvent.click(screen.getByRole("button", { name: "Open menu" }));
+      const row = document.querySelector<HTMLElement>(".site-header__inner")!;
+      const panel = document.getElementById("site-mobile-menu")!;
+      const panelItems = within(panel).getAllByRole("link");
+      const last = panelItems[panelItems.length - 1];
+
+      last.focus();
+      fireEvent.keyDown(document, { key: "Tab" });
+      expect(row.contains(document.activeElement)).toBe(true);
+      expect(document.activeElement).not.toBe(last);
+
+      fireEvent.keyDown(document, { key: "Tab", shiftKey: true });
+      expect(last).toHaveFocus();
+    } finally {
+      rects.mockRestore();
+    }
+  });
+
+  it("closes the mobile menu from the dimmed page, which starts below the header", () => {
+    render(<SiteNav />);
+    fireEvent.click(screen.getByRole("button", { name: "Open menu" }));
+    const scrim = document.querySelector<HTMLElement>("header ~ div.fixed[aria-hidden='true']")!;
+    expect(scrim.className).toContain("top-[var(--site-header-height)]");
+    expect(scrim.closest("header")).toBeNull();
+
+    fireEvent.click(scrim);
+    expect(document.getElementById("site-mobile-menu")).toBeNull();
+  });
+
   it("keeps the mobile menu in the same order and closes on Escape", () => {
     render(<RealCoursesProvider value><SiteNav /></RealCoursesProvider>);
 

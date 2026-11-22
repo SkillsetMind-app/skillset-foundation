@@ -15,7 +15,8 @@ export function PrivacyChoicesButton() {
     <button
       type="button"
       onClick={reopenCookieConsent}
-      className="font-semibold text-[var(--color-ink-soft)] underline-offset-2 transition-colors hover:text-[var(--color-primary)] hover:underline"
+      // 44px de alvo de toque: o texto de 12px sozinho dava ~24px.
+      className="inline-flex min-h-11 items-center font-semibold text-[var(--color-ink-soft)] underline-offset-2 transition-colors hover:text-[var(--color-primary)] hover:underline"
     >
       {t("publicPages.privacy.your_privacy_choices")}
     </button>

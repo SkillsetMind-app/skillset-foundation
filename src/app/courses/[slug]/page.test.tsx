@@ -39,6 +39,11 @@ vi.mock("@/components/site/site-nav", () => ({
   SiteNav: () => null,
 }));
 
+// Server component assíncrono com teste próprio; aqui só importa que ele está na página.
+vi.mock("@/components/site/site-footer", () => ({
+  SiteFooter: () => <footer data-testid="site-footer" />,
+}));
+
 // O botão de inscrição da amostra lê a sessão; aqui só importa a volta.
 vi.mock("@/components/courses/course-enrollment-cta", () => ({
   CourseEnrollmentCta: () => null,
@@ -87,6 +92,8 @@ describe("página do curso de criador", () => {
     // Curso publicado renderiza sem a consulta extra e sem 404.
     expect(mocks.getCourseRefAccess).not.toHaveBeenCalled();
     expect(mocks.notFound).not.toHaveBeenCalled();
+    // Termos e política de reembolso ao alcance de quem vai pagar.
+    expect(screen.getByTestId("site-footer")).toBeInTheDocument();
   });
 
   // Link para curso nao publicado, removido ou slug invalido respondia 200 com
@@ -143,6 +150,7 @@ describe("volta da página de amostra", () => {
     render(await CourseDetailPage({ params: Promise.resolve({ slug: "leadership-development" }) }));
 
     expect(screen.getByRole("link", { name })).toHaveAttribute("href", href);
+    expect(screen.getByTestId("site-footer")).toBeInTheDocument();
   });
 });
 

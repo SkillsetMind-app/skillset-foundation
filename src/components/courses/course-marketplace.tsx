@@ -13,7 +13,9 @@ import { Bookmark, BookmarkCheck, LayoutGrid, List, Search } from "lucide-react"
 import { startTransition, useDeferredValue, useEffect, useState } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
+import { CourseGridSkeleton } from "@/components/courses/course-grid-skeleton";
 import { CourseTile } from "@/components/courses/course-tile";
+import { InlineAlert } from "@/components/ui/inline-alert";
 import { useInstructorNames } from "@/components/courses/use-instructor-names";
 import type { TeacherCourse } from "@/domain/teacher-course";
 import type { CourseCard } from "@/lib/data/catalog";
@@ -264,9 +266,12 @@ export function CourseMarketplace({ courses = [] }: CourseMarketplaceProps) {
                 }`}
               >
                 <span>{filter === allCategoriesLabel ? t("publicCourses.all") : getCourseCategoryLabel(filter, t)}</span>
-                <span className="marketplace-filter-button__count">
-                  {categoryCount(filter)}
-                </span>
+                {/* Sem número até a lista chegar: "All courses 0" lia como loja vazia. */}
+                {isLoadingPublishedCourses ? null : (
+                  <span className="marketplace-filter-button__count">
+                    {categoryCount(filter)}
+                  </span>
+                )}
               </button>
             );
           })}
@@ -386,36 +391,19 @@ export function CourseMarketplace({ courses = [] }: CourseMarketplaceProps) {
         </div>
       ) : null}
 
+      {/* InlineAlert: o erro é anunciado ao leitor de tela, e não só pintado. */}
       {publishedCoursesError ? (
-        <p className="mb-5 rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
-          {t(publishedCoursesError)}
-        </p>
+        <InlineAlert tone="error" className="mb-5">{t(publishedCoursesError)}</InlineAlert>
       ) : null}
 
       {wishlistError ? (
-        <p className="mb-5 rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
-          {t(wishlistError)}
-        </p>
+        <InlineAlert tone="error" className="mb-5">{t(wishlistError)}</InlineAlert>
       ) : null}
 
       {isLoadingPublishedCourses ? (
         <>
           <p role="status" className="sr-only">{t("publicCourses.loadingCourses")}</p>
-          <div className="marketplace-course-grid" aria-hidden="true">
-            {[0, 1, 2].map((index) => (
-              <div
-                key={index}
-                className="marketplace-card animate-pulse"
-              >
-                <div className="marketplace-card__media bg-[var(--color-surface-strong)]" />
-                <div className="space-y-3 p-5">
-                  <div className="h-3 w-24 rounded bg-[var(--color-surface-strong)]" />
-                  <div className="h-6 w-3/4 rounded bg-[var(--color-surface-strong)]" />
-                  <div className="h-16 rounded bg-[var(--color-surface-soft)]" />
-                </div>
-              </div>
-            ))}
-          </div>
+          <CourseGridSkeleton />
         </>
       ) : visibleCourses.length === 0 ? (
         hasAnyCourses && isFiltering ? (

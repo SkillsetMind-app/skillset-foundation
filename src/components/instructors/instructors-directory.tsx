@@ -60,7 +60,8 @@ export function InstructorsDirectory() {
         {[0, 1, 2].map((item) => (
           <div
             key={item}
-            className="h-56 animate-pulse rounded-lg border border-[var(--color-line)] bg-white shadow-[var(--shadow-soft)]"
+            // Mesma altura mínima do cartão de verdade (min-h-64): sem pulo quando chega.
+            className="h-64 animate-pulse rounded-lg border border-[var(--color-line)] bg-white shadow-[var(--shadow-soft)]"
           />
         ))}
       </section>
@@ -69,7 +70,8 @@ export function InstructorsDirectory() {
 
   if (hasError) {
     return (
-      <section className="mt-12 rounded-lg border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] p-6">
+      // role="alert": o erro é anunciado ao leitor de tela, e não só pintado.
+      <section role="alert" className="mt-12 rounded-lg border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] p-6">
         <p className="text-sm font-semibold text-[var(--color-danger-fg)]">
           {t("publicPages.directory.instructor_profiles_could_not_load_right")}
         </p>
