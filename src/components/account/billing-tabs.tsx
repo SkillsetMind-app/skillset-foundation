@@ -11,6 +11,7 @@ import { HorizontalTabs } from "@/components/shared/horizontal-tabs";
 import { ShortId } from "@/components/shared/short-id";
 import { StatusChip } from "@/components/shared/status-chip";
 import { EmptyState } from "@/components/ui/empty-state";
+import { InlineAlert } from "@/components/ui/inline-alert";
 import { plans } from "@/data/plans";
 import type { Order } from "@/domain/order";
 import type { UserProfile } from "@/domain/user-profile";
@@ -476,12 +477,7 @@ function PortalButton({ label }: { label: string }) {
         {busy ? t("accountBilling.openingStripe") : label}
       </button>
       {portalError ? (
-        <p
-          role="alert"
-          className="mt-3 rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]"
-        >
-          {t(portalError)}
-        </p>
+        <InlineAlert tone="error" className="mt-3">{t(portalError)}</InlineAlert>
       ) : null}
     </div>
   );
@@ -738,12 +734,7 @@ function RefundModal({
             </dl>
 
             {submitError ? (
-              <p
-                role="alert"
-                className="mt-4 rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]"
-              >
-                {t(submitError)}
-              </p>
+              <InlineAlert tone="error" className="mt-4">{t(submitError)}</InlineAlert>
             ) : null}
 
             <div className="mt-6 flex justify-end gap-3">
@@ -796,9 +787,7 @@ function BillingNotice({
 }) {
   if (tone === "error") {
     return (
-      <p className="rounded-lg border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
-        {children}
-      </p>
+      <InlineAlert tone="error">{children}</InlineAlert>
     );
   }
 

@@ -117,6 +117,21 @@ describe("CourseStudentRosterView", () => {
     expect(screen.queryByText("When someone joins, you'll see them here.")).not.toBeInTheDocument();
   });
 
+  // F-11: a falha é anunciada e tem saída; enquanto lê de novo, o botão trava.
+  it("announces the failed read and offers Try again, locked while it runs", () => {
+    const onRetry = vi.fn();
+    const { rerender } = render(<CourseStudentRosterView state="error" students={[]} courseId="course-1" onRetry={onRetry} />);
+
+    expect(screen.getByRole("alert")).toHaveTextContent(/could not load the roster/);
+    // A frase não manda mais recarregar a página: o botão está ao lado.
+    expect(screen.getByRole("alert")).not.toHaveTextContent(/reload/i);
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(onRetry).toHaveBeenCalledTimes(1);
+
+    rerender(<CourseStudentRosterView state="error" students={[]} courseId="course-1" onRetry={onRetry} retrying />);
+    expect(screen.getByRole("button", { name: "Try again" })).toBeDisabled();
+  });
+
   it("sums the class up before the table so the numbers are not counted by hand", () => {
     renderRoster([student, refunded, finished]);
 

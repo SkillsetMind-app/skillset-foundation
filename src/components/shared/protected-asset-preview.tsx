@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Download, Loader2 } from "lucide-react";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { WatermarkedVideoPlayer } from "@/components/learn/watermarked-video-player";
+import { InlineAlert } from "@/components/ui/inline-alert";
 import { getCourseAssetTitle, type CourseAsset } from "@/domain/course-asset";
 import { getProtectedCourseAssetObjectUrl } from "@/lib/data/course-assets";
 import type { LessonPositionRef } from "@/lib/learn/lesson-position";
@@ -78,9 +79,7 @@ function ProtectedAssetPreviewContent({
 
   if (hasError) {
     return (
-      <p className="mt-3 rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-3 py-2 text-sm font-semibold text-[var(--color-danger-fg)]">
-        {t("courseMedia.preview.assetError")}
-      </p>
+      <InlineAlert tone="error" className="mt-3 px-3 py-2">{t("courseMedia.preview.assetError")}</InlineAlert>
     );
   }
 

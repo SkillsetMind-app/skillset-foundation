@@ -10,6 +10,7 @@ import { useTranslation } from "@/components/i18n/i18n-provider";
 import { CommunityItemActions } from "@/components/learn/community-item-actions";
 import { CommunityPostDrawer } from "@/components/learn/community-post-drawer";
 import { BuilderSkeleton } from "@/components/teacher/builder-skeleton";
+import { InlineAlert } from "@/components/ui/inline-alert";
 import {
   groupCommentsByPost,
   isInstructor,
@@ -158,9 +159,7 @@ export function TeacherCommunityInbox({ courseId }: { courseId: string }) {
       </header>
 
       {error ? (
-        <p className="rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
-          {t(error)}
-        </p>
+        <InlineAlert tone="error">{t(error)}</InlineAlert>
       ) : null}
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_300px] lg:items-start">

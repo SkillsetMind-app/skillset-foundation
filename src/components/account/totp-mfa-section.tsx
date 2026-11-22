@@ -13,6 +13,7 @@ import {
   type TotpSecret,
   unenrollTotpFactor,
 } from "@/lib/auth/supabase-auth";
+import { InlineAlert } from "@/components/ui/inline-alert";
 import { useModalFocus } from "@/lib/a11y/use-modal-focus";
 import { isPublicFeatureEnabled } from "@/lib/feature-flags";
 
@@ -435,12 +436,9 @@ export function TotpMfaSection({ emailVerified }: { emailVerified: boolean }) {
             </form>
 
             {error ? (
-              <p
-                role="alert"
-                className="mt-3 rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]"
-              >
+              <InlineAlert tone="error" className="mt-3">
                 {"key" in error ? t(error.key) : getAuthErrorMessage(error.cause, t)}
-              </p>
+              </InlineAlert>
             ) : null}
           </div>
         </div>
@@ -452,12 +450,9 @@ export function TotpMfaSection({ emailVerified }: { emailVerified: boolean }) {
         </p>
       ) : null}
       {error && !setup ? (
-        <p
-          role="alert"
-          className="mt-3 rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]"
-        >
+        <InlineAlert tone="error" className="mt-3">
           {"key" in error ? t(error.key) : getAuthErrorMessage(error.cause, t)}
-        </p>
+        </InlineAlert>
       ) : null}
     </div>
   );

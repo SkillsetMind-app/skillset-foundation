@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangle, X } from "lucide-react";
+import { X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { ComponentType, ReactNode } from "react";
 
@@ -267,9 +267,9 @@ export function DeleteOrArchiveCourseDialog({
         {hasAudience ? (
           // O "Importante" da Hotmart: a frase que o professor precisa ler
           // antes de decidir nao pode dividir peso com o resto do texto.
-          <InlineAlert tone="warning" className="mt-4 flex items-start gap-2">
-            <AlertTriangle aria-hidden="true" size={18} strokeWidth={1.9} className="mt-0.5 shrink-0" />
-            <span>{t("creatorPanel.products.archive.callout")}</span>
+          // O ícone de aviso agora vem do próprio InlineAlert (um só).
+          <InlineAlert tone="warning" className="mt-4">
+            {t("creatorPanel.products.archive.callout")}
           </InlineAlert>
         ) : audience !== null ? (
           // O que some junto, dito antes do clique: a migration 20261008030000

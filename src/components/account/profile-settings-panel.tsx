@@ -31,7 +31,9 @@ import {
   uploadUserAvatar,
   type UploadAvatarProgress,
 } from "@/lib/data/profile-media";
+import { SavedNote } from "@/components/teacher/save-status-line";
 import { UploadProgressNote } from "@/components/teacher/upload-progress-note";
+import { InlineAlert } from "@/components/ui/inline-alert";
 
 const goalOptions = [
   ["career_growth", "accountProfile.goals.career_growth"],
@@ -128,12 +130,18 @@ export function ProfileSettingsPanel() {
     return [timezone, ...timezoneOptions];
   }, [timezone]);
 
+  // Qualquer edição depois de salvar tira o "Profile updated.": a frase só vale
+  // para o que foi gravado. Campos de texto chegam pelo onChange do form; os
+  // botões (objetivos, credenciais) chamam aqui.
+  const clearSuccess = () => setSuccess("");
+
   function toggleGoal(goal: UserGoal) {
     setGoals((currentGoals) =>
       currentGoals.includes(goal)
         ? currentGoals.filter((currentGoal) => currentGoal !== goal)
         : normalizeGoals([...currentGoals, goal]),
     );
+    clearSuccess();
   }
 
   function updateCredential(index: number, value: string) {
@@ -146,12 +154,14 @@ export function ProfileSettingsPanel() {
     setCredentials((current) =>
       current.length >= maxCredentialEntries ? current : [...current, ""],
     );
+    clearSuccess();
   }
 
   function removeCredential(index: number) {
     setCredentials((current) =>
       current.filter((_, position) => position !== index),
     );
+    clearSuccess();
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -307,7 +317,7 @@ export function ProfileSettingsPanel() {
     <section className="settings-section-card">
       {header}
 
-      <form className="mt-6 grid grid-cols-1 gap-4" onSubmit={handleSubmit}>
+      <form className="mt-6 grid grid-cols-1 gap-4" onSubmit={handleSubmit} onChange={clearSuccess}>
         <div className="flex flex-col gap-4 rounded-lg border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-4 sm:flex-row sm:items-center">
           <UserAvatar
             name={displayName || user?.email}
@@ -539,24 +549,21 @@ export function ProfileSettingsPanel() {
         </div>
 
         {error ? (
-          <p role="alert" className="rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
-            {formatValidationMessage(error, t)}
-          </p>
+          <InlineAlert tone="error">{formatValidationMessage(error, t)}</InlineAlert>
         ) : null}
 
-        {success ? (
-          <p className="info-notice" aria-live="polite">
-            {t(success)}
-          </p>
-        ) : null}
-
-        <button
-          type="submit"
-          disabled={isSaving}
-          className="button-solid justify-self-start px-4 py-2.5 text-sm disabled:opacity-60"
-        >
-          {isSaving ? t("accountProfile.saving") : t("accountProfile.save")}
-        </button>
+        {/* O "salvo" fica ao lado do botão: acima dele, nascia e empurrava o
+            botão recém-clicado para baixo. */}
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            type="submit"
+            disabled={isSaving}
+            className="button-solid px-4 py-2.5 text-sm disabled:opacity-60"
+          >
+            {isSaving ? t("accountProfile.saving") : t("accountProfile.save")}
+          </button>
+          {success ? <SavedNote text={t(success)} /> : null}
+        </div>
       </form>
     </section>
   );

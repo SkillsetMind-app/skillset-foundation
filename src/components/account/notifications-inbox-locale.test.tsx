@@ -19,6 +19,8 @@ afterEach(cleanup);
 it("translates empty state and keeps notification preference destination", () => {
   mount();
   expect(screen.getByText("Aún no hay notificaciones")).toBeTruthy();
+  // F-08: a caixa vazia da casa, com um título só, h2 logo abaixo do h1.
+  expect(screen.getByRole("heading", { level: 2, name: "Aún no hay notificaciones" })).toBeTruthy();
   expect(screen.getByRole("tablist", { name: "Filtrar notificaciones" })).toBeTruthy();
   expect(screen.getByRole("link", { name: "Preferencias de notificaciones" }).getAttribute("href")).toBe("/account?tab=notifications");
 });

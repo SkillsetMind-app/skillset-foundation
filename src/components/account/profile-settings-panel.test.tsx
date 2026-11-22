@@ -158,7 +158,8 @@ describe.each([
     expect(input.closest("label")).not.toHaveClass("pointer-events-none");
     expect(input.closest("label")).toHaveTextContent(replace);
     expect(screen.getByText(success)).toBeInTheDocument();
-    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    // A nota de envio saiu; o único status que fica é o "salvo" ao lado do botão.
+    expect(screen.getByRole("status")).toHaveTextContent(success);
     expect(mocks.refreshUser).toHaveBeenCalledTimes(upload === mocks.uploadUserAvatar ? 1 : 0);
   });
 });

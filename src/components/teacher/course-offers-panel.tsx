@@ -6,6 +6,8 @@ import type { FormEvent } from "react";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { CourseShareLink } from "@/components/teacher/course-share-link";
 import { CurrencySelect } from "@/components/teacher/currency-select";
+import { SavedNote } from "@/components/teacher/save-status-line";
+import { InlineAlert } from "@/components/ui/inline-alert";
 import { isActivationRequiredError } from "@/domain/creator-verification";
 import { paymentChoiceOf, type CoursePricingShape } from "@/domain/product-pricing";
 import type { TeacherCoursePaymentType } from "@/domain/teacher-course";
@@ -442,11 +444,12 @@ export function CourseOffersPanel({
       ) : null}
 
       {/* Anunciados: criar um preço e falhar não acontecia de modo audível. */}
-      {error ? (
-        <p role="alert" className="mt-3 text-sm font-semibold text-[var(--color-danger-fg)]">{t(error)}</p>
-      ) : null}
+      {error ? <InlineAlert tone="error" className="mt-3">{t(error)}</InlineAlert> : null}
+      {/* "Criado" com cara de criado (o check verde), não o cinza de uma dica. */}
       {notice ? (
-        <p role="status" className="mt-3 text-sm text-[var(--color-ink-soft)]">{t(notice)}</p>
+        <p className="mt-3">
+          <SavedNote text={t(notice)} />
+        </p>
       ) : null}
 
     </section>

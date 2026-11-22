@@ -176,9 +176,7 @@ function MessageComposer({
         placeholder={t("courseRoster.messagePlaceholder")}
       />
       {error ? (
-        <p role="alert" className="text-xs font-semibold text-[var(--color-danger-fg)]">
-          {t(error)}
-        </p>
+        <InlineAlert tone="error">{t(error)}</InlineAlert>
       ) : null}
       <div className="flex flex-wrap gap-2">
         <Button
@@ -202,6 +200,8 @@ export function CourseStudentRosterView({
   courseId,
   now,
   share,
+  onRetry,
+  retrying = false,
 }: {
   state: "loading" | "ready" | "error";
   students: CourseStudent[];
@@ -209,6 +209,9 @@ export function CourseStudentRosterView({
   now?: Date;
   /** Produto publicado: a lista vazia oferece "Copy my page link". */
   share?: { title: string };
+  /** Lê a lista de novo depois de uma falha; `retrying` trava o botão. */
+  onRetry?: () => void;
+  retrying?: boolean;
 }) {
   const { t, locale } = useTranslation();
   const [search, setSearch] = useState("");
@@ -282,11 +285,16 @@ export function CourseStudentRosterView({
   }
 
   if (state === "error") {
+    // O erro no vermelho da casa, anunciado, e com saída: antes era uma frase
+    // cinza e o único jeito de tentar de novo era recarregar a página.
     return (
       <PanelCard title={t("courseRoster.title")} description={t("courseRoster.description")}>
-        <p className="mt-5 text-sm text-[var(--color-ink-soft)]">
-          {t("courseRoster.loadError")}
-        </p>
+        <InlineAlert tone="error" className="mt-5">{t("courseRoster.loadError")}</InlineAlert>
+        {onRetry ? (
+          <Button variant="outline" className="mt-3" loading={retrying} onClick={onRetry}>
+            {t("appErrors.retry")}
+          </Button>
+        ) : null}
       </PanelCard>
     );
   }
@@ -505,6 +513,7 @@ export function CourseStudentRoster({ courseId, share }: { courseId: string; sha
   const [revision, setRevision] = useState(0);
   const [state, setState] = useState<"loading" | "ready" | "error">("loading");
   const [students, setStudents] = useState<CourseStudent[]>([]);
+  const [retrying, setRetrying] = useState(false);
 
   useEffect(() => {
     let current = true;
@@ -520,6 +529,9 @@ export function CourseStudentRoster({ courseId, share }: { courseId: string; sha
       .catch(() => {
         if (!current) return;
         setState("error");
+      })
+      .finally(() => {
+        if (current) setRetrying(false);
       });
     return () => {
       current = false;
@@ -528,6 +540,17 @@ export function CourseStudentRoster({ courseId, share }: { courseId: string; sha
 
   return <div className="grid min-w-0 gap-5">
     <CourseAccessPanel key={courseId} courseId={courseId} onChange={() => setRevision((value) => value + 1)} />
-    <CourseStudentRosterView state={state} students={students} courseId={courseId} share={share} />
+    <CourseStudentRosterView
+      state={state}
+      students={students}
+      courseId={courseId}
+      share={share}
+      retrying={retrying}
+      onRetry={() => {
+        // A mesma leitura de quando um acesso muda: só roda de novo o efeito.
+        setRetrying(true);
+        setRevision((value) => value + 1);
+      }}
+    />
   </div>;
 }

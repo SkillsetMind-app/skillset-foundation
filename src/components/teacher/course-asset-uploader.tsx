@@ -9,7 +9,7 @@ import {
 
 import type { CourseAsset, CourseAssetKind } from "@/domain/course-asset";
 import { useTranslation } from "@/components/i18n/i18n-provider";
-import { ConfirmDialog } from "@/components/ui";
+import { ConfirmDialog, InlineAlert } from "@/components/ui";
 import { getCourseAssetKindLabel } from "@/lib/i18n/course-assets";
 import {
   courseAssetAcceptTypes,
@@ -381,9 +381,7 @@ export function CourseAssetUploader({ course, isEditable, onModuleCoverUploaded,
         {uploadProgress ? <UploadProgressNote progress={uploadProgress} /> : null}
 
         {error ? (
-          <p role="alert" className="rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
-            {errorMessage}
-          </p>
+          <InlineAlert tone="error">{errorMessage}</InlineAlert>
         ) : null}
 
         {success ? (
