@@ -101,8 +101,7 @@ export function subscribeToUserProfile(
     .subscribe();
 
   // `reload()` le de novo SEM mexer no canal (o "Try again" das preferencias):
-  // o canal `users:<uid>` e o mesmo do aviso de status da plataforma, e
-  // religar um canal com o mesmo nome devolve o antigo, ainda saindo.
+  // sem o intervalo entre sair e entrar de novo no Realtime.
   return Object.assign(
     () => {
       active = false;

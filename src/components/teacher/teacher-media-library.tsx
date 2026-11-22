@@ -57,7 +57,7 @@ export function TeacherMediaLibrary() {
   const assetsSubscription = useRef<{ reload: () => Promise<void> } | null>(null);
 
   // So o usuario nas dependencias: escolher outro curso desligava e religava
-  // o canal dos cursos com o mesmo nome, e ele parava de receber mudancas.
+  // o canal dos cursos e relia a lista inteira, sem nada ter mudado.
   useEffect(() => {
     if (!user) {
       return;

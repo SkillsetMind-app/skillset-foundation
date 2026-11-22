@@ -236,8 +236,8 @@ export function subscribeToTeacherOrders(
     )
     .subscribe();
 
-  // `reload()` le de novo SEM mexer no canal (o "Try again" da Home): religar
-  // um canal com o mesmo nome devolve o antigo, ainda saindo.
+  // `reload()` le de novo SEM mexer no canal (o "Try again" da Home): sem o
+  // intervalo entre sair e entrar de novo no Realtime.
   return Object.assign(
     () => {
       stopped = true;
