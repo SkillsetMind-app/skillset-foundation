@@ -59,11 +59,13 @@ function fill(level: string) {
 }
 
 describe("Platform invitations", () => {
-  it("uses paired theme colors for the email and access-level fields", async () => {
+  // A pele padrão dos campos (I-14) traz o par de cores do tema claro e do
+  // escuro (globals.css, `.field-input` e `[data-theme="dark"] .field-input`).
+  it("uses the platform field skin for the email and access-level fields", async () => {
     render(<PlatformInviteManager />);
     await screen.findByText("No invitations yet.");
     for (const label of ["Email", "Access level"]) {
-      expect(screen.getByLabelText(label)).toHaveClass("bg-[var(--color-surface)]", "text-[var(--color-ink)]");
+      expect(screen.getByLabelText(label)).toHaveClass("field-input", "min-h-11");
       expect(screen.getByLabelText(label)).not.toHaveClass("bg-white");
     }
   });
@@ -126,14 +128,14 @@ describe("Platform invitations", () => {
     let finish!: (value: { invite: PlatformInvite; emailStatus: "sent" }) => void;
     mocks.resendPlatformInvite.mockReturnValue(new Promise(resolve => { finish = resolve; }));
     render(<RoleManager />);
-    fireEvent.click(screen.getByRole("button", { name: "Invitations" }));
+    fireEvent.click(screen.getByRole("tab", { name: "Invitations" }));
     await screen.findByText("No invitations yet.");
     fill("teacher");
     fireEvent.click(screen.getByRole("button", { name: "Send invitation" }));
     const row = await screen.findByRole("listitem");
     expect(within(row).getByText(/Invitation saved, but the email was not sent/)).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "What each level can do" }));
-    fireEvent.click(screen.getByRole("button", { name: "Invitations" }));
+    fireEvent.click(screen.getByRole("tab", { name: "What each level can do" }));
+    fireEvent.click(screen.getByRole("tab", { name: "Invitations" }));
     expect(within(row).getByText(/email was not sent/)).toBeVisible();
     fireEvent.click(within(row).getByRole("button", { name: "Resend" }));
     expect(within(row).getByRole("button", { name: "Revoke" })).toBeDisabled();

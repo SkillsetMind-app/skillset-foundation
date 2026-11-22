@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AuthProvider, useAuth } from "@/components/auth/auth-provider";
@@ -91,11 +91,22 @@ afterEach(() => {
 });
 
 describe("view-as preview", () => {
-  it("uses the theme's on-primary foreground for the selected level and reminder", () => {
+  // Escolher a prévia é um modo, não um painel: o seletor segmentado único
+  // (PeriodTabs), com o nível atual pressionado (I-18).
+  it("marks the previewed level in the shared segmented control and keeps the reminder on-primary", () => {
     window.sessionStorage.setItem("skillsetmind.viewAs", "student");
     renderWith(["admin", "teacher"]);
-    expect(screen.getByRole("button", { name: "Learner" })).toHaveClass("text-[var(--color-on-primary)]");
+    const group = screen.getByRole("group", { name: "Preview the product" });
+    expect(group).toHaveClass("studio-range-tabs");
+    expect(within(group).getByRole("button", { name: "Learner" })).toHaveAttribute("aria-pressed", "true");
+    expect(within(group).getByRole("button", { name: "Team" })).toHaveAttribute("aria-pressed", "false");
     expect(screen.getByRole("status")).toHaveClass("text-[var(--color-on-primary)]");
+  });
+
+  it("presses no level while there is no preview", () => {
+    renderWith(["admin"]);
+    const group = screen.getByRole("group", { name: "Preview the product" });
+    for (const button of within(group).getAllByRole("button")) expect(button).toHaveAttribute("aria-pressed", "false");
   });
 
   it("does nothing for a non-admin, even with a preview already stored", () => {

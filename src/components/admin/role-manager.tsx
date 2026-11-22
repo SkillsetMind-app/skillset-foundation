@@ -1,11 +1,12 @@
 "use client";
 
-import { CircleDollarSign, RotateCcw, Shield } from "lucide-react";
+import { CheckCircle2, CircleDollarSign, RotateCcw, Shield } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { PlatformInviteManager } from "@/components/admin/platform-invite-manager";
 import { AccountControlDialog } from "@/components/admin/account-control-dialog";
+import { HorizontalTabs } from "@/components/shared/horizontal-tabs";
 import { Button, ConfirmDialog, Field, InlineAlert } from "@/components/ui";
 import { setActivationWaiver } from "@/lib/data/platform-invites";
 import {
@@ -75,6 +76,20 @@ function refusalKey(caught: unknown, fallback: "loadError" | "saveError") {
   return typeof message === "string" ? refusalKeys.get(message) ?? fallback : fallback;
 }
 
+// Os níveis que perguntam antes de gravar: admin nos dois sentidos e Team ao
+// dar (I-04: Team abre reembolsos, moderação e o catálogo inteiro, e era um
+// clique só). Título, botão e frase de cada pergunta.
+const LEVEL_QUESTIONS = {
+  adminGrant: ["adminGrantTitle", "adminGrantLabel", "confirmAdminGrant"],
+  adminRemove: ["adminRemoveTitle", "adminRemoveLabel", "confirmAdminRemove"],
+  staffGrant: ["staffGrantTitle", "staffGrantLabel", "confirmStaffGrant"],
+} as const;
+
+function levelQuestion(level: Level, next: boolean): keyof typeof LEVEL_QUESTIONS | null {
+  if (level.id === "admin") return next ? "adminGrant" : "adminRemove";
+  return level.id === "staff" && next ? "staffGrant" : null;
+}
+
 function hasLevel(roles: readonly Role[], level: Level): boolean {
   return level.roles.every((role) => roles.includes(role));
 }
@@ -111,18 +126,22 @@ export function RoleManager() {
   const [waiverBusy, setWaiverBusy] = useState(false);
   const [accountTarget, setAccountTarget] = useState<PlatformUser | null>(null);
   const [waiverFeedback, setWaiverFeedback] = useState<{ uid: string; key: string; failed: boolean } | null>(null);
+  // Quem teve o nível gravado agora: o "Saved" ao lado das caixas (I-11).
+  const [savedUid, setSavedUid] = useState("");
 
   // A pergunta aberta: a pessoa e o pedido do clique. O confirmar roda o que
-  // vinha depois do OK do window.confirm; no nível admin, sobre os papéis que
-  // a lista tem NA HORA de confirmar (veja confirmAsked).
+  // vinha depois do OK do window.confirm; num nível, sobre os papéis que a
+  // lista tem NA HORA de confirmar (veja confirmAsked).
   const [asking, setAsking] = useState<
     | { kind: "waiver"; user: PlatformUser; waived: boolean }
-    | { kind: "admin"; user: PlatformUser; level: Level; next: boolean }
+    | { kind: "level"; user: PlatformUser; level: Level; next: boolean; question: keyof typeof LEVEL_QUESTIONS }
     | null
   >(null);
 
   function askWaiver(user: PlatformUser, waived: boolean) {
     if (waiverBusy || savingUid) return;
+    // Outro pedido começou: o "Saved" de antes não fala mais deste momento.
+    setSavedUid("");
     setAsking({ kind: "waiver", user, waived });
   }
 
@@ -164,11 +183,15 @@ export function RoleManager() {
   }, [search, load]);
 
   function requestLevel(user: PlatformUser, level: Level, next: boolean) {
-    // Admin is the one level that can hand out every other level: never on a
-    // stray click. Same confirm the activation waiver uses. Os outros níveis
-    // gravam direto, como antes.
-    if (level.id === "admin") {
-      setAsking({ kind: "admin", user, level, next });
+    // Um clique novo apaga o "Saved" de antes: com a pergunta cancelada ele
+    // ficava ao lado das caixas, como se a mudança desistida tivesse gravado.
+    setSavedUid("");
+    // Admin hands out every other level and Team opens refunds and the whole
+    // catalog: never on a stray click. Same confirm the activation waiver
+    // uses. Learner, Instructor e tirar Team gravam direto, como antes.
+    const question = levelQuestion(level, next);
+    if (question) {
+      setAsking({ kind: "level", user, level, next, question });
       return;
     }
     void applyLevel(user, level, next);
@@ -188,6 +211,7 @@ export function RoleManager() {
   async function applyLevel(user: PlatformUser, level: Level, next: boolean) {
     const nextRoles = toggleLevel(user.roles, level, next);
     setSavingUid(user.uid);
+    setSavedUid("");
     setError(null);
     try {
       const saved = await setUserRoles(user.uid, nextRoles);
@@ -196,6 +220,7 @@ export function RoleManager() {
           entry.uid === user.uid ? { ...entry, roles: saved } : entry,
         ),
       );
+      setSavedUid(user.uid);
     } catch (caught) {
       setError({ scope: "save", key: refusalKey(caught, "saveError") });
     } finally {
@@ -215,9 +240,9 @@ export function RoleManager() {
   );
 
   const tabs = [
-    { id: "people" as const, label: t(`${copy}.people`) },
-    { id: "invitations" as const, label: t("platformInvites.tab") },
-    { id: "matrix" as const, label: t(`${copy}.matrix`) },
+    { value: "people", label: t(`${copy}.people`) },
+    { value: "invitations", label: t("platformInvites.tab") },
+    { value: "matrix", label: t(`${copy}.matrix`) },
   ];
 
   return (
@@ -227,43 +252,36 @@ export function RoleManager() {
           sucesso continuam na lista, onde já apareciam. */}
       {asking ? (
         <ConfirmDialog
-          title={asking.kind === "admin"
-            ? t(`${copy}.${asking.next ? "adminGrantTitle" : "adminRemoveTitle"}`)
+          title={asking.kind === "level"
+            ? t(`${copy}.${LEVEL_QUESTIONS[asking.question][0]}`)
             : t(`platformInvites.${asking.waived ? "waiveTitle" : "requireTitle"}`)}
-          confirmLabel={asking.kind === "admin"
-            ? t(`${copy}.${asking.next ? "adminGrantLabel" : "adminRemoveLabel"}`)
+          confirmLabel={asking.kind === "level"
+            ? t(`${copy}.${LEVEL_QUESTIONS[asking.question][1]}`)
             : t(`platformInvites.${asking.waived ? "waive" : "require"}`)}
           cancelLabel={t("platform.ops.confirmDialog.cancel")}
-          danger={asking.kind === "admin" || !asking.waived}
+          danger={asking.kind === "level" || !asking.waived}
           onConfirm={confirmAsked}
           onClose={() => setAsking(null)}
         >
-          {(asking.kind === "admin"
-            ? t(`${copy}.${asking.next ? "confirmAdminGrant" : "confirmAdminRemove"}`)
+          {(asking.kind === "level"
+            ? t(`${copy}.${LEVEL_QUESTIONS[asking.question][2]}`)
             : t(`platformInvites.${asking.waived ? "waiveConfirm" : "requireConfirm"}`)
           ).replace("{person}", () => personLabel(asking.user))}
         </ConfirmDialog>
       ) : null}
-      <div className="flex flex-wrap items-center gap-2">
-        {tabs.map((entry) => (
-          <button
-            key={entry.id}
-            type="button"
-            onClick={() => {
-              setTab(entry.id);
-              if (entry.id === "invitations") setInvitationsOpened(true);
-            }}
-            aria-pressed={tab === entry.id}
-            className={`min-h-11 rounded-md px-4 py-2 text-sm font-bold transition ${
-              tab === entry.id
-                ? "bg-[var(--color-primary)] text-[var(--color-on-primary)]"
-                : "border border-[var(--color-line)] text-[var(--color-ink-soft)]"
-            }`}
-          >
-            {entry.label}
-          </button>
-        ))}
-      </div>
+      {/* Estas trocam de painel: abas de verdade, no desenho único (I-18). As
+          setas já trocam a aba sem busca nova: a lista de pessoas fica no
+          estado daqui e a de convites carrega uma vez, na primeira visita. */}
+      <HorizontalTabs
+        tabs={tabs}
+        activeValue={tab}
+        onChange={(value) => {
+          const next = value as typeof tab;
+          setTab(next);
+          if (next === "invitations") setInvitationsOpened(true);
+        }}
+        ariaLabel={t(`${copy}.tabsLabel`)}
+      />
 
       {invitationsOpened ? <div hidden={tab !== "invitations"} className="mt-6 min-w-0"><PlatformInviteManager /></div> : null}
 
@@ -286,9 +304,12 @@ export function RoleManager() {
               {...a11y}
               type="search"
               value={search}
-              onChange={(event) => setSearch(event.target.value)}
+              onChange={(event) => {
+                setSearch(event.target.value);
+                setSavedUid("");
+              }}
               placeholder={t(`${copy}.searchPlaceholder`)}
-              className="min-h-11 w-full rounded-md border border-[var(--color-line)] px-4 py-2.5 text-sm font-normal"
+              className="field-input min-h-11"
             />}
           </Field>
 
@@ -343,6 +364,18 @@ export function RoleManager() {
                         {t(`${copy}.levels.${level.id}.label`)}
                       </label>
                     ))}
+                    {/* Lugar guardado para o "Saved": aparece sem empurrar as
+                        caixas nem os botões de baixo (I-11). A região viva fica
+                        sempre montada e só o texto entra nela: região e texto
+                        nascendo juntos nem sempre são lidos. */}
+                    <span role="status" className="inline-flex min-h-11 min-w-[7rem] items-center gap-1.5 text-sm font-semibold text-[var(--color-success-fg)]">
+                      {savedUid === user.uid ? (
+                        <>
+                          <CheckCircle2 aria-hidden="true" size={16} className="shrink-0" />
+                          {t(`${copy}.levelSaved`)}
+                        </>
+                      ) : null}
+                    </span>
                   </div>
                   <div className="mt-3 flex flex-wrap gap-2">
                     <Button variant="outline" disabled={waiverBusy || Boolean(savingUid)} className="min-h-11 max-w-full whitespace-normal" onClick={() => setAccountTarget(user)}>

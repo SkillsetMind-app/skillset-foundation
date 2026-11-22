@@ -35,8 +35,11 @@ describe("payments presentation and export contract", () => {
     expect(screen.getByText("Importe bruto (últimos 12 pedidos)")).toBeInTheDocument();
     expect(screen.getByText("Importe bruto (últimos 12 pedidos)").nextElementSibling?.textContent).toBe(`${money(2500, "EUR", "es")} · ${money(10000, "USD", "es")}`);
     expect(screen.getByText("Comisión estimada (los mismos 12)").nextElementSibling?.textContent).toBe(`${money(125, "EUR", "es")} · ${money(1000, "USD", "es")}`);
-    expect(screen.getAllByText("Pagado")).toHaveLength(2);
-    expect(screen.getByText("Pendiente")).toBeInTheDocument();
+    // A tabela (cartão largo) e os blocos (cartão estreito) mostram os mesmos
+    // pedidos; o CSS mostra um dos dois. A contagem é por desenho.
+    const table = screen.getByRole("table", { name: "Pedidos recientes de Stripe" });
+    expect(within(table).getAllByText("Pagado")).toHaveLength(2);
+    expect(within(table).getByText("Pendiente")).toBeInTheDocument();
     // I-06: partes com rótulo; comprador curto (inteiro no title e na ficha),
     // pedido inteiro e selecionável.
     const first = screen.getAllByRole("article")[0];
@@ -65,6 +68,36 @@ describe("payments presentation and export contract", () => {
     expect(dates()).toEqual([["Paid on", format("2026-11-18T14:41:00.000Z", "en")], ["Created on", format("2026-11-03T18:15:00.000Z", "en")]]);
     language();
     expect(dates()).toEqual([["Pagado el", format("2026-11-18T14:41:00.000Z", "es")], ["Creado el", format("2026-11-03T18:15:00.000Z", "es")]]);
+  });
+
+  // I-06: no cartão largo os pedidos são uma tabela de verdade, com data,
+  // comprador, curso, status e o valor alinhado à direita. Nada some do
+  // bloco: provedor e código inteiro do pedido continuam na linha.
+  it("lists orders as a real table with the amount in its own right-aligned column", () => {
+    render(panel());
+    deliver([{ ...order, paidAt: "2026-11-18T14:41:00.000Z" }, { ...order, id: "order-eur", currency: "EUR", amountMinor: 2500, status: "pending" as const, createdAt: "2026-11-03T18:15:00.000Z" }]);
+    const table = screen.getByRole("table", { name: "Recent Stripe orders" });
+    expect(table.closest(".hidden")).toHaveClass("@3xl:block");
+    expect(screen.getAllByRole("article")[0].parentElement).toHaveClass("@3xl:hidden");
+    expect(within(table).getAllByRole("columnheader").map((head) => head.textContent)).toEqual(["Date", "User", "Course", "Provider", "Status", "Amount"]);
+    const [first, second] = within(table).getAllByRole("row").slice(1);
+    const format = (iso: string) => new Intl.DateTimeFormat("en", { dateStyle: "medium", timeStyle: "short" }).format(new Date(iso));
+    // textContent exato: a hora em inglês leva um espaço estreito que o
+    // toHaveTextContent troca por espaço comum.
+    const dateParts = (row: HTMLElement) => [...within(row).getAllByRole("cell")[0].querySelectorAll("span")].map((part) => part.textContent);
+    expect(dateParts(first)).toEqual(["Paid on", format("2026-11-18T14:41:00.000Z")]);
+    expect(dateParts(second)).toEqual(["Created on", format("2026-11-03T18:15:00.000Z")]);
+    expect(within(first).getByRole("rowheader")).toHaveTextContent(`${order.courseTitle}${order.id}`);
+    expect(within(first).getByText(order.id)).toHaveClass("select-all");
+    expect(within(first).getByRole("link", { name: order.userId })).toHaveAttribute("href", `/ops/users/${encodeURIComponent(order.userId)}`);
+    expect(within(first).getByText("stripe")).toBeInTheDocument();
+    const amount = within(first).getByText(money(10000, "USD", "en"));
+    expect(amount).toHaveClass("text-right", "tabular-nums");
+    expect(within(second).getByText(money(2500, "EUR", "en"))).toHaveClass("text-right");
+    language();
+    expect(within(screen.getByRole("table", { name: "Pedidos recientes de Stripe" })).getAllByRole("columnheader").map((head) => head.textContent))
+      .toEqual(["Fecha", "Usuario", "Curso", "Proveedor", "Estado", "Importe"]);
+    expect(screen.getByRole("table").querySelector("tbody tr td:last-child")?.textContent).toBe(money(10000, "USD", "es"));
   });
 
   it.each([0, 1, 2])("renders a confirmed %i paid count in Spanish", count => {

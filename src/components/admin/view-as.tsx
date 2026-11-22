@@ -2,6 +2,7 @@
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { PeriodTabs } from "@/components/shared/period-tabs";
 import type { Role } from "@/lib/permissions";
 
 /**
@@ -48,22 +49,19 @@ export function ViewAsSwitcher() {
       <p className="mt-1 text-sm leading-6 text-[var(--color-ink-soft)]">
         {t(`${copy}.preview.description`)}
       </p>
-      <div className="mt-4 flex flex-wrap gap-2">
-        {PREVIEWABLE.map((entry) => (
-          <button
-            key={entry.role}
-            type="button"
-            onClick={() => setViewAsRole(entry.role)}
-            aria-pressed={viewAsRole === entry.role}
-            className={`min-h-11 rounded-md px-4 py-2 text-sm font-bold transition ${
-              viewAsRole === entry.role
-                ? "bg-[var(--color-primary)] text-[var(--color-on-primary)]"
-                : "border border-[var(--color-line)] text-[var(--color-ink-soft)]"
-            }`}
-          >
-            {t(`${copy}.levels.${entry.level}.label`)}
-          </button>
-        ))}
+      <div className="mt-4 flex flex-wrap items-center gap-2">
+        {/* Escolhe um modo, não troca de painel: o seletor segmentado único
+            (I-18). Sem prévia, nenhum fica pressionado ("" não é opção). */}
+        <PeriodTabs<Role | "">
+          options={PREVIEWABLE.map((entry) => entry.role)}
+          value={viewAsRole ?? ""}
+          onChange={(role) => setViewAsRole(role || null)}
+          label={t(`${copy}.preview.title`)}
+          renderLabel={(role) => {
+            const level = PREVIEWABLE.find((entry) => entry.role === role)?.level;
+            return t(`${copy}.levels.${level}.label`);
+          }}
+        />
         {viewAsRole ? (
           <button
             type="button"

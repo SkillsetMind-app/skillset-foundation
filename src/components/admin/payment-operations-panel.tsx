@@ -10,14 +10,8 @@ import { InlineAlert } from "@/components/ui";
 import type { Order } from "@/domain/order";
 import { subscribeToRecentOrders } from "@/lib/data/orders";
 import { toDate } from "@/lib/format-date";
+import { formatMoney } from "@/lib/format-money";
 import { platformFeeForSale } from "@/lib/payments/rules";
-
-function formatMoney(amountMinor: number, currency: Order["currency"], locale = "en") {
-  return new Intl.NumberFormat(locale, {
-    style: "currency",
-    currency,
-  }).format(amountMinor / 100);
-}
 
 // Quando o dinheiro entrou; sem pagamento ainda, quando o pedido nasceu. O
 // rótulo diz qual das duas é ("Paid on" ou "Created on").
@@ -119,7 +113,7 @@ export function PaymentOperationsPanel() {
         userId: order.userId,
         provider: order.provider,
         status: order.status,
-        amount: formatMoney(order.amountMinor, order.currency),
+        amount: formatMoney(order.amountMinor, order.currency, "en"),
         currency: order.currency,
         platformFeeBps: order.platformFeeBps,
       })),
@@ -173,13 +167,18 @@ export function PaymentOperationsPanel() {
         <InlineAlert tone="error" className="mt-5">{t(`${copy}.loadError`)}</InlineAlert>
       ) : null}
 
-      <div className="mt-6 grid gap-3">
+      {/* Cartão largo: uma tabela, com data, valor e status em coluna (I-06).
+          Cartão estreito: um bloco por pedido, como em sale-list.tsx (#588),
+          em vez de uma tabela que esconderia o valor na rolagem lateral. */}
+      <div className="@container mt-6">
         {isLoading ? (
           <p role="status" className="text-sm text-[var(--color-ink-soft)]">{t(`${copy}.loading`)}</p>
         ) : orders.length === 0 ? (
           error ? null : <p className="rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">{t(`${copy}.empty`)}</p>
         ) : (
-          orders.map((order) => (
+          <>
+          <div className="grid gap-3 @3xl:hidden">
+          {orders.map((order) => (
             <article
               key={order.id}
               className="rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4"
@@ -223,7 +222,56 @@ export function PaymentOperationsPanel() {
                 </div>
               </dl>
             </article>
-          ))
+          ))}
+          </div>
+          <div className="hidden overflow-x-auto rounded-lg border fine-rule @3xl:block">
+            <table className="w-full min-w-[720px] border-collapse text-left text-sm">
+              <caption className="sr-only">{t(`${copy}.tableCaption`)}</caption>
+              <thead>
+                <tr className="border-b fine-rule">
+                  {(["date", "user", "course", "provider", "status"] as const).map((head) => (
+                    <th key={head} scope="col" className="px-4 py-3 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-ink-muted)]">
+                      {t(`${copy}.${head}`)}
+                    </th>
+                  ))}
+                  <th scope="col" className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-ink-muted)]">
+                    {t(`${copy}.amount`)}
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {orders.map((order) => {
+                  const when = orderDate(order, locale);
+                  return (
+                    <tr key={order.id} className="border-b fine-rule align-top last:border-b-0">
+                      {/* Pagamento ou criação: o rótulo pequeno diz qual das duas. */}
+                      <td className="whitespace-nowrap px-4 py-3 text-xs text-[var(--color-ink-soft)]">
+                        <span className="block">{t(`${copy}.${when.labelKey}`)}</span>
+                        <span className="tabular-nums text-[var(--color-ink)]">{when.text}</span>
+                      </td>
+                      <td className="px-4 py-3 text-xs">
+                        <Link href={`/ops/users/${encodeURIComponent(order.userId)}`} title={order.userId} aria-label={order.userId}
+                          className="inline-flex min-h-6 items-center font-mono font-semibold text-[var(--color-primary)] underline underline-offset-2">
+                          {shortId(order.userId)}
+                        </Link>
+                      </td>
+                      <th scope="row" className="max-w-[18rem] px-4 py-3 font-semibold text-[var(--color-ink)]">
+                        <span className="block break-words">{order.courseTitle}</span>
+                        {/* O código inteiro, que seleciona com um clique para copiar. */}
+                        <span className="mt-1 block select-all break-all font-mono text-xs font-normal text-[var(--color-ink-soft)]">{order.id}</span>
+                      </th>
+                      <td className="px-4 py-3 text-xs text-[var(--color-ink)]">{order.provider}</td>
+                      <td className="px-4 py-3"><StatusChip status={order.status} /></td>
+                      <td className="whitespace-nowrap px-4 py-3 text-right font-semibold tabular-nums text-[var(--color-primary)]">
+                        {formatMoney(order.amountMinor, order.currency, locale)}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          </>
         )}
       </div>
     </section>

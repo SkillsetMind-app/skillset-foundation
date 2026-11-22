@@ -79,12 +79,17 @@ function roster(roles: string[]) {
 }
 
 describe("RoleManager", () => {
-  it("uses the theme's on-primary foreground for the selected tab", () => {
+  // As três trocam de painel: são as abas únicas da plataforma (I-18), não
+  // caixas com aria-pressed.
+  it("switches panels with the platform tabs", () => {
     mocks.listPlatformUsers.mockResolvedValue([]);
     render(translatedRoster());
-    expect(screen.getByRole("button", { name: "People" })).toHaveClass("text-[var(--color-on-primary)]");
-    fireEvent.click(screen.getByRole("button", { name: "What each level can do" }));
-    expect(screen.getByRole("button", { name: "What each level can do" })).toHaveClass("text-[var(--color-on-primary)]");
+    expect(screen.getByRole("tablist", { name: "Access sections" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "People" })).toHaveAttribute("aria-selected", "true");
+    fireEvent.click(screen.getByRole("tab", { name: "What each level can do" }));
+    expect(screen.getByRole("tab", { name: "What each level can do" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("tab", { name: "People" })).toHaveAttribute("aria-selected", "false");
+    expect(screen.queryByRole("button", { name: "People" })).toBeNull();
   });
 
   it("retries a failed roster read with the current search without writing roles", async () => {
@@ -112,11 +117,11 @@ describe("RoleManager", () => {
     mocks.listPlatformUsers.mockRejectedValue(new Error("Private roster detail"));
     render(translatedRoster());
     await screen.findByRole("alert");
-    fireEvent.click(screen.getByRole("button", { name: "What each level can do" }));
+    fireEvent.click(screen.getByRole("tab", { name: "What each level can do" }));
     expect(screen.getByRole("table")).toBeInTheDocument();
     expect(screen.queryByRole("alert")).toBeNull();
     expect(screen.queryByRole("button", { name: translate(getDictionary("en"), "authFlow.loading.retry") })).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "People" }));
+    fireEvent.click(screen.getByRole("tab", { name: "People" }));
     expect(screen.getByRole("alert")).toHaveTextContent("Could not load the roster.");
     expect(mocks.listPlatformUsers).toHaveBeenCalledTimes(1);
     expect(mocks.setUserRoles).not.toHaveBeenCalled();
@@ -132,6 +137,7 @@ describe("RoleManager", () => {
 
     const team = await screen.findByLabelText("Team");
     fireEvent.click(team);
+    answer("Add to Team");
 
     await waitFor(() => expect(mocks.setUserRoles).toHaveBeenCalledTimes(1));
     const [uid, nextRoles] = mocks.setUserRoles.mock.calls[0];
@@ -231,6 +237,94 @@ describe("RoleManager", () => {
     expect(screen.getByLabelText("Instructor")).toBeChecked();
   });
 
+  // Team abre reembolsos, moderação e o catálogo inteiro: dar Team pergunta,
+  // como admin (I-04). A gravação é a mesma de antes, uma vez, só depois do sim.
+  it("asks before adding someone to the Team and writes once, only after confirmation", async () => {
+    mocks.listPlatformUsers.mockResolvedValue(roster(["student"]));
+    mocks.setUserRoles.mockResolvedValue(["student", "support", "moderator", "ops"]);
+    render(translatedRoster());
+
+    fireEvent.click(await screen.findByLabelText("Team"));
+    const dialog = screen.getByRole("dialog", { name: "Add this person to the Team?" });
+    expect(dialog).toHaveTextContent("Add Test Person to the Team? Team members open the internal panel, answer support, issue refunds, moderate the community and can publish or take down any course.");
+    answer("Cancel");
+    expect(mocks.setUserRoles).not.toHaveBeenCalled();
+    expect(screen.getByLabelText("Team")).not.toBeChecked();
+
+    fireEvent.click(screen.getByRole("button", { name: "Change language" }));
+    fireEvent.click(screen.getByLabelText("Equipo"));
+    expect(screen.getByRole("dialog", { name: "¿Agregar a esta persona al Equipo?" }))
+      .toHaveTextContent("¿Agregar a Test Person al Equipo?");
+    answer("Agregar al Equipo");
+    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Agregar al Equipo" }));
+    expect(mocks.setUserRoles).toHaveBeenCalledExactlyOnceWith("u-1", ["student", "support", "moderator", "ops"]);
+    await waitFor(() => expect(screen.getByLabelText("Equipo")).toBeChecked());
+  });
+
+  it("removes Team without asking, as before", async () => {
+    mocks.listPlatformUsers.mockResolvedValue(roster(["student", "support", "moderator", "ops"]));
+    mocks.setUserRoles.mockResolvedValue(["student"]);
+    render(translatedRoster());
+
+    fireEvent.click(await screen.findByLabelText("Team"));
+
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(mocks.setUserRoles).toHaveBeenCalledExactlyOnceWith("u-1", ["student"]);
+  });
+
+  // Gravar um nível dizia nada: as caixas só apagavam e voltavam (I-11). A
+  // região viva do "Saved" fica sempre montada; só o texto entra e sai.
+  it("says Saved next to the levels after a level change, in a reserved live slot", async () => {
+    mocks.listPlatformUsers.mockResolvedValue(roster(["student"]));
+    let finish!: (roles: string[]) => void;
+    mocks.setUserRoles.mockReturnValue(new Promise<string[]>(resolve => { finish = resolve; }));
+    render(translatedRoster());
+
+    const instructor = await screen.findByLabelText("Instructor");
+    const slot = instructor.closest("div")!.lastElementChild!;
+    expect(slot).toHaveClass("min-w-[7rem]");
+    expect(slot).toHaveAttribute("role", "status");
+    expect(slot).toBeEmptyDOMElement();
+    fireEvent.click(instructor);
+    expect(slot).toBeEmptyDOMElement();
+    await act(async () => finish(["student", "teacher"]));
+    expect(instructor.closest("div")!.lastElementChild).toBe(slot);
+    expect(slot).toHaveTextContent("Saved");
+    fireEvent.click(screen.getByRole("button", { name: "Change language" }));
+    expect(slot).toHaveTextContent("Guardado");
+  });
+
+  // Um "Saved" velho ao lado das caixas dizia que a mudança desistida gravou.
+  it("drops Saved on the next click, a cancelled question, a failed write and a new search", async () => {
+    mocks.listPlatformUsers.mockResolvedValue(roster(["student"]));
+    mocks.setUserRoles.mockResolvedValueOnce(["student", "teacher"]);
+    render(translatedRoster());
+    const slot = () => screen.getByLabelText("Instructor").closest("div")!.lastElementChild!;
+
+    fireEvent.click(await screen.findByLabelText("Instructor"));
+    await waitFor(() => expect(slot()).toHaveTextContent("Saved"));
+    // Cancelar a pergunta do Team não deixa o "Saved" de antes.
+    fireEvent.click(screen.getByLabelText("Team"));
+    expect(slot()).toBeEmptyDOMElement();
+    answer("Cancel");
+    expect(slot()).toBeEmptyDOMElement();
+
+    // Gravação recusada: o erro aparece e nenhum "Saved".
+    mocks.setUserRoles.mockRejectedValueOnce({ message: "Private RPC schema detail" });
+    fireEvent.click(screen.getByLabelText("Team"));
+    answer("Add to Team");
+    expect(await screen.findByRole("alert")).toHaveTextContent("That change was refused. Nothing was saved.");
+    expect(slot()).toBeEmptyDOMElement();
+
+    // Grava de novo e depois busca: a lista nova não herda o "Saved".
+    mocks.setUserRoles.mockResolvedValueOnce(["student"]);
+    fireEvent.click(screen.getByLabelText("Instructor"));
+    await waitFor(() => expect(slot()).toHaveTextContent("Saved"));
+    fireEvent.change(screen.getByRole("searchbox", { name: "Find someone" }), { target: { value: "Test" } });
+    expect(slot()).toBeEmptyDOMElement();
+    expect(mocks.setUserRoles).toHaveBeenCalledTimes(3);
+  });
+
   it("does not ask for levels below admin", async () => {
     mocks.listPlatformUsers.mockResolvedValue(roster(["student"]));
     mocks.setUserRoles.mockResolvedValue(["student", "teacher"]);
@@ -273,6 +367,7 @@ describe("RoleManager", () => {
     await waitFor(() => expect(mocks.listPlatformUsers).toHaveBeenLastCalledWith("Ana $$50 $&"));
     const reads = mocks.listPlatformUsers.mock.calls.length;
     fireEvent.click(screen.getByLabelText("Team"));
+    answer("Add to Team");
     expect(screen.getByLabelText("Team")).not.toBeChecked();
     fireEvent.click(screen.getByRole("button", { name: "Change language" }));
     expect(screen.getByRole("searchbox", { name: "Buscar a una persona" })).toHaveValue("Ana $$50 $&");
@@ -316,6 +411,7 @@ describe("RoleManager", () => {
     mocks.setUserRoles.mockRejectedValue({ message: "Private RPC schema detail" });
     render(translatedRoster());
     fireEvent.click(await screen.findByLabelText("Team"));
+    answer("Add to Team");
     expect(await screen.findByRole("alert")).toHaveTextContent("That change was refused. Nothing was saved.");
     expect(screen.getByLabelText("Team")).not.toBeChecked();
     fireEvent.click(screen.getByRole("button", { name: "Change language" }));
@@ -347,7 +443,8 @@ describe("RoleManager", () => {
     await waitFor(() => expect(mocks.listPlatformUsers).toHaveBeenLastCalledWith("Test"));
     expect(screen.getByText("Test Person").closest("ul")).toHaveAttribute("aria-busy", "true");
     expect(screen.getByText("Test Person").closest("ul")).toHaveClass("opacity-60");
-    expect(screen.queryByRole("status")).toBeNull();
+    // A lista não vira a linha de "carregando" (as regiões do "Saved" ficam montadas e vazias).
+    expect(screen.queryByText(/Loading the roster/)).toBeNull();
     await act(async () => finish(roster(["student"])));
     expect(screen.getByText("Test Person").closest("ul")).not.toHaveAttribute("aria-busy");
     expect(mocks.setUserRoles).not.toHaveBeenCalled();
@@ -399,7 +496,7 @@ describe("RoleManager", () => {
     mocks.listPlatformUsers.mockResolvedValue(Array.from({ length: count }, (_, index) => ({ ...roster([])[0], uid: `u-${index}`, displayName: `Nombre $$ $& ${index}` })));
     render(translatedRoster());
     fireEvent.click(screen.getByRole("button", { name: "Change language" }));
-    await waitFor(() => expect(screen.queryByRole("status")).toBeNull());
+    await waitFor(() => expect(screen.queryByText(/Cargando la lista de personas/)).toBeNull());
     expect(screen.queryAllByRole("listitem")).toHaveLength(count);
     if (count === 0) expect(screen.getByText("Nadie coincide con esta búsqueda.")).toBeInTheDocument();
     for (let index = 0; index < count; index++) expect(screen.getByText(`Nombre $$ $& ${index}`)).toBeInTheDocument();
@@ -408,11 +505,11 @@ describe("RoleManager", () => {
   it("translates every permission label and description without changing the matrix", async () => {
     mocks.listPlatformUsers.mockResolvedValue([]);
     render(translatedRoster());
-    fireEvent.click(screen.getByRole("button", { name: "What each level can do" }));
+    fireEvent.click(screen.getByRole("tab", { name: "What each level can do" }));
     for (const definition of allPermissionDefinitions) expect(screen.getByText(definition.label)).toHaveAttribute("title", definition.description);
     const before = screen.getAllByRole("cell").map(cell => cell.querySelector("span")?.textContent ?? "label");
     fireEvent.click(screen.getByRole("button", { name: "Change language" }));
-    expect(screen.getByRole("button", { name: "Qué puede hacer cada nivel" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("tab", { name: "Qué puede hacer cada nivel" })).toHaveAttribute("aria-selected", "true");
     expect(screen.getByRole("region", { name: "Qué puede hacer cada nivel" })).toHaveAttribute("tabindex", "0");
     expect(screen.getAllByRole("row")).toHaveLength(allPermissionDefinitions.length + 1);
     for (const definition of allPermissionDefinitions) {

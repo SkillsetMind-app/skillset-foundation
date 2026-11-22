@@ -626,6 +626,11 @@
         "adminGrantLabel": "Make administrator",
         "adminRemoveTitle": "Remove administrator access?",
         "adminRemoveLabel": "Remove administrator",
+        "confirmStaffGrant": "Add {person} to the Team? Team members open the internal panel, answer support, issue refunds, moderate the community and can publish or take down any course.",
+        "staffGrantTitle": "Add this person to the Team?",
+        "staffGrantLabel": "Add to Team",
+        "levelSaved": "Saved",
+        "tabsLabel": "Access sections",
         "searchPlaceholder": "Name or email",
         "loading": "Loading the roster…",
         "empty": "No one matches that search.",
@@ -848,7 +853,12 @@
         "user": "User",
         "paidOn": "Paid on",
         "createdOn": "Created on",
-        "provider": "Provider"
+        "provider": "Provider",
+        "date": "Date",
+        "course": "Course",
+        "status": "Status",
+        "amount": "Amount",
+        "tableCaption": "Recent Stripe orders"
       },
       "enrollmentPanel": {
         "eyebrow": "Manual enrollment",
@@ -1132,6 +1142,8 @@
         "actor": "Actor",
         "when": "When",
         "target": "Target",
+        "action": "Action",
+        "tableCaption": "Audit log, newest first",
         "actions": {
           "refundRequested": "Refund requested",
           "refundIssued": "Refund issued",

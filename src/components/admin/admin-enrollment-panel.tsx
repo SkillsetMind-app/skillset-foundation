@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
-import { ConfirmDialog, Field, InlineAlert } from "@/components/ui";
+import { Button, ConfirmDialog, Field, InlineAlert } from "@/components/ui";
 import type { Enrollment } from "@/domain/enrollment";
 import type { TeacherCourse } from "@/domain/teacher-course";
 import type { UserProfile } from "@/domain/user-profile";
@@ -176,14 +176,14 @@ export function AdminEnrollmentPanel() {
               aria-label={t(`${copy}.filterLabel`)}
               placeholder={t(`${copy}.filterPlaceholder`)}
               disabled={isLoadingUsers || users.length === 0 || readErrors.users}
-              className="min-h-11 min-w-0 w-full rounded-md border border-[var(--color-line)] bg-white px-4 py-2.5 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
+              className="field-input min-h-11 min-w-0 disabled:cursor-not-allowed disabled:opacity-60"
             />
             <select
               {...a11y}
               value={selectedUser ? userId : ""}
               onChange={(event) => setUserId(event.target.value)}
               disabled={isLoadingUsers || users.length === 0 || readErrors.users}
-              className="min-h-11 min-w-0 w-full rounded-md border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
+              className="field-input min-h-11 min-w-0 disabled:cursor-not-allowed disabled:opacity-60"
             >
               <option value="">
                 {t(`${copy}.${isLoadingUsers ? "loadingUsers" : noLearnerMatch ? "noMatch" : "chooseUser"}`)}
@@ -203,7 +203,7 @@ export function AdminEnrollmentPanel() {
             value={courseId}
             onChange={(event) => setCourseId(event.target.value)}
             disabled={isLoadingCourses || courses.length === 0 || readErrors.courses}
-            className="min-h-11 min-w-0 w-full rounded-md border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
+            className="field-input min-h-11 min-w-0 disabled:cursor-not-allowed disabled:opacity-60"
           >
             <option value="">
               {t(`${copy}.${isLoadingCourses ? "loadingCourses" : "chooseCourse"}`)}
@@ -275,14 +275,17 @@ export function AdminEnrollmentPanel() {
                       {t(`${copy}.${enrollment.source === "admin" ? "adminGrant" : "demoGrant"}`)}
                     </p>
                   </div>
-                  <button
-                    type="button"
+                  {/* Tirar o acesso é vermelho, como Unpublish e Reject (I-04); a
+                      pergunta antes continua a mesma. */}
+                  <Button
+                    variant="danger"
+                    size="sm"
                     onClick={() => setAsking(enrollment)}
                     disabled={revokingId === enrollment.id}
-                    className="button-outline min-h-11 px-4 py-2 text-xs disabled:opacity-60"
+                    className="min-h-11 px-3.5 py-2"
                   >
                     {t(`${copy}.${revokingId === enrollment.id ? "revoking" : "revoke"}`)}
-                  </button>
+                  </Button>
                 </article>
               );
             })

@@ -626,6 +626,11 @@
         "adminGrantLabel": "Convertir en administrador",
         "adminRemoveTitle": "¿Quitar el acceso de administrador?",
         "adminRemoveLabel": "Quitar administrador",
+        "confirmStaffGrant": "¿Agregar a {person} al Equipo? El equipo entra al panel interno, atiende el soporte, emite reembolsos, modera la comunidad y puede publicar o retirar cualquier curso.",
+        "staffGrantTitle": "¿Agregar a esta persona al Equipo?",
+        "staffGrantLabel": "Agregar al Equipo",
+        "levelSaved": "Guardado",
+        "tabsLabel": "Secciones de acceso",
         "searchPlaceholder": "Nombre o correo electrónico",
         "loading": "Cargando la lista de personas…",
         "empty": "Nadie coincide con esta búsqueda.",
@@ -848,7 +853,12 @@
         "user": "Usuario",
         "paidOn": "Pagado el",
         "createdOn": "Creado el",
-        "provider": "Proveedor"
+        "provider": "Proveedor",
+        "date": "Fecha",
+        "course": "Curso",
+        "status": "Estado",
+        "amount": "Importe",
+        "tableCaption": "Pedidos recientes de Stripe"
       },
       "enrollmentPanel": {
         "eyebrow": "Inscripción manual",
@@ -1132,6 +1142,8 @@
         "actor": "Responsable",
         "when": "Cuándo",
         "target": "Destino",
+        "action": "Acción",
+        "tableCaption": "Registro de auditoría, del más reciente al más antiguo",
         "actions": {
           "refundRequested": "Reembolso solicitado",
           "refundIssued": "Reembolso emitido",
