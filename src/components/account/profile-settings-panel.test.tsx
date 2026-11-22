@@ -142,10 +142,13 @@ describe.each([
     const status = await screen.findByRole("status");
     expect(status).toHaveTextContent("Sending...");
     expect(status).not.toHaveTextContent("%");
+    // F-20: sem porcentagem, a barra indeterminada mostra que o envio anda.
+    expect(status.querySelector(".upload-indeterminate-fill")).not.toBeNull();
     expect(upload).toHaveBeenCalledExactlyOnceWith("user-1", file, expect.any(Function));
     expect(input).toBeDisabled();
     expect(input.closest("label")).toHaveClass("pointer-events-none", "opacity-60");
-    expect(input.closest("label")).toHaveTextContent("Uploading...");
+    // O rótulo fica estável; "Uploading" aparecia aqui e na nota ao mesmo tempo.
+    expect(input.closest("label")).not.toHaveTextContent("Uploading");
     expect(input.value).toBe("");
     expect(screen.queryByText(success)).not.toBeInTheDocument();
 

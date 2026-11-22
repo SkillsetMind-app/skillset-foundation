@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
@@ -28,5 +30,22 @@ describe("upload progress locale", () => {
     if (percent === null) expect(screen.getByRole("status")).not.toHaveTextContent("%");
     else expect(screen.getByRole("status")).toHaveTextContent(`${percent}%`);
     if (percent === 50) expect(screen.getByRole("status")).toHaveTextContent("512 B de 1.0 KB");
+    // F-20: só o envio sem porcentagem ganha a barra que desliza (decorativa).
+    const sliding = screen.getByRole("status").querySelector(".upload-indeterminate-fill");
+    if (percent === null) expect(sliding?.parentElement).toHaveAttribute("aria-hidden", "true");
+    else expect(sliding).toBeNull();
+  });
+
+  // Um trecho parcial parado se leria como "30% feito": sem movimento, o trilho
+  // inteiro fica preenchido e apagado; o trecho de 30% só existe deslizando.
+  it("parada, a barra sem porcentagem enche o trilho; o trecho de 30% só desliza com movimento", () => {
+    const css = readFileSync(join(process.cwd(), "src/app/globals.css"), "utf8");
+    const rule = (from: number) => css.slice(from, css.indexOf("}", from));
+    const base = css.indexOf(".upload-indeterminate-fill {");
+    expect(rule(base)).toMatch(/width: 100%;\s*opacity: 0\.35;/);
+    const media = css.indexOf("@media (prefers-reduced-motion: no-preference) {", base);
+    expect(css.slice(base, media)).not.toContain("@media");
+    const moving = css.indexOf(".upload-indeterminate-fill {", media);
+    expect(rule(moving)).toMatch(/width: 30%;[\s\S]*animation: motion-track-slide/);
   });
 });

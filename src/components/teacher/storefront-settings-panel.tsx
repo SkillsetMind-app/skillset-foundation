@@ -121,7 +121,8 @@ function StorefrontImageUpload({
             }`}
           >
             <UploadCloud aria-hidden="true" size={16} />
-            {t(`teach.storefrontEditor.image.${isUploading ? "uploading" : imageUrl ? "replace" : "upload"}`)}
+            {/* F-20: rótulo estável; o andamento fica só na nota abaixo. */}
+            {t(`teach.storefrontEditor.image.${imageUrl ? "replace" : "upload"}`)}
             <input
               type="file"
               accept={allowedAvatarTypes.join(",")}

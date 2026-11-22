@@ -260,22 +260,52 @@ export function ProfileSettingsPanel() {
     }
   }
 
-  if (isLoading) {
-    return (
-      <section className="settings-section-card">
-        <p className="text-sm text-[var(--color-ink-soft)]">{t("accountProfile.loading")}</p>
-      </section>
-    );
-  }
-
-  return (
-    <section className="settings-section-card">
+  const header = (
+    <>
       <h2 className="text-lg font-bold text-[var(--color-ink)]">
         {t("accountProfile.title")}
       </h2>
       <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--color-ink-soft)]">
         {t("accountProfile.description")}
       </p>
+    </>
+  );
+
+  if (isLoading) {
+    // F-03: título e descrição já são conhecidos e entram de vez; só o
+    // formulário espera, em blocos do tamanho da foto e dos primeiros campos
+    // (regra do BuilderSkeleton). Antes era um cartão com uma linha e o
+    // formulário inteiro caía depois, empurrando tudo.
+    const block = "bg-[var(--color-surface-strong)]";
+    return (
+      <section className="settings-section-card">
+        {header}
+        <div role="status" className="mt-6">
+          <span className="sr-only">{t("accountProfile.loading")}</span>
+          <div aria-hidden="true" className="grid animate-pulse gap-4">
+            <div className="flex flex-col gap-4 rounded-lg border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-4 sm:flex-row sm:items-center">
+              <div className={`size-20 shrink-0 rounded-full ${block}`} />
+              <div className="grid flex-1 gap-2">
+                <div className={`h-4 w-32 rounded-sm ${block}`} />
+                <div className={`h-4 w-full max-w-sm rounded-sm ${block}`} />
+                <div className={`mt-1 h-11 w-40 rounded-md ${block}`} />
+              </div>
+            </div>
+            {[0, 1, 2].map((item) => (
+              <div key={item} className="grid gap-2">
+                <div className={`h-4 w-28 rounded-sm ${block}`} />
+                <div className={`h-11 w-full rounded-md ${block}`} />
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <section className="settings-section-card">
+      {header}
 
       <form className="mt-6 grid grid-cols-1 gap-4" onSubmit={handleSubmit}>
         <div className="flex flex-col gap-4 rounded-lg border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-4 sm:flex-row sm:items-center">
@@ -297,11 +327,12 @@ export function ProfileSettingsPanel() {
               }`}
             >
               <UploadCloud size={16} aria-hidden />
-              {isUploadingAvatar
-                ? t("accountProfile.uploading")
-                : photoURL
-                  ? t("accountProfile.photo.replace")
-                  : t("accountProfile.photo.upload")}
+              {/* F-20: o rótulo não troca durante o envio; quem diz o
+                  andamento é só a nota logo abaixo (antes "Uploading..." aqui
+                  e "Uploading 37%" ali, ao mesmo tempo). */}
+              {photoURL
+                ? t("accountProfile.photo.replace")
+                : t("accountProfile.photo.upload")}
               <input
                 type="file"
                 accept={allowedAvatarTypes.join(",")}
@@ -439,11 +470,9 @@ export function ProfileSettingsPanel() {
                 }`}
               >
                 <UploadCloud size={16} aria-hidden />
-                {isUploadingSignature
-                  ? t("accountProfile.uploading")
-                  : signatureUrl
-                    ? t("accountProfile.signature.replace")
-                    : t("accountProfile.signature.upload")}
+                {signatureUrl
+                  ? t("accountProfile.signature.replace")
+                  : t("accountProfile.signature.upload")}
                 <input
                   type="file"
                   accept={allowedAvatarTypes.join(",")}

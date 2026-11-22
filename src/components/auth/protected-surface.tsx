@@ -23,12 +23,9 @@ export function ProtectedSurface({ permissions, contactWhenSignedOut = false, ch
   const pathname = usePathname() ?? "";
 
   if (status === "loading") {
-    return (
-      <SkillsetSpinner
-        title={t("auth.guard.loadingTitle")}
-        description={t("auth.guard.loadingDescription")}
-      />
-    );
+    // A mesma frase de /loading e /welcome: logo depois de entrar, esta tela
+    // vem colada nelas e tem de parecer a mesma espera.
+    return <SkillsetSpinner title={t("authFlow.loading.title")} />;
   }
 
   if (status === "mfa_required" || !user) {
