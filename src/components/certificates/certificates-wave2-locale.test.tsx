@@ -124,13 +124,27 @@ describe("certificate interface locale does not rewrite issued documents", () =>
     mocks.get.mockReturnValue(new Promise((done) => { resolve = done; }));
     const view = show(<CertificatePrintView certificateId={certificate.id} />);
     // Loading: the certificate paper is already there (same box), no jump when it arrives.
-    expect(screen.getByRole("status")).toHaveTextContent("Preparando tu certificado...");
+    expect(screen.getByText("Preparando tu certificado...")).toBeInTheDocument();
     expect(view.container.querySelector(".cert-doc .cert-doc-content")).not.toBeNull();
     await act(async () => { resolve(certificate); });
 
     await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Copiar enlace de verificación" })); });
     expect(writeText.mock.calls[0][0].endsWith(`/verify?code=${encodeURIComponent(certificate.verificationCode)}`)).toBe(true);
     expect(screen.getByRole("status")).toHaveTextContent("Enlace copiado");
+  });
+
+  it("when the clipboard is refused, shows the verification link in a field to copy by hand", async () => {
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText: vi.fn(() => Promise.reject(new Error("denied"))) },
+      configurable: true,
+    });
+    show(<CertificatePrintView certificateId={certificate.id} />);
+    const copy = await screen.findByRole("button", { name: "Copiar enlace de verificación" });
+    await act(async () => { fireEvent.click(copy); });
+    expect(screen.getByRole("alert")).toHaveTextContent("No se pudo copiar el enlace.");
+    const field = screen.getByRole("textbox", { name: "Enlace de verificación" }) as HTMLInputElement;
+    expect(field).toHaveAttribute("readonly");
+    expect(field.value.endsWith(`/verify?code=${encodeURIComponent(certificate.verificationCode)}`)).toBe(true);
   });
 
   it.each(["missing", "revoked", "foreign", "error"])("localizes %s print state and does not show a document", async (state) => {

@@ -148,12 +148,16 @@ export function subscribeToTeacherMessages(
 // subscribeToTeacherMessages. Antes so existia a leitura por curso: o aluno
 // com tres cursos tinha tres lugares para responder ao professor, cada um no
 // fim da pagina da aula, e nenhuma lista de conversas (o professor tinha).
+//
+// `reload()` le de novo SEM mexer no canal (o "Try again" da caixa). Desligar
+// e religar o canal com o mesmo nome devolvia o canal antigo, ainda saindo, e
+// a caixa parava de receber as mensagens novas.
 export function subscribeToStudentMessages(
   studentId: string,
   callback: (messages: CourseMessage[]) => void,
   onError: (error: Error) => void,
   maxMessages = 400,
-): () => void {
+): (() => void) & { reload: () => Promise<void> } {
   const supabase = getSupabaseBrowserClient();
 
   const load = async () => {
@@ -188,9 +192,12 @@ export function subscribeToStudentMessages(
     )
     .subscribe();
 
-  return () => {
-    void supabase.removeChannel(channel);
-  };
+  return Object.assign(
+    () => {
+      void supabase.removeChannel(channel);
+    },
+    { reload: load },
+  );
 }
 
 /** Quantas conversas esperam a resposta do professor (a ultima mensagem e do

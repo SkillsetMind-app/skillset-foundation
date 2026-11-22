@@ -149,47 +149,49 @@ export function MaterialFileList({ files, large = false }: { files: CourseAsset[
  * prévia (PDF de 320px, imagem, vídeo extra) só monta quando a pessoa pede:
  * antes cada anexo já vinha aberto e três PDFs somavam ~1.100px de documento
  * embutido, além de um pedido de link por arquivo ao abrir a aula.
+ *
+ * Um botão só, que troca o rótulo e o aria-expanded: trocar de elemento
+ * tirava o foco do teclado e o leitor de tela perdia o lugar.
  */
 export function LessonAssetActions({ asset }: { asset: CourseAsset }) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const title = getCourseAssetTitle(asset);
-  const previewable = /^(video|image)\//.test(asset.contentType) || asset.contentType === "application/pdf";
+  const type = asset.contentType;
+  const isVideo = type.startsWith("video/");
+  // Áudio e texto não têm prévia embutida: aberta, ela mostra "Open file" (o
+  // mp3 toca no navegador) e "Download", como antes.
+  const previewable = /^(video|image|audio|text)\//.test(type) || type === "application/pdf";
 
-  if (open) {
-    return (
-      <>
-        <button
-          type="button"
-          aria-expanded="true"
-          onClick={() => setOpen(false)}
-          className="button-outline mt-3 px-4 py-2 text-xs"
-        >
-          {t("courseMedia.preview.hide")}
-        </button>
-        <ProtectedAssetPreview asset={asset} />
-      </>
-    );
+  // Os outros tipos (docx, mapa mental...) ficam como eram: "Open file" e
+  // "Download" logo de cara. Nada do que a pessoa fazia antes some.
+  if (!previewable) {
+    return <ProtectedAssetPreview asset={asset} />;
   }
 
   return (
-    <div className="mt-3 flex flex-wrap gap-2">
-      {previewable ? (
+    <div className="mt-3">
+      <div className="flex flex-wrap gap-2">
         <button
           type="button"
-          aria-expanded="false"
-          aria-label={t("courseMedia.preview.showNamed").replace("{title}", () => title)}
-          onClick={() => setOpen(true)}
+          aria-expanded={open}
+          aria-label={t(open ? "courseMedia.preview.hideNamed" : "courseMedia.preview.showNamed").replace("{title}", () => title)}
+          onClick={() => setOpen((current) => !current)}
           className="button-outline px-4 py-2 text-xs"
         >
-          {t("courseMedia.preview.show")}
+          {t(open ? "courseMedia.preview.hide" : "courseMedia.preview.show")}
         </button>
-      ) : null}
-      <ProtectedAssetDownload
-        asset={asset}
-        label={t("courseMedia.preview.downloadNamed").replace("{title}", () => title)}
-        className="button-outline px-4 py-2 text-xs"
-      />
+        {/* Aberta, a prévia de imagem, PDF, áudio e texto já traz o próprio
+            "Download"; a de vídeo (só o player) não. */}
+        {open && !isVideo ? null : (
+          <ProtectedAssetDownload
+            asset={asset}
+            label={t("courseMedia.preview.downloadNamed").replace("{title}", () => title)}
+            className="button-outline px-4 py-2 text-xs"
+          />
+        )}
+      </div>
+      {open ? <ProtectedAssetPreview asset={asset} /> : null}
     </div>
   );
 }

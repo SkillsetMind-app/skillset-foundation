@@ -86,13 +86,6 @@ export function CertificatePrintView({
           <div className="flex flex-wrap items-center gap-3">
             {/* O link público de verificação, o mesmo que vai para o LinkedIn:
                 antes só dava para compartilhar pelo LinkedIn. */}
-            <span
-              role="status"
-              aria-live="polite"
-              className={`text-xs font-semibold ${copyResult === "failed" ? "text-[var(--color-danger-fg)]" : "text-[var(--color-ink-soft)]"}`}
-            >
-              {copyResult ? t(copyResult === "copied" ? "learnWave2.print.copied" : "learnWave2.print.copyFailed") : ""}
-            </span>
             <button
               type="button"
               onClick={() => void copyVerificationLink(certificate)}
@@ -117,6 +110,31 @@ export function CertificatePrintView({
             >
               {t("learnWave2.print.download")}
             </button>
+          </div>
+        ) : null}
+        {/* A linha do "Link copied" existe sempre, vazia (altura reservada,
+            também no carregamento): nada se mexe quando o aviso aparece. */}
+        <p
+          role="status"
+          aria-live="polite"
+          className="min-h-5 w-full text-xs font-semibold text-[var(--color-ink-soft)] sm:text-right"
+        >
+          {copyResult === "copied" ? t("learnWave2.print.copied") : ""}
+        </p>
+        {/* Sem acesso à área de transferência: o link num campo para copiar
+            à mão (tocar seleciona tudo). */}
+        {state === "ready" && certificate && copyResult === "failed" ? (
+          <div className="w-full">
+            <p role="alert" className="text-xs font-semibold text-[var(--color-danger-fg)]">
+              {t("learnWave2.print.copyFailed")}
+            </p>
+            <input
+              readOnly
+              value={buildVerifyUrl(certificate)}
+              aria-label={t("learnWave2.print.verifyLink")}
+              onFocus={(event) => event.currentTarget.select()}
+              className="field-input mt-2 text-base"
+            />
           </div>
         ) : null}
       </div>

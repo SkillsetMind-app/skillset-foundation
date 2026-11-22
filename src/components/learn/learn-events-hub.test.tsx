@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { I18nProvider } from "@/components/i18n/i18n-provider";
@@ -41,6 +41,8 @@ const mocks = vi.hoisted(() => {
   return {
     user: { uid: "student-1", roles: ["student"] }, startsAt, enrollment, events, base,
     rsvp: null as { status: "attending" | "not_attending" } | null,
+    // Os eventos que abriram um canal de presenca.
+    rsvpEvents: [] as string[],
   };
 });
 
@@ -68,7 +70,8 @@ vi.mock("@/lib/data/course-events", () => ({
     onData([...mocks.events].sort((a, b) => a.startsAt.localeCompare(b.startsAt)));
     return () => undefined;
   },
-  subscribeToCourseEventRsvp: (_eventId: string, _uid: string, onData: (rsvp: unknown) => void) => {
+  subscribeToCourseEventRsvp: (eventId: string, _uid: string, onData: (rsvp: unknown) => void) => {
+    mocks.rsvpEvents.push(eventId);
     onData(mocks.rsvp);
     return () => undefined;
   },
@@ -106,8 +109,12 @@ describe("LearnEventsHub", () => {
       const old = screen.getByRole("heading", { name: "Old session" });
       const past = old.closest("details") as HTMLElement;
       expect(past).not.toHaveAttribute("open");
-      expect(within(past).getByText("Past")).toBeInTheDocument();
+      // Cabecalho proprio: os cartoes passados nao ficam sob "Upcoming".
+      expect(within(past).getByRole("heading", { level: 2, name: /Past/ })).toBeInTheDocument();
       expect(within(past).queryByRole("button", { name: "I will attend" })).not.toBeInTheDocument();
+      expect(within(past).queryByRole("link", { name: "Join external session" })).not.toBeInTheDocument();
+      // Nem um canal de presenca por cartao passado.
+      expect(mocks.rsvpEvents).not.toContain("old");
     } finally {
       mocks.events = saved;
     }
@@ -130,6 +137,25 @@ describe("LearnEventsHub", () => {
     } finally {
       mocks.events = saved;
       mocks.rsvp = null;
+    }
+  });
+
+  it("a resposta salva fica marcada na hora, sem esperar o tempo real", async () => {
+    const saved = mocks.events;
+    mocks.events = [
+      { ...mocks.base, id: "next", title: "Next session", startsAt: new Date(Date.now() + 48 * 3_600_000).toISOString() },
+    ];
+    try {
+      render(<LearnEventsHub />);
+      const attend = screen.getByRole("button", { name: "I will attend" });
+      expect(attend).toHaveAttribute("aria-pressed", "false");
+
+      await act(async () => {
+        fireEvent.click(attend);
+      });
+      expect(screen.getByRole("button", { name: "I will attend" })).toHaveAttribute("aria-pressed", "true");
+    } finally {
+      mocks.events = saved;
     }
   });
 });

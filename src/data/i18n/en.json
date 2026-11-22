@@ -4467,6 +4467,7 @@
       "show": "Preview",
       "showNamed": "Preview {title}",
       "hide": "Hide preview",
+      "hideNamed": "Hide preview of {title}",
       "openWith": {
         "xmind": "To open it, use the free app XMind.",
         "mm": "To open it, use the free app FreeMind or Freeplane."
@@ -5632,7 +5633,8 @@
       "download": "Print or save as PDF",
       "copyLink": "Copy verification link",
       "copied": "Link copied",
-      "copyFailed": "Could not copy the link.",
+      "copyFailed": "Could not copy the link. Select it below and copy it.",
+      "verifyLink": "Verification link",
       "loading": "Preparing your certificate...",
       "loadingDetail": "SkillsetMind is loading this credential record.",
       "missing": "Certificate not available.",

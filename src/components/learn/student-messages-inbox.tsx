@@ -3,7 +3,7 @@
 import { ArrowLeft, Inbox, Send } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { formatNotificationTime } from "@/components/account/notification-row";
@@ -44,10 +44,13 @@ export function StudentMessagesInbox() {
   // lugar do vazio (uma falha não é "você não tem conversas").
   const [ready, setReady] = useState(false);
   const [loadFailed, setLoadFailed] = useState(false);
-  const [attempt, setAttempt] = useState(0);
+  // Uma releitura falhou com a lista já na tela: aviso no topo, com ou sem
+  // conversa aberta, e some quando uma leitura seguinte dá certo.
+  const [reloadFailed, setReloadFailed] = useState(false);
   const [draft, setDraft] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [notice, setNotice] = useState("");
+  const subscription = useRef<{ reload: () => Promise<void> } | null>(null);
 
   useEffect(() => {
     if (!user) {
@@ -55,28 +58,38 @@ export function StudentMessagesInbox() {
     }
 
     let loaded = false;
-    return subscribeToStudentMessages(
+    const current = subscribeToStudentMessages(
       user.uid,
       (next) => {
         loaded = true;
         setMessages(next);
         setReady(true);
+        setLoadFailed(false);
+        setReloadFailed(false);
       },
       () => {
         // Falha numa releitura (o canal em tempo real recarrega) não apaga a
         // lista que já está na tela: vira só o aviso.
         if (loaded) {
-          setNotice("learnWave2.messages.loadError");
+          setReloadFailed(true);
         } else {
           setLoadFailed(true);
         }
       },
     );
-  }, [user, attempt]);
+    subscription.current = current;
+    return () => {
+      subscription.current = null;
+      current();
+    };
+  }, [user]);
 
+  // "Try again" lê de novo pelo mesmo canal. Desligar e religar o canal (com o
+  // mesmo nome) deixava a caixa sem as mensagens novas: a enviada não aparecia
+  // e a resposta do professor não chegava.
   function retryLoad() {
     setLoadFailed(false);
-    setAttempt((current) => current + 1);
+    void subscription.current?.reload();
   }
 
   // Para o aluno, cada thread e um curso (a chave e curso + o proprio aluno).
@@ -124,6 +137,10 @@ export function StudentMessagesInbox() {
         <ArrowLeft size={16} aria-hidden="true" />
         {backLabel}
       </Link>
+
+      {reloadFailed ? (
+        <InlineAlert tone="error">{t("learnWave2.messages.loadError")}</InlineAlert>
+      ) : null}
 
       {loadFailed ? (
         <section className="rounded-lg border fine-rule bg-white p-5">

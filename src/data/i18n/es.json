@@ -4467,6 +4467,7 @@
       "show": "Vista previa",
       "showNamed": "Vista previa de {title}",
       "hide": "Ocultar vista previa",
+      "hideNamed": "Ocultar vista previa de {title}",
       "openWith": {
         "xmind": "Para abrirlo, usa la app gratuita XMind.",
         "mm": "Para abrirlo, usa la app gratuita FreeMind o Freeplane."
@@ -5632,7 +5633,8 @@
       "download": "Imprimir o guardar como PDF",
       "copyLink": "Copiar enlace de verificación",
       "copied": "Enlace copiado",
-      "copyFailed": "No se pudo copiar el enlace.",
+      "copyFailed": "No se pudo copiar el enlace. Selecciónalo abajo y cópialo.",
+      "verifyLink": "Enlace de verificación",
       "loading": "Preparando tu certificado...",
       "loadingDetail": "SkillsetMind está cargando el registro de esta credencial.",
       "missing": "Certificado no disponible.",

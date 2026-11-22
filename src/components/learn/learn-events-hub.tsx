@@ -199,13 +199,15 @@ export function LearnEventsHub() {
       </section>
       {past.length > 0 ? (
         <details className="group rounded-lg border border-[var(--color-line)] bg-white">
-          <summary className="flex min-h-12 cursor-pointer list-none items-center [&::-webkit-details-marker]:hidden justify-between gap-3 px-4 text-base font-semibold text-[var(--color-primary)]">
-            <span>
+          <summary className="flex min-h-12 cursor-pointer list-none items-center [&::-webkit-details-marker]:hidden justify-between gap-3 px-4 text-[var(--color-primary)]">
+            {/* Cabeçalho próprio: os cartões que já passaram ficam sob "Past",
+                não sob "Upcoming", para quem navega por títulos. */}
+            <h2 className="text-base font-semibold">
               {t("creatorPanel.events.filter.past")}{" "}
               <span className="ml-1 rounded-full bg-[var(--color-surface-soft)] px-2 py-0.5 text-xs font-bold tabular-nums">
                 {past.length}
               </span>
-            </span>
+            </h2>
             <ChevronDown aria-hidden="true" size={18} className="group-open:rotate-180" />
           </summary>
           <div className="grid gap-4 px-4 pb-4 lg:grid-cols-2">
@@ -235,10 +237,15 @@ function LearnerEventCard({
   // (antes trocava sempre o rótulo de "I will attend", mesmo ao recusar).
   const [savingStatus, setSavingStatus] = useState<CourseEventRsvpStatus | null>(null);
   const isSavingRsvp = savingStatus !== null;
+  // A resposta salva aparece marcada na hora, sem esperar a volta do tempo
+  // real; a próxima leitura do canal assume de novo.
+  const [savedStatus, setSavedStatus] = useState<CourseEventRsvpStatus | null>(null);
+  const chosenStatus = savedStatus ?? rsvp?.status ?? null;
   const [rsvpError, setRsvpError] = useState("");
 
   useEffect(() => {
-    if (!currentUser) {
+    // Sessão que já passou não mostra presença: não abre um canal por cartão.
+    if (!currentUser || isPast) {
       return;
     }
 
@@ -247,6 +254,7 @@ function LearnerEventCard({
       currentUser.uid,
       (nextRsvp) => {
         setRsvp(nextRsvp);
+        setSavedStatus(null);
         setIsLoadingRsvp(false);
       },
       () => {
@@ -254,7 +262,7 @@ function LearnerEventCard({
         setIsLoadingRsvp(false);
       },
     );
-  }, [currentUser, event.id]);
+  }, [currentUser, event.id, isPast]);
 
   async function handleRsvp(status: CourseEventRsvpStatus) {
     if (!currentUser) {
@@ -271,6 +279,7 @@ function LearnerEventCard({
         status,
         user: currentUser,
       });
+      setSavedStatus(status);
     } catch {
       setRsvpError("learnWave2.eventsHub.saveError");
     } finally {
@@ -322,7 +331,7 @@ function LearnerEventCard({
           ) : null}
           <div className="mt-2 inline-flex flex-wrap gap-1 rounded-lg border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-1">
             {(["attending", "not_attending"] as const).map((status) => {
-              const chosen = rsvp?.status === status;
+              const chosen = chosenStatus === status;
               return (
                 <button
                   key={status}
@@ -352,7 +361,8 @@ function LearnerEventCard({
         </div>
       )}
 
-      {safeJoinUrl ? (
+      {/* Sessão que já passou: sem "Join" (nem o aviso de link que falta). */}
+      {isPast ? null : safeJoinUrl ? (
         <a
           href={safeJoinUrl}
           target="_blank"
