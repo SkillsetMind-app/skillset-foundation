@@ -69,6 +69,27 @@ describe("sale detail with real EN/ES dictionaries", () => {
     expect(screen.getByText("Refund recorded")).toBeVisible();
   });
 
+  // Antes o codigo do pedido era a maior letra da tela e o liquido tinha o
+  // tamanho do valor e da taxa; e nao havia volta para Vendas.
+  it("makes the net the strongest figure, keeps the order code small and links back to sales", () => {
+    mount();
+    const net = screen.getByText("Neto antes de la comisión de Stripe").parentElement!.querySelector("p:last-child")!;
+    expect(net.textContent).toBe(new Intl.NumberFormat("es", { style: "currency", currency: "USD" }).format(111.11));
+    expect(net).toHaveClass("text-3xl");
+    const amount = screen.getByText("Importe").parentElement!.querySelector("p:last-child")!;
+    expect(amount).not.toHaveClass("text-3xl");
+    expect(screen.getByRole("heading", { name: "Pedido #12345678" })).toHaveClass("text-sm");
+    expect(screen.getByRole("link", { name: "Volver a ventas" })).toHaveAttribute("href", "/teach/sales");
+    switchLanguage();
+    expect(screen.getByRole("link", { name: "Back to sales" })).toHaveAttribute("href", "/teach/sales");
+  });
+
+  it("sends a missing sale back to the sales list", () => {
+    mocks.subscribe.mockImplementation((_id, callback) => { callback(null); return () => {}; });
+    mount();
+    expect(screen.getByRole("link", { name: "Volver a ventas" })).toHaveAttribute("href", "/teach/sales");
+  });
+
   it("translates pending dates and unavailable identifiers", () => {
     mocks.subscribe.mockImplementation((_id, callback) => { callback({ ...order, status: "pending", createdAt: undefined, updatedAt: undefined, checkoutSessionId: null, paymentIntentId: null }); return () => {}; });
     mount();

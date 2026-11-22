@@ -208,6 +208,31 @@ describe("CourseStudentRosterView", () => {
     expect(await screen.findByText(/Message sent to Maria Silva/)).toBeInTheDocument();
   });
 
+  // Antes a caixa abria DENTRO da celula do nome: a linha crescia ~170px e,
+  // no celular, a caixa ficava meio escondida atras da rolagem lateral.
+  it("opens the composer in its own row below the student, focused, and Esc closes it", () => {
+    renderRoster([student, finished]);
+
+    const toggle = screen.getByRole("button", { name: /Message Maria Silva/ });
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    fireEvent.click(toggle);
+
+    const box = screen.getByRole("textbox");
+    expect(box).toHaveFocus();
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    const cell = box.closest("td")!;
+    expect(cell).toHaveAttribute("colspan", "7");
+    // A linha da caixa vem logo depois da linha da Maria, nao dentro dela.
+    const studentRow = within(screen.getByRole("table")).getByText("Maria Silva").closest("tr")!;
+    expect(studentRow.nextElementSibling).toBe(cell.closest("tr"));
+    expect(toggle).toHaveAttribute("aria-controls", cell.closest("tr")!.id);
+
+    fireEvent.keyDown(box, { key: "Escape" });
+    expect(screen.queryByRole("textbox")).toBeNull();
+    expect(toggle).toHaveFocus();
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+  });
+
   it("refuses to send an empty message", () => {
     renderRoster([student]);
 

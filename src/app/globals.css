@@ -6437,12 +6437,13 @@ html:has(#member-lesson-player) {
   gap: 0.25rem;
 }
 
+/* Sales e Promote sao itens do primeiro nivel como os outros: a altura (44px),
+   o texto (14px) e o chip (32px) vem do mesmo lugar dos links diretos. Antes
+   este bloco os encolhia para 38px, 11,5px em MAIUSCULAS e 66% de branco, e
+   eles pareciam titulos de secao. */
 .platform-sidebar .platform-nav-link.platform-nav-section-trigger {
-  min-height: 38px;
-  gap: 0.5rem;
   border-color: transparent !important;
   background: transparent !important;
-  color: rgba(255, 255, 255, 0.66) !important;
   box-shadow: none !important;
 }
 
@@ -6450,19 +6451,6 @@ html:has(#member-lesson-player) {
 .platform-sidebar .platform-nav-link.platform-nav-section-trigger.platform-nav-section-active {
   background: rgba(255, 255, 255, 0.06) !important;
   color: #ffffff !important;
-}
-
-.platform-nav-section-trigger .platform-nav-icon-chip {
-  width: 28px;
-  height: 28px;
-  flex-basis: 28px;
-}
-
-.platform-nav-section-trigger .platform-sidebar-label {
-  font-size: 0.72rem;
-  font-weight: 800;
-  letter-spacing: 0;
-  text-transform: uppercase;
 }
 
 .platform-nav-section-chevron {

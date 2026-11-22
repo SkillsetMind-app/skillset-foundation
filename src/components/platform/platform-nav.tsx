@@ -300,8 +300,11 @@ export function PlatformNav({
           aria-label={
             collapsed ? t("platform.openSectionNav").replace("{section}", sectionLabel) : undefined
           }
-          className={`platform-nav-link platform-nav-section-trigger group relative flex w-full shrink-0 items-center rounded-md border text-sm font-semibold transition-colors ${
-            collapsed ? "justify-center px-0" : "px-2"
+          // Mesma linha de 44px, 14px e chip de 32px dos links diretos: Sales e
+          // Promote pareciam titulos de secao (38px, 11,5px em MAIUSCULAS) e,
+          // na gaveta do celular, ficavam com 30px e a borda na cor do texto.
+          className={`platform-nav-link platform-nav-section-trigger group relative flex h-11 min-h-11 w-full shrink-0 items-center gap-2.5 rounded-md border border-transparent py-1.5 text-sm font-semibold text-[var(--color-ink-soft)] transition-colors hover:bg-[var(--color-surface-strong)] hover:text-[var(--color-ink)] ${
+            collapsed ? "justify-center px-0" : "px-2.5"
           } ${
             collapsed && isActiveSection
               ? "platform-nav-active"
@@ -318,7 +321,7 @@ export function PlatformNav({
             <SectionIcon aria-hidden="true" size={18} strokeWidth={2} />
           ) : (
             <span className="platform-nav-icon-chip">
-              <SectionIcon aria-hidden="true" size={17} strokeWidth={2} />
+              <SectionIcon aria-hidden="true" size={18} strokeWidth={2} />
             </span>
           )}
           <span className="platform-sidebar-label min-w-0 truncate">{sectionLabel}</span>
@@ -466,8 +469,12 @@ function PlatformNavLink({
       // para o leitor de tela, e o CSS o mostra como dica no hover E no foco
       // do teclado (o title só aparecia no mouse, e depois de 1s).
       className={`platform-nav-link group relative flex h-11 min-h-11 shrink-0 items-center gap-2.5 rounded-md border px-2.5 py-1.5 text-sm font-semibold transition-colors ${
+        // Gaveta do celular: a pagina atual ganha fundo azul claro e texto
+        // azul-marinho. Antes era so um contorno claro e uma sombra, porque o
+        // estilo de ativo mora no bloco da barra escura (.platform-sidebar),
+        // que vence estas classes com !important no computador.
         active
-          ? "platform-nav-active border-[rgba(24,58,94,0.2)] shadow-[0_10px_22px_rgba(26,54,93,0.16)]"
+          ? "platform-nav-active border-[rgba(24,58,94,0.2)] bg-[var(--color-surface-soft)] text-[var(--color-primary)]"
           : "border-transparent text-[var(--color-ink-soft)] hover:bg-[var(--color-surface-strong)] hover:text-[var(--color-ink)]"
       }`}
     >

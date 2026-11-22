@@ -591,7 +591,7 @@ describe("H3: pais declarado do professor", () => {
 
   it("exige uma escolha sem inferir pais do idioma ou do telefone", async () => {
     render(<OnboardingWizard />);
-    expect(await screen.findByLabelText("Payout country")).toHaveValue("");
+    expect(await screen.findByLabelText("Country where you get paid")).toHaveValue("");
     expect(screen.queryByRole("button", { name: "Skip for now" })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Continue" }));
     expect(screen.getByText("Answer this question before continuing.")).toBeInTheDocument();
@@ -600,7 +600,7 @@ describe("H3: pais declarado do professor", () => {
 
   it.each(["CA", "other"])("persiste %s apenas nas respostas, conserva as anteriores e retoma sem perder o pais", async (country) => {
     const view = render(<OnboardingWizard />);
-    fireEvent.change(await screen.findByLabelText("Payout country"), { target: { value: country } });
+    fireEvent.change(await screen.findByLabelText("Country where you get paid"), { target: { value: country } });
     if (country === "other") {
       expect(screen.getByRole("status")).toHaveTextContent(/cannot sell or receive payments/);
     }
@@ -618,16 +618,16 @@ describe("H3: pais declarado do professor", () => {
     for (let index = 0; index < 3; index += 1) {
       fireEvent.click(screen.getByRole("button", { name: "Back" }));
     }
-    expect(screen.getByLabelText("Payout country")).toHaveValue(country);
+    expect(screen.getByLabelText("Country where you get paid")).toHaveValue(country);
   });
 
   it("nao avanca quando a persistencia falha e permite tentar de novo", async () => {
     mocks.updateOnboardingAnswers.mockRejectedValueOnce(new Error("offline"));
     render(<OnboardingWizard />);
-    fireEvent.change(await screen.findByLabelText("Payout country"), { target: { value: "GB" } });
+    fireEvent.change(await screen.findByLabelText("Country where you get paid"), { target: { value: "GB" } });
     fireEvent.click(screen.getByRole("button", { name: "Continue" }));
     expect(await screen.findByText(/Could not save this answer/)).toBeInTheDocument();
-    expect(screen.getByLabelText("Payout country")).toHaveValue("GB");
+    expect(screen.getByLabelText("Country where you get paid")).toHaveValue("GB");
     fireEvent.click(screen.getByRole("button", { name: "Continue" }));
     await screen.findByText("Do you already have an audience?");
   });
@@ -636,11 +636,11 @@ describe("H3: pais declarado do professor", () => {
     mocks.profile.onboardingAnswers = { profileConfirmed: true, path: "student", payoutCountry: "other" };
     render(<OnboardingWizard />);
     await screen.findByText("What do you want to learn first?");
-    expect(screen.queryByLabelText("Payout country")).toBeNull();
+    expect(screen.queryByLabelText("Country where you get paid")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Personal Development" }));
     fireEvent.click(screen.getByRole("button", { name: "Continue" }));
     await screen.findByText("Where did you hear about SkillsetMind?");
-    expect(screen.queryByLabelText("Payout country")).toBeNull();
+    expect(screen.queryByLabelText("Country where you get paid")).toBeNull();
   });
 
   it("troca de aluno para professor passa a exigir a pergunta", async () => {
@@ -652,15 +652,15 @@ describe("H3: pais declarado do professor", () => {
     fireEvent.click(screen.getByRole("button", { name: "Continue" }));
     fireEvent.click(screen.getByRole("button", { name: "Continue" }));
     fireEvent.click(screen.getByRole("button", { name: "Continue" }));
-    expect(await screen.findByLabelText("Payout country")).toHaveValue("");
+    expect(await screen.findByLabelText("Country where you get paid")).toHaveValue("");
   });
 
   it("Enter no seletor nao salva nem avanca antes de confirmar a escolha", async () => {
     render(<OnboardingWizard />);
-    const select = await screen.findByLabelText("Payout country");
+    const select = await screen.findByLabelText("Country where you get paid");
     fireEvent.change(select, { target: { value: "CA" } });
     fireEvent.keyDown(select, { key: "Enter" });
-    expect(screen.getByLabelText("Payout country")).toHaveValue("CA");
+    expect(screen.getByLabelText("Country where you get paid")).toHaveValue("CA");
     expect(mocks.updateOnboardingAnswers).not.toHaveBeenCalled();
   });
 });

@@ -3,33 +3,22 @@
 import Link from "next/link";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import type { Locale } from "@/lib/i18n/config";
-import { Copy, Mail, RotateCcw } from "lucide-react";
+import { ArrowLeft, Copy, Mail, RotateCcw } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { StatusChip } from "@/components/shared/status-chip";
 import { StripeDashboardButton } from "@/components/teacher/stripe-dashboard-button";
 import { buttonClasses, Card, Eyebrow, InlineAlert } from "@/components/ui";
-import type { Order } from "@/domain/order";
+import { formatOrderRef, type Order } from "@/domain/order";
 import { subscribeToOrder } from "@/lib/data/orders";
 import { toDate } from "@/lib/format-date";
+import { formatMoney } from "@/lib/format-money";
 import { platformFeeForSale } from "@/lib/payments/rules";
 
 type SaleDetailProps = {
   orderId: string;
 };
-
-function formatMoney(amountMinor: number, currency: string, locale: Locale) {
-  return new Intl.NumberFormat(locale, {
-    style: "currency",
-    currency,
-  }).format(amountMinor / 100);
-}
-
-function formatOrderRef(id: string) {
-  const tail = id.slice(-8).toUpperCase();
-  return tail ? `#${tail}` : `#${id.toUpperCase()}`;
-}
 
 function formatDate(value: unknown, locale: Locale, pending: string) {
   const date = toDate(value);
@@ -161,7 +150,7 @@ export function SaleDetail({ orderId }: SaleDetailProps) {
       <section className="settings-section-card">
         <InlineAlert tone="error">{t(error || "saleDetail.notFound")}</InlineAlert>
         <Link
-          href="/teach"
+          href="/teach/sales"
           className={buttonClasses({ variant: "outline" }, "mt-5")}
         >
           {t("saleDetail.back")}
@@ -194,26 +183,54 @@ export function SaleDetail({ orderId }: SaleDetailProps) {
 
   return (
     <div className="grid gap-5 lg:grid-cols-[1fr_320px]">
+      {/* Nao havia volta para Vendas: so o menu, ou o Inicio no erro. */}
+      <Link
+        href="/teach/sales"
+        className="inline-flex min-h-11 w-fit items-center gap-2 text-sm font-semibold text-[var(--color-primary)] hover:underline lg:col-span-2"
+      >
+        <ArrowLeft aria-hidden="true" size={16} strokeWidth={1.9} />
+        {t("saleDetail.back")}
+      </Link>
       <div className="grid gap-5">
+        {/* O que o professor recebe e o numero grande; o codigo do pedido
+            era a maior letra da tela (36px em serifa) e o liquido, a menor. */}
         <section className="settings-section-card">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div>
-              <Eyebrow>{t("saleDetail.sale")}</Eyebrow>
-              <h2 className="display-title mt-3 text-4xl text-[var(--color-primary)]">
-                {t("saleDetail.order").replace("{id}", () => formatOrderRef(order.id))}
-              </h2>
-              <p className="mt-2 flex flex-wrap items-center gap-2 text-xs leading-6 text-[var(--color-ink-soft)]">
-                {t("saleDetail.fullId")}
-                <CopyIdButton value={order.id} label={t("saleDetail.orderId")} />
-              </p>
-              <p className="mt-3 text-xs leading-6 text-[var(--color-ink-soft)]">
-                {t("saleDetail.dates")
-                  .replace("{created}", () => formatDate(order.createdAt, locale, t("saleDetail.pendingTime")))
-                  .replace("{updated}", () => formatDate(order.updatedAt ?? order.createdAt, locale, t("saleDetail.pendingTime")))}
-              </p>
-            </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <h2 className="text-sm font-semibold text-[var(--color-ink-soft)]">
+              {t("saleDetail.order").replace("{id}", () => formatOrderRef(order.id))}
+            </h2>
             <StatusChip status={order.status} />
           </div>
+          <div className="mt-4 flex flex-wrap items-end gap-x-8 gap-y-3">
+            <div>
+              <p className="text-xs uppercase tracking-[0.18em] text-[var(--color-ink-soft)]">
+                {t("saleDetail.net")}
+              </p>
+              <p className="num mt-1 text-3xl font-bold text-[var(--color-primary)]">
+                {formatMoney(creatorNetMinor, order.currency, locale)}
+              </p>
+            </div>
+            <div className="grid gap-1 text-sm">
+              {[
+                [t("saleDetail.amount"), formatMoney(order.amountMinor, order.currency, locale)],
+                [t("saleDetail.fee"), formatMoney(platformFeeMinor, order.currency, locale)],
+              ].map(([label, value]) => (
+                <div key={label} className="flex flex-wrap gap-x-2">
+                  <p className="text-[var(--color-ink-soft)]">{label}</p>
+                  <p className="num font-semibold text-[var(--color-ink)]">{value}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+          <p className="mt-4 flex flex-wrap items-center gap-2 text-xs leading-6 text-[var(--color-ink-soft)]">
+            {t("saleDetail.fullId")}
+            <CopyIdButton value={order.id} label={t("saleDetail.orderId")} />
+          </p>
+          <p className="mt-2 text-xs leading-6 text-[var(--color-ink-soft)]">
+            {t("saleDetail.dates")
+              .replace("{created}", () => formatDate(order.createdAt, locale, t("saleDetail.pendingTime")))
+              .replace("{updated}", () => formatDate(order.updatedAt ?? order.createdAt, locale, t("saleDetail.pendingTime")))}
+          </p>
         </section>
 
         <section className="settings-section-card">
@@ -234,26 +251,10 @@ export function SaleDetail({ orderId }: SaleDetailProps) {
 
         <section className="settings-section-card">
           <Eyebrow>{t("saleDetail.payment")}</Eyebrow>
-          <div className="mt-5 grid gap-3 sm:grid-cols-3">
-            {[
-              [t("saleDetail.amount"), formatMoney(order.amountMinor, order.currency, locale)],
-              [t("saleDetail.fee"), formatMoney(platformFeeMinor, order.currency, locale)],
-              [t("saleDetail.net"), formatMoney(creatorNetMinor, order.currency, locale)],
-            ].map(([label, value]) => (
-              <Card key={label} tone="soft" padding="sm" shadow={false}>
-                <p className="text-xs uppercase tracking-[0.18em] text-[var(--color-ink-soft)]">
-                  {label}
-                </p>
-                <p className="mt-2 text-lg font-bold text-[var(--color-primary)]">
-                  {value}
-                </p>
-              </Card>
-            ))}
-          </div>
           <Card
             padding="sm"
             shadow={false}
-            className="mt-5 grid gap-3 text-xs text-[var(--color-ink-soft)]"
+            className="mt-4 grid gap-3 text-xs text-[var(--color-ink-soft)]"
           >
             <p>
               {t("saleDetail.provider")} <strong className="text-[var(--color-ink)]">{order.provider}</strong>

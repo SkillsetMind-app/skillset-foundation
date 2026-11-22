@@ -1,4 +1,4 @@
-import { cleanup, render, renderHook, screen, waitFor, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, renderHook, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { TeacherInboxQuestions } from "@/components/teacher/teacher-inbox-questions";
@@ -89,7 +89,8 @@ describe("Alunos: todos os produtos numa lista", () => {
     expect(rows).toHaveLength(3);
 
     const ana = rows.find((row) => within(row).queryByText("Leadership"))!;
-    expect(within(ana).getByRole("link", { name: /See in product/ })).toHaveAttribute(
+    // O proprio nome e o link (sem a parede de botoes iguais em toda linha).
+    expect(within(ana).getByRole("link", { name: /^Ana: See in product/ })).toHaveAttribute(
       "href",
       "/teach/courses/c-1/manage?section=students",
     );
@@ -120,6 +121,31 @@ describe("Alunos: todos os produtos numa lista", () => {
     expect(within(statusOf("Carla")).getByText("Refunded")).toBeInTheDocument();
     expect(within(statusOf("Dani")).getByText("Revoked")).toBeInTheDocument();
     expect(within(statusOf("Edu")).getByText("Expired")).toBeInTheDocument();
+  });
+
+  // Antes nao havia como achar uma pessoa: era rolar a tabela inteira. A busca
+  // filtra o que ja veio (nome, e-mail, produto), sem consulta nova.
+  it("busca por nome, e-mail ou produto no que ja carregou, e diz quando nada bate", async () => {
+    mocks.getMyCourseStudents.mockResolvedValue([
+      enrollment("e-1", "c-1", "s-1", "Ana", "active"),
+      { ...enrollment("e-2", "c-2", "s-2", "Bruno", "completed"), email: "bruno@example.com" },
+    ]);
+    render(<TeacherStudentsList />);
+
+    const search = await screen.findByLabelText("Search students by name, e-mail or product");
+    const bodyRows = () => screen.getAllByRole("row").slice(1);
+    fireEvent.change(search, { target: { value: "BRUNO@" } });
+    expect(bodyRows()).toHaveLength(1);
+    expect(bodyRows()[0]).toHaveTextContent("Bruno");
+    fireEvent.change(search, { target: { value: "leader" } });
+    expect(bodyRows()).toHaveLength(1);
+    expect(bodyRows()[0]).toHaveTextContent("Ana");
+    fireEvent.change(search, { target: { value: "nobody" } });
+    expect(screen.queryByRole("table")).toBeNull();
+    expect(screen.getByText("No student matches this search.")).toBeInTheDocument();
+    // A contagem e de todos, nao do recorte da busca.
+    expect(screen.getByText("2 active students")).toBeInTheDocument();
+    expect(mocks.getMyCourseStudents).toHaveBeenCalledTimes(1);
   });
 
   it("so com matriculas encerradas, a conta diz zero", async () => {

@@ -510,8 +510,9 @@ export function StorefrontSettingsPanel() {
 
   return (
     <section className="settings-section-card">
+      {/* Titulo de cartao, sem repetir o rotulo "Teacher Studio" da pagina. */}
       <SectionHeader
-        eyebrow={t("teach.page.eyebrow")}
+        size="card"
         title={t("teach.storefrontEditor.title")}
         description={`${t("teach.storefrontEditor.description")}${
           !coursesReady || isPublished ? "" : ` ${t("teach.storefrontPage.laterStep")}`

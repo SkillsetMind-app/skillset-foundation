@@ -337,7 +337,7 @@ export function CustomDomainsPanel() {
   return (
     <section ref={panelRef} tabIndex={-1} className="settings-section-card" aria-label={t("teach.customDomains.title")} aria-busy={loading}>
       <SectionHeader
-        eyebrow={t("teach.page.eyebrow")}
+        size="card"
         title={t("teach.customDomains.title")}
         description={t("teach.customDomains.description")}
       />
