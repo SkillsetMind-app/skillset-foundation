@@ -1491,6 +1491,7 @@
       "nextLesson": {
         "title": "Siguiente lección",
         "countdown": "Siguiente lección en {seconds} s",
+        "announce": "La siguiente lección empieza en {seconds} segundos: {title}. Elige Cancelar para quedarte en esta lección.",
         "watch": "Ver ahora",
         "cancel": "Cancelar"
       },
@@ -1681,7 +1682,6 @@
       "accessError": "No pudimos confirmar tu acceso a la comunidad.",
       "postsError": "No pudimos cargar las publicaciones de la comunidad.",
       "rateLimit": "Publicaste mucho en la última hora. Espera un poco y vuelve a intentarlo.",
-      "eyebrow": "Comunidad",
       "filters": "Filtrar publicaciones",
       "all": "Todas",
       "questions": "Preguntas",
@@ -1713,6 +1713,7 @@
         "shortQuestion": "Escribe primero tu pregunta en una línea, con al menos unas palabras.",
         "shortPost": "Escribe un poco más antes de publicar.",
         "publishError": "No pudimos publicar tu publicación.",
+        "posted": "Publicado.",
         "prompt": "Pregunta al grupo o comparte algo…",
         "ask": "Hacer una pregunta",
         "share": "Compartir",
@@ -1747,7 +1748,7 @@
         "question": "Pregunta",
         "unpin": "Desfijar",
         "pin": "Fijar",
-        "clap": "Aplaudir · {count}",
+        "clap": "Me gusta · {count}",
         "reply": "Responder",
         "viewReplies": "Ver {count} respuestas",
         "answer": "respuesta",
@@ -1758,7 +1759,6 @@
         "postReply": "Publicar respuesta"
       },
       "live": {
-        "none": "Todavía no hay sesiones en vivo programadas.",
         "next": "Próxima sesión en vivo",
         "now": "En vivo ahora",
         "inMinutes": "En vivo en {count} min",
@@ -5750,12 +5750,9 @@
       "count": "{count} de {total} comunidades visibles",
       "noMatch": "Ninguna comunidad coincide con este filtro.",
       "noMatchDetail": "Borra la búsqueda o cambia de filtro para ver las comunidades de tus cursos.",
-      "enrolled": "Tu curso",
       "open": "Abrir comunidad",
       "category": "comunidad del curso",
-      "name": "Comunidad de {course}",
-      "description": "Un espacio del curso para anuncios del profesor, preguntas de estudiantes, conversaciones y recursos compartidos.",
-      "visibility": "solo estudiantes matriculados"
+      "name": "Comunidad de {course}"
     },
     "wishlistHub": {
       "loadError": "No pudimos cargar tus cursos guardados.",

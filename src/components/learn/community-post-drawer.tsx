@@ -157,17 +157,6 @@ export function CommunityPostDrawer({
               ? ` · ${t("learn.community.card.fromLesson").replace("{lesson}", () => post.lessonTitle ?? "")}`
               : ""}
           </p>
-          <div className="mt-1 flex flex-wrap items-center gap-2">
-            <CommunityItemActions
-              post={post}
-              currentUser={currentUser}
-              canModerate={canModerate}
-              onDeleted={() => {
-                onHide(post.id);
-                onClose();
-              }}
-            />
-          </div>
           {kind === "question" ? (
             <span
               className={`mt-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-bold ${
@@ -186,6 +175,19 @@ export function CommunityPostDrawer({
           {post.body ? (
             <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-[var(--color-ink-soft)]">{post.body}</p>
           ) : null}
+          {/* Fixar, apagar e denunciar DEPOIS do texto: entre o autor e o
+              título, a linha de ações era a primeira coisa lida na pergunta. */}
+          <div className="mt-3 flex flex-wrap items-center gap-2 empty:hidden">
+            <CommunityItemActions
+              post={post}
+              currentUser={currentUser}
+              canModerate={canModerate}
+              onDeleted={() => {
+                onHide(post.id);
+                onClose();
+              }}
+            />
+          </div>
 
           <ul className="mt-5 grid gap-2" aria-label={t("learn.community.drawer.replies")}>
             {ordered.length === 0 ? (

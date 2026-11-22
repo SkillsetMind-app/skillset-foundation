@@ -1491,6 +1491,7 @@
       "nextLesson": {
         "title": "Next lesson",
         "countdown": "Next lesson in {seconds}s",
+        "announce": "Next lesson starts in {seconds} seconds: {title}. Choose Cancel to stay on this lesson.",
         "watch": "Watch now",
         "cancel": "Cancel"
       },
@@ -1681,7 +1682,6 @@
       "accessError": "We could not confirm your community access.",
       "postsError": "We could not load community posts.",
       "rateLimit": "You've posted a lot in the last hour. Wait a little and try again.",
-      "eyebrow": "Community",
       "filters": "Filter posts",
       "all": "All",
       "questions": "Questions",
@@ -1713,6 +1713,7 @@
         "shortQuestion": "Write your question in one line first — at least a few words.",
         "shortPost": "Write a little more before posting.",
         "publishError": "We could not publish your post.",
+        "posted": "Posted.",
         "prompt": "Ask the cohort or share something…",
         "ask": "Ask a question",
         "share": "Share",
@@ -1747,7 +1748,7 @@
         "question": "Question",
         "unpin": "Unpin",
         "pin": "Pin",
-        "clap": "Clap · {count}",
+        "clap": "Like · {count}",
         "reply": "Reply",
         "viewReplies": "View {count} replies",
         "answer": "answer",
@@ -1758,7 +1759,6 @@
         "postReply": "Post reply"
       },
       "live": {
-        "none": "No live scheduled yet.",
         "next": "Next live",
         "now": "Live now",
         "inMinutes": "Live in {count} min",
@@ -5750,12 +5750,9 @@
       "count": "{count} of {total} communities visible",
       "noMatch": "No communities match this filter.",
       "noMatchDetail": "Clear the search or switch filters to see enrolled course spaces.",
-      "enrolled": "Enrolled course",
       "open": "Open community",
       "category": "course community",
-      "name": "{course} community",
-      "description": "A course-linked space for teacher announcements, learner questions, discussion, and shared resources.",
-      "visibility": "enrolled only"
+      "name": "{course} community"
     },
     "wishlistHub": {
       "loadError": "We could not load your saved courses.",

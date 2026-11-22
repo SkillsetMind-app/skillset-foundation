@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import { useState } from "react";
+import { useId, useLayoutEffect, useRef, useState } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
 
@@ -63,6 +63,34 @@ export function MembersAreaHero({
 }: MembersAreaHeroProps) {
   const { t } = useTranslation();
   const [showFullDescription, setShowFullDescription] = useState(false);
+  // "Show more" só quando a descrição está de fato cortada nas 2 linhas. Antes
+  // o botão aparecia até embaixo de uma frase de uma linha. Mede fechado: uma
+  // vez antes da primeira pintura (layout effect, sem o botão piscar) e de
+  // novo quando a caixa muda de tamanho (largura da tela) ou a fonte termina
+  // de carregar (a quebra de linha muda). Aberto não mede: ali o texto cabe
+  // sempre, e o "Show less" precisa continuar.
+  const descriptionId = useId();
+  const descriptionRef = useRef<HTMLParagraphElement>(null);
+  const [descriptionClamped, setDescriptionClamped] = useState(false);
+  useLayoutEffect(() => {
+    const element = descriptionRef.current;
+    if (!element) return;
+    const measure = () => {
+      if (element.classList.contains("members-hero__sub--full")) return;
+      setDescriptionClamped(element.scrollHeight > element.clientHeight + 1);
+    };
+    measure();
+    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(measure);
+    observer?.observe(element);
+    let active = true;
+    void document.fonts?.ready.then(() => {
+      if (active) measure();
+    });
+    return () => {
+      active = false;
+      observer?.disconnect();
+    };
+  }, [description]);
 
   // No-cover fallback monogram: prefer an explicit studio, but always fall back
   // to the title so the art mark is never blank (title is always present).
@@ -115,6 +143,8 @@ export function MembersAreaHero({
         {description ? (
           <>
             <p
+              id={descriptionId}
+              ref={descriptionRef}
               className={
                 showFullDescription
                   ? "members-hero__sub members-hero__sub--full"
@@ -123,15 +153,19 @@ export function MembersAreaHero({
             >
               {description}
             </p>
-            <button
-              type="button"
-              className="members-hero__more"
-              onClick={() => setShowFullDescription((open) => !open)}
-            >
-              {showFullDescription
-                ? t("learn.membersHero.showLess")
-                : t("learn.membersHero.showMore")}
-            </button>
+            {descriptionClamped ? (
+              <button
+                type="button"
+                className="members-hero__more"
+                aria-expanded={showFullDescription}
+                aria-controls={descriptionId}
+                onClick={() => setShowFullDescription((open) => !open)}
+              >
+                {showFullDescription
+                  ? t("learn.membersHero.showLess")
+                  : t("learn.membersHero.showMore")}
+              </button>
+            ) : null}
           </>
         ) : null}
 
@@ -156,13 +190,15 @@ export function MembersAreaHero({
         ) : null}
 
         {/* Terminou o curso: a acao principal e o certificado. Mesmo rotulo da
-            barra de abas e do botao da ultima aula. */}
+            barra de abas e do botao da ultima aula. button-solid: o botao
+            primario da sala (cor do curso, sombra, sobe 1px no hover em 180ms);
+            antes so trocava de cor, sem o retorno dos outros botoes. */}
         {pct === 100 && certificateHref ? (
-          <Link className="members-hero__cta" href={certificateHref}>
+          <Link className="members-hero__cta button-solid" href={certificateHref}>
             {t("learn.classroom.workspace.certificate")}
           </Link>
         ) : primaryAction ? (
-          <Link className="members-hero__cta" href={primaryAction.href}>
+          <Link className="members-hero__cta button-solid" href={primaryAction.href}>
             {primaryAction.label}
           </Link>
         ) : null}
