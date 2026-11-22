@@ -3,11 +3,12 @@
 import Image from "next/image";
 import Link from "next/link";
 import { PlayCircle, Radio } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { NotificationRow } from "@/components/account/notification-row";
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { InlineAlert } from "@/components/ui/inline-alert";
 import { LearningPathsRows } from "@/components/learn/learning-paths-rows";
 import { MemberAreaLinks } from "@/components/learn/member-area-links";
 import { WelcomeTour } from "@/components/learn/welcome-tour";
@@ -123,15 +124,18 @@ export function LearnDashboard() {
     };
   }, [enrolledCourseKey]);
 
+  const enrollmentsSubscription = useRef<{ reload: () => Promise<void> } | null>(null);
+
   useEffect(() => {
     if (!user) {
       return;
     }
 
-    return subscribeToUserEnrollments(
+    const current = subscribeToUserEnrollments(
       user.uid,
       (nextEnrollments) => {
         setEnrollments(nextEnrollments);
+        setHasError(false);
         setIsLoading(false);
       },
       () => {
@@ -139,7 +143,20 @@ export function LearnDashboard() {
         setIsLoading(false);
       },
     );
+    enrollmentsSubscription.current = current;
+    return () => {
+      enrollmentsSubscription.current = null;
+      current();
+    };
   }, [user]);
+
+  // "Try again" le de novo pelo mesmo canal. Antes a unica saida do erro era
+  // recarregar a pagina no navegador.
+  function retryLoad() {
+    setHasError(false);
+    setIsLoading(true);
+    void enrollmentsSubscription.current?.reload();
+  }
 
   // Mesma fonte do sino: o que chegou de novo (resposta na comunidade,
   // mensagem do professor, certificado) so aparecia atras de um clique no
@@ -266,11 +283,13 @@ export function LearnDashboard() {
       <div className="grid gap-8">
         {greeting}
         <div className="rounded-lg border border-[rgba(178,34,52,0.2)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
-          <p className="rounded-md bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
-            {t("learn.dashboard.loadError")}
-          </p>
+          <InlineAlert tone="error">{t("learn.dashboard.loadError")}</InlineAlert>
+          {/* "Try again" e a acao principal; explorar e suporte ficam ao lado. */}
           <div className="mt-4 flex flex-wrap gap-3">
-            <Link href="/courses" className="button-solid px-4 py-2.5 text-sm">
+            <button type="button" onClick={retryLoad} className="button-solid px-4 py-2.5 text-sm">
+              {t("appErrors.retry")}
+            </button>
+            <Link href="/courses" className="button-outline px-4 py-2.5 text-sm">
               {t("learn.dashboard.exploreCourses")}
             </Link>
             <Link href="/support" className="button-outline px-4 py-2.5 text-sm">

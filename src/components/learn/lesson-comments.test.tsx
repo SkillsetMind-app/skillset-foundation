@@ -394,7 +394,7 @@ describe("comentarios da aula sob o player", () => {
       target: { value: "Where is the template for step 3? $$50 $&\nI looked in the module resources." },
     });
     fireEvent.click(screen.getByRole("button", { name: "Comment" }));
-    expect(screen.getByRole("button", { name: "Posting…" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Posting..." })).toBeDisabled();
     expect(createCommunityPost).toHaveBeenCalledExactlyOnceWith({
       courseSlug: "course-1",
       category: "question",

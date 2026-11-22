@@ -31,7 +31,11 @@ export function subscribeToNotifications(
   userId: string,
   callback: (notifications: AppNotification[]) => void,
   onError: (error: Error) => void,
-): () => void {
+): (() => void) & { reload: () => Promise<void> } {
+  // `reload()` le de novo SEM mexer no canal (o "Try again" do sino). Desligar
+  // e religar o canal com o mesmo nome devolve o canal antigo, ainda saindo, e
+  // o sino para de receber os avisos novos (o mesmo defeito de course-messages).
+  //
   // createdAt is server-written on every notification (clients never create
   // them), so there is no pending-write null to corrupt the ordering — sorting
   // by created_at desc is safe.
@@ -43,8 +47,14 @@ export function subscribeToNotifications(
   // back a no-op unsubscribe so the inbox simply renders empty.
   try {
     const supabase = getSupabaseBrowserClient();
+    // So a leitura mais nova entrega (como em course-assets): um "Try again"
+    // que volta depois da releitura disparada por um aviso novo traria a
+    // lista velha, sem o aviso, ate o proximo evento.
+    let active = true;
+    let latestLoad = 0;
 
     const load = async () => {
+      const thisLoad = ++latestLoad;
       const { data, error } = await supabase
         .from("notifications")
         .select("*")
@@ -52,6 +62,9 @@ export function subscribeToNotifications(
         .order("created_at", { ascending: false })
         .limit(NOTIFICATIONS_LIMIT);
 
+      if (!active || thisLoad !== latestLoad) {
+        return;
+      }
       if (error) {
         onError(error instanceof Error ? error : new Error(String(error)));
         return;
@@ -81,12 +94,21 @@ export function subscribeToNotifications(
       )
       .subscribe();
 
-    return () => {
-      void supabase.removeChannel(channel);
-    };
+    return Object.assign(
+      () => {
+        active = false;
+        void supabase.removeChannel(channel);
+      },
+      { reload: load },
+    );
   } catch (error) {
-    onError(error instanceof Error ? error : new Error(String(error)));
-    return () => {};
+    const failure = error instanceof Error ? error : new Error(String(error));
+    onError(failure);
+    // Sem cliente nao ha o que reler: o "Try again" devolve a mesma falha em
+    // vez de deixar o sino carregando para sempre.
+    return Object.assign(() => {}, {
+      reload: async () => onError(failure),
+    });
   }
 }
 

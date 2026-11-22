@@ -99,21 +99,30 @@ export function subscribeToCourseThread(
 
 // Every message across a teacher's courses, newest-first; the inbox groups
 // them into threads client-side (groupCourseMessageThreads).
+// `reload()` le de novo SEM mexer no canal, como na caixa do aluno abaixo.
 export function subscribeToTeacherMessages(
   teacherId: string,
   callback: (messages: CourseMessage[]) => void,
   onError: (error: Error) => void,
   maxMessages = 400,
-): () => void {
+): (() => void) & { reload: () => Promise<void> } {
   const supabase = getSupabaseBrowserClient();
+  // So a leitura mais nova entrega: um "Try again" que volta depois da
+  // releitura de uma mensagem nova traria a lista sem ela.
+  let active = true;
+  let latestLoad = 0;
 
   const load = async () => {
+    const thisLoad = ++latestLoad;
     const { data, error } = await supabase
       .from(courseMessagesTable)
       .select("*")
       .eq("teacher_id", teacherId)
       .order("created_at", { ascending: false })
       .limit(maxMessages);
+    if (!active || thisLoad !== latestLoad) {
+      return;
+    }
     if (error) {
       onError(error instanceof Error ? error : new Error(String(error)));
       return;
@@ -139,9 +148,13 @@ export function subscribeToTeacherMessages(
     )
     .subscribe();
 
-  return () => {
-    void supabase.removeChannel(channel);
-  };
+  return Object.assign(
+    () => {
+      active = false;
+      void supabase.removeChannel(channel);
+    },
+    { reload: load },
+  );
 }
 
 // Toda conversa de UM aluno, em todos os cursos dele — o espelho de

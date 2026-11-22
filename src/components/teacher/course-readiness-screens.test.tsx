@@ -545,8 +545,8 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     fireEvent.click(screen.getByRole("button", { name: "Add lesson" }));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Switch language" }));
-    expect(screen.getByText("Lección añadida. El editor se abrirá cuando termine el guardado automático…")).toBeInTheDocument();
-    expect(screen.getByText("Guardando lección…")).toBeInTheDocument();
+    expect(screen.getByText("Lección añadida. El editor se abrirá cuando termine el guardado automático...")).toBeInTheDocument();
+    expect(screen.getByText("Guardando lección...")).toBeInTheDocument();
     act(() => vi.advanceTimersByTime(1800));
     expect(updateTeacherCourseBuilder).toHaveBeenCalledOnce();
     const payload = vi.mocked(updateTeacherCourseBuilder).mock.calls[0][1];

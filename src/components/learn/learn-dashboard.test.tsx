@@ -167,6 +167,8 @@ const { mockUser, fixtures, fuse } = vi.hoisted(() => {
     realCourses: [] as Course[],
     fetchedIds: [] as string[][],
     emitEnrollments: (() => undefined) as (next: Enrollment[]) => void,
+    enrollmentsFail: false,
+    reloads: 0,
     calls: 0,
   };
 
@@ -223,11 +225,22 @@ vi.mock("@/lib/data/enrollments", () => ({
   subscribeToUserEnrollments: (
     _uid: string,
     onData: (enrollments: Enrollment[]) => void,
+    onError: (error: Error) => void,
   ) => {
     fuse();
     fixtures.emitEnrollments = onData;
-    onData(fixtures.enrollments);
-    return () => undefined;
+    const read = () => {
+      if (fixtures.enrollmentsFail) onError(new Error("offline"));
+      else onData(fixtures.enrollments);
+    };
+    read();
+    // Como o de verdade: `reload` le de novo sem mexer no canal.
+    return Object.assign(() => undefined, {
+      reload: async () => {
+        fixtures.reloads += 1;
+        read();
+      },
+    });
   },
 }));
 
@@ -273,6 +286,26 @@ describe("LearnDashboard", () => {
     fixtures.enrollments = fixtures.base;
     fixtures.realCourses = [];
     fixtures.fetchedIds = [];
+    fixtures.enrollmentsFail = false;
+    fixtures.reloads = 0;
+  });
+
+  it("se as matriculas nao carregam: erro anunciado e 'Try again' como acao principal, que le de novo", async () => {
+    fixtures.enrollmentsFail = true;
+    render(<LearnDashboard />);
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("We could not load your enrolled courses.");
+    const retry = screen.getByRole("button", { name: "Try again" });
+    expect(retry).toHaveClass("button-solid");
+    expect(screen.getByRole("link", { name: "Explore courses" })).toHaveClass("button-outline");
+
+    fixtures.enrollmentsFail = false;
+    await act(async () => {
+      fireEvent.click(retry);
+    });
+    expect(fixtures.reloads).toBe(1);
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(await screen.findByRole("heading", { name: "My courses" })).toBeInTheDocument();
   });
 
   it("sauda uma vez so: um h1 e nenhum 'Welcome back'", async () => {

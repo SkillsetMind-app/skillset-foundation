@@ -69,7 +69,7 @@ describe("SecuritySettingsPanel feedback", () => {
     render(<SecuritySettingsPanel />);
 
     clickSendResetLink();
-    expect(screen.getByRole("button", { name: "Sending…" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Sending..." })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Update password" })).toBeDisabled();
 
     await act(async () => finish());

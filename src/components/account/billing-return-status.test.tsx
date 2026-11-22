@@ -75,7 +75,7 @@ describe("billing return status", () => {
     show();
 
     await tick(0);
-    expect(screen.getByRole("heading", { name: "Confirming your plan…" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Confirming your plan..." })).toBeInTheDocument();
     // Nada confirma sem assinatura: nem titulo de sucesso, nem botao do estudio.
     expect(screen.queryByRole("link", { name: "Open Teacher Studio" })).not.toBeInTheDocument();
 
@@ -93,7 +93,7 @@ describe("billing return status", () => {
     show();
 
     await tick(0);
-    expect(screen.getByRole("heading", { name: "Confirming your plan…" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Confirming your plan..." })).toBeInTheDocument();
     await tick(3000);
     expect(screen.getByRole("heading", { name: "Your 14-day free trial has started." })).toBeInTheDocument();
   });

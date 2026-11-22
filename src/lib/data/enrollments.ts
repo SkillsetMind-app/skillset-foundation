@@ -180,15 +180,23 @@ export function subscribeToUserEnrollments(
   userId: string,
   callback: (enrollments: Enrollment[]) => void,
   onError: (error: Error) => void,
-): () => void {
+): (() => void) & { reload: () => Promise<void> } {
   const supabase = getSupabaseBrowserClient();
+  // So a leitura mais nova entrega: um "Try again" que volta depois da
+  // releitura de uma matricula nova traria a lista sem ela.
+  let active = true;
+  let latestLoad = 0;
 
   const load = async () => {
+    const thisLoad = ++latestLoad;
     const { data, error } = await supabase
       .from("enrollments")
       .select("*")
       .eq("user_id", userId);
 
+    if (!active || thisLoad !== latestLoad) {
+      return;
+    }
     if (error) {
       onError(error instanceof Error ? error : new Error(String(error)));
       return;
@@ -218,9 +226,16 @@ export function subscribeToUserEnrollments(
     )
     .subscribe();
 
-  return () => {
-    void supabase.removeChannel(channel);
-  };
+  // `reload()` le de novo SEM mexer no canal (o "Try again" do painel e da
+  // comunidade): religar um canal com o mesmo nome devolve o antigo, ainda
+  // saindo, e as matriculas novas deixam de chegar.
+  return Object.assign(
+    () => {
+      active = false;
+      void supabase.removeChannel(channel);
+    },
+    { reload: load },
+  );
 }
 
 export function subscribeToAdminGrantedEnrollments(
