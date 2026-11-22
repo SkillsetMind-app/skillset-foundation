@@ -51,23 +51,27 @@ export function WelcomeTour({ userId, firstName }: { userId: string; firstName: 
   const { t } = useTranslation();
   const { open, dismiss } = useWelcomeTour(userId, "student");
   const [stepIndex, setStepIndex] = useState(0);
+  // true depois da primeira troca de passo. Na abertura a própria janela já
+  // entra com motion-panel-in (.modal-panel); o texto subir junto dava a
+  // mesma animação duas vezes.
+  const [stepChanged, setStepChanged] = useState(false);
   const dialogRef = useRef<HTMLDivElement>(null);
   const titleRef = useRef<HTMLHeadingElement>(null);
-  const changedStep = useRef(false);
   const steps = buildSteps(firstName, t);
 
   useModalFocus(dialogRef, open);
+
+  function goToStep(next: number) {
+    setStepChanged(true);
+    setStepIndex(Math.max(0, Math.min(steps.length - 1, next)));
+  }
 
   // Trocou de passo: o foco vai para o título novo. Sem isso, voltar ao passo
   // 1 tirava o "Back" da tela com o foco nele, e o foco caía no corpo da
   // página, atrás da janela. Na abertura quem foca é o useModalFocus.
   useEffect(() => {
-    if (!changedStep.current) {
-      changedStep.current = true;
-      return;
-    }
-    titleRef.current?.focus();
-  }, [stepIndex]);
+    if (stepChanged) titleRef.current?.focus();
+  }, [stepIndex, stepChanged]);
 
   useEffect(() => {
     if (!open) {
@@ -116,8 +120,9 @@ export function WelcomeTour({ userId, firstName }: { userId: string; firstName: 
         {/* Os quatro passos empilhados na mesma célula da grade: a caixa tem
             a altura do passo mais longo, então trocar de passo não muda a
             altura da janela nem tira os botões de baixo do mouse. Só o passo
-            atual aparece (e existe para o leitor de tela); ele entra subindo
-            8px (motion-panel-in, só com movimento liberado). */}
+            atual aparece (e existe para o leitor de tela); a partir da
+            primeira troca ele entra subindo 8px (motion-panel-in, só com
+            movimento liberado). */}
         <div className="grid px-6 pb-2 pt-4">
           {steps.map((item, index) => {
             const current = index === stepIndex;
@@ -125,7 +130,7 @@ export function WelcomeTour({ userId, firstName }: { userId: string; firstName: 
               <div
                 key={item.title}
                 aria-hidden={current ? undefined : true}
-                className={`[grid-area:1/1] ${current ? "motion-panel-in" : "invisible"}`}
+                className={`[grid-area:1/1] ${current ? (stepChanged ? "motion-panel-in" : "") : "invisible"}`}
               >
                 <h2
                   id={current ? "welcome-tour-title" : undefined}
@@ -167,7 +172,7 @@ export function WelcomeTour({ userId, firstName }: { userId: string; firstName: 
             {stepIndex > 0 ? (
               <button
                 type="button"
-                onClick={() => setStepIndex((index) => Math.max(0, index - 1))}
+                onClick={() => goToStep(stepIndex - 1)}
                 className="button-outline shrink-0 px-4 py-2 text-sm"
               >
                 {t("learn.tour.back")}
@@ -180,7 +185,7 @@ export function WelcomeTour({ userId, firstName }: { userId: string; firstName: 
             ) : (
               <button
                 type="button"
-                onClick={() => setStepIndex((index) => Math.min(steps.length - 1, index + 1))}
+                onClick={() => goToStep(stepIndex + 1)}
                 className="button-solid shrink-0 px-4 py-2 text-sm"
               >
                 {t("learn.tour.next")}

@@ -61,27 +61,17 @@ export function MemberAreaShell({
       ? brand.accentColor
       : null;
 
-  // Tema desconhecido: moldura neutra do mesmo tamanho (barra de 44px + py-3
-  // como o cabeçalho, e o mesmo <main>), no fundo da plataforma, que é o
-  // mesmo do aviso de "carregando" do login que vem antes. Pintar o claro
-  // aqui fazia a área escura nascer clara e virar escura um instante depois.
-  if (theme === null) {
-    return (
-      <div aria-busy="true" className="flex min-h-screen flex-col bg-[var(--color-base)]">
-        <div aria-hidden="true" className="flex border-b border-transparent px-4 py-3 sm:px-6">
-          <span className="h-11" />
-        </div>
-        <main className="mx-auto w-full max-w-[1280px] flex-1 py-6 md:px-6 lg:px-8">
-          {children}
-        </main>
-      </div>
-    );
-  }
+  // Tema desconhecido (null): a mesma casca, cabeçalho inclusive (marca, Ajuda,
+  // sino, conta: a saída continua na tela se a leitura demorar), com a paleta
+  // "pending" de globals.css, que lê os tons da PLATAFORMA. É o mesmo fundo do
+  // aviso de "carregando" do login que vem antes. Pintar o claro aqui fazia a
+  // área escura nascer clara e virar escura um instante depois.
+  const pending = theme === null;
 
   return (
     <ThemeProvider>
       <div
-        data-members-theme={theme}
+        data-members-theme={pending ? "pending" : theme}
         className="flex min-h-screen flex-col bg-[var(--ma-bg)] text-[var(--ma-ink)]"
         style={
           accentColor
@@ -120,9 +110,11 @@ export function MemberAreaShell({
           ) : (
             // tone fixo pelo tema do CURSO: a paleta --ma-* não segue o
             // <html>, então "auto" pintava o logo navy no cabeçalho escuro.
+            // Enquanto o tema não chega (pending) a casca usa os tons da
+            // plataforma, e aí "auto" é o certo.
             // O logo leva para "My courses", nao para a home publica: quem
             // esta estudando quer voltar para os seus cursos, nao para a vitrine.
-            <LogoWordmark href="/learn" nav tone={theme === "dark" ? "dark" : "light"} />
+            <LogoWordmark href="/learn" nav tone={pending ? "auto" : theme === "dark" ? "dark" : "light"} />
           )}
           <div className="flex shrink-0 items-center gap-2 empty:hidden">
             <AdvisorHeaderSlot />

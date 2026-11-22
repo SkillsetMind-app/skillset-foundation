@@ -307,7 +307,7 @@ describe("comentarios da aula sob o player", () => {
     expect(within(region).queryByText(/honest-scarcity/)).toBeNull();
     // Sem respostas inline, sem curtidas: isso segue no feed.
     expect(within(region).queryByText("Found it, thanks!")).toBeNull();
-    expect(within(region).queryByRole("button", { name: /reply|clap|👏/i })).toBeNull();
+    expect(within(region).queryByRole("button", { name: /reply|like|clap|👏/i })).toBeNull();
 
     // Posicao: depois de "Informacoes da aula". Aula de texto (esta): o corpo
     // vem antes dos comentarios — sem video, o que se le e o texto.

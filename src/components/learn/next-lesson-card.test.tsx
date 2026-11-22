@@ -87,12 +87,18 @@ describe("NextLessonCard", () => {
 
     const card = screen.getByRole("dialog", { name: "Next lesson" });
     expect(card).not.toHaveAttribute("aria-live");
+    // A região viva nasce vazia e recebe o texto depois: texto que já está lá
+    // na montagem costuma não ser lido.
     const status = screen.getByRole("status");
+    expect(status.textContent).toBe("");
+    act(() => { vi.advanceTimersByTime(50); });
     const text = "Next lesson starts in 5 seconds: Lesson two. Choose Cancel to stay on this lesson.";
     expect(status).toHaveTextContent(text);
     expect(screen.getByText(/Next lesson in 5s/)).toHaveAttribute("aria-hidden", "true");
 
-    for (let tick = 0; tick < 3; tick += 1) act(() => { vi.advanceTimersByTime(1000); });
+    // 50ms já passaram: completa o primeiro segundo e mais dois.
+    act(() => { vi.advanceTimersByTime(950); });
+    for (let tick = 0; tick < 2; tick += 1) act(() => { vi.advanceTimersByTime(1000); });
     // O texto anunciado nao muda com o tique; so o numero visivel muda.
     expect(screen.getByRole("status")).toHaveTextContent(text);
     expect(screen.getByText(/Next lesson in 2s/)).toBeInTheDocument();

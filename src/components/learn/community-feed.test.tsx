@@ -322,6 +322,20 @@ describe("feed da comunidade (rodada 11)", () => {
     expect(createCommunityPost).toHaveBeenCalledWith(expect.objectContaining({ category, body: "Original content $$50 $&", title: null, lessonId: null, lessonTitle: null }));
   });
 
+  // A lista nao e mais aria-live, o proprio post entra direto nela e o
+  // formulario fecha: sem isto, quem usa leitor de tela nao ouvia nada e o
+  // foco caia no corpo da pagina.
+  it("depois de publicar: 'Posted.' na regiao de status e o foco volta ao campo do compositor", async () => {
+    await renderFeed({}, "en");
+    fireEvent.click(screen.getByRole("button", { name: "Ask the cohort or share something…" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "Your post" }), { target: { value: "Sharing my worksheet notes." } });
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Post" })); });
+
+    expect(createCommunityPost).toHaveBeenCalledWith(expect.objectContaining({ category: "discussion", body: "Sharing my worksheet notes." }));
+    expect(screen.getByRole("button", { name: "Ask the cohort or share something…" })).toHaveFocus();
+    expect(screen.getAllByRole("status").some((node) => node.textContent === "Posted.")).toBe(true);
+  });
+
   it("translates a stored validation error and retains the draft without publishing", async () => {
     await renderFeed({}, "en");
     fireEvent.click(screen.getByRole("button", { name: "Ask a question" }));
@@ -546,7 +560,8 @@ describe("feed da comunidade (rodada 11)", () => {
   it("cromo enxuto: titulo so para leitor de tela, uma entrada por tarefa, sem cartao de live vazio", async () => {
     await renderFeed({ canModerate: true });
 
-    expect(screen.getByRole("heading", { level: 2, name: "Leading Teams Through Change" })).toHaveClass("sr-only");
+    // Escondido, mas aparece quando recebe o foco (depois de apagar o ultimo post).
+    expect(screen.getByRole("heading", { level: 2, name: "Leading Teams Through Change" })).toHaveClass("sr-only", "focus:not-sr-only");
     expect(screen.queryByText("Community")).toBeNull();
     expect(screen.getByRole("button", { name: "Ask the cohort or share something…" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Ask a question" })).toBeInTheDocument();

@@ -7,6 +7,8 @@ import type { Lesson } from "@/domain/learning";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 
 const COUNTDOWN_SECONDS = 5;
+/** O aviso entra na região viva um instante DEPOIS de ela existir. */
+const ANNOUNCE_DELAY_MS = 50;
 /** Tem que bater com a transição de `.member-next-lesson.is-leaving`. */
 const EXIT_MS = 250;
 
@@ -37,6 +39,14 @@ export function NextLessonCard({
   const { t } = useTranslation();
   const [secondsLeft, setSecondsLeft] = useState(COUNTDOWN_SECONDS);
   const [leaving, setLeaving] = useState(false);
+  // Região viva que já nasce com o texto muitas vezes não é lida (NVDA/JAWS
+  // anunciam MUDANÇAS): ela monta vazia e o texto chega 50ms depois. Timer
+  // próprio, fora da contagem e da navegação.
+  const [announced, setAnnounced] = useState(false);
+  useEffect(() => {
+    const timer = window.setTimeout(() => setAnnounced(true), ANNOUNCE_DELAY_MS);
+    return () => window.clearTimeout(timer);
+  }, []);
 
   // Saindo: a contagem para (senão o cartão em queda ainda trocaria de aula) e
   // o pai só desmonta quando a animação termina.
@@ -95,7 +105,7 @@ export function NextLessonCard({
         </span>
       </div>
       <p className="sr-only" role="status">
-        {announcement}
+        {announced ? announcement : ""}
       </p>
       <div className="min-w-0 flex-1">
         <p aria-hidden="true" className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/60">

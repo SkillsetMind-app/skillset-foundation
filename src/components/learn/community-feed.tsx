@@ -3,7 +3,7 @@
 import { CheckCircle2, HelpCircle, Pin, Radio, ThumbsUp, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 
 import { formatNotificationTime } from "@/components/account/notification-row";
 import { useAuth } from "@/components/auth/auth-provider";
@@ -108,6 +108,16 @@ export function CommunityFeed({
   const [enrollmentReady, setEnrollmentReady] = useState(skipEnrollmentGate);
   // Chave do dicionario, nao texto: o idioma pode trocar com o erro na tela.
   const [error, setError] = useState("");
+  // "Posted." na região de status depois de publicar: a lista deixou de ser
+  // aria-live, o próprio post entra direto nela e o formulário fecha, então
+  // quem usa leitor de tela não ouvia nada. Some depois de alguns segundos
+  // para o próximo post ser anunciado de novo.
+  const [posted, setPosted] = useState(false);
+  useEffect(() => {
+    if (!posted) return;
+    const timer = window.setTimeout(() => setPosted(false), 4000);
+    return () => window.clearTimeout(timer);
+  }, [posted]);
 
   // Feed: `all` e tudo o que chegou; `visible` e o que esta na tela; `pending`
   // sao posts de OUTRAS pessoas que chegaram pelo realtime e esperam a pessoa
@@ -282,9 +292,14 @@ export function CommunityFeed({
       <div className="grid gap-4">
         {/* Título só para leitor de tela: logo acima já estão o nome do curso
             (h1) e a aba "Community" ativa, e o eyebrow mais o h2 de 24px
-            repetiam os dois. Recebe o foco quando o último post visível é
-            apagado. Fora do fluxo (sr-only), não abre espaço na grade. */}
-        <h2 data-community-heading tabIndex={-1} className="sr-only">
+            repetiam os dois. Fora do fluxo (sr-only), não abre espaço na
+            grade. Recebe o foco quando o último post visível é apagado, e aí
+            aparece (focus:not-sr-only) para o foco não sumir da tela. */}
+        <h2
+          data-community-heading
+          tabIndex={-1}
+          className="sr-only text-lg font-semibold text-[var(--color-ink)] focus:not-sr-only"
+        >
           {space.name.replace(/ community$/i, "")}
         </h2>
         {liveChip ? (
@@ -348,6 +363,7 @@ export function CommunityFeed({
             answeredPosts={feed.visible}
             canModerate={canModerate}
             onError={setError}
+            onPosted={() => setPosted(true)}
           />
         ) : null}
 
@@ -371,12 +387,15 @@ export function CommunityFeed({
           </div>
         ) : null}
 
-        {/* O leitor de tela ouve só a linha "N new posts". Antes a lista
-            inteira era aria-live: cada curtida e cada post novo eram lidos. */}
+        {/* O leitor de tela ouve só a linha "N new posts" (ou "Posted."
+            depois de publicar). Antes a lista inteira era aria-live: cada
+            curtida e cada post novo eram lidos. */}
         <p role="status" className="sr-only">
           {feed.pending > 0
             ? t(`learn.community.${feed.pending === 1 ? "newPostOne" : "newPostMany"}`).replace("{count}", () => String(feed.pending))
-            : ""}
+            : posted
+              ? t("learn.community.composer.posted")
+              : ""}
         </p>
 
         <div className="grid gap-3">
@@ -513,6 +532,7 @@ function Composer({
   answeredPosts,
   canModerate,
   onError,
+  onPosted,
 }: {
   user: SkillsetUser;
   space: CommunitySpace;
@@ -522,9 +542,20 @@ function Composer({
   canModerate: boolean;
   /** Recebe a CHAVE do dicionario (ou "" para limpar); o pai traduz na tela. */
   onError: (messageKey: string) => void;
+  /** Publicou: o pai anuncia "Posted." na região de status do feed. */
+  onPosted: () => void;
 }) {
   const { t, locale } = useTranslation();
   const [mode, setMode] = useState<"idle" | "ask" | "share" | "update">("idle");
+  // Depois de publicar o formulário fecha e o botão que tinha o foco some:
+  // o foco volta para o campo do compositor, em vez de cair no corpo da página.
+  const promptRef = useRef<HTMLButtonElement>(null);
+  const focusPromptAfterPost = useRef(false);
+  useEffect(() => {
+    if (mode !== "idle" || !focusPromptAfterPost.current) return;
+    focusPromptAfterPost.current = false;
+    promptRef.current?.focus();
+  }, [mode]);
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -579,7 +610,9 @@ function Composer({
         lessonTitle: mode === "ask" && lesson ? `lesson ${lesson.number}` : null,
         user,
       });
+      focusPromptAfterPost.current = true;
       reset();
+      onPosted();
     } catch (failure) {
       onError(isRateLimitError(failure) ? "learn.community.rateLimit" : "learn.community.composer.publishError");
     } finally {
@@ -592,6 +625,7 @@ function Composer({
       <div className="flex flex-wrap items-center gap-2 rounded-lg border border-[var(--color-line)] bg-white p-3 shadow-[var(--shadow-soft)]">
         <Avatar name={user.displayName ?? ""} small />
         <button
+          ref={promptRef}
           type="button"
           onClick={() => setMode("share")}
           className="min-h-11 flex-1 rounded-md bg-[var(--color-surface-soft)] px-4 text-left text-sm text-[var(--color-ink-muted)]"

@@ -33,10 +33,13 @@ describe("WelcomeTour do aluno", () => {
     expect(screen.getByText("Manage your account")).toBeInTheDocument();
     expect(screen.getAllByRole("heading", { level: 2 })).toHaveLength(1);
     expect(screen.getByRole("dialog", { name: "Welcome, Ana" })).toBeInTheDocument();
+    // Na abertura quem entra é a janela; o texto do 1º passo não anima de novo.
+    expect(screen.getByRole("heading", { level: 2, name: "Welcome, Ana" }).parentElement).not.toHaveClass("motion-panel-in");
 
     fireEvent.click(screen.getByRole("button", { name: "Next" }));
     const second = screen.getByRole("heading", { level: 2, name: "Pick up where you left off" });
     expect(second).toHaveFocus();
+    expect(second.parentElement).toHaveClass("motion-panel-in");
     expect(screen.getAllByRole("heading", { level: 2 })).toHaveLength(1);
     expect(screen.getByRole("dialog", { name: "Pick up where you left off" })).toBeInTheDocument();
 

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import { useLayoutEffect, useRef, useState } from "react";
+import { useId, useLayoutEffect, useRef, useState } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
 
@@ -69,6 +69,7 @@ export function MembersAreaHero({
   // novo quando a caixa muda de tamanho (largura da tela) ou a fonte termina
   // de carregar (a quebra de linha muda). Aberto não mede: ali o texto cabe
   // sempre, e o "Show less" precisa continuar.
+  const descriptionId = useId();
   const descriptionRef = useRef<HTMLParagraphElement>(null);
   const [descriptionClamped, setDescriptionClamped] = useState(false);
   useLayoutEffect(() => {
@@ -142,7 +143,7 @@ export function MembersAreaHero({
         {description ? (
           <>
             <p
-              id="members-hero-description"
+              id={descriptionId}
               ref={descriptionRef}
               className={
                 showFullDescription
@@ -157,7 +158,7 @@ export function MembersAreaHero({
                 type="button"
                 className="members-hero__more"
                 aria-expanded={showFullDescription}
-                aria-controls="members-hero-description"
+                aria-controls={descriptionId}
                 onClick={() => setShowFullDescription((open) => !open)}
               >
                 {showFullDescription
