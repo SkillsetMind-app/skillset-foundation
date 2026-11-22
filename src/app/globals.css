@@ -1207,6 +1207,17 @@ p {
   background: rgba(255, 255, 255, 0.14);
 }
 
+/* Botão desligado não reage: um "Publish product" apagado ainda subia e
+   ganhava sombra com o mouse e afundava no clique, como se fosse clicável.
+   Fica chato (sem sombra), parado e com o cursor de bloqueado. Vem DEPOIS de
+   todos os :hover e :active acima, que têm a mesma especificidade: é a ordem
+   que faz esta regra valer. */
+:is(.button-solid, .button-outline, .button-accent, .button-danger, .button-solid-light, .button-outline-light):is(:disabled, [aria-disabled="true"]) {
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
 /* Hero conversion card — an always-light surface sitting on the always-navy
    hero, so every color is FIXED (not a theme token): theme tokens invert in
    dark mode and would wreck contrast on this white card (same rationale as the
@@ -8442,9 +8453,10 @@ button:hover > .dash-card,
   color: var(--color-accent-fg);
 }
 
+/* Tinta escura sobre o dourado: branco ali dá 2,6:1 (ícone pede 3:1). */
 .marketplace-card__wishlist.is-active {
   background: var(--color-accent);
-  color: #ffffff;
+  color: var(--color-on-accent);
 }
 
 .marketplace-card__body {
