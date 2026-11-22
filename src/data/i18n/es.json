@@ -6,6 +6,9 @@
     "copied": "Copiado",
     "failed": "No se pudo copiar. Selecciona el código y cópialo a mano."
   },
+  "confirmDialog": {
+    "error": "No se pudo completar. Inténtalo de nuevo en un momento."
+  },
   "lessonUpload": {
     "title": "Carga de la lección",
     "uploading": "Subiendo archivo...",

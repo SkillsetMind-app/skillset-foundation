@@ -6,6 +6,9 @@
     "copied": "Copied",
     "failed": "Could not copy. Select the code and copy it by hand."
   },
+  "confirmDialog": {
+    "error": "That didn't go through. Try again in a moment."
+  },
   "lessonUpload": {
     "title": "Lesson upload",
     "uploading": "Uploading file...",

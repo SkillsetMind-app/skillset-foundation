@@ -148,6 +148,10 @@ export function PlansPanel() {
       setError("planTrial.cancelError");
     } finally {
       setBusyAction(null);
+      // past_due/unpaid voltam `subscription: null`, o que desmonta a janela
+      // sem passar pelo onClose: sem isto a pergunta reabriria sozinha se uma
+      // assinatura voltasse a aparecer.
+      setConfirmingCancel(false);
     }
   }
 

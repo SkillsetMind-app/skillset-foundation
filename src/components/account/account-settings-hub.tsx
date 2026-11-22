@@ -9,7 +9,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 
 import { AccountDataPanel } from "@/components/account/account-data-panel";
 import { ProfileSettingsPanel } from "@/components/account/profile-settings-panel";
@@ -341,6 +341,10 @@ function ToggleRow({
   saved?: boolean;
 }) {
   const { t } = useTranslation();
+  // Nome = só o rótulo; a descrição entra como descrição. Com aria-label o
+  // leitor de tela nunca lia o que cada chave faz.
+  const labelId = useId();
+  const descriptionId = useId();
   return (
     <div className="py-1">
       {/* A linha inteira é a chave. Antes só o trilho de 46×26 respondia ao
@@ -350,16 +354,17 @@ function ToggleRow({
         type="button"
         role="switch"
         aria-checked={checked}
-        aria-label={label}
+        aria-labelledby={labelId}
+        aria-describedby={descriptionId}
         disabled={disabled}
         onClick={onChange}
         className="-mx-3 flex min-h-11 w-[calc(100%_+_1.5rem)] items-center justify-between gap-4 rounded-md px-3 py-3 text-left hover:bg-[var(--color-surface-soft)] disabled:cursor-not-allowed disabled:opacity-50"
       >
         <span>
-          <span className="block text-sm font-bold text-[var(--color-ink)]">
+          <span id={labelId} className="block text-sm font-bold text-[var(--color-ink)]">
             {label}
           </span>
-          <span className="mt-1 block max-w-2xl text-sm leading-6 text-[var(--color-ink-soft)]">
+          <span id={descriptionId} className="mt-1 block max-w-2xl text-sm leading-6 text-[var(--color-ink-soft)]">
             {description}
           </span>
         </span>

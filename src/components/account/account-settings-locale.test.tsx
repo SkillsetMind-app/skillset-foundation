@@ -1,6 +1,7 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { I18nProvider, useTranslation } from "@/components/i18n/i18n-provider";
+import { CONFIRM_GUARD_MS } from "@/components/ui/confirm-dialog";
 import { AccountSettingsHub } from "./account-settings-hub";
 
 const mocks = vi.hoisted(() => ({ user: { uid: "creator-test" }, tab: "notifications", replace: vi.fn(), save: vi.fn(), export: vi.fn(), remove: vi.fn() }));
@@ -38,7 +39,7 @@ function show() {
 
 describe("account settings locale", () => {
   beforeEach(() => { vi.clearAllMocks(); stubDialog(); mocks.tab = "notifications"; mocks.save.mockResolvedValue(undefined); mocks.export.mockResolvedValue(undefined); mocks.remove.mockResolvedValue(undefined); });
-  afterEach(() => { cleanup(); restoreDialog(); });
+  afterEach(() => { cleanup(); restoreDialog(); vi.useRealTimers(); });
 
   it("renders Spanish navigation and notification controls with untranslated route identifiers", async () => {
     show();
@@ -51,6 +52,8 @@ describe("account settings locale", () => {
     // A linha inteira é a chave: o texto do rótulo e da descrição está dentro do alvo.
     const row = screen.getByRole("switch", { name: "Actividad del curso" });
     expect(row).toHaveTextContent("Reseñas, comentarios");
+    // O nome é só o rótulo; o que a chave faz é lido como descrição.
+    expect(row).toHaveAccessibleDescription("Reseñas, comentarios, actividad de las lecciones y logros de los estudiantes.");
     fireEvent.click(row);
     expect(mocks.save).toHaveBeenCalledWith("creator-test", expect.objectContaining({ notifications: expect.objectContaining({ courseActivity: false }) }));
   });
@@ -86,6 +89,8 @@ describe("account settings locale", () => {
 
   it("requires the translated second confirmation before requesting deletion", async () => {
     mocks.tab = "privacy";
+    // Só o Date é falso: o confirmar ignora cliques nos primeiros 500ms.
+    vi.useFakeTimers({ toFake: ["Date"] });
     show();
     fireEvent.click(screen.getByRole("button", { name: "Eliminar cuenta" }));
     expect(mocks.remove).not.toHaveBeenCalled();
@@ -94,6 +99,10 @@ describe("account settings locale", () => {
     expect(screen.getByRole("button", { name: "Eliminar cuenta" })).toBeInTheDocument();
     const dialog = screen.getByRole("dialog", { name: "¿Eliminar tu cuenta?" });
     expect(dialog).toHaveTextContent("Las solicitudes se gestionan manualmente");
+    // O 2º toque de um toque duplo chega colado na abertura e é descartado.
+    fireEvent.click(within(dialog).getByRole("button", { name: "Confirmar solicitud de eliminación" }));
+    expect(mocks.remove).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(CONFIRM_GUARD_MS);
     fireEvent.click(within(dialog).getByRole("button", { name: "Confirmar solicitud de eliminación" }));
     await waitFor(() => expect(mocks.remove).toHaveBeenCalledOnce());
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
