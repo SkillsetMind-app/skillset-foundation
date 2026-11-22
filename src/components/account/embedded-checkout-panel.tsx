@@ -10,6 +10,8 @@ import { type ReactNode, useEffect, useMemo, useState } from "react";
 
 import { BrandName } from "@/components/shared/brand-name";
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { StripeFrameSkeleton } from "@/components/teacher/builder-skeleton";
+import { SupportDetails } from "@/components/teacher/support-details";
 import type { Locale } from "@/lib/i18n/config";
 import {
   formatPlanCommission,
@@ -194,7 +196,9 @@ export function EmbeddedCheckoutPanel({
           <div role="alert" className="p-6 text-sm text-[var(--color-danger-fg)]">
             <p className="font-semibold">{t("activationCheckout.errorTitle")}</p>
             <p className="mt-2 text-[var(--color-ink-soft)]">{t(`billingCheckout.error.${error.key}`)}</p>
-            {error.status ? <p className="mt-2 text-xs">{t("activationCheckout.reference")} HTTP {error.status}</p> : null}
+            {/* A frase acima diz o que fazer; o codigo da resposta fica so
+                para o suporte, recolhido (era "Reference: HTTP 409"). */}
+            {error.status ? <SupportDetails code={error.status} className="mt-2" /> : null}
             <Link
               href="/account/plans"
               className="button-outline mt-4 px-4 py-2 text-sm text-[var(--color-ink)]"
@@ -203,13 +207,7 @@ export function EmbeddedCheckoutPanel({
             </Link>
           </div>
         ) : !options ? (
-          <div
-            className="grid place-items-center p-8 text-sm text-[var(--color-ink-soft)]"
-            aria-busy="true"
-            aria-live="polite"
-          >
-            {t("activationCheckout.preparing")}
-          </div>
+          <StripeFrameSkeleton label={t("activationCheckout.preparing")} />
         ) : (
           <EmbeddedCheckoutProvider stripe={stripeLoader!} options={options}>
             <EmbeddedCheckout />
@@ -254,11 +252,21 @@ export function EmbeddedCheckoutPanel({
           </strong>
           {t("billingCheckout.processing")}
         </p>
-        {trialDays !== null ? (
-          <p className="mt-2 text-[11px] font-semibold leading-5 text-[var(--color-ink)]">
-            {planDisclosure({ t, locale, plan, cycle, trial: trialDays > 0 })}
+        {/* A frase da renovacao chega junto com a resposta do servidor: o
+            lugar dela fica guardado (tres linhas) enquanto isso, para o resumo
+            nao crescer e empurrar o cartao quando ela aparece. */}
+        {error ? null : (
+          <p className="mt-2 min-h-[3.75rem] text-[11px] font-semibold leading-5 text-[var(--color-ink)]">
+            {trialDays !== null ? (
+              planDisclosure({ t, locale, plan, cycle, trial: trialDays > 0 })
+            ) : (
+              <span aria-hidden="true" className="block animate-pulse space-y-2 pt-1">
+                <span className="block h-3 rounded-sm bg-[var(--color-surface-strong)]" />
+                <span className="block h-3 w-2/3 rounded-sm bg-[var(--color-surface-strong)]" />
+              </span>
+            )}
           </p>
-        ) : null}
+        )}
         <p className="mt-2 text-[11px] leading-5 text-[var(--color-ink-muted)]">
           {t("billingCheckout.cancel")}
         </p>

@@ -115,6 +115,10 @@ describe("TeacherEventStudio", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("We could not load your scheduled sessions.");
     expect(screen.queryByText("No sessions in this view.")).toBeNull();
     expect(screen.getAllByText("—")).toHaveLength(3);
+    // Exportar desligado diz que a leitura falhou, nao "nada para exportar".
+    const exportButton = screen.getByRole("button", { name: "Export" });
+    expect(exportButton).toBeDisabled();
+    expect(exportButton).toHaveAccessibleDescription("Export is off because this data could not be loaded.");
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));
     expect(agenda.reload).toHaveBeenCalledTimes(1);
     expect(screen.getByText("Loading scheduled sessions...")).toBeInTheDocument();

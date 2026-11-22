@@ -192,6 +192,10 @@ describe("AdvisorSidebar", () => {
     expect(screen.getByText("Loading your conversation...")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: SUGGESTION })).toBeNull();
     expect(screen.getByRole("button", { name: "Send message" })).toBeDisabled();
+    // Desligado dizendo por que: a frase da conversa carregando.
+    expect(screen.getByRole("button", { name: "Send message" })).toHaveAccessibleDescription(
+      "Loading your conversation...",
+    );
     // Only the GET. The turn was refused outright, not queued.
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(composer()).toHaveValue("Draft that must survive");

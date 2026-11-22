@@ -9,7 +9,6 @@ import {
   FileDown,
   Layers3,
   Plus,
-  Store,
   UsersRound,
   type LucideIcon,
 } from "lucide-react";
@@ -165,7 +164,9 @@ export function TeacherStudioDashboard() {
           mente. Antes de a lista chegar nao da para saber qual das duas e
           verdade: vale "Hello", que nao afirma nada. Se a assinatura de
           cursos falhar, fica o "Welcome back" de antes. */}
-      {/* O mesmo cabecalho das telas irmas (era 36px sem serifa so aqui). */}
+      {/* O mesmo cabecalho das telas irmas (era 36px sem serifa so aqui).
+          So "New product": o "Storefront" daqui levava ao mesmo editor do
+          "Edit storefront" do cartao da vitrine, logo abaixo. */}
       <PlatformPageHeader
         title={
           firstName
@@ -174,19 +175,13 @@ export function TeacherStudioDashboard() {
         }
         description={t("creatorPanel.home.description")}
         actions={
-          <>
-            <Link href="/teach/storefront" className="button-outline px-4 text-sm">
-              <Store aria-hidden="true" size={16} strokeWidth={1.9} />
-              {t("creatorPanel.home.storefront")}
-            </Link>
-            <Link
-              href="/teach/builder?newCourse=1&format=course"
-              className={`${noProducts ? "button-outline" : "button-solid"} px-4 text-sm`}
-            >
-              <Plus aria-hidden="true" size={16} strokeWidth={2} />
-              {t("creatorPanel.newProduct")}
-            </Link>
-          </>
+          <Link
+            href="/teach/builder?newCourse=1&format=course"
+            className={`${noProducts ? "button-outline" : "button-solid"} px-4 text-sm`}
+          >
+            <Plus aria-hidden="true" size={16} strokeWidth={2} />
+            {t("creatorPanel.newProduct")}
+          </Link>
         }
       />
 
@@ -522,13 +517,21 @@ function StudioProductsSection({
       ) : null}
 
       {!coursesLoaded ? (
-        <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          {[1, 2, 3, 4].map((item) => (
-            <div
-              key={item}
-              className="h-32 animate-pulse rounded-md bg-[var(--color-surface-strong)]"
-            />
-          ))}
+        // O esqueleto tem a forma do cartao que vem (capa 16:9, tipo, titulo,
+        // linha de aulas): era um bloco de 128px para um cartao de ~260px, e a
+        // secao dobrava de altura quando os produtos chegavam.
+        <div role="status" className="mt-3">
+          <span className="sr-only">{t("creatorPanel.products.loading")}</span>
+          <div aria-hidden="true" className="grid animate-pulse gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            {[1, 2, 3, 4].map((item) => (
+              <div key={item} className="min-h-36 rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)] p-4">
+                <div className="aspect-video rounded-md bg-[var(--color-surface-strong)]" />
+                <div className="mt-3 h-3 w-20 rounded-sm bg-[var(--color-surface-strong)]" />
+                <div className="mt-3 h-4 w-3/4 rounded-sm bg-[var(--color-surface-strong)]" />
+                <div className="mt-2 h-3 w-1/2 rounded-sm bg-[var(--color-surface-strong)]" />
+              </div>
+            ))}
+          </div>
         </div>
       ) : courses.length === 0 && coursesFailed ? (
         // A leitura falhou: o erro com "Try again" acima basta (como na Midia).

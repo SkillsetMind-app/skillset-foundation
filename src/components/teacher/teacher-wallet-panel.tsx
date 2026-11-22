@@ -18,6 +18,7 @@ import { useTranslation } from "@/components/i18n/i18n-provider";
 import { InlineHelp } from "@/components/shared/inline-help";
 import { StatusChip } from "@/components/shared/status-chip";
 import { TeacherConnectOnboarding } from "@/components/teacher/teacher-connect-onboarding";
+import { MetricCard } from "@/components/teacher/metric-card";
 import { StripeDashboardButton } from "@/components/teacher/stripe-dashboard-button";
 import {
   summarizeCreatorWallet,
@@ -243,7 +244,9 @@ export function TeacherWalletPanel() {
               repetir a mesma frase tres vezes. Sem isto a pagina ficaria sem
               cabecalho de nivel 1 e a navegacao por titulos comecaria no 2
               (revisao do Codex). */}
-          <h1 className="display-title mt-3 flex items-center gap-2 text-4xl leading-tight text-[var(--color-primary)]">
+          {/* No tamanho do cabecalho compacto da area da conta (o da casca em
+              /account/*): era 36px so aqui. */}
+          <h1 className="display-title mt-2 flex max-w-4xl items-center gap-2 text-xl leading-tight text-[var(--color-primary)] sm:text-2xl lg:text-3xl">
             {t("teach.earnings.title")}
             <InlineHelp topic={t("teach.earnings.helpTopic")} href="/help#payouts">
               {t("teach.earnings.helpBody")}
@@ -307,18 +310,10 @@ export function TeacherWalletPanel() {
           </div>
 
           <div className="mt-6 flex flex-wrap gap-2">
-            {ready ? (
-              <button
-                type="button"
-                onClick={refreshStripeStatus}
-                disabled={isRefreshingStripe}
-                className="button-solid-light px-4 py-2.5 text-sm disabled:opacity-60"
-              >
-                {isRefreshingStripe
-                  ? t("teach.earnings.refreshing")
-                  : t("teach.earnings.refreshStripe")}
-              </button>
-            ) : (
+            {/* Um botao de atualizar so, o do cartao da conta: com a conta
+                pronta havia dois ("Refresh Stripe" aqui e "Refresh account"
+                ao lado), fazendo a mesma coisa. */}
+            {ready ? null : (
               <a href="#stripe-connect" className="button-solid-light px-4 py-2.5 text-sm">
                 {t("teach.earnings.completeSetup")}
               </a>
@@ -360,6 +355,10 @@ export function TeacherWalletPanel() {
             {t("teach.earnings.bankNote")}
           </p>
 
+          {/* As linhas de estado so quando a conta existe: sem conta eram tres
+              linhas ("Not created", "Pending", "Pending") repetindo o selo
+              "Not connected" logo acima. */}
+          {connected ? (
           <div className="mt-5 grid gap-3">
             <PayoutStatusRow
               icon={Banknote}
@@ -409,6 +408,7 @@ export function TeacherWalletPanel() {
               }
             />
           </div>
+          ) : null}
 
           {/* Sem conta conectada o botao so devolvia o erro "conecte o
               Stripe", com o passo de conectar logo ao lado. */}
@@ -435,6 +435,7 @@ export function TeacherWalletPanel() {
           linha. 2x2 no tablet, 4 colunas no desktop — nenhum orfao. */}
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <MetricCard
+          unavailable={!financialsReady}
           label={t("teach.earnings.paidSales")}
           value={financialsReady
             ? String(financials.salesCount)
@@ -443,14 +444,17 @@ export function TeacherWalletPanel() {
               : "—"}
         />
         <MetricCard
+          unavailable={!financialsReady}
           label={t("teach.earnings.grossSales")}
           value={money(financials.grossPaidByCurrency)}
         />
         <MetricCard
+          unavailable={!financialsReady}
           label={t("teach.earnings.platformFee")}
           value={money(financials.platformFeeByCurrency)}
         />
         <MetricCard
+          unavailable={!financialsReady}
           label={t("teach.earnings.stripeFee")}
           value={money(financials.stripeFeeByCurrency)}
         />
@@ -574,19 +578,6 @@ function BalanceRow({ label, value }: { label: string; value: string }) {
       <span className="text-[rgba(255,255,255,0.72)]">{label}</span>
       <strong>{value}</strong>
     </div>
-  );
-}
-
-function MetricCard({ label, value }: { label: string; value: string }) {
-  return (
-    <article className="rounded-lg border border-[var(--color-line)] bg-white p-5 shadow-[var(--shadow-soft)]">
-      <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-ink-muted)]">
-        {label}
-      </p>
-      <p className="mt-2 text-2xl font-black text-[var(--color-primary)]">
-        {value}
-      </p>
-    </article>
   );
 }
 

@@ -73,9 +73,14 @@ describe("payment checkout localization with real dictionaries", () => {
     let resolve!: (value: Response) => void;
     mocks.fetch.mockReturnValue(new Promise<Response>((done) => { resolve = done; }));
     mount(kind === "activation" ? <ActivationCheckoutPanel /> : <EmbeddedCheckoutPanel planId="pro" cycle="yearly" />);
-    expect(screen.getByText(copy("es", "activationCheckout.preparing"))).toHaveAttribute("aria-busy", "true");
+    // A espera guarda o lugar do formulario (esqueleto) e anuncia a frase.
+    const waiting = screen.getByRole("status");
+    // Status sem aria-busy: alguns leitores seguram o anuncio com os dois juntos.
+    expect(waiting).not.toHaveAttribute("aria-busy");
+    expect(waiting).toHaveAttribute("data-skeleton", "stripe");
+    expect(waiting).toHaveTextContent(copy("es", "activationCheckout.preparing"));
     fireEvent.click(screen.getByText("EN"));
-    expect(screen.getByText(copy("en", "activationCheckout.preparing"))).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent(copy("en", "activationCheckout.preparing"));
     expect(mocks.fetch).toHaveBeenCalledTimes(1);
     await act(async () => resolve(response()));
     // Same DOM node after the locale change = Stripe's iframe was not remounted.
@@ -142,7 +147,10 @@ describe("payment checkout localization with real dictionaries", () => {
     mocks.fetch.mockResolvedValue(response(status, code));
     mount(<EmbeddedCheckoutPanel planId="starter" cycle="monthly" />);
     expect(await screen.findByRole("alert")).toHaveTextContent(copy("es", `billingCheckout.error.${key}`));
-    expect(screen.getByRole("alert")).toHaveTextContent(`HTTP ${status}`);
+    // O codigo fica so no recolhido "para o suporte", sem "HTTP" na frase.
+    expect(screen.getByRole("alert")).toHaveTextContent(`Código de error: ${status}`);
+    expect(screen.getByRole("alert")).not.toHaveTextContent("HTTP");
+    expect(screen.getByText("Detalles para soporte").closest("details")).not.toHaveAttribute("open");
     expect(screen.queryByText(/RAW TRANSPORT DETAIL/)).toBeNull();
     fireEvent.click(screen.getByText("EN"));
     expect(screen.getByRole("alert")).toHaveTextContent(copy("en", `billingCheckout.error.${key}`));

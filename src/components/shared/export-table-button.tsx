@@ -15,6 +15,9 @@ type ExportTableButtonProps = {
   filename: string;
   className?: string;
   disabled?: boolean;
+  /** Por que quem chama desligou (ex.: a leitura falhou); sem isto, so o caso
+   *  que o botao conhece, zero linhas, ganha motivo. */
+  disabledReason?: string;
 };
 
 function normalizeFilename(filename: string, extension: "csv" | "json") {
@@ -72,6 +75,7 @@ export function ExportTableButton({
   filename,
   className,
   disabled = false,
+  disabledReason,
 }: ExportTableButtonProps) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
@@ -79,6 +83,13 @@ export function ExportTableButton({
   const menuRef = useRef<HTMLDivElement>(null);
   const menuId = useId();
   const isDisabled = disabled || rows.length === 0;
+  // Zero linhas so diz "nada para exportar" quando quem chama nao desligou: uma
+  // leitura que falhou tambem chega com zero linhas, e ai o motivo e outro.
+  const reason = disabled
+    ? disabledReason
+    : rows.length === 0
+      ? t("platform.ops.exportButton.nothingToExport")
+      : undefined;
   const isMenuOpen = open && !isDisabled;
 
   useLayoutEffect(() => {
@@ -194,10 +205,19 @@ export function ExportTableButton({
         aria-haspopup="menu"
         aria-expanded={isMenuOpen}
         aria-controls={isMenuOpen ? menuId : undefined}
+        aria-describedby={reason ? `${menuId}-reason` : undefined}
+        title={reason}
       >
         <Download aria-hidden="true" size={14} strokeWidth={1.9} />
         {t("platform.ops.exportButton.export")}
       </button>
+      {/* Desligado sem dizer por que: agora o leitor de tela ouve o motivo
+          (e o mouse ve no title). */}
+      {reason ? (
+        <span id={`${menuId}-reason`} className="sr-only">
+          {reason}
+        </span>
+      ) : null}
 
       {isMenuOpen ? createPortal(
         <div

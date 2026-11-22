@@ -7,12 +7,13 @@ import type { FormEvent } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { PlatformPageHeader } from "@/components/platform/platform-page-header";
 import { StatusChip } from "@/components/shared/status-chip";
+import { CardPageSkeleton } from "@/components/teacher/builder-skeleton";
 import {
   buttonClasses,
   Button,
   Card,
-  Eyebrow,
   Field,
   InlineAlert,
 } from "@/components/ui";
@@ -235,19 +236,17 @@ export function CreatorVerificationPanel() {
 
   return (
     <div className="mx-auto grid w-full max-w-3xl gap-6">
+      {/* O cabecalho das telas irmas, fora do cartao: o titulo era um 24px em
+          serifa dentro dele, com o rotulo generico "Teacher studio" em cima. O
+          selo de status vai para o lado do titulo. */}
+      <PlatformPageHeader
+        title={t(`${copy}.title`)}
+        actions={caseLoaded && verificationCase ? (
+          <StatusChip status={verificationCase.status} label={t(`${copy}.status.${verificationCase.status}`)} />
+        ) : undefined}
+      />
       <Card as="section" padding="lg">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <Eyebrow>{t(`${copy}.eyebrow`)}</Eyebrow>
-            <h1 className="display-title mt-1 text-2xl text-[var(--color-primary)]">
-              {t(`${copy}.title`)}
-            </h1>
-          </div>
-          {caseLoaded && verificationCase ? (
-            <StatusChip status={verificationCase.status} label={t(`${copy}.status.${verificationCase.status}`)} />
-          ) : null}
-        </div>
-        <p className="mt-3 text-sm leading-6 text-[var(--color-ink-soft)]">
+        <p className="text-sm leading-6 text-[var(--color-ink-soft)]">
           {t(`${copy}.description`)}{" "}
           {t(`${copy}.${requireVerification ? "required" : "optional"}`)}
         </p>
@@ -272,13 +271,9 @@ export function CreatorVerificationPanel() {
         ) : null}
       </Card>
 
-      {!caseLoaded ? (
-        <Card as="section" padding="lg">
-          <p className="text-sm text-[var(--color-ink-soft)]">
-            {t(`${copy}.loading`)}
-          </p>
-        </Card>
-      ) : null}
+      {/* O cartao que vem (aprovado, em revisao ou o formulario) carregando
+          no proprio formato, em vez de um cartao com uma frase. */}
+      {!caseLoaded ? <CardPageSkeleton label={t(`${copy}.loading`)} header={false} /> : null}
 
       {caseLoaded && status === "approved" ? (
         <Card as="section" padding="lg">

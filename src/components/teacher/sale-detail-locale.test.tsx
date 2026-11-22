@@ -153,13 +153,30 @@ describe("sale detail with real EN/ES dictionaries", () => {
   it("relocalizes loading and a later subscription error", async () => {
     mocks.subscribe.mockImplementation(() => () => {});
     mount();
-    expect(screen.getByText("Cargando venta...")).toBeVisible();
+    // A espera e um esqueleto no formato da venda; a frase fica para o leitor de tela.
+    const status = screen.getByRole("status");
+    expect(status).toHaveAttribute("data-skeleton", "detail");
+    expect(status).toHaveTextContent("Cargando venta...");
     switchLanguage();
-    expect(screen.getByText("Loading sale...")).toBeVisible();
+    expect(screen.getByRole("status")).toHaveTextContent("Loading sale...");
     await act(async () => mocks.subscribe.mock.calls[0][2](new Error("internal")));
     expect(screen.getByRole("alert")).toHaveTextContent("We could not load this sale.");
     switchLanguage();
     expect(screen.getByRole("alert")).toHaveTextContent("No pudimos cargar esta venta.");
+  });
+
+  it("keeps course id, slug and currency in a collapsed support block and the e-mails as text links", () => {
+    mount();
+    const details = screen.getByText("Detalles para soporte").closest("details")!;
+    expect(details).not.toHaveAttribute("open");
+    expect(details).toHaveTextContent(order.courseId);
+    expect(details).toHaveTextContent(order.courseSlug);
+    expect(details).toHaveTextContent(order.currency);
+    for (const name of ["Contactar con soporte", "Ayuda con el reembolso"]) {
+      expect(screen.getByRole("link", { name })).not.toHaveClass("button-outline");
+    }
+    switchLanguage();
+    expect(screen.getByText("Details for support")).toBeInTheDocument();
   });
 
   it("translates missing and forbidden sales without exposing order data", () => {

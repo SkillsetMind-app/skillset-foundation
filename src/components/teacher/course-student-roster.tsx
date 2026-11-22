@@ -7,7 +7,9 @@ import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 
 import { ExportTableButton } from "@/components/shared/export-table-button";
 import { StatusChip } from "@/components/shared/status-chip";
+import { TableSkeleton } from "@/components/teacher/builder-skeleton";
 import { PanelCard } from "@/components/teacher/course-commerce-panels";
+import { MetricCard } from "@/components/teacher/metric-card";
 import { CourseAccessPanel } from "@/components/teacher/course-access-panel";
 import { CourseShareLink } from "@/components/teacher/course-share-link";
 import { Button, EmptyState, InlineAlert } from "@/components/ui";
@@ -279,7 +281,10 @@ export function CourseStudentRosterView({
   if (state === "loading") {
     return (
       <PanelCard title={t("courseRoster.title")} description={t("courseRoster.description")}>
-        <p className="mt-5 text-sm text-[var(--color-ink-soft)]">{t("courseRoster.loading")}</p>
+        {/* Os quatro quadros, busca + dois filtros + exportar, e as linhas. */}
+        <div className="mt-5">
+          <TableSkeleton label={t("courseRoster.loading")} tiles={4} controls={4} />
+        </div>
       </PanelCard>
     );
   }
@@ -337,17 +342,7 @@ export function CourseStudentRosterView({
           { label: "courseRoster.completed", value: String(stats.completed) },
           { label: "courseRoster.average", value: `${stats.averageProgress}%` },
         ].map((stat) => (
-          <div
-            key={t(stat.label)}
-            className="rounded-md border border-[var(--color-line)] bg-[var(--color-surface)] px-4 py-3"
-          >
-            <dt className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--color-ink-muted)]">
-              {t(stat.label)}
-            </dt>
-            <dd className="mt-1 text-2xl font-bold tracking-[-0.03em] text-[var(--color-primary)]">
-              {stat.value}
-            </dd>
-          </div>
+          <MetricCard key={stat.label} labelAs="dt" label={t(stat.label)} value={stat.value} />
         ))}
       </dl>
 

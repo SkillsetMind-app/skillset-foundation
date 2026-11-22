@@ -7458,10 +7458,11 @@ button:hover > .dash-card,
 }
 
 .studio-chart-empty p {
+  /* Professor: a serifa fica so no titulo da pagina (T-09). */
   color: var(--color-primary);
-  font-family: var(--font-display);
-  font-size: 1.25rem;
-  font-weight: 700;
+  font-family: inherit;
+  font-size: 1rem;
+  font-weight: 600;
 }
 
 .studio-chart-empty span {
@@ -7667,11 +7668,12 @@ button:hover > .dash-card,
 }
 
 .studio-activity-card strong {
+  /* Professor: titulo de cartao no texto da casa, nao em serifa (T-09). */
   color: var(--color-primary);
-  font-family: var(--font-display);
-  font-size: 1.24rem;
-  font-weight: 700;
-  line-height: 1.18;
+  font-family: inherit;
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.35;
 }
 
 .studio-activity-card small {

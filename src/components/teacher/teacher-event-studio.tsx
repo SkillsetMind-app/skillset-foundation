@@ -8,6 +8,7 @@ import { ArrowLeft, ArrowRight, CalendarDays, Plus, X } from "lucide-react";
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { ExportTableButton } from "@/components/shared/export-table-button";
+import { MetricCard } from "@/components/teacher/metric-card";
 import { ConfirmDialog, EmptyState, InlineAlert } from "@/components/ui";
 import {
   formatEventDateTime,
@@ -413,27 +414,21 @@ export function TeacherEventStudio() {
 
   return (
     <section className="grid min-w-0 gap-5">
-      <dl className="grid grid-cols-3 divide-x divide-[var(--color-line)] border-y border-[var(--color-line)] py-4">
+      {/* O quadro de numero da casa. Tres lado a lado so a partir de 480px:
+          no celular o rotulo em maiusculas nao cabia num terco da tela. */}
+      <dl className="grid gap-3 min-[480px]:grid-cols-3">
         {tiles.map((tile) => (
-          <div
+          <MetricCard
             key={tile.key}
-            className="min-w-0 px-3 first:pl-0 last:pr-0 sm:px-6"
-          >
-            <dt className="break-words text-xs font-semibold text-[var(--color-ink-soft)]">
-              {tile.label}
-            </dt>
-            {eventsLoaded ? (
-              // Leitura que falhou nao e "0 sessoes": fica o traco.
-              <dd className="mt-1 text-2xl font-semibold text-[var(--color-ink)]">
-                {eventsFailed ? "—" : tile.value}
-              </dd>
-            ) : (
-              <dd className="mt-1 h-8 w-10 animate-pulse rounded bg-[var(--color-surface-strong)]" />
-            )}
-            <dd className="sr-only">
-              {tile.hint}
-            </dd>
-          </div>
+            labelAs="dt"
+            label={tile.label}
+            loading={!eventsLoaded}
+            // Leitura que falhou nao e "0 sessoes": fica o traco.
+            unavailable={eventsFailed}
+            value={eventsFailed ? "—" : tile.value}
+            hint={tile.hint}
+            srOnlyHint
+          />
         ))}
       </dl>
 
@@ -679,7 +674,13 @@ export function TeacherEventStudio() {
             placeholder={t(`${copy}.searchPlaceholder`)}
             className="min-h-11 min-w-[12rem] flex-1 rounded-md border border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-ink)]"
           />
-          <ExportTableButton rows={exportRows} filename="skillset-events" />
+          {/* Sem a leitura das sessoes, zero linhas nao quer dizer "agenda vazia". */}
+          <ExportTableButton
+            rows={exportRows}
+            filename="skillset-events"
+            disabled={!eventsLoaded || eventsFailed}
+            disabledReason={eventsFailed ? t("platform.ops.exportButton.loadFailed") : undefined}
+          />
         </div>
 
         {eventsFailed ? null : <p className="mt-3 text-sm text-[var(--color-ink-soft)]">{countLine}</p>}

@@ -87,6 +87,8 @@ describe("report currency follows the provider without changing amounts or expor
     const props = mocks.exportTable.mock.lastCall?.[0];
     expect(props).toMatchObject({
       filename: "skillset-reports",
+      // Pedidos lidos: Exportar ligado (so a leitura que falha o desliga, com motivo).
+      disabled: false,
       rows: [{ Producto: "Course title $&", Pedidos: 1, Ingresos: "12345.67", Moneda: "USD", Reembolsos: 0 }],
     });
     for (const subscribe of [mocks.subscribeOrders, mocks.subscribeLedgers, mocks.subscribeSubscriptions]) {

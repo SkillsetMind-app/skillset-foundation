@@ -8,7 +8,9 @@ import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { HorizontalTabs } from "@/components/shared/horizontal-tabs";
 import { StatusChip } from "@/components/shared/status-chip";
-import { buttonClasses, Card, InlineAlert } from "@/components/ui";
+import { MetricCard } from "@/components/teacher/metric-card";
+import { SupportDetails } from "@/components/teacher/support-details";
+import { buttonClasses, InlineAlert } from "@/components/ui";
 import type { CourseSubscription } from "@/domain/course-subscription";
 import {
   buildCreatorRenewalHistory,
@@ -26,6 +28,7 @@ import {
   type SubscriberProfile,
 } from "@/lib/data/user-profiles";
 import { toDate } from "@/lib/format-date";
+import { formatMoney, formatMoneyBreakdown } from "@/lib/format-money";
 import type { Locale } from "@/lib/i18n/config";
 import { countLabel, type Translate } from "@/lib/i18n/count-label";
 
@@ -244,17 +247,18 @@ export function CreatorSubscriptionCenterView({
         <MetricCard
           label={t(`${copy}.activeSubscribers`)}
           value={countLabel(t, `${copy}.activeOne`, `${copy}.activeMany`, metrics.activeCount)}
-          detail={countLabel(t, `${copy}.scheduledOne`, `${copy}.scheduledMany`, metrics.cancelScheduledCount)}
+          hint={countLabel(t, `${copy}.scheduledOne`, `${copy}.scheduledMany`, metrics.cancelScheduledCount)}
           icon={Users}
         />
         <MetricCard
           label={t(`${copy}.mrr`)}
+          unavailable={financialState !== "ready"}
           value={financialState === "ready"
-            ? formatMrr(metrics.mrrByCurrency, t(`${copy}.mrrEmpty`))
+            ? formatMrr(metrics.mrrByCurrency, t(`${copy}.mrrEmpty`), locale)
             : financialState === "error"
               ? t("teach.reports.unavailable")
               : "—"}
-          detail={financialState === "ready"
+          hint={financialState === "ready"
             ? formatMrrDetail(metrics, t)
             : financialState === "error"
               ? t(`${copy}.mrrError`)
@@ -264,13 +268,13 @@ export function CreatorSubscriptionCenterView({
         <MetricCard
           label={t(`${copy}.paymentAttention`)}
           value={String(metrics.pastDueCount)}
-          detail={t(`${copy}.pastDueDetail`)}
+          hint={t(`${copy}.pastDueDetail`)}
           icon={AlertTriangle}
         />
         <MetricCard
           label={t(`${copy}.churn`)}
           value={`${metrics.observedChurnRate}%`}
-          detail={countLabel(t, `${copy}.canceledOne`, `${copy}.canceledMany`, metrics.canceledLast30Days)}
+          hint={countLabel(t, `${copy}.canceledOne`, `${copy}.canceledMany`, metrics.canceledLast30Days)}
           icon={CalendarClock}
         />
       </section>
@@ -335,12 +339,7 @@ export function CreatorSubscriptionCenterView({
                       >
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
-                            <p className="truncate text-sm font-bold text-[var(--color-primary)]">
-                              {profile?.displayName || maskLearner(subscription.userId, t("roles.learner"))}
-                            </p>
-                            <p className="mt-1 text-xs text-[var(--color-ink-muted)]">
-                              {maskLearner(subscription.userId, t("roles.learner"))}
-                            </p>
+                            <SubscriberName name={profile?.displayName} userId={subscription.userId} label={t("roles.learner")} />
                           </div>
                           <StatusChip
                             status={subscription.status}
@@ -392,10 +391,7 @@ export function CreatorSubscriptionCenterView({
                       return (
                         <tr key={subscription.id} className="border-b border-[var(--color-line)] last:border-0">
                           <td className="px-3 py-4">
-                            <p className="text-sm font-bold text-[var(--color-primary)]">
-                              {profile?.displayName || maskLearner(subscription.userId, t("roles.learner"))}
-                            </p>
-                            <p className="mt-1 text-xs text-[var(--color-ink-muted)]">{maskLearner(subscription.userId, t("roles.learner"))}</p>
+                            <SubscriberName name={profile?.displayName} userId={subscription.userId} label={t("roles.learner")} />
                           </td>
                           <td className="px-3 py-4 text-sm font-semibold text-[var(--color-ink)]">
                             {course?.title || subscription.courseId}
@@ -439,15 +435,29 @@ export function CreatorSubscriptionCenterView({
               return (
                 <article key={renewal.id} className="flex flex-col justify-between gap-3 border-b border-[var(--color-line)] py-4 sm:flex-row sm:items-center">
                   <div>
-                    <p className="text-sm font-bold text-[var(--color-primary)]">{t(`${copy}.renewalLabel`).replace("{id}", () => renewal.id)}</p>
-                    <p className="mt-1 text-xs text-[var(--color-ink-soft)]">
-                      {profile?.displayName || (renewal.userId ? maskLearner(renewal.userId, t("roles.learner")) : t(`${copy}.historicalSubscriber`))} / {renewal.courseTitle} / {formatDate(renewal.createdAt, locale, t("creatorPanel.sales.datePending"))}
+                    {/* O titulo era "Renewal {id cru}": agora o produto e a data. */}
+                    <p className="text-sm font-bold text-[var(--color-primary)]">
+                      {/* Uma passada so: um titulo com "{date}" dentro nao e
+                          trocado de novo. */}
+                      {t(`${copy}.renewalLabel`).replace(/\{plan\}|\{date\}/g, (token) =>
+                        token === "{plan}"
+                          ? renewal.courseTitle
+                          : formatDate(renewal.createdAt, locale, t("creatorPanel.sales.datePending")))}
                     </p>
+                    <p className="mt-1 text-xs text-[var(--color-ink-soft)]">
+                      {profile?.displayName || (renewal.userId ? maskLearner(renewal.userId, t("roles.learner")) : t(`${copy}.historicalSubscriber`))}
+                    </p>
+                    {/* O id e a unica referencia da renovacao para a Stripe e o
+                        suporte (uma falha e a nova tentativa do mesmo dia so
+                        diferem por ele): recolhido e selecionavel. */}
+                    <SupportDetails>
+                      <p className="select-all">{t(`${copy}.renewalId`).replace("{id}", () => renewal.id)}</p>
+                    </SupportDetails>
                   </div>
                   <div className="flex items-center gap-3">
                     <StatusChip status={renewal.status} label={formatStatus(renewal.status, t)} />
-                    <p className="text-sm font-bold text-[var(--color-primary)]">
-                      {t("publicPages.pricing.gross")} {renewal.currency} {(renewal.grossAmountMinor / 100).toFixed(2)}
+                    <p className="num text-sm font-bold text-[var(--color-primary)]">
+                      {t("publicPages.pricing.gross")} {formatMoney(renewal.grossAmountMinor, renewal.currency, locale)}
                     </p>
                   </div>
                 </article>
@@ -461,19 +471,6 @@ export function CreatorSubscriptionCenterView({
         )}
       </section>
     </div>
-  );
-}
-
-function MetricCard({ label, value, detail, icon: Icon }: { label: string; value: string; detail: string; icon: typeof Users }) {
-  return (
-    <Card as="article" padding="sm">
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--color-ink-muted)]">{label}</p>
-        <Icon aria-hidden="true" size={16} className="shrink-0 text-[var(--color-accent-fg)]" />
-      </div>
-      <p className="mt-3 text-2xl font-bold text-[var(--color-primary)]">{value}</p>
-      <p className="mt-2 text-xs leading-5 text-[var(--color-ink-soft)]">{detail}</p>
-    </Card>
   );
 }
 
@@ -500,9 +497,10 @@ function isRecurringCourse(course: TeacherCourse): boolean {
   return course.paymentType === "subscription_monthly" || course.paymentType === "subscription_yearly";
 }
 
-function formatMrr(values: Array<{ currency: string; amountMinor: number }>, emptyLabel: string): string {
-  if (!values.length) return emptyLabel;
-  return values.map((value) => `${value.currency} ${(value.amountMinor / 100).toFixed(2)}`).join(" + ");
+// Pelo formatador da casa, uma moeda de cada vez ("$49.00 · R$99.00"): era
+// "USD 49.00 + BRL 99.00", e o "+" sugeria uma soma de moedas.
+function formatMrr(values: Array<{ currency: string; amountMinor: number }>, emptyLabel: string, locale: string): string {
+  return values.length ? formatMoneyBreakdown(values, locale, null) : emptyLabel;
 }
 
 function formatMrrDetail(metrics: ReturnType<typeof calculateCreatorSubscriptionMetrics>, t: Translate): string {
@@ -554,6 +552,17 @@ function formatDate(value: unknown, locale: Locale, fallback: string): string {
 
 function maskLearner(userId: string, label: string): string {
   return `${label} ...${userId.slice(-6)}`;
+}
+
+// Sem nome, o aprendiz mascarado aparece uma vez so: antes "Learner ...a1b2c3"
+// saia no titulo e de novo na linha de baixo, na mesma celula.
+function SubscriberName({ name, userId, label }: { name?: string; userId: string; label: string }) {
+  return (
+    <>
+      <p className="truncate text-sm font-bold text-[var(--color-primary)]">{name || maskLearner(userId, label)}</p>
+      {name ? <p className="mt-1 text-xs text-[var(--color-ink-muted)]">{maskLearner(userId, label)}</p> : null}
+    </>
+  );
 }
 
 function toMillis(value: unknown): number {

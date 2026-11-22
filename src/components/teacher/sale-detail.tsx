@@ -8,13 +8,18 @@ import { useEffect, useState } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { StatusChip } from "@/components/shared/status-chip";
+import { SaleDetailSkeleton } from "@/components/teacher/builder-skeleton";
 import { StripeDashboardButton } from "@/components/teacher/stripe-dashboard-button";
+import { SupportDetails } from "@/components/teacher/support-details";
 import { buttonClasses, Card, Eyebrow, InlineAlert } from "@/components/ui";
 import { formatOrderRef, orderRevenueMinor, type Order } from "@/domain/order";
 import { subscribeToOrder } from "@/lib/data/orders";
 import { toDate } from "@/lib/format-date";
 import { formatMoney } from "@/lib/format-money";
 import { platformFeeForSale } from "@/lib/payments/rules";
+
+const textLink =
+  "inline-flex min-h-11 items-center gap-1.5 text-sm font-semibold text-[var(--color-primary)] underline underline-offset-4";
 
 type SaleDetailProps = {
   orderId: string;
@@ -138,11 +143,7 @@ export function SaleDetail({ orderId }: SaleDetailProps) {
   }, [orderId]);
 
   if (isLoading) {
-    return (
-      <section className="settings-section-card">
-        <p className="text-sm text-[var(--color-ink-soft)]">{t("saleDetail.loading")}</p>
-      </section>
-    );
+    return <SaleDetailSkeleton label={t("saleDetail.loading")} />;
   }
 
   if (error || !order) {
@@ -315,7 +316,7 @@ export function SaleDetail({ orderId }: SaleDetailProps) {
               {t("stripeDashboard.refundGuidance")}
             </p>
           ) : null}
-          <div className="mt-5 flex flex-wrap gap-3">
+          <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2">
             {isOwnSale ? <StripeDashboardButton /> : null}
             <Link
               href={`/learn/courses/${order.courseSlug}`}
@@ -323,10 +324,10 @@ export function SaleDetail({ orderId }: SaleDetailProps) {
             >
               {t("saleDetail.viewEnrollment")}
             </Link>
-            <a
-              href="mailto:support@skillsetmind.com"
-              className={buttonClasses({ variant: "outline", size: "sm" })}
-            >
+            {/* Os dois e-mails do suporte sao links de texto: eram quatro
+                botoes iguais, e os dois que abrem o e-mail pareciam acoes da
+                venda. */}
+            <a href="mailto:support@skillsetmind.com" className={textLink}>
               <Mail aria-hidden="true" size={14} />
               {t("saleDetail.support")}
             </a>
@@ -336,7 +337,7 @@ export function SaleDetail({ orderId }: SaleDetailProps) {
               )}&body=${encodeURIComponent(
                 t("saleDetail.refundBody").replace(/\{id\}|\{title\}/g, (token) => token === "{id}" ? order.id : order.courseTitle),
               )}`}
-              className={buttonClasses({ variant: "outline", size: "sm" })}
+              className={textLink}
             >
               <RotateCcw aria-hidden="true" size={14} />
               {t(isOwnSale ? "stripeDashboard.refundSupport" : "saleDetail.refund")}
@@ -351,11 +352,13 @@ export function SaleDetail({ orderId }: SaleDetailProps) {
           <h3 className="mt-3 text-lg font-bold leading-7 text-[var(--color-ink)]">
             {order.courseTitle}
           </h3>
-          <div className="mt-4 grid gap-2 text-xs leading-5 text-[var(--color-ink-soft)]">
+          {/* Codigo, slug e moeda so servem para o suporte: recolhidos, e
+              ainda selecionaveis para colar num chamado. */}
+          <SupportDetails className="mt-3">
             <p>{t("saleDetail.courseId")} {order.courseId}</p>
             <p>{t("saleDetail.slug")} {order.courseSlug}</p>
             <p>{t("saleDetail.currency")} {order.currency}</p>
-          </div>
+          </SupportDetails>
           <Link
             href={`/courses/${order.courseSlug}`}
             className={buttonClasses({ variant: "outline", size: "sm" }, "mt-5")}

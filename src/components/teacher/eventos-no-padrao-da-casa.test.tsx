@@ -150,8 +150,11 @@ describe("agenda de eventos no padrao da casa", () => {
   it("resumo compacto e formulario sem molduras empilhadas preservam os controles", () => {
     const { container } = renderStudio();
     const summary = container.querySelector("dl");
-    expect(summary).toHaveClass("grid-cols-3");
+    // O quadro de numero da casa (MetricCard), tres lado a lado a partir de
+    // 480px; no celular o rotulo em maiusculas nao cabia num terco da tela.
+    expect(summary).toHaveClass("min-[480px]:grid-cols-3");
     expect(summary?.querySelectorAll("dt")).toHaveLength(3);
+    expect(summary?.querySelectorAll("dt + dd.num")).toHaveLength(3);
     expect(container.querySelector(".studio-kpi-card")).toBeNull();
     expect(container.querySelector(".settings-section-card")).toBeNull();
     const trigger = screen.getByRole("button", { name: "New session" });

@@ -480,5 +480,38 @@ describe("painel do criador em espanhol", () => {
     expect(subscriptionCounts()).toEqual(initialSubscriptions);
     expect(mocks.setOwnCourseFeatured).toHaveBeenCalledExactlyOnceWith("course-1", false);
   });
+
+  // A recusa do banco vinha crua, em ingles de desenvolvedor, mesmo em espanhol.
+  // Agora: a frase da casa com o que fazer; o texto cru so no recolhido.
+  it.each([
+    [
+      "You are using all 5 marketplace highlights included in your plan. Remove one first, or request an expansion.",
+      "Estás usando todos los destacados de tu plan. Quita uno de otro curso primero.",
+    ],
+    ["Sign in to manage your marketplace highlights.", "Tu sesión expiró. Vuelve a iniciar sesión para gestionar tus destacados."],
+    ["Only a published course can be highlighted in the marketplace.", "Solo un curso publicado puede destacarse. Publica este curso primero."],
+    ["That course was not found in your account.", "Recarga la página e inténtalo de nuevo. Si continúa, contacta con soporte."],
+  ])("a recusa '%s' sai na frase traduzida, com o texto cru recolhido", async (raw, sentence) => {
+    mocks.course = { ...mocks.course, status: "published", featured: false };
+    mocks.courses = [mocks.course];
+    mocks.profile = { ...mocks.profile, currentPlanId: "pro" };
+    // Como o supabase-js devolve: objeto com message, nao Error.
+    mocks.setOwnCourseFeatured.mockRejectedValueOnce({ message: raw, code: "P0001" });
+    renderEs(<CourseManageHub courseId="course-1" />);
+
+    fireEvent.click(await highlightCardButton("Destacar este curso"));
+    const alert = await highlightCard("es").findByRole("alert");
+    expect(alert).toHaveTextContent("No se pudo actualizar el destacado del marketplace.");
+    expect(alert).toHaveTextContent(sentence);
+    expect(alert).not.toHaveTextContent(raw);
+    const details = highlightCard("es").getByText("Detalles para soporte").closest("details")!;
+    expect(details).not.toHaveAttribute("open");
+    expect(details).toHaveTextContent(raw);
+  });
 });
+
+async function highlightCardButton(name: string) {
+  await screen.findByRole("button", { name });
+  return highlightCard("es").getByRole("button", { name });
+}
 vi.mock("@/lib/data/creator-plan", () => ({ fetchCreatorPlanRequired: async () => false }));

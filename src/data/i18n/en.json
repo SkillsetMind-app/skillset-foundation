@@ -909,7 +909,9 @@
       "exportButton": {
         "export": "Export",
         "csv": "Export as CSV",
-        "json": "Export as JSON"
+        "json": "Export as JSON",
+        "nothingToExport": "Nothing to export in this view yet.",
+        "loadFailed": "Export is off because this data could not be loaded."
       },
       "userTable": {
         "searchLabel": "Find someone",
@@ -2210,7 +2212,8 @@
       "renewalsLoading": "Loading renewal history...",
       "renewalsError": "Renewal history is unavailable.",
       "renewalsEmpty": "Renewal history appears after the first recurring invoice is paid.",
-      "renewalLabel": "Renewal {id}",
+      "renewalLabel": "{plan} renewal · {date}",
+      "renewalId": "Renewal ID: {id}",
       "historicalSubscriber": "Historical subscriber",
       "statusTrialing": "Trialing",
       "statusPastDue": "Past due",
@@ -2256,6 +2259,8 @@
       "moveDown": "Move {title} down",
       "save": "Save storefront",
       "saving": "Saving...",
+      "saveWaitUpload": "You can save when the image finishes uploading.",
+      "saveWaitCourses": "You can save once your published products have loaded.",
       "presets": {
         "default": "Platform default",
         "warm": "Warm",
@@ -2649,7 +2654,14 @@
         "paidPlan": "paid",
         "gateQuota": "You're using all {limit} highlights on your plan. Remove one from another course first.",
         "contactUs": "Contact us for more",
-        "updateError": "Could not update the marketplace highlight."
+        "updateError": "Could not update the marketplace highlight.",
+        "refused": {
+          "signIn": "Your session expired. Sign in again to manage your highlights.",
+          "notPublished": "Only a published course can be highlighted. Publish this course first.",
+          "plan": "Marketplace highlights are not included in your current plan. See plans to add them.",
+          "quota": "You're using all the highlights on your plan. Remove one from another course first.",
+          "other": "Refresh the page and try again. If it continues, contact support."
+        }
       },
       "notFound": {
         "title": "This course isn't in your studio.",
@@ -5125,6 +5137,8 @@
     "retry": "Try again",
     "retrying": "Trying again...",
     "home": "Go home",
+    "supportDetails": "Details for support",
+    "errorCode": "Error code: {code}",
     "preparingMetadataTitle": "Preparing your workspace | SkillsetMind"
   },
   "supportCenter": {

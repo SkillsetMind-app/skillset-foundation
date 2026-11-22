@@ -142,7 +142,8 @@ export function TeacherStudioInsights({
           <aside className="grid gap-5">
             <div className="dash-card p-5">
               <div className="flex items-center justify-between gap-3">
-                <h3 className="display-title text-2xl text-[var(--color-primary)]">
+                {/* Titulo de cartao no texto da casa: a serifa e so do h1. */}
+                <h3 className="text-lg font-semibold text-[var(--color-primary)]">
                   {t("teach.insights.topCourses")}
                 </h3>
                 <Link href="/teach/builder" className="button-outline px-3.5 py-2 text-xs">

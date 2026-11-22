@@ -59,6 +59,134 @@ export function ProductListSkeleton({ label }: { label: string }) {
   );
 }
 
+/**
+ * Uma tabela carregando (Vendas, Alunos, alunos do produto): os quadros de
+ * numero quando a tela tem, a fileira de busca e filtros, a linha da contagem
+ * e as linhas na altura de uma linha de verdade. Antes era "Loading your
+ * sales..." num cartao, e filtros, contagem e linhas entravam de uma vez,
+ * empurrando tudo para baixo.
+ */
+export function TableSkeleton({
+  label,
+  tiles = 0,
+  controls = 1,
+  rows = 5,
+}: {
+  label: string;
+  tiles?: number;
+  controls?: number;
+  rows?: number;
+}) {
+  return (
+    <div role="status" data-skeleton="table" className="grid gap-4">
+      <span className="sr-only">{label}</span>
+      <div aria-hidden="true" className="grid animate-pulse gap-4">
+        {tiles ? (
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            {Array.from({ length: tiles }, (_, item) => (
+              <div key={item} className={`h-24 rounded-lg ${block}`} />
+            ))}
+          </div>
+        ) : null}
+        <div className="flex flex-wrap gap-3">
+          <div className={`h-11 min-w-[12rem] flex-1 rounded-md ${block}`} />
+          {Array.from({ length: controls - 1 }, (_, item) => (
+            <div key={item} className={`h-11 w-36 rounded-md ${block}`} />
+          ))}
+        </div>
+        <div className={`h-4 w-48 rounded-sm ${block}`} />
+        <div className="rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)]">
+          {Array.from({ length: rows }, (_, item) => (
+            <div key={item} className="flex h-14 items-center border-b border-[var(--color-line)] px-4 last:border-b-0">
+              <div className={`h-4 w-full rounded-sm ${block}`} />
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * O detalhe de uma venda carregando: a volta, a coluna dos cartoes (valor,
+ * cliente, pagamento) e o cartao do curso ao lado, no mesmo grid da tela.
+ */
+export function SaleDetailSkeleton({ label }: { label: string }) {
+  const card = "rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)] p-6";
+  return (
+    <div role="status" data-skeleton="detail" className="grid gap-5 lg:grid-cols-[1fr_320px]">
+      <span className="sr-only">{label}</span>
+      <div aria-hidden="true" className={`h-11 w-24 animate-pulse rounded-md ${block} lg:col-span-2`} />
+      <div aria-hidden="true" className="grid animate-pulse content-start gap-5">
+        <div className={card}>
+          <div className={`h-4 w-40 rounded-sm ${block}`} />
+          <div className={`mt-4 h-9 w-36 rounded-md ${block}`} />
+          <div className={`mt-4 h-3 w-full max-w-md rounded-sm ${block}`} />
+        </div>
+        {[0, 1].map((item) => (
+          <div key={item} className={card}>
+            <div className={`h-3 w-24 rounded-sm ${block}`} />
+            <div className={`mt-4 h-20 rounded-md ${block}`} />
+          </div>
+        ))}
+      </div>
+      <div aria-hidden="true" className={`${card} h-fit animate-pulse`}>
+        <div className={`h-3 w-20 rounded-sm ${block}`} />
+        <div className={`mt-3 h-6 w-3/4 rounded-md ${block}`} />
+        <div className={`mt-5 h-9 w-40 rounded-md ${block}`} />
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Uma tela de cartao (Verificacao) carregando: o titulo e o cartao com texto e
+ * botao. `header={false}` quando o titulo ja esta na tela e so o cartao vem.
+ */
+export function CardPageSkeleton({ label, header = true }: { label: string; header?: boolean }) {
+  return (
+    <div role="status" data-skeleton="card" className="grid gap-6">
+      <span className="sr-only">{label}</span>
+      {header ? (
+        <div aria-hidden="true" className="animate-pulse border-b border-[var(--color-line)] pb-5 pt-2">
+          <div className={`h-9 w-72 max-w-full rounded-md ${block}`} />
+        </div>
+      ) : null}
+      <div aria-hidden="true" className="animate-pulse rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)] p-6">
+        <div className={`h-4 w-full max-w-xl rounded-sm ${block}`} />
+        <div className={`mt-3 h-4 w-2/3 rounded-sm ${block}`} />
+        <div className={`mt-6 h-11 w-48 rounded-md ${block}`} />
+      </div>
+    </div>
+  );
+}
+
+/**
+ * O lugar do formulario da Stripe (assinatura, ativacao, repasses) enquanto
+ * ele nao chega: a caixa ja nasce com a altura do formulario e um esqueleto
+ * dentro. Antes era "Preparing..." numa caixa de ~90px que pulava para ~600px
+ * quando o iframe chegava, empurrando a pagina. Sem aria-busy junto do
+ * role="status": alguns leitores de tela seguram o anuncio enquanto ele vale.
+ */
+export function StripeFrameSkeleton({ label }: { label: string }) {
+  return (
+    <div role="status" data-skeleton="stripe" className="min-h-[560px] p-6">
+      <span className="sr-only">{label}</span>
+      <div aria-hidden="true" className="grid animate-pulse gap-4">
+        <div className={`h-4 w-32 rounded-sm ${block}`} />
+        <div className={`h-11 rounded-md ${block}`} />
+        <div className={`h-4 w-40 rounded-sm ${block}`} />
+        <div className={`h-11 rounded-md ${block}`} />
+        <div className="grid grid-cols-2 gap-3">
+          <div className={`h-11 rounded-md ${block}`} />
+          <div className={`h-11 rounded-md ${block}`} />
+        </div>
+        <div className={`mt-4 h-12 rounded-md ${block}`} />
+      </div>
+    </div>
+  );
+}
+
 export function BuilderSkeleton({ label }: { label: string }) {
   return (
     <section role="status" data-skeleton="editor" className="grid gap-4">

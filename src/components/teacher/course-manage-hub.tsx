@@ -22,6 +22,7 @@ import {
 } from "@/components/teacher/course-commerce-panels";
 import { BuilderSkeleton } from "@/components/teacher/builder-skeleton";
 import { CourseShareLink } from "@/components/teacher/course-share-link";
+import { SupportDetails } from "@/components/teacher/support-details";
 import { CourseOffersPanel } from "@/components/teacher/course-offers-panel";
 import { CourseOverviewPanel, StatCard } from "@/components/teacher/course-overview-panel";
 import { ReadinessGroups } from "@/components/teacher/readiness-groups";
@@ -173,6 +174,30 @@ const allSectionIds = new Set<string>([
   ...roadmapSections.map((s) => s.id),
 ]);
 
+// O supabase-js devolve o erro do rpc como objeto (nem sempre Error): o texto
+// vem de `message` em qualquer dos dois.
+function serverMessage(cause: unknown): string {
+  const message = (cause as { message?: unknown } | null)?.message;
+  return typeof message === "string" ? message.trim() : "";
+}
+
+// A recusa do banco (set_own_course_featured) e em ingles de desenvolvedor.
+// Cada recusa conhecida vira a frase da casa que mantem o que fazer; o resto,
+// "recarregue e tente de novo": se o botao estava ligado, a tela estava velha.
+function highlightRefusalKey(detail: string): string {
+  const text = detail.toLowerCase();
+  const reason = text.includes("sign in")
+    ? "signIn"
+    : text.includes("only a published course")
+      ? "notPublished"
+      : text.includes("not included in your current plan")
+        ? "plan"
+        : /using all .* highlights/.test(text)
+          ? "quota"
+          : "other";
+  return `creatorPanel.hub.highlight.refused.${reason}`;
+}
+
 /**
  * Self-serve marketplace highlight, metered by the teacher's plan.
  *
@@ -180,7 +205,9 @@ const allSectionIds = new Set<string>([
  * second round-trip, and `featured` is read straight off the realtime course
  * row — so after the RPC lands, the subscription repaints this card. The
  * numbers here are the *display*; `set_own_course_featured` is what actually
- * enforces the quota, and its message is surfaced verbatim when it refuses.
+ * enforces the quota. Quando ela recusa, a tela diz a frase da casa com o que
+ * fazer (ver highlightRefusalKey); o texto cru do banco fica recolhido no
+ * "Details for support".
  */
 function MarketplaceHighlightPanel({
   course,
@@ -193,9 +220,9 @@ function MarketplaceHighlightPanel({
 }) {
   const { t } = useTranslation();
   const [saving, setSaving] = useState(false);
-  // The RPC's refusal is data and is shown verbatim; our own fallback is kept
-  // as a dictionary key so it follows a locale switch while the card is open.
-  const [error, setError] = useState<{ message: string } | { key: string } | null>(null);
+  // Chave do dicionario (segue a troca de idioma com o cartao aberto) e o
+  // texto cru do servidor, que so vai para o "Details for support".
+  const [error, setError] = useState<{ key: string; detail: string } | null>(null);
 
   const featured = course.featured === true;
   const limit = effectiveLimit(planId, "featuredSlots");
@@ -228,11 +255,8 @@ function MarketplaceHighlightPanel({
     try {
       await setOwnCourseFeatured(course.id, !featured);
     } catch (toggleError) {
-      setError(
-        toggleError instanceof Error && toggleError.message
-          ? { message: toggleError.message }
-          : { key: "creatorPanel.hub.highlight.updateError" }
-      );
+      const detail = serverMessage(toggleError);
+      setError({ key: highlightRefusalKey(detail), detail });
     } finally {
       setSaving(false);
     }
@@ -291,9 +315,16 @@ function MarketplaceHighlightPanel({
         </p>
       ) : null}
       {error ? (
-        <InlineAlert tone="error" className="mt-3">
-          {"message" in error ? error.message : t(error.key)}
-        </InlineAlert>
+        <>
+          <InlineAlert tone="error" className="mt-3" title={t("creatorPanel.hub.highlight.updateError")}>
+            {t(error.key)}
+          </InlineAlert>
+          {error.detail ? (
+            <SupportDetails className="mt-1">
+              <p className="select-all">{error.detail}</p>
+            </SupportDetails>
+          ) : null}
+        </>
       ) : null}
     </PanelCard>
   );
