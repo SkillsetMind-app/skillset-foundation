@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AccountActionRequestsPanel } from "@/components/admin/account-action-requests-panel";
@@ -17,6 +17,12 @@ function ChangeLanguage() {
 function panel() { return <I18nProvider initialLocale="en"><ChangeLanguage /><AccountActionRequestsPanel /></I18nProvider>; }
 function language() { fireEvent.click(screen.getByRole("button", { name: "Change language" })); }
 function deliver(rows = [request]) { act(() => mocks.subscribe.mock.calls[0][0](rows)); }
+// Concluir e recusar passam pela janela de confirmação; em processo segue direto.
+function confirmIn(label: string) { fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: label })); }
+beforeEach(() => {
+  HTMLDialogElement.prototype.showModal = function showModal() { this.setAttribute("open", ""); };
+  HTMLDialogElement.prototype.close = function close() { this.removeAttribute("open"); this.dispatchEvent(new Event("close")); };
+});
 beforeEach(() => { vi.clearAllMocks(); mocks.user = { uid: "admin-$$-$&" }; mocks.subscribe.mockImplementation(() => vi.fn()); mocks.resolve.mockResolvedValue(undefined); });
 afterEach(cleanup);
 
@@ -71,7 +77,12 @@ describe("account request presentation and canonical actions", () => {
     deliver();
     language();
     fireEvent.click(screen.getByRole("button", { name: label }));
+    if (status !== "processing") {
+      expect(mocks.resolve).not.toHaveBeenCalled();
+      confirmIn(label);
+    }
     expect(mocks.resolve).toHaveBeenCalledWith(request.id, status, "admin-$$-$&");
+    expect(screen.getByRole("button", { name: label })).toHaveAttribute("aria-busy", "true");
     expect(screen.getByText("Pendiente")).toBeInTheDocument();
     expect(screen.queryByText(statusLabel, { exact: true })).toBeNull();
     for (const button of screen.getAllByRole("button").filter(button => button.textContent !== "Change language")) expect(button).toBeDisabled();
@@ -90,6 +101,7 @@ describe("account request presentation and canonical actions", () => {
     render(panel());
     deliver();
     fireEvent.click(screen.getByRole("button", { name: "Mark completed" }));
+    confirmIn("Mark completed");
     await screen.findByRole("alert");
     language();
     expect(screen.getByRole("alert")).toHaveTextContent("No pudimos actualizar esta solicitud de cuenta.");
@@ -116,6 +128,21 @@ describe("account request presentation and canonical actions", () => {
     deliver();
     language();
     fireEvent.click(screen.getByRole("button", { name: "Marcar completada" }));
+    confirmIn("Marcar completada");
+    expect(mocks.resolve).not.toHaveBeenCalled();
+  });
+
+  it("asks before closing a request, shows Reject in red, and cancel writes nothing", () => {
+    render(panel());
+    deliver([{ ...request, type: "account_deletion" }]);
+    expect(screen.getByRole("button", { name: "Reject" })).toHaveClass("button-danger");
+    expect(screen.getByRole("button", { name: "Mark completed" })).not.toHaveClass("button-danger");
+    fireEvent.click(screen.getByRole("button", { name: "Reject" }));
+    const dialog = screen.getByRole("dialog", { name: "Reject this request?" });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Mark completed" }));
+    expect(screen.getByRole("dialog", { name: "Mark this request completed?" })).toBeInTheDocument();
     expect(mocks.resolve).not.toHaveBeenCalled();
   });
 });

@@ -12,6 +12,8 @@ it.each([
   ["rejected", "Rechazado", "danger"],
   ["deleting", "En eliminación", "warning"],
   ["future_custom_status", "future custom status", "draft"],
+  ["suspended", "suspended", "warning"],
+  ["blocked", "blocked", "danger"],
 ])("presents %s without changing its canonical status or losing the future fallback", (status, label, variant) => {
   render(<I18nProvider initialLocale="es"><StatusChip status={status} /></I18nProvider>);
   expect(screen.getByText(label)).toHaveAttribute("data-status", status);

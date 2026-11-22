@@ -110,10 +110,7 @@ export function SupportTicketQueue({ query = "" }: { query?: string }) {
     <section className="min-w-0 break-words rounded-lg border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-            {t("platform.ops.support")}
-          </p>
-          <h3 className="mt-2 text-base font-semibold text-[var(--color-ink)]">
+          <h3 className="text-base font-semibold text-[var(--color-ink)]">
             {t(`${copy}.title`)}
           </h3>
           <p className="mt-1 max-w-2xl text-sm leading-6 text-[var(--color-ink-soft)]">

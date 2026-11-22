@@ -20,6 +20,7 @@ import type { Role } from "@/lib/permissions";
 const copy = "platform.ops.usersPanel";
 const table = "platform.ops.userTable";
 const STATUSES: readonly OpsUserStatus[] = ["active", "suspended", "blocked"];
+const COLUMNS = ["person", "level", "status", "joined", "lastSignIn"] as const;
 const ROLES: readonly Role[] = ["student", "teacher", "admin", "support", "moderator", "ops"];
 const roleLabelKeys = {
   guest: "platform.ops.usersPanel.roles.guest",
@@ -78,8 +79,7 @@ export function OpsUserTable() {
         <AccountControlDialog key={target.uid} uid={target.uid} label={target.email || target.displayName || target.uid}
           onClose={() => { setTarget(null); setReload((value) => value + 1); }} />
       ) : null}
-      <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">{t(`${copy}.eyebrow`)}</p>
-      <h3 className="mt-2 text-base font-semibold text-[var(--color-ink)]">{t(`${copy}.title`)}</h3>
+      <h3 className="text-base font-semibold text-[var(--color-ink)]">{t(`${copy}.title`)}</h3>
       <p className="mt-1 max-w-2xl text-sm leading-6 text-[var(--color-ink-soft)]">{t(`${copy}.description`)}</p>
 
       <div className="mt-5 grid min-w-0 gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,10rem)_minmax(0,10rem)]">
@@ -125,37 +125,47 @@ export function OpsUserTable() {
       {result && result.users.length === 0 ? <p className="mt-6 text-sm text-[var(--color-ink-soft)]">{t(`${copy}.empty`)}</p> : null}
 
       {result && result.users.length > 0 ? (
-        <ul className="mt-6 grid min-w-0 gap-3">
-          {result.users.map((user) => {
-            const joined = formatDate(user.createdAt, locale);
-            const lastSignIn = formatDate(user.lastSignInAt, locale);
-            const facts = [
-              user.roles.map((entry) => t(roleLabelKeys[entry])).join(", "),
-              joined ? t(`${table}.joined`).replace("{date}", () => joined) : null,
-              lastSignIn ? t(`${table}.lastSignIn`).replace("{date}", () => lastSignIn) : t(`${table}.neverSignedIn`),
-            ].filter(Boolean).join(" · ");
-            return (
-              <li key={user.uid} className="min-w-0 rounded-lg border border-[var(--color-line)] p-4">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div className="min-w-0">
+        // Tabela no lugar de 50 cartões altos (~9.400px): datas em coluna, dez
+        // linhas por tela. Rola de lado dentro do próprio quadro no celular (I-01).
+        <div role="region" aria-label={t(`${copy}.title`)} tabIndex={0} className="mt-5 min-w-0 overflow-x-auto">
+          <table className="w-full min-w-[720px] border-collapse text-left text-sm">
+            <thead>
+              <tr className="border-b fine-rule">
+                {COLUMNS.map((column) => (
+                  <th key={column} scope="col" className="py-2 pr-4 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-ink-muted)]">
+                    {t(`${table}.columns.${column}`)}
+                  </th>
+                ))}
+                <th scope="col" className="py-2"><span className="sr-only">{t(`${table}.columns.actions`)}</span></th>
+              </tr>
+            </thead>
+            <tbody>
+              {result.users.map((user) => (
+                <tr key={user.uid} className="border-b fine-rule last:border-b-0">
+                  <td className="py-2 pr-4">
                     <Link href={`/ops/users/${encodeURIComponent(user.uid)}`}
-                      className="inline-flex min-h-11 items-center break-words text-sm font-bold text-[var(--color-ink)] underline underline-offset-4">
+                      className="inline-flex min-h-11 items-center break-words font-semibold text-[var(--color-ink)] underline underline-offset-4">
                       {user.displayName || t(`${copy}.unnamed`)}
                     </Link>
-                    <p className="break-all text-xs text-[var(--color-ink-soft)]">{user.email || t(`${copy}.noEmail`)}</p>
-                  </div>
-                  <StatusChip status={user.status} label={t(`${table}.status.${user.status}`)} />
-                </div>
-                <p className="mt-2 break-words text-xs text-[var(--color-ink-soft)]">{facts}</p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <Button variant="outline" className="min-h-11 max-w-full whitespace-normal" onClick={() => setTarget(user)}>
-                    <Shield size={16} className="shrink-0" aria-hidden />{t("accountControls.title")}
-                  </Button>
-                </div>
-              </li>
-            );
-          })}
-        </ul>
+                    <span className="block break-all text-xs text-[var(--color-ink-soft)]">{user.email || t(`${copy}.noEmail`)}</span>
+                  </td>
+                  <td className="py-2 pr-4 text-[var(--color-ink)]">{user.roles.map((entry) => t(roleLabelKeys[entry])).join(", ")}</td>
+                  <td className="py-2 pr-4"><StatusChip status={user.status} label={t(`${table}.status.${user.status}`)} /></td>
+                  <td className="py-2 pr-4 text-xs tabular-nums text-[var(--color-ink-soft)]">{formatDate(user.createdAt, locale) ?? "—"}</td>
+                  <td className="py-2 pr-4 text-xs tabular-nums text-[var(--color-ink-soft)]">
+                    {formatDate(user.lastSignInAt, locale) ?? t(`${table}.neverSignedIn`)}
+                  </td>
+                  <td className="py-2 text-right">
+                    <Button variant="outline" size="sm" className="min-h-11 px-3 whitespace-nowrap" onClick={() => setTarget(user)}
+                      icon={<Shield size={16} className="shrink-0" aria-hidden />}>
+                      {t("accountControls.title")}
+                    </Button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       ) : null}
 
       {result && total > 0 ? (

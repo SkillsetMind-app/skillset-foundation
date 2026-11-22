@@ -25,7 +25,7 @@
     "active": "Acceso habilitado",
     "suspended": "Acceso suspendido",
     "blockedEmail": "Registro bloqueado para",
-    "action": "Acción",
+    "action": "¿Qué quieres hacer?",
     "suspend": "Suspender acceso",
     "block": "Suspender acceso y bloquear el registro con este correo",
     "restore": "Restaurar acceso y registro con el correo",
@@ -33,8 +33,12 @@
     "blockImpact": "Las sesiones existentes pierden el acceso. Se rechazarán nuevas cuentas con el correo de autenticación de esta cuenta. No se eliminan datos.",
     "restoreImpact": "Se restauran el acceso y el registro con el correo. La persona debe cerrar sesión e iniciar otra; las sesiones anteriores siguen sin ser válidas.",
     "reason": "Motivo (obligatorio)",
-    "confirm": "Confirmar cambio de cuenta",
-    "saving": "Guardando...",
+    "chooseAction": "Elige una acción",
+    "confirmSuspend": "Suspender acceso",
+    "confirmBlock": "Suspender y bloquear el correo",
+    "confirmRestore": "Restaurar acceso",
+    "cancel": "Cancelar",
+    "done": "Listo",
     "saved": "Cambio guardado y registrado en la auditoría.",
     "mfaRequired": "Se requiere una sesión de administrador activo con autenticación de dos factores.",
     "self": "No puedes cambiar el acceso de tu propia cuenta.",
@@ -534,6 +538,9 @@
       "inbox": "Bandeja de entrada"
     },
     "ops": {
+      "confirmDialog": {
+        "cancel": "Cancelar"
+      },
       "overview": "Resumen",
       "verification": "Verificación de creadores",
       "catalog": "Catálogo publicado",
@@ -786,6 +793,8 @@
         "feature": "Destacar",
         "unfeature": "Quitar destacado",
         "unpublish": "Retirar de publicación",
+        "unpublishTitle": "¿Retirar {title} de publicación?",
+        "unpublishBody": "Sale del marketplace ahora. Puedes volver a publicarlo después desde esta lista.",
         "republish": "Volver a publicar",
         "deleting": "Eliminando...",
         "confirmDelete": "Confirmar eliminación",
@@ -875,8 +884,14 @@
           "suspended": "Suspendida",
           "blocked": "Bloqueada"
         },
-        "joined": "Alta el {date}",
-        "lastSignIn": "Último acceso el {date}",
+        "columns": {
+          "person": "Persona",
+          "level": "Nivel",
+          "status": "Estado",
+          "joined": "Alta",
+          "lastSignIn": "Último acceso",
+          "actions": "Acciones"
+        },
         "neverSignedIn": "Nunca inició sesión",
         "range": "{from}–{to} de {total}",
         "previous": "Página anterior",
@@ -1038,6 +1053,12 @@
           "data_export": "Exportación de datos",
           "account_deletion": "Eliminación de cuenta"
         },
+        "confirm": {
+          "completedTitle": "¿Marcar esta solicitud como completada?",
+          "completedBody": "Hazlo solo después de exportar los datos o eliminar la cuenta. Cambiar el estado no hace ninguna de las dos cosas.",
+          "rejectedTitle": "¿Rechazar esta solicitud?",
+          "rejectedBody": "La solicitud se cierra como rechazada. Cambiar el estado no exporta datos ni elimina la cuenta."
+        },
         "actions": {
           "processing": "Marcar en proceso",
           "completed": "Marcar completada",
@@ -1084,7 +1105,10 @@
           "refundRequested": "Reembolso solicitado",
           "refundIssued": "Reembolso emitido",
           "deletionRequested": "Eliminación de cuenta solicitada",
-          "exportRequested": "Exportación de datos solicitada"
+          "exportRequested": "Exportación de datos solicitada",
+          "accountSuspended": "Acceso suspendido",
+          "accountBlocked": "Acceso suspendido y correo bloqueado",
+          "accountRestored": "Acceso restaurado"
         },
         "targets": {
           "order": "Pedido",
@@ -1142,7 +1166,8 @@
         "reviewHint": "Obligatoria para solicitar cambios o rechazar. Opcional al aprobar.",
         "noteRequired": "Añade una nota de revisión clara (al menos 12 caracteres) antes de solicitar cambios o rechazar.",
         "reviewError": "No pudimos registrar esta decisión. Inténtalo de nuevo.",
-        "updating": "Actualizando...",
+        "rejectTitle": "¿Rechazar esta solicitud?",
+        "rejectBody": "La solicitud sale de la cola como rechazada, con tu nota. Para pedir ajustes, usa Solicitar cambios.",
         "decisions": {
           "approved": "Aprobar",
           "needs_changes": "Solicitar cambios",

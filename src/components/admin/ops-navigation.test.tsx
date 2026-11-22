@@ -169,7 +169,27 @@ describe("filas de Operações na barra", () => {
     expect(current[0]).toHaveAttribute("href", `/ops?tab=${id}`);
     expect(current[0]).toHaveTextContent(label);
     expect(within(screen.getByRole("navigation", { name: "Breadcrumb" })).getByText(label)).toBeInTheDocument();
+    // Cada aba se chama pelo nome dela, não "Operations" nas nove (I-07).
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(label);
     expect(screen.getByRole("heading", { name: heading })).toBeInTheDocument();
+  });
+
+  it("puts open privacy requests above the people list, and below it when none are open", () => {
+    mocks.query = "tab=users";
+    const order = () => {
+      const requests = screen.getByRole("heading", { name: "Export and deletion requests." });
+      const people = screen.getByRole("heading", { name: "Find learners and educators." });
+      return requests.compareDocumentPosition(people) & Node.DOCUMENT_POSITION_FOLLOWING ? "requests first" : "people first";
+    };
+    const { unmount } = render(<OpsPage />);
+    expect(order()).toBe("people first");
+    unmount();
+    mocks.accounts.mockImplementation((next: (rows: unknown[]) => void) => {
+      next([{ id: "r-1", type: "account_deletion", requestedBy: "u-1", email: null, status: "pending", requestedAt: null, updatedAt: null, resolvedBy: null, resolvedAt: null }]);
+      return vi.fn();
+    });
+    render(<OpsPage />);
+    expect(order()).toBe("requests first");
   });
 
   it.each(["", "tab=unknown", "tab="])("lands an admin on Overview for query %s", (query) => {
@@ -332,7 +352,10 @@ describe("audit presentation inside the protected Operations page", () => {
     expect(screen.getByText(/Responsable actor-\$\$-\$& - Fecha pendiente - Destino target-\$\$-\$&-4/)).toBeInTheDocument();
     const date = new Intl.DateTimeFormat("es", { dateStyle: "medium", timeStyle: "short" }).format(new Date(entries[0].createdAt!));
     expect(screen.getByText(`Responsable actor@example.test - ${date} - Destino target-$$-$&-0`)).toBeInTheDocument();
-    const panel = screen.getByRole("heading", { name: "Registro de auditoría" }).closest("section")!;
+    // O título da página é o nome da fila (I-07); o painel é achado pela explicação dele.
+    expect(screen.getByRole("heading", { level: 1, name: "Registro de auditoría" })).toBeInTheDocument();
+    const panel = screen.getByText(/Los reembolsos y las solicitudes de cuenta se registran aquí/).closest("section")!;
+    expect(panel).not.toHaveClass("platform-content");
     expect(within(panel).queryAllByRole("button")).toHaveLength(0);
     expect(mocks.audit).toHaveBeenCalledTimes(1);
     fireEvent.click(screen.getByRole("button", { name: "Change audit language" }));

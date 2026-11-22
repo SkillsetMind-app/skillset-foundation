@@ -100,6 +100,9 @@ const statusVariants: Record<string, string> = {
   pending_dns: "warning",
   pending_verification: "warning",
   error: "danger",
+  // Conta suspensa ou bloqueada pede atenção no /ops; caía no cinza de rascunho (I-05).
+  suspended: "warning",
+  blocked: "danger",
 };
 
 export function StatusChip({ status, label, className }: StatusChipProps) {
