@@ -315,6 +315,11 @@ export function LessonContentModal({
   // Contador, nao booleano: cada recusa vira um no novo no role="status" e e
   // anunciada de novo. null = sem aviso.
   const [linkNotSaved, setLinkNotSaved] = useState<number | null>(null);
+  // Sobe quando a troca do link antigo e confirmada na janela: remonta o
+  // seletor, que nasce mostrando o link gravado. O campo tinha voltado ao
+  // salvo ("") ao perguntar; sem isso ele seguia vazio e o blur seguinte
+  // apagava o link recem-gravado.
+  const [linkReplaced, setLinkReplaced] = useState(0);
   const [deletingAssetId, setDeletingAssetId] = useState<string | null>(null);
   const lessonAssets = assets.filter((asset) => asset.lessonId === lesson.id);
   const videoAssets = lessonAssets.filter((asset) => isVideoAssetKind(asset.kind));
@@ -526,9 +531,18 @@ export function LessonContentModal({
 
     function handleKeyDown(event: KeyboardEvent) {
       // Com a confirmacao aberta, o Esc e dela: fecha so a pergunta.
-      if (event.key === "Escape" && !asking && !isUploading && flushLinkAllowsClose(linkHandleRef.current)) {
-        onClose();
+      if (event.key !== "Escape" || asking || isUploading) {
+        return;
       }
+      if (flushLinkAllowsClose(linkHandleRef.current)) {
+        onClose();
+        return;
+      }
+      // A descarga segurou o estudio (link recusado, ou a pergunta da troca
+      // acabou de abrir). Este mesmo Esc ainda esta sendo entregue: sem o
+      // preventDefault o navegador o aplicava a janela recem-aberta, que
+      // piscava e fechava antes de o professor responder.
+      event.preventDefault();
     }
 
     document.addEventListener("keydown", handleKeyDown);
@@ -929,6 +943,7 @@ export function LessonContentModal({
             <div className="grid gap-5">
 
               <LessonVideoSourcePicker
+                key={linkReplaced}
                 mode={videoMode}
                 disabled={!isEditable || isUploading}
                 accept={courseAssetAcceptTypes[uploadKind]}
@@ -984,11 +999,39 @@ export function LessonContentModal({
                     return;
                   }
                   // O link aceito substitui o link antigo (Drive etc.): pede a
-                  // mesma confirmacao do botao de tirar. Recusou, nada muda e
-                  // o campo volta ao salvo.
+                  // mesma confirmacao do botao de tirar, na janela da
+                  // plataforma (era o window.confirm). A pergunta e assincrona
+                  // e o seletor espera uma resposta agora: daqui sai "nao
+                  // gravou" (o campo volta ao salvo e o Esc nao fecha o
+                  // estudio) e a gravacao fica para o confirmar, uma vez so.
+                  // Cancelou: nada muda, e so entao o aviso "nao salvo" sai no
+                  // role="status" (antes era lido com a pergunta aberta).
                   // Saindo da pagina (silent) nao da para perguntar: nao grava.
-                  if (oldLink && (options?.silent || !window.confirm(t("creatorEditor.lesson.removeOldLinkConfirm")))) {
-                    setLinkNotSaved((count) => (count ?? 0) + 1);
+                  if (oldLink) {
+                    if (options?.silent) {
+                      setLinkNotSaved((count) => (count ?? 0) + 1);
+                      return false;
+                    }
+                    // Com a pergunta ja aberta, nao abre outra por cima.
+                    if (!asking) {
+                      ask({
+                        title: t("creatorEditor.lesson.removeOldLinkTitle"),
+                        body: t("creatorEditor.lesson.removeOldLinkConfirm"),
+                        confirmLabel: t("creatorEditor.lesson.removeOldLink"),
+                        danger: true,
+                        run: () => {
+                          setLinkNotSaved(null);
+                          onUpdateLesson({ videoSource: "youtube", externalUrl: nextUrl });
+                          setLinkReplaced((count) => count + 1);
+                          // O campo que abriu a pergunta foi remontado: sem
+                          // alvo, o foco vai para um botao que fica.
+                          window.setTimeout(() => {
+                            if (document.activeElement === document.body) replaceButtonRef.current?.focus();
+                          }, 0);
+                        },
+                        onCancel: () => setLinkNotSaved((count) => (count ?? 0) + 1),
+                      });
+                    }
                     return false;
                   }
                   setLinkNotSaved(null);

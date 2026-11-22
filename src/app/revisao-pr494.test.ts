@@ -102,9 +102,11 @@ describe("Plausivel 5: botao-texto com pelo menos 24px de area", () => {
   it.each([
     // O "Email me a reset link" da Seguranca passou a 44px e 14px.
     ["components/account/security-settings-panel.tsx", "min-h-11 text-sm font-bold"],
-    ["components/account/totp-mfa-section.tsx", "min-h-6 shrink-0 text-xs"],
-    ["components/account/totp-mfa-section.tsx", "min-h-6 text-xs font-semibold"],
-    ["components/account/billing-tabs.tsx", "min-h-6 text-xs font-semibold"],
+    // Copiar, Cancelar do 2FA e "Request a refund" viraram botões do sistema
+    // (.button-outline: 44px), acima do mínimo de 24px que este teste guarda.
+    ["components/account/totp-mfa-section.tsx", "button-outline shrink-0 px-3 py-2 text-xs"],
+    ["components/account/totp-mfa-section.tsx", "button-outline px-3.5 py-2.5 text-xs"],
+    ["components/account/billing-tabs.tsx", "button-outline px-3 py-2 text-xs"],
     // O Pin saiu do cabecalho do cartao (PR #505) e mora nas acoes, com 44px.
     ["components/learn/community-item-actions.tsx", "min-h-11 rounded-md px-3 text-xs font-semibold"],
     ["components/auth/signup-form.tsx", "inline-flex min-h-6 items-center"],

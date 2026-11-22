@@ -206,7 +206,7 @@ export function ExportTableButton({
           role="menu"
           aria-labelledby={`${menuId}-trigger`}
           style={{ position: "fixed", visibility: "hidden" }}
-          className="z-[50] w-44 overflow-y-auto rounded-lg border border-[var(--color-line)] bg-white p-1.5 shadow-[var(--shadow-strong)]"
+          className="motion-drop-in z-[50] w-44 overflow-y-auto rounded-lg border border-[var(--color-line)] bg-white p-1.5 shadow-[var(--shadow-strong)]"
         >
           <button
             type="button"

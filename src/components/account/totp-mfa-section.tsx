@@ -240,7 +240,9 @@ export function TotpMfaSection({ emailVerified }: { emailVerified: boolean }) {
                 </p>
               </div>
               {confirmingDisable === factor.uid ? (
-                <div className="flex items-center gap-3">
+                // Botões do sistema, com 44px: "Yes, turn off" era um botão
+                // feito à mão de 32px e os outros dois, texto de 32px.
+                <div className="flex flex-wrap items-center gap-3">
                   <span className="text-xs text-[var(--color-ink-soft)]">
                     {t("accountSecurity.mfa.disableConfirm")}
                   </span>
@@ -251,7 +253,7 @@ export function TotpMfaSection({ emailVerified }: { emailVerified: boolean }) {
                       void handleDisable(factor.uid);
                     }}
                     disabled={busy}
-                    className="min-h-[32px] rounded-md border border-[var(--color-danger)] px-3 text-xs font-bold text-[var(--color-danger)] hover:bg-[var(--color-danger-soft)] disabled:opacity-60"
+                    className="button-danger button-danger-solid px-3 py-2 text-xs"
                   >
                     {t("accountSecurity.mfa.confirmDisable")}
                   </button>
@@ -259,7 +261,7 @@ export function TotpMfaSection({ emailVerified }: { emailVerified: boolean }) {
                     type="button"
                     onClick={() => setConfirmingDisable(null)}
                     disabled={busy}
-                    className="min-h-[32px] px-2 text-xs font-bold text-[var(--color-ink-soft)] underline-offset-2 hover:underline disabled:opacity-60"
+                    className="button-outline px-3 py-2 text-xs"
                   >
                     {t("accountSecurity.mfa.keepEnabled")}
                   </button>
@@ -269,7 +271,7 @@ export function TotpMfaSection({ emailVerified }: { emailVerified: boolean }) {
                   type="button"
                   onClick={() => setConfirmingDisable(factor.uid)}
                   disabled={busy}
-                  className="min-h-[32px] px-2 text-xs font-bold text-[var(--color-danger)] underline-offset-2 hover:underline disabled:opacity-60"
+                  className="button-danger px-3 py-2 text-xs"
                 >
                   {t("accountSecurity.mfa.disable")}
                 </button>
@@ -314,7 +316,7 @@ export function TotpMfaSection({ emailVerified }: { emailVerified: boolean }) {
             )}
             <h2
               id="totp-setup-title"
-              className="pr-10 text-xl font-semibold text-[var(--color-primary)]"
+              className="display-title pr-10 text-2xl leading-tight text-[var(--color-primary)]"
             >
               {t("accountSecurity.mfa.dialogTitle")}
             </h2>
@@ -377,7 +379,7 @@ export function TotpMfaSection({ emailVerified }: { emailVerified: boolean }) {
                 <button
                   type="button"
                   onClick={handleCopyKey}
-                  className="min-h-6 shrink-0 text-xs font-bold text-[var(--color-primary)] hover:underline"
+                  className="button-outline shrink-0 px-3 py-2 text-xs"
                 >
                   {t(copied ? "accountSecurity.mfa.copied" : "accountSecurity.mfa.copy")}
                 </button>
@@ -429,7 +431,7 @@ export function TotpMfaSection({ emailVerified }: { emailVerified: boolean }) {
                 type="button"
                 onClick={closeSetup}
                 disabled={busy}
-                className="min-h-6 text-xs font-semibold text-[var(--color-ink-soft)] hover:text-[var(--color-ink)] disabled:opacity-60"
+                className="button-outline px-3.5 py-2.5 text-xs"
               >
                 {t("accountSecurity.mfa.cancel")}
               </button>

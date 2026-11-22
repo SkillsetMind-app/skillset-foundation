@@ -136,6 +136,24 @@ describe("billing locale with real dictionaries", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
   });
 
+  // A-15 / A-22 / C-12: pedir dinheiro de volta é um botão de contorno de
+  // 44px (era um link dourado de 24px), o recibo tem alvo de 44px, e a página
+  // de trás para de rolar enquanto a janela está aberta.
+  it("refund trigger is a 44px outline button and the page behind stops scrolling", () => {
+    mocks.tab = "purchases"; mocks.orders = [order];
+    mount(<BillingTabs />);
+    const trigger = screen.getByRole("button", { name: "Solicitar un reembolso" });
+    expect(trigger).toHaveClass("button-outline");
+    expect(trigger.className).not.toContain("accent");
+    expect(screen.getByRole("link", { name: /Ver recibo/ })).toHaveClass("min-h-11");
+
+    fireEvent.click(trigger);
+    expect(document.body.style.overflow).toBe("hidden");
+    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Cancelar" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(document.body.style.overflow).toBe("");
+  });
+
   // O número que o aluno manda ao suporte quando "comprei e não entrou".
   it("shows the short order ID with a copy button in My purchases", () => {
     mocks.tab = "purchases"; mocks.orders = [{ ...order, id: "9b1d4e2a-0c3f-4a5b-8d6e-7f8091a2b3c4" }];

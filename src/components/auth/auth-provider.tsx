@@ -7,6 +7,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useId,
   useMemo,
   useRef,
   useState,
@@ -32,9 +33,11 @@ import {
 } from "@/lib/legal/versions";
 import { captureFirstTouch } from "@/lib/attribution/first-touch";
 import { previewRoles, ViewAsBanner } from "@/components/admin/view-as";
+import { LegalGateContext } from "@/components/auth/legal-gate-state";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { isRole, type Role } from "@/lib/permissions";
 import { identifyUser, resetUser } from "@/lib/posthog/client";
+import { useModalFocus } from "@/lib/a11y/use-modal-focus";
 
 type AuthContextValue = AuthSession & {
   refreshUser: () => Promise<void>;
@@ -152,9 +155,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isRealAdmin,
       }}
     >
-      <LegalAcceptanceGate />
-      <ViewAsBanner />
-      {children}
+      <LegalAcceptanceGate>
+        <ViewAsBanner />
+        {children}
+      </LegalAcceptanceGate>
     </AuthContext.Provider>
   );
 }
@@ -169,7 +173,7 @@ export function useAuth() {
   return context;
 }
 
-function LegalAcceptanceGate() {
+function LegalAcceptanceGate({ children }: { children: ReactNode }) {
   const { t } = useTranslation();
   const { status, user } = useAuth();
   const pathname = usePathname() ?? "";
@@ -272,6 +276,25 @@ function LegalAcceptanceGate() {
     || pathname.startsWith("/loading")
     || pathname.startsWith("/signup")
     || pathname.startsWith("/welcome");
+  const showGate = needsAcceptance && !onExemptRoute;
+
+  // A janela já cobria a página, mas o Tab saía para o sino e a conta atrás
+  // do escuro e o leitor de tela não sabia que era uma janela. O foco fica
+  // preso dentro e começa na primeira caixa de marcar (sem marcar nada). Sem
+  // Esc, sem clique fora e sem X: aceitar é obrigatório.
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const titleId = useId();
+  // O foco começa na caixa: sem a descrição ligada, o parágrafo que explica
+  // a janela era pulado pelo leitor de tela.
+  const bodyId = useId();
+  useModalFocus(dialogRef, showGate);
+  // Os tours de boas-vindas esperam a janela (legal-gate-state.ts). Também
+  // enquanto não se sabe se ela vem: um tour aberto antes ficaria atrás dela,
+  // já marcado como visto. Só leitura; nada aqui muda quando a janela abre.
+  const tourMustWait = showGate || status === "loading" || (uid !== null && current === null);
+  useEffect(() => {
+    if (showGate) dialogRef.current?.querySelector<HTMLInputElement>('input[type="checkbox"]')?.focus();
+  }, [showGate]);
 
   async function handleAccept() {
     if (!user || !canAccept) {
@@ -300,20 +323,24 @@ function LegalAcceptanceGate() {
     }
   }
 
-  if (!needsAcceptance || onExemptRoute) {
-    return null;
-  }
-
-  return (
+  const gateWindow = showGate ? (
     <div className="dialog-backdrop fixed inset-0 z-[85] grid place-items-center px-4">
-      <div className="modal-panel modal-panel-scroll w-full max-w-xl rounded-xl border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-strong)]">
+      <div
+        ref={dialogRef}
+        tabIndex={-1}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        aria-describedby={bodyId}
+        className="modal-panel modal-panel-scroll w-full max-w-xl rounded-xl border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-strong)] outline-none"
+      >
         <p className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--color-accent-fg)]">
           {t(firstAcceptance ? "legalAcceptance.firstEyebrow" : "legalAcceptance.eyebrow")}
         </p>
-        <h2 className="display-title mt-3 text-4xl text-[var(--color-primary)]">
+        <h2 id={titleId} className="display-title mt-3 text-4xl text-[var(--color-primary)]">
           {t("legalAcceptance.title")}
         </h2>
-        <p className="mt-3 text-sm leading-7 text-[var(--color-ink-soft)]">
+        <p id={bodyId} className="mt-3 text-sm leading-7 text-[var(--color-ink-soft)]">
           {t(firstAcceptance ? "legalAcceptance.firstBody" : "legalAcceptance.body")}
         </p>
 
@@ -390,7 +417,7 @@ function LegalAcceptanceGate() {
         </div>
 
         {error ? (
-          <p className="mt-4 rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
+          <p role="alert" className="mt-4 rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
             {t(error)}
           </p>
         ) : null}
@@ -405,5 +432,12 @@ function LegalAcceptanceGate() {
         </button>
       </div>
     </div>
+  ) : null;
+
+  return (
+    <LegalGateContext.Provider value={tourMustWait}>
+      {gateWindow}
+      {children}
+    </LegalGateContext.Provider>
   );
 }

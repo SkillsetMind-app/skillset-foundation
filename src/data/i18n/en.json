@@ -1907,6 +1907,9 @@
       "addProductOption": "{title} (now in {area})",
       "deleteArea": "Delete area",
       "deleteAreaConfirm": "Yes, delete this area",
+      "deleteAreaTitle": "Delete this area?",
+      "deleteAreaBody": "Delete the area \"{name}\"? Its products go back to the main area. Nobody loses access.",
+      "deleteAreaKeep": "Keep area",
       "deleteAreaHelp": "Its products go back to the main area. Nobody loses access."
     },
     "tour": {

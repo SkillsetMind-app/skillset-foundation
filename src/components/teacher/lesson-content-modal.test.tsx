@@ -377,50 +377,67 @@ describe("LessonContentModal — um video por aula", () => {
 
   // O primeiro link aceito sobrescrevia o link antigo sem perguntar: a unica
   // confirmacao estava no botao de tirar.
-  it("link do Vimeo numa aula com link antigo pede a confirmacao antes de gravar", () => {
-    const confirm = vi.spyOn(window, "confirm")
-      .mockReturnValueOnce(false).mockReturnValueOnce(false).mockReturnValueOnce(true);
+  // A troca pelo link pergunta na janela da plataforma (era o window.confirm).
+  const replaceAsk = () => screen.queryByRole("dialog", { name: "Remove this link?" });
+  const declineReplace = () => fireEvent.click(within(replaceAsk()!).getByRole("button", { name: "Cancel" }));
+
+  it("link do Vimeo numa aula com link antigo pede a confirmacao antes de gravar", async () => {
+    const nativeConfirm = vi.spyOn(window, "confirm");
     const { onUpdateLesson } = renderModal({ externalUrl: drive }, "Módulo 1", true);
     const notice = "Link not saved. The old link stays.";
     fireEvent.click(screen.getByRole("button", { name: "Replace with link" }));
 
     fireEvent.change(linkField(), { target: { value: vimeo } });
     fireEvent.blur(linkField());
-    expect(confirm).toHaveBeenCalledExactlyOnceWith("Remove the old link? Students will lose the button that opens it.");
+    expect(replaceAsk()).toHaveAccessibleDescription("Remove the old link? Students will lose the button that opens it.");
     expect(onUpdateLesson).not.toHaveBeenCalled();
     expect(screen.getByRole("region", { name: "Old link" })).toHaveTextContent(drive);
+    // Com a pergunta aberta o aviso "nao salvo" ainda nao sai: o leitor de
+    // tela o lia enquanto o professor era perguntado.
+    expect(screen.getByRole("status")).toBeEmptyDOMElement();
+    declineReplace();
+    expect(replaceAsk()).toBeNull();
+    expect(onUpdateLesson).not.toHaveBeenCalled();
     // Recusou: o campo volta ao salvo e avisa. Sair de novo (X, aba, troca)
     // nao pergunta outra vez nem come o clique.
     expect(linkField()).toHaveValue("");
     expect(screen.getByRole("status")).toHaveTextContent(notice);
+    expect(screen.getByRole("region", { name: "Old link" })).toHaveTextContent(drive);
     const firstNotice = screen.getByText(notice);
     fireEvent.blur(linkField());
-    expect(confirm).toHaveBeenCalledOnce();
+    expect(replaceAsk()).toBeNull();
 
     // A segunda recusa vira um no novo no status, para ser anunciada de novo.
     fireEvent.change(linkField(), { target: { value: vimeo } });
     fireEvent.blur(linkField());
-    expect(confirm).toHaveBeenCalledTimes(2);
+    expect(replaceAsk()).not.toBeNull();
+    declineReplace();
     expect(screen.getByText(notice)).not.toBe(firstNotice);
 
+    // Confirmou: grava uma vez so, depois do confirmar.
     fireEvent.change(linkField(), { target: { value: vimeo } });
     fireEvent.blur(linkField());
-    expect(confirm).toHaveBeenCalledTimes(3);
+    expect(onUpdateLesson).not.toHaveBeenCalled();
+    clickConfirm(replaceAsk()!, "Remove old link");
     expect(onUpdateLesson).toHaveBeenCalledExactlyOnceWith({ videoSource: "youtube", externalUrl: vimeo });
-    expect(confirm.mock.invocationCallOrder[2]).toBeLessThan(onUpdateLesson.mock.invocationCallOrder[0]);
+    await waitFor(() => expect(replaceAsk()).toBeNull());
+    expect(onUpdateLesson).toHaveBeenCalledOnce();
     expect(screen.queryByRole("region", { name: "Old link" })).not.toBeInTheDocument();
+    // O campo mostra o link gravado: o blur seguinte nao o apaga.
+    expect(linkField()).toHaveValue(vimeo);
+    fireEvent.blur(linkField());
+    expect(onUpdateLesson).toHaveBeenCalledOnce();
     // Gravou: o aviso de "nao salvo" sai.
     expect(screen.getByRole("status")).toBeEmptyDOMElement();
+    expect(nativeConfirm).not.toHaveBeenCalled();
   });
 
   it("o aviso de link nao salvo some depois de tirar o link antigo e ao trocar de aba", () => {
-    // A troca pelo link (no blur) ainda pergunta no confirm nativo: ela mora no
-    // protocolo sincrono do flushLink. Tirar o link antigo pergunta na janela.
-    vi.spyOn(window, "confirm").mockReturnValueOnce(false);
     renderModal({ externalUrl: drive }, "Módulo 1", true);
     fireEvent.click(screen.getByRole("button", { name: "Replace with link" }));
     fireEvent.change(linkField(), { target: { value: vimeo } });
     fireEvent.blur(linkField());
+    declineReplace();
     expect(screen.getByRole("status")).toHaveTextContent("Link not saved. The old link stays.");
 
     fireEvent.click(screen.getByRole("button", { name: "Remove old link" }));
@@ -544,20 +561,28 @@ describe("LessonContentModal — um video por aula", () => {
   });
 
   it("Esc e Cancelar na confirmacao deixam o estudio aberto; o Esc seguinte fecha", () => {
-    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
     const { onUpdateLesson, onClose } = renderModal({ externalUrl: drive }, "Módulo 1", true);
     fireEvent.click(screen.getByRole("button", { name: "Replace with link" }));
     fireEvent.change(linkField(), { target: { value: vimeo } });
 
-    fireEvent.keyDown(linkField(), { key: "Escape" });
-    expect(confirm).toHaveBeenCalledOnce();
+    // O Esc que abriu a pergunta sai cancelado (preventDefault): no navegador,
+    // sem isso, o mesmo Esc fechava a janela recem-aberta.
+    expect(fireEvent.keyDown(linkField(), { key: "Escape" })).toBe(false);
+    expect(replaceAsk()).not.toBeNull();
     expect(onClose).not.toHaveBeenCalled();
+    expect(onUpdateLesson).not.toHaveBeenCalled();
+    expect(screen.getByRole("status")).toBeEmptyDOMElement();
+    // Com a pergunta aberta, o Esc e dela: o estudio nao fecha por baixo.
+    fireEvent.keyDown(linkField(), { key: "Escape" });
+    expect(onClose).not.toHaveBeenCalled();
+    declineReplace();
+    expect(replaceAsk()).toBeNull();
     expect(onUpdateLesson).not.toHaveBeenCalled();
     expect(screen.getByRole("status")).toHaveTextContent("Link not saved. The old link stays.");
 
     // O campo voltou ao salvo: nada mais a perder, o Esc seguinte fecha.
     fireEvent.keyDown(linkField(), { key: "Escape" });
-    expect(confirm).toHaveBeenCalledOnce();
+    expect(replaceAsk()).toBeNull();
     expect(onClose).toHaveBeenCalledOnce();
   });
 

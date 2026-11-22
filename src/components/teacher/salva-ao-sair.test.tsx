@@ -202,6 +202,9 @@ describe("builder grava o rascunho pendente ao sair", () => {
     unmount();
 
     expect(confirm).not.toHaveBeenCalled();
+    // A pergunta mora na janela da plataforma (<dialog>), não mais no
+    // window.confirm: a descarga silenciosa não abre nenhuma.
+    expect(document.querySelector("dialog")).toBeNull();
     expect(updateTeacherCourseBuilder).not.toHaveBeenCalled();
   });
 
@@ -236,6 +239,9 @@ describe("builder grava o rascunho pendente ao sair", () => {
     });
     expect(field()).toHaveValue(vimeo);
     expect(confirm).not.toHaveBeenCalled();
+    // Com o builder ainda montado, uma pergunta aberta aqui apareceria: a
+    // descarga silenciosa não abre a janela da plataforma (<dialog>).
+    expect(document.querySelector("dialog")).toBeNull();
     expect(updateTeacherCourseBuilder).not.toHaveBeenCalled();
   });
 

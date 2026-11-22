@@ -1,13 +1,16 @@
 import {
+  act,
   cleanup,
   fireEvent,
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AuthProvider } from "@/components/auth/auth-provider";
+import { useLegalGateWaiting } from "@/components/auth/legal-gate-state";
 import { I18nProvider, useTranslation } from "@/components/i18n/i18n-provider";
 import { markSignupTerms, SIGNUP_TERMS_MARK_KEY } from "@/lib/auth/signup-terms-mark";
 import {
@@ -55,6 +58,12 @@ const OUTDATED_TEACHER = { roles: ["teacher"], teacherTermsAcceptedAt: "2026-05-
 // Lets the profile read resolve and the gate render before asserting absence.
 const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
 
+// O que os tours de boas-vindas leem para esperar a janela dos termos.
+function TourWaitProbe() {
+  return <span data-testid="tour-waits">{String(useLegalGateWaiting())}</span>;
+}
+const tourWaits = () => screen.getByTestId("tour-waits").textContent;
+
 function LocaleToggle() {
   const { setLocale } = useTranslation();
   return <button onClick={() => setLocale("en")}>English</button>;
@@ -82,6 +91,7 @@ function renderSignedIn(locale: "en" | "es" = "en") {
       <LocaleToggle />
       <AuthProvider>
         <p>page</p>
+        <TourWaitProbe />
       </AuthProvider>
     </I18nProvider>,
   );
@@ -123,6 +133,65 @@ describe("LegalAcceptanceGate as the signup recovery path", () => {
     expect(screen.getByText("Could not update your legal acceptance. Please try again.")).toBeTruthy();
     expect(screen.getAllByRole("checkbox").every((input) => (input as HTMLInputElement).checked)).toBe(true);
     expect(screen.getByRole("button", { name: ACCEPT })).toHaveProperty("disabled", false);
+  });
+
+  // C-06: a janela cobria a página, mas o Tab saía para a página de trás e o
+  // leitor de tela não sabia que era uma janela. Ela segue sem saída: Esc não
+  // fecha, e o foco começa na primeira caixa sem marcar nada.
+  it("is a real modal: named, focus inside on the first box, Escape does not close it, error announced", async () => {
+    mocks.getUserProfile.mockResolvedValue({ termsVersion: null, privacyVersion: null, marketingConsent: false });
+    mocks.acceptUserTerms.mockRejectedValue(new Error("transport details"));
+    renderSignedIn();
+
+    const dialog = await screen.findByRole("dialog", { name: "Review SkillsetMind terms to continue." });
+    expect(dialog).toHaveAttribute("aria-modal", "true");
+    // O foco começa na caixa: a explicação chega pela descrição da janela.
+    expect(dialog).toHaveAccessibleDescription("Read and accept the SkillsetMind terms to use your account.");
+    const [terms, privacy] = screen.getAllByRole("checkbox");
+    await waitFor(() => expect(terms).toHaveFocus());
+    expect(dialog.contains(document.activeElement)).toBe(true);
+    expect((terms as HTMLInputElement).checked).toBe(false);
+
+    fireEvent.keyDown(document.activeElement!, { key: "Escape" });
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(screen.getByRole("dialog", { name: "Review SkillsetMind terms to continue." })).toBe(dialog);
+    expect(within(dialog).queryByRole("button", { name: /close/i })).toBeNull();
+
+    fireEvent.click(terms);
+    fireEvent.click(privacy);
+    fireEvent.click(screen.getByRole("button", { name: ACCEPT }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Could not update your legal acceptance. Please try again.");
+  });
+
+  // Os tours de boas-vindas esperam a janela: com a janela na tela, e antes de
+  // se saber se ela vem, o valor é true; aceito, vira false.
+  it("tells the welcome tours to wait while the window is open or still undecided", async () => {
+    let resolveProfile!: (profile: unknown) => void;
+    mocks.getUserProfile.mockReturnValue(new Promise((done) => { resolveProfile = done; }));
+    renderSignedIn();
+    expect(tourWaits()).toBe("true");
+
+    await act(async () => resolveProfile({ termsVersion: null, privacyVersion: null, marketingConsent: false }));
+    await screen.findByRole("dialog");
+    expect(tourWaits()).toBe("true");
+
+    const [terms, privacy] = screen.getAllByRole("checkbox");
+    fireEvent.click(terms);
+    fireEvent.click(privacy);
+    fireEvent.click(screen.getByRole("button", { name: ACCEPT }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(tourWaits()).toBe("false");
+  });
+
+  it("lets the welcome tours open once the terms are known to be current", async () => {
+    mocks.getUserProfile.mockResolvedValue({
+      termsVersion: currentTermsVersion,
+      privacyVersion: currentPrivacyVersion,
+      marketingConsent: false,
+    });
+    renderSignedIn();
+    await waitFor(() => expect(tourWaits()).toBe("false"));
+    expect(screen.queryByRole("dialog")).toBeNull();
   });
 
   it("asks for the terms again when the profile has none and records them", async () => {

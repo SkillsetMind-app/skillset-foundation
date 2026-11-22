@@ -3,6 +3,7 @@ import type { ReactElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { I18nProvider } from "@/components/i18n/i18n-provider";
+import { DeleteOrArchiveCourseDialog } from "@/components/teacher/course-actions";
 import { CourseManageHub } from "@/components/teacher/course-manage-hub";
 import { TeacherCourseStudio } from "@/components/teacher/teacher-course-studio";
 import type { TeacherCourse } from "@/domain/teacher-course";
@@ -441,3 +442,21 @@ describe("o que acontece depois da ação", () => {
   });
 });
 vi.mock("@/lib/data/creator-plan", () => ({ fetchCreatorPlanRequired: async () => false }));
+
+// B-11: a pagina de tras rolava por baixo da janela. No painel quem rola e o
+// .platform-content, nao o body.
+describe("modal de excluir/arquivar — a pagina de tras", () => {
+  it("trava a rolagem do .platform-content enquanto aberto e devolve ao fechar", async () => {
+    const { unmount } = renderEn(
+      <section className="platform-content">
+        <DeleteOrArchiveCourseDialog courseId="course-1" courseTitle="Facilitation foundations" onCancel={vi.fn()} onDone={vi.fn()} />
+      </section>,
+    );
+    const scroller = document.querySelector<HTMLElement>(".platform-content")!;
+    await screen.findByRole("dialog", { name: "Delete Facilitation foundations" });
+    expect(scroller.style.overflow).toBe("hidden");
+    expect(document.body.style.overflow).toBe("");
+    unmount();
+    expect(scroller.style.overflow).toBe("");
+  });
+});
