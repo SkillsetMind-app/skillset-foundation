@@ -1,6 +1,8 @@
 import type { CourseAsset } from "@/domain/course-asset";
 import { getLessonIdsWithMedia } from "@/domain/course-readiness";
 import { isCouponExpired, type CourseCoupon } from "@/domain/course-commerce";
+import { normalizeCurrency } from "@/domain/creator-ops";
+import { isRevenueOrder, orderRevenueMinor } from "@/domain/order";
 import type { TeacherCourse } from "@/domain/teacher-course";
 
 // O painel do produto respondia "quanto falta para publicar" e mais nada. Quem
@@ -74,7 +76,7 @@ export function getCourseOverviewStats({
   // tela mostrar a receita da loja inteira como se fosse deste produto.
   const mine = students.filter((student) => student.courseId === course.id);
   const paidOrders = orders.filter(
-    (order) => order.courseId === course.id && order.status === "paid",
+    (order) => order.courseId === course.id && isRevenueOrder(order),
   );
 
   const completedCount = mine.filter(isCourseStudentComplete).length;
@@ -86,10 +88,11 @@ export function getCourseOverviewStats({
 
   const byCurrency = new Map<string, number>();
   for (const order of paidOrders) {
-    const currency = (order.currency || "usd").toUpperCase();
-    // Reembolso ja devolvido nao e receita. O pedido continua pago, entao
-    // somar o bruto contaria dinheiro que voltou para o comprador.
-    const net = order.amountMinor - (order.refundedAmountMinor ?? 0);
+    // A mesma normalizacao da Home e de Ganhos: sem moeda vira "UNSPECIFIED"
+    // (era "USD" aqui e "UNSPECIFIED" la).
+    const currency = normalizeCurrency(order.currency);
+    // Reembolso ja devolvido nao e receita (pago ou com reembolso parcial).
+    const net = orderRevenueMinor(order) ?? 0;
     byCurrency.set(currency, (byCurrency.get(currency) ?? 0) + net);
   }
 

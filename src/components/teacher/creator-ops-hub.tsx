@@ -16,17 +16,19 @@ import {
   buildReportProductRows,
   buildRevenueSeries,
   calculateRefundRate,
+  groupPaidOrdersByCurrency,
   isWithinWindow,
   resolveReportWindow,
   type ReportPeriod,
 } from "@/domain/creator-reports";
 import { calculateCreatorSubscriptionMetrics } from "@/domain/creator-subscriptions";
-import { isPaidOrder, type Order } from "@/domain/order";
+import { isRevenueOrder, type Order } from "@/domain/order";
 import type { PayoutLedgerEntry } from "@/domain/payout-ledger";
 import type { CourseSubscription } from "@/domain/course-subscription";
 import { subscribeToTeacherCourseSubscriptions } from "@/lib/data/course-subscriptions";
 import { subscribeToTeacherOrders } from "@/lib/data/orders";
 import { subscribeToTeacherPayoutLedger } from "@/lib/data/payout-ledger";
+import { formatMoney, formatMoneyBreakdown } from "@/lib/format-money";
 
 type ReadState = "loading" | "ready" | "error";
 
@@ -40,24 +42,9 @@ const periodSubtitleKey: Record<ReportPeriod, string> = {
   all: "teach.insights.rangeAll",
 };
 
-// Chart totals stay in en-US, like the shared chart's "$...k" axis and the home
-// revenue chart; KPIs and the table follow the interface language.
-const chartMoney = new Intl.NumberFormat("en-US", {
-  style: "currency",
-  currency: "USD",
-  maximumFractionDigits: 0,
-});
-
-function money(amountMinor: number, currency: string, locale: string): string {
-  try {
-    const formatted = new Intl.NumberFormat(locale, {
-      maximumFractionDigits: 0,
-    }).format(amountMinor / 100);
-    return `${currency} ${formatted}`;
-  } catch {
-    return `${currency} ${(amountMinor / 100).toFixed(2)}`;
-  }
-}
+// Chart totals stay in en-US, like the home revenue chart; KPIs and the table
+// follow the interface language. A moeda e a do grafico (era USD fixo).
+const WHOLE = { minimumFractionDigits: 0, maximumFractionDigits: 0 };
 
 export function CreatorOpsHub() {
   const { user } = useAuth();
@@ -104,9 +91,10 @@ export function CreatorOpsHub() {
     };
   }, [user]);
 
+  // Moedas lado a lado com " · " (o " + " de antes lia como soma).
   const moneyBreakdown = (values: CurrencyAmount[]): string =>
     values.length
-      ? values.map((value) => money(value.amountMinor, value.currency, locale)).join(" + ")
+      ? formatMoneyBreakdown(values, locale, null, WHOLE)
       : t("teach.reports.noActivity");
 
   const report = useMemo(() => {
@@ -115,7 +103,8 @@ export function CreatorOpsHub() {
       month: "short",
       day: "numeric",
     });
-    const paidOrders = orders.filter((order) => isPaidOrder(order.status));
+    // Pago ou com reembolso parcial (conta o que ficou com o professor).
+    const paidOrders = orders.filter(isRevenueOrder);
     // A janela sai dos pedidos pagos porque "All" precisa saber onde a loja
     // comecou; os KPIs e o grafico usam a MESMA janela, entao a linha e o
     // numero nunca contam periodos diferentes.
@@ -123,6 +112,14 @@ export function CreatorOpsHub() {
     const ordersInPeriod = orders.filter((order) =>
       isWithinWindow(order.createdAt, window),
     );
+    const paidInPeriod = paidOrders.filter((order) => isWithinWindow(order.createdAt, window));
+    // Uma moeda no grafico (a de mais pedidos com dinheiro no periodo; empate:
+    // alfabetica); as outras vao numa linha embaixo. Nada soma moedas. Sem
+    // venda no periodo, o eixo fica na unica moeda que o professor ja vendeu.
+    const currencies = groupPaidOrdersByCurrency(paidInPeriod);
+    const everSold = groupPaidOrdersByCurrency(paidOrders);
+    const chartCurrency =
+      currencies[0]?.currency ?? (everSold.length === 1 ? everSold[0].currency : "USD");
     const ledgersInPeriod = ledgers.filter((entry) =>
       isWithinWindow(entry.createdAt, window),
     );
@@ -141,19 +138,27 @@ export function CreatorOpsHub() {
         subscriptionMetrics,
       }),
       refund: calculateRefundRate(ordersInPeriod),
+      chartCurrency,
+      otherCurrencies: currencies
+        .slice(1)
+        .filter((group) => group.totalMinor !== 0)
+        .map((group) => ({ currency: group.currency, amountMinor: group.totalMinor }))
+        .sort((left, right) => right.amountMinor - left.amountMinor),
       series: buildRevenueSeries(
-        paidOrders.filter((order) => isWithinWindow(order.createdAt, window)),
+        paidInPeriod,
         window,
         (date, bucket) =>
           bucket === "month"
             ? monthFormatter.format(date)
             : dayFormatter.format(date),
+        chartCurrency,
       ),
       products: buildReportProductRows(ordersInPeriod),
     };
   }, [orders, ledgers, subscriptions, period, locale]);
 
-  const { snap, refund, series, products } = report;
+  const { snap, refund, series, products, chartCurrency, otherCurrencies } = report;
+  // A serie ja e de uma moeda so: a soma dos baldes e o total dela.
   const chartTotalMinor = series.reduce((sum, point) => sum + point.grossMinor, 0);
 
   const columns = {
@@ -245,8 +250,21 @@ export function CreatorOpsHub() {
 
       <RevenueChart
         points={series}
+        currency={chartCurrency}
+        note={
+          otherCurrencies.length
+            ? t("teach.insights.otherCurrencies").replace("{totals}", () =>
+                formatMoneyBreakdown(otherCurrencies, "en-US", null, WHOLE),
+              )
+            : undefined
+        }
         totalMinor={chartTotalMinor}
-        totalLabel={chartMoney.format(chartTotalMinor / 100)}
+        totalLabel={formatMoney(chartTotalMinor, chartCurrency, "en-US", WHOLE)}
+        unavailableLabel={
+          ordersState === "ready"
+            ? undefined
+            : t(ordersState === "error" ? "teach.reports.unavailable" : "teach.reports.loadingValue")
+        }
         title={t("teach.insights.revenue")}
         subtitle={t(periodSubtitleKey[period])}
         ariaLabel={t("teach.insights.chartAria")}
@@ -278,7 +296,7 @@ export function CreatorOpsHub() {
               <tbody>
                 {products.map((row) => (
                   <tr
-                    key={row.courseId}
+                    key={`${row.courseId}:${row.currency}`}
                     className="border-t border-[var(--color-line)] text-[var(--color-ink)]"
                   >
                     <td className="py-2 pr-4">{row.courseTitle}</td>
@@ -286,7 +304,7 @@ export function CreatorOpsHub() {
                       {row.orders}
                     </td>
                     <td className="py-2 pr-4 text-right font-semibold tabular-nums">
-                      {money(row.grossMinor, row.currency, locale)}
+                      {formatMoney(row.grossMinor, row.currency, locale, WHOLE)}
                     </td>
                     <td className="py-2 text-right tabular-nums">{row.refunds}</td>
                   </tr>
