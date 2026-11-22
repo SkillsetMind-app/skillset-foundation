@@ -76,6 +76,14 @@ export function MobileSidebarDrawer({
       items.findIndex((candidate) => candidate.href === item.href) === index,
   );
 
+  // Qual aba e a pagina atual. "Home" so vale no inicio da area: antes ela
+  // ficava marcada em TODA pagina do estudio (/teach/sales, /teach/reports...),
+  // que so se alcancam pelo "More". As outras abas valem para as paginas
+  // dentro delas (/account/billing e Profile).
+  const isCurrentTab = (href: string) =>
+    href === homeHref ? pathname === href : pathname === href || pathname.startsWith(`${href}/`);
+  const noTabIsCurrent = !primaryItems.some((item) => isCurrentTab(item.href));
+
   useEffect(() => {
     if (!open) {
       return;
@@ -109,12 +117,15 @@ export function MobileSidebarDrawer({
       <nav className="platform-mobile-nav" aria-label={t("platform.mobile.navLabel")}>
         {primaryItems.map((item) => {
           const Icon = item.icon;
-          const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
+          const active = isCurrentTab(item.href);
 
           return (
             <Link
               key={item.href}
               href={item.href}
+              // aria-current diz ao leitor de tela qual é a página; o traço da
+              // aba atual vem da mesma marca (globals.css).
+              aria-current={active ? "page" : undefined}
               className={[
                 "grid min-w-0 flex-1 place-items-center gap-1 px-2 py-2 text-[11px] font-bold text-[var(--color-ink-soft)]",
                 active ? "text-[var(--color-primary)]" : "",
@@ -128,6 +139,9 @@ export function MobileSidebarDrawer({
         <button
           type="button"
           onClick={onOpen}
+          // Página que só existe dentro de "More" (vendas, relatórios...):
+          // nenhuma das abas é ela, então a marca fica no "More".
+          data-current={noTabIsCurrent ? "true" : undefined}
           className="grid min-w-0 flex-1 place-items-center gap-1 px-2 py-2 text-[11px] font-bold text-[var(--color-ink-soft)]"
           aria-label={t("platform.mobile.openMore")}
         >
