@@ -124,7 +124,8 @@ function addCurrencyAmount(
   totals.set(currency, (totals.get(currency) ?? 0) + amount);
 }
 
-function normalizeCurrency(value: unknown): string {
+/** Codigo da moeda em maiusculas; sem moeda gravada vira "UNSPECIFIED". */
+export function normalizeCurrency(value: unknown): string {
   const currency = String(value ?? "").trim().toUpperCase();
   return currency || "UNSPECIFIED";
 }

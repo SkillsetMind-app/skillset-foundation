@@ -6,6 +6,7 @@
  * KPIs saem do mesmo `startMillis`, entao a linha e o numero nunca contam
  * periodos diferentes.
  */
+import { normalizeCurrency } from "@/domain/creator-ops";
 import { isPaidOrder, type Order, type OrderStatus } from "@/domain/order";
 import { toDate } from "@/lib/format-date";
 
@@ -27,6 +28,13 @@ export type RevenuePoint = {
   key: string;
   label: string;
   grossMinor: number;
+};
+
+/** Pedidos pagos de UMA moeda: quantos e quanto, sem converter nada. */
+export type CurrencyOrderGroup = {
+  currency: string;
+  orders: number;
+  totalMinor: number;
 };
 
 export type ReportProductRow = {
@@ -144,10 +152,36 @@ function bucketKey(date: Date, bucket: RevenueBucket): string {
     : `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
 }
 
+/**
+ * Os pedidos pagos agrupados por moeda: nada converte, nada soma moedas
+ * diferentes (o grafico somava R$100 com $20 e escrevia "$120"). A moeda com
+ * mais pedidos vem primeiro (empate: ordem alfabetica); e a que o grafico
+ * desenha.
+ */
+export function groupPaidOrdersByCurrency(paidOrders: Order[]): CurrencyOrderGroup[] {
+  const groups = new Map<string, CurrencyOrderGroup>();
+  for (const order of paidOrders) {
+    const currency = normalizeCurrency(order.currency);
+    const group = groups.get(currency) ?? { currency, orders: 0, totalMinor: 0 };
+    group.orders += 1;
+    group.totalMinor += order.amountMinor;
+    groups.set(currency, group);
+  }
+  return [...groups.values()].sort(
+    (left, right) =>
+      right.orders - left.orders || left.currency.localeCompare(right.currency),
+  );
+}
+
+/**
+ * Serie de receita de UMA moeda (`currency`): pedidos de outra moeda ficam de
+ * fora, para que um balde nunca some moedas diferentes.
+ */
 export function buildRevenueSeries(
   paidOrders: Order[],
   window: ReportWindow,
   formatLabel: (date: Date, bucket: RevenueBucket) => string,
+  currency: string,
   now = new Date(),
 ): RevenuePoint[] {
   const points = Array.from({ length: window.count }, (_, index) => {
@@ -166,6 +200,7 @@ export function buildRevenueSeries(
   const byKey = new Map(points.map((point) => [point.key, point]));
 
   for (const order of paidOrders) {
+    if (normalizeCurrency(order.currency) !== currency) continue;
     const millis = getTimestampMillis(order.createdAt);
     const date = millis === null ? now : new Date(millis);
     const point = byKey.get(bucketKey(date, window.bucket));
@@ -193,7 +228,8 @@ export function calculateRefundRate(orders: Order[]): RefundRate {
 
 /**
  * Mesma contagem do "Top courses" da home, mas com todas as linhas, os
- * reembolsos do periodo e ordenada pela receita.
+ * reembolsos do periodo e ordenada pela receita. Uma linha por produto E
+ * moeda: um produto vendido em duas moedas tem duas linhas, nunca uma soma.
  */
 export function buildReportProductRows(orders: Order[]): ReportProductRow[] {
   const byCourse = new Map<string, ReportProductRow>();
@@ -203,10 +239,14 @@ export function buildReportProductRows(orders: Order[]): ReportProductRow[] {
     const isRefund = isRefundedOrder(order.status);
     if (!isPaid && !isRefund) continue;
 
-    const row = byCourse.get(order.courseId) ?? {
+    // Sem moeda gravada o pedido contava como USD aqui, sem saber se era.
+    // Agora sai como "UNSPECIFIED", o mesmo nome do grafico e de Ganhos.
+    const currency = normalizeCurrency(order.currency);
+    const key = `${order.courseId}:${currency}`;
+    const row = byCourse.get(key) ?? {
       courseId: order.courseId,
       courseTitle: order.courseTitle,
-      currency: String(order.currency || "USD").toUpperCase(),
+      currency,
       orders: 0,
       grossMinor: 0,
       refunds: 0,
@@ -219,7 +259,7 @@ export function buildReportProductRows(orders: Order[]): ReportProductRow[] {
       row.refunds += 1;
     }
 
-    byCourse.set(order.courseId, row);
+    byCourse.set(key, row);
   }
 
   return [...byCourse.values()].sort(

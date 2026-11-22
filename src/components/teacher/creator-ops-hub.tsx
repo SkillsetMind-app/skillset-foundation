@@ -16,6 +16,7 @@ import {
   buildReportProductRows,
   buildRevenueSeries,
   calculateRefundRate,
+  groupPaidOrdersByCurrency,
   isWithinWindow,
   resolveReportWindow,
   type ReportPeriod,
@@ -27,6 +28,7 @@ import type { CourseSubscription } from "@/domain/course-subscription";
 import { subscribeToTeacherCourseSubscriptions } from "@/lib/data/course-subscriptions";
 import { subscribeToTeacherOrders } from "@/lib/data/orders";
 import { subscribeToTeacherPayoutLedger } from "@/lib/data/payout-ledger";
+import { formatMoney, formatMoneyBreakdown } from "@/lib/format-money";
 
 type ReadState = "loading" | "ready" | "error";
 
@@ -40,13 +42,9 @@ const periodSubtitleKey: Record<ReportPeriod, string> = {
   all: "teach.insights.rangeAll",
 };
 
-// Chart totals stay in en-US, like the shared chart's "$...k" axis and the home
-// revenue chart; KPIs and the table follow the interface language.
-const chartMoney = new Intl.NumberFormat("en-US", {
-  style: "currency",
-  currency: "USD",
-  maximumFractionDigits: 0,
-});
+// Chart totals stay in en-US, like the home revenue chart; KPIs and the table
+// follow the interface language. A moeda e a do grafico (era USD fixo).
+const WHOLE = { minimumFractionDigits: 0, maximumFractionDigits: 0 };
 
 function money(amountMinor: number, currency: string, locale: string): string {
   try {
@@ -123,6 +121,11 @@ export function CreatorOpsHub() {
     const ordersInPeriod = orders.filter((order) =>
       isWithinWindow(order.createdAt, window),
     );
+    const paidInPeriod = paidOrders.filter((order) => isWithinWindow(order.createdAt, window));
+    // Uma moeda no grafico (a de mais pedidos no periodo; empate: alfabetica);
+    // as outras vao numa linha embaixo. Nada soma moedas diferentes.
+    const currencies = groupPaidOrdersByCurrency(paidInPeriod);
+    const chartCurrency = currencies[0]?.currency ?? "USD";
     const ledgersInPeriod = ledgers.filter((entry) =>
       isWithinWindow(entry.createdAt, window),
     );
@@ -141,19 +144,26 @@ export function CreatorOpsHub() {
         subscriptionMetrics,
       }),
       refund: calculateRefundRate(ordersInPeriod),
+      chartCurrency,
+      otherCurrencies: currencies
+        .slice(1)
+        .map((group) => ({ currency: group.currency, amountMinor: group.totalMinor }))
+        .sort((left, right) => right.amountMinor - left.amountMinor),
       series: buildRevenueSeries(
-        paidOrders.filter((order) => isWithinWindow(order.createdAt, window)),
+        paidInPeriod,
         window,
         (date, bucket) =>
           bucket === "month"
             ? monthFormatter.format(date)
             : dayFormatter.format(date),
+        chartCurrency,
       ),
       products: buildReportProductRows(ordersInPeriod),
     };
   }, [orders, ledgers, subscriptions, period, locale]);
 
-  const { snap, refund, series, products } = report;
+  const { snap, refund, series, products, chartCurrency, otherCurrencies } = report;
+  // A serie ja e de uma moeda so: a soma dos baldes e o total dela.
   const chartTotalMinor = series.reduce((sum, point) => sum + point.grossMinor, 0);
 
   const columns = {
@@ -245,8 +255,16 @@ export function CreatorOpsHub() {
 
       <RevenueChart
         points={series}
+        currency={chartCurrency}
+        note={
+          otherCurrencies.length
+            ? t("teach.insights.otherCurrencies").replace("{totals}", () =>
+                formatMoneyBreakdown(otherCurrencies, "en-US", null, WHOLE),
+              )
+            : undefined
+        }
         totalMinor={chartTotalMinor}
-        totalLabel={chartMoney.format(chartTotalMinor / 100)}
+        totalLabel={formatMoney(chartTotalMinor, chartCurrency, "en-US", WHOLE)}
         title={t("teach.insights.revenue")}
         subtitle={t(periodSubtitleKey[period])}
         ariaLabel={t("teach.insights.chartAria")}
@@ -278,7 +296,7 @@ export function CreatorOpsHub() {
               <tbody>
                 {products.map((row) => (
                   <tr
-                    key={row.courseId}
+                    key={`${row.courseId}:${row.currency}`}
                     className="border-t border-[var(--color-line)] text-[var(--color-ink)]"
                   >
                     <td className="py-2 pr-4">{row.courseTitle}</td>

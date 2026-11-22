@@ -17,11 +17,14 @@ import { StatusChip } from "@/components/shared/status-chip";
 import { RevenueChart } from "@/components/teacher/revenue-chart";
 import {
   buildRevenueSeries,
+  groupPaidOrdersByCurrency,
+  isWithinWindow,
   resolveRevenueRangeWindow,
   type RevenueRange,
 } from "@/domain/creator-reports";
 import type { Order } from "@/domain/order";
 import type { TeacherCourse } from "@/domain/teacher-course";
+import { formatMoney, formatMoneyBreakdown } from "@/lib/format-money";
 
 const revenueRanges: RevenueRange[] = ["3m", "6m", "12m", "all"];
 
@@ -32,11 +35,9 @@ const revenueRangeSubtitleKey: Record<RevenueRange, string> = {
   all: "teach.insights.rangeAll",
 };
 
-const money = new Intl.NumberFormat("en-US", {
-  style: "currency",
-  currency: "USD",
-  maximumFractionDigits: 0,
-});
+// Valores inteiros e em en-US, como o grafico sempre escreveu; a moeda e a
+// de cada valor (era USD fixo: R$100 + $20 saiam "$120").
+const WHOLE = { minimumFractionDigits: 0, maximumFractionDigits: 0 };
 
 type ActivityItem = {
   title: string;
@@ -64,21 +65,36 @@ export function TeacherStudioInsights({
   // Historico de venda = existe pedido pago, nao "entrou dinheiro": um pedido
   // pago de valor zero (produto gratis) ja e historico e merece o grafico.
   const hasSales = paidOrders.length > 0;
-  const grossMinor = paidOrders.reduce((sum, order) => sum + order.amountMinor, 0);
-  const monthlyRevenue = useMemo(
+  // Nada soma moedas diferentes. O grafico desenha UMA: a de mais pedidos no
+  // periodo (empate: ordem alfabetica); as outras ficam numa linha embaixo.
+  const revenue = useMemo(
     () => {
       const monthFormatter = new Intl.DateTimeFormat(locale, { month: "short" });
-      return buildRevenueSeries(
-        paidOrders,
-        resolveRevenueRangeWindow(paidOrders, revenueRange),
-        (date) => monthFormatter.format(date),
-      );
+      const window = resolveRevenueRangeWindow(paidOrders, revenueRange);
+      const allTime = groupPaidOrdersByCurrency(paidOrders);
+      const charted =
+        groupPaidOrdersByCurrency(
+          paidOrders.filter((order) => isWithinWindow(order.createdAt, window)),
+        )[0]?.currency ??
+        allTime[0]?.currency ??
+        "USD";
+      return {
+        currency: charted,
+        points: buildRevenueSeries(paidOrders, window, (date) => monthFormatter.format(date), charted),
+        // O total segue sendo o de sempre (todo o historico), so que da moeda
+        // desenhada.
+        totalMinor: allTime.find((group) => group.currency === charted)?.totalMinor ?? 0,
+        others: allTime
+          .filter((group) => group.currency !== charted)
+          .map((group) => ({ currency: group.currency, amountMinor: group.totalMinor }))
+          .sort((left, right) => right.amountMinor - left.amountMinor),
+      };
     },
     [paidOrders, revenueRange, locale],
   );
   const topCourses = useMemo(
-    () => buildTopCourses(courses, paidOrders),
-    [courses, paidOrders],
+    () => buildTopCourses(courses, paidOrders, revenue.currency),
+    [courses, paidOrders, revenue.currency],
   );
   const activity = buildActivity(courses, t);
 
@@ -91,9 +107,17 @@ export function TeacherStudioInsights({
       {hasSales ? (
         <section className="studio-dashboard-grid">
           <RevenueChart
-            points={monthlyRevenue}
-            totalMinor={grossMinor}
-            totalLabel={money.format(grossMinor / 100)}
+            points={revenue.points}
+            currency={revenue.currency}
+            note={
+              revenue.others.length
+                ? t("teach.insights.otherCurrencies").replace("{totals}", () =>
+                    formatMoneyBreakdown(revenue.others, "en-US", null, WHOLE),
+                  )
+                : undefined
+            }
+            totalMinor={revenue.totalMinor}
+            totalLabel={formatMoney(revenue.totalMinor, revenue.currency, "en-US", WHOLE)}
             title={t("teach.insights.revenue")}
             subtitle={t(revenueRangeSubtitleKey[revenueRange])}
             ariaLabel={t("teach.insights.chartAria")}
@@ -140,7 +164,9 @@ export function TeacherStudioInsights({
                         </small>
                       </span>
                       <span className="studio-course-row__value">
-                        <strong>{money.format(course.grossMinor / 100)}</strong>
+                        <strong>
+                          {formatMoneyBreakdown(course.revenue, "en-US", revenue.currency, WHOLE)}
+                        </strong>
                         <StatusChip status={course.status} />
                       </span>
                     </Link>
@@ -190,19 +216,18 @@ function RichEmptyLine({ title, detail }: { title: string; detail: string }) {
   );
 }
 
-function buildTopCourses(courses: TeacherCourse[], paidOrders: Order[]) {
-  const byCourse = new Map<string, { orders: number; grossMinor: number }>();
+// Receita de cada produto por moeda, cada uma no proprio valor. A ordem usa a
+// moeda do grafico, para nao comparar reais com dolares.
+function buildTopCourses(courses: TeacherCourse[], paidOrders: Order[], chartedCurrency: string) {
+  const byCourse = new Map<string, Order[]>();
 
   paidOrders.forEach((order) => {
-    const current = byCourse.get(order.courseId) ?? { orders: 0, grossMinor: 0 };
-    current.orders += 1;
-    current.grossMinor += order.amountMinor;
-    byCourse.set(order.courseId, current);
+    byCourse.set(order.courseId, [...(byCourse.get(order.courseId) ?? []), order]);
   });
 
   return courses
     .map((course) => {
-      const sales = byCourse.get(course.id) ?? { orders: 0, grossMinor: 0 };
+      const groups = groupPaidOrdersByCurrency(byCourse.get(course.id) ?? []);
 
       return {
         id: course.id,
@@ -210,10 +235,14 @@ function buildTopCourses(courses: TeacherCourse[], paidOrders: Order[]) {
         status: course.status,
         lessonCount: course.lessonCount,
         code: buildCourseCode(course.title),
-        ...sales,
+        orders: groups.reduce((sum, group) => sum + group.orders, 0),
+        revenue: groups
+          .map((group) => ({ currency: group.currency, amountMinor: group.totalMinor }))
+          .sort((left, right) => right.amountMinor - left.amountMinor),
+        chartedMinor: groups.find((group) => group.currency === chartedCurrency)?.totalMinor ?? 0,
       };
     })
-    .sort((a, b) => b.grossMinor - a.grossMinor || b.lessonCount - a.lessonCount)
+    .sort((a, b) => b.chartedMinor - a.chartedMinor || b.lessonCount - a.lessonCount)
     .slice(0, 3);
 }
 

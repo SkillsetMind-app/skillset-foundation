@@ -5,14 +5,19 @@ import type { ReactNode } from "react";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { SpotArt } from "@/components/ui/spot-art";
 import type { RevenuePoint } from "@/domain/creator-reports";
+import { formatMoney } from "@/lib/format-money";
 
 /**
  * O grafico de receita que so existia na home. Agora e um componente so, usado
  * pela home e pela pagina de relatorios; quem chama decide o periodo, os
  * rotulos e o que vai no canto direito do cabecalho (as abas de periodo).
+ * Desenha UMA moeda (`currency`): quem chama escolhe qual e diz em `note` o
+ * que ficou de fora, em vez de somar moedas diferentes.
  */
 export function RevenueChart({
   points,
+  currency,
+  note,
   totalMinor,
   totalLabel,
   title,
@@ -23,6 +28,9 @@ export function RevenueChart({
   headerAction,
 }: {
   points: RevenuePoint[];
+  currency: string;
+  /** Uma linha sob o grafico (ex.: as outras moedas, que nao estao nele). */
+  note?: string;
   totalMinor: number;
   totalLabel: string;
   title: string;
@@ -36,19 +44,19 @@ export function RevenueChart({
   const chart = buildChart(points);
   // Eixo pelo formatador da lingua ("$1.5K"): o "$2k" feito a mao arredondava
   // $1.500 para $2k e escrevia "$2k" em duas linhas. O minimo de casas vai
-  // explicito: sem ele, versoes do ICU escrevem "$1.0K" e "$0.0".
-  const axisMoney = new Intl.NumberFormat(locale, {
-    style: "currency",
-    currency: "USD",
-    notation: "compact",
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 1,
-  });
+  // explicito: sem ele, versoes do ICU escrevem "$1.0K" e "$0.0". A moeda e a
+  // do grafico (era USD fixo, mesmo para quem vende em reais).
+  const axisMoney = (amountMinor: number) =>
+    formatMoney(amountMinor, currency, locale, {
+      notation: "compact",
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 1,
+    });
   // 90 baldes diarios (ou 24 mensais) escreviam 90 rotulos e viravam borrao.
   // Um a cada N mantem no maximo ~12 em qualquer periodo (~4 no celular).
   const labelEvery = Math.max(1, Math.ceil(points.length / 12));
   const percent = (value: number, total: number) => `${(value / total) * 100}%`;
-  const yTexts = chart.yLabels.map((label) => axisMoney.format(label.amountMinor / 100));
+  const yTexts = chart.yLabels.map((label) => axisMoney(label.amountMinor));
   // A coluna do eixo tem a largura do maior rotulo: "2,5 mil US$" em espanhol
   // e bem mais largo que "$2.5K" e seria cortado numa coluna fixa.
   const axisWidth = `${Math.max(1, ...yTexts.map((text) => text.length)) + 1}ch`;
@@ -173,6 +181,9 @@ export function RevenueChart({
             ) : null,
           )}
         </div>
+        {note ? (
+          <p className="mt-3 text-xs leading-5 text-[var(--color-ink-soft)]">{note}</p>
+        ) : null}
 
         {!totalMinor ? (
           <div className="studio-chart-empty">

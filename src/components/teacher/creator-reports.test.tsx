@@ -246,6 +246,25 @@ describe("Relatorios do professor", () => {
     ]);
   });
 
+  // R$100 e $20 viravam um "$120" no grafico dos relatorios.
+  it("duas moedas: o grafico desenha uma, diz as outras e a tabela separa as linhas", async () => {
+    mocks.orders = [
+      order({ id: "b1", status: "paid", courseId: "c1", courseTitle: "Deep Hypnosis", amountMinor: 10_000, currency: "BRL", createdAt: daysAgo(2) }),
+      order({ id: "b2", status: "paid", courseId: "c1", courseTitle: "Deep Hypnosis", amountMinor: 10_000, currency: "BRL", createdAt: daysAgo(3) }),
+      order({ id: "u1", status: "paid", courseId: "c1", courseTitle: "Deep Hypnosis", amountMinor: 2_000, currency: "USD", createdAt: daysAgo(2) }),
+    ];
+
+    render(<CreatorOpsHub />);
+
+    // BRL tem mais pedidos no periodo: e a moeda do grafico.
+    const chart = (await screen.findByRole("img", { name: "Teacher revenue chart" })).closest<HTMLElement>(".studio-chart-card")!;
+    expect(within(chart).getByText("R$200", { selector: "strong" })).toBeInTheDocument();
+    expect(within(chart).getByText("Other currencies are not in this chart: $20.")).toBeInTheDocument();
+    const rows = within(screen.getByRole("table")).getAllByRole("row").slice(1);
+    expect(rows.map((row) => within(row).getAllByRole("cell")[2].textContent)).toEqual(["BRL 200", "USD 20"]);
+    expect(document.body.textContent).not.toMatch(/\$220|R\$220|BRL 220|USD 220/);
+  });
+
   it("sem nenhuma linha, o export nao fica clicavel", async () => {
     mocks.orders = [];
     mocks.ledgers = [];

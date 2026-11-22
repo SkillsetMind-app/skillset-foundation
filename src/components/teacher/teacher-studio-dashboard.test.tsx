@@ -794,3 +794,94 @@ describe("Home do professor: movimento", () => {
   });
 });
 vi.mock("@/lib/data/creator-plan", () => ({ fetchCreatorPlanRequired: async () => state.planRequired }));
+
+// --- Receita por moeda: nada soma reais com dolares --------------------------
+
+function paidOrder(fields: Record<string, unknown>) {
+  return {
+    id: "o1",
+    courseId: "c1",
+    courseTitle: "Breathwork Basics",
+    status: "paid",
+    amountMinor: 4900,
+    currency: "usd",
+    createdAt: new Date(),
+    ...fields,
+  };
+}
+
+function revenueTile() {
+  return screen.getByText("Revenue, 30d").nextElementSibling as HTMLElement;
+}
+
+describe("Home do professor: receita nunca soma moedas", () => {
+  it("uma moeda so (USD): quadro e grafico como sempre", async () => {
+    state.courses = [course({ status: "published" })];
+    state.orders = [paidOrder({})];
+
+    render(<TeacherStudioDashboard />);
+
+    await screen.findByText("Revenue, 30d");
+    expect(revenueTile()).toHaveTextContent(/^\$49$/);
+    expect(screen.getByText("$49", { selector: "strong.num" })).toBeInTheDocument();
+    expect(screen.queryByText(/not in this chart/)).toBeNull();
+  });
+
+  // R$100 e $20 viravam "$120" no quadro e no grafico.
+  it("duas moedas: cada uma no proprio valor, o grafico desenha uma e diz as outras", async () => {
+    state.courses = [course({ status: "published" })];
+    state.orders = [
+      paidOrder({ id: "brl", currency: "BRL", amountMinor: 10_000 }),
+      paidOrder({ id: "usd", currency: "USD", amountMinor: 2_000 }),
+    ];
+
+    render(<TeacherStudioDashboard />);
+
+    await screen.findByText("Revenue, 30d");
+    // Lado a lado, a maior primeiro.
+    expect(revenueTile()).toHaveTextContent("R$100 · $20");
+    // Empate em pedidos: o grafico fica com a primeira em ordem alfabetica.
+    expect(screen.getByText("R$100", { selector: "strong.num" })).toBeInTheDocument();
+    expect(screen.getByText("Other currencies are not in this chart: $20.")).toBeInTheDocument();
+    expect(screen.getAllByText("R$0").length).toBeGreaterThan(0);
+    // Nenhuma soma das duas em lugar nenhum da Home.
+    expect(document.body.textContent).not.toMatch(/\$120|R\$120/);
+  });
+
+  it("reembolso nao entra na receita, nem na moeda dele", async () => {
+    state.courses = [course({ status: "published" })];
+    state.orders = [
+      paidOrder({ id: "usd" }),
+      paidOrder({ id: "brl", currency: "BRL", amountMinor: 10_000, status: "refunded" }),
+    ];
+
+    render(<TeacherStudioDashboard />);
+
+    await screen.findByText("Revenue, 30d");
+    expect(revenueTile()).toHaveTextContent(/^\$49$/);
+    expect(document.body.textContent).not.toContain("R$");
+  });
+
+  // Linha antiga sem moeda: o Intl recusa o codigo; a Home abre com o valor.
+  it("moeda vazia: cai no texto simples, sem derrubar a Home", async () => {
+    state.courses = [course({ status: "published" })];
+    state.orders = [paidOrder({ currency: "" })];
+
+    render(<TeacherStudioDashboard />);
+
+    await screen.findByText("Revenue, 30d");
+    expect(revenueTile()).toHaveTextContent("UNSPECIFIED 49.00");
+    expect(screen.getByRole("img", { name: "Teacher revenue chart" })).toBeInTheDocument();
+  });
+
+  it("sem pedido pago (so matricula gratis): zero sem inventar moeda", async () => {
+    state.courses = [course({ status: "published", paymentType: "free", enrollmentCount: 3 })];
+    state.orders = [];
+
+    render(<TeacherStudioDashboard />);
+
+    await screen.findByText("Revenue, 30d");
+    expect(revenueTile()).toHaveTextContent(/^0$/);
+    expect(screen.queryByRole("img", { name: "Teacher revenue chart" })).toBeNull();
+  });
+});
