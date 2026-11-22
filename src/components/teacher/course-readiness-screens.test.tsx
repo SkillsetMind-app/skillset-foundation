@@ -323,7 +323,7 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
 
   it("localizes a visible price block without saving the invalid draft", async () => {
     vi.useFakeTimers();
-    renderBuilder("pricing");
+    const view = renderBuilder("pricing");
     await act(async () => {});
     const price = screen.getByRole("textbox", { name: "Price" });
     fireEvent.change(price, { target: { value: "invalid" } });
@@ -336,9 +336,18 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     expect(price).toHaveValue("invalid");
     act(() => vi.advanceTimersByTime(5000));
     expect(updateTeacherCourseBuilder).not.toHaveBeenCalled();
-    // Publicar mora so na aba Publish; o preco errado segue pendente la.
+    // Publicar mora so na aba Publish: la, com o mesmo rascunho, ele segue
+    // apagado.
     expect(screen.queryByRole("button", { name: "Publicar producto" })).toBeNull();
-    expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "67");
+    mocks.searchParams.set("tab", "review");
+    view.rerender(
+      <I18nProvider initialLocale="en">
+        <SwitchLanguage />
+        <CourseBuilderStudio />
+      </I18nProvider>,
+    );
+    expect(screen.getByRole("button", { name: "Publicar producto" })).toBeDisabled();
+    expect(updateTeacherCourseBuilder).not.toHaveBeenCalled();
   });
 
   // O aviso do preco caia no cartao do rodape, telas abaixo do campo.
@@ -349,6 +358,8 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     fireEvent.click(screen.getByRole("button", { name: "Save draft" }));
 
     const message = "Use a valid non-negative price, or leave the field empty.";
+    // O foco vai ao campo (no celular ele pode estar fora da tela).
+    expect(price).toHaveFocus();
     expect(price).toHaveAttribute("aria-invalid", "true");
     expect(price).toHaveAccessibleDescription(message);
     expect(screen.getAllByRole("alert")).toHaveLength(1);
@@ -2387,17 +2398,12 @@ describe("movimento so na mudanca", () => {
     title.focus();
     await act(async () => finishPublish());
 
-    // O painel "Publicado!" mora na aba Publish, onde se publica: na aba
-    // Details nada aparece e o foco fica no titulo.
+    // Publicou com outra aba na tela: o painel sai no topo dessa aba (a aba
+    // nao troca debaixo de quem digita) e o foco fica no titulo.
+    const copy = await screen.findByRole("button", { name: "Copy my page link" });
     expect(title).toHaveFocus();
-    expect(screen.queryByRole("button", { name: "Copy my page link" })).toBeNull();
-    mocks.searchParams.set("tab", "review");
-    view.rerender(
-      <I18nProvider initialLocale="en">
-        <SwitchLanguage />
-        <CourseBuilderStudio />
-      </I18nProvider>,
-    );
-    expect(await screen.findByRole("button", { name: "Copy my page link" })).toBeInTheDocument();
+    expect(copy).not.toHaveFocus();
+    expect(document.getElementById("builder-sec-review")).toBeNull();
+    expect(mocks.searchParams.get("tab")).toBe("details");
   });
 });

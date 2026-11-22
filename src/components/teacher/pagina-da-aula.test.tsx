@@ -520,10 +520,17 @@ describe("pagina da aula no builder", () => {
     clickConfirm(asking, "Delete file");
 
     await waitFor(() => expect(screen.getAllByText(missingIntro).length).toBeGreaterThan(0));
-    // O Publish mora na aba Publish e le a mesma prontidao do passo a passo,
-    // que voltou a ter a aula pendente.
+    // O Publish mora na aba Publish: la, a aula volta a ser pendencia e o
+    // botao fica apagado.
     expect(screen.queryByRole("button", { name: "Publish product" })).toBeNull();
-    expect(Number(screen.getByRole("progressbar").getAttribute("aria-valuenow"))).toBeLessThan(100);
+    navigateTo("/teach/builder?courseId=course-1&tab=review");
+    const review = await waitFor(() => {
+      const found = document.getElementById("builder-sec-review");
+      if (!found) throw new Error("aba Publish nao abriu");
+      return found;
+    });
+    await waitFor(() => expect(within(review).getByText(missingIntro)).toBeInTheDocument());
+    expect(screen.getByRole("button", { name: "Publish product" })).toBeDisabled();
   }, 10000);
 
   // Sem a camada do antigo modal, a barra lateral ficou clicavel no meio de um

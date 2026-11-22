@@ -611,6 +611,9 @@ export function CourseBuilderStudio() {
   // Move aplica (no Chrome/Edge as setas do teclado disparam change na hora).
   const [moveTargets, setMoveTargets] = useState<Record<string, string>>({});
   const [moveStatus, setMoveStatus] = useState<{ moduleId: string; text: string } | null>(null);
+  // Modulo onde a aula entrou: "Lesson added" so na pagina dele. Mover limpa o
+  // `success`, entao a linha sempre mostra o aviso mais novo.
+  const [lessonAddedIn, setLessonAddedIn] = useState<string | null>(null);
   // Lista de modulos: o anuncio do Up/Down e a linha que recebe a aula arrastada.
   const [reorderStatus, setReorderStatus] = useState("");
   const [dragOverModuleId, setDragOverModuleId] = useState<string | null>(null);
@@ -1615,6 +1618,7 @@ export function CourseBuilderStudio() {
       moduleId: targetModuleId,
       lessonId: nextLessonId,
     };
+    setLessonAddedIn(targetModuleId);
     setSuccess("lessonAdded");
   }
 
@@ -2027,7 +2031,7 @@ export function CourseBuilderStudio() {
         dripStrategy={dripStrategy}
         onClose={() => {}}
         onSetFreePreview={() => {}}
-        onAssetsChanged={refreshCourseAssets}
+        onAssetsChanged={() => refreshCourseAssets()}
         onUpdateLesson={(patch) => updateLesson(lessonModule.id, lesson.id, patch)}
       />
     );
@@ -2085,7 +2089,7 @@ export function CourseBuilderStudio() {
           }
           setUploadingLesson(null);
         }}
-        onAssetsChanged={refreshCourseAssets}
+        onAssetsChanged={() => refreshCourseAssets()}
         onSetFreePreview={() => {
           const next = freePreviewLessonId === lesson.id ? "" : lesson.id;
           setFreePreviewLessonId(next);
@@ -2444,7 +2448,7 @@ export function CourseBuilderStudio() {
             anuncia mudanca de texto numa regiao que ja existia. */}
         <div className="grid gap-2">
           <p role="status" className="text-xs font-semibold text-[var(--color-primary)]">
-            {success === "lessonAdded"
+            {success === "lessonAdded" && lessonAddedIn === module.id
               ? t("creatorEditor.builder.success.lessonAdded")
               : moveStatus?.moduleId === module.id ? moveStatus.text : ""}
           </p>
@@ -2547,13 +2551,21 @@ export function CourseBuilderStudio() {
     setError(null);
     setSuccess(null);
 
+    // Com o campo na tela, o foco vai ate ele: no celular o aviso do campo
+    // ficava abaixo da dobra e o Save parecia nao fazer nada.
     if (!priceFieldIsValid) {
       setError({ code: liveWithoutPrice ? "livePrice" : "price" });
+      if (priceFieldShown) {
+        document.getElementById("builder-price")?.focus();
+      }
       return;
     }
 
     if (!installmentsAreValid) {
       setError({ code: "installmentsSave" });
+      if (priceFieldShown && showSplitPayments && installmentsEnabled) {
+        document.getElementById("builder-installments")?.focus();
+      }
       return;
     }
 
@@ -3090,6 +3102,33 @@ export function CourseBuilderStudio() {
       ) : null}
     </InlineAlert>
   ) : null;
+  // Publicou: o pico da jornada. O link para divulgar sai aqui mesmo, sem ir
+  // ao Manage. Mora na aba Publish, no lugar do botao; se a pessoa trocou de
+  // aba enquanto publicava, sai no topo da aba em que ela esta, em vez de
+  // trocar a aba debaixo de quem digita. O botao latao de copiar so pega o
+  // foco quando nada esta focado (CourseShareLink), entao nao rouba teclas.
+  const publishedPanel = success === "published" ? (
+    <>
+      {courseId ? (
+        <PublishedPanel
+          courseId={courseId}
+          courseTitle={title.trim() || t("creatorPanel.hub.header.courseFallback")}
+          headingRef={successNoticeRef}
+        />
+      ) : null}
+      {/* Depois de publicar, e só aí: a oferta do selo, sem travar nada.
+          Status null (leitura falhou ou não chegou) não oferece. */}
+      {user ? (
+        <VerifiedBadgeOffer
+          uid={user.uid}
+          name={user.displayName}
+          photoURL={user.photoURL}
+          verificationStatus={verificationStatus}
+          onDismiss={() => successNoticeRef.current?.focus()}
+        />
+      ) : null}
+    </>
+  ) : null;
   // Lugar fora da tela (Publish em outra aba, biblioteca fechada): o topo.
   const heroShowsError = errorSlot === "hero"
     || (errorSlot === "publish" && activeTab !== "review")
@@ -3171,6 +3210,7 @@ export function CourseBuilderStudio() {
           {t("creatorEditor.builder.success.draftSaved")}
         </p>
       ) : null}
+      {activeTab === "review" ? null : publishedPanel}
 
       <nav className="course-builder-stepper" aria-label={t("creatorEditor.builder.navigation.steps")}>
         <div className="course-builder-stepper__head">
@@ -3662,6 +3702,7 @@ export function CourseBuilderStudio() {
                           : "creatorEditor.builder.pricing.price",
                     )}
                     <input
+                      id="builder-price"
                       value={priceAmount}
                       onChange={(event) => {
                         setPriceAmount(event.target.value);
@@ -3735,6 +3776,7 @@ export function CourseBuilderStudio() {
                         <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
                           {t("creatorEditor.builder.pricing.splitMax")}
                           <select
+                            id="builder-installments"
                             value={installmentsMax}
                             onChange={(event) => {
                               setInstallmentsMax(event.target.value);
@@ -4216,27 +4258,7 @@ export function CourseBuilderStudio() {
           <div className="mt-6">{builderErrorAlert}</div>
         ) : null}
 
-        {/* Publicou: o pico da jornada. O link para divulgar sai aqui mesmo,
-            no lugar do botao, sem ir ao Manage, e o botao latao de copiar
-            recebe o foco. Publicar so existe nesta aba. */}
-        {activeTab === "review" && success === "published" && courseId ? (
-          <PublishedPanel
-            courseId={courseId}
-            courseTitle={title.trim() || t("creatorPanel.hub.header.courseFallback")}
-            headingRef={successNoticeRef}
-          />
-        ) : null}
-        {/* Depois de publicar, e só aí: a oferta do selo, sem travar nada.
-            Status null (leitura falhou ou não chegou) não oferece. */}
-        {activeTab === "review" && success === "published" && user ? (
-          <VerifiedBadgeOffer
-            uid={user.uid}
-            name={user.displayName}
-            photoURL={user.photoURL}
-            verificationStatus={verificationStatus}
-            onDismiss={() => successNoticeRef.current?.focus()}
-          />
-        ) : null}
+        {activeTab === "review" ? publishedPanel : null}
 
         {/* Na pagina da aula a saida e o "Back to module" dela: Back/Continue
             do construtor empilhavam uma terceira barra de acoes. */}
