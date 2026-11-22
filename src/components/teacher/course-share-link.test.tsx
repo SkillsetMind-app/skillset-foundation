@@ -160,6 +160,45 @@ describe("CourseShareLink", () => {
     expect(share).toHaveFocus();
   });
 
+  // O foco ficava no botão e as setas não andavam: o menu só funcionava no Tab.
+  it("opens with focus on the first target and moves with the arrow keys", () => {
+    render(<CourseShareLink label="Checkout" path="/courses/course-1/checkout" title={title} />);
+    fireEvent.click(screen.getByRole("button", { name: "Share Checkout" }));
+    const [whatsapp, x, , email] = within(screen.getByRole("menu")).getAllByRole("menuitem");
+    expect(whatsapp).toHaveFocus();
+    fireEvent.keyDown(whatsapp, { key: "ArrowDown" });
+    expect(x).toHaveFocus();
+    fireEvent.keyDown(x, { key: "End" });
+    expect(email).toHaveFocus();
+    fireEvent.keyDown(email, { key: "ArrowDown" });
+    expect(whatsapp).toHaveFocus();
+  });
+
+  it("choosing a target closes the menu and hands focus back to Share", () => {
+    render(<CourseShareLink label="Checkout" path="/courses/course-1/checkout" title={title} />);
+    const share = screen.getByRole("button", { name: "Share Checkout" });
+    fireEvent.click(share);
+    fireEvent.click(screen.getByRole("menuitem", { name: "Email" }));
+    expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+    expect(share).toHaveFocus();
+  });
+
+  it("closes when focus tabs out of the button row, not while it moves inside", () => {
+    render(
+      <>
+        <CourseShareLink label="Checkout" path="/courses/course-1/checkout" title={title} />
+        <button type="button">Next on the page</button>
+      </>,
+    );
+    const share = screen.getByRole("button", { name: "Share Checkout" });
+    fireEvent.click(share);
+    const email = screen.getByRole("menuitem", { name: "Email" });
+    fireEvent.focusOut(email, { relatedTarget: share });
+    expect(screen.getByRole("menu")).toBeInTheDocument();
+    fireEvent.focusOut(email, { relatedTarget: screen.getByRole("button", { name: "Next on the page" }) });
+    expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+  });
+
   it("closes when the pointer goes down outside the button row", () => {
     render(<CourseShareLink label="Checkout" path="/courses/course-1/checkout" title={title} />);
     fireEvent.click(screen.getByRole("button", { name: "Share Checkout" }));

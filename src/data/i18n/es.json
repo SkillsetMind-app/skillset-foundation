@@ -4863,6 +4863,7 @@
     "label": "Teléfono",
     "placeholder": "Número de teléfono",
     "countryAria": "Código de país: {code} {dialCode} ({country})",
+    "countryList": "Código de país",
     "hint": "Se guarda en formato internacional E.164, por ejemplo +15551234567."
   },
   "userAvatar": {

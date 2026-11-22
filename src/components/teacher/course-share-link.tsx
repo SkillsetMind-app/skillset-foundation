@@ -4,9 +4,11 @@ import { useEffect, useRef, useState } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { entryUrl, type EntryKind } from "@/domain/host-routing";
+import { moveFocusByKey } from "@/lib/a11y/menu-keys";
 import { SITE_URL } from "@/lib/seo/page-metadata";
 import { useCurrentHostname } from "@/lib/ui/use-current-hostname";
 
+const MENU_ITEM = '[role="menuitem"]';
 const actionClass =
   "inline-flex min-h-11 items-center px-4 py-2 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2";
 
@@ -50,6 +52,7 @@ export function CourseShareLink({
   const rowRef = useRef<HTMLDivElement>(null);
   const shareRef = useRef<HTMLButtonElement>(null);
   const copyRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
   const forLabel = (key: string) => t(key).replace("{label}", () => label);
   const outlineClass = accent ? "button-outline button-lg" : `button-outline ${actionClass}`;
 
@@ -66,6 +69,9 @@ export function CourseShareLink({
     if (!open) {
       return;
     }
+
+    // Aberto, o foco vai ao 1º destino e as setas andam entre eles.
+    menuRef.current?.querySelector<HTMLElement>(MENU_ITEM)?.focus({ preventScroll: true });
 
     function handlePointerDown(event: MouseEvent) {
       if (rowRef.current && !rowRef.current.contains(event.target as Node)) {
@@ -117,7 +123,17 @@ export function CourseShareLink({
       <p className="mt-1 break-all font-mono text-sm text-[var(--color-ink)]">{url}</p>
       {/* `relative` on the row, not on the Share button: the menu then hangs
           from the row's left edge and never runs past the card on a phone. */}
-      <div ref={rowRef} className="relative mt-3 flex flex-wrap gap-2">
+      <div
+        ref={rowRef}
+        // Tab para fora do menu fecha (o foco começa dentro dele).
+        onBlur={(event) => {
+          const next = event.relatedTarget;
+          if (open && next instanceof Node && !event.currentTarget.contains(next)) {
+            setOpen(false);
+          }
+        }}
+        className="relative mt-3 flex flex-wrap gap-2"
+      >
         <button
           ref={copyRef}
           type="button"
@@ -145,8 +161,10 @@ export function CourseShareLink({
         </button>
         {open ? (
           <div
+            ref={menuRef}
             role="menu"
             aria-label={forLabel("creatorPanel.shareLink.menuAria")}
+            onKeyDown={(event) => moveFocusByKey(event, MENU_ITEM)}
             className="motion-drop-in absolute left-0 top-[calc(100%+8px)] z-40 w-48 rounded-lg border border-[var(--color-line)] bg-white p-1.5 shadow-[var(--shadow-strong)]"
           >
             {targets.map(({ key, href }) => (
@@ -156,7 +174,12 @@ export function CourseShareLink({
                 role="menuitem"
                 target={href.startsWith("mailto:") ? undefined : "_blank"}
                 rel="noopener noreferrer"
-                onClick={() => setOpen(false)}
+                // Escolher um destino devolve o foco ao Share, em vez de
+                // deixá-lo cair no body.
+                onClick={() => {
+                  setOpen(false);
+                  shareRef.current?.focus();
+                }}
                 className="flex min-h-11 items-center rounded-md px-3 text-sm font-semibold text-[var(--color-ink)] hover:bg-[var(--color-surface-soft)]"
               >
                 {t(`creatorPanel.shareLink.${key}`)}

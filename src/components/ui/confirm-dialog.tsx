@@ -44,7 +44,9 @@ export const CONFIRM_GUARD_MS = 500;
  * - nos primeiros CONFIRM_GUARD_MS o confirmar não responde (toque duplo);
  * - durante o `onConfirm` o botão trava e mostra `pendingLabel`: dois cliques
  *   seguidos disparam a ação uma vez só;
- * - cabe na tela (.modal-panel, AGENTS.md) e tem 16px de margem no celular.
+ * - cabe na tela (.modal-panel, AGENTS.md) e tem 16px de margem no celular;
+ *   a entrada e o fundo (--color-scrim) vêm da mesma classe, iguais às outras
+ *   janelas.
  *
  * Erros — escolha um dos dois caminhos:
  * - o `onConfirm` trata o próprio erro e termina normalmente: a janela fecha e
@@ -146,7 +148,7 @@ export function ConfirmDialog({
         if (!pendingRef.current) dialogRef.current?.close();
       }}
       onClose={onClose}
-      className="modal-panel modal-panel-scroll motion-panel-in m-auto w-[calc(100%_-_2rem)] max-w-md rounded-xl border border-[var(--color-line)] bg-[var(--color-surface)] p-0 text-[var(--color-ink)] shadow-[var(--shadow-strong)] backdrop:bg-[rgba(15,39,68,0.62)]"
+      className="modal-panel modal-panel-scroll m-auto w-[calc(100%_-_2rem)] max-w-md rounded-xl border border-[var(--color-line)] bg-[var(--color-surface)] p-0 text-[var(--color-ink)] shadow-[var(--shadow-strong)]"
     >
       <div className="grid gap-2 p-6">
         {eyebrow ? (

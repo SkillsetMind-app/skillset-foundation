@@ -66,7 +66,7 @@ export function UpgradeModal({
     >
       <button
         type="button"
-        className="absolute inset-0 bg-[rgba(15,39,68,0.62)] backdrop-blur-[2px]"
+        className="dialog-backdrop absolute inset-0"
         aria-label={t("billingCheckout.close")}
         onClick={onClose}
       />
@@ -86,7 +86,7 @@ export function UpgradeModal({
           <button
             type="button"
             onClick={onClose}
-            className="grid size-9 shrink-0 place-items-center rounded-md text-[var(--color-ink-soft)] transition hover:bg-[var(--color-surface-soft)] hover:text-[var(--color-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus-ring)]"
+            className="button-icon"
             aria-label={t("billingCheckout.close")}
           >
             <X aria-hidden="true" size={18} strokeWidth={1.8} />

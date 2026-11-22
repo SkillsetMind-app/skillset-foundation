@@ -1,9 +1,10 @@
 "use client";
 
-import { ChevronDown } from "lucide-react";
+import { Check, ChevronDown } from "lucide-react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { moveFocusByKey } from "@/lib/a11y/menu-keys";
 
 type CountryOption = {
   code: string;
@@ -56,9 +57,12 @@ export function isValidE164Phone(value: string) {
 export function PhoneInput({ value, onChange, label }: PhoneInputProps) {
   const { locale, t } = useTranslation();
   const inputId = useId();
+  const listId = useId();
   const countryNames = useMemo(() => new Intl.DisplayNames([locale], { type: "region" }), [locale]);
   const [open, setOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
   const selectedCountry = findCountryForValue(value);
   const nationalDigits = getNationalDigits(value, selectedCountry);
 
@@ -66,6 +70,11 @@ export function PhoneInput({ value, onChange, label }: PhoneInputProps) {
     if (!open) {
       return;
     }
+
+    // Aberta, a lista começa no país escolhido: as setas andam a partir dele.
+    listRef.current
+      ?.querySelector<HTMLElement>('[aria-selected="true"]')
+      ?.focus({ preventScroll: true });
 
     function handleMouseDown(event: MouseEvent) {
       if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
@@ -76,6 +85,7 @@ export function PhoneInput({ value, onChange, label }: PhoneInputProps) {
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
         setOpen(false);
+        triggerRef.current?.focus();
       }
     }
 
@@ -92,6 +102,7 @@ export function PhoneInput({ value, onChange, label }: PhoneInputProps) {
     const existingNationalDigits = nationalDigits.slice(0, country.maxDigits);
     onChange(existingNationalDigits ? `${country.dialCode}${existingNationalDigits}` : "");
     setOpen(false);
+    triggerRef.current?.focus();
   }
 
   function handleNumberChange(nextValue: string) {
@@ -104,17 +115,27 @@ export function PhoneInput({ value, onChange, label }: PhoneInputProps) {
       <label htmlFor={inputId}>{label ?? t("phoneInput.label")}</label>
       <div
         ref={wrapperRef}
-        className="relative flex h-11 rounded-md border border-[var(--color-line)] bg-white focus-within:border-[var(--color-primary-light)]"
+        // O foco agora entra na lista: um Tab dali levava ao campo de baixo
+        // com a lista ainda aberta por cima dele. Foco saiu da caixa, fecha.
+        onBlur={(event) => {
+          const next = event.relatedTarget;
+          if (open && next instanceof Node && !event.currentTarget.contains(next)) {
+            setOpen(false);
+          }
+        }}
+        className="phone-field relative flex h-11 rounded-md border-[1.5px] border-[var(--color-field-border)] bg-[var(--color-surface-soft)] focus-within:border-[var(--color-primary)] focus-within:bg-[var(--color-surface)]"
       >
         <button
+          ref={triggerRef}
           type="button"
           onClick={() => setOpen((current) => !current)}
           aria-label={t("phoneInput.countryAria")
             .replace("{code}", () => selectedCountry.code)
             .replace("{country}", () => countryNames.of(selectedCountry.code) ?? selectedCountry.code)
             .replace("{dialCode}", () => selectedCountry.dialCode)}
-          aria-haspopup="menu"
+          aria-haspopup="listbox"
           aria-expanded={open}
+          aria-controls={open ? listId : undefined}
           className="flex w-24 shrink-0 items-center justify-center gap-1 border-r border-[var(--color-line)] bg-[var(--color-surface-soft)] px-3 text-xs font-bold text-[var(--color-primary)] transition hover:bg-[var(--color-surface-strong)]"
         >
           {selectedCountry.code} {selectedCountry.dialCode}
@@ -132,23 +153,41 @@ export function PhoneInput({ value, onChange, label }: PhoneInputProps) {
           value={nationalDigits}
           onChange={(event) => handleNumberChange(event.target.value)}
           placeholder={t("phoneInput.placeholder")}
-          className="min-w-0 flex-1 border-0 px-4 text-sm font-normal outline-none"
+          className="min-w-0 flex-1 border-0 bg-transparent px-4 text-sm font-normal outline-none"
         />
 
         {open ? (
-          <div className="absolute left-0 top-[calc(100%+8px)] z-50 w-72 max-w-full rounded-lg border border-[var(--color-line)] bg-white p-1.5 shadow-[var(--shadow-strong)]">
-            {countries.map((country) => (
-              <button
-                key={country.code}
-                type="button"
-                onClick={() => handleCountryChange(country)}
-                aria-label={`${countryNames.of(country.code) ?? country.code} ${country.dialCode}`}
-                className="flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-sm font-semibold text-[var(--color-ink-soft)] transition hover:bg-[var(--color-surface-soft)] hover:text-[var(--color-primary)]"
-              >
-                <span>{countryNames.of(country.code) ?? country.code}</span>
-                <span>{country.dialCode}</span>
-              </button>
-            ))}
+          // Lista de opções como a do idioma: diz qual país está escolhido
+          // (antes nenhum ficava marcado) e anda nas setas.
+          <div
+            ref={listRef}
+            id={listId}
+            role="listbox"
+            aria-label={t("phoneInput.countryList")}
+            onKeyDown={(event) => moveFocusByKey(event, '[role="option"]')}
+            className="absolute left-0 top-[calc(100%+8px)] z-50 max-h-72 w-72 max-w-full overflow-y-auto rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)] p-1.5 shadow-[var(--shadow-strong)]"
+          >
+            {countries.map((country) => {
+              const selected = country.code === selectedCountry.code;
+              return (
+                <button
+                  key={country.code}
+                  type="button"
+                  role="option"
+                  aria-selected={selected}
+                  tabIndex={-1}
+                  onClick={() => handleCountryChange(country)}
+                  aria-label={`${countryNames.of(country.code) ?? country.code} ${country.dialCode}`}
+                  className={`flex min-h-11 w-full items-center justify-between gap-3 rounded-md px-3 text-left text-sm font-semibold transition hover:bg-[var(--color-surface-soft)] hover:text-[var(--color-primary)] ${selected ? "text-[var(--color-primary)]" : "text-[var(--color-ink-soft)]"}`}
+                >
+                  <span>{countryNames.of(country.code) ?? country.code}</span>
+                  <span className="inline-flex items-center gap-2">
+                    {country.dialCode}
+                    <Check aria-hidden="true" size={16} strokeWidth={2.2} className={selected ? undefined : "invisible"} />
+                  </span>
+                </button>
+              );
+            })}
           </div>
         ) : null}
       </div>

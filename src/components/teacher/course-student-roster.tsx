@@ -172,7 +172,7 @@ function MessageComposer({
         value={body}
         onChange={(event) => setBody(event.target.value)}
         rows={3}
-        className="w-full rounded-md border border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-ink)]"
+        className="field-input"
         placeholder={t("courseRoster.messagePlaceholder")}
       />
       {error ? (

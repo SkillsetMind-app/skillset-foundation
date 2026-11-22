@@ -19,18 +19,18 @@ afterEach(cleanup);
 it("translates empty state and keeps notification preference destination", () => {
   mount();
   expect(screen.getByText("Aún no hay notificaciones")).toBeTruthy();
-  expect(screen.getByRole("group", { name: "Filtrar notificaciones" })).toBeTruthy();
+  expect(screen.getByRole("tablist", { name: "Filtrar notificaciones" })).toBeTruthy();
   expect(screen.getByRole("link", { name: "Preferencias de notificaciones" }).getAttribute("href")).toBe("/account?tab=notifications");
 });
 it("keeps authored notification text, unread ids and selection across language changes", async () => {
   mocks.rows = [{ id: "n-1", type: "community_reply", title: "Original $& title", body: "Author message", read: false }];
   mount();
-  fireEvent.click(screen.getByRole("button", { name: "Sin leer (1)" }));
+  fireEvent.click(screen.getByRole("tab", { name: "Sin leer (1)" }));
   expect(screen.getByText("Original $& title")).toBeTruthy();
   fireEvent.click(screen.getByRole("button", { name: "Marcar todas como leídas" }));
   await waitFor(() => expect(mocks.markAll).toHaveBeenCalledWith("u-1", ["n-1"]));
   fireEvent.click(screen.getByRole("button", { name: "English" }));
-  expect(screen.getByRole("button", { name: "Unread (1)" }).getAttribute("aria-pressed")).toBe("true");
+  expect(screen.getByRole("tab", { name: "Unread (1)" }).getAttribute("aria-selected")).toBe("true");
   expect(screen.getByText("Author message")).toBeTruthy();
   expect(mocks.subscribe).toHaveBeenCalledTimes(1);
 });

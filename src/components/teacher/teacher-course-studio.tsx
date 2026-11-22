@@ -299,7 +299,8 @@ export function TeacherCourseStudio({
                     : "/teach/builder",
                 )
               }
-              className="min-h-11 rounded-md border border-[var(--color-line-strong)] bg-white px-3 text-sm font-semibold normal-case tracking-normal text-[var(--color-ink)] outline-none focus:border-[var(--color-primary-light)] focus:ring-2 focus:ring-[rgba(66,102,145,0.18)]"
+              // h-11: o .field-input dá 45px; a busca ao lado tem 44.
+              className="field-input h-11 normal-case tracking-normal"
             >
               <option value="products">{t("creatorPanel.products.eyebrow")}</option>
               <option value="communities">{t("platform.nav.communities")}</option>
@@ -311,7 +312,7 @@ export function TeacherCourseStudio({
               aria-label={t("creatorPanel.products.statusAria")}
               value={statusFilter}
               onChange={(event) => setStatusFilter(event.target.value as ProductFilter)}
-              className="min-h-11 rounded-md border border-[var(--color-line-strong)] bg-white px-3 text-sm font-semibold normal-case tracking-normal text-[var(--color-ink)] outline-none focus:border-[var(--color-primary-light)] focus:ring-2 focus:ring-[rgba(66,102,145,0.18)]"
+              className="field-input h-11 normal-case tracking-normal"
             >
               {productFilters.map((filter) => (
                 <option key={filter.id} value={filter.id}>
