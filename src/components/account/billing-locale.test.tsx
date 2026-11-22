@@ -198,15 +198,16 @@ describe("billing locale with real dictionaries", () => {
   it("translates plans and their existing pricing highlights without changing cycle", async () => {
     mount(<PlansPanel />);
     expect(screen.getByText("Plan actual:")).toBeTruthy();
-    expect(screen.getByRole("radiogroup", { name: "Ciclo de facturación" })).toBeTruthy();
-    const annual = screen.getByRole("radio", { name: /^Anual/ });
+    // O seletor segmentado da casa (PeriodTabs): grupo com aria-pressed.
+    expect(screen.getByRole("group", { name: "Ciclo de facturación" })).toBeTruthy();
+    const annual = screen.getByRole("button", { name: /^Anual/ });
     fireEvent.click(annual);
-    expect(annual.getAttribute("aria-checked")).toBe("true");
+    expect(annual.getAttribute("aria-pressed")).toBe("true");
     expect(await screen.findByRole("button", { name: "Mejorar a Pro" })).toBeTruthy();
     expect(screen.getByText("0% de comisión en Pro. El procesamiento de tarjetas de Stripe se sigue aplicando.")).toBeTruthy();
     expect(screen.getByText(/^\$890 al año, desde hoy\. Se renueva automáticamente/)).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "English" }));
-    expect(screen.getByRole("radio", { name: /^Yearly/ }).getAttribute("aria-checked")).toBe("true");
+    expect(screen.getByRole("button", { name: /^Yearly/ }).getAttribute("aria-pressed")).toBe("true");
     expect(screen.getByText("0% commission on Pro. Card processing by Stripe still applies.")).toBeTruthy();
     expect(screen.getByText(/^\$890\/year, starting today\./)).toBeTruthy();
   });
