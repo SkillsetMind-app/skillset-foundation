@@ -99,8 +99,12 @@ describe.each(["en", "es"] as const)("Disclosures no cadastro %s", (locale) => {
     const notice = disclosure(locale);
     const google = screen.getByRole("button", { name: t("auth.continueWithGoogle") });
     expect(notice.compareDocumentPosition(google) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(google).toBeDisabled();
+    // Sem o aceite o botao segue clicavel: o clique explica o que falta e nao
+    // inicia nada (o afterEach confere que Google, cadastro e rede ficaram parados).
+    expect(google).toBeEnabled();
     expect(screen.getByRole("checkbox")).not.toBeChecked();
+    fireEvent.click(google);
+    expect(screen.getByRole("alert")).toHaveTextContent(t("auth.signup.acceptTermsForGoogle"));
   });
 
   it("mantem as condicoes perto da criacao da conta no segundo passo", () => {

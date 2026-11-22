@@ -58,18 +58,12 @@ export function BillingReturnStatus() {
     };
   }, []);
 
-  const actions = (primary: boolean) => (
-    <div className="mt-6 flex flex-wrap justify-center gap-3">
-      <Link
-        href="/teach"
-        className={buttonClasses({ variant: primary ? "solid" : "outline", size: primary ? "lg" : "md" })}
-      >
-        {t("billingCheckout.openStudio")}
-      </Link>
-      <Link href="/account/billing?tab=overview" className={buttonClasses({ variant: "outline", size: primary ? "lg" : "md" })}>
-        {t("billingCheckout.backToBilling")}
-      </Link>
-    </div>
+  // O botao do estudio so existe depois da confirmacao. Esperando ou sem
+  // resposta, a unica saida e Billing: nada aqui pode parecer confirmado.
+  const backToBilling = (size: "md" | "lg") => (
+    <Link href="/account/billing?tab=overview" className={buttonClasses({ variant: "outline", size })}>
+      {t("billingCheckout.backToBilling")}
+    </Link>
   );
 
   if (subscription) {
@@ -90,7 +84,12 @@ export function BillingReturnStatus() {
                 formatTrialDate(new Date(subscription.trialEnd as string), locale))
             : t("billingCheckout.planActiveBody")}
         </p>
-        {actions(true)}
+        <div className="mt-6 flex flex-wrap justify-center gap-3">
+          <Link href="/teach" className={buttonClasses({ variant: "solid", size: "lg" })}>
+            {t("billingCheckout.openStudio")}
+          </Link>
+          {backToBilling("lg")}
+        </div>
       </div>
     );
   }
@@ -107,20 +106,23 @@ export function BillingReturnStatus() {
         <p className="mx-auto mt-3 max-w-md text-sm leading-7 text-[var(--color-ink-soft)]">
           {t("billingCheckout.returnBody")}
         </p>
-        {actions(false)}
+        <div className="mt-5 flex justify-center">{backToBilling("md")}</div>
       </div>
     );
   }
 
   return (
-    <div className="px-4 py-8 text-center" role="status" aria-live="polite">
-      <div className="mx-auto size-12 rounded-full border-[3px] border-[rgba(26,54,93,0.12)] border-t-[var(--color-accent-fg)] motion-safe:animate-spin" />
-      <h2 className="mt-4 text-2xl font-semibold text-[var(--color-primary)]">
-        {t("billingCheckout.confirming")}
-      </h2>
-      <p className="mx-auto mt-3 max-w-md text-sm leading-7 text-[var(--color-ink-soft)]">
-        {t("billingCheckout.confirmingBody")}
-      </p>
+    <div className="px-4 py-8 text-center">
+      <div role="status" aria-live="polite">
+        <div className="mx-auto size-12 rounded-full border-[3px] border-[rgba(26,54,93,0.12)] border-t-[var(--color-accent-fg)] motion-safe:animate-spin" />
+        <h2 className="mt-4 text-2xl font-semibold text-[var(--color-primary)]">
+          {t("billingCheckout.confirming")}
+        </h2>
+        <p className="mx-auto mt-3 max-w-md text-sm leading-7 text-[var(--color-ink-soft)]">
+          {t("billingCheckout.confirmingBody")}
+        </p>
+      </div>
+      <div className="mt-5 flex justify-center">{backToBilling("md")}</div>
     </div>
   );
 }

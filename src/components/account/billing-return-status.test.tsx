@@ -1,6 +1,6 @@
 // A tela depois do cartao: confirma o teste gratis pela assinatura que o
 // servidor devolve (nunca pela URL) e leva de volta ao estudio.
-import { cleanup, render, screen } from "@testing-library/react";
+import { act, cleanup, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { BillingReturnStatus } from "@/components/account/billing-return-status";
@@ -29,6 +29,12 @@ const show = (locale: "en" | "es" = "en") =>
       <BillingReturnStatus />
     </I18nProvider>,
   );
+
+// O relogio falso anda dentro de act: sem isso o React nao redesenha no teste.
+const tick = (ms: number) =>
+  act(async () => {
+    await vi.advanceTimersByTimeAsync(ms);
+  });
 
 beforeEach(() => mocks.billing.mockReset());
 afterEach(() => {
@@ -68,12 +74,12 @@ describe("billing return status", () => {
     mocks.billing.mockResolvedValue({ trialEligible: true, subscription: null });
     show();
 
-    await vi.advanceTimersByTimeAsync(0);
+    await tick(0);
     expect(screen.getByRole("heading", { name: "Confirming your plan…" })).toBeInTheDocument();
     // Nada confirma sem assinatura: nem titulo de sucesso, nem botao do estudio.
     expect(screen.queryByRole("link", { name: "Open Teacher Studio" })).not.toBeInTheDocument();
 
-    await vi.advanceTimersByTimeAsync(3000 * 15);
+    await tick(3000 * 15);
     expect(screen.getByRole("heading", { name: "Review your subscription status." })).toBeInTheDocument();
     expect(mocks.billing).toHaveBeenCalledTimes(15);
     expect(screen.getByRole("link", { name: "Back to billing" })).toBeInTheDocument();
@@ -86,9 +92,9 @@ describe("billing return status", () => {
       .mockResolvedValue(trialing);
     show();
 
-    await vi.advanceTimersByTimeAsync(0);
+    await tick(0);
     expect(screen.getByRole("heading", { name: "Confirming your plan…" })).toBeInTheDocument();
-    await vi.advanceTimersByTimeAsync(3000);
+    await tick(3000);
     expect(screen.getByRole("heading", { name: "Your 14-day free trial has started." })).toBeInTheDocument();
   });
 });

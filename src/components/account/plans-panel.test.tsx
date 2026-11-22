@@ -187,7 +187,7 @@ describe("PlansPanel com os 2 planos e o teste gratis", () => {
     expect(await screen.findByText("Free trial — ends October 20, 2026")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Cancel plan" }));
     expect(window.confirm).toHaveBeenCalledWith(
-      "Cancel your plan? Your trial runs until October 20, 2026 and you won't be charged.",
+      "Cancel your plan? Your free trial runs until October 20, 2026 and you won't be charged.",
     );
     expect(await screen.findByText("Ends on October 20, 2026")).toBeInTheDocument();
     expect(state.cancel).toHaveBeenCalledOnce();
