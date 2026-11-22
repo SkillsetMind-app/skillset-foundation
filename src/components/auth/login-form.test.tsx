@@ -183,9 +183,13 @@ describe("LoginForm: campo de senha e botao de e-mail", () => {
     expect(field).toHaveAttribute("autocomplete", "current-password");
     expect(screen.getByRole("link", { name: "auth.forgotPassword" }).closest("label")).toBeNull();
 
-    fireEvent.click(screen.getByRole("button", { name: "auth.showPassword" }));
+    const eye = screen.getByRole("button", { name: "auth.showPassword" });
+    fireEvent.click(eye);
     expect(field).toHaveAttribute("type", "text");
-    expect(screen.getByRole("button", { name: "auth.hidePassword" })).toHaveAttribute("aria-pressed", "true");
+    // Um nome so; o estado vem do aria-pressed.
+    expect(eye).toHaveAttribute("aria-pressed", "true");
+    expect(eye).toHaveAccessibleName("auth.showPassword");
+    expect(screen.getByRole("textbox", { name: "auth.password" })).toBe(field);
   });
 
   // A-09: o rotulo de espera so no botao apertado; os dois seguem travados.

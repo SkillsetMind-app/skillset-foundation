@@ -102,7 +102,10 @@ describe("SecuritySettingsPanel feedback", () => {
     fireEvent.click(eyes[1]);
     expect(next).toHaveAttribute("type", "text");
     expect(screen.getByLabelText("Current password")).toHaveAttribute("type", "password");
-    expect(screen.getByRole("button", { name: "Hide password" })).toHaveAttribute("aria-pressed", "true");
+    // Um nome so; o estado vem do aria-pressed. O nome do campo e so o rotulo.
+    expect(eyes[1]).toHaveAttribute("aria-pressed", "true");
+    expect(eyes[0]).toHaveAttribute("aria-pressed", "false");
+    expect(screen.getByRole("textbox", { name: "New password" })).toBe(next);
   });
 
   it("treats the email send limit as reassurance, not an error", async () => {

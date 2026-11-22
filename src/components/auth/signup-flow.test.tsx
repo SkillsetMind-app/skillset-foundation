@@ -103,13 +103,41 @@ describe("SignupForm: o olhinho e a porta de confirmacao", () => {
     fireEvent.click(eyes[0]);
     expect(first.type).toBe("text");
     expect(second.type).toBe(secretField);
-    expect(screen.getByRole("button", { name: "auth.hidePassword" })).toHaveAttribute(
-      "aria-pressed",
-      "true",
-    );
+    // Um nome so; o estado vem do aria-pressed.
+    expect(eyes[0]).toHaveAttribute("aria-pressed", "true");
+    expect(eyes[1]).toHaveAttribute("aria-pressed", "false");
+    expect(screen.getAllByRole("button", { name: "auth.showPassword" })).toHaveLength(2);
 
-    fireEvent.click(screen.getByRole("button", { name: "auth.showPassword" }));
+    fireEvent.click(eyes[1]);
     expect(second.type).toBe("text");
+    // O nome acessivel do campo e so o rotulo, sem o do botao.
+    expect(screen.getByRole("textbox", { name: "auth." + secretField })).toBe(first);
+    expect(screen.getByRole("textbox", { name: "auth.signup.confirmPassword" })).toBe(second);
+  });
+
+  // A-09: o rotulo de espera segue o metodo clicado. "Back" segue ativo
+  // durante a criacao da conta; voltando ao passo 1 no meio do pedido, o
+  // Google dizia "Opening Google..." sem ter sido clicado.
+  it("so o Google clicado diz 'Opening Google...'; voltar no meio da criacao nao", async () => {
+    mocks.signUpWithEmail.mockReturnValue(new Promise(() => {}));
+    render(<SignupForm />);
+    fillStepOne();
+    fillStepTwoAndSubmit();
+
+    expect(await screen.findByRole("button", { name: "auth.signup.creatingAccount" })).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: "auth.signup.back" }));
+    expect(screen.getByRole("button", { name: /auth\.continueWithGoogle/ })).toBeDisabled();
+    expect(screen.queryByRole("button", { name: /auth\.openingGoogle/ })).toBeNull();
+  });
+
+  it("clicar no Google muda o rotulo dele", () => {
+    mocks.signInWithGoogle.mockReturnValue(new Promise(() => {}));
+    render(<SignupForm />);
+    fireEvent.click(screen.getByRole("checkbox"));
+    fireEvent.click(screen.getByRole("button", { name: /auth\.continueWithGoogle/ }));
+
+    expect(screen.getByRole("button", { name: /auth\.openingGoogle/ })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "auth.signup.continue" })).toBeDisabled();
   });
 
   // A-10: dentro do <label>, a frase virava parte do nome do campo.

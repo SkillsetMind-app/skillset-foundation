@@ -1,19 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useLayoutEffect,
-  useState,
-  type FormEvent,
-} from "react";
+import { useEffect, useState, type FormEvent } from "react";
 
 import {
   TurnstileWidget,
   isCaptchaEnabled,
 } from "@/components/auth/turnstile-widget";
+import { usePageHeading } from "@/components/auth/page-heading";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { getAuthRoute, getLoadingRoute, getSafeReturnTo, type AuthPathIntent } from "@/lib/auth/routing";
 import {
@@ -59,22 +53,6 @@ function ResendStatus({ sent, cooldown, message }: { sent: boolean; cooldown: nu
   );
 }
 
-// O titulo grande da pagina (/auth) seguia "Crie sua conta" em cima da porta de
-// confirmar e do link vencido. A tela de estado avisa a pagina, com a chave do
-// seu titulo, enquanto esta montada, e a pagina troca o titulo ("Check your
-// email", "This link has expired"). Sem provedor (porta solta), nao faz nada.
-export const ConfirmGateContext = createContext<((titleKey: string | null) => void) | null>(null);
-
-// Antes da pintura, para o titulo antigo nao piscar sobre a tela de estado.
-function usePageTitle(titleKey: string) {
-  const setPageTitle = useContext(ConfirmGateContext);
-  useLayoutEffect(() => {
-    setPageTitle?.(titleKey);
-    return () => setPageTitle?.(null);
-  }, [setPageTitle, titleKey]);
-  return setPageTitle !== null;
-}
-
 // A porta "confirme seu e-mail", logo depois de criar a conta (e tambem quando
 // alguem tenta entrar sem ter confirmado).
 //
@@ -99,9 +77,9 @@ export function ConfirmEmailGate({
   onChangeEmail?: () => void;
 }) {
   const { t } = useTranslation();
-  // A porta so existe no cliente (depois de criar a conta ou de um login sem
-  // confirmar), entao o layout effect nunca roda no servidor.
-  usePageTitle("auth.signup.checkEmailTitle");
+  // O titulo grande da pagina (/auth) seguia "Crie sua conta" em cima da
+  // porta de confirmar: com ela na tela, vira "Check your email".
+  usePageHeading({ titleKey: "auth.signup.checkEmailTitle" });
   const [cooldown, startCooldown] = useResendCooldown();
   const [isSending, setIsSending] = useState(false);
   const [sent, setSent] = useState(false);
@@ -266,9 +244,10 @@ export function ExpiredConfirmationLink({
   onSignIn: (email: string) => void;
 }) {
   const { t } = useTranslation();
-  // Dentro de /auth o aviso vira o titulo da pagina; solta, a tela mostra
-  // o proprio titulo.
-  const titleOnPage = usePageTitle("auth.signup.expiredTitle");
+  // Em /auth o aviso vira o titulo da pagina ("Sign in as a learner." ficava
+  // em cima dele). O titulo proprio so sai depois que a pagina ja mostra o
+  // dela: no HTML do servidor e solta, a tela segue com o seu.
+  const titleOnPage = usePageHeading({ titleKey: "auth.signup.expiredTitle" });
   const [email, setEmail] = useState("");
   const [cooldown, startCooldown] = useResendCooldown();
   const [isSending, setIsSending] = useState(false);

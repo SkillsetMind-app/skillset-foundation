@@ -49,6 +49,12 @@ describe("UpdatePasswordForm", () => {
     fireEvent.click(eyes[0]);
     expect(field).toHaveAttribute("type", "text");
     expect(screen.getByLabelText("Confirm new password")).toHaveAttribute("type", "password");
+    // Um nome so, estado no aria-pressed; e o nome do campo e so o rotulo
+    // (com o olho dentro do <label> ele virava "New password Show password").
+    expect(eyes[0]).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("textbox", { name: "New password" })).toBe(field);
+    fireEvent.click(eyes[1]);
+    expect(screen.getByRole("textbox", { name: "Confirm new password" })).toHaveAttribute("autocomplete", "new-password");
   });
 
   it("senhas diferentes: o aviso fica fora do rotulo e descreve o campo", () => {

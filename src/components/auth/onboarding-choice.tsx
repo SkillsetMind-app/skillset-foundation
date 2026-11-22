@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
+import { usePageHeading } from "@/components/auth/page-heading";
 import {
   TurnstileWidget,
   isCaptchaEnabled,
@@ -526,6 +527,20 @@ export function OnboardingChoice() {
     }
   }
 
+  // A ativacao curta assume o titulo e a descricao da pagina: o padrao de
+  // /onboarding ("Set up your SkillsetMind profile.") fala de montar um perfil
+  // que ela nao monta. Decidido pelo perfil carregado, nao pelo endereco: o
+  // cadastro de 3 passos tambem abre com ?path=teacher. Sem o cartao do e-mail
+  // (ja verificado), "verifique seu e-mail" seria um pedido sem botao.
+  const streamlinedDescriptionKey = askEmailVerification
+    ? "onboarding.streamlinedDesc"
+    : "onboarding.streamlinedDescVerified";
+  const headingOnPage = usePageHeading(
+    !isBootstrapping && streamlinedTeacherActivation
+      ? { titleKey: "onboarding.streamlinedTitle", descriptionKey: streamlinedDescriptionKey }
+      : null,
+  );
+
   if (isBootstrapping) {
     // O mesmo giro e a mesma frase do fallback de /onboarding, que vem logo
     // antes: antes eram duas esperas seguidas com cara e texto diferentes.
@@ -542,14 +557,14 @@ export function OnboardingChoice() {
         : "";
 
     return (
-      <div className="grid gap-5">
-        {/* "One last step to open Teacher Studio" ja e o titulo da pagina
-            (/onboarding?path=teacher): o cartao que o repetia virou a
-            descricao dela. Sem o cartao do e-mail (ja verificado), "verifique
-            seu e-mail" seria um pedido sem botao. */}
-        <p className="auth-description">
-          {t(askEmailVerification ? "onboarding.streamlinedDesc" : "onboarding.streamlinedDescVerified")}
-        </p>
+      <div className="mt-6 grid gap-5">
+        {/* O titulo e a descricao moram no topo da pagina (o cartao que os
+            repetia saiu); solta, sem a pagina, a tela mostra a descricao. */}
+        {headingOnPage ? null : (
+          <p className="text-sm leading-6 text-[var(--color-ink-soft)]">
+            {t(streamlinedDescriptionKey)}
+          </p>
+        )}
         {askPayoutCountry ? payoutCountryField : null}
 
         {askEmailVerification ? emailVerificationCard : null}

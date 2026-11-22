@@ -100,6 +100,10 @@ export function SignupForm() {
   // can only fail the same way again.
   const [accountExists, setAccountExists] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  // Qual entrada foi apertada, so para o rotulo (isLoading segue travando os
+  // dois). "Back" no meio da criacao da conta mostrava o Google dizendo
+  // "Opening Google..." sem ninguem ter clicado nele.
+  const [pendingMethod, setPendingMethod] = useState<"email" | "google" | null>(null);
   // Turnstile token — empty unless the widget is enabled. Shown on step 2 where
   // the account is actually created (Google OAuth doesn't use a captcha token).
   const [captchaToken, setCaptchaToken] = useState("");
@@ -157,6 +161,7 @@ export function SignupForm() {
       return;
     }
 
+    setPendingMethod("email");
     setIsLoading(true);
 
     try {
@@ -221,6 +226,7 @@ export function SignupForm() {
       return;
     }
 
+    setPendingMethod("google");
     setIsLoading(true);
 
     try {
@@ -445,8 +451,9 @@ export function SignupForm() {
                 className="button-outline px-4 py-2.5 text-sm disabled:opacity-60"
               >
                 <GoogleMark />
-                {/* No passo 1 so o Google liga isLoading: e ele que esta trabalhando. */}
-                {isLoading ? t("auth.openingGoogle") : t("auth.continueWithGoogle")}
+                {isLoading && pendingMethod === "google"
+                  ? t("auth.openingGoogle")
+                  : t("auth.continueWithGoogle")}
               </button>
             </>
           ) : null}
@@ -460,10 +467,15 @@ export function SignupForm() {
       ) : (
         <>
           {intent === "teacher" ? introNode : null}
-          <label className="grid gap-1.5 text-sm font-semibold text-[var(--color-ink)]">
-            {t("auth.password")}
+          {/* Rotulo e campo lado a lado (htmlFor), com o olho fora do
+              <label>: dentro dele, o nome do botao entrava no nome do campo. */}
+          <div className="grid gap-1.5">
+            <label htmlFor="signup-password" className="text-sm font-semibold text-[var(--color-ink)]">
+              {t("auth.password")}
+            </label>
             <span className="relative block">
               <input
+                id="signup-password"
                 type={showPassword ? "text" : "password"}
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
@@ -480,7 +492,7 @@ export function SignupForm() {
                 onToggle={() => setShowPassword((visible) => !visible)}
               />
             </span>
-          </label>
+          </div>
           {/* As regras aparecem desde o inicio (as que faltam, apagadas): antes
               surgiam no 1o caractere e empurravam o resto do formulario. Fora
               do <label>, para o nome do campo continuar sendo so "Password";
@@ -489,10 +501,13 @@ export function SignupForm() {
             <PasswordStrengthChecklist password={password} />
           </div>
 
-          <label className="grid gap-1.5 text-sm font-semibold text-[var(--color-ink)]">
-            {t("auth.signup.confirmPassword")}
+          <div className="grid gap-1.5">
+            <label htmlFor="signup-confirm-password" className="text-sm font-semibold text-[var(--color-ink)]">
+              {t("auth.signup.confirmPassword")}
+            </label>
             <span className="relative block">
               <input
+                id="signup-confirm-password"
                 type={showConfirmPassword ? "text" : "password"}
                 value={confirmPassword}
                 onChange={(event) => setConfirmPassword(event.target.value)}
@@ -508,7 +523,7 @@ export function SignupForm() {
                 onToggle={() => setShowConfirmPassword((visible) => !visible)}
               />
             </span>
-          </label>
+          </div>
           {/* Fora do <label>: dentro dele a frase virava parte do nome do campo.
               O campo aponta para ela como descricao enquanto ela aparece. */}
           {showMismatch ? (

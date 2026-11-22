@@ -2,6 +2,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-libra
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { OnboardingChoice } from "@/components/auth/onboarding-choice";
+import { PageHeadingProvider, PageHeadingText } from "@/components/auth/page-heading";
 
 const mocks = vi.hoisted(() => ({
   // Stable identities: Next's real useRouter/useSearchParams keep the same
@@ -137,6 +138,42 @@ describe("H3: pais na ativacao do professor", () => {
     });
     expect(mocks.updateOnboardingAnswers.mock.invocationCallOrder[0])
       .toBeLessThan(mocks.completeUserOnboarding.mock.invocationCallOrder[0]);
+  });
+
+  // A-20 / O-06: o titulo segue a tela que o perfil decide, nao o endereco.
+  // Com ?path=teacher tambem abre o cadastro de 3 passos (quem nao terminou o
+  // cadastro, convite novo, perfil que nao carregou), e ali o titulo da pagina
+  // continua o padrao.
+  function mountOnPage() {
+    render(
+      <PageHeadingProvider>
+        <h1><PageHeadingText part="title" fallback="page.title" /></h1>
+        <p><PageHeadingText part="description" fallback="page.description" /></p>
+        <OnboardingChoice />
+      </PageHeadingProvider>,
+    );
+    return act(async () => emitAuthenticated());
+  }
+
+  it("a ativacao curta troca o titulo e a descricao da pagina", async () => {
+    await mountOnPage();
+
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("onboarding.streamlinedTitle");
+    expect(screen.getAllByText("onboarding.streamlinedDescVerified")).toHaveLength(1);
+    expect(screen.queryByText("page.description")).toBeNull();
+  });
+
+  it.each([
+    ["quem nao terminou o cadastro", () => mocks.getUserProfile.mockResolvedValue({ ...profile, onboardingCompleted: false })],
+    ["perfil que nao carregou", () => mocks.getUserProfile.mockRejectedValueOnce(new Error("offline"))],
+  ])("%s ve o cadastro de 3 passos sob o titulo padrao", async (_caso, arrange) => {
+    arrange();
+    await mountOnPage();
+
+    expect(screen.getByRole("button", { name: "onboarding.continue" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("page.title");
+    expect(screen.getByText("page.description")).toBeInTheDocument();
+    expect(screen.queryByText("onboarding.streamlinedTitle")).toBeNull();
   });
 
   // A-20: "Activate teaching" ficava cinza sem dizer o que faltava. A trava e

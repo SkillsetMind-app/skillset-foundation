@@ -135,10 +135,15 @@ export function UpdatePasswordForm({
     <>
       {choosingHeading}
       <form className="mt-6 grid gap-4" onSubmit={handleSubmit}>
-        <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
-          {t("authFlow.recovery.newPassword")}
+        {/* Rotulo e campo lado a lado (htmlFor), com o olho fora do
+            <label>: dentro dele, o nome do botao entrava no nome do campo. */}
+        <div className="grid gap-2">
+          <label htmlFor="reset-new-password" className="text-sm font-semibold text-[var(--color-ink)]">
+            {t("authFlow.recovery.newPassword")}
+          </label>
           <span className="relative block">
             <input
+              id="reset-new-password"
               type={showPassword ? "text" : "password"}
               value={password}
               onChange={(event) => setPassword(event.target.value)}
@@ -155,17 +160,20 @@ export function UpdatePasswordForm({
               onToggle={() => setShowPassword((visible) => !visible)}
             />
           </span>
-        </label>
+        </div>
         {/* As regras desde o inicio (as que faltam, apagadas) e fora do <label>,
             como no cadastro: antes surgiam na 1a letra, empurravam o resto e
             entravam no nome do campo. */}
         <div id="reset-password-rules" className="-mt-2">
           <PasswordStrengthChecklist password={password} />
         </div>
-        <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
-          {t("authFlow.recovery.confirmPassword")}
+        <div className="grid gap-2">
+          <label htmlFor="reset-confirm-password" className="text-sm font-semibold text-[var(--color-ink)]">
+            {t("authFlow.recovery.confirmPassword")}
+          </label>
           <span className="relative block">
             <input
+              id="reset-confirm-password"
               type={showConfirmPassword ? "text" : "password"}
               value={confirmPassword}
               onChange={(event) => setConfirmPassword(event.target.value)}
@@ -181,7 +189,7 @@ export function UpdatePasswordForm({
               onToggle={() => setShowConfirmPassword((visible) => !visible)}
             />
           </span>
-        </label>
+        </div>
         {showMismatch ? (
           <span
             id="reset-password-mismatch"
