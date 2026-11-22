@@ -101,7 +101,7 @@ describe("OpsUserDossierPanel", () => {
     render(panel());
     await screen.findByRole("heading", { name: "Dossier Target" });
     const section = (key: string) => en(`platform.ops.userDossier.sections.${key}`);
-    const titles = screen.getAllByRole("heading", { level: 3 }).map((heading) => heading.textContent);
+    const titles = screen.getAllByRole("heading", { level: 2 }).map((heading) => heading.textContent);
     expect(titles.slice(0, 2)).toEqual([section("access"), section("purchases")]);
     expect(titles.at(-1)).toBe(section("onboarding"));
     // O status mora só no cabeçalho; a linha do tempo não repete o título como rótulo.
@@ -112,6 +112,41 @@ describe("OpsUserDossierPanel", () => {
     expect(screen.getByText(/^Account deletion/)).toBeInTheDocument();
     expect(screen.getByText(/Access suspended and email blocked · admin@example\.test/)).toBeInTheDocument();
     expect(screen.queryByText(/account_deletion|user\.account_block/)).toBeNull();
+  });
+
+  // I-03: a pessoa é o título da página (um h1 só), com "Person record" em
+  // cima, e uma faixa de resumo logo abaixo; os cartões viram h2.
+  it("faz do nome o h1, com a faixa de resumo e o nome do plano", async () => {
+    mocks.get.mockResolvedValue(dossier({
+      purchases: { ...dossier().purchases, plan_subscription: { plan_id: "pro", status: "trialing", current_period_end: null, cancel_at_period_end: false } },
+    }));
+    render(panel());
+    const h1 = await screen.findByRole("heading", { level: 1 });
+    expect(h1).toHaveTextContent("Dossier Target");
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+    expect(h1.previousElementSibling).toHaveTextContent("Person record");
+    expect(screen.queryByRole("heading", { level: 3 })).toBeNull();
+    const strip = screen.getByText("Level").closest("dl")!;
+    const facts = [...strip.querySelectorAll("dt")].map((term) => [term.textContent, term.nextElementSibling?.textContent]);
+    const joined = new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(new Date("2026-09-01T00:00:00Z"));
+    expect(facts).toEqual([["Status", "Blocked"], ["Level", "Learner, Instructor"], ["Plan", "Pro"], ["Joined", joined]]);
+    // Entrada uma vez só: saiu do cartão de acesso.
+    expect(screen.getAllByText("Joined")).toHaveLength(1);
+    // Compras: o nome do plano e o código cru só como detalhe, selecionável (I-10).
+    const raw = screen.getByText("pro");
+    expect(raw).toHaveClass("select-all", "font-mono");
+    expect(raw.parentElement).toHaveTextContent("Pro");
+  });
+
+  it("carregando e com erro, o h1 é o genérico", async () => {
+    let fail!: (reason: unknown) => void;
+    mocks.get.mockReturnValue(new Promise((_, reject) => { fail = reject; }));
+    render(panel());
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Person record");
+    fail(new Error("provider detail"));
+    expect(await screen.findByRole("button", { name: en("authFlow.loading.retry") })).toBeInTheDocument();
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Person record");
   });
 
   it("não deixa separador vazio quando falta o status de uma matrícula", async () => {

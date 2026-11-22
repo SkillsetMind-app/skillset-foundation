@@ -125,7 +125,7 @@ export function AccountControlDialog({ uid, label, onClose }: { uid: string; lab
         <Field id="account-control-reason" label={t("accountControls.reason")}>
           {a11y => <textarea {...a11y} required minLength={3} maxLength={500} rows={3} disabled={busy || control.isSelf}
             value={reason} onChange={event => setReason(event.target.value)}
-            className="w-full resize-y rounded-md border border-[var(--color-line)] bg-[var(--color-surface)] p-3 text-sm" />}
+            className="field-input resize-y disabled:cursor-not-allowed disabled:opacity-60" />}
         </Field>
         <div className="flex flex-wrap items-center justify-end gap-3">
           <Button variant="outline" disabled={busy} onClick={close}>{t("accountControls.cancel")}</Button>

@@ -22,7 +22,8 @@ const table = "platform.ops.userTable";
 const STATUSES: readonly OpsUserStatus[] = ["active", "suspended", "blocked"];
 const COLUMNS = ["person", "level", "status", "joined", "lastSignIn"] as const;
 const ROLES: readonly Role[] = ["student", "teacher", "admin", "support", "moderator", "ops"];
-const roleLabelKeys = {
+// A ficha da pessoa usa os mesmos nomes de nível na faixa de resumo.
+export const roleLabelKeys = {
   guest: "platform.ops.usersPanel.roles.guest",
   student: "roles.learner",
   teacher: "platform.ops.accessPanel.levels.teacher.label",
@@ -97,7 +98,10 @@ export function OpsUserTable() {
           {(a11y) => <div className="relative">
             <input {...a11y} type="search" value={search} placeholder={t(`${table}.searchPlaceholder`)}
               onChange={(event) => { setSearch(event.target.value); setPage(0); }}
-              className="min-h-11 w-full rounded-md border border-[var(--color-line)] py-2.5 pl-4 pr-10 text-sm font-normal" />
+              // A pele padrão dos campos (I-14). O `!` é preciso: o padding do
+              // .field-input é regra solta e venceria o pr-10, e o giro da busca
+              // cairia em cima do texto.
+              className="field-input min-h-11 pr-10!" />
             {searching ? <Loader2 size={16} aria-hidden="true" data-searching=""
               className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[var(--color-ink-muted)] motion-safe:animate-spin" /> : null}
           </div>}
@@ -105,7 +109,7 @@ export function OpsUserTable() {
         <Field id="ops-user-status" label={t(`${table}.statusLabel`)}>
           {(a11y) => <select {...a11y} value={status}
             onChange={(event) => { setStatus(event.target.value as OpsUserStatus | ""); setPage(0); }}
-            className="min-h-11 w-full rounded-md border border-[var(--color-line)] bg-transparent px-3 text-sm">
+            className="field-input min-h-11">
             <option value="">{t(`${table}.all`)}</option>
             {STATUSES.map((value) => <option key={value} value={value}>{t(`${table}.status.${value}`)}</option>)}
           </select>}
@@ -113,7 +117,7 @@ export function OpsUserTable() {
         <Field id="ops-user-role" label={t(`${table}.roleLabel`)}>
           {(a11y) => <select {...a11y} value={role}
             onChange={(event) => { setRole(event.target.value as Role | ""); setPage(0); }}
-            className="min-h-11 w-full rounded-md border border-[var(--color-line)] bg-transparent px-3 text-sm">
+            className="field-input min-h-11">
             <option value="">{t(`${table}.all`)}</option>
             {ROLES.map((value) => <option key={value} value={value}>{t(roleLabelKeys[value])}</option>)}
           </select>}

@@ -162,7 +162,9 @@ function AuditLogPanel() {
         {t(`${copy}.description`)}
       </p>
 
-      <div className="mt-5 grid gap-3">
+      {/* Cartão largo: uma tabela, com quando, quem e o alvo em coluna (I-06).
+          Cartão estreito: um bloco por evento, como em sale-list.tsx (#588). */}
+      <div className="@container mt-5">
         {isLoading ? (
           <p role="status" className="text-sm text-[var(--color-ink-soft)]">
             {t(`${copy}.loading`)}
@@ -173,7 +175,9 @@ function AuditLogPanel() {
           // h2: logo abaixo do h1 "Audit log", sem outro título no meio.
           <EmptyState as="h2" title={t(`${copy}.empty`)} />
         ) : (
-          entries.map((entry) => (
+          <>
+          <div className="grid gap-3 @3xl:hidden">
+          {entries.map((entry) => (
             <article
               key={entry.id}
               className="rounded-lg border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-4"
@@ -207,7 +211,41 @@ function AuditLogPanel() {
                 </div>
               </dl>
             </article>
-          ))
+          ))}
+          </div>
+          <div className="hidden overflow-x-auto rounded-lg border border-[var(--color-line)] @3xl:block">
+            <table className="w-full min-w-[720px] border-collapse text-left text-sm">
+              <caption className="sr-only">{t(`${copy}.tableCaption`)}</caption>
+              <thead>
+                <tr className="border-b border-[var(--color-line)]">
+                  {(["when", "action", "actor", "target"] as const).map((head) => (
+                    <th key={head} scope="col" className="px-4 py-3 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-ink-muted)]">
+                      {t(`${copy}.${head}`)}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {entries.map((entry) => (
+                  <tr key={entry.id} className="border-b border-[var(--color-line)] align-top last:border-b-0">
+                    <td className="whitespace-nowrap px-4 py-3 text-xs tabular-nums text-[var(--color-ink)]">
+                      {formatAuditTimestamp(entry, locale, t(`${copy}.pendingTimestamp`))}
+                    </td>
+                    <th scope="row" className="max-w-[22rem] px-4 py-3 font-semibold text-[var(--color-ink)]">
+                      {formatAuditAction(entry.action, t)}
+                      <span className="mt-1 block break-words text-xs font-normal leading-5 text-[var(--color-ink-soft)]">{entry.summary}</span>
+                    </th>
+                    <td className="max-w-[16rem] break-all px-4 py-3 text-xs text-[var(--color-ink)]">{entry.actorEmail ?? entry.actorId}</td>
+                    <td className="max-w-[16rem] px-4 py-3 text-xs">
+                      <span className="block text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--color-primary)]">{formatAuditTarget(entry.targetType, t)}</span>
+                      <span className="mt-1 block select-all break-all font-mono text-[var(--color-ink)]">{entry.targetId}</span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          </>
         )}
       </div>
     </section>
