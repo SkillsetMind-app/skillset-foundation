@@ -37,8 +37,9 @@ export function AuthPage() {
   // quem entrava pela porta errada nao percebia.
   const modeKey = isSignup ? "Signup" : "Signin";
   const roleKey = pathIntent === "teacher" ? "Educator" : "Learner";
-  // Com a porta "confirme seu e-mail" na tela, o titulo vira a instrucao.
-  const [confirmGateOpen, setConfirmGateOpen] = useState(false);
+  // Com uma tela de estado no lugar do formulario ("confirme seu e-mail",
+  // link vencido), o titulo diz o estado.
+  const [stateTitleKey, setStateTitleKey] = useState<string | null>(null);
 
   useEffect(() => {
     if (status === "loading" || entrySessionHandled.current) {
@@ -56,9 +57,9 @@ export function AuthPage() {
   return (
     <AuthFrame homeLabel={t("auth.page.backToHome")}>
       <h1 className="auth-title display-title">
-        {t(confirmGateOpen ? "auth.signup.checkEmailTitle" : `auth.page.title${modeKey}${roleKey}`)}
+        {t(stateTitleKey ?? `auth.page.title${modeKey}${roleKey}`)}
       </h1>
-      <ConfirmGateContext.Provider value={setConfirmGateOpen}>
+      <ConfirmGateContext.Provider value={setStateTitleKey}>
         {isSignup ? <SignupForm /> : <LoginForm />}
       </ConfirmGateContext.Provider>
     </AuthFrame>

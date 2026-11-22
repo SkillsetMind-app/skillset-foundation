@@ -112,6 +112,23 @@ describe("SignupForm: o olhinho e a porta de confirmacao", () => {
     expect(second.type).toBe("text");
   });
 
+  // A-10: dentro do <label>, a frase virava parte do nome do campo.
+  it("senhas diferentes: o aviso fica fora do rotulo e descreve o campo", () => {
+    render(<SignupForm />);
+    fillStepOne();
+
+    fireEvent.change(screen.getByLabelText("auth." + secretField), {
+      target: { value: strongSecret },
+    });
+    const confirm = screen.getByLabelText("auth.signup.confirmPassword");
+    fireEvent.change(confirm, { target: { value: "different" } });
+
+    const warning = screen.getByText("auth.signup.passwordsDontMatch");
+    expect(warning.closest("label")).toBeNull();
+    expect(confirm).toHaveAttribute("aria-invalid", "true");
+    expect(confirm).toHaveAttribute("aria-describedby", warning.id);
+  });
+
   it("conta criada sem sessao: a porta de confirmacao, com reenviar e espera de 60 s", async () => {
     render(<SignupForm />);
     fillStepOne();

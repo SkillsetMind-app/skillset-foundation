@@ -718,7 +718,11 @@ export function OnboardingWizard() {
         />
       </header>
 
-      <div className="grid flex-1 place-items-center px-4 py-8 sm:px-5">
+      {/* Do tablet para cima, pergunta e botoes formam um bloco so, centrado
+          na altura (margens automaticas): antes Back e Continue ficavam nos
+          cantos da tela, longe da pergunta. No celular segue a barra presa ao
+          pe (globals.css, .onboarding-footer). */}
+      <div className="grid flex-1 place-items-center px-4 py-8 sm:mt-auto sm:flex-none sm:px-5">
         {/* A key remonta a pergunta a cada troca: sem ela o React reaproveitava
             a mesma <section> e a entrada animada so rodava na primeira. */}
         {activeQuestion ? (
@@ -726,7 +730,7 @@ export function OnboardingWizard() {
         ) : null}
       </div>
 
-      <footer className="onboarding-footer flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-4 sm:px-8 sm:py-5">
+      <footer className="onboarding-footer flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-4 sm:mx-auto sm:mb-auto sm:w-full sm:max-w-[560px] sm:px-0 sm:pb-5 sm:pt-0">
         <button
           type="button"
           onClick={goBack}
@@ -992,8 +996,10 @@ export function OnboardingWizard() {
             }
             lead={t("authFlow.onboarding.instagramLead")}
           >
-            <div className="flex overflow-hidden rounded-md border-[1.5px] border-[var(--color-line)] bg-white focus-within:border-[var(--color-primary-light)]">
-              <span className="grid place-items-center border-r border-[var(--color-line)] bg-[var(--color-surface-soft)] px-4 text-sm font-semibold text-[var(--color-ink-soft)]">
+            {/* A pele do .field-input no invólucro (o "@" fica dentro dela),
+                com os mesmos tokens do campo de telefone. */}
+            <div className="flex overflow-hidden rounded-md border-[1.5px] border-[var(--color-field-border)] bg-[var(--color-surface-soft)] focus-within:border-[var(--color-primary)] focus-within:bg-[var(--color-surface)]">
+              <span className="grid place-items-center border-r border-[var(--color-line)] px-4 text-sm font-semibold text-[var(--color-ink-soft)]">
                 @
               </span>
               <input
@@ -1003,7 +1009,7 @@ export function OnboardingWizard() {
                 }
                 onBlur={() => void persistAnswers(answers)}
                 placeholder={t("authFlow.onboarding.instagramPlaceholder")}
-                className="min-w-0 flex-1 px-4 py-3 text-sm outline-none"
+                className="min-w-0 flex-1 bg-transparent px-4 py-3 text-sm outline-none"
               />
             </div>
             <ErrorMessage error={error} />

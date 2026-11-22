@@ -213,6 +213,21 @@ describe("AuthPage continues an existing verified session", () => {
     expect(mocks.getUserProfile).not.toHaveBeenCalled();
   });
 
+  // A-12: "Sign in as a learner." seguia em cima de "This link has expired",
+  // que vinha num cartao com um segundo titulo.
+  it("turns an expired confirmation link into the page heading, and back", async () => {
+    mocks.auth = { status: "unauthenticated", user: null };
+    mocks.searchParams = new URLSearchParams("mode=signin&error=confirm_expired&path=student");
+    renderAuth();
+
+    expect(screen.getByRole("heading", { level: 1, name: "This link has expired" })).toBeInTheDocument();
+    expect(screen.getAllByRole("heading")).toHaveLength(1);
+
+    fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Sign in as a learner.");
+    await waitFor(() => expect(mocks.getPendingSecondFactor).toHaveBeenCalledTimes(1));
+  });
+
   it("keeps callback errors visible even when another verified session exists", async () => {
     mocks.searchParams = new URLSearchParams("mode=signin&error=otp_expired&path=student");
     renderAuth();

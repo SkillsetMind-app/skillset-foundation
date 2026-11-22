@@ -1,12 +1,12 @@
 "use client";
 
-import { Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState, type FormEvent } from "react";
 
 import { ConfirmEmailGate } from "@/components/auth/confirm-email-gate";
 import { GoogleMark } from "@/components/auth/google-mark";
+import { PasswordVisibilityToggle } from "@/components/auth/password-visibility-toggle";
 import {
   TurnstileWidget,
   isCaptchaEnabled,
@@ -259,7 +259,7 @@ export function SignupForm() {
   }
 
   const introNode = (
-    <p className="text-xs leading-5 text-[var(--color-ink-soft)]">
+    <p className="text-sm leading-6 text-[var(--color-ink-soft)]">
       {intro}
       {intent === "teacher" ? (
         <>
@@ -445,7 +445,8 @@ export function SignupForm() {
                 className="button-outline px-4 py-2.5 text-sm disabled:opacity-60"
               >
                 <GoogleMark />
-                {t("auth.continueWithGoogle")}
+                {/* No passo 1 so o Google liga isLoading: e ele que esta trabalhando. */}
+                {isLoading ? t("auth.openingGoogle") : t("auth.continueWithGoogle")}
               </button>
             </>
           ) : null}
@@ -474,19 +475,10 @@ export function SignupForm() {
                 aria-describedby="signup-password-rules"
                 className="field-input pr-11"
               />
-              <button
-                type="button"
-                onClick={() => setShowPassword((visible) => !visible)}
-                aria-label={t(showPassword ? "auth.hidePassword" : "auth.showPassword")}
-                aria-pressed={showPassword}
-                className="absolute inset-y-0 right-0 flex items-center px-3 text-[var(--color-ink-muted)] transition-colors hover:text-[var(--color-ink)]"
-              >
-                {showPassword ? (
-                  <EyeOff className="h-4 w-4" aria-hidden="true" />
-                ) : (
-                  <Eye className="h-4 w-4" aria-hidden="true" />
-                )}
-              </button>
+              <PasswordVisibilityToggle
+                visible={showPassword}
+                onToggle={() => setShowPassword((visible) => !visible)}
+              />
             </span>
           </label>
           {/* As regras aparecem desde o inicio (as que faltam, apagadas): antes
@@ -508,30 +500,25 @@ export function SignupForm() {
                 autoComplete="new-password"
                 required
                 aria-invalid={showMismatch}
+                aria-describedby={showMismatch ? "signup-password-mismatch" : undefined}
                 className="field-input pr-11"
               />
-              <button
-                type="button"
-                onClick={() => setShowConfirmPassword((visible) => !visible)}
-                aria-label={t(
-                  showConfirmPassword ? "auth.hidePassword" : "auth.showPassword",
-                )}
-                aria-pressed={showConfirmPassword}
-                className="absolute inset-y-0 right-0 flex items-center px-3 text-[var(--color-ink-muted)] transition-colors hover:text-[var(--color-ink)]"
-              >
-                {showConfirmPassword ? (
-                  <EyeOff className="h-4 w-4" aria-hidden="true" />
-                ) : (
-                  <Eye className="h-4 w-4" aria-hidden="true" />
-                )}
-              </button>
+              <PasswordVisibilityToggle
+                visible={showConfirmPassword}
+                onToggle={() => setShowConfirmPassword((visible) => !visible)}
+              />
             </span>
-            {showMismatch ? (
-              <span className="text-xs font-semibold text-[var(--color-danger-fg)]">
-                {t("auth.signup.passwordsDontMatch")}
-              </span>
-            ) : null}
           </label>
+          {/* Fora do <label>: dentro dele a frase virava parte do nome do campo.
+              O campo aponta para ela como descricao enquanto ela aparece. */}
+          {showMismatch ? (
+            <span
+              id="signup-password-mismatch"
+              className="-mt-1 text-xs font-semibold text-[var(--color-danger-fg)]"
+            >
+              {t("auth.signup.passwordsDontMatch")}
+            </span>
+          ) : null}
 
           {errorNode}
 

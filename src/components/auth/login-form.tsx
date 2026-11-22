@@ -1,11 +1,11 @@
 "use client";
 
-import { Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 
 import { GoogleMark } from "@/components/auth/google-mark";
+import { PasswordVisibilityToggle } from "@/components/auth/password-visibility-toggle";
 import {
   TurnstileWidget,
   isCaptchaEnabled,
@@ -99,6 +99,10 @@ export function LoginForm() {
     () => searchParams.get("error") === "confirm_expired",
   );
   const [isLoading, setIsLoading] = useState(false);
+  // Qual entrada foi apertada, so para o rotulo: os dois botoes seguem
+  // travados juntos por isLoading, mas so o clicado diz que esta trabalhando
+  // (antes o Google fazia o botao de e-mail dizer "Signing in...").
+  const [pendingMethod, setPendingMethod] = useState<"email" | "google" | null>(null);
   // Set when a sign-in succeeds at the password step but the account also
   // requires a TOTP second factor. Holds the original error the resolver needs.
   const [mfaError, setMfaError] = useState<MfaRequiredError | null>(null);
@@ -141,6 +145,7 @@ export function LoginForm() {
 
   async function handleEmailLogin() {
     setError(null);
+    setPendingMethod("email");
     setIsLoading(true);
 
     try {
@@ -169,6 +174,7 @@ export function LoginForm() {
 
   async function handleGoogleLogin() {
     setError(null);
+    setPendingMethod("google");
     setIsLoading(true);
 
     try {
@@ -309,26 +315,10 @@ export function LoginForm() {
     );
   }
 
+  // A mesma ordem do cadastro: e-mail primeiro, depois "ou" e o Google. Antes
+  // o Google vinha em cima aqui e embaixo no cadastro.
   return (
     <form className="mt-5 grid gap-3.5" onSubmit={handleSubmit}>
-      {isGoogleAuthEnabled ? (
-        <>
-          <button
-            type="button"
-            disabled={isLoading}
-            onClick={handleGoogleLogin}
-            className="button-outline px-4 py-2.5 text-sm disabled:opacity-60"
-          >
-            <GoogleMark />
-            {t("auth.continueWithGoogle")}
-          </button>
-          <div className="flex items-center gap-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-[var(--color-ink-muted)]">
-            <span className="h-px flex-1 bg-[var(--color-line)]" />
-            {t("auth.signup.or")}
-            <span className="h-px flex-1 bg-[var(--color-line)]" />
-          </div>
-        </>
-      ) : null}
       <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
         {t("auth.email")}
         <input
@@ -341,18 +331,26 @@ export function LoginForm() {
           className="field-input"
         />
       </label>
-      <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
-        <span className="flex items-center justify-between gap-2">
-          {t("auth.password")}
+      {/* "Forgot password?" mora fora do <label>: dentro dele o leitor de tela
+          anunciava o campo como "Password Forgot password?". */}
+      <div className="grid gap-2">
+        <div className="flex items-center justify-between gap-2">
+          <label
+            htmlFor="login-password"
+            className="text-sm font-semibold text-[var(--color-ink)]"
+          >
+            {t("auth.password")}
+          </label>
           <Link
             href="/forgot-password"
             className="auth-text-link text-sm font-semibold text-[var(--color-primary)]"
           >
             {t("auth.forgotPassword")}
           </Link>
-        </span>
+        </div>
         <span className="relative block">
           <input
+            id="login-password"
             type={showPassword ? "text" : "password"}
             value={password}
             onChange={(event) => setPassword(event.target.value)}
@@ -361,21 +359,12 @@ export function LoginForm() {
             required
             className="field-input pr-11"
           />
-          <button
-            type="button"
-            onClick={() => setShowPassword((visible) => !visible)}
-            aria-label={t(showPassword ? "auth.hidePassword" : "auth.showPassword")}
-            aria-pressed={showPassword}
-            className="absolute inset-y-0 right-0 flex items-center px-3 text-[var(--color-ink-muted)] transition-colors hover:text-[var(--color-ink)]"
-          >
-            {showPassword ? (
-              <EyeOff className="h-4 w-4" aria-hidden="true" />
-            ) : (
-              <Eye className="h-4 w-4" aria-hidden="true" />
-            )}
-          </button>
+          <PasswordVisibilityToggle
+            visible={showPassword}
+            onToggle={() => setShowPassword((visible) => !visible)}
+          />
         </span>
-      </label>
+      </div>
       {/* O aviso da casa (com ícone) anuncia igual: role="alert", assertive. */}
       {error ? <InlineAlert tone="error">{errorMessage}</InlineAlert> : null}
       <TurnstileWidget onToken={setCaptchaToken} resetSignal={captchaResetSignal} />
@@ -384,8 +373,28 @@ export function LoginForm() {
         disabled={isLoading || (isCaptchaEnabled && !captchaToken)}
         className="button-solid mt-2 px-4 py-2.5 text-sm disabled:opacity-60"
       >
-        {isLoading ? t("auth.signingIn") : t("auth.signIn")}
+        {isLoading && pendingMethod === "email" ? t("auth.signingIn") : t("auth.signIn")}
       </button>
+      {isGoogleAuthEnabled ? (
+        <>
+          <div className="flex items-center gap-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-[var(--color-ink-muted)]">
+            <span className="h-px flex-1 bg-[var(--color-line)]" />
+            {t("auth.signup.or")}
+            <span className="h-px flex-1 bg-[var(--color-line)]" />
+          </div>
+          <button
+            type="button"
+            disabled={isLoading}
+            onClick={handleGoogleLogin}
+            className="button-outline px-4 py-2.5 text-sm disabled:opacity-60"
+          >
+            <GoogleMark />
+            {isLoading && pendingMethod === "google"
+              ? t("auth.openingGoogle")
+              : t("auth.continueWithGoogle")}
+          </button>
+        </>
+      ) : null}
       <Link
         href={signupHref}
         className="auth-text-link text-sm font-semibold text-[var(--color-primary)]"

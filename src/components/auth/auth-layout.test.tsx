@@ -4,7 +4,7 @@ import { cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import UnifiedAuthPage from "@/app/auth/page";
-import OnboardingPage from "@/app/onboarding/page";
+import OnboardingPage, { generateMetadata as generateOnboardingMetadata } from "@/app/onboarding/page";
 import WelcomePage from "@/app/welcome/page";
 import { AuthShell } from "@/components/auth/auth-shell";
 import { ResetPasswordForm } from "@/components/auth/reset-password-form";
@@ -76,6 +76,21 @@ describe("the auth frame stays consistent during recovery and loading", () => {
     expect(screen.queryByRole("heading", { name: "Opening SkillsetMind..." })).not.toBeInTheDocument();
     expect(screen.getAllByRole("main")).toHaveLength(1);
     expect(screen.getByRole("link", { name: translate(getDictionary("en"), "auth.onboardingShell.footerLink") })).toHaveAttribute("href", "/courses");
+  });
+
+  // A-20 / O-06: a ativacao do ensino tinha o titulo "Set up your SkillsetMind
+  // profile." sobre uma tela que nao monta perfil. Titulo e aba dizem o passo.
+  it("names the teacher activation in the page heading and the browser tab", async () => {
+    const searchParams = Promise.resolve({ path: "teacher" });
+    const page = await OnboardingPage({ searchParams });
+    const shell = await AuthShell(page.props);
+    render(<I18nProvider initialLocale="en">{shell}</I18nProvider>);
+
+    const title = translate(getDictionary("en"), "onboarding.streamlinedTitle");
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(title);
+    expect(screen.queryByText(translate(getDictionary("en"), "auth.onboardingShell.description"))).toBeNull();
+    expect((await generateOnboardingMetadata({ searchParams })).title).toBe(`${title} | SkillsetMind`);
+    expect((await generateOnboardingMetadata()).title).toBe("Set up your SkillsetMind profile | SkillsetMind");
   });
 
   it("keeps the full-page welcome fallback as a titled page", async () => {

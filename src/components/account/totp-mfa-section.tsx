@@ -415,7 +415,7 @@ export function TotpMfaSection({ emailVerified }: { emailVerified: boolean }) {
                   inputMode="numeric"
                   autoComplete="one-time-code"
                   aria-label={t("accountSecurity.mfa.codeLabel")}
-                  className="w-32 rounded-md border border-[var(--color-line)] bg-white px-4 py-3 text-center font-mono text-base tracking-[0.3em] outline-none focus:border-[var(--color-primary-light)]"
+                  className="field-input max-w-32 text-center font-mono tracking-[0.3em]"
                 />
               </label>
               <button
