@@ -15,6 +15,11 @@ import {
 } from "@/lib/data/enrollments";
 import { subscribeToPublishedTeacherCourses } from "@/lib/data/published-courses";
 
+// Nome e e-mail juntos: duas "Maria Lopez" só se separam pelo e-mail.
+function accountLabel(user: UserProfile) {
+  return user.displayName && user.email ? `${user.displayName} · ${user.email}` : user.displayName || user.email || user.uid;
+}
+
 export function AdminEnrollmentPanel() {
   const { t } = useTranslation();
   const copy = "platform.ops.enrollmentPanel";
@@ -95,11 +100,19 @@ export function AdminEnrollmentPanel() {
     [user.displayName, user.email, user.uid].join(" ").toLowerCase().includes(term);
   const learnerOptions = term ? users.filter((user) => user.uid === userId || matches(user)) : users;
   const noLearnerMatch = term !== "" && !users.some(matches);
-  const missingChoice = !userId || !selectedCourse;
-  const showChoiceHint = missingChoice && !readErrors.users && !readErrors.courses;
+  // Como o curso: a conta escolhida só vale se ainda está na lista carregada.
+  // Se ela sai (apagada, ou fora das linhas que a leitura traz), o select fica
+  // sem nada marcado e o botão não pode dar acesso a uma conta que não se vê.
+  const selectedUser = users.find((user) => user.uid === userId) ?? null;
+  // Por que o botão está cinza, dito embaixo dele (I-13). Nada enquanto as
+  // listas carregam; falha de leitura já tem o próprio aviso acima.
+  const blockedReason = isLoadingUsers || isLoadingCourses || readErrors.users || readErrors.courses ? null
+    : courses.length === 0 ? "noCourses"
+      : users.length === 0 ? "noUsers"
+        : !selectedUser || !selectedCourse ? "choose" : null;
 
   async function handleCreateEnrollment() {
-    if (!userId || !selectedCourse) {
+    if (!selectedUser || !selectedCourse) {
       setError("choose");
       return;
     }
@@ -109,7 +122,7 @@ export function AdminEnrollmentPanel() {
     setIsSaving(true);
 
     try {
-      await createAdminEnrollmentForTeacherCourse(userId, selectedCourse);
+      await createAdminEnrollmentForTeacherCourse(selectedUser.uid, selectedCourse);
       setSuccess("created");
     } catch {
       setError("create");
@@ -167,7 +180,7 @@ export function AdminEnrollmentPanel() {
             />
             <select
               {...a11y}
-              value={userId}
+              value={selectedUser ? userId : ""}
               onChange={(event) => setUserId(event.target.value)}
               disabled={isLoadingUsers || users.length === 0 || readErrors.users}
               className="min-h-11 min-w-0 w-full rounded-md border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
@@ -177,7 +190,7 @@ export function AdminEnrollmentPanel() {
               </option>
               {learnerOptions.map((user) => (
                 <option key={user.uid} value={user.uid}>
-                  {user.displayName && user.email ? `${user.displayName} · ${user.email}` : user.displayName || user.email || user.uid}
+                  {accountLabel(user)}
                 </option>
               ))}
             </select>
@@ -210,19 +223,20 @@ export function AdminEnrollmentPanel() {
       <button
         type="button"
         onClick={handleCreateEnrollment}
-        disabled={isSaving || missingChoice || readErrors.users || readErrors.courses}
-        aria-describedby={showChoiceHint ? "ops-enrollment-create-hint" : undefined}
+        disabled={isSaving || !selectedUser || !selectedCourse || readErrors.users || readErrors.courses}
+        aria-describedby="ops-enrollment-create-hint"
         className="button-solid min-h-11 mt-6 px-4 py-2.5 text-sm disabled:opacity-60"
       >
         {t(`${copy}.${isSaving ? "creating" : "create"}`)}
       </button>
-      {/* O botão cinza diz o que falta, logo abaixo dele (I-13). Falha de leitura
-          já tem o próprio aviso acima. */}
-      {showChoiceHint ? (
-        <p id="ops-enrollment-create-hint" className="mt-2 text-xs text-[var(--color-ink-soft)]">
-          {t(`${copy}.errors.choose`)}
-        </p>
-      ) : null}
+      {/* Embaixo do botão: o que falta quando ele está cinza, ou para quem vai o
+          acesso quando está pronto, para conferir antes de clicar. */}
+      <p id="ops-enrollment-create-hint" className="mt-2 break-words text-xs text-[var(--color-ink-soft)]">
+        {blockedReason === "choose" ? t(`${copy}.errors.choose`)
+          : blockedReason ? t(`${copy}.${blockedReason}`)
+            : selectedUser && selectedCourse ? t(`${copy}.grantsTo`).replace("{person}", () => accountLabel(selectedUser))
+              : null}
+      </p>
 
       <div className="mt-8 border-t border-[var(--color-line)] pt-6">
         <div className="flex flex-wrap items-center justify-between gap-3">

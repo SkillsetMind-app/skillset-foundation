@@ -1,7 +1,7 @@
 "use client";
 
 import { CircleDollarSign, RotateCcw, Shield } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { PlatformInviteManager } from "@/components/admin/platform-invite-manager";
@@ -139,15 +139,21 @@ export function RoleManager() {
     }
   }
 
+  // Só a resposta da busca mais nova vale: a de "an" chegando depois da de
+  // "ana" trocava a lista nova pela velha, e o "carregando" apagava na
+  // primeira resposta que chegasse.
+  const latestLoad = useRef(0);
   const load = useCallback(async (term: string) => {
+    const request = ++latestLoad.current;
     setIsLoading(true);
     setError(null);
     try {
-      setUsers(await listPlatformUsers(term));
+      const next = await listPlatformUsers(term);
+      if (request === latestLoad.current) setUsers(next);
     } catch (caught) {
-      setError({ scope: "load", key: refusalKey(caught, "loadError") });
+      if (request === latestLoad.current) setError({ scope: "load", key: refusalKey(caught, "loadError") });
     } finally {
-      setIsLoading(false);
+      if (request === latestLoad.current) setIsLoading(false);
     }
   }, []);
 

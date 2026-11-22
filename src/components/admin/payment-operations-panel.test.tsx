@@ -37,15 +37,16 @@ describe("payments presentation and export contract", () => {
     expect(screen.getByText("Comisión estimada (los mismos 12)").nextElementSibling?.textContent).toBe(`${money(125, "EUR", "es")} · ${money(1000, "USD", "es")}`);
     expect(screen.getAllByText("Pagado")).toHaveLength(2);
     expect(screen.getByText("Pendiente")).toBeInTheDocument();
-    // I-06: partes com rótulo; códigos curtos na tela e inteiros no title.
+    // I-06: partes com rótulo; comprador curto (inteiro no title e na ficha),
+    // pedido inteiro e selecionável.
     const first = screen.getAllByRole("article")[0];
     const part = (label: string) => within(first).getByText(label, { selector: "dt" }).nextElementSibling;
-    expect(part("Pedido")).toHaveAttribute("title", order.id);
-    expect(part("Pedido")).toHaveTextContent("order-$$…");
+    expect(part("Pedido")).toHaveTextContent(order.id);
+    expect(part("Pedido")).toHaveClass("select-all", "break-all");
     expect(within(first).getByRole("link", { name: order.userId })).toHaveAttribute("href", `/ops/users/${encodeURIComponent(order.userId)}`);
     expect(part("Usuario")).toHaveTextContent("learner-…");
     expect(part("Proveedor")).toHaveTextContent("stripe");
-    expect(part("Fecha")).toHaveTextContent("—");
+    expect(part("Creado el")).toHaveTextContent("—");
     expect(screen.getByTestId("export").textContent).toBe(exportBefore);
     expect(screen.getByTestId("export")).toHaveAttribute("data-filename", "skillset-orders");
     expect(JSON.parse(exportBefore!)[0]).toEqual({ id: order.id, courseTitle: order.courseTitle, userId: order.userId, provider: "stripe", status: "paid", amount: "$100.00", currency: "USD", platformFeeBps: 1000 });
@@ -59,10 +60,11 @@ describe("payments presentation and export contract", () => {
       { ...order, id: "pending", status: "pending", paidAt: null, createdAt: "2026-11-03T18:15:00.000Z" },
     ]);
     const format = (iso: string, locale: string) => new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(new Date(iso));
-    const dates = () => screen.getAllByText(/^(Date|Fecha)$/, { selector: "dt" }).map((term) => term.nextElementSibling?.textContent);
-    expect(dates()).toEqual([format("2026-11-18T14:41:00.000Z", "en"), format("2026-11-03T18:15:00.000Z", "en")]);
+    // O rótulo diz qual data é: a do pagamento ou a da criação do pedido.
+    const dates = () => screen.getAllByText(/^(Paid on|Created on|Pagado el|Creado el)$/, { selector: "dt" }).map((term) => [term.textContent, term.nextElementSibling?.textContent]);
+    expect(dates()).toEqual([["Paid on", format("2026-11-18T14:41:00.000Z", "en")], ["Created on", format("2026-11-03T18:15:00.000Z", "en")]]);
     language();
-    expect(dates()).toEqual([format("2026-11-18T14:41:00.000Z", "es"), format("2026-11-03T18:15:00.000Z", "es")]);
+    expect(dates()).toEqual([["Pagado el", format("2026-11-18T14:41:00.000Z", "es")], ["Creado el", format("2026-11-03T18:15:00.000Z", "es")]]);
   });
 
   it.each([0, 1, 2])("renders a confirmed %i paid count in Spanish", count => {

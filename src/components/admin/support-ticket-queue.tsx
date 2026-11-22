@@ -107,13 +107,20 @@ export function SupportTicketQueue({ query = "" }: { query?: string }) {
     try {
       await respondToSupportTicket(ticketId, draft, user.uid);
       setReplyDrafts((drafts) => ({ ...drafts, [ticketId]: "" }));
-      setOpenReplies((open) => ({ ...open, [ticketId]: false }));
       setSuccess("replySuccess");
+      closeReply(ticketId);
     } catch {
       setError("replyError");
     } finally {
       setReplyingTicketId(null);
     }
+  }
+
+  // Fecha a caixa e devolve o foco ao "Reply" que a abriu: o botão que tinha o
+  // foco some junto com a caixa, e o foco cairia no começo da página.
+  function closeReply(ticketId: string) {
+    flushSync(() => setOpenReplies((open) => ({ ...open, [ticketId]: false })));
+    document.getElementById(`support-reply-open-${ticketId}`)?.focus();
   }
 
   return (
@@ -222,17 +229,15 @@ export function SupportTicketQueue({ query = "" }: { query?: string }) {
                           : t(`${copy}.sendReply`)}
                     </button>
                     <Button variant="outline" size="sm" className="min-h-11 px-4 py-2" disabled={replyingTicketId === ticket.id}
-                      onClick={() => {
-                        // O foco volta para o "Reply" que abriu a caixa, não some com ela.
-                        flushSync(() => setOpenReplies((open) => ({ ...open, [ticket.id]: false })));
-                        document.getElementById(`support-reply-open-${ticket.id}`)?.focus();
-                      }}>
+                      onClick={() => closeReply(ticket.id)}>
                       {t("platform.ops.confirmDialog.cancel")}
                     </Button>
                   </div>
                 </div>
               ) : null}
-              {/* O status é dito só pela etiqueta: aqui ficam apenas os outros (I-09). */}
+              {/* Cada status sempre no mesmo lugar, o atual travado: tirar o atual
+                  da fila fazia o botão de baixo do clique virar outro status, e
+                  um 2º clique reabria o chamado (I-09). */}
               <div className="mt-4 flex flex-wrap items-center gap-2">
                 {openReplies[ticket.id] ? null : (
                   <Button id={`support-reply-open-${ticket.id}`} variant="outline" size="sm" className="min-h-11 px-4 py-2"
@@ -244,13 +249,13 @@ export function SupportTicketQueue({ query = "" }: { query?: string }) {
                   <span id={`support-move-${ticket.id}`} className="text-xs font-semibold text-[var(--color-ink-soft)]">
                     {t(`${copy}.moveTo`)}
                   </span>
-                  {nextStatuses.filter((status) => status !== ticket.status).map((status) => (
+                  {nextStatuses.map((status) => (
                     <Button
                       key={status}
                       variant="outline"
                       size="sm"
                       onClick={() => handleStatusUpdate(ticket.id, status)}
-                      disabled={activeTicketId === ticket.id}
+                      disabled={activeTicketId === ticket.id || ticket.status === status}
                       loading={activeTicketId === ticket.id && activeStatus === status}
                       className="min-h-11 px-4 py-2"
                     >

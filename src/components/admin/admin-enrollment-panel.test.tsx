@@ -106,11 +106,41 @@ describe("administrative enrollment presentation", () => {
     fireEvent.change(screen.getByRole("combobox", { name: "Published creator course" }), { target: { value: course.id } });
     expect(create).toBeEnabled();
     expect(screen.queryByText("Choose a user and a published creator course.")).toBeNull();
+    // Pronto para clicar: diz para quem vai o acesso.
+    expect(create).toHaveAccessibleDescription("Grants access to Bruno Silva · bruno@example.test");
     fireEvent.change(filter, { target: { value: "" } });
     expect(options()).toHaveLength(3);
     language();
     expect(screen.getByRole("searchbox", { name: "Filtrar estudiantes" })).toBeInTheDocument();
     expect(mocks.create).not.toHaveBeenCalled();
+  });
+
+  it("never grants to a chosen account that is no longer in the loaded list", () => {
+    render(panel());
+    deliver([]);
+    select();
+    const create = screen.getByRole("button", { name: "Create admin enrollment" });
+    expect(create).toBeEnabled();
+    // A conta sai da lista (apagada, ou fora das linhas que a leitura traz).
+    act(() => mocks.users.mock.calls[0][0]([{ ...user, uid: "someone-else", displayName: "Outra Pessoa" }]));
+    expect(screen.getByRole("combobox", { name: "Learner" })).toHaveValue("");
+    expect(create).toBeDisabled();
+    expect(create).toHaveAccessibleDescription("Choose a user and a published creator course.");
+    fireEvent.click(create);
+    expect(mocks.create).not.toHaveBeenCalled();
+  });
+
+  it("says nothing while the lists load, then names what is missing", () => {
+    render(panel());
+    const create = screen.getByRole("button", { name: "Create admin enrollment" });
+    expect(create).toBeDisabled();
+    expect(create).toHaveAccessibleDescription("");
+    act(() => { mocks.users.mock.calls[0][0]([user]); mocks.grants.mock.calls[0][0]([]); });
+    expect(create).toHaveAccessibleDescription("");
+    act(() => mocks.courses.mock.calls[0][0]([]));
+    expect(create).toHaveAccessibleDescription("There is no published creator course to grant yet.");
+    language();
+    expect(screen.getByRole("button", { name: "Crear inscripción administrativa" })).toHaveAccessibleDescription("Todavía no hay un curso publicado de un creador para dar.");
   });
 
   it.each([0, 1, 2])("shows %i confirmed grants with translated sources", count => {

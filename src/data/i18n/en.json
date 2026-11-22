@@ -844,7 +844,8 @@
         "empty": "No Stripe orders yet. After a paid checkout, pending and paid orders will appear here.",
         "order": "Order",
         "user": "User",
-        "date": "Date",
+        "paidOn": "Paid on",
+        "createdOn": "Created on",
         "provider": "Provider"
       },
       "enrollmentPanel": {
@@ -858,6 +859,9 @@
         "filterLabel": "Filter learners",
         "filterPlaceholder": "Type a name or email",
         "noMatch": "No account matches this search",
+        "noCourses": "There is no published creator course to grant yet.",
+        "noUsers": "There is no account to choose yet.",
+        "grantsTo": "Grants access to {person}",
         "loadingCourses": "Loading courses...",
         "chooseCourse": "Choose course",
         "creating": "Creating enrollment...",
@@ -1182,7 +1186,7 @@
         "loadError": "We could not load the verification queue.",
         "empty": "No verification applications are waiting right now.",
         "noResults": "No applications match this search.",
-        "pendingTimestamp": "Pending timestamp",
+        "submittedUnknown": "Submission date not recorded",
         "submitted": "Submitted {date}",
         "noEvidence": "No evidence links attached.",
         "document": "Download private evidence",

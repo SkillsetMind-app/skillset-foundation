@@ -844,7 +844,8 @@
         "empty": "Todavía no hay pedidos de Stripe. Después de una compra de pago, aquí aparecerán los pedidos pendientes y pagados.",
         "order": "Pedido",
         "user": "Usuario",
-        "date": "Fecha",
+        "paidOn": "Pagado el",
+        "createdOn": "Creado el",
         "provider": "Proveedor"
       },
       "enrollmentPanel": {
@@ -858,6 +859,9 @@
         "filterLabel": "Filtrar estudiantes",
         "filterPlaceholder": "Escribe un nombre o correo",
         "noMatch": "Ninguna cuenta coincide con esta búsqueda",
+        "noCourses": "Todavía no hay un curso publicado de un creador para dar.",
+        "noUsers": "Todavía no hay una cuenta para elegir.",
+        "grantsTo": "Da acceso a {person}",
         "loadingCourses": "Cargando cursos...",
         "chooseCourse": "Elige un curso",
         "creating": "Creando inscripción...",
@@ -1182,7 +1186,7 @@
         "loadError": "No pudimos cargar la cola de verificación.",
         "empty": "No hay solicitudes de verificación pendientes.",
         "noResults": "Ninguna solicitud coincide con esta búsqueda.",
-        "pendingTimestamp": "Fecha pendiente",
+        "submittedUnknown": "Fecha de envío no registrada",
         "submitted": "Enviada el {date}",
         "noEvidence": "No se adjuntaron enlaces de verificación.",
         "document": "Descargar documento privado",

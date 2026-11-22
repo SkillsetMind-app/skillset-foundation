@@ -47,10 +47,10 @@ function EvidenceDocument({ path }: { path: string }) {
   </div>;
 }
 
-function formatSubmittedAt(iso: string, locale: string, pendingLabel: string) {
+function formatSubmittedAt(iso: string, locale: string) {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) {
-    return pendingLabel;
+    return null;
   }
   return new Intl.DateTimeFormat(locale, {
     dateStyle: "medium",
@@ -97,6 +97,12 @@ export function CreatorVerificationQueue({ query = "" }: { query?: string }) {
       },
     );
   }, []);
+
+  // Sem data, uma frase inteira: "Submitted Pending timestamp" não se lia.
+  function submittedLine(iso: string) {
+    const date = formatSubmittedAt(iso, locale);
+    return date ? t(`${copy}.submitted`).replace("{date}", () => date) : t(`${copy}.submittedUnknown`);
+  }
 
   async function handleReview(caseId: string, decision: ReviewDecision, confirmed = false) {
     const note = reviewNotes[caseId]?.trim() ?? "";
@@ -197,7 +203,7 @@ export function CreatorVerificationQueue({ query = "" }: { query?: string }) {
                 {/* Data em texto simples: a pílula em caixa alta, no lugar onde as
                     outras filas põem o status, era lida como status (I-17). */}
                 <p className="text-xs tabular-nums text-[var(--color-ink-soft)]">
-                  {t(`${copy}.submitted`).replace("{date}", () => formatSubmittedAt(verificationCase.createdAt, locale, t(`${copy}.pendingTimestamp`)))}
+                  {submittedLine(verificationCase.createdAt)}
                 </p>
               </div>
 

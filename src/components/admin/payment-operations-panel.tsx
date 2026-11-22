@@ -19,13 +19,19 @@ function formatMoney(amountMinor: number, currency: Order["currency"], locale = 
   }).format(amountMinor / 100);
 }
 
-// Quando o dinheiro entrou; sem pagamento ainda, quando o pedido nasceu.
-function formatOrderDate(order: Order, locale: string) {
-  const date = toDate(order.paidAt) ?? toDate(order.createdAt);
-  return date ? new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(date) : "—";
+// Quando o dinheiro entrou; sem pagamento ainda, quando o pedido nasceu. O
+// rótulo diz qual das duas é ("Paid on" ou "Created on").
+function orderDate(order: Order, locale: string) {
+  const paid = toDate(order.paidAt);
+  const date = paid ?? toDate(order.createdAt);
+  return {
+    labelKey: paid ? "paidOn" : "createdOn",
+    text: date ? new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(date) : "—",
+  };
 }
 
-// Os 8 primeiros caracteres bastam para conferir de olho; o código inteiro fica no title.
+// Os 8 primeiros caracteres bastam para conferir o comprador de olho; o código
+// inteiro fica no title e na ficha da pessoa, aonde o link leva.
 function shortId(id: string) {
   return id.length > 8 ? `${id.slice(0, 8)}…` : id;
 }
@@ -190,12 +196,13 @@ export function PaymentOperationsPanel() {
                 </span>
               </div>
               {/* Em partes com rótulo, não numa linha corrida: a data do pedido
-                  (nunca aparecia) e os códigos curtos, inteiros no title. O
-                  comprador abre a ficha da pessoa (I-06). */}
+                  (nunca aparecia), o comprador curto, que abre a ficha da
+                  pessoa, e o código do pedido inteiro, que quebra a linha e
+                  seleciona com um clique para copiar (I-06). */}
               <dl className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-xs leading-6 text-[var(--color-ink-soft)]">
                 <div className="flex gap-1.5">
-                  <dt>{t(`${copy}.date`)}</dt>
-                  <dd className="tabular-nums text-[var(--color-ink)]">{formatOrderDate(order, locale)}</dd>
+                  <dt>{t(`${copy}.${orderDate(order, locale).labelKey}`)}</dt>
+                  <dd className="tabular-nums text-[var(--color-ink)]">{orderDate(order, locale).text}</dd>
                 </div>
                 <div className="flex gap-1.5">
                   <dt>{t(`${copy}.user`)}</dt>
@@ -207,12 +214,12 @@ export function PaymentOperationsPanel() {
                   </dd>
                 </div>
                 <div className="flex gap-1.5">
-                  <dt>{t(`${copy}.order`)}</dt>
-                  <dd className="font-mono text-[var(--color-ink)]" title={order.id}>{shortId(order.id)}</dd>
-                </div>
-                <div className="flex gap-1.5">
                   <dt>{t(`${copy}.provider`)}</dt>
                   <dd className="text-[var(--color-ink)]">{order.provider}</dd>
+                </div>
+                <div className="flex min-w-0 gap-1.5">
+                  <dt>{t(`${copy}.order`)}</dt>
+                  <dd className="min-w-0 select-all break-all font-mono text-[var(--color-ink)]">{order.id}</dd>
                 </div>
               </dl>
             </article>

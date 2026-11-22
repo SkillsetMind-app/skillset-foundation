@@ -67,6 +67,15 @@ describe("verification queue search, states and language", () => {
     expect(screen.getByText(`Enviada el ${enviada}`)).toBeInTheDocument();
   });
 
+  it("says the submission date was not recorded instead of gluing two labels", () => {
+    render(queue());
+    deliver([{ ...cases[0], createdAt: "not-a-date" }]);
+    expect(screen.getByText("Submission date not recorded")).toBeInTheDocument();
+    expect(screen.queryByText(/Submitted/)).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Change language" }));
+    expect(screen.getByText("Fecha de envío no registrada")).toBeInTheDocument();
+  });
+
   it.each(["en", "es"] as const)("preserves literal dollar sequences in the applicant note in %s", locale => {
     const note = "Certificado custa $$50; código literal $&.";
     render(queue());

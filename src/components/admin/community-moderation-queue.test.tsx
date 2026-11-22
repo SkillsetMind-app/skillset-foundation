@@ -72,7 +72,7 @@ describe("community report presentation", () => {
     expect(mocks.subscribe).toHaveBeenCalledTimes(1);
   });
 
-  it("lists open reports first, twelve at a time, and offers only the other statuses (I-09)", () => {
+  it("lists open reports first, twelve at a time, with every status button in a fixed slot (I-09)", () => {
     render(panel());
     const closed = [0, 1].map((index): CommunityReport => ({ ...report, id: `closed-${index}`, status: "reviewed", reporterName: `Fechada ${index}` }));
     const open = Array.from({ length: 12 }, (_, index): CommunityReport => ({ ...report, id: `open-${index}`, reporterName: `Aberta ${index}` }));
@@ -83,11 +83,34 @@ describe("community report presentation", () => {
     expect(moves(screen.getAllByRole("article")[0])).toEqual(["Reviewed", "Resolved", "Dismissed"]);
     fireEvent.click(screen.getByRole("button", { name: "Show 2 more" }));
     expect(reporters()).toEqual([...open, ...closed].map((entry) => entry.reporterName));
-    expect(moves(screen.getAllByRole("article")[13])).toEqual(["Resolved", "Dismissed"]);
+    // Os mesmos três lugares; o do status atual só trava.
+    expect(moves(screen.getAllByRole("article")[13])).toEqual(["Reviewed", "Resolved", "Dismissed"]);
+    expect(within(screen.getAllByRole("article")[13]).getByRole("button", { name: "Reviewed" })).toBeDisabled();
     expect(screen.queryByRole("button", { name: /Show \d+ more/ })).toBeNull();
     language();
     expect(screen.getAllByRole("group", { name: "Mover a" })).toHaveLength(14);
     expect(mocks.update).not.toHaveBeenCalled();
+  });
+
+  it("never moves another card or a button under the pointer after a decision (I-09)", async () => {
+    render(panel());
+    const a: CommunityReport = { ...report, id: "report-a", reporterName: "Aberta A" };
+    const b: CommunityReport = { ...report, id: "report-b", reporterName: "Aberta B" };
+    deliver([a, b]);
+    const reporters = () => screen.getAllByRole("article").map((card) => within(card).getByText(/^Aberta [AB]$/).textContent);
+    const slots = (index: number) => within(screen.getAllByRole("article")[index]).getAllByRole("button").map((button) => [button.textContent, (button as HTMLButtonElement).disabled]);
+    fireEvent.click(within(screen.getAllByRole("article")[0]).getByRole("button", { name: "Dismissed" }));
+    await act(async () => {});
+    expect(mocks.update).toHaveBeenCalledWith(a, "dismissed");
+    // A releitura ao vivo traz a A dispensada: ela não desce e a B não sobe para o lugar dela.
+    deliver([{ ...a, status: "dismissed" }, b]);
+    expect(reporters()).toEqual(["Aberta A", "Aberta B"]);
+    expect(slots(0)).toEqual([["Reviewed", false], ["Resolved", false], ["Dismissed", true]]);
+    expect(slots(1)).toEqual([["Reviewed", false], ["Resolved", false], ["Dismissed", false]]);
+    // Uma denúncia nova ainda entra no grupo das abertas, como antes.
+    deliver([{ ...report, id: "report-c", reporterName: "Aberta C" }, { ...a, status: "dismissed" }, b]);
+    expect(screen.getAllByRole("article").map((card) => within(card).getByText(/^Aberta [ABC]$/).textContent)).toEqual(["Aberta C", "Aberta A", "Aberta B"]);
+    expect(mocks.update).toHaveBeenCalledTimes(1);
   });
 
   it("does not show a rejected action as resolved or expose provider details", async () => {
