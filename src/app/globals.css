@@ -9861,3 +9861,23 @@ button:hover > .dash-card,
     transform: translateY(6px);
   }
 }
+
+/* ── Carregamento: envio de arquivo sem porcentagem (F-20) ─────────────────
+   O Storage não informa o andamento; um trecho de 30% desliza pelo trilho
+   para a espera não parecer travada. Com "reduzir movimento" o trecho fica
+   parado no começo do trilho. Só transform (regra do catálogo de movimento). */
+@media (prefers-reduced-motion: no-preference) {
+  .upload-indeterminate-fill {
+    animation: motion-track-slide 1.2s ease-in-out infinite;
+  }
+}
+
+@keyframes motion-track-slide {
+  from {
+    transform: translateX(-100%);
+  }
+
+  to {
+    transform: translateX(340%);
+  }
+}

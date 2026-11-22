@@ -73,9 +73,11 @@ describe("profile settings locale", () => {
     let reject!: (reason: Error) => void;
     mocks.getUserProfile.mockReturnValue(new Promise((_, fail) => { reject = fail; }));
     renderProfile();
-    expect(screen.getByText("Cargando los ajustes del perfil...")).toBeInTheDocument();
+    // F-03: o título já entra; só o formulário espera, em esqueleto.
+    expect(screen.getByRole("heading", { name: "Ajustes del perfil" })).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("Cargando los ajustes del perfil...");
     changeLanguage();
-    expect(screen.getByText("Loading profile settings...")).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("Loading profile settings...");
     await act(async () => reject(new Error("Internal profile service failure")));
     expect(screen.getByRole("alert")).toHaveTextContent("We could not load your profile settings.");
     changeLanguage();
@@ -88,7 +90,8 @@ describe("profile settings locale", () => {
     let complete!: () => void;
     mocks.updateUserIdentity.mockReturnValue(new Promise<void>((resolve) => { complete = resolve; }));
     const { container } = renderProfile();
-    expect(await screen.findByRole("heading", { name: "Ajustes del perfil" })).toBeInTheDocument();
+    expect(await screen.findByText("Foto de perfil")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Ajustes del perfil" })).toBeInTheDocument();
     for (const text of ["Foto de perfil", "Credenciales", "Sin firma", "Objetivos"]) {
       expect(screen.getByText(text)).toBeInTheDocument();
     }
@@ -234,14 +237,16 @@ describe.each([
     expect(input.value).toBe("");
     changeLanguage();
     expect(screen.getByLabelText(enLabel)).toBe(input);
-    expect(input.closest("label")).toHaveTextContent("Uploading...");
+    // F-20: o rótulo do botão não repete o andamento; só a nota o diz.
+    expect(input.closest("label")).not.toHaveTextContent("Uploading");
     expect(screen.getByRole("status")).toHaveTextContent("Sending...");
     act(() => progress({ bytesTransferred: 1, totalBytes: 3, percent: 33, state: "running" }));
     expect(screen.getByRole("status")).toHaveTextContent("33%");
     expect(screen.getByRole("status")).toHaveTextContent("1 B of 3 B");
+    expect(screen.getByRole("status").querySelector(".upload-indeterminate-fill")).toBeNull();
     changeLanguage();
     expect(screen.getByRole("status")).toHaveTextContent("1 B de 3 B");
-    expect(input.closest("label")).toHaveTextContent("Subiendo...");
+    expect(input.closest("label")).not.toHaveTextContent("Subiendo");
     await act(async () => complete("https://media.example.test/uploaded.png"));
     expect(screen.getByText(success)).toBeInTheDocument();
     expect(input.closest("label")).toHaveTextContent(replace);

@@ -28,5 +28,9 @@ describe("upload progress locale", () => {
     if (percent === null) expect(screen.getByRole("status")).not.toHaveTextContent("%");
     else expect(screen.getByRole("status")).toHaveTextContent(`${percent}%`);
     if (percent === 50) expect(screen.getByRole("status")).toHaveTextContent("512 B de 1.0 KB");
+    // F-20: só o envio sem porcentagem ganha a barra que desliza (decorativa).
+    const sliding = screen.getByRole("status").querySelector(".upload-indeterminate-fill");
+    if (percent === null) expect(sliding?.parentElement).toHaveAttribute("aria-hidden", "true");
+    else expect(sliding).toBeNull();
   });
 });

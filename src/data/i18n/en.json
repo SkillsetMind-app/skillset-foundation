@@ -2256,7 +2256,6 @@
         "removeLogo": "Remove storefront logo",
         "removeHero": "Remove storefront hero image",
         "upload": "Upload",
-        "uploading": "Uploading...",
         "replace": "Replace",
         "remove": "Remove",
         "errors": {
@@ -2631,7 +2630,6 @@
         "contactUs": "Contact us for more",
         "updateError": "Could not update the marketplace highlight."
       },
-      "loading": "Loading course...",
       "notFound": {
         "title": "This course isn't in your studio.",
         "description": "It may have been deleted, or it belongs to another creator.",
@@ -4628,7 +4626,6 @@
     "phone": "Phone number",
     "timezone": "Timezone",
     "goalsTitle": "Goals",
-    "uploading": "Uploading...",
     "saving": "Saving...",
     "save": "Save profile",
     "photo": {

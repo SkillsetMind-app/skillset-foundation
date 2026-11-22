@@ -50,6 +50,7 @@ describe("teacher wrapper titles and Suspense use the real server dictionaries",
     third.unmount();
     state.suspend = true;
     render(await CommunityPage({ params }));
-    expect(screen.getByText(loading)).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent(loading);
+    expect(screen.getByRole("status").querySelector(".animate-pulse")).not.toBeNull();
   });
 });

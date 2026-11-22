@@ -64,7 +64,9 @@ describe("residual teacher routes with real server translation and I18nProvider"
     mocks.locale = locale;
     mocks.suspended = true;
     render(<I18nProvider initialLocale={locale}>{await CourseManagePage({ params: Promise.resolve({ courseId: "course-$&" }) })}</I18nProvider>);
-    expect(screen.getByText(locale === "es" ? "Cargando la gesti\u00f3n del curso..." : "Loading course management...")).toBeInTheDocument();
+    // F-03: esqueleto no formato da p\u00e1gina (o mesmo do hub carregando), n\u00e3o um cart\u00e3o com uma linha.
+    expect(screen.getByRole("status")).toHaveTextContent(locale === "es" ? "Cargando la gesti\u00f3n del curso..." : "Loading course management...");
+    expect(screen.getByRole("status").querySelector(".animate-pulse")).not.toBeNull();
     expect(screen.queryByTestId("manage-hub")).toBeNull();
   });
 });

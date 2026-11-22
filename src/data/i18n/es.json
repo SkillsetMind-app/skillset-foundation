@@ -2256,7 +2256,6 @@
         "removeLogo": "Eliminar logotipo de la tienda",
         "removeHero": "Eliminar imagen de portada de la tienda",
         "upload": "Subir",
-        "uploading": "Subiendo...",
         "replace": "Reemplazar",
         "remove": "Eliminar",
         "errors": {
@@ -2631,7 +2630,6 @@
         "contactUs": "Escríbenos para ampliarlo",
         "updateError": "No se pudo actualizar el destacado del marketplace."
       },
-      "loading": "Cargando curso...",
       "notFound": {
         "title": "Este curso no está en tu estudio.",
         "description": "Puede que se haya eliminado o que pertenezca a otro creador.",
@@ -4628,7 +4626,6 @@
     "phone": "Número de teléfono",
     "timezone": "Zona horaria",
     "goalsTitle": "Objetivos",
-    "uploading": "Subiendo...",
     "saving": "Guardando...",
     "save": "Guardar perfil",
     "photo": {

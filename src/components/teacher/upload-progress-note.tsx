@@ -44,6 +44,12 @@ export function UploadProgressNote({
               .replace("{total}", () => formatCourseAssetSize(progress.totalBytes))}
           </p>
         </>
+      ) : !done ? (
+        // F-20: sem porcentagem a nota ficava parada e parecia travada. A
+        // barra indeterminada mostra que segue andando, sem inventar número.
+        <div aria-hidden="true" className="mt-2 h-2 overflow-hidden rounded-full bg-[var(--color-surface-soft)]">
+          <div className="upload-indeterminate-fill h-full w-[30%] rounded-full bg-[var(--color-primary)]" />
+        </div>
       ) : null}
     </div>
   );
