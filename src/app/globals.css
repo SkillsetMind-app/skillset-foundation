@@ -8555,10 +8555,12 @@ button:hover > .dash-card,
   font-weight: 700;
   font-size: 15px;
   text-decoration: none;
-  opacity: 0.92;
+  text-underline-offset: 4px;
 }
+/* Hover por sublinhado, não por opacidade (o texto ficava 8% apagado em
+   repouso e o hover só o acendia). */
 .members-hero__back:hover {
-  opacity: 1;
+  text-decoration: underline;
 }
 .members-hero__title {
   margin: 0;

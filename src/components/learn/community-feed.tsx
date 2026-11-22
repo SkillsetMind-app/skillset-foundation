@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckCircle2, HelpCircle, Pin, Radio, X } from "lucide-react";
+import { CheckCircle2, HelpCircle, Pin, Radio, ThumbsUp, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
@@ -280,22 +280,20 @@ export function CommunityFeed({
   return (
     <div className="community-feed grid gap-5 lg:grid-cols-[minmax(0,1fr)_300px] lg:items-start">
       <div className="grid gap-4">
-        <header className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-              {t("learn.community.eyebrow")}
-            </p>
-            {/* Recebe o foco quando o ultimo post visivel e apagado. */}
-            <h2 data-community-heading tabIndex={-1} className="display-title mt-1 text-2xl text-[var(--color-ink)]">
-              {space.name.replace(/ community$/i, "")}
-            </h2>
-          </div>
-          {liveChip ? (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-[rgba(22,163,74,0.1)] px-3 py-1 text-xs font-bold text-[rgb(21,128,61)] lg:hidden">
+        {/* Título só para leitor de tela: logo acima já estão o nome do curso
+            (h1) e a aba "Community" ativa, e o eyebrow mais o h2 de 24px
+            repetiam os dois. Recebe o foco quando o último post visível é
+            apagado. Fora do fluxo (sr-only), não abre espaço na grade. */}
+        <h2 data-community-heading tabIndex={-1} className="sr-only">
+          {space.name.replace(/ community$/i, "")}
+        </h2>
+        {liveChip ? (
+          <p className="lg:hidden">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-[rgba(22,163,74,0.1)] px-3 py-1 text-xs font-bold text-[rgb(21,128,61)]">
               <Radio size={12} aria-hidden /> {liveChip}
             </span>
-          ) : null}
-        </header>
+          </p>
+        ) : null}
 
         {/* Tres filtros no lugar de seis espacos com ordenacao. */}
         <div className="flex flex-wrap items-center gap-2">
@@ -373,7 +371,15 @@ export function CommunityFeed({
           </div>
         ) : null}
 
-        <div className="grid gap-3" aria-live="polite">
+        {/* O leitor de tela ouve só a linha "N new posts". Antes a lista
+            inteira era aria-live: cada curtida e cada post novo eram lidos. */}
+        <p role="status" className="sr-only">
+          {feed.pending > 0
+            ? t(`learn.community.${feed.pending === 1 ? "newPostOne" : "newPostMany"}`).replace("{count}", () => String(feed.pending))
+            : ""}
+        </p>
+
+        <div className="grid gap-3">
           {!feed.ready ? (
             <p className="text-sm text-[var(--color-ink-soft)]">{t("learn.community.feedLoading")}</p>
           ) : shownPosts.length === 0 ? (
@@ -410,7 +416,9 @@ export function CommunityFeed({
       ) : null}
 
       <aside className="grid gap-3">
-        <LiveCard live={nextLive} now={now} locale={locale} />
+        {/* Só com uma live marcada. Antes a lateral sempre abria com um
+            cartão vazio "No live scheduled yet.". */}
+        {nextLive ? <LiveCard live={nextLive} now={now} locale={locale} /> : null}
 
         <section className="rounded-lg border border-[var(--color-line)] bg-white p-4 shadow-[var(--shadow-soft)]">
           <div className="flex items-center gap-2">
@@ -597,13 +605,8 @@ function Composer({
         >
           {t("learn.community.composer.ask")}
         </button>
-        <button
-          type="button"
-          onClick={() => setMode("share")}
-          className="button-outline min-h-11 px-4 text-sm"
-        >
-          {t("learn.community.composer.share")}
-        </button>
+        {/* Sem "Share" ao lado: o campo de mentira já abre o mesmo
+            formulário, e o botão a mais quebrava a linha no celular. */}
         {canModerate ? (
           <button
             type="button"
@@ -813,9 +816,9 @@ function FeedCard({
     <article
       data-community-item
       aria-label={post.title ?? post.body.slice(0, 60)}
-      className={`rounded-lg border border-[var(--color-line)] bg-white p-4 shadow-[var(--shadow-soft)] ${
-        fromInstructor ? "border-l-4 border-l-[var(--color-primary)]" : ""
-      }`}
+      // O post do instrutor se marca pelo "· Instructor" do cabeçalho; a
+      // borda colorida à esquerda é proibida pelo contrato de design.
+      className="rounded-lg border border-[var(--color-line)] bg-white p-4 shadow-[var(--shadow-soft)]"
     >
       <header className="flex flex-wrap items-center gap-2 text-xs text-[var(--color-ink-muted)]">
         <Avatar name={post.authorName} small />
@@ -870,9 +873,11 @@ function FeedCard({
           disabled={!currentUser || isOwn || likePending}
           aria-pressed={liked}
           aria-label={t("learn.community.card.clap").replace("{count}", () => String(likes.count))}
-          className={`min-h-11 rounded-md px-3 ${liked ? "bg-[var(--color-surface-soft)] text-[var(--color-ink)]" : "hover:bg-[var(--color-surface-soft)]"} disabled:opacity-70`}
+          className={`inline-flex min-h-11 items-center gap-1.5 rounded-md px-3 ${liked ? "bg-[var(--color-surface-soft)] text-[var(--color-ink)]" : "hover:bg-[var(--color-surface-soft)]"} disabled:opacity-70`}
         >
-          👏 {likes.count}
+          {/* Ícone, não emoji (o contrato de design proíbe emoji na interface). */}
+          <ThumbsUp size={14} aria-hidden />
+          {likes.count}
         </button>
         <button
           type="button"
@@ -966,15 +971,8 @@ function FeedCard({
 
 // ---------------------------------------------------------------------------
 
-function LiveCard({ live, now, locale }: { live: CourseEvent | null; now: number; locale: string }) {
+function LiveCard({ live, now, locale }: { live: CourseEvent; now: number; locale: string }) {
   const { t } = useTranslation();
-  if (!live) {
-    return (
-      <section className="rounded-lg border border-[var(--color-line)] bg-white p-4 text-sm text-[var(--color-ink-soft)] shadow-[var(--shadow-soft)]">
-        {t("learn.community.live.none")}
-      </section>
-    );
-  }
   const startsAt = Date.parse(live.startsAt);
   const running = startsAt <= now;
   const safeJoinUrl = getSafeExternalUrl(live.externalUrl);

@@ -390,6 +390,8 @@ describe("hero da home do curso", () => {
     expect(screen.getByText("3 of 3 lessons · 100%")).toBeInTheDocument();
     const hero = document.querySelector(".members-hero") as HTMLElement;
     expect(within(hero).getByRole("link", { name: "Get certificate" })).toHaveAttribute("href", "/learn/credentials");
+    // Uma vez so na capa: a barra de abas nao repete o certificado do hero.
+    expect(screen.getAllByRole("link", { name: "Get certificate" })).toHaveLength(1);
     // Terminou: a acao principal e o certificado, nao "continuar".
     expect(within(hero).queryByRole("link", { name: /^Continue/ })).toBeNull();
     expect(recordLessonProgress).not.toHaveBeenCalled();

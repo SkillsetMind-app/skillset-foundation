@@ -1350,7 +1350,12 @@ export function EnrolledCourseWorkspace({
         active={activeTab}
         lessonId={selectedLesson?.id ?? null}
         tabs={classroomTabs}
-        certificateHref={certificateHref}
+        // Na capa a 100% o certificado já é a ação principal do hero (mesmas
+        // condições do MembersAreaHeroBand acima); aqui seria o mesmo
+        // "Get certificate" duas vezes na mesma tela.
+        certificateHref={
+          isCourseHome && !previewMode && totalLessonCount > 0 ? null : certificateHref
+        }
       />
 
       {/* Um item so da grade para a aba aberta: na troca de aba ele entra

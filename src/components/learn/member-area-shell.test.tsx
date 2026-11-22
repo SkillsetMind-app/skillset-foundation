@@ -41,6 +41,21 @@ describe("MemberAreaShell", () => {
     ).not.toBeNull();
   });
 
+  // Tema ainda desconhecido (área do criador carregando): nem claro nem escuro,
+  // para a área escura não nascer clara e virar escura.
+  it("theme null: moldura neutra, sem tema da área e sem o cabeçalho temático", () => {
+    const { container } = render(
+      <MemberAreaShell theme={null}>
+        <p>Loading</p>
+      </MemberAreaShell>,
+    );
+
+    expect(container.querySelector("[data-members-theme]")).toBeNull();
+    expect(container.querySelector("header")).toBeNull();
+    expect(container.firstElementChild).toHaveAttribute("aria-busy", "true");
+    expect(screen.getByText("Loading")).toBeInTheDocument();
+  });
+
   it.each([
     ["dark", "logo-wordmark__themed--dark"],
     ["light", "logo-wordmark__themed--light"],

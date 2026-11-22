@@ -46,7 +46,8 @@ export function MemberAreaShell({
 }: {
   children: ReactNode;
   brand?: MemberAreaBrand | null;
-  theme?: MembersTheme;
+  /** null = o tema ainda não é conhecido (área do criador carregando). */
+  theme?: MembersTheme | null;
   /** O curso desta sala: a Ajuda manda a duvida da aula para a comunidade
    *  dele (ou para a mensagem ao professor, se a comunidade estiver off). */
   course?: HelpCourse | null;
@@ -59,6 +60,23 @@ export function MemberAreaShell({
     brand?.accentColor && isStorefrontHexColor(brand.accentColor)
       ? brand.accentColor
       : null;
+
+  // Tema desconhecido: moldura neutra do mesmo tamanho (barra de 44px + py-3
+  // como o cabeçalho, e o mesmo <main>), no fundo da plataforma, que é o
+  // mesmo do aviso de "carregando" do login que vem antes. Pintar o claro
+  // aqui fazia a área escura nascer clara e virar escura um instante depois.
+  if (theme === null) {
+    return (
+      <div aria-busy="true" className="flex min-h-screen flex-col bg-[var(--color-base)]">
+        <div aria-hidden="true" className="flex border-b border-transparent px-4 py-3 sm:px-6">
+          <span className="h-11" />
+        </div>
+        <main className="mx-auto w-full max-w-[1280px] flex-1 py-6 md:px-6 lg:px-8">
+          {children}
+        </main>
+      </div>
+    );
+  }
 
   return (
     <ThemeProvider>

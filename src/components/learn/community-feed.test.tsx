@@ -306,7 +306,8 @@ describe("feed da comunidade (rodada 11)", () => {
   });
 
   it.each([
-    ["Share", "Compartir", "Tu publicación", "Publicar", "discussion"],
+    // Sem botão "Share": o campo de mentira abre o mesmo formulário.
+    ["Ask the cohort or share something…", "Compartir", "Tu publicación", "Publicar", "discussion"],
     ["Post an update", "Publicar un aviso", "Tu publicación", "Publicar aviso", "announcement"],
   ])("preserves the %s draft and payload while translating", async (entry, formName, label, submit, category) => {
     await renderFeed({ canModerate: true }, "en");
@@ -521,8 +522,13 @@ describe("feed da comunidade (rodada 11)", () => {
     });
     expect(screen.getAllByRole("article")).toHaveLength(4);
     expect(screen.queryByText("Anyone tried the worksheet?")).toBeNull();
+    // So a linha "1 new post" e anunciada; a lista nao e mais regiao viva.
+    const feedStatus = screen.getAllByRole("status").find((node) => node.textContent === "1 new post");
+    expect(feedStatus).toBeDefined();
+    expect(screen.getAllByRole("article")[0].closest("[aria-live]")).toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: "1 new post" }));
+    expect(feedStatus?.textContent).toBe("");
     expect(screen.getAllByRole("article")).toHaveLength(5);
     expect(screen.getByText("Anyone tried the worksheet?")).toBeInTheDocument();
 
@@ -532,6 +538,26 @@ describe("feed da comunidade (rodada 11)", () => {
     });
     expect(screen.getByText("My own share.")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /new post/ })).toBeNull();
+  });
+
+  // Antes: eyebrow "COMMUNITY" + h2 de 24px com o nome do curso (repetindo o
+  // h1 e a aba), "Share" fazendo o mesmo que o campo, e um cartão vazio
+  // "No live scheduled yet." sempre na lateral.
+  it("cromo enxuto: titulo so para leitor de tela, uma entrada por tarefa, sem cartao de live vazio", async () => {
+    await renderFeed({ canModerate: true });
+
+    expect(screen.getByRole("heading", { level: 2, name: "Leading Teams Through Change" })).toHaveClass("sr-only");
+    expect(screen.queryByText("Community")).toBeNull();
+    expect(screen.getByRole("button", { name: "Ask the cohort or share something…" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Ask a question" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Post an update" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Share" })).toBeNull();
+    expect(screen.queryByRole("region", { name: "Next live" })).toBeNull();
+    expect(screen.queryByText("No live scheduled yet.")).toBeNull();
+    // Reacao com icone (nao emoji) e post do instrutor sem a borda colorida.
+    expect(document.body.textContent).not.toContain("👏");
+    expect(screen.getAllByRole("button", { name: /^Like · \d+$/ }).length).toBeGreaterThan(0);
+    for (const card of screen.getAllByRole("article")) expect(card.className).not.toContain("border-l-4");
   });
 
   it("lateral: 'Live in 40 min' vira 'Join' quando comeca; quem esta online; 'Say hi' so na primeira semana", async () => {

@@ -331,6 +331,8 @@ describe("learner wave 2 with real provider and dictionaries", () => {
     mocks.enrollments.mockImplementation((_uid, next) => { next([enrollment]); return () => {}; });
     show(<LearnCommunityHub />);
     expect(await screen.findByRole("heading", { name: "Comunidad de Original course $&" })).toBeVisible();
+    // O cartão é o curso e a entrada: sem as quatro linhas iguais em todo cartão.
+    expect(screen.getByRole("article").textContent).toBe("Comunidad de Original course $&Abrir comunidad");
     expect(mocks.communityIds).toHaveBeenCalledExactlyOnceWith(["course-es"]);
     fireEvent.change(screen.getByRole("searchbox", { name: "Buscar en las comunidades de tus cursos" }), { target: { value: "comunidad" } });
     expect(screen.getByRole("link", { name: "Abrir comunidad" })).toHaveAttribute("href", "/learn/courses/course-es/community");

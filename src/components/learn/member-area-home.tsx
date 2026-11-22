@@ -14,6 +14,8 @@ import {
   getMemberAreaHome,
   memberAreaCoverUrl,
   memberAreaRoutePath,
+  rememberMemberAreaTheme,
+  rememberedMemberAreaTheme,
   type MemberAreaCommunity,
   type MemberAreaHome,
   type MemberAreaLockedProduct,
@@ -62,6 +64,32 @@ function priceLabel(
   }
 }
 
+// Esqueleto no formato da área pronta: capa com título e três cartões. Antes
+// era uma frase solta, e a página inteira se montava de uma vez. A cor do osso
+// segue o tema quando ele já é conhecido (--ma-line) e cai no cinza da
+// plataforma na moldura neutra.
+const bone = "animate-pulse rounded-lg bg-[var(--ma-line,var(--color-surface-strong))]";
+
+function MemberAreaHomeSkeleton({ label }: { label: string }) {
+  return (
+    <div className="grid gap-8">
+      <p role="status" className="sr-only">{label}</p>
+      <div aria-hidden="true" className="grid gap-3">
+        <div className={`aspect-video max-h-[min(40svh,22rem)] w-full ${bone}`} />
+        <div className={`h-9 w-2/3 max-w-sm ${bone}`} />
+      </div>
+      <div aria-hidden="true" className="grid gap-3">
+        <div className={`h-6 w-40 ${bone}`} />
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {[0, 1, 2].map((item) => (
+            <div key={item} className={`aspect-[4/3] ${bone}`} />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /**
  * /learn/areas/[criador] (e /[area] numa extra): a área do criador para o
  * aluno. Não libera aula: cada produto abre a própria sala.
@@ -90,6 +118,7 @@ export function MemberAreaHomeView({
           router.replace(memberAreaStorefrontPath(areaRef));
           return;
         }
+        rememberMemberAreaTheme(areaRef, slug, home.area.theme);
         setState({ status: "ready", home, community });
       })
       .catch(() => {
@@ -101,11 +130,14 @@ export function MemberAreaHomeView({
   }, [areaRef, slug, retryKey, router]);
 
   if (state.status !== "ready") {
+    // O tema só chega com a leitura: até lá vale o último visto nesta área, ou
+    // a moldura neutra (null). O erro mantém o claro padrão de antes.
+    const remembered = rememberedMemberAreaTheme(areaRef, slug);
     return (
-      <MemberAreaShell brand={brand}>
+      <MemberAreaShell brand={brand} theme={state.status === "loading" ? remembered : remembered ?? undefined}>
         <div className="px-4 md:px-0">
           {state.status === "loading" ? (
-            <p role="status" className="text-sm text-[var(--ma-ink-soft)]">{t("learn.memberArea.loading")}</p>
+            <MemberAreaHomeSkeleton label={t("learn.memberArea.loading")} />
           ) : (
             <div role="alert" className="grid justify-items-start gap-3">
               <p className="text-sm text-[var(--ma-ink)]">{t("learn.memberArea.loadError")}</p>
