@@ -7,6 +7,8 @@ import type { Lesson } from "@/domain/learning";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 
 const COUNTDOWN_SECONDS = 5;
+/** O aviso entra na região viva um instante DEPOIS de ela existir. */
+const ANNOUNCE_DELAY_MS = 50;
 /** Tem que bater com a transição de `.member-next-lesson.is-leaving`. */
 const EXIT_MS = 250;
 
@@ -37,6 +39,14 @@ export function NextLessonCard({
   const { t } = useTranslation();
   const [secondsLeft, setSecondsLeft] = useState(COUNTDOWN_SECONDS);
   const [leaving, setLeaving] = useState(false);
+  // Região viva que já nasce com o texto muitas vezes não é lida (NVDA/JAWS
+  // anunciam MUDANÇAS): ela monta vazia e o texto chega 50ms depois. Timer
+  // próprio, fora da contagem e da navegação.
+  const [announced, setAnnounced] = useState(false);
+  useEffect(() => {
+    const timer = window.setTimeout(() => setAnnounced(true), ANNOUNCE_DELAY_MS);
+    return () => window.clearTimeout(timer);
+  }, []);
 
   // Saindo: a contagem para (senão o cartão em queda ainda trocaria de aula) e
   // o pai só desmonta quando a animação termina.
@@ -68,11 +78,19 @@ export function NextLessonCard({
 
   const progress = 1 - secondsLeft / COUNTDOWN_SECONDS;
 
+  // Aviso para leitor de tela: UMA vez, quando o cartão aparece. Antes o cartão
+  // inteiro era aria-live e o número mudava a cada segundo, então o leitor
+  // relia o cartão cinco vezes. O texto usa a contagem inicial (constante),
+  // não `secondsLeft`, para não mudar a cada tique; a contagem visível fica
+  // fora da árvore de acessibilidade.
+  const announcement = t("learn.classroom.nextLesson.announce")
+    .replace("{seconds}", () => String(COUNTDOWN_SECONDS))
+    .replace("{title}", () => lesson.title);
+
   return (
     <div
       role="dialog"
       aria-label={t("learn.classroom.nextLesson.title")}
-      aria-live="polite"
       className={`member-next-lesson ${leaving ? "is-leaving" : ""} absolute inset-x-3 bottom-3 z-10 flex items-center gap-3 rounded-lg bg-[rgba(15,39,68,0.92)] p-3 text-white shadow-[0_18px_36px_rgba(15,39,68,0.35)] backdrop-blur sm:inset-x-auto sm:right-3 sm:max-w-[360px]`}
     >
       <div
@@ -86,8 +104,11 @@ export function NextLessonCard({
           {secondsLeft}
         </span>
       </div>
+      <p className="sr-only" role="status">
+        {announced ? announcement : ""}
+      </p>
       <div className="min-w-0 flex-1">
-        <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/60">
+        <p aria-hidden="true" className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/60">
           {t("learn.classroom.nextLesson.countdown").replace("{seconds}", () => String(secondsLeft))}
         </p>
         <p className="truncate text-sm font-semibold">{lesson.title}</p>

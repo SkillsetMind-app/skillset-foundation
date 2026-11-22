@@ -1,9 +1,9 @@
 "use client";
 
-import { CheckCircle2, HelpCircle, Pin, Radio, X } from "lucide-react";
+import { CheckCircle2, HelpCircle, Pin, Radio, ThumbsUp, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 
 import { formatNotificationTime } from "@/components/account/notification-row";
 import { useAuth } from "@/components/auth/auth-provider";
@@ -108,6 +108,16 @@ export function CommunityFeed({
   const [enrollmentReady, setEnrollmentReady] = useState(skipEnrollmentGate);
   // Chave do dicionario, nao texto: o idioma pode trocar com o erro na tela.
   const [error, setError] = useState("");
+  // "Posted." na região de status depois de publicar: a lista deixou de ser
+  // aria-live, o próprio post entra direto nela e o formulário fecha, então
+  // quem usa leitor de tela não ouvia nada. Some depois de alguns segundos
+  // para o próximo post ser anunciado de novo.
+  const [posted, setPosted] = useState(false);
+  useEffect(() => {
+    if (!posted) return;
+    const timer = window.setTimeout(() => setPosted(false), 4000);
+    return () => window.clearTimeout(timer);
+  }, [posted]);
 
   // Feed: `all` e tudo o que chegou; `visible` e o que esta na tela; `pending`
   // sao posts de OUTRAS pessoas que chegaram pelo realtime e esperam a pessoa
@@ -280,22 +290,25 @@ export function CommunityFeed({
   return (
     <div className="community-feed grid gap-5 lg:grid-cols-[minmax(0,1fr)_300px] lg:items-start">
       <div className="grid gap-4">
-        <header className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-              {t("learn.community.eyebrow")}
-            </p>
-            {/* Recebe o foco quando o ultimo post visivel e apagado. */}
-            <h2 data-community-heading tabIndex={-1} className="display-title mt-1 text-2xl text-[var(--color-ink)]">
-              {space.name.replace(/ community$/i, "")}
-            </h2>
-          </div>
-          {liveChip ? (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-[rgba(22,163,74,0.1)] px-3 py-1 text-xs font-bold text-[rgb(21,128,61)] lg:hidden">
+        {/* Título só para leitor de tela: logo acima já estão o nome do curso
+            (h1) e a aba "Community" ativa, e o eyebrow mais o h2 de 24px
+            repetiam os dois. Fora do fluxo (sr-only), não abre espaço na
+            grade. Recebe o foco quando o último post visível é apagado, e aí
+            aparece (focus:not-sr-only) para o foco não sumir da tela. */}
+        <h2
+          data-community-heading
+          tabIndex={-1}
+          className="sr-only text-lg font-semibold text-[var(--color-ink)] focus:not-sr-only"
+        >
+          {space.name.replace(/ community$/i, "")}
+        </h2>
+        {liveChip ? (
+          <p className="lg:hidden">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-[rgba(22,163,74,0.1)] px-3 py-1 text-xs font-bold text-[rgb(21,128,61)]">
               <Radio size={12} aria-hidden /> {liveChip}
             </span>
-          ) : null}
-        </header>
+          </p>
+        ) : null}
 
         {/* Tres filtros no lugar de seis espacos com ordenacao. */}
         <div className="flex flex-wrap items-center gap-2">
@@ -350,6 +363,7 @@ export function CommunityFeed({
             answeredPosts={feed.visible}
             canModerate={canModerate}
             onError={setError}
+            onPosted={() => setPosted(true)}
           />
         ) : null}
 
@@ -373,7 +387,18 @@ export function CommunityFeed({
           </div>
         ) : null}
 
-        <div className="grid gap-3" aria-live="polite">
+        {/* O leitor de tela ouve só a linha "N new posts" (ou "Posted."
+            depois de publicar). Antes a lista inteira era aria-live: cada
+            curtida e cada post novo eram lidos. */}
+        <p role="status" className="sr-only">
+          {feed.pending > 0
+            ? t(`learn.community.${feed.pending === 1 ? "newPostOne" : "newPostMany"}`).replace("{count}", () => String(feed.pending))
+            : posted
+              ? t("learn.community.composer.posted")
+              : ""}
+        </p>
+
+        <div className="grid gap-3">
           {!feed.ready ? (
             <p className="text-sm text-[var(--color-ink-soft)]">{t("learn.community.feedLoading")}</p>
           ) : shownPosts.length === 0 ? (
@@ -410,7 +435,9 @@ export function CommunityFeed({
       ) : null}
 
       <aside className="grid gap-3">
-        <LiveCard live={nextLive} now={now} locale={locale} />
+        {/* Só com uma live marcada. Antes a lateral sempre abria com um
+            cartão vazio "No live scheduled yet.". */}
+        {nextLive ? <LiveCard live={nextLive} now={now} locale={locale} /> : null}
 
         <section className="rounded-lg border border-[var(--color-line)] bg-white p-4 shadow-[var(--shadow-soft)]">
           <div className="flex items-center gap-2">
@@ -505,6 +532,7 @@ function Composer({
   answeredPosts,
   canModerate,
   onError,
+  onPosted,
 }: {
   user: SkillsetUser;
   space: CommunitySpace;
@@ -514,9 +542,20 @@ function Composer({
   canModerate: boolean;
   /** Recebe a CHAVE do dicionario (ou "" para limpar); o pai traduz na tela. */
   onError: (messageKey: string) => void;
+  /** Publicou: o pai anuncia "Posted." na região de status do feed. */
+  onPosted: () => void;
 }) {
   const { t, locale } = useTranslation();
   const [mode, setMode] = useState<"idle" | "ask" | "share" | "update">("idle");
+  // Depois de publicar o formulário fecha e o botão que tinha o foco some:
+  // o foco volta para o campo do compositor, em vez de cair no corpo da página.
+  const promptRef = useRef<HTMLButtonElement>(null);
+  const focusPromptAfterPost = useRef(false);
+  useEffect(() => {
+    if (mode !== "idle" || !focusPromptAfterPost.current) return;
+    focusPromptAfterPost.current = false;
+    promptRef.current?.focus();
+  }, [mode]);
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -571,7 +610,9 @@ function Composer({
         lessonTitle: mode === "ask" && lesson ? `lesson ${lesson.number}` : null,
         user,
       });
+      focusPromptAfterPost.current = true;
       reset();
+      onPosted();
     } catch (failure) {
       onError(isRateLimitError(failure) ? "learn.community.rateLimit" : "learn.community.composer.publishError");
     } finally {
@@ -584,6 +625,7 @@ function Composer({
       <div className="flex flex-wrap items-center gap-2 rounded-lg border border-[var(--color-line)] bg-white p-3 shadow-[var(--shadow-soft)]">
         <Avatar name={user.displayName ?? ""} small />
         <button
+          ref={promptRef}
           type="button"
           onClick={() => setMode("share")}
           className="min-h-11 flex-1 rounded-md bg-[var(--color-surface-soft)] px-4 text-left text-sm text-[var(--color-ink-muted)]"
@@ -597,13 +639,8 @@ function Composer({
         >
           {t("learn.community.composer.ask")}
         </button>
-        <button
-          type="button"
-          onClick={() => setMode("share")}
-          className="button-outline min-h-11 px-4 text-sm"
-        >
-          {t("learn.community.composer.share")}
-        </button>
+        {/* Sem "Share" ao lado: o campo de mentira já abre o mesmo
+            formulário, e o botão a mais quebrava a linha no celular. */}
         {canModerate ? (
           <button
             type="button"
@@ -813,9 +850,9 @@ function FeedCard({
     <article
       data-community-item
       aria-label={post.title ?? post.body.slice(0, 60)}
-      className={`rounded-lg border border-[var(--color-line)] bg-white p-4 shadow-[var(--shadow-soft)] ${
-        fromInstructor ? "border-l-4 border-l-[var(--color-primary)]" : ""
-      }`}
+      // O post do instrutor se marca pelo "· Instructor" do cabeçalho; a
+      // borda colorida à esquerda é proibida pelo contrato de design.
+      className="rounded-lg border border-[var(--color-line)] bg-white p-4 shadow-[var(--shadow-soft)]"
     >
       <header className="flex flex-wrap items-center gap-2 text-xs text-[var(--color-ink-muted)]">
         <Avatar name={post.authorName} small />
@@ -870,9 +907,11 @@ function FeedCard({
           disabled={!currentUser || isOwn || likePending}
           aria-pressed={liked}
           aria-label={t("learn.community.card.clap").replace("{count}", () => String(likes.count))}
-          className={`min-h-11 rounded-md px-3 ${liked ? "bg-[var(--color-surface-soft)] text-[var(--color-ink)]" : "hover:bg-[var(--color-surface-soft)]"} disabled:opacity-70`}
+          className={`inline-flex min-h-11 items-center gap-1.5 rounded-md px-3 ${liked ? "bg-[var(--color-surface-soft)] text-[var(--color-ink)]" : "hover:bg-[var(--color-surface-soft)]"} disabled:opacity-70`}
         >
-          👏 {likes.count}
+          {/* Ícone, não emoji (o contrato de design proíbe emoji na interface). */}
+          <ThumbsUp size={14} aria-hidden />
+          {likes.count}
         </button>
         <button
           type="button"
@@ -966,15 +1005,8 @@ function FeedCard({
 
 // ---------------------------------------------------------------------------
 
-function LiveCard({ live, now, locale }: { live: CourseEvent | null; now: number; locale: string }) {
+function LiveCard({ live, now, locale }: { live: CourseEvent; now: number; locale: string }) {
   const { t } = useTranslation();
-  if (!live) {
-    return (
-      <section className="rounded-lg border border-[var(--color-line)] bg-white p-4 text-sm text-[var(--color-ink-soft)] shadow-[var(--shadow-soft)]">
-        {t("learn.community.live.none")}
-      </section>
-    );
-  }
   const startsAt = Date.parse(live.startsAt);
   const running = startsAt <= now;
   const safeJoinUrl = getSafeExternalUrl(live.externalUrl);

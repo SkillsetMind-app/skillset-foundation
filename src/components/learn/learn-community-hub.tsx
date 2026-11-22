@@ -106,9 +106,8 @@ export function LearnCommunityHub() {
     createEnrollmentCommunityCards(enrollments, communityIds ?? NO_COURSES).map((space) => ({
       ...space,
       name: t("learnWave2.communityHub.name").replace("{course}", () => space.courseTitle),
+      // Só para a busca: o cartão não mostra mais a categoria.
       categories: t("learnWave2.communityHub.category"),
-      description: t("learnWave2.communityHub.description"),
-      visibility: t("learnWave2.communityHub.visibility"),
     }));
   const filteredCards = communityCards.filter((space) => {
     const normalizedSearch = search.trim().toLowerCase();
@@ -175,35 +174,24 @@ export function LearnCommunityHub() {
         </div>
       ) : null}
 
+      {/* Cada cartão diz só o que muda de uma comunidade para outra: o curso.
+          Antes eram quatro linhas iguais em todos ("COURSE COMMUNITY",
+          "ENROLLED COURSE", a mesma frase de descrição e "ENROLLED ONLY"). */}
       <div className="grid gap-4 lg:grid-cols-2">
       {filteredCards.map((space) => (
         <article
           key={space.id}
-          className="rounded-lg border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]"
+          className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]"
         >
-          <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-            {space.categories}
-          </p>
-          <span className="mt-4 inline-flex rounded-chip bg-[var(--color-surface-soft)] px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--color-primary)]">
-            {t("learnWave2.communityHub.enrolled")}
-          </span>
-          <h2 className="mt-3 text-lg font-semibold text-[var(--color-primary)]">
+          <h2 className="min-w-0 break-words text-lg font-semibold text-[var(--color-primary)]">
             {space.name}
           </h2>
-          <p className="mt-4 text-sm leading-7 text-[var(--color-ink-soft)]">
-            {space.description}
-          </p>
-          <div className="mt-6 flex items-center justify-between gap-3">
-            <p className="text-xs uppercase tracking-[0.14em] text-[var(--color-ink-soft)]">
-              {space.visibility}
-            </p>
-            <Link
-              href={space.href}
-              className="button-solid px-4 py-2.5 text-sm"
-            >
-              {t("learnWave2.communityHub.open")}
-            </Link>
-          </div>
+          <Link
+            href={space.href}
+            className="button-solid px-4 py-2.5 text-sm"
+          >
+            {t("learnWave2.communityHub.open")}
+          </Link>
         </article>
       ))}
       </div>

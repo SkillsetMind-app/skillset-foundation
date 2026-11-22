@@ -41,6 +41,26 @@ describe("MemberAreaShell", () => {
     ).not.toBeNull();
   });
 
+  // Tema ainda desconhecido (área do criador carregando): nem claro nem escuro,
+  // para a área escura não nascer clara e virar escura.
+  // O cabeçalho fica (logo, Ajuda, conta): se a leitura demorar, a saída
+  // continua na tela. E nada de aria-busy em volta do aviso de carregando,
+  // que o leitor de tela poderia calar.
+  it("theme null: paleta neutra da plataforma, com o cabeçalho e sem aria-busy", () => {
+    const { container } = render(
+      <MemberAreaShell theme={null}>
+        <p role="status">Loading</p>
+      </MemberAreaShell>,
+    );
+
+    expect(container.querySelector('[data-members-theme="pending"]')).not.toBeNull();
+    expect(container.querySelector('[data-members-theme="light"], [data-members-theme="dark"]')).toBeNull();
+    expect(container.querySelector("header .logo-wordmark__themed--auto")).not.toBeNull();
+    expect(container.querySelector('header a[href="/learn"]')).not.toBeNull();
+    expect(container.querySelector("[aria-busy]")).toBeNull();
+    expect(screen.getByRole("status")).toHaveTextContent("Loading");
+  });
+
   it.each([
     ["dark", "logo-wordmark__themed--dark"],
     ["light", "logo-wordmark__themed--light"],

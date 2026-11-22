@@ -181,6 +181,33 @@ export function memberAreaRoutePath(ref: string, slug: string | null = null): st
   return slug ? `${base}/${encodeURIComponent(slug)}` : base;
 }
 
+// O tema da área só chega com a leitura feita no navegador: a tabela é do dono,
+// e o servidor não a lê em nome do aluno. Guardar o último tema visto deixa a
+// volta à área, e a comunidade dela, pintarem no tema certo desde o primeiro
+// quadro, sem leitura nova ao banco. Sem nada guardado (primeira visita), a
+// tela espera neutra em vez de nascer clara e virar escura.
+// ponytail: um valor por endereço de área; tema trocado pelo professor só
+// aparece depois da próxima abertura da área (a leitura regrava).
+const themeKey = (ref: string, slug: string | null) => `skillset:member-area-theme:${memberAreaRoutePath(ref, slug)}`;
+
+/** O último tema visto desta área, ou null quando nunca foi aberta neste navegador. */
+export function rememberedMemberAreaTheme(ref: string, slug: string | null = null): MemberAreaTheme | null {
+  try {
+    const value = window.localStorage.getItem(themeKey(ref, slug));
+    return value === "dark" || value === "light" ? value : null;
+  } catch {
+    return null;
+  }
+}
+
+export function rememberMemberAreaTheme(ref: string, slug: string | null, theme: MemberAreaTheme): void {
+  try {
+    window.localStorage.setItem(themeKey(ref, slug), theme);
+  } catch {
+    // Armazenamento bloqueado (aba privada): só perde o atalho do primeiro quadro.
+  }
+}
+
 /** Endereço de área extra: minúsculas, números e hífen, até 40. Mesma regra do banco. */
 export function isValidMemberAreaSlug(slug: string): boolean {
   return /^[a-z0-9]([a-z0-9-]{0,38}[a-z0-9])?$/.test(slug) && slug !== "community";

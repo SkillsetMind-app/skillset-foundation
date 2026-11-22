@@ -59,6 +59,25 @@ describe("MemberAreaHomeView", () => {
     mocks.getMemberAreaHome.mockReset();
     mocks.getMemberAreaCommunity.mockReset().mockResolvedValue(null);
     mocks.replace.mockReset();
+    window.localStorage.clear();
+  });
+
+  // Antes a casca nascia clara durante a leitura e uma área escura virava
+  // escura um instante depois. O tema só chega com a leitura: na primeira
+  // visita a espera é neutra (sem tema), na volta já sai no tema guardado.
+  it("carregando: moldura neutra na primeira visita, tema guardado na volta", async () => {
+    mocks.getMemberAreaHome.mockResolvedValue(home);
+    const first = renderView();
+    expect(screen.getByTestId("shell")).not.toHaveAttribute("data-members-theme");
+    expect(screen.getByRole("status")).toHaveTextContent("Loading the members area...");
+    expect(await screen.findByRole("heading", { level: 1, name: "Eton Academy" })).toBeTruthy();
+    expect(screen.getByTestId("shell").getAttribute("data-members-theme")).toBe("dark");
+    first.unmount();
+
+    renderView();
+    expect(screen.getByRole("status")).toBeTruthy();
+    expect(screen.getByTestId("shell").getAttribute("data-members-theme")).toBe("dark");
+    expect(await screen.findByRole("heading", { level: 1, name: "Eton Academy" })).toBeTruthy();
   });
 
   // Comunidade da área inteira: cartão no topo quando o professor escolheu uma;

@@ -80,6 +80,31 @@ describe("NextLessonCard", () => {
     expect(screen.getByText(/Next lesson in 5s/)).toBeInTheDocument();
   });
 
+  it("leitor de tela ouve o aviso UMA vez; a contagem que muda fica fora da regiao viva", () => {
+    // Antes o cartao inteiro era aria-live e o numero mudava a cada segundo:
+    // o leitor relia o cartao cinco vezes.
+    render(<NextLessonCard lesson={lesson} onPlay={() => {}} onCancel={() => {}} />);
+
+    const card = screen.getByRole("dialog", { name: "Next lesson" });
+    expect(card).not.toHaveAttribute("aria-live");
+    // A região viva nasce vazia e recebe o texto depois: texto que já está lá
+    // na montagem costuma não ser lido.
+    const status = screen.getByRole("status");
+    expect(status.textContent).toBe("");
+    act(() => { vi.advanceTimersByTime(50); });
+    const text = "Next lesson starts in 5 seconds: Lesson two. Choose Cancel to stay on this lesson.";
+    expect(status).toHaveTextContent(text);
+    expect(screen.getByText(/Next lesson in 5s/)).toHaveAttribute("aria-hidden", "true");
+
+    // 50ms já passaram: completa o primeiro segundo e mais dois.
+    act(() => { vi.advanceTimersByTime(950); });
+    for (let tick = 0; tick < 2; tick += 1) act(() => { vi.advanceTimersByTime(1000); });
+    // O texto anunciado nao muda com o tique; so o numero visivel muda.
+    expect(screen.getByRole("status")).toHaveTextContent(text);
+    expect(screen.getByText(/Next lesson in 2s/)).toBeInTheDocument();
+    expect(card.querySelectorAll("[aria-live]")).toHaveLength(0);
+  });
+
   it("'Cancelar' faz o cartao DESCER e so entao avisa o pai; onPlay nunca", () => {
     // Antes o cartao aparecia e sumia seco, sem nada entre um quadro e outro.
     const onPlay = vi.fn();

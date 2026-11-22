@@ -1,6 +1,6 @@
 "use client";
 
-import { Award, GraduationCap, LifeBuoy, PlayCircle, X, type LucideIcon } from "lucide-react";
+import { Award, GraduationCap, LifeBuoy, PlayCircle, type LucideIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
@@ -51,10 +51,27 @@ export function WelcomeTour({ userId, firstName }: { userId: string; firstName: 
   const { t } = useTranslation();
   const { open, dismiss } = useWelcomeTour(userId, "student");
   const [stepIndex, setStepIndex] = useState(0);
+  // true depois da primeira troca de passo. Na abertura a própria janela já
+  // entra com motion-panel-in (.modal-panel); o texto subir junto dava a
+  // mesma animação duas vezes.
+  const [stepChanged, setStepChanged] = useState(false);
   const dialogRef = useRef<HTMLDivElement>(null);
+  const titleRef = useRef<HTMLHeadingElement>(null);
   const steps = buildSteps(firstName, t);
 
   useModalFocus(dialogRef, open);
+
+  function goToStep(next: number) {
+    setStepChanged(true);
+    setStepIndex(Math.max(0, Math.min(steps.length - 1, next)));
+  }
+
+  // Trocou de passo: o foco vai para o título novo. Sem isso, voltar ao passo
+  // 1 tirava o "Back" da tela com o foco nele, e o foco caía no corpo da
+  // página, atrás da janela. Na abertura quem foca é o useModalFocus.
+  useEffect(() => {
+    if (stepChanged) titleRef.current?.focus();
+  }, [stepIndex, stepChanged]);
 
   useEffect(() => {
     if (!open) {
@@ -92,39 +109,52 @@ export function WelcomeTour({ userId, firstName }: { userId: string; firstName: 
         className="modal-panel modal-panel-scroll w-full max-w-md overflow-hidden rounded-xl border border-[var(--color-line)] bg-white shadow-[0_24px_60px_rgba(15,31,58,0.28)] outline-none"
         onMouseDown={(event) => event.stopPropagation()}
       >
-        <div className="flex items-start justify-between gap-3 px-6 pt-6">
+        {/* Um controle de pular só, o "Skip" do rodapé (e o Esc). O X do
+            topo ("Skip the tour") fazia a mesma coisa. */}
+        <div className="px-6 pt-6">
           <span className="flex h-11 w-11 items-center justify-center rounded-full bg-[var(--color-surface-soft)] text-[var(--color-primary)]">
             <Icon className="h-5 w-5" aria-hidden="true" />
           </span>
-          <button
-            type="button"
-            onClick={dismiss}
-            aria-label={t("learn.tour.skipTour")}
-            className="grid h-11 w-11 place-items-center rounded-full text-[var(--color-ink-muted)] transition-colors hover:bg-[var(--color-surface-soft)] hover:text-[var(--color-ink)]"
-          >
-            <X className="h-4 w-4" aria-hidden="true" />
-          </button>
         </div>
 
-        <div className="px-6 pb-2 pt-4">
-          <h2
-            id="welcome-tour-title"
-            className="display-title text-3xl leading-tight text-[var(--color-primary)]"
-          >
-            {step.title}
-          </h2>
-          <p className="mt-3 text-sm leading-7 text-[var(--color-ink-soft)]">{step.body}</p>
+        {/* Os quatro passos empilhados na mesma célula da grade: a caixa tem
+            a altura do passo mais longo, então trocar de passo não muda a
+            altura da janela nem tira os botões de baixo do mouse. Só o passo
+            atual aparece (e existe para o leitor de tela); a partir da
+            primeira troca ele entra subindo 8px (motion-panel-in, só com
+            movimento liberado). */}
+        <div className="grid px-6 pb-2 pt-4">
+          {steps.map((item, index) => {
+            const current = index === stepIndex;
+            return (
+              <div
+                key={item.title}
+                aria-hidden={current ? undefined : true}
+                className={`[grid-area:1/1] ${current ? (stepChanged ? "motion-panel-in" : "") : "invisible"}`}
+              >
+                <h2
+                  id={current ? "welcome-tour-title" : undefined}
+                  ref={current ? titleRef : undefined}
+                  tabIndex={current ? -1 : undefined}
+                  className="display-title text-3xl leading-tight text-[var(--color-primary)] outline-none"
+                >
+                  {item.title}
+                </h2>
+                <p className="mt-3 text-sm leading-7 text-[var(--color-ink-soft)]">{item.body}</p>
+              </div>
+            );
+          })}
         </div>
 
+        {/* Traços de largura fixa: só a cor do atual muda. Antes o ativo
+            crescia de 6 para 24px (transition-all, refazia o layout). */}
         <div className="flex items-center gap-2 px-6 py-3" aria-hidden="true">
           {steps.map((item, index) => (
             <span
               key={item.title}
               className={[
-                "h-1.5 rounded-full transition-all",
-                index === stepIndex
-                  ? "w-6 bg-[var(--color-primary)]"
-                  : "w-1.5 bg-[var(--color-line)]",
+                "h-1.5 w-6 rounded-full transition-colors duration-[var(--duration-base)]",
+                index === stepIndex ? "bg-[var(--color-primary)]" : "bg-[var(--color-line)]",
               ].join(" ")}
             />
           ))}
@@ -142,7 +172,7 @@ export function WelcomeTour({ userId, firstName }: { userId: string; firstName: 
             {stepIndex > 0 ? (
               <button
                 type="button"
-                onClick={() => setStepIndex((index) => Math.max(0, index - 1))}
+                onClick={() => goToStep(stepIndex - 1)}
                 className="button-outline shrink-0 px-4 py-2 text-sm"
               >
                 {t("learn.tour.back")}
@@ -155,7 +185,7 @@ export function WelcomeTour({ userId, firstName }: { userId: string; firstName: 
             ) : (
               <button
                 type="button"
-                onClick={() => setStepIndex((index) => Math.min(steps.length - 1, index + 1))}
+                onClick={() => goToStep(stepIndex + 1)}
                 className="button-solid shrink-0 px-4 py-2 text-sm"
               >
                 {t("learn.tour.next")}

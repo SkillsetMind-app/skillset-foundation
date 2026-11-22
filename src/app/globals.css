@@ -8469,6 +8469,25 @@ button:hover > .dash-card,
   --ma-display: "Cormorant Garamond", Georgia, serif;
   --ma-sans: "Manrope", system-ui, -apple-system, sans-serif;
 }
+/* Área do criador carregando: o tema dela só chega com a leitura no
+   navegador. Até lá a casca (member-area-shell.tsx) usa os tons da
+   PLATAFORMA, que seguem o claro/escuro do app, em vez de nascer no claro da
+   área e virar escura um instante depois. */
+[data-members-theme="pending"] {
+  --ma-bg: var(--color-base);
+  --ma-bg-top: var(--color-base);
+  --ma-elev: var(--color-surface);
+  --ma-surface: var(--color-surface);
+  --ma-surface-2: var(--color-surface-soft);
+  --ma-line: var(--color-line);
+  --ma-line-2: var(--color-line-strong);
+  --ma-ink: var(--color-ink);
+  --ma-ink-soft: var(--color-ink-soft);
+  --ma-ink-muted: var(--color-ink-muted);
+  --ma-shadow: var(--shadow-soft);
+  --ma-accent-ink: var(--color-danger-fg);
+  --ma-success-ink: var(--color-success-fg);
+}
 
 .members-hero {
   position: relative;
@@ -8555,10 +8574,12 @@ button:hover > .dash-card,
   font-weight: 700;
   font-size: 15px;
   text-decoration: none;
-  opacity: 0.92;
+  text-underline-offset: 4px;
 }
+/* Hover por sublinhado, não por opacidade (o texto ficava 8% apagado em
+   repouso e o hover só o acendia). */
 .members-hero__back:hover {
-  opacity: 1;
+  text-decoration: underline;
 }
 .members-hero__title {
   margin: 0;

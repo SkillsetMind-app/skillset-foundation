@@ -46,7 +46,8 @@ export function MemberAreaShell({
 }: {
   children: ReactNode;
   brand?: MemberAreaBrand | null;
-  theme?: MembersTheme;
+  /** null = o tema ainda não é conhecido (área do criador carregando). */
+  theme?: MembersTheme | null;
   /** O curso desta sala: a Ajuda manda a duvida da aula para a comunidade
    *  dele (ou para a mensagem ao professor, se a comunidade estiver off). */
   course?: HelpCourse | null;
@@ -60,10 +61,17 @@ export function MemberAreaShell({
       ? brand.accentColor
       : null;
 
+  // Tema desconhecido (null): a mesma casca, cabeçalho inclusive (marca, Ajuda,
+  // sino, conta: a saída continua na tela se a leitura demorar), com a paleta
+  // "pending" de globals.css, que lê os tons da PLATAFORMA. É o mesmo fundo do
+  // aviso de "carregando" do login que vem antes. Pintar o claro aqui fazia a
+  // área escura nascer clara e virar escura um instante depois.
+  const pending = theme === null;
+
   return (
     <ThemeProvider>
       <div
-        data-members-theme={theme}
+        data-members-theme={pending ? "pending" : theme}
         className="flex min-h-screen flex-col bg-[var(--ma-bg)] text-[var(--ma-ink)]"
         style={
           accentColor
@@ -102,9 +110,11 @@ export function MemberAreaShell({
           ) : (
             // tone fixo pelo tema do CURSO: a paleta --ma-* não segue o
             // <html>, então "auto" pintava o logo navy no cabeçalho escuro.
+            // Enquanto o tema não chega (pending) a casca usa os tons da
+            // plataforma, e aí "auto" é o certo.
             // O logo leva para "My courses", nao para a home publica: quem
             // esta estudando quer voltar para os seus cursos, nao para a vitrine.
-            <LogoWordmark href="/learn" nav tone={theme === "dark" ? "dark" : "light"} />
+            <LogoWordmark href="/learn" nav tone={pending ? "auto" : theme === "dark" ? "dark" : "light"} />
           )}
           <div className="flex shrink-0 items-center gap-2 empty:hidden">
             <AdvisorHeaderSlot />
