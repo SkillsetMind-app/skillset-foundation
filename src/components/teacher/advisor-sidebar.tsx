@@ -110,9 +110,12 @@ export function AdvisorSidebar({ children }: { children?: ReactNode } = {}) {
     if (!open || !header || !float) return;
     const place = () => {
       const box = header.getBoundingClientRect();
+      // O topo conta da borda de baixo da barra, nao do botao: medido pelo
+      // botao, o painel comecava 2px dentro da barra.
+      const barBottom = header.closest(".platform-topbar")?.getBoundingClientRect().bottom ?? box.bottom;
       const panelWidth = Math.min(380, window.innerWidth - 40);
       const right = Math.min(window.innerWidth - box.right, window.innerWidth - panelWidth - 16);
-      float.style.setProperty("--advisor-top", `${Math.round(box.bottom + 8)}px`);
+      float.style.setProperty("--advisor-top", `${Math.round(barBottom + 8)}px`);
       float.style.setProperty("--advisor-right", `${Math.max(16, Math.round(right))}px`);
     };
     place();

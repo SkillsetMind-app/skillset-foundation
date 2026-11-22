@@ -10,6 +10,10 @@ import { Eyebrow } from "@/components/ui/eyebrow";
  * da pagina a direita, sobre a mesma linha de baixo. As telas que montam o
  * proprio cabecalho (o titulo depende do que carregou) usam este mesmo
  * componente com `hideHeader` na casca.
+ *
+ * So no estudio (/teach): a sala do aluno, a conta, o suporte e o painel
+ * interno seguem com o cabecalho antigo da casca. Por isso as classes sao
+ * utilitarias e nao `.platform-page-heading`, que e a regra deles.
  */
 export function PlatformPageHeader({
   eyebrow,
@@ -26,8 +30,8 @@ export function PlatformPageHeader({
 }) {
   return (
     <div
-      className={`platform-page-heading flex flex-wrap items-end justify-between gap-4 ${
-        compact ? "platform-page-heading--compact" : ""
+      className={`flex flex-wrap items-end justify-between gap-4 border-b border-[var(--color-line)] pb-5 ${
+        compact ? "pt-1" : "pt-2"
       }`}
     >
       <div className="min-w-0">

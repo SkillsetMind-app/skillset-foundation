@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { Order } from "@/domain/order";
@@ -25,6 +25,8 @@ const mocks = vi.hoisted(() => ({
   // A primeira leitura falha; o "Try again" le de novo pelo mesmo canal.
   ordersFail: false,
   reload: vi.fn(),
+  // O canal ao vivo: uma releitura posterior que falha chega por aqui.
+  failLater: null as ((error: Error) => void) | null,
 }));
 
 vi.mock("@/lib/payments/connect", () => ({ openTeacherStripeDashboard: mocks.openStripe }));
@@ -39,6 +41,7 @@ vi.mock("@/lib/data/orders", () => ({
     onData: (orders: Order[]) => void,
     onError: (error: Error) => void,
   ) => {
+    mocks.failLater = onError;
     if (mocks.ordersFail) onError(new Error("orders down"));
     else onData(mocks.orders);
     return Object.assign(() => undefined, { reload: mocks.reload });
@@ -85,6 +88,25 @@ describe("SaleList", () => {
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));
     expect(mocks.reload).toHaveBeenCalledTimes(1);
     expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  // Uma releitura que falha com a tabela na tela nao apaga as vendas boas: o
+  // aviso com "Try again" vem por cima delas.
+  it("a failed background re-read keeps the rows, with the alert and Try again above them", () => {
+    mocks.orders = [order({})];
+    render(<SaleList />);
+    expect(screen.getAllByText("Facilitation Fundamentals").length).toBeGreaterThan(0);
+
+    act(() => mocks.failLater?.(new Error("re-read down")));
+
+    expect(screen.getByRole("alert")).toHaveTextContent("We could not load your sales.");
+    expect(screen.getAllByText("Facilitation Fundamentals").length).toBeGreaterThan(0);
+    expect(screen.getByLabelText("Filter by period")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(mocks.reload).toHaveBeenCalledTimes(1);
+    // A tabela fica na tela enquanto le de novo (nada de voltar ao "carregando").
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.getAllByText("Facilitation Fundamentals").length).toBeGreaterThan(0);
   });
 
   it("keeps the operating frame and names the period with zero orders", () => {

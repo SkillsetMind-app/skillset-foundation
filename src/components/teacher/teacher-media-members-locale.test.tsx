@@ -117,6 +117,23 @@ describe("ES-12 media and members with real dictionaries", () => {
     expect(screen.getByRole("link", { name: "Abrir área de subida del editor" })).toBeInTheDocument();
   });
 
+  // Com arquivos na biblioteca, uma busca ou um tipo sem resultado nao e a
+  // primeira vez: nada de "suba pelo editor", e sim "nenhum resultado" com o
+  // caminho de volta.
+  it("busca sem resultado mostra 'nenhum resultado' e limpa os filtros", () => {
+    const es = getDictionary("es");
+    mount(<TeacherMediaLibrary />);
+    fireEvent.change(screen.getByRole("combobox", { name: "Tipo" }), { target: { value: "course_cover" } });
+    fireEvent.change(screen.getByRole("searchbox", { name: "Buscar recursos" }), { target: { value: "nada assim" } });
+
+    expect(screen.getByText(translate(es, "teacherMedia.noMatches"))).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: translate(es, "teacherMedia.emptyTitle") })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: translate(es, "teacherMedia.clearFilters") }));
+    expect(screen.getByRole("searchbox", { name: "Buscar recursos" })).toHaveValue("");
+    expect(screen.getByRole("combobox", { name: "Tipo" })).toHaveValue("all");
+    expect(screen.getByText("Original $&.jpg")).toBeInTheDocument();
+  });
+
   it.each(["courseError", "assetError"] as const)("relocalizes media %s", (failure) => {
     state[failure] = true;
     mount(<TeacherMediaLibrary />);

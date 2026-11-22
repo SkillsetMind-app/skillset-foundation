@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { I18nProvider } from "@/components/i18n/i18n-provider";
@@ -27,6 +27,8 @@ const agenda = vi.hoisted(() => ({
   // A primeira leitura da agenda falha; o "Try again" le de novo pelo canal.
   eventsFail: false,
   reload: vi.fn(),
+  // O canal ao vivo: uma releitura posterior que falha chega por aqui.
+  failLater: null as ((error: Error) => void) | null,
 }));
 
 // O I18nProvider chama useRouter() para o refresh ao trocar de idioma.
@@ -83,6 +85,7 @@ vi.mock("@/lib/data/course-events", () => ({
     onData: (events: CourseEvent[]) => void,
     onError: (error: Error) => void,
   ) => {
+    agenda.failLater = onError;
     if (agenda.eventsFail) onError(new Error("agenda down"));
     else onData(agenda.events);
     return Object.assign(vi.fn(), { reload: agenda.reload });
@@ -115,6 +118,29 @@ describe("TeacherEventStudio", () => {
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));
     expect(agenda.reload).toHaveBeenCalledTimes(1);
     expect(screen.getByText("Loading scheduled sessions...")).toBeInTheDocument();
+  });
+
+  // Releitura que falha com a agenda na tela: as sessoes ficam, o aviso sobe e
+  // o "Try again" vem antes da lista (sem voltar ao "carregando").
+  it("releitura que falha mantem as sessoes na tela, com Try again", async () => {
+    agenda.params = "";
+    agenda.events = [{
+      id: "event-kept", courseId: "course-1", courseSlug: "course-1", courseTitle: "Existing course",
+      ownerId: "teacher-1", title: "Kept session", description: "Still here.",
+      type: "live_class", status: "scheduled", startsAt: "2027-03-14T15:30:00.000Z",
+      externalUrl: "https://meet.example.com/live", recordingAssetId: null,
+    }] as CourseEvent[];
+    render(<TeacherEventStudio />);
+    expect(await screen.findByText("Kept session")).toBeInTheDocument();
+
+    act(() => agenda.failLater?.(new Error("re-read down")));
+
+    expect(screen.getByRole("alert")).toHaveTextContent("We could not load your scheduled sessions.");
+    expect(screen.getByText("Kept session")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(agenda.reload).toHaveBeenCalledTimes(1);
+    expect(screen.getByText("Kept session")).toBeInTheDocument();
+    expect(screen.queryByText("Loading scheduled sessions...")).toBeNull();
   });
 
   async function scheduleSession() {

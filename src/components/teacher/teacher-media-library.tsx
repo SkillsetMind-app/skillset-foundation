@@ -272,6 +272,23 @@ export function TeacherMediaLibrary() {
               {t("teacherMedia.loadingAssets")}
             </p>
           )
+        ) : assets.length > 0 && filteredAssets.length === 0 ? (
+          // Ha arquivos, so nenhum bate com a busca ou o tipo: nao e a
+          // primeira vez ("Upload from the builder."), e "nenhum resultado"
+          // com o caminho de volta.
+          <div className="grid justify-items-start gap-3 rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4">
+            <p role="status" className="text-sm leading-6 text-[var(--color-ink-soft)]">{t("teacherMedia.noMatches")}</p>
+            <button
+              type="button"
+              onClick={() => {
+                setSearch("");
+                setKindFilter("all");
+              }}
+              className="button-outline px-4 text-sm"
+            >
+              {t("teacherMedia.clearFilters")}
+            </button>
+          </div>
         ) : filteredAssets.length === 0 ? (
           <EmptyState
             as="h2"

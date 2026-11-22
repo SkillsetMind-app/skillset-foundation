@@ -25,8 +25,9 @@ type PlatformShellProps = {
   /** One-paragraph context line below the title. Optional. */
   description?: string;
   /**
-   * Compact variant: tighter spacing (the title keeps the one page size). Use
-   * for inner pages where a tab/breadcrumb already gives context.
+   * Compact variant: smaller title, tighter padding. Use for inner pages
+   * where a tab/breadcrumb already gives context. (No estudio o titulo tem um
+   * tamanho so; compact so aperta o espaco.)
    */
   compact?: boolean;
   /** Some surfaces, like Studio and Builder, own their own richer header. */
@@ -63,7 +64,12 @@ export function PlatformShell({
     : pageCounts;
   // Pelo endereco, nao pelo papel: a largura ja vem certa no HTML do servidor,
   // sem esperar o login carregar (a coluna nao muda de largura na tela).
-  const teacherFrame = pathname === "/teach" || pathname.startsWith("/teach/");
+  const teachRoute = pathname === "/teach" || pathname.startsWith("/teach/");
+  // O construtor usa a largura toda, decidido pelo endereco tambem: pela
+  // classe do editor carregado, o esqueleto (e o erro, e a tela sem curso)
+  // saia na coluna de 1280px e a pagina pulava para a largura toda depois.
+  const builderRoute = pathname === "/teach/builder" || pathname.startsWith("/teach/builder/");
+  const teacherFrame = teachRoute && !builderRoute;
 
   return (
     <ThemeProvider>
@@ -124,19 +130,51 @@ export function PlatformShell({
                       // monitor de 1920px a lista de vendas tinha o titulo na
                       // borda esquerda e o valor 1500px depois. So a partir de
                       // 1440px: abaixo disso nenhuma tela fica mais estreita
-                      // que antes. O construtor de cursos usa a largura toda.
-                      teacherFrame
-                        ? "mx-auto w-full min-[1440px]:max-w-7xl has-[.course-builder-shell]:max-w-none"
-                        : "",
+                      // que antes.
+                      teacherFrame ? "mx-auto w-full min-[1440px]:max-w-7xl" : "",
                     ].join(" ")}
                   >
-                    {hideHeader ? null : (
+                    {/* O cabecalho novo e so do estudio. Sala do aluno, conta,
+                        suporte e painel interno seguem com o de antes. */}
+                    {hideHeader ? null : teachRoute ? (
                       <PlatformPageHeader
                         eyebrow={eyebrow}
                         title={title}
                         description={description}
                         compact={compact}
                       />
+                    ) : (
+                      <div
+                        className={`platform-page-heading ${
+                          compact ? "platform-page-heading--compact" : ""
+                        }`}
+                      >
+                        {eyebrow ? (
+                          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
+                            {eyebrow}
+                          </p>
+                        ) : null}
+                        <h1
+                          className={
+                            compact
+                              ? "display-title max-w-4xl text-xl leading-tight text-[var(--color-primary)] sm:text-2xl lg:text-3xl"
+                              : `display-title ${
+                                  eyebrow ? "mt-3" : ""
+                                } max-w-4xl text-3xl leading-tight text-[var(--color-primary)] sm:text-4xl lg:text-5xl`
+                          }
+                        >
+                          {title}
+                        </h1>
+                        {description ? (
+                          <p
+                            className={`max-w-3xl text-sm leading-7 text-[var(--color-ink-soft)] ${
+                              compact ? "mt-2" : "mt-3"
+                            }`}
+                          >
+                            {description}
+                          </p>
+                        ) : null}
+                      </div>
                     )}
                     {children}
                   </div>

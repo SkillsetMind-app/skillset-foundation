@@ -3706,6 +3706,9 @@ html[data-view-as] .platform-shell-root {
    abre logo abaixo dele, e nao no rodape. A altura desconta o topo medido,
    para o painel inteiro caber na janela. No celular nada muda. */
 .floating-action--advisor.floating-action--anchored {
+  /* Logo abaixo da camada da barra do topo (60): o painel do sino e o menu da
+     conta, que moram nela, abrem POR CIMA da conversa, nao escondidos atras. */
+  z-index: 59;
   top: var(--advisor-top, 4.5rem);
   bottom: auto;
   inset-inline-end: var(--advisor-right, 1.5rem);
@@ -3859,11 +3862,8 @@ body:has([aria-label="Course categories"])
   padding: 1.75rem clamp(1.25rem, 2.8vw, 3rem) 3rem;
 }
 
-/* Cabecalho de pagina unico (platform-page-header.tsx): a linha de baixo
-   separa titulo e acoes do corpo, como na Home e em Membros. */
 .platform-page-heading {
-  padding: 0.5rem 0 1.25rem;
-  border-bottom: 1px solid var(--color-line);
+  padding: 0.5rem 0 0.25rem;
 }
 
 .platform-page-heading--compact {
@@ -7355,12 +7355,6 @@ button:hover > .dash-card,
 [data-theme="dark"] .studio-chart-empty {
   border-color: var(--color-line);
   background: var(--color-surface);
-}
-
-[data-theme="dark"] .studio-range-tabs button:hover,
-[data-theme="dark"] .studio-range-tabs button.is-active {
-  background: var(--color-surface-strong);
-  color: var(--color-ink);
 }
 
 .studio-chart-empty p {

@@ -173,11 +173,13 @@ export function TeacherEventStudio() {
     };
   }, [user]);
 
-  // "Try again" le de novo pelo mesmo canal; enquanto isso a lista volta ao
-  // "carregando".
+  // "Try again" le de novo pelo mesmo canal. Sem agenda na tela, a lista volta
+  // ao "carregando"; com agenda (a releitura e que falhou), ela fica.
   function retryEvents() {
-    setEventsFailed(false);
-    setEventsLoaded(false);
+    if (eventsFailed) {
+      setEventsFailed(false);
+      setEventsLoaded(false);
+    }
     setError((currentError) => (currentError === "events" ? "" : currentError));
     void eventsSubscription.current?.reload();
   }
@@ -685,6 +687,13 @@ export function TeacherEventStudio() {
         {eventsFailed ? null : <p className="mt-3 text-sm text-[var(--color-ink-soft)]">{countLine}</p>}
 
         <div className="mt-4 grid gap-3">
+          {/* Releitura que falhou com a agenda na tela: a lista fica, e o
+              "Try again" vem antes dela (o aviso ja esta no topo). */}
+          {eventsLoaded && !eventsFailed && error === "events" ? (
+            <button type="button" onClick={retryEvents} className="button-outline justify-self-start px-4 text-sm">
+              {t("appErrors.retry")}
+            </button>
+          ) : null}
           {!eventsLoaded ? (
             <p className="rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-7 text-[var(--color-ink-soft)]">
               {t(`${copy}.loading`)}

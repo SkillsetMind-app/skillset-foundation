@@ -1940,12 +1940,10 @@
       "linkBuilder": "Course builder"
     },
     "reportsPage": {
-      "eyebrow": "Teacher Studio",
       "title": "Reports",
       "description": "Sales, recurring revenue, and recorded earnings at a glance. Every charge was created on your own Stripe account — SkillsetMind never holds it. Stripe's own settlement and payout timing then applies."
     },
     "salesPage": {
-      "eyebrow": "Teacher Studio",
       "title": "Your sales",
       "description": "Every paid order for your courses."
     },
@@ -1955,7 +1953,6 @@
       "description": "Create course-linked live classes, mentorships, masterclasses, office hours, webinars, and deadlines. Learners see the same agenda in their workspace."
     },
     "page": {
-      "eyebrow": "Teacher Studio",
       "title": "Build, ship, get paid.",
       "description": "Drafting is open from the start. Publishing needs professional verification (where required) and passing the launch checks."
     },
@@ -6149,6 +6146,8 @@
     "emptyTitle": "Upload from the builder.",
     "emptyDescription": "Add a course cover, module cover, lesson video, PDF, slide deck, worksheet, audio file, or replay from the selected course builder.",
     "openUploads": "Open builder upload area",
+    "noMatches": "No file matches this search or type.",
+    "clearFilters": "Clear filters",
     "preview": "Preview",
     "private": "Private",
     "lessonAsset": "Lesson asset",

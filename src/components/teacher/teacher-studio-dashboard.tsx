@@ -18,7 +18,7 @@ import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { PlatformPageHeader } from "@/components/platform/platform-page-header";
-import { HorizontalTabs } from "@/components/shared/horizontal-tabs";
+import { PeriodTabs } from "@/components/shared/period-tabs";
 import { StatusChip } from "@/components/shared/status-chip";
 import { TeacherOverviewMetrics } from "@/components/teacher/teacher-overview-metrics";
 import { StudioRecentActivity } from "@/components/teacher/studio-recent-activity";
@@ -512,16 +512,18 @@ function StudioProductsSection({
       </div>
 
       {/* Cinco filtros sobre uma lista vazia so faziam barulho na 1a visita. */}
-      {/* As abas da casa (setas, Home/End, a ativa na ordem do Tab), no lugar
-          da barra feita a mao so aqui. */}
+      {/* Filtro, nao abas de secao: o seletor segmentado da casa (o mesmo do
+          periodo), no lugar da barra sublinhada feita a mao so aqui. */}
       {courses.length > 0 ? (
-        <HorizontalTabs
-          className="mt-4"
-          tabs={filters.map((item) => ({ value: item.id, label: item.label }))}
-          activeValue={filter}
-          onChange={(value) => setFilter(value as ProductFilter)}
-          ariaLabel={t("creatorPanel.home.products.filtersLabel")}
-        />
+        <div className="mt-4">
+          <PeriodTabs
+            options={filters.map((item) => item.id)}
+            value={filter}
+            onChange={setFilter}
+            label={t("creatorPanel.home.products.filtersLabel")}
+            renderLabel={(id) => filters.find((item) => item.id === id)?.label ?? id}
+          />
+        </div>
       ) : null}
 
       {!coursesLoaded ? (

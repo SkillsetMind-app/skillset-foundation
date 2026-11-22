@@ -56,7 +56,8 @@ export function TeacherMembersAreaHub() {
 
   function retryLoad() {
     setError("");
-    setIsLoading(true);
+    // Com a lista na tela ela fica; so a primeira leitura volta ao esqueleto.
+    if (!loaded) setIsLoading(true);
     void subscription.current?.reload();
   }
 

@@ -192,13 +192,18 @@ describe("Advisor no cabecalho sem cobrir o conteudo", () => {
     await renderStudio();
     const trigger = screen.getByRole("button", { name: "Open studio advisor" });
     vi.spyOn(trigger.parentElement!, "getBoundingClientRect").mockReturnValue(DOMRect.fromRect({ x: 700, y: 10, width: 44, height: 44 }));
+    // A barra do topo termina em 65px: o painel comeca 8px abaixo DELA, nao
+    // do botao (que termina em 54px, dentro da barra).
+    const bar = screen.getByRole("banner");
+    vi.spyOn(bar, "getBoundingClientRect").mockReturnValue(DOMRect.fromRect({ x: 0, y: 0, width: 1024, height: 65 }));
     await openAdvisor();
     const panel = screen.getByRole("dialog", { name: "Studio advisor" });
     const float = panel.parentElement!;
     expect(float.classList.contains("floating-action--anchored")).toBe(anchored);
     expect(panel.classList.contains("motion-drop-in")).toBe(anchored);
     if (anchored) {
-      expect(float.style.getPropertyValue("--advisor-top")).toBe("62px");
+      expect(bar).toHaveClass("platform-topbar");
+      expect(float.style.getPropertyValue("--advisor-top")).toBe("73px");
       expect(float.style.getPropertyValue("--advisor-right")).toBe(`${window.innerWidth - 744}px`);
     } else {
       expect(float.style.getPropertyValue("--advisor-top")).toBe("");

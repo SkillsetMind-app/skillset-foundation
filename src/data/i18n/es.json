@@ -1940,12 +1940,10 @@
       "linkBuilder": "Constructor de cursos"
     },
     "reportsPage": {
-      "eyebrow": "Estudio del Profesor",
       "title": "Informes",
       "description": "Ventas, ingresos recurrentes y ganancias registradas de un vistazo. Cada cobro se creó en tu propia cuenta de Stripe: SkillsetMind nunca lo retiene. Después se aplican los plazos de liquidación y pago de Stripe."
     },
     "salesPage": {
-      "eyebrow": "Estudio del Profesor",
       "title": "Tus ventas",
       "description": "Cada pedido pagado de tus cursos."
     },
@@ -1955,7 +1953,6 @@
       "description": "Crea clases en vivo, mentorías, masterclasses, horas de consulta, webinars y plazos vinculados al curso. Los estudiantes ven la misma agenda en su espacio."
     },
     "page": {
-      "eyebrow": "Estudio del Profesor",
       "title": "Crea, publica, cobra.",
       "description": "La preparación de cursos está abierta desde el principio. Para publicar necesitas la verificación profesional (cuando se requiere) y superar los controles de lanzamiento."
     },
@@ -6149,6 +6146,8 @@
     "emptyTitle": "Sube archivos desde el editor.",
     "emptyDescription": "Añade una portada de curso o módulo, video de lección, PDF, presentación, hoja de trabajo, audio o grabación desde el editor del curso seleccionado.",
     "openUploads": "Abrir área de subida del editor",
+    "noMatches": "Ningún archivo coincide con esta búsqueda o tipo.",
+    "clearFilters": "Limpiar filtros",
     "preview": "Vista previa",
     "private": "Privado",
     "lessonAsset": "Recurso de la lección",

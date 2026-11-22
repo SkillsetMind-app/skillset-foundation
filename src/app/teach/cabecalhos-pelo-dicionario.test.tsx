@@ -83,9 +83,15 @@ describe("cabecalhos das paginas do estudio", () => {
   it.each(pages)("o cabecalho de %s existe nos dois idiomas e muda de idioma", (page) => {
     const key = `${page}Page`;
 
-    for (const field of ["eyebrow", "title", "description"]) {
+    for (const field of ["title", "description"]) {
       expect(en.teach[key][field], `en teach.${key}.${field}`).toBeTruthy();
       expect(es.teach[key][field], `es teach.${key}.${field}`).toBeTruthy();
+    }
+    // O rotulo generico "Teacher Studio" saiu do cabecalho (nao nomeava a
+    // tela nem um grupo); a chave sem uso saiu junto dos dois dicionarios.
+    if (page !== "events") {
+      expect(en.teach[key].eyebrow).toBeUndefined();
+      expect(es.teach[key].eyebrow).toBeUndefined();
     }
     expect(es.teach[key].title).not.toBe(en.teach[key].title);
     expect(es.teach[key].description).not.toBe(en.teach[key].description);
