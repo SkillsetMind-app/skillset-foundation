@@ -34,16 +34,17 @@ describe("saídas do tour de boas-vindas", () => {
     expect(screen.getByRole("button", { name: "Skip" })).toHaveClass("min-h-11");
   });
 
-  it("no tour do aluno, X e Skip têm alvo de 44px", async () => {
+  // C-17: no tour do aluno o X ("Skip the tour") e o "Skip" faziam a mesma
+  // coisa; ficou só o "Skip" do rodapé (e o Esc). A saída que resta continua
+  // com nome visível e alvo de 44px.
+  it("no tour do aluno, a única saída (Skip) tem nome e alvo de 44px", async () => {
     render(<WelcomeTour userId="student-1" firstName="Ana" />);
 
-    await screen.findByRole("dialog");
+    const dialog = await screen.findByRole("dialog");
 
-    // Ordem no DOM: o X no cabeçalho, depois o Skip no rodapé, antes de Next.
-    const [close, skip] = within(screen.getByRole("dialog")).getAllByRole("button");
-    expect(close).toHaveAttribute("aria-label");
-    expect(close).toHaveClass("h-11", "w-11");
-    expect(skip).toHaveClass("min-h-11");
+    expect(within(dialog).queryByRole("button", { name: "Skip the tour" })).toBeNull();
+    expect(within(dialog).getAllByRole("button", { name: /skip/i })).toHaveLength(1);
+    expect(within(dialog).getByRole("button", { name: "Skip" })).toHaveClass("min-h-11");
   });
 
   it("no tour do aluno, um nome com $& aparece literal, sem virar '{name}'", async () => {
@@ -181,7 +182,8 @@ describe.each([
     vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => { throw new Error("storage unavailable"); });
     render(<Tour userId="no-storage" firstName="Ana" />);
     await screen.findByRole("dialog");
-    fireEvent.click(screen.getByRole("button", { name: "Skip the tour" }));
+    // "Skip" existe nos dois tours (no do aluno é a única saída).
+    fireEvent.click(screen.getByRole("button", { name: "Skip" }));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 });
