@@ -37,7 +37,7 @@ export async function CapabilitiesGrid() {
 
   return (
     <section className="mx-auto w-full max-w-7xl px-5 py-16 sm:px-8 sm:py-20 lg:py-24">
-      <RevealSection className="max-w-2xl">
+      <RevealSection className="home-heading max-w-2xl">
         <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
           {t("home.capabilities.kicker")}
         </p>
@@ -48,11 +48,11 @@ export async function CapabilitiesGrid() {
           {t("home.capabilities.sub")}
         </p>
       </RevealSection>
-      <div className="mt-10 grid gap-5 sm:mt-12 md:grid-cols-2 xl:grid-cols-3">
+      <div className="home-cards mt-10 grid gap-5 sm:mt-12 md:grid-cols-2 xl:grid-cols-3">
         {capabilities.map((capability) => {
           const { Icon } = capability;
           return (
-            <RevealSection key={capability.title}>
+            <RevealSection key={capability.title} className="home-card">
               <article className="group h-full rounded-lg border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)] transition duration-[180ms] ease-out hover:-translate-y-0.5 hover:border-[var(--color-line-strong)] hover:shadow-[var(--shadow-strong)]">
                 <span
                   className="grid size-12 place-items-center rounded-md bg-[var(--color-surface-soft)] text-[var(--color-primary)] ring-1 ring-inset ring-[var(--color-line)] shadow-[0_6px_14px_rgba(26,54,93,0.08)] transition-all duration-[180ms] ease-out group-hover:bg-[var(--color-primary)] group-hover:text-[var(--color-base)] group-hover:shadow-[0_10px_22px_rgba(26,54,93,0.20)]"
