@@ -56,15 +56,17 @@ describe("C2: botoes sem .button-* mantem o piso de 44px (min-h-11)", () => {
 
 describe("C3: latao fora de erro, aviso e exclusao", () => {
   const dangerText = "text-[var(--color-danger-fg)]";
-  const errorSites: [string, string][] = [
+  // Terceiro item: o que a tag precisa ter, quando não é a classe direta.
+  const errorSites: [string, string, string?][] = [
     ["components/teacher/activation-checkout-panel.tsx", 'role="alert" className="p-6 text-sm'],
     ["components/account/embedded-checkout-panel.tsx", 'role="alert" className="p-6 text-sm'],
-    ["components/learn/community-leaderboard.tsx", 'role="alert" className="mt-3 text-xs font-semibold'],
+    // Virou InlineAlert de erro, que pinta o texto em danger-fg (ui.test.tsx).
+    ["components/learn/community-leaderboard.tsx", '<InlineAlert tone="error" className="mt-3', 'tone="error"'],
     ["components/certificates/certificate-verification-panel.tsx", '<h2 className="text-lg font-semibold'],
   ];
 
-  it.each(errorSites)("%s: erro em danger-fg", (file, needle) => {
-    expect(tagAround(read(file), needle)).toContain(dangerText);
+  it.each(errorSites)("%s: erro em danger-fg", (file, needle, expected = dangerText) => {
+    expect(tagAround(read(file), needle)).toContain(expected);
   });
 
   it("senhas nao conferem em danger-fg", () => {

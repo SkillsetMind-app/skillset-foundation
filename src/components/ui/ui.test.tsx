@@ -158,6 +158,8 @@ describe("InlineAlert", () => {
   it("o fundo do erro segue o tema (--color-danger-soft)", () => {
     render(<InlineAlert tone="error">Falhou.</InlineAlert>);
     expect(screen.getByRole("alert").className).toContain("bg-[var(--color-danger-soft)]");
+    // Texto do erro em danger-fg, nunca no latão (revisao-pr494.test.ts, C3).
+    expect(screen.getByRole("alert").className).toContain("text-[var(--color-danger-fg)]");
   });
 
   it("título e trechos com link ficam num miolo ao lado do ícone, na ordem", () => {
