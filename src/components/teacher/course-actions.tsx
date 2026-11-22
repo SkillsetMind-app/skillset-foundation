@@ -6,6 +6,7 @@ import type { ComponentType, ReactNode } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { InlineAlert } from "@/components/ui/inline-alert";
+import { moveFocusByKey } from "@/lib/a11y/menu-keys";
 import { useModalFocus } from "@/lib/a11y/use-modal-focus";
 import {
   deleteOrArchiveCourse,
@@ -23,6 +24,7 @@ import {
 const MENU_WIDTH_PX = 224;
 // Folga minima entre o menu e a borda da janela.
 const MENU_MARGIN_PX = 8;
+const MENU_ITEM = '[role="menuitem"]';
 
 /**
  * Casca do menu de acoes: gatilho so-icone, fecha no Escape e no clique fora,
@@ -50,11 +52,16 @@ export function CourseActionsMenu({
   const [menuLeftPx, setMenuLeftPx] = useState<number | null>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!open) {
       return;
     }
+
+    // Menu aberto = foco no 1º item; antes ficava no gatilho e as setas não
+    // tinham onde agir.
+    menuRef.current?.querySelector<HTMLElement>(MENU_ITEM)?.focus();
 
     function handlePointerDown(event: MouseEvent) {
       if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
@@ -107,8 +114,10 @@ export function CourseActionsMenu({
         // quem abre um modal logo em seguida rouba o foco no efeito, depois do
         // commit, entao a ordem continua sendo menu -> modal.
         <div
+          ref={menuRef}
           role="menu"
           aria-label={t("creatorPanel.products.actions.menu").replace("{title}", () => courseTitle)}
+          onKeyDown={(event) => moveFocusByKey(event, MENU_ITEM)}
           onClick={() => {
             setOpen(false);
             triggerRef.current?.focus();
@@ -196,7 +205,7 @@ export function DeleteOrArchiveCourseDialog({
 
   return (
     <div
-      className="fixed inset-0 z-[70] grid place-items-center bg-[rgba(7,9,13,0.55)] p-4"
+      className="dialog-backdrop fixed inset-0 z-[70] grid place-items-center p-4"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget && !busy) {
           onCancel();

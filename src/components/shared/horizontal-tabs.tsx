@@ -29,6 +29,11 @@ export function HorizontalTabs({
 }: HorizontalTabsProps) {
   const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const enabledTabs = tabs.filter((tab) => !tab.disabled);
+  // Tab entra na barra pela aba ativa e as setas andam dentro dela (padrão de
+  // abas da WAI-ARIA). Sem ativa válida, a primeira habilitada recebe o Tab.
+  const focusValue = enabledTabs.some((tab) => tab.value === activeValue)
+    ? activeValue
+    : enabledTabs[0]?.value;
 
   function moveFocus(currentValue: string, direction: 1 | -1) {
     const currentIndex = enabledTabs.findIndex((tab) => tab.value === currentValue);
@@ -52,7 +57,7 @@ export function HorizontalTabs({
         className,
       )}
     >
-      <div className="flex min-w-max gap-0" role="group" aria-label={ariaLabel}>
+      <div className="flex min-w-max gap-0" role="tablist" aria-label={ariaLabel}>
         {tabs.map((tab, index) => {
           const isActive = tab.value === activeValue;
 
@@ -63,7 +68,9 @@ export function HorizontalTabs({
                 tabRefs.current[index] = node;
               }}
               type="button"
-              aria-pressed={isActive}
+              role="tab"
+              aria-selected={isActive}
+              tabIndex={tab.value === focusValue ? 0 : -1}
               disabled={tab.disabled}
               onClick={() => onChange(tab.value)}
               onKeyDown={(event) => {
@@ -77,9 +84,14 @@ export function HorizontalTabs({
                   moveFocus(tab.value, -1);
                 }
               }}
+              // Ativa = texto e linha navy (latão é de marco, não de seleção).
+              // O hover só escurece o texto: sem linha, nunca se confunde com
+              // a ativa (antes o hover pintava a mesma cor da ativa).
               className={cn(
-                "shrink-0 border-b-2 border-transparent bg-transparent px-5 py-3 text-sm font-semibold text-[var(--color-ink-soft)] transition duration-[180ms] hover:text-[var(--color-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus-ring)] disabled:cursor-not-allowed disabled:opacity-50",
-                isActive && "border-[var(--color-accent-fg)] text-[var(--color-primary)]",
+                "shrink-0 border-b-2 bg-transparent px-5 py-3 text-sm font-semibold transition duration-[180ms] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus-ring)] disabled:cursor-not-allowed disabled:opacity-50",
+                isActive
+                  ? "border-[var(--color-primary)] text-[var(--color-primary)]"
+                  : "border-transparent text-[var(--color-ink-soft)] hover:text-[var(--color-ink)]",
               )}
             >
               {tab.label}
@@ -88,7 +100,7 @@ export function HorizontalTabs({
                   className={cn(
                     "ml-2 inline-grid min-w-[20px] place-items-center rounded-full px-1.5 text-[11px] font-bold leading-5 tabular-nums",
                     tab.count > 0
-                      ? "bg-[var(--color-accent)] text-white"
+                      ? "bg-[var(--color-accent)] text-[var(--color-on-accent)]"
                       : "bg-[var(--color-surface-soft)] text-[var(--color-ink-soft)]",
                   )}
                 >

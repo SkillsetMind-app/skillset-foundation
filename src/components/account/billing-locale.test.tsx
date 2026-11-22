@@ -53,10 +53,10 @@ describe("billing locale with real dictionaries", () => {
 
   it("translates overview and navigation without changing route keys", () => {
     mount(<BillingTabs />);
-    expect(screen.getByRole("group", { name: "Secciones de facturación" })).toBeTruthy();
+    expect(screen.getByRole("tablist", { name: "Secciones de facturación" })).toBeTruthy();
     expect(screen.getByText("Gasto total")).toBeTruthy();
     expect(screen.getByText("0 cursos comprados", { exact: false })).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Compras" }));
+    fireEvent.click(screen.getByRole("tab", { name: "Compras" }));
     expect(mocks.replace).toHaveBeenCalledWith("/account/billing?tab=purchases", { scroll: false });
   });
 
@@ -122,7 +122,7 @@ describe("billing locale with real dictionaries", () => {
   // subscription: Free" next to the courses they bought.
   it("a learner sees what they bought, with no creator plan", () => {
     mount(<BillingTabs />);
-    expect(screen.queryByRole("button", { name: "Suscripción" })).toBeNull();
+    expect(screen.queryByRole("tab", { name: "Suscripción" })).toBeNull();
     expect(screen.queryByText("Acceso actual")).toBeNull();
     expect(screen.queryByText("Suscripción de Stripe")).toBeNull();
     expect(screen.queryByText(/suscripción Free/i)).toBeNull();
@@ -138,7 +138,7 @@ describe("billing locale with real dictionaries", () => {
   it("a teacher keeps the Subscription tab and the plan line", () => {
     mocks.user.roles = ["student", "teacher"];
     mount(<BillingTabs />);
-    expect(screen.getByRole("button", { name: "Suscripción" })).toBeTruthy();
+    expect(screen.getByRole("tab", { name: "Suscripción" })).toBeTruthy();
     expect(screen.getByText("Acceso actual")).toBeTruthy();
     expect(screen.getByText("Suscripción de Stripe")).toBeTruthy();
     cleanup();

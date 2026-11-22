@@ -57,7 +57,7 @@ export function ListingSearchBar({
   return (
     <label
       className={cn(
-        "relative flex h-10 w-full max-w-[360px] items-center overflow-hidden rounded-md border border-[var(--color-line)] bg-[var(--color-surface-soft)]",
+        "relative flex h-11 w-full max-w-[360px] items-center overflow-hidden rounded-md border border-[var(--color-line)] bg-[var(--color-surface-soft)]",
         className,
       )}
     >
@@ -73,14 +73,16 @@ export function ListingSearchBar({
         value={draft}
         onChange={(event) => queueChange(event.target.value)}
         placeholder={placeholder}
-        className="min-w-0 flex-1 border-0 bg-transparent px-3 pr-9 text-sm text-[var(--color-ink)] outline-none placeholder:text-[var(--color-ink-soft)]"
+        className="min-w-0 flex-1 border-0 bg-transparent px-3 pr-11 text-sm text-[var(--color-ink)] outline-none placeholder:text-[var(--color-ink-soft)]"
       />
       {draft ? (
         <button
           type="button"
           onClick={clearSearch}
           aria-label={t("platform.clearSearch")}
-          className="absolute right-2 grid size-6 place-items-center rounded-md text-[var(--color-ink-soft)] transition hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-primary)]"
+          // O "limpar" tinha 24px; agora ocupa a ponta inteira da busca, que
+          // subiu de 40 para 44px e ficou da altura dos filtros ao lado.
+          className="button-icon absolute right-0"
         >
           <X aria-hidden="true" size={14} strokeWidth={1.8} />
         </button>

@@ -289,7 +289,8 @@ export function TotpMfaSection({ emailVerified }: { emailVerified: boolean }) {
       )}
 
       {setup && !isEnrolled ? (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-[rgba(7,9,13,0.55)] sm:p-6">
+        // p-4 no celular: sem ele a janela encostava nas duas bordas da tela.
+        <div className="dialog-backdrop fixed inset-0 z-[70] flex items-center justify-center p-4 sm:p-6">
           <div
             ref={dialogRef}
             tabIndex={-1}
