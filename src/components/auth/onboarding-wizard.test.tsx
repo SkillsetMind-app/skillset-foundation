@@ -252,21 +252,44 @@ describe("boas-vindas: o fim leva de volta para onde a pessoa estava", () => {
   });
 
   // O-18/F-10: o "You're all set" segurava a pessoa 1,8s sem nenhum botao.
-  // Agora o "Continue" vai na hora para o MESMO destino, e a pausa automatica
-  // nao navega uma segunda vez depois do clique.
-  it("'Continue' no fim vai na hora para o mesmo destino, uma vez so", async () => {
+  // Agora o "Continue" chega focado e vai na hora para o MESMO destino, e a
+  // pausa automatica (1500ms) nao navega uma segunda vez depois do clique.
+  it("'Continue' no fim chega focado e vai na hora para o mesmo destino, uma vez so", async () => {
     mocks.searchParams = new URLSearchParams("returnTo=/courses/focus");
 
     await terminar();
 
     await screen.findByRole("heading", { level: 1, name: /all set/ });
-    expect(screen.getByRole("status")).toHaveTextContent("Taking you there now.");
+    const continuar = screen.getByRole("button", { name: "Continue" });
+    expect(continuar).toHaveFocus();
+    // O leitor de tela ouve o titulo e a frase junto com o botao focado.
+    expect(continuar).toHaveAccessibleDescription(/You're all set, Patrick\..*Taking you there now\./);
     expect(mocks.router.replace).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    fireEvent.click(continuar);
     expect(mocks.router.replace).toHaveBeenCalledExactlyOnceWith("/courses/focus");
 
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    await new Promise((resolve) => setTimeout(resolve, 1700));
     expect(mocks.router.replace).toHaveBeenCalledTimes(1);
+  });
+
+  it("sem clique, segue sozinho depois de 1500ms, nao antes", async () => {
+    await terminar();
+
+    await screen.findByRole("heading", { level: 1, name: /all set/ });
+    await new Promise((resolve) => setTimeout(resolve, 1200));
+    expect(mocks.router.replace).not.toHaveBeenCalled();
+    await waitFor(() => expect(mocks.router.replace).toHaveBeenCalledExactlyOnceWith("/learn"), { timeout: 2000 });
+  });
+
+  // Voltar do navegador durante a pausa desmonta a tela: a pausa que ainda
+  // corre nao pode puxar a pessoa de volta para frente.
+  it("desmontada antes do fim da pausa, nao navega", async () => {
+    await terminar();
+    await screen.findByRole("heading", { level: 1, name: /all set/ });
+
+    cleanup();
+    await new Promise((resolve) => setTimeout(resolve, 1700));
+    expect(mocks.router.replace).not.toHaveBeenCalled();
   });
 
   it("descarta destino de outro dominio", async () => {

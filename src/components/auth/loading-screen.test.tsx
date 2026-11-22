@@ -180,7 +180,7 @@ describe("LoadingScreen recovery without granting access", () => {
     mocks.getUserProfile.mockResolvedValue({ onboardingCompleted: true, roles: ["teacher"] });
     render(<LoadingScreen />);
     expect(screen.getByRole("status")).toHaveTextContent("authFlow.loading.title");
-    // performance.now() segue o relógio real: folga de alguns ms para cada lado.
+    // O Vitest falsifica também performance.now(): a espera é exatamente 400ms.
     await act(async () => { await vi.advanceTimersByTimeAsync(350); });
     expect(mocks.router.replace).not.toHaveBeenCalled();
     await act(async () => { await vi.advanceTimersByTimeAsync(50); });

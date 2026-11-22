@@ -120,6 +120,10 @@ const alreadySoldLabels: Record<"yes" | "no", string> = {
   no: "authFlow.onboarding.notSellingYet",
 };
 
+// A tela "You're all set" e uma so por pagina: ids fixos, como o do titulo da pergunta.
+const DONE_TITLE_ID = "onboarding-done-title";
+const DONE_DESCRIPTION_ID = "onboarding-done-description";
+
 function wait(ms: number) {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
 }
@@ -274,7 +278,26 @@ export function OnboardingWizard() {
   const [doneHref, setDoneHref] = useState<string | null>(null);
   const isComplete = doneHref !== null;
   const leftRef = useRef(false);
+  const continueRef = useRef<HTMLButtonElement>(null);
   const [error, setError] = useState("");
+
+  // Saiu da tela (ex.: Voltar do navegador durante a pausa): a pausa que ainda
+  // corre nao puxa a pessoa para frente. O reset no setup cobre o StrictMode,
+  // que desmonta e remonta o efeito uma vez em desenvolvimento.
+  useEffect(() => {
+    leftRef.current = false;
+    return () => {
+      leftRef.current = true;
+    };
+  }, []);
+
+  // A tela "You're all set" chega com o foco no "Continue": Enter funciona e
+  // o leitor de tela le o titulo e a frase pelo aria-describedby do botao.
+  useEffect(() => {
+    if (isComplete) {
+      continueRef.current?.focus();
+    }
+  }, [isComplete]);
 
   const questions = useMemo(
     () => getVisibleQuestions(answers, pathKnown),
@@ -568,9 +591,10 @@ export function OnboardingWizard() {
           ? getTeacherOnboardingRoute(returnTo)
           : (getPlanCheckoutReturnTo(returnTo) ? null : returnTo) ?? "/learn";
       setDoneHref(destination);
-      // Eram 1800ms presos na tela, sem botao. Agora uma pausa curta para o
-      // resumo ser visto; o "Continue" da tela vai na hora.
-      await wait(800);
+      // Eram 1800ms presos na tela, sem botao. O "Continue" da tela vai na
+      // hora; a pausa automatica fica em 1500ms para quem le devagar (e para
+      // um toque atrasado nao cair na tela seguinte).
+      await wait(1500);
       leaveTo(destination);
     } catch {
       setError("authFlow.onboarding.finishError");
@@ -578,7 +602,8 @@ export function OnboardingWizard() {
     }
   }
 
-  // O "Continue" e a pausa automatica chegam aqui; so a primeira navega.
+  // O "Continue" e a pausa automatica chegam aqui; so a primeira navega, e
+  // nenhuma depois que a tela foi desmontada.
   function leaveTo(href: string | null) {
     if (!href || leftRef.current) {
       return;
@@ -635,10 +660,10 @@ export function OnboardingWizard() {
           <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
             {t("authFlow.onboarding.welcome")}
           </p>
-          <h1 className="display-title mt-4 text-[38px] font-semibold leading-[1.1] text-[var(--color-primary)]">
+          <h1 id={DONE_TITLE_ID} className="display-title mt-4 text-[38px] font-semibold leading-[1.1] text-[var(--color-primary)]">
             {name ? t("authFlow.onboarding.allSet").replace("{name}", () => name) : t("authFlow.onboarding.allSetAnonymous")}
           </h1>
-          <p role="status" className="mx-auto mt-3 max-w-md text-sm leading-6 text-[var(--color-ink-soft)]">
+          <p id={DONE_DESCRIPTION_ID} className="mx-auto mt-3 max-w-md text-sm leading-6 text-[var(--color-ink-soft)]">
             {t("authFlow.onboarding.completeDescription")}
           </p>
           {recap.length > 0 ? (
@@ -667,10 +692,12 @@ export function OnboardingWizard() {
               ))}
             </dl>
           ) : null}
-          {/* Antes um giro sem texto e 1,8s sem nenhum controle. A pausa curta
+          {/* Antes um giro sem texto e 1,8s sem nenhum controle. A pausa
               continua (dá para ler o resumo); o botão leva ao mesmo destino já. */}
           <button
+            ref={continueRef}
             type="button"
+            aria-describedby={`${DONE_TITLE_ID} ${DONE_DESCRIPTION_ID}`}
             onClick={() => leaveTo(doneHref)}
             className="button-solid mt-8 px-4 py-2.5 text-sm"
           >

@@ -9864,10 +9864,18 @@ button:hover > .dash-card,
 
 /* ── Carregamento: envio de arquivo sem porcentagem (F-20) ─────────────────
    O Storage não informa o andamento; um trecho de 30% desliza pelo trilho
-   para a espera não parecer travada. Com "reduzir movimento" o trecho fica
-   parado no começo do trilho. Só transform (regra do catálogo de movimento). */
+   para a espera não parecer travada. Parado, um trecho parcial se leria como
+   "30% feito": com "reduzir movimento" o trilho fica inteiro preenchido e
+   apagado, sem número nenhum. Só transform (regra do catálogo de movimento). */
+.upload-indeterminate-fill {
+  width: 100%;
+  opacity: 0.35;
+}
+
 @media (prefers-reduced-motion: no-preference) {
   .upload-indeterminate-fill {
+    width: 30%;
+    opacity: 1;
     animation: motion-track-slide 1.2s ease-in-out infinite;
   }
 }
