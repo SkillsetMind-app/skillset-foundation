@@ -120,11 +120,16 @@ describe("view-as preview", () => {
     // adding to it, so no admin-only control can survive into the preview.
     expect(screen.getByTestId("roles")).toHaveTextContent("student");
     expect(screen.getByTestId("realAdmin")).toHaveTextContent("true");
+    // A faixa reserva o próprio espaço no topo em vez de tampar a barra (I-15).
+    expect(document.documentElement).toHaveAttribute("data-view-as");
+    expect(document.documentElement.style.getPropertyValue("--view-as-offset")).toMatch(/^\d+px$/);
 
     fireEvent.click(screen.getByRole("button", { name: /exit preview/i }));
 
     expect(screen.getByTestId("roles")).toHaveTextContent("admin,teacher");
     expect(window.sessionStorage.getItem("skillsetmind.viewAs")).toBeNull();
+    expect(document.documentElement).not.toHaveAttribute("data-view-as");
+    expect(document.documentElement.style.getPropertyValue("--view-as-offset")).toBe("");
   });
 
   it("previews Team with every role a real staff member holds", () => {

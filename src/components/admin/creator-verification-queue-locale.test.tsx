@@ -44,7 +44,7 @@ describe("verification profession labels with real dictionaries", () => {
     expect(screen.getByText(spanish)).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: base.applicantName })).toBeInTheDocument();
     expect(screen.getByText(/Original note \$&/)).toBeInTheDocument();
-    expect(screen.getByText(/Registry \$&/)).toHaveTextContent("REG-123 (Region $&)");
+    expect(screen.getByText(/Registry \$&/)).toHaveTextContent("Registry $& · REG-123 · Region $&");
     expect(row.profession).toBe(profession);
     expect(mocks.review).not.toHaveBeenCalled();
     expect(mocks.subscribe).toHaveBeenCalledTimes(1);

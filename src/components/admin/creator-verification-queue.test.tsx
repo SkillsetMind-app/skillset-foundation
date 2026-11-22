@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { CreatorVerificationQueue } from "@/components/admin/creator-verification-queue";
 import { I18nProvider, useTranslation } from "@/components/i18n/i18n-provider";
+import { CONFIRM_GUARD_MS } from "@/components/ui/confirm-dialog";
 import type { CreatorVerificationCase } from "@/domain/creator-verification";
 
 const mocks = vi.hoisted(() => ({ subscribe: vi.fn(), review: vi.fn(), download: vi.fn() }));
@@ -29,13 +30,15 @@ function deliver(rows = cases) { act(() => mocks.subscribe.mock.calls[0][0](rows
 
 beforeEach(() => {
   vi.clearAllMocks();
+  // Só o Date é falso: o confirmar ignora cliques nos primeiros CONFIRM_GUARD_MS.
+  vi.useFakeTimers({ toFake: ["Date"] });
   // jsdom não tem showModal/close; o mesmo arranjo do teste da janela de conta.
   HTMLDialogElement.prototype.showModal = function showModal() { this.setAttribute("open", ""); };
   HTMLDialogElement.prototype.close = function close() { this.removeAttribute("open"); this.dispatchEvent(new Event("close")); };
   mocks.subscribe.mockImplementation(() => vi.fn());
   mocks.review.mockResolvedValue(undefined);
 });
-afterEach(cleanup);
+afterEach(() => { cleanup(); vi.useRealTimers(); });
 
 describe("verification queue search, states and language", () => {
   it("offers private evidence without publishing its path and handles denied access", async () => {
@@ -51,6 +54,28 @@ describe("verification queue search, states and language", () => {
     expect(screen.queryByText("private provider detail")).toBeNull();
     expect(mocks.review).not.toHaveBeenCalled();
   });
+  it("writes the submitted date as text and the registration without empty parts (I-17)", () => {
+    render(queue());
+    deliver([cases[0], { ...cases[1], registrationRegion: "" }]);
+    const submitted = new Intl.DateTimeFormat("en", { dateStyle: "medium", timeStyle: "short" }).format(new Date(cases[0].createdAt));
+    expect(screen.getByText(`Submitted ${submitted}`)).toBeInTheDocument();
+    expect(screen.getByText("Registry · REG-100 · Florida")).toBeInTheDocument();
+    expect(screen.getByText("Registry · REG-200")).toBeInTheDocument();
+    expect(screen.queryByText(/\(\s*\)/)).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Change language" }));
+    const enviada = new Intl.DateTimeFormat("es", { dateStyle: "medium", timeStyle: "short" }).format(new Date(cases[0].createdAt));
+    expect(screen.getByText(`Enviada el ${enviada}`)).toBeInTheDocument();
+  });
+
+  it("says the submission date was not recorded instead of gluing two labels", () => {
+    render(queue());
+    deliver([{ ...cases[0], createdAt: "not-a-date" }]);
+    expect(screen.getByText("Submission date not recorded")).toBeInTheDocument();
+    expect(screen.queryByText(/Submitted/)).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Change language" }));
+    expect(screen.getByText("Fecha de envío no registrada")).toBeInTheDocument();
+  });
+
   it.each(["en", "es"] as const)("preserves literal dollar sequences in the applicant note in %s", locale => {
     const note = "Certificado custa $$50; código literal $&.";
     render(queue());
@@ -101,7 +126,7 @@ describe("verification queue search, states and language", () => {
     expect(screen.getByRole("alert")).toHaveTextContent("al menos 12 caracteres");
     expect(screen.getByText("Facilitadora autoral")).toBeInTheDocument();
     expect(screen.getByText(/Nota original da candidata\./)).toBeInTheDocument();
-    expect(screen.getByText(new Intl.DateTimeFormat("es", { dateStyle: "medium", timeStyle: "short" }).format(new Date(cases[0].createdAt)))).toBeInTheDocument();
+    expect(screen.getByText(`Enviada el ${new Intl.DateTimeFormat("es", { dateStyle: "medium", timeStyle: "short" }).format(new Date(cases[0].createdAt))}`)).toBeInTheDocument();
     expect(mocks.subscribe).toHaveBeenCalledTimes(1);
   });
 
@@ -115,6 +140,7 @@ describe("verification queue search, states and language", () => {
     // Recusar pergunta antes e só grava depois da confirmação na janela.
     if (decision === "rejected") {
       expect(mocks.review).not.toHaveBeenCalled();
+      vi.advanceTimersByTime(CONFIRM_GUARD_MS);
       fireEvent.click(within(screen.getByRole("dialog", { name: "¿Rechazar esta solicitud?" })).getByRole("button", { name: label }));
     }
     expect(await screen.findByRole("status")).toHaveTextContent(/creador|solicitud/i);

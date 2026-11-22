@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
@@ -8,6 +9,7 @@ import { StatusChip } from "@/components/shared/status-chip";
 import { InlineAlert } from "@/components/ui";
 import type { Order } from "@/domain/order";
 import { subscribeToRecentOrders } from "@/lib/data/orders";
+import { toDate } from "@/lib/format-date";
 import { platformFeeForSale } from "@/lib/payments/rules";
 
 function formatMoney(amountMinor: number, currency: Order["currency"], locale = "en") {
@@ -15,6 +17,23 @@ function formatMoney(amountMinor: number, currency: Order["currency"], locale = 
     style: "currency",
     currency,
   }).format(amountMinor / 100);
+}
+
+// Quando o dinheiro entrou; sem pagamento ainda, quando o pedido nasceu. O
+// rótulo diz qual das duas é ("Paid on" ou "Created on").
+function orderDate(order: Order, locale: string) {
+  const paid = toDate(order.paidAt);
+  const date = paid ?? toDate(order.createdAt);
+  return {
+    labelKey: paid ? "paidOn" : "createdOn",
+    text: date ? new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(date) : "—",
+  };
+}
+
+// Os 8 primeiros caracteres bastam para conferir o comprador de olho; o código
+// inteiro fica no title e na ficha da pessoa, aonde o link leva.
+function shortId(id: string) {
+  return id.length > 8 ? `${id.slice(0, 8)}…` : id;
 }
 
 export function PaymentOperationsPanel() {
@@ -176,9 +195,33 @@ export function PaymentOperationsPanel() {
                   {formatMoney(order.amountMinor, order.currency, locale)}
                 </span>
               </div>
-              <p className="mt-3 break-words text-xs leading-6 text-[var(--color-ink-soft)]">
-                {t(`${copy}.order`)} {order.id} - {t(`${copy}.user`)} {order.userId} - {t(`${copy}.provider`)} {order.provider}
-              </p>
+              {/* Em partes com rótulo, não numa linha corrida: a data do pedido
+                  (nunca aparecia), o comprador curto, que abre a ficha da
+                  pessoa, e o código do pedido inteiro, que quebra a linha e
+                  seleciona com um clique para copiar (I-06). */}
+              <dl className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-xs leading-6 text-[var(--color-ink-soft)]">
+                <div className="flex gap-1.5">
+                  <dt>{t(`${copy}.${orderDate(order, locale).labelKey}`)}</dt>
+                  <dd className="tabular-nums text-[var(--color-ink)]">{orderDate(order, locale).text}</dd>
+                </div>
+                <div className="flex gap-1.5">
+                  <dt>{t(`${copy}.user`)}</dt>
+                  <dd>
+                    <Link href={`/ops/users/${encodeURIComponent(order.userId)}`} title={order.userId} aria-label={order.userId}
+                      className="font-mono font-semibold text-[var(--color-primary)] underline underline-offset-2">
+                      {shortId(order.userId)}
+                    </Link>
+                  </dd>
+                </div>
+                <div className="flex gap-1.5">
+                  <dt>{t(`${copy}.provider`)}</dt>
+                  <dd className="text-[var(--color-ink)]">{order.provider}</dd>
+                </div>
+                <div className="flex min-w-0 gap-1.5">
+                  <dt>{t(`${copy}.order`)}</dt>
+                  <dd className="min-w-0 select-all break-all font-mono text-[var(--color-ink)]">{order.id}</dd>
+                </div>
+              </dl>
             </article>
           ))
         )}

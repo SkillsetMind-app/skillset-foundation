@@ -79,6 +79,27 @@ export function ViewAsSwitcher() {
 }
 
 /**
+ * A faixa é fixa no topo e ficava por cima da barra da plataforma, tampando a
+ * busca, o sino e o menu da conta (I-15). Agora ela mede a própria altura e a
+ * página desce essa medida (globals.css, `html[data-view-as]`). O observador
+ * refaz a medida quando a frase quebra em duas linhas (celular, outro idioma).
+ */
+function reserveBannerSpace(node: HTMLDivElement | null) {
+  if (!node) return;
+  const root = document.documentElement;
+  const sync = () => root.style.setProperty("--view-as-offset", `${node.offsetHeight}px`);
+  sync();
+  root.setAttribute("data-view-as", "");
+  const observer = typeof ResizeObserver === "function" ? new ResizeObserver(sync) : null;
+  observer?.observe(node);
+  return () => {
+    observer?.disconnect();
+    root.removeAttribute("data-view-as");
+    root.style.removeProperty("--view-as-offset");
+  };
+}
+
+/**
  * Always-on reminder that the product on screen is a preview.
  *
  * Mounted globally, because the preview follows you off the ops page — without
@@ -98,6 +119,7 @@ export function ViewAsBanner() {
 
   return (
     <div
+      ref={reserveBannerSpace}
       role="status"
       aria-live="polite"
       className="fixed inset-x-0 top-0 z-[70] flex flex-wrap items-center justify-center gap-3 bg-[var(--color-primary)] px-4 py-2 text-sm font-semibold text-[var(--color-on-primary)]"

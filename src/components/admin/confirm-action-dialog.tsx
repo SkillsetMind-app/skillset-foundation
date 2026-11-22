@@ -1,22 +1,21 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
-
 import { useTranslation } from "@/components/i18n/i18n-provider";
-import { Button } from "@/components/ui";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 /**
  * Pergunta antes das ações do /ops que tiram algo do ar ou recusam alguém
  * (I-04): eram um clique só, no mesmo contorno de "Request changes".
- * Mesmo padrão da janela de acesso à conta: <dialog> nativo com showModal(),
- * que prende o foco, fecha no Esc e devolve o foco a quem abriu. Nunca
- * window.confirm: a caixa do navegador não diz o que vai acontecer.
  *
- * A janela só fecha quando a ação termina. Fechando no mesmo clique, o
- * segundo clique de um duplo clique caía no botão que estava embaixo
- * (Approve de outro caso, Feature, Republish). Enquanto grava, os dois botões
- * travam e o Esc não fecha. Quem chama já mostra o erro no próprio painel
- * (a promessa não rejeita), então ela fecha também quando a gravação falha.
+ * Casca fina sobre a janela única da plataforma (`ui/confirm-dialog`), para o
+ * admin ter uma implementação só: <dialog> nativo com showModal(), foco que
+ * começa no lado seguro e volta a quem abriu, Esc, a trava do toque duplo e a
+ * trava enquanto grava (os dois botões param e o Esc não fecha; um duplo
+ * clique grava uma vez e não cai no botão de baixo).
+ *
+ * O contrato de quem chama continua o daqui: o painel já mostra o erro no
+ * próprio lugar (a promessa não rejeita), então a janela fecha também quando a
+ * gravação falha, em vez de abrir um segundo aviso dentro dela.
  */
 export function ConfirmActionDialog({ title, body, confirmLabel, onConfirm, onClose }: {
   title: string;
@@ -26,38 +25,22 @@ export function ConfirmActionDialog({ title, body, confirmLabel, onConfirm, onCl
   onClose: () => void;
 }) {
   const { t } = useTranslation();
-  const dialog = useRef<HTMLDialogElement>(null);
-  const pending = useRef(false);
-  const [busy, setBusy] = useState(false);
-  const id = useId();
-
-  useEffect(() => {
-    dialog.current?.showModal();
-  }, []);
-
-  async function confirm() {
-    if (pending.current) return;
-    pending.current = true;
-    setBusy(true);
-    try {
-      await onConfirm();
-    } finally {
-      pending.current = false;
-      setBusy(false);
-      dialog.current?.close();
-    }
-  }
-
-  return <dialog ref={dialog} aria-labelledby={`${id}-title`} aria-describedby={`${id}-body`}
-    onCancel={event => { if (pending.current) event.preventDefault(); }} onClose={onClose}
-    className="modal-panel modal-panel-scroll m-auto w-[calc(100%_-_2rem)] max-w-[480px] rounded-xl border border-[var(--color-line)] bg-[var(--color-surface)] p-5 text-[var(--color-ink)] backdrop:bg-[rgba(16,42,67,0.5)] sm:p-6">
-    <h2 id={`${id}-title`} className="break-words text-lg font-bold">{title}</h2>
-    <p id={`${id}-body`} className="mt-2 text-sm leading-6 text-[var(--color-ink-soft)]">{body}</p>
-    <div className="mt-6 flex flex-wrap justify-end gap-3">
-      <Button variant="outline" disabled={busy} onClick={() => dialog.current?.close()}>{t("platform.ops.confirmDialog.cancel")}</Button>
-      <Button variant="danger" className="whitespace-normal" loading={busy} onClick={() => void confirm()}>
-        {confirmLabel}
-      </Button>
-    </div>
-  </dialog>;
+  return (
+    <ConfirmDialog
+      title={title}
+      confirmLabel={confirmLabel}
+      cancelLabel={t("platform.ops.confirmDialog.cancel")}
+      danger
+      onConfirm={async () => {
+        try {
+          await onConfirm();
+        } catch {
+          // Quem chamou já avisa no painel; aqui só fecha, como antes.
+        }
+      }}
+      onClose={onClose}
+    >
+      {body}
+    </ConfirmDialog>
+  );
 }

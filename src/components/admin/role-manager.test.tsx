@@ -336,6 +336,65 @@ describe("RoleManager", () => {
     expect(mocks.listPlatformUsers).toHaveBeenCalledTimes(1);
   });
 
+  it("keeps the current roster on screen, dimmed and busy, while a new search runs (I-12)", async () => {
+    mocks.listPlatformUsers.mockResolvedValueOnce(roster(["student"]));
+    render(translatedRoster());
+    const list = (await screen.findByText("Test Person")).closest("ul")!;
+    expect(list).not.toHaveAttribute("aria-busy");
+    let finish!: (people: ReturnType<typeof roster>) => void;
+    mocks.listPlatformUsers.mockReturnValueOnce(new Promise(resolve => { finish = resolve; }));
+    fireEvent.change(screen.getByRole("searchbox", { name: "Find someone" }), { target: { value: "Test" } });
+    await waitFor(() => expect(mocks.listPlatformUsers).toHaveBeenLastCalledWith("Test"));
+    expect(screen.getByText("Test Person").closest("ul")).toHaveAttribute("aria-busy", "true");
+    expect(screen.getByText("Test Person").closest("ul")).toHaveClass("opacity-60");
+    expect(screen.queryByRole("status")).toBeNull();
+    await act(async () => finish(roster(["student"])));
+    expect(screen.getByText("Test Person").closest("ul")).not.toHaveAttribute("aria-busy");
+    expect(mocks.setUserRoles).not.toHaveBeenCalled();
+  });
+
+  it("ignores an older search answer that arrives after the newer one", async () => {
+    mocks.listPlatformUsers.mockResolvedValueOnce([]);
+    render(translatedRoster());
+    await screen.findByText("No one matches that search.");
+    let answerAn!: (people: ReturnType<typeof roster>) => void;
+    let answerAna!: (people: ReturnType<typeof roster>) => void;
+    mocks.listPlatformUsers
+      .mockReturnValueOnce(new Promise(resolve => { answerAn = resolve; }))
+      .mockReturnValueOnce(new Promise(resolve => { answerAna = resolve; }));
+    const search = screen.getByRole("searchbox", { name: "Find someone" });
+    fireEvent.change(search, { target: { value: "an" } });
+    await waitFor(() => expect(mocks.listPlatformUsers).toHaveBeenLastCalledWith("an"));
+    fireEvent.change(search, { target: { value: "ana" } });
+    await waitFor(() => expect(mocks.listPlatformUsers).toHaveBeenLastCalledWith("ana"));
+    await act(async () => answerAna([{ ...roster(["student"])[0], displayName: "Ana Nova" }]));
+    expect(screen.getByText("Ana Nova").closest("ul")).not.toHaveAttribute("aria-busy");
+    // A resposta velha de "an" chega depois e não troca a lista.
+    await act(async () => answerAn([{ ...roster(["student"])[0], uid: "u-2", displayName: "Andre Velho" }]));
+    expect(screen.getByText("Ana Nova")).toBeInTheDocument();
+    expect(screen.queryByText("Andre Velho")).toBeNull();
+  });
+
+  it("keeps showing the search as running until the newest answer arrives", async () => {
+    mocks.listPlatformUsers.mockResolvedValueOnce(roster(["student"]));
+    render(translatedRoster());
+    await screen.findByText("Test Person");
+    let answerOld!: (people: ReturnType<typeof roster>) => void;
+    let answerNew!: (people: ReturnType<typeof roster>) => void;
+    mocks.listPlatformUsers
+      .mockReturnValueOnce(new Promise(resolve => { answerOld = resolve; }))
+      .mockReturnValueOnce(new Promise(resolve => { answerNew = resolve; }));
+    const search = screen.getByRole("searchbox", { name: "Find someone" });
+    fireEvent.change(search, { target: { value: "Te" } });
+    await waitFor(() => expect(mocks.listPlatformUsers).toHaveBeenLastCalledWith("Te"));
+    fireEvent.change(search, { target: { value: "Test" } });
+    await waitFor(() => expect(mocks.listPlatformUsers).toHaveBeenLastCalledWith("Test"));
+    await act(async () => answerOld(roster(["student"])));
+    expect(screen.getByText("Test Person").closest("ul")).toHaveAttribute("aria-busy", "true");
+    await act(async () => answerNew(roster(["student"])));
+    expect(screen.getByText("Test Person").closest("ul")).not.toHaveAttribute("aria-busy");
+  });
+
   it.each([0, 1, 2])("renders %i roster entries without altering names in Spanish", async count => {
     mocks.listPlatformUsers.mockResolvedValue(Array.from({ length: count }, (_, index) => ({ ...roster([])[0], uid: `u-${index}`, displayName: `Nombre $$ $& ${index}` })));
     render(translatedRoster());
