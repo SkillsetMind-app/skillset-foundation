@@ -6,7 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { PlatformInviteManager } from "@/components/admin/platform-invite-manager";
 import { AccountControlDialog } from "@/components/admin/account-control-dialog";
-import { Button, Field, InlineAlert } from "@/components/ui";
+import { Button, ConfirmDialog, Field, InlineAlert } from "@/components/ui";
 import { setActivationWaiver } from "@/lib/data/platform-invites";
 import {
   listPlatformUsers,
@@ -112,11 +112,20 @@ export function RoleManager() {
   const [accountTarget, setAccountTarget] = useState<PlatformUser | null>(null);
   const [waiverFeedback, setWaiverFeedback] = useState<{ uid: string; key: string; failed: boolean } | null>(null);
 
-  async function applyWaiver(user: PlatformUser, waived: boolean) {
+  // A pergunta aberta. Guarda a pessoa e o pedido como estavam no clique, e o
+  // confirmar roda exatamente o que vinha depois do OK do window.confirm.
+  const [asking, setAsking] = useState<
+    | { kind: "waiver"; user: PlatformUser; waived: boolean }
+    | { kind: "admin"; user: PlatformUser; level: Level; next: boolean }
+    | null
+  >(null);
+
+  function askWaiver(user: PlatformUser, waived: boolean) {
     if (waiverBusy || savingUid) return;
-    const confirmation = t(`platformInvites.${waived ? "waiveConfirm" : "requireConfirm"}`)
-      .replace("{person}", () => personLabel(user));
-    if (!window.confirm(confirmation)) return;
+    setAsking({ kind: "waiver", user, waived });
+  }
+
+  async function applyWaiver(user: PlatformUser, waived: boolean) {
     setWaiverBusy(true);
     setWaiverFeedback(null);
     try {
@@ -147,14 +156,18 @@ export function RoleManager() {
     return () => window.clearTimeout(timer);
   }, [search, load]);
 
-  async function applyLevel(user: PlatformUser, level: Level, next: boolean) {
+  function requestLevel(user: PlatformUser, level: Level, next: boolean) {
     // Admin is the one level that can hand out every other level: never on a
-    // stray click. Same confirm the activation waiver uses.
+    // stray click. Same confirm the activation waiver uses. Os outros níveis
+    // gravam direto, como antes.
     if (level.id === "admin") {
-      const confirmation = t(`${copy}.${next ? "confirmAdminGrant" : "confirmAdminRemove"}`)
-        .replace("{person}", () => personLabel(user));
-      if (!window.confirm(confirmation)) return;
+      setAsking({ kind: "admin", user, level, next });
+      return;
     }
+    void applyLevel(user, level, next);
+  }
+
+  async function applyLevel(user: PlatformUser, level: Level, next: boolean) {
     const nextRoles = toggleLevel(user.roles, level, next);
     setSavingUid(user.uid);
     setError(null);
@@ -192,6 +205,29 @@ export function RoleManager() {
   return (
     <section className="min-w-0 rounded-lg border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)]">
       {accountTarget ? <AccountControlDialog key={accountTarget.uid} uid={accountTarget.uid} label={accountTarget.email || personLabel(accountTarget)} onClose={() => setAccountTarget(null)} /> : null}
+      {/* As frases são as mesmas do antigo window.confirm. Erro e aviso de
+          sucesso continuam na lista, onde já apareciam. */}
+      {asking ? (
+        <ConfirmDialog
+          title={asking.kind === "admin"
+            ? t(`${copy}.${asking.next ? "adminGrantTitle" : "adminRemoveTitle"}`)
+            : t(`platformInvites.${asking.waived ? "waiveTitle" : "requireTitle"}`)}
+          confirmLabel={asking.kind === "admin"
+            ? t(`${copy}.${asking.next ? "adminGrantLabel" : "adminRemoveLabel"}`)
+            : t(`platformInvites.${asking.waived ? "waive" : "require"}`)}
+          cancelLabel={t("platform.ops.confirmDialog.cancel")}
+          danger={asking.kind === "admin" || !asking.waived}
+          onConfirm={() => asking.kind === "admin"
+            ? applyLevel(asking.user, asking.level, asking.next)
+            : applyWaiver(asking.user, asking.waived)}
+          onClose={() => setAsking(null)}
+        >
+          {(asking.kind === "admin"
+            ? t(`${copy}.${asking.next ? "confirmAdminGrant" : "confirmAdminRemove"}`)
+            : t(`platformInvites.${asking.waived ? "waiveConfirm" : "requireConfirm"}`)
+          ).replace("{person}", () => personLabel(asking.user))}
+        </ConfirmDialog>
+      ) : null}
       <div className="flex flex-wrap items-center gap-2">
         {tabs.map((entry) => (
           <button
@@ -282,7 +318,7 @@ export function RoleManager() {
                           checked={hasLevel(user.roles, level)}
                           disabled={savingUid === user.uid || waiverBusy}
                           onChange={(event) =>
-                            void applyLevel(user, level, event.target.checked)
+                            requestLevel(user, level, event.target.checked)
                           }
                         />
                         {t(`${copy}.levels.${level.id}.label`)}
@@ -293,10 +329,10 @@ export function RoleManager() {
                     <Button variant="outline" disabled={waiverBusy || Boolean(savingUid)} className="min-h-11 max-w-full whitespace-normal" onClick={() => setAccountTarget(user)}>
                       <Shield size={16} className="shrink-0" aria-hidden />{t("accountControls.title")}
                     </Button>
-                    <Button variant="outline" disabled={waiverBusy || Boolean(savingUid)} className="min-h-11 max-w-full whitespace-normal" onClick={() => void applyWaiver(user, true)}>
+                    <Button variant="outline" disabled={waiverBusy || Boolean(savingUid)} className="min-h-11 max-w-full whitespace-normal" onClick={() => askWaiver(user, true)}>
                       <CircleDollarSign size={16} className="shrink-0" aria-hidden />{t("platformInvites.waive")}
                     </Button>
-                    <Button variant="outline" disabled={waiverBusy || Boolean(savingUid)} className="min-h-11 max-w-full whitespace-normal" onClick={() => void applyWaiver(user, false)}>
+                    <Button variant="outline" disabled={waiverBusy || Boolean(savingUid)} className="min-h-11 max-w-full whitespace-normal" onClick={() => askWaiver(user, false)}>
                       <CircleDollarSign size={16} className="shrink-0" aria-hidden />{t("platformInvites.require")}
                     </Button>
                   </div>

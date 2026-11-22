@@ -41,14 +41,27 @@ function Language() {
 function mount(children: ReactNode, locale: "en" | "es" = "es") {
   return render(<I18nProvider initialLocale={locale}><Language />{children}</I18nProvider>);
 }
+const originalShow = Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype, "showModal");
+const originalClose = Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype, "close");
 beforeEach(() => {
   vi.clearAllMocks();
   state.plan = "plus";
   state.landing = { template: "classic", blocks: [] };
   vi.mocked(saveCourseLanding).mockResolvedValue({ ok: true });
   vi.mocked(updateTeacherCourseBuilder).mockResolvedValue(undefined);
+  // Tirar uma seção pergunta na janela da plataforma; o jsdom não tem
+  // showModal/close e o stub faz o mínimo que o navegador faz.
+  Object.defineProperty(HTMLDialogElement.prototype, "showModal", { configurable: true, value() { this.setAttribute("open", ""); } });
+  Object.defineProperty(HTMLDialogElement.prototype, "close", { configurable: true, value() { if (!this.hasAttribute("open")) return; this.removeAttribute("open"); this.dispatchEvent(new Event("close")); } });
 });
-afterEach(() => { cleanup(); vi.restoreAllMocks(); });
+afterEach(() => {
+  cleanup();
+  vi.restoreAllMocks();
+  if (originalShow) Object.defineProperty(HTMLDialogElement.prototype, "showModal", originalShow);
+  else Reflect.deleteProperty(HTMLDialogElement.prototype, "showModal");
+  if (originalClose) Object.defineProperty(HTMLDialogElement.prototype, "close", originalClose);
+  else Reflect.deleteProperty(HTMLDialogElement.prototype, "close");
+});
 
 describe("ES-09 editors with the shipped dictionaries", () => {
   it("requires the coordinator to integrate both namespaces in the real dictionaries", () => {
@@ -150,7 +163,6 @@ describe("ES-09 editors with the shipped dictionaries", () => {
       { kind: "cta", heading: "Ready?", body: "Saved CTA", buttonLabel: "Enrol now" },
     ] };
     const original = structuredClone(state.landing);
-    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
     mount(<CourseLandingEditor course={course} />);
     expect(screen.getByText("Cargando tu página de ventas…")).toBeInTheDocument();
     await screen.findByLabelText("Título principal");
@@ -166,7 +178,10 @@ describe("ES-09 editors with the shipped dictionaries", () => {
     expect(screen.getAllByRole("button", { name: "Subir" })).toHaveLength(7);
     expect(screen.getByText(/Atención: esta página usa/)).toHaveTextContent("therapist");
     fireEvent.click(screen.getByRole("button", { name: "Eliminar sección Sobre ti" }));
-    expect(confirm).toHaveBeenCalledWith('¿Eliminar la sección "Sobre ti" y todo su contenido?');
+    expect(screen.getByRole("dialog", { name: "¿Eliminar esta sección?" }))
+      .toHaveTextContent('¿Eliminar la sección "Sobre ti" y todo su contenido?');
+    fireEvent.click(screen.getByRole("button", { name: "Mantener la sección" }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "EN" }));
     expect(screen.getByLabelText("Headline")).toHaveValue("Saved therapist $&");
     expect(screen.getByLabelText("Button label")).toHaveValue("Enrol now");

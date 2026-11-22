@@ -1,10 +1,16 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { I18nProvider } from "@/components/i18n/i18n-provider";
 import { TeacherEventStudio } from "@/components/teacher/teacher-event-studio";
+import { CONFIRM_GUARD_MS } from "@/components/ui/confirm-dialog";
 import type { CourseEvent } from "@/domain/course-event";
-import { createCourseEvent, updateCourseEvent } from "@/lib/data/course-events";
+import {
+  cancelCourseEvent,
+  createCourseEvent,
+  deleteCourseEvent,
+  updateCourseEvent,
+} from "@/lib/data/course-events";
 
 const authState = vi.hoisted(() => ({
   user: { uid: "teacher-1", roles: ["teacher"] },
@@ -282,5 +288,90 @@ describe("TeacherEventStudio", () => {
       new Intl.DateTimeFormat("es", { dateStyle: "medium", timeStyle: "short" }).format(new Date(startsAt)),
     )).toBeInTheDocument();
     expect(screen.getByText("Fecha pendiente")).toBeInTheDocument();
+  });
+
+  // F-14: cancelar e excluir abriam a caixa cinza do navegador ("OK /
+  // Cancel") e, depois de excluir, nada dizia que tinha dado certo.
+  describe("cancelar e excluir perguntam na janela da plataforma", () => {
+    const session: CourseEvent = {
+      id: "event-live", courseId: "course-1", courseSlug: "course-1", courseTitle: "Existing course",
+      ownerId: "teacher-1", title: "Live $& session", description: "", type: "live_class",
+      status: "scheduled", startsAt: "2027-03-14T15:30:00.000Z",
+      externalUrl: "https://meet.example.com/live", recordingAssetId: null,
+    };
+    // O jsdom não tem showModal/close: o stub faz o mínimo que o navegador faz.
+    const originalShow = Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype, "showModal");
+    const originalClose = Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype, "close");
+
+    beforeEach(() => {
+      agenda.params = "";
+      agenda.events = [session];
+      // Só o Date é falso: o confirmar ignora cliques nos primeiros 500ms.
+      vi.useFakeTimers({ toFake: ["Date"] });
+      Object.defineProperty(HTMLDialogElement.prototype, "showModal", { configurable: true, value() { this.setAttribute("open", ""); } });
+      Object.defineProperty(HTMLDialogElement.prototype, "close", { configurable: true, value() { if (!this.hasAttribute("open")) return; this.removeAttribute("open"); this.dispatchEvent(new Event("close")); } });
+    });
+    afterEach(() => {
+      vi.useRealTimers();
+      if (originalShow) Object.defineProperty(HTMLDialogElement.prototype, "showModal", originalShow);
+      else Reflect.deleteProperty(HTMLDialogElement.prototype, "showModal");
+      if (originalClose) Object.defineProperty(HTMLDialogElement.prototype, "close", originalClose);
+      else Reflect.deleteProperty(HTMLDialogElement.prototype, "close");
+    });
+
+    it.each([
+      {
+        trigger: "Cancel session", title: "Cancel this session?", confirm: "Cancel session", action: cancelCourseEvent,
+        sentence: "Cancel \"Live $& session\"? Learners who RSVP'd will see it as cancelled.", notice: "Session cancelled.",
+      },
+      {
+        trigger: "Delete", title: "Delete this session?", confirm: "Delete session", action: deleteCourseEvent,
+        sentence: "Permanently delete \"Live $& session\"? This cannot be undone.", notice: "Session deleted.",
+      },
+    ])("$trigger: mostra a frase, nada acontece sem confirmar e confirmar roda uma vez", async ({ trigger, title, confirm, action, sentence, notice }) => {
+      const nativeConfirm = vi.spyOn(window, "confirm");
+      vi.mocked(action).mockResolvedValue(undefined);
+      render(<TeacherEventStudio />);
+
+      // (a) a frase de sempre, agora na janela da plataforma;
+      fireEvent.click(screen.getByRole("button", { name: trigger }));
+      const dialog = screen.getByRole("dialog", { name: title });
+      expect(dialog).toHaveTextContent(sentence);
+      expect(nativeConfirm).not.toHaveBeenCalled();
+      // (b) desistir não faz nada;
+      fireEvent.click(within(dialog).getByRole("button", { name: "Keep session" }));
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+      expect(action).not.toHaveBeenCalled();
+      expect(screen.queryByRole("status")).not.toBeInTheDocument();
+
+      // (c) confirmar chama a ação uma vez, com a mesma sessão. O clique
+      // colado na abertura (toque duplo) é descartado.
+      fireEvent.click(screen.getByRole("button", { name: trigger }));
+      const again = screen.getByRole("dialog", { name: title });
+      fireEvent.click(within(again).getByRole("button", { name: confirm }));
+      expect(action).not.toHaveBeenCalled();
+      vi.advanceTimersByTime(CONFIRM_GUARD_MS);
+      fireEvent.click(within(again).getByRole("button", { name: confirm }));
+      expect(action).toHaveBeenCalledExactlyOnceWith("event-live");
+      // e diz que deu certo.
+      expect(await screen.findByRole("status")).toHaveTextContent(notice);
+      await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+      expect(action).toHaveBeenCalledOnce();
+      nativeConfirm.mockRestore();
+    });
+
+    it("quando excluir falha, o erro aparece onde já aparecia e não há aviso de sucesso", async () => {
+      vi.mocked(deleteCourseEvent).mockRejectedValueOnce(new Error("Delete unavailable"));
+      render(<TeacherEventStudio />);
+
+      fireEvent.click(screen.getByRole("button", { name: "Delete" }));
+      vi.advanceTimersByTime(CONFIRM_GUARD_MS);
+      fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Delete session" }));
+
+      expect(await screen.findByRole("alert")).toHaveTextContent("We could not delete this session.");
+      await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+      expect(screen.queryByRole("status")).not.toBeInTheDocument();
+      expect(deleteCourseEvent).toHaveBeenCalledOnce();
+    });
   });
 });

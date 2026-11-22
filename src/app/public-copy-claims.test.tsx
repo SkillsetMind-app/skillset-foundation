@@ -303,7 +303,8 @@ describe("public copy guard: home, /pricing, /fees-and-payouts, /for-creators, /
   const dormant = new Set([
     // Ops-only invite manager and role manager (admin, AAL2): the waiver switch
     // for the dormant fee. The invitee's screen no longer shows any of them.
-    ...["waive", "require", "waived", "notWaived", "waiveConfirm", "requireConfirm", "waiverSaved", "requireSaved", "waiverError"].map((key) => `platformInvites.${key}`),
+    // waiveTitle/requireTitle: títulos da janela que pergunta antes da isenção.
+    ...["waive", "require", "waived", "notWaived", "waiveConfirm", "requireConfirm", "waiveTitle", "requireTitle", "waiverSaved", "requireSaved", "waiverError"].map((key) => `platformInvites.${key}`),
     // The 402 claim_custom_domain raises only while the gate holds a creator back.
     "teach.customDomains.errors.activation",
   ]);

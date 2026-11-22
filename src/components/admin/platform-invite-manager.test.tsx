@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PlatformInviteManager } from "@/components/admin/platform-invite-manager";
 import { RoleManager } from "@/components/admin/role-manager";
 import { I18nProvider } from "@/components/i18n/i18n-provider";
+import { CONFIRM_GUARD_MS } from "@/components/ui/confirm-dialog";
 import type { PlatformInvite } from "@/domain/platform-invites";
 
 const mocks = vi.hoisted(() => ({
@@ -19,12 +20,38 @@ const invitation: PlatformInvite = {
   created_at: "2026-09-09T00:00:00Z", expires_at: "2099-09-09T00:00:00Z", accepted_at: null, revoked_at: null,
 };
 
+// Revogar e mexer na isenção perguntam na janela da plataforma (não mais no
+// window.confirm). O jsdom não tem showModal/close: o stub faz o mínimo que o
+// navegador faz.
+const originalShow = Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype, "showModal");
+const originalClose = Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype, "close");
+
 beforeEach(() => {
   mocks.listPlatformInvites.mockResolvedValue([]);
   mocks.listPlatformUsers.mockResolvedValue([{ uid: "user-1", email: "person@example.com", displayName: "Person", roles: ["teacher"], verificationStatus: null, createdAt: null }]);
   mocks.createPlatformInvite.mockResolvedValue({ invite: invitation, emailStatus: "sent" });
+  Object.defineProperty(HTMLDialogElement.prototype, "showModal", { configurable: true, value() { this.setAttribute("open", ""); } });
+  Object.defineProperty(HTMLDialogElement.prototype, "close", { configurable: true, value() { if (!this.hasAttribute("open")) return; this.removeAttribute("open"); this.dispatchEvent(new Event("close")); } });
 });
-afterEach(() => { cleanup(); vi.resetAllMocks(); vi.restoreAllMocks(); });
+afterEach(() => {
+  cleanup();
+  vi.useRealTimers();
+  vi.resetAllMocks();
+  vi.restoreAllMocks();
+  if (originalShow) Object.defineProperty(HTMLDialogElement.prototype, "showModal", originalShow);
+  else Reflect.deleteProperty(HTMLDialogElement.prototype, "showModal");
+  if (originalClose) Object.defineProperty(HTMLDialogElement.prototype, "close", originalClose);
+  else Reflect.deleteProperty(HTMLDialogElement.prototype, "close");
+});
+
+// Responde a pergunta aberta. Pede o Date falso (vi.useFakeTimers({ toFake:
+// ["Date"] }) no começo do teste): o confirmar ignora cliques nos primeiros
+// CONFIRM_GUARD_MS, contra o toque duplo.
+function answer(button: string) {
+  const dialog = screen.getByRole("dialog");
+  vi.advanceTimersByTime(CONFIRM_GUARD_MS);
+  fireEvent.click(within(dialog).getByRole("button", { name: button }));
+}
 
 function fill(level: string) {
   fireEvent.change(screen.getByLabelText("Email"), { target: { value: invitation.email } });
@@ -117,7 +144,7 @@ describe("Platform invitations", () => {
   });
 
   it("shows expiry and terminal states, requiring confirmation to revoke", async () => {
-    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    vi.useFakeTimers({ toFake: ["Date"] });
     mocks.listPlatformInvites.mockResolvedValue([
       invitation,
       { ...invitation, id: "expired", expires_at: "2020-01-01T00:00:00Z" },
@@ -132,19 +159,26 @@ describe("Platform invitations", () => {
       expect(within(row).getByRole("button", { name: "Resend" })).toBeDisabled();
       expect(within(row).getByRole("button", { name: "Revoke" })).toBeDisabled();
     }
+    // (a) a frase de sempre, na janela; (b) desistir não revoga.
     fireEvent.click(within(rows[0]).getByRole("button", { name: "Revoke" }));
+    expect(screen.getByRole("dialog", { name: "Revoke this invitation?" }))
+      .toHaveTextContent("Revoke the invitation for person@example.com? This link will no longer grant access.");
+    answer("Cancel");
+    expect(screen.queryByRole("dialog")).toBeNull();
     expect(mocks.revokePlatformInvite).not.toHaveBeenCalled();
-    confirm.mockReturnValue(true);
+    // (c) confirmar revoga uma vez, o mesmo convite.
     fireEvent.click(within(rows[0]).getByRole("button", { name: "Revoke" }));
+    answer("Revoke invitation");
     await waitFor(() => expect(within(rows[0]).getByRole("button", { name: "Resend" })).toBeDisabled());
-    expect(mocks.revokePlatformInvite).toHaveBeenCalledWith(invitation.id);
+    expect(mocks.revokePlatformInvite).toHaveBeenCalledExactlyOnceWith(invitation.id);
     expect(await screen.findByText("Invitation revoked.")).toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   });
 
   it("blocks expired resend without calling the API but still permits revocation", async () => {
     mocks.listPlatformInvites.mockResolvedValue([{ ...invitation, expires_at: "2020-01-01T00:00:00Z" }]);
     mocks.revokePlatformInvite.mockResolvedValue(undefined);
-    vi.spyOn(window, "confirm").mockReturnValue(true);
+    vi.useFakeTimers({ toFake: ["Date"] });
     render(<PlatformInviteManager />);
     const resend = await screen.findByRole("button", { name: "Resend" });
     expect(resend).toBeDisabled();
@@ -153,6 +187,7 @@ describe("Platform invitations", () => {
     const revoke = screen.getByRole("button", { name: "Revoke" });
     expect(revoke).toBeEnabled();
     fireEvent.click(revoke);
+    answer("Revoke invitation");
     await screen.findByText("Invitation revoked.");
     expect(mocks.revokePlatformInvite).toHaveBeenCalledWith(invitation.id);
     expect(mocks.resendPlatformInvite).not.toHaveBeenCalled();
@@ -183,20 +218,27 @@ describe("Platform invitations", () => {
   });
 
   it("offers two explicit waiver commands without claiming the current payment status", async () => {
-    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    vi.useFakeTimers({ toFake: ["Date"] });
     mocks.setActivationWaiver.mockResolvedValue(undefined);
     render(<RoleManager />);
     const waive = await screen.findByRole("button", { name: "Waive activation fee" });
     fireEvent.click(waive);
+    expect(screen.getByRole("dialog", { name: "Waive the activation fee?" }))
+      .toHaveTextContent("Waive the activation fee for Person? This does not approve verification, accept terms, or change payment records.");
+    answer("Cancel");
     expect(mocks.setActivationWaiver).not.toHaveBeenCalled();
-    confirm.mockReturnValue(true);
     fireEvent.click(waive);
+    answer("Waive activation fee");
     await screen.findByText("Activation fee waiver saved. Verification, terms and payment records are unchanged.");
-    expect(mocks.setActivationWaiver).toHaveBeenLastCalledWith("user-1", true);
+    expect(mocks.setActivationWaiver).toHaveBeenCalledExactlyOnceWith("user-1", true);
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     fireEvent.click(screen.getByRole("button", { name: "Require activation fee" }));
+    expect(screen.getByRole("dialog", { name: "Require the activation fee again?" }))
+      .toHaveTextContent("Any existing payment remains valid");
+    answer("Require activation fee");
     await screen.findByText("Activation fee waiver removed. Any existing payment remains valid. No charge was made.");
     expect(mocks.setActivationWaiver).toHaveBeenLastCalledWith("user-1", false);
-    expect(confirm).toHaveBeenLastCalledWith(expect.stringContaining("Any existing payment remains valid"));
+    expect(mocks.setActivationWaiver).toHaveBeenCalledTimes(2);
     expect(mocks.setUserRoles).not.toHaveBeenCalled();
   });
 });
