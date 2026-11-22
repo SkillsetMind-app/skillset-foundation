@@ -89,6 +89,10 @@ describe("SignupForm presents only the available paths", () => {
     fireEvent.click(screen.getByRole("button", { name: "auth.signup.continue" }));
     expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "2");
     expect(screen.getByLabelText("auth.password")).toHaveFocus();
+    // A-10: as regras da senha estao a vista antes de digitar e sao a
+    // descricao do campo, nao parte do nome dele.
+    expect(screen.getByText("authFlow.passwordRules.title")).toBeInTheDocument();
+    expect(screen.getByLabelText("auth.password")).toHaveAccessibleDescription(/authFlow\.passwordRules\.length/);
     expect(mocks.signUpWithEmail).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "auth.signup.back" }));
     expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "1");

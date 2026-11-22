@@ -78,6 +78,17 @@ describe("the auth frame stays consistent during recovery and loading", () => {
     expect(screen.getByRole("link", { name: translate(getDictionary("en"), "auth.onboardingShell.footerLink") })).toHaveAttribute("href", "/courses");
   });
 
+  // A ativacao do professor so pede os termos (e o que faltar): o titulo
+  // "Set up your profile / Choose your path" nao batia com ela.
+  it("titles the teacher activation as the last step, not as profile setup", async () => {
+    const page = await OnboardingPage({ searchParams: Promise.resolve({ path: "teacher" }) });
+    const shell = await AuthShell(page.props);
+    render(<I18nProvider initialLocale="en">{shell}</I18nProvider>);
+
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("One last step to open Teacher Studio");
+  });
+
   it("keeps the full-page welcome fallback as a titled page", async () => {
     render(await WelcomePage());
 

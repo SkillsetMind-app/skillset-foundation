@@ -116,8 +116,12 @@ describe("H3: pais na ativacao do professor", () => {
   it.each(["teacher", "student"])("quem terminou como %s ativa ensino sem repetir o questionario", async (path) => {
     mocks.getUserProfile.mockResolvedValue({ ...profile, onboardingPath: path });
     await mount();
-    expect(screen.getByText("onboarding.streamlinedTitle")).toBeInTheDocument();
+    // O titulo "One last step" e da pagina (app/onboarding/page.tsx), nao
+    // repetido numa caixa aqui dentro.
+    expect(screen.queryByText("onboarding.streamlinedTitle")).toBeNull();
     expect(screen.queryByLabelText("onboarding.publicName")).toBeNull();
+    // E-mail ja verificado: o cartao de verificacao nao aparece de novo.
+    expect(screen.queryByText("onboarding.emailVerificationTitle")).toBeNull();
     const finish = screen.getByRole("button", { name: "onboarding.activateTeaching" });
     expect(finish).toBeDisabled();
     fireEvent.change(screen.getByLabelText("connectOnboarding.countryLabel"), { target: { value: "CA" } });
@@ -153,6 +157,27 @@ describe("H3: pais na ativacao do professor", () => {
 
   it("sem plano escolhido, o fim continua em /teach", async () => {
     expect(await ativar("path=teacher")).toBe("/teach");
+  });
+
+  // A ativacao curta so pergunta o que falta: o pais ja respondido na
+  // entrevista nao volta, e segue gravado igual na ativacao.
+  it("pais ja respondido nao aparece de novo e continua gravado", async () => {
+    mocks.getUserProfile.mockResolvedValue({
+      ...profile, onboardingAnswers: { ...previousAnswers, payoutCountry: "US" },
+    });
+    await mount();
+    expect(screen.queryByLabelText("connectOnboarding.countryLabel")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "onboarding.activateTeaching" }));
+    await waitFor(() => expect(mocks.router.push).toHaveBeenCalledWith("/teach"));
+    expect(mocks.updateOnboardingAnswers).toHaveBeenCalledExactlyOnceWith({
+      uid: "learner-1", answers: { ...previousAnswers, payoutCountry: "US" },
+    });
+  });
+
+  it("o campo do pais nao some no meio da escolha", async () => {
+    await mount();
+    fireEvent.change(screen.getByLabelText("connectOnboarding.countryLabel"), { target: { value: "CA" } });
+    expect(screen.getByLabelText("connectOnboarding.countryLabel")).toHaveValue("CA");
   });
 
   it.each([

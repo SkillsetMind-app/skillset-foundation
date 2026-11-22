@@ -195,8 +195,18 @@ describe("AuthPage continues an existing verified session", () => {
     fireEvent.change(view.container.querySelector('input[type="password"]')!, { target: { value: "fixture-password" } });
     fireEvent.submit(view.container.querySelector("form")!);
 
-    expect(await screen.findByRole("heading", { name: /email/i })).toBeInTheDocument();
+    // O titulo da pagina vira a instrucao; nada de "Sign in as a learner."
+    // em cima da porta de confirmar.
+    expect(await screen.findByRole("heading", { level: 1, name: "Check your email" })).toBeInTheDocument();
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+    expect(screen.getByRole("status")).toHaveTextContent("This page continues by itself once you confirm.");
+    // O contador do reenvio nao fica dentro de regiao anunciada.
+    expect(screen.getByRole("button", { name: "Resend the link" }).closest("[aria-live]")).toBeNull();
     expect(mocks.router.replace).not.toHaveBeenCalled();
+
+    // Voltar para corrigir o e-mail devolve o titulo do formulario.
+    fireEvent.click(screen.getByRole("button", { name: "Wrong email? Change it" }));
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Sign in as a learner.");
     expect(mocks.getUserProfile).not.toHaveBeenCalled();
   });
 

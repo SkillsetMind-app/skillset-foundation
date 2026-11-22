@@ -2,7 +2,7 @@
 
 import { Check, GraduationCap, Loader2, Presentation } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { OnboardingProgress } from "@/components/auth/onboarding-progress";
@@ -335,14 +335,14 @@ export function OnboardingWizard() {
         return;
       }
 
-      if (event.key === "Escape") {
-        goBack();
-      }
-
+      // Sem Esc global: ele voltava uma pergunta de qualquer lugar da tela, e
+      // "Back" ja e um botao.
       if (event.key === "Enter") {
         const target = event.target as HTMLElement | null;
 
-        if (target?.tagName === "TEXTAREA" || target?.tagName === "SELECT") {
+        // Enter num botao ou link e do proprio botao (marcar a opcao, voltar,
+        // pular). Antes o atalho engolia o clique e tentava seguir em frente.
+        if (["TEXTAREA", "SELECT", "BUTTON", "A"].includes(target?.tagName ?? "")) {
           return;
         }
 
@@ -645,8 +645,8 @@ export function OnboardingWizard() {
   }
 
   return (
-    <main className="onboarding-page flex min-h-screen flex-col">
-      <header className="flex items-center justify-between gap-5 px-6 py-5 sm:px-8">
+    <main className="onboarding-page flex min-h-svh flex-col">
+      <header className="flex items-center justify-between gap-5 px-4 py-5 sm:px-8">
         <LogoWordmark nav />
         <OnboardingProgress
           activeQuestion={activeQuestion?.number ?? 1}
@@ -654,36 +654,41 @@ export function OnboardingWizard() {
         />
       </header>
 
-      <div className="grid flex-1 place-items-center px-5 py-8">
-        {activeQuestion ? renderQuestion(activeQuestion) : null}
+      <div className="grid flex-1 place-items-center px-4 py-8 sm:px-5">
+        {/* A key remonta a pergunta a cada troca: sem ela o React reaproveitava
+            a mesma <section> e a entrada animada so rodava na primeira. */}
+        {activeQuestion ? (
+          <Fragment key={activeQuestion.id}>{renderQuestion(activeQuestion)}</Fragment>
+        ) : null}
       </div>
 
-      <footer className="flex items-center justify-between gap-4 px-6 py-5 sm:px-8">
+      <footer className="onboarding-footer flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-4 sm:px-8 sm:py-5">
         <button
           type="button"
           onClick={goBack}
           disabled={currentIndex === 0 || isSaving}
-          className="rounded-md px-5 py-3 text-sm font-semibold text-[var(--color-ink-soft)] transition hover:bg-[var(--color-surface-soft)] hover:text-[var(--color-primary)] disabled:pointer-events-none disabled:opacity-40"
+          className="min-h-11 rounded-md px-3 py-3 text-sm font-semibold text-[var(--color-ink-soft)] transition hover:bg-[var(--color-surface-soft)] hover:text-[var(--color-primary)] disabled:pointer-events-none disabled:opacity-40 sm:px-5"
         >
           {t("authFlow.onboarding.back")}
         </button>
 
-        <div className="flex items-center gap-3">
+        <div className="ml-auto flex items-center gap-3">
           {activeQuestion && !activeQuestion.required ? (
             <button
               type="button"
               onClick={() => void handleSkip()}
               disabled={isSaving}
-              className="px-2 py-3 text-sm font-semibold text-[var(--color-ink-soft)] transition hover:text-[var(--color-primary)] disabled:opacity-60"
+              className="min-h-11 px-2 py-3 text-sm font-semibold text-[var(--color-ink-soft)] transition hover:text-[var(--color-primary)] disabled:opacity-60"
             >
               {t("authFlow.onboarding.skip")}
             </button>
           ) : null}
+          {/* Mesma acao principal das telas de cadastro (azul, 48px). */}
           <button
             type="button"
             onClick={() => void handleContinue()}
             disabled={isSaving}
-            className="btn-cta-hero px-5 py-3 text-sm disabled:cursor-not-allowed disabled:opacity-60"
+            className="button-solid button-lg disabled:cursor-not-allowed disabled:opacity-60"
           >
             {t(isSaving ? "authFlow.onboarding.saving" : "authFlow.onboarding.continue")}
           </button>
@@ -697,7 +702,7 @@ export function OnboardingWizard() {
       case "payoutCountry": {
         const regionNames = new Intl.DisplayNames(locale, { type: "region" });
         return (
-          <OnboardingQuestion number={question.number} title={t("onboarding.payoutCountryTitle")} lead={t("onboarding.payoutCountryHint")}>
+          <OnboardingQuestion number={question.number} total={questions.length} title={t("onboarding.payoutCountryTitle")} lead={t("onboarding.payoutCountryHint")}>
             <label htmlFor="onboarding-payout-country" className="block text-sm font-semibold text-[var(--color-ink)]">
               {t("connectOnboarding.countryLabel")}
             </label>
@@ -728,6 +733,7 @@ export function OnboardingWizard() {
         return (
           <OnboardingQuestion
             number={question.number}
+            total={questions.length}
             title={t("authFlow.onboarding.profileTitle")}
             lead={
               phoneRequired
@@ -767,6 +773,7 @@ export function OnboardingWizard() {
         return (
           <OnboardingQuestion
             number={question.number}
+            total={questions.length}
             title={t("authFlow.onboarding.pathTitle")}
             lead={t("authFlow.onboarding.pathLead")}
           >
@@ -793,6 +800,7 @@ export function OnboardingWizard() {
         return (
           <OnboardingQuestion
             number={question.number}
+            total={questions.length}
             title={t("authFlow.onboarding.professionTitle")}
             lead={t("authFlow.onboarding.professionLead")}
           >
@@ -811,6 +819,7 @@ export function OnboardingWizard() {
         return (
           <OnboardingQuestion
             number={question.number}
+            total={questions.length}
             title={t("authFlow.onboarding.discoveryTitle")}
           >
             <OptionGrid
@@ -828,6 +837,7 @@ export function OnboardingWizard() {
         return (
           <OnboardingQuestion
             number={question.number}
+            total={questions.length}
             title={t("authFlow.onboarding.sellingTitle")}
           >
             <div className="grid gap-4 sm:grid-cols-2">
@@ -856,6 +866,7 @@ export function OnboardingWizard() {
         return (
           <OnboardingQuestion
             number={question.number}
+            total={questions.length}
             title={t("authFlow.onboarding.revenueTitle")}
             lead={t("authFlow.onboarding.revenueLead")}
           >
@@ -864,18 +875,17 @@ export function OnboardingWizard() {
                 <button
                   key={option}
                   type="button"
+                  aria-pressed={answers.monthlyRevenue === option}
                   onClick={() =>
                     void updateAnswer({ ...answers, monthlyRevenue: option }, true)
                   }
                   className={[
-                    "flex items-center justify-between rounded-lg border-[1.5px] bg-white px-5 py-4 text-left text-sm font-semibold transition hover:bg-[var(--color-surface-soft)]",
-                    answers.monthlyRevenue === option
-                      ? "border-[var(--color-accent-fg)] text-[var(--color-primary)]"
-                      : "border-[var(--color-line)] text-[var(--color-ink)]",
+                    "flex items-center justify-between gap-4 px-5 py-4 text-sm font-semibold text-[var(--color-primary)]",
+                    choiceTone(answers.monthlyRevenue === option),
                   ].join(" ")}
                 >
                   {optionLabel(option)}
-                  <span className="size-5 rounded-full border border-[var(--color-line)]" />
+                  <SelectionDot selected={answers.monthlyRevenue === option} />
                 </button>
               ))}
             </div>
@@ -886,6 +896,7 @@ export function OnboardingWizard() {
         return (
           <OnboardingQuestion
             number={question.number}
+            total={questions.length}
             title={
               answers.path === "teacher"
                 ? t("authFlow.onboarding.teacherGoalTitle")
@@ -909,6 +920,7 @@ export function OnboardingWizard() {
         return (
           <OnboardingQuestion
             number={question.number}
+            total={questions.length}
             title={
               answers.path === "teacher"
                 ? t("authFlow.onboarding.teacherInstagramTitle")
@@ -937,6 +949,7 @@ export function OnboardingWizard() {
         return (
           <OnboardingQuestion
             number={question.number}
+            total={questions.length}
             title={t("authFlow.onboarding.audienceTitle")}
           >
             <div className="grid gap-2">
@@ -944,17 +957,17 @@ export function OnboardingWizard() {
                 <button
                   key={option}
                   type="button"
+                  aria-pressed={answers.audienceSize === option}
                   onClick={() =>
                     void updateAnswer({ ...answers, audienceSize: option }, true)
                   }
                   className={[
-                    "rounded-lg border-[1.5px] bg-white px-5 py-4 text-left text-sm font-semibold transition hover:bg-[var(--color-surface-soft)]",
-                    answers.audienceSize === option
-                      ? "border-[var(--color-accent-fg)] text-[var(--color-primary)]"
-                      : "border-[var(--color-line)] text-[var(--color-ink)]",
+                    "flex items-center justify-between gap-4 px-5 py-4 text-sm font-semibold text-[var(--color-primary)]",
+                    choiceTone(answers.audienceSize === option),
                   ].join(" ")}
                 >
                   {optionLabel(option)}
+                  <SelectionDot selected={answers.audienceSize === option} />
                 </button>
               ))}
             </div>
@@ -983,25 +996,23 @@ function PathCard({
   return (
     <button
       type="button"
+      aria-pressed={selected}
       onClick={onClick}
-      className={[
-        "group rounded-lg border-[1.5px] bg-white px-6 py-6 text-left transition duration-[200ms] hover:-translate-y-0.5 hover:border-[var(--color-accent-fg)] hover:shadow-[var(--shadow-strong)]",
-        selected
-          ? "border-[var(--color-accent-fg)] bg-[rgba(178,34,52,0.04)]"
-          : "border-[var(--color-line)]",
-      ].join(" ")}
+      className={["px-6 py-6", choiceTone(selected)].join(" ")}
     >
-      <span
-        className={[
-          "mb-5 grid size-12 place-items-center rounded-md bg-[var(--color-surface-strong)] transition",
-          selected
-            ? "text-[var(--color-accent-fg)]"
-            : "text-[var(--color-primary)] group-hover:text-[var(--color-accent-fg)]",
-        ].join(" ")}
-      >
-        <Icon aria-hidden="true" size={32} strokeWidth={1.6} />
+      <span className="mb-5 flex w-full items-start justify-between gap-4">
+        <span
+          className={[
+            "grid size-12 place-items-center rounded-md text-[var(--color-primary)]",
+            selected ? "bg-white" : "bg-[var(--color-surface-strong)]",
+          ].join(" ")}
+        >
+          <Icon aria-hidden="true" size={32} strokeWidth={1.6} />
+        </span>
+        <SelectionDot selected={selected} />
       </span>
-      <span className="display-title block text-[22px] font-semibold leading-none text-[var(--color-primary)]">
+      {/* Manrope como as outras respostas: o serifado fica so no titulo. */}
+      <span className="block text-base font-bold leading-tight text-[var(--color-primary)]">
         {title}
       </span>
       <span className="mt-3 block text-[13px] leading-6 text-[var(--color-ink-soft)]">
@@ -1025,21 +1036,49 @@ function LargeRadio({
   return (
     <button
       type="button"
+      aria-pressed={selected}
       onClick={onClick}
-      className={[
-        "rounded-lg border-[1.5px] bg-white p-5 text-left transition hover:-translate-y-0.5 hover:border-[var(--color-accent-fg)] hover:shadow-[var(--shadow-soft)]",
-        selected
-          ? "border-[var(--color-accent-fg)] bg-[rgba(178,34,52,0.04)]"
-          : "border-[var(--color-line)]",
-      ].join(" ")}
+      className={["flex items-start justify-between gap-4 p-5", choiceTone(selected)].join(" ")}
     >
-      <span className="block text-base font-bold text-[var(--color-primary)]">
-        {title}
+      <span>
+        <span className="block text-base font-bold text-[var(--color-primary)]">
+          {title}
+        </span>
+        <span className="mt-2 block text-[13px] leading-6 text-[var(--color-ink-soft)]">
+          {description}
+        </span>
       </span>
-      <span className="mt-2 block text-[13px] leading-6 text-[var(--color-ink-soft)]">
-        {description}
-      </span>
+      <SelectionDot selected={selected} />
     </button>
+  );
+}
+
+// Um so jeito de mostrar "marcado" nas respostas de escolha unica (cartoes e
+// linhas): antes cada pergunta tinha o seu — azul cheio, borda dourada, tom
+// rosado — e o circulo da receita nunca enchia. Borda e anel azuis, fundo
+// claro e o circulo com check. O hover so mexe na que nao esta marcada.
+function choiceTone(selected: boolean) {
+  return [
+    "rounded-lg border text-left transition duration-[var(--duration-base)]",
+    selected
+      ? "border-[var(--color-primary)] bg-[var(--color-surface-soft)] shadow-[inset_0_0_0_1px_var(--color-primary)]"
+      : "border-[var(--color-line)] bg-white hover:-translate-y-0.5 hover:border-[var(--color-line-strong)] hover:shadow-[var(--shadow-soft)]",
+  ].join(" ");
+}
+
+function SelectionDot({ selected }: { selected: boolean }) {
+  return selected ? (
+    <span
+      aria-hidden="true"
+      className="grid size-5 shrink-0 place-items-center rounded-full bg-[var(--color-primary)] text-white"
+    >
+      <Check size={12} strokeWidth={3} />
+    </span>
+  ) : (
+    <span
+      aria-hidden="true"
+      className="size-5 shrink-0 rounded-full border-[1.5px] border-[var(--color-field-border)]"
+    />
   );
 }
 
@@ -1057,7 +1096,9 @@ function OptionGrid({
   selected: string[];
 }) {
   return (
-    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+    // Os 8 temas (multi) tem nomes longos: em duas colunas no celular quebravam
+    // em 3 linhas. Uma coluna no celular, duas a partir do tablet.
+    <div className={multi ? "grid grid-cols-1 gap-2 sm:grid-cols-2" : "grid grid-cols-2 gap-2 sm:grid-cols-3"}>
       {options.map((option) => {
         const isSelected = selected.includes(option);
 
@@ -1065,6 +1106,7 @@ function OptionGrid({
           <button
             key={option}
             type="button"
+            aria-pressed={isSelected}
             onClick={() => onSelect(option)}
             className={[
               // O hover claro so vale para a opcao nao marcada: na marcada ele

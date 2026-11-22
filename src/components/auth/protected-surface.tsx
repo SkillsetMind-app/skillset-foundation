@@ -78,12 +78,22 @@ export function ProtectedSurface({ permissions, contactWhenSignedOut = false, ch
   }
 
   if (!hasAnyPermission({ roles: user.roles }, permissions)) {
+    // Barrado na area de ensino = professor que pulou a ativacao. Sem o
+    // ?path=teacher, /onboarding abria o cadastro antigo de 3 passos, com
+    // "aprender" marcado, no lugar da ativacao de um passo que ele pulou.
+    const teacherArea =
+      permissions.some((permission) => permission.startsWith("teacherStudio."))
+      || pathname === "/teach"
+      || pathname.startsWith("/teach/");
     return (
       <AccessPanel
         eyebrow={t("auth.guard.limitedEyebrow")}
         title={t("auth.guard.limitedTitle")}
         description={t("auth.guard.limitedDescription")}
-        cta={{ href: "/onboarding", label: t("auth.guard.updateOnboarding") }}
+        cta={{
+          href: teacherArea ? "/onboarding?path=teacher" : "/onboarding",
+          label: t("auth.guard.updateOnboarding"),
+        }}
         secondary={{ href: "/contact", label: t("auth.guard.contactSupport") }}
       />
     );

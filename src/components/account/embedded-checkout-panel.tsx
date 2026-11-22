@@ -217,7 +217,10 @@ export function EmbeddedCheckoutPanel({
         )}
       </div>
 
-      <aside className="h-fit rounded-lg border fine-rule bg-white p-5 shadow-[var(--shadow-soft)]">
+      {/* Abaixo de 1024px a grade vira uma coluna: o resumo (o que se compra,
+          preco, teste gratis e renovacao) vem antes do cartao do Stripe, nao
+          depois do botao de pagar. No computador fica na coluna da direita. */}
+      <aside className="order-first h-fit rounded-lg border fine-rule bg-white p-5 shadow-[var(--shadow-soft)] lg:order-none">
         <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
           {t("billingCheckout.subscribing")}
         </p>

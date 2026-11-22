@@ -386,6 +386,79 @@ describe("boas-vindas: o professor tambem diz onde nos conheceu", () => {
   });
 });
 
+// O-07/O-08/O-21: o total da entrevista aparece e e anunciado; cada pergunta
+// remonta (a entrada animada roda em todas); Enter num botao e do botao e Esc
+// nao volta uma pergunta.
+describe("boas-vindas: progresso, troca de pergunta e teclado", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.searchParams = new URLSearchParams("path=teacher");
+    mocks.profile = {
+      displayName: "Patrick Simon",
+      phoneNumber: "+1 555 123 4567",
+      onboardingAnswers: { profileConfirmed: true, path: "teacher" },
+    };
+    mocks.getUserProfile.mockImplementation(() => Promise.resolve(mocks.profile));
+    mocks.updateOnboardingAnswers.mockResolvedValue(undefined);
+    mocks.updateUserIdentity.mockResolvedValue(undefined);
+  });
+
+  afterEach(cleanup);
+
+  it("mostra 'Question 2 of 8' e expoe a barra de progresso", async () => {
+    render(<OnboardingWizard />);
+    await screen.findByText("What best describes your work?");
+
+    expect(screen.getByText("Question 2 of 8")).toBeInTheDocument();
+    const bar = screen.getByRole("progressbar", { name: "Question 2 of 8" });
+    expect(bar).toHaveAttribute("aria-valuenow", "2");
+    expect(bar).toHaveAttribute("aria-valuemax", "8");
+  });
+
+  it("cada pergunta nova e um elemento novo (a entrada roda de novo)", async () => {
+    const view = render(<OnboardingWizard />);
+    await screen.findByText("What best describes your work?");
+    const first = view.container.querySelector(".welcome-question");
+
+    fireEvent.click(screen.getByRole("button", { name: "Coach" }));
+    await screen.findByText("What kind of program will you publish?");
+
+    expect(view.container.querySelector(".welcome-question")).not.toBe(first);
+    expect(screen.getByText("Question 3 of 8")).toBeInTheDocument();
+  });
+
+  it("Enter numa opcao nao tenta seguir e Esc nao volta", async () => {
+    render(<OnboardingWizard />);
+    const coach = await screen.findByRole("button", { name: "Coach" });
+
+    fireEvent.keyDown(coach, { key: "Enter" });
+    expect(screen.queryByText("Answer this question before continuing.")).toBeNull();
+
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(screen.getByText("What best describes your work?")).toBeInTheDocument();
+    expect(screen.queryByText("How will you use SkillsetMind first?")).toBeNull();
+  });
+
+  it("Enter num campo de texto continua seguindo em frente", async () => {
+    mocks.profile = { displayName: "Patrick Simon", phoneNumber: null, onboardingAnswers: {} };
+    render(<OnboardingWizard />);
+    const phone = await screen.findByLabelText("Phone");
+
+    fireEvent.keyDown(phone, { key: "Enter" });
+    expect(await screen.findByText(/Enter a phone number/)).toBeInTheDocument();
+  });
+
+  it("a resposta marcada fica marcada para o leitor de tela", async () => {
+    mocks.profile.onboardingAnswers = { profileConfirmed: true, path: "teacher", profession: "Coach" };
+    render(<OnboardingWizard />);
+    await screen.findByText("What kind of program will you publish?");
+    fireEvent.click(screen.getByRole("button", { name: "Back" }));
+
+    expect(await screen.findByRole("button", { name: "Coach" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "Facilitator" })).toHaveAttribute("aria-pressed", "false");
+  });
+});
+
 describe("boas-vindas: retoma o checkout depois de perder a sessão", () => {
   const checkout = "/courses/focus/checkout?offer=LAUNCH&priceId=price-1";
 

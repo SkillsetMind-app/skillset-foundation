@@ -1,7 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState, type FormEvent } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useLayoutEffect,
+  useState,
+  type FormEvent,
+} from "react";
 
 import {
   TurnstileWidget,
@@ -33,6 +40,11 @@ function useResendCooldown() {
   return [cooldown, () => setCooldown(RESEND_COOLDOWN_SECONDS)] as const;
 }
 
+// O titulo grande da pagina (/auth) seguia "Crie sua conta" em cima da porta de
+// confirmar. A porta avisa a pagina enquanto esta na tela, e a pagina troca o
+// titulo por "Check your email". Sem provedor (porta solta), nao faz nada.
+export const ConfirmGateContext = createContext<((open: boolean) => void) | null>(null);
+
 // A porta "confirme seu e-mail", logo depois de criar a conta (e tambem quando
 // alguem tenta entrar sem ter confirmado).
 //
@@ -57,6 +69,14 @@ export function ConfirmEmailGate({
   onChangeEmail?: () => void;
 }) {
   const { t } = useTranslation();
+  const setGateOpen = useContext(ConfirmGateContext);
+  // Antes da pintura, para o titulo antigo nao piscar sobre a porta. A porta
+  // so existe no cliente (depois de criar a conta ou de um login sem
+  // confirmar), entao o layout effect nunca roda no servidor.
+  useLayoutEffect(() => {
+    setGateOpen?.(true);
+    return () => setGateOpen?.(false);
+  }, [setGateOpen]);
   const [cooldown, startCooldown] = useResendCooldown();
   const [isSending, setIsSending] = useState(false);
   const [sent, setSent] = useState(false);
@@ -136,28 +156,36 @@ export function ConfirmEmailGate({
     }
   }
 
+  // Sem aria-live na secao inteira: o leitor de tela lia "Resend in 59s...
+  // 58s..." a cada segundo durante um minuto. So o "enviado de novo" e a
+  // espera sao anunciados. A instrucao e o titulo da pagina ("Check your
+  // email"); "Resend" deixou de ser o botao cheio, porque nao e o proximo passo.
   return (
-    <section
-      className="mt-5 grid gap-3 rounded-lg border border-[var(--color-line)] bg-[var(--color-surface-soft)] px-5 py-6"
-      aria-live="polite"
-    >
-      <h2 className="text-lg font-semibold text-[var(--color-ink)]">
-        {t("auth.signup.confirmTitle")}
-      </h2>
+    <section className="mt-5 grid gap-4">
       <p className="text-sm leading-6 text-[var(--color-ink-soft)]">
         {t("auth.signup.confirmSentTo")}{" "}
         <strong className="font-semibold text-[var(--color-ink)]">{email}</strong>.{" "}
         {t("auth.signup.confirmBody")}
       </p>
+      <p
+        role="status"
+        className="flex items-center gap-2.5 rounded-md bg-[var(--color-surface-soft)] px-3.5 py-3 text-sm font-semibold leading-5 text-[var(--color-ink)]"
+      >
+        <span
+          aria-hidden="true"
+          className="size-4 shrink-0 rounded-full border-2 border-[rgba(26,54,93,0.18)] border-t-[var(--color-primary)] motion-safe:animate-spin"
+        />
+        {t("auth.signup.confirmWaiting")}
+      </p>
 
       <TurnstileWidget onToken={setCaptchaToken} resetSignal={captchaResetSignal} />
 
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="grid gap-1">
         <button
           type="button"
           onClick={() => void handleResend()}
           disabled={isSending || cooldown > 0 || captchaPending}
-          className="min-h-11 rounded-md bg-[var(--color-primary)] px-4 py-2.5 text-sm font-semibold text-[var(--color-base)] disabled:opacity-60"
+          className="button-outline w-full disabled:opacity-60"
         >
           {cooldown > 0
             ? t("auth.signup.confirmResendIn").replace("{seconds}", String(cooldown))
@@ -169,7 +197,7 @@ export function ConfirmEmailGate({
           <button
             type="button"
             onClick={onChangeEmail}
-            className="min-h-11 rounded-md border border-[var(--color-line)] bg-white px-4 py-2.5 text-sm font-semibold text-[var(--color-ink)]"
+            className="min-h-11 rounded-md px-4 text-sm font-semibold text-[var(--color-primary)] underline-offset-4 hover:underline"
           >
             {t("auth.signup.confirmChangeEmail")}
           </button>
@@ -177,7 +205,7 @@ export function ConfirmEmailGate({
       </div>
 
       {sent ? (
-        <p className="text-xs font-semibold text-[var(--color-primary)]">{t("auth.signup.confirmResent")}</p>
+        <p role="status" className="text-sm font-semibold text-[var(--color-primary)]">{t("auth.signup.confirmResent")}</p>
       ) : null}
       {error ? (
         <p role="alert" className="text-xs font-semibold text-[var(--color-danger-fg)]">

@@ -279,8 +279,8 @@ describe("auth flow follows the selected language without resetting state", () =
     mocks.searchParams = new URLSearchParams("path=teacher");
     renderSpanish(<OnboardingWizard />);
     expect(await screen.findByRole("heading", { name: "Primero, cuéntanos quién eres." })).toBeInTheDocument();
-    expect(screen.getByText("Pregunta 01")).toBeInTheDocument();
-    expect(screen.getByLabelText("Pregunta 1 de 8")).toBeInTheDocument();
+    expect(screen.getByText("Pregunta 1 de 8")).toBeInTheDocument();
+    expect(screen.getByRole("progressbar", { name: "Pregunta 1 de 8" })).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText("Nombre completo"), { target: { value: "Alex Edited" } });
     fireEvent.change(screen.getByLabelText("Teléfono"), { target: { value: "12" } });
     fireEvent.click(screen.getByRole("button", { name: "Continuar" }));
