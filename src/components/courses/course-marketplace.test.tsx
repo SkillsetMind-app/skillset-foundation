@@ -1,12 +1,18 @@
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { getDictionary, translate } from "@/lib/i18n/dictionaries";
 import type { TeacherCourse } from "@/domain/teacher-course";
 import { CourseMarketplace } from "./course-marketplace";
 
-const state = vi.hoisted(() => ({ locale: "en" as "en" | "es", query: new URLSearchParams("cat=Performance&q=focus&offer=SPRING"), replace: vi.fn(), subscribe: vi.fn() }));
+const state = vi.hoisted(() => ({
+  locale: "en" as "en" | "es", query: new URLSearchParams("cat=Performance&q=focus&offer=SPRING"), replace: vi.fn(), subscribe: vi.fn(),
+  auth: { status: "unauthenticated", user: null } as { status: string; user: { uid: string } | null },
+  wishlist: vi.fn(), toggle: vi.fn(),
+}));
 vi.mock("@/components/i18n/i18n-provider", () => ({ useTranslation: () => ({ locale: state.locale, t: (key: string) => translate(getDictionary(state.locale), key) }) }));
-vi.mock("@/components/auth/auth-provider", () => ({ useAuth: () => ({ status: "unauthenticated", user: null }) }));
+vi.mock("@/components/auth/auth-provider", () => ({ useAuth: () => state.auth }));
+vi.mock("@/lib/data/wishlist", () => ({ subscribeToUserWishlistCourseIds: state.wishlist, toggleWishlistCourse: state.toggle }));
+vi.mock("@/lib/data/enrollments", () => ({ subscribeToUserEnrollments: () => () => {} }));
 vi.mock("next/navigation", () => ({ usePathname: () => "/courses", useSearchParams: () => state.query, useRouter: () => ({ replace: state.replace }) }));
 vi.mock("@/lib/supabase/config", () => ({ getSupabaseClientConfig: () => ({}) }));
 vi.mock("@/components/courses/use-instructor-names", () => ({ useInstructorNames: () => new Map() }));
@@ -16,6 +22,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   state.locale = "en";
   state.query = new URLSearchParams("cat=Performance&q=focus&offer=SPRING");
+  state.auth = { status: "unauthenticated", user: null };
 });
 afterEach(cleanup);
 
@@ -122,6 +129,68 @@ it("a falha ao carregar a lista é anunciada ao leitor de tela", () => {
   render(<CourseMarketplace />);
 
   expect(screen.getByRole("alert")).toHaveTextContent(translate(getDictionary("en"), "publicCourses.loadCoursesError"));
+});
+
+// A falha era um beco ("Refresh the page"): agora "Try again" relê pela mesma
+// inscrição, e o vazio "Marketplace opening soon" não aparece junto do erro.
+it("a falha da lista oferece Try again, que relê sem reinscrever e só tira o aviso quando os cursos chegam", async () => {
+  state.query = new URLSearchParams("");
+  let next: (courses: TeacherCourse[]) => void = () => {};
+  let finish: () => void = () => {};
+  const reload = vi.fn(() => new Promise<void>((resolve) => { finish = resolve; }));
+  state.subscribe.mockImplementation((onData: (courses: TeacherCourse[]) => void, onError: () => void) => {
+    next = onData;
+    onError();
+    return Object.assign(() => {}, { reload });
+  });
+  render(<CourseMarketplace />);
+
+  expect(screen.getByRole("alert")).toHaveTextContent("Courses could not load right now.");
+  expect(screen.queryByText("Marketplace opening soon")).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+  expect(reload).toHaveBeenCalledTimes(1);
+  expect(state.subscribe).toHaveBeenCalledTimes(1);
+  // Travado enquanto lê; o aviso fica até a resposta.
+  const busy = screen.getByRole("button", { name: "Trying again..." });
+  expect(busy).toBeDisabled();
+  expect(busy).toHaveAttribute("aria-busy", "true");
+  expect(screen.getByRole("alert")).toBeInTheDocument();
+
+  await act(async () => {
+    next([{ id: "focus", ownerId: "teacher", title: "Deep focus", summary: "", category: "Performance", status: "published", modules: [], lessonCount: 3, priceAmountMinor: 9900, currency: "USD" }]);
+    finish();
+  });
+  expect(await screen.findByRole("link", { name: "Deep focus" })).toBeInTheDocument();
+  expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  // O botão sumiu: o foco ficou na seção do catálogo, não no <body>.
+  expect(document.activeElement).toHaveClass("marketplace-section");
+});
+
+// Salvar um favorito limpava o MESMO aviso: a falha de ler os favoritos sumia
+// com o "Try again", sem os favoritos terem chegado.
+it("a falha ao salvar um favorito não apaga a falha de ler os favoritos, nem o Try again dela", async () => {
+  state.query = new URLSearchParams("");
+  state.auth = { status: "authenticated", user: { uid: "u-1" } };
+  state.subscribe.mockImplementation((next: (courses: TeacherCourse[]) => void) => {
+    next([{ id: "focus", ownerId: "teacher", title: "Deep focus", summary: "", category: "Performance", status: "published", modules: [], lessonCount: 3, priceAmountMinor: 9900, currency: "USD" }]);
+    return Object.assign(() => {}, { reload: vi.fn(async () => undefined) });
+  });
+  const reload = vi.fn(async () => undefined);
+  state.wishlist.mockImplementation((_uid: string, _next: unknown, onError: (error: Error) => void) => {
+    onError(new Error("offline"));
+    return Object.assign(() => {}, { reload });
+  });
+  state.toggle.mockRejectedValue(new Error("offline"));
+  render(<CourseMarketplace />);
+
+  expect(screen.getByText("Your wishlist could not load right now.")).toBeInTheDocument();
+  await act(async () => fireEvent.click(screen.getByRole("button", { name: "Save Deep focus to wishlist" })));
+  expect(screen.getByText("Could not update your saved courses. Please try again.")).toBeInTheDocument();
+  expect(screen.getByText("Your wishlist could not load right now.")).toBeInTheDocument();
+
+  fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+  expect(reload).toHaveBeenCalledTimes(1);
+  expect(state.wishlist).toHaveBeenCalledTimes(1);
 });
 
 // No celular, cabeçalho e filtros abertos davam uns 800px antes do primeiro

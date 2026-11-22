@@ -10,6 +10,9 @@ import type { CourseAsset } from "@/domain/course-asset";
 import { subscribeToCourseAssets } from "@/lib/data/course-assets";
 import { recordLessonProgress, subscribeToCompletedLessons } from "@/lib/data/lesson-progress";
 
+// As inscricoes devolvem a funcao de desligar com `reload` (o "Try again").
+const unsubscribable = () => Object.assign(vi.fn(), { reload: vi.fn(async () => undefined) });
+
 /**
  * P2/P4 da paridade com a Hotmart (§4.2 e §4.3 do relatorio de 2026-09-06):
  *   - anterior / proxima junto do titulo da aula, uma vez so, sem burlar o
@@ -423,7 +426,7 @@ describe("hero da home do curso", () => {
     let emit!: (lessonIds: string[]) => void;
     vi.mocked(subscribeToCompletedLessons).mockImplementationOnce((_id, onNext) => {
       emit = onNext;
-      return vi.fn();
+      return unsubscribable();
     });
     renderClassroom("lesson=l2", [], { tab: "about" });
 

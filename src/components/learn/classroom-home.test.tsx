@@ -9,9 +9,12 @@ import type { CourseAsset } from "@/domain/course-asset";
 import { subscribeToCourseAssets, getProtectedCourseAssetObjectUrl } from "@/lib/data/course-assets";
 import { countOpenCommunityQuestions } from "@/lib/data/community-posts";
 import { subscribeToCourseEvents } from "@/lib/data/course-events";
-import { recordLessonProgress } from "@/lib/data/lesson-progress";
+import { recordLessonProgress, subscribeToCompletedLessons } from "@/lib/data/lesson-progress";
 import { subscribeToEnrollment } from "@/lib/data/enrollments";
 import { subscribeToLessonContent } from "@/lib/data/lesson-content";
+
+// As inscricoes devolvem a funcao de desligar com `reload` (o "Try again").
+const unsubscribable = () => Object.assign(vi.fn(), { reload: vi.fn(async () => undefined) });
 
 /**
  * Reanalise item 8, renderizado de verdade (matricula real, nao preview):
@@ -249,7 +252,7 @@ describe("sala de aula com matricula real", () => {
     vi.mocked(subscribeToEnrollment).mockClear();
     vi.mocked(subscribeToEnrollment).mockImplementationOnce((_uid, _slug, _next, onError) => {
       fail = onError;
-      return vi.fn();
+      return unsubscribable();
     });
     render(<I18nProvider initialLocale="en"><ChangeLanguage /><EnrolledCourseWorkspace course={course} /></I18nProvider>);
     expect(screen.getByRole("status")).toHaveTextContent("Loading course...");
@@ -264,11 +267,116 @@ describe("sala de aula com matricula real", () => {
     expect(recordLessonProgress).not.toHaveBeenCalled();
   });
 
+  // O cartão de erro era um beco (só os links para fora): "Try again" relê a
+  // matrícula pelo mesmo canal e a sala abre, com o foco no título dela.
+  it("a falha da matrícula oferece Try again, que relê sem reinscrever e abre a sala", async () => {
+    mocks.searchParams = new URLSearchParams("lesson=l1");
+    mocks.completed = [];
+    let deliver!: Parameters<typeof subscribeToEnrollment>[2];
+    const reload = vi.fn(async () => deliver({
+      id: "enr-1", userId: "student-1", courseId: "course-1", courseSlug: "demo-course",
+      courseTitle: "Demo course", courseCategory: "Leadership", courseImage: "",
+      status: "active", source: "admin", progressPercent: 0, lastLessonId: null,
+    }));
+    vi.mocked(subscribeToEnrollment).mockClear();
+    vi.mocked(subscribeToEnrollment).mockImplementationOnce((_uid, _slug, next, onError) => {
+      deliver = next;
+      onError(new Error("down"));
+      return Object.assign(vi.fn(), { reload });
+    });
+    render(<I18nProvider initialLocale="en"><EnrolledCourseWorkspace course={course} /></I18nProvider>);
+    expect(screen.getByRole("alert")).toHaveTextContent("We could not confirm your enrollment for this course.");
+    expect(screen.getByRole("link", { name: "Back to my learning" })).toBeInTheDocument();
+
+    await act(async () => fireEvent.click(screen.getByRole("button", { name: "Try again" })));
+    expect(reload).toHaveBeenCalledTimes(1);
+    expect(subscribeToEnrollment).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(screen.getByText("One")).toBeInTheDocument();
+    expect(document.activeElement?.tagName).toBe("H1");
+  });
+
+  // Uma falha por leitura: a sala nunca abre com o progresso vazio ou sem os
+  // materiais que a leitura que falhou deixou no lugar.
+  function failProgressAndAssets() {
+    type Read<T> = { next: (value: T) => void; fail: (error: Error) => void; reload: () => Promise<void> };
+    const progress: Read<string[]> = { next: () => {}, fail: () => {}, reload: vi.fn(async () => undefined) };
+    const assets: Read<CourseAsset[]> = { next: () => {}, fail: () => {}, reload: vi.fn(async () => undefined) };
+    vi.mocked(subscribeToCompletedLessons).mockImplementationOnce((_id, next, fail) => {
+      Object.assign(progress, { next, fail });
+      return Object.assign(vi.fn(), { reload: progress.reload });
+    });
+    vi.mocked(subscribeToCourseAssets).mockImplementationOnce((_id, next, fail) => {
+      Object.assign(assets, { next, fail });
+      return Object.assign(vi.fn(), { reload: assets.reload });
+    });
+    mocks.searchParams = new URLSearchParams("lesson=l1");
+    mocks.completed = [];
+    render(<I18nProvider initialLocale="en"><EnrolledCourseWorkspace course={course} enableFirestoreAssets /></I18nProvider>);
+    return { progress, assets };
+  }
+
+  it.each(["progress", "assets"] as const)("a falha de %s primeiro e depois a outra: o cartão fica até as duas voltarem, e o Try again relê as duas", async (first) => {
+    const { progress, assets } = failProgressAndAssets();
+    act(() => {
+      if (first === "progress") {
+        progress.fail(new Error("down"));
+        assets.fail(new Error("down"));
+      } else {
+        assets.fail(new Error("down"));
+        progress.fail(new Error("down"));
+      }
+    });
+    expect(screen.getByRole("alert")).toBeInTheDocument();
+
+    await act(async () => fireEvent.click(screen.getByRole("button", { name: "Try again" })));
+    expect(progress.reload).toHaveBeenCalledTimes(1);
+    expect(assets.reload).toHaveBeenCalledTimes(1);
+
+    // Só a primeira que falhou voltou: a sala segue fechada.
+    act(() => (first === "progress" ? progress.next(["l1"]) : assets.next([])));
+    expect(screen.getByRole("alert")).toBeInTheDocument();
+    expect(screen.queryByText("One")).not.toBeInTheDocument();
+
+    act(() => (first === "progress" ? assets.next([]) : progress.next(["l1"])));
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(screen.getByText("One")).toBeInTheDocument();
+    expect(document.activeElement?.tagName).toBe("H1");
+  });
+
+  it("uma releitura boa dos materiais pelo canal, sem clique, não abre a sala com o progresso que falhou", () => {
+    const { progress, assets } = failProgressAndAssets();
+    act(() => {
+      progress.fail(new Error("down"));
+      assets.fail(new Error("down"));
+    });
+    // O canal dos materiais relê sozinho e dá certo: o progresso segue falhando.
+    act(() => assets.next([]));
+    expect(screen.getByRole("alert")).toHaveTextContent("We could not load lesson progress for this course.");
+    expect(screen.queryByText("One")).not.toBeInTheDocument();
+    expect(progress.reload).not.toHaveBeenCalled();
+  });
+
+  it("um Try again que falha de novo desarma o foco: a leitura boa que vem depois não o puxa", async () => {
+    const { progress, assets } = failProgressAndAssets();
+    act(() => {
+      assets.next([]);
+      progress.fail(new Error("down"));
+    });
+    await act(async () => fireEvent.click(screen.getByRole("button", { name: "Try again" })));
+    act(() => progress.fail(new Error("still down")));
+    expect(screen.getByRole("alert")).toBeInTheDocument();
+
+    act(() => progress.next(["l1"]));
+    expect(screen.getByText("One")).toBeInTheDocument();
+    expect(document.activeElement?.tagName).not.toBe("H1");
+  });
+
   it("whitelabel: the enrollment error does not link to our public course page", () => {
     mocks.searchParams = new URLSearchParams();
     vi.mocked(subscribeToEnrollment).mockImplementationOnce((_uid, _slug, _next, onError) => {
       onError(new Error("down"));
-      return vi.fn();
+      return unsubscribable();
     });
     render(<EnrolledCourseWorkspace course={course} whitelabel />);
     expect(screen.getByText("We could not confirm your enrollment for this course.")).toBeInTheDocument();
@@ -438,7 +546,7 @@ describe("sala de aula com matricula real", () => {
     };
     vi.mocked(subscribeToCourseEvents).mockImplementationOnce((_courseId, onData) => {
       onData([liveEvent(new Date(Date.now() + 60 * 60 * 1000).toISOString())]);
-      return () => undefined;
+      return unsubscribable();
     });
     render(<I18nProvider initialLocale="es"><EnrolledCourseWorkspace course={localizedCourse} enableFirestoreAssets /></I18nProvider>);
     const tabs = screen.getByRole("navigation", { name: "Secciones del curso" });
@@ -629,7 +737,7 @@ describe("sala de aula com matricula real", () => {
     vi.mocked(subscribeToCourseAssets).mockClear();
     vi.mocked(subscribeToEnrollment).mockImplementationOnce((_uid, _slug, onNext) => {
       onNext(null);
-      return vi.fn();
+      return unsubscribable();
     });
     render(<I18nProvider initialLocale="en"><EnrolledCourseWorkspace course={course} enableFirestoreAssets /></I18nProvider>);
     expect(screen.queryByRole("navigation", { name: "Modules" })).not.toBeInTheDocument();
@@ -801,7 +909,7 @@ describe("abas da sala com endereco proprio", () => {
   it("sem sessao ao vivo marcada, a aba 'Live sessions' nao aparece", () => {
     vi.mocked(subscribeToCourseEvents).mockImplementationOnce((_courseId, onData) => {
       onData([liveEvent(new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString())]);
-      return () => undefined;
+      return unsubscribable();
     });
     renderClassroom("lesson=l2");
 
@@ -812,7 +920,7 @@ describe("abas da sala com endereco proprio", () => {
   it("com sessao marcada, a aba se chama 'Live sessions' e mostra a sessao", () => {
     vi.mocked(subscribeToCourseEvents).mockImplementation((_courseId, onData) => {
       onData([liveEvent(new Date(Date.now() + 60 * 60 * 1000).toISOString())]);
-      return () => undefined;
+      return unsubscribable();
     });
     try {
       const { unmount } = renderClassroom("lesson=l2");
@@ -826,7 +934,7 @@ describe("abas da sala com endereco proprio", () => {
       renderClassroom("lesson=l2", [], "lives");
       expect(screen.getByText("Live Q&A")).toBeInTheDocument();
     } finally {
-      vi.mocked(subscribeToCourseEvents).mockImplementation(() => vi.fn());
+      vi.mocked(subscribeToCourseEvents).mockImplementation(() => unsubscribable());
     }
   });
 
@@ -834,7 +942,7 @@ describe("abas da sala com endereco proprio", () => {
     let emit!: (events: ReturnType<typeof liveEvent>[]) => void;
     vi.mocked(subscribeToCourseEvents).mockImplementationOnce((_courseId, onData) => {
       emit = onData;
-      return () => undefined;
+      return unsubscribable();
     });
     renderClassroom("lesson=l2", [], "lives");
 
@@ -952,7 +1060,7 @@ describe("o contador de perguntas abertas na aba Community", () => {
         externalUrl: "https://meet.example.com/live",
         recordingAssetId: null,
       }]);
-      return () => undefined;
+      return unsubscribable();
     });
     mocks.searchParams = new URLSearchParams("lesson=l1");
     mocks.pathname = "/learn/courses/demo-course/lives";

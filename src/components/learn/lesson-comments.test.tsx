@@ -43,6 +43,8 @@ const mocks = vi.hoisted(() => ({
   enrollmentSubscriptions: 0,
   postSubscriptions: 0,
   postsCallback: null as null | ((posts: CommunityPost[]) => void),
+  postsError: null as null | ((error: Error) => void),
+  postsReload: vi.fn(async () => undefined),
   commentsCallback: null as null | ((comments: CommunityComment[]) => void),
 }));
 
@@ -119,13 +121,14 @@ vi.mock("@/lib/data/course-assets", () => ({
 vi.mock("@/lib/data/community-posts", () => ({
   countOpenCommunityQuestions: vi.fn(() => new Promise<number>(() => {})),
   subscribeToCommunityPosts: vi.fn(
-    (_slug: string, onNext: (posts: CommunityPost[]) => void) => {
+    (_slug: string, onNext: (posts: CommunityPost[]) => void, onError: (error: Error) => void) => {
       mocks.postSubscriptions += 1;
       if (mocks.postSubscriptions > 20) {
         throw new Error("subscribeToCommunityPosts chamado mais de 20 vezes: laco de render");
       }
       mocks.postsCallback = onNext;
-      return vi.fn();
+      mocks.postsError = onError;
+      return Object.assign(vi.fn(), { reload: mocks.postsReload });
     },
   ),
   subscribeToCourseCommunityComments: vi.fn(
@@ -264,6 +267,8 @@ beforeEach(() => {
   mocks.enrollmentSubscriptions = 0;
   mocks.postSubscriptions = 0;
   mocks.postsCallback = null;
+  mocks.postsError = null;
+  mocks.postsReload.mockClear();
   mocks.commentsCallback = null;
   vi.mocked(recordLessonProgress).mockClear();
   vi.mocked(countOpenCommunityQuestions).mockClear();
@@ -275,6 +280,31 @@ beforeEach(() => {
     cb(0);
     return 0;
   };
+});
+
+describe("comentarios da aula: erro de leitura", () => {
+  // A falha era um beco ("We could not load community posts." e o vazio
+  // embaixo): agora "Try again" rele pelo mesmo canal.
+  it("a falha oferece Try again, sem o vazio, e os comentarios chegam sem reinscrever", () => {
+    renderClassroom("lesson=l1");
+    act(() => mocks.postsError?.(new Error("offline")));
+
+    const region = screen.getByRole("region", { name: "Lesson comments" });
+    expect(within(region).getByRole("alert")).toHaveTextContent("We could not load community posts.");
+    expect(within(region).queryByText("Loading lesson comments...")).not.toBeInTheDocument();
+    expect(within(region).queryByText(/No comments on this lesson yet/i)).not.toBeInTheDocument();
+
+    fireEvent.click(within(region).getByRole("button", { name: "Try again" }));
+    expect(mocks.postsReload).toHaveBeenCalledTimes(1);
+    expect(subscribeToCommunityPosts).toHaveBeenCalledTimes(1);
+
+    deliverFeed();
+    const loaded = screen.getByRole("region", { name: "Lesson comments · 1" });
+    expect(within(loaded).queryByRole("alert")).not.toBeInTheDocument();
+    expect(within(loaded).getByText("Carla Souza")).toBeInTheDocument();
+    // O botao sumiu: o foco ficou na secao, nao no <body>.
+    expect(loaded).toHaveFocus();
+  });
 });
 
 describe("comentarios da aula sob o player", () => {

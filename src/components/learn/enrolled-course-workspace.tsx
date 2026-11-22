@@ -45,6 +45,7 @@ import {
 import { ProtectedAssetPreview } from "@/components/shared/protected-asset-preview";
 import { MilestoneSeal, useJustDone } from "@/components/ui/drawn-check";
 import { InlineAlert } from "@/components/ui/inline-alert";
+import { LoadErrorAlert } from "@/components/ui/load-error-alert";
 import type { CourseAsset } from "@/domain/course-asset";
 import {
   formatCourseAssetSize,
@@ -304,7 +305,22 @@ export function EnrolledCourseWorkspace({
     key: null,
     ready: false,
   });
-  const [error, setError] = useState("");
+  // Uma falha por leitura. O cartão de erro fica enquanto QUALQUER uma estiver
+  // falhando: a sala nunca abre com o progresso vazio ou sem materiais que a
+  // leitura que falhou deixou no lugar. Cada leitura boa tira só a própria
+  // falha; o "Try again" relê todas as que falharam, pelos mesmos canais.
+  // Progresso e materiais guardam DE QUEM falhou (a matrícula, o curso): a
+  // falha de uma inscrição que já acabou não prende o cartão.
+  const [failedReads, setFailedReads] = useState<{
+    enrollment: boolean;
+    progress: string | null;
+    assets: string | null;
+  }>({ enrollment: false, progress: null, assets: null });
+  const enrollmentSubscription = useRef<ReloadableSubscription | null>(null);
+  const progressSubscription = useRef<ReloadableSubscription | null>(null);
+  const errorCardRef = useRef<HTMLElement>(null);
+  const roomRef = useRef<HTMLDivElement>(null);
+  const focusRoomAfterRetry = useRef(false);
   // Erro de uma AÇÃO (concluir/desfazer aula): aviso dentro do player, a sala
   // fica. `error` acima é de carga e troca a sala inteira pelo cartão de erro —
   // uma falha momentânea ao salvar tirava o aluno da aula.
@@ -409,21 +425,28 @@ export function EnrolledCourseWorkspace({
       return;
     }
 
-    return subscribeToEnrollment(
+    const current = subscribeToEnrollment(
       user.uid,
       course.slug,
       (nextEnrollment) => {
         setEnrollment(nextEnrollment);
+        setFailedReads((reads) => (reads.enrollment ? { ...reads, enrollment: false } : reads));
         setIsLoading(false);
         // Matrícula que chega depois da montagem (checkout): o relógio da
         // montagem ficou para trás e a aula 1 apareceria fechada.
         setClockNow(Date.now());
       },
       () => {
-        setError("learn.classroom.workspace.enrollmentError");
+        focusRoomAfterRetry.current = false;
+        setFailedReads((reads) => ({ ...reads, enrollment: true }));
         setIsLoading(false);
       },
     );
+    enrollmentSubscription.current = current;
+    return () => {
+      enrollmentSubscription.current = null;
+      current();
+    };
   }, [course.slug, enrollmentRecheck, hasParentEnrollment, previewMode, user]);
 
   useEffect(() => {
@@ -431,7 +454,7 @@ export function EnrolledCourseWorkspace({
       return;
     }
 
-    return subscribeToCompletedLessons(
+    const current = subscribeToCompletedLessons(
       enrollmentId,
       (lessonIds) => {
         setProgressState({
@@ -439,10 +462,12 @@ export function EnrolledCourseWorkspace({
           lessonIds,
           ready: true,
         });
+        setFailedReads((reads) => (reads.progress === enrollmentId ? { ...reads, progress: null } : reads));
         setClockNow(Date.now());
       },
       () => {
-        setError("learn.classroom.workspace.progressLoadError");
+        focusRoomAfterRetry.current = false;
+        setFailedReads((reads) => ({ ...reads, progress: enrollmentId }));
         setProgressState({
           key: enrollmentId,
           lessonIds: [],
@@ -451,6 +476,11 @@ export function EnrolledCourseWorkspace({
         setClockNow(Date.now());
       },
     );
+    progressSubscription.current = current;
+    return () => {
+      progressSubscription.current = null;
+      current();
+    };
   }, [enrollmentId, previewMode]);
 
   // Liberação pelo calendário (migration 20260915020000). A RLS só entrega o
@@ -664,9 +694,11 @@ export function EnrolledCourseWorkspace({
           key: course.id,
           ready: true,
         });
+        setFailedReads((reads) => (reads.assets === course.id ? { ...reads, assets: null } : reads));
       },
       () => {
-        setError("learn.classroom.workspace.assetsError");
+        focusRoomAfterRetry.current = false;
+        setFailedReads((reads) => ({ ...reads, assets: course.id }));
         setAssetsState({
           assets: [],
           key: course.id,
@@ -764,6 +796,32 @@ export function EnrolledCourseWorkspace({
   // Painel novo so na troca de aba (ver useTabChanged).
   const tabChanged = useTabChanged(tab);
 
+  // As falhas que valem agora: a de uma inscrição que já acabou não conta.
+  const enrollmentFailed = failedReads.enrollment;
+  const progressFailed = !previewMode && enrollmentId !== null && failedReads.progress === enrollmentId;
+  const assetsFailed = enableFirestoreAssets && enrollmentId !== null && failedReads.assets === course.id;
+  const error = enrollmentFailed
+    ? "learn.classroom.workspace.enrollmentError"
+    : progressFailed
+      ? "learn.classroom.workspace.progressLoadError"
+      : assetsFailed
+        ? "learn.classroom.workspace.assetsError"
+        : "";
+
+  // O cartão de erro some quando o "Try again" dá certo: o foco vai para o
+  // título da sala, em vez de cair no <body>. Uma falha no caminho desarma.
+  useEffect(() => {
+    if (error || isLoading || !focusRoomAfterRetry.current) {
+      return;
+    }
+    focusRoomAfterRetry.current = false;
+    const title = roomRef.current?.querySelector<HTMLElement>("h1");
+    if (title) {
+      title.tabIndex = -1;
+      title.focus();
+    }
+  }, [error, isLoading]);
+
   if (isLoading) {
     // The classroom's one loading state, the same the route file and the
     // creator workspace paint, so a student never sees the wait change look.
@@ -771,9 +829,22 @@ export function EnrolledCourseWorkspace({
   }
 
   if (error) {
+    // "Try again" relê TODAS as leituras que falharam, pelos mesmos canais.
     return (
-      <section className="rounded-lg border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
-        <InlineAlert tone="error">{t(error)}</InlineAlert>
+      <section ref={errorCardRef} tabIndex={-1} className="rounded-lg border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
+        <LoadErrorAlert
+          focusRef={errorCardRef}
+          onRetry={() => {
+            focusRoomAfterRetry.current = true;
+            return Promise.all([
+              enrollmentFailed ? enrollmentSubscription.current?.reload?.() : undefined,
+              progressFailed ? progressSubscription.current?.reload?.() : undefined,
+              assetsFailed ? assetsSubscription.current?.reload?.() : undefined,
+            ]);
+          }}
+        >
+          {t(error)}
+        </LoadErrorAlert>
         <div className="mt-4 flex flex-wrap gap-3">
           <Link href="/learn" className="button-solid px-4 py-2.5 text-sm">
             {t("learn.classroom.workspace.backToLearning")}
@@ -1248,6 +1319,7 @@ export function EnrolledCourseWorkspace({
 
   return (
     <div
+      ref={roomRef}
       className="member-classroom"
       data-members-theme={course.membersTheme ?? "light"}
     >

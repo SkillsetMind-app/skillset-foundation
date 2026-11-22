@@ -153,13 +153,43 @@ describe("credentials hub load errors", () => {
     expect(frame).toContainElement(screen.getByRole("heading", { name: "Finished course" }));
   });
 
-  // Os certificados não têm releitura: sem botão, e o erro deles não some.
-  it("a falha dos certificados não oferece Try again", () => {
-    mocks.enrollments.mockImplementation((_uid, onData) => { onData([finished]); return () => {}; });
-    mocks.certificates.mockImplementation((_uid, _next, onError) => { onError(new Error("network")); return () => {}; });
+  // Os certificados agora têm releitura: "Try again" relê só eles, e a lista
+  // não aparece sem os emitidos (até a resposta vale o "carregando").
+  it("a falha dos certificados oferece Try again, que relê só os certificados", () => {
+    const enrollmentsReload = vi.fn(async () => undefined);
+    const certificatesReload = vi.fn(async () => undefined);
+    let deliver: (rows: Certificate[]) => void = () => {};
+    let fail: (error: Error) => void = () => {};
+    mocks.enrollments.mockImplementation((_uid, onData) => {
+      onData([finished]);
+      return Object.assign(() => {}, { reload: enrollmentsReload });
+    });
+    mocks.certificates.mockImplementation((_uid, next, onError) => {
+      deliver = next;
+      fail = onError;
+      onError(new Error("network"));
+      return Object.assign(() => {}, { reload: certificatesReload });
+    });
     render(<I18nProvider initialLocale="en"><LearnCredentialsHub /></I18nProvider>);
 
     expect(screen.getByRole("alert")).toHaveTextContent("We could not load your issued certificate records.");
-    expect(screen.queryByRole("button", { name: "Try again" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(certificatesReload).toHaveBeenCalledTimes(1);
+    expect(enrollmentsReload).not.toHaveBeenCalled();
+    expect(mocks.certificates).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Finished course" })).not.toBeInTheDocument();
+    expect(document.activeElement).toHaveTextContent("Loading credentials");
+
+    // Falhou de novo: o erro volta, com o botão.
+    act(() => fail(new Error("network")));
+    expect(screen.getByRole("alert")).toHaveTextContent("We could not load your issued certificate records.");
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(certificatesReload).toHaveBeenCalledTimes(2);
+
+    act(() => deliver([certificate]));
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Finished course" })).toBeVisible();
+    expect(screen.getByText("Issued", { selector: "span" })).toBeVisible();
   });
 });

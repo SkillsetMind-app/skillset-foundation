@@ -412,6 +412,33 @@ describe("learner wave 2 with real provider and dictionaries", () => {
     expect(screen.getByRole("alert")).toHaveTextContent("Could not update your wishlist. Please try again.");
   });
 
+  // A falha de leitura era um beco: "Try again" relê pelo mesmo canal, trava
+  // enquanto lê, e o vazio não aparece junto do erro.
+  it("a falha da lista de desejos oferece Try again, que relê sem reinscrever", async () => {
+    const reload = vi.fn(async () => undefined);
+    let next: (items: unknown[]) => void = () => {};
+    mocks.wishlist.mockImplementation((_uid, onData, onError) => {
+      next = onData;
+      onError(new Error("network"));
+      return Object.assign(() => {}, { reload });
+    });
+    show(<LearnerWishlist />);
+
+    expect(screen.getByRole("alert")).toHaveTextContent("No pudimos cargar tus cursos guardados.");
+    expect(screen.queryByRole("heading", { name: "Elige tus favoritos antes de matricularte." })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Intentar de nuevo" }));
+    expect(reload).toHaveBeenCalledTimes(1);
+    expect(mocks.wishlist).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("button", { name: "Intentando de nuevo..." })).toBeDisabled();
+    expect(screen.getByRole("alert")).toBeInTheDocument();
+
+    await act(async () => next([{ id: "saved", courseId: "course-es", courseSlug: "course-es" }]));
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Curso guardado no disponible." })).toBeVisible();
+    // O botão sumiu: o foco ficou na moldura da lista, não no <body>.
+    expect(document.activeElement).toHaveAttribute("tabindex", "-1");
+  });
+
   it("localizes leaderboard windows, singular progress and badge tooltip without changing the selected window", () => {
     mocks.leaderboard.mockImplementation((window, next) => {
       next({ window, entries: [{ rank: 1, displayName: "Original member $&", level: 3, points: 20 }] });
@@ -468,13 +495,33 @@ describe("agenda do aluno: erro de leitura", () => {
     expect(frame).toContainElement(screen.getByRole("heading", { name: event.title }));
   });
 
-  // As agendas não têm releitura: sem botão, para o erro delas não sumir.
-  it("a falha de uma agenda não oferece Try again", () => {
-    mocks.enrollments.mockImplementation((_uid, next) => { next([enrollment]); return () => {}; });
-    mocks.events.mockImplementation((_slug, _next, onError) => { onError(new Error("network")); return () => {}; });
+  // As agendas agora têm releitura: "Try again" relê só a agenda que falhou,
+  // e até a resposta vale o "carregando", nunca a agenda vazia.
+  it("a falha de uma agenda oferece Try again, que relê só aquela agenda", () => {
+    const enrollmentsReload = vi.fn(async () => undefined);
+    const eventsReload = vi.fn(async () => undefined);
+    let deliver: (events: CourseEvent[]) => void = () => {};
+    mocks.enrollments.mockImplementation((_uid, next) => {
+      next([enrollment]);
+      return Object.assign(() => {}, { reload: enrollmentsReload });
+    });
+    mocks.events.mockImplementation((_slug, next, onError) => {
+      deliver = next;
+      onError(new Error("network"));
+      return Object.assign(() => {}, { reload: eventsReload });
+    });
     show(<LearnEventsHub />);
 
     expect(screen.getByRole("alert")).toHaveTextContent("No pudimos cargar una o más agendas de los cursos.");
-    expect(screen.queryByRole("button", { name: "Intentar de nuevo" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Intentar de nuevo" }));
+    expect(eventsReload).toHaveBeenCalledTimes(1);
+    expect(enrollmentsReload).not.toHaveBeenCalled();
+    expect(mocks.events).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(screen.queryByText("Todavía no hay sesiones en vivo programadas.")).not.toBeInTheDocument();
+    expect(document.activeElement).toHaveTextContent("Cargando tu agenda de eventos...");
+
+    act(() => deliver([event]));
+    expect(screen.getByRole("heading", { name: event.title })).toBeVisible();
   });
 });

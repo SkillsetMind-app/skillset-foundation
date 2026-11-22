@@ -109,7 +109,7 @@ beforeEach(() => {
   vi.mocked(subscribeToCourseSubscription).mockImplementation((_id, next, error) => {
     onSubscription = next;
     onReadError = error;
-    return mocks.unsubscribe;
+    return Object.assign(() => mocks.unsubscribe(), { reload: async () => undefined });
   });
 });
 
@@ -194,6 +194,30 @@ describe("CourseSubscriptionCard — idioma e estado recebido", () => {
     emit(null);
     expect(within(card()).queryByRole("alert")).not.toBeInTheDocument();
     expect(within(card()).getByText("Todavía no hay detalles de la suscripción.")).toBeVisible();
+    expectSingleSubscription();
+    expect(setCourseSubscriptionCancellation).not.toHaveBeenCalled();
+  });
+
+  // O erro de leitura era um beco: "Try again" relê pela mesma inscrição, e o
+  // aviso só sai quando a assinatura chega. Nenhuma ação de cobrança é chamada.
+  it("a falha da leitura oferece Try again, que relê sem reinscrever", () => {
+    const reload = vi.fn(async () => undefined);
+    vi.mocked(subscribeToCourseSubscription).mockImplementation((_id, next, error) => {
+      onSubscription = next;
+      onReadError = error;
+      return Object.assign(() => mocks.unsubscribe(), { reload });
+    });
+    renderCard();
+    failRead();
+    fireEvent.click(within(card()).getByRole("button", { name: "Try again" }));
+    expect(reload).toHaveBeenCalledTimes(1);
+    expect(within(card()).getByRole("button", { name: "Trying again..." })).toBeDisabled();
+    expect(within(card()).getByRole("alert")).toHaveTextContent("We could not load your subscription details.");
+
+    emit({ ...subscription });
+    expect(within(card()).queryByRole("alert")).not.toBeInTheDocument();
+    expect(within(card()).getByRole("button", { name: "Cancel subscription" })).toBeEnabled();
+    expect(document.activeElement).toHaveClass("member-sidebar-card");
     expectSingleSubscription();
     expect(setCourseSubscriptionCancellation).not.toHaveBeenCalled();
   });

@@ -38,10 +38,12 @@ export function LearnCredentialsHub() {
   const [isLoading, setIsLoading] = useState(true);
   const [certificatesReady, setCertificatesReady] = useState(false);
   const [error, setError] = useState("");
-  // Os certificados não têm releitura: se eles falharam, o "Try again" das
-  // matrículas não pode apagar esse erro e mostrar a lista sem os emitidos.
+  // Uma falha por leitura: o "Try again" relê só a que falhou, cada uma pelo
+  // seu canal, e a lista nunca aparece sem os certificados emitidos.
+  const [enrollmentsFailed, setEnrollmentsFailed] = useState(false);
   const [certificatesFailed, setCertificatesFailed] = useState(false);
   const enrollmentsSubscription = useRef<{ reload?: () => Promise<void> } | null>(null);
+  const certificatesSubscription = useRef<{ reload?: () => Promise<void> } | null>(null);
 
   useEffect(() => {
     if (!user) {
@@ -52,10 +54,12 @@ export function LearnCredentialsHub() {
       user.uid,
       (nextEnrollments) => {
         setEnrollments(nextEnrollments);
+        setEnrollmentsFailed(false);
         setIsLoading(false);
       },
       () => {
         setError("learnWave2.credentials.loadError");
+        setEnrollmentsFailed(true);
         setIsLoading(false);
       },
     );
@@ -71,10 +75,11 @@ export function LearnCredentialsHub() {
       return;
     }
 
-    return subscribeToUserCertificates(
+    const current = subscribeToUserCertificates(
       user.uid,
       (nextCertificates) => {
         setCertificates(nextCertificates);
+        setCertificatesFailed(false);
         setCertificatesReady(true);
       },
       () => {
@@ -83,6 +88,11 @@ export function LearnCredentialsHub() {
         setCertificatesReady(true);
       },
     );
+    certificatesSubscription.current = current;
+    return () => {
+      certificatesSubscription.current = null;
+      current();
+    };
   }, [user]);
 
   const candidates = useMemo(
@@ -126,24 +136,29 @@ export function LearnCredentialsHub() {
     );
   }
 
-  // Lê as matrículas de novo pelo mesmo canal (sem religar). Até a resposta
-  // vale o "carregando", nunca o vazio.
+  // Lê de novo o que falhou (matrículas, certificados ou os dois) pelos mesmos
+  // canais (sem religar). Até a resposta vale o "carregando", nunca o vazio.
   function retryLoad() {
     frameRef.current?.focus();
     setError("");
-    setIsLoading(true);
-    void enrollmentsSubscription.current?.reload?.();
+    if (enrollmentsFailed) {
+      setIsLoading(true);
+      void enrollmentsSubscription.current?.reload?.();
+    }
+    if (certificatesFailed) {
+      setCertificatesFailed(false);
+      setCertificatesReady(false);
+      void certificatesSubscription.current?.reload?.();
+    }
   }
 
   if (error) {
     return frame(
       <section className="rounded-lg border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
         <InlineAlert tone="error">{t(error)}</InlineAlert>
-        {error === "learnWave2.credentials.loadError" && !certificatesFailed ? (
-          <button type="button" onClick={retryLoad} className="button-outline mt-4 px-4 text-sm">
-            {t("appErrors.retry")}
-          </button>
-        ) : null}
+        <button type="button" onClick={retryLoad} className="button-outline mt-4 px-4 text-sm">
+          {t("appErrors.retry")}
+        </button>
       </section>
     );
   }

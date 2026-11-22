@@ -2942,8 +2942,8 @@
     "openingBody": "Every course here comes from an independent professional, verified where required. Want to be among the first educators to publish here? You can start today.",
     "startTeaching": "Start teaching",
     "creatorOverview": "Creator overview",
-    "loadCoursesError": "Courses could not load right now. Refresh the page to try again.",
-    "loadWishlistError": "Your wishlist could not load right now. Refresh the page to try again.",
+    "loadCoursesError": "Courses could not load right now.",
+    "loadWishlistError": "Your wishlist could not load right now.",
     "updateWishlistError": "Could not update your saved courses. Please try again.",
     "removeWishlist": "Remove from wishlist",
     "saveWishlist": "Save to wishlist",
@@ -5119,6 +5119,7 @@
     "globalTitle": "The app hit an unexpected error.",
     "globalBody": "The issue has been logged. Try reloading, or head back to the homepage.",
     "retry": "Try again",
+    "retrying": "Trying again...",
     "home": "Go home",
     "preparingMetadataTitle": "Preparing your workspace | SkillsetMind"
   },

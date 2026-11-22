@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -53,6 +53,36 @@ describe("MemberAreaCommunityView", () => {
     expect(screen.getByTestId("shell").getAttribute("data-members-theme")).toBe("dark");
     const surface = screen.getByText("feed").closest(".member-classroom");
     expect(surface).toHaveAttribute("data-members-theme", "dark");
+  });
+
+  // O erro era um beco (só a frase): "Try again" chama a mesma leitura, trava
+  // enquanto ela corre e o aviso só sai quando a comunidade chega.
+  it("a falha oferece Try again, que lê de novo e abre a comunidade com o foco na moldura", async () => {
+    mocks.getMemberAreaCommunity.mockRejectedValueOnce(new Error("offline"));
+    renderView();
+    expect(await screen.findByRole("alert")).toHaveTextContent("We could not load this members area. Please try again.");
+
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    const busy = screen.getByRole("button", { name: "Trying again..." });
+    expect(busy).toBeDisabled();
+    expect(screen.getByRole("alert")).toBeInTheDocument();
+
+    expect(await screen.findByRole("heading", { level: 1, name: "Eton Circle" })).toBeTruthy();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(mocks.getMemberAreaCommunity).toHaveBeenCalledTimes(2);
+    expect(document.activeElement).toBe(screen.getByRole("heading", { level: 1 }).parentElement);
+  });
+
+  it("dois cliques antes de redesenhar abrem uma releitura só", async () => {
+    mocks.getMemberAreaCommunity.mockRejectedValueOnce(new Error("offline"));
+    renderView();
+    const button = await screen.findByRole("button", { name: "Try again" });
+    act(() => {
+      button.click();
+      button.click();
+    });
+    expect(await screen.findByRole("heading", { level: 1, name: "Eton Circle" })).toBeTruthy();
+    expect(mocks.getMemberAreaCommunity).toHaveBeenCalledTimes(2);
   });
 
   it("sem tema guardado: espera neutra e abre no claro padrão", async () => {

@@ -10,7 +10,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Bookmark, BookmarkCheck, ChevronDown, LayoutGrid, List, Search, SlidersHorizontal } from "lucide-react";
-import { startTransition, useDeferredValue, useEffect, useState } from "react";
+import { startTransition, useDeferredValue, useEffect, useRef, useState } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { CourseGridSkeleton } from "@/components/courses/course-grid-skeleton";
@@ -18,6 +18,7 @@ import { CourseTile } from "@/components/courses/course-tile";
 import { EmptyState } from "@/components/ui/empty-state";
 import { InlineAlert } from "@/components/ui/inline-alert";
 import { ProgressBar } from "@/components/ui/progress-bar";
+import { LoadErrorAlert } from "@/components/ui/load-error-alert";
 import { useInstructorNames } from "@/components/courses/use-instructor-names";
 import type { TeacherCourse } from "@/domain/teacher-course";
 import type { CourseCard } from "@/lib/data/catalog";
@@ -69,6 +70,9 @@ export function CourseMarketplace({ courses = [] }: CourseMarketplaceProps) {
   const [activeEnrollments, setActiveEnrollments] = useState<Enrollment[]>([]);
   const [publishedCourses, setPublishedCourses] = useState<TeacherCourse[]>([]);
   const [publishedCoursesError, setPublishedCoursesError] = useState("");
+  // A falha de LER os favoritos (com "Try again") e a de salvar um favorito
+  // (só o aviso) ficam à parte: salvar outro não apaga a primeira.
+  const [wishlistLoadFailed, setWishlistLoadFailed] = useState(false);
   const [wishlistError, setWishlistError] = useState("");
   const [wishlistCourseIds, setWishlistCourseIds] = useState<Set<string>>(
     () => new Set(),
@@ -79,6 +83,11 @@ export function CourseMarketplace({ courses = [] }: CourseMarketplaceProps) {
   const [isLoadingPublishedCourses, setIsLoadingPublishedCourses] = useState(
     Boolean(getSupabaseClientConfig()),
   );
+  // "Try again" lê de novo pela mesma inscrição (sem religar); o foco vai para
+  // a seção, que fica na tela quando o aviso some.
+  const coursesSubscription = useRef<{ reload: () => Promise<void> } | null>(null);
+  const wishlistSubscription = useRef<{ reload: () => Promise<void> } | null>(null);
+  const sectionRef = useRef<HTMLElement>(null);
   const deferredQuery = useDeferredValue(query.toLowerCase().trim());
 
   // Keep category + search in the URL so a filtered view is shareable and
@@ -119,7 +128,7 @@ export function CourseMarketplace({ courses = [] }: CourseMarketplaceProps) {
       return;
     }
 
-    return subscribeToPublishedTeacherCourses(
+    const current = subscribeToPublishedTeacherCourses(
       (nextCourses) => {
         setPublishedCourses(
           nextCourses
@@ -133,6 +142,11 @@ export function CourseMarketplace({ courses = [] }: CourseMarketplaceProps) {
         setIsLoadingPublishedCourses(false);
       },
     );
+    coursesSubscription.current = current;
+    return () => {
+      coursesSubscription.current = null;
+      current();
+    };
   }, []);
 
   useEffect(() => {
@@ -140,16 +154,22 @@ export function CourseMarketplace({ courses = [] }: CourseMarketplaceProps) {
       return;
     }
 
-    return subscribeToUserWishlistCourseIds(
+    const current = subscribeToUserWishlistCourseIds(
       user.uid,
       (nextCourseIds) => {
         setWishlistCourseIds(nextCourseIds);
+        setWishlistLoadFailed(false);
         setWishlistError("");
       },
       () => {
-        setWishlistError("publicCourses.loadWishlistError");
+        setWishlistLoadFailed(true);
       },
     );
+    wishlistSubscription.current = current;
+    return () => {
+      wishlistSubscription.current = null;
+      current();
+    };
   }, [status, user]);
 
   // Continue-learning strip data. Mirrors the learn dashboard subscription
@@ -258,7 +278,7 @@ export function CourseMarketplace({ courses = [] }: CourseMarketplaceProps) {
   });
 
   return (
-    <section className="marketplace-section">
+    <section ref={sectionRef} tabIndex={-1} className="marketplace-section">
       <div className="marketplace-filter-panel">
         <button
           type="button"
@@ -421,9 +441,26 @@ export function CourseMarketplace({ courses = [] }: CourseMarketplaceProps) {
         </div>
       ) : null}
 
-      {/* InlineAlert: o erro é anunciado ao leitor de tela, e não só pintado. */}
+      {/* Erro de leitura com "Try again"; o aviso só sai quando a leitura
+          volta. A falha ao salvar um favorito segue sendo só o aviso. */}
       {publishedCoursesError ? (
-        <InlineAlert tone="error" className="mb-5">{t(publishedCoursesError)}</InlineAlert>
+        <LoadErrorAlert
+          className="mb-5"
+          focusRef={sectionRef}
+          onRetry={() => coursesSubscription.current?.reload()}
+        >
+          {t(publishedCoursesError)}
+        </LoadErrorAlert>
+      ) : null}
+
+      {wishlistLoadFailed ? (
+        <LoadErrorAlert
+          className="mb-5"
+          focusRef={sectionRef}
+          onRetry={() => wishlistSubscription.current?.reload()}
+        >
+          {t("publicCourses.loadWishlistError")}
+        </LoadErrorAlert>
       ) : null}
 
       {wishlistError ? (
@@ -436,7 +473,8 @@ export function CourseMarketplace({ courses = [] }: CourseMarketplaceProps) {
           <CourseGridSkeleton />
         </>
       ) : visibleCourses.length === 0 ? (
-        hasAnyCourses && isFiltering ? (
+        // Com a leitura em erro, o vazio mentiria ("Marketplace opening soon").
+        publishedCoursesError ? null : hasAnyCourses && isFiltering ? (
           // O vazio da plataforma (EmptyState): o h1 serifado da página continua
           // sendo a única manchete; antes este h2 era outra serifa de 30px.
           <EmptyState

@@ -12,6 +12,7 @@ import { CommunityItemActions } from "@/components/learn/community-item-actions"
 import { CommunityPostDrawer } from "@/components/learn/community-post-drawer";
 import { EmptyState } from "@/components/ui/empty-state";
 import { InlineAlert } from "@/components/ui/inline-alert";
+import { LoadErrorAlert } from "@/components/ui/load-error-alert";
 import type { SkillsetUser } from "@/domain/auth";
 import {
   countOpenQuestions,
@@ -144,31 +145,65 @@ export function CommunityFeed({
   const [deleted, setDeleted] = useState<ReadonlySet<string>>(() => new Set());
   const hide = useCallback((id: string) => setDeleted((current) => new Set(current).add(id)), []);
 
+  // Falhas de LEITURA à parte do `error` (o do compositor): cada uma com o seu
+  // "Try again", que relê pelo mesmo canal e só some quando a leitura volta.
+  const [accessFailed, setAccessFailed] = useState(false);
+  const [postsFailed, setPostsFailed] = useState(false);
+  const enrollmentSubscription = useRef<{ reload: () => Promise<void> } | null>(null);
+  const postsSubscription = useRef<{ reload: () => Promise<void> } | null>(null);
+  // O título do feed é o ponto fixo do foco quando o botão some; a porta
+  // de acesso, enquanto a matrícula não chega.
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const gateRef = useRef<HTMLElement>(null);
+  const focusFeedOnOpen = useRef(false);
+
   useEffect(() => {
     if (!user || skipEnrollmentGate) {
       return;
     }
-    return subscribeToEnrollment(
+    const current = subscribeToEnrollment(
       user.uid,
       space.courseSlug,
       (next) => {
         setEnrollment(next);
+        setAccessFailed(false);
         setEnrollmentReady(true);
       },
       () => {
-        setError("learn.community.accessError");
+        // Falhou de novo: o foco não pula sozinho numa leitura boa mais tarde.
+        focusFeedOnOpen.current = false;
+        setAccessFailed(true);
         setEnrollmentReady(true);
       },
     );
+    enrollmentSubscription.current = current;
+    return () => {
+      enrollmentSubscription.current = null;
+      current();
+    };
   }, [skipEnrollmentGate, space.courseSlug, user]);
 
   const canRead = skipEnrollmentGate || Boolean(enrollment);
+
+  // A porta some quando o "Try again" do acesso dá certo: o foco segue para o
+  // título do feed, em vez de cair no <body>.
+  useEffect(() => {
+    if (canRead && focusFeedOnOpen.current) {
+      focusFeedOnOpen.current = false;
+      headingRef.current?.focus();
+    }
+  }, [canRead]);
+
+  function retryAccess() {
+    focusFeedOnOpen.current = true;
+    return enrollmentSubscription.current?.reload();
+  }
 
   useEffect(() => {
     if (!canRead) {
       return;
     }
-    return subscribeToCommunityPosts(
+    const current = subscribeToCommunityPosts(
       space.courseSlug,
       (posts) => {
         setFeed((current) => {
@@ -190,12 +225,20 @@ export function CommunityFeed({
             ready: true,
           };
         });
+        setPostsFailed(false);
       },
       () => {
-        setError("learn.community.postsError");
-        setFeed({ all: [], visible: [], pending: 0, ready: true });
+        // O feed não muda: posts já na tela ficam, com o aviso acima deles.
+        // Sem nenhuma leitura boa ele segue "não pronto", e a primeira que
+        // chegar depois do "Try again" entra direto, não como "N new posts".
+        setPostsFailed(true);
       },
     );
+    postsSubscription.current = current;
+    return () => {
+      postsSubscription.current = null;
+      current();
+    };
   }, [canRead, space.courseSlug, user?.uid]);
 
   useEffect(() => {
@@ -267,7 +310,7 @@ export function CommunityFeed({
 
   if (!canRead) {
     return (
-      <section className="rounded-lg border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
+      <section ref={gateRef} tabIndex={-1} className="rounded-lg border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
         <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
           {t("learn.community.accessRequired")}
         </p>
@@ -277,7 +320,11 @@ export function CommunityFeed({
         <p className="mt-4 text-sm leading-7 text-[var(--color-ink-soft)]">
           {t("learn.community.gateDetails")}
         </p>
-        {error ? <InlineAlert tone="error" className="mt-4">{t(error)}</InlineAlert> : null}
+        {accessFailed ? (
+          <LoadErrorAlert className="mt-4" focusRef={gateRef} onRetry={retryAccess}>
+            {t("learn.community.accessError")}
+          </LoadErrorAlert>
+        ) : null}
       </section>
     );
   }
@@ -294,6 +341,7 @@ export function CommunityFeed({
             grade. Recebe o foco quando o último post visível é apagado, e aí
             aparece (focus:not-sr-only) para o foco não sumir da tela. */}
         <h2
+          ref={headingRef}
           data-community-heading
           tabIndex={-1}
           className="sr-only text-lg font-semibold text-[var(--color-ink)] focus:not-sr-only"
@@ -368,6 +416,12 @@ export function CommunityFeed({
           />
         ) : null}
 
+        {postsFailed ? (
+          <LoadErrorAlert focusRef={headingRef} onRetry={() => postsSubscription.current?.reload()}>
+            {t("learn.community.postsError")}
+          </LoadErrorAlert>
+        ) : null}
+
         {error ? <InlineAlert tone="error">{t(error)}</InlineAlert> : null}
 
         {feed.pending > 0 ? (
@@ -396,9 +450,10 @@ export function CommunityFeed({
         </p>
 
         <div className="grid gap-3">
+          {/* Com a leitura em erro, nem "carregando" nem o vazio: só o aviso. */}
           {!feed.ready ? (
-            <p className="text-sm text-[var(--color-ink-soft)]">{t("learn.community.feedLoading")}</p>
-          ) : shownPosts.length === 0 ? (
+            postsFailed ? null : <p className="text-sm text-[var(--color-ink-soft)]">{t("learn.community.feedLoading")}</p>
+          ) : shownPosts.length === 0 && postsFailed ? null : shownPosts.length === 0 ? (
             // O vazio de lista da plataforma; h3 como o título de cada post.
             <EmptyState as="h3" title={t(livePosts.length === 0 ? "learn.community.empty" : "learn.community.emptyFilter")} />
           ) : (

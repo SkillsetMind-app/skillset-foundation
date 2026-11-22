@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import { I18nProvider, useTranslation } from "@/components/i18n/i18n-provider";
 import { InstructorsDirectory } from "./instructors-directory";
@@ -18,7 +18,8 @@ const course: CreatorCourse = {
   id: "course", href: "/courses/original-course", title: "Original course title", coverImageUrl: null,
   free: true, priceAmountMinor: null, currency: "USD", ratingAverage: 0, ratingCount: 0,
 };
-vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
+const routerRefresh = vi.hoisted(() => vi.fn());
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: routerRefresh }) }));
 vi.mock("@/components/shared/user-avatar", () => ({ UserAvatar: () => null }));
 vi.mock("@/lib/data/user-profiles", () => ({
   listPublicProfiles: vi.fn(async () => {
@@ -65,6 +66,44 @@ it.each([
   fireEvent.click(screen.getByText("ES"));
   expect(screen.getByText(es)).toBeInTheDocument();
   expect(listPublicProfiles).toHaveBeenCalledTimes(1);
+});
+
+// O erro era um beco: "Try again" chama a mesma leitura, e o aviso só sai
+// quando ela volta com os perfis.
+it("a falha do diretório oferece Try again, que lê de novo e mostra os perfis", async () => {
+  fixture.directory = "error";
+  show(<InstructorsDirectory />);
+  await screen.findByText("Instructor profiles could not load right now.");
+
+  fixture.directory = "loaded";
+  fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+  expect(await screen.findByRole("link", { name: "View profile" })).toBeInTheDocument();
+  expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  expect(listPublicProfiles).toHaveBeenCalledTimes(2);
+  // O botão sumiu: o foco ficou na moldura do diretório, não no <body>.
+  expect(document.activeElement).not.toBe(document.body);
+  expect(document.activeElement).toHaveAttribute("tabindex", "-1");
+});
+
+it("dois cliques no Try again do diretório antes de redesenhar abrem uma releitura só", async () => {
+  fixture.directory = "error";
+  show(<InstructorsDirectory />);
+  await screen.findByText("Instructor profiles could not load right now.");
+
+  fixture.directory = "loaded";
+  const button = screen.getByRole("button", { name: "Try again" });
+  act(() => {
+    button.click();
+    button.click();
+  });
+  expect(await screen.findByRole("link", { name: "View profile" })).toBeInTheDocument();
+  expect(listPublicProfiles).toHaveBeenCalledTimes(2);
+});
+
+it("o perfil cujos cursos não carregaram oferece Try again, que pede a página de novo", () => {
+  show(<InstructorProfileView profile={fixture.profile as PublicProfile} courses={null} />);
+  fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+  expect(routerRefresh).toHaveBeenCalledTimes(1);
 });
 
 // Diretório vazio só leva à loja quando ela tem curso real; o perfil do

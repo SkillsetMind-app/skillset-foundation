@@ -112,21 +112,39 @@ export function subscribeToCourseSubscription(
   subscriptionId: string,
   callback: (subscription: CourseSubscription | null) => void,
   onError: (error: Error) => void,
-): () => void {
+): (() => void) & { reload: () => Promise<void> } {
   const supabase = getSupabaseBrowserClient();
+  // `reload()` (o "Try again") repete esta leitura sem mexer no canal. A
+  // inicial sai como antes (a mesma cadeia, no mesmo instante) e entrega como
+  // antes, so cedendo a um reload mais novo; o que o reload comecou nao
+  // entrega depois de desligar nem por cima de uma leitura mais nova.
+  let active = true;
+  let latestLoad = 0;
+  let latestReload = 0;
 
-  void supabase
-    .from("course_subscriptions")
-    .select("*")
-    .eq("id", subscriptionId)
-    .maybeSingle()
-    .then(({ data, error }) => {
-      if (error) {
-        onError(error instanceof Error ? error : new Error(String(error)));
-        return;
-      }
-      callback(data ? rowToCourseSubscription(data) : null);
-    });
+  const load = (fromReload = false): Promise<void> => {
+    const thisLoad = ++latestLoad;
+    if (fromReload) latestReload = thisLoad;
+    return Promise.resolve(
+      supabase
+        .from("course_subscriptions")
+        .select("*")
+        .eq("id", subscriptionId)
+        .maybeSingle()
+        .then(({ data, error }) => {
+          if (fromReload ? !active || thisLoad !== latestLoad : thisLoad < latestReload) {
+            return;
+          }
+          if (error) {
+            onError(error instanceof Error ? error : new Error(String(error)));
+            return;
+          }
+          callback(data ? rowToCourseSubscription(data) : null);
+        }),
+    );
+  };
+
+  void load();
 
   const channel = supabase
     .channel(`course_subscriptions:one:${subscriptionId}`)
@@ -152,7 +170,13 @@ export function subscribeToCourseSubscription(
     )
     .subscribe();
 
-  return () => {
-    void supabase.removeChannel(channel);
-  };
+  // `reload()` le de novo SEM mexer no canal (o "Try again" do cartao da
+  // assinatura na sala).
+  return Object.assign(
+    () => {
+      active = false;
+      void supabase.removeChannel(channel);
+    },
+    { reload: () => load(true) },
+  );
 }
