@@ -8,7 +8,7 @@ import { ArrowLeft, ArrowRight, CalendarDays, Plus, X } from "lucide-react";
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { ExportTableButton } from "@/components/shared/export-table-button";
-import { ConfirmDialog, EmptyState } from "@/components/ui";
+import { ConfirmDialog, EmptyState, InlineAlert } from "@/components/ui";
 import {
   formatEventDateTime,
   isValidExternalEventUrl,
@@ -461,9 +461,7 @@ export function TeacherEventStudio() {
         {/* Erro fora do formulario: cancelar e excluir tambem falham, e com o
             formulario fechado a mensagem ficava invisivel. */}
         {error ? (
-          <p role="alert" className="mt-4 rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
-            {t(`${copy}.errors.${error}`)}
-          </p>
+          <InlineAlert tone="error" className="mt-4">{t(`${copy}.errors.${error}`)}</InlineAlert>
         ) : null}
         {notice ? (
           <p role="status" className="info-notice mt-4">
@@ -850,9 +848,9 @@ function TeacherEventRsvpSummary({ eventId }: { eventId: string }) {
           {t(`${copy}.rsvpLoading`)}
         </p>
       ) : error ? (
-        <p className="mt-2 text-sm font-semibold text-[var(--color-danger-fg)]">
-          {t(`${copy}.rsvpError`)}
-        </p>
+        // Aviso (polite), não erro: a linha se repete em cada cartão de evento,
+        // e oito erros assertivos interrompiam o leitor de tela oito vezes.
+        <InlineAlert tone="warning" className="mt-2">{t(`${copy}.rsvpError`)}</InlineAlert>
       ) : (
         <div className="mt-2 flex flex-wrap gap-2 text-sm">
           <span className="rounded-md bg-[var(--color-surface-soft)] px-3 py-1 font-semibold text-[var(--color-primary)]">

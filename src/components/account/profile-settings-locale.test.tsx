@@ -130,6 +130,13 @@ describe("profile settings locale", () => {
     expect(screen.getByText("Perfil actualizado.")).toBeInTheDocument();
     changeLanguage();
     expect(screen.getByText("Profile updated.")).toBeInTheDocument();
+    // F-05: o "salvo" é anunciado e mora DEPOIS do botão, na mesma linha; acima
+    // dele, nascia e empurrava o botão recém-clicado para baixo.
+    const saved = screen.getByRole("status");
+    expect(saved).toHaveTextContent("Profile updated.");
+    const save = screen.getByRole("button", { name: "Save profile" });
+    expect(save.compareDocumentPosition(saved) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(saved.parentElement).toBe(save.parentElement);
     expect(mocks.getUserProfile).toHaveBeenCalledTimes(1);
     expect(mocks.updateUserIdentity).toHaveBeenCalledExactlyOnceWith("profile-user", {
       displayName: "Ana $& Edited", username: "ana-edited", bio: profile.bio,
@@ -137,6 +144,24 @@ describe("profile settings locale", () => {
       credentials: ["My English credential $&"],
       goals: ["teach_online", "career_growth", "skill_certification", "build_community", "live_mentorship", "business_training"],
     });
+
+    // Editar de novo tira o "salvo": a frase não pode valer para texto que já
+    // não é o gravado. Nada é gravado por isso.
+    fireEvent.change(screen.getByLabelText("Public name"), { target: { value: "Ana again" } });
+    expect(screen.queryByText("Profile updated.")).toBeNull();
+    expect(screen.queryByRole("status")).toBeNull();
+    expect(mocks.updateUserIdentity).toHaveBeenCalledTimes(1);
+  });
+
+  it("a toggled goal also clears the saved line", async () => {
+    const { container } = renderProfile();
+    await screen.findByDisplayValue(profile.displayName);
+    await act(async () => { fireEvent.submit(container.querySelector("form")!); });
+    expect(await screen.findByText("Perfil actualizado.")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Enseñar en línea" }));
+    expect(screen.queryByText("Perfil actualizado.")).toBeNull();
+    expect(mocks.updateUserIdentity).toHaveBeenCalledTimes(1);
   });
 
   it.each([
@@ -251,7 +276,8 @@ describe.each([
     expect(screen.getByText(success)).toBeInTheDocument();
     expect(input.closest("label")).toHaveTextContent(replace);
     expect(input).toBeEnabled();
-    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    // A nota de envio saiu; o único status que fica é o "salvo" ao lado do botão.
+    expect(screen.getByRole("status")).toHaveTextContent(success);
     if (upload === mocks.uploadTeacherSignature) {
       expect(screen.getByAltText("Tu firma para los certificados")).toHaveAttribute("src", "https://media.example.test/uploaded.png");
     }

@@ -12,6 +12,7 @@ import {
   isCaptchaEnabled,
 } from "@/components/auth/turnstile-widget";
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { InlineAlert } from "@/components/ui/inline-alert";
 import { PLAN_TRIAL_DAYS } from "@/data/plans";
 import { isGoogleAuthEnabled } from "@/lib/auth/providers";
 import {
@@ -275,11 +276,9 @@ export function SignupForm() {
   );
 
   const errorNode = error ? (
-    <p
-      role="alert"
-      aria-live="assertive"
-      className="rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]"
-    >
+    // Só a caixa mudou (o aviso da casa, com ícone): texto, link e anúncio
+    // (role="alert", aria-live="assertive") são os mesmos de antes.
+    <InlineAlert tone="error">
       {errorMessage}
       {accountExists ? (
         <>
@@ -289,7 +288,7 @@ export function SignupForm() {
           </Link>
         </>
       ) : null}
-    </p>
+    </InlineAlert>
   ) : null;
 
   // Account created, session pending confirmation. The form is done — replacing

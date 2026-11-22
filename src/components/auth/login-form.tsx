@@ -11,6 +11,7 @@ import {
   isCaptchaEnabled,
 } from "@/components/auth/turnstile-widget";
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { InlineAlert } from "@/components/ui/inline-alert";
 import { isGoogleAuthEnabled } from "@/lib/auth/providers";
 import {
   ConfirmEmailGate,
@@ -286,15 +287,7 @@ export function LoginForm() {
             className="field-input text-center font-mono text-lg tracking-[0.4em]"
           />
         </label>
-        {error ? (
-          <p
-            role="alert"
-            aria-live="assertive"
-            className="rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]"
-          >
-            {errorMessage}
-          </p>
-        ) : null}
+        {error ? <InlineAlert tone="error">{errorMessage}</InlineAlert> : null}
         <button
           type="submit"
           disabled={isLoading || mfaCode.length < 6}
@@ -383,15 +376,8 @@ export function LoginForm() {
           </button>
         </span>
       </label>
-      {error ? (
-        <p
-          role="alert"
-          aria-live="assertive"
-          className="rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]"
-        >
-          {errorMessage}
-        </p>
-      ) : null}
+      {/* O aviso da casa (com ícone) anuncia igual: role="alert", assertive. */}
+      {error ? <InlineAlert tone="error">{errorMessage}</InlineAlert> : null}
       <TurnstileWidget onToken={setCaptchaToken} resetSignal={captchaResetSignal} />
       <button
         type="submit"

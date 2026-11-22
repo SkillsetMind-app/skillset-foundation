@@ -1,6 +1,6 @@
 "use client";
 
-import { BellOff, CheckCheck } from "lucide-react";
+import { CheckCheck } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
@@ -9,6 +9,7 @@ import { useTranslation } from "@/components/i18n/i18n-provider";
 import { useAuth } from "@/components/auth/auth-provider";
 import { HorizontalTabs } from "@/components/shared/horizontal-tabs";
 import { Button, buttonClasses } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
 import { notificationHref, type AppNotification } from "@/domain/notification";
 import {
   markAllNotificationsAsRead,
@@ -134,20 +135,14 @@ export function NotificationsInbox() {
             ))}
           </div>
         ) : visible.length === 0 ? (
-          <div className="px-6 py-16 text-center">
-            <BellOff
-              aria-hidden="true"
-              size={36}
-              strokeWidth={1.5}
-              className="mx-auto text-[var(--color-ink-muted)]"
-            />
-            <p className="mt-4 text-sm font-semibold text-[var(--color-ink)]">
-              {t(filter === "unread" && items.length > 0 ? "accountNotifications.caughtUp" : "accountNotifications.empty")}
-            </p>
-            <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-[var(--color-ink-soft)]">
-              {t(filter === "unread" && items.length > 0 ? "accountNotifications.caughtUpBody" : "accountNotifications.emptyBody")}
-            </p>
-          </div>
+          // A caixa vazia da casa, com os mesmos textos; h2 logo abaixo do h1
+          // da página (antes eram dois parágrafos soltos sob um ícone).
+          <EmptyState
+            as="h2"
+            title={t(filter === "unread" && items.length > 0 ? "accountNotifications.caughtUp" : "accountNotifications.empty")}
+            description={t(filter === "unread" && items.length > 0 ? "accountNotifications.caughtUpBody" : "accountNotifications.emptyBody")}
+            className="m-4 sm:m-6"
+          />
         ) : (
           <ul className="divide-y divide-[var(--color-line)]">
             {visible.map((notification) => (

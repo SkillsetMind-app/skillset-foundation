@@ -277,6 +277,20 @@ describe("StorefrontSettingsPanel", () => {
     expect(
       screen.getByText(/old image could not be removed/i),
     ).toBeInTheDocument();
+    // F-05: o "salvo" nasce ao lado do botão (mesma linha, depois dele) e é
+    // anunciado; acima, empurrava o botão recém-clicado para baixo.
+    const saved = screen.getByRole("status");
+    expect(saved).toHaveTextContent("Storefront saved.");
+    expect(saved.classList.contains("info-notice")).toBe(false);
+    expect(saved.parentElement).toBe(screen.getByRole("button", { name: "Save storefront" }).parentElement);
+
+    // Editar de novo tira o "salvo" (a frase só vale para o que foi gravado);
+    // o aviso de erro da limpeza fica, e nada é gravado por isso.
+    const saves = mocks.updateUserStorefront.mock.calls.length;
+    fireEvent.change(screen.getByLabelText("Tagline"), { target: { value: "A new line" } });
+    expect(screen.queryByText("Storefront saved.")).toBeNull();
+    expect(screen.getByText(/old image could not be removed/i)).toBeInTheDocument();
+    expect(mocks.updateUserStorefront.mock.calls.length).toBe(saves);
   });
 
   // A rejeição era escrita no rodapé do formulário, ~120 linhas abaixo do

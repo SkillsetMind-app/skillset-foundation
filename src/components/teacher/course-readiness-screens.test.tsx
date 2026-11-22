@@ -271,7 +271,7 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     expect(screen.getByRole("heading", { name: mocks.course.title })).toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: "Guardar borrador" })).toHaveLength(2);
     expect(screen.getByRole("button", { name: "Publicar producto" })).toBeDisabled();
-    expect(screen.getByTestId("publish-readiness-bar")).toHaveStyle({ width: "67%" });
+    expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "67");
     expect(screen.getAllByText("Añade al menos una lección.").length).toBeGreaterThan(0);
     expect(mocks.searchParams.get("tab")).toBe(tab);
     expect(subscribeToTeacherCourse).toHaveBeenCalledTimes(subscriptions);
@@ -1132,9 +1132,12 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
       await screen.findByText(`${expected.doneCount} of ${expected.total} checks · ${expected.percent}%`),
     ).toBeInTheDocument();
     expect(screen.queryAllByText(new RegExp(`${expected.percent}%`))).toHaveLength(1);
-    expect(screen.getByTestId("publish-readiness-bar")).toHaveStyle({
-      width: `${expected.percent}%`,
-    });
+    // Uma leitura so: a frase e o nome da barra; a linha visivel fica fora da
+    // arvore de acessibilidade para o leitor de tela nao repeti-la.
+    const checksLine = screen.getByText(`${expected.doneCount} of ${expected.total} checks · ${expected.percent}%`);
+    expect(checksLine).toHaveAttribute("aria-hidden", "true");
+    expect(screen.getByRole("progressbar", { name: checksLine.textContent! })).toBeInTheDocument();
+    expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", String(expected.percent));
 
     // O proximo passo e o rodape vem da mesma lista.
     expect(screen.getAllByText("Add at least one lesson.").length).toBeGreaterThanOrEqual(2);
@@ -1152,9 +1155,7 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     const settled = screen.findByText(`${expected.doneCount} of ${expected.total} checks · ${expected.percent}%`);
     plan.release!();
     expect(await settled).toBeInTheDocument();
-    expect(screen.getByTestId("publish-readiness-bar")).toHaveStyle({
-      width: `${expected.percent}%`,
-    });
+    expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", String(expected.percent));
   });
 
   it.each(["en", "es"] as const)("localizes the real manage checklist from %s without changing publication gates or edit destinations", async (initialLocale) => {
@@ -1185,7 +1186,7 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     }));
     await waitFor(() => expect(rows()).toHaveLength(11));
     const initialState = state();
-    expect(screen.getByTestId("publish-readiness-bar")).toHaveStyle({ width: "75%" });
+    expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "75");
     if (initialLocale === "en") {
       expect(screen.getByRole("link", { name: "Edit Course title" })).toBeInTheDocument();
       expect(screen.getByText("6 of 8 required steps done · 75% ready")).toBeInTheDocument();
@@ -1217,7 +1218,7 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
       expect(within(row).getAllByRole("link")).toHaveLength(1);
     }
     expect(within(card).getByText("6 de 8 pasos obligatorios listos · 75% listo")).toBeInTheDocument();
-    expect(screen.getByTestId("publish-readiness-bar")).toHaveStyle({ width: "75%" });
+    expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "75");
     expect(state()).toEqual(initialState);
     expect(screen.getByRole("heading", { name: paidCourse.title })).toBeInTheDocument();
     expect(mocks.getSubscriptionCounts()).toEqual(subscriptions);
@@ -1273,9 +1274,11 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
         `${expected.doneCount} of ${expected.total} required steps done · ${expected.percent}% ready`,
       ),
     ).toBeInTheDocument();
-    expect(screen.getByTestId("publish-readiness-bar")).toHaveStyle({
-      width: `${expected.percent}%`,
-    });
+    expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", String(expected.percent));
+    // Uma leitura so: a frase e o nome da barra, e a linha visivel fica escondida.
+    const stepsLine = screen.getByText(`${expected.doneCount} of ${expected.total} required steps done · ${expected.percent}% ready`);
+    expect(stepsLine).toHaveAttribute("aria-hidden", "true");
+    expect(screen.getByRole("progressbar", { name: stepsLine.textContent! })).toBeInTheDocument();
 
     const list = screen.getByText("Publish checklist").closest("section") ?? document.body;
     expect(within(list).getByText("Add at least one lesson.")).toBeInTheDocument();
@@ -1575,7 +1578,8 @@ describe("Painel: o que falta para publicar vem primeiro e cada linha leva a alg
     expect(done).toHaveTextContent(/^Done: /);
     expect(done).not.toHaveTextContent("✓");
     expect(pending.querySelector("[data-drawn-check]")).toBeNull();
-    expect(screen.getByTestId("publish-readiness-bar")).toHaveClass("bg-[var(--color-accent)]");
+    // A barra compartilhada: preenchimento no latão de texto (contraste 3:1).
+    expect(screen.getByRole("progressbar").firstElementChild).toHaveClass("bg-[var(--color-accent-fg)]");
   });
 });
 

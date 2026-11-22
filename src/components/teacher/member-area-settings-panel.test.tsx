@@ -104,7 +104,12 @@ describe("MemberAreaSettingsPanel", () => {
       { courseId: "old", visible: true },
       { courseId: "new", visible: true },
     ], null);
-    expect(await screen.findByText(/Saved\. Students see the changes/)).toBeTruthy();
+    const saved = await screen.findByText(/Saved\. Students see the changes/);
+    // F-05: o "salvo" fica na linha dos botões, depois do Save, e é anunciado.
+    expect(saved).toHaveAttribute("role", "status");
+    const save = screen.getByRole("button", { name: "Save members area" });
+    expect(saved.parentElement).toBe(save.parentElement);
+    expect(save.compareDocumentPosition(saved) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it("carrega o que já foi salvo: ordem, oculto e capa; trocar a capa apaga a antiga ao salvar", async () => {
