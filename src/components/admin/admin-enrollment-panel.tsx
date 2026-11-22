@@ -75,6 +75,12 @@ export function AdminEnrollmentPanel() {
     );
   }, []);
 
+  // O mesmo rótulo da linha da lista e da janela de revogar.
+  function learnerLabel(userId: string) {
+    const learner = users.find((user) => user.uid === userId);
+    return learner?.displayName || learner?.email || userId;
+  }
+
   const selectedCourse = useMemo(
     () => courses.find((course) => course.id === courseId) ?? null,
     [courseId, courses],
@@ -209,8 +215,6 @@ export function AdminEnrollmentPanel() {
             readErrors.grants ? null : <p className="rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">{t(`${copy}.empty`)}</p>
           ) : (
             grantedEnrollments.map((enrollment) => {
-              const learner = users.find((user) => user.uid === enrollment.userId);
-
               return (
                 <article
                   key={enrollment.id}
@@ -221,7 +225,7 @@ export function AdminEnrollmentPanel() {
                       {enrollment.courseTitle}
                     </p>
                     <p className="mt-1 break-words text-xs leading-5 text-[var(--color-ink-soft)]">
-                      {learner?.displayName || learner?.email || enrollment.userId}
+                      {learnerLabel(enrollment.userId)}
                       {" - "}
                       {t(`${copy}.${enrollment.source === "admin" ? "adminGrant" : "demoGrant"}`)}
                     </p>
@@ -253,7 +257,12 @@ export function AdminEnrollmentPanel() {
           onConfirm={() => handleRevoke(asking)}
           onClose={() => setAsking(null)}
         >
-          {t(`${copy}.confirmRevoke`).replace("{title}", () => asking.courseTitle)}
+          <p>{t(`${copy}.confirmRevoke`).replace("{title}", () => asking.courseTitle)}</p>
+          {/* Dois estudantes no mesmo curso: sem o nome, não dá para conferir
+              quem perde o acesso. */}
+          <p className="mt-2 break-words font-semibold text-[var(--color-ink)]">
+            {t(`${copy}.revokeLearner`).replace("{person}", () => learnerLabel(asking.userId))}
+          </p>
         </ConfirmDialog>
       ) : null}
     </section>

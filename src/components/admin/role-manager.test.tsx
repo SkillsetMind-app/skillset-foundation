@@ -162,9 +162,9 @@ describe("RoleManager", () => {
     expect(screen.getByLabelText("Admin")).not.toBeChecked();
   });
 
-  it("grants admin only after the operator confirms, once, with the roles of the click", async () => {
+  it("grants admin only after the operator confirms, once, over the roles current at confirmation", async () => {
     mocks.listPlatformUsers.mockResolvedValue(roster(["student"]));
-    mocks.setUserRoles.mockResolvedValue(["student", "admin"]);
+    mocks.setUserRoles.mockResolvedValue(["student", "teacher", "admin"]);
     render(translatedRoster());
 
     fireEvent.click(await screen.findByLabelText("Admin"));
@@ -174,12 +174,33 @@ describe("RoleManager", () => {
     // Um clique colado na abertura (toque duplo) é descartado.
     fireEvent.click(within(dialog).getByRole("button", { name: "Make administrator" }));
     expect(mocks.setUserRoles).not.toHaveBeenCalled();
-    // (c) confirmar grava uma vez, com os mesmos argumentos de antes.
+    // Com a pergunta aberta, a busca com atraso traz papéis mais novos (alguém
+    // virou instrutor). Gravar os do clique apagaria essa mudança.
+    mocks.listPlatformUsers.mockResolvedValue(roster(["student", "teacher"]));
+    fireEvent.change(screen.getByRole("searchbox", { name: "Find someone" }), { target: { value: "Test" } });
+    await waitFor(() => expect(mocks.listPlatformUsers).toHaveBeenLastCalledWith("Test"));
+    await waitFor(() => expect(screen.getByLabelText("Instructor")).toBeChecked());
+    // (c) confirmar grava uma vez: o admin entra sobre os papéis de agora.
     answer("Make administrator");
     fireEvent.click(within(dialog).getByRole("button", { name: "Make administrator" }));
-    expect(mocks.setUserRoles).toHaveBeenCalledExactlyOnceWith("u-1", ["student", "admin"]);
+    expect(mocks.setUserRoles).toHaveBeenCalledExactlyOnceWith("u-1", ["student", "teacher", "admin"]);
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     expect(await screen.findByLabelText("Admin")).toBeChecked();
+  });
+
+  it("writes nothing when the person left the list while the question was open", async () => {
+    mocks.listPlatformUsers.mockResolvedValue(roster(["student"]));
+    render(translatedRoster());
+
+    fireEvent.click(await screen.findByLabelText("Admin"));
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    mocks.listPlatformUsers.mockResolvedValue([]);
+    fireEvent.change(screen.getByRole("searchbox", { name: "Find someone" }), { target: { value: "Someone else" } });
+    expect(await screen.findByText("No one matches that search.")).toBeInTheDocument();
+
+    answer("Make administrator");
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(mocks.setUserRoles).not.toHaveBeenCalled();
   });
 
   it("asks before removing admin, in the operator's language", async () => {

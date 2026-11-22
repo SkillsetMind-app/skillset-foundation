@@ -360,6 +360,19 @@ describe("TeacherEventStudio", () => {
       nativeConfirm.mockRestore();
     });
 
+    it("o aviso de sucesso some quando a pessoa volta a mexer na agenda", async () => {
+      render(<TeacherEventStudio />);
+      fireEvent.click(screen.getByRole("button", { name: "Cancel session" }));
+      vi.advanceTimersByTime(CONFIRM_GUARD_MS);
+      fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Cancel session" }));
+      expect(await screen.findByRole("status")).toHaveTextContent("Session cancelled.");
+
+      // Editar outra coisa: o "Session cancelled." antigo não fica ao lado do
+      // formulário (nem de um erro novo dele).
+      fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+      expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    });
+
     it("quando excluir falha, o erro aparece onde já aparecia e não há aviso de sucesso", async () => {
       vi.mocked(deleteCourseEvent).mockRejectedValueOnce(new Error("Delete unavailable"));
       render(<TeacherEventStudio />);

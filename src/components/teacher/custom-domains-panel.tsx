@@ -119,7 +119,7 @@ function DomainCard({
   errorMessage,
 }: {
   domain: DomainRow;
-  onRemove: (id: string) => unknown;
+  onRemove: (id: string) => void;
   onRecheck: (id: string) => void;
   busy: boolean;
   errorMessage?: string;
@@ -192,15 +192,19 @@ function DomainCard({
         </Button>
       </div>
 
-      {/* A janela espera o DELETE e a recarga (o botão trava, um toque só);
-          o erro continua aparecendo no cartão, como antes. */}
+      {/* A janela NÃO espera o DELETE: a rota espera a API da Vercel sem
+          prazo, e esperar ali travaria a página inteira (Esc e Cancel
+          incluídos). Fecha na hora; o botão do cartão fica ocupado pelo
+          busyId e o erro continua aparecendo no cartão, como antes. */}
       {asking ? (
         <ConfirmDialog
           title={t("teach.customDomains.disconnectTitle")}
           confirmLabel={t("teach.customDomains.disconnectDomain")}
           cancelLabel={t("teach.customDomains.keepDomain")}
           danger
-          onConfirm={() => onRemove(domain.id)}
+          onConfirm={() => {
+            onRemove(domain.id);
+          }}
           onClose={() => setAsking(false)}
         >
           {t("teach.customDomains.confirmDisconnect").replace("{hostname}", () => domain.hostname)}

@@ -870,6 +870,7 @@
         "revoke": "Revocar acceso",
         "confirmRevoke": "¿Revocar el acceso a \"{title}\" de este estudiante? Perderá el acceso de inmediato.",
         "revokeTitle": "¿Revocar este acceso?",
+        "revokeLearner": "Estudiante: {person}",
         "readErrors": {
           "users": "No pudimos cargar los usuarios para la inscripción manual.",
           "courses": "No pudimos cargar los cursos publicados de los creadores.",

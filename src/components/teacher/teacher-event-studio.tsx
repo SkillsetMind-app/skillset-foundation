@@ -153,6 +153,7 @@ export function TeacherEventStudio() {
       () => {
         setEventsLoaded(true);
         setError("events");
+        setNotice(null);
       },
     );
   }, [user]);
@@ -227,11 +228,15 @@ export function TeacherEventStudio() {
     setExternalUrl(event.externalUrl);
     setDescription(event.description);
     setError("");
+    setNotice(null);
     setIsFormOpen(true);
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    // Antes das checagens: um "Session deleted." antigo não pode ficar ao
+    // lado do erro novo do formulário.
+    setNotice(null);
 
     if (!user || isSaving || !event.currentTarget.reportValidity()) {
       return;
@@ -260,7 +265,6 @@ export function TeacherEventStudio() {
     }
 
     setError("");
-    setNotice(null);
     setIsSaving(true);
 
     try {

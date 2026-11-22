@@ -171,6 +171,13 @@ describe("CustomDomainsPanel", () => {
   // 8px do "Check again" que o professor martela enquanto o DNS propaga.
   it("pede confirmação antes de desconectar o domínio", async () => {
     const nativeConfirm = vi.spyOn(window, "confirm");
+    // O DELETE fica pendurado, como numa Vercel lenta.
+    const removal = deferredResponse();
+    fetchMock.mockImplementation(async (_url, init) =>
+      init?.method === "DELETE"
+        ? removal.promise
+        : jsonResponse({ domains, quota: { used: 3, limit: 3 }, configured: true }),
+    );
 
     render(<CustomDomainsPanel />);
     await screen.findByText("aulas.exemplo.com");
@@ -199,11 +206,19 @@ describe("CustomDomainsPanel", () => {
     fireEvent.click(within(again).getByRole("button", { name: "Disconnect domain" }));
     fireEvent.click(within(again).getByRole("button", { name: "Disconnect domain" }));
 
-    await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledWith("/api/teach/domains/dom-1", {
-        method: "DELETE",
-      });
+    expect(fetchMock).toHaveBeenCalledWith("/api/teach/domains/dom-1", {
+      method: "DELETE",
     });
+    // A janela não espera o DELETE (que pode demorar minutos): fecha na hora
+    // e a página volta a responder. Quem fica ocupado é só o cartão.
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    const card = domainCard("aulas.exemplo.com");
+    expect(card.getByRole("button", { name: "Disconnect" })).toBeDisabled();
+    expect(card.getByRole("button", { name: "Check again" })).toBeDisabled();
+    expect(domainCard("erro.exemplo.com").getByRole("button", { name: "Disconnect" })).toBeEnabled();
+    expect(requestCount("DELETE")).toBe(1);
+
+    await act(async () => removal.resolve(jsonResponse({ ok: true, hostname: "aulas.exemplo.com" })));
     expect(requestCount("DELETE")).toBe(1);
   });
 

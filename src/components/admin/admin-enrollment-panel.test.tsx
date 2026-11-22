@@ -103,8 +103,10 @@ describe("administrative enrollment presentation", () => {
     deliver();
     language();
     fireEvent.click(screen.getByRole("button", { name: "Revocar acceso" }));
-    expect(screen.getByRole("dialog", { name: "¿Revocar este acceso?" }))
-      .toHaveTextContent(`¿Revocar el acceso a "${course.title}" de este estudiante? Perderá el acceso de inmediato.`);
+    const dialog = screen.getByRole("dialog", { name: "¿Revocar este acceso?" });
+    expect(dialog).toHaveTextContent(`¿Revocar el acceso a "${course.title}" de este estudiante? Perderá el acceso de inmediato.`);
+    // Quem perde o acesso, com o nome literal ($$ e $& não viram padrão).
+    expect(dialog).toHaveTextContent(`Estudiante: ${user.displayName}`);
     expect(mocks.revoke).not.toHaveBeenCalled();
     if (!confirm) {
       answer("Cancelar");

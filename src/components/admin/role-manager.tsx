@@ -112,8 +112,9 @@ export function RoleManager() {
   const [accountTarget, setAccountTarget] = useState<PlatformUser | null>(null);
   const [waiverFeedback, setWaiverFeedback] = useState<{ uid: string; key: string; failed: boolean } | null>(null);
 
-  // A pergunta aberta. Guarda a pessoa e o pedido como estavam no clique, e o
-  // confirmar roda exatamente o que vinha depois do OK do window.confirm.
+  // A pergunta aberta: a pessoa e o pedido do clique. O confirmar roda o que
+  // vinha depois do OK do window.confirm; no nível admin, sobre os papéis que
+  // a lista tem NA HORA de confirmar (veja confirmAsked).
   const [asking, setAsking] = useState<
     | { kind: "waiver"; user: PlatformUser; waived: boolean }
     | { kind: "admin"; user: PlatformUser; level: Level; next: boolean }
@@ -167,6 +168,17 @@ export function RoleManager() {
     void applyLevel(user, level, next);
   }
 
+  function confirmAsked() {
+    if (!asking) return;
+    if (asking.kind === "waiver") return applyWaiver(asking.user, asking.waived);
+    // A janela deixa a pergunta aberta por um tempo, e a busca com atraso pode
+    // trazer papéis mais novos nesse meio-tempo. Gravar os do clique apagaria
+    // essa mudança: o admin entra ou sai sobre os papéis de agora. Se a pessoa
+    // saiu da lista, não grava nada (a janela só fecha).
+    const current = users.find((entry) => entry.uid === asking.user.uid);
+    return current ? applyLevel(current, asking.level, asking.next) : undefined;
+  }
+
   async function applyLevel(user: PlatformUser, level: Level, next: boolean) {
     const nextRoles = toggleLevel(user.roles, level, next);
     setSavingUid(user.uid);
@@ -217,9 +229,7 @@ export function RoleManager() {
             : t(`platformInvites.${asking.waived ? "waive" : "require"}`)}
           cancelLabel={t("platform.ops.confirmDialog.cancel")}
           danger={asking.kind === "admin" || !asking.waived}
-          onConfirm={() => asking.kind === "admin"
-            ? applyLevel(asking.user, asking.level, asking.next)
-            : applyWaiver(asking.user, asking.waived)}
+          onConfirm={confirmAsked}
           onClose={() => setAsking(null)}
         >
           {(asking.kind === "admin"

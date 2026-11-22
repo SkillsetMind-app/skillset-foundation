@@ -870,6 +870,7 @@
         "revoke": "Revoke access",
         "confirmRevoke": "Revoke access to \"{title}\" for this learner? They lose access immediately.",
         "revokeTitle": "Revoke this access?",
+        "revokeLearner": "Learner: {person}",
         "readErrors": {
           "users": "We could not load users for manual enrollment.",
           "courses": "We could not load published creator courses.",
