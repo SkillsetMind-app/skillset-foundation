@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from "react";
 
+import { ConfirmActionDialog } from "@/components/admin/confirm-action-dialog";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { StatusChip } from "@/components/shared/status-chip";
-import { InlineAlert } from "@/components/ui";
+import { Button, InlineAlert } from "@/components/ui";
 import type { TeacherCourse } from "@/domain/teacher-course";
 import {
   adminCanRepublishCourse,
@@ -27,7 +28,10 @@ export function ManagedCoursePanel() {
   const [success, setSuccess] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [busyCourseId, setBusyCourseId] = useState<string | null>(null);
+  // Qual botão foi apertado: só ele gira; os outros do cartão só travam (I-08).
+  const [busyAction, setBusyAction] = useState<string | null>(null);
   const [confirmingDeleteId, setConfirmingDeleteId] = useState<string | null>(null);
+  const [confirmingUnpublish, setConfirmingUnpublish] = useState<TeacherCourse | null>(null);
 
   useEffect(() => {
     return subscribeToManagedCourses(
@@ -52,6 +56,7 @@ export function ManagedCoursePanel() {
     setError("");
     setSuccess("");
     setBusyCourseId(courseId);
+    setBusyAction(failureKey);
 
     try {
       await action();
@@ -60,6 +65,7 @@ export function ManagedCoursePanel() {
       setError(failureKey);
     } finally {
       setBusyCourseId(null);
+      setBusyAction(null);
       setConfirmingDeleteId(null);
     }
   }
@@ -108,12 +114,18 @@ export function ManagedCoursePanel() {
 
   return (
     <section className="rounded-lg border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
+      {confirmingUnpublish ? (
+        <ConfirmActionDialog
+          title={t(`${copy}.unpublishTitle`).replace("{title}", () => confirmingUnpublish.title)}
+          body={t(`${copy}.unpublishBody`)}
+          confirmLabel={t(`${copy}.unpublish`)}
+          onConfirm={() => handleUnpublish(confirmingUnpublish.id)}
+          onClose={() => setConfirmingUnpublish(null)}
+        />
+      ) : null}
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-            {t(`${copy}.eyebrow`)}
-          </p>
-          <h3 className="mt-2 text-base font-semibold text-[var(--color-ink)]">
+          <h3 className="text-base font-semibold text-[var(--color-ink)]">
             {t(`${copy}.title`)}
           </h3>
           <p className="mt-1 max-w-2xl text-sm leading-6 text-[var(--color-ink-soft)]">
@@ -155,7 +167,7 @@ export function ManagedCoursePanel() {
                 <div className="flex flex-col items-end gap-2">
                   <StatusChip status={course.status} />
                   {course.featured ? (
-                    <span className="rounded-chip bg-[var(--color-primary)] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--color-base)]">
+                    <span className="rounded-chip bg-[var(--color-primary)] px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--color-base)]">
                       {t(`${copy}.featured`)}
                     </span>
                   ) : null}
@@ -164,42 +176,40 @@ export function ManagedCoursePanel() {
 
               <div className="mt-4 flex flex-wrap gap-2">
                 {course.status === "published" ? (
-                  <button
-                    type="button"
+                  <Button
+                    variant={course.featured ? "outline" : "solid"}
+                    size="sm"
                     onClick={() => handleToggleFeatured(course)}
                     disabled={busyCourseId === course.id}
-                    className={
-                      course.featured
-                        ? "button-outline min-h-11 px-3.5 py-2 text-xs disabled:opacity-60"
-                        : "button-solid min-h-11 px-3.5 py-2 text-xs disabled:opacity-60"
-                    }
+                    loading={busyCourseId === course.id && busyAction === "feature"}
+                    className="min-h-11 px-3.5 py-2"
                   >
-                    {busyCourseId === course.id
-                      ? t(`${copy}.working`)
-                      : course.featured
-                        ? t(`${copy}.unfeature`)
-                        : t(`${copy}.feature`)}
-                  </button>
+                    {course.featured ? t(`${copy}.unfeature`) : t(`${copy}.feature`)}
+                  </Button>
                 ) : null}
                 {adminCanUnpublishCourse(course.status) ? (
-                  <button
-                    type="button"
-                    onClick={() => handleUnpublish(course.id)}
+                  // Tirar do ar é vermelho e pergunta antes: era um clique, igual a "Feature".
+                  <Button
+                    variant="danger"
+                    size="sm"
+                    onClick={() => setConfirmingUnpublish(course)}
                     disabled={busyCourseId === course.id}
-                    className="button-outline min-h-11 px-3.5 py-2 text-xs disabled:opacity-60"
+                    loading={busyCourseId === course.id && busyAction === "unpublish"}
+                    className="min-h-11 px-3.5 py-2"
                   >
-                    {t(`${copy}.${busyCourseId === course.id ? "working" : "unpublish"}`)}
-                  </button>
+                    {t(`${copy}.unpublish`)}
+                  </Button>
                 ) : null}
                 {adminCanRepublishCourse(course.status) ? (
-                  <button
-                    type="button"
+                  <Button
+                    size="sm"
                     onClick={() => handleRepublish(course.id)}
                     disabled={busyCourseId === course.id}
-                    className="button-solid min-h-11 px-3.5 py-2 text-xs disabled:opacity-60"
+                    loading={busyCourseId === course.id && busyAction === "republish"}
+                    className="min-h-11 px-3.5 py-2"
                   >
-                    {t(`${copy}.${busyCourseId === course.id ? "working" : "republish"}`)}
-                  </button>
+                    {t(`${copy}.republish`)}
+                  </Button>
                 ) : null}
                 {confirmingDeleteId === course.id ? (
                   <>

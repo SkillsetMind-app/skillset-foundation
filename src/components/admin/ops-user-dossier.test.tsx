@@ -97,6 +97,36 @@ describe("OpsUserDossierPanel", () => {
     expect(screen.getByText(/Created a course · Dossier fixture/)).toBeInTheDocument();
   });
 
+  it("abre por acesso e compras, deixa o cadastro no fim e não repete status nem rótulo", async () => {
+    render(panel());
+    await screen.findByRole("heading", { name: "Dossier Target" });
+    const section = (key: string) => en(`platform.ops.userDossier.sections.${key}`);
+    const titles = screen.getAllByRole("heading", { level: 3 }).map((heading) => heading.textContent);
+    expect(titles.slice(0, 2)).toEqual([section("access"), section("purchases")]);
+    expect(titles.at(-1)).toBe(section("onboarding"));
+    // O status mora só no cabeçalho; a linha do tempo não repete o título como rótulo.
+    expect(screen.queryByText(en("platform.ops.userDossier.fields.accountStatus"))).toBeNull();
+    expect(screen.getAllByText(section("timeline"))).toHaveLength(1);
+    expect(screen.getAllByText(section("privacy"))).toHaveLength(1);
+    // Código cru vira texto: tipo do pedido e ação da auditoria (I-10).
+    expect(screen.getByText(/^Account deletion/)).toBeInTheDocument();
+    expect(screen.getByText(/Access suspended and email blocked · admin@example\.test/)).toBeInTheDocument();
+    expect(screen.queryByText(/account_deletion|user\.account_block/)).toBeNull();
+  });
+
+  it("não deixa separador vazio quando falta o status de uma matrícula", async () => {
+    mocks.get.mockResolvedValue(dossier({
+      learning: {
+        enrollments_by_status: {}, certificates: 0, course_subscriptions_by_status: {},
+        recent_enrollments: [{ id: "e-1", course_id: "c-9", course_title: "Stress Reset", status: null, source: null, progress_percent: 0, created_at: null }],
+      },
+    }));
+    render(panel());
+    const row = (await screen.findByText("Stress Reset")).closest("li")!;
+    expect(row).toHaveTextContent("Stress Reset0%");
+    expect(row.textContent).not.toContain("·  ·");
+  });
+
   it("não oferece o controle de conta na própria conta", async () => {
     mocks.get.mockResolvedValue(dossier({ identity: { ...dossier().identity, is_self: true } }));
     render(panel());

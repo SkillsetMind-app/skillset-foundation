@@ -143,8 +143,9 @@ describe("platform shells", () => {
 
     // Título compacto: a fila começa logo abaixo, não depois de uma frase de
     // efeito de 48px, três métricas e dois filtros que nenhuma fila lia.
+    // O título é a fila aberta (Overview por padrão); "Operations" vira o sobretítulo.
     expect(
-      screen.getByRole("heading", { name: "Operations" }),
+      screen.getByRole("heading", { level: 1, name: "Overview" }),
     ).toBeInTheDocument();
     expect(
       screen.queryByText(/A calm operations layer/i),

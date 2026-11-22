@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from "react";
 
+import { ConfirmActionDialog } from "@/components/admin/confirm-action-dialog";
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { StatusChip } from "@/components/shared/status-chip";
-import { InlineAlert } from "@/components/ui";
+import { Button, InlineAlert } from "@/components/ui";
 import {
   resolveAccountActionRequest,
   subscribeToAccountActionRequests,
@@ -15,6 +16,8 @@ import {
 import { toDate } from "@/lib/format-date";
 
 const resolutionActions: AccountActionResolution[] = ["processing", "completed", "rejected"];
+// Fechar um pedido (concluído ou recusado) pergunta antes: eram um clique (I-04).
+const confirmedResolutions = new Set<AccountActionResolution>(["completed", "rejected"]);
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 function formatTimestamp(value: AccountActionRequest["requestedAt"], locale: string, pending: string) {
@@ -37,6 +40,8 @@ export function AccountActionRequestsPanel() {
   const [requests, setRequests] = useState<AccountActionRequest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeRequestId, setActiveRequestId] = useState<string | null>(null);
+  const [activeStatus, setActiveStatus] = useState<AccountActionResolution | null>(null);
+  const [confirming, setConfirming] = useState<{ id: string; status: AccountActionResolution } | null>(null);
   const [error, setError] = useState(false);
   const [loadError, setLoadError] = useState(false);
   // ponytail: read once per mount; a day counter does not need to tick live.
@@ -63,6 +68,7 @@ export function AccountActionRequestsPanel() {
 
     setError(false);
     setActiveRequestId(requestId);
+    setActiveStatus(status);
 
     try {
       await resolveAccountActionRequest(requestId, status, user.uid);
@@ -70,11 +76,21 @@ export function AccountActionRequestsPanel() {
       setError(true);
     } finally {
       setActiveRequestId(null);
+      setActiveStatus(null);
     }
   }
 
   return (
     <section className="rounded-lg border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
+      {confirming ? (
+        <ConfirmActionDialog
+          title={t(`${copy}.confirm.${confirming.status}Title`)}
+          body={t(`${copy}.confirm.${confirming.status}Body`)}
+          confirmLabel={t(`${copy}.actions.${confirming.status}`)}
+          onConfirm={() => handleResolve(confirming.id, confirming.status)}
+          onClose={() => setConfirming(null)}
+        />
+      ) : null}
       <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
         {t(`${copy}.eyebrow`)}
       </p>
@@ -135,17 +151,21 @@ export function AccountActionRequestsPanel() {
               ) : null}
               <div className="mt-4 flex flex-wrap gap-2">
                 {resolutionActions.map((status) => (
-                  <button
+                  <Button
                     key={status}
-                    type="button"
-                    onClick={() => handleResolve(request.id, status)}
+                    variant={status === "rejected" ? "danger" : "outline"}
+                    size="sm"
+                    onClick={() => confirmedResolutions.has(status)
+                      ? setConfirming({ id: request.id, status })
+                      : handleResolve(request.id, status)}
                     disabled={
                       activeRequestId === request.id || request.status === status
                     }
-                    className="button-outline min-h-11 px-4 py-2 text-xs disabled:opacity-60"
+                    loading={activeRequestId === request.id && activeStatus === status}
+                    className="min-h-11 px-4 py-2"
                   >
                     {t(`${copy}.actions.${status}`)}
-                  </button>
+                  </Button>
                 ))}
               </div>
             </article>

@@ -24,8 +24,9 @@
     "loading": "Loading account status...",
     "active": "Access enabled",
     "suspended": "Access suspended",
+    "blocked": "Access suspended, email blocked",
     "blockedEmail": "Registration blocked for",
-    "action": "Action",
+    "action": "What do you want to do?",
     "suspend": "Suspend access",
     "block": "Suspend access and block email registration",
     "restore": "Restore access and email registration",
@@ -33,8 +34,12 @@
     "blockImpact": "Existing sessions lose account access. New accounts using this account's Auth email will be refused. No account data is deleted.",
     "restoreImpact": "Account access and email registration are restored. The user must sign out and sign in again; old sessions remain invalid.",
     "reason": "Reason (required)",
-    "confirm": "Confirm account change",
-    "saving": "Saving...",
+    "chooseAction": "Choose an action",
+    "confirmSuspend": "Suspend access",
+    "confirmBlock": "Suspend and block email",
+    "confirmRestore": "Restore access",
+    "cancel": "Cancel",
+    "done": "Done",
     "saved": "Account change saved and recorded in the audit log.",
     "mfaRequired": "An active administrator session with two-factor authentication is required.",
     "self": "You cannot change your own account access.",
@@ -534,6 +539,9 @@
       "inbox": "Inbox"
     },
     "ops": {
+      "confirmDialog": {
+        "cancel": "Cancel"
+      },
       "overview": "Overview",
       "verification": "Creator verification",
       "catalog": "Published catalog",
@@ -786,6 +794,8 @@
         "feature": "Feature",
         "unfeature": "Unfeature",
         "unpublish": "Unpublish",
+        "unpublishTitle": "Unpublish {title}?",
+        "unpublishBody": "It leaves the marketplace now. You can republish it later from this list.",
         "republish": "Republish",
         "deleting": "Deleting...",
         "confirmDelete": "Confirm delete",
@@ -875,8 +885,14 @@
           "suspended": "Suspended",
           "blocked": "Blocked"
         },
-        "joined": "Joined {date}",
-        "lastSignIn": "Last sign-in {date}",
+        "columns": {
+          "person": "Person",
+          "level": "Level",
+          "status": "Status",
+          "joined": "Joined",
+          "lastSignIn": "Last sign-in",
+          "actions": "Actions"
+        },
         "neverSignedIn": "Never signed in",
         "range": "{from}–{to} of {total}",
         "previous": "Previous page",
@@ -1038,6 +1054,12 @@
           "data_export": "Data export",
           "account_deletion": "Account deletion"
         },
+        "confirm": {
+          "completedTitle": "Mark this request completed?",
+          "completedBody": "Do this only after the data was exported or the account was deleted. Changing the status does neither.",
+          "rejectedTitle": "Reject this request?",
+          "rejectedBody": "The request is closed as rejected. Changing the status does not export data or delete an account."
+        },
         "actions": {
           "processing": "Mark processing",
           "completed": "Mark completed",
@@ -1084,7 +1106,10 @@
           "refundRequested": "Refund requested",
           "refundIssued": "Refund issued",
           "deletionRequested": "Account deletion requested",
-          "exportRequested": "Data export requested"
+          "exportRequested": "Data export requested",
+          "accountSuspended": "Access suspended",
+          "accountBlocked": "Access suspended and email blocked",
+          "accountRestored": "Access restored"
         },
         "targets": {
           "order": "Order",
@@ -1142,7 +1167,8 @@
         "reviewHint": "Required when requesting changes or rejecting. Optional when approving.",
         "noteRequired": "Add a clear review note (at least 12 characters) before requesting changes or rejecting.",
         "reviewError": "We could not record this decision. Please try again.",
-        "updating": "Updating...",
+        "rejectTitle": "Reject this application?",
+        "rejectBody": "The application leaves the queue as rejected, with your note. To ask for fixes instead, use Request changes.",
         "decisions": {
           "approved": "Approve",
           "needs_changes": "Request changes",

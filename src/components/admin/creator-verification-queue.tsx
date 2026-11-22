@@ -3,8 +3,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { Download } from "lucide-react";
 
+import { ConfirmActionDialog } from "@/components/admin/confirm-action-dialog";
 import { useTranslation } from "@/components/i18n/i18n-provider";
-import { Field, InlineAlert } from "@/components/ui";
+import { Button, Field, InlineAlert } from "@/components/ui";
 import type { CreatorVerificationCase } from "@/domain/creator-verification";
 import {
   reviewCreatorVerification,
@@ -66,6 +67,9 @@ export function CreatorVerificationQueue({ query = "" }: { query?: string }) {
   const [success, setSuccess] = useState<ReviewDecision | null>(null);
   const [invalidNoteCaseId, setInvalidNoteCaseId] = useState<string | null>(null);
   const [activeCaseId, setActiveCaseId] = useState<string | null>(null);
+  // Qual decisão foi apertada: só ela gira, as outras só travam (I-08).
+  const [activeDecision, setActiveDecision] = useState<ReviewDecision | null>(null);
+  const [confirmingRejectId, setConfirmingRejectId] = useState<string | null>(null);
   const [reviewNotes, setReviewNotes] = useState<Record<string, string>>({});
   const normalizedQuery = query.toLowerCase().trim();
   const visibleCases = useMemo(
@@ -94,7 +98,7 @@ export function CreatorVerificationQueue({ query = "" }: { query?: string }) {
     );
   }, []);
 
-  async function handleReview(caseId: string, decision: ReviewDecision) {
+  async function handleReview(caseId: string, decision: ReviewDecision, confirmed = false) {
     const note = reviewNotes[caseId]?.trim() ?? "";
     setReviewError(false);
     setSuccess(null);
@@ -105,7 +109,13 @@ export function CreatorVerificationQueue({ query = "" }: { query?: string }) {
     }
 
     setInvalidNoteCaseId(null);
+    // Recusar é definitivo: pergunta antes, depois de a nota já estar válida.
+    if (decision === "rejected" && !confirmed) {
+      setConfirmingRejectId(caseId);
+      return;
+    }
     setActiveCaseId(caseId);
+    setActiveDecision(decision);
 
     try {
       await reviewCreatorVerification(caseId, decision, note || null);
@@ -119,17 +129,24 @@ export function CreatorVerificationQueue({ query = "" }: { query?: string }) {
       setReviewError(true);
     } finally {
       setActiveCaseId(null);
+      setActiveDecision(null);
     }
   }
 
   return (
     <section className="min-w-0 break-words rounded-lg border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
+      {confirmingRejectId ? (
+        <ConfirmActionDialog
+          title={t(`${copy}.rejectTitle`)}
+          body={t(`${copy}.rejectBody`)}
+          confirmLabel={t(`${copy}.decisions.rejected`)}
+          onConfirm={() => handleReview(confirmingRejectId, "rejected", true)}
+          onClose={() => setConfirmingRejectId(null)}
+        />
+      ) : null}
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-            {t("platform.ops.verification")}
-          </p>
-          <h3 className="mt-2 text-base font-semibold text-[var(--color-ink)]">
+          <h3 className="text-base font-semibold text-[var(--color-ink)]">
             {t(`${copy}.title`)}
           </h3>
           <p className="mt-1 max-w-2xl text-sm leading-6 text-[var(--color-ink-soft)]">
@@ -238,23 +255,20 @@ export function CreatorVerificationQueue({ query = "" }: { query?: string }) {
               <div className="mt-4 flex flex-wrap gap-2">
                 {decisions.map(
                   (decision) => (
-                    <button
+                    // Recusar em vermelho: era o mesmo contorno de "Request changes" (I-04).
+                    <Button
                       key={decision}
-                      type="button"
+                      variant={decision === "approved" ? "solid" : decision === "rejected" ? "danger" : "outline"}
+                      size="sm"
                       onClick={() =>
                         handleReview(verificationCase.id, decision)
                       }
                       disabled={activeCaseId === verificationCase.id}
-                      className={
-                        decision === "approved"
-                          ? "button-solid max-w-full whitespace-normal px-4 py-2 text-xs disabled:opacity-60"
-                          : "button-outline max-w-full whitespace-normal px-4 py-2 text-xs disabled:opacity-60"
-                      }
+                      loading={activeCaseId === verificationCase.id && activeDecision === decision}
+                      className="min-h-11 max-w-full whitespace-normal px-4 py-2"
                     >
-                      {activeCaseId === verificationCase.id
-                        ? t(`${copy}.updating`)
-                        : t(`${copy}.decisions.${decision}`)}
-                    </button>
+                      {t(`${copy}.decisions.${decision}`)}
+                    </Button>
                   ),
                 )}
               </div>
