@@ -480,5 +480,27 @@ describe("painel do criador em espanhol", () => {
     expect(subscriptionCounts()).toEqual(initialSubscriptions);
     expect(mocks.setOwnCourseFeatured).toHaveBeenCalledExactlyOnceWith("course-1", false);
   });
+
+  // A recusa do banco vinha crua, em ingles de desenvolvedor, mesmo em espanhol.
+  it("uma recusa do servidor sai na frase traduzida, nunca no texto cru", async () => {
+    mocks.course = { ...mocks.course, status: "published", featured: false };
+    mocks.courses = [mocks.course];
+    mocks.profile = { ...mocks.profile, currentPlanId: "pro" };
+    mocks.setOwnCourseFeatured.mockRejectedValueOnce(
+      new Error("Marketplace highlights are not included in your current plan."),
+    );
+    renderEs(<CourseManageHub courseId="course-1" />);
+
+    fireEvent.click(await highlightCardButton("Destacar este curso"));
+    expect(await highlightCard("es").findByRole("alert")).toHaveTextContent(
+      "No se pudo actualizar el destacado del marketplace.",
+    );
+    expect(screen.queryByText(/not included in your current plan/)).toBeNull();
+  });
 });
+
+async function highlightCardButton(name: string) {
+  await screen.findByRole("button", { name });
+  return highlightCard("es").getByRole("button", { name });
+}
 vi.mock("@/lib/data/creator-plan", () => ({ fetchCreatorPlanRequired: async () => false }));

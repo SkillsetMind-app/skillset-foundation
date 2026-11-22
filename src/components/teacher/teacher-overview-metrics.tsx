@@ -4,6 +4,7 @@ import { TrendingDown, TrendingUp } from "lucide-react";
 import { useState } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { MetricCard } from "@/components/teacher/metric-card";
 import { groupPaidOrdersByCurrency } from "@/domain/creator-reports";
 import { isRevenueOrder, type Order } from "@/domain/order";
 import type { TeacherCourse } from "@/domain/teacher-course";
@@ -124,6 +125,7 @@ export function TeacherOverviewMetrics({
     value: string;
     hint: string;
     delta: { label: string; up: boolean } | null;
+    unavailable?: boolean;
   }[] = [
     {
       label: t("teach.metrics.revenue30d"),
@@ -137,6 +139,7 @@ export function TeacherOverviewMetrics({
         ? t("teach.metrics.revenueHintPaid")
         : t("teach.metrics.revenueHintEmpty"),
       delta: ordersFailed ? null : revenueDelta,
+      unavailable: ordersFailed,
     },
     {
       label: t("teach.metrics.newStudents"),
@@ -145,6 +148,7 @@ export function TeacherOverviewMetrics({
         ? t("teach.metrics.newStudentsHintPaid")
         : t("teach.metrics.newStudentsHintEmpty"),
       delta: ordersFailed ? null : percentDelta(paidOrders30d.length, newStudentsPrev30d),
+      unavailable: ordersFailed,
     },
     // O quadro "Completion" saiu: o valor era fixo em "--", com a dica
     // "Appears once learners finish lessons", que nunca se cumpria. Volta
@@ -166,43 +170,35 @@ export function TeacherOverviewMetrics({
   return (
     <section className="grid gap-4 md:grid-cols-3">
       {cards.map((card) => (
-        <div
+        <MetricCard
           key={card.label}
-          className="studio-kpi-card dash-card dash-card--strong p-5"
-        >
-          <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--color-ink-muted)]">
-            {card.label}
-          </p>
-          {isLoading ? (
-            <div className="mt-3 h-8 w-24 animate-pulse rounded bg-[var(--color-surface-strong)]" />
-          ) : (
-            <p className="mt-2 text-4xl font-bold tracking-[-0.04em] text-[var(--color-primary)]">
-              {card.value}
-            </p>
-          )}
-          {!isLoading && card.delta ? (
-            <div
-              className={`mt-2 inline-flex items-center gap-1 text-xs font-bold ${
-                card.delta.up
-                  ? "text-[var(--color-success-fg)]"
-                  : "text-[var(--color-danger-fg)]"
-              }`}
-            >
-              {card.delta.up ? (
-                <TrendingUp aria-hidden="true" size={13} />
-              ) : (
-                <TrendingDown aria-hidden="true" size={13} />
-              )}
-              {card.delta.label}
-              <span className="font-semibold text-[var(--color-ink-soft)]">
-                {t("teach.metrics.vsPrev30d")}
+          label={card.label}
+          value={card.value}
+          loading={isLoading}
+          unavailable={card.unavailable}
+          hint={card.hint}
+          trend={
+            card.delta ? (
+              <span
+                className={`inline-flex items-center gap-1 text-xs font-bold ${
+                  card.delta.up
+                    ? "text-[var(--color-success-fg)]"
+                    : "text-[var(--color-danger-fg)]"
+                }`}
+              >
+                {card.delta.up ? (
+                  <TrendingUp aria-hidden="true" size={13} />
+                ) : (
+                  <TrendingDown aria-hidden="true" size={13} />
+                )}
+                {card.delta.label}
+                <span className="font-semibold text-[var(--color-ink-soft)]">
+                  {t("teach.metrics.vsPrev30d")}
+                </span>
               </span>
-            </div>
-          ) : null}
-          <p className="mt-2 max-w-[13rem] text-xs leading-5 text-[var(--color-ink-soft)]">
-            {card.hint}
-          </p>
-        </div>
+            ) : null
+          }
+        />
       ))}
       <span className="sr-only">
         {t("teach.metrics.srSummary")

@@ -909,7 +909,8 @@
       "exportButton": {
         "export": "Exportar",
         "csv": "Exportar como CSV",
-        "json": "Exportar como JSON"
+        "json": "Exportar como JSON",
+        "nothingToExport": "Todavía no hay nada para exportar en esta vista."
       },
       "userTable": {
         "searchLabel": "Buscar a una persona",
@@ -2210,7 +2211,7 @@
       "renewalsLoading": "Cargando el historial de renovaciones...",
       "renewalsError": "El historial de renovaciones no está disponible.",
       "renewalsEmpty": "El historial de renovaciones aparece después del pago de la primera factura recurrente.",
-      "renewalLabel": "Renovación {id}",
+      "renewalLabel": "Renovación de {plan} · {date}",
       "historicalSubscriber": "Suscriptor histórico",
       "statusTrialing": "En periodo de prueba",
       "statusPastDue": "Pago vencido",
@@ -2256,6 +2257,8 @@
       "moveDown": "Mover {title} hacia abajo",
       "save": "Guardar tienda",
       "saving": "Guardando...",
+      "saveWaitUpload": "Podrás guardar cuando la imagen termine de subirse.",
+      "saveWaitCourses": "Podrás guardar cuando se carguen tus productos publicados.",
       "presets": {
         "default": "Predeterminado de la plataforma",
         "warm": "Cálido",
@@ -5124,6 +5127,8 @@
     "retry": "Intentar de nuevo",
     "retrying": "Intentando de nuevo...",
     "home": "Ir al inicio",
+    "supportDetails": "Detalles para soporte",
+    "errorCode": "Código de error: {code}",
     "preparingMetadataTitle": "Preparando tu espacio de trabajo | SkillsetMind"
   },
   "supportCenter": {

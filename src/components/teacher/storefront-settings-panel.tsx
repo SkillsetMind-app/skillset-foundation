@@ -197,6 +197,12 @@ export function StorefrontSettingsPanel() {
   const [uploadProgress, setUploadProgress] = useState<
     Partial<Record<StorefrontImageKind, UploadAvatarProgress>>
   >({});
+  // Por que o Save esta desligado (alem de "salvando", que o rotulo ja diz).
+  const saveBlockedKey = uploadingImages.size > 0
+    ? "saveWaitUpload"
+    : !coursesReady
+      ? "saveWaitCourses"
+      : null;
   const [pendingImageRemovals, setPendingImageRemovals] = useState<
     ReadonlySet<StorefrontImageKind>
   >(() => new Set());
@@ -814,9 +820,20 @@ export function StorefrontSettingsPanel() {
         ) : null}
 
         <div className="flex flex-wrap items-center gap-3">
-          <Button type="submit" disabled={isSaving || uploadingImages.size > 0 || !coursesReady}>
+          <Button
+            type="submit"
+            disabled={isSaving || uploadingImages.size > 0 || !coursesReady}
+            aria-describedby={saveBlockedKey && !isSaving ? "storefront-save-reason" : undefined}
+          >
             {t(`teach.storefrontEditor.${isSaving ? "saving" : "save"}`)}
           </Button>
+          {/* O botao ficava cinza sem dizer por que (imagem subindo, produtos
+              ainda carregando): agora a razao fica ao lado dele. */}
+          {saveBlockedKey && !isSaving ? (
+            <p id="storefront-save-reason" className="text-xs leading-5 text-[var(--color-ink-soft)]">
+              {t(`teach.storefrontEditor.${saveBlockedKey}`)}
+            </p>
+          ) : null}
           {success === "saved" ? <SavedNote text={t("teach.storefrontEditor.feedback.saved")} /> : null}
         </div>
       </form>

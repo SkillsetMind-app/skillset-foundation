@@ -386,7 +386,7 @@ export function AdvisorSidebar({ children }: { children?: ReactNode } = {}) {
             </p>
 
             {historyStatus === "loading" ? (
-              <p className="text-xs font-medium text-[var(--color-ink-muted)]">
+              <p id="advisor-history-loading" className="text-xs font-medium text-[var(--color-ink-muted)]">
                 {t("advisor.loading")}
               </p>
             ) : null}
@@ -476,6 +476,9 @@ export function AdvisorSidebar({ children }: { children?: ReactNode } = {}) {
               type="submit"
               disabled={isSending || historyStatus !== "ready" || input.trim().length === 0}
               aria-label={t("advisor.send")}
+              // Desligado enquanto a conversa carrega: o motivo e a frase
+              // "Loading your conversation..." que ja esta na tela.
+              aria-describedby={historyStatus === "loading" ? "advisor-history-loading" : undefined}
               className="button-solid flex h-10 w-10 shrink-0 items-center justify-center rounded-md p-0 disabled:opacity-50"
             >
               <Send className="h-4 w-4" aria-hidden="true" />

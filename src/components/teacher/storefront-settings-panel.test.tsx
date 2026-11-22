@@ -199,6 +199,8 @@ describe("StorefrontSettingsPanel", () => {
     });
 
     expect(saveButton).toBeDisabled();
+    // Desligado, mas dizendo por que (antes so ficava cinza).
+    expect(saveButton).toHaveAccessibleDescription("You can save when the image finishes uploading.");
 
     await act(async () => {
       resolveLogo("https://media.example/storefront-logo.png?v=1");
@@ -211,6 +213,8 @@ describe("StorefrontSettingsPanel", () => {
       await heroUpload;
     });
     await waitFor(() => expect(saveButton).toBeEnabled());
+    expect(saveButton).not.toHaveAttribute("aria-describedby");
+    expect(screen.queryByText("You can save when the image finishes uploading.")).toBeNull();
   });
 
   it("removes an uploaded object only after its saved URL is cleared", async () => {
@@ -633,6 +637,7 @@ describe("StorefrontSettingsPanel", () => {
       const tagline = await screen.findByLabelText("Tagline");
       const save = screen.getByRole("button", { name: "Save storefront" });
       expect(save).toBeDisabled();
+      expect(save).toHaveAccessibleDescription("You can save once your published products have loaded.");
       expect(screen.getByText("Loading courses...")).toBeInTheDocument();
       fireEvent.change(screen.getByLabelText("Accent color"), { target: { value: draft.accentColor } });
       fireEvent.change(tagline, { target: { value: draft.tagline } });

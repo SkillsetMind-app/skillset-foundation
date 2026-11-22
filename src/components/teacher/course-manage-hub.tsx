@@ -180,7 +180,9 @@ const allSectionIds = new Set<string>([
  * second round-trip, and `featured` is read straight off the realtime course
  * row — so after the RPC lands, the subscription repaints this card. The
  * numbers here are the *display*; `set_own_course_featured` is what actually
- * enforces the quota, and its message is surfaced verbatim when it refuses.
+ * enforces the quota. Quando ela recusa, a tela diz a frase traduzida, nunca
+ * o texto cru do banco (ingles fixo, de desenvolvedor): a linha de motivo
+ * logo acima ja explica plano, cota e publicacao.
  */
 function MarketplaceHighlightPanel({
   course,
@@ -193,9 +195,8 @@ function MarketplaceHighlightPanel({
 }) {
   const { t } = useTranslation();
   const [saving, setSaving] = useState(false);
-  // The RPC's refusal is data and is shown verbatim; our own fallback is kept
-  // as a dictionary key so it follows a locale switch while the card is open.
-  const [error, setError] = useState<{ message: string } | { key: string } | null>(null);
+  // Chave do dicionario, para seguir a troca de idioma com o cartao aberto.
+  const [error, setError] = useState<string | null>(null);
 
   const featured = course.featured === true;
   const limit = effectiveLimit(planId, "featuredSlots");
@@ -227,12 +228,8 @@ function MarketplaceHighlightPanel({
     setError(null);
     try {
       await setOwnCourseFeatured(course.id, !featured);
-    } catch (toggleError) {
-      setError(
-        toggleError instanceof Error && toggleError.message
-          ? { message: toggleError.message }
-          : { key: "creatorPanel.hub.highlight.updateError" }
-      );
+    } catch {
+      setError("creatorPanel.hub.highlight.updateError");
     } finally {
       setSaving(false);
     }
@@ -292,7 +289,7 @@ function MarketplaceHighlightPanel({
       ) : null}
       {error ? (
         <InlineAlert tone="error" className="mt-3">
-          {"message" in error ? error.message : t(error.key)}
+          {t(error)}
         </InlineAlert>
       ) : null}
     </PanelCard>

@@ -12,6 +12,8 @@ import {
 import { useEffect, useRef, useState } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { StripeFrameSkeleton } from "@/components/teacher/builder-skeleton";
+import { SupportDetails } from "@/components/teacher/support-details";
 import { Button, Card, Eyebrow, InlineAlert } from "@/components/ui";
 import {
   fetchConnectAccountSessionSecret,
@@ -323,8 +325,10 @@ function ConnectOnboardingFlow({
       <Card padding="none" className="p-5">
         <p role="alert" className="text-sm leading-7 text-[var(--color-ink-soft)]">
           {t(`connectOnboarding.error.${key}`)}
-          {error.status ? <> {t("activationCheckout.reference")} HTTP {error.status}</> : null}
         </p>
+        {/* O codigo da resposta e so para o suporte, recolhido; era
+            "Reference: HTTP 409" no meio da frase. */}
+        {error.status ? <SupportDetails code={error.status} className="mt-2" /> : null}
         <div className="mt-4 flex flex-wrap gap-2">
           {key === "country" && onChooseAgain ? (
             <Button onClick={onChooseAgain}>{t("connectOnboarding.chooseAnotherCountry")}</Button>
@@ -382,12 +386,12 @@ function ConnectOnboardingFlow({
         {error ? (
           <InlineAlert tone="error" className="mt-3">
             {t(`connectOnboarding.error.${error.key}`)}
-            {error.status ? <> {t("activationCheckout.reference")} HTTP {error.status}</> : null}
             {connectRecoveryHref(error.key) ? <Link className="ml-2 underline" href={connectRecoveryHref(error.key)!}>
               {t(`connectOnboarding.recovery.${error.key}`)}
             </Link> : null}
           </InlineAlert>
         ) : null}
+        {error?.status ? <SupportDetails code={error.status} className="mt-2" /> : null}
         <div className="mt-4">
           <Button onClick={openHostedFallback} disabled={isOpeningHosted}>
             {t(isOpeningHosted ? "connectOnboarding.opening" : "connectOnboarding.continue")}
@@ -422,14 +426,10 @@ function ConnectOnboardingFlow({
 
   if (!connect) {
     return (
-      // Card não repassa atributos ARIA, e aqui o aria-busy/aria-live é o
-      // ponto: sai como <div> com as mesmas variáveis do primitivo.
-      <div
-        className="rounded-lg border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-5 text-sm text-[var(--color-ink-soft)]"
-        aria-busy="true"
-        aria-live="polite"
-      >
-        {t("connectOnboarding.preparing")}
+      // O lugar do formulario da Stripe guardado, com esqueleto: era uma
+      // frase numa caixa baixa que pulava quando o cadastro chegava.
+      <div className="overflow-hidden rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)]">
+        <StripeFrameSkeleton label={t("connectOnboarding.preparing")} />
       </div>
     );
   }
@@ -487,7 +487,7 @@ function StripeConnectFallback({
         {t(`connectOnboarding.error.${errorKey}`)}{" "}
         {t("connectOnboarding.fallbackBody")}
       </p>
-      {status ? <p className="mt-2 text-xs">{t("activationCheckout.reference")} HTTP {status}</p> : null}
+      {status ? <SupportDetails code={status} className="mt-2" /> : null}
       <div className="mt-4 flex flex-wrap gap-2">
         {/* Stripe's hosted page stays available for every error, as before
             translation; the recovery link is an extra way out, not a replacement. */}

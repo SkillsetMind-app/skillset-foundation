@@ -79,6 +79,7 @@ export function ExportTableButton({
   const menuRef = useRef<HTMLDivElement>(null);
   const menuId = useId();
   const isDisabled = disabled || rows.length === 0;
+  const emptyReason = !disabled && rows.length === 0;
   const isMenuOpen = open && !isDisabled;
 
   useLayoutEffect(() => {
@@ -194,10 +195,19 @@ export function ExportTableButton({
         aria-haspopup="menu"
         aria-expanded={isMenuOpen}
         aria-controls={isMenuOpen ? menuId : undefined}
+        aria-describedby={emptyReason ? `${menuId}-reason` : undefined}
+        title={emptyReason ? t("platform.ops.exportButton.nothingToExport") : undefined}
       >
         <Download aria-hidden="true" size={14} strokeWidth={1.9} />
         {t("platform.ops.exportButton.export")}
       </button>
+      {/* Desligado sem dizer por que: agora o leitor de tela ouve o motivo
+          (e o mouse ve no title). So no caso que o botao conhece, zero linhas. */}
+      {emptyReason ? (
+        <span id={`${menuId}-reason`} className="sr-only">
+          {t("platform.ops.exportButton.nothingToExport")}
+        </span>
+      ) : null}
 
       {isMenuOpen ? createPortal(
         <div

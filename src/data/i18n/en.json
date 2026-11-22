@@ -909,7 +909,8 @@
       "exportButton": {
         "export": "Export",
         "csv": "Export as CSV",
-        "json": "Export as JSON"
+        "json": "Export as JSON",
+        "nothingToExport": "Nothing to export in this view yet."
       },
       "userTable": {
         "searchLabel": "Find someone",
@@ -2210,7 +2211,7 @@
       "renewalsLoading": "Loading renewal history...",
       "renewalsError": "Renewal history is unavailable.",
       "renewalsEmpty": "Renewal history appears after the first recurring invoice is paid.",
-      "renewalLabel": "Renewal {id}",
+      "renewalLabel": "{plan} renewal · {date}",
       "historicalSubscriber": "Historical subscriber",
       "statusTrialing": "Trialing",
       "statusPastDue": "Past due",
@@ -2256,6 +2257,8 @@
       "moveDown": "Move {title} down",
       "save": "Save storefront",
       "saving": "Saving...",
+      "saveWaitUpload": "You can save when the image finishes uploading.",
+      "saveWaitCourses": "You can save once your published products have loaded.",
       "presets": {
         "default": "Platform default",
         "warm": "Warm",
@@ -5124,6 +5127,8 @@
     "retry": "Try again",
     "retrying": "Trying again...",
     "home": "Go home",
+    "supportDetails": "Details for support",
+    "errorCode": "Error code: {code}",
     "preparingMetadataTitle": "Preparing your workspace | SkillsetMind"
   },
   "supportCenter": {

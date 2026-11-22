@@ -722,6 +722,20 @@ describe("Home do professor: primeira visita", () => {
     expect(heading).not.toHaveTextContent("Welcome");
   });
 
+  // O esqueleto tem a forma do cartao (capa 16:9 e texto), anunciado uma vez;
+  // e o cabecalho so tem "New product" (o "Storefront" repetia o cartao).
+  it("enquanto os produtos carregam: esqueleto no formato do cartao, e um botao no cabecalho", async () => {
+    data.subscribeToTeacherCourses.mockImplementationOnce(() => () => undefined);
+
+    render(<TeacherStudioDashboard />);
+
+    const status = (await screen.findByText("Loading products...")).closest("[role='status']") as HTMLElement;
+    expect(status).not.toBeNull();
+    expect(status.querySelectorAll(".aspect-video")).toHaveLength(4);
+    expect(screen.queryByRole("link", { name: "Storefront" })).toBeNull();
+    expect(screen.getByRole("link", { name: "New product" })).toBeInTheDocument();
+  });
+
   it("se a assinatura de cursos falhar, mantem 'Welcome back'", async () => {
     data.subscribeToTeacherCourses.mockImplementationOnce(
       (_uid: string, _onData: (courses: unknown[]) => void, onError?: (error: Error) => void) => {
@@ -933,7 +947,7 @@ describe("Home do professor: receita nunca soma moedas", () => {
 
 describe("Home do professor: variacao, Top courses, reembolso parcial e leitura falha", () => {
   const DAY = 24 * 60 * 60 * 1000;
-  const revenueCard = () => revenueTile().closest(".studio-kpi-card") as HTMLElement;
+  const revenueCard = () => revenueTile().closest("article") as HTMLElement;
 
   it("variacao so moeda com moeda: $60 agora contra $50 antes = +20.0%", async () => {
     state.courses = [course({ status: "published" })];
@@ -1031,7 +1045,7 @@ describe("Home do professor: variacao, Top courses, reembolso parcial e leitura 
 
     render(<TeacherStudioDashboard />);
 
-    const card = (await screen.findByText("Revenue, 30d")).closest(".studio-kpi-card") as HTMLElement;
+    const card = (await screen.findByText("Revenue, 30d")).closest("article") as HTMLElement;
     expect(card.querySelector(".animate-pulse")).not.toBeNull();
     expect(card.textContent).not.toMatch(/\$0/);
     expect(within(card).queryByText("0")).toBeNull();

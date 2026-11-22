@@ -170,11 +170,11 @@ describe("carteira do professor em espanhol", () => {
     expect(screen.getByRole("heading", { level: 2, name: "Tu cuenta de Stripe" })).toBeInTheDocument();
     expect(screen.queryByText("Stripe Connect")).toBeNull();
     expect(screen.getByText("Sin conectar")).toBeInTheDocument();
-    expect(screen.getByText("Cuenta conectada")).toBeInTheDocument();
-    expect(screen.getByText("Sin crear")).toBeInTheDocument();
-    expect(screen.getByText("Cobros")).toBeInTheDocument();
-    // "Pendiente" aparece nos cobros e nos pagos.
-    expect(screen.getAllByText("Pendiente")).toHaveLength(2);
+    // Sem conta, as tres linhas de estado ("Sin crear", "Pendiente",
+    // "Pendiente") nao aparecem: so repetiam o selo "Sin conectar".
+    for (const row of ["Cuenta conectada", "Sin crear", "Cobros", "Pendiente"]) {
+      expect(screen.queryByText(row), row).toBeNull();
+    }
     expect(
       screen.getByRole("button", { name: "Actualizar el estado de la cuenta" }),
     ).toBeInTheDocument();
@@ -196,6 +196,40 @@ describe("carteira do professor em espanhol", () => {
         name: "Completa la configuración de Stripe antes de vender cursos de pago.",
       }),
     ).toBeInTheDocument();
+  });
+
+  it("com a conta criada, as linhas de estado aparecem em espanhol e ha um botao de atualizar so", () => {
+    const profile = mocks.profile;
+    mocks.profile = { stripeConnectedAccountId: "acct_1234567890" };
+    try {
+      render(
+        <I18nProvider initialLocale="es">
+          <TeacherWalletPanel />
+        </I18nProvider>,
+      );
+
+      expect(screen.getByText("Cuenta conectada")).toBeInTheDocument();
+      expect(screen.getByText("Cobros")).toBeInTheDocument();
+      // "Pendiente" aparece nos cobros e nos pagos.
+      expect(screen.getAllByText("Pendiente")).toHaveLength(2);
+      expect(screen.queryByText("Sin crear")).toBeNull();
+      cleanup();
+
+      // Conta pronta: eram dois botoes de atualizar (no saldo e na conta).
+      mocks.profile = {
+        stripeConnectedAccountId: "acct_1234567890",
+        stripeConnectChargesEnabled: true,
+        stripeConnectPayoutsEnabled: true,
+      };
+      render(
+        <I18nProvider initialLocale="es">
+          <TeacherWalletPanel />
+        </I18nProvider>,
+      );
+      expect(screen.getAllByRole("button", { name: /^Actualizar/ })).toHaveLength(1);
+    } finally {
+      mocks.profile = profile;
+    }
   });
 
   it("mostra os extratos e a linha do ledger em espanhol", () => {

@@ -10,6 +10,7 @@ import { StatusChip } from "@/components/shared/status-chip";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { Button, Card, EmptyState, InlineAlert, buttonClasses } from "@/components/ui";
 import { SpotArt } from "@/components/ui/spot-art";
+import { TableSkeleton } from "@/components/teacher/builder-skeleton";
 import { StripeDashboardButton } from "@/components/teacher/stripe-dashboard-button";
 import { formatOrderRef, type Order } from "@/domain/order";
 import { subscribeToTeacherOrders } from "@/lib/data/orders";
@@ -160,13 +161,8 @@ export function SaleList() {
   );
 
   if (isLoading) {
-    return (
-      <Card as="section" padding="lg">
-        <p className="text-sm text-[var(--color-ink-soft)]">
-          {t(`${copy}.loading`)}
-        </p>
-      </Card>
-    );
+    // Periodo, busca, status e exportar: os quatro controles da moldura.
+    return <TableSkeleton label={t(`${copy}.loading`)} controls={4} />;
   }
 
   if (error && !loaded) {

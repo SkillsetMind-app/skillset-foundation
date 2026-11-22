@@ -2,6 +2,7 @@ import { Suspense } from "react";
 
 import { ProtectedSurface } from "@/components/auth/protected-surface";
 import { PlatformShell } from "@/components/platform/platform-shell";
+import { CardPageSkeleton } from "@/components/teacher/builder-skeleton";
 import { CreatorVerificationPanel } from "@/components/teacher/creator-verification-panel";
 import { getServerTranslation } from "@/lib/i18n/server";
 import { privatePageMetadata } from "@/lib/seo/private-page-metadata";
@@ -17,11 +18,11 @@ export default async function CreatorVerificationPage() {
       <PlatformShell title={t("professionalBadge.title")} hideHeader>
         <Suspense
           fallback={
-            <section className="rounded-lg border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)]">
-              <p className="text-sm text-[var(--color-ink-soft)]">
-                {t("professionalBadge.loading")}
-              </p>
-            </section>
+            // A forma da tela (titulo e cartao), na mesma coluna do painel:
+            // antes era um cartao com uma frase, trocado por outro cartao.
+            <div className="mx-auto w-full max-w-3xl">
+              <CardPageSkeleton label={t("professionalBadge.loading")} />
+            </div>
           }
         >
           <CreatorVerificationPanel />

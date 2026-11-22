@@ -294,4 +294,16 @@ describe("menu de exportacao dentro da tela", () => {
     expect(screen.queryByRole("menu")).not.toBeInTheDocument();
     expect(createObjectURL).not.toHaveBeenCalled();
   });
+
+  // Desligado por zero linhas diz por que; desligado por quem chama (carregando,
+  // erro) nao inventa motivo.
+  it("diz o motivo quando nao ha linhas, e so nesse caso", () => {
+    const { unmount } = render(<I18nProvider initialLocale="es"><ExportTableButton rows={[]} filename="fixture" /></I18nProvider>);
+    expect(screen.getByRole("button", { name: "Exportar" })).toHaveAccessibleDescription(
+      "Todavía no hay nada para exportar en esta vista.",
+    );
+    unmount();
+    render(<ExportTableButton rows={[{ id: "fixture" }]} disabled filename="fixture" />);
+    expect(screen.getByRole("button", { name: "Export" })).not.toHaveAttribute("aria-describedby");
+  });
 });

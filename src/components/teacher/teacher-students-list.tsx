@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { StatusChip } from "@/components/shared/status-chip";
+import { TableSkeleton } from "@/components/teacher/builder-skeleton";
 import { EmptyState, InlineAlert } from "@/components/ui";
 import { SpotArt } from "@/components/ui/spot-art";
 import { getMyCourseStudents, type CourseStudent } from "@/lib/data/enrollments";
@@ -60,11 +61,7 @@ export function TeacherStudentsList() {
   }, [uid, attempt]);
 
   if (state.status === "loading") {
-    return (
-      <p role="status" className="text-sm text-[var(--color-ink-soft)]">
-        {t("teach.studentsPage.loading")}
-      </p>
-    );
+    return <TableSkeleton label={t("teach.studentsPage.loading")} />;
   }
 
   if (state.status === "error") {

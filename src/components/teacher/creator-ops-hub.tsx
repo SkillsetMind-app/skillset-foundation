@@ -7,6 +7,7 @@ import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { ExportTableButton } from "@/components/shared/export-table-button";
 import { PeriodTabs } from "@/components/shared/period-tabs";
+import { MetricCard } from "@/components/teacher/metric-card";
 import { RevenueChart } from "@/components/teacher/revenue-chart";
 import {
   buildCreatorOpsSnapshot,
@@ -185,6 +186,7 @@ export function CreatorOpsHub() {
   const tiles = [
     {
       key: "sales",
+      state: ordersState,
       label: t("teach.reports.kpiSales"),
       value: tileValue(ordersState, String(snap.salesCount)),
       detail:
@@ -194,12 +196,14 @@ export function CreatorOpsHub() {
     },
     {
       key: "net",
+      state: ledgersState,
       label: t("teach.reports.kpiNet"),
       value: tileValue(ledgersState, moneyBreakdown(snap.teacherNetByCurrency)),
       detail: t("teach.reports.kpiNetDetail"),
     },
     {
       key: "refund",
+      state: ordersState,
       label: t("teach.reports.kpiRefund"),
       value: tileValue(ordersState, `${refund.rate}%`),
       detail: t("teach.reports.kpiRefundDetail")
@@ -208,6 +212,7 @@ export function CreatorOpsHub() {
     },
     {
       key: "mrr",
+      state: subscriptionsState,
       label: t("teach.reports.kpiMrr"),
       value: tileValue(subscriptionsState, moneyBreakdown(snap.mrrByCurrency)),
       detail: t("teach.reports.kpiMrrDetail"),
@@ -231,20 +236,13 @@ export function CreatorOpsHub() {
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {tiles.map((tile) => (
-          <article
+          <MetricCard
             key={tile.key}
-            className="rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)] p-5 shadow-[var(--shadow-soft)]"
-          >
-            <span className="text-xs font-semibold uppercase tracking-wide text-[var(--color-ink-soft)]">
-              {tile.label}
-            </span>
-            <div className="mt-2 text-2xl font-semibold text-[var(--color-ink)]">
-              {tile.value}
-            </div>
-            <p className="mt-1 text-sm leading-5 text-[var(--color-ink-soft)]">
-              {tile.detail}
-            </p>
-          </article>
+            label={tile.label}
+            value={tile.value}
+            unavailable={tile.state !== "ready"}
+            hint={tile.detail}
+          />
         ))}
       </div>
 
