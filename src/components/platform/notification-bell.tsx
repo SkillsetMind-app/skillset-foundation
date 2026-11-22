@@ -142,7 +142,10 @@ export function NotificationBell() {
   }
 
   // "Try again" le de novo pelo mesmo canal (ver subscribeToNotifications).
+  // O botao some (volta o esqueleto): o foco vai para o titulo do painel, em
+  // vez de cair na pagina.
   function retryLoad() {
+    titleRef.current?.focus();
     setFailedUid(null);
     void subscription.current?.reload();
   }
@@ -162,9 +165,12 @@ export function NotificationBell() {
   const preview = filtered.slice(0, 6);
 
   return (
+    // Abaixo de 768px o painel se prende a barra do topo (como a busca), nao ao
+    // sino: a conta e o idioma ficam a direita do sino, e alinhado a ele o
+    // painel de 343px comecava fora da tela (x = -88 em 375px).
     <div
       ref={wrapperRef}
-      className="relative"
+      className="relative max-md:static"
       onBlur={(event) => {
         // Tab para fora do painel fecha, como a Ajuda ao lado. Foco para
         // "lugar nenhum" (clique num texto do painel) nao fecha.
@@ -202,13 +208,15 @@ export function NotificationBell() {
 
       {open ? (
         // Popover, nao janela centrada: fica preso ao sino (como a Ajuda) e
-        // nunca passa da altura da tela; a lista rola por dentro.
+        // nunca passa da altura da tela; a lista rola por dentro. No celular,
+        // 16px da borda direita da barra e no maximo a tela menos 32px: de
+        // 320 a 767px sobra pelo menos 16px dos dois lados.
         <div
           id={panelId}
           role="dialog"
           aria-labelledby={titleId}
           aria-busy={!loaded && !loadFailed}
-          className="motion-drop-in absolute right-0 top-[calc(100%+8px)] z-50 flex max-h-[calc(100svh-80px)] w-[min(380px,calc(100vw-32px))] flex-col overflow-hidden rounded-lg border border-[var(--color-line)] bg-white shadow-[0_24px_48px_rgba(15,39,68,0.16)]"
+          className="motion-drop-in absolute right-0 top-[calc(100%+8px)] z-50 flex max-h-[calc(100svh-96px)] w-[min(380px,calc(100vw-32px))] flex-col max-md:right-4 overflow-hidden rounded-lg border border-[var(--color-line)] bg-white shadow-[0_24px_48px_rgba(15,39,68,0.16)]"
         >
           {/* Alvos de 44px (sino, X, "Mark all read", abas, "View all"): antes
               eram 32px e uns 24px de altura, dificeis de acertar no celular. */}

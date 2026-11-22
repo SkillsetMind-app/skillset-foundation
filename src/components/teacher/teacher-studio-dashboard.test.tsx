@@ -718,6 +718,10 @@ describe("Home do professor: primeira visita", () => {
         "Welcome back, Patrick.",
       );
     });
+    // Falha nao e "sem produto": nada de convidar a criar um produto repetido.
+    expect(screen.getByRole("alert")).toHaveTextContent("We could not load your products or sales.");
+    expect(screen.queryByRole("heading", { name: "Your first product starts here." })).toBeNull();
+    expect(screen.getByRole("link", { name: "New product" })).toHaveClass("button-solid");
   });
 });
 

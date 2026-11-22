@@ -135,7 +135,9 @@ export function TeacherStudioDashboard() {
   );
   // Primeira visita, sem produto: o vazio da lista guarda o UNICO botao forte.
   // Filtros, formatos e o "New product" solido disputavam com ele.
-  const noProducts = coursesLoaded && courses.length === 0;
+  // Leitura que falhou nao e "sem produto": nada de convite a criar um
+  // produto repetido embaixo do erro.
+  const noProducts = coursesLoaded && courses.length === 0 && !coursesFailed;
   const greetingKey = !coursesLoaded
     ? "hello"
     : courses.length > 0 || coursesFailed
@@ -206,7 +208,7 @@ export function TeacherStudioDashboard() {
         launched={launched}
       />
 
-      <StudioProductsSection courses={courses} coursesLoaded={coursesLoaded} />
+      <StudioProductsSection courses={courses} coursesLoaded={coursesLoaded} coursesFailed={coursesFailed} />
 
       <div className="grid gap-8 lg:grid-cols-2">
         <StudioRecentActivity courses={courses} orders={orders} />
@@ -461,9 +463,11 @@ function StudioNextSteps({
 function StudioProductsSection({
   courses,
   coursesLoaded,
+  coursesFailed,
 }: {
   courses: TeacherCourse[];
   coursesLoaded: boolean;
+  coursesFailed: boolean;
 }) {
   const { t } = useTranslation();
   const [filter, setFilter] = useState<ProductFilter>("all");
@@ -539,6 +543,9 @@ function StudioProductsSection({
             />
           ))}
         </div>
+      ) : courses.length === 0 && coursesFailed ? (
+        // A leitura falhou: o erro com "Try again" acima basta (como na Midia).
+        null
       ) : courses.length === 0 ? (
         // Nenhum produto ainda: a cena do primeiro produto e o unico botao
         // latao da Home (o marco), no lugar da faixa tracejada de uma frase.

@@ -400,10 +400,18 @@ export function subscribeToTeacherCourses(
   onError: (error: Error) => void
 ): (() => void) & { reload: () => Promise<void> } {
   const supabase = getSupabaseBrowserClient();
+  // So a leitura mais nova entrega: um "Try again" que volta depois da
+  // releitura de um curso alterado traria a lista velha.
+  let active = true;
+  let latestLoad = 0;
 
   const load = async () => {
+    const thisLoad = ++latestLoad;
     const { data, error } = await supabase.from(coursesTable).select("*").eq("owner_id", ownerId);
 
+    if (!active || thisLoad !== latestLoad) {
+      return;
+    }
     if (error) {
       onError(error instanceof Error ? error : new Error(String(error)));
       return;
@@ -434,6 +442,7 @@ export function subscribeToTeacherCourses(
   // Midia): religar um canal com o mesmo nome devolve o antigo, ainda saindo.
   return Object.assign(
     () => {
+      active = false;
       void supabase.removeChannel(channel);
     },
     { reload: load },

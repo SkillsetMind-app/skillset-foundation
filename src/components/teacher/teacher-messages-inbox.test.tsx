@@ -110,12 +110,19 @@ describe("caixa do professor antes, durante e depois da leitura", () => {
     expect(screen.queryByRole("alert")).toBeNull();
   });
 
-  it("releitura que falha com a lista na tela: a lista fica e o aviso aparece", () => {
+  it("releitura que falha com a lista na tela: a lista fica, e o aviso traz 'Try again'", async () => {
     mocks.messages = [fromStudent];
     show();
     act(() => mocks.fail());
     expect(screen.getByRole("alert")).toHaveTextContent("We could not load your student messages.");
     expect(screen.getByRole("navigation", { name: "Student threads" })).toBeTruthy();
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    });
+    expect(mocks.reloads).toBe(1);
+    expect(mocks.unsubscribe).not.toHaveBeenCalled();
+    expect(screen.queryByRole("alert")).toBeNull();
   });
 });
 

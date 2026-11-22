@@ -52,19 +52,30 @@ export function subscribeToUserProfile(
   // Fire once with the current value (like Firestore onSnapshot), then keep the
   // caller in sync via Realtime. RLS scopes postgres_changes to the caller's
   // own row, so no cross-user leakage.
-  const load = () =>
-    supabase
+  //
+  // So a leitura mais nova entrega: um "Try again" que volta depois de outra
+  // leitura (ou de uma linha que chegou pelo tempo real) traria o perfil velho.
+  let active = true;
+  let latestLoad = 0;
+
+  const load = () => {
+    const thisLoad = ++latestLoad;
+    return supabase
       .from("users")
       .select("*")
       .eq("uid", uid)
       .maybeSingle()
       .then(({ data, error }) => {
+        if (!active || thisLoad !== latestLoad) {
+          return;
+        }
         if (error) {
           onError(error instanceof Error ? error : new Error(String(error)));
           return;
         }
         callback(data ? rowToUserProfile(data) : null);
       });
+  };
 
   void load();
 
@@ -74,6 +85,12 @@ export function subscribeToUserProfile(
       "postgres_changes",
       { event: "*", schema: "public", table: "users", filter: `uid=eq.${uid}` },
       (payload) => {
+        if (!active) {
+          return;
+        }
+        // A linha do tempo real e pelo menos tao nova quanto uma leitura que
+        // ainda esta no caminho: essa leitura nao entrega mais.
+        latestLoad += 1;
         if (payload.eventType === "DELETE") {
           callback(null);
           return;
@@ -88,6 +105,7 @@ export function subscribeToUserProfile(
   // religar um canal com o mesmo nome devolve o antigo, ainda saindo.
   return Object.assign(
     () => {
+      active = false;
       void supabase.removeChannel(channel);
     },
     { reload: async () => { await load(); } },

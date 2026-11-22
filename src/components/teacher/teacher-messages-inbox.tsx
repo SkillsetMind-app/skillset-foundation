@@ -130,6 +130,20 @@ export function TeacherMessagesInbox() {
     );
   }
 
+  // Releitura que falhou com a lista na tela: aviso com "Try again". O aviso
+  // (e o botao, com o foco) fica ate uma leitura dar certo.
+  const reloadBanner = (className: string) =>
+    reloadFailed ? (
+      <div className={`grid gap-3 ${className}`}>
+        <InlineAlert tone="error" className="w-full text-left">
+          {t("teacherMessages.loadError")}
+        </InlineAlert>
+        <button type="button" onClick={retryLoad} className="button-outline px-4 text-sm">
+          {t("appErrors.retry")}
+        </button>
+      </div>
+    ) : null;
+
   if (threads.length === 0) {
     return (
       <section className="rounded-lg border fine-rule bg-white px-6 py-10 text-center">
@@ -144,22 +158,14 @@ export function TeacherMessagesInbox() {
         <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-[var(--color-ink-soft)]">
           {t("teacherMessages.emptyDescription")}
         </p>
-        {reloadFailed ? (
-          <InlineAlert tone="error" className="mt-4">
-            {t("teacherMessages.loadError")}
-          </InlineAlert>
-        ) : null}
+        {reloadBanner("mt-4 justify-items-center")}
       </section>
     );
   }
 
   return (
     <div className="grid gap-5 lg:grid-cols-[minmax(240px,320px)_1fr]">
-      {reloadFailed ? (
-        <InlineAlert tone="error" className="lg:col-span-2">
-          {t("teacherMessages.loadError")}
-        </InlineAlert>
-      ) : null}
+      {reloadBanner("justify-items-start lg:col-span-2")}
       <nav aria-label={t("teacherMessages.threads")} className="grid content-start gap-2">
         {threads.map((thread) => {
           const isActive = selectedThread?.key === thread.key;

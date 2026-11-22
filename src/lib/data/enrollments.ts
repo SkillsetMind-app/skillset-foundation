@@ -182,13 +182,21 @@ export function subscribeToUserEnrollments(
   onError: (error: Error) => void,
 ): (() => void) & { reload: () => Promise<void> } {
   const supabase = getSupabaseBrowserClient();
+  // So a leitura mais nova entrega: um "Try again" que volta depois da
+  // releitura de uma matricula nova traria a lista sem ela.
+  let active = true;
+  let latestLoad = 0;
 
   const load = async () => {
+    const thisLoad = ++latestLoad;
     const { data, error } = await supabase
       .from("enrollments")
       .select("*")
       .eq("user_id", userId);
 
+    if (!active || thisLoad !== latestLoad) {
+      return;
+    }
     if (error) {
       onError(error instanceof Error ? error : new Error(String(error)));
       return;
@@ -223,6 +231,7 @@ export function subscribeToUserEnrollments(
   // saindo, e as matriculas novas deixam de chegar.
   return Object.assign(
     () => {
+      active = false;
       void supabase.removeChannel(channel);
     },
     { reload: load },

@@ -88,6 +88,8 @@ describe("o sino antes, durante e depois da leitura", () => {
     expect(mocks.unsubscribe).not.toHaveBeenCalled();
     expect(screen.queryByRole("alert")).toBeNull();
     expect(screen.getByRole("status")).toHaveTextContent("Loading your notifications...");
+    // O botao saiu da tela: o foco foi para o titulo, nao caiu na pagina.
+    expect(screen.getByRole("heading", { name: "Notifications" })).toHaveFocus();
 
     act(() => mocks.next?.([aviso({ id: "s", type: "support_reply", link: "/support" })]));
     expect(hrefOf("Support replied to your request")).toBe("/support");
@@ -130,6 +132,17 @@ describe("o sino antes, durante e depois da leitura", () => {
     fireEvent.click(close);
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(screen.getByRole("button", { name: /Open notifications/ })).toHaveFocus();
+  });
+
+  it("no celular o painel se prende a barra do topo, com 16px de cada lado", () => {
+    openBell("en");
+    const panel = screen.getByRole("dialog", { name: "Notifications" });
+    // Abaixo de 768px a caixa do sino deixa de ser a referencia (a conta e o
+    // idioma ficam a direita dele e o painel comecava fora da tela): o painel
+    // fica a 16px da borda direita da barra e tem no maximo a tela menos 32px.
+    expect(panel.parentElement).toHaveClass("relative", "max-md:static");
+    expect(panel).toHaveClass("absolute", "right-0", "max-md:right-4", "w-[min(380px,calc(100vw-32px))]");
+    expect(panel).toHaveClass("max-h-[calc(100svh-96px)]", "overflow-hidden");
   });
 });
 
