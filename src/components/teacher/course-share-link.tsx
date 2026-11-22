@@ -1,5 +1,6 @@
 "use client";
 
+import { Check, Copy } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
@@ -21,6 +22,7 @@ export function CourseShareLink({
   accent = false,
   focusCopy = false,
   copyDescribedBy,
+  compact = false,
 }: {
   label: string;
   path: string;
@@ -43,6 +45,11 @@ export function CourseShareLink({
   /** Leva o foco ao botão de copiar ao montar (marco de publicação). */
   focusCopy?: boolean;
   copyDescribedBy?: string;
+  /**
+   * Só o botão de copiar, sem a caixa (linha de uma lista de preços). A caixa
+   * inteira, com Abrir e Compartilhar, fica em Promo links.
+   */
+  compact?: boolean;
 }) {
   const { t } = useTranslation();
   const hostname = useCurrentHostname();
@@ -62,6 +69,14 @@ export function CourseShareLink({
       copyRef.current?.focus();
     }
   }, [focusCopy]);
+
+  // "Copied" mora no próprio botão por 2s e some: antes entrava uma linha nova
+  // embaixo que nunca saía, e a caixa crescia.
+  useEffect(() => {
+    if (result !== "copied") return;
+    const timer = window.setTimeout(() => setResult(null), 2000);
+    return () => window.clearTimeout(timer);
+  }, [result]);
 
   // Same close rules as the product-list kebab (teacher-course-studio): Escape
   // closes and hands focus back, a press outside the button row closes.
@@ -117,6 +132,44 @@ export function CourseShareLink({
     { key: "email", href: `mailto:?subject=${encodedTitle}&body=${message}` },
   ];
 
+  const copied = result === "copied";
+  const CopyIcon = copied ? Check : Copy;
+  const copyButton = (
+    <button
+      ref={copyRef}
+      type="button"
+      onClick={() => void copyLink()}
+      // Nome fixo: o texto visível vira "Link copied." por 2s, e quem está no
+      // botão com o leitor de tela continua sabendo qual botão é.
+      aria-label={copyLabel ?? forLabel("creatorPanel.shareLink.copyAria")}
+      aria-describedby={copyDescribedBy}
+      // O marco sai no tamanho do fluxo (48px, 15px/600), não no 12px da fileira.
+      // Fora dele copiar é ação secundária: contorno, nunca o azul cheio.
+      className={accent ? "button-accent button-lg" : `button-outline gap-1.5 ${actionClass}`}
+    >
+      <CopyIcon aria-hidden="true" size={14} />
+      {copied ? t("creatorPanel.shareLink.copied") : (copyLabel ?? t("creatorPanel.shareLink.copy"))}
+    </button>
+  );
+  // Anunciado uma vez, sem linha visível a mais (o botão já mostra).
+  const feedback = (
+    <>
+      {copied ? <p role="status" className="sr-only">{t("creatorPanel.shareLink.copied")}</p> : null}
+      {result === "error" ? <p role="alert" className="mt-2 text-sm text-[var(--color-danger-fg)]">{t("creatorPanel.shareLink.copyError")}</p> : null}
+    </>
+  );
+
+  if (compact) {
+    return (
+      <div className="mt-2 min-w-0">
+        {copyButton}
+        {feedback}
+        {/* Sem a caixa, o "copie o link acima" precisa de um link para copiar. */}
+        {result === "error" ? <p className="mt-1 break-all font-mono text-xs text-[var(--color-ink)]">{url}</p> : null}
+      </div>
+    );
+  }
+
   return (
     <div className="mt-4 min-w-0 rounded-md border fine-rule bg-white px-4 py-3">
       <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-ink-muted)]">{label}</p>
@@ -134,17 +187,7 @@ export function CourseShareLink({
         }}
         className="relative mt-3 flex flex-wrap gap-2"
       >
-        <button
-          ref={copyRef}
-          type="button"
-          onClick={() => void copyLink()}
-          aria-label={copyLabel ? undefined : forLabel("creatorPanel.shareLink.copyAria")}
-          aria-describedby={copyDescribedBy}
-          // O marco sai no tamanho do fluxo (48px, 15px/600), não no 12px da fileira.
-          className={accent ? "button-accent button-lg" : `button-solid ${actionClass}`}
-        >
-          {copyLabel ?? t("creatorPanel.shareLink.copy")}
-        </button>
+        {copyButton}
         <a href={url} aria-label={forLabel("creatorPanel.shareLink.openAria")} className={outlineClass}>
           {t("creatorPanel.shareLink.open")}
         </a>
@@ -188,8 +231,7 @@ export function CourseShareLink({
           </div>
         ) : null}
       </div>
-      {result === "copied" ? <p role="status" className="mt-2 text-sm text-[var(--color-ink-soft)]">{t("creatorPanel.shareLink.copied")}</p> : null}
-      {result === "error" ? <p role="alert" className="mt-2 text-sm text-[var(--color-danger-fg)]">{t("creatorPanel.shareLink.copyError")}</p> : null}
+      {feedback}
     </div>
   );
 }

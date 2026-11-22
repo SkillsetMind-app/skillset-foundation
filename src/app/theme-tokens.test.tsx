@@ -203,7 +203,8 @@ describe("neutral dark actions", () => {
     "teacher/teacher-members-area-hub.tsx",
     // teacher-studio-dashboard.tsx saiu da lista: o unico controle cheio dele
     // eram os marcos ("Creator milestones"), que repetiam os passos e sairam.
-    "teacher/course-manage-hub.tsx",
+    // course-manage-hub.tsx saiu tambem: o unico preenchimento dele era a
+    // bolinha azul do "✓" da lista de publicar, que virou o check do construtor.
     "teacher/course-landing-editor.tsx",
     "learn/learning-paths-rows.tsx",
     "account/notifications-inbox.tsx",

@@ -132,8 +132,9 @@ describe("painel de ofertas em espanhol", () => {
     const inativa = screen.getByText("Sin precio", { exact: false });
     expect(inativa.textContent).toContain("inactivo");
 
-    // Rotulo do link de checkout da oferta.
-    expect(screen.getByText("página de pago de Launch")).toBeInTheDocument();
+    // Rotulo do link de checkout da oferta: a linha leva so o "Copiar enlace",
+    // com o nome da oferta no nome do botao.
+    expect(screen.getByRole("button", { name: "Copiar enlace de página de pago de Launch" })).toHaveTextContent("Copiar enlace");
 
     semIngles(INGLES_ANTIGO_LISTA);
   });

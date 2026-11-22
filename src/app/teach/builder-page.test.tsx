@@ -29,4 +29,16 @@ describe("builder route loading language", () => {
     expect(screen.getByText(text)).toBeInTheDocument();
     expect(mocks.permissions).toEqual(["teacherStudio.manageCourses"]);
   });
+
+  // Sem curso e a lista: o esqueleto do editor (etapas, formulario) aparecia
+  // antes e trocava pelo da lista, dois pulos ate a tabela.
+  it("draws the list skeleton for the product list and the editor skeleton for a course", async () => {
+    mocks.locale = "en";
+    const { unmount } = render(await TeacherBuilderPage({ searchParams: Promise.resolve({}) }));
+    expect(screen.getByRole("status")).toHaveAttribute("data-skeleton", "list");
+    unmount();
+    render(await TeacherBuilderPage({ searchParams: Promise.resolve({ courseId: "course-1" }) }));
+    expect(screen.getByRole("status")).toHaveAttribute("data-skeleton", "editor");
+    expect(screen.getByRole("status")).toHaveTextContent("Loading course builder...");
+  });
 });

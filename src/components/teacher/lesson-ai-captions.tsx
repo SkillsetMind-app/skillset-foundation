@@ -3,7 +3,9 @@
 import { useEffect, useState } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { RetryAlert } from "@/components/teacher/save-status-line";
 import { useConfirm } from "@/components/teacher/use-confirm";
+import { Button } from "@/components/ui";
 import { CAPTION_LANGUAGES, captionLanguageName, isCaptionLanguage } from "@/domain/caption-languages";
 import { callTeachAi, loadTeachAi, teachAiErrorText } from "@/lib/ai/teach-ai-client";
 
@@ -20,7 +22,8 @@ type Caption = {
   stale: boolean;
 };
 type Usage = { usedSeconds: number; limitSeconds: number };
-type Notice = { kind: "ok" | "error"; text: string } | null;
+// O erro guarda o pedido que falhou: "Try again" repete exatamente ele.
+type Notice = { kind: "ok"; text: string } | { kind: "error"; text: string; retry: () => void } | null;
 
 function captionState(caption: Caption): "stale" | "draft" | "changed" | "published" {
   if (caption.stale) return "stale";
@@ -39,6 +42,8 @@ export function LessonAiCaptions({ courseId, lessonId, assetId }: { courseId: st
   const [notice, setNotice] = useState<Notice>(null);
   const [spoken, setSpoken] = useState<string>(isCaptionLanguage(locale) ? locale : "en");
   const [target, setTarget] = useState("");
+  // Cada tentativa de leitura: "Try again" depois de uma falha lê de novo.
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     let live = true;
@@ -46,7 +51,15 @@ export function LessonAiCaptions({ courseId, lessonId, assetId }: { courseId: st
       if (!live) return;
       if (!result.ok) {
         setCaptions([]);
-        setNotice({ kind: "error", text: teachAiErrorText(result, t) });
+        setNotice({
+          kind: "error",
+          text: teachAiErrorText(result, t),
+          retry: () => {
+            setCaptions(null);
+            setNotice(null);
+            setAttempt((current) => current + 1);
+          },
+        });
         return;
       }
       const loaded = result.body.captions as Caption[];
@@ -60,7 +73,7 @@ export function LessonAiCaptions({ courseId, lessonId, assetId }: { courseId: st
     return () => {
       live = false;
     };
-  }, [courseId, lessonId, assetId, t]);
+  }, [courseId, lessonId, assetId, t, attempt]);
 
   function keep(caption: Caption) {
     setCaptions((current) => {
@@ -77,7 +90,11 @@ export function LessonAiCaptions({ courseId, lessonId, assetId }: { courseId: st
     setBusy(null);
     if (result.body.usage) setUsage(result.body.usage as Usage);
     if (!result.ok) {
-      setNotice({ kind: "error", text: teachAiErrorText(result, t) });
+      setNotice({
+        kind: "error",
+        text: teachAiErrorText(result, t),
+        retry: () => void run(action, extra, busyKey, okText),
+      });
       return false;
     }
     if (result.body.caption) keep({ ...(result.body.caption as Caption), stale: false });
@@ -114,7 +131,7 @@ export function LessonAiCaptions({ courseId, lessonId, assetId }: { courseId: st
   const working = busy !== null;
 
   return (
-    <section aria-labelledby="lesson-ai-captions-title" className="grid min-w-0 gap-3">
+    <section aria-labelledby="lesson-ai-captions-title" aria-busy={working || captions === null} className="grid min-w-0 gap-3">
       <h4 id="lesson-ai-captions-title" className="text-sm font-semibold">{t("creatorEditor.lesson.ai.title")}</h4>
       <p className="text-sm text-[var(--color-ink-soft)]">{t("creatorEditor.lesson.ai.help")}</p>
       {usage ? (
@@ -138,10 +155,9 @@ export function LessonAiCaptions({ courseId, lessonId, assetId }: { courseId: st
                 ))}
               </select>
             </label>
-            <button
-              type="button"
-              className="button-solid min-h-11 px-4 py-2.5 text-sm disabled:opacity-60"
+            <Button
               disabled={working}
+              loading={busy === "transcribe"}
               onClick={() => {
                 const generate = () => {
                   void run("transcribe", { language: spoken }, "transcribe", t("creatorEditor.lesson.ai.generated"));
@@ -160,7 +176,7 @@ export function LessonAiCaptions({ courseId, lessonId, assetId }: { courseId: st
               {busy === "transcribe"
                 ? t("creatorEditor.lesson.ai.generating")
                 : t(spokenExists ? "creatorEditor.lesson.ai.regenerate" : "creatorEditor.lesson.ai.generate")}
-            </button>
+            </Button>
           </div>
 
           {captions.map((caption) => {
@@ -182,7 +198,12 @@ export function LessonAiCaptions({ courseId, lessonId, assetId }: { courseId: st
                 {state === "stale" ? null : (
                   <textarea
                     value={texts[caption.language] ?? caption.vtt}
-                    onChange={(event) => setTexts((current) => ({ ...current, [caption.language]: event.target.value }))}
+                    onChange={(event) => {
+                      setTexts((current) => ({ ...current, [caption.language]: event.target.value }));
+                      // Editou depois da falha: repetir o pedido antigo gravaria o
+                      // texto velho por cima. O erro sai; o Save usa o texto novo.
+                      setNotice((current) => (current?.kind === "error" ? null : current));
+                    }}
                     disabled={working}
                     rows={10}
                     spellCheck
@@ -196,6 +217,7 @@ export function LessonAiCaptions({ courseId, lessonId, assetId }: { courseId: st
                         type="button"
                         className="button-outline min-h-11 px-3 text-sm disabled:opacity-60"
                         disabled={working || !edited}
+                        aria-busy={busy === `save-${caption.language}` || undefined}
                         onClick={() => void run("saveCaption", { language: caption.language, vtt: texts[caption.language] },
                           `save-${caption.language}`, t("creatorEditor.lesson.ai.saved"))}
                       >
@@ -205,6 +227,7 @@ export function LessonAiCaptions({ courseId, lessonId, assetId }: { courseId: st
                         type="button"
                         className="button-solid min-h-11 px-4 py-2.5 text-sm disabled:opacity-60"
                         disabled={working || (state === "published" && !edited)}
+                        aria-busy={busy === `publish-${caption.language}` || undefined}
                         onClick={() => void publish(caption)}
                       >
                         {t("creatorEditor.lesson.ai.publish")}
@@ -246,23 +269,24 @@ export function LessonAiCaptions({ courseId, lessonId, assetId }: { courseId: st
                   ))}
                 </select>
               </label>
-              <button
-                type="button"
-                className="button-outline min-h-11 px-3 text-sm disabled:opacity-60"
+              <Button
+                variant="outline"
                 disabled={working || !target}
+                loading={busy === "translate"}
                 onClick={() => void run("translate", { from: source.language, to: target }, "translate",
                   t("creatorEditor.lesson.ai.translated"))}
               >
                 {busy === "translate" ? t("creatorEditor.lesson.ai.translating") : t("creatorEditor.lesson.ai.translate")}
-              </button>
+              </Button>
             </div>
           ) : null}
         </>
       )}
 
-      <p role="status" aria-live="polite" className={notice?.kind === "error" ? "text-sm font-semibold text-[var(--color-danger-fg)]" : "text-sm text-[var(--color-ink-soft)]"}>
-        {notice?.text ?? ""}
+      <p role="status" aria-live="polite" className="text-sm text-[var(--color-ink-soft)]">
+        {notice?.kind === "ok" ? notice.text : ""}
       </p>
+      {notice?.kind === "error" ? <RetryAlert text={notice.text} onRetry={notice.retry} /> : null}
       {confirmDialog}
     </section>
   );

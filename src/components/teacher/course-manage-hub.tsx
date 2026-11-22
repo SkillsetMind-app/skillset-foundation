@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowLeft, ChevronDown, ChevronLeft, ChevronRight, Circle } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
@@ -10,6 +10,7 @@ import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { ShortId } from "@/components/shared/short-id";
 import { StatusChip } from "@/components/shared/status-chip";
+import { DrawnCheck } from "@/components/ui/drawn-check";
 import {
   CourseActionsMenu,
   DeleteOrArchiveCourseDialog,
@@ -676,6 +677,8 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
               <button
                 key={item.id}
                 ref={section === item.id ? activeSectionRef : undefined}
+                // A seção aberta era só cor: o leitor de tela não sabia onde estava.
+                aria-current={section === item.id ? "page" : undefined}
                 type="button"
                 onClick={() => setSection(item.id)}
                 className={`min-h-11 shrink-0 whitespace-nowrap rounded-md border-b-2 px-3 py-2 text-left text-sm font-semibold transition lg:w-full lg:border-b-0 lg:border-l-2 ${
@@ -696,6 +699,7 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
               <button
                 key={item.id}
                 ref={section === item.id ? activeSectionRef : undefined}
+                aria-current={section === item.id ? "page" : undefined}
                 type="button"
                 onClick={() => setSection(item.id)}
                 className={`rounded-md px-3 py-2 text-left text-sm font-semibold transition ${
@@ -726,10 +730,12 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
               title={t("creatorPanel.hub.checklist.title")}
               description={t(`creatorPanel.hub.status.${course.status}`)}
             >
-              <div className="mt-4 h-2 overflow-hidden rounded-full bg-[var(--color-surface-hover)]">
+              {/* Mesma barra do construtor (latão, 6px): as duas telas
+                  desenhavam a mesma prontidão de jeitos diferentes. */}
+              <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-[rgba(26,54,93,0.12)]">
                 <div
                   data-testid="publish-readiness-bar"
-                  className="h-full rounded-full bg-[var(--color-primary)] transition-all"
+                  className="h-full rounded-full bg-[var(--color-accent)] transition-[width] duration-300 ease-out"
                   style={{ width: `${readiness.percent}%` }}
                 />
               </div>
@@ -745,28 +751,24 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
                 renderItem={(item) => {
                   const editHref = readinessEditHref(item, course.id);
                   return (
-                    // Linha pronta ganha o verde suave da casa (o mesmo do
-                    // InlineAlert tone="success"): a pessoa varre a lista e ve
-                    // onde ainda falta sem ler item por item.
+                    // A mesma linha do construtor: feito = check desenhado em
+                    // verde (com "Done" para o leitor de tela), pendente =
+                    // círculo vazio. Era um "✓" digitado numa bolinha azul.
                     <li
                       key={item.id}
                       data-readiness-item={item.id}
-                      className={`flex items-start gap-3 rounded-md px-3 py-2 ${
-                        item.done ? "bg-[var(--color-success-soft)]" : ""
-                      }`}
+                      className="flex items-start gap-3 rounded-md border border-[var(--color-line)] bg-white px-4 py-3"
                     >
-                      <span
-                        aria-hidden
-                        className={`mt-0.5 inline-flex size-5 shrink-0 items-center justify-center rounded-full text-[11px] font-bold ${
-                          item.done
-                            ? "bg-[var(--color-primary)] text-[var(--color-on-primary)]"
-                            : "border fine-rule bg-white text-[var(--color-ink-muted)]"
-                        }`}
-                      >
-                        {item.done ? "✓" : ""}
-                      </span>
+                      {item.done ? (
+                        <span className="mt-0.5 text-[var(--color-success-fg)]">
+                          <DrawnCheck size={15} />
+                          <span className="sr-only">{t("creatorEditor.lesson.state.done")}: </span>
+                        </span>
+                      ) : (
+                        <Circle aria-hidden="true" size={13} strokeWidth={1.8} className="mt-1 shrink-0 text-[var(--color-ink-muted)]" />
+                      )}
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-semibold text-[var(--color-ink)]">
+                        <p className={`text-sm font-semibold ${item.done ? "text-[var(--color-success-fg)]" : "text-[var(--color-ink)]"}`}>
                           {item.label}
                           {item.optional ? (
                             <span className="ml-2 text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--color-ink-muted)]">
@@ -1113,9 +1115,11 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
                 title={t("creatorPanel.hub.page.title")}
                 description={t("creatorPanel.hub.page.description")}
               >
+                {/* Um botão cheio por seção: aqui é o "Save page" do editor
+                    de blocos. Abrir a página é ação secundária. */}
                 <Link
                   href={`/courses/${course.id}`}
-                  className="button-solid mt-5 inline-flex px-4 py-2 text-xs"
+                  className="button-outline mt-5 inline-flex px-4 py-2 text-xs"
                 >
                   {t("creatorPanel.hub.page.open")}
                 </Link>

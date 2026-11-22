@@ -9,6 +9,10 @@
   "confirmDialog": {
     "error": "No se pudo completar. Inténtalo de nuevo en un momento."
   },
+  "saveStatus": {
+    "unsaved": "Cambios sin guardar",
+    "retry": "Intentar de nuevo"
+  },
   "lessonUpload": {
     "title": "Carga de la lección",
     "uploading": "Subiendo archivo...",
@@ -2549,6 +2553,7 @@
       "submitting": "Agregando...",
       "loadError": "No pudimos cargar tus precios.",
       "createError": "No pudimos agregar este precio.",
+      "activationError": "Paga la tarifa única de activación antes de agregar un precio.",
       "invalidAmount": "Introduce un precio válido.",
       "created": "Precio agregado. Su enlace cobra exactamente este precio."
     },
@@ -2740,6 +2745,7 @@
     "overview": {
       "title": "Cómo va este producto",
       "scope": "Todo lo de abajo cuenta solo {title}, nunca tus otros productos.",
+      "studentsError": "No pudimos cargar tus alumnos, así que estos números no se muestran.",
       "viewPublic": "Ver página pública",
       "previewStudent": "Ver como alumno",
       "students": "Alumnos inscritos",
@@ -3724,6 +3730,7 @@
   "creatorEditor": {
     "lesson": {
       "ai": {
+        "tools": "Herramientas de IA: subtítulos y cuestionario",
         "unsaved": "Cambios sin guardar",
         "saveAndUpdate": "Guardar y actualizar para los alumnos",
         "confirmRegenerate": "¿Generar los subtítulos de nuevo? Se reemplazan tus correcciones en este idioma y la duración del video vuelve a contar en tus horas de IA del mes.",
@@ -4187,7 +4194,8 @@
         "moveConfirm": "Los estudiantes que ya abrieron esta lección pueden perder el acceso hasta volver a llegar a ella en el nuevo orden. ¿Mover de todos modos?",
         "moveButton": "Mover",
         "moveLessonButton": "Mover \"{title}\"",
-        "moveDone": "\"{title}\" se movió a {module}."
+        "moveDone": "\"{title}\" se movió a {module}.",
+        "movedTo": "\"{title}\" pasó a la posición {position}."
       },
       "summary": {
         "month": " / mes",
@@ -4311,7 +4319,7 @@
         "switchToMonthly": "Cobrar cada mes",
         "offerCharges": "Tu página cobra {price} ({model}).",
         "offerChange": "Cámbialo en Otros precios.",
-        "offersFailed": "No pudimos cargar tus precios. Recarga la página.",
+        "offersFailed": "No pudimos cargar tus precios.",
         "preview": "Lección de vista previa gratuita",
         "noPreview": "Aún no hay una vista previa seleccionada",
         "listingHelp": "Las personas pagan en una página segura antes de entrar."

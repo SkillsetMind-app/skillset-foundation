@@ -68,12 +68,14 @@ export function CoursePreviewShell({
     );
   }
 
+  // O mesmo cartão escuro do fallback da rota, com a mesma frase: antes a
+  // espera trocava dele para um cartão branco com "PREVIEW MODE", um título de
+  // 30px "Loading preview..." e um botão de voltar — três telas até a prévia.
   if (isLoading) {
     return (
-      <PreviewState
-        title={t("creatorEditor.preview.loading")}
-        detail={t("creatorEditor.preview.loadingHelp")}
-      />
+      <section role="status" className="rounded-lg border border-[var(--ma-line)] bg-[var(--ma-surface)] p-6">
+        <p className="text-sm text-[var(--ma-ink-soft)]">{t("creatorEditor.preview.serverLoading")}</p>
+      </section>
     );
   }
 

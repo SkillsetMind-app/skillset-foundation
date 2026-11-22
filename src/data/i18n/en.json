@@ -9,6 +9,10 @@
   "confirmDialog": {
     "error": "That didn't go through. Try again in a moment."
   },
+  "saveStatus": {
+    "unsaved": "Unsaved changes",
+    "retry": "Try again"
+  },
   "lessonUpload": {
     "title": "Lesson upload",
     "uploading": "Uploading file...",
@@ -2549,6 +2553,7 @@
       "submitting": "Adding...",
       "loadError": "Could not load your prices.",
       "createError": "Could not add this price.",
+      "activationError": "Pay the one-time activation fee before adding a price.",
       "invalidAmount": "Enter a valid price.",
       "created": "Price added. Its link charges exactly this price."
     },
@@ -2740,6 +2745,7 @@
     "overview": {
       "title": "How this product is doing",
       "scope": "Everything below counts only {title}, never your other products.",
+      "studentsError": "Could not load your students, so these numbers are not shown.",
       "viewPublic": "View public page",
       "previewStudent": "Preview as a student",
       "students": "Students enrolled",
@@ -3724,6 +3730,7 @@
   "creatorEditor": {
     "lesson": {
       "ai": {
+        "tools": "AI tools: captions and quiz",
         "unsaved": "Unsaved changes",
         "saveAndUpdate": "Save and update for students",
         "confirmRegenerate": "Generate the captions again? Your edits in this language are replaced, and the video's length counts again toward your monthly AI hours.",
@@ -4187,7 +4194,8 @@
         "moveConfirm": "Students who already opened this lesson may lose access until they reach it again in the new order. Move anyway?",
         "moveButton": "Move",
         "moveLessonButton": "Move \"{title}\"",
-        "moveDone": "\"{title}\" moved to {module}."
+        "moveDone": "\"{title}\" moved to {module}.",
+        "movedTo": "\"{title}\" moved to position {position}."
       },
       "summary": {
         "month": " / month",
@@ -4311,7 +4319,7 @@
         "switchToMonthly": "Charge every month instead",
         "offerCharges": "Your page charges {price} ({model}).",
         "offerChange": "Change it in Other prices.",
-        "offersFailed": "Couldn't load your prices. Reload the page.",
+        "offersFailed": "Couldn't load your prices.",
         "preview": "Free preview lesson",
         "noPreview": "No preview selected yet",
         "listingHelp": "People pay on a secure page before they get access."

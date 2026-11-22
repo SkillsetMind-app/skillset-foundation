@@ -3,7 +3,9 @@
 import { useEffect, useState } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { RetryAlert } from "@/components/teacher/save-status-line";
 import { useConfirm } from "@/components/teacher/use-confirm";
+import { Button } from "@/components/ui";
 import { callTeachAi, loadTeachAi, teachAiErrorText } from "@/lib/ai/teach-ai-client";
 import type { QuizQuestion } from "@/lib/ai/lesson-text";
 
@@ -20,7 +22,13 @@ export function LessonAiQuiz({ courseId, lessonId, assetId }: { courseId: string
   const [quiz, setQuiz] = useState<Quiz | null | undefined | "error">(undefined);
   const [dirty, setDirty] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
-  const [notice, setNotice] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
+  // O erro guarda o pedido que falhou: "Try again" repete exatamente ele.
+  const [notice, setNotice] = useState<
+    { kind: "ok"; text: string } | { kind: "error"; text: string; retry: () => void } | null
+  >(null);
+  // Cada tentativa de leitura. Sem ela, um quiz que não carregou deixava o
+  // painel só com a frase de erro, sem nenhum botão.
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     let live = true;
@@ -28,7 +36,15 @@ export function LessonAiQuiz({ courseId, lessonId, assetId }: { courseId: string
       if (!live) return;
       if (!result.ok) {
         setQuiz("error");
-        setNotice({ kind: "error", text: teachAiErrorText(result, t) });
+        setNotice({
+          kind: "error",
+          text: teachAiErrorText(result, t),
+          retry: () => {
+            setQuiz(undefined);
+            setNotice(null);
+            setAttempt((current) => current + 1);
+          },
+        });
         return;
       }
       setQuiz((result.body.quiz as Quiz | null) ?? null);
@@ -36,7 +52,7 @@ export function LessonAiQuiz({ courseId, lessonId, assetId }: { courseId: string
     return () => {
       live = false;
     };
-  }, [courseId, lessonId, assetId, t]);
+  }, [courseId, lessonId, assetId, t, attempt]);
 
   async function run(payload: Record<string, unknown>, key: string, okText: string) {
     setBusy(key);
@@ -44,7 +60,7 @@ export function LessonAiQuiz({ courseId, lessonId, assetId }: { courseId: string
     const result = await callTeachAi({ courseId, lessonId, assetId, ...payload });
     setBusy(null);
     if (!result.ok) {
-      setNotice({ kind: "error", text: teachAiErrorText(result, t) });
+      setNotice({ kind: "error", text: teachAiErrorText(result, t), retry: () => void run(payload, key, okText) });
       return;
     }
     setQuiz((result.body.quiz as Quiz | null) ?? null);
@@ -58,6 +74,7 @@ export function LessonAiQuiz({ courseId, lessonId, assetId }: { courseId: string
       questions: current.questions.map((question, i) => (i === index ? { ...question, ...patch } : question)),
     } : current);
     setDirty(true);
+    dropStaleRetry();
   }
 
   function removeQuestion(index: number) {
@@ -65,6 +82,13 @@ export function LessonAiQuiz({ courseId, lessonId, assetId }: { courseId: string
       ? { ...current, questions: current.questions.filter((_, i) => i !== index) }
       : current);
     setDirty(true);
+    dropStaleRetry();
+  }
+
+  // Editou depois da falha: repetir o pedido antigo gravaria as perguntas
+  // velhas por cima das novas. O erro sai; Save usa o quiz da tela.
+  function dropStaleRetry() {
+    setNotice((current) => (current?.kind === "error" ? null : current));
   }
 
   const working = busy !== null;
@@ -73,7 +97,7 @@ export function LessonAiQuiz({ courseId, lessonId, assetId }: { courseId: string
   const published = current?.status === "published";
 
   return (
-    <section aria-labelledby="lesson-ai-quiz-title" className="grid min-w-0 gap-3">
+    <section aria-labelledby="lesson-ai-quiz-title" aria-busy={working || quiz === undefined} className="grid min-w-0 gap-3">
       <h4 id="lesson-ai-quiz-title" className="text-sm font-semibold">{t("creatorEditor.lesson.ai.quizTitle")}</h4>
       <p className="text-sm text-[var(--color-ink-soft)]">{t("creatorEditor.lesson.ai.quizHelp")}</p>
 
@@ -134,10 +158,10 @@ export function LessonAiQuiz({ courseId, lessonId, assetId }: { courseId: string
 
       {loaded ? (
         <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            className="button-outline min-h-11 px-3 text-sm disabled:opacity-60"
+          <Button
+            variant="outline"
             disabled={working}
+            loading={busy === "generate"}
             onClick={() => {
               const generate = () => {
                 void run({ action: "generateQuiz" }, "generate", t("creatorEditor.lesson.ai.quizGenerated"));
@@ -156,7 +180,7 @@ export function LessonAiQuiz({ courseId, lessonId, assetId }: { courseId: string
             {busy === "generate"
               ? t("creatorEditor.lesson.ai.generatingQuiz")
               : t(current ? "creatorEditor.lesson.ai.regenerateQuiz" : "creatorEditor.lesson.ai.generateQuiz")}
-          </button>
+          </Button>
           {current ? (
             <>
               <button type="button" className="button-outline min-h-11 px-3 text-sm disabled:opacity-60"
@@ -189,10 +213,10 @@ export function LessonAiQuiz({ courseId, lessonId, assetId }: { courseId: string
         </div>
       ) : null}
 
-      <p role="status" aria-live="polite"
-        className={notice?.kind === "error" ? "text-sm font-semibold text-[var(--color-danger-fg)]" : "text-sm text-[var(--color-ink-soft)]"}>
-        {notice?.text ?? ""}
+      <p role="status" aria-live="polite" className="text-sm text-[var(--color-ink-soft)]">
+        {notice?.kind === "ok" ? notice.text : ""}
       </p>
+      {notice?.kind === "error" ? <RetryAlert text={notice.text} onRetry={notice.retry} /> : null}
       {confirmDialog}
     </section>
   );

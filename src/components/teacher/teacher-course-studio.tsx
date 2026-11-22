@@ -23,6 +23,7 @@ import {
   CourseActionsMenu,
   DeleteOrArchiveCourseDialog,
 } from "@/components/teacher/course-actions";
+import { ProductRowsSkeleton } from "@/components/teacher/builder-skeleton";
 import { CreateCourseStart } from "@/components/teacher/create-course-start";
 import type { TeacherCourse, TeacherCourseProductFormat } from "@/domain/teacher-course";
 import { getMyCoursesBeingDeleted, type CourseBeingDeleted } from "@/lib/data/course-deletions";
@@ -349,14 +350,7 @@ export function TeacherCourseStudio({
 
         <div className="mt-5">
           {isLoadingCourses ? (
-            <div className="grid gap-0" aria-label={t("creatorPanel.products.loadingAria")}>
-              {[1, 2, 3].map((item) => (
-                <div
-                  key={item}
-                  className="h-24 animate-pulse border-b border-[var(--color-line)] bg-[var(--color-surface-soft)]"
-                />
-              ))}
-            </div>
+            <ProductRowsSkeleton label={t("creatorPanel.products.loadingAria")} />
           ) : courses.length === 0 ||
             (productView === "communities" &&
               !courses.some((course) => course.communityEnabled)) ? (

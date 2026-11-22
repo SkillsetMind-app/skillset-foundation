@@ -4,6 +4,7 @@ import { useState, type FormEvent } from "react";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 
 import { PanelCard } from "@/components/teacher/course-commerce-panels";
+import { SaveStatusLine } from "@/components/teacher/save-status-line";
 import type { DripStrategy } from "@/domain/drip-policy";
 import { DEFAULT_PLATFORM_FEE_BPS } from "@/lib/payments/rules";
 import type { TeacherCourse } from "@/domain/teacher-course";
@@ -27,9 +28,18 @@ export function SalesPageEditor({ course }: { course: TeacherCourse }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  // O que está na tela contra o que o servidor confirmou por último: "Saved"
+  // só vale enquanto os dois são iguais.
+  const draft = JSON.stringify([title, summary, outcomesText]);
+  const [savedDraft, setSavedDraft] = useState(draft);
 
-  async function handleSave(event: FormEvent) {
+  function handleSave(event: FormEvent) {
     event.preventDefault();
+    void save();
+  }
+
+  async function save() {
+    const sent = draft;
     setSaving(true);
     setError("");
     setNotice("");
@@ -66,6 +76,7 @@ export function SalesPageEditor({ course }: { course: TeacherCourse }) {
         membersDescription: course.membersDescription ?? null,
         communityEnabled: Boolean(course.communityEnabled),
       });
+      setSavedDraft(sent);
       setNotice("teacherSalesCopy.saved");
     } catch (saveError) {
       const reasons: Record<string, string> = {
@@ -121,18 +132,10 @@ export function SalesPageEditor({ course }: { course: TeacherCourse }) {
             placeholder={t("teacherSalesCopy.outcomesPlaceholder")}
           />
         </label>
-        {error ? (
-          <p className="text-sm text-[var(--color-danger,#b91c1c)]" role="alert">
-            {t(error)}
-          </p>
-        ) : null}
-        {notice ? (
-          <p className="text-sm text-[var(--color-ink-soft)]" role="status">
-            {t(notice)}
-          </p>
-        ) : null}
-        <div className="flex flex-wrap gap-2">
-          <button type="submit" className="button-solid px-4 py-2 text-xs" disabled={saving}>
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Contorno: na seção Page o único botão cheio é o "Save page" do
+              editor de blocos logo abaixo. */}
+          <button type="submit" className="button-outline px-4 py-2 text-xs" disabled={saving}>
             {t(saving ? "teacherSalesCopy.saving" : "teacherSalesCopy.save")}
           </button>
           <a
@@ -143,6 +146,13 @@ export function SalesPageEditor({ course }: { course: TeacherCourse }) {
           >
             {t("teacherSalesCopy.preview")}
           </a>
+          <SaveStatusLine
+            saving={saving}
+            dirty={draft !== savedDraft}
+            savedText={notice ? t(notice) : undefined}
+            errorText={error ? t(error) : undefined}
+            onRetry={() => void save()}
+          />
         </div>
       </form>
     </PanelCard>

@@ -1112,11 +1112,19 @@ export function LessonContentModal({
 
               {/* Legenda com IA: só para vídeo enviado à Bunny (é dela que sai
                   o áudio e é nela que a legenda publicada aparece). */}
+              {/* Recolhida por padrão: aberta, a legenda (10 linhas) e o quiz
+                  (pergunta por pergunta) faziam a aba de vídeo virar três telas
+                  e empurravam o "Done" para longe. */}
               {isTeacherAiEnabled && isEditable && resolvedSource === "upload" && primaryVideo?.bunnyVideoId ? (
-                <>
-                  <LessonAiCaptions key={primaryVideo.id} courseId={course.id} lessonId={lesson.id} assetId={primaryVideo.id} />
-                  <LessonAiQuiz key={`quiz-${primaryVideo.id}`} courseId={course.id} lessonId={lesson.id} assetId={primaryVideo.id} />
-                </>
+                <details className="rounded-md border fine-rule bg-[var(--color-surface-soft)] px-4 py-1">
+                  <summary className="flex min-h-11 cursor-pointer items-center text-sm font-semibold text-[var(--color-ink)]">
+                    {t("creatorEditor.lesson.ai.tools")}
+                  </summary>
+                  <div className="grid gap-6 pb-3 pt-2">
+                    <LessonAiCaptions key={primaryVideo.id} courseId={course.id} lessonId={lesson.id} assetId={primaryVideo.id} />
+                    <LessonAiQuiz key={`quiz-${primaryVideo.id}`} courseId={course.id} lessonId={lesson.id} assetId={primaryVideo.id} />
+                  </div>
+                </details>
               ) : null}
 
               <p className="lesson-modal__guidance">

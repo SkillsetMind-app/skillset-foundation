@@ -11,14 +11,26 @@ function stubOffers() {
     { id: "o3", name: "Expired", active: false, prices: [price] },
   ] }) })));
 }
+// Cada linha de preco leva so o "Copy link" (a caixa inteira fica em Promo
+// links): o link que ele copia e a prova do codigo / id da oferta.
+async function copiedUrl(name: string) {
+  const writeText = vi.fn().mockResolvedValue(undefined);
+  vi.stubGlobal("navigator", { clipboard: { writeText } });
+  fireEvent.click(await screen.findByRole("button", { name: `Copy ${name} payment page link` }));
+  await waitFor(() => expect(writeText).toHaveBeenCalledOnce());
+  return writeText.mock.calls[0][0];
+}
 // jsdom serve em localhost: fora de produção o link de oferta fica relativo,
 // para que um preview nunca publique um host que só resolve em produção.
 it("shares checkout by public code or offer ID, never inactive offers", async () => {
   stubOffers();
   render(<CourseOffersPanel courseId="course-1" courseTitle="Launch course" />);
-  expect(await screen.findByRole("link", { name: "Open Launch payment page" })).toHaveAttribute("href", "/courses/course-1/checkout?offer=LAUNCH");
-  expect(screen.getByRole("link", { name: "Open Standard payment page" })).toHaveAttribute("href", "/courses/course-1/checkout?offerId=o2");
-  expect(screen.queryByRole("link", { name: /Expired/ })).not.toBeInTheDocument();
+  expect(await copiedUrl("Launch")).toBe("/courses/course-1/checkout?offer=LAUNCH");
+  expect(await copiedUrl("Standard")).toBe("/courses/course-1/checkout?offerId=o2");
+  expect(screen.queryByRole("button", { name: /Expired/ })).not.toBeInTheDocument();
+  // Sem caixa de link por linha: nem Abrir nem Compartilhar.
+  expect(screen.queryByRole("link", { name: /payment page/ })).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: /^Share / })).not.toBeInTheDocument();
   const section = screen.getByRole("heading", { level: 2 }).parentElement;
   expect(section?.tagName).toBe("SECTION");
   expect(section?.className).not.toMatch(/border|shadow|rounded/);
@@ -27,9 +39,9 @@ it("publishes offer links on pay.skillsetmind.com in production, code and ID pre
   stubOffers();
   vi.stubGlobal("location", { ...window.location, hostname: "www.skillsetmind.com" });
   render(<CourseOffersPanel courseId="course-1" courseTitle="Launch course" />);
-  expect(await screen.findByRole("link", { name: "Open Launch payment page" })).toHaveAttribute("href", "https://pay.skillsetmind.com/courses/course-1/checkout?offer=LAUNCH");
-  expect(screen.getByRole("link", { name: "Open Standard payment page" })).toHaveAttribute("href", "https://pay.skillsetmind.com/courses/course-1/checkout?offerId=o2");
-  expect(screen.queryByRole("link", { name: /Expired/ })).not.toBeInTheDocument();
+  expect(await copiedUrl("Launch")).toBe("https://pay.skillsetmind.com/courses/course-1/checkout?offer=LAUNCH");
+  expect(await copiedUrl("Standard")).toBe("https://pay.skillsetmind.com/courses/course-1/checkout?offerId=o2");
+  expect(screen.queryByRole("button", { name: /Expired/ })).not.toBeInTheDocument();
 });
 
 // O formulario nascia sempre com 97 USD avulso: num curso por assinatura de
@@ -197,4 +209,28 @@ it("sem nenhuma oferta, o formulario continua aberto e nao ha botao Add another 
 
   expect(await screen.findByLabelText("Amount")).toBeInTheDocument();
   expect(screen.queryByRole("button", { name: "Add another price" })).not.toBeInTheDocument();
+});
+
+// A mensagem crua da rota (ingles, as vezes tecnica) ia direto para a tela e
+// nao era anunciada. Agora sai a frase da casa, num alerta.
+it.each([
+  ["Pay the one-time activation fee to activate your creator account.", "Pay the one-time activation fee before adding a price."],
+  ["A paid offer must have a positive price.", "Enter a valid price."],
+  ["duplicate key value violates unique constraint", "Could not add this price."],
+])("criar falha com %s: frase da casa, anunciada", async (raw, shown) => {
+  vi.stubGlobal("fetch", vi.fn(async (_url: string, init?: RequestInit) =>
+    init?.method === "POST"
+      ? { ok: false, json: async () => ({ error: raw }) }
+      : { ok: true, json: async () => ({ offers: [] }) }));
+  render(<CourseOffersPanel courseId="course-1" courseTitle="Launch course" />);
+  fireEvent.click(await screen.findByRole("button", { name: "Add price" }));
+  expect(await screen.findByRole("alert")).toHaveTextContent(shown);
+  if (raw !== shown) expect(screen.queryByText(raw)).not.toBeInTheDocument();
+});
+
+it("a lista que a rota nao leu vira erro de leitura, nao 'nenhum preco'", async () => {
+  vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ offers: [], warning: "Offers are unavailable." }) })));
+  render(<CourseOffersPanel courseId="course-1" courseTitle="Launch course" />);
+  expect(await screen.findByRole("alert")).toHaveTextContent("Could not load your prices.");
+  expect(screen.queryByText("Offers are unavailable.")).not.toBeInTheDocument();
 });

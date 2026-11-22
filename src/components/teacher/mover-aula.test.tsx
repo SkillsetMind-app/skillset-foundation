@@ -401,3 +401,38 @@ describe("mover a aula entre modulos", () => {
   }, 10000);
 });
 vi.mock("@/lib/data/creator-plan", () => ({ fetchCreatorPlanRequired: async () => false }));
+
+// Up/Down trocavam as linhas em silencio e a linha que recebia a aula
+// arrastada nao se marcava. Agora: anuncio da nova posicao e marca no alvo.
+describe("reordenar: anuncio e marca de soltura", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.course = courseWith();
+    openAt("courseId=course-1&tab=content");
+  });
+  afterEach(() => cleanup());
+
+  it("Up/Down anunciam a nova posicao, na lista e na pagina do modulo", async () => {
+    await renderBuilder();
+    fireEvent.click(within(rowOf("m1")).getByRole("button", { name: "Down" }));
+    expect(screen.getByText('"Start here" moved to position 2.')).toHaveAttribute("role", "status");
+    cleanup();
+
+    openAt("courseId=course-1&tab=content&module=m1");
+    await renderBuilder();
+    fireEvent.click(within(card()).getAllByRole("button", { name: "Up" })[1]);
+    expect(within(card()).getByRole("status")).toHaveTextContent('"Second" moved to position 1.');
+  });
+
+  it("a linha que vai receber a aula arrastada se marca, e desmarca ao soltar", async () => {
+    await renderBuilder();
+    const dataTransfer = fakeDataTransfer();
+    fireEvent.dragStart(within(rowOf("m1")).getByText("Second"), { dataTransfer });
+    fireEvent.dragOver(rowOf("m2"), { dataTransfer });
+    expect(rowOf("m2").className).toContain("outline-dashed");
+    expect(rowOf("m1").className).not.toContain("outline-dashed");
+    fireEvent.drop(rowOf("m2"), { dataTransfer });
+    expect(rowOf("m2").className).not.toContain("outline-dashed");
+  });
+});
+
