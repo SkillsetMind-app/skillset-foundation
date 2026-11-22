@@ -141,10 +141,12 @@ export function SupportTicketCenter() {
               {t(`${copy}.${success}`)}
             </p>
           ) : null}
+          {/* No celular o botão ocupa a linha; do tablet para cima fica do
+              tamanho do texto, em vez de esticar de ponta a ponta do cartão. */}
           <button
             type="submit"
             disabled={isSubmitting}
-            className="button-solid px-4 py-2.5 text-sm disabled:opacity-60"
+            className="button-solid px-4 py-2.5 text-sm disabled:opacity-60 sm:justify-self-start"
           >
             {t(`${copy}.${isSubmitting ? "creating" : "create"}`)}
           </button>

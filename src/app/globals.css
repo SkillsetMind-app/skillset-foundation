@@ -1348,16 +1348,13 @@ p {
    wash across the top of the page (the gradient is an arbitrary value, so the
    global .bg-white dark override never reached it) — give it a muted dark-amber
    surface with warm light text so it still reads as a warning without glaring. */
+/* A faixa usa as cores de aviso da plataforma (as mesmas do InlineAlert).
+   Era o único degradê do produto, em âmbar do Tailwind; os tokens já trocam
+   no tema escuro, então a regra própria do escuro saiu. */
 .account-status-banner {
-  background: linear-gradient(90deg, #fef3c7 0%, #fde68a 100%);
-  border-bottom: 1px solid #f59e0b;
-  color: #78350f;
-}
-
-[data-theme="dark"] .account-status-banner {
-  background: linear-gradient(90deg, rgba(192, 123, 10, 0.18) 0%, rgba(192, 123, 10, 0.26) 100%);
-  border-bottom-color: rgba(245, 158, 11, 0.42);
-  color: #fad79f;
+  background: var(--color-warning-soft);
+  border-bottom: 1px solid var(--color-warning);
+  color: var(--color-warning-fg);
 }
 
 /* Active account-nav pill. Light = navy fill with white text (correct). In dark
@@ -7459,6 +7456,14 @@ button:hover > .dash-card,
   border-top: 1px solid var(--color-line);
   background: #ffffff;
   box-shadow: var(--shadow-strong);
+}
+
+/* Onde a pessoa está: a aba atual ganha um traço em cima, além da cor. Só a
+   cor (dois azuis escuros) não dava para distinguir. */
+.platform-mobile-nav [aria-current="page"],
+.platform-mobile-nav [data-current="true"] {
+  box-shadow: inset 0 2px 0 var(--color-primary);
+  color: var(--color-primary);
 }
 
 /* TELAS MÉDIAS (768–1179px): o rail de 64px é o padrão, e o conteúdo fica
