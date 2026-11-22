@@ -66,63 +66,51 @@ export function BillingReturnStatus() {
     </Link>
   );
 
-  if (subscription) {
-    const trialing = subscription.status === "trialing" && Boolean(subscription.trialEnd);
-    return (
-      <div className="px-4 py-8 text-center" role="status">
-        <div className="mx-auto grid size-12 place-items-center text-[var(--color-success-fg)]">
-          <CircleCheck aria-hidden="true" size={28} />
-        </div>
-        <h2 className="mt-3 text-2xl font-semibold text-[var(--color-primary)]">
-          {trialing
-            ? t("billingCheckout.trialStarted").replace("{days}", () => String(PLAN_TRIAL_DAYS))
-            : t("billingCheckout.planActive")}
-        </h2>
-        <p className="mx-auto mt-3 max-w-md text-sm leading-7 text-[var(--color-ink-soft)]">
-          {trialing && subscription.trialEnd
-            ? t("billingCheckout.trialStartedBody").replace("{date}", () =>
-                formatTrialDate(new Date(subscription.trialEnd as string), locale))
-            : t("billingCheckout.planActiveBody")}
-        </p>
-        <div className="mt-6 flex flex-wrap justify-center gap-3">
-          <Link href="/teach" className={buttonClasses({ variant: "solid", size: "lg" })}>
-            {t("billingCheckout.openStudio")}
-          </Link>
-          {backToBilling("lg")}
-        </div>
-      </div>
-    );
-  }
+  const trialing = subscription?.status === "trialing" && Boolean(subscription.trialEnd);
+  const confirmed = Boolean(subscription);
 
-  if (gaveUp) {
-    return (
-      <div className="px-4 py-8 text-center">
-        <div className="mx-auto grid size-12 place-items-center text-[var(--color-ink-soft)]">
-          <Info aria-hidden="true" size={24} />
-        </div>
-        <h2 className="mt-3 text-2xl font-semibold text-[var(--color-primary)]">
-          {t("billingCheckout.returnHeading")}
-        </h2>
-        <p className="mx-auto mt-3 max-w-md text-sm leading-7 text-[var(--color-ink-soft)]">
-          {t("billingCheckout.returnBody")}
-        </p>
-        <div className="mt-5 flex justify-center">{backToBilling("md")}</div>
-      </div>
-    );
-  }
+  const heading = confirmed
+    ? trialing
+      ? t("billingCheckout.trialStarted").replace("{days}", () => String(PLAN_TRIAL_DAYS))
+      : t("billingCheckout.planActive")
+    : gaveUp
+      ? t("billingCheckout.returnHeading")
+      : t("billingCheckout.confirming");
+  const body = confirmed
+    ? trialing && subscription?.trialEnd
+      ? t("billingCheckout.trialStartedBody").replace("{date}", () =>
+          formatTrialDate(new Date(subscription.trialEnd as string), locale))
+      : t("billingCheckout.planActiveBody")
+    : gaveUp
+      ? t("billingCheckout.returnBody")
+      : t("billingCheckout.confirmingBody");
 
   return (
     <div className="px-4 py-8 text-center">
+      {/* Uma regiao viva so, igual nos tres estados: o leitor de tela anuncia
+          "confirmando" e depois o resultado. Trocar o elemento a cada estado
+          fazia o anuncio do resultado se perder. */}
       <div role="status" aria-live="polite">
-        <div className="mx-auto size-12 rounded-full border-[3px] border-[rgba(26,54,93,0.12)] border-t-[var(--color-accent-fg)] motion-safe:animate-spin" />
-        <h2 className="mt-4 text-2xl font-semibold text-[var(--color-primary)]">
-          {t("billingCheckout.confirming")}
-        </h2>
-        <p className="mx-auto mt-3 max-w-md text-sm leading-7 text-[var(--color-ink-soft)]">
-          {t("billingCheckout.confirmingBody")}
-        </p>
+        <div className="mx-auto grid size-12 place-items-center">
+          {confirmed ? (
+            <CircleCheck aria-hidden="true" size={28} className="text-[var(--color-success-fg)]" />
+          ) : gaveUp ? (
+            <Info aria-hidden="true" size={24} className="text-[var(--color-ink-soft)]" />
+          ) : (
+            <span className="size-12 rounded-full border-[3px] border-[rgba(26,54,93,0.12)] border-t-[var(--color-accent-fg)] motion-safe:animate-spin" />
+          )}
+        </div>
+        <h2 className="mt-3 text-2xl font-semibold text-[var(--color-primary)]">{heading}</h2>
+        <p className="mx-auto mt-3 max-w-md text-sm leading-7 text-[var(--color-ink-soft)]">{body}</p>
       </div>
-      <div className="mt-5 flex justify-center">{backToBilling("md")}</div>
+      <div className="mt-6 flex flex-wrap justify-center gap-3">
+        {confirmed ? (
+          <Link href="/teach" className={buttonClasses({ variant: "solid", size: "lg" })}>
+            {t("billingCheckout.openStudio")}
+          </Link>
+        ) : null}
+        {backToBilling(confirmed ? "lg" : "md")}
+      </div>
     </div>
   );
 }

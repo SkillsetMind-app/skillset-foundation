@@ -399,6 +399,9 @@ export function SignupForm() {
               type="checkbox"
               checked={legalAccepted}
               onChange={(event) => setLegalAccepted(event.target.checked)}
+              // O balao do navegador vem na lingua do navegador e some sozinho:
+              // o aviso da pagina fica, na lingua da pagina.
+              onInvalid={() => setError({ key: "auth.signup.acceptTermsToCreate" })}
               className="mt-0.5 size-5 shrink-0 accent-[var(--color-primary)]"
               required
             />
