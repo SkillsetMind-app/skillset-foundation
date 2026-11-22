@@ -85,14 +85,14 @@ describe("moldura das telas do professor", () => {
       <PlatformPageHeader
         eyebrow="Products"
         title="Members & communities"
-        actions={<a href="/teach/builder">New product</a>}
+        actions={<button type="button">New product</button>}
       />,
     );
 
     const header = screen.getByRole("heading", { level: 1 }).closest(".platform-page-heading") as HTMLElement;
     expect(header).toHaveClass("flex", "items-end", "justify-between");
     expect(within(header).getByText("Products")).toHaveClass("uppercase");
-    expect(within(header).getByRole("link", { name: "New product" })).toBeInTheDocument();
+    expect(within(header).getByRole("button", { name: "New product" })).toBeInTheDocument();
   });
 
   it("o cabecalho tem a linha de baixo que separa titulo e acoes do corpo", () => {
