@@ -142,7 +142,7 @@ describe("Alunos: todos os produtos numa lista", () => {
     expect(bodyRows()[0]).toHaveTextContent("Ana");
     fireEvent.change(search, { target: { value: "nobody" } });
     expect(screen.queryByRole("table")).toBeNull();
-    expect(screen.getByText("No student matches this search.")).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("No student matches this search.");
     // A contagem e de todos, nao do recorte da busca.
     expect(screen.getByText("2 active students")).toBeInTheDocument();
     expect(mocks.getMyCourseStudents).toHaveBeenCalledTimes(1);

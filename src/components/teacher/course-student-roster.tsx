@@ -128,6 +128,12 @@ function MessageComposer({
     fieldRef.current?.focus();
   }, []);
 
+  // Enviou: o "Send" some da tela e o foco cairia no corpo da pagina, onde o
+  // Esc da caixa ja nao chega. Vai para o "Close".
+  useEffect(() => {
+    if (sent) document.getElementById(`message-close-${student.enrollmentId}`)?.focus();
+  }, [sent, student.enrollmentId]);
+
   const handleSend = async () => {
     setSending(true);
     setError("");
@@ -145,7 +151,7 @@ function MessageComposer({
   if (sent) {
     return (
       <InlineAlert tone="success" title={t("courseRoster.sent").replace("{name}", () => student.displayName || t("courseRoster.theStudent"))}>
-        <Button variant="outline" size="sm" onClick={onClose}>
+        <Button id={`message-close-${student.enrollmentId}`} variant="outline" size="sm" onClick={onClose}>
           {t("courseRoster.close")}
         </Button>
       </InlineAlert>

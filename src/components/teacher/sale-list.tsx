@@ -95,7 +95,9 @@ export function SaleList() {
   }, [period]);
 
   const visible = useMemo(() => {
-    const needle = search.trim().toLowerCase();
+    // A tabela mostra o codigo como "#1A2B3C4D", mas o id guardado nao tem
+    // "#": colar o codigo da tela nao achava nada. O codigo e o fim do id.
+    const needle = search.trim().replace(/^#/, "").toLowerCase();
     const fromMs = range?.from.getTime() ?? 0;
 
     return orders
@@ -266,10 +268,37 @@ export function SaleList() {
       ) : (
         // Uma tabela num cartao so: antes eram ate 50 cartoes soltos, sem
         // colunas, com o valor andando para os lados conforme a largura do
-        // selo de status. No celular a tabela rola dentro da propria caixa.
-        <Card as="div" padding="none" className="overflow-hidden">
-          <div className="overflow-x-auto">
+        // selo de status. Cartao estreito (celular, ou barra lateral aberta
+        // num tablet): cada venda vira um bloco curto, com o valor a vista,
+        // em vez de uma tabela que esconderia valor e link na rolagem lateral.
+        <Card as="div" padding="none" className="@container overflow-hidden">
+          <ul className="@2xl:hidden">
+            {visibleOrders.map((order) => (
+              <li
+                key={order.id}
+                className="flex items-start justify-between gap-3 border-b fine-rule px-4 py-3 last:border-b-0"
+              >
+                <div className="min-w-0">
+                  <Link
+                    href={`/teach/sales/${order.id}`}
+                    className="block truncate text-sm font-semibold text-[var(--color-primary)] hover:underline"
+                  >
+                    {order.courseTitle}
+                  </Link>
+                  <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-[var(--color-ink-soft)]">
+                    <StatusChip status={order.status} />
+                    <span>{formatDate(toDate(order.createdAt), locale, t(`${copy}.datePending`))}</span>
+                  </div>
+                </div>
+                <span className="num shrink-0 whitespace-nowrap text-right text-sm font-bold text-[var(--color-primary)]">
+                  {formatMoney(order.amountMinor, order.currency, locale)}
+                </span>
+              </li>
+            ))}
+          </ul>
+          <div className="hidden overflow-x-auto @2xl:block">
             <table className="w-full min-w-[640px] border-collapse text-left text-sm">
+              <caption className="sr-only">{t(`${copy}.tableCaption`)}</caption>
               <thead>
                 <tr className="border-b fine-rule">
                   {(["colProduct", "colOrder", "colStatus", "colDate"] as const).map((head) => (
@@ -300,9 +329,15 @@ export function SaleList() {
                       key={order.id}
                       className="border-b fine-rule last:border-b-0 hover:bg-[var(--color-surface-soft)]"
                     >
-                      <td className="max-w-[16rem] px-4 py-3 font-semibold text-[var(--color-ink)]">
-                        <span className="block truncate" title={order.courseTitle}>{order.courseTitle}</span>
-                      </td>
+                      <th scope="row" className="max-w-[16rem] px-4 py-3 font-semibold">
+                        <Link
+                          href={`/teach/sales/${order.id}`}
+                          title={order.courseTitle}
+                          className="block truncate text-[var(--color-primary)] hover:underline"
+                        >
+                          {order.courseTitle}
+                        </Link>
+                      </th>
                       <td className="num px-4 py-3 text-xs text-[var(--color-ink-soft)]">{ref}</td>
                       <td className="px-4 py-3">
                         <StatusChip status={order.status} />

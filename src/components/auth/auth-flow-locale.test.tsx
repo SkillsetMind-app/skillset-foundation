@@ -320,12 +320,12 @@ describe("auth flow follows the selected language without resetting state", () =
       onboardingAnswers: { profileConfirmed: true, path: "teacher", profession: "Coach", primaryGoal: ["Business"], alreadySold: "no" },
     });
     renderSpanish(<OnboardingWizard />);
-    const select = await screen.findByLabelText("País donde cobras");
+    const select = await screen.findByLabelText("País de tu cuenta bancaria");
     expect(screen.getByRole("option", { name: "Alemania" })).toHaveValue("DE");
     fireEvent.change(select, { target: { value: "other" } });
     expect(screen.getByRole("status")).toHaveTextContent(/no puedes vender ni recibir pagos/);
     fireEvent.click(screen.getByRole("button", { name: "Change language" }));
-    expect(screen.getByLabelText("Country where you get paid")).toHaveValue("other");
+    expect(screen.getByLabelText("Country of your bank account")).toHaveValue("other");
     expect(screen.getByRole("status")).toHaveTextContent(/cannot sell or receive payments/);
     fireEvent.click(screen.getByRole("button", { name: "Continue" }));
     await waitFor(() => expect(mocks.updateOnboardingAnswers).toHaveBeenLastCalledWith(expect.objectContaining({

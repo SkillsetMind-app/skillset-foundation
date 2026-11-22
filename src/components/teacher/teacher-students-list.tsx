@@ -113,7 +113,7 @@ export function TeacherStudentsList() {
         />
       </div>
       {visible.length === 0 ? (
-        <p className="mt-4 text-sm leading-6 text-[var(--color-ink-soft)]">
+        <p role="status" className="mt-4 text-sm leading-6 text-[var(--color-ink-soft)]">
           {t("teach.studentsPage.noMatches")}
         </p>
       ) : (
@@ -143,7 +143,7 @@ export function TeacherStudentsList() {
                         ultima coluna. */}
                     <Link
                       href={`/teach/courses/${course}/manage?section=students`}
-                      className="block font-semibold text-[var(--color-ink)] hover:text-[var(--color-primary)] hover:underline"
+                      className="block font-semibold text-[var(--color-primary)] underline decoration-[var(--color-line-strong)] underline-offset-4 hover:decoration-current"
                     >
                       {name}
                       <span className="sr-only">: {t("teach.studentsPage.seeInProduct")}, {student.courseTitle}</span>

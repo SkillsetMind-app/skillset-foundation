@@ -128,7 +128,7 @@ describe("SaleList", () => {
     expect(screen.getByText(/^2 orders between .+ and .+$/)).toBeInTheDocument();
 
     // Antes: 50 cartoes soltos, sem colunas. Agora uma tabela com cabecalho.
-    const table = screen.getByRole("table");
+    const table = screen.getByRole("table", { name: "Your sales, newest first" });
     expect(
       within(table).getAllByRole("columnheader").map((head) => head.textContent),
     ).toEqual(["Product", "Order", "Status", "Date", "Amount", "Actions"]);
@@ -136,6 +136,9 @@ describe("SaleList", () => {
     expect(rows).toHaveLength(2);
     expect(rows[0]).toHaveTextContent("Group Work");
     expect(rows[0]).toHaveTextContent("#ORDER-2");
+    // O produto e o cabecalho da linha e, de novo, o link da venda.
+    const product = within(rows[0]).getByRole("rowheader");
+    expect(within(product).getByRole("link", { name: "Group Work" })).toHaveAttribute("href", "/teach/sales/order-2");
 
     const viewLinks = within(table).getAllByRole("link", { name: /^View sale/ });
     expect(viewLinks.map((link) => link.getAttribute("href"))).toEqual([
@@ -148,7 +151,7 @@ describe("SaleList", () => {
 
     // O chip, nao a opcao "Refunded" do filtro de status.
     expect(
-      screen.getByText("Refunded", { selector: "span.status-chip" }),
+      within(table).getByText("Refunded", { selector: "span.status-chip" }),
     ).toHaveAttribute("data-status", "refunded");
     expect(screen.getByRole("button", { name: /export/i })).toBeEnabled();
   });
@@ -177,6 +180,47 @@ describe("SaleList", () => {
     expect(within(partial).getByText("$120.00")).toHaveClass("text-right");
     expect(within(partial).getByText("Partially refunded", { selector: "span.status-chip" })).toBeInTheDocument();
     expect(screen.queryByText(/\$219|\$90\.00/)).toBeNull();
+  });
+
+  // A 360px a tabela de 640px escondia o valor e o unico link na rolagem
+  // lateral. Cartao estreito: cada venda vira um bloco com titulo-link, selo,
+  // data e valor; a tabela so aparece quando o cartao tem largura para ela.
+  it("in a narrow card, shows each sale as a short block with the link and the amount", () => {
+    mocks.orders = [
+      order({ id: "order-a", courseTitle: "Group Work", amountMinor: 4900, createdAt: new Date(Date.now() - DAY).toISOString() }),
+      order({ id: "order-b", status: "partially_refunded", refundedAmountMinor: 1000, createdAt: new Date(Date.now() - 2 * DAY).toISOString() }),
+    ];
+
+    render(<SaleList />);
+
+    const table = screen.getByRole("table");
+    expect(table.parentElement).toHaveClass("hidden", "@2xl:block");
+    const list = screen.getAllByRole("list").find((item) => item.className.includes("@2xl:hidden"))!;
+    expect(list).toBeDefined();
+    const [first, second] = within(list).getAllByRole("listitem");
+    expect(within(first).getByRole("link", { name: "Group Work" })).toHaveAttribute("href", "/teach/sales/order-a");
+    expect(within(first).getByText("$49.00")).toHaveClass("num", "text-right");
+    expect(within(second).getByText("$120.00")).toBeInTheDocument();
+    expect(within(second).getByText("Partially refunded", { selector: "span.status-chip" })).toBeInTheDocument();
+  });
+
+  // A tabela mostra "#1A2B3C4D"; o id guardado nao tem "#". Colar o codigo
+  // da tela tem que achar a venda, sem importar maiusculas.
+  it("finds a sale by the short code shown in the table, with or without #", () => {
+    mocks.orders = [
+      order({ id: "order-abcd1234", courseTitle: "Group Work" }),
+      order({ id: "order-ffff0000", courseTitle: "Other" }),
+    ];
+
+    render(<SaleList />);
+
+    const search = screen.getByLabelText("Search sales by course or order id");
+    for (const value of ["#ABCD1234", "abcd1234", " #abcd1234 "]) {
+      fireEvent.change(search, { target: { value } });
+      const rows = within(screen.getByRole("table")).getAllByRole("row").slice(1);
+      expect(rows, value).toHaveLength(1);
+      expect(rows[0]).toHaveTextContent("#ABCD1234");
+    }
   });
 
   it.each(["en", "es"] as const)("opens the shared Stripe action only on click, with conditional refund guidance (%s)", async (locale) => {

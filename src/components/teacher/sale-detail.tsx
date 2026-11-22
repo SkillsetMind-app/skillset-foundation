@@ -10,7 +10,7 @@ import { useAuth } from "@/components/auth/auth-provider";
 import { StatusChip } from "@/components/shared/status-chip";
 import { StripeDashboardButton } from "@/components/teacher/stripe-dashboard-button";
 import { buttonClasses, Card, Eyebrow, InlineAlert } from "@/components/ui";
-import { formatOrderRef, type Order } from "@/domain/order";
+import { formatOrderRef, orderRevenueMinor, type Order } from "@/domain/order";
 import { subscribeToOrder } from "@/lib/data/orders";
 import { toDate } from "@/lib/format-date";
 import { formatMoney } from "@/lib/format-money";
@@ -169,6 +169,23 @@ export function SaleDetail({ orderId }: SaleDetailProps) {
     order.platformFeeFixedMinor ?? 0,
   );
   const creatorNetMinor = order.amountMinor - platformFeeMinor;
+  const refundedMinor = order.refundedAmountMinor ?? 0;
+  // O numero grande e o que ficou com o professor, a mesma conta dos Ganhos
+  // (orderRevenueMinor: valor menos o devolvido). Reembolsada inteira,
+  // pendente, falha ou cancelada nao e receita: sem numero grande, so os tres
+  // valores pequenos, como antes.
+  // A taxa fica COMO FOI COBRADA, sobre o valor cheio no checkout. Um
+  // reembolso pela SkillsetMind (refund_application_fee) devolve a taxa na
+  // proporcao, mas o pedido nao guarda quanto voltou (e um reembolso feito
+  // direto na Stripe pode nao devolver): o liquido mostrado e o piso, nunca
+  // mais do que ficou.
+  const keptMinor = orderRevenueMinor(order);
+  const headlineMinor = keptMinor === null ? null : keptMinor - platformFeeMinor;
+  const money = (amountMinor: number) => formatMoney(amountMinor, order.currency, locale);
+  const figures: Array<[string, string]> = [[t("saleDetail.amount"), money(order.amountMinor)]];
+  if (refundedMinor > 0) figures.push([t("saleDetail.refunded"), `−${money(refundedMinor)}`]);
+  figures.push([t("saleDetail.fee"), money(platformFeeMinor)]);
+  if (headlineMinor === null) figures.push([t("saleDetail.net"), money(creatorNetMinor)]);
   const timeline = getTimeline(order, t, locale);
 
   if (!canView) {
@@ -202,19 +219,18 @@ export function SaleDetail({ orderId }: SaleDetailProps) {
             <StatusChip status={order.status} />
           </div>
           <div className="mt-4 flex flex-wrap items-end gap-x-8 gap-y-3">
-            <div>
-              <p className="text-xs uppercase tracking-[0.18em] text-[var(--color-ink-soft)]">
-                {t("saleDetail.net")}
-              </p>
-              <p className="num mt-1 text-3xl font-bold text-[var(--color-primary)]">
-                {formatMoney(creatorNetMinor, order.currency, locale)}
-              </p>
-            </div>
+            {headlineMinor !== null ? (
+              <div>
+                <p className="text-xs uppercase tracking-[0.18em] text-[var(--color-ink-soft)]">
+                  {t(refundedMinor > 0 ? "saleDetail.netAfterRefund" : "saleDetail.net")}
+                </p>
+                <p className="num mt-1 text-3xl font-bold text-[var(--color-primary)]">
+                  {money(headlineMinor)}
+                </p>
+              </div>
+            ) : null}
             <div className="grid gap-1 text-sm">
-              {[
-                [t("saleDetail.amount"), formatMoney(order.amountMinor, order.currency, locale)],
-                [t("saleDetail.fee"), formatMoney(platformFeeMinor, order.currency, locale)],
-              ].map(([label, value]) => (
+              {figures.map(([label, value]) => (
                 <div key={label} className="flex flex-wrap gap-x-2">
                   <p className="text-[var(--color-ink-soft)]">{label}</p>
                   <p className="num font-semibold text-[var(--color-ink)]">{value}</p>

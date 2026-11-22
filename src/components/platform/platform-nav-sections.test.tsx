@@ -138,7 +138,12 @@ describe("primeiro nivel: grupos com a mesma linha dos links, e a pagina atual a
 
     const current = document.querySelector('a[aria-current="page"]');
     expect(current).toHaveAttribute("href", "/teach/sales");
-    expect(current).toHaveClass("bg-[var(--color-surface-soft)]", "text-[var(--color-primary)]");
+    // O fundo mais forte (o claro de antes perdia para o hover) e o filete.
+    expect(current).toHaveClass(
+      "bg-[var(--color-surface-strong)]",
+      "text-[var(--color-primary)]",
+      "before:bg-[var(--color-accent)]",
+    );
     expect(document.querySelectorAll('[aria-current="page"]')).toHaveLength(1);
 
     // A Ajuda abre no lugar como os grupos: com a setinha.

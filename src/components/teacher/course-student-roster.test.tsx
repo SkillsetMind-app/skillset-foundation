@@ -206,6 +206,12 @@ describe("CourseStudentRosterView", () => {
       }),
     );
     expect(await screen.findByText(/Message sent to Maria Silva/)).toBeInTheDocument();
+    // O "Send" sumiu: o foco vai para o "Close", e o Esc continua fechando.
+    const close = screen.getByRole("button", { name: "Close" });
+    await waitFor(() => expect(close).toHaveFocus());
+    fireEvent.keyDown(close, { key: "Escape" });
+    expect(screen.queryByText(/Message sent to Maria Silva/)).toBeNull();
+    expect(screen.getByRole("button", { name: /Message Maria Silva/ })).toHaveFocus();
   });
 
   // Antes a caixa abria DENTRO da celula do nome: a linha crescia ~170px e,

@@ -469,12 +469,13 @@ function PlatformNavLink({
       // para o leitor de tela, e o CSS o mostra como dica no hover E no foco
       // do teclado (o title só aparecia no mouse, e depois de 1s).
       className={`platform-nav-link group relative flex h-11 min-h-11 shrink-0 items-center gap-2.5 rounded-md border px-2.5 py-1.5 text-sm font-semibold transition-colors ${
-        // Gaveta do celular: a pagina atual ganha fundo azul claro e texto
-        // azul-marinho. Antes era so um contorno claro e uma sombra, porque o
-        // estilo de ativo mora no bloco da barra escura (.platform-sidebar),
-        // que vence estas classes com !important no computador.
+        // Gaveta do celular: a pagina atual ganha o fundo mais forte, texto
+        // azul-marinho e o filete dourado, nos dois temas (o fundo claro de
+        // antes ficava mais fraco que o hover e, no escuro, sumia no fundo da
+        // gaveta). No computador o bloco da barra escura (.platform-sidebar)
+        // vence estas classes com !important e desenha o mesmo filete.
         active
-          ? "platform-nav-active border-[rgba(24,58,94,0.2)] bg-[var(--color-surface-soft)] text-[var(--color-primary)]"
+          ? "platform-nav-active border-[rgba(24,58,94,0.2)] bg-[var(--color-surface-strong)] text-[var(--color-primary)] before:absolute before:left-1 before:top-1/2 before:h-[18px] before:w-[3px] before:-translate-y-1/2 before:rounded-full before:bg-[var(--color-accent)] before:content-['']"
           : "border-transparent text-[var(--color-ink-soft)] hover:bg-[var(--color-surface-strong)] hover:text-[var(--color-ink)]"
       }`}
     >
