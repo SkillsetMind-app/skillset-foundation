@@ -439,7 +439,7 @@ export function subscribeToTeacherCourses(
     .subscribe();
 
   // `reload()` le de novo SEM mexer no canal (o "Try again" da Home e da
-  // Midia): religar um canal com o mesmo nome devolve o antigo, ainda saindo.
+  // Midia): sem o intervalo entre sair e entrar de novo no Realtime.
   return Object.assign(
     () => {
       active = false;

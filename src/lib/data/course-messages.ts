@@ -162,9 +162,9 @@ export function subscribeToTeacherMessages(
 // com tres cursos tinha tres lugares para responder ao professor, cada um no
 // fim da pagina da aula, e nenhuma lista de conversas (o professor tinha).
 //
-// `reload()` le de novo SEM mexer no canal (o "Try again" da caixa). Desligar
-// e religar o canal com o mesmo nome devolvia o canal antigo, ainda saindo, e
-// a caixa parava de receber as mensagens novas.
+// `reload()` le de novo SEM mexer no canal (o "Try again" da caixa): sem o
+// intervalo entre sair e entrar de novo no Realtime, em que uma mensagem nova
+// se perderia, e sem uma segunda leitura de graca.
 export function subscribeToStudentMessages(
   studentId: string,
   callback: (messages: CourseMessage[]) => void,
@@ -172,14 +172,22 @@ export function subscribeToStudentMessages(
   maxMessages = 400,
 ): (() => void) & { reload: () => Promise<void> } {
   const supabase = getSupabaseBrowserClient();
+  // So a leitura mais nova entrega: um "Try again" que volta depois da
+  // releitura de uma mensagem nova traria a lista sem ela.
+  let active = true;
+  let latestLoad = 0;
 
   const load = async () => {
+    const thisLoad = ++latestLoad;
     const { data, error } = await supabase
       .from(courseMessagesTable)
       .select("*")
       .eq("student_id", studentId)
       .order("created_at", { ascending: false })
       .limit(maxMessages);
+    if (!active || thisLoad !== latestLoad) {
+      return;
+    }
     if (error) {
       onError(error instanceof Error ? error : new Error(String(error)));
       return;
@@ -207,6 +215,7 @@ export function subscribeToStudentMessages(
 
   return Object.assign(
     () => {
+      active = false;
       void supabase.removeChannel(channel);
     },
     { reload: load },

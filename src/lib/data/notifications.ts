@@ -32,9 +32,9 @@ export function subscribeToNotifications(
   callback: (notifications: AppNotification[]) => void,
   onError: (error: Error) => void,
 ): (() => void) & { reload: () => Promise<void> } {
-  // `reload()` le de novo SEM mexer no canal (o "Try again" do sino). Desligar
-  // e religar o canal com o mesmo nome devolve o canal antigo, ainda saindo, e
-  // o sino para de receber os avisos novos (o mesmo defeito de course-messages).
+  // `reload()` le de novo SEM mexer no canal (o "Try again" do sino): sem o
+  // intervalo entre sair e entrar de novo no Realtime, em que um aviso novo se
+  // perderia.
   //
   // createdAt is server-written on every notification (clients never create
   // them), so there is no pending-write null to corrupt the ordering — sorting
