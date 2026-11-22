@@ -138,6 +138,27 @@ describe("OpsUserDossierPanel", () => {
     expect(raw.parentElement).toHaveTextContent("Pro");
   });
 
+  it.each([
+    // Código que nenhum plano conhece (legado): aparece cru, sem linha extra.
+    ["price_legacy_1", "price_legacy_1"],
+    // Assinatura sem plano gravado: "None", sem quebrar a ficha.
+    [null, "None"],
+  ])("plano %s: mostra %s, sem quebrar", async (planId, shown) => {
+    mocks.get.mockResolvedValue(dossier({
+      purchases: { ...dossier().purchases, plan_subscription: { plan_id: planId, status: "active", current_period_end: null, cancel_at_period_end: null } },
+    }));
+    render(panel());
+    await screen.findByRole("heading", { level: 1, name: "Dossier Target" });
+    const strip = screen.getByText("Level").closest("dl")!;
+    const plan = [...strip.querySelectorAll("dt")].find((term) => term.textContent === "Plan")!;
+    expect(plan.nextElementSibling?.textContent).toBe(shown);
+    // No cartão de compras: o status fica, e não há detalhe cru repetido.
+    const purchases = screen.getByRole("heading", { level: 2, name: "Purchases" }).closest("section")!;
+    expect(purchases.querySelector(".select-all")).toBeNull();
+    expect(purchases).toHaveTextContent("Active");
+    if (planId) expect(purchases).toHaveTextContent(planId);
+  });
+
   it("carregando e com erro, o h1 é o genérico", async () => {
     let fail!: (reason: unknown) => void;
     mocks.get.mockReturnValue(new Promise((_, reject) => { fail = reject; }));

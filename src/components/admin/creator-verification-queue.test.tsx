@@ -180,7 +180,7 @@ describe("verification queue search, states and language", () => {
     expect(screen.getByRole("button", { name: "Rechazar" })).not.toHaveAttribute("aria-busy");
     // O lugar do aviso já existe antes do resultado: ele entra sem empurrar a lista (I-17).
     const slot = document.querySelector("[data-result-slot]")!;
-    expect(slot).toHaveClass("min-h-[74px]", "sm:min-h-[50px]");
+    expect(slot).toHaveClass("min-h-[98px]", "min-[400px]:min-h-[74px]", "sm:min-h-[50px]");
     expect(slot).toBeEmptyDOMElement();
     await act(async () => finishReview());
     expect(screen.queryByRole("heading", { name: "Ana Rivera" })).toBeNull();

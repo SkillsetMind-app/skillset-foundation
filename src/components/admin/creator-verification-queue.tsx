@@ -168,8 +168,11 @@ export function CreatorVerificationQueue({ query = "" }: { query?: string }) {
       {loadError ? <InlineAlert tone="error" className="mt-5">{t(`${copy}.loadError`)}</InlineAlert> : null}
       {/* Lugar guardado para o resultado da decisão, do tamanho do aviso: ele
           aparece sem empurrar a lista para baixo do ponteiro (I-17), pelo
-          mesmo motivo dos botões em lugar fixo das outras filas (#586). */}
-      <div data-result-slot="" className="mt-5 min-h-[74px] sm:min-h-[50px]">
+          mesmo motivo dos botões em lugar fixo das outras filas (#586). A frase
+          mais longa (~56 caracteres) dá três linhas até ~370px (reservadas até
+          400px, com folga), duas até 640px e uma acima; cada linha do aviso
+          tem 24px, mais 26px de moldura. */}
+      <div data-result-slot="" className="mt-5 min-h-[98px] min-[400px]:min-h-[74px] sm:min-h-[50px]">
         {reviewError ? <InlineAlert tone="error">{t(`${copy}.reviewError`)}</InlineAlert>
           : success ? <InlineAlert tone="success">{t(`${copy}.success.${success}`)}</InlineAlert> : null}
       </div>

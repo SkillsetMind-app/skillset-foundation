@@ -272,8 +272,9 @@ describe("RoleManager", () => {
     expect(mocks.setUserRoles).toHaveBeenCalledExactlyOnceWith("u-1", ["student"]);
   });
 
-  // Gravar um nível dizia nada: as caixas só apagavam e voltavam (I-11).
-  it("says Saved next to the levels after a level change, in a reserved slot", async () => {
+  // Gravar um nível dizia nada: as caixas só apagavam e voltavam (I-11). A
+  // região viva do "Saved" fica sempre montada; só o texto entra e sai.
+  it("says Saved next to the levels after a level change, in a reserved live slot", async () => {
     mocks.listPlatformUsers.mockResolvedValue(roster(["student"]));
     let finish!: (roles: string[]) => void;
     mocks.setUserRoles.mockReturnValue(new Promise<string[]>(resolve => { finish = resolve; }));
@@ -282,13 +283,46 @@ describe("RoleManager", () => {
     const instructor = await screen.findByLabelText("Instructor");
     const slot = instructor.closest("div")!.lastElementChild!;
     expect(slot).toHaveClass("min-w-[7rem]");
+    expect(slot).toHaveAttribute("role", "status");
     expect(slot).toBeEmptyDOMElement();
     fireEvent.click(instructor);
-    expect(screen.queryByRole("status")).toBeNull();
+    expect(slot).toBeEmptyDOMElement();
     await act(async () => finish(["student", "teacher"]));
-    expect(within(slot as HTMLElement).getByRole("status")).toHaveTextContent("Saved");
+    expect(instructor.closest("div")!.lastElementChild).toBe(slot);
+    expect(slot).toHaveTextContent("Saved");
     fireEvent.click(screen.getByRole("button", { name: "Change language" }));
-    expect(screen.getByRole("status")).toHaveTextContent("Guardado");
+    expect(slot).toHaveTextContent("Guardado");
+  });
+
+  // Um "Saved" velho ao lado das caixas dizia que a mudança desistida gravou.
+  it("drops Saved on the next click, a cancelled question, a failed write and a new search", async () => {
+    mocks.listPlatformUsers.mockResolvedValue(roster(["student"]));
+    mocks.setUserRoles.mockResolvedValueOnce(["student", "teacher"]);
+    render(translatedRoster());
+    const slot = () => screen.getByLabelText("Instructor").closest("div")!.lastElementChild!;
+
+    fireEvent.click(await screen.findByLabelText("Instructor"));
+    await waitFor(() => expect(slot()).toHaveTextContent("Saved"));
+    // Cancelar a pergunta do Team não deixa o "Saved" de antes.
+    fireEvent.click(screen.getByLabelText("Team"));
+    expect(slot()).toBeEmptyDOMElement();
+    answer("Cancel");
+    expect(slot()).toBeEmptyDOMElement();
+
+    // Gravação recusada: o erro aparece e nenhum "Saved".
+    mocks.setUserRoles.mockRejectedValueOnce({ message: "Private RPC schema detail" });
+    fireEvent.click(screen.getByLabelText("Team"));
+    answer("Add to Team");
+    expect(await screen.findByRole("alert")).toHaveTextContent("That change was refused. Nothing was saved.");
+    expect(slot()).toBeEmptyDOMElement();
+
+    // Grava de novo e depois busca: a lista nova não herda o "Saved".
+    mocks.setUserRoles.mockResolvedValueOnce(["student"]);
+    fireEvent.click(screen.getByLabelText("Instructor"));
+    await waitFor(() => expect(slot()).toHaveTextContent("Saved"));
+    fireEvent.change(screen.getByRole("searchbox", { name: "Find someone" }), { target: { value: "Test" } });
+    expect(slot()).toBeEmptyDOMElement();
+    expect(mocks.setUserRoles).toHaveBeenCalledTimes(3);
   });
 
   it("does not ask for levels below admin", async () => {
@@ -409,7 +443,8 @@ describe("RoleManager", () => {
     await waitFor(() => expect(mocks.listPlatformUsers).toHaveBeenLastCalledWith("Test"));
     expect(screen.getByText("Test Person").closest("ul")).toHaveAttribute("aria-busy", "true");
     expect(screen.getByText("Test Person").closest("ul")).toHaveClass("opacity-60");
-    expect(screen.queryByRole("status")).toBeNull();
+    // A lista não vira a linha de "carregando" (as regiões do "Saved" ficam montadas e vazias).
+    expect(screen.queryByText(/Loading the roster/)).toBeNull();
     await act(async () => finish(roster(["student"])));
     expect(screen.getByText("Test Person").closest("ul")).not.toHaveAttribute("aria-busy");
     expect(mocks.setUserRoles).not.toHaveBeenCalled();
@@ -461,7 +496,7 @@ describe("RoleManager", () => {
     mocks.listPlatformUsers.mockResolvedValue(Array.from({ length: count }, (_, index) => ({ ...roster([])[0], uid: `u-${index}`, displayName: `Nombre $$ $& ${index}` })));
     render(translatedRoster());
     fireEvent.click(screen.getByRole("button", { name: "Change language" }));
-    await waitFor(() => expect(screen.queryByRole("status")).toBeNull());
+    await waitFor(() => expect(screen.queryByText(/Cargando la lista de personas/)).toBeNull());
     expect(screen.queryAllByRole("listitem")).toHaveLength(count);
     if (count === 0) expect(screen.getByText("Nadie coincide con esta búsqueda.")).toBeInTheDocument();
     for (let index = 0; index < count; index++) expect(screen.getByText(`Nombre $$ $& ${index}`)).toBeInTheDocument();

@@ -1,13 +1,12 @@
 "use client";
 
-import { CircleDollarSign, RotateCcw, Shield } from "lucide-react";
+import { CheckCircle2, CircleDollarSign, RotateCcw, Shield } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { PlatformInviteManager } from "@/components/admin/platform-invite-manager";
 import { AccountControlDialog } from "@/components/admin/account-control-dialog";
 import { HorizontalTabs } from "@/components/shared/horizontal-tabs";
-import { SavedNote } from "@/components/teacher/save-status-line";
 import { Button, ConfirmDialog, Field, InlineAlert } from "@/components/ui";
 import { setActivationWaiver } from "@/lib/data/platform-invites";
 import {
@@ -141,6 +140,8 @@ export function RoleManager() {
 
   function askWaiver(user: PlatformUser, waived: boolean) {
     if (waiverBusy || savingUid) return;
+    // Outro pedido começou: o "Saved" de antes não fala mais deste momento.
+    setSavedUid("");
     setAsking({ kind: "waiver", user, waived });
   }
 
@@ -182,6 +183,9 @@ export function RoleManager() {
   }, [search, load]);
 
   function requestLevel(user: PlatformUser, level: Level, next: boolean) {
+    // Um clique novo apaga o "Saved" de antes: com a pergunta cancelada ele
+    // ficava ao lado das caixas, como se a mudança desistida tivesse gravado.
+    setSavedUid("");
     // Admin hands out every other level and Team opens refunds and the whole
     // catalog: never on a stray click. Same confirm the activation waiver
     // uses. Learner, Instructor e tirar Team gravam direto, como antes.
@@ -300,7 +304,10 @@ export function RoleManager() {
               {...a11y}
               type="search"
               value={search}
-              onChange={(event) => setSearch(event.target.value)}
+              onChange={(event) => {
+                setSearch(event.target.value);
+                setSavedUid("");
+              }}
               placeholder={t(`${copy}.searchPlaceholder`)}
               className="field-input min-h-11"
             />}
@@ -358,9 +365,16 @@ export function RoleManager() {
                       </label>
                     ))}
                     {/* Lugar guardado para o "Saved": aparece sem empurrar as
-                        caixas nem os botões de baixo (I-11). */}
-                    <span className="inline-flex min-h-11 min-w-[7rem] items-center">
-                      {savedUid === user.uid ? <SavedNote text={t(`${copy}.levelSaved`)} /> : null}
+                        caixas nem os botões de baixo (I-11). A região viva fica
+                        sempre montada e só o texto entra nela: região e texto
+                        nascendo juntos nem sempre são lidos. */}
+                    <span role="status" className="inline-flex min-h-11 min-w-[7rem] items-center gap-1.5 text-sm font-semibold text-[var(--color-success-fg)]">
+                      {savedUid === user.uid ? (
+                        <>
+                          <CheckCircle2 aria-hidden="true" size={16} className="shrink-0" />
+                          {t(`${copy}.levelSaved`)}
+                        </>
+                      ) : null}
                     </span>
                   </div>
                   <div className="mt-3 flex flex-wrap gap-2">
