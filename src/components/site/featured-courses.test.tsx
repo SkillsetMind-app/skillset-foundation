@@ -70,7 +70,11 @@ describe("FeaturedCourses", () => {
     const { container } = render(<FeaturedCourses />);
 
     const skeleton = container.querySelector(".marketplace-course-grid[aria-hidden='true']");
-    expect(skeleton?.querySelectorAll(".marketplace-card.animate-pulse")).toHaveLength(6);
+    // Uma fileira: 3 no computador; o wrapper esconde o 2º abaixo de 640px e
+    // o 3º abaixo de 1024px.
+    expect(skeleton?.querySelectorAll(".marketplace-card.animate-pulse")).toHaveLength(3);
+    expect(skeleton?.parentElement?.className).toContain("max-sm:[&_.marketplace-card:nth-child(n+2)]:hidden!");
+    expect(skeleton?.parentElement?.className).toContain("max-lg:[&_.marketplace-card:nth-child(n+3)]:hidden!");
     act(() => answer([]));
     expect(container.querySelector(".animate-pulse")).toBeNull();
   });

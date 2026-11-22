@@ -343,10 +343,10 @@ describe("barra do site publico: links de 1280px para cima, margem igual a das p
     expect(headerWidth(labels(en, true), signedOut(en, false))).toBeGreaterThan(room(1024));
   });
 
-  it("a margem da barra e a das paginas: 20px no celular e 32px a partir de 640px, em toda largura", () => {
+  it("a margem da barra e a das paginas: 20px no celular e 32px a partir de 40rem (o sm), em toda largura", () => {
     expect(prop(inner, "padding")).toBe("8px var(--container-pad-mobile)");
     expect(root("container-pad-mobile")).toBe(20);
-    const tablet = rule(mediaBlocks("(min-width: 640px)").join("\n"), ".site-header__inner");
+    const tablet = rule(mediaBlocks("(width >= 40rem)").join("\n"), ".site-header__inner");
     expect(prop(tablet, "padding-inline")).toBe("var(--container-pad-desktop)");
     expect(root("container-pad-desktop")).toBe(32);
     // Nada abaixo de 1280px volta a apertar a barra.

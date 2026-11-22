@@ -93,10 +93,13 @@ export function FeaturedCourses() {
 
         {/* O mesmo molde de cartão do catálogo, na mesma grade (2 colunas a
             partir de 640px, 3 a partir de 1024px): o curso nasce no lugar do
-            esqueleto. */}
+            esqueleto. Só uma fileira (1, 2 ou 3 cartões conforme a largura):
+            com menos cursos que esqueletos a faixa encolheria para cima ao
+            chegar; assim ela só cresce para baixo. O !important vence o
+            display do .marketplace-card, que fica fora de camada. */}
         {loading ? (
-          <div className="mt-10">
-            <CourseGridSkeleton count={FEATURED_LIMIT} />
+          <div className="mt-10 max-sm:[&_.marketplace-card:nth-child(n+2)]:hidden! max-lg:[&_.marketplace-card:nth-child(n+3)]:hidden!">
+            <CourseGridSkeleton count={3} />
           </div>
         ) : featuredCourses.length === 0 ? null : (
         <ul className="marketplace-course-grid mt-10">

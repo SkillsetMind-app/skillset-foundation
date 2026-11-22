@@ -184,8 +184,8 @@ export default async function PricingPage() {
                       className={[
                         isHighlight ? "button-solid" : "button-outline",
                         // Em três colunas estreitas (md) o rótulo pode quebrar
-                        // em duas linhas: as duas centradas.
-                        "w-full justify-center px-4 py-2.5 text-center text-sm",
+                        // em duas ou três linhas: centradas e sem encostar.
+                        "w-full justify-center whitespace-normal px-4 py-2.5 text-center text-sm leading-snug",
                         cycle === "monthly"
                           ? "group-has-[#billing-yearly:checked]:hidden"
                           : "hidden group-has-[#billing-yearly:checked]:inline-flex",

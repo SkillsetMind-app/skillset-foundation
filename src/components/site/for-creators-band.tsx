@@ -52,12 +52,14 @@ export async function ForCreatorsBand() {
                 </Link>
               </div>
             </div>
-            {/* Três colunas para os três itens: em duas, o terceiro ficava
-                sozinho com meia largura e um buraco ao lado. */}
-            <div className="grid gap-3 sm:grid-cols-3">
+            {/* Três colunas para os três itens só quando a faixa ocupa a
+                largura toda (md): em duas, o terceiro ficava sozinho com meia
+                largura. Do lg para cima a coluna é metade da faixa e os itens
+                empilham, para cada um ter largura de leitura. */}
+            <div className="grid gap-3 md:grid-cols-3 lg:grid-cols-1">
               {/* Os 3 planos com preço, mensal e anual, nas letras miúdas da
                   home (decisão de 13/11/2026). */}
-              <div className="home-creators__item rounded-lg border border-white/16 bg-white/10 p-4 text-sm leading-6 text-white/85 sm:col-span-3">
+              <div className="home-creators__item rounded-lg border border-white/16 bg-white/10 p-4 text-sm leading-6 text-white/85 md:col-span-3 lg:col-span-1">
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/75">
                   {t("home.creators.plansLabel")}
                 </p>

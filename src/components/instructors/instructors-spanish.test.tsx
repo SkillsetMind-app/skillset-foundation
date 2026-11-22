@@ -43,9 +43,9 @@ afterEach(() => { cleanup(); fixture.directory = "loaded"; vi.clearAllMocks(); }
 
 it("translates a loaded directory without fetching again or translating author data", async () => {
   show(<InstructorsDirectory />);
-  await screen.findByRole("link", { name: "View profile" });
+  await screen.findByText("View profile");
   fireEvent.click(screen.getByText("ES"));
-  expect(screen.getByRole("link", { name: "Ver perfil" })).toBeInTheDocument();
+  expect(screen.getByText("Ver perfil")).toBeInTheDocument();
   expect(screen.getByText("Original author biography")).toBeInTheDocument();
   expect(listPublicProfiles).toHaveBeenCalledTimes(1);
 });
@@ -53,7 +53,19 @@ it("translates a loaded directory without fetching again or translating author d
 // O diretório leva ao perfil pelo @ (o endereço canônico), não pelo uid.
 it("links each directory card to the @handle address", async () => {
   show(<InstructorsDirectory />);
-  expect(await screen.findByRole("link", { name: "View profile" })).toHaveAttribute("href", "/@author");
+  expect(await screen.findByRole("link", { name: "Original Author" })).toHaveAttribute("href", "/@author");
+});
+
+// O cartão inteiro é o destino: um link só, no nome, esticado pelo
+// .marketplace-card__link; o "View profile" segue escrito, sem ser outro link.
+it("makes the whole directory card one stretched link on the name", async () => {
+  show(<InstructorsDirectory />);
+  const link = await screen.findByRole("link", { name: "Original Author" });
+  const card = link.closest("article")!;
+  expect(link).toHaveClass("marketplace-card__link");
+  expect(card).toHaveClass("relative", "motion-hover-lift");
+  expect(card.querySelectorAll("a")).toHaveLength(1);
+  expect(screen.getByText("View profile").closest("a")).toBeNull();
 });
 
 it.each([
@@ -77,7 +89,7 @@ it("a falha do diretório oferece Try again, que lê de novo e mostra os perfis"
 
   fixture.directory = "loaded";
   fireEvent.click(screen.getByRole("button", { name: "Try again" }));
-  expect(await screen.findByRole("link", { name: "View profile" })).toBeInTheDocument();
+  expect(await screen.findByRole("link", { name: "Original Author" })).toBeInTheDocument();
   expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   expect(listPublicProfiles).toHaveBeenCalledTimes(2);
   // O botão sumiu: o foco ficou na moldura do diretório, não no <body>.
@@ -96,7 +108,7 @@ it("dois cliques no Try again do diretório antes de redesenhar abrem uma releit
     button.click();
     button.click();
   });
-  expect(await screen.findByRole("link", { name: "View profile" })).toBeInTheDocument();
+  expect(await screen.findByRole("link", { name: "Original Author" })).toBeInTheDocument();
   expect(listPublicProfiles).toHaveBeenCalledTimes(2);
 });
 

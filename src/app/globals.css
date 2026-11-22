@@ -1945,7 +1945,9 @@ html[data-view-as] .site-header {
   padding: 8px var(--container-pad-mobile);
 }
 
-@media (min-width: 640px) {
+/* 40rem, e não 640px: é o ponto do sm:px-8 das páginas, que acompanha a
+   fonte padrão aumentada no navegador. */
+@media (width >= 40rem) {
   .site-header__inner {
     padding-inline: var(--container-pad-desktop);
   }

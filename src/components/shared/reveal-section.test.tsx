@@ -32,7 +32,9 @@ afterEach(() => {
 });
 
 describe("RevealSection", () => {
-  it("sem IntersectionObserver a seção nunca é armada", () => {
+  it("sem IntersectionObserver a seção nunca é armada, mesmo abaixo da tela", () => {
+    expect(window.IntersectionObserver).toBeUndefined();
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue({ top: window.innerHeight + 400 } as DOMRect);
     render(<RevealSection data-testid="section">conteudo</RevealSection>);
     expect(screen.getByTestId("section").className).not.toContain("reveal-on-view--armed");
   });
