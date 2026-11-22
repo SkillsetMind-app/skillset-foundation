@@ -13,6 +13,8 @@ const { mockUser, state, data } = vi.hoisted(() => {
     // segurar a leitura e ver o estado "carregando").
     verificationFlag: null as Promise<boolean> | null,
     activationBlocked: false,
+    // Sem plano ativo nem teste em curso: o passo do plano entra na lista.
+    planRequired: false,
   };
 
   return {
@@ -131,6 +133,7 @@ beforeEach(() => {
   state.requireVerification = false;
   state.verificationFlag = null;
   state.activationBlocked = false;
+  state.planRequired = false;
   vi.clearAllMocks();
 });
 
@@ -189,6 +192,34 @@ describe("Inicio do professor: os passos sao as travas reais do publish", () => 
     expect(
       within(recommended()).getByRole("heading", { name: "Create a product" }),
     ).toBeInTheDocument();
+  });
+
+  // O cartao so e pedido depois de criar: o teste gratis e exigido para
+  // publicar, nao para montar o produto.
+  it("sem plano: criar vem antes do plano, e o plano abre os cartoes de plano", async () => {
+    state.planRequired = true;
+    render(<TeacherStudioDashboard />);
+
+    await waitFor(async () =>
+      expect(await stepLabels()).toEqual(["Create a product", "Creator plan", "Publish your product"]),
+    );
+    expect(
+      within(recommended()).getByRole("heading", { name: "Create a product" }),
+    ).toBeInTheDocument();
+  });
+
+  it("sem plano e com produto: o recomendado e o plano, em /account/plans", async () => {
+    state.planRequired = true;
+    state.courses = [course({ paymentType: "free", priceAmountMinor: 0 })];
+    render(<TeacherStudioDashboard />);
+
+    await waitFor(() =>
+      expect(within(recommended()).getByRole("heading", { name: "Creator plan" })).toBeInTheDocument(),
+    );
+    expect(within(recommended()).getByRole("link", { name: "See plans" })).toHaveAttribute(
+      "href",
+      "/account/plans",
+    );
   });
 
   it("curso pago em rascunho: Stripe entra antes do publish e vira o recomendado", async () => {
@@ -691,4 +722,4 @@ describe("Home do professor: movimento", () => {
     expect(container.querySelector("[data-milestone-seal]")).not.toHaveClass("milestone-seal");
   });
 });
-vi.mock("@/lib/data/creator-plan", () => ({ fetchCreatorPlanRequired: async () => false }));
+vi.mock("@/lib/data/creator-plan", () => ({ fetchCreatorPlanRequired: async () => state.planRequired }));

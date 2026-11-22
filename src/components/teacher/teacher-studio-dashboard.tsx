@@ -210,16 +210,6 @@ function StudioNextSteps({
   // plataforma exige. Antes o passo 2 cobrava verificacao APROVADA de todo
   // mundo, nao havia passo de publicar e a barra parava em 67%.
   const steps = [
-    ...(account.planRequired
-      ? [{
-          id: "plan",
-          label: t("creatorEditor.readiness.items.plan.label"),
-          detail: t("creatorEditor.readiness.items.plan.hint"),
-          href: "/account/billing",
-          done: false,
-          action: t("creatorEditor.builder.publish.managePlan"),
-        }]
-      : []),
     {
       id: "create",
       label: t("creatorPanel.home.steps.create"),
@@ -228,6 +218,20 @@ function StudioNextSteps({
       done: courses.length > 0,
       action: t("creatorPanel.createProduct"),
     },
+    // O plano vem DEPOIS de criar: o teste gratis so e exigido para publicar, e
+    // pedir o cartao a quem ainda nao montou nada era o primeiro passo da casa.
+    // O botao abre os cartoes de plano (/account/plans); antes abria a pagina
+    // de recibos de aluno (/account/billing), a tres cliques do teste.
+    ...(account.planRequired
+      ? [{
+          id: "plan",
+          label: t("creatorEditor.readiness.items.plan.label"),
+          detail: t("creatorEditor.readiness.items.plan.hint"),
+          href: "/account/plans",
+          done: false,
+          action: t("billingCheckout.seePlans"),
+        }]
+      : []),
     ...(needsStripe
       ? [
           {

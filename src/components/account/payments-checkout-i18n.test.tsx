@@ -122,7 +122,7 @@ describe("payment checkout localization with real dictionaries", () => {
     // The server opened a trial: the renewal terms beside the card form say so.
     const price = `$${total} ${cycle === "yearly" ? "al año" : "al mes"}`;
     expect(screen.getByText((text) =>
-      text.startsWith(`Prueba de 14 días, luego ${price}. Se renueva automáticamente`))).toBeInTheDocument();
+      text.startsWith(`Prueba gratis de 14 días, luego ${price}. Se renueva automáticamente`))).toBeInTheDocument();
     fireEvent.click(screen.getByText("EN"));
     expect(screen.getByText(plan.tagline)).toBeInTheDocument();
     expect(mocks.fetch).toHaveBeenCalledTimes(1);

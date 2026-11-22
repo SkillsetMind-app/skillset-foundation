@@ -32,7 +32,7 @@ describe("pricing page", () => {
 
     expect(
       screen.getByText(
-        "Every plan publishes and sells, and each starts with a 14-day trial, card required. Higher plans lower the commission, down to 0% on Pro, and raise your limits.",
+        "Every plan publishes and sells, and each starts with a 14-day free trial, card required. Higher plans lower the commission, down to 0% on Pro, and raise your limits.",
       ),
     ).toBeInTheDocument();
     expect(screen.queryByText("Which plan is for me?")).not.toBeInTheDocument();
@@ -81,15 +81,15 @@ describe("pricing page", () => {
       expect(card.className).toContain("flex h-full flex-col");
     }
     // One link per cycle; CSS shows the one for the selected cycle.
-    const [cta, yearlyCta] = grid.getAllByRole("link", { name: "Start your 14-day trial — Starter" });
-    expect(cta).toHaveTextContent("Start your 14-day trial");
+    const [cta, yearlyCta] = grid.getAllByRole("link", { name: "Start your 14-day free trial — Starter" });
+    expect(cta).toHaveTextContent("Start your 14-day free trial");
     expect(yearlyCta.parentElement).toBe(cta.parentElement);
     expect(cta.parentElement?.className).toContain("mt-auto");
     // The renewal terms sit next to the button, for each cycle.
     expect(cta.parentElement).toHaveTextContent(
-      "14-day trial, then $19/month. A card is required. Renews automatically until you cancel. Cancel in Billing before your trial ends to avoid the subscription charge.",
+      "14-day free trial, then $19/month. A card is required. Renews automatically until you cancel. Cancel in Billing before your trial ends to avoid the subscription charge.",
     );
-    expect(cta.parentElement).toHaveTextContent("14-day trial, then $190/year.");
+    expect(cta.parentElement).toHaveTextContent("14-day free trial, then $190/year.");
   });
 
   // The plan used to be lost on the way to signup: all three buttons went to
@@ -101,7 +101,7 @@ describe("pricing page", () => {
     const grid = within(screen.getByRole("region", { name: "Plan comparison" }));
     expect(publicPlans.map((plan) => plan.id)).toEqual(["basic", "starter", "pro"]);
     for (const plan of publicPlans) {
-      const links = grid.getAllByRole("link", { name: `Start your 14-day trial — ${plan.name}` });
+      const links = grid.getAllByRole("link", { name: `Start your 14-day free trial — ${plan.name}` });
       expect(links.map((link) => link.getAttribute("href"))).toEqual([
         `/auth?mode=signup&path=teacher&plan=${plan.id}&cycle=monthly`,
         `/auth?mode=signup&path=teacher&plan=${plan.id}&cycle=yearly`,

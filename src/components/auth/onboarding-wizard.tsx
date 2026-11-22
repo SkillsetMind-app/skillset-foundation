@@ -1067,10 +1067,12 @@ function OptionGrid({
             type="button"
             onClick={() => onSelect(option)}
             className={[
-              "rounded-md border-[1.5px] px-4 py-3 text-sm font-semibold transition hover:bg-[var(--color-surface-soft)]",
+              // O hover claro so vale para a opcao nao marcada: na marcada ele
+              // trocava o fundo azul por um claro e o texto claro sumia.
+              "rounded-md border-[1.5px] px-4 py-3 text-sm font-semibold transition",
               isSelected
                 ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-[var(--color-base)]"
-                : "border-[var(--color-line)] bg-white text-[var(--color-ink)]",
+                : "border-[var(--color-line)] bg-white text-[var(--color-ink)] hover:bg-[var(--color-surface-soft)]",
               multi && selected.length >= 3 && !isSelected
                 ? "cursor-not-allowed opacity-50"
                 : "",

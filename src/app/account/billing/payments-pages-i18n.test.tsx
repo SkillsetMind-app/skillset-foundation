@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { act, cleanup, render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
@@ -6,7 +6,9 @@ import BillingUpgradePage from "@/app/account/billing/upgrade/page";
 import BillingReturnPage from "@/app/account/billing/return/page";
 import TeachActivatePage from "@/app/teach/activate/page";
 import TeachActivateReturnPage from "@/app/teach/activate/return/page";
+import { I18nProvider } from "@/components/i18n/i18n-provider";
 import { LOCALE_COOKIE } from "@/lib/i18n/config";
+import { getDictionary } from "@/lib/i18n/dictionaries";
 
 const mocks = vi.hoisted(() => ({
   locale: "es", guard: vi.fn(), checkout: vi.fn(), activation: vi.fn(),
@@ -33,6 +35,11 @@ vi.mock("@/components/platform/platform-shell", () => ({
 vi.mock("@/components/account/embedded-checkout-panel", () => ({
   EmbeddedCheckoutPanel: (props: unknown) => { mocks.checkout(props); return <div>Checkout fixture</div>; },
 }));
+// A tela de retorno pergunta a assinatura ao servidor. Aqui o servidor nunca
+// tem assinatura: so a referencia na URL, que nao pode confirmar nada.
+vi.mock("@/lib/payments/billing", () => ({
+  fetchPlanBillingState: async () => ({ trialEligible: true, subscription: null }),
+}));
 vi.mock("@/components/teacher/activation-checkout-panel", () => ({
   ActivationCheckoutPanel: (props: unknown) => { mocks.activation(props); return <div>Activation fixture</div>; },
 }));
@@ -40,7 +47,10 @@ beforeEach(() => {
   vi.clearAllMocks();
   mocks.blocked = { data: true, error: null };
 });
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.useRealTimers();
+});
 
 it.each(["en", "es"] as const)("uses real server dictionaries for upgrade parameters and missing-plan recovery in %s", async (locale) => {
   mocks.locale = locale;
@@ -58,13 +68,23 @@ it.each(["en", "es"] as const)("uses real server dictionaries for upgrade parame
 
 it.each(["en", "es"] as const)("does not treat an unverified session reference as checkout or payment confirmation in %s", async (locale) => {
   mocks.locale = locale;
-  render(await BillingReturnPage({ searchParams: Promise.resolve({ session_id: "session-reference-fixture" }) }));
+  vi.useFakeTimers();
+  const page = await BillingReturnPage({ searchParams: Promise.resolve({ session_id: "session-reference-fixture" }) });
+  render(<I18nProvider initialLocale={locale} initialDictionary={getDictionary(locale)}>{page}</I18nProvider>);
+  // Enquanto confere e depois de desistir (~45 s sem assinatura), nada confirma.
+  await act(async () => { await vi.advanceTimersByTimeAsync(0); });
+  expect(screen.getByRole("heading", { name: locale === "es" ? "Confirmando tu plan…" : "Confirming your plan…" })).toBeInTheDocument();
+  expect(document.querySelector(".lucide-circle-check")).toBeNull();
+  expect(document.querySelector('a[href="/teach"]')).toBeNull();
+  await act(async () => { await vi.advanceTimersByTimeAsync(3000 * 15); });
   expect(screen.getByRole("heading", { name: locale === "es" ? "Revisa el estado de tu suscripción." : "Review your subscription status." })).toBeInTheDocument();
   expect(screen.getByText(locale === "es"
     ? "Revisa tu plan actual en Facturación. Si acabas de completar el proceso de pago, espera unos momentos y selecciona Actualizar estado de facturación. No inicies otro proceso de pago mientras lo compruebas."
     : "Review your current plan in Billing. If you just completed checkout, allow a few moments, then select Refresh billing status. Do not start another checkout while checking.")).toBeInTheDocument();
   expect(screen.queryByText(/Checkout complete|Pago completado|Stripe finished|Stripe completó/)).toBeNull();
   expect(document.querySelector(".lucide-check")).toBeNull();
+  expect(document.querySelector(".lucide-circle-check")).toBeNull();
+  expect(screen.queryByText(/free trial has started|prueba gratis de 14 días ha empezado|plan is active|plan está activo/i)).toBeNull();
   expect(screen.queryByText(/session-reference-fixture/)).toBeNull();
   expect(screen.getByRole("link", { name: locale === "es" ? "Volver a la facturación" : "Back to billing" })).toHaveAttribute("href", "/account/billing?tab=overview");
   expect(document.querySelector('a[href="/teach"]')).toBeNull();

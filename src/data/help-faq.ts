@@ -71,7 +71,7 @@ export const helpFaqCategories: ReadonlyArray<HelpFaqCategory> = [
     items: [
       {
         q: "Which plan should I start on?",
-        a: "Every plan starts with a 14-day trial; a card is required, and you can cancel in Billing before the trial ends without being charged. Basic is $9/month ($90/year) with 10% + $0.30 per sale. Starter is $19/month ($190/year) with 4.9% + $0.30. Pro is $89/month ($890/year) with 0% commission and higher limits. Card processing by Stripe still applies. The pricing page shows what each plan takes from a sample $100 sale.",
+        a: "Every plan starts with a 14-day free trial; a card is required, and you can cancel in Billing before the trial ends without being charged. Basic is $9/month ($90/year) with 10% + $0.30 per sale. Starter is $19/month ($190/year) with 4.9% + $0.30. Pro is $89/month ($890/year) with 0% commission and higher limits. Card processing by Stripe still applies. The pricing page shows what each plan takes from a sample $100 sale.",
       },
       {
         q: "What happens when I upgrade or downgrade?",
@@ -79,7 +79,7 @@ export const helpFaqCategories: ReadonlyArray<HelpFaqCategory> = [
       },
       {
         q: "What if I cancel my plan?",
-        a: "Cancel anytime from Billing with \"Cancel plan\". If you cancel during the 14-day trial, you are not charged; otherwise the plan stays active until the end of the period you paid for. Your courses, students, content, and history are preserved — SkillsetMind never deletes a creator's data.",
+        a: "Cancel anytime from Billing with \"Cancel plan\". If you cancel during the 14-day free trial, you are not charged; otherwise the plan stays active until the end of the period you paid for. Your courses, students, content, and history are preserved — SkillsetMind never deletes a creator's data.",
       },
     ],
   },

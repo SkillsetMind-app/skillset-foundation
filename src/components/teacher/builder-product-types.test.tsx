@@ -110,7 +110,8 @@ function session(): CourseEvent {
     description: "",
     type: "live_class",
     status: "scheduled",
-    startsAt: "2026-11-20T22:30:00.000Z",
+    // Sessao por vir: a data antiga (20/11/2026) venceu e derrubava o teste.
+    startsAt: "2099-11-20T22:30:00.000Z",
     externalUrl: "",
     recordingAssetId: null,
   };

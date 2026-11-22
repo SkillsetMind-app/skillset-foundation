@@ -393,11 +393,15 @@ export function SignupForm() {
             </label>
           </div>
 
-          <label className="flex items-start gap-2.5 text-xs leading-5 text-[var(--color-ink-soft)]">
+          {/* O aceite e o que destrava o cadastro: letra de corpo, nao de rodape. */}
+          <label className="flex items-start gap-2.5 text-sm leading-6 text-[var(--color-ink)]">
             <input
               type="checkbox"
               checked={legalAccepted}
               onChange={(event) => setLegalAccepted(event.target.checked)}
+              // O balao do navegador vem na lingua do navegador e some sozinho:
+              // o aviso da pagina fica, na lingua da pagina.
+              onInvalid={() => setError({ key: "auth.signup.acceptTermsToCreate" })}
               className="mt-0.5 size-5 shrink-0 accent-[var(--color-primary)]"
               required
             />
@@ -416,10 +420,13 @@ export function SignupForm() {
 
           {errorNode}
 
+          {/* Sem o aceite o botao continua clicavel: apagado, ele nao dizia o
+              porque. O clique agora aponta a caixa (required) ou mostra o aviso
+              que handleEmailSignup/handleGoogleSignup ja tinham. */}
           <button
             key="identity-continue"
             type="submit"
-            disabled={isLoading || !legalAccepted}
+            disabled={isLoading}
             className="button-solid mt-1 px-4 py-2.5 text-sm disabled:opacity-60"
           >
             {t("auth.signup.continue")}
@@ -434,7 +441,7 @@ export function SignupForm() {
               </div>
               <button
                 type="button"
-                disabled={isLoading || !legalAccepted}
+                disabled={isLoading}
                 onClick={handleGoogleSignup}
                 className="button-outline px-4 py-2.5 text-sm disabled:opacity-60"
               >
