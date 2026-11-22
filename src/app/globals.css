@@ -6556,6 +6556,13 @@ html:has(#member-lesson-player) {
   color: var(--ma-accent-ink) !important;
 }
 
+/* Avisos de erro da sala (InlineAlert e linhas de erro): o vermelho da
+   plataforma dava ~2.7:1 num curso escuro. Troca a variável, não a cor, para o
+   ícone e o texto da caixa seguirem juntos. */
+.member-classroom[data-members-theme] [class*="text-[var(--color-danger-fg)]"] {
+  --color-danger-fg: var(--ma-accent-ink);
+}
+
 /* A gaveta da pergunta não sai da sala (não é portal), então o texto dela já
    vem na cor do CURSO pelas regras acima. Fundo, divisórias e os tons que as
    regras acima não trocam passam a ler a mesma paleta: sem isso a gaveta era

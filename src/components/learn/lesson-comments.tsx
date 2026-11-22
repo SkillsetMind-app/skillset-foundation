@@ -7,6 +7,7 @@ import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { formatNotificationTime } from "@/components/account/notification-row";
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { InlineAlert } from "@/components/ui/inline-alert";
 import { filterPosts, groupCommentsByPost } from "@/domain/community-feed";
 import type { CommunityComment, CommunityPost } from "@/domain/community-post";
 import type { Course } from "@/domain/learning";
@@ -216,9 +217,9 @@ function LessonCommentsPanel({
       )}
 
       {error ? (
-        <p className="mt-3 rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-3 py-2 text-sm font-semibold text-[var(--color-danger-fg)]">
+        <InlineAlert tone="error" className="mt-3 px-3 py-2">
           {t(error)}
-        </p>
+        </InlineAlert>
       ) : null}
 
       {canRead ? (

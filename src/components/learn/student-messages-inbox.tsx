@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, Inbox, Send } from "lucide-react";
+import { ArrowLeft, Send } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
@@ -8,6 +8,7 @@ import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useAuth } from "@/components/auth/auth-provider";
 import { formatNotificationTime } from "@/components/account/notification-row";
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { EmptyState } from "@/components/ui/empty-state";
 import { InlineAlert } from "@/components/ui/inline-alert";
 import type { CourseMessage } from "@/domain/course-message";
 import {
@@ -160,19 +161,12 @@ export function StudentMessagesInbox() {
           </div>
         </div>
       ) : threads.length === 0 ? (
-        <section className="rounded-lg border fine-rule bg-white px-6 py-10 text-center">
-          <Inbox
-            aria-hidden="true"
-            className="mx-auto text-[var(--color-ink-muted)]"
-            size={28}
-          />
-          <h2 className="mt-3 text-lg font-semibold text-[var(--color-primary)]">
-            {t("learnWave2.messages.empty")}
-          </h2>
-          <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-[var(--color-ink-soft)]">
-            {t("learnWave2.messages.emptyDetail")}
-          </p>
-        </section>
+        // O vazio da plataforma (EmptyState), em h2 logo abaixo do h1 do shell.
+        <EmptyState
+          as="h2"
+          title={t("learnWave2.messages.empty")}
+          description={t("learnWave2.messages.emptyDetail")}
+        />
       ) : (
         <div className="grid gap-5 lg:grid-cols-[minmax(240px,320px)_1fr]">
           {/* No celular a lista ou a conversa: com uma aberta, a lista sai e a

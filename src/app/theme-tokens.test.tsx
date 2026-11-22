@@ -276,6 +276,24 @@ describe.each([["light", light], ["dark", dark]] as const)("semantic success con
   );
 });
 
+// As quatro caixas do InlineAlert (ui/inline-alert.tsx): o texto de cada tom
+// sobre o próprio fundo, em qualquer superfície onde a caixa caia. O fundo do
+// erro é translúcido, então a conta compõe sobre a superfície.
+describe.each([["light", light], ["dark", dark]] as const)("InlineAlert tone contrast — %s", (_theme, vars) => {
+  it.each([
+    ["--color-danger-fg", "--color-danger-soft"],
+    ["--color-warning-fg", "--color-warning-soft"],
+    ["--color-success-fg", "--color-success-soft"],
+    ["--color-ink-soft", "--color-info-soft"],
+  ])("keeps %s at AA on %s over every surface", (foreground, background) => {
+    for (const surface of ["--color-base", "--color-surface", "--color-surface-soft", "--color-surface-strong"]) {
+      const contrast = ratio(`var(${foreground})`, `var(${background})`, vars, surface);
+      expect(contrast, `${background} over ${surface} must resolve`).not.toBeNull();
+      expect(contrast!, `${background} over ${surface}`).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+});
+
 /**
  * First top-level token of a background shorthand (`#fff url(...) no-repeat`).
  *

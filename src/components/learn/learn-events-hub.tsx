@@ -2,10 +2,12 @@
 
 import { Check, ChevronDown } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { EmptyState } from "@/components/ui/empty-state";
+import { InlineAlert } from "@/components/ui/inline-alert";
 import type { SkillsetUser } from "@/domain/auth";
 import {
   formatEventDateTime,
@@ -35,13 +37,17 @@ export function LearnEventsHub() {
   const [loadedSlugs, setLoadedSlugs] = useState<string[]>([]);
   const [isLoadingEnrollments, setIsLoadingEnrollments] = useState(true);
   const [error, setError] = useState("");
+  // As sessões não têm releitura: se alguma falhou, o "Try again" das
+  // matrículas não pode apagar esse erro e mostrar a agenda vazia.
+  const [eventsFailed, setEventsFailed] = useState(false);
+  const enrollmentsSubscription = useRef<{ reload?: () => Promise<void> } | null>(null);
 
   useEffect(() => {
     if (!user) {
       return;
     }
 
-    return subscribeToUserEnrollments(
+    const current = subscribeToUserEnrollments(
       user.uid,
       (nextEnrollments) => {
         setEnrollments(nextEnrollments);
@@ -52,6 +58,11 @@ export function LearnEventsHub() {
         setIsLoadingEnrollments(false);
       },
     );
+    enrollmentsSubscription.current = current;
+    return () => {
+      enrollmentsSubscription.current = null;
+      current();
+    };
   }, [user]);
 
   useEffect(() => {
@@ -79,6 +90,7 @@ export function LearnEventsHub() {
         },
         () => {
           setError("learnWave2.eventsHub.eventsError");
+          setEventsFailed(true);
           setLoadedSlugs((currentSlugs) =>
             currentSlugs.includes(courseSlug)
               ? currentSlugs
@@ -132,50 +144,52 @@ export function LearnEventsHub() {
     );
   }
 
+  // Lê as matrículas de novo pelo mesmo canal (sem religar). Até a resposta
+  // vale o "carregando", nunca o vazio.
+  function retryLoad() {
+    setError("");
+    setIsLoadingEnrollments(true);
+    void enrollmentsSubscription.current?.reload?.();
+  }
+
   if (error) {
     return (
-      <section className="rounded-lg border border-[rgba(178,34,52,0.2)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
-        <p role="alert" className="rounded-md bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
-          {t(error)}
-        </p>
+      <section className="rounded-lg border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
+        <InlineAlert tone="error">{t(error)}</InlineAlert>
+        {error === "learnWave2.eventsHub.loadError" && !eventsFailed ? (
+          <button type="button" onClick={retryLoad} className="button-outline mt-4 px-4 text-sm">
+            {t("appErrors.retry")}
+          </button>
+        ) : null}
       </section>
     );
   }
 
+  // Os dois vazios no EmptyState da plataforma: h2 logo abaixo do h1 do shell.
   if (enrollments.length === 0) {
     return (
-      <section className="rounded-lg border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
-        <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-          {t("learnWave2.eventsHub.eyebrow")}
-        </p>
-        <h2 className="mt-3 text-lg font-semibold text-[var(--color-primary)]">
-          {t("learnWave2.eventsHub.emptyTitle")}
-        </h2>
-        <p className="mt-4 max-w-2xl text-sm leading-7 text-[var(--color-ink-soft)]">
-          {t("learnWave2.eventsHub.emptyDetail")}
-        </p>
-        <div className="mt-6">
+      <EmptyState
+        as="h2"
+        eyebrow={t("learnWave2.eventsHub.eyebrow")}
+        title={t("learnWave2.eventsHub.emptyTitle")}
+        description={t("learnWave2.eventsHub.emptyDetail")}
+        action={
           <Link href="/courses" className="button-solid px-4 py-2.5 text-sm">
             {t("learnWave2.eventsHub.explore")}
           </Link>
-        </div>
-      </section>
+        }
+      />
     );
   }
 
   if (events.length === 0) {
     return (
-      <section className="rounded-lg border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
-        <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-          {t("learnWave2.eventsHub.schedule")}
-        </p>
-        <h2 className="mt-3 text-lg font-semibold text-[var(--color-primary)]">
-          {t("learnWave2.eventsHub.noSessions")}
-        </h2>
-        <p className="mt-4 max-w-2xl text-sm leading-7 text-[var(--color-ink-soft)]">
-          {t("learnWave2.eventsHub.noSessionsDetail")}
-        </p>
-      </section>
+      <EmptyState
+        as="h2"
+        eyebrow={t("learnWave2.eventsHub.schedule")}
+        title={t("learnWave2.eventsHub.noSessions")}
+        description={t("learnWave2.eventsHub.noSessionsDetail")}
+      />
     );
   }
 
@@ -354,9 +368,9 @@ function LearnerEventCard({
             })}
           </div>
           {rsvpError ? (
-            <p role="alert" className="mt-3 rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-3 py-2 text-sm font-semibold text-[var(--color-danger-fg)]">
+            <InlineAlert tone="error" className="mt-3 px-3 py-2">
               {t(rsvpError)}
-            </p>
+            </InlineAlert>
           ) : null}
         </div>
       )}

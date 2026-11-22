@@ -5,6 +5,7 @@ import { CheckCircle2, Lock, PlayCircle } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { ProgressBar } from "@/components/ui/progress-bar";
 import {
   CourseCover,
   CourseUnlockModal,
@@ -197,12 +198,11 @@ export function LearningPathsRows({
                     .replace("{total}", String(path.courseIds.length))
                     .replace("{percent}", String(progress.progressPercent))}
                 </p>
-                <div className="mt-2 h-2 overflow-hidden rounded-full bg-[rgba(26,54,93,0.12)]">
-                  <div
-                    className="h-full rounded-full bg-[var(--color-accent)]"
-                    style={{ width: `${progress.progressPercent}%` }}
-                  />
-                </div>
+                <ProgressBar
+                  value={progress.progressPercent}
+                  label={t("learn.paths.percentComplete").replace("{percent}", () => String(progress.progressPercent))}
+                  className="mt-2"
+                />
               </div>
             </div>
 

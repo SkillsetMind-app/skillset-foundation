@@ -8,6 +8,7 @@ import {
   Eyebrow,
   Field,
   InlineAlert,
+  ProgressBar,
   SectionHeader,
   buttonClasses,
 } from "@/components/ui";
@@ -123,6 +124,125 @@ describe("InlineAlert", () => {
     const status = screen.getByRole("status");
     expect(status).toHaveAttribute("aria-live", "polite");
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  // Sem ícone, a única diferença entre erro, aviso, sucesso e informação era a
+  // cor. O ícone é decorativo: o nome do aviso continua sendo a frase.
+  it.each(["error", "warning", "success", "info"] as const)("tom %s traz o próprio ícone, escondido do leitor de tela", (tone) => {
+    const { container } = render(<InlineAlert tone={tone}>Mensagem.</InlineAlert>);
+
+    const box = container.firstElementChild!;
+    const icons = box.querySelectorAll("svg");
+    expect(icons).toHaveLength(1);
+    expect(icons[0]).toHaveAttribute("aria-hidden", "true");
+    expect(icons[0]).toHaveAttribute("width", "16");
+    expect(box).toHaveClass("flex", "items-start", "gap-2");
+    expect(box).toHaveTextContent("Mensagem.");
+  });
+
+  it("cada tom tem um ícone diferente", () => {
+    const { container } = render(
+      <>
+        {(["error", "warning", "success", "info"] as const).map((tone) => (
+          <InlineAlert key={tone} tone={tone}>{tone}</InlineAlert>
+        ))}
+      </>,
+    );
+
+    const classes = [...container.querySelectorAll("svg")].map((icon) => icon.getAttribute("class"));
+    expect(new Set(classes).size).toBe(4);
+  });
+
+  // O fundo do erro vem da variável de tema, que sobe para 18% no escuro (o
+  // literal de 6% sumia sobre o quase-preto).
+  it("o fundo do erro segue o tema (--color-danger-soft)", () => {
+    render(<InlineAlert tone="error">Falhou.</InlineAlert>);
+    expect(screen.getByRole("alert").className).toContain("bg-[var(--color-danger-soft)]");
+  });
+
+  it("título e trechos com link ficam num miolo ao lado do ícone, na ordem", () => {
+    render(
+      <InlineAlert tone="warning" title="Atenção">
+        Leia antes. <a href="/x">Abrir</a>
+      </InlineAlert>,
+    );
+
+    const status = screen.getByRole("status");
+    expect(status).toHaveTextContent("AtençãoLeia antes. Abrir");
+    const body = status.lastElementChild!;
+    expect(body).toHaveClass("min-w-0", "flex-1");
+    expect(body.firstElementChild).toHaveTextContent("Atenção");
+    expect(body.querySelector("a")).toHaveAttribute("href", "/x");
+  });
+
+  // Seis telas já arrumam os filhos em flex na própria caixa (uma com o próprio
+  // ícone de aviso): elas seguem sem ícone extra e com os filhos soltos.
+  it("quem arruma os filhos em flex segue como antes: sem ícone extra nem miolo", () => {
+    render(
+      <InlineAlert tone="error" className="mt-5 flex flex-wrap items-center justify-between gap-3">
+        <span>Falhou.</span>
+        <button type="button">Tentar de novo</button>
+      </InlineAlert>,
+    );
+
+    const alert = screen.getByRole("alert");
+    expect(alert.querySelector("svg")).toBeNull();
+    expect(alert.firstElementChild?.tagName).toBe("SPAN");
+    expect(alert).toHaveClass("justify-between");
+    expect(alert).not.toHaveClass("items-start");
+  });
+});
+
+describe("ProgressBar", () => {
+  it("diz o valor ao leitor de tela, de 0 a 100", () => {
+    render(<ProgressBar value={40} label="Progress" />);
+
+    const bar = screen.getByRole("progressbar", { name: "Progress" });
+    expect(bar).toHaveAttribute("aria-valuenow", "40");
+    expect(bar).toHaveAttribute("aria-valuemin", "0");
+    expect(bar).toHaveAttribute("aria-valuemax", "100");
+  });
+
+  it("corta o valor nas pontas", () => {
+    render(
+      <>
+        <ProgressBar value={140} label="Acima" />
+        <ProgressBar value={-5} label="Abaixo" />
+      </>,
+    );
+
+    expect(screen.getByRole("progressbar", { name: "Acima" })).toHaveAttribute("aria-valuenow", "100");
+    expect(screen.getByRole("progressbar", { name: "Abaixo" })).toHaveAttribute("aria-valuenow", "0");
+  });
+
+  // Trilho pela variável de linha (o navy a 12% sumia no escuro) e movimento
+  // só em transform, dentro de motion-safe.
+  it("uma altura, trilho que segue o tema e preenchimento que desliza com transform", () => {
+    render(<ProgressBar value={25} label="Curso" />);
+
+    const bar = screen.getByRole("progressbar", { name: "Curso" });
+    expect(bar).toHaveClass("h-1.5", "rounded-full", "overflow-hidden", "bg-[var(--color-line)]");
+    const fill = bar.firstElementChild as HTMLElement;
+    expect(fill).toHaveClass("bg-[var(--color-accent)]", "motion-safe:transition-transform");
+    expect(fill.className).not.toMatch(/transition-\[width\]|transition-all/);
+    expect(fill.style.transform).toBe("translateX(-75%)");
+  });
+
+  it("aceita trilho e preenchimento de uma área com tema próprio", () => {
+    render(
+      <ProgressBar
+        value={50}
+        label="Área"
+        className="bg-[var(--ma-surface-2)]"
+        fillClassName="bg-[var(--ma-accent)]"
+      />,
+    );
+
+    const bar = screen.getByRole("progressbar", { name: "Área" });
+    expect(bar).toHaveClass("bg-[var(--ma-surface-2)]");
+    expect(bar).not.toHaveClass("bg-[var(--color-line)]");
+    expect(bar.firstElementChild).toHaveClass("bg-[var(--ma-accent)]");
+    expect(bar.firstElementChild).not.toHaveClass("bg-[var(--color-accent)]");
   });
 });
 

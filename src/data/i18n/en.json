@@ -1754,6 +1754,7 @@
         "unpin": "Unpin",
         "pin": "Pin",
         "clap": "Like · {count}",
+        "clapOwn": "You can't like your own post.",
         "reply": "Reply",
         "viewReplies": "View {count} replies",
         "answer": "answer",

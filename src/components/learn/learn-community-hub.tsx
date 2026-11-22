@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { useAuth } from "@/components/auth/auth-provider";
+import { InlineAlert } from "@/components/ui/inline-alert";
 import type { Enrollment, EnrollmentCommunityCard } from "@/domain/enrollment";
 import { communityEnrollmentCourseIds, createEnrollmentCommunityCards } from "@/domain/enrollment";
 import { getCommunityCourseIds, subscribeToUserEnrollments } from "@/lib/data/enrollments";
@@ -91,10 +92,8 @@ export function LearnCommunityHub() {
 
   if (error) {
     return (
-      <section className="rounded-lg border border-[rgba(178,34,52,0.2)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
-        <p role="alert" className="rounded-md bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
-          {t(error)}
-        </p>
+      <section className="rounded-lg border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
+        <InlineAlert tone="error">{t(error)}</InlineAlert>
         <button type="button" onClick={retryLoad} className="button-outline mt-4 px-4 text-sm">
           {t("appErrors.retry")}
         </button>

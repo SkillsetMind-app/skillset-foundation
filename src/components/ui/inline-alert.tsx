@@ -1,3 +1,4 @@
+import { AlertCircle, AlertTriangle, CheckCircle2, Info, type LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { cn } from "@/lib/cn";
@@ -22,6 +23,15 @@ const toneClass: Record<AlertTone, string> = {
   info: "border-[var(--color-line)] bg-[var(--color-info-soft)] text-[var(--color-ink-soft)]",
 };
 
+// Um ícone por tom: sem ele a única diferença entre erro, aviso e sucesso era a
+// cor, e quem não distingue vermelho de verde ficava sem sinal nenhum.
+const toneIcon: Record<AlertTone, LucideIcon> = {
+  error: AlertCircle,
+  warning: AlertTriangle,
+  success: CheckCircle2,
+  info: Info,
+};
+
 export type InlineAlertProps = {
   tone: AlertTone;
   title?: string;
@@ -33,6 +43,17 @@ export function InlineAlert({ tone, title, className, children }: InlineAlertPro
   // "assertive" interrompe a leitura para dar a má notícia; "polite" espera a
   // frase corrente terminar. Erro é a única coisa que merece interromper.
   const urgent = tone === "error";
+  // Seis telas de professor e admin já arrumam os próprios filhos em flex (uma
+  // com o próprio ícone). Elas seguem como antes, sem ícone nem miolo: o ícone
+  // novo não pode empurrar o botão nem dobrar o símbolo delas.
+  const ownLayout = /(^|\s)flex(\s|$)/.test(className ?? "");
+  const Icon = toneIcon[tone];
+  const content = (
+    <>
+      {title ? <p className="font-bold">{title}</p> : null}
+      {children}
+    </>
+  );
 
   return (
     <div
@@ -40,12 +61,27 @@ export function InlineAlert({ tone, title, className, children }: InlineAlertPro
       aria-live={urgent ? "assertive" : "polite"}
       className={cn(
         "rounded-md border px-4 py-3 text-sm font-semibold leading-6",
+        !ownLayout && "flex items-start gap-2",
         toneClass[tone],
         className,
       )}
     >
-      {title ? <p className="font-bold">{title}</p> : null}
-      {children}
+      {ownLayout ? (
+        content
+      ) : (
+        <>
+          {/* h-[1lh]: a caixa do ícone tem a altura de UMA linha do texto, então
+              ele fica centrado na primeira linha em qualquer tamanho (text-xs ou
+              text-sm) e o texto que quebra alinha embaixo do texto, não dele. */}
+          <span className="flex h-[1lh] shrink-0 items-center">
+            <Icon aria-hidden="true" size={16} strokeWidth={2.2} />
+          </span>
+          {/* Frase simples fica direto na caixa, como antes (é o caso de quase
+              todos os usos); título ou trechos com link ganham um miolo, para
+              não virarem colunas lado a lado. */}
+          {title || typeof children !== "string" ? <div className="min-w-0 flex-1">{content}</div> : children}
+        </>
+      )}
     </div>
   );
 }

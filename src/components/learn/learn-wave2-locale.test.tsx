@@ -439,3 +439,36 @@ describe("learner wave 2 with real provider and dictionaries", () => {
     expect(screen.getByRole("heading", { name: heading })).toBeVisible();
   });
 });
+
+describe("agenda do aluno: erro de leitura", () => {
+  // A falha das matrículas era um beco; o "Try again" relê pelo mesmo canal.
+  it("a falha das matrículas oferece Try again, e a agenda volta sem reinscrever", () => {
+    const reload = vi.fn(async () => undefined);
+    let next: (rows: Enrollment[]) => void = () => {};
+    mocks.enrollments.mockImplementation((_uid, onData, onError) => {
+      next = onData;
+      onError(new Error("network"));
+      return Object.assign(() => {}, { reload });
+    });
+    show(<LearnEventsHub />);
+
+    expect(screen.getByRole("alert")).toHaveTextContent("No pudimos cargar los cursos en los que estás matriculado.");
+    fireEvent.click(screen.getByRole("button", { name: "Intentar de nuevo" }));
+    expect(reload).toHaveBeenCalledTimes(1);
+    expect(mocks.enrollments).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+
+    act(() => next([enrollment]));
+    expect(screen.getByRole("heading", { name: event.title })).toBeVisible();
+  });
+
+  // As agendas não têm releitura: sem botão, para o erro delas não sumir.
+  it("a falha de uma agenda não oferece Try again", () => {
+    mocks.enrollments.mockImplementation((_uid, next) => { next([enrollment]); return () => {}; });
+    mocks.events.mockImplementation((_slug, _next, onError) => { onError(new Error("network")); return () => {}; });
+    show(<LearnEventsHub />);
+
+    expect(screen.getByRole("alert")).toHaveTextContent("No pudimos cargar una o más agendas de los cursos.");
+    expect(screen.queryByRole("button", { name: "Intentar de nuevo" })).not.toBeInTheDocument();
+  });
+});

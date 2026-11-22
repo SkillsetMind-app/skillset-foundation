@@ -44,6 +44,7 @@ import {
 } from "@/components/learn/watermarked-video-player";
 import { ProtectedAssetPreview } from "@/components/shared/protected-asset-preview";
 import { MilestoneSeal, useJustDone } from "@/components/ui/drawn-check";
+import { InlineAlert } from "@/components/ui/inline-alert";
 import type { CourseAsset } from "@/domain/course-asset";
 import {
   formatCourseAssetSize,
@@ -771,10 +772,8 @@ export function EnrolledCourseWorkspace({
 
   if (error) {
     return (
-      <section className="rounded-lg border border-[rgba(178,34,52,0.2)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
-        <p className="rounded-md bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
-          {t(error)}
-        </p>
+      <section className="rounded-lg border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
+        <InlineAlert tone="error">{t(error)}</InlineAlert>
         <div className="mt-4 flex flex-wrap gap-3">
           <Link href="/learn" className="button-solid px-4 py-2.5 text-sm">
             {t("learn.classroom.workspace.backToLearning")}
@@ -1374,9 +1373,9 @@ export function EnrolledCourseWorkspace({
       <div className="member-classroom-layout">
         <section id="member-lesson-player" className="member-classroom-player">
         {actionError ? (
-          <p role="alert" className="mb-5 rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
+          <InlineAlert tone="error" className="mb-5">
             {t(actionError)}
-          </p>
+          </InlineAlert>
         ) : null}
         {selectedLesson && resolvedSelectedLesson ? (
           <LessonContentPanel

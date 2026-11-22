@@ -3,13 +3,15 @@
 import { CheckCircle2, HelpCircle, Pin, Radio, ThumbsUp, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type FormEvent } from "react";
 
 import { formatNotificationTime } from "@/components/account/notification-row";
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { CommunityItemActions } from "@/components/learn/community-item-actions";
 import { CommunityPostDrawer } from "@/components/learn/community-post-drawer";
+import { EmptyState } from "@/components/ui/empty-state";
+import { InlineAlert } from "@/components/ui/inline-alert";
 import type { SkillsetUser } from "@/domain/auth";
 import {
   countOpenQuestions,
@@ -275,11 +277,7 @@ export function CommunityFeed({
         <p className="mt-4 text-sm leading-7 text-[var(--color-ink-soft)]">
           {t("learn.community.gateDetails")}
         </p>
-        {error ? (
-          <p className="mt-4 rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
-            {t(error)}
-          </p>
-        ) : null}
+        {error ? <InlineAlert tone="error" className="mt-4">{t(error)}</InlineAlert> : null}
       </section>
     );
   }
@@ -367,11 +365,7 @@ export function CommunityFeed({
           />
         ) : null}
 
-        {error ? (
-          <p className="rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
-            {t(error)}
-          </p>
-        ) : null}
+        {error ? <InlineAlert tone="error">{t(error)}</InlineAlert> : null}
 
         {feed.pending > 0 ? (
           // 76px = a barra do topo da área de membros (~68px, sticky, z-40)
@@ -402,9 +396,8 @@ export function CommunityFeed({
           {!feed.ready ? (
             <p className="text-sm text-[var(--color-ink-soft)]">{t("learn.community.feedLoading")}</p>
           ) : shownPosts.length === 0 ? (
-            <p className="rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-7 text-[var(--color-ink-soft)]">
-              {t(livePosts.length === 0 ? "learn.community.empty" : "learn.community.emptyFilter")}
-            </p>
+            // O vazio de lista da plataforma; h3 como o título de cada post.
+            <EmptyState as="h3" title={t(livePosts.length === 0 ? "learn.community.empty" : "learn.community.emptyFilter")} />
           ) : (
             shownPosts.map((post) => (
               <FeedCard
@@ -802,6 +795,8 @@ function FeedCard({
   const answered = isAnswered(post);
   const inline = pickInlineReply(post, comments, instructorIds);
   const isOwn = currentUser?.uid === post.authorId;
+  // O "curtir" do próprio post fica travado: o motivo vai junto do botão.
+  const clapReasonId = useId();
   const liked = currentUser ? likes.likerIds.includes(currentUser.uid) : false;
   const inlineIsAnswer = Boolean(inline && post.acceptedCommentId === inline.id);
 
@@ -907,12 +902,18 @@ function FeedCard({
           disabled={!currentUser || isOwn || likePending}
           aria-pressed={liked}
           aria-label={t("learn.community.card.clap").replace("{count}", () => String(likes.count))}
+          aria-describedby={isOwn ? clapReasonId : undefined}
           className={`inline-flex min-h-11 items-center gap-1.5 rounded-md px-3 ${liked ? "bg-[var(--color-surface-soft)] text-[var(--color-ink)]" : "hover:bg-[var(--color-surface-soft)]"} disabled:opacity-70`}
         >
           {/* Ícone, não emoji (o contrato de design proíbe emoji na interface). */}
           <ThumbsUp size={14} aria-hidden />
           {likes.count}
         </button>
+        {isOwn ? (
+          <span id={clapReasonId} className="sr-only">
+            {t("learn.community.card.clapOwn")}
+          </span>
+        ) : null}
         <button
           type="button"
           onClick={() => setReplyOpen((open) => !open)}
@@ -987,7 +988,7 @@ function FeedCard({
             />
           </label>
           {replyError ? (
-            <p className="text-xs font-semibold text-[var(--color-danger-fg)]">{t(replyError)}</p>
+            <InlineAlert tone="error" className="px-3 py-2 text-xs leading-5">{t(replyError)}</InlineAlert>
           ) : null}
           <div className="flex justify-end gap-2">
             <button type="button" onClick={() => setReplyOpen(false)} className="button-outline min-h-11 px-3 text-sm">

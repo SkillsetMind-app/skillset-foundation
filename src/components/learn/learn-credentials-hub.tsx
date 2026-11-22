@@ -1,10 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { useAuth } from "@/components/auth/auth-provider";
+import { EmptyState } from "@/components/ui/empty-state";
+import { InlineAlert } from "@/components/ui/inline-alert";
+import { ProgressBar } from "@/components/ui/progress-bar";
 import {
   type Certificate,
   getCredentialCandidate,
@@ -25,13 +28,17 @@ export function LearnCredentialsHub() {
   const [isLoading, setIsLoading] = useState(true);
   const [certificatesReady, setCertificatesReady] = useState(false);
   const [error, setError] = useState("");
+  // Os certificados não têm releitura: se eles falharam, o "Try again" das
+  // matrículas não pode apagar esse erro e mostrar a lista sem os emitidos.
+  const [certificatesFailed, setCertificatesFailed] = useState(false);
+  const enrollmentsSubscription = useRef<{ reload?: () => Promise<void> } | null>(null);
 
   useEffect(() => {
     if (!user) {
       return;
     }
 
-    return subscribeToUserEnrollments(
+    const current = subscribeToUserEnrollments(
       user.uid,
       (nextEnrollments) => {
         setEnrollments(nextEnrollments);
@@ -42,6 +49,11 @@ export function LearnCredentialsHub() {
         setIsLoading(false);
       },
     );
+    enrollmentsSubscription.current = current;
+    return () => {
+      enrollmentsSubscription.current = null;
+      current();
+    };
   }, [user]);
 
   useEffect(() => {
@@ -57,6 +69,7 @@ export function LearnCredentialsHub() {
       },
       () => {
         setError("learnWave2.credentials.certificatesError");
+        setCertificatesFailed(true);
         setCertificatesReady(true);
       },
     );
@@ -87,34 +100,41 @@ export function LearnCredentialsHub() {
     );
   }
 
+  // Lê as matrículas de novo pelo mesmo canal (sem religar). Até a resposta
+  // vale o "carregando", nunca o vazio.
+  function retryLoad() {
+    setError("");
+    setIsLoading(true);
+    void enrollmentsSubscription.current?.reload?.();
+  }
+
   if (error) {
     return (
-      <section className="rounded-lg border border-[rgba(178,34,52,0.2)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
-        <p role="alert" className="rounded-md bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
-          {t(error)}
-        </p>
+      <section className="rounded-lg border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
+        <InlineAlert tone="error">{t(error)}</InlineAlert>
+        {error === "learnWave2.credentials.loadError" && !certificatesFailed ? (
+          <button type="button" onClick={retryLoad} className="button-outline mt-4 px-4 text-sm">
+            {t("appErrors.retry")}
+          </button>
+        ) : null}
       </section>
     );
   }
 
+  // O vazio da plataforma (EmptyState), em h2 logo abaixo do h1 do shell.
   if (candidates.length === 0) {
     return (
-      <section className="rounded-lg border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
-        <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-          {t("learnWave2.credentials.brand")}
-        </p>
-        <h2 className="mt-3 text-lg font-semibold text-[var(--color-primary)]">
-          {t("learnWave2.credentials.emptyTitle")}
-        </h2>
-        <p className="mt-4 max-w-2xl text-sm leading-7 text-[var(--color-ink-soft)]">
-          {t("learnWave2.credentials.emptyDetail")}
-        </p>
-        <div className="mt-6">
+      <EmptyState
+        as="h2"
+        eyebrow={t("learnWave2.credentials.brand")}
+        title={t("learnWave2.credentials.emptyTitle")}
+        description={t("learnWave2.credentials.emptyDetail")}
+        action={
           <Link href="/courses" className="button-solid px-4 py-2.5 text-sm">
             {t("learnWave2.credentials.explore")}
           </Link>
-        </div>
-      </section>
+        }
+      />
     );
   }
 
@@ -150,14 +170,12 @@ export function LearnCredentialsHub() {
             <CredentialCard key={candidate.enrollmentId} candidate={candidate} />
           ))
         ) : (
-          <div className="rounded-lg border border-dashed border-[var(--color-line-strong)] bg-[var(--color-surface-soft)] p-6 lg:col-span-2">
-            <p className="text-sm font-semibold text-[var(--color-ink)]">
-              {t("learnWave2.credentials.noMatch")}
-            </p>
-            <p className="mt-2 text-sm leading-7 text-[var(--color-ink-soft)]">
-              {t("learnWave2.credentials.noMatchDetail")}
-            </p>
-          </div>
+          <EmptyState
+            as="h2"
+            className="lg:col-span-2"
+            title={t("learnWave2.credentials.noMatch")}
+            description={t("learnWave2.credentials.noMatchDetail")}
+          />
         )}
       </div>
     </div>
@@ -236,16 +254,7 @@ function CredentialCard({ candidate }: { candidate: CredentialCandidate }) {
         </span>
       </div>
       <div className="mt-4 flex items-center gap-2.5">
-        <div
-          role="progressbar"
-          aria-label={t("learnWave2.credentials.progress")}
-          aria-valuenow={percent}
-          aria-valuemin={0}
-          aria-valuemax={100}
-          className="h-1.5 flex-1 overflow-hidden rounded-full bg-[rgba(26,54,93,0.12)]"
-        >
-          <div className="h-full rounded-full bg-[var(--color-accent)]" style={{ width: `${percent}%` }} />
-        </div>
+        <ProgressBar value={percent} label={t("learnWave2.credentials.progress")} className="flex-1" />
         <span className="text-xs font-bold tabular-nums text-[var(--color-ink-soft)]">
           {new Intl.NumberFormat(locale, { style: "percent", maximumFractionDigits: 2 }).format(candidate.progressPercent / 100)}
         </span>
@@ -329,9 +338,9 @@ function CredentialCard({ candidate }: { candidate: CredentialCandidate }) {
         </div>
       ) : null}
       {issueError ? (
-        <p role="alert" className="mt-3 rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
+        <InlineAlert tone="error" className="mt-3">
           {t(issueError)}
-        </p>
+        </InlineAlert>
       ) : null}
     </article>
   );

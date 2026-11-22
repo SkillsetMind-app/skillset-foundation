@@ -554,6 +554,36 @@ describe("feed da comunidade (rodada 11)", () => {
     expect(screen.queryByRole("button", { name: /new post/ })).toBeNull();
   });
 
+  // O "Like" do próprio post fica travado; antes nada dizia por quê.
+  it("o Like travado do próprio post diz o motivo; o dos outros, não", async () => {
+    await renderFeed();
+    const mine = post({ id: "mine", authorId: "student-1", authorName: "Ana Ribeiro", category: "discussion", body: "My own share." });
+    await act(async () => {
+      mocks.postsCallback?.([mine, ...posts]);
+    });
+
+    const own = within(screen.getByText("My own share.").closest("article")!).getByRole("button", { name: /^Like · \d+$/ });
+    expect(own).toBeDisabled();
+    expect(own).toHaveAccessibleDescription("You can't like your own post.");
+    const other = within(screen.getAllByRole("article").find((card) => !card.textContent?.includes("My own share."))!).getByRole("button", { name: /^Like · \d+$/ });
+    expect(other).not.toHaveAttribute("aria-describedby");
+  });
+
+  // O vazio da lista é o EmptyState da plataforma, com h3 como os posts.
+  it("sem posts, o vazio é o EmptyState com título h3", async () => {
+    render(<CommunityFeed space={space} instructorName="Patrick" />);
+    await waitFor(() => expect(mocks.postsCallback).not.toBeNull());
+    await act(async () => {
+      mocks.postsCallback?.([]);
+      mocks.commentsCallback?.([]);
+      mocks.eventsCallback?.([]);
+      mocks.presenceCallback?.([]);
+    });
+
+    const heading = screen.getByRole("heading", { level: 3, name: "No posts yet. Ask the first question or share what you're working on." });
+    expect(heading.closest("div.border-dashed")).not.toBeNull();
+  });
+
   // Antes: eyebrow "COMMUNITY" + h2 de 24px com o nome do curso (repetindo o
   // h1 e a aba), "Share" fazendo o mesmo que o campo, e um cartão vazio
   // "No live scheduled yet." sempre na lateral.
