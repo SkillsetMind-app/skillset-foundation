@@ -329,7 +329,7 @@ describe("pagina da aula no builder", () => {
     }
   });
 
-  it("?module=M&lesson=L mostra Curso > Modulo > Aula e a aba de video, sem dialogo", async () => {
+  it("?module=M&lesson=L mostra Curso > Modulo, o nome da aula uma vez e a aba de video, sem dialogo", async () => {
     openAt(lessonUrl);
     await renderBuilder();
 
@@ -337,7 +337,16 @@ describe("pagina da aula no builder", () => {
     expect(within(trail).getByRole("link", { name: "Clinical performance foundations" }))
       .toHaveAttribute("href", "/teach/builder?courseId=course-1&tab=content");
     expect(within(trail).getByRole("link", { name: "Start here" })).toHaveAttribute("href", moduleUrl);
-    expect(within(trail).getByText("Welcome").closest("[aria-current='page']")).not.toBeNull();
+    // O nome da aula aparecia tres vezes na tela: trilha, titulo e a linha
+    // "Module 1 - ... / Lesson 1". Agora so o titulo e visivel; na trilha a aula
+    // fica para o leitor de tela, como item atual.
+    const current = within(trail).getByText("Welcome");
+    expect(current.closest("[aria-current='page']")).toBe(current);
+    expect(current).toHaveClass("sr-only");
+    const visible = within(card()).getAllByText("Welcome").filter((element) => !element.closest(".sr-only"));
+    expect(visible).toEqual([within(card()).getByRole("heading", { name: "Welcome" })]);
+    // O cabecalho da aba Curriculum nao fica entre o construtor e a aula.
+    expect(screen.queryByRole("heading", { name: "Build the curriculum." })).not.toBeInTheDocument();
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(linkField()).toHaveValue(youtube);
   });
@@ -548,13 +557,15 @@ describe("pagina da aula no builder", () => {
     expect(document.activeElement).toBe(screen.getByRole("heading", { name: "Welcome" }));
   });
 
-  it("sair pelo Done troca a entrada do historico e devolve o foco ao botao da aula", async () => {
+  it("sair por Back to module troca a entrada do historico e devolve o foco ao botao da aula", async () => {
     openAt(moduleUrl);
     await renderBuilder();
     fireEvent.click(within(card()).getByRole("button", { name: "Edit content" }));
     navigateTo(lessonUrl);
 
-    fireEvent.click(screen.getByRole("button", { name: "Done" }));
+    // "Done" era tambem o estado da aba Description: o botao diz para onde leva.
+    expect(screen.queryByRole("button", { name: "Done" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Back to module" }));
     expect(mocks.router.replace).toHaveBeenLastCalledWith(moduleUrl, { scroll: false });
     navigateTo(moduleUrl);
 

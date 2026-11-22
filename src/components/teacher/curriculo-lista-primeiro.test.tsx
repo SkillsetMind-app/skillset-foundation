@@ -200,9 +200,13 @@ describe("aba Curriculum: a lista de modulos vem primeiro", () => {
       renderBuilder();
       await screen.findByRole("heading", { name: mocks.course.title });
 
+      // A contagem mora no cabecalho da aba; o cartao "Course structure" do
+      // rodape, que a repetia ("1 module, 1 lesson"), saiu.
       expect(screen.getByText("1 module")).toBeInTheDocument();
-      expect(screen.getByText("1 module, 1 lesson")).toBeInTheDocument();
+      // Cabecalho da aba e a linha do modulo.
+      expect(screen.getAllByText("1 lesson").length).toBeGreaterThan(0);
       expect(screen.queryByText("1 modules")).not.toBeInTheDocument();
+      expect(screen.queryByText("1 lessons")).not.toBeInTheDocument();
     } finally {
       mocks.course.modules = modulesOriginais;
     }

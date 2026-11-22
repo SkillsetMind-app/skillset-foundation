@@ -765,6 +765,104 @@ describe("LessonContentModal — video tab", () => {
     expect(URL.revokeObjectURL).toHaveBeenCalledWith("blob:local-aula.mp4");
   });
 
+  // A queixa do dono: ao enviar, um bloco enorme tomava a tela (botao de
+  // 1.453 px, previa de ponta a ponta). Durante o envio o cartao fica com nome,
+  // andamento, uma barra e Cancelar; as abas dizem por que travaram.
+  it("durante o envio o cartao fica compacto e a frase explica as abas travadas", async () => {
+    let finish!: () => void;
+    uploadCourseAsset.mockImplementationOnce(() => new Promise<void>((resolve) => { finish = resolve; }));
+    renderModal();
+    chooseVideoFile("minha aula.mp4");
+    const videoTab = screen.getByRole("button", { name: /^Video/ });
+    // Meio cheio (forma, nao so cor) e a palavra no title para quem usa mouse.
+    expect(videoTab.querySelector(".lesson-modal__tab-dot")).toHaveAttribute("data-tone", "busy");
+    expect(videoTab.querySelector(".lesson-modal__tab-dot")).toHaveAttribute("title", "Selected");
+    expect(screen.queryByText("Tabs unlock when the upload finishes.")).not.toBeInTheDocument();
+    const submit = screen.getByRole("button", { name: "Upload file" });
+    act(() => submit.focus());
+    fireEvent.click(submit);
+
+    const progress = await screen.findByRole("progressbar", { name: "Uploading..." });
+    const form = progress.closest("form")!;
+    // O botao focado some: sem Cancelar neste envio, o foco vai para o andamento.
+    expect(within(form).getByRole("status")).toHaveFocus();
+    expect(within(form).getByText(/minha aula\.mp4/)).toBeInTheDocument();
+    expect(within(form).getAllByRole("progressbar")).toHaveLength(1);
+    // O botao de enviar so repetia "Uploading...": sai da vista, o campo fica montado.
+    expect(within(form).queryByRole("button", { name: "Uploading..." })).not.toBeInTheDocument();
+    expect(within(form).queryByRole("combobox", { name: "Video type" })).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Lesson video")).toBeInTheDocument();
+    expect(screen.getByText("Tabs unlock when the upload finishes.")).toBeInTheDocument();
+    // A etiqueta da aba nao troca mais de palavra visivel (e de largura).
+    expect(within(videoTab).queryByText("Uploading...")?.className).toBe("sr-only");
+
+    await act(async () => { finish(); });
+    expect(screen.queryByText("Tabs unlock when the upload finishes.")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Upload file" })).toBeVisible();
+    // Sem arquivo novo o envio fica desligado: o foco volta ao campo de arquivo.
+    expect(screen.getByLabelText("Lesson video")).toHaveFocus();
+  });
+
+  it("o foco vai para Cancelar quando o envio comeca e volta ao campo quando ele e cancelado", async () => {
+    bunnyConfig.isBunnyConfigured = true;
+    const { CourseAssetUploadCancelled } = await import("@/lib/data/course-assets");
+    let fail!: (error: Error) => void;
+    const cancel = vi.fn(() => fail(new CourseAssetUploadCancelled()));
+    uploadLessonVideoToBunny.mockImplementationOnce((input) => {
+      (input as { onCancelAvailable: (cancel: () => void) => void }).onCancelAvailable(cancel);
+      return new Promise<void>((_resolve, reject) => { fail = reject; });
+    });
+    renderModal();
+    chooseVideoFile();
+    const submit = screen.getByRole("button", { name: "Upload file" });
+    act(() => submit.focus());
+    fireEvent.click(submit);
+
+    const cancelButton = await screen.findByRole("button", { name: "Cancel upload" });
+    expect(cancelButton).toHaveFocus();
+    await act(async () => { fireEvent.click(cancelButton); });
+    expect(cancel).toHaveBeenCalledOnce();
+    // Aula sem video: o cartao sai e volta a area de soltar, com o foco nela.
+    await waitFor(() => expect(screen.getByLabelText("Upload a lesson video")).toHaveFocus());
+  });
+
+  it("numa aula com video, cancelar devolve o foco ao campo de arquivo do cartao", async () => {
+    currentAssets = [videoAsset()];
+    bunnyConfig.isBunnyConfigured = true;
+    const { CourseAssetUploadCancelled } = await import("@/lib/data/course-assets");
+    let fail!: (error: Error) => void;
+    uploadLessonVideoToBunny.mockImplementationOnce((input) => {
+      (input as { onCancelAvailable: (cancel: () => void) => void }).onCancelAvailable(() => fail(new CourseAssetUploadCancelled()));
+      return new Promise<void>((_resolve, reject) => { fail = reject; });
+    });
+    renderModal({ videoSource: "upload" });
+    fireEvent.change(screen.getByLabelText("Lesson video"), {
+      target: { files: [new File(["video"], "nova.mp4", { type: "video/mp4" })] },
+    });
+    const submit = screen.getByRole("button", { name: "Upload file" });
+    act(() => submit.focus());
+    fireEvent.click(submit);
+    const cancelButton = await screen.findByRole("button", { name: "Cancel upload" });
+    expect(cancelButton).toHaveFocus();
+    await act(async () => { fireEvent.click(cancelButton); });
+    await waitFor(() => expect(screen.getByLabelText("Lesson video")).toHaveFocus());
+  });
+
+  // A aba Settings dizia "Preview" ou "Private"; sem a marca, so quem abria a
+  // aba sabia que a aula esta aberta ao publico.
+  it.each([[true, "Preview", "on"], [false, "Private", "off"]] as const)(
+    "a aba Settings mostra se a aula e previa gratis (%s)",
+    (isFreePreview, label, tone) => {
+      renderModal({}, "Módulo 1", false, "instant", isFreePreview);
+      const settings = screen.getByRole("button", { name: /^Settings/ });
+      // O leitor de tela ouve o estado junto com o nome da aba.
+      expect(settings).toHaveAccessibleName(new RegExp(`${label}$`));
+      const mark = settings.querySelector(".lesson-modal__tab-dot");
+      expect(mark).toHaveAttribute("data-tone", tone);
+      expect(mark).toHaveAttribute("title", label);
+    },
+  );
+
   it("retains the selected file when choosing live recording", async () => {
     renderModal();
     const file = chooseVideoFile();

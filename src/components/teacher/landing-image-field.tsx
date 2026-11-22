@@ -7,8 +7,9 @@ import { useTranslation } from "@/components/i18n/i18n-provider";
 import { formatCourseAssetSize, getCourseAssetUploadErrorMessage } from "@/domain/course-asset";
 import { landingImageMaxBytes, landingImageTypes, uploadLandingImage } from "@/lib/data/landing-images";
 
+// Mesmo reset do editor da pagina: o label em volta e caixa alta e negrito.
 const fieldClass =
-  "w-full rounded-md border border-[var(--color-line)] bg-white px-3 py-2.5 text-sm text-[var(--color-ink)]";
+  "w-full rounded-md border border-[var(--color-line)] bg-white px-3 py-2.5 text-sm font-normal normal-case tracking-normal text-[var(--color-ink)]";
 
 /**
  * Image field for sales page blocks: upload first, pasting a link second.

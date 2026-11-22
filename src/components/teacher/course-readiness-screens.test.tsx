@@ -425,6 +425,14 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
       ? screen.getAllByRole("button", { name: "Save draft" })[0]
       : screen.getByRole("button", { name: "Publish product" }));
     await screen.findByRole("link", { name: "Activate storefront" });
+    // O aviso sai perto do botao clicado, nao no cartao do fim da pagina.
+    const alert = screen.getByRole("alert");
+    if (operation === "save") {
+      expect(document.querySelector(".course-builder-hero")?.nextElementSibling).toBe(alert);
+    } else {
+      expect(alert.closest(".course-builder-panel")).not.toBeNull();
+      expect(alert.compareDocumentPosition(screen.getByRole("button", { name: "Publish product" })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    }
     fireEvent.click(screen.getByRole("button", { name: "Switch language" }));
     expect(screen.getByRole("alert")).toHaveTextContent("Activa tu tienda para habilitar la publicación: una tarifa única de activación, que se cobra una sola vez por cuenta de creador, nunca por curso.");
     expect(screen.getByRole("link", { name: "Activar tienda" })).toHaveAttribute("href", "/teach/activate?courseId=course-1");
@@ -1048,20 +1056,17 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     expect(expected.percent).toBe(67);
   });
 
-  it("construtor: chip, barra, texto do stepper e rodape mostram 67%", async () => {
+  it("construtor: a prontidao aparece uma vez, no stepper, com a barra em 67%", async () => {
     render(<CourseBuilderStudio />);
 
     await screen.findByRole("heading", { name: "Clinical performance foundations" });
 
     // O titulo chega antes da consulta do plano; esperar a porcentagem final.
-    const chips = await screen.findAllByText(`${expected.percent}% ready`);
-    expect(chips.length).toBeGreaterThanOrEqual(2);
-
-    // Texto do stepper e a barra logo abaixo dele.
-    expect(screen.getByText(`Publish readiness ${expected.percent}%`)).toBeInTheDocument();
+    // Uma linha so: o chip do topo e o cartao do rodape repetiam o numero.
     expect(
-      screen.getByText(`${expected.doneCount} of ${expected.total} checks ready`),
+      await screen.findByText(`${expected.doneCount} of ${expected.total} checks · ${expected.percent}%`),
     ).toBeInTheDocument();
+    expect(screen.queryAllByText(new RegExp(`${expected.percent}%`))).toHaveLength(1);
     expect(screen.getByTestId("publish-readiness-bar")).toHaveStyle({
       width: `${expected.percent}%`,
     });
@@ -1076,13 +1081,12 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     plan.hold = true;
     render(<CourseBuilderStudio />);
     await screen.findByRole("heading", { name: mocks.course.title });
-    expect(screen.getAllByText("57% ready")).toHaveLength(2);
-    expect(screen.queryByText(`${expected.percent}% ready`)).toBeNull();
+    expect(screen.getAllByText(/ · 57%$/)).toHaveLength(1);
+    expect(screen.queryByText(new RegExp(` · ${expected.percent}%$`))).toBeNull();
 
-    const settled = screen.findAllByText(`${expected.percent}% ready`);
+    const settled = screen.findByText(`${expected.doneCount} of ${expected.total} checks · ${expected.percent}%`);
     plan.release!();
-    expect((await settled).length).toBeGreaterThanOrEqual(2);
-    expect(screen.getByText(`${expected.doneCount} of ${expected.total} checks ready`)).toBeInTheDocument();
+    expect(await settled).toBeInTheDocument();
     expect(screen.getByTestId("publish-readiness-bar")).toHaveStyle({
       width: `${expected.percent}%`,
     });
