@@ -1,6 +1,6 @@
 "use client";
 
-import { PlayCircle } from "lucide-react";
+import { Loader2, PlayCircle } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { Button } from "@/components/ui";
@@ -314,11 +314,14 @@ export function BunnyVideoPlayer(props: BunnyVideoPlayerProps) {
   }
 
   if (!currentPlayback.embedUrl) {
+    // A mesma espera da caixa da aula: 16:9 (o iframe abaixo é aspect-video,
+    // então nada pula quando ele chega) e só o anel. O ícone de play com
+    // frase parecia "sem vídeo"; o texto fica para o leitor de tela.
     return (
-      <div className="member-video-empty">
-        <PlayCircle size={34} aria-hidden />
-        <h5>{t("courseMedia.preview.loading")}</h5>
-        <p>{t("courseMedia.preview.preparingPlayback")}</p>
+      <div className="member-video-empty member-video-empty--loading" role="status">
+        <Loader2 size={32} aria-hidden className="motion-safe:animate-spin" />
+        <h5 className="sr-only">{t("courseMedia.preview.loading")}</h5>
+        <p className="sr-only">{t("courseMedia.preview.preparingPlayback")}</p>
       </div>
     );
   }

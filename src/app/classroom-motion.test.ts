@@ -61,3 +61,53 @@ describe("o cartao 'Proxima aula'", () => {
     expect(leaving).toMatch(/transition:\s*\n?\s*opacity \d+ms/);
   });
 });
+
+describe("a moldura da sala", () => {
+  // overflow: hidden fazia da sala um conteiner de rolagem: a barra "Mark
+  // complete & next", a lista de aulas e o aviso de posts novos grudavam nela
+  // e rolavam junto com a pagina. clip corta os cantos sem isso.
+  it("corta os cantos com clip, para o sticky grudar na tela", () => {
+    expect(block(".member-classroom[data-members-theme]")).toMatch(/overflow: clip;/);
+  });
+
+  // As margens antigas miravam filhos diretos da sala e pararam de casar
+  // quando o invólucro da aba entrou: os cartões encostavam na borda e, no
+  // celular, o vídeo passava 14px de cada lado da tela.
+  it("o invólucro da aba dá 24px de respiro (14px no celular, o que o vídeo de ponta a ponta desconta)", () => {
+    expect(block(".member-classroom[data-members-theme] > .member-classroom-body")).toContain("padding: 0 24px 24px;");
+    expect(css).toMatch(/\.member-classroom\[data-members-theme\] > \.member-classroom-body \{\s*padding: 0 14px 14px;/);
+    expect(css).toMatch(/\.member-video-dock \{\s*margin-inline: -31px;/);
+  });
+
+  // A caixa de espera tinha 260-520px e o player que chega é 16:9: a aula
+  // pulava quando o vídeo aparecia.
+  it("a caixa de espera do vídeo já tem o 16:9 do player", () => {
+    const loading = block(".member-video-empty--loading");
+    expect(loading).toContain("aspect-ratio: 16 / 9;");
+    expect(loading).toContain("min-height: 0;");
+  });
+});
+
+describe("a gaveta da pergunta", () => {
+  it("fundo pelo token de superfície (segue o tema), na camada dos popups", () => {
+    expect(css).toMatch(/\.community-drawer \{[^}]*background: var\(--color-surface\);/);
+    expect(css).not.toMatch(/\.community-drawer(__reply)? \{[^}]*background: #ffffff;/);
+    expect(css).toMatch(/\.community-drawer-backdrop \{[^}]*z-index: 70;/);
+  });
+
+  it("dentro da sala lê a paleta do curso, como o texto dela", () => {
+    const rule = block(".member-classroom[data-members-theme] .community-drawer");
+    expect(rule).toContain("--color-surface: var(--ma-surface);");
+    expect(rule).toContain("--color-ink: var(--ma-ink);");
+    expect(rule).toContain("--color-line: var(--ma-line);");
+  });
+
+  it("entra deslizando, só em no-preference", () => {
+    const use = css.indexOf("animation: community-drawer-in var(--duration-base) var(--ease-standard) backwards;");
+    expect(use).toBeGreaterThan(-1);
+    const opener = css.lastIndexOf("@media (prefers-reduced-motion: no-preference) {", use);
+    expect(opener).toBeGreaterThan(-1);
+    expect(use - opener).toBeLessThan(400);
+    expect(css).toMatch(/@keyframes community-drawer-in \{\s*from \{\s*opacity: 0;\s*transform: translateX\(16px\);/);
+  });
+});

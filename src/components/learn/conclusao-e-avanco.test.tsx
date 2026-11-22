@@ -262,6 +262,23 @@ describe("concluir e seguir para a proxima aula", () => {
     expect(within(lessonBar()).queryByRole("link", { name: "Get certificate" })).not.toBeInTheDocument();
     expect(within(lessonBar()).getByRole("button", { name: "Completed" })).toBeDisabled();
   });
+
+  // Drip por prazo: concluir esta nao abre a proxima. O botao dizia "Next
+  // lesson" e o clique nao fazia nada, sem dizer por que.
+  it("proxima trancada por data: o botao diz quando ela abre e fica desligado", () => {
+    const timeDrip = { ...course, dripStrategy: "time_drip_lesson", dripIntervalDays: 1 } as Course;
+    mocks.searchParams = new URLSearchParams("lesson=l1");
+    mocks.completed = [];
+    const { unmount } = render(<EnrolledCourseWorkspace course={timeDrip} />);
+    // Antes de concluir: "Mark complete", sem prometer "& next".
+    expect(within(lessonBar()).getByRole("button", { name: "Mark complete" })).toBeEnabled();
+    unmount();
+
+    mocks.completed = ["l1"];
+    render(<EnrolledCourseWorkspace course={timeDrip} />);
+    const button = within(lessonBar()).getByRole("button", { name: /^Next lesson · Unlocks / });
+    expect(button).toBeDisabled();
+  });
 });
 
 // Onda D na sala: o check da aula, o selo de 100% e o painel da aba so se

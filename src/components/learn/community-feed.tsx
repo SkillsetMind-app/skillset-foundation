@@ -360,7 +360,9 @@ export function CommunityFeed({
         ) : null}
 
         {feed.pending > 0 ? (
-          <div className="sticky top-2 z-10 flex justify-center">
+          // 76px = a barra do topo da área de membros (~68px, sticky, z-40)
+          // + 8px: com top-2 o aviso grudava ATRÁS da barra e sumia.
+          <div className="sticky top-[76px] z-10 flex justify-center">
             <button
               type="button"
               onClick={showPending}

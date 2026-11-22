@@ -79,7 +79,7 @@ export function NextLessonCard({
         aria-hidden="true"
         className="member-next-lesson__ring grid size-10 shrink-0 place-items-center rounded-full text-sm font-bold tabular-nums"
         style={{
-          background: `conic-gradient(var(--color-accent) ${Math.round(progress * 360)}deg, rgba(255,255,255,0.18) 0deg)`,
+          background: `conic-gradient(var(--ma-accent, var(--color-accent)) ${Math.round(progress * 360)}deg, rgba(255,255,255,0.18) 0deg)`,
         }}
       >
         <span className="grid size-8 place-items-center rounded-full bg-[rgba(15,39,68,0.95)]">
@@ -93,10 +93,13 @@ export function NextLessonCard({
         <p className="truncate text-sm font-semibold">{lesson.title}</p>
       </div>
       <div className="flex shrink-0 items-center gap-1.5">
+        {/* button-solid: na sala ele pinta com a cor do curso e o texto que
+            ela pede (--ma-accent / --ma-on-accent). O dourado da plataforma
+            com texto branco dava 2.56:1. */}
         <button
           type="button"
           onClick={onPlay}
-          className="inline-flex min-h-11 items-center gap-1.5 rounded-md bg-[var(--color-accent)] px-3 text-xs font-bold text-white"
+          className="button-solid inline-flex min-h-11 items-center gap-1.5 px-3 text-xs font-bold"
         >
           <Play aria-hidden="true" size={14} strokeWidth={2.5} />
           {t("learn.classroom.nextLesson.watch")}

@@ -1376,7 +1376,6 @@
         "locked": "Lesson locked",
         "closeMiniPlayer": "Close mini player",
         "loading": "Loading lesson content...",
-        "loadingDetails": "Fetching this lesson's media and notes.",
         "mediaMissing": "Media not attached yet",
         "mediaDetails": "When the instructor uploads a video or connects an embed, it plays here.",
         "content": "Lesson content",
@@ -1412,7 +1411,6 @@
         "loading": "Loading course resources...",
         "empty": "No files to download yet.",
         "courseFiles": "Course files",
-        "loadingLesson": "Loading lesson assets...",
         "emptyLesson": "No files are attached to this lesson yet.",
         "preview": "Preview",
         "enrolled": "Enrolled"
@@ -1713,7 +1711,6 @@
         "joinLater": "Join when it starts"
       },
       "drawer": {
-        "back": "Back to feed",
         "close": "Close",
         "replies": "Replies",
         "noReplies": "No replies yet. Be the first.",
@@ -1722,7 +1719,8 @@
         "markError": "We could not save the answer mark. Try again.",
         "replyLabel": "Add your reply",
         "replyPlaceholder": "Add your reply…",
-        "send": "Reply"
+        "send": "Reply",
+        "sending": "Sending..."
       },
       "actions": {
         "delete": "Delete",
