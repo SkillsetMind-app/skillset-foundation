@@ -174,6 +174,31 @@ describe("CourseShareLink", () => {
     expect(whatsapp).toHaveFocus();
   });
 
+  it("choosing a target closes the menu and hands focus back to Share", () => {
+    render(<CourseShareLink label="Checkout" path="/courses/course-1/checkout" title={title} />);
+    const share = screen.getByRole("button", { name: "Share Checkout" });
+    fireEvent.click(share);
+    fireEvent.click(screen.getByRole("menuitem", { name: "Email" }));
+    expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+    expect(share).toHaveFocus();
+  });
+
+  it("closes when focus tabs out of the button row, not while it moves inside", () => {
+    render(
+      <>
+        <CourseShareLink label="Checkout" path="/courses/course-1/checkout" title={title} />
+        <button type="button">Next on the page</button>
+      </>,
+    );
+    const share = screen.getByRole("button", { name: "Share Checkout" });
+    fireEvent.click(share);
+    const email = screen.getByRole("menuitem", { name: "Email" });
+    fireEvent.focusOut(email, { relatedTarget: share });
+    expect(screen.getByRole("menu")).toBeInTheDocument();
+    fireEvent.focusOut(email, { relatedTarget: screen.getByRole("button", { name: "Next on the page" }) });
+    expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+  });
+
   it("closes when the pointer goes down outside the button row", () => {
     render(<CourseShareLink label="Checkout" path="/courses/course-1/checkout" title={title} />);
     fireEvent.click(screen.getByRole("button", { name: "Share Checkout" }));

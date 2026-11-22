@@ -87,7 +87,7 @@
   --color-field-border: #7c8a98;
   /* Fundo de toda janela centrada. Eram 9 fundos (preto a 55%, três navys a
      38-62%, com e sem desfoque) e cada popup parecia de um kit diferente.
-     Igual nos dois temas: escurece a página de trás, não é superfície. */
+     O tema escuro tem o seu (preto), porque navy ali não escurece nada. */
   --color-scrim: rgba(15, 39, 68, 0.62);
   --shadow-avatar: 0 8px 18px rgba(26, 54, 93, 0.14);
   /* Design V2 net-new tokens (additive — no existing value changed) */
@@ -172,6 +172,9 @@
   /* Sobre fundo escuro o navy some; o anel vira claro para manter contraste. */
   --focus-ring: var(--color-primary-light);
   --color-field-border: var(--color-line-strong);
+  /* Navy a 62% sobre o fundo escuro dava ~#0d1e34, quase o painel (#0f1626):
+     tingia em vez de escurecer. Preto a 60% separa a janela da página. */
+  --color-scrim: rgba(0, 0, 0, 0.6);
   --color-ink: #e8edf5;
   --color-ink-soft: #a4b3c8;
   /* Lifted from #6b7e9a → #8493ad: the old value failed WCAG AA on dark
@@ -369,9 +372,16 @@ html {
    (.dialog-backdrop) e o ::backdrop do <dialog> nativo (ui/confirm-dialog, a
    janela de acesso do /ops). Sem desfoque: o README só permite blur no topo
    e no cartão de vidro. */
-.dialog-backdrop,
-dialog.modal-panel::backdrop {
+.dialog-backdrop {
   background: var(--color-scrim);
+}
+
+/* Regra própria: um navegador que não aceita o seletor descarta a lista
+   inteira e levaria o .dialog-backdrop junto. E antes do Chrome 122, Firefox
+   120 e Safari 17.4 (iPhone parado no iOS 16) o ::backdrop não herda
+   variáveis: sem o valor de reserva o fundo da confirmação ficava transparente. */
+dialog.modal-panel::backdrop {
+  background: var(--color-scrim, rgba(15, 39, 68, 0.62));
 }
 
 /* Entrada única das janelas: o fundo acende e o painel sobe 8px, em 180ms.
@@ -384,7 +394,10 @@ dialog.modal-panel::backdrop {
     animation: motion-panel-in var(--duration-base) var(--ease-standard) backwards;
   }
 
-  .dialog-backdrop,
+  .dialog-backdrop {
+    animation: motion-fade var(--duration-base) var(--ease-standard) backwards;
+  }
+
   dialog.modal-panel::backdrop {
     animation: motion-fade var(--duration-base) var(--ease-standard) backwards;
   }
@@ -412,6 +425,18 @@ dialog.modal-panel::backdrop {
     background: var(--color-surface-soft);
     color: var(--color-primary);
   }
+}
+
+/* O "limpar" da busca mora encostado na ponta de um campo com overflow
+   hidden: o anel global (3px para fora) era cortado em três lados, e o hover
+   do .button-icon pintava a mesma cor do campo. Anel para dentro e hover um
+   tom acima. Sem camada: precisa vencer `button:focus-visible`. */
+.listing-search-clear:hover {
+  background: var(--color-surface-strong);
+}
+
+.listing-search-clear:focus-visible {
+  outline-offset: -3px;
 }
 
 @media (min-width: 1024px) {
@@ -716,6 +741,12 @@ p {
 [data-theme="dark"] select {
   background-color: var(--color-surface) !important;
   color: var(--color-ink);
+}
+
+/* O telefone é uma caixa só (país + número, shared/phone-input): o campo de
+   dentro segue o fundo da caixa, senão o escuro mostrava dois tons. */
+[data-theme="dark"] .phone-field input {
+  background-color: transparent !important;
 }
 
 [data-theme="dark"] option {

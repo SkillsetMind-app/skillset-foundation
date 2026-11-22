@@ -32,18 +32,29 @@ function noPreferenceRanges(): Array<[number, number]> {
 describe("moldura das janelas", () => {
   it("um fundo só, do token, para a camada feita à mão e para o <dialog>", () => {
     expect(css).toContain("--color-scrim: rgba(15, 39, 68, 0.62);");
-    expect(css).toMatch(/\.dialog-backdrop,\s*dialog\.modal-panel::backdrop \{\s*background: var\(--color-scrim\);/);
+    expect(css).toMatch(/\n\.dialog-backdrop \{\s*background: var\(--color-scrim\);/);
+    // Regra própria e com reserva: o ::backdrop antigo não herda variáveis.
+    expect(css).toMatch(
+      /\ndialog\.modal-panel::backdrop \{\s*background: var\(--color-scrim, rgba\(15, 39, 68, 0\.62\)\);/,
+    );
+  });
+
+  it("no tema escuro o fundo escurece (preto), em vez de tingir de navy", () => {
+    const start = css.indexOf('[data-theme="dark"] {');
+    const dark = css.slice(start, css.indexOf("\n}", start));
+    expect(dark).toContain("--color-scrim: rgba(0, 0, 0, 0.6);");
   });
 
   it("o painel sobe e o fundo acende em 180ms, só sem 'reduzir movimento'", () => {
     const ranges = noPreferenceRanges();
     const inside = (index: number) => ranges.some(([start, end]) => index > start && index < end);
     const panel = css.search(/\.modal-panel \{\s*animation: motion-panel-in var\(--duration-base\) var\(--ease-standard\) backwards;/);
-    const backdrop = css.search(/\.dialog-backdrop,\s*dialog\.modal-panel::backdrop \{\s*animation: motion-fade var\(--duration-base\)/);
-    expect(panel).toBeGreaterThan(-1);
-    expect(backdrop).toBeGreaterThan(-1);
-    expect(inside(panel)).toBe(true);
-    expect(inside(backdrop)).toBe(true);
+    const backdrop = css.search(/\.dialog-backdrop \{\s*animation: motion-fade var\(--duration-base\)/);
+    const nativeBackdrop = css.search(/dialog\.modal-panel::backdrop \{\s*animation: motion-fade var\(--duration-base\)/);
+    for (const at of [panel, backdrop, nativeBackdrop]) {
+      expect(at).toBeGreaterThan(-1);
+      expect(inside(at)).toBe(true);
+    }
   });
 
   it("nenhuma janela volta a pintar o fundo preto a 55%", () => {

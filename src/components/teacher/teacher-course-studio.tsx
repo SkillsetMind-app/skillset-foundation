@@ -299,7 +299,8 @@ export function TeacherCourseStudio({
                     : "/teach/builder",
                 )
               }
-              className="field-input min-h-11 normal-case tracking-normal"
+              // h-11: o .field-input dá 45px; a busca ao lado tem 44.
+              className="field-input h-11 normal-case tracking-normal"
             >
               <option value="products">{t("creatorPanel.products.eyebrow")}</option>
               <option value="communities">{t("platform.nav.communities")}</option>
@@ -311,7 +312,7 @@ export function TeacherCourseStudio({
               aria-label={t("creatorPanel.products.statusAria")}
               value={statusFilter}
               onChange={(event) => setStatusFilter(event.target.value as ProductFilter)}
-              className="field-input min-h-11 normal-case tracking-normal"
+              className="field-input h-11 normal-case tracking-normal"
             >
               {productFilters.map((filter) => (
                 <option key={filter.id} value={filter.id}>

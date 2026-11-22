@@ -14,11 +14,14 @@ vi.mock("@/lib/data/teacher-courses", () => ({
 describe("CourseActionsMenu no teclado", () => {
   function renderMenu() {
     render(
-      <CourseActionsMenu courseTitle="Stress Reset" icon={MoreHorizontal}>
-        <a href="/edit" role="menuitem">Edit</a>
-        <a href="/preview" role="menuitem">View as student</a>
-        <button type="button" role="menuitem">Delete</button>
-      </CourseActionsMenu>,
+      <>
+        <CourseActionsMenu courseTitle="Stress Reset" icon={MoreHorizontal}>
+          <a href="/edit" role="menuitem">Edit</a>
+          <a href="/preview" role="menuitem">View as student</a>
+          <button type="button" role="menuitem">Delete</button>
+        </CourseActionsMenu>
+        <button type="button">Next on the page</button>
+      </>,
     );
     const trigger = screen.getByRole("button", { name: /Stress Reset/ });
     fireEvent.click(trigger);
@@ -39,6 +42,17 @@ describe("CourseActionsMenu no teclado", () => {
     expect(remove).toHaveFocus();
     fireEvent.keyDown(remove, { key: "Home" });
     expect(edit).toHaveFocus();
+  });
+
+  it("Tab para fora do menu fecha; andar entre os itens não", () => {
+    const trigger = renderMenu();
+    const [edit, preview] = screen.getAllByRole("menuitem");
+    fireEvent.focusOut(edit, { relatedTarget: preview });
+    expect(screen.getByRole("menu")).toBeInTheDocument();
+    fireEvent.focusOut(preview, { relatedTarget: trigger });
+    expect(screen.getByRole("menu")).toBeInTheDocument();
+    fireEvent.focusOut(preview, { relatedTarget: screen.getByRole("button", { name: "Next on the page" }) });
+    expect(screen.queryByRole("menu")).not.toBeInTheDocument();
   });
 
   it("Esc fecha e devolve o foco ao gatilho", () => {

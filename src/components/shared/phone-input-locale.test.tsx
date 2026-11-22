@@ -166,6 +166,24 @@ describe("PhoneInput locale", () => {
     expect(mocks.onChange).not.toHaveBeenCalled();
   });
 
+  // O foco começa na lista: um Tab dali caía no campo de baixo com a lista
+  // ainda aberta por cima dele.
+  it("fecha a lista quando o foco sai da caixa do telefone, não quando anda dentro dela", () => {
+    render(
+      <>
+        <PhoneInput value="+15551234567" onChange={mocks.onChange} />
+        <select aria-label="Timezone" />
+      </>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Country code: US +1 (United States)" }));
+    const option = screen.getByRole("option", { name: "United States +1" });
+    fireEvent.focusOut(option, { relatedTarget: screen.getByRole("textbox", { name: "Phone" }) });
+    expect(screen.getByRole("listbox")).toBeInTheDocument();
+    fireEvent.focusOut(option, { relatedTarget: screen.getByRole("combobox", { name: "Timezone" }) });
+    expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+    expect(mocks.onChange).not.toHaveBeenCalled();
+  });
+
   it("preserves E.164 validation boundaries for every supported country", () => {
     expect(isValidE164Phone("")).toBe(true);
     expect(isValidE164Phone("15551234567")).toBe(false);

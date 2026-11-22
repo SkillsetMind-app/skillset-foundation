@@ -84,6 +84,7 @@ describe("HorizontalTabs — aba ativa", () => {
     expect(active.className).toContain("border-[var(--color-primary)]");
     expect(active.className).not.toContain("accent");
     expect(other.className).toContain("border-transparent");
+    expect(other.className).toContain("text-[var(--color-ink-muted)]");
     expect(other.className).toContain("hover:text-[var(--color-ink)]");
     expect(other.className).not.toContain("hover:text-[var(--color-primary)]");
   });
@@ -94,5 +95,17 @@ describe("HorizontalTabs — aba ativa", () => {
     fireEvent.keyDown(screen.getByRole("tab", { name: "Purchases" }), { key: "ArrowRight" });
     expect(screen.getByRole("tab", { name: "Payment methods" })).toHaveFocus();
     expect(onChange).toHaveBeenCalledWith("methods");
+  });
+
+  it("Home e End vão à primeira e à última aba", () => {
+    const onChange = vi.fn();
+    renderTabs(onChange);
+    const active = screen.getByRole("tab", { name: "Purchases" });
+    fireEvent.keyDown(active, { key: "Home" });
+    expect(screen.getByRole("tab", { name: "Overview" })).toHaveFocus();
+    expect(onChange).toHaveBeenLastCalledWith("overview");
+    fireEvent.keyDown(active, { key: "End" });
+    expect(screen.getByRole("tab", { name: "Payment methods" })).toHaveFocus();
+    expect(onChange).toHaveBeenLastCalledWith("methods");
   });
 });

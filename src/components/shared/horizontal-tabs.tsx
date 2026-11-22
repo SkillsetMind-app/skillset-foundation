@@ -35,19 +35,27 @@ export function HorizontalTabs({
     ? activeValue
     : enabledTabs[0]?.value;
 
-  function moveFocus(currentValue: string, direction: 1 | -1) {
+  // Setas andam uma aba (com volta); Home e End vão à primeira e à última.
+  function moveFocus(currentValue: string, key: string) {
     const currentIndex = enabledTabs.findIndex((tab) => tab.value === currentValue);
+    const last = enabledTabs.length - 1;
+    const jump: Record<string, number> = {
+      ArrowRight: currentIndex === last ? 0 : currentIndex + 1,
+      ArrowLeft: currentIndex <= 0 ? last : currentIndex - 1,
+      Home: 0,
+      End: last,
+    };
 
-    if (currentIndex === -1 || enabledTabs.length === 0) {
-      return;
+    if (currentIndex === -1 || !(key in jump)) {
+      return false;
     }
 
-    const nextIndex = (currentIndex + direction + enabledTabs.length) % enabledTabs.length;
-    const nextTab = enabledTabs[nextIndex];
+    const nextTab = enabledTabs[jump[key]];
     const nextTabIndex = tabs.findIndex((tab) => tab.value === nextTab.value);
 
     tabRefs.current[nextTabIndex]?.focus();
     onChange(nextTab.value);
+    return true;
   }
 
   return (
@@ -74,24 +82,19 @@ export function HorizontalTabs({
               disabled={tab.disabled}
               onClick={() => onChange(tab.value)}
               onKeyDown={(event) => {
-                if (event.key === "ArrowRight") {
+                if (moveFocus(tab.value, event.key)) {
                   event.preventDefault();
-                  moveFocus(tab.value, 1);
-                }
-
-                if (event.key === "ArrowLeft") {
-                  event.preventDefault();
-                  moveFocus(tab.value, -1);
                 }
               }}
-              // Ativa = texto e linha navy (latão é de marco, não de seleção).
-              // O hover só escurece o texto: sem linha, nunca se confunde com
-              // a ativa (antes o hover pintava a mesma cor da ativa).
+              // Ativa = texto navy e linha (latão é de marco, não de seleção).
+              // As outras ficam no cinza apagado e o hover só escurece o texto,
+              // sem linha. Mesmo peso em todas: negrito só na ativa mudaria a
+              // largura e a barra pularia ao trocar.
               className={cn(
                 "shrink-0 border-b-2 bg-transparent px-5 py-3 text-sm font-semibold transition duration-[180ms] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus-ring)] disabled:cursor-not-allowed disabled:opacity-50",
                 isActive
                   ? "border-[var(--color-primary)] text-[var(--color-primary)]"
-                  : "border-transparent text-[var(--color-ink-soft)] hover:text-[var(--color-ink)]",
+                  : "border-transparent text-[var(--color-ink-muted)] hover:text-[var(--color-ink)]",
               )}
             >
               {tab.label}

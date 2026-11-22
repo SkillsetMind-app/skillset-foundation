@@ -82,7 +82,7 @@ export function ListingSearchBar({
           aria-label={t("platform.clearSearch")}
           // O "limpar" tinha 24px; agora ocupa a ponta inteira da busca, que
           // subiu de 40 para 44px e ficou da altura dos filtros ao lado.
-          className="button-icon absolute right-0"
+          className="button-icon listing-search-clear absolute right-0"
         >
           <X aria-hidden="true" size={14} strokeWidth={1.8} />
         </button>

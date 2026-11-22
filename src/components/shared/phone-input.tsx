@@ -72,7 +72,9 @@ export function PhoneInput({ value, onChange, label }: PhoneInputProps) {
     }
 
     // Aberta, a lista começa no país escolhido: as setas andam a partir dele.
-    listRef.current?.querySelector<HTMLElement>('[aria-selected="true"]')?.focus();
+    listRef.current
+      ?.querySelector<HTMLElement>('[aria-selected="true"]')
+      ?.focus({ preventScroll: true });
 
     function handleMouseDown(event: MouseEvent) {
       if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
@@ -113,7 +115,15 @@ export function PhoneInput({ value, onChange, label }: PhoneInputProps) {
       <label htmlFor={inputId}>{label ?? t("phoneInput.label")}</label>
       <div
         ref={wrapperRef}
-        className="relative flex h-11 rounded-md border-[1.5px] border-[var(--color-field-border)] bg-[var(--color-surface-soft)] focus-within:border-[var(--color-primary)] focus-within:bg-[var(--color-surface)]"
+        // O foco agora entra na lista: um Tab dali levava ao campo de baixo
+        // com a lista ainda aberta por cima dele. Foco saiu da caixa, fecha.
+        onBlur={(event) => {
+          const next = event.relatedTarget;
+          if (open && next instanceof Node && !event.currentTarget.contains(next)) {
+            setOpen(false);
+          }
+        }}
+        className="phone-field relative flex h-11 rounded-md border-[1.5px] border-[var(--color-field-border)] bg-[var(--color-surface-soft)] focus-within:border-[var(--color-primary)] focus-within:bg-[var(--color-surface)]"
       >
         <button
           ref={triggerRef}

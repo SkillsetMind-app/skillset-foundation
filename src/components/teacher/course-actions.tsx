@@ -61,7 +61,7 @@ export function CourseActionsMenu({
 
     // Menu aberto = foco no 1º item; antes ficava no gatilho e as setas não
     // tinham onde agir.
-    menuRef.current?.querySelector<HTMLElement>(MENU_ITEM)?.focus();
+    menuRef.current?.querySelector<HTMLElement>(MENU_ITEM)?.focus({ preventScroll: true });
 
     function handlePointerDown(event: MouseEvent) {
       if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
@@ -85,7 +85,18 @@ export function CourseActionsMenu({
   }, [open]);
 
   return (
-    <div ref={wrapperRef} className="relative">
+    <div
+      ref={wrapperRef}
+      // Tab para fora do menu fecha: o foco já começa dentro dele, e o menu
+      // aberto ficava por cima do que recebeu o foco.
+      onBlur={(event) => {
+        const next = event.relatedTarget;
+        if (open && next instanceof Node && !event.currentTarget.contains(next)) {
+          setOpen(false);
+        }
+      }}
+      className="relative"
+    >
       <button
         ref={triggerRef}
         type="button"

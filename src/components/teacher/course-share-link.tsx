@@ -71,7 +71,7 @@ export function CourseShareLink({
     }
 
     // Aberto, o foco vai ao 1º destino e as setas andam entre eles.
-    menuRef.current?.querySelector<HTMLElement>(MENU_ITEM)?.focus();
+    menuRef.current?.querySelector<HTMLElement>(MENU_ITEM)?.focus({ preventScroll: true });
 
     function handlePointerDown(event: MouseEvent) {
       if (rowRef.current && !rowRef.current.contains(event.target as Node)) {
@@ -123,7 +123,17 @@ export function CourseShareLink({
       <p className="mt-1 break-all font-mono text-sm text-[var(--color-ink)]">{url}</p>
       {/* `relative` on the row, not on the Share button: the menu then hangs
           from the row's left edge and never runs past the card on a phone. */}
-      <div ref={rowRef} className="relative mt-3 flex flex-wrap gap-2">
+      <div
+        ref={rowRef}
+        // Tab para fora do menu fecha (o foco começa dentro dele).
+        onBlur={(event) => {
+          const next = event.relatedTarget;
+          if (open && next instanceof Node && !event.currentTarget.contains(next)) {
+            setOpen(false);
+          }
+        }}
+        className="relative mt-3 flex flex-wrap gap-2"
+      >
         <button
           ref={copyRef}
           type="button"
@@ -164,7 +174,12 @@ export function CourseShareLink({
                 role="menuitem"
                 target={href.startsWith("mailto:") ? undefined : "_blank"}
                 rel="noopener noreferrer"
-                onClick={() => setOpen(false)}
+                // Escolher um destino devolve o foco ao Share, em vez de
+                // deixá-lo cair no body.
+                onClick={() => {
+                  setOpen(false);
+                  shareRef.current?.focus();
+                }}
                 className="flex min-h-11 items-center rounded-md px-3 text-sm font-semibold text-[var(--color-ink)] hover:bg-[var(--color-surface-soft)]"
               >
                 {t(`creatorPanel.shareLink.${key}`)}
