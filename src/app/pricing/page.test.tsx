@@ -131,4 +131,20 @@ describe("pricing page", () => {
     expect(label?.className).toContain("text-[13px]");
     expect(label?.className).not.toContain("uppercase");
   });
+
+  // Num celular de 360px a coluna da resposta ficava toda fora da caixa.
+  it("keeps the fee table's last column, You receive, pinned while the table scrolls", async () => {
+    render(await PricingPage());
+
+    const table = screen.getByRole("table");
+    expect(table.parentElement?.className).toContain("overflow-x-auto");
+    const headers = within(table).getAllByRole("columnheader");
+    expect(headers.at(-1)).toHaveTextContent("You receive");
+    const rows = within(table).getAllByRole("row");
+    expect(rows).toHaveLength(publicPlans.length + 1);
+    for (const row of rows) {
+      const last = within(row).queryAllByRole("cell").at(-1) ?? within(row).getAllByRole("columnheader").at(-1);
+      expect(last).toHaveClass("sticky", "right-0", "sm:shadow-none");
+    }
+  });
 });

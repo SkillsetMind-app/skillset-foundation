@@ -93,6 +93,22 @@ export function SiteNav() {
       return;
     }
 
+    // A partir de 1280px o painel, o escuro e o X somem (xl:hidden). Se a
+    // janela cresce com o menu aberto (tablet girado, janela maximizada), o
+    // menu fecha junto: senão a página ficava travada e o Tab preso na barra,
+    // sem botão visível para soltar.
+    const desktop = window.matchMedia?.("(min-width: 1280px)");
+    if (desktop?.matches) {
+      // Sincroniza com um sistema externo (a largura da janela).
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setMobileOpen(false);
+      return;
+    }
+    function closeOnDesktop(event: MediaQueryListEvent) {
+      if (event.matches) setMobileOpen(false);
+    }
+    desktop?.addEventListener("change", closeOnDesktop);
+
     // O foco entra no primeiro item; antes ficava no X e o Tab passava pela
     // página de trás antes de chegar ao menu.
     mobilePanelRef.current
@@ -114,6 +130,7 @@ export function SiteNav() {
     return () => {
       document.body.style.overflow = previousOverflow;
       document.removeEventListener("keydown", handleKeyDown);
+      desktop?.removeEventListener("change", closeOnDesktop);
     };
   }, [mobileOpen]);
 

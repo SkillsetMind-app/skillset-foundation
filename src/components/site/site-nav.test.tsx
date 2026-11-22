@@ -1,4 +1,5 @@
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -216,6 +217,40 @@ describe("SiteNav", () => {
     fireEvent.keyDown(document, { key: "Escape" });
     expect(document.body.style.overflow).toBe("");
     expect(toggle).toHaveFocus();
+  });
+
+  // Tablet girado ou janela maximizada com o menu aberto: o painel, o escuro e
+  // o X somem a partir de 1280px, e a página ficava travada sem como soltar.
+  it("closes the mobile menu and frees the page when the window grows past 1280px", () => {
+    const listeners = new Set<(event: { matches: boolean }) => void>();
+    const desktop = {
+      matches: false,
+      addEventListener: (_type: string, listener: (event: { matches: boolean }) => void) => listeners.add(listener),
+      removeEventListener: (_type: string, listener: (event: { matches: boolean }) => void) => listeners.delete(listener),
+    };
+    const matchMedia = vi.fn(() => desktop);
+    vi.stubGlobal("matchMedia", matchMedia);
+    render(<SiteNav />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Open menu" }));
+    expect(document.getElementById("site-mobile-menu")).toBeInTheDocument();
+    expect(document.body.style.overflow).toBe("hidden");
+    expect(matchMedia).toHaveBeenCalledWith("(min-width: 1280px)");
+
+    desktop.matches = true;
+    act(() => listeners.forEach((listener) => listener({ matches: true })));
+    expect(document.getElementById("site-mobile-menu")).toBeNull();
+    expect(document.body.style.overflow).toBe("");
+    expect(listeners.size).toBe(0);
+  });
+
+  it("does not open the mobile menu when the window is already desktop-wide", () => {
+    vi.stubGlobal("matchMedia", vi.fn(() => ({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() })));
+    render(<SiteNav />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Open menu" }));
+    expect(document.getElementById("site-mobile-menu")).toBeNull();
+    expect(document.body.style.overflow).toBe("");
   });
 
   it("keeps Tab inside the header row while the mobile menu is open", () => {

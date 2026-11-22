@@ -255,7 +255,7 @@ export default async function PricingPage() {
                     fina. */}
                 <th
                   scope="col"
-                  className="sticky right-0 bg-[var(--color-surface-soft)] px-4 py-3 text-right font-bold text-[var(--color-primary)] shadow-[-10px_0_12px_-10px_rgba(15,39,68,0.3)]"
+                  className="sticky right-0 bg-[var(--color-surface-soft)] px-4 py-3 text-right font-bold text-[var(--color-primary)] shadow-[-10px_0_12px_-10px_rgba(15,39,68,0.3)] sm:shadow-none"
                 >
                   {t("publicPages.pricing.you_receive")}
                 </th>
@@ -285,7 +285,7 @@ export default async function PricingPage() {
                     <td className="px-4 py-3 text-right text-[var(--color-ink-soft)]">
                       −{formatUsd(sampleStripeFeeUsd)}
                     </td>
-                    <td className="sticky right-0 bg-white px-4 py-3 text-right font-bold text-[var(--color-primary)] shadow-[-10px_0_12px_-10px_rgba(15,39,68,0.3)]">
+                    <td className="sticky right-0 bg-white px-4 py-3 text-right font-bold text-[var(--color-primary)] shadow-[-10px_0_12px_-10px_rgba(15,39,68,0.3)] sm:shadow-none">
                       {formatUsd(net)}
                     </td>
                   </tr>

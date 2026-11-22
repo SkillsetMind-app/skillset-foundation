@@ -22,6 +22,8 @@ const fixtures = vi.hoisted(() => ({
   subscriptions: 0,
   // true: a assinatura do curso não responde, como uma leitura ainda a caminho.
   holdCourse: false,
+  // As chaves públicas (payments.checkout): ligadas, salvo no teste que as desliga.
+  flagsOn: true,
   router: { push: vi.fn(), replace: vi.fn() },
   course: {
     id: "course-1",
@@ -79,7 +81,7 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(fixtures.query),
 }));
 
-vi.mock("@/lib/feature-flags", () => ({ isPublicFeatureEnabled: () => true }));
+vi.mock("@/lib/feature-flags", () => ({ isPublicFeatureEnabled: () => fixtures.flagsOn }));
 
 vi.mock("@/lib/supabase/config", () => ({
   getSupabaseClientConfig: () => ({}),
@@ -180,6 +182,7 @@ beforeEach(() => {
   fixtures.locale = "en";
   fixtures.subscriptions = 0;
   fixtures.holdCourse = false;
+  fixtures.flagsOn = true;
   fixtures.auth.status = "unauthenticated";
   fixtures.auth.user = null;
   fixtures.course.paymentType = "one_time";
@@ -284,6 +287,23 @@ describe("CreatorCourseDetail: enquanto carrega", () => {
     expect(screen.queryByText("Checkout not available yet")).not.toBeInTheDocument();
     // O texto só para o leitor de tela; na tela, a barra do tamanho do preço.
     expect(within(container.querySelector<HTMLElement>("#enroll-card")!).getByText("Loading pricing...")).toHaveClass("sr-only");
+  });
+
+  // Com a compra desligada o botão não diz "Enroll" para virar o aviso depois.
+  it("com a compra desligada, o aviso vem direto, sem o rótulo de espera", async () => {
+    fixtures.flagsOn = false;
+    fixtures.auth.status = "authenticated";
+    fixtures.auth.user = { uid: "buyer" };
+    vi.stubGlobal("fetch", vi.fn(() => new Promise(() => {})));
+    const { container } = render(<CreatorCourseDetail courseIdOverride="course-1" hideHeader />);
+
+    const button = await waitFor(() => {
+      const found = container.querySelector<HTMLButtonElement>("#enroll-card button[data-cta-focus]");
+      expect(found).not.toBeNull();
+      return found!;
+    });
+    expect(button).toHaveTextContent("Checkout not available yet");
+    expect(button).not.toHaveAttribute("aria-busy");
   });
 
   it("o cancelamento da compra é aviso neutro, e o erro de checkout é anunciado", async () => {

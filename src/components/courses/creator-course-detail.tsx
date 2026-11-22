@@ -601,7 +601,8 @@ export function CreatorCourseDetail({
         ? t("publicCourses.openingCheckout")
         : checkoutEnabled && hasPaidPrice
           ? enrollLabel
-          : pricePending
+          // Com a compra desligada não há o que esperar: o aviso sai direto.
+          : checkoutEnabled && pricePending
             ? t("publicCourses.enroll")
             : t("publicCourses.checkoutUnavailable");
   // Secoes que EXISTEM nesta pagina. Um menu que oferece "Reviews" para um
@@ -1213,7 +1214,7 @@ export function CreatorCourseDetail({
                 data-cta-focus
                 onClick={handleCheckout}
                 disabled={!canCheckout || isCheckingOut}
-                aria-busy={pricePending || undefined}
+                aria-busy={(checkoutEnabled && pricePending) || undefined}
                 className="button-solid mt-6 min-h-12 w-full px-5 py-3 text-base font-semibold disabled:opacity-60"
               >
                 {cardActionLabel}
