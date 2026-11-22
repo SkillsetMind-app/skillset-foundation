@@ -479,7 +479,7 @@ describe("LearnDashboard", () => {
     render(<LearnDashboard />);
 
     const region = await screen.findByRole("region", { name: "My courses" });
-    expect(within(region).queryByRole("tab")).not.toBeInTheDocument();
+    expect(within(region).queryByRole("group", { name: "Filter courses" })).not.toBeInTheDocument();
     expect(within(region).queryByRole("searchbox")).not.toBeInTheDocument();
     for (const name of ["Effective Communication", "Brand Design Atelier"]) {
       expect(
@@ -502,7 +502,7 @@ describe("LearnDashboard", () => {
       within(region).queryByRole("heading", { level: 3, name: "Brand Design Atelier" }),
     ).not.toBeInTheDocument();
 
-    fireEvent.click(within(region).getByRole("tab", { name: "Completed" }));
+    fireEvent.click(within(region).getByRole("button", { name: "Completed" }));
 
     expect(
       within(region).getByRole("heading", { level: 3, name: "Brand Design Atelier" }),
@@ -510,8 +510,9 @@ describe("LearnDashboard", () => {
     expect(
       within(region).queryByRole("heading", { level: 3, name: "Effective Communication" }),
     ).not.toBeInTheDocument();
-    expect(within(region).getByRole("tab", { name: "Completed" })).toHaveAttribute(
-      "aria-selected",
+    // Filtro, nao abas: a escolha vai no proprio botao (aria-pressed).
+    expect(within(region).getByRole("button", { name: "Completed" })).toHaveAttribute(
+      "aria-pressed",
       "true",
     );
   });

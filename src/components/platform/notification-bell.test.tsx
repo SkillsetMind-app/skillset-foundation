@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { I18nProvider } from "@/components/i18n/i18n-provider";
@@ -81,7 +81,10 @@ describe("o sino antes, durante e depois da leitura", () => {
 
     expect(screen.getByRole("alert")).toHaveTextContent("We could not load your notifications.");
     expect(screen.queryByText("You're all caught up")).toBeNull();
-    expect(screen.getByRole("tablist", { hidden: true })).not.toBeVisible();
+    // Escondido o grupo fica sem nome acessivel; o rotulo e conferido pelo atributo.
+    const filters = screen.getByRole("group", { hidden: true });
+    expect(filters).toHaveAttribute("aria-label", "Filter notifications");
+    expect(filters).not.toBeVisible();
 
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));
     expect(mocks.reload).toHaveBeenCalledOnce();
@@ -124,7 +127,14 @@ describe("o sino antes, durante e depois da leitura", () => {
     openBell("en");
 
     expect(screen.getByRole("button", { name: "Mark all read" })).toHaveClass("min-h-11");
-    for (const tab of screen.getAllByRole("tab")) expect(tab).toHaveClass("min-h-11");
+    // All/Unread sao filtros (aria-pressed), nao abas; continuam com 44px.
+    const filters = within(screen.getByRole("group", { name: "Filter notifications" })).getAllByRole("button");
+    expect(filters).toHaveLength(2);
+    for (const tab of filters) expect(tab).toHaveClass("min-h-11");
+    expect(filters[0]).toHaveAttribute("aria-pressed", "true");
+    fireEvent.click(filters[1]);
+    expect(filters[1]).toHaveAttribute("aria-pressed", "true");
+    expect(filters[0]).toHaveAttribute("aria-pressed", "false");
     expect(screen.getByRole("link", { name: "View all" })).toHaveClass("min-h-11");
     const close = screen.getByRole("button", { name: "Close notifications" });
     expect(close).toHaveClass("size-11");

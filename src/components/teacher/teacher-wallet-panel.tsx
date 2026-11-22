@@ -336,10 +336,12 @@ export function TeacherWalletPanel() {
                 {t("teach.earnings.destination")}
               </p>
               {/* "Stripe Connect" e o nome do produto da Stripe, nao do que a
-                  pessoa tem: para quem nao e tecnico, e a conta dela. */}
-              <h3 className="mt-2 text-lg font-semibold text-[var(--color-ink)]">
+                  pessoa tem: para quem nao e tecnico, e a conta dela.
+                  h2, como os outros titulos de cartao da pagina: o h1 e o do
+                  topo e a navegacao por titulos pulava do 1 para o 3. */}
+              <h2 className="mt-2 text-lg font-semibold text-[var(--color-ink)]">
                 {t("teach.earnings.stripeAccount")}
-              </h3>
+              </h2>
             </div>
             <StatusChip
               status={
@@ -463,9 +465,9 @@ export function TeacherWalletPanel() {
                   ? t("teach.earnings.connectContinue")
                   : t("teach.earnings.connectStart")}
               </p>
-              <h3 className="mt-2 text-lg font-semibold text-[var(--color-ink)]">
+              <h2 className="mt-2 text-lg font-semibold text-[var(--color-ink)]">
                 {t("teach.earnings.connectTitle")}
-              </h3>
+              </h2>
               <p className="mt-2 max-w-3xl text-sm leading-7 text-[var(--color-ink-soft)]">
                 {t("teach.earnings.connectBody")}
               </p>
@@ -499,9 +501,9 @@ export function TeacherWalletPanel() {
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
               {t("teach.earnings.statements")}
             </p>
-            <h3 className="mt-2 text-lg font-semibold text-[var(--color-ink)]">
+            <h2 className="mt-2 text-lg font-semibold text-[var(--color-ink)]">
               {t("teach.earnings.statementsTitle")}
-            </h3>
+            </h2>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--color-ink-soft)]">
               {t("teach.earnings.statementsBody")}
             </p>
@@ -554,9 +556,9 @@ export function TeacherWalletPanel() {
           <FileText aria-hidden="true" size={22} strokeWidth={2} />
         </span>
         <div className="min-w-0 flex-1">
-          <h3 className="text-lg font-semibold text-[var(--color-ink)]">
+          <h2 className="text-lg font-semibold text-[var(--color-ink)]">
             {t("teach.earnings.taxCenter")}
-          </h3>
+          </h2>
           <p className="mt-1 text-sm leading-6 text-[var(--color-ink-soft)]">
             {t("teach.earnings.taxCenterBody")}
           </p>

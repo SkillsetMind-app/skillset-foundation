@@ -124,9 +124,16 @@ describe("PlansPanel", () => {
   it("mostra o seletor Mensal/Anual em 13px sem caixa alta, na linha do titulo", () => {
     render(<PlansPanel />);
 
-    const monthly = screen.getByRole("radio", { name: "Monthly" });
-    expect(monthly.className).toMatch(/text-\[13px\]/);
-    expect(monthly.className).not.toMatch(/\buppercase\b/);
+    // O seletor segmentado da casa (PeriodTabs): a escolha vai no proprio
+    // botao (aria-pressed) e o tamanho vem da regra .studio-range-tabs.
+    const monthly = screen.getByRole("button", { name: "Monthly" });
+    expect(monthly).toHaveAttribute("aria-pressed", "true");
+    expect(monthly.closest(".studio-range-tabs")).not.toBeNull();
+    const css = readFileSync(path.join(process.cwd(), "src/app/globals.css"), "utf8");
+    const start = css.indexOf(".studio-range-tabs button {");
+    const rule = css.slice(start, css.indexOf("}", start));
+    expect(rule).toMatch(/font-size: 0\.8125rem;/);
+    expect(rule).not.toMatch(/uppercase/);
   });
 });
 
@@ -149,7 +156,7 @@ describe("PlansPanel com os 2 planos e o teste gratis", () => {
     expect(within(card).queryByText("Your plan")).not.toBeInTheDocument();
     if (cancelled) expect(screen.queryByText(/^Next payment:/)).not.toBeInTheDocument();
     else expect(screen.getByText(/^Next payment:/)).not.toHaveTextContent("$9");
-    fireEvent.click(screen.getByRole("radio", { name: /^Yearly/ }));
+    fireEvent.click(screen.getByRole("button", { name: /^Yearly/ }));
     expect(card).toHaveTextContent("$90");
   });
   it("mostra so Basic, Starter e Pro, mesmo para quem ainda esta sem plano", () => {
@@ -172,7 +179,7 @@ describe("PlansPanel com os 2 planos e o teste gratis", () => {
     );
 
     // O desconto do anual está no próprio botão, não num title invisível.
-    const yearly = screen.getByRole("radio", { name: /^Yearly/ });
+    const yearly = screen.getByRole("button", { name: /^Yearly/ });
     expect(yearly).toHaveTextContent("~17% off");
     expect(yearly).not.toHaveAttribute("title");
     fireEvent.click(yearly);

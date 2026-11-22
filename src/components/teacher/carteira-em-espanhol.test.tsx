@@ -166,7 +166,8 @@ describe("carteira do professor em espanhol", () => {
     expect(screen.getByText("Destino de los pagos")).toBeInTheDocument();
     // O titulo era "Stripe Connect" fixo no codigo, em toda lingua: nome do
     // produto da Stripe, nao do que a pessoa tem.
-    expect(screen.getByRole("heading", { name: "Tu cuenta de Stripe" })).toBeInTheDocument();
+    // h2 logo abaixo do h1 da pagina (antes pulava para h3).
+    expect(screen.getByRole("heading", { level: 2, name: "Tu cuenta de Stripe" })).toBeInTheDocument();
     expect(screen.queryByText("Stripe Connect")).toBeNull();
     expect(screen.getByText("Sin conectar")).toBeInTheDocument();
     expect(screen.getByText("Cuenta conectada")).toBeInTheDocument();
@@ -206,7 +207,7 @@ describe("carteira do professor em espanhol", () => {
 
     expect(screen.getByText("Extractos")).toBeInTheDocument();
     expect(
-      screen.getByRole("heading", { name: "Registro de ingresos reciente." }),
+      screen.getByRole("heading", { level: 2, name: "Registro de ingresos reciente." }),
     ).toBeInTheDocument();
     // O "Exportar tras el primer pago" era desligado para sempre: saiu.
     expect(

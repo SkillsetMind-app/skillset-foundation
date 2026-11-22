@@ -6,6 +6,7 @@ import { Check } from "lucide-react";
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { UpgradeModal } from "@/components/account/upgrade-modal";
+import { PeriodTabs } from "@/components/shared/period-tabs";
 import { StatusChip } from "@/components/shared/status-chip";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -36,14 +37,7 @@ type UpgradeState = {
   cycle: PlanBillingCycle;
 } | null;
 
-const billingCycles: ReadonlyArray<{
-  value: PlanBillingCycle;
-  label: string;
-  hint: string;
-}> = [
-  { value: "monthly", label: "Monthly", hint: "Pay each month" },
-  { value: "yearly", label: "Yearly", hint: "~17% off vs monthly" },
-];
+const billingCycles: readonly PlanBillingCycle[] = ["monthly", "yearly"];
 
 export function PlansPanel() {
   const { t, locale } = useTranslation();
@@ -265,29 +259,19 @@ export function PlansPanel() {
       </section>
 
       {/* O desconto do anual aparece no próprio botão, como em /pricing: no
-          `title` ele só existia para quem parava o mouse em cima. */}
-      <div
-        role="radiogroup"
-        aria-label={t("accountPlans.cycle")}
-        className="inline-flex w-fit gap-1 rounded-md border fine-rule bg-[var(--color-surface-soft)] p-1"
-      >
-        {billingCycles.map((option) => {
-          const active = cycle === option.value;
-          return (
-            <button
-              key={option.value}
-              type="button"
-              role="radio"
-              aria-checked={active}
-              onClick={() => setCycle(option.value)}
-              className={
-                active
-                  ? "inline-flex min-h-11 items-center rounded-sm bg-[var(--color-primary)] px-3 py-1.5 text-[13px] font-semibold text-[var(--color-base)]"
-                  : "inline-flex min-h-11 items-center rounded-sm px-3 py-1.5 text-[13px] font-semibold text-[var(--color-ink-soft)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-primary)]"
-              }
-            >
-              {t(`accountPlans.cycles.${option.value}.label`)}
-              {option.value === "yearly" ? (
+          `title` ele só existia para quem parava o mouse em cima.
+          O seletor segmentado da casa (aria-pressed): o ciclo muda os preços
+          mostrados, é um filtro, não abas. */}
+      <div className="w-fit max-w-full">
+        <PeriodTabs
+          options={billingCycles}
+          value={cycle}
+          onChange={setCycle}
+          label={t("accountPlans.cycle")}
+          renderLabel={(option) => (
+            <>
+              {t(`accountPlans.cycles.${option}.label`)}
+              {option === "yearly" ? (
                 <>
                   {" "}
                   <span className="ml-1 text-[11px] font-medium opacity-80">
@@ -295,9 +279,9 @@ export function PlansPanel() {
                   </span>
                 </>
               ) : null}
-            </button>
-          );
-        })}
+            </>
+          )}
+        />
       </div>
       {planLoadFailed ? (
         <p className="text-xs text-[var(--color-ink-soft)]">

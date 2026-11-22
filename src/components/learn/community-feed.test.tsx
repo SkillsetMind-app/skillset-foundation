@@ -247,13 +247,13 @@ describe("feed da comunidade (rodada 11)", () => {
 
   it("translates filters and a literal instructor name while preserving query, focus and subscriptions", async () => {
     await renderFeed({ instructorName: "Pat $$50 $&" }, "en");
-    fireEvent.click(screen.getByRole("tab", { name: "Questions · 1 open" }));
+    fireEvent.click(screen.getByRole("button", { name: "Questions · 1 open" }));
     const search = screen.getByRole("searchbox", { name: "Search posts" });
     fireEvent.change(search, { target: { value: "portuguese" } });
     search.focus();
     fireEvent.click(screen.getByRole("button", { name: "Change language" }));
-    expect(screen.getByRole("tab", { name: "Preguntas · 1 abierta" })).toHaveAttribute("aria-selected", "true");
-    expect(screen.getByRole("tab", { name: "De Pat $$50 $&" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Preguntas · 1 abierta" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "De Pat $$50 $&" })).toBeInTheDocument();
     expect(screen.getByRole("searchbox", { name: "Buscar publicaciones" })).toBe(search);
     expect(search).toHaveFocus();
     expect(search).toHaveValue("portuguese");
@@ -450,14 +450,14 @@ describe("feed da comunidade (rodada 11)", () => {
     expect(cards[0]).toHaveTextContent("pinned");
     expect(cards).toHaveLength(4);
 
-    fireEvent.click(screen.getByRole("tab", { name: "Questions · 1 open" }));
+    fireEvent.click(screen.getByRole("button", { name: "Questions · 1 open" }));
     expect(screen.getAllByRole("article")).toHaveLength(2);
 
-    fireEvent.click(screen.getByRole("tab", { name: "From Patrick" }));
+    fireEvent.click(screen.getByRole("button", { name: "From Patrick" }));
     expect(screen.getAllByRole("article")).toHaveLength(1);
     expect(screen.getByRole("article")).toHaveTextContent("This week: persuasion");
 
-    fireEvent.click(screen.getByRole("tab", { name: "All" }));
+    fireEvent.click(screen.getByRole("button", { name: "All" }));
     fireEvent.change(screen.getByRole("searchbox", { name: "Search posts" }), {
       target: { value: "portuguese" },
     });
