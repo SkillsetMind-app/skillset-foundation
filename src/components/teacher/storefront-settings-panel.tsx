@@ -2,7 +2,7 @@
 
 import { ExternalLink, Trash2, UploadCloud } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
@@ -183,7 +183,7 @@ export function StorefrontSettingsPanel() {
 
   const [publishedCourses, setPublishedCourses] = useState<TeacherCourse[]>([]);
   const [courseLoadState, setCourseLoadState] = useState<"loading" | "ready" | "error">("loading");
-  const [courseRetryKey, setCourseRetryKey] = useState(0);
+  const coursesSubscription = useRef<{ reload: () => Promise<void> } | null>(null);
   const coursesReady = courseLoadState === "ready";
 
   const [isLoading, setIsLoading] = useState(true);
@@ -266,7 +266,7 @@ export function StorefrontSettingsPanel() {
       return;
     }
 
-    const unsubscribe = subscribeToTeacherCourses(
+    const current = subscribeToTeacherCourses(
       user.uid,
       (courses) => {
         setPublishedCourses(
@@ -278,9 +278,21 @@ export function StorefrontSettingsPanel() {
         setCourseLoadState("error");
       },
     );
+    coursesSubscription.current = current;
 
-    return unsubscribe;
-  }, [user, courseRetryKey]);
+    return () => {
+      coursesSubscription.current = null;
+      current();
+    };
+  }, [user]);
+
+  // "Try again" le de novo pelo mesmo canal (reload), como nas outras telas:
+  // sem o intervalo entre sair e entrar de novo no Realtime e sem uma segunda
+  // leitura de graca.
+  function retryCourses() {
+    setCourseLoadState("loading");
+    void coursesSubscription.current?.reload();
+  }
 
   // The showcase is an ordered VIEW over the teacher's published courses:
   // saved order first (dropping courses no longer published), then any newly
@@ -712,10 +724,7 @@ export function StorefrontSettingsPanel() {
               <Button
                 variant="outline"
                 className="mt-3"
-                onClick={() => {
-                  setCourseLoadState("loading");
-                  setCourseRetryKey((current) => current + 1);
-                }}
+                onClick={retryCourses}
               >
                 {t("authFlow.loading.retry")}
               </Button>

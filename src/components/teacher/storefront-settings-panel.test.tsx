@@ -599,10 +599,11 @@ describe("StorefrontSettingsPanel", () => {
       let deliverCourses: (courses: unknown[]) => void = () => undefined;
       let failCourses: (error: Error) => void = () => undefined;
       const unsubscribeCourses = vi.fn();
+      const reloadCourses = vi.fn(async () => undefined);
       mocks.subscribeToTeacherCourses.mockImplementation((_uid, onData, onError) => {
         deliverCourses = onData;
         failCourses = onError;
-        return unsubscribeCourses;
+        return Object.assign(unsubscribeCourses, { reload: reloadCourses });
       });
       const expectDraftIntact = () => {
         expect(screen.getByLabelText(/^(Accent color|Color de acento)$/)).toHaveValue(draft.accentColor);
@@ -644,9 +645,12 @@ describe("StorefrontSettingsPanel", () => {
       expect(mocks.getUserProfile).toHaveBeenCalledOnce();
       expect(mocks.subscribeToTeacherCourses).toHaveBeenCalledOnce();
 
+      // "Intentar de nuevo" le de novo pela mesma inscricao (reload): nao
+      // desliga o canal nem abre outra inscricao.
       fireEvent.click(screen.getByRole("button", { name: "Intentar de nuevo" }));
-      await waitFor(() => expect(mocks.subscribeToTeacherCourses).toHaveBeenCalledTimes(2));
-      expect(unsubscribeCourses).toHaveBeenCalledOnce();
+      await waitFor(() => expect(reloadCourses).toHaveBeenCalledOnce());
+      expect(mocks.subscribeToTeacherCourses).toHaveBeenCalledOnce();
+      expect(unsubscribeCourses).not.toHaveBeenCalled();
       expect(mocks.getUserProfile).toHaveBeenCalledOnce();
       expect(screen.queryByRole("alert")).not.toBeInTheDocument();
       expect(screen.getByText("Cargando cursos...")).toBeInTheDocument();
@@ -672,7 +676,7 @@ describe("StorefrontSettingsPanel", () => {
       }));
       expect(mocks.updateUserStorefront).toHaveBeenCalledOnce();
       expect(mocks.getUserProfile).toHaveBeenCalledOnce();
-      expect(mocks.subscribeToTeacherCourses).toHaveBeenCalledTimes(2);
+      expect(mocks.subscribeToTeacherCourses).toHaveBeenCalledOnce();
       expect(mocks.uploadUserStorefrontImage).not.toHaveBeenCalled();
       expect(mocks.removeUserStorefrontImage).not.toHaveBeenCalled();
     });
