@@ -121,8 +121,8 @@ describe("OpsUserDossierPanel", () => {
       purchases: { ...dossier().purchases, plan_subscription: { plan_id: "pro", status: "trialing", current_period_end: null, cancel_at_period_end: false } },
     }));
     render(panel());
-    const h1 = await screen.findByRole("heading", { level: 1 });
-    expect(h1).toHaveTextContent("Dossier Target");
+    // Carregando, o h1 é o genérico; ele vira o nome quando a ficha chega.
+    const h1 = await screen.findByRole("heading", { level: 1, name: "Dossier Target" });
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
     expect(h1.previousElementSibling).toHaveTextContent("Person record");
     expect(screen.queryByRole("heading", { level: 3 })).toBeNull();
