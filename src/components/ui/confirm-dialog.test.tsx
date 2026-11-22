@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -137,6 +137,39 @@ describe("ConfirmDialog", () => {
     fireEvent.click(screen.getByRole("button", { name: "Yes, delete" }));
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     expect(onConfirm).toHaveBeenCalledTimes(2);
+  });
+
+  // Aviso sem escolha (era o window.alert): um botão só, sem vermelho, que
+  // fecha no primeiro toque; dar ciência não desfaz nada.
+  it("acknowledge: um botão só, com o foco, sem trava de toque duplo", async () => {
+    const onConfirm = vi.fn();
+    const onClose = vi.fn();
+    render(
+      <ConfirmDialog acknowledge danger title="Upload in progress" confirmLabel="OK, I'll wait" onConfirm={onConfirm} onClose={onClose}>
+        Wait for it to finish.
+      </ConfirmDialog>,
+    );
+    const dialog = screen.getByRole("dialog", { name: "Upload in progress" });
+    expect(within(dialog).getAllByRole("button")).toHaveLength(1);
+    const ok = within(dialog).getByRole("button", { name: "OK, I'll wait" });
+    expect(ok).toHaveFocus();
+    expect(ok).not.toHaveClass("button-danger-solid");
+
+    // Sem avançar o relógio: o primeiro toque já vale.
+    fireEvent.click(ok);
+    expect(onConfirm).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
+  });
+
+  it("acknowledge: Esc também fecha", () => {
+    const onClose = vi.fn();
+    render(
+      <ConfirmDialog acknowledge title="Upload in progress" confirmLabel="OK" onConfirm={vi.fn()} onClose={onClose}>
+        Wait.
+      </ConfirmDialog>,
+    );
+    fireEvent(screen.getByRole("dialog"), new Event("cancel", { cancelable: true }));
+    expect(onClose).toHaveBeenCalledTimes(1);
   });
 
   it("mostra o errorLabel de quem chamou no lugar da frase genérica", async () => {

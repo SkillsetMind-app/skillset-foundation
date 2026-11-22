@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { I18nProvider } from "@/components/i18n/i18n-provider";
 import { CourseBuilderStudio } from "@/components/teacher/course-builder-studio";
+import { clickConfirm, stubDialogs } from "@/components/teacher/confirm-test-helpers";
 import type { DripStrategy } from "@/domain/drip-policy";
 import type { TeacherCourse, TeacherLesson } from "@/domain/teacher-course";
 import { updateTeacherCourseBuilder } from "@/lib/data/teacher-courses";
@@ -148,7 +149,14 @@ function rowOf(moduleId: string) {
   return card().querySelector(`[data-module-row="${moduleId}"]`)?.closest("article") as HTMLElement;
 }
 
+// Mover, previa gratis e apagar moram em "Mais acoes" da linha da aula.
+function openMore(title: string) {
+  const more = screen.getByRole("button", { name: `More actions for "${title}"` });
+  if (more.getAttribute("aria-expanded") !== "true") fireEvent.click(more);
+}
+
 function chooseAndMove(title: string, moduleId: string) {
+  openMore(title);
   fireEvent.change(screen.getByRole("combobox", { name: `Move "${title}" to another module` }), {
     target: { value: moduleId },
   });
@@ -156,16 +164,21 @@ function chooseAndMove(title: string, moduleId: string) {
 }
 
 describe("mover a aula entre modulos", () => {
+  let restoreDialogs = () => {};
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.course = courseWith();
     openAt("courseId=course-1&tab=content");
+    restoreDialogs = stubDialogs();
   });
 
   afterEach(() => {
     cleanup();
     vi.restoreAllMocks();
+    restoreDialogs();
   });
+
+  const moveDialog = () => screen.queryByRole("dialog", { name: "Move this lesson?" });
 
   it("o seletor e o botao Move levam L2 para o fim de M2 com o mesmo id, e o formulario e o estudio seguem no modulo certo", async () => {
     openAt("courseId=course-1&tab=content&module=m1");
@@ -206,6 +219,7 @@ describe("mover a aula entre modulos", () => {
     openAt("courseId=course-1&tab=content&module=m1");
     await renderBuilder();
 
+    openMore("Second");
     fireEvent.change(screen.getByRole("combobox", { name: 'Move "Second" to another module' }), {
       target: { value: "m2" },
     });
@@ -217,12 +231,13 @@ describe("mover a aula entre modulos", () => {
 
   it.each(positional)("com liberacao por posicao (%s), pede confirmacao nos dois caminhos e cancelar mantem a ordem", async (strategy) => {
     mocks.course = courseWith(strategy);
-    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
     openAt("courseId=course-1&tab=content&module=m1");
     const { rerender } = await renderBuilder();
 
     chooseAndMove("Second", "m2");
-    expect(confirm).toHaveBeenLastCalledWith(confirmText);
+    expect(moveDialog()).toHaveAccessibleDescription(confirmText);
+    fireEvent.click(within(moveDialog()!).getByRole("button", { name: "Cancel" }));
+    expect(moveDialog()).toBeNull();
     expect(titlesOnPage()).toEqual(["Welcome", "Second"]);
 
     openAt("courseId=course-1&tab=content");
@@ -231,19 +246,39 @@ describe("mover a aula entre modulos", () => {
     fireEvent.dragStart(within(rowOf("m1")).getByText("Second"), { dataTransfer });
     fireEvent.dragOver(rowOf("m2"), { dataTransfer });
     fireEvent.drop(rowOf("m2"), { dataTransfer });
-    expect(confirm).toHaveBeenCalledTimes(2);
+    expect(moveDialog()).toHaveAccessibleDescription(confirmText);
+    fireEvent.click(within(moveDialog()!).getByRole("button", { name: "Cancel" }));
     expect(within(rowOf("m1")).getByText("Second")).toBeInTheDocument();
     expect(within(rowOf("m2")).queryByText("Second")).not.toBeInTheDocument();
   });
 
-  it.each(["time_drip_custom", "instant"] as DripStrategy[])("com %s, move sem perguntar", async (strategy) => {
-    mocks.course = courseWith(strategy);
-    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+  // Confirmar roda o mesmo mover de antes, uma vez: a aula vai para o fim do
+  // destino, o aviso sai e o foco vai para o titulo do modulo.
+  it("com liberacao por posicao, confirmar na janela move uma vez e avisa", async () => {
+    mocks.course = courseWith("sequential_progress");
     openAt("courseId=course-1&tab=content&module=m1");
     await renderBuilder();
 
     chooseAndMove("Second", "m2");
-    expect(confirm).not.toHaveBeenCalled();
+    expect(titlesOnPage()).toEqual(["Welcome", "Second"]);
+    clickConfirm(moveDialog()!, "Move lesson");
+    expect(titlesOnPage()).toEqual(["Welcome"]);
+    await waitFor(() => expect(within(card()).getByRole("status")).toHaveTextContent('"Second" moved to Deep work.'));
+    expect(moveDialog()).toBeNull();
+    expect(document.activeElement).toBe(within(card()).getByRole("heading", { name: "Start here" }));
+
+    await waitFor(() => expect(updateTeacherCourseBuilder).toHaveBeenCalled(), { timeout: 5000 });
+    expect(idsOf(0)).toEqual(["l1"]);
+    expect(idsOf(1)).toEqual(["l3", "l2"]);
+  }, 10000);
+
+  it.each(["time_drip_custom", "instant"] as DripStrategy[])("com %s, move sem perguntar", async (strategy) => {
+    mocks.course = courseWith(strategy);
+    openAt("courseId=course-1&tab=content&module=m1");
+    await renderBuilder();
+
+    chooseAndMove("Second", "m2");
+    expect(moveDialog()).toBeNull();
     expect(titlesOnPage()).toEqual(["Welcome"]);
   });
 
@@ -280,7 +315,6 @@ describe("mover a aula entre modulos", () => {
 
   it("soltar a aula no proprio modulo nao muda nada (nem pergunta)", async () => {
     mocks.course = courseWith("sequential_progress");
-    const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
     await renderBuilder();
     const dataTransfer = fakeDataTransfer();
 
@@ -288,7 +322,7 @@ describe("mover a aula entre modulos", () => {
     fireEvent.dragOver(rowOf("m1"), { dataTransfer });
     fireEvent.drop(rowOf("m1"), { dataTransfer });
 
-    expect(confirm).not.toHaveBeenCalled();
+    expect(moveDialog()).toBeNull();
     await wait(2200);
     expect(updateTeacherCourseBuilder).not.toHaveBeenCalled();
   }, 10000);
@@ -325,7 +359,6 @@ describe("mover a aula entre modulos", () => {
       ...courseWith(),
       modules: [...courseWith().modules, { id: "m3", title: "Wrap up", lessons: [] }],
     };
-    const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
     openAt("courseId=course-1&tab=content&module=m1");
     const { rerender } = await renderBuilder();
 
@@ -338,6 +371,7 @@ describe("mover a aula entre modulos", () => {
     expect(within(card()).getByRole("status")).toHaveTextContent("");
 
     // Destino marcado e depois apagado: Move nao fica ativo para ele.
+    openMore("Second");
     fireEvent.change(screen.getByRole("combobox", { name: 'Move "Second" to another module' }), {
       target: { value: "m2" },
     });
@@ -345,7 +379,8 @@ describe("mover a aula entre modulos", () => {
     openAt("courseId=course-1&tab=content");
     rerender(tree());
     fireEvent.click(within(rowOf("m2")).getByRole("button", { name: "Delete" }));
-    expect(confirm).toHaveBeenCalled();
+    clickConfirm(screen.getByRole("dialog", { name: "Delete this module?" }), "Delete module");
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Delete this module?" })).toBeNull());
     openAt("courseId=course-1&tab=content&module=m1");
     rerender(tree());
     expect(screen.getByRole("button", { name: 'Move "Second"' })).toBeDisabled();
@@ -353,7 +388,6 @@ describe("mover a aula entre modulos", () => {
 
   it("aula de outro curso (arrastada de outra aba) nao pede confirmacao nem move", async () => {
     mocks.course = courseWith("sequential_progress");
-    const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
     await renderBuilder();
     const foreign = fakeDataTransfer();
     foreign.setData("application/x-skillset-lesson", "lesson-from-another-course");
@@ -361,7 +395,7 @@ describe("mover a aula entre modulos", () => {
     fireEvent.dragOver(rowOf("m2"), { dataTransfer: foreign });
     fireEvent.drop(rowOf("m2"), { dataTransfer: foreign });
 
-    expect(confirm).not.toHaveBeenCalled();
+    expect(moveDialog()).toBeNull();
     await wait(2200);
     expect(updateTeacherCourseBuilder).not.toHaveBeenCalled();
   }, 10000);

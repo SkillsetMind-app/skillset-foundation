@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { useConfirm } from "@/components/teacher/use-confirm";
 import { callTeachAi, loadTeachAi, teachAiErrorText } from "@/lib/ai/teach-ai-client";
 import type { QuizQuestion } from "@/lib/ai/lesson-text";
 
@@ -14,6 +15,7 @@ type Quiz = { questions: QuizQuestion[]; status: "draft" | "published" };
 
 export function LessonAiQuiz({ courseId, lessonId, assetId }: { courseId: string; lessonId: string; assetId: string }) {
   const { t } = useTranslation();
+  const { ask, dialog: confirmDialog } = useConfirm();
   // undefined = carregando; "error" = não deu para ler (não oferece gerar por cima).
   const [quiz, setQuiz] = useState<Quiz | null | undefined | "error">(undefined);
   const [dirty, setDirty] = useState(false);
@@ -137,9 +139,18 @@ export function LessonAiQuiz({ courseId, lessonId, assetId }: { courseId: string
             className="button-outline min-h-11 px-3 text-sm disabled:opacity-60"
             disabled={working}
             onClick={() => {
+              const generate = () => {
+                void run({ action: "generateQuiz" }, "generate", t("creatorEditor.lesson.ai.quizGenerated"));
+              };
               // Perguntas novas substituem as editadas e tiram o quiz do ar até publicar de novo.
-              if (current && !window.confirm(t("creatorEditor.lesson.ai.confirmRegenerateQuiz"))) return;
-              void run({ action: "generateQuiz" }, "generate", t("creatorEditor.lesson.ai.quizGenerated"));
+              if (!current) return generate();
+              ask({
+                title: t("creatorEditor.lesson.ai.confirmRegenerateQuizTitle"),
+                body: t("creatorEditor.lesson.ai.confirmRegenerateQuiz"),
+                confirmLabel: t("creatorEditor.lesson.ai.regenerateQuiz"),
+                danger: true,
+                run: generate,
+              });
             }}
           >
             {busy === "generate"
@@ -162,10 +173,15 @@ export function LessonAiQuiz({ courseId, lessonId, assetId }: { courseId: string
               </button>
               <button type="button" className="button-danger px-3.5 py-2 text-xs disabled:opacity-60"
                 disabled={working}
-                onClick={() => {
-                  if (!window.confirm(t("creatorEditor.lesson.ai.confirmRemoveQuiz"))) return;
-                  void run({ action: "removeQuiz" }, "remove", t("creatorEditor.lesson.ai.quizRemoved"));
-                }}>
+                onClick={() => ask({
+                  title: t("creatorEditor.lesson.ai.confirmRemoveQuizTitle"),
+                  body: t("creatorEditor.lesson.ai.confirmRemoveQuiz"),
+                  confirmLabel: t("creatorEditor.lesson.ai.removeQuiz"),
+                  danger: true,
+                  run: () => {
+                    void run({ action: "removeQuiz" }, "remove", t("creatorEditor.lesson.ai.quizRemoved"));
+                  },
+                })}>
                 {t("creatorEditor.lesson.ai.removeQuiz")}
               </button>
             </>
@@ -177,6 +193,7 @@ export function LessonAiQuiz({ courseId, lessonId, assetId }: { courseId: string
         className={notice?.kind === "error" ? "text-sm font-semibold text-[var(--color-danger-fg)]" : "text-sm text-[var(--color-ink-soft)]"}>
         {notice?.text ?? ""}
       </p>
+      {confirmDialog}
     </section>
   );
 }
