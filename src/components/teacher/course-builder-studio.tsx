@@ -2318,7 +2318,7 @@ export function CourseBuilderStudio() {
                           "{title}",
                           () => lesson.title || t("creatorEditor.builder.curriculum.untitledLesson"),
                         )}
-                        className="rounded-md border border-[var(--color-line)] bg-white px-3 py-2 text-xs text-[var(--color-ink-soft)] disabled:opacity-50"
+                        className="min-h-11 rounded-md border border-[var(--color-line)] bg-white px-3 py-2 text-xs text-[var(--color-ink-soft)] disabled:opacity-50"
                       >
                         <option value="">{t("creatorEditor.builder.curriculum.moveToModule")}</option>
                         {modules.map((other, otherIndex) =>
@@ -2382,7 +2382,7 @@ export function CourseBuilderStudio() {
                       )
                     }
                     disabled={!isEditable}
-                    className={`rounded-md border px-3 py-2 text-xs font-semibold disabled:opacity-50 ${
+                    className={`min-h-11 rounded-md border px-3 py-2 text-xs font-semibold disabled:opacity-50 ${
                       freePreviewLessonId === lesson.id
                         ? "border-[var(--color-primary)] bg-[rgba(26,54,93,0.08)] text-[var(--color-primary)]"
                         : "border-[var(--color-line)] bg-white text-[var(--color-ink-soft)]"
@@ -2958,7 +2958,9 @@ export function CourseBuilderStudio() {
             <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
               {t("creatorEditor.builder.navigation.creation")}
             </p>
-            <p className="mt-1 truncate text-sm font-semibold leading-snug text-[var(--color-ink-soft)]">
+            {/* Duas linhas, nao reticencias: a unica dica do proximo passo saia
+                cortada ("Upload a cover — it fronts the pro..."). */}
+            <p className="mt-1 line-clamp-2 text-sm font-semibold leading-snug text-[var(--color-ink-soft)]">
               {t("creatorEditor.builder.navigation.next")}{" "}
               <span className="text-[var(--color-primary)]">
                 {readiness.next?.hint ?? t("creatorEditor.builder.publish.ready")}
@@ -3248,7 +3250,7 @@ export function CourseBuilderStudio() {
                   )
                 }
                 disabled={learningOutcomes.length >= MAX_LEARNING_OUTCOMES}
-                className="inline-flex w-fit items-center gap-1.5 rounded-md border border-[var(--color-line)] px-3 py-2 text-xs font-semibold text-[var(--color-primary)] transition-colors hover:border-[var(--color-primary-light)] disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex min-h-11 w-fit items-center gap-1.5 rounded-md border border-[var(--color-line)] px-3 py-2 text-xs font-semibold text-[var(--color-primary)] transition-colors hover:border-[var(--color-primary-light)] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <Plus aria-hidden="true" size={14} strokeWidth={2} />
                 {t("creatorEditor.builder.details.addOutcome")}

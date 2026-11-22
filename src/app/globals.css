@@ -7216,6 +7216,12 @@ button:hover > .dash-card,
   .course-builder-steps {
     grid-template-columns: 1fr;
   }
+
+  /* No celular os cinco passos empilhados empurravam o primeiro campo para
+     ~800 px do topo: a linha de apoio de cada passo sai, o nome fica. */
+  .course-builder-step__sub {
+    display: none;
+  }
 }
 
 /* Recolhida, o nome sai da linha mas fica no DOM: é o nome acessível do link.
