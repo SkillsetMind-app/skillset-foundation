@@ -126,7 +126,7 @@ export function TeacherStudentsList() {
           value={search}
           onChange={(event) => setSearch(event.target.value)}
           placeholder={t("teach.studentsPage.searchPlaceholder")}
-          className="min-h-11 w-full rounded-md border border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-ink)] sm:w-72"
+          className="field-input field-input--inline min-w-[12rem] flex-1 sm:max-w-72"
         />
       </div>
       {visible.length === 0 ? (

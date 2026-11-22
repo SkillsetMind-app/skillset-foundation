@@ -1,4 +1,6 @@
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { Order } from "@/domain/order";
@@ -120,6 +122,17 @@ describe("SaleList", () => {
     );
     expect(screen.getByLabelText("Filter by status")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /export/i })).toBeDisabled();
+
+    // A pele padrao dos campos (borda de 1.5px que aparece no branco), sem a
+    // largura toda que quebraria a fileira. O modificador precisa vir depois
+    // do .field-input na folha para vencer o width: 100% dele.
+    for (const label of ["Filter by period", "Search sales by course or order id", "Filter by status"]) {
+      expect(screen.getByLabelText(label), label).toHaveClass("field-input", "field-input--inline");
+    }
+    const css = readFileSync(join(process.cwd(), "src/app/globals.css"), "utf8");
+    const inline = css.indexOf(".field-input--inline {");
+    expect(inline).toBeGreaterThan(css.indexOf(".field-input {"));
+    expect(css.slice(inline, css.indexOf("}", inline))).toMatch(/width: auto;[\s\S]*min-height: 44px;/);
 
     // A linha de contagem diz o recorte: "0 orders between <de> e <ate>".
     expect(screen.getByText(/^0 orders between .+ and .+$/)).toBeInTheDocument();

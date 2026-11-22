@@ -308,9 +308,13 @@ export function CommunityFeed({
           </p>
         ) : null}
 
-        {/* Tres filtros no lugar de seis espacos com ordenacao. */}
+        {/* Tres filtros no lugar de seis espacos com ordenacao. Filtram uma
+            lista, nao trocam de painel: grupo com aria-pressed, como o seletor
+            segmentado da casa. As cores ficam as daqui porque a sala troca a
+            paleta pelas classes (o .studio-range-tabs usaria as da plataforma
+            num curso escuro). */}
         <div className="flex flex-wrap items-center gap-2">
-          <div role="tablist" aria-label={t("learn.community.filters")} className="flex flex-wrap gap-1">
+          <div role="group" aria-label={t("learn.community.filters")} className="flex flex-wrap gap-1">
             {(
               [
                 ["all", t("learn.community.all")],
@@ -327,8 +331,7 @@ export function CommunityFeed({
               <button
                 key={id}
                 type="button"
-                role="tab"
-                aria-selected={filter === id}
+                aria-pressed={filter === id}
                 onClick={() => setFilter(id)}
                 className={`min-h-11 rounded-md px-4 text-sm font-semibold transition ${
                   filter === id

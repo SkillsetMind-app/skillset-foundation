@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { useAuth } from "@/components/auth/auth-provider";
+import { PeriodTabs } from "@/components/shared/period-tabs";
 import { EmptyState } from "@/components/ui/empty-state";
 import { InlineAlert } from "@/components/ui/inline-alert";
 import { ProgressBar } from "@/components/ui/progress-bar";
@@ -19,6 +20,15 @@ import {
   subscribeToUserCertificates,
 } from "@/lib/data/certificates";
 import { subscribeToUserEnrollments } from "@/lib/data/enrollments";
+
+const credentialFilters = ["all", "issued", "eligible", "in_progress"] as const;
+type CredentialFilter = (typeof credentialFilters)[number];
+const credentialFilterKeys: Record<CredentialFilter, string> = {
+  all: "learnWave2.credentials.all",
+  issued: "learnWave2.credentials.issuedCount",
+  eligible: "learnWave2.credentials.readyCount",
+  in_progress: "learnWave2.credentials.progressCount",
+};
 
 export function LearnCredentialsHub() {
   const { t, locale } = useTranslation();
@@ -87,7 +97,13 @@ export function LearnCredentialsHub() {
   const eligibleCount = candidates.filter((candidate) => candidate.status === "eligible").length;
   const issuedCount = candidates.filter((candidate) => candidate.status === "issued").length;
   const inProgressCount = candidates.filter((candidate) => candidate.status === "in_progress").length;
-  const [activeFilter, setActiveFilter] = useState<"all" | "issued" | "eligible" | "in_progress">("all");
+  const filterCounts: Record<CredentialFilter, number> = {
+    all: candidates.length,
+    issued: issuedCount,
+    eligible: eligibleCount,
+    in_progress: inProgressCount,
+  };
+  const [activeFilter, setActiveFilter] = useState<CredentialFilter>("all");
   const visibleCandidates = activeFilter === "all"
     ? candidates
     : candidates.filter((candidate) => candidate.status === activeFilter);
@@ -155,24 +171,18 @@ export function LearnCredentialsHub() {
   return frame(
     <div className="grid gap-5">
       <div>
-        <div className="credential-filter-tabs" role="group" aria-label={t("learnWave2.credentials.filters")}>
-          {[
-            ["all", t("learnWave2.credentials.all").replace("{count}", () => new Intl.NumberFormat(locale).format(candidates.length))],
-            ["issued", t("learnWave2.credentials.issuedCount").replace("{count}", () => new Intl.NumberFormat(locale).format(issuedCount))],
-            ["eligible", t("learnWave2.credentials.readyCount").replace("{count}", () => new Intl.NumberFormat(locale).format(eligibleCount))],
-            ["in_progress", t("learnWave2.credentials.progressCount").replace("{count}", () => new Intl.NumberFormat(locale).format(inProgressCount))],
-          ].map(([value, label]) => (
-            <button
-              key={value}
-              type="button"
-              aria-pressed={activeFilter === value}
-              className={activeFilter === value ? "is-active" : undefined}
-              onClick={() => setActiveFilter(value as typeof activeFilter)}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+        {/* O seletor segmentado da casa: o desenho proprio daqui pintava o
+            hover igual a escolhida, e nao se sabia qual filtro estava ligado. */}
+        <PeriodTabs
+          options={credentialFilters}
+          value={activeFilter}
+          onChange={setActiveFilter}
+          label={t("learnWave2.credentials.filters")}
+          wrap
+          renderLabel={(value) =>
+            t(credentialFilterKeys[value]).replace("{count}", () => new Intl.NumberFormat(locale).format(filterCounts[value]))
+          }
+        />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">

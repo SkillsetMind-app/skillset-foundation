@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { I18nProvider } from "@/components/i18n/i18n-provider";
@@ -64,6 +64,22 @@ describe("credentials hub eligibility", () => {
 });
 
 describe("credentials hub hierarchy", () => {
+  // O desenho proprio pintava o hover igual ao filtro escolhido; agora e o
+  // seletor segmentado da casa, com a escolha no proprio botao.
+  it("os filtros sao o seletor segmentado da casa e filtram a lista", () => {
+    show({ ...finished, status: "active", progressPercent: 40 });
+    const group = screen.getByRole("group", { name: "Credential filters" });
+    // Quebra a linha: a 360px em espanhol os quatro ficam a vista, sem rolagem.
+    expect(group).toHaveClass("studio-range-tabs", "studio-range-tabs--wrap");
+    expect(within(group).getByRole("button", { name: "All 1" })).toHaveAttribute("aria-pressed", "true");
+
+    fireEvent.click(within(group).getByRole("button", { name: "Issued 0" }));
+    expect(within(group).getByRole("button", { name: "Issued 0" })).toHaveAttribute("aria-pressed", "true");
+    expect(within(group).getByRole("button", { name: "All 1" })).toHaveAttribute("aria-pressed", "false");
+    expect(screen.queryByRole("heading", { name: "Finished course" })).not.toBeInTheDocument();
+    expect(screen.getByText("No credentials match this filter.")).toBeVisible();
+  });
+
   it("one header (the shell's), and each card states its progress once", () => {
     show({ ...finished, status: "active", progressPercent: 40 });
     // The hero and the section title are gone; the filters carry the counts.

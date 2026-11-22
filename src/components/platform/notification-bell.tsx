@@ -218,7 +218,7 @@ export function NotificationBell() {
           aria-busy={!loaded && !loadFailed}
           className="motion-drop-in absolute right-0 top-[calc(100%+8px)] z-50 flex max-h-[calc(100svh-96px)] w-[min(380px,calc(100vw-32px))] flex-col max-md:right-4 overflow-hidden rounded-lg border border-[var(--color-line)] bg-white shadow-[0_24px_48px_rgba(15,39,68,0.16)]"
         >
-          {/* Alvos de 44px (sino, X, "Mark all read", abas, "View all"): antes
+          {/* Alvos de 44px (sino, X, "Mark all read", filtros, "View all"): antes
               eram 32px e uns 24px de altura, dificeis de acertar no celular. */}
           <div className="flex shrink-0 items-center justify-between border-b border-[var(--color-line)] py-1.5 pl-5 pr-2">
             <h4
@@ -249,9 +249,14 @@ export function NotificationBell() {
               </button>
             </div>
           </div>
-          {/* Na falha nao ha o que filtrar: o erro e o "Try again" ficam sozinhos. */}
+          {/* Na falha nao ha o que filtrar: o erro e o "Try again" ficam sozinhos.
+              All/Unread filtram a lista, nao trocam de painel: grupo com
+              aria-pressed (o padrao dos filtros). Fica o desenho daqui porque
+              o seletor segmentado da casa tem 36px e o painel garante 44px. O
+              hover so escurece o texto: antes pintava o mesmo fundo da
+              escolhida, e nao se sabia qual estava ligada. */}
           <div
-            role="tablist"
+            role="group"
             hidden={loadFailed}
             aria-label={t("platform.notifications.filterLabel")}
             className="flex shrink-0 items-center gap-1 border-b border-[var(--color-line)] px-4 py-1"
@@ -260,13 +265,12 @@ export function NotificationBell() {
               <button
                 key={value}
                 type="button"
-                role="tab"
-                aria-selected={filter === value}
+                aria-pressed={filter === value}
                 onClick={() => setFilter(value)}
                 className={`min-h-11 rounded-md px-3 text-xs font-semibold transition ${
                   filter === value
                     ? "bg-[var(--color-surface-soft)] text-[var(--color-primary)]"
-                    : "text-[var(--color-ink-soft)] hover:bg-[var(--color-surface-soft)]"
+                    : "text-[var(--color-ink-soft)] hover:text-[var(--color-ink)]"
                 }`}
               >
                 {value === "all"

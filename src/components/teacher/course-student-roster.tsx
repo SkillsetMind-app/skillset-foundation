@@ -95,7 +95,7 @@ function matchesProgress(student: CourseStudent, filter: ProgressFilter): boolea
 }
 
 function selectClasses() {
-  return "min-h-11 rounded-md border border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2 text-sm font-semibold text-[var(--color-ink)]";
+  return "field-input field-input--inline";
 }
 
 /**
@@ -361,7 +361,7 @@ export function CourseStudentRosterView({
           value={search}
           onChange={(event) => setSearch(event.target.value)}
           placeholder={t("courseRoster.searchPlaceholder")}
-          className="min-h-11 min-w-0 flex-1 rounded-md border border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-ink)]"
+          className="field-input field-input--inline min-w-[12rem] flex-1"
         />
         <label htmlFor="roster-progress" className="sr-only">
           {t("courseRoster.progressFilter")}

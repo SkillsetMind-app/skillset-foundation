@@ -825,16 +825,6 @@ p {
   border-color: var(--color-line);
 }
 
-/* Selected tabs keep their white "selected" affordance (like .platform-nav-active)
-   but their label used var(--color-primary) -> light blue on white (~2.16:1).
-   Pin the label to the same dark ink the nav chip uses (~15:1). Covers hover.
-   (O seletor do estudio, .studio-range-tabs, saiu daqui: ele usa os tokens de
-   superficie e de texto, que ja trocam no tema escuro.) */
-[data-theme="dark"] .credential-filter-tabs button:hover,
-[data-theme="dark"] .credential-filter-tabs button.is-active {
-  color: #0f2744;
-}
-
 /* Decorative number/progress badges: white bg + light-blue var(--color-primary)
    read ~2.16:1 in dark. Soft dark surface keeps the glyph at ~7.7:1. */
 [data-theme="dark"] .course-builder-step__num {
@@ -2788,6 +2778,17 @@ select:focus-visible {
   box-shadow: 0 0 0 2px var(--focus-ring);
 }
 
+/* A mesma pele numa fileira de filtros (vendas, alunos): sem a largura toda,
+   que quebrava a linha, e com 44px cravados, a altura da busca e dos botoes
+   ao lado. A largura vem do conteudo ou de flex/min-w. Fica depois da regra
+   do .field-input para vencer o `width: 100%` dele (as utilidades do Tailwind
+   moram numa camada e perdem para regra solta). */
+.field-input--inline {
+  width: auto;
+  min-height: 44px;
+  padding-block: 0;
+}
+
 .auth-split {
   min-height: 100svh;
   display: grid;
@@ -4023,11 +4024,11 @@ body:has([aria-label="Course categories"])
     transform 180ms ease;
 }
 
+/* Como as abas da casa: o hover so escurece o texto. Antes ele pintava borda,
+   fundo e cor iguais aos da etapa aberta, e com o ponteiro em cima nao se
+   sabia qual estava aberta. A marca de feito continua no numero. */
 .course-builder-step:hover {
-  transform: translateY(-1px);
-  border-color: var(--color-line);
-  background: var(--color-surface-soft);
-  color: var(--color-primary);
+  color: var(--color-ink);
 }
 
 .course-builder-step.is-active {
@@ -4046,7 +4047,8 @@ body:has([aria-label="Course categories"])
   width: auto;
   height: 2px;
   border-radius: 999px;
-  background: var(--color-accent);
+  /* Navy, como a aba escolhida da casa; latao e de marco. */
+  background: var(--color-primary);
 }
 
 .course-builder-step__num {
@@ -4494,9 +4496,16 @@ body:has([aria-label="Course categories"])
     color 180ms ease;
 }
 
-.lesson-modal__tabs button:hover,
+/* O desenho das abas da casa (HorizontalTabs): passar o mouse so escurece o
+   texto, sem linha; a escolhida e navy com a linha navy. Antes o hover era a
+   mesma regra da escolhida (linha de latao), e com o ponteiro na barra nao se
+   sabia qual aba estava aberta. O latao fica para marco. */
+.lesson-modal__tabs button:hover {
+  color: var(--color-ink);
+}
+
 .lesson-modal__tabs button.is-active {
-  border-bottom-color: var(--color-accent-fg);
+  border-bottom-color: var(--color-primary);
   color: var(--color-primary);
 }
 
@@ -7326,10 +7335,11 @@ button:hover > .dash-card,
 }
 
 /* ── Seletor segmentado do estudio (PeriodTabs): uma entre poucas opcoes ──
-   O unico desenho para filtro no professor (periodo dos relatorios e da Home,
-   espacos/comunidades em Membros). Texto normal, sem versalete; 36px de botao
-   + 4px de moldura = 44px de toque. Passar o mouse nao pinta igual a ativa
-   (antes as duas regras eram a mesma e nao se sabia qual estava escolhida). */
+   O unico desenho para filtro (periodo dos relatorios e da Home,
+   espacos/comunidades em Membros, cursos e credenciais do aluno, ciclo dos
+   planos). Texto normal, sem versalete; 36px de botao no mouse e 44px no toque
+   (regra logo abaixo). Passar o mouse nao pinta igual a ativa (antes as duas
+   regras eram a mesma e nao se sabia qual estava escolhida). */
 .studio-range-tabs {
   display: inline-flex;
   max-width: 100%;
@@ -7373,6 +7383,34 @@ button:hover > .dash-card,
   background: var(--color-surface);
   color: var(--color-primary);
   box-shadow: var(--shadow-soft);
+}
+
+/* No escuro a pastilha escolhida (#0f1626) e a moldura (#141d33) quase se
+   confundem e a sombra some no fundo escuro: sobrava so a cor do texto, e
+   este seletor decide o que a pessoa paga (Mensal/Anual). Um contorno por
+   dentro em --color-primary passa de 3:1 contra a moldura e nao mexe no
+   tamanho do botao. O claro fica como esta. */
+[data-theme="dark"] .studio-range-tabs button[aria-pressed="true"] {
+  box-shadow:
+    inset 0 0 0 1.5px var(--color-primary),
+    var(--shadow-soft);
+}
+
+/* A moldura de 4px e do grupo, nao do botao: tocar nela nao escolhe nada.
+   Publico de 55+ no celular: um toque que erra "Yearly" deixa o professor no
+   Mensal. No toque o botao tem os 44px inteiros. */
+@media (pointer: coarse) {
+  .studio-range-tabs button {
+    min-height: 44px;
+  }
+}
+
+/* Variante que quebra a linha (credenciais: quatro filtros com numero). A
+   rolagem por dentro escondia "En curso N" atras dela a 360px em espanhol;
+   quebrando, os quatro ficam a vista e seguem na mesma moldura. */
+.studio-range-tabs--wrap {
+  flex-wrap: wrap;
+  overflow-x: visible;
 }
 
 .studio-chart-canvas {
@@ -7784,40 +7822,6 @@ button:hover > .dash-card,
   font-family: var(--font-display);
   font-size: 2rem;
   line-height: 1;
-}
-
-.credential-filter-tabs {
-  display: inline-flex;
-  flex-wrap: wrap;
-  gap: 0.35rem;
-  border: 1px solid var(--color-line);
-  border-radius: var(--radius-lg);
-  background: var(--color-surface-soft);
-  padding: 0.25rem;
-}
-
-.credential-filter-tabs button {
-  border: 0;
-  border-radius: var(--radius-md);
-  background: transparent;
-  color: var(--color-ink-soft);
-  cursor: pointer;
-  /* Alvo de 44px (antes ~33px, abaixo do mínimo de toque). */
-  min-height: 44px;
-  font-size: 0.875rem;
-  font-weight: 600;
-  padding: 0 0.875rem;
-  transition:
-    background var(--duration-base) var(--ease-standard),
-    color var(--duration-base) var(--ease-standard),
-    box-shadow var(--duration-base) var(--ease-standard);
-}
-
-.credential-filter-tabs button:hover,
-.credential-filter-tabs button.is-active {
-  background: #ffffff;
-  color: var(--color-primary);
-  box-shadow: 0 6px 14px rgba(15, 39, 68, 0.06);
 }
 
 .credential-card {

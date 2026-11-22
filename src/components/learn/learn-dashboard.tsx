@@ -14,6 +14,7 @@ import { LearningPathsRows } from "@/components/learn/learning-paths-rows";
 import { MemberAreaLinks } from "@/components/learn/member-area-links";
 import { WelcomeTour } from "@/components/learn/welcome-tour";
 import { ListingSearchBar } from "@/components/shared/listing-search-bar";
+import { PeriodTabs } from "@/components/shared/period-tabs";
 import { StatusChip } from "@/components/shared/status-chip";
 import { formatEventDateTime, type CourseEvent } from "@/domain/course-event";
 import {
@@ -52,7 +53,8 @@ const TOP_ITEMS = 3;
 // eles so empurram os cartoes para baixo.
 const COURSE_CONTROLS_AFTER = 6;
 
-type CourseFilter = "in_progress" | "completed";
+const courseFilters = ["in_progress", "completed"] as const;
+type CourseFilter = (typeof courseFilters)[number];
 
 const FALLBACK_COVER = "/brand/logo-mark.png";
 
@@ -631,32 +633,17 @@ export function LearnDashboard() {
           </h2>
           {showCourseControls ? (
             <div className="flex flex-wrap items-center gap-3">
-              <div
-                role="tablist"
-                aria-label={t("learn.dashboard.filterLabel")}
-                className="flex items-center gap-1 rounded-md border fine-rule bg-[var(--color-surface-soft)] p-1"
-              >
-                {(["in_progress", "completed"] as const).map((value) => (
-                  <button
-                    key={value}
-                    type="button"
-                    role="tab"
-                    aria-selected={courseFilter === value}
-                    onClick={() => setCourseFilter(value)}
-                    className={`min-h-11 rounded-sm px-4 text-xs font-semibold transition ${
-                      courseFilter === value
-                        ? "bg-white text-[var(--color-primary)] shadow-[var(--shadow-soft)]"
-                        : "text-[var(--color-ink-soft)] hover:text-[var(--color-primary)]"
-                    }`}
-                  >
-                    {t(
-                      value === "completed"
-                        ? "learn.dashboard.filterCompleted"
-                        : "learn.dashboard.filterInProgress",
-                    )}
-                  </button>
-                ))}
-              </div>
+              {/* Filtro de uma lista, nao abas de secao: o seletor segmentado
+                  da casa (aria-pressed), o mesmo das credenciais. */}
+              <PeriodTabs
+                options={courseFilters}
+                value={courseFilter}
+                onChange={setCourseFilter}
+                label={t("learn.dashboard.filterLabel")}
+                renderLabel={(value) =>
+                  t(value === "completed" ? "learn.dashboard.filterCompleted" : "learn.dashboard.filterInProgress")
+                }
+              />
               <ListingSearchBar
                 value={enrollmentQuery}
                 onChange={setEnrollmentQuery}
