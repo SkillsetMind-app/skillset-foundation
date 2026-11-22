@@ -398,7 +398,8 @@ export function CourseAssetUploader({ course, isEditable, onModuleCoverUploaded,
             || !selectedFile
             || (requiresModuleTarget && !moduleId)
           }
-          className="button-solid px-4 py-2.5 text-sm disabled:opacity-60"
+          // A grade do formulario esticava o botao de ponta a ponta do cartao.
+          className="button-solid justify-self-start px-4 py-2.5 text-sm disabled:opacity-60"
         >
           {isUploading ? t("creatorEditor.members.uploading") : t("creatorEditor.assets.upload")}
         </button>

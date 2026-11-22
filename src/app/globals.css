@@ -3022,6 +3022,14 @@ html[data-view-as] .platform-shell-root {
   flex: 0 0 auto;
 }
 
+/* Caixas de marcar e botoes de radio sem estilo proprio (construtor, ofertas,
+   caixa da comunidade, biblioteca de midia) saiam no azul do navegador ao
+   lado dos navy da casa. Uma regra so, dentro da plataforma. */
+.platform-shell-root input[type="checkbox"],
+.platform-shell-root input[type="radio"] {
+  accent-color: var(--color-primary);
+}
+
 .platform-topbar {
   position: relative;
   /* The topbar already forms a stacking context via `backdrop-filter`. That

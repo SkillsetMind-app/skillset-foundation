@@ -167,6 +167,10 @@ async function renderBuilder() {
 }
 
 const card = () => document.querySelector("#builder-sec-modules") as HTMLElement;
+// Na pagina da aula nao ha Back/Continue do construtor (a saida e o "Back to
+// module"): trocar de aba e pelo passo a passo, o mesmo selectTab.
+const pricingStep = () =>
+  within(screen.getByRole("navigation", { name: "Course creation steps" })).getByRole("button", { name: /Pricing/ });
 
 function startUpload() {
   fireEvent.change(screen.getByLabelText("Upload a lesson video"), {
@@ -457,9 +461,11 @@ describe("pagina da aula no builder", () => {
     navigateTo(moduleUrl);
     expect(screen.getByRole("heading", { name: "Intro" })).toBeInTheDocument();
 
-    // Trocar de aba pelo rodape tambem nao acontece durante o envio.
+    // Trocar de aba pelo passo a passo tambem nao acontece durante o envio, e
+    // o Back/Continue do construtor nao aparece na pagina da aula.
+    expect(screen.queryByRole("button", { name: /^Continue to/ })).toBeNull();
     mocks.router.push.mockClear();
-    fireEvent.click(screen.getByRole("button", { name: /^Continue to/ }));
+    fireEvent.click(pricingStep());
     expect(mocks.router.push).not.toHaveBeenCalled();
 
     // O envio acaba: a tela volta a seguir a URL, e nao ha segundo envio.
@@ -486,8 +492,9 @@ describe("pagina da aula no builder", () => {
     await act(async () => finishUpload("asset-intro"));
 
     await waitFor(() => expect(screen.queryByText(missingIntro)).not.toBeInTheDocument());
-    fireEvent.click(screen.getByRole("button", { name: /^Continue to/ }));
+    fireEvent.click(pricingStep());
     const next = String(mocks.router.push.mock.calls.at(-1)?.[0]);
+    expect(next).toContain("tab=pricing");
     expect(next).not.toContain("lesson=");
   }, 10000);
 
@@ -513,7 +520,10 @@ describe("pagina da aula no builder", () => {
     clickConfirm(asking, "Delete file");
 
     await waitFor(() => expect(screen.getAllByText(missingIntro).length).toBeGreaterThan(0));
-    expect(screen.getByRole("button", { name: "Publish product" })).toBeDisabled();
+    // O Publish mora na aba Publish e le a mesma prontidao do passo a passo,
+    // que voltou a ter a aula pendente.
+    expect(screen.queryByRole("button", { name: "Publish product" })).toBeNull();
+    expect(Number(screen.getByRole("progressbar").getAttribute("aria-valuenow"))).toBeLessThan(100);
   }, 10000);
 
   // Sem a camada do antigo modal, a barra lateral ficou clicavel no meio de um

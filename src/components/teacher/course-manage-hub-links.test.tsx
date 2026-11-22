@@ -77,6 +77,11 @@ vi.mock("@/components/teacher/course-overview-panel", () => ({
   CourseOverviewPanel: () => null,
 }));
 
+// O checklist le a lista de arquivos (conteudo em toda aula), como o construtor.
+vi.mock("@/lib/data/course-assets", () => ({
+  fetchCourseAssets: () => Promise.resolve([]),
+}));
+
 afterEach(() => cleanup());
 
 function renderLinks() {

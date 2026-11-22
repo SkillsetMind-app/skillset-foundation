@@ -89,7 +89,7 @@ export function CourseCategorySelect({
               >
                 {getCourseCategoryLabel(item, t)}
                 {index === 0 ? (
-                  <span className="text-[9px] font-bold uppercase tracking-wide opacity-80">
+                  <span className="text-[11px] font-bold uppercase tracking-wide opacity-80">
                     {t("creatorEditor.categorySelect.primary")}
                   </span>
                 ) : null}
@@ -137,7 +137,7 @@ export function CourseCategorySelect({
                       ? t("creatorEditor.categorySelect.maximum")
                       : undefined
                 }
-                className={`flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-left text-sm transition-colors ${
+                className={`flex min-h-11 w-full items-center gap-2.5 rounded-md px-3 py-2 text-left text-sm transition-colors ${
                   isSelected
                     ? "bg-[var(--color-surface-soft)] font-semibold text-[var(--color-primary)]"
                     : "text-[var(--color-ink)] hover:bg-[var(--color-surface-soft)]"
