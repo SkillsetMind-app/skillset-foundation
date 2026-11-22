@@ -112,7 +112,7 @@ import {
 import { compressImage, MAX_SOURCE_IMAGE_BYTES } from "@/lib/media/compress-image";
 import { ReadinessGroups } from "@/components/teacher/readiness-groups";
 import { UploadProgressNote } from "@/components/teacher/upload-progress-note";
-import { Button, buttonClasses, EmptyState } from "@/components/ui";
+import { Button, buttonClasses, EmptyState, InlineAlert, ProgressBar } from "@/components/ui";
 import { DrawnCheck, MilestoneSeal, useJustDone } from "@/components/ui/drawn-check";
 import { SpotArt } from "@/components/ui/spot-art";
 import type { CourseAsset } from "@/domain/course-asset";
@@ -1189,6 +1189,11 @@ export function CourseBuilderStudio() {
     publishGates,
     t,
   );
+  // A linha "4 of 7 checks · 57%" e o nome da barra que a acompanha.
+  const readinessText = t("creatorEditor.builder.summary.checks")
+    .replace("{done}", () => String(readiness.doneCount))
+    .replace("{total}", () => String(readiness.total))
+    .replace("{percent}", () => String(readiness.percent));
   // Falta so a taxa: o botao principal vira "Activate and publish" e leva ao
   // checkout com este curso, para a volta cair de novo aqui.
   const needsActivation = readiness.pending.some((item) => item.id === "activation");
@@ -2930,9 +2935,7 @@ export function CourseBuilderStudio() {
   if (!courseId) {
     return (
       <section className="settings-section-card">
-        <p className="rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
-          {t("creatorEditor.builder.shell.chooseCourse")}
-        </p>
+        <InlineAlert tone="error">{t("creatorEditor.builder.shell.chooseCourse")}</InlineAlert>
         <Link href="/teach" className="button-outline mt-5 px-4 py-2.5 text-sm">
           {t("creatorEditor.builder.navigation.studio")}
         </Link>
@@ -2947,9 +2950,7 @@ export function CourseBuilderStudio() {
   if (error && !course) {
     return (
       <section className="settings-section-card">
-        <p className="rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
-          {errorMessage}
-        </p>
+        <InlineAlert tone="error">{errorMessage}</InlineAlert>
         <Link href="/teach" className="button-outline mt-5 px-4 py-2.5 text-sm">
           {t("creatorEditor.builder.navigation.studio")}
         </Link>
@@ -3040,10 +3041,7 @@ export function CourseBuilderStudio() {
   // Um alerta so, renderizado no lugar de errorSlot. O titulo vazio da aula
   // nova fica no proprio formulario dela.
   const builderErrorAlert = error && error.code !== "lessonTitle" ? (
-    <div
-      role="alert"
-      className="rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]"
-    >
+    <InlineAlert tone="error">
       <p>{errorMessage}</p>
       {error.code === "plan" ? (
         <Link href="/account/billing?tab=subscriptions" className="button-solid mt-3 px-4 py-2 text-xs">
@@ -3064,7 +3062,7 @@ export function CourseBuilderStudio() {
           {t("creatorPanel.hub.pricing.finishOnboarding")}
         </Link>
       ) : null}
-    </div>
+    </InlineAlert>
   ) : null;
   const footerShowsError = errorSlot === "footer" || (errorSlot === "publish" && activeTab !== "review");
 
@@ -3158,24 +3156,15 @@ export function CourseBuilderStudio() {
             {/* A prontidao mora so aqui, numa linha: o "71%" aparecia tres
                 vezes (chip do topo, esta linha e o cartao do rodape). */}
             <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--color-ink-soft)]">
-              {t("creatorEditor.builder.summary.checks")
-                .replace("{done}", () => String(readiness.doneCount))
-                .replace("{total}", () => String(readiness.total))
-                .replace("{percent}", () => String(readiness.percent))}
+              {readinessText}
             </p>
             {/* A barra media estagios (5) e o chip media checks (7): 40% e
                 71% no mesmo cabecalho para o mesmo curso. Agora os tres leem
                 o mesmo numero. */}
-            {/* Latão, como a barra do aluno (learn-dashboard): progresso e
-                conquista. O número fica sempre ao lado. */}
+            {/* A barra compartilhada (latão de texto, trilho que segue o tema),
+                a mesma do painel do curso e da área do aluno. */}
             <div className="mt-2 flex items-center gap-2">
-              <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-[rgba(26,54,93,0.12)]">
-                <div
-                  data-testid="publish-readiness-bar"
-                  className="h-full rounded-full bg-[var(--color-accent)] transition-[width] duration-300 ease-out"
-                  style={{ width: `${readiness.percent}%` }}
-                />
-              </div>
+              <ProgressBar value={readiness.percent} label={readinessText} className="flex-1" />
               {readiness.percent === 100 ? <MilestoneSeal animate={justDoneReadiness.size > 0} /> : null}
             </div>
           </div>
@@ -3613,9 +3602,9 @@ export function CourseBuilderStudio() {
               disabled={!isEditable}
             />
             {paymentChoiceFits ? null : (
-              <p className="mt-3 text-sm font-semibold text-[var(--color-danger-fg)]">
+              <InlineAlert tone="error" className="mt-3">
                 {t("creatorEditor.builder.pricing.notForType")}
-              </p>
+              </InlineAlert>
             )}
             {paymentChoice === "free" ? (
               <p className="mt-4 text-sm font-semibold text-[var(--color-ink)]">
@@ -4731,11 +4720,11 @@ function CourseCoverField({
           {progress ? <UploadProgressNote progress={progress} /> : null}
 
           {error ? (
-            <p role="alert" className="rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-3 py-2 text-xs font-semibold text-[var(--color-danger-fg)]">
+            <InlineAlert tone="error" className="px-3 py-2 text-xs">
               {error.kind === "invalid-image"
                 ? t("creatorEditor.members.invalidImage").replace("{limit}", () => formatCourseAssetSize(supabaseUploadLimitBytes))
                 : getCourseAssetUploadErrorMessage(error.cause, supabaseUploadLimitBytes, t)}
-            </p>
+            </InlineAlert>
           ) : null}
 
           {!course.coverImageUrl && !error && !progress ? (
@@ -5144,13 +5133,13 @@ function MembersCoverField({
           {progress ? <UploadProgressNote progress={progress} /> : null}
 
           {error ? (
-            <p role="alert" className="rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-3 py-2 text-xs font-semibold text-[var(--color-danger-fg)]">
+            <InlineAlert tone="error" className="px-3 py-2 text-xs">
               {error.kind === "too-large"
                 ? t("creatorEditor.members.coverTooLarge")
                 : error.kind === "invalid-image"
                   ? t("creatorEditor.members.invalidImage").replace("{limit}", () => formatCourseAssetSize(supabaseUploadLimitBytes))
                   : getCourseAssetUploadErrorMessage(error.cause, supabaseUploadLimitBytes, t)}
-            </p>
+            </InlineAlert>
           ) : null}
         </div>
       </div>

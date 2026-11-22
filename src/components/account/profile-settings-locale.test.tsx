@@ -130,6 +130,13 @@ describe("profile settings locale", () => {
     expect(screen.getByText("Perfil actualizado.")).toBeInTheDocument();
     changeLanguage();
     expect(screen.getByText("Profile updated.")).toBeInTheDocument();
+    // F-05: o "salvo" é anunciado e mora DEPOIS do botão, na mesma linha; acima
+    // dele, nascia e empurrava o botão recém-clicado para baixo.
+    const saved = screen.getByRole("status");
+    expect(saved).toHaveTextContent("Profile updated.");
+    const save = screen.getByRole("button", { name: "Save profile" });
+    expect(save.compareDocumentPosition(saved) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(saved.parentElement).toBe(save.parentElement);
     expect(mocks.getUserProfile).toHaveBeenCalledTimes(1);
     expect(mocks.updateUserIdentity).toHaveBeenCalledExactlyOnceWith("profile-user", {
       displayName: "Ana $& Edited", username: "ana-edited", bio: profile.bio,
@@ -251,7 +258,8 @@ describe.each([
     expect(screen.getByText(success)).toBeInTheDocument();
     expect(input.closest("label")).toHaveTextContent(replace);
     expect(input).toBeEnabled();
-    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    // A nota de envio saiu; o único status que fica é o "salvo" ao lado do botão.
+    expect(screen.getByRole("status")).toHaveTextContent(success);
     if (upload === mocks.uploadTeacherSignature) {
       expect(screen.getByAltText("Tu firma para los certificados")).toHaveAttribute("src", "https://media.example.test/uploaded.png");
     }

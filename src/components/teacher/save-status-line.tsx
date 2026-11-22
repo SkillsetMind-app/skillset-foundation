@@ -1,9 +1,9 @@
 "use client";
 
-import { AlertCircle, CheckCircle2 } from "lucide-react";
+import { CheckCircle2 } from "lucide-react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
-import { Button } from "@/components/ui";
+import { Button, InlineAlert } from "@/components/ui";
 
 /**
  * Erro com saída: a frase no vermelho de erro (anunciada) e, embaixo, um
@@ -14,13 +14,7 @@ export function RetryAlert({ text, onRetry, className = "" }: { text: string; on
   const { t } = useTranslation();
   return (
     <div className={`grid justify-items-start gap-2 ${className}`}>
-      <p
-        role="alert"
-        className="flex items-start gap-2.5 rounded-md border border-[rgba(178,34,52,0.3)] bg-[var(--color-danger-soft)] px-4 py-3 text-sm font-semibold leading-5 text-[var(--color-danger-fg)]"
-      >
-        <AlertCircle aria-hidden="true" size={18} className="mt-px shrink-0" />
-        {text}
-      </p>
+      <InlineAlert tone="error">{text}</InlineAlert>
       {onRetry ? (
         <Button variant="outline" onClick={onRetry}>
           {t("saveStatus.retry")}
@@ -63,13 +57,21 @@ export function SaveStatusLine({
       </span>
     );
   }
-  if (savedText) {
-    return (
-      <span role="status" className="inline-flex items-center gap-1.5 text-sm font-semibold text-[var(--color-success-fg)]">
-        <CheckCircle2 aria-hidden="true" size={16} />
-        {savedText}
-      </span>
-    );
-  }
+  if (savedText) return <SavedNote text={savedText} />;
   return null;
+}
+
+/**
+ * O "salvo" dos formulários do professor e da conta: check verde e a frase, na
+ * mesma linha do botão que gravou. Antes cada painel tinha o seu (caixa azul,
+ * caixa verde, texto cinza), e três deles nasciam ACIMA do botão, empurrando-o
+ * uns 48px para baixo logo depois do clique. O erro continua no InlineAlert.
+ */
+export function SavedNote({ text }: { text: string }) {
+  return (
+    <span role="status" className="inline-flex items-center gap-1.5 text-sm font-semibold text-[var(--color-success-fg)]">
+      <CheckCircle2 aria-hidden="true" size={16} className="shrink-0" />
+      {text}
+    </span>
+  );
 }

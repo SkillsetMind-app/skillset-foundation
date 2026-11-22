@@ -5,6 +5,7 @@ import { useState, type FormEvent } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { useAuth } from "@/components/auth/auth-provider";
+import { InlineAlert } from "@/components/ui/inline-alert";
 import {
   isStrongPassword,
   PasswordStrengthChecklist,
@@ -73,12 +74,7 @@ export function UpdatePasswordForm({
   if (!recoveryVerified || status === "unauthenticated") {
     return (
       <div className="mt-6 grid gap-4">
-        <p
-          role="alert"
-          className="rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]"
-        >
-          {t("authFlow.recovery.invalid")}
-        </p>
+        <InlineAlert tone="error">{t("authFlow.recovery.invalid")}</InlineAlert>
         <Link
           href="/forgot-password"
           className="button-solid justify-self-start px-4 py-2.5 text-sm"
@@ -155,15 +151,7 @@ export function UpdatePasswordForm({
           </span>
         ) : null}
       </label>
-      {error ? (
-        <p
-          role="alert"
-          aria-live="assertive"
-          className="rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]"
-        >
-          {errorMessage}
-        </p>
-      ) : null}
+      {error ? <InlineAlert tone="error">{errorMessage}</InlineAlert> : null}
       <button
         type="submit"
         disabled={isLoading || !passwordReady || !passwordsMatch}

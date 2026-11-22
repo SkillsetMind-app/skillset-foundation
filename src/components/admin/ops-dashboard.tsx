@@ -20,7 +20,7 @@ import { ViewAsSwitcher } from "@/components/admin/view-as";
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { PlatformShell } from "@/components/platform/platform-shell";
-import { InlineAlert } from "@/components/ui";
+import { EmptyState, InlineAlert } from "@/components/ui";
 import { canAccessPlatformNavItem, getOpsNavItem } from "@/data/site";
 import {
   subscribeToAuditLog,
@@ -170,9 +170,8 @@ function AuditLogPanel() {
         ) : error ? (
           <InlineAlert tone="error">{t(`${copy}.loadError`)}</InlineAlert>
         ) : entries.length === 0 ? (
-          <div className="rounded-lg border border-dashed border-[var(--color-line-strong)] bg-[var(--color-surface-soft)] p-5 text-sm leading-7 text-[var(--color-ink-soft)]">
-            {t(`${copy}.empty`)}
-          </div>
+          // h2: logo abaixo do h1 "Audit log", sem outro título no meio.
+          <EmptyState as="h2" title={t(`${copy}.empty`)} />
         ) : (
           entries.map((entry) => (
             <article

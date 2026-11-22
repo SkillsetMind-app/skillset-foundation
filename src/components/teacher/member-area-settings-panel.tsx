@@ -7,6 +7,7 @@ import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { HorizontalTabs } from "@/components/shared/horizontal-tabs";
+import { SavedNote } from "@/components/teacher/save-status-line";
 import { Button, Card, Field, InlineAlert, buttonClasses } from "@/components/ui";
 import type { PlanId } from "@/data/plans";
 import { planEntitlements } from "@/domain/entitlements";
@@ -776,8 +777,8 @@ function MemberAreaForm({
           }`)}
         </InlineAlert>
       ) : null}
-      {feedback === "saved" ? <p role="status" className="info-notice">{t("teach.memberAreaEditor.saved")}</p> : null}
-
+      {/* O "salvo" fica na linha dos botões (último, para não empurrar o
+          "Preview"): acima deles, nascia e empurrava o botão recém-clicado. */}
       <div className="flex flex-wrap items-center gap-3">
         <Button type="submit" disabled={locked || saving || uploading || courses === null || coursesFailed}>
           {t(`teach.memberAreaEditor.${saving ? "saving" : "save"}`)}
@@ -791,6 +792,7 @@ function MemberAreaForm({
           <ExternalLink aria-hidden="true" size={15} />
           {t("teach.memberAreaEditor.previewAsStudent")}
         </Link>
+        {feedback === "saved" ? <SavedNote text={t("teach.memberAreaEditor.saved")} /> : null}
       </div>
       <p className="text-xs text-[var(--color-ink-soft)]">{t("teach.memberAreaEditor.previewHelp")}</p>
 

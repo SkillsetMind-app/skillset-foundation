@@ -17,7 +17,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 
 import { CourseCategorySelect } from "@/components/teacher/course-category-select";
 import { InlineHelp } from "@/components/shared/inline-help";
-import { Button } from "@/components/ui";
+import { Button, InlineAlert } from "@/components/ui";
 import { useJustDone } from "@/components/ui/drawn-check";
 import { SpotArt } from "@/components/ui/spot-art";
 import { isValidExternalEventUrl } from "@/domain/course-event";
@@ -411,10 +411,7 @@ export function CreateCourseStart({ ownerId, initialFormat = "course" }: CreateC
             </div>
 
             {error ? (
-              <div
-                role="alert"
-                className="mt-5 rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]"
-              >
+              <InlineAlert tone="error" className="mt-5">
                 <p>{t(error)}</p>
                 {error === "courseCreation.activationError" ? (
                   <Link
@@ -424,7 +421,7 @@ export function CreateCourseStart({ ownerId, initialFormat = "course" }: CreateC
                     {t("courseCreation.activate")}
                   </Link>
                 ) : null}
-              </div>
+              </InlineAlert>
             ) : null}
 
             {submitBlockers.length > 0 ? (

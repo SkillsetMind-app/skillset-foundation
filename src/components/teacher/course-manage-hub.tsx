@@ -29,6 +29,7 @@ import { CourseStudentRoster } from "@/components/teacher/course-student-roster"
 import { CourseLandingEditor } from "@/components/teacher/course-landing-editor";
 import { SalesPageEditor } from "@/components/teacher/sales-page-editor";
 import { InlineAlert } from "@/components/ui/inline-alert";
+import { ProgressBar } from "@/components/ui/progress-bar";
 import type { PlanId } from "@/data/plans";
 import { planById, refundWindowDays } from "@/data/plans";
 import {
@@ -290,9 +291,9 @@ function MarketplaceHighlightPanel({
         </p>
       ) : null}
       {error ? (
-        <p className="mt-3 text-xs font-semibold text-[var(--color-danger-fg)]">
+        <InlineAlert tone="error" className="mt-3">
           {"message" in error ? error.message : t(error.key)}
-        </p>
+        </InlineAlert>
       ) : null}
     </PanelCard>
   );
@@ -481,6 +482,11 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
     account,
     t,
   );
+  // A linha "6 of 8 required steps done · 75% ready" e o nome da barra.
+  const readinessText = t("creatorPanel.hub.checklist.progress")
+    .replace("{done}", () => String(readiness.doneCount))
+    .replace("{total}", () => String(readiness.total))
+    .replace("{percent}", () => String(readiness.percent));
   const pricing = getCoursePricingShape(course);
   // "Add the yearly plan" na etapa de preco chega com ?addPrice=yearly&amount=
   // (em centavos): o formulario de outro preco ja abre com o plano anual.
@@ -615,8 +621,9 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
         {course.status === "inactive" ? (
           // Arquivar sem dizer o que fazer depois deixa o professor achando que
           // perdeu o curso. O chip diz o estado; esta linha diz a saida.
-          <InlineAlert tone="warning" className="mt-4 flex flex-wrap items-center gap-x-2 gap-y-1">
-            <span>{t("creatorPanel.hub.header.archivedNotice")}</span>
+          // Sem o flex próprio: ganha o ícone de aviso, e o link segue a frase.
+          <InlineAlert tone="warning" className="mt-4">
+            {t("creatorPanel.hub.header.archivedNotice")}{" "}
             <Link
               href={`/teach/builder?courseId=${encodeURIComponent(course.id)}&tab=review`}
               className="underline underline-offset-2"
@@ -730,20 +737,11 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
               title={t("creatorPanel.hub.checklist.title")}
               description={t(`creatorPanel.hub.status.${course.status}`)}
             >
-              {/* Mesma barra do construtor (latão, 6px): as duas telas
+              {/* A mesma barra do construtor (a compartilhada): as duas telas
                   desenhavam a mesma prontidão de jeitos diferentes. */}
-              <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-[rgba(26,54,93,0.12)]">
-                <div
-                  data-testid="publish-readiness-bar"
-                  className="h-full rounded-full bg-[var(--color-accent)] transition-[width] duration-300 ease-out"
-                  style={{ width: `${readiness.percent}%` }}
-                />
-              </div>
+              <ProgressBar value={readiness.percent} label={readinessText} className="mt-4" />
               <p className="mt-2 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-ink-muted)]">
-                {t("creatorPanel.hub.checklist.progress")
-                  .replace("{done}", () => String(readiness.doneCount))
-                  .replace("{total}", () => String(readiness.total))
-                  .replace("{percent}", () => String(readiness.percent))}
+                {readinessText}
               </p>
               <ReadinessGroups
                 readiness={readiness}

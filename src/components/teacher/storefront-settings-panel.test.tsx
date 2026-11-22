@@ -277,6 +277,12 @@ describe("StorefrontSettingsPanel", () => {
     expect(
       screen.getByText(/old image could not be removed/i),
     ).toBeInTheDocument();
+    // F-05: o "salvo" nasce ao lado do botão (mesma linha, depois dele) e é
+    // anunciado; acima, empurrava o botão recém-clicado para baixo.
+    const saved = screen.getByRole("status");
+    expect(saved).toHaveTextContent("Storefront saved.");
+    expect(saved.classList.contains("info-notice")).toBe(false);
+    expect(saved.parentElement).toBe(screen.getByRole("button", { name: "Save storefront" }).parentElement);
   });
 
   // A rejeição era escrita no rodapé do formulário, ~120 linhas abaixo do

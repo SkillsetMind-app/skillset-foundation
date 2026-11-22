@@ -26,7 +26,7 @@ import { StudioStorefrontCard } from "@/components/teacher/studio-storefront-car
 import { TeacherStudioInsights } from "@/components/teacher/teacher-studio-insights";
 import { TeacherWelcomeTour } from "@/components/teacher/teacher-welcome-tour";
 import { usePublishGates } from "@/components/teacher/use-publish-gates";
-import { EmptyState, buttonClasses } from "@/components/ui";
+import { EmptyState, ProgressBar, buttonClasses } from "@/components/ui";
 import { DrawnCheck, MilestoneSeal, useJustDone } from "@/components/ui/drawn-check";
 import { InlineAlert } from "@/components/ui/inline-alert";
 import { SpotArt } from "@/components/ui/spot-art";
@@ -346,6 +346,9 @@ function StudioNextSteps({
   ];
   const completeCount = steps.filter((step) => step.done).length;
   const progress = Math.round((completeCount / steps.length) * 100);
+  const progressText = t("creatorPanel.home.nextSteps.progress")
+    .replace("{done}", () => String(completeCount))
+    .replace("{total}", () => String(steps.length));
   // O passo aberto ganha o destaque e o botao, no proprio lugar. Antes um
   // painel ao lado ("Recommended now") repetia o titulo e a frase dele, e com
   // tudo feito recomendava "Publish your product" a quem ja tinha publicado.
@@ -385,24 +388,14 @@ function StudioNextSteps({
               <p className="text-2xl font-semibold tabular-nums text-[var(--color-primary)]">
                 {`${progress}%`}
               </p>
-              <p className="text-xs text-[var(--color-ink-muted)]">
-                {t("creatorPanel.home.nextSteps.progress")
-                  .replace("{done}", () => String(completeCount))
-                  .replace("{total}", () => String(steps.length))}
-              </p>
+              <p className="text-xs text-[var(--color-ink-muted)]">{progressText}</p>
             </div>
           </div>
 
-          {/* Latao, como a barra do aluno: progresso e conquista. O "2 of 3"
-              logo acima e o numero que acompanha a barra. */}
+          {/* A barra compartilhada, a mesma do aluno: progresso e conquista.
+              O "2 of 3" logo acima e o numero que acompanha a barra. */}
           <div className="mt-4 flex items-center gap-2">
-            <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-[rgba(26,54,93,0.12)]">
-              <div
-                data-testid="studio-next-steps-bar"
-                className="h-full rounded-full bg-[var(--color-accent)] transition-[width] duration-300 ease-out"
-                style={{ width: `${progress}%` }}
-              />
-            </div>
+            <ProgressBar value={progress} label={progressText} className="flex-1" />
             {/* O marco: a barra chegou ao fim. */}
             {progress === 100 ? <MilestoneSeal animate={justDone.size > 0} /> : null}
           </div>
@@ -557,13 +550,10 @@ function StudioProductsSection({
           className="mt-3"
         />
       ) : filtered.length === 0 ? (
-        <div className="mt-3 border-y border-dashed border-[var(--color-line-strong)] px-5 py-10 text-center">
-          {/* So a frase: o "New product" do cabecalho ja cria, e um segundo
-              botao solido aqui disputava com ele. */}
-          <p className="text-sm font-semibold text-[var(--color-ink)]">
-            {t("creatorPanel.home.products.empty")}
-          </p>
-        </div>
+        // So a frase, na caixa vazia da casa (a mesma do "primeiro produto"
+        // logo acima): o "New product" do cabecalho ja cria, e um segundo
+        // botao solido aqui disputava com ele.
+        <EmptyState as="h3" title={t("creatorPanel.home.products.empty")} className="mt-3" />
       ) : (
         // motion-stagger: os cartoes sobem em escada (40ms cada) quando os
         // dados chegam; a lista so monta depois do esqueleto.

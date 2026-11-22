@@ -4,7 +4,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import { PanelCard } from "@/components/teacher/course-commerce-panels";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { isActivationRequiredError } from "@/domain/creator-verification";
-import { Button } from "@/components/ui";
+import { Button, InlineAlert } from "@/components/ui";
 import { changeCourseAccess, listCourseAccess, type CourseAccessAction, type CourseAccessGrant } from "@/lib/data/course-access";
 
 const statusLabels = {
@@ -96,7 +96,7 @@ export function CourseAccessPanel({ courseId, onChange }: { courseId: string; on
       </div>
       <Button type="submit" disabled={busy || !loaded || !email.trim()}>{t("courseAccess.grant")}</Button>
     </form>
-    {error ? <p role="alert" className="mt-3 text-sm text-[var(--color-danger-fg)]">{t(error)}</p> : null}
+    {error ? <InlineAlert tone="error" className="mt-3">{t(error)}</InlineAlert> : null}
     <p ref={statusRef} tabIndex={-1} role="status" aria-live="polite" className="mt-3 text-sm text-[var(--color-ink-soft)]">{message ? t(message).replace("{status}", () => t(statusLabels[messageStatus])) : ""}</p>
     <ul className="mt-4 grid min-w-0 gap-3">
       {grants.map((grant) => <li key={grant.id} className="min-w-0 rounded-md border border-[var(--color-line)] p-3">

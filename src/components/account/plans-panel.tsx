@@ -306,12 +306,7 @@ export function PlansPanel() {
       ) : null}
 
       {error ? (
-        <p
-          role="alert"
-          className="rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]"
-        >
-          {t(error)}
-        </p>
+        <InlineAlert tone="error">{t(error)}</InlineAlert>
       ) : null}
 
       {/* Only the plans on offer. An Enterprise subscriber sees "Enterprise"

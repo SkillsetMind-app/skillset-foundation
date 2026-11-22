@@ -222,7 +222,7 @@ describe("checklist de publicacao em tres blocos e faixa de rascunho", () => {
     const sale = list.querySelector<HTMLElement>('[data-readiness-group="sale"]')!;
     expect(within(sale).getByRole("link", { name: "Open verification" })).toHaveAttribute("href", "/teach/verification");
     expect(within(sale).getByText("Set a price above $0, or choose Free.")).toBeInTheDocument();
-    expect(screen.getByTestId("publish-readiness-bar")).toHaveStyle({ width: "67%" });
+    expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "67");
   });
 });
 vi.mock("@/lib/data/creator-plan", () => ({ fetchCreatorPlanRequired: async () => false }));

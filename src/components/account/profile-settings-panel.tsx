@@ -31,7 +31,9 @@ import {
   uploadUserAvatar,
   type UploadAvatarProgress,
 } from "@/lib/data/profile-media";
+import { SavedNote } from "@/components/teacher/save-status-line";
 import { UploadProgressNote } from "@/components/teacher/upload-progress-note";
+import { InlineAlert } from "@/components/ui/inline-alert";
 
 const goalOptions = [
   ["career_growth", "accountProfile.goals.career_growth"],
@@ -539,24 +541,21 @@ export function ProfileSettingsPanel() {
         </div>
 
         {error ? (
-          <p role="alert" className="rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
-            {formatValidationMessage(error, t)}
-          </p>
+          <InlineAlert tone="error">{formatValidationMessage(error, t)}</InlineAlert>
         ) : null}
 
-        {success ? (
-          <p className="info-notice" aria-live="polite">
-            {t(success)}
-          </p>
-        ) : null}
-
-        <button
-          type="submit"
-          disabled={isSaving}
-          className="button-solid justify-self-start px-4 py-2.5 text-sm disabled:opacity-60"
-        >
-          {isSaving ? t("accountProfile.saving") : t("accountProfile.save")}
-        </button>
+        {/* O "salvo" fica ao lado do botão: acima dele, nascia e empurrava o
+            botão recém-clicado para baixo. */}
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            type="submit"
+            disabled={isSaving}
+            className="button-solid px-4 py-2.5 text-sm disabled:opacity-60"
+          >
+            {isSaving ? t("accountProfile.saving") : t("accountProfile.save")}
+          </button>
+          {success ? <SavedNote text={t(success)} /> : null}
+        </div>
       </form>
     </section>
   );

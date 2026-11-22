@@ -6,7 +6,7 @@ import { ConfirmActionDialog } from "@/components/admin/confirm-action-dialog";
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { StatusChip } from "@/components/shared/status-chip";
-import { Button, InlineAlert } from "@/components/ui";
+import { Button, EmptyState, InlineAlert } from "@/components/ui";
 import {
   resolveAccountActionRequest,
   subscribeToAccountActionRequests,
@@ -110,7 +110,7 @@ export function AccountActionRequestsPanel() {
             {t(`${copy}.loading`)}
           </p>
         ) : requests.length === 0 ? (
-          loadError ? null : <div className="rounded-lg border border-dashed border-[var(--color-line-strong)] bg-[var(--color-surface-soft)] p-5 text-sm leading-7 text-[var(--color-ink-soft)]">{t(`${copy}.empty`)}</div>
+          loadError ? null : <EmptyState title={t(`${copy}.empty`)} />
         ) : (
           requests.map((request) => {
             const requested = toDate(request.requestedAt);

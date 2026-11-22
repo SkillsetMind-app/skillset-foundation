@@ -35,6 +35,7 @@ import {
 } from "@/lib/data/profile-media";
 import { subscribeToTeacherCourses } from "@/lib/data/teacher-courses";
 import { getUserProfile, updateUserStorefront } from "@/lib/data/user-profiles";
+import { SavedNote } from "@/components/teacher/save-status-line";
 import { UploadProgressNote } from "@/components/teacher/upload-progress-note";
 
 type StorefrontImageError = "" | "invalid" | "upload";
@@ -798,15 +799,18 @@ export function StorefrontSettingsPanel() {
           </InlineAlert>
         ) : null}
 
-        {success ? <p className="info-notice">{t(`teach.storefrontEditor.feedback.${success}`)}</p> : null}
+        {/* A caixa azul fica só para o aviso neutro ("imagem enviada, salve
+            para publicar"); o "salvo" vai para o lado do botão, sem empurrá-lo. */}
+        {success && success !== "saved" ? (
+          <p className="info-notice">{t(`teach.storefrontEditor.feedback.${success}`)}</p>
+        ) : null}
 
-        <Button
-          type="submit"
-          disabled={isSaving || uploadingImages.size > 0 || !coursesReady}
-          className="justify-self-start"
-        >
-          {t(`teach.storefrontEditor.${isSaving ? "saving" : "save"}`)}
-        </Button>
+        <div className="flex flex-wrap items-center gap-3">
+          <Button type="submit" disabled={isSaving || uploadingImages.size > 0 || !coursesReady}>
+            {t(`teach.storefrontEditor.${isSaving ? "saving" : "save"}`)}
+          </Button>
+          {success === "saved" ? <SavedNote text={t("teach.storefrontEditor.feedback.saved")} /> : null}
+        </div>
       </form>
     </section>
   );
