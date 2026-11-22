@@ -25,6 +25,9 @@ it("translates empty state and keeps notification preference destination", () =>
 it("keeps authored notification text, unread ids and selection across language changes", async () => {
   mocks.rows = [{ id: "n-1", type: "community_reply", title: "Original $& title", body: "Author message", read: false }];
   mount();
+  // A contagem fica so na aba; o ponto da linha e lido como "Sin leer".
+  expect(screen.queryByText("1 sin leer")).toBeNull();
+  expect(screen.getByRole("img", { name: "Sin leer" })).toBeTruthy();
   fireEvent.click(screen.getByRole("tab", { name: "Sin leer (1)" }));
   expect(screen.getByText("Original $& title")).toBeTruthy();
   fireEvent.click(screen.getByRole("button", { name: "Marcar todas como leídas" }));

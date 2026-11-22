@@ -1,4 +1,4 @@
-import { act, cleanup, render } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ConfirmEmailGate } from "@/components/auth/confirm-email-gate";
@@ -11,6 +11,7 @@ import { ConfirmEmailGate } from "@/components/auth/confirm-email-gate";
 
 const mocks = vi.hoisted(() => ({
   refreshCurrentUserEmailVerification: vi.fn(),
+  resendSignupConfirmation: vi.fn(),
   assign: vi.fn(),
 }));
 
@@ -21,6 +22,7 @@ vi.mock("@/components/i18n/i18n-provider", () => ({
 vi.mock("@/lib/auth/supabase-auth", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/auth/supabase-auth")>()),
   refreshCurrentUserEmailVerification: mocks.refreshCurrentUserEmailVerification,
+  resendSignupConfirmation: mocks.resendSignupConfirmation,
 }));
 
 vi.mock("@/components/auth/turnstile-widget", () => ({
@@ -37,6 +39,7 @@ beforeEach(() => {
   vi.spyOn(document, "visibilityState", "get").mockImplementation(() => visibility);
   vi.stubGlobal("location", { ...window.location, assign: mocks.assign });
   mocks.refreshCurrentUserEmailVerification.mockResolvedValue(false);
+  mocks.resendSignupConfirmation.mockResolvedValue(undefined);
 });
 
 afterEach(() => {
@@ -119,5 +122,38 @@ describe("ConfirmEmailGate notices a confirmation made elsewhere", () => {
     await tick(6000);
 
     expect(mocks.assign).toHaveBeenCalledWith("/loading?next=welcome");
+  });
+});
+
+// O leitor de tela lia "Resend in 59s... 58s..." a cada segundo. O numero fica
+// so no botao (fora de regiao viva) e a espera e anunciada duas vezes: enviado,
+// e depois "ja pode pedir outro", na mesma linha de status.
+describe("ConfirmEmailGate resend countdown for screen readers", () => {
+  it("keeps the ticking number out of live regions and announces once when resend is back", async () => {
+    render(<ConfirmEmailGate email="learner@example.com" />);
+
+    // A regiao ja existe, vazia, antes do primeiro envio: regiao que nasce
+    // cheia costuma nao ser lida.
+    const status = screen.getAllByRole("status").find((element) => element.textContent === "");
+    expect(status).toBeDefined();
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "auth.signup.confirmResend" }));
+    });
+    // O texto entra no MESMO elemento.
+    expect(screen.getByText("auth.signup.confirmResent")).toBe(status);
+    expect(status).not.toHaveTextContent("auth.signup.confirmResendReady");
+    const countdown = screen.getByRole("button", { name: "auth.signup.confirmResendIn" });
+    expect(countdown).toBeDisabled();
+    expect(countdown.closest("[role='status'], [aria-live]")).toBeNull();
+
+    // A espera de 60 s continua a mesma.
+    for (let second = 0; second < 59; second += 1) await tick(1000);
+    expect(status).not.toHaveTextContent("auth.signup.confirmResendReady");
+    await tick(1000);
+
+    expect(status).toHaveTextContent("auth.signup.confirmResendReady");
+    expect(screen.getByRole("button", { name: "auth.signup.confirmResend" })).toBeEnabled();
+    expect(mocks.resendSignupConfirmation).toHaveBeenCalledTimes(1);
   });
 });
