@@ -129,9 +129,12 @@ export function NotificationRow({
           {formatNotificationTime(notification.createdAt, t, locale)}
         </p>
       </div>
+      {/* O ponto era o unico sinal de "nao lida" e o leitor de tela nao o
+          lia. Agora ele diz "Unread". */}
       {!notification.read ? (
         <span
-          aria-hidden="true"
+          role="img"
+          aria-label={t("accountNotifications.unread")}
           className="mt-2 size-2 shrink-0 rounded-full bg-[var(--color-accent)]"
         />
       ) : null}

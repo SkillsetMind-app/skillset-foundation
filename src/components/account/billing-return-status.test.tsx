@@ -82,7 +82,10 @@ describe("billing return status", () => {
     await tick(3000 * 15);
     expect(screen.getByRole("heading", { name: "Review your subscription status." })).toBeInTheDocument();
     expect(mocks.billing).toHaveBeenCalledTimes(15);
-    expect(screen.getByRole("link", { name: "Back to billing" })).toBeInTheDocument();
+    // Mesmo cartao das outras telas de retorno: a acao principal e a unica
+    // cheia, e o suporte aparece quando a confirmacao nao veio.
+    expect(screen.getByRole("link", { name: "Back to billing" })).toHaveClass("button-solid");
+    expect(screen.getByRole("link", { name: "Contact support" })).toHaveAttribute("href", "/support");
   });
 
   it("a assinatura que chega na segunda leitura confirma o teste", async () => {

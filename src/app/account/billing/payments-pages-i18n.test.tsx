@@ -97,6 +97,7 @@ it.each(["en", "es"] as const)("handles a return without session reference in %s
   render(await BillingReturnPage({}));
   expect(screen.getByRole("heading", { name: locale === "es" ? "Estado del pago sin verificar." : "Checkout status not verified." })).toBeInTheDocument();
   expect(screen.getByRole("link", { name: locale === "es" ? "Volver a la facturación" : "Back to billing" })).toHaveAttribute("href", "/account/billing?tab=overview");
+  expect(screen.getByRole("link", { name: locale === "es" ? "Contactar con soporte" : "Contact support" })).toHaveAttribute("href", "/support");
 });
 
 it.each([

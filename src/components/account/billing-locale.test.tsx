@@ -7,11 +7,11 @@ import type { Order } from "@/domain/order";
 import { getDictionary, translate } from "@/lib/i18n/dictionaries";
 
 const mocks = vi.hoisted(() => ({
-  user: { uid: "learner-1", roles: ["student"] }, tab: "overview", orders: [] as Order[], profile: { currentPlanId: "free", stripeCustomerId: "customer-test" },
+  user: { uid: "learner-1", roles: ["student"] }, authStatus: "authenticated", tab: "overview", orders: [] as Order[], profile: { currentPlanId: "free", stripeCustomerId: "customer-test" },
   refund: vi.fn(), portal: vi.fn(), replace: vi.fn(),
 }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn(), replace: mocks.replace }), useSearchParams: () => new URLSearchParams({ tab: mocks.tab }) }));
-vi.mock("@/components/auth/auth-provider", () => ({ useAuth: () => ({ status: "authenticated", user: mocks.user }) }));
+vi.mock("@/components/auth/auth-provider", () => ({ useAuth: () => ({ status: mocks.authStatus, user: mocks.user }) }));
 vi.mock("@/lib/data/orders", () => ({ subscribeToUserOrders: (_uid: string, next: (rows: Order[]) => void) => { next(mocks.orders); return vi.fn(); } }));
 vi.mock("@/lib/data/user-profiles", () => ({ subscribeToUserProfile: (_uid: string, next: (profile: typeof mocks.profile) => void) => { next(mocks.profile); return vi.fn(); } }));
 vi.mock("@/lib/payments/billing", () => ({
@@ -33,7 +33,7 @@ const order: Order = {
   amountMinor: 1950, currency: "USD", platformFeeBps: 1000, status: "paid", provider: "stripe", checkoutSessionId: null, paymentIntentId: null,
   createdAt: "2026-09-01T12:00:00Z", receiptUrl: "https://example.com/receipt",
 };
-beforeEach(() => { vi.clearAllMocks(); mocks.tab = "overview"; mocks.orders = []; mocks.user.roles = ["student"]; mocks.refund.mockResolvedValue(undefined); mocks.portal.mockResolvedValue(undefined); });
+beforeEach(() => { vi.clearAllMocks(); mocks.authStatus = "authenticated"; mocks.tab = "overview"; mocks.orders = []; mocks.user.roles = ["student"]; mocks.refund.mockResolvedValue(undefined); mocks.portal.mockResolvedValue(undefined); });
 afterEach(cleanup);
 
 describe("billing locale with real dictionaries", () => {
@@ -55,7 +55,9 @@ describe("billing locale with real dictionaries", () => {
     mount(<BillingTabs />);
     expect(screen.getByRole("tablist", { name: "Secciones de facturación" })).toBeTruthy();
     expect(screen.getByText("Gasto total")).toBeTruthy();
-    expect(screen.getByText("0 cursos comprados", { exact: false })).toBeTruthy();
+    // Cada numero uma vez: a contagem mora so na linha "Cursos comprados".
+    expect(within(screen.getByText("Cursos comprados").parentElement!).getByText("0")).toBeTruthy();
+    expect(screen.queryByText(/^\d+ cursos? comprados?$/)).toBeNull();
     fireEvent.click(screen.getByRole("tab", { name: "Compras" }));
     expect(mocks.replace).toHaveBeenCalledWith("/account/billing?tab=purchases", { scroll: false });
   });
@@ -64,11 +66,27 @@ describe("billing locale with real dictionaries", () => {
     mocks.tab = "purchases";
     const first = mount(<BillingTabs />);
     expect(screen.getByRole("heading", { name: "Aún no tienes compras." })).toBeTruthy();
+    // Sem a etiqueta "VACÍO" no ambar de pendente.
+    expect(screen.queryByText("Vacío")).toBeNull();
     first.unmount();
     mocks.tab = "payment-methods";
     mount(<BillingTabs />);
     expect(screen.getByRole("heading", { name: "Gestionados de forma segura por Stripe." })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Gestionar métodos de pago" })).toBeTruthy();
+  });
+
+  // Carregando: esqueleto no formato da aba, com a frase so para o leitor de tela.
+  it.each([
+    ["overview", "Cargando el resumen de facturación..."],
+    ["purchases", "Cargando tus compras..."],
+    ["payment-methods", "Cargando tus métodos de pago..."],
+  ])("shows a skeleton announced as loading on %s", (tab, label) => {
+    mocks.authStatus = "loading"; mocks.tab = tab;
+    mount(<BillingTabs />);
+    const status = screen.getByRole("status");
+    expect(status).toHaveTextContent(label);
+    expect(status.querySelector(".sr-only")).toHaveTextContent(label);
+    expect(status.querySelector("[aria-hidden='true'].animate-pulse")).not.toBeNull();
   });
 
   it("keeps course text and refund identity while translating confirmation and success", async () => {

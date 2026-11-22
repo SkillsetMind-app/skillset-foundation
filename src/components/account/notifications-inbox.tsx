@@ -8,6 +8,7 @@ import { NotificationRow } from "@/components/account/notification-row";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { useAuth } from "@/components/auth/auth-provider";
 import { HorizontalTabs } from "@/components/shared/horizontal-tabs";
+import { Button, buttonClasses } from "@/components/ui/button";
 import { notificationHref, type AppNotification } from "@/domain/notification";
 import {
   markAllNotificationsAsRead,
@@ -101,30 +102,18 @@ export function NotificationsInbox() {
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-[var(--color-ink-soft)]">
-          {unreadIds.length > 0
-            ? t("accountNotifications.unreadCount").replace("{count}", () => String(unreadIds.length))
-            : t("accountNotifications.caughtUp")}
-        </p>
-        <div className="flex items-center gap-2">
-          <Link
-            href="/account?tab=notifications"
-            className="rounded-md border border-[var(--color-line)] px-3 py-2 text-xs font-semibold text-[var(--color-primary)] transition hover:bg-[var(--color-surface-soft)]"
-          >
-            {t("accountNotifications.preferences")}
-          </Link>
-          {unreadIds.length > 0 ? (
-            <button
-              type="button"
-              onClick={handleMarkAll}
-              className="inline-flex items-center gap-1.5 rounded-md bg-[var(--color-primary)] px-3 py-2 text-xs font-semibold text-[var(--color-on-primary)] transition hover:opacity-90"
-            >
-              <CheckCheck aria-hidden="true" size={14} strokeWidth={2} />
-              {t("accountNotifications.markAll")}
-            </button>
-          ) : null}
-        </div>
+      {/* A contagem de nao lidas mora so na aba "Unread (N)": a frase "N
+          unread" aqui em cima repetia o mesmo numero. Os dois botoes sao os
+          da plataforma, com 44px de alvo. */}
+      <div className="flex flex-wrap items-center justify-end gap-3">
+        <Link href="/account?tab=notifications" className={buttonClasses({ variant: "outline" })}>
+          {t("accountNotifications.preferences")}
+        </Link>
+        {unreadIds.length > 0 ? (
+          <Button icon={<CheckCheck aria-hidden="true" size={16} strokeWidth={2} />} onClick={handleMarkAll}>
+            {t("accountNotifications.markAll")}
+          </Button>
+        ) : null}
       </div>
 
       <div className="overflow-hidden rounded-lg border border-[var(--color-line)] bg-white shadow-[var(--shadow-soft)]">
@@ -167,7 +156,7 @@ export function NotificationsInbox() {
                   <Link
                     href={notificationHref(notification) ?? notification.link}
                     onClick={() => void handleActivate(notification)}
-                    className="block transition hover:bg-[var(--color-surface-soft)]"
+                    className="block transition-colors duration-[var(--duration-base)] hover:bg-[var(--color-surface-soft)]"
                   >
                     <NotificationRow notification={notification} />
                   </Link>
@@ -175,7 +164,7 @@ export function NotificationsInbox() {
                   <button
                     type="button"
                     onClick={() => void handleActivate(notification)}
-                    className="block w-full text-left transition hover:bg-[var(--color-surface-soft)]"
+                    className="block w-full text-left transition-colors duration-[var(--duration-base)] hover:bg-[var(--color-surface-soft)]"
                   >
                     <NotificationRow notification={notification} />
                   </button>

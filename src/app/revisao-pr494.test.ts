@@ -29,7 +29,8 @@ describe("C1: o chip de status quebra de linha em vez de sair do cartao", () => 
 
 describe("C2: botoes sem .button-* mantem o piso de 44px (min-h-11)", () => {
   const sites: [string, string][] = [
-    ["components/auth/confirm-email-gate.tsx", "min-h-11 rounded-md bg-[var(--color-primary)]"],
+    // O "Send me a new link" do link vencido virou .button-solid (44px vem da
+    // classe), entao saiu desta lista de botoes sem .button-*.
     // "Wrong email? Change it" virou link de texto, mas segue com 44px de alvo.
     ["components/auth/confirm-email-gate.tsx", "min-h-11 rounded-md px-4 text-sm font-semibold text-[var(--color-primary)]"],
     ["components/auth/signup-form.tsx", '"min-h-11 rounded-md border-[1.5px]'],

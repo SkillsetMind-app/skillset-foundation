@@ -207,7 +207,8 @@ describe("neutral dark actions", () => {
     // bolinha azul do "✓" da lista de publicar, que virou o check do construtor.
     "teacher/course-landing-editor.tsx",
     "learn/learning-paths-rows.tsx",
-    "account/notifications-inbox.tsx",
+    // account/notifications-inbox.tsx saiu da lista: o "Mark all read" virou o
+    // Button da plataforma (.button-solid, com regra propria do tema escuro).
     "courses/course-landing-blocks.tsx",
   ])("uses the primary foreground on filled controls in %s", (file) => {
     const source = readFileSync(join(process.cwd(), "src/components", file), "utf8");

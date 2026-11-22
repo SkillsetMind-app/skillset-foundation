@@ -216,11 +216,13 @@ export function SecuritySettingsPanel() {
                 {t("accountSecurity.verification.description")}
               </p>
             </div>
+            {/* "Required" e aviso, nao erro: as cores de aviso da plataforma,
+                no lugar do rosa do vermelho antigo com texto dourado. */}
             <span
               className={`rounded-chip px-2 py-1 text-[10px] font-bold uppercase tracking-[0.14em] ${
                 emailVerified
                   ? "bg-white text-[var(--color-primary)]"
-                  : "bg-[rgba(178,34,52,0.08)] text-[var(--color-accent-fg)]"
+                  : "bg-[var(--color-warning-soft)] text-[var(--color-warning-fg)]"
               }`}
             >
               {t(emailVerified

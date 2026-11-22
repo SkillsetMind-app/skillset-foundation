@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { CircleCheck, Info } from "lucide-react";
 
+import { PaymentReturnCard } from "@/components/account/payment-return-card";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { buttonClasses } from "@/components/ui/button";
 import { PLAN_TRIAL_DAYS } from "@/data/plans";
@@ -59,9 +60,10 @@ export function BillingReturnStatus() {
   }, []);
 
   // O botao do estudio so existe depois da confirmacao. Esperando ou sem
-  // resposta, a unica saida e Billing: nada aqui pode parecer confirmado.
-  const backToBilling = (size: "md" | "lg") => (
-    <Link href="/account/billing?tab=overview" className={buttonClasses({ variant: "outline", size })}>
+  // resposta, a saida e Billing (e o suporte, quando a confirmacao nao veio):
+  // nada aqui pode parecer confirmado.
+  const backToBilling = (variant: "solid" | "outline") => (
+    <Link href="/account/billing?tab=overview" className={buttonClasses({ variant })}>
       {t("billingCheckout.backToBilling")}
     </Link>
   );
@@ -85,32 +87,36 @@ export function BillingReturnStatus() {
       ? t("billingCheckout.returnBody")
       : t("billingCheckout.confirmingBody");
 
+  // A regiao viva e uma so nos tres estados (mora no cartao): trocar o
+  // elemento a cada estado fazia o anuncio do resultado se perder.
   return (
-    <div className="px-4 py-8 text-center">
-      {/* Uma regiao viva so, igual nos tres estados: o leitor de tela anuncia
-          "confirmando" e depois o resultado. Trocar o elemento a cada estado
-          fazia o anuncio do resultado se perder. */}
-      <div role="status" aria-live="polite">
-        <div className="mx-auto grid size-12 place-items-center">
-          {confirmed ? (
-            <CircleCheck aria-hidden="true" size={28} className="text-[var(--color-success-fg)]" />
-          ) : gaveUp ? (
-            <Info aria-hidden="true" size={24} className="text-[var(--color-ink-soft)]" />
-          ) : (
-            <span className="size-12 rounded-full border-[3px] border-[rgba(26,54,93,0.12)] border-t-[var(--color-accent-fg)] motion-safe:animate-spin" />
-          )}
-        </div>
-        <h2 className="mt-3 text-2xl font-semibold text-[var(--color-primary)]">{heading}</h2>
-        <p className="mx-auto mt-3 max-w-md text-sm leading-7 text-[var(--color-ink-soft)]">{body}</p>
-      </div>
-      <div className="mt-6 flex flex-wrap justify-center gap-3">
-        {confirmed ? (
-          <Link href="/teach" className={buttonClasses({ variant: "solid", size: "lg" })}>
+    <PaymentReturnCard
+      icon={confirmed ? (
+        <CircleCheck aria-hidden="true" size={20} className="text-[var(--color-success-fg)]" />
+      ) : gaveUp ? (
+        <Info aria-hidden="true" size={20} />
+      ) : (
+        <span className="size-5 rounded-full border-2 border-[var(--color-line)] border-t-[var(--color-accent-fg)] motion-safe:animate-spin" />
+      )}
+      heading={heading}
+      body={body}
+      actions={confirmed ? (
+        <>
+          <Link href="/teach" className={buttonClasses({ variant: "solid" })}>
             {t("billingCheckout.openStudio")}
           </Link>
-        ) : null}
-        {backToBilling(confirmed ? "lg" : "md")}
-      </div>
-    </div>
+          {backToBilling("outline")}
+        </>
+      ) : gaveUp ? (
+        <>
+          {backToBilling("solid")}
+          <Link href="/support" className={buttonClasses({ variant: "outline" })}>
+            {t("billingCheckout.support")}
+          </Link>
+        </>
+      ) : (
+        backToBilling("outline")
+      )}
+    />
   );
 }

@@ -9,6 +9,7 @@ import { UpgradeModal } from "@/components/account/upgrade-modal";
 import { StatusChip } from "@/components/shared/status-chip";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { InlineAlert } from "@/components/ui/inline-alert";
 import {
   formatPlanCommission,
   hasRealStripePriceIds,
@@ -176,15 +177,17 @@ export function PlansPanel() {
 
   return (
     <section className="grid gap-5">
+      {/* Pendente = as cores de aviso da plataforma (as da faixa de status da
+          conta), no lugar da caixa rosa tracejada com titulo dourado. */}
       {!checkoutReady ? (
-        <div className="rounded-lg border border-dashed border-[rgba(178,34,52,0.32)] bg-[rgba(178,34,52,0.04)] p-4 text-sm leading-6 text-[var(--color-ink)]">
-          <p className="font-semibold text-[var(--color-accent-fg)]">
-            {t(priceIdsReady ? "accountPlans.checkoutSoon" : "accountPlans.setupPending")}
-          </p>
-          <p className="mt-1 text-[var(--color-ink-soft)]">
+        <InlineAlert
+          tone="warning"
+          title={t(priceIdsReady ? "accountPlans.checkoutSoon" : "accountPlans.setupPending")}
+        >
+          <p className="font-normal">
             {t(priceIdsReady ? "accountPlans.checkoutSoonBody" : "accountPlans.setupPendingBody")}
           </p>
-        </div>
+        </InlineAlert>
       ) : null}
 
       {/* A assinatura num bloco próprio. Antes plano, preço, próxima cobrança,

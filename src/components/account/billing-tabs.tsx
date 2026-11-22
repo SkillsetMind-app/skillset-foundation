@@ -10,6 +10,7 @@ import { useAuth } from "@/components/auth/auth-provider";
 import { HorizontalTabs } from "@/components/shared/horizontal-tabs";
 import { ShortId } from "@/components/shared/short-id";
 import { StatusChip } from "@/components/shared/status-chip";
+import { EmptyState } from "@/components/ui/empty-state";
 import { plans } from "@/data/plans";
 import type { Order } from "@/domain/order";
 import type { UserProfile } from "@/domain/user-profile";
@@ -269,7 +270,7 @@ function OverviewTab({
   }, [isSignedIn, showPlan, billingRequest]);
 
   if (authResolving || isLoading || profileStatus === "loading") {
-    return <BillingNotice>{t("accountBilling.loadingOverview")}</BillingNotice>;
+    return <BillingSkeleton shape="overview" label={t("accountBilling.loadingOverview")} />;
   }
 
   if (!isSignedIn) {
@@ -315,11 +316,10 @@ function OverviewTab({
         <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
           {t("accountBilling.lifetimeSpend")}
         </p>
-        <p className="display-title mt-2 text-4xl text-[var(--color-primary)]">
+        {/* O valor em letra comum (a serifa e do titulo da pagina). A frase "N
+            cursos comprados" saiu: o numero ja esta na linha logo abaixo. */}
+        <p className="mt-2 text-3xl font-bold leading-tight tabular-nums text-[var(--color-primary)]">
           {formatMoney(spentMinor, currency, locale)}
-        </p>
-        <p className="mt-1 text-sm text-[var(--color-ink-soft)]">
-          {t(courseCount === 1 ? "accountBilling.coursePurchased" : "accountBilling.coursesPurchased").replace("{count}", () => String(courseCount))}
         </p>
 
         <dl className="mt-5 grid gap-px overflow-hidden rounded-md border fine-rule bg-[var(--color-line)]">
@@ -414,7 +414,7 @@ function PaymentMethodsTab({
 }) {
   const { t } = useTranslation();
   if (authResolving) {
-    return <BillingNotice>{t("accountBilling.loadingMethods")}</BillingNotice>;
+    return <BillingSkeleton shape="panel" label={t("accountBilling.loadingMethods")} />;
   }
 
   if (!isSignedIn) {
@@ -499,7 +499,7 @@ function PurchasesTab({
   const [refundFor, setRefundFor] = useState<Order | null>(null);
 
   if (authResolving) {
-    return <BillingNotice>{t("accountBilling.loadingPurchases")}</BillingNotice>;
+    return <BillingSkeleton shape="list" label={t("accountBilling.loadingPurchases")} />;
   }
 
   if (!isSignedIn) {
@@ -507,7 +507,7 @@ function PurchasesTab({
   }
 
   if (isLoading) {
-    return <BillingNotice>{t("accountBilling.loadingPurchases")}</BillingNotice>;
+    return <BillingSkeleton shape="list" label={t("accountBilling.loadingPurchases")} />;
   }
 
   if (error) {
@@ -518,11 +518,12 @@ function PurchasesTab({
   // client-side filtering hides real orders here.
   if (orders.length === 0) {
     return (
-      <BillingEmptyState
-        eyebrow={t("accountBilling.tabs.purchases")}
+      // O vazio padrao da plataforma, sem a etiqueta "EMPTY" no ambar de
+      // pendente: nada esta pendente, so nao ha compras.
+      <EmptyState
+        as="h3"
         title={t("accountBilling.noPurchases")}
-        detail={t("accountBilling.noPurchasesBody")}
-        statusLabel={t("accountBilling.empty")}
+        description={t("accountBilling.noPurchasesBody")}
       />
     );
   }
@@ -793,33 +794,50 @@ function BillingNotice({
   );
 }
 
-function BillingEmptyState({
-  eyebrow,
-  title,
-  detail,
-  statusLabel,
-}: {
-  eyebrow: string;
-  title: string;
-  detail: string;
-  statusLabel: string;
-}) {
+// F-03: cada aba carregava numa caixa tracejada de uma linha ("Loading your
+// billing overview...") que depois virava um layout bem mais alto. Agora
+// blocos no formato do que vem, no padrao do esqueleto do perfil: a frase fica
+// para o leitor de tela, os blocos nao. O pulso para no bloco global de
+// "reduzir movimento".
+const skeletonBlock = "bg-[var(--color-surface-strong)]";
+
+function BillingSkeleton({ label, shape }: { label: string; shape: "overview" | "list" | "panel" }) {
   return (
-    <div className="rounded-lg border border-dashed border-[var(--color-line-strong)] bg-[var(--color-surface-soft)] p-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-            {eyebrow}
-          </p>
-          <h3 className="display-title mt-3 text-3xl text-[var(--color-ink)]">
-            {title}
-          </h3>
-        </div>
-        <StatusChip status="pending" label={statusLabel} />
+    <div role="status">
+      <span className="sr-only">{label}</span>
+      <div aria-hidden="true" className="animate-pulse">
+        {shape === "overview" ? (
+          <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
+            <div className="grid gap-3 rounded-lg border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-5">
+              <div className={`h-3 w-2/5 rounded-sm ${skeletonBlock}`} />
+              <div className={`h-8 w-1/2 rounded-md ${skeletonBlock}`} />
+              <div className={`mt-2 h-24 rounded-md ${skeletonBlock}`} />
+              <div className={`mt-2 h-11 w-2/5 rounded-md ${skeletonBlock}`} />
+            </div>
+            <div className="grid content-start gap-3 rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)] p-5">
+              <div className={`h-3 w-3/5 rounded-sm ${skeletonBlock}`} />
+              <div className={`h-3 rounded-sm ${skeletonBlock}`} />
+              <div className={`h-3 rounded-sm ${skeletonBlock}`} />
+              <div className={`h-3 w-2/3 rounded-sm ${skeletonBlock}`} />
+              <div className={`mt-2 h-16 rounded-md ${skeletonBlock}`} />
+            </div>
+          </div>
+        ) : shape === "list" ? (
+          <div className="grid gap-3">
+            <div className={`h-4 w-28 rounded-sm ${skeletonBlock}`} />
+            {[0, 1, 2].map((row) => (
+              <div key={row} className={`h-28 rounded-lg ${skeletonBlock}`} />
+            ))}
+          </div>
+        ) : (
+          <div className="grid gap-3 rounded-lg border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-5">
+            <div className={`h-3 w-1/4 rounded-sm ${skeletonBlock}`} />
+            <div className={`h-7 w-1/2 rounded-md ${skeletonBlock}`} />
+            <div className={`h-3 w-full max-w-2xl rounded-sm ${skeletonBlock}`} />
+            <div className={`mt-2 h-11 w-48 rounded-md ${skeletonBlock}`} />
+          </div>
+        )}
       </div>
-      <p className="mt-4 max-w-2xl text-sm leading-7 text-[var(--color-ink-soft)]">
-        {detail}
-      </p>
     </div>
   );
 }

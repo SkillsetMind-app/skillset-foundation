@@ -2357,12 +2357,13 @@ html[data-view-as] .site-header {
   padding: 0.85rem;
   color: var(--color-ink-soft);
   text-align: left;
+  /* Tempos e curva do catálogo de movimento (eram 180ms "ease" soltos). */
   transition:
-    background 180ms ease,
-    border-color 180ms ease,
-    color 180ms ease,
-    transform 180ms ease,
-    box-shadow 180ms ease;
+    background var(--duration-base) var(--ease-standard),
+    border-color var(--duration-base) var(--ease-standard),
+    color var(--duration-base) var(--ease-standard),
+    transform var(--duration-base) var(--ease-standard),
+    box-shadow var(--duration-base) var(--ease-standard);
 }
 
 .account-settings-tab:hover {
@@ -2475,9 +2476,10 @@ html[data-view-as] .site-header {
   border: 1px solid var(--color-line);
   border-radius: 999px;
   background: var(--color-surface-strong);
+  /* Tokens do catálogo de movimento, como a aba de configurações acima. */
   transition:
-    background 180ms ease,
-    border-color 180ms ease;
+    background var(--duration-base) var(--ease-standard),
+    border-color var(--duration-base) var(--ease-standard);
 }
 
 .settings-toggle span {
@@ -2491,7 +2493,7 @@ html[data-view-as] .site-header {
      themes (same fix already applied to the lesson-modal toggle). */
   background: var(--color-on-primary);
   box-shadow: 0 4px 10px rgba(26, 54, 93, 0.14);
-  transition: transform 180ms ease;
+  transition: transform var(--duration-base) var(--ease-standard);
 }
 
 .settings-toggle--on {
