@@ -352,18 +352,18 @@ export function OpsUserDossierPanel({ uid }: { uid: string }) {
       </Section>
 
       <Section title={s("privacy")} list>
-          {privacy.length ? (
-            <ul className="grid gap-2">
-              {privacy.map((request) => (
-                <li key={request.id} className={rowClass}>
-                  {request.type && REQUEST_TYPES.has(request.type)
-                    ? t(`platform.ops.accountRequestsPanel.types.${request.type}`)
-                    : request.type}
-                  <StatusChip status={request.status ?? "pending"} /> {date(request.requested_at)}
-                </li>
-              ))}
-            </ul>
-          ) : none}
+        {privacy.length ? (
+          <ul className="grid gap-2">
+            {privacy.map((request) => (
+              <li key={request.id} className={rowClass}>
+                {request.type && REQUEST_TYPES.has(request.type)
+                  ? t(`platform.ops.accountRequestsPanel.types.${request.type}`)
+                  : request.type}
+                <StatusChip status={request.status ?? "pending"} /> {date(request.requested_at)}
+              </li>
+            ))}
+          </ul>
+        ) : none}
       </Section>
 
       <Section title={s("audit")}>
@@ -394,15 +394,15 @@ export function OpsUserDossierPanel({ uid }: { uid: string }) {
       </Section>
 
       <Section title={s("timeline")} list>
-          {timeline.length ? (
-            <ul className="grid gap-2">
-              {timeline.map((event, index) => (
-                <li key={`${event.kind}-${event.at}-${index}`} className="break-words">
-                  {date(event.at, true)} · {t(`${copy}.timelineKinds.${event.kind}`)}{event.label ? ` · ${event.label}` : ""}
-                </li>
-              ))}
-            </ul>
-          ) : none}
+        {timeline.length ? (
+          <ul className="grid gap-2">
+            {timeline.map((event, index) => (
+              <li key={`${event.kind}-${event.at}-${index}`} className="break-words">
+                {date(event.at, true)} · {t(`${copy}.timelineKinds.${event.kind}`)}{event.label ? ` · ${event.label}` : ""}
+              </li>
+            ))}
+          </ul>
+        ) : none}
       </Section>
 
       <Section title={s("behavior")}>
