@@ -83,10 +83,13 @@ describe("C3: latao fora de erro, aviso e exclusao", () => {
     expect(src.slice(src.lastIndexOf("<span", i), i)).toContain(dangerText);
   });
 
-  it("confirmar exclusao do curso usa button-danger, nao button-accent", () => {
+  // I-04: apagar e retirar abrem a mesma janela de perigo (ConfirmActionDialog,
+  // vermelho cheio); os dois botões do cartão são o variant="danger".
+  it("confirmar exclusao do curso usa a janela de perigo, nao button-accent", () => {
     const src = read("components/admin/managed-course-panel.tsx");
     expect(src).not.toContain("button-accent");
-    expect(src.match(/button-danger/g)?.length).toBeGreaterThanOrEqual(2);
+    expect(src.match(/variant="danger"/g)?.length).toBe(2);
+    expect(src.match(/<ConfirmActionDialog/g)?.length).toBe(2);
   });
 
   it("remover credencial: hover em danger-fg, sem latao", () => {

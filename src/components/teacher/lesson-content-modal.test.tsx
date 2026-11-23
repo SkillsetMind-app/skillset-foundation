@@ -801,6 +801,25 @@ describe("LessonContentModal — um video por aula", () => {
     renderModal();
     expect(screen.getByRole("status")).toHaveTextContent("We could not load lesson assets.");
   });
+
+  // F-11: a falha da lista era um beco (so a frase). "Try again" le de novo
+  // pela mesma recarga; o foco fica na janela quando o botao some.
+  it("o erro de carga tem Try again, que le os arquivos de novo", async () => {
+    subscribeOutcome = "fail";
+    reloadServesCurrentAssets = true;
+    currentAssets = [videoAsset()];
+    try {
+      renderModal();
+      expect(screen.getByRole("status")).toHaveTextContent("We could not load lesson assets.");
+      fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+      await waitFor(() => expect(screen.queryByText("We could not load lesson assets.")).not.toBeInTheDocument());
+      expect(screen.queryByRole("button", { name: /Try again|Trying again/ })).toBeNull();
+      expect(screen.getByRole("dialog")).toHaveFocus();
+      expect(subscribed).toHaveBeenCalledTimes(1);
+    } finally {
+      reloadServesCurrentAssets = false;
+    }
+  });
 });
 
 describe("LessonContentModal — video tab", () => {

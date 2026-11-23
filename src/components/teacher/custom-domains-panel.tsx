@@ -416,7 +416,7 @@ export function CustomDomainsPanel() {
                     onChange={(event) => setHostname(event.target.value)}
                     placeholder={t("teach.customDomains.hostnamePlaceholder")}
                     disabled={atQuota || adding}
-                    className="field-input field-input--inline min-w-0 flex-1 font-mono disabled:opacity-50"
+                    className="field-input field-input--inline min-w-0 flex-1 font-mono disabled:opacity-60"
                   />
                   <Button type="submit" disabled={atQuota || adding || !hostname.trim()}>
                     {adding ? <Loader2 className="h-4 w-4 animate-spin" /> : null}

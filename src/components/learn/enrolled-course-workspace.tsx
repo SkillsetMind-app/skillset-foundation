@@ -2333,7 +2333,9 @@ function LessonContentPanel({
   );
 
   return (
-    <div className="member-lesson-panel">
+    // F-02: o painel diz que esta carregando enquanto o conteudo ou os anexos
+    // nao chegam; o anuncio e um so, o do palco (os comentarios nao repetem).
+    <div className="member-lesson-panel" aria-busy={!locked && (isLoadingContent || isLoadingAssets) ? true : undefined}>
       <div className="member-lesson-panel__head">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">

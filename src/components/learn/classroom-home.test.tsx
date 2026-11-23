@@ -572,9 +572,13 @@ describe("sala de aula com matricula real", () => {
 
     expect(document.querySelector("#member-lesson-player .member-video-stage")).not.toBeNull();
     expect(screen.getByText("Loading lesson content...")).toBeInTheDocument();
+    // F-02: o painel fica ocupado e o "carregando" e um aviso so, o do palco.
+    expect(document.querySelector(".member-lesson-panel")).toHaveAttribute("aria-busy", "true");
+    expect(screen.getAllByRole("status").filter((status) => /Loading/.test(status.textContent ?? ""))).toHaveLength(1);
 
     act(() => emit(new Map()));
     expect(document.querySelector("#member-lesson-player .member-video-stage")).toBeNull();
+    expect(document.querySelector(".member-lesson-panel")).not.toHaveAttribute("aria-busy");
   });
 
   it("aula de texto: sem caixa de video, e o texto vem antes dos comentarios", () => {

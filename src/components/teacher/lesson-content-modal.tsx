@@ -32,6 +32,7 @@ import {
   type LessonVideoSourcePickerHandle,
 } from "@/components/teacher/lesson-video-source-picker";
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { Button } from "@/components/ui/button";
 import { BunnyVideoPlayer } from "@/components/courses/bunny-video-player";
 import { TrustedEmbedPlayer } from "@/components/learn/trusted-embed-player";
 import { ProtectedAssetPreview } from "@/components/shared/protected-asset-preview";
@@ -375,6 +376,28 @@ export function LessonContentModal({
   const dialogRef = useRef<HTMLElement>(null);
 
   useModalFocus(dialogRef, variant === "dialog");
+
+  // F-11: a falha da lista de arquivos era um beco, so a frase. A frase segue
+  // onde ja e anunciada (no campo do link, no aviso do envio, no formulario de
+  // envio), entao aqui vem so a saida: "Try again" le de novo pela mesma recarga
+  // do fim do envio. O foco vai antes para a janela, porque o botao some quando
+  // a lista chega.
+  const [retryingAssets, setRetryingAssets] = useState(false);
+  async function retryAssets() {
+    if (retryingAssets) return;
+    dialogRef.current?.focus();
+    setRetryingAssets(true);
+    try {
+      await assetsReloadRef.current?.();
+    } finally {
+      setRetryingAssets(false);
+    }
+  }
+  const assetsRetry = loadErrorMessage ? (
+    <Button variant="outline" className="justify-self-start" loading={retryingAssets} onClick={() => void retryAssets()}>
+      {t(retryingAssets ? "appErrors.retrying" : "appErrors.retry")}
+    </Button>
+  ) : null;
 
   // Envio cancelado numa aula sem video: o cartao de envio sai com o botao
   // Cancelar focado e volta a area de soltar. O foco vai para o campo dela em
@@ -1150,6 +1173,7 @@ export function LessonContentModal({
                       : videoMode === "upload" ? loadErrorMessage : ""}
                 </p>
               )}
+              {assetsRetry}
 
               {videoAssets.length > 0 ? (
                   <LessonAssetList
@@ -1294,6 +1318,7 @@ export function LessonContentModal({
                 success={successMessage}
                 uploadKind="lesson_thumbnail"
               />
+              {assetsRetry}
               <LessonAssetList
                 assets={thumbnailAssets}
                 emptyLabel={t("creatorEditor.lesson.noThumbnail")}
@@ -1332,6 +1357,7 @@ export function LessonContentModal({
                 success={successMessage}
                 uploadKind="lesson_material"
               />
+              {assetsRetry}
               <LessonAssetList
                 assets={materialAssets}
                 emptyLabel={t("creatorEditor.lesson.noMaterials")}

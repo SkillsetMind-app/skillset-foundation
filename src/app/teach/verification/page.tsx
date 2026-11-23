@@ -20,7 +20,8 @@ export default async function CreatorVerificationPage() {
           fallback={
             // A forma da tela (titulo e cartao), na mesma coluna do painel:
             // antes era um cartao com uma frase, trocado por outro cartao.
-            <div className="mx-auto w-full max-w-3xl">
+            // Alinhada a esquerda, como o painel desde o T-01 (sem mx-auto).
+            <div className="w-full max-w-3xl">
               <CardPageSkeleton label={t("professionalBadge.loading")} />
             </div>
           }

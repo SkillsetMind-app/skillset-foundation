@@ -808,7 +808,7 @@ export function StorefrontSettingsPanel() {
                         onClick={() => reorder(index, -1)}
                         disabled={index === 0}
                         aria-label={t("teach.storefrontEditor.moveUp").replace("{title}", () => course.title)}
-                        className="min-h-11 min-w-11 rounded-md border border-[var(--color-line)] px-2.5 py-1.5 text-xs font-semibold text-[var(--color-ink-soft)] disabled:opacity-40"
+                        className="min-h-11 min-w-11 rounded-md border border-[var(--color-line)] px-2.5 py-1.5 text-xs font-semibold text-[var(--color-ink-soft)] disabled:opacity-60"
                       >
                         ↑
                       </button>
@@ -817,7 +817,7 @@ export function StorefrontSettingsPanel() {
                         onClick={() => reorder(index, 1)}
                         disabled={index === orderedCourses.length - 1}
                         aria-label={t("teach.storefrontEditor.moveDown").replace("{title}", () => course.title)}
-                        className="min-h-11 min-w-11 rounded-md border border-[var(--color-line)] px-2.5 py-1.5 text-xs font-semibold text-[var(--color-ink-soft)] disabled:opacity-40"
+                        className="min-h-11 min-w-11 rounded-md border border-[var(--color-line)] px-2.5 py-1.5 text-xs font-semibold text-[var(--color-ink-soft)] disabled:opacity-60"
                       >
                         ↓
                       </button>

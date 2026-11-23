@@ -230,6 +230,51 @@ describe("Alunos: todos os produtos numa lista", () => {
     expect(screen.getByRole("button", { name: "Show 50 more" })).toBeInTheDocument();
   });
 
+  // T-18: a lista nao tinha Export. Ele leva o recorte inteiro da busca e do
+  // filtro (nao so as 50 abertas), sem ler de novo.
+  it("Export leva tudo o que a busca e o filtro acham, nao so as linhas abertas", async () => {
+    mocks.getMyCourseStudents.mockResolvedValue([
+      ...Array.from({ length: 60 }, (_, index) => ({
+        ...enrollment(`e-${index}`, "c-1", `s-${index}`, `Aluno ${index}`, "active"),
+        email: `aluno${index}@example.com`,
+      })),
+      { ...enrollment("e-x", "c-2", "s-x", "Carla", "refunded"), email: "carla@example.com" },
+    ]);
+    render(<TeacherStudentsList />);
+    await screen.findByText("60 active students");
+    fireEvent.change(screen.getByRole("combobox", { name: "Filter by access" }), { target: { value: "active" } });
+    expect(screen.getAllByRole("row").slice(1)).toHaveLength(50);
+
+    const created: HTMLAnchorElement[] = [];
+    const realCreate = document.createElement.bind(document);
+    vi.spyOn(document, "createElement").mockImplementation((tag: string) => {
+      const element = realCreate(tag);
+      if (tag === "a") created.push(element as HTMLAnchorElement);
+      return element;
+    });
+    const blobs: string[] = [];
+    vi.stubGlobal("Blob", class {
+      constructor(parts: string[]) {
+        blobs.push(parts.join(""));
+      }
+    });
+    vi.stubGlobal("URL", { createObjectURL: () => "blob:x", revokeObjectURL: () => undefined });
+
+    fireEvent.click(screen.getByRole("button", { name: /Export/ }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Export as CSV" }));
+
+    const lines = blobs[0].split("\n");
+    expect(lines[0]).toBe("name,email,product,access,progressPercent,enrolledAt");
+    expect(lines).toHaveLength(61);
+    expect(blobs[0]).toContain("aluno59@example.com,Leadership,active,0,");
+    expect(blobs[0]).not.toContain("carla@example.com");
+    expect(created[0]?.download).toMatch(/^students-\d{4}-\d{2}-\d{2}\.csv$/);
+    expect(mocks.getMyCourseStudents).toHaveBeenCalledTimes(1);
+
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
   it("sem alunos, um estado vazio que explica", async () => {
     mocks.getMyCourseStudents.mockResolvedValue([]);
     render(<TeacherStudentsList />);
