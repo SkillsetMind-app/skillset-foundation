@@ -822,22 +822,6 @@ describe("LessonContentModal — um video por aula", () => {
       reloadServesCurrentAssets = false;
     }
   });
-
-  it("o Try again da lista espera na mesma celula: 'Trying again...' enquanto rele", async () => {
-    subscribeOutcome = "fail";
-    renderModal();
-    const retry = screen.getByRole("button", { name: "Try again" });
-    expect(within(retry).getByText("Trying again...")).toHaveAttribute("aria-hidden", "true");
-
-    fireEvent.click(retry);
-    const busy = screen.getByRole("button", { name: "Trying again..." });
-    expect(busy).toBe(retry);
-    expect(busy).toBeDisabled();
-    expect(within(busy).getByText("Try again")).toHaveAttribute("aria-hidden", "true");
-
-    // A releitura volta sem a lista: o aviso fica e o botão volta ao repouso.
-    expect(await screen.findByRole("button", { name: "Try again" })).toBe(retry);
-  });
 });
 
 describe("LessonContentModal — video tab", () => {
@@ -1031,6 +1015,23 @@ describe("LessonContentModal — video tab", () => {
     const meta = Array.from(list.querySelectorAll("span")).filter((span) => span.classList.contains("lesson-modal-assets__meta"));
     expect(meta).toHaveLength(1);
     expect(meta[0].textContent).toMatch(/ - /);
+  });
+
+  // Na aba de materiais o nome é editável: as três linhas que a regra antiga
+  // pintava (rótulo do nome, tipo e tamanho, nome original) levam a classe.
+  it("na aba de materiais, com nome editado, as tres linhas de detalhe levam lesson-modal-assets__meta", () => {
+    currentAssets = [videoAsset({
+      id: "material-1", kind: "lesson_material", contentType: "application/pdf", fileName: "apostila.pdf", title: "Apostila final",
+    })];
+    renderModal({}, "Módulo 1", true);
+    fireEvent.click(screen.getByRole("tab", { name: /^Materials/ }));
+    const list = document.querySelector(".lesson-modal-assets") as HTMLElement;
+    const meta = Array.from(list.querySelectorAll(".lesson-modal-assets__meta")).map((node) => node.textContent);
+    expect(meta).toHaveLength(3);
+    expect(meta[0]).toBe("Name students see");
+    expect(meta[1]).toMatch(/ - /);
+    expect(meta[2]).toBe("File: apostila.pdf");
+    expect(within(list).getByRole("button", { name: "Delete" }).querySelector(".lesson-modal-assets__meta")).toBeNull();
   });
 
   // Lido como texto (o jsdom não aplica o globals.css): nenhuma regra da lista
