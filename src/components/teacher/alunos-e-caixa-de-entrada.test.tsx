@@ -193,10 +193,41 @@ describe("Alunos: todos os produtos numa lista", () => {
     expect(bodyRows()).toHaveLength(50);
     fireEvent.click(screen.getByRole("button", { name: "Show 50 more" }));
     expect(bodyRows()).toHaveLength(100);
+    // O foco segue para a primeira linha nova, onde a leitura continua.
+    expect(bodyRows()[50]).toHaveFocus();
     fireEvent.click(screen.getByRole("button", { name: "Show 20 more" }));
     expect(bodyRows()).toHaveLength(120);
+    // O ultimo clique tira o botao; o foco nao cai no body.
     expect(screen.queryByRole("button", { name: /Show \d+ more/ })).toBeNull();
+    expect(bodyRows()[100]).toHaveFocus();
     expect(mocks.getMyCourseStudents).toHaveBeenCalledTimes(1);
+  });
+
+  // Ir e voltar no filtro (ou buscar) recomeca nas primeiras 50: antes, depois
+  // de abrir tudo, as 120 voltavam de uma vez.
+  it("filtro ou busca novos recomecam nas primeiras 50", async () => {
+    mocks.getMyCourseStudents.mockResolvedValue(
+      Array.from({ length: 120 }, (_, index) => ({
+        ...enrollment(`e-${index}`, "c-1", `s-${index}`, `Aluno ${index}`, "active"),
+        enrolledAt: new Date(Date.UTC(2026, 0, 1) + index * 60_000).toISOString(),
+      })),
+    );
+    render(<TeacherStudentsList />);
+
+    await screen.findByText("120 active students");
+    const bodyRows = () => screen.getAllByRole("row").slice(1);
+    fireEvent.click(screen.getByRole("button", { name: "Show 50 more" }));
+    fireEvent.click(screen.getByRole("button", { name: "Show 20 more" }));
+    expect(bodyRows()).toHaveLength(120);
+    const access = screen.getByRole("combobox", { name: "Filter by access" });
+    fireEvent.change(access, { target: { value: "refunded" } });
+    fireEvent.change(access, { target: { value: "all" } });
+    expect(bodyRows()).toHaveLength(50);
+    fireEvent.click(screen.getByRole("button", { name: "Show 50 more" }));
+    expect(bodyRows()).toHaveLength(100);
+    fireEvent.change(screen.getByLabelText("Search students by name, e-mail or product"), { target: { value: "Aluno" } });
+    expect(bodyRows()).toHaveLength(50);
+    expect(screen.getByRole("button", { name: "Show 50 more" })).toBeInTheDocument();
   });
 
   it("sem alunos, um estado vazio que explica", async () => {

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
@@ -35,10 +35,25 @@ export function TeacherStudentsList() {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<StatusFilter>("all");
   const [visibleCount, setVisibleCount] = useState(PAGE);
+  // Indice da primeira linha que o "Show N more" abriu: o foco vai para ela.
+  // Sem isso, o ultimo clique tirava o botao da tela e o foco caia no body.
+  const [revealedFrom, setRevealedFrom] = useState<number | null>(null);
+  const tbodyRef = useRef<HTMLTableSectionElement>(null);
   // "Try again" pede a mesma leitura de novo (antes a saida era recarregar a
   // pagina inteira).
   const [attempt, setAttempt] = useState(0);
   const uid = user?.uid ?? null;
+
+  useEffect(() => {
+    if (revealedFrom !== null) tbodyRef.current?.rows[revealedFrom]?.focus();
+  }, [revealedFrom]);
+
+  // Busca ou filtro novo recomeca nas primeiras 50: depois de abrir 300, ir e
+  // voltar no filtro desenhava as 300 de uma vez.
+  const resetWindow = () => {
+    setVisibleCount(PAGE);
+    setRevealedFrom(null);
+  };
 
   useEffect(() => {
     if (!uid) {
@@ -134,7 +149,10 @@ export function TeacherStudentsList() {
           id="students-search"
           type="search"
           value={search}
-          onChange={(event) => setSearch(event.target.value)}
+          onChange={(event) => {
+            setSearch(event.target.value);
+            resetWindow();
+          }}
           placeholder={t("teach.studentsPage.searchPlaceholder")}
           className="field-input field-input--inline min-w-[12rem] flex-1 sm:max-w-72"
         />
@@ -144,7 +162,10 @@ export function TeacherStudentsList() {
         <select
           id="students-status"
           value={status}
-          onChange={(event) => setStatus(event.target.value as StatusFilter)}
+          onChange={(event) => {
+            setStatus(event.target.value as StatusFilter);
+            resetWindow();
+          }}
           className="field-input field-input--inline"
         >
           {statusFilters.map((option) => (
@@ -173,12 +194,16 @@ export function TeacherStudentsList() {
               </th>
             </tr>
           </thead>
-          <tbody>
-            {visible.map((student) => {
+          <tbody ref={tbodyRef}>
+            {visible.map((student, index) => {
               const name = student.displayName || t("courseRoster.unnamed");
               const course = encodeURIComponent(student.courseId);
               return (
-                <tr key={student.enrollmentId} className="border-b fine-rule last:border-b-0">
+                <tr
+                  key={student.enrollmentId}
+                  tabIndex={index === revealedFrom ? -1 : undefined}
+                  className="border-b fine-rule last:border-b-0"
+                >
                   <td className="py-3 pr-4">
                     {/* O nome abre o aluno na lista do produto. Antes eram um ou
                         dois botoes de 44px iguais em toda linha: uma parede na
@@ -219,7 +244,14 @@ export function TeacherStudentsList() {
       </div>
       )}
       {hiddenCount > 0 ? (
-        <Button variant="outline" className="mt-4" onClick={() => setVisibleCount((count) => count + PAGE)}>
+        <Button
+          variant="outline"
+          className="mt-4"
+          onClick={() => {
+            setRevealedFrom(visible.length);
+            setVisibleCount((count) => count + PAGE);
+          }}
+        >
           {t("teach.studentsPage.showMore").replace("{count}", () => String(Math.min(hiddenCount, PAGE)))}
         </Button>
       ) : null}
