@@ -169,9 +169,12 @@ export function CourseUnlockModal({
         aria-label={t("learn.paths.close")}
         onClick={onClose}
       />
-      <div className="modal-panel relative z-[75] flex w-full max-w-lg flex-col overflow-hidden bg-white shadow-[0_30px_80px_rgba(15,39,68,0.32)] sm:rounded-xl">
+      {/* O painel da casa do sm em diante (no celular, tela cheia). O
+          bg-white e a borda por classe ficam: dentro da sala é por esses
+          nomes que o fundo e o filete passam às cores do curso. */}
+      <div className="dialog-panel dialog-panel--md modal-panel relative z-[75] flex flex-col overflow-hidden border-[var(--color-line)] bg-white max-sm:rounded-none max-sm:border-0">
         <div className="relative aspect-[16/9] w-full overflow-hidden">
-          <CourseCover course={course} sizes="(min-width: 640px) 512px, 100vw" />
+          <CourseCover course={course} sizes="(min-width: 640px) 576px, 100vw" />
           <button
             type="button"
             onClick={onClose}

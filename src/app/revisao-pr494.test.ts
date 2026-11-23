@@ -119,7 +119,8 @@ describe("Plausivel 5: botao-texto com pelo menos 24px de area", () => {
     // Copiar, Cancelar do 2FA e "Request a refund" viraram botões do sistema
     // (.button-outline: 44px), acima do mínimo de 24px que este teste guarda.
     ["components/account/totp-mfa-section.tsx", "button-outline shrink-0 px-3 py-2 text-xs"],
-    ["components/account/totp-mfa-section.tsx", "button-outline px-3.5 py-2.5 text-xs"],
+    // O Cancelar do 2FA foi ao rodapé da casa, no tamanho dos outros (14px).
+    ["components/account/totp-mfa-section.tsx", "button-outline min-h-11 px-4 py-2.5 text-sm"],
     ["components/account/billing-tabs.tsx", "button-outline px-3 py-2 text-xs"],
     // O Pin saiu do cabecalho do cartao (PR #505) e mora nas acoes, com 44px.
     ["components/learn/community-item-actions.tsx", "min-h-11 rounded-md px-3 text-xs font-semibold"],

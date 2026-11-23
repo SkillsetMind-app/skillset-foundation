@@ -141,12 +141,12 @@ describe("aula de amostra: as quatro portas sincronizam os vídeos", () => {
   it("página da aula: marcar sincroniza a aula, desmarcar sincroniza nenhuma", async () => {
     openAt("courseId=course-1&tab=content&module=m1&lesson=l1");
     await renderBuilder();
-    fireEvent.click(screen.getByRole("button", { name: /^Settings/ }));
-    const toggle = () => screen.getByRole("button", { name: "Use this lesson as the free preview" });
+    fireEvent.click(screen.getByRole("tab", { name: /^Settings/ }));
+    const toggle = () => screen.getByRole("switch", { name: "Use this lesson as the free preview" });
 
     fireEvent.click(toggle());
     expect(sync).toHaveBeenCalledExactlyOnceWith("course-1", "l1");
-    expect(toggle()).toHaveAttribute("aria-pressed", "true");
+    expect(toggle()).toHaveAttribute("aria-checked", "true");
 
     // A mesma aula de novo: limpa, nunca sincroniza "l1" uma segunda vez.
     fireEvent.click(toggle());

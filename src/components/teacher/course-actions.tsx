@@ -240,7 +240,7 @@ export function DeleteOrArchiveCourseDialog({
         role="dialog"
         aria-modal="true"
         aria-label={t("creatorPanel.products.delete.aria").replace("{title}", () => courseTitle)}
-        className="modal-panel modal-panel-scroll relative w-full max-w-md rounded-xl border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-strong)] outline-none"
+        className="dialog-panel modal-panel modal-panel-scroll relative outline-none"
       >
         {/* O X é o Cancelar: some enquanto apaga ou arquiva, quando o
             Cancelar também trava. */}
@@ -254,6 +254,7 @@ export function DeleteOrArchiveCourseDialog({
             <X aria-hidden="true" size={18} />
           </button>
         )}
+        <div className="p-6">
         <p className={`pr-10 text-xs font-bold uppercase tracking-[0.2em] ${known ? "text-[var(--color-danger-fg)]" : "text-[var(--color-ink-muted)]"}`}>
           {known ? t(`${prefix}.eyebrow`) : t("creatorPanel.products.removeEyebrow")}
         </p>
@@ -309,8 +310,12 @@ export function DeleteOrArchiveCourseDialog({
           </InlineAlert>
         ) : null}
         </div>
+        </div>
 
-        <div className="mt-6 flex flex-wrap justify-end gap-3">
+        {/* O rodapé da casa: filete em cima e, abaixo do sm, empilha com a
+            ação em cima e o Cancelar embaixo (antes ficavam lado a lado e
+            quebravam soltos). Do sm em diante pode quebrar, como antes. */}
+        <div className="dialog-footer flex-wrap">
           <button
             type="button"
             onClick={onCancel}

@@ -70,7 +70,9 @@ export function UpgradeModal({
         aria-label={t("billingCheckout.close")}
         onClick={onClose}
       />
-      <div className="modal-panel relative z-[75] flex w-full max-w-5xl flex-col overflow-hidden bg-white shadow-[0_30px_80px_rgba(15,39,68,0.32)] sm:rounded-xl">
+      {/* O painel da casa do sm em diante; no celular segue em tela cheia,
+          sem canto nem borda. */}
+      <div className="dialog-panel dialog-panel--xl modal-panel relative z-[75] flex flex-col overflow-hidden max-sm:rounded-none max-sm:border-0">
         <header className="flex items-center justify-between gap-3 border-b border-[var(--color-line)] px-5 py-4 sm:px-6">
           <div>
             <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">

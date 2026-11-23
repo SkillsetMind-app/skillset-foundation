@@ -105,8 +105,10 @@ export function LessonListOverlay({
           recolhida, e tocar nela fechava a lista). Do sm em diante, o teto
           das janelas em svh (o 86vh contava a barra do navegador). A entrada
           (motion-panel-in) só sem "reduzir movimento"; antes aparecia num
-          corte seco. A lista rola por dentro. */}
-      <div className="motion-panel-in relative z-[75] flex w-full max-w-3xl flex-col overflow-hidden bg-white shadow-[0_30px_80px_rgba(15,39,68,0.32)] sm:max-h-[calc(100svh-3rem)] sm:rounded-xl">
+          corte seco. A lista rola por dentro. O painel é o da casa do sm em
+          diante; bg-white e a borda por classe ficam porque a sala troca as
+          cores do curso por esses nomes. */}
+      <div className="dialog-panel dialog-panel--lg motion-panel-in relative z-[75] flex flex-col overflow-hidden border-[var(--color-line)] bg-white max-sm:rounded-none max-sm:border-0 sm:max-h-[calc(100svh-3rem)]">
         <header className="flex items-start justify-between gap-3 border-b border-[var(--color-line)] px-5 py-4 sm:px-6">
           <div className="min-w-0">
             <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">

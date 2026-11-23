@@ -681,7 +681,7 @@ function RefundModal({
       onClick={busy ? undefined : onClose}
     >
       <div
-        className="modal-panel modal-panel-scroll relative w-full max-w-md rounded-xl border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-strong)]"
+        className="dialog-panel modal-panel modal-panel-scroll relative"
         onClick={(event) => event.stopPropagation()}
       >
         {/* O X faz o mesmo que o Cancelar (e o Concluído): some enquanto o
@@ -698,6 +698,7 @@ function RefundModal({
         )}
         {done ? (
           <>
+            <div className="p-6">
             <p className="pr-10 text-xs uppercase tracking-[0.22em] text-[var(--color-success-fg)]">
               {t("accountBilling.refundRequested")}
             </p>
@@ -707,7 +708,8 @@ function RefundModal({
             <p className="mt-3 text-sm leading-7 text-[var(--color-ink-soft)]">
               {t("accountBilling.refundFor")} <strong>{order.courseTitle}</strong> {t("accountBilling.refundSubmittedBody")}
             </p>
-            <div className="mt-6 flex justify-end">
+            </div>
+            <div className="dialog-footer">
               <button
                 type="button"
                 onClick={onClose}
@@ -719,6 +721,7 @@ function RefundModal({
           </>
         ) : (
           <>
+            <div className="p-6">
             <p className="pr-10 text-xs uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
               {t("accountBilling.refundRequest")}
             </p>
@@ -750,8 +753,11 @@ function RefundModal({
             {submitError ? (
               <InlineAlert tone="error" className="mt-4">{t(submitError)}</InlineAlert>
             ) : null}
+            </div>
 
-            <div className="mt-6 flex justify-end gap-3">
+            {/* O rodapé da casa: abaixo do sm empilha, o pedido em cima e o
+                Cancelar embaixo. */}
+            <div className="dialog-footer">
               <button
                 type="button"
                 onClick={onClose}
