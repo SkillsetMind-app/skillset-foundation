@@ -500,7 +500,7 @@ function AssetGroup({
                     type="button"
                     onClick={() => onDelete(asset)}
                     disabled={deletingAssetId === asset.id}
-                    className="button-danger px-3.5 py-2 text-xs disabled:opacity-60"
+                    className="button-danger px-3.5 py-2 text-xs"
                   >
                     {deletingAssetId === asset.id ? t("creatorEditor.lesson.deleting") : t("creatorEditor.lesson.delete")}
                   </button>

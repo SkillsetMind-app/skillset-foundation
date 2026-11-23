@@ -71,7 +71,7 @@ export function CertificateVerificationPanel() {
         <button
           type="submit"
           disabled={isChecking}
-          className="button-solid px-4 py-2.5 text-sm disabled:opacity-60"
+          className="button-solid px-4 py-2.5 text-sm"
         >
           {isChecking ? t("learnWave2.verification.checking") : t("learnWave2.verification.verify")}
         </button>

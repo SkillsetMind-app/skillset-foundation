@@ -356,7 +356,7 @@ function OverviewTab({
             onClick={() => setRefreshVersion((version) => version + 1)}
             disabled={billing === undefined}
             aria-busy={billing === undefined}
-            className="button-outline mt-3 max-w-full gap-2 whitespace-normal px-4 py-2 text-sm disabled:opacity-60"
+            className="button-outline mt-3 max-w-full gap-2 whitespace-normal px-4 py-2 text-sm"
           >
             <RefreshCw size={16} aria-hidden="true" className="shrink-0" />
             {t("accountBilling.refreshStatus")}
@@ -472,7 +472,7 @@ function PortalButton({ label }: { label: string }) {
         type="button"
         onClick={handleOpenPortal}
         disabled={busy}
-        className="button-outline px-4 py-2 text-sm disabled:opacity-60"
+        className="button-outline px-4 py-2 text-sm"
       >
         {busy ? t("accountBilling.openingStripe") : label}
       </button>
@@ -756,7 +756,7 @@ function RefundModal({
                 type="button"
                 onClick={onClose}
                 disabled={busy}
-                className="button-outline px-4 py-2 text-sm disabled:opacity-60"
+                className="button-outline px-4 py-2 text-sm"
               >
                 {t("accountBilling.cancel")}
               </button>
@@ -764,7 +764,7 @@ function RefundModal({
                 type="button"
                 onClick={handleSubmit}
                 disabled={busy}
-                className="button-solid px-4 py-2 text-sm disabled:opacity-60"
+                className="button-solid px-4 py-2 text-sm"
               >
                 {t(busy ? "accountBilling.submitting" : "accountBilling.submitRefund")}
               </button>

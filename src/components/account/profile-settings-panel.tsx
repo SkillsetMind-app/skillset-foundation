@@ -558,7 +558,7 @@ export function ProfileSettingsPanel() {
           <button
             type="submit"
             disabled={isSaving}
-            className="button-solid px-4 py-2.5 text-sm disabled:opacity-60"
+            className="button-solid px-4 py-2.5 text-sm"
           >
             {isSaving ? t("accountProfile.saving") : t("accountProfile.save")}
           </button>

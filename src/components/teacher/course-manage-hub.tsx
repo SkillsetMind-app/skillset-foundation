@@ -288,7 +288,7 @@ function MarketplaceHighlightPanel({
           type="button"
           onClick={() => void handleToggle()}
           disabled={saving || !canToggle}
-          className={`${featured ? "button-outline" : "button-solid"} px-4 py-2 text-xs disabled:cursor-not-allowed disabled:opacity-50`}
+          className={`${featured ? "button-outline" : "button-solid"} px-4 py-2 text-xs disabled:cursor-not-allowed`}
         >
           {saving
             ? t("creatorPanel.hub.highlight.saving")

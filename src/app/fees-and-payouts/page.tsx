@@ -86,7 +86,7 @@ export default async function FeesAndPayoutsPage() {
           {t("publicPages.fees.full_plan_comparison_sample_breakdowns_and")}{" "}
           <Link
             href="/pricing"
-            className="font-semibold text-[var(--color-primary)] underline underline-offset-2"
+            className="font-semibold text-[var(--color-primary)]! underline underline-offset-2"
           >
             {t("publicPages.fees.pricing_page")}
           </Link>

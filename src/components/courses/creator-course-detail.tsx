@@ -1207,7 +1207,7 @@ export function CreatorCourseDetail({
                 data-cta-focus
                 onClick={handleFreeEnrollment}
                 disabled={isEnrollingFree}
-                className="button-solid mt-6 w-full px-5 py-2.5 text-sm disabled:opacity-60"
+                className="button-solid mt-6 w-full px-5 py-2.5 text-sm"
               >
                 {cardActionLabel}
               </button>
@@ -1218,7 +1218,7 @@ export function CreatorCourseDetail({
                 onClick={handleCheckout}
                 disabled={!canCheckout || isCheckingOut}
                 aria-busy={(checkoutEnabled && pricePending) || undefined}
-                className="button-solid mt-6 min-h-12 w-full px-5 py-3 text-base font-semibold disabled:opacity-60"
+                className="button-solid mt-6 min-h-12 w-full px-5 py-3 text-base font-semibold"
               >
                 {cardActionLabel}
               </button>

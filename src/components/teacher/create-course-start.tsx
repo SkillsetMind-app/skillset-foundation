@@ -458,7 +458,7 @@ export function CreateCourseStart({ ownerId, initialFormat = "course" }: CreateC
                 aria-describedby={
                   submitBlockers.length > 0 ? "create-course-blockers" : undefined
                 }
-                className="w-full disabled:opacity-60 sm:w-auto"
+                className="w-full sm:w-auto"
               >
                 {isSaving ? t("courseCreation.creating") : t("courseCreation.create")}
                 {isSaving ? null : <ArrowRight aria-hidden="true" size={15} strokeWidth={1.9} />}

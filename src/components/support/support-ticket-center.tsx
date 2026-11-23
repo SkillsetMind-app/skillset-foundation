@@ -104,7 +104,7 @@ export function SupportTicketCenter() {
             <select
               value={category}
               onChange={(event) => setCategory(event.target.value as SupportTicketCategory)}
-              className="rounded-md border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
+              className="field-input"
             >
               {categories.map((item) => (
                 <option key={item} value={item}>
@@ -119,7 +119,7 @@ export function SupportTicketCenter() {
               value={subject}
               onChange={(event) => setSubject(event.target.value)}
               placeholder={t(`${copy}.subjectPlaceholder`)}
-              className="rounded-md border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
+              className="field-input"
             />
           </label>
           <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
@@ -129,7 +129,7 @@ export function SupportTicketCenter() {
               onChange={(event) => setMessage(event.target.value)}
               rows={6}
               placeholder={t(`${copy}.detailsPlaceholder`)}
-              className="resize-none rounded-md border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
+              className="field-input resize-none"
             />
           </label>
           {error ? (
@@ -147,7 +147,7 @@ export function SupportTicketCenter() {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="button-solid px-4 py-2.5 text-sm disabled:opacity-60 sm:justify-self-start"
+            className="button-solid px-4 py-2.5 text-sm sm:justify-self-start"
           >
             {t(`${copy}.${isSubmitting ? "creating" : "create"}`)}
           </button>

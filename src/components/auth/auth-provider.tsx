@@ -358,7 +358,7 @@ function LegalAcceptanceGate({ children }: { children: ReactNode }) {
               {t("legalAcceptance.agreeTerms")}{" "}
               <Link
                 href="/legal/terms"
-                className="font-semibold text-[var(--color-primary)] underline-offset-4 hover:underline"
+                className="font-semibold text-[var(--color-primary)]! underline-offset-4 hover:underline"
               >
                 {t("legalAcceptance.terms")}
               </Link>
@@ -377,7 +377,7 @@ function LegalAcceptanceGate({ children }: { children: ReactNode }) {
               {t("legalAcceptance.agreePrivacy")}{" "}
               <Link
                 href="/legal/privacy"
-                className="font-semibold text-[var(--color-primary)] underline-offset-4 hover:underline"
+                className="font-semibold text-[var(--color-primary)]! underline-offset-4 hover:underline"
               >
                 {t("legalAcceptance.privacy")}
               </Link>
@@ -398,7 +398,7 @@ function LegalAcceptanceGate({ children }: { children: ReactNode }) {
                 {t("legalAcceptance.agreeTeacherTerms")}{" "}
                 <Link
                   href="/legal/teacher-terms"
-                  className="font-semibold text-[var(--color-primary)] underline-offset-4 hover:underline"
+                  className="font-semibold text-[var(--color-primary)]! underline-offset-4 hover:underline"
                 >
                   {t("legalAcceptance.teacherTerms")}
                 </Link>
@@ -427,7 +427,7 @@ function LegalAcceptanceGate({ children }: { children: ReactNode }) {
           type="button"
           disabled={isSaving || !canAccept}
           onClick={handleAccept}
-          className="button-solid mt-5 w-full px-4 py-2.5 text-sm disabled:opacity-60"
+          className="button-solid mt-5 w-full px-4 py-2.5 text-sm"
         >
           {t(isSaving ? "legalAcceptance.saving" : "legalAcceptance.accept")}
         </button>

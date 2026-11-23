@@ -156,7 +156,7 @@ export function StudentMessagesInbox() {
           </p>
           <div aria-hidden="true" className="grid content-start gap-2">
             {[0, 1, 2].map((row) => (
-              <div key={row} className="h-[84px] animate-pulse rounded-md bg-[var(--color-surface-soft)]" />
+              <div key={row} className="h-[84px] animate-pulse rounded-md bg-[var(--color-surface-strong)]" />
             ))}
           </div>
         </div>
@@ -266,7 +266,7 @@ export function StudentMessagesInbox() {
                 <button
                   type="submit"
                   disabled={isSending || !draft.trim()}
-                  className="button-solid inline-flex min-h-11 w-fit items-center gap-2 px-4 py-2.5 text-sm disabled:opacity-60"
+                  className="button-solid inline-flex min-h-11 w-fit items-center gap-2 px-4 py-2.5 text-sm"
                 >
                   <Send size={15} aria-hidden="true" />
                   {isSending ? t("learnWave2.messages.sending") : t("learnWave2.messages.send")}

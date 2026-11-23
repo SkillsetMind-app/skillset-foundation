@@ -207,7 +207,7 @@ export function PaymentOperationsPanel() {
                   <dt>{t(`${copy}.user`)}</dt>
                   <dd>
                     <Link href={`/ops/users/${encodeURIComponent(order.userId)}`} title={order.userId} aria-label={order.userId}
-                      className="font-mono font-semibold text-[var(--color-primary)] underline underline-offset-2">
+                      className="font-mono font-semibold text-[var(--color-primary)]! underline underline-offset-2">
                       {shortId(order.userId)}
                     </Link>
                   </dd>

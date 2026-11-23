@@ -30,7 +30,7 @@ export default async function ResetPasswordPage() {
         {t("auth.forgot.footerPrompt")}{" "}
         <Link
           href="/auth?mode=signin"
-          className="font-semibold text-[var(--color-primary)]"
+          className="font-semibold text-[var(--color-primary)]!"
         >
           {t("auth.forgot.footerLink")}
         </Link>

@@ -100,7 +100,7 @@ function MarketplaceSkeleton({ label }: { label: string }) {
             {[0, 1].map((index) => (
               <div key={index} className="grid gap-2">
                 <div className="h-3 w-12 animate-pulse rounded bg-[var(--color-surface-strong)]" />
-                <div className="h-11 animate-pulse rounded-md bg-[var(--color-surface-soft)]" />
+                <div className="h-11 animate-pulse rounded-md bg-[var(--color-surface-strong)]" />
               </div>
             ))}
           </div>

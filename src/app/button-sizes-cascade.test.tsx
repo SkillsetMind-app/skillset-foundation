@@ -17,7 +17,7 @@ const root = process.cwd();
 const globalsPath = join(root, "src/app/globals.css");
 
 const PROBE_CLASSES =
-  "button-solid button-outline button-danger button-solid-light button-outline-light text-xs text-sm font-semibold font-normal py-2 py-2.5 px-3.5 text-[var(--color-accent-fg)] focus-visible:outline-[var(--focus-ring)] focus-visible:ring-[var(--focus-ring)]";
+  "button-solid button-outline button-danger button-solid-light button-outline-light text-xs text-sm font-semibold font-normal py-2 py-2.5 px-3.5 text-[var(--color-accent-fg)] focus-visible:outline-[var(--focus-ring)] focus-visible:ring-[var(--focus-ring)] disabled:opacity-40 field-input min-h-[88px] transition-colors text-[var(--color-primary)]!";
 
 async function compileGlobals(): Promise<Root> {
   // Só troca a varredura de arquivos por uma lista fixa de classes: o resto
@@ -39,12 +39,19 @@ type Candidate = {
 };
 
 // Aproximação suficiente para os seletores de botão: ids, classes/atributos/
-// pseudo-classes, elementos.
+// pseudo-classes, elementos. `:is()`/`:not()` valem o argumento mais pesado e
+// `:where()` vale zero, como na spec: contar `:is(.a, .b):is(:disabled, [x])`
+// como cinco classes fazia a regra de desligado vencer onde não vence.
 function specificity(selector: string): number {
-  const ids = (selector.match(/#[\w-]+/g) ?? []).length;
-  const classes = (selector.match(/\.[\w-]+|\[[^\]]*\]|:(?!:)[\w-]+/g) ?? []).length;
-  const tags = (selector.match(/(^|[\s>+~(])[a-z][\w-]*/g) ?? []).length;
-  return ids * 100 + classes * 10 + tags;
+  let nested = 0;
+  const flat = selector.replace(/:(is|not|where)\(([^()]*)\)/g, (_match, fn: string, args: string) => {
+    if (fn !== "where") nested += Math.max(...args.split(",").map((arg) => specificity(arg.trim())));
+    return "";
+  });
+  const ids = (flat.match(/#[\w-]+/g) ?? []).length;
+  const classes = (flat.match(/\.[\w-]+|\[[^\]]*\]|:(?!:)[\w-]+/g) ?? []).length;
+  const tags = (flat.match(/(^|[\s>+~(])[a-z][\w-]*/g) ?? []).length;
+  return ids * 100 + classes * 10 + tags + nested;
 }
 
 function readLayerOrder(css: Root): string[] {
@@ -57,7 +64,22 @@ function readLayerOrder(css: Root): string[] {
   return order;
 }
 
-function collect(css: Root, element: Element, props: Set<string>): Candidate[] {
+// O `:is()` com lista não é confiável no motor de seletores do jsdom: abre a
+// lista em seletores simples (`:is(.a, .b):is(:x, [y])` vira quatro) e casa
+// qualquer um. A especificidade segue sendo a do seletor original.
+function expandIs(selector: string): string[] {
+  const match = /:is\(([^()]*)\)/.exec(selector);
+  if (!match) return [selector];
+  const before = selector.slice(0, match.index);
+  const after = selector.slice(match.index + match[0].length);
+  return match[1].split(",").flatMap((arg) => expandIs(`${before}${arg.trim()}${after}`));
+}
+
+// `hover`: trata o elemento como se o mouse estivesse em cima (o seletor casa
+// sem o `:hover`, mas a especificidade conta o `:hover`).
+function collect(css: Root, element: Element, props: Set<string>, hover = false): Candidate[] {
+  const matchesAs = (selector: string) =>
+    expandIs(hover ? selector.replace(/:hover/g, "") : selector).some((simple) => element.matches(simple));
   const layerOrder = readLayerOrder(css);
   const unlayered = layerOrder.length;
   const candidates: Candidate[] = [];
@@ -80,7 +102,7 @@ function collect(css: Root, element: Element, props: Set<string>): Candidate[] {
 
     const matches = rule.selectors.some((selector) => {
       try {
-        return element.matches(selector);
+        return matchesAs(selector);
       } catch {
         return false;
       }
@@ -90,7 +112,7 @@ function collect(css: Root, element: Element, props: Set<string>): Candidate[] {
     const bestSelector = Math.max(
       ...rule.selectors.map((selector) => {
         try {
-          return element.matches(selector) ? specificity(selector) : -1;
+          return matchesAs(selector) ? specificity(selector) : -1;
         } catch {
           return -1;
         }
@@ -117,7 +139,14 @@ function collect(css: Root, element: Element, props: Set<string>): Candidate[] {
 // depois a camada mais TARDIA; entre importantes a ordem inverte (camada mais
 // cedo vence, sem-camada perde de todas); então especificidade, então ordem.
 function resolve(css: Root, element: Element, ...props: string[]): string | undefined {
-  const candidates = collect(css, element, new Set(props));
+  return pick(css, collect(css, element, new Set(props)));
+}
+
+function resolveHover(css: Root, element: Element, ...props: string[]): string | undefined {
+  return pick(css, collect(css, element, new Set(props), true));
+}
+
+function pick(css: Root, candidates: Candidate[]): string | undefined {
   const unlayered = readLayerOrder(css).length;
   const key = (candidate: Candidate) => [
     candidate.important ? 1 : 0,
@@ -264,6 +293,116 @@ describe("tamanho dos botões (P-16)", () => {
       }
     }
     expect(violations).toEqual([]);
+  });
+});
+
+// C-11: a opacidade de desligado vinha de cada chamada, em cinco valores. A
+// regra central fica fora de camada e vence a utility, então a chamada que
+// ainda pede 40% sai com os mesmos 60% de todo botão desligado.
+describe("botão desligado (C-11)", () => {
+  it("sai com 60% e o fundo de repouso, mesmo pedindo outra opacidade", () => {
+    const button = mount("button-solid disabled:opacity-40");
+    button.setAttribute("disabled", "");
+    expect(resolve(css, button, "opacity")).toBe("0.6");
+    expect(resolve(css, button, "background")).toBe("var(--color-primary)");
+  });
+
+  function disabled(className: string, wrapper?: Record<string, string>, off = true): Element {
+    const button = mount(className);
+    if (off) button.setAttribute("disabled", "");
+    if (wrapper) {
+      const box = document.createElement("div");
+      for (const [name, value] of Object.entries(wrapper)) box.setAttribute(name, value);
+      document.body.append(box);
+      box.append(button);
+    }
+    return button;
+  }
+
+  // Cada caso: o botão desligado tem, em repouso e com o mouse em cima, o
+  // mesmo desenho do botão ligado em repouso (no mesmo tema e escopo).
+  const member = { class: "member-classroom", "data-members-theme": "light" };
+  it.each([
+    ["button-solid", undefined, "background"],
+    ["button-outline", undefined, "background"],
+    // O par grande: o :hover dele (dois seletores de classe) vencia a regra
+    // de desligado e o "Back" apagado ia de cinza a navy.
+    ["button-outline button-lg", undefined, "border-color"],
+    // No escuro, a borda de repouso do tema escuro, não a do claro.
+    ["button-danger", { "data-theme": "dark" }, "border-color"],
+    ["button-outline", { "data-theme": "dark" }, "border-color"],
+    // O rótulo do contorno: o :hover troca para o navy escuro com !important.
+    ["button-outline", undefined, "color"],
+    ["button-outline", { "data-theme": "dark" }, "color"],
+    ["button-danger button-danger-solid", undefined, "background"],
+    // Área de membros: as regras do escopo pesam mais que a central.
+    ["button-solid", member, "background"],
+    ["button-outline", member, "border-color"],
+    ["button-icon", undefined, "color"],
+  ] as const)("%s desligado (%o): %s de repouso, também no hover", (className, wrapper, prop) => {
+    const props = prop === "background" ? ["background", "background-color"] : [prop];
+    const resting = resolve(css, disabled(className, wrapper, false), ...props);
+    expect(resting).toBeTruthy();
+    const button = disabled(className, wrapper);
+    expect(resolve(css, button, ...props)).toBe(resting);
+    expect(resolveHover(css, button, ...props)).toBe(resting);
+  });
+
+  // Prova de que o hover forçado funciona: o botão LIGADO muda.
+  it("ligado, o hover forçado escurece o fundo", () => {
+    const button = disabled("button-solid", undefined, false);
+    expect(resolveHover(css, button, "background")).toBe("var(--color-primary-dark)");
+  });
+
+  it("na área de membros o desligado não ganha sombra nem sobe no hover", () => {
+    const button = disabled("button-solid", { class: "member-classroom", "data-members-theme": "light" });
+    expect(resolveHover(css, button, "box-shadow")).toBe("none");
+    expect(resolveHover(css, button, "transform")).toBe("none");
+  });
+
+  it("o botão só de ícone desligado tem o cursor de bloqueado e os 60%", () => {
+    const button = disabled("button-icon");
+    expect(resolve(css, button, "cursor")).toBe("not-allowed");
+    expect(resolve(css, button, "opacity")).toBe("0.6");
+  });
+});
+
+// C-05: 44px em todo campo, a altura do botão ao lado; mas um min-h-* do JSX
+// (as caixas de texto de 88px da comunidade) continua valendo.
+describe("altura dos campos (C-05)", () => {
+  it("um campo .field-input tem no mínimo 44px", () => {
+    expect(resolve(css, mount("field-input", "input"), "min-height")).toBe("44px");
+  });
+
+  it("a caixa de texto que pede 88px continua com 88px", () => {
+    expect(resolve(css, mount("field-input min-h-[88px]", "textarea"), "min-height")).toBe("88px");
+  });
+});
+
+// C-09: 118 transições escritas à mão (`transition-colors` sem duração)
+// rodavam nos 150ms e na curva do Tailwind, ao lado de botões a 180ms.
+describe("tempo das transições (C-09)", () => {
+  it("uma utility transition-* sem duração usa os tokens de movimento", () => {
+    const element = mount("transition-colors");
+    expect(resolve(css, element, "transition-duration")).toContain("var(--default-transition-duration)");
+    expect(resolve(css, element, "transition-timing-function")).toContain(
+      "var(--default-transition-timing-function)",
+    );
+    expect(resolve(css, document.documentElement, "--default-transition-duration")).toBe("var(--duration-base)");
+    // A curva fica a do Tailwind (movimento do site público aprovado assim).
+    expect(resolve(css, document.documentElement, "--default-transition-timing-function")).toBe(
+      "cubic-bezier(0.4, 0, 0.2, 1)",
+    );
+  });
+});
+
+// `a { color: inherit; text-decoration: none; }` mora FORA de camada e vence
+// toda utility do Tailwind: um link que pede a cor de destaque herda a do pai
+// (o texto apagado em volta). Só o modificador `!` passa por cima.
+describe("cor de link", () => {
+  it("num <a>, a utility de cor sem ! herda; com ! sai com a cor pedida", () => {
+    expect(resolve(css, mount("text-[var(--color-accent-fg)]", "a"), "color")).toBe("inherit");
+    expect(resolve(css, mount("text-[var(--color-primary)]!", "a"), "color")).toBe("var(--color-primary)");
   });
 });
 

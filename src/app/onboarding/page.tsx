@@ -17,7 +17,7 @@ export default async function OnboardingPage() {
       footer={
         <>
           {t("auth.onboardingShell.footerPrompt")}{" "}
-          <Link href="/courses" className="font-semibold text-[var(--color-primary)]">
+          <Link href="/courses" className="font-semibold text-[var(--color-primary)]!">
             {t("auth.onboardingShell.footerLink")}
           </Link>
         </>

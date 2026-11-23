@@ -418,7 +418,7 @@ export function SaleList() {
         {t(`${copy}.stripeNote`)}{" "}
         <Link
           href="/account/payments"
-          className="font-semibold text-[var(--color-primary)] hover:underline"
+          className="font-semibold text-[var(--color-primary)]! hover:underline"
         >
           {t(`${copy}.learnMore`)}
         </Link>

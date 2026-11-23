@@ -755,7 +755,7 @@ export function LearnDashboard() {
             {t("learn.dashboard.refundsMoved")}{" "}
             <Link
               href="/account/billing?tab=purchases"
-              className="font-semibold text-[var(--color-primary)] hover:underline"
+              className="font-semibold text-[var(--color-primary)]! hover:underline"
             >
               {t("learn.dashboard.refundsMovedLink")}
             </Link>

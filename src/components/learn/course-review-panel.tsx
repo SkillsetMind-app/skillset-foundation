@@ -166,7 +166,7 @@ export function CourseReviewPanel({
           <button
             type="submit"
             disabled={!canReview || isSaving}
-            className="button-solid w-fit px-4 py-2.5 text-sm disabled:opacity-60"
+            className="button-solid w-fit px-4 py-2.5 text-sm"
           >
             {isSaving
               ? t("learn.classroom.review.saving")

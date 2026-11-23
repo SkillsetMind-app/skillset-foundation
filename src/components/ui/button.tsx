@@ -26,7 +26,7 @@ const variantClass: Record<ButtonVariant, string> = {
   // Sem classe global: fundo transparente que só ganha cor no hover. A única
   // variante que traz a própria transição (as outras vêm do CSS global).
   ghost:
-    "border border-transparent bg-transparent text-[var(--color-ink-soft)] transition-colors duration-200 hover:bg-[var(--color-surface-soft)] hover:text-[var(--color-ink)]",
+    "border border-transparent bg-transparent text-[var(--color-ink-soft)] transition-colors hover:bg-[var(--color-surface-soft)] hover:text-[var(--color-ink)]",
 };
 
 const sizeClass: Record<ButtonSize, string> = {
@@ -37,9 +37,11 @@ const sizeClass: Record<ButtonSize, string> = {
 };
 
 // Sem `transition` aqui: a utility (150ms) vencia a camada components e
-// brigava com o afundar de 120ms / soltar de 180ms do CSS global.
+// brigava com o afundar de 120ms / soltar de 180ms do CSS global. Os 60% de
+// desligado valem para o ghost; as outras variantes já os recebem da regra
+// central do globals.css.
 const base =
-  "inline-flex items-center justify-center gap-2 rounded-md font-semibold disabled:cursor-not-allowed disabled:opacity-50";
+  "inline-flex items-center justify-center gap-2 rounded-md font-semibold disabled:cursor-not-allowed disabled:opacity-60";
 
 /**
  * A forma em texto, para quem precisa de <Link> vestido de botão — 40 arquivos

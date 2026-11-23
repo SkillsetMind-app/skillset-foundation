@@ -421,7 +421,7 @@ export function TeacherWalletPanel() {
             type="button"
             onClick={refreshStripeStatus}
             disabled={isRefreshingStripe}
-            className="button-outline mt-5 w-full justify-center px-4 py-2.5 text-sm disabled:opacity-60"
+            className="button-outline mt-5 w-full justify-center px-4 py-2.5 text-sm"
           >
             <RefreshCw aria-hidden="true" size={14} strokeWidth={2} />
             {isRefreshingStripe

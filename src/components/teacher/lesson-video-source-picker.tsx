@@ -280,7 +280,7 @@ export function LessonVideoSourcePicker({ replaceButtonRef, linkHandleRef, ...pr
       <button
         ref={replaceButtonRef}
         type="button"
-        className="button-outline justify-self-start px-3 py-2 text-xs disabled:opacity-60"
+        className="button-outline justify-self-start px-3 py-2 text-xs"
         disabled={props.disabled}
         onClick={() => props.onModeChange(props.mode === "upload" ? "link" : "upload")}
       >

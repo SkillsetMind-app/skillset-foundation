@@ -182,7 +182,7 @@ export function AssistantPanel() {
           disabled={isSending || input.trim().length === 0}
           aria-label={t("publicPages.assistant.send_message")}
           // 44px, o alvo de toque mínimo (era 40px).
-          className="button-solid flex size-11 shrink-0 items-center justify-center rounded-md p-0 disabled:opacity-50"
+          className="button-solid flex size-11 shrink-0 items-center justify-center rounded-md p-0"
         >
           <Send className="h-4 w-4" aria-hidden="true" />
         </button>

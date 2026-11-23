@@ -93,9 +93,16 @@ describe("F-19: um tom só nos blocos de espera", () => {
     "components/teacher/teacher-members-area-hub.tsx",
     "components/teacher/teacher-inbox-questions.tsx",
     "components/teacher/teacher-messages-inbox.tsx",
+    // Sobras: a busca do catálogo, as mensagens do aluno e o diretório de
+    // professores (que pulsava um cartão branco com sombra).
+    "app/courses/page.tsx",
+    "app/learn/messages/page.tsx",
+    "components/learn/student-messages-inbox.tsx",
+    "components/instructors/instructors-directory.tsx",
   ])("%s pinta o osso em surface-strong", (file) => {
     const source = read(file);
     expect(source).not.toMatch(/animate-pulse[^"]*bg-\[var\(--color-surface-soft\)\]/);
+    expect(source).not.toMatch(/animate-pulse[^"]*bg-white/);
     expect(source).toMatch(/animate-pulse[^"]*bg-\[var\(--color-surface-strong\)\]/);
   });
 });

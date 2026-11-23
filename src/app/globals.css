@@ -252,6 +252,11 @@
   --radius-2xl: 16px;
   --radius-3xl: 16px;
   --radius-4xl: 16px;
+  /* Toda utility transition-* sem duração própria anda no tempo da casa
+     (eram os 150ms do Tailwind, e o controle feito à mão terminava antes do
+     botão do sistema ao lado). A curva das utilities fica a do Tailwind, de
+     propósito: o movimento do site público foi aprovado assim. */
+  --default-transition-duration: var(--duration-base);
 }
 
 @theme inline {
@@ -442,6 +447,12 @@ dialog.modal-panel::backdrop {
   .button-icon:hover {
     background: var(--color-surface-soft);
     color: var(--color-primary);
+  }
+
+  /* Desligado não reage ao mouse: fica o fundo e a cor de repouso. */
+  .button-icon:is(:disabled, [aria-disabled="true"]) {
+    background: transparent;
+    color: var(--color-ink-soft);
   }
 }
 
@@ -1746,11 +1757,70 @@ p {
    ganhava sombra com o mouse e afundava no clique, como se fosse clicável.
    Fica chato (sem sombra), parado e com o cursor de bloqueado. Vem DEPOIS de
    todos os :hover e :active acima, que têm a mesma especificidade: é a ordem
-   que faz esta regra valer. */
-:is(.button-solid, .button-outline, .button-accent, .button-danger, .button-solid-light, .button-outline-light):is(:disabled, [aria-disabled="true"]) {
+   que faz esta regra valer. A opacidade era escrita em cada chamada, com cinco
+   valores (30 a 70%); agora é uma só, daqui, e vence a utility da chamada
+   (regra fora de camada). */
+:is(.button-solid, .button-outline, .button-accent, .button-danger, .button-solid-light, .button-outline-light, .button-icon):is(:disabled, [aria-disabled="true"]) {
   cursor: not-allowed;
+  opacity: 0.6;
   transform: none;
   box-shadow: none;
+}
+
+/* O fundo e a borda também ficam os de repouso: no hover o "Save" apagado
+   ainda escurecia como se fosse clicável. Cada variante repete o próprio
+   desenho em repouso, com a especificidade do :hover e depois dele. */
+.button-solid:is(:disabled, [aria-disabled="true"]) {
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+}
+
+.button-outline:is(:disabled, [aria-disabled="true"]) {
+  border-color: var(--color-line-strong);
+  background: var(--color-surface);
+  /* O :hover troca o rótulo para o navy escuro com !important. */
+  color: var(--color-primary) !important;
+}
+
+[data-theme="dark"] .button-outline:is(:disabled, [aria-disabled="true"]) {
+  border-color: var(--color-line);
+}
+
+/* O par grande tem contorno navy em repouso, e o :hover dele (dois seletores
+   de classe) vencia a regra acima: o "Back" apagado do construtor ia de cinza
+   a navy sob o mouse. */
+.button-outline.button-lg:is(:disabled, [aria-disabled="true"]) {
+  border-color: var(--color-primary);
+}
+
+.button-danger:is(:disabled, [aria-disabled="true"]) {
+  border-color: rgba(178, 34, 52, 0.38);
+  background: var(--color-surface);
+}
+
+/* Mesmo peso da borda escura em repouso, e depois dela: sem isto o "Delete"
+   apagado ganhava no escuro a borda do tema claro. */
+[data-theme="dark"] .button-danger:is(:disabled, [aria-disabled="true"]) {
+  border-color: rgba(232, 128, 140, 0.5);
+}
+
+.button-danger.button-danger-solid:is(:disabled, [aria-disabled="true"]) {
+  border-color: var(--color-danger);
+  background: var(--color-danger);
+}
+
+.button-accent:is(:disabled, [aria-disabled="true"]) {
+  border-color: var(--color-accent);
+  background: var(--color-accent);
+}
+
+.button-solid-light:is(:disabled, [aria-disabled="true"]) {
+  border-color: var(--color-accent);
+  background: var(--color-accent);
+}
+
+.button-outline-light:is(:disabled, [aria-disabled="true"]) {
+  background: rgba(255, 255, 255, 0.1);
 }
 
 /* Hero conversion card — an always-light surface sitting on the always-navy
@@ -2669,9 +2739,18 @@ html[data-view-as] .site-header {
   line-height: 1.4;
   color: var(--color-ink);
   transition:
-    border-color 150ms ease,
-    box-shadow 150ms ease,
-    background-color 150ms ease;
+    border-color var(--duration-base) var(--ease-standard),
+    box-shadow var(--duration-base) var(--ease-standard),
+    background-color var(--duration-base) var(--ease-standard);
+}
+
+/* 44px, a altura do botão e da busca ao lado: select e data saíam de 38 a
+   46px conforme o navegador. Em camada, e não na regra acima, para um min-h-*
+   do JSX (as caixas de texto de 88px) continuar valendo. */
+@layer components {
+  .field-input {
+    min-height: 44px;
+  }
 }
 
 .field-input::placeholder {
@@ -6939,6 +7018,24 @@ html:has(#member-lesson-player) {
   box-shadow: none;
 }
 
+/* Desligado na área de membros: as regras acima têm mais peso que a central
+   (botão desligado), e o "Post" apagado da comunidade escurecia e ganhava
+   sombra no hover. Fica o desenho de repouso, sem sombra e parado. */
+.member-classroom[data-members-theme] .button-solid:is(:disabled, [aria-disabled="true"]),
+.member-classroom[data-members-theme] .button-accent:is(:disabled, [aria-disabled="true"]) {
+  border-color: var(--ma-accent);
+  background: var(--ma-accent);
+  box-shadow: none;
+  transform: none;
+}
+
+.member-classroom[data-members-theme] .button-outline:is(:disabled, [aria-disabled="true"]) {
+  border-color: var(--ma-line-2);
+  background: transparent;
+  box-shadow: none;
+  transform: none;
+}
+
 @media (max-width: 767.98px) {
   .member-classroom[data-members-theme] {
     border-radius: var(--radius-lg);
@@ -7121,7 +7218,7 @@ html:has(#member-lesson-player) {
 .platform-nav-section-chevron {
   margin-inline-start: auto;
   flex: 0 0 auto;
-  transition: transform 160ms ease;
+  transition: transform var(--duration-base) var(--ease-standard);
 }
 
 .platform-nav-section-chevron.is-open {
@@ -7284,8 +7381,8 @@ html:has(#member-lesson-player) {
   border-radius: var(--radius-lg);
   box-shadow: 0 12px 28px rgba(26, 54, 93, 0.04);
   transition:
-    border-color 180ms ease,
-    box-shadow 220ms ease;
+    border-color var(--duration-base) var(--ease-standard),
+    box-shadow var(--duration-base) var(--ease-standard);
 }
 /* Only metric / interactive dash-cards (anything inside an <a>, <button>,
    or with the .dash-card--interactive helper) get the hover lift.
@@ -7540,8 +7637,8 @@ button:hover > .dash-card,
   box-shadow: 0 10px 22px rgba(15, 39, 68, 0.18);
   text-decoration: none;
   transition:
-    transform 180ms ease,
-    box-shadow 200ms ease;
+    transform var(--duration-base) var(--ease-standard),
+    box-shadow var(--duration-base) var(--ease-standard);
 }
 
 .studio-payout-chip:hover {

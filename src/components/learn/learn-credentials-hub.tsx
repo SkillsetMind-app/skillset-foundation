@@ -353,7 +353,7 @@ function CredentialCard({ candidate }: { candidate: CredentialCandidate }) {
               type="button"
               onClick={handleIssue}
               disabled={isIssuing}
-              className="button-solid px-4 py-2.5 text-sm disabled:opacity-60"
+              className="button-solid px-4 py-2.5 text-sm"
             >
               {isIssuing ? t("learnWave2.credentials.issuing") : t("learnWave2.credentials.confirm")}
             </button>
@@ -364,7 +364,7 @@ function CredentialCard({ candidate }: { candidate: CredentialCandidate }) {
                 setIssueError("");
               }}
               disabled={isIssuing}
-              className="button-outline px-4 py-2.5 text-sm disabled:opacity-60"
+              className="button-outline px-4 py-2.5 text-sm"
             >
               {t("learnWave2.credentials.cancel")}
             </button>

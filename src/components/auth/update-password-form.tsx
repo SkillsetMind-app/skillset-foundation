@@ -216,7 +216,7 @@ export function UpdatePasswordForm({
           type="submit"
           disabled={isLoading || !passwordReady || !passwordsMatch}
           aria-describedby={updateDescribedBy}
-          className="button-solid mt-2 px-4 py-2.5 text-sm disabled:opacity-60"
+          className="button-solid mt-2 px-4 py-2.5 text-sm"
         >
           {t(isLoading ? "authFlow.recovery.updating" : "authFlow.recovery.update")}
         </button>

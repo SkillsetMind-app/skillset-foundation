@@ -285,7 +285,7 @@ export function TotpMfaSection({ emailVerified }: { emailVerified: boolean }) {
           type="button"
           onClick={handleStart}
           disabled={busy}
-          className="button-outline mt-4 px-3.5 py-2 text-xs disabled:opacity-60"
+          className="button-outline mt-4 px-3.5 py-2 text-xs"
         >
           {t(busy && !setup ? "accountSecurity.mfa.preparing" : "accountSecurity.mfa.setup")}
         </button>
@@ -335,7 +335,7 @@ export function TotpMfaSection({ emailVerified }: { emailVerified: boolean }) {
                     {t("accountSecurity.mfa.step2BeforeLink")}{" "}
                     <a
                       href={setup.otpauthUrl}
-                      className="font-semibold text-[var(--color-primary)] hover:underline"
+                      className="font-semibold text-[var(--color-primary)]! hover:underline"
                     >
                       {t("accountSecurity.mfa.setupLink")}
                     </a>{" "}
@@ -389,7 +389,7 @@ export function TotpMfaSection({ emailVerified }: { emailVerified: boolean }) {
                   {t("accountSecurity.mfa.onDevice")}{" "}
                   <a
                     href={setup.otpauthUrl}
-                    className="font-semibold text-[var(--color-primary)] hover:underline"
+                    className="font-semibold text-[var(--color-primary)]! hover:underline"
                   >
                     {t("accountSecurity.mfa.setupLink")}
                   </a>
@@ -423,7 +423,7 @@ export function TotpMfaSection({ emailVerified }: { emailVerified: boolean }) {
               <button
                 type="submit"
                 disabled={busy || code.length < 6}
-                className="button-solid px-3.5 py-2.5 text-xs disabled:opacity-60"
+                className="button-solid px-3.5 py-2.5 text-xs"
               >
                 {t(busy ? "accountSecurity.mfa.verifying" : "accountSecurity.mfa.enable")}
               </button>

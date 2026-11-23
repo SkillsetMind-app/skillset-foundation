@@ -1082,7 +1082,7 @@ export function LessonContentModal({
                   <p className="text-xs text-[var(--color-ink-soft)]">{t("creatorEditor.lesson.oldLinkHelp")}</p>
                   <button
                     type="button"
-                    className="button-outline justify-self-start px-3 py-2 text-xs disabled:opacity-60"
+                    className="button-outline justify-self-start px-3 py-2 text-xs"
                     // Durante o envio o botao de troca fica desabilitado: o
                     // foco nao teria para onde ir e o aviso se perdia.
                     disabled={!isEditable || isUploading}
@@ -1376,7 +1376,7 @@ export function LessonContentModal({
           </p>
           <button
             type="button"
-            className="button-solid px-4 py-2.5 text-sm disabled:opacity-60"
+            className="button-solid px-4 py-2.5 text-sm"
             onClick={requestClose}
             disabled={isUploading}
           >
@@ -1535,7 +1535,7 @@ function LessonUploadForm({
         type="submit"
         autoFocus={isVideo && Boolean(selectedFile)}
         disabled={!isEditable || isUploading || !selectedFile}
-        className="button-solid min-h-11 px-4 py-2.5 text-sm disabled:opacity-60"
+        className="button-solid min-h-11 px-4 py-2.5 text-sm"
       >
         {t(`creatorEditor.lesson.file.${isUploading ? "uploading" : "upload"}`)}
       </button>
@@ -1678,7 +1678,7 @@ function LessonAssetList({
                   onClick={() => onMove(index, -1)}
                   aria-disabled={index === 0 || isSavingOrder}
                   aria-label={t("creatorEditor.lesson.files.moveUp").replace("{title}", () => title)}
-                  className="button-outline min-h-11 min-w-11 px-2 aria-disabled:opacity-40"
+                  className="button-outline min-h-11 min-w-11 px-2"
                 >
                   <ArrowUp aria-hidden="true" size={16} />
                 </button>
@@ -1687,7 +1687,7 @@ function LessonAssetList({
                   onClick={() => onMove(index, 1)}
                   aria-disabled={index === assets.length - 1 || isSavingOrder}
                   aria-label={t("creatorEditor.lesson.files.moveDown").replace("{title}", () => title)}
-                  className="button-outline min-h-11 min-w-11 px-2 aria-disabled:opacity-40"
+                  className="button-outline min-h-11 min-w-11 px-2"
                 >
                   <ArrowDown aria-hidden="true" size={16} />
                 </button>
@@ -1701,7 +1701,7 @@ function LessonAssetList({
                 type="button"
                 onClick={() => onDelete(asset)}
                 disabled={deletingAssetId === asset.id}
-                className="button-danger px-3.5 py-2 text-xs disabled:opacity-60"
+                className="button-danger px-3.5 py-2 text-xs"
               >
                 {t(`creatorEditor.lesson.${deletingAssetId === asset.id ? "deleting" : "delete"}`)}
               </button>

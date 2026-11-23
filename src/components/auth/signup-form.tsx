@@ -287,7 +287,7 @@ export function SignupForm() {
           {" "}
           <Link
             href="/pricing"
-            className="font-semibold text-[var(--color-primary)] underline underline-offset-4"
+            className="font-semibold text-[var(--color-primary)]! underline underline-offset-4"
           >
             {t("auth.signup.plansLink")}
           </Link>
@@ -447,7 +447,7 @@ export function SignupForm() {
             key="identity-continue"
             type="submit"
             disabled={isLoading}
-            className="button-solid mt-1 px-4 py-2.5 text-sm disabled:opacity-60"
+            className="button-solid mt-1 px-4 py-2.5 text-sm"
           >
             {t("auth.signup.continue")}
           </button>
@@ -463,7 +463,7 @@ export function SignupForm() {
                 type="button"
                 disabled={isLoading}
                 onClick={handleGoogleSignup}
-                className="button-outline px-4 py-2.5 text-sm disabled:opacity-60"
+                className="button-outline px-4 py-2.5 text-sm"
               >
                 <GoogleMark />
                 {isLoading && pendingMethod === "google"
@@ -567,7 +567,7 @@ export function SignupForm() {
               (isCaptchaEnabled && !captchaToken)
             }
             aria-describedby={createDescribedBy}
-            className="button-solid mt-1 px-4 py-2.5 text-sm disabled:opacity-60"
+            className="button-solid mt-1 px-4 py-2.5 text-sm"
           >
             {isLoading
               ? t("auth.signup.creatingAccount")

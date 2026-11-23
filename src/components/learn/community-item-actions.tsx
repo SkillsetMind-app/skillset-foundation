@@ -257,7 +257,7 @@ export function CommunityItemActions({
             type="button"
             onClick={() => void confirmDelete()}
             disabled={busy}
-            className="button-danger min-h-11 px-3 text-sm disabled:opacity-60"
+            className="button-danger min-h-11 px-3 text-sm"
           >
             {t(busy ? "learn.community.actions.deleting" : "learn.community.actions.deleteYes")}
           </button>
@@ -316,7 +316,7 @@ export function CommunityItemActions({
             >
               {t("learn.community.report.cancel")}
             </button>
-            <button type="submit" disabled={busy} className="button-solid min-h-11 px-3 text-sm disabled:opacity-60">
+            <button type="submit" disabled={busy} className="button-solid min-h-11 px-3 text-sm">
               {t(busy ? "learn.community.report.sending" : "learn.community.report.send")}
             </button>
           </div>

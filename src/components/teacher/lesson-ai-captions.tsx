@@ -236,7 +236,7 @@ export function LessonAiCaptions({ courseId, lessonId, assetId }: { courseId: st
                     <>
                       <button
                         type="button"
-                        className="button-outline min-h-11 px-3 text-sm disabled:opacity-60"
+                        className="button-outline min-h-11 px-3 text-sm"
                         disabled={working || !edited}
                         aria-busy={busy === `save-${caption.language}` || undefined}
                         onClick={() => void run("saveCaption", { language: caption.language, vtt: texts[caption.language] },
@@ -246,7 +246,7 @@ export function LessonAiCaptions({ courseId, lessonId, assetId }: { courseId: st
                       </button>
                       <button
                         type="button"
-                        className="button-solid min-h-11 px-4 py-2.5 text-sm disabled:opacity-60"
+                        className="button-solid min-h-11 px-4 py-2.5 text-sm"
                         disabled={working || (state === "published" && !edited)}
                         aria-busy={busy === `publish-${caption.language}` || undefined}
                         onClick={() => void publish(caption)}
@@ -257,7 +257,7 @@ export function LessonAiCaptions({ courseId, lessonId, assetId }: { courseId: st
                   )}
                   <button
                     type="button"
-                    className="button-danger px-3.5 py-2 text-xs disabled:opacity-60"
+                    className="button-danger px-3.5 py-2 text-xs"
                     disabled={working}
                     onClick={() => ask({
                       title: t("creatorEditor.lesson.ai.confirmRemoveTitle"),

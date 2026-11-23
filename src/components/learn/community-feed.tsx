@@ -807,7 +807,7 @@ function Composer({
         <button
           type="submit"
           disabled={isSubmitting}
-          className="button-solid min-h-11 px-4 text-sm disabled:opacity-60"
+          className="button-solid min-h-11 px-4 text-sm"
         >
           {t(
             isSubmitting
@@ -1062,7 +1062,7 @@ function FeedCard({
             <button type="button" onClick={() => setReplyOpen(false)} className="button-outline min-h-11 px-3 text-sm">
               {t("learn.community.composer.cancel")}
             </button>
-            <button type="submit" disabled={isReplying} className="button-solid min-h-11 px-3 text-sm disabled:opacity-60">
+            <button type="submit" disabled={isReplying} className="button-solid min-h-11 px-3 text-sm">
               {t(isReplying ? "learn.community.composer.posting" : "learn.community.card.postReply")}
             </button>
           </div>

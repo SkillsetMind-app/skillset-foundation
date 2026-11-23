@@ -357,7 +357,7 @@ export function CustomDomainsPanel() {
           {loadError ? (
             <Button
               variant="outline"
-              className="justify-self-start aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
+              className="justify-self-start aria-disabled:cursor-not-allowed"
               aria-disabled={loading}
               onClick={(event) => {
                 if (loading) return;

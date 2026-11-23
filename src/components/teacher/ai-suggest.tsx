@@ -80,7 +80,7 @@ export function AiSuggest({
               <span className="min-w-0">{item}</span>
               <button
                 type="button"
-                className="button-outline min-h-11 shrink-0 px-3 text-sm disabled:opacity-60"
+                className="button-outline min-h-11 shrink-0 px-3 text-sm"
                 disabled={disabled}
                 onClick={() => pick(item)}
               >

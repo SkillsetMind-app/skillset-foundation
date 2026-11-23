@@ -104,7 +104,7 @@ export function ResetPasswordForm() {
       <button
         type="submit"
         disabled={isLoading || (isCaptchaEnabled && !captchaToken)}
-        className="button-solid mt-2 px-4 py-2.5 text-sm disabled:opacity-60"
+        className="button-solid mt-2 px-4 py-2.5 text-sm"
       >
         {t(isLoading ? "authFlow.recovery.sending" : "authFlow.recovery.send")}
       </button>

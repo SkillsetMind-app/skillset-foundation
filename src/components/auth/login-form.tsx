@@ -297,7 +297,7 @@ export function LoginForm() {
         <button
           type="submit"
           disabled={isLoading || mfaCode.length < 6}
-          className="button-solid mt-2 px-4 py-2.5 text-sm disabled:opacity-60"
+          className="button-solid mt-2 px-4 py-2.5 text-sm"
         >
           {isLoading ? t("auth.verifying") : t("auth.verify")}
         </button>
@@ -371,7 +371,7 @@ export function LoginForm() {
       <button
         type="submit"
         disabled={isLoading || (isCaptchaEnabled && !captchaToken)}
-        className="button-solid mt-2 px-4 py-2.5 text-sm disabled:opacity-60"
+        className="button-solid mt-2 px-4 py-2.5 text-sm"
       >
         {isLoading && pendingMethod === "email" ? t("auth.signingIn") : t("auth.signIn")}
       </button>
@@ -386,7 +386,7 @@ export function LoginForm() {
             type="button"
             disabled={isLoading}
             onClick={handleGoogleLogin}
-            className="button-outline px-4 py-2.5 text-sm disabled:opacity-60"
+            className="button-outline px-4 py-2.5 text-sm"
           >
             <GoogleMark />
             {isLoading && pendingMethod === "google"
