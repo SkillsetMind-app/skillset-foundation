@@ -1318,7 +1318,9 @@ export function CreatorCourseDetail({
             {canCheckout && !subscriptionInterval ? (
               isCouponOpen ? (
                 <label className="mt-4 block">
-                  <span className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--color-ink-soft)]">{t("publicCourses.coupon")}</span>
+                  {/* O rótulo da casa (o do Field): 14px e em caixa normal. Era o
+                      último rótulo de 12px em maiúsculas do cartão de compra. */}
+                  <span className="text-sm font-semibold text-[var(--color-ink)]">{t("publicCourses.coupon")}</span>
                   <input
                     value={couponCode}
                     autoFocus
