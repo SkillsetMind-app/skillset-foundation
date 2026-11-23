@@ -2,7 +2,7 @@
 
 import { UploadCloud } from "lucide-react";
 import Image from "next/image";
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
@@ -35,6 +35,7 @@ import { SavedNote } from "@/components/teacher/save-status-line";
 import { UploadProgressNote } from "@/components/teacher/upload-progress-note";
 import { BusyLabel } from "@/components/ui/busy-label";
 import { InlineAlert } from "@/components/ui/inline-alert";
+import { LoadErrorAlert } from "@/components/ui/load-error-alert";
 
 const goalOptions = [
   ["career_growth", "accountProfile.goals.career_growth"],
@@ -75,6 +76,10 @@ export function ProfileSettingsPanel() {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  // "Try again" da leitura do perfil: a mesma leitura do efeito, de novo.
+  const [loadAttempt, setLoadAttempt] = useState(0);
+  // A seção fica na tela nos dois desfechos e recebe o foco do "Try again".
+  const sectionRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     if (!user) {
@@ -121,7 +126,15 @@ export function ProfileSettingsPanel() {
     return () => {
       mounted = false;
     };
-  }, [user]);
+  }, [user, loadAttempt]);
+
+  // Volta à espera de sempre (o esqueleto): o formulário sai da tela enquanto
+  // lê, então Enter não salva os campos vazios do perfil que não carregou.
+  function retryLoad() {
+    setError("");
+    setIsLoading(true);
+    setLoadAttempt((attempt) => attempt + 1);
+  }
 
   const safeTimezoneOptions = useMemo(() => {
     if (timezoneOptions.includes(timezone)) {
@@ -289,7 +302,7 @@ export function ProfileSettingsPanel() {
     // formulário inteiro caía depois, empurrando tudo.
     const block = "bg-[var(--color-surface-strong)]";
     return (
-      <section className="settings-section-card">
+      <section ref={sectionRef} tabIndex={-1} className="settings-section-card outline-none">
         {header}
         <div role="status" className="mt-6">
           <span className="sr-only">{t("accountProfile.loading")}</span>
@@ -315,7 +328,7 @@ export function ProfileSettingsPanel() {
   }
 
   return (
-    <section className="settings-section-card">
+    <section ref={sectionRef} tabIndex={-1} className="settings-section-card outline-none">
       {header}
 
       <form className="mt-6 grid grid-cols-1 gap-4" onSubmit={handleSubmit} onChange={clearSuccess}>
@@ -549,7 +562,10 @@ export function ProfileSettingsPanel() {
           </div>
         </div>
 
-        {error ? (
+        {/* Só o erro de LEITURA ganha "Try again"; os de salvar e validar seguem como eram. */}
+        {error === "accountProfile.errors.load" ? (
+          <LoadErrorAlert onRetry={retryLoad} focusRef={sectionRef}>{t(error)}</LoadErrorAlert>
+        ) : error ? (
           <InlineAlert tone="error">{formatValidationMessage(error, t)}</InlineAlert>
         ) : null}
 

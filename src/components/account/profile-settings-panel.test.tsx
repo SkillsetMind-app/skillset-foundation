@@ -163,3 +163,38 @@ describe.each([
     expect(mocks.refreshUser).toHaveBeenCalledTimes(upload === mocks.uploadUserAvatar ? 1 : 0);
   });
 });
+
+describe("ProfileSettingsPanel - leitura que falha", () => {
+  beforeEach(() => {
+    mocks.getUserProfile.mockReset();
+  });
+  afterEach(cleanup);
+
+  it("ganha \"Try again\", que lê o perfil de novo uma vez só e mostra os dados", async () => {
+    let resolve!: (value: unknown) => void;
+    mocks.getUserProfile
+      .mockRejectedValueOnce(new Error("offline"))
+      .mockReturnValueOnce(new Promise((done) => { resolve = done; }));
+    render(<ProfileSettingsPanel />);
+    expect(await screen.findByText("We could not load your profile settings.")).toBeInTheDocument();
+    const retry = screen.getByRole("button", { name: "Try again" });
+    fireEvent.click(retry);
+    fireEvent.click(retry);
+    // Lendo: a espera de sempre, sem formulário para Enter salvar.
+    expect(screen.getByRole("status")).toHaveTextContent("Loading profile settings...");
+    expect(screen.queryByRole("button", { name: "Save profile" })).toBeNull();
+    await act(async () => resolve({ displayName: "Ana Souza", roles: ["student"] }));
+    expect(screen.getByLabelText("Public name")).toHaveValue("Ana Souza");
+    expect(mocks.getUserProfile).toHaveBeenCalledTimes(2);
+    expect(screen.queryByText("We could not load your profile settings.")).toBeNull();
+  });
+
+  it("erro que não é de leitura não ganha \"Try again\"", async () => {
+    mocks.getUserProfile.mockResolvedValue({ displayName: "Ana", roles: ["student"] });
+    render(<ProfileSettingsPanel />);
+    const input = await screen.findByLabelText<HTMLInputElement>("Upload profile photo");
+    fireEvent.change(input, { target: { files: [new File(["x"], "notes.txt", { type: "text/plain" })] } });
+    expect(await screen.findByText("Use a JPG, PNG, or WebP under 5 MB profile image.")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Try again" })).toBeNull();
+  });
+});
