@@ -94,6 +94,29 @@ describe("F-03 / I-3: esperas com forma, e as rotas que respondem na hora", () =
   });
 });
 
+describe("I-2: um anel da casa, que para quem pediu menos movimento", () => {
+  it("o anel compartilhado tem trilho que aparece no tema escuro e gira só em no-preference", () => {
+    const source = read("components/shared/skillset-spinner.tsx");
+    // O navy a 12% fixo sumia no fundo escuro, na espera de toda página protegida.
+    expect(source).not.toContain("rgba(26,54,93,0.12)");
+    expect(source).toContain("border-[var(--color-line)] border-t-[var(--color-accent-fg)] motion-safe:animate-spin");
+  });
+
+  it("a volta do pagamento usa o anel da casa, sem cópia à mão", () => {
+    const source = read("components/account/billing-return-status.tsx");
+    expect(source).toContain('<SpinnerRing size="sm" />');
+    expect(source).not.toMatch(/rounded-full border-2[^"]*animate-spin/);
+  });
+
+  // Sem `motion-safe:` o anel girava mesmo com "reduzir movimento" ligado.
+  it.each(["components/ui/button.tsx", "components/shared/protected-asset-preview.tsx", "components/shared/skillset-spinner.tsx", "components/account/billing-return-status.tsx"])(
+    "%s não gira sem motion-safe",
+    (file) => {
+      expect(read(file)).not.toMatch(/(?<!motion-safe:)\banimate-spin/);
+    },
+  );
+});
+
 describe("F-19: um tom só nos blocos de espera", () => {
   it.each([
     "app/auth/page.tsx",

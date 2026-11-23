@@ -10112,9 +10112,13 @@ button:hover > .dash-card,
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  /* 1. Troca de etapa: o painel novo sobe 8px e acende; a saída é seca. */
+  /* 1. Troca de etapa: o painel novo sobe 8px e acende; a saída é seca. É a
+     entrada compartilhada: etapa do construtor e da criação de curso, troca
+     de aba da sala, lista de aulas, os dois tours de boas-vindas, o menu de
+     ajuda, a ajuda da tela, a gaveta do celular e o Advisor no celular.
+     Todas no tempo da casa (eram 200ms soltos). */
   .motion-panel-in {
-    animation: motion-panel-in 200ms var(--ease-standard) backwards;
+    animation: motion-panel-in var(--duration-base) var(--ease-standard) backwards;
   }
 
   /* 2. Escolher uma opção: o selo latão cresce de 0,6 para 1 (formato na tela

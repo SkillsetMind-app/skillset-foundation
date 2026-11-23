@@ -39,6 +39,8 @@ describe("tempos da casa", () => {
     ".platform-nav-section-chevron",
     ".dash-card",
     ".studio-payout-chip",
+    // A entrada da gaveta do celular (e do Advisor no celular) era 200ms solto.
+    ".motion-panel-in",
   ])("%s anda nos tokens, sem milissegundo solto", (selector) => {
     const body = block(selector);
     expect(body).toMatch(/var\(--duration-(base|slow)\) var\(--ease-standard\)/);

@@ -221,7 +221,7 @@ export function ProtectedAssetDownload({
         className={loading ? `${className} opacity-60` : className}
       >
         {loading ? (
-          <Loader2 aria-hidden="true" size={16} className="animate-spin" />
+          <Loader2 aria-hidden="true" size={16} className="motion-safe:animate-spin" />
         ) : (
           <Download aria-hidden="true" size={16} />
         )}

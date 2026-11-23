@@ -69,7 +69,17 @@ export function PlatformShell({
   // classe do editor carregado, o esqueleto (e o erro, e a tela sem curso)
   // saia na coluna de 1280px e a pagina pulava para a largura toda depois.
   const builderRoute = pathname === "/teach/builder" || pathname.startsWith("/teach/builder/");
-  const teacherFrame = teachRoute && !builderRoute;
+  // A mesma coluna na conta (Ganhos abre pela barra do professor) e nas listas
+  // do aluno. Fora dela, de proposito: a sala de aula (largura toda por
+  // desenho), a area de membros e as telas de pagar plano (checkout, volta do
+  // checkout e a escolha do plano), que ficam como estavam.
+  const learnListRoute = (pathname === "/learn" || pathname.startsWith("/learn/"))
+    && !pathname.startsWith("/learn/courses/") && !pathname.startsWith("/learn/areas/");
+  const checkoutRoute = pathname.startsWith("/account/billing/upgrade")
+    || pathname.startsWith("/account/billing/return")
+    || pathname.startsWith("/account/plans");
+  const accountRoute = (pathname === "/account" || pathname.startsWith("/account/")) && !checkoutRoute;
+  const framed = (teachRoute && !builderRoute) || accountRoute || learnListRoute;
 
   return (
     <ThemeProvider>
@@ -126,12 +136,12 @@ export function PlatformShell({
                   <div
                     className={[
                       compact ? "space-y-4" : "space-y-6",
-                      // Estudio: uma coluna de no maximo 1280px, centrada. Num
-                      // monitor de 1920px a lista de vendas tinha o titulo na
-                      // borda esquerda e o valor 1500px depois. So a partir de
-                      // 1440px: abaixo disso nenhuma tela fica mais estreita
-                      // que antes.
-                      teacherFrame ? "mx-auto w-full min-[1440px]:max-w-7xl" : "",
+                      // Estudio, conta e listas do aluno: uma coluna de no
+                      // maximo 1280px, centrada. Num monitor de 1920px a lista
+                      // de vendas tinha o titulo na borda esquerda e o valor
+                      // 1500px depois. So a partir de 1440px: abaixo disso
+                      // nenhuma tela fica mais estreita que antes.
+                      framed ? "mx-auto w-full min-[1440px]:max-w-7xl" : "",
                     ].join(" ")}
                   >
                     {/* O cabecalho novo e so do estudio. Sala do aluno, conta,

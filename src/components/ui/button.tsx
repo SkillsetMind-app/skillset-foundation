@@ -88,7 +88,7 @@ export function Button({
       {...rest}
     >
       {loading ? (
-        <Loader2 aria-hidden="true" size={16} strokeWidth={2.2} className="shrink-0 animate-spin" />
+        <Loader2 aria-hidden="true" size={16} strokeWidth={2.2} className="shrink-0 motion-safe:animate-spin" />
       ) : (
         icon
       )}
