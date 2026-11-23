@@ -4,8 +4,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type MouseEvent } from "react";
 
+import { ClassroomLoading } from "@/components/learn/classroom-loading";
 import { EnrolledCourseWorkspace } from "@/components/learn/enrolled-course-workspace";
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { Button } from "@/components/ui/button";
 import type { ClassroomTab } from "@/domain/classroom-tabs";
 import type { TeacherCourse } from "@/domain/teacher-course";
 import { teacherCourseToLearningCourse } from "@/lib/data/published-courses";
@@ -95,12 +97,15 @@ export function CoursePreviewShell({
   const [course, setCourse] = useState<TeacherCourse | null>(null);
   const [isLoading, setIsLoading] = useState(shouldLoadCourse);
   const [hasLoadError, setHasLoadError] = useState(false);
+  // "Try again" da falha: assina de novo o mesmo curso (F-11).
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     if (!shouldLoadCourse) {
       return;
     }
 
+    // `attempt` nas dependências: cada "Try again" fecha a assinatura e abre outra.
     return subscribeToTeacherCourse(
       courseId,
       (nextCourse) => {
@@ -113,7 +118,7 @@ export function CoursePreviewShell({
         setIsLoading(false);
       },
     );
-  }, [courseId, shouldLoadCourse]);
+  }, [courseId, shouldLoadCourse, attempt]);
 
   if (!courseId) {
     return (
@@ -135,19 +140,26 @@ export function CoursePreviewShell({
     );
   }
 
-  // O mesmo cartão escuro do fallback da rota, com a mesma frase: antes a
-  // espera trocava dele para um cartão branco com "PREVIEW MODE", um título de
-  // 30px "Loading preview..." e um botão de voltar — três telas até a prévia.
+  // A espera da sala do aluno (a mesma do fallback da rota e da própria sala,
+  // com a mesma frase): antes era um cartão com uma frase, e a sala trocava
+  // para os blocos dela logo depois — duas esperas de cara diferente (F-03).
   if (isLoading) {
-    return (
-      <section role="status" className="rounded-lg border border-[var(--ma-line)] bg-[var(--ma-surface)] p-6">
-        <p className="text-sm text-[var(--ma-ink-soft)]">{t("creatorEditor.preview.serverLoading")}</p>
-      </section>
-    );
+    return <ClassroomLoading label={t("learnWave2.courseLoading.title")} />;
   }
 
   if (hasLoadError) {
-    return <PreviewState courseId={courseId} title={t("creatorEditor.preview.unavailable")} detail={t("creatorEditor.preview.loadError")} />;
+    return (
+      <PreviewState
+        courseId={courseId}
+        title={t("creatorEditor.preview.unavailable")}
+        detail={t("creatorEditor.preview.loadError")}
+        onRetry={() => {
+          setHasLoadError(false);
+          setIsLoading(true);
+          setAttempt((current) => current + 1);
+        }}
+      />
+    );
   }
 
   if (!course) {
@@ -180,7 +192,18 @@ export function CoursePreviewShell({
 
 // Erro e "sem curso": a frase de sempre, sem título de destaque, e a volta é o
 // construtor DESTE curso (antes, o início do estúdio).
-function PreviewState({ courseId, title, detail }: { courseId: string; title: string; detail: string }) {
+function PreviewState({
+  courseId,
+  title,
+  detail,
+  onRetry,
+}: {
+  courseId: string;
+  title: string;
+  detail: string;
+  /** Só na falha de leitura: lê o curso de novo, sem recarregar a página. */
+  onRetry?: () => void;
+}) {
   const { t } = useTranslation();
   const leavePreview = useLeavePreview(courseId);
   const href = builderHref(courseId);
@@ -195,13 +218,16 @@ function PreviewState({ courseId, title, detail }: { courseId: string; title: st
       <p className="mt-2 max-w-2xl text-sm leading-7 text-[var(--color-ink-soft)]">
         {detail}
       </p>
-      <Link
-        href={href}
-        onClick={(event) => leavePreview(event, href)}
-        className="button-outline mt-6 px-4 py-2.5 text-sm"
-      >
-        {t("creatorEditor.preview.back")}
-      </Link>
+      <div className="mt-6 flex flex-wrap gap-3">
+        {onRetry ? <Button onClick={onRetry}>{t("appErrors.retry")}</Button> : null}
+        <Link
+          href={href}
+          onClick={(event) => leavePreview(event, href)}
+          className="button-outline px-4 py-2.5 text-sm"
+        >
+          {t("creatorEditor.preview.back")}
+        </Link>
+      </div>
     </section>
   );
 }

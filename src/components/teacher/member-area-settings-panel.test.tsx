@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { I18nProvider } from "@/components/i18n/i18n-provider";
@@ -139,6 +139,28 @@ describe("MemberAreaSettingsPanel", () => {
     fireEvent.click(screen.getByRole("button", { name: "Save members area" }));
     await waitFor(() => expect(mocks.removeMemberAreaCover).toHaveBeenCalledWith("users/teacher-1/member-area/cover-1"));
     expect(mocks.saveMyMemberArea).toHaveBeenCalledWith(expect.objectContaining({ coverPath: "users/teacher-1/member-area/cover-2" }), "area-main");
+  });
+
+  // B-05 + F-12: o rótulo da capa não vira "Uploading..."; o andamento é a
+  // nota de envio, e o Save apagado diz por quê. A falha sai no aviso da casa.
+  it("enviando a capa: rótulo fixo, nota de envio e o Save diz por que espera", async () => {
+    let finish!: (path: string) => void;
+    mocks.uploadMemberAreaCover.mockReturnValueOnce(new Promise<string>((resolve) => { finish = resolve; }))
+      .mockRejectedValueOnce(new Error("offline"));
+    renderPanel();
+    await screen.findByRole("list");
+    fireEvent.change(screen.getByLabelText("Upload cover"), { target: { files: [new File(["x"], "capa.png", { type: "image/png" })] } });
+    expect(await screen.findByText("Sending...")).toBeTruthy();
+    expect(screen.queryByText("Uploading...")).toBeNull();
+    const save = screen.getByRole("button", { name: "Save members area" });
+    expect(save).toBeDisabled();
+    expect(save).toHaveAccessibleDescription("Wait for the cover to finish uploading, then save.");
+    await act(async () => finish("users/teacher-1/member-area/cover-9"));
+    expect(screen.getByRole("button", { name: "Save members area" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Save members area" })).not.toHaveAccessibleDescription();
+
+    fireEvent.change(screen.getByLabelText("Replace cover"), { target: { files: [new File(["x"], "capa.png", { type: "image/png" })] } });
+    expect(await screen.findByRole("alert")).toHaveTextContent("We could not upload this image.");
   });
 
   it("imagem fora do formato não sobe", async () => {

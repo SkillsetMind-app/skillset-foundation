@@ -158,8 +158,14 @@ export function LessonAiCaptions({ courseId, lessonId, assetId }: { courseId: st
         </p>
       ) : null}
 
+      {/* A forma da linha que vem (idioma + botão), não uma frase solta
+          (F-03). O aria-busy da seção já diz que está carregando. */}
       {captions === null ? (
-        <p className="text-sm text-[var(--color-ink-soft)]">{t("creatorEditor.lesson.ai.loading")}</p>
+        <div className="flex animate-pulse flex-wrap items-end gap-3">
+          <span className="sr-only">{t("creatorEditor.lesson.ai.loading")}</span>
+          <div aria-hidden="true" className="h-11 min-w-[12rem] flex-1 rounded-md bg-[var(--color-surface-strong)]" />
+          <div aria-hidden="true" className="h-11 w-40 rounded-md bg-[var(--color-surface-strong)]" />
+        </div>
       ) : (
         <>
           <div className="flex flex-wrap items-end gap-3">
