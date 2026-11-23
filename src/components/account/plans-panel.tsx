@@ -8,6 +8,7 @@ import { useTranslation } from "@/components/i18n/i18n-provider";
 import { UpgradeModal } from "@/components/account/upgrade-modal";
 import { PeriodTabs } from "@/components/shared/period-tabs";
 import { StatusChip } from "@/components/shared/status-chip";
+import { BusyLabel } from "@/components/ui/busy-label";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { InlineAlert } from "@/components/ui/inline-alert";
@@ -238,7 +239,7 @@ export function PlansPanel() {
           <div className="mt-4 flex flex-wrap gap-3">
             {currentPlanId !== "free" ? (
               <Button variant="outline" onClick={handleManage} disabled={busyAction === "portal"}>
-                {t(busyAction === "portal" ? "accountBilling.openingStripe" : "accountPlans.manage")}
+                <BusyLabel busy={busyAction === "portal"} idle={t("accountPlans.manage")} busyText={t("accountBilling.openingStripe")} />
               </Button>
             ) : null}
             {subscription && !subscription.cancelAtPeriodEnd ? (
@@ -251,7 +252,7 @@ export function PlansPanel() {
                 onClick={() => setConfirmingCancel(true)}
                 disabled={busyAction === "cancel"}
               >
-                {t(busyAction === "cancel" ? "planTrial.cancelling" : "planTrial.cancel")}
+                <BusyLabel busy={busyAction === "cancel"} idle={t("planTrial.cancel")} busyText={t("planTrial.cancelling")} />
               </Button>
             ) : null}
           </div>
@@ -382,7 +383,7 @@ export function PlansPanel() {
                     disabled={busyAction === "portal"}
                     className="button-outline min-h-11 w-full justify-center px-4 py-2.5 text-sm"
                   >
-                    {t(busyAction === "portal" ? "accountPlans.opening" : "accountPlans.change")}
+                    <BusyLabel busy={busyAction === "portal"} idle={t("accountPlans.change")} busyText={t("accountPlans.opening")} />
                   </button>
                 ) : (
                   <>

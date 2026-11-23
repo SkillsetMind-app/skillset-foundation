@@ -10,7 +10,7 @@ import { useTranslation } from "@/components/i18n/i18n-provider";
 import { CommunityItemActions } from "@/components/learn/community-item-actions";
 import { CommunityPostDrawer } from "@/components/learn/community-post-drawer";
 import { BuilderSkeleton } from "@/components/teacher/builder-skeleton";
-import { Button } from "@/components/ui";
+import { BusyLabel, Button } from "@/components/ui";
 import { InlineAlert } from "@/components/ui/inline-alert";
 import {
   groupCommentsByPost,
@@ -427,7 +427,11 @@ function WaitingCard({
                 {t("teacherCommunity.cancel")}
               </button>
               <button type="submit" disabled={isSaving} className="button-solid min-h-11 px-4 text-sm">
-                {t(isSaving ? "teacherCommunity.posting" : "teacherCommunity.postAnswer")}
+                <BusyLabel
+                  busy={isSaving}
+                  idle={t("teacherCommunity.postAnswer")}
+                  busyText={t("teacherCommunity.posting")}
+                />
               </button>
             </div>
           </div>
@@ -526,7 +530,11 @@ function UpdateComposer({
             {t("teacherCommunity.cancel")}
           </button>
           <button type="submit" disabled={isSaving} className="button-solid min-h-11 px-4 text-sm">
-            {t(isSaving ? "teacherCommunity.posting" : "teacherCommunity.postUpdate")}
+            <BusyLabel
+              busy={isSaving}
+              idle={t("teacherCommunity.postUpdate")}
+              busyText={t("teacherCommunity.posting")}
+            />
           </button>
         </div>
       </div>

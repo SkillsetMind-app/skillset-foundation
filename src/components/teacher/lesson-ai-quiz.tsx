@@ -167,6 +167,7 @@ export function LessonAiQuiz({ courseId, lessonId, assetId }: { courseId: string
             variant="outline"
             disabled={working}
             loading={busy === "generate"}
+            busyLabel={t("creatorEditor.lesson.ai.generatingQuiz")}
             onClick={() => {
               const generate = () => {
                 void run({ action: "generateQuiz" }, "generate", t("creatorEditor.lesson.ai.quizGenerated"));
@@ -182,9 +183,7 @@ export function LessonAiQuiz({ courseId, lessonId, assetId }: { courseId: string
               });
             }}
           >
-            {busy === "generate"
-              ? t("creatorEditor.lesson.ai.generatingQuiz")
-              : t(current ? "creatorEditor.lesson.ai.regenerateQuiz" : "creatorEditor.lesson.ai.generateQuiz")}
+            {t(current ? "creatorEditor.lesson.ai.regenerateQuiz" : "creatorEditor.lesson.ai.generateQuiz")}
           </Button>
           {current ? (
             <>

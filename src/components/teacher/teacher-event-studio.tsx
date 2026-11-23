@@ -10,7 +10,7 @@ import { useTranslation } from "@/components/i18n/i18n-provider";
 import { ExportTableButton } from "@/components/shared/export-table-button";
 import { CardStackSkeleton } from "@/components/teacher/builder-skeleton";
 import { MetricCard } from "@/components/teacher/metric-card";
-import { ConfirmDialog, EmptyState, InlineAlert } from "@/components/ui";
+import { BusyLabel, ConfirmDialog, EmptyState, InlineAlert } from "@/components/ui";
 import {
   describeTimeZone,
   formatEventDateTime,
@@ -797,14 +797,22 @@ export function TeacherEventStudio() {
                   aria-describedby={!editingEventId && !selectedCourse && !isLoading ? "event-submit-reason" : undefined}
                   className="button-solid min-h-11 gap-2 px-4 py-2.5 text-sm"
                 >
-                  {isSaving
-                    ? t(`${copy}.saving`)
-                    : formStep === 1
-                      ? t(`${copy}.continue`)
-                      : editingEventId
-                        ? t(`${copy}.submitEdit`)
-                        : t(`${copy}.submitNew`)}
-                  {formStep === 1 ? <ArrowRight aria-hidden="true" size={16} /> : null}
+                  {/* Só o passo 2 grava (o 1 só avança), então o passo e a
+                      edição não mudam durante a espera. */}
+                  <BusyLabel
+                    busy={isSaving}
+                    idle={
+                      <>
+                        {formStep === 1
+                          ? t(`${copy}.continue`)
+                          : editingEventId
+                            ? t(`${copy}.submitEdit`)
+                            : t(`${copy}.submitNew`)}
+                        {formStep === 1 ? <ArrowRight aria-hidden="true" size={16} /> : null}
+                      </>
+                    }
+                    busyText={t(`${copy}.saving`)}
+                  />
                 </button>
                 {editingEventId ? (
                   <button
@@ -961,9 +969,11 @@ export function TeacherEventStudio() {
                       disabled={actioningEventId === event.id}
                       className="button-outline px-3.5 py-2 text-xs"
                     >
-                      {actioningEventId === event.id
-                        ? t(`${copy}.working`)
-                        : t(`${copy}.cancelSession`)}
+                      <BusyLabel
+                        busy={actioningEventId === event.id}
+                        idle={t(`${copy}.cancelSession`)}
+                        busyText={t(`${copy}.working`)}
+                      />
                     </button>
                   ) : null}
                   <button

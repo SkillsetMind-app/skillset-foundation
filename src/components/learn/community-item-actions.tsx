@@ -3,6 +3,7 @@
 import { useEffect, useId, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { BusyLabel } from "@/components/ui/busy-label";
 import { InlineAlert } from "@/components/ui/inline-alert";
 import type { SkillsetUser } from "@/domain/auth";
 import type { CommunityComment, CommunityPost } from "@/domain/community-post";
@@ -259,7 +260,11 @@ export function CommunityItemActions({
             disabled={busy}
             className="button-danger min-h-11 px-3 text-sm"
           >
-            {t(busy ? "learn.community.actions.deleting" : "learn.community.actions.deleteYes")}
+            <BusyLabel
+              busy={busy}
+              idle={t("learn.community.actions.deleteYes")}
+              busyText={t("learn.community.actions.deleting")}
+            />
           </button>
           <button
             ref={keepRef}
@@ -317,7 +322,11 @@ export function CommunityItemActions({
               {t("learn.community.report.cancel")}
             </button>
             <button type="submit" disabled={busy} className="button-solid min-h-11 px-3 text-sm">
-              {t(busy ? "learn.community.report.sending" : "learn.community.report.send")}
+              <BusyLabel
+                busy={busy}
+                idle={t("learn.community.report.send")}
+                busyText={t("learn.community.report.sending")}
+              />
             </button>
           </div>
         </form>

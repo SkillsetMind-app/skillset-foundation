@@ -10,6 +10,7 @@ import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { CommunityItemActions } from "@/components/learn/community-item-actions";
 import { CommunityPostDrawer } from "@/components/learn/community-post-drawer";
+import { BusyLabel } from "@/components/ui/busy-label";
 import { EmptyState } from "@/components/ui/empty-state";
 import { InlineAlert } from "@/components/ui/inline-alert";
 import { LoadErrorAlert } from "@/components/ui/load-error-alert";
@@ -818,15 +819,17 @@ function Composer({
           disabled={isSubmitting}
           className="button-solid min-h-11 px-4 text-sm"
         >
-          {t(
-            isSubmitting
-              ? "learn.community.composer.posting"
-              : mode === "ask"
+          <BusyLabel
+            busy={isSubmitting}
+            idle={t(
+              mode === "ask"
                 ? "learn.community.composer.postQuestion"
                 : mode === "update"
                   ? "learn.community.composer.postUpdate"
                   : "learn.community.composer.post",
-          )}
+            )}
+            busyText={t("learn.community.composer.posting")}
+          />
         </button>
       </div>
     </form>
@@ -1072,7 +1075,11 @@ function FeedCard({
               {t("learn.community.composer.cancel")}
             </button>
             <button type="submit" disabled={isReplying} className="button-solid min-h-11 px-3 text-sm">
-              {t(isReplying ? "learn.community.composer.posting" : "learn.community.card.postReply")}
+              <BusyLabel
+                busy={isReplying}
+                idle={t("learn.community.card.postReply")}
+                busyText={t("learn.community.composer.posting")}
+              />
             </button>
           </div>
         </form>

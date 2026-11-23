@@ -13,6 +13,7 @@ import {
   type TotpSecret,
   unenrollTotpFactor,
 } from "@/lib/auth/supabase-auth";
+import { BusyLabel } from "@/components/ui/busy-label";
 import { InlineAlert } from "@/components/ui/inline-alert";
 import { useModalFocus } from "@/lib/a11y/use-modal-focus";
 import { isPublicFeatureEnabled } from "@/lib/feature-flags";
@@ -287,7 +288,11 @@ export function TotpMfaSection({ emailVerified }: { emailVerified: boolean }) {
           disabled={busy}
           className="button-outline mt-4 px-3.5 py-2 text-xs"
         >
-          {t(busy && !setup ? "accountSecurity.mfa.preparing" : "accountSecurity.mfa.setup")}
+          <BusyLabel
+            busy={busy && !setup}
+            idle={t("accountSecurity.mfa.setup")}
+            busyText={t("accountSecurity.mfa.preparing")}
+          />
         </button>
       )}
 
@@ -426,7 +431,7 @@ export function TotpMfaSection({ emailVerified }: { emailVerified: boolean }) {
                 disabled={busy || code.length < 6}
                 className="button-solid min-h-11 px-4 py-2.5 text-sm"
               >
-                {t(busy ? "accountSecurity.mfa.verifying" : "accountSecurity.mfa.enable")}
+                <BusyLabel busy={busy} idle={t("accountSecurity.mfa.enable")} busyText={t("accountSecurity.mfa.verifying")} />
               </button>
               <button
                 type="button"

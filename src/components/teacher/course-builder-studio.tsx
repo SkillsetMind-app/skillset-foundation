@@ -3131,6 +3131,7 @@ export function CourseBuilderStudio() {
       size="lg"
       icon={<Send aria-hidden="true" size={16} strokeWidth={2} />}
       loading={isSubmitting}
+      busyLabel={t("creatorEditor.builder.publish.publishing")}
       onClick={() => {
         setErrorSlot("publish");
         void publishCourse();
@@ -3140,11 +3141,9 @@ export function CourseBuilderStudio() {
       aria-describedby={showPublishReason ? "builder-publish-reason" : undefined}
       className="w-full sm:w-auto"
     >
-      {isSubmitting
-        ? t("creatorEditor.builder.publish.publishing")
-        : needsActivation
-          ? t("creatorEditor.builder.publish.activateAndPublish")
-          : t("creatorEditor.builder.publish.submit")}
+      {needsActivation
+        ? t("creatorEditor.builder.publish.activateAndPublish")
+        : t("creatorEditor.builder.publish.submit")}
     </Button>
   );
 

@@ -7,7 +7,7 @@ import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { ExportTableButton } from "@/components/shared/export-table-button";
 import { StatusChip } from "@/components/shared/status-chip";
-import { Button, Field, InlineAlert } from "@/components/ui";
+import { BusyLabel, Button, Field, InlineAlert } from "@/components/ui";
 import {
   supportTicketCategoryLabels,
   supportTicketStatusLabels,
@@ -222,11 +222,11 @@ export function SupportTicketQueue({ query = "" }: { query?: string }) {
                       }
                       className="button-solid max-w-full w-fit whitespace-normal px-4 py-2 text-xs"
                     >
-                      {replyingTicketId === ticket.id
-                        ? t(`${copy}.sending`)
-                        : ticket.adminResponse
-                          ? t(`${copy}.updateReply`)
-                          : t(`${copy}.sendReply`)}
+                      <BusyLabel
+                        busy={replyingTicketId === ticket.id}
+                        idle={ticket.adminResponse ? t(`${copy}.updateReply`) : t(`${copy}.sendReply`)}
+                        busyText={t(`${copy}.sending`)}
+                      />
                     </button>
                     <Button variant="outline" size="sm" className="min-h-11 px-4 py-2" disabled={replyingTicketId === ticket.id}
                       onClick={() => closeReply(ticket.id)}>

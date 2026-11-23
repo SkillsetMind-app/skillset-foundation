@@ -526,6 +526,34 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     expect(screen.getByRole("alert")).toHaveTextContent("Añade un video, texto o archivo a cada lección antes de publicar.");
   });
 
+  // F-04: publicando, o botão diz "Publishing..." sem mudar de largura: o
+  // rótulo de repouso fica na mesma célula, invisível e fora do nome.
+  it("publishing keeps both labels in place and names the button by the visible one", async () => {
+    vi.mocked(subscribeToTeacherCourse).mockImplementationOnce((_id, emit) => {
+      emit({ ...mocks.course, paymentType: "free", priceAmountMinor: 0, modules: [{ id: "m1", title: "Start here", lessons: [{ id: "l1", title: "Welcome", description: "", type: "text", contentText: "Read this first." }] }] });
+      return Object.assign(() => {}, { reload: async () => {} });
+    });
+    let failPublish: (error: Error) => void = () => {};
+    vi.mocked(publishTeacherCourse).mockImplementationOnce(
+      () => new Promise((_resolve, reject) => { failPublish = reject; }),
+    );
+    renderBuilder("review");
+    await screen.findByRole("heading", { name: mocks.course.title });
+    const idle = screen.getByRole("button", { name: "Publish product" });
+    expect(within(idle).getByText("Publishing...")).toHaveAttribute("aria-hidden", "true");
+    fireEvent.click(idle);
+
+    const busy = await screen.findByRole("button", { name: "Publishing..." });
+    expect(busy).toBe(idle);
+    expect(busy).toBeDisabled();
+    expect(busy).toHaveAttribute("aria-busy", "true");
+    expect(within(busy).getByText("Publish product")).toHaveAttribute("aria-hidden", "true");
+    expect(screen.queryByRole("button", { name: "Publish product" })).toBeNull();
+
+    await act(async () => { failPublish(new Error("network")); });
+    expect(await screen.findByRole("button", { name: "Publish product" })).toBe(idle);
+  });
+
   // Os tipos novos tem recusas proprias no servidor: cada uma diz o que falta,
   // em vez do generico "try again".
   it.each([

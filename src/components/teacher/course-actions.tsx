@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import type { ComponentType, ReactNode } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { BusyLabel } from "@/components/ui/busy-label";
 import { InlineAlert } from "@/components/ui/inline-alert";
 import { moveFocusByKey } from "@/lib/a11y/menu-keys";
 import { useModalFocus } from "@/lib/a11y/use-modal-focus";
@@ -332,7 +333,11 @@ export function DeleteOrArchiveCourseDialog({
             // Antes da contagem, contorno neutro: nem um nem outro.
             className={`${!known ? "button-outline" : hasAudience ? "button-solid" : "button-danger button-danger-solid"} px-4 text-sm`}
           >
-            {!known && !failed ? t("creatorPanel.products.removeChecking") : busy ? t(`${prefix}.busy`) : t(`${prefix}.confirm`)}
+            <BusyLabel
+              busy={(known || failed) && busy}
+              idle={!known && !failed ? t("creatorPanel.products.removeChecking") : t(`${prefix}.confirm`)}
+              busyText={t(`${prefix}.busy`)}
+            />
           </button>
         </div>
       </div>

@@ -187,6 +187,32 @@ describe("TeacherEventStudio", () => {
     expect(lesson).toHaveClass("button-outline");
   });
 
+  // F-04: o botao nao muda de largura ao gravar. "Saving..." continua escrito
+  // e vira o nome do botao; o "Schedule session" fica no lugar, escondido.
+  it("Schedule session vira Saving... na espera, sem perder o lugar do rotulo", async () => {
+    let finish!: (id: string) => void;
+    vi.mocked(createCourseEvent).mockReturnValueOnce(new Promise<string>((resolve) => { finish = resolve; }));
+    render(<TeacherEventStudio />);
+    fillWhen("2027-03-14", "15:30");
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    fireEvent.change(screen.getByLabelText("Session title"), { target: { value: "Live workshop" } });
+    fireEvent.change(screen.getByLabelText("External class link"), { target: { value: "https://meet.example.com/live" } });
+    fireEvent.change(screen.getByLabelText("Session description"), { target: { value: "Practical exercises together." } });
+
+    const submit = screen.getByRole("button", { name: "Schedule session" });
+    expect(screen.getByText("Saving...")).toHaveAttribute("aria-hidden", "true");
+    fireEvent.click(submit);
+
+    expect(await screen.findByRole("button", { name: "Saving..." })).toBe(submit);
+    expect(submit).toBeDisabled();
+    expect(screen.queryByRole("button", { name: "Schedule session" })).toBeNull();
+    expect(screen.getByText("Schedule session")).toHaveAttribute("aria-hidden", "true");
+    expect(screen.getByText("Saving...")).not.toHaveAttribute("aria-hidden");
+    expect(screen.getByText("Saving...").parentElement).toBe(screen.getByText("Schedule session").parentElement);
+
+    await act(async () => finish("event-1"));
+  });
+
   it("produto que ja tem aula: o proximo passo e so preco e publicar", async () => {
     agenda.productModules = [{ id: "m1", title: "Welcome", lessons: [{ id: "l1", title: "Hello", type: "text", description: "" }] }];
     render(<TeacherEventStudio />);

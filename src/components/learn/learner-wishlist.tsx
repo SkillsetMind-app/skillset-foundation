@@ -7,6 +7,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { useAuth } from "@/components/auth/auth-provider";
+import { BusyLabel } from "@/components/ui/busy-label";
 import { EmptyState } from "@/components/ui/empty-state";
 import { InlineAlert } from "@/components/ui/inline-alert";
 import { LoadErrorAlert } from "@/components/ui/load-error-alert";
@@ -237,7 +238,11 @@ export function LearnerWishlist() {
                       onClick={() => void handleRemove(item)}
                       className="button-outline px-4 py-2.5 text-sm"
                     >
-                      {removingId === item.id ? t("learnWave2.wishlistHub.removing") : t("learnWave2.wishlistHub.remove")}
+                      <BusyLabel
+                        busy={removingId === item.id}
+                        idle={t("learnWave2.wishlistHub.remove")}
+                        busyText={t("learnWave2.wishlistHub.removing")}
+                      />
                     </button>
                   </div>
                 </div>
@@ -259,7 +264,11 @@ export function LearnerWishlist() {
                   onClick={() => void handleRemove(item)}
                   className="button-outline mt-5 px-4 py-2.5 text-sm"
                 >
-                  {removingId === item.id ? t("learnWave2.wishlistHub.removing") : t("learnWave2.wishlistHub.remove")}
+                  <BusyLabel
+                    busy={removingId === item.id}
+                    idle={t("learnWave2.wishlistHub.remove")}
+                    busyText={t("learnWave2.wishlistHub.removing")}
+                  />
                 </button>
               </div>
             )}

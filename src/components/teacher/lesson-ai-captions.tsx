@@ -202,6 +202,9 @@ export function LessonAiCaptions({ courseId, lessonId, assetId }: { courseId: st
                 });
               }}
             >
+              {/* Fica trocando o rótulo, de propósito: a espera é uma frase
+                  (cerca de três vezes o "Generate captions") e reservá-la
+                  deixaria o botão largo e o seletor de idioma espremido. */}
               {busy === "transcribe"
                 ? t("creatorEditor.lesson.ai.generating")
                 : t(spokenExists ? "creatorEditor.lesson.ai.regenerate" : "creatorEditor.lesson.ai.generate")}
@@ -310,6 +313,8 @@ export function LessonAiCaptions({ courseId, lessonId, assetId }: { courseId: st
                 onClick={() => void run("translate", { from: source.language, to: target }, "translate",
                   t("creatorEditor.lesson.ai.translated"))}
               >
+                {/* Como o "Generate captions": reservar spinner e
+                    "Translating..." espremeria o seletor de idioma ao lado. */}
                 {busy === "translate" ? t("creatorEditor.lesson.ai.translating") : t("creatorEditor.lesson.ai.translate")}
               </Button>
             </div>

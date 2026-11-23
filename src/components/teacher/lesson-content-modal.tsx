@@ -33,6 +33,7 @@ import {
 } from "@/components/teacher/lesson-video-source-picker";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { Button } from "@/components/ui/button";
+import { BusyLabel } from "@/components/ui/busy-label";
 import { BunnyVideoPlayer } from "@/components/courses/bunny-video-player";
 import { TrustedEmbedPlayer } from "@/components/learn/trusted-embed-player";
 import { ProtectedAssetPreview } from "@/components/shared/protected-asset-preview";
@@ -1448,9 +1449,11 @@ export function LessonContentModal({
           >
             {/* "Done" era tambem o estado da aba Description; na pagina o botao
                 diz para onde leva. */}
-            {isUploading
-              ? t("creatorEditor.lesson.file.uploading")
-              : t(isPage ? "creatorEditor.lesson.backToModule" : "creatorEditor.lesson.state.done")}
+            <BusyLabel
+              busy={isUploading}
+              idle={t(isPage ? "creatorEditor.lesson.backToModule" : "creatorEditor.lesson.state.done")}
+              busyText={t("creatorEditor.lesson.file.uploading")}
+            />
           </button>
         </footer>
         )}
@@ -1778,6 +1781,10 @@ function LessonAssetList({
                 disabled={deletingAssetId === asset.id}
                 className="button-danger px-3.5 py-2 text-xs"
               >
+                {/* Sem BusyLabel de propósito: a regra fora de camada
+                    `.lesson-modal-assets span` (globals.css) pinta todo span
+                    daqui de bloco cinza e maiúsculo, e as duas faces
+                    empilhariam. Converter só depois de escopar essa regra. */}
                 {t(`creatorEditor.lesson.${deletingAssetId === asset.id ? "deleting" : "delete"}`)}
               </button>
             ) : null}

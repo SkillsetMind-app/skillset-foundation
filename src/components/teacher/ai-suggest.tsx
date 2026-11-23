@@ -99,9 +99,10 @@ export function AiSuggest({
         className="justify-self-start"
         disabled={disabled}
         loading={busy}
+        busyLabel={t("creatorEditor.lesson.ai.suggesting")}
         onClick={suggest}
       >
-        {busy ? t("creatorEditor.lesson.ai.suggesting") : t("creatorEditor.lesson.ai.suggest")}
+        {t("creatorEditor.lesson.ai.suggest")}
       </Button>
       {suggestions ? (
         <>

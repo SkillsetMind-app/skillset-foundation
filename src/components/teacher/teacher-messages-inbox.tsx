@@ -7,6 +7,7 @@ import { useAuth } from "@/components/auth/auth-provider";
 import { formatNotificationTime } from "@/components/account/notification-row";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { courseMessageErrorKey } from "@/components/teacher/course-student-roster";
+import { BusyLabel } from "@/components/ui/busy-label";
 import { InlineAlert } from "@/components/ui/inline-alert";
 import type { CourseMessage } from "@/domain/course-message";
 import {
@@ -254,7 +255,7 @@ export function TeacherMessagesInbox() {
               className="button-solid inline-flex w-fit items-center gap-2 px-4 py-2.5 text-sm"
             >
               <Send size={15} aria-hidden="true" />
-              {t(isSending ? "teacherMessages.sending" : "teacherMessages.send")}
+              <BusyLabel busy={isSending} idle={t("teacherMessages.send")} busyText={t("teacherMessages.sending")} />
             </button>
           </form>
         </section>

@@ -36,6 +36,7 @@ import {
 import { subscribeToTeacherCourses } from "@/lib/data/teacher-courses";
 import { getUserProfile, updateUserStorefront } from "@/lib/data/user-profiles";
 import { SavedNote } from "@/components/teacher/save-status-line";
+import { BusyLabel } from "@/components/ui/busy-label";
 import { UploadProgressNote } from "@/components/teacher/upload-progress-note";
 
 type StorefrontImageError = "" | "invalid" | "upload";
@@ -848,7 +849,11 @@ export function StorefrontSettingsPanel() {
             disabled={isSaving || uploadingImages.size > 0 || !coursesReady}
             aria-describedby={saveBlockedKey && !isSaving ? "storefront-save-reason" : undefined}
           >
-            {t(`teach.storefrontEditor.${isSaving ? "saving" : "save"}`)}
+            <BusyLabel
+              busy={isSaving}
+              idle={t("teach.storefrontEditor.save")}
+              busyText={t("teach.storefrontEditor.saving")}
+            />
           </Button>
           {/* O botao ficava cinza sem dizer por que (imagem subindo, produtos
               ainda carregando): agora a razao fica ao lado dele. */}
