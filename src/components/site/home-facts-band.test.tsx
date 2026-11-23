@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
 import { cleanup, render } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -46,6 +49,21 @@ describe("faixa de fatos da home", () => {
     expect(container.querySelectorAll("dl > :not(div)")).toHaveLength(0);
     // Fato não é link: nada aqui leva a lugar nenhum.
     expect(container.querySelector("a")).toBeNull();
+  });
+
+  // A borda esquerda da faixa é a mesma do topo e do "How it works": a mesma
+  // caixa (max-w-7xl com o recuo dentro dela). O recuo na faixa, fora da
+  // caixa, deixava os fatos 32px à esquerda do resto em telas largas.
+  it("usa a mesma caixa das seções vizinhas, com o recuo dentro dela", async () => {
+    const { container } = await renderBand("en");
+    const box = ["mx-auto", "w-full", "max-w-7xl", "px-5", "sm:px-8"];
+
+    expect(container.querySelector("dl")).toHaveClass(...box);
+    expect(container.querySelector("section")?.className).not.toMatch(/(?:^|\s)(?:\w+:)?px-/);
+    for (const path of ["src/components/site/how-it-works-strip.tsx", "src/components/site/marketing-hero.tsx"]) {
+      const source = readFileSync(join(process.cwd(), path), "utf8");
+      expect(source, path).toMatch(/className="[^"]*\bmx-auto w-full max-w-7xl px-5 [^"]*\bsm:px-8\b/);
+    }
   });
 
   it.each(dictionaries)("em %s a seção tem nome: um título escondido, lido pelo leitor de tela", async (locale, dict) => {

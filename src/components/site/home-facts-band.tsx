@@ -23,15 +23,18 @@ export async function HomeFactsBand() {
   return (
     <section
       aria-labelledby="home-facts-title"
-      className="home-facts border-b fine-rule bg-[var(--color-surface-soft)] px-5 py-12 sm:px-8 sm:py-14 lg:py-16"
+      className="home-facts border-b fine-rule bg-[var(--color-surface-soft)] py-12 sm:py-14 lg:py-16"
     >
       <h2 id="home-facts-title" className="sr-only">
         {t("home.facts.title")}
       </h2>
       {/* 2x2 no celular, 4 colunas do lg. O número fica sempre abaixo do
           título do topo (clamp(2.3rem, 4.6vw, 3.6rem)) em qualquer largura;
-          a legenda é texto corrido: 17/18px na cor cheia. */}
-      <dl className="mx-auto grid w-full max-w-7xl grid-cols-2 gap-x-6 gap-y-10 lg:grid-cols-4 lg:gap-x-10">
+          a legenda é texto corrido: 17/18px na cor cheia. A caixa é a mesma
+          do topo e do "How it works" (max-w-7xl com o recuo DENTRO dela):
+          com o recuo na faixa, a 1440px a faixa começava 32px à esquerda
+          das outras seções. O fundo continua de ponta a ponta. */}
+      <dl className="mx-auto grid w-full max-w-7xl grid-cols-2 gap-x-6 gap-y-10 px-5 sm:px-8 lg:grid-cols-4 lg:gap-x-10">
         {facts.map((fact) => (
           <div key={fact.label} className="home-facts__item">
             <dt className="display-title text-[clamp(2.25rem,4.4vw,3.5rem)] leading-none text-[var(--color-primary)]">
