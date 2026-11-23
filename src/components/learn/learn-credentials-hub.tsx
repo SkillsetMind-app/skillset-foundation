@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { CardListSkeleton } from "@/components/shared/page-skeletons";
 import { useAuth } from "@/components/auth/auth-provider";
 import { PeriodTabs } from "@/components/shared/period-tabs";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -129,11 +130,8 @@ export function LearnCredentialsHub() {
   );
 
   if (isLoading || !certificatesReady) {
-    return frame(
-      <section className="rounded-lg border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
-        <p className="text-sm text-[var(--color-ink-soft)]">{t("learnWave2.credentials.loading")}</p>
-      </section>
-    );
+    // Os filtros e dois cartões, no lugar da frase solta num cartão branco.
+    return frame(<CardListSkeleton label={t("learnWave2.credentials.loading")} head="tabs" />);
   }
 
   // Lê de novo o que falhou (matrículas, certificados ou os dois) pelos mesmos

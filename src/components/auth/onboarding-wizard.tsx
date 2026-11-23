@@ -13,6 +13,7 @@ import {
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { LogoWordmark } from "@/components/shared/logo-wordmark";
 import { SkillsetSpinner } from "@/components/shared/skillset-spinner";
+import { InlineAlert } from "@/components/ui/inline-alert";
 import { skillsetCourseCategories } from "@/domain/teacher-course";
 import type { OnboardingAnswers } from "@/domain/user-profile";
 import {
@@ -1201,7 +1202,7 @@ function OptionGrid({
 
 function ErrorMessage({ error }: { error: string }) {
   const { t } = useTranslation();
-  const ref = useRef<HTMLParagraphElement>(null);
+  const ref = useRef<HTMLDivElement>(null);
   // No celular a barra do "Continue" fica presa embaixo e o aviso nascia atras
   // dela (ou abaixo da dobra): o toque nao mudava nada visivel. Leva o aviso
   // ao meio da tela quando ele aparece; sem animacao para quem pediu menos
@@ -1217,8 +1218,12 @@ function ErrorMessage({ error }: { error: string }) {
   }
 
   return (
-    <p ref={ref} role="alert" className="mt-5 rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-center text-sm font-semibold text-[var(--color-danger-fg)]">
-      {t(error)}
-    </p>
+    // O InlineAlert nao repassa ref: a caixa de fora (so com o aviso dentro)
+    // e quem rola para a vista.
+    <div ref={ref} className="mt-5">
+      <InlineAlert tone="error" className="justify-center text-center">
+        {t(error)}
+      </InlineAlert>
+    </div>
   );
 }

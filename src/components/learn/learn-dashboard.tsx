@@ -254,7 +254,7 @@ export function LearnDashboard() {
     // quadro de "My courses" com três cartões (capa 16:10, duas linhas e a
     // barra). Antes eram três caixas soltas sem o quadro, e a página pulava
     // quando as matrículas chegavam.
-    const bone = "animate-pulse rounded-md bg-[var(--color-surface-soft)]";
+    const bone = "animate-pulse rounded-md bg-[var(--color-surface-strong)]";
     return (
       <div aria-busy="true" aria-live="polite" className="grid gap-8">
         <div className="border-b border-[var(--color-line)] pb-5">

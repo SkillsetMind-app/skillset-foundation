@@ -132,7 +132,7 @@ export function TeacherMembersAreaHub() {
         <div className="mt-4 divide-y divide-[var(--color-line)] border-y border-[var(--color-line)]">
           {isLoading ? (
             [1, 2, 3].map((item) => (
-              <div key={item} className="h-28 animate-pulse bg-[var(--color-surface-soft)]" />
+              <div key={item} className="h-28 animate-pulse bg-[var(--color-surface-strong)]" />
             ))
           ) : visibleCourses.length === 0 ? (
             <div className="grid place-items-center px-5 py-14 text-center">

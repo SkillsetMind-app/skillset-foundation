@@ -240,12 +240,15 @@ export function CommunityItemActions({
       ) : null}
 
       {panel === "delete" ? (
+        // Confirmação, não erro: fica um grupo (um alerta seria lido sozinho ao
+        // abrir). O fundo é o token, que no tema escuro sobe para 18%; o 6%
+        // literal sumia no quase preto.
         <div
           id={panelId}
           role="group"
           aria-labelledby={`${panelId}-title`}
           onKeyDown={closeOnEscape}
-          className="flex basis-full flex-wrap items-center gap-2 rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] p-3"
+          className="flex basis-full flex-wrap items-center gap-2 rounded-md border border-[rgba(178,34,52,0.2)] bg-[var(--color-danger-soft)] p-3"
         >
           <p id={`${panelId}-title`} className="w-full text-sm font-semibold text-[var(--color-ink)]">
             {t(confirmKey)}

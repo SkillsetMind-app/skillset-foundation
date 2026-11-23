@@ -12,6 +12,8 @@ import {
 } from "@/components/auth/turnstile-widget";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { SkillsetSpinner } from "@/components/shared/skillset-spinner";
+import { InlineAlert } from "@/components/ui/inline-alert";
+import { ProgressBar } from "@/components/ui/progress-bar";
 import type { OnboardingAnswers, UserGoal } from "@/domain/user-profile";
 import { CONNECT_PAYOUT_COUNTRIES, isConnectPayoutCountry } from "@/lib/payments/connect-countries";
 import {
@@ -591,9 +593,9 @@ export function OnboardingChoice() {
         <p className="text-xs leading-5 text-[var(--color-ink-soft)]">{streamlinedProfileNotice}</p>
 
         {error ? (
-          <p role="alert" className="rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
+          <InlineAlert tone="error">
             {error}
-          </p>
+          </InlineAlert>
         ) : null}
 
         {/* Um botao forte so ("Activate teaching"); pular vira texto discreto,
@@ -647,12 +649,7 @@ export function OnboardingChoice() {
           </span>
           <span className="text-[var(--color-ink-soft)]">{stepCounter}</span>
         </div>
-        <div className="h-1 overflow-hidden rounded-full bg-[var(--color-surface-soft)]">
-          <div
-            className="h-full rounded-full bg-[var(--color-primary)] transition-[width] duration-300"
-            style={{ width: `${((step + 1) / stepLabels.length) * 100}%` }}
-          />
-        </div>
+        <ProgressBar value={Math.round(((step + 1) / stepLabels.length) * 100)} label={stepCounter} />
       </div>
 
       {step === 0 ? (
@@ -803,9 +800,9 @@ export function OnboardingChoice() {
       ) : null}
 
       {error ? (
-        <p role="alert" className="rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
+        <InlineAlert tone="error">
           {error}
-        </p>
+        </InlineAlert>
       ) : null}
 
       <div className="flex flex-wrap gap-3">

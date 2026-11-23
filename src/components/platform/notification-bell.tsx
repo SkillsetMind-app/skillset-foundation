@@ -30,6 +30,9 @@ export function NotificationBell() {
   // Guardar o uid (e nao zerar dentro do efeito) evita o setState em cascata.
   const [loadedUid, setLoadedUid] = useState<string | null>(null);
   const [failedUid, setFailedUid] = useState<string | null>(null);
+  // "Mark all read" que falhou: antes calava (o catch so engolia) e a pessoa
+  // achava que tinha marcado. Os avisos seguem como nao lidos; o painel diz.
+  const [markAllFailed, setMarkAllFailed] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const titleRef = useRef<HTMLHeadingElement>(null);
@@ -134,10 +137,11 @@ export function NotificationBell() {
     if (unreadIds.length === 0) {
       return;
     }
+    setMarkAllFailed(false);
     try {
       await markAllNotificationsAsRead(uid, unreadIds);
     } catch {
-      // Non-critical.
+      setMarkAllFailed(true);
     }
   }
 
@@ -183,7 +187,12 @@ export function NotificationBell() {
       <button
         ref={triggerRef}
         type="button"
-        onClick={() => setOpen((current) => !current)}
+        onClick={() => {
+          // Abrir de novo começa limpo: a falha de antes não volta nem é lida
+          // outra vez. (Fechado, o painel não existe; só se reabre por aqui.)
+          if (!open) setMarkAllFailed(false);
+          setOpen((current) => !current);
+        }}
         aria-haspopup="dialog"
         aria-controls={open ? panelId : undefined}
         aria-expanded={open}
@@ -279,6 +288,13 @@ export function NotificationBell() {
               </button>
             ))}
           </div>
+          {/* Só enquanto sobra aviso não lido: lido por outra aba, a falha
+              não vale mais. */}
+          {markAllFailed && unreadCount > 0 ? (
+            <InlineAlert tone="error" className="mx-4 mt-3 shrink-0">
+              {t("platform.notifications.markAllError")}
+            </InlineAlert>
+          ) : null}
           {loadFailed ? (
             <div className="grid gap-3 p-5">
               <InlineAlert tone="error">{t("platform.notifications.loadError")}</InlineAlert>

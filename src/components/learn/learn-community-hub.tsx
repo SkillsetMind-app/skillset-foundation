@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { useAuth } from "@/components/auth/auth-provider";
+import { CardListSkeleton } from "@/components/shared/page-skeletons";
 import { InlineAlert } from "@/components/ui/inline-alert";
 import type { Enrollment, EnrollmentCommunityCard } from "@/domain/enrollment";
 import { communityEnrollmentCourseIds, createEnrollmentCommunityCards } from "@/domain/enrollment";
@@ -86,11 +87,9 @@ export function LearnCommunityHub() {
   const communityIds = !courses ? NO_COURSES : community?.courses === courses ? community.ids : null;
 
   if (isLoading || (!error && communityIds === null)) {
-    return (
-      <section className="rounded-lg border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
-        <p className="text-sm text-[var(--color-ink-soft)]">{t("learnWave2.communityHub.loading")}</p>
-      </section>
-    );
+    // A linha de cima e dois cartões, no lugar da frase solta num cartão
+    // branco. Sem a busca: ela só aparece com muitas comunidades.
+    return <CardListSkeleton label={t("learnWave2.communityHub.loading")} head="title" />;
   }
 
   if (error) {

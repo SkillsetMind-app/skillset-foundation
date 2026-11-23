@@ -281,6 +281,8 @@
       "confirmPassword": "Confirmar contraseña",
       "confirmPasswordPlaceholder": "Vuelve a escribir tu contraseña",
       "passwordsDontMatch": "Las dos contraseñas no coinciden.",
+      "confirmPasswordFirst": "Escribe la contraseña otra vez para confirmarla.",
+      "choosePasswordFirst": "Elige una contraseña que cumpla las reglas de arriba.",
       "agreePrefix": "Acepto las ",
       "agreeMiddle": " y la ",
       "agreeSuffix": " de SkillsetMind.",
@@ -1298,6 +1300,7 @@
       "close": "Cerrar notificaciones",
       "title": "Notificaciones",
       "markAllRead": "Marcar todas como leídas",
+      "markAllError": "No pudimos marcar tus notificaciones como leídas. Inténtalo de nuevo.",
       "filterLabel": "Filtrar notificaciones",
       "all": "Todas",
       "unread": "Sin leer",
@@ -4738,6 +4741,7 @@
       "placeholder": "nuevo-correo@ejemplo.com",
       "label": "Nueva dirección de correo electrónico",
       "send": "Enviar confirmación del cambio",
+      "typeFirst": "Escribe primero el nuevo correo electrónico.",
       "sent": "Enviamos un mensaje de verificación al nuevo correo. Ábrelo para confirmar el cambio."
     },
     "password": {
@@ -4746,6 +4750,8 @@
       "current": "Contraseña actual",
       "next": "Nueva contraseña",
       "update": "Actualizar contraseña",
+      "currentFirst": "Escribe primero tu contraseña actual.",
+      "chooseFirst": "Elige una contraseña nueva que cumpla las reglas de arriba.",
       "forgot": "¿Olvidaste tu contraseña actual? Te enviaremos un enlace seguro por correo para que puedas crear una nueva sin usar la anterior.",
       "sendReset": "Enviarme un enlace de restablecimiento",
       "requirementsError": "Usa una contraseña que cumpla todos los requisitos.",

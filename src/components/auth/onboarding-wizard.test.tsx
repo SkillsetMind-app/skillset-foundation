@@ -504,7 +504,8 @@ describe("boas-vindas: progresso, troca de pergunta e teclado", () => {
       const alert = await screen.findByRole("alert");
       expect(alert).toHaveTextContent(/Enter a phone number/);
       expect(scrollIntoView).toHaveBeenCalledWith(expect.objectContaining({ block: "center" }));
-      expect(scrollIntoView.mock.contexts).toContain(alert);
+      // A caixa que rola e a de fora do aviso (o InlineAlert nao repassa ref).
+      expect(scrollIntoView.mock.contexts).toContain(alert.parentElement);
     } finally {
       delete (Element.prototype as { scrollIntoView?: unknown }).scrollIntoView;
     }
