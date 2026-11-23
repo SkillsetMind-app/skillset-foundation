@@ -222,7 +222,7 @@ export function TeacherStudentsList() {
                         ultima coluna. */}
                     <Link
                       href={`/teach/courses/${course}/manage?section=students`}
-                      className="block font-semibold text-[var(--color-primary)] underline decoration-[var(--color-line-strong)] underline-offset-4 hover:decoration-current pointer-coarse:-my-3 pointer-coarse:py-3"
+                      className="block font-semibold text-[var(--color-primary)] underline decoration-[var(--color-line-strong)] underline-offset-4 hover:decoration-current pointer-coarse:relative pointer-coarse:-my-3 pointer-coarse:py-3"
                     >
                       {name}
                       <span className="sr-only">: {t("teach.studentsPage.seeInProduct")}, {student.courseTitle}</span>
