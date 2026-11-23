@@ -304,7 +304,7 @@ export function TeacherEventStudio() {
     if (mode === "copy") {
       do {
         when.setDate(when.getDate() + 7);
-      } while (when.getTime() <= Date.now());
+      } while (when.getTime() <= now);
     }
     const [date, time] = toLocalDateAndTime(when);
     setFormStep(1);
