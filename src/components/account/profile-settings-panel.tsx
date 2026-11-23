@@ -78,6 +78,10 @@ export function ProfileSettingsPanel() {
   const [success, setSuccess] = useState("");
   // "Try again" da leitura do perfil: a mesma leitura do efeito, de novo.
   const [loadAttempt, setLoadAttempt] = useState(0);
+  // A leitura falhou: o formulário NÃO aparece (os campos estariam vazios, e
+  // salvar gravaria bio, telefone e metas vazios por cima do perfil guardado).
+  // Separado do `error`, que outro aviso (validar, foto) podia sobrescrever.
+  const [loadFailed, setLoadFailed] = useState(false);
   // A seção fica na tela nos dois desfechos e recebe o foco do "Try again".
   const sectionRef = useRef<HTMLElement>(null);
 
@@ -111,10 +115,11 @@ export function ProfileSettingsPanel() {
           (profile?.roles ?? []).includes("teacher") ||
             (profile?.roles ?? []).includes("admin"),
         );
+        setLoadFailed(false);
       })
       .catch(() => {
         if (mounted) {
-          setError("accountProfile.errors.load");
+          setLoadFailed(true);
         }
       })
       .finally(() => {
@@ -128,10 +133,9 @@ export function ProfileSettingsPanel() {
     };
   }, [user, loadAttempt]);
 
-  // Volta à espera de sempre (o esqueleto): o formulário sai da tela enquanto
-  // lê, então Enter não salva os campos vazios do perfil que não carregou.
+  // Volta à espera de sempre (o esqueleto) até a leitura nova responder.
   function retryLoad() {
-    setError("");
+    setLoadFailed(false);
     setIsLoading(true);
     setLoadAttempt((attempt) => attempt + 1);
   }
@@ -323,6 +327,18 @@ export function ProfileSettingsPanel() {
             ))}
           </div>
         </div>
+      </section>
+    );
+  }
+
+  if (loadFailed) {
+    // Só o título e o aviso com "Try again": nada editável sobre dados que não vieram.
+    return (
+      <section ref={sectionRef} tabIndex={-1} className="settings-section-card outline-none">
+        {header}
+        <LoadErrorAlert className="mt-6" onRetry={retryLoad} focusRef={sectionRef}>
+          {t("accountProfile.errors.load")}
+        </LoadErrorAlert>
       </section>
     );
   }
@@ -562,10 +578,7 @@ export function ProfileSettingsPanel() {
           </div>
         </div>
 
-        {/* Só o erro de LEITURA ganha "Try again"; os de salvar e validar seguem como eram. */}
-        {error === "accountProfile.errors.load" ? (
-          <LoadErrorAlert onRetry={retryLoad} focusRef={sectionRef}>{t(error)}</LoadErrorAlert>
-        ) : error ? (
+        {error ? (
           <InlineAlert tone="error">{formatValidationMessage(error, t)}</InlineAlert>
         ) : null}
 

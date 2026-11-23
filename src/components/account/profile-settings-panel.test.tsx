@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   getUserProfile: vi.fn(),
+  updateUserIdentity: vi.fn(),
   uploadUserAvatar: vi.fn(),
   uploadTeacherSignature: vi.fn(),
   refreshUser: vi.fn(),
@@ -15,7 +16,7 @@ vi.mock("@/components/auth/auth-provider", () => ({
 
 vi.mock("@/lib/data/user-profiles", () => ({
   getUserProfile: mocks.getUserProfile,
-  updateUserIdentity: vi.fn(),
+  updateUserIdentity: mocks.updateUserIdentity,
 }));
 
 vi.mock("@/lib/data/profile-media", async (importOriginal) => ({
@@ -172,19 +173,29 @@ describe("ProfileSettingsPanel - leitura que falha", () => {
 
   it("ganha \"Try again\", que lê o perfil de novo uma vez só e mostra os dados", async () => {
     let resolve!: (value: unknown) => void;
+    mocks.updateUserIdentity.mockReset();
     mocks.getUserProfile
       .mockRejectedValueOnce(new Error("offline"))
       .mockReturnValueOnce(new Promise((done) => { resolve = done; }));
-    render(<ProfileSettingsPanel />);
+    const { container } = render(<ProfileSettingsPanel />);
     expect(await screen.findByText("We could not load your profile settings.")).toBeInTheDocument();
+    // Leitura falhada: nada editável (campos vazios gravariam por cima do perfil).
+    expect(container.querySelector("form")).toBeNull();
+    expect(screen.queryByRole("textbox")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Save profile" })).toBeNull();
+    expect(screen.queryByLabelText("Upload profile photo")).toBeNull();
+    fireEvent.keyDown(screen.getByRole("button", { name: "Try again" }), { key: "Enter" });
+    expect(mocks.updateUserIdentity).not.toHaveBeenCalled();
     const retry = screen.getByRole("button", { name: "Try again" });
     fireEvent.click(retry);
     fireEvent.click(retry);
     // Lendo: a espera de sempre, sem formulário para Enter salvar.
     expect(screen.getByRole("status")).toHaveTextContent("Loading profile settings...");
     expect(screen.queryByRole("button", { name: "Save profile" })).toBeNull();
-    await act(async () => resolve({ displayName: "Ana Souza", roles: ["student"] }));
+    await act(async () => resolve({ displayName: "Ana Souza", username: "anasouza", bio: "Coach de equipes", roles: ["student"] }));
     expect(screen.getByLabelText("Public name")).toHaveValue("Ana Souza");
+    expect(screen.getByLabelText("Bio", { exact: false })).toHaveValue("Coach de equipes");
+    expect(mocks.updateUserIdentity).not.toHaveBeenCalled();
     expect(mocks.getUserProfile).toHaveBeenCalledTimes(2);
     expect(screen.queryByText("We could not load your profile settings.")).toBeNull();
   });
