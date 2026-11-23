@@ -187,6 +187,26 @@ describe("volta da página de amostra", () => {
   });
 });
 
+// A amostra ficou para trás do curso real: o preço vinha rotulado "Access"
+// em 10px, no cartão e na barra do celular. Agora "Price" em 12px, nos dois.
+describe("rótulo do preço da página de amostra", () => {
+  const es = (key: string) => translate(getDictionary("es"), key);
+
+  it("diz Price no cartão e na barra, e não mais Access", async () => {
+    const { container } = render(await CourseDetailPage({ params: Promise.resolve({ slug: "leadership-development" }) }));
+
+    const eyebrows = screen.getAllByText(es("publicCourses.priceEyebrow"));
+    expect(eyebrows).toHaveLength(2);
+    expect(container.querySelector("#enroll-card")).toContainElement(eyebrows[0]);
+    expect(container.querySelector("#enroll-card")).not.toContainElement(eyebrows[1]);
+    for (const eyebrow of eyebrows) {
+      expect(eyebrow).toHaveClass("text-xs", "uppercase");
+      expect(eyebrow).not.toHaveClass("text-[10px]");
+    }
+    expect(screen.queryByText(es("publicCourses.access"))).toBeNull();
+  });
+});
+
 // A amostra tinha linhas de 32px em caixa alta com hífens ("PREVIEW - VIDEO -
 // 8 MIN") e tudo aberto: agora o mesmo currículo da página de um curso real.
 describe("currículo da página de amostra", () => {

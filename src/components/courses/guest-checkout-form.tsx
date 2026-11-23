@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useSyncExternalStore, type FormEvent } from "react";
+import { useId, useState, useSyncExternalStore, type FormEvent } from "react";
 
 import { GoogleMark } from "@/components/auth/google-mark";
 import { TurnstileWidget } from "@/components/auth/turnstile-widget";
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { Field } from "@/components/ui/field";
 import { InlineAlert } from "@/components/ui/inline-alert";
 import { isPlatformHost } from "@/domain/host-routing";
 import { isGoogleAuthEnabled } from "@/lib/auth/providers";
@@ -14,9 +15,8 @@ import { signInWithGoogle } from "@/lib/auth/supabase-auth";
 import { startGuestCourseCheckout } from "@/lib/payments/checkout";
 import { PaymentRequestError } from "@/lib/payments/client-fetch";
 
-const fieldClass =
-  "mt-1.5 w-full rounded-md border border-[var(--color-line)] bg-white px-3.5 py-2.5 text-sm outline-none focus:border-[var(--color-primary-light)]";
-const labelClass = "text-xs font-semibold uppercase tracking-[0.18em] text-[var(--color-ink-soft)]";
+// O servidor recusa nome ou e-mail com uma frase só, sem dizer qual dos dois.
+const identityErrorKey = "guestCheckout.form.invalid";
 
 const noSubscription = () => () => {};
 
@@ -69,6 +69,12 @@ export function GuestCheckoutForm({
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [errorKey, setErrorKey] = useState("");
   const [linkSent, setLinkSent] = useState(false);
+  const fieldId = useId();
+  const nameId = `${fieldId}-name`;
+  const emailId = `${fieldId}-email`;
+  // Erro de nome ou e-mail fica no par de campos, embaixo do e-mail, e os dois
+  // campos apontam para ele; antes ele só aparecia no fim, depois do botão.
+  const identityError = errorKey === identityErrorKey ? t(errorKey) : undefined;
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -131,31 +137,37 @@ export function GuestCheckoutForm({
   return (
     <div className="mt-6 grid gap-3">
       <form className="grid gap-3" onSubmit={handleSubmit}>
-        <label className="block">
-          <span className={labelClass}>{t("guestCheckout.form.name")}</span>
-          <input
-            data-cta-focus
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-            maxLength={80}
-            autoComplete="name"
-            required
-            className={fieldClass}
-          />
-        </label>
-        <label className="block">
-          <span className={labelClass}>{t("guestCheckout.form.email")}</span>
-          <input
-            type="email"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            maxLength={254}
-            autoComplete="email"
-            inputMode="email"
-            required
-            className={fieldClass}
-          />
-        </label>
+        {/* O campo da casa (o do cadastro): rótulo em frase, borda que se vê
+            no branco e erro marcado no próprio campo. */}
+        <Field id={nameId} label={t("guestCheckout.form.name")} required>
+          {(a11y) => (
+            <input
+              {...a11y}
+              aria-invalid={Boolean(identityError)}
+              aria-describedby={identityError ? `${emailId}-error` : undefined}
+              data-cta-focus
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              maxLength={80}
+              autoComplete="name"
+              className="field-input"
+            />
+          )}
+        </Field>
+        <Field id={emailId} label={t("guestCheckout.form.email")} error={identityError} required>
+          {(a11y) => (
+            <input
+              {...a11y}
+              type="email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              maxLength={254}
+              autoComplete="email"
+              inputMode="email"
+              className="field-input"
+            />
+          )}
+        </Field>
         <label className="flex items-start gap-2.5 text-xs leading-5 text-[var(--color-ink-soft)]">
           <input
             type="checkbox"
@@ -197,7 +209,7 @@ export function GuestCheckoutForm({
 
       {linkSent ? <p role="status" className="info-notice">{t("guestCheckout.form.linkSent")}</p> : null}
       {/* O aviso da casa: ícone e fundo que seguem o tema (o 6% literal sumia no escuro). */}
-      {errorKey ? <InlineAlert tone="error">{t(errorKey)}</InlineAlert> : null}
+      {errorKey && !identityError ? <InlineAlert tone="error">{t(errorKey)}</InlineAlert> : null}
 
       {isGoogleAuthEnabled ? (
         <>
