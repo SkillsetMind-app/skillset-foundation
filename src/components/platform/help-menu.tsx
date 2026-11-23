@@ -100,8 +100,12 @@ const labelClass = {
   bar: "help-menu-trigger__label",
 };
 
+// Em repouso, a tinta da página (como a gaveta do celular sempre mostrou nos
+// links): a dica de 12px de cada escolha (.help-menu-choice__hint, opacity 0.8)
+// em ink-soft dava 4,02:1 na gaveta branca. Na barra escura do computador a
+// regra .platform-sidebar .platform-nav-link vence com !important.
 const choiceClass = {
-  nav: "platform-nav-link help-menu-choice-link flex min-h-11 w-full items-center rounded-md border border-transparent px-2.5 py-2 text-sm text-[var(--color-ink-soft)] hover:bg-[var(--color-surface-strong)] hover:text-[var(--color-ink)]",
+  nav: "platform-nav-link help-menu-choice-link flex min-h-11 w-full items-center rounded-md border border-transparent px-2.5 py-2 text-sm text-[var(--color-ink)] hover:bg-[var(--color-surface-strong)] hover:text-[var(--color-ink)]",
   bar: "account-menu-item help-menu-choice-link",
 };
 

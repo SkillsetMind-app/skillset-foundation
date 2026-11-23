@@ -241,7 +241,7 @@ export function SiteNav() {
                       className={`${baseClass} ${
                         active
                           ? "bg-[var(--color-surface-soft)] text-[var(--color-primary)]"
-                          : "text-[var(--color-ink-soft)] hover:bg-[var(--color-surface-soft)] hover:text-[var(--color-primary)]"
+                          : "text-[var(--color-ink)] hover:bg-[var(--color-surface-soft)] hover:text-[var(--color-primary)]"
                       }`}
                     >
                       {item.label}

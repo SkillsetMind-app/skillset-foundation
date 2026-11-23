@@ -73,12 +73,14 @@ export function LegalText({ text }: { text: string }) {
     }
     if (tag === "em") return <em key={index}>{content}</em>;
     const href = legalLinks[tag as keyof typeof legalLinks];
+    // Sem cor própria: o link segue a cor do parágrafo, que é como o site
+    // público foi aprovado. O latão que estava aqui nunca chegou à tela.
     return href.startsWith("mailto:") ? (
-      <a key={index} className="font-semibold text-[var(--color-accent-fg)]" href={href}>
+      <a key={index} className="font-semibold" href={href}>
         {href.slice("mailto:".length)}
       </a>
     ) : (
-      <Link key={index} className="font-semibold text-[var(--color-accent-fg)]" href={href}>
+      <Link key={index} className="font-semibold" href={href}>
         {content}
       </Link>
     );

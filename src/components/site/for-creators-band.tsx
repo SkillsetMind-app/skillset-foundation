@@ -46,7 +46,7 @@ export async function ForCreatorsBand() {
                 </Link>
                 <Link
                   href="/promise"
-                  className="inline-flex items-center px-2 py-3 text-sm font-semibold text-white/80 underline-offset-4 transition hover:text-white hover:underline"
+                  className="inline-flex items-center px-2 py-3 text-sm font-semibold text-white underline-offset-4 transition hover:text-white hover:underline"
                 >
                   {t("home.creators.ctaPromise")}
                 </Link>

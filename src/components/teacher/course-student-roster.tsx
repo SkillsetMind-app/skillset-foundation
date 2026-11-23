@@ -423,7 +423,9 @@ export function CourseStudentRosterView({
                     {student.email ? (
                       <a
                         href={`mailto:${student.email}`}
-                        className="text-xs text-[var(--color-ink-soft)] underline"
+                        // Navy, como sempre apareceu: o `underline` não vale num
+                        // link (text-decoration global) e a cor é o único sinal.
+                        className="text-xs text-[var(--color-primary)] underline"
                       >
                         {student.email}
                       </a>
