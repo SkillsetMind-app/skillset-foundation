@@ -1,5 +1,5 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { I18nProvider, useTranslation } from "@/components/i18n/i18n-provider";
 import { CoursePreviewShell } from "@/components/teacher/course-preview-shell";
@@ -41,10 +41,11 @@ beforeEach(() => {
 });
 
 describe("localized preview entry without reconnecting the course", () => {
+  // A volta é o construtor (do curso, quando há um), não o início do estúdio.
   it.each([
-    ["", true, "Course not selected.", "Curso no seleccionado.", "Vuelve al editor y abre la vista previa de un curso específico."],
-    ["course-1", false, "Preview is not connected.", "La vista previa no está conectada.", "La conexión con la plataforma debe estar disponible para cargar la vista previa."],
-  ] as const)("translates the entry state for %s / connected=%s", (courseId, connected, english, spanish, detail) => {
+    ["", true, "Course not selected.", "Curso no seleccionado.", "Vuelve al editor y abre la vista previa de un curso específico.", "/teach/builder"],
+    ["course-1", false, "Preview is not connected.", "La vista previa no está conectada.", "La conexión con la plataforma debe estar disponible para cargar la vista previa.", "/teach/builder?courseId=course-1"],
+  ] as const)("translates the entry state for %s / connected=%s", (courseId, connected, english, spanish, detail, backHref) => {
     mocks.connected = connected;
     renderPreview(courseId);
     expect(screen.getByRole("heading", { name: english })).toBeInTheDocument();
@@ -53,7 +54,7 @@ describe("localized preview entry without reconnecting the course", () => {
     expect(screen.getByRole("heading", { name: spanish })).toBeInTheDocument();
     expect(screen.getByText(detail)).toBeInTheDocument();
     expect(screen.getByText("Modo de vista previa")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Volver al estudio del creador" })).toHaveAttribute("href", "/teach");
+    expect(screen.getByRole("link", { name: "Volver al editor del curso" })).toHaveAttribute("href", backHref);
     expect(mocks.subscribe).toHaveBeenCalledTimes(subscriptions);
   });
 
@@ -94,6 +95,49 @@ describe("localized preview entry without reconnecting the course", () => {
     expect(mocks.subscribe).toHaveBeenCalledOnce();
     unmount();
     expect(mocks.unsubscribe).toHaveBeenCalledOnce();
+  });
+
+  // "Exit preview" navegava esta aba para o construtor: dois construtores
+  // salvando o mesmo curso. Aberta pelo construtor, a aba fecha.
+  describe("leaving the preview", () => {
+    const course = { id: "course-1", ownerId: "teacher-1", title: "Curso", summary: "", category: "Leadership", status: "draft" as const, modules: [], lessonCount: 0 };
+
+    function exitClick(opener: unknown, closes: boolean) {
+      mocks.subscribe.mockImplementation((_id, onCourse) => { onCourse(course); return mocks.unsubscribe; });
+      const close = vi.spyOn(window, "close").mockImplementation(() => {
+        if (closes) Object.defineProperty(window, "closed", { configurable: true, value: true });
+      });
+      Object.defineProperty(window, "opener", { configurable: true, value: opener });
+      Object.defineProperty(window, "closed", { configurable: true, value: false });
+      renderPreview();
+      const click = new MouseEvent("click", { bubbles: true, cancelable: true, button: 0 });
+      screen.getByRole("link", { name: "Fixture exit" }).dispatchEvent(click);
+      return { close, prevented: click.defaultPrevented };
+    }
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+      Object.defineProperty(window, "opener", { configurable: true, value: null });
+      Object.defineProperty(window, "closed", { configurable: true, value: false });
+    });
+
+    it("closes the tab the builder opened, without navigating it", () => {
+      const { close, prevented } = exitClick({}, true);
+      expect(close).toHaveBeenCalledOnce();
+      expect(prevented).toBe(true);
+    });
+
+    it("opened directly (no opener): follows the link to this course's builder", () => {
+      const { close, prevented } = exitClick(null, false);
+      expect(close).not.toHaveBeenCalled();
+      expect(prevented).toBe(false);
+    });
+
+    it("if the browser refuses to close, the link still goes to the builder", () => {
+      const { close, prevented } = exitClick({}, false);
+      expect(close).toHaveBeenCalledOnce();
+      expect(prevented).toBe(false);
+    });
   });
 
   it("distinguishes a missing course from a subscription failure", () => {

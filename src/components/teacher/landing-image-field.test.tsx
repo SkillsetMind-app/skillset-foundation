@@ -55,7 +55,10 @@ describe("LandingImageField", () => {
     const onChange = setup();
     const file = new File(["x"], "foto.png", { type: "image/png" });
     pick(file);
-    expect(await screen.findByText("Uploading...")).toBeInTheDocument();
+    // Rótulo fixo; o andamento sai uma vez, na nota (como nas capas do construtor).
+    expect(await screen.findByRole("status")).toHaveTextContent("Sending...");
+    expect(screen.getByRole("button", { name: "Upload image" })).toBeDisabled();
+    expect(screen.queryByText("Uploading...")).toBeNull();
     finish(publicUrl);
     await waitFor(() => expect(onChange).toHaveBeenCalledWith(publicUrl));
     expect(mocks.uploadLandingImage).toHaveBeenCalledWith("c1", file);

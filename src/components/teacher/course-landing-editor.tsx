@@ -15,13 +15,13 @@
  * before typing.
  */
 
-import { ChevronDown, ChevronUp, Loader2, Plus, Trash2 } from "lucide-react";
+import { Check, ChevronDown, ChevronUp, Loader2, Plus, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { useAuth } from "@/components/auth/auth-provider";
 import { PanelCard } from "@/components/teacher/course-commerce-panels";
-import { ConfirmDialog } from "@/components/ui";
+import { Button, ConfirmDialog } from "@/components/ui";
 
 import {
   courseLandingBlockKinds,
@@ -403,7 +403,14 @@ function BlockFields({
   }
 }
 
-export function CourseLandingEditor({ course }: { course: TeacherCourse }) {
+export function CourseLandingEditor({
+  course,
+  onDirtyChange,
+}: {
+  course: TeacherCourse;
+  /** O mesmo "Unsaved changes" da linha ao lado do Save, para o aviso de sair. */
+  onDirtyChange?: (dirty: boolean) => void;
+}) {
   const { user } = useAuth();
   const { t, locale } = useTranslation();
   const uid = user?.uid ?? null;
@@ -422,6 +429,10 @@ export function CourseLandingEditor({ course }: { course: TeacherCourse }) {
   // abrir ou a última gravada): "Saved." só enquanto as duas são iguais.
   const draft = useMemo(() => JSON.stringify({ template, blocks }), [template, blocks]);
   const [savedDraft, setSavedDraft] = useState<string | null>(null);
+  const dirty = savedDraft !== null && draft !== savedDraft;
+  useEffect(() => {
+    onDirtyChange?.(dirty);
+  }, [dirty, onDirtyChange]);
   // Seção que pediu para sair, enquanto a pergunta está aberta.
   const [removing, setRemoving] = useState<{ id: number; kind: CourseLandingBlockKind } | null>(null);
 
@@ -535,21 +546,28 @@ export function CourseLandingEditor({ course }: { course: TeacherCourse }) {
 
       <div className="mt-5 grid gap-2">
         <span className={labelClass}>{t("teacherLanding.template")}</span>
-        <div className="flex flex-wrap gap-2">
+        {/* O seletor segmentado do construtor (tema da área de membros): o
+            escolhido é a pastilha clara com sombra, o check e aria-pressed,
+            não só a cor; o hover tinge o fundo sem pastilha nem check, então
+            não se confunde com o escolhido; 44px de alvo. */}
+        <div className="inline-flex w-fit flex-wrap gap-1 rounded-md border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-1">
           {courseLandingTemplates.map((option) => {
             const locked = option !== "classic" && !canChooseTemplate;
+            const active = template === option;
             return (
               <button
                 key={option}
                 type="button"
                 disabled={locked}
+                aria-pressed={active}
                 onClick={() => setTemplate(option)}
-                className={`rounded-md border px-4 py-2 text-sm font-semibold disabled:opacity-50 ${
-                  template === option
-                    ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-[var(--color-on-primary)]"
-                    : "border-[var(--color-line)] bg-white text-[var(--color-ink)]"
+                className={`inline-flex min-h-11 items-center gap-1.5 rounded-sm px-3 py-2 text-sm font-semibold transition-colors duration-[var(--duration-base)] ease-[var(--ease-standard)] disabled:cursor-not-allowed disabled:opacity-50 ${
+                  active
+                    ? "bg-[var(--color-surface)] text-[var(--color-primary)] shadow-[var(--shadow-soft)]"
+                    : "text-[var(--color-ink-soft)] enabled:hover:bg-[var(--color-surface-strong)] enabled:hover:text-[var(--color-ink)]"
                 }`}
               >
+                {active ? <Check aria-hidden="true" size={15} strokeWidth={2.2} /> : null}
                 {t(`teacherLanding.templates.${option}`)}
                 {locked ? t("teacherLanding.paidPlans") : ""}
               </button>
@@ -656,18 +674,14 @@ export function CourseLandingEditor({ course }: { course: TeacherCourse }) {
       ) : null}
 
       <div className="mt-5 flex flex-wrap items-center gap-3">
-        <button
-          type="button"
-          onClick={handleSave}
-          disabled={saving}
-          className="inline-flex min-h-11 items-center gap-2 rounded-md bg-[var(--color-primary)] px-5 py-2.5 text-sm font-bold text-[var(--color-on-primary)] disabled:opacity-50"
-        >
-          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+        {/* O Button da casa (o mesmo de todo Save): era uma caixa navy feita
+            à mão, sem o subir do hover nem a sombra dos outros. */}
+        <Button onClick={handleSave} loading={saving}>
           {t(saving ? "teacherLanding.saving" : "teacherLanding.save")}
-        </button>
+        </Button>
         <SaveStatusLine
           saving={saving}
-          dirty={savedDraft !== null && draft !== savedDraft}
+          dirty={dirty}
           savedText={message ? t(message) : undefined}
           errorText={error ? t(error) : undefined}
           onRetry={() => void handleSave()}

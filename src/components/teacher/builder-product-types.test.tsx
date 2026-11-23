@@ -533,6 +533,27 @@ describe("como as pessoas vao pagar", () => {
       expect(screen.queryByText("$29 / month")).toBeNull();
       expect(screen.getByText("$97")).toBeInTheDocument();
     });
+
+    // A releitura do foco que falha nao apaga a lista boa da tela: o aviso com
+    // "Try again" sai acima dela, como em toda lista.
+    it("releitura que falha mantem os precos na tela, com Try again", async () => {
+      stubOffers([main]);
+      mocks.course = paid("course", "one_time", 9700, { status: "published" });
+      renderBuilder("pricing");
+      expect(await screen.findByText(/^Your page charges \$97 \(One payment\)\./)).toBeInTheDocument();
+
+      vi.stubGlobal("fetch", vi.fn(async () => ({ ok: false, json: async () => ({}) })));
+      fireEvent.focus(window);
+
+      expect(await screen.findByText("Couldn't refresh your prices. These are the last ones loaded.")).toHaveAttribute("role", "alert");
+      expect(screen.getByText(/^Your page charges \$97 \(One payment\)\./)).toBeInTheDocument();
+      expect(screen.getByText("$97")).toBeInTheDocument();
+
+      stubOffers([main]);
+      fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+      await waitFor(() => expect(screen.queryByRole("alert")).toBeNull());
+      expect(screen.getByText(/^Your page charges \$97 \(One payment\)\./)).toBeInTheDocument();
+    });
   });
 
   // Produto criado antes da regra: a tela mostra o que ele e e avisa.

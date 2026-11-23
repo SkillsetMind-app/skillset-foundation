@@ -1,11 +1,14 @@
 "use client";
 
-import { Loader2, UploadCloud, X } from "lucide-react";
+import { UploadCloud, X } from "lucide-react";
 import { useId, useRef, useState } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { InlineAlert } from "@/components/ui";
 import { formatCourseAssetSize, getCourseAssetUploadErrorMessage } from "@/domain/course-asset";
 import { landingImageMaxBytes, landingImageTypes, uploadLandingImage } from "@/lib/data/landing-images";
+
+import { UploadProgressNote } from "./upload-progress-note";
 
 // Mesmo reset do editor da pagina: o label em volta e caixa alta e negrito.
 const fieldClass =
@@ -36,7 +39,11 @@ export function LandingImageField({
   const inputRef = useRef<HTMLInputElement>(null);
   const labelId = useId();
   const rulesId = useId();
-  const [uploading, setUploading] = useState(false);
+  // Tamanho do arquivo em envio (null = nada subindo): a nota de andamento, a
+  // mesma das capas do construtor, diz "Sending..." e o tamanho, porque este
+  // envio não informa porcentagem.
+  const [uploadingBytes, setUploadingBytes] = useState<number | null>(null);
+  const uploading = uploadingBytes !== null;
   const [error, setError] = useState("");
   const limit = formatCourseAssetSize(landingImageMaxBytes);
 
@@ -55,13 +62,13 @@ export function LandingImageField({
       );
       return;
     }
-    setUploading(true);
+    setUploadingBytes(file.size);
     try {
       onChange(await uploadLandingImage(courseId, file));
     } catch (cause) {
       setError(getCourseAssetUploadErrorMessage(cause, landingImageMaxBytes, t));
     } finally {
-      setUploading(false);
+      setUploadingBytes(null);
       if (inputRef.current) inputRef.current.value = "";
     }
   }
@@ -96,8 +103,10 @@ export function LandingImageField({
           onClick={() => inputRef.current?.click()}
           className="inline-flex min-h-11 w-fit items-center gap-2 rounded-md border border-[var(--color-line)] bg-white px-3 py-2.5 text-sm font-semibold text-[var(--color-primary)] disabled:opacity-60"
         >
-          {uploading ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <UploadCloud className="size-4" aria-hidden />}
-          {uploading ? t("teacherLanding.upload.uploading") : t("teacherLanding.upload.button")}
+          {/* Rótulo fixo, como nas capas do construtor: o andamento é só a
+              nota logo abaixo. */}
+          <UploadCloud className="size-4" aria-hidden />
+          {t("teacherLanding.upload.button")}
         </button>
         {value ? (
           <button
@@ -113,10 +122,11 @@ export function LandingImageField({
       <p id={rulesId} className="text-xs normal-case tracking-normal text-[var(--color-ink-soft)]">
         {t("teacherLanding.upload.rules").replace("{limit}", () => limit)}
       </p>
+      {uploadingBytes !== null ? (
+        <UploadProgressNote progress={{ bytesTransferred: 0, totalBytes: uploadingBytes, percent: null, state: "running" }} />
+      ) : null}
       {error ? (
-        <p role="alert" className="text-sm font-semibold text-red-700">
-          {error}
-        </p>
+        <InlineAlert tone="error">{error}</InlineAlert>
       ) : null}
       <label className="grid gap-1.5 text-xs font-bold uppercase tracking-[0.16em] text-[var(--color-ink-soft)]">
         {t("teacherLanding.upload.orLink")}

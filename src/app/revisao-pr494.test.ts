@@ -35,7 +35,9 @@ describe("C2: botoes sem .button-* mantem o piso de 44px (min-h-11)", () => {
     ["components/auth/confirm-email-gate.tsx", "min-h-11 rounded-md px-4 text-sm font-semibold text-[var(--color-primary)]"],
     ["components/auth/signup-form.tsx", '"min-h-11 rounded-md border-[1.5px]'],
     ["components/account/profile-settings-panel.tsx", "min-h-11 shrink-0 rounded-md border"],
-    ["components/teacher/course-landing-editor.tsx", "inline-flex min-h-11 items-center gap-2 rounded-md bg-[var(--color-primary)]"],
+    // O "Save page" virou o Button da casa (min-h-11 do tamanho md); o botão
+    // feito à mão que sobrou ali é o do modelo da página, também com 44px.
+    ["components/teacher/course-landing-editor.tsx", "inline-flex min-h-11 items-center gap-1.5 rounded-sm px-3 py-2"],
     ["components/teacher/course-landing-editor.tsx", "mt-3 min-h-11 justify-self-start"],
     ["components/teacher/landing-image-field.tsx", "inline-flex min-h-11 w-fit items-center gap-2 rounded-md border"],
   ];

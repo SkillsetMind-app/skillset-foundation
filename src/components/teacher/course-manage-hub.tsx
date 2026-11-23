@@ -4,7 +4,7 @@ import Link from "next/link";
 import { ArrowLeft, ChevronDown, ChevronLeft, ChevronRight, Circle } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { ReactNode } from "react";
+import type { MouseEvent as ReactMouseEvent, ReactNode } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
@@ -29,6 +29,7 @@ import { ReadinessGroups } from "@/components/teacher/readiness-groups";
 import { CourseStudentRoster } from "@/components/teacher/course-student-roster";
 import { CourseLandingEditor } from "@/components/teacher/course-landing-editor";
 import { SalesPageEditor } from "@/components/teacher/sales-page-editor";
+import { useConfirm } from "@/components/teacher/use-confirm";
 import { InlineAlert } from "@/components/ui/inline-alert";
 import { ProgressBar } from "@/components/ui/progress-bar";
 import type { PlanId } from "@/data/plans";
@@ -397,6 +398,50 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
 
   const courseLoaded = loadedCourseId === courseId;
 
+  // Manage › Page: o texto de venda e a página têm Save próprio, e sair com
+  // "Unsaved changes" perdia o que foi digitado sem uma palavra. O aviso vale
+  // para fechar ou recarregar a aba e para a navegação que ESTE painel controla
+  // (as seções e os links dele). A barra lateral não é dele e segue direto.
+  const [salesDirty, setSalesDirty] = useState(false);
+  const [landingDirty, setLandingDirty] = useState(false);
+  const pageDirty = section === "page" && (salesDirty || landingDirty);
+  const { ask, dialog: leaveDialog } = useConfirm();
+  useEffect(() => {
+    if (!pageDirty) return;
+    const warn = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [pageDirty]);
+  const leavePage = (go: () => void) => {
+    if (!pageDirty) {
+      go();
+      return;
+    }
+    ask({
+      title: t("creatorEditor.builder.confirm.leaveTitle"),
+      body: t("creatorEditor.builder.confirm.leave"),
+      confirmLabel: t("creatorEditor.builder.confirm.leaveAction"),
+      cancelLabel: t("creatorEditor.builder.confirm.stay"),
+      danger: true,
+      run: go,
+    });
+  };
+  // Links do painel (voltar ao construtor, "Edit in Builder", menu do curso):
+  // a captura segura o clique antes do Link do Next e, confirmado, navega.
+  // Aba nova e clique modificado não desmontam nada e seguem direto.
+  const guardPageLinks = (event: ReactMouseEvent<HTMLElement>) => {
+    if (!pageDirty || event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    const anchor = (event.target as Element | null)?.closest?.("a[href]");
+    if (!(anchor instanceof HTMLAnchorElement) || (anchor.target && anchor.target !== "_self")) return;
+    const destination = new URL(anchor.href, window.location.href);
+    if (destination.origin !== window.location.origin) return;
+    event.preventDefault();
+    leavePage(() => router.push(destination.pathname + destination.search + destination.hash));
+  };
+
   useEffect(() => {
     const menu = menuRef.current;
     const viewport = menu?.closest<HTMLElement>(".platform-content");
@@ -558,7 +603,8 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
   );
 
   return (
-    <div className="grid gap-5">
+    <div className="grid gap-5" onClickCapture={guardPageLinks}>
+      {leaveDialog}
       <section className="border-b border-[var(--color-line)] bg-white pb-5">
         <Link
           href="/teach/builder"
@@ -609,7 +655,10 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
               <select
                 aria-label={t("creatorPanel.hub.header.switchCourse")}
                 value={course.id}
-                onChange={(event) => router.push(`/teach/courses/${event.target.value}/manage`)}
+                onChange={(event) => {
+                  const next = event.target.value;
+                  leavePage(() => router.push(`/teach/courses/${next}/manage`));
+                }}
                 className="min-h-11 rounded-md border fine-rule bg-white px-3 py-2 text-xs font-semibold text-[var(--color-ink)]"
               >
                 <option value={course.id}>{course.title}</option>
@@ -724,7 +773,7 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
                 // A seção aberta era só cor: o leitor de tela não sabia onde estava.
                 aria-current={section === item.id ? "page" : undefined}
                 type="button"
-                onClick={() => setSection(item.id)}
+                onClick={() => (item.id === section ? undefined : leavePage(() => setSection(item.id)))}
                 className={`min-h-11 shrink-0 whitespace-nowrap rounded-md border-b-2 px-3 py-2 text-left text-sm font-semibold transition lg:w-full lg:border-b-0 lg:border-l-2 ${
                   section === item.id
                     ? "border-[var(--color-primary)] bg-[var(--color-surface-soft)] text-[var(--color-primary)]"
@@ -745,7 +794,7 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
                 ref={section === item.id ? activeSectionRef : undefined}
                 aria-current={section === item.id ? "page" : undefined}
                 type="button"
-                onClick={() => setSection(item.id)}
+                onClick={() => (item.id === section ? undefined : leavePage(() => setSection(item.id)))}
                 className={`rounded-md px-3 py-2 text-left text-sm font-semibold transition ${
                   section === item.id
                     ? "bg-[var(--color-surface-soft)] text-[var(--color-primary)]"
@@ -1142,11 +1191,11 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
 
           {section === "page" ? (
             <div className="grid gap-4">
-              <SalesPageEditor course={course} />
+              <SalesPageEditor course={course} onDirtyChange={setSalesDirty} />
               {/* The block editor sits below the title/summary form rather than
                   replacing it: those fields also feed the marketplace card and
                   the course header, so they are not page-only copy. */}
-              <CourseLandingEditor course={course} />
+              <CourseLandingEditor course={course} onDirtyChange={setLandingDirty} />
               <PanelCard
                 title={t("creatorPanel.hub.page.title")}
                 description={t("creatorPanel.hub.page.description")}

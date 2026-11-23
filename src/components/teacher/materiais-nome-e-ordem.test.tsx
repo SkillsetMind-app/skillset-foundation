@@ -90,6 +90,12 @@ describe("nome e ordem dos materiais", () => {
     expect(mocks.rename).toHaveBeenCalledExactlyOnceWith("slides", "Slides");
     expect(mocks.reload).toHaveBeenCalled();
     expect(screen.getByText("Name saved.")).toBeInTheDocument();
+    // Embaixo do campo renomeado, não na caixa de envio acima da lista.
+    expect(screen.getByText("Name saved.").closest("article")).toBe(fields[0].closest("article"));
+    expect(screen.getByText("Name saved.")).toHaveAttribute("role", "status");
+    // Voltou a digitar: o "salvo" deixa de valer.
+    fireEvent.change(screen.getAllByLabelText("Name students see")[0], { target: { value: "Slides 2" } });
+    expect(screen.queryByText("Name saved.")).toBeNull();
   });
 
   it("sair do campo sem mudar nada não grava", () => {
@@ -161,6 +167,7 @@ describe("nome e ordem dos materiais", () => {
     });
 
     expect(screen.getByText("We could not save this change. Try again.")).toBeInTheDocument();
+    expect(screen.getByText("We could not save this change. Try again.").closest("article")).toBe(field.closest("article"));
     expect(screen.queryByText("Name saved.")).toBeNull();
   });
 

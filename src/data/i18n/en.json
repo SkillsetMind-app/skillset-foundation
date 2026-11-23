@@ -4019,7 +4019,7 @@
       "notFound": "Course record not found.",
       "notFoundHelp": "The course may have been deleted or your session may need refresh.",
       "mode": "Preview mode",
-      "back": "Back to Teacher Studio",
+      "back": "Back to the course builder",
       "serverLoading": "Loading course preview...",
       "banner": "Preview mode - this is how students will see your course.",
       "exit": "Exit preview",
@@ -4253,7 +4253,8 @@
         "next": "Next:",
         "backTo": "Back to {step}",
         "continueTo": "Continue to {step}",
-        "back": "Back"
+        "back": "Back",
+        "stepHelp": "More about this step"
       },
       "publish": {
         "ready": "Course is ready to publish.",
@@ -4345,6 +4346,7 @@
         "offerCharges": "Your page charges {price} ({model}).",
         "offerChange": "Change it in Other prices.",
         "offersFailed": "Couldn't load your prices.",
+        "offersRefreshFailed": "Couldn't refresh your prices. These are the last ones loaded.",
         "preview": "Free preview lesson",
         "noPreview": "No preview selected yet",
         "listingHelp": "People pay on a secure page before they get access."
