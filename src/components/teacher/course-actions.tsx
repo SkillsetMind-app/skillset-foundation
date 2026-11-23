@@ -7,6 +7,7 @@ import type { ComponentType, ReactNode } from "react";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { BusyLabel } from "@/components/ui/busy-label";
 import { InlineAlert } from "@/components/ui/inline-alert";
+import { LoadErrorAlert } from "@/components/ui/load-error-alert";
 import { moveFocusByKey } from "@/lib/a11y/menu-keys";
 import { useModalFocus } from "@/lib/a11y/use-modal-focus";
 import {
@@ -167,6 +168,8 @@ export function DeleteOrArchiveCourseDialog({
   const [audience, setAudience] = useState<{ enrollments: number; orders: number; subscriptions: number } | null>(null);
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
+  // "Try again" da contagem: relê SÓ a contagem (getCourseAudience), nunca o apagar.
+  const [audienceAttempt, setAudienceAttempt] = useState(0);
   useModalFocus(dialogRef, true);
 
   useEffect(() => {
@@ -184,7 +187,14 @@ export function DeleteOrArchiveCourseDialog({
     return () => {
       live = false;
     };
-  }, [courseId]);
+  }, [courseId, audienceAttempt]);
+
+  // Volta às linhas de espera do texto; o botão de confirmar segue travado
+  // (sem contagem) até a contagem chegar, como na primeira leitura.
+  function retryAudience() {
+    setFailed(false);
+    setAudienceAttempt((attempt) => attempt + 1);
+  }
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
@@ -305,7 +315,13 @@ export function DeleteOrArchiveCourseDialog({
           </>
         ) : null}
 
-        {failed ? (
+        {/* Sem contagem, o confirmar está travado: a falha só pode ser da LEITURA,
+            e só ela ganha "Try again". A falha de apagar segue como era. */}
+        {failed && !known ? (
+          <LoadErrorAlert className="mt-4" onRetry={retryAudience} focusRef={dialogRef}>
+            {t("creatorPanel.products.deleteError")}
+          </LoadErrorAlert>
+        ) : failed ? (
           <InlineAlert tone="error" className="mt-4">
             {t("creatorPanel.products.deleteError")}
           </InlineAlert>
