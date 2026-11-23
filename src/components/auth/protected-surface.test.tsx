@@ -3,9 +3,11 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { AuthSession } from "@/domain/auth";
 import { ProtectedSurface } from "@/components/auth/protected-surface";
+import type { Permission } from "@/lib/permissions";
 
 const mocks = vi.hoisted(() => ({
   session: { status: "loading", user: null } as AuthSession,
+  pathname: "/account",
 }));
 
 vi.mock("@/components/auth/auth-provider", () => ({
@@ -16,7 +18,7 @@ vi.mock("@/components/i18n/i18n-provider", () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
 
-vi.mock("next/navigation", () => ({ usePathname: () => "/account" }));
+vi.mock("next/navigation", () => ({ usePathname: () => mocks.pathname }));
 
 const learner = {
   uid: "u-1",
@@ -132,5 +134,46 @@ describe("ProtectedSurface — senha aceita, codigo ainda nao", () => {
 
     expect(screen.getByRole("link", { name: "auth.guard.createAccount" })).toBeTruthy();
     expect(screen.queryByRole("link", { name: "auth.guard.contactSupport" })).toBeNull();
+  });
+});
+
+// F-03, estagio 0: so o que a espera desenha mudou. Os muros (sem conta, codigo
+// pendente, sem permissao) foram gravados ANTES da mudanca e tem de sair iguais,
+// letra por letra, numa rota da casca e numa da sala de aula.
+describe("ProtectedSurface — os muros nao mudam com a espera nova", () => {
+  afterEach(() => {
+    cleanup();
+    mocks.pathname = "/account";
+  });
+
+  function wall(session: AuthSession, permissions: readonly Permission[] = ["auth.signOut"], contact = false) {
+    mocks.session = session;
+    const { container } = render(
+      <ProtectedSurface permissions={permissions} contactWhenSignedOut={contact}>
+        <p>conteudo protegido</p>
+      </ProtectedSurface>,
+    );
+    expect(container.querySelector(".auth-split")).toBeInTheDocument();
+    return container.querySelector(".auth-card")!.innerHTML;
+  }
+
+  it("numa rota da casca da plataforma (/teach/sales)", () => {
+    mocks.pathname = "/teach/sales";
+    expect(wall({ status: "unauthenticated", user: null })).toMatchInlineSnapshot(`"<p class="mb-3 text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">auth.guard.signInEyebrow</p><h1 class="auth-title display-title">auth.guard.signInTitle</h1><p class="auth-description">auth.guard.signInDescription</p><div class="mt-6 flex flex-wrap gap-3"><a class="button-solid px-4 py-2.5 text-sm" href="/login?returnTo=%2Fteach%2Fsales">auth.guard.signIn</a><a class="button-outline px-4 py-2.5 text-sm" href="/auth?mode=signup&amp;returnTo=%2Fteach%2Fsales">auth.guard.createAccount</a></div>"`);
+    cleanup();
+    expect(wall({ status: "unauthenticated", user: null }, ["auth.signOut"], true)).toMatchInlineSnapshot(`"<p class="mb-3 text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">auth.guard.signInEyebrow</p><h1 class="auth-title display-title">auth.guard.signInTitle</h1><p class="auth-description">auth.guard.signInDescription</p><div class="mt-6 flex flex-wrap gap-3"><a class="button-solid px-4 py-2.5 text-sm" href="/login?returnTo=%2Fteach%2Fsales">auth.guard.signIn</a><a class="button-outline px-4 py-2.5 text-sm" href="/contact">auth.guard.contactSupport</a></div>"`);
+    cleanup();
+    expect(wall({ status: "mfa_required", user: learner })).toMatchInlineSnapshot(`"<p class="mb-3 text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">auth.guard.signInEyebrow</p><h1 class="auth-title display-title">auth.mfaTitle</h1><p class="auth-description">auth.mfaSubtitle</p><div class="mt-6 flex flex-wrap gap-3"><a class="button-solid px-4 py-2.5 text-sm" href="/login?returnTo=%2Fteach%2Fsales">auth.verify</a></div>"`);
+    cleanup();
+    expect(wall({ status: "authenticated", user: learner }, ["teacherStudio.access"])).toMatchInlineSnapshot(`"<p class="mb-3 text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">auth.guard.limitedEyebrow</p><h1 class="auth-title display-title">auth.guard.limitedTitle</h1><p class="auth-description">auth.guard.limitedDescription</p><div class="mt-6 flex flex-wrap gap-3"><a class="button-solid px-4 py-2.5 text-sm" href="/onboarding?path=teacher">auth.guard.updateOnboarding</a><a class="button-outline px-4 py-2.5 text-sm" href="/contact">auth.guard.contactSupport</a></div>"`);
+  });
+
+  it("numa rota da sala de aula (/learn/courses/intro)", () => {
+    mocks.pathname = "/learn/courses/intro";
+    expect(wall({ status: "unauthenticated", user: null })).toMatchInlineSnapshot(`"<p class="mb-3 text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">auth.guard.signInEyebrow</p><h1 class="auth-title display-title">auth.guard.signInTitle</h1><p class="auth-description">auth.guard.signInDescription</p><div class="mt-6 flex flex-wrap gap-3"><a class="button-solid px-4 py-2.5 text-sm" href="/login?returnTo=%2Flearn%2Fcourses%2Fintro">auth.guard.signIn</a><a class="button-outline px-4 py-2.5 text-sm" href="/auth?mode=signup&amp;returnTo=%2Flearn%2Fcourses%2Fintro">auth.guard.createAccount</a></div>"`);
+    cleanup();
+    expect(wall({ status: "mfa_required", user: learner })).toMatchInlineSnapshot(`"<p class="mb-3 text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">auth.guard.signInEyebrow</p><h1 class="auth-title display-title">auth.mfaTitle</h1><p class="auth-description">auth.mfaSubtitle</p><div class="mt-6 flex flex-wrap gap-3"><a class="button-solid px-4 py-2.5 text-sm" href="/login?returnTo=%2Flearn%2Fcourses%2Fintro">auth.verify</a></div>"`);
+    cleanup();
+    expect(wall({ status: "authenticated", user: learner }, ["users.manage"])).toMatchInlineSnapshot(`"<p class="mb-3 text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">auth.guard.limitedEyebrow</p><h1 class="auth-title display-title">auth.guard.limitedTitle</h1><p class="auth-description">auth.guard.limitedDescription</p><div class="mt-6 flex flex-wrap gap-3"><a class="button-solid px-4 py-2.5 text-sm" href="/onboarding">auth.guard.updateOnboarding</a><a class="button-outline px-4 py-2.5 text-sm" href="/contact">auth.guard.contactSupport</a></div>"`);
   });
 });
