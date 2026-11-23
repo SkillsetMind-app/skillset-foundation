@@ -815,7 +815,6 @@ p {
    glyph/text stays var(--color-primary) and reads ~7.7:1 on surface-soft. */
 [data-theme="dark"] .account-settings-tab__icon,
 [data-theme="dark"] .settings-info-row__icon,
-[data-theme="dark"] .course-upload-preset__icon,
 [data-theme="dark"] .studio-action-card__icon,
 [data-theme="dark"] .settings-pill--neutral {
   background: var(--color-surface-soft);
@@ -835,7 +834,6 @@ p {
    text to ~1:1 in dark. Use an elevated dark surface for the hover highlight
    instead (text stays readable; matches the row/card resting surface). */
 [data-theme="dark"] .account-settings-tab:hover,
-[data-theme="dark"] .course-upload-preset:hover,
 [data-theme="dark"] .studio-course-row:hover,
 [data-theme="dark"] .studio-action-card:hover {
   background: var(--color-surface-strong);
@@ -2602,73 +2600,6 @@ html[data-view-as] .site-header {
   .course-upload-panel {
     padding: 1.5rem;
   }
-}
-
-.course-upload-presets {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 0.75rem;
-}
-
-@media (min-width: 768px) {
-  .course-upload-presets {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-.course-upload-preset {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  align-items: start;
-  gap: 0.75rem;
-  border: 1px solid var(--color-line);
-  border-radius: var(--radius-lg);
-  background: var(--color-surface-soft);
-  padding: 1rem;
-  color: var(--color-ink-soft);
-  text-align: left;
-  transition:
-    transform 180ms ease,
-    background 180ms ease,
-    border-color 180ms ease,
-    box-shadow 180ms ease;
-}
-
-.course-upload-preset:hover {
-  transform: translateY(-1px);
-  border-color: rgba(26, 54, 93, 0.22);
-  background: #ffffff;
-  color: var(--color-ink);
-  box-shadow: var(--shadow-soft);
-}
-
-.course-upload-preset--active {
-  border-color: rgba(26, 54, 93, 0.34);
-  background: var(--color-primary);
-  color: var(--color-base);
-  box-shadow: 0 16px 32px rgba(26, 54, 93, 0.16);
-}
-
-.course-upload-preset--active span:last-child span:last-child {
-  color: rgba(255, 255, 255, 0.76);
-}
-
-/* A1-cont-2: same inversion as .account-settings-tab--active — the preset's
-   --color-primary fill goes light blue in dark, so this muted-white sub-label
-   fails (~1.9:1). Match the parent's --color-base dark ink (8.8:1). Dark-scoped. */
-[data-theme="dark"] .course-upload-preset--active span:last-child span:last-child {
-  color: var(--color-base);
-}
-
-.course-upload-preset__icon {
-  display: grid;
-  width: 38px;
-  height: 38px;
-  place-items: center;
-  border: 1px solid var(--color-line);
-  border-radius: var(--radius-md);
-  background: #ffffff;
-  color: var(--color-primary);
 }
 
 @media (width < 1024px) {
@@ -5237,9 +5168,39 @@ body:has([aria-label="Course categories"])
   box-shadow: 0 14px 34px rgba(15, 39, 68, 0.055);
 }
 
+/* A faixa da prévia gruda logo abaixo da barra do topo da área de membros
+   (member-area-shell.tsx, sticky top 0: 44px dos botões + 24 de respiro + 1 de
+   borda = 69px), não em top 0, onde ficaria atrás dela. Era um cartão comum:
+   depois de rolar, nada dizia que era uma prévia. Sticky guarda o próprio
+   lugar, então em repouso não cobre nada. Uma linha fina: 44px + 8 + 8.
+   69px e z 30 ficam escritos: a barra do topo não tem variável de altura
+   (o 92px da lista de aulas abaixo sai da mesma conta) e a escala --z-* começa
+   em 50, acima dela (z-40), que a faixa não pode cobrir. */
 .member-preview-banner {
+  position: sticky;
+  top: 69px;
+  z-index: 30;
   background: var(--color-surface-strong);
-  padding: 16px;
+  padding: 8px 16px;
+}
+
+/* A faixa presa cobre o topo: o foco do teclado e as âncoras param abaixo dela
+   (barra do topo 69 + faixa ~62 + folga). */
+html:has(.member-preview-banner) {
+  scroll-padding-top: 148px;
+}
+
+/* No celular o texto ao lado do botão quebra em linhas, em vez de o botão
+   descer para uma segunda faixa: presa no topo, cada linha a mais é tela a
+   menos. */
+@media (max-width: 639.98px) {
+  .member-preview-banner > div {
+    flex-wrap: nowrap;
+  }
+
+  .member-preview-banner > div > a {
+    flex: none;
+  }
 }
 
 .member-classroom-hero {
@@ -5426,6 +5387,16 @@ body:has([aria-label="Course categories"])
      do topo da área de membros (~68px) + 24px; 108px deixa 16px embaixo. */
   max-height: calc(100svh - 108px);
   overflow-y: auto;
+}
+
+/* Na prévia a faixa presa (~62px) fica entre a barra do topo e a lista de
+   aulas: a lista desce o mesmo tanto para não passar por baixo dela. Só onde a
+   lista é presa (acima de 1180px; abaixo ela vira acordeão estático). */
+@media (width > 1180px) {
+  .member-classroom:has(> .member-preview-banner) .member-classroom-sidebar {
+    top: 154px;
+    max-height: calc(100svh - 170px);
+  }
 }
 
 /* Cabeçalho curto de aula — a capa inteira fica para a primeira visita. */
@@ -8029,13 +8000,46 @@ button:hover > .dash-card,
     justify-content: flex-start;
   }
 
+  /* No celular os cinco passos empilhados (~270px) empurravam o primeiro
+     campo para ~800 px do topo: viram uma faixa que rola de lado, com a etapa
+     aberta no meio (course-builder-studio.tsx) e a borda direita esmaecida
+     enquanto houver etapa escondida, como as abas da sala. A rolagem corta o
+     que passa da borda: 5px de respiro guardam o anel de foco (2px + 3px de
+     afastamento) e o traço da etapa aberta (bottom -0.25rem); a margem
+     negativa devolve o alinhamento com o resto da página. O foco pelo Tab
+     para fora dos 48px esmaecidos da borda (scroll-padding). */
   .course-builder-steps {
-    grid-template-columns: 1fr;
+    display: flex;
+    overflow-x: auto;
+    margin-inline: -5px;
+    padding: 5px 5px 6px;
+    scroll-padding-inline: 48px;
+    scrollbar-width: none;
   }
 
-  /* No celular os cinco passos empilhados empurravam o primeiro campo para
-     ~800 px do topo: a linha de apoio de cada passo sai, o nome fica. */
+  .course-builder-steps::-webkit-scrollbar {
+    display: none;
+  }
+
+  .course-builder-steps[data-more="true"] {
+    mask-image: linear-gradient(90deg, #000 calc(100% - 48px), transparent);
+  }
+
+  .course-builder-steps > .course-builder-step {
+    flex: 0 0 auto;
+    width: auto;
+  }
+
+  /* A linha de apoio de cada passo sai, o nome fica. */
   .course-builder-step__sub {
+    display: none;
+  }
+}
+
+/* Abaixo do sm (o mesmo corte do botão "More about this step", que só existe
+   ali) a ajuda da etapa fica fechada até a pessoa pedir. */
+@media (max-width: 639.98px) {
+  .course-builder-step-help:not([data-open="true"]) {
     display: none;
   }
 }

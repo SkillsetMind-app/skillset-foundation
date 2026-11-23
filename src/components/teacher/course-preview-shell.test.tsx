@@ -1,5 +1,5 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { I18nProvider, useTranslation } from "@/components/i18n/i18n-provider";
 import { CoursePreviewShell } from "@/components/teacher/course-preview-shell";
@@ -10,9 +10,10 @@ const mocks = vi.hoisted(() => ({
   subscribe: vi.fn(),
   unsubscribe: vi.fn(),
   refresh: vi.fn(),
+  push: vi.fn(),
 }));
 
-vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: mocks.refresh }) }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: mocks.refresh, push: mocks.push }) }));
 vi.mock("@/lib/supabase/config", () => ({
   getSupabaseClientConfig: () => mocks.connected ? { url: "https://fixture.invalid" } : null,
 }));
@@ -41,10 +42,11 @@ beforeEach(() => {
 });
 
 describe("localized preview entry without reconnecting the course", () => {
+  // A volta é o construtor (do curso, quando há um), não o início do estúdio.
   it.each([
-    ["", true, "Course not selected.", "Curso no seleccionado.", "Vuelve al editor y abre la vista previa de un curso específico."],
-    ["course-1", false, "Preview is not connected.", "La vista previa no está conectada.", "La conexión con la plataforma debe estar disponible para cargar la vista previa."],
-  ] as const)("translates the entry state for %s / connected=%s", (courseId, connected, english, spanish, detail) => {
+    ["", true, "Course not selected.", "Curso no seleccionado.", "Vuelve al editor y abre la vista previa de un curso específico.", "/teach/builder"],
+    ["course-1", false, "Preview is not connected.", "La vista previa no está conectada.", "La conexión con la plataforma debe estar disponible para cargar la vista previa.", "/teach/builder?courseId=course-1"],
+  ] as const)("translates the entry state for %s / connected=%s", (courseId, connected, english, spanish, detail, backHref) => {
     mocks.connected = connected;
     renderPreview(courseId);
     expect(screen.getByRole("heading", { name: english })).toBeInTheDocument();
@@ -53,7 +55,7 @@ describe("localized preview entry without reconnecting the course", () => {
     expect(screen.getByRole("heading", { name: spanish })).toBeInTheDocument();
     expect(screen.getByText(detail)).toBeInTheDocument();
     expect(screen.getByText("Modo de vista previa")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Volver al estudio del creador" })).toHaveAttribute("href", "/teach");
+    expect(screen.getByRole("link", { name: "Volver al editor del curso" })).toHaveAttribute("href", backHref);
     expect(mocks.subscribe).toHaveBeenCalledTimes(subscriptions);
   });
 
@@ -94,6 +96,88 @@ describe("localized preview entry without reconnecting the course", () => {
     expect(mocks.subscribe).toHaveBeenCalledOnce();
     unmount();
     expect(mocks.unsubscribe).toHaveBeenCalledOnce();
+  });
+
+  // "Exit preview" navegava esta aba para o construtor: dois construtores
+  // salvando o mesmo curso. Aberta pelo construtor, a aba fecha.
+  describe("leaving the preview", () => {
+    const course = { id: "course-1", ownerId: "teacher-1", title: "Curso", summary: "", category: "Leadership", status: "draft" as const, modules: [], lessonCount: 0 };
+    const exitHref = "/teach/builder?courseId=course-1&tab=members";
+
+    function builderTab(overrides: { closed?: boolean; pathname?: string; search?: string; crossOrigin?: boolean } = {}) {
+      const location = { origin: window.location.origin, pathname: overrides.pathname ?? "/teach/builder", search: overrides.search ?? "?courseId=course-1&tab=pricing" };
+      return {
+        closed: overrides.closed ?? false,
+        focus: vi.fn(),
+        get location() {
+          if (overrides.crossOrigin) throw new DOMException("Blocked a frame", "SecurityError");
+          return location;
+        },
+      };
+    }
+
+    // A aba de origem fica guardada no módulo (sobrevive à troca de aba da
+    // prévia): cada caso carrega o módulo de novo, com o seu opener.
+    async function exitClick(opener: unknown, { closes = true }: { closes?: boolean } = {}) {
+      // Relógio simulado em TODO caso: o clique agenda um setTimeout de 150 ms
+      // que lê window.closed. Com relógio real, o de um caso disparava no meio
+      // do seguinte (o afterEach já devolveu closed=false) e chamava o push.
+      vi.useFakeTimers({ toFake: ["setTimeout"] });
+      vi.resetModules();
+      Object.defineProperty(window, "opener", { configurable: true, writable: true, value: opener });
+      Object.defineProperty(window, "closed", { configurable: true, writable: true, value: false });
+      const close = vi.spyOn(window, "close").mockImplementation(() => {
+        if (closes) Object.defineProperty(window, "closed", { configurable: true, writable: true, value: true });
+      });
+      mocks.subscribe.mockImplementation((_id, onCourse) => { onCourse(course); return mocks.unsubscribe; });
+      const { I18nProvider: Provider } = await import("@/components/i18n/i18n-provider");
+      const { CoursePreviewShell: Shell } = await import("@/components/teacher/course-preview-shell");
+      render(<Provider initialLocale="en"><Shell courseId="course-1" tab="materials" /></Provider>);
+      // Montou: a referência foi guardada e window.opener zerado (tabnabbing).
+      const openerAfterMount = window.opener;
+      const click = new MouseEvent("click", { bubbles: true, cancelable: true, button: 0 });
+      screen.getByRole("link", { name: "Fixture exit" }).dispatchEvent(click);
+      return { close, prevented: click.defaultPrevented, openerAfterMount };
+    }
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+      vi.useRealTimers();
+      Object.defineProperty(window, "opener", { configurable: true, writable: true, value: null });
+      Object.defineProperty(window, "closed", { configurable: true, writable: true, value: false });
+    });
+
+    it("closes the tab when this course's builder is still open in the tab that opened it", async () => {
+      const tab = builderTab();
+      const { close, prevented, openerAfterMount } = await exitClick(tab);
+      expect(openerAfterMount).toBeNull();
+      expect(close).toHaveBeenCalledOnce();
+      expect(tab.focus).toHaveBeenCalledOnce();
+      expect(prevented).toBe(true);
+      expect(mocks.push).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      ["opened directly (no opener)", null],
+      ["the builder tab was closed", builderTab({ closed: true })],
+      ["the builder tab moved to another course", builderTab({ search: "?courseId=course-2" })],
+      ["the builder tab moved to another screen", builderTab({ pathname: "/teach" })],
+      ["the opener is on another origin", builderTab({ crossOrigin: true })],
+    ])("%s: does not close, follows the link to this course's builder", async (_label, opener) => {
+      const { close, prevented, openerAfterMount } = await exitClick(opener);
+      expect(openerAfterMount).toBeNull();
+      expect(close).not.toHaveBeenCalled();
+      expect(prevented).toBe(false);
+    });
+
+    it("if the browser refuses to close, the tab goes to the builder after a moment", async () => {
+      const { close, prevented } = await exitClick(builderTab(), { closes: false });
+      expect(close).toHaveBeenCalledOnce();
+      expect(prevented).toBe(true);
+      expect(mocks.push).not.toHaveBeenCalled();
+      vi.advanceTimersByTime(200);
+      expect(mocks.push).toHaveBeenCalledExactlyOnceWith(exitHref);
+    });
   });
 
   it("distinguishes a missing course from a subscription failure", () => {

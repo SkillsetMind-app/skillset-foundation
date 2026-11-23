@@ -1066,7 +1066,8 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
         expect(link.tagName).toBe("A");
         expect(link).toHaveAttribute("href", "/teach/builder/course-1/preview");
         expect(link).toHaveAttribute("target", "_blank");
-        expect(link).toHaveAttribute("rel", "noopener noreferrer");
+        // A prévia fecha a própria aba ao sair: precisa saber quem a abriu.
+        expect(link).toHaveAttribute("rel", "opener");
         fireEvent.click(link);
       }
       if (locale === "en") fireEvent.click(screen.getByRole("button", { name: "Switch language" }));

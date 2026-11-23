@@ -265,7 +265,10 @@ export function LessonContentModal({
   const [localUploadProgress, setUploadProgress] = useState<UploadCourseAssetProgress | null>(null);
   const uploadProgress = sharedUpload?.progress ?? localUploadProgress;
   const [error, setError] = useState<LessonError | null>(null);
-  const [success, setSuccess] = useState<"uploaded" | "deleted" | "oldLinkRemoved" | "renamed" | "ordered" | null>(null);
+  const [success, setSuccess] = useState<"uploaded" | "deleted" | "oldLinkRemoved" | "ordered" | null>(null);
+  // "Name saved." (ou a falha) sai embaixo do campo renomeado: antes caía na
+  // caixa de envio, acima da lista, longe do arquivo que mudou.
+  const [renameNotice, setRenameNotice] = useState<{ assetId: string; failed: boolean } | null>(null);
   const [isSavingOrder, setIsSavingOrder] = useState(false);
   const completedAssetId = sharedUpload?.status === "success" ? sharedUpload.assetId : undefined;
   const [handledAssetId, setHandledAssetId] = useState<string | undefined>();
@@ -772,12 +775,13 @@ export function LessonContentModal({
     if (!isEditable) return;
     setError(null);
     setSuccess(null);
+    setRenameNotice(null);
     try {
       await renameCourseAsset(asset.id, title);
-      setSuccess("renamed");
+      setRenameNotice({ assetId: asset.id, failed: false });
       void assetsReloadRef.current?.();
     } catch {
-      setError({ kind: "save" });
+      setRenameNotice({ assetId: asset.id, failed: true });
     }
   }
 
@@ -1305,6 +1309,8 @@ export function LessonContentModal({
                 deletingAssetId={deletingAssetId}
                 onDelete={handleDeleteAsset}
                 onRename={(asset, title) => void handleRenameAsset(asset, title)}
+                renameNotice={renameNotice}
+                onRenameEdit={() => setRenameNotice(null)}
                 onMove={(index, delta) => void handleMoveMaterial(index, delta)}
                 isSavingOrder={isSavingOrder}
               />
@@ -1578,6 +1584,8 @@ function LessonAssetList({
   deletingAssetId,
   onDelete,
   onRename,
+  renameNotice = null,
+  onRenameEdit,
   onMove,
   isSavingOrder = false,
 }: {
@@ -1588,6 +1596,10 @@ function LessonAssetList({
   onDelete: (asset: CourseAsset) => void;
   /** Materiais: o nome que o aluno vê, gravado ao sair do campo. */
   onRename?: (asset: CourseAsset, title: string) => void;
+  /** O resultado do último nome gravado, mostrado embaixo do campo dele. */
+  renameNotice?: { assetId: string; failed: boolean } | null;
+  /** Voltou a digitar: o "salvo" de antes deixa de ser verdade. */
+  onRenameEdit?: () => void;
   /** Materiais: sobe (-1) ou desce (+1) o arquivo na lista. */
   onMove?: (index: number, delta: -1 | 1) => void;
   isSavingOrder?: boolean;
@@ -1621,6 +1633,9 @@ function LessonAssetList({
                   defaultValue={title}
                   maxLength={courseAssetTitleMaxLength}
                   disabled={!isEditable}
+                  onChange={() => {
+                    if (renameNotice?.assetId === asset.id) onRenameEdit?.();
+                  }}
                   onBlur={(event) => {
                     const next = event.target.value.trim();
                     if (next !== title) onRename(asset, next);
@@ -1634,6 +1649,16 @@ function LessonAssetList({
             ) : (
               <strong>{title}</strong>
             )}
+            {/* Fora do label (senão entraria no nome do campo) e em <p>: o
+                span desta lista é caixa alta e cinza. */}
+            {renameNotice?.assetId === asset.id ? (
+              <p
+                role={renameNotice.failed ? "alert" : "status"}
+                className={`mt-1 text-xs font-semibold ${renameNotice.failed ? "text-[var(--color-danger-fg)]" : "text-[var(--color-success-fg)]"}`}
+              >
+                {renameNotice.failed ? getLessonErrorMessage({ kind: "save" }, t) : t("creatorEditor.lesson.success.renamed")}
+              </p>
+            ) : null}
             <span>
               {getCourseAssetKindLabel(asset.kind, t)} - {formatCourseAssetSize(asset.size)}
             </span>

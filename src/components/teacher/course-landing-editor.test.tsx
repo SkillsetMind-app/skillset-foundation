@@ -261,6 +261,31 @@ describe("sales page save status", () => {
     expect(screen.getByRole("status")).toHaveTextContent("Saved.");
   });
 
+  // O modelo escolhido dizia so pela cor; o Save era uma caixa navy a mao.
+  it("template choices are pressed buttons and Save is the shared Button with a busy state", async () => {
+    await mountEditor([hero()]);
+    const classic = screen.getByRole("button", { name: "Classic" });
+    const bold = screen.getByRole("button", { name: "Bold" });
+    expect(classic).toHaveAttribute("aria-pressed", "true");
+    expect(bold).toHaveAttribute("aria-pressed", "false");
+    expect(classic).toHaveClass("min-h-11");
+    fireEvent.click(bold);
+    expect(bold).toHaveAttribute("aria-pressed", "true");
+    expect(classic).toHaveAttribute("aria-pressed", "false");
+
+    let finish!: (value: { ok: true }) => void;
+    vi.mocked(saveCourseLanding).mockImplementationOnce(() => new Promise((resolve) => { finish = resolve; }));
+    const saveButton = screen.getByRole("button", { name: "Save page" });
+    expect(saveButton).toHaveClass("button-solid");
+    fireEvent.click(saveButton);
+    const busy = screen.getByRole("button", { name: "Saving..." });
+    expect(busy).toBe(saveButton);
+    expect(busy).toBeDisabled();
+    expect(busy).toHaveAttribute("aria-busy", "true");
+    await act(async () => finish({ ok: true }));
+    expect(screen.getByRole("button", { name: "Save page" })).toBeEnabled();
+  });
+
   it("a failed save shows the error with Try again, which sends the same page again", async () => {
     await mountEditor([hero()]);
     vi.mocked(saveCourseLanding).mockClear();

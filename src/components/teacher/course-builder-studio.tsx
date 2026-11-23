@@ -9,6 +9,7 @@ import {
   ArrowUp,
   CalendarDays,
   CheckCircle2,
+  ChevronDown,
   ChevronRight,
   Circle,
   CloudOff,
@@ -961,6 +962,20 @@ export function CourseBuilderStudio() {
   const [offersFailed, setOffersFailed] = useState(false);
   // "Try again" da falha: a mesma leitura, de novo (antes só recarregando a página).
   const [offersAttempt, setOffersAttempt] = useState(0);
+  // De que curso é a lista na tela: uma releitura que falha não apaga a lista
+  // boa do MESMO curso (a regra de toda lista); de outro curso, apaga.
+  const offersCourseRef = useRef<string | null>(null);
+  // Com a lista na tela, o "Try again" não tira o aviso enquanto lê: ele fica,
+  // com o botão em espera, até a resposta. Sem lista, volta o esqueleto.
+  const [offersRetrying, setOffersRetrying] = useState(false);
+  const retryOffers = () => {
+    if (checkoutOffers) {
+      setOffersRetrying(true);
+    } else {
+      setOffersFailed(false);
+    }
+    setOffersAttempt((current) => current + 1);
+  };
   useEffect(() => {
     if (!courseId) {
       return;
@@ -977,14 +992,19 @@ export function CourseBuilderStudio() {
             throw new Error("offers unavailable");
           }
           if (alive && request === latest) {
+            offersCourseRef.current = courseId;
             setCheckoutOffers(data.offers.map((offer) => ({ ...offer, courseId })));
             setOffersFailed(false);
+            setOffersRetrying(false);
           }
         })
         .catch(() => {
           if (alive && request === latest) {
-            setCheckoutOffers(null);
+            // A releitura do foco falhava e apagava os cartoes que estavam
+            // certos na tela. So a tela muda: o checkout le o preco no servidor.
+            if (offersCourseRef.current !== courseId) setCheckoutOffers(null);
             setOffersFailed(true);
+            setOffersRetrying(false);
           }
         });
     };
@@ -2287,7 +2307,7 @@ export function CourseBuilderStudio() {
                   <button
                     type="button"
                     disabled
-                    className="button-outline px-3 py-2 text-xs disabled:opacity-60"
+                    className="button-outline px-3 py-2 text-xs disabled:opacity-50"
                     title={t("creatorEditor.builder.curriculum.saveErrorTitle")}
                   >
                     {t("creatorEditor.builder.curriculum.saveToUpload")}
@@ -2309,7 +2329,7 @@ export function CourseBuilderStudio() {
                   disabled={!isEditable || lessonIndex === 0}
                   aria-label={t("creatorEditor.builder.curriculum.up")}
                   title={t("creatorEditor.builder.curriculum.up")}
-                  className="grid size-11 shrink-0 place-items-center rounded-md text-[var(--color-ink-soft)] hover:bg-[var(--color-surface-soft)] disabled:opacity-40"
+                  className="grid size-11 shrink-0 place-items-center rounded-md text-[var(--color-ink-soft)] hover:bg-[var(--color-surface-soft)] disabled:opacity-50"
                 >
                   <ArrowUp aria-hidden="true" size={16} strokeWidth={2} />
                 </button>
@@ -2322,7 +2342,7 @@ export function CourseBuilderStudio() {
                   }
                   aria-label={t("creatorEditor.builder.curriculum.down")}
                   title={t("creatorEditor.builder.curriculum.down")}
-                  className="grid size-11 shrink-0 place-items-center rounded-md text-[var(--color-ink-soft)] hover:bg-[var(--color-surface-soft)] disabled:opacity-40"
+                  className="grid size-11 shrink-0 place-items-center rounded-md text-[var(--color-ink-soft)] hover:bg-[var(--color-surface-soft)] disabled:opacity-50"
                 >
                   <ArrowDown aria-hidden="true" size={16} strokeWidth={2} />
                 </button>
@@ -2508,7 +2528,7 @@ export function CourseBuilderStudio() {
               <button
                 type="submit"
                 disabled={!isEditable}
-                className="button-solid px-4 py-2.5 text-sm disabled:opacity-60"
+                className="button-solid px-4 py-2.5 text-sm disabled:opacity-50"
               >
                 {t("creatorEditor.builder.curriculum.addLesson")}
               </button>
@@ -2967,6 +2987,35 @@ export function CourseBuilderStudio() {
     scrollPendingSectionIntoView();
   }, [activeTab, scrollPendingSectionIntoView]);
 
+  // No celular as cinco etapas viram uma faixa que rola de lado (globals.css):
+  // a etapa aberta vem para o meio e a borda direita esmaece enquanto houver
+  // etapa escondida, como nas abas da sala (classroom-tabs.tsx). Só mexe no
+  // scrollLeft da própria faixa, nunca na rolagem da página. isLoading: a faixa
+  // só existe depois da carga.
+  const stepsRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const row = stepsRef.current;
+    if (!row) return;
+    const current = row.querySelector<HTMLElement>('[aria-current="step"]');
+    if (current && row.scrollWidth > row.clientWidth) {
+      const bar = row.getBoundingClientRect();
+      const step = current.getBoundingClientRect();
+      row.scrollLeft += step.left - bar.left - (bar.width - step.width) / 2;
+    }
+    const mark = () => {
+      row.dataset.more = String(row.scrollLeft + row.clientWidth < row.scrollWidth - 1);
+    };
+    mark();
+    row.addEventListener("scroll", mark, { passive: true });
+    window.addEventListener("resize", mark);
+    return () => {
+      row.removeEventListener("scroll", mark);
+      window.removeEventListener("resize", mark);
+    };
+  }, [activeStageId, isLoading]);
+  // A ajuda da etapa, no celular, fica atrás de "More about this step".
+  const [stepHelpOpen, setStepHelpOpen] = useState(false);
+
   if (!courseId) {
     return (
       <section className="settings-section-card">
@@ -3065,7 +3114,7 @@ export function CourseBuilderStudio() {
       disabled={!canPublish || !readyToPublish || !priceFieldIsValid}
       // O botao apagado diz por que: a frase ao lado dele.
       aria-describedby={showPublishReason ? "builder-publish-reason" : undefined}
-      className="w-full disabled:opacity-60 sm:w-auto"
+      className="w-full disabled:opacity-50 sm:w-auto"
     >
       {isSubmitting
         ? t("creatorEditor.builder.publish.publishing")
@@ -3159,7 +3208,9 @@ export function CourseBuilderStudio() {
               />
             ) : null}
           </div>
-          <p className="mt-6 text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
+          {/* No celular o rótulo sai: o primeiro campo ficava ~800px abaixo
+              do topo, e o título logo abaixo já diz onde se está. */}
+          <p className="mt-6 text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)] max-sm:hidden">
             {t("creatorEditor.builder.shell.title")}
           </p>
           {/* h1, não h2: esta é a única página do builder e o título do curso é
@@ -3178,10 +3229,15 @@ export function CourseBuilderStudio() {
           >
             {t("creatorEditor.builder.navigation.manage")}
           </Link>
+          {/* rel="opener": a prévia sabe que veio daqui, e o "Exit preview"
+              fecha a aba em vez de abrir um segundo construtor nela
+              (course-preview-shell.tsx). A prévia guarda esta aba e zera
+              window.opener ao montar: página de outra origem aberta depois
+              naquela aba não alcança esta. */}
           <Link
             href={`/teach/builder/${courseId}/preview`}
             target="_blank"
-            rel="noopener noreferrer"
+            rel="opener"
             className="button-outline px-4 py-2.5 text-sm"
           >
             <ExternalLink aria-hidden="true" size={14} strokeWidth={1.8} />
@@ -3215,7 +3271,7 @@ export function CourseBuilderStudio() {
       <nav className="course-builder-stepper" aria-label={t("creatorEditor.builder.navigation.steps")}>
         <div className="course-builder-stepper__head">
           <div className="min-w-0">
-            <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
+            <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)] max-sm:hidden">
               {t("creatorEditor.builder.navigation.creation")}
             </p>
             {/* Duas linhas, nao reticencias: a unica dica do proximo passo saia
@@ -3246,7 +3302,7 @@ export function CourseBuilderStudio() {
             </div>
           </div>
         </div>
-        <div className="course-builder-steps">
+        <div ref={stepsRef} className="course-builder-steps">
           {builderStages.map((stage, index) => {
             const isActive = activeStageId === stage.id;
             const isDone = stageCompletion[stage.id];
@@ -3309,6 +3365,20 @@ export function CourseBuilderStudio() {
                         ? t("creatorEditor.builder.steps.pricing.heading")
                         : t("creatorEditor.builder.steps.review.heading")}
               </h3>
+              {/* No celular a ajuda da etapa fica fechada atrás deste botão: o
+                  parágrafo empurrava o primeiro campo mais uma tela para baixo.
+                  Do sm para cima o botão some e a ajuda fica aberta. */}
+              <button
+                type="button"
+                aria-expanded={stepHelpOpen}
+                aria-controls="builder-step-help"
+                onClick={() => setStepHelpOpen((open) => !open)}
+                className="mt-2 inline-flex min-h-11 items-center gap-1.5 text-sm font-semibold text-[var(--color-primary)] sm:hidden"
+              >
+                {t("creatorEditor.builder.navigation.stepHelp")}
+                <ChevronDown aria-hidden="true" size={16} className={stepHelpOpen ? "rotate-180" : ""} />
+              </button>
+              <div id="builder-step-help" data-open={stepHelpOpen} className="course-builder-step-help">
               <p className="mt-3 max-w-2xl text-sm leading-7 text-[var(--color-ink-soft)]">
                 {activeTab === "details"
                   ? t("creatorEditor.builder.steps.details.help")
@@ -3334,6 +3404,7 @@ export function CourseBuilderStudio() {
                   </Link>
                 </p>
               ) : null}
+              </div>
             </div>
             <div className="grid gap-2 text-right text-xs font-semibold text-[var(--color-ink-soft)]">
               {/* O e-book nao mostra modulo nem aula. */}
@@ -3479,7 +3550,7 @@ export function CourseBuilderStudio() {
                           )
                         }
                         aria-label={t("creatorEditor.builder.details.removeOutcome").replace("{index}", () => String(index + 1))}
-                        className="grid size-11 shrink-0 place-items-center rounded-md border border-[var(--color-line)] text-[var(--color-ink-soft)] transition-colors hover:border-[var(--color-danger-fg)] hover:text-[var(--color-danger-fg)]"
+                        className="grid size-11 shrink-0 place-items-center rounded-md border border-[var(--color-line)] text-[var(--color-ink-soft)] transition-colors duration-[var(--duration-base)] ease-[var(--ease-standard)] hover:border-[var(--color-danger-fg)] hover:text-[var(--color-danger-fg)]"
                       >
                         <Trash2 aria-hidden="true" size={14} strokeWidth={1.8} />
                       </button>
@@ -3504,7 +3575,7 @@ export function CourseBuilderStudio() {
                   )
                 }
                 disabled={learningOutcomes.length >= MAX_LEARNING_OUTCOMES}
-                className="inline-flex min-h-11 w-fit items-center gap-1.5 rounded-md border border-[var(--color-line)] px-3 py-2 text-xs font-semibold text-[var(--color-primary)] transition-colors hover:border-[var(--color-primary-light)] disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex min-h-11 w-fit items-center gap-1.5 rounded-md border border-[var(--color-line)] px-3 py-2 text-xs font-semibold text-[var(--color-primary)] transition-colors duration-[var(--duration-base)] ease-[var(--ease-standard)] hover:border-[var(--color-primary-light)] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <Plus aria-hidden="true" size={14} strokeWidth={2} />
                 {t("creatorEditor.builder.details.addOutcome")}
@@ -3596,6 +3667,14 @@ export function CourseBuilderStudio() {
             id="builder-sec-pricing"
             className={`${panelIn} scroll-mt-24 rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4`}
           >
+            {checkoutOffers && offersFailed ? (
+              <RetryAlert
+                className="mb-4"
+                text={t("creatorEditor.builder.pricing.offersRefreshFailed")}
+                onRetry={retryOffers}
+                busy={offersRetrying}
+              />
+            ) : null}
             {!checkoutOffers ? (
               // Sem a lista de precos, o preco principal e desconhecido: nada
               // de cartoes por cima dele. Enquanto ela chega, blocos do tamanho
@@ -3604,10 +3683,7 @@ export function CourseBuilderStudio() {
               offersFailed ? (
                 <RetryAlert
                   text={t("creatorEditor.builder.pricing.offersFailed")}
-                  onRetry={() => {
-                    setOffersFailed(false);
-                    setOffersAttempt((current) => current + 1);
-                  }}
+                  onRetry={retryOffers}
                 />
               ) : (
                 <div role="status" className="grid gap-4">
@@ -3909,7 +3985,7 @@ export function CourseBuilderStudio() {
                   type="button"
                   onClick={() => setIsModuleFormOpen(true)}
                   disabled={!isEditable}
-                  className="button-outline inline-flex items-center gap-2 px-4 py-2.5 text-sm disabled:opacity-60"
+                  className="button-outline inline-flex items-center gap-2 px-4 py-2.5 text-sm disabled:opacity-50"
                 >
                   <Plus aria-hidden="true" size={14} strokeWidth={2} />
                   {t("creatorEditor.builder.curriculum.addModule")}
@@ -3962,7 +4038,7 @@ export function CourseBuilderStudio() {
                   <button
                     type="submit"
                     disabled={!isEditable}
-                    className="button-solid px-4 py-2.5 text-sm disabled:opacity-60"
+                    className="button-solid px-4 py-2.5 text-sm disabled:opacity-50"
                   >
                     {t("creatorEditor.builder.curriculum.createModule")}
                   </button>
@@ -4030,8 +4106,10 @@ export function CourseBuilderStudio() {
                       }}
                       className="flex min-h-11 min-w-0 flex-1 items-center gap-3 rounded-md"
                     >
-                      {/* Recorte redondo da capa vertical 2:3. */}
-                      <span className="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-full border border-[var(--color-line)] bg-white text-[var(--color-ink-soft)]">
+                      {/* A capa vertical 2:3 em miniatura (32x48), com o canto
+                          das outras capas: era um círculo aqui e um retângulo
+                          na página do módulo. */}
+                      <span className="flex h-12 w-8 shrink-0 items-center justify-center overflow-hidden rounded-sm border border-[var(--color-line)] bg-white text-[var(--color-ink-soft)]">
                         {coverUrl ? (
                           // eslint-disable-next-line @next/next/no-img-element -- module cover is an arbitrary CourseAsset URL
                           <img src={coverUrl} alt="" className="h-full w-full object-cover" />
@@ -4273,7 +4351,7 @@ export function CourseBuilderStudio() {
               }
             }}
             disabled={selectedTabIndex <= 0}
-            className="button-outline button-lg w-full disabled:opacity-40 sm:w-auto"
+            className="button-outline button-lg w-full disabled:opacity-50 sm:w-auto"
           >
             <ArrowLeft aria-hidden="true" size={16} strokeWidth={2} />
             {selectedTabIndex > 0
@@ -4477,7 +4555,7 @@ function CreatedStrip({
             type="button"
             onClick={onClose}
             aria-label={t("creatorEditor.builder.created.close")}
-            className="grid h-11 w-11 shrink-0 place-items-center rounded-md text-white/80 transition-colors hover:bg-white/10 hover:text-white"
+            className="grid h-11 w-11 shrink-0 place-items-center rounded-md text-white/80 transition-colors duration-[var(--duration-base)] ease-[var(--ease-standard)] hover:bg-white/10 hover:text-white"
           >
             <X aria-hidden="true" size={16} strokeWidth={2} />
           </button>
@@ -4765,9 +4843,9 @@ function CourseCoverField({
 
         <div className="grid content-start gap-2">
           <label
-            className={`inline-flex w-fit items-center gap-2 rounded-md border border-dashed border-[var(--color-line)] bg-white px-4 py-3 text-sm font-semibold text-[var(--color-primary)] transition-colors hover:border-[var(--color-primary-light)] focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[var(--color-primary)] ${
+            className={`inline-flex w-fit items-center gap-2 rounded-md border border-dashed border-[var(--color-line)] bg-white px-4 py-3 text-sm font-semibold text-[var(--color-primary)] transition-colors duration-[var(--duration-base)] ease-[var(--ease-standard)] hover:border-[var(--color-primary-light)] focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[var(--color-primary)] ${
               !isEditable || isUploading
-                ? "pointer-events-none opacity-60"
+                ? "pointer-events-none opacity-50"
                 : "cursor-pointer"
             }`}
           >
@@ -4923,7 +5001,7 @@ function MembersAreaTab({
                   disabled={!isEditable}
                   aria-pressed={active}
                   onClick={() => onThemeChange(option.value)}
-                  className={`inline-flex min-h-11 items-center gap-1.5 rounded-sm px-3 py-2 text-sm font-semibold transition-colors disabled:opacity-60 ${
+                  className={`inline-flex min-h-11 items-center gap-1.5 rounded-sm px-3 py-2 text-sm font-semibold transition-colors duration-[var(--duration-base)] ease-[var(--ease-standard)] disabled:opacity-50 ${
                     active
                       ? "bg-white text-[var(--color-primary)] shadow-[var(--shadow-soft)]"
                       : "text-[var(--color-ink-soft)] hover:text-[var(--color-ink)]"
@@ -5032,10 +5110,11 @@ function MembersAreaTab({
             />
           </div>
         </div>
+        {/* rel="opener": o mesmo motivo do "Preview" do topo. */}
         <Link
           href={`/teach/builder/${courseId}/preview`}
           target="_blank"
-          rel="noopener noreferrer"
+          rel="opener"
           className="button-outline inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm"
         >
           {t("creatorEditor.members.openPreview")}
@@ -5170,9 +5249,9 @@ function MembersCoverField({
 
         <div className="grid content-start gap-2">
           <label
-            className={`inline-flex w-fit items-center gap-2 rounded-md border border-dashed border-[var(--color-line)] bg-white px-4 py-3 text-sm font-semibold text-[var(--color-primary)] transition-colors hover:border-[var(--color-primary-light)] focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[var(--color-primary)] ${
+            className={`inline-flex w-fit items-center gap-2 rounded-md border border-dashed border-[var(--color-line)] bg-white px-4 py-3 text-sm font-semibold text-[var(--color-primary)] transition-colors duration-[var(--duration-base)] ease-[var(--ease-standard)] hover:border-[var(--color-primary-light)] focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[var(--color-primary)] ${
               !isEditable || isUploading
-                ? "pointer-events-none opacity-60"
+                ? "pointer-events-none opacity-50"
                 : "cursor-pointer"
             }`}
           >

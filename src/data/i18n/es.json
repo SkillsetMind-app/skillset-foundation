@@ -4034,7 +4034,7 @@
       "notFound": "No se encontró el curso.",
       "notFoundHelp": "Es posible que el curso se haya eliminado o que debas actualizar la sesión.",
       "mode": "Modo de vista previa",
-      "back": "Volver al estudio del creador",
+      "back": "Volver al editor del curso",
       "serverLoading": "Cargando vista previa del curso...",
       "banner": "Modo de vista previa: así verán tus alumnos el curso.",
       "exit": "Salir de la vista previa",
@@ -4268,7 +4268,8 @@
         "next": "Siguiente:",
         "backTo": "Volver a {step}",
         "continueTo": "Continuar a {step}",
-        "back": "Volver"
+        "back": "Volver",
+        "stepHelp": "Más sobre este paso"
       },
       "publish": {
         "ready": "El curso está listo para publicar.",
@@ -4360,6 +4361,7 @@
         "offerCharges": "Tu página cobra {price} ({model}).",
         "offerChange": "Cámbialo en Otros precios.",
         "offersFailed": "No pudimos cargar tus precios.",
+        "offersRefreshFailed": "No pudimos actualizar tus precios. Estos son los últimos que cargamos.",
         "preview": "Lección de vista previa gratuita",
         "noPreview": "Aún no hay una vista previa seleccionada",
         "listingHelp": "Las personas pagan en una página segura antes de entrar."
@@ -4413,8 +4415,6 @@
       "help": "Sube las portadas de este curso y sus módulos. Para los vídeos, materiales y miniaturas de cada lección, abre el editor de lecciones desde la pestaña Contenido.",
       "count": "{count} archivos subidos",
       "coverSet": "La portada del curso ya está añadida. Sube otra para cambiarla.",
-      "uploadType": "Tipo de subida",
-      "uploadingLabel": "Archivo que vas a subir",
       "targetHelp": "Elige el destino y el archivo antes de subirlo.",
       "imageLimit": "Imagen de hasta {limit}.",
       "assetType": "Tipo de archivo",
@@ -6304,7 +6304,6 @@
     },
     "upload": {
       "button": "Subir imagen",
-      "uploading": "Subiendo...",
       "rules": "JPG, PNG o WebP, de hasta {limit}.",
       "orLink": "O pega un enlace",
       "previewAlt": "Vista previa de {label}",

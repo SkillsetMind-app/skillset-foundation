@@ -226,7 +226,9 @@ describe("neutral dark actions", () => {
     // eram os marcos ("Creator milestones"), que repetiam os passos e sairam.
     // course-manage-hub.tsx saiu tambem: o unico preenchimento dele era a
     // bolinha azul do "✓" da lista de publicar, que virou o check do construtor.
-    "teacher/course-landing-editor.tsx",
+    // course-landing-editor.tsx saiu: o "Save page" virou o Button da casa
+    // (.button-solid) e o modelo escolhido virou a pastilha clara do seletor
+    // segmentado; nenhum preenchimento navy à mão sobrou nele.
     "learn/learning-paths-rows.tsx",
     // account/notifications-inbox.tsx saiu da lista: o "Mark all read" virou o
     // Button da plataforma (.button-solid, com regra propria do tema escuro).

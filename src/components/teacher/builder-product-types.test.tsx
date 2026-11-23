@@ -533,6 +533,50 @@ describe("como as pessoas vao pagar", () => {
       expect(screen.queryByText("$29 / month")).toBeNull();
       expect(screen.getByText("$97")).toBeInTheDocument();
     });
+
+    // A releitura do foco que falha nao apaga a lista boa da tela: o aviso com
+    // "Try again" sai acima dela, como em toda lista.
+    it("releitura que falha mantem os precos na tela, com Try again", async () => {
+      stubOffers([main]);
+      mocks.course = paid("course", "one_time", 9700, { status: "published" });
+      renderBuilder("pricing");
+      expect(await screen.findByText(/^Your page charges \$97 \(One payment\)\./)).toBeInTheDocument();
+
+      vi.stubGlobal("fetch", vi.fn(async () => ({ ok: false, json: async () => ({}) })));
+      fireEvent.focus(window);
+
+      expect(await screen.findByText("Couldn't refresh your prices. These are the last ones loaded.")).toHaveAttribute("role", "alert");
+      expect(screen.getByText(/^Your page charges \$97 \(One payment\)\./)).toBeInTheDocument();
+      expect(screen.getByText("$97")).toBeInTheDocument();
+
+      // Enquanto tenta de novo, o aviso fica, com o botão em espera.
+      let answer!: (value: unknown) => void;
+      vi.stubGlobal("fetch", vi.fn(() => new Promise((resolve) => { answer = resolve; })));
+      fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+      expect(screen.getByText("Couldn't refresh your prices. These are the last ones loaded.")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Try again" })).toHaveAttribute("aria-busy", "true");
+      await act(async () => answer({ ok: true, json: async () => ({ offers: [main] }) }));
+      await waitFor(() => expect(screen.queryByRole("alert")).toBeNull());
+      expect(screen.getByText(/^Your page charges \$97 \(One payment\)\./)).toBeInTheDocument();
+    });
+
+    // A lista mantida tambem alimenta a regra do Save: produto no ar, cobrado
+    // pela oferta e sem valor no construtor. Antes a falha virava "preco
+    // desconhecido" e o Save era recusado ("livePrice"); agora vale a ultima
+    // lista boa, e o Save grava.
+    it("produto no ar cobrado pela oferta: com a releitura falhando, o Save ainda grava", async () => {
+      stubOffers([main]);
+      mocks.course = paid("course", "one_time", 0, { status: "published" });
+      renderBuilder("pricing");
+      expect(await screen.findByText(/^Your page charges \$97 \(One payment\)\./)).toBeInTheDocument();
+
+      vi.stubGlobal("fetch", vi.fn(async () => ({ ok: false, json: async () => ({}) })));
+      fireEvent.focus(window);
+      await screen.findByText("Couldn't refresh your prices. These are the last ones loaded.");
+
+      fireEvent.click(screen.getByRole("button", { name: "Save draft" }));
+      await waitFor(() => expect(updateTeacherCourseBuilder).toHaveBeenCalledOnce());
+    });
   });
 
   // Produto criado antes da regra: a tela mostra o que ele e e avisa.

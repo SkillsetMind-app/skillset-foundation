@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 
 import { PanelCard } from "@/components/teacher/course-commerce-panels";
@@ -18,7 +18,14 @@ const DEFAULT_DRIP: DripStrategy = "instant";
  * Edits the fields that drive the public product page: title, summary, outcomes.
  * Full drag-drop page builder remains P2; this covers the critical producer path.
  */
-export function SalesPageEditor({ course }: { course: TeacherCourse }) {
+export function SalesPageEditor({
+  course,
+  onDirtyChange,
+}: {
+  course: TeacherCourse;
+  /** O mesmo "Unsaved changes" da linha ao lado do Save, para o aviso de sair. */
+  onDirtyChange?: (dirty: boolean) => void;
+}) {
   const { t } = useTranslation();
   const [title, setTitle] = useState(course.title ?? "");
   const [summary, setSummary] = useState(course.summary ?? "");
@@ -32,6 +39,10 @@ export function SalesPageEditor({ course }: { course: TeacherCourse }) {
   // só vale enquanto os dois são iguais.
   const draft = JSON.stringify([title, summary, outcomesText]);
   const [savedDraft, setSavedDraft] = useState(draft);
+  const dirty = draft !== savedDraft;
+  useEffect(() => {
+    onDirtyChange?.(dirty);
+  }, [dirty, onDirtyChange]);
 
   function handleSave(event: FormEvent) {
     event.preventDefault();
@@ -148,7 +159,7 @@ export function SalesPageEditor({ course }: { course: TeacherCourse }) {
           </a>
           <SaveStatusLine
             saving={saving}
-            dirty={draft !== savedDraft}
+            dirty={dirty}
             savedText={notice ? t(notice) : undefined}
             errorText={error ? t(error) : undefined}
             onRetry={() => void save()}

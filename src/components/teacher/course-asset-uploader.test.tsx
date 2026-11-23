@@ -115,7 +115,9 @@ describe("CourseAssetUploader", () => {
     });
     const targetCourse = { ...course, modules: [{ id: "m1", title: "Módulo $$ $&", lessons: [] }] };
     const { unmount } = render(<I18nProvider initialLocale="en"><SwitchLanguage /><CourseAssetUploader course={targetCourse} isEditable /></I18nProvider>);
-    fireEvent.click(within(screen.getByRole("list", { name: "Upload type" })).getByText("Module cover").closest("button")!);
+    // Os cartões de tipo saíram (repetiam o select): o tipo se escolhe no select.
+    expect(screen.queryByRole("list", { name: "Upload type" })).toBeNull();
+    fireEvent.change(screen.getByLabelText("Asset type"), { target: { value: "module_cover" } });
     fireEvent.change(screen.getByLabelText("Attach to module"), { target: { value: "m1" } });
     const file = new File(["png"], "portada-$$-$&.png", { type: "image/png" });
     const input = screen.getByLabelText("Choose a module cover file");
@@ -378,6 +380,9 @@ describe("CourseAssetUploader", () => {
     fireEvent.click(screen.getByRole("button", { name: "Upload asset" }));
 
     expect(await screen.findByRole("status")).toHaveTextContent("42%");
+    // Rótulo fixo: o botão não vira "Uploading..."; o andamento é só a nota.
+    expect(screen.getByRole("button", { name: "Upload asset" })).toHaveAttribute("aria-busy", "true");
+    expect(screen.queryByText("Uploading...")).toBeNull();
   });
 
   // Falhou depois de começar: o progresso antigo não pode ficar na tela ao
