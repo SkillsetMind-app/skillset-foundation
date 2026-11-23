@@ -312,9 +312,10 @@ export function DeleteOrArchiveCourseDialog({
         </div>
         </div>
 
-        {/* O rodapé da casa: filete em cima e, no celular, empilha com a
-            ação em cima (antes ficavam lado a lado e quebravam soltos). */}
-        <div className="dialog-footer">
+        {/* O rodapé da casa: filete em cima e, abaixo do sm, empilha com a
+            ação em cima e o Cancelar embaixo (antes ficavam lado a lado e
+            quebravam soltos). Do sm em diante pode quebrar, como antes. */}
+        <div className="dialog-footer flex-wrap">
           <button
             type="button"
             onClick={onCancel}

@@ -67,6 +67,20 @@ describe("ConfirmDialog", () => {
     expect(screen.getByRole("button", { name: "Yes, delete" })).toHaveClass("button-danger", "button-danger-solid");
   });
 
+  // O rodapé da casa empilha abaixo do sm com column-reverse: o último no
+  // código fica em cima. O Cancelar vem primeiro, então no celular fica
+  // embaixo, onde o polegar cai; do sm em diante, à esquerda do confirmar.
+  it("no rodapé da casa o Cancelar vem antes do confirmar (embaixo quando empilha)", () => {
+    const { dialog } = openDialog();
+    const keep = within(dialog).getByRole("button", { name: "Keep it" });
+    const remove = within(dialog).getByRole("button", { name: "Yes, delete" });
+    expect(dialog).toHaveClass("dialog-panel");
+    expect(keep.parentElement).toHaveClass("dialog-footer");
+    expect(remove.parentElement).toBe(keep.parentElement);
+    expect(Array.from(keep.parentElement!.children)).toEqual([keep, remove]);
+    expect(keep).toHaveFocus();
+  });
+
   it("cancelar e Esc fecham sem confirmar e devolvem o foco ao gatilho", () => {
     const onConfirm = vi.fn();
     const { trigger } = openDialog(onConfirm);

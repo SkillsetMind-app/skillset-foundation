@@ -755,7 +755,8 @@ function RefundModal({
             ) : null}
             </div>
 
-            {/* O rodapé da casa: no celular empilha, o pedido em cima. */}
+            {/* O rodapé da casa: abaixo do sm empilha, o pedido em cima e o
+                Cancelar embaixo. */}
             <div className="dialog-footer">
               <button
                 type="button"

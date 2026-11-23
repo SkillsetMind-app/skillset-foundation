@@ -173,8 +173,9 @@ export function ConfirmDialog({
           </InlineAlert>
         ) : null}
       </div>
-      {/* O rodapé da casa: no celular os botões empilham com o de confirmar
-          em cima; dos 480px em diante ficam à direita, o seguro primeiro. */}
+      {/* O rodapé da casa: abaixo do sm os botões empilham com o de confirmar
+          em cima e o Cancelar embaixo; do sm em diante ficam à direita, o
+          seguro primeiro. */}
       <div className="dialog-footer">
         {acknowledge ? null : (
           <Button

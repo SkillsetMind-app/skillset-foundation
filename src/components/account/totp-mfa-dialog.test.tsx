@@ -73,13 +73,17 @@ describe("TOTP setup dialog", () => {
     expect(within(dialog).getByRole("link", { name: "open this setup link" })).toHaveAttribute("href", setup.otpauthUrl);
     expect(within(dialog).getByLabelText("Authenticator code")).toBeInTheDocument();
     expect(document.body.style.overflow).toBe("hidden");
-    // Rodapé da casa: Cancelar antes do Ativar (a principal por último), nos
-    // 14px dos outros botões; eram 12px numa linha de formulário.
+    // A linha do código fica como era: campo, Ativar logo ao lado (perto do
+    // campo, com o teclado numérico aberto) e Cancelar; só os botões sobem
+    // dos 12px para os 14px/44px da casa.
+    const field = within(dialog).getByLabelText("Authenticator code");
     const cancel = within(dialog).getByRole("button", { name: "Cancel" });
     const enable = within(dialog).getByRole("button", { name: "Turn on 2FA" });
-    expect(cancel.parentElement).toHaveClass("dialog-footer");
-    expect(enable.parentElement).toBe(cancel.parentElement);
-    expect(cancel.compareDocumentPosition(enable) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    const row = field.closest("form")!;
+    expect(enable.parentElement).toBe(row);
+    expect(cancel.parentElement).toBe(row);
+    expect(field.compareDocumentPosition(enable) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(enable.compareDocumentPosition(cancel) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     for (const button of [cancel, enable]) expect(button).toHaveClass("text-sm", "min-h-11");
   });
 

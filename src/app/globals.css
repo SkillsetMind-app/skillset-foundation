@@ -430,8 +430,9 @@ dialog.modal-panel::backdrop {
    larguras soltas e seis jeitos de pôr os botões (à direita sem filete, em
    linha de formulário, empilhados só em algumas). Agora: uma sombra, um canto,
    quatro larguras; o rodapé tem filete em cima, ações à direita com a
-   principal por último e, abaixo de 480px, empilha na largura toda com a
-   principal em cima (column-reverse). O fundo é o token de superfície (no
+   principal por último e, abaixo de 640px (o sm, onde a confirmação já
+   empilhava), empilha na largura toda com a principal em cima e o Cancelar
+   embaixo, onde o polegar cai (column-reverse). O fundo é o token de superfície (no
    escuro, o mesmo do bg-white). Em camada: a janela que precisa de outra
    coisa num tamanho (o checkout em tela cheia no celular) muda por utility. */
 @layer components {
@@ -457,9 +458,9 @@ dialog.modal-panel::backdrop {
     max-width: 64rem;
   }
 
+  /* Do sm em diante, uma linha só (sem quebra), como a confirmação sempre foi. */
   .dialog-footer {
     display: flex;
-    flex-wrap: wrap;
     align-items: center;
     justify-content: flex-end;
     gap: 0.75rem;
@@ -467,7 +468,7 @@ dialog.modal-panel::backdrop {
     padding: 1rem 1.5rem;
   }
 
-  @media (width < 480px) {
+  @media (width < 640px) {
     .dialog-footer {
       flex-direction: column-reverse;
       align-items: stretch;
@@ -4434,15 +4435,6 @@ body:has([aria-label="Course categories"])
 /* O titulo da aula ficava em 37,6 px, maior que o h1 do curso (30 px). */
 .lesson-modal--page .lesson-modal__context h3 {
   font-size: 1.5rem;
-}
-
-/* O estudio como janela entra como as outras (o fundo ja acende pelo
-   .dialog-backdrop): sobe 8px em 180ms. Aparecia num corte seco. Na pagina
-   ele nao flutua, entao nao anima. */
-@media (prefers-reduced-motion: no-preference) {
-  .lesson-modal:not(.lesson-modal--page) {
-    animation: motion-panel-in var(--duration-base) var(--ease-standard) backwards;
-  }
 }
 
 .lesson-modal__trail {
