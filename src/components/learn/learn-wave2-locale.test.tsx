@@ -44,8 +44,8 @@ vi.mock("@/lib/posthog/page-trackers", () => ({
   ),
 }));
 vi.mock("@/components/learn/enrolled-course-workspace", () => ({
-  EnrolledCourseWorkspace: ({ course, enrollment }: { course: { title: string }; enrollment?: { id: string } }) => (
-    <h1 data-enrollment={enrollment?.id}>{course.title}</h1>
+  EnrolledCourseWorkspace: ({ course, enrollment, focusTitleOnOpen }: { course: { title: string }; enrollment?: { id: string }; focusTitleOnOpen?: boolean }) => (
+    <h1 data-enrollment={enrollment?.id} data-focus-title={String(Boolean(focusTitleOnOpen))}>{course.title}</h1>
   ),
 }));
 vi.mock("@/lib/data/course-messages", () => ({ subscribeToStudentMessages: mocks.messages, sendCourseMessage: mocks.send }));
@@ -302,6 +302,67 @@ describe("learner wave 2 with real provider and dictionaries", () => {
 
     expect(screen.getByText(courseError)).toBeVisible();
     expect(screen.queryByRole("heading", { name: enrollment.courseTitle })).not.toBeInTheDocument();
+  });
+
+  it("falha ao ler a matrícula: \"Try again\" refaz a mesma leitura uma vez, com a espera da sala, e abre o curso", async () => {
+    mocks.enrollment
+      .mockImplementationOnce((_uid, _id, _next, fail) => { fail(new Error("Temporary failure")); return () => {}; })
+      .mockImplementation(() => () => {});
+    mocks.course.mockImplementation((_id, next) => { next({ id: "course-es", title: enrollment.courseTitle }); return () => {}; });
+    show(<CreatorCourseWorkspace initialCourseId="course-es" />);
+    expect(screen.getByText("No pudimos confirmar tu matrícula en este curso.")).toBeVisible();
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: translate(getDictionary("es"), "appErrors.retry") }));
+    });
+
+    // A mesma leitura, uma vez a mais; enquanto ela corre, só a espera (nada para clicar).
+    expect(mocks.enrollment).toHaveBeenCalledTimes(2);
+    expect(screen.getByRole("status")).toHaveTextContent(translate(getDictionary("es"), "learnWave2.courseLoading.title"));
+    expect(screen.queryByRole("button", { name: translate(getDictionary("es"), "appErrors.retry") })).not.toBeInTheDocument();
+
+    act(() => { mocks.enrollment.mock.calls[1][2](enrollment); });
+
+    const title = screen.getByRole("heading", { name: enrollment.courseTitle });
+    expect(title).toHaveAttribute("data-focus-title", "true");
+    expect(mocks.enrollment).toHaveBeenCalledTimes(2);
+    expect(mocks.course).toHaveBeenCalledTimes(1);
+  });
+
+  it("falha ao ler o curso: \"Try again\" refaz só a leitura do curso e abre a sala", async () => {
+    mocks.enrollment.mockImplementation((_uid, _id, next) => { next(enrollment); return () => {}; });
+    mocks.course
+      .mockImplementationOnce((_id, _next, fail) => { fail(new Error("Course unavailable")); return () => {}; })
+      .mockImplementation((_id, next) => { next({ id: "course-es", title: enrollment.courseTitle }); return () => {}; });
+    show(<CreatorCourseWorkspace initialCourseId="course-es" />);
+    expect(screen.getByText(translate(getDictionary("es"), "learnWave2.workspace.courseError"))).toBeVisible();
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: translate(getDictionary("es"), "appErrors.retry") }));
+    });
+
+    expect(mocks.course).toHaveBeenCalledTimes(2);
+    expect(mocks.enrollment).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("heading", { name: enrollment.courseTitle })).toHaveAttribute("data-focus-title", "true");
+  });
+
+  it("sem acesso, sem matrícula ativa ou sem curso: nenhum \"Try again\"", () => {
+    const retry = translate(getDictionary("es"), "appErrors.retry");
+    const noEnrollment = show(<CreatorCourseWorkspace initialCourseId="course-es" />);
+    expect(screen.getByRole("heading", { name: translate(getDictionary("es"), "learnWave2.workspace.required") })).toBeVisible();
+    expect(screen.queryByRole("button", { name: retry })).not.toBeInTheDocument();
+    noEnrollment.unmount();
+
+    mocks.enrollment.mockImplementation((_uid, _id, next) => { next({ ...enrollment, status: "refunded" }); return () => {}; });
+    const inactive = show(<CreatorCourseWorkspace initialCourseId="course-es" />);
+    expect(screen.getByRole("heading", { name: translate(getDictionary("es"), "learnWave2.workspace.inactive") })).toBeVisible();
+    expect(screen.queryByRole("button", { name: retry })).not.toBeInTheDocument();
+    inactive.unmount();
+
+    mocks.enrollment.mockImplementation((_uid, _id, next) => { next(enrollment); return () => {}; });
+    show(<CreatorCourseWorkspace initialCourseId="course-es" />);
+    expect(screen.getByRole("heading", { name: translate(getDictionary("es"), "learnWave2.workspace.missing") })).toBeVisible();
+    expect(screen.queryByRole("button", { name: retry })).not.toBeInTheDocument();
   });
 
   it("preserves authored messages, ARIA interpolation and draft during pending send and errors", async () => {

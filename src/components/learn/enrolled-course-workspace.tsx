@@ -166,6 +166,9 @@ type EnrolledCourseWorkspaceProps = {
   /** A matrícula que o pai (CreatorCourseWorkspace) já assina. Sem ela a sala
    *  buscava a mesma linha de novo, atrás de mais uma tela de espera. */
   enrollment?: Enrollment;
+  /** O pai abriu a sala depois de um "Try again": o foco vai para o título da
+   *  sala ao abrir, como no "Try again" daqui (focusRoomAfterRetry). */
+  focusTitleOnOpen?: boolean;
 };
 
 export function EnrolledCourseWorkspace({
@@ -177,6 +180,7 @@ export function EnrolledCourseWorkspace({
   tab = "lesson",
   openPostId = null,
   enrollment: parentEnrollment,
+  focusTitleOnOpen = false,
 }: EnrolledCourseWorkspaceProps) {
   const { t, locale } = useTranslation();
   const { user } = useAuth();
@@ -329,7 +333,7 @@ export function EnrolledCourseWorkspace({
   const progressSubscription = useRef<ReloadableSubscription | null>(null);
   const errorCardRef = useRef<HTMLElement>(null);
   const roomRef = useRef<HTMLDivElement>(null);
-  const focusRoomAfterRetry = useRef(false);
+  const focusRoomAfterRetry = useRef(focusTitleOnOpen);
   // Erro de uma AÇÃO (concluir/desfazer aula): aviso dentro do player, a sala
   // fica. `error` acima é de carga e troca a sala inteira pelo cartão de erro —
   // uma falha momentânea ao salvar tirava o aluno da aula.
