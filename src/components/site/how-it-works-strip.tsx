@@ -39,7 +39,7 @@ export async function HowItWorksStrip() {
 
   return (
     <section className="home-how__panel mx-auto w-full max-w-7xl px-5 py-16 sm:px-8 sm:py-20 lg:py-24">
-      {/* Título de seção maior, de 32px no celular a 52px, sempre abaixo do
+      {/* Título de seção maior, de 36px no celular a 52px, sempre abaixo do
           título do topo (clamp(2.3rem, 4.6vw, 3.6rem)) em qualquer largura.
           Mais largo (max-w-4xl) para ficar em duas linhas: o painel preso do
           computador precisa caber abaixo da barra. */}
@@ -47,7 +47,7 @@ export async function HowItWorksStrip() {
         <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
           {t("home.how.kicker")}
         </p>
-        <h2 className="display-title mt-3 text-[clamp(2rem,4.2vw,3.25rem)] leading-[1.05] text-[var(--color-primary)]">
+        <h2 className="display-title mt-3 text-[clamp(2.25rem,4.2vw,3.25rem)] leading-[1.05] text-[var(--color-primary)]">
           {t("home.how.title")}
         </h2>
       </RevealSection>

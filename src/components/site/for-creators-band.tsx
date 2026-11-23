@@ -28,7 +28,7 @@ export async function ForCreatorsBand() {
               <p className="text-xs font-semibold uppercase tracking-[0.22em] text-white/75">
                 {t("home.creators.eyebrow")}
               </p>
-              <h2 className="display-title mt-3 text-[clamp(2rem,4.2vw,3.25rem)] leading-[1.05] text-white">
+              <h2 className="display-title mt-3 text-[clamp(2.25rem,4.2vw,3.25rem)] leading-[1.05] text-white">
                 {t("home.creators.title")}
               </h2>
               {/* Alvo de 48px nos dois links (público de 55+). */}

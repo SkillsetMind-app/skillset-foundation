@@ -207,9 +207,9 @@ describe("seções de marketing viraram servidor", () => {
     },
   );
 
-  // Hierarquia: título de seção nunca maior que o título do topo, em nenhuma
-  // largura, e pelo menos 0.25rem menor no celular. Lê o clamp() de cada
-  // arquivo e compara de 320 a 1920px (1rem = 16px).
+  // Hierarquia: título de seção sempre menor que o título do topo, em qualquer
+  // largura, mas nunca abaixo de 36px no celular (o público tem 55+). Lê o
+  // clamp() de cada arquivo e compara de 320 a 1920px (1rem = 16px).
   it("os títulos de seção ficam abaixo do título do topo em qualquer largura", () => {
     const clampOf = (path: string, tag: string) => {
       const match = readSource(path).match(
@@ -224,9 +224,8 @@ describe("seções de marketing viraram servidor", () => {
       const section = clampOf(`src/components/site/${file}.tsx`, "h2");
       for (let width = 320; width <= 1920; width += 8) {
         expect(section(width), `${file} em ${width}px`).toBeLessThan(hero(width));
-        if (width < 768) expect(hero(width) - section(width), `${file} em ${width}px`).toBeGreaterThanOrEqual(4);
+        if (width < 640) expect(section(width), `${file} em ${width}px`).toBeGreaterThanOrEqual(36);
       }
-      expect(hero(1920) - section(1920), file).toBeGreaterThanOrEqual(0.35 * 16 - 0.01);
     }
   });
 

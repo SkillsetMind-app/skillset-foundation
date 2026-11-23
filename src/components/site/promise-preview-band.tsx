@@ -36,7 +36,7 @@ export async function PromisePreviewBand() {
               {/* Título e texto na escala das outras seções. A cor vale para a
                   faixa clara; com a cortina azul do computador o globals.css
                   troca as duas pelos tons claros dela (só o tamanho muda lá). */}
-              <h2 className="display-title mt-3 text-[clamp(2rem,4.2vw,3.25rem)] leading-[1.05] text-[var(--color-primary)]">
+              <h2 className="display-title mt-3 text-[clamp(2.25rem,4.2vw,3.25rem)] leading-[1.05] text-[var(--color-primary)]">
                 {t("home.promise.title")}
               </h2>
               <p className="mt-4 max-w-xl text-[1.0625rem] leading-[1.6] text-[var(--color-ink)] md:text-lg">
