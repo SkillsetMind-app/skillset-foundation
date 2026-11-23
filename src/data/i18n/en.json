@@ -1946,6 +1946,7 @@
       "noActivity": "No activity",
       "unavailable": "Unavailable",
       "loadingValue": "Loading...",
+      "loadError": "We could not load part of this report.",
       "shortcuts": "Operations shortcuts",
       "linkSales": "All sales",
       "linkSubscriptions": "Subscriptions",
@@ -2379,7 +2380,8 @@
       "community": "Community",
       "searchLabel": "Search students by name, e-mail or product",
       "searchPlaceholder": "Search by name, e-mail or product",
-      "noMatches": "No student matches this search."
+      "noMatches": "No student matches this search or filter.",
+      "showMore": "Show {count} more"
     }
   },
   "creatorPanel": {
@@ -2448,6 +2450,7 @@
       "courseLabel": "Course",
       "courseEmptyOption": "Create a course first",
       "courseUnavailableOption": "Choose an available course",
+      "courseLocked": "The course of a scheduled session can't be changed.",
       "stepSchedule": "Course and time",
       "stepDetails": "Session details",
       "continue": "Continue",

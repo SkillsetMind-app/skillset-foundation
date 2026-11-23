@@ -9,6 +9,7 @@ import { ExportTableButton } from "@/components/shared/export-table-button";
 import { PeriodTabs } from "@/components/shared/period-tabs";
 import { MetricCard } from "@/components/teacher/metric-card";
 import { RevenueChart } from "@/components/teacher/revenue-chart";
+import { Button, InlineAlert } from "@/components/ui";
 import {
   buildCreatorOpsSnapshot,
   type CurrencyAmount,
@@ -58,6 +59,10 @@ export function CreatorOpsHub() {
   const [subscriptionsState, setSubscriptionsState] =
     useState<ReadState>("loading");
   const [period, setPeriod] = useState<ReportPeriod>("30d");
+  // "Try again" assina de novo as mesmas tres leituras.
+  const [attempt, setAttempt] = useState(0);
+  const readFailed =
+    ordersState === "error" || ledgersState === "error" || subscriptionsState === "error";
 
   useEffect(() => {
     if (!user) return;
@@ -90,7 +95,15 @@ export function CreatorOpsHub() {
     return () => {
       for (const unsub of unsubs) unsub?.();
     };
-  }, [user]);
+  }, [user, attempt]);
+
+  function retryReads() {
+    // So o que falhou volta a "carregando"; o que ja veio fica na tela.
+    setOrdersState((state) => (state === "error" ? "loading" : state));
+    setLedgersState((state) => (state === "error" ? "loading" : state));
+    setSubscriptionsState((state) => (state === "error" ? "loading" : state));
+    setAttempt((current) => current + 1);
+  }
 
   // Moedas lado a lado com " · " (o " + " de antes lia como soma).
   const moneyBreakdown = (values: CurrencyAmount[]): string =>
@@ -240,6 +253,17 @@ export function CreatorOpsHub() {
           disabledReason={ordersState === "error" ? t("platform.ops.exportButton.loadFailed") : undefined}
         />
       </div>
+
+      {/* F-11: a leitura que falhava so deixava "Unavailable" nos quadros,
+          sem aviso e sem caminho de volta alem de recarregar a pagina. */}
+      {readFailed ? (
+        <div className="grid gap-3">
+          <InlineAlert tone="error">{t("teach.reports.loadError")}</InlineAlert>
+          <Button variant="outline" className="justify-self-start" onClick={retryReads}>
+            {t("appErrors.retry")}
+          </Button>
+        </div>
+      ) : null}
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {tiles.map((tile) => (

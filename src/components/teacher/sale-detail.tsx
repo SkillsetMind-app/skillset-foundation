@@ -127,6 +127,8 @@ export function SaleDetail({ orderId }: SaleDetailProps) {
   const [order, setOrder] = useState<Order | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+  // "Try again" assina de novo a mesma leitura (antes a saida era recarregar).
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     return subscribeToOrder(
@@ -140,7 +142,7 @@ export function SaleDetail({ orderId }: SaleDetailProps) {
         setIsLoading(false);
       },
     );
-  }, [orderId]);
+  }, [orderId, attempt]);
 
   if (isLoading) {
     return <SaleDetailSkeleton label={t("saleDetail.loading")} />;
@@ -150,12 +152,25 @@ export function SaleDetail({ orderId }: SaleDetailProps) {
     return (
       <section className="settings-section-card">
         <InlineAlert tone="error">{t(error || "saleDetail.notFound")}</InlineAlert>
-        <Link
-          href="/teach/sales"
-          className={buttonClasses({ variant: "outline" }, "mt-5")}
-        >
-          {t("saleDetail.back")}
-        </Link>
+        <div className="mt-5 flex flex-wrap gap-3">
+          {/* So a falha de leitura tenta de novo; venda que nao existe nao. */}
+          {error ? (
+            <button
+              type="button"
+              onClick={() => {
+                setError("");
+                setIsLoading(true);
+                setAttempt((current) => current + 1);
+              }}
+              className={buttonClasses({ variant: "outline" })}
+            >
+              {t("appErrors.retry")}
+            </button>
+          ) : null}
+          <Link href="/teach/sales" className={buttonClasses({ variant: "outline" })}>
+            {t("saleDetail.back")}
+          </Link>
+        </div>
       </section>
     );
   }

@@ -1946,6 +1946,7 @@
       "noActivity": "Sin actividad",
       "unavailable": "No disponible",
       "loadingValue": "Cargando...",
+      "loadError": "No pudimos cargar parte de este informe.",
       "shortcuts": "Atajos de operaciones",
       "linkSales": "Todas las ventas",
       "linkSubscriptions": "Suscripciones",
@@ -2379,7 +2380,8 @@
       "community": "Comunidad",
       "searchLabel": "Buscar alumnos por nombre, correo o producto",
       "searchPlaceholder": "Busca por nombre, correo o producto",
-      "noMatches": "Ningún alumno coincide con esta búsqueda."
+      "noMatches": "Ningún alumno coincide con esta búsqueda o filtro.",
+      "showMore": "Mostrar {count} más"
     }
   },
   "creatorPanel": {
@@ -2448,6 +2450,7 @@
       "courseLabel": "Curso",
       "courseEmptyOption": "Crea un curso primero",
       "courseUnavailableOption": "Elige un curso disponible",
+      "courseLocked": "El curso de una sesión programada no se puede cambiar.",
       "stepSchedule": "Curso y horario",
       "stepDetails": "Detalles de la sesión",
       "continue": "Continuar",

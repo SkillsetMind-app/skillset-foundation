@@ -24,6 +24,9 @@ describe("F-07: as últimas caixas vermelhas à mão viraram o aviso da casa", (
     "components/support/support-ticket-center.tsx",
     // Ganhos: a caixa do topo e a frase vermelha do bloco da conta.
     "components/teacher/teacher-wallet-panel.tsx",
+    // Frases vermelhas soltas que viraram o aviso da casa.
+    "components/teacher/activation-checkout-panel.tsx",
+    "components/teacher/custom-domains-panel.tsx",
   ])("%s usa o InlineAlert de erro", (file) => {
     const source = read(file);
     expect(source).not.toContain(handRedBox);
@@ -109,5 +112,23 @@ describe("F-19: um tom só nos blocos de espera", () => {
     expect(source).not.toMatch(/animate-pulse[^"]*bg-\[var\(--color-surface-soft\)\]/);
     expect(source).not.toMatch(/animate-pulse[^"]*bg-white/);
     expect(source).toMatch(/animate-pulse[^"]*bg-\[var\(--color-surface-strong\)\]/);
+  });
+
+  // As linhas da lista de produtos pulsavam em surface-soft (F-19). Ali os
+  // blocos usam a constante `block`, por isso a prova é a constante.
+  it("components/teacher/builder-skeleton.tsx pinta o osso em surface-strong", () => {
+    const source = read("components/teacher/builder-skeleton.tsx");
+    expect(source).not.toMatch(/animate-pulse[^"]*bg-\[var\(--color-surface-soft\)\]/);
+    expect(source).toContain('const block = "bg-[var(--color-surface-strong)]";');
+  });
+});
+
+describe("F-03 / T-07: Vitrine, Mídia e Eventos esperam com a forma da tela", () => {
+  it.each([
+    ["components/teacher/storefront-settings-panel.tsx", 'data-skeleton="storefront"'],
+    ["components/teacher/teacher-media-library.tsx", "<CardStackSkeleton"],
+    ["components/teacher/teacher-event-studio.tsx", "<CardStackSkeleton"],
+  ])("%s não espera com uma frase num cartão", (file, skeleton) => {
+    expect(read(file)).toContain(skeleton);
   });
 });

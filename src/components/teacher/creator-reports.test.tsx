@@ -301,6 +301,18 @@ describe("Relatorios do professor", () => {
     expect(within(chart).queryByText("No revenue in this period")).toBeNull();
   });
 
+  // F-11: so "Unavailable" nos quadros, sem aviso nem saida alem de recarregar.
+  it("leitura que falha avisa e 'Try again' le de novo", async () => {
+    mocks.ordersRead = "error";
+    render(<CreatorOpsHub />);
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("We could not load part of this report.");
+    mocks.ordersRead = "ready";
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Try again" })).toBeNull();
+  });
+
   it("sem nenhuma linha, o export nao fica clicavel", async () => {
     mocks.orders = [];
     mocks.ledgers = [];

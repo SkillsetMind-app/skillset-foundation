@@ -855,7 +855,15 @@ describe("CustomDomainsPanel", () => {
         await waitFor(() => expect(hostname.closest("section")).toHaveAttribute("aria-busy", "false"));
         for (const locale of ["en", "es"] as const) {
           await changeLocale(locale);
-          expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+          // O aviso de releitura saiu. O recheck termina em "Problem": o único
+          // aviso que sobra é o do próprio cartão (F-07: InlineAlert de erro).
+          expect(screen.queryByText(refreshCopy[locale])).not.toBeInTheDocument();
+          expect(screen.queryAllByRole("alert")).toHaveLength(operation === "recheck" ? 1 : 0);
+          if (operation === "recheck") {
+            expect(domainCard(target.hostname).getByRole("alert")).toHaveTextContent(
+              locale === "es" ? "No se pudo configurar el dominio." : "The domain could not be set up.",
+            );
+          }
           expect(hostname).toHaveValue(retainedDraft);
           expect(hostname).not.toHaveAttribute("aria-invalid", "true");
           expect(screen.getByText(locale === "es" ? `${finalRows.length} de 3 utilizados` : `${finalRows.length} of 3 used`)).toBeInTheDocument();

@@ -190,4 +190,16 @@ describe("ES-11 communication with real locale state", () => {
     fireEvent.click(screen.getByRole("button", { name: "EN" }));
     expect(screen.getByText(en)).toBeInTheDocument();
   });
+
+  // F-11: as duas leituras que falhavam eram um beco (so recarregar a pagina).
+  it.each(["courseError", "postsError"] as const)("%s: o erro da casa e 'Try again' le de novo", async (failure) => {
+    state[failure] = true;
+    mount(<TeacherCommunityInbox courseId="course/$&" />);
+    expect(await screen.findByRole("alert")).toBeInTheDocument();
+    state[failure] = false;
+    state.posts = [question];
+    fireEvent.click(screen.getByRole("button", { name: "Intentar de nuevo" }));
+    expect((await screen.findAllByText("Original question $&")).length).toBeGreaterThan(0);
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
 });
