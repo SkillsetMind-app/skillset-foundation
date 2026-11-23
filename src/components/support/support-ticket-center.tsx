@@ -5,6 +5,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { StatusChip } from "@/components/shared/status-chip";
+import { InlineAlert } from "@/components/ui/inline-alert";
 import {
   supportTicketCategoryLabels,
   type SupportTicket,
@@ -132,9 +133,9 @@ export function SupportTicketCenter() {
             />
           </label>
           {error ? (
-            <p role="alert" className="rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
+            <InlineAlert tone="error">
               {t(`${copy}.${error}`)}
-            </p>
+            </InlineAlert>
           ) : null}
           {success ? (
             <p role="status" className="info-notice">

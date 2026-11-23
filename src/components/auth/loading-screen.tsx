@@ -3,6 +3,7 @@
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { SkillsetSpinner } from "@/components/shared/skillset-spinner";
+import { InlineAlert } from "@/components/ui/inline-alert";
 import {
   getAuthRoute,
   getOnboardedReturnTo,
@@ -112,9 +113,11 @@ export function LoadingScreen() {
         </button>
       ) : null}
       {hasError ? (
-        <p role="alert" className="mt-4 rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
+        // text-left: a tela de espera centra tudo, mas o aviso tem ícone à
+        // esquerda; centrado, a segunda linha descolava dele.
+        <InlineAlert tone="error" className="mt-4 text-left">
           {t("authFlow.loading.error")}
-        </p>
+        </InlineAlert>
       ) : null}
     </SkillsetSpinner>
   );

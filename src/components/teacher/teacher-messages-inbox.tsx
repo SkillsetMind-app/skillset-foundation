@@ -123,7 +123,7 @@ export function TeacherMessagesInbox() {
         </p>
         <div aria-hidden="true" className="grid content-start gap-2">
           {[0, 1, 2].map((row) => (
-            <div key={row} className="h-[100px] animate-pulse rounded-lg bg-[var(--color-surface-soft)]" />
+            <div key={row} className="h-[100px] animate-pulse rounded-lg bg-[var(--color-surface-strong)]" />
           ))}
         </div>
       </div>

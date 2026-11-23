@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { InlineAlert } from "@/components/ui/inline-alert";
 import { useHasRealCourses } from "@/components/site/real-courses";
 import { useSearchParams } from "next/navigation";
 import { useState, type FormEvent } from "react";
@@ -77,9 +78,9 @@ export function CertificateVerificationPanel() {
       </form>
 
       {error ? (
-        <p role="alert" className="mt-5 rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
+        <InlineAlert tone="error" className="mt-5">
           {t(error)}
-        </p>
+        </InlineAlert>
       ) : null}
 
       {result?.valid === false ? (

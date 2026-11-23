@@ -108,6 +108,27 @@ describe("SecuritySettingsPanel feedback", () => {
     expect(screen.getByRole("textbox", { name: "New password" })).toBe(next);
   });
 
+  // F-12: os dois botões apagados diziam nada. Agora dizem o que falta,
+  // ligados a eles, e a frase sai junto com a trava.
+  it("os botões apagados dizem o que falta, ligados a eles", () => {
+    render(<SecuritySettingsPanel />);
+
+    const send = screen.getByRole("button", { name: "Send change confirmation" });
+    expect(send).toBeDisabled();
+    expect(send).toHaveAccessibleDescription("Type the new email address first.");
+    fireEvent.change(screen.getByLabelText("New email address"), { target: { value: "new@example.com" } });
+    expect(send).toBeEnabled();
+    expect(send).not.toHaveAttribute("aria-describedby");
+
+    const update = screen.getByRole("button", { name: "Update password" });
+    expect(update).toHaveAccessibleDescription("Enter your current password first.");
+    fireEvent.change(screen.getByLabelText("Current password"), { target: { value: "OldPassword1!" } });
+    expect(update).toHaveAccessibleDescription("Choose a new password that meets the rules above.");
+    fireEvent.change(screen.getByLabelText("New password"), { target: { value: "NewPassword42!" } });
+    expect(update).toBeEnabled();
+    expect(update).not.toHaveAttribute("aria-describedby");
+  });
+
   it("treats the email send limit as reassurance, not an error", async () => {
     mockedResetPassword.mockRejectedValue({
       code: "over_email_send_rate_limit",

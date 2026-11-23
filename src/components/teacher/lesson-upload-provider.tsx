@@ -62,7 +62,7 @@ export function LessonUploadProvider({ children }: { children: ReactNode }) {
               <button type="button" className="button-icon" onClick={dismissLessonUpload} aria-label={t("lessonUpload.close")} title={t("lessonUpload.close")}><X size={18} aria-hidden="true" /></button>
             )}
           </div>
-          {job.status === "uploading" && <progress className="mt-2 h-1.5 w-full accent-[var(--color-ink)]" max={100} value={job.progress?.percent ?? undefined} aria-label={t("lessonUpload.uploading")} />}
+          {job.status === "uploading" && <progress className="upload-progress mt-2" max={100} value={job.progress?.percent ?? undefined} aria-label={t("lessonUpload.uploading")} />}
           <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
             <Link className="inline-flex min-h-11 items-center text-sm underline" href={href}>{t("lessonUpload.open")}</Link>
             {job.status === "uploading" && job.canCancel && <button type="button" className="button-danger px-3 py-2 text-xs" onClick={cancelLessonUpload}>{t("lessonUpload.cancel")}</button>}

@@ -157,6 +157,28 @@ describe("SignupForm: o olhinho e a porta de confirmacao", () => {
     expect(confirm).toHaveAttribute("aria-describedby", warning.id);
   });
 
+  // F-12: "Create account" apagado dizia nada. Agora diz o que falta, ligado
+  // ao botao; senhas diferentes apontam para o aviso que ja existe.
+  it("o botao apagado da etapa 2 diz o que falta, ligado a ele", () => {
+    render(<SignupForm />);
+    fillStepOne();
+    const create = screen.getByRole("button", { name: "auth.signup.createAccount" });
+    expect(create).toBeDisabled();
+    expect(create).toHaveAccessibleDescription("auth.signup.choosePasswordFirst");
+
+    fireEvent.change(screen.getByLabelText("auth." + secretField), { target: { value: strongSecret } });
+    expect(create).toHaveAccessibleDescription("auth.signup.confirmPasswordFirst");
+
+    const confirm = screen.getByLabelText("auth.signup.confirmPassword");
+    fireEvent.change(confirm, { target: { value: "different" } });
+    expect(create).toHaveAccessibleDescription("auth.signup.passwordsDontMatch");
+    expect(screen.getAllByText("auth.signup.passwordsDontMatch")).toHaveLength(1);
+
+    fireEvent.change(confirm, { target: { value: strongSecret } });
+    expect(create).toBeEnabled();
+    expect(create).not.toHaveAttribute("aria-describedby");
+  });
+
   it("conta criada sem sessao: a porta de confirmacao, com reenviar e espera de 60 s", async () => {
     render(<SignupForm />);
     fillStepOne();
