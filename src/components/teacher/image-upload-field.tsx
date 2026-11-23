@@ -26,7 +26,8 @@ export type ImageUploadFieldProps = {
     /** 2:3 em 128px (capa do módulo); sem isto, 16:9 em até 200px. */
     portrait?: boolean;
     /** Outra moldura (proporção e largura) no lugar de 16:9 em até 200px:
-     *  a vitrine usa 1:1 no logo e 16:7 na capa, como já desenhava. */
+     *  a vitrine usa 1:1 no logo e 16:7 na capa, como já desenhava.
+     *  Ignorada quando `portrait` está ligado (vale a moldura 2:3). */
     frame?: string;
     /** A imagem inteira, com folga, em vez de cobrir a moldura (o logo). */
     contain?: boolean;
