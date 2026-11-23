@@ -16,12 +16,15 @@ export function PlatformSearch({
   pathname,
   open = false,
   searchHref,
+  onDismiss,
 }: {
   pathname: string;
   /** No celular a barra do topo não tem largura para o campo; um ícone o abre. */
   open?: boolean;
   /** A page with a query consumer can preserve its own scope and parameters. */
   searchHref?: string;
+  /** Fecha a faixa do celular: Esc (devolve o foco ao ícone) ou busca enviada. */
+  onDismiss?: (reason: "escape" | "submit") => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
@@ -67,6 +70,11 @@ export function PlatformSearch({
   function handleKeyDown(event: KeyboardEvent<HTMLInputElement>) {
     if (event.key === "Enter") {
       submitSearch();
+      // No celular a faixa abre por cima do título da página: ficava aberta
+      // sobre os resultados até a pessoa achar o ícone de novo.
+      onDismiss?.("submit");
+    } else if (event.key === "Escape") {
+      onDismiss?.("escape");
     }
   }
 
@@ -95,7 +103,9 @@ export function PlatformSearch({
         aria-label={placeholder}
         onKeyDown={handleKeyDown}
       />
-      {shortcutLabel ? <span aria-hidden="true">{shortcutLabel}</span> : null}
+      {/* Atalho de teclado não é dica para quem está no toque. O `!` vence a
+          regra `.platform-topbar-search span`, que fica fora das camadas. */}
+      {shortcutLabel ? <span aria-hidden="true" className="pointer-coarse:hidden!">{shortcutLabel}</span> : null}
     </label>
   );
 }
