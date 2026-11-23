@@ -492,13 +492,13 @@ describe("a sala busca de novo só quando uma aula abre", () => {
     expect(counts().signs).toBe(before.signs);
   });
 
-  // O aviso grande do player (h5): fechada, carregando, ou o vazio de verdade.
+  // O aviso grande do player (h3): fechada, carregando, ou o vazio de verdade.
   // Aula de leitura pronta nao tem caixa de video: null.
   function playerNotice() {
     return (
       document
         .getElementById("member-lesson-player")
-        ?.querySelector(".member-video-empty h5")?.textContent ?? null
+        ?.querySelector(".member-video-empty h3")?.textContent ?? null
     );
   }
 

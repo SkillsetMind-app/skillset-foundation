@@ -327,16 +327,29 @@ describe("learner wave 2 with real provider and dictionaries", () => {
     expect(screen.queryByText("Internal transport detail")).not.toBeInTheDocument();
   });
 
-  it("localizes generated community copy and searches the translated category without changing course titles", async () => {
+  it("localizes generated community copy without changing course titles; one community has no search box", async () => {
     mocks.enrollments.mockImplementation((_uid, next) => { next([enrollment]); return () => {}; });
     show(<LearnCommunityHub />);
     expect(await screen.findByRole("heading", { name: "Comunidad de Original course $&" })).toBeVisible();
     // O cartão é o curso e a entrada: sem as quatro linhas iguais em todo cartão.
     expect(screen.getByRole("article").textContent).toBe("Comunidad de Original course $&Abrir comunidad");
     expect(mocks.communityIds).toHaveBeenCalledExactlyOnceWith(["course-es"]);
-    fireEvent.change(screen.getByRole("searchbox", { name: "Buscar en las comunidades de tus cursos" }), { target: { value: "comunidad" } });
     expect(screen.getByRole("link", { name: "Abrir comunidad" })).toHaveAttribute("href", "/learn/courses/course-es/community");
-    expect(screen.getByText("1 de 1 comunidades visibles")).toBeVisible();
+    // Uma comunidade cabe na tela: a busca (um cartão inteiro) só aparece acima de 6.
+    expect(screen.queryByRole("searchbox")).toBeNull();
+  });
+
+  it("with more than 6 communities, searches the translated category and keeps the query across languages", async () => {
+    const many = Array.from({ length: 7 }, (_, index) => ({
+      ...enrollment, id: `enrollment-${index}`, courseId: `course-${index}`, courseSlug: `course-${index}`, courseTitle: `Course ${index} $&`,
+    }));
+    mocks.communityIds.mockResolvedValue(new Set(many.map((row) => row.courseId)));
+    mocks.enrollments.mockImplementation((_uid, next) => { next(many); return () => {}; });
+    show(<LearnCommunityHub />);
+    expect(await screen.findByRole("heading", { name: "Comunidad de Course 0 $&" })).toBeVisible();
+    fireEvent.change(screen.getByRole("searchbox", { name: "Buscar en las comunidades de tus cursos" }), { target: { value: "comunidad" } });
+    expect(screen.getAllByRole("link", { name: "Abrir comunidad" })).toHaveLength(7);
+    expect(screen.getByText("7 de 7 comunidades visibles")).toBeVisible();
     changeLanguage();
     expect(screen.getByRole("searchbox", { name: "Search enrolled communities" })).toHaveValue("comunidad");
     expect(screen.getByText("No communities match this filter.")).toBeVisible();
@@ -365,7 +378,7 @@ describe("learner wave 2 with real provider and dictionaries", () => {
     show(<LearnCommunityHub />);
     expect(await screen.findByRole("heading", { name: "Comunidad de Original course $&" })).toBeVisible();
     expect(screen.queryByRole("heading", { name: /Quiet course/ })).not.toBeInTheDocument();
-    expect(screen.getByText("1 de 1 comunidades visibles")).toBeVisible();
+    expect(screen.getAllByRole("article")).toHaveLength(1);
     expect(mocks.communityIds).toHaveBeenCalledExactlyOnceWith(["course-es", "course-quiet"]);
   });
 

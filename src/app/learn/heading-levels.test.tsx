@@ -85,3 +85,22 @@ describe("níveis de cabeçalho da área do aluno", () => {
     expect(offenders).toEqual([]);
   });
 });
+
+describe("níveis de cabeçalho da aula aberta", () => {
+  // O título da aula era h4 logo abaixo do h1 do curso, e comentários, quiz e
+  // os avisos do palco (trancada, carregando, sem mídia) eram h5: dois degraus
+  // pulados para quem navega por cabeçalho.
+  const read = (file: string) => readFileSync(join(LEARN_COMPONENTS_DIR, file), "utf8");
+
+  it("a aula é h2 e as subseções dela são h3", () => {
+    const workspace = read("enrolled-course-workspace.tsx");
+    const panel = workspace.slice(workspace.indexOf("function LessonContentPanel"));
+    expect(firstHeadingLevel(panel)).toBe(2);
+    expect(panel).not.toMatch(/<h[45][\s>]/);
+    for (const file of ["lesson-comments.tsx", "lesson-quiz.tsx"]) {
+      const source = read(file);
+      expect(firstHeadingLevel(source), file).toBe(3);
+      expect(source, file).not.toMatch(/<h[45][\s>]/);
+    }
+  });
+});

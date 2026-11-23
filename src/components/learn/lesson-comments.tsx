@@ -88,6 +88,9 @@ function LessonCommentsPanel({
   // relê pelo mesmo canal; o aviso só sai quando os comentários chegam, e os
   // que já estão na tela ficam. O foco vai para a seção (o botão some).
   const [postsFailed, setPostsFailed] = useState(false);
+  // O leitor de tela ouve só o próprio comentário publicado, não a lista:
+  // numa conversa movimentada a lista viva lia cada post que chegava.
+  const [posted, setPosted] = useState(false);
   const postsSubscription = useRef<{ reload: () => Promise<void> } | null>(null);
   const sectionRef = useRef<HTMLElement>(null);
 
@@ -145,6 +148,7 @@ function LessonCommentsPanel({
       return;
     }
     setError("");
+    setPosted(false);
     setIsSubmitting(true);
     try {
       await createCommunityPost({
@@ -158,6 +162,7 @@ function LessonCommentsPanel({
       });
       setBody("");
       setOpen(false);
+      setPosted(true);
     } catch (failure) {
       setError(isRateLimitError(failure) ? "learn.community.rateLimit" : "learn.community.composer.publishError");
     } finally {
@@ -172,14 +177,15 @@ function LessonCommentsPanel({
       ref={sectionRef}
       tabIndex={-1}
       aria-labelledby="member-lesson-comments-title"
-      className="rounded-lg border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-4"
+      className="member-lesson-comments rounded-lg border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-4"
     >
       <div className="flex items-center gap-2">
         <MessageCircle size={15} className="text-[var(--color-accent-fg)]" aria-hidden />
-        <h5 id="member-lesson-comments-title" className="text-sm font-bold text-[var(--color-ink)]">
+        {/* h3: subseção da aula (o título da aula é o h2 do painel). */}
+        <h3 id="member-lesson-comments-title" className="text-sm font-bold text-[var(--color-ink)]">
           {t("learn.classroom.lessonComments.title")}
           {count == null ? "" : ` · ${count}`}
-        </h5>
+        </h3>
       </div>
 
       {open && canRead ? (
@@ -243,13 +249,28 @@ function LessonCommentsPanel({
       ) : null}
 
       {canRead ? (
-        <div className="mt-3 grid gap-2" aria-live="polite">
+        <div className="mt-3 grid gap-2">
+          {/* Um aviso só: "carregando" enquanto o feed não chega, depois
+              "publicado" quando o próprio comentário entra. */}
+          <p role="status" className="sr-only">
+            {!feed.ready && !postsFailed
+              ? t("learn.classroom.lessonComments.loading")
+              : posted
+                ? t("learn.classroom.lessonComments.posted")
+                : ""}
+          </p>
           {/* Com a leitura em erro, nem "carregando" nem o vazio: só o aviso. */}
           {!feed.ready || (postsFailed && lessonPosts.length === 0) ? (
             postsFailed ? null : (
-              <p className="text-sm text-[var(--color-ink-soft)]">
-                {t("learn.classroom.lessonComments.loading")}
-              </p>
+              // Esperando: uma linha no formato do comentário (avatar e duas
+              // linhas), no lugar do texto "Loading lesson comments...".
+              <div aria-hidden="true" className="flex gap-3 rounded-md border border-[var(--color-line)] bg-white p-3">
+                <span className="h-8 w-8 shrink-0 rounded-full bg-[var(--ma-line,var(--color-surface-strong))] motion-safe:animate-pulse" />
+                <span className="grid flex-1 content-center gap-2">
+                  <span className="block h-3 w-1/3 rounded-sm bg-[var(--ma-line,var(--color-surface-strong))] motion-safe:animate-pulse" />
+                  <span className="block h-3 w-4/5 rounded-sm bg-[var(--ma-line,var(--color-surface-strong))] motion-safe:animate-pulse" />
+                </span>
+              </div>
             )
           ) : lessonPosts.length === 0 ? (
             <p className="text-sm text-[var(--color-ink-soft)]">

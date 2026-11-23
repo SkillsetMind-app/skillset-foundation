@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { CourseCover } from "@/components/learn/course-unlock-modal";
 import { MemberAreaShell, type MemberAreaBrand } from "@/components/learn/member-area-shell";
+import { ProgressBar } from "@/components/ui/progress-bar";
 import { classroomTabHref } from "@/domain/classroom-tabs";
 import {
   getMemberAreaCommunity,
@@ -221,11 +222,13 @@ export function MemberAreaHomeView({
           </Link>
         ) : null}
 
-        <section aria-labelledby="area-continue-title" className="grid gap-3">
-          <h2 id="area-continue-title" className="text-xl font-semibold text-[var(--ma-ink)]">
-            {t("learn.memberArea.continueTitle")}
-          </h2>
-          {continueWatching ? (
+        {/* Seção vazia some: título e "nada aqui" embaixo eram uma seção
+            inteira sem conteúdo. Só "My products" fica com o aviso de vazio. */}
+        {continueWatching ? (
+          <section aria-labelledby="area-continue-title" className="grid gap-3">
+            <h2 id="area-continue-title" className="text-xl font-semibold text-[var(--ma-ink)]">
+              {t("learn.memberArea.continueTitle")}
+            </h2>
             <Link
               href={classroomTabHref(classroomPath(continueWatching.courseId), "lesson", continueWatching.lessonId)}
               className="flex min-w-0 items-center gap-4 rounded-lg border border-[var(--ma-line)] bg-[var(--ma-surface)] p-4 hover:border-[var(--ma-accent)]"
@@ -243,10 +246,8 @@ export function MemberAreaHomeView({
                 </span>
               </span>
             </Link>
-          ) : (
-            <p className="text-sm text-[var(--ma-ink-soft)]">{t("learn.memberArea.continueEmpty")}</p>
-          )}
-        </section>
+          </section>
+        ) : null}
 
         <section aria-labelledby="area-mine-title" className="grid gap-3">
           <h2 id="area-mine-title" className="text-xl font-semibold text-[var(--ma-ink)]">
@@ -270,13 +271,17 @@ export function MemberAreaHomeView({
                         {t(`courseCreation.types.${product.productFormat ?? "course"}.label`)}
                       </span>
                       <span className="line-clamp-2 break-words text-base font-semibold text-[var(--ma-ink)]">{product.title}</span>
-                      <span className="h-1.5 overflow-hidden rounded-full bg-[var(--ma-surface-2)]" aria-hidden="true">
-                        <span
-                          className="block h-full rounded-full bg-[var(--ma-accent)]"
-                          style={{ width: `${Math.max(0, Math.min(100, product.progressPercent))}%` }}
-                        />
-                      </span>
-                      <span className="text-xs text-[var(--ma-ink-soft)]">
+                      {/* A barra da casa (ui/progress-bar), nas cores da área, e
+                          anunciada como barra. O número escrito embaixo é o
+                          mesmo rótulo dela: fica fora da árvore para o nome do
+                          cartão não dizer o progresso duas vezes. */}
+                      <ProgressBar
+                        value={product.progressPercent}
+                        label={t("learn.memberArea.progress").replace("{percent}", () => String(Math.round(product.progressPercent)))}
+                        className="bg-[var(--ma-surface-2)]"
+                        fillClassName="bg-[var(--ma-accent)]"
+                      />
+                      <span aria-hidden="true" className="text-xs text-[var(--ma-ink-soft)]">
                         {t("learn.memberArea.progress").replace("{percent}", () => String(Math.round(product.progressPercent)))}
                       </span>
                     </span>
@@ -287,15 +292,11 @@ export function MemberAreaHomeView({
           )}
         </section>
 
-        <section aria-labelledby="area-more-title" className="grid gap-3">
-          <h2 id="area-more-title" className="text-xl font-semibold text-[var(--ma-ink)]">
-            {t("learn.memberArea.moreProducts")}
-          </h2>
-          {moreProducts.length === 0 ? (
-            <p className="text-sm text-[var(--ma-ink-soft)]">
-              {t(myProducts.length > 0 ? "learn.memberArea.moreProductsEmpty" : "learn.memberArea.moreProductsNone")}
-            </p>
-          ) : (
+        {moreProducts.length > 0 ? (
+          <section aria-labelledby="area-more-title" className="grid gap-3">
+            <h2 id="area-more-title" className="text-xl font-semibold text-[var(--ma-ink)]">
+              {t("learn.memberArea.moreProducts")}
+            </h2>
             <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {moreProducts.map((product) => {
                 const price = priceLabel(product, locale, priceLabels);
@@ -325,8 +326,8 @@ export function MemberAreaHomeView({
                 );
               })}
             </ul>
-          )}
-        </section>
+          </section>
+        ) : null}
       </div>
     </MemberAreaShell>
   );

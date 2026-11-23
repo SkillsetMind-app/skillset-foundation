@@ -646,6 +646,8 @@ describe("feed da comunidade (rodada 11)", () => {
     const own = within(screen.getByText("My own share.").closest("article")!).getByRole("button", { name: /^Like · \d+$/ });
     expect(own).toBeDisabled();
     expect(own).toHaveAccessibleDescription("You can't like your own post.");
+    // O motivo também à vista, não só para o leitor de tela.
+    expect(screen.getByText("You can't like your own post.")).not.toHaveClass("sr-only");
     const other = within(screen.getAllByRole("article").find((card) => !card.textContent?.includes("My own share."))!).getByRole("button", { name: /^Like · \d+$/ });
     expect(other).not.toHaveAttribute("aria-describedby");
   });

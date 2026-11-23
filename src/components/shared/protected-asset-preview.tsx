@@ -84,8 +84,22 @@ function ProtectedAssetPreviewContent({
   }
 
   if (!objectUrl) {
+    // Vídeo: a mesma caixa 16:9 da espera da sala, só com o anel (o texto fica
+    // para o leitor de tela). Era uma pílula branca dentro do palco escuro, que
+    // depois virava o vídeo inteiro. Fora da sala (prévia do professor) a caixa
+    // traz o próprio fundo escuro (globals.css, .protected-asset-loading).
+    // Outros arquivos: uma linha com o anel, sem pílula.
+    if (asset.contentType.startsWith("video/")) {
+      return (
+        <div className="member-video-empty member-video-empty--loading protected-asset-loading" role="status">
+          <Loader2 size={32} aria-hidden className="motion-safe:animate-spin" />
+          <span className="sr-only">{t("courseMedia.preview.preparingAsset")}</span>
+        </div>
+      );
+    }
     return (
-      <p className="mt-3 rounded-md bg-white px-3 py-2 text-sm text-[var(--color-ink-soft)]">
+      <p role="status" className="mt-3 inline-flex items-center gap-2 text-sm text-[var(--color-ink-soft)]">
+        <Loader2 size={16} aria-hidden className="motion-safe:animate-spin" />
         {t("courseMedia.preview.preparingAsset")}
       </p>
     );

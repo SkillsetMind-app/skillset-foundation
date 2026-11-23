@@ -5,6 +5,7 @@ import { useEffect, useState, type FormEvent } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { InlineAlert } from "@/components/ui/inline-alert";
 import type { CourseMessage } from "@/domain/course-message";
 import { COURSE_MESSAGE_MAX_CHARS } from "@/domain/course-message";
 import { formatNotificationTime } from "@/components/account/notification-row";
@@ -54,6 +55,10 @@ export function CourseMessagesPanel({
   const { t, locale } = useTranslation();
   const { user } = useAuth();
   const [messages, setMessages] = useState<CourseMessage[]>([]);
+  // A conversa ainda não chegou: o histórico surgia de repente ACIMA do
+  // formulário e empurrava a caixa de texto. Até a primeira leitura (ou a
+  // falha), linhas de espera no lugar dele.
+  const [ready, setReady] = useState(false);
   const [draft, setDraft] = useState("");
   const [isSending, setIsSending] = useState(false);
   // A dictionary key, never rendered text: the locale can change while the
@@ -69,9 +74,13 @@ export function CourseMessagesPanel({
     return subscribeToCourseThread(
       courseId,
       user.uid,
-      setMessages,
+      (rows) => {
+        setMessages(rows);
+        setReady(true);
+      },
       () => {
         setNotice("learn.classroom.messages.loadError");
+        setReady(true);
       },
     );
   }, [courseId, previewMode, user]);
@@ -116,7 +125,19 @@ export function CourseMessagesPanel({
         </p>
       </div>
 
-      {messages.length > 0 ? (
+      {canSend && !ready ? (
+        <div role="status" className="mt-5 grid gap-3">
+          <span className="sr-only">{t("learn.classroom.messages.loading")}</span>
+          {/* Uma mensagem de cada lado, no formato das de verdade. */}
+          {["justify-self-start", "justify-self-end"].map((side) => (
+            <span
+              key={side}
+              aria-hidden="true"
+              className={`block h-14 w-3/5 rounded-lg bg-[var(--ma-line,var(--color-surface-strong))] motion-safe:animate-pulse ${side}`}
+            />
+          ))}
+        </div>
+      ) : messages.length > 0 ? (
         <ul className="mt-5 grid gap-3">
           {messages.map((message) => {
             const isMine = user ? message.senderId === user.uid : false;
@@ -160,11 +181,9 @@ export function CourseMessagesPanel({
           </p>
         ) : null}
 
-        {notice ? (
-          <p className="rounded-md bg-white px-3 py-2 text-xs font-semibold leading-5 text-[var(--color-primary)]">
-            {t(notice)}
-          </p>
-        ) : null}
+        {/* Erro com cara de erro (caixa da casa, com ícone, lida em voz alta):
+            antes era a mesma pílula navy de um aviso neutro. */}
+        {notice ? <InlineAlert tone="error">{t(notice)}</InlineAlert> : null}
 
         <button
           type="submit"

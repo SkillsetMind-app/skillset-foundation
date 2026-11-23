@@ -40,7 +40,7 @@ describe("CourseUnlockModal", () => {
 
     expect(screen.getByText("Deep Focus Systems")).toBeInTheDocument();
     // The popup owns no checkout logic — /courses/[id] does.
-    const cta = screen.getByRole("link", { name: /Unlock course/ });
+    const cta = screen.getByRole("link", { name: /Buy course/ });
     expect(cta).toHaveAttribute("href", "/courses/course-1");
     expect(cta).toHaveTextContent("$249.00");
   });
@@ -64,7 +64,7 @@ describe("CourseUnlockModal", () => {
       />,
     );
 
-    const cta = screen.getByRole("link", { name: /Unlock course/ });
+    const cta = screen.getByRole("link", { name: /Buy course/ });
     expect(cta).toHaveAttribute("href", "#enroll-card");
     fireEvent.click(cta);
     expect(onClose).toHaveBeenCalledOnce();

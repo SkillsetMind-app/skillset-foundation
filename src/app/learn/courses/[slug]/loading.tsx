@@ -19,7 +19,9 @@ import { getServerTranslation } from "@/lib/i18n/server";
 export default async function LoadingCourse() {
   const { t } = await getServerTranslation();
   return (
-    <div className="mx-auto w-full max-w-[1280px] px-4 py-6 sm:px-6 lg:px-8">
+    // Margem lateral igual à da casca (md:px-6 lg:px-8); no celular quem dá o
+    // respiro é a própria ClassroomLoading, como dentro da casca.
+    <div className="mx-auto w-full max-w-[1280px] py-6 md:px-6 lg:px-8">
       <ClassroomLoading label={t("learnWave2.courseLoading.title")} />
     </div>
   );

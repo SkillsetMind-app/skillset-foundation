@@ -311,9 +311,12 @@ describe("comentarios da aula sob o player", () => {
   it("mostra so os posts desta aula, com contagem, autor, hora, respostas e o link para a gaveta", () => {
     renderClassroom("lesson=l1");
 
-    // Enquanto o feed nao chega: titulo sem numero e "carregando".
+    // Enquanto o feed nao chega: titulo sem numero e "carregando" — dito ao
+    // leitor de tela num aviso so; na tela, uma linha de espera no formato do
+    // comentario, nao o texto.
     const loading = screen.getByRole("region", { name: "Lesson comments" });
-    expect(within(loading).getByText("Loading lesson comments...")).toBeInTheDocument();
+    expect(within(loading).getByRole("status")).toHaveTextContent("Loading lesson comments...");
+    expect(within(loading).getByText("Loading lesson comments...")).toHaveClass("sr-only");
     expect(subscribeToCommunityPosts).toHaveBeenCalledExactlyOnceWith(
       "course-1", expect.any(Function), expect.any(Function),
     );
@@ -339,11 +342,12 @@ describe("comentarios da aula sob o player", () => {
     expect(within(region).queryByText("Found it, thanks!")).toBeNull();
     expect(within(region).queryByRole("button", { name: /reply|like|clap|👏/i })).toBeNull();
 
-    // Posicao: depois de "Informacoes da aula". Aula de texto (esta): o corpo
-    // vem antes dos comentarios — sem video, o que se le e o texto.
-    const info = screen.getByRole("button", { name: "Lesson information" });
+    // Posicao: depois do titulo da aula ("Lesson information" saiu). Aula de
+    // texto (esta): o corpo vem antes dos comentarios — sem video, o que se le
+    // e o texto.
+    const title = document.querySelector(".member-lesson-panel__head h2") as HTMLElement;
     const body = document.getElementById("member-lesson-content") as HTMLElement;
-    expect(info.compareDocumentPosition(region) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(title.compareDocumentPosition(region) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(body.compareDocumentPosition(region) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     // O contador da aba Community nao muda: uma leitura, a de sempre.
     expect(countOpenCommunityQuestions).toHaveBeenCalledExactlyOnceWith("course-1");
@@ -379,8 +383,8 @@ describe("comentarios da aula sob o player", () => {
     expect(screen.queryByRole("button", { name: "Comment on the lesson." })).toBeNull();
     expect(subscribeToCommunityPosts).not.toHaveBeenCalled();
     expect(subscribeToCourseCommunityComments).not.toHaveBeenCalled();
-    // "Informacoes da aula" (#222) segue no lugar.
-    expect(screen.getByRole("button", { name: "Lesson information" })).toBeInTheDocument();
+    // O resto da aula segue no lugar.
+    expect(document.getElementById("member-lesson-content")).toBeInTheDocument();
   });
 
   it("preview do professor: caixa desabilitada com a porta do feed, sem inscricao e sem lista", () => {
@@ -438,7 +442,21 @@ describe("comentarios da aula sob o player", () => {
     await act(async () => resolve({ id: "post-new" }));
     expect(screen.queryByRole("textbox", { name: "Your comment on this lesson" })).toBeNull();
     expect(screen.getByRole("button", { name: "Comment on the lesson." })).toBeInTheDocument();
+    // O leitor de tela ouve o proprio comentario publicado, uma linha so.
+    const region = screen.getByRole("region", { name: /Lesson comments/ });
+    expect(within(region).getByRole("status")).toHaveTextContent("Comment posted.");
     expect(recordLessonProgress).not.toHaveBeenCalled();
+  });
+
+  // A lista inteira era aria-live: numa conversa movimentada, cada post que
+  // chegava era lido em voz alta.
+  it("a lista nao e regiao viva: so o aviso de uma linha fala", () => {
+    renderClassroom("lesson=l1");
+    deliverFeed();
+    const region = screen.getByRole("region", { name: "Lesson comments · 1" });
+    expect(region.querySelectorAll("[aria-live]")).toHaveLength(0);
+    expect(within(region).getByRole("status").textContent).toBe("");
+    expect(within(region).getByRole("heading", { level: 3, name: "Lesson comments · 1" })).toBeInTheDocument();
   });
 
   it("erro de publicacao fica como chave e traduz; EN <-> ES sem trocar de aula nem reinscrever", async () => {

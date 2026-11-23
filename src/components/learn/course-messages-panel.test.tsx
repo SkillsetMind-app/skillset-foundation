@@ -103,10 +103,31 @@ describe("private course messages in the current locale", () => {
     renderMessages(false, "en");
     fireEvent.change(screen.getByRole("textbox"), { target: { value: "Unsent" } });
     expect(screen.getByText("We could not load your messages.")).toBeInTheDocument();
+    // Erro com cara de erro (caixa da casa, lida em voz alta), não a pílula
+    // navy de aviso neutro; e a espera não fica girando por baixo dele.
+    expect(screen.getByRole("alert")).toHaveTextContent("We could not load your messages.");
+    expect(screen.queryByRole("status")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Change language" }));
     expect(screen.getByText("No pudimos cargar tus mensajes.")).toBeInTheDocument();
     expect(screen.getByRole("textbox")).toHaveValue("Unsent");
     expect(subscribeToCourseThread).toHaveBeenCalledTimes(1);
+  });
+
+  // O historico surgia de repente acima do formulario: ate a primeira leitura,
+  // linhas de espera no lugar dele, com um aviso so para o leitor de tela.
+  it("shows a wait state where the thread will appear, until the first read", () => {
+    let deliver!: (rows: CourseMessage[]) => void;
+    vi.mocked(subscribeToCourseThread).mockImplementationOnce((_course, _student, onNext) => {
+      deliver = onNext;
+      return vi.fn();
+    });
+    renderMessages(false, "en");
+    expect(screen.getByRole("status")).toHaveTextContent("Loading your messages...");
+    const field = screen.getByRole("textbox", { name: "Your private message" });
+    expect(screen.getByRole("status").compareDocumentPosition(field) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    act(() => deliver([{ id: "m1", senderId: "teacher-test", body: "Hello", createdAt: new Date().toISOString() } as CourseMessage]));
+    expect(screen.queryByRole("status")).toBeNull();
+    expect(screen.getByText("Hello")).toBeInTheDocument();
   });
 
   // A sala com a marca do professor nao tem sino (member-area-shell.tsx): ali
