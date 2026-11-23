@@ -85,7 +85,7 @@ describe("LearnEventsHub", () => {
     render(<I18nProvider initialLocale="es"><LearnEventsHub /></I18nProvider>);
 
     expect(await screen.findByText(
-      new Intl.DateTimeFormat("es", { dateStyle: "medium", timeStyle: "short" }).format(new Date(mocks.startsAt)),
+      new Intl.DateTimeFormat("es", { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZoneName: "longGeneric" }).format(new Date(mocks.startsAt)),
     )).toBeInTheDocument();
     expect(screen.getByText("Fecha pendiente")).toBeInTheDocument();
   });

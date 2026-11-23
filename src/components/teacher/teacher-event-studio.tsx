@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type FormEvent } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { ArrowLeft, ArrowRight, CalendarDays, Plus, X } from "lucide-react";
@@ -12,7 +12,10 @@ import { MetricCard } from "@/components/teacher/metric-card";
 import { ConfirmDialog, EmptyState, InlineAlert } from "@/components/ui";
 import {
   formatEventDateTime,
-  isValidExternalEventUrl,
+  formatEventTimeInZones,
+  isEventLinkAcceptable,
+  US_PREVIEW_TIME_ZONES,
+  withLinkScheme,
   type CourseEvent,
   type CourseEventRsvp,
   type CourseEventType,
@@ -64,18 +67,28 @@ function bucketOf(event: CourseEvent, now: number): Exclude<EventFilter, "all"> 
   return startsAt < now ? "past" : "upcoming";
 }
 
-// Convert a stored ISO timestamp into the local "YYYY-MM-DDTHH:mm" value a
-// datetime-local input expects, so editing an event pre-fills the right time.
-function toDateTimeLocalValue(iso: string): string {
-  const date = new Date(iso);
-
+// Um instante como os valores locais dos campos de data e de hora
+// ("YYYY-MM-DD", "HH:mm"), para editar e copiar a sessao na hora certa.
+function toLocalDateAndTime(date: Date): [string, string] {
   if (Number.isNaN(date.getTime())) {
-    return "";
+    return ["", ""];
   }
 
-  const offsetMs = date.getTimezoneOffset() * 60000;
+  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString();
 
-  return new Date(date.getTime() - offsetMs).toISOString().slice(0, 16);
+  return [local.slice(0, 10), local.slice(11, 16)];
+}
+
+// A cidade do fuso do computador ("America/New_York" vira "New York"). E o
+// fuso que `new Date(...)` usa para ler o que a pessoa digita. No servidor fica
+// vazio: o render do servidor nao sabe o fuso de quem abre a pagina.
+const noSubscription = () => () => {};
+function useComputerZoneCity(): string {
+  return useSyncExternalStore(
+    noSubscription,
+    () => Intl.DateTimeFormat().resolvedOptions().timeZone?.split("/").pop()?.replace(/_/g, " ") ?? "",
+    () => "",
+  );
 }
 
 export function TeacherEventStudio() {
@@ -87,7 +100,12 @@ export function TeacherEventStudio() {
   const [courseId, setCourseId] = useState(searchParams.get("courseId") ?? "");
   const [type, setType] = useState<CourseEventType>("live_class");
   const [title, setTitle] = useState("");
-  const [startsAt, setStartsAt] = useState("");
+  // Data e hora em dois campos (como a criacao do produto "Live event"): o
+  // datetime-local vinha em pedacinhos dificeis de editar. Junta como antes:
+  // "YYYY-MM-DDTHH:mm", lido no fuso do computador.
+  const [eventDate, setEventDate] = useState("");
+  const [eventTime, setEventTime] = useState("");
+  const startsAt = eventDate && eventTime ? `${eventDate}T${eventTime}` : "";
   const [externalUrl, setExternalUrl] = useState("");
   const [description, setDescription] = useState("");
   const [isSaving, setIsSaving] = useState(false);
@@ -102,11 +120,24 @@ export function TeacherEventStudio() {
   // efeito reinscreveria em laco) e a frase troca de idioma na hora.
   const [error, setError] = useState("");
   const [editingEventId, setEditingEventId] = useState<string | null>(null);
+  // Como a sessao editada estava: data passada so trava se a pessoa mudou a
+  // data, e descricao que ja era vazia (sessao criada junto com o produto)
+  // nao obriga a escrever 12 letras so para acrescentar o link.
+  const [editingBase, setEditingBase] = useState<{ startsAt: string; descriptionWasEmpty: boolean } | null>(null);
   const [actioningEventId, setActioningEventId] = useState<string | null>(null);
   // Pergunta aberta (cancelar ou excluir) e o aviso de que deu certo: antes a
   // sessao sumia ou mudava de estado sem nenhuma frase dizendo o que houve.
   const [asking, setAsking] = useState<{ action: "cancel" | "delete"; event: CourseEvent } | null>(null);
-  const [notice, setNotice] = useState<"cancelledNotice" | "deletedNotice" | null>(null);
+  const [notice, setNotice] = useState<
+    "cancelledNotice" | "deletedNotice" | "scheduledNotice" | "updatedNotice" | null
+  >(null);
+  // Quantos disseram "vou" em cada sessao, para a janela de excluir dizer
+  // quem perde a resposta. Vem da leitura que cada cartao ja faz.
+  const [goingByEvent, setGoingByEvent] = useState<Record<string, number>>({});
+  const reportGoing = useCallback((eventId: string, count: number) => {
+    setGoingByEvent((current) => (current[eventId] === count ? current : { ...current, [eventId]: count }));
+  }, []);
+  const zoneCity = useComputerZoneCity();
   // O formulario e um pedido, nao a pagina. Quem chega pelo fluxo de criacao de
   // produto (`?newEvent=1`, create-course-start.tsx) ja pediu, e so para essa
   // pessoa ele nasce aberto.
@@ -120,7 +151,14 @@ export function TeacherEventStudio() {
   const stepHeading = useRef<HTMLHeadingElement>(null);
   const [filter, setFilter] = useState<EventFilter>("upcoming");
   const [search, setSearch] = useState("");
-  const [now] = useState(() => Date.now());
+  // O "agora" anda a cada 30 s: a sessao que comeca passa de Upcoming para Past
+  // sem recarregar a pagina.
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 30_000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     if (isFormOpen) stepHeading.current?.focus();
@@ -203,7 +241,7 @@ export function TeacherEventStudio() {
   const visible = useMemo(() => {
     const needle = search.trim().toLowerCase();
 
-    return events.filter((event) => {
+    const matching = events.filter((event) => {
       if (filter !== "all" && bucketOf(event, now) !== filter) {
         return false;
       }
@@ -214,6 +252,10 @@ export function TeacherEventStudio() {
 
       return `${event.title} ${event.courseTitle}`.toLowerCase().includes(needle);
     });
+
+    // A leitura vem da mais antiga para a mais nova. Em "Past" e "All" a
+    // sessao que interessa e a mais recente: ela vem primeiro.
+    return filter === "past" || filter === "all" ? matching.reverse() : matching;
   }, [events, filter, now, search]);
 
   const exportRows = useMemo(
@@ -233,8 +275,10 @@ export function TeacherEventStudio() {
   function resetForm() {
     setFormStep(1);
     setEditingEventId(null);
+    setEditingBase(null);
     setTitle("");
-    setStartsAt("");
+    setEventDate("");
+    setEventTime("");
     setExternalUrl("");
     setDescription("");
     setType("live_class");
@@ -245,13 +289,36 @@ export function TeacherEventStudio() {
     setIsFormOpen(false);
   }
 
-  function startEditing(event: CourseEvent) {
+  function openForm() {
+    setNotice(null);
+    setIsFormOpen(true);
+  }
+
+  // "edit" muda a propria sessao; "copy" e "Schedule another like this": o
+  // formulario de uma sessao NOVA, igual a esta, uma semana depois (mesma
+  // hora do relogio, mesmo com troca de horario de verao no meio). Copiada de
+  // uma sessao antiga, pula de semana em semana ate a primeira que ainda nao
+  // passou. Nada e gravado ate a pessoa confirmar.
+  function openPrefilled(event: CourseEvent, mode: "edit" | "copy") {
+    const when = new Date(event.startsAt);
+    if (mode === "copy") {
+      do {
+        when.setDate(when.getDate() + 7);
+      } while (when.getTime() <= Date.now());
+    }
+    const [date, time] = toLocalDateAndTime(when);
     setFormStep(1);
-    setEditingEventId(event.id);
+    setEditingEventId(mode === "edit" ? event.id : null);
+    setEditingBase(
+      mode === "edit"
+        ? { startsAt: date && time ? `${date}T${time}` : "", descriptionWasEmpty: !event.description.trim() }
+        : null,
+    );
     setCourseId(event.courseId);
     setType(event.type);
     setTitle(event.title);
-    setStartsAt(toDateTimeLocalValue(event.startsAt));
+    setEventDate(date);
+    setEventTime(time);
     setExternalUrl(event.externalUrl);
     setDescription(event.description);
     setError("");
@@ -280,13 +347,24 @@ export function TeacherEventStudio() {
       return;
     }
 
+    // Data passada gravava sem aviso (ou caia no erro generico do banco). A
+    // sessao antiga que a pessoa so corrige, sem mexer na data, segue editavel.
+    const dateChanged = !editingBase || editingBase.startsAt !== startsAt;
+    if (dateChanged && new Date(startsAt).getTime() <= Date.now()) {
+      setError("past");
+      setFormStep(1);
+      return;
+    }
+
     if (formStep === 1) {
       setError("");
       setFormStep(2);
       return;
     }
 
-    if (!isValidExternalEventUrl(externalUrl)) {
+    // O mesmo https:// do blur, para quem enviou sem sair do campo.
+    const link = withLinkScheme(externalUrl);
+    if (!isEventLinkAcceptable(type, link)) {
       setError("url");
       return;
     }
@@ -301,9 +379,10 @@ export function TeacherEventStudio() {
           description,
           type,
           startsAt: new Date(startsAt).toISOString(),
-          externalUrl,
+          externalUrl: link,
         });
         closeForm();
+        setNotice("updatedNotice");
       } else {
         if (!selectedCourse) {
           setError("noCourse");
@@ -319,12 +398,13 @@ export function TeacherEventStudio() {
           description,
           type,
           startsAt: new Date(startsAt).toISOString(),
-          externalUrl,
+          externalUrl: link,
         });
 
         closeForm();
         setCourseId(selectedCourse.id);
         setNextStepCourseId(selectedCourse.id);
+        setNotice("scheduledNotice");
       }
     } catch {
       setError("save");
@@ -412,6 +492,19 @@ export function TeacherEventStudio() {
     .replace("{count}", () => String(visible.length))
     .replace("{filter}", () => t(`${copy}.filter.${filter}`));
 
+  // Erro de data mora junto dos campos de data e hora (e e lido com eles);
+  // os outros seguem no aviso do topo.
+  const dateError = error === "startsAt" || error === "past";
+  const [today] = toLocalDateAndTime(new Date(now));
+  const usPreview = formatEventTimeInZones(startsAt, locale, US_PREVIEW_TIME_ZONES);
+  const descriptionOptional = Boolean(editingBase?.descriptionWasEmpty);
+  const fieldClass =
+    "rounded-md border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]";
+  // Data e hora maiores que os outros campos: e o que a pessoa mais precisa ler.
+  const whenFieldClass =
+    "min-h-12 rounded-md border border-[var(--color-line)] bg-white px-4 py-3 text-base font-normal outline-none focus:border-[var(--color-primary-light)]";
+  const whenDescribedBy = ["event-zone-line", dateError ? "event-when-error" : ""].join(" ").trim();
+
   return (
     <section className="grid min-w-0 gap-5">
       {/* O quadro de numero da casa. Tres lado a lado so a partir de 480px:
@@ -444,7 +537,7 @@ export function TeacherEventStudio() {
             type="button"
             aria-expanded={isFormOpen}
             aria-controls="event-session-form"
-            onClick={() => (isFormOpen ? closeForm() : setIsFormOpen(true))}
+            onClick={() => (isFormOpen ? closeForm() : openForm())}
             disabled={isSaving}
             className={`${isFormOpen ? "button-outline" : "button-solid"} min-h-11 gap-2 px-4 py-2.5 text-sm`}
           >
@@ -455,10 +548,12 @@ export function TeacherEventStudio() {
 
         {/* Erro fora do formulario: cancelar e excluir tambem falham, e com o
             formulario fechado a mensagem ficava invisivel. */}
-        {error ? (
+        {error && !(dateError && isFormOpen) ? (
           <InlineAlert tone="error" className="mt-4">{t(`${copy}.errors.${error}`)}</InlineAlert>
         ) : null}
-        {notice ? (
+        {/* Sessao marcada em produto por publicar ja tem a frase no quadro do
+            proximo passo, logo abaixo: nao repete. */}
+        {notice && !(notice === "scheduledNotice" && nextStepCourse) ? (
           <p role="status" className="info-notice mt-4">
             {t(`${copy}.${notice}`)}
           </p>
@@ -537,36 +632,72 @@ export function TeacherEventStudio() {
                 </select>
               </label>
 
-              <div className="grid gap-4 md:grid-cols-2">
+              <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
+                {t(`${copy}.typeLabel`)}
+                <select
+                  value={type}
+                  onChange={(event) => setType(event.target.value as CourseEventType)}
+                  className={fieldClass}
+                >
+                  {eventTypes.map((item) => (
+                    <option key={item} value={item}>
+                      {t(`${copy}.type.${item}`)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              {/* Os mesmos dois campos da criacao do produto "Live event". O
+                  minimo de hoje so vale para sessao nova: a sessao que ja
+                  passou continua editavel sem mexer na data. */}
+              <div className="grid gap-4 sm:grid-cols-2">
                 <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
-                  {t(`${copy}.typeLabel`)}
-                  <select
-                    value={type}
-                    onChange={(event) => setType(event.target.value as CourseEventType)}
-                    className="rounded-md border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
-                  >
-                    {eventTypes.map((item) => (
-                      <option key={item} value={item}>
-                        {t(`${copy}.type.${item}`)}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
-                  {t(`${copy}.startsAtLabel`)}
+                  {t("courseCreation.eventDate")}
                   <input
-                    value={startsAt}
-                    onChange={(event) => setStartsAt(event.target.value)}
-                    type="datetime-local"
+                    type="date"
+                    min={editingBase ? undefined : today}
+                    value={eventDate}
+                    onChange={(event) => setEventDate(event.target.value)}
                     required
-                    className="rounded-md border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
+                    aria-invalid={dateError || undefined}
+                    aria-describedby={whenDescribedBy}
+                    className={whenFieldClass}
                   />
                 </label>
+                <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
+                  {t("courseCreation.eventTime")}
+                  <input
+                    type="time"
+                    value={eventTime}
+                    onChange={(event) => setEventTime(event.target.value)}
+                    required
+                    aria-invalid={dateError || undefined}
+                    aria-describedby={whenDescribedBy}
+                    className={whenFieldClass}
+                  />
+                </label>
+                {/* De quem e a hora: a do computador, que e o fuso que
+                    `new Date(...)` usa para ler o que foi digitado. */}
+                <p id="event-zone-line" className="text-sm text-[var(--color-ink-soft)] sm:col-span-2">
+                  {zoneCity ? t(`${copy}.timeZoneLine`).replace("{zone}", () => zoneCity) : null}
+                </p>
+                {dateError ? (
+                  <div id="event-when-error" className="sm:col-span-2">
+                    <InlineAlert tone="error">{t(`${copy}.errors.${error}`)}</InlineAlert>
+                  </div>
+                ) : null}
               </div>
               </> : <>
               <p className="break-words text-sm text-[var(--color-ink-soft)]">
                 {selectedCourse?.title} · {t(`${copy}.type.${type}`)} · {formatEventDateTime(startsAt, locale, t("platform.events.datePending"))}
               </p>
+              {/* Alunos em varios fusos dos EUA: a professora ve, antes de
+                  salvar, a hora de cada um. */}
+              {usPreview.length > 0 ? (
+                <p className="break-words text-sm text-[var(--color-ink-soft)]">
+                  {t(`${copy}.usPreview`).replace("{times}", () => usPreview.join(" · "))}
+                </p>
+              ) : null}
               <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
                 {t(`${copy}.titleLabel`)}
                 <input
@@ -579,23 +710,39 @@ export function TeacherEventStudio() {
                 />
               </label>
 
-              <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
-                {t(`${copy}.urlLabel`)}
-                <input
-                  value={externalUrl}
-                  onChange={(event) => setExternalUrl(event.target.value)}
-                  required
-                  placeholder={t(`${copy}.urlPlaceholder`)}
-                  className="rounded-md border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
-                />
-              </label>
+              {/* type="url": o celular abre o teclado de endereco. Ao sair do
+                  campo, "zoom.us/j/1" ganha o https:// que faltava. Prazo nao
+                  e reuniao: so ele pode ficar sem link. */}
+              <div className="grid gap-2">
+                <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
+                  {t(`${copy}.urlLabel`)}
+                  <input
+                    type="url"
+                    inputMode="url"
+                    value={externalUrl}
+                    onChange={(event) => setExternalUrl(event.target.value)}
+                    onBlur={() => setExternalUrl(withLinkScheme(externalUrl))}
+                    required={type !== "deadline"}
+                    aria-describedby={type === "deadline" ? "event-link-optional" : undefined}
+                    placeholder={t(`${copy}.urlPlaceholder`)}
+                    className={fieldClass}
+                  />
+                </label>
+                {type === "deadline" ? (
+                  <span id="event-link-optional" className="text-xs text-[var(--color-ink-muted)]">
+                    {t(`${copy}.urlOptionalDeadline`)}
+                  </span>
+                ) : null}
+              </div>
 
               <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
                 {t(`${copy}.descriptionLabel`)}
+                {/* Sem `required` so na sessao que ja tinha descricao vazia; o
+                    minimo de 12 letras vale para o que for escrito. */}
                 <textarea
                   value={description}
                   onChange={(event) => setDescription(event.target.value)}
-                  required
+                  required={!descriptionOptional}
                   minLength={12}
                   rows={4}
                   placeholder={t(`${copy}.descriptionPlaceholder`)}
@@ -710,7 +857,7 @@ export function TeacherEventStudio() {
               action={
                 <button
                   type="button"
-                  onClick={() => setIsFormOpen(true)}
+                  onClick={openForm}
                   className="button-solid px-4 py-2.5 text-sm"
                 >
                   {t(`${copy}.emptyCta`)}
@@ -745,7 +892,7 @@ export function TeacherEventStudio() {
                 <p className="mt-3 text-sm leading-6 text-[var(--color-ink-soft)]">
                   {event.description}
                 </p>
-                <TeacherEventRsvpSummary eventId={event.id} />
+                <TeacherEventRsvpSummary eventId={event.id} eventTitle={event.title} onGoingCount={reportGoing} />
                 {getSafeExternalUrl(event.externalUrl) ? (
                   <a
                     href={getSafeExternalUrl(event.externalUrl) ?? undefined}
@@ -759,10 +906,19 @@ export function TeacherEventStudio() {
                 <div className="mt-4 flex flex-wrap gap-2 border-t border-[var(--color-line)] pt-3">
                   <button
                     type="button"
-                    onClick={() => startEditing(event)}
+                    onClick={() => openPrefilled(event, "edit")}
                     className="button-outline px-3.5 py-2 text-xs"
                   >
                     {t(`${copy}.edit`)}
+                  </button>
+                  {/* Grupo semanal: a proxima sessao em dois toques, em vez de
+                      digitar tudo de novo. */}
+                  <button
+                    type="button"
+                    onClick={() => openPrefilled(event, "copy")}
+                    className="button-outline px-3.5 py-2 text-xs"
+                  >
+                    {t(`${copy}.scheduleAnother`)}
                   </button>
                   {event.status === "scheduled" ? (
                     <button
@@ -806,17 +962,37 @@ export function TeacherEventStudio() {
           }
           onClose={() => setAsking(null)}
         >
-          {t(`${copy}.${asking.action === "cancel" ? "confirmCancel" : "confirmDelete"}`).replace(
-            "{title}",
-            () => asking.event.title,
-          )}
+          <p>
+            {t(`${copy}.${asking.action === "cancel" ? "confirmCancel" : "confirmDelete"}`).replace(
+              "{title}",
+              () => asking.event.title,
+            )}
+          </p>
+          {/* Excluir apaga as respostas junto e nao avisa ninguem: a pessoa
+              sabe quantos perdem a resposta antes de confirmar. */}
+          {asking.action === "delete" && (goingByEvent[asking.event.id] ?? 0) > 0 ? (
+            <p className="mt-2 font-semibold text-[var(--color-ink)]">
+              {t(`${copy}.${goingByEvent[asking.event.id] === 1 ? "deleteGoingOne" : "deleteGoing"}`).replace(
+                "{count}",
+                () => String(goingByEvent[asking.event.id]),
+              )}
+            </p>
+          ) : null}
         </ConfirmDialog>
       ) : null}
     </section>
   );
 }
 
-function TeacherEventRsvpSummary({ eventId }: { eventId: string }) {
+function TeacherEventRsvpSummary({
+  eventId,
+  eventTitle,
+  onGoingCount,
+}: {
+  eventId: string;
+  eventTitle: string;
+  onGoingCount: (eventId: string, count: number) => void;
+}) {
   const { t } = useTranslation();
   const [rsvps, setRsvps] = useState<CourseEventRsvp[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -838,6 +1014,24 @@ function TeacherEventRsvpSummary({ eventId }: { eventId: string }) {
 
   const attendingCount = rsvps.filter((rsvp) => rsvp.status === "attending").length;
   const notAttendingCount = rsvps.filter((rsvp) => rsvp.status === "not_attending").length;
+
+  // Contagem que nao carregou nao vira "0": a janela de excluir so fala dela
+  // quando a leitura chegou.
+  useEffect(() => {
+    if (!isLoading && !error) onGoingCount(eventId, attendingCount);
+  }, [attendingCount, error, eventId, isLoading, onGoingCount]);
+
+  // Nome e e-mail ja chegam nesta leitura (o dono le as respostas pela RLS):
+  // quem vai primeiro, depois quem nao vai, cada grupo em ordem de nome.
+  const answered = [...rsvps].sort(
+    (left, right) => Number(left.status !== "attending") - Number(right.status !== "attending"),
+  );
+  const answerLabel = (rsvp: CourseEventRsvp) => t(`${copy}.answer.${rsvp.status}`);
+  const exportRows = answered.map((rsvp) => ({
+    name: rsvp.attendeeName,
+    email: rsvp.attendeeEmail ?? "",
+    answer: answerLabel(rsvp),
+  }));
 
   return (
     <div className="mt-4 rounded-lg border border-[var(--color-line)] bg-white p-3">
@@ -862,6 +1056,26 @@ function TeacherEventRsvpSummary({ eventId }: { eventId: string }) {
           </span>
         </div>
       )}
+      {/* Antes so os numeros: o professor nao sabia QUEM vinha. A lista abre
+          e fecha (details nativo) para nao alongar cada cartao. */}
+      {!isLoading && !error && answered.length > 0 ? (
+        <details className="mt-2">
+          <summary className="cursor-pointer py-3 text-sm font-semibold text-[var(--color-primary)]">
+            {t(`${copy}.attendeesToggle`)}
+          </summary>
+          <ul className="grid gap-1 text-sm text-[var(--color-ink)]">
+            {answered.map((rsvp) => (
+              <li key={rsvp.id} className="break-words">
+                {rsvp.attendeeName} · <span className="text-[var(--color-ink-soft)]">{answerLabel(rsvp)}</span>
+              </li>
+            ))}
+          </ul>
+          {/* O botao da casa diz so "Export"; o grupo diz o que sai dele. */}
+          <div role="group" aria-label={t(`${copy}.exportAttendees`)} className="mt-3">
+            <ExportTableButton rows={exportRows} filename={`attendees-${eventTitle}`} />
+          </div>
+        </details>
+      ) : null}
     </div>
   );
 }

@@ -1,3 +1,5 @@
+import { formatEventDateTime } from "@/domain/course-event";
+
 export type NotificationType =
   | "community_question"
   | "community_comment"
@@ -53,7 +55,39 @@ export function notificationHref(
       return "/learn/messages?course=" + match[1];
     }
   }
+  // Aviso de sessao marcada: o banco grava a sala inteira (a aba das aulas),
+  // mas a sessao mora na aba "Live sessions". So a sala sem aba e reescrita.
+  if (notification.type === "live_event") {
+    const match = /^\/learn\/courses\/([^/?#]+)\/?$/.exec(link);
+    if (match) {
+      return `/learn/courses/${match[1]}/lives`;
+    }
+  }
   return link;
+}
+
+// O aviso de sessao marcada (notify_enrolled_on_course_event) grava em ingles
+// e em UTC: "Live session scheduled: X" e "<produto> — Nov 26, 2026 at 00:00
+// UTC". A tela traduz o titulo e reescreve a hora no idioma e no fuso de quem
+// le, com a mesma frase das outras telas. Vale para os avisos antigos tambem.
+const LIVE_TITLE_PREFIX = "Live session scheduled: ";
+const LIVE_BODY = /^([\s\S]*) — ([A-Z][a-z]{2}) (\d{1,2}), (\d{4}) at (\d{2}):(\d{2}) UTC$/;
+const PG_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+// Texto que nao bate com o formato do banco aparece como esta.
+export function notificationBody(
+  notification: Pick<AppNotification, "type" | "body">,
+  locale: string,
+  timeZone?: string,
+): string {
+  const match = notification.type === "live_event" ? LIVE_BODY.exec(notification.body) : null;
+  const month = match ? PG_MONTHS.indexOf(match[2]) : -1;
+  if (!match || month < 0) {
+    return notification.body;
+  }
+  const [, product, , day, year, hour, minute] = match;
+  const instant = new Date(Date.UTC(Number(year), month, Number(day), Number(hour), Number(minute)));
+  return `${product} — ${formatEventDateTime(instant.toISOString(), locale, notification.body, timeZone)}`;
 }
 
 // Titulos antigos gravados em ingles pelo banco (send_course_message). A
@@ -66,13 +100,18 @@ const legacyTitleKeys: Record<string, string> = {
 
 // O titulo no idioma de quem le. Os avisos de resposta gravam title vazio e os
 // ids em params (20261006041500_avisos_de_resposta.sql): a frase nasce aqui.
-// Titulo gravado aparece como esta (fora os dois ingleses acima).
+// Titulo gravado aparece como esta (fora os dois ingleses acima e o da sessao
+// marcada, LIVE_TITLE_PREFIX).
 export function notificationTitle(
   notification: Pick<AppNotification, "type" | "title" | "actorName" | "params">,
   t: (key: string) => string,
 ): string {
   const key = (id: string) => t("platform.notifications.types." + id);
   if (notification.title) {
+    if (notification.type === "live_event" && notification.title.startsWith(LIVE_TITLE_PREFIX)) {
+      const sessionTitle = notification.title.slice(LIVE_TITLE_PREFIX.length);
+      return key("liveSessionScheduled").replace("{title}", () => sessionTitle);
+    }
     const legacy = legacyTitleKeys[notification.title];
     return legacy ? key(legacy) : notification.title;
   }

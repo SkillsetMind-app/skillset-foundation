@@ -595,6 +595,11 @@ describe("LearnDashboard", () => {
     expect(
       within(news).getByRole("link", { name: /Ana replied to your post/ }),
     ).toHaveAttribute("href", "/learn/community/effective-communication?post=1");
+    // O mesmo destino do sino (notificationHref): a mensagem do professor
+    // abre a conversa, nao a sala inteira.
+    expect(
+      within(news).getByRole("link", { name: /Message from your teacher/ }),
+    ).toHaveAttribute("href", "/learn/messages?course=effective-communication");
     expect(within(news).getByText("Certificate issued")).toBeInTheDocument();
     // A quarta fica para o sino e a caixa de entrada.
     expect(within(news).queryByText("Older notification")).not.toBeInTheDocument();
@@ -654,7 +659,7 @@ describe("LearnDashboard", () => {
     render(<I18nProvider initialLocale="es"><LearnDashboard /></I18nProvider>);
 
     expect(await screen.findByText(
-      new Intl.DateTimeFormat("es", { dateStyle: "medium", timeStyle: "short" }).format(new Date(fixtures.liveEvent.startsAt)),
+      new Intl.DateTimeFormat("es", { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZoneName: "longGeneric" }).format(new Date(fixtures.liveEvent.startsAt)),
     )).toBeInTheDocument();
   });
 

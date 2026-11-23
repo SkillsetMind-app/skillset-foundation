@@ -59,6 +59,34 @@ export function isValidExternalEventUrl(value: string): boolean {
   }
 }
 
+// Prazo (deadline) nao e reuniao: so ele pode ficar sem link. Link preenchido
+// passa pela mesma regra de sempre, em qualquer tipo. Sessao sem link ja
+// existia (a criacao do produto "Live event" deixa o link para depois).
+export function isEventLinkAcceptable(type: CourseEventType, value: string): boolean {
+  return (type === "deadline" && value.trim() === "") || isValidExternalEventUrl(value);
+}
+
+// "zoom.us/j/123" vira "https://zoom.us/j/123". O que ja traz esquema (ate um
+// "javascript:") fica como veio e a validacao acima decide.
+export function withLinkScheme(value: string): string {
+  const trimmed = value.trim();
+  return trimmed && !/^[a-z][a-z\d+.-]*:/i.test(trimmed) ? `https://${trimmed}` : trimmed;
+}
+
+// Os quatro fusos principais dos EUA, para a previa do formulario do professor.
+export const US_PREVIEW_TIME_ZONES = [
+  "America/New_York",
+  "America/Chicago",
+  "America/Denver",
+  "America/Los_Angeles",
+] as const;
+
+// Ingles: a sigla generica ("PT"). Espanhol: o nome longo ("hora del
+// Pacifico"), porque a sigla curta sai "GMT-8", que ninguem le.
+function zoneNameStyle(locale: string): "shortGeneric" | "longGeneric" {
+  return locale.toLowerCase().startsWith("en") ? "shortGeneric" : "longGeneric";
+}
+
 // Defaults keep every existing caller on English; the classroom passes its
 // locale and an already-translated placeholder.
 /** A data no fuso de quem ensina, com o fuso escrito ("GMT-3"). Fuso ausente
@@ -87,10 +115,15 @@ export function formatEventDateTimeInZone(
   }
 }
 
+// A frase que toda tela usa: dia da semana e o fuso de QUEM LE escrito
+// ("Wed, Nov 25, 4:00 PM PT"). Antes saia "Nov 25, 2026, 4:00 PM" sem dizer de
+// quem era a hora, e a mesma sessao parecia ter tres horarios. `timeZone` so
+// para teste e para a previa: sem ele vale o fuso do aparelho.
 export function formatEventDateTime(
   value: string,
   locale = "en",
   fallback = "Date pending",
+  timeZone?: string,
 ): string {
   const date = new Date(value);
 
@@ -99,7 +132,41 @@ export function formatEventDateTime(
   }
 
   return new Intl.DateTimeFormat(locale, {
-    dateStyle: "medium",
-    timeStyle: "short",
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    timeZoneName: zoneNameStyle(locale),
+    timeZone,
   }).format(date);
+}
+
+// Um instante em varios fusos: ["7:00 PM ET", "6:00 PM CT", ...]. O dia da
+// semana so entra quando os fusos caem em dias diferentes (1 AM ET e 10 PM PT
+// do dia anterior), senao a previa mentiria. Data invalida: lista vazia.
+export function formatEventTimeInZones(
+  value: string,
+  locale: string,
+  timeZones: readonly string[],
+): string[] {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return [];
+  }
+
+  const weekdays = new Set(
+    timeZones.map((timeZone) => new Intl.DateTimeFormat(locale, { weekday: "short", timeZone }).format(date)),
+  );
+
+  return timeZones.map((timeZone) =>
+    new Intl.DateTimeFormat(locale, {
+      weekday: weekdays.size > 1 ? "short" : undefined,
+      hour: "numeric",
+      minute: "2-digit",
+      timeZoneName: zoneNameStyle(locale),
+      timeZone,
+    }).format(date),
+  );
 }

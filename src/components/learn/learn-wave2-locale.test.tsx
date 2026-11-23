@@ -409,7 +409,7 @@ describe("learner wave 2 with real provider and dictionaries", () => {
     expect(screen.getByRole("heading", { name: event.title })).toBeVisible();
     expect(screen.getByText("Clase en vivo")).toBeVisible();
     expect(screen.getByText("Programada")).toBeVisible();
-    expect(screen.getByText(new Intl.DateTimeFormat("es", { dateStyle: "medium", timeStyle: "short" }).format(new Date(event.startsAt)))).toBeVisible();
+    expect(screen.getByText(new Intl.DateTimeFormat("es", { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZoneName: "longGeneric" }).format(new Date(event.startsAt)))).toBeVisible();
     fireEvent.click(screen.getByRole("button", { name: "Asistiré" }));
     expect(mocks.saveRsvp).toHaveBeenCalledWith({ eventId: event.id, courseSlug: event.courseSlug, status: "attending", user: mocks.user });
     expect(screen.getByRole("button", { name: "Guardando..." })).toBeDisabled();

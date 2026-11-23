@@ -1068,7 +1068,7 @@ describe("o contador de perguntas abertas na aba Community", () => {
     render(<I18nProvider initialLocale="es"><EnrolledCourseWorkspace course={course} tab="lives" /></I18nProvider>);
 
     expect(screen.getByText(
-      new Intl.DateTimeFormat("es", { dateStyle: "medium", timeStyle: "short" }).format(new Date(startsAt)),
+      new Intl.DateTimeFormat("es", { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZoneName: "longGeneric" }).format(new Date(startsAt)),
     )).toBeInTheDocument();
   });
 });
