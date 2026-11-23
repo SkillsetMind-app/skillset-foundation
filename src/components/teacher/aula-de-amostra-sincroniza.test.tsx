@@ -148,12 +148,16 @@ describe("aula de amostra: as quatro portas sincronizam os vídeos", () => {
     expect(sync).toHaveBeenCalledExactlyOnceWith("course-1", "l1");
     expect(toggle()).toHaveAttribute("aria-pressed", "true");
 
+    // A mesma aula de novo: limpa, nunca sincroniza "l1" uma segunda vez.
     fireEvent.click(toggle());
-    expect(sync).toHaveBeenCalledTimes(2);
-    expect(sync).toHaveBeenLastCalledWith("course-1", "");
+    expect(sync.mock.calls).toEqual([["course-1", "l1"], ["course-1", ""]]);
   });
 
-  it("seletor da aba Pricing: troca sincroniza, o mesmo valor não, vazio limpa", async () => {
+  // O "mesmo valor não sincroniza" não se prova aqui: o React não dispara o
+  // onChange do <select> quando o valor não muda. Nas duas chaves (página da
+  // aula e menu da linha) ele se prova: escolher a amostra que já é a amostra
+  // limpa (uma sincronia com ""), nunca uma segunda sincronia com a mesma aula.
+  it("seletor da aba Pricing: troca sincroniza, vazio limpa", async () => {
     openAt("courseId=course-1&tab=pricing");
     await renderBuilder();
     const select = await screen.findByRole("combobox", { name: "Free preview lesson" });
@@ -161,15 +165,11 @@ describe("aula de amostra: as quatro portas sincronizam os vídeos", () => {
     fireEvent.change(select, { target: { value: "l2" } });
     expect(sync).toHaveBeenCalledExactlyOnceWith("course-1", "l2");
 
-    fireEvent.change(select, { target: { value: "l2" } });
-    expect(sync).toHaveBeenCalledOnce();
-
     fireEvent.change(select, { target: { value: "l1" } });
     expect(sync).toHaveBeenLastCalledWith("course-1", "l1");
 
     fireEvent.change(select, { target: { value: "" } });
-    expect(sync).toHaveBeenLastCalledWith("course-1", "");
-    expect(sync).toHaveBeenCalledTimes(3);
+    expect(sync.mock.calls).toEqual([["course-1", "l2"], ["course-1", "l1"], ["course-1", ""]]);
   });
 
   it("menu da linha: marca e desmarca pela mesma função; falha na sincronia não derruba nada", async () => {
@@ -185,9 +185,9 @@ describe("aula de amostra: as quatro portas sincronizam os vídeos", () => {
     expect(within(card()).getByRole("button", { name: "Free preview selected" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: title, level: 1 })).toBeInTheDocument();
 
+    // A mesma aula de novo: limpa, nunca sincroniza "l1" uma segunda vez.
     fireEvent.click(within(card()).getByRole("button", { name: "Free preview selected" }));
-    expect(sync).toHaveBeenCalledTimes(2);
-    expect(sync).toHaveBeenLastCalledWith("course-1", "");
+    expect(sync.mock.calls).toEqual([["course-1", "l1"], ["course-1", ""]]);
   });
 
   it("caixa de aula nova com a amostra marcada: sincroniza a aula nova", async () => {
