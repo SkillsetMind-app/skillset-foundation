@@ -13,7 +13,9 @@ import {
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { LogoWordmark } from "@/components/shared/logo-wordmark";
 import { SkillsetSpinner } from "@/components/shared/skillset-spinner";
+import { BusyLabel } from "@/components/ui/busy-label";
 import { InlineAlert } from "@/components/ui/inline-alert";
+import { LoadErrorAlert } from "@/components/ui/load-error-alert";
 import { skillsetCourseCategories } from "@/domain/teacher-course";
 import type { OnboardingAnswers } from "@/domain/user-profile";
 import {
@@ -282,6 +284,11 @@ export function OnboardingWizard() {
   const [profileName, setProfileName] = useState("");
   const [profilePhone, setProfilePhone] = useState("");
   const [isBootstrapping, setIsBootstrapping] = useState(true);
+  // Cada "Try again" da leitura de entrada soma 1 e roda a mesma leitura de novo.
+  const [loadAttempt, setLoadAttempt] = useState(0);
+  // O "Try again" some junto com a tela (vira a espera) e o foco caia no
+  // <body>; quando a entrevista volta, o foco vai para o titulo da pergunta.
+  const refocusAfterLoad = useRef(false);
   const [isSaving, setIsSaving] = useState(false);
   // Destino do fim da entrevista; preenchido = a tela "You're all set".
   const [doneHref, setDoneHref] = useState<string | null>(null);
@@ -367,11 +374,23 @@ export function OnboardingWizard() {
     return () => {
       mounted = false;
     };
-  }, [hasReturnTo, pathIntent, returnTo, router, status, user]);
+  }, [hasReturnTo, pathIntent, returnTo, router, status, user, loadAttempt]);
+
+  // A leitura das respostas salvas falhou na chegada. "Try again" volta a
+  // espera da chegada e repete a MESMA leitura, uma vez: so leitura, nada e
+  // gravado. A espera tambem impede responder enquanto a leitura corre.
+  function retryLoad() {
+    refocusAfterLoad.current = true;
+    setError("");
+    setIsBootstrapping(true);
+    setLoadAttempt((attempt) => attempt + 1);
+  }
 
   useEffect(() => {
     function handleKeydown(event: KeyboardEvent) {
-      if (isSaving || isComplete) {
+      // Na espera da chegada (e na do "Try again") a tela ainda nao tem as
+      // respostas salvas: um Enter ali gravaria o estado velho por cima delas.
+      if (isSaving || isComplete || isBootstrapping) {
         return;
       }
 
@@ -405,9 +424,10 @@ export function OnboardingWizard() {
     if (isBootstrapping || isComplete || !activeQuestionId) {
       return;
     }
-    if (shownQuestionId.current && shownQuestionId.current !== activeQuestionId) {
+    if (refocusAfterLoad.current || (shownQuestionId.current && shownQuestionId.current !== activeQuestionId)) {
       document.getElementById(ONBOARDING_QUESTION_TITLE_ID)?.focus();
     }
+    refocusAfterLoad.current = false;
     shownQuestionId.current = activeQuestionId;
   }, [activeQuestionId, isBootstrapping, isComplete]);
 
@@ -767,7 +787,11 @@ export function OnboardingWizard() {
             disabled={isSaving}
             className="button-solid button-lg disabled:cursor-not-allowed"
           >
-            {t(isSaving ? "authFlow.onboarding.saving" : "authFlow.onboarding.continue")}
+            <BusyLabel
+              busy={isSaving}
+              idle={t("authFlow.onboarding.continue")}
+              busyText={t("authFlow.onboarding.saving")}
+            />
           </button>
         </div>
       </footer>
@@ -802,7 +826,7 @@ export function OnboardingWizard() {
                 {t("onboarding.payoutCountryUnavailable")}
               </p>
             ) : null}
-            <ErrorMessage error={error} />
+            <ErrorMessage error={error} onRetry={retryLoad} />
           </OnboardingQuestion>
         );
       }
@@ -843,7 +867,7 @@ export function OnboardingWizard() {
                 />
               </label>
             </div>
-            <ErrorMessage error={error} />
+            <ErrorMessage error={error} onRetry={retryLoad} />
           </OnboardingQuestion>
         );
       case "path":
@@ -870,7 +894,7 @@ export function OnboardingWizard() {
                 onClick={() => void updateAnswer({ ...answers, path: "teacher" }, true)}
               />
             </div>
-            <ErrorMessage error={error} />
+            <ErrorMessage error={error} onRetry={retryLoad} />
           </OnboardingQuestion>
         );
       case "profession":
@@ -889,7 +913,7 @@ export function OnboardingWizard() {
                 void updateAnswer({ ...answers, profession: option }, true)
               }
             />
-            <ErrorMessage error={error} />
+            <ErrorMessage error={error} onRetry={retryLoad} />
           </OnboardingQuestion>
         );
       case "sourceOfDiscovery":
@@ -907,7 +931,7 @@ export function OnboardingWizard() {
                 void updateAnswer({ ...answers, sourceOfDiscovery: option }, true)
               }
             />
-            <ErrorMessage error={error} />
+            <ErrorMessage error={error} onRetry={retryLoad} />
           </OnboardingQuestion>
         );
       case "alreadySold":
@@ -936,7 +960,7 @@ export function OnboardingWizard() {
                 }
               />
             </div>
-            <ErrorMessage error={error} />
+            <ErrorMessage error={error} onRetry={retryLoad} />
           </OnboardingQuestion>
         );
       case "monthlyRevenue":
@@ -966,7 +990,7 @@ export function OnboardingWizard() {
                 </button>
               ))}
             </div>
-            <ErrorMessage error={error} />
+            <ErrorMessage error={error} onRetry={retryLoad} />
           </OnboardingQuestion>
         );
       case "primaryGoal":
@@ -990,7 +1014,7 @@ export function OnboardingWizard() {
             <p className="mt-3 text-center text-xs font-semibold text-[var(--color-ink-soft)]">
               {t("authFlow.onboarding.chooseThree")}
             </p>
-            <ErrorMessage error={error} />
+            <ErrorMessage error={error} onRetry={retryLoad} />
           </OnboardingQuestion>
         );
       case "instagramHandle":
@@ -1021,7 +1045,7 @@ export function OnboardingWizard() {
                 className="min-w-0 flex-1 bg-transparent px-4 py-3 text-sm outline-none"
               />
             </div>
-            <ErrorMessage error={error} />
+            <ErrorMessage error={error} onRetry={retryLoad} />
           </OnboardingQuestion>
         );
       case "audienceSize":
@@ -1050,7 +1074,7 @@ export function OnboardingWizard() {
                 </button>
               ))}
             </div>
-            <ErrorMessage error={error} />
+            <ErrorMessage error={error} onRetry={retryLoad} />
           </OnboardingQuestion>
         );
     }
@@ -1208,7 +1232,7 @@ function OptionGrid({
   );
 }
 
-function ErrorMessage({ error }: { error: string }) {
+function ErrorMessage({ error, onRetry }: { error: string; onRetry: () => void }) {
   const { t } = useTranslation();
   const ref = useRef<HTMLDivElement>(null);
   // No celular a barra do "Continue" fica presa embaixo e o aviso nascia atras
@@ -1229,9 +1253,19 @@ function ErrorMessage({ error }: { error: string }) {
     // O InlineAlert nao repassa ref: a caixa de fora (so com o aviso dentro)
     // e quem rola para a vista.
     <div ref={ref} className="mt-5">
-      <InlineAlert tone="error" className="justify-center text-center">
-        {t(error)}
-      </InlineAlert>
+      {/* So o erro de LEITURA ganha "Try again". Os de salvar seguem sem ele:
+          repetir ali e o proprio "Continue", e um segundo botao gravaria duas vezes.
+          O foco: esta caixa some junto com a tela (vira a espera da chegada), entao
+          o focusRef daqui nao segura nada; quem leva o foco e o efeito do titulo. */}
+      {error === "authFlow.onboarding.loadError" ? (
+        <LoadErrorAlert onRetry={onRetry} focusRef={ref} alertClassName="justify-center text-center">
+          {t(error)}
+        </LoadErrorAlert>
+      ) : (
+        <InlineAlert tone="error" className="justify-center text-center">
+          {t(error)}
+        </InlineAlert>
+      )}
     </div>
   );
 }

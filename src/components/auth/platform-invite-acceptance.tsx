@@ -7,7 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import { AuthFrame } from "@/components/auth/auth-frame";
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
-import { Button, InlineAlert, buttonClasses } from "@/components/ui";
+import { BusyLabel, Button, InlineAlert, buttonClasses } from "@/components/ui";
 import type { PlatformInvite } from "@/domain/platform-invites";
 import { acceptPlatformInvite, getMyPlatformInvite } from "@/lib/data/platform-invites";
 
@@ -98,7 +98,7 @@ function RecipientInvite({ id, onReauthentication }: { id: string; onReauthentic
       <dl className="space-y-3 border-y border-[var(--color-line)] py-4 text-sm">
         <div><dt className="text-[var(--color-ink-soft)]">{t(`${copy}.level`)}</dt><dd className="font-semibold">{t(`platform.ops.accessPanel.levels.${invite.access_level}.label`)}</dd></div>
       </dl>
-      {ended ? <InlineAlert tone="info">{t(`${copy}.status.${ended}`)}</InlineAlert> : <Button disabled={busy} className="min-h-11 max-w-full whitespace-normal" onClick={() => void accept()}><Check size={16} className="shrink-0" aria-hidden />{t(`${copy}.${busy ? "accepting" : "accept"}`)}</Button>}
+      {ended ? <InlineAlert tone="info">{t(`${copy}.status.${ended}`)}</InlineAlert> : <Button disabled={busy} className="min-h-11 max-w-full whitespace-normal" onClick={() => void accept()}><Check size={16} className="shrink-0" aria-hidden /><BusyLabel busy={busy} idle={t(`${copy}.accept`)} busyText={t(`${copy}.accepting`)} /></Button>}
     </> : null}
   </div>;
 }

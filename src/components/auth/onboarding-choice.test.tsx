@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { OnboardingChoice } from "@/components/auth/onboarding-choice";
@@ -339,5 +339,41 @@ describe("H3: pais na ativacao do professor", () => {
     fireEvent.click(screen.getByRole("button", { name: "onboarding.continue" }));
     fireEvent.click(screen.getByRole("button", { name: "onboarding.finishSetup" }));
     await waitFor(() => expect(mocks.router.push).toHaveBeenCalledExactlyOnceWith(destino));
+  });
+
+  // F-04: o botão que espera não muda de largura. Os dois rótulos moram na
+  // mesma célula; o que não vale fica escondido do leitor, então o nome do
+  // botão é sempre o texto à vista. Trava, tipo e ação seguem os mesmos.
+  it.each([
+    ["ativação curta", true, "onboarding.activateTeaching", "onboarding.activating"],
+    ["cadastro completo", false, "onboarding.finishSetup", "onboarding.saving"],
+  ] as const)("%s: o botão final diz a espera sem trocar de largura", async (_label, onboardingCompleted, idle, busy) => {
+    let release!: () => void;
+    mocks.updateOnboardingAnswers.mockReturnValue(new Promise<void>((resolve) => { release = () => resolve(); }));
+    mocks.getUserProfile.mockResolvedValue({ ...profile, onboardingCompleted });
+    await mount();
+    fireEvent.change(screen.getByLabelText("connectOnboarding.countryLabel"), { target: { value: "CA" } });
+    if (!onboardingCompleted) {
+      fireEvent.click(screen.getByRole("button", { name: "onboarding.continue" }));
+      fireEvent.click(screen.getByRole("button", { name: "onboarding.continue" }));
+    }
+
+    const button = screen.getByRole("button", { name: idle });
+    expect(button).toHaveAttribute("type", "button");
+    expect(button).toBeEnabled();
+    expect(within(button).getByText(busy)).toHaveAttribute("aria-hidden", "true");
+
+    fireEvent.click(button);
+    expect(button).toHaveAccessibleName(busy);
+    expect(button).toBeDisabled();
+    // Repouso e espera na mesma célula da grade: a largura é a do maior.
+    const idleFace = within(button).getByText(idle);
+    expect(idleFace).toHaveAttribute("aria-hidden", "true");
+    expect(idleFace.parentElement).toBe(within(button).getByText(busy).parentElement);
+
+    await act(async () => release());
+    await waitFor(() => expect(mocks.router.push).toHaveBeenCalledWith("/teach"));
+    expect(mocks.updateOnboardingAnswers).toHaveBeenCalledTimes(1);
+    expect(mocks.completeUserOnboarding).toHaveBeenCalledTimes(1);
   });
 });

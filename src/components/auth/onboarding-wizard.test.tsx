@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getVisibleQuestions, OnboardingWizard } from "@/components/auth/onboarding-wizard";
@@ -887,5 +887,130 @@ describe("F-09: a barra da entrevista é a da casa, com os mesmos valores", () =
       "9:sourceOfDiscovery:opcional",
       "10:instagramHandle:opcional",
     ]);
+  });
+});
+
+// F-04: o "Continue" que espera não muda de largura (e não empurra o "Skip").
+// F-11: a leitura das respostas salvas que falha na chegada ganha "Try again";
+// as falhas de salvar, não (repetir ali é o próprio "Continue").
+describe("boas-vindas: 'Continue' esperando e a leitura que falhou na chegada", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.searchParams = new URLSearchParams("path=student");
+    mocks.profile = { displayName: "Patrick Simon", phoneNumber: null, onboardingAnswers: {} };
+    mocks.getUserProfile.mockImplementation(() => Promise.resolve(mocks.profile));
+    mocks.updateOnboardingAnswers.mockResolvedValue(undefined);
+    mocks.updateUserIdentity.mockResolvedValue(undefined);
+  });
+
+  afterEach(cleanup);
+
+  it("'Continue' esperando: nome 'Saving...', trava, e os dois rótulos na mesma célula", async () => {
+    let release!: () => void;
+    mocks.updateUserIdentity.mockReturnValue(new Promise<void>((resolve) => { release = () => resolve(); }));
+    render(<OnboardingWizard />);
+    await screen.findByText("First, tell us who you are.");
+
+    const button = screen.getByRole("button", { name: "Continue" });
+    expect(button).toHaveAttribute("type", "button");
+    expect(within(button).getByText("Saving...")).toHaveAttribute("aria-hidden", "true");
+
+    fireEvent.click(button);
+    expect(button).toHaveAccessibleName("Saving...");
+    expect(button).toBeDisabled();
+    const idle = within(button).getByText("Continue");
+    expect(idle).toHaveAttribute("aria-hidden", "true");
+    expect(idle.parentElement).toBe(within(button).getByText("Saving...").parentElement);
+
+    await act(async () => release());
+    expect(await screen.findByText("What do you want to learn first?")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Continue" })).toBeEnabled();
+    expect(mocks.updateUserIdentity).toHaveBeenCalledTimes(1);
+  });
+
+  it("a leitura falhou na chegada: 'Try again' repete a leitura uma vez e retoma de onde a pessoa parou", async () => {
+    mocks.profile = {
+      displayName: "Patrick Simon",
+      phoneNumber: null,
+      onboardingAnswers: { profileConfirmed: true, path: "student" },
+    };
+    mocks.getUserProfile.mockRejectedValueOnce(new Error("offline"));
+    render(<OnboardingWizard />);
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("Could not load saved onboarding answers. You can continue from here.");
+    expect(screen.getAllByRole("alert")).toHaveLength(1);
+    expect(mocks.getUserProfile).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+
+    expect(await screen.findByText("What do you want to learn first?")).toBeInTheDocument();
+    expect(mocks.getUserProfile).toHaveBeenCalledTimes(2);
+    expect(screen.queryByRole("alert")).toBeNull();
+    // Só leitura: nada foi gravado no caminho.
+    expect(mocks.updateOnboardingAnswers).not.toHaveBeenCalled();
+    expect(mocks.updateUserIdentity).not.toHaveBeenCalled();
+  });
+
+  // A espera do "Try again" ainda não tem as respostas salvas: um Enter ali
+  // gravava o estado velho (nome digitado, respostas vazias) por cima delas.
+  it("Enter na espera do 'Try again' não grava nada; com a entrevista de volta, o foco vai ao título e Enter segue", async () => {
+    mocks.getUserProfile.mockRejectedValueOnce(new Error("offline"));
+    render(<OnboardingWizard />);
+    await screen.findByRole("alert");
+    fireEvent.change(screen.getByLabelText("Full name"), { target: { value: "Patrick Simon" } });
+
+    let finishRead!: () => void;
+    mocks.getUserProfile.mockReturnValueOnce(new Promise((resolve) => { finishRead = () => resolve(mocks.profile); }));
+    const retry = screen.getByRole("button", { name: "Try again" });
+    retry.focus();
+    // Enter num botão é do próprio botão: o navegador o vira clique.
+    fireEvent.keyDown(retry, { key: "Enter" });
+    fireEvent.click(retry);
+    expect(await screen.findByText("Opening SkillsetMind...")).toBeInTheDocument();
+
+    // Um segundo Enter (ou a tecla presa) com a leitura ainda correndo.
+    fireEvent.keyDown(document.body, { key: "Enter" });
+    fireEvent.keyDown(document.body, { key: "Enter" });
+    await act(async () => {});
+    expect(mocks.updateUserIdentity).not.toHaveBeenCalled();
+    expect(mocks.updateOnboardingAnswers).not.toHaveBeenCalled();
+
+    await act(async () => finishRead());
+    const title = await screen.findByText("First, tell us who you are.");
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(document.activeElement).toBe(title.closest("#onboarding-question-title"));
+
+    // De volta, Enter segue como antes.
+    fireEvent.keyDown(document.body, { key: "Enter" });
+    await waitFor(() => expect(mocks.updateUserIdentity).toHaveBeenCalledTimes(1));
+    expect(mocks.getUserProfile).toHaveBeenCalledTimes(2);
+  });
+
+  it("Enter na espera da chegada não grava nem deixa aviso velho", async () => {
+    let finishRead!: () => void;
+    mocks.getUserProfile.mockReturnValueOnce(new Promise((resolve) => { finishRead = () => resolve(mocks.profile); }));
+    render(<OnboardingWizard />);
+    expect(screen.getByText("Opening SkillsetMind...")).toBeInTheDocument();
+
+    fireEvent.keyDown(document.body, { key: "Enter" });
+    await act(async () => finishRead());
+
+    expect(await screen.findByText("First, tell us who you are.")).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(mocks.updateUserIdentity).not.toHaveBeenCalled();
+    expect(mocks.updateOnboardingAnswers).not.toHaveBeenCalled();
+  });
+
+  it("falha de salvar não ganha 'Try again'", async () => {
+    mocks.updateUserIdentity.mockRejectedValueOnce(new Error("offline"));
+    render(<OnboardingWizard />);
+    await screen.findByText("First, tell us who you are.");
+
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+
+    expect(await screen.findByRole("alert")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Try again" })).toBeNull();
+    expect(mocks.getUserProfile).toHaveBeenCalledTimes(1);
   });
 });
