@@ -1219,7 +1219,7 @@ function OptionGrid({
                 ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-[var(--color-base)]"
                 : "border-[var(--color-line)] bg-white text-[var(--color-ink)] hover:bg-[var(--color-surface-soft)]",
               multi && selected.length >= 3 && !isSelected
-                ? "cursor-not-allowed opacity-50"
+                ? "cursor-not-allowed opacity-60"
                 : "",
             ].join(" ")}
             disabled={multi && selected.length >= 3 && !isSelected}
