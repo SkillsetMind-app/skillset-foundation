@@ -99,9 +99,12 @@ it("uses the latest locale after a pending preflight without repeating it", asyn
   let resolve!: (value: Response) => void;
   mocks.fetch.mockReturnValue(new Promise<Response>((done) => { resolve = done; }));
   mount();
-  expect(screen.getByText(copy("es", "connectOnboarding.preparing"))).toHaveAttribute("aria-busy", "true");
+  const waiting = screen.getByRole("status");
+  expect(waiting).toHaveAttribute("data-skeleton", "stripe");
+  expect(waiting).not.toHaveAttribute("aria-busy");
+  expect(waiting).toHaveTextContent(copy("es", "connectOnboarding.preparing"));
   fireEvent.click(screen.getByText("EN"));
-  expect(screen.getByText(copy("en", "connectOnboarding.preparing"))).toBeInTheDocument();
+  expect(screen.getByRole("status")).toHaveTextContent(copy("en", "connectOnboarding.preparing"));
   await act(async () => resolve(reply()));
   await screen.findByTestId("connect-onboarding-fixture");
   expect(mocks.initialize).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ locale: "en" }));
@@ -142,7 +145,9 @@ it.each([
   expect(screen.getByRole("button", { name: copy("es", "connectOnboarding.continueSecure") })).toBeInTheDocument();
   fireEvent.click(screen.getByText("EN"));
   expect(screen.getByRole("alert")).toHaveTextContent(copy("en", `connectOnboarding.error.${key}`));
-  expect(screen.getByText(`Reference: HTTP ${status}`)).toBeInTheDocument();
+  // O codigo da resposta so no recolhido "para o suporte", nunca "HTTP" na frase.
+  expect(screen.getByText(`Error code: ${status}`)).toBeInTheDocument();
+  expect(screen.queryByText(/HTTP/)).toBeNull();
   expect(screen.queryByText(/RAW CONNECT TRANSPORT/)).toBeNull();
   expect(mocks.fetch).toHaveBeenCalledTimes(1);
   expect(mocks.initialize).not.toHaveBeenCalled();

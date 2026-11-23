@@ -1,6 +1,6 @@
 "use client";
 
-import { ShieldCheck } from "lucide-react";
+import { ShieldCheck, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
@@ -13,6 +13,8 @@ import {
   type TotpSecret,
   unenrollTotpFactor,
 } from "@/lib/auth/supabase-auth";
+import { BusyLabel } from "@/components/ui/busy-label";
+import { InlineAlert } from "@/components/ui/inline-alert";
 import { useModalFocus } from "@/lib/a11y/use-modal-focus";
 import { isPublicFeatureEnabled } from "@/lib/feature-flags";
 
@@ -239,7 +241,9 @@ export function TotpMfaSection({ emailVerified }: { emailVerified: boolean }) {
                 </p>
               </div>
               {confirmingDisable === factor.uid ? (
-                <div className="flex items-center gap-3">
+                // Botões do sistema, com 44px: "Yes, turn off" era um botão
+                // feito à mão de 32px e os outros dois, texto de 32px.
+                <div className="flex flex-wrap items-center gap-3">
                   <span className="text-xs text-[var(--color-ink-soft)]">
                     {t("accountSecurity.mfa.disableConfirm")}
                   </span>
@@ -250,7 +254,7 @@ export function TotpMfaSection({ emailVerified }: { emailVerified: boolean }) {
                       void handleDisable(factor.uid);
                     }}
                     disabled={busy}
-                    className="min-h-[32px] rounded-md border border-[var(--color-danger)] px-3 text-xs font-bold text-[var(--color-danger)] hover:bg-[var(--color-danger-soft)] disabled:opacity-60"
+                    className="button-danger button-danger-solid px-3 py-2 text-xs"
                   >
                     {t("accountSecurity.mfa.confirmDisable")}
                   </button>
@@ -258,7 +262,7 @@ export function TotpMfaSection({ emailVerified }: { emailVerified: boolean }) {
                     type="button"
                     onClick={() => setConfirmingDisable(null)}
                     disabled={busy}
-                    className="min-h-[32px] px-2 text-xs font-bold text-[var(--color-ink-soft)] underline-offset-2 hover:underline disabled:opacity-60"
+                    className="button-outline px-3 py-2 text-xs"
                   >
                     {t("accountSecurity.mfa.keepEnabled")}
                   </button>
@@ -268,7 +272,7 @@ export function TotpMfaSection({ emailVerified }: { emailVerified: boolean }) {
                   type="button"
                   onClick={() => setConfirmingDisable(factor.uid)}
                   disabled={busy}
-                  className="min-h-[32px] px-2 text-xs font-bold text-[var(--color-danger)] underline-offset-2 hover:underline disabled:opacity-60"
+                  className="button-danger px-3 py-2 text-xs"
                 >
                   {t("accountSecurity.mfa.disable")}
                 </button>
@@ -282,25 +286,42 @@ export function TotpMfaSection({ emailVerified }: { emailVerified: boolean }) {
           type="button"
           onClick={handleStart}
           disabled={busy}
-          className="button-outline mt-4 px-3.5 py-2 text-xs disabled:opacity-60"
+          className="button-outline mt-4 px-3.5 py-2 text-xs"
         >
-          {t(busy && !setup ? "accountSecurity.mfa.preparing" : "accountSecurity.mfa.setup")}
+          <BusyLabel
+            busy={busy && !setup}
+            idle={t("accountSecurity.mfa.setup")}
+            busyText={t("accountSecurity.mfa.preparing")}
+          />
         </button>
       )}
 
       {setup && !isEnrolled ? (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-[rgba(7,9,13,0.55)] sm:p-6">
+        // p-4 no celular: sem ele a janela encostava nas duas bordas da tela.
+        <div className="dialog-backdrop fixed inset-0 z-[70] flex items-center justify-center p-4 sm:p-6">
           <div
             ref={dialogRef}
             tabIndex={-1}
             role="dialog"
             aria-modal="true"
             aria-labelledby="totp-setup-title"
-            className="modal-panel modal-panel-scroll w-full max-w-md rounded-xl border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-strong)] outline-none"
+            className="dialog-panel modal-panel modal-panel-scroll relative p-6 outline-none"
           >
+            {/* O X é o mesmo Cancelar do rodapé, e some enquanto ele trava
+                (conferindo o código). */}
+            {busy ? null : (
+              <button
+                type="button"
+                onClick={closeSetup}
+                aria-label={t("accountSecurity.mfa.close")}
+                className="button-icon absolute right-3 top-3"
+              >
+                <X aria-hidden="true" size={18} />
+              </button>
+            )}
             <h2
               id="totp-setup-title"
-              className="text-xl font-semibold text-[var(--color-primary)]"
+              className="display-title pr-10 text-2xl leading-tight text-[var(--color-primary)]"
             >
               {t("accountSecurity.mfa.dialogTitle")}
             </h2>
@@ -319,7 +340,7 @@ export function TotpMfaSection({ emailVerified }: { emailVerified: boolean }) {
                     {t("accountSecurity.mfa.step2BeforeLink")}{" "}
                     <a
                       href={setup.otpauthUrl}
-                      className="font-semibold text-[var(--color-primary)] hover:underline"
+                      className="font-semibold text-[var(--color-primary)]! hover:underline"
                     >
                       {t("accountSecurity.mfa.setupLink")}
                     </a>{" "}
@@ -363,7 +384,7 @@ export function TotpMfaSection({ emailVerified }: { emailVerified: boolean }) {
                 <button
                   type="button"
                   onClick={handleCopyKey}
-                  className="min-h-6 shrink-0 text-xs font-bold text-[var(--color-primary)] hover:underline"
+                  className="button-outline shrink-0 px-3 py-2 text-xs"
                 >
                   {t(copied ? "accountSecurity.mfa.copied" : "accountSecurity.mfa.copy")}
                 </button>
@@ -373,7 +394,7 @@ export function TotpMfaSection({ emailVerified }: { emailVerified: boolean }) {
                   {t("accountSecurity.mfa.onDevice")}{" "}
                   <a
                     href={setup.otpauthUrl}
-                    className="font-semibold text-[var(--color-primary)] hover:underline"
+                    className="font-semibold text-[var(--color-primary)]! hover:underline"
                   >
                     {t("accountSecurity.mfa.setupLink")}
                   </a>
@@ -389,7 +410,8 @@ export function TotpMfaSection({ emailVerified }: { emailVerified: boolean }) {
               }}
             >
               <label className="grid gap-1 text-sm">
-                <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--color-ink-soft)]">
+                {/* Rótulo da casa (14px, em frase); era 10px em caixa alta. */}
+                <span className="font-semibold text-[var(--color-ink)]">
                   {t("accountSecurity.mfa.code")}
                 </span>
                 <input
@@ -401,33 +423,30 @@ export function TotpMfaSection({ emailVerified }: { emailVerified: boolean }) {
                   inputMode="numeric"
                   autoComplete="one-time-code"
                   aria-label={t("accountSecurity.mfa.codeLabel")}
-                  className="w-32 rounded-md border border-[var(--color-line)] bg-white px-4 py-3 text-center font-mono text-base tracking-[0.3em] outline-none focus:border-[var(--color-primary-light)]"
+                  className="field-input max-w-32 text-center font-mono tracking-[0.3em]"
                 />
               </label>
               <button
                 type="submit"
                 disabled={busy || code.length < 6}
-                className="button-solid px-3.5 py-2.5 text-xs disabled:opacity-60"
+                className="button-solid min-h-11 px-4 py-2.5 text-sm"
               >
-                {t(busy ? "accountSecurity.mfa.verifying" : "accountSecurity.mfa.enable")}
+                <BusyLabel busy={busy} idle={t("accountSecurity.mfa.enable")} busyText={t("accountSecurity.mfa.verifying")} />
               </button>
               <button
                 type="button"
                 onClick={closeSetup}
                 disabled={busy}
-                className="min-h-6 text-xs font-semibold text-[var(--color-ink-soft)] hover:text-[var(--color-ink)] disabled:opacity-60"
+                className="button-outline min-h-11 px-4 py-2.5 text-sm"
               >
                 {t("accountSecurity.mfa.cancel")}
               </button>
             </form>
 
             {error ? (
-              <p
-                role="alert"
-                className="mt-3 rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]"
-              >
+              <InlineAlert tone="error" className="mt-3">
                 {"key" in error ? t(error.key) : getAuthErrorMessage(error.cause, t)}
-              </p>
+              </InlineAlert>
             ) : null}
           </div>
         </div>
@@ -439,12 +458,9 @@ export function TotpMfaSection({ emailVerified }: { emailVerified: boolean }) {
         </p>
       ) : null}
       {error && !setup ? (
-        <p
-          role="alert"
-          className="mt-3 rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]"
-        >
+        <InlineAlert tone="error" className="mt-3">
           {"key" in error ? t(error.key) : getAuthErrorMessage(error.cause, t)}
-        </p>
+        </InlineAlert>
       ) : null}
     </div>
   );

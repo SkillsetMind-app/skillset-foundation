@@ -85,11 +85,11 @@ const course = {
   ],
 } as unknown as Course;
 
-// O título da aula aberta é o h4 do cabeçalho do painel, dentro do player.
+// O título da aula aberta é o h2 do cabeçalho do painel, dentro do player.
 function playerHeading() {
   return document
     .getElementById("member-lesson-player")
-    ?.querySelector(".member-lesson-panel__head h4")?.textContent;
+    ?.querySelector(".member-lesson-panel__head h2")?.textContent;
 }
 
 describe("a aula trancada diz qual aula terminar", () => {

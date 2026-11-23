@@ -51,7 +51,9 @@ export function PublicEntryMenu({ mobile = false }: { mobile?: boolean }) {
       {open ? (
         <div
           id={panelId}
-          className={`${mobile ? "mt-2 w-full" : "absolute right-0 top-full z-[60] mt-2 w-64 max-w-[calc(100vw-2rem)]"} grid gap-1 rounded-lg border border-[var(--color-line)] bg-white p-2 shadow-[var(--shadow-soft)]`}
+          // A mesma entrada dos menus da plataforma (motion-drop-in); aparecia
+          // num corte seco.
+          className={`motion-drop-in ${mobile ? "mt-2 w-full" : "absolute right-0 top-full z-[60] mt-2 w-64 max-w-[calc(100vw-2rem)]"} grid gap-1 rounded-lg border border-[var(--color-line)] bg-white p-2 shadow-[var(--shadow-soft)]`}
         >
           {/* Each intent enters through its own short host in production; the
               sign-in route and intent ride along unchanged, so the proxy's 307

@@ -2,6 +2,7 @@ import { getServerTranslation } from "@/lib/i18n/server";
 import Link from "next/link";
 import { Suspense } from "react";
 
+import { CourseGridSkeleton } from "@/components/courses/course-grid-skeleton";
 import { CourseMarketplace } from "@/components/courses/course-marketplace";
 import { SiteFooter } from "@/components/site/site-footer";
 import { SiteNav } from "@/components/site/site-nav";
@@ -30,7 +31,7 @@ export default async function CoursesPage() {
     return (
       <div className="page-shell">
         <SiteNav />
-        <main id="conteudo" className="mx-auto w-full max-w-7xl px-6 py-10 sm:px-8 sm:py-14">
+        <main id="conteudo" className="mx-auto w-full max-w-7xl px-5 py-10 sm:px-8 sm:py-14">
           <section className="marketplace-empty">
             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">{t("publicCourses.openingSoon")}</p>
             <h1 className="display-title mt-3 text-3xl text-[var(--color-ink)] sm:text-4xl">{t("publicCourses.firstCourses")}</h1>
@@ -49,7 +50,7 @@ export default async function CoursesPage() {
   return (
     <div className="page-shell">
       <SiteNav />
-      <main id="conteudo" className="mx-auto w-full max-w-7xl px-6 py-10 sm:px-8 sm:py-14">
+      <main id="conteudo" className="mx-auto w-full max-w-7xl px-5 py-10 sm:px-8 sm:py-14">
         <div className="marketplace-page-header mb-8">
           <div className="marketplace-page-header__grid">
             <div>
@@ -60,7 +61,7 @@ export default async function CoursesPage() {
           </div>
         </div>
 
-        <Suspense fallback={<MarketplaceSkeleton />}>
+        <Suspense fallback={<MarketplaceSkeleton label={t("publicCourses.loadingCourses")} />}>
           <CourseMarketplace />
         </Suspense>
       </main>
@@ -72,46 +73,40 @@ export default async function CoursesPage() {
 // SSR-visible fallback that mirrors the client-side loading state in
 // CourseMarketplace. Without this, search engines and no-JS visitors see
 // t("publicCourses.loadingCourses") and bounce — the real page has filters + a card grid.
-function MarketplaceSkeleton() {
+// Desenha o painel de filtro de verdade (fileira de categorias sobre a linha de
+// busca e ordem), e não a coluna lateral que a loja não tem, e os mesmos
+// cartões do carregamento do cliente: nada muda de lugar entre os dois.
+function MarketplaceSkeleton({ label }: { label: string }) {
   return (
-    <section aria-hidden="true">
-      <div className="mb-8 grid gap-3 lg:grid-cols-[1fr_280px] lg:items-start">
-        <div className="flex flex-wrap gap-2.5">
-          {[80, 110, 96, 88, 120].map((width, index) => (
-            <div
-              key={index}
-              className="h-9 animate-pulse rounded-md bg-[var(--color-surface-strong)]"
-              style={{ width }}
-            />
-          ))}
+    <section className="marketplace-section">
+      <p role="status" className="sr-only">{label}</p>
+      <div className="marketplace-filter-panel" aria-hidden="true">
+        {/* No celular o painel real abre fechado, atrás do botão "Filters":
+            a espera desenha o mesmo botão, para nada pular quando ele chega. */}
+        <div className="marketplace-filters-toggle">
+          <div className="h-4 w-20 animate-pulse rounded bg-[var(--color-surface-strong)]" />
         </div>
-        <div className="grid gap-3">
-          <div className="grid gap-2">
-            <div className="h-3 w-12 animate-pulse rounded bg-[var(--color-surface-strong)]" />
-            <div className="h-11 animate-pulse rounded-md bg-[var(--color-surface-soft)]" />
+        <div className="marketplace-filter-body">
+          <div className="marketplace-filter-list">
+            {[110, 120, 96, 104].map((width, index) => (
+              <div
+                key={index}
+                className="h-11 animate-pulse rounded-md bg-[var(--color-surface-strong)]"
+                style={{ width }}
+              />
+            ))}
           </div>
-          <div className="grid gap-2">
-            <div className="h-3 w-10 animate-pulse rounded bg-[var(--color-surface-strong)]" />
-            <div className="h-11 animate-pulse rounded-md bg-[var(--color-surface-soft)]" />
+          <div className="marketplace-controls">
+            {[0, 1].map((index) => (
+              <div key={index} className="grid gap-2">
+                <div className="h-3 w-12 animate-pulse rounded bg-[var(--color-surface-strong)]" />
+                <div className="h-11 animate-pulse rounded-md bg-[var(--color-surface-strong)]" />
+              </div>
+            ))}
           </div>
         </div>
       </div>
-      <div className="marketplace-course-grid">
-        {[0, 1, 2, 3, 4, 5].map((index) => (
-          <div
-            key={index}
-            className="marketplace-card animate-pulse"
-          >
-            <div className="marketplace-card__media bg-[var(--color-surface-strong)]" />
-            <div className="space-y-3 p-5">
-              <div className="h-3 w-24 rounded bg-[var(--color-surface-strong)]" />
-              <div className="h-6 w-3/4 rounded bg-[var(--color-surface-strong)]" />
-              <div className="h-16 rounded bg-[var(--color-surface-soft)]" />
-              <div className="h-8 w-1/3 rounded bg-[var(--color-surface-soft)]" />
-            </div>
-          </div>
-        ))}
-      </div>
+      <CourseGridSkeleton />
     </section>
   );
 }

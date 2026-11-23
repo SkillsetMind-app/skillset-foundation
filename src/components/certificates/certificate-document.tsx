@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { brand } from "@/data/brand";
 
 import type { Certificate } from "@/domain/certificate";
 
@@ -32,14 +33,14 @@ export function CertificateDocument({
     // tinha ligado o dark mode alguma vez abria o certificado por link direto e
     // baixava um PDF ilegível. Cores literais aqui são a escolha certa, não
     // descuido: o artefato não deve seguir o tema de quem o abre.
-    <article className="cert-doc mx-auto w-full max-w-4xl bg-white text-[#102a43] shadow-[var(--shadow-soft)] print:max-w-none print:shadow-none">
-      <div className="relative overflow-hidden rounded-lg border-[3px] border-[var(--color-primary)] p-6 sm:p-10 print:rounded-none print:border-2">
+    <article className="cert-doc mx-auto w-full max-w-4xl bg-white text-[#102a43] print:max-w-none">
+      <div className="cert-doc-frame">
         <div
-          className="pointer-events-none absolute inset-2 rounded-sm border border-[var(--color-line-strong)] print:inset-1"
+          className="cert-doc-rule"
           aria-hidden="true"
         />
-        <div className="relative">
-          <header className="flex flex-wrap items-center justify-between gap-4">
+        <div className="cert-doc-content">
+          <header className="cert-doc-header">
             {hideBrand ? (
               // Whitelabel: the teacher's mark takes the masthead. No logo on
               // file falls back to their name set as a wordmark, never to ours.
@@ -55,14 +56,14 @@ export function CertificateDocument({
                   />
                 </span>
               ) : (
-                <span className="display-title text-xl text-[var(--color-primary)]">
+                <span className="cert-doc-wordmark">
                   {teacherName}
                 </span>
               )
             ) : (
               <span className="relative block h-9 w-36">
                 <Image
-                  src="/brand/logo-full-dark.png"
+                  src={brand.logoFullLight}
                   alt="SkillsetMind"
                   fill
                   sizes="160px"
@@ -70,13 +71,13 @@ export function CertificateDocument({
                 />
               </span>
             )}
-            <div className="text-right">
+            <div className="cert-doc-heading">
               {hideBrand ? null : (
-                <p className="text-[10px] font-bold uppercase tracking-[0.28em] text-[var(--color-accent-fg)]">
+                <p className="cert-doc-authority">
                   {certificate.authorityLabel}
                 </p>
               )}
-              <p className="text-xs font-semibold text-[var(--color-ink-soft)]">
+              <p className="cert-doc-type">
                 Certificate of Completion
               </p>
             </div>
@@ -85,8 +86,8 @@ export function CertificateDocument({
           {/* Co-brand band, for plans that add the teacher's mark next to ours.
               Under whitelabel it is redundant: the mark is already the header. */}
           {!hideBrand && certificate.sponsorLogoUrl ? (
-            <div className="mt-5 flex items-center gap-3">
-              <span className="text-[10px] uppercase tracking-[0.2em] text-[var(--color-ink-soft)]">
+            <div className="cert-doc-cobrand">
+              <span className="cert-doc-caption">
                 Course by
               </span>
               <span className="relative block h-7 w-28">
@@ -102,29 +103,29 @@ export function CertificateDocument({
             </div>
           ) : null}
 
-          <div className="mt-8 text-center sm:mt-10">
-            <p className="text-xs uppercase tracking-[0.24em] text-[var(--color-ink-soft)]">
+          <div className="cert-doc-award">
+            <p className="cert-doc-caption">
               This certifies that
             </p>
-            <h1 className="display-title mt-3 text-4xl text-[var(--color-primary)] sm:text-5xl">
+            <h1 className={`cert-doc-name${studentName.length > 60 ? " cert-doc-name-long" : ""}`}>
               {studentName}
             </h1>
-            <p className="mx-auto mt-5 max-w-xl text-sm leading-7 text-[var(--color-ink-soft)]">
+            <p className="cert-doc-completion">
               {hideBrand
                 ? "has successfully completed the program"
                 : "has successfully completed the SkillsetMind program"}
             </p>
-            <h2 className="display-title mt-3 text-2xl text-[var(--color-ink)] sm:text-3xl">
+            <h2 className={`cert-doc-course${certificate.courseTitle.length > 120 ? " cert-doc-course-long" : ""}`}>
               {certificate.courseTitle}
             </h2>
-            <p className="mt-2 text-xs uppercase tracking-[0.18em] text-[var(--color-brand)]">
+            <p className="cert-doc-category">
               {certificate.courseCategory}
             </p>
           </div>
 
-          <footer className="mt-10 grid gap-6 sm:mt-12 sm:grid-cols-2 sm:items-end">
-            <div className="text-center sm:text-left">
-              <div className="flex h-14 items-end justify-center sm:justify-start">
+          <footer className="cert-doc-footer">
+            <div className="cert-doc-instructor">
+              <div className="cert-doc-signature">
                 {certificate.teacherSignatureUrl ? (
                   <span className="relative block h-12 w-44">
                     <Image
@@ -132,36 +133,36 @@ export function CertificateDocument({
                       alt={`${teacherName} signature`}
                       fill
                       sizes="176px"
-                      className="object-contain object-bottom sm:object-left-bottom"
+                      className="object-contain object-left-bottom"
                       unoptimized
                     />
                   </span>
                 ) : (
-                  <span className="display-title text-3xl italic text-[var(--color-primary)]">
+                  <span className="cert-doc-signature-fallback">
                     {teacherName}
                   </span>
                 )}
               </div>
-              <div className="mt-1 border-t border-[var(--color-ink)] pt-2">
-                <p className="text-sm font-semibold text-[var(--color-ink)]">
+              <div className="cert-doc-signatory">
+                <p className="cert-doc-teacher">
                   {teacherName}
                 </p>
-                <p className="text-xs text-[var(--color-ink-soft)]">Instructor</p>
+                <p className="cert-doc-caption">Instructor</p>
               </div>
             </div>
-            <div className="text-center sm:text-right">
+            <div className="cert-doc-verification">
               {issuedOn ? (
-                <p className="text-sm font-semibold text-[var(--color-ink)]">
+                <p className="cert-doc-issued">
                   Issued {issuedOn}
                 </p>
               ) : null}
-              <p className="mt-2 text-[10px] uppercase tracking-[0.2em] text-[var(--color-ink-soft)]">
+              <p className="cert-doc-caption">
                 Verification code
               </p>
-              <p className="font-mono text-sm font-semibold text-[var(--color-primary)]">
+              <p className="cert-doc-code">
                 {certificate.verificationCode}
               </p>
-              <p className="mt-1 text-[11px] text-[var(--color-ink-soft)]">
+              <p className="cert-doc-verify-url">
                 Verify at skillsetmind.com/verify
               </p>
             </div>
@@ -183,6 +184,7 @@ function formatIssuedAt(issuedAt: unknown): string {
     year: "numeric",
     month: "long",
     day: "numeric",
+    timeZone: "UTC",
   }).format(date);
 }
 

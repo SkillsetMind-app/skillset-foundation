@@ -197,15 +197,41 @@ describe("neutral dark actions", () => {
     }
   });
 
+  // O seletor segmentado (PeriodTabs) decide o ciclo que o professor paga. No
+  // escuro a pastilha escolhida e a moldura quase se confundem, entao ela
+  // ganha um contorno em --color-primary: ele tem de passar de 3:1 (limite de
+  // elemento nao textual) contra a moldura e contra a propria pastilha.
+  it("keeps the selected segmented option distinct from its track in dark theme", () => {
+    const ring = block('[data-theme="dark"] .studio-range-tabs button[aria-pressed="true"]');
+    expect(ring).toMatch(/inset 0 0 0 1\.5px var\(--color-primary\)/);
+    // A regra do escuro vem depois da base (que segue igual no claro).
+    expect(css.indexOf('[data-theme="dark"] .studio-range-tabs button[aria-pressed="true"] {')).toBeGreaterThan(
+      css.indexOf('.studio-range-tabs button[aria-pressed="true"] {'),
+    );
+    expect(block('.studio-range-tabs button[aria-pressed="true"]')).toContain("box-shadow: var(--shadow-soft);");
+    const chip = /background:\s*([^;]+);/.exec(block('.studio-range-tabs button[aria-pressed="true"]'))?.[1];
+    const track = /background:\s*([^;]+);/.exec(block(".studio-range-tabs"))?.[1];
+    for (const backdrop of [chip!, track!]) {
+      expect(ratio("var(--color-primary)", backdrop, dark), backdrop).toBeGreaterThanOrEqual(3);
+    }
+  });
+
   // These utility-only fills are outside the stylesheet's color/background
   // guard below. Read the real classes, not a mocked component's styling.
   it.each([
-    "teacher/teacher-members-area-hub.tsx",
-    "teacher/teacher-studio-dashboard.tsx",
-    "teacher/course-manage-hub.tsx",
-    "teacher/course-landing-editor.tsx",
+    // teacher-members-area-hub.tsx saiu da lista: o unico controle cheio dele
+    // era o seletor espacos/comunidades, que virou o seletor segmentado da
+    // casa (PeriodTabs, sem fundo navy; o contraste dele e conferido pela folha).
+    // teacher-studio-dashboard.tsx saiu da lista: o unico controle cheio dele
+    // eram os marcos ("Creator milestones"), que repetiam os passos e sairam.
+    // course-manage-hub.tsx saiu tambem: o unico preenchimento dele era a
+    // bolinha azul do "✓" da lista de publicar, que virou o check do construtor.
+    // course-landing-editor.tsx saiu: o "Save page" virou o Button da casa
+    // (.button-solid) e o modelo escolhido virou a pastilha clara do seletor
+    // segmentado; nenhum preenchimento navy à mão sobrou nele.
     "learn/learning-paths-rows.tsx",
-    "account/notifications-inbox.tsx",
+    // account/notifications-inbox.tsx saiu da lista: o "Mark all read" virou o
+    // Button da plataforma (.button-solid, com regra propria do tema escuro).
     "courses/course-landing-blocks.tsx",
   ])("uses the primary foreground on filled controls in %s", (file) => {
     const source = readFileSync(join(process.cwd(), "src/components", file), "utf8");
@@ -269,6 +295,24 @@ describe.each([["light", light], ["dark", dark]] as const)("semantic success con
       }
     },
   );
+});
+
+// As quatro caixas do InlineAlert (ui/inline-alert.tsx): o texto de cada tom
+// sobre o próprio fundo, em qualquer superfície onde a caixa caia. O fundo do
+// erro é translúcido, então a conta compõe sobre a superfície.
+describe.each([["light", light], ["dark", dark]] as const)("InlineAlert tone contrast — %s", (_theme, vars) => {
+  it.each([
+    ["--color-danger-fg", "--color-danger-soft"],
+    ["--color-warning-fg", "--color-warning-soft"],
+    ["--color-success-fg", "--color-success-soft"],
+    ["--color-ink-soft", "--color-info-soft"],
+  ])("keeps %s at AA on %s over every surface", (foreground, background) => {
+    for (const surface of ["--color-base", "--color-surface", "--color-surface-soft", "--color-surface-strong"]) {
+      const contrast = ratio(`var(${foreground})`, `var(${background})`, vars, surface);
+      expect(contrast, `${background} over ${surface} must resolve`).not.toBeNull();
+      expect(contrast!, `${background} over ${surface}`).toBeGreaterThanOrEqual(4.5);
+    }
+  });
 });
 
 /**
@@ -597,4 +641,144 @@ describe("certificado no tema escuro", () => {
       expect(css, `${selector} ausente`).toContain(selector);
     }
   });
+});
+
+// O ProgressBar (ui/progress-bar.tsx): o preenchimento --color-accent-fg contra
+// o trilho --color-line, composto sobre as superfícies onde as barras ficam
+// (cartões brancos e claros). O latão de fundo dava 1.44:1 no tema claro.
+describe.each([["light", light], ["dark", dark]] as const)("ProgressBar fill contrast — %s", (_theme, vars) => {
+  it.each(["--color-base", "--color-surface", "--color-surface-soft"])("keeps the fill at 3:1 against the track on %s", (surface) => {
+    const contrast = ratio("var(--color-accent-fg)", "var(--color-line)", vars, surface);
+    expect(contrast, `track over ${surface} must resolve`).not.toBeNull();
+    expect(contrast!, `fill vs track over ${surface}`).toBeGreaterThanOrEqual(3);
+  });
+});
+
+// Os avisos do InlineAlert dentro da sala: a sala pinta o fundo pelo tema do
+// CURSO, e a plataforma tem o próprio tema. Nas quatro misturas, erro e aviso
+// precisam ler a 4.5:1 sobre o próprio fundo, em qualquer superfície da sala.
+// Com a plataforma escura num curso claro, o âmbar do escuro dava 1.59:1.
+describe.each(COMBOS)("InlineAlert inside the classroom — %s", (_name, vars, courseTheme) => {
+  const danger = palette('.member-classroom[data-members-theme] [class*="text-[var(--color-danger-fg)]"]');
+  const warning = palette(`.member-classroom[data-members-theme="${courseTheme}"] [class*="text-[var(--color-warning-fg)]"]`);
+
+  it.each([
+    ["--color-danger-fg", "--color-danger-soft", danger],
+    ["--color-warning-fg", "--color-warning-soft", warning],
+  ] as const)("keeps %s on %s at AA over every classroom surface", (foreground, background, remap) => {
+    expect(Object.keys(remap).length, "classroom remap not found").toBeGreaterThan(0);
+    const merged = { ...vars, ...remap };
+    for (const surface of ["--ma-bg", "--ma-elev", "--ma-surface", "--ma-surface-2"]) {
+      const contrast = ratio(`var(${foreground})`, `var(${background})`, merged, surface);
+      expect(contrast, `${background} over ${surface} must resolve`).not.toBeNull();
+      expect(contrast!, `${background} over ${surface}`).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+
+  // A borda tracejada do EmptyState usa --color-line-strong, que a sala não
+  // trocava: navy a 40% sumia num curso escuro.
+  it("remaps the strong border to the course line", () => {
+    expect(block('.member-classroom[data-members-theme] [class*="border-[var(--color-line-strong)]"]')).toContain(
+      "border-color: var(--ma-line-2) !important;",
+    );
+  });
+});
+
+// O .field-input dentro da sala (mensagem, avaliação, comentário da aula):
+// com a plataforma escura, o fundo `!important` e a borda de foco do
+// [data-theme="dark"] .field-input venciam a regra de campo da sala, e num
+// curso claro a caixa saía no tom da plataforma. A regra própria da sala
+// devolve fundo, borda e foco ao tema do curso nas quatro misturas.
+describe.each(COMBOS)("campo da casa dentro da sala — %s", (_name, vars) => {
+  const field = ".member-classroom[data-members-theme] .field-input";
+
+  it("fundo, borda e foco do .field-input saem do tema do curso", () => {
+    expect(sheet).toMatch(
+      /\.member-classroom\[data-members-theme\] \.field-input,\s*\.member-classroom\[data-members-theme\] \.field-input:focus,\s*\.member-classroom\[data-members-theme\] \.field-input:focus-visible \{/,
+    );
+    const rule = block(`${field}:focus-visible`);
+    expect(rule).toContain("border-color: var(--ma-line);");
+    // O fundo do escuro da plataforma tem !important: o da sala precisa dele.
+    expect(rule).toContain("background: var(--ma-surface) !important;");
+    expect(rule).toContain("color: var(--ma-ink);");
+    // Vem depois das regras da plataforma, e o foco pesa mais que o do escuro.
+    expect(css.indexOf(`${field},`)).toBeGreaterThan(css.indexOf('[data-theme="dark"] .field-input:focus-visible {'));
+    expect(ratio("var(--ma-ink)", "var(--ma-surface)", vars, "--ma-bg")).toBeGreaterThanOrEqual(4.5);
+  });
+});
+
+// A comunidade da sala nas cores do CURSO, nas quatro misturas. Antes o feed
+// pintava "respondida", "ao vivo" e "Answer" num verde fixo (3.6:1 num curso
+// escuro), e o filtro ativo, a pílula "N new posts" e os avatares no navy da
+// plataforma (~1.3:1 contra o painel de um curso escuro: o filtro escolhido
+// parecia não escolhido).
+describe.each(COMBOS)("comunidade da sala nas cores do curso — %s", (_name, vars, courseTheme) => {
+  const surfaces = ["--ma-bg", "--ma-elev", "--ma-surface", "--ma-surface-2"];
+  const success = palette(`.member-classroom[data-members-theme="${courseTheme}"] [class*="var(--color-success-"]`);
+  const inverted = palette(
+    '.member-classroom[data-members-theme] .member-lesson-comments [class*="bg-[var(--color-primary)]"]',
+  );
+
+  it("lê o verde de sucesso a 4.5:1 no próprio fundo e direto na superfície", () => {
+    expect(Object.keys(success).length, "remapeamento do verde não encontrado").toBeGreaterThan(0);
+    const merged = { ...vars, ...success };
+    for (const surface of surfaces) {
+      for (const background of ["var(--color-success-soft)", `var(${surface})`]) {
+        const contrast = ratio("var(--color-success-fg)", background, merged, surface);
+        expect(contrast, `${background} over ${surface} must resolve`).not.toBeNull();
+        expect(contrast!, `${background} over ${surface}`).toBeGreaterThanOrEqual(4.5);
+      }
+    }
+  });
+
+  it("o filtro ativo, a pílula e o avatar leem o texto e se destacam do painel", () => {
+    expect(Object.keys(inverted).length, "remapeamento do navy não encontrado").toBeGreaterThan(0);
+    const merged = { ...vars, ...inverted };
+    for (const surface of surfaces) {
+      const label = ratio("var(--color-base)", "var(--color-primary)", merged, surface);
+      expect(label, `texto sobre o preenchimento, ${surface}`).not.toBeNull();
+      expect(label!).toBeGreaterThanOrEqual(4.5);
+      // O preenchimento contra o painel: 3:1, o mínimo para o que não é texto.
+      const fill = ratio("var(--color-primary)", `var(${surface})`, merged, surface);
+      expect(fill!, `preenchimento sobre ${surface}`).toBeGreaterThanOrEqual(3);
+    }
+  });
+});
+
+// A faixa "ao vivo" da sala (live-session-parts.tsx): fundo e borda no verde
+// remapeado pelo tema do CURSO, texto no --ma-ink, direto sobre o fundo da
+// sala (--ma-bg). Nas quatro misturas: texto a 4.5:1, borda a 3:1.
+describe.each(COMBOS)("faixa ao vivo da sala — %s", (_name, vars, courseTheme) => {
+  it("lê o texto sobre o verde e a borda se destaca do fundo da sala", () => {
+    const success = palette(`.member-classroom[data-members-theme="${courseTheme}"] [class*="var(--color-success-"]`);
+    expect(Object.keys(success).length, "remapeamento do verde não encontrado").toBeGreaterThan(0);
+    const merged = { ...vars, ...success };
+    const text = ratio("var(--ma-ink)", "var(--color-success-soft)", merged, "--ma-bg");
+    expect(text, "texto da faixa").not.toBeNull();
+    expect(text!).toBeGreaterThanOrEqual(4.5);
+    const border = ratio("var(--color-success-fg)", "var(--ma-bg)", merged, "--ma-bg");
+    expect(border!, "borda da faixa").toBeGreaterThanOrEqual(3);
+    const soft = ratio("var(--ma-ink-soft)", "var(--color-success-soft)", merged, "--ma-bg");
+    expect(soft!, "frase sem link na faixa").toBeGreaterThanOrEqual(4.5);
+  });
+});
+
+// Links de destaque da área de membros (o "← Back to the area" da comunidade,
+// o link do início da área): agora que a cor pedida num <a> chega à tela, eles
+// pedem --ma-accent-ink. O --ma-accent é fundo de botão: 2,9:1 num curso escuro.
+describe.each(COMBOS)("link de destaque da área de membros — %s", (_name, vars) => {
+  it("--ma-accent-ink lê 4.5:1 no fundo e na superfície do curso", () => {
+    for (const background of ["var(--ma-bg)", "var(--ma-surface)"]) {
+      const contrast = ratio("var(--ma-accent-ink)", background, vars, "--ma-bg");
+      expect(contrast, `${background} must resolve`).not.toBeNull();
+      expect(contrast!, background).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+});
+
+it("o feed e a gaveta da comunidade não pintam mais verde fixo", () => {
+  for (const file of ["community-feed.tsx", "community-post-drawer.tsx"]) {
+    const source = readFileSync(join(process.cwd(), "src/components/learn", file), "utf8");
+    expect(source, file).not.toMatch(/rgba?\(2[12],\s*1(28|63),/);
+  }
 });

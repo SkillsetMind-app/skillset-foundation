@@ -29,6 +29,12 @@ export async function generateMetadata() {
 const sampleSaleUsd = 100;
 const sampleStripeFeeUsd = sampleSaleUsd * 0.029 + 0.3;
 
+// Itens que esta página já diz em outro lugar do cartão: a taxa (linha logo
+// abaixo do preço) e a economia anual (o seletor mensal/anual). Os mesmos
+// itens seguem nos cartões do app, que leem o mesmo plans.ts; por isso o
+// filtro mora aqui e os dados não mudam.
+const statedElsewhereOnPricing = /per sale$|^0% commission|^Annual billing/;
+
 export default async function PricingPage() {
   const { locale, t } = await getServerTranslation();
 
@@ -75,8 +81,10 @@ export default async function PricingPage() {
           </div>
         </fieldset>
 
+        {/* Três colunas desde md: de 640 a 1023px cada cartão ocupava a
+            largura toda, quase vazio, e era preciso rolar para comparar. */}
         <section
-          className="grid gap-4 lg:grid-cols-3"
+          className="grid gap-4 md:grid-cols-3"
           aria-label={t("publicPages.pricing.plan_comparison")}
         >
           {publicPlans.map((plan, index) => {
@@ -94,40 +102,56 @@ export default async function PricingPage() {
                 }
               >
                 {isHighlight ? (
-                  <span className="absolute -top-3 left-6 rounded-full bg-[var(--color-accent)] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-white">
+                  <span className="absolute -top-3 left-6 rounded-chip bg-[var(--color-accent)] px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--color-on-accent)]">
                     {t("publicPages.pricing.recommended")}
                   </span>
                 ) : null}
                 <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
                   {plan.name}
                 </p>
-                {/* The commission is what a plan actually changes, so it is the
-                    big number; the subscription is the small line under it. */}
-                <p className="mt-3 flex items-baseline gap-1.5">
+                {/* The dollar price is the big number (what the buyer decides
+                    on); the commission is the small secondary line under it. */}
+                {/* Monthly price — hidden when the yearly radio is checked. */}
+                <p className="mt-3 flex items-baseline gap-1 group-has-[#billing-yearly:checked]:hidden">
                   <span className="display-title text-4xl text-[var(--color-primary)]">
-                    {plan.commissionPercent}%
+                    {formatUsdWhole(plan.monthlyUsd)}
                   </span>
                   <span className="text-sm text-[var(--color-ink-soft)]">
-                    {t("publicPages.pricing.per_sale_with_fixed").replace("{fixed}", () => formatUsd(PER_SALE_FIXED_FEE_USD))}
+                    {t("publicPages.pricing.mo")}
                   </span>
                 </p>
-                {/* Monthly line — hidden when the yearly radio is checked. */}
-                <p className="mt-1 text-sm text-[var(--color-ink-soft)] group-has-[#billing-yearly:checked]:hidden">
-                  {formatUsdWhole(plan.monthlyUsd)}{t("publicPages.pricing.mo")}
+                {/* Yearly price — shown only when the yearly radio is checked. */}
+                <p className="mt-3 hidden items-baseline gap-1 group-has-[#billing-yearly:checked]:flex">
+                  <span className="display-title text-4xl text-[var(--color-primary)]">
+                    {formatUsd(yearlyMonthlyEquiv)}
+                  </span>
+                  <span className="text-sm text-[var(--color-ink-soft)]">
+                    {t("publicPages.pricing.mo")}
+                  </span>
                 </p>
-                {/* Yearly line — shown only when the yearly radio is checked. */}
-                <p className="mt-1 hidden text-sm text-[var(--color-ink-soft)] group-has-[#billing-yearly:checked]:block">
-                  {formatUsd(yearlyMonthlyEquiv)}{t("publicPages.pricing.mo_billed")}{" "}
+                {/* O total anual tem lugar nos dois ciclos (invisível no
+                    mensal): trocar o seletor não muda a altura dos cartões
+                    nem empurra o resto da página. */}
+                <p className="invisible mt-0.5 text-xs text-[var(--color-ink-soft)] group-has-[#billing-yearly:checked]:visible">
                   {formatUsdWhole(plan.yearlyUsd)} {t("publicPages.pricing.yearly_2")}
                 </p>
-                <p className="mt-4 text-sm leading-6 text-[var(--color-ink)]">
-                  {t(`publicPages.plans.${plan.id}.tagline`)}
+                <p className="mt-2 text-sm text-[var(--color-ink-soft)]">
+                  <span className="font-semibold text-[var(--color-ink)]">
+                    {plan.commissionPercent}%
+                  </span>{" "}
+                  <span>
+                    {plan.commissionPercent === 0
+                      ? t("publicPages.pricing.zero_commission_note")
+                      : t("publicPages.pricing.per_sale_with_fixed").replace("{fixed}", () => formatUsd(PER_SALE_FIXED_FEE_USD))}
+                  </span>
                 </p>
-                <p className="mt-1 text-xs text-[var(--color-ink-soft)]">
-                  {t(`publicPages.plans.${plan.id}.audience`)}
+                {/* Uma frase por cartão. A do plano de 0% repete a linha da
+                    taxa logo acima, então nele vale a frase do público. */}
+                <p className="mt-4 text-sm leading-6 text-[var(--color-ink)]">
+                  {t(`publicPages.plans.${plan.id}.${plan.commissionPercent === 0 ? "audience" : "tagline"}`)}
                 </p>
                 <ul className="mb-6 mt-5 grid gap-2 text-sm text-[var(--color-ink-soft)]">
-                  {plan.highlights.map((highlight, highlightIndex) => (
+                  {plan.highlights.map((highlight, highlightIndex) => statedElsewhereOnPricing.test(highlight) ? null : (
                     <li key={highlight} className="flex items-start gap-2">
                       <Check
                         aria-hidden="true"
@@ -149,23 +173,40 @@ export default async function PricingPage() {
                   <p className="hidden text-xs leading-5 text-[var(--color-ink-soft)] group-has-[#billing-yearly:checked]:block">
                     {planDisclosure({ t, locale, plan, cycle: "yearly", trial: true, publicOffer: true })}
                   </p>
-                  <Link
-                    href="/auth?mode=signup&path=teacher"
-                    className={
-                      isHighlight
-                        ? "button-solid w-full justify-center px-4 py-2.5 text-sm"
-                        : "button-outline w-full justify-center px-4 py-2.5 text-sm"
-                    }
-                    aria-label={`${t("planTrial.cta")} — ${plan.name}`}
-                    data-plan-position={index}
-                  >
-                    {t("planTrial.cta")}
-                  </Link>
+                  {/* One link per cycle, shown by the same CSS toggle as the
+                      prices: the button carries the plan and the cycle to the
+                      card screen, still with no client JS. The hidden one is
+                      display:none, so it is out of the tab order too. */}
+                  {(["monthly", "yearly"] as const).map((cycle) => (
+                    <Link
+                      key={cycle}
+                      href={`/auth?mode=signup&path=teacher&plan=${plan.id}&cycle=${cycle}`}
+                      className={[
+                        isHighlight ? "button-solid" : "button-outline",
+                        // Em três colunas estreitas (md) o rótulo pode quebrar
+                        // em duas ou três linhas: centradas e sem encostar.
+                        "w-full justify-center whitespace-normal px-4 py-2.5 text-center text-sm leading-snug",
+                        cycle === "monthly"
+                          ? "group-has-[#billing-yearly:checked]:hidden"
+                          : "hidden group-has-[#billing-yearly:checked]:inline-flex",
+                      ].join(" ")}
+                      aria-label={`${t("planTrial.cta")} — ${plan.name}`}
+                      data-plan-position={index}
+                    >
+                      {t("planTrial.cta")}
+                    </Link>
+                  ))}
                 </div>
               </article>
             );
           })}
         </section>
+        {/* O teste grátis é dito uma vez fora dos cartões, logo abaixo dos
+            botões (traz o "um por conta", que o aviso do cartão não diz); a
+            faixa do fim da página não repete. */}
+        <p className="mt-4 text-xs leading-5 text-[var(--color-ink-muted)]">
+          {t("planTrial.publicNote")}
+        </p>
         {/* Enterprise is not a card: it is set up by hand, so it is a contact. */}
         <p className="mt-4 text-sm">
           <Link
@@ -174,9 +215,6 @@ export default async function PricingPage() {
           >
             {t("publicPages.pricing.enterprise_talk_to_us")}
           </Link>
-        </p>
-        <p className="mt-4 text-xs leading-5 text-[var(--color-ink-muted)]">
-          {t("planTrial.publicNote")}
         </p>
       </div>
 
@@ -224,9 +262,13 @@ export default async function PricingPage() {
                     </Tooltip>
                   </span>
                 </th>
+                {/* "You receive" é a resposta da tabela: fica presa à direita
+                    enquanto o resto rola dentro da caixa. Num celular de 360px
+                    ela ficava toda fora da tela, atrás de uma barra de rolagem
+                    fina. */}
                 <th
                   scope="col"
-                  className="px-4 py-3 text-right font-bold text-[var(--color-primary)]"
+                  className="sticky right-0 bg-[var(--color-surface-soft)] px-4 py-3 text-right font-bold text-[var(--color-primary)] shadow-[-10px_0_12px_-10px_rgba(15,39,68,0.3)] sm:shadow-none"
                 >
                   {t("publicPages.pricing.you_receive")}
                 </th>
@@ -234,8 +276,10 @@ export default async function PricingPage() {
             </thead>
             <tbody className="divide-y divide-[var(--color-line)]">
               {publicPlans.map((plan) => {
-                const platformFee =
-                  (sampleSaleUsd * plan.commissionPercent) / 100 + PER_SALE_FIXED_FEE_USD;
+                // A 0% plan (Pro) pays no fixed part either.
+                const platformFee = plan.commissionPercent === 0
+                  ? 0
+                  : (sampleSaleUsd * plan.commissionPercent) / 100 + PER_SALE_FIXED_FEE_USD;
                 const net = sampleSaleUsd - platformFee - sampleStripeFeeUsd;
                 return (
                   <tr key={plan.id} className="bg-white">
@@ -254,7 +298,7 @@ export default async function PricingPage() {
                     <td className="px-4 py-3 text-right text-[var(--color-ink-soft)]">
                       −{formatUsd(sampleStripeFeeUsd)}
                     </td>
-                    <td className="px-4 py-3 text-right font-bold text-[var(--color-primary)]">
+                    <td className="sticky right-0 bg-white px-4 py-3 text-right font-bold text-[var(--color-primary)] shadow-[-10px_0_12px_-10px_rgba(15,39,68,0.3)] sm:shadow-none">
                       {formatUsd(net)}
                     </td>
                   </tr>
@@ -349,14 +393,9 @@ export default async function PricingPage() {
       </section>
 
       <section className="mt-8 flex flex-wrap items-center justify-between gap-4 rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-6">
-        <div>
-          <p className="text-sm font-semibold text-[var(--color-ink)]">
-            {t("publicPages.pricing.ready_to_publish_on_skillsetmind")}
-          </p>
-          <p className="mt-1 text-sm text-[var(--color-ink-soft)]">
-            {t("publicPages.pricing.start_with_a_free_trial")}
-          </p>
-        </div>
+        <p className="text-sm font-semibold text-[var(--color-ink)]">
+          {t("publicPages.pricing.ready_to_publish_on_skillsetmind")}
+        </p>
         <div className="flex flex-wrap gap-3">
           <Link href="/for-creators" className="button-outline px-4 py-2.5 text-sm">
             {t("publicPages.pricing.creator_overview")}

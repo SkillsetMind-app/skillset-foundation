@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { I18nProvider, useTranslation } from "@/components/i18n/i18n-provider";
 import { CustomDomainsPanel } from "@/components/teacher/custom-domains-panel";
+import { CONFIRM_GUARD_MS } from "@/components/ui/confirm-dialog";
 import { domainRejectionMessage, parseCustomDomain } from "@/domain/custom-domain";
 import type { CustomDomainStatus, DomainRejection } from "@/domain/custom-domain";
 
@@ -97,6 +98,23 @@ function requestCount(method = "GET") {
   return fetchMock.mock.calls.filter(([, init]) => (init?.method ?? "GET") === method).length;
 }
 
+// "Disconnect" pergunta na janela da plataforma (não mais no window.confirm).
+// O jsdom não tem showModal/close: o stub do beforeEach faz o mínimo que o
+// navegador faz.
+const originalShow = Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype, "showModal");
+const originalClose = Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype, "close");
+
+// Clica e, se a pergunta abrir, confirma depois da trava do toque duplo: o
+// caminho do antigo OK. Devolve a janela (ou null, quando nada perguntou).
+function press(button: HTMLElement) {
+  fireEvent.click(button);
+  const dialog = screen.queryByRole("dialog");
+  if (!dialog) return null;
+  vi.advanceTimersByTime(CONFIRM_GUARD_MS);
+  fireEvent.click(within(dialog).getByRole("button", { name: /^(Disconnect domain|Desconectar dominio)$/ }));
+  return dialog;
+}
+
 function domainCard(hostname: string) {
   const card = screen.getByText(hostname).parentElement?.parentElement;
   if (!card) throw new Error(`Missing card for fixture ${hostname}`);
@@ -111,12 +129,22 @@ describe("CustomDomainsPanel", () => {
       jsonResponse({ domains, quota: { used: 3, limit: 3 }, configured: true }),
     );
     vi.stubGlobal("fetch", fetchMock);
+    // Só o Date é falso: o confirmar da janela ignora cliques nos primeiros
+    // CONFIRM_GUARD_MS; os setTimeout reais continuam servindo o findBy.
+    vi.useFakeTimers({ toFake: ["Date"] });
+    Object.defineProperty(HTMLDialogElement.prototype, "showModal", { configurable: true, value() { this.setAttribute("open", ""); } });
+    Object.defineProperty(HTMLDialogElement.prototype, "close", { configurable: true, value() { if (!this.hasAttribute("open")) return; this.removeAttribute("open"); this.dispatchEvent(new Event("close")); } });
   });
 
   afterEach(() => {
     cleanup();
+    vi.useRealTimers();
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
+    if (originalShow) Object.defineProperty(HTMLDialogElement.prototype, "showModal", originalShow);
+    else Reflect.deleteProperty(HTMLDialogElement.prototype, "showModal");
+    if (originalClose) Object.defineProperty(HTMLDialogElement.prototype, "close", originalClose);
+    else Reflect.deleteProperty(HTMLDialogElement.prototype, "close");
   });
 
   // P-26: o painel pintava o status com bg-amber-100/bg-emerald-100/bg-red-100 —
@@ -142,7 +170,14 @@ describe("CustomDomainsPanel", () => {
   // P-07: "Disconnect" derrubava o domínio em um clique, sem confirmação, a
   // 8px do "Check again" que o professor martela enquanto o DNS propaga.
   it("pede confirmação antes de desconectar o domínio", async () => {
-    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(false);
+    const nativeConfirm = vi.spyOn(window, "confirm");
+    // O DELETE fica pendurado, como numa Vercel lenta.
+    const removal = deferredResponse();
+    fetchMock.mockImplementation(async (_url, init) =>
+      init?.method === "DELETE"
+        ? removal.promise
+        : jsonResponse({ domains, quota: { used: 3, limit: 3 }, configured: true }),
+    );
 
     render(<CustomDomainsPanel />);
     await screen.findByText("aulas.exemplo.com");
@@ -150,20 +185,41 @@ describe("CustomDomainsPanel", () => {
     const [disconnect] = screen.getAllByRole("button", { name: /Disconnect/ });
     fireEvent.click(disconnect);
 
-    expect(confirmSpy).toHaveBeenCalledWith(expect.stringContaining("aulas.exemplo.com"));
-    expect(fetchMock).not.toHaveBeenCalledWith(
-      expect.anything(),
-      expect.objectContaining({ method: "DELETE" }),
+    // (a) a frase de sempre, agora na janela da plataforma;
+    const dialog = screen.getByRole("dialog", { name: "Disconnect this domain?" });
+    expect(dialog).toHaveTextContent(
+      "Disconnect aulas.exemplo.com? Students go back to the platform address, and the DNS setup starts over if you reconnect it.",
     );
+    expect(nativeConfirm).not.toHaveBeenCalled();
+    // (b) desistir não desconecta nada;
+    fireEvent.click(within(dialog).getByRole("button", { name: "Keep domain" }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(requestCount("DELETE")).toBe(0);
 
-    confirmSpy.mockReturnValue(true);
+    // (c) confirmar manda um DELETE só, do domínio do cartão. O clique colado
+    // na abertura (toque duplo) e o segundo clique são descartados.
     fireEvent.click(disconnect);
+    const again = screen.getByRole("dialog", { name: "Disconnect this domain?" });
+    fireEvent.click(within(again).getByRole("button", { name: "Disconnect domain" }));
+    expect(requestCount("DELETE")).toBe(0);
+    vi.advanceTimersByTime(CONFIRM_GUARD_MS);
+    fireEvent.click(within(again).getByRole("button", { name: "Disconnect domain" }));
+    fireEvent.click(within(again).getByRole("button", { name: "Disconnect domain" }));
 
-    await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledWith("/api/teach/domains/dom-1", {
-        method: "DELETE",
-      });
+    expect(fetchMock).toHaveBeenCalledWith("/api/teach/domains/dom-1", {
+      method: "DELETE",
     });
+    // A janela não espera o DELETE (que pode demorar minutos): fecha na hora
+    // e a página volta a responder. Quem fica ocupado é só o cartão.
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    const card = domainCard("aulas.exemplo.com");
+    expect(card.getByRole("button", { name: "Disconnect" })).toBeDisabled();
+    expect(card.getByRole("button", { name: "Check again" })).toBeDisabled();
+    expect(domainCard("erro.exemplo.com").getByRole("button", { name: "Disconnect" })).toBeEnabled();
+    expect(requestCount("DELETE")).toBe(1);
+
+    await act(async () => removal.resolve(jsonResponse({ ok: true, hostname: "aulas.exemplo.com" })));
+    expect(requestCount("DELETE")).toBe(1);
   });
 
   it("veste Disconnect como ação de perigo, não como gêmeo do Check again", async () => {
@@ -267,12 +323,12 @@ describe("CustomDomainsPanel", () => {
     fetchMock.mockReturnValue(pending.promise);
     renderWithLocale();
     await waitFor(() => expect(requestCount()).toBe(1));
-    expect(screen.getByText("Loading your domains…")).toBeInTheDocument();
+    expect(screen.getByText("Loading your domains...")).toBeInTheDocument();
     expect(screen.queryByText(/Your plan does not include a custom domain/)).not.toBeInTheDocument();
     expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
 
     await changeLocale("es");
-    expect(screen.getByText("Cargando tus dominios…")).toBeInTheDocument();
+    expect(screen.getByText("Cargando tus dominios...")).toBeInTheDocument();
     expect(requestCount()).toBe(1);
     await act(async () => {
       if (failure === "HTTP") pending.resolve(jsonResponse({ error: "local-qa-load-failure" }, 503));
@@ -302,7 +358,7 @@ describe("CustomDomainsPanel", () => {
     const retryButton = screen.getByRole("button", { name: "Try again" });
     retryButton.focus();
     fireEvent.click(retryButton);
-    expect(screen.getByRole("status")).toHaveTextContent("Loading your domains…");
+    expect(screen.getByRole("status")).toHaveTextContent("Loading your domains...");
     expect(screen.getByRole("status").closest("section")).toHaveAttribute("aria-busy", "true");
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Try again" })).toBe(retryButton);
@@ -311,7 +367,7 @@ describe("CustomDomainsPanel", () => {
     expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
     expect(requestCount()).toBe(2);
     await changeLocale("es");
-    expect(screen.getByRole("status")).toHaveTextContent("Cargando tus dominios…");
+    expect(screen.getByRole("status")).toHaveTextContent("Cargando tus dominios...");
     expect(requestCount()).toBe(2);
     await act(async () => retry.resolve(jsonResponse(domainPayload([domains[1]]))));
     expect(await screen.findByText(domains[1].hostname)).toBeInTheDocument();
@@ -537,7 +593,6 @@ describe("CustomDomainsPanel", () => {
 
   it("preserva contexto ao cancelar e mantém desconexão ocupada durante EN↔ES sem DELETE duplicado", async () => {
     const removal = deferredResponse();
-    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(false);
     fetchMock.mockResolvedValue(jsonResponse(domainPayload([domains[1]])));
     fetchMock.mockResolvedValueOnce(jsonResponse(domainPayload(domains.slice(0, 2))));
     fetchMock.mockReturnValueOnce(removal.promise);
@@ -545,17 +600,19 @@ describe("CustomDomainsPanel", () => {
     const hostname = await screen.findByRole("textbox", { name: "Añadir un dominio" });
     fireEvent.change(hostname, { target: { value: "draft.example.com" } });
     fireEvent.click(domainCard(domains[0].hostname).getByRole("button", { name: "Desconectar" }));
-    expect(confirmSpy).toHaveBeenLastCalledWith(
+    const spanish = screen.getByRole("dialog", { name: "¿Desconectar este dominio?" });
+    expect(spanish).toHaveTextContent(
       `¿Desconectar ${domains[0].hostname}? Los estudiantes volverán a la dirección de la plataforma y tendrás que configurar el DNS de nuevo si lo reconectas.`,
     );
+    fireEvent.click(within(spanish).getByRole("button", { name: "Mantener el dominio" }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(requestCount("DELETE")).toBe(0);
     expect(hostname).toHaveValue("draft.example.com");
     expect(domainCard(domains[0].hostname).getByRole("button", { name: "Comprobar de nuevo" })).toBeEnabled();
 
     await changeLocale("en");
-    confirmSpy.mockReturnValue(true);
-    fireEvent.click(domainCard(domains[0].hostname).getByRole("button", { name: "Disconnect" }));
-    expect(confirmSpy).toHaveBeenLastCalledWith(
+    const english = press(domainCard(domains[0].hostname).getByRole("button", { name: "Disconnect" }));
+    expect(english).toHaveTextContent(
       `Disconnect ${domains[0].hostname}? Students go back to the platform address, and the DNS setup starts over if you reconnect it.`,
     );
     expect(fetchMock).toHaveBeenCalledWith(`/api/teach/domains/${domains[0].id}`, { method: "DELETE" });
@@ -607,14 +664,13 @@ describe("CustomDomainsPanel", () => {
     { method: "DELETE", action: "Disconnect", status: 403, body: { error: "local-qa-unknown-remove-error" }, en: "Could not remove that domain.", es: "No pudimos desconectar ese dominio." },
   ])("não apresenta sucesso falso em $method HTTP $status e conserva contexto ao trocar idioma", async ({ method, action, status, body, en, es }) => {
     const mutation = deferredResponse();
-    vi.spyOn(window, "confirm").mockReturnValue(true);
     fetchMock.mockResolvedValue(jsonResponse(domainPayload([domains[0]])));
     fetchMock.mockResolvedValueOnce(jsonResponse(domainPayload([domains[0]])));
     fetchMock.mockReturnValueOnce(mutation.promise);
     renderWithLocale();
     const hostname = await screen.findByRole("textbox", { name: "Add a domain" });
     fireEvent.change(hostname, { target: { value: "draft.example.com" } });
-    fireEvent.click(domainCard(domains[0].hostname).getByRole("button", { name: action }));
+    press(domainCard(domains[0].hostname).getByRole("button", { name: action }));
     expect(domainCard(domains[0].hostname).getByRole("button", { name: action })).toBeDisabled();
     expect(fetchMock).toHaveBeenCalledWith(`/api/teach/domains/${domains[0].id}`, { method });
     await act(async () => mutation.resolve(jsonResponse(body, status)));
@@ -640,7 +696,6 @@ describe("CustomDomainsPanel", () => {
     { method: "POST", action: "Check again" },
     { method: "DELETE", action: "Disconnect" },
   ])("reconcilia $method 404 com quota cheia sem anunciar sucesso da operação", async ({ method, action }) => {
-    vi.spyOn(window, "confirm").mockReturnValue(true);
     fetchMock.mockResolvedValueOnce(jsonResponse(domainPayload([domains[0]], { used: 1, limit: 1 })));
     fetchMock.mockResolvedValueOnce(jsonResponse({ error: "Domain not found." }, 404));
     fetchMock.mockResolvedValueOnce(jsonResponse(domainPayload([], { used: 0, limit: 1 })));
@@ -648,7 +703,7 @@ describe("CustomDomainsPanel", () => {
     const hostname = await screen.findByRole("textbox", { name: "Add a domain" });
     expect(hostname).toBeDisabled();
     expect(hostname).toHaveValue("");
-    fireEvent.click(domainCard(domains[0].hostname).getByRole("button", { name: action }));
+    press(domainCard(domains[0].hostname).getByRole("button", { name: action }));
     await waitFor(() => expect(requestCount()).toBe(2));
     await waitFor(() => expect(screen.queryByText(domains[0].hostname)).not.toBeInTheDocument());
     expect(screen.getByText("0 of 1 used")).toBeInTheDocument();
@@ -670,13 +725,12 @@ describe("CustomDomainsPanel", () => {
     { method: "DELETE", action: "Disconnect", en: "Could not remove that domain.", es: "No pudimos desconectar ese dominio." },
   ])("associa a recusa de $method ao cartão acionado, preservando o campo de adicionar válido em EN/ES", async ({ method, action, en, es }) => {
     const mutation = deferredResponse();
-    vi.spyOn(window, "confirm").mockReturnValue(true);
     fetchMock.mockResolvedValueOnce(jsonResponse(domainPayload(domains.slice(0, 2))));
     fetchMock.mockReturnValueOnce(mutation.promise);
     renderWithLocale();
     const hostname = await screen.findByRole("textbox", { name: "Add a domain" });
     fireEvent.change(hostname, { target: { value: "draft.example.com" } });
-    fireEvent.click(domainCard(domains[0].hostname).getByRole("button", { name: action }));
+    press(domainCard(domains[0].hostname).getByRole("button", { name: action }));
     await act(async () => mutation.resolve(jsonResponse({ error: "local-qa-action-refused" }, 403)));
     expect(domainCard(domains[0].hostname).getByRole("alert")).toHaveTextContent(en);
     for (const locale of ["en", "es"] as const) {
@@ -722,7 +776,6 @@ describe("CustomDomainsPanel", () => {
         const mutation = deferredResponse();
         const failedRead = deferredResponse();
         const retry = deferredResponse();
-        const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
         const verificationValue = "TXT literal $$ $& {hostname} local-qa";
         const target: DomainFixture = {
           ...domains[0], status: "pending_verification",
@@ -749,7 +802,7 @@ describe("CustomDomainsPanel", () => {
         const retainedDraft = operation === "add" ? "" : draft;
         expect(hostname).toBeEnabled();
         fireEvent.change(hostname, { target: { value: draft } });
-        fireEvent.click(operation === "add"
+        const asked = press(operation === "add"
           ? screen.getByRole("button", { name: action })
           : domainCard(target.hostname).getByRole("button", { name: action }));
         expectDomainTraffic(1, [write]);
@@ -787,7 +840,7 @@ describe("CustomDomainsPanel", () => {
         await waitFor(() => expect(requestCount()).toBe(3));
         for (const locale of ["en", "es"] as const) {
           await changeLocale(locale);
-          expect(screen.getByRole("status")).toHaveTextContent(locale === "es" ? "Cargando tus dominios…" : "Loading your domains…");
+          expect(screen.getByRole("status")).toHaveTextContent(locale === "es" ? "Cargando tus dominios..." : "Loading your domains...");
           expect(hostname.closest("section")).toHaveAttribute("aria-busy", "true");
           expect(screen.getByRole("textbox", { name: locale === "es" ? "Añadir un dominio" : "Add a domain" })).toBe(hostname);
           expect(hostname).toHaveValue(retainedDraft);
@@ -802,7 +855,15 @@ describe("CustomDomainsPanel", () => {
         await waitFor(() => expect(hostname.closest("section")).toHaveAttribute("aria-busy", "false"));
         for (const locale of ["en", "es"] as const) {
           await changeLocale(locale);
-          expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+          // O aviso de releitura saiu. O recheck termina em "Problem": o único
+          // aviso que sobra é o do próprio cartão (F-07: InlineAlert de erro).
+          expect(screen.queryByText(refreshCopy[locale])).not.toBeInTheDocument();
+          expect(screen.queryAllByRole("alert")).toHaveLength(operation === "recheck" ? 1 : 0);
+          if (operation === "recheck") {
+            expect(domainCard(target.hostname).getByRole("alert")).toHaveTextContent(
+              locale === "es" ? "No se pudo configurar el dominio." : "The domain could not be set up.",
+            );
+          }
           expect(hostname).toHaveValue(retainedDraft);
           expect(hostname).not.toHaveAttribute("aria-invalid", "true");
           expect(screen.getByText(locale === "es" ? `${finalRows.length} de 3 utilizados` : `${finalRows.length} of 3 used`)).toBeInTheDocument();
@@ -811,7 +872,8 @@ describe("CustomDomainsPanel", () => {
           else expect(domainCard(target.hostname).getByText(locale === "es" ? "Problema" : "Problem")).toBeInTheDocument();
           expectDomainTraffic(3, [write]);
         }
-        expect(confirmSpy).toHaveBeenCalledTimes(operation === "remove" ? 1 : 0);
+        // Só desconectar pergunta antes.
+        expect(Boolean(asked)).toBe(operation === "remove");
       },
     );
 
@@ -839,7 +901,7 @@ describe("CustomDomainsPanel", () => {
       expect(retryButton).not.toBeDisabled();
       expect(retryButton).toHaveAttribute("aria-disabled", "true");
       expect(panel).toHaveAttribute("aria-busy", "true");
-      expect(screen.getByRole("status")).toHaveTextContent(locale === "es" ? "Cargando tus dominios…" : "Loading your domains…");
+      expect(screen.getByRole("status")).toHaveTextContent(locale === "es" ? "Cargando tus dominios..." : "Loading your domains...");
       fireEvent.click(retryButton);
       fireEvent.click(retryButton);
       expectDomainTraffic(3, [write]);
@@ -891,7 +953,6 @@ describe("CustomDomainsPanel", () => {
 
     it("libera quota cheia somente após o GET de recuperação de DELETE aceito", async () => {
       const retry = deferredResponse();
-      const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
       const write: Mutation = { url: `/api/teach/domains/${domains[0].id}`, method: "DELETE" };
       fetchMock.mockResolvedValueOnce(jsonResponse(domainPayload([domains[0]], { used: 1, limit: 1 })));
       fetchMock.mockResolvedValueOnce(jsonResponse({ ok: true, hostname: domains[0].hostname }));
@@ -901,7 +962,7 @@ describe("CustomDomainsPanel", () => {
       const hostname = await screen.findByRole("textbox", { name: "Add a domain" });
       expect(hostname).toBeDisabled();
       expect(hostname).toHaveValue("");
-      fireEvent.click(domainCard(domains[0].hostname).getByRole("button", { name: "Disconnect" }));
+      const asked = press(domainCard(domains[0].hostname).getByRole("button", { name: "Disconnect" }));
       expect(await screen.findByRole("alert")).toHaveTextContent(refreshCopy.en);
       expect(hostname).not.toHaveAttribute("aria-invalid", "true");
       expect(screen.getByText("1 of 1 used")).toBeInTheDocument();
@@ -916,7 +977,7 @@ describe("CustomDomainsPanel", () => {
       fireEvent.change(hostname, { target: { value: "next.example.com" } });
       expect(screen.getByRole("button", { name: "Connect" })).toBeEnabled();
       expectDomainTraffic(3, [write]);
-      expect(confirmSpy).toHaveBeenCalledOnce();
+      expect(asked).not.toBeNull();
     });
 
     it("mantém snapshot e rascunho quando o retry falha antes da leitura seguinte recuperar", async () => {
@@ -934,7 +995,7 @@ describe("CustomDomainsPanel", () => {
       fireEvent.click(domainCard(domains[0].hostname).getByRole("button", { name: "Check again" }));
       expect(await screen.findByRole("alert")).toHaveTextContent(refreshCopy.en);
       fireEvent.click(screen.getByRole("button", { name: "Try again" }));
-      expect(screen.getByRole("status")).toHaveTextContent("Loading your domains…");
+      expect(screen.getByRole("status")).toHaveTextContent("Loading your domains...");
       expectDomainTraffic(3, [write]);
       await act(async () => failedRetry.reject(new Error("local-qa-retry-unreachable")));
       expect(await screen.findByRole("alert")).toHaveTextContent(refreshCopy.en);
@@ -992,7 +1053,6 @@ describe("CustomDomainsPanel", () => {
       { method: "DELETE", action: "Disconnect" },
     ] as const)("recupera a leitura após $method 404 sem sucesso ou mutação repetida", async ({ method, action }) => {
       const retry = deferredResponse();
-      const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
       const write: Mutation = { url: `/api/teach/domains/${domains[0].id}`, method };
       fetchMock.mockResolvedValueOnce(jsonResponse(domainPayload([domains[0]], { used: 1, limit: 1 })));
       fetchMock.mockResolvedValueOnce(jsonResponse({ error: "Domain not found." }, 404));
@@ -1002,7 +1062,7 @@ describe("CustomDomainsPanel", () => {
       const hostname = await screen.findByRole("textbox", { name: "Add a domain" });
       const form = hostname.closest("form")!;
       expect(hostname).toBeDisabled();
-      fireEvent.click(domainCard(domains[0].hostname).getByRole("button", { name: action }));
+      const asked = press(domainCard(domains[0].hostname).getByRole("button", { name: action }));
       await screen.findByText(refreshCopy.en);
       for (const locale of ["en", "es"] as const) {
         await changeLocale(locale);
@@ -1024,7 +1084,7 @@ describe("CustomDomainsPanel", () => {
       expect(screen.queryByRole("alert")).not.toBeInTheDocument();
       expect(screen.queryByRole("status")).not.toBeInTheDocument();
       expectDomainTraffic(3, [write]);
-      expect(confirmSpy).toHaveBeenCalledTimes(method === "DELETE" ? 1 : 0);
+      expect(Boolean(asked)).toBe(method === "DELETE");
     });
   });
 });

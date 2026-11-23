@@ -1,6 +1,7 @@
 import { Loader2 } from "lucide-react";
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 
+import { BusyLabel } from "@/components/ui/busy-label";
 import { cn } from "@/lib/cn";
 
 /**
@@ -26,7 +27,7 @@ const variantClass: Record<ButtonVariant, string> = {
   // Sem classe global: fundo transparente que só ganha cor no hover. A única
   // variante que traz a própria transição (as outras vêm do CSS global).
   ghost:
-    "border border-transparent bg-transparent text-[var(--color-ink-soft)] transition-colors duration-200 hover:bg-[var(--color-surface-soft)] hover:text-[var(--color-ink)]",
+    "border border-transparent bg-transparent text-[var(--color-ink-soft)] transition-colors hover:bg-[var(--color-surface-soft)] hover:text-[var(--color-ink)]",
 };
 
 const sizeClass: Record<ButtonSize, string> = {
@@ -37,9 +38,11 @@ const sizeClass: Record<ButtonSize, string> = {
 };
 
 // Sem `transition` aqui: a utility (150ms) vencia a camada components e
-// brigava com o afundar de 120ms / soltar de 180ms do CSS global.
+// brigava com o afundar de 120ms / soltar de 180ms do CSS global. Os 60% de
+// desligado valem para o ghost; as outras variantes já os recebem da regra
+// central do globals.css.
 const base =
-  "inline-flex items-center justify-center gap-2 rounded-md font-semibold disabled:cursor-not-allowed disabled:opacity-50";
+  "inline-flex items-center justify-center gap-2 rounded-md font-semibold disabled:cursor-not-allowed disabled:opacity-60";
 
 /**
  * A forma em texto, para quem precisa de <Link> vestido de botão — 40 arquivos
@@ -62,6 +65,12 @@ export type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   icon?: ReactNode;
   /** Carregando: o spinner toma o lugar do ícone e o botão trava. */
   loading?: boolean;
+  /**
+   * Rótulo da espera ("Saving..."), escrito ao lado do spinner enquanto
+   * `loading`. Com ele, os dois rótulos (e o lugar do spinner) ficam
+   * reservados na mesma célula: o botão tem sempre a mesma largura.
+   */
+  busyLabel?: ReactNode;
 };
 
 export function Button({
@@ -70,12 +79,16 @@ export function Button({
   fullWidth = false,
   icon,
   loading = false,
+  busyLabel,
   disabled,
   className,
   children,
   type = "button",
   ...rest
 }: ButtonProps) {
+  const spinner = (
+    <Loader2 aria-hidden="true" size={16} strokeWidth={2.2} className="shrink-0 motion-safe:animate-spin" />
+  );
   return (
     <button
       // Sem type explícito, todo botão dentro de <form> envia o formulário.
@@ -85,12 +98,30 @@ export function Button({
       aria-busy={loading || undefined}
       {...rest}
     >
-      {loading ? (
-        <Loader2 aria-hidden="true" size={16} strokeWidth={2.2} className="shrink-0 animate-spin" />
+      {busyLabel === undefined ? (
+        <>
+          {loading ? spinner : icon}
+          {children}
+        </>
       ) : (
-        icon
+        // O spinner mora na face da espera: invisível em repouso, mas já
+        // ocupando o lugar, então aparecer não alarga o botão.
+        <BusyLabel
+          busy={loading}
+          idle={
+            <>
+              {icon}
+              {children}
+            </>
+          }
+          busyText={
+            <>
+              {spinner}
+              {busyLabel}
+            </>
+          }
+        />
       )}
-      {children}
     </button>
   );
 }

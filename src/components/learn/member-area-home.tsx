@@ -1,6 +1,6 @@
 "use client";
 
-import { Lock, PlayCircle } from "lucide-react";
+import { Lock, MessagesSquare, PlayCircle } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -8,15 +8,24 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { CourseCover } from "@/components/learn/course-unlock-modal";
 import { MemberAreaShell, type MemberAreaBrand } from "@/components/learn/member-area-shell";
+import { ProgressBar } from "@/components/ui/progress-bar";
 import { classroomTabHref } from "@/domain/classroom-tabs";
 import {
+  getMemberAreaCommunity,
   getMemberAreaHome,
   memberAreaCoverUrl,
+  memberAreaRoutePath,
+  rememberMemberAreaTheme,
+  rememberedMemberAreaTheme,
+  type MemberAreaCommunity,
   type MemberAreaHome,
   type MemberAreaLockedProduct,
 } from "@/lib/data/member-areas";
 
-type State = { status: "loading" } | { status: "error" } | { status: "ready"; home: MemberAreaHome };
+type State =
+  | { status: "loading" }
+  | { status: "error" }
+  | { status: "ready"; home: MemberAreaHome; community: MemberAreaCommunity | null };
 
 const cardClass =
   "group flex min-w-0 flex-col overflow-hidden rounded-lg border border-[var(--ma-line)] bg-[var(--ma-surface)] shadow-[var(--ma-shadow)]";
@@ -56,8 +65,45 @@ function priceLabel(
   }
 }
 
-/** /learn/areas/[criador]: a área do criador para o aluno. Não libera aula: cada produto abre a própria sala. */
-export function MemberAreaHomeView({ areaRef, brand = null }: { areaRef: string; brand?: MemberAreaBrand | null }) {
+// Esqueleto no formato da área pronta: capa com título e três cartões. Antes
+// era uma frase solta, e a página inteira se montava de uma vez. A cor do osso
+// segue o tema quando ele já é conhecido (--ma-line) e cai no cinza da
+// plataforma na moldura neutra.
+const bone = "animate-pulse rounded-lg bg-[var(--ma-line,var(--color-surface-strong))]";
+
+export function MemberAreaHomeSkeleton({ label }: { label: string }) {
+  return (
+    <div className="grid gap-8">
+      <p role="status" className="sr-only">{label}</p>
+      <div aria-hidden="true" className="grid gap-3">
+        <div className={`aspect-video max-h-[min(40svh,22rem)] w-full ${bone}`} />
+        <div className={`h-9 w-2/3 max-w-sm ${bone}`} />
+      </div>
+      <div aria-hidden="true" className="grid gap-3">
+        <div className={`h-6 w-40 ${bone}`} />
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {[0, 1, 2].map((item) => (
+            <div key={item} className={`aspect-[4/3] ${bone}`} />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * /learn/areas/[criador] (e /[area] numa extra): a área do criador para o
+ * aluno. Não libera aula: cada produto abre a própria sala.
+ */
+export function MemberAreaHomeView({
+  areaRef,
+  slug = null,
+  brand = null,
+}: {
+  areaRef: string;
+  slug?: string | null;
+  brand?: MemberAreaBrand | null;
+}) {
   const { t, locale } = useTranslation();
   const router = useRouter();
   const [state, setState] = useState<State>({ status: "loading" });
@@ -65,14 +111,16 @@ export function MemberAreaHomeView({ areaRef, brand = null }: { areaRef: string;
 
   useEffect(() => {
     let cancelled = false;
-    getMemberAreaHome(areaRef)
-      .then((home) => {
+    // A comunidade da área é um extra: se ela falhar, a área abre sem o cartão.
+    Promise.all([getMemberAreaHome(areaRef, slug), getMemberAreaCommunity(areaRef, slug).catch(() => null)])
+      .then(([home, community]) => {
         if (cancelled) return;
         if (!home) {
           router.replace(memberAreaStorefrontPath(areaRef));
           return;
         }
-        setState({ status: "ready", home });
+        rememberMemberAreaTheme(areaRef, slug, home.area.theme);
+        setState({ status: "ready", home, community });
       })
       .catch(() => {
         if (!cancelled) setState({ status: "error" });
@@ -80,14 +128,17 @@ export function MemberAreaHomeView({ areaRef, brand = null }: { areaRef: string;
     return () => {
       cancelled = true;
     };
-  }, [areaRef, retryKey, router]);
+  }, [areaRef, slug, retryKey, router]);
 
   if (state.status !== "ready") {
+    // O tema só chega com a leitura: até lá vale o último visto nesta área, ou
+    // a moldura neutra (null). O erro mantém o claro padrão de antes.
+    const remembered = rememberedMemberAreaTheme(areaRef, slug);
     return (
-      <MemberAreaShell brand={brand}>
+      <MemberAreaShell brand={brand} theme={state.status === "loading" ? remembered : remembered ?? undefined}>
         <div className="px-4 md:px-0">
           {state.status === "loading" ? (
-            <p role="status" className="text-sm text-[var(--ma-ink-soft)]">{t("learn.memberArea.loading")}</p>
+            <MemberAreaHomeSkeleton label={t("learn.memberArea.loading")} />
           ) : (
             <div role="alert" className="grid justify-items-start gap-3">
               <p className="text-sm text-[var(--ma-ink)]">{t("learn.memberArea.loadError")}</p>
@@ -109,6 +160,7 @@ export function MemberAreaHomeView({ areaRef, brand = null }: { areaRef: string;
   }
 
   const { area, continueWatching, myProducts, moreProducts } = state.home;
+  const { community } = state;
   const areaName = area.name ?? area.creatorName ?? "";
   const priceLabels = {
     free: t("learn.memberArea.free"),
@@ -122,7 +174,7 @@ export function MemberAreaHomeView({ areaRef, brand = null }: { areaRef: string;
         {area.isOwnerPreview ? (
           <p className="rounded-md border border-[var(--ma-line)] bg-[var(--ma-surface-2)] px-4 py-3 text-sm text-[var(--ma-ink-soft)]">
             {t("learn.memberArea.ownerPreview")}{" "}
-            <Link href="/teach/member-area" className="font-semibold text-[var(--ma-accent)] underline-offset-2 hover:underline">
+            <Link href="/teach/member-area" className="font-semibold text-[var(--ma-accent-ink)]! underline-offset-2 hover:underline">
               {t("learn.memberArea.editArea")}
             </Link>
           </p>
@@ -150,11 +202,35 @@ export function MemberAreaHomeView({ areaRef, brand = null }: { areaRef: string;
           </div>
         </header>
 
-        <section aria-labelledby="area-continue-title" className="grid gap-3">
-          <h2 id="area-continue-title" className="text-xl font-semibold text-[var(--ma-ink)]">
-            {t("learn.memberArea.continueTitle")}
-          </h2>
-          {continueWatching ? (
+        {community ? (
+          <Link
+            href={`${memberAreaRoutePath(areaRef, slug)}/community`}
+            className="flex min-w-0 items-center gap-4 rounded-lg border border-[var(--ma-line)] bg-[var(--ma-surface)] p-4 hover:border-[var(--ma-accent)]"
+          >
+            <MessagesSquare aria-hidden="true" size={32} className="shrink-0 text-[var(--ma-accent)]" />
+            <span className="min-w-0">
+              <span className="block truncate text-base font-semibold text-[var(--ma-ink)]">
+                {t("learn.memberArea.communityTitle")}
+              </span>
+              <span className="block truncate text-sm text-[var(--ma-ink-soft)]">
+                {t("learn.memberArea.communityBody").replace("{name}", () => area.creatorName ?? areaName)}
+              </span>
+            </span>
+            {/* Texto de 14px: --ma-accent é fundo de botão (2,9:1 num curso
+                escuro); o texto de destaque legível é --ma-accent-ink. */}
+            <span className="ml-auto hidden shrink-0 text-sm font-semibold text-[var(--ma-accent-ink)] sm:inline">
+              {t("learn.memberArea.communityOpen")}
+            </span>
+          </Link>
+        ) : null}
+
+        {/* Seção vazia some: título e "nada aqui" embaixo eram uma seção
+            inteira sem conteúdo. Só "My products" fica com o aviso de vazio. */}
+        {continueWatching ? (
+          <section aria-labelledby="area-continue-title" className="grid gap-3">
+            <h2 id="area-continue-title" className="text-xl font-semibold text-[var(--ma-ink)]">
+              {t("learn.memberArea.continueTitle")}
+            </h2>
             <Link
               href={classroomTabHref(classroomPath(continueWatching.courseId), "lesson", continueWatching.lessonId)}
               className="flex min-w-0 items-center gap-4 rounded-lg border border-[var(--ma-line)] bg-[var(--ma-surface)] p-4 hover:border-[var(--ma-accent)]"
@@ -172,10 +248,8 @@ export function MemberAreaHomeView({ areaRef, brand = null }: { areaRef: string;
                 </span>
               </span>
             </Link>
-          ) : (
-            <p className="text-sm text-[var(--ma-ink-soft)]">{t("learn.memberArea.continueEmpty")}</p>
-          )}
-        </section>
+          </section>
+        ) : null}
 
         <section aria-labelledby="area-mine-title" className="grid gap-3">
           <h2 id="area-mine-title" className="text-xl font-semibold text-[var(--ma-ink)]">
@@ -195,14 +269,21 @@ export function MemberAreaHomeView({ areaRef, brand = null }: { areaRef: string;
                       <CourseCover course={{ coverImageUrl: product.coverImageUrl, title: product.title }} sizes="(max-width: 640px) 100vw, 33vw" />
                     </span>
                     <span className="grid gap-2 p-4">
-                      <span className="line-clamp-2 break-words text-base font-semibold text-[var(--ma-ink)]">{product.title}</span>
-                      <span className="h-1.5 overflow-hidden rounded-full bg-[var(--ma-surface-2)]" aria-hidden="true">
-                        <span
-                          className="block h-full rounded-full bg-[var(--ma-accent)]"
-                          style={{ width: `${Math.max(0, Math.min(100, product.progressPercent))}%` }}
-                        />
+                      <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--ma-ink-soft)]">
+                        {t(`courseCreation.types.${product.productFormat ?? "course"}.label`)}
                       </span>
-                      <span className="text-xs text-[var(--ma-ink-soft)]">
+                      <span className="line-clamp-2 break-words text-base font-semibold text-[var(--ma-ink)]">{product.title}</span>
+                      {/* A barra da casa (ui/progress-bar), nas cores da área, e
+                          anunciada como barra. O número escrito embaixo é o
+                          mesmo rótulo dela: fica fora da árvore para o nome do
+                          cartão não dizer o progresso duas vezes. */}
+                      <ProgressBar
+                        value={product.progressPercent}
+                        label={t("learn.memberArea.progress").replace("{percent}", () => String(Math.round(product.progressPercent)))}
+                        className="bg-[var(--ma-surface-2)]"
+                        fillClassName="bg-[var(--ma-accent)]"
+                      />
+                      <span aria-hidden="true" className="text-xs text-[var(--ma-ink-soft)]">
                         {t("learn.memberArea.progress").replace("{percent}", () => String(Math.round(product.progressPercent)))}
                       </span>
                     </span>
@@ -213,15 +294,11 @@ export function MemberAreaHomeView({ areaRef, brand = null }: { areaRef: string;
           )}
         </section>
 
-        <section aria-labelledby="area-more-title" className="grid gap-3">
-          <h2 id="area-more-title" className="text-xl font-semibold text-[var(--ma-ink)]">
-            {t("learn.memberArea.moreProducts")}
-          </h2>
-          {moreProducts.length === 0 ? (
-            <p className="text-sm text-[var(--ma-ink-soft)]">
-              {t(myProducts.length > 0 ? "learn.memberArea.moreProductsEmpty" : "learn.memberArea.moreProductsNone")}
-            </p>
-          ) : (
+        {moreProducts.length > 0 ? (
+          <section aria-labelledby="area-more-title" className="grid gap-3">
+            <h2 id="area-more-title" className="text-xl font-semibold text-[var(--ma-ink)]">
+              {t("learn.memberArea.moreProducts")}
+            </h2>
             <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {moreProducts.map((product) => {
                 const price = priceLabel(product, locale, priceLabels);
@@ -242,7 +319,7 @@ export function MemberAreaHomeView({ areaRef, brand = null }: { areaRef: string;
                       </span>
                       <Link
                         href={`/courses/${encodeURIComponent(product.salesKey)}`}
-                        className={`${actionClass} bg-[var(--ma-accent)] text-[var(--ma-on-accent)] hover:bg-[var(--ma-accent-hover)]`}
+                        className={`${actionClass} bg-[var(--ma-accent)] text-[var(--ma-on-accent)]! hover:bg-[var(--ma-accent-hover)]`}
                       >
                         {t("learn.memberArea.viewProduct")}
                       </Link>
@@ -251,8 +328,8 @@ export function MemberAreaHomeView({ areaRef, brand = null }: { areaRef: string;
                 );
               })}
             </ul>
-          )}
-        </section>
+          </section>
+        ) : null}
       </div>
     </MemberAreaShell>
   );

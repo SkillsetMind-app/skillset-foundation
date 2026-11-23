@@ -173,7 +173,7 @@ describe("caixa de entrada da comunidade (professor)", () => {
 
     const card = screen.getByRole("article", { name: "How do you set a real deadline?" });
     fireEvent.click(within(card).getByRole("button", { name: "Answer" }));
-    fireEvent.change(within(card).getByPlaceholderText("Write the answer here…"), {
+    fireEvent.change(within(card).getByPlaceholderText("Write the answer here..."), {
       target: { value: "Show the constraint, not the pressure." },
     });
     fireEvent.click(within(card).getByRole("button", { name: "Post answer" }));
@@ -192,7 +192,7 @@ describe("caixa de entrada da comunidade (professor)", () => {
     const card = screen.getByRole("article", { name: "How do you set a real deadline?" });
     fireEvent.click(within(card).getByRole("button", { name: "Answer" }));
     fireEvent.click(within(card).getByRole("checkbox", { name: /Mark as the answer/ }));
-    fireEvent.change(within(card).getByPlaceholderText("Write the answer here…"), {
+    fireEvent.change(within(card).getByPlaceholderText("Write the answer here..."), {
       target: { value: "Can you share the campaign first?" },
     });
     fireEvent.click(within(card).getByRole("button", { name: "Post answer" }));
@@ -248,7 +248,7 @@ describe("caixa de entrada da comunidade (professor)", () => {
 
     const card = screen.getByRole("article", { name: "How do you set a real deadline?" });
     fireEvent.click(within(card).getByRole("button", { name: "Answer" }));
-    fireEvent.change(within(card).getByPlaceholderText("Write the answer here…"), {
+    fireEvent.change(within(card).getByPlaceholderText("Write the answer here..."), {
       target: { value: "Show the constraint, not the pressure." },
     });
     fireEvent.click(within(card).getByRole("button", { name: "Post answer" }));
@@ -354,7 +354,7 @@ describe("'All posts': o professor modera a propria comunidade", () => {
     expect(deleteCommunityComment).toHaveBeenCalledExactlyOnceWith("c-student");
     expect(within(drawer).getByText("No replies yet. Be the first.")).toBeInTheDocument();
 
-    fireEvent.click(within(drawer).getByRole("button", { name: "Back to feed" }));
+    fireEvent.click(within(drawer).getByRole("button", { name: "Close" }));
     expect(screen.queryByRole("dialog")).toBeNull();
   });
 });

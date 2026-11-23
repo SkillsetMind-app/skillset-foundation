@@ -7,8 +7,11 @@ import type { Lesson } from "@/domain/learning";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 
 const COUNTDOWN_SECONDS = 5;
-/** Tem que bater com a transição de `.member-next-lesson.is-leaving`. */
-const EXIT_MS = 250;
+/** O aviso entra na região viva um instante DEPOIS de ela existir. */
+const ANNOUNCE_DELAY_MS = 50;
+/** Tem que bater com a transição de `.member-next-lesson.is-leaving`
+ *  (--duration-base, o tempo padrão do sistema). */
+const EXIT_MS = 180;
 
 // O cartão "Próxima aula" que sobe sobre o vídeo quando ele termina.
 //
@@ -37,6 +40,14 @@ export function NextLessonCard({
   const { t } = useTranslation();
   const [secondsLeft, setSecondsLeft] = useState(COUNTDOWN_SECONDS);
   const [leaving, setLeaving] = useState(false);
+  // Região viva que já nasce com o texto muitas vezes não é lida (NVDA/JAWS
+  // anunciam MUDANÇAS): ela monta vazia e o texto chega 50ms depois. Timer
+  // próprio, fora da contagem e da navegação.
+  const [announced, setAnnounced] = useState(false);
+  useEffect(() => {
+    const timer = window.setTimeout(() => setAnnounced(true), ANNOUNCE_DELAY_MS);
+    return () => window.clearTimeout(timer);
+  }, []);
 
   // Saindo: a contagem para (senão o cartão em queda ainda trocaria de aula) e
   // o pai só desmonta quando a animação termina.
@@ -68,35 +79,53 @@ export function NextLessonCard({
 
   const progress = 1 - secondsLeft / COUNTDOWN_SECONDS;
 
+  // Aviso para leitor de tela: UMA vez, quando o cartão aparece. Antes o cartão
+  // inteiro era aria-live e o número mudava a cada segundo, então o leitor
+  // relia o cartão cinco vezes. O texto usa a contagem inicial (constante),
+  // não `secondsLeft`, para não mudar a cada tique; a contagem visível fica
+  // fora da árvore de acessibilidade.
+  const announcement = t("learn.classroom.nextLesson.announce")
+    .replace("{seconds}", () => String(COUNTDOWN_SECONDS))
+    .replace("{title}", () => lesson.title);
+
+  // Região rotulada, não diálogo: o cartão não prende o foco nem bloqueia o
+  // vídeo, e "dialog" prometia ao leitor de tela uma janela que não existe.
   return (
     <div
-      role="dialog"
+      role="region"
       aria-label={t("learn.classroom.nextLesson.title")}
-      aria-live="polite"
       className={`member-next-lesson ${leaving ? "is-leaving" : ""} absolute inset-x-3 bottom-3 z-10 flex items-center gap-3 rounded-lg bg-[rgba(15,39,68,0.92)] p-3 text-white shadow-[0_18px_36px_rgba(15,39,68,0.35)] backdrop-blur sm:inset-x-auto sm:right-3 sm:max-w-[360px]`}
     >
       <div
         aria-hidden="true"
         className="member-next-lesson__ring grid size-10 shrink-0 place-items-center rounded-full text-sm font-bold tabular-nums"
         style={{
-          background: `conic-gradient(var(--color-accent) ${Math.round(progress * 360)}deg, rgba(255,255,255,0.18) 0deg)`,
+          background: `conic-gradient(var(--ma-accent, var(--color-accent)) ${Math.round(progress * 360)}deg, rgba(255,255,255,0.18) 0deg)`,
         }}
       >
         <span className="grid size-8 place-items-center rounded-full bg-[rgba(15,39,68,0.95)]">
           {secondsLeft}
         </span>
       </div>
+      <p className="sr-only" role="status">
+        {announced ? announcement : ""}
+      </p>
       <div className="min-w-0 flex-1">
-        <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/60">
-          {t("learn.classroom.nextLesson.countdown").replace("{seconds}", () => String(secondsLeft))}
+        {/* A contagem fica só no anel; aqui, "Next lesson" parado (o mesmo
+            nome da região, por isso fora da árvore de acessibilidade). */}
+        <p aria-hidden="true" className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/70">
+          {t("learn.classroom.nextLesson.title")}
         </p>
         <p className="truncate text-sm font-semibold">{lesson.title}</p>
       </div>
       <div className="flex shrink-0 items-center gap-1.5">
+        {/* button-solid: na sala ele pinta com a cor do curso e o texto que
+            ela pede (--ma-accent / --ma-on-accent). O dourado da plataforma
+            com texto branco dava 2.56:1. */}
         <button
           type="button"
           onClick={onPlay}
-          className="inline-flex min-h-11 items-center gap-1.5 rounded-md bg-[var(--color-accent)] px-3 text-xs font-bold text-white"
+          className="button-solid inline-flex min-h-11 items-center gap-1.5 px-3 text-xs font-bold"
         >
           <Play aria-hidden="true" size={14} strokeWidth={2.5} />
           {t("learn.classroom.nextLesson.watch")}

@@ -5,6 +5,7 @@ import { buildPageMetadata } from "@/lib/seo/page-metadata";
 const copy = "promiseChangelog";
 // Newest first. `{date}` in a line becomes the entry's own date.
 const entries = [
+  { date: "2026-11-13", title: "change5Title", lines: ["change5WhatChanged", "change5Why", "change5Effective"] },
   { date: "2026-10-06", title: "change4Title", lines: ["change4WhatChanged", "change4Why", "change4Effective"] },
   { date: "2026-10-06", title: "change3Title", lines: ["change3WhatChanged", "change3Why", "change3Effective"] },
   { date: "2026-09-15", title: "change2Title", lines: ["change2WhatChanged", "change2Why", "change2Effective"] },
@@ -41,9 +42,12 @@ export default async function PromiseChangelogPage() {
         {entries.map((entry) => {
           const effectiveAt = dateFormat.format(new Date(`${entry.date}T00:00:00Z`));
           return (
-            <div key={entry.title} className="mt-8 rounded-lg border border-[var(--color-line)] bg-white p-5">
+            // Uma linha por mudança, separadas por um filete: era um cartão
+            // com borda dentro do cartão da página.
+            <div key={entry.title} className="mt-8 border-t border-[var(--color-line)] pt-6">
+              {/* S-25: a data por extenso, como no cabeçalho, e não a ISO crua. */}
               <p className="text-sm font-bold text-[var(--color-ink)]">
-                {entry.date} — {t(`${copy}.${entry.title}`)}
+                {effectiveAt} — {t(`${copy}.${entry.title}`)}
               </p>
               <div className="mt-4 grid gap-2 text-sm leading-7 text-[var(--color-ink-soft)]">
                 {entry.lines.map((line) => (
@@ -54,22 +58,6 @@ export default async function PromiseChangelogPage() {
           );
         })}
 
-        <div className="mt-8 rounded-lg border border-dashed border-[var(--color-line-strong)] bg-[var(--color-surface-soft)] p-5">
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
-            {t(`${copy}.futureFormat`)}
-          </p>
-          <div className="mt-4 grid gap-2 text-sm leading-7 text-[var(--color-ink-soft)]">
-            <p>
-              <strong className="text-[var(--color-ink)]">
-                YYYY-MM-DD — {t(`${copy}.futureTitle`)}
-              </strong>
-            </p>
-            <p>{t(`${copy}.futureChange`)}</p>
-            <p>{t(`${copy}.futureWhy`)}</p>
-            <p>{t(`${copy}.futureNew`)}</p>
-            <p>{t(`${copy}.futureExisting`)}</p>
-          </div>
-        </div>
       </section>
     </PublicPage>
   );

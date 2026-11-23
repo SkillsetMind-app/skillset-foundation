@@ -5,9 +5,12 @@ const mocks = vi.hoisted(() => ({
   getStripe: vi.fn(),
   isStripeConfigured: vi.fn(() => true),
   reversalCreate: vi.fn(),
+  refundCreate: vi.fn(),
   subscriptionRetrieve: vi.fn(),
   subscriptionCancel: vi.fn(),
   paymentIntentRetrieve: vi.fn(),
+  invoicePaymentsList: vi.fn(),
+  invoiceRetrieve: vi.fn(),
   disputesList: vi.fn(),
   notifyOps: vi.fn(),
 }));
@@ -35,6 +38,7 @@ type FailurePoint =
   | "orders.update"
   | "fulfill_paid_course_access"
   | "payout_ledger.insert"
+  | "checkout_locks.delete"
   | "course_subscriptions.update"
   | "certificates.update";
 
@@ -77,6 +81,15 @@ type AdminState = {
   enrollmentInserts: Array<Record<string, unknown>>;
   planSubscriptions: Array<Record<string, unknown>>;
   orderRow: Record<string, unknown>;
+  couponReservation?: "reserved" | "released" | "redeemed";
+  checkoutLock?: { lock_key: string; order_id: string } | null;
+  afterCheckoutLockRead?: () => void;
+  // Outra transacao commita depois da leitura do handler e antes de a RPC
+  // atomica (close_unpaid_course_order/settle_paid_course_order) travar o pedido.
+  beforeOrderTransaction?: () => void;
+  // Quantas reservas viraram 'redeemed' (o redeemed_count do cupom).
+  couponRedemptions: number;
+  saleRows?: Record<string, Array<Record<string, unknown>>>;
   paymentWrites: Array<Record<string, unknown>>;
   orderWrites: Array<Record<string, unknown>>;
   // payout_ledger ids written in checkout mode, so a redelivery meets the
@@ -139,6 +152,7 @@ function createAdmin(
     },
     paymentWrites: [],
     orderWrites: [],
+    couponRedemptions: 0,
     ledgerIds: new Set(),
     certificate: { enrollment_id: "user_1__course_1", status: "issued" },
     certificateWrites: 0,
@@ -149,6 +163,7 @@ function createAdmin(
       "select";
     private values: Record<string, unknown> = {};
     private filters: Filter[] = [];
+    private ignoreDuplicates = false;
 
     constructor(private readonly table: string) {}
 
@@ -156,9 +171,10 @@ function createAdmin(
       return this;
     }
 
-    upsert(values: Record<string, unknown>) {
+    upsert(values: Record<string, unknown>, options?: { ignoreDuplicates?: boolean }) {
       this.operation = "upsert";
       this.values = values;
+      this.ignoreDuplicates = Boolean(options?.ignoreDuplicates);
       return this;
     }
 
@@ -232,10 +248,22 @@ function createAdmin(
           return {
             data:
               this.operation === "upsert"
-                ? [{ stripe_event_id: eventId }]
+                ? state.saleRows && state.doneEvents.has(eventId) ? [] : [{ stripe_event_id: eventId }]
                 : null,
             error: null,
           };
+        }
+
+        const rows = state.saleRows?.[this.table];
+        if (rows) {
+          if (this.operation === "update") {
+            rows.filter((row) => this.filters.every(({ column, value }) => row[column] === value))
+              .forEach((row) => Object.assign(row, this.values));
+          } else if (this.operation === "insert" || this.operation === "upsert") {
+            const existing = rows.find((row) => row.id === this.values.id);
+            if (!existing) rows.push({ ...this.values });
+            else if (!this.ignoreDuplicates) Object.assign(existing, this.values);
+          }
         }
 
         if (
@@ -253,6 +281,14 @@ function createAdmin(
             .filter(({ column }) => column === "source" || column === "subscription_id")
             .every(({ column, value }) => state.enrollmentRow?.[column] === value);
           if (matches) {
+            // Modelo do trigger SQL; atomicidade real e provada no smoke SQL.
+            if (this.values.status === "refunded" && state.certificate.status === "issued") {
+              if (state.failAt === "certificates.update") {
+                return { data: null, error: { message: "forced certificate trigger failure" } };
+              }
+              Object.assign(state.certificate, { status: "refund_revoked" });
+              state.certificateWrites += 1;
+            }
             state.enrollmentUpdates.push({ ...this.values, id: this.filterValue("id") });
             if (state.enrollmentRow) Object.assign(state.enrollmentRow, this.values);
           }
@@ -277,6 +313,12 @@ function createAdmin(
 
         if (this.table === "payments") state.paymentWrites.push({ ...this.values });
         if (this.table === "orders") state.orderWrites.push({ ...this.values });
+        if (this.table === "checkout_locks" && this.operation === "delete" && state.checkoutLock) {
+          const row: Record<string, unknown> = state.checkoutLock;
+          if (this.filters.every(({ column, value }) => row[column] === value)) {
+            state.checkoutLock = null;
+          }
+        }
 
         if (this.table === "subscriptions" && this.operation === "upsert") {
           const existing = state.planSubscriptions.find((row) => row.id === this.values.id);
@@ -306,6 +348,19 @@ function createAdmin(
       }
 
       let data: Record<string, unknown> | null = null;
+      if (state.saleRows && this.table === "processed_stripe_events") {
+        return {
+          data: { status: state.doneEvents.has(String(this.filterValue("stripe_event_id"))) ? "done" : "failed" },
+          error: null,
+        };
+      }
+      const rows = state.saleRows?.[this.table];
+      if (rows) {
+        const matches = rows.filter((row) => this.filters.every(({ column, value }) => row[column] === value));
+        // A SELECT response is a snapshot, not a reference to a later committed row.
+        const snapshots = matches.map((row) => ({ ...row }));
+        return { data: single ? snapshots[0] ?? null : snapshots, error: null };
+      }
       if (this.table === "subscriptions") {
         const statuses = this.filterValue("status") as unknown[] | undefined;
         return {
@@ -317,6 +372,13 @@ function createAdmin(
       }
       if (this.table === "orders") {
         data = this.filterValue("id") === state.orderRow.id ? { ...state.orderRow } : null;
+      } else if (this.table === "checkout_locks") {
+        data = state.checkoutLock && this.filterValue("lock_key") === state.checkoutLock.lock_key
+          ? { ...state.checkoutLock } : null;
+        // A new attempt can claim the key after this snapshot, before DELETE.
+        const afterRead = state.afterCheckoutLockRead;
+        state.afterCheckoutLockRead = undefined;
+        afterRead?.();
       } else if (this.table === "courses") {
         data = {
           id: "course_1",
@@ -357,15 +419,116 @@ function createAdmin(
     }
   }
 
+  type RpcResult = { data: unknown; error: { message: string } | null };
+
+  // O pedido commitado que a RPC trava: a linha persistida quando ha saleRows.
+  function committedOrder(id: unknown): Record<string, unknown> | null {
+    const rows = state.saleRows?.orders;
+    if (rows) return rows.find((row) => row.id === id) ?? null;
+    return state.orderRow.id === id ? state.orderRow : null;
+  }
+
+  // A mesma amarracao que as duas RPCs conferem na linha travada.
+  function lockedOrderMatches(row: Record<string, unknown>, args: Record<string, unknown>): boolean {
+    const saved = row.teacher_stripe_connected_account_id;
+    const accountMatches = row.payout_model === "direct_charge"
+      ? typeof saved === "string" && saved !== "" && args.p_connected_account_id === saved
+      : (row.payout_model === "separate_charges_and_transfers" || row.payout_model === "destination_charge")
+        && args.p_connected_account_id === null;
+    return typeof row.checkout_session_id === "string" && row.checkout_session_id !== ""
+      && row.checkout_session_id === args.p_session_id && accountMatches;
+  }
+
+  // Cada RPC e uma transacao inteira: decide sobre a linha fresca e grava tudo
+  // ou nada. Falha forcada no meio devolve erro sem nenhum efeito.
+  function closeUnpaidOrder(args: Record<string, unknown>): RpcResult {
+    const row = committedOrder(args.p_order_id);
+    if (!row) return { data: "missing", error: null };
+    if (!lockedOrderMatches(row, args)) return { data: null, error: { message: "CHECKOUT_ORDER_MISMATCH" } };
+    if (!["pending", "failed", "cancelled"].includes(String(row.status))) return { data: "settled", error: null };
+    if (state.couponReservation === "redeemed") return { data: "settling", error: null };
+    if (state.failAt === "checkout_locks.delete" || state.failAt === "orders.update") {
+      return { data: null, error: { message: `forced ${state.failAt} failure` } };
+    }
+    if (state.couponReservation === "reserved") state.couponReservation = "released";
+    const lock = state.checkoutLock;
+    if (lock && lock.lock_key === `${row.user_id}__${row.course_id}` && lock.order_id === row.id) {
+      state.checkoutLock = null;
+    }
+    const write = { status: args.p_status, updated_at: new Date().toISOString() };
+    Object.assign(row, write);
+    state.orderWrites.push({ ...write });
+    return { data: "closed", error: null };
+  }
+
+  function settlePaidOrder(args: Record<string, unknown>): RpcResult {
+    const row = committedOrder(args.p_order_id);
+    if (!row) return { data: null, error: { message: "CHECKOUT_ORDER_NOT_FOUND" } };
+    if (!lockedOrderMatches(row, args)) return { data: null, error: { message: "CHECKOUT_ORDER_MISMATCH" } };
+    if (row.status === "refunded" || row.status === "partially_refunded") return { data: "refunded", error: null };
+    if (row.status === "paid") {
+      const saved = row.payment_intent_id;
+      if (typeof saved === "string" && saved !== "" && saved !== args.p_payment_intent_id) {
+        return { data: null, error: { message: "ORDER_PAYMENT_CONFLICT" } };
+      }
+      return { data: "paid", error: null };
+    }
+    if (row.status === "failed" || row.status === "cancelled") return { data: "closed", error: null };
+    if (row.status !== "pending") return { data: null, error: { message: "ORDER_STATUS_UNEXPECTED" } };
+    // Mirror the SQL guard: a released reservation cannot be redeemed.
+    if (state.couponReservation === "released") {
+      return { data: null, error: { message: "COUPON_RESERVATION_RELEASED" } };
+    }
+    if (state.failAt === "orders.update") return { data: null, error: { message: "forced orders.update failure" } };
+    if (state.couponReservation === "reserved") {
+      state.couponReservation = "redeemed";
+      state.couponRedemptions += 1;
+    }
+    const ts = new Date().toISOString();
+    const write = {
+      status: "paid",
+      checkout_session_id: args.p_session_id,
+      payment_intent_id: args.p_payment_intent_id,
+      ...(args.p_receipt_url ? { receipt_url: args.p_receipt_url } : {}),
+      paid_at: ts,
+      updated_at: ts,
+    };
+    Object.assign(row, write);
+    state.orderWrites.push({ ...write });
+    return { data: "settled", error: null };
+  }
+
   const admin = {
     from: vi.fn((table: string) => new Query(table)),
     rpc: vi.fn(async (name: string, args: Record<string, unknown>) => {
       state.rpcCalls.push({ name, args });
+      if (name === "close_unpaid_course_order" || name === "settle_paid_course_order") {
+        const concurrent = state.beforeOrderTransaction;
+        state.beforeOrderTransaction = undefined;
+        concurrent?.();
+        return name === "close_unpaid_course_order" ? closeUnpaidOrder(args) : settlePaidOrder(args);
+      }
+      if (name === "release_course_coupon_reservation" && state.couponReservation === "reserved") {
+        state.couponReservation = "released";
+      }
+      if (name === "finalize_course_coupon_reservation" && state.couponReservation) {
+        // Mirror the SQL guard: a released reservation cannot be redeemed.
+        if (state.couponReservation === "released") {
+          return { data: null, error: { message: "COUPON_RESERVATION_RELEASED" } };
+        }
+        state.couponReservation = "redeemed";
+      }
       if (name === "enforce_rate_limit" && state.authEmailLimited && args.p_key === "guest_auth_email_global") {
         return { data: null, error: { message: "RATE_LIMIT" } };
       }
       if (name === "fulfill_paid_course_access" && state.failAt === name) {
         return { data: null, error: { message: "enrollment RPC unavailable" } };
+      }
+      if (name === "fulfill_paid_course_access" && state.saleRows) {
+        state.enrollmentRow = {
+          status: "active", source: args.p_source, subscription_id: args.p_subscription_id,
+          progress_percent: 0,
+        };
       }
       if (name === "claim_payout_transfer_reversal") {
         const claimKey = String(args.p_claim_key);
@@ -644,6 +807,7 @@ describe("Stripe webhook financial integrity", () => {
     process.env.STRIPE_CONNECT_WEBHOOK_SECRET = "whsec_connect_test";
     mocks.getAdmin.mockReset();
     mocks.reversalCreate.mockReset().mockResolvedValue({ id: "trr_1" });
+    mocks.refundCreate.mockReset();
     mocks.subscriptionRetrieve.mockReset().mockResolvedValue({
       metadata: { purpose: "course_subscription" },
     });
@@ -658,6 +822,8 @@ describe("Stripe webhook financial integrity", () => {
     mocks.paymentIntentRetrieve
       .mockReset()
       .mockResolvedValue({ latest_charge: null });
+    mocks.invoicePaymentsList.mockReset().mockImplementation(async function* () {});
+    mocks.invoiceRetrieve.mockReset();
     mocks.getStripe.mockReset().mockReturnValue({
       webhooks: {
         constructEvent: (rawBody: string) => JSON.parse(rawBody),
@@ -665,9 +831,12 @@ describe("Stripe webhook financial integrity", () => {
       paymentIntents: {
         retrieve: mocks.paymentIntentRetrieve,
       },
+      invoicePayments: { list: mocks.invoicePaymentsList },
+      invoices: { retrieve: mocks.invoiceRetrieve },
       transfers: {
         createReversal: mocks.reversalCreate,
       },
+      refunds: { create: mocks.refundCreate },
       subscriptions: {
         retrieve: mocks.subscriptionRetrieve,
         cancel: mocks.subscriptionCancel,
@@ -682,6 +851,522 @@ describe("Stripe webhook financial integrity", () => {
     delete process.env.STRIPE_CONNECT_WEBHOOK_SECRET;
     vi.restoreAllMocks();
     vi.unstubAllEnvs();
+  });
+
+  describe("recoverable card declines", () => {
+    function declinedPaymentEvent() {
+      return {
+        id: "evt_card_declined",
+        type: "payment_intent.payment_failed",
+        account: "acct_teacher",
+        data: { object: {
+          id: "pi_1",
+          status: "requires_payment_method",
+          metadata: { orderId: "order_1" },
+        } },
+      };
+    }
+
+    function pendingCouponCheckout() {
+      const admin = createAdmin("checkout");
+      admin.state.couponReservation = "reserved";
+      admin.state.checkoutLock = { lock_key: "user_1__course_1", order_id: "order_1" };
+      mocks.getAdmin.mockReturnValue(admin);
+      return admin;
+    }
+
+    it("keeps the order, lock and coupon reservation when the card can be retried", async () => {
+      const admin = pendingCouponCheckout();
+
+      expect((await postEvent(declinedPaymentEvent())).status).toBe(200);
+
+      expect(admin.state.orderWrites).toEqual([]);
+      expect(admin.state.couponReservation).toBe("reserved");
+      expect(admin.state.checkoutLock?.order_id).toBe("order_1");
+      expect(admin.state.rpcCalls).not.toContainEqual(expect.objectContaining({
+        name: "release_course_coupon_reservation",
+      }));
+      expect(fulfillCalls(admin)).toHaveLength(0);
+      expect(admin.state.doneEvents.has("evt_card_declined")).toBe(true);
+    });
+
+    it("fulfills the same session once after a decline followed by successful payment", async () => {
+      const admin = pendingCouponCheckout();
+
+      expect((await postEvent(declinedPaymentEvent())).status).toBe(200);
+      expect((await postEvent(checkoutEvent())).status).toBe(200);
+      expect(admin.state.couponReservation).toBe("redeemed");
+      expect(admin.state.orderWrites).toContainEqual(expect.objectContaining({ status: "paid" }));
+      expect(fulfillCalls(admin)).toHaveLength(1);
+
+      // Out-of-order delivery of the decline must not undo a later success.
+      expect((await postEvent({ ...declinedPaymentEvent(), id: "evt_late_decline" })).status).toBe(200);
+      expect((await postEvent({ ...checkoutEvent(), id: "evt_completed_again" })).status).toBe(200);
+      expect(admin.state.couponReservation).toBe("redeemed");
+      expect(admin.state.orderWrites.every((write) => write.status === "paid")).toBe(true);
+      expect(fulfillCalls(admin)).toHaveLength(1);
+    });
+
+    it.each([
+      ["checkout.session.expired", "cancelled"],
+      ["checkout.session.async_payment_failed", "failed"],
+    ])("still releases the abandoned checkout on %s", async (type, status) => {
+      const admin = pendingCouponCheckout();
+      await postEvent(declinedPaymentEvent());
+
+      const completed = checkoutEvent();
+      const response = await postEvent({
+        ...completed,
+        id: "evt_terminal",
+        type,
+        data: { object: { ...completed.data.object, payment_status: "unpaid" } },
+      });
+
+      expect(response.status).toBe(200);
+      expect(admin.state.couponReservation).toBe("released");
+      expect(admin.state.checkoutLock).toBeNull();
+      expect(admin.state.orderWrites).toEqual([
+        expect.objectContaining({ status }),
+      ]);
+      expect(fulfillCalls(admin)).toHaveLength(0);
+    });
+  });
+
+  describe.each([
+    ["checkout.session.expired", "cancelled"],
+    ["checkout.session.async_payment_failed", "failed"],
+  ])("saved order binding for %s", (type, status) => {
+    function terminalEvent() {
+      const event = checkoutEvent();
+      event.type = type;
+      event.data.object.payment_status = "unpaid";
+      return event;
+    }
+
+    function pendingCheckout() {
+      const admin = createAdmin("checkout");
+      admin.state.couponReservation = "reserved";
+      admin.state.checkoutLock = { lock_key: "user_1__course_1", order_id: "order_1" };
+      mocks.getAdmin.mockReturnValue(admin);
+      return admin;
+    }
+
+    it.each([
+      ["another session", { checkout_session_id: "cs_other" }],
+      ["unattached session", { checkout_session_id: null }],
+      ["another account", { teacher_stripe_connected_account_id: "acct_other" }],
+      ["missing direct account", { teacher_stripe_connected_account_id: null }],
+      ["unknown payout model", { payout_model: "unknown" }],
+      ["connected event for a platform charge", { payout_model: "destination_charge" }],
+    ])("rejects %s without releasing the order, coupon or lock", async (_label, patch) => {
+      const admin = pendingCheckout();
+      Object.assign(admin.state.orderRow, patch);
+      const event = terminalEvent();
+
+      expect((await postEvent(event)).status).toBe(500);
+
+      expect(admin.state.orderWrites).toEqual([]);
+      expect(admin.state.couponReservation).toBe("reserved");
+      expect(admin.state.checkoutLock?.order_id).toBe("order_1");
+      expect(admin.state.rpcCalls).not.toContainEqual(expect.objectContaining({
+        name: "release_course_coupon_reservation",
+      }));
+      expect(admin.state.paymentWrites).toEqual([]);
+      expect(fulfillCalls(admin)).toHaveLength(0);
+      expect(admin.state.doneEvents.has(event.id)).toBe(false);
+    });
+
+    it("rejects a platform event for a direct charge", async () => {
+      const admin = pendingCheckout();
+      const event = terminalEvent();
+      delete (event as { account?: string }).account;
+
+      expect((await postEvent(event)).status).toBe(500);
+      expect(admin.state.orderWrites).toEqual([]);
+      expect(admin.state.couponReservation).toBe("reserved");
+      expect(admin.state.checkoutLock?.order_id).toBe("order_1");
+      expect(admin.state.doneEvents.has(event.id)).toBe(false);
+    });
+
+    it("does not bypass the order binding for a subscription session carrying an order ID", async () => {
+      const admin = pendingCheckout();
+      const event = terminalEvent();
+      event.data.object.mode = "subscription";
+      event.data.object.id = "cs_unrelated_subscription";
+
+      expect((await postEvent(event)).status).toBe(500);
+      expect(admin.state.orderWrites).toEqual([]);
+      expect(admin.state.couponReservation).toBe("reserved");
+      expect(admin.state.checkoutLock?.order_id).toBe("order_1");
+      expect(admin.state.doneEvents.has(event.id)).toBe(false);
+    });
+
+    it("does not require a settled amount or currency to release an unpaid session", async () => {
+      const admin = pendingCheckout();
+      Object.assign(admin.state.orderRow, { amount_minor: 20000, currency: "EUR" });
+
+      expect((await postEvent(terminalEvent())).status).toBe(200);
+      expect(admin.state.orderWrites).toEqual([expect.objectContaining({ status })]);
+      expect(admin.state.couponReservation).toBe("released");
+      expect(admin.state.checkoutLock).toBeNull();
+    });
+
+    it("retries after the server attaches the saved session", async () => {
+      const admin = pendingCheckout();
+      admin.state.orderRow.checkout_session_id = null;
+      const event = terminalEvent();
+
+      expect((await postEvent(event)).status).toBe(500);
+      expect(admin.state.couponReservation).toBe("reserved");
+      expect(admin.state.checkoutLock?.order_id).toBe("order_1");
+      expect(admin.state.doneEvents.has(event.id)).toBe(false);
+
+      admin.state.orderRow.checkout_session_id = event.data.object.id;
+      expect((await postEvent(event)).status).toBe(200);
+      expect(admin.state.orderWrites).toEqual([expect.objectContaining({ status })]);
+      expect(admin.state.couponReservation).toBe("released");
+      expect(admin.state.checkoutLock).toBeNull();
+      expect(admin.state.doneEvents.has(event.id)).toBe(true);
+    });
+
+    it.each(["separate_charges_and_transfers", "destination_charge"])(
+      "preserves a legitimate %s checkout without optional metadata", async (payoutModel) => {
+        const admin = pendingCheckout();
+        admin.state.orderRow.payout_model = payoutModel;
+        const event = terminalEvent();
+        delete (event as { account?: string }).account;
+        delete event.data.object.metadata.teacherId;
+        delete event.data.object.metadata.connectedAccountId;
+
+        expect((await postEvent(event)).status).toBe(200);
+        expect(admin.state.orderWrites).toEqual([expect.objectContaining({ status })]);
+        expect(admin.state.couponReservation).toBe("released");
+        expect(admin.state.checkoutLock).toBeNull();
+      },
+    );
+
+    it("uses the account saved on the order, not mutable account metadata", async () => {
+      const admin = pendingCheckout();
+      admin.state.orderRow.teacher_stripe_connected_account_id = "acct_original";
+      const event = terminalEvent();
+      event.account = "acct_original";
+
+      expect((await postEvent(event)).status).toBe(200);
+      expect(admin.state.orderWrites).toEqual([expect.objectContaining({ status })]);
+      expect(admin.state.couponReservation).toBe("released");
+      expect(admin.state.checkoutLock).toBeNull();
+    });
+
+    it.each(["paid", "refunded"])("preserves a saved %s order and its redeemed coupon", async (savedStatus) => {
+      const admin = pendingCheckout();
+      admin.state.orderRow.status = savedStatus;
+      admin.state.couponReservation = "redeemed";
+
+      expect((await postEvent(terminalEvent())).status).toBe(200);
+      expect(admin.state.orderWrites).toEqual([]);
+      expect(admin.state.couponReservation).toBe("redeemed");
+      expect(admin.state.rpcCalls).not.toContainEqual(expect.objectContaining({
+        name: "release_course_coupon_reservation",
+      }));
+    });
+
+    it.each(["paid", "refunded"])(
+      "preserves %s committed after the pending order was read",
+      async (settledStatus) => {
+        const admin = pendingCheckout();
+        admin.state.saleRows = { orders: [admin.state.orderRow] };
+        let concurrentCommit = false;
+        admin.state.beforeOrderTransaction = () => {
+          // Model another handler committing after this handler's pending snapshot.
+          admin.state.orderRow.status = settledStatus;
+          admin.state.couponReservation = "redeemed";
+          concurrentCommit = true;
+        };
+        const event = terminalEvent();
+
+        const response = await postEvent(event);
+
+        expect(concurrentCommit).toBe(true);
+        expect(admin.state.orderRow.status).toBe(settledStatus);
+        expect(admin.state.couponReservation).toBe("redeemed");
+        expect(admin.state.orderWrites).toEqual([]);
+        expect(admin.state.paymentWrites).toEqual([]);
+        expect(fulfillCalls(admin)).toHaveLength(0);
+        expect(response.status).toBe(200);
+        expect(admin.state.doneEvents.has(event.id)).toBe(true);
+      },
+    );
+
+    it("still closes an unchanged pending order with a persisted row", async () => {
+      const admin = pendingCheckout();
+      admin.state.saleRows = { orders: [admin.state.orderRow] };
+
+      expect((await postEvent(terminalEvent())).status).toBe(200);
+
+      expect(admin.state.orderRow.status).toBe(status);
+      expect(admin.state.couponReservation).toBe("released");
+      expect(admin.state.checkoutLock).toBeNull();
+      expect(admin.state.orderWrites).toEqual([expect.objectContaining({ status })]);
+    });
+  });
+
+  describe("checkout lock ownership at the write", () => {
+    const terminalEvents = [
+      ["checkout.session.completed", "paid"],
+      ["checkout.session.expired", "cancelled"],
+      ["checkout.session.async_payment_failed", "failed"],
+    ] as const;
+    const originalLock = { lock_key: "user_1__course_1", order_id: "order_1" };
+
+    function terminalEvent(type: string) {
+      const event = checkoutEvent();
+      return {
+        ...event,
+        type,
+        data: { object: {
+          ...event.data.object,
+          payment_status: type === "checkout.session.completed" ? "paid" : "unpaid",
+        } },
+      };
+    }
+
+    it.each(terminalEvents)("keeps a newer attempt that claims between SELECT and DELETE on %s", async (type, status) => {
+      const admin = createAdmin("checkout");
+      admin.state.checkoutLock = { ...originalLock };
+      const newerLock = { ...originalLock, order_id: "order_newer" };
+      const supersede = vi.fn(() => { admin.state.checkoutLock = { ...newerLock }; });
+      // O pago le o lock no app; o fechamento decide dentro da RPC.
+      if (type === "checkout.session.completed") admin.state.afterCheckoutLockRead = supersede;
+      else admin.state.beforeOrderTransaction = supersede;
+      mocks.getAdmin.mockReturnValue(admin);
+      const event = terminalEvent(type);
+
+      expect((await postEvent(event)).status).toBe(200);
+
+      expect(supersede).toHaveBeenCalledOnce();
+      expect(admin.state.checkoutLock).toEqual(newerLock);
+      expect(admin.state.doneEvents).toContain(event.id);
+      expect(admin.state.orderWrites).toContainEqual(expect.objectContaining({ status }));
+    });
+
+    it.each(terminalEvents)("still removes this attempt's own lock on %s", async (type) => {
+      const admin = createAdmin("checkout");
+      admin.state.checkoutLock = { ...originalLock };
+      mocks.getAdmin.mockReturnValue(admin);
+      const event = terminalEvent(type);
+
+      expect((await postEvent(event)).status).toBe(200);
+      expect(admin.state.checkoutLock).toBeNull();
+      expect(admin.state.doneEvents).toContain(event.id);
+      expect(fulfillCalls(admin)).toHaveLength(type === "checkout.session.completed" ? 1 : 0);
+      expect(admin.state.paymentWrites).toHaveLength(type === "checkout.session.completed" ? 1 : 0);
+    });
+
+    it.each([
+      { lock_key: "user_1__course_1", order_id: "order_newer" },
+      { lock_key: "user_1__course_other", order_id: "order_1" },
+    ])("keeps another lock when fulfilment already exists: %j", async (otherLock) => {
+      const admin = createAdmin("checkout");
+      admin.state.ledgerIds.add("order_1");
+      admin.state.checkoutLock = { ...otherLock };
+      mocks.getAdmin.mockReturnValue(admin);
+      const event = checkoutEvent();
+
+      expect((await postEvent(event)).status).toBe(200);
+      expect(admin.state.checkoutLock).toEqual(otherLock);
+      expect(admin.state.doneEvents).toContain(event.id);
+      expect(fulfillCalls(admin)).toHaveLength(0);
+      expect(admin.state.paymentWrites).toHaveLength(0);
+    });
+
+    it.each(terminalEvents)("retries when the matching lock cannot be deleted on %s", async (type) => {
+      const admin = createAdmin("checkout", "checkout_locks.delete");
+      admin.state.checkoutLock = { ...originalLock };
+      mocks.getAdmin.mockReturnValue(admin);
+      const event = terminalEvent(type);
+
+      expect((await postEvent(event)).status).toBe(500);
+      expect(admin.state.checkoutLock).toEqual(originalLock);
+      expect(admin.state.doneEvents).not.toContain(event.id);
+
+      expect((await postEvent(event)).status).toBe(500);
+      expect(admin.state.checkoutLock).toEqual(originalLock);
+      expect(admin.state.doneEvents).not.toContain(event.id);
+      expect(fulfillCalls(admin)).toHaveLength(type === "checkout.session.completed" ? 1 : 0);
+      expect(admin.state.paymentWrites).toHaveLength(type === "checkout.session.completed" ? 1 : 0);
+
+      admin.state.failAt = undefined;
+      expect((await postEvent(event)).status).toBe(200);
+      expect(admin.state.checkoutLock).toBeNull();
+      expect(admin.state.doneEvents).toContain(event.id);
+      expect(fulfillCalls(admin)).toHaveLength(type === "checkout.session.completed" ? 1 : 0);
+      expect(admin.state.paymentWrites).toHaveLength(type === "checkout.session.completed" ? 1 : 0);
+    });
+  });
+
+  describe("pedido avulso fecha ou liquida numa transacao so", () => {
+    const ownLock = { lock_key: "user_1__course_1", order_id: "order_1" };
+
+    function couponCheckout() {
+      const admin = createAdmin("checkout");
+      admin.state.couponReservation = "reserved";
+      admin.state.checkoutLock = { ...ownLock };
+      mocks.getAdmin.mockReturnValue(admin);
+      return admin;
+    }
+
+    function closingEvent(type: string) {
+      const event = checkoutEvent();
+      return { ...event, id: "evt_terminal", type, data: { object: { ...event.data.object, payment_status: "unpaid" } } };
+    }
+
+    it.each([
+      ["checkout.session.expired", "cancelled"],
+      ["checkout.session.async_payment_failed", "failed"],
+    ])("rolls back the coupon release and lock removal when %s fails at the last write", async (type, status) => {
+      const admin = couponCheckout();
+      admin.state.failAt = "orders.update";
+      const event = closingEvent(type);
+
+      expect((await postEvent(event)).status).toBe(500);
+      expect(admin.state.orderRow.status).toBe("pending");
+      expect(admin.state.couponReservation).toBe("reserved");
+      expect(admin.state.checkoutLock).toEqual(ownLock);
+      expect(admin.state.orderWrites).toEqual([]);
+      expect(admin.state.doneEvents.has(event.id)).toBe(false);
+
+      admin.state.failAt = undefined;
+      expect((await postEvent(event)).status).toBe(200);
+      expect(admin.state.orderRow.status).toBe(status);
+      expect(admin.state.couponReservation).toBe("released");
+      expect(admin.state.checkoutLock).toBeNull();
+    });
+
+    it.each([
+      ["checkout.session.expired", { checkout_session_id: "cs_reattached" }],
+      ["checkout.session.expired", { teacher_stripe_connected_account_id: "acct_other" }],
+      ["checkout.session.completed", { checkout_session_id: "cs_reattached" }],
+      ["checkout.session.completed", { teacher_stripe_connected_account_id: "acct_other" }],
+    ] as const)("rechecks the saved binding on the locked row for %s: %j", async (type, patch) => {
+      const admin = couponCheckout();
+      admin.state.beforeOrderTransaction = () => { Object.assign(admin.state.orderRow, patch); };
+      const event = type === "checkout.session.completed" ? checkoutEvent() : closingEvent(type);
+
+      expect((await postEvent(event)).status).toBe(500);
+      expect(admin.state.orderRow.status).toBe("pending");
+      expect(admin.state.couponReservation).toBe("reserved");
+      expect(admin.state.couponRedemptions).toBe(0);
+      expect(admin.state.checkoutLock).toEqual(ownLock);
+      expect(admin.state.orderWrites).toEqual([]);
+      expect(admin.state.paymentWrites).toEqual([]);
+      expect(fulfillCalls(admin)).toHaveLength(0);
+      expect(admin.state.doneEvents.has(event.id)).toBe(false);
+    });
+
+    it("keeps a paid order, its coupon and a newer lock when the terminal event arrives later", async () => {
+      const admin = couponCheckout();
+      expect((await postEvent(checkoutEvent())).status).toBe(200);
+      admin.state.checkoutLock = { lock_key: "user_1__course_1", order_id: "order_newer" };
+
+      expect((await postEvent(closingEvent("checkout.session.expired"))).status).toBe(200);
+      expect(admin.state.orderRow.status).toBe("paid");
+      expect(admin.state.couponReservation).toBe("redeemed");
+      expect(admin.state.couponRedemptions).toBe(1);
+      expect(admin.state.checkoutLock?.order_id).toBe("order_newer");
+      expect(admin.state.orderWrites).toEqual([expect.objectContaining({ status: "paid" })]);
+      expect(fulfillCalls(admin)).toHaveLength(1);
+    });
+
+    it("alerts and keeps retrying a payment that arrives after the order was closed", async () => {
+      const admin = couponCheckout();
+      expect((await postEvent(closingEvent("checkout.session.expired"))).status).toBe(200);
+      const paid = { ...checkoutEvent(), id: "evt_paid_late" };
+
+      expect((await postEvent(paid)).status).toBe(500);
+      expect((await postEvent(paid)).status).toBe(500);
+
+      expect(mocks.notifyOps).toHaveBeenCalledWith(expect.objectContaining({
+        event: "stripe.webhook.paid_after_close",
+        severity: "critical",
+      }));
+      expect(admin.state.orderRow.status).toBe("cancelled");
+      expect(admin.state.couponReservation).toBe("released");
+      expect(admin.state.couponRedemptions).toBe(0);
+      expect(admin.state.orderWrites).toEqual([expect.objectContaining({ status: "cancelled" })]);
+      expect(admin.state.paymentWrites).toEqual([]);
+      expect(fulfillCalls(admin)).toHaveLength(0);
+      expect(admin.state.doneEvents.has(paid.id)).toBe(false);
+    });
+
+    it.each([false, true])("does not resurrect a refunded order from a paid replay (ledger written: %s)", async (ledgerWritten) => {
+      const admin = couponCheckout();
+      Object.assign(admin.state.orderRow, { status: "refunded", payment_intent_id: "pi_1" });
+      admin.state.couponReservation = "redeemed";
+      if (ledgerWritten) admin.state.ledgerIds.add("order_1");
+
+      expect((await postEvent(checkoutEvent())).status).toBe(200);
+      expect(admin.state.orderRow.status).toBe("refunded");
+      expect(admin.state.orderWrites).toEqual([]);
+      expect(admin.state.paymentWrites).toEqual([]);
+      expect(fulfillCalls(admin)).toHaveLength(0);
+      expect(admin.state.couponRedemptions).toBe(0);
+    });
+
+    it("rejects a paid replay carrying a different payment identity", async () => {
+      const admin = couponCheckout();
+      Object.assign(admin.state.orderRow, {
+        status: "paid", payment_intent_id: "pi_original", paid_at: "2026-01-01T00:00:00.000Z",
+      });
+      admin.state.couponReservation = "redeemed";
+
+      expect((await postEvent(checkoutEvent())).status).toBe(500);
+      expect(admin.state.orderRow).toMatchObject({
+        status: "paid", payment_intent_id: "pi_original", paid_at: "2026-01-01T00:00:00.000Z",
+      });
+      expect(admin.state.orderWrites).toEqual([]);
+      expect(admin.state.paymentWrites).toEqual([]);
+      expect(fulfillCalls(admin)).toHaveLength(0);
+      expect(admin.state.doneEvents.has("evt_checkout")).toBe(false);
+    });
+
+    it("finishes an interrupted fulfilment without moving paid_at or counting the coupon twice", async () => {
+      const admin = couponCheckout();
+      admin.state.failAt = "fulfill_paid_course_access";
+      expect((await postEvent(checkoutEvent())).status).toBe(500);
+      expect(admin.state.orderRow.status).toBe("paid");
+      expect(admin.state.couponRedemptions).toBe(1);
+      const paidAt = admin.state.orderRow.paid_at;
+
+      admin.state.failAt = undefined;
+      expect((await postEvent(checkoutEvent())).status).toBe(200);
+      expect(admin.state.orderRow.paid_at).toBe(paidAt);
+      expect(admin.state.orderRow.payment_intent_id).toBe("pi_1");
+      expect(admin.state.couponReservation).toBe("redeemed");
+      expect(admin.state.couponRedemptions).toBe(1);
+      expect(admin.state.orderWrites).toHaveLength(1);
+      expect(fulfillCalls(admin)).toHaveLength(2);
+      expect(admin.state.ledgerIds.has("order_1")).toBe(true);
+      expect(admin.state.checkoutLock).toBeNull();
+    });
+
+    it.each(["checkout.session.expired", "checkout.session.async_payment_failed"])(
+      "leaves a pending order whose coupon was already redeemed to its settlement on %s", async (type) => {
+        const admin = couponCheckout();
+        admin.state.couponReservation = "redeemed";
+
+        expect((await postEvent(closingEvent(type))).status).toBe(200);
+        expect(admin.state.orderRow.status).toBe("pending");
+        expect(admin.state.couponReservation).toBe("redeemed");
+        expect(admin.state.checkoutLock).toEqual(ownLock);
+        expect(admin.state.orderWrites).toEqual([]);
+
+        expect((await postEvent(checkoutEvent())).status).toBe(200);
+        expect(admin.state.orderRow.status).toBe("paid");
+        expect(admin.state.couponRedemptions).toBe(0);
+        expect(fulfillCalls(admin)).toHaveLength(1);
+        expect(admin.state.checkoutLock).toBeNull();
+      },
+    );
   });
 
   it.each([
@@ -758,6 +1443,9 @@ describe("Stripe webhook financial integrity", () => {
     expect(response.status).toBe(500);
     expect(admin.state.rpcCalls).not.toContainEqual(expect.objectContaining({
       name: "finalize_course_coupon_reservation",
+    }));
+    expect(admin.state.rpcCalls).not.toContainEqual(expect.objectContaining({
+      name: "settle_paid_course_order",
     }));
     expect(admin.state.paymentWrites).toEqual([]);
     expect(admin.state.orderWrites).toEqual([]);
@@ -1031,6 +1719,55 @@ describe("Stripe webhook financial integrity", () => {
       { stripeAccount: "acct_teacher" },
     );
     expect(admin.state.doneEvents).toContain("evt_invoice_paid");
+  });
+
+  // Full-Dashboard creators hold their own API keys: metadata on objects in a
+  // connected account is creator-controlled and must not grant or revoke across accounts.
+  it.each([
+    ["another creator's account", "acct_other", "teacher_1"],
+    ["a teacher who does not own the course", "acct_teacher", "teacher_2"],
+  ])("never grants a course renewal paid on %s", async (_label, account, teacherId) => {
+    const admin = createAdmin("checkout");
+    mocks.getAdmin.mockReturnValue(admin);
+    mocks.notifyOps.mockReset();
+    mocks.subscriptionRetrieve.mockResolvedValueOnce({
+      metadata: { purpose: "course_subscription", courseId: "course_1", userId: "user_1", teacherId },
+      items: { data: [{ current_period_end: 1_800_000_000 }] }, customer: "cus_1", status: "active", cancel_at_period_end: false,
+    });
+    const response = await postEvent({ ...paidInvoiceEvent(), account });
+    expect(response.status).toBe(200);
+    expect(admin.state.rpcCalls.map((c: { name: string }) => c.name)).not.toContain("fulfill_paid_course_access");
+    expect(mocks.notifyOps).toHaveBeenCalledWith(expect.objectContaining({
+      event: "stripe.course_subscription.foreign_account",
+    }));
+  });
+
+  it("never records a course subscription forged on another creator's account", async () => {
+    const admin = createAdmin("checkout");
+    mocks.getAdmin.mockReturnValue(admin);
+    mocks.notifyOps.mockReset();
+    const forged = {
+      id: "sub_forged", status: "active", customer: "cus_x", cancel_at_period_end: false,
+      metadata: { purpose: "course_subscription", courseId: "course_1", userId: "user_1", teacherId: "teacher_1" },
+      items: { data: [{ price: { recurring: { interval: "month" } }, current_period_end: 1_900_000_000 }] },
+    };
+    mocks.subscriptionRetrieve.mockResolvedValueOnce(forged);
+    const response = await postEvent({
+      id: "evt_forged_sub", type: "customer.subscription.created", account: "acct_other", data: { object: forged },
+    });
+    expect(response.status).toBe(200);
+    expect(admin.from).not.toHaveBeenCalledWith("course_subscriptions");
+    expect(mocks.notifyOps).toHaveBeenCalledWith(expect.objectContaining({
+      event: "stripe.course_subscription.foreign_account",
+    }));
+  });
+
+  it("ignores activation-fee metadata on a connected account (payment and refund)", async () => {
+    const admin = createAdmin("checkout");
+    mocks.getAdmin.mockReturnValue(admin);
+    expect((await postEvent({ ...activationFeeEvent(), account: "acct_teacher" })).status).toBe(200);
+    expect((await postEvent({ ...activationRefundEvent(), account: "acct_teacher" })).status).toBe(200);
+    expect(admin.state.userUpdates).toHaveLength(0);
   });
 
   it("a purchase uses atomic fulfillment instead of a stale enrollment snapshot", async () => {
@@ -1477,6 +2214,190 @@ describe("Stripe webhook financial integrity", () => {
     });
   });
 
+  describe("subscription refunds before local sale records", () => {
+    const metadata = {
+      purpose: "course_subscription", courseId: "course_1", userId: "user_1",
+      teacherId: "teacher_1", connectedAccountId: "acct_untrusted_metadata",
+    };
+    const invoice = {
+      id: "in_paid_1",
+      parent: { subscription_details: { subscription: "sub_1", metadata } },
+    };
+    const subscription = {
+      id: "sub_1", metadata, status: "active", customer: "cus_1",
+      items: { data: [{ current_period_end: 1_800_000_000 }] },
+      cancel_at_period_end: false,
+    };
+
+    function listedInvoices(...invoices: unknown[]) {
+      mocks.invoicePaymentsList.mockImplementation(async function* () {
+        for (const item of invoices) yield { invoice: item };
+      });
+    }
+
+    function earlyRefund(full = true) {
+      const event = refundEvent("evt_early_subscription_refund", full ? 10000 : 3000);
+      return {
+        ...event, account: "acct_teacher",
+        data: { object: { ...event.data.object, payment_intent: "pi_paid_1", refunded: full } },
+      };
+    }
+
+    beforeEach(() => {
+      mocks.subscriptionRetrieve.mockResolvedValue(subscription);
+      listedInvoices(invoice);
+    });
+
+    function emptySale() {
+      const admin = createAdmin("checkout");
+      admin.state.saleRows = { orders: [], payments: [], payout_ledger: [] };
+      mocks.getAdmin.mockReturnValue(admin);
+      return admin;
+    }
+
+    it.each([true, false])("retries an early refund (full=%s), then records it after the invoice and ignores duplicates", async (full) => {
+      const admin = emptySale();
+      const refund = earlyRefund(full);
+      expect((await postEvent(refund)).status).toBe(500);
+      expect(admin.state.doneEvents).not.toContain(refund.id);
+      expect(admin.state.saleRows?.payments).toEqual([]);
+      expect(fulfillCalls(admin)).toHaveLength(0);
+
+      expect((await postEvent(paidInvoiceEvent())).status).toBe(200);
+      expect(admin.state.saleRows?.payments).toEqual([
+        expect.objectContaining({ id: "pi_paid_1", order_id: "in_paid_1", status: "succeeded" }),
+      ]);
+      expect(admin.state.enrollmentRow?.status).toBe("active");
+      expect((await postEvent(refund)).status).toBe(200);
+      const status = full ? "refunded" : "partially_refunded";
+      for (const table of ["orders", "payments"]) {
+        expect(admin.state.saleRows?.[table]).toEqual([
+          expect.objectContaining({ status, refunded_amount_minor: full ? 10000 : 3000 }),
+        ]);
+      }
+      expect(admin.state.saleRows?.payout_ledger).toEqual([
+        expect.objectContaining({
+          id: "in_paid_1", kind: "course_subscription", subscription_id: "sub_1",
+          refunded_amount_minor: full ? 10000 : 3000,
+        }),
+      ]);
+      expect(mocks.subscriptionCancel).toHaveBeenCalledTimes(full ? 1 : 0);
+      if (full) {
+        expect(mocks.subscriptionCancel).toHaveBeenCalledWith(
+          "sub_1", {}, { stripeAccount: "acct_teacher" },
+        );
+      }
+      expect(admin.state.doneEvents).toContain(refund.id);
+      const writes = admin.state.orderWrites.length;
+      expect(await (await postEvent(refund)).json()).toMatchObject({ duplicate: true });
+      expect(admin.state.orderWrites).toHaveLength(writes);
+      expect(mocks.subscriptionCancel).toHaveBeenCalledTimes(full ? 1 : 0);
+      expect(mocks.invoicePaymentsList).toHaveBeenCalledTimes(1);
+      expect(mocks.invoicePaymentsList).toHaveBeenCalledWith(
+        { payment: { type: "payment_intent", payment_intent: "pi_paid_1" }, expand: ["data.invoice"] },
+        { stripeAccount: "acct_teacher" },
+      );
+      if (full) {
+        const canceled = { ...subscription, status: "canceled" };
+        mocks.subscriptionRetrieve.mockResolvedValue(canceled);
+        expect((await postEvent({
+          id: "evt_refund_cancellation", type: "customer.subscription.deleted", account: "acct_teacher",
+          data: { object: canceled },
+        })).status).toBe(200);
+        expect(admin.state.enrollmentRow?.status).toBe("revoked");
+      } else {
+        expect(admin.state.enrollmentRow?.status).toBe("active");
+      }
+    });
+
+    it.each([
+      ["unknown payment", []],
+      ["standalone invoice", [{ id: "in_manual", parent: null }]],
+      ["platform plan", [{ ...invoice, parent: { subscription_details: { subscription: "sub_plan", metadata: { purpose: "plan_subscription" } } } }]],
+      ["empty snapshot", [{ ...invoice, parent: { subscription_details: { subscription: "sub_1", metadata: {} } } }]],
+    ])("ignores %s without treating current subscription metadata as authority", async (_name, invoices) => {
+      const admin = emptySale();
+      listedInvoices(...invoices as unknown[]);
+      expect((await postEvent(earlyRefund())).status).toBe(200);
+      expect(admin.state.doneEvents).toContain("evt_early_subscription_refund");
+      expect(admin.state.saleRows).toEqual({ orders: [], payments: [], payout_ledger: [] });
+      expect(mocks.subscriptionCancel).not.toHaveBeenCalled();
+      expect(mocks.subscriptionRetrieve).not.toHaveBeenCalled();
+    });
+
+    it("finds a course after an unrelated invoice and uses the event account for fallback reads", async () => {
+      const admin = emptySale();
+      listedInvoices({ id: "in_manual", parent: null }, "in_paid_1");
+      mocks.invoiceRetrieve.mockResolvedValue({
+        id: "in_paid_1", parent: { subscription_details: { subscription: "sub_1", metadata: null } },
+      });
+      expect((await postEvent(earlyRefund())).status).toBe(500);
+      expect(mocks.invoiceRetrieve).toHaveBeenCalledWith("in_paid_1", undefined, { stripeAccount: "acct_teacher" });
+      expect(mocks.subscriptionRetrieve).toHaveBeenCalledWith("sub_1", undefined, { stripeAccount: "acct_teacher" });
+      expect(admin.state.doneEvents).not.toContain("evt_early_subscription_refund");
+    });
+
+    it("recognizes a legacy platform course without changing account from metadata", async () => {
+      emptySale();
+      expect((await postEvent({ ...earlyRefund(), account: undefined })).status).toBe(500);
+      expect(mocks.invoicePaymentsList).toHaveBeenCalledWith(expect.any(Object), undefined);
+      expect(mocks.subscriptionRetrieve).not.toHaveBeenCalled();
+    });
+
+    it("ignores a legacy non-course subscription after reading it in the event account", async () => {
+      const admin = emptySale();
+      listedInvoices({ id: "in_plan", subscription: "sub_plan" });
+      mocks.subscriptionRetrieve.mockResolvedValue({ metadata: { uid: "user_1" } });
+      expect((await postEvent(earlyRefund())).status).toBe(200);
+      expect(mocks.subscriptionRetrieve).toHaveBeenCalledWith("sub_plan", undefined, { stripeAccount: "acct_teacher" });
+      expect(admin.state.orderWrites).toEqual([]);
+      expect(mocks.subscriptionCancel).not.toHaveBeenCalled();
+    });
+
+    it("does not acknowledge a known course with incomplete invoice metadata", async () => {
+      const admin = emptySale();
+      listedInvoices({
+        ...invoice, parent: { subscription_details: {
+          subscription: "sub_1", metadata: { ...metadata, teacherId: "" },
+        } },
+      });
+      expect((await postEvent(earlyRefund())).status).toBe(500);
+      expect(admin.state.doneEvents).not.toContain("evt_early_subscription_refund");
+      expect(mocks.subscriptionRetrieve).not.toHaveBeenCalled();
+      expect(mocks.subscriptionCancel).not.toHaveBeenCalled();
+    });
+
+    it("does not discard a refund when its invoice was deleted", async () => {
+      const admin = emptySale();
+      listedInvoices({ id: "in_deleted", deleted: true });
+      expect((await postEvent(earlyRefund())).status).toBe(500);
+      expect(admin.state.doneEvents).not.toContain("evt_early_subscription_refund");
+      expect(mocks.subscriptionRetrieve).not.toHaveBeenCalled();
+      expect(mocks.subscriptionCancel).not.toHaveBeenCalled();
+    });
+
+    it.each(["list", "invoice", "subscription"])("keeps the event retryable after a %s API failure", async (failure) => {
+      const admin = emptySale();
+      if (failure === "list") {
+        mocks.invoicePaymentsList.mockImplementationOnce(async function* () { throw new Error("Stripe unavailable"); });
+      } else {
+        listedInvoices("in_paid_1");
+        if (failure === "invoice") mocks.invoiceRetrieve.mockRejectedValueOnce(new Error("Stripe timeout"));
+        else {
+          mocks.invoiceRetrieve.mockResolvedValue({ id: "in_paid_1", subscription: "sub_1" });
+          mocks.subscriptionRetrieve.mockRejectedValueOnce(new Error("Stripe rate limited"));
+        }
+      }
+      expect((await postEvent(earlyRefund())).status).toBe(500);
+      expect(admin.state.doneEvents).not.toContain("evt_early_subscription_refund");
+      expect(admin.state.saleRows?.payments).toEqual([]);
+      listedInvoices(invoice);
+      expect((await postEvent(paidInvoiceEvent())).status).toBe(200);
+      expect((await postEvent(earlyRefund())).status).toBe(200);
+      expect(admin.state.doneEvents).toContain("evt_early_subscription_refund");
+    });
+  });
+
   // Quem fechava a aba depois de pagar ficava so com o recibo do Stripe: sem
   // link do curso, sem saber como entrar. O webhook agora manda UM email.
   describe("access email after a paid sale", () => {
@@ -1851,6 +2772,28 @@ describe("Stripe webhook financial integrity", () => {
       expect(fulfillCalls(admin)).toHaveLength(2);
     });
 
+    // The handler re-runs on redelivery; the reservation only redeems once.
+    it("redeems a first invoice coupon once and still delivers", async () => {
+      const admin = createAdmin("checkout");
+      mocks.getAdmin.mockReturnValue(admin);
+      admin.state.couponReservation = "reserved";
+      mocks.subscriptionRetrieve.mockResolvedValue(subscription({ couponReservationId: "res_1" }));
+      const finalizeCalls = () => admin.state.rpcCalls.filter((call) => call.name === "finalize_course_coupon_reservation");
+
+      expect((await postEvent(firstInvoiceEvent())).status).toBe(200);
+      await vi.waitFor(() => expect(buyerEmails()).toHaveLength(1));
+      expect(admin.state.couponReservation).toBe("redeemed");
+      expect(finalizeCalls().map((call) => call.args)).toEqual([{ p_order_id: "res_1" }]);
+      expect(fulfillCalls(admin)).toHaveLength(1);
+
+      expect((await postEvent(firstInvoiceEvent())).status).toBe(200);
+      await flush();
+      expect(admin.state.couponReservation).toBe("redeemed");
+      expect(finalizeCalls().every((call) => call.args.p_order_id === "res_1")).toBe(true);
+      expect(admin.state.rpcCalls.some((call) => call.name === "release_course_coupon_reservation")).toBe(false);
+      expect(buyerEmails()).toHaveLength(1);
+    });
+
     // A failed renewal loses no purchase email; alerting on it would be noise
     // that spends the 5-minute throttle meant for real losses.
     it("stays silent on the access-email alert when a renewal's enrollment fails", async () => {
@@ -2054,20 +2997,45 @@ describe("Stripe webhook financial integrity", () => {
       expect(admin.state.certificateWrites).toBe(0);
     });
 
-    it("keeps the refund and the access revocation when the certificate write fails", async () => {
+    it.each(["refund", "lost dispute"])("retries %s after an atomic certificate failure without financial effects", async (kind) => {
       const admin = createAdmin("refund", "certificates.update");
+      if (kind === "lost dispute") admin.state.ledger.status = "disputed";
+      admin.state.ledger.payment_id = "pi_1";
+      // Leituras posteriores veem as escritas ja commitadas, inclusive no retry.
+      admin.state.saleRows = {
+        orders: [admin.state.orderRow],
+        payments: [{ id: "pi_1", order_id: "order_1", status: "succeeded" }],
+        payout_ledger: [admin.state.ledger],
+      };
       mocks.getAdmin.mockReturnValue(admin);
+      const event = kind === "refund"
+        ? fullRefundEvent("evt_full_refund_certificate_down")
+        : connectedDispute("evt_lost_certificate_down", "lost");
 
-      expect((await postEvent(fullRefundEvent("evt_full_refund_certificate_down"))).status).toBe(200);
+      expect((await postEvent(event)).status).toBe(500);
+      expect(admin.state.doneEvents).not.toContain(event.id);
+      expect(admin.state.enrollmentUpdates).not.toContainEqual(
+        expect.objectContaining({ status: "refunded" }),
+      );
+      expect(admin.state.certificate.status).toBe("issued");
+      expect(admin.state.ledger.status).toBe("refunded");
+      if (kind === "refund") {
+        expect(admin.state.orderRow.status).toBe("refunded");
+        expect(admin.state.saleRows.payments[0].status).toBe("refunded");
+      }
 
+      admin.state.failAt = undefined;
+      expect((await postEvent(event)).status).toBe(200);
+      expect(admin.state.doneEvents).toContain(event.id);
+      expect(admin.state.certificate.status).toBe("refund_revoked");
       expect(admin.state.enrollmentUpdates).toContainEqual(
         expect.objectContaining({ id: "user_1__course_1", status: "refunded" }),
       );
-      expect(admin.state.doneEvents).toContain("evt_full_refund_certificate_down");
-      expect(mocks.notifyOps).toHaveBeenCalledWith(expect.objectContaining({
-        event: "stripe.webhook.certificate_revoke_failed",
-        context: { courseId: "course_1", userId: "user_1" },
-      }));
+      expect((await postEvent(event)).status).toBe(200);
+      expect(admin.state.certificateWrites).toBe(1);
+      expect(mocks.reversalCreate).not.toHaveBeenCalled();
+      expect(mocks.subscriptionCancel).not.toHaveBeenCalled();
+      expect(mocks.refundCreate).not.toHaveBeenCalled();
     });
   });
 });

@@ -24,7 +24,7 @@ export default async function ForgotPasswordPage() {
       footer={
         <>
           {t("auth.forgot.footerPrompt")}{" "}
-          <Link href="/auth?mode=signin" className="font-semibold text-[var(--color-primary)]">
+          <Link href="/auth?mode=signin" className="font-semibold text-[var(--color-primary)]!">
             {t("auth.forgot.footerLink")}
           </Link>
         </>

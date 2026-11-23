@@ -3,9 +3,14 @@ import { describe, expect, it } from "vitest";
 import type { SkillsetUser } from "@/domain/auth";
 import type { UserProfile } from "@/domain/user-profile";
 import {
+  getEntryReturnTo,
+  getOnboardedReturnTo,
+  getPlanCheckoutReturnTo,
+  getPlanCheckoutRoute,
   getPostAuthRoute,
   getPrimaryWorkspaceHref,
   getSafeReturnTo,
+  getTeacherOnboardingRoute,
   getWorkspaceHomeHref,
 } from "@/lib/auth/routing";
 
@@ -121,5 +126,111 @@ describe("post-login return paths", () => {
     ["/courses/a b", "/courses/a%20b"],
   ])("returns the resolved path for %j", (returnTo, expected) => {
     expect(getSafeReturnTo(new URLSearchParams({ returnTo }))).toBe(expected);
+  });
+});
+
+// A /pricing button carries the plan and the cycle; they reach the card screen
+// (/account/billing/upgrade) as an ordinary returnTo.
+describe("plan picked on /pricing", () => {
+  const card = (plan: string, cycle: string) => `/account/billing/upgrade?plan=${plan}&cycle=${cycle}`;
+
+  it.each(["basic", "starter", "pro"].flatMap((plan) => ["monthly", "yearly"].map((cycle) => [plan, cycle])))(
+    "opens the card screen for %s %s",
+    (plan, cycle) => {
+      expect(getPlanCheckoutRoute(new URLSearchParams({ plan, cycle }))).toBe(card(plan, cycle));
+    },
+  );
+
+  // Closed list: Enterprise (`plus`), the no-plan state, another casing, an
+  // extra value, a missing half. None of them is a choice.
+  it.each([
+    ["plus", "monthly"],
+    ["free", "monthly"],
+    ["enterprise", "yearly"],
+    ["Starter", "monthly"],
+    ["starter", "weekly"],
+    ["starter", "Yearly"],
+    ["starter", ""],
+    ["", "monthly"],
+    ["pro&cycle=yearly", "monthly"],
+    ["//evil.example", "monthly"],
+  ])("ignores plan %j with cycle %j", (plan, cycle) => {
+    const params = new URLSearchParams({ plan, cycle });
+    expect(getPlanCheckoutRoute(params)).toBeNull();
+    expect(getEntryReturnTo(params)).toBeNull();
+  });
+
+  it("ignores a plan with no cycle and a cycle with no plan", () => {
+    expect(getPlanCheckoutRoute(new URLSearchParams("plan=pro"))).toBeNull();
+    expect(getPlanCheckoutRoute(new URLSearchParams("cycle=yearly"))).toBeNull();
+    expect(getPlanCheckoutRoute(new URLSearchParams())).toBeNull();
+  });
+
+  it("gives the entry the plan only when no deep link came with it", () => {
+    expect(getEntryReturnTo(new URLSearchParams("plan=pro&cycle=yearly"))).toBe(card("pro", "yearly"));
+    expect(getEntryReturnTo(new URLSearchParams({ plan: "pro", cycle: "yearly", returnTo: "/courses/focus" })))
+      .toBe("/courses/focus");
+    expect(getEntryReturnTo(new URLSearchParams("path=teacher"))).toBeNull();
+  });
+
+  it("recognises only the card screen of a plan on offer as that choice", () => {
+    expect(getPlanCheckoutReturnTo(card("starter", "monthly"))).toBe(card("starter", "monthly"));
+    // Rebuilt, never echoed: anything extra on the link is dropped.
+    expect(getPlanCheckoutReturnTo(`${card("starter", "monthly")}&coupon=x#pay`)).toBe(card("starter", "monthly"));
+    for (const other of [
+      null,
+      "",
+      "/courses/focus",
+      "/teach?plan=pro&cycle=yearly",
+      card("plus", "monthly"),
+      card("pro", "weekly"),
+      "/account/billing/upgrade",
+      "/account/billing/upgrade/x?plan=pro&cycle=yearly",
+      "https://evil.example/account/billing/upgrade?plan=pro&cycle=yearly",
+      "//evil.example/account/billing/upgrade?plan=pro&cycle=yearly",
+    ]) {
+      expect(getPlanCheckoutReturnTo(other)).toBeNull();
+    }
+  });
+
+  it("carries only that choice into teacher activation", () => {
+    expect(getTeacherOnboardingRoute()).toBe("/onboarding?path=teacher");
+    expect(getTeacherOnboardingRoute("/courses/focus")).toBe("/onboarding?path=teacher");
+    expect(getTeacherOnboardingRoute(card("plus", "monthly"))).toBe("/onboarding?path=teacher");
+    expect(getTeacherOnboardingRoute(card("pro", "yearly"))).toBe(
+      "/onboarding?path=teacher&returnTo=%2Faccount%2Fbilling%2Fupgrade%3Fplan%3Dpro%26cycle%3Dyearly",
+    );
+  });
+
+  it("opens the card screen only for a teacher with no plan yet", () => {
+    const choice = card("starter", "yearly");
+    expect(getOnboardedReturnTo({ roles: ["teacher"] }, choice)).toBe(choice);
+    expect(getOnboardedReturnTo({ roles: ["teacher"], currentPlanId: "free" }, choice)).toBe(choice);
+    // Already on a plan (bought or granted): null, the usual route.
+    expect(getOnboardedReturnTo({ roles: ["teacher"], currentPlanId: "basic" }, choice)).toBeNull();
+    expect(getOnboardedReturnTo({ roles: ["teacher"], currentPlanId: "plus" }, choice)).toBeNull();
+    // Not teaching yet: activation first, with the choice.
+    expect(getOnboardedReturnTo({ roles: ["student"] }, choice)).toBe(getTeacherOnboardingRoute(choice));
+    expect(getOnboardedReturnTo({ roles: ["student"] }, choice, "teacher")).toBe(getTeacherOnboardingRoute(choice));
+    // Through the learner entry nobody opens a plan: null, the usual route.
+    expect(getOnboardedReturnTo({ roles: ["teacher"] }, choice, "student")).toBeNull();
+    expect(getOnboardedReturnTo({ roles: ["student"] }, choice, "student")).toBeNull();
+  });
+
+  // A repeated parameter is read the way the card screen reads it (the first
+  // one), and the route that comes out carries a single plan and cycle.
+  it("reads a repeated parameter by its first value only", () => {
+    expect(getPlanCheckoutRoute(new URLSearchParams("plan=pro&plan=plus&cycle=yearly&cycle=weekly")))
+      .toBe(card("pro", "yearly"));
+    expect(getPlanCheckoutRoute(new URLSearchParams("plan=plus&plan=pro&cycle=yearly"))).toBeNull();
+    expect(getPlanCheckoutReturnTo("/account/billing/upgrade?plan=plus&plan=pro&cycle=yearly")).toBeNull();
+  });
+
+  it("leaves every other deep link exactly as it was", () => {
+    expect(getOnboardedReturnTo({ roles: ["student"] }, "/courses/focus/checkout?offer=LAUNCH"))
+      .toBe("/courses/focus/checkout?offer=LAUNCH");
+    expect(getOnboardedReturnTo({ roles: ["teacher"], currentPlanId: "pro" }, "/teach/courses")).toBe("/teach/courses");
+    expect(getOnboardedReturnTo({ roles: ["student"] }, "/courses/focus", "student")).toBe("/courses/focus");
+    expect(getOnboardedReturnTo({ roles: ["student"] }, null)).toBeNull();
   });
 });

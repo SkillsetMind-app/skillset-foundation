@@ -144,13 +144,24 @@ describe("idioma na barra do topo da plataforma", () => {
     expect(account.getAttribute("aria-label")).toBeTruthy();
   });
 
-  it("usa a variante discreta: alvo 44px sem moldura permanente ou seta", () => {
+  // O componente continua o compacto (44px, sem seta, sem moldura propria: no
+  // site ele segue discreto). Na barra da plataforma ele ganha a moldura dos
+  // vizinhos pela folha: sem borda nem fundo, o "EN" parecia texto solto.
+  it("usa a variante compacta: alvo 44px sem seta; na barra, a mesma moldura dos vizinhos", () => {
     const { trigger } = renderHeader("/teach");
     expect(trigger).toHaveClass("size-11", "locale-switcher-compact", "bg-transparent");
     expect(trigger).not.toHaveClass("border");
     expect(trigger).not.toHaveClass("rounded-full");
     expect(trigger).toHaveTextContent("EN");
     expect(trigger.querySelector("svg")).toBeNull();
+    const sheet = postcss.parse(readFileSync(join(process.cwd(), "src/app/globals.css"), "utf8"));
+    const framed: Record<string, string> = {};
+    sheet.walkRules((rule) => {
+      if (rule.selector !== ".platform-topbar__actions .locale-switcher-compact") return;
+      rule.walkDecls((d) => { framed[d.prop] = d.value; });
+    });
+    expect(trigger.matches(".platform-topbar__actions .locale-switcher-compact")).toBe(true);
+    expect(framed).toMatchObject({ border: "1px solid var(--color-line)", background: "var(--color-surface)" });
   });
 
   it("troca o idioma sem sair da plataforma, e persiste", () => {

@@ -17,6 +17,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  vi.useRealTimers();
   delete process.env.OPS_ALERT_WEBHOOK_URL;
 });
 
@@ -88,6 +89,22 @@ describe("notifyOps", () => {
       notifyOps({ event: "test.event", severity: "warn", summary: "x" }),
     ).not.toThrow();
   });
+
+  it("allows another payment failure alert after the repeat window expires", async () => {
+    process.env.OPS_ALERT_WEBHOOK_URL = WEBHOOK;
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(0);
+    const { notifyOps } = await loadFresh();
+    const alert = { event: "payments.request.failed", severity: "critical" as const, summary: "failure" };
+
+    notifyOps(alert);
+    vi.setSystemTime(299_999);
+    notifyOps(alert);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    vi.setSystemTime(300_000);
+    notifyOps(alert);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
 });
 
 describe("sendOpsAlert", () => {
@@ -120,5 +137,26 @@ describe("sendOpsAlert", () => {
     await expect(sendOpsAlert(alert)).resolves.toBe(false);
     fetchMock.mockImplementationOnce(() => Promise.reject(new Error("relay down")));
     await expect(sendOpsAlert(alert)).resolves.toBe(false);
+  });
+});
+
+describe("payment error fallback when alerts cannot be delivered", () => {
+  it.each(["missing", "refused", "unreachable"])("preserves a safe 500 and log with relay %s", async (state) => {
+    if (state !== "missing") process.env.OPS_ALERT_WEBHOOK_URL = WEBHOOK;
+    if (state === "refused") fetchMock.mockImplementation(() => Promise.resolve(new Response("no", { status: 403 })));
+    if (state === "unreachable") fetchMock.mockImplementation(() => Promise.reject(new Error("relay down")));
+    vi.resetModules();
+    const { paymentErrorResponse } = await import("@/lib/payments/server/auth");
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      const response = paymentErrorResponse(new Error("private-buyer@example.test private-fixture"));
+      expect(response.status).toBe(500);
+      expect(await response.json()).toEqual({ error: "Something went wrong. Please try again." });
+      expect(log).toHaveBeenCalledExactlyOnceWith("Unhandled payment route error");
+      expect(JSON.stringify(fetchMock.mock.calls)).not.toContain("private-buyer");
+      expect(fetchMock).toHaveBeenCalledTimes(state === "missing" ? 0 : 1);
+    } finally {
+      log.mockRestore();
+    }
   });
 });

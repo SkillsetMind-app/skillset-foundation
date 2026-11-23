@@ -1,5 +1,5 @@
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { EnrolledCourseWorkspace } from "@/components/learn/enrolled-course-workspace";
 import { I18nProvider, useTranslation } from "@/components/i18n/i18n-provider";
@@ -8,10 +8,14 @@ import type { Course } from "@/domain/learning";
 import type { CourseAsset } from "@/domain/course-asset";
 import { subscribeToCourseAssets, getProtectedCourseAssetObjectUrl } from "@/lib/data/course-assets";
 import { countOpenCommunityQuestions } from "@/lib/data/community-posts";
+import { formatEventDateTime } from "@/domain/course-event";
 import { subscribeToCourseEvents } from "@/lib/data/course-events";
-import { recordLessonProgress } from "@/lib/data/lesson-progress";
+import { recordLessonProgress, subscribeToCompletedLessons } from "@/lib/data/lesson-progress";
 import { subscribeToEnrollment } from "@/lib/data/enrollments";
 import { subscribeToLessonContent } from "@/lib/data/lesson-content";
+
+// As inscricoes devolvem a funcao de desligar com `reload` (o "Try again").
+const unsubscribable = () => Object.assign(vi.fn(), { reload: vi.fn(async () => undefined) });
 
 /**
  * Reanalise item 8, renderizado de verdade (matricula real, nao preview):
@@ -249,7 +253,7 @@ describe("sala de aula com matricula real", () => {
     vi.mocked(subscribeToEnrollment).mockClear();
     vi.mocked(subscribeToEnrollment).mockImplementationOnce((_uid, _slug, _next, onError) => {
       fail = onError;
-      return vi.fn();
+      return unsubscribable();
     });
     render(<I18nProvider initialLocale="en"><ChangeLanguage /><EnrolledCourseWorkspace course={course} /></I18nProvider>);
     expect(screen.getByRole("status")).toHaveTextContent("Loading course...");
@@ -264,11 +268,116 @@ describe("sala de aula com matricula real", () => {
     expect(recordLessonProgress).not.toHaveBeenCalled();
   });
 
+  // O cartão de erro era um beco (só os links para fora): "Try again" relê a
+  // matrícula pelo mesmo canal e a sala abre, com o foco no título dela.
+  it("a falha da matrícula oferece Try again, que relê sem reinscrever e abre a sala", async () => {
+    mocks.searchParams = new URLSearchParams("lesson=l1");
+    mocks.completed = [];
+    let deliver!: Parameters<typeof subscribeToEnrollment>[2];
+    const reload = vi.fn(async () => deliver({
+      id: "enr-1", userId: "student-1", courseId: "course-1", courseSlug: "demo-course",
+      courseTitle: "Demo course", courseCategory: "Leadership", courseImage: "",
+      status: "active", source: "admin", progressPercent: 0, lastLessonId: null,
+    }));
+    vi.mocked(subscribeToEnrollment).mockClear();
+    vi.mocked(subscribeToEnrollment).mockImplementationOnce((_uid, _slug, next, onError) => {
+      deliver = next;
+      onError(new Error("down"));
+      return Object.assign(vi.fn(), { reload });
+    });
+    render(<I18nProvider initialLocale="en"><EnrolledCourseWorkspace course={course} /></I18nProvider>);
+    expect(screen.getByRole("alert")).toHaveTextContent("We could not confirm your enrollment for this course.");
+    expect(screen.getByRole("link", { name: "Back to my learning" })).toBeInTheDocument();
+
+    await act(async () => fireEvent.click(screen.getByRole("button", { name: "Try again" })));
+    expect(reload).toHaveBeenCalledTimes(1);
+    expect(subscribeToEnrollment).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(screen.getByText("One")).toBeInTheDocument();
+    expect(document.activeElement?.tagName).toBe("H1");
+  });
+
+  // Uma falha por leitura: a sala nunca abre com o progresso vazio ou sem os
+  // materiais que a leitura que falhou deixou no lugar.
+  function failProgressAndAssets() {
+    type Read<T> = { next: (value: T) => void; fail: (error: Error) => void; reload: () => Promise<void> };
+    const progress: Read<string[]> = { next: () => {}, fail: () => {}, reload: vi.fn(async () => undefined) };
+    const assets: Read<CourseAsset[]> = { next: () => {}, fail: () => {}, reload: vi.fn(async () => undefined) };
+    vi.mocked(subscribeToCompletedLessons).mockImplementationOnce((_id, next, fail) => {
+      Object.assign(progress, { next, fail });
+      return Object.assign(vi.fn(), { reload: progress.reload });
+    });
+    vi.mocked(subscribeToCourseAssets).mockImplementationOnce((_id, next, fail) => {
+      Object.assign(assets, { next, fail });
+      return Object.assign(vi.fn(), { reload: assets.reload });
+    });
+    mocks.searchParams = new URLSearchParams("lesson=l1");
+    mocks.completed = [];
+    render(<I18nProvider initialLocale="en"><EnrolledCourseWorkspace course={course} enableFirestoreAssets /></I18nProvider>);
+    return { progress, assets };
+  }
+
+  it.each(["progress", "assets"] as const)("a falha de %s primeiro e depois a outra: o cartão fica até as duas voltarem, e o Try again relê as duas", async (first) => {
+    const { progress, assets } = failProgressAndAssets();
+    act(() => {
+      if (first === "progress") {
+        progress.fail(new Error("down"));
+        assets.fail(new Error("down"));
+      } else {
+        assets.fail(new Error("down"));
+        progress.fail(new Error("down"));
+      }
+    });
+    expect(screen.getByRole("alert")).toBeInTheDocument();
+
+    await act(async () => fireEvent.click(screen.getByRole("button", { name: "Try again" })));
+    expect(progress.reload).toHaveBeenCalledTimes(1);
+    expect(assets.reload).toHaveBeenCalledTimes(1);
+
+    // Só a primeira que falhou voltou: a sala segue fechada.
+    act(() => (first === "progress" ? progress.next(["l1"]) : assets.next([])));
+    expect(screen.getByRole("alert")).toBeInTheDocument();
+    expect(screen.queryByText("One")).not.toBeInTheDocument();
+
+    act(() => (first === "progress" ? assets.next([]) : progress.next(["l1"])));
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(screen.getByText("One")).toBeInTheDocument();
+    expect(document.activeElement?.tagName).toBe("H1");
+  });
+
+  it("uma releitura boa dos materiais pelo canal, sem clique, não abre a sala com o progresso que falhou", () => {
+    const { progress, assets } = failProgressAndAssets();
+    act(() => {
+      progress.fail(new Error("down"));
+      assets.fail(new Error("down"));
+    });
+    // O canal dos materiais relê sozinho e dá certo: o progresso segue falhando.
+    act(() => assets.next([]));
+    expect(screen.getByRole("alert")).toHaveTextContent("We could not load lesson progress for this course.");
+    expect(screen.queryByText("One")).not.toBeInTheDocument();
+    expect(progress.reload).not.toHaveBeenCalled();
+  });
+
+  it("um Try again que falha de novo desarma o foco: a leitura boa que vem depois não o puxa", async () => {
+    const { progress, assets } = failProgressAndAssets();
+    act(() => {
+      assets.next([]);
+      progress.fail(new Error("down"));
+    });
+    await act(async () => fireEvent.click(screen.getByRole("button", { name: "Try again" })));
+    act(() => progress.fail(new Error("still down")));
+    expect(screen.getByRole("alert")).toBeInTheDocument();
+
+    act(() => progress.next(["l1"]));
+    expect(screen.getByText("One")).toBeInTheDocument();
+    expect(document.activeElement?.tagName).not.toBe("H1");
+  });
+
   it("whitelabel: the enrollment error does not link to our public course page", () => {
     mocks.searchParams = new URLSearchParams();
     vi.mocked(subscribeToEnrollment).mockImplementationOnce((_uid, _slug, _next, onError) => {
       onError(new Error("down"));
-      return vi.fn();
+      return unsubscribable();
     });
     render(<EnrolledCourseWorkspace course={course} whitelabel />);
     expect(screen.getByText("We could not confirm your enrollment for this course.")).toBeInTheDocument();
@@ -301,12 +410,13 @@ describe("sala de aula com matricula real", () => {
     act(() => emit([{ id: "file-test", courseId: course.id, ownerId: "teacher-1", lessonId: null,
       kind: "lesson_material", fileName: "Worksheet $$50 $&.pdf", contentType: "application/pdf",
       size: 512, storagePath: "courses/course-1/assets/file-test.pdf", isPreview: false }]));
-    expect(screen.getByText("1 archivo")).toBeInTheDocument();
+    // A contagem localizada fica na aba; o painel nao repete "1 archivo".
+    expect(screen.getByRole("link", { name: /^Materiales\s*1$/ })).toBeInTheDocument();
+    expect(screen.queryByText("1 archivo")).not.toBeInTheDocument();
     expect(screen.getByText("Worksheet $$50 $&.pdf")).toBeInTheDocument();
     // Arquivo sem aula (do curso inteiro) fica no grupo próprio.
     expect(screen.getByRole("heading", { name: "Archivos del curso" })).toBeInTheDocument();
     act(() => emit([]));
-    expect(screen.getByText("0 archivos")).toBeInTheDocument();
     expect(screen.getByText("Todavía no hay archivos para descargar.")).toBeInTheDocument();
   });
 
@@ -341,8 +451,9 @@ describe("sala de aula com matricula real", () => {
       { ...material, id: "module-only", moduleId: "m1", fileName: "module-only.png" },
     ]));
     // Materiais lista também o arquivo da aula liberada (l1), não só o do curso.
-    expect(screen.getByText("2 files")).toBeInTheDocument();
+    // A contagem fica só na aba ("Materials 2"); o selo "2 files" do painel saiu.
     expect(screen.getByRole("link", { name: /^Materials\s*2$/ })).toBeInTheDocument();
+    expect(screen.queryByText("2 files")).not.toBeInTheDocument();
     expect(screen.getByText("Worksheet.png")).toBeInTheDocument();
     expect(screen.getByText("lesson-only.png")).toBeInTheDocument();
     for (const name of ["identity-only.png", "course-art.png", "module-only.png"]) {
@@ -350,7 +461,6 @@ describe("sala de aula com matricula real", () => {
     }
 
     await act(async () => emit([cover]));
-    expect(screen.getByText("0 files")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /^Materials$/ })).toBeInTheDocument();
     expect(screen.getByText("No files to download yet.")).toBeInTheDocument();
 
@@ -437,7 +547,7 @@ describe("sala de aula com matricula real", () => {
     };
     vi.mocked(subscribeToCourseEvents).mockImplementationOnce((_courseId, onData) => {
       onData([liveEvent(new Date(Date.now() + 60 * 60 * 1000).toISOString())]);
-      return () => undefined;
+      return unsubscribable();
     });
     render(<I18nProvider initialLocale="es"><EnrolledCourseWorkspace course={localizedCourse} enableFirestoreAssets /></I18nProvider>);
     const tabs = screen.getByRole("navigation", { name: "Secciones del curso" });
@@ -462,9 +572,13 @@ describe("sala de aula com matricula real", () => {
 
     expect(document.querySelector("#member-lesson-player .member-video-stage")).not.toBeNull();
     expect(screen.getByText("Loading lesson content...")).toBeInTheDocument();
+    // F-02: o painel fica ocupado e o "carregando" e um aviso so, o do palco.
+    expect(document.querySelector(".member-lesson-panel")).toHaveAttribute("aria-busy", "true");
+    expect(screen.getAllByRole("status").filter((status) => /Loading/.test(status.textContent ?? ""))).toHaveLength(1);
 
     act(() => emit(new Map()));
     expect(document.querySelector("#member-lesson-player .member-video-stage")).toBeNull();
+    expect(document.querySelector(".member-lesson-panel")).not.toHaveAttribute("aria-busy");
   });
 
   it("aula de texto: sem caixa de video, e o texto vem antes dos comentarios", () => {
@@ -628,7 +742,7 @@ describe("sala de aula com matricula real", () => {
     vi.mocked(subscribeToCourseAssets).mockClear();
     vi.mocked(subscribeToEnrollment).mockImplementationOnce((_uid, _slug, onNext) => {
       onNext(null);
-      return vi.fn();
+      return unsubscribable();
     });
     render(<I18nProvider initialLocale="en"><EnrolledCourseWorkspace course={course} enableFirestoreAssets /></I18nProvider>);
     expect(screen.queryByRole("navigation", { name: "Modules" })).not.toBeInTheDocument();
@@ -800,7 +914,7 @@ describe("abas da sala com endereco proprio", () => {
   it("sem sessao ao vivo marcada, a aba 'Live sessions' nao aparece", () => {
     vi.mocked(subscribeToCourseEvents).mockImplementationOnce((_courseId, onData) => {
       onData([liveEvent(new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString())]);
-      return () => undefined;
+      return unsubscribable();
     });
     renderClassroom("lesson=l2");
 
@@ -811,7 +925,7 @@ describe("abas da sala com endereco proprio", () => {
   it("com sessao marcada, a aba se chama 'Live sessions' e mostra a sessao", () => {
     vi.mocked(subscribeToCourseEvents).mockImplementation((_courseId, onData) => {
       onData([liveEvent(new Date(Date.now() + 60 * 60 * 1000).toISOString())]);
-      return () => undefined;
+      return unsubscribable();
     });
     try {
       const { unmount } = renderClassroom("lesson=l2");
@@ -825,7 +939,7 @@ describe("abas da sala com endereco proprio", () => {
       renderClassroom("lesson=l2", [], "lives");
       expect(screen.getByText("Live Q&A")).toBeInTheDocument();
     } finally {
-      vi.mocked(subscribeToCourseEvents).mockImplementation(() => vi.fn());
+      vi.mocked(subscribeToCourseEvents).mockImplementation(() => unsubscribable());
     }
   });
 
@@ -833,7 +947,7 @@ describe("abas da sala com endereco proprio", () => {
     let emit!: (events: ReturnType<typeof liveEvent>[]) => void;
     vi.mocked(subscribeToCourseEvents).mockImplementationOnce((_courseId, onData) => {
       emit = onData;
-      return () => undefined;
+      return unsubscribable();
     });
     renderClassroom("lesson=l2", [], "lives");
 
@@ -951,7 +1065,7 @@ describe("o contador de perguntas abertas na aba Community", () => {
         externalUrl: "https://meet.example.com/live",
         recordingAssetId: null,
       }]);
-      return () => undefined;
+      return unsubscribable();
     });
     mocks.searchParams = new URLSearchParams("lesson=l1");
     mocks.pathname = "/learn/courses/demo-course/lives";
@@ -959,7 +1073,158 @@ describe("o contador de perguntas abertas na aba Community", () => {
     render(<I18nProvider initialLocale="es"><EnrolledCourseWorkspace course={course} tab="lives" /></I18nProvider>);
 
     expect(screen.getByText(
-      new Intl.DateTimeFormat("es", { dateStyle: "medium", timeStyle: "short" }).format(new Date(startsAt)),
+      formatEventDateTime(startsAt, "es"),
     )).toBeInTheDocument();
+  });
+});
+
+/**
+ * Na hora H o botao de entrar fugia: a aba das aulas nao avisava nada e o
+ * "agora" da aba das sessoes parava na hora em que a lista chegou. Agora uma
+ * faixa em TODAS as abas, com o relogio andando; a cancelada aparece marcada; e
+ * a leitura que falha diz que falhou, com "Try again".
+ */
+describe("sessoes ao vivo na sala", () => {
+  const NOW = Date.parse("2026-11-25T20:50:00.000Z");
+  const status = (text: string) =>
+    screen.getAllByText(text).find((element) => element.getAttribute("role") === "status");
+
+  beforeEach(() => {
+    mocks.replace.mockReset();
+    mocks.enrollmentSubscriptions = 0;
+    Element.prototype.scrollIntoView = vi.fn();
+    vi.useFakeTimers({ toFake: ["Date", "setInterval", "clearInterval"] });
+    vi.setSystemTime(NOW);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.mocked(subscribeToCourseEvents).mockImplementation(() => unsubscribable());
+  });
+
+  it("10 min antes, a faixa com Join aparece na aba das aulas; o aviso so muda quando vira 'ao vivo'", () => {
+    vi.mocked(subscribeToCourseEvents).mockImplementation((_courseId, onData) => {
+      onData([liveEvent(new Date(NOW + 10 * 60_000).toISOString())]);
+      return unsubscribable();
+    });
+    renderClassroom("lesson=l2");
+
+    expect(screen.getByText("Starts in 10 min: Live Q&A")).toBeInTheDocument();
+    expect(status("Starting soon: Live Q&A")).toBeTruthy();
+    // O nome do link leva o titulo (a linha visivel fica fora da arvore).
+    expect(screen.getByRole("link", { name: "Join: Live Q&A" })).toHaveAttribute("href", "https://meet.example.com/live");
+
+    // A contagem anda; o aviso do leitor de tela nao.
+    act(() => vi.advanceTimersByTime(60_000));
+    expect(screen.getByText("Starts in 9 min: Live Q&A")).toBeInTheDocument();
+    expect(status("Starting soon: Live Q&A")).toBeTruthy();
+
+    act(() => vi.advanceTimersByTime(10 * 60_000));
+    expect(status("Live now: Live Q&A")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Join: Live Q&A" })).toBeInTheDocument();
+  });
+
+  // Webinar as 6:00 e plantao as 7:30: as 7:20 a faixa abria a sala do webinar
+  // (o primeiro da lista ainda "ao vivo"); agora vale a de inicio mais perto.
+  it.each([
+    ["7:20", 80, "Starts in 10 min: Office hours", "https://meet.example.com/office"],
+    ["6:10", 10, "Live now: Webinar", "https://meet.example.com/webinar"],
+  ])("duas sessoes a 90 min, as %s: a faixa mostra a mais perto de agora", (_label, offset, text, href) => {
+    const webinarStart = NOW - offset * 60_000;
+    vi.mocked(subscribeToCourseEvents).mockImplementation((_courseId, onData) => {
+      onData([
+        { ...liveEvent(new Date(webinarStart).toISOString()), id: "webinar", title: "Webinar", externalUrl: "https://meet.example.com/webinar" },
+        { ...liveEvent(new Date(webinarStart + 90 * 60_000).toISOString()), id: "office", title: "Office hours", externalUrl: "https://meet.example.com/office" },
+      ]);
+      return unsubscribable();
+    });
+    renderClassroom("lesson=l2");
+
+    // A linha visível (ao vivo, ela e o aviso têm o mesmo texto).
+    expect(screen.getAllByText(text).some((element) => element.getAttribute("role") !== "status")).toBe(true);
+    const title = text.split(": ")[1];
+    expect(screen.getByRole("link", { name: `Join: ${title}` })).toHaveAttribute("href", href);
+  });
+
+  it("um prazo na aba das sessoes: data de entrega e 'Open link', nunca 'Join now'; vencido, sai", () => {
+    vi.mocked(subscribeToCourseEvents).mockImplementation((_courseId, onData) => {
+      onData([
+        { ...liveEvent(new Date(NOW + 5 * 60_000).toISOString()), id: "due", title: "Essay due", type: "deadline" },
+        { ...liveEvent(new Date(NOW - 30 * 60_000).toISOString()), id: "late", title: "Quiz due", type: "deadline" },
+      ]);
+      return unsubscribable();
+    });
+    renderClassroom("lesson=l2", [], "lives");
+
+    const due = screen.getByText("Essay due").closest("li") as HTMLElement;
+    expect(within(due).getByText(/^Due: /)).toBeInTheDocument();
+    expect(within(due).getByRole("link", { name: "Open link" })).toBeInTheDocument();
+    expect(within(due).queryByText("Happening now")).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Join now" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Quiz due")).not.toBeInTheDocument();
+    // Prazo nao vira faixa "ao vivo".
+    expect(screen.queryByText(/Starts in|Live now/)).not.toBeInTheDocument();
+  });
+
+  it("a faixa tambem aparece nas outras abas; sessao longe nao mostra faixa", () => {
+    vi.mocked(subscribeToCourseEvents).mockImplementation((_courseId, onData) => {
+      onData([liveEvent(new Date(NOW - 30 * 60_000).toISOString())]);
+      return unsubscribable();
+    });
+    const { unmount } = renderClassroom("lesson=l2", [], "community");
+    expect(status("Live now: Live Q&A")).toBeTruthy();
+    unmount();
+
+    vi.mocked(subscribeToCourseEvents).mockImplementation((_courseId, onData) => {
+      onData([liveEvent(new Date(NOW + 2 * 60 * 60_000).toISOString())]);
+      return unsubscribable();
+    });
+    renderClassroom("lesson=l2");
+    expect(screen.queryByText(/Starts in|Live now/)).not.toBeInTheDocument();
+  });
+
+  it("na aba das sessoes: a cancelada marcada e sem link; a proxima com o calendario", () => {
+    vi.mocked(subscribeToCourseEvents).mockImplementation((_courseId, onData) => {
+      onData([
+        { ...liveEvent(new Date(NOW + 24 * 60 * 60_000).toISOString()), id: "cancelled", title: "Called off", status: "cancelled" },
+        { ...liveEvent(new Date(NOW + 48 * 60 * 60_000).toISOString()), id: "next", title: "Next Q&A" },
+      ]);
+      return unsubscribable();
+    });
+    renderClassroom("lesson=l2", [], "lives");
+
+    expect(subscribeToCourseEvents).toHaveBeenLastCalledWith(
+      "course-1", expect.any(Function), expect.any(Function), { includeCancelled: true },
+    );
+    const cancelled = screen.getByText("Called off").closest("li") as HTMLElement;
+    expect(within(cancelled).getByText("Cancelled")).toBeInTheDocument();
+    expect(cancelled.querySelector("s")).not.toBeNull();
+    expect(within(cancelled).queryByRole("link")).not.toBeInTheDocument();
+    const next = screen.getByText("Next Q&A").closest("li") as HTMLElement;
+    expect(within(next).getByRole("link", { name: "Open session link" })).toBeInTheDocument();
+    expect(within(next).getByRole("link", { name: "Add to Google Calendar" })).toBeInTheDocument();
+    // A cancelada nao vira faixa.
+    expect(screen.queryByText(/Starts in|Live now/)).not.toBeInTheDocument();
+  });
+
+  it("a leitura das sessoes falha: erro e Try again, nunca 'nenhuma sessao'", async () => {
+    let deliver!: (events: ReturnType<typeof liveEvent>[]) => void;
+    const reload = vi.fn(async () => deliver([liveEvent(new Date(NOW + 60 * 60_000).toISOString())]));
+    vi.mocked(subscribeToCourseEvents).mockImplementation((_courseId, onData, onError) => {
+      deliver = onData;
+      onError(new Error("offline"));
+      return Object.assign(vi.fn(), { reload });
+    });
+    renderClassroom("lesson=l2", [], "lives");
+
+    expect(screen.getByText("We could not load the live sessions for this course.")).toBeInTheDocument();
+    expect(screen.queryByText("No live sessions are scheduled right now.")).not.toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    });
+    expect(reload).toHaveBeenCalledOnce();
+    expect(screen.getByText("Live Q&A")).toBeInTheDocument();
+    expect(screen.queryByText("We could not load the live sessions for this course.")).not.toBeInTheDocument();
   });
 });

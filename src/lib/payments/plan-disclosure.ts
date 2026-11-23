@@ -22,7 +22,7 @@ export function formatTrialDate(date: Date, locale: string): string {
 }
 
 /**
- * "$5/month", "$50/year", "$89 al mes"... Always "$" (en-US): the pricing page
+ * "$9/month", "$90/year", "$89 al mes"... Always "$" (en-US): the pricing page
  * and the help copy write prices that way in both languages.
  */
 export function planPriceLabel(

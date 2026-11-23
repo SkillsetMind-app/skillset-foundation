@@ -25,6 +25,10 @@ it.each([
   state.locale = locale;
   render(await VerifyPage());
   expect(screen.getByText(text)).toBeInTheDocument();
+  // F-03: a frase e a do leitor de tela; na tela, o cartao em esqueleto, sem
+  // segundo titulo.
+  expect(screen.getByRole("status")).toHaveTextContent(text);
+  expect(screen.queryByRole("heading")).toBeNull();
 });
 
 it.each([

@@ -3,12 +3,13 @@
 import { useAuth } from "@/components/auth/auth-provider";
 import { AuthFrame } from "@/components/auth/auth-frame";
 import { LoginForm } from "@/components/auth/login-form";
+import { PageHeadingProvider, PageHeadingText } from "@/components/auth/page-heading";
 import { SignupForm } from "@/components/auth/signup-form";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import {
   getAuthPathIntentFromSearchParams,
+  getEntryReturnTo,
   getLoadingRoute,
-  getSafeReturnTo,
 } from "@/lib/auth/routing";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef } from "react";
@@ -46,16 +47,20 @@ export function AuthPage() {
     // completed inside the form already owns its confirmation and navigation.
     entrySessionHandled.current = true;
     if (status === "authenticated" && user?.emailVerified && !searchParams.has("error")) {
-      router.replace(getLoadingRoute("welcome", pathIntent, getSafeReturnTo(searchParams)));
+      router.replace(getLoadingRoute("welcome", pathIntent, getEntryReturnTo(searchParams)));
     }
   }, [pathIntent, router, searchParams, status, user]);
 
   return (
     <AuthFrame homeLabel={t("auth.page.backToHome")}>
-      <h1 className="auth-title display-title">
-        {t(`auth.page.title${modeKey}${roleKey}`)}
-      </h1>
-      {isSignup ? <SignupForm /> : <LoginForm />}
+      {/* Com uma tela de estado no lugar do formulario ("confirme seu
+          e-mail", link vencido), o titulo diz o estado (page-heading.tsx). */}
+      <PageHeadingProvider>
+        <h1 className="auth-title display-title">
+          <PageHeadingText part="title" fallback={t(`auth.page.title${modeKey}${roleKey}`)} />
+        </h1>
+        {isSignup ? <SignupForm /> : <LoginForm />}
+      </PageHeadingProvider>
     </AuthFrame>
   );
 }

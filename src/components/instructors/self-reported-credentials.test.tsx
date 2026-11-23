@@ -63,7 +63,7 @@ describe("credencial com selo", () => {
         <CourseInstructorCard teacherId="t-1" profile={verified} />
       </>,
     );
-    await screen.findByRole("link", { name: "View profile" });
+    await screen.findByText("View profile");
     expect(screen.getAllByText("ICF Associate Certified Coach")).toHaveLength(3);
     expect(screen.queryByText("Self-reported")).not.toBeInTheDocument();
   });

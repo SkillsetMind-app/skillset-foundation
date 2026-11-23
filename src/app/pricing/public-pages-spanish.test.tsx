@@ -27,7 +27,7 @@ it("localizes profile metadata without changing its canonical reference", async 
 it.each([
   [PricingPage, pricingMetadata, "Precios que bajan a medida que creces.", "Precios"],
   [CreatorsPage, creatorsMetadata, "Enseña con un sistema completo para gestionar cursos.", "Enseña en SkillsetMind"],
-  [PromisePage, promiseMetadata, "Seis compromisos. Por escrito. Públicos.", "La promesa de SkillsetMind"],
+  [PromisePage, promiseMetadata, "La promesa de SkillsetMind a los creadores", "La promesa de SkillsetMind a los creadores"],
   [AboutPage, aboutMetadata, "SkillsetMind es un espacio público para aprender, enseñar y crecer con confianza.", "Acerca de nosotros"],
   [ContactPage, contactMetadata, "Contacta con el equipo adecuado para soporte, enseñanza y colaboraciones.", "Contacto"],
   [InstructorsPage, instructorsMetadata, "Aprende de expertos independientes.", "Instructores"],
@@ -48,9 +48,11 @@ it("refreshes pricing language without resetting the selected cycle or expanded 
   view.rerender(await PricingPage());
   expect(screen.getByLabelText(/Anual/)).toBeChecked();
   expect(screen.getByText("¿Qué ocurre si cambio a un plan inferior o cancelo?").closest("details")).toHaveAttribute("open");
-  expect(screen.getByRole("region", { name: "Comparación de planes" })).toHaveTextContent("$5/mes");
+  expect(screen.getByRole("region", { name: "Comparación de planes" })).toHaveTextContent("$9/mes");
   expect(screen.getByRole("columnheader", { name: "Comisión de la plataforma" })).toBeInTheDocument();
-  expect(screen.getByText("4.9% + $0.30 por venta")).toBeInTheDocument();
-  expect(screen.getByRole("link", { name: "Empieza tu prueba gratis de 14 días — Pro" })).toBeInTheDocument();
+  // A taxa por venda é dita uma vez por cartão, na linha abaixo do preço.
+  expect(screen.getByRole("region", { name: "Comparación de planes" })).toHaveTextContent("4.9% + $0.30 por venta");
+  // One link per billing cycle; CSS shows the one for the selected cycle.
+  expect(screen.getAllByRole("link", { name: "Empieza tu prueba gratis de 14 días — Pro" })).toHaveLength(2);
   expect(screen.getByRole("region", { name: "Comparación de planes" })).toHaveTextContent("Se renueva automáticamente hasta que canceles.");
 });

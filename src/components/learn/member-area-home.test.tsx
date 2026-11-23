@@ -9,7 +9,7 @@ import type { MemberAreaHome } from "@/lib/data/member-areas";
 const mocks = vi.hoisted(() => {
   const replace = vi.fn();
   // Estável como o do Next: o efeito depende dele.
-  return { getMemberAreaHome: vi.fn(), replace, router: { replace, refresh: () => undefined } };
+  return { getMemberAreaHome: vi.fn(), getMemberAreaCommunity: vi.fn(), replace, router: { replace, refresh: () => undefined } };
 });
 
 vi.mock("next/navigation", () => ({ useRouter: () => mocks.router }));
@@ -22,12 +22,13 @@ vi.mock("@/components/learn/member-area-shell", () => ({
 vi.mock("@/lib/data/member-areas", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/data/member-areas")>()),
   getMemberAreaHome: mocks.getMemberAreaHome,
+  getMemberAreaCommunity: mocks.getMemberAreaCommunity,
   memberAreaCoverUrl: (path: string) => `https://media.test/${path}`,
 }));
 
 const home: MemberAreaHome = {
   area: {
-    ownerId: "u-1", username: "eton", creatorName: "Eton Simon", creatorPhotoUrl: null,
+    ownerId: "u-1", username: "eton", slug: null, creatorName: "Eton Simon", creatorPhotoUrl: null,
     name: "Eton Academy", theme: "dark", coverPath: "users/u-1/member-area/cover-1",
     welcomeText: "Welcome to the academy.", configured: true, isOwnerPreview: false,
   },
@@ -56,7 +57,52 @@ function renderView(ref = "@eton", locale: "en" | "es" = "en") {
 describe("MemberAreaHomeView", () => {
   beforeEach(() => {
     mocks.getMemberAreaHome.mockReset();
+    mocks.getMemberAreaCommunity.mockReset().mockResolvedValue(null);
     mocks.replace.mockReset();
+    window.localStorage.clear();
+  });
+
+  // Antes a casca nascia clara durante a leitura e uma área escura virava
+  // escura um instante depois. O tema só chega com a leitura: na primeira
+  // visita a espera é neutra (sem tema), na volta já sai no tema guardado.
+  it("carregando: moldura neutra na primeira visita, tema guardado na volta", async () => {
+    mocks.getMemberAreaHome.mockResolvedValue(home);
+    const first = renderView();
+    expect(screen.getByTestId("shell")).not.toHaveAttribute("data-members-theme");
+    expect(screen.getByRole("status")).toHaveTextContent("Loading the members area...");
+    expect(await screen.findByRole("heading", { level: 1, name: "Eton Academy" })).toBeTruthy();
+    expect(screen.getByTestId("shell").getAttribute("data-members-theme")).toBe("dark");
+    first.unmount();
+
+    renderView();
+    expect(screen.getByRole("status")).toBeTruthy();
+    expect(screen.getByTestId("shell").getAttribute("data-members-theme")).toBe("dark");
+    expect(await screen.findByRole("heading", { level: 1, name: "Eton Academy" })).toBeTruthy();
+  });
+
+  // Comunidade da área inteira: cartão no topo quando o professor escolheu uma;
+  // se a leitura dela falhar, a área abre igual, sem o cartão.
+  it("mostra o cartão da comunidade da área e o tipo de cada produto", async () => {
+    mocks.getMemberAreaHome.mockResolvedValue(home);
+    mocks.getMemberAreaCommunity.mockResolvedValue({ courseId: "c-club", title: "Inner circle", isOwner: false });
+    renderView();
+    const card = await screen.findByRole("link", { name: /^Community/ });
+    expect(card.getAttribute("href")).toBe("/learn/areas/%40eton/community");
+    expect(card.textContent).toContain("Talk with everyone learning with Eton Simon.");
+    expect(within(screen.getByRole("region", { name: "My products" })).getByRole("link").textContent).toContain("Course");
+    // "Open the community" é texto de 14px: pede o destaque legível do curso,
+    // não o fundo de botão (2,9:1 num curso escuro).
+    const open = within(card).getByText("Open the community");
+    expect(open).toHaveClass("text-[var(--ma-accent-ink)]");
+    expect(open).not.toHaveClass("text-[var(--ma-accent)]");
+  });
+
+  it("abre a área mesmo se a comunidade falhar", async () => {
+    mocks.getMemberAreaHome.mockResolvedValue(home);
+    mocks.getMemberAreaCommunity.mockRejectedValue(new Error("boom"));
+    renderView();
+    expect(await screen.findByRole("heading", { name: "Eton Academy" })).toBeTruthy();
+    expect(screen.queryByRole("link", { name: /^Community/ })).toBeNull();
   });
   afterEach(cleanup);
 
@@ -64,7 +110,7 @@ describe("MemberAreaHomeView", () => {
     mocks.getMemberAreaHome.mockResolvedValue(home);
     renderView();
     expect(await screen.findByRole("heading", { level: 1, name: "Eton Academy" })).toBeTruthy();
-    expect(mocks.getMemberAreaHome).toHaveBeenCalledWith("@eton");
+    expect(mocks.getMemberAreaHome).toHaveBeenCalledWith("@eton", null);
     expect(screen.getByTestId("shell").getAttribute("data-members-theme")).toBe("dark");
     expect(screen.getByText("By Eton Simon")).toBeTruthy();
     expect(screen.getByText("Welcome to the academy.")).toBeTruthy();
@@ -76,6 +122,8 @@ describe("MemberAreaHomeView", () => {
     const mine = screen.getByRole("region", { name: "My products" });
     expect(within(mine).getByRole("link").getAttribute("href")).toBe("/learn/courses/c-a");
     expect(within(mine).getByText("12% complete")).toBeTruthy();
+    // A barra da casa, anunciada como barra (antes era só um traço mudo).
+    expect(within(mine).getByRole("progressbar", { name: "12% complete" }).getAttribute("aria-valuenow")).toBe("12");
 
     const more = screen.getByRole("region", { name: "More from this creator" });
     expect(within(more).getByText("Locked")).toBeTruthy();
@@ -108,17 +156,22 @@ describe("MemberAreaHomeView", () => {
     renderView();
     expect(await screen.findByText(/Preview: this is what your students see/)).toBeTruthy();
     expect(screen.getByRole("link", { name: "Edit members area" }).getAttribute("href")).toBe("/teach/member-area");
-    expect(screen.getByText("Open one of your products below to start.")).toBeTruthy();
+    // Seção vazia some (título + "nada aqui" eram uma seção sem conteúdo);
+    // só "My products" fica, com o aviso de vazio.
+    expect(screen.queryByRole("region", { name: "Continue where you left off" })).toBeNull();
+    expect(screen.queryByText("Open one of your products below to start.")).toBeNull();
     expect(screen.getByText("You have no products from this creator yet.")).toBeTruthy();
-    // Sem nada comprado, a vitrine vazia não diz "você já tem tudo".
-    expect(screen.getByText("This creator has no other products yet.")).toBeTruthy();
+    expect(screen.queryByRole("region", { name: "More from this creator" })).toBeNull();
+    expect(screen.queryByText("This creator has no other products yet.")).toBeNull();
     expect(screen.queryByText("You already have every product from this creator.")).toBeNull();
   });
 
-  it("quem já tem tudo vê 'você já tem tudo'; assinatura mostra o intervalo", async () => {
+  it("quem já tem tudo não vê a vitrine vazia; assinatura mostra o intervalo", async () => {
     mocks.getMemberAreaHome.mockResolvedValueOnce({ ...home, moreProducts: [] });
     renderView();
-    expect(await screen.findByText("You already have every product from this creator.")).toBeTruthy();
+    expect(await screen.findByRole("region", { name: "My products" })).toBeTruthy();
+    expect(screen.queryByRole("region", { name: "More from this creator" })).toBeNull();
+    expect(screen.queryByText("You already have every product from this creator.")).toBeNull();
     cleanup();
     mocks.getMemberAreaHome.mockResolvedValueOnce({
       ...home,

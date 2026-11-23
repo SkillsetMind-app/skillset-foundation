@@ -10,9 +10,10 @@ vi.mock("next/headers", () => ({
   cookies: async () => ({ get: () => undefined }),
 }));
 
-// Há curso real publicado? Contrato de hasRealPublishedCourse; começa com sim.
+// Vitrine aberta (12 cursos de 5 professores)? Contrato de isMarketplaceOpen;
+// começa com sim.
 const state = vi.hoisted(() => ({ hasCourses: true }));
-vi.mock("@/lib/data/server/public-course", () => ({ hasRealPublishedCourse: async () => state.hasCourses }));
+vi.mock("@/lib/data/server/public-course", () => ({ isMarketplaceOpen: async () => state.hasCourses }));
 
 afterEach(() => {
   cleanup();
@@ -20,10 +21,9 @@ afterEach(() => {
 });
 
 describe("SiteFooter", () => {
-  // Loja vazia não ganha link: o rodapé leva a ela só quando há curso real.
-  // O diretório de instrutores segue a mesma regra (#471): sem curso real, ele
-  // só listaria perfis sem nada à venda.
-  it("tira Cursos e Instrutores do rodapé enquanto não há curso real publicado", async () => {
+  // Vitrine fechada não ganha link: o rodapé leva a ela só com 12 cursos de
+  // 5 professores, a mesma regra do menu e da home.
+  it("tira Cursos e Instrutores do rodapé enquanto a vitrine está fechada", async () => {
     state.hasCourses = false;
     render(await SiteFooter());
 
@@ -58,6 +58,11 @@ describe("SiteFooter", () => {
     expect(promiseLinks).toHaveLength(1);
     expect(screen.queryByText("Creator Promise")).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Copyright (DMCA)" })).toHaveAttribute("href", "/legal/copyright");
+  });
+
+  it("diz que é educação, não terapia", async () => {
+    render(await SiteFooter());
+    expect(document.body.textContent).toContain("Education, not therapy.");
   });
 
   it("abre o menu de idioma para cima, para não cair fora da página", async () => {

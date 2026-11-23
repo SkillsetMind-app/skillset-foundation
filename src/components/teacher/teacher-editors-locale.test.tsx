@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ReactNode } from "react";
 
@@ -41,14 +41,27 @@ function Language() {
 function mount(children: ReactNode, locale: "en" | "es" = "es") {
   return render(<I18nProvider initialLocale={locale}><Language />{children}</I18nProvider>);
 }
+const originalShow = Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype, "showModal");
+const originalClose = Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype, "close");
 beforeEach(() => {
   vi.clearAllMocks();
   state.plan = "plus";
   state.landing = { template: "classic", blocks: [] };
   vi.mocked(saveCourseLanding).mockResolvedValue({ ok: true });
   vi.mocked(updateTeacherCourseBuilder).mockResolvedValue(undefined);
+  // Tirar uma seção pergunta na janela da plataforma; o jsdom não tem
+  // showModal/close e o stub faz o mínimo que o navegador faz.
+  Object.defineProperty(HTMLDialogElement.prototype, "showModal", { configurable: true, value() { this.setAttribute("open", ""); } });
+  Object.defineProperty(HTMLDialogElement.prototype, "close", { configurable: true, value() { if (!this.hasAttribute("open")) return; this.removeAttribute("open"); this.dispatchEvent(new Event("close")); } });
 });
-afterEach(() => { cleanup(); vi.restoreAllMocks(); });
+afterEach(() => {
+  cleanup();
+  vi.restoreAllMocks();
+  if (originalShow) Object.defineProperty(HTMLDialogElement.prototype, "showModal", originalShow);
+  else Reflect.deleteProperty(HTMLDialogElement.prototype, "showModal");
+  if (originalClose) Object.defineProperty(HTMLDialogElement.prototype, "close", originalClose);
+  else Reflect.deleteProperty(HTMLDialogElement.prototype, "close");
+});
 
 describe("ES-09 editors with the shipped dictionaries", () => {
   it("requires the coordinator to integrate both namespaces in the real dictionaries", () => {
@@ -95,9 +108,9 @@ describe("ES-09 editors with the shipped dictionaries", () => {
     vi.mocked(updateTeacherCourseBuilder).mockImplementationOnce(() => new Promise((_, fail) => { reject = fail; }));
     mount(<SalesPageEditor course={course} />, "en");
     fireEvent.click(screen.getByRole("button", { name: "Save sales page" }));
-    expect(screen.getByRole("button", { name: "Saving…" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Saving..." })).toBeDisabled();
     fireEvent.click(screen.getByRole("button", { name: "ES" }));
-    expect(screen.getByRole("button", { name: "Guardando…" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Guardando..." })).toBeDisabled();
     reject(new Error("Internal English backend failure"));
     expect(await screen.findByRole("alert")).toHaveTextContent("No se pudo guardar la página de ventas.");
     expect(screen.queryByText("Internal English backend failure")).not.toBeInTheDocument();
@@ -150,9 +163,8 @@ describe("ES-09 editors with the shipped dictionaries", () => {
       { kind: "cta", heading: "Ready?", body: "Saved CTA", buttonLabel: "Enrol now" },
     ] };
     const original = structuredClone(state.landing);
-    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
     mount(<CourseLandingEditor course={course} />);
-    expect(screen.getByText("Cargando tu página de ventas…")).toBeInTheDocument();
+    expect(screen.getByText("Cargando tu página de ventas...")).toBeInTheDocument();
     await screen.findByLabelText("Título principal");
     for (const name of ["Una línea debajo del título",
       "Título del paso 1", "Qué ocurre en este paso", "Qué dijeron", "Quién lo dijo",
@@ -161,12 +173,20 @@ describe("ES-09 editors with the shipped dictionaries", () => {
     }
     expect(screen.getByText("URL de la imagen de fondo")).toBeInTheDocument();
     expect(screen.getByText("URL de tu foto")).toBeInTheDocument();
-    expect(screen.getAllByRole("button", { name: "Subir imagen" })).toHaveLength(2);
+    // O botão de imagem é o rótulo do campo de arquivo da casca única (B-05).
+    expect(screen.getAllByLabelText("Subir imagen")).toHaveLength(2);
     expect(screen.getAllByLabelText("O pega un enlace")).toHaveLength(2);
+    // Cada link colado mora no grupo com o nome da própria imagem.
+    for (const image of ["URL de la imagen de fondo", "URL de tu foto"]) {
+      expect(within(screen.getByRole("group", { name: image })).getAllByLabelText("O pega un enlace")).toHaveLength(1);
+    }
     expect(screen.getAllByRole("button", { name: "Subir" })).toHaveLength(7);
     expect(screen.getByText(/Atención: esta página usa/)).toHaveTextContent("therapist");
     fireEvent.click(screen.getByRole("button", { name: "Eliminar sección Sobre ti" }));
-    expect(confirm).toHaveBeenCalledWith('¿Eliminar la sección "Sobre ti" y todo su contenido?');
+    expect(screen.getByRole("dialog", { name: "¿Eliminar esta sección?" }))
+      .toHaveTextContent('¿Eliminar la sección "Sobre ti" y todo su contenido?');
+    fireEvent.click(screen.getByRole("button", { name: "Mantener la sección" }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "EN" }));
     expect(screen.getByLabelText("Headline")).toHaveValue("Saved therapist $&");
     expect(screen.getByLabelText("Button label")).toHaveValue("Enrol now");
@@ -214,5 +234,30 @@ describe("ES-09 editors with the shipped dictionaries", () => {
     fireEvent.click(screen.getByRole("button", { name: "Empezar con una página sugerida" }));
     expect(screen.getByText("Has utilizado todas las secciones incluidas en tu plan. Elimina una o mejora tu plan para añadir más.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Sobre ti" })).toBeDisabled();
+  });
+});
+
+describe("sales copy save status", () => {
+  it("drops the saved line as soon as the copy differs from what was saved", async () => {
+    mount(<SalesPageEditor course={course} />, "en");
+    const summary = screen.getByLabelText("Description");
+    fireEvent.change(summary, { target: { value: "Edited summary" } });
+    expect(screen.getByRole("status")).toHaveTextContent("Unsaved changes");
+    fireEvent.click(screen.getByRole("button", { name: "Save sales page" }));
+    expect(await screen.findByRole("status")).toHaveTextContent("Sales page copy saved.");
+    fireEvent.change(summary, { target: { value: "Edited summary, more" } });
+    expect(screen.getByRole("status")).toHaveTextContent("Unsaved changes");
+    expect(screen.queryByText(/Sales page copy saved/)).not.toBeInTheDocument();
+  });
+
+  it("Try again repeats the same save after a failure", async () => {
+    vi.mocked(updateTeacherCourseBuilder).mockRejectedValueOnce(new Error("Internal English backend failure"));
+    mount(<SalesPageEditor course={course} />, "en");
+    fireEvent.click(screen.getByRole("button", { name: "Save sales page" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Could not save sales page.");
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(await screen.findByRole("status")).toHaveTextContent("Sales page copy saved.");
+    expect(updateTeacherCourseBuilder).toHaveBeenCalledTimes(2);
+    expect(vi.mocked(updateTeacherCourseBuilder).mock.calls[1]).toEqual(vi.mocked(updateTeacherCourseBuilder).mock.calls[0]);
   });
 });

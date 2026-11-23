@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 
 import { isCoursePubliclySellable } from "@/domain/teacher-course";
 import { getServerLocale } from "@/lib/i18n/server";
@@ -6,6 +6,7 @@ import { getAppUrl } from "@/lib/payments/server/app-url";
 import { enforceRateLimit, PaymentError, paymentErrorResponse } from "@/lib/payments/server/auth";
 import { createCourseCheckoutSession } from "@/lib/payments/server/course-checkout";
 import {
+  decodeGuestCheckoutCookie,
   discardNewGuestBuyer,
   encodeGuestCheckoutCookie,
   findOrCreateGuestBuyer,
@@ -54,8 +55,9 @@ function invalidRequest() {
 // The answer is the same whether or not the e-mail already had an account: a
 // Stripe url; { status: "access_link_sent" } when that account already holds
 // the course (enrolled, subscribed or owner); or a 409 "checkout_pending" when
-// a checkout for the course is already open or starting for it.
-export async function POST(request: Request) {
+// a checkout for the course is already open or starting for it. An open
+// checkout's url goes back only to the browser that opened it (signed cookie).
+export async function POST(request: NextRequest) {
   if (!isGuestCheckoutConfigured() || !isPlatformRequest(request)) {
     return NextResponse.json({ error: "Not found.", code: "guest_checkout_disabled" }, { status: 404 });
   }
@@ -117,9 +119,11 @@ export async function POST(request: Request) {
     // An account made here is removed only when the purchase was refused
     // before any checkout could exist for it. The answer to the browser stays
     // the same either way.
+    const pending = decodeGuestCheckoutCookie(request.cookies.get(GUEST_CHECKOUT_COOKIE)?.value);
+    const openedHere = pending?.email === email && pending.courseId === courseId;
     let response: NextResponse;
     try {
-      response = await answerForBuyer(admin, { userId: buyer.userId, courseId, ownerId: course.owner_id, email, body });
+      response = await answerForBuyer(admin, { userId: buyer.userId, courseId, ownerId: course.owner_id, email, body, openedHere });
     } catch (error) {
       // Thrown before the shared builder ran.
       if (buyer.created) await discardNewGuestBuyer(admin, buyer.userId);
@@ -140,7 +144,7 @@ export async function POST(request: Request) {
 
 async function answerForBuyer(
   admin: ReturnType<typeof getSupabaseAdminClient>,
-  input: { userId: string; courseId: string; ownerId: string; email: string; body: Record<string, unknown> },
+  input: { userId: string; courseId: string; ownerId: string; email: string; body: Record<string, unknown>; openedHere: boolean },
 ): Promise<NextResponse> {
   const { userId, courseId, email, body } = input;
   const { data: enrollment, error: enrollmentError } = await admin
@@ -170,6 +174,7 @@ async function answerForBuyer(
       customerEmail: email,
       // Read by the webhook after the paid sale (sign-in link).
       checkoutOrigin: "guest",
+      reuseOpenCheckout: input.openedHere,
     },
   );
 

@@ -9,7 +9,7 @@ import { buildPageMetadata } from "@/lib/seo/page-metadata";
 export async function generateMetadata() {
   const { t } = await getServerTranslation();
   return buildPageMetadata({
-    title: t("publicPages.promise.the_skillsetmind_promise"),
+    title: t("publicPages.promise.the_skillsetmind_creator_promise"),
     description:
       t("publicPages.promise.skillsetmind_commitments_to_creators_and_learners"),
     path: "/promise",
@@ -81,7 +81,7 @@ export default async function PromisePage() {
             className="absolute inset-0 opacity-[0.1]"
             style={{
               backgroundImage:
-                "radial-gradient(circle at 18% 28%, rgba(255,255,255,0.45), transparent 32%), radial-gradient(circle at 86% 64%, rgba(178,34,52,0.46), transparent 34%)",
+                "radial-gradient(circle at 18% 28%, rgba(255,255,255,0.45), transparent 32%), radial-gradient(circle at 86% 64%, rgba(201,154,70,0.46), transparent 34%)",
             }}
           />
           {/* Engraved-editorial security texture — the same certificate/banknote
@@ -93,12 +93,12 @@ export default async function PromisePage() {
             aria-hidden="true"
             className="absolute inset-0 bg-[url(/brand/hero-engraving-mobile.webp)] bg-cover bg-center bg-no-repeat opacity-[0.5] mix-blend-screen lg:bg-[url(/brand/hero-engraving-desktop.webp)]"
           />
-          <div className="relative z-10 mx-auto w-full max-w-7xl px-6 py-16 sm:px-8 lg:py-24">
+          <div className="relative z-10 mx-auto w-full max-w-7xl px-5 py-16 sm:px-8 lg:py-24">
             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-white/78">
-              {t("publicPages.promise.the_skillsetmind_creator_promise")}
+              {t("publicPages.promise.six_commitments_in_writing_public")}
             </p>
             <h1 className="display-title mt-5 max-w-4xl text-5xl leading-none text-white sm:text-7xl">
-              {t("publicPages.promise.six_commitments_in_writing_public")}
+              {t("publicPages.promise.the_skillsetmind_creator_promise")}
             </h1>
             <p className="mt-6 max-w-2xl text-base leading-8 text-white/78 sm:text-lg">
               {t("publicPages.promise.these_promises_are_contractual_product_rules")}
@@ -107,18 +107,22 @@ export default async function PromisePage() {
           <div className="absolute bottom-0 left-0 right-0 h-1 bg-[var(--color-accent)]" />
         </section>
 
-        <section className="mx-auto grid w-full max-w-5xl gap-5 px-6 py-14 sm:px-8 lg:py-20">
+        <section className="mx-auto grid w-full max-w-5xl gap-5 px-5 py-14 sm:px-8 lg:py-20">
           {promises.map((promise) => (
             <article
               key={promise.number}
               className="rounded-lg border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)] sm:p-8"
             >
               <div className="grid gap-5 lg:grid-cols-[120px_1fr]">
-                <p className="display-title text-7xl leading-none text-[var(--color-accent-soft)]">
+                {/* Numero de enfeite: creme sobre branco dava ~1,2:1 e ainda era
+                    lido pelo leitor de tela antes do titulo da promessa. */}
+                <p aria-hidden="true" className="display-title text-5xl leading-none text-[var(--color-ink-muted)]">
                   {promise.number}
                 </p>
                 <div>
-                  <h2 className="display-title text-4xl leading-tight text-[var(--color-primary)]">
+                  {/* Serifa só no h1: seis títulos de 36px faziam de cada
+                      cartão uma tela inteira no celular. */}
+                  <h2 className="text-2xl font-bold leading-snug text-[var(--color-primary)]">
                     {promise.title}
                   </h2>
                   <p className="mt-4 text-sm leading-8 text-[var(--color-ink-soft)]">

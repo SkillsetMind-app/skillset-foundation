@@ -1,9 +1,12 @@
+import { Info } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { PaymentReturnCard } from "@/components/account/payment-return-card";
 import { ProtectedSurface } from "@/components/auth/protected-surface";
 import { PlatformShell } from "@/components/platform/platform-shell";
 import { ActivationReturnLink } from "@/components/teacher/activation-return-link";
+import { buttonClasses } from "@/components/ui/button";
 import { getServerTranslation } from "@/lib/i18n/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { privatePageMetadata } from "@/lib/seo/private-page-metadata";
@@ -28,27 +31,25 @@ export default async function TeachActivateReturnPage() {
   return (
     <ProtectedSurface permissions={["teacherStudio.access"]}>
       <PlatformShell title={t("activationCheckout.returnTitle")} compact>
-        <div className="rounded-lg border fine-rule bg-white p-8 shadow-[var(--shadow-soft)]">
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
-            {t("activationCheckout.thanks")}
-          </p>
-          <h2 className="display-title mt-3 text-3xl text-[var(--color-primary)]">
-            {t("activationCheckout.confirming")}
-          </h2>
-          <p className="mt-3 max-w-lg text-sm leading-7 text-[var(--color-ink-soft)]">
-            {t("activationCheckout.returnBody")}
-          </p>
-          <div className="mt-5 flex flex-wrap gap-3">
-            {/* The course the creator was publishing, kept in this tab by the
-                checkout panel; /teach when there is none. */}
-            <ActivationReturnLink className="button-solid px-4 py-2.5 text-sm">
-              {t("activationCheckout.backToCourseStudio")}
-            </ActivationReturnLink>
-            <Link href="/support" className="button-outline px-4 py-2.5 text-sm">
-              {t("activationCheckout.support")}
-            </Link>
-          </div>
-        </div>
+        {/* O mesmo cartao do retorno do plano. Sai o "Thanks" e a segunda
+            serifa: a serifa da tela e o titulo da pagina. */}
+        <PaymentReturnCard
+          icon={<Info aria-hidden="true" size={20} />}
+          heading={t("activationCheckout.confirming")}
+          body={t("activationCheckout.returnBody")}
+          actions={
+            <>
+              {/* The course the creator was publishing, kept in this tab by the
+                  checkout panel; /teach when there is none. */}
+              <ActivationReturnLink className={buttonClasses({ variant: "solid" })}>
+                {t("activationCheckout.backToCourseStudio")}
+              </ActivationReturnLink>
+              <Link href="/support" className={buttonClasses({ variant: "outline" })}>
+                {t("activationCheckout.support")}
+              </Link>
+            </>
+          }
+        />
       </PlatformShell>
     </ProtectedSurface>
   );

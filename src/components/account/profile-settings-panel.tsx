@@ -2,7 +2,7 @@
 
 import { UploadCloud } from "lucide-react";
 import Image from "next/image";
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
@@ -31,7 +31,11 @@ import {
   uploadUserAvatar,
   type UploadAvatarProgress,
 } from "@/lib/data/profile-media";
+import { SavedNote } from "@/components/teacher/save-status-line";
 import { UploadProgressNote } from "@/components/teacher/upload-progress-note";
+import { BusyLabel } from "@/components/ui/busy-label";
+import { InlineAlert } from "@/components/ui/inline-alert";
+import { LoadErrorAlert } from "@/components/ui/load-error-alert";
 
 const goalOptions = [
   ["career_growth", "accountProfile.goals.career_growth"],
@@ -72,6 +76,14 @@ export function ProfileSettingsPanel() {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  // "Try again" da leitura do perfil: a mesma leitura do efeito, de novo.
+  const [loadAttempt, setLoadAttempt] = useState(0);
+  // A leitura falhou: o formulário NÃO aparece (os campos estariam vazios, e
+  // salvar gravaria bio, telefone e metas vazios por cima do perfil guardado).
+  // Separado do `error`, que outro aviso (validar, foto) podia sobrescrever.
+  const [loadFailed, setLoadFailed] = useState(false);
+  // A seção fica na tela nos dois desfechos e recebe o foco do "Try again".
+  const sectionRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     if (!user) {
@@ -103,10 +115,11 @@ export function ProfileSettingsPanel() {
           (profile?.roles ?? []).includes("teacher") ||
             (profile?.roles ?? []).includes("admin"),
         );
+        setLoadFailed(false);
       })
       .catch(() => {
         if (mounted) {
-          setError("accountProfile.errors.load");
+          setLoadFailed(true);
         }
       })
       .finally(() => {
@@ -118,7 +131,14 @@ export function ProfileSettingsPanel() {
     return () => {
       mounted = false;
     };
-  }, [user]);
+  }, [user, loadAttempt]);
+
+  // Volta à espera de sempre (o esqueleto) até a leitura nova responder.
+  function retryLoad() {
+    setLoadFailed(false);
+    setIsLoading(true);
+    setLoadAttempt((attempt) => attempt + 1);
+  }
 
   const safeTimezoneOptions = useMemo(() => {
     if (timezoneOptions.includes(timezone)) {
@@ -128,12 +148,18 @@ export function ProfileSettingsPanel() {
     return [timezone, ...timezoneOptions];
   }, [timezone]);
 
+  // Qualquer edição depois de salvar tira o "Profile updated.": a frase só vale
+  // para o que foi gravado. Campos de texto chegam pelo onChange do form; os
+  // botões (objetivos, credenciais) chamam aqui.
+  const clearSuccess = () => setSuccess("");
+
   function toggleGoal(goal: UserGoal) {
     setGoals((currentGoals) =>
       currentGoals.includes(goal)
         ? currentGoals.filter((currentGoal) => currentGoal !== goal)
         : normalizeGoals([...currentGoals, goal]),
     );
+    clearSuccess();
   }
 
   function updateCredential(index: number, value: string) {
@@ -146,12 +172,14 @@ export function ProfileSettingsPanel() {
     setCredentials((current) =>
       current.length >= maxCredentialEntries ? current : [...current, ""],
     );
+    clearSuccess();
   }
 
   function removeCredential(index: number) {
     setCredentials((current) =>
       current.filter((_, position) => position !== index),
     );
+    clearSuccess();
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -260,27 +288,66 @@ export function ProfileSettingsPanel() {
     }
   }
 
+  const header = (
+    <>
+      <h2 className="text-lg font-bold text-[var(--color-ink)]">
+        {t("accountProfile.title")}
+      </h2>
+      <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--color-ink-soft)]">
+        {t("accountProfile.description")}
+      </p>
+    </>
+  );
+
   if (isLoading) {
+    // F-03: título e descrição já são conhecidos e entram de vez; só o
+    // formulário espera, em blocos do tamanho da foto e dos primeiros campos
+    // (regra do BuilderSkeleton). Antes era um cartão com uma linha e o
+    // formulário inteiro caía depois, empurrando tudo.
+    const block = "bg-[var(--color-surface-strong)]";
     return (
-      <section className="settings-section-card">
-        <p className="text-sm text-[var(--color-ink-soft)]">{t("accountProfile.loading")}</p>
+      <section ref={sectionRef} tabIndex={-1} className="settings-section-card outline-none">
+        {header}
+        <div role="status" className="mt-6">
+          <span className="sr-only">{t("accountProfile.loading")}</span>
+          <div aria-hidden="true" className="grid animate-pulse gap-4">
+            <div className="flex flex-col gap-4 rounded-lg border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-4 sm:flex-row sm:items-center">
+              <div className={`size-20 shrink-0 rounded-full ${block}`} />
+              <div className="grid flex-1 gap-2">
+                <div className={`h-4 w-32 rounded-sm ${block}`} />
+                <div className={`h-4 w-full max-w-sm rounded-sm ${block}`} />
+                <div className={`mt-1 h-11 w-40 rounded-md ${block}`} />
+              </div>
+            </div>
+            {[0, 1, 2].map((item) => (
+              <div key={item} className="grid gap-2">
+                <div className={`h-4 w-28 rounded-sm ${block}`} />
+                <div className={`h-11 w-full rounded-md ${block}`} />
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  if (loadFailed) {
+    // Só o título e o aviso com "Try again": nada editável sobre dados que não vieram.
+    return (
+      <section ref={sectionRef} tabIndex={-1} className="settings-section-card outline-none">
+        {header}
+        <LoadErrorAlert className="mt-6" onRetry={retryLoad} focusRef={sectionRef}>
+          {t("accountProfile.errors.load")}
+        </LoadErrorAlert>
       </section>
     );
   }
 
   return (
-    <section className="settings-section-card">
-      <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-        {t("accountProfile.identity")}
-      </p>
-      <h3 className="display-title mt-3 text-3xl text-[var(--color-primary)]">
-        {t("accountProfile.title")}
-      </h3>
-      <p className="mt-4 max-w-2xl text-sm leading-7 text-[var(--color-ink-soft)]">
-        {t("accountProfile.description")}
-      </p>
+    <section ref={sectionRef} tabIndex={-1} className="settings-section-card outline-none">
+      {header}
 
-      <form className="mt-6 grid grid-cols-1 gap-4" onSubmit={handleSubmit}>
+      <form className="mt-6 grid grid-cols-1 gap-4" onSubmit={handleSubmit} onChange={clearSuccess}>
         <div className="flex flex-col gap-4 rounded-lg border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-4 sm:flex-row sm:items-center">
           <UserAvatar
             name={displayName || user?.email}
@@ -295,16 +362,17 @@ export function ProfileSettingsPanel() {
               {t("accountProfile.photo.hint")}
             </p>
             <label
-              className={`relative mt-3 inline-flex min-h-11 w-fit cursor-pointer items-center gap-2 rounded-md border border-dashed border-[var(--color-line)] bg-white px-4 py-2.5 text-sm font-semibold text-[var(--color-primary)] transition-colors hover:border-[var(--color-primary-light)] focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[var(--color-primary)] ${
+              className={`relative mt-3 inline-flex min-h-11 w-fit cursor-pointer items-center gap-2 rounded-md border border-dashed border-[var(--color-line)] bg-white px-4 py-2.5 text-sm font-semibold text-[var(--color-primary)] transition-colors duration-[var(--duration-base)] hover:border-[var(--color-primary-light)] focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[var(--color-primary)] ${
                 isUploadingAvatar ? "pointer-events-none opacity-60" : ""
               }`}
             >
               <UploadCloud size={16} aria-hidden />
-              {isUploadingAvatar
-                ? t("accountProfile.uploading")
-                : photoURL
-                  ? t("accountProfile.photo.replace")
-                  : t("accountProfile.photo.upload")}
+              {/* F-20: o rótulo não troca durante o envio; quem diz o
+                  andamento é só a nota logo abaixo (antes "Uploading..." aqui
+                  e "Uploading 37%" ali, ao mesmo tempo). */}
+              {photoURL
+                ? t("accountProfile.photo.replace")
+                : t("accountProfile.photo.upload")}
               <input
                 type="file"
                 accept={allowedAvatarTypes.join(",")}
@@ -331,20 +399,20 @@ export function ProfileSettingsPanel() {
           <input
             value={displayName}
             onChange={(event) => setDisplayName(event.target.value)}
-            className="min-w-0 rounded-md border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
+            className="min-w-0 field-input"
           />
         </label>
 
         <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
           {t("accountProfile.username")}
-          <div className="flex overflow-hidden rounded-md border border-[var(--color-line)] bg-white focus-within:border-[var(--color-primary-light)]">
+          <div className="flex overflow-hidden rounded-md border-[1.5px] border-[var(--color-field-border)] bg-[var(--color-surface-soft)] focus-within:border-[var(--color-primary)] focus-within:bg-white">
             <span className="grid place-items-center border-r border-[var(--color-line)] px-3 text-sm font-semibold text-[var(--color-ink-soft)]">
               @
             </span>
             <input
               value={username}
               onChange={(event) => setUsername(normalizeUsername(event.target.value))}
-              className="min-w-0 flex-1 px-4 py-3 text-sm font-normal outline-none"
+              className="min-w-0 flex-1 bg-transparent px-4 py-3 text-sm font-normal outline-none"
             />
           </div>
         </label>
@@ -355,7 +423,7 @@ export function ProfileSettingsPanel() {
             value={bio}
             onChange={(event) => setBio(event.target.value)}
             rows={4}
-            className="min-w-0 resize-none rounded-md border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
+            className="min-w-0 resize-none field-input"
           />
           <span className="text-xs font-normal text-[var(--color-ink-soft)]">
             {t("accountProfile.bioCount").replace("{count}", String(bio.trim().length))}
@@ -387,7 +455,7 @@ export function ProfileSettingsPanel() {
                         updateCredential(index, event.target.value)
                       }
                       placeholder={t("accountProfile.credentials.placeholder")}
-                      className="min-w-0 flex-1 rounded-md border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
+                      className="min-w-0 flex-1 field-input"
                     />
                     <button
                       type="button"
@@ -437,16 +505,14 @@ export function ProfileSettingsPanel() {
                 {t("accountProfile.signature.hint")}
               </p>
               <label
-                className={`relative mt-3 inline-flex min-h-11 w-fit cursor-pointer items-center gap-2 rounded-md border border-dashed border-[var(--color-line)] bg-white px-4 py-2.5 text-sm font-semibold text-[var(--color-primary)] transition-colors hover:border-[var(--color-primary-light)] focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[var(--color-primary)] ${
+                className={`relative mt-3 inline-flex min-h-11 w-fit cursor-pointer items-center gap-2 rounded-md border border-dashed border-[var(--color-line)] bg-white px-4 py-2.5 text-sm font-semibold text-[var(--color-primary)] transition-colors duration-[var(--duration-base)] hover:border-[var(--color-primary-light)] focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[var(--color-primary)] ${
                   isUploadingSignature ? "pointer-events-none opacity-60" : ""
                 }`}
               >
                 <UploadCloud size={16} aria-hidden />
-                {isUploadingSignature
-                  ? t("accountProfile.uploading")
-                  : signatureUrl
-                    ? t("accountProfile.signature.replace")
-                    : t("accountProfile.signature.upload")}
+                {signatureUrl
+                  ? t("accountProfile.signature.replace")
+                  : t("accountProfile.signature.upload")}
                 <input
                   type="file"
                   accept={allowedAvatarTypes.join(",")}
@@ -481,7 +547,7 @@ export function ProfileSettingsPanel() {
           <select
             value={timezone}
             onChange={(event) => setTimezone(event.target.value)}
-            className="min-w-0 rounded-md border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
+            className="min-w-0 field-input"
           >
             {safeTimezoneOptions.map((option) => (
               <option key={option} value={option}>
@@ -513,24 +579,21 @@ export function ProfileSettingsPanel() {
         </div>
 
         {error ? (
-          <p role="alert" className="rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
-            {formatValidationMessage(error, t)}
-          </p>
+          <InlineAlert tone="error">{formatValidationMessage(error, t)}</InlineAlert>
         ) : null}
 
-        {success ? (
-          <p className="info-notice" aria-live="polite">
-            {t(success)}
-          </p>
-        ) : null}
-
-        <button
-          type="submit"
-          disabled={isSaving}
-          className="button-solid justify-self-start px-4 py-2.5 text-sm disabled:opacity-60"
-        >
-          {isSaving ? t("accountProfile.saving") : t("accountProfile.save")}
-        </button>
+        {/* O "salvo" fica ao lado do botão: acima dele, nascia e empurrava o
+            botão recém-clicado para baixo. */}
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            type="submit"
+            disabled={isSaving}
+            className="button-solid px-4 py-2.5 text-sm"
+          >
+            <BusyLabel busy={isSaving} idle={t("accountProfile.save")} busyText={t("accountProfile.saving")} />
+          </button>
+          {success ? <SavedNote text={t(success)} /> : null}
+        </div>
       </form>
     </section>
   );

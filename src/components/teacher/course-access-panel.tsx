@@ -4,7 +4,8 @@ import { useEffect, useId, useRef, useState } from "react";
 import { PanelCard } from "@/components/teacher/course-commerce-panels";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { isActivationRequiredError } from "@/domain/creator-verification";
-import { Button } from "@/components/ui";
+import { Button, InlineAlert } from "@/components/ui";
+import { LoadErrorAlert } from "@/components/ui/load-error-alert";
 import { changeCourseAccess, listCourseAccess, type CourseAccessAction, type CourseAccessGrant } from "@/lib/data/course-access";
 
 const statusLabels = {
@@ -48,14 +49,27 @@ export function CourseAccessPanel({ courseId, onChange }: { courseId: string; on
   const [messageStatus, setMessageStatus] = useState<CourseAccessGrant["access_status"]>("pending");
   const [error, setError] = useState("");
   const [confirmId, setConfirmId] = useState<string | null>(null);
+  // Falha da LEITURA da lista, à parte do erro de conceder: ela ganha um "Try
+  // again" que lê de novo. Antes a frase mandava recarregar a página (F-11).
+  const [loadFailed, setLoadFailed] = useState(false);
+  const titleRef = useRef<HTMLParagraphElement>(null);
 
   useEffect(() => {
     let current = true;
     void listCourseAccess(courseId).then((rows) => { if (current) setGrants(rows); }).catch(() => {
-      if (current) setError("courseAccess.loadError");
+      if (current) setLoadFailed(true);
     }).finally(() => { if (current) setLoaded(true); });
     return () => { current = false; };
   }, [courseId]);
+
+  async function retryLoad() {
+    try {
+      setGrants(await listCourseAccess(courseId));
+      setLoadFailed(false);
+    } catch {
+      // Continua o aviso com o "Try again".
+    }
+  }
 
   async function act(action: CourseAccessAction) {
     setBusy(true);
@@ -85,18 +99,21 @@ export function CourseAccessPanel({ courseId, onChange }: { courseId: string; on
   }
 
   return <PanelCard title={t("courseAccess.title")} description={t("courseAccess.description")}>
-    <p className="mt-4 text-sm text-[var(--color-ink-soft)]">
+    <p ref={titleRef} tabIndex={-1} className="mt-4 text-sm text-[var(--color-ink-soft)]">
       {t("courseAccess.help")}
     </p>
     <form className="mt-4 flex min-w-0 flex-wrap items-end gap-3" onSubmit={(event) => { event.preventDefault(); void act({ courseId, email }); }}>
       <div className="min-w-0 flex-1 basis-60">
         <label htmlFor={inputId} className="mb-2 block text-sm font-semibold text-[var(--color-ink)]">{t("courseAccess.email")}</label>
         <input id={inputId} type="email" required maxLength={254} value={email} onChange={(event) => setEmail(event.target.value)} disabled={busy}
-          className="min-h-11 w-full min-w-0 rounded-md border border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-ink)]" />
+          className="field-input min-w-0 disabled:cursor-not-allowed disabled:opacity-60" />
       </div>
       <Button type="submit" disabled={busy || !loaded || !email.trim()}>{t("courseAccess.grant")}</Button>
     </form>
-    {error ? <p role="alert" className="mt-3 text-sm text-[var(--color-danger-fg)]">{t(error)}</p> : null}
+    {loadFailed ? (
+      <LoadErrorAlert className="mt-3" focusRef={titleRef} onRetry={retryLoad}>{t("courseAccess.loadError")}</LoadErrorAlert>
+    ) : null}
+    {error ? <InlineAlert tone="error" className="mt-3">{t(error)}</InlineAlert> : null}
     <p ref={statusRef} tabIndex={-1} role="status" aria-live="polite" className="mt-3 text-sm text-[var(--color-ink-soft)]">{message ? t(message).replace("{status}", () => t(statusLabels[messageStatus])) : ""}</p>
     <ul className="mt-4 grid min-w-0 gap-3">
       {grants.map((grant) => <li key={grant.id} className="min-w-0 rounded-md border border-[var(--color-line)] p-3">

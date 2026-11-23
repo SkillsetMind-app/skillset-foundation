@@ -1,15 +1,19 @@
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { I18nProvider } from "@/components/i18n/i18n-provider";
+import { clickConfirm, stubDialogs } from "@/components/teacher/confirm-test-helpers";
 import { MemberAreaSettingsPanel } from "@/components/teacher/member-area-settings-panel";
 
 const mocks = vi.hoisted(() => ({
-  getMyMemberAreaEditor: vi.fn(),
+  createMyMemberArea: vi.fn(),
+  deleteMyMemberArea: vi.fn(),
+  getMyMemberAreas: vi.fn(),
   getUserProfile: vi.fn(),
   removeMemberAreaCover: vi.fn(),
   saveMyMemberArea: vi.fn(),
   saveMyMemberAreaProducts: vi.fn(),
+  setMyMemberAreaCommunity: vi.fn(),
   subscribeToTeacherCourses: vi.fn(),
   uploadMemberAreaCover: vi.fn(),
   user: { uid: "teacher-1" },
@@ -23,11 +27,14 @@ vi.mock("@/lib/data/member-areas", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/data/member-areas")>();
   return {
     ...actual,
-    getMyMemberAreaEditor: mocks.getMyMemberAreaEditor,
+    createMyMemberArea: mocks.createMyMemberArea,
+    deleteMyMemberArea: mocks.deleteMyMemberArea,
+    getMyMemberAreas: mocks.getMyMemberAreas,
     memberAreaCoverUrl: (path: string) => `https://media.test/${path}`,
     removeMemberAreaCover: mocks.removeMemberAreaCover,
     saveMyMemberArea: mocks.saveMyMemberArea,
     saveMyMemberAreaProducts: mocks.saveMyMemberAreaProducts,
+    setMyMemberAreaCommunity: mocks.setMyMemberAreaCommunity,
     uploadMemberAreaCover: mocks.uploadMemberAreaCover,
   };
 });
@@ -46,13 +53,20 @@ function renderPanel(locale: "en" | "es" = "en") {
   );
 }
 
+const virtualMain = { id: null, slug: null, settings: null, communityCourseId: null };
+const editorOf = (areas: unknown[], placement: [string, { areaId: string; position: number; visible: boolean }][] = []) => ({
+  areas,
+  placement: new Map(placement),
+});
+
 const titles = () => within(screen.getByRole("list")).getAllByRole("listitem").map((item) => item.textContent ?? "");
 
 describe("MemberAreaSettingsPanel", () => {
   beforeEach(() => {
     for (const mock of Object.values(mocks)) if (typeof mock === "function") mock.mockReset();
     mocks.getUserProfile.mockResolvedValue({ displayName: "Eton Simon", username: "eton" });
-    mocks.getMyMemberAreaEditor.mockResolvedValue({ settings: null, choices: new Map() });
+    mocks.getMyMemberAreas.mockResolvedValue(editorOf([virtualMain]));
+    mocks.setMyMemberAreaCommunity.mockResolvedValue(undefined);
     mocks.subscribeToTeacherCourses.mockImplementation((_uid: string, callback: (value: unknown) => void) => {
       callback(courses);
       return () => undefined;
@@ -87,20 +101,27 @@ describe("MemberAreaSettingsPanel", () => {
     await waitFor(() => expect(mocks.saveMyMemberAreaProducts).toHaveBeenCalled());
     expect(mocks.saveMyMemberArea).toHaveBeenCalledWith({
       name: "Eton Academy", theme: "dark", coverPath: null, welcomeText: "Welcome!",
-    });
+    }, null);
     expect(mocks.saveMyMemberAreaProducts).toHaveBeenCalledWith([
       { courseId: "draft", visible: false },
       { courseId: "old", visible: true },
       { courseId: "new", visible: true },
-    ]);
-    expect(await screen.findByText(/Saved\. Students see the changes/)).toBeTruthy();
+    ], null);
+    const saved = await screen.findByText(/Saved\. Students see the changes/);
+    // F-05: o "salvo" fica na linha dos botões, depois do Save, e é anunciado.
+    expect(saved).toHaveAttribute("role", "status");
+    const save = screen.getByRole("button", { name: "Save members area" });
+    expect(saved.parentElement).toBe(save.parentElement);
+    expect(save.compareDocumentPosition(saved) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it("carrega o que já foi salvo: ordem, oculto e capa; trocar a capa apaga a antiga ao salvar", async () => {
-    mocks.getMyMemberAreaEditor.mockResolvedValue({
+    mocks.getMyMemberAreas.mockResolvedValue(editorOf([{
+      id: "area-main",
+      slug: null,
       settings: { name: "Eton Academy", theme: "dark", coverPath: "users/teacher-1/member-area/cover-1", welcomeText: "Hi" },
-      choices: new Map([["old", { position: 0, visible: true }], ["new", { position: 1, visible: false }]]),
-    });
+      communityCourseId: null,
+    }], [["old", { areaId: "area-main", position: 0, visible: true }], ["new", { areaId: "area-main", position: 1, visible: false }]]));
     mocks.uploadMemberAreaCover.mockResolvedValue("users/teacher-1/member-area/cover-2");
     renderPanel();
     await screen.findByRole("list");
@@ -117,7 +138,29 @@ describe("MemberAreaSettingsPanel", () => {
     await waitFor(() => expect(screen.getByRole("button", { name: "Save members area" })).toBeEnabled());
     fireEvent.click(screen.getByRole("button", { name: "Save members area" }));
     await waitFor(() => expect(mocks.removeMemberAreaCover).toHaveBeenCalledWith("users/teacher-1/member-area/cover-1"));
-    expect(mocks.saveMyMemberArea).toHaveBeenCalledWith(expect.objectContaining({ coverPath: "users/teacher-1/member-area/cover-2" }));
+    expect(mocks.saveMyMemberArea).toHaveBeenCalledWith(expect.objectContaining({ coverPath: "users/teacher-1/member-area/cover-2" }), "area-main");
+  });
+
+  // B-05 + F-12: o rótulo da capa não vira "Uploading..."; o andamento é a
+  // nota de envio, e o Save apagado diz por quê. A falha sai no aviso da casa.
+  it("enviando a capa: rótulo fixo, nota de envio e o Save diz por que espera", async () => {
+    let finish!: (path: string) => void;
+    mocks.uploadMemberAreaCover.mockReturnValueOnce(new Promise<string>((resolve) => { finish = resolve; }))
+      .mockRejectedValueOnce(new Error("offline"));
+    renderPanel();
+    await screen.findByRole("list");
+    fireEvent.change(screen.getByLabelText("Upload cover"), { target: { files: [new File(["x"], "capa.png", { type: "image/png" })] } });
+    expect(await screen.findByText("Sending...")).toBeTruthy();
+    expect(screen.queryByText("Uploading...")).toBeNull();
+    const save = screen.getByRole("button", { name: "Save members area" });
+    expect(save).toBeDisabled();
+    expect(save).toHaveAccessibleDescription("Wait for the cover to finish uploading, then save.");
+    await act(async () => finish("users/teacher-1/member-area/cover-9"));
+    expect(screen.getByRole("button", { name: "Save members area" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Save members area" })).not.toHaveAccessibleDescription();
+
+    fireEvent.change(screen.getByLabelText("Replace cover"), { target: { files: [new File(["x"], "capa.png", { type: "image/png" })] } });
+    expect(await screen.findByRole("alert")).toHaveTextContent("We could not upload this image.");
   });
 
   it("imagem fora do formato não sobe", async () => {
@@ -127,6 +170,19 @@ describe("MemberAreaSettingsPanel", () => {
       target: { files: [new File(["x"], "capa.gif", { type: "image/gif" })] },
     });
     expect(await screen.findByText(/Use a JPG, PNG or WebP image under 5 MB/)).toBeTruthy();
+    expect(mocks.uploadMemberAreaCover).not.toHaveBeenCalled();
+  });
+
+  // B-05: a capa usa a casca única de imagem; accept e teto de 5 MB seguem daqui.
+  it("capa: mesmo accept e a imagem acima de 5 MB não sobe", async () => {
+    renderPanel();
+    await screen.findByRole("list");
+    const input = screen.getByLabelText("Upload cover");
+    expect(input).toHaveAttribute("accept", "image/jpeg,image/png,image/webp");
+    const big = new File(["x"], "capa.png", { type: "image/png" });
+    Object.defineProperty(big, "size", { value: 6 * 1024 * 1024 });
+    fireEvent.change(input, { target: { files: [big] } });
+    expect((await screen.findByText(/Use a JPG, PNG or WebP image under 5 MB/)).closest('[role="alert"]')).not.toBeNull();
     expect(mocks.uploadMemberAreaCover).not.toHaveBeenCalled();
   });
 
@@ -171,6 +227,187 @@ describe("MemberAreaSettingsPanel", () => {
     fireEvent.click(screen.getByRole("button", { name: "Save members area" }));
     await waitFor(() => expect(mocks.saveMyMemberAreaProducts).toHaveBeenCalled());
     expect(mocks.saveMyMemberAreaProducts.mock.calls[0][0]).toHaveLength(500);
+  });
+
+  // Comunidade da área inteira: só produto community do professor entra na lista.
+  it("escolhe a comunidade da área entre os produtos community e salva", async () => {
+    mocks.subscribeToTeacherCourses.mockImplementation((_uid: string, callback: (value: unknown) => void) => {
+      callback([
+        ...courses,
+        { id: "club", title: "Inner circle", status: "published", productFormat: "community", communityEnabled: true, createdAt: "2026-10-02T00:00:00Z" },
+      ]);
+      return () => undefined;
+    });
+    renderPanel();
+    const select = await screen.findByRole("combobox", { name: "Community for the whole area" });
+    expect(within(select).getAllByRole("option").map((option) => option.textContent)).toEqual(["No area community", "Inner circle"]);
+    expect(titles().some((title) => title.includes("Inner circle") && title.includes("Community"))).toBe(true);
+    fireEvent.change(select, { target: { value: "club" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save members area" }));
+    await waitFor(() => expect(mocks.setMyMemberAreaCommunity).toHaveBeenCalledWith("club", null));
+    expect(await screen.findByText(/^Saved. Students see the changes/)).toBeTruthy();
+  });
+
+  it("Starter: só a principal, sem botão de nova área", async () => {
+    mocks.getUserProfile.mockResolvedValue({ displayName: "Eton Simon", username: "eton", currentPlanId: "starter" });
+    renderPanel();
+    expect(await screen.findByText(/Your plan includes 1 area\. Pro includes up to 3/)).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "New area" })).toBeNull();
+    expect(screen.getByText("1 of 1 areas on your plan.")).toBeTruthy();
+  });
+
+  it("Pro: cria uma área extra e abre nela", async () => {
+    mocks.getUserProfile.mockResolvedValue({ displayName: "Eton Simon", username: "eton", currentPlanId: "pro" });
+    mocks.createMyMemberArea.mockResolvedValue("area-2");
+    mocks.getMyMemberAreas
+      .mockResolvedValueOnce(editorOf([virtualMain]))
+      .mockResolvedValue(editorOf([virtualMain, {
+        id: "area-2", slug: "vip", settings: { name: "VIP", theme: "light", coverPath: null, welcomeText: null }, communityCourseId: null,
+      }]));
+    renderPanel();
+    fireEvent.click(await screen.findByRole("button", { name: "New area" }));
+    fireEvent.change(screen.getByLabelText("Name of the new area"), { target: { value: "VIP" } });
+    fireEvent.change(screen.getByLabelText("Address"), { target: { value: "VIP Room" } });
+    expect(screen.getByText(/\/learn\/areas\/@eton\/vip-room/)).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("Address"), { target: { value: "vip" } });
+    fireEvent.click(screen.getByRole("button", { name: "Create area" }));
+    await waitFor(() => expect(mocks.createMyMemberArea).toHaveBeenCalledWith("VIP", "vip"));
+    expect(await screen.findByRole("tab", { name: "VIP", selected: true })).toBeTruthy();
+    expect(screen.getByText(/No products in this area yet/)).toBeTruthy();
+    expect(screen.getByRole("link", { name: /View as student/ }).getAttribute("href")).toBe("/learn/areas/@eton/vip");
+  });
+
+  it("endereço inválido nem chega ao banco", async () => {
+    mocks.getUserProfile.mockResolvedValue({ displayName: "Eton Simon", username: "eton", currentPlanId: "pro" });
+    renderPanel();
+    fireEvent.click(await screen.findByRole("button", { name: "New area" }));
+    fireEvent.change(screen.getByLabelText("Address"), { target: { value: "community" } });
+    fireEvent.click(screen.getByRole("button", { name: "Create area" }));
+    expect(await screen.findByText(/"community" is reserved/)).toBeTruthy();
+    expect(mocks.createMyMemberArea).not.toHaveBeenCalled();
+  });
+
+  it("extra: lista só os produtos dela, traz um da principal e devolve outro", async () => {
+    mocks.getUserProfile.mockResolvedValue({ displayName: "Eton Simon", username: "eton", currentPlanId: "pro" });
+    mocks.getMyMemberAreas.mockResolvedValue(editorOf([virtualMain, {
+      id: "area-2", slug: "vip", settings: { name: "VIP", theme: "light", coverPath: null, welcomeText: null }, communityCourseId: null,
+    }], [["old", { areaId: "area-2", position: 0, visible: true }]]));
+    renderPanel();
+    await screen.findByRole("list");
+    // Principal: tudo menos o que está na VIP.
+    expect(titles().join("|")).not.toContain("Old course");
+    fireEvent.click(screen.getByRole("tab", { name: "VIP" }));
+    expect(titles()).toHaveLength(1);
+    expect(titles()[0]).toContain("Old course");
+    fireEvent.change(screen.getByLabelText("Add a product to this area"), { target: { value: "new" } });
+    fireEvent.click(screen.getByRole("button", { name: "Remove Old course from this area" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save members area" }));
+    await waitFor(() => expect(mocks.saveMyMemberAreaProducts).toHaveBeenCalledWith([{ courseId: "new", visible: true }], "area-2"));
+    expect(mocks.saveMyMemberArea).toHaveBeenCalledWith(expect.objectContaining({ name: "VIP" }), "area-2");
+  });
+
+  it("plano caiu: a extra fica travada, só dá para apagar", async () => {
+    mocks.getUserProfile.mockResolvedValue({ displayName: "Eton Simon", username: "eton", currentPlanId: "starter" });
+    mocks.getMyMemberAreas.mockResolvedValue(editorOf([virtualMain, {
+      id: "area-2", slug: "vip", settings: { name: "VIP", theme: "light", coverPath: null, welcomeText: null }, communityCourseId: null,
+    }]));
+    renderPanel();
+    fireEvent.click(await screen.findByRole("tab", { name: "VIP" }));
+    expect(screen.getByText(/your current plan does not include it/)).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Save members area" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Delete area" })).toBeEnabled();
+  });
+
+  // B-10: apagar era um clique duplo no mesmo botão de contorno. Agora a
+  // janela da plataforma diz o nome da área e só o confirmar apaga, com a
+  // mesma chamada de antes.
+  it("apagar a extra pergunta na janela, com o nome da área, e só apaga no confirmar", async () => {
+    const restoreDialogs = stubDialogs();
+    try {
+      mocks.getUserProfile.mockResolvedValue({ displayName: "Eton Simon", username: "eton", currentPlanId: "starter" });
+      mocks.getMyMemberAreas.mockResolvedValue(editorOf([virtualMain, {
+        id: "area-2", slug: "vip", settings: { name: "VIP", theme: "light", coverPath: null, welcomeText: null }, communityCourseId: null,
+      }]));
+      mocks.deleteMyMemberArea.mockResolvedValue(undefined);
+      renderPanel();
+      fireEvent.click(await screen.findByRole("tab", { name: "VIP" }));
+      const trigger = screen.getByRole("button", { name: "Delete area" });
+      expect(trigger).toHaveClass("button-danger");
+
+      fireEvent.click(trigger);
+      const asking = screen.getByRole("dialog", { name: "Delete this area?" });
+      expect(asking).toHaveAccessibleDescription('Delete the area "VIP"? Its products go back to the main area. Nobody loses access.');
+      fireEvent.click(within(asking).getByRole("button", { name: "Keep area" }));
+      expect(screen.queryByRole("dialog", { name: "Delete this area?" })).toBeNull();
+      expect(mocks.deleteMyMemberArea).not.toHaveBeenCalled();
+
+      fireEvent.click(screen.getByRole("button", { name: "Delete area" }));
+      clickConfirm(screen.getByRole("dialog", { name: "Delete this area?" }), "Yes, delete this area");
+      await waitFor(() => expect(mocks.deleteMyMemberArea).toHaveBeenCalledExactlyOnceWith("area-2"));
+    } finally {
+      restoreDialogs();
+    }
+  });
+
+  it("a lista de produtos que não carrega ganha \"Try again\", que lê de novo uma vez só", async () => {
+    const reload = vi.fn();
+    mocks.subscribeToTeacherCourses.mockImplementation(
+      (_uid: string, callback: (value: unknown) => void, onError: (error: Error) => void) => {
+        onError(new Error("offline"));
+        reload.mockImplementation(async () => callback(courses));
+        return Object.assign(() => undefined, { reload });
+      },
+    );
+    renderPanel();
+    expect(await screen.findByText(/We could not load your products\./)).toBeTruthy();
+    expect(screen.queryByText(/Reload the page/)).toBeNull();
+    expect(screen.getByRole("button", { name: "Save members area" })).toBeDisabled();
+    const retry = screen.getByRole("button", { name: "Try again" });
+    fireEvent.click(retry);
+    fireEvent.click(retry);
+    expect(await screen.findByRole("list")).toBeTruthy();
+    expect(reload).toHaveBeenCalledTimes(1);
+    expect(titles()[0]).toContain("Draft course");
+    expect(screen.queryByRole("button", { name: "Try again" })).toBeNull();
+  });
+
+  it("numa área travada pelo plano, o \"Try again\" da lista continua clicável", async () => {
+    // Plano Free: a extra passa do limite e o formulário dela fica travado.
+    mocks.getUserProfile.mockResolvedValue({ displayName: "Eton Simon", username: "eton", currentPlanId: "free" });
+    mocks.getMyMemberAreas.mockResolvedValue(editorOf([virtualMain, {
+      id: "area-2", slug: "vip", settings: { name: "VIP", theme: "light", coverPath: null, welcomeText: null }, communityCourseId: null,
+    }]));
+    const reload = vi.fn();
+    mocks.subscribeToTeacherCourses.mockImplementation(
+      (_uid: string, callback: (value: unknown) => void, onError: (error: Error) => void) => {
+        onError(new Error("offline"));
+        reload.mockImplementation(async () => callback(courses));
+        return Object.assign(() => undefined, { reload });
+      },
+    );
+    renderPanel();
+    fireEvent.click(await screen.findByRole("tab", { name: "VIP" }));
+    expect(await screen.findByText(/your current plan does not include it/)).toBeTruthy();
+    expect(screen.getByLabelText("Area name")).toBeDisabled();
+    const retry = screen.getByRole("button", { name: "Try again" });
+    expect(retry).toBeEnabled();
+    fireEvent.click(retry);
+    await waitFor(() => expect(reload).toHaveBeenCalledTimes(1));
+    expect(screen.queryByRole("button", { name: "Try again" })).toBeNull();
+    // O que edita a lista (e a comunidade) segue travado na área travada.
+    await screen.findByText("No products in this area yet. Add one below.");
+    const selects = screen.getAllByRole("combobox");
+    expect(selects.length).toBeGreaterThan(1);
+    for (const select of selects) expect(select).toBeDisabled();
+  });
+
+  it("erro de salvar não ganha \"Try again\"", async () => {
+    mocks.saveMyMemberArea.mockRejectedValue(new Error("boom"));
+    renderPanel();
+    await screen.findByRole("list");
+    fireEvent.click(screen.getByRole("button", { name: "Save members area" }));
+    expect(await screen.findByText("We could not save your members area. Please try again.")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Try again" })).toBeNull();
   });
 
   it("em espanhol", async () => {

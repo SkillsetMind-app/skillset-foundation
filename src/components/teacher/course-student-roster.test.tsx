@@ -117,6 +117,21 @@ describe("CourseStudentRosterView", () => {
     expect(screen.queryByText("When someone joins, you'll see them here.")).not.toBeInTheDocument();
   });
 
+  // F-11: a falha é anunciada e tem saída; enquanto lê de novo, o botão trava.
+  it("announces the failed read and offers Try again, locked while it runs", () => {
+    const onRetry = vi.fn();
+    const { rerender } = render(<CourseStudentRosterView state="error" students={[]} courseId="course-1" onRetry={onRetry} />);
+
+    expect(screen.getByRole("alert")).toHaveTextContent(/could not load the roster/);
+    // A frase não manda mais recarregar a página: o botão está ao lado.
+    expect(screen.getByRole("alert")).not.toHaveTextContent(/reload/i);
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(onRetry).toHaveBeenCalledTimes(1);
+
+    rerender(<CourseStudentRosterView state="error" students={[]} courseId="course-1" onRetry={onRetry} retrying />);
+    expect(screen.getByRole("button", { name: "Try again" })).toBeDisabled();
+  });
+
   it("sums the class up before the table so the numbers are not counted by hand", () => {
     renderRoster([student, refunded, finished]);
 
@@ -206,6 +221,37 @@ describe("CourseStudentRosterView", () => {
       }),
     );
     expect(await screen.findByText(/Message sent to Maria Silva/)).toBeInTheDocument();
+    // O "Send" sumiu: o foco vai para o "Close", e o Esc continua fechando.
+    const close = screen.getByRole("button", { name: "Close" });
+    await waitFor(() => expect(close).toHaveFocus());
+    fireEvent.keyDown(close, { key: "Escape" });
+    expect(screen.queryByText(/Message sent to Maria Silva/)).toBeNull();
+    expect(screen.getByRole("button", { name: /Message Maria Silva/ })).toHaveFocus();
+  });
+
+  // Antes a caixa abria DENTRO da celula do nome: a linha crescia ~170px e,
+  // no celular, a caixa ficava meio escondida atras da rolagem lateral.
+  it("opens the composer in its own row below the student, focused, and Esc closes it", () => {
+    renderRoster([student, finished]);
+
+    const toggle = screen.getByRole("button", { name: /Message Maria Silva/ });
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    fireEvent.click(toggle);
+
+    const box = screen.getByRole("textbox");
+    expect(box).toHaveFocus();
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    const cell = box.closest("td")!;
+    expect(cell).toHaveAttribute("colspan", "7");
+    // A linha da caixa vem logo depois da linha da Maria, nao dentro dela.
+    const studentRow = within(screen.getByRole("table")).getByText("Maria Silva").closest("tr")!;
+    expect(studentRow.nextElementSibling).toBe(cell.closest("tr"));
+    expect(toggle).toHaveAttribute("aria-controls", cell.closest("tr")!.id);
+
+    fireEvent.keyDown(box, { key: "Escape" });
+    expect(screen.queryByRole("textbox")).toBeNull();
+    expect(toggle).toHaveFocus();
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
   });
 
   it("refuses to send an empty message", () => {

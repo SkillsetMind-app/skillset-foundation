@@ -294,4 +294,22 @@ describe("menu de exportacao dentro da tela", () => {
     expect(screen.queryByRole("menu")).not.toBeInTheDocument();
     expect(createObjectURL).not.toHaveBeenCalled();
   });
+
+  // Desligado por zero linhas diz por que; desligado por quem chama (carregando,
+  // erro) nao inventa motivo.
+  it("diz o motivo quando nao ha linhas, e so nesse caso", () => {
+    const { unmount } = render(<I18nProvider initialLocale="es"><ExportTableButton rows={[]} filename="fixture" /></I18nProvider>);
+    expect(screen.getByRole("button", { name: "Exportar" })).toHaveAccessibleDescription(
+      "Todavía no hay nada para exportar en esta vista.",
+    );
+    // T-15: o motivo se le na tela (no toque nao ha title), nao so no leitor.
+    expect(screen.getByText("Todavía no hay nada para exportar en esta vista.")).not.toHaveClass("sr-only");
+    unmount();
+    // Leitura que falhou chega com zero linhas: nao pode dizer "nada para exportar".
+    const failed = render(<ExportTableButton rows={[]} disabled filename="fixture" />);
+    expect(screen.getByRole("button", { name: "Export" })).not.toHaveAttribute("aria-describedby");
+    failed.unmount();
+    render(<ExportTableButton rows={[]} disabled disabledReason="This data could not be loaded." filename="fixture" />);
+    expect(screen.getByRole("button", { name: "Export" })).toHaveAccessibleDescription("This data could not be loaded.");
+  });
 });

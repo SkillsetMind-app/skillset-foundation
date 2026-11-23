@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { NotificationRow, formatNotificationTime } from "@/components/account/notification-row";
 import { I18nProvider } from "@/components/i18n/i18n-provider";
+import { formatEventDateTime } from "@/domain/course-event";
 import type { AppNotification } from "@/domain/notification";
 import { getDictionary, translate } from "@/lib/i18n/dictionaries";
 
@@ -63,5 +64,29 @@ describe("NotificationRow", () => {
     );
 
     expect(screen.getByText("Hace 5 min")).toBeInTheDocument();
+  });
+
+  // O aviso de sessao chegava em ingles e em UTC para quem usa espanhol. O
+  // fuso aqui e o do aparelho (o mesmo nos dois lados); o formato com fuso
+  // fixo esta em notification-href.test.ts.
+  it("aviso de sessao marcada: titulo traduzido e hora no fuso de quem le", () => {
+    const notification: AppNotification = {
+      id: "n2",
+      type: "live_event",
+      title: "Live session scheduled: Office hours",
+      body: "Mindful leadership — Nov 26, 2026 at 00:00 UTC",
+      read: false,
+      createdAt: new Date(now - 5 * 60_000).toISOString(),
+    };
+    render(
+      <I18nProvider initialLocale="es">
+        <NotificationRow notification={notification} />
+      </I18nProvider>,
+    );
+
+    expect(screen.getByText("Sesión en vivo programada: Office hours")).toBeInTheDocument();
+    const when = formatEventDateTime("2026-11-26T00:00:00.000Z", "es").replace(/\s+/g, " ");
+    expect(screen.getByText(`Mindful leadership — ${when}`)).toBeInTheDocument();
+    expect(screen.queryByText(/UTC/)).toBeNull();
   });
 });

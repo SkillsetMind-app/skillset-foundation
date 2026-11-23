@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { RetryAlert } from "@/components/teacher/save-status-line";
 import { StudioRecentActivity } from "@/components/teacher/studio-recent-activity";
 import { Card, EmptyState } from "@/components/ui";
 import type { CourseAsset } from "@/domain/course-asset";
@@ -67,12 +68,15 @@ export function CourseOverviewPanelView({
   stats,
   issues,
   loading,
+  onRetryStudents,
   children,
 }: {
   course: Pick<TeacherCourse, "id" | "title" | "status">;
   stats: CourseOverviewStats;
   issues: CourseMaintenanceIssue[];
   loading: boolean;
+  /** A leitura dos alunos falhou: erro com "Try again" no lugar dos números. */
+  onRetryStudents?: () => void;
   children?: React.ReactNode;
 }) {
   const { t } = useTranslation();
@@ -158,7 +162,10 @@ export function CourseOverviewPanelView({
         </div>
       </div>
 
-      {loading ? (
+      {onRetryStudents ? (
+        // Sem a lista de alunos os quatro números seriam inventados (zero).
+        <RetryAlert text={t("creatorPanel.overview.studentsError")} onRetry={onRetryStudents} />
+      ) : loading ? (
         <div
           data-testid="course-overview-loading"
           className="h-28 animate-pulse rounded-lg bg-[var(--color-surface-strong)]"
@@ -244,6 +251,10 @@ export function CourseOverviewPanel({ course }: { course: TeacherCourse }) {
   const { user } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
   const [students, setStudents] = useState<CourseStudent[] | null>(null);
+  // A falha só ia para o log: `students` ficava null e o esqueleto pulsava
+  // para sempre. Agora vira erro com "Try again", que lê de novo.
+  const [studentsFailed, setStudentsFailed] = useState(false);
+  const [studentsAttempt, setStudentsAttempt] = useState(0);
   const [assets, setAssets] = useState<CourseAsset[] | null>(null);
   const [coupons, setCoupons] = useState<CourseCoupon[] | null>(null);
 
@@ -266,16 +277,22 @@ export function CourseOverviewPanel({ course }: { course: TeacherCourse }) {
 
     let alive = true;
 
+    const logError = logSubscriptionError("CourseOverviewPanel.students");
     void getMyCourseStudents()
       .then((next) => {
-        if (alive) setStudents(next);
+        if (!alive) return;
+        setStudents(next);
+        setStudentsFailed(false);
       })
-      .catch(logSubscriptionError("CourseOverviewPanel.students"));
+      .catch((error: unknown) => {
+        logError(error);
+        if (alive) setStudentsFailed(true);
+      });
 
     return () => {
       alive = false;
     };
-  }, [user]);
+  }, [user, studentsAttempt]);
 
   useEffect(() => {
     let alive = true;
@@ -318,6 +335,16 @@ export function CourseOverviewPanel({ course }: { course: TeacherCourse }) {
       stats={stats}
       issues={issues}
       loading={students === null}
+      // Só sem números na tela: uma releitura que falha não apaga os que já
+      // estão ali (eles seguem valendo até a próxima leitura boa).
+      onRetryStudents={
+        studentsFailed && students === null
+          ? () => {
+              setStudentsFailed(false);
+              setStudentsAttempt((current) => current + 1);
+            }
+          : undefined
+      }
     >
       <StudioRecentActivity courses={[course]} />
     </CourseOverviewPanelView>

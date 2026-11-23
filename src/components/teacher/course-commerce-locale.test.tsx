@@ -146,4 +146,17 @@ describe("commerce with real EN/ES dictionaries", () => {
     switchLanguage();
     expect(screen.getByRole("alert")).toHaveTextContent("Keep the tax registration under 80 characters.");
   });
+
+  // F-05: o "salvo" era uma caixa verde embaixo do formulário. Agora é o check
+  // verde na linha do botão, e sai quando a pessoa mexe de novo.
+  it("tax saved: the saved note sits beside the button and leaves on the next edit", async () => {
+    mount(true);
+    const button = screen.getByRole("button", { name: "Guardar configuración fiscal" });
+    fireEvent.click(button);
+    const saved = await screen.findByRole("status");
+    expect(saved).toHaveTextContent("Configuración fiscal guardada.");
+    expect(saved.parentElement).toBe(button.parentElement);
+    fireEvent.change(screen.getByLabelText("Identificación de registro fiscal (opcional)"), { target: { value: "EIN-1" } });
+    expect(screen.queryByRole("status")).toBeNull();
+  });
 });

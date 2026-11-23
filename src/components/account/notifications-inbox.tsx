@@ -1,6 +1,6 @@
 "use client";
 
-import { BellOff, CheckCheck } from "lucide-react";
+import { CheckCheck } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
@@ -8,6 +8,8 @@ import { NotificationRow } from "@/components/account/notification-row";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { useAuth } from "@/components/auth/auth-provider";
 import { HorizontalTabs } from "@/components/shared/horizontal-tabs";
+import { Button, buttonClasses } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
 import { notificationHref, type AppNotification } from "@/domain/notification";
 import {
   markAllNotificationsAsRead,
@@ -101,30 +103,18 @@ export function NotificationsInbox() {
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-[var(--color-ink-soft)]">
-          {unreadIds.length > 0
-            ? t("accountNotifications.unreadCount").replace("{count}", () => String(unreadIds.length))
-            : t("accountNotifications.caughtUp")}
-        </p>
-        <div className="flex items-center gap-2">
-          <Link
-            href="/account?tab=notifications"
-            className="rounded-md border border-[var(--color-line)] px-3 py-2 text-xs font-semibold text-[var(--color-primary)] transition hover:bg-[var(--color-surface-soft)]"
-          >
-            {t("accountNotifications.preferences")}
-          </Link>
-          {unreadIds.length > 0 ? (
-            <button
-              type="button"
-              onClick={handleMarkAll}
-              className="inline-flex items-center gap-1.5 rounded-md bg-[var(--color-primary)] px-3 py-2 text-xs font-semibold text-[var(--color-on-primary)] transition hover:opacity-90"
-            >
-              <CheckCheck aria-hidden="true" size={14} strokeWidth={2} />
-              {t("accountNotifications.markAll")}
-            </button>
-          ) : null}
-        </div>
+      {/* A contagem de nao lidas mora so na aba "Unread (N)": a frase "N
+          unread" aqui em cima repetia o mesmo numero. Os dois botoes sao os
+          da plataforma, com 44px de alvo. */}
+      <div className="flex flex-wrap items-center justify-end gap-3">
+        <Link href="/account?tab=notifications" className={buttonClasses({ variant: "outline" })}>
+          {t("accountNotifications.preferences")}
+        </Link>
+        {unreadIds.length > 0 ? (
+          <Button icon={<CheckCheck aria-hidden="true" size={16} strokeWidth={2} />} onClick={handleMarkAll}>
+            {t("accountNotifications.markAll")}
+          </Button>
+        ) : null}
       </div>
 
       <div className="overflow-hidden rounded-lg border border-[var(--color-line)] bg-white shadow-[var(--shadow-soft)]">
@@ -145,20 +135,14 @@ export function NotificationsInbox() {
             ))}
           </div>
         ) : visible.length === 0 ? (
-          <div className="px-6 py-16 text-center">
-            <BellOff
-              aria-hidden="true"
-              size={36}
-              strokeWidth={1.5}
-              className="mx-auto text-[var(--color-ink-muted)]"
-            />
-            <p className="mt-4 text-sm font-semibold text-[var(--color-ink)]">
-              {t(filter === "unread" && items.length > 0 ? "accountNotifications.caughtUp" : "accountNotifications.empty")}
-            </p>
-            <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-[var(--color-ink-soft)]">
-              {t(filter === "unread" && items.length > 0 ? "accountNotifications.caughtUpBody" : "accountNotifications.emptyBody")}
-            </p>
-          </div>
+          // A caixa vazia da casa, com os mesmos textos; h2 logo abaixo do h1
+          // da página (antes eram dois parágrafos soltos sob um ícone).
+          <EmptyState
+            as="h2"
+            title={t(filter === "unread" && items.length > 0 ? "accountNotifications.caughtUp" : "accountNotifications.empty")}
+            description={t(filter === "unread" && items.length > 0 ? "accountNotifications.caughtUpBody" : "accountNotifications.emptyBody")}
+            className="m-4 sm:m-6"
+          />
         ) : (
           <ul className="divide-y divide-[var(--color-line)]">
             {visible.map((notification) => (
@@ -167,7 +151,7 @@ export function NotificationsInbox() {
                   <Link
                     href={notificationHref(notification) ?? notification.link}
                     onClick={() => void handleActivate(notification)}
-                    className="block transition hover:bg-[var(--color-surface-soft)]"
+                    className="block transition-colors duration-[var(--duration-base)] hover:bg-[var(--color-surface-soft)]"
                   >
                     <NotificationRow notification={notification} />
                   </Link>
@@ -175,7 +159,7 @@ export function NotificationsInbox() {
                   <button
                     type="button"
                     onClick={() => void handleActivate(notification)}
-                    className="block w-full text-left transition hover:bg-[var(--color-surface-soft)]"
+                    className="block w-full text-left transition-colors duration-[var(--duration-base)] hover:bg-[var(--color-surface-soft)]"
                   >
                     <NotificationRow notification={notification} />
                   </button>

@@ -126,6 +126,8 @@ describe("capa do módulo: 2:3 comprimida no navegador", () => {
 
   it("sobe a imagem comprimida em WebP, como capa do módulo", async () => {
     const input = await moduleCoverInput();
+    // A casca única (B-05) recebe o accept da capa do módulo como era.
+    expect(input).toHaveAttribute("accept", "image/*");
     choose(input, new File(["foto grande"], "capa.png", { type: "image/png" }));
 
     await waitFor(() => expect(uploadCourseAsset).toHaveBeenCalledTimes(1));
@@ -145,6 +147,22 @@ describe("capa do módulo: 2:3 comprimida no navegador", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "This image is over 10 MB. Choose a smaller one.",
     );
+    expect(uploadCourseAsset).not.toHaveBeenCalled();
+  });
+
+  // O botao dizia "Uploading..." e a nota de baixo repetia. O rotulo agora e
+  // fixo; enquanto a imagem comprime (antes do envio), a nota ja diz que esta
+  // enviando, sem porcentagem.
+  it("enquanto comprime, a nota de envio aparece e o rotulo do botao nao muda", async () => {
+    vi.mocked(createImageBitmap).mockImplementationOnce(() => new Promise<ImageBitmap>(() => {}));
+    const input = await moduleCoverInput();
+    choose(input, new File(["foto"], "capa.png", { type: "image/png" }));
+
+    const region = screen.getByRole("region", { name: "Module cover" });
+    expect(within(region).getByText("Sending...").closest('[role="status"]')).not.toBeNull();
+    expect(within(region).queryByText("Uploading...")).toBeNull();
+    expect(within(region).getByText("Upload cover")).toBeInTheDocument();
+    expect(input).toBeDisabled();
     expect(uploadCourseAsset).not.toHaveBeenCalled();
   });
 

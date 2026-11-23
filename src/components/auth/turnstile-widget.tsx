@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { RotateCw } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { InlineAlert } from "@/components/ui/inline-alert";
 
 // Cloudflare Turnstile — env-gated bot check for the auth forms (login, signup,
 // password reset). When NEXT_PUBLIC_TURNSTILE_SITE_KEY is unset the component
@@ -93,6 +95,7 @@ export function TurnstileWidget({
   const containerRef = useRef<HTMLDivElement | null>(null);
   const widgetIdRef = useRef<string | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
+  const [challengeFailed, setChallengeFailed] = useState(false);
   // Keep the latest onToken without making it a mount-effect dep (which would
   // re-render the widget on every parent render).
   const onTokenRef = useRef(onToken);
@@ -115,12 +118,24 @@ export function TurnstileWidget({
         return;
       }
       const chosen = typeof sizeRef.current === "function" ? sizeRef.current(el.clientWidth) : sizeRef.current;
+      const failChallenge = () => {
+        if (!cancelled) {
+          onTokenRef.current("");
+          setChallengeFailed(true);
+        }
+        return true;
+      };
       widgetIdRef.current = window.turnstile.render(el, {
         sitekey: SITE_KEY,
         ...(chosen ? { size: chosen } : {}),
-        callback: (token: string) => onTokenRef.current(token),
+        callback: (token: string) => {
+          if (cancelled) return;
+          setChallengeFailed(false);
+          onTokenRef.current(token);
+        },
         "expired-callback": () => onTokenRef.current(""),
-        "error-callback": () => onTokenRef.current(""),
+        "error-callback": failChallenge,
+        "timeout-callback": failChallenge,
       });
     });
 
@@ -133,24 +148,47 @@ export function TurnstileWidget({
     };
   }, []);
 
+  const retryChallenge = useCallback(() => {
+    if (window.turnstile && widgetIdRef.current) {
+      setChallengeFailed(false);
+      onTokenRef.current("");
+      try {
+        window.turnstile.reset(widgetIdRef.current);
+      } catch {
+        setChallengeFailed(true);
+      }
+    }
+  }, []);
+
   useEffect(() => {
     if (resetSignal > 0 && window.turnstile && widgetIdRef.current) {
-      window.turnstile.reset(widgetIdRef.current);
       onTokenRef.current("");
+      window.turnstile.reset(widgetIdRef.current);
     }
   }, [resetSignal]);
 
   if (!SITE_KEY) return null;
   if (loadFailed) {
     return (
-      <p
-        role="alert"
-        aria-live="assertive"
-        className="rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]"
-      >
-        {t(loadErrorCopy)}
-      </p>
+      // Mesmo nó na troca de idioma: o texto muda, o aviso não é lido de novo.
+      <InlineAlert tone="error">{t(loadErrorCopy)}</InlineAlert>
     );
   }
-  return <div ref={containerRef} className="flex justify-center" />;
+  return (
+    <div className="grid min-w-0 gap-3">
+      {/* Manter o widget montado permite recuperacao sem apagar o formulario. */}
+      <div ref={containerRef} className="flex justify-center" />
+      {challengeFailed ? (
+        // O aviso e, logo abaixo, o botão que o resolve (como no LoadErrorAlert);
+        // o botão fica fora da região lida, que anuncia só a frase.
+        <div className="grid gap-3">
+          <InlineAlert tone="error">{t("authCaptcha.challengeError")}</InlineAlert>
+          <button type="button" onClick={retryChallenge} className="button-outline min-h-11 gap-2 justify-self-start px-3 py-2 text-sm">
+            <RotateCw size={16} aria-hidden="true" />
+            {t("authCaptcha.retry")}
+          </button>
+        </div>
+      ) : null}
+    </div>
+  );
 }

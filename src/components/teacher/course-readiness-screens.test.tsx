@@ -4,7 +4,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { I18nProvider, useTranslation } from "@/components/i18n/i18n-provider";
 import { CourseBuilderStudio } from "@/components/teacher/course-builder-studio";
 import { CourseManageHub } from "@/components/teacher/course-manage-hub";
-import { getCourseReadiness } from "@/domain/course-readiness";
+import { clickConfirm, stubDialogs } from "@/components/teacher/confirm-test-helpers";
+import { getCourseReadiness, getLessonIdsWithMedia } from "@/domain/course-readiness";
 import type { CourseAsset } from "@/domain/course-asset";
 import type { CourseEvent } from "@/domain/course-event";
 import type { TeacherCourse } from "@/domain/teacher-course";
@@ -103,6 +104,7 @@ vi.mock("@/lib/data/user-profiles", () => ({
 }));
 // Pais da conta Stripe do professor: so o parcelamento (Mexico) le.
 const profileExtra = vi.hoisted((): {
+  currentPlanId?: string;
   stripeConnectCountry?: string;
   stripeConnectChargesEnabled?: boolean;
   stripeConnectPayoutsEnabled?: boolean;
@@ -119,8 +121,17 @@ vi.mock("@/lib/data/creator-verification", () => ({
   fetchCreatorActivationBlocked: () => Promise.resolve(activation.blocked),
 }));
 const activation = vi.hoisted(() => ({ blocked: false }));
-const plan = vi.hoisted(() => ({ required: false }));
-vi.mock("@/lib/data/creator-plan", () => ({ fetchCreatorPlanRequired: async () => plan.required }));
+const plan = vi.hoisted(() => ({
+  required: false,
+  hold: false,
+  release: null as null | (() => void),
+}));
+vi.mock("@/lib/data/creator-plan", () => ({
+  fetchCreatorPlanRequired: async () => {
+    if (plan.hold) await new Promise<void>((resolve) => { plan.release = resolve; });
+    return plan.required;
+  },
+}));
 
 vi.mock("@/lib/data/course-assets", () => ({
   fetchCourseAssets: vi.fn(() => Promise.resolve([])),
@@ -150,7 +161,10 @@ vi.mock("@/lib/data/course-events", () => ({
 // Upload de capa depende de APIs de browser que o jsdom nao tem e nao entra
 // na conta de readiness.
 vi.mock("@/components/teacher/course-asset-uploader", () => ({
-  CourseAssetUploader: () => null,
+  // So o aviso de "apagou um arquivo": o erro da releitura sai embaixo dela.
+  CourseAssetUploader: ({ onAssetDeleted }: { onAssetDeleted?: () => void }) => (
+    <button type="button" onClick={onAssetDeleted}>Fake asset deleted</button>
+  ),
 }));
 
 // O painel do produto (numeros, atividade, manutencao) le pedidos, matriculas,
@@ -188,15 +202,29 @@ function renderBuilder(tab = "details") {
   );
 }
 
+// Os links de pagamentos levam a volta para a aba Publish deste curso.
+const PAYOUTS_WITH_RETURN = `/account/payments?returnTo=${encodeURIComponent("/teach/builder?courseId=course-1&tab=review")}#stripe-connect`;
+
+async function publishProduct() {
+  const button = await screen.findByRole("button", { name: "Publish product" });
+  await waitFor(() => expect(button).toBeEnabled());
+  fireEvent.click(button);
+}
+
 // Nenhum preco em Outros precos: a etapa de preco do construtor mostra os
 // cartoes. Sem a lista, ela nao mostra preco nenhum.
+let restoreDialogs = () => {};
 beforeEach(() => {
   plan.required = false;
+  plan.hold = false;
+  plan.release = null;
   vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ offers: [] }) })));
+  restoreDialogs = stubDialogs();
 });
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  restoreDialogs();
 });
 
 // O professor via, para o mesmo curso, 71% no chip do construtor, 40% na
@@ -245,9 +273,17 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     expect(screen.getByRole("navigation", { name: "Pasos para crear el curso" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: heading })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: mocks.course.title })).toBeInTheDocument();
-    expect(screen.getAllByRole("button", { name: "Guardar borrador" })).toHaveLength(2);
-    expect(screen.getByRole("button", { name: "Publicar producto" })).toBeDisabled();
-    expect(screen.getByTestId("publish-readiness-bar")).toHaveStyle({ width: "67%" });
+    // Um "Save draft" (o do topo) e o "Publish product" so na aba Publish: o
+    // rodape repetia os dois embaixo de toda aba.
+    expect(screen.getAllByRole("button", { name: "Guardar borrador" })).toHaveLength(1);
+    if (tab === "review") {
+      expect(screen.getByRole("button", { name: "Publicar producto" })).toBeDisabled();
+    } else {
+      expect(screen.queryByRole("button", { name: "Publicar producto" })).toBeNull();
+      expect(screen.queryByText("Preparación para publicar")).toBeNull();
+    }
+    expect(screen.getByRole("link", { name: "Volver al estudio del creador" })).toHaveAttribute("href", "/teach");
+    expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "67");
     expect(screen.getAllByText("Añade al menos una lección.").length).toBeGreaterThan(0);
     expect(mocks.searchParams.get("tab")).toBe(tab);
     expect(subscribeToTeacherCourse).toHaveBeenCalledTimes(subscriptions);
@@ -287,7 +323,7 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
 
   it("localizes a visible price block without saving the invalid draft", async () => {
     vi.useFakeTimers();
-    renderBuilder("pricing");
+    const view = renderBuilder("pricing");
     await act(async () => {});
     const price = screen.getByRole("textbox", { name: "Price" });
     fireEvent.change(price, { target: { value: "invalid" } });
@@ -300,7 +336,41 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     expect(price).toHaveValue("invalid");
     act(() => vi.advanceTimersByTime(5000));
     expect(updateTeacherCourseBuilder).not.toHaveBeenCalled();
+    // Publicar mora so na aba Publish: la, com o mesmo rascunho, ele segue
+    // apagado.
+    expect(screen.queryByRole("button", { name: "Publicar producto" })).toBeNull();
+    mocks.searchParams.set("tab", "review");
+    view.rerender(
+      <I18nProvider initialLocale="en">
+        <SwitchLanguage />
+        <CourseBuilderStudio />
+      </I18nProvider>,
+    );
     expect(screen.getByRole("button", { name: "Publicar producto" })).toBeDisabled();
+    expect(updateTeacherCourseBuilder).not.toHaveBeenCalled();
+  });
+
+  // O aviso do preco caia no cartao do rodape, telas abaixo do campo.
+  it("preco invalido no Save draft: o aviso sai no proprio campo, nao no topo", async () => {
+    renderBuilder("pricing");
+    const price = await screen.findByRole("textbox", { name: "Price" });
+    fireEvent.change(price, { target: { value: "invalid" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save draft" }));
+
+    const message = "Use a valid non-negative price, or leave the field empty.";
+    // O foco vai ao campo (no celular ele pode estar fora da tela).
+    expect(price).toHaveFocus();
+    expect(price).toHaveAttribute("aria-invalid", "true");
+    expect(price).toHaveAccessibleDescription(message);
+    expect(screen.getAllByRole("alert")).toHaveLength(1);
+    expect(screen.getByRole("alert")).toHaveTextContent(message);
+    expect(document.querySelector(".course-builder-hero")?.nextElementSibling?.getAttribute("role")).not.toBe("alert");
+    expect(updateTeacherCourseBuilder).not.toHaveBeenCalled();
+
+    // Corrigiu: o aviso sai sem esperar outro clique.
+    fireEvent.change(price, { target: { value: "49" } });
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(price).not.toHaveAttribute("aria-invalid");
   });
 
   it("keeps canonical price and currency values when their labels change", async () => {
@@ -360,13 +430,17 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
       emit({ ...mocks.course, modules: [{ id: "m1", title, lessons }] });
       return Object.assign(() => {}, { reload: async () => {} });
     });
-    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
     renderBuilder("content");
     await screen.findByRole("heading", { name: mocks.course.title });
     fireEvent.click(screen.getByRole("button", { name: "Switch language" }));
     fireEvent.click(screen.getByRole("button", { name: "Eliminar" }));
     const related = count === 0 ? "" : count === 1 ? " y su 1 lección" : " y sus 2 lecciones";
-    expect(confirm).toHaveBeenCalledExactlyOnceWith(`¿Eliminar el módulo "${title}"${related}? No se podrá deshacer después del guardado automático.`);
+    // A frase de antes, agora na janela da plataforma; cancelar nao apaga.
+    const dialog = screen.getByRole("dialog", { name: "¿Eliminar este módulo?" });
+    expect(dialog).toHaveAccessibleDescription(`¿Eliminar el módulo "${title}"${related}? No se podrá deshacer después del guardado automático.`);
+    expect(within(dialog).getByRole("button", { name: "Eliminar módulo" })).toHaveClass("button-danger-solid");
+    fireEvent.click(within(dialog).getByRole("button", { name: "Cancelar" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
     // A linha do modulo mostra o nome literal e quantas aulas ele tem; as
     // aulas em si moram na pagina do modulo (?module=M).
     const row = document.querySelector("#builder-sec-modules article") as HTMLElement;
@@ -374,6 +448,17 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     expect(within(row).getByText(count === 1 ? "1 lección" : `${count} lecciones`)).toBeInTheDocument();
     expect(updateTeacherCourseBuilder).not.toHaveBeenCalled();
     expect(subscribeToTeacherCourse).toHaveBeenCalledOnce();
+  });
+
+  it("confirmar na janela apaga o modulo uma vez, e so depois do confirmar", async () => {
+    renderBuilder("content");
+    await screen.findByRole("heading", { name: mocks.course.title });
+    fireEvent.click(screen.getByRole("button", { name: "Delete" }));
+    const dialog = screen.getByRole("dialog", { name: "Delete this module?" });
+    expect(document.querySelectorAll("#builder-sec-modules article")).toHaveLength(1);
+    clickConfirm(dialog, "Delete module");
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(document.querySelectorAll("#builder-sec-modules article")).toHaveLength(0);
   });
 
   it("localizes an existing module validation error and retains the unsaved module fields", async () => {
@@ -408,6 +493,14 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
       ? screen.getAllByRole("button", { name: "Save draft" })[0]
       : screen.getByRole("button", { name: "Publish product" }));
     await screen.findByRole("link", { name: "Activate storefront" });
+    // O aviso sai perto do botao clicado, nao no cartao do fim da pagina.
+    const alert = screen.getByRole("alert");
+    if (operation === "save") {
+      expect(document.querySelector(".course-builder-hero")?.nextElementSibling).toBe(alert);
+    } else {
+      expect(alert.closest(".course-builder-panel")).not.toBeNull();
+      expect(alert.compareDocumentPosition(screen.getByRole("button", { name: "Publish product" })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    }
     fireEvent.click(screen.getByRole("button", { name: "Switch language" }));
     expect(screen.getByRole("alert")).toHaveTextContent("Activa tu tienda para habilitar la publicación: una tarifa única de activación, que se cobra una sola vez por cuenta de creador, nunca por curso.");
     expect(screen.getByRole("link", { name: "Activar tienda" })).toHaveAttribute("href", "/teach/activate?courseId=course-1");
@@ -431,6 +524,34 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("Add a video, text or file to every lesson before publishing.");
     fireEvent.click(screen.getByRole("button", { name: "Switch language" }));
     expect(screen.getByRole("alert")).toHaveTextContent("Añade un video, texto o archivo a cada lección antes de publicar.");
+  });
+
+  // F-04: publicando, o botão diz "Publishing..." sem mudar de largura: o
+  // rótulo de repouso fica na mesma célula, invisível e fora do nome.
+  it("publishing keeps both labels in place and names the button by the visible one", async () => {
+    vi.mocked(subscribeToTeacherCourse).mockImplementationOnce((_id, emit) => {
+      emit({ ...mocks.course, paymentType: "free", priceAmountMinor: 0, modules: [{ id: "m1", title: "Start here", lessons: [{ id: "l1", title: "Welcome", description: "", type: "text", contentText: "Read this first." }] }] });
+      return Object.assign(() => {}, { reload: async () => {} });
+    });
+    let failPublish: (error: Error) => void = () => {};
+    vi.mocked(publishTeacherCourse).mockImplementationOnce(
+      () => new Promise((_resolve, reject) => { failPublish = reject; }),
+    );
+    renderBuilder("review");
+    await screen.findByRole("heading", { name: mocks.course.title });
+    const idle = screen.getByRole("button", { name: "Publish product" });
+    expect(within(idle).getByText("Publishing...")).toHaveAttribute("aria-hidden", "true");
+    fireEvent.click(idle);
+
+    const busy = await screen.findByRole("button", { name: "Publishing..." });
+    expect(busy).toBe(idle);
+    expect(busy).toBeDisabled();
+    expect(busy).toHaveAttribute("aria-busy", "true");
+    expect(within(busy).getByText("Publish product")).toHaveAttribute("aria-hidden", "true");
+    expect(screen.queryByRole("button", { name: "Publish product" })).toBeNull();
+
+    await act(async () => { failPublish(new Error("network")); });
+    expect(await screen.findByRole("button", { name: "Publish product" })).toBe(idle);
   });
 
   // Os tipos novos tem recusas proprias no servidor: cada uma diz o que falta,
@@ -498,8 +619,8 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     fireEvent.click(screen.getByRole("button", { name: "Add lesson" }));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Switch language" }));
-    expect(screen.getByText("Lección añadida. El editor se abrirá cuando termine el guardado automático…")).toBeInTheDocument();
-    expect(screen.getByText("Guardando lección…")).toBeInTheDocument();
+    expect(screen.getByText("Lección añadida. El editor se abrirá cuando termine el guardado automático...")).toBeInTheDocument();
+    expect(screen.getByText("Guardando lección...")).toBeInTheDocument();
     act(() => vi.advanceTimersByTime(1800));
     expect(updateTeacherCourseBuilder).toHaveBeenCalledOnce();
     const payload = vi.mocked(updateTeacherCourseBuilder).mock.calls[0][1];
@@ -535,7 +656,9 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     const input = screen.getByLabelText("Upload cover");
     fireEvent.change(input, { target: { files: [file] } });
     fireEvent.click(screen.getByRole("button", { name: "Switch language" }));
-    expect(screen.getByLabelText("Subiendo...")).toBe(input);
+    // Rotulo fixo durante o envio: o estado e so a nota de progresso.
+    expect(screen.getByLabelText("Subir portada")).toBe(input);
+    expect(screen.queryByText("Subiendo...")).toBeNull();
     expect(input).toBeDisabled();
     expect(screen.getByText("50%").closest('[role="status"]')).not.toBeNull();
     expect(vi.mocked(uploadCourseAsset).mock.calls[0][0]).toMatchObject({ file, courseId: "course-1", kind: "course_cover", isPreview: false });
@@ -546,8 +669,20 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     expect(subscribeToTeacherCourse).toHaveBeenCalledOnce();
   });
 
+  // B-05: a capa do curso usa a casca única; o accept e o teto seguem os dela.
+  it("keeps the course-cover accept and refuses a file over the upload limit before sending", async () => {
+    renderBuilder();
+    await screen.findByRole("heading", { name: mocks.course.title });
+    const input = screen.getByLabelText("Upload cover");
+    expect(input).toHaveAttribute("accept", "image/*");
+    const big = new File(["x"], "capa.png", { type: "image/png" });
+    Object.defineProperty(big, "size", { value: 600 * 1024 * 1024 });
+    fireEvent.change(input, { target: { files: [big] } });
+    expect(screen.getByText(/Use an image file under/).closest('[role="alert"]')).not.toBeNull();
+    expect(uploadCourseAsset).not.toHaveBeenCalled();
+  });
+
   it("uses the current language when leaving a dirty draft and keeps new-tab preview exempt", async () => {
-    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
     const { container } = renderBuilder();
     await screen.findByRole("heading", { name: mocks.course.title });
     fireEvent.change(screen.getByRole("textbox", { name: "Course title" }), { target: { value: "Edited course title" } });
@@ -555,14 +690,58 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     const leave = document.createElement("a");
     leave.href = "/teach";
     leave.textContent = "Leave fixture";
+    // Quem navegaria (o Link do Next): so recebe o clique se a guarda soltar.
+    const followed = vi.fn((event: MouseEvent) => event.preventDefault());
+    leave.addEventListener("click", followed);
     container.appendChild(leave);
     expect(fireEvent.click(leave)).toBe(false);
-    expect(confirm).toHaveBeenCalledExactlyOnceWith("Este curso tiene cambios sin guardar. ¿Quieres salir y perderlos?");
+    expect(followed).not.toHaveBeenCalled();
+    const dialog = screen.getByRole("dialog", { name: "¿Salir sin guardar?" });
+    expect(dialog).toHaveAccessibleDescription("Este curso tiene cambios sin guardar. ¿Quieres salir y perderlos?");
+    fireEvent.click(within(dialog).getByRole("button", { name: "Quedarme en esta página" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(followed).not.toHaveBeenCalled();
     const preview = screen.getByRole("link", { name: /^Vista previa.*pestaña nueva/i });
     preview.addEventListener("click", (event) => event.preventDefault());
     fireEvent.click(preview);
-    expect(confirm).toHaveBeenCalledOnce();
+    expect(screen.queryByRole("dialog")).toBeNull();
     expect(updateTeacherCourseBuilder).not.toHaveBeenCalled();
+  });
+
+  // A janela nao segura o clique como o confirm() segurava: confirmado, o
+  // mesmo link recebe o clique uma vez e segue (o Link do Next navega).
+  it("confirmar a saida repete o clique no link uma vez so", async () => {
+    const { container } = renderBuilder();
+    await screen.findByRole("heading", { name: mocks.course.title });
+    fireEvent.change(screen.getByRole("textbox", { name: "Course title" }), { target: { value: "Edited course title" } });
+    const leave = document.createElement("a");
+    leave.href = "/teach";
+    leave.textContent = "Leave fixture";
+    const followed = vi.fn((event: MouseEvent) => event.preventDefault());
+    leave.addEventListener("click", followed);
+    container.appendChild(leave);
+    fireEvent.click(leave);
+    clickConfirm(screen.getByRole("dialog", { name: "Leave without saving?" }), "Leave anyway");
+    await waitFor(() => expect(followed).toHaveBeenCalledOnce());
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  // O link saiu da tela enquanto a janela estava aberta: confirmado, a saida
+  // vai pelo endereco dele, uma vez.
+  it("confirmar a saida com o link fora da tela navega pelo endereco", async () => {
+    mocks.router.push.mockClear();
+    const { container } = renderBuilder();
+    await screen.findByRole("heading", { name: mocks.course.title });
+    fireEvent.change(screen.getByRole("textbox", { name: "Course title" }), { target: { value: "Edited course title" } });
+    const leave = document.createElement("a");
+    leave.href = "/teach/sales?view=all#top";
+    leave.textContent = "Leave fixture";
+    container.appendChild(leave);
+    fireEvent.click(leave);
+    leave.remove();
+    clickConfirm(screen.getByRole("dialog", { name: "Leave without saving?" }), "Leave anyway");
+    await waitFor(() => expect(mocks.router.push).toHaveBeenCalledOnce());
+    expect(mocks.router.push).toHaveBeenCalledWith("/teach/sales?view=all#top");
   });
 
   it("translates a read failure and recovers through the original subscription", async () => {
@@ -928,7 +1107,8 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
         expect(link.tagName).toBe("A");
         expect(link).toHaveAttribute("href", "/teach/builder/course-1/preview");
         expect(link).toHaveAttribute("target", "_blank");
-        expect(link).toHaveAttribute("rel", "noopener noreferrer");
+        // A prévia fecha a própria aba ao sair: precisa saber quem a abriu.
+        expect(link).toHaveAttribute("rel", "opener");
         fireEvent.click(link);
       }
       if (locale === "en") fireEvent.click(screen.getByRole("button", { name: "Switch language" }));
@@ -951,6 +1131,7 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
       fireEvent.change(screen.getByRole("textbox", { name: new RegExp(`^${label}`) }), { target: { value } });
     }
     fireEvent.click(screen.getByRole("button", { name: "Dark" }));
+    expect(screen.getByLabelText("Upload cover")).toHaveAttribute("accept", "image/*");
     fireEvent.change(screen.getByLabelText("Upload cover"), { target: { files: [new File(["no"], "invalid.txt", { type: "text/plain" })] } });
     expect(screen.getByText(/Use an image file under/)).toBeInTheDocument();
     const subscriptions = vi.mocked(subscribeToTeacherCourse).mock.calls.length;
@@ -982,7 +1163,8 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     fireEvent.change(input, { target: { files: [file] } });
     expect(screen.getByText("50%").closest('[role="status"]')).not.toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Switch language" }));
-    expect(screen.getByLabelText("Subiendo...")).toBe(input);
+    expect(screen.getByLabelText("Subir portada")).toBe(input);
+    expect(screen.queryByText("Subiendo...")).toBeNull();
     expect(input).toBeDisabled();
     expect(screen.getByText("50%").closest('[role="status"]')).not.toBeNull();
     expect(uploadCourseAsset).toHaveBeenCalledOnce();
@@ -1014,15 +1196,46 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     await act(async () => fireEvent.change(screen.getByLabelText("Upload cover"), { target: { files: [new File(["image"], "cover.png", { type: "image/png" })] } }));
     act(() => emitAssets([{ id: "new-cover", courseId: "course-1", ownerId: "teacher-1", kind: "members_cover", fileName: "cover.png", contentType: "image/png", size: 5, storagePath: "fixture/cover.png", downloadUrl: "/fixture-cover.png", isPreview: false, lessonId: null }]));
     expect(screen.getByRole("img", { name: `${authorTitle} members cover` })).toHaveAttribute("src", "/fixture-cover.png");
-    expect(screen.getByText("Cover set")).toBeInTheDocument();
+    // Sem o selo "Cover set" (B-05): a prévia e o "Replace cover" dizem que há capa.
+    expect(screen.getByLabelText("Replace cover")).toHaveAttribute("type", "file");
     fireEvent.click(screen.getByRole("button", { name: "Switch language" }));
     expect(screen.getByRole("img", { name: `Portada del área de miembros de ${authorTitle}` })).toHaveAttribute("src", "/fixture-cover.png");
-    expect(screen.getByText("Portada añadida")).toBeInTheDocument();
+    expect(screen.getByLabelText("Cambiar portada")).toHaveAttribute("type", "file");
     fireEvent.click(screen.getByRole("button", { name: "Quitar portada" }));
     expect(screen.queryByRole("img", { name: `Portada del área de miembros de ${authorTitle}` })).not.toBeInTheDocument();
     expect(screen.getByText("Aún no hay portada")).toBeInTheDocument();
     expect(uploadCourseAsset).toHaveBeenCalledOnce();
     expect(subscribeToCourseAssets).toHaveBeenCalledOnce();
+  });
+
+  // O rodape saiu: o erro da biblioteca sai embaixo dela, e com ela fechada,
+  // no topo da pagina.
+  it("biblioteca de midia: a falha ao reler os arquivos sai embaixo dela", async () => {
+    renderBuilder();
+    await screen.findByRole("heading", { name: mocks.course.title });
+    fireEvent.click(screen.getByRole("button", { name: "Open media library" }));
+    vi.mocked(fetchCourseAssets).mockRejectedValueOnce(new Error("offline"));
+    fireEvent.click(screen.getByRole("button", { name: "Fake asset deleted" }));
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("We could not load this course.");
+    expect(alert.closest(".course-builder-footer")).not.toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Hide media library" }));
+    expect(document.querySelector(".course-builder-hero")?.nextElementSibling).toBe(screen.getByRole("alert"));
+  });
+
+  // A chave da comunidade era feita a mao (48x28, botao por `left`): agora e a
+  // mesma da Conta, num alvo de 44px.
+  it("comunidade: a chave da Conta liga e desliga com o mesmo estado", async () => {
+    renderMembers();
+    const toggle = await screen.findByRole("switch", { name: "Enable course community" });
+    expect(toggle).toHaveAttribute("aria-checked", "false");
+    expect(toggle).toHaveClass("min-h-11", "min-w-11");
+    expect(toggle.querySelector(".settings-toggle:not(.settings-toggle--on)")).not.toBeNull();
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute("aria-checked", "true");
+    expect(toggle.querySelector(".settings-toggle--on")).not.toBeNull();
+    expect(screen.getByText("Community is on. Students see a Community section in this course.")).toBeInTheDocument();
   });
 
   it("a funcao pura e a referencia: 4 de 6 checks, 67%", () => {
@@ -1031,28 +1244,54 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     expect(expected.percent).toBe(67);
   });
 
-  it("construtor: chip, barra, texto do stepper e rodape mostram 67%", async () => {
+  it("construtor: a prontidao aparece uma vez, no stepper, com a barra em 67%", async () => {
     render(<CourseBuilderStudio />);
 
     await screen.findByRole("heading", { name: "Clinical performance foundations" });
 
-    // Chip no cabecalho e "% ready" do rodape.
-    const chips = screen.getAllByText(`${expected.percent}% ready`);
-    expect(chips.length).toBeGreaterThanOrEqual(2);
-
-    // Texto do stepper e a barra logo abaixo dele.
-    expect(screen.getByText(`Publish readiness ${expected.percent}%`)).toBeInTheDocument();
+    // O titulo chega antes da consulta do plano; esperar a porcentagem final.
+    // Uma linha so: o chip do topo e o cartao do rodape repetiam o numero.
     expect(
-      screen.getByText(`${expected.doneCount} of ${expected.total} checks ready`),
+      await screen.findByText(`${expected.doneCount} of ${expected.total} checks · ${expected.percent}%`),
     ).toBeInTheDocument();
-    expect(screen.getByTestId("publish-readiness-bar")).toHaveStyle({
-      width: `${expected.percent}%`,
-    });
+    expect(screen.queryAllByText(new RegExp(`${expected.percent}%`))).toHaveLength(1);
+    // Uma leitura so: a frase e o nome da barra; a linha visivel fica fora da
+    // arvore de acessibilidade para o leitor de tela nao repeti-la.
+    const checksLine = screen.getByText(`${expected.doneCount} of ${expected.total} checks · ${expected.percent}%`);
+    expect(checksLine).toHaveAttribute("aria-hidden", "true");
+    expect(screen.getByRole("progressbar", { name: checksLine.textContent! })).toBeInTheDocument();
+    expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", String(expected.percent));
 
-    // O proximo passo e o rodape vem da mesma lista.
-    expect(screen.getAllByText("Add at least one lesson.").length).toBeGreaterThanOrEqual(2);
-    expect(screen.getByText("Set a price above $0, or choose Free.")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Publish product" })).toBeDisabled();
+    // O proximo passo sai uma vez, no stepper; o rodape nao repete a lista.
+    expect(screen.getAllByText("Add at least one lesson.")).toHaveLength(1);
+    expect(screen.queryByText("Set a price above $0, or choose Free.")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Publish product" })).toBeNull();
+    cleanup();
+
+    // As pendencias moram na aba Publish, da mesma lista, e o Publish apagado
+    // diz por que.
+    mocks.searchParams.set("tab", "review");
+    render(<CourseBuilderStudio />);
+    await screen.findByRole("heading", { name: "Clinical performance foundations" });
+    const review = document.getElementById("builder-sec-review")!;
+    expect(within(review).getByText("Add at least one lesson.")).toBeInTheDocument();
+    expect(within(review).getByText("Set a price above $0, or choose Free.")).toBeInTheDocument();
+    const publish = screen.getByRole("button", { name: "Publish product" });
+    expect(publish).toBeDisabled();
+    expect(publish).toHaveAccessibleDescription("Finish the publication checks to go live.");
+  });
+
+  it("waits for the plan response before reading the final builder readiness", async () => {
+    plan.hold = true;
+    render(<CourseBuilderStudio />);
+    await screen.findByRole("heading", { name: mocks.course.title });
+    expect(screen.getAllByText(/ · 57%$/)).toHaveLength(1);
+    expect(screen.queryByText(new RegExp(` · ${expected.percent}%$`))).toBeNull();
+
+    const settled = screen.findByText(`${expected.doneCount} of ${expected.total} checks · ${expected.percent}%`);
+    plan.release!();
+    expect(await settled).toBeInTheDocument();
+    expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", String(expected.percent));
   });
 
   it.each(["en", "es"] as const)("localizes the real manage checklist from %s without changing publication gates or edit destinations", async (initialLocale) => {
@@ -1078,12 +1317,12 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     const rows = () => [...container.querySelectorAll<HTMLElement>("[data-readiness-item]")];
     const state = () => rows().map((row) => ({
       id: row.dataset.readinessItem,
-      done: row.classList.contains("bg-[var(--color-success-soft)]"),
+      done: row.querySelector("[data-drawn-check]") !== null,
       hrefs: [...row.querySelectorAll("a")].map((link) => link.getAttribute("href")),
     }));
+    await waitFor(() => expect(rows()).toHaveLength(11));
     const initialState = state();
-    expect(rows()).toHaveLength(11);
-    expect(screen.getByTestId("publish-readiness-bar")).toHaveStyle({ width: "75%" });
+    expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "75");
     if (initialLocale === "en") {
       expect(screen.getByRole("link", { name: "Edit Course title" })).toBeInTheDocument();
       expect(screen.getByText("6 of 8 required steps done · 75% ready")).toBeInTheDocument();
@@ -1108,14 +1347,14 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
       expect(within(row).getByText(label)).toBeInTheDocument();
       expect(within(row).getByText(hint)).toBeInTheDocument();
       expect(Boolean(within(row).queryByText("Opcional"))).toBe(optional);
-      expect(row.classList.contains("bg-[var(--color-success-soft)]")).toBe(done);
+      expect(row.querySelector("[data-drawn-check]") !== null).toBe(done);
       expect(within(row).getByRole("link", {
         name: id === "verification" ? "Abrir verificación" : `Editar ${label}`,
       })).toHaveAttribute("href", href);
       expect(within(row).getAllByRole("link")).toHaveLength(1);
     }
     expect(within(card).getByText("6 de 8 pasos obligatorios listos · 75% listo")).toBeInTheDocument();
-    expect(screen.getByTestId("publish-readiness-bar")).toHaveStyle({ width: "75%" });
+    expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "75");
     expect(state()).toEqual(initialState);
     expect(screen.getByRole("heading", { name: paidCourse.title })).toBeInTheDocument();
     expect(mocks.getSubscriptionCounts()).toEqual(subscriptions);
@@ -1152,7 +1391,7 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     const hint = "Add a video, text or file to every lesson. Missing: Empty lesson.";
     const publish = screen.getByRole("button", { name: "Publish product" });
     if (filled) {
-      expect(publish).toBeEnabled();
+      await waitFor(() => expect(publish).toBeEnabled());
       expect(screen.queryByText(hint)).not.toBeInTheDocument();
     } else {
       expect((await screen.findAllByText(hint)).length).toBeGreaterThan(0);
@@ -1167,19 +1406,82 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     await screen.findByText("Publish checklist");
 
     expect(
-      screen.getByText(
+      await screen.findByText(
         `${expected.doneCount} of ${expected.total} required steps done · ${expected.percent}% ready`,
       ),
     ).toBeInTheDocument();
-    expect(screen.getByTestId("publish-readiness-bar")).toHaveStyle({
-      width: `${expected.percent}%`,
-    });
+    expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", String(expected.percent));
+    // Uma leitura so: a frase e o nome da barra, e a linha visivel fica escondida.
+    const stepsLine = screen.getByText(`${expected.doneCount} of ${expected.total} required steps done · ${expected.percent}% ready`);
+    expect(stepsLine).toHaveAttribute("aria-hidden", "true");
+    expect(screen.getByRole("progressbar", { name: stepsLine.textContent! })).toBeInTheDocument();
 
     const list = screen.getByText("Publish checklist").closest("section") ?? document.body;
     expect(within(list).getByText("Add at least one lesson.")).toBeInTheDocument();
     expect(
       within(list).getByText("Set a price above $0, or choose Free."),
     ).toBeInTheDocument();
+  });
+
+  // O Manage nao lia a lista de arquivos e tirava "conteudo em toda aula": o
+  // mesmo curso dava 83% la e 71% no construtor.
+  it("aula vazia: construtor e Manage mostram o mesmo numero, com o mesmo item", async () => {
+    const withEmptyLesson: TeacherCourse = {
+      ...mocks.course,
+      modules: [{ id: "m1", title: "Start here", lessons: [
+        { id: "l1", title: "Ready lesson", description: "", type: "text", contentText: "Read this first." },
+        { id: "l2", title: "Empty lesson", description: "", type: "video" },
+      ] }],
+      lessonCount: 2,
+    };
+    const reference = getCourseReadiness({
+      ...withEmptyLesson,
+      lessonIdsWithMedia: getLessonIdsWithMedia(withEmptyLesson.modules, []),
+    });
+    expect([reference.doneCount, reference.total, reference.percent]).toEqual([5, 7, 71]);
+    const emit = () => vi.mocked(subscribeToTeacherCourse).mockImplementationOnce((_id, onData) => {
+      onData(withEmptyLesson);
+      return Object.assign(() => {}, { reload: async () => {} });
+    });
+
+    emit();
+    const hub = render(<CourseManageHub courseId="course-1" />);
+    expect(await screen.findByText("5 of 7 required steps done · 71% ready")).toBeInTheDocument();
+    expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "71");
+    expect(hub.container.querySelector('[data-readiness-item="lessonMedia"]')).not.toBeNull();
+    cleanup();
+
+    emit();
+    render(<CourseBuilderStudio />);
+    expect(await screen.findByText("5 of 7 checks · 71%")).toBeInTheDocument();
+    expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "71");
+  });
+
+  // B-15: sem a lista de arquivos o Manage dava outro número que o construtor
+  // (e a falha era engolida). Agora espera com "—%", e a falha tem "Try again".
+  it("Manage: sem a lista de arquivos, —% no lugar do numero e Try again", async () => {
+    const withLesson: TeacherCourse = {
+      ...mocks.course,
+      modules: [{ id: "m1", title: "Start here", lessons: [
+        { id: "l1", title: "Ready lesson", description: "", type: "text", contentText: "Read this first." },
+      ] }],
+      lessonCount: 1,
+    };
+    vi.mocked(subscribeToTeacherCourse).mockImplementationOnce((_id, onData) => {
+      onData(withLesson);
+      return Object.assign(() => {}, { reload: async () => {} });
+    });
+    vi.mocked(fetchCourseAssets).mockRejectedValueOnce(new Error("offline"));
+    render(<CourseManageHub courseId="course-1" />);
+
+    expect(await screen.findByText("Checking the content of your lessons... · —% ready")).toBeInTheDocument();
+    expect(await screen.findByText(/We could not check the content of your lessons/)).toBeInTheDocument();
+    expect(screen.queryByRole("progressbar")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(await screen.findByRole("progressbar")).toBeInTheDocument();
+    expect(screen.queryByText(/—%/)).toBeNull();
+    expect(screen.queryByText(/We could not check the content/)).toBeNull();
   });
 });
 
@@ -1273,6 +1575,20 @@ describe("aba de preco sem o que nao se aplica", () => {
     expect(screen.queryByText(/subscription|Payment model|Marketplace setup|billing interval/i)).not.toBeInTheDocument();
     expect(screen.getByRole("textbox", { name: "Price" })).toBeInTheDocument();
     expect(screen.getByRole("combobox", { name: "Free preview lesson" })).toBeInTheDocument();
+    // F-12: sem aula o seletor fica apagado e diz por quê.
+    expect(screen.getByRole("combobox", { name: "Free preview lesson" })).toBeDisabled();
+    expect(screen.getByRole("combobox", { name: "Free preview lesson" }))
+      .toHaveAccessibleDescription("Add a lesson in Curriculum first, then pick it here.");
+  });
+
+  // F-12: no teto de resultados o "Add" apagava calado.
+  it("resultados no teto: o Add apagado diz o limite", async () => {
+    renderBuilder("details");
+    await screen.findByRole("heading", { name: mocks.course.title, level: 1 });
+    const add = screen.getByRole("button", { name: "Add learning outcome" });
+    for (let index = 0; index < 8 && !(add as HTMLButtonElement).disabled; index += 1) fireEvent.click(add);
+    expect(add).toBeDisabled();
+    expect(add).toHaveAccessibleDescription("You can list up to 8 outcomes.");
   });
 
   it.each([
@@ -1458,16 +1774,23 @@ describe("Painel: o que falta para publicar vem primeiro e cada linha leva a alg
     expect(within(card).queryByLabelText(/^Edit Professional verification$/)).toBeNull();
   });
 
-  it("linha concluida fica verde; linha pendente fica neutra", async () => {
+  // O mesmo desenho do construtor: check desenhado verde (com "Done" para o
+  // leitor de tela) e circulo vazio, e a mesma barra de latao. Antes era um
+  // "✓" digitado numa bolinha azul e uma barra azul mais grossa.
+  it("linha concluida tem o check verde do construtor; linha pendente, o circulo vazio", async () => {
     render(<CourseManageHub courseId="course-1" />);
     await screen.findByText("Publish checklist");
     const card = checklistCard();
 
     // "Module" esta feito (o curso tem um modulo); "Lesson" nao.
-    const done = card.querySelector('[data-readiness-item="module"]');
-    const pending = card.querySelector('[data-readiness-item="lesson"]');
-    expect(done?.className).toContain("bg-[var(--color-success-soft)]");
-    expect(pending?.className).not.toContain("bg-[var(--color-success-soft)]");
+    const done = card.querySelector<HTMLElement>('[data-readiness-item="module"]')!;
+    const pending = card.querySelector<HTMLElement>('[data-readiness-item="lesson"]')!;
+    expect(done.querySelector("[data-drawn-check]")).not.toBeNull();
+    expect(done).toHaveTextContent(/^Done: /);
+    expect(done).not.toHaveTextContent("✓");
+    expect(pending.querySelector("[data-drawn-check]")).toBeNull();
+    // A barra compartilhada: preenchimento no latão de texto (contraste 3:1).
+    expect(screen.getByRole("progressbar").firstElementChild).toHaveClass("bg-[var(--color-accent-fg)]");
   });
 });
 
@@ -1505,7 +1828,7 @@ describe("publicar sem surpresa", () => {
     renderBuilder("review");
     const button = await screen.findByRole("button", { name: "Activate and publish" });
     expect(screen.getAllByText("Activation — US$25, one time").length).toBeGreaterThan(0);
-    expect(button).toBeEnabled();
+    await waitFor(() => expect(button).toBeEnabled());
 
     fireEvent.click(button);
     await waitFor(() => expect(mocks.router.push).toHaveBeenCalledWith("/teach/activate?courseId=course-1"));
@@ -1520,8 +1843,22 @@ describe("publicar sem surpresa", () => {
 
   it("keeps Publish product for a creator who does not owe the fee", async () => {
     renderBuilder("review");
-    expect(await screen.findByRole("button", { name: "Publish product" })).toBeEnabled();
+    const button = await screen.findByRole("button", { name: "Publish product" });
+    await waitFor(() => expect(button).toBeEnabled());
     expect(screen.queryByText("Activation — US$25, one time")).toBeNull();
+  });
+
+  it("keeps a complete course blocked until the plan response allows publishing", async () => {
+    plan.hold = true;
+    renderBuilder("review");
+    const button = await screen.findByRole("button", { name: "Publish product" });
+    expect(button).toBeDisabled();
+    fireEvent.click(button);
+    expect(publishTeacherCourse).not.toHaveBeenCalled();
+
+    await act(async () => plan.release!());
+    await waitFor(() => expect(button).toBeEnabled());
+    expect(publishTeacherCourse).not.toHaveBeenCalled();
   });
 
   it("Manage: the activation row leads to checkout for this course", async () => {
@@ -1539,7 +1876,7 @@ describe("publicar sem surpresa", () => {
   it("shows the product link to share right after publishing", async () => {
     vi.mocked(publishTeacherCourse).mockResolvedValueOnce(undefined as never);
     renderBuilder("review");
-    fireEvent.click(await screen.findByRole("button", { name: "Publish product" }));
+    await publishProduct();
     expect(await screen.findByRole("heading", { name: "It's live." })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Open Product page" })).toHaveAttribute("href", "https://www.skillsetmind.com/courses/course-1");
     expect(screen.getByRole("button", { name: "Copy my page link" })).toBeInTheDocument();
@@ -1555,7 +1892,7 @@ describe("publicar sem surpresa", () => {
     it("troca o paragrafo cinza pela cena e leva o foco ao 'Copy my page link'", async () => {
       vi.mocked(publishTeacherCourse).mockResolvedValueOnce(undefined as never);
       const { container } = renderBuilder("review");
-      fireEvent.click(await screen.findByRole("button", { name: "Publish product" }));
+      await publishProduct();
 
       const copy = await screen.findByRole("button", { name: "Copy my page link" });
       await waitFor(() => expect(copy).toHaveFocus());
@@ -1575,7 +1912,7 @@ describe("publicar sem surpresa", () => {
       window.localStorage.setItem("skillsetmind.publishedCelebrated.course-1", "1");
       vi.mocked(publishTeacherCourse).mockResolvedValueOnce(undefined as never);
       renderBuilder("review");
-      fireEvent.click(await screen.findByRole("button", { name: "Publish product" }));
+      await publishProduct();
 
       const panel = await screen.findByRole("region", { name: "It's live." });
       expect(panel).not.toHaveClass("is-celebrating");
@@ -1587,26 +1924,44 @@ describe("publicar sem surpresa", () => {
     const blocked = vi.spyOn(track, "coursePublishBlocked");
     vi.mocked(publishTeacherCourse).mockRejectedValueOnce(new Error("Finish Stripe payout onboarding before publishing a paid course."));
     renderBuilder("review");
-    fireEvent.click(await screen.findByRole("button", { name: "Publish product" }));
+    await publishProduct();
     const alert = await screen.findByRole("alert");
-    expect(within(alert).getByRole("link", { name: "Finish payout onboarding" })).toHaveAttribute("href", "/account/payments#stripe-connect");
+    expect(within(alert).getByRole("link", { name: "Set up how you get paid" })).toHaveAttribute("href", PAYOUTS_WITH_RETURN);
     expect(blocked).toHaveBeenCalledWith({ course_id: "course-1", reason: "payouts" });
   });
 
-  it("links a server plan refusal to billing", async () => {
-    vi.mocked(publishTeacherCourse).mockRejectedValueOnce(new Error("creator_plan_required"));
-    renderBuilder("review");
-    fireEvent.click(await screen.findByRole("button", { name: "Publish product" }));
-    const alert = await screen.findByRole("alert");
-    expect(within(alert).getByRole("link", { name: "Manage plan" })).toHaveAttribute("href", "/account/billing?tab=subscriptions");
+  // Quem nunca assinou ia para os recibos ("Manage plan"): agora vai aos
+  // planos, como na Home do professor. Quem tem plano segue gerenciando.
+  it.each([
+    ["free", "See plans", "/account/plans"],
+    ["pro", "Manage plan", "/account/billing?tab=subscriptions"],
+  ] as const)("links a server plan refusal for plan %s to %s", async (planId, name, href) => {
+    profileExtra.currentPlanId = planId;
+    try {
+      vi.mocked(publishTeacherCourse).mockRejectedValueOnce(new Error("creator_plan_required"));
+      renderBuilder("review");
+      await publishProduct();
+      const alert = await screen.findByRole("alert");
+      await waitFor(() => expect(within(alert).getByRole("link", { name })).toHaveAttribute("href", href));
+    } finally {
+      delete profileExtra.currentPlanId;
+    }
   });
 
-  it("offers billing and disables publishing when the server requires a plan", async () => {
+  it.each([
+    ["free", "See plans", "/account/plans"],
+    ["pro", "Manage plan", "/account/billing?tab=subscriptions"],
+  ] as const)("offers plan %s a %s link and disables publishing when the server requires a plan", async (planId, name, href) => {
     plan.required = true;
-    renderBuilder("review");
-    expect(await screen.findByRole("link", { name: "Manage plan" })).toHaveAttribute("href", "/account/billing?tab=subscriptions");
-    expect(screen.getByRole("button", { name: "Publish product" })).toBeDisabled();
-    expect(publishTeacherCourse).not.toHaveBeenCalled();
+    profileExtra.currentPlanId = planId;
+    try {
+      renderBuilder("review");
+      expect(await screen.findByRole("link", { name })).toHaveAttribute("href", href);
+      expect(screen.getByRole("button", { name: "Publish product" })).toBeDisabled();
+      expect(publishTeacherCourse).not.toHaveBeenCalled();
+    } finally {
+      delete profileExtra.currentPlanId;
+    }
   });
 });
 
@@ -1639,7 +1994,7 @@ describe("motivo do bloqueio no analytics", () => {
     const blocked = vi.spyOn(track, "coursePublishBlocked");
     arrange();
     renderBuilder("review");
-    fireEvent.click(await screen.findByRole("button", { name: "Publish product" }));
+    await publishProduct();
     await screen.findByRole("alert");
     expect(blocked).toHaveBeenCalledExactlyOnceWith({ course_id: "course-1", reason });
   });
@@ -1660,7 +2015,61 @@ describe("item de payouts no construtor", () => {
     renderBuilder("review");
     await screen.findByRole("heading", { name: mocks.course.title });
     const item = screen.getAllByText("Stripe payouts")[0].closest("li")!;
-    expect(within(item).getByRole("link", { name: "Finish payout onboarding" })).toHaveAttribute("href", "/account/payments#stripe-connect");
+    expect(within(item).getByRole("link", { name: "Set up how you get paid" })).toHaveAttribute("href", PAYOUTS_WITH_RETURN);
+  });
+});
+
+// Cada pendencia do Publish leva ao lugar de resolver; produto no ar nao
+// mostra um "Publish product" apagado e mudo.
+describe("aba Publish: cada pendencia tem para onde ir", () => {
+  afterEach(() => {
+    cleanup();
+    mocks.searchParams.delete("tab");
+    mocks.router.push.mockReset();
+    vi.restoreAllMocks();
+  });
+
+  it("o item de preco leva a aba Pricing, e o nome do item vai no botao", async () => {
+    renderBuilder("review");
+    await screen.findByRole("heading", { name: mocks.course.title });
+    const fix = await screen.findByRole("button", { name: "Go to Pricing: Pricing" });
+    fireEvent.click(fix);
+    expect(mocks.router.push).toHaveBeenCalledWith(
+      "/teach/builder?courseId=course-1&tab=pricing",
+      { scroll: false },
+    );
+  });
+
+  it("conteudo faltando abre a primeira aula sem conteudo", async () => {
+    vi.mocked(subscribeToTeacherCourse).mockImplementationOnce((_id, emit) => {
+      emit({
+        ...mocks.course,
+        modules: [{ id: "m1", title: "Start here", lessons: [
+          { id: "l1", title: "Ready lesson", description: "", type: "text", contentText: "Read this first." },
+          { id: "l2", title: "Empty lesson", description: "", type: "video" },
+        ] }],
+      });
+      return Object.assign(() => {}, { reload: async () => {} });
+    });
+    renderBuilder("review");
+    await screen.findByRole("heading", { name: mocks.course.title });
+    fireEvent.click(await screen.findByRole("button", { name: "Open the lesson: Lesson content" }));
+    expect(mocks.router.push).toHaveBeenCalledWith(
+      "/teach/builder?courseId=course-1&tab=content&module=m1&lesson=l2",
+      { scroll: false },
+    );
+  });
+
+  it("produto no ar diz que nao precisa publicar de novo, sem botao apagado", async () => {
+    vi.mocked(subscribeToTeacherCourse).mockImplementationOnce((_id, emit) => {
+      emit({ ...mocks.course, status: "published" });
+      return Object.assign(() => {}, { reload: async () => {} });
+    });
+    renderBuilder("review");
+    await screen.findByRole("heading", { name: mocks.course.title });
+    expect(screen.getAllByText("This product is already live. Saved changes don't need a new publish.").length).toBeGreaterThan(0);
+    expect(screen.queryByRole("button", { name: "Publish product" })).toBeNull();
+    expect(screen.queryByText("Finish the publication checks to go live.")).toBeNull();
   });
 });
 
@@ -1688,7 +2097,7 @@ describe("Manage: o que o tipo entrega entra na porcentagem", () => {
   const row = (container: HTMLElement, id: string) =>
     container.querySelector<HTMLElement>(`[data-readiness-item="${id}"]`);
   const done = (element: HTMLElement | null) =>
-    Boolean(element?.classList.contains("bg-[var(--color-success-soft)]"));
+    Boolean(element?.querySelector("[data-drawn-check]"));
 
   const free = { paymentType: "free" as const, priceAmountMinor: 0 };
 
@@ -1823,6 +2232,56 @@ describe("faixa de marco depois de criar (created=1)", () => {
     act(() => vi.advanceTimersByTime(3999));
     expect(screen.getByText(STRIP)).toBeInTheDocument();
     act(() => vi.advanceTimersByTime(1));
+    expect(screen.queryByText(STRIP)).toBeNull();
+  });
+
+  // O curso nasce com "Modulo 1, Aula 1": a faixa vira atalho para ela e nao
+  // some sozinha (em 4s o botao saia de alcance).
+  it("com a aula que ja existe, a faixa leva a ela e fica ate ser usada", () => {
+    vi.mocked(subscribeToTeacherCourse).mockImplementationOnce((_id, emit) => {
+      emit({ ...mocks.course, modules: [{ id: "m1", title: "Module 1", lessons: [{ id: "l1", title: "Lesson 1", description: "", type: "video" }] }] });
+      return Object.assign(() => {}, { reload: async () => {} });
+    });
+    vi.useFakeTimers();
+    renderBuilder("content");
+    act(() => vi.advanceTimersByTime(0));
+    const open = screen.getByRole("button", { name: "Open your first lesson" });
+    act(() => vi.advanceTimersByTime(10_000));
+    expect(screen.getByText(STRIP)).toBeInTheDocument();
+    fireEvent.click(open);
+    // (O ?created=1 sai pelo router.replace, que aqui e um mock.)
+    expect(mocks.router.push).toHaveBeenCalledWith(
+      expect.stringMatching(/^\/teach\/builder\?courseId=course-1&.*tab=content&module=m1&lesson=l1$/),
+      { scroll: false },
+    );
+    expect(screen.queryByText(STRIP)).toBeNull();
+  });
+
+  // Presa no pe da tela, a faixa cobria o "Continue to…" e o rodape das
+  // outras abas: fora da aba de conteudo ela sai.
+  it("sai ao trocar para outra aba", async () => {
+    vi.mocked(subscribeToTeacherCourse).mockImplementationOnce((_id, emit) => {
+      emit({ ...mocks.course, modules: [{ id: "m1", title: "Module 1", lessons: [{ id: "l1", title: "Lesson 1", description: "", type: "video" }] }] });
+      return Object.assign(() => {}, { reload: async () => {} });
+    });
+    const view = renderBuilder("content");
+    await screen.findByText(STRIP);
+    mocks.searchParams.set("tab", "pricing");
+    view.rerender(
+      <I18nProvider initialLocale="en">
+        <SwitchLanguage />
+        <CourseBuilderStudio />
+      </I18nProvider>,
+    );
+    expect(screen.queryByText(STRIP)).toBeNull();
+    // E nao volta ao retornar para o conteudo.
+    mocks.searchParams.set("tab", "content");
+    view.rerender(
+      <I18nProvider initialLocale="en">
+        <SwitchLanguage />
+        <CourseBuilderStudio />
+      </I18nProvider>,
+    );
     expect(screen.queryByText(STRIP)).toBeNull();
   });
 
@@ -2009,7 +2468,7 @@ describe("movimento so na mudanca", () => {
       return Object.assign(() => {}, { reload: async () => {} });
     });
     const view = renderBuilder("review");
-    fireEvent.click(await screen.findByRole("button", { name: "Publish product" }));
+    await publishProduct();
     await waitFor(() => expect(publishTeacherCourse).toHaveBeenCalled());
 
     // Enquanto a rede responde: aba Details, clique no titulo.
@@ -2024,8 +2483,12 @@ describe("movimento so na mudanca", () => {
     title.focus();
     await act(async () => finishPublish());
 
+    // Publicou com outra aba na tela: o painel sai no topo dessa aba (a aba
+    // nao troca debaixo de quem digita) e o foco fica no titulo.
     const copy = await screen.findByRole("button", { name: "Copy my page link" });
     expect(title).toHaveFocus();
     expect(copy).not.toHaveFocus();
+    expect(document.getElementById("builder-sec-review")).toBeNull();
+    expect(mocks.searchParams.get("tab")).toBe("details");
   });
 });

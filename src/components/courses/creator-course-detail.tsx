@@ -5,13 +5,18 @@ import { getCourseCategoryLabel } from "@/lib/i18n/course-categories";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 
 import Link from "next/link";
-import { Lock, ShieldCheck, Star, Target } from "lucide-react";
+import { ArrowLeft, Clock, Lock, Receipt, ShieldCheck, Star, Target } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { BunnyVideoPlayer } from "@/components/courses/bunny-video-player";
+import { renderCourseDetailSkeleton } from "@/components/courses/course-detail-skeleton";
+import { CourseModuleDisclosure } from "@/components/courses/course-module-disclosure";
 import { CourseUnlockModal } from "@/components/learn/course-unlock-modal";
+import { Button } from "@/components/ui/button";
+import { InlineAlert } from "@/components/ui/inline-alert";
+import { LoadErrorAlert } from "@/components/ui/load-error-alert";
 import {
   CourseInstructorCard,
   CourseReviewsSection,
@@ -33,6 +38,7 @@ import {
 } from "@/domain/product-pricing";
 import type { TeacherCourse, TeacherCourseStatus } from "@/domain/teacher-course";
 import {
+  formatTotalMinutes,
   isCoursePubliclySellable,
   normalizeLearningOutcomes,
   resolveLessonVideoSource,
@@ -64,6 +70,11 @@ type CreatorCourseDetailProps = {
   /** A página já renderizou título e resumo no servidor (mesmo padrão de PlatformShell). */
   hideHeader?: boolean;
   checkoutOnly?: boolean;
+  /**
+   * Capa, título e resumo que o servidor desenhou. Entram no topo da coluna da
+   * esquerda, para o cartão de compra começar no alto da página, ao lado deles.
+   */
+  lead?: ReactNode;
 };
 
 // The checkout API has public codes for auth/configuration, but its business
@@ -103,6 +114,10 @@ const checkoutMessageKeys: Partial<Record<number, Record<string, string>>> = {
   },
 };
 
+// Quanto a página de compra espera a leitura da matrícula antes de oferecer o
+// botão de pagar a quem entrou (ela costuma responder em menos de 1 s).
+const ENROLLMENT_READ_TIMEOUT_MS = 4_000;
+
 function getCheckoutErrorKey(error: unknown): string {
   if (error instanceof PaymentRequestError) {
     if (error.status === 401 && error.code === "unauthenticated") {
@@ -123,6 +138,7 @@ export function CreatorCourseDetail({
   courseIdOverride,
   hideHeader = false,
   checkoutOnly = false,
+  lead = null,
 }: CreatorCourseDetailProps = {}) {
   const { t, locale } = useTranslation();
   const { status: authStatus, user } = useAuth();
@@ -184,13 +200,20 @@ export function CreatorCourseDetail({
   // Padlocked lesson in the curriculum: opens the buy popup (cover, title and a
   // button to the buy card on this same page). Public course fields only.
   const [isUnlockOpen, setIsUnlockOpen] = useState(false);
-  // No desktop a capa da página de vendas vem antes das colunas, e o cartão de
-  // compra só aparece depois de quase duas telas. Enquanto ele está fora da
-  // tela, a barra de preço e compra (a mesma do celular) flutua no canto.
+  // Enquanto o botão do cartão de compra está fora da tela, a barra de preço e
+  // compra aparece (no celular, no pé da tela; no desktop, no canto). Com ele à
+  // vista, ela some: seria um segundo "Enroll" ao lado do primeiro.
+  // null = ainda não medido (sem IntersectionObserver, ou antes do 1º aviso):
+  // vale o desenho antigo, barra à vista no celular. Só a medição esconde.
   // Ref de callback: o cartão só nasce depois que o curso carrega.
-  const [enrollCardInView, setEnrollCardInView] = useState(true);
+  const [enrollCardInView, setEnrollCardInView] = useState<boolean | null>(null);
   const enrollCardObserver = useRef<IntersectionObserver | null>(null);
+  // O cartão também recebe o foco do "Try again" do preço (fica nos dois desfechos).
+  const enrollCardRef = useRef<HTMLElement | null>(null);
+  // A barra flutuante recebe o foco do "Try again" dela (fica nos dois desfechos).
+  const buyBarRef = useRef<HTMLDivElement>(null);
   const watchEnrollCard = useCallback((node: HTMLElement | null) => {
+    enrollCardRef.current = node;
     enrollCardObserver.current?.disconnect();
     enrollCardObserver.current = null;
     if (!node || checkoutOnly || typeof IntersectionObserver === "undefined") return;
@@ -220,18 +243,46 @@ export function CreatorCourseDetail({
   const viewerUid = user?.uid ?? null;
   const enrollmentCourseId = course?.id ?? null;
   const [viewerEnrollmentKey, setViewerEnrollmentKey] = useState<string | null>(null);
+  // A chave da leitura que já respondeu (com matrícula, sem, ou com falha). A
+  // página de compra também lê: quem volta do cadastro ou do "Sign in" pode já
+  // ter o curso, e ali via o botão de pagar em vez de "Continue learning".
+  const [enrollmentAnsweredKey, setEnrollmentAnsweredKey] = useState<string | null>(null);
   useEffect(() => {
-    if (checkoutOnly || !hasBackendConfig || !viewerUid || !enrollmentCourseId) {
+    if (!hasBackendConfig || !viewerUid || !enrollmentCourseId) {
       return;
     }
     const key = `${viewerUid}__${enrollmentCourseId}`;
-    return subscribeToEnrollment(
+    // Desligado, nada mais: a resposta atrasada de outra pessoa (ou de outro
+    // curso) não pode reescrever a chave de agora e travar o botão de novo.
+    let live = true;
+    // Leitura que não responde nem falha: passado o prazo, vale como falha (o
+    // botão de pagar volta; o servidor recusa quem já tem). A compra nunca
+    // fica presa num "Enroll" apagado até recarregar a página.
+    const timeout = window.setTimeout(() => {
+      if (live) setEnrollmentAnsweredKey(key);
+    }, ENROLLMENT_READ_TIMEOUT_MS);
+    const unsubscribe = subscribeToEnrollment(
       viewerUid,
       enrollmentCourseId,
-      (enrollment) => setViewerEnrollmentKey(enrollment && canOpenEnrollment(enrollment.status) ? key : null),
-      () => undefined,
+      (enrollment) => {
+        if (!live) return;
+        window.clearTimeout(timeout);
+        setViewerEnrollmentKey(enrollment && canOpenEnrollment(enrollment.status) ? key : null);
+        setEnrollmentAnsweredKey(key);
+      },
+      // Falhou: fica como era (o botão de pagar; o servidor recusa quem já tem).
+      () => {
+        if (!live) return;
+        window.clearTimeout(timeout);
+        setEnrollmentAnsweredKey(key);
+      },
     );
-  }, [checkoutOnly, hasBackendConfig, viewerUid, enrollmentCourseId]);
+    return () => {
+      live = false;
+      window.clearTimeout(timeout);
+      unsubscribe();
+    };
+  }, [hasBackendConfig, viewerUid, enrollmentCourseId]);
   const [offerLoadError, setOfferLoadError] = useState("");
   const [offerState, setOfferState] = useState<{
     courseId: string | null;
@@ -246,6 +297,9 @@ export function CreatorCourseDetail({
     content: LessonContent | null;
   }>({ key: null, content: null });
 
+  // "Try again" do erro de leitura: a assinatura não relê sozinha, então o
+  // número novo assina de novo. O aviso fica na tela até a resposta chegar.
+  const [courseReadAttempt, setCourseReadAttempt] = useState(0);
   useEffect(() => {
     if (!courseRef || !hasBackendConfig) {
       return;
@@ -255,6 +309,7 @@ export function CreatorCourseDetail({
       courseRef,
       (nextCourse) => {
         setCourse(nextCourse);
+        setError("");
         setIsLoading(false);
       },
       () => {
@@ -262,7 +317,7 @@ export function CreatorCourseDetail({
         setIsLoading(false);
       },
     );
-  }, [courseRef, hasBackendConfig]);
+  }, [courseRef, hasBackendConfig, courseReadAttempt]);
 
   // Resolved primary key — empty until the course row loads.
   const resolvedCourseId = course?.id ?? "";
@@ -299,6 +354,9 @@ export function CreatorCourseDetail({
     };
   }, [checkoutOnly, resolvedCourseId, hasBackendConfig, freePreviewLessonId]);
 
+  // "Try again" do preço: limpa o erro (o cartão volta à espera de sempre, sem
+  // preço nem botão de pagar) e lê as ofertas de novo.
+  const [offerReadAttempt, setOfferReadAttempt] = useState(0);
   useEffect(() => {
     if (!resolvedCourseId || !isCoursePubliclySellable(course?.status)) {
       return;
@@ -325,7 +383,12 @@ export function CreatorCourseDetail({
       });
 
     return () => controller.abort();
-  }, [course?.status, resolvedCourseId]);
+  }, [course?.status, resolvedCourseId, offerReadAttempt]);
+  // Um "Try again" só, o do aviso do cartão e o da barra flutuante.
+  function retryOfferRead() {
+    setOfferLoadError("");
+    setOfferReadAttempt((attempt) => attempt + 1);
+  }
 
   // Evento ao vivo: a data da sessao, no fuso de quem ensina. Fica guardada
   // com o id do curso, entao uma resposta velha nunca aparece em outro.
@@ -355,6 +418,8 @@ export function CreatorCourseDetail({
       <CourseDetailState
         title={t("publicCourses.notSelected")}
         detail={t("publicCourses.chooseCourse")}
+        nested={hideHeader}
+        lead={lead}
       />
     );
   }
@@ -364,21 +429,42 @@ export function CreatorCourseDetail({
       <CourseDetailState
         title={t("publicCourses.detailsUnavailable")}
         detail={t("publicCourses.connectionError")}
+        nested={hideHeader}
+        lead={lead}
       />
     );
   }
 
-  if (isLoading) {
-    return (
-      <CourseDetailState
-        title={t("publicCourses.loadingCourse")}
-        detail={t("publicCourses.checkingCourse")}
-      />
-    );
+  if (isLoading && !error) {
+    // Carregar não é erro: o esqueleto da página, sem título nem saída.
+    // Chamado como função, e não como <CourseDetailSkeleton />: a árvore sai
+    // com a mesma forma do retorno abaixo, e o `lead` (capa e h1 do servidor)
+    // continua montado quando o curso chega, sem piscar.
+    return renderCourseDetailSkeleton({
+      label: t(checkoutOnly ? "publicCourses.loadingCheckout" : "publicCourses.loadingCourse"),
+      checkoutOnly,
+      lead,
+    });
   }
 
   if (error) {
-    return <CourseDetailState title={t("publicCourses.unavailable")} detail={t(error)} />;
+    // Rede ruim não é fim de caminho: o aviso com "Try again", que lê o curso de
+    // novo; nada de preço ou botão de pagar até a leitura dar certo.
+    return (
+      <CourseDetailState
+        title={t("publicCourses.unavailable")}
+        detail={t(error)}
+        nested={hideHeader}
+        lead={lead}
+        retry={{
+          busy: isLoading,
+          onRetry: () => {
+            setIsLoading(true);
+            setCourseReadAttempt((attempt) => attempt + 1);
+          },
+        }}
+      />
+    );
   }
 
   if (!course) {
@@ -386,6 +472,8 @@ export function CreatorCourseDetail({
       <CourseDetailState
         title={t("publicCourses.notFound")}
         detail={t("publicCourses.notListed")}
+        nested={hideHeader}
+        lead={lead}
       />
     );
   }
@@ -398,6 +486,8 @@ export function CreatorCourseDetail({
     return (
       <CourseDetailState
         {...getUnpublishedCourseState(course.status, { isOwner, isAdmin }, t)}
+        nested={hideHeader}
+        lead={lead}
       />
     );
   }
@@ -415,6 +505,10 @@ export function CreatorCourseDetail({
       })
     : null;
   const pricingReady = offersLoaded && !offerLoadError;
+  // O preço ainda está a caminho (não falhou): o cartão guarda o lugar dele.
+  const pricePending = !pricingReady && !offerLoadError;
+  // A releitura pedida pelo "Try again" ainda corre: a barra mostra a espera.
+  const offerRetrying = offerReadAttempt > 0 && pricePending;
   const courseIsFree =
     resolvedPrice?.paymentType === "free" || resolvedPrice?.amountMinor === 0;
   const subscriptionInterval =
@@ -440,8 +534,14 @@ export function CreatorCourseDetail({
           subscriptionInterval ? ` / ${t(`publicCourses.${subscriptionInterval}`)}` : ""
         }`
       : t("publicCourses.pricingPending");
+  // Página de compra, com sessão: até a matrícula responder, o botão fica na
+  // espera do cartão (a mesma do preço a caminho), e não oferece pagar a quem
+  // talvez já tenha o curso. A página de venda segue como era.
+  const accessPending =
+    checkoutOnly && user != null && enrollmentAnsweredKey !== `${user.uid}__${course.id}`;
   const canCheckout =
     pricingReady
+    && !accessPending
     && checkoutEnabled
     && authStatus === "authenticated"
     && Boolean(user)
@@ -451,6 +551,7 @@ export function CreatorCourseDetail({
     pricingReady && Boolean(resolvedPrice) && (resolvedPrice?.amountMinor ?? 0) > 0;
   const canEnrollFree =
     pricingReady
+    && !accessPending
     && authStatus === "authenticated"
     && Boolean(user)
     && courseIsFree;
@@ -536,26 +637,10 @@ export function CreatorCourseDetail({
           : t("publicCourses.curriculumPending");
   const hasRating = Boolean(course.ratingCount && course.ratingAverage);
   const learningOutcomes = normalizeLearningOutcomes(course.learningOutcomes);
-  // Duracao real do curso, somada das aulas. So aparece quando TODAS as aulas
-  // declaram minutos: com parte delas sem o dado, a soma vira um total menor
-  // que o curso (17 aulas exibidas como "10 min"). Nao se estima tempo de curso.
-  const everyLessonTimed = course.modules.every((module) =>
-    module.lessons.every((lesson) => (lesson.durationMinutes ?? 0) > 0));
-  const totalMinutes = !everyLessonTimed ? 0 : course.modules.reduce(
-    (sum, module) =>
-      sum
-      + module.lessons.reduce(
-        (lessonSum, lesson) => lessonSum + (lesson.durationMinutes ?? 0),
-        0,
-      ),
-    0,
+  // Duracao real do curso, somada das aulas (so com todas as aulas medidas).
+  const durationLabel = formatTotalMinutes(
+    course.modules.flatMap((module) => module.lessons.map((lesson) => lesson.durationMinutes)),
   );
-  const durationLabel =
-    totalMinutes >= 60
-      ? `${Math.floor(totalMinutes / 60)}h${totalMinutes % 60 ? ` ${totalMinutes % 60}m` : ""}`
-      : totalMinutes > 0
-        ? `${totalMinutes} min`
-        : null;
   const instructorName = instructorProfile?.displayName || null;
   // Como se cobra, ao lado do numero grande. Nunca inventado: sai do proprio
   // tipo de pagamento que o checkout vai usar.
@@ -573,24 +658,38 @@ export function CreatorCourseDetail({
   if (requestedOfferId) returnParams.set("offerId", requestedOfferId);
   if (requestedOfferCode) returnParams.set("offer", requestedOfferCode);
   if (requestedPriceId) returnParams.set("priceId", requestedPriceId);
-  const returnTo = `${coursePath}${returnParams.size ? `?${returnParams}` : ""}`;
-  const signupHref = `/auth?mode=signup&returnTo=${encodeURIComponent(returnTo)}`;
+  const returnQuery = returnParams.size ? `?${returnParams}` : "";
+  // Entrar (e a compra sem login) volta para ESTA pagina. Quem ja tem o curso
+  // ve "Continue learning" nas duas: as duas leem a matricula.
+  const returnTo = `${coursePath}${returnQuery}`;
+  // Criar conta volta ao CHECKOUT, com a mesma oferta: conta nova nunca tem o
+  // curso, e depois do e-mail e da entrevista o cartao de pagar (ou de entrar
+  // gratis) e a primeira coisa da tela, e nao o topo da pagina de venda.
+  const checkoutReturnTo = `/courses/${encodeURIComponent(courseRef)}/checkout${returnQuery}`;
+  const signupHref = `/auth?mode=signup&returnTo=${encodeURIComponent(checkoutReturnTo)}`;
   const enrollLabel = courseIsFree
     ? t("publicCourses.enrollFree")
     : pricingReady && hasPaidPrice
       ? `${subscriptionInterval ? t("publicCourses.subscribe") : t("publicCourses.enroll")} — ${priceLabel}`
       : t("publicCourses.enroll");
   // The text of the buy card's main button. The popup uses this same value, so
-  // the two never disagree, including "Checkout not available yet".
+  // the two never disagree, including "Checkout not available yet". Enquanto o
+  // preço só carrega o botão diz "Enroll": "not available" ali parecia curso
+  // fora de venda nos segundos antes do preço chegar.
   const cardActionLabel = authStatus !== "authenticated"
     ? enrollLabel
-    : canEnrollFree
+    : accessPending
+      ? t("publicCourses.enroll")
+      : canEnrollFree
       ? isEnrollingFree ? t("publicCourses.addingCourse") : t("publicCourses.enrollFree")
       : isCheckingOut
         ? t("publicCourses.openingCheckout")
         : checkoutEnabled && hasPaidPrice
           ? enrollLabel
-          : t("publicCourses.checkoutUnavailable");
+          // Com a compra desligada não há o que esperar: o aviso sai direto.
+          : checkoutEnabled && pricePending
+            ? t("publicCourses.enroll")
+            : t("publicCourses.checkoutUnavailable");
   // Secoes que EXISTEM nesta pagina. Um menu que oferece "Reviews" para um
   // curso sem resenha leva a pessoa para lugar nenhum, entao cada item so
   // entra quando a secao correspondente vai ser desenhada.
@@ -714,6 +813,22 @@ export function CreatorCourseDetail({
     ) : null}
     <div className={checkoutOnly ? "grid w-full min-w-0 gap-6" : "grid gap-8 pb-24 lg:grid-cols-[1.15fr_0.85fr] lg:pb-0"}>
       <section className="min-w-0">
+        {/* A volta ao catálogo saiu do cartão de compra (era a última linha
+            dele, disputando com o botão) e fica aqui, no alto da coluna, como
+            caminho de volta. Loja vazia não é destino: leva ao início. Na
+            página de compra a volta é o "ver detalhes" do cartão.
+            O `lead` fica na 2ª posição desta section, como no esqueleto: é o
+            que o mantém montado na troca (course-detail-skeleton.tsx). */}
+        {checkoutOnly ? null : (
+          <Link
+            href={hasRealCourses ? "/courses" : "/"}
+            className="mb-2 flex min-h-11 w-fit items-center gap-1.5 text-sm font-semibold text-[var(--color-ink-soft)] underline-offset-4 hover:text-[var(--color-primary)] hover:underline"
+          >
+            <ArrowLeft aria-hidden="true" size={16} strokeWidth={2} />
+            {t(hasRealCourses ? "publicCourses.backCourses" : "publicPages.notFound.home")}
+          </Link>
+        )}
+        {lead}
         {hideHeader ? null : (
           <div
             id="overview"
@@ -804,11 +919,13 @@ export function CreatorCourseDetail({
             exactly. The price and the checkout handler are passed in rather
             than recomputed: re-deriving from the course row would ignore
             offers and coupons and quote the buyer a number that is not what
-            they will be charged. */}
+            they will be charged. Só vai preço de verdade: carregando ou com
+            falha, o bloco fica sem a linha do preço, em vez de imprimir
+            "Loading pricing..." / "Pricing unavailable" como se fosse um. */}
         <CourseLandingBlocks
           blocks={landing.blocks}
           template={landing.template}
-          priceLabel={priceLabel}
+          priceLabel={pricingReady ? priceLabel : undefined}
           onEnrol={handleCardAction}
           enrolDisabled={isEnrollingFree || isCheckingOut}
         />
@@ -860,7 +977,9 @@ export function CreatorCourseDetail({
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--color-ink-soft)]">
                   {previewLesson.moduleTitle}
                 </p>
-                <h2 className="display-title mt-2 text-4xl leading-tight text-[var(--color-primary)]">
+                {/* 20px em Manrope: em 36px de serifa, o nome da aula grátis
+                    competia com o título do curso. */}
+                <h2 className="mt-2 text-xl font-bold leading-tight text-[var(--color-primary)]">
                   {previewLesson.title}
                 </h2>
                 <p className="mt-3 text-sm leading-7 text-[var(--color-ink-soft)]">
@@ -922,28 +1041,39 @@ export function CreatorCourseDetail({
           className="mt-8 scroll-mt-24 rounded-lg border border-[var(--color-line)] bg-white p-5 shadow-[var(--shadow-soft)]"
         >
           <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">{t("publicCourses.structure")}</p>
-          <div className="mt-5 grid gap-4">
+          <div className="mt-5 grid gap-3">
             {course.modules.length === 0 ? (
               <p className="rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-7 text-[var(--color-ink-soft)]">{t("publicCourses.curriculumPending")}</p>
             ) : (
-              course.modules.map((module) => (
-                <div
+              course.modules.map((module, moduleIndex) => (
+                // Um módulo por sanfona: com tudo aberto, um curso de 10 módulos
+                // virava uma coluna enorme e, no celular, o cartão de compra só
+                // vinha depois dela. O primeiro abre sozinho; os outros mostram
+                // nome, aulas e duração.
+                <CourseModuleDisclosure
                   key={module.id}
-                  className="rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4"
+                  title={module.title}
+                  meta={[
+                    t(module.lessons.length === 1 ? "publicCourses.lessonOne" : "publicCourses.lessonMany")
+                      .replace("{count}", String(module.lessons.length)),
+                    formatTotalMinutes(module.lessons.map((lesson) => lesson.durationMinutes)),
+                  ].filter(Boolean).join(" · ")}
+                  defaultOpen={moduleIndex === 0}
                 >
-                  <h2 className="text-sm font-semibold text-[var(--color-ink)]">
-                    {module.title}
-                  </h2>
-                  <div className="mt-4 grid gap-2">
+                  <div className="grid gap-2 px-3 pb-3">
                     {module.lessons.map((lesson) => {
                       const isPreview = course.freePreviewLessonId === lesson.id;
+                      // 44px de altura: a aula trancada é botão (abre a compra)
+                      // e tinha 32px, abaixo do alvo de toque mínimo.
                       const rowClass =
-                        "flex items-center justify-between gap-3 rounded-md bg-white px-3 py-2 text-xs text-[var(--color-ink-soft)]";
+                        "flex min-h-11 items-center justify-between gap-3 rounded-md bg-white px-3 py-2.5 text-sm text-[var(--color-ink-soft)]";
+                      // 12px em caixa normal, com " · ": as maiúsculas
+                      // espaçadas e os hífens ("VIDEO - 12 MIN") liam como código.
                       const meta = (
-                        <span className="shrink-0 text-right uppercase tracking-[0.16em]">
+                        <span className="shrink-0 text-right text-xs">
                           {t(`publicCourses.lessonTypes.${lesson.type}`)}
-                          {lesson.durationMinutes ? ` - ${lesson.durationMinutes} min` : ""}
-                          {isPreview ? ` - ${t("publicCourses.previewShort")}` : ""}
+                          {lesson.durationMinutes ? ` · ${lesson.durationMinutes} min` : ""}
+                          {isPreview ? ` · ${t("publicCourses.previewShort")}` : ""}
                         </span>
                       );
                       // The free preview (and every lesson, for the owner or
@@ -974,7 +1104,7 @@ export function CreatorCourseDetail({
                       );
                     })}
                   </div>
-                </div>
+                </CourseModuleDisclosure>
               ))
             )}
           </div>
@@ -1020,10 +1150,24 @@ export function CreatorCourseDetail({
         {/* O preco era a quarta de seis linhas de uma lista "At a glance",
             entre "Status: Published" e "Access: Secure checkout" — vocabulario
             interno que o comprador nao precisa ler. Agora ele e o numero
-            grande no topo do cartao. */}
-        <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">{t("publicCourses.access")}</p>
+            grande no topo do cartao. O rotulo dizia "Access" (o comprador
+            procurava o preco e lia outra coisa) em 10px; agora diz "Price" em 12px. */}
+        <p className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--color-accent-fg)]">{t("publicCourses.priceEyebrow")}</p>
         <p className="display-title mt-1 flex flex-wrap items-baseline gap-2 text-4xl leading-none text-[var(--color-primary)]">
-          <span>{priceLabel}</span>
+          {/* Carregando: uma barra da altura do preço, e não "Loading
+              pricing..." em 36px quebrando em duas linhas. */}
+          {pricePending ? (
+            <>
+              <span aria-hidden="true" className="block h-9 w-[150px] max-w-full animate-pulse rounded-md bg-[var(--color-surface-strong)]" />
+              <span className="sr-only">{priceLabel}</span>
+            </>
+          ) : offerLoadError ? (
+            // Falhou: o aviso vermelho logo abaixo diz o que houve. Aqui, só
+            // um traço discreto, e não "Pricing unavailable" em 36px repetindo.
+            <span aria-hidden="true" className="text-[var(--color-ink-muted)]">—</span>
+          ) : (
+            <span>{priceLabel}</span>
+          )}
           {billingSuffix ? (
             <span className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-ink-soft)] [font-family:var(--font-sans)]">
               · {billingSuffix}
@@ -1031,7 +1175,6 @@ export function CreatorCourseDetail({
           ) : null}
         </p>
 
-        <div className="mt-5 h-px bg-[var(--color-line)]" />
         {offers.length > 1 ? (
           <fieldset className="mt-5 border-y border-[var(--color-line)] py-4">
             <legend className="px-1 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--color-ink-soft)]">{t("publicCourses.chooseOffer")}</legend>
@@ -1077,50 +1220,31 @@ export function CreatorCourseDetail({
             </div>
           </fieldset>
         ) : null}
-        {/* Status e Access sairam: "Published" e o estado interno do curso e
-            "Secure checkout" e como a plataforma cobra — nenhum dos dois ajuda
-            a decidir. O preco virou o numero grande acima, e a nota subiu para
-            a assinatura do instrutor. */}
-        {/* Na pagina de compra quem decide ja leu o curso: categoria e contagem
-            de aulas ficam no resumo do pedido, nao entre o preco e o formulario. */}
-        {checkoutOnly ? null : <dl className="mt-5 grid gap-4">
-          {[
-            [t("publicCourses.category"), getCourseCategoryLabel(course.category, t)],
-            ...(showsCurriculum ? [[t("publicCourses.lessons"), String(course.lessonCount)]] : []),
-            ...(durationLabel ? [[t("publicCourses.duration"), durationLabel]] : []),
-          ].map(([label, value]) => (
-            <div
-              key={label}
-              className="border-b border-[var(--color-line)] pb-4 last:border-b-0 last:pb-0"
-            >
-              <dt className="text-xs uppercase tracking-[0.18em] text-[var(--color-ink-soft)]">
-                {label}
-              </dt>
-              <dd className="mt-1 text-sm font-semibold text-[var(--color-ink)]">
-                {value}
-              </dd>
-            </div>
-          ))}
-        </dl>}
-
+        {/* Compra cancelada é um fato neutro ("nada foi cobrado"), não erro:
+            tom de informação, anunciado sem interromper. */}
         {checkoutStatus === "cancelled" ? (
-          <p className="mt-5 rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">{t("publicCourses.cancelled")}</p>
+          <InlineAlert tone="info" className="mt-5">{t("publicCourses.cancelled")}</InlineAlert>
         ) : null}
 
         {checkoutStatus === "success" ? (
           <p className="mt-5 info-notice">{t("publicCourses.paymentReceived")}</p>
         ) : null}
 
+        {/* InlineAlert: o erro é anunciado ao leitor de tela, e não só pintado. */}
         {checkoutError ? (
-          <p className="mt-5 rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
-            {t(checkoutError)}
-          </p>
+          <InlineAlert tone="error" className="mt-5">{t(checkoutError)}</InlineAlert>
         ) : null}
 
-        {offerLoadError || (pricingReady && hasExplicitOffer && !resolvedPrice) ? (
-          <p className="mt-5 rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
-            {offerLoadError ? t(offerLoadError) : t("publicCourses.selectedOfferUnavailable")}
-          </p>
+        {offerLoadError ? (
+          <LoadErrorAlert
+            className="mt-5"
+            focusRef={enrollCardRef}
+            onRetry={retryOfferRead}
+          >
+            {t(offerLoadError)}
+          </LoadErrorAlert>
+        ) : pricingReady && hasExplicitOffer && !resolvedPrice ? (
+          <InlineAlert tone="error" className="mt-5">{t("publicCourses.selectedOfferUnavailable")}</InlineAlert>
         ) : null}
 
         {guestCheckoutOn ? (
@@ -1177,7 +1301,7 @@ export function CreatorCourseDetail({
                 data-cta-focus
                 onClick={handleFreeEnrollment}
                 disabled={isEnrollingFree}
-                className="button-solid mt-6 w-full px-5 py-2.5 text-sm disabled:opacity-60"
+                className="button-solid mt-6 w-full px-5 py-2.5 text-sm"
               >
                 {cardActionLabel}
               </button>
@@ -1187,7 +1311,8 @@ export function CreatorCourseDetail({
                 data-cta-focus
                 onClick={handleCheckout}
                 disabled={!canCheckout || isCheckingOut}
-                className="button-solid mt-6 min-h-12 w-full px-5 py-3 text-base font-semibold disabled:opacity-60"
+                aria-busy={accessPending || (checkoutEnabled && pricePending) || undefined}
+                className="button-solid mt-6 min-h-12 w-full px-5 py-3 text-base font-semibold"
               >
                 {cardActionLabel}
               </button>
@@ -1196,7 +1321,9 @@ export function CreatorCourseDetail({
             {canCheckout && !subscriptionInterval ? (
               isCouponOpen ? (
                 <label className="mt-4 block">
-                  <span className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--color-ink-soft)]">{t("publicCourses.coupon")}</span>
+                  {/* O rótulo da casa (o do Field): 14px e em caixa normal. Era o
+                      último rótulo de 12px em maiúsculas do cartão de compra. */}
+                  <span className="text-sm font-semibold text-[var(--color-ink)]">{t("publicCourses.coupon")}</span>
                   <input
                     value={couponCode}
                     autoFocus
@@ -1210,7 +1337,7 @@ export function CreatorCourseDetail({
                     }
                     autoComplete="off"
                     placeholder={t("publicCourses.optional")}
-                    className="mt-2 w-full rounded-md border border-[var(--color-line)] bg-white px-3.5 py-2.5 text-sm outline-none focus:border-[var(--color-primary-light)]"
+                    className="field-input mt-2"
                   />
                 </label>
               ) : (
@@ -1222,85 +1349,139 @@ export function CreatorCourseDetail({
               )
             ) : null}
             {!checkoutEnabled ? (
-              <p className="mt-3 rounded-md border border-[rgba(24,58,94,0.12)] bg-[var(--color-surface-soft)] px-4 py-3 text-xs leading-6 text-[var(--color-ink-soft)]">{t("publicCourses.checkoutLater")}</p>
+              <p className="mt-3 rounded-md border border-[var(--color-line)] bg-[var(--color-surface-soft)] px-4 py-3 text-xs leading-6 text-[var(--color-ink-soft)]">{t("publicCourses.checkoutLater")}</p>
             ) : null}
           </>
         )}
 
-        <p className="mt-3 text-xs leading-6 text-[var(--color-ink-soft)]">
-          {courseIsFree
-            ? t("publicCourses.freeAccess")
-            : t("publicCourses.paidAccess")}
-        </p>
+        {/* Depois do botao vinham cinco blocos soltos, dois em caixas de cores
+            diferentes (verde e cinza), e o botao se perdia no meio do cartao.
+            Agora e UM bloco discreto, num estilo so: o que o curso inclui e,
+            em lista, acesso, pagamento seguro, reembolso e quem vende. As
+            frases sao as mesmas de antes (mesmas chaves), so reagrupadas. */}
+        {checkoutOnly && !pricingReady ? null : <div className="mt-5 grid gap-4 border-t border-[var(--color-line)] pt-5">
+          {/* Na pagina de compra quem decide ja leu o curso: categoria e contagem
+              de aulas ficam no resumo do pedido, nao junto do formulario. */}
+          {checkoutOnly ? null : <dl className="grid gap-2 text-sm">
+            {[
+              [t("publicCourses.category"), getCourseCategoryLabel(course.category, t)],
+              ...(showsCurriculum ? [[t("publicCourses.lessons"), String(course.lessonCount)]] : []),
+              ...(durationLabel ? [[t("publicCourses.duration"), durationLabel]] : []),
+            ].map(([label, value]) => (
+              <div key={label} className="flex items-baseline justify-between gap-4">
+                <dt className="shrink-0 text-[var(--color-ink-soft)]">{label}</dt>
+                <dd className="min-w-0 text-right font-semibold text-[var(--color-ink)]">{value}</dd>
+              </div>
+            ))}
+          </dl>}
 
-        {/* Risk reversal at the point of purchase. States the REAL policy
-            (automaticRefundWindowDays = 7, progress < 50% — see requestRefund),
-            never an invented "30-day guarantee" the platform doesn't honor. */}
-        {!courseIsFree ? (
-          <>
+          {/* Só com o preço resolvido: até lá `courseIsFree` é falso, e um curso
+              grátis lia "Paid access opens…", reembolso e vendedor enquanto o
+              preço carregava (ou se a leitura falhasse). */}
+          {pricingReady ? <ul className="grid gap-3 text-xs leading-5 text-[var(--color-ink-soft)]">
+            <li className="flex gap-2.5">
+              <Clock aria-hidden="true" size={14} strokeWidth={2} className="mt-0.5 shrink-0 text-[var(--color-primary)]" />
+              <span>{courseIsFree ? t("publicCourses.freeAccess") : t("publicCourses.paidAccess")}</span>
+            </li>
             {/* Só com um preço pago resolvido: com o preço carregando ou
                 indisponível não há pagamento a processar. */}
-            {hasPaidPrice ? (
-              <p className="mt-3 flex items-center gap-2 text-xs font-semibold text-[var(--color-ink-soft)]">
-                <Lock aria-hidden="true" size={14} strokeWidth={2} className="shrink-0 text-[var(--color-success-fg)]" />
-                {t("publicCourses.securePayment")}
-              </p>
+            {!courseIsFree && hasPaidPrice ? (
+              <li className="flex gap-2.5">
+                <Lock aria-hidden="true" size={14} strokeWidth={2} className="mt-0.5 shrink-0 text-[var(--color-primary)]" />
+                <span>{t("publicCourses.securePayment")}</span>
+              </li>
             ) : null}
-            <p className="mt-3 flex gap-3 rounded-md border border-[var(--color-success-fg)]/25 bg-[var(--color-success-soft)] px-4 py-3 text-xs leading-6 text-[var(--color-ink-soft)]">
-              <ShieldCheck aria-hidden="true" size={20} strokeWidth={1.8} className="mt-0.5 shrink-0 text-[var(--color-success-fg)]" />
-              <span>
-                <strong className="text-[var(--color-ink)]">{t("publicCourses.refundTitle")}</strong>{" "}
-                {t("publicCourses.refundBody")}
-              </span>
-            </p>
-          </>
-        ) : null}
+            {/* Risk reversal at the point of purchase. States the REAL policy
+                (automaticRefundWindowDays = 7, progress < 50% — see requestRefund),
+                never an invented "30-day guarantee" the platform doesn't honor. */}
+            {!courseIsFree ? (
+              <li className="flex gap-2.5">
+                <ShieldCheck aria-hidden="true" size={14} strokeWidth={2} className="mt-0.5 shrink-0 text-[var(--color-primary)]" />
+                <span>
+                  <strong className="text-[var(--color-ink)]">{t("publicCourses.refundTitle")}</strong>{" "}
+                  {t("publicCourses.refundBody")}
+                </span>
+              </li>
+            ) : null}
+            {/* Direct charges: the buyer's counterparty is the EDUCATOR, not
+                SkillsetMind. The charge is created on the educator's own connected
+                account (see /api/payments/checkout, `stripeAccount`) and we set no
+                statement_descriptor override, so THEIR descriptor reaches the card
+                statement. A buyer who does not expect that name disputes it, and
+                the chargeback lands on the educator's balance. */}
+            {!courseIsFree ? (
+              <li className="flex gap-2.5">
+                <Receipt aria-hidden="true" size={14} strokeWidth={2} className="mt-0.5 shrink-0 text-[var(--color-primary)]" />
+                {/* Na página de venda, uma linha e "Learn more": o parágrafo
+                    de três linhas empurrava o cartão. A frase inteira segue na
+                    página (no <details>, sem sair dela); o alvo do toque cresce
+                    para 44px sem afastar as outras linhas. Na página de compra,
+                    logo antes de pagar, ela fica aberta. */}
+                {checkoutOnly ? (
+                  <span>
+                    <strong className="text-[var(--color-ink)]">{t("publicCourses.sellerTitle")}</strong>{" "}
+                    {t("publicCourses.sellerBody")}
+                  </span>
+                ) : (
+                  <details className="group/seller min-w-0 [&_summary::-webkit-details-marker]:hidden">
+                    <summary className="-my-3 cursor-pointer list-none py-3">
+                      <strong className="text-[var(--color-ink)]">{t("publicCourses.sellerTitle")}</strong>{" "}
+                      <span className="font-semibold text-[var(--color-primary)] underline underline-offset-2 group-open/seller:hidden">{t("publicCourses.sellerLearnMore")}</span>
+                    </summary>
+                    <p className="mt-1">{t("publicCourses.sellerBody")}</p>
+                  </details>
+                )}
+              </li>
+            ) : null}
+          </ul> : null}
+        </div>}
 
-        {/* Direct charges: the buyer's counterparty is the EDUCATOR, not
-            SkillsetMind. The charge is created on the educator's own connected
-            account (see /api/payments/checkout, `stripeAccount`) and we set no
-            statement_descriptor override, so THEIR descriptor reaches the card
-            statement. A buyer who does not expect that name disputes it, and
-            the chargeback lands on the educator's balance. */}
-        {!courseIsFree ? (
-          <p className="mt-3 rounded-md border border-[rgba(26,54,93,0.12)] bg-[var(--color-surface-soft)] px-4 py-3 text-xs leading-6 text-[var(--color-ink-soft)]">
-            <strong className="text-[var(--color-ink)]">{t("publicCourses.sellerTitle")}</strong>{" "}
-            {t("publicCourses.sellerBody")}
-          </p>
-        ) : null}
-
-        {/* Loja vazia não é destino: a volta leva ao início. Na página de
-            compra não há volta ao catálogo: o resumo do pedido leva ao curso.
-            Sem o resumo (a leitura do servidor falhou), o cartão leva. */}
-        {checkoutOnly ? (hideHeader ? null : (
+        {/* Na página de compra não há volta ao catálogo: o resumo do pedido
+            leva ao curso. Sem o resumo (a leitura do servidor falhou), o
+            cartão leva. Na página de venda a volta mora no alto da coluna. */}
+        {checkoutOnly && !hideHeader ? (
           <Link
             href={`/courses/${encodeURIComponent(courseRef)}`}
             className="mt-4 inline-flex min-h-11 w-full items-center justify-center text-sm font-semibold text-[var(--color-primary)]"
           >{t("publicCourses.checkoutCourseDetails")}</Link>
-        )) : (
-          <Link
-            href={hasRealCourses ? "/courses" : "/"}
-            className="mt-4 inline-flex min-h-11 w-full items-center justify-center text-sm font-semibold text-[var(--color-primary)]"
-          >{t(hasRealCourses ? "publicCourses.backCourses" : "publicPages.notFound.home")}</Link>
-        )}
+        ) : null}
       </aside>
     </div>
 
     {/* No celular a coluna do cartao cai para o fim da pagina: para achar o
         preco e o botao era preciso rolar por todo o curriculo. Esta barra
-        mantem os dois a mao e leva ao cartao. A partir de lg ela so aparece
-        enquanto o cartao esta fora da tela (a capa da pagina de vendas vem
-        antes das colunas), como um cartao no canto; com o cartao a vista, some. */}
+        mantem os dois a mao e leva ao cartao. Em qualquer largura ela so
+        aparece enquanto o botao do cartao esta fora da tela (no desktop, como
+        um cartao no canto); com ele a vista, some: dois "Enroll" ao mesmo
+        tempo, e a barra cobrindo o pe do cartao. `hidden` tira a barra da
+        ordem do Tab; o pb-24 da pagina continua reservando o lugar dela.
+        Antes da primeira medicao, a barra fica como era: a vista no celular. */}
     {!checkoutOnly ? <div
       className={`course-buy-float pointer-events-none fixed inset-x-0 bottom-0 z-40 px-3 pb-3 ${
-        enrollCardInView ? "lg:hidden" : "lg:inset-x-auto lg:right-6 lg:bottom-6 lg:w-[24rem] lg:px-0 lg:pb-0"
+        enrollCardInView === null
+          ? "lg:hidden"
+          : enrollCardInView ? "hidden" : "lg:inset-x-auto lg:right-6 lg:bottom-6 lg:w-[24rem] lg:px-0 lg:pb-0"
       }`}
     >
-      <div className="pointer-events-auto flex items-center gap-3 rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)]/95 px-4 py-3 shadow-[0_-6px_30px_rgba(15,39,68,0.18)] backdrop-blur supports-[backdrop-filter]:bg-[var(--color-surface)]/85">
+      <div ref={buyBarRef} tabIndex={-1} className="pointer-events-auto flex items-center gap-3 rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)]/95 px-4 py-3 shadow-[0_-6px_30px_rgba(15,39,68,0.18)] backdrop-blur supports-[backdrop-filter]:bg-[var(--color-surface)]/85">
         <div className="min-w-0 flex-1">
-          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">{t("publicCourses.access")}</p>
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">{t("publicCourses.priceEyebrow")}</p>
           <p className="display-title truncate text-xl leading-none text-[var(--color-primary)]">
-            {priceLabel}
+            {/* Carregando: a mesma barra pulsante do cartão, na altura da
+                linha do preço (a barra não muda de altura quando ele chega). */}
+            {pricePending ? (
+              <>
+                <span aria-hidden="true" className="block h-5 w-20 animate-pulse rounded-md bg-[var(--color-surface-strong)]" />
+                <span className="sr-only">{priceLabel}</span>
+              </>
+            ) : offerLoadError ? (
+              // Falhou: o traço do cartão, e não "Pricing unavailable" em
+              // letra de título.
+              <>
+                <span aria-hidden="true" className="text-[var(--color-ink-muted)]">—</span>
+                <span className="sr-only">{priceLabel}</span>
+              </>
+            ) : priceLabel}
           </p>
         </div>
         {viewerIsLearner ? (
@@ -1308,6 +1489,25 @@ export function CreatorCourseDetail({
             href={classroomHref}
             className="button-solid inline-flex min-h-11 shrink-0 items-center px-3.5 py-2 text-xs"
           >{t("publicCourses.continueLearning")}</Link>
+        ) : offerLoadError || offerRetrying ? (
+          // Sem preço não há "Enroll": o mesmo "Try again" do aviso do
+          // cartão, que no celular fica no fim da página, depois do
+          // currículo. O foco vai antes para a barra, que fica nos dois
+          // desfechos (o botão trava na espera e vira "Enroll" se der certo).
+          // busyLabel: os dois rótulos ocupam a mesma célula, então o botão
+          // não cresce ao virar "Trying again..." e o preço ao lado não pula.
+          <Button
+            variant="outline"
+            loading={offerRetrying}
+            busyLabel={t("appErrors.retrying")}
+            onClick={() => {
+              buyBarRef.current?.focus();
+              retryOfferRead();
+            }}
+            className="shrink-0 px-3.5 py-2 text-xs"
+          >
+            {t("appErrors.retry")}
+          </Button>
         ) : (
           <Link
             href="#enroll-card"
@@ -1339,37 +1539,68 @@ type CourseDetailAction = {
   href: string;
 };
 
+// Só para erro de verdade ou curso fora do ar; carregar usa o esqueleto.
 function CourseDetailState({
   title,
   detail,
   action,
+  nested = false,
+  lead = null,
+  retry,
 }: {
   title: string;
   detail: string;
   action?: CourseDetailAction;
+  /** O servidor já pôs o h1 do curso na página: este título vira h2. */
+  nested?: boolean;
+  /** O cabeçalho do servidor (o único h1) segue no alto, acima do aviso. */
+  lead?: ReactNode;
+  /** Erro de leitura: o aviso ganha "Try again", e a saída vira link discreto. */
+  retry?: { onRetry: () => void; busy: boolean };
 }) {
   const { t } = useTranslation();
   const hasRealCourses = useHasRealCourses();
+  const sectionRef = useRef<HTMLElement>(null);
   const resolvedAction = action ?? (hasRealCourses
     ? { label: t("publicCourses.openMarketplace"), href: "/courses" }
     : { label: t("publicPages.notFound.home"), href: "/" });
+  const Heading = nested ? "h2" : "h1";
 
+  // Sem o sobretítulo "Creator course": era vocabulário interno.
   return (
-    <section className="rounded-lg border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)]">
-      <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">{t("publicCourses.creatorCourse")}</p>
-      <h1 className="display-title mt-3 text-4xl text-[var(--color-ink)]">
+    <>
+    {lead}
+    <section ref={sectionRef} tabIndex={retry ? -1 : undefined} className="rounded-lg border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)]">
+      <Heading className="display-title text-4xl text-[var(--color-ink)]">
         {title}
-      </h1>
-      <p className="mt-4 max-w-2xl text-sm leading-7 text-[var(--color-ink-soft)]">
-        {detail}
-      </p>
-      <Link
-        href={resolvedAction.href}
-        className="button-solid mt-6 inline-flex px-5 py-2.5 text-sm"
-      >
-        {resolvedAction.label}
-      </Link>
+      </Heading>
+      {retry ? (
+        <>
+          <LoadErrorAlert className="mt-4 max-w-2xl" focusRef={sectionRef} onRetry={retry.onRetry} busy={retry.busy}>
+            {detail}
+          </LoadErrorAlert>
+          <Link
+            href={resolvedAction.href}
+            className="mt-3 inline-flex min-h-11 items-center text-sm font-semibold text-[var(--color-primary)]! underline-offset-4 hover:underline"
+          >
+            {resolvedAction.label}
+          </Link>
+        </>
+      ) : (
+        <>
+          <p className="mt-4 max-w-2xl text-sm leading-7 text-[var(--color-ink-soft)]">
+            {detail}
+          </p>
+          <Link
+            href={resolvedAction.href}
+            className="button-solid mt-6 inline-flex px-5 py-2.5 text-sm"
+          >
+            {resolvedAction.label}
+          </Link>
+        </>
+      )}
     </section>
+    </>
   );
 }
 

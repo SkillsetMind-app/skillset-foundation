@@ -25,12 +25,25 @@ export default async function VerifyPage() {
         <SiteNav />
       </div>
       <main id="conteudo" className="px-5 py-12 md:px-8 md:py-16">
+        {/* O mesmo cartão do painel, com o olho, o título, a frase e a
+            fileira do código em esqueleto: o painel nasce no lugar, sem pulo.
+            A frase fica para o leitor de tela. */}
         <Suspense
           fallback={
-            <section className="mx-auto max-w-4xl rounded-lg border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)]">
-              <p className="text-sm text-[var(--color-ink-soft)]">
-                {t("learnWave2.verification.pageLoading")}
-              </p>
+            <section
+              role="status"
+              className="mx-auto max-w-4xl rounded-lg border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)] md:p-8"
+            >
+              <span className="sr-only">{t("learnWave2.verification.pageLoading")}</span>
+              <div aria-hidden="true" className="animate-pulse">
+                <div className="h-3 w-40 rounded-md bg-[var(--color-surface-strong)]" />
+                <div className="mt-4 h-10 w-3/4 rounded-md bg-[var(--color-surface-strong)] md:h-14" />
+                <div className="mt-5 h-4 max-w-2xl rounded-md bg-[var(--color-surface-strong)]" />
+                <div className="mt-8 grid gap-3 sm:grid-cols-[1fr_auto]">
+                  <div className="h-11 rounded-md bg-[var(--color-surface-strong)]" />
+                  <div className="h-11 w-28 rounded-md bg-[var(--color-surface-strong)]" />
+                </div>
+              </div>
             </section>
           }
         >

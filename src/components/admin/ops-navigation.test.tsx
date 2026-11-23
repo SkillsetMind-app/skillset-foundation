@@ -97,7 +97,7 @@ describe("filas de Operações na barra", () => {
   it("contains the access matrix in its own keyboard-scrollable region", () => {
     mocks.query = "tab=access";
     render(<OpsPage />);
-    fireEvent.click(screen.getByRole("button", { name: "What each level can do" }));
+    fireEvent.click(screen.getByRole("tab", { name: "What each level can do" }));
     const matrix = screen.getByRole("region", { name: "What each level can do" });
     expect(matrix).toHaveAttribute("tabindex", "0");
     expect(matrix).toHaveClass("overflow-x-auto");
@@ -169,7 +169,54 @@ describe("filas de Operações na barra", () => {
     expect(current[0]).toHaveAttribute("href", `/ops?tab=${id}`);
     expect(current[0]).toHaveTextContent(label);
     expect(within(screen.getByRole("navigation", { name: "Breadcrumb" })).getByText(label)).toBeInTheDocument();
+    // Cada aba se chama pelo nome dela, não "Operations" nas nove (I-07).
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(label);
     expect(screen.getByRole("heading", { name: heading })).toBeInTheDocument();
+  });
+
+  it("puts open privacy requests above the people list, and below it when none are open", () => {
+    mocks.query = "tab=users";
+    const order = () => {
+      const requests = screen.getByRole("heading", { name: "Export and deletion requests." });
+      const people = screen.getByRole("heading", { name: "Find learners and educators." });
+      return requests.compareDocumentPosition(people) & Node.DOCUMENT_POSITION_FOLLOWING ? "requests first" : "people first";
+    };
+    const { unmount } = render(<OpsPage />);
+    expect(order()).toBe("people first");
+    unmount();
+    mocks.accounts.mockImplementation((next: (rows: unknown[]) => void) => {
+      next([{ id: "r-1", type: "account_deletion", requestedBy: "u-1", email: null, status: "pending", requestedAt: null, updatedAt: null, resolvedBy: null, resolvedAt: null }]);
+      return vi.fn();
+    });
+    render(<OpsPage />);
+    expect(order()).toBe("requests first");
+  });
+
+  it.each([
+    ["0 to 1", [], "people first"],
+    ["1 to 0", ["pending"], "requests first"],
+  ] as const)("keeps the first order when the live request count goes %s, so the people table never moves", (_change, initial, expected) => {
+    mocks.query = "tab=users";
+    const row = (status: string) => ({ id: `r-${status}`, type: "account_deletion", requestedBy: "u-1", email: null, status, requestedAt: null, updatedAt: null, resolvedBy: null, resolvedAt: null });
+    let rows: unknown[] = initial.map(row);
+    // O contador e o painel assinam a mesma fonte; cada inscrição recebe a lista atual.
+    mocks.accounts.mockImplementation((next: (value: unknown[]) => void) => { next(rows); return vi.fn(); });
+    const order = () => {
+      const requests = screen.getByRole("heading", { name: "Export and deletion requests." });
+      const people = screen.getByRole("heading", { name: "Find learners and educators." });
+      return requests.compareDocumentPosition(people) & Node.DOCUMENT_POSITION_FOLLOWING ? "requests first" : "people first";
+    };
+    render(<OpsPage />);
+    const table = screen.getByRole("heading", { name: "Find learners and educators." }).closest("section");
+    expect(order()).toBe(expected);
+    rows = initial.length ? [] : [row("pending")];
+    act(() => { for (const [next] of mocks.accounts.mock.calls) (next as (value: unknown[]) => void)(rows); });
+    // A contagem mudou de fato (o selo acompanha), mas a ordem não.
+    if (initial.length) expect(sidebar()).not.toHaveTextContent(/Users, 1 pending/);
+    else expect(sidebar()).toHaveTextContent(/Users, 1 pending/);
+    expect(order()).toBe(expected);
+    // O mesmo nó da tabela continua no lugar (um <dialog> aberto nela não sai da camada do topo).
+    expect(screen.getByRole("heading", { name: "Find learners and educators." }).closest("section")).toBe(table);
   });
 
   it.each(["", "tab=unknown", "tab="])("lands an admin on Overview for query %s", (query) => {
@@ -319,25 +366,47 @@ describe("audit presentation inside the protected Operations page", () => {
     const entries: AuditLogEntry[] = actions.map(([action], index) => ({ id: `event-${index}`, action, actorId: "actor-$$-$&", actorEmail: index ? null : "actor@example.test", targetType: index === 4 ? "future_target" : index < 2 ? "order" : "user", targetId: `target-$$-$&-${index}`, summary: `Registro histórico $$50 $& "áéí" ${index}`, metadata: {}, createdAt: index === 4 ? "not-a-date" : "2026-09-04T12:00:00.000Z" }));
     mocks.audit.mockImplementation((next: (rows: AuditLogEntry[]) => void) => { next(entries); return vi.fn(); });
     render(<I18nProvider initialLocale="en"><ChangeAuditLanguage /><OpsPage /></I18nProvider>);
-    for (const [, english] of actions) expect(screen.getByText(english)).toBeInTheDocument();
+    // Uma vez no bloco e uma na tabela (o CSS mostra um dos dois).
+    for (const [, english] of actions) expect(screen.getAllByText(english)).toHaveLength(2);
     fireEvent.click(screen.getByRole("button", { name: "Change audit language" }));
     expect(screen.getByRole("heading", { name: "Registro de auditoría" })).toBeInTheDocument();
+    // Os blocos (cartão estreito) e a tabela (cartão largo) têm os mesmos
+    // eventos, na mesma ordem; o CSS mostra um dos dois.
+    const articles = screen.getAllByRole("article");
     for (const [index, entry] of entries.entries()) {
-      const article = screen.getByText(entry.summary).closest("article")!;
+      const article = articles[index];
+      expect(within(article).getByText(entry.summary)).toBeInTheDocument();
       expect(within(article).getByText(actions[index][2])).toBeInTheDocument();
       expect(article).toHaveTextContent(entry.targetId);
       expect(article).toHaveTextContent(entry.actorEmail ?? entry.actorId);
     }
-    expect(screen.getByText("future target")).toBeInTheDocument();
-    expect(screen.getByText(/Responsable actor-\$\$-\$& - Fecha pendiente - Destino target-\$\$-\$&-4/)).toBeInTheDocument();
+    expect(screen.getAllByText("future target")).toHaveLength(2);
+    // Cada parte com o próprio rótulo, não uma frase corrida (I-06).
+    const parts = (index: number) => [...articles[index].querySelectorAll("dt")].map((term) => [term.textContent, term.nextElementSibling?.textContent]);
+    expect(parts(4)).toEqual([["Cuándo", "Fecha pendiente"], ["Responsable", "actor-$$-$&"], ["Destino", "target-$$-$&-4"]]);
     const date = new Intl.DateTimeFormat("es", { dateStyle: "medium", timeStyle: "short" }).format(new Date(entries[0].createdAt!));
-    expect(screen.getByText(`Responsable actor@example.test - ${date} - Destino target-$$-$&-0`)).toBeInTheDocument();
-    const panel = screen.getByRole("heading", { name: "Registro de auditoría" }).closest("section")!;
+    expect(parts(0)).toEqual([["Cuándo", date], ["Responsable", "actor@example.test"], ["Destino", "target-$$-$&-0"]]);
+    // I-06: no cartão largo, uma tabela de verdade, com cada parte na sua coluna.
+    const table = screen.getByRole("table", { name: "Registro de auditoría, del más reciente al más antiguo" });
+    expect(articles[0].parentElement).toHaveClass("@3xl:hidden");
+    expect(table.closest(".hidden")).toHaveClass("@3xl:block");
+    expect(within(table).getAllByRole("columnheader").map((head) => head.textContent)).toEqual(["Cuándo", "Acción", "Responsable", "Destino"]);
+    const rows = within(table).getAllByRole("row").slice(1);
+    expect(rows).toHaveLength(entries.length);
+    const [whenCell, actorCell, targetCell] = within(rows[0]).getAllByRole("cell");
+    expect(whenCell.textContent).toBe(date);
+    expect(within(rows[0]).getByRole("rowheader")).toHaveTextContent(`${actions[0][2]}${entries[0].summary}`);
+    expect(actorCell).toHaveTextContent("actor@example.test");
+    expect(within(targetCell).getByText("target-$$-$&-0")).toHaveClass("select-all", "font-mono");
+    // O título da página é o nome da fila (I-07); o painel é achado pela explicação dele.
+    expect(screen.getByRole("heading", { level: 1, name: "Registro de auditoría" })).toBeInTheDocument();
+    const panel = screen.getByText(/Los reembolsos y las solicitudes de cuenta se registran aquí/).closest("section")!;
+    expect(panel).not.toHaveClass("platform-content");
     expect(within(panel).queryAllByRole("button")).toHaveLength(0);
     expect(mocks.audit).toHaveBeenCalledTimes(1);
     fireEvent.click(screen.getByRole("button", { name: "Change audit language" }));
-    expect(screen.getByText(entries[0].summary)).toBeInTheDocument();
-    expect(screen.getByText("Refund requested")).toBeInTheDocument();
+    expect(screen.getAllByText(entries[0].summary)).toHaveLength(2);
+    expect(screen.getAllByText("Refund requested")).toHaveLength(2);
   });
 
   it("separates a failed audit read from empty and translates recovery", () => {

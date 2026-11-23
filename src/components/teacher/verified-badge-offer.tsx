@@ -89,7 +89,9 @@ export function VerifiedBadgeOffer({
     <aside
       aria-labelledby={titleId}
       data-verified-badge-offer=""
-      className="mt-4 rounded-lg border border-[var(--color-line)] border-l-2 border-l-[var(--color-accent)] bg-[var(--color-surface)] p-4"
+      // Sem a faixa dourada na esquerda (cartao com borda colorida de lado e
+      // padrao proibido): a borda fina comum basta.
+      className="mt-4 rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)] p-4"
     >
       <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--color-accent-fg)]">
         {t("verifiedBadge.offer.eyebrow")}

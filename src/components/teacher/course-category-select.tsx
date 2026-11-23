@@ -89,7 +89,7 @@ export function CourseCategorySelect({
               >
                 {getCourseCategoryLabel(item, t)}
                 {index === 0 ? (
-                  <span className="text-[9px] font-bold uppercase tracking-wide opacity-80">
+                  <span className="text-[11px] font-bold uppercase tracking-wide opacity-80">
                     {t("creatorEditor.categorySelect.primary")}
                   </span>
                 ) : null}
@@ -104,7 +104,7 @@ export function CourseCategorySelect({
           aria-hidden="true"
           size={16}
           strokeWidth={1.8}
-          className={`shrink-0 text-[var(--color-ink-muted)] transition-transform duration-200 ${
+          className={`shrink-0 text-[var(--color-ink-muted)] transition-transform duration-[var(--duration-base)] ease-[var(--ease-standard)] ${
             open ? "rotate-180" : ""
           }`}
         />
@@ -115,7 +115,7 @@ export function CourseCategorySelect({
           id={optionsId}
           role="group"
           aria-label={t("creatorEditor.categorySelect.label")}
-          className="course-category-menu absolute z-30 mt-2 max-h-64 w-full overflow-y-auto rounded-lg border border-[var(--color-line)] bg-white p-1.5 shadow-[var(--shadow-strong)]"
+          className="course-category-menu motion-drop-in absolute z-30 mt-2 max-h-64 w-full overflow-y-auto rounded-lg border border-[var(--color-line)] bg-white p-1.5 shadow-[var(--shadow-strong)]"
         >
           {visibleOptions.map((item) => {
             const isSelected = selected.includes(item);
@@ -137,11 +137,11 @@ export function CourseCategorySelect({
                       ? t("creatorEditor.categorySelect.maximum")
                       : undefined
                 }
-                className={`flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-left text-sm transition-colors ${
+                className={`flex min-h-11 w-full items-center gap-2.5 rounded-md px-3 py-2 text-left text-sm transition-colors ${
                   isSelected
                     ? "bg-[var(--color-surface-soft)] font-semibold text-[var(--color-primary)]"
                     : "text-[var(--color-ink)] hover:bg-[var(--color-surface-soft)]"
-                } ${isLockedOut ? "cursor-not-allowed opacity-40" : isRequiredSelection ? "cursor-not-allowed" : "cursor-pointer"}`}
+                } ${isLockedOut ? "cursor-not-allowed opacity-60" : isRequiredSelection ? "cursor-not-allowed" : "cursor-pointer"}`}
               >
                 <input
                   type="checkbox"

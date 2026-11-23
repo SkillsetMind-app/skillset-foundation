@@ -69,6 +69,77 @@ describe("sale detail with real EN/ES dictionaries", () => {
     expect(screen.getByText("Refund recorded")).toBeVisible();
   });
 
+  // Antes o codigo do pedido era a maior letra da tela e o liquido tinha o
+  // tamanho do valor e da taxa; e nao havia volta para Vendas.
+  it("makes the net the strongest figure, keeps the order code small and links back to sales", () => {
+    mount();
+    const net = screen.getByText("Neto antes de la comisión de Stripe").parentElement!.querySelector("p:last-child")!;
+    expect(net.textContent).toBe(new Intl.NumberFormat("es", { style: "currency", currency: "USD" }).format(111.11));
+    expect(net).toHaveClass("text-3xl");
+    const amount = screen.getByText("Importe").parentElement!.querySelector("p:last-child")!;
+    expect(amount).not.toHaveClass("text-3xl");
+    expect(screen.getByRole("heading", { name: "Pedido #12345678" })).toHaveClass("text-sm");
+    expect(screen.getByRole("link", { name: "Volver a ventas" })).toHaveAttribute("href", "/teach/sales");
+    switchLanguage();
+    expect(screen.getByRole("link", { name: "Back to sales" })).toHaveAttribute("href", "/teach/sales");
+  });
+
+  // O numero grande nao pode mostrar dinheiro que nao ficou: reembolso parcial
+  // conta o valor menos o devolvido (como os Ganhos), e o que nao e receita
+  // (reembolsada inteira, pendente) nao tem numero grande.
+  describe("money by order state (EN)", () => {
+    function show(overrides: Partial<Order>) {
+      mocks.subscribe.mockImplementation((_id, callback) => { callback({ ...order, ...overrides }); return () => {}; });
+      render(<I18nProvider initialLocale="en"><SaleDetail orderId={order.id} /></I18nProvider>);
+    }
+    const figure = (label: string) =>
+      screen.getByText(label, { selector: "p" }).parentElement!.querySelector("p:last-child")!.textContent;
+    const headline = () => document.querySelector("p.text-3xl");
+
+    it("paid: the net is the headline", () => {
+      show({ status: "paid" });
+      expect(headline()).toHaveTextContent("$111.11");
+      expect(figure("Net before Stripe fee")).toBe("$111.11");
+      expect(figure("Amount")).toBe("$123.45");
+      expect(figure("SkillsetMind fee")).toBe("$12.34");
+      expect(screen.queryByText("Refunded", { selector: "p" })).toBeNull();
+    });
+
+    it("partially refunded $120 - $30: headline from what was kept, fee as charged, refund shown", () => {
+      show({ status: "partially_refunded", amountMinor: 12000, refundedAmountMinor: 3000 });
+      expect(headline()).toHaveTextContent("$78.00");
+      expect(figure("Net after refund, before Stripe fee")).toBe("$78.00");
+      expect(figure("Amount")).toBe("$120.00");
+      expect(figure("Refunded")).toBe("−$30.00");
+      expect(figure("SkillsetMind fee")).toBe("$12.00");
+      expect(screen.queryByText("Net before Stripe fee")).toBeNull();
+    });
+
+    it("fully refunded: no headline, the three small figures plus the refund", () => {
+      show({ status: "refunded", amountMinor: 12000, refundedAmountMinor: 12000 });
+      expect(headline()).toBeNull();
+      expect(figure("Amount")).toBe("$120.00");
+      expect(figure("Refunded")).toBe("−$120.00");
+      expect(figure("SkillsetMind fee")).toBe("$12.00");
+      expect(figure("Net before Stripe fee")).toBe("$108.00");
+    });
+
+    it("pending: no headline and no refund line", () => {
+      show({ status: "pending", amountMinor: 12000 });
+      expect(headline()).toBeNull();
+      expect(figure("Amount")).toBe("$120.00");
+      expect(figure("SkillsetMind fee")).toBe("$12.00");
+      expect(figure("Net before Stripe fee")).toBe("$108.00");
+      expect(screen.queryByText("Refunded", { selector: "p" })).toBeNull();
+    });
+  });
+
+  it("sends a missing sale back to the sales list", () => {
+    mocks.subscribe.mockImplementation((_id, callback) => { callback(null); return () => {}; });
+    mount();
+    expect(screen.getByRole("link", { name: "Volver a ventas" })).toHaveAttribute("href", "/teach/sales");
+  });
+
   it("translates pending dates and unavailable identifiers", () => {
     mocks.subscribe.mockImplementation((_id, callback) => { callback({ ...order, status: "pending", createdAt: undefined, updatedAt: undefined, checkoutSessionId: null, paymentIntentId: null }); return () => {}; });
     mount();
@@ -82,13 +153,47 @@ describe("sale detail with real EN/ES dictionaries", () => {
   it("relocalizes loading and a later subscription error", async () => {
     mocks.subscribe.mockImplementation(() => () => {});
     mount();
-    expect(screen.getByText("Cargando venta...")).toBeVisible();
+    // A espera e um esqueleto no formato da venda; a frase fica para o leitor de tela.
+    const status = screen.getByRole("status");
+    expect(status).toHaveAttribute("data-skeleton", "detail");
+    expect(status).toHaveTextContent("Cargando venta...");
     switchLanguage();
-    expect(screen.getByText("Loading sale...")).toBeVisible();
+    expect(screen.getByRole("status")).toHaveTextContent("Loading sale...");
     await act(async () => mocks.subscribe.mock.calls[0][2](new Error("internal")));
     expect(screen.getByRole("alert")).toHaveTextContent("We could not load this sale.");
     switchLanguage();
     expect(screen.getByRole("alert")).toHaveTextContent("No pudimos cargar esta venta.");
+  });
+
+  // F-11: a falha de leitura era um beco (so "Back to sales"); agora "Try
+  // again" assina a mesma leitura de novo. Venda que nao existe nao oferece.
+  it("load error offers Try again, which subscribes again and shows the sale", async () => {
+    mocks.subscribe.mockImplementationOnce((_id, _callback, onError) => { onError(new Error("down")); return () => {}; });
+    mount();
+    expect(screen.getByRole("alert")).toHaveTextContent("No pudimos cargar esta venta.");
+    fireEvent.click(screen.getByRole("button", { name: "Intentar de nuevo" }));
+    expect(mocks.subscribe).toHaveBeenCalledTimes(2);
+    expect(screen.getByRole("heading", { name: order.courseTitle })).toBeVisible();
+  });
+
+  it("a missing sale does not offer Try again", () => {
+    mocks.subscribe.mockImplementation((_id, callback) => { callback(null); return () => {}; });
+    mount();
+    expect(screen.queryByRole("button", { name: "Intentar de nuevo" })).toBeNull();
+  });
+
+  it("keeps course id, slug and currency in a collapsed support block and the e-mails as text links", () => {
+    mount();
+    const details = screen.getByText("Detalles para soporte").closest("details")!;
+    expect(details).not.toHaveAttribute("open");
+    expect(details).toHaveTextContent(order.courseId);
+    expect(details).toHaveTextContent(order.courseSlug);
+    expect(details).toHaveTextContent(order.currency);
+    for (const name of ["Contactar con soporte", "Ayuda con el reembolso"]) {
+      expect(screen.getByRole("link", { name })).not.toHaveClass("button-outline");
+    }
+    switchLanguage();
+    expect(screen.getByText("Details for support")).toBeInTheDocument();
   });
 
   it("translates missing and forbidden sales without exposing order data", () => {

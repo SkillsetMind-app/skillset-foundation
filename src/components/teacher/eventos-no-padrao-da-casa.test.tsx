@@ -37,6 +37,7 @@ const mocks = vi.hoisted(() => ({
   router: { push: vi.fn(), replace: vi.fn(), refresh: vi.fn() },
   searchParams: new URLSearchParams(""),
   events: [] as unknown[],
+  rsvpFails: false,
 }));
 
 vi.mock("next/navigation", () => ({
@@ -73,8 +74,9 @@ vi.mock("@/lib/data/course-events", () => ({
   cancelCourseEvent: vi.fn(),
   createCourseEvent: vi.fn(),
   deleteCourseEvent: vi.fn(),
-  subscribeToCourseEventRsvps: (_id: string, onData: (rsvps: unknown[]) => void) => {
-    onData([]);
+  subscribeToCourseEventRsvps: (_id: string, onData: (rsvps: unknown[]) => void, onError?: (error: Error) => void) => {
+    if (mocks.rsvpFails) onError?.(new Error("rsvp read failed"));
+    else onData([]);
     return () => undefined;
   },
   subscribeToTeacherCourseEvents: (
@@ -109,6 +111,22 @@ describe("agenda de eventos no padrao da casa", () => {
   beforeEach(() => {
     mocks.searchParams = new URLSearchParams("");
     mocks.events = [];
+    mocks.rsvpFails = false;
+  });
+
+  // Um resumo de RSVP por cartao: com a leitura falhando, oito eventos eram
+  // oito alertas assertivos interrompendo o leitor de tela. Agora e aviso.
+  it("a falha do resumo de RSVP avisa sem interromper (status, nunca alert)", () => {
+    mocks.rsvpFails = true;
+    mocks.events = [makeEvent({ id: "a" }), makeEvent({ id: "b", title: "Case clinic" })];
+    renderStudio();
+
+    const notes = screen.getAllByText("RSVP summary unavailable.");
+    expect(notes).toHaveLength(2);
+    for (const note of notes) {
+      expect(note.closest('[role="status"]')).not.toBeNull();
+    }
+    expect(screen.queryByRole("alert")).toBeNull();
   });
 
   afterEach(() => {
@@ -125,22 +143,26 @@ describe("agenda de eventos no padrao da casa", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "New session" }));
 
-    expect(screen.getByLabelText("Date and time")).toBeInTheDocument();
+    expect(screen.getByLabelText("Date")).toBeInTheDocument();
+    expect(screen.getByLabelText("Time")).toBeInTheDocument();
     expect(screen.getByRole("combobox", { name: "Course" })).toBeInTheDocument();
   });
 
   it("resumo compacto e formulario sem molduras empilhadas preservam os controles", () => {
     const { container } = renderStudio();
     const summary = container.querySelector("dl");
-    expect(summary).toHaveClass("grid-cols-3");
+    // O quadro de numero da casa (MetricCard), tres lado a lado a partir de
+    // 480px; no celular o rotulo em maiusculas nao cabia num terco da tela.
+    expect(summary).toHaveClass("min-[480px]:grid-cols-3");
     expect(summary?.querySelectorAll("dt")).toHaveLength(3);
+    expect(summary?.querySelectorAll("dt + dd.num")).toHaveLength(3);
     expect(container.querySelector(".studio-kpi-card")).toBeNull();
     expect(container.querySelector(".settings-section-card")).toBeNull();
     const trigger = screen.getByRole("button", { name: "New session" });
     expect(trigger).toHaveAttribute("aria-expanded", "false");
     fireEvent.click(trigger);
     const panel = document.getElementById(trigger.getAttribute("aria-controls")!);
-    expect(panel).toContainElement(screen.getByLabelText("Date and time"));
+    expect(panel).toContainElement(screen.getByLabelText("Date"));
     expect(panel).toHaveClass("border-b");
     expect(trigger).toHaveAttribute("aria-expanded", "true");
     fireEvent.click(screen.getByRole("button", { name: "Close" }));
@@ -158,7 +180,29 @@ describe("agenda de eventos no padrao da casa", () => {
 
     expect(tile("Still ahead on the agenda").getByText("2")).toBeInTheDocument();
     expect(tile("Already happened").getByText("1")).toBeInTheDocument();
-    expect(tile("Called off — everyone who RSVP'd saw it").getByText("1")).toBeInTheDocument();
+    // A frase antiga prometia que quem confirmou "viu" o cancelamento; hoje o
+    // aluno ve a sessao marcada como cancelada ate uma semana depois da data.
+    expect(tile("Called off — learners see it marked as cancelled until a week after its date").getByText("1")).toBeInTheDocument();
+  });
+
+  // A leitura vem da mais antiga para a mais nova; no passado, o que importa
+  // e a sessao mais recente. Em "All", as que vem (a proxima no topo) e depois
+  // as que passaram (a mais recente primeiro).
+  it("Past mostra a mais recente primeiro; All poe a proxima no topo e depois o passado", () => {
+    mocks.events = [
+      makeEvent({ id: "old", title: "Two days ago", startsAt: new Date(Date.now() - 48 * HOUR).toISOString() }),
+      makeEvent({ id: "recent", title: "Yesterday", startsAt: new Date(Date.now() - 24 * HOUR).toISOString() }),
+      makeEvent({ id: "soon", title: "Tomorrow", startsAt: new Date(Date.now() + 24 * HOUR).toISOString() }),
+      makeEvent({ id: "later", title: "In two days", startsAt: new Date(Date.now() + 48 * HOUR).toISOString() }),
+    ];
+    renderStudio();
+    const titles = () => screen.getAllByRole("heading", { level: 4 }).map((heading) => heading.textContent);
+
+    expect(titles()).toEqual(["Tomorrow", "In two days"]);
+    fireEvent.change(screen.getByLabelText("Filter sessions"), { target: { value: "past" } });
+    expect(titles()).toEqual(["Yesterday", "Two days ago"]);
+    fireEvent.change(screen.getByLabelText("Filter sessions"), { target: { value: "all" } });
+    expect(titles()).toEqual(["Tomorrow", "In two days", "Yesterday", "Two days ago"]);
   });
 
   it("a moldura (filtro, busca, exportar) e a contagem dizem de que recorte a lista fala", () => {
@@ -203,6 +247,6 @@ describe("agenda de eventos no padrao da casa", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Schedule a session" }));
 
-    expect(screen.getByLabelText("Date and time")).toBeInTheDocument();
+    expect(screen.getByLabelText("Date")).toBeInTheDocument();
   });
 });

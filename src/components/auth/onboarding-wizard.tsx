@@ -1,25 +1,35 @@
 "use client";
 
-import { Check, GraduationCap, Loader2, Presentation } from "lucide-react";
+import { Check, GraduationCap, Presentation } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { OnboardingProgress } from "@/components/auth/onboarding-progress";
-import { OnboardingQuestion } from "@/components/auth/onboarding-question";
+import {
+  ONBOARDING_QUESTION_TITLE_ID,
+  OnboardingQuestion,
+} from "@/components/auth/onboarding-question";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { LogoWordmark } from "@/components/shared/logo-wordmark";
+import { SkillsetSpinner } from "@/components/shared/skillset-spinner";
+import { BusyLabel } from "@/components/ui/busy-label";
+import { InlineAlert } from "@/components/ui/inline-alert";
+import { LoadErrorAlert } from "@/components/ui/load-error-alert";
 import { skillsetCourseCategories } from "@/domain/teacher-course";
 import type { OnboardingAnswers } from "@/domain/user-profile";
 import {
   getAuthPathIntentFromSearchParams,
   getAuthRoute,
+  getPlanCheckoutReturnTo,
   getSafeReturnTo,
+  getTeacherOnboardingRoute,
 } from "@/lib/auth/routing";
 import { isValidPhoneNumber } from "@/domain/user-profile";
 import { validateDisplayName } from "@/lib/auth/profile-validation";
 import { getCourseCategoryLabel } from "@/lib/i18n/course-categories";
 import { CONNECT_PAYOUT_COUNTRIES, isConnectPayoutCountry } from "@/lib/payments/connect-countries";
+import { scrollBehavior } from "@/lib/ui/scroll-behavior";
 import {
   getUserProfile,
   updateOnboardingAnswers,
@@ -113,6 +123,10 @@ const alreadySoldLabels: Record<"yes" | "no", string> = {
   no: "authFlow.onboarding.notSellingYet",
 };
 
+// A tela "You're all set" e uma so por pagina: ids fixos, como o do titulo da pergunta.
+const DONE_TITLE_ID = "onboarding-done-title";
+const DONE_DESCRIPTION_ID = "onboarding-done-description";
+
 function wait(ms: number) {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
 }
@@ -128,9 +142,14 @@ function wait(ms: number) {
 // Decidido uma vez ao carregar, nunca a partir da resposta dada aqui: senao a
 // pergunta sumiria da lista no instante em que fosse respondida. "Voltar" ate
 // ela a traz de volta (goBack).
-function getVisibleQuestions(
+//
+// `hasReturnTo`: o aluno tem para onde voltar (ex.: o checkout do curso que ia
+// comprar). Ai o interesse vira opcional, para seguir e pagar sem responder.
+// So o ramo do aluno le isso; o do professor nao muda.
+export function getVisibleQuestions(
   answers: OnboardingAnswers,
   pathKnown = false,
+  hasReturnTo = false,
 ): QuestionDefinition[] {
   const isTeacher = answers.path === "teacher";
 
@@ -155,7 +174,7 @@ function getVisibleQuestions(
     : [
         { id: "profile", required: true },
         { id: "path", required: true },
-        { id: "primaryGoal", required: true },
+        { id: "primaryGoal", required: !hasReturnTo },
         { id: "sourceOfDiscovery", required: false },
       ];
 
@@ -253,6 +272,9 @@ export function OnboardingWizard() {
   // O curso de onde a pessoa veio, se veio de algum. Passa pelo mesmo filtro do
   // login: so caminho interno, nunca URL de outro dominio.
   const returnTo = useMemo(() => getSafeReturnTo(searchParams), [searchParams]);
+  // O plano de /pricing nao conta: o aluno que chega com ele termina em /learn,
+  // entao nao tem para onde voltar e o interesse segue obrigatorio.
+  const hasReturnTo = Boolean(returnTo) && !getPlanCheckoutReturnTo(returnTo);
   const [answers, setAnswers] = useState<OnboardingAnswers>(() => ({
     ...(pathIntent ? { path: pathIntent } : {}),
   }));
@@ -262,13 +284,40 @@ export function OnboardingWizard() {
   const [profileName, setProfileName] = useState("");
   const [profilePhone, setProfilePhone] = useState("");
   const [isBootstrapping, setIsBootstrapping] = useState(true);
+  // Cada "Try again" da leitura de entrada soma 1 e roda a mesma leitura de novo.
+  const [loadAttempt, setLoadAttempt] = useState(0);
+  // O "Try again" some junto com a tela (vira a espera) e o foco caia no
+  // <body>; quando a entrevista volta, o foco vai para o titulo da pergunta.
+  const refocusAfterLoad = useRef(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [isComplete, setIsComplete] = useState(false);
+  // Destino do fim da entrevista; preenchido = a tela "You're all set".
+  const [doneHref, setDoneHref] = useState<string | null>(null);
+  const isComplete = doneHref !== null;
+  const leftRef = useRef(false);
+  const continueRef = useRef<HTMLButtonElement>(null);
   const [error, setError] = useState("");
 
+  // Saiu da tela (ex.: Voltar do navegador durante a pausa): a pausa que ainda
+  // corre nao puxa a pessoa para frente. O reset no setup cobre o StrictMode,
+  // que desmonta e remonta o efeito uma vez em desenvolvimento.
+  useEffect(() => {
+    leftRef.current = false;
+    return () => {
+      leftRef.current = true;
+    };
+  }, []);
+
+  // A tela "You're all set" chega com o foco no "Continue": Enter funciona e
+  // o leitor de tela le o titulo e a frase pelo aria-describedby do botao.
+  useEffect(() => {
+    if (isComplete) {
+      continueRef.current?.focus();
+    }
+  }, [isComplete]);
+
   const questions = useMemo(
-    () => getVisibleQuestions(answers, pathKnown),
-    [answers, pathKnown],
+    () => getVisibleQuestions(answers, pathKnown, hasReturnTo),
+    [answers, pathKnown, hasReturnTo],
   );
   const activeQuestion = questions[Math.min(currentIndex, questions.length - 1)];
 
@@ -303,7 +352,7 @@ export function OnboardingWizard() {
             : {}),
         };
         const knownPath = Boolean(savedAnswers.path);
-        const nextQuestions = getVisibleQuestions(savedAnswers, knownPath);
+        const nextQuestions = getVisibleQuestions(savedAnswers, knownPath, hasReturnTo);
 
         setPathKnown(knownPath);
         setAnswers(savedAnswers);
@@ -325,22 +374,34 @@ export function OnboardingWizard() {
     return () => {
       mounted = false;
     };
-  }, [pathIntent, returnTo, router, status, user]);
+  }, [hasReturnTo, pathIntent, returnTo, router, status, user, loadAttempt]);
+
+  // A leitura das respostas salvas falhou na chegada. "Try again" volta a
+  // espera da chegada e repete a MESMA leitura, uma vez: so leitura, nada e
+  // gravado. A espera tambem impede responder enquanto a leitura corre.
+  function retryLoad() {
+    refocusAfterLoad.current = true;
+    setError("");
+    setIsBootstrapping(true);
+    setLoadAttempt((attempt) => attempt + 1);
+  }
 
   useEffect(() => {
     function handleKeydown(event: KeyboardEvent) {
-      if (isSaving || isComplete) {
+      // Na espera da chegada (e na do "Try again") a tela ainda nao tem as
+      // respostas salvas: um Enter ali gravaria o estado velho por cima delas.
+      if (isSaving || isComplete || isBootstrapping) {
         return;
       }
 
-      if (event.key === "Escape") {
-        goBack();
-      }
-
+      // Sem Esc global: ele voltava uma pergunta de qualquer lugar da tela, e
+      // "Back" ja e um botao.
       if (event.key === "Enter") {
         const target = event.target as HTMLElement | null;
 
-        if (target?.tagName === "TEXTAREA" || target?.tagName === "SELECT") {
+        // Enter num botao ou link e do proprio botao (marcar a opcao, voltar,
+        // pular). Antes o atalho engolia o clique e tentava seguir em frente.
+        if (["TEXTAREA", "SELECT", "BUTTON", "A"].includes(target?.tagName ?? "")) {
           return;
         }
 
@@ -352,6 +413,23 @@ export function OnboardingWizard() {
     window.addEventListener("keydown", handleKeydown);
     return () => window.removeEventListener("keydown", handleKeydown);
   });
+
+  // A troca de pergunta remonta a tela e o botao focado some: o foco caia no
+  // <body> e nada anunciava a pergunta nova. Leva o foco ao titulo dela, a
+  // partir da segunda pergunta vista (na chegada a pagina o foco fica onde
+  // o navegador o pos).
+  const activeQuestionId = activeQuestion?.id ?? null;
+  const shownQuestionId = useRef<QuestionId | null>(null);
+  useEffect(() => {
+    if (isBootstrapping || isComplete || !activeQuestionId) {
+      return;
+    }
+    if (refocusAfterLoad.current || (shownQuestionId.current && shownQuestionId.current !== activeQuestionId)) {
+      document.getElementById(ONBOARDING_QUESTION_TITLE_ID)?.focus();
+    }
+    refocusAfterLoad.current = false;
+    shownQuestionId.current = activeQuestionId;
+  }, [activeQuestionId, isBootstrapping, isComplete]);
 
   async function persistAnswers(nextAnswers: OnboardingAnswers, completed = false) {
     if (!user) {
@@ -368,6 +446,10 @@ export function OnboardingWizard() {
 
   async function updateAnswer(nextAnswers: OnboardingAnswers, autoAdvance = false) {
     const cleanedAnswers = compactAnswers(nextAnswers);
+    // A pergunta em que a resposta foi dada. Dois toques rapidos na mesma
+    // opcao (ou Enter duas vezes) avancavam duas vezes e pulavam a proxima
+    // pergunta obrigatoria; so avanca quem ainda esta nesta pergunta.
+    const from = currentIndex;
 
     setError("");
     setAnswers(cleanedAnswers);
@@ -377,7 +459,7 @@ export function OnboardingWizard() {
 
       if (autoAdvance) {
         await wait(240);
-        advance(cleanedAnswers);
+        advance(cleanedAnswers, from);
       }
     } catch {
       setError("authFlow.onboarding.answerSaveError");
@@ -388,7 +470,7 @@ export function OnboardingWizard() {
   // chegou por um ?path= errado consegue trocar. A pergunta volta exatamente no
   // indice em que esta, entao o passo atual vira ela e a numeracao segue certa.
   function goBack() {
-    const pathIndex = getVisibleQuestions(answers).findIndex(
+    const pathIndex = getVisibleQuestions(answers, false, hasReturnTo).findIndex(
       (question) => question.id === "path",
     );
     if (pathKnown && currentIndex === pathIndex) {
@@ -398,9 +480,11 @@ export function OnboardingWizard() {
     setCurrentIndex((index) => Math.max(index - 1, 0));
   }
 
-  function advance(nextAnswers = answers) {
-    const nextQuestions = getVisibleQuestions(nextAnswers, pathKnown);
-    setCurrentIndex((index) => Math.min(index + 1, nextQuestions.length - 1));
+  function advance(nextAnswers = answers, from = currentIndex) {
+    const nextQuestions = getVisibleQuestions(nextAnswers, pathKnown, hasReturnTo);
+    setCurrentIndex((index) =>
+      index === from ? Math.min(index + 1, nextQuestions.length - 1) : index,
+    );
   }
 
   function validateCurrentQuestion() {
@@ -526,20 +610,35 @@ export function OnboardingWizard() {
 
     try {
       await persistAnswers(answers, true);
-      setIsComplete(true);
-      await wait(1800);
       // Fim da linha do deep link: quem chegou aqui vindo de um curso volta
       // para ELE, nao para o painel. O professor e a excecao — /onboarding e
-      // um passo obrigatorio da conta, nao um destino que da para trocar.
-      router.replace(
+      // um passo obrigatorio da conta, nao um destino que da para trocar. So o
+      // plano escolhido em /pricing segue com ele, para abrir o cartao no fim.
+      // Plano e de quem ensina: no caminho de aluno essa tela nao abre.
+      const destination =
         answers.path === "teacher"
-          ? "/onboarding?path=teacher"
-          : returnTo ?? "/learn",
-      );
+          ? getTeacherOnboardingRoute(returnTo)
+          : (getPlanCheckoutReturnTo(returnTo) ? null : returnTo) ?? "/learn";
+      setDoneHref(destination);
+      // Eram 1800ms presos na tela, sem botao. O "Continue" da tela vai na
+      // hora; a pausa automatica fica em 1500ms para quem le devagar (e para
+      // um toque atrasado nao cair na tela seguinte).
+      await wait(1500);
+      leaveTo(destination);
     } catch {
       setError("authFlow.onboarding.finishError");
       setIsSaving(false);
     }
+  }
+
+  // O "Continue" e a pausa automatica chegam aqui; so a primeira navega, e
+  // nenhuma depois que a tela foi desmontada.
+  function leaveTo(href: string | null) {
+    if (!href || leftRef.current) {
+      return;
+    }
+    leftRef.current = true;
+    router.replace(href);
   }
 
   function toggleGoal(goal: string) {
@@ -552,16 +651,8 @@ export function OnboardingWizard() {
   }
 
   if (isBootstrapping || status === "loading") {
-    return (
-      <main className="grid min-h-screen place-items-center bg-[var(--color-base)] px-5">
-        <div className="text-center">
-          <div className="mx-auto mb-5 size-14 rounded-full border-[3px] border-[rgba(26,54,93,0.12)] border-t-[var(--color-accent-fg)] motion-safe:animate-spin" />
-          <p className="text-sm font-semibold text-[var(--color-primary)]">
-            {t("authFlow.onboarding.preparing")}
-          </p>
-        </div>
-      </main>
-    );
+    // Igual ao fallback de /welcome que vem logo antes: uma espera só.
+    return <SkillsetSpinner title={t("authFlow.loading.title")} />;
   }
 
   if (isComplete) {
@@ -598,10 +689,10 @@ export function OnboardingWizard() {
           <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
             {t("authFlow.onboarding.welcome")}
           </p>
-          <h1 className="display-title mt-4 text-[38px] font-semibold leading-[1.1] text-[var(--color-primary)]">
+          <h1 id={DONE_TITLE_ID} className="display-title mt-4 text-[38px] font-semibold leading-[1.1] text-[var(--color-primary)]">
             {name ? t("authFlow.onboarding.allSet").replace("{name}", () => name) : t("authFlow.onboarding.allSetAnonymous")}
           </h1>
-          <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-[var(--color-ink-soft)]">
+          <p id={DONE_DESCRIPTION_ID} className="mx-auto mt-3 max-w-md text-sm leading-6 text-[var(--color-ink-soft)]">
             {t("authFlow.onboarding.completeDescription")}
           </p>
           {recap.length > 0 ? (
@@ -630,19 +721,25 @@ export function OnboardingWizard() {
               ))}
             </dl>
           ) : null}
-          <Loader2
-            aria-hidden="true"
-            className="mx-auto mt-8 size-14 animate-spin text-[var(--color-accent-fg)]"
-            strokeWidth={1.6}
-          />
+          {/* Antes um giro sem texto e 1,8s sem nenhum controle. A pausa
+              continua (dá para ler o resumo); o botão leva ao mesmo destino já. */}
+          <button
+            ref={continueRef}
+            type="button"
+            aria-describedby={`${DONE_TITLE_ID} ${DONE_DESCRIPTION_ID}`}
+            onClick={() => leaveTo(doneHref)}
+            className="button-solid mt-8 px-4 py-2.5 text-sm"
+          >
+            {t("authFlow.onboarding.continue")}
+          </button>
         </section>
       </main>
     );
   }
 
   return (
-    <main className="onboarding-page flex min-h-screen flex-col">
-      <header className="flex items-center justify-between gap-5 px-6 py-5 sm:px-8">
+    <main className="onboarding-page flex min-h-svh flex-col">
+      <header className="flex items-center justify-between gap-5 px-4 py-5 sm:px-8">
         <LogoWordmark nav />
         <OnboardingProgress
           activeQuestion={activeQuestion?.number ?? 1}
@@ -650,38 +747,51 @@ export function OnboardingWizard() {
         />
       </header>
 
-      <div className="grid flex-1 place-items-center px-5 py-8">
-        {activeQuestion ? renderQuestion(activeQuestion) : null}
+      {/* Do tablet para cima, pergunta e botoes formam um bloco so, centrado
+          na altura (margens automaticas): antes Back e Continue ficavam nos
+          cantos da tela, longe da pergunta. No celular segue a barra presa ao
+          pe (globals.css, .onboarding-footer). */}
+      <div className="grid flex-1 place-items-center px-4 py-8 sm:mt-auto sm:flex-none sm:px-5">
+        {/* A key remonta a pergunta a cada troca: sem ela o React reaproveitava
+            a mesma <section> e a entrada animada so rodava na primeira. */}
+        {activeQuestion ? (
+          <Fragment key={activeQuestion.id}>{renderQuestion(activeQuestion)}</Fragment>
+        ) : null}
       </div>
 
-      <footer className="flex items-center justify-between gap-4 px-6 py-5 sm:px-8">
+      <footer className="onboarding-footer flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-4 sm:mx-auto sm:mb-auto sm:w-full sm:max-w-[560px] sm:px-0 sm:pb-5 sm:pt-0">
         <button
           type="button"
           onClick={goBack}
           disabled={currentIndex === 0 || isSaving}
-          className="rounded-md px-5 py-3 text-sm font-semibold text-[var(--color-ink-soft)] transition hover:bg-[var(--color-surface-soft)] hover:text-[var(--color-primary)] disabled:pointer-events-none disabled:opacity-40"
+          className="min-h-11 rounded-md px-3 py-3 text-sm font-semibold text-[var(--color-ink-soft)] transition hover:bg-[var(--color-surface-soft)] hover:text-[var(--color-primary)] disabled:pointer-events-none disabled:opacity-60 sm:px-5"
         >
           {t("authFlow.onboarding.back")}
         </button>
 
-        <div className="flex items-center gap-3">
+        <div className="ml-auto flex items-center gap-3">
           {activeQuestion && !activeQuestion.required ? (
             <button
               type="button"
               onClick={() => void handleSkip()}
               disabled={isSaving}
-              className="px-2 py-3 text-sm font-semibold text-[var(--color-ink-soft)] transition hover:text-[var(--color-primary)] disabled:opacity-60"
+              className="min-h-11 px-2 py-3 text-sm font-semibold text-[var(--color-ink-soft)] transition hover:text-[var(--color-primary)] disabled:opacity-60"
             >
               {t("authFlow.onboarding.skip")}
             </button>
           ) : null}
+          {/* Mesma acao principal das telas de cadastro (azul, 48px). */}
           <button
             type="button"
             onClick={() => void handleContinue()}
             disabled={isSaving}
-            className="btn-cta-hero px-5 py-3 text-sm disabled:cursor-not-allowed disabled:opacity-60"
+            className="button-solid button-lg disabled:cursor-not-allowed"
           >
-            {t(isSaving ? "authFlow.onboarding.saving" : "authFlow.onboarding.continue")}
+            <BusyLabel
+              busy={isSaving}
+              idle={t("authFlow.onboarding.continue")}
+              busyText={t("authFlow.onboarding.saving")}
+            />
           </button>
         </div>
       </footer>
@@ -693,7 +803,7 @@ export function OnboardingWizard() {
       case "payoutCountry": {
         const regionNames = new Intl.DisplayNames(locale, { type: "region" });
         return (
-          <OnboardingQuestion number={question.number} title={t("onboarding.payoutCountryTitle")} lead={t("onboarding.payoutCountryHint")}>
+          <OnboardingQuestion number={question.number} total={questions.length} title={t("onboarding.payoutCountryTitle")} lead={t("onboarding.payoutCountryHint")}>
             <label htmlFor="onboarding-payout-country" className="block text-sm font-semibold text-[var(--color-ink)]">
               {t("connectOnboarding.countryLabel")}
             </label>
@@ -716,7 +826,7 @@ export function OnboardingWizard() {
                 {t("onboarding.payoutCountryUnavailable")}
               </p>
             ) : null}
-            <ErrorMessage error={error} />
+            <ErrorMessage error={error} onRetry={retryLoad} />
           </OnboardingQuestion>
         );
       }
@@ -724,6 +834,7 @@ export function OnboardingWizard() {
         return (
           <OnboardingQuestion
             number={question.number}
+            total={questions.length}
             title={t("authFlow.onboarding.profileTitle")}
             lead={
               phoneRequired
@@ -756,13 +867,14 @@ export function OnboardingWizard() {
                 />
               </label>
             </div>
-            <ErrorMessage error={error} />
+            <ErrorMessage error={error} onRetry={retryLoad} />
           </OnboardingQuestion>
         );
       case "path":
         return (
           <OnboardingQuestion
             number={question.number}
+            total={questions.length}
             title={t("authFlow.onboarding.pathTitle")}
             lead={t("authFlow.onboarding.pathLead")}
           >
@@ -782,13 +894,14 @@ export function OnboardingWizard() {
                 onClick={() => void updateAnswer({ ...answers, path: "teacher" }, true)}
               />
             </div>
-            <ErrorMessage error={error} />
+            <ErrorMessage error={error} onRetry={retryLoad} />
           </OnboardingQuestion>
         );
       case "profession":
         return (
           <OnboardingQuestion
             number={question.number}
+            total={questions.length}
             title={t("authFlow.onboarding.professionTitle")}
             lead={t("authFlow.onboarding.professionLead")}
           >
@@ -800,13 +913,14 @@ export function OnboardingWizard() {
                 void updateAnswer({ ...answers, profession: option }, true)
               }
             />
-            <ErrorMessage error={error} />
+            <ErrorMessage error={error} onRetry={retryLoad} />
           </OnboardingQuestion>
         );
       case "sourceOfDiscovery":
         return (
           <OnboardingQuestion
             number={question.number}
+            total={questions.length}
             title={t("authFlow.onboarding.discoveryTitle")}
           >
             <OptionGrid
@@ -817,13 +931,14 @@ export function OnboardingWizard() {
                 void updateAnswer({ ...answers, sourceOfDiscovery: option }, true)
               }
             />
-            <ErrorMessage error={error} />
+            <ErrorMessage error={error} onRetry={retryLoad} />
           </OnboardingQuestion>
         );
       case "alreadySold":
         return (
           <OnboardingQuestion
             number={question.number}
+            total={questions.length}
             title={t("authFlow.onboarding.sellingTitle")}
           >
             <div className="grid gap-4 sm:grid-cols-2">
@@ -845,13 +960,14 @@ export function OnboardingWizard() {
                 }
               />
             </div>
-            <ErrorMessage error={error} />
+            <ErrorMessage error={error} onRetry={retryLoad} />
           </OnboardingQuestion>
         );
       case "monthlyRevenue":
         return (
           <OnboardingQuestion
             number={question.number}
+            total={questions.length}
             title={t("authFlow.onboarding.revenueTitle")}
             lead={t("authFlow.onboarding.revenueLead")}
           >
@@ -860,28 +976,28 @@ export function OnboardingWizard() {
                 <button
                   key={option}
                   type="button"
+                  aria-pressed={answers.monthlyRevenue === option}
                   onClick={() =>
                     void updateAnswer({ ...answers, monthlyRevenue: option }, true)
                   }
                   className={[
-                    "flex items-center justify-between rounded-lg border-[1.5px] bg-white px-5 py-4 text-left text-sm font-semibold transition hover:bg-[var(--color-surface-soft)]",
-                    answers.monthlyRevenue === option
-                      ? "border-[var(--color-accent-fg)] text-[var(--color-primary)]"
-                      : "border-[var(--color-line)] text-[var(--color-ink)]",
+                    "flex items-center justify-between gap-4 px-5 py-4 text-sm font-semibold text-[var(--color-primary)]",
+                    choiceTone(answers.monthlyRevenue === option),
                   ].join(" ")}
                 >
                   {optionLabel(option)}
-                  <span className="size-5 rounded-full border border-[var(--color-line)]" />
+                  <SelectionDot selected={answers.monthlyRevenue === option} />
                 </button>
               ))}
             </div>
-            <ErrorMessage error={error} />
+            <ErrorMessage error={error} onRetry={retryLoad} />
           </OnboardingQuestion>
         );
       case "primaryGoal":
         return (
           <OnboardingQuestion
             number={question.number}
+            total={questions.length}
             title={
               answers.path === "teacher"
                 ? t("authFlow.onboarding.teacherGoalTitle")
@@ -898,13 +1014,14 @@ export function OnboardingWizard() {
             <p className="mt-3 text-center text-xs font-semibold text-[var(--color-ink-soft)]">
               {t("authFlow.onboarding.chooseThree")}
             </p>
-            <ErrorMessage error={error} />
+            <ErrorMessage error={error} onRetry={retryLoad} />
           </OnboardingQuestion>
         );
       case "instagramHandle":
         return (
           <OnboardingQuestion
             number={question.number}
+            total={questions.length}
             title={
               answers.path === "teacher"
                 ? t("authFlow.onboarding.teacherInstagramTitle")
@@ -912,8 +1029,10 @@ export function OnboardingWizard() {
             }
             lead={t("authFlow.onboarding.instagramLead")}
           >
-            <div className="flex overflow-hidden rounded-md border-[1.5px] border-[var(--color-line)] bg-white focus-within:border-[var(--color-primary-light)]">
-              <span className="grid place-items-center border-r border-[var(--color-line)] bg-[var(--color-surface-soft)] px-4 text-sm font-semibold text-[var(--color-ink-soft)]">
+            {/* A pele do .field-input no invólucro (o "@" fica dentro dela),
+                com os mesmos tokens do campo de telefone. */}
+            <div className="flex overflow-hidden rounded-md border-[1.5px] border-[var(--color-field-border)] bg-[var(--color-surface-soft)] focus-within:border-[var(--color-primary)] focus-within:bg-[var(--color-surface)]">
+              <span className="grid place-items-center border-r border-[var(--color-line)] px-4 text-sm font-semibold text-[var(--color-ink-soft)]">
                 @
               </span>
               <input
@@ -923,16 +1042,17 @@ export function OnboardingWizard() {
                 }
                 onBlur={() => void persistAnswers(answers)}
                 placeholder={t("authFlow.onboarding.instagramPlaceholder")}
-                className="min-w-0 flex-1 px-4 py-3 text-sm outline-none"
+                className="min-w-0 flex-1 bg-transparent px-4 py-3 text-sm outline-none"
               />
             </div>
-            <ErrorMessage error={error} />
+            <ErrorMessage error={error} onRetry={retryLoad} />
           </OnboardingQuestion>
         );
       case "audienceSize":
         return (
           <OnboardingQuestion
             number={question.number}
+            total={questions.length}
             title={t("authFlow.onboarding.audienceTitle")}
           >
             <div className="grid gap-2">
@@ -940,21 +1060,21 @@ export function OnboardingWizard() {
                 <button
                   key={option}
                   type="button"
+                  aria-pressed={answers.audienceSize === option}
                   onClick={() =>
                     void updateAnswer({ ...answers, audienceSize: option }, true)
                   }
                   className={[
-                    "rounded-lg border-[1.5px] bg-white px-5 py-4 text-left text-sm font-semibold transition hover:bg-[var(--color-surface-soft)]",
-                    answers.audienceSize === option
-                      ? "border-[var(--color-accent-fg)] text-[var(--color-primary)]"
-                      : "border-[var(--color-line)] text-[var(--color-ink)]",
+                    "flex items-center justify-between gap-4 px-5 py-4 text-sm font-semibold text-[var(--color-primary)]",
+                    choiceTone(answers.audienceSize === option),
                   ].join(" ")}
                 >
                   {optionLabel(option)}
+                  <SelectionDot selected={answers.audienceSize === option} />
                 </button>
               ))}
             </div>
-            <ErrorMessage error={error} />
+            <ErrorMessage error={error} onRetry={retryLoad} />
           </OnboardingQuestion>
         );
     }
@@ -979,25 +1099,23 @@ function PathCard({
   return (
     <button
       type="button"
+      aria-pressed={selected}
       onClick={onClick}
-      className={[
-        "group rounded-lg border-[1.5px] bg-white px-6 py-6 text-left transition duration-[200ms] hover:-translate-y-0.5 hover:border-[var(--color-accent-fg)] hover:shadow-[var(--shadow-strong)]",
-        selected
-          ? "border-[var(--color-accent-fg)] bg-[rgba(178,34,52,0.04)]"
-          : "border-[var(--color-line)]",
-      ].join(" ")}
+      className={["px-6 py-6", choiceTone(selected)].join(" ")}
     >
-      <span
-        className={[
-          "mb-5 grid size-12 place-items-center rounded-md bg-[var(--color-surface-strong)] transition",
-          selected
-            ? "text-[var(--color-accent-fg)]"
-            : "text-[var(--color-primary)] group-hover:text-[var(--color-accent-fg)]",
-        ].join(" ")}
-      >
-        <Icon aria-hidden="true" size={32} strokeWidth={1.6} />
+      <span className="mb-5 flex w-full items-start justify-between gap-4">
+        <span
+          className={[
+            "grid size-12 place-items-center rounded-md text-[var(--color-primary)]",
+            selected ? "bg-white" : "bg-[var(--color-surface-strong)]",
+          ].join(" ")}
+        >
+          <Icon aria-hidden="true" size={32} strokeWidth={1.6} />
+        </span>
+        <SelectionDot selected={selected} />
       </span>
-      <span className="display-title block text-[22px] font-semibold leading-none text-[var(--color-primary)]">
+      {/* Manrope como as outras respostas: o serifado fica so no titulo. */}
+      <span className="block text-base font-bold leading-tight text-[var(--color-primary)]">
         {title}
       </span>
       <span className="mt-3 block text-[13px] leading-6 text-[var(--color-ink-soft)]">
@@ -1021,21 +1139,49 @@ function LargeRadio({
   return (
     <button
       type="button"
+      aria-pressed={selected}
       onClick={onClick}
-      className={[
-        "rounded-lg border-[1.5px] bg-white p-5 text-left transition hover:-translate-y-0.5 hover:border-[var(--color-accent-fg)] hover:shadow-[var(--shadow-soft)]",
-        selected
-          ? "border-[var(--color-accent-fg)] bg-[rgba(178,34,52,0.04)]"
-          : "border-[var(--color-line)]",
-      ].join(" ")}
+      className={["flex items-start justify-between gap-4 p-5", choiceTone(selected)].join(" ")}
     >
-      <span className="block text-base font-bold text-[var(--color-primary)]">
-        {title}
+      <span>
+        <span className="block text-base font-bold text-[var(--color-primary)]">
+          {title}
+        </span>
+        <span className="mt-2 block text-[13px] leading-6 text-[var(--color-ink-soft)]">
+          {description}
+        </span>
       </span>
-      <span className="mt-2 block text-[13px] leading-6 text-[var(--color-ink-soft)]">
-        {description}
-      </span>
+      <SelectionDot selected={selected} />
     </button>
+  );
+}
+
+// Um so jeito de mostrar "marcado" nas respostas de escolha unica (cartoes e
+// linhas): antes cada pergunta tinha o seu — azul cheio, borda dourada, tom
+// rosado — e o circulo da receita nunca enchia. Borda e anel azuis, fundo
+// claro e o circulo com check. O hover so mexe na que nao esta marcada.
+function choiceTone(selected: boolean) {
+  return [
+    "rounded-lg border text-left transition duration-[var(--duration-base)]",
+    selected
+      ? "border-[var(--color-primary)] bg-[var(--color-surface-soft)] shadow-[inset_0_0_0_1px_var(--color-primary)]"
+      : "border-[var(--color-line)] bg-white hover:-translate-y-0.5 hover:border-[var(--color-line-strong)] hover:shadow-[var(--shadow-soft)]",
+  ].join(" ");
+}
+
+function SelectionDot({ selected }: { selected: boolean }) {
+  return selected ? (
+    <span
+      aria-hidden="true"
+      className="grid size-5 shrink-0 place-items-center rounded-full bg-[var(--color-primary)] text-white"
+    >
+      <Check size={12} strokeWidth={3} />
+    </span>
+  ) : (
+    <span
+      aria-hidden="true"
+      className="size-5 shrink-0 rounded-full border-[1.5px] border-[var(--color-field-border)]"
+    />
   );
 }
 
@@ -1053,7 +1199,9 @@ function OptionGrid({
   selected: string[];
 }) {
   return (
-    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+    // Os 8 temas (multi) tem nomes longos: em duas colunas no celular quebravam
+    // em 3 linhas. Uma coluna no celular, duas a partir do tablet.
+    <div className={multi ? "grid grid-cols-1 gap-2 sm:grid-cols-2" : "grid grid-cols-2 gap-2 sm:grid-cols-3"}>
       {options.map((option) => {
         const isSelected = selected.includes(option);
 
@@ -1061,14 +1209,17 @@ function OptionGrid({
           <button
             key={option}
             type="button"
+            aria-pressed={isSelected}
             onClick={() => onSelect(option)}
             className={[
-              "rounded-md border-[1.5px] px-4 py-3 text-sm font-semibold transition hover:bg-[var(--color-surface-soft)]",
+              // O hover claro so vale para a opcao nao marcada: na marcada ele
+              // trocava o fundo azul por um claro e o texto claro sumia.
+              "rounded-md border-[1.5px] px-4 py-3 text-sm font-semibold transition",
               isSelected
                 ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-[var(--color-base)]"
-                : "border-[var(--color-line)] bg-white text-[var(--color-ink)]",
+                : "border-[var(--color-line)] bg-white text-[var(--color-ink)] hover:bg-[var(--color-surface-soft)]",
               multi && selected.length >= 3 && !isSelected
-                ? "cursor-not-allowed opacity-50"
+                ? "cursor-not-allowed opacity-60"
                 : "",
             ].join(" ")}
             disabled={multi && selected.length >= 3 && !isSelected}
@@ -1081,15 +1232,40 @@ function OptionGrid({
   );
 }
 
-function ErrorMessage({ error }: { error: string }) {
+function ErrorMessage({ error, onRetry }: { error: string; onRetry: () => void }) {
   const { t } = useTranslation();
+  const ref = useRef<HTMLDivElement>(null);
+  // No celular a barra do "Continue" fica presa embaixo e o aviso nascia atras
+  // dela (ou abaixo da dobra): o toque nao mudava nada visivel. Leva o aviso
+  // ao meio da tela quando ele aparece; sem animacao para quem pediu menos
+  // movimento.
+  useEffect(() => {
+    if (error) {
+      ref.current?.scrollIntoView?.({ block: "center", behavior: scrollBehavior() });
+    }
+  }, [error]);
+
   if (!error) {
     return null;
   }
 
   return (
-    <p role="alert" className="mt-5 rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-center text-sm font-semibold text-[var(--color-danger-fg)]">
-      {t(error)}
-    </p>
+    // O InlineAlert nao repassa ref: a caixa de fora (so com o aviso dentro)
+    // e quem rola para a vista.
+    <div ref={ref} className="mt-5">
+      {/* So o erro de LEITURA ganha "Try again". Os de salvar seguem sem ele:
+          repetir ali e o proprio "Continue", e um segundo botao gravaria duas vezes.
+          O foco: esta caixa some junto com a tela (vira a espera da chegada), entao
+          o focusRef daqui nao segura nada; quem leva o foco e o efeito do titulo. */}
+      {error === "authFlow.onboarding.loadError" ? (
+        <LoadErrorAlert onRetry={onRetry} focusRef={ref} alertClassName="justify-center text-center">
+          {t(error)}
+        </LoadErrorAlert>
+      ) : (
+        <InlineAlert tone="error" className="justify-center text-center">
+          {t(error)}
+        </InlineAlert>
+      )}
+    </div>
   );
 }

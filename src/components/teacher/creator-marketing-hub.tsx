@@ -13,6 +13,7 @@ import {
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { PlatformPageHeader } from "@/components/platform/platform-page-header";
 import { Card, buttonClasses } from "@/components/ui";
 import { groupCourseMessageThreads } from "@/domain/course-message";
 import type { CourseMessage } from "@/domain/course-message";
@@ -225,17 +226,11 @@ export function CreatorMarketingHub() {
 
   return (
     <div className="grid gap-7">
-      <header className="border-b border-[var(--color-line)] pb-5">
-        <p className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--color-accent-fg)]">
-          {t("teach.marketing.eyebrow")}
-        </p>
-        <h1 className="mt-2 text-3xl font-semibold leading-tight text-[var(--color-primary)]">
-          {t("teach.marketing.title")}
-        </h1>
-        <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--color-ink-soft)]">
-          {t("teach.marketing.description")}
-        </p>
-      </header>
+      <PlatformPageHeader
+        eyebrow={t("teach.marketing.eyebrow")}
+        title={t("teach.marketing.title")}
+        description={t("teach.marketing.description")}
+      />
 
       <section aria-labelledby="marketing-tools-title">
         {/* O "5 tools" saiu: a grade ja diz quantos sao, e o espaco vale mais
@@ -253,7 +248,7 @@ export function CreatorMarketingHub() {
                 key={tool.key}
                 as="article"
                 padding="md"
-                className="grid content-start gap-3"
+                className="flex flex-col gap-3"
               >
                 <span className="grid size-10 place-items-center rounded-md border border-[var(--color-line)] bg-[var(--color-surface-soft)] text-[var(--color-primary)]">
                   <Icon aria-hidden="true" size={18} strokeWidth={1.8} />
@@ -265,9 +260,12 @@ export function CreatorMarketingHub() {
                   </p>
                 </div>
                 {tool.state ? <div>{tool.state}</div> : null}
+                {/* mt-auto: os quatro botoes da fileira ficam na mesma linha,
+                    no pe do cartao, em vez de uma escada logo abaixo de cada
+                    texto. */}
                 <Link
                   href={tool.href}
-                  className={`${buttonClasses({ variant: "outline", size: "sm" })} justify-self-start`}
+                  className={`${buttonClasses({ variant: "outline", size: "sm" })} mt-auto self-start`}
                 >
                   {tool.action}
                   <ArrowRight aria-hidden="true" size={14} strokeWidth={1.8} />

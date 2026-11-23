@@ -10,8 +10,10 @@ import { useEffect, useMemo, useState } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { rememberActivationReturnCourse } from "@/components/teacher/activation-return-link";
+import { StripeFrameSkeleton } from "@/components/teacher/builder-skeleton";
+import { SupportDetails } from "@/components/teacher/support-details";
 import { BrandName } from "@/components/shared/brand-name";
-import { Card, Eyebrow, buttonClasses } from "@/components/ui";
+import { Card, Eyebrow, InlineAlert, buttonClasses } from "@/components/ui";
 import { activationFeeUsd, formatPlanCommission, planById } from "@/data/plans";
 import { formatUsdWhole } from "@/data/platform";
 import { createActivationCheckoutClientSecret } from "@/lib/payments/activation";
@@ -143,21 +145,25 @@ export function ActivationCheckoutPanel({ courseId = null }: { courseId?: string
   return (
     <div className="grid gap-5 lg:grid-cols-[1fr_360px]">
       <Card padding="none" className="overflow-hidden">
+        {/* F-07: a caixa de erro da casa (ícone, fundo que aparece no tema
+            escuro, anúncio). Só a casca mudou: textos, condições e destinos
+            são os mesmos. */}
         {error ? (
-          <div role="alert" className="p-6 text-sm text-[var(--color-danger-fg)]">
-            <p className="font-semibold">
-              {error.verificationRequired
-                ? t("creatorPanel.activationGate.verificationTitle")
-                : error.key === "alreadyActive"
-                  ? t("activationCheckout.alreadyActiveTitle")
-                  : t("activationCheckout.errorTitle")}
-            </p>
-            <p className="mt-2 text-[var(--color-ink-soft)]">
+          <InlineAlert tone="error" className="m-6"
+            title={error.verificationRequired
+              ? t("creatorPanel.activationGate.verificationTitle")
+              : error.key === "alreadyActive"
+                ? t("activationCheckout.alreadyActiveTitle")
+                : t("activationCheckout.errorTitle")}
+          >
+            <p className="mt-2 font-normal text-[var(--color-ink-soft)]">
               {error.verificationRequired
                 ? t("creatorPanel.activationGate.verificationBody")
                 : t(`activationCheckout.error.${error.key}`)}
             </p>
-            {error.status && error.key !== "alreadyActive" ? <p className="mt-2 text-xs">{t("activationCheckout.reference")} HTTP {error.status}</p> : null}
+            {/* A frase acima diz o que fazer; o codigo da resposta fica so
+                para o suporte, recolhido (era "Reference: HTTP 409"). */}
+            {error.status && error.key !== "alreadyActive" ? <SupportDetails code={error.status} className="mt-2" /> : null}
             <Link href={error.verificationRequired ? "/teach/verification" : studioHref} className={buttonClasses({ variant: "outline" }, "mt-4")}>
               {error.verificationRequired
                 ? t("creatorPanel.activationGate.verificationAction")
@@ -165,15 +171,9 @@ export function ActivationCheckoutPanel({ courseId = null }: { courseId?: string
                   ? t("activationCheckout.backToCourseStudio")
                   : t("activationCheckout.backToStudio")}
             </Link>
-          </div>
+          </InlineAlert>
         ) : !options ? (
-          <div
-            className="grid place-items-center p-8 text-sm text-[var(--color-ink-soft)]"
-            aria-busy="true"
-            aria-live="polite"
-          >
-            {t("activationCheckout.preparing")}
-          </div>
+          <StripeFrameSkeleton label={t("activationCheckout.preparing")} />
         ) : (
           <EmbeddedCheckoutProvider stripe={stripeLoader!} options={options}>
             <EmbeddedCheckout />
@@ -183,7 +183,9 @@ export function ActivationCheckoutPanel({ courseId = null }: { courseId?: string
 
       <Card as="aside" padding="none" className="h-fit p-5">
         <Eyebrow>{t("activationCheckout.activating")}</Eyebrow>
-        <h2 className="display-title mt-2 text-3xl text-[var(--color-primary)]">
+        {/* A serifa fica so no titulo da pagina; aqui o texto da casa, e o
+            preco em algarismos de largura fixa, como no cartao de plano. */}
+        <h2 className="mt-2 text-xl font-semibold leading-snug text-[var(--color-primary)]">
           {t("activationCheckout.storefrontBefore")}<BrandName />{t("activationCheckout.storefrontAfter")}
         </h2>
         <p className="mt-2 text-sm text-[var(--color-ink-soft)]">
@@ -194,7 +196,7 @@ export function ActivationCheckoutPanel({ courseId = null }: { courseId?: string
             {t("activationCheckout.oneTimeFee")}
           </p>
           <div className="mt-1 flex items-baseline gap-1">
-            <span className="display-title text-3xl tabular-nums text-[var(--color-primary)]">
+            <span className="num text-3xl font-bold text-[var(--color-primary)]">
               {formatUsdWhole(activationFeeUsd, locale)}
             </span>
             <span className="text-xs font-semibold text-[var(--color-ink-soft)]">

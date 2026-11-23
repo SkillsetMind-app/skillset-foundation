@@ -101,7 +101,7 @@ describe("legal document translation from the request cookie", () => {
   });
 
   it.each(pages)("$key defaults to English for absent or unsupported cookies", async ({ Page, key }) => {
-    const effective = key === "teacherTerms" ? "Effective October 6, 2026" : "Effective September 24, 2026";
+    const effective = key === "teacherTerms" ? "Effective November 13, 2026" : "Effective September 24, 2026";
     for (const cookie of [undefined, "pt-BR", "invalid"]) {
       request.locale = cookie;
       const view = render(await Page());

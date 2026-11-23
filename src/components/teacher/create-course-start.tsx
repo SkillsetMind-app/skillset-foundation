@@ -17,7 +17,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 
 import { CourseCategorySelect } from "@/components/teacher/course-category-select";
 import { InlineHelp } from "@/components/shared/inline-help";
-import { Button } from "@/components/ui";
+import { Button, InlineAlert } from "@/components/ui";
 import { useJustDone } from "@/components/ui/drawn-check";
 import { SpotArt } from "@/components/ui/spot-art";
 import { isValidExternalEventUrl } from "@/domain/course-event";
@@ -330,7 +330,7 @@ export function CreateCourseStart({ ownerId, initialFormat = "course" }: CreateC
                   minLength={3}
                   maxLength={120}
                   placeholder={t("courseCreation.titlePlaceholder")}
-                  className="min-h-11 rounded-md border border-[var(--color-field-border)] bg-white px-3.5 py-2.5 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
+                  className="field-input"
                 />
               </label>
 
@@ -343,7 +343,7 @@ export function CreateCourseStart({ ownerId, initialFormat = "course" }: CreateC
                       min={today}
                       value={eventDate}
                       onChange={(event) => setEventDate(event.target.value)}
-                      className="min-h-11 rounded-md border border-[var(--color-field-border)] bg-white px-3.5 py-2.5 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
+                      className="field-input"
                     />
                   </label>
                   <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
@@ -352,7 +352,7 @@ export function CreateCourseStart({ ownerId, initialFormat = "course" }: CreateC
                       type="time"
                       value={eventTime}
                       onChange={(event) => setEventTime(event.target.value)}
-                      className="min-h-11 rounded-md border border-[var(--color-field-border)] bg-white px-3.5 py-2.5 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
+                      className="field-input"
                     />
                   </label>
                   <div className="grid gap-2 sm:col-span-2">
@@ -365,7 +365,7 @@ export function CreateCourseStart({ ownerId, initialFormat = "course" }: CreateC
                         onChange={(event) => setEventLink(event.target.value)}
                         placeholder="https://"
                         aria-describedby="create-course-link-help"
-                        className="min-h-11 rounded-md border border-[var(--color-field-border)] bg-white px-3.5 py-2.5 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
+                        className="field-input"
                       />
                     </label>
                     <span id="create-course-link-help" className="text-xs text-[var(--color-ink-muted)]">
@@ -384,7 +384,7 @@ export function CreateCourseStart({ ownerId, initialFormat = "course" }: CreateC
                   maxLength={1200}
                   rows={4}
                   placeholder={t("courseCreation.promisePlaceholder")}
-                  className="resize-none rounded-md border border-[var(--color-field-border)] bg-white px-3.5 py-2.5 text-sm font-normal leading-6 outline-none focus:border-[var(--color-primary-light)]"
+                  className="field-input resize-none"
                 />
                 <span className="text-xs font-normal text-[var(--color-ink-muted)]">
                   {t("courseCreation.characterCount").replace("{count}", () => String(summary.trim().length))}
@@ -411,10 +411,7 @@ export function CreateCourseStart({ ownerId, initialFormat = "course" }: CreateC
             </div>
 
             {error ? (
-              <div
-                role="alert"
-                className="mt-5 rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]"
-              >
+              <InlineAlert tone="error" className="mt-5">
                 <p>{t(error)}</p>
                 {error === "courseCreation.activationError" ? (
                   <Link
@@ -424,7 +421,7 @@ export function CreateCourseStart({ ownerId, initialFormat = "course" }: CreateC
                     {t("courseCreation.activate")}
                   </Link>
                 ) : null}
-              </div>
+              </InlineAlert>
             ) : null}
 
             {submitBlockers.length > 0 ? (
@@ -457,14 +454,15 @@ export function CreateCourseStart({ ownerId, initialFormat = "course" }: CreateC
                 variant="accent"
                 size="lg"
                 loading={isSaving}
+                busyLabel={t("courseCreation.creating")}
                 disabled={!canSubmit}
                 aria-describedby={
                   submitBlockers.length > 0 ? "create-course-blockers" : undefined
                 }
-                className="w-full disabled:opacity-60 sm:w-auto"
+                className="w-full sm:w-auto"
               >
-                {isSaving ? t("courseCreation.creating") : t("courseCreation.create")}
-                {isSaving ? null : <ArrowRight aria-hidden="true" size={15} strokeWidth={1.9} />}
+                {t("courseCreation.create")}
+                <ArrowRight aria-hidden="true" size={15} strokeWidth={1.9} />
               </Button>
             </div>
           </div>

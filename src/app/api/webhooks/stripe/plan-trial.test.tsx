@@ -210,12 +210,30 @@ describe("plan free trial through the Stripe webhook", () => {
   });
 
   // A Basic payer is a paying customer: own-logo certificates, the public
+  it.each([
+    ["price_1UP4MvPvg1vJW0IjLNG6YeC9", "monthly", 500],
+    ["price_1UP4MwPvg1vJW0IjKAq6kpd8", "yearly", 5000],
+    ["price_1UVi6QPvg1vJW0IjKHYmUE09", "monthly", 900],
+    ["price_1UVi6RPvg1vJW0Ijz87nmj5D", "yearly", 9000],
+  ])("keeps Basic %s through creation, renewal and cancellation", async (id, cycle, amount) => {
+    const subscription = planSubscription({
+      metadata: { uid: "creator_1", planId: "basic", cycle, locale: "en" },
+      items: { data: [{ price: { id, unit_amount: amount, currency: "usd" } }] },
+    });
+    for (const [event, status] of [["created", "trialing"], ["updated", "active"], ["deleted", "canceled"]]) {
+      expect((await deliver(`customer.subscription.${event}`, { ...subscription, status })).status).toBe(200);
+      expect(db.tables.subscriptions[0]).toMatchObject({ plan_id: "basic", cycle, stripe_price_id: id, status });
+      expect(db.tables.users[0].current_plan_id).toBe(status === "canceled" ? "free" : "basic");
+    }
+  });
+
+  // A Basic payer is a paying customer: own-logo certificates, the public
   // storefront and no daily caps all key off current_plan_id <> 'free'.
   it.each(["trialing", "active"])("stores a %s Basic subscriber as basic, not free", async (status) => {
     await deliver("customer.subscription.created", planSubscription({
       status,
       metadata: { uid: "creator_1", planId: "basic", cycle: "monthly", locale: "en" },
-      items: { data: [{ price: { id: basicMonthly, unit_amount: 500, currency: "usd" } }] },
+      items: { data: [{ price: { id: basicMonthly, unit_amount: 900, currency: "usd" } }] },
     }));
     expect(db.tables.subscriptions[0]).toMatchObject({ plan_id: "basic", status });
     expect(db.tables.users[0].current_plan_id).toBe("basic");
@@ -225,7 +243,7 @@ describe("plan free trial through the Stripe webhook", () => {
     db.tables.subscriptions.push({ id: "sub_old_pro", user_id: "creator_1", plan_id: "pro", status: "active" });
     await deliver("customer.subscription.created", planSubscription({
       status: "active",
-      items: { data: [{ price: { id: basicMonthly, unit_amount: 500, currency: "usd" } }] },
+      items: { data: [{ price: { id: basicMonthly, unit_amount: 900, currency: "usd" } }] },
     }));
     expect(db.tables.users[0].current_plan_id).toBe("pro");
   });
@@ -250,7 +268,7 @@ describe("plan free trial through the Stripe webhook", () => {
     const basicMeta = { uid: "creator_1", planId: "basic", cycle: "monthly", locale: "en" };
     await deliver("customer.subscription.created", planSubscription({
       metadata: basicMeta,
-      items: { data: [{ price: { id: basicMonthly, unit_amount: 500, currency: "usd" } }] },
+      items: { data: [{ price: { id: basicMonthly, unit_amount: 900, currency: "usd" } }] },
     }));
     expect(db.tables.users[0].current_plan_id).toBe("basic");
 

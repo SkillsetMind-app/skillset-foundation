@@ -8,15 +8,27 @@ export function subscribeToCompletedLessons(
   enrollmentId: string,
   callback: (lessonIds: string[]) => void,
   onError: (error: Error) => void,
-): () => void {
+): (() => void) & { reload: () => Promise<void> } {
   const supabase = getSupabaseBrowserClient();
+  // `reload()` (o "Try again") repete esta leitura sem mexer no canal. As de
+  // sempre (a inicial e as do canal) entregam como antes, so cedem a um reload
+  // mais novo; o que o reload comecou nao entrega depois de desligar nem por
+  // cima de uma leitura mais nova (traria o progresso velho).
+  let active = true;
+  let latestLoad = 0;
+  let latestReload = 0;
 
-  const load = async () => {
+  const load = async (fromReload = false) => {
+    const thisLoad = ++latestLoad;
+    if (fromReload) latestReload = thisLoad;
     const { data, error } = await supabase
       .from(lessonProgressTable)
       .select("lesson_id")
       .eq("enrollment_id", enrollmentId);
 
+    if (fromReload ? !active || thisLoad !== latestLoad : thisLoad < latestReload) {
+      return;
+    }
     if (error) {
       onError(error instanceof Error ? error : new Error(String(error)));
       return;
@@ -43,9 +55,14 @@ export function subscribeToCompletedLessons(
     )
     .subscribe();
 
-  return () => {
-    void supabase.removeChannel(channel);
-  };
+  // `reload()` le de novo SEM mexer no canal (o "Try again" da sala).
+  return Object.assign(
+    () => {
+      active = false;
+      void supabase.removeChannel(channel);
+    },
+    { reload: () => load(true) },
+  );
 }
 
 export type LessonProgressResult = {

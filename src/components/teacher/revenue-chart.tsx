@@ -2,16 +2,23 @@
 
 import type { ReactNode } from "react";
 
+import { useTranslation } from "@/components/i18n/i18n-provider";
 import { SpotArt } from "@/components/ui/spot-art";
 import type { RevenuePoint } from "@/domain/creator-reports";
+import { formatMoney } from "@/lib/format-money";
 
 /**
  * O grafico de receita que so existia na home. Agora e um componente so, usado
  * pela home e pela pagina de relatorios; quem chama decide o periodo, os
  * rotulos e o que vai no canto direito do cabecalho (as abas de periodo).
+ * Desenha UMA moeda (`currency`): quem chama escolhe qual e diz em `note` o
+ * que ficou de fora, em vez de somar moedas diferentes.
  */
 export function RevenueChart({
   points,
+  currency,
+  note,
+  unavailableLabel,
   totalMinor,
   totalLabel,
   title,
@@ -22,6 +29,14 @@ export function RevenueChart({
   headerAction,
 }: {
   points: RevenuePoint[];
+  currency: string;
+  /** Uma linha sob o grafico (ex.: as outras moedas, que nao estao nele). */
+  note?: string;
+  /**
+   * Dados ainda carregando ou leitura que falhou: no lugar de "sem receita"
+   * (que afirmaria zero), so este rotulo.
+   */
+  unavailableLabel?: string;
   totalMinor: number;
   totalLabel: string;
   title: string;
@@ -31,111 +46,156 @@ export function RevenueChart({
   emptyDetail: string;
   headerAction?: ReactNode;
 }) {
+  const { locale } = useTranslation();
   const chart = buildChart(points);
-  // 90 baldes diarios (ou 24 mensais) escreviam 90 rotulos em 640px e viravam
-  // borrao. Um a cada N mantem no maximo ~12 legiveis em qualquer periodo.
+  // Eixo pelo formatador da lingua ("$1.5K"): o "$2k" feito a mao arredondava
+  // $1.500 para $2k e escrevia "$2k" em duas linhas. O minimo de casas vai
+  // explicito: sem ele, versoes do ICU escrevem "$1.0K" e "$0.0". A moeda e a
+  // do grafico (era USD fixo, mesmo para quem vende em reais).
+  const axisMoney = (amountMinor: number) =>
+    formatMoney(amountMinor, currency, locale, {
+      notation: "compact",
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 1,
+    });
+  // 90 baldes diarios (ou 24 mensais) escreviam 90 rotulos e viravam borrao.
+  // Um a cada N mantem no maximo ~12 em qualquer periodo (~4 no celular).
   const labelEvery = Math.max(1, Math.ceil(points.length / 12));
+  const percent = (value: number, total: number) => `${(value / total) * 100}%`;
+  const yTexts = chart.yLabels.map((label) => axisMoney(label.amountMinor));
+  // A coluna do eixo tem a largura do maior rotulo: "2,5 mil US$" em espanhol
+  // e bem mais largo que "$2.5K" e seria cortado numa coluna fixa.
+  const axisWidth = `${Math.max(1, ...yTexts.map((text) => text.length)) + 1}ch`;
 
   return (
     <div className="studio-chart-card dash-card p-5 sm:p-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0 max-w-full">
-          <h3 className="display-title text-2xl text-[var(--color-primary)]">
+          {/* O total e o numero que o professor veio ver: ele e o destaque, e
+              "Revenue" vira o rotulo. */}
+          <h3 className="text-sm font-semibold text-[var(--color-ink-soft)]">
             {title}
           </h3>
-          <p className="mt-1 text-sm leading-6 text-[var(--color-ink-soft)]">
-            {subtitle}
-          </p>
           {/* O total é agregado, não o valor do último ponto. Fora do SVG,
               ele pode quebrar linha sem ser cortado. */}
           {points.length > 0 && totalMinor ? (
-            <strong className="mt-2 inline-block max-w-full break-all rounded-md bg-[#0f2744] px-3 py-1 text-sm font-extrabold text-white">
+            <strong className="num mt-1 block max-w-full break-all text-3xl font-bold text-[var(--color-primary)]">
               {totalLabel}
             </strong>
           ) : null}
+          <p className="mt-1 text-sm leading-6 text-[var(--color-ink-soft)]">
+            {subtitle}
+          </p>
         </div>
         {headerAction}
       </div>
 
       <div className="studio-chart-canvas">
-        <svg
-          viewBox={`0 0 ${chart.width} ${chart.height}`}
-          role="img"
-          aria-label={ariaLabel}
-          className="h-full w-full"
-        >
-          <defs>
-            <linearGradient id="studioRevenueArea" x1="0" x2="0" y1="0" y2="1">
-              <stop offset="0%" stopColor="#1a365d" stopOpacity="0.2" />
-              <stop offset="100%" stopColor="#1a365d" stopOpacity="0" />
-            </linearGradient>
-          </defs>
-          {chart.gridLines.map((line) => (
-            <line
-              key={line.y}
-              x1={chart.padLeft}
-              x2={chart.width - chart.padRight}
-              y1={line.y}
-              y2={line.y}
-              stroke="var(--color-line)"
-              strokeDasharray={line.major ? "0" : "4 6"}
-            />
-          ))}
-          {chart.yLabels.map((label) => (
-            <text
-              key={label.text}
-              x={chart.padLeft - 8}
-              y={label.y + 4}
-              textAnchor="end"
-              fontSize="10"
-              fill="var(--color-ink-muted)"
-              fontWeight="700"
+        {/* O texto do eixo morava DENTRO do SVG, que escala com o cartao: 10
+            unidades viravam ~9px no computador e ~4px no celular. Agora os
+            rotulos sao HTML em volta do desenho e ficam sempre em 12px; o
+            desenho estica (preserveAspectRatio none) e o traco nao engorda. */}
+        <div className="flex h-[200px] gap-2">
+          <div className="relative shrink-0 text-xs" style={{ width: axisWidth }} aria-hidden="true">
+            {chart.yLabels.map((label, index) => (
+              <span
+                key={index}
+                className="absolute right-0 -translate-y-1/2 whitespace-nowrap text-xs font-semibold tabular-nums text-[var(--color-ink-muted)]"
+                style={{ top: percent(label.y, chart.height) }}
+              >
+                {yTexts[index]}
+              </span>
+            ))}
+          </div>
+          <div className="relative min-w-0 flex-1">
+            <svg
+              viewBox={`0 0 ${chart.width} ${chart.height}`}
+              preserveAspectRatio="none"
+              role="img"
+              aria-label={ariaLabel}
+              className="absolute inset-0 h-full w-full overflow-visible"
             >
-              {label.text}
-            </text>
-          ))}
+              <defs>
+                <linearGradient id="studioRevenueArea" x1="0" x2="0" y1="0" y2="1">
+                  <stop offset="0%" stopColor="#1a365d" stopOpacity="0.2" />
+                  <stop offset="100%" stopColor="#1a365d" stopOpacity="0" />
+                </linearGradient>
+              </defs>
+              {chart.gridLines.map((line, index) => (
+                <line
+                  key={index}
+                  x1={0}
+                  x2={chart.width}
+                  y1={line.y}
+                  y2={line.y}
+                  stroke="var(--color-line)"
+                  strokeDasharray={line.major ? "0" : "4 6"}
+                  vectorEffect="non-scaling-stroke"
+                />
+              ))}
+              <path d={chart.areaPath} fill="url(#studioRevenueArea)" />
+              <path
+                d={chart.linePath}
+                stroke="var(--color-primary)"
+                strokeWidth="3"
+                fill="none"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                vectorEffect="non-scaling-stroke"
+              />
+            </svg>
+            {/* Os pontos sao HTML: com o desenho esticado, um circulo do SVG
+                viraria elipse. */}
+            {chart.points.map(([x, y], index) => {
+              const last = index === chart.points.length - 1;
+              return (
+                <span
+                  key={index}
+                  aria-hidden="true"
+                  className={`absolute -translate-x-1/2 -translate-y-1/2 rounded-full ${
+                    last ? "size-2.5 bg-[var(--color-accent)]" : "size-1.5 bg-[var(--color-primary)]"
+                  }`}
+                  style={{ left: percent(x, chart.width), top: percent(y, chart.height) }}
+                />
+              );
+            })}
+          </div>
+        </div>
+        <div
+          className="relative mt-2 h-4 text-xs"
+          style={{ marginLeft: `calc(${axisWidth} + 0.5rem)` }}
+          aria-hidden="true"
+        >
           {points.map((point, index) =>
             index % labelEvery === 0 ? (
               // A chave era o rotulo: em 24 meses "Sep" aparecia duas vezes e
-              // o React reclamava de chave repetida.
-              <text
+              // o React reclamava de chave repetida. O 1o e o ultimo rotulo
+              // encostam na borda em vez de vazar dela.
+              <span
                 key={point.key}
-                x={chart.points[index]?.[0] ?? 0}
-                y={chart.height - 8}
-                textAnchor="middle"
-                fontSize="10"
-                fill="var(--color-ink-muted)"
-                fontWeight="700"
+                className={`absolute top-0 whitespace-nowrap text-xs font-semibold text-[var(--color-ink-muted)] ${
+                  index === 0
+                    ? ""
+                    : index === points.length - 1
+                      ? "-translate-x-full"
+                      : "-translate-x-1/2"
+                } ${index % (labelEvery * 3) === 0 ? "" : "max-sm:hidden"}`}
+                style={{ left: percent(chart.points[index]?.[0] ?? 0, chart.width) }}
               >
                 {point.label}
-              </text>
+              </span>
             ) : null,
           )}
-          <path d={chart.areaPath} fill="url(#studioRevenueArea)" />
-          <path
-            d={chart.linePath}
-            stroke="var(--color-primary)"
-            strokeWidth="3"
-            fill="none"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-          {chart.points.map((point, index) => (
-            <circle
-              key={`${point[0]}-${point[1]}`}
-              cx={point[0]}
-              cy={point[1]}
-              r={index === chart.points.length - 1 ? 5 : 2.5}
-              fill={
-                index === chart.points.length - 1
-                  ? "var(--color-accent)"
-                  : "var(--color-primary)"
-              }
-            />
-          ))}
-        </svg>
+        </div>
+        {note ? (
+          <p className="mt-3 text-xs leading-5 text-[var(--color-ink-soft)]">{note}</p>
+        ) : null}
 
-        {!totalMinor ? (
+        {unavailableLabel ? (
+          <div className="studio-chart-empty" role="status">
+            <p>{unavailableLabel}</p>
+          </div>
+        ) : !totalMinor ? (
           <div className="studio-chart-empty">
             {/* A cena do recibo, sem moeda: nada aqui sugere quanto vai entrar. */}
             <SpotArt scene="noSales" className="spot-art-in mx-auto mb-2 max-w-[6.5rem]" />
@@ -149,18 +209,21 @@ export function RevenueChart({
 }
 
 function buildChart(points: RevenuePoint[]) {
+  // Os rotulos ficam fora do desenho: sem margem lateral para eles.
   const width = 640;
-  const height = 240;
-  const padLeft = 48;
-  const padRight = 16;
-  const padTop = 18;
-  const padBottom = 32;
-  const innerWidth = width - padLeft - padRight;
+  const height = 200;
+  const padTop = 10;
+  const padBottom = 6;
   const innerHeight = height - padTop - padBottom;
-  const maxGross = Math.max(...points.map((point) => point.grossMinor), 10000);
-  const stepX = innerWidth / Math.max(1, points.length - 1);
+  // O topo era o maior mes exato: o ponto encostava no teto e o eixo escrevia
+  // valores quebrados. Agora sobe para um passo redondo (1, 2, 2.5 ou 5 x 10^n).
+  const peak = Math.max(...points.map((point) => point.grossMinor), 10000);
+  const step = niceStep(peak / 4);
+  const intervals = Math.max(1, Math.ceil(peak / step));
+  const maxGross = step * intervals;
+  const stepX = width / Math.max(1, points.length - 1);
   const plotted = points.map((point, index) => {
-    const x = padLeft + index * stepX;
+    const x = index * stepX;
     const y = padTop + innerHeight - (point.grossMinor / maxGross) * innerHeight;
 
     return [x, y] as [number, number];
@@ -169,35 +232,28 @@ function buildChart(points: RevenuePoint[]) {
     .map((point, index) => `${index === 0 ? "M" : "L"}${point[0]},${point[1]}`)
     .join(" ");
   const baseline = padTop + innerHeight;
-  const areaPath = `${linePath} L${plotted[plotted.length - 1]?.[0] ?? padLeft},${baseline} L${plotted[0]?.[0] ?? padLeft},${baseline} Z`;
-  const gridLines = [0, 0.25, 0.5, 0.75, 1].map((position, index) => ({
-    y: padTop + innerHeight - position * innerHeight,
-    major: index === 0,
+  const areaPath = `${linePath} L${plotted[plotted.length - 1]?.[0] ?? 0},${baseline} L${plotted[0]?.[0] ?? 0},${baseline} Z`;
+  const ticks = Array.from({ length: intervals + 1 }, (_, index) => ({
+    y: padTop + innerHeight - (index / intervals) * innerHeight,
+    amountMinor: step * index,
   }));
-  const yLabels = [0, 0.25, 0.5, 0.75, 1].map((position) => ({
-    y: padTop + innerHeight - position * innerHeight,
-    text: formatAxisLabel(maxGross * position),
-  }));
+  const gridLines = ticks.map((tick, index) => ({ y: tick.y, major: index === 0 }));
 
   return {
     width,
     height,
-    padLeft,
-    padRight,
     points: plotted,
     linePath,
     areaPath,
     gridLines,
-    yLabels,
+    yLabels: ticks,
   };
 }
 
-function formatAxisLabel(amountMinor: number) {
-  const dollars = amountMinor / 100;
-
-  if (dollars >= 1000) {
-    return `$${Math.round(dollars / 1000)}k`;
-  }
-
-  return `$${Math.round(dollars)}`;
+// Menor passo "redondo" (1, 2, 2.5 ou 5 vezes uma potencia de 10) que cobre o
+// valor pedido. Exportado so para o teste.
+export function niceStep(value: number) {
+  const magnitude = 10 ** Math.floor(Math.log10(value));
+  const factor = [1, 2, 2.5, 5, 10].find((candidate) => candidate * magnitude >= value) ?? 10;
+  return factor * magnitude;
 }

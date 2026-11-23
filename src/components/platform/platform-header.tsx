@@ -113,7 +113,7 @@ export function PlatformHeader({ currentNavigationHref, searchHref }: {
           <AdvisorHeaderSlot />
           <NotificationBell />
           {status === "authenticated" && user ? (
-            <AccountMenu user={user} onSignOut={signOut} />
+            <AccountMenu user={user} onSignOut={signOut} topBarSwitchHref={switchTo?.href} />
           ) : null}
           {/* O idioma só existia no site público: dentro de /teach, /learn,
               /account e /ops a pessoa tinha que sair da plataforma para trocar.

@@ -1,4 +1,5 @@
 import { LoadingScreen } from "@/components/auth/loading-screen";
+import { SkillsetSpinner } from "@/components/shared/skillset-spinner";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { getServerTranslation } from "@/lib/i18n/server";
@@ -19,16 +20,9 @@ export default function LoadingPage() {
   );
 }
 
+// Mesma tela e mesma frase do LoadingScreen que entra no lugar dela: a troca
+// do servidor para o cliente não aparece.
 async function LoadingFallback() {
   const { t } = await getServerTranslation();
-  return (
-    <main className="grid min-h-screen place-items-center bg-[var(--color-base)] px-5">
-      <section className="text-center">
-        <div className="mx-auto mb-5 size-14 rounded-full border-[3px] border-[rgba(26,54,93,0.12)] border-t-[var(--color-accent-fg)] motion-safe:animate-spin" />
-        <p className="text-sm font-semibold text-[var(--color-ink-soft)]">
-          {t("appErrors.preparingAccess")}
-        </p>
-      </section>
-    </main>
-  );
+  return <SkillsetSpinner title={t("authFlow.loading.title")} />;
 }

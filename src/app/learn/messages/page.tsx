@@ -23,8 +23,23 @@ export default async function LearnMessagesPage() {
         description={t("learnWave2.messagesPage.description")}
       >
         {/* useSearchParams (a conversa aberta vive em ?course=) exige Suspense
-            na rota. */}
-        <Suspense fallback={null}>
+            na rota. A espera é a mesma da caixa (lista de conversas em
+            esqueleto, no mesmo tom, para nada trocar de cor na passagem), não
+            uma área em branco. */}
+        <Suspense
+          fallback={
+            <div aria-busy="true" className="grid gap-5 lg:grid-cols-[minmax(240px,320px)_1fr]">
+              <p className="sr-only" role="status">
+                {t("learnWave2.messages.loading")}
+              </p>
+              <div aria-hidden="true" className="grid content-start gap-2">
+                {[0, 1, 2].map((row) => (
+                  <div key={row} className="h-[84px] animate-pulse rounded-md bg-[var(--color-surface-strong)]" />
+                ))}
+              </div>
+            </div>
+          }
+        >
           <StudentMessagesInbox />
         </Suspense>
       </PlatformShell>

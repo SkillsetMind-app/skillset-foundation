@@ -4,11 +4,17 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
+import { useAuth } from "@/components/auth/auth-provider";
+import { usePageHeading } from "@/components/auth/page-heading";
 import {
   TurnstileWidget,
   isCaptchaEnabled,
 } from "@/components/auth/turnstile-widget";
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { SkillsetSpinner } from "@/components/shared/skillset-spinner";
+import { BusyLabel } from "@/components/ui/busy-label";
+import { InlineAlert } from "@/components/ui/inline-alert";
+import { ProgressBar } from "@/components/ui/progress-bar";
 import type { OnboardingAnswers, UserGoal } from "@/domain/user-profile";
 import { CONNECT_PAYOUT_COUNTRIES, isConnectPayoutCountry } from "@/lib/payments/connect-countries";
 import {
@@ -29,7 +35,10 @@ import {
   updateOnboardingAnswers,
 } from "@/lib/data/user-profiles";
 import type { Role } from "@/lib/permissions";
-import { getAuthPathIntentFromSearchParams } from "@/lib/auth/routing";
+import {
+  getAuthPathIntentFromSearchParams,
+  getPlanCheckoutReturnTo,
+} from "@/lib/auth/routing";
 
 const paths = [
   {
@@ -105,10 +114,17 @@ const timezoneOptions = [
 
 export function OnboardingChoice() {
   const router = useRouter();
+  const { refreshUser } = useAuth();
   const { locale, t } = useTranslation();
   const searchParams = useSearchParams();
   const pathIntent = useMemo(
     () => getAuthPathIntentFromSearchParams(searchParams),
+    [searchParams],
+  );
+  // The plan picked on /pricing, when the visitor came from one of its
+  // buttons. Only that card screen counts: any other returnTo is ignored here.
+  const planCheckout = useMemo(
+    () => getPlanCheckoutReturnTo(searchParams.get("returnTo")),
     [searchParams],
   );
   const [step, setStep] = useState(0);
@@ -137,6 +153,13 @@ export function OnboardingChoice() {
   // Quem ja terminou o cadastro nao repete perfil/objetivos na ativacao.
   const [streamlinedTeacherActivation, setStreamlinedTeacherActivation] =
     useState(false);
+  // Na ativacao curta so aparece o que falta. Decidido uma vez, com o que veio
+  // salvo: senao o campo do pais sumia no instante em que a pessoa escolhia, e
+  // o cartao do e-mail some junto com o "verificado" que ela acabou de ver.
+  // "Outro pais" continua aparecendo, por causa do aviso de que sem conta de
+  // recebimento elegivel nao da para vender.
+  const [askPayoutCountry, setAskPayoutCountry] = useState(true);
+  const [askEmailVerification, setAskEmailVerification] = useState(true);
 
   useEffect(() => {
     // Supabase re-fires onAuthStateChange on TOKEN_REFRESHED / USER_UPDATED —
@@ -167,6 +190,7 @@ export function OnboardingChoice() {
       seeded = true;
 
       setDisplayName(authedUser.displayName ?? "");
+      setAskEmailVerification(!authedUser.emailVerified);
 
       void (async () => {
         try {
@@ -183,6 +207,7 @@ export function OnboardingChoice() {
           setOnboardingAnswers(profile?.onboardingAnswers ?? {});
           setAnswersLoaded(true);
           setPayoutCountry(profile?.onboardingAnswers?.payoutCountry ?? "");
+          setAskPayoutCountry(!isConnectPayoutCountry(profile?.onboardingAnswers?.payoutCountry));
           setTeacherTermsAccepted(Boolean(profile?.teacherTermsAcceptedAt));
 
           const intendedRole = pathIntent ?? "student";
@@ -243,6 +268,11 @@ export function OnboardingChoice() {
     "{handle}",
     () => normalizeUsername(username) || t("onboarding.usernamePlaceholder"),
   );
+  // A ativacao curta nao tem campo de @: sem um, o texto mostrava o exemplo
+  // "@your-name" como se fosse o endereco da pessoa. Diz so que e publico.
+  const streamlinedProfileNotice = normalizeUsername(username)
+    ? publicProfileNotice
+    : t("onboarding.publicProfileNoticeNoHandle");
   const canContinue = selectedPath !== null
     && (!selectedPathIncludesTeacher || (teacherTermsAccepted && emailVerified));
   const payoutCountryAnswered = payoutCountry === "other" || isConnectPayoutCountry(payoutCountry);
@@ -270,6 +300,66 @@ export function OnboardingChoice() {
       <p id="activation-payout-warning" role="status" className="text-sm leading-6 text-[var(--color-ink-soft)]">
         {payoutCountry === "other" ? t("onboarding.payoutCountryUnavailable") : null}
       </p>
+    </div>
+  );
+
+  // O mesmo cartao nas duas telas (ativacao curta e passo 1 do cadastro).
+  const emailVerificationCard = (
+    <div className="rounded-lg border border-[var(--color-line)] bg-white p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="font-semibold text-[var(--color-ink)]">
+            {t("onboarding.emailVerificationTitle")}
+          </p>
+          <p className="mt-1">{t("onboarding.emailVerificationDesc")}</p>
+        </div>
+        {/* "Required" e aviso, nao erro: as cores de aviso da plataforma (como
+            na aba Seguranca), no lugar do rosa do vermelho antigo com dourado. */}
+        <span
+          className={`shrink-0 rounded-chip px-2 py-1 text-[10px] font-bold uppercase tracking-[0.14em] ${
+            emailVerified
+              ? "bg-[rgba(26,54,93,0.08)] text-[var(--color-primary)]"
+              : "bg-[var(--color-warning-soft)] text-[var(--color-warning-fg)]"
+          }`}
+        >
+          {emailVerified ? t("onboarding.verified") : t("onboarding.required")}
+        </span>
+      </div>
+      {!emailVerified ? (
+        <div className="mt-4 flex flex-wrap gap-2">
+          {isCaptchaEnabled ? (
+            <div className="basis-full">
+              <TurnstileWidget
+                onToken={setCaptchaToken}
+                resetSignal={captchaResetSignal}
+              />
+            </div>
+          ) : null}
+          {/* Os dois em contorno e 14px: o botao cheio da tela e o que ativa
+              (ou continua). "I verified my email" cheio competia com ele. */}
+          <button
+            type="button"
+            onClick={handleSendVerification}
+            disabled={isSendingVerification || captchaPending}
+            className="button-outline px-4 py-2 text-sm"
+          >
+            {t("onboarding.sendVerification")}
+          </button>
+          <button
+            type="button"
+            onClick={handleRefreshVerification}
+            disabled={isSendingVerification}
+            className="button-outline px-4 py-2 text-sm"
+          >
+            {t("onboarding.iVerified")}
+          </button>
+        </div>
+      ) : null}
+      {verificationMessage ? (
+        <p className="mt-3 text-xs font-semibold text-[var(--color-primary)]">
+          {verificationMessage}
+        </p>
+      ) : null}
     </div>
   );
 
@@ -395,6 +485,14 @@ export function OnboardingChoice() {
       return;
     }
 
+    // O botao "Activate teaching" nao fica mais apagado por falta do aceite:
+    // o clique explica o que falta, em vez de nao fazer nada.
+    if (selectedPathIncludesTeacher && !teacherTermsAccepted) {
+      setStep(0);
+      setError(t("onboarding.errorAcceptTerms"));
+      return;
+    }
+
     setIsSaving(true);
 
     try {
@@ -420,84 +518,59 @@ export function OnboardingChoice() {
         },
       });
 
-      router.push(selectedPath.href);
+      await refreshUser();
+      // A new teacher who chose a plan on /pricing goes straight to its card
+      // screen; without that choice, the workspace as before.
+      router.push(
+        (selectedPathIncludesTeacher && planCheckout) || selectedPath.href,
+      );
     } catch {
       setError(t("onboarding.errorFinish"));
       setIsSaving(false);
     }
   }
 
+  // A ativacao curta assume o titulo e a descricao da pagina: o padrao de
+  // /onboarding ("Set up your SkillsetMind profile.") fala de montar um perfil
+  // que ela nao monta. Decidido pelo perfil carregado, nao pelo endereco: o
+  // cadastro de 3 passos tambem abre com ?path=teacher. Sem o cartao do e-mail
+  // (ja verificado), "verifique seu e-mail" seria um pedido sem botao.
+  const streamlinedDescriptionKey = askEmailVerification
+    ? "onboarding.streamlinedDesc"
+    : "onboarding.streamlinedDescVerified";
+  const headingOnPage = usePageHeading(
+    !isBootstrapping && streamlinedTeacherActivation
+      ? { titleKey: "onboarding.streamlinedTitle", descriptionKey: streamlinedDescriptionKey }
+      : null,
+  );
+
   if (isBootstrapping) {
-    return (
-      <div className="mt-6 rounded-lg border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-5 text-sm font-semibold text-[var(--color-ink-soft)]">
-        {t("onboarding.preparing")}
-      </div>
-    );
+    // O mesmo giro e a mesma frase do fallback de /onboarding, que vem logo
+    // antes: antes eram duas esperas seguidas com cara e texto diferentes.
+    return <SkillsetSpinner fullscreen={false} title={t("authFlow.loading.title")} />;
   }
 
   if (streamlinedTeacherActivation) {
+    // Por que "Activate teaching" esta apagado. A trava continua a mesma; so
+    // passa a ser dita, na mesma frase que o clique mostraria.
+    const activateBlockedReason = !emailVerified
+      ? t("onboarding.errorVerifyEmail")
+      : !payoutCountryAnswered
+        ? t("onboarding.payoutCountryRequired")
+        : "";
+
     return (
       <div className="mt-6 grid gap-5">
-        {payoutCountryField}
-        <div className="rounded-lg border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
-          <p className="font-semibold text-[var(--color-ink)]">
-            {t("onboarding.streamlinedTitle")}
+        {/* O titulo e a descricao moram no topo da pagina (o cartao que os
+            repetia saiu); solta, sem a pagina, a tela mostra a descricao. */}
+        {headingOnPage ? null : (
+          <p className="text-sm leading-6 text-[var(--color-ink-soft)]">
+            {t(streamlinedDescriptionKey)}
           </p>
-          <p className="mt-1">{t("onboarding.streamlinedDesc")}</p>
-        </div>
+        )}
+        {askPayoutCountry ? payoutCountryField : null}
 
-        <div className="rounded-lg border border-[var(--color-line)] bg-white p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <p className="font-semibold text-[var(--color-ink)]">
-                {t("onboarding.emailVerificationTitle")}
-              </p>
-              <p className="mt-1">{t("onboarding.emailVerificationDesc")}</p>
-            </div>
-            <span
-              className={`shrink-0 rounded-chip px-2 py-1 text-[10px] font-bold uppercase tracking-[0.14em] ${
-                emailVerified
-                  ? "bg-[rgba(26,54,93,0.08)] text-[var(--color-primary)]"
-                  : "bg-[rgba(178,34,52,0.08)] text-[var(--color-accent-fg)]"
-              }`}
-            >
-              {emailVerified ? t("onboarding.verified") : t("onboarding.required")}
-            </span>
-          </div>
-          {!emailVerified ? (
-            <div className="mt-4 flex flex-wrap gap-2">
-              {isCaptchaEnabled ? (
-                <div className="basis-full">
-                  <TurnstileWidget
-                    onToken={setCaptchaToken}
-                    resetSignal={captchaResetSignal}
-                  />
-                </div>
-              ) : null}
-              <button
-                type="button"
-                onClick={handleSendVerification}
-                disabled={isSendingVerification || captchaPending}
-                className="button-outline px-4 py-2 text-xs disabled:opacity-60"
-              >
-                {t("onboarding.sendVerification")}
-              </button>
-              <button
-                type="button"
-                onClick={handleRefreshVerification}
-                disabled={isSendingVerification}
-                className="button-solid px-4 py-2 text-xs disabled:opacity-60"
-              >
-                {t("onboarding.iVerified")}
-              </button>
-            </div>
-          ) : null}
-          {verificationMessage ? (
-            <p className="mt-3 text-xs font-semibold text-[var(--color-primary)]">
-              {verificationMessage}
-            </p>
-          ) : null}
-        </div>
+        {askEmailVerification ? emailVerificationCard : null}
 
         <label className="flex gap-3 rounded-lg border border-[var(--color-line)] bg-white p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
           <input
@@ -510,7 +583,7 @@ export function OnboardingChoice() {
             {t("onboarding.teacherTermsPrefix")}{" "}
             <Link
               href="/legal/teacher-terms"
-              className="font-semibold text-[var(--color-primary)] underline-offset-4 hover:underline"
+              className="font-semibold text-[var(--color-primary)]! underline-offset-4 hover:underline"
               target="_blank"
             >
               {t("onboarding.teacherTermsLink")}
@@ -518,32 +591,43 @@ export function OnboardingChoice() {
             {t("onboarding.teacherTermsSuffix")}
           </span>
         </label>
-        <p className="text-xs leading-5 text-[var(--color-ink-soft)]">{publicProfileNotice}</p>
+        <p className="text-xs leading-5 text-[var(--color-ink-soft)]">{streamlinedProfileNotice}</p>
 
         {error ? (
-          <p role="alert" className="rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
+          <InlineAlert tone="error">
             {error}
-          </p>
+          </InlineAlert>
         ) : null}
 
-        <div className="flex flex-wrap gap-3">
+        {/* Um botao forte so ("Activate teaching"); pular vira texto discreto,
+            no mesmo lugar e com o mesmo destino. */}
+        <div className="flex flex-wrap items-center gap-3">
           <button
             type="button"
             onClick={() => router.push("/learn")}
             disabled={isSaving}
-            className="button-outline px-4 py-2.5 text-sm disabled:opacity-60"
+            className="min-h-11 rounded-md px-2 text-sm font-semibold text-[var(--color-ink-soft)] underline-offset-4 hover:text-[var(--color-primary)] hover:underline disabled:opacity-60"
           >
             {t("onboarding.skipForNow")}
           </button>
           <button
             type="button"
             onClick={handleFinish}
-            disabled={isSaving || !emailVerified || !teacherTermsAccepted || !payoutCountryAnswered}
-            className="button-solid px-4 py-2.5 text-sm disabled:opacity-60"
+            disabled={isSaving || !emailVerified || !payoutCountryAnswered}
+            aria-describedby={activateBlockedReason ? "activation-blocked-reason" : undefined}
+            className="button-solid button-lg"
           >
-            {isSaving ? t("onboarding.activating") : t("onboarding.activateTeaching")}
+            <BusyLabel busy={isSaving} idle={t("onboarding.activateTeaching")} busyText={t("onboarding.activating")} />
           </button>
         </div>
+        {activateBlockedReason ? (
+          <p
+            id="activation-blocked-reason"
+            className="-mt-2 text-sm leading-6 text-[var(--color-ink-soft)]"
+          >
+            {activateBlockedReason}
+          </p>
+        ) : null}
       </div>
     );
   }
@@ -566,12 +650,7 @@ export function OnboardingChoice() {
           </span>
           <span className="text-[var(--color-ink-soft)]">{stepCounter}</span>
         </div>
-        <div className="h-1 overflow-hidden rounded-full bg-[var(--color-surface-soft)]">
-          <div
-            className="h-full rounded-full bg-[var(--color-primary)] transition-[width] duration-300"
-            style={{ width: `${((step + 1) / stepLabels.length) * 100}%` }}
-          />
-        </div>
+        <ProgressBar value={Math.round(((step + 1) / stepLabels.length) * 100)} label={stepCounter} />
       </div>
 
       {step === 0 ? (
@@ -603,58 +682,7 @@ export function OnboardingChoice() {
           {selectedPathIncludesTeacher ? (
             <div className="grid gap-3">
               {payoutCountryField}
-              <div className="rounded-lg border border-[var(--color-line)] bg-white p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <p className="font-semibold text-[var(--color-ink)]">
-                      {t("onboarding.emailVerificationTitle")}
-                    </p>
-                    <p className="mt-1">{t("onboarding.emailVerificationDesc")}</p>
-                  </div>
-                  <span
-                    className={`shrink-0 rounded-chip px-2 py-1 text-[10px] font-bold uppercase tracking-[0.14em] ${
-                      emailVerified
-                        ? "bg-[rgba(26,54,93,0.08)] text-[var(--color-primary)]"
-                        : "bg-[rgba(178,34,52,0.08)] text-[var(--color-accent-fg)]"
-                    }`}
-                  >
-                    {emailVerified ? t("onboarding.verified") : t("onboarding.required")}
-                  </span>
-                </div>
-                {!emailVerified ? (
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    {isCaptchaEnabled ? (
-                      <div className="basis-full">
-                        <TurnstileWidget
-                          onToken={setCaptchaToken}
-                          resetSignal={captchaResetSignal}
-                        />
-                      </div>
-                    ) : null}
-                    <button
-                      type="button"
-                      onClick={handleSendVerification}
-                      disabled={isSendingVerification || captchaPending}
-                      className="button-outline px-4 py-2 text-xs disabled:opacity-60"
-                    >
-                      {t("onboarding.sendVerification")}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleRefreshVerification}
-                      disabled={isSendingVerification}
-                      className="button-solid px-4 py-2 text-xs disabled:opacity-60"
-                    >
-                      {t("onboarding.iVerified")}
-                    </button>
-                  </div>
-                ) : null}
-                {verificationMessage ? (
-                  <p className="mt-3 text-xs font-semibold text-[var(--color-primary)]">
-                    {verificationMessage}
-                  </p>
-                ) : null}
-              </div>
+              {emailVerificationCard}
 
               <label className="flex gap-3 rounded-lg border border-[var(--color-line)] bg-white p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
                 <input
@@ -667,7 +695,7 @@ export function OnboardingChoice() {
                   {t("onboarding.teacherTermsPrefix")}{" "}
                   <Link
                     href="/legal/teacher-terms"
-                    className="font-semibold text-[var(--color-primary)] underline-offset-4 hover:underline"
+                    className="font-semibold text-[var(--color-primary)]! underline-offset-4 hover:underline"
                     target="_blank"
                   >
                     {t("onboarding.teacherTermsLink")}
@@ -691,13 +719,13 @@ export function OnboardingChoice() {
                 value={displayName}
                 onChange={(event) => setDisplayName(event.target.value)}
                 placeholder={t("onboarding.publicNamePlaceholder")}
-                className="rounded-md border border-[var(--color-line)] bg-white px-3.5 py-2.5 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
+                className="field-input"
               />
             </label>
 
             <label className="grid gap-1.5 text-sm font-semibold text-[var(--color-ink)]">
               {t("onboarding.username")}
-              <div className="flex overflow-hidden rounded-md border border-[var(--color-line)] bg-white focus-within:border-[var(--color-primary-light)]">
+              <div className="flex overflow-hidden rounded-md border-[1.5px] border-[var(--color-field-border)] bg-[var(--color-surface-soft)] focus-within:border-[var(--color-primary)] focus-within:bg-[var(--color-surface)]">
                 <span className="grid place-items-center border-r border-[var(--color-line)] px-3 text-sm font-semibold text-[var(--color-ink-soft)]">
                   @
                 </span>
@@ -707,7 +735,7 @@ export function OnboardingChoice() {
                   onChange={(event) => setUsername(normalizeUsername(event.target.value))}
                   placeholder={t("onboarding.usernamePlaceholder")}
                   maxLength={32}
-                  className="min-w-0 flex-1 px-3.5 py-2.5 text-sm font-normal outline-none"
+                  className="min-w-0 flex-1 bg-transparent px-3.5 py-2.5 text-sm font-normal outline-none"
                 />
               </div>
             </label>
@@ -720,7 +748,7 @@ export function OnboardingChoice() {
               onChange={(event) => setBio(event.target.value)}
               placeholder={t("onboarding.bioPlaceholder")}
               rows={3}
-              className="resize-none rounded-md border border-[var(--color-line)] bg-white px-3.5 py-2.5 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
+              className="field-input resize-none"
             />
             <span className="text-xs font-normal text-[var(--color-ink-soft)]">
               {t("onboarding.bioCount").replace("{count}", String(bio.trim().length))}
@@ -732,7 +760,7 @@ export function OnboardingChoice() {
             <select
               value={timezone}
               onChange={(event) => setTimezone(event.target.value)}
-              className="rounded-md border border-[var(--color-line)] bg-white px-3.5 py-2.5 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
+              className="field-input"
             >
               {safeTimezoneOptions.map((option) => (
                 <option key={option} value={option}>
@@ -773,9 +801,9 @@ export function OnboardingChoice() {
       ) : null}
 
       {error ? (
-        <p role="alert" className="rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
+        <InlineAlert tone="error">
           {error}
-        </p>
+        </InlineAlert>
       ) : null}
 
       <div className="flex flex-wrap gap-3">
@@ -784,7 +812,7 @@ export function OnboardingChoice() {
             type="button"
             onClick={() => setStep((currentStep) => Math.max(currentStep - 1, 0))}
             disabled={isSaving}
-            className="button-outline px-4 py-2.5 text-sm disabled:opacity-60"
+            className="button-outline px-4 py-2.5 text-sm"
           >
             {t("onboarding.back")}
           </button>
@@ -794,7 +822,7 @@ export function OnboardingChoice() {
             type="button"
             onClick={handleNext}
             disabled={isSaving}
-            className="button-solid px-4 py-2.5 text-sm disabled:opacity-60"
+            className="button-solid px-4 py-2.5 text-sm"
           >
             {t("onboarding.continue")}
           </button>
@@ -803,9 +831,9 @@ export function OnboardingChoice() {
             type="button"
             onClick={handleFinish}
             disabled={isSaving}
-            className="button-solid px-4 py-2.5 text-sm disabled:opacity-60"
+            className="button-solid px-4 py-2.5 text-sm"
           >
-            {isSaving ? t("onboarding.saving") : t("onboarding.finishSetup")}
+            <BusyLabel busy={isSaving} idle={t("onboarding.finishSetup")} busyText={t("onboarding.saving")} />
           </button>
         )}
       </div>

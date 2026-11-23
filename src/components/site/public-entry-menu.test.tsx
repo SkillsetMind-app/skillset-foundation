@@ -29,6 +29,8 @@ describe("public account entry", () => {
       expect(link).toHaveAttribute("href", `/auth?mode=signin&path=${intent}`);
       expect(link).not.toHaveAttribute("target");
     }
+    // Entra como os menus da plataforma, em vez de um corte seco.
+    expect(screen.getByRole("link", { name: "My courses" }).parentElement).toHaveClass("motion-drop-in");
   });
 
   // Em produção cada intenção entra pelo seu host curto. A rota de sign-in e a

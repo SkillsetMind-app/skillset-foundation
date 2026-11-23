@@ -84,7 +84,7 @@ describe("classroom without an enrollment", () => {
 
     const dialog = screen.getByRole("dialog");
     expect(within(dialog).getByRole("heading", { name: "Demo course" })).toBeInTheDocument();
-    expect(within(dialog).getByRole("link", { name: /Unlock course/ })).toHaveAttribute("href", "/courses/demo-course");
+    expect(within(dialog).getByRole("link", { name: /Buy course/ })).toHaveAttribute("href", "/courses/demo-course");
     expect(within(dialog).getByRole("link", { name: "Back to my learning" })).toHaveAttribute("href", "/learn");
     expect(screen.queryByText("Enrollment required")).not.toBeInTheDocument();
 
@@ -95,11 +95,11 @@ describe("classroom without an enrollment", () => {
 
   // The modal's fallback printed "Unlock course - $129.00" from the raw
   // course price, always in English. The course page owns the price.
-  it("the popup button says 'Unlock course' with no price", () => {
+  it("the popup button says 'Buy course' with no price", () => {
     render(<EnrolledCourseWorkspace course={course} />);
 
     const cta = within(screen.getByRole("dialog")).getAllByRole("link")[0];
-    expect(cta.textContent?.trim()).toBe("Unlock course");
+    expect(cta.textContent?.trim()).toBe("Buy course");
   });
 
   it("closing the popup goes back to my learning", () => {

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { plans } from "@/data/plans";
+import { isPublicFeatureEnabled } from "@/lib/feature-flags";
 import { notifyOps } from "@/lib/ops/alert";
 import { StripeConfigError } from "@/lib/payments/server/stripe";
 import { runRateLimit } from "@/lib/supabase/rate-limit";
@@ -158,20 +159,43 @@ export async function isOnFreePlan(uid: string): Promise<boolean> {
  */
 export function paymentErrorResponse(error: unknown): NextResponse {
   if (error instanceof StripeConfigError) {
-    // Founder-gated dormant state: Stripe isn't configured yet. Not an error the
-    // buyer caused — the UI shows a calm "payments being set up" notice.
+    // Dormant flows stay silent; an enabled payment flow must not fail unnoticed.
+    if (process.env.NEXT_PUBLIC_GUEST_CHECKOUT_ENABLED === "true"
+      || isPublicFeatureEnabled("payments.checkout")
+      || Boolean(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY)) {
+      notifyOps({
+        event: "payments.configuration.unavailable",
+        severity: "critical",
+        summary: "O pagamento esta habilitado, mas falta uma configuracao necessaria. Compras podem estar bloqueadas. Revise a configuracao e publique novamente.",
+        context: { status: 503 },
+      });
+    }
     return NextResponse.json(
       { error: error.message, code: "payments_not_configured" },
       { status: 503 },
     );
   }
   if (error instanceof PaymentError) {
+    if (error.status === 502 && error.code === "stripe_dashboard_unavailable") {
+      notifyOps({
+        event: "payments.dashboard.unavailable",
+        severity: "warn",
+        summary: "Um professor nao conseguiu abrir o painel da Stripe. Verifique a disponibilidade da integracao e a conta de recebimento.",
+        context: { status: 502 },
+      });
+    }
     return NextResponse.json(
       { error: error.message, ...(error.code ? { code: error.code } : {}) },
       { status: error.status },
     );
   }
-  console.error("Unhandled payment route error", error);
+  console.error("Unhandled payment route error");
+  notifyOps({
+    event: "payments.request.failed",
+    severity: "critical",
+    summary: "Uma operacao de pagamento falhou inesperadamente. O cliente pode nao ter conseguido concluir. Verifique as falhas de pagamento antes de pedir nova tentativa.",
+    context: { status: 500 },
+  });
   return NextResponse.json(
     { error: "Something went wrong. Please try again." },
     { status: 500 },

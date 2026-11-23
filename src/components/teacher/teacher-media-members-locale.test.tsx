@@ -64,7 +64,8 @@ describe("ES-12 media and members with real dictionaries", () => {
 
   it("localizes filters, alt text and sizes; preserves names, URLs, kind values and search draft", () => {
     mount(<TeacherMediaLibrary />);
-    expect(screen.getByRole("heading", { name: "Archivos del curso y recursos de las lecciones" })).toBeInTheDocument();
+    // O titulo da Midia e o h1 da pagina (era um h3 dentro do cartao, sem h1).
+    expect(screen.getByRole("heading", { level: 1, name: "Archivos del curso y recursos de las lecciones" })).toBeInTheDocument();
     const image = screen.getByRole("img", { name: "Portada del curso: Original $&.jpg" });
     expect(image).toHaveAttribute("src", "/uploads/original.jpg");
     expect(screen.getByText(/1,5 KB/)).toBeInTheDocument();
@@ -116,6 +117,23 @@ describe("ES-12 media and members with real dictionaries", () => {
     expect(screen.getByRole("link", { name: "Abrir área de subida del editor" })).toBeInTheDocument();
   });
 
+  // Com arquivos na biblioteca, uma busca ou um tipo sem resultado nao e a
+  // primeira vez: nada de "suba pelo editor", e sim "nenhum resultado" com o
+  // caminho de volta.
+  it("busca sem resultado mostra 'nenhum resultado' e limpa os filtros", () => {
+    const es = getDictionary("es");
+    mount(<TeacherMediaLibrary />);
+    fireEvent.change(screen.getByRole("combobox", { name: "Tipo" }), { target: { value: "course_cover" } });
+    fireEvent.change(screen.getByRole("searchbox", { name: "Buscar recursos" }), { target: { value: "nada assim" } });
+
+    expect(screen.getByText(translate(es, "teacherMedia.noMatches"))).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: translate(es, "teacherMedia.emptyTitle") })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: translate(es, "teacherMedia.clearFilters") }));
+    expect(screen.getByRole("searchbox", { name: "Buscar recursos" })).toHaveValue("");
+    expect(screen.getByRole("combobox", { name: "Tipo" })).toHaveValue("all");
+    expect(screen.getByText("Original $&.jpg")).toBeInTheDocument();
+  });
+
   it.each(["courseError", "assetError"] as const)("relocalizes media %s", (failure) => {
     state[failure] = true;
     mount(<TeacherMediaLibrary />);
@@ -126,8 +144,10 @@ describe("ES-12 media and members with real dictionaries", () => {
 
   it("localizes member metadata, singular counts and theme without translating course content", () => {
     mount(<TeacherMembersAreaHub />);
-    expect(screen.getByRole("heading", { name: "Miembros y comunidades" })).toBeInTheDocument();
-    expect(screen.getByRole("radiogroup", { name: "Tipo de contenido para miembros" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: "Miembros y comunidades" })).toBeInTheDocument();
+    // O seletor segmentado da casa (botoes com aria-pressed), nao mais radios.
+    expect(screen.getByRole("group", { name: "Tipo de contenido para miembros" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Espacios de productos" })).toHaveAttribute("aria-pressed", "true");
     const card = screen.getByRole("article");
     expect(card).toHaveTextContent("Original course $&");
     expect(card).toHaveTextContent("1 módulo · 1 lección");
@@ -136,7 +156,8 @@ describe("ES-12 media and members with real dictionaries", () => {
     expect(card).toHaveTextContent("Comunidad activada");
     expect(within(card).getByRole("link", { name: "Personalizar" }))
       .toHaveAttribute("href", "/teach/builder?courseId=course-1&tab=members");
-    fireEvent.click(screen.getByRole("radio", { name: "Comunidades" }));
+    expect(screen.getByRole("button", { name: "Comunidades" })).toHaveAttribute("aria-pressed", "false");
+    fireEvent.click(screen.getByRole("button", { name: "Comunidades" }));
     expect(state.push).toHaveBeenCalledWith("/teach/members?view=communities");
     fireEvent.click(screen.getByRole("button", { name: "EN" }));
     expect(card).toHaveTextContent("Original course $&");
@@ -160,6 +181,9 @@ describe("ES-12 media and members with real dictionaries", () => {
     state.courseError = true;
     mount(<TeacherMembersAreaHub />);
     expect(screen.getByRole("alert")).toHaveTextContent("No pudimos cargar tus áreas de miembros. Inténtalo de nuevo.");
+    // Falha na leitura nao e "nenhum espaco ainda": sem o vazio, com "Try again".
+    expect(screen.queryByRole("heading", { name: translate(getDictionary("es"), "teacherMembers.noSpace") })).toBeNull();
+    expect(screen.getByRole("button", { name: translate(getDictionary("es"), "appErrors.retry") })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "EN" }));
     expect(screen.getByRole("alert")).toHaveTextContent("We could not load your members areas. Please try again.");
   });

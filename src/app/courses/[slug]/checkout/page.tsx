@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Suspense } from "react";
 
+import { CourseDetailSkeleton } from "@/components/courses/course-detail-skeleton";
 import { CreatorCourseDetail } from "@/components/courses/creator-course-detail";
 import { CheckoutHeader } from "@/components/site/checkout-header";
 import { getPublicCourseByRef } from "@/lib/data/server/public-course";
@@ -87,7 +88,7 @@ export default async function CourseCheckoutPage({ params }: PageProps) {
             </aside>
           ) : null}
           <div className="min-w-0 lg:order-1">
-            <Suspense fallback={<p role="status">{t("publicCourses.loadingCheckout")}</p>}>
+            <Suspense fallback={<CourseDetailSkeleton label={t("publicCourses.loadingCheckout")} checkoutOnly />}>
               <CreatorCourseDetail courseIdOverride={slug} checkoutOnly hideHeader={Boolean(course)} />
             </Suspense>
           </div>

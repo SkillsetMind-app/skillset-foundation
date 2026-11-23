@@ -11,10 +11,12 @@ export default async function OpsUserDossierPage({ params }: { params: Promise<{
   return (
     // A tela pede users.manage (só admin); quem decide de verdade é a RPC, com admin e aal2.
     <ProtectedSurface permissions={["users.manage"]}>
+      {/* O h1 é o nome da pessoa (I-03), que só chega no navegador: a ficha
+          desenha o próprio cabeçalho, com "Person record" em cima. */}
       <PlatformShell
-        eyebrow={t("platform.nav.operations")}
         title={t("platform.ops.userDossier.pageTitle")}
         compact
+        hideHeader
         currentNavigationHref={getOpsNavItem("users").href}
       >
         {/* UID é UUID: sem "%" próprio, então decodificar é seguro com ou sem decodificação prévia do Next. */}

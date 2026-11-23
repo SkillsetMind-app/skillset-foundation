@@ -3,8 +3,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { Download } from "lucide-react";
 
+import { ConfirmActionDialog } from "@/components/admin/confirm-action-dialog";
 import { useTranslation } from "@/components/i18n/i18n-provider";
-import { Field, InlineAlert } from "@/components/ui";
+import { BusyLabel, Button, Field, InlineAlert } from "@/components/ui";
 import type { CreatorVerificationCase } from "@/domain/creator-verification";
 import {
   reviewCreatorVerification,
@@ -40,16 +41,16 @@ function EvidenceDocument({ path }: { path: string }) {
         finally { setBusy(false); }
       }}>
       <Download size={16} aria-hidden="true" />
-      {t(`${copy}.${busy ? "openingDocument" : "document"}`)}
+      <BusyLabel busy={busy} idle={t(`${copy}.document`)} busyText={t(`${copy}.openingDocument`)} />
     </button>
     {failed ? <InlineAlert tone="error">{t(`${copy}.documentError`)}</InlineAlert> : null}
   </div>;
 }
 
-function formatSubmittedAt(iso: string, locale: string, pendingLabel: string) {
+function formatSubmittedAt(iso: string, locale: string) {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) {
-    return pendingLabel;
+    return null;
   }
   return new Intl.DateTimeFormat(locale, {
     dateStyle: "medium",
@@ -66,6 +67,9 @@ export function CreatorVerificationQueue({ query = "" }: { query?: string }) {
   const [success, setSuccess] = useState<ReviewDecision | null>(null);
   const [invalidNoteCaseId, setInvalidNoteCaseId] = useState<string | null>(null);
   const [activeCaseId, setActiveCaseId] = useState<string | null>(null);
+  // Qual decisão foi apertada: só ela gira, as outras só travam (I-08).
+  const [activeDecision, setActiveDecision] = useState<ReviewDecision | null>(null);
+  const [confirmingRejectId, setConfirmingRejectId] = useState<string | null>(null);
   const [reviewNotes, setReviewNotes] = useState<Record<string, string>>({});
   const normalizedQuery = query.toLowerCase().trim();
   const visibleCases = useMemo(
@@ -94,7 +98,13 @@ export function CreatorVerificationQueue({ query = "" }: { query?: string }) {
     );
   }, []);
 
-  async function handleReview(caseId: string, decision: ReviewDecision) {
+  // Sem data, uma frase inteira: "Submitted Pending timestamp" não se lia.
+  function submittedLine(iso: string) {
+    const date = formatSubmittedAt(iso, locale);
+    return date ? t(`${copy}.submitted`).replace("{date}", () => date) : t(`${copy}.submittedUnknown`);
+  }
+
+  async function handleReview(caseId: string, decision: ReviewDecision, confirmed = false) {
     const note = reviewNotes[caseId]?.trim() ?? "";
     setReviewError(false);
     setSuccess(null);
@@ -105,7 +115,13 @@ export function CreatorVerificationQueue({ query = "" }: { query?: string }) {
     }
 
     setInvalidNoteCaseId(null);
+    // Recusar é definitivo: pergunta antes, depois de a nota já estar válida.
+    if (decision === "rejected" && !confirmed) {
+      setConfirmingRejectId(caseId);
+      return;
+    }
     setActiveCaseId(caseId);
+    setActiveDecision(decision);
 
     try {
       await reviewCreatorVerification(caseId, decision, note || null);
@@ -119,17 +135,24 @@ export function CreatorVerificationQueue({ query = "" }: { query?: string }) {
       setReviewError(true);
     } finally {
       setActiveCaseId(null);
+      setActiveDecision(null);
     }
   }
 
   return (
     <section className="min-w-0 break-words rounded-lg border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
+      {confirmingRejectId ? (
+        <ConfirmActionDialog
+          title={t(`${copy}.rejectTitle`)}
+          body={t(`${copy}.rejectBody`)}
+          confirmLabel={t(`${copy}.decisions.rejected`)}
+          onConfirm={() => handleReview(confirmingRejectId, "rejected", true)}
+          onClose={() => setConfirmingRejectId(null)}
+        />
+      ) : null}
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-            {t("platform.ops.verification")}
-          </p>
-          <h3 className="mt-2 text-base font-semibold text-[var(--color-ink)]">
+          <h3 className="text-base font-semibold text-[var(--color-ink)]">
             {t(`${copy}.title`)}
           </h3>
           <p className="mt-1 max-w-2xl text-sm leading-6 text-[var(--color-ink-soft)]">
@@ -143,10 +166,18 @@ export function CreatorVerificationQueue({ query = "" }: { query?: string }) {
       </div>
 
       {loadError ? <InlineAlert tone="error" className="mt-5">{t(`${copy}.loadError`)}</InlineAlert> : null}
-      {reviewError ? <InlineAlert tone="error" className="mt-5">{t(`${copy}.reviewError`)}</InlineAlert> : null}
-      {success ? <InlineAlert tone="success" className="mt-5">{t(`${copy}.success.${success}`)}</InlineAlert> : null}
+      {/* Lugar guardado para o resultado da decisão, do tamanho do aviso: ele
+          aparece sem empurrar a lista para baixo do ponteiro (I-17), pelo
+          mesmo motivo dos botões em lugar fixo das outras filas (#586). A frase
+          mais longa (~56 caracteres) dá três linhas até ~370px (reservadas até
+          400px, com folga), duas até 640px e uma acima; cada linha do aviso
+          tem 24px, mais 26px de moldura. */}
+      <div data-result-slot="" className="mt-5 min-h-[98px] min-[400px]:min-h-[74px] sm:min-h-[50px]">
+        {reviewError ? <InlineAlert tone="error">{t(`${copy}.reviewError`)}</InlineAlert>
+          : success ? <InlineAlert tone="success">{t(`${copy}.success.${success}`)}</InlineAlert> : null}
+      </div>
 
-      <div className="mt-6 grid gap-3">
+      <div className="mt-1 grid gap-3">
         {isLoading ? (
           <p role="status" className="text-sm text-[var(--color-ink-soft)]">
             {t(`${copy}.loading`)}
@@ -177,16 +208,18 @@ export function CreatorVerificationQueue({ query = "" }: { query?: string }) {
                     </p>
                   ) : null}
                 </div>
-                <span className="rounded-md bg-white px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-primary)]">
-                  {formatSubmittedAt(verificationCase.createdAt, locale, t(`${copy}.pendingTimestamp`))}
-                </span>
+                {/* Data em texto simples: a pílula em caixa alta, no lugar onde as
+                    outras filas põem o status, era lida como status (I-17). */}
+                <p className="text-xs tabular-nums text-[var(--color-ink-soft)]">
+                  {submittedLine(verificationCase.createdAt)}
+                </p>
               </div>
 
               <div className="mt-4 grid min-w-0 gap-2 rounded-lg border fine-rule bg-white p-4">
+                {/* Só as partes preenchidas: sem região a linha acabava em "()" (I-17). */}
                 {verificationCase.registrationId ? <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--color-ink-soft)]">
-                  {verificationCase.registrationType} —{" "}
-                  {verificationCase.registrationId} (
-                  {verificationCase.registrationRegion})
+                  {[verificationCase.registrationType, verificationCase.registrationId, verificationCase.registrationRegion]
+                    .filter(Boolean).join(" · ")}
                 </p> : null}
                 {verificationCase.documentPath ? <EvidenceDocument path={verificationCase.documentPath} /> : null}
                 {verificationCase.evidenceLinks.length > 0 ? (
@@ -231,30 +264,27 @@ export function CreatorVerificationQueue({ query = "" }: { query?: string }) {
                   }
                   rows={3}
                   placeholder={t(`${copy}.reviewPlaceholder`)}
-                  className="min-w-0 resize-none rounded-md border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
+                  className="field-input min-w-0 resize-none"
                 />}
               </Field>
 
               <div className="mt-4 flex flex-wrap gap-2">
                 {decisions.map(
                   (decision) => (
-                    <button
+                    // Recusar em vermelho: era o mesmo contorno de "Request changes" (I-04).
+                    <Button
                       key={decision}
-                      type="button"
+                      variant={decision === "approved" ? "solid" : decision === "rejected" ? "danger" : "outline"}
+                      size="sm"
                       onClick={() =>
                         handleReview(verificationCase.id, decision)
                       }
                       disabled={activeCaseId === verificationCase.id}
-                      className={
-                        decision === "approved"
-                          ? "button-solid max-w-full whitespace-normal px-4 py-2 text-xs disabled:opacity-60"
-                          : "button-outline max-w-full whitespace-normal px-4 py-2 text-xs disabled:opacity-60"
-                      }
+                      loading={activeCaseId === verificationCase.id && activeDecision === decision}
+                      className="min-h-11 max-w-full whitespace-normal px-4 py-2"
                     >
-                      {activeCaseId === verificationCase.id
-                        ? t(`${copy}.updating`)
-                        : t(`${copy}.decisions.${decision}`)}
-                    </button>
+                      {t(`${copy}.decisions.${decision}`)}
+                    </Button>
                   ),
                 )}
               </div>

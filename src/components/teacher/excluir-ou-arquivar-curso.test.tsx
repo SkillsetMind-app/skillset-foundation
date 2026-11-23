@@ -1,8 +1,9 @@
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type { ReactElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { I18nProvider } from "@/components/i18n/i18n-provider";
+import { DeleteOrArchiveCourseDialog } from "@/components/teacher/course-actions";
 import { CourseManageHub } from "@/components/teacher/course-manage-hub";
 import { TeacherCourseStudio } from "@/components/teacher/teacher-course-studio";
 import type { TeacherCourse } from "@/domain/teacher-course";
@@ -143,6 +144,7 @@ async function abreModalDoHub() {
   const dialog = await screen.findByRole("dialog", { name: "Delete Facilitation foundations" });
   // O modal so libera a confirmacao depois de saber quantos compradores existem.
   await waitFor(() => expect(mocks.getCourseAudience).toHaveBeenCalledWith("course-1"));
+  await waitFor(() => expect(within(dialog).queryByText("Remove product")).toBeNull());
   return dialog;
 }
 
@@ -268,6 +270,28 @@ describe("o menu abre para dentro da tela", () => {
 });
 
 describe("modal de excluir/arquivar — o texto segue o dado", () => {
+  // O modal abria dizendo "Delete" em vermelho e virava "Archive" em azul
+  // quando a contagem chegava. Antes dela: texto neutro e confirmar travado.
+  it("enquanto a contagem nao chega, nao promete apagar nem arquivar", async () => {
+    let answer!: (audience: { enrollments: number; orders: number; subscriptions: number }) => void;
+    mocks.getCourseAudience.mockReturnValue(new Promise((resolve) => { answer = resolve; }));
+    const menu = await abreMenuDoHub();
+    fireEvent.click(within(menu).getByRole("menuitem", { name: "Delete course" }));
+    const dialog = await screen.findByRole("dialog", { name: "Delete Facilitation foundations" });
+
+    expect(within(dialog).getByText("Remove product")).toBeInTheDocument();
+    expect(within(dialog).getByRole("heading", { level: 2 })).toHaveTextContent("Facilitation foundations");
+    const waiting = within(dialog).getByRole("button", { name: "Checking for buyers..." });
+    expect(waiting).toBeDisabled();
+    expect(waiting).not.toHaveClass("button-danger-solid");
+    expect(within(dialog).queryByText("Delete this course?")).toBeNull();
+    expect(within(dialog).queryByText("This course has students")).toBeNull();
+
+    answer({ enrollments: 1, orders: 0, subscriptions: 0 });
+    expect(await within(dialog).findByRole("button", { name: "Archive course" })).toBeEnabled();
+    expect(within(dialog).queryByText("Remove product")).toBeNull();
+  });
+
   it("sem comprador, avisa que a exclusão é permanente", async () => {
     const dialog = await abreModalDoHub();
 
@@ -358,6 +382,36 @@ describe("modal de excluir/arquivar — o texto segue o dado", () => {
   });
 });
 
+describe("modal de excluir/arquivar — o X do cabeçalho", () => {
+  it("fecha como o Cancelar, sem apagar nada", async () => {
+    const dialog = await abreModalDoHub();
+    const close = within(dialog).getByRole("button", { name: "Close" });
+    expect(close).toHaveClass("button-icon");
+
+    fireEvent.click(close);
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(mocks.deleteOrArchiveCourse).not.toHaveBeenCalled();
+  });
+
+  it("some enquanto apaga, quando o Cancelar também trava", async () => {
+    let fail!: (reason: unknown) => void;
+    mocks.deleteOrArchiveCourse.mockReturnValue(new Promise((_, reject) => { fail = reject; }));
+    const dialog = await abreModalDoHub();
+    fireEvent.click(within(dialog).getByRole("button", { name: "Yes, delete" }));
+
+    await waitFor(() => expect(within(dialog).getByRole("button", { name: "Cancel" })).toBeDisabled());
+    expect(within(dialog).queryByRole("button", { name: "Close" })).toBeNull();
+    // Esc e o clique no fundo seguem o Cancelar travado.
+    fireEvent.keyDown(document, { key: "Escape" });
+    fireEvent.mouseDown(dialog.parentElement!);
+    expect(screen.getByRole("dialog", { name: "Delete Facilitation foundations" })).toBe(dialog);
+
+    fail(new Error("23503"));
+    expect(await within(dialog).findByRole("button", { name: "Close" })).toBeInTheDocument();
+  });
+});
+
 describe("o que acontece depois da ação", () => {
   it("apagado, o hub sai de cena e volta para a lista", async () => {
     const dialog = await abreModalDoHub();
@@ -388,3 +442,65 @@ describe("o que acontece depois da ação", () => {
   });
 });
 vi.mock("@/lib/data/creator-plan", () => ({ fetchCreatorPlanRequired: async () => false }));
+
+// B-11: a pagina de tras rolava por baixo da janela. No painel quem rola e o
+// .platform-content, nao o body.
+describe("modal de excluir/arquivar — a pagina de tras", () => {
+  it("trava a rolagem do .platform-content enquanto aberto e devolve ao fechar", async () => {
+    const { unmount } = renderEn(
+      <section className="platform-content">
+        <DeleteOrArchiveCourseDialog courseId="course-1" courseTitle="Facilitation foundations" onCancel={vi.fn()} onDone={vi.fn()} />
+      </section>,
+    );
+    const scroller = document.querySelector<HTMLElement>(".platform-content")!;
+    await screen.findByRole("dialog", { name: "Delete Facilitation foundations" });
+    expect(scroller.style.overflow).toBe("hidden");
+    expect(document.body.style.overflow).toBe("");
+    unmount();
+    expect(scroller.style.overflow).toBe("");
+  });
+});
+
+// A contagem de compradores que não carrega: "Try again" relê SÓ a contagem, e
+// o confirmar segue travado até ela chegar (sem contagem, nem apagar nem arquivar).
+describe("modal de excluir/arquivar — contagem que não carrega", () => {
+  const deleteError = "We could not delete this product. Nothing was removed. Please try again or contact SkillsetMind support.";
+  const audienceError = "We could not check who bought this product. Nothing was removed.";
+
+  it("ganha \"Try again\", relê a contagem uma vez só e só então libera o confirmar", async () => {
+    let resolve!: (value: { enrollments: number; orders: number; subscriptions: number }) => void;
+    mocks.getCourseAudience
+      .mockReset()
+      .mockRejectedValueOnce(new Error("offline"))
+      .mockReturnValueOnce(new Promise((done) => { resolve = done; }));
+    renderEn(<DeleteOrArchiveCourseDialog courseId="course-1" courseTitle="Facilitation foundations" onCancel={vi.fn()} onDone={vi.fn()} />);
+    const dialog = await screen.findByRole("dialog", { name: "Delete Facilitation foundations" });
+    // A frase da contagem, nunca a do apagar: o "Try again" não tenta apagar.
+    expect(await within(dialog).findByText(audienceError)).toBeInTheDocument();
+    expect(within(dialog).queryByText(deleteError)).toBeNull();
+    expect(within(dialog).getByRole("button", { name: "Yes, delete" })).toBeDisabled();
+
+    const retry = within(dialog).getByRole("button", { name: "Try again" });
+    fireEvent.click(retry);
+    fireEvent.click(retry);
+    // Lendo: as linhas de espera e o confirmar ainda travado.
+    expect(within(dialog).queryByText(audienceError)).toBeNull();
+    expect(within(dialog).getByRole("button", { name: "Checking for buyers..." })).toBeDisabled();
+
+    await act(async () => resolve({ enrollments: 0, orders: 0, subscriptions: 0 }));
+    expect(within(dialog).getByRole("button", { name: "Yes, delete" })).toBeEnabled();
+    expect(mocks.getCourseAudience).toHaveBeenCalledTimes(2);
+    expect(mocks.deleteOrArchiveCourse).not.toHaveBeenCalled();
+  });
+
+  it("a falha de apagar não ganha \"Try again\"", async () => {
+    mocks.deleteOrArchiveCourse.mockRejectedValue(new Error("23503"));
+    renderEn(<DeleteOrArchiveCourseDialog courseId="course-1" courseTitle="Facilitation foundations" onCancel={vi.fn()} onDone={vi.fn()} />);
+    const dialog = await screen.findByRole("dialog", { name: "Delete Facilitation foundations" });
+    fireEvent.click(await within(dialog).findByRole("button", { name: "Yes, delete" }));
+    expect(await within(dialog).findByText(deleteError)).toBeInTheDocument();
+    expect(within(dialog).queryByText(audienceError)).toBeNull();
+    expect(within(dialog).queryByRole("button", { name: "Try again" })).toBeNull();
+    expect(mocks.getCourseAudience).toHaveBeenCalledTimes(1);
+  });
+});

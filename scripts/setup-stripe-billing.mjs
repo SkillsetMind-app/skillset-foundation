@@ -2,8 +2,8 @@
 /**
  * Creates the Skillset Basic Product and its two Prices on Stripe, idempotently.
  *
- *   - Basic: $5/month (lookup key skillset_basic_monthly) and $50/year
- *     (skillset_basic_yearly), recurring USD.
+ *   - Basic: $9/month (lookup key skillset_basic_monthly_20261028) and $90/year
+ *     (skillset_basic_yearly_20261028), recurring USD. Legacy Prices stay active.
  *   - Starter, Pro and Enterprise already exist and src/data/plans.ts carries
  *     their Price ids. This script never creates them, so it cannot mint a
  *     second $19 or $89 Price.
@@ -49,8 +49,8 @@ export const PLANS = [
     id: "basic",
     name: "Skillset Basic",
     description: "10% + $0.30 per sale.",
-    monthlyUsd: 5,
-    yearlyUsd: 50,
+    monthlyUsd: 9,
+    yearlyUsd: 90,
   },
 ];
 
@@ -78,7 +78,7 @@ export async function upsertProduct(stripe, plan) {
 }
 
 export async function upsertPrice(stripe, plan, product, cycle) {
-  const lookupKey = `skillset_${plan.id}_${cycle}`;
+  const lookupKey = `skillset_${plan.id}_${cycle}_20261028`;
   const amount = (cycle === "monthly" ? plan.monthlyUsd : plan.yearlyUsd) * 100;
   const interval = cycle === "monthly" ? "month" : "year";
 
@@ -91,22 +91,32 @@ export async function upsertPrice(stripe, plan, product, cycle) {
         `Price ${existing.id} (${lookupKey}) is archived. Reactivate it in the Dashboard; this script will not create a second one.`,
       );
     }
+    if (existing.product !== product.id || existing.currency !== "usd"
+      || existing.unit_amount !== amount || existing.recurring?.interval !== interval
+      || existing.recurring?.interval_count !== 1) {
+      throw new Error(`Price ${existing.id} (${lookupKey}) does not match the requested Product, amount or interval.`);
+    }
     console.log(`  ✓ Price '${lookupKey}' already exists: ${existing.id}`);
     return existing;
   }
 
   // Made in the Dashboard without the lookup key: same Product, amount and
   // interval is the same Price.
-  const onProduct = await stripe.prices.list({ product: product.id, active: true, limit: 100 });
-  const twin = onProduct.data.find(
-    (price) => price.currency === "usd"
+  let archivedMatch = null;
+  for await (const price of stripe.prices.list({ product: product.id, limit: 100 })) {
+    if (price.currency === "usd"
       && price.unit_amount === amount
-      && price.recurring?.interval === interval,
-  );
-  if (twin) {
-    console.log(`  ✓ Price ${twin.id} already exists without a lookup key; set it to '${lookupKey}' in the Dashboard.`);
-    return twin;
+      && price.recurring?.interval === interval
+      && price.recurring?.interval_count === 1) {
+      if (!price.active) {
+        archivedMatch = price;
+        continue;
+      }
+      console.log(`  ✓ Price ${price.id} already exists; reuse it for '${lookupKey}'.`);
+      return price;
+    }
   }
+  if (archivedMatch) throw new Error(`Price ${archivedMatch.id} is archived; this script will not create a twin.`);
 
   const price = await stripe.prices.create({
     product: product.id,

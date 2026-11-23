@@ -1,8 +1,9 @@
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { I18nProvider } from "@/components/i18n/i18n-provider";
 import { CourseLandingEditor } from "@/components/teacher/course-landing-editor";
+import { CONFIRM_GUARD_MS } from "@/components/ui/confirm-dialog";
 import type { CourseLandingBlock } from "@/domain/course-landing";
 import type { TeacherCourse } from "@/domain/teacher-course";
 import type { CourseLanding } from "@/lib/data/course-landings";
@@ -108,15 +109,28 @@ async function save() {
   return vi.mocked(saveCourseLanding).mock.calls[0][1].blocks;
 }
 
+const originalShow = Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype, "showModal");
+const originalClose = Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype, "close");
+
 beforeEach(() => {
   sb.uploads.length = 0;
   sb.removed.length = 0;
   sb.tables.length = 0;
   sb.rows.length = 0;
   slowRender.on = false;
-  vi.spyOn(window, "confirm").mockReturnValue(true);
+  // Tirar uma seção pergunta na janela da plataforma (não mais no
+  // window.confirm). O jsdom não tem showModal/close: o stub faz o mínimo.
+  Object.defineProperty(HTMLDialogElement.prototype, "showModal", { configurable: true, value() { this.setAttribute("open", ""); } });
+  Object.defineProperty(HTMLDialogElement.prototype, "close", { configurable: true, value() { if (!this.hasAttribute("open")) return; this.removeAttribute("open"); this.dispatchEvent(new Event("close")); } });
 });
-afterEach(() => vi.restoreAllMocks());
+afterEach(() => {
+  vi.useRealTimers();
+  vi.restoreAllMocks();
+  if (originalShow) Object.defineProperty(HTMLDialogElement.prototype, "showModal", originalShow);
+  else Reflect.deleteProperty(HTMLDialogElement.prototype, "showModal");
+  if (originalClose) Object.defineProperty(HTMLDialogElement.prototype, "close", originalClose);
+  else Reflect.deleteProperty(HTMLDialogElement.prototype, "close");
+});
 
 describe("sales page image upload while the creator keeps editing", () => {
   it("keeps the title typed while the image was uploading", async () => {
@@ -147,10 +161,21 @@ describe("sales page image upload while the creator keeps editing", () => {
   });
 
   it("drops and deletes the upload when its section was removed meanwhile", async () => {
+    // Só o Date é falso: o confirmar ignora cliques nos primeiros 500ms.
+    vi.useFakeTimers({ toFake: ["Date"] });
     await mountEditor([hero(), about()]);
     pick(1);
     await waitFor(() => expect(sb.uploads).toHaveLength(1));
     fireEvent.click(screen.getByRole("button", { name: "Remove About you section" }));
+    const dialog = screen.getByRole("dialog", { name: "Remove this section?" });
+    expect(dialog).toHaveTextContent('Remove the "About you" section and everything written in it?');
+    // Desistir mantém a seção; confirmar a tira do rascunho.
+    fireEvent.click(within(dialog).getByRole("button", { name: "Keep section" }));
+    expect(screen.getByRole("button", { name: "Remove About you section" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Remove About you section" }));
+    vi.advanceTimersByTime(CONFIRM_GUARD_MS);
+    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Remove section" }));
+    expect(screen.queryByRole("button", { name: "Remove About you section" })).not.toBeInTheDocument();
     await finishUpload();
 
     await waitFor(() => expect(sb.removed).toEqual([sb.uploads[0].path]));
@@ -213,5 +238,64 @@ describe("sales page image cleanup", () => {
 
     const saved = await save();
     expect(saved[0]).toMatchObject({ imageUrl: "https://cdn.example.com/a.png" });
+  });
+});
+
+// "Saved." ficava na tela enquanto a pessoa voltava a digitar: o que nao
+// estava gravado parecia gravado. A linha ao lado do Save diz so a verdade.
+describe("sales page save status", () => {
+  it("says Unsaved changes after an edit, Saved. only while the page matches the save", async () => {
+    await mountEditor([hero()]);
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    const headline = screen.getByLabelText("Headline");
+    fireEvent.change(headline, { target: { value: "New title" } });
+    expect(screen.getByRole("status")).toHaveTextContent("Unsaved changes");
+
+    await save();
+    expect(screen.getByRole("status")).toHaveTextContent("Saved.");
+    fireEvent.change(headline, { target: { value: "New title, again" } });
+    expect(screen.getByRole("status")).toHaveTextContent("Unsaved changes");
+    expect(screen.queryByText("Saved.")).not.toBeInTheDocument();
+    // Voltar ao texto gravado e verdade de novo: igual ao que o servidor tem.
+    fireEvent.change(headline, { target: { value: "New title" } });
+    expect(screen.getByRole("status")).toHaveTextContent("Saved.");
+  });
+
+  // O modelo escolhido dizia so pela cor; o Save era uma caixa navy a mao.
+  it("template choices are pressed buttons and Save is the shared Button with a busy state", async () => {
+    await mountEditor([hero()]);
+    const classic = screen.getByRole("button", { name: "Classic" });
+    const bold = screen.getByRole("button", { name: "Bold" });
+    expect(classic).toHaveAttribute("aria-pressed", "true");
+    expect(bold).toHaveAttribute("aria-pressed", "false");
+    expect(classic).toHaveClass("min-h-11");
+    fireEvent.click(bold);
+    expect(bold).toHaveAttribute("aria-pressed", "true");
+    expect(classic).toHaveAttribute("aria-pressed", "false");
+
+    let finish!: (value: { ok: true }) => void;
+    vi.mocked(saveCourseLanding).mockImplementationOnce(() => new Promise((resolve) => { finish = resolve; }));
+    const saveButton = screen.getByRole("button", { name: "Save page" });
+    expect(saveButton).toHaveClass("button-solid");
+    fireEvent.click(saveButton);
+    const busy = screen.getByRole("button", { name: "Saving..." });
+    expect(busy).toBe(saveButton);
+    expect(busy).toBeDisabled();
+    expect(busy).toHaveAttribute("aria-busy", "true");
+    await act(async () => finish({ ok: true }));
+    expect(screen.getByRole("button", { name: "Save page" })).toBeEnabled();
+  });
+
+  it("a failed save shows the error with Try again, which sends the same page again", async () => {
+    await mountEditor([hero()]);
+    vi.mocked(saveCourseLanding).mockClear();
+    vi.mocked(saveCourseLanding).mockResolvedValueOnce({ ok: false, reason: "nope" });
+    fireEvent.click(screen.getByRole("button", { name: "Save page" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Could not save the page.");
+
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(await screen.findByRole("status")).toHaveTextContent("Saved.");
+    expect(saveCourseLanding).toHaveBeenCalledTimes(2);
+    expect(vi.mocked(saveCourseLanding).mock.calls[1]).toEqual(vi.mocked(saveCourseLanding).mock.calls[0]);
   });
 });

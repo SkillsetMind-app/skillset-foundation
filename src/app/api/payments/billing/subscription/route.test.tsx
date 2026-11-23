@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   retrieve: vi.fn(),
   update: vi.fn(),
   cancel: vi.fn(),
+  preview: vi.fn(),
 }));
 
 vi.mock("@/lib/supabase/admin", () => ({ getSupabaseAdminClient: mocks.getAdmin }));
@@ -17,7 +18,7 @@ vi.mock("@/lib/payments/server/auth", async (importOriginal) => ({
 }));
 vi.mock("@/lib/payments/server/stripe", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/payments/server/stripe")>()),
-  getStripeClient: () => ({ subscriptions: { retrieve: mocks.retrieve, update: mocks.update, cancel: mocks.cancel } }),
+  getStripeClient: () => ({ invoices: { createPreview: mocks.preview }, subscriptions: { retrieve: mocks.retrieve, update: mocks.update, cancel: mocks.cancel } }),
 }));
 
 import { GET, POST } from "@/app/api/payments/billing/subscription/route";
@@ -59,6 +60,7 @@ function admin(subscription: Record<string, unknown> | null, pastTrial: Record<s
 describe("/api/payments/billing/subscription", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.preview.mockResolvedValue({ amount_due: 8900, currency: "usd" });
     mocks.requireUserId.mockResolvedValue("creator_1");
     mocks.enforceRateLimit.mockResolvedValue(undefined);
     mocks.retrieve.mockResolvedValue({ id: "sub_plan_1", metadata: { uid: "creator_1" } });
@@ -79,6 +81,8 @@ describe("/api/payments/billing/subscription", () => {
         trialEnd: "2026-10-20T12:00:00.000Z",
         currentPeriodEnd: "2026-10-20T12:00:00.000Z",
         cancelAtPeriodEnd: false,
+        nextPayment: { amountMinor: 8900, currency: "usd" },
+        contractedPrice: null,
       },
     });
   });
@@ -86,6 +90,49 @@ describe("/api/payments/billing/subscription", () => {
   it("offers the trial to an account that never had one", async () => {
     mocks.getAdmin.mockReturnValue(admin(null, null));
     expect(await (await GET()).json()).toEqual({ trialEligible: true, subscription: null });
+  });
+
+  it.each([500, 5000, 900, 9000, 0, 350])("returns Stripe's actual next payment %s, not catalog pricing", async (amount) => {
+    const db = admin({ ...trialing, plan_id: "basic" }, null);
+    mocks.getAdmin.mockReturnValue(db);
+    mocks.preview.mockResolvedValue({ amount_due: amount, currency: "usd" });
+    expect((await (await GET()).json()).subscription.nextPayment).toEqual({ amountMinor: amount, currency: "usd" });
+    expect(mocks.preview).toHaveBeenCalledWith({ subscription: trialing.id });
+    expect(db.writes).toEqual([]);
+    expect(mocks.update).not.toHaveBeenCalled();
+  });
+
+  it("keeps cancellation available when the preview fails, without guessing an amount", async () => {
+    mocks.getAdmin.mockReturnValue(admin(trialing, null));
+    mocks.preview.mockRejectedValue(new Error("unavailable"));
+    const response = await GET();
+    expect(response.status).toBe(200);
+    expect((await response.json()).subscription.nextPayment).toBeNull();
+  });
+
+  it.each([{ amount_due: -1, currency: "usd" }, { amount_due: 500.5, currency: "usd" }, { amount_due: 500, currency: "invalid" }])("does not display invalid preview data %j", async (invoice) => {
+    mocks.getAdmin.mockReturnValue(admin(trialing, null));
+    mocks.preview.mockResolvedValue(invoice);
+    expect((await (await GET()).json()).subscription.nextPayment).toBeNull();
+  });
+
+  it("does not preview a cancelled renewal", async () => {
+    mocks.getAdmin.mockReturnValue(admin({ ...trialing, cancel_at_period_end: true }, null));
+    expect((await (await GET()).json()).subscription.nextPayment).toBeNull();
+    expect(mocks.preview).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["price_1UP4MvPvg1vJW0IjLNG6YeC9", 500, "monthly"],
+    ["price_1UP4MwPvg1vJW0IjKAq6kpd8", 5000, "yearly"],
+    ["price_1UVi6QPvg1vJW0IjKHYmUE09", 900, "monthly"],
+    ["price_1UVi6RPvg1vJW0Ijz87nmj5D", 9000, "yearly"],
+  ])("keeps contracted tariff %s even without a preview", async (id, amount, cycle) => {
+    mocks.getAdmin.mockReturnValue(admin({ ...trialing, stripe_price_id: id }, null));
+    mocks.preview.mockRejectedValue(new Error("unavailable"));
+    expect((await (await GET()).json()).subscription).toMatchObject({
+      contractedPrice: { amountMinor: amount, currency: "usd", cycle }, nextPayment: null,
+    });
   });
 
   it("cancels at period end: during the trial that means no charge at all", async () => {

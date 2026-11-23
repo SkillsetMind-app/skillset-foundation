@@ -4,6 +4,7 @@ import Link from "next/link";
 import { EmbeddedCheckoutPanel } from "@/components/account/embedded-checkout-panel";
 import { ProtectedSurface } from "@/components/auth/protected-surface";
 import { PlatformShell } from "@/components/platform/platform-shell";
+import { StripeFrameSkeleton } from "@/components/teacher/builder-skeleton";
 import { isPublicPlanId, type PlanBillingCycle, type PlanId } from "@/data/plans";
 import { getServerTranslation } from "@/lib/i18n/server";
 import { privatePageMetadata } from "@/lib/seo/private-page-metadata";
@@ -45,8 +46,10 @@ export default async function BillingUpgradePage({
         {planId ? (
             <Suspense
               fallback={
-                <div className="rounded-lg border fine-rule bg-white p-8 text-sm text-[var(--color-ink-soft)] shadow-[var(--shadow-soft)]">
-                  {t("activationCheckout.preparing")}
+                // O mesmo lugar guardado do painel (e de /teach/activate): o
+                // formulario da Stripe entra sem empurrar a pagina.
+                <div className="overflow-hidden rounded-lg border fine-rule bg-white shadow-[var(--shadow-soft)]">
+                  <StripeFrameSkeleton label={t("activationCheckout.preparing")} />
                 </div>
               }
             >

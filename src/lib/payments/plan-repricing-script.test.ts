@@ -31,7 +31,9 @@ describe("scripts/plan-repricing.mjs", () => {
     // The old ladder: Starter froze 5%, Pro 3%.
     expect(feeDrifted(5, "starter")).toBe(true);
     expect(feeDrifted(3, "pro")).toBe(true);
-    // A subscription with no percent pays no fee: always drifted now.
-    expect(feeDrifted(null, "pro")).toBe(true);
+    // A subscription with no percent pays no fee: drifted on every plan that
+    // charges one; in step on the 0% plans (Pro and Enterprise, 2026-11-13).
+    expect(feeDrifted(null, "starter")).toBe(true);
+    expect(feeDrifted(null, "pro")).toBe(false);
   });
 });

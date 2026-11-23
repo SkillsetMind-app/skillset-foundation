@@ -102,7 +102,7 @@ export function LocaleSwitcher({
             aria-hidden="true"
             size={12}
             strokeWidth={1.8}
-            className={`transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+            className={`transition-transform duration-[var(--duration-base)] ease-[var(--ease-standard)] ${open ? "rotate-180" : ""}`}
           />
         )}
       </button>
@@ -112,7 +112,7 @@ export function LocaleSwitcher({
           id={listId}
           role="listbox"
           aria-label={t("footer.language")}
-          className={`absolute right-0 z-[60] min-w-44 max-w-[calc(100vw-2rem)] rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)] p-1.5 shadow-[var(--shadow-soft)] ${dropUp ? "bottom-full mb-2" : "top-full mt-2"}`}
+          className={`motion-drop-in absolute right-0 z-[60] min-w-44 max-w-[calc(100vw-2rem)] rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)] p-1.5 shadow-[var(--shadow-soft)] ${dropUp ? "bottom-full mb-2" : "top-full mt-2"}`}
         >
           {LOCALES.map((code) => {
             const selected = code === locale;

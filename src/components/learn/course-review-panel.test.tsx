@@ -64,6 +64,12 @@ describe("CourseReviewPanel locale and state", () => {
     expect(submitCourseReview).toHaveBeenCalledExactlyOnceWith({ courseId: "course-test", rating: 3, body });
     await act(async () => resolve({ success: true, reviewId: "review-test", ratingAverage: 3, ratingCount: 1 }));
     expect(screen.getByText("Review saved. Thank you for rating this course.")).toBeInTheDocument();
+    // Sucesso com cara de sucesso, ao lado do botão (que não sai do lugar), e
+    // sem a caixa de erro: antes os dois eram a mesma pílula navy.
+    const status = screen.getByRole("status");
+    expect(status).toHaveTextContent("Review saved. Thank you for rating this course.");
+    expect(document.querySelector("button[type=submit]")!.compareDocumentPosition(status) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.queryByRole("alert")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Change language" }));
     expect(screen.getByText("Reseña guardada. Gracias por valorar este curso.")).toBeInTheDocument();
     expect(field).toHaveValue(body);
@@ -116,6 +122,10 @@ describe("CourseReviewPanel locale and state", () => {
     fireEvent.change(screen.getByRole("textbox"), { target: { value: "Draft $$ $&" } });
     await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Enviar reseña" })); });
     expect(screen.getByText(expected)).toBeInTheDocument();
+    // A falha é uma caixa de erro (lida em voz alta), e a região do "salvou"
+    // fica vazia.
+    expect(screen.getByRole("alert")).toHaveTextContent(expected);
+    expect(screen.getByRole("status").textContent).toBe("");
     expect(screen.getByRole("textbox")).toHaveValue("Draft $$ $&");
     expect(screen.queryByText(message)).not.toBeInTheDocument();
     expect(screen.queryByText(/Reseña guardada/)).not.toBeInTheDocument();
@@ -133,5 +143,43 @@ describe("CourseReviewPanel locale and state", () => {
     expect(screen.getByText("No pudimos cargar tu reseña del curso.")).toBeInTheDocument();
     expect(subscribeToUserCourseReview).toHaveBeenCalledTimes(1);
     expect(submitCourseReview).not.toHaveBeenCalled();
+  });
+
+  // F-11: a falha da leitura tem saída; o aviso fica, com o botão ocupado, até a
+  // releitura responder, e a resenha salva chega e preenche o formulário.
+  it("Try again keeps the alert busy until the saved review arrives", () => {
+    vi.mocked(subscribeToUserCourseReview).mockImplementationOnce((_courseId, _userId, _onNext, onError) => {
+      onError(new Error("offline"));
+      return vi.fn();
+    });
+    let deliver!: (review: CourseReview | null) => void;
+    vi.mocked(subscribeToUserCourseReview).mockImplementationOnce((_courseId, _userId, onNext) => {
+      deliver = onNext;
+      return vi.fn();
+    });
+    renderReview({}, "en");
+    expect(screen.getByRole("alert")).toHaveTextContent("We could not load your course review.");
+
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(subscribeToUserCourseReview).toHaveBeenCalledTimes(2);
+    expect(screen.getByRole("alert")).toHaveTextContent("We could not load your course review.");
+    expect(screen.getByRole("button", { name: "Trying again..." })).toHaveAttribute("aria-busy", "true");
+
+    act(() => deliver({ rating: 3, body: "Solid course" } as CourseReview));
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.getByDisplayValue("Solid course")).toBeInTheDocument();
+    expect(submitCourseReview).not.toHaveBeenCalled();
+  });
+
+  it("a second failed read gives the alert and an enabled Try again back", async () => {
+    vi.mocked(subscribeToUserCourseReview).mockImplementation((_courseId, _userId, _onNext, onError) => {
+      onError(new Error("offline"));
+      return vi.fn();
+    });
+    renderReview({}, "en");
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+
+    expect(await screen.findByRole("button", { name: "Try again" })).toBeEnabled();
+    expect(screen.getByRole("alert")).toHaveTextContent("We could not load your course review.");
   });
 });

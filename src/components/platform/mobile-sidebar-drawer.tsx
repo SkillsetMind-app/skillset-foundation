@@ -76,6 +76,14 @@ export function MobileSidebarDrawer({
       items.findIndex((candidate) => candidate.href === item.href) === index,
   );
 
+  // Qual aba e a pagina atual. "Home" so vale no inicio da area: antes ela
+  // ficava marcada em TODA pagina do estudio (/teach/sales, /teach/reports...),
+  // que so se alcancam pelo "More". As outras abas valem para as paginas
+  // dentro delas (/account/billing e Profile).
+  const isCurrentTab = (href: string) =>
+    href === homeHref ? pathname === href : pathname === href || pathname.startsWith(`${href}/`);
+  const noTabIsCurrent = !primaryItems.some((item) => isCurrentTab(item.href));
+
   useEffect(() => {
     if (!open) {
       return;
@@ -109,12 +117,15 @@ export function MobileSidebarDrawer({
       <nav className="platform-mobile-nav" aria-label={t("platform.mobile.navLabel")}>
         {primaryItems.map((item) => {
           const Icon = item.icon;
-          const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
+          const active = isCurrentTab(item.href);
 
           return (
             <Link
               key={item.href}
               href={item.href}
+              // aria-current diz ao leitor de tela qual é a página; o traço da
+              // aba atual vem da mesma marca (globals.css).
+              aria-current={active ? "page" : undefined}
               className={[
                 "grid min-w-0 flex-1 place-items-center gap-1 px-2 py-2 text-[11px] font-bold text-[var(--color-ink-soft)]",
                 active ? "text-[var(--color-primary)]" : "",
@@ -128,6 +139,9 @@ export function MobileSidebarDrawer({
         <button
           type="button"
           onClick={onOpen}
+          // Página que só existe dentro de "More" (vendas, relatórios...):
+          // nenhuma das abas é ela, então a marca fica no "More".
+          data-current={noTabIsCurrent ? "true" : undefined}
           className="grid min-w-0 flex-1 place-items-center gap-1 px-2 py-2 text-[11px] font-bold text-[var(--color-ink-soft)]"
           aria-label={t("platform.mobile.openMore")}
         >
@@ -138,9 +152,12 @@ export function MobileSidebarDrawer({
 
       {open ? (
         <div className="fixed inset-0 z-[100] min-[1180px]:hidden">
+          {/* Fundo e entrada das outras janelas: o fundo acende e a gaveta
+              sobe 8px (só sem "reduzir movimento"). Antes aparecia num corte
+              seco, com um navy próprio. */}
           <button
             type="button"
-            className="absolute inset-0 bg-[rgba(15,39,68,0.45)]"
+            className="dialog-backdrop absolute inset-0"
             aria-label={t("platform.mobile.close")}
             onClick={onClose}
           />
@@ -150,7 +167,7 @@ export function MobileSidebarDrawer({
             role="dialog"
             aria-modal="true"
             aria-label={t("platform.mobile.drawerLabel")}
-            className="relative z-[1] flex h-svh w-[280px] max-w-full flex-col bg-white shadow-[0_0_60px_rgba(15,39,68,0.25)] outline-none"
+            className="motion-panel-in relative z-[1] flex h-svh w-[280px] max-w-full flex-col bg-white shadow-[0_0_60px_rgba(15,39,68,0.25)] outline-none"
             onClick={(event) => {
               if (event.target instanceof Element && event.target.closest("a[href]")) {
                 onClose();

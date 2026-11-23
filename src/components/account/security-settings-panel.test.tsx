@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { SecuritySettingsPanel } from "@/components/account/security-settings-panel";
@@ -34,10 +34,10 @@ describe("SecuritySettingsPanel feedback", () => {
     Element.prototype.scrollIntoView = vi.fn();
   });
 
-  // Worse than the reset page: the shared message paragraph renders after the
-  // card grid AND after the two-factor card, so below `lg` the answer lands a
-  // full screen away from the button that produced it.
-  it("scrolls the shared feedback line into view after sending a reset link", async () => {
+  // A resposta aparecia depois da grade inteira E do cartão de dois fatores
+  // (abaixo do `lg`, uma tela longe do botão) e a página rolava até ela.
+  // Agora ela nasce logo abaixo do botão que a pediu, sem rolar nada.
+  it("mostra a confirmação do link logo abaixo do botão, sem rolar a página", async () => {
     mockedResetPassword.mockResolvedValue(undefined);
     render(<SecuritySettingsPanel />);
 
@@ -45,22 +45,88 @@ describe("SecuritySettingsPanel feedback", () => {
 
     const status = await screen.findByRole("status");
     expect(status).toHaveTextContent("Reset link sent to learner@example.com");
-    expect(Element.prototype.scrollIntoView).toHaveBeenCalled();
+    expect(status.previousElementSibling).toBe(
+      screen.getByRole("button", { name: "Email me a reset link" }),
+    );
+    expect(Element.prototype.scrollIntoView).not.toHaveBeenCalled();
   });
 
-  it("re-reveals the same confirmation on a repeat press", async () => {
+  it("re-shows the same confirmation on a repeat press", async () => {
     mockedResetPassword.mockResolvedValue(undefined);
     render(<SecuritySettingsPanel />);
 
     clickSendResetLink();
     await screen.findByRole("status");
+    clickSendResetLink();
 
-    vi.mocked(Element.prototype.scrollIntoView).mockClear();
+    expect(await screen.findByRole("status")).toHaveTextContent("Reset link sent to");
+    expect(mockedResetPassword).toHaveBeenCalledTimes(2);
+  });
+
+  it("troca o texto só do botão apertado enquanto o pedido anda", async () => {
+    let finish!: () => void;
+    mockedResetPassword.mockReturnValue(new Promise<void>((resolve) => { finish = resolve; }));
+    render(<SecuritySettingsPanel />);
 
     clickSendResetLink();
-    await screen.findByRole("status");
+    expect(screen.getByRole("button", { name: "Sending..." })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Update password" })).toBeDisabled();
 
-    expect(Element.prototype.scrollIntoView).toHaveBeenCalled();
+    await act(async () => finish());
+    expect(screen.getByRole("button", { name: "Email me a reset link" })).toBeEnabled();
+  });
+
+  it("com o e-mail já verificado não oferece reenviar nem atualizar o status", () => {
+    render(<SecuritySettingsPanel />);
+
+    expect(screen.getByText("Verified")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Send email" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Refresh status" })).toBeNull();
+    // Rótulo visível em cada campo, não só o placeholder.
+    expect(screen.getByLabelText("Current password")).toHaveClass("field-input");
+    expect(screen.getByLabelText("New email address")).toHaveClass("field-input");
+  });
+
+  // A-10: as regras so surgiam na 1a letra (e empurravam o botao), e aqui nao
+  // havia o olho que o login e o cadastro tem.
+  it("mostra as regras antes de digitar, ligadas ao campo, e o olho nas duas senhas", () => {
+    render(<SecuritySettingsPanel />);
+
+    const next = screen.getByLabelText("New password");
+    const rules = screen.getByText("Your password must include:").closest("[id]")!;
+    expect(rules).toHaveTextContent("At least 8 characters");
+    expect(next).toHaveAttribute("aria-describedby", rules.id);
+
+    const eyes = screen.getAllByRole("button", { name: "Show password" });
+    expect(eyes).toHaveLength(2);
+    fireEvent.click(eyes[1]);
+    expect(next).toHaveAttribute("type", "text");
+    expect(screen.getByLabelText("Current password")).toHaveAttribute("type", "password");
+    // Um nome so; o estado vem do aria-pressed. O nome do campo e so o rotulo.
+    expect(eyes[1]).toHaveAttribute("aria-pressed", "true");
+    expect(eyes[0]).toHaveAttribute("aria-pressed", "false");
+    expect(screen.getByRole("textbox", { name: "New password" })).toBe(next);
+  });
+
+  // F-12: os dois botões apagados diziam nada. Agora dizem o que falta,
+  // ligados a eles, e a frase sai junto com a trava.
+  it("os botões apagados dizem o que falta, ligados a eles", () => {
+    render(<SecuritySettingsPanel />);
+
+    const send = screen.getByRole("button", { name: "Send change confirmation" });
+    expect(send).toBeDisabled();
+    expect(send).toHaveAccessibleDescription("Type the new email address first.");
+    fireEvent.change(screen.getByLabelText("New email address"), { target: { value: "new@example.com" } });
+    expect(send).toBeEnabled();
+    expect(send).not.toHaveAttribute("aria-describedby");
+
+    const update = screen.getByRole("button", { name: "Update password" });
+    expect(update).toHaveAccessibleDescription("Enter your current password first.");
+    fireEvent.change(screen.getByLabelText("Current password"), { target: { value: "OldPassword1!" } });
+    expect(update).toHaveAccessibleDescription("Choose a new password that meets the rules above.");
+    fireEvent.change(screen.getByLabelText("New password"), { target: { value: "NewPassword42!" } });
+    expect(update).toBeEnabled();
+    expect(update).not.toHaveAttribute("aria-describedby");
   });
 
   it("treats the email send limit as reassurance, not an error", async () => {

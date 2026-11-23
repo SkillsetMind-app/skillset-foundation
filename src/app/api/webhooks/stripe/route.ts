@@ -24,7 +24,6 @@ import {
   resolveInvoicePaymentIntentId,
   sanitizeStripeSecret,
   shouldCancelCourseSubscriptionForRefund,
-  shouldApplyOrderStatusTransition,
   shouldMarkEnrollmentRefundedAfterChargeRefund,
   shouldReleaseCheckoutLock,
   stripeFeeMinorFromBalanceTransaction,
@@ -327,6 +326,36 @@ function queueCreatorSaleEmail(admin: Admin, sale: CreatorSale): void {
 }
 
 // --- one-time checkout fulfilment -------------------------------------------
+// Resgata o cupom e marca o pedido paid numa transacao so, com o pedido
+// travado. O retorno e o status fresco: 'settled' acabou de virar paid; 'paid'
+// ja era paid com este pagamento; 'refunded' ja devolveu o dinheiro; 'closed'
+// foi fechado (expired/failed) antes de o pagamento chegar.
+type PaidOrderOutcome = "settled" | "paid" | "refunded" | "closed";
+
+async function settlePaidCourseOrder(
+  admin: Admin,
+  args: {
+    orderId: string;
+    sessionId: string;
+    paymentIntentId: string;
+    connectedAccountId: string | null;
+    receiptUrl: string | null;
+  },
+): Promise<PaidOrderOutcome> {
+  const { data, error } = await admin.rpc("settle_paid_course_order", {
+    p_order_id: args.orderId,
+    p_session_id: args.sessionId,
+    p_payment_intent_id: args.paymentIntentId,
+    p_connected_account_id: args.connectedAccountId,
+    p_receipt_url: args.receiptUrl,
+  });
+  if (error) throw new Error(`Settle checkout order: ${error.message}`);
+  if (data !== "settled" && data !== "paid" && data !== "refunded" && data !== "closed") {
+    throw new Error("Settle checkout order returned an unknown outcome.");
+  }
+  return data;
+}
+
 async function finalizeCourseCouponReservation(
   admin: Admin,
   orderId: string,
@@ -421,6 +450,25 @@ async function handleActivationFeePaid(
   if (auditError) throw new Error(auditError.message);
 }
 
+function sessionBelongsToOrder(
+  order: {
+    checkout_session_id: string | null;
+    payout_model: string | null;
+    teacher_stripe_connected_account_id: string | null;
+  },
+  sessionId: string,
+  connectedAccountId: string | null,
+): boolean {
+  const accountMatches = order.payout_model === "direct_charge"
+    ? Boolean(order.teacher_stripe_connected_account_id)
+      && connectedAccountId === order.teacher_stripe_connected_account_id
+    : ["separate_charges_and_transfers", "destination_charge"].includes(order.payout_model ?? "")
+      && connectedAccountId === null;
+  return Boolean(order.checkout_session_id)
+    && order.checkout_session_id === sessionId
+    && accountMatches;
+}
+
 async function handleCheckoutCompleted(
   admin: Admin,
   session: Stripe.Checkout.Session,
@@ -443,18 +491,12 @@ async function handleCheckoutCompleted(
 
   const courseId = order.course_id;
   const userId = order.user_id;
-  const accountMatches = order.payout_model === "direct_charge"
-    ? Boolean(order.teacher_stripe_connected_account_id)
-      && connectedAccountId === order.teacher_stripe_connected_account_id
-    : ["separate_charges_and_transfers", "destination_charge"].includes(order.payout_model ?? "")
-      && connectedAccountId === null;
   const amountMinor = Number(order.amount_minor);
   // The server attaches this session before returning its URL. Metadata is a
   // reference to that saved sale, never authority to replace its buyer or course.
   if (
-    !order.checkout_session_id || order.checkout_session_id !== session.id
+    !sessionBelongsToOrder(order, session.id, connectedAccountId)
     || metadata.courseId !== courseId || metadata.userId !== userId
-    || !accountMatches
     || typeof order.currency !== "string"
     || session.currency?.toUpperCase() !== order.currency.toUpperCase()
     || !Number.isSafeInteger(amountMinor) || amountMinor < 0
@@ -466,29 +508,10 @@ async function handleCheckoutCompleted(
     throw new Error("Checkout does not match its saved order.");
   }
 
-  await finalizeCourseCouponReservation(admin, orderId);
-
   const paymentIntentId =
     typeof session.payment_intent === "string"
       ? session.payment_intent
       : session.payment_intent?.id || session.id;
-
-  // Re-arm guard: the ledger row is created exactly once per order (LAST,
-  // below). If it already exists this order was fully fulfilled — a redelivery
-  // / async event / replay must NOT re-run fulfilment.
-  const { data: existingLedger } = await admin
-    .from("payout_ledger")
-    .select("id")
-    .eq("id", orderId)
-    .maybeSingle();
-  if (existingLedger) return;
-
-  const { data: course } = await admin
-    .from("courses")
-    .select("*")
-    .eq("id", courseId)
-    .maybeSingle();
-  if (!course) throw new Error(`Course ${courseId} not found.`);
 
   // Best-effort receipt url off the PaymentIntent's latest charge. Never blocks.
   let receiptUrl: string | null = null;
@@ -528,6 +551,55 @@ async function handleCheckoutCompleted(
       // ponytail: receipt lookup is best-effort; never blocks fulfilment.
     }
   }
+
+  // Cupom e status paid mudam juntos, sobre a linha fresca, antes de qualquer
+  // escrita de pagamento ou matricula.
+  const outcome = await settlePaidCourseOrder(admin, {
+    orderId,
+    sessionId: session.id,
+    paymentIntentId,
+    connectedAccountId,
+    receiptUrl,
+  });
+  if (outcome === "closed") {
+    // Contencao, nao recuperacao: o cupom deste pedido ja foi solto e o lock
+    // pode ser de outra tentativa. Nada e concedido; o evento falha ate alguem
+    // reconciliar o pagamento a mao.
+    notifyOps({
+      event: "stripe.webhook.paid_after_close",
+      severity: "critical",
+      summary:
+        "A one-time checkout was paid after its order was closed (expired/failed). Nothing was granted; the event keeps retrying until the payment is reconciled by hand.",
+      context: { orderId, checkoutSessionId: session.id },
+    });
+    throw new Error("Paid checkout arrived after its order was closed.");
+  }
+
+  // Re-arm guard: the ledger row is created exactly once per order (LAST,
+  // below). If it already exists this order was fully fulfilled — a redelivery
+  // / async event / replay must NOT re-run fulfilment.
+  const { data: existingLedger } = await admin
+    .from("payout_ledger")
+    .select("id")
+    .eq("id", orderId)
+    .maybeSingle();
+  if (existingLedger) {
+    // Fulfilment is complete, but a failed lock cleanup still needs its retry.
+    await requireSupabaseWrite(
+      admin.from("checkout_locks").delete().eq("lock_key", `${userId}__${courseId}`).eq("order_id", orderId),
+      "Release settled checkout lock",
+    );
+    return;
+  }
+  // Reembolsado: o dinheiro ja voltou. Nada de acesso nem registro novo.
+  if (outcome === "refunded") return;
+
+  const { data: course } = await admin
+    .from("courses")
+    .select("*")
+    .eq("id", courseId)
+    .maybeSingle();
+  if (!course) throw new Error(`Course ${courseId} not found.`);
 
   const grossAmountMinor = Number(order.amount_minor || 0);
   // ?? not || so an explicitly snapshotted 0-bps fee survives.
@@ -570,21 +642,6 @@ async function handleCheckoutCompleted(
       { onConflict: "id" },
     ),
     "Persist checkout payment",
-  );
-
-  await requireSupabaseWrite(
-    admin
-      .from("orders")
-      .update({
-        status: "paid",
-        checkout_session_id: session.id,
-        payment_intent_id: paymentIntentId,
-        ...(receiptUrl ? { receipt_url: receiptUrl } : {}),
-        paid_at: ts,
-        updated_at: ts,
-      })
-      .eq("id", orderId),
-    "Mark checkout order paid",
   );
 
   // The UPSERT serializes with creator revocation and preserves progress.
@@ -654,7 +711,7 @@ async function handleCheckoutCompleted(
     .maybeSingle();
   if (lock && shouldReleaseCheckoutLock(lock.order_id, orderId)) {
     await requireSupabaseWrite(
-      admin.from("checkout_locks").delete().eq("lock_key", lockKey),
+      admin.from("checkout_locks").delete().eq("lock_key", lockKey).eq("order_id", orderId),
       "Release settled checkout lock",
     );
   }
@@ -695,11 +752,18 @@ async function handleCourseSubscriptionInvoicePaid(
     .eq("id", courseId)
     .maybeSingle();
   if (!course) throw new Error(`Course ${courseId} not found for subscription invoice.`);
-  const { data: owner } = await admin
+  const { data: owner, error: ownerError } = await admin
     .from("users")
     .select("current_plan_id,stripe_connected_account_id")
     .eq("uid", teacherId)
     .maybeSingle();
+  // A transient read error must retry, never drop a real renewal as "foreign".
+  if (ownerError) throw new Error(ownerError.message);
+
+  if (isForeignCourseAccount(eventAccountId, teacherId, course, owner)) {
+    reportForeignCourseSubscription(subscriptionId, eventAccountId);
+    return;
+  }
 
   // ?? / isFinite, not || — legacy metadata "0" (old 0-bps Plus subscriptions)
   // is a valid snapshotted fee and must not coerce to the default.
@@ -949,9 +1013,37 @@ async function handleCourseSubscriptionInvoicePaid(
 }
 
 // --- course-subscription lifecycle ------------------------------------------
+// Full-Dashboard creators hold their own API keys, so course-subscription
+// metadata on a connected account is creator-controlled. It counts only when the
+// course belongs to the named teacher AND the event came from that teacher's
+// account (the course's saved one or the owner's current one). Platform-level
+// events (no account) are ours and always trusted.
+function isForeignCourseAccount(
+  eventAccountId: string | null,
+  teacherId: string | null,
+  course: { owner_id?: unknown; stripe_connected_account_id?: unknown } | null,
+  owner: { stripe_connected_account_id?: unknown } | null,
+): boolean {
+  if (!eventAccountId) return false;
+  return !course || !teacherId || course.owner_id !== teacherId
+    || (eventAccountId !== course.stripe_connected_account_id
+      && eventAccountId !== owner?.stripe_connected_account_id);
+}
+
+function reportForeignCourseSubscription(subscriptionId: string, eventAccountId: string | null): void {
+  notifyOps({
+    event: "stripe.course_subscription.foreign_account",
+    severity: "critical",
+    summary:
+      "A course subscription event came from an account that does not own the course. Nothing was granted or recorded.",
+    context: { subscriptionId, eventAccountId },
+  });
+}
+
 async function handleCourseSubscriptionLifecycle(
   admin: Admin,
   subscription: Stripe.Subscription,
+  eventAccountId: string | null,
 ): Promise<boolean> {
   const meta = subscription.metadata ?? {};
   if (meta.purpose !== "course_subscription") return false;
@@ -960,6 +1052,23 @@ async function handleCourseSubscriptionLifecycle(
   const userId = typeof meta.userId === "string" ? meta.userId : null;
   const teacherId = typeof meta.teacherId === "string" ? meta.teacherId : null;
   if (!courseId || !userId) return true; // ours; swallow so plan handler isn't called
+
+  if (eventAccountId) {
+    const { data: course, error: courseError } = await admin
+      .from("courses")
+      .select("owner_id,stripe_connected_account_id")
+      .eq("id", courseId)
+      .maybeSingle();
+    if (courseError) throw new Error(courseError.message);
+    const { data: owner, error: ownerError } = teacherId
+      ? await admin.from("users").select("stripe_connected_account_id").eq("uid", teacherId).maybeSingle()
+      : { data: null, error: null };
+    if (ownerError) throw new Error(ownerError.message);
+    if (isForeignCourseAccount(eventAccountId, teacherId, course, owner)) {
+      reportForeignCourseSubscription(subscription.id, eventAccountId);
+      return true; // swallow: never upsert a creator-forged row, never run the plan handler
+    }
+  }
 
   const status = subscription.status;
   const entitled = status === "active" || status === "trialing";
@@ -1119,6 +1228,9 @@ async function handleChargeRefunded(
   // A LOST DISPUTE on the fee does not fire charge.refunded; that path lives in
   // handleDisputeClosed, which reads the same metadata off the PaymentIntent.
   if (charge.metadata?.purpose === ACTIVATION_FEE_CHECKOUT_PURPOSE) {
+    // Platform charge only: on a connected account this metadata is creator-made
+    // and must never revoke someone else's storefront.
+    if (connectedAccountId) return;
     const activationUid = charge.metadata?.uid;
     // Partial refund does not revoke: they still paid for the storefront.
     if (activationUid && charge.refunded === true) {
@@ -1187,7 +1299,33 @@ async function handleChargeRefunded(
       );
     }
 
-    if (!ledger) return;
+    if (!ledger) {
+      const stripe = getStripeClient();
+      const options = connectedAccountId ? { stripeAccount: connectedAccountId } : undefined;
+      // Invoice refunds can precede invoice.paid; distinguish our course from unrelated charges before acknowledging it.
+      for await (const invoicePayment of stripe.invoicePayments.list({
+        payment: { type: "payment_intent", payment_intent: paymentIntentId },
+        expand: ["data.invoice"],
+      }, options)) {
+        const invoice = typeof invoicePayment.invoice === "string"
+          ? await stripe.invoices.retrieve(invoicePayment.invoice, undefined, options)
+          : invoicePayment.invoice;
+        if (invoice.deleted) {
+          throw new Error("Refund invoice was deleted; cannot verify its course subscription.");
+        }
+        const subscriptionId = resolveInvoiceSubscriptionId(invoice);
+        if (!subscriptionId) continue;
+        // Prefer the immutable invoice snapshot; mutable subscription metadata is only a legacy fallback.
+        const metadata = invoice.parent?.subscription_details?.metadata
+          ?? (await stripe.subscriptions.retrieve(subscriptionId, undefined, options)).metadata;
+        if (metadata?.purpose !== "course_subscription") continue;
+        if (!metadata.courseId || !metadata.userId || !metadata.teacherId) {
+          throw new Error("Refunded course subscription is missing required metadata.");
+        }
+        throw new Error("Course subscription refund arrived before its sale records; retry this refund.");
+      }
+      return;
+    }
     await requireSupabaseWrite(
       admin
         .from("payout_ledger")
@@ -1312,53 +1450,12 @@ async function handleChargeRefunded(
         .eq("id", `${order.user_id}__${order.course_id}`),
       "Refund course enrollment",
     );
-    await revokeCertificateForPurchase(admin, order.user_id, order.course_id);
   }
 }
 
-// --- certificate withdrawn with the purchase --------------------------------
-// A full refund or a lost chargeback takes the course back; the certificate it
-// earned goes with it, so the public verification page stops vouching for it.
-// Called only where the enrollment is revoked for that reason.
-//
-// 'refund_revoked', not 'revoked': issue_skillset_certificate refuses to
-// re-issue only 'revoked' (an ops decision) and sets any other existing row
-// back to 'issued'. A buyer who is refunded, buys again and finishes gets the
-// certificate back; an ops revocation stays final.
-//
-// Touches only a certificate still 'issued': a repeated event matches nothing,
-// and an ops 'revoked' row is never downgraded. Never throws: the refund and
-// the access revocation are already written, and a failed certificate write is
-// an alert for a human, not a reason to fail the event.
-//
-// Known limit: the match is user + course, the same as the enrollment
-// revocation it follows — enrollments carry no order id. A late refund or lost
-// chargeback on an OLD order also withdraws the certificate earned under a
-// newer purchase (and that purchase's access). Once access is restored, the
-// learner re-issues it.
-async function revokeCertificateForPurchase(
-  admin: Admin,
-  userId: string,
-  courseId: string,
-): Promise<void> {
-  try {
-    const { error } = await admin
-      .from("certificates")
-      .update({ status: "refund_revoked", updated_at: nowIso() })
-      .eq("enrollment_id", `${userId}__${courseId}`)
-      .eq("status", "issued");
-    if (error) throw new Error(error.message);
-  } catch (error) {
-    console.error("Certificate revocation failed", { courseId, userId }, error);
-    notifyOps({
-      event: "stripe.webhook.certificate_revoke_failed",
-      severity: "warn",
-      summary:
-        "A refunded or charged-back purchase kept its certificate: the revocation write failed. Revoke it by hand.",
-      context: { courseId, userId },
-    });
-  }
-}
+// O trigger da matricula retira o certificado na mesma transacao do status
+// refunded. Falhas chegam a requireSupabaseWrite e mantem o evento reenviavel;
+// nao ha uma segunda escrita best-effort que possa deixar o certificado valido.
 
 // --- card disputes (chargebacks) --------------------------------------------
 // Under direct charges a dispute debits the TEACHER's own Stripe balance —
@@ -1524,7 +1621,6 @@ async function handleDisputeClosed(
           .eq("id", `${order.user_id}__${order.course_id}`),
         "Revoke enrollment after lost chargeback",
       );
-      await revokeCertificateForPurchase(admin, order.user_id, order.course_id);
     }
   }
   // Stripe keeps subscriptions running after disputes unless optional account
@@ -1541,15 +1637,16 @@ async function handleDisputeClosed(
 // --- terminal order status (expired / failed) with lock release + B2 guard --
 async function markOrderStatus(
   admin: Admin,
-  orderId: string | null | undefined,
+  session: Stripe.Checkout.Session,
+  connectedAccountId: string | null,
   status: "failed" | "cancelled",
 ): Promise<void> {
+  const orderId = session.metadata?.orderId;
   if (!orderId) return;
-  const ts = nowIso();
 
   const { data: order, error: orderError } = await admin
     .from("orders")
-    .select("status,user_id,course_id")
+    .select("status,user_id,course_id,checkout_session_id,payout_model,teacher_stripe_connected_account_id")
     .eq("id", orderId)
     .maybeSingle();
   if (orderError) throw new Error(orderError.message);
@@ -1559,29 +1656,23 @@ async function markOrderStatus(
   // would violate NOT NULL on amount_minor/currency/user_id anyway).
   if (!order) return;
 
-  // Release the checkout lock only if it still belongs to THIS order. [B3]
-  if (order.user_id && order.course_id) {
-    const lockKey = `${order.user_id}__${order.course_id}`;
-    const { data: lock } = await admin
-      .from("checkout_locks")
-      .select("order_id")
-      .eq("lock_key", lockKey)
-      .maybeSingle();
-    if (lock && shouldReleaseCheckoutLock(lock.order_id, orderId)) {
-      await requireSupabaseWrite(
-        admin.from("checkout_locks").delete().eq("lock_key", lockKey),
-        "Release failed checkout lock",
-      );
-    }
+  // Retry if the session is not attached yet; metadata alone cannot authorize cleanup.
+  if (!sessionBelongsToOrder(order, session.id, connectedAccountId)) {
+    throw new Error("Terminal checkout event does not match its saved order.");
   }
 
-  // Never overwrite a settled money outcome (paid/refunded). [B2]
-  if (!shouldApplyOrderStatusTransition(order.status)) return;
-
-  await releaseCourseCouponReservation(admin, orderId);
+  // A leitura acima so falha cedo. Quem decide e a RPC, com o pedido travado:
+  // pago/reembolsado nunca desce [B2], pedido com cupom ja resgatado esta
+  // liquidando e fica como esta, e cupom reservado, lock DESTE pedido [B3] e
+  // status mudam juntos ou nao mudam.
   await requireSupabaseWrite(
-    admin.from("orders").update({ status, updated_at: ts }).eq("id", orderId),
-    "Mark checkout order terminal",
+    admin.rpc("close_unpaid_course_order", {
+      p_order_id: orderId,
+      p_session_id: session.id,
+      p_status: status,
+      p_connected_account_id: connectedAccountId,
+    }),
+    "Close unpaid checkout order",
   );
 }
 
@@ -1758,9 +1849,16 @@ async function handleCourseSubscriptionInvoiceCreated(
   const fee = platformFeeForSale(
     amountDue,
     canonicalPlatformFeeBpsForPlan(owner?.current_plan_id),
-    toStripeAmount(platformFixedFeeMinor(currency), currency),
+    toStripeAmount(platformFixedFeeMinor(currency, owner?.current_plan_id), currency),
   );
-  if (fee <= 0) return;
+  if (fee <= 0) {
+    // Only a 0% plan clears the subscription's percent: a tiny renewal on a
+    // paid-commission plan also floors to 0, and must keep its percent.
+    if (canonicalPlatformFeeBpsForPlan(owner?.current_plan_id) === 0) {
+      await clearInheritedRenewalFee(subscription, invoice, eventAccountId);
+    }
+    return;
+  }
   try {
     await getStripeClient().invoices.update(
       invoice.id!,
@@ -1782,6 +1880,42 @@ async function handleCourseSubscriptionInvoiceCreated(
     console.warn(
       `[stripe webhook] invoice.created: ${invoice.id} is no longer editable; the renewal keeps the subscription's percent.`,
     );
+  }
+}
+
+// A 0% plan (Pro, Enterprise) adds nothing to a renewal. But a student
+// subscription sold while the teacher was on a paid-commission plan still
+// carries that plan's percent: clear it on the subscription (this and every
+// later renewal, and invoice.paid then books the plan's 0) and zero this draft.
+// Never a retry loop — a refusal would hold the renewal up to 72 h — so a
+// failure is logged and sent to ops, who can run scripts/plan-repricing.mjs.
+async function clearInheritedRenewalFee(
+  subscription: Stripe.Subscription,
+  invoice: Stripe.Invoice,
+  eventAccountId: string,
+): Promise<void> {
+  if (!(Number(subscription.application_fee_percent) > 0)) return;
+  const stripe = getStripeClient();
+  try {
+    await stripe.subscriptions.update(
+      subscription.id,
+      { application_fee_percent: "" },
+      { stripeAccount: eventAccountId },
+    );
+    await stripe.invoices.update(
+      invoice.id!,
+      { application_fee_amount: 0 },
+      { stripeAccount: eventAccountId },
+    );
+  } catch (error) {
+    console.warn(`[stripe webhook] invoice.created: could not clear the inherited fee on ${subscription.id}.`, error);
+    notifyOps({
+      event: "stripe.webhook.zero_plan_fee_not_cleared",
+      severity: "warn",
+      summary:
+        "A 0% plan teacher's student renewal kept the old plan's fee. Run scripts/plan-repricing.mjs for this account.",
+      context: { subscriptionId: subscription.id, invoiceId: invoice.id ?? null },
+    });
   }
 }
 
@@ -2095,7 +2229,9 @@ export async function POST(request: Request) {
           // handleCheckoutCompleted: that handler requires orderId/courseId/
           // userId metadata and throws without them, which would 500 the webhook
           // and leave Stripe retrying the event forever.
-          await handleActivationFeePaid(admin, session);
+          // The fee is a PLATFORM charge. Full-Dashboard creators hold their own
+          // API keys, so the same metadata on a connected account is creator-made.
+          if (!eventAccountId) await handleActivationFeePaid(admin, session);
         } else if (session.mode !== "subscription") {
           await handleCheckoutCompleted(admin, session, eventAccountId);
         } else if (
@@ -2110,15 +2246,15 @@ export async function POST(request: Request) {
         break;
       }
       case "checkout.session.async_payment_failed":
-        await markOrderStatus(admin, event.data.object.metadata?.orderId, "failed");
+        await markOrderStatus(admin, event.data.object, eventAccountId, "failed");
         await releaseAbandonedSubscriptionCoupon(admin, event.data.object);
         break;
       case "checkout.session.expired":
-        await markOrderStatus(admin, event.data.object.metadata?.orderId, "cancelled");
+        await markOrderStatus(admin, event.data.object, eventAccountId, "cancelled");
         await releaseAbandonedSubscriptionCoupon(admin, event.data.object);
         break;
       case "payment_intent.payment_failed":
-        await markOrderStatus(admin, event.data.object.metadata?.orderId, "failed");
+        // A declined card can be retried in the same session; only terminal session events release it.
         break;
       case "charge.refunded":
         await handleChargeRefunded(admin, event.data.object, eventAccountId);
@@ -2142,6 +2278,7 @@ export async function POST(request: Request) {
         const handledAsCourse = await handleCourseSubscriptionLifecycle(
           admin,
           subscriptionObject,
+          eventAccountId,
         );
         if (!handledAsCourse) {
           await syncSubscriptionFromStripe(admin, subscriptionObject);

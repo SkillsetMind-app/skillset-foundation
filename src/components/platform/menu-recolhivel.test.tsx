@@ -397,6 +397,17 @@ describe("tablet: a marca volta ao topo do rail", () => {
 describe("1024–1179px sem escolha: o 1º quadro já é o rail que o JS desenha", () => {
   const auto = ".platform-grid--auto:not(.platform-grid--collapsed)";
 
+  // O filete dourado do item ativo fica no meio da linha. O item também leva
+  // `before:-translate-y-1/2` (gaveta do celular), que usa a propriedade
+  // `translate`: com `transform: translateY(-50%)` na regra os dois somavam
+  // e o filete ficava 9px acima do ícone.
+  it("filete do item ativo centrado: um deslocamento só, pela mesma propriedade das classes", () => {
+    const filete = ruleBody(css, ".platform-sidebar .platform-nav-active::before");
+    expect(filete).toMatch(/top: 50%;/);
+    expect(filete).toMatch(/translate: 0 -50%;/);
+    expect(filete).not.toMatch(/translateY/);
+  });
+
   it("ativo em quadrado branco de 44px, ícones sem caixinha, sem filete e calha da rolagem reservada", () => {
     const medium = mediaBlock(MEDIUM);
     const active = ruleBody(medium, `  ${auto} .platform-nav-link:is(.platform-nav-active, .platform-nav-section-active)`);

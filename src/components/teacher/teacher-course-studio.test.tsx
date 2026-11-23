@@ -14,6 +14,8 @@ const mocks = vi.hoisted(() => ({
   getMyCoursesBeingDeleted: vi.fn(),
   push: vi.fn(),
   subscribeCalls: 0,
+  failNextReads: 0,
+  params: {} as Record<string, string>,
 }));
 
 const courses: TeacherCourse[] = [
@@ -57,7 +59,7 @@ const courses: TeacherCourse[] = [
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: mocks.push }),
-  useSearchParams: () => ({ get: () => null }),
+  useSearchParams: () => ({ get: (key: string) => mocks.params[key] ?? null }),
 }));
 
 vi.mock("@/components/auth/auth-provider", () => ({
@@ -70,13 +72,23 @@ vi.mock("@/lib/data/teacher-courses", () => ({
   subscribeToTeacherCourses: (
     _ownerId: string,
     onData: (nextCourses: TeacherCourse[]) => void,
+    onError?: (error: Error) => void,
   ) => {
     mocks.subscribeCalls += 1;
     if (mocks.subscribeCalls > 20) {
       throw new Error("subscribeToTeacherCourses entrou em loop de render");
     }
-    onData(courses);
-    return vi.fn();
+    // failNextReads > 0: a leitura falha (no canal ou no reload) antes de dar certo.
+    const read = () => {
+      if (mocks.failNextReads > 0) {
+        mocks.failNextReads -= 1;
+        onError?.(new Error("read failed"));
+      } else {
+        onData(courses);
+      }
+    };
+    read();
+    return Object.assign(vi.fn(), { reload: async () => read() });
   },
 }));
 
@@ -99,6 +111,48 @@ describe("TeacherCourseStudio — lista de produtos", () => {
     mocks.getMyCoursesBeingDeleted.mockReset();
     mocks.getMyCoursesBeingDeleted.mockResolvedValue([]);
     mocks.subscribeCalls = 0;
+    mocks.failNextReads = 0;
+    mocks.params = {};
+  });
+
+  // F-11: a leitura que falhou tinha so "Please refresh". Agora "Try again" le
+  // de novo pelo mesmo canal, e o erro sai quando a lista chega.
+  it("offers Try again after a failed read and clears the error when the list arrives", async () => {
+    mocks.failNextReads = 1;
+    render(<TeacherCourseStudio />);
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("We could not load your products.");
+    // Sem lista lida, "No products yet" afirmaria o que não se sabe.
+    expect(screen.queryByText("No products yet")).toBeNull();
+    expect(screen.queryByRole("link", { name: /Create product/ })).toBeNull();
+    // A frase não manda mais recarregar a página: o botão está ao lado.
+    expect(screen.getByRole("alert")).not.toHaveTextContent(/refresh/i);
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+
+    expect(await screen.findByRole("table", { name: "Products" })).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Try again" })).toBeNull();
+    expect(mocks.subscribeCalls).toBe(1);
+  });
+
+  // A busca do topo do professor ("Search your products") recarregava a Home
+  // igual. Agora cai aqui com ?q= e a lista ja chega filtrada; uma busca nova
+  // com a lista aberta troca o filtro sem remontar a tela.
+  it("chega filtrada pelo ?q= da busca do topo e acompanha uma busca nova", async () => {
+    mocks.params = { q: "mentoring" };
+    const { rerender } = render(<TeacherCourseStudio />);
+    const table = await screen.findByRole("table", { name: "Products" });
+
+    expect(screen.getByRole("searchbox")).toHaveValue("mentoring");
+    expect(within(table).getAllByRole("row").slice(1)).toHaveLength(1);
+    expect(within(table).getByText("Mentoring essentials")).toBeInTheDocument();
+
+    mocks.params = { q: "community" };
+    rerender(<TeacherCourseStudio />);
+
+    expect(screen.getByRole("searchbox")).toHaveValue("community");
+    expect(within(table).getByText("Community leadership")).toBeInTheDocument();
+    expect(within(table).queryByText("Mentoring essentials")).toBeNull();
   });
 
   // A pessoa recebia tres colunas sem nome e quarenta botoes em dez produtos.

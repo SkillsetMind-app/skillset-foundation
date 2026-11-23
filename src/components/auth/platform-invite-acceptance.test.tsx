@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import InvitationPage from "@/app/invitations/[id]/page";
@@ -50,12 +50,40 @@ describe("PlatformInviteAcceptance", () => {
     await waitFor(() => expect(mocks.assign).toHaveBeenCalledWith("/onboarding?path=teacher"));
     expect(mocks.acceptPlatformInvite).toHaveBeenCalledTimes(1);
   });
+  // F-04: esperando, o botão guarda a largura. Os dois rótulos moram na mesma
+  // célula e o que não vale fica fora do leitor: o nome é sempre o texto à vista.
+  it("keeps its width while accepting: same cell for both labels, the visible one names the button", async () => {
+    let finish!: (value: { next_path: string }) => void;
+    mocks.acceptPlatformInvite.mockReturnValue(new Promise(resolve => { finish = resolve; }));
+    render(<PlatformInviteAcceptance id={invitation.id} />);
+    const accept = await screen.findByRole("button", { name: "Accept invitation" });
+    expect(within(accept).getByText("Accepting...")).toHaveAttribute("aria-hidden", "true");
+    fireEvent.click(accept);
+    expect(accept).toHaveAccessibleName("Accepting...");
+    expect(accept).toBeDisabled();
+    const idle = within(accept).getByText("Accept invitation");
+    expect(idle).toHaveAttribute("aria-hidden", "true");
+    expect(idle.parentElement).toBe(within(accept).getByText("Accepting...").parentElement);
+    await act(async () => finish({ next_path: "/onboarding?path=teacher" }));
+    expect(mocks.assign).toHaveBeenCalledWith("/onboarding?path=teacher");
+    expect(mocks.acceptPlatformInvite).toHaveBeenCalledTimes(1);
+  });
   it("awaits route params and only reads the invitation on GET", async () => {
     render(await InvitationPage({ params: Promise.resolve({ id: invitation.id }) }));
     expect(await screen.findByText(invitation.email)).toBeInTheDocument();
     expect(mocks.getMyPlatformInvite).toHaveBeenCalledWith(invitation.id);
     expect(mocks.acceptPlatformInvite).not.toHaveBeenCalled();
     expect(mocks.assign).not.toHaveBeenCalled();
+  });
+
+  // O-19: o convite abria numa pagina solta, sem logo nem caminho de volta.
+  it("opens inside the sign-in frame, with one page title and a way home", () => {
+    mocks.useAuth.mockReturnValue({ status: "unauthenticated", user: null });
+    render(<PlatformInviteAcceptance id={invitation.id} />);
+    expect(screen.getAllByRole("main")).toHaveLength(1);
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("SkillsetMind invitation");
+    expect(screen.getByRole("link", { name: "Back to home" })).toHaveAttribute("href", "/");
   });
 
   it("waits for auth and preserves the invitation on both sign-in and signup links", () => {

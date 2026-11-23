@@ -80,7 +80,7 @@ export function rowToTeacherCourse(row: CourseRow): TeacherCourse {
 export function subscribeToPublishedTeacherCourses(
   callback: (courses: TeacherCourse[]) => void,
   onError: (error: Error) => void,
-): () => void {
+): (() => void) & { reload: () => Promise<void> } {
   // Only approved courses are public. Draft and review states stay in Studio.
   // Bounded: every public catalog visitor streams this query, and each row
   // carries the FULL course (modules + lesson contentText), so an unbounded
@@ -88,14 +88,26 @@ export function subscribeToPublishedTeacherCourses(
   // the foreseeable horizon; past that the fix is a slim "courseCards"
   // projection + pagination, not a bigger limit.
   const supabase = getSupabaseBrowserClient();
+  // `reload()` (o "Try again") repete esta leitura sem mexer no canal. As de
+  // sempre (a inicial e as do canal) entregam como antes, so cedem a um reload
+  // mais novo; o que o reload comecou nao entrega depois de desligar (`closed`)
+  // nem por cima de uma leitura mais nova (traria o catalogo velho).
+  let closed = false;
+  let latestLoad = 0;
+  let latestReload = 0;
 
-  const load = async () => {
+  const load = async (fromReload = false) => {
+    const thisLoad = ++latestLoad;
+    if (fromReload) latestReload = thisLoad;
     const { data, error } = await supabase
       .from(coursesTable)
       .select("*")
       .eq("status", "published")
       .limit(200);
 
+    if (fromReload ? closed || thisLoad !== latestLoad : thisLoad < latestReload) {
+      return;
+    }
     if (error) {
       onError(error instanceof Error ? error : new Error(String(error)));
       return;
@@ -113,7 +125,6 @@ export function subscribeToPublishedTeacherCourses(
   // Visitante sem login fica so com a carga acima: o Realtime do projeto e
   // "private only" e recusava este canal ~575 vezes por dia.
   let channel: ReturnType<typeof supabase.channel> | null = null;
-  let closed = false;
   void supabase.auth.getSession().then(({ data }) => {
     if (!data.session || closed) return;
     // Realtime server filters only support a single-column eq, not `in`, so watch
@@ -131,10 +142,15 @@ export function subscribeToPublishedTeacherCourses(
       .subscribe();
   });
 
-  return () => {
-    closed = true;
-    if (channel) void supabase.removeChannel(channel);
-  };
+  // `reload()` le de novo SEM mexer no canal (o "Try again" do catalogo e da
+  // lista de desejos).
+  return Object.assign(
+    () => {
+      closed = true;
+      if (channel) void supabase.removeChannel(channel);
+    },
+    { reload: () => load(true) },
+  );
 }
 
 // The student dashboard's projection: enough to name a course, draw its cover

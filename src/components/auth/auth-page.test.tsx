@@ -1,4 +1,5 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { renderToString } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AuthPage } from "@/components/auth/auth-page";
@@ -123,6 +124,36 @@ describe("AuthPage continues an existing verified session", () => {
     expect(mocks.signInWithEmail).not.toHaveBeenCalled();
   });
 
+  // A /pricing button: `plan` and `cycle` in the link. Signed in already, the
+  // teacher with no plan lands on that plan's card screen.
+  it("takes a signed-in teacher from a /pricing plan button to that plan's card screen", async () => {
+    mocks.auth = { status: "authenticated", user: { ...sessionUser, roles: ["teacher"] } };
+    mocks.searchParams = new URLSearchParams("mode=signup&path=teacher&plan=starter&cycle=yearly");
+    mocks.getUserProfile.mockResolvedValue({ onboardingCompleted: true, roles: ["teacher"] });
+    const view = renderAuth();
+
+    await continueThroughLoading(view, "teacher");
+
+    await waitFor(() => expect(mocks.router.replace).toHaveBeenLastCalledWith(
+      "/account/billing/upgrade?plan=starter&cycle=yearly",
+    ), ROUTED);
+  });
+
+  it.each([
+    ["a plan that is not on offer", "mode=signup&path=teacher&plan=plus&cycle=yearly", {}],
+    ["a cycle that does not exist", "mode=signup&path=teacher&plan=starter&cycle=weekly", {}],
+    ["a teacher who already has a plan", "mode=signup&path=teacher&plan=starter&cycle=yearly", { currentPlanId: "basic" }],
+  ])("keeps the studio as the destination for %s", async (_label, query, plan) => {
+    mocks.auth = { status: "authenticated", user: { ...sessionUser, roles: ["teacher"] } };
+    mocks.searchParams = new URLSearchParams(query);
+    mocks.getUserProfile.mockResolvedValue({ onboardingCompleted: true, roles: ["teacher"], ...plan });
+    const view = renderAuth();
+
+    await continueThroughLoading(view, "teacher");
+
+    await waitFor(() => expect(mocks.router.replace).toHaveBeenLastCalledWith("/teach"), ROUTED);
+  });
+
   it("keeps required onboarding and its checkout destination for a new profile", async () => {
     mocks.searchParams = new URLSearchParams({ mode: "signin", path: "student", returnTo: checkout });
     mocks.getUserProfile.mockResolvedValue({ onboardingCompleted: false, roles: ["student"] });
@@ -165,9 +196,47 @@ describe("AuthPage continues an existing verified session", () => {
     fireEvent.change(view.container.querySelector('input[type="password"]')!, { target: { value: "fixture-password" } });
     fireEvent.submit(view.container.querySelector("form")!);
 
-    expect(await screen.findByRole("heading", { name: /email/i })).toBeInTheDocument();
+    // O titulo da pagina vira a instrucao; nada de "Sign in as a learner."
+    // em cima da porta de confirmar.
+    expect(await screen.findByRole("heading", { level: 1, name: "Check your email" })).toBeInTheDocument();
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+    // So promete seguir sozinha no mesmo aparelho: e o unico caso que a
+    // checagem desta aba enxerga.
+    // (A linha "enviado" tambem e status, sempre montada e vazia ate o envio.)
+    expect(screen.getByText("If you open the link on this device, this page continues by itself.")).toHaveAttribute("role", "status");
+    // O contador do reenvio nao fica dentro de regiao anunciada.
+    expect(screen.getByRole("button", { name: "Resend the link" }).closest("[aria-live]")).toBeNull();
     expect(mocks.router.replace).not.toHaveBeenCalled();
+
+    // Voltar para corrigir o e-mail devolve o titulo do formulario.
+    fireEvent.click(screen.getByRole("button", { name: "Wrong email? Change it" }));
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Sign in as a learner.");
     expect(mocks.getUserProfile).not.toHaveBeenCalled();
+  });
+
+  // A-12: "Sign in as a learner." seguia em cima de "This link has expired",
+  // que vinha num cartao com um segundo titulo.
+  it("turns an expired confirmation link into the page heading, and back", async () => {
+    mocks.auth = { status: "unauthenticated", user: null };
+    mocks.searchParams = new URLSearchParams("mode=signin&error=confirm_expired&path=student");
+    renderAuth();
+
+    expect(screen.getByRole("heading", { level: 1, name: "This link has expired" })).toBeInTheDocument();
+    expect(screen.getAllByRole("heading")).toHaveLength(1);
+
+    fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Sign in as a learner.");
+    await waitFor(() => expect(mocks.getPendingSecondFactor).toHaveBeenCalledTimes(1));
+  });
+
+  // Antes do JavaScript (HTML do servidor) o titulo da pagina ainda e o do
+  // formulario: a tela do link vencido mantem o seu ate a pagina assumir.
+  it("keeps the expired-link heading in the server HTML, before the page heading switches", () => {
+    mocks.auth = { status: "unauthenticated", user: null };
+    mocks.searchParams = new URLSearchParams("mode=signin&error=confirm_expired&path=student");
+    const html = renderToString(<I18nProvider initialLocale="en"><AuthPage /></I18nProvider>);
+
+    expect(html).toMatch(/<h2[^>]*>This link has expired<\/h2>/);
   });
 
   it("keeps callback errors visible even when another verified session exists", async () => {

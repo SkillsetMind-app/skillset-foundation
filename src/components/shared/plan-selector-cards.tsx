@@ -22,6 +22,14 @@ type PlanSelectorCardsProps<TValue extends string> = {
   className?: string;
 };
 
+/**
+ * Três opções numa linha só: em duas colunas a terceira ficava sozinha, com
+ * metade da largura. O esqueleto da aba de preço usa a mesma regra.
+ */
+export function planGridColumns(count: number) {
+  return count === 3 ? "md:grid-cols-3" : "md:grid-cols-2";
+}
+
 export function PlanSelectorCards<TValue extends string>({
   label,
   options,
@@ -35,7 +43,7 @@ export function PlanSelectorCards<TValue extends string>({
       <legend className="text-sm font-semibold text-[var(--color-ink)]">
         {label}
       </legend>
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className={cn("grid gap-4", planGridColumns(options.length))}>
         {options.map((option) => {
           const Icon = option.icon;
           const isSelected = option.value === value;
@@ -50,18 +58,22 @@ export function PlanSelectorCards<TValue extends string>({
               onClick={() => onChange(option.value)}
               className={cn(
                 "group grid gap-4 rounded-lg border-2 bg-white p-5 text-left transition duration-[180ms] ease-out",
-                "hover:-translate-y-0.5 hover:border-[rgba(26,54,93,0.22)] hover:shadow-[var(--shadow-soft)]",
-                "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[3px] focus-visible:outline-[rgba(26,54,93,0.28)]",
+                "hover:-translate-y-0.5 hover:shadow-[var(--shadow-soft)]",
+                "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[3px] focus-visible:outline-[var(--focus-ring)]",
+                // Escolhido na cor principal, sem o rosa do vermelho antigo; o
+                // hover so reforca a borda de quem nao esta escolhido.
                 isSelected
-                  ? "border-[var(--color-accent-fg)] bg-[rgba(178,34,52,0.04)]"
-                  : "border-[var(--color-line)]",
+                  ? "border-[var(--color-primary)] bg-[var(--color-surface-soft)]"
+                  : "border-[var(--color-line)] hover:border-[var(--color-line-strong)]",
                 isDisabled &&
-                  "cursor-not-allowed opacity-55 hover:translate-y-0 hover:border-[var(--color-line)] hover:shadow-none",
+                  "cursor-not-allowed opacity-60 hover:translate-y-0 hover:border-[var(--color-line)] hover:shadow-none",
               )}
             >
               <span className="flex items-start justify-between gap-3">
                 <span>
-                  <span className="display-title block text-xl font-semibold leading-tight text-[var(--color-primary)]">
+                  {/* Título de cartão do construtor (16px, o mesmo do PanelCard):
+                      a letra de destaque fica só no título da tela. */}
+                  <span className="plan-card-title block text-base font-semibold leading-tight text-[var(--color-primary)]">
                     {option.title}
                   </span>
                   <span className="mt-2 block text-sm leading-6 text-[var(--color-ink-soft)]">
@@ -74,7 +86,7 @@ export function PlanSelectorCards<TValue extends string>({
                     // motion-select: o selo da escolha cresce de 0,6 para 1
                     // (catálogo de movimento, item 2).
                     isSelected &&
-                      "motion-select bg-[rgba(178,34,52,0.08)] text-[var(--color-accent-fg)]",
+                      "motion-select bg-[var(--color-primary)] text-[var(--color-on-primary)]",
                   )}
                 >
                   <Icon aria-hidden="true" size={18} />

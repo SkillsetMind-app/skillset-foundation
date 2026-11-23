@@ -36,14 +36,17 @@ function renderBadge(verification: ProfessionalVerification, { locale = "en", co
 }
 
 describe("o selo", () => {
-  it("é um quadrado com check e canto de 4px: sem círculo, sem o BadgeCheck do Lucide", () => {
+  it("usa o BadgeCheck recortado do Lucide com cores da marca e nome acessivel", () => {
     const { container } = render(<VerifiedSeal label="Verified professional" />);
     const svg = container.querySelector("svg")!;
 
     expect(svg).toHaveClass("verified-seal");
-    expect(svg.querySelector("rect")).toHaveAttribute("rx", "4");
+    expect(svg.querySelector("rect")).toBeNull();
     expect(svg.querySelector("circle")).toBeNull();
-    expect(svg.getAttribute("class")).not.toMatch(/lucide|badge-check/);
+    expect(svg).toHaveClass("lucide-badge-check");
+    expect(svg).toHaveAttribute("fill", "var(--seal-ground)");
+    expect(svg).toHaveAttribute("stroke", "var(--seal-mark)");
+    expect(svg).toHaveAttribute("focusable", "false");
     // Na cor da marca (marinho/latão via .verified-seal), nunca um azul fixo.
     expect(container.innerHTML).not.toMatch(/#[0-9a-f]{6}|rgb\(/i);
     expect(screen.getByRole("img", { name: "Verified professional" })).toBe(svg);
@@ -52,6 +55,15 @@ describe("o selo", () => {
   it("sem rótulo é decorativo", () => {
     const { container } = render(<VerifiedSeal />);
     expect(container.querySelector("svg")).toHaveAttribute("aria-hidden", "true");
+  });
+
+  it("preserva tamanho explicito e classe do caller sem alterar a geometria", () => {
+    const { container } = render(<VerifiedSeal size={24} className="custom-seal" />);
+    const svg = container.querySelector("svg")!;
+    expect(svg).toHaveAttribute("width", "24");
+    expect(svg).toHaveAttribute("height", "24");
+    expect(svg).toHaveAttribute("viewBox", "0 0 24 24");
+    expect(svg).toHaveClass("custom-seal");
   });
 });
 

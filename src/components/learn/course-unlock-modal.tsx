@@ -62,6 +62,22 @@ export type CourseUnlockModalCourse = Pick<
   "id" | "title" | "summary" | "category" | "coverImageUrl" | "priceAmountMinor" | "currency"
 >;
 
+/**
+ * O verbo do botão e o aviso pelo preço que o curso já traz. "Unlock" é
+ * palavra que a marca evita, mas trocar por "Buy" em todo lugar punha "Buy
+ * course" num curso grátis. Pago compra; grátis se inscreve (o mesmo texto da
+ * página do curso); sem preço conhecido fica o "Unlock course" neutro. Botão e
+ * aviso saem do mesmo par, para nunca discordarem.
+ */
+export function unlockCopyKeys(priceAmountMinor: number | null | undefined): { label: string; note: string } {
+  if (typeof priceAmountMinor !== "number") {
+    return { label: "learn.paths.unlock", note: "learn.paths.unlockNote" };
+  }
+  return priceAmountMinor > 0
+    ? { label: "learn.paths.buy", note: "learn.paths.buyNote" }
+    : { label: "publicCourses.enrollFree", note: "publicCourses.unlockNoteFree" };
+}
+
 export function CourseUnlockModal({
   course,
   onClose,
@@ -149,17 +165,22 @@ export function CourseUnlockModal({
     >
       <button
         type="button"
-        className="absolute inset-0 bg-[rgba(15,39,68,0.62)] backdrop-blur-[2px]"
+        className="dialog-backdrop absolute inset-0"
         aria-label={t("learn.paths.close")}
         onClick={onClose}
       />
-      <div className="modal-panel relative z-[75] flex w-full max-w-lg flex-col overflow-hidden bg-white shadow-[0_30px_80px_rgba(15,39,68,0.32)] sm:rounded-xl">
+      {/* O painel da casa do sm em diante (no celular, tela cheia). O
+          bg-white e a borda por classe ficam: dentro da sala é por esses
+          nomes que o fundo e o filete passam às cores do curso. */}
+      <div className="dialog-panel dialog-panel--md modal-panel relative z-[75] flex flex-col overflow-hidden border-[var(--color-line)] bg-white max-sm:rounded-none max-sm:border-0">
         <div className="relative aspect-[16/9] w-full overflow-hidden">
-          <CourseCover course={course} sizes="(min-width: 640px) 512px, 100vw" />
+          <CourseCover course={course} sizes="(min-width: 640px) 576px, 100vw" />
           <button
             type="button"
             onClick={onClose}
-            className="absolute right-3 top-3 grid size-9 place-items-center rounded-full bg-[rgba(15,39,68,0.62)] text-white transition hover:bg-[#102a43] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+            // O X de todas as janelas (.button-icon, 44px, canto de 8px), com
+            // fundo claro por estar em cima da capa. Era um círculo navy só aqui.
+            className="button-icon absolute right-3 top-3 bg-[var(--color-surface)] shadow-[var(--shadow-soft)] hover:bg-[var(--color-surface-soft)]"
             aria-label={t("learn.paths.close")}
           >
             <X aria-hidden="true" size={18} strokeWidth={1.8} />
@@ -182,7 +203,7 @@ export function CourseUnlockModal({
 
           <p className="mt-4 flex items-start gap-2 rounded-md bg-[var(--color-surface-soft)] px-3 py-2.5 text-xs leading-6 text-[var(--color-ink-soft)]">
             <Lock aria-hidden="true" size={14} className="mt-1 shrink-0" />
-            <span>{note ?? t("learn.paths.unlockNote")}</span>
+            <span>{note ?? t(unlockCopyKeys(course.priceAmountMinor).note)}</span>
           </p>
 
           <Link
@@ -192,7 +213,9 @@ export function CourseUnlockModal({
           >
             <Lock aria-hidden="true" size={15} />
             {ctaLabel
-              ?? (price ? `${t("learn.paths.unlock")} - ${price}` : t("learn.paths.unlock"))}
+              ?? (price
+                ? `${t(unlockCopyKeys(course.priceAmountMinor).label)} - ${price}`
+                : t(unlockCopyKeys(course.priceAmountMinor).label))}
           </Link>
           {secondaryLink ? (
             <Link

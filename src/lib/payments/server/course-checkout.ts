@@ -62,6 +62,13 @@ export type CourseCheckoutOptions = {
    * (and on the subscription) for the webhook. Default: none (signed-in).
    */
   checkoutOrigin?: "guest";
+  /**
+   * false: a live checkout already open for this buyer and course is never
+   * handed back (409 instead). The guest route sets it for a browser that did
+   * not open that checkout, so typing someone's e-mail never returns their
+   * Stripe page. Default: handed back (signed-in buyer, double click).
+   */
+  reuseOpenCheckout?: boolean;
 };
 
 // Opens a Stripe Checkout Session for a paid course. Shared by the signed-in
@@ -266,11 +273,17 @@ export async function createCourseCheckoutSession(
     const userEmail = options.customerEmail ?? buyer?.email ?? undefined;
     const appUrl = getAppUrl();
     const stripe = getStripeClient();
+    // Voltar da Stripe nao pode trocar a oferta pela padrao do curso.
+    const cancelParams = new URLSearchParams({ checkout: "cancelled" });
+    if (priced.offerId) cancelParams.set("offerId", priced.offerId);
+    if (priced.priceId) cancelParams.set("priceId", priced.priceId);
+    const cancelUrl = `${appUrl}/courses/${encodeURIComponent(courseId)}/checkout?${cancelParams}`;
 
     const owner = await getUserRow(course.owner_id);
     const platformFeeBps = canonicalPlatformFeeBpsForPlan(owner?.current_plan_id);
     // The fixed part of the fee (~US$0.30), in the stored unit of this currency.
-    const platformFeeFixedMinor = platformFixedFeeMinor(currency);
+    // Zero on a 0% plan (Pro): SkillsetMind takes nothing from that sale.
+    const platformFeeFixedMinor = platformFixedFeeMinor(currency, owner?.current_plan_id);
     // Course fields are caches; only the owner's protected Connect profile
     // can authorize the account that receives a new payment.
     const connectedAccountId = owner?.stripe_connected_account_id ?? null;
@@ -311,6 +324,9 @@ export async function createCourseCheckoutSession(
 
       const lock = lockRows?.[0];
       if (lock?.action === "reuse" && lock.checkout_url) {
+        if (options.reuseOpenCheckout === false) {
+          throw new PaymentError("A subscription checkout for this course is already open.", 409);
+        }
         // Same guard as the one-time path below. The lock is per buyer+course,
         // so without this a request for a DIFFERENT offer is handed the first
         // offer's URL and the buyer checks out expecting the offer they picked.
@@ -491,7 +507,7 @@ export async function createCourseCheckoutSession(
             expires_at: Math.floor(Date.now() / 1000) + checkoutSessionExpiresInSec,
             success_url: options.successUrl
               ?? `${appUrl}/learn/courses/${encodeURIComponent(courseId)}?checkout=success`,
-            cancel_url: `${appUrl}/courses/${encodeURIComponent(courseId)}?checkout=cancelled`,
+            cancel_url: cancelUrl,
           },
           {
             idempotencyKey: `course_sub_checkout_${checkoutAttemptId}`,
@@ -583,6 +599,9 @@ export async function createCourseCheckoutSession(
     const lock = lockRows?.[0];
 
     if (lock?.action === "reuse" && lock.checkout_url) {
+      if (options.reuseOpenCheckout === false) {
+        throw new PaymentError("A checkout for this course is already open.", 409);
+      }
       // A sibling request already has a live session — hand back the SAME url.
       const { data: existingLock, error: existingLockError } = await admin
         .from("checkout_locks")
@@ -803,7 +822,7 @@ export async function createCourseCheckoutSession(
       expires_at: Math.floor(Date.now() / 1000) + checkoutSessionExpiresInSec,
       success_url: options.successUrl
         ?? `${appUrl}/learn/courses/${encodeURIComponent(courseId)}?checkout=success`,
-      cancel_url: `${appUrl}/courses/${encodeURIComponent(courseId)}?checkout=cancelled`,
+      cancel_url: cancelUrl,
     };
 
     // Same rollback contract as the subscription branch above: a failure after

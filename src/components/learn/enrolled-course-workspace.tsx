@@ -2,14 +2,13 @@
 
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
-  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Clock,
   FileText,
-  Info,
+  Loader2,
   LockKeyhole,
   PlayCircle,
 } from "lucide-react";
@@ -24,6 +23,7 @@ import { CourseMessagesPanel } from "@/components/learn/course-messages-panel";
 import {
   CourseMaterialsPanel,
   groupReleasedMaterials,
+  LessonAssetActions,
   MaterialAppHint,
   MaterialFileList,
 } from "@/components/learn/course-materials-panel";
@@ -35,13 +35,17 @@ import { NextLessonCard } from "@/components/learn/next-lesson-card";
 import { MembersAreaHero } from "@/components/learn/members-area-hero";
 import { TrustedEmbedPlayer } from "@/components/learn/trusted-embed-player";
 import { CourseSubscriptionCard } from "@/components/learn/course-subscription-card";
-import { CourseUnlockModal } from "@/components/learn/course-unlock-modal";
+import { CourseUnlockModal, unlockCopyKeys } from "@/components/learn/course-unlock-modal";
 import { VideoDock } from "@/components/learn/video-dock";
 import {
   VideoWatermark,
 } from "@/components/learn/watermarked-video-player";
 import { ProtectedAssetPreview } from "@/components/shared/protected-asset-preview";
+import { BusyLabel } from "@/components/ui/busy-label";
 import { MilestoneSeal, useJustDone } from "@/components/ui/drawn-check";
+import { InlineAlert } from "@/components/ui/inline-alert";
+import { LoadErrorAlert } from "@/components/ui/load-error-alert";
+import { ProgressBar } from "@/components/ui/progress-bar";
 import type { CourseAsset } from "@/domain/course-asset";
 import {
   formatCourseAssetSize,
@@ -54,8 +58,17 @@ import { getCourseAssetKindLabel } from "@/lib/i18n/course-assets";
 import type { CourseEvent } from "@/domain/course-event";
 import {
   formatEventDateTime,
+  getEventLiveState,
+  getEventUpdatedAt,
+  isCancelledEventShown,
   isValidExternalEventUrl,
 } from "@/domain/course-event";
+import {
+  ClassroomLiveStrip,
+  EventCalendarActions,
+  noJoinLinkKey,
+  useNow,
+} from "@/components/learn/live-session-parts";
 import {
   formatUnlockDate,
   getLessonUnlockState,
@@ -104,6 +117,8 @@ import {
 import { useCreatorAreaLink } from "@/components/learn/member-area-links";
 import { track } from "@/lib/posthog/events";
 import { scrollBehavior } from "@/lib/ui/scroll-behavior";
+import { LessonQuiz } from "@/components/learn/lesson-quiz";
+import { isTeacherAiEnabled } from "@/lib/ai/config";
 
 // Liberação de aula pelo calendário (migration 20260915020000).
 // Folga depois do prazo: o relógio do aparelho pode estar à frente do banco.
@@ -151,6 +166,9 @@ type EnrolledCourseWorkspaceProps = {
   /** A matrícula que o pai (CreatorCourseWorkspace) já assina. Sem ela a sala
    *  buscava a mesma linha de novo, atrás de mais uma tela de espera. */
   enrollment?: Enrollment;
+  /** O pai abriu a sala depois de um "Try again": o foco vai para o título da
+   *  sala ao abrir, como no "Try again" daqui (focusRoomAfterRetry). */
+  focusTitleOnOpen?: boolean;
 };
 
 export function EnrolledCourseWorkspace({
@@ -162,8 +180,9 @@ export function EnrolledCourseWorkspace({
   tab = "lesson",
   openPostId = null,
   enrollment: parentEnrollment,
+  focusTitleOnOpen = false,
 }: EnrolledCourseWorkspaceProps) {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const { user } = useAuth();
   const searchParams = useSearchParams();
   // Stripe's success_url carries ?checkout=success while the webhook is still
@@ -178,7 +197,7 @@ export function EnrolledCourseWorkspace({
   const [isLoading, setIsLoading] = useState(!previewMode && !hasParentEnrollment);
   // A area do criador, quando ele tem perfil publico: e para la que o
   // "voltar" da aula leva (a saida continua uma so). Fora do preview.
-  const creatorArea = useCreatorAreaLink(previewMode ? null : course.instructorId);
+  const creatorArea = useCreatorAreaLink(previewMode ? null : course.instructorId, course.id);
   const [progressState, setProgressState] = useState<{
     key: string | null;
     lessonIds: string[];
@@ -299,7 +318,22 @@ export function EnrolledCourseWorkspace({
     key: null,
     ready: false,
   });
-  const [error, setError] = useState("");
+  // Uma falha por leitura. O cartão de erro fica enquanto QUALQUER uma estiver
+  // falhando: a sala nunca abre com o progresso vazio ou sem materiais que a
+  // leitura que falhou deixou no lugar. Cada leitura boa tira só a própria
+  // falha; o "Try again" relê todas as que falharam, pelos mesmos canais.
+  // Progresso e materiais guardam DE QUEM falhou (a matrícula, o curso): a
+  // falha de uma inscrição que já acabou não prende o cartão.
+  const [failedReads, setFailedReads] = useState<{
+    enrollment: boolean;
+    progress: string | null;
+    assets: string | null;
+  }>({ enrollment: false, progress: null, assets: null });
+  const enrollmentSubscription = useRef<ReloadableSubscription | null>(null);
+  const progressSubscription = useRef<ReloadableSubscription | null>(null);
+  const errorCardRef = useRef<HTMLElement>(null);
+  const roomRef = useRef<HTMLDivElement>(null);
+  const focusRoomAfterRetry = useRef(focusTitleOnOpen);
   // Erro de uma AÇÃO (concluir/desfazer aula): aviso dentro do player, a sala
   // fica. `error` acima é de carga e troca a sala inteira pelo cartão de erro —
   // uma falha momentânea ao salvar tirava o aluno da aula.
@@ -404,21 +438,28 @@ export function EnrolledCourseWorkspace({
       return;
     }
 
-    return subscribeToEnrollment(
+    const current = subscribeToEnrollment(
       user.uid,
       course.slug,
       (nextEnrollment) => {
         setEnrollment(nextEnrollment);
+        setFailedReads((reads) => (reads.enrollment ? { ...reads, enrollment: false } : reads));
         setIsLoading(false);
         // Matrícula que chega depois da montagem (checkout): o relógio da
         // montagem ficou para trás e a aula 1 apareceria fechada.
         setClockNow(Date.now());
       },
       () => {
-        setError("learn.classroom.workspace.enrollmentError");
+        focusRoomAfterRetry.current = false;
+        setFailedReads((reads) => ({ ...reads, enrollment: true }));
         setIsLoading(false);
       },
     );
+    enrollmentSubscription.current = current;
+    return () => {
+      enrollmentSubscription.current = null;
+      current();
+    };
   }, [course.slug, enrollmentRecheck, hasParentEnrollment, previewMode, user]);
 
   useEffect(() => {
@@ -426,7 +467,7 @@ export function EnrolledCourseWorkspace({
       return;
     }
 
-    return subscribeToCompletedLessons(
+    const current = subscribeToCompletedLessons(
       enrollmentId,
       (lessonIds) => {
         setProgressState({
@@ -434,10 +475,12 @@ export function EnrolledCourseWorkspace({
           lessonIds,
           ready: true,
         });
+        setFailedReads((reads) => (reads.progress === enrollmentId ? { ...reads, progress: null } : reads));
         setClockNow(Date.now());
       },
       () => {
-        setError("learn.classroom.workspace.progressLoadError");
+        focusRoomAfterRetry.current = false;
+        setFailedReads((reads) => ({ ...reads, progress: enrollmentId }));
         setProgressState({
           key: enrollmentId,
           lessonIds: [],
@@ -446,6 +489,11 @@ export function EnrolledCourseWorkspace({
         setClockNow(Date.now());
       },
     );
+    progressSubscription.current = current;
+    return () => {
+      progressSubscription.current = null;
+      current();
+    };
   }, [enrollmentId, previewMode]);
 
   // Liberação pelo calendário (migration 20260915020000). A RLS só entrega o
@@ -659,9 +707,11 @@ export function EnrolledCourseWorkspace({
           key: course.id,
           ready: true,
         });
+        setFailedReads((reads) => (reads.assets === course.id ? { ...reads, assets: null } : reads));
       },
       () => {
-        setError("learn.classroom.workspace.assetsError");
+        focusRoomAfterRetry.current = false;
+        setFailedReads((reads) => ({ ...reads, assets: course.id }));
         setAssetsState({
           assets: [],
           key: course.id,
@@ -710,27 +760,42 @@ export function EnrolledCourseWorkspace({
   // aparecia sempre e, sem sessão marcada, abria uma página vazia. Aqui em
   // cima ela decide se a aba existe. "Agora" é amostrado quando a lista chega
   // (o render tem de ser puro).
-  const [liveState, setLiveState] = useState<{ events: CourseEvent[]; now: number }>({
+  const [liveState, setLiveState] = useState<{ events: CourseEvent[]; now: number; failed: boolean }>({
     events: [],
     now: 0,
+    failed: false,
   });
+  const eventsSubscription = useRef<ReloadableSubscription | null>(null);
   // Só com matrícula: sem ela a sala não abre, e não há o que assinar.
   useEffect(() => {
     if (previewMode || !enrollmentId) {
       return;
     }
 
-    return subscribeToCourseEvents(
+    const current = subscribeToCourseEvents(
       course.id,
-      (events) => setLiveState({ events, now: Date.now() }),
-      // A agenda é acessória: com erro, fica vazia, sem aviso na sala.
-      () => setLiveState({ events: [], now: Date.now() }),
+      (events) => setLiveState({ events, now: Date.now(), failed: false }),
+      // A agenda é acessória: com erro, a sala abre igual, sem aviso. Só a aba
+      // das sessões diz que falhou e oferece "Try again" (nunca "nenhuma
+      // sessão"); o que já tinha chegado fica.
+      () => setLiveState((state) => ({ events: state.events, now: Date.now(), failed: true })),
+      // A cancelada aparece marcada na aba das sessões, em vez de sumir.
+      { includeCancelled: true },
     );
+    eventsSubscription.current = current;
+    return () => {
+      eventsSubscription.current = null;
+      // `?.`: antes o efeito devolvia a inscrição direto, e um dublê de teste
+      // sem retorno passava sem erro.
+      current?.();
+    };
   }, [course.id, enrollmentId, previewMode]);
-  // Ficam à vista até 2h depois do início: dá para entrar numa live que já
-  // começou.
-  const upcomingEvents = liveState.events.filter(
-    (event) => Date.parse(event.startsAt) > liveState.now - 2 * 60 * 60 * 1000,
+  // Ficam à vista enquanto não acabaram (a janela comum de course-event.ts);
+  // a cancelada, por 7 dias depois da hora marcada.
+  const upcomingEvents = liveState.events.filter((event) =>
+    event.status === "cancelled"
+      ? isCancelledEventShown(event.startsAt, liveState.now)
+      : getEventLiveState(event.startsAt, liveState.now, event.type) !== "over",
   );
 
   // LESSON_STARTED — fires when the learner navigates to a lesson card.
@@ -759,18 +824,62 @@ export function EnrolledCourseWorkspace({
   // Painel novo so na troca de aba (ver useTabChanged).
   const tabChanged = useTabChanged(tab);
 
+  // As falhas que valem agora: a de uma inscrição que já acabou não conta.
+  const enrollmentFailed = failedReads.enrollment;
+  const progressFailed = !previewMode && enrollmentId !== null && failedReads.progress === enrollmentId;
+  const assetsFailed = enableFirestoreAssets && enrollmentId !== null && failedReads.assets === course.id;
+  const error = enrollmentFailed
+    ? "learn.classroom.workspace.enrollmentError"
+    : progressFailed
+      ? "learn.classroom.workspace.progressLoadError"
+      : assetsFailed
+        ? "learn.classroom.workspace.assetsError"
+        : "";
+
+  // O cartão de erro some quando o "Try again" dá certo: o foco vai para o
+  // título da sala, em vez de cair no <body>. Uma falha no caminho desarma.
+  useEffect(() => {
+    if (error || isLoading || !focusRoomAfterRetry.current) {
+      return;
+    }
+    focusRoomAfterRetry.current = false;
+    const title = roomRef.current?.querySelector<HTMLElement>("h1");
+    if (title) {
+      title.tabIndex = -1;
+      title.focus();
+    }
+  }, [error, isLoading]);
+
   if (isLoading) {
     // The classroom's one loading state, the same the route file and the
     // creator workspace paint, so a student never sees the wait change look.
-    return <ClassroomLoading label={t("learnWave2.courseLoading.title")} />;
+    // Com a aula no endereço a sala abre no cabeçalho curto, não na capa (a
+    // conta de isCourseHome, sem o progresso, que ainda não chegou).
+    return (
+      <ClassroomLoading
+        label={t("learnWave2.courseLoading.title")}
+        short={Boolean(lessonParam) && !previewMode && tab !== "about"}
+      />
+    );
   }
 
   if (error) {
+    // "Try again" relê TODAS as leituras que falharam, pelos mesmos canais.
     return (
-      <section className="rounded-lg border border-[rgba(178,34,52,0.2)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
-        <p className="rounded-md bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
+      <section ref={errorCardRef} tabIndex={-1} className="rounded-lg border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
+        <LoadErrorAlert
+          focusRef={errorCardRef}
+          onRetry={() => {
+            focusRoomAfterRetry.current = true;
+            return Promise.all([
+              enrollmentFailed ? enrollmentSubscription.current?.reload?.() : undefined,
+              progressFailed ? progressSubscription.current?.reload?.() : undefined,
+              assetsFailed ? assetsSubscription.current?.reload?.() : undefined,
+            ]);
+          }}
+        >
           {t(error)}
-        </p>
+        </LoadErrorAlert>
         <div className="mt-4 flex flex-wrap gap-3">
           <Link href="/learn" className="button-solid px-4 py-2.5 text-sm">
             {t("learn.classroom.workspace.backToLearning")}
@@ -805,7 +914,12 @@ export function EnrolledCourseWorkspace({
               ? t("learn.classroom.workspace.enrollmentDelayed")
               : t("learn.classroom.workspace.openingCourse")}
           </h1>
-          <p role="status" className="mt-4 max-w-2xl text-sm leading-7 text-[var(--color-ink-soft)]">
+          <p role="status" className="mt-4 flex max-w-2xl items-start gap-2 text-sm leading-7 text-[var(--color-ink-soft)]">
+            {/* Até 90s esperando a matrícula: o anel diz que algo está
+                andando. Some quando a espera estoura (aí o texto pede ação). */}
+            {checkoutGraceExpired ? null : (
+              <Loader2 size={18} aria-hidden className="mt-1.5 shrink-0 motion-safe:animate-spin" />
+            )}
             {checkoutGraceExpired
               ? t("learn.classroom.workspace.delayedDetails")
               : t("learn.classroom.workspace.openingDetails")}
@@ -833,8 +947,10 @@ export function EnrolledCourseWorkspace({
           }}
           ctaHref={`/courses/${course.slug}`}
           // No price here: the modal's fallback formats the raw course price
-          // in English. The course page owns the real, resolved price.
-          ctaLabel={t("learn.paths.unlock")}
+          // in English. The course page owns the real, resolved price. The
+          // verb (and the modal's note) still follow it: buy, enroll free, or
+          // the neutral "Unlock course" when the price is unknown.
+          ctaLabel={t(unlockCopyKeys(course.priceAmountMinor).label)}
           secondaryLink={{ href: "/learn", label: t("learn.classroom.workspace.backToLearning") }}
           onClose={() => router.push("/learn")}
         />
@@ -953,6 +1069,15 @@ export function EnrolledCourseWorkspace({
     selectedLessonNumber > 1 ? allLessons[selectedLessonNumber - 2] : null;
   const nextInOrder =
     selectedLessonNumber > 0 ? allLessons[selectedLessonNumber] ?? null : null;
+  // A próxima abre numa DATA (drip por prazo): concluir esta não a destranca.
+  // O botão de baixo dizia "Next lesson" e não fazia nada; agora diz quando
+  // ela abre. (Sequencial não entra aqui: concluir esta é o que abre a
+  // próxima, e completeAndFindNext já trata isso.)
+  const nextUnlockState = nextInOrder ? lessonUnlockStateById.get(nextInOrder.id) : undefined;
+  const nextOpensAt =
+    nextUnlockState && !nextUnlockState.unlocked && nextUnlockState.reason === "scheduled"
+      ? nextUnlockState.unlocksAt
+      : null;
   // Members-area hero cover: the teacher's chosen members_cover CourseAsset
   // (resolved to a protected object URL inside the hero band). Only available
   // once the course assets are streamed (enableFirestoreAssets); otherwise the
@@ -1213,7 +1338,9 @@ export function EnrolledCourseWorkspace({
   // gravacao (a aula que o professor acrescentar), se houver.
   const sessionAlreadyHappened =
     productFormat === "live_event"
-    && liveState.events.some((event) => Date.parse(event.startsAt) <= liveState.now);
+    && liveState.events.some(
+      (event) => event.status !== "cancelled" && Date.parse(event.startsAt) <= liveState.now,
+    );
 
   // As abas que este curso tem. Materiais só quando os arquivos do curso são
   // lidos (cursos publicados por professor); lives, comunidade e mensagens não
@@ -1236,6 +1363,7 @@ export function EnrolledCourseWorkspace({
 
   return (
     <div
+      ref={roomRef}
       className="member-classroom"
       data-members-theme={course.membersTheme ?? "light"}
     >
@@ -1269,12 +1397,18 @@ export function EnrolledCourseWorkspace({
         />
       ) : (
         <header className="member-classroom-head">
+          {/* No celular so a seta fica a vista (o rotulo continua sendo o
+              nome do link): "← Maria Fernanda's members area" espremia o nome
+              do curso ate sumir. */}
           <Link href={backHref} className="member-classroom-head__back">
-            ← {backLabel}
+            ← <span className="max-[640px]:sr-only">{backLabel}</span>
           </Link>
           <div className="member-classroom-head__main">
+            {/* O nome do CURSO, nao o titulo da area de membros: esse e a
+                saudacao da capa, e quem o preenche com o proprio nome deixava
+                a sala inteira sem dizer que curso era. */}
             <h1 className="member-classroom-head__title">
-              {course.membersTitle ?? course.title}
+              {course.title}
             </h1>
             {activeTab === "lesson" && selectedLesson ? (
               <LessonStepper
@@ -1288,16 +1422,15 @@ export function EnrolledCourseWorkspace({
               />
             ) : null}
           </div>
-          <span
+          {/* A barra da casa (ui/progress-bar), nas cores do curso: o trilho na
+              linha do curso vem do CSS da sala, o preenchimento no acento. Ela
+              desliza até a marca nova (transform), em vez de saltar. */}
+          <ProgressBar
+            value={progressPercent}
+            label={t("learn.paths.percentComplete").replace("{percent}", () => String(progressPercent))}
             className="member-classroom-head__progress"
-            role="progressbar"
-            aria-valuenow={progressPercent}
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-label={t("learn.paths.percentComplete").replace("{percent}", () => String(progressPercent))}
-          >
-            <span style={{ width: `${progressPercent}%` }} />
-          </span>
+            fillClassName="bg-[var(--ma-accent)]"
+          />
           <span className="member-classroom-head__percent inline-flex items-center gap-1">
             {progressPercent}%
             {/* O marco: a barra chegou ao fim (o mesmo selo do construtor). */}
@@ -1331,12 +1464,25 @@ export function EnrolledCourseWorkspace({
         active={activeTab}
         lessonId={selectedLesson?.id ?? null}
         tabs={classroomTabs}
-        certificateHref={certificateHref}
+        // Na capa a 100% o certificado já é a ação principal do hero (mesmas
+        // condições do MembersAreaHeroBand acima); aqui seria o mesmo
+        // "Get certificate" duas vezes na mesma tela.
+        certificateHref={
+          isCourseHome && !previewMode && totalLessonCount > 0 ? null : certificateHref
+        }
       />
 
+      {/* Sessão começando ou ao vivo: a faixa fica em TODAS as abas. Ao lado
+          das leituras, não dentro delas: com a agenda falhando, a sala abre
+          igual (a faixa usa o que já chegou). */}
+      {previewMode ? null : <ClassroomLiveStrip events={liveState.events} />}
+
       {/* Um item so da grade para a aba aberta: na troca de aba ele entra
-          subindo 8px (motion-panel-in); na carga da pagina, parado. */}
-      <div className={tabChanged ? "motion-panel-in" : undefined}>
+          subindo 8px (motion-panel-in); na carga da pagina, parado. A classe
+          fixa leva o respiro de 24px ate a moldura da sala (globals.css): sem
+          ela os paineis encostavam na borda e o video passava da tela no
+          celular. */}
+      <div className={tabChanged ? "member-classroom-body motion-panel-in" : "member-classroom-body"}>
       {activeTab === "lesson" && totalLessonCount === 0 ? (
         <section className="member-resource-panel">
           <p className="text-sm text-[var(--color-ink-soft)]">{t("learn.classroom.workspace.noLessons")}</p>
@@ -1347,13 +1493,14 @@ export function EnrolledCourseWorkspace({
       <div className="member-classroom-layout">
         <section id="member-lesson-player" className="member-classroom-player">
         {actionError ? (
-          <p role="alert" className="mb-5 rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
+          <InlineAlert tone="error" className="mb-5">
             {t(actionError)}
-          </p>
+          </InlineAlert>
         ) : null}
         {selectedLesson && resolvedSelectedLesson ? (
           <LessonContentPanel
             assets={selectedLessonAssets}
+            courseId={course.id}
             enrollmentId={workspaceEnrollment?.id ?? null}
             enableFirestoreAssets={enableFirestoreAssets}
             isLoadingAssets={
@@ -1372,14 +1519,14 @@ export function EnrolledCourseWorkspace({
               || (selectedLessonReleasing && !resolvedSelectedLesson?.contentText?.trim())
             }
             lesson={resolvedSelectedLesson}
-            moduleTitle={selectedModule?.title ?? null}
             onEnded={handleLessonEnded}
             unlockState={selectedLessonUnlockState}
             previousRequiredLesson={previousRequiredLesson}
+            underHero={isCourseHome}
             onSelectLesson={selectLesson}
             previewMode={previewMode}
             lessonComments={
-              // Sob o player e "Informacoes da aula" (paridade Hotmart, P3):
+              // No fim do painel, depois do material (paridade Hotmart, P3):
               // o feed da comunidade filtrado por esta aula. Some sozinho
               // quando a comunidade do curso esta desligada.
               <LessonComments
@@ -1401,9 +1548,12 @@ export function EnrolledCourseWorkspace({
           // already uses keeps pinned to the bottom.
           // bg-inherit picks up the player surface, which the members theme
           // repaints, so the bar follows the course theme with no fork.
+          // As margens negativas anulam o padding do cartao (16px no celular,
+          // 24px acima de 768): presa no pe da tela, a barra cobre o cartao de
+          // borda a borda, sem o texto passando pelos lados.
           <nav
             aria-label={t("creatorEditor.preview.lessonNavigation")}
-            className="sticky bottom-0 z-20 mt-5 flex flex-wrap items-center justify-center gap-3 border-t border-[var(--color-line)] bg-inherit py-3"
+            className="sticky bottom-0 z-20 -mx-4 mt-5 flex flex-wrap items-center justify-center gap-3 border-t border-[var(--color-line)] bg-inherit px-4 py-3 md:-mx-6 md:px-6"
           >
             {/* "Anterior" morava aqui, sozinho, sem "proxima" ao lado. Os dois
                 agora ficam junto do titulo (LessonStepper), uma vez so. */}
@@ -1445,24 +1595,39 @@ export function EnrolledCourseWorkspace({
                       && !selectedLessonUnlockState.unlocked,
                   )
                   || activeLessonId === selectedLesson.id
-                  || (!nextInOrder && completedLessonIds.includes(selectedLesson.id))
+                  || ((!nextInOrder || Boolean(nextOpensAt)) && completedLessonIds.includes(selectedLesson.id))
                 }
-                className="button-solid flex-1 px-4 py-2.5 text-sm disabled:opacity-60 sm:flex-none"
+                className="button-solid flex-1 px-4 py-2.5 text-sm sm:flex-none"
               >
-                {previewMode
-                  ? t("creatorEditor.preview.only")
-                  : selectedLessonUnlockState
-                      && !selectedLessonUnlockState.unlocked
-                    ? t("learn.classroom.lesson.locked")
-                    : activeLessonId === selectedLesson.id
-                      ? t("learn.classroom.workspace.saving")
-                      : completedLessonIds.includes(selectedLesson.id)
-                        ? nextInOrder
-                          ? t("learn.classroom.nextLesson.title")
-                          : t("learn.classroom.curriculum.completed")
-                        : nextInOrder
-                          ? t("learn.classroom.workspace.completeAndNext")
-                          : t("learn.classroom.workspace.complete")}
+                {/* "Saving..." só vale fora do preview e com a aula aberta,
+                    como antes; os dois rótulos na mesma célula, o botão não
+                    muda de largura ao concluir. */}
+                <BusyLabel
+                  busy={
+                    !previewMode
+                    && !(selectedLessonUnlockState && !selectedLessonUnlockState.unlocked)
+                    && activeLessonId === selectedLesson.id
+                  }
+                  idle={
+                    previewMode
+                      ? t("creatorEditor.preview.only")
+                      : selectedLessonUnlockState
+                          && !selectedLessonUnlockState.unlocked
+                        ? t("learn.classroom.lesson.locked")
+                        : completedLessonIds.includes(selectedLesson.id)
+                          ? nextInOrder
+                            ? nextOpensAt
+                              // "Next lesson · Unlocks Nov 24, 2026": a mesma frase
+                              // da playlist, dita de qual aula se trata.
+                              ? `${t("learn.classroom.nextLesson.title")} · ${t("learn.classroom.lesson.unlocks").replace("{date}", () => formatUnlockDate(nextOpensAt, locale))}`
+                              : t("learn.classroom.nextLesson.title")
+                            : t("learn.classroom.curriculum.completed")
+                          : nextInOrder && !nextOpensAt
+                            ? t("learn.classroom.workspace.completeAndNext")
+                            : t("learn.classroom.workspace.complete")
+                  }
+                  busyText={t("learn.classroom.workspace.saving")}
+                />
               </button>
               )}
             </div>
@@ -1561,6 +1726,8 @@ export function EnrolledCourseWorkspace({
         <CourseEventsAgenda
           upcoming={upcomingEvents}
           now={liveState.now}
+          failed={liveState.failed}
+          onRetry={() => eventsSubscription.current?.reload?.()}
           alreadyHappened={sessionAlreadyHappened}
           replayHref={allLessons[0] ? classroomTabHref(basePath, "lesson", allLessons[0].id) : null}
         />
@@ -1612,21 +1779,44 @@ export function EnrolledCourseWorkspace({
 // teacher-event-studio writes). The workspace subscribes and only lists the tab
 // when there is a session; opened by its address with none, it says so.
 function CourseEventsAgenda({
-  upcoming,
+  upcoming: listed,
   now,
+  failed = false,
+  onRetry,
   alreadyHappened = false,
   replayHref = null,
 }: {
   upcoming: CourseEvent[];
   now: number;
+  failed?: boolean;
+  onRetry?: () => Promise<unknown> | void;
   alreadyHappened?: boolean;
   replayHref?: string | null;
 }) {
   const { t, locale } = useTranslation();
+  // O relógio que anda: "Happening now" e o "Join now" aparecem na hora, sem
+  // recarregar (antes o "agora" parava na hora em que a lista chegou).
+  const clock = useNow();
+  const panelRef = useRef<HTMLElement>(null);
+  const upcoming = listed.filter(
+    (event) => event.status === "cancelled" || getEventLiveState(event.startsAt, clock, event.type) !== "over",
+  );
 
   // now = 0: a primeira leitura ainda não voltou. Não dá para dizer "nenhuma".
   if (now === 0) {
     return null;
+  }
+
+  // A leitura falhou: o erro e "Try again", nunca "nenhuma sessão marcada"
+  // (para quem comprou um evento ao vivo, a sessão é o produto inteiro).
+  if (failed) {
+    return (
+      <section ref={panelRef} tabIndex={-1} className="member-resource-panel">
+        <LoadErrorAlert focusRef={panelRef} onRetry={() => onRetry?.()}>
+          {t("learnWave2.agenda.loadError")}
+        </LoadErrorAlert>
+      </section>
+    );
   }
 
   if (upcoming.length === 0) {
@@ -1657,7 +1847,17 @@ function CourseEventsAgenda({
       </div>
       <ul className="mt-4 grid gap-3">
         {upcoming.map((event) => {
-          const isLiveNow = Date.parse(event.startsAt) <= now;
+          // Prazo nunca fica "ao vivo" nem "Join now" (getEventLiveState):
+          // aparece como data de entrega, com "Open link".
+          const isDeadline = event.type === "deadline";
+          const state = getEventLiveState(event.startsAt, clock, event.type);
+          const isLiveNow = state === "live";
+          // De 15 min antes em diante, o botão de entrar ganha destaque.
+          const isJoinTime = isLiveNow || state === "startingSoon";
+          const isCancelled = event.status === "cancelled";
+          const date = formatEventDateTime(event.startsAt, locale, t("platform.events.datePending"));
+          const when = isDeadline ? t("platform.events.dueBy").replace("{when}", () => date) : date;
+          const updatedAt = isCancelled ? null : getEventUpdatedAt(event);
           const joinUrl = isValidExternalEventUrl(event.externalUrl)
             ? event.externalUrl
             : null;
@@ -1672,7 +1872,9 @@ function CourseEventsAgenda({
                   <span className="member-meta-chip">
                     {t(`creatorPanel.events.type.${event.type}`)}
                   </span>
-                  {isLiveNow ? (
+                  {isCancelled ? (
+                    <span className="member-meta-chip">{t("creatorPanel.events.status.cancelled")}</span>
+                  ) : isLiveNow ? (
                     <span className="rounded-full bg-[rgba(178,34,52,0.1)] px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--color-accent-fg)]">
                       {t("learnWave2.agenda.now")}
                     </span>
@@ -1682,24 +1884,37 @@ function CourseEventsAgenda({
                   {event.title}
                 </p>
                 <p className="mt-1 text-xs font-semibold text-[var(--color-ink-soft)]">
-                  {formatEventDateTime(event.startsAt, locale, t("platform.events.datePending"))}
+                  {isCancelled ? <s>{when}</s> : when}
                 </p>
+                {updatedAt ? (
+                  <p className="mt-1 text-xs text-[var(--color-ink-soft)]">
+                    {t("learnWave2.eventsHub.updated").replace("{date}", () =>
+                      formatEventDateTime(updatedAt, locale, t("platform.events.datePending")),
+                    )}
+                  </p>
+                ) : null}
               </div>
-              {joinUrl ? (
+              {/* Cancelada: sem link de entrar e sem calendário. */}
+              {isCancelled ? null : joinUrl ? (
                 <a
                   href={joinUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className={`${isLiveNow ? "button-accent" : "button-outline"} inline-flex items-center gap-2 px-5 py-2.5 text-sm`}
+                  className={`${isJoinTime ? "button-accent" : "button-outline"} inline-flex items-center gap-2 px-5 py-2.5 text-sm`}
                 >
                   <PlayCircle size={16} aria-hidden />
-                  {isLiveNow ? t("learnWave2.agenda.join") : t("learnWave2.agenda.open")}
+                  {t(isDeadline ? "platform.events.openLink" : isJoinTime ? "learnWave2.agenda.join" : "learnWave2.agenda.open")}
                 </a>
               ) : (
                 <span className="text-xs font-semibold text-[var(--color-ink-soft)]">
-                  {t("learnWave2.agenda.soon")}
+                  {t(noJoinLinkKey(event.type))}
                 </span>
               )}
+              {!isCancelled && state === "upcoming" ? (
+                <div className="basis-full">
+                  <EventCalendarActions event={event} joinUrl={joinUrl} />
+                </div>
+              ) : null}
             </li>
           );
         })}
@@ -1847,7 +2062,13 @@ function MembersAreaHeroBand({
       theme={course.membersTheme ?? "light"}
       coverUrl={objectUrl ?? course.image ?? null}
       title={course.membersTitle ?? course.title}
-      subtitle={course.membersSubtitle ?? null}
+      // Titulo proprio na capa (muitas vezes o nome do professor) e sem
+      // subtitulo: o nome do curso entra na linha de baixo, senao a capa nao
+      // dizia em nenhum lugar que curso e este.
+      subtitle={
+        course.membersSubtitle
+          ?? (course.membersTitle && course.membersTitle !== course.title ? course.title : null)
+      }
       description={course.membersDescription ?? course.summary ?? null}
       progressPercent={progressPercent}
       completedCount={completedCount}
@@ -1946,95 +2167,19 @@ function LessonStepper({
   );
 }
 
-// "Informacoes da aula" sob o player (paridade Hotmart, §4.3): tipo, duracao,
-// modulo, materiais e data de liberacao — so o que `lesson`, o modulo e o
-// estado de liberacao ja trazem; nenhuma leitura nova. Estado local + botao
-// (nao <details>): aria-expanded / aria-controls explicitos, alvo de 44px.
-function LessonInfo({
-  lesson,
-  moduleTitle,
-  materialsCount,
-  unlocksAt,
-}: {
-  lesson: Lesson;
-  moduleTitle: string | null;
-  /** null = curso sem arquivos (catalogo) ou ainda carregando: a linha some. */
-  materialsCount: number | null;
-  unlocksAt: Date | null;
-}) {
-  const { t, locale } = useTranslation();
-  const [open, setOpen] = useState(false);
-  const rows: Array<[string, string]> = [
-    [t("learn.classroom.lessonInfo.type"), t(lessonTypeLabels[lesson.type])],
-  ];
-  // Mesmo criterio do relogio no cabecalho: so duracao de verdade.
-  if (/\d/.test(lesson.duration)) {
-    rows.push([t("learn.classroom.lessonInfo.duration"), lesson.duration]);
-  }
-  if (moduleTitle) {
-    rows.push([t("learn.classroom.lessonInfo.module"), moduleTitle]);
-  }
-  if (materialsCount != null) {
-    rows.push([
-      t("learn.classroom.lessonInfo.materials"),
-      t(`learn.classroom.resources.${materialsCount === 1 ? "fileOne" : "fileMany"}`)
-        .replace("{count}", () => String(materialsCount)),
-    ]);
-  }
-  if (unlocksAt) {
-    rows.push([
-      t("learn.classroom.lessonInfo.availableFrom"),
-      new Intl.DateTimeFormat(locale, { month: "short", day: "numeric", year: "numeric" })
-        .format(unlocksAt),
-    ]);
-  }
-
-  return (
-    <div className="mt-3">
-      <button
-        type="button"
-        aria-expanded={open}
-        aria-controls={open ? "member-lesson-info" : undefined}
-        onClick={() => setOpen((current) => !current)}
-        className="inline-flex min-h-11 items-center gap-1.5 rounded-md px-2 text-sm font-semibold text-[var(--color-ink)] underline-offset-4 hover:underline"
-      >
-        <Info aria-hidden="true" size={15} />
-        {t("learn.classroom.lessonInfo.toggle")}
-        <ChevronDown aria-hidden="true" size={15} className={open ? "rotate-180" : ""} />
-      </button>
-      {/* Fechado = fora do DOM, nao `hidden`: o tipo da aula ja esta no
-          cabecalho do painel, e uma copia oculta viraria texto duplicado para
-          quem busca por ele (leitor de tela em modo de leitura, testes). */}
-      {open ? (
-        <dl
-          id="member-lesson-info"
-          className="mt-2 grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1.5 rounded-lg border border-[var(--color-line)] bg-[var(--color-surface-soft)] px-4 py-3 text-sm"
-        >
-          {rows.map(([term, value]) => (
-            <Fragment key={term}>
-              <dt className="font-semibold text-[var(--color-ink-soft)]">{term}</dt>
-              <dd className="m-0 text-[var(--color-ink)]">{value}</dd>
-            </Fragment>
-          ))}
-        </dl>
-      ) : null}
-    </div>
-  );
-}
-
 // "Mark complete" used to live at the end of this panel. It now sits in the
 // sticky lesson action bar with Previous / All lessons / Next, so the student
 // never has to scroll past the discussion to find it.
 function LessonContentPanel({
   assets,
   autoplay = false,
+  courseId,
   enrollmentId,
   enableFirestoreAssets,
   isLoadingAssets,
   isLoadingContent,
   lesson,
   lessonComments = null,
-  moduleTitle,
   nextUp = null,
   onCancelNextUp,
   onEnded,
@@ -2042,9 +2187,12 @@ function LessonContentPanel({
   onSelectLesson,
   previewMode,
   previousRequiredLesson = null,
+  underHero = false,
   unlockState,
 }: {
   assets: CourseAsset[];
+  /** Curso da aula: o quiz é lido por curso + aula (o id da aula sozinho não é único). */
+  courseId: string;
   /** A aula abriu pelo cartão "Próxima aula": começa a tocar sozinha. */
   autoplay?: boolean;
   /** A matricula do aluno: sem ela (preview do professor) a posicao do video
@@ -2058,18 +2206,18 @@ function LessonContentPanel({
   onPlayNextUp?: () => void;
   isLoadingContent: boolean;
   lesson: Lesson;
-  /** Comentarios da aula (feed da comunidade filtrado), logo abaixo de
-   *  "Informacoes da aula". O painel nao sabe de comunidade: quem monta e a
-   *  sala, que tem o caminho base e o numero da aula. */
+  /** Comentarios da aula (feed da comunidade filtrado), no fim do painel.
+   *  O painel nao sabe de comunidade: quem monta e a sala, que tem o caminho
+   *  base e o numero da aula. */
   lessonComments?: ReactNode;
-  /** Modulo da aula, para "Informacoes da aula". */
-  moduleTitle: string | null;
   onEnded: () => void;
   /** Abre outra aula da sala (o botão "Go to that lesson" da aula trancada). */
   onSelectLesson?: (lessonId: string) => void;
   previewMode: boolean;
   /** Sequencial trancado: a aula que falta concluir antes desta. */
   previousRequiredLesson?: Pick<Lesson, "id" | "title"> | null;
+  /** A capa do curso está acima do painel (primeira visita, preview, About). */
+  underHero?: boolean;
   unlockState: LessonUnlockState | null;
 }) {
   const { t, locale } = useTranslation();
@@ -2130,6 +2278,15 @@ function LessonContentPanel({
   const contentReady = !locked && !hasPlayableVideo && !isLoadingContent && !isLoadingAssets;
   const fileOnly = contentReady && lessonFiles.length > 0;
   const textOnly = contentReady && (isTextFirstLesson || fileOnly);
+  // O tipo dito pelo que a aula mostra, nao pelo campo: aula nova nasce
+  // "video" (acima), e uma aula so de leitura ou so de arquivo dizia "VIDEO
+  // LESSON" no topo.
+  const shownType: LessonType =
+    lesson.type === "video" && fileOnly
+      ? "download"
+      : lesson.type === "video" && textOnly
+        ? "text"
+        : lesson.type;
   // No preview do professor não se guarda posição: ele não é o aluno.
   // Memoizado porque a referência é objeto: uma nova a cada render reabriria
   // a aula (e o evento "abriu" do funil) a cada quadro.
@@ -2156,11 +2313,9 @@ function LessonContentPanel({
             {lesson.description}
           </p>
         ) : null}
-        {!locked && lessonContentPending ? (
-          <p className="mt-3 text-sm leading-7 text-[var(--color-ink-soft)]">
-            {t("learn.classroom.lesson.loading")}
-          </p>
-        ) : null}
+        {/* Traços no lugar de um segundo "Loading lesson content...": o
+            aviso de carregando e um so, o da caixa do video. */}
+        {!locked && lessonContentPending ? <SkeletonLines /> : null}
         {!locked && lesson.contentText ? (
           <div className="mt-4 whitespace-pre-line rounded-lg border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-4 text-sm leading-7 text-[var(--color-ink-soft)]">
             {linkify(lesson.contentText)}
@@ -2176,6 +2331,7 @@ function LessonContentPanel({
             {t("learn.classroom.lesson.openResource")}
           </a>
         ) : null}
+        {isTeacherAiEnabled && !locked && !fileOnly ? <LessonQuiz key={lesson.id} courseId={courseId} lessonId={lesson.id} /> : null}
         {fileOnly ? (
           <>
             <p className="mt-3 text-sm leading-7 text-[var(--color-ink-soft)]">
@@ -2193,15 +2349,23 @@ function LessonContentPanel({
   );
 
   return (
-    <div className="member-lesson-panel">
+    // F-02: o painel diz que esta carregando enquanto o conteudo ou os anexos
+    // nao chegam; o anuncio e um so, o do palco (os comentarios nao repetem).
+    <div className="member-lesson-panel" aria-busy={!locked && (isLoadingContent || isLoadingAssets) ? true : undefined}>
       <div className="member-lesson-panel__head">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
-            {t(lessonTypeLabels[lesson.type])}
+            {t(lessonTypeLabels[shownType])}
           </p>
-          <h4 className="display-title mt-2 text-3xl text-[var(--color-ink)]">
+          {/* h2: a aula é a seção principal sob o h1 do curso (antes h4, e
+              as subseções h5). Sob a capa, que já traz o título de 56px do
+              curso, o da aula vai na letra do texto, em 18px: uma serifa
+              grande por tela. No cabeçalho curto a serifa fica com a aula. */}
+          <h2
+            className={`mt-2 text-[var(--color-ink)] ${underHero ? "text-lg font-semibold" : "display-title text-3xl"}`}
+          >
             {lesson.title}
-          </h4>
+          </h2>
         </div>
         {/* Sem duracao real (o fallback "Self-paced" de published-courses)
             nao ha relogio a mostrar: a duracao nao se digita mais. */}
@@ -2226,7 +2390,7 @@ function LessonContentPanel({
         {locked ? (
           <div className="member-video-empty">
             <LockKeyhole size={28} aria-hidden />
-            <h5>{t("learn.classroom.lesson.locked")}</h5>
+            <h3>{t("learn.classroom.lesson.locked")}</h3>
             <p>
               {unlockState
                 ? formatUnlockMessage(unlockState, locale, t, previousRequiredLesson?.title ?? null)
@@ -2271,15 +2435,18 @@ function LessonContentPanel({
         ) : isLoadingContent || isLoadingAssets ? (
           // Com os anexos ainda chegando, a aula de video piscava "Media not
           // attached yet" antes do player aparecer.
-          <div className="member-video-empty">
-            <PlayCircle size={34} aria-hidden />
-            <h5>{t("learn.classroom.lesson.loading")}</h5>
-            <p>{t("learn.classroom.lesson.loadingDetails")}</p>
+          // Carregando = palco no formato 16:9 do player que vem (nada pula
+          // quando ele chega) e so um anel girando. O icone de play e a frase
+          // ficam para "Media not attached yet": antes as duas caixas eram
+          // iguais. O texto segue para o leitor de tela, num aviso so.
+          <div className="member-video-empty member-video-empty--loading" role="status">
+            <Loader2 size={32} aria-hidden className="motion-safe:animate-spin" />
+            <h3 className="sr-only">{t("learn.classroom.lesson.loading")}</h3>
           </div>
         ) : (
           <div className="member-video-empty">
             <PlayCircle size={34} aria-hidden />
-            <h5>{t("learn.classroom.lesson.mediaMissing")}</h5>
+            <h3>{t("learn.classroom.lesson.mediaMissing")}</h3>
             <p>{t("learn.classroom.lesson.mediaDetails")}</p>
           </div>
         )}
@@ -2287,21 +2454,34 @@ function LessonContentPanel({
       </VideoDock>
       )}
 
-      <LessonInfo
-        lesson={lesson}
-        moduleTitle={moduleTitle}
-        materialsCount={
-          enableFirestoreAssets && !isLoadingAssets ? supportingAssets.length : null
-        }
-        unlocksAt={unlockState?.unlocksAt ?? null}
-      />
-
-      {textOnly ? lessonBody : null}
+      {/* "Lesson information" saiu: repetia tipo (acima), duracao (o chip),
+          modulo (a lista de aulas) e arquivos (a lista abaixo); a data de
+          uma aula trancada segue no aviso do palco.
+          O material do professor (descricao, notas, arquivos, quiz) vem logo
+          sob a aula, e os comentarios por ultimo. Na aula de video o corpo
+          ficava embaixo de uma lista de comentarios sem fim. */}
+      {lessonBody}
 
       {/* Aula trancada: sem comentarios. */}
       {!locked ? lessonComments : null}
+    </div>
+  );
+}
 
-      {textOnly ? null : lessonBody}
+// Linhas de espera do corpo da aula e dos arquivos. Escondidas do leitor de
+// tela: o aviso de carregando e um so, o da caixa do video. Cor da paleta do
+// curso com reserva na da plataforma, a mesma da ClassroomLoading.
+const skeletonWidths = ["w-full", "w-[92%]", "w-3/5"];
+
+function SkeletonLines({ count = 3 }: { count?: number }) {
+  return (
+    <div aria-hidden="true" className="mt-4 grid gap-2">
+      {skeletonWidths.slice(0, count).map((width) => (
+        <span
+          key={width}
+          className={`block h-3 ${width} rounded-sm bg-[var(--ma-line,var(--color-surface-strong))] motion-safe:animate-pulse`}
+        />
+      ))}
     </div>
   );
 }
@@ -2315,11 +2495,9 @@ function LessonAssetList({
 }) {
   const { t } = useTranslation();
   if (isLoading) {
-    return (
-      <p className="mt-4 rounded-md bg-[var(--color-surface-soft)] px-3 py-2 text-sm text-[var(--color-ink-soft)]">
-        {t("learn.classroom.resources.loadingLesson")}
-      </p>
-    );
+    // Traço, nao a pilula "Loading lesson assets...": ela era identica a
+    // "No files are attached" e somava mais um "Loading" na tela.
+    return <SkeletonLines count={1} />;
   }
 
   if (assets.length === 0) {
@@ -2348,14 +2526,16 @@ function LessonAssetList({
               </div>
               <MaterialAppHint fileName={asset.fileName} />
             </div>
-            {/* "Preview" só vale para vídeo (a aula de amostra). Material
-                marcado no passado continua só de matriculado. */}
-            <span className="rounded-chip bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--color-primary)]">
-              {t(asset.isPreview && isVideoAssetKind(asset.kind) ? "learn.classroom.resources.preview" : "learn.classroom.resources.enrolled")}
-            </span>
+            {/* "Preview" só vale para vídeo (a aula de amostra). O selo
+                "Enrolled" saiu: valia para todo anexo e não dizia nada. */}
+            {asset.isPreview && isVideoAssetKind(asset.kind) ? (
+              <span className="rounded-chip bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--color-primary)]">
+                {t("learn.classroom.resources.preview")}
+              </span>
+            ) : null}
           </div>
 
-          <ProtectedAssetPreview asset={asset} />
+          <LessonAssetActions asset={asset} />
         </div>
       ))}
     </div>

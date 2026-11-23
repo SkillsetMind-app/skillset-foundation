@@ -117,6 +117,11 @@ document.documentElement.scrollWidth > document.documentElement.clientWidth  // 
   blocked everywhere. The test above enforces the exception narrowly; widening
   it needs a new owner decision, not a test edit.
 
+  **Second exception, decided by the owner on 2026-11-13:** one small line under
+  the home headline (`home.hero.alsoFor`) may read exactly "Also for
+  psychologists who teach. Education, not therapy." ("También para psicólogos
+  que enseñan. Educación, no terapia."). Same test, same narrowness.
+
   The disclaimers on `/legal/terms` and `/legal/teacher-terms`, and the
   guardrail in `src/lib/assistant/knowledge.ts`, say "not therapy" and "no
   therapist-client relationship" **on purpose**. Those sentences deny the

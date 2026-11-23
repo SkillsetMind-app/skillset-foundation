@@ -11,23 +11,31 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { PlatformPageHeader } from "@/components/platform/platform-page-header";
 import { InlineHelp } from "@/components/shared/inline-help";
 import { StatusChip } from "@/components/shared/status-chip";
 import { TeacherConnectOnboarding } from "@/components/teacher/teacher-connect-onboarding";
+import { MetricCard } from "@/components/teacher/metric-card";
 import { StripeDashboardButton } from "@/components/teacher/stripe-dashboard-button";
+import { loadTeacherInbox } from "@/components/teacher/use-teacher-inbox-count";
+import { InlineAlert } from "@/components/ui/inline-alert";
+import { LoadErrorAlert } from "@/components/ui/load-error-alert";
 import {
   summarizeCreatorWallet,
   type CurrencyAmount,
 } from "@/domain/creator-ops";
+import { formatOrderRef } from "@/domain/order";
 import type { PayoutLedgerEntry } from "@/domain/payout-ledger";
 import type { UserProfile } from "@/domain/user-profile";
 import { subscribeToTeacherPayoutLedger } from "@/lib/data/payout-ledger";
 import { subscribeToUserProfile } from "@/lib/data/user-profiles";
+import { getSafeReturnTo } from "@/lib/auth/routing";
 import { toDate } from "@/lib/format-date";
+import { formatMoney, formatMoneyBreakdown } from "@/lib/format-money";
 import {
   isConnectNotEnabledError,
   refreshTeacherStripeAccountStatus,
@@ -40,23 +48,43 @@ const PAYOUTS_UNAVAILABLE_KEY = "teach.earnings.payoutsUnavailable";
 
 type LedgerReadState = "loading" | "ready" | "error";
 
+// O construtor manda ?returnTo= para a volta cair na aba Publish do curso.
+// So um caminho do proprio construtor passa (getSafeReturnTo ja barra outro
+// site e "//host"); qualquer outra coisa nao vira botao.
+function readBuilderReturnTo(): string | null {
+  const target = getSafeReturnTo(new URLSearchParams(window.location.search));
+  return target?.startsWith("/teach/builder?") ? target : null;
+}
+const noSubscribe = () => () => {};
+
 type Translate = (key: string) => string;
+type Reloadable = { reload?: () => Promise<void> };
+type Notice = { text: string; tone: "info" | "success" };
+
+// O osso dos esqueletos da casa (surface-strong), pulsando so ele.
+const bone = "animate-pulse rounded-md bg-[var(--color-surface-strong)]";
 
 export function TeacherWalletPanel() {
   const { user } = useAuth();
+  const uid = user?.uid;
   const { locale, t } = useTranslation();
   // `t` fica fora das dependencias dos efeitos: com ele la, um provider que
   // devolva funcao nova por render reinscreve tudo em laco (a suite do CI
-  // ficou muda 16 min). A ref le sempre o `t` atual sem reinscrever nada.
-  const tRef = useRef(t);
-  useEffect(() => {
-    tRef.current = t;
-  }, [t]);
+  // ficou muda 16 min). Os efeitos guardam estado, nunca frase traduzida.
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [message, setMessage] = useState("");
+  const [notice, setNotice] = useState<Notice | null>(null);
   const [error, setError] = useState("");
+  // As duas leituras com "Try again": o reload le de novo sem mexer no canal.
+  const profileRead = useRef<Reloadable | null>(null);
+  const ledgerRead = useRef<Reloadable | null>(null);
+  // Ficam na tela nos dois desfechos da releitura e recebem o foco do clique.
+  const connectRef = useRef<HTMLElement>(null);
+  const statementsRef = useRef<HTMLElement>(null);
+  const [courseTitles, setCourseTitles] = useState<ReadonlyMap<string, string>>(() => new Map());
   const [isRefreshingStripe, setIsRefreshingStripe] = useState(false);
+  // Lido no cliente: no servidor (e na hidratacao) nao ha botao de volta.
+  const returnTo = useSyncExternalStore(noSubscribe, readBuilderReturnTo, () => null);
   const [ledgerEntries, setLedgerEntries] = useState<PayoutLedgerEntry[]>([]);
   const [ledgerState, setLedgerState] = useState<LedgerReadState>("loading");
   // Platform-level truth reported by the onboarding component: when Stripe
@@ -71,17 +99,20 @@ export function TeacherWalletPanel() {
       return;
     }
 
-    return subscribeToUserProfile(
+    // A falha do perfil e dita UMA vez, no bloco da conta, com "Try again":
+    // antes saia tambem na caixa do topo, a mesma frase duas vezes.
+    const subscription = subscribeToUserProfile(
       user.uid,
       (nextProfile) => {
         setProfile(nextProfile);
         setIsLoading(false);
       },
       () => {
-        setError(tRef.current("teach.earnings.profileError"));
         setIsLoading(false);
       },
     );
+    profileRead.current = subscription;
+    return subscription;
   }, [user]);
 
   useEffect(() => {
@@ -89,7 +120,8 @@ export function TeacherWalletPanel() {
       return;
     }
 
-    return subscribeToTeacherPayoutLedger(
+    // Idem para o extrato: o aviso com "Try again" mora no proprio extrato.
+    const subscription = subscribeToTeacherPayoutLedger(
       user.uid,
       (entries) => {
         setLedgerEntries(entries);
@@ -97,10 +129,33 @@ export function TeacherWalletPanel() {
       },
       () => {
         setLedgerState("error");
-        setError(tRef.current("teach.earnings.ledgerReadError"));
       },
     );
+    ledgerRead.current = subscription;
+    return subscription;
   }, [user]);
+
+  // O nome do produto em cada linha do extrato. A barra do professor ja le os
+  // produtos nesta pagina (o numero da Caixa de entrada); loadTeacherInbox junta
+  // pedidos simultaneos, entao a linha ganha o nome sem leitura nova. Falhou, a
+  // linha fica com o codigo curto do pedido, como em Vendas.
+  // Pelo id, nao pelo objeto: a renovacao do login entrega outro `user` com o
+  // mesmo id, e isso nao pode disparar as tres consultas da Caixa de novo.
+  useEffect(() => {
+    if (!uid) {
+      return;
+    }
+    let alive = true;
+    loadTeacherInbox(uid).then(
+      ({ courses }) => {
+        if (alive) setCourseTitles(new Map(courses.map((course) => [course.id, course.title])));
+      },
+      () => {},
+    );
+    return () => {
+      alive = false;
+    };
+  }, [uid]);
 
   function handleOnboardingComplete() {
     void refreshStripeStatus();
@@ -130,7 +185,7 @@ export function TeacherWalletPanel() {
 
   async function refreshStripeStatus() {
     setError("");
-    setMessage("");
+    setNotice(null);
     setIsRefreshingStripe(true);
 
     try {
@@ -138,21 +193,21 @@ export function TeacherWalletPanel() {
       if (status.payoutsUnavailable) {
         // Platform-side Connect configuration gap — calm info, not an error.
         setPlatformPayoutsUnavailable(true);
-        setMessage(t(PAYOUTS_UNAVAILABLE_KEY));
+        setNotice({ text: t(PAYOUTS_UNAVAILABLE_KEY), tone: "info" });
         return;
       }
       setPlatformPayoutsUnavailable(false);
-      setMessage(
+      setNotice(
         status.chargesEnabled && status.payoutsEnabled
-          ? t("teach.earnings.stripeReady")
-          : t("teach.earnings.stripeNeedsInfo"),
+          ? { text: t("teach.earnings.stripeReady"), tone: "success" }
+          : { text: t("teach.earnings.stripeNeedsInfo"), tone: "info" },
       );
     } catch (cause) {
       // Same platform gap reported by an older deployed function as a thrown
       // precondition — keep it calm rather than error-styled.
       if (isConnectNotEnabledError(cause)) {
         setPlatformPayoutsUnavailable(true);
-        setMessage(t(PAYOUTS_UNAVAILABLE_KEY));
+        setNotice({ text: t(PAYOUTS_UNAVAILABLE_KEY), tone: "info" });
         return;
       }
       // Surface the real reason (e.g. missing STRIPE_SECRET_KEY secret or a
@@ -180,9 +235,24 @@ export function TeacherWalletPanel() {
     () => summarizeCreatorWallet(ledgerEntries),
     [ledgerEntries],
   );
+  // Um total vazio sai como zero na moeda das outras somas quando ha uma so.
+  // Com nenhuma ou varias, "0" puro: "$0.00" ao lado de "R$100.00" de
+  // reembolso diria que o neto e de outra moeda.
+  const currencies = new Set(
+    [
+      financials.grossPaidByCurrency,
+      financials.platformFeeByCurrency,
+      financials.stripeFeeByCurrency,
+      financials.teacherNetByCurrency,
+      financials.refundedByCurrency,
+    ]
+      .flat()
+      .map((value) => value.currency),
+  );
+  const zeroCurrency = currencies.size === 1 ? [...currencies][0] : null;
   const money = (values: CurrencyAmount[]) =>
     ledgerState === "ready"
-      ? formatCurrencyBreakdown(values)
+      ? formatMoneyBreakdown(values, locale, zeroCurrency)
       : ledgerState === "error"
         ? t("teach.earnings.unavailable")
         : "—";
@@ -205,49 +275,52 @@ export function TeacherWalletPanel() {
 
   return (
     <section className="payouts-shell">
-      <header className="payouts-head">
-        <div>
-          <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-            {t("platform.nav.earnings")}
+      {/* O cabecalho das telas irmas do estudio (30px em qualquer largura, sem
+          o rotulo "Earnings" que so repetia o nome da barra). h1: a casca de
+          /account/payments esconde o dela, e e este que abre a pagina. O "?"
+          fica ao lado do titulo, nao dentro dele: dentro, o leitor de tela
+          lia "... Help about Payout schedule" como parte do nome da pagina. */}
+      <PlatformPageHeader
+        title={t("teach.earnings.title")}
+        titleAside={
+          <InlineHelp topic={t("teach.earnings.helpTopic")} href="/help#payouts">
+            {t("teach.earnings.helpBody")}
+          </InlineHelp>
+        }
+        description={t("teach.earnings.intro")}
+        actions={
+          <p className="flex items-center gap-2 text-sm text-[var(--color-ink-soft)]">
+            <Download aria-hidden="true" size={14} strokeWidth={2} />
+            {t("teach.earnings.taxForms")}
           </p>
-          {/* h1, nao h2: este painel e o cabecalho da unica pagina que o usa
-              (/account/payments), e a casca esconde o titulo dela para nao
-              repetir a mesma frase tres vezes. Sem isto a pagina ficaria sem
-              cabecalho de nivel 1 e a navegacao por titulos comecaria no 2
-              (revisao do Codex). */}
-          <h1 className="display-title mt-3 flex items-center gap-2 text-4xl leading-tight text-[var(--color-primary)]">
-            {t("teach.earnings.title")}
-            <InlineHelp topic={t("teach.earnings.helpTopic")} href="/help#payouts">
-              {t("teach.earnings.helpBody")}
-            </InlineHelp>
-          </h1>
-          {/* Uma frase, e o resto recolhido. `details` nativo: sem estado, sem
-              portal, e o texto longo so ocupa a tela de quem pediu por ele. */}
-          <p className="mt-3 max-w-3xl text-sm leading-7 text-[var(--color-ink-soft)]">
-            {t("teach.earnings.intro")}
-          </p>
-          <details className="mt-2 max-w-3xl text-sm leading-7 text-[var(--color-ink-soft)]">
-            <summary className="cursor-pointer font-semibold text-[var(--color-primary)]">
-              {t("teach.earnings.learnMore")}
-            </summary>
-            <p className="mt-2">{t("teach.earnings.details")}</p>
-          </details>
-        </div>
-        <p className="flex items-center gap-2 text-sm text-[var(--color-ink-soft)]">
-          <Download aria-hidden="true" size={14} strokeWidth={2} />
-          {t("teach.earnings.taxForms")}
-        </p>
-      </header>
+        }
+      >
+        {/* Uma frase, e o resto recolhido. `details` nativo: sem estado, sem
+            portal, e o texto longo so ocupa a tela de quem pediu por ele. */}
+        <details className="mt-2 max-w-3xl text-sm leading-7 text-[var(--color-ink-soft)]">
+          <summary className="cursor-pointer font-semibold text-[var(--color-primary)]">
+            {t("teach.earnings.learnMore")}
+          </summary>
+          <p className="mt-2">{t("teach.earnings.details")}</p>
+        </details>
+      </PlatformPageHeader>
 
-      {message ? (
-        <p className="rounded-md border border-[rgba(24,58,94,0.12)] bg-[var(--color-surface-soft)] px-4 py-3 text-sm font-semibold text-[var(--color-primary)]">
-          {message}
-        </p>
-      ) : null}
-      {error ? (
-        <p className="rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
-          {error}
-        </p>
+      {/* Os avisos da casa (anunciados ao leitor de tela, com icone): eram
+          duas caixas feitas a mao, mudas, e a vermelha some no tema escuro. */}
+      {notice ? <InlineAlert tone={notice.tone}>{notice.text}</InlineAlert> : null}
+      {error ? <InlineAlert tone="error">{error}</InlineAlert> : null}
+      {/* UM aviso de espera para a pagina inteira, sempre montado (para o
+          leitor de tela ouvir a troca): o bloco da conta e o extrato esperam
+          ao mesmo tempo, e dois avisos falavam juntos. Os esqueletos sao mudos. */}
+      <p role="status" className="sr-only">
+        {isLoading || ledgerState === "loading" ? t("teach.earnings.pageLoading") : ""}
+      </p>
+      {/* Veio do Publish do construtor: pagamentos prontos, o caminho de volta
+          para publicar e um botao, nao a barra lateral. */}
+      {ready && returnTo ? (
+        <Link href={returnTo} className="button-solid button-lg w-full sm:w-fit">
+          {t("teach.earnings.backToCourse")}
+        </Link>
       ) : null}
 
       <div className="payouts-grid">
@@ -255,7 +328,7 @@ export function TeacherWalletPanel() {
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-[rgba(255,255,255,0.66)]">
             {t("teach.earnings.netEstimate")}
           </p>
-          <p className="display-title mt-3 break-words text-3xl leading-tight text-white sm:text-4xl">
+          <p className="num mt-3 break-words text-3xl font-bold leading-tight text-white sm:text-4xl">
             {money(financials.teacherNetByCurrency)}
           </p>
           {/* Uma linha ao lado do numero grande. O resto (cobranca na conta do
@@ -272,18 +345,10 @@ export function TeacherWalletPanel() {
           </div>
 
           <div className="mt-6 flex flex-wrap gap-2">
-            {ready ? (
-              <button
-                type="button"
-                onClick={refreshStripeStatus}
-                disabled={isRefreshingStripe}
-                className="button-solid-light px-4 py-2.5 text-sm disabled:opacity-60"
-              >
-                {isRefreshingStripe
-                  ? t("teach.earnings.refreshing")
-                  : t("teach.earnings.refreshStripe")}
-              </button>
-            ) : (
+            {/* Um botao de atualizar so, o do cartao da conta: com a conta
+                pronta havia dois ("Refresh Stripe" aqui e "Refresh account"
+                ao lado), fazendo a mesma coisa. */}
+            {ready ? null : (
               <a href="#stripe-connect" className="button-solid-light px-4 py-2.5 text-sm">
                 {t("teach.earnings.completeSetup")}
               </a>
@@ -300,9 +365,13 @@ export function TeacherWalletPanel() {
               <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
                 {t("teach.earnings.destination")}
               </p>
-              <h3 className="display-title mt-2 text-2xl text-[var(--color-primary)]">
-                Stripe Connect
-              </h3>
+              {/* "Stripe Connect" e o nome do produto da Stripe, nao do que a
+                  pessoa tem: para quem nao e tecnico, e a conta dela.
+                  h2, como os outros titulos de cartao da pagina: o h1 e o do
+                  topo e a navegacao por titulos pulava do 1 para o 3. */}
+              <h2 className="mt-2 text-lg font-semibold text-[var(--color-ink)]">
+                {t("teach.earnings.stripeAccount")}
+              </h2>
             </div>
             <StatusChip
               status={
@@ -314,13 +383,22 @@ export function TeacherWalletPanel() {
                       ? "pending"
                       : "draft"
               }
-              label={isLoading ? t("teach.earnings.loadingStatus") : statusLabel}
+              // Perfil que nao veio nao e "Not connected": nao se sabe.
+              label={isLoading
+                ? t("teach.earnings.loadingStatus")
+                : profile
+                  ? statusLabel
+                  : t("teach.earnings.unavailable")}
             />
           </div>
           <p className="mt-3 text-sm leading-6 text-[var(--color-ink-soft)]">
             {t("teach.earnings.bankNote")}
           </p>
 
+          {/* As linhas de estado so quando a conta existe: sem conta eram tres
+              linhas ("Not created", "Pending", "Pending") repetindo o selo
+              "Not connected" logo acima. */}
+          {connected ? (
           <div className="mt-5 grid gap-3">
             <PayoutStatusRow
               icon={Banknote}
@@ -370,15 +448,20 @@ export function TeacherWalletPanel() {
               }
             />
           </div>
+          ) : null}
 
-          <div className="mt-5">
-            <StripeDashboardButton />
-          </div>
+          {/* Sem conta conectada o botao so devolvia o erro "conecte o
+              Stripe", com o passo de conectar logo ao lado. */}
+          {connected && !platformPayoutsUnavailable ? (
+            <div className="mt-5">
+              <StripeDashboardButton />
+            </div>
+          ) : null}
           <button
             type="button"
             onClick={refreshStripeStatus}
             disabled={isRefreshingStripe}
-            className="button-outline mt-5 w-full justify-center px-4 py-2.5 text-sm disabled:opacity-60"
+            className="button-outline mt-5 w-full justify-center px-4 py-2.5 text-sm"
           >
             <RefreshCw aria-hidden="true" size={14} strokeWidth={2} />
             {isRefreshingStripe
@@ -392,6 +475,7 @@ export function TeacherWalletPanel() {
           linha. 2x2 no tablet, 4 colunas no desktop — nenhum orfao. */}
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <MetricCard
+          unavailable={!financialsReady}
           label={t("teach.earnings.paidSales")}
           value={financialsReady
             ? String(financials.salesCount)
@@ -400,21 +484,29 @@ export function TeacherWalletPanel() {
               : "—"}
         />
         <MetricCard
+          unavailable={!financialsReady}
           label={t("teach.earnings.grossSales")}
           value={money(financials.grossPaidByCurrency)}
         />
         <MetricCard
+          unavailable={!financialsReady}
           label={t("teach.earnings.platformFee")}
           value={money(financials.platformFeeByCurrency)}
         />
         <MetricCard
+          unavailable={!financialsReady}
           label={t("teach.earnings.stripeFee")}
           value={money(financials.stripeFeeByCurrency)}
         />
       </div>
 
       {ready ? null : (
-        <section id="stripe-connect" className="scroll-mt-24 rounded-lg border border-[var(--color-line)] bg-white p-5 shadow-[var(--shadow-soft)]">
+        <section
+          ref={connectRef}
+          tabIndex={-1}
+          id="stripe-connect"
+          className="scroll-mt-24 rounded-lg border border-[var(--color-line)] bg-white p-5 shadow-[var(--shadow-soft)]"
+        >
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
@@ -422,9 +514,9 @@ export function TeacherWalletPanel() {
                   ? t("teach.earnings.connectContinue")
                   : t("teach.earnings.connectStart")}
               </p>
-              <h3 className="display-title mt-2 text-2xl text-[var(--color-primary)]">
+              <h2 className="mt-2 text-lg font-semibold text-[var(--color-ink)]">
                 {t("teach.earnings.connectTitle")}
-              </h3>
+              </h2>
               <p className="mt-2 max-w-3xl text-sm leading-7 text-[var(--color-ink-soft)]">
                 {t("teach.earnings.connectBody")}
               </p>
@@ -436,10 +528,22 @@ export function TeacherWalletPanel() {
                 onboarding are what create the account. A profile that failed
                 to load is just as unknown: never offer the permanent country
                 choice to someone who may already have an account. */}
-            {isLoading ? null : !profile ? (
-              <p role="alert" className="text-sm leading-7 text-[var(--color-danger-fg)]">
+            {isLoading ? (
+              // A forma do primeiro passo (o pais da conta e o botao), no
+              // lugar de um bloco vazio em que o formulario caia depois.
+              <div aria-hidden="true" data-skeleton="connect" className="grid gap-3">
+                <div className={`h-4 w-48 ${bone}`} />
+                <div className={`h-11 w-full max-w-sm ${bone}`} />
+                <div className={`h-4 w-full max-w-md ${bone}`} />
+                <div className={`mt-1 h-11 w-56 max-w-full ${bone}`} />
+              </div>
+            ) : !profile ? (
+              <LoadErrorAlert
+                focusRef={connectRef}
+                onRetry={() => profileRead.current?.reload?.()}
+              >
                 {t("teach.earnings.profileError")}
-              </p>
+              </LoadErrorAlert>
             ) : (
               <TeacherConnectOnboarding
                 initialPayoutCountry={profile?.onboardingAnswers?.payoutCountry}
@@ -452,32 +556,52 @@ export function TeacherWalletPanel() {
         </section>
       )}
 
-      <section className="payout-statements">
+      <section ref={statementsRef} tabIndex={-1} className="payout-statements">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
               {t("teach.earnings.statements")}
             </p>
-            <h3 className="display-title mt-2 text-3xl text-[var(--color-primary)]">
+            <h2 className="mt-2 text-lg font-semibold text-[var(--color-ink)]">
               {t("teach.earnings.statementsTitle")}
-            </h3>
+            </h2>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--color-ink-soft)]">
               {t("teach.earnings.statementsBody")}
             </p>
           </div>
-          <button type="button" disabled className="button-outline px-4 py-2.5 text-sm opacity-60">
-            {t("teach.earnings.export")}
-          </button>
+          {/* Aqui havia "Export after first payout", desligado para sempre:
+              nem depois do primeiro repasse ele ligava. O extrato de vendas
+              exporta em Vendas. */}
         </div>
 
         <div className="mt-5 overflow-hidden rounded-lg border border-[var(--color-line)]">
           {ledgerState === "loading" ? (
-            <div className="bg-[var(--color-surface-soft)] p-6 text-sm leading-7 text-[var(--color-ink-soft)]">
-              {t("teach.earnings.ledgerLoading")}
+            // Linhas no formato do extrato (data, produto, situacao, valor),
+            // no lugar de uma frase numa caixa que depois virava a lista.
+            <div aria-hidden="true" data-skeleton="statement" className="divide-y divide-[var(--color-line)]">
+              {[0, 1, 2].map((row) => (
+                <div
+                  key={row}
+                  className="grid gap-3 bg-white p-4 md:grid-cols-[140px_1fr_150px_120px_auto] md:items-center"
+                >
+                  <div className={`h-3 w-20 ${bone}`} />
+                  <div className="grid gap-2">
+                    <div className={`h-4 w-2/3 ${bone}`} />
+                    <div className={`h-3 w-1/3 ${bone}`} />
+                  </div>
+                  <div className={`h-6 w-24 ${bone}`} />
+                  <div className={`h-4 w-16 ${bone}`} />
+                </div>
+              ))}
             </div>
           ) : ledgerState === "error" ? (
-            <div className="bg-[var(--color-surface-soft)] p-6 text-sm leading-7 text-[var(--color-ink-soft)]">
-              {t("teach.earnings.ledgerError")}
+            <div className="bg-[var(--color-surface-soft)] p-4">
+              <LoadErrorAlert
+                focusRef={statementsRef}
+                onRetry={() => ledgerRead.current?.reload?.()}
+              >
+                {t("teach.earnings.ledgerReadError")}
+              </LoadErrorAlert>
             </div>
           ) : ledgerEntries.length === 0 ? (
             <div className="bg-[var(--color-surface-soft)] p-6 text-sm leading-7 text-[var(--color-ink-soft)]">
@@ -501,7 +625,13 @@ export function TeacherWalletPanel() {
                 })
                 .slice(0, 6)
                 .map((entry) => (
-                  <LedgerRow key={entry.id} entry={entry} t={t} />
+                  <LedgerRow
+                    key={entry.id}
+                    entry={entry}
+                    courseTitle={courseTitles.get(entry.courseId)}
+                    t={t}
+                    locale={locale}
+                  />
                 ))}
             </div>
           )}
@@ -513,9 +643,9 @@ export function TeacherWalletPanel() {
           <FileText aria-hidden="true" size={22} strokeWidth={2} />
         </span>
         <div className="min-w-0 flex-1">
-          <h3 className="display-title text-2xl text-[var(--color-primary)]">
+          <h2 className="text-lg font-semibold text-[var(--color-ink)]">
             {t("teach.earnings.taxCenter")}
-          </h3>
+          </h2>
           <p className="mt-1 text-sm leading-6 text-[var(--color-ink-soft)]">
             {t("teach.earnings.taxCenterBody")}
           </p>
@@ -531,19 +661,6 @@ function BalanceRow({ label, value }: { label: string; value: string }) {
       <span className="text-[rgba(255,255,255,0.72)]">{label}</span>
       <strong>{value}</strong>
     </div>
-  );
-}
-
-function MetricCard({ label, value }: { label: string; value: string }) {
-  return (
-    <article className="rounded-lg border border-[var(--color-line)] bg-white p-5 shadow-[var(--shadow-soft)]">
-      <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-ink-muted)]">
-        {label}
-      </p>
-      <p className="mt-2 text-2xl font-black text-[var(--color-primary)]">
-        {value}
-      </p>
-    </article>
   );
 }
 
@@ -573,56 +690,63 @@ function PayoutStatusRow({
   );
 }
 
-function LedgerRow({ entry, t }: { entry: PayoutLedgerEntry; t: Translate }) {
+// A linha diz o produto e o codigo curto do pedido ("Order #1A2B3C4D", o mesmo
+// de Vendas): era "Order {uuid}" e "Payment pi_..." crus. O id do pagamento
+// fica na venda, um clique adiante, com o botao de copiar.
+function LedgerRow({
+  entry,
+  courseTitle,
+  t,
+  locale,
+}: {
+  entry: PayoutLedgerEntry;
+  courseTitle?: string;
+  t: Translate;
+  locale: string;
+}) {
+  // `?? ""`: linha antiga sem pedido nao derruba a pagina do dinheiro.
+  const orderRef = t("teach.earnings.orderLabel").replace("{id}", () => formatOrderRef(entry.orderId ?? ""));
   return (
     <Link
       href={`/teach/sales/${entry.orderId}`}
       className="grid gap-3 bg-white p-4 transition hover:bg-[var(--color-surface-soft)] md:grid-cols-[140px_1fr_150px_120px_auto]"
     >
       <span className="text-xs font-semibold text-[var(--color-ink-soft)]">
-        {formatDate(entry.createdAt ?? entry.releaseAt, t("teach.earnings.datePending"))}
+        {formatDate(entry.createdAt ?? entry.releaseAt, t("teach.earnings.datePending"), locale)}
       </span>
       <span className="min-w-0">
         <span className="block truncate text-sm font-bold text-[var(--color-ink)]">
-          {t("teach.earnings.orderLabel").replace("{id}", entry.orderId)}
+          {courseTitle || orderRef}
         </span>
-        <span className="mt-1 block truncate text-xs text-[var(--color-ink-soft)]">
-          {t("teach.earnings.paymentLabel").replace("{id}", entry.paymentId)}
-        </span>
+        {courseTitle ? (
+          <span className="num mt-1 block truncate text-xs text-[var(--color-ink-soft)]">
+            {orderRef}
+          </span>
+        ) : null}
       </span>
       <StatusChip
         status={mapLedgerStatus(entry.status)}
         label={t(ledgerStatusKey(entry.status))}
       />
       <span className="text-right text-sm font-black text-[var(--color-primary)] md:text-left">
-        {formatMoney(entry.netAmountMinor, entry.currency)}
+        {formatMoney(entry.netAmountMinor, entry.currency, locale)}
       </span>
       <ArrowRight aria-hidden="true" size={15} strokeWidth={2} className="hidden text-[var(--color-ink-muted)] md:block" />
     </Link>
   );
 }
 
-function formatMoney(amountMinor: number, currency = "USD") {
-  return new Intl.NumberFormat("en", {
-    style: "currency",
-    currency,
-  }).format(amountMinor / 100);
-}
-
-function formatCurrencyBreakdown(values: CurrencyAmount[]): string {
-  if (!values.length) return "0";
-  return values
-    .map((value) => `${value.currency} ${(value.amountMinor / 100).toFixed(2)}`)
-    .join(" + ");
-}
-
-function formatDate(value: unknown, pendingLabel: string) {
+// Dinheiro e data na lingua da tela, como em Vendas. O maior numero de Ganhos
+// saia "0" sem moeda para professor novo, e "USD 49.00 + EUR 10.00" depois;
+// as datas saiam sempre em ingles, inclusive na tela em espanhol. O dinheiro
+// (com o recuo para moeda que o Intl recusa) mora em @/lib/format-money.
+function formatDate(value: unknown, pendingLabel: string, locale: string) {
   const date = toDate(value);
   if (!date) {
     return pendingLabel;
   }
 
-  return new Intl.DateTimeFormat("en", {
+  return new Intl.DateTimeFormat(locale, {
     dateStyle: "medium",
   }).format(date);
 }

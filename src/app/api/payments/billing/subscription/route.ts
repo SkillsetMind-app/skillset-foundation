@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { planAndCycleByStripePriceId, planUsdByStripePriceId } from "@/data/plans";
 
 import {
   enforceRateLimit,
@@ -21,6 +22,7 @@ type SubscriptionRow = {
   id: string;
   plan_id: string | null;
   cycle: string | null;
+  stripe_price_id: string | null;
   status: string;
   trial_end: string | null;
   current_period_end: string | null;
@@ -30,7 +32,7 @@ type SubscriptionRow = {
 async function findLiveSubscription(uid: string): Promise<SubscriptionRow | null> {
   const { data, error } = await getSupabaseAdminClient()
     .from("subscriptions")
-    .select("id,plan_id,cycle,status,trial_end,current_period_end,cancel_at_period_end")
+    .select("id,plan_id,cycle,stripe_price_id,status,trial_end,current_period_end,cancel_at_period_end")
     .eq("user_id", uid)
     .in("status", LIVE_STATUSES)
     .order("updated_at", { ascending: false })
@@ -42,6 +44,9 @@ async function findLiveSubscription(uid: string): Promise<SubscriptionRow | null
 
 function toView(row: SubscriptionRow | null) {
   if (!row) return null;
+  const priceId = row.stripe_price_id ?? "";
+  const amountUsd = planUsdByStripePriceId(priceId);
+  const price = planAndCycleByStripePriceId(priceId);
   return {
     planId: row.plan_id,
     cycle: row.cycle,
@@ -49,6 +54,10 @@ function toView(row: SubscriptionRow | null) {
     trialEnd: row.status === "trialing" ? row.trial_end : null,
     currentPeriodEnd: row.current_period_end,
     cancelAtPeriodEnd: Boolean(row.cancel_at_period_end),
+    nextPayment: null as { amountMinor: number; currency: string } | null,
+    contractedPrice: price && amountUsd !== undefined
+      ? { amountMinor: amountUsd * 100, currency: "usd", cycle: price.cycle }
+      : null,
   };
 }
 
@@ -65,9 +74,24 @@ export async function GET() {
     ]);
     if (trial.error) throw new Error(trial.error.message);
 
+    const view = toView(subscription);
+    if (subscription && view && !view.cancelAtPeriodEnd
+      && ["active", "trialing"].includes(subscription.status)) {
+      try {
+        // A previa preserva o preco contratado, descontos e saldo; nunca usar o catalogo atual.
+        const invoice = await getStripeClient().invoices.createPreview({ subscription: subscription.id });
+        if (Number.isSafeInteger(invoice.amount_due) && invoice.amount_due >= 0
+          && /^[a-z]{3}$/.test(invoice.currency)) {
+          view.nextPayment = { amountMinor: invoice.amount_due, currency: invoice.currency };
+        }
+      } catch {
+        // Falha de leitura nao pode esconder os controles de cancelamento.
+      }
+    }
+
     return NextResponse.json({
       trialEligible: !trial.data,
-      subscription: toView(subscription),
+      subscription: view,
     });
   } catch (error) {
     return paymentErrorResponse(error);

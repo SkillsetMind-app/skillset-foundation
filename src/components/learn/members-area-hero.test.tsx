@@ -1,8 +1,8 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { MembersAreaHero } from "@/components/learn/members-area-hero";
 
@@ -43,6 +43,37 @@ describe("MembersAreaHero", () => {
     );
     expect(container.querySelector(".members-hero__prog")).not.toBeNull();
     expect(screen.getByText("42%")).toBeInTheDocument();
+  });
+});
+
+// Antes o "Show more" aparecia embaixo de qualquer descrição, até de uma linha.
+// jsdom não faz layout: a altura cortada (2 linhas) e a do texto inteiro vêm
+// do espião.
+describe("MembersAreaHero — 'Show more' só com o texto cortado", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  function heights(scroll: number, client: number) {
+    vi.spyOn(Element.prototype, "scrollHeight", "get").mockReturnValue(scroll);
+    vi.spyOn(Element.prototype, "clientHeight", "get").mockReturnValue(client);
+  }
+
+  it("texto que cabe nas 2 linhas: sem botão", () => {
+    heights(50, 50);
+    render(<MembersAreaHero theme="dark" title="Course" description="One short line." />);
+    expect(screen.getByText("One short line.")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Show more" })).toBeNull();
+  });
+
+  it("texto cortado: 'Show more' abre e vira 'Show less'", () => {
+    heights(120, 50);
+    render(<MembersAreaHero theme="dark" title="Course" description="A long description." />);
+    const toggle = screen.getByRole("button", { name: "Show more" });
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    fireEvent.click(toggle);
+    expect(screen.getByRole("button", { name: "Show less" })).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByText("A long description.")).toHaveClass("members-hero__sub--full");
   });
 });
 

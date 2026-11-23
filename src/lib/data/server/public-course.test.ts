@@ -30,7 +30,7 @@ vi.mock("@/lib/supabase/config", () => ({
   assertSupabaseClientConfig: () => ({ url: "https://example.supabase.co", anonKey: "anon" }),
 }));
 
-const { getCourseRefAccess, hasRealPublishedCourse, listPublishedCourses } = await import("@/lib/data/server/public-course");
+const { getCourseRefAccess, hasRealPublishedCourse, listPublishedCourses, marketplaceIsOpen } = await import("@/lib/data/server/public-course");
 
 type Row = { id: string; title_key: string | null; status: string; owner_id: string };
 
@@ -300,5 +300,24 @@ describe("hasRealPublishedCourse", () => {
     } finally {
       log.mockRestore();
     }
+  });
+});
+
+// Vitrine automática (decisão do dono, 13/11/2026): abre com 12 cursos reais
+// publicados de 5 professores diferentes, e fecha sozinha abaixo disso.
+describe("marketplaceIsOpen", () => {
+  const owners = (courses: number, teachers: number) =>
+    Array.from({ length: courses }, (_, i) => `t${i % teachers}`);
+
+  it("abre com 12 cursos de 5 professores", () => {
+    expect(marketplaceIsOpen(owners(12, 5))).toBe(true);
+    expect(marketplaceIsOpen(owners(40, 9))).toBe(true);
+  });
+
+  it("fica fechada com 11 cursos, ou com 12 cursos de só 4 professores", () => {
+    expect(marketplaceIsOpen(owners(11, 5))).toBe(false);
+    expect(marketplaceIsOpen(owners(12, 4))).toBe(false);
+    expect(marketplaceIsOpen(owners(2, 1))).toBe(false);
+    expect(marketplaceIsOpen([])).toBe(false);
   });
 });

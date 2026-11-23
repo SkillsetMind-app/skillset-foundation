@@ -1,3 +1,4 @@
+import { isPublicPlanId } from "@/data/plans";
 import type { SkillsetUser } from "@/domain/auth";
 import type { UserProfile } from "@/domain/user-profile";
 import { hasPermission } from "@/lib/permissions";
@@ -131,6 +132,101 @@ export function getSafeReturnTo(
 // become //host in the router.
 function hasUnsafeChar(text: string): boolean {
   return [...text].some((char) => char === "\\" || char < " " || char === "\u007f");
+}
+
+const PLAN_CHECKOUT_PATH = "/account/billing/upgrade";
+
+/**
+ * The plan and billing cycle a /pricing button carries
+ * (`?plan=starter&cycle=yearly`), as the card screen that opens them. A closed
+ * list: the plans on offer and the two cycles. Anything else is no choice at
+ * all, and the entry behaves as it always did.
+ */
+export function getPlanCheckoutRoute(searchParams: URLSearchParams): string | null {
+  const plan = searchParams.get("plan");
+  const cycle = searchParams.get("cycle");
+
+  if (!isPublicPlanId(plan) || (cycle !== "monthly" && cycle !== "yearly")) {
+    return null;
+  }
+
+  return `${PLAN_CHECKOUT_PATH}?plan=${plan}&cycle=${cycle}`;
+}
+
+/**
+ * Where the auth entry (/auth) is headed: the deep link the sign-in wall
+ * captured, else the plan picked on /pricing. From here on that plan travels as
+ * an ordinary `returnTo`, so it survives the confirmation email and the Google
+ * round trip the way a course link already does.
+ */
+export function getEntryReturnTo(searchParams: URLSearchParams): string | null {
+  return getSafeReturnTo(searchParams) ?? getPlanCheckoutRoute(searchParams);
+}
+
+/**
+ * That same plan, recognised again at the end of the trip. The route is rebuilt
+ * from the closed list, never echoed; any other `returnTo` gives null.
+ */
+export function getPlanCheckoutReturnTo(
+  returnTo: string | null | undefined,
+): string | null {
+  const safe = getSafeReturnTo(new URLSearchParams({ returnTo: returnTo ?? "" }));
+
+  if (!safe) {
+    return null;
+  }
+
+  const target = new URL(safe, RETURN_TO_BASE);
+
+  return target.pathname === PLAN_CHECKOUT_PATH
+    ? getPlanCheckoutRoute(target.searchParams)
+    : null;
+}
+
+/**
+ * Teacher activation (/onboarding). It is a required step, not a destination a
+ * deep link may replace. The one thing it carries is the plan picked on
+ * /pricing, so its last button opens that card screen instead of /teach.
+ */
+export function getTeacherOnboardingRoute(returnTo: string | null = null): string {
+  const searchParams = new URLSearchParams({ path: "teacher" });
+  const planCheckout = getPlanCheckoutReturnTo(returnTo);
+
+  if (planCheckout) {
+    searchParams.set("returnTo", planCheckout);
+  }
+
+  return `/onboarding?${searchParams.toString()}`;
+}
+
+/**
+ * The deep link an onboarded account follows after signing in. Every link goes
+ * straight through except the card screen of a plan picked on /pricing: someone
+ * who does not teach yet activates teaching first and reaches the card from
+ * there, and an account that already has a plan gets null (its usual route),
+ * because that screen only opens a first plan. So does anyone who came in
+ * through the learner entry: a plan is for teaching.
+ */
+export function getOnboardedReturnTo(
+  profile: Pick<UserProfile, "roles" | "currentPlanId">,
+  returnTo: string | null,
+  intent: AuthPathIntent | null = null,
+): string | null {
+  const planCheckout = getPlanCheckoutReturnTo(returnTo);
+
+  if (!planCheckout) {
+    return returnTo;
+  }
+
+  if (intent === "student") {
+    return null;
+  }
+
+  if (!profile.roles.includes("teacher")) {
+    return getTeacherOnboardingRoute(planCheckout);
+  }
+
+  return (profile.currentPlanId ?? "free") === "free" ? planCheckout : null;
 }
 
 export function getAuthErrorRoute(reason: string, next: string): string {

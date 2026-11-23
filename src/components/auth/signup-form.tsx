@@ -1,17 +1,20 @@
 "use client";
 
-import { Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState, type FormEvent } from "react";
 
 import { ConfirmEmailGate } from "@/components/auth/confirm-email-gate";
 import { GoogleMark } from "@/components/auth/google-mark";
+import { PasswordVisibilityToggle } from "@/components/auth/password-visibility-toggle";
 import {
   TurnstileWidget,
   isCaptchaEnabled,
 } from "@/components/auth/turnstile-widget";
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { InlineAlert } from "@/components/ui/inline-alert";
+import { ProgressBar } from "@/components/ui/progress-bar";
+import { PLAN_TRIAL_DAYS } from "@/data/plans";
 import { isGoogleAuthEnabled } from "@/lib/auth/providers";
 import {
   isStrongPassword,
@@ -32,8 +35,9 @@ import {
 import {
   getAuthRoute,
   getAuthPathIntentFromSearchParams,
+  getEntryReturnTo,
   getLoadingRoute,
-  getSafeReturnTo,
+  getOnboardedReturnTo,
   getWelcomeRoute,
 } from "@/lib/auth/routing";
 import { markSignupTerms } from "@/lib/auth/signup-terms-mark";
@@ -64,8 +68,9 @@ export function SignupForm() {
   // Where the visitor was headed when the wall stopped them — the course they
   // pressed "enroll" on. Sign-in already honoured it; signup dropped it, so the
   // buyer landed on a dashboard and the sale evaporated. Validated (same-origin
-  // path only) before it is carried anywhere.
-  const returnTo = useMemo(() => getSafeReturnTo(searchParams), [searchParams]);
+  // path only) before it is carried anywhere. A /pricing button arrives the
+  // same way: its plan and cycle become the card screen as the destination.
+  const returnTo = useMemo(() => getEntryReturnTo(searchParams), [searchParams]);
 
   function chooseIntent(next: "student" | "teacher") {
     setIntent(next);
@@ -80,7 +85,7 @@ export function SignupForm() {
     intent === "teacher"
       ? "auth.signup.introEducator"
       : "auth.signup.introLearner",
-  );
+  ).replace("{days}", String(PLAN_TRIAL_DAYS));
   const signinHref = getAuthRoute("signin", intent, returnTo);
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
@@ -96,6 +101,10 @@ export function SignupForm() {
   // can only fail the same way again.
   const [accountExists, setAccountExists] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  // Qual entrada foi apertada, so para o rotulo (isLoading segue travando os
+  // dois). "Back" no meio da criacao da conta mostrava o Google dizendo
+  // "Opening Google..." sem ninguem ter clicado nele.
+  const [pendingMethod, setPendingMethod] = useState<"email" | "google" | null>(null);
   // Turnstile token — empty unless the widget is enabled. Shown on step 2 where
   // the account is actually created (Google OAuth doesn't use a captcha token).
   const [captchaToken, setCaptchaToken] = useState("");
@@ -115,6 +124,21 @@ export function SignupForm() {
   const passwordReady = isStrongPassword(password);
   const passwordsMatch = password === confirmPassword;
   const showMismatch = confirmPassword.length > 0 && !passwordsMatch;
+  // Por que "Create account" está apagado (a trava é a mesma; só passa a ser
+  // dita). Senhas diferentes já têm a frase delas embaixo da confirmação: o
+  // botão aponta para ela. A verificação de segurança mostra o próprio estado.
+  const createBlockedReason = !legalAccepted
+    ? t("auth.signup.acceptTermsToCreate")
+    : !passwordReady
+      ? t("auth.signup.choosePasswordFirst")
+      : !passwordsMatch && !showMismatch
+        ? t("auth.signup.confirmPasswordFirst")
+        : "";
+  const createDescribedBy = createBlockedReason
+    ? "signup-create-blocked"
+    : showMismatch
+      ? "signup-password-mismatch"
+      : undefined;
   const stepLabel = t("auth.signup.progress")
     .replace("{current}", String(step))
     .replace("{total}", "2");
@@ -153,6 +177,7 @@ export function SignupForm() {
       return;
     }
 
+    setPendingMethod("email");
     setIsLoading(true);
 
     try {
@@ -217,6 +242,7 @@ export function SignupForm() {
       return;
     }
 
+    setPendingMethod("google");
     setIsLoading(true);
 
     try {
@@ -238,7 +264,7 @@ export function SignupForm() {
       }
       router.push(
         profile?.onboardingCompleted
-          ? returnTo ?? getLoadingRoute("route", intent)
+          ? getOnboardedReturnTo(profile, returnTo, intent) ?? getLoadingRoute("route", intent)
           : getWelcomeRoute(intent, returnTo),
       );
     } catch (caughtError) {
@@ -254,12 +280,27 @@ export function SignupForm() {
     }
   }
 
+  const introNode = (
+    <p className="text-sm leading-6 text-[var(--color-ink-soft)]">
+      {intro}
+      {intent === "teacher" ? (
+        <>
+          {" "}
+          <Link
+            href="/pricing"
+            className="font-semibold text-[var(--color-primary)]! underline underline-offset-4"
+          >
+            {t("auth.signup.plansLink")}
+          </Link>
+        </>
+      ) : null}
+    </p>
+  );
+
   const errorNode = error ? (
-    <p
-      role="alert"
-      aria-live="assertive"
-      className="rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]"
-    >
+    // Só a caixa mudou (o aviso da casa, com ícone): texto, link e anúncio
+    // (role="alert", aria-live="assertive") são os mesmos de antes.
+    <InlineAlert tone="error">
       {errorMessage}
       {accountExists ? (
         <>
@@ -269,7 +310,7 @@ export function SignupForm() {
           </Link>
         </>
       ) : null}
-    </p>
+    </InlineAlert>
   ) : null;
 
   // Account created, session pending confirmation. The form is done — replacing
@@ -292,27 +333,12 @@ export function SignupForm() {
 
   return (
     <form className="mt-5 grid gap-3" onSubmit={handleEmailSignup}>
-      <div
-        role="progressbar"
-        aria-label={stepLabel}
-        aria-valuemin={1}
-        aria-valuemax={2}
-        aria-valuenow={step}
-        aria-valuetext={stepLabel}
-        className="flex items-center gap-3 text-xs font-semibold text-[var(--color-ink-soft)]"
-      >
-        <span>{stepLabel}</span>
-        <div className="flex items-center gap-2" aria-hidden="true">
-          {[1, 2].map((n) => (
-            <span
-              key={n}
-              className={[
-                "h-1.5 rounded-full transition-all",
-                step === n ? "w-6 bg-[var(--color-primary)]" : "w-2 bg-[var(--color-line)]",
-              ].join(" ")}
-            />
-          ))}
-        </div>
+      {/* Os pontinhos feitos à mão viraram a barra da casa (a da sala e a do
+          construtor). O texto visível sai do leitor de tela: a barra já diz
+          "Step 1 of 2", com o passo de 1 a 2, como antes. */}
+      <div className="flex items-center gap-3 text-xs font-semibold text-[var(--color-ink-soft)]">
+        <span aria-hidden="true">{stepLabel}</span>
+        <ProgressBar value={step * 50} step={{ current: step, total: 2 }} label={stepLabel} className="w-16" />
       </div>
 
       {step === 1 ? (
@@ -342,7 +368,7 @@ export function SignupForm() {
             </div>
           </fieldset>
 
-          <p className="text-xs leading-5 text-[var(--color-ink-soft)]">{intro}</p>
+          {introNode}
 
           <div className="grid gap-3">
             <label className="grid gap-1.5 text-sm font-semibold text-[var(--color-ink)]">
@@ -373,11 +399,15 @@ export function SignupForm() {
             </label>
           </div>
 
-          <label className="flex items-start gap-2.5 text-xs leading-5 text-[var(--color-ink-soft)]">
+          {/* O aceite e o que destrava o cadastro: letra de corpo, nao de rodape. */}
+          <label className="flex items-start gap-2.5 text-sm leading-6 text-[var(--color-ink)]">
             <input
               type="checkbox"
               checked={legalAccepted}
               onChange={(event) => setLegalAccepted(event.target.checked)}
+              // O balao do navegador vem na lingua do navegador e some sozinho:
+              // o aviso da pagina fica, na lingua da pagina.
+              onInvalid={() => setError({ key: "auth.signup.acceptTermsToCreate" })}
               className="mt-0.5 size-5 shrink-0 accent-[var(--color-primary)]"
               required
             />
@@ -396,11 +426,14 @@ export function SignupForm() {
 
           {errorNode}
 
+          {/* Sem o aceite o botao continua clicavel: apagado, ele nao dizia o
+              porque. O clique agora aponta a caixa (required) ou mostra o aviso
+              que handleEmailSignup/handleGoogleSignup ja tinham. */}
           <button
             key="identity-continue"
             type="submit"
-            disabled={isLoading || !legalAccepted}
-            className="button-solid mt-1 px-4 py-2.5 text-sm disabled:opacity-60"
+            disabled={isLoading}
+            className="button-solid mt-1 px-4 py-2.5 text-sm"
           >
             {t("auth.signup.continue")}
           </button>
@@ -414,12 +447,14 @@ export function SignupForm() {
               </div>
               <button
                 type="button"
-                disabled={isLoading || !legalAccepted}
+                disabled={isLoading}
                 onClick={handleGoogleSignup}
-                className="button-outline px-4 py-2.5 text-sm disabled:opacity-60"
+                className="button-outline px-4 py-2.5 text-sm"
               >
                 <GoogleMark />
-                {t("auth.continueWithGoogle")}
+                {isLoading && pendingMethod === "google"
+                  ? t("auth.openingGoogle")
+                  : t("auth.continueWithGoogle")}
               </button>
             </>
           ) : null}
@@ -432,10 +467,16 @@ export function SignupForm() {
         </>
       ) : (
         <>
-          <label className="grid gap-1.5 text-sm font-semibold text-[var(--color-ink)]">
-            {t("auth.password")}
+          {intent === "teacher" ? introNode : null}
+          {/* Rotulo e campo lado a lado (htmlFor), com o olho fora do
+              <label>: dentro dele, o nome do botao entrava no nome do campo. */}
+          <div className="grid gap-1.5">
+            <label htmlFor="signup-password" className="text-sm font-semibold text-[var(--color-ink)]">
+              {t("auth.password")}
+            </label>
             <span className="relative block">
               <input
+                id="signup-password"
                 type={showPassword ? "text" : "password"}
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
@@ -444,29 +485,30 @@ export function SignupForm() {
                 minLength={8}
                 required
                 autoFocus
+                aria-describedby="signup-password-rules"
                 className="field-input pr-11"
               />
-              <button
-                type="button"
-                onClick={() => setShowPassword((visible) => !visible)}
-                aria-label={t(showPassword ? "auth.hidePassword" : "auth.showPassword")}
-                aria-pressed={showPassword}
-                className="absolute inset-y-0 right-0 flex items-center px-3 text-[var(--color-ink-muted)] transition-colors hover:text-[var(--color-ink)]"
-              >
-                {showPassword ? (
-                  <EyeOff className="h-4 w-4" aria-hidden="true" />
-                ) : (
-                  <Eye className="h-4 w-4" aria-hidden="true" />
-                )}
-              </button>
+              <PasswordVisibilityToggle
+                visible={showPassword}
+                onToggle={() => setShowPassword((visible) => !visible)}
+              />
             </span>
-            {password ? <PasswordStrengthChecklist password={password} /> : null}
-          </label>
+          </div>
+          {/* As regras aparecem desde o inicio (as que faltam, apagadas): antes
+              surgiam no 1o caractere e empurravam o resto do formulario. Fora
+              do <label>, para o nome do campo continuar sendo so "Password";
+              o campo aponta para elas como descricao. */}
+          <div id="signup-password-rules">
+            <PasswordStrengthChecklist password={password} />
+          </div>
 
-          <label className="grid gap-1.5 text-sm font-semibold text-[var(--color-ink)]">
-            {t("auth.signup.confirmPassword")}
+          <div className="grid gap-1.5">
+            <label htmlFor="signup-confirm-password" className="text-sm font-semibold text-[var(--color-ink)]">
+              {t("auth.signup.confirmPassword")}
+            </label>
             <span className="relative block">
               <input
+                id="signup-confirm-password"
                 type={showConfirmPassword ? "text" : "password"}
                 value={confirmPassword}
                 onChange={(event) => setConfirmPassword(event.target.value)}
@@ -474,30 +516,25 @@ export function SignupForm() {
                 autoComplete="new-password"
                 required
                 aria-invalid={showMismatch}
+                aria-describedby={showMismatch ? "signup-password-mismatch" : undefined}
                 className="field-input pr-11"
               />
-              <button
-                type="button"
-                onClick={() => setShowConfirmPassword((visible) => !visible)}
-                aria-label={t(
-                  showConfirmPassword ? "auth.hidePassword" : "auth.showPassword",
-                )}
-                aria-pressed={showConfirmPassword}
-                className="absolute inset-y-0 right-0 flex items-center px-3 text-[var(--color-ink-muted)] transition-colors hover:text-[var(--color-ink)]"
-              >
-                {showConfirmPassword ? (
-                  <EyeOff className="h-4 w-4" aria-hidden="true" />
-                ) : (
-                  <Eye className="h-4 w-4" aria-hidden="true" />
-                )}
-              </button>
+              <PasswordVisibilityToggle
+                visible={showConfirmPassword}
+                onToggle={() => setShowConfirmPassword((visible) => !visible)}
+              />
             </span>
-            {showMismatch ? (
-              <span className="text-xs font-semibold text-[var(--color-accent-fg)]">
-                {t("auth.signup.passwordsDontMatch")}
-              </span>
-            ) : null}
-          </label>
+          </div>
+          {/* Fora do <label>: dentro dele a frase virava parte do nome do campo.
+              O campo aponta para ela como descricao enquanto ela aparece. */}
+          {showMismatch ? (
+            <span
+              id="signup-password-mismatch"
+              className="-mt-1 text-xs font-semibold text-[var(--color-danger-fg)]"
+            >
+              {t("auth.signup.passwordsDontMatch")}
+            </span>
+          ) : null}
 
           {errorNode}
 
@@ -515,12 +552,18 @@ export function SignupForm() {
               !passwordsMatch ||
               (isCaptchaEnabled && !captchaToken)
             }
-            className="button-solid mt-1 px-4 py-2.5 text-sm disabled:opacity-60"
+            aria-describedby={createDescribedBy}
+            className="button-solid mt-1 px-4 py-2.5 text-sm"
           >
             {isLoading
               ? t("auth.signup.creatingAccount")
               : t("auth.signup.createAccount")}
           </button>
+          {createBlockedReason ? (
+            <p id="signup-create-blocked" className="-mt-1 text-xs leading-5 text-[var(--color-ink-soft)]">
+              {createBlockedReason}
+            </p>
+          ) : null}
 
           <button
             key="password-back"

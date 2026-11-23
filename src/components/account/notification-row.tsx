@@ -15,6 +15,7 @@ import {
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import {
+  notificationBody,
   notificationTitle,
   type AppNotification,
   type NotificationType,
@@ -122,16 +123,19 @@ export function NotificationRow({
         </p>
         {notification.body ? (
           <p className="mt-0.5 line-clamp-2 text-xs leading-5 text-[var(--color-ink-soft)]">
-            {notification.body}
+            {notificationBody(notification, locale)}
           </p>
         ) : null}
         <p className="mt-1 text-[11px] font-medium text-[var(--color-ink-muted)]">
           {formatNotificationTime(notification.createdAt, t, locale)}
         </p>
       </div>
+      {/* O ponto era o unico sinal de "nao lida" e o leitor de tela nao o
+          lia. Agora ele diz "Unread". */}
       {!notification.read ? (
         <span
-          aria-hidden="true"
+          role="img"
+          aria-label={t("accountNotifications.unread")}
           className="mt-2 size-2 shrink-0 rounded-full bg-[var(--color-accent)]"
         />
       ) : null}

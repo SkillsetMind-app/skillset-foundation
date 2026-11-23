@@ -15,6 +15,9 @@ type ExportTableButtonProps = {
   filename: string;
   className?: string;
   disabled?: boolean;
+  /** Por que quem chama desligou (ex.: a leitura falhou); sem isto, so o caso
+   *  que o botao conhece, zero linhas, ganha motivo. */
+  disabledReason?: string;
 };
 
 function normalizeFilename(filename: string, extension: "csv" | "json") {
@@ -72,6 +75,7 @@ export function ExportTableButton({
   filename,
   className,
   disabled = false,
+  disabledReason,
 }: ExportTableButtonProps) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
@@ -79,6 +83,13 @@ export function ExportTableButton({
   const menuRef = useRef<HTMLDivElement>(null);
   const menuId = useId();
   const isDisabled = disabled || rows.length === 0;
+  // Zero linhas so diz "nada para exportar" quando quem chama nao desligou: uma
+  // leitura que falhou tambem chega com zero linhas, e ai o motivo e outro.
+  const reason = disabled
+    ? disabledReason
+    : rows.length === 0
+      ? t("platform.ops.exportButton.nothingToExport")
+      : undefined;
   const isMenuOpen = open && !isDisabled;
 
   useLayoutEffect(() => {
@@ -183,21 +194,34 @@ export function ExportTableButton({
   }
 
   return (
-    <div className={cn("relative", className)}>
+    // `contents`: o botão e o motivo entram direto na fileira de quem chama. O
+    // motivo vai para uma linha só dele, embaixo da fileira (basis-full,
+    // order-last): ao lado do botão, ele aparecia no meio da busca e fazia os
+    // filtros de Vendas e Relatórios quebrarem de linha. O menu é um portal
+    // com posição fixa: não precisa de caixa em volta.
+    <div className={cn("contents", className)}>
       <button
         ref={triggerRef}
         id={`${menuId}-trigger`}
         type="button"
         onClick={() => setOpen((current) => !current)}
         disabled={isDisabled}
-        className="button-outline inline-flex items-center gap-2 px-3.5 py-2 text-xs disabled:opacity-50"
+        className="button-outline inline-flex items-center gap-2 px-3.5 py-2 text-xs"
         aria-haspopup="menu"
         aria-expanded={isMenuOpen}
         aria-controls={isMenuOpen ? menuId : undefined}
+        aria-describedby={reason ? `${menuId}-reason` : undefined}
       >
         <Download aria-hidden="true" size={14} strokeWidth={1.9} />
         {t("platform.ops.exportButton.export")}
       </button>
+      {/* T-15: o motivo de estar desligado era só title e leitor de tela, e no
+          toque não aparecia. Agora é uma linha visível, ligada ao botão. */}
+      {reason ? (
+        <span id={`${menuId}-reason`} className="order-last basis-full text-xs leading-5 text-[var(--color-ink-soft)] sm:text-right">
+          {reason}
+        </span>
+      ) : null}
 
       {isMenuOpen ? createPortal(
         <div
@@ -206,7 +230,7 @@ export function ExportTableButton({
           role="menu"
           aria-labelledby={`${menuId}-trigger`}
           style={{ position: "fixed", visibility: "hidden" }}
-          className="z-[50] w-44 overflow-y-auto rounded-lg border border-[var(--color-line)] bg-white p-1.5 shadow-[var(--shadow-strong)]"
+          className="motion-drop-in z-[50] w-44 overflow-y-auto rounded-lg border border-[var(--color-line)] bg-white p-1.5 shadow-[var(--shadow-strong)]"
         >
           <button
             type="button"

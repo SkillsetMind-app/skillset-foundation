@@ -83,6 +83,20 @@ describe("piso de 16px em campos de formulário no celular", () => {
     ).toBe(true);
   });
 
+  it("a pele .field-input (14px) não derruba o piso em textarea e select", () => {
+    // `.field-input` é (0,1,0) e vence `textarea`/`select` (0,0,1); o input
+    // passa porque o `:not()` do piso dá (0,2,1). Sem o reforço com a classe,
+    // Bio e Fuso do perfil ficavam em 14px e o iPhone dava zoom.
+    const cobre = pisos.some(
+      (bloco) => /textarea\.field-input/.test(bloco) && /select\.field-input/.test(bloco),
+    );
+
+    expect(
+      cobre,
+      "o piso de 16px não alcança textarea/select com .field-input — o Safari do iOS vai dar zoom",
+    ).toBe(true);
+  });
+
   it("não precisa de !important para vencer as regras de classe", () => {
     // `input:not([type="checkbox"]):not([type="radio"])` é (0,2,1) e já vence
     // `.platform-sidebar-search input`, que é (0,1,1). Um !important de folha de

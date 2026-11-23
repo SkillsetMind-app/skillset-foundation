@@ -80,10 +80,13 @@ export async function openTeacherStripeDashboard() {
   );
   if (typeof url !== "string") throw new Error("Stripe dashboard URL missing.");
   const destination = new URL(url);
+  // Express: single-use login link. Full Dashboard (new creators): Stripe's own sign-in.
+  const isExpressLink = destination.origin === "https://connect.stripe.com"
+    && destination.pathname.startsWith("/express/");
+  const isFullDashboard = destination.href === "https://dashboard.stripe.com/";
   if (
-    destination.origin !== "https://connect.stripe.com"
-    || destination.username || destination.password
-    || !destination.pathname.startsWith("/express/")
+    destination.username || destination.password
+    || (!isExpressLink && !isFullDashboard)
   ) {
     throw new Error("Invalid Stripe dashboard URL.");
   }

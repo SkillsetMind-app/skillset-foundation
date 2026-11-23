@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { I18nProvider } from "@/components/i18n/i18n-provider";
@@ -63,6 +63,39 @@ describe("credentials hub eligibility", () => {
   });
 });
 
+describe("credentials hub hierarchy", () => {
+  // O desenho proprio pintava o hover igual ao filtro escolhido; agora e o
+  // seletor segmentado da casa, com a escolha no proprio botao.
+  it("os filtros sao o seletor segmentado da casa e filtram a lista", () => {
+    show({ ...finished, status: "active", progressPercent: 40 });
+    const group = screen.getByRole("group", { name: "Credential filters" });
+    // Quebra a linha: a 360px em espanhol os quatro ficam a vista, sem rolagem.
+    expect(group).toHaveClass("studio-range-tabs", "studio-range-tabs--wrap");
+    expect(within(group).getByRole("button", { name: "All 1" })).toHaveAttribute("aria-pressed", "true");
+
+    fireEvent.click(within(group).getByRole("button", { name: "Issued 0" }));
+    expect(within(group).getByRole("button", { name: "Issued 0" })).toHaveAttribute("aria-pressed", "true");
+    expect(within(group).getByRole("button", { name: "All 1" })).toHaveAttribute("aria-pressed", "false");
+    expect(screen.queryByRole("heading", { name: "Finished course" })).not.toBeInTheDocument();
+    expect(screen.getByText("No credentials match this filter.")).toBeVisible();
+  });
+
+  it("one header (the shell's), and each card states its progress once", () => {
+    show({ ...finished, status: "active", progressPercent: 40 });
+    // The hero and the section title are gone; the filters carry the counts.
+    expect(screen.queryByText("Credentials from real course progress.")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "In progress 1" })).toBeVisible();
+    const title = screen.getByRole("heading", { name: "Finished course" });
+    expect(title).not.toHaveClass("display-title");
+    // Status pill + a bar with the percentage; no "Progress" box, no sentence.
+    expect(screen.getByText("In progress", { selector: "span" })).toBeVisible();
+    expect(screen.getByRole("progressbar", { name: "Progress" })).toHaveAttribute("aria-valuenow", "40");
+    expect(screen.getAllByText("40%")).toHaveLength(1);
+    expect(screen.queryByText("Complete the course to become eligible for your SkillsetMind Verified certificate.")).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Continue course" })).toBeVisible();
+  });
+});
+
 describe("credentials hub issuance errors", () => {
   async function claimAndFail(error: unknown) {
     mocks.issue.mockRejectedValue(error);
@@ -87,5 +120,76 @@ describe("credentials hub issuance errors", () => {
     await claimAndFail({ message: "duplicate key value violates unique constraint", code: "23505" });
     expect(screen.getByRole("alert")).toHaveTextContent("We could not issue this certificate yet. Please try again.");
     expect(screen.getByRole("alert")).not.toHaveTextContent("duplicate key");
+  });
+});
+
+describe("credentials hub load errors", () => {
+  // A falha de leitura era um beco: a única saída era recarregar o navegador.
+  it("a falha das matrículas oferece Try again, que relê pelo mesmo canal", async () => {
+    const reload = vi.fn(async () => undefined);
+    let next: (rows: Enrollment[]) => void = () => {};
+    mocks.enrollments.mockImplementation((_uid, onData, onError) => {
+      next = onData;
+      onError(new Error("network"));
+      return Object.assign(() => {}, { reload });
+    });
+    mocks.certificates.mockImplementation((_uid, onData) => { onData([]); return () => {}; });
+    render(<I18nProvider initialLocale="en"><LearnCredentialsHub /></I18nProvider>);
+
+    expect(screen.getByRole("alert")).toHaveTextContent("We could not load your credential records.");
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(reload).toHaveBeenCalledTimes(1);
+    expect(mocks.enrollments).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    // O botão some com o clique: o foco fica na moldura do painel, não no <body>.
+    const frame = document.activeElement as HTMLElement;
+    expect(frame).not.toBe(document.body);
+    expect(frame).toHaveAttribute("tabindex", "-1");
+    expect(frame).toHaveTextContent("Loading credentials");
+
+    act(() => next([finished]));
+    expect(screen.getByRole("heading", { name: "Finished course" })).toBeVisible();
+    expect(document.activeElement).toBe(frame);
+    expect(frame).toContainElement(screen.getByRole("heading", { name: "Finished course" }));
+  });
+
+  // Os certificados agora têm releitura: "Try again" relê só eles, e a lista
+  // não aparece sem os emitidos (até a resposta vale o "carregando").
+  it("a falha dos certificados oferece Try again, que relê só os certificados", () => {
+    const enrollmentsReload = vi.fn(async () => undefined);
+    const certificatesReload = vi.fn(async () => undefined);
+    let deliver: (rows: Certificate[]) => void = () => {};
+    let fail: (error: Error) => void = () => {};
+    mocks.enrollments.mockImplementation((_uid, onData) => {
+      onData([finished]);
+      return Object.assign(() => {}, { reload: enrollmentsReload });
+    });
+    mocks.certificates.mockImplementation((_uid, next, onError) => {
+      deliver = next;
+      fail = onError;
+      onError(new Error("network"));
+      return Object.assign(() => {}, { reload: certificatesReload });
+    });
+    render(<I18nProvider initialLocale="en"><LearnCredentialsHub /></I18nProvider>);
+
+    expect(screen.getByRole("alert")).toHaveTextContent("We could not load your issued certificate records.");
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(certificatesReload).toHaveBeenCalledTimes(1);
+    expect(enrollmentsReload).not.toHaveBeenCalled();
+    expect(mocks.certificates).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Finished course" })).not.toBeInTheDocument();
+    expect(document.activeElement).toHaveTextContent("Loading credentials");
+
+    // Falhou de novo: o erro volta, com o botão.
+    act(() => fail(new Error("network")));
+    expect(screen.getByRole("alert")).toHaveTextContent("We could not load your issued certificate records.");
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(certificatesReload).toHaveBeenCalledTimes(2);
+
+    act(() => deliver([certificate]));
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Finished course" })).toBeVisible();
+    expect(screen.getByText("Issued", { selector: "span" })).toBeVisible();
   });
 });

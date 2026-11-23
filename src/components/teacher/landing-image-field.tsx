@@ -1,14 +1,12 @@
 "use client";
 
-import { Loader2, UploadCloud, X } from "lucide-react";
-import { useId, useRef, useState } from "react";
+import { useRef, useState } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { formatCourseAssetSize, getCourseAssetUploadErrorMessage } from "@/domain/course-asset";
 import { landingImageMaxBytes, landingImageTypes, uploadLandingImage } from "@/lib/data/landing-images";
 
-const fieldClass =
-  "w-full rounded-md border border-[var(--color-line)] bg-white px-3 py-2.5 text-sm text-[var(--color-ink)]";
+import { ImageUploadField } from "./image-upload-field";
 
 /**
  * Image field for sales page blocks: upload first, pasting a link second.
@@ -33,9 +31,11 @@ export function LandingImageField({
 }) {
   const { t } = useTranslation();
   const inputRef = useRef<HTMLInputElement>(null);
-  const labelId = useId();
-  const rulesId = useId();
-  const [uploading, setUploading] = useState(false);
+  // Tamanho do arquivo em envio (null = nada subindo): a nota de andamento, a
+  // mesma das capas do construtor, diz "Sending..." e o tamanho, porque este
+  // envio não informa porcentagem.
+  const [uploadingBytes, setUploadingBytes] = useState<number | null>(null);
+  const uploading = uploadingBytes !== null;
   const [error, setError] = useState("");
   const limit = formatCourseAssetSize(landingImageMaxBytes);
 
@@ -54,73 +54,42 @@ export function LandingImageField({
       );
       return;
     }
-    setUploading(true);
+    setUploadingBytes(file.size);
     try {
       onChange(await uploadLandingImage(courseId, file));
     } catch (cause) {
       setError(getCourseAssetUploadErrorMessage(cause, landingImageMaxBytes, t));
     } finally {
-      setUploading(false);
+      setUploadingBytes(null);
       if (inputRef.current) inputRef.current.value = "";
     }
   }
 
   return (
-    <div role="group" aria-labelledby={labelId} className="grid gap-2">
-      <span id={labelId} className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--color-ink-soft)]">
-        {label}
-      </span>
-      {value ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={value}
-          alt={t("teacherLanding.upload.previewAlt").replace("{label}", () => label)}
-          className="max-h-40 w-full rounded-md border border-[var(--color-line)] object-cover"
-        />
-      ) : null}
-      <input
-        ref={inputRef}
-        type="file"
-        accept={landingImageTypes.join(",")}
-        className="sr-only"
-        aria-hidden
-        tabIndex={-1}
-        onChange={(e) => void handleFile(e.target.files?.[0])}
+    // O grupo leva o nome do bloco: com duas imagens na página, cada "Or paste
+    // a link" diz de qual imagem é.
+    <div role="group" aria-label={label} className="grid gap-3">
+      {/* A casca de imagem das capas do construtor (B-05): prévia de 200px,
+          botão de rótulo fixo, nota de envio, erro e "Remove". */}
+      <ImageUploadField
+        title={label}
+        help={t("teacherLanding.upload.rules").replace("{limit}", () => limit)}
+        preview={{ src: value, alt: t("teacherLanding.upload.previewAlt").replace("{label}", () => label) }}
+        triggerLabel={t("teacherLanding.upload.button")}
+        input={{
+          ref: inputRef,
+          accept: landingImageTypes.join(","),
+          disabled: uploading,
+          onChange: (e) => void handleFile(e.target.files?.[0]),
+        }}
+        remove={{ label: t("teacherLanding.upload.remove"), onClick: () => onChange(null) }}
+        progress={uploadingBytes === null ? null : { bytesTransferred: 0, totalBytes: uploadingBytes, percent: null, state: "running" }}
+        error={error || undefined}
       />
-      <div className="flex flex-wrap gap-2">
-        <button
-          type="button"
-          disabled={uploading}
-          aria-describedby={rulesId}
-          onClick={() => inputRef.current?.click()}
-          className="inline-flex min-h-11 w-fit items-center gap-2 rounded-md border border-[var(--color-line)] bg-white px-3 py-2.5 text-sm font-semibold text-[var(--color-primary)] disabled:opacity-60"
-        >
-          {uploading ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <UploadCloud className="size-4" aria-hidden />}
-          {uploading ? t("teacherLanding.upload.uploading") : t("teacherLanding.upload.button")}
-        </button>
-        {value ? (
-          <button
-            type="button"
-            onClick={() => onChange(null)}
-            className="inline-flex min-h-11 w-fit items-center gap-2 rounded-md border border-[var(--color-line)] bg-white px-3 py-2.5 text-sm font-semibold text-[var(--color-danger-fg)]"
-          >
-            <X className="size-4" aria-hidden />
-            {t("teacherLanding.upload.remove")}
-          </button>
-        ) : null}
-      </div>
-      <p id={rulesId} className="text-xs normal-case tracking-normal text-[var(--color-ink-soft)]">
-        {t("teacherLanding.upload.rules").replace("{limit}", () => limit)}
-      </p>
-      {error ? (
-        <p role="alert" className="text-sm font-semibold text-red-700">
-          {error}
-        </p>
-      ) : null}
-      <label className="grid gap-1.5 text-xs font-bold uppercase tracking-[0.16em] text-[var(--color-ink-soft)]">
+      <label className="grid gap-1.5 text-sm font-semibold text-[var(--color-ink)]">
         {t("teacherLanding.upload.orLink")}
         <input
-          className={fieldClass}
+          className="field-input"
           value={value ?? ""}
           placeholder={placeholder}
           onChange={(e) => onChange(e.target.value.trim() || null)}

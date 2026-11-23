@@ -3,17 +3,21 @@
 import Image from "next/image";
 import Link from "next/link";
 import { PlayCircle, Radio } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { NotificationRow } from "@/components/account/notification-row";
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { InlineAlert } from "@/components/ui/inline-alert";
+import { ProgressBar } from "@/components/ui/progress-bar";
 import { LearningPathsRows } from "@/components/learn/learning-paths-rows";
 import { MemberAreaLinks } from "@/components/learn/member-area-links";
 import { WelcomeTour } from "@/components/learn/welcome-tour";
 import { ListingSearchBar } from "@/components/shared/listing-search-bar";
+import { PeriodTabs } from "@/components/shared/period-tabs";
 import { StatusChip } from "@/components/shared/status-chip";
-import { formatEventDateTime, type CourseEvent } from "@/domain/course-event";
+import { noJoinLinkKey, useNow } from "@/components/learn/live-session-parts";
+import { formatEventDateTime, getEventLiveState, type CourseEvent } from "@/domain/course-event";
 import {
   canContinueEnrollment,
   canOpenEnrollment,
@@ -24,7 +28,7 @@ import {
   getRemainingMinutesFrom,
   getResumeCourseLesson,
 } from "@/domain/lesson-progress";
-import type { AppNotification } from "@/domain/notification";
+import { notificationHref, type AppNotification } from "@/domain/notification";
 import type { TeacherCourse } from "@/domain/teacher-course";
 import { getCourseBySlug } from "@/lib/data/catalog";
 import { subscribeToCourseEvents } from "@/lib/data/course-events";
@@ -50,7 +54,8 @@ const TOP_ITEMS = 3;
 // eles so empurram os cartoes para baixo.
 const COURSE_CONTROLS_AFTER = 6;
 
-type CourseFilter = "in_progress" | "completed";
+const courseFilters = ["in_progress", "completed"] as const;
+type CourseFilter = (typeof courseFilters)[number];
 
 const FALLBACK_COVER = "/brand/logo-mark.png";
 
@@ -64,6 +69,8 @@ export function LearnDashboard() {
   const [hasError, setHasError] = useState(false);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [eventBuckets, setEventBuckets] = useState<Record<string, CourseEvent[]>>({});
+  // Relógio que anda: a live fica no painel enquanto acontece, com "Happening now".
+  const now = useNow();
   // Os cursos REAIS da pessoa. Sem isto o painel só enxergava os 6 cursos de
   // demonstração de `catalog.ts`, e uma matrícula real nunca carrega slug de
   // demonstração — `enrollments.ts:115` e o webhook do Stripe gravam o id do
@@ -123,15 +130,18 @@ export function LearnDashboard() {
     };
   }, [enrolledCourseKey]);
 
+  const enrollmentsSubscription = useRef<{ reload: () => Promise<void> } | null>(null);
+
   useEffect(() => {
     if (!user) {
       return;
     }
 
-    return subscribeToUserEnrollments(
+    const current = subscribeToUserEnrollments(
       user.uid,
       (nextEnrollments) => {
         setEnrollments(nextEnrollments);
+        setHasError(false);
         setIsLoading(false);
       },
       () => {
@@ -139,7 +149,20 @@ export function LearnDashboard() {
         setIsLoading(false);
       },
     );
+    enrollmentsSubscription.current = current;
+    return () => {
+      enrollmentsSubscription.current = null;
+      current();
+    };
   }, [user]);
+
+  // "Try again" le de novo pelo mesmo canal. Antes a unica saida do erro era
+  // recarregar a pagina no navegador.
+  function retryLoad() {
+    setHasError(false);
+    setIsLoading(true);
+    void enrollmentsSubscription.current?.reload();
+  }
 
   // Mesma fonte do sino: o que chegou de novo (resposta na comunidade,
   // mensagem do professor, certificado) so aparecia atras de um clique no
@@ -183,22 +206,26 @@ export function LearnDashboard() {
     }
   }, [enrollments]);
 
+  // A live fica até acabar (a janela comum de course-event.ts). Antes ela
+  // saía do painel no minuto em que começava, levando o "Join" junto. O prazo
+  // sai na hora em que vence e nunca fica "Happening now".
   const upcomingEvents = useMemo(() => {
-    // Display-only metric recomputed whenever event data changes; reading the
-    // wall clock here is intentional and any staleness is harmless.
-    // eslint-disable-next-line react-hooks/purity
-    const now = Date.now();
     return Object.values(eventBuckets)
       .flat()
-      .map((event) => ({ event, startsAt: Date.parse(event.startsAt) }))
-      .filter(({ startsAt }) => Number.isFinite(startsAt) && startsAt >= now)
+      .map((event) => ({
+        event,
+        startsAt: Date.parse(event.startsAt),
+        state: getEventLiveState(event.startsAt, now, event.type),
+      }))
+      .filter(({ startsAt, state }) => Number.isFinite(startsAt) && state !== "over")
       .sort((left, right) => left.startsAt - right.startsAt)
-      .map(({ event, startsAt }) => ({
+      .map(({ event, startsAt, state }) => ({
         ...event,
         externalUrl: getSafeExternalUrl(event.externalUrl),
         isThisWeek: startsAt <= now + weekMillis,
+        isLive: state === "live",
       }));
-  }, [eventBuckets]);
+  }, [eventBuckets, now]);
 
   // O aviso de reembolso aparecia em toda visita. Agora so enquanto serve:
   // ha uma compra paga ainda dentro das regras do reembolso automatico. So
@@ -230,25 +257,33 @@ export function LearnDashboard() {
   );
 
   if (isLoading) {
-    // Skeleton mirrors the loaded shape (continue row + course grid) so the
-    // layout does not jump when the enrollments arrive. Same animate-pulse
-    // blocks the rest of the app already uses; the sr-only status keeps the
-    // old copy.
+    // O esqueleto tem o formato da tela carregada: linha do cabeçalho e o
+    // quadro de "My courses" com três cartões (capa 16:10, duas linhas e a
+    // barra). Antes eram três caixas soltas sem o quadro, e a página pulava
+    // quando as matrículas chegavam.
+    const bone = "animate-pulse rounded-md bg-[var(--color-surface-strong)]";
     return (
       <div aria-busy="true" aria-live="polite" className="grid gap-8">
-        {greeting}
+        <div className="border-b border-[var(--color-line)] pb-5">
+          {greeting}
+          <div className={`mt-3 h-4 w-48 ${bone}`} />
+        </div>
         <p className="sr-only" role="status">
           {t("learn.dashboard.loading")}
         </p>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {[0, 1, 2].map((item) => (
-            <div
-              key={item}
-              className="h-56 animate-pulse rounded-lg border border-[var(--color-line)] bg-white shadow-[var(--shadow-soft)]"
-            />
-          ))}
+        <div className="dash-card dash-card--strong p-4 sm:p-6">
+          <div className={`h-6 w-40 ${bone}`} />
+          <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {[0, 1, 2].map((item) => (
+              <div key={item} className="rounded-lg border fine-rule bg-white p-3">
+                <div className={`aspect-[16/10] ${bone}`} />
+                <div className={`mt-3 h-3 w-24 ${bone}`} />
+                <div className={`mt-2 h-4 w-3/4 ${bone}`} />
+                <div className={`mt-3 h-1.5 ${bone}`} />
+              </div>
+            ))}
+          </div>
         </div>
-        <div className="h-44 animate-pulse rounded-lg bg-[var(--color-surface-soft)]" />
       </div>
     );
   }
@@ -257,12 +292,14 @@ export function LearnDashboard() {
     return (
       <div className="grid gap-8">
         {greeting}
-        <div className="rounded-lg border border-[rgba(178,34,52,0.2)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
-          <p className="rounded-md bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
-            {t("learn.dashboard.loadError")}
-          </p>
+        <div className="rounded-lg border border-[var(--color-line)] bg-white p-4 sm:p-6 shadow-[var(--shadow-soft)]">
+          <InlineAlert tone="error">{t("learn.dashboard.loadError")}</InlineAlert>
+          {/* "Try again" e a acao principal; explorar e suporte ficam ao lado. */}
           <div className="mt-4 flex flex-wrap gap-3">
-            <Link href="/courses" className="button-solid px-4 py-2.5 text-sm">
+            <button type="button" onClick={retryLoad} className="button-solid px-4 py-2.5 text-sm">
+              {t("appErrors.retry")}
+            </button>
+            <Link href="/courses" className="button-outline px-4 py-2.5 text-sm">
               {t("learn.dashboard.exploreCourses")}
             </Link>
             <Link href="/support" className="button-outline px-4 py-2.5 text-sm">
@@ -284,7 +321,7 @@ export function LearnDashboard() {
             <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
               {t("learn.dashboard.myLearning")}
             </p>
-            <h2 className="display-title mt-3 text-3xl text-[var(--color-ink)]">
+            <h2 className="mt-3 text-lg font-semibold text-[var(--color-primary)]">
               {t("learn.dashboard.emptyTitle")}
             </h2>
             <p className="mt-4 max-w-2xl text-sm leading-7 text-[var(--color-ink-soft)]">
@@ -459,12 +496,16 @@ export function LearnDashboard() {
                       <span className="absolute inset-0 grid place-items-center bg-[rgba(15,39,68,0.28)] text-white transition group-hover:bg-[rgba(15,39,68,0.4)]">
                         <PlayCircle aria-hidden="true" size={40} strokeWidth={1.6} />
                       </span>
-                      <span className="absolute inset-x-0 bottom-0 h-1.5 bg-[rgba(255,255,255,0.4)]">
-                        <span
-                          className="block h-full bg-[var(--color-accent)]"
-                          style={{ width: `${percent}%` }}
+                      {/* Sobre a foto: a barra da plataforma, recuada e com cantos
+                          redondos (antes colada na borda e reta). O número vai
+                          em texto no fim do cartão, então a barra fica calada. */}
+                      <div aria-hidden="true" className="absolute inset-x-3 bottom-3">
+                        <ProgressBar
+                          value={percent}
+                          label={t("learn.dashboard.percentComplete").replace("{percent}", String(percent))}
+                          className="bg-[rgba(255,255,255,0.22)]"
                         />
-                      </span>
+                      </div>
                     </div>
                     <p className="mt-3 line-clamp-1 text-sm font-semibold text-[var(--color-primary)]">
                       {enrollment.courseTitle}
@@ -488,8 +529,16 @@ export function LearnDashboard() {
       ) : null}
 
       {/* Sem live marcada a coluna gastava meia linha dizendo isso; agora
-          some, e "What's new" ocupa a largura toda. */}
-      <div className={nextEvents.length > 0 ? "grid gap-6 lg:grid-cols-2" : "grid gap-6"}>
+          some. "What's new" vazio some do mesmo jeito: o "Nothing new yet."
+          empurrava "My courses" para baixo a cada visita. */}
+      {nextEvents.length > 0 || latestNotifications.length > 0 ? (
+      <div
+        className={
+          nextEvents.length > 0 && latestNotifications.length > 0
+            ? "grid gap-6 lg:grid-cols-2"
+            : "grid gap-6"
+        }
+      >
         {nextEvents.length > 0 ? (
           <section
             aria-labelledby="upcoming-lives-title"
@@ -508,8 +557,17 @@ export function LearnDashboard() {
                     <Radio aria-hidden="true" size={16} strokeWidth={1.8} />
                   </span>
                   <div className="min-w-0 flex-1">
+                    {event.isLive ? (
+                      <p className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--color-accent-fg)]">
+                        {t("learnWave2.agenda.now")}
+                      </p>
+                    ) : null}
                     <p className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--color-primary)]">
-                      {formatEventDateTime(event.startsAt, locale, t("platform.events.datePending"))}
+                      {event.type === "deadline"
+                        ? t("platform.events.dueBy").replace("{when}", () =>
+                            formatEventDateTime(event.startsAt, locale, t("platform.events.datePending")),
+                          )
+                        : formatEventDateTime(event.startsAt, locale, t("platform.events.datePending"))}
                     </p>
                     <p className="truncate text-sm font-semibold text-[var(--color-ink)]">
                       {event.title}
@@ -525,11 +583,11 @@ export function LearnDashboard() {
                       rel="noreferrer"
                       className="button-solid px-4 text-sm"
                     >
-                      {t("learn.dashboard.joinLive")}
+                      {t(event.type === "deadline" ? "platform.events.openLink" : "learn.dashboard.joinLive")}
                     </a>
                   ) : (
                     <span className="text-xs text-[var(--color-ink-soft)]">
-                      {t("platform.events.linkUnavailable")}
+                      {t(noJoinLinkKey(event.type))}
                     </span>
                   )}
                 </li>
@@ -538,6 +596,7 @@ export function LearnDashboard() {
           </section>
         ) : null}
 
+        {latestNotifications.length > 0 ? (
         <section
           aria-labelledby="whats-new-title"
           className="dash-card dash-card--strong p-4 sm:p-5"
@@ -556,17 +615,12 @@ export function LearnDashboard() {
               {t("learn.dashboard.seeAllNotifications")}
             </Link>
           </div>
-          {latestNotifications.length === 0 ? (
-            <p className="mt-3 text-sm leading-6 text-[var(--color-ink-soft)]">
-              {t("learn.dashboard.nothingNew")}
-            </p>
-          ) : (
             <ul className="mt-2 divide-y divide-[var(--color-line)]">
               {latestNotifications.map((notification) => (
                 <li key={notification.id}>
                   {notification.link ? (
                     <Link
-                      href={notification.link}
+                      href={notificationHref(notification) ?? notification.link}
                       className="block rounded-md transition hover:bg-[var(--color-surface-soft)]"
                     >
                       <NotificationRow notification={notification} />
@@ -577,9 +631,10 @@ export function LearnDashboard() {
                 </li>
               ))}
             </ul>
-          )}
         </section>
+        ) : null}
       </div>
+      ) : null}
 
       <section
         aria-labelledby="my-courses-title"
@@ -594,32 +649,17 @@ export function LearnDashboard() {
           </h2>
           {showCourseControls ? (
             <div className="flex flex-wrap items-center gap-3">
-              <div
-                role="tablist"
-                aria-label={t("learn.dashboard.filterLabel")}
-                className="flex items-center gap-1 rounded-md border fine-rule bg-[var(--color-surface-soft)] p-1"
-              >
-                {(["in_progress", "completed"] as const).map((value) => (
-                  <button
-                    key={value}
-                    type="button"
-                    role="tab"
-                    aria-selected={courseFilter === value}
-                    onClick={() => setCourseFilter(value)}
-                    className={`min-h-11 rounded-sm px-4 text-xs font-semibold transition ${
-                      courseFilter === value
-                        ? "bg-white text-[var(--color-primary)] shadow-[var(--shadow-soft)]"
-                        : "text-[var(--color-ink-soft)] hover:text-[var(--color-primary)]"
-                    }`}
-                  >
-                    {t(
-                      value === "completed"
-                        ? "learn.dashboard.filterCompleted"
-                        : "learn.dashboard.filterInProgress",
-                    )}
-                  </button>
-                ))}
-              </div>
+              {/* Filtro de uma lista, nao abas de secao: o seletor segmentado
+                  da casa (aria-pressed), o mesmo das credenciais. */}
+              <PeriodTabs
+                options={courseFilters}
+                value={courseFilter}
+                onChange={setCourseFilter}
+                label={t("learn.dashboard.filterLabel")}
+                renderLabel={(value) =>
+                  t(value === "completed" ? "learn.dashboard.filterCompleted" : "learn.dashboard.filterInProgress")
+                }
+              />
               <ListingSearchBar
                 value={enrollmentQuery}
                 onChange={setEnrollmentQuery}
@@ -635,12 +675,14 @@ export function LearnDashboard() {
         ) : (
           <ul className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {visibleEnrollments.map((enrollment) => {
-              const canOpenWorkspace = canOpenEnrollment(enrollment.status);
               const percent = clampPercent(enrollment.progressPercent);
-
-              return (
-                <li key={enrollment.id}>
-                  <article className="flex h-full flex-col rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-3">
+              const { resume, href } = courseLink(enrollment);
+              // O cartão inteiro abre o curso (antes: um botão cheio "Open" por
+              // cartão, seis botões azuis iguais com seis cursos). Estornado ou
+              // expirado não abre: fica um cartão parado com o selo do status.
+              const cardClass = "flex h-full flex-col rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-3";
+              const card = (
+                <>
                     <div className="relative aspect-[16/10] overflow-hidden rounded-md">
                       <Image
                         // Same fallback the write path uses (lib/data/enrollments.ts).
@@ -659,39 +701,46 @@ export function LearnDashboard() {
                     <h3 className="mt-1 line-clamp-2 text-base font-semibold leading-5 text-[var(--color-primary)]">
                       {enrollment.courseTitle}
                     </h3>
-                    <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
-                      <p className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--color-ink-soft)]">
-                        {t("learn.dashboard.percentComplete").replace(
-                          "{percent}",
-                          String(percent),
-                        )}
-                      </p>
-                      <StatusChip status={enrollment.status} />
-                    </div>
-                    <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[rgba(26,54,93,0.12)]">
-                      <div
-                        className="h-full rounded-full bg-[var(--color-accent)]"
-                        style={{ width: `${percent}%` }}
+                    {/* O progresso uma vez só: a barra com o número ao lado.
+                        Antes "40% COMPLETE", o selo "ACTIVE" e a barra diziam
+                        a mesma coisa três vezes. */}
+                    <div className="mt-2.5 flex items-center gap-2.5">
+                      <ProgressBar
+                        value={percent}
+                        label={t("learn.dashboard.percentComplete").replace("{percent}", String(percent))}
+                        className="flex-1"
                       />
+                      {/* O leitor de tela ouve o valor pela própria barra. */}
+                      <span aria-hidden="true" className="text-xs font-bold tabular-nums text-[var(--color-primary)]">
+                        {percent}%
+                      </span>
                     </div>
-                    <div className="mt-auto pt-3">
-                      {canOpenWorkspace ? (
-                        <Link
-                          href={courseLink(enrollment).href}
-                          className="button-solid w-full px-4 text-sm"
-                        >
-                          {t("learn.dashboard.openWorkspace")}
-                        </Link>
-                      ) : (
-                        <p className="text-xs font-semibold text-[var(--color-ink-soft)]">
-                          {t("learn.dashboard.accessStatus").replace(
-                            "{status}",
-                            t(`statusChip.${enrollment.status}`),
-                          )}
-                        </p>
-                      )}
-                    </div>
-                  </article>
+                    {/* O selo só aparece quando há algo a dizer (concluído,
+                        estornado, expirado); "ativo" é o normal. */}
+                    {enrollment.status !== "active" ? (
+                      <StatusChip status={enrollment.status} className="mt-2 self-start" />
+                    ) : resume ? (
+                      <p className="mt-2 text-xs text-[var(--color-ink-soft)]">
+                        {t("learn.dashboard.resumePosition")
+                          .replace("{module}", String(resume.moduleNumber))
+                          .replace("{lesson}", String(resume.lessonNumber))}
+                      </p>
+                    ) : null}
+                </>
+              );
+
+              return (
+                <li key={enrollment.id}>
+                  {canOpenEnrollment(enrollment.status) ? (
+                    <Link
+                      href={href}
+                      className={`${cardClass} transition duration-[var(--duration-base)] hover:-translate-y-px hover:bg-[var(--color-surface-hover)] hover:shadow-[var(--shadow-soft)]`}
+                    >
+                      {card}
+                    </Link>
+                  ) : (
+                    <article className={cardClass}>{card}</article>
+                  )}
                 </li>
               );
             })}
@@ -706,7 +755,7 @@ export function LearnDashboard() {
             {t("learn.dashboard.refundsMoved")}{" "}
             <Link
               href="/account/billing?tab=purchases"
-              className="font-semibold text-[var(--color-primary)] hover:underline"
+              className="font-semibold text-[var(--color-primary)]! hover:underline"
             >
               {t("learn.dashboard.refundsMovedLink")}
             </Link>

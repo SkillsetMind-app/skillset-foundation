@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   getUserProfile: vi.fn(),
+  updateUserIdentity: vi.fn(),
   uploadUserAvatar: vi.fn(),
   uploadTeacherSignature: vi.fn(),
   refreshUser: vi.fn(),
@@ -15,7 +16,7 @@ vi.mock("@/components/auth/auth-provider", () => ({
 
 vi.mock("@/lib/data/user-profiles", () => ({
   getUserProfile: mocks.getUserProfile,
-  updateUserIdentity: vi.fn(),
+  updateUserIdentity: mocks.updateUserIdentity,
 }));
 
 vi.mock("@/lib/data/profile-media", async (importOriginal) => ({
@@ -142,10 +143,13 @@ describe.each([
     const status = await screen.findByRole("status");
     expect(status).toHaveTextContent("Sending...");
     expect(status).not.toHaveTextContent("%");
+    // F-20: sem porcentagem, a barra indeterminada mostra que o envio anda.
+    expect(status.querySelector(".upload-indeterminate-fill")).not.toBeNull();
     expect(upload).toHaveBeenCalledExactlyOnceWith("user-1", file, expect.any(Function));
     expect(input).toBeDisabled();
     expect(input.closest("label")).toHaveClass("pointer-events-none", "opacity-60");
-    expect(input.closest("label")).toHaveTextContent("Uploading...");
+    // O rótulo fica estável; "Uploading" aparecia aqui e na nota ao mesmo tempo.
+    expect(input.closest("label")).not.toHaveTextContent("Uploading");
     expect(input.value).toBe("");
     expect(screen.queryByText(success)).not.toBeInTheDocument();
 
@@ -155,7 +159,53 @@ describe.each([
     expect(input.closest("label")).not.toHaveClass("pointer-events-none");
     expect(input.closest("label")).toHaveTextContent(replace);
     expect(screen.getByText(success)).toBeInTheDocument();
-    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    // A nota de envio saiu; o único status que fica é o "salvo" ao lado do botão.
+    expect(screen.getByRole("status")).toHaveTextContent(success);
     expect(mocks.refreshUser).toHaveBeenCalledTimes(upload === mocks.uploadUserAvatar ? 1 : 0);
+  });
+});
+
+describe("ProfileSettingsPanel - leitura que falha", () => {
+  beforeEach(() => {
+    mocks.getUserProfile.mockReset();
+  });
+  afterEach(cleanup);
+
+  it("ganha \"Try again\", que lê o perfil de novo uma vez só e mostra os dados", async () => {
+    let resolve!: (value: unknown) => void;
+    mocks.updateUserIdentity.mockReset();
+    mocks.getUserProfile
+      .mockRejectedValueOnce(new Error("offline"))
+      .mockReturnValueOnce(new Promise((done) => { resolve = done; }));
+    const { container } = render(<ProfileSettingsPanel />);
+    expect(await screen.findByText("We could not load your profile settings.")).toBeInTheDocument();
+    // Leitura falhada: nada editável (campos vazios gravariam por cima do perfil).
+    expect(container.querySelector("form")).toBeNull();
+    expect(screen.queryByRole("textbox")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Save profile" })).toBeNull();
+    expect(screen.queryByLabelText("Upload profile photo")).toBeNull();
+    fireEvent.keyDown(screen.getByRole("button", { name: "Try again" }), { key: "Enter" });
+    expect(mocks.updateUserIdentity).not.toHaveBeenCalled();
+    const retry = screen.getByRole("button", { name: "Try again" });
+    fireEvent.click(retry);
+    fireEvent.click(retry);
+    // Lendo: a espera de sempre, sem formulário para Enter salvar.
+    expect(screen.getByRole("status")).toHaveTextContent("Loading profile settings...");
+    expect(screen.queryByRole("button", { name: "Save profile" })).toBeNull();
+    await act(async () => resolve({ displayName: "Ana Souza", username: "anasouza", bio: "Coach de equipes", roles: ["student"] }));
+    expect(screen.getByLabelText("Public name")).toHaveValue("Ana Souza");
+    expect(screen.getByLabelText("Bio", { exact: false })).toHaveValue("Coach de equipes");
+    expect(mocks.updateUserIdentity).not.toHaveBeenCalled();
+    expect(mocks.getUserProfile).toHaveBeenCalledTimes(2);
+    expect(screen.queryByText("We could not load your profile settings.")).toBeNull();
+  });
+
+  it("erro que não é de leitura não ganha \"Try again\"", async () => {
+    mocks.getUserProfile.mockResolvedValue({ displayName: "Ana", roles: ["student"] });
+    render(<ProfileSettingsPanel />);
+    const input = await screen.findByLabelText<HTMLInputElement>("Upload profile photo");
+    fireEvent.change(input, { target: { files: [new File(["x"], "notes.txt", { type: "text/plain" })] } });
+    expect(await screen.findByText("Use a JPG, PNG, or WebP under 5 MB profile image.")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Try again" })).toBeNull();
   });
 });

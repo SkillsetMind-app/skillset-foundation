@@ -12,7 +12,7 @@ import {
   UsersRound,
 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState, type CSSProperties } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
@@ -23,7 +23,10 @@ import {
   CourseActionsMenu,
   DeleteOrArchiveCourseDialog,
 } from "@/components/teacher/course-actions";
+import { ProductRowsSkeleton } from "@/components/teacher/builder-skeleton";
 import { CreateCourseStart } from "@/components/teacher/create-course-start";
+import { Button } from "@/components/ui/button";
+import { InlineAlert } from "@/components/ui/inline-alert";
 import type { TeacherCourse, TeacherCourseProductFormat } from "@/domain/teacher-course";
 import { getMyCoursesBeingDeleted, type CourseBeingDeleted } from "@/lib/data/course-deletions";
 import { subscribeToTeacherCourses } from "@/lib/data/teacher-courses";
@@ -131,12 +134,23 @@ export function TeacherCourseStudio({
   const router = useRouter();
   const searchParams = useSearchParams();
   const productView = searchParams.get("view") === "communities" ? "communities" : "products";
-  const [courseQuery, setCourseQuery] = useState("");
+  // A busca do topo manda para /teach/builder?q=: a lista ja chega filtrada.
+  // Uma busca nova com a lista aberta troca o ?q= sem remontar a tela, por
+  // isso o campo acompanha a URL quando ela muda (e so entao).
+  const urlQuery = searchParams.get("q") ?? "";
+  const [seededQuery, setSeededQuery] = useState(urlQuery);
+  const [courseQuery, setCourseQuery] = useState(urlQuery);
+  if (seededQuery !== urlQuery) {
+    setSeededQuery(urlQuery);
+    setCourseQuery(urlQuery);
+  }
   const [statusFilter, setStatusFilter] = useState<ProductFilter>("all");
   const [courses, setCourses] = useState<TeacherCourse[]>([]);
   // Kept as a dictionary key so the message follows a locale switch.
   const [errorKey, setErrorKey] = useState<string | null>(null);
   const [isLoadingCourses, setIsLoadingCourses] = useState(true);
+  const coursesSubscription = useRef<{ reload: () => Promise<void> } | null>(null);
+  const [retrying, setRetrying] = useState(false);
   const [confirmingDeleteId, setConfirmingDeleteId] = useState<string | null>(null);
   const [beingDeleted, setBeingDeleted] = useState<CourseBeingDeleted[]>([]);
   const normalizedCourseQuery = courseQuery.toLowerCase().trim();
@@ -158,10 +172,11 @@ export function TeacherCourseStudio({
       return;
     }
 
-    return subscribeToTeacherCourses(
+    const current = subscribeToTeacherCourses(
       user.uid,
       (nextCourses) => {
         setCourses(nextCourses);
+        setErrorKey(null);
         setIsLoadingCourses(false);
       },
       () => {
@@ -169,7 +184,21 @@ export function TeacherCourseStudio({
         setIsLoadingCourses(false);
       },
     );
+    coursesSubscription.current = current;
+    return () => {
+      coursesSubscription.current = null;
+      current();
+    };
   }, [user]);
+
+  async function retryLoad() {
+    setRetrying(true);
+    try {
+      await coursesSubscription.current?.reload();
+    } finally {
+      setRetrying(false);
+    }
+  }
 
   // ponytail: rele quando a lista em tempo real muda, que e exatamente quando
   // um produto some. Falhou: esconde a lista, que e so informativa.
@@ -231,13 +260,15 @@ export function TeacherCourseStudio({
         </Link>
       </header>
 
+      {/* "Try again" lê de novo pelo mesmo canal (sem desligar e religar);
+          o erro só sai quando a lista chega. */}
       {errorKey ? (
-        <p
-          role="alert"
-          className="rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]"
-        >
-          {t(errorKey)}
-        </p>
+        <div className="grid gap-3">
+          <InlineAlert tone="error">{t(errorKey)}</InlineAlert>
+          <Button variant="outline" className="justify-self-start" loading={retrying} onClick={() => void retryLoad()}>
+            {t("appErrors.retry")}
+          </Button>
+        </div>
       ) : null}
 
       <section aria-labelledby="product-list-title">
@@ -266,6 +297,9 @@ export function TeacherCourseStudio({
 
         <div className="mt-4 grid gap-3 md:grid-cols-[minmax(220px,1fr)_minmax(150px,auto)_minmax(170px,auto)] md:items-end">
           <ListingSearchBar
+            // O campo guarda o rascunho dele; uma busca nova pelo topo o remonta
+            // com o texto novo.
+            key={seededQuery}
             value={courseQuery}
             onChange={setCourseQuery}
             placeholder={
@@ -287,7 +321,8 @@ export function TeacherCourseStudio({
                     : "/teach/builder",
                 )
               }
-              className="min-h-11 rounded-md border border-[var(--color-line-strong)] bg-white px-3 text-sm font-semibold normal-case tracking-normal text-[var(--color-ink)] outline-none focus:border-[var(--color-primary-light)] focus:ring-2 focus:ring-[rgba(66,102,145,0.18)]"
+              // h-11: o .field-input dá 45px; a busca ao lado tem 44.
+              className="field-input h-11 normal-case tracking-normal"
             >
               <option value="products">{t("creatorPanel.products.eyebrow")}</option>
               <option value="communities">{t("platform.nav.communities")}</option>
@@ -299,7 +334,7 @@ export function TeacherCourseStudio({
               aria-label={t("creatorPanel.products.statusAria")}
               value={statusFilter}
               onChange={(event) => setStatusFilter(event.target.value as ProductFilter)}
-              className="min-h-11 rounded-md border border-[var(--color-line-strong)] bg-white px-3 text-sm font-semibold normal-case tracking-normal text-[var(--color-ink)] outline-none focus:border-[var(--color-primary-light)] focus:ring-2 focus:ring-[rgba(66,102,145,0.18)]"
+              className="field-input h-11 normal-case tracking-normal"
             >
               {productFilters.map((filter) => (
                 <option key={filter.id} value={filter.id}>
@@ -336,14 +371,11 @@ export function TeacherCourseStudio({
 
         <div className="mt-5">
           {isLoadingCourses ? (
-            <div className="grid gap-0" aria-label={t("creatorPanel.products.loadingAria")}>
-              {[1, 2, 3].map((item) => (
-                <div
-                  key={item}
-                  className="h-24 animate-pulse border-b border-[var(--color-line)] bg-[var(--color-surface-soft)]"
-                />
-              ))}
-            </div>
+            <ProductRowsSkeleton label={t("creatorPanel.products.loadingAria")} />
+          ) : errorKey && courses.length === 0 ? (
+            // A leitura falhou e nada chegou: o erro com "Try again" acima
+            // basta. "No products yet" embaixo dele afirmava o que nao se sabe.
+            null
           ) : courses.length === 0 ||
             (productView === "communities" &&
               !courses.some((course) => course.communityEnabled)) ? (
