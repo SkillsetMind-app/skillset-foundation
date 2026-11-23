@@ -71,6 +71,11 @@ vi.mock("@/lib/data/payout-ledger", () => ({
   },
 }));
 
+// Os produtos do professor (o nome em cada linha do extrato) nao vem aqui.
+vi.mock("@/components/teacher/use-teacher-inbox-count", () => ({
+  loadTeacherInbox: () => Promise.resolve({ courses: [], questions: [], threads: 0 }),
+}));
+
 vi.mock("@/lib/data/creator-verification", () => ({
   fetchCreatorActivationBlocked: () => Promise.resolve(false),
 }));
@@ -146,12 +151,14 @@ describe("carteira do professor em espanhol", () => {
     );
 
     // Cabecalho e cartao do saldo.
-    // Um nome so para a pagina do dinheiro: "Ganancias", o mesmo da barra.
-    expect(screen.getByText("Ganancias", { selector: "p" })).toBeInTheDocument();
+    // O rotulo "Ganancias" em cima do titulo so repetia o nome da barra: saiu,
+    // como nas telas irmas. O h1 e so o titulo, sem ponto e sem o "?" dentro.
+    expect(screen.queryByText("Ganancias", { selector: "p" })).toBeNull();
     expect(screen.queryByText("Pagos e impuestos")).toBeNull();
     expect(
       screen.getByRole("heading", {
-        name: /Tus ganancias, tu configuración de pagos\./,
+        level: 1,
+        name: "Tus ganancias, tu configuración de pagos",
       }),
     ).toBeInTheDocument();
     expect(screen.getByText("Stripe recoge tus datos fiscales")).toBeInTheDocument();
@@ -250,9 +257,10 @@ describe("carteira do professor em espanhol", () => {
     // Sem conta Stripe conectada, "Abrir mi Stripe" so dava erro: nao aparece.
     expect(screen.queryByRole("button", { name: "Abrir mi Stripe" })).toBeNull();
 
-    // A linha do proprio movimento: pedido, pagamento e situacao.
-    expect(screen.getByText("Pedido ord-1")).toBeInTheDocument();
-    expect(screen.getByText("Pago pay-1")).toBeInTheDocument();
+    // A linha do proprio movimento: o codigo curto do pedido (sem o nome do
+    // produto, que aqui nao foi lido) e a situacao; o id do pagamento saiu.
+    expect(screen.getByText("Pedido #ORD-1")).toBeInTheDocument();
+    expect(screen.queryByText("Pago pay-1")).toBeNull();
     expect(screen.getByText("Registrado")).toBeInTheDocument();
     // Data e valor na lingua da tela: a data saia sempre em ingles e o neto
     // como "USD 42.38".

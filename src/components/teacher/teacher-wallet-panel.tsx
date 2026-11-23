@@ -15,15 +15,20 @@ import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "reac
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { PlatformPageHeader } from "@/components/platform/platform-page-header";
 import { InlineHelp } from "@/components/shared/inline-help";
 import { StatusChip } from "@/components/shared/status-chip";
 import { TeacherConnectOnboarding } from "@/components/teacher/teacher-connect-onboarding";
 import { MetricCard } from "@/components/teacher/metric-card";
 import { StripeDashboardButton } from "@/components/teacher/stripe-dashboard-button";
+import { loadTeacherInbox } from "@/components/teacher/use-teacher-inbox-count";
+import { InlineAlert } from "@/components/ui/inline-alert";
+import { LoadErrorAlert } from "@/components/ui/load-error-alert";
 import {
   summarizeCreatorWallet,
   type CurrencyAmount,
 } from "@/domain/creator-ops";
+import { formatOrderRef } from "@/domain/order";
 import type { PayoutLedgerEntry } from "@/domain/payout-ledger";
 import type { UserProfile } from "@/domain/user-profile";
 import { subscribeToTeacherPayoutLedger } from "@/lib/data/payout-ledger";
@@ -53,21 +58,29 @@ function readBuilderReturnTo(): string | null {
 const noSubscribe = () => () => {};
 
 type Translate = (key: string) => string;
+type Reloadable = { reload?: () => Promise<void> };
+type Notice = { text: string; tone: "info" | "success" };
+
+// O osso dos esqueletos da casa (surface-strong), pulsando so ele.
+const bone = "animate-pulse rounded-md bg-[var(--color-surface-strong)]";
 
 export function TeacherWalletPanel() {
   const { user } = useAuth();
   const { locale, t } = useTranslation();
   // `t` fica fora das dependencias dos efeitos: com ele la, um provider que
   // devolva funcao nova por render reinscreve tudo em laco (a suite do CI
-  // ficou muda 16 min). A ref le sempre o `t` atual sem reinscrever nada.
-  const tRef = useRef(t);
-  useEffect(() => {
-    tRef.current = t;
-  }, [t]);
+  // ficou muda 16 min). Os efeitos guardam estado, nunca frase traduzida.
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [message, setMessage] = useState("");
+  const [notice, setNotice] = useState<Notice | null>(null);
   const [error, setError] = useState("");
+  // As duas leituras com "Try again": o reload le de novo sem mexer no canal.
+  const profileRead = useRef<Reloadable | null>(null);
+  const ledgerRead = useRef<Reloadable | null>(null);
+  // Ficam na tela nos dois desfechos da releitura e recebem o foco do clique.
+  const connectRef = useRef<HTMLElement>(null);
+  const statementsRef = useRef<HTMLElement>(null);
+  const [courseTitles, setCourseTitles] = useState<ReadonlyMap<string, string>>(() => new Map());
   const [isRefreshingStripe, setIsRefreshingStripe] = useState(false);
   // Lido no cliente: no servidor (e na hidratacao) nao ha botao de volta.
   const returnTo = useSyncExternalStore(noSubscribe, readBuilderReturnTo, () => null);
@@ -85,17 +98,20 @@ export function TeacherWalletPanel() {
       return;
     }
 
-    return subscribeToUserProfile(
+    // A falha do perfil e dita UMA vez, no bloco da conta, com "Try again":
+    // antes saia tambem na caixa do topo, a mesma frase duas vezes.
+    const subscription = subscribeToUserProfile(
       user.uid,
       (nextProfile) => {
         setProfile(nextProfile);
         setIsLoading(false);
       },
       () => {
-        setError(tRef.current("teach.earnings.profileError"));
         setIsLoading(false);
       },
     );
+    profileRead.current = subscription;
+    return subscription;
   }, [user]);
 
   useEffect(() => {
@@ -103,7 +119,8 @@ export function TeacherWalletPanel() {
       return;
     }
 
-    return subscribeToTeacherPayoutLedger(
+    // Idem para o extrato: o aviso com "Try again" mora no proprio extrato.
+    const subscription = subscribeToTeacherPayoutLedger(
       user.uid,
       (entries) => {
         setLedgerEntries(entries);
@@ -111,9 +128,30 @@ export function TeacherWalletPanel() {
       },
       () => {
         setLedgerState("error");
-        setError(tRef.current("teach.earnings.ledgerReadError"));
       },
     );
+    ledgerRead.current = subscription;
+    return subscription;
+  }, [user]);
+
+  // O nome do produto em cada linha do extrato. A barra do professor ja le os
+  // produtos nesta pagina (o numero da Caixa de entrada); loadTeacherInbox junta
+  // pedidos simultaneos, entao a linha ganha o nome sem leitura nova. Falhou, a
+  // linha fica com o codigo curto do pedido, como em Vendas.
+  useEffect(() => {
+    if (!user) {
+      return;
+    }
+    let alive = true;
+    loadTeacherInbox(user.uid).then(
+      ({ courses }) => {
+        if (alive) setCourseTitles(new Map(courses.map((course) => [course.id, course.title])));
+      },
+      () => {},
+    );
+    return () => {
+      alive = false;
+    };
   }, [user]);
 
   function handleOnboardingComplete() {
@@ -144,7 +182,7 @@ export function TeacherWalletPanel() {
 
   async function refreshStripeStatus() {
     setError("");
-    setMessage("");
+    setNotice(null);
     setIsRefreshingStripe(true);
 
     try {
@@ -152,21 +190,21 @@ export function TeacherWalletPanel() {
       if (status.payoutsUnavailable) {
         // Platform-side Connect configuration gap — calm info, not an error.
         setPlatformPayoutsUnavailable(true);
-        setMessage(t(PAYOUTS_UNAVAILABLE_KEY));
+        setNotice({ text: t(PAYOUTS_UNAVAILABLE_KEY), tone: "info" });
         return;
       }
       setPlatformPayoutsUnavailable(false);
-      setMessage(
+      setNotice(
         status.chargesEnabled && status.payoutsEnabled
-          ? t("teach.earnings.stripeReady")
-          : t("teach.earnings.stripeNeedsInfo"),
+          ? { text: t("teach.earnings.stripeReady"), tone: "success" }
+          : { text: t("teach.earnings.stripeNeedsInfo"), tone: "info" },
       );
     } catch (cause) {
       // Same platform gap reported by an older deployed function as a thrown
       // precondition — keep it calm rather than error-styled.
       if (isConnectNotEnabledError(cause)) {
         setPlatformPayoutsUnavailable(true);
-        setMessage(t(PAYOUTS_UNAVAILABLE_KEY));
+        setNotice({ text: t(PAYOUTS_UNAVAILABLE_KEY), tone: "info" });
         return;
       }
       // Surface the real reason (e.g. missing STRIPE_SECRET_KEY secret or a
@@ -234,52 +272,40 @@ export function TeacherWalletPanel() {
 
   return (
     <section className="payouts-shell">
-      <header className="payouts-head">
-        <div>
-          <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
-            {t("platform.nav.earnings")}
+      {/* O cabecalho das telas irmas do estudio (30px em qualquer largura, sem
+          o rotulo "Earnings" que so repetia o nome da barra). h1: a casca de
+          /account/payments esconde o dela, e e este que abre a pagina. O "?"
+          fica ao lado do titulo, nao dentro dele: dentro, o leitor de tela
+          lia "... Help about Payout schedule" como parte do nome da pagina. */}
+      <PlatformPageHeader
+        title={t("teach.earnings.title")}
+        titleAside={
+          <InlineHelp topic={t("teach.earnings.helpTopic")} href="/help#payouts">
+            {t("teach.earnings.helpBody")}
+          </InlineHelp>
+        }
+        description={t("teach.earnings.intro")}
+        actions={
+          <p className="flex items-center gap-2 text-sm text-[var(--color-ink-soft)]">
+            <Download aria-hidden="true" size={14} strokeWidth={2} />
+            {t("teach.earnings.taxForms")}
           </p>
-          {/* h1, nao h2: este painel e o cabecalho da unica pagina que o usa
-              (/account/payments), e a casca esconde o titulo dela para nao
-              repetir a mesma frase tres vezes. Sem isto a pagina ficaria sem
-              cabecalho de nivel 1 e a navegacao por titulos comecaria no 2
-              (revisao do Codex). */}
-          {/* No tamanho do cabecalho compacto da area da conta (o da casca em
-              /account/*): era 36px so aqui. */}
-          <h1 className="display-title mt-2 flex max-w-4xl items-center gap-2 text-xl leading-tight text-[var(--color-primary)] sm:text-2xl lg:text-3xl">
-            {t("teach.earnings.title")}
-            <InlineHelp topic={t("teach.earnings.helpTopic")} href="/help#payouts">
-              {t("teach.earnings.helpBody")}
-            </InlineHelp>
-          </h1>
-          {/* Uma frase, e o resto recolhido. `details` nativo: sem estado, sem
-              portal, e o texto longo so ocupa a tela de quem pediu por ele. */}
-          <p className="mt-3 max-w-3xl text-sm leading-7 text-[var(--color-ink-soft)]">
-            {t("teach.earnings.intro")}
-          </p>
-          <details className="mt-2 max-w-3xl text-sm leading-7 text-[var(--color-ink-soft)]">
-            <summary className="cursor-pointer font-semibold text-[var(--color-primary)]">
-              {t("teach.earnings.learnMore")}
-            </summary>
-            <p className="mt-2">{t("teach.earnings.details")}</p>
-          </details>
-        </div>
-        <p className="flex items-center gap-2 text-sm text-[var(--color-ink-soft)]">
-          <Download aria-hidden="true" size={14} strokeWidth={2} />
-          {t("teach.earnings.taxForms")}
-        </p>
-      </header>
+        }
+      >
+        {/* Uma frase, e o resto recolhido. `details` nativo: sem estado, sem
+            portal, e o texto longo so ocupa a tela de quem pediu por ele. */}
+        <details className="mt-2 max-w-3xl text-sm leading-7 text-[var(--color-ink-soft)]">
+          <summary className="cursor-pointer font-semibold text-[var(--color-primary)]">
+            {t("teach.earnings.learnMore")}
+          </summary>
+          <p className="mt-2">{t("teach.earnings.details")}</p>
+        </details>
+      </PlatformPageHeader>
 
-      {message ? (
-        <p className="rounded-md border border-[rgba(24,58,94,0.12)] bg-[var(--color-surface-soft)] px-4 py-3 text-sm font-semibold text-[var(--color-primary)]">
-          {message}
-        </p>
-      ) : null}
-      {error ? (
-        <p className="rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]">
-          {error}
-        </p>
-      ) : null}
+      {/* Os avisos da casa (anunciados ao leitor de tela, com icone): eram
+          duas caixas feitas a mao, mudas, e a vermelha some no tema escuro. */}
+      {notice ? <InlineAlert tone={notice.tone}>{notice.text}</InlineAlert> : null}
+      {error ? <InlineAlert tone="error">{error}</InlineAlert> : null}
       {/* Veio do Publish do construtor: pagamentos prontos, o caminho de volta
           para publicar e um botao, nao a barra lateral. */}
       {ready && returnTo ? (
@@ -348,7 +374,12 @@ export function TeacherWalletPanel() {
                       ? "pending"
                       : "draft"
               }
-              label={isLoading ? t("teach.earnings.loadingStatus") : statusLabel}
+              // Perfil que nao veio nao e "Not connected": nao se sabe.
+              label={isLoading
+                ? t("teach.earnings.loadingStatus")
+                : profile
+                  ? statusLabel
+                  : t("teach.earnings.unavailable")}
             />
           </div>
           <p className="mt-3 text-sm leading-6 text-[var(--color-ink-soft)]">
@@ -461,7 +492,12 @@ export function TeacherWalletPanel() {
       </div>
 
       {ready ? null : (
-        <section id="stripe-connect" className="scroll-mt-24 rounded-lg border border-[var(--color-line)] bg-white p-5 shadow-[var(--shadow-soft)]">
+        <section
+          ref={connectRef}
+          tabIndex={-1}
+          id="stripe-connect"
+          className="scroll-mt-24 rounded-lg border border-[var(--color-line)] bg-white p-5 shadow-[var(--shadow-soft)]"
+        >
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
@@ -483,10 +519,23 @@ export function TeacherWalletPanel() {
                 onboarding are what create the account. A profile that failed
                 to load is just as unknown: never offer the permanent country
                 choice to someone who may already have an account. */}
-            {isLoading ? null : !profile ? (
-              <p role="alert" className="text-sm leading-7 text-[var(--color-danger-fg)]">
+            {isLoading ? (
+              // A forma do primeiro passo (o pais da conta e o botao), no
+              // lugar de um bloco vazio em que o formulario caia depois.
+              <div role="status" className="grid gap-3">
+                <span className="sr-only">{t("teach.earnings.connectLoading")}</span>
+                <div aria-hidden="true" className={`h-4 w-48 ${bone}`} />
+                <div aria-hidden="true" className={`h-11 w-full max-w-sm ${bone}`} />
+                <div aria-hidden="true" className={`h-4 w-full max-w-md ${bone}`} />
+                <div aria-hidden="true" className={`mt-1 h-11 w-56 max-w-full ${bone}`} />
+              </div>
+            ) : !profile ? (
+              <LoadErrorAlert
+                focusRef={connectRef}
+                onRetry={() => profileRead.current?.reload?.()}
+              >
                 {t("teach.earnings.profileError")}
-              </p>
+              </LoadErrorAlert>
             ) : (
               <TeacherConnectOnboarding
                 initialPayoutCountry={profile?.onboardingAnswers?.payoutCountry}
@@ -499,7 +548,7 @@ export function TeacherWalletPanel() {
         </section>
       )}
 
-      <section className="payout-statements">
+      <section ref={statementsRef} tabIndex={-1} className="payout-statements">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
@@ -519,12 +568,34 @@ export function TeacherWalletPanel() {
 
         <div className="mt-5 overflow-hidden rounded-lg border border-[var(--color-line)]">
           {ledgerState === "loading" ? (
-            <div className="bg-[var(--color-surface-soft)] p-6 text-sm leading-7 text-[var(--color-ink-soft)]">
-              {t("teach.earnings.ledgerLoading")}
+            // Linhas no formato do extrato (data, produto, situacao, valor),
+            // no lugar de uma frase numa caixa que depois virava a lista.
+            <div role="status" className="divide-y divide-[var(--color-line)]">
+              <span className="sr-only">{t("teach.earnings.ledgerLoading")}</span>
+              {[0, 1, 2].map((row) => (
+                <div
+                  key={row}
+                  aria-hidden="true"
+                  className="grid gap-3 bg-white p-4 md:grid-cols-[140px_1fr_150px_120px_auto] md:items-center"
+                >
+                  <div className={`h-3 w-20 ${bone}`} />
+                  <div className="grid gap-2">
+                    <div className={`h-4 w-2/3 ${bone}`} />
+                    <div className={`h-3 w-1/3 ${bone}`} />
+                  </div>
+                  <div className={`h-6 w-24 ${bone}`} />
+                  <div className={`h-4 w-16 ${bone}`} />
+                </div>
+              ))}
             </div>
           ) : ledgerState === "error" ? (
-            <div className="bg-[var(--color-surface-soft)] p-6 text-sm leading-7 text-[var(--color-ink-soft)]">
-              {t("teach.earnings.ledgerError")}
+            <div className="bg-[var(--color-surface-soft)] p-4">
+              <LoadErrorAlert
+                focusRef={statementsRef}
+                onRetry={() => ledgerRead.current?.reload?.()}
+              >
+                {t("teach.earnings.ledgerReadError")}
+              </LoadErrorAlert>
             </div>
           ) : ledgerEntries.length === 0 ? (
             <div className="bg-[var(--color-surface-soft)] p-6 text-sm leading-7 text-[var(--color-ink-soft)]">
@@ -548,7 +619,13 @@ export function TeacherWalletPanel() {
                 })
                 .slice(0, 6)
                 .map((entry) => (
-                  <LedgerRow key={entry.id} entry={entry} t={t} locale={locale} />
+                  <LedgerRow
+                    key={entry.id}
+                    entry={entry}
+                    courseTitle={courseTitles.get(entry.courseId)}
+                    t={t}
+                    locale={locale}
+                  />
                 ))}
             </div>
           )}
@@ -607,7 +684,22 @@ function PayoutStatusRow({
   );
 }
 
-function LedgerRow({ entry, t, locale }: { entry: PayoutLedgerEntry; t: Translate; locale: string }) {
+// A linha diz o produto e o codigo curto do pedido ("Order #1A2B3C4D", o mesmo
+// de Vendas): era "Order {uuid}" e "Payment pi_..." crus. O id do pagamento
+// fica na venda, um clique adiante, com o botao de copiar.
+function LedgerRow({
+  entry,
+  courseTitle,
+  t,
+  locale,
+}: {
+  entry: PayoutLedgerEntry;
+  courseTitle?: string;
+  t: Translate;
+  locale: string;
+}) {
+  // `?? ""`: linha antiga sem pedido nao derruba a pagina do dinheiro.
+  const orderRef = t("teach.earnings.orderLabel").replace("{id}", () => formatOrderRef(entry.orderId ?? ""));
   return (
     <Link
       href={`/teach/sales/${entry.orderId}`}
@@ -618,11 +710,13 @@ function LedgerRow({ entry, t, locale }: { entry: PayoutLedgerEntry; t: Translat
       </span>
       <span className="min-w-0">
         <span className="block truncate text-sm font-bold text-[var(--color-ink)]">
-          {t("teach.earnings.orderLabel").replace("{id}", entry.orderId)}
+          {courseTitle || orderRef}
         </span>
-        <span className="mt-1 block truncate text-xs text-[var(--color-ink-soft)]">
-          {t("teach.earnings.paymentLabel").replace("{id}", entry.paymentId)}
-        </span>
+        {courseTitle ? (
+          <span className="num mt-1 block truncate text-xs text-[var(--color-ink-soft)]">
+            {orderRef}
+          </span>
+        ) : null}
       </span>
       <StatusChip
         status={mapLedgerStatus(entry.status)}

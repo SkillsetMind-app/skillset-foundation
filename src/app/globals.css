@@ -2605,14 +2605,6 @@ html[data-view-as] .site-header {
   gap: 1.25rem;
 }
 
-.payouts-head {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 1rem;
-  flex-wrap: wrap;
-}
-
 .payouts-grid {
   display: grid;
   gap: 1.25rem;
