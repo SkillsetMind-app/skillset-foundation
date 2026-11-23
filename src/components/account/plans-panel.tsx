@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Check } from "lucide-react";
 
 import { useAuth } from "@/components/auth/auth-provider";
@@ -12,6 +12,7 @@ import { BusyLabel } from "@/components/ui/busy-label";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { InlineAlert } from "@/components/ui/inline-alert";
+import { LoadErrorAlert } from "@/components/ui/load-error-alert";
 import {
   formatPlanCommission,
   hasRealStripePriceIds,
@@ -63,6 +64,10 @@ export function PlansPanel() {
   // Keyed on the uid, not the user object: a re-fetch on every new object
   // would overwrite the state "Cancel plan" just wrote.
   const uid = user?.uid ?? null;
+  // A assinatura do perfil, para o "Try again" ler o plano de novo sem sair do
+  // canal do tempo real; a seção fica nos dois desfechos e recebe o foco.
+  const profileRead = useRef<{ reload: () => Promise<void> } | null>(null);
+  const sectionRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     if (!uid) return;
@@ -79,7 +84,7 @@ export function PlansPanel() {
 
   useEffect(() => {
     if (!user) return;
-    const unsubscribe = subscribeToUserProfile(
+    const subscription = subscribeToUserProfile(
       user.uid,
       (profile) => {
         setPlanLoadFailed(false);
@@ -92,8 +97,18 @@ export function PlansPanel() {
         setPlanLoadFailed(true);
       },
     );
-    return () => unsubscribe();
+    profileRead.current = subscription;
+    return () => {
+      profileRead.current = null;
+      subscription();
+    };
   }, [user]);
+
+  // Volta ao "Loading..." do plano até a leitura nova responder.
+  function retryPlanRead() {
+    setPlanLoadFailed(false);
+    return profileRead.current?.reload();
+  }
 
   // Two independent gates must both be green for a real upgrade:
   //   1. Price IDs configured server-side (isBillingConfigured)
@@ -171,7 +186,7 @@ export function PlansPanel() {
   }
 
   return (
-    <section className="grid gap-5">
+    <section ref={sectionRef} tabIndex={-1} className="grid gap-5 outline-none">
       {/* Pendente = as cores de aviso da plataforma (as da faixa de status da
           conta), no lugar da caixa rosa tracejada com titulo dourado. */}
       {!checkoutReady ? (
@@ -285,9 +300,9 @@ export function PlansPanel() {
         />
       </div>
       {planLoadFailed ? (
-        <p className="text-xs text-[var(--color-ink-soft)]">
+        <LoadErrorAlert onRetry={retryPlanRead} focusRef={sectionRef}>
           {t("accountPlans.planReadError")}
-        </p>
+        </LoadErrorAlert>
       ) : null}
 
       {error ? (

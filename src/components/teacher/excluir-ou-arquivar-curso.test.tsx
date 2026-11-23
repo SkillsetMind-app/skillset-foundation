@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type { ReactElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -458,5 +458,49 @@ describe("modal de excluir/arquivar — a pagina de tras", () => {
     expect(document.body.style.overflow).toBe("");
     unmount();
     expect(scroller.style.overflow).toBe("");
+  });
+});
+
+// A contagem de compradores que não carrega: "Try again" relê SÓ a contagem, e
+// o confirmar segue travado até ela chegar (sem contagem, nem apagar nem arquivar).
+describe("modal de excluir/arquivar — contagem que não carrega", () => {
+  const deleteError = "We could not delete this product. Nothing was removed. Please try again or contact SkillsetMind support.";
+  const audienceError = "We could not check who bought this product. Nothing was removed.";
+
+  it("ganha \"Try again\", relê a contagem uma vez só e só então libera o confirmar", async () => {
+    let resolve!: (value: { enrollments: number; orders: number; subscriptions: number }) => void;
+    mocks.getCourseAudience
+      .mockReset()
+      .mockRejectedValueOnce(new Error("offline"))
+      .mockReturnValueOnce(new Promise((done) => { resolve = done; }));
+    renderEn(<DeleteOrArchiveCourseDialog courseId="course-1" courseTitle="Facilitation foundations" onCancel={vi.fn()} onDone={vi.fn()} />);
+    const dialog = await screen.findByRole("dialog", { name: "Delete Facilitation foundations" });
+    // A frase da contagem, nunca a do apagar: o "Try again" não tenta apagar.
+    expect(await within(dialog).findByText(audienceError)).toBeInTheDocument();
+    expect(within(dialog).queryByText(deleteError)).toBeNull();
+    expect(within(dialog).getByRole("button", { name: "Yes, delete" })).toBeDisabled();
+
+    const retry = within(dialog).getByRole("button", { name: "Try again" });
+    fireEvent.click(retry);
+    fireEvent.click(retry);
+    // Lendo: as linhas de espera e o confirmar ainda travado.
+    expect(within(dialog).queryByText(audienceError)).toBeNull();
+    expect(within(dialog).getByRole("button", { name: "Checking for buyers..." })).toBeDisabled();
+
+    await act(async () => resolve({ enrollments: 0, orders: 0, subscriptions: 0 }));
+    expect(within(dialog).getByRole("button", { name: "Yes, delete" })).toBeEnabled();
+    expect(mocks.getCourseAudience).toHaveBeenCalledTimes(2);
+    expect(mocks.deleteOrArchiveCourse).not.toHaveBeenCalled();
+  });
+
+  it("a falha de apagar não ganha \"Try again\"", async () => {
+    mocks.deleteOrArchiveCourse.mockRejectedValue(new Error("23503"));
+    renderEn(<DeleteOrArchiveCourseDialog courseId="course-1" courseTitle="Facilitation foundations" onCancel={vi.fn()} onDone={vi.fn()} />);
+    const dialog = await screen.findByRole("dialog", { name: "Delete Facilitation foundations" });
+    fireEvent.click(await within(dialog).findByRole("button", { name: "Yes, delete" }));
+    expect(await within(dialog).findByText(deleteError)).toBeInTheDocument();
+    expect(within(dialog).queryByText(audienceError)).toBeNull();
+    expect(within(dialog).queryByRole("button", { name: "Try again" })).toBeNull();
+    expect(mocks.getCourseAudience).toHaveBeenCalledTimes(1);
   });
 });

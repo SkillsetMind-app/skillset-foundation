@@ -2842,6 +2842,7 @@
       "signIn": "Sign in as a creator to start a product.",
       "loadError": "We could not load your products. If it keeps failing, contact SkillsetMind support.",
       "deleteError": "We could not delete this product. Nothing was removed. Please try again or contact SkillsetMind support.",
+      "audienceError": "We could not check who bought this product. Nothing was removed.",
       "removeEyebrow": "Remove product",
       "removeChecking": "Checking for buyers...",
       "actions": {
@@ -5007,6 +5008,7 @@
     "portalBody": "Manage your SkillsetMind billing in Stripe. Available invoices and saved payment methods remain accessible without an active subscription. Course receipts are listed under Purchases.",
     "openPortal": "Open Stripe portal",
     "detailsError": "We couldn't load your billing details right now. Refresh to try again.",
+    "detailsLoadError": "We couldn't load your billing details right now.",
     "portalAfterPurchase": "No Stripe billing account is linked here. Check Purchases for available course receipts.",
     "processedBy": "All payments are processed by",
     "cardDetails": "Card details are never stored on SkillsetMind. Course purchases are charged by the educator’s own Stripe account — your SkillsetMind subscription is the only thing charged by us.",
@@ -5749,6 +5751,7 @@
       "missingDetail": "This certificate could not be found on your account, or it has not been issued yet. Issue it from your credentials page first.",
       "error": "We could not load this certificate.",
       "errorDetail": "Something went wrong loading the credential. Refresh the page or try again from your credentials list.",
+      "errorRetryDetail": "Something went wrong loading the credential. Try again, or open it from your credentials list.",
       "metadataTitle": "Certificate",
       "metadataDescription": "View and print your SkillsetMind Verified certificate."
     },

@@ -2,7 +2,7 @@
 
 import { UploadCloud } from "lucide-react";
 import Image from "next/image";
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
@@ -35,6 +35,7 @@ import { SavedNote } from "@/components/teacher/save-status-line";
 import { UploadProgressNote } from "@/components/teacher/upload-progress-note";
 import { BusyLabel } from "@/components/ui/busy-label";
 import { InlineAlert } from "@/components/ui/inline-alert";
+import { LoadErrorAlert } from "@/components/ui/load-error-alert";
 
 const goalOptions = [
   ["career_growth", "accountProfile.goals.career_growth"],
@@ -75,6 +76,14 @@ export function ProfileSettingsPanel() {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  // "Try again" da leitura do perfil: a mesma leitura do efeito, de novo.
+  const [loadAttempt, setLoadAttempt] = useState(0);
+  // A leitura falhou: o formulário NÃO aparece (os campos estariam vazios, e
+  // salvar gravaria bio, telefone e metas vazios por cima do perfil guardado).
+  // Separado do `error`, que outro aviso (validar, foto) podia sobrescrever.
+  const [loadFailed, setLoadFailed] = useState(false);
+  // A seção fica na tela nos dois desfechos e recebe o foco do "Try again".
+  const sectionRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     if (!user) {
@@ -106,10 +115,11 @@ export function ProfileSettingsPanel() {
           (profile?.roles ?? []).includes("teacher") ||
             (profile?.roles ?? []).includes("admin"),
         );
+        setLoadFailed(false);
       })
       .catch(() => {
         if (mounted) {
-          setError("accountProfile.errors.load");
+          setLoadFailed(true);
         }
       })
       .finally(() => {
@@ -121,7 +131,14 @@ export function ProfileSettingsPanel() {
     return () => {
       mounted = false;
     };
-  }, [user]);
+  }, [user, loadAttempt]);
+
+  // Volta à espera de sempre (o esqueleto) até a leitura nova responder.
+  function retryLoad() {
+    setLoadFailed(false);
+    setIsLoading(true);
+    setLoadAttempt((attempt) => attempt + 1);
+  }
 
   const safeTimezoneOptions = useMemo(() => {
     if (timezoneOptions.includes(timezone)) {
@@ -289,7 +306,7 @@ export function ProfileSettingsPanel() {
     // formulário inteiro caía depois, empurrando tudo.
     const block = "bg-[var(--color-surface-strong)]";
     return (
-      <section className="settings-section-card">
+      <section ref={sectionRef} tabIndex={-1} className="settings-section-card outline-none">
         {header}
         <div role="status" className="mt-6">
           <span className="sr-only">{t("accountProfile.loading")}</span>
@@ -314,8 +331,20 @@ export function ProfileSettingsPanel() {
     );
   }
 
+  if (loadFailed) {
+    // Só o título e o aviso com "Try again": nada editável sobre dados que não vieram.
+    return (
+      <section ref={sectionRef} tabIndex={-1} className="settings-section-card outline-none">
+        {header}
+        <LoadErrorAlert className="mt-6" onRetry={retryLoad} focusRef={sectionRef}>
+          {t("accountProfile.errors.load")}
+        </LoadErrorAlert>
+      </section>
+    );
+  }
+
   return (
-    <section className="settings-section-card">
+    <section ref={sectionRef} tabIndex={-1} className="settings-section-card outline-none">
       {header}
 
       <form className="mt-6 grid grid-cols-1 gap-4" onSubmit={handleSubmit} onChange={clearSuccess}>

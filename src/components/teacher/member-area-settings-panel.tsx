@@ -2,16 +2,17 @@
 
 import { ExternalLink, Eye, EyeOff, Plus, Trash2, X } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { HorizontalTabs } from "@/components/shared/horizontal-tabs";
-import { CardPageSkeleton } from "@/components/teacher/builder-skeleton";
+import { CardPageSkeleton, CardStackSkeleton } from "@/components/teacher/builder-skeleton";
 import { SavedNote } from "@/components/teacher/save-status-line";
 import { ImageUploadField } from "@/components/teacher/image-upload-field";
 import { useConfirm } from "@/components/teacher/use-confirm";
 import { BusyLabel, Button, Card, Field, InlineAlert, buttonClasses } from "@/components/ui";
+import { LoadErrorAlert } from "@/components/ui/load-error-alert";
 import type { PlanId } from "@/data/plans";
 import { planEntitlements } from "@/domain/entitlements";
 import type { TeacherCourse } from "@/domain/teacher-course";
@@ -73,6 +74,9 @@ export function MemberAreaSettingsPanel() {
   const [coursesFailed, setCoursesFailed] = useState(false);
   const [selected, setSelected] = useState(mainKey);
   const [creating, setCreating] = useState(false);
+  // A assinatura da lista de produtos, para o "Try again" ler de novo sem
+  // sair e entrar outra vez no canal do tempo real.
+  const coursesRead = useRef<{ reload: () => Promise<void> } | null>(null);
 
   async function reload(nextSelected?: string) {
     if (!uid) return;
@@ -107,7 +111,7 @@ export function MemberAreaSettingsPanel() {
 
   useEffect(() => {
     if (!uid) return;
-    return subscribeToTeacherCourses(
+    const subscription = subscribeToTeacherCourses(
       uid,
       (next) => {
         setCourses(next);
@@ -115,7 +119,20 @@ export function MemberAreaSettingsPanel() {
       },
       () => setCoursesFailed(true),
     );
+    coursesRead.current = subscription;
+    return () => {
+      coursesRead.current = null;
+      subscription();
+    };
   }, [uid, retryKey]);
+
+  // Volta à espera da lista (e o "Save" trava, como antes da primeira leitura)
+  // até a leitura nova responder: nunca a lista velha no lugar do erro.
+  function retryCourses() {
+    setCourses(null);
+    setCoursesFailed(false);
+    return coursesRead.current?.reload();
+  }
 
   if (loadState === "error") {
     return (
@@ -213,6 +230,7 @@ export function MemberAreaSettingsPanel() {
         editor={editor}
         courses={courses}
         coursesFailed={coursesFailed}
+        onRetryCourses={retryCourses}
         creator={creator}
         locked={area.id !== null && lockedIds.has(area.id)}
         lockedIds={lockedIds}
@@ -308,6 +326,7 @@ function MemberAreaForm({
   editor,
   courses,
   coursesFailed,
+  onRetryCourses,
   creator,
   locked,
   lockedIds,
@@ -320,6 +339,7 @@ function MemberAreaForm({
   editor: MyMemberAreas;
   courses: TeacherCourse[] | null;
   coursesFailed: boolean;
+  onRetryCourses: () => Promise<void> | undefined;
   creator: Creator;
   locked: boolean;
   lockedIds: ReadonlySet<string | null>;
@@ -331,6 +351,7 @@ function MemberAreaForm({
   const { t } = useTranslation();
   const { ask, dialog: confirmDialog } = useConfirm();
   const isExtra = area.slug !== null;
+  const productsRef = useRef<HTMLDivElement>(null);
 
   const [name, setName] = useState(area.settings?.name ?? "");
   const [theme, setTheme] = useState<MemberAreaTheme>(area.settings?.theme ?? "light");
@@ -449,6 +470,9 @@ function MemberAreaForm({
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    // Enter num campo não salva com a lista de produtos lendo de novo (ou
+    // falhada): a ordem gravada sairia da lista velha.
+    if (courses === null || coursesFailed) return;
     setSaving(true);
     setFeedback("");
     const previousCover = savedCoverPath;
@@ -624,9 +648,14 @@ function MemberAreaForm({
           )}
         </Field>
       </Card>
+      </fieldset>
 
+      {/* O cartão de produtos fica fora do fieldset travado: o "Try again" da
+          leitura funciona mesmo numa área travada ou salvando. O que edita a
+          lista segue travado no fieldset de dentro. */}
       <Card tone="soft" padding="sm" shadow={false} className="grid gap-3">
-        <div>
+        {/* Fica na tela nos dois desfechos do "Try again" e recebe o foco. */}
+        <div ref={productsRef} tabIndex={-1} className="outline-none">
           <p className="text-sm font-semibold text-[var(--color-ink)]">{t("teach.memberAreaEditor.products")}</p>
           <p className="mt-1 text-xs leading-5 text-[var(--color-ink-soft)]">{t("teach.memberAreaEditor.productsHelp")}</p>
           {orderedCourses.length > maxProducts ? (
@@ -636,9 +665,15 @@ function MemberAreaForm({
           ) : null}
         </div>
         {coursesFailed ? (
-          <InlineAlert tone="error">{t("teach.memberAreaEditor.errors.courses")}</InlineAlert>
-        ) : courses === null ? (
-          <p role="status" className="text-xs text-[var(--color-ink-soft)]">{t("teach.memberAreaEditor.loading")}</p>
+          // A frase antiga mandava recarregar a página; agora o botão lê de novo.
+          <LoadErrorAlert onRetry={onRetryCourses} focusRef={productsRef}>
+            {t("creatorPanel.products.loadError")}
+          </LoadErrorAlert>
+        ) : null}
+        <fieldset disabled={saving || locked} className="grid min-w-0 gap-3 empty:hidden">
+        {coursesFailed ? null : courses === null ? (
+          // A forma das linhas de produto, não uma frase solta.
+          <CardStackSkeleton label={t("teach.memberAreaEditor.loading")} cards={2} />
         ) : orderedCourses.length === 0 ? (
           <p className="text-xs text-[var(--color-ink-soft)]">
             {t(isExtra ? "teach.memberAreaEditor.noProductsInArea" : "teach.memberAreaEditor.noProducts")}
@@ -733,8 +768,10 @@ function MemberAreaForm({
             )}
           </Field>
         ) : null}
+        </fieldset>
       </Card>
 
+      <fieldset disabled={saving || locked} className="grid min-w-0 gap-5">
       <Card padding="sm" shadow={false} className="grid gap-3">
         <Field
           id="member-area-community"

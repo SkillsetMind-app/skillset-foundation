@@ -2842,6 +2842,7 @@
       "signIn": "Inicia sesión como creador para empezar un producto.",
       "loadError": "No pudimos cargar tus productos. Si el problema continúa, contacta con el soporte de SkillsetMind.",
       "deleteError": "No pudimos eliminar este producto. No se borró nada. Inténtalo de nuevo o contacta con el soporte de SkillsetMind.",
+      "audienceError": "No pudimos comprobar quién compró este producto. No se borró nada.",
       "removeEyebrow": "Quitar producto",
       "removeChecking": "Buscando compradores...",
       "actions": {
@@ -5007,6 +5008,7 @@
     "portalBody": "Gestiona tu facturación de SkillsetMind en Stripe. Las facturas disponibles y los métodos de pago guardados siguen accesibles sin una suscripción activa. Los recibos de cursos están en Compras.",
     "openPortal": "Abrir el portal de Stripe",
     "detailsError": "No pudimos cargar tus datos de facturación. Actualiza la página para intentarlo de nuevo.",
+    "detailsLoadError": "No pudimos cargar tus datos de facturación.",
     "portalAfterPurchase": "No hay una cuenta de facturación de Stripe vinculada aquí. Consulta Compras para ver los recibos de cursos disponibles.",
     "processedBy": "Todos los pagos son procesados por",
     "cardDetails": "SkillsetMind nunca almacena los datos de tu tarjeta. Las compras de cursos se cobran en la cuenta de Stripe del educador; solo tu suscripción a SkillsetMind se cobra por nuestra cuenta.",
@@ -5749,6 +5751,7 @@
       "missingDetail": "No se encontró este certificado en tu cuenta o todavía no se ha emitido. Emítelo primero desde tu página de credenciales.",
       "error": "No pudimos cargar este certificado.",
       "errorDetail": "Ocurrió un error al cargar la credencial. Actualiza la página o inténtalo de nuevo desde tu lista de credenciales.",
+      "errorRetryDetail": "Ocurrió un error al cargar la credencial. Inténtalo de nuevo o ábrela desde tu lista de credenciales.",
       "metadataTitle": "Certificado",
       "metadataDescription": "Consulta e imprime tu certificado SkillsetMind Verified."
     },
