@@ -296,7 +296,7 @@ export function CourseStudentRosterView({
       <PanelCard title={t("courseRoster.title")} description={t("courseRoster.description")}>
         <InlineAlert tone="error" className="mt-5">{t("courseRoster.loadError")}</InlineAlert>
         {onRetry ? (
-          <Button variant="outline" className="mt-3" loading={retrying} onClick={onRetry}>
+          <Button variant="outline" className="mt-3" loading={retrying} busyLabel={t("appErrors.retry")} onClick={onRetry}>
             {t("appErrors.retry")}
           </Button>
         ) : null}

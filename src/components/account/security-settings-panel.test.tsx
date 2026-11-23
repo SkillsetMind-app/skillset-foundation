@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { SecuritySettingsPanel } from "@/components/account/security-settings-panel";
@@ -67,9 +67,18 @@ describe("SecuritySettingsPanel feedback", () => {
     let finish!: () => void;
     mockedResetPassword.mockReturnValue(new Promise<void>((resolve) => { finish = resolve; }));
     render(<SecuritySettingsPanel />);
+    // Os dois rótulos na mesma célula: o da espera escondido e fora do nome.
+    // O sublinhado do hover mora no próprio par (o do botão não atravessa o
+    // inline-grid).
+    const reset = screen.getByRole("button", { name: "Email me a reset link" });
+    expect(within(reset).getByText("Sending...")).toHaveAttribute("aria-hidden", "true");
+    expect(reset).toHaveClass("group/reset");
+    expect(within(reset).getByText("Sending...").parentElement).toHaveClass("inline-grid", "group-hover/reset:underline");
 
     clickSendResetLink();
-    expect(screen.getByRole("button", { name: "Sending..." })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Sending..." })).toBe(reset);
+    expect(reset).toBeDisabled();
+    expect(within(reset).getByText("Email me a reset link")).toHaveAttribute("aria-hidden", "true");
     expect(screen.getByRole("button", { name: "Update password" })).toBeDisabled();
 
     await act(async () => finish());

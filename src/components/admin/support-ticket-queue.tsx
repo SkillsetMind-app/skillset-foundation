@@ -257,6 +257,7 @@ export function SupportTicketQueue({ query = "" }: { query?: string }) {
                       onClick={() => handleStatusUpdate(ticket.id, status)}
                       disabled={activeTicketId === ticket.id || ticket.status === status}
                       loading={activeTicketId === ticket.id && activeStatus === status}
+                      busyLabel={t(`statusChip.${status}`)}
                       className="min-h-11 px-4 py-2"
                     >
                       {t(`statusChip.${status}`)}

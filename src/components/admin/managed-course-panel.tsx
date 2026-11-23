@@ -193,6 +193,7 @@ export function ManagedCoursePanel() {
                     onClick={() => handleToggleFeatured(course)}
                     disabled={busyCourseId === course.id}
                     loading={busyCourseId === course.id && busyAction === "feature"}
+                    busyLabel={course.featured ? t(`${copy}.unfeature`) : t(`${copy}.feature`)}
                     className="min-h-11 px-3.5 py-2"
                   >
                     {course.featured ? t(`${copy}.unfeature`) : t(`${copy}.feature`)}
@@ -206,6 +207,7 @@ export function ManagedCoursePanel() {
                     onClick={() => setConfirmingUnpublish(course)}
                     disabled={busyCourseId === course.id}
                     loading={busyCourseId === course.id && busyAction === "unpublish"}
+                    busyLabel={t(`${copy}.unpublish`)}
                     className="min-h-11 px-3.5 py-2"
                   >
                     {t(`${copy}.unpublish`)}
@@ -217,6 +219,7 @@ export function ManagedCoursePanel() {
                     onClick={() => handleRepublish(course.id)}
                     disabled={busyCourseId === course.id}
                     loading={busyCourseId === course.id && busyAction === "republish"}
+                    busyLabel={t(`${copy}.republish`)}
                     className="min-h-11 px-3.5 py-2"
                   >
                     {t(`${copy}.republish`)}
@@ -228,6 +231,7 @@ export function ManagedCoursePanel() {
                   onClick={() => setConfirmingDelete(course)}
                   disabled={busyCourseId === course.id}
                   loading={busyCourseId === course.id && busyAction === "delete"}
+                  busyLabel={t(`${copy}.delete`)}
                   className="min-h-11 px-3.5 py-2"
                 >
                   {t(`${copy}.delete`)}

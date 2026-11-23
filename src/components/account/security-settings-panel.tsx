@@ -396,9 +396,17 @@ export function SecuritySettingsPanel() {
                 type="button"
                 onClick={handleSendPasswordReset}
                 disabled={isBusy || captchaPending}
-                className="mt-1 min-h-11 text-sm font-bold text-[var(--color-primary)] underline-offset-2 hover:underline disabled:opacity-60"
+                className="group/reset mt-1 min-h-11 text-sm font-bold text-[var(--color-primary)] underline-offset-2 disabled:opacity-60"
               >
-                {t(busy === "reset" ? "accountSecurity.sending" : "accountSecurity.password.sendReset")}
+                {/* O sublinhado do hover não atravessa o inline-grid do
+                    BusyLabel (caixa atômica): ele mesmo se sublinha quando o
+                    botão está sob o ponteiro. */}
+                <BusyLabel
+                  busy={busy === "reset"}
+                  idle={t("accountSecurity.password.sendReset")}
+                  busyText={t("accountSecurity.sending")}
+                  className="group-hover/reset:underline"
+                />
               </button>
               {feedbackFor("reset")}
             </div>

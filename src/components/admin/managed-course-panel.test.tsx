@@ -127,6 +127,11 @@ describe("catalog presentation and language", () => {
     deliver();
     const unpublish = screen.getByRole("button", { name: "Unpublish" });
     expect(unpublish).toHaveClass("button-danger");
+    // Os botões do cartão guardam as duas faces (repouso e espera com o anel)
+    // na mesma célula: o que gira não empurra os vizinhos.
+    for (const button of within(screen.getByRole("article")).getAllByRole("button")) {
+      expect(button.querySelectorAll('[class*="grid-area"]')).toHaveLength(2);
+    }
     fireEvent.click(unpublish);
     const dialog = screen.getByRole("dialog", { name: `Unpublish ${course.title}?` });
     expect(dialog).toHaveClass("modal-panel");
@@ -145,6 +150,7 @@ describe("catalog presentation and language", () => {
     // Só o botão apertado gira; os vizinhos travam com o próprio nome.
     const card = screen.getByRole("article");
     expect(within(card).getByRole("button", { name: "Unpublish" })).toHaveAttribute("aria-busy", "true");
+    expect(within(card).getByRole("button", { name: "Unpublish" })).toBe(unpublish);
     expect(within(card).getByRole("button", { name: "Feature" })).toBeDisabled();
     expect(within(card).getByRole("button", { name: "Feature" })).not.toHaveAttribute("aria-busy");
     await act(async () => finish());

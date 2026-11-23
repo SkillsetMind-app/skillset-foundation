@@ -1,4 +1,6 @@
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -974,29 +976,81 @@ describe("LessonContentModal — video tab", () => {
     expect(done).toBeEnabled();
   });
 
-  // O Delete da lista de arquivos fica SEM o par empilhado: a regra fora de
-  // camada `.lesson-modal-assets span` (globals.css) faria de cada span um
-  // bloco cinza e maiúsculo, empilhando as duas faces. Só converter depois de
-  // escopar essa regra.
-  it("o Delete da lista de arquivos troca o rotulo sem span, nos dois estados", async () => {
+  // O Delete da lista de arquivos espera sem mudar de largura: as duas faces
+  // na mesma célula. Só depois de a regra cinza e maiúscula da lista sair de
+  // `.lesson-modal-assets span` para `.lesson-modal-assets__meta` (globals.css),
+  // senão cada face virava um bloco cinza e as duas empilhavam.
+  it("o Delete da lista de arquivos guarda os dois rotulos na mesma celula e se chama pelo que esta a vista", async () => {
     currentAssets = [videoAsset()];
     let finish!: () => void;
     deleteCourseAsset.mockImplementationOnce(() => new Promise<void>((resolve) => { finish = resolve; }));
     renderModal();
     const list = document.querySelector(".lesson-modal-assets") as HTMLElement;
     const remove = within(list).getByRole("button", { name: "Delete" });
-    expect(remove.querySelector("span")).toBeNull();
-    expect(remove.textContent).toBe("Delete");
+    const idle = within(remove).getByText("Delete");
+    const waiting = within(remove).getByText("Deleting...");
+    expect(waiting).toHaveAttribute("aria-hidden", "true");
+    expect(idle.parentElement).toBe(waiting.parentElement);
+    expect(idle.parentElement).toHaveClass("inline-grid");
+    // Nenhum span do botão leva a classe da linha de detalhe.
+    expect(remove.querySelector(".lesson-modal-assets__meta")).toBeNull();
 
     fireEvent.click(remove);
     clickConfirm(screen.getByRole("dialog", { name: "Delete this file?" }), "Delete file");
 
     const busy = await within(list).findByRole("button", { name: "Deleting..." });
+    expect(busy).toBe(remove);
     expect(busy).toBeDisabled();
-    expect(busy.querySelector("span")).toBeNull();
-    expect(busy.textContent).toBe("Deleting...");
+    expect(within(busy).getByText("Delete")).toHaveAttribute("aria-hidden", "true");
 
     await act(async () => { finish(); });
+  });
+
+  // A linha de detalhe (tipo e tamanho) continua com a classe que leva o
+  // cinza maiúsculo; os span de fora dela não.
+  it("a linha de detalhe do arquivo leva lesson-modal-assets__meta", () => {
+    currentAssets = [videoAsset()];
+    renderModal();
+    const list = document.querySelector(".lesson-modal-assets") as HTMLElement;
+    const meta = Array.from(list.querySelectorAll("span")).filter((span) => span.classList.contains("lesson-modal-assets__meta"));
+    expect(meta).toHaveLength(1);
+    expect(meta[0].textContent).toMatch(/ - /);
+  });
+
+  // Na aba de materiais o nome é editável: as três linhas que a regra antiga
+  // pintava (rótulo do nome, tipo e tamanho, nome original) levam a classe.
+  it("na aba de materiais, com nome editado, as tres linhas de detalhe levam lesson-modal-assets__meta", () => {
+    currentAssets = [videoAsset({
+      id: "material-1", kind: "lesson_material", contentType: "application/pdf", fileName: "apostila.pdf", title: "Apostila final",
+    })];
+    renderModal({}, "Módulo 1", true);
+    fireEvent.click(screen.getByRole("tab", { name: /^Materials/ }));
+    const list = document.querySelector(".lesson-modal-assets") as HTMLElement;
+    const meta = Array.from(list.querySelectorAll(".lesson-modal-assets__meta")).map((node) => node.textContent);
+    expect(meta).toHaveLength(3);
+    expect(meta[0]).toBe("Name students see");
+    expect(meta[1]).toMatch(/ - /);
+    expect(meta[2]).toBe("File: apostila.pdf");
+    expect(within(list).getByRole("button", { name: "Delete" }).querySelector(".lesson-modal-assets__meta")).toBeNull();
+  });
+
+  // Lido como texto (o jsdom não aplica o globals.css): nenhuma regra da lista
+  // alcança um span qualquer, e o cinza maiúsculo em bloco fica na classe.
+  it("o globals.css pinta so a linha de detalhe da lista, nao todo span", () => {
+    const css = readFileSync(join(process.cwd(), "src/app/globals.css"), "utf8")
+      .replace(/\r\n/g, "\n")
+      .replace(/\/\*[\s\S]*?\*\//g, "");
+    const selectors = Array.from(css.matchAll(/([^{}]*\.lesson-modal-assets[^{}]*)\{/g))
+      .flatMap((match) => match[1].split(","))
+      .map((selector) => selector.trim());
+    expect(selectors.length).toBeGreaterThan(0);
+    for (const selector of selectors) {
+      expect(selector, selector).not.toMatch(/(^|[\s>+~])span(?![\w-])/);
+    }
+    expect(css).toMatch(/\.lesson-modal-assets strong,\s*\.lesson-modal-assets__meta\s*\{\s*display: block;\s*\}/);
+    // A regra própria (não a do grupo acima, que vem depois de uma vírgula).
+    const meta = css.match(/\}\s*\.lesson-modal-assets__meta \{([^}]*)\}/)?.[1];
+    expect(meta).toMatch(/color: var\(--color-ink-soft\);[\s\S]*font-size: 0\.6875rem;[\s\S]*text-transform: uppercase;/);
   });
 
   it("o foco vai para Cancelar quando o envio comeca e volta ao campo quando ele e cancelado", async () => {

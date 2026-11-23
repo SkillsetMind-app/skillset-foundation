@@ -265,7 +265,13 @@ export function TeacherCourseStudio({
       {errorKey ? (
         <div className="grid gap-3">
           <InlineAlert tone="error">{t(errorKey)}</InlineAlert>
-          <Button variant="outline" className="justify-self-start" loading={retrying} onClick={() => void retryLoad()}>
+          <Button
+            variant="outline"
+            className="justify-self-start"
+            loading={retrying}
+            busyLabel={t("appErrors.retry")}
+            onClick={() => void retryLoad()}
+          >
             {t("appErrors.retry")}
           </Button>
         </div>

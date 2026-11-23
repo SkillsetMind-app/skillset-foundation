@@ -340,10 +340,12 @@ export function CourseAssetUploader({ course, isEditable, onModuleCoverUploaded,
 
         {/* Depois da opção de prévia e da miniatura: quem envia vê antes tudo o
             que muda o envio. Rótulo fixo: o andamento é só a nota logo abaixo
-            (ela dizia "Uploading 45%" embaixo de um botão "Uploading..."). */}
+            (ela dizia "Uploading 45%" embaixo de um botão "Uploading...").
+            A face da espera repete o rótulo com o anel, no lugar já guardado. */}
         <Button
           type="submit"
           loading={isUploading}
+          busyLabel={t("creatorEditor.assets.upload")}
           disabled={!isEditable || !selectedFile || (requiresModuleTarget && !moduleId)}
           className="justify-self-start"
         >

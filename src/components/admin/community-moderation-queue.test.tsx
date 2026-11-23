@@ -15,6 +15,12 @@ function ChangeLanguage() {
   return <button onClick={() => setLocale(locale === "en" ? "es" : "en")}>Change language</button>;
 }
 function panel() { return <I18nProvider initialLocale="en"><ChangeLanguage /><CommunityModerationQueue /></I18nProvider>; }
+// O texto à vista do botão: a face escondida do BusyLabel (aria-hidden) fica de fora.
+function shown(element: Element) {
+  const copy = element.cloneNode(true) as Element;
+  copy.querySelectorAll('[aria-hidden="true"]').forEach((node) => node.remove());
+  return copy.textContent;
+}
 function language() { fireEvent.click(screen.getByRole("button", { name: "Change language" })); }
 function deliver(rows = [report]) { act(() => mocks.subscribe.mock.calls[0][0](rows)); }
 beforeEach(() => { vi.clearAllMocks(); mocks.configured = true; mocks.subscribe.mockImplementation(() => vi.fn()); mocks.update.mockResolvedValue(undefined); });
@@ -60,6 +66,8 @@ describe("community report presentation", () => {
     expect(screen.getByText("Abierto")).toBeInTheDocument();
     // Só o botão apertado gira; os três travam e mantêm o nome (I-08).
     expect(screen.getByRole("button", { name: label })).toHaveAttribute("aria-busy", "true");
+    // O mesmo nome nas duas faces; a do anel já guardava o lugar em repouso.
+    expect(screen.getByRole("button", { name: label }).querySelectorAll('[class*="grid-area"]')).toHaveLength(2);
     for (const name of ["Revisado", "Resuelto", "Descartado"]) expect(screen.getByRole("button", { name })).toBeDisabled();
     expect(screen.getAllByRole("button").filter((button) => button.getAttribute("aria-busy") === "true")).toHaveLength(1);
     language();
@@ -79,7 +87,7 @@ describe("community report presentation", () => {
     deliver([...closed, ...open]);
     const reporters = () => screen.getAllByRole("article").map((card) => within(card).getByText(/^(Aberta|Fechada) \d+$/).textContent);
     expect(reporters()).toEqual(open.map((entry) => entry.reporterName));
-    const moves = (card: HTMLElement) => within(within(card).getByRole("group", { name: "Move to" })).getAllByRole("button").map((button) => button.textContent);
+    const moves = (card: HTMLElement) => within(within(card).getByRole("group", { name: "Move to" })).getAllByRole("button").map((button) => shown(button));
     expect(moves(screen.getAllByRole("article")[0])).toEqual(["Reviewed", "Resolved", "Dismissed"]);
     fireEvent.click(screen.getByRole("button", { name: "Show 2 more" }));
     expect(reporters()).toEqual([...open, ...closed].map((entry) => entry.reporterName));
@@ -98,7 +106,7 @@ describe("community report presentation", () => {
     const b: CommunityReport = { ...report, id: "report-b", reporterName: "Aberta B" };
     deliver([a, b]);
     const reporters = () => screen.getAllByRole("article").map((card) => within(card).getByText(/^Aberta [AB]$/).textContent);
-    const slots = (index: number) => within(screen.getAllByRole("article")[index]).getAllByRole("button").map((button) => [button.textContent, (button as HTMLButtonElement).disabled]);
+    const slots = (index: number) => within(screen.getAllByRole("article")[index]).getAllByRole("button").map((button) => [shown(button), (button as HTMLButtonElement).disabled]);
     fireEvent.click(within(screen.getAllByRole("article")[0]).getByRole("button", { name: "Dismissed" }));
     await act(async () => {});
     expect(mocks.update).toHaveBeenCalledWith(a, "dismissed");

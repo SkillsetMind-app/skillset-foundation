@@ -162,6 +162,7 @@ export function AccountActionRequestsPanel() {
                       activeRequestId === request.id || request.status === status
                     }
                     loading={activeRequestId === request.id && activeStatus === status}
+                    busyLabel={t(`${copy}.actions.${status}`)}
                     className="min-h-11 px-4 py-2"
                   >
                     {t(`${copy}.actions.${status}`)}
