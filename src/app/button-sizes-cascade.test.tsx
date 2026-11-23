@@ -421,15 +421,34 @@ describe("cor de link", () => {
   });
 
   it("o globals.css não traz de volta uma cor fora de camada na regra do <a>", () => {
-    // Lido do fonte, sem compilar: qualquer `a`, `a:hover`, `a:visited`... sem
-    // @layer em volta que declare `color` reabre o defeito em todo link.
+    // Lido do fonte, sem compilar: uma regra sem @layer em volta que pegue
+    // QUALQUER link (o alvo é um <a> sem classe nem id, em qualquer forma) e
+    // declare `color` reabre o defeito em todo link. Regra presa a uma classe
+    // (`.lesson-modal__trail a`) é desenho de um lugar e fica de fora.
+    const bareAnchor = (selector: string) => {
+      // Argumentos de :not()/:is() e conteúdo de [atributo] não contam:
+      // `a:not(.x)` ainda pega quase todo link.
+      let flat = selector.trim().replace(/\[[^\]]*\]/g, "[]");
+      while (/\([^()]*\)/.test(flat)) flat = flat.replace(/\(([^()]*)\)/g, "%");
+      if (/[.#]/.test(flat) || flat.includes("::")) return false;
+      const subject = flat.split(/\s*[>+~]\s*|\s+/).filter(Boolean).at(-1) ?? "";
+      if (!/^(a|\*)?(\[\]|:[\w-]+%?)*$/.test(subject)) return false;
+      return subject.startsWith("a") || /:(any-)?link\b/.test(subject);
+    };
+    const hits = ["a", "a:hover", "a[href]", "a:any-link", ":any-link", ":link", "*:link"];
+    hits.push("html a", "body a", "body > a:visited", "a:not(.button-solid)");
+    for (const hit of hits) expect(bareAnchor(hit), hit).toBe(true);
+    const misses = [".lesson-modal__trail a", ".site-header__link", "a.foo", "#x a", "a::after"];
+    misses.push("button", "abbr", ".x :any-link", ":where([id])", "*");
+    for (const miss of misses) expect(bareAnchor(miss), miss).toBe(false);
+
     const source = postcss.parse(readFileSync(globalsPath, "utf8"));
     const offenders: string[] = [];
     source.walkRules((rule) => {
       for (let parent = rule.parent; parent && parent.type !== "root"; parent = parent.parent) {
         if (parent.type === "atrule" && (parent as postcss.AtRule).name === "layer") return;
       }
-      if (!rule.selectors.some((selector) => /^a(:[\w-]+(\([^)]*\))?)*$/.test(selector.trim()))) return;
+      if (!rule.selectors.some(bareAnchor)) return;
       rule.walkDecls("color", (decl) => {
         offenders.push(`${rule.selector} { color: ${decl.value} } (linha ${decl.source?.start?.line})`);
       });
