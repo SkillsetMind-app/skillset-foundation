@@ -92,4 +92,15 @@ describe("ImageUploadField", () => {
     const second = setup();
     expect(second.region.querySelector(".aspect-video")).not.toBeNull();
   });
+
+  it("moldura e encaixe próprios só quando pedidos (o logo da vitrine)", () => {
+    const { region } = setup({ preview: { src: "/logo.png", alt: "", frame: "aspect-square w-24", contain: true } });
+    expect(region.querySelector(".aspect-square.w-24")).not.toBeNull();
+    expect(region.querySelector(".aspect-video")).toBeNull();
+    expect(region.querySelector("img")).toHaveClass("object-contain");
+    cleanup();
+    const plain = setup({ preview: { src: "/capa.png", alt: "Cover" } });
+    expect(plain.region.querySelector("img")).toHaveClass("object-cover");
+    expect(plain.region.querySelector("img")).not.toHaveClass("object-contain");
+  });
 });
