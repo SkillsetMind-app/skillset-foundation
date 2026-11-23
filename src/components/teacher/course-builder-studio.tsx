@@ -1319,7 +1319,7 @@ export function CourseBuilderStudio() {
       {t("creatorEditor.builder.pricing.preview")}
       <select
         value={freePreviewLessonId}
-        onChange={(event) => setFreePreviewLessonId(event.target.value)}
+        onChange={(event) => chooseFreePreviewLesson(event.target.value)}
         disabled={!isEditable || allLessons.length === 0}
         aria-describedby={previewNeedsLesson ? "builder-preview-needs-lesson" : undefined}
         className="rounded-md border border-[var(--color-field-border)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
@@ -1582,6 +1582,28 @@ export function CourseBuilderStudio() {
     setSuccess(null);
   }
 
+  // A porta única para escolher a aula de amostra: página da aula, seletor da
+  // aba Pricing, menu da linha e caixa de aula nova. Só a página da aula
+  // sincronizava os vídeos; nas outras três a loja respondia "Video
+  // unavailable" para a amostra, e ao trocar de A para B os vídeos de A
+  // seguiam marcados como amostra (is_preview) e os de B não. "" = nenhuma.
+  function chooseFreePreviewLesson(next: string) {
+    if (next === freePreviewLessonId) {
+      return;
+    }
+    setFreePreviewLessonId(next);
+    if (!course) {
+      return;
+    }
+    // A flag do curso sozinha não abre o vídeo para quem ainda não
+    // comprou: a busca anônima filtra por is_preview no asset. Sem este
+    // passo, marcar a prévia depois do upload deixava a loja com
+    // "Video unavailable" e nenhum aviso no estúdio.
+    void syncLessonPreviewAssets(course.id, next).catch(() => {
+      // Falha aqui não pode derrubar o builder; o publish revalida.
+    });
+  }
+
   function openLessonForm(moduleId: string) {
     // `lessonModuleId` era o select "Choose module"; agora quem responde por ele
     // e a linha do modulo, e `handleAddLesson` segue igual.
@@ -1638,7 +1660,8 @@ export function CourseBuilderStudio() {
       ),
     );
     if (lessonIsFreePreview) {
-      setFreePreviewLessonId(nextLessonId);
+      // A aula nova ainda não tem vídeo, mas a sincronia fecha o da anterior.
+      chooseFreePreviewLesson(nextLessonId);
     }
     setLessonTitle("");
     setLessonIsFreePreview(false);
@@ -2121,17 +2144,7 @@ export function CourseBuilderStudio() {
           setUploadingLesson(null);
         }}
         onAssetsChanged={() => refreshCourseAssets()}
-        onSetFreePreview={() => {
-          const next = freePreviewLessonId === lesson.id ? "" : lesson.id;
-          setFreePreviewLessonId(next);
-          // A flag do curso sozinha não abre o vídeo para quem ainda não
-          // comprou: a busca anônima filtra por is_preview no asset. Sem este
-          // passo, marcar a prévia depois do upload deixava a loja com
-          // "Video unavailable" e nenhum aviso no estúdio.
-          void syncLessonPreviewAssets(course.id, next).catch(() => {
-            // Falha aqui não pode derrubar o builder; o publish revalida.
-          });
-        }}
+        onSetFreePreview={() => chooseFreePreviewLesson(freePreviewLessonId === lesson.id ? "" : lesson.id)}
         onUpdateLesson={(patch) => updateLesson(lessonModule.id, lesson.id, patch)}
       />
     );
@@ -2373,9 +2386,7 @@ export function CourseBuilderStudio() {
                   <button
                     type="button"
                     onClick={() =>
-                      setFreePreviewLessonId(
-                        freePreviewLessonId === lesson.id ? "" : lesson.id,
-                      )
+                      chooseFreePreviewLesson(freePreviewLessonId === lesson.id ? "" : lesson.id)
                     }
                     disabled={!isEditable}
                     className={`min-h-11 rounded-md border px-3 py-2 text-xs font-semibold disabled:opacity-60 ${
