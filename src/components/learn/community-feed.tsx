@@ -313,7 +313,14 @@ export function CommunityFeed({
   }
 
   if (!enrollmentReady) {
-    return <p className="text-sm text-[var(--color-ink-soft)]">{t("learn.community.loading")}</p>;
+    // A mesma forma da espera dos posts, com a faixa dos filtros em cima: o
+    // acesso e os posts chegam sem trocar de frase nem pular.
+    return (
+      <div className="grid gap-4">
+        <div aria-hidden="true" className={`h-11 w-72 max-w-full rounded-md ${feedBone}`} />
+        <FeedPostsSkeleton label={t("learn.community.loading")} />
+      </div>
+    );
   }
 
   if (!canRead) {
@@ -365,12 +372,14 @@ export function CommunityFeed({
         ) : null}
 
         {/* Tres filtros no lugar de seis espacos com ordenacao. Filtram uma
-            lista, nao trocam de painel: grupo com aria-pressed, como o seletor
-            segmentado da casa. As cores ficam as daqui porque a sala troca a
-            paleta pelas classes (o .studio-range-tabs usaria as da plataforma
-            num curso escuro). */}
+            lista, nao trocam de painel: grupo com aria-pressed, no desenho do
+            seletor segmentado da casa (moldura clara, a escolhida em pastilha
+            com borda e sombra). Em utilities, e nao .studio-range-tabs: a sala
+            troca a paleta pelas classes (borda, bg-white, surface-soft e as
+            tintas), e o .studio-range-tabs usaria as da plataforma num curso
+            escuro. */}
         <div className="flex flex-wrap items-center gap-2">
-          <div role="group" aria-label={t("learn.community.filters")} className="flex flex-wrap gap-1">
+          <div role="group" aria-label={t("learn.community.filters")} className="inline-flex max-w-full flex-wrap gap-1 rounded-lg border border-[var(--color-line)] bg-[var(--color-surface-soft)] p-1">
             {(
               [
                 ["all", t("learn.community.all")],
@@ -389,10 +398,10 @@ export function CommunityFeed({
                 type="button"
                 aria-pressed={filter === id}
                 onClick={() => setFilter(id)}
-                className={`min-h-11 rounded-md px-4 text-sm font-semibold transition-colors duration-[var(--duration-base)] ease-[var(--ease-standard)] ${
+                className={`min-h-11 rounded-md border px-4 text-sm font-semibold transition-colors duration-[var(--duration-base)] ease-[var(--ease-standard)] ${
                   filter === id
-                    ? "bg-[var(--color-primary)] text-[var(--color-base)]"
-                    : "text-[var(--color-ink-soft)] hover:bg-[var(--color-surface-soft)]"
+                    ? "border-[var(--color-line)] bg-white text-[var(--color-primary)] shadow-[var(--shadow-soft)]"
+                    : "border-transparent text-[var(--color-ink-soft)] hover:text-[var(--color-primary)]"
                 }`}
               >
                 {label}
@@ -460,7 +469,7 @@ export function CommunityFeed({
         <div className="grid gap-3">
           {/* Com a leitura em erro, nem "carregando" nem o vazio: só o aviso. */}
           {!feed.ready ? (
-            postsFailed ? null : <p className="text-sm text-[var(--color-ink-soft)]">{t("learn.community.feedLoading")}</p>
+            postsFailed ? null : <FeedPostsSkeleton label={t("learn.community.feedLoading")} />
           ) : shownPosts.length === 0 && postsFailed ? null : shownPosts.length === 0 ? (
             // O vazio de lista da plataforma; h3 como o título de cada post.
             <EmptyState as="h3" title={t(livePosts.length === 0 ? "learn.community.empty" : "learn.community.emptyFilter")} />
@@ -1165,6 +1174,30 @@ function Avatar({ name, online = false, small = false }: { name: string; online?
         <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-white bg-[var(--color-success)]" />
       ) : null}
     </span>
+  );
+}
+
+// Osso das esperas do feed: na sala, a linha do curso (--ma-line), como as
+// outras esperas da sala; fora dela, o tom dos esqueletos da casa.
+const feedBone = "bg-[var(--ma-line,var(--color-surface-strong))] motion-safe:animate-pulse";
+
+// Dois cartões de post no lugar da frase "Loading...": a frase fica só para o
+// leitor de tela, num role="status".
+function FeedPostsSkeleton({ label }: { label: string }) {
+  return (
+    <div role="status" className="grid gap-3">
+      <span className="sr-only">{label}</span>
+      {[0, 1].map((item) => (
+        <div key={item} aria-hidden="true" className="grid gap-3 rounded-lg border border-[var(--color-line)] p-4 sm:p-5">
+          <div className="flex items-center gap-3">
+            <span className={`h-9 w-9 shrink-0 rounded-full ${feedBone}`} />
+            <span className={`h-3 w-1/3 rounded-sm ${feedBone}`} />
+          </div>
+          <span className={`h-3 w-4/5 rounded-sm ${feedBone}`} />
+          <span className={`h-3 w-3/5 rounded-sm ${feedBone}`} />
+        </div>
+      ))}
+    </div>
   );
 }
 

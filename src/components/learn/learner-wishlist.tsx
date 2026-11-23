@@ -128,10 +128,22 @@ export function LearnerWishlist() {
     </div>
   );
 
+  // A espera com a forma da lista (dois cartões com capa e texto), e a frase
+  // só para o leitor de tela: antes era uma frase solta num cartão.
   if (isLoading) {
     return frame(
-      <div className="dash-card dash-card--strong p-5 text-sm text-[var(--color-ink-soft)]">
-        {t("learnWave2.wishlistHub.loading")}
+      <div role="status" className="grid gap-5 lg:grid-cols-2">
+        <span className="sr-only">{t("learnWave2.wishlistHub.loading")}</span>
+        {[0, 1].map((item) => (
+          <div key={item} aria-hidden="true" className="dash-card dash-card--strong grid overflow-hidden md:grid-cols-[220px_1fr]">
+            <div className="min-h-[180px] animate-pulse bg-[var(--color-surface-strong)]" />
+            <div className="grid content-start gap-3 p-5">
+              <div className="h-5 w-2/3 animate-pulse rounded-md bg-[var(--color-surface-strong)]" />
+              <div className="h-4 w-1/2 animate-pulse rounded-md bg-[var(--color-surface-strong)]" />
+              <div className="mt-2 h-11 w-32 animate-pulse rounded-md bg-[var(--color-surface-strong)]" />
+            </div>
+          </div>
+        ))}
       </div>
     );
   }

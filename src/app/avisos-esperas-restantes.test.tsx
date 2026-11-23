@@ -67,6 +67,25 @@ describe("F-09: barras de progresso", () => {
   it("o CSS morto da barra antiga do currículo saiu", () => {
     expect(read("app/globals.css")).not.toContain("member-curriculum-progress");
   });
+
+  // A barra do topo da sala, a da capa e a da nota de envio eram feitas à mão
+  // (a da nota em 8px navy): agora são a ProgressBar compartilhada.
+  it.each([
+    "components/learn/enrolled-course-workspace.tsx",
+    "components/learn/members-area-hero.tsx",
+    "components/teacher/upload-progress-note.tsx",
+  ])("%s usa a barra compartilhada", (file) => {
+    const source = read(file);
+    expect(source).toContain("<ProgressBar");
+    expect(source).not.toMatch(/style=\{\{ width: `\$\{/);
+  });
+
+  it("o CSS das barras feitas à mão saiu (preenchimento da sala, da capa e do cartão de módulo)", () => {
+    const css = read("app/globals.css");
+    expect(css).not.toContain(".member-classroom-head__progress > span");
+    expect(css).not.toContain(".members-hero__bar > span");
+    expect(css).not.toContain("member-module-card__bar");
+  });
 });
 
 describe("F-03 / I-3: esperas com forma, e as rotas que respondem na hora", () => {
@@ -80,6 +99,22 @@ describe("F-03 / I-3: esperas com forma, e as rotas que respondem na hora", () =
   // viraria um pulo no navegador, na página para onde o Stripe devolve.
   it.each(["app/teach/activate/loading.tsx", "app/teach/activate/return/loading.tsx"])("%s não existe", (file) => {
     expect(existsSync(join(process.cwd(), "src", file))).toBe(false);
+  });
+
+  // Comunidade (duas frases seguidas), favoritos, materiais e ranking esperavam
+  // com uma frase solta: agora a forma do que vem, e a frase só para o leitor.
+  it.each([
+    ["components/learn/community-feed.tsx", "learn.community.loading"],
+    ["components/learn/community-feed.tsx", "learn.community.feedLoading"],
+    ["components/learn/learner-wishlist.tsx", "learnWave2.wishlistHub.loading"],
+    ["components/learn/course-materials-panel.tsx", "learn.classroom.resources.loading"],
+    ["components/learn/community-leaderboard.tsx", "learnWave2.leaderboard.loading"],
+  ])("%s espera com forma (%s só para o leitor de tela)", (file, key) => {
+    const source = read(file);
+    const sentence = source.indexOf(`t("${key}")`);
+    expect(sentence, key).toBeGreaterThan(-1);
+    // A frase mora num sr-only (direto, ou como `label` de um esqueleto da tela).
+    expect(source.slice(Math.max(0, sentence - 120), sentence)).toMatch(/sr-only|label=\{$/);
   });
 
   it("a caixa de mensagens do aluno não espera em branco", () => {
