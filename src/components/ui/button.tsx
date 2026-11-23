@@ -26,7 +26,7 @@ const variantClass: Record<ButtonVariant, string> = {
   // Sem classe global: fundo transparente que só ganha cor no hover. A única
   // variante que traz a própria transição (as outras vêm do CSS global).
   ghost:
-    "border border-transparent bg-transparent text-[var(--color-ink-soft)] transition-colors duration-200 hover:bg-[var(--color-surface-soft)] hover:text-[var(--color-ink)]",
+    "border border-transparent bg-transparent text-[var(--color-ink-soft)] transition-colors hover:bg-[var(--color-surface-soft)] hover:text-[var(--color-ink)]",
 };
 
 const sizeClass: Record<ButtonSize, string> = {
@@ -37,9 +37,11 @@ const sizeClass: Record<ButtonSize, string> = {
 };
 
 // Sem `transition` aqui: a utility (150ms) vencia a camada components e
-// brigava com o afundar de 120ms / soltar de 180ms do CSS global.
+// brigava com o afundar de 120ms / soltar de 180ms do CSS global. Os 60% de
+// desligado valem para o ghost; as outras variantes já os recebem da regra
+// central do globals.css.
 const base =
-  "inline-flex items-center justify-center gap-2 rounded-md font-semibold disabled:cursor-not-allowed disabled:opacity-50";
+  "inline-flex items-center justify-center gap-2 rounded-md font-semibold disabled:cursor-not-allowed disabled:opacity-60";
 
 /**
  * A forma em texto, para quem precisa de <Link> vestido de botão — 40 arquivos
@@ -60,7 +62,11 @@ export type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   fullWidth?: boolean;
   /** Ícone à esquerda do texto. Decorativo: o nome do botão é o texto. */
   icon?: ReactNode;
-  /** Carregando: o spinner toma o lugar do ícone e o botão trava. */
+  /**
+   * Carregando: o botão trava. Com ícone, o spinner toma o lugar dele; sem
+   * ícone, o spinner fica no centro, por cima do texto, que segue no lugar
+   * (invisível) para o botão não mudar de largura.
+   */
   loading?: boolean;
 };
 
@@ -76,21 +82,28 @@ export function Button({
   type = "button",
   ...rest
 }: ButtonProps) {
+  const spinner = <Loader2 aria-hidden="true" size={16} strokeWidth={2.2} className="shrink-0 animate-spin" />;
+  // Sem ícone, o spinner entrava na frente do texto e o botão crescia 24px
+  // enquanto salvava. O texto fica (opacidade 0 segue lido como nome do botão).
+  const centred = loading && !icon;
   return (
     <button
       // Sem type explícito, todo botão dentro de <form> envia o formulário.
       type={type}
-      className={buttonClasses({ variant, size, fullWidth }, className)}
+      className={buttonClasses({ variant, size, fullWidth }, cn(centred && "relative", className))}
       disabled={disabled || loading}
       aria-busy={loading || undefined}
       {...rest}
     >
-      {loading ? (
-        <Loader2 aria-hidden="true" size={16} strokeWidth={2.2} className="shrink-0 animate-spin" />
+      {loading && icon ? spinner : icon}
+      {centred ? (
+        <>
+          <span className="inline-flex items-center gap-2 opacity-0">{children}</span>
+          <span className="absolute inset-0 flex items-center justify-center">{spinner}</span>
+        </>
       ) : (
-        icon
+        children
       )}
-      {children}
     </button>
   );
 }

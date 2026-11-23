@@ -315,7 +315,7 @@ export function DeleteOrArchiveCourseDialog({
             type="button"
             onClick={onCancel}
             disabled={busy}
-            className="button-outline px-4 text-sm disabled:opacity-60"
+            className="button-outline px-4 text-sm"
           >
             {t("creatorPanel.products.delete.cancel")}
           </button>
@@ -325,7 +325,7 @@ export function DeleteOrArchiveCourseDialog({
             disabled={busy || !known}
             // Apagar e para sempre: vermelho cheio. Arquivar volta atras: azul.
             // Antes da contagem, contorno neutro: nem um nem outro.
-            className={`${!known ? "button-outline" : hasAudience ? "button-solid" : "button-danger button-danger-solid"} px-4 text-sm disabled:opacity-60`}
+            className={`${!known ? "button-outline" : hasAudience ? "button-solid" : "button-danger button-danger-solid"} px-4 text-sm`}
           >
             {!known && !failed ? t("creatorPanel.products.removeChecking") : busy ? t(`${prefix}.busy`) : t(`${prefix}.confirm`)}
           </button>

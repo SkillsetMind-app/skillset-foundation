@@ -90,9 +90,10 @@ function suggestedBlocks(courseTitle: string, t: (key: string) => string): Cours
 }
 
 // O campo fica dentro do label em caixa alta, negrito e espacado: sem o reset
-// de peso, caixa e espacamento, o texto digitado herdava esse estilo.
-const fieldClass =
-  "w-full rounded-md border border-[var(--color-line)] bg-white px-3 py-2.5 text-sm font-normal normal-case tracking-normal text-[var(--color-ink)]";
+// de peso, caixa e espacamento, o texto digitado herdava esse estilo. O peso
+// vem do .field-input (a pele de todo campo da plataforma); caixa e
+// espacamento ficam aqui.
+const fieldClass = "field-input normal-case tracking-normal";
 const labelClass = "grid gap-1.5 text-xs font-bold uppercase tracking-[0.16em] text-[var(--color-ink-soft)]";
 
 // Editor-only identity for a block. Position is not identity: an upload that

@@ -147,7 +147,7 @@ export function LessonAiQuiz({ courseId, lessonId, assetId }: { courseId: string
                 <textarea rows={2} value={question.explanation} disabled={working}
                   onChange={(event) => edit(index, { explanation: event.target.value })} />
               </label>
-              <button type="button" className="button-danger justify-self-start px-3.5 py-2 text-xs disabled:opacity-60"
+              <button type="button" className="button-danger justify-self-start px-3.5 py-2 text-xs"
                 disabled={working || current.questions.length === 1} onClick={() => removeQuestion(index)}>
                 {t("creatorEditor.lesson.ai.removeQuestion")}
               </button>
@@ -183,19 +183,19 @@ export function LessonAiQuiz({ courseId, lessonId, assetId }: { courseId: string
           </Button>
           {current ? (
             <>
-              <button type="button" className="button-outline min-h-11 px-3 text-sm disabled:opacity-60"
+              <button type="button" className="button-outline min-h-11 px-3 text-sm"
                 disabled={working || !dirty}
                 onClick={() => void run({ action: "saveQuiz", questions: current.questions, publish: published }, "save",
                   t("creatorEditor.lesson.ai.saved"))}>
                 {t(published ? "creatorEditor.lesson.ai.saveAndUpdate" : "creatorEditor.lesson.ai.save")}
               </button>
-              <button type="button" className="button-solid min-h-11 px-4 py-2.5 text-sm disabled:opacity-60"
+              <button type="button" className="button-solid min-h-11 px-4 py-2.5 text-sm"
                 disabled={working}
                 onClick={() => void run({ action: "saveQuiz", questions: current.questions, publish: !published }, "publish",
                   t(published ? "creatorEditor.lesson.ai.quizUnpublished" : "creatorEditor.lesson.ai.quizPublishedNotice"))}>
                 {t(published ? "creatorEditor.lesson.ai.unpublish" : "creatorEditor.lesson.ai.publish")}
               </button>
-              <button type="button" className="button-danger px-3.5 py-2 text-xs disabled:opacity-60"
+              <button type="button" className="button-danger px-3.5 py-2 text-xs"
                 disabled={working}
                 onClick={() => ask({
                   title: t("creatorEditor.lesson.ai.confirmRemoveQuizTitle"),

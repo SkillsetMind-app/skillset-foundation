@@ -252,6 +252,11 @@
   --radius-2xl: 16px;
   --radius-3xl: 16px;
   --radius-4xl: 16px;
+  /* Toda utility transition-* sem duração própria anda no tempo da casa. Sem
+     isto valiam os 150ms e a curva do Tailwind, e o controle feito à mão
+     terminava antes, noutra curva, do botão do sistema ao lado. */
+  --default-transition-duration: var(--duration-base);
+  --default-transition-timing-function: var(--ease-standard);
 }
 
 @theme inline {
@@ -1069,7 +1074,7 @@ p {
 
 @media (prefers-reduced-motion: no-preference) {
   .hero-copy-rise {
-    animation: hero-copy-rise 620ms cubic-bezier(0.2, 0.6, 0.2, 1) both;
+    animation: hero-copy-rise var(--duration-slow) var(--ease-standard) both;
   }
 }
 
@@ -1746,11 +1751,55 @@ p {
    ganhava sombra com o mouse e afundava no clique, como se fosse clicável.
    Fica chato (sem sombra), parado e com o cursor de bloqueado. Vem DEPOIS de
    todos os :hover e :active acima, que têm a mesma especificidade: é a ordem
-   que faz esta regra valer. */
+   que faz esta regra valer. A opacidade era escrita em cada chamada, com cinco
+   valores (30 a 70%); agora é uma só, daqui, e vence a utility da chamada
+   (regra fora de camada). */
 :is(.button-solid, .button-outline, .button-accent, .button-danger, .button-solid-light, .button-outline-light):is(:disabled, [aria-disabled="true"]) {
   cursor: not-allowed;
+  opacity: 0.6;
   transform: none;
   box-shadow: none;
+}
+
+/* O fundo e a borda também ficam os de repouso: no hover o "Save" apagado
+   ainda escurecia como se fosse clicável. Cada variante repete o próprio
+   desenho em repouso, com a especificidade do :hover e depois dele. */
+.button-solid:is(:disabled, [aria-disabled="true"]) {
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+}
+
+.button-outline:is(:disabled, [aria-disabled="true"]) {
+  border-color: var(--color-line-strong);
+  background: var(--color-surface);
+}
+
+[data-theme="dark"] .button-outline:is(:disabled, [aria-disabled="true"]) {
+  border-color: var(--color-line);
+}
+
+.button-danger:is(:disabled, [aria-disabled="true"]) {
+  border-color: rgba(178, 34, 52, 0.38);
+  background: var(--color-surface);
+}
+
+.button-danger.button-danger-solid:is(:disabled, [aria-disabled="true"]) {
+  border-color: var(--color-danger);
+  background: var(--color-danger);
+}
+
+.button-accent:is(:disabled, [aria-disabled="true"]) {
+  border-color: var(--color-accent);
+  background: var(--color-accent);
+}
+
+.button-solid-light:is(:disabled, [aria-disabled="true"]) {
+  border-color: var(--color-accent);
+  background: var(--color-accent);
+}
+
+.button-outline-light:is(:disabled, [aria-disabled="true"]) {
+  background: rgba(255, 255, 255, 0.1);
 }
 
 /* Hero conversion card — an always-light surface sitting on the always-navy
@@ -2669,9 +2718,18 @@ html[data-view-as] .site-header {
   line-height: 1.4;
   color: var(--color-ink);
   transition:
-    border-color 150ms ease,
-    box-shadow 150ms ease,
-    background-color 150ms ease;
+    border-color var(--duration-base) var(--ease-standard),
+    box-shadow var(--duration-base) var(--ease-standard),
+    background-color var(--duration-base) var(--ease-standard);
+}
+
+/* 44px, a altura do botão e da busca ao lado: select e data saíam de 38 a
+   46px conforme o navegador. Em camada, e não na regra acima, para um min-h-*
+   do JSX (as caixas de texto de 88px) continuar valendo. */
+@layer components {
+  .field-input {
+    min-height: 44px;
+  }
 }
 
 .field-input::placeholder {
@@ -7111,7 +7169,7 @@ html:has(#member-lesson-player) {
 .platform-nav-section-chevron {
   margin-inline-start: auto;
   flex: 0 0 auto;
-  transition: transform 160ms ease;
+  transition: transform var(--duration-base) var(--ease-standard);
 }
 
 .platform-nav-section-chevron.is-open {
@@ -7274,8 +7332,8 @@ html:has(#member-lesson-player) {
   border-radius: var(--radius-lg);
   box-shadow: 0 12px 28px rgba(26, 54, 93, 0.04);
   transition:
-    border-color 180ms ease,
-    box-shadow 220ms ease;
+    border-color var(--duration-base) var(--ease-standard),
+    box-shadow var(--duration-base) var(--ease-standard);
 }
 /* Only metric / interactive dash-cards (anything inside an <a>, <button>,
    or with the .dash-card--interactive helper) get the hover lift.
@@ -7530,8 +7588,8 @@ button:hover > .dash-card,
   box-shadow: 0 10px 22px rgba(15, 39, 68, 0.18);
   text-decoration: none;
   transition:
-    transform 180ms ease,
-    box-shadow 200ms ease;
+    transform var(--duration-base) var(--ease-standard),
+    box-shadow var(--duration-base) var(--ease-standard);
 }
 
 .studio-payout-chip:hover {
@@ -9281,9 +9339,9 @@ button:hover > .dash-card,
   background: var(--color-surface);
   box-shadow: var(--shadow-soft);
   transition:
-    transform 220ms cubic-bezier(0.2, 0.6, 0.2, 1),
-    border-color 180ms ease,
-    box-shadow 220ms ease;
+    transform var(--duration-base) var(--ease-standard),
+    border-color var(--duration-base) var(--ease-standard),
+    box-shadow var(--duration-base) var(--ease-standard);
 }
 
 .marketplace-card:hover {
@@ -9425,8 +9483,8 @@ button:hover > .dash-card,
 
 .marketplace-card__media img {
   transition:
-    transform 500ms cubic-bezier(0.2, 0.6, 0.2, 1),
-    filter 220ms ease;
+    transform var(--duration-slow) var(--ease-standard),
+    filter var(--duration-base) var(--ease-standard);
 }
 
 .marketplace-card:hover .marketplace-card__media img {

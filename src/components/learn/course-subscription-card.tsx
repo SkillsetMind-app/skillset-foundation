@@ -153,7 +153,7 @@ export function CourseSubscriptionCard({
               type="button"
               disabled={pending}
               onClick={() => handleChange(true)}
-              className="button-solid mt-4 w-full px-4 py-2.5 text-sm disabled:opacity-60"
+              className="button-solid mt-4 w-full px-4 py-2.5 text-sm"
             >
               {pending ? t(`${copy}.working`) : t(`${copy}.undo`)}
             </button>
@@ -162,7 +162,7 @@ export function CourseSubscriptionCard({
               type="button"
               disabled={pending}
               onClick={() => handleChange(false)}
-              className="button-outline mt-4 w-full px-4 py-2.5 text-sm disabled:opacity-60"
+              className="button-outline mt-4 w-full px-4 py-2.5 text-sm"
             >
               {pending ? t(`${copy}.working`) : t(`${copy}.cancel`)}
             </button>

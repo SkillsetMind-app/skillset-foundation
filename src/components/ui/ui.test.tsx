@@ -66,6 +66,35 @@ describe("Button", () => {
     expect(button.querySelector(".animate-spin")).not.toBeNull();
   });
 
+  // F-04: sem ícone, o spinner entrava na frente do texto e o botão crescia
+  // 24px enquanto salvava. Agora o texto fica no lugar (invisível, segue sendo
+  // o nome do botão) e o spinner vai ao centro, por cima.
+  it("carregando sem ícone: mesma largura, texto como nome e spinner no centro", () => {
+    render(<Button loading>Salvar</Button>);
+
+    const button = screen.getByRole("button", { name: "Salvar" });
+    expect(button).toBeDisabled();
+    expect(button).toHaveAttribute("aria-busy", "true");
+    expect(button).toHaveClass("relative");
+    const label = button.firstElementChild as HTMLElement;
+    expect(label.tagName).toBe("SPAN");
+    expect(label).toHaveClass("opacity-0");
+    expect(label).toHaveTextContent("Salvar");
+    expect(label.querySelector(".animate-spin")).toBeNull();
+    const overlay = button.querySelector(".animate-spin")?.closest("span");
+    expect(overlay).toHaveClass("absolute", "inset-0", "justify-center");
+  });
+
+  it("parado, o texto é filho direto do botão, sem camada de spinner", () => {
+    render(<Button>Salvar</Button>);
+
+    const button = screen.getByRole("button", { name: "Salvar" });
+    expect(button).not.toHaveClass("relative");
+    expect(button.querySelector("span")).toBeNull();
+    expect(button.querySelector(".animate-spin")).toBeNull();
+    expect(button).not.toHaveAttribute("aria-busy");
+  });
+
   it("expõe a mesma roupa em texto, para Link vestido de botão", () => {
     expect(buttonClasses({ variant: "outline", size: "sm" })).toContain("button-outline");
     expect(buttonClasses({ variant: "outline", size: "sm" })).toContain("text-xs");

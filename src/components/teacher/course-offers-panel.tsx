@@ -30,8 +30,8 @@ type OfferRow = {
   prices: OfferPrice[];
 };
 
-const inputClass =
-  "rounded-md border border-[var(--color-line)] bg-white px-3.5 py-2.5 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]";
+// A pele de todo campo da plataforma (44px, borda que aparece no branco).
+const inputClass = "field-input";
 
 // O tipo de pagamento vem da API como texto livre. So os quatro conhecidos tem
 // traducao; qualquer outro cai no formato antigo em vez de virar chave crua.
@@ -433,7 +433,7 @@ export function CourseOffersPanel({
             <button
               type="submit"
               disabled={saving || loading}
-              className="button-solid px-5 py-2.5 text-xs disabled:opacity-60"
+              className="button-solid px-5 py-2.5 text-xs"
             >
               {saving
                 ? t("creatorPanel.offers.submitting")

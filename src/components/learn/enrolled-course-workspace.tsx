@@ -1561,7 +1561,7 @@ export function EnrolledCourseWorkspace({
                   || activeLessonId === selectedLesson.id
                   || ((!nextInOrder || Boolean(nextOpensAt)) && completedLessonIds.includes(selectedLesson.id))
                 }
-                className="button-solid flex-1 px-4 py-2.5 text-sm disabled:opacity-60 sm:flex-none"
+                className="button-solid flex-1 px-4 py-2.5 text-sm sm:flex-none"
               >
                 {previewMode
                   ? t("creatorEditor.preview.only")

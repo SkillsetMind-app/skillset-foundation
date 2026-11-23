@@ -223,7 +223,7 @@ export function LearnerWishlist() {
                       type="button"
                       disabled={removingId === item.id}
                       onClick={() => void handleRemove(item)}
-                      className="button-outline px-4 py-2.5 text-sm disabled:opacity-60"
+                      className="button-outline px-4 py-2.5 text-sm"
                     >
                       {removingId === item.id ? t("learnWave2.wishlistHub.removing") : t("learnWave2.wishlistHub.remove")}
                     </button>
@@ -245,7 +245,7 @@ export function LearnerWishlist() {
                   type="button"
                   disabled={removingId === item.id}
                   onClick={() => void handleRemove(item)}
-                  className="button-outline mt-5 px-4 py-2.5 text-sm disabled:opacity-60"
+                  className="button-outline mt-5 px-4 py-2.5 text-sm"
                 >
                   {removingId === item.id ? t("learnWave2.wishlistHub.removing") : t("learnWave2.wishlistHub.remove")}
                 </button>

@@ -394,7 +394,7 @@ function WaitingCard({
               <button type="button" onClick={() => setOpen(false)} className="button-outline min-h-11 px-3 text-sm">
                 {t("teacherCommunity.cancel")}
               </button>
-              <button type="submit" disabled={isSaving} className="button-solid min-h-11 px-4 text-sm disabled:opacity-60">
+              <button type="submit" disabled={isSaving} className="button-solid min-h-11 px-4 text-sm">
                 {t(isSaving ? "teacherCommunity.posting" : "teacherCommunity.postAnswer")}
               </button>
             </div>
@@ -493,7 +493,7 @@ function UpdateComposer({
           <button type="button" onClick={() => setOpen(false)} className="button-outline min-h-11 px-3 text-sm">
             {t("teacherCommunity.cancel")}
           </button>
-          <button type="submit" disabled={isSaving} className="button-solid min-h-11 px-4 text-sm disabled:opacity-60">
+          <button type="submit" disabled={isSaving} className="button-solid min-h-11 px-4 text-sm">
             {t(isSaving ? "teacherCommunity.posting" : "teacherCommunity.postUpdate")}
           </button>
         </div>

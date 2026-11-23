@@ -25,7 +25,7 @@ export function ThemeToggle() {
         aria-hidden="true"
         size={18}
         strokeWidth={1.9}
-        className={`absolute transition-all duration-300 ease-out motion-reduce:transition-none ${
+        className={`absolute transition-all motion-reduce:transition-none ${
           isDark
             ? "rotate-0 scale-100 opacity-100"
             : "-rotate-90 scale-50 opacity-0"
@@ -35,7 +35,7 @@ export function ThemeToggle() {
         aria-hidden="true"
         size={18}
         strokeWidth={1.9}
-        className={`absolute transition-all duration-300 ease-out motion-reduce:transition-none ${
+        className={`absolute transition-all motion-reduce:transition-none ${
           isDark
             ? "rotate-90 scale-50 opacity-0"
             : "rotate-0 scale-100 opacity-100"

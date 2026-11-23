@@ -634,7 +634,7 @@
         "levelSaved": "Saved",
         "tabsLabel": "Access sections",
         "searchPlaceholder": "Name or email",
-        "loading": "Loading the roster…",
+        "loading": "Loading the roster...",
         "empty": "No one matches that search.",
         "noLevel": "No level yet — sees only the public site.",
         "levels": {
@@ -3506,7 +3506,7 @@
     "assistant": {
       "skillsetmind_assistant": "SkillsetMind assistant",
       "ask_the_assistant": "Ask the assistant",
-      "assistant_is_thinking": "Assistant is thinking…",
+      "assistant_is_thinking": "Assistant is thinking...",
       "ask_about_plans_refunds_payouts": "Ask about plans, refunds, payouts…",
       "send_message": "Send message",
       "greeting": "Hi, I'm the SkillsetMind assistant. Ask me anything about courses, plans, refunds, payouts, or getting started. I answer from the platform's own documentation.",

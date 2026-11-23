@@ -47,7 +47,7 @@ export function GuestAccessLink({ maskedEmail }: { maskedEmail: string }) {
           setState("sending");
           void requestAccessLink().then(setState);
         }}
-        className="button-outline w-full justify-center px-5 py-2.5 text-sm disabled:opacity-60"
+        className="button-outline w-full justify-center px-5 py-2.5 text-sm"
       >
         {t("guestCheckout.thanks.resend")}
       </button>

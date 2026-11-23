@@ -45,7 +45,7 @@ export function StripeDashboardButton() {
         aria-disabled={busy}
         aria-describedby={error ? errorId : undefined}
         icon={<ExternalLink aria-hidden="true" size={16} />}
-        className="w-52 max-w-full justify-self-start whitespace-normal aria-disabled:cursor-wait aria-disabled:opacity-60"
+        className="w-52 max-w-full justify-self-start whitespace-normal aria-disabled:cursor-wait"
       >
         {t(busy ? "stripeDashboard.opening" : "stripeDashboard.open")}
       </Button>

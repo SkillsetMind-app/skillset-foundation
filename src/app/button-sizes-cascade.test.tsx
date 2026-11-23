@@ -17,7 +17,7 @@ const root = process.cwd();
 const globalsPath = join(root, "src/app/globals.css");
 
 const PROBE_CLASSES =
-  "button-solid button-outline button-danger button-solid-light button-outline-light text-xs text-sm font-semibold font-normal py-2 py-2.5 px-3.5 text-[var(--color-accent-fg)] focus-visible:outline-[var(--focus-ring)] focus-visible:ring-[var(--focus-ring)]";
+  "button-solid button-outline button-danger button-solid-light button-outline-light text-xs text-sm font-semibold font-normal py-2 py-2.5 px-3.5 text-[var(--color-accent-fg)] focus-visible:outline-[var(--focus-ring)] focus-visible:ring-[var(--focus-ring)] disabled:opacity-40 field-input min-h-[88px] transition-colors text-[var(--color-primary)]!";
 
 async function compileGlobals(): Promise<Root> {
   // Só troca a varredura de arquivos por uma lista fixa de classes: o resto
@@ -264,6 +264,56 @@ describe("tamanho dos botões (P-16)", () => {
       }
     }
     expect(violations).toEqual([]);
+  });
+});
+
+// C-11: a opacidade de desligado vinha de cada chamada, em cinco valores. A
+// regra central fica fora de camada e vence a utility, então a chamada que
+// ainda pede 40% sai com os mesmos 60% de todo botão desligado.
+describe("botão desligado (C-11)", () => {
+  it("sai com 60% e o fundo de repouso, mesmo pedindo outra opacidade", () => {
+    const button = mount("button-solid disabled:opacity-40");
+    button.setAttribute("disabled", "");
+    expect(resolve(css, button, "opacity")).toBe("0.6");
+    expect(resolve(css, button, "background")).toBe("var(--color-primary)");
+  });
+});
+
+// C-05: 44px em todo campo, a altura do botão ao lado; mas um min-h-* do JSX
+// (as caixas de texto de 88px da comunidade) continua valendo.
+describe("altura dos campos (C-05)", () => {
+  it("um campo .field-input tem no mínimo 44px", () => {
+    expect(resolve(css, mount("field-input", "input"), "min-height")).toBe("44px");
+  });
+
+  it("a caixa de texto que pede 88px continua com 88px", () => {
+    expect(resolve(css, mount("field-input min-h-[88px]", "textarea"), "min-height")).toBe("88px");
+  });
+});
+
+// C-09: 118 transições escritas à mão (`transition-colors` sem duração)
+// rodavam nos 150ms e na curva do Tailwind, ao lado de botões a 180ms.
+describe("tempo das transições (C-09)", () => {
+  it("uma utility transition-* sem duração usa os tokens de movimento", () => {
+    const element = mount("transition-colors");
+    expect(resolve(css, element, "transition-duration")).toContain("var(--default-transition-duration)");
+    expect(resolve(css, element, "transition-timing-function")).toContain(
+      "var(--default-transition-timing-function)",
+    );
+    expect(resolve(css, document.documentElement, "--default-transition-duration")).toBe("var(--duration-base)");
+    expect(resolve(css, document.documentElement, "--default-transition-timing-function")).toBe(
+      "var(--ease-standard)",
+    );
+  });
+});
+
+// `a { color: inherit; text-decoration: none; }` mora FORA de camada e vence
+// toda utility do Tailwind: um link que pede a cor de destaque herda a do pai
+// (o texto apagado em volta). Só o modificador `!` passa por cima.
+describe("cor de link", () => {
+  it("num <a>, a utility de cor sem ! herda; com ! sai com a cor pedida", () => {
+    expect(resolve(css, mount("text-[var(--color-accent-fg)]", "a"), "color")).toBe("inherit");
+    expect(resolve(css, mount("text-[var(--color-primary)]!", "a"), "color")).toBe("var(--color-primary)");
   });
 });
 

@@ -92,7 +92,7 @@ export function InstructorsDirectory() {
           <div
             key={item}
             // Mesma altura mínima do cartão de verdade (min-h-64): sem pulo quando chega.
-            className="h-64 animate-pulse rounded-lg border border-[var(--color-line)] bg-white shadow-[var(--shadow-soft)]"
+            className="h-64 animate-pulse rounded-lg bg-[var(--color-surface-strong)]"
           />
         ))}
       </section>

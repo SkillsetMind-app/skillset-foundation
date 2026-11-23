@@ -257,7 +257,7 @@ export function CommunityPostDrawer({
             <button
               type="submit"
               disabled={isSending}
-              className="button-solid min-h-11 px-4 text-sm disabled:opacity-60"
+              className="button-solid min-h-11 px-4 text-sm"
             >
               {t(isSending ? "learn.community.drawer.sending" : "learn.community.drawer.send")}
             </button>

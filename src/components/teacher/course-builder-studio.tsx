@@ -2307,7 +2307,7 @@ export function CourseBuilderStudio() {
                   <button
                     type="button"
                     disabled
-                    className="button-outline px-3 py-2 text-xs disabled:opacity-50"
+                    className="button-outline px-3 py-2 text-xs"
                     title={t("creatorEditor.builder.curriculum.saveErrorTitle")}
                   >
                     {t("creatorEditor.builder.curriculum.saveToUpload")}
@@ -2439,7 +2439,7 @@ export function CourseBuilderStudio() {
                           "{title}",
                           () => lessonName,
                         )}
-                        className="button-outline px-3 py-2 text-xs disabled:opacity-50"
+                        className="button-outline px-3 py-2 text-xs"
                       >
                         {t("creatorEditor.builder.curriculum.moveButton")}
                       </button>
@@ -2449,7 +2449,7 @@ export function CourseBuilderStudio() {
                     type="button"
                     onClick={() => deleteLesson(module.id, lesson.id)}
                     disabled={!isEditable}
-                    className="button-danger px-3 py-2 text-xs disabled:opacity-50"
+                    className="button-danger px-3 py-2 text-xs"
                   >
                     {t("creatorEditor.builder.curriculum.deleteLesson")}
                   </button>
@@ -2528,7 +2528,7 @@ export function CourseBuilderStudio() {
               <button
                 type="submit"
                 disabled={!isEditable}
-                className="button-solid px-4 py-2.5 text-sm disabled:opacity-50"
+                className="button-solid px-4 py-2.5 text-sm"
               >
                 {t("creatorEditor.builder.curriculum.addLesson")}
               </button>
@@ -2552,7 +2552,7 @@ export function CourseBuilderStudio() {
             onClick={() => openLessonForm(module.id)}
             disabled={!isEditable}
             aria-label={t("creatorEditor.builder.curriculum.addLessonToModule").replace("{index}", () => String(moduleIndex + 1))}
-            className="button-outline inline-flex w-fit items-center gap-1.5 px-3 py-2 text-xs disabled:opacity-50"
+            className="button-outline inline-flex w-fit items-center gap-1.5 px-3 py-2 text-xs"
           >
             <Plus aria-hidden="true" size={13} strokeWidth={2} />
             {t("creatorEditor.builder.curriculum.addLesson")}
@@ -3114,7 +3114,7 @@ export function CourseBuilderStudio() {
       disabled={!canPublish || !readyToPublish || !priceFieldIsValid}
       // O botao apagado diz por que: a frase ao lado dele.
       aria-describedby={showPublishReason ? "builder-publish-reason" : undefined}
-      className="w-full disabled:opacity-50 sm:w-auto"
+      className="w-full sm:w-auto"
     >
       {isSubmitting
         ? t("creatorEditor.builder.publish.publishing")
@@ -3985,7 +3985,7 @@ export function CourseBuilderStudio() {
                   type="button"
                   onClick={() => setIsModuleFormOpen(true)}
                   disabled={!isEditable}
-                  className="button-outline inline-flex items-center gap-2 px-4 py-2.5 text-sm disabled:opacity-50"
+                  className="button-outline inline-flex items-center gap-2 px-4 py-2.5 text-sm"
                 >
                   <Plus aria-hidden="true" size={14} strokeWidth={2} />
                   {t("creatorEditor.builder.curriculum.addModule")}
@@ -4038,7 +4038,7 @@ export function CourseBuilderStudio() {
                   <button
                     type="submit"
                     disabled={!isEditable}
-                    className="button-solid px-4 py-2.5 text-sm disabled:opacity-50"
+                    className="button-solid px-4 py-2.5 text-sm"
                   >
                     {t("creatorEditor.builder.curriculum.createModule")}
                   </button>
@@ -4135,7 +4135,7 @@ export function CourseBuilderStudio() {
                         type="button"
                         onClick={() => moveModule(module.id, "up")}
                         disabled={!isEditable || moduleIndex === 0}
-                        className="button-outline px-3 py-2 text-xs disabled:opacity-50"
+                        className="button-outline px-3 py-2 text-xs"
                       >
                         {t("creatorEditor.builder.curriculum.up")}
                       </button>
@@ -4143,7 +4143,7 @@ export function CourseBuilderStudio() {
                         type="button"
                         onClick={() => moveModule(module.id, "down")}
                         disabled={!isEditable || moduleIndex === modules.length - 1}
-                        className="button-outline px-3 py-2 text-xs disabled:opacity-50"
+                        className="button-outline px-3 py-2 text-xs"
                       >
                         {t("creatorEditor.builder.curriculum.down")}
                       </button>
@@ -4153,7 +4153,7 @@ export function CourseBuilderStudio() {
                         type="button"
                         onClick={() => deleteModule(module.id)}
                         disabled={!isEditable}
-                        className="button-danger ml-4 px-3 py-2 text-xs disabled:opacity-50"
+                        className="button-danger ml-4 px-3 py-2 text-xs"
                       >
                         {t("creatorEditor.builder.curriculum.delete")}
                       </button>
@@ -4351,7 +4351,7 @@ export function CourseBuilderStudio() {
               }
             }}
             disabled={selectedTabIndex <= 0}
-            className="button-outline button-lg w-full disabled:opacity-50 sm:w-auto"
+            className="button-outline button-lg w-full sm:w-auto"
           >
             <ArrowLeft aria-hidden="true" size={16} strokeWidth={2} />
             {selectedTabIndex > 0

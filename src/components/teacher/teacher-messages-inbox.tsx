@@ -251,7 +251,7 @@ export function TeacherMessagesInbox() {
             <button
               type="submit"
               disabled={isSending || !draft.trim()}
-              className="button-solid inline-flex w-fit items-center gap-2 px-4 py-2.5 text-sm disabled:opacity-60"
+              className="button-solid inline-flex w-fit items-center gap-2 px-4 py-2.5 text-sm"
             >
               <Send size={15} aria-hidden="true" />
               {t(isSending ? "teacherMessages.sending" : "teacherMessages.send")}

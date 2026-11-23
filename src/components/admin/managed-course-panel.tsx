@@ -217,7 +217,7 @@ export function ManagedCoursePanel() {
                       type="button"
                       onClick={() => handleDelete(course.id)}
                       disabled={busyCourseId === course.id}
-                      className="button-danger min-h-11 px-3.5 py-2 text-xs disabled:opacity-60"
+                      className="button-danger min-h-11 px-3.5 py-2 text-xs"
                     >
                       {t(`${copy}.${busyCourseId === course.id ? "deleting" : "confirmDelete"}`)}
                     </button>
@@ -225,7 +225,7 @@ export function ManagedCoursePanel() {
                       type="button"
                       onClick={() => setConfirmingDeleteId(null)}
                       disabled={busyCourseId === course.id}
-                      className="button-outline min-h-11 px-3.5 py-2 text-xs disabled:opacity-60"
+                      className="button-outline min-h-11 px-3.5 py-2 text-xs"
                     >
                       {t(`${copy}.cancel`)}
                     </button>
@@ -235,7 +235,7 @@ export function ManagedCoursePanel() {
                     type="button"
                     onClick={() => setConfirmingDeleteId(course.id)}
                     disabled={busyCourseId === course.id}
-                    className="button-danger min-h-11 px-3.5 py-2 text-xs disabled:opacity-60"
+                    className="button-danger min-h-11 px-3.5 py-2 text-xs"
                   >
                     {t(`${copy}.delete`)}
                   </button>

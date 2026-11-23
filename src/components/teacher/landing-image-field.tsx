@@ -11,8 +11,7 @@ import { landingImageMaxBytes, landingImageTypes, uploadLandingImage } from "@/l
 import { UploadProgressNote } from "./upload-progress-note";
 
 // Mesmo reset do editor da pagina: o label em volta e caixa alta e negrito.
-const fieldClass =
-  "w-full rounded-md border border-[var(--color-line)] bg-white px-3 py-2.5 text-sm font-normal normal-case tracking-normal text-[var(--color-ink)]";
+const fieldClass = "field-input normal-case tracking-normal";
 
 /**
  * Image field for sales page blocks: upload first, pasting a link second.

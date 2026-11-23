@@ -757,7 +757,7 @@ export function OnboardingWizard() {
             type="button"
             onClick={() => void handleContinue()}
             disabled={isSaving}
-            className="button-solid button-lg disabled:cursor-not-allowed disabled:opacity-60"
+            className="button-solid button-lg disabled:cursor-not-allowed"
           >
             {t(isSaving ? "authFlow.onboarding.saving" : "authFlow.onboarding.continue")}
           </button>

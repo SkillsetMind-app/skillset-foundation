@@ -783,7 +783,7 @@ export function TeacherEventStudio() {
                 <button
                   type="submit"
                   disabled={isSaving || isLoading || (!editingEventId && !selectedCourse)}
-                  className="button-solid min-h-11 gap-2 px-4 py-2.5 text-sm disabled:opacity-60"
+                  className="button-solid min-h-11 gap-2 px-4 py-2.5 text-sm"
                 >
                   {isSaving
                     ? t(`${copy}.saving`)
@@ -948,7 +948,7 @@ export function TeacherEventStudio() {
                       type="button"
                       onClick={() => setAsking({ action: "cancel", event })}
                       disabled={actioningEventId === event.id}
-                      className="button-outline px-3.5 py-2 text-xs disabled:opacity-60"
+                      className="button-outline px-3.5 py-2 text-xs"
                     >
                       {actioningEventId === event.id
                         ? t(`${copy}.working`)
@@ -959,7 +959,7 @@ export function TeacherEventStudio() {
                     type="button"
                     onClick={() => setAsking({ action: "delete", event })}
                     disabled={actioningEventId === event.id}
-                    className="button-danger px-3.5 py-2 text-xs disabled:opacity-60"
+                    className="button-danger px-3.5 py-2 text-xs"
                   >
                     {t(`${copy}.delete`)}
                   </button>

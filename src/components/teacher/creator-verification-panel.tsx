@@ -49,8 +49,8 @@ const validationErrorKeys = new Map([
   ["Use a valid https:// professional link (max 300 characters).", "invalidSecureLink"],
 ]);
 
-const inputClass =
-  "rounded-md border border-[var(--color-line)] bg-[var(--color-surface)] px-3.5 py-2.5 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]";
+// A pele de todo campo da plataforma (44px, borda que aparece no branco).
+const inputClass = "field-input";
 
 function DetailRow({ label, value }: { label: string; value: string }) {
   return (

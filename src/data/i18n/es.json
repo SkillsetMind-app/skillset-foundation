@@ -634,7 +634,7 @@
         "levelSaved": "Guardado",
         "tabsLabel": "Secciones de acceso",
         "searchPlaceholder": "Nombre o correo electrónico",
-        "loading": "Cargando la lista de personas…",
+        "loading": "Cargando la lista de personas...",
         "empty": "Nadie coincide con esta búsqueda.",
         "noLevel": "Aún no tiene un nivel: solo puede ver el sitio público.",
         "levels": {
@@ -3506,7 +3506,7 @@
     "assistant": {
       "skillsetmind_assistant": "Asistente de SkillsetMind",
       "ask_the_assistant": "Pregunta al asistente",
-      "assistant_is_thinking": "El asistente está pensando…",
+      "assistant_is_thinking": "El asistente está pensando...",
       "ask_about_plans_refunds_payouts": "Pregunta sobre planes, reembolsos, transferencias…",
       "send_message": "Enviar mensaje",
       "greeting": "Hola, soy el asistente de SkillsetMind. Pregúntame sobre cursos, planes, reembolsos, transferencias o cómo empezar. Respondo a partir de la documentación de la plataforma.",

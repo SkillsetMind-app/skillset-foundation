@@ -174,7 +174,7 @@ export function MemberAreaHomeView({
         {area.isOwnerPreview ? (
           <p className="rounded-md border border-[var(--ma-line)] bg-[var(--ma-surface-2)] px-4 py-3 text-sm text-[var(--ma-ink-soft)]">
             {t("learn.memberArea.ownerPreview")}{" "}
-            <Link href="/teach/member-area" className="font-semibold text-[var(--ma-accent)] underline-offset-2 hover:underline">
+            <Link href="/teach/member-area" className="font-semibold text-[var(--ma-accent)]! underline-offset-2 hover:underline">
               {t("learn.memberArea.editArea")}
             </Link>
           </p>
@@ -317,7 +317,7 @@ export function MemberAreaHomeView({
                       </span>
                       <Link
                         href={`/courses/${encodeURIComponent(product.salesKey)}`}
-                        className={`${actionClass} bg-[var(--ma-accent)] text-[var(--ma-on-accent)] hover:bg-[var(--ma-accent-hover)]`}
+                        className={`${actionClass} bg-[var(--ma-accent)] text-[var(--ma-on-accent)]! hover:bg-[var(--ma-accent-hover)]`}
                       >
                         {t("learn.memberArea.viewProduct")}
                       </Link>

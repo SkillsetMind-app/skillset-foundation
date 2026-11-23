@@ -102,7 +102,7 @@ export function LessonQuiz({ courseId, lessonId }: { courseId: string; lessonId:
             {isChecked ? null : (
               <button
                 type="button"
-                className="button-outline min-h-11 justify-self-start px-3 text-sm disabled:opacity-60"
+                className="button-outline min-h-11 justify-self-start px-3 text-sm"
                 disabled={choice === undefined}
                 onClick={() => setChecked((current) => ({ ...current, [index]: true }))}
               >

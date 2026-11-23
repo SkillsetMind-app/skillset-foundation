@@ -380,7 +380,7 @@ export function PlansPanel() {
                     type="button"
                     onClick={handleManage}
                     disabled={busyAction === "portal"}
-                    className="button-outline min-h-11 w-full justify-center px-4 py-2.5 text-sm disabled:opacity-60"
+                    className="button-outline min-h-11 w-full justify-center px-4 py-2.5 text-sm"
                   >
                     {t(busyAction === "portal" ? "accountPlans.opening" : "accountPlans.change")}
                   </button>
@@ -399,8 +399,8 @@ export function PlansPanel() {
                       disabled={!canPurchase}
                       className={
                         canPurchase
-                          ? "button-solid min-h-11 w-full justify-center px-4 py-2.5 text-sm disabled:opacity-60"
-                          : "button-outline min-h-11 w-full justify-center px-4 py-2.5 text-sm disabled:opacity-60"
+                          ? "button-solid min-h-11 w-full justify-center px-4 py-2.5 text-sm"
+                          : "button-outline min-h-11 w-full justify-center px-4 py-2.5 text-sm"
                       }
                     >
                       {!canPurchase

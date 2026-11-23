@@ -90,7 +90,7 @@ export function StripeConnectNotice() {
         {t("platform.banner.connectPayouts")}{" "}
         <Link
           href="/account/payments#stripe-connect"
-          className="font-bold text-[var(--color-primary)] underline underline-offset-4"
+          className="font-bold text-[var(--color-primary)]! underline underline-offset-4"
         >
           {t("platform.banner.connectPayoutsCta")}
         </Link>

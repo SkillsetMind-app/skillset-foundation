@@ -446,7 +446,7 @@ export function AdvisorSidebar({ children }: { children?: ReactNode } = {}) {
           {activationBlocked ? (
             <p className="border-t border-[var(--color-line)] bg-[var(--color-surface-soft)] px-4 py-2 text-xs leading-5 text-[var(--color-ink-soft)]">
               {t("advisor.activationRequired")}{" "}
-              <Link href="/teach/activate" className="font-semibold text-[var(--color-primary)] underline">
+              <Link href="/teach/activate" className="font-semibold text-[var(--color-primary)]! underline">
                 {t("creatorEditor.builder.publish.activate")}
               </Link>
             </p>
@@ -479,7 +479,7 @@ export function AdvisorSidebar({ children }: { children?: ReactNode } = {}) {
               // Desligado enquanto a conversa carrega: o motivo e a frase
               // "Loading your conversation..." que ja esta na tela.
               aria-describedby={historyStatus === "loading" ? "advisor-history-loading" : undefined}
-              className="button-solid flex h-10 w-10 shrink-0 items-center justify-center rounded-md p-0 disabled:opacity-50"
+              className="button-solid flex h-10 w-10 shrink-0 items-center justify-center rounded-md p-0"
             >
               <Send className="h-4 w-4" aria-hidden="true" />
             </button>

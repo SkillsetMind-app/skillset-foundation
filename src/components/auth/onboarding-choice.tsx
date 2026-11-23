@@ -340,7 +340,7 @@ export function OnboardingChoice() {
             type="button"
             onClick={handleSendVerification}
             disabled={isSendingVerification || captchaPending}
-            className="button-outline px-4 py-2 text-sm disabled:opacity-60"
+            className="button-outline px-4 py-2 text-sm"
           >
             {t("onboarding.sendVerification")}
           </button>
@@ -348,7 +348,7 @@ export function OnboardingChoice() {
             type="button"
             onClick={handleRefreshVerification}
             disabled={isSendingVerification}
-            className="button-outline px-4 py-2 text-sm disabled:opacity-60"
+            className="button-outline px-4 py-2 text-sm"
           >
             {t("onboarding.iVerified")}
           </button>
@@ -582,7 +582,7 @@ export function OnboardingChoice() {
             {t("onboarding.teacherTermsPrefix")}{" "}
             <Link
               href="/legal/teacher-terms"
-              className="font-semibold text-[var(--color-primary)] underline-offset-4 hover:underline"
+              className="font-semibold text-[var(--color-primary)]! underline-offset-4 hover:underline"
               target="_blank"
             >
               {t("onboarding.teacherTermsLink")}
@@ -614,7 +614,7 @@ export function OnboardingChoice() {
             onClick={handleFinish}
             disabled={isSaving || !emailVerified || !payoutCountryAnswered}
             aria-describedby={activateBlockedReason ? "activation-blocked-reason" : undefined}
-            className="button-solid button-lg disabled:opacity-60"
+            className="button-solid button-lg"
           >
             {isSaving ? t("onboarding.activating") : t("onboarding.activateTeaching")}
           </button>
@@ -694,7 +694,7 @@ export function OnboardingChoice() {
                   {t("onboarding.teacherTermsPrefix")}{" "}
                   <Link
                     href="/legal/teacher-terms"
-                    className="font-semibold text-[var(--color-primary)] underline-offset-4 hover:underline"
+                    className="font-semibold text-[var(--color-primary)]! underline-offset-4 hover:underline"
                     target="_blank"
                   >
                     {t("onboarding.teacherTermsLink")}
@@ -811,7 +811,7 @@ export function OnboardingChoice() {
             type="button"
             onClick={() => setStep((currentStep) => Math.max(currentStep - 1, 0))}
             disabled={isSaving}
-            className="button-outline px-4 py-2.5 text-sm disabled:opacity-60"
+            className="button-outline px-4 py-2.5 text-sm"
           >
             {t("onboarding.back")}
           </button>
@@ -821,7 +821,7 @@ export function OnboardingChoice() {
             type="button"
             onClick={handleNext}
             disabled={isSaving}
-            className="button-solid px-4 py-2.5 text-sm disabled:opacity-60"
+            className="button-solid px-4 py-2.5 text-sm"
           >
             {t("onboarding.continue")}
           </button>
@@ -830,7 +830,7 @@ export function OnboardingChoice() {
             type="button"
             onClick={handleFinish}
             disabled={isSaving}
-            className="button-solid px-4 py-2.5 text-sm disabled:opacity-60"
+            className="button-solid px-4 py-2.5 text-sm"
           >
             {isSaving ? t("onboarding.saving") : t("onboarding.finishSetup")}
           </button>

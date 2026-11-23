@@ -225,7 +225,7 @@ export function AdminEnrollmentPanel() {
         onClick={handleCreateEnrollment}
         disabled={isSaving || !selectedUser || !selectedCourse || readErrors.users || readErrors.courses}
         aria-describedby="ops-enrollment-create-hint"
-        className="button-solid min-h-11 mt-6 px-4 py-2.5 text-sm disabled:opacity-60"
+        className="button-solid min-h-11 mt-6 px-4 py-2.5 text-sm"
       >
         {t(`${copy}.${isSaving ? "creating" : "create"}`)}
       </button>

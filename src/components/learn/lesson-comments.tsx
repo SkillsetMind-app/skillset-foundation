@@ -225,7 +225,7 @@ function LessonCommentsPanel({
             <button
               type="submit"
               disabled={isSubmitting}
-              className="button-solid min-h-11 px-4 text-sm disabled:opacity-60"
+              className="button-solid min-h-11 px-4 text-sm"
             >
               {t(
                 isSubmitting

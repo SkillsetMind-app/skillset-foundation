@@ -188,7 +188,7 @@ export function ConfirmEmailGate({
           type="button"
           onClick={() => void handleResend()}
           disabled={isSending || cooldown > 0 || captchaPending}
-          className="button-outline w-full disabled:opacity-60"
+          className="button-outline w-full"
         >
           {cooldown > 0
             ? t("auth.signup.confirmResendIn").replace("{seconds}", String(cooldown))
@@ -216,7 +216,7 @@ export function ConfirmEmailGate({
 
       <p className="text-xs leading-5 text-[var(--color-ink-muted)]">
         {t("auth.signup.confirmAlreadyDone")}{" "}
-        <Link href={getAuthRoute("signin", intent, returnTo)} className="auth-text-link font-semibold text-[var(--color-primary)]">
+        <Link href={getAuthRoute("signin", intent, returnTo)} className="auth-text-link font-semibold text-[var(--color-primary)]!">
           {t("auth.signup.confirmSignIn")}
         </Link>
       </p>
@@ -321,7 +321,7 @@ export function ExpiredConfirmationLink({
       <button
         type="submit"
         disabled={isSending || cooldown > 0 || captchaPending}
-        className="button-solid w-full disabled:opacity-60"
+        className="button-solid w-full"
       >
         {cooldown > 0
           ? t("auth.signup.confirmResendIn").replace("{seconds}", String(cooldown))

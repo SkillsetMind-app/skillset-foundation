@@ -220,7 +220,7 @@ export function SupportTicketQueue({ query = "" }: { query?: string }) {
                         replyingTicketId === ticket.id
                         || (replyDrafts[ticket.id] ?? "").trim().length < 2
                       }
-                      className="button-solid max-w-full w-fit whitespace-normal px-4 py-2 text-xs disabled:opacity-60"
+                      className="button-solid max-w-full w-fit whitespace-normal px-4 py-2 text-xs"
                     >
                       {replyingTicketId === ticket.id
                         ? t(`${copy}.sending`)
