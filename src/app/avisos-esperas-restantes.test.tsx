@@ -62,19 +62,23 @@ describe("F-09: barras de progresso", () => {
 });
 
 describe("F-03 / I-3: esperas com forma, e as rotas que respondem na hora", () => {
-  it.each([
-    "app/learn/areas/[criador]/loading.tsx",
-    "app/teach/activate/loading.tsx",
-    "app/teach/activate/return/loading.tsx",
-  ])("%s existe", (file) => {
-    expect(existsSync(join(process.cwd(), "src", file))).toBe(true);
+  it("a área de membros responde na hora com o próprio esqueleto", () => {
+    expect(existsSync(join(process.cwd(), "src", "app/learn/areas/[criador]/loading.tsx"))).toBe(true);
+    expect(read("app/learn/areas/[criador]/loading.tsx")).toContain("<MemberAreaHomeSkeleton");
+  });
+
+  // /teach/activate e a volta do Stripe respondem 307 no servidor quando não
+  // há o que pagar; um loading.tsx mandaria a moldura antes (200) e o desvio
+  // viraria um pulo no navegador, na página para onde o Stripe devolve.
+  it.each(["app/teach/activate/loading.tsx", "app/teach/activate/return/loading.tsx"])("%s não existe", (file) => {
+    expect(existsSync(join(process.cwd(), "src", file))).toBe(false);
   });
 
   it("a caixa de mensagens do aluno não espera em branco", () => {
     expect(read("app/learn/messages/page.tsx")).not.toContain("fallback={null}");
   });
 
-  it.each(["tabs", "title", "search"] as const)("a lista de cartões (%s): um aviso, sem título nem botão", (head) => {
+  it.each(["tabs", "title"] as const)("a lista de cartões (%s): um aviso, sem título nem botão", (head) => {
     render(<CardListSkeleton label="Loading credentials..." head={head} />);
     expect(screen.getByRole("status")).toHaveTextContent("Loading credentials...");
     expect(screen.queryByRole("heading")).toBeNull();

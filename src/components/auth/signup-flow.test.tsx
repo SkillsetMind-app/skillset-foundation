@@ -164,7 +164,7 @@ describe("SignupForm: o olhinho e a porta de confirmacao", () => {
     fillStepOne();
     const create = screen.getByRole("button", { name: "auth.signup.createAccount" });
     expect(create).toBeDisabled();
-    expect(create).toHaveAccessibleDescription("auth.signup.passwordRequirements");
+    expect(create).toHaveAccessibleDescription("auth.signup.choosePasswordFirst");
 
     fireEvent.change(screen.getByLabelText("auth." + secretField), { target: { value: strongSecret } });
     expect(create).toHaveAccessibleDescription("auth.signup.confirmPasswordFirst");

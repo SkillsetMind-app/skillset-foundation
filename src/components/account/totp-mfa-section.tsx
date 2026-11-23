@@ -423,7 +423,6 @@ export function TotpMfaSection({ emailVerified }: { emailVerified: boolean }) {
               <button
                 type="submit"
                 disabled={busy || code.length < 6}
-                aria-describedby={code.length < 6 ? "mfa-enable-blocked" : undefined}
                 className="button-solid px-3.5 py-2.5 text-xs disabled:opacity-60"
               >
                 {t(busy ? "accountSecurity.mfa.verifying" : "accountSecurity.mfa.enable")}
@@ -437,12 +436,6 @@ export function TotpMfaSection({ emailVerified }: { emailVerified: boolean }) {
                 {t("accountSecurity.mfa.cancel")}
               </button>
             </form>
-            {/* Por que "Enable" está apagado enquanto o código não tem 6 dígitos. */}
-            {code.length < 6 ? (
-              <p id="mfa-enable-blocked" className="mt-2 text-xs leading-5 text-[var(--color-ink-soft)]">
-                {t("accountSecurity.mfa.codeRequired")}
-              </p>
-            ) : null}
 
             {error ? (
               <InlineAlert tone="error" className="mt-3">

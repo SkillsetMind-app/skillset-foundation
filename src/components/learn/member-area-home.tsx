@@ -70,7 +70,7 @@ function priceLabel(
 // plataforma na moldura neutra.
 const bone = "animate-pulse rounded-lg bg-[var(--ma-line,var(--color-surface-strong))]";
 
-function MemberAreaHomeSkeleton({ label }: { label: string }) {
+export function MemberAreaHomeSkeleton({ label }: { label: string }) {
   return (
     <div className="grid gap-8">
       <p role="status" className="sr-only">{label}</p>

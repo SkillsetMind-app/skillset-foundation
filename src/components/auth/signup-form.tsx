@@ -129,7 +129,7 @@ export function SignupForm() {
   const createBlockedReason = !legalAccepted
     ? t("auth.signup.acceptTermsToCreate")
     : !passwordReady
-      ? t("auth.signup.passwordRequirements")
+      ? t("auth.signup.choosePasswordFirst")
       : !passwordsMatch && !showMismatch
         ? t("auth.signup.confirmPasswordFirst")
         : "";

@@ -93,11 +93,13 @@ describe("learner routes read the real locale cookie", () => {
   // rota pintada de escuro (os cursos nascem claros), a do Suspense, um cartao
   // branco e o esqueleto da sala. A da rota e a do Suspense agora sao a MESMA.
   // F-03: a area de membros busca a marca no servidor antes de responder; sem
-  // loading.tsx o clique deixava a tela anterior parada ate a resposta.
-  it("the members-area routes answer at once with the classroom's neutral wait", async () => {
+  // loading.tsx o clique deixava a tela anterior parada ate a resposta. A
+  // espera e o esqueleto da propria area, o mesmo que ela mostra enquanto le.
+  it("the members-area routes answer at once with the area's own skeleton", async () => {
     const view = render(await LoadingMemberArea());
     expect(screen.getByRole("status")).toHaveTextContent("Cargando el área de miembros...");
-    expect(view.container.querySelector("[aria-busy='true']")).not.toBeNull();
+    expect(view.container.querySelectorAll("[aria-hidden='true'] [class*='aspect-[4/3]']")).toHaveLength(3);
+    expect(screen.queryByRole("heading")).toBeNull();
     mocks.locale = "en";
     view.rerender(await LoadingMemberArea());
     expect(screen.getByRole("status")).toHaveTextContent("Loading the members area...");

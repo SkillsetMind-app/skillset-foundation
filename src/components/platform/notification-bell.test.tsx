@@ -124,7 +124,17 @@ describe("o sino antes, durante e depois da leitura", () => {
     expect(screen.getByText("Support replied to your request")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Open notifications, 1 unread" })).toBeTruthy();
 
-    // A tentativa seguinte que da certo tira o aviso de falha.
+    // Fechar e abrir de novo comeca limpo: a falha antiga nao volta nem e lida.
+    fireEvent.click(screen.getByRole("button", { name: "Close notifications" }));
+    fireEvent.click(screen.getByRole("button", { name: "Open notifications, 1 unread" }));
+    expect(screen.queryByRole("alert")).toBeNull();
+
+    // Falhou de novo: o aviso volta. A tentativa seguinte que da certo o tira.
+    vi.mocked(markAllNotificationsAsRead).mockRejectedValueOnce(new Error("offline"));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Mark all read" }));
+    });
+    expect(screen.getByRole("alert")).toBeTruthy();
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "Mark all read" }));
     });

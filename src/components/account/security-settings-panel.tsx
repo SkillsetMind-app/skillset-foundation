@@ -71,7 +71,7 @@ export function SecuritySettingsPanel() {
   const passwordBlockedReason = !currentPassword
     ? t("accountSecurity.password.currentFirst")
     : !passwordReady
-      ? t("accountSecurity.password.requirementsError")
+      ? t("accountSecurity.password.chooseFirst")
       : "";
 
   async function handleSendVerification() {

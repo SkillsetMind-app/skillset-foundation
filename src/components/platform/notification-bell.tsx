@@ -187,7 +187,12 @@ export function NotificationBell() {
       <button
         ref={triggerRef}
         type="button"
-        onClick={() => setOpen((current) => !current)}
+        onClick={() => {
+          // Abrir de novo começa limpo: a falha de antes não volta nem é lida
+          // outra vez. (Fechado, o painel não existe; só se reabre por aqui.)
+          if (!open) setMarkAllFailed(false);
+          setOpen((current) => !current);
+        }}
         aria-haspopup="dialog"
         aria-controls={open ? panelId : undefined}
         aria-expanded={open}

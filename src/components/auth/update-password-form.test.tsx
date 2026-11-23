@@ -74,7 +74,8 @@ describe("UpdatePasswordForm", () => {
     renderForm();
     const update = screen.getByRole("button", { name: "Update password" });
     expect(update).toBeDisabled();
-    expect(update).toHaveAccessibleDescription("Use a password that meets every requirement.");
+    // Antes de digitar, um convite, nao a frase de erro.
+    expect(update).toHaveAccessibleDescription("Choose a password that meets the rules above.");
 
     fireEvent.change(screen.getByLabelText("New password"), { target: { value: newSecret } });
     expect(update).toHaveAccessibleDescription("Type the password again to confirm it.");

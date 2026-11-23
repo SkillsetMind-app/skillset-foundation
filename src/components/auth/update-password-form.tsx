@@ -48,7 +48,7 @@ export function UpdatePasswordForm({
   // dita). Senhas diferentes já têm a frase delas embaixo da confirmação: o
   // botão aponta para ela, em vez de repeti-la.
   const updateBlockedReason = !passwordReady
-    ? t("auth.signup.passwordRequirements")
+    ? t("auth.signup.choosePasswordFirst")
     : !passwordsMatch && !showMismatch
       ? t("auth.signup.confirmPasswordFirst")
       : "";

@@ -123,7 +123,7 @@ describe("SecuritySettingsPanel feedback", () => {
     const update = screen.getByRole("button", { name: "Update password" });
     expect(update).toHaveAccessibleDescription("Enter your current password first.");
     fireEvent.change(screen.getByLabelText("Current password"), { target: { value: "OldPassword1!" } });
-    expect(update).toHaveAccessibleDescription("Use a password that meets every requirement.");
+    expect(update).toHaveAccessibleDescription("Choose a new password that meets the rules above.");
     fireEvent.change(screen.getByLabelText("New password"), { target: { value: "NewPassword42!" } });
     expect(update).toBeEnabled();
     expect(update).not.toHaveAttribute("aria-describedby");

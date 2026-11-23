@@ -84,8 +84,9 @@ export function LearnCommunityHub() {
   const communityIds = !courses ? NO_COURSES : community?.courses === courses ? community.ids : null;
 
   if (isLoading || (!error && communityIds === null)) {
-    // A busca e dois cartões, no lugar da frase solta num cartão branco.
-    return <CardListSkeleton label={t("learnWave2.communityHub.loading")} head="search" />;
+    // A linha de cima e dois cartões, no lugar da frase solta num cartão
+    // branco. Sem a busca: ela só aparece com muitas comunidades.
+    return <CardListSkeleton label={t("learnWave2.communityHub.loading")} head="title" />;
   }
 
   if (error) {

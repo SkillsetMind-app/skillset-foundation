@@ -649,7 +649,7 @@ export function OnboardingChoice() {
           </span>
           <span className="text-[var(--color-ink-soft)]">{stepCounter}</span>
         </div>
-        <ProgressBar value={((step + 1) / stepLabels.length) * 100} label={stepCounter} />
+        <ProgressBar value={Math.round(((step + 1) / stepLabels.length) * 100)} label={stepCounter} />
       </div>
 
       {step === 0 ? (
