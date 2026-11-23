@@ -1489,16 +1489,19 @@ export function CreatorCourseDetail({
           // cartão, que no celular fica no fim da página, depois do
           // currículo. O foco vai antes para a barra, que fica nos dois
           // desfechos (o botão trava na espera e vira "Enroll" se der certo).
+          // busyLabel: os dois rótulos ocupam a mesma célula, então o botão
+          // não cresce ao virar "Trying again..." e o preço ao lado não pula.
           <Button
             variant="outline"
             loading={offerRetrying}
+            busyLabel={t("appErrors.retrying")}
             onClick={() => {
               buyBarRef.current?.focus();
               retryOfferRead();
             }}
             className="shrink-0 px-3.5 py-2 text-xs"
           >
-            {t(offerRetrying ? "appErrors.retrying" : "appErrors.retry")}
+            {t("appErrors.retry")}
           </Button>
         ) : (
           <Link

@@ -1695,13 +1695,22 @@ describe("CreatorCourseDetail: preço que falha e quem vende", () => {
     // A mesma altura de 44px do "Enroll": a barra não encolhe neste estado.
     expect(retry).toHaveClass("min-h-11");
     expect(offerReads()).toBe(1);
+    // Os dois rótulos já moram no botão (a largura é a do maior); em repouso o
+    // da espera fica escondido e fora do nome.
+    expect(within(retry).getByText("Trying again...")).toHaveAttribute("aria-hidden", "true");
+    expect(within(retry).getByText("Try again")).not.toHaveAttribute("aria-hidden");
 
     fireEvent.click(retry);
     fireEvent.click(within(bar).getByRole("button", { name: "Trying again..." }));
 
-    // Uma releitura só, e a barra espera com o botão travado.
+    // Uma releitura só, e a barra espera com o botão travado: o mesmo botão,
+    // agora com o nome da espera, e o rótulo de repouso escondido no lugar.
     expect(offerReads()).toBe(2);
-    expect(within(bar).getByRole("button", { name: "Trying again..." })).toHaveAttribute("aria-busy", "true");
+    const waiting = within(bar).getByRole("button", { name: "Trying again..." });
+    expect(waiting).toBe(retry);
+    expect(waiting).toHaveAttribute("aria-busy", "true");
+    expect(within(waiting).getByText("Try again")).toHaveAttribute("aria-hidden", "true");
+    expect(within(bar).queryByRole("button", { name: "Try again" })).toBeNull();
     expect(within(bar).getByText("Loading pricing...")).toHaveClass("sr-only");
 
     await act(async () => answerRetry({ ok: true, json: async () => ({ offers: [] }) }));

@@ -207,7 +207,7 @@ describe("rótulo do preço da página de amostra", () => {
       expect(eyebrow).toHaveClass("text-xs", "uppercase");
       expect(eyebrow).not.toHaveClass("text-[10px]");
     }
-    expect(screen.queryByText(es("publicCourses.access"))).toBeNull();
+    expect(screen.queryByText("Acceso")).toBeNull();
   });
 });
 
