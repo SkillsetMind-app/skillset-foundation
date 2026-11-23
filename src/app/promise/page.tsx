@@ -120,7 +120,9 @@ export default async function PromisePage() {
                   {promise.number}
                 </p>
                 <div>
-                  <h2 className="display-title text-4xl leading-tight text-[var(--color-primary)]">
+                  {/* Serifa só no h1: seis títulos de 36px faziam de cada
+                      cartão uma tela inteira no celular. */}
+                  <h2 className="text-2xl font-bold leading-snug text-[var(--color-primary)]">
                     {promise.title}
                   </h2>
                   <p className="mt-4 text-sm leading-8 text-[var(--color-ink-soft)]">

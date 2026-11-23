@@ -52,10 +52,14 @@ export async function ForCreatorsBand() {
                 </Link>
               </div>
             </div>
-            <div className="grid gap-3 sm:grid-cols-2">
+            {/* Três colunas para os três itens só quando a faixa ocupa a
+                largura toda (md): em duas, o terceiro ficava sozinho com meia
+                largura. Do lg para cima a coluna é metade da faixa e os itens
+                empilham, para cada um ter largura de leitura. */}
+            <div className="grid gap-3 md:grid-cols-3 lg:grid-cols-1">
               {/* Os 3 planos com preço, mensal e anual, nas letras miúdas da
                   home (decisão de 13/11/2026). */}
-              <div className="home-creators__item rounded-lg border border-white/16 bg-white/10 p-4 text-sm leading-6 text-white/85 sm:col-span-2">
+              <div className="home-creators__item rounded-lg border border-white/16 bg-white/10 p-4 text-sm leading-6 text-white/85 md:col-span-3 lg:col-span-1">
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/75">
                   {t("home.creators.plansLabel")}
                 </p>
@@ -78,18 +82,18 @@ export async function ForCreatorsBand() {
                 </ul>
                 <p className="mt-2 text-xs leading-5 text-white/70">{t("home.creators.plansNote")}</p>
               </div>
+              {/* Sem uma segunda entrada aqui dentro: a faixa inteira já entra
+                  de uma vez, e os itens pingavam um a um. */}
               {trustBullets.map((bullet) => (
-                <RevealSection key={bullet} className="home-creators__item">
-                  <div className="flex h-full items-start gap-3 rounded-lg border border-white/16 bg-white/10 p-4 text-sm leading-6 text-white/85">
-                    <span
-                      aria-hidden="true"
-                      className="grid size-6 shrink-0 place-items-center rounded-full bg-[var(--color-accent)]/30 text-[var(--color-accent-soft)]"
-                    >
-                      <Check size={14} strokeWidth={2.4} />
-                    </span>
-                    <span>{bullet}</span>
-                  </div>
-                </RevealSection>
+                <div key={bullet} className="home-creators__item flex h-full items-start gap-3 rounded-lg border border-white/16 bg-white/10 p-4 text-sm leading-6 text-white/85">
+                  <span
+                    aria-hidden="true"
+                    className="grid size-6 shrink-0 place-items-center rounded-full bg-[var(--color-accent)]/30 text-[var(--color-accent-soft)]"
+                  >
+                    <Check size={14} strokeWidth={2.4} />
+                  </span>
+                  <span>{bullet}</span>
+                </div>
               ))}
             </div>
           </div>

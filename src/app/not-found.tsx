@@ -15,7 +15,9 @@ export default async function NotFound() {
       <SiteNav />
       <main id="conteudo" className="flex min-h-[60svh] items-center justify-center px-6 py-16">
         <div className="surface-card max-w-2xl rounded-lg p-8 text-center sm:p-10">
-          <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[var(--color-accent-fg)]">
+          {/* O mesmo olho navy da página de erro (app/error.tsx): as duas
+              telas de "algo deu errado" com uma cara só. */}
+          <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[var(--color-primary)]">
             {t("publicPages.notFound.eyebrow")}
           </p>
           <h1 className="display-title page-title mt-4 text-[var(--color-ink)]">

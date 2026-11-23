@@ -3241,7 +3241,6 @@
       "when_can_a_sale_be_refunded": "¿Cuándo se puede reembolsar una venta y cómo afecta a mi transferencia?",
       "learners_can_self_refund_within_days": "Los alumnos pueden solicitar el reembolso por su cuenta dentro de los {value0} días posteriores a la compra si completaron menos de la mitad del curso. Como el comprador pagó directamente a tu cuenta de Stripe, el reembolso se descuenta de tu propio saldo y se te devuelve la comisión de SkillsetMind de esa venta. Así no pagas una comisión por una venta que se anuló.",
       "ready_to_publish_on_skillsetmind": "¿Listo para publicar en SkillsetMind?",
-      "start_with_a_free_trial": "Todos los planes empiezan con una prueba gratis de 14 días, con tarjeta. Cancela cuando quieras en Facturación antes de que termine y no se te cobrará.",
       "creator_overview": "Información para creadores",
       "start_free": "Crear cuenta",
       "start_plan": "Empieza con {plan}",

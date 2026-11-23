@@ -53,9 +53,11 @@ export async function CapabilitiesGrid() {
           const { Icon } = capability;
           return (
             <RevealSection key={capability.title} className="home-card">
-              <article className="group h-full rounded-lg border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)] transition duration-[180ms] ease-out hover:-translate-y-0.5 hover:border-[var(--color-line-strong)] hover:shadow-[var(--shadow-strong)]">
+              {/* Cartão de leitura, não link: parado no mouse. Subir e trocar
+                  a cor do ícone fazia parecer um botão que não abre nada. */}
+              <article className="h-full rounded-lg border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)]">
                 <span
-                  className="grid size-12 place-items-center rounded-md bg-[var(--color-surface-soft)] text-[var(--color-primary)] ring-1 ring-inset ring-[var(--color-line)] shadow-[0_6px_14px_rgba(26,54,93,0.08)] transition-all duration-[180ms] ease-out group-hover:bg-[var(--color-primary)] group-hover:text-[var(--color-base)] group-hover:shadow-[0_10px_22px_rgba(26,54,93,0.20)]"
+                  className="grid size-12 place-items-center rounded-md bg-[var(--color-surface-soft)] text-[var(--color-primary)] ring-1 ring-inset ring-[var(--color-line)] shadow-[0_6px_14px_rgba(26,54,93,0.08)]"
                   aria-hidden="true"
                 >
                   <Icon size={22} strokeWidth={1.7} />

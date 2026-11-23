@@ -42,7 +42,9 @@ export default async function PromiseChangelogPage() {
         {entries.map((entry) => {
           const effectiveAt = dateFormat.format(new Date(`${entry.date}T00:00:00Z`));
           return (
-            <div key={entry.title} className="mt-8 rounded-lg border border-[var(--color-line)] bg-white p-5">
+            // Uma linha por mudança, separadas por um filete: era um cartão
+            // com borda dentro do cartão da página.
+            <div key={entry.title} className="mt-8 border-t border-[var(--color-line)] pt-6">
               <p className="text-sm font-bold text-[var(--color-ink)]">
                 {entry.date} — {t(`${copy}.${entry.title}`)}
               </p>

@@ -3,6 +3,7 @@ import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
+import { brand } from "@/data/brand";
 import en from "@/data/i18n/en.json";
 import es from "@/data/i18n/es.json";
 
@@ -249,5 +250,108 @@ describe("telas medias: nada estoura de 600 a 1179px", () => {
   it("a tabela de alunos tem largura minima, mas rola dentro da propria caixa, nunca a pagina", () => {
     const students = read("src/components/teacher/teacher-students-list.tsx");
     expect(students).toMatch(/<div className="mt-4 overflow-x-auto">\s*<table className="w-full min-w-\[720px\]/);
+  });
+});
+
+/**
+ * Barra do site publico (SiteNav). A auditoria pediu os links a partir de
+ * 1024px (iPad deitado). A conta abaixo, com as larguras da folha e as letras
+ * puxadas para o lado pior, mostra que ali eles nao cabem com a conta aberta
+ * nem em espanhol: por isso o menu continua ate 1279px. A margem lateral, essa
+ * sim, passa a ser a das paginas em toda largura.
+ */
+describe("barra do site publico: links de 1280px para cima, margem igual a das paginas", () => {
+  const SCROLLBAR = 17;
+  const FONT = 14;
+  const CHEVRON = 14;
+  const ICON = 16;
+  const BORDER = 2;
+  const LOCALE = 44; // LocaleSwitcher compacto: size-11.
+  const BUTTON_PAD = { belowXl: 12, xl: 16 }; // "button-solid px-3 xl:px-4" no site-nav.tsx
+  const nav = readFileSync(join(process.cwd(), "src/components/site/site-nav.tsx"), "utf8");
+  const below1280 = mediaBlocks("(width < 1280px)").join("\n");
+  const root = (name: string) => px(css.match(new RegExp(`--${name}:\\s*([^;]+);`))![1]);
+
+  const inner = rule(css, ".site-header__inner");
+  const innerGap = px(prop(inner, "gap"));
+  const links = rule(css, ".site-header__links");
+  const link = rule(css, ".site-header__link");
+  const signin = rule(css, ".btn-signin");
+  const signinBelow1280 = below1280.match(/\.btn-signin,\s*\.btn-cta-hero\s*\{([^}]*)\}/)![1];
+  const trigger = rule(css, ".account-menu-trigger");
+  // Logo inteiro da barra: h-8 (32px) na proporcao do arquivo.
+  const logo = 32 * (brand.logoFullLightSize.width / brand.logoFullLightSize.height);
+  const text = (label: string) => label.length * FONT * TEXT_EM;
+
+  function linksWidth(labels: string[]): number {
+    const padX = px(prop(link, "padding").split(/\s+/)[1]);
+    return labels.reduce((sum, label) => sum + text(label) + padX * 2, 0) + px(prop(links, "gap")) * (labels.length - 1);
+  }
+
+  function signedOut(dict: typeof en, xl: boolean): number {
+    const signinPad = xl ? px(prop(signin, "padding").split(/\s+/)[1]) : px(prop(signinBelow1280, "padding-left"));
+    const signinWidth = text(dict.nav.signIn) + signinPad * 2 + px(prop(signin, "gap")) + CHEVRON + BORDER;
+    const create = text(dict.nav.getStarted) + (xl ? BUTTON_PAD.xl : BUTTON_PAD.belowXl) * 2 + BORDER;
+    return signinWidth + 8 + create; // gap-2 entre os dois
+  }
+
+  function signedIn(dict: typeof en, xl: boolean): number {
+    const dashboard = ICON + 8 + text(dict.nav.dashboard) + (xl ? BUTTON_PAD.xl : BUTTON_PAD.belowXl) * 2 + BORDER;
+    const [, right, , left] = prop(trigger, "padding").split(/\s+/).map((value) => px(value));
+    const gap = px(prop(trigger, "gap"));
+    const account = left + AVATAR + gap + px(prop(rule(css, ".account-menu-trigger__name"), "max-width")) + gap + 12 + right + BORDER;
+    return dashboard + px(prop(rule(css, ".site-header__actions"), "gap")) + account;
+  }
+
+  /** Logo, links e o grupo de acoes (sem o botao de menu: o lado melhor). */
+  function headerWidth(labels: string[], actions: number): number {
+    const actionsGap = px(prop(rule(css, ".site-header__actions"), "gap"));
+    return logo + innerGap * 2 + px(prop(links, "margin-left")) + linksWidth(labels) + actions + actionsGap + LOCALE;
+  }
+
+  function room(viewport: number): number {
+    const pad = root("container-pad-desktop");
+    return Math.min(viewport - SCROLLBAR, px(prop(inner, "max-width"))) - pad * 2;
+  }
+
+  const labels = (dict: typeof en, store: boolean) =>
+    [store ? dict.nav.courses : null, dict.nav.forCreators, dict.nav.pricing, dict.nav.promise, dict.nav.help].filter(
+      (label): label is string => label !== null,
+    );
+
+  it("os numeros vem do site-nav: botoes px-3 abaixo de xl, px-4 no xl, e o menu some no xl", () => {
+    expect(nav).toContain('className="button-solid gap-2 px-3 xl:px-4"');
+    expect(nav).toContain('className="button-solid px-3 xl:px-4"');
+    expect(nav).toMatch(/aria-controls="site-mobile-menu"[\s\S]*xl:hidden/);
+    expect(prop(below1280.match(/\.site-header__links\s*\{([^}]*)\}/)![1], "display")).toBe("none");
+  });
+
+  it.each([
+    ["en", en],
+    ["es", es],
+  ] as const)("%s: de 1280px para cima cabe tudo, com a loja aberta, logado ou nao", (_locale, dict) => {
+    for (const actions of [signedOut(dict, true), signedIn(dict, true)]) {
+      expect(headerWidth(labels(dict, true), actions)).toBeLessThanOrEqual(room(1280));
+    }
+  });
+
+  it("a conta prova por que os links esperam 1280px: em 1024px nao cabem logado, nem em espanhol deslogado", () => {
+    for (const dict of [en, es]) {
+      expect(headerWidth(labels(dict, false), signedIn(dict, false))).toBeGreaterThan(room(1024));
+    }
+    expect(headerWidth(labels(es, false), signedOut(es, false))).toBeGreaterThan(room(1024));
+    expect(headerWidth(labels(en, true), signedOut(en, false))).toBeGreaterThan(room(1024));
+  });
+
+  it("a margem da barra e a das paginas: 20px no celular e 32px a partir de 40rem (o sm), em toda largura", () => {
+    expect(prop(inner, "padding")).toBe("8px var(--container-pad-mobile)");
+    expect(root("container-pad-mobile")).toBe(20);
+    const tablet = rule(mediaBlocks("(width >= 40rem)").join("\n"), ".site-header__inner");
+    expect(prop(tablet, "padding-inline")).toBe("var(--container-pad-desktop)");
+    expect(root("container-pad-desktop")).toBe(32);
+    // Nada abaixo de 1280px volta a apertar a barra.
+    expect(below1280).not.toMatch(/\.site-header__inner\s*\{/);
+    const page = readFileSync(join(process.cwd(), "src/components/site/public-page.tsx"), "utf8");
+    expect(page).toContain("px-5 py-12 sm:px-8");
   });
 });

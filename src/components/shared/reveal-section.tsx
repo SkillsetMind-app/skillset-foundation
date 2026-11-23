@@ -13,13 +13,14 @@ export function RevealSection({
   className = "",
   ...props
 }: RevealSectionProps) {
-  const { ref, revealed } = useRevealOnView<HTMLDivElement>();
+  const { ref, armed, revealed } = useRevealOnView<HTMLDivElement>();
 
   return (
     <div
       ref={ref}
       className={[
         "reveal-on-view",
+        armed ? "reveal-on-view--armed" : "",
         revealed ? "reveal-on-view--in" : "",
         className,
       ]

@@ -93,6 +93,12 @@ describe("C3: latao fora de erro, aviso e exclusao", () => {
 
   it("olho da pagina de erro em navy e chip live_event sem latao", () => {
     expect(tagAround(read("app/error.tsx"), 'appErrors.eyebrow')).not.toContain("accent");
+    // O 404 usa o mesmo olho (F-17): era latao, a pagina de erro era navy.
+    const eyebrowClass = (file: string, key: string) => tagAround(read(file), key).match(/className="([^"]*)"/)?.[1];
+    expect(eyebrowClass("app/not-found.tsx", "publicPages.notFound.eyebrow")).toBe(
+      eyebrowClass("app/error.tsx", "appErrors.eyebrow"),
+    );
+    expect(eyebrowClass("app/not-found.tsx", "publicPages.notFound.eyebrow")).toContain("--color-primary");
     const row = read("components/account/notification-row.tsx");
     expect(row).toMatch(/live_event: "[^"]*text-\[var\(--color-danger-fg\)\]"/);
   });

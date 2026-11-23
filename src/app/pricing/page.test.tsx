@@ -71,6 +71,54 @@ describe("pricing page", () => {
     expect(grid.getByText("Recommended").closest("article")).toHaveTextContent("Starter");
   });
 
+  // Cada fato uma vez: a taxa na linha abaixo do preço, a economia anual no
+  // seletor e o teste grátis numa frase junto dos botões. O Pro dizia "0%
+  // commission" três vezes seguidas e a página citava o teste nove vezes.
+  it("states the fee, the yearly saving and the trial once each", async () => {
+    render(await PricingPage());
+
+    const region = screen.getByRole("region", { name: "Plan comparison" });
+    const count = (text: string, part: string) => text.split(part).length - 1;
+    for (const card of within(region).getAllByRole("article")) {
+      const text = card.textContent ?? "";
+      expect(count(text, "per sale")).toBeLessThanOrEqual(1);
+      expect(count(text, "Card processing by Stripe still applies")).toBeLessThanOrEqual(1);
+      expect(text).not.toContain("Annual billing saves");
+    }
+    // A lista fica só com o que muda de um plano para o outro.
+    const pro = within(region).getByText("Pro").closest("article")!;
+    expect(pro).toHaveTextContent("Creators with an established catalog.");
+    expect(pro).toHaveTextContent("5 custom domains and 5 marketplace highlights");
+    expect(pro).toHaveTextContent("Remove the SkillsetMind mark");
+    expect(within(region).getByText("1 custom domain and 1 marketplace highlight")).toBeInTheDocument();
+    expect(within(region).getByText("Publish once your course passes the launch checks")).toBeInTheDocument();
+    expect(screen.getByLabelText(/Yearly/).closest("label")).toHaveTextContent("~17% off");
+    // Os cartões do app leem o mesmo plans.ts: o filtro é só desta página.
+    expect(publicPlans.find((plan) => plan.id === "basic")?.highlights).toContain("Annual billing saves ~17%");
+    expect(publicPlans.find((plan) => plan.id === "pro")?.highlights[0]).toMatch(/^0% commission/);
+
+    expect(screen.getAllByText(translate(getDictionary("en"), "planTrial.publicNote"))).toHaveLength(1);
+    const closing = screen.getByText("Ready to publish on SkillsetMind?").closest("section")!;
+    expect(closing).not.toHaveTextContent("14-day free trial");
+  });
+
+  // O total anual ("$190 yearly") só existia no anual: trocar o seletor
+  // aumentava os três cartões e empurrava a página.
+  it("keeps the yearly total line in both cycles, invisible on monthly", async () => {
+    render(await PricingPage());
+
+    const region = screen.getByRole("region", { name: "Plan comparison" });
+    expect(region.className).toContain("md:grid-cols-3");
+    const yearlyLines = [...region.querySelectorAll("p")].filter((line) => line.textContent?.endsWith(" yearly"));
+    expect(yearlyLines).toHaveLength(publicPlans.length);
+    for (const line of yearlyLines) {
+      const classes = line.className.split(" ");
+      expect(classes).toContain("invisible");
+      expect(classes).toContain("group-has-[#billing-yearly:checked]:visible");
+      expect(classes).not.toContain("hidden");
+    }
+  });
+
   it("stretches the cards and pins the button to the bottom", async () => {
     render(await PricingPage());
 
