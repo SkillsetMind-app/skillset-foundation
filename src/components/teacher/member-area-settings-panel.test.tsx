@@ -349,6 +349,37 @@ describe("MemberAreaSettingsPanel", () => {
     }
   });
 
+  it("a lista de produtos que não carrega ganha \"Try again\", que lê de novo uma vez só", async () => {
+    const reload = vi.fn();
+    mocks.subscribeToTeacherCourses.mockImplementation(
+      (_uid: string, callback: (value: unknown) => void, onError: (error: Error) => void) => {
+        onError(new Error("offline"));
+        reload.mockImplementation(async () => callback(courses));
+        return Object.assign(() => undefined, { reload });
+      },
+    );
+    renderPanel();
+    expect(await screen.findByText(/We could not load your products\./)).toBeTruthy();
+    expect(screen.queryByText(/Reload the page/)).toBeNull();
+    expect(screen.getByRole("button", { name: "Save members area" })).toBeDisabled();
+    const retry = screen.getByRole("button", { name: "Try again" });
+    fireEvent.click(retry);
+    fireEvent.click(retry);
+    expect(await screen.findByRole("list")).toBeTruthy();
+    expect(reload).toHaveBeenCalledTimes(1);
+    expect(titles()[0]).toContain("Draft course");
+    expect(screen.queryByRole("button", { name: "Try again" })).toBeNull();
+  });
+
+  it("erro de salvar não ganha \"Try again\"", async () => {
+    mocks.saveMyMemberArea.mockRejectedValue(new Error("boom"));
+    renderPanel();
+    await screen.findByRole("list");
+    fireEvent.click(screen.getByRole("button", { name: "Save members area" }));
+    expect(await screen.findByText("We could not save your members area. Please try again.")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Try again" })).toBeNull();
+  });
+
   it("em espanhol", async () => {
     renderPanel("es");
     expect(await screen.findByText(/Todavía no la personalizaste/)).toBeTruthy();
