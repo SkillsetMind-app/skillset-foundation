@@ -28,13 +28,14 @@ export async function ForCreatorsBand() {
               <p className="text-xs font-semibold uppercase tracking-[0.22em] text-white/75">
                 {t("home.creators.eyebrow")}
               </p>
-              <h2 className="display-title mt-3 text-4xl leading-tight text-white sm:text-5xl">
+              <h2 className="display-title mt-3 text-[clamp(2.25rem,4.2vw,3.25rem)] leading-[1.05] text-white">
                 {t("home.creators.title")}
               </h2>
+              {/* Alvo de 48px nos dois links (público de 55+). */}
               <div className="mt-6 flex flex-wrap gap-3">
                 <Link
                   href="/auth?mode=signup&path=teacher"
-                  className="button-solid-light group inline-flex items-center gap-2 px-4 py-2.5 text-sm"
+                  className="button-solid-light group inline-flex min-h-12 items-center gap-2 px-4 py-2.5 text-sm"
                 >
                   {t("home.creators.ctaStart")}
                   <ArrowRight
@@ -46,7 +47,7 @@ export async function ForCreatorsBand() {
                 </Link>
                 <Link
                   href="/promise"
-                  className="inline-flex items-center px-2 py-3 text-sm font-semibold text-white underline-offset-4 transition hover:text-white hover:underline"
+                  className="inline-flex min-h-12 items-center px-2 py-3 text-sm font-semibold text-white underline-offset-4 transition hover:text-white hover:underline"
                 >
                   {t("home.creators.ctaPromise")}
                 </Link>
@@ -83,9 +84,11 @@ export async function ForCreatorsBand() {
                 <p className="mt-2 text-xs leading-5 text-white/70">{t("home.creators.plansNote")}</p>
               </div>
               {/* Sem uma segunda entrada aqui dentro: a faixa inteira já entra
-                  de uma vez, e os itens pingavam um a um. */}
+                  de uma vez, e os itens pingavam um a um. Os três itens são o
+                  texto corrido da faixa: 17/18px, sem mudar o tom claro (a
+                  faixa é azul-marinho). Os planos ficam nas letras miúdas. */}
               {trustBullets.map((bullet) => (
-                <div key={bullet} className="home-creators__item flex h-full items-start gap-3 rounded-lg border border-white/16 bg-white/10 p-4 text-sm leading-6 text-white/85">
+                <div key={bullet} className="home-creators__item flex h-full items-start gap-3 rounded-lg border border-white/16 bg-white/10 p-4 text-[1.0625rem] leading-[1.6] text-white/85 md:text-lg">
                   <span
                     aria-hidden="true"
                     className="grid size-6 shrink-0 place-items-center rounded-full bg-[var(--color-accent)]/30 text-[var(--color-accent-soft)]"

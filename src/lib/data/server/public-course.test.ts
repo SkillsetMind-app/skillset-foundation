@@ -30,7 +30,8 @@ vi.mock("@/lib/supabase/config", () => ({
   assertSupabaseClientConfig: () => ({ url: "https://example.supabase.co", anonKey: "anon" }),
 }));
 
-const { getCourseRefAccess, hasRealPublishedCourse, listPublishedCourses, marketplaceIsOpen } = await import("@/lib/data/server/public-course");
+const { getCourseRefAccess, getShowcaseCourseCover, hasRealPublishedCourse, listPublishedCourses, marketplaceIsOpen } =
+  await import("@/lib/data/server/public-course");
 
 type Row = { id: string; title_key: string | null; status: string; owner_id: string };
 
@@ -300,6 +301,77 @@ describe("hasRealPublishedCourse", () => {
     } finally {
       log.mockRestore();
     }
+  });
+});
+
+// O cartão "See a real course" da home: título e capa de um curso, pela mesma
+// leitura anônima e em cache de hasRealPublishedCourse.
+describe("getShowcaseCourseCover", () => {
+  function anonClient(result: { data: unknown; error: unknown }) {
+    const calls: unknown[][] = [];
+    const query = {
+      select: (...args: unknown[]) => (calls.push(["select", ...args]), query),
+      eq: (...args: unknown[]) => (calls.push(["eq", ...args]), query),
+      maybeSingle: async () => (calls.push(["maybeSingle"]), result),
+    };
+    anon.client = { from: (table: string) => (calls.push(["from", table]), query) };
+    return calls;
+  }
+
+  it("lê só título e capa do curso publicado com aquele id", async () => {
+    const calls = anonClient({ data: { title: "Emotional Intelligence Mastery", cover_image_url: "https://x/capa.jpg" }, error: null });
+
+    expect(await getShowcaseCourseCover("c-1")).toEqual({
+      title: "Emotional Intelligence Mastery",
+      coverImageUrl: "https://x/capa.jpg",
+    });
+    expect(calls).toEqual([
+      ["from", "courses"],
+      ["select", "title, cover_image_url"],
+      ["eq", "id", "c-1"],
+      ["eq", "status", "published"],
+      ["maybeSingle"],
+    ]);
+  });
+
+  it("curso que não está publicado (ou não existe) responde null", async () => {
+    anonClient({ data: null, error: null });
+    expect(await getShowcaseCourseCover("c-1")).toBeNull();
+  });
+
+  it("falha de leitura responde null e fica no log", async () => {
+    anonClient({ data: null, error: { message: "banco fora" } });
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      expect(await getShowcaseCourseCover("c-1")).toBeNull();
+      expect(log).toHaveBeenCalledWith(expect.stringContaining("getShowcaseCourseCover"), expect.anything());
+    } finally {
+      log.mockRestore();
+    }
+  });
+
+  // Banco mudo: uma tentativa só, abortada pelo prazo, guardada 5 min. A home
+  // sai com o cartão de texto em vez de esperar e repetir.
+  it("desiste na primeira vez que o prazo estoura, sem repetir, e responde null", async () => {
+    anon.client = null;
+    const timedOut = vi.fn<typeof fetch>(async () => {
+      throw new DOMException("The operation was aborted due to timeout", "TimeoutError");
+    });
+    vi.stubGlobal("fetch", timedOut);
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      expect(await getShowcaseCourseCover("c-1")).toBeNull();
+      expect(timedOut).toHaveBeenCalledTimes(1);
+      const init = timedOut.mock.calls[0]?.[1] as RequestInit & { next?: { revalidate?: number } };
+      expect(init.signal).toBeInstanceOf(AbortSignal);
+      expect(init.next?.revalidate).toBe(300);
+    } finally {
+      log.mockRestore();
+      vi.unstubAllGlobals();
+    }
+    const options = anon.options as { auth: { persistSession: boolean }; db: { retry?: boolean } };
+    expect(options.auth.persistSession).toBe(false);
+    expect(options.db.retry).toBe(false);
   });
 });
 
