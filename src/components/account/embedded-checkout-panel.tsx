@@ -12,6 +12,7 @@ import { BrandName } from "@/components/shared/brand-name";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { StripeFrameSkeleton } from "@/components/teacher/builder-skeleton";
 import { SupportDetails } from "@/components/teacher/support-details";
+import { InlineAlert } from "@/components/ui/inline-alert";
 import type { Locale } from "@/lib/i18n/config";
 import {
   formatPlanCommission,
@@ -193,12 +194,15 @@ export function EmbeddedCheckoutPanel({
     <div className="grid gap-5 lg:grid-cols-[1fr_360px]">
       <div className="overflow-hidden rounded-lg border fine-rule bg-white shadow-[var(--shadow-soft)]">
         {error ? (
-          <div role="alert" className="p-6 text-sm text-[var(--color-danger-fg)]">
-            <p className="font-semibold">{t("activationCheckout.errorTitle")}</p>
-            <p className="mt-2 text-[var(--color-ink-soft)]">{t(`billingCheckout.error.${error.key}`)}</p>
-            {/* A frase acima diz o que fazer; o codigo da resposta fica so
-                para o suporte, recolhido (era "Reference: HTTP 409"). */}
-            {error.status ? <SupportDetails code={error.status} className="mt-2" /> : null}
+          <div className="p-6 text-sm">
+            {/* O aviso de erro da casa (ícone, fundo que segue o tema, lido em
+                voz alta); era o título vermelho solto, sem caixa. */}
+            <InlineAlert tone="error" title={t("activationCheckout.errorTitle")}>
+              <p className="mt-1 font-normal">{t(`billingCheckout.error.${error.key}`)}</p>
+              {/* A frase acima diz o que fazer; o codigo da resposta fica so
+                  para o suporte, recolhido (era "Reference: HTTP 409"). */}
+              {error.status ? <SupportDetails code={error.status} className="mt-2" /> : null}
+            </InlineAlert>
             <Link
               href="/account/plans"
               className="button-outline mt-4 px-4 py-2 text-sm text-[var(--color-ink)]"

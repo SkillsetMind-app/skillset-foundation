@@ -30,6 +30,10 @@ describe("F-07: as últimas caixas vermelhas à mão viraram o aviso da casa", (
     // Os dois chips de falha do salvar do construtor e a capa da área de membros.
     "components/teacher/course-builder-studio.tsx",
     "components/teacher/member-area-settings-panel.tsx",
+    // Compra: sem conta, a página de obrigado e o erro do checkout embutido.
+    "components/courses/guest-checkout-form.tsx",
+    "components/courses/guest-access-link.tsx",
+    "components/account/embedded-checkout-panel.tsx",
   ])("%s usa o InlineAlert de erro", (file) => {
     const source = read(file);
     expect(source).not.toContain(handRedBox);

@@ -3,9 +3,7 @@
 import { useState } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
-
-const errorClass =
-  "rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]";
+import { InlineAlert } from "@/components/ui/inline-alert";
 
 type LinkState = "waiting" | "sending" | "sent" | "pending" | "failed" | "limited";
 
@@ -31,12 +29,14 @@ export function GuestAccessLink({ maskedEmail }: { maskedEmail: string }) {
   const message = t(`guestCheckout.thanks.${state}`).replace("{email}", () => maskedEmail);
   return (
     <div className="mt-6 grid gap-4">
-      <p
-        role={state === "failed" || state === "limited" ? "alert" : "status"}
-        className={state === "failed" || state === "limited" ? errorClass : "info-notice"}
-      >
-        {message}
-      </p>
+      {/* Falha: o aviso de erro da casa (ícone, fundo que segue o tema). */}
+      {state === "failed" || state === "limited" ? (
+        <InlineAlert tone="error">{message}</InlineAlert>
+      ) : (
+        <p role="status" className="info-notice">
+          {message}
+        </p>
+      )}
       {state === "waiting" || state === "sent" ? (
         <p className="text-sm leading-6 text-[var(--color-ink-soft)]">{t("guestCheckout.thanks.checkSpam")}</p>
       ) : null}
