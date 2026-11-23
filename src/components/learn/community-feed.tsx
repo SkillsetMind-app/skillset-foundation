@@ -1145,7 +1145,7 @@ function Avatar({ name, online = false, small = false }: { name: string; online?
     >
       {initials}
       {online ? (
-        <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-white bg-[rgb(22,163,74)]" />
+        <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-white bg-[var(--color-success)]" />
       ) : null}
     </span>
   );

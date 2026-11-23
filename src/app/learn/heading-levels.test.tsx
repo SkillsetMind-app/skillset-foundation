@@ -103,4 +103,17 @@ describe("níveis de cabeçalho da aula aberta", () => {
       expect(source, file).not.toMatch(/<h[45][\s>]/);
     }
   });
+
+  // Sob a capa o título da aula (h2) tem 18px (text-lg); o aviso do palco
+  // logo abaixo (h3: trancada, sem mídia) tinha 20px. Um subtítulo não pode
+  // ser maior que o título dele.
+  it("o aviso do palco não é maior que o título da aula sob a capa", () => {
+    const workspace = read("enrolled-course-workspace.tsx");
+    expect(workspace).toContain('underHero ? "text-lg font-semibold"');
+    const css = readFileSync(join(process.cwd(), "src", "app", "globals.css"), "utf8");
+    const at = css.indexOf(".member-video-empty h5 {");
+    expect(at).toBeGreaterThan(-1);
+    const [, size] = css.slice(at, css.indexOf("}", at)).match(/font-size: (\d+)px;/)!;
+    expect(Number(size)).toBeLessThanOrEqual(18);
+  });
 });

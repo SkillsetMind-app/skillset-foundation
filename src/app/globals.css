@@ -5881,12 +5881,14 @@ body:has([aria-label="Course categories"])
   /* O vídeo terminou com o mini ligado: o cartão "Next lesson" nascia dentro
      do vídeo pequeno (~150x84px) e só o anel aparecia. Aqui o palco deixa de
      ser a referência do cartão, e ele vira uma faixa logo abaixo da barra do
-     mini, de ponta a ponta. O vídeo não sai do lugar no DOM. */
+     mini, de ponta a ponta. O vídeo não sai do lugar no DOM. As duas regras
+     dependem do mesmo :has(): navegador sem ele ignora as duas e o cartão
+     fica onde estava, em vez de cair sob o overflow do palco e sumir. */
   .member-video-dock--mini .member-video-stage:has(> .member-next-lesson) {
     position: static;
   }
 
-  .member-video-dock--mini .member-next-lesson {
+  .member-video-dock--mini .member-video-stage:has(> .member-next-lesson) > .member-next-lesson {
     top: 100%;
     right: 0;
     bottom: auto;
@@ -5982,11 +5984,13 @@ body:has([aria-label="Course categories"])
 }
 
 /* h3 nos avisos da sala (subseção da aula, que é h2); h5 segue no player da
-   Bunny (components/courses), que mora no mesmo palco. */
+   Bunny (components/courses), que mora no mesmo palco. 18px, não 20: sob a
+   capa o título da aula (o h2 acima) tem 18px, e um subtítulo não pode ser
+   maior que o título dele. */
 .member-video-empty h3,
 .member-video-empty h5 {
   margin-top: 16px;
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 800;
 }
 

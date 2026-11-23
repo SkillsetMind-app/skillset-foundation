@@ -66,11 +66,15 @@ describe("o cartao 'Proxima aula'", () => {
   it("com o mini player ligado vira uma faixa logo abaixo dele", () => {
     const media = css.lastIndexOf(
       "@media (max-width: 767.98px) {",
-      css.indexOf(".member-video-dock--mini .member-next-lesson {"),
+      css.indexOf(".member-video-dock--mini .member-video-stage:has(> .member-next-lesson) > .member-next-lesson {"),
     );
     expect(media).toBeGreaterThan(-1);
     expect(block(".member-video-dock--mini .member-video-stage:has(> .member-next-lesson)")).toContain("position: static;");
-    const strip = block(".member-video-dock--mini .member-next-lesson");
+    // As duas metades sob o mesmo :has(): sem suporte, as duas caem juntas e
+    // o cartão fica onde estava (sem isso ele ia para baixo do palco, que
+    // corta o que passa da borda, e sumia).
+    expect(css).not.toContain(".member-video-dock--mini .member-next-lesson {");
+    const strip = block(".member-video-dock--mini .member-video-stage:has(> .member-next-lesson) > .member-next-lesson");
     expect(strip).toContain("top: 100%;");
     expect(strip).toContain("bottom: auto;");
   });

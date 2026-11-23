@@ -93,6 +93,17 @@ function LessonCommentsPanel({
   const [posted, setPosted] = useState(false);
   const postsSubscription = useRef<{ reload: () => Promise<void> } | null>(null);
   const sectionRef = useRef<HTMLElement>(null);
+  // Publicar ou cancelar desmonta a caixa de texto que tinha o foco, e ele
+  // caía no <body>: volta para a caixa em repouso, de onde a pessoa veio.
+  const composerRef = useRef<HTMLButtonElement>(null);
+  const returnFocus = useRef(false);
+
+  useEffect(() => {
+    if (!open && returnFocus.current) {
+      returnFocus.current = false;
+      composerRef.current?.focus();
+    }
+  }, [open]);
 
   useEffect(() => {
     if (!canRead) {
@@ -129,6 +140,7 @@ function LessonCommentsPanel({
   const commentsByPost = useMemo(() => groupCommentsByPost(comments), [comments]);
 
   function cancel() {
+    returnFocus.current = true;
     setOpen(false);
     setBody("");
     setError("");
@@ -161,6 +173,7 @@ function LessonCommentsPanel({
         user,
       });
       setBody("");
+      returnFocus.current = true;
       setOpen(false);
       setPosted(true);
     } catch (failure) {
@@ -227,6 +240,7 @@ function LessonCommentsPanel({
         // do compositor do feed): so vira textarea ao clicar. Desabilitada
         // no preview e sem sessao, com a mensagem da porta do feed.
         <button
+          ref={composerRef}
           type="button"
           disabled={!canRead}
           onClick={() => setOpen(true)}

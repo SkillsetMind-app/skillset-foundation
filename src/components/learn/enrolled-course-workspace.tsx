@@ -35,7 +35,7 @@ import { NextLessonCard } from "@/components/learn/next-lesson-card";
 import { MembersAreaHero } from "@/components/learn/members-area-hero";
 import { TrustedEmbedPlayer } from "@/components/learn/trusted-embed-player";
 import { CourseSubscriptionCard } from "@/components/learn/course-subscription-card";
-import { CourseUnlockModal } from "@/components/learn/course-unlock-modal";
+import { CourseUnlockModal, unlockCopyKeys } from "@/components/learn/course-unlock-modal";
 import { VideoDock } from "@/components/learn/video-dock";
 import {
   VideoWatermark,
@@ -917,8 +917,10 @@ export function EnrolledCourseWorkspace({
           }}
           ctaHref={`/courses/${course.slug}`}
           // No price here: the modal's fallback formats the raw course price
-          // in English. The course page owns the real, resolved price.
-          ctaLabel={t("learn.paths.unlock")}
+          // in English. The course page owns the real, resolved price. The
+          // verb (and the modal's note) still follow it: buy, enroll free, or
+          // the neutral "Unlock course" when the price is unknown.
+          ctaLabel={t(unlockCopyKeys(course.priceAmountMinor).label)}
           secondaryLink={{ href: "/learn", label: t("learn.classroom.workspace.backToLearning") }}
           onClose={() => router.push("/learn")}
         />

@@ -442,6 +442,9 @@ describe("comentarios da aula sob o player", () => {
     await act(async () => resolve({ id: "post-new" }));
     expect(screen.queryByRole("textbox", { name: "Your comment on this lesson" })).toBeNull();
     expect(screen.getByRole("button", { name: "Comment on the lesson." })).toBeInTheDocument();
+    // A caixa de texto sumiu: o foco volta para a caixa em repouso, nao cai
+    // no <body>.
+    expect(screen.getByRole("button", { name: "Comment on the lesson." })).toHaveFocus();
     // O leitor de tela ouve o proprio comentario publicado, uma linha so.
     const region = screen.getByRole("region", { name: /Lesson comments/ });
     expect(within(region).getByRole("status")).toHaveTextContent("Comment posted.");

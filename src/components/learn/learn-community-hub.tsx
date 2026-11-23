@@ -11,10 +11,9 @@ import { communityEnrollmentCourseIds, createEnrollmentCommunityCards } from "@/
 import { getCommunityCourseIds, subscribeToUserEnrollments } from "@/lib/data/enrollments";
 
 const NO_COURSES: ReadonlySet<string> = new Set();
-// A busca só aparece com mais de 6 comunidades: com uma ou duas ela era um
-// cartão inteiro para filtrar o que já cabe na tela. O mesmo limite dos
-// controles de "My courses" em /learn (COURSE_CONTROLS_AFTER).
-const SEARCH_AFTER = 6;
+// A busca só aparece a partir de 3 comunidades: com uma ou duas ela era um
+// cartão inteiro para filtrar o que já cabe na tela.
+const SEARCH_FROM = 3;
 
 export function LearnCommunityHub() {
   const { t, locale } = useTranslation();
@@ -112,8 +111,12 @@ export function LearnCommunityHub() {
       // Só para a busca: o cartão não mostra mais a categoria.
       categories: t("learnWave2.communityHub.category"),
     }));
+  const showSearch = communityCards.length >= SEARCH_FROM;
   const filteredCards = communityCards.filter((space) => {
-    const normalizedSearch = search.trim().toLowerCase();
+    // Com a caixa escondida o texto não filtra: se a contagem cai com uma
+    // busca digitada, o aluno ficava em "No communities match" sem a caixa
+    // para limpar.
+    const normalizedSearch = showSearch ? search.trim().toLowerCase() : "";
     const matchesSearch =
       !normalizedSearch ||
       space.name.toLowerCase().includes(normalizedSearch) ||
@@ -146,7 +149,7 @@ export function LearnCommunityHub() {
 
   return (
     <section className="space-y-5">
-      {communityCards.length > SEARCH_AFTER ? (
+      {showSearch ? (
         <div className="rounded-lg border border-[var(--color-line)] bg-white p-5 shadow-[var(--shadow-soft)]">
           <div className="grid gap-3">
             <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">

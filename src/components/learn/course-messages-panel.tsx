@@ -126,16 +126,15 @@ export function CourseMessagesPanel({
       </div>
 
       {canSend && !ready ? (
-        <div role="status" className="mt-5 grid gap-3">
+        // Uma linha só, dentro do vão de 20px acima do formulário (altura
+        // zero no fluxo): a maioria das conversas chega vazia, e duas bolhas
+        // de espera faziam o formulário subir ~124px quando o vazio chegava.
+        <div role="status" className="relative h-0">
           <span className="sr-only">{t("learn.classroom.messages.loading")}</span>
-          {/* Uma mensagem de cada lado, no formato das de verdade. */}
-          {["justify-self-start", "justify-self-end"].map((side) => (
-            <span
-              key={side}
-              aria-hidden="true"
-              className={`block h-14 w-3/5 rounded-lg bg-[var(--ma-line,var(--color-surface-strong))] motion-safe:animate-pulse ${side}`}
-            />
-          ))}
+          <span
+            aria-hidden="true"
+            className="absolute left-0 top-2 block h-2 w-2/5 rounded-sm bg-[var(--ma-line,var(--color-surface-strong))] motion-safe:animate-pulse"
+          />
         </div>
       ) : messages.length > 0 ? (
         <ul className="mt-5 grid gap-3">

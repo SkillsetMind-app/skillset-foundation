@@ -723,6 +723,6 @@ describe.each(COMBOS)("comunidade da sala nas cores do curso — %s", (_name, va
 it("o feed e a gaveta da comunidade não pintam mais verde fixo", () => {
   for (const file of ["community-feed.tsx", "community-post-drawer.tsx"]) {
     const source = readFileSync(join(process.cwd(), "src/components/learn", file), "utf8");
-    expect(source, file).not.toMatch(/rgb\(21,\s*128,\s*61\)|rgba\(22,\s*163,\s*74,/);
+    expect(source, file).not.toMatch(/rgba?\(2[12],\s*1(28|63),/);
   }
 });

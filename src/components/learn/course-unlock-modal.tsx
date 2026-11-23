@@ -62,6 +62,22 @@ export type CourseUnlockModalCourse = Pick<
   "id" | "title" | "summary" | "category" | "coverImageUrl" | "priceAmountMinor" | "currency"
 >;
 
+/**
+ * O verbo do botão e o aviso pelo preço que o curso já traz. "Unlock" é
+ * palavra que a marca evita, mas trocar por "Buy" em todo lugar punha "Buy
+ * course" num curso grátis. Pago compra; grátis se inscreve (o mesmo texto da
+ * página do curso); sem preço conhecido fica o "Unlock course" neutro. Botão e
+ * aviso saem do mesmo par, para nunca discordarem.
+ */
+export function unlockCopyKeys(priceAmountMinor: number | null | undefined): { label: string; note: string } {
+  if (typeof priceAmountMinor !== "number") {
+    return { label: "learn.paths.unlock", note: "learn.paths.unlockNote" };
+  }
+  return priceAmountMinor > 0
+    ? { label: "learn.paths.buy", note: "learn.paths.buyNote" }
+    : { label: "publicCourses.enrollFree", note: "publicCourses.unlockNoteFree" };
+}
+
 export function CourseUnlockModal({
   course,
   onClose,
@@ -184,7 +200,7 @@ export function CourseUnlockModal({
 
           <p className="mt-4 flex items-start gap-2 rounded-md bg-[var(--color-surface-soft)] px-3 py-2.5 text-xs leading-6 text-[var(--color-ink-soft)]">
             <Lock aria-hidden="true" size={14} className="mt-1 shrink-0" />
-            <span>{note ?? t("learn.paths.unlockNote")}</span>
+            <span>{note ?? t(unlockCopyKeys(course.priceAmountMinor).note)}</span>
           </p>
 
           <Link
@@ -194,7 +210,9 @@ export function CourseUnlockModal({
           >
             <Lock aria-hidden="true" size={15} />
             {ctaLabel
-              ?? (price ? `${t("learn.paths.unlock")} - ${price}` : t("learn.paths.unlock"))}
+              ?? (price
+                ? `${t(unlockCopyKeys(course.priceAmountMinor).label)} - ${price}`
+                : t(unlockCopyKeys(course.priceAmountMinor).label))}
           </Link>
           {secondaryLink ? (
             <Link
