@@ -74,9 +74,14 @@ export function CourseMaterialsPanel({
         </div>
       </div>
       {isLoading ? (
-        <p className="mt-4 rounded-md bg-white px-3 py-2 text-sm text-[var(--color-ink-soft)]">
-          {t("learn.classroom.resources.loading")}
-        </p>
+        // A espera com a forma das linhas de arquivo, no osso da sala
+        // (--ma-line), e a frase só para o leitor de tela.
+        <div role="status" className="mt-5 grid gap-2">
+          <span className="sr-only">{t("learn.classroom.resources.loading")}</span>
+          {[0, 1].map((row) => (
+            <div key={row} aria-hidden="true" className="h-16 rounded-lg bg-[var(--ma-line,var(--color-surface-strong))] motion-safe:animate-pulse" />
+          ))}
+        </div>
       ) : groups.count === 0 ? (
         <p className="mt-4 rounded-md bg-white px-3 py-2 text-sm text-[var(--color-ink-soft)]">
           {t("learn.classroom.resources.empty")}

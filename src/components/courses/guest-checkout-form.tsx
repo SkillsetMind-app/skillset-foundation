@@ -6,6 +6,7 @@ import { useState, useSyncExternalStore, type FormEvent } from "react";
 import { GoogleMark } from "@/components/auth/google-mark";
 import { TurnstileWidget } from "@/components/auth/turnstile-widget";
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { InlineAlert } from "@/components/ui/inline-alert";
 import { isPlatformHost } from "@/domain/host-routing";
 import { isGoogleAuthEnabled } from "@/lib/auth/providers";
 import { getLoadingRoute } from "@/lib/auth/routing";
@@ -16,8 +17,6 @@ import { PaymentRequestError } from "@/lib/payments/client-fetch";
 const fieldClass =
   "mt-1.5 w-full rounded-md border border-[var(--color-line)] bg-white px-3.5 py-2.5 text-sm outline-none focus:border-[var(--color-primary-light)]";
 const labelClass = "text-xs font-semibold uppercase tracking-[0.18em] text-[var(--color-ink-soft)]";
-const errorClass =
-  "rounded-md border border-[rgba(178,34,52,0.2)] bg-[rgba(178,34,52,0.06)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-fg)]";
 
 const noSubscription = () => () => {};
 
@@ -197,7 +196,8 @@ export function GuestCheckoutForm({
       </form>
 
       {linkSent ? <p role="status" className="info-notice">{t("guestCheckout.form.linkSent")}</p> : null}
-      {errorKey ? <p role="alert" className={errorClass}>{t(errorKey)}</p> : null}
+      {/* O aviso da casa: ícone e fundo que seguem o tema (o 6% literal sumia no escuro). */}
+      {errorKey ? <InlineAlert tone="error">{t(errorKey)}</InlineAlert> : null}
 
       {isGoogleAuthEnabled ? (
         <>

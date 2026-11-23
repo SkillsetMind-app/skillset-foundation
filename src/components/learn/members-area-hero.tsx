@@ -5,6 +5,7 @@ import { ArrowLeft } from "lucide-react";
 import { useId, useLayoutEffect, useRef, useState } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { ProgressBar } from "@/components/ui/progress-bar";
 
 export interface MembersAreaHeroProps {
   theme: "light" | "dark";
@@ -183,18 +184,14 @@ export function MembersAreaHero({
                 </>
               )}
             </span>
-            {/* A barra da capa fica (o desenho dela é para cima da foto); só
-                passa a ser anunciada como barra de progresso. */}
-            <span
+            {/* A barra da casa (ui/progress-bar): o trilho claro sobre a foto
+                vem do .members-hero__bar, o preenchimento no acento do curso. */}
+            <ProgressBar
+              value={pct}
+              label={t("learn.paths.percentComplete").replace("{percent}", () => String(pct))}
               className="members-hero__bar"
-              role="progressbar"
-              aria-valuenow={pct}
-              aria-valuemin={0}
-              aria-valuemax={100}
-              aria-label={t("learn.paths.percentComplete").replace("{percent}", () => String(pct))}
-            >
-              <span style={{ width: `${pct}%` }} />
-            </span>
+              fillClassName="bg-[var(--ma-accent)]"
+            />
           </div>
         ) : null}
 

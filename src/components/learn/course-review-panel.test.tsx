@@ -144,4 +144,42 @@ describe("CourseReviewPanel locale and state", () => {
     expect(subscribeToUserCourseReview).toHaveBeenCalledTimes(1);
     expect(submitCourseReview).not.toHaveBeenCalled();
   });
+
+  // F-11: a falha da leitura tem saída; o aviso fica, com o botão ocupado, até a
+  // releitura responder, e a resenha salva chega e preenche o formulário.
+  it("Try again keeps the alert busy until the saved review arrives", () => {
+    vi.mocked(subscribeToUserCourseReview).mockImplementationOnce((_courseId, _userId, _onNext, onError) => {
+      onError(new Error("offline"));
+      return vi.fn();
+    });
+    let deliver!: (review: CourseReview | null) => void;
+    vi.mocked(subscribeToUserCourseReview).mockImplementationOnce((_courseId, _userId, onNext) => {
+      deliver = onNext;
+      return vi.fn();
+    });
+    renderReview({}, "en");
+    expect(screen.getByRole("alert")).toHaveTextContent("We could not load your course review.");
+
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(subscribeToUserCourseReview).toHaveBeenCalledTimes(2);
+    expect(screen.getByRole("alert")).toHaveTextContent("We could not load your course review.");
+    expect(screen.getByRole("button", { name: "Trying again..." })).toHaveAttribute("aria-busy", "true");
+
+    act(() => deliver({ rating: 3, body: "Solid course" } as CourseReview));
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.getByDisplayValue("Solid course")).toBeInTheDocument();
+    expect(submitCourseReview).not.toHaveBeenCalled();
+  });
+
+  it("a second failed read gives the alert and an enabled Try again back", async () => {
+    vi.mocked(subscribeToUserCourseReview).mockImplementation((_courseId, _userId, _onNext, onError) => {
+      onError(new Error("offline"));
+      return vi.fn();
+    });
+    renderReview({}, "en");
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+
+    expect(await screen.findByRole("button", { name: "Try again" })).toBeEnabled();
+    expect(screen.getByRole("alert")).toHaveTextContent("We could not load your course review.");
+  });
 });

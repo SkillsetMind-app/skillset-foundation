@@ -44,6 +44,7 @@ import { ProtectedAssetPreview } from "@/components/shared/protected-asset-previ
 import { MilestoneSeal, useJustDone } from "@/components/ui/drawn-check";
 import { InlineAlert } from "@/components/ui/inline-alert";
 import { LoadErrorAlert } from "@/components/ui/load-error-alert";
+import { ProgressBar } from "@/components/ui/progress-bar";
 import type { CourseAsset } from "@/domain/course-asset";
 import {
   formatCourseAssetSize,
@@ -1416,16 +1417,15 @@ export function EnrolledCourseWorkspace({
               />
             ) : null}
           </div>
-          <span
+          {/* A barra da casa (ui/progress-bar), nas cores do curso: o trilho na
+              linha do curso vem do CSS da sala, o preenchimento no acento. Ela
+              desliza até a marca nova (transform), em vez de saltar. */}
+          <ProgressBar
+            value={progressPercent}
+            label={t("learn.paths.percentComplete").replace("{percent}", () => String(progressPercent))}
             className="member-classroom-head__progress"
-            role="progressbar"
-            aria-valuenow={progressPercent}
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-label={t("learn.paths.percentComplete").replace("{percent}", () => String(progressPercent))}
-          >
-            <span style={{ width: `${progressPercent}%` }} />
-          </span>
+            fillClassName="bg-[var(--ma-accent)]"
+          />
           <span className="member-classroom-head__percent inline-flex items-center gap-1">
             {progressPercent}%
             {/* O marco: a barra chegou ao fim (o mesmo selo do construtor). */}

@@ -253,6 +253,26 @@ describe("feed da comunidade (rodada 11)", () => {
     vi.useRealTimers();
   });
 
+  // F-03: a espera tem a forma dos posts, com a frase só para o leitor de tela.
+  // C-04: o filtro no desenho do seletor segmentado (pastilha clara, não navy cheio).
+  it("espera com a forma dos posts e filtro no desenho segmentado", async () => {
+    render(<I18nProvider initialLocale="en"><CommunityFeed space={space} instructorName="Patrick" /></I18nProvider>);
+    await waitFor(() => expect(mocks.postsCallback).not.toBeNull());
+    const waiting = screen.getByText("Loading community feed...");
+    expect(waiting).toHaveClass("sr-only");
+    expect(waiting.closest("[role='status']")).not.toBeNull();
+
+    await act(async () => mocks.postsCallback?.(posts));
+    expect(screen.queryByText("Loading community feed...")).toBeNull();
+    const group = screen.getByRole("group", { name: "Filter posts" });
+    expect(group).toHaveClass("rounded-lg", "border", "bg-[var(--color-surface-soft)]", "p-1");
+    const all = within(group).getByRole("button", { name: "All" });
+    expect(all).toHaveAttribute("aria-pressed", "true");
+    expect(all).toHaveClass("bg-white", "text-[var(--color-primary)]", "shadow-[var(--shadow-soft)]");
+    expect(all.className).not.toContain("bg-[var(--color-primary)]");
+    expect(within(group).getByRole("button", { name: "Questions · 1 open" })).toHaveClass("border-transparent");
+  });
+
   it("translates filters and a literal instructor name while preserving query, focus and subscriptions", async () => {
     await renderFeed({ instructorName: "Pat $$50 $&" }, "en");
     fireEvent.click(screen.getByRole("button", { name: "Questions · 1 open" }));

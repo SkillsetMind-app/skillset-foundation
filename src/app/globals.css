@@ -5544,26 +5544,6 @@ html:has(.member-preview-banner) {
   color: var(--color-ink);
 }
 
-.member-classroom-head__progress {
-  display: block;
-  height: 6px;
-  overflow: hidden;
-  border-radius: 999px;
-  background: var(--color-line);
-}
-
-.member-classroom-head__progress > span {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
-  background: var(--color-accent);
-  /* Concluir uma aula reescreve a largura de uma vez: a barra SALTAVA para a
-     nova marca, e o unico feedback de "isso contou" passava batido. Animar a
-     largura faz o avanco ser visto. (prefers-reduced-motion zera a duracao no
-     bloco global la embaixo.) */
-  transition: width 400ms ease-out;
-}
-
 .member-classroom-head__percent {
   font-size: 12px;
   font-weight: 700;
@@ -6247,22 +6227,6 @@ html:has(.member-preview-banner) {
   box-shadow: 0 4px 12px rgba(31, 138, 91, 0.4);
 }
 
-.member-module-card__bar {
-  position: absolute;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  z-index: 3;
-  height: 5px;
-  background: rgba(255, 255, 255, 0.28);
-}
-
-.member-module-card__bar > span {
-  display: block;
-  height: 100%;
-  background: var(--color-accent);
-}
-
 .member-module-card__body {
   display: flex;
   flex-direction: column;
@@ -6857,12 +6821,10 @@ html:has(#member-lesson-player) {
   color: var(--ma-on-accent);
 }
 
+/* O trilho da barra do topo (ProgressBar) na linha do curso; o preenchimento
+   no acento vem da própria barra (fillClassName). */
 .member-classroom[data-members-theme] .member-classroom-head__progress {
   background: var(--ma-line);
-}
-
-.member-classroom[data-members-theme] .member-classroom-head__progress > span {
-  background: var(--ma-accent);
 }
 
 .member-classroom[data-members-theme] .member-sidebar-card--dark {
@@ -8980,18 +8942,9 @@ button:hover > .dash-card,
   color: #fff;
   font-variant-numeric: tabular-nums;
 }
+/* A barra da capa é a ProgressBar da casa; aqui só o trilho claro sobre a foto. */
 .members-hero__bar {
-  display: block;
-  height: 6px;
-  border-radius: 999px;
   background: rgba(255, 255, 255, 0.22);
-  overflow: hidden;
-}
-.members-hero__bar > span {
-  display: block;
-  height: 100%;
-  border-radius: 999px;
-  background: var(--ma-accent);
 }
 /* "Ver certificado" no hero, só a 100%: branco sobre o acento (AA nos dois
    temas, o mesmo par do botão de acento da sala). */
