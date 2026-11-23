@@ -146,7 +146,10 @@ export function TeacherStudioDashboard() {
       : "welcome";
 
   return (
-    <div className="grid gap-8">
+    // grid-cols-1 = minmax(0, 1fr): sem ele a coluna crescia ate a largura dos
+    // filtros de "My products" (rolam por dentro) e a 375px a tela inteira
+    // passava 35px da borda, cortando titulo, texto e o "67%".
+    <div className="grid grid-cols-1 gap-8">
       {user ? (
         <TeacherWelcomeTour
           key={user.uid}
