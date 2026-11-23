@@ -308,6 +308,34 @@ export const isMarketplaceOpen = cache(async (): Promise<boolean> => {
 });
 
 /**
+ * Título e capa de UM curso publicado, para o cartão "See a real course" da
+ * home enquanto a vitrine está fechada. Mesma leitura de isMarketplaceOpen:
+ * cliente anônimo, uma tentativa só, desiste de verdade em 1,5 s (o fetch é
+ * abortado) e a resposta fica 5 min no cache de dados do Next. Assim a home
+ * não paga uma ida ao banco por visita, e um banco lento não segura cada
+ * visita nem deixa leituras abandonadas repetindo por trás. Só as duas
+ * colunas que o cartão usa. Falha ou prazo estourado vale null: a home mostra
+ * o cartão de texto.
+ */
+export const getShowcaseCourseCover = cache(async (
+  id: string,
+): Promise<{ title: string; coverImageUrl: string | null } | null> => {
+  try {
+    const { data, error } = await anonymousReadClient({ timeoutMs: 1_500, revalidate: 300 })
+      .from("courses")
+      .select("title, cover_image_url")
+      .eq("id", id)
+      .eq("status", "published")
+      .maybeSingle();
+    if (error) throw error;
+    return data ? { title: data.title, coverImageUrl: data.cover_image_url } : null;
+  } catch (error) {
+    console.error("[public-course] getShowcaseCourseCover failed", error);
+    return null;
+  }
+});
+
+/**
  * Cursos reais publicados, um por URL do sitemap. Os internos de teste saem
  * pelo MESMO predicado que a loja usa; a página deles segue no ar.
  */

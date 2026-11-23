@@ -38,12 +38,16 @@ export async function HowItWorksStrip() {
   ];
 
   return (
-    <section className="mx-auto w-full max-w-7xl px-5 py-16 sm:px-8 sm:py-20 lg:py-24">
-      <RevealSection className="home-heading max-w-2xl">
+    <section className="home-how__panel mx-auto w-full max-w-7xl px-5 py-16 sm:px-8 sm:py-20 lg:py-24">
+      {/* Título de seção maior, de 36px no celular a 52px, sempre abaixo do
+          título do topo (clamp(2.3rem, 4.6vw, 3.6rem)) em qualquer largura.
+          Mais largo (max-w-4xl) para ficar em duas linhas: o painel preso do
+          computador precisa caber abaixo da barra. */}
+      <RevealSection className="home-heading max-w-4xl">
         <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
           {t("home.how.kicker")}
         </p>
-        <h2 className="display-title mt-3 text-4xl leading-tight text-[var(--color-primary)] sm:text-5xl">
+        <h2 className="display-title mt-3 text-[clamp(2.25rem,4.2vw,3.25rem)] leading-[1.05] text-[var(--color-primary)]">
           {t("home.how.title")}
         </h2>
       </RevealSection>
@@ -70,7 +74,13 @@ export async function HowItWorksStrip() {
                 <h3 className="mt-5 text-lg font-bold text-[var(--color-primary)]">
                   {step.title}
                 </h3>
-                <p className="mt-3 text-sm leading-7 text-[var(--color-ink-soft)]">
+                {/* Texto corrido em 17px (18px do md) e na cor de texto cheia,
+                    para leitura de quem tem 55+. Do lg para cima os passos
+                    viram três colunas estreitas dentro do painel preso, que
+                    precisa caber abaixo da barra em 1280x640 e 1024x720 (o
+                    passo 3 em espanhol é o mais longo): ali 16px com linha de
+                    24px ocupa a mesma altura dos 14px/28px de antes. */}
+                <p className="mt-3 text-[1.0625rem] leading-[1.6] text-[var(--color-ink)] md:text-lg lg:text-base lg:leading-6">
                   {step.description}
                 </p>
               </article>

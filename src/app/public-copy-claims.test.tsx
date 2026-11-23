@@ -15,6 +15,8 @@ import { generateMetadata as homeMetadata } from "@/app/page";
 import { I18nProvider } from "@/components/i18n/i18n-provider";
 import { CapabilitiesGrid } from "@/components/site/capabilities-grid";
 import { ForCreatorsBand } from "@/components/site/for-creators-band";
+import { HomeFactsBand } from "@/components/site/home-facts-band";
+import { HomeFaq } from "@/components/site/home-faq";
 import { HowItWorksStrip } from "@/components/site/how-it-works-strip";
 import { MarketingHero } from "@/components/site/marketing-hero";
 import { PromisePreviewBand } from "@/components/site/promise-preview-band";
@@ -250,9 +252,11 @@ describe("public copy guard: home, /pricing, /fees-and-payouts, /for-creators, /
     return (
       <>
         {await MarketingHero()}
+        {await HomeFactsBand()}
         {await HowItWorksStrip()}
         {await CapabilitiesGrid()}
         {await PromisePreviewBand()}
+        {await HomeFaq()}
         {await ForCreatorsBand()}
       </>
     );
