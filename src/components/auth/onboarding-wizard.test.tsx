@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getVisibleQuestions, OnboardingWizard } from "@/components/auth/onboarding-wizard";
@@ -887,5 +887,80 @@ describe("F-09: a barra da entrevista é a da casa, com os mesmos valores", () =
       "9:sourceOfDiscovery:opcional",
       "10:instagramHandle:opcional",
     ]);
+  });
+});
+
+// F-04: o "Continue" que espera não muda de largura (e não empurra o "Skip").
+// F-11: a leitura das respostas salvas que falha na chegada ganha "Try again";
+// as falhas de salvar, não (repetir ali é o próprio "Continue").
+describe("boas-vindas: 'Continue' esperando e a leitura que falhou na chegada", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.searchParams = new URLSearchParams("path=student");
+    mocks.profile = { displayName: "Patrick Simon", phoneNumber: null, onboardingAnswers: {} };
+    mocks.getUserProfile.mockImplementation(() => Promise.resolve(mocks.profile));
+    mocks.updateOnboardingAnswers.mockResolvedValue(undefined);
+    mocks.updateUserIdentity.mockResolvedValue(undefined);
+  });
+
+  afterEach(cleanup);
+
+  it("'Continue' esperando: nome 'Saving...', trava, e os dois rótulos na mesma célula", async () => {
+    let release!: () => void;
+    mocks.updateUserIdentity.mockReturnValue(new Promise<void>((resolve) => { release = () => resolve(); }));
+    render(<OnboardingWizard />);
+    await screen.findByText("First, tell us who you are.");
+
+    const button = screen.getByRole("button", { name: "Continue" });
+    expect(button).toHaveAttribute("type", "button");
+    expect(within(button).getByText("Saving...")).toHaveAttribute("aria-hidden", "true");
+
+    fireEvent.click(button);
+    expect(button).toHaveAccessibleName("Saving...");
+    expect(button).toBeDisabled();
+    const idle = within(button).getByText("Continue");
+    expect(idle).toHaveAttribute("aria-hidden", "true");
+    expect(idle.parentElement).toBe(within(button).getByText("Saving...").parentElement);
+
+    await act(async () => release());
+    expect(await screen.findByText("What do you want to learn first?")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Continue" })).toBeEnabled();
+    expect(mocks.updateUserIdentity).toHaveBeenCalledTimes(1);
+  });
+
+  it("a leitura falhou na chegada: 'Try again' repete a leitura uma vez e retoma de onde a pessoa parou", async () => {
+    mocks.profile = {
+      displayName: "Patrick Simon",
+      phoneNumber: null,
+      onboardingAnswers: { profileConfirmed: true, path: "student" },
+    };
+    mocks.getUserProfile.mockRejectedValueOnce(new Error("offline"));
+    render(<OnboardingWizard />);
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("Could not load saved onboarding answers. You can continue from here.");
+    expect(screen.getAllByRole("alert")).toHaveLength(1);
+    expect(mocks.getUserProfile).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+
+    expect(await screen.findByText("What do you want to learn first?")).toBeInTheDocument();
+    expect(mocks.getUserProfile).toHaveBeenCalledTimes(2);
+    expect(screen.queryByRole("alert")).toBeNull();
+    // Só leitura: nada foi gravado no caminho.
+    expect(mocks.updateOnboardingAnswers).not.toHaveBeenCalled();
+    expect(mocks.updateUserIdentity).not.toHaveBeenCalled();
+  });
+
+  it("falha de salvar não ganha 'Try again'", async () => {
+    mocks.updateUserIdentity.mockRejectedValueOnce(new Error("offline"));
+    render(<OnboardingWizard />);
+    await screen.findByText("First, tell us who you are.");
+
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+
+    expect(await screen.findByRole("alert")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Try again" })).toBeNull();
+    expect(mocks.getUserProfile).toHaveBeenCalledTimes(1);
   });
 });

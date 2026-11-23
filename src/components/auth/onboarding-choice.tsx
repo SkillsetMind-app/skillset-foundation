@@ -12,6 +12,7 @@ import {
 } from "@/components/auth/turnstile-widget";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { SkillsetSpinner } from "@/components/shared/skillset-spinner";
+import { BusyLabel } from "@/components/ui/busy-label";
 import { InlineAlert } from "@/components/ui/inline-alert";
 import { ProgressBar } from "@/components/ui/progress-bar";
 import type { OnboardingAnswers, UserGoal } from "@/domain/user-profile";
@@ -616,7 +617,7 @@ export function OnboardingChoice() {
             aria-describedby={activateBlockedReason ? "activation-blocked-reason" : undefined}
             className="button-solid button-lg"
           >
-            {isSaving ? t("onboarding.activating") : t("onboarding.activateTeaching")}
+            <BusyLabel busy={isSaving} idle={t("onboarding.activateTeaching")} busyText={t("onboarding.activating")} />
           </button>
         </div>
         {activateBlockedReason ? (
@@ -832,7 +833,7 @@ export function OnboardingChoice() {
             disabled={isSaving}
             className="button-solid px-4 py-2.5 text-sm"
           >
-            {isSaving ? t("onboarding.saving") : t("onboarding.finishSetup")}
+            <BusyLabel busy={isSaving} idle={t("onboarding.finishSetup")} busyText={t("onboarding.saving")} />
           </button>
         )}
       </div>
