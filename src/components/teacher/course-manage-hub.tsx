@@ -676,7 +676,7 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
                   const next = event.target.value;
                   leavePage(() => router.push(`/teach/courses/${next}/manage`));
                 }}
-                className="min-h-11 rounded-md border fine-rule bg-white px-3 py-2 text-xs font-semibold text-[var(--color-ink)]"
+                className="field-input field-input--inline"
               >
                 <option value={course.id}>{course.title}</option>
                 {switchableCourses.map((candidate) => (

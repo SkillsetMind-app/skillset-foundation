@@ -170,7 +170,7 @@ export function CourseReviewPanel({
           disabled={!canReview || isSaving}
           maxLength={1200}
           rows={4}
-          className="min-h-28 rounded-md border border-[var(--color-line)] bg-white px-4 py-3 text-sm leading-6 text-[var(--color-ink)] outline-none transition focus:border-[var(--color-primary)]"
+          className="field-input min-h-28"
           aria-label={t("learn.classroom.review.bodyLabel")}
           placeholder={t("learn.classroom.review.placeholder")}
         />

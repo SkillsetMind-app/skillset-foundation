@@ -30,8 +30,9 @@ const secondaryCurrencies = supportedStripeCurrencies.filter(
   (currency) => !(topSkillsetCurrencies as readonly string[]).includes(currency),
 );
 
+// O campo da casa; apagado como os outros campos .field-input travados.
 export const currencySelectClassName =
-  "w-full min-w-0 rounded-md border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]";
+  "field-input w-full min-w-0 disabled:cursor-not-allowed disabled:opacity-60";
 
 type CurrencySelectProps = {
   value: string;

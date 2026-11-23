@@ -1,6 +1,6 @@
 "use client";
 
-import { ExternalLink, Eye, EyeOff, Plus, Trash2, UploadCloud, X } from "lucide-react";
+import { ExternalLink, Eye, EyeOff, Plus, Trash2, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 
@@ -9,7 +9,7 @@ import { useTranslation } from "@/components/i18n/i18n-provider";
 import { HorizontalTabs } from "@/components/shared/horizontal-tabs";
 import { CardPageSkeleton } from "@/components/teacher/builder-skeleton";
 import { SavedNote } from "@/components/teacher/save-status-line";
-import { UploadProgressNote } from "@/components/teacher/upload-progress-note";
+import { ImageUploadField } from "@/components/teacher/image-upload-field";
 import { useConfirm } from "@/components/teacher/use-confirm";
 import { BusyLabel, Button, Card, Field, InlineAlert, buttonClasses } from "@/components/ui";
 import type { PlanId } from "@/data/plans";
@@ -48,8 +48,8 @@ const mainKey = "main";
 type LoadState = "loading" | "ready" | "error";
 type Creator = { name: string; username: string | null };
 
-const fieldClass =
-  "w-full rounded-md border border-[var(--color-line)] bg-[var(--color-surface)] px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]";
+// O campo da casa (globals.css): a borda fina de antes sumia no cartão branco.
+const fieldClass = "field-input";
 const smallButtonClass =
   "inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-md border border-[var(--color-line)] px-2.5 py-1.5 text-xs font-semibold text-[var(--color-ink-soft)] disabled:opacity-60";
 
@@ -576,67 +576,32 @@ function MemberAreaForm({
           </div>
         </fieldset>
 
-        <div className="grid gap-3 sm:grid-cols-[minmax(0,16rem)_minmax(0,1fr)] sm:items-center">
-          <div className="relative grid aspect-video w-full overflow-hidden rounded-md border border-[var(--color-line)] bg-[var(--color-surface)]">
-            {coverUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={coverUrl} alt="" className="h-full w-full object-cover" />
-            ) : (
-              <UploadCloud aria-hidden="true" size={22} className="m-auto text-[var(--color-ink-muted)]" />
-            )}
-          </div>
-          <div className="min-w-0">
-            <p className="text-sm font-semibold text-[var(--color-ink)]">{t("teach.memberAreaEditor.cover")}</p>
-            <p className="mt-1 text-xs leading-5 text-[var(--color-ink-soft)]">{t("teach.memberAreaEditor.coverHelp")}</p>
-            <div className="mt-3 flex flex-wrap items-center gap-2">
-              <label
-                className={`relative inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-md border border-dashed border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2 text-sm font-semibold text-[var(--color-primary)] focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[var(--color-primary)] ${
-                  uploading ? "pointer-events-none opacity-60" : ""
-                }`}
-              >
-                <UploadCloud aria-hidden="true" size={16} />
-                {/* Rótulo fixo, como nas capas do construtor: o andamento é só
-                    a nota logo abaixo (B-05). */}
-                {t(`teach.memberAreaEditor.${coverUrl ? "replaceCover" : "uploadCover"}`)}
-                <input
-                  type="file"
-                  accept={allowedAvatarTypes.join(",")}
-                  disabled={uploading}
-                  onChange={(event) => {
-                    const file = event.target.files?.[0] ?? null;
-                    event.target.value = "";
-                    void handleCover(file);
-                  }}
-                  className="sr-only"
-                />
-              </label>
-              {/* O "Remove" das capas do construtor: texto vermelho num alvo
-                  de 44px, fora da vista enquanto a nova sobe. */}
-              {coverUrl && !uploading ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setCoverPath(null);
-                    setFeedback("");
-                  }}
-                  className="min-h-11 w-fit text-xs font-semibold text-[var(--color-danger-fg)] underline-offset-2 hover:underline"
-                >
-                  {t("teach.memberAreaEditor.removeCover")}
-                </button>
-              ) : null}
-            </div>
-            {uploadingBytes !== null ? (
-              <div className="mt-2">
-                <UploadProgressNote progress={{ bytesTransferred: 0, totalBytes: uploadingBytes, percent: null, state: "running" }} />
-              </div>
-            ) : null}
-            {coverError ? (
-              <InlineAlert tone="error" className="mt-2 px-3 py-2 text-xs">
-                {t(`teach.memberAreaEditor.errors.${coverError === "invalid" ? "coverInvalid" : "coverUpload"}`)}
-              </InlineAlert>
-            ) : null}
-          </div>
-        </div>
+        {/* A casca de imagem das capas do construtor (B-05). O envio, o limite
+            e o que se guarda seguem daqui. */}
+        <ImageUploadField
+          title={t("teach.memberAreaEditor.cover")}
+          help={t("teach.memberAreaEditor.coverHelp")}
+          preview={{ src: coverUrl, alt: "" }}
+          triggerLabel={t(`teach.memberAreaEditor.${coverUrl ? "replaceCover" : "uploadCover"}`)}
+          input={{
+            accept: allowedAvatarTypes.join(","),
+            disabled: uploading,
+            onChange: (event) => {
+              const file = event.target.files?.[0] ?? null;
+              event.target.value = "";
+              void handleCover(file);
+            },
+          }}
+          remove={{
+            label: t("teach.memberAreaEditor.removeCover"),
+            onClick: () => {
+              setCoverPath(null);
+              setFeedback("");
+            },
+          }}
+          progress={uploadingBytes === null ? null : { bytesTransferred: 0, totalBytes: uploadingBytes, percent: null, state: "running" }}
+          error={coverError ? t(`teach.memberAreaEditor.errors.${coverError === "invalid" ? "coverInvalid" : "coverUpload"}`) : undefined}
+        />
 
         <Field
           id="member-area-welcome"

@@ -67,7 +67,7 @@ export function CertificateVerificationPanel() {
           onChange={(event) => setVerificationCode(event.target.value)}
           aria-label={t("learnWave2.verification.codeLabel")}
           placeholder="SK-..."
-          className="rounded-md border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-semibold uppercase tracking-[0.08em] text-[var(--color-ink)] outline-none focus:border-[var(--color-primary-light)]"
+          className="field-input uppercase tracking-[0.08em]"
         />
         <button
           type="submit"

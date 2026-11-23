@@ -216,7 +216,7 @@ function LessonCommentsPanel({
               rows={3}
               autoFocus
               placeholder={t("learn.classroom.lessonComments.prompt")}
-              className="resize-y rounded-md border border-[var(--color-line)] bg-white px-3 py-2.5 text-sm text-[var(--color-ink)]"
+              className="field-input resize-y"
             />
           </label>
           <div className="flex flex-wrap justify-end gap-2">

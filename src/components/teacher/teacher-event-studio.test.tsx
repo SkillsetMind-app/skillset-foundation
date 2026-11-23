@@ -410,7 +410,7 @@ describe("TeacherEventStudio", () => {
     // Campos maiores, com o teclado certo de cada um.
     expect(screen.getByLabelText("Date")).toHaveAttribute("type", "date");
     expect(screen.getByLabelText("Time")).toHaveAttribute("type", "time");
-    expect(screen.getByLabelText("Date")).toHaveClass("min-h-12", "text-base");
+    expect(screen.getByLabelText("Date")).toHaveClass("field-input", "min-h-12", "text-base!");
     zone.mockRestore();
 
     fillWhen("2027-03-14", "15:30");

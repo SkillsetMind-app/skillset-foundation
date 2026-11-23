@@ -89,12 +89,10 @@ function suggestedBlocks(courseTitle: string, t: (key: string) => string): Cours
   });
 }
 
-// O campo fica dentro do label em caixa alta, negrito e espacado: sem o reset
-// de peso, caixa e espacamento, o texto digitado herdava esse estilo. O peso
-// vem do .field-input (a pele de todo campo da plataforma); caixa e
-// espacamento ficam aqui.
-const fieldClass = "field-input normal-case tracking-normal";
-const labelClass = "grid gap-1.5 text-xs font-bold uppercase tracking-[0.16em] text-[var(--color-ink-soft)]";
+// O rótulo da casa (o mesmo do <Field>: 14px, negrito, em frase). Era a
+// etiqueta de 12px em caixa alta, que só este editor usava nos campos.
+const fieldClass = "field-input";
+const labelClass = "grid gap-1.5 text-sm font-semibold text-[var(--color-ink)]";
 
 // Editor-only identity for a block. Position is not identity: an upload that
 // finishes after the sections moved must still land on the block that asked.

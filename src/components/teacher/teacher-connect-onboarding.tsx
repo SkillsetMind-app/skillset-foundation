@@ -138,7 +138,7 @@ export function TeacherConnectOnboarding({
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
           aria-describedby="payout-country-hint payout-country-warning"
-          className="mt-2 block min-h-11 w-full max-w-sm rounded-md border border-[var(--color-line)] bg-white px-4 text-sm outline-none focus:border-[var(--color-primary-light)]"
+          className="field-input mt-2 block max-w-sm"
         >
           {options.map(({ code, label }) => (
             <option key={code} value={code}>{label}</option>

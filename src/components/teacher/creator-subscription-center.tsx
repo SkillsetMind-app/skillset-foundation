@@ -336,14 +336,14 @@ export function CreatorSubscriptionCenterView({
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
                   placeholder={t(`${copy}.searchPlaceholder`)}
-                  className="min-h-11 w-full rounded-md border border-[var(--color-line)] bg-[var(--color-surface)] py-2 pl-9 pr-3 text-sm text-[var(--color-ink)] outline-none focus:border-[var(--color-primary-light)]"
+                  className="field-input pl-9!"
                 />
               </label>
               <select
                 aria-label={t(`${copy}.filterLabel`)}
                 value={filter}
                 onChange={(event) => setFilter(event.target.value as SubscriberFilter)}
-                className="min-h-11 rounded-md border border-[var(--color-line)] bg-[var(--color-surface)] px-3 text-sm font-semibold text-[var(--color-primary)]"
+                className="field-input field-input--inline"
               >
                 <option value="all">{t("creatorPanel.sales.status.all")}</option>
                 <option value="active">{t("statusChip.active")}</option>

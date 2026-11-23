@@ -35,17 +35,25 @@ describe("LandingImageField", () => {
     mocks.uploadLandingImage.mockReset();
   });
 
+  // B-05: a casca única das capas. O botão é o rótulo do campo de arquivo
+  // (como nas capas do construtor), com as regras como descrição.
   it("offers an upload button, named by its field and described by the rules", () => {
     setup();
-    const button = screen.getByRole("button", { name: "Upload image" });
-    expect(button).toHaveAccessibleDescription("JPG, PNG or WebP, up to 5.0 MB.");
-    expect(screen.getByRole("group", { name: "Photo" })).toContainElement(button);
+    const input = screen.getByLabelText("Upload image");
+    expect(input).toHaveAttribute("type", "file");
+    expect(input).toHaveAccessibleDescription("JPG, PNG or WebP, up to 5.0 MB.");
+    expect(screen.getByRole("region", { name: "Photo" })).toContainElement(input);
     expect(screen.getByLabelText("Or paste a link")).toBeInTheDocument();
+  });
+
+  it("keeps the same accepted formats", () => {
+    setup();
+    expect(screen.getByLabelText("Upload image")).toHaveAttribute("accept", "image/jpeg,image/png,image/webp");
   });
 
   it("speaks Spanish", () => {
     setup(null, "es");
-    expect(screen.getByRole("button", { name: "Subir imagen" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Subir imagen")).toBeInTheDocument();
     expect(screen.getByLabelText("O pega un enlace")).toBeInTheDocument();
   });
 
@@ -57,7 +65,7 @@ describe("LandingImageField", () => {
     pick(file);
     // Rótulo fixo; o andamento sai uma vez, na nota (como nas capas do construtor).
     expect(await screen.findByRole("status")).toHaveTextContent("Sending...");
-    expect(screen.getByRole("button", { name: "Upload image" })).toBeDisabled();
+    expect(screen.getByLabelText("Upload image")).toBeDisabled();
     expect(screen.queryByText("Uploading...")).toBeNull();
     finish(publicUrl);
     await waitFor(() => expect(onChange).toHaveBeenCalledWith(publicUrl));

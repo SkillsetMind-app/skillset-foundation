@@ -173,7 +173,8 @@ describe("ES-09 editors with the shipped dictionaries", () => {
     }
     expect(screen.getByText("URL de la imagen de fondo")).toBeInTheDocument();
     expect(screen.getByText("URL de tu foto")).toBeInTheDocument();
-    expect(screen.getAllByRole("button", { name: "Subir imagen" })).toHaveLength(2);
+    // O botão de imagem é o rótulo do campo de arquivo da casca única (B-05).
+    expect(screen.getAllByLabelText("Subir imagen")).toHaveLength(2);
     expect(screen.getAllByLabelText("O pega un enlace")).toHaveLength(2);
     expect(screen.getAllByRole("button", { name: "Subir" })).toHaveLength(7);
     expect(screen.getByText(/Atención: esta página usa/)).toHaveTextContent("therapist");

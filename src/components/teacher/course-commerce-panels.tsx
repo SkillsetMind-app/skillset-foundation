@@ -48,8 +48,8 @@ const taxRegionKeys: Record<TaxRegion, string> = {
   Other: "courseCommerce.regionother",
 };
 
-const inputClass =
-  "rounded-md border border-[var(--color-line)] bg-[var(--color-surface)] px-3.5 py-2.5 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]";
+// O campo da casa (globals.css): a borda fina de antes sumia no cartão branco.
+const inputClass = "field-input";
 
 export function PanelCard({
   title,

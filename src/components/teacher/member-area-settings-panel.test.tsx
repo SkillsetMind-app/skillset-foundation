@@ -173,6 +173,19 @@ describe("MemberAreaSettingsPanel", () => {
     expect(mocks.uploadMemberAreaCover).not.toHaveBeenCalled();
   });
 
+  // B-05: a capa usa a casca única de imagem; accept e teto de 5 MB seguem daqui.
+  it("capa: mesmo accept e a imagem acima de 5 MB não sobe", async () => {
+    renderPanel();
+    await screen.findByRole("list");
+    const input = screen.getByLabelText("Upload cover");
+    expect(input).toHaveAttribute("accept", "image/jpeg,image/png,image/webp");
+    const big = new File(["x"], "capa.png", { type: "image/png" });
+    Object.defineProperty(big, "size", { value: 6 * 1024 * 1024 });
+    fireEvent.change(input, { target: { files: [big] } });
+    expect((await screen.findByText(/Use a JPG, PNG or WebP image under 5 MB/)).closest('[role="alert"]')).not.toBeNull();
+    expect(mocks.uploadMemberAreaCover).not.toHaveBeenCalled();
+  });
+
   it("erro ao salvar aparece e nada some", async () => {
     mocks.saveMyMemberArea.mockRejectedValue(new Error("MEMBER_AREA_FORBIDDEN"));
     renderPanel();
