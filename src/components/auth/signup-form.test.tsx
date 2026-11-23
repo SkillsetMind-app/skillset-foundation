@@ -103,6 +103,27 @@ describe("SignupForm presents only the available paths", () => {
     expect(mocks.signUpWithEmail).not.toHaveBeenCalled();
   });
 
+  // F-09: os pontinhos viraram a barra da casa. O leitor de tela ouve o mesmo
+  // passo, de 1 a 2, e o texto visível não é lido duas vezes.
+  it("draws the steps with the shared bar and keeps the step values", () => {
+    render(<SignupForm />);
+    const bar = () => screen.getByRole("progressbar", { name: "auth.signup.progress" });
+    expect(bar()).toHaveAttribute("aria-valuemin", "1");
+    expect(bar()).toHaveAttribute("aria-valuemax", "2");
+    expect(bar()).toHaveAttribute("aria-valuenow", "1");
+    expect(bar()).toHaveAttribute("aria-valuetext", "auth.signup.progress");
+    expect(bar()).toHaveClass("h-1.5", "rounded-full", "bg-[var(--color-line)]");
+    expect((bar().firstElementChild as HTMLElement).style.transform).toBe("translateX(-50%)");
+    expect(screen.getByText("auth.signup.progress")).toHaveAttribute("aria-hidden", "true");
+
+    fireEvent.change(screen.getByLabelText("auth.signup.fullName"), { target: { value: "Alex Rivera" } });
+    fireEvent.change(screen.getByLabelText("auth.email"), { target: { value: "alex@example.test" } });
+    fireEvent.click(screen.getByRole("checkbox"));
+    fireEvent.click(screen.getByRole("button", { name: "auth.signup.continue" }));
+    expect(bar()).toHaveAttribute("aria-valuenow", "2");
+    expect((bar().firstElementChild as HTMLElement).style.transform).toBe("translateX(-0%)");
+  });
+
   it.each([false, true])("keeps native Back non-submitting across the step change with a password draft: %s", async (hasPasswordDraft) => {
     render(<SignupForm />);
     expect(screen.getByLabelText("auth.signup.fullName")).not.toHaveFocus();

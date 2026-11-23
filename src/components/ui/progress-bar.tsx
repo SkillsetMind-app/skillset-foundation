@@ -21,18 +21,24 @@ export type ProgressBarProps = {
   className?: string;
   /** Preenchimento: só para a cor de destaque de uma área de membros. */
   fillClassName?: string;
+  /**
+   * Passos ("Step 1 of 2", "Question 3 of 8"): o leitor de tela segue ouvindo
+   * o passo, de 1 ao total, e a frase do `label`; o `value` só desenha.
+   */
+  step?: { current: number; total: number };
 };
 
-export function ProgressBar({ value, label, className, fillClassName }: ProgressBarProps) {
+export function ProgressBar({ value, label, className, fillClassName, step }: ProgressBarProps) {
   const percent = Math.max(0, Math.min(100, value));
 
   return (
     <div
       role="progressbar"
       aria-label={label}
-      aria-valuenow={percent}
-      aria-valuemin={0}
-      aria-valuemax={100}
+      aria-valuenow={step ? step.current : percent}
+      aria-valuemin={step ? 1 : 0}
+      aria-valuemax={step ? step.total : 100}
+      aria-valuetext={step ? label : undefined}
       className={cn("h-1.5 overflow-hidden rounded-full bg-[var(--color-line)]", className)}
     >
       {/* Desliza com transform, não com width: o contrato de movimento só anima
