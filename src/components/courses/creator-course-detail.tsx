@@ -1462,6 +1462,13 @@ export function CreatorCourseDetail({
                 <span aria-hidden="true" className="block h-5 w-20 animate-pulse rounded-md bg-[var(--color-surface-strong)]" />
                 <span className="sr-only">{priceLabel}</span>
               </>
+            ) : offerLoadError ? (
+              // Falhou: o traço do cartão, e não "Pricing unavailable" em
+              // letra de título. O aviso com "Try again" mora no cartão.
+              <>
+                <span aria-hidden="true" className="text-[var(--color-ink-muted)]">—</span>
+                <span className="sr-only">{priceLabel}</span>
+              </>
             ) : priceLabel}
           </p>
         </div>
@@ -1470,7 +1477,7 @@ export function CreatorCourseDetail({
             href={classroomHref}
             className="button-solid inline-flex min-h-11 shrink-0 items-center px-3.5 py-2 text-xs"
           >{t("publicCourses.continueLearning")}</Link>
-        ) : (
+        ) : offerLoadError ? null : (
           <Link
             href="#enroll-card"
             className="button-solid inline-flex min-h-11 shrink-0 items-center px-3.5 py-2 text-xs"

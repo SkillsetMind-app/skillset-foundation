@@ -744,7 +744,7 @@ export function OnboardingWizard() {
           type="button"
           onClick={goBack}
           disabled={currentIndex === 0 || isSaving}
-          className="min-h-11 rounded-md px-3 py-3 text-sm font-semibold text-[var(--color-ink-soft)] transition hover:bg-[var(--color-surface-soft)] hover:text-[var(--color-primary)] disabled:pointer-events-none disabled:opacity-40 sm:px-5"
+          className="min-h-11 rounded-md px-3 py-3 text-sm font-semibold text-[var(--color-ink-soft)] transition hover:bg-[var(--color-surface-soft)] hover:text-[var(--color-primary)] disabled:pointer-events-none disabled:opacity-60 sm:px-5"
         >
           {t("authFlow.onboarding.back")}
         </button>

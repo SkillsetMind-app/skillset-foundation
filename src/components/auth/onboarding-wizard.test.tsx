@@ -799,3 +799,93 @@ describe("boas-vindas: o comprador segue para o checkout sem responder o interes
     );
   });
 });
+
+// F-09: os pontinhos da entrevista viraram a barra da casa (a da sala e a do
+// construtor). O que o leitor de tela ouve (o passo, de 1 ao total, e
+// "Question N of M") e a frase visível seguem iguais no primeiro, num do meio
+// e no último passo dos dois caminhos.
+describe("F-09: a barra da entrevista é a da casa, com os mesmos valores", () => {
+  const professorCompleto = {
+    profileConfirmed: true,
+    path: "teacher",
+    profession: "Coach",
+    primaryGoal: ["Business"],
+    alreadySold: "no",
+    payoutCountry: "US",
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.getUserProfile.mockImplementation(() => Promise.resolve(mocks.profile));
+    mocks.updateOnboardingAnswers.mockResolvedValue(undefined);
+    mocks.updateUserIdentity.mockResolvedValue(undefined);
+  });
+
+  afterEach(cleanup);
+
+  it.each([
+    ["aluno, primeiro passo", "student", {}, 1, 3, "First, tell us who you are."],
+    ["aluno, passo do meio", "student", { profileConfirmed: true, path: "student" }, 2, 3, "What do you want to learn first?"],
+    ["aluno, último passo", "student", { profileConfirmed: true, path: "student", primaryGoal: ["Business"] }, 3, 3, "Where did you hear about SkillsetMind?"],
+    ["professor, primeiro passo", "teacher", {}, 1, 8, "First, tell us who you are."],
+    ["professor, passo do meio", "teacher", { profileConfirmed: true, path: "teacher", profession: "Coach" }, 3, 8, "What kind of program will you publish?"],
+    ["professor, último passo", "teacher", professorCompleto, 8, 8, /Instagram handle/],
+  ])("%s: Question N of M na frase e na barra", async (_label, path, answers, current, total, title) => {
+    mocks.searchParams = new URLSearchParams({ path });
+    mocks.profile = { displayName: "Patrick Simon", phoneNumber: "+1 555 123 4567", onboardingAnswers: { ...answers } };
+    render(<OnboardingWizard />);
+    expect(await screen.findByText(title)).toBeInTheDocument();
+
+    const text = `Question ${current} of ${total}`;
+    expect(screen.getByText(text)).toBeInTheDocument();
+    const bar = screen.getByRole("progressbar", { name: text });
+    expect(bar).toHaveAttribute("aria-valuenow", String(current));
+    expect(bar).toHaveAttribute("aria-valuemin", "1");
+    expect(bar).toHaveAttribute("aria-valuemax", String(total));
+    expect(bar).toHaveAttribute("aria-valuetext", text);
+    // O desenho é o da ProgressBar: trilho que segue o tema, latão de texto.
+    expect(bar).toHaveClass("h-1.5", "rounded-full", "bg-[var(--color-line)]");
+    expect(bar.firstElementChild).toHaveClass("bg-[var(--color-accent-fg)]");
+    expect(screen.getAllByRole("progressbar")).toHaveLength(1);
+  });
+
+  // A lista de perguntas, a ordem e o obrigatório de cada uma, escritas aqui
+  // por extenso: o pacote só trocou o desenho da barra.
+  it("as perguntas, a ordem e o obrigatório de cada caminho seguem os mesmos", () => {
+    const lista = (...args: Parameters<typeof getVisibleQuestions>) =>
+      getVisibleQuestions(...args).map(({ number, id, required }) => `${number}:${id}:${required ? "obrigatória" : "opcional"}`);
+
+    expect(lista({ path: "student" }, true, false)).toEqual([
+      "1:profile:obrigatória",
+      "2:primaryGoal:obrigatória",
+      "3:sourceOfDiscovery:opcional",
+    ]);
+    expect(lista({ path: "student" }, true, true)).toEqual([
+      "1:profile:obrigatória",
+      "2:primaryGoal:opcional",
+      "3:sourceOfDiscovery:opcional",
+    ]);
+    expect(lista({ path: "teacher", alreadySold: "no" }, true, false)).toEqual([
+      "1:profile:obrigatória",
+      "2:profession:obrigatória",
+      "3:primaryGoal:obrigatória",
+      "4:alreadySold:obrigatória",
+      "5:payoutCountry:obrigatória",
+      "6:audienceSize:opcional",
+      "7:sourceOfDiscovery:opcional",
+      "8:instagramHandle:opcional",
+    ]);
+    expect(lista({ path: "teacher", alreadySold: "yes" }, false, true)).toEqual([
+      "1:profile:obrigatória",
+      "2:path:obrigatória",
+      "3:profession:obrigatória",
+      "4:primaryGoal:obrigatória",
+      "5:alreadySold:obrigatória",
+      "6:payoutCountry:obrigatória",
+      "7:monthlyRevenue:opcional",
+      "8:audienceSize:opcional",
+      "9:sourceOfDiscovery:opcional",
+      "10:instagramHandle:opcional",
+    ]);
+  });
+});

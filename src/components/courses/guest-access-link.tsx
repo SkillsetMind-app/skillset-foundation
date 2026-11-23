@@ -28,7 +28,7 @@ export function GuestAccessLink({ maskedEmail }: { maskedEmail: string }) {
 
   const message = t(`guestCheckout.thanks.${state}`).replace("{email}", () => maskedEmail);
   return (
-    <div className="mt-6 grid gap-4">
+    <div className="grid gap-4">
       {/* Falha: o aviso de erro da casa (ícone, fundo que segue o tema). */}
       {state === "failed" || state === "limited" ? (
         <InlineAlert tone="error">{message}</InlineAlert>

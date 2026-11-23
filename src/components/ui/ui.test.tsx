@@ -221,6 +221,23 @@ describe("ProgressBar", () => {
     expect(screen.getByRole("progressbar", { name: "Abaixo" })).toHaveAttribute("aria-valuenow", "0");
   });
 
+  // Cadastro e entrevista: o leitor de tela ouve o passo, não a porcentagem.
+  it("em passos, diz o passo de 1 ao total e a frase; o valor só desenha", () => {
+    render(<ProgressBar value={50} step={{ current: 1, total: 2 }} label="Step 1 of 2" />);
+
+    const bar = screen.getByRole("progressbar", { name: "Step 1 of 2" });
+    expect(bar).toHaveAttribute("aria-valuenow", "1");
+    expect(bar).toHaveAttribute("aria-valuemin", "1");
+    expect(bar).toHaveAttribute("aria-valuemax", "2");
+    expect(bar).toHaveAttribute("aria-valuetext", "Step 1 of 2");
+    expect((bar.firstElementChild as HTMLElement).style.transform).toBe("translateX(-50%)");
+  });
+
+  it("sem passos, não escreve valuetext", () => {
+    render(<ProgressBar value={40} label="Progress" />);
+    expect(screen.getByRole("progressbar", { name: "Progress" })).not.toHaveAttribute("aria-valuetext");
+  });
+
   // Trilho pela variável de linha (o navy a 12% sumia no escuro) e movimento
   // só em transform, dentro de motion-safe.
   it("uma altura, trilho que segue o tema e preenchimento que desliza com transform", () => {

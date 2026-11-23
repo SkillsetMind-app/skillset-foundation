@@ -13,6 +13,7 @@ import {
 } from "@/components/auth/turnstile-widget";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { InlineAlert } from "@/components/ui/inline-alert";
+import { ProgressBar } from "@/components/ui/progress-bar";
 import { PLAN_TRIAL_DAYS } from "@/data/plans";
 import { isGoogleAuthEnabled } from "@/lib/auth/providers";
 import {
@@ -332,27 +333,12 @@ export function SignupForm() {
 
   return (
     <form className="mt-5 grid gap-3" onSubmit={handleEmailSignup}>
-      <div
-        role="progressbar"
-        aria-label={stepLabel}
-        aria-valuemin={1}
-        aria-valuemax={2}
-        aria-valuenow={step}
-        aria-valuetext={stepLabel}
-        className="flex items-center gap-3 text-xs font-semibold text-[var(--color-ink-soft)]"
-      >
-        <span>{stepLabel}</span>
-        <div className="flex items-center gap-2" aria-hidden="true">
-          {[1, 2].map((n) => (
-            <span
-              key={n}
-              className={[
-                "h-1.5 rounded-full transition-all",
-                step === n ? "w-6 bg-[var(--color-primary)]" : "w-2 bg-[var(--color-line)]",
-              ].join(" ")}
-            />
-          ))}
-        </div>
+      {/* Os pontinhos feitos à mão viraram a barra da casa (a da sala e a do
+          construtor). O texto visível sai do leitor de tela: a barra já diz
+          "Step 1 of 2", com o passo de 1 a 2, como antes. */}
+      <div className="flex items-center gap-3 text-xs font-semibold text-[var(--color-ink-soft)]">
+        <span aria-hidden="true">{stepLabel}</span>
+        <ProgressBar value={step * 50} step={{ current: step, total: 2 }} label={stepLabel} className="w-16" />
       </div>
 
       {step === 1 ? (

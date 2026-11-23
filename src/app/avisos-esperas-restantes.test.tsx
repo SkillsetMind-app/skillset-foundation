@@ -78,6 +78,9 @@ describe("F-09: barras de progresso", () => {
     "components/learn/enrolled-course-workspace.tsx",
     "components/learn/members-area-hero.tsx",
     "components/teacher/upload-progress-note.tsx",
+    // Os pontinhos do cadastro e da entrevista (no caminho de cadastro).
+    "components/auth/signup-form.tsx",
+    "components/auth/onboarding-progress.tsx",
   ])("%s usa a barra compartilhada", (file) => {
     const source = read(file);
     expect(source).toContain("<ProgressBar");

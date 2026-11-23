@@ -1665,6 +1665,27 @@ describe("CreatorCourseDetail: preço que falha e quem vende", () => {
     expect(within(bar).getByText("Loading pricing...")).toHaveClass("sr-only");
     expect(bar.querySelector('[aria-hidden="true"].animate-pulse')).not.toBeNull();
   });
+
+  // S-04: com o preço falhando, a barra mostra o traço do cartão (e não
+  // "Pricing unavailable" em letra de título) e não oferece "Enroll" sem
+  // preço. O aviso com "Try again" é o do cartão.
+  it("com a leitura do preço falhando, a barra de compra mostra só o traço, sem botão", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: false, json: async () => ({ error: "unavailable" }) })));
+    const { container } = render(<CreatorCourseDetail courseIdOverride="course-1" hideHeader />);
+    const card = await waitFor(() => {
+      const found = container.querySelector<HTMLElement>("#enroll-card");
+      expect(found).not.toBeNull();
+      return found!;
+    });
+    expect(await within(card).findByRole("alert")).toHaveTextContent("Offers are temporarily unavailable.");
+    expect(within(card).getByRole("button", { name: "Try again" })).toBeInTheDocument();
+
+    const bar = container.querySelector<HTMLElement>(".course-buy-float")!;
+    expect(bar).not.toBeNull();
+    expect(within(bar).getByText("—")).toHaveAttribute("aria-hidden", "true");
+    expect(within(bar).getByText("Pricing unavailable")).toHaveClass("sr-only");
+    expect(bar.querySelector("a, button")).toBeNull();
+  });
 });
 
 // Um curso de 10 módulos era uma coluna enorme, tudo aberto.
