@@ -93,11 +93,13 @@ describe("moldura das telas do professor", () => {
     expect(frame().parentElement).toHaveClass("platform-content");
   });
 
-  // A sala de aula usa a largura toda por desenho; as telas de pagar o plano
-  // ficam como estavam.
+  // A sala de aula usa a largura toda por desenho; a area de membros, o
+  // suporte e as telas de pagar o plano ficam como estavam.
   it.each([
     "/learn/courses/curso-1",
     "/learn/courses/curso-1/community",
+    "/learn/areas/x",
+    "/support",
     "/account/billing/upgrade",
     "/account/billing/return",
     "/account/plans",

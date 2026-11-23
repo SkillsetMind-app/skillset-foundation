@@ -135,6 +135,39 @@ describe("o topo nao tem Ajuda", () => {
   });
 });
 
+// No celular a troca de lado mora na barra de baixo, e o menu da conta nao a
+// repete mais. Topo e barra calculam o destino cada um por si: este teste
+// trava os dois juntos, para uma edicao num lado nao tirar a unica troca do
+// celular sem ninguem ver.
+describe("barra de baixo e topo levam ao mesmo outro lado", () => {
+  it.each(
+    [["student"], ["teacher"], ["admin", "teacher"]].flatMap((roles) =>
+      ["/teach", "/learn", "/ops"].map((pathname) => [roles.join("+"), pathname, roles] as const),
+    ),
+  )("%s em %s", (_label, pathname, roles) => {
+    mocks.pathname = pathname;
+    mocks.roles = [...roles];
+    const { container } = render(
+      <>
+        <PlatformHeader />
+        <MobileSidebarDrawer open={false} onOpen={vi.fn()} onClose={vi.fn()} />
+      </>,
+    );
+
+    const headerTarget = container.querySelector(".platform-topbar__switch")?.getAttribute("href") ?? null;
+    const bar = screen.getByRole("navigation", { name: "Mobile platform navigation" });
+    const barTargets = within(bar).getAllByRole("link").map((link) => link.getAttribute("href"));
+    if (headerTarget) {
+      expect(barTargets).toContain(headerTarget);
+    } else {
+      // Quem so estuda nao tem troca no topo, nem atalho do estudio na barra
+      // (o Home segue o endereco, por isso o nome e nao o href).
+      expect(roles).toEqual(["student"]);
+      expect(within(bar).queryByRole("link", { name: "Teach" })).toBeNull();
+    }
+  });
+});
+
 describe("barra de baixo do celular: o atalho e sempre o OUTRO lado", () => {
   it.each([
     ["/teach", "Learn", "/learn"],
