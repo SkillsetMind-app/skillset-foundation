@@ -157,7 +157,7 @@ export function CreatorMarketingHub() {
           {uid ? (
             <Link
               href={storefrontPath}
-              className="inline-flex items-center gap-1 text-xs font-semibold text-[var(--color-primary)] underline underline-offset-2"
+              className="inline-flex items-center gap-1 text-xs font-semibold text-[var(--color-primary)] underline underline-offset-2 pointer-coarse:min-h-11"
             >
               {t("teach.marketing.state.openPublicPage")}
             </Link>

@@ -182,7 +182,8 @@ export function CourseInstructorCard({
       ) : null}
       <Link
         href={`/instructors/${encodeURIComponent(teacherId)}`}
-        className="mt-3 inline-flex text-xs font-semibold text-[var(--color-primary)] underline-offset-4 hover:underline"
+        // No toque o link tem 44px de altura (era 16px, na pagina de venda).
+        className="mt-3 inline-flex items-center text-xs font-semibold text-[var(--color-primary)] underline-offset-4 hover:underline pointer-coarse:mt-0 pointer-coarse:min-h-11"
       >{t("publicCourses.fullProfile")}</Link>
     </div>
   );
