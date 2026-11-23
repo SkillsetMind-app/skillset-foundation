@@ -373,6 +373,128 @@ describe("StorefrontSettingsPanel", () => {
     expect(status).not.toHaveTextContent("%");
   });
 
+  // B-05: logo e capa desenham a casca única de imagem. Cada um segue com o
+  // próprio envio, tipos, limite, remover e moldura; o Save manda o mesmo.
+  describe("logo e capa no campo único de imagem", () => {
+    const logoUrl = "https://media.example/storefront-logo.png?v=1";
+    const heroUrl = "https://media.example/storefront-hero.png?v=1";
+
+    function givenImages(branding: { logoUrl?: string; heroImageUrl?: string }) {
+      mocks.getUserProfile.mockResolvedValue({
+        displayName: "Dr. Ana Silva",
+        storefront: { branding: { themePreset: "default", ...branding }, showcase: { orderedCourseIds: [] } },
+      });
+    }
+
+    it.each([
+      ["logo", "Storefront logo", "Upload storefront logo", ".aspect-square.w-24", true],
+      ["hero", "Storefront cover", "Upload storefront hero image", ".aspect-\\[16\\/7\\]", false],
+    ] as const)("%s: mesmo accept, mesma moldura, a escolha zerada e o arquivo inteiro no envio", async (kind, title, inputLabel, frame, contain) => {
+      givenImages({ logoUrl, heroImageUrl: heroUrl });
+      mocks.uploadUserStorefrontImage.mockReturnValueOnce(new Promise<string>(() => undefined));
+      render(<StorefrontSettingsPanel />);
+
+      const region = await screen.findByRole("region", { name: title });
+      const input = within(region).getByLabelText(inputLabel);
+      expect(input).toHaveAttribute("type", "file");
+      expect(input).toHaveAttribute("accept", "image/jpeg,image/png,image/webp");
+      expect(input).toHaveAccessibleDescription(/JPG, PNG, or WebP under 5 MB\.$/);
+      expect(region.querySelector(frame)).not.toBeNull();
+      const image = region.querySelector("img");
+      expect(image).toHaveAttribute("src", kind === "logo" ? logoUrl : heroUrl);
+      expect(image?.classList.contains("object-contain")).toBe(contain);
+      expect(image?.classList.contains("object-cover")).toBe(!contain);
+
+      // A escolha é zerada no onChange: o mesmo arquivo pode vir de novo.
+      let resetTo: string | undefined;
+      Object.defineProperty(input, "value", {
+        configurable: true,
+        get: () => "",
+        set: (value: string) => { resetTo = value; },
+      });
+      const file = new File(["x"], `${kind}.png`, { type: "image/png" });
+      fireEvent.change(input, { target: { files: [file] } });
+      expect(resetTo).toBe("");
+      expect(mocks.uploadUserStorefrontImage).toHaveBeenCalledWith("teacher-1", kind, file, expect.any(Function));
+      expect(mocks.uploadUserStorefrontImage).toHaveBeenCalledOnce();
+    });
+
+    it.each([
+      ["logo", "Upload storefront logo", "Remove storefront logo"],
+      ["hero", "Upload storefront hero image", "Remove storefront hero image"],
+    ] as const)("%s: travado e sem Remove enquanto sobe; o Remove volta depois de uma falha", async (_kind, inputLabel, removeLabel) => {
+      vi.spyOn(console, "error").mockImplementation(() => undefined);
+      givenImages({ logoUrl, heroImageUrl: heroUrl });
+      let fail: (reason: Error) => void = () => undefined;
+      mocks.uploadUserStorefrontImage.mockReturnValueOnce(new Promise<string>((_resolve, reject) => { fail = reject; }));
+      render(<StorefrontSettingsPanel />);
+
+      const input = await screen.findByLabelText(inputLabel);
+      expect(screen.getByRole("button", { name: removeLabel })).toBeEnabled();
+      fireEvent.change(input, { target: { files: [new File(["x"], "a.png", { type: "image/png" })] } });
+      expect(input).toBeDisabled();
+      expect(screen.queryByRole("button", { name: removeLabel })).toBeNull();
+
+      await act(async () => { fail(new Error("LOCAL TEST: offline")); });
+      expect(await screen.findByRole("alert")).toHaveTextContent("We could not upload this image. Please try again.");
+      expect(input).toBeEnabled();
+      expect(screen.getByRole("button", { name: removeLabel })).toBeEnabled();
+    });
+
+    it.each([
+      ["sem imagem", {}],
+      ["só com o logo", { logoUrl }],
+      ["só com a capa", { heroImageUrl: heroUrl }],
+      ["com as duas", { logoUrl, heroImageUrl: heroUrl }],
+    ] as const)("Save manda o mesmo pacote %s", async (_state, branding: { logoUrl?: string; heroImageUrl?: string }) => {
+      givenImages(branding);
+      render(<StorefrontSettingsPanel />);
+      fireEvent.click(await screen.findByRole("button", { name: "Save storefront" }));
+      await waitFor(() => expect(mocks.updateUserStorefront).toHaveBeenCalledWith("teacher-1", {
+        branding: {
+          accentColor: null,
+          logoUrl: branding.logoUrl ?? null,
+          heroImageUrl: branding.heroImageUrl ?? null,
+          themePreset: "default",
+        },
+        showcase: { tagline: null, orderedCourseIds: [], featuredCourseId: null },
+      }));
+      expect(mocks.removeUserStorefrontImage).not.toHaveBeenCalled();
+    });
+
+    it("Save depois de trocar o logo e tirar a capa: o mesmo pacote e a limpeza só da capa", async () => {
+      givenImages({ logoUrl, heroImageUrl: heroUrl });
+      const newLogo = "https://media.example/storefront-logo.png?v=2";
+      mocks.uploadUserStorefrontImage.mockResolvedValueOnce(newLogo);
+      render(<StorefrontSettingsPanel />);
+
+      fireEvent.change(await screen.findByLabelText("Upload storefront logo"), {
+        target: { files: [new File(["x"], "logo.png", { type: "image/png" })] },
+      });
+      expect(await screen.findByText("Logo uploaded. Save the storefront to publish it.")).toBeInTheDocument();
+      fireEvent.click(screen.getByRole("button", { name: "Remove storefront hero image" }));
+      fireEvent.click(screen.getByRole("button", { name: "Save storefront" }));
+
+      await waitFor(() => expect(mocks.removeUserStorefrontImage).toHaveBeenCalledWith("teacher-1", "hero"));
+      expect(mocks.updateUserStorefront).toHaveBeenCalledWith("teacher-1", {
+        branding: { accentColor: null, logoUrl: newLogo, heroImageUrl: null, themePreset: "default" },
+        showcase: { tagline: null, orderedCourseIds: [], featuredCourseId: null },
+      });
+      expect(mocks.removeUserStorefrontImage).toHaveBeenCalledOnce();
+    });
+
+    it("escolher uma imagem segue tirando o \"salvo\" (o campo continua dentro do formulário)", async () => {
+      render(<StorefrontSettingsPanel />);
+      fireEvent.click(await screen.findByRole("button", { name: "Save storefront" }));
+      expect(await screen.findByText("Storefront saved.")).toBeInTheDocument();
+      fireEvent.change(screen.getByLabelText("Upload storefront logo"), {
+        target: { files: [new File(["bmp"], "logo.bmp", { type: "image/bmp" })] },
+      });
+      expect(screen.queryByText("Storefront saved.")).toBeNull();
+      expect(mocks.uploadUserStorefrontImage).not.toHaveBeenCalled();
+    });
+  });
+
   describe("idioma real da vitrine", () => {
     it.each(["en", "es"] as const)("traduz o formulário desde %s e preserva rascunho, ordem, destaque e dados autorais", async (initialLocale) => {
       const author = "Autoria $$ e $&";

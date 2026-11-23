@@ -25,6 +25,11 @@ export type ImageUploadFieldProps = {
     alt: string;
     /** 2:3 em 128px (capa do módulo); sem isto, 16:9 em até 200px. */
     portrait?: boolean;
+    /** Outra moldura (proporção e largura) no lugar de 16:9 em até 200px:
+     *  a vitrine usa 1:1 no logo e 16:7 na capa, como já desenhava. */
+    frame?: string;
+    /** A imagem inteira, com folga, em vez de cobrir a moldura (o logo). */
+    contain?: boolean;
     /** Texto do quadro vazio. */
     emptyLabel?: string;
   };
@@ -79,12 +84,12 @@ export function ImageUploadField({
       <div className={portrait ? "grid min-w-0 gap-3" : "grid min-w-0 gap-3 sm:grid-cols-[200px_minmax(0,1fr)] sm:items-start"}>
         <div
           className={`relative overflow-hidden rounded-md border border-[var(--color-line)] bg-[var(--color-surface)] ${
-            portrait ? "aspect-[2/3] w-32" : "aspect-video w-full max-w-[200px]"
+            portrait ? "aspect-[2/3] w-32" : (preview.frame ?? "aspect-video w-full max-w-[200px]")
           }`}
         >
           {preview.src ? (
             // eslint-disable-next-line @next/next/no-img-element -- a imagem vem do Storage ou de um link colado
-            <img src={preview.src} alt={preview.alt} className="h-full w-full object-cover" />
+            <img src={preview.src} alt={preview.alt} className={preview.contain ? "h-full w-full object-contain p-2" : "h-full w-full object-cover"} />
           ) : (
             <div className="flex h-full w-full flex-col items-center justify-center gap-1.5 text-[var(--color-ink-soft)]">
               <ImageIcon size={22} aria-hidden />
