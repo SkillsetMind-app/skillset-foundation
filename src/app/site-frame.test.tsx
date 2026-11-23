@@ -184,6 +184,7 @@ describe("seções de marketing viraram servidor", () => {
     "src/components/site/how-it-works-strip.tsx",
     "src/components/site/promise-preview-band.tsx",
     "src/components/site/for-creators-band.tsx",
+    "src/components/site/home-facts-band.tsx",
   ])("%s não é mais componente de cliente", (path) => {
     const source = readSource(path);
 
@@ -226,6 +227,12 @@ describe("seções de marketing viraram servidor", () => {
         expect(section(width), `${file} em ${width}px`).toBeLessThan(hero(width));
         if (width < 640) expect(section(width), `${file} em ${width}px`).toBeGreaterThanOrEqual(36);
       }
+    }
+    // Os números da faixa de fatos são grandes, mas nunca maiores que o título
+    // do topo, em nenhuma largura.
+    const figure = clampOf("src/components/site/home-facts-band.tsx", "dt");
+    for (let width = 320; width <= 1920; width += 8) {
+      expect(figure(width), `número da faixa de fatos em ${width}px`).toBeLessThan(hero(width));
     }
   });
 

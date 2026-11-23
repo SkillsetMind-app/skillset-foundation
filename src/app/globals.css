@@ -1421,6 +1421,19 @@ p {
   }
 }
 
+/* Faixa de fatos: cada número aparece e sobe 12px, bem de leve. */
+@keyframes motion-scroll-fact {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
 /* Sem suporte ou com movimento reduzido a barra de leitura não existe. */
 .home-scroll-progress {
   display: none;
@@ -1940,6 +1953,30 @@ p {
         animation-timeline: --home-course;
         animation-range: entry 0% cover 50%;
       }
+    }
+
+    /* 11. Faixa de fatos (fora das cenas: vale no celular e no computador).
+       Os quatro números aparecem um depois do outro. A régua é de cada fato
+       e o trecho é medido em svh, não em %: seja qual for a altura do fato,
+       ele termina inteiro antes de o topo dele passar de 79% da tela (a regra
+       de leitura pede inteiro de 75% para cima). No celular, 2x2, a segunda
+       fileira entra quando chega, e cada fileira tem a sua escada. */
+    .home-scroll .home-facts__item {
+      animation: motion-scroll-fact 1ms var(--ease-standard) both;
+      animation-timeline: view();
+      animation-range: cover 0% cover 12svh;
+    }
+
+    .home-scroll .home-facts__item:nth-child(2) {
+      animation-range: cover 3svh cover 15svh;
+    }
+
+    .home-scroll .home-facts__item:nth-child(3) {
+      animation-range: cover 6svh cover 18svh;
+    }
+
+    .home-scroll .home-facts__item:nth-child(4) {
+      animation-range: cover 9svh cover 21svh;
     }
   }
 }

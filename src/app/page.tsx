@@ -5,6 +5,7 @@ import { ArrowRight } from "lucide-react";
 import { CapabilitiesGrid } from "@/components/site/capabilities-grid";
 import { FeaturedCourses } from "@/components/site/featured-courses";
 import { ForCreatorsBand } from "@/components/site/for-creators-band";
+import { HomeFactsBand } from "@/components/site/home-facts-band";
 import { HowItWorksStrip } from "@/components/site/how-it-works-strip";
 import { MarketingHero } from "@/components/site/marketing-hero";
 import { PromisePreviewBand } from "@/components/site/promise-preview-band";
@@ -71,6 +72,9 @@ export default async function Home() {
       {/* Um <main> por página, alvo do "Skip to content" da barra. */}
       <main id="conteudo">
         <MarketingHero />
+        {/* Fatos que já são verdade (moedas, tarifa fixa, compromissos e o
+            teste), logo abaixo do topo. Sem âncora: não é destino de menu. */}
+        <HomeFactsBand />
         <section id="how-it-works" className="home-how scroll-mt-28">
           <HowItWorksStrip />
         </section>

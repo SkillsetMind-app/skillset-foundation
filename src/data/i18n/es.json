@@ -509,6 +509,14 @@
       "title": "Mira un curso real en SkillsetMind",
       "body": "Abre un curso publicado tal como lo ve un comprador: la página de venta, las lecciones y la lección de muestra.",
       "cta": "Abrir el curso"
+    },
+    "facts": {
+      "title": "SkillsetMind de un vistazo",
+      "currencies": "Monedas en el checkout, vía Stripe",
+      "feeLockMonths": "24",
+      "feeLock": "Meses de tarifa fija en tu plan",
+      "commitmentsCount": "6",
+      "commitments": "Compromisos por escrito con cada creador"
     }
   },
   "platform": {

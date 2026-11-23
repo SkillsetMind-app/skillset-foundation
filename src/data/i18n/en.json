@@ -509,6 +509,14 @@
       "title": "See a real course on SkillsetMind",
       "body": "Open a published course the way a buyer sees it: the sales page, the lessons and the preview lesson.",
       "cta": "Open the course"
+    },
+    "facts": {
+      "title": "SkillsetMind at a glance",
+      "currencies": "Currencies at checkout, via Stripe",
+      "feeLockMonths": "24",
+      "feeLock": "Months of fee-lock on your plan",
+      "commitmentsCount": "6",
+      "commitments": "Written commitments to every creator"
     }
   },
   "platform": {
