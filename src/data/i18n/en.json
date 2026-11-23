@@ -4013,7 +4013,6 @@
       "previewHelp": "The full preview opens the last saved version in a new tab. Wait for autosave to finish before opening it.",
       "cover": "Members area cover",
       "coverHelp": "Hero background for the enrolled-student workspace. Recommended 16:9, under {limit}.",
-      "coverSet": "Cover set",
       "coverAlt": "{courseTitle} members cover",
       "noCover": "No cover yet",
       "uploading": "Uploading...",

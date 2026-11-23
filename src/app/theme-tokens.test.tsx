@@ -684,6 +684,29 @@ describe.each(COMBOS)("InlineAlert inside the classroom — %s", (_name, vars, c
   });
 });
 
+// O .field-input dentro da sala (mensagem, avaliação, comentário da aula):
+// com a plataforma escura, o fundo `!important` e a borda de foco do
+// [data-theme="dark"] .field-input venciam a regra de campo da sala, e num
+// curso claro a caixa saía no tom da plataforma. A regra própria da sala
+// devolve fundo, borda e foco ao tema do curso nas quatro misturas.
+describe.each(COMBOS)("campo da casa dentro da sala — %s", (_name, vars) => {
+  const field = ".member-classroom[data-members-theme] .field-input";
+
+  it("fundo, borda e foco do .field-input saem do tema do curso", () => {
+    expect(sheet).toMatch(
+      /\.member-classroom\[data-members-theme\] \.field-input,\s*\.member-classroom\[data-members-theme\] \.field-input:focus,\s*\.member-classroom\[data-members-theme\] \.field-input:focus-visible \{/,
+    );
+    const rule = block(`${field}:focus-visible`);
+    expect(rule).toContain("border-color: var(--ma-line);");
+    // O fundo do escuro da plataforma tem !important: o da sala precisa dele.
+    expect(rule).toContain("background: var(--ma-surface) !important;");
+    expect(rule).toContain("color: var(--ma-ink);");
+    // Vem depois das regras da plataforma, e o foco pesa mais que o do escuro.
+    expect(css.indexOf(`${field},`)).toBeGreaterThan(css.indexOf('[data-theme="dark"] .field-input:focus-visible {'));
+    expect(ratio("var(--ma-ink)", "var(--ma-surface)", vars, "--ma-bg")).toBeGreaterThanOrEqual(4.5);
+  });
+});
+
 // A comunidade da sala nas cores do CURSO, nas quatro misturas. Antes o feed
 // pintava "respondida", "ao vivo" e "Answer" num verde fixo (3.6:1 num curso
 // escuro), e o filtro ativo, a pílula "N new posts" e os avatares no navy da

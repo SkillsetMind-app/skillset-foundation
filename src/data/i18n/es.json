@@ -4013,7 +4013,6 @@
       "previewHelp": "La vista previa completa abre la última versión guardada en una pestaña nueva. Espera a que termine el guardado automático antes de abrirla.",
       "cover": "Portada del área de miembros",
       "coverHelp": "Imagen de fondo del curso para tus alumnos. Recomendamos 16:9 y menos de {limit}.",
-      "coverSet": "Portada añadida",
       "coverAlt": "Portada del área de miembros de {courseTitle}",
       "noCover": "Aún no hay portada",
       "uploading": "Subiendo...",

@@ -66,7 +66,9 @@ export function LandingImageField({
   }
 
   return (
-    <div className="grid gap-3">
+    // O grupo leva o nome do bloco: com duas imagens na página, cada "Or paste
+    // a link" diz de qual imagem é.
+    <div role="group" aria-label={label} className="grid gap-3">
       {/* A casca de imagem das capas do construtor (B-05): prévia de 200px,
           botão de rótulo fixo, nota de envio, erro e "Remove". */}
       <ImageUploadField

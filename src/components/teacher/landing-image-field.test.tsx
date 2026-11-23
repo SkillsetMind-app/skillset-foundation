@@ -43,7 +43,11 @@ describe("LandingImageField", () => {
     expect(input).toHaveAttribute("type", "file");
     expect(input).toHaveAccessibleDescription("JPG, PNG or WebP, up to 5.0 MB.");
     expect(screen.getByRole("region", { name: "Photo" })).toContainElement(input);
-    expect(screen.getByLabelText("Or paste a link")).toBeInTheDocument();
+    // O link colado fica no grupo com o nome do bloco: com duas imagens na
+    // página, cada "Or paste a link" diz de qual imagem é.
+    const group = screen.getByRole("group", { name: "Photo" });
+    expect(group).toContainElement(input);
+    expect(group).toContainElement(screen.getByLabelText("Or paste a link"));
   });
 
   it("keeps the same accepted formats", () => {
