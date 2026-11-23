@@ -135,8 +135,8 @@ export async function updateCourseEvent(
 
 /**
  * Cancel an event without deleting it, so learners who already RSVP'd see the
- * cancelled state. subscribeToCourseEvents filters to scheduled, so cancelled
- * events drop off the learner agenda automatically.
+ * cancelled state: /learn/events and the classroom tab read with
+ * `includeCancelled`; the dashboard and the community still drop it.
  */
 export async function cancelCourseEvent(eventId: string) {
   const supabase = getSupabaseBrowserClient();
@@ -362,10 +362,14 @@ export function subscribeToCourseEventRsvps(
   };
 }
 
+// `includeCancelled`: a agenda /learn/events e a aba da sala mostram a sessao
+// cancelada marcada como tal (a tela decide por quantos dias). A consulta e a
+// mesma; so o filtro do navegador muda. Sem a opcao, como sempre: so as marcadas.
 export function subscribeToCourseEvents(
   courseSlug: string,
   callback: (events: CourseEvent[]) => void,
   onError: (error: Error) => void,
+  { includeCancelled = false }: { includeCancelled?: boolean } = {},
 ): (() => void) & { reload: () => Promise<void> } {
   const supabase = getSupabaseBrowserClient();
   // `reload()` (o "Try again") repete esta leitura sem mexer no canal. As de
@@ -395,7 +399,7 @@ export function subscribeToCourseEvents(
     callback(
       (data ?? [])
         .map(rowToCourseEvent)
-        .filter((event) => event.status === "scheduled")
+        .filter((event) => event.status === "scheduled" || (includeCancelled && event.status === "cancelled"))
         .sort((left, right) => left.startsAt.localeCompare(right.startsAt)),
     );
   };

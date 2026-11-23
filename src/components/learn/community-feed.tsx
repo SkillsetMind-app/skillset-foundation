@@ -28,7 +28,8 @@ import {
   type CommunityFeedFilter,
 } from "@/domain/community-feed";
 import type { CommunityComment, CommunityPost } from "@/domain/community-post";
-import type { CourseEvent } from "@/domain/course-event";
+import { formatEventDateTime, getEventLiveState, type CourseEvent } from "@/domain/course-event";
+import { noJoinLinkKey } from "@/components/learn/live-session-parts";
 import type { Enrollment } from "@/domain/enrollment";
 import { getSafeExternalUrl } from "@/domain/external-url";
 import type { CommunitySpace } from "@/domain/learning";
@@ -84,8 +85,9 @@ type CommunityFeedProps = {
 };
 
 const SAY_HI_WINDOW_MS = 7 * 24 * 3_600_000;
+// O cartão aparece 24 h antes; quando a sessão acaba vem da janela comum
+// (getEventLiveState, course-event.ts).
 const LIVE_SOON_WINDOW_MS = 24 * 3_600_000;
-const LIVE_RUNNING_WINDOW_MS = 3 * 3_600_000;
 
 export function CommunityFeed({
   space,
@@ -1068,8 +1070,11 @@ function FeedCard({
 
 function LiveCard({ live, now, locale }: { live: CourseEvent; now: number; locale: string }) {
   const { t } = useTranslation();
-  const startsAt = Date.parse(live.startsAt);
-  const running = startsAt <= now;
+  const state = getEventLiveState(live.startsAt, now);
+  const running = state === "live";
+  // O link de entrar aparece 15 min antes, como nas outras telas (antes só
+  // depois do início).
+  const canJoin = running || state === "startingSoon";
   const safeJoinUrl = getSafeExternalUrl(live.externalUrl);
   return (
     <section
@@ -1084,10 +1089,11 @@ function LiveCard({ live, now, locale }: { live: CourseEvent; now: number; local
         <Radio size={12} aria-hidden /> {liveChipLabel(live, now, t)}
       </p>
       <p className="mt-2 text-sm font-semibold text-[var(--color-ink)]">{live.title}</p>
+      {/* A mesma frase das outras telas, com data e fuso (antes "Wed 04:00 PM"). */}
       <p className="mt-0.5 text-xs text-[var(--color-ink-muted)]">
-        {new Date(startsAt).toLocaleString(locale, { weekday: "short", hour: "2-digit", minute: "2-digit" })}
+        {formatEventDateTime(live.startsAt, locale, t("platform.events.datePending"))}
       </p>
-      {running && safeJoinUrl ? (
+      {canJoin && safeJoinUrl ? (
         <a
           href={safeJoinUrl}
           target="_blank"
@@ -1098,7 +1104,7 @@ function LiveCard({ live, now, locale }: { live: CourseEvent; now: number; local
         </a>
       ) : (
         <p className="mt-3 text-xs text-[var(--color-ink-muted)]">
-          {t(safeJoinUrl ? "learn.community.live.joinLater" : "platform.events.linkUnavailable")}
+          {t(safeJoinUrl ? "learn.community.live.joinLater" : noJoinLinkKey(live.type))}
         </p>
       )}
     </section>
@@ -1110,7 +1116,7 @@ function pickNextLive(events: CourseEvent[], now: number): CourseEvent | null {
     events
       .filter((event) => {
         const startsAt = Date.parse(event.startsAt);
-        return startsAt >= now - LIVE_RUNNING_WINDOW_MS && startsAt <= now + LIVE_SOON_WINDOW_MS;
+        return startsAt <= now + LIVE_SOON_WINDOW_MS && getEventLiveState(event.startsAt, now) !== "over";
       })
       .sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt))[0] ?? null
   );

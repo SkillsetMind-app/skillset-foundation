@@ -579,9 +579,9 @@ describe("TeacherEventStudio", () => {
     it.each([
       {
         trigger: "Cancel session", title: "Cancel this session?", confirm: "Cancel session", action: cancelCourseEvent,
-        // A frase antiga prometia "verao como cancelada"; hoje a sessao some
-        // da lista do aluno e ninguem e avisado. A frase diz o que e verdade.
-        sentence: "Cancel \"Live $& session\"? It disappears from learners' lists, and they are not notified automatically, so let them know.", notice: "Session cancelled.",
+        // A frase diz o que e verdade: o aluno ve a sessao marcada como
+        // cancelada por uma semana, e ninguem e avisado sozinho.
+        sentence: "Cancel \"Live $& session\"? Learners see it marked as cancelled in their agenda for a week. They are not notified automatically, so let them know.", notice: "Session cancelled.",
       },
       {
         trigger: "Delete", title: "Delete this session?", confirm: "Delete session", action: deleteCourseEvent,

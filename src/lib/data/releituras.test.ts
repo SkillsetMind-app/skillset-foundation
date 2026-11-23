@@ -154,7 +154,40 @@ const cases: Case[] = [
     answer: (id) => [{ id, course_slug: "course-1", status: "scheduled", starts_at: "2026-12-01T10:00:00Z", title: id }],
     idOf: firstId,
   },
+  // A opção das canceladas: a MESMA consulta e o mesmo canal, só o filtro muda.
+  {
+    name: "subscribeToCourseEvents com includeCancelled",
+    subscribe: (callback, onError) =>
+      subscribeToCourseEvents("course-1", callback as never, onError, { includeCancelled: true }),
+    query: [["from", "course_events"], ["select", "*"], ["eq", "course_slug", "course-1"]],
+    channel: { name: "course_events:slug:course-1", filter: { event: "*", schema: "public", table: "course_events", filter: "course_slug=eq.course-1" } },
+    realtime: "reread",
+    answer: (id) => [{ id, course_slug: "course-1", status: "cancelled", starts_at: "2026-12-01T10:00:00Z", title: id }],
+    idOf: firstId,
+  },
 ];
+
+describe("subscribeToCourseEvents: as canceladas", () => {
+  const rows = [
+    { id: "marcada", course_slug: "course-1", status: "scheduled", starts_at: "2026-12-01T10:00:00Z" },
+    { id: "cancelada", course_slug: "course-1", status: "cancelled", starts_at: "2026-12-02T10:00:00Z" },
+    { id: "realizada", course_slug: "course-1", status: "completed", starts_at: "2026-12-03T10:00:00Z" },
+  ];
+
+  it.each([
+    ["sem a opção, só as marcadas (como antes)", undefined, ["marcada"]],
+    ["com a opção, as marcadas e as canceladas", { includeCancelled: true }, ["marcada", "cancelada"]],
+  ] as const)("%s", async (_label, options, ids) => {
+    fake.reads = [];
+    fake.channels = [];
+    const callback = vi.fn();
+    subscribeToCourseEvents("course-1", callback, vi.fn(), options);
+    await vi.waitFor(() => expect(fake.reads).toHaveLength(1));
+    fake.reads[0].answer({ data: rows, error: null });
+    await vi.waitFor(() => expect(callback).toHaveBeenCalledOnce());
+    expect(callback.mock.calls[0][0].map((event: { id: string }) => event.id)).toEqual(ids);
+  });
+});
 
 const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
 const reads = (count: number) => vi.waitFor(() => expect(fake.reads).toHaveLength(count));

@@ -1292,7 +1292,8 @@
     },
     "events": {
       "datePending": "Fecha pendiente",
-      "linkUnavailable": "El enlace de la sesión no está disponible. Contacta a tu instructor."
+      "linkUnavailable": "Todavía no se agregó el enlace para entrar. Contacta a tu instructor.",
+      "deadlineNoLink": "Es una fecha límite, no una reunión: no hay enlace para entrar."
     },
     "notifications": {
       "open": "Abrir notificaciones",
@@ -2486,7 +2487,7 @@
       "tiles": {
         "upcomingHint": "Todavía por venir en la agenda",
         "pastHint": "Ya sucedieron",
-        "cancelledHint": "Suspendidas: ya no aparecen a los alumnos"
+        "cancelledHint": "Suspendidas: los alumnos las ven marcadas como canceladas durante una semana"
       },
       "emptyTitle": "Ninguna sesión en esta vista.",
       "emptyBody": "Nada coincide con este filtro y esta búsqueda. Programa una y cada persona inscrita en el curso la encuentra en su propia agenda.",
@@ -2509,7 +2510,7 @@
       "cancelSession": "Cancelar sesión",
       "working": "Trabajando...",
       "delete": "Eliminar",
-      "confirmCancel": "¿Cancelar \"{title}\"? Desaparece de la lista de los alumnos y no reciben ningún aviso automático, así que avísales.",
+      "confirmCancel": "¿Cancelar \"{title}\"? Los alumnos la ven marcada como cancelada en su agenda durante una semana. No reciben ningún aviso automático, así que avísales.",
       "confirmDelete": "¿Eliminar \"{title}\" para siempre? Esto no se puede deshacer.",
       "deleteGoing": "{count} personas dijeron que asistirán. Eliminar borra sus respuestas y nadie recibe aviso. Cancelar sesión conserva el registro.",
       "deleteGoingOne": "1 persona dijo que asistirá. Eliminar borra su respuesta y nadie recibe aviso. Cancelar sesión conserva el registro.",
@@ -5842,9 +5843,13 @@
       "attend": "Asistiré",
       "notAttend": "No puedo asistir",
       "join": "Unirse a la sesión externa",
-      "noLink": "Todavía no se ha añadido un enlace para unirse a esta sesión.",
       "attending": "Asistirás",
-      "not_attending": "No asistirás"
+      "not_attending": "No asistirás",
+      "held": "Realizada",
+      "going": "Vas a asistir: {when}",
+      "updated": "Actualizada: {date}",
+      "accessEndedTitle": "Tu acceso al curso terminó.",
+      "accessEnded": "Las sesiones de {courses} ya no aparecen aquí porque tu acceso terminó."
     },
     "verification": {
       "emptyError": "Introduce un código de verificación de SkillsetMind.",
@@ -5876,11 +5881,20 @@
       "now": "En vivo ahora",
       "join": "Unirse ahora",
       "open": "Abrir enlace de la sesión",
-      "soon": "Enlace disponible pronto",
       "communityDescription": "Un espacio del curso para anuncios, preguntas, recursos y conversaciones entre estudiantes.",
       "empty": "No hay sesiones en vivo programadas por ahora.",
       "happened": "La sesión ya ocurrió.",
-      "replay": "Ver la grabación"
+      "replay": "Ver la grabación",
+      "loadError": "No pudimos cargar las sesiones en vivo de este curso.",
+      "stripLive": "En vivo ahora: {title}",
+      "stripSoon": "Empieza en {count} min: {title}",
+      "stripSoonAnnounce": "Está por empezar: {title}",
+      "stripJoin": "Entrar"
+    },
+    "calendar": {
+      "google": "Agregar a Google Calendar",
+      "ics": "Descargar archivo de calendario (.ics)",
+      "duration": "La entrada del calendario dura {minutes} minutos: la sesión no tiene hora de fin definida."
     },
     "leaderboard": {
       "loadError": "No pudimos cargar la clasificación.",

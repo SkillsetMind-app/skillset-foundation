@@ -624,9 +624,33 @@ describe("LearnDashboard", () => {
       const lives = await screen.findByRole("region", { name: "Próximas sesiones en vivo" });
       expect(lives).toHaveTextContent("Live Q&A");
       expect(within(lives).queryByRole("link")).not.toBeInTheDocument();
-      expect(lives).toHaveTextContent("El enlace de la sesión no está disponible. Contacta a tu instructor.");
+      expect(lives).toHaveTextContent("Todavía no se agregó el enlace para entrar. Contacta a tu instructor.");
     },
   );
+
+  // Antes a live saia do painel no minuto em que comecava, levando o "Join".
+  it("a live que esta acontecendo fica no painel, com 'Happening now' e 'Join'; a que acabou sai", async () => {
+    fixtures.events = [
+      { ...fixtures.liveEvent, id: "running", title: "Running Q&A", startsAt: new Date(Date.now() - 30 * 60_000).toISOString() },
+      { ...fixtures.liveEvent, id: "over", title: "Finished Q&A", startsAt: new Date(Date.now() - 4 * 60 * 60_000).toISOString() },
+    ];
+    render(<LearnDashboard />);
+
+    const lives = await screen.findByRole("region", { name: "Upcoming lives" });
+    expect(within(lives).getByText("Running Q&A")).toBeInTheDocument();
+    expect(within(lives).getByText("Happening now")).toBeInTheDocument();
+    expect(within(lives).getByRole("link", { name: "Join" })).toHaveAttribute("href", "https://meet.example.com/live");
+    expect(within(lives).queryByText("Finished Q&A")).not.toBeInTheDocument();
+  });
+
+  it("um prazo sem link diz que e uma data de entrega, nao 'link indisponivel'", async () => {
+    fixtures.events = [{ ...fixtures.liveEvent, type: "deadline", externalUrl: "" }];
+    render(<LearnDashboard />);
+
+    const lives = await screen.findByRole("region", { name: "Upcoming lives" });
+    expect(lives).toHaveTextContent("This is a due date, not a meeting: there is nothing to join.");
+    expect(lives).not.toHaveTextContent("The join link has not been added yet.");
+  });
 
   it("preserves a valid HTTP upcoming link and trims surrounding whitespace", async () => {
     fixtures.events = [{ ...fixtures.liveEvent, externalUrl: "  http://example.com/live  " }];

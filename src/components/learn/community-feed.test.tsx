@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CommunityFeed } from "@/components/learn/community-feed";
 import { I18nProvider, useTranslation } from "@/components/i18n/i18n-provider";
 import type { CommunityComment, CommunityPost } from "@/domain/community-post";
+import { formatEventDateTime } from "@/domain/course-event";
 import type { CommunitySpace } from "@/domain/learning";
 import type { Enrollment } from "@/domain/enrollment";
 import { createCommunityPost, createCommunityComment, createCommunityReport, deleteCommunityComment, deleteCommunityPost, setCommunityPostAcceptedAnswer, setCommunityPostPinned, subscribeToCommunityPosts } from "@/lib/data/community-posts";
@@ -721,6 +722,16 @@ describe("feed da comunidade (rodada 11)", () => {
     expect(screen.getByText(/2 online/)).toBeInTheDocument();
     expect(screen.getByText("New here? Say hi 👋")).toBeInTheDocument();
 
+    // 10 min antes ja e "comecando": o link de entrar aparece, como nas
+    // outras telas (antes so depois do inicio). Data e fuso na frase comum.
+    await act(async () => {
+      vi.setSystemTime(NOW + 30 * 60_000);
+      await vi.advanceTimersByTimeAsync(30_000);
+    });
+    const soon = screen.getByRole("region", { name: "Next live" });
+    expect(within(soon).getByRole("link", { name: "Join" })).toHaveAttribute("href", "https://zoom.us/j/1");
+    expect(soon).toHaveTextContent(formatEventDateTime(new Date(NOW + 40 * 60_000).toISOString(), "en"));
+
     await act(async () => {
       vi.setSystemTime(NOW + 41 * 60_000);
       await vi.advanceTimersByTimeAsync(30_000);
@@ -748,9 +759,9 @@ describe("feed da comunidade (rodada 11)", () => {
       const live = screen.getByRole("region", { name: "Next live" });
       expect(live).toHaveTextContent("Live Q&A");
       expect(within(live).queryByRole("link")).not.toBeInTheDocument();
-      expect(live).toHaveTextContent("Session link unavailable. Contact your instructor.");
+      expect(live).toHaveTextContent("The join link has not been added yet. Contact your instructor.");
       fireEvent.click(screen.getByRole("button", { name: "Change language" }));
-      expect(live).toHaveTextContent("El enlace de la sesión no está disponible. Contacta a tu instructor.");
+      expect(live).toHaveTextContent("Todavía no se agregó el enlace para entrar. Contacta a tu instructor.");
     },
   );
 

@@ -16,7 +16,8 @@ import { WelcomeTour } from "@/components/learn/welcome-tour";
 import { ListingSearchBar } from "@/components/shared/listing-search-bar";
 import { PeriodTabs } from "@/components/shared/period-tabs";
 import { StatusChip } from "@/components/shared/status-chip";
-import { formatEventDateTime, type CourseEvent } from "@/domain/course-event";
+import { noJoinLinkKey, useNow } from "@/components/learn/live-session-parts";
+import { formatEventDateTime, getEventLiveState, type CourseEvent } from "@/domain/course-event";
 import {
   canContinueEnrollment,
   canOpenEnrollment,
@@ -68,6 +69,8 @@ export function LearnDashboard() {
   const [hasError, setHasError] = useState(false);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [eventBuckets, setEventBuckets] = useState<Record<string, CourseEvent[]>>({});
+  // Relógio que anda: a live fica no painel enquanto acontece, com "Happening now".
+  const now = useNow();
   // Os cursos REAIS da pessoa. Sem isto o painel só enxergava os 6 cursos de
   // demonstração de `catalog.ts`, e uma matrícula real nunca carrega slug de
   // demonstração — `enrollments.ts:115` e o webhook do Stripe gravam o id do
@@ -203,22 +206,21 @@ export function LearnDashboard() {
     }
   }, [enrollments]);
 
+  // A live fica até acabar (a janela comum de course-event.ts). Antes ela
+  // saía do painel no minuto em que começava, levando o "Join" junto.
   const upcomingEvents = useMemo(() => {
-    // Display-only metric recomputed whenever event data changes; reading the
-    // wall clock here is intentional and any staleness is harmless.
-    // eslint-disable-next-line react-hooks/purity
-    const now = Date.now();
     return Object.values(eventBuckets)
       .flat()
-      .map((event) => ({ event, startsAt: Date.parse(event.startsAt) }))
-      .filter(({ startsAt }) => Number.isFinite(startsAt) && startsAt >= now)
+      .map((event) => ({ event, startsAt: Date.parse(event.startsAt), state: getEventLiveState(event.startsAt, now) }))
+      .filter(({ startsAt, state }) => Number.isFinite(startsAt) && state !== "over")
       .sort((left, right) => left.startsAt - right.startsAt)
-      .map(({ event, startsAt }) => ({
+      .map(({ event, startsAt, state }) => ({
         ...event,
         externalUrl: getSafeExternalUrl(event.externalUrl),
         isThisWeek: startsAt <= now + weekMillis,
+        isLive: state === "live",
       }));
-  }, [eventBuckets]);
+  }, [eventBuckets, now]);
 
   // O aviso de reembolso aparecia em toda visita. Agora so enquanto serve:
   // ha uma compra paga ainda dentro das regras do reembolso automatico. So
@@ -550,6 +552,11 @@ export function LearnDashboard() {
                     <Radio aria-hidden="true" size={16} strokeWidth={1.8} />
                   </span>
                   <div className="min-w-0 flex-1">
+                    {event.isLive ? (
+                      <p className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--color-accent-fg)]">
+                        {t("learnWave2.agenda.now")}
+                      </p>
+                    ) : null}
                     <p className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--color-primary)]">
                       {formatEventDateTime(event.startsAt, locale, t("platform.events.datePending"))}
                     </p>
@@ -571,7 +578,7 @@ export function LearnDashboard() {
                     </a>
                   ) : (
                     <span className="text-xs text-[var(--color-ink-soft)]">
-                      {t("platform.events.linkUnavailable")}
+                      {t(noJoinLinkKey(event.type))}
                     </span>
                   )}
                 </li>

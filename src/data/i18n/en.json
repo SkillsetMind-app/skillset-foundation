@@ -1292,7 +1292,8 @@
     },
     "events": {
       "datePending": "Date pending",
-      "linkUnavailable": "Session link unavailable. Contact your instructor."
+      "linkUnavailable": "The join link has not been added yet. Contact your instructor.",
+      "deadlineNoLink": "This is a due date, not a meeting: there is nothing to join."
     },
     "notifications": {
       "open": "Open notifications",
@@ -2486,7 +2487,7 @@
       "tiles": {
         "upcomingHint": "Still ahead on the agenda",
         "pastHint": "Already happened",
-        "cancelledHint": "Called off — removed from learners' lists"
+        "cancelledHint": "Called off — learners see it marked as cancelled for a week"
       },
       "emptyTitle": "No sessions in this view.",
       "emptyBody": "Nothing matches this filter and search. Schedule one and every learner enrolled in the course finds it in their own agenda.",
@@ -2509,7 +2510,7 @@
       "cancelSession": "Cancel session",
       "working": "Working...",
       "delete": "Delete",
-      "confirmCancel": "Cancel \"{title}\"? It disappears from learners' lists, and they are not notified automatically, so let them know.",
+      "confirmCancel": "Cancel \"{title}\"? Learners see it marked as cancelled in their agenda for a week. They are not notified automatically, so let them know.",
       "confirmDelete": "Permanently delete \"{title}\"? This cannot be undone.",
       "deleteGoing": "{count} people said they will attend. Deleting erases their answers and nobody is notified. Cancel session keeps the record instead.",
       "deleteGoingOne": "1 person said they will attend. Deleting erases the answer and nobody is notified. Cancel session keeps the record instead.",
@@ -5842,9 +5843,13 @@
       "attend": "I will attend",
       "notAttend": "I cannot attend",
       "join": "Join external session",
-      "noLink": "A join link has not been added for this session yet.",
       "attending": "Going",
-      "not_attending": "Not going"
+      "not_attending": "Not going",
+      "held": "Held",
+      "going": "You're going: {when}",
+      "updated": "Updated {date}",
+      "accessEndedTitle": "Your course access ended.",
+      "accessEnded": "Sessions from {courses} no longer appear here because your access ended."
     },
     "verification": {
       "emptyError": "Enter a SkillsetMind verification code.",
@@ -5876,11 +5881,20 @@
       "now": "Happening now",
       "join": "Join now",
       "open": "Open session link",
-      "soon": "Link available soon",
       "communityDescription": "A course-linked space for announcements, questions, resources, and cohort discussion.",
       "empty": "No live sessions are scheduled right now.",
       "happened": "The session already happened.",
-      "replay": "Watch the replay"
+      "replay": "Watch the replay",
+      "loadError": "We could not load the live sessions for this course.",
+      "stripLive": "Live now: {title}",
+      "stripSoon": "Starts in {count} min: {title}",
+      "stripSoonAnnounce": "Starting soon: {title}",
+      "stripJoin": "Join"
+    },
+    "calendar": {
+      "google": "Add to Google Calendar",
+      "ics": "Download calendar file (.ics)",
+      "duration": "The calendar entry lasts {minutes} minutes: the session has no set end time."
     },
     "leaderboard": {
       "loadError": "We could not load the leaderboard.",

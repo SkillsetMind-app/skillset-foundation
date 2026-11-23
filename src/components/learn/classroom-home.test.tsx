@@ -1,5 +1,5 @@
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { EnrolledCourseWorkspace } from "@/components/learn/enrolled-course-workspace";
 import { I18nProvider, useTranslation } from "@/components/i18n/i18n-provider";
@@ -1071,5 +1071,113 @@ describe("o contador de perguntas abertas na aba Community", () => {
     expect(screen.getByText(
       formatEventDateTime(startsAt, "es"),
     )).toBeInTheDocument();
+  });
+});
+
+/**
+ * Na hora H o botao de entrar fugia: a aba das aulas nao avisava nada e o
+ * "agora" da aba das sessoes parava na hora em que a lista chegou. Agora uma
+ * faixa em TODAS as abas, com o relogio andando; a cancelada aparece marcada; e
+ * a leitura que falha diz que falhou, com "Try again".
+ */
+describe("sessoes ao vivo na sala", () => {
+  const NOW = Date.parse("2026-11-25T20:50:00.000Z");
+  const status = (text: string) =>
+    screen.getAllByText(text).find((element) => element.getAttribute("role") === "status");
+
+  beforeEach(() => {
+    mocks.replace.mockReset();
+    mocks.enrollmentSubscriptions = 0;
+    Element.prototype.scrollIntoView = vi.fn();
+    vi.useFakeTimers({ toFake: ["Date", "setInterval", "clearInterval"] });
+    vi.setSystemTime(NOW);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.mocked(subscribeToCourseEvents).mockImplementation(() => unsubscribable());
+  });
+
+  it("10 min antes, a faixa com Join aparece na aba das aulas; o aviso so muda quando vira 'ao vivo'", () => {
+    vi.mocked(subscribeToCourseEvents).mockImplementation((_courseId, onData) => {
+      onData([liveEvent(new Date(NOW + 10 * 60_000).toISOString())]);
+      return unsubscribable();
+    });
+    renderClassroom("lesson=l2");
+
+    expect(screen.getByText("Starts in 10 min: Live Q&A")).toBeInTheDocument();
+    expect(status("Starting soon: Live Q&A")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Join" })).toHaveAttribute("href", "https://meet.example.com/live");
+
+    // A contagem anda; o aviso do leitor de tela nao.
+    act(() => vi.advanceTimersByTime(60_000));
+    expect(screen.getByText("Starts in 9 min: Live Q&A")).toBeInTheDocument();
+    expect(status("Starting soon: Live Q&A")).toBeTruthy();
+
+    act(() => vi.advanceTimersByTime(10 * 60_000));
+    expect(status("Live now: Live Q&A")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Join" })).toBeInTheDocument();
+  });
+
+  it("a faixa tambem aparece nas outras abas; sessao longe nao mostra faixa", () => {
+    vi.mocked(subscribeToCourseEvents).mockImplementation((_courseId, onData) => {
+      onData([liveEvent(new Date(NOW - 30 * 60_000).toISOString())]);
+      return unsubscribable();
+    });
+    const { unmount } = renderClassroom("lesson=l2", [], "community");
+    expect(status("Live now: Live Q&A")).toBeTruthy();
+    unmount();
+
+    vi.mocked(subscribeToCourseEvents).mockImplementation((_courseId, onData) => {
+      onData([liveEvent(new Date(NOW + 2 * 60 * 60_000).toISOString())]);
+      return unsubscribable();
+    });
+    renderClassroom("lesson=l2");
+    expect(screen.queryByText(/Starts in|Live now/)).not.toBeInTheDocument();
+  });
+
+  it("na aba das sessoes: a cancelada marcada e sem link; a proxima com o calendario", () => {
+    vi.mocked(subscribeToCourseEvents).mockImplementation((_courseId, onData) => {
+      onData([
+        { ...liveEvent(new Date(NOW + 24 * 60 * 60_000).toISOString()), id: "cancelled", title: "Called off", status: "cancelled" },
+        { ...liveEvent(new Date(NOW + 48 * 60 * 60_000).toISOString()), id: "next", title: "Next Q&A" },
+      ]);
+      return unsubscribable();
+    });
+    renderClassroom("lesson=l2", [], "lives");
+
+    expect(subscribeToCourseEvents).toHaveBeenLastCalledWith(
+      "course-1", expect.any(Function), expect.any(Function), { includeCancelled: true },
+    );
+    const cancelled = screen.getByText("Called off").closest("li") as HTMLElement;
+    expect(within(cancelled).getByText("Cancelled")).toBeInTheDocument();
+    expect(cancelled.querySelector("s")).not.toBeNull();
+    expect(within(cancelled).queryByRole("link")).not.toBeInTheDocument();
+    const next = screen.getByText("Next Q&A").closest("li") as HTMLElement;
+    expect(within(next).getByRole("link", { name: "Open session link" })).toBeInTheDocument();
+    expect(within(next).getByRole("link", { name: "Add to Google Calendar" })).toBeInTheDocument();
+    // A cancelada nao vira faixa.
+    expect(screen.queryByText(/Starts in|Live now/)).not.toBeInTheDocument();
+  });
+
+  it("a leitura das sessoes falha: erro e Try again, nunca 'nenhuma sessao'", async () => {
+    let deliver!: (events: ReturnType<typeof liveEvent>[]) => void;
+    const reload = vi.fn(async () => deliver([liveEvent(new Date(NOW + 60 * 60_000).toISOString())]));
+    vi.mocked(subscribeToCourseEvents).mockImplementation((_courseId, onData, onError) => {
+      deliver = onData;
+      onError(new Error("offline"));
+      return Object.assign(vi.fn(), { reload });
+    });
+    renderClassroom("lesson=l2", [], "lives");
+
+    expect(screen.getByText("We could not load the live sessions for this course.")).toBeInTheDocument();
+    expect(screen.queryByText("No live sessions are scheduled right now.")).not.toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    });
+    expect(reload).toHaveBeenCalledOnce();
+    expect(screen.getByText("Live Q&A")).toBeInTheDocument();
+    expect(screen.queryByText("We could not load the live sessions for this course.")).not.toBeInTheDocument();
   });
 });
