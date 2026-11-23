@@ -10,6 +10,7 @@ import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { ShortId } from "@/components/shared/short-id";
 import { StatusChip } from "@/components/shared/status-chip";
+import { BusyLabel } from "@/components/ui/busy-label";
 import { DrawnCheck } from "@/components/ui/drawn-check";
 import {
   CourseActionsMenu,
@@ -31,6 +32,7 @@ import { CourseLandingEditor } from "@/components/teacher/course-landing-editor"
 import { SalesPageEditor } from "@/components/teacher/sales-page-editor";
 import { useConfirm } from "@/components/teacher/use-confirm";
 import { InlineAlert } from "@/components/ui/inline-alert";
+import { LoadErrorAlert } from "@/components/ui/load-error-alert";
 import { ProgressBar } from "@/components/ui/progress-bar";
 import type { PlanId } from "@/data/plans";
 import { planById, refundWindowDays } from "@/data/plans";
@@ -290,11 +292,11 @@ function MarketplaceHighlightPanel({
           disabled={saving || !canToggle}
           className={`${featured ? "button-outline" : "button-solid"} px-4 py-2 text-xs disabled:cursor-not-allowed`}
         >
-          {saving
-            ? t("creatorPanel.hub.highlight.saving")
-            : featured
-              ? t("creatorPanel.hub.highlight.remove")
-              : t("creatorPanel.hub.highlight.add")}
+          <BusyLabel
+            busy={saving}
+            idle={featured ? t("creatorPanel.hub.highlight.remove") : t("creatorPanel.hub.highlight.add")}
+            busyText={t("creatorPanel.hub.highlight.saving")}
+          />
         </button>
       </div>
       {gateReason ? (
@@ -503,6 +505,10 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
   // curso, como era a do e-book.
   const courseModules = course?.modules;
   const [courseAssets, setCourseAssets] = useState<{ courseId: string; list: CourseAsset[] } | null>(null);
+  // A falha da lista era engolida, e o Manage seguia com outra porcentagem.
+  // Agora a conta espera ("—%") e a falha ganha "Try again" (B-15).
+  const [assetsFailedFor, setAssetsFailedFor] = useState<string | null>(null);
+  const readinessLineRef = useRef<HTMLParagraphElement>(null);
   useEffect(() => {
     if (!courseModules) {
       return;
@@ -512,11 +518,18 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
       .then((list) => {
         if (!cancelled) setCourseAssets({ courseId, list });
       })
-      .catch(() => undefined);
+      .catch(() => {
+        if (!cancelled) setAssetsFailedFor(courseId);
+      });
     return () => {
       cancelled = true;
     };
   }, [courseId, courseModules]);
+  const retryCourseAssets = () =>
+    fetchCourseAssets(courseId).then(
+      (list) => setCourseAssets({ courseId, list }),
+      () => setAssetsFailedFor(courseId),
+    );
 
   const isOwner = Boolean(course && user && course.ownerId === user.uid);
   // Server-enforced by the commerce RPCs; surfaced here so the panels can
@@ -569,6 +582,10 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
     .replace("{done}", () => String(readiness.doneCount))
     .replace("{total}", () => String(readiness.total))
     .replace("{percent}", () => String(readiness.percent));
+  // Com aula no curso, a conta depende da lista de arquivos: sem ela o número
+  // sairia diferente do construtor. Até ela chegar, "—%" e nada de barra.
+  const readinessPending = !assets && course.modules.some((courseModule) => courseModule.lessons.length > 0);
+  const assetsFailed = readinessPending && assetsFailedFor === course.id;
   const pricing = getCoursePricingShape(course);
   // "Add the yearly plan" na etapa de preco chega com ?addPrice=yearly&amount=
   // (em centavos): o formulario de outro preco ja abre com o plano anual.
@@ -659,7 +676,8 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
                   const next = event.target.value;
                   leavePage(() => router.push(`/teach/courses/${next}/manage`));
                 }}
-                className="min-h-11 rounded-md border fine-rule bg-white px-3 py-2 text-xs font-semibold text-[var(--color-ink)]"
+                // Até a largura da linha: um título longo não passa da tela de 375px.
+                className="field-input field-input--inline max-w-full"
               >
                 <option value={course.id}>{course.title}</option>
                 {switchableCourses.map((candidate) => (
@@ -760,7 +778,7 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
                 const row = sectionRowRef.current;
                 if (row) row.scrollBy({ left: sign * row.clientWidth, behavior: "auto" });
               }}
-              className={`absolute top-0 flex h-11 w-11 items-center justify-center text-[var(--color-primary)] disabled:opacity-30 lg:hidden ${direction === "previous" ? "left-0" : "right-0"}`}
+              className={`absolute top-0 flex h-11 w-11 items-center justify-center text-[var(--color-primary)] disabled:opacity-60 lg:hidden ${direction === "previous" ? "left-0" : "right-0"}`}
             >
               <Icon size={18} aria-hidden="true" />
             </button>
@@ -825,11 +843,28 @@ export function CourseManageHub({ courseId }: { courseId: string }) {
             >
               {/* A mesma barra do construtor (a compartilhada): as duas telas
                   desenhavam a mesma prontidão de jeitos diferentes. */}
-              <ProgressBar value={readiness.percent} label={readinessText} className="mt-4" />
-              {/* aria-hidden: a barra acima já diz esta frase (é o nome dela). */}
-              <p aria-hidden="true" className="mt-2 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-ink-muted)]">
-                {readinessText}
+              {readinessPending ? (
+                // O trilho vazio guarda o lugar da barra: nada pula quando a
+                // conta chega, e nenhum número falso é anunciado.
+                <div aria-hidden="true" className="mt-4 h-1.5 rounded-full bg-[var(--color-line)]" />
+              ) : (
+                <ProgressBar value={readiness.percent} label={readinessText} className="mt-4" />
+              )}
+              {/* aria-hidden: a barra acima já diz esta frase (é o nome dela).
+                  Esperando, não há barra: a frase fica para o leitor de tela. */}
+              <p
+                ref={readinessLineRef}
+                tabIndex={-1}
+                aria-hidden={readinessPending ? undefined : "true"}
+                className="mt-2 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-ink-muted)]"
+              >
+                {readinessPending ? t("creatorPanel.hub.checklist.progressPending") : readinessText}
               </p>
+              {assetsFailed ? (
+                <LoadErrorAlert className="mt-3" focusRef={readinessLineRef} onRetry={retryCourseAssets}>
+                  {t("creatorPanel.hub.checklist.assetsError")}
+                </LoadErrorAlert>
+              ) : null}
               <ReadinessGroups
                 readiness={readiness}
                 className="mt-4 grid gap-5"

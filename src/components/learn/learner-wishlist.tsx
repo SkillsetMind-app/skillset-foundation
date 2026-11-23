@@ -7,6 +7,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { useAuth } from "@/components/auth/auth-provider";
+import { BusyLabel } from "@/components/ui/busy-label";
 import { EmptyState } from "@/components/ui/empty-state";
 import { InlineAlert } from "@/components/ui/inline-alert";
 import { LoadErrorAlert } from "@/components/ui/load-error-alert";
@@ -128,10 +129,22 @@ export function LearnerWishlist() {
     </div>
   );
 
+  // A espera com a forma da lista (dois cartões com capa e texto), e a frase
+  // só para o leitor de tela: antes era uma frase solta num cartão.
   if (isLoading) {
     return frame(
-      <div className="dash-card dash-card--strong p-5 text-sm text-[var(--color-ink-soft)]">
-        {t("learnWave2.wishlistHub.loading")}
+      <div role="status" className="grid gap-5 lg:grid-cols-2">
+        <span className="sr-only">{t("learnWave2.wishlistHub.loading")}</span>
+        {[0, 1].map((item) => (
+          <div key={item} aria-hidden="true" className="dash-card dash-card--strong grid overflow-hidden md:grid-cols-[220px_1fr]">
+            <div className="min-h-[180px] animate-pulse bg-[var(--color-surface-strong)]" />
+            <div className="grid content-start gap-3 p-5">
+              <div className="h-5 w-2/3 animate-pulse rounded-md bg-[var(--color-surface-strong)]" />
+              <div className="h-4 w-1/2 animate-pulse rounded-md bg-[var(--color-surface-strong)]" />
+              <div className="mt-2 h-11 w-32 animate-pulse rounded-md bg-[var(--color-surface-strong)]" />
+            </div>
+          </div>
+        ))}
       </div>
     );
   }
@@ -225,7 +238,11 @@ export function LearnerWishlist() {
                       onClick={() => void handleRemove(item)}
                       className="button-outline px-4 py-2.5 text-sm"
                     >
-                      {removingId === item.id ? t("learnWave2.wishlistHub.removing") : t("learnWave2.wishlistHub.remove")}
+                      <BusyLabel
+                        busy={removingId === item.id}
+                        idle={t("learnWave2.wishlistHub.remove")}
+                        busyText={t("learnWave2.wishlistHub.removing")}
+                      />
                     </button>
                   </div>
                 </div>
@@ -247,7 +264,11 @@ export function LearnerWishlist() {
                   onClick={() => void handleRemove(item)}
                   className="button-outline mt-5 px-4 py-2.5 text-sm"
                 >
-                  {removingId === item.id ? t("learnWave2.wishlistHub.removing") : t("learnWave2.wishlistHub.remove")}
+                  <BusyLabel
+                    busy={removingId === item.id}
+                    idle={t("learnWave2.wishlistHub.remove")}
+                    busyText={t("learnWave2.wishlistHub.removing")}
+                  />
                 </button>
               </div>
             )}

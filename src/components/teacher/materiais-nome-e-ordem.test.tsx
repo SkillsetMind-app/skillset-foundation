@@ -188,7 +188,7 @@ describe("envio de material", () => {
   it("não há mais a caixa de prévia pública, em nenhuma aba", () => {
     renderModal();
     expect(screen.queryByRole("checkbox")).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: /^Materials/ }));
+    fireEvent.click(screen.getByRole("tab", { name: /^Materials/ }));
     expect(screen.queryByRole("checkbox")).toBeNull();
     expect(screen.queryByText(/public preview/i)).toBeNull();
   });

@@ -59,16 +59,36 @@ describe("localized preview entry without reconnecting the course", () => {
     expect(mocks.subscribe).toHaveBeenCalledTimes(subscriptions);
   });
 
-  // Carregando: o mesmo cartao escuro e a mesma frase do fallback da rota,
-  // sem titulo de 30px nem "Back to Teacher Studio" para uma espera.
-  it("keeps the route's themed loading card while the course loads", () => {
+  // Carregando: a espera da sala (ClassroomLoading), a mesma do fallback da
+  // rota e da propria sala, sem titulo nem "Back" para uma espera (F-03).
+  it("keeps the classroom's loading blocks while the course loads", () => {
     renderPreview();
-    expect(screen.getByRole("status")).toHaveTextContent("Loading course preview...");
-    expect(screen.getByRole("status").className).toContain("bg-[var(--ma-surface)]");
+    expect(screen.getByRole("status")).toHaveTextContent("Loading course...");
+    expect(screen.getByRole("status").closest("section")).toHaveAttribute("aria-busy", "true");
     expect(screen.queryByRole("heading")).not.toBeInTheDocument();
     expect(screen.queryByRole("link")).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Switch language" }));
-    expect(screen.getByRole("status")).toHaveTextContent("Cargando vista previa del curso...");
+    expect(screen.getByRole("status")).toHaveTextContent("Cargando curso...");
+  });
+
+  // F-11: a falha tinha so "Back". "Try again" assina o curso de novo, sem
+  // recarregar a pagina.
+  it("offers Try again on a load failure and subscribes again", () => {
+    let fail: () => void = () => {};
+    let emit: (course: TeacherCourse | null) => void = () => {};
+    mocks.subscribe.mockImplementation((_id, onCourse, onError) => {
+      emit = onCourse;
+      fail = onError;
+      return mocks.unsubscribe;
+    });
+    renderPreview();
+    act(() => fail());
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(mocks.unsubscribe).toHaveBeenCalledOnce();
+    expect(mocks.subscribe).toHaveBeenCalledTimes(2);
+    expect(screen.getByRole("status")).toHaveTextContent("Loading course...");
+    act(() => emit({ id: "course-1", ownerId: "teacher-1", title: "Curso", summary: "", category: "Leadership", status: "draft", modules: [], lessonCount: 0 }));
+    expect(screen.getByTestId("workspace")).toHaveTextContent("Curso");
   });
 
   it("translates an already-visible failure without subscribing again, then recovers on the same channel", () => {

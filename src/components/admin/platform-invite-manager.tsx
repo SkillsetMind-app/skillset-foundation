@@ -4,7 +4,7 @@ import { Ban, RotateCcw, Send } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
-import { Button, ConfirmDialog, Field, InlineAlert } from "@/components/ui";
+import { BusyLabel, Button, ConfirmDialog, Field, InlineAlert } from "@/components/ui";
 import type { PlatformInvite } from "@/domain/platform-invites";
 import { createPlatformInvite, listPlatformInvites, resendPlatformInvite, revokePlatformInvite } from "@/lib/data/platform-invites";
 
@@ -126,7 +126,8 @@ export function PlatformInviteManager() {
             {t(`${copy}.confirmAdmin`)}
           </label> : null}
           <Button type="submit" variant={accessLevel === "admin" ? "danger" : "solid"} disabled={busy || loading || (accessLevel === "admin" && !confirmAdmin)} className="min-h-11 max-w-full whitespace-normal">
-            <Send size={16} className="shrink-0" aria-hidden />{t(`${copy}.${busy ? "saving" : "send"}`)}
+            <Send size={16} className="shrink-0" aria-hidden />
+            <BusyLabel busy={busy} idle={t(`${copy}.send`)} busyText={t(`${copy}.saving`)} />
           </Button>
         </fieldset>
       </form>

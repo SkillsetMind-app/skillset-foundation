@@ -114,3 +114,13 @@ describe("botao desligado nao reage ao mouse nem ao clique", () => {
     expect(violations).toEqual([]);
   });
 });
+
+// C-11: o "Back" da entrevista do cadastro era o último botão feito à mão a 40%.
+describe("botões feitos à mão do cadastro", () => {
+  it("o Back e o Skip da entrevista apagam nos mesmos 60%", () => {
+    const source = readFileSync(join(process.cwd(), "src/components/auth/onboarding-wizard.tsx"), "utf8");
+    const opacities = [...source.matchAll(/\bdisabled:opacity-(\d+)\b/g)].map((match) => match[1]);
+    expect(opacities.length).toBeGreaterThan(0);
+    expect(new Set(opacities)).toEqual(new Set(["60"]));
+  });
+});

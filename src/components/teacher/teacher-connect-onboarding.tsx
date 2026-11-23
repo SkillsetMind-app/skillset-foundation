@@ -14,7 +14,7 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { StripeFrameSkeleton } from "@/components/teacher/builder-skeleton";
 import { SupportDetails } from "@/components/teacher/support-details";
-import { Button, Card, Eyebrow, InlineAlert } from "@/components/ui";
+import { BusyLabel, Button, Card, Eyebrow, InlineAlert } from "@/components/ui";
 import {
   fetchConnectAccountSessionSecret,
   isConnectNotEnabledError,
@@ -138,7 +138,7 @@ export function TeacherConnectOnboarding({
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
           aria-describedby="payout-country-hint payout-country-warning"
-          className="mt-2 block min-h-11 w-full max-w-sm rounded-md border border-[var(--color-line)] bg-white px-4 text-sm outline-none focus:border-[var(--color-primary-light)]"
+          className="field-input mt-2 block max-w-sm"
         >
           {options.map(({ code, label }) => (
             <option key={code} value={code}>{label}</option>
@@ -394,7 +394,11 @@ function ConnectOnboardingFlow({
         {error?.status ? <SupportDetails code={error.status} className="mt-2" /> : null}
         <div className="mt-4">
           <Button onClick={openHostedFallback} disabled={isOpeningHosted}>
-            {t(isOpeningHosted ? "connectOnboarding.opening" : "connectOnboarding.continue")}
+            <BusyLabel
+              busy={isOpeningHosted}
+              idle={t("connectOnboarding.continue")}
+              busyText={t("connectOnboarding.opening")}
+            />
           </Button>
         </div>
       </Card>
@@ -492,7 +496,11 @@ function StripeConnectFallback({
         {/* Stripe's hosted page stays available for every error, as before
             translation; the recovery link is an extra way out, not a replacement. */}
         <Button onClick={onHosted} disabled={isOpeningHosted}>
-          {t(isOpeningHosted ? "connectOnboarding.opening" : "connectOnboarding.continueSecure")}
+          <BusyLabel
+            busy={isOpeningHosted}
+            idle={t("connectOnboarding.continueSecure")}
+            busyText={t("connectOnboarding.opening")}
+          />
         </Button>
         <Button variant="outline" onClick={onRetry}>
           {t("connectOnboarding.retry")}

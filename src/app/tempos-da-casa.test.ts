@@ -34,11 +34,24 @@ describe("tempos da casa", () => {
     expect(block(".marketplace-card__media img")).toContain("transform 500ms cubic-bezier(0.2, 0.6, 0.2, 1)");
   });
 
+  // As setas que giram ao abrir (idioma, categoria) andam no tempo da casa;
+  // a do idioma ficava a 200ms ao lado da da categoria, a 180ms.
+  it.each(["i18n/locale-switcher.tsx", "teacher/course-category-select.tsx"])(
+    "a seta de %s gira nos tokens",
+    (file) => {
+      const source = readFileSync(join(process.cwd(), "src/components", file), "utf8");
+      expect(source).toContain("transition-transform duration-[var(--duration-base)] ease-[var(--ease-standard)]");
+      expect(source).not.toMatch(/duration-\d+/);
+    },
+  );
+
   it.each([
     ".field-input",
     ".platform-nav-section-chevron",
     ".dash-card",
     ".studio-payout-chip",
+    // A entrada da gaveta do celular (e do Advisor no celular) era 200ms solto.
+    ".motion-panel-in",
   ])("%s anda nos tokens, sem milissegundo solto", (selector) => {
     const body = block(selector);
     expect(body).toMatch(/var\(--duration-(base|slow)\) var\(--ease-standard\)/);

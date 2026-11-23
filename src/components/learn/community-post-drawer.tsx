@@ -6,6 +6,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { formatNotificationTime } from "@/components/account/notification-row";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { CommunityItemActions } from "@/components/learn/community-item-actions";
+import { BusyLabel } from "@/components/ui/busy-label";
 import { InlineAlert } from "@/components/ui/inline-alert";
 import type { SkillsetUser } from "@/domain/auth";
 import { isAnswered, isInstructor, postKind, toMillis } from "@/domain/community-feed";
@@ -259,7 +260,11 @@ export function CommunityPostDrawer({
               disabled={isSending}
               className="button-solid min-h-11 px-4 text-sm"
             >
-              {t(isSending ? "learn.community.drawer.sending" : "learn.community.drawer.send")}
+              <BusyLabel
+                busy={isSending}
+                idle={t("learn.community.drawer.send")}
+                busyText={t("learn.community.drawer.sending")}
+              />
             </button>
             {error ? (
               <InlineAlert tone="error" className="basis-full px-3 py-2 text-xs leading-5">

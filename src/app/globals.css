@@ -426,6 +426,56 @@ dialog.modal-panel::backdrop {
   }
 }
 
+/* Painel e rodapé únicos das janelas centradas. Havia três sombras de painel,
+   larguras soltas e seis jeitos de pôr os botões (à direita sem filete, em
+   linha de formulário, empilhados só em algumas). Agora: uma sombra, um canto,
+   quatro larguras; o rodapé tem filete em cima, ações à direita com a
+   principal por último e, abaixo de 640px (o sm, onde a confirmação já
+   empilhava), empilha na largura toda com a principal em cima e o Cancelar
+   embaixo, onde o polegar cai (column-reverse). O fundo é o token de superfície (no
+   escuro, o mesmo do bg-white). Em camada: a janela que precisa de outra
+   coisa num tamanho (o checkout em tela cheia no celular) muda por utility. */
+@layer components {
+  .dialog-panel {
+    width: 100%;
+    max-width: 28rem;
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-xl);
+    background: var(--color-surface);
+    padding: 0;
+    box-shadow: var(--shadow-strong);
+  }
+
+  .dialog-panel--md {
+    max-width: 36rem;
+  }
+
+  .dialog-panel--lg {
+    max-width: 48rem;
+  }
+
+  .dialog-panel--xl {
+    max-width: 64rem;
+  }
+
+  /* Do sm em diante, uma linha só (sem quebra), como a confirmação sempre foi. */
+  .dialog-footer {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    border-top: 1px solid var(--color-line);
+    padding: 1rem 1.5rem;
+  }
+
+  @media (width < 640px) {
+    .dialog-footer {
+      flex-direction: column-reverse;
+      align-items: stretch;
+    }
+  }
+}
+
 /* Botão só de ícone: alvo de 44px, ícone no centro, canto de 8px (redondo é
    de avatar e de chave). Havia seis tamanhos, de 24 a 44px, e os pequenos
    escapavam do dedo. O anel de foco é o global de `button:focus-visible`.
@@ -528,8 +578,12 @@ body {
   background: transparent;
 }
 
+/* Link sem cor própria aqui: o preflight do Tailwind já herda a cor do pai
+   DENTRO de `@layer base`. A mesma herança fora de camada vencia toda utility
+   num <a>/<Link>, e o link que pedia a cor de destaque saía com a do texto em
+   volta (cascade em button-sizes-cascade.test.tsx). O sublinhado continua
+   desligado aqui: ligar os `underline` mortos é outra decisão. */
 a {
-  color: inherit;
   text-decoration: none;
 }
 
@@ -2997,14 +3051,6 @@ html[data-view-as] .site-header {
   gap: 1.25rem;
 }
 
-.payouts-head {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 1rem;
-  flex-wrap: wrap;
-}
-
 .payouts-grid {
   display: grid;
   gap: 1.25rem;
@@ -4362,6 +4408,8 @@ body:has([aria-label="Course categories"])
   padding: 1rem 0;
   display: grid;
   gap: 0.9rem;
+  /* A faixa de etapas decide pela largura dela (@container mais abaixo). */
+  container-type: inline-size;
 }
 
 .course-builder-stepper__head {
@@ -5415,6 +5463,30 @@ body:has([aria-label="Course categories"])
   border-radius: var(--radius-lg);
   background: #ffffff;
   padding: 1rem;
+  /* A linha é o botão da chave (lesson-content-modal): o texto também liga. */
+  width: 100%;
+  text-align: left;
+  transition: border-color var(--duration-base) var(--ease-standard);
+}
+
+.lesson-modal-setting:hover:not(:disabled) {
+  border-color: var(--color-line-strong);
+}
+
+/* Desligada (curso sem edição): só o trilho apaga, como antes; o texto segue
+   legível. A regra do [role="switch"] punha a mãozinha mesmo desligada. */
+.lesson-modal-setting:disabled {
+  cursor: not-allowed;
+}
+
+.lesson-modal-setting:disabled .settings-toggle {
+  opacity: 0.6;
+}
+
+/* Abaixo de 1024px a linha vira coluna, e o flex-basis de 46px do trilho
+   passaria a ser a ALTURA: ficava um círculo. */
+.lesson-modal-setting > .settings-toggle {
+  flex: none;
 }
 
 .lesson-modal-setting strong {
@@ -5422,7 +5494,8 @@ body:has([aria-label="Course categories"])
   font-size: 0.9375rem;
 }
 
-.lesson-modal-setting p {
+.lesson-modal-setting__help {
+  display: block;
   margin-top: 0.35rem;
   color: var(--color-ink-soft);
   font-size: 0.8125rem;
@@ -5430,41 +5503,7 @@ body:has([aria-label="Course categories"])
   line-height: 1.55;
 }
 
-.lesson-modal-setting button {
-  position: relative;
-  width: 3rem;
-  height: 1.65rem;
-  flex: 0 0 auto;
-  border: 1px solid var(--color-line);
-  border-radius: 999px;
-  background: var(--color-surface-strong);
-  transition:
-    background-color 180ms ease,
-    border-color 180ms ease;
-}
-
-.lesson-modal-setting button::after {
-  content: "";
-  position: absolute;
-  top: 50%;
-  left: 0.25rem;
-  width: 1.1rem;
-  height: 1.1rem;
-  border-radius: 999px;
-  background: #ffffff;
-  box-shadow: 0 3px 8px rgba(15, 39, 68, 0.16);
-  transform: translateY(-50%);
-  transition: left 180ms ease;
-}
-
-.lesson-modal-setting button.is-on {
-  border-color: var(--color-primary);
-  background: var(--color-primary);
-}
-
-.lesson-modal-setting button.is-on::after {
-  left: 1.55rem;
-}
+/* A chave da aula agora é a .settings-toggle da casa (lesson-content-modal). */
 
 .lesson-modal__footer {
   display: flex;
@@ -5537,18 +5576,12 @@ body:has([aria-label="Course categories"])
   background: var(--color-surface);
 }
 
-[data-theme="dark"] .lesson-modal-setting button:not(.is-on) {
+[data-theme="dark"] .lesson-modal-setting .settings-toggle:not(.settings-toggle--on) {
   background: var(--color-base);
 }
 
 [data-theme="dark"] .lesson-modal--page {
   background: var(--color-surface);
-}
-
-/* On-toggle track inverts to light blue in dark; flip the knob to dark ink so it
-   stays visible (8.8:1) and the color shift reinforces the positional state. */
-[data-theme="dark"] .lesson-modal-setting button.is-on::after {
-  background: var(--color-base);
 }
 
 @media (max-width: 1280px) {
@@ -5905,26 +5938,6 @@ html:has(.member-preview-banner) {
   white-space: nowrap;
   text-overflow: ellipsis;
   color: var(--color-ink);
-}
-
-.member-classroom-head__progress {
-  display: block;
-  height: 6px;
-  overflow: hidden;
-  border-radius: 999px;
-  background: var(--color-line);
-}
-
-.member-classroom-head__progress > span {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
-  background: var(--color-accent);
-  /* Concluir uma aula reescreve a largura de uma vez: a barra SALTAVA para a
-     nova marca, e o unico feedback de "isso contou" passava batido. Animar a
-     largura faz o avanco ser visto. (prefers-reduced-motion zera a duracao no
-     bloco global la embaixo.) */
-  transition: width 400ms ease-out;
 }
 
 .member-classroom-head__percent {
@@ -6610,22 +6623,6 @@ html:has(.member-preview-banner) {
   box-shadow: 0 4px 12px rgba(31, 138, 91, 0.4);
 }
 
-.member-module-card__bar {
-  position: absolute;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  z-index: 3;
-  height: 5px;
-  background: rgba(255, 255, 255, 0.28);
-}
-
-.member-module-card__bar > span {
-  display: block;
-  height: 100%;
-  background: var(--color-accent);
-}
-
 .member-module-card__body {
   display: flex;
   flex-direction: column;
@@ -7220,12 +7217,10 @@ html:has(#member-lesson-player) {
   color: var(--ma-on-accent);
 }
 
+/* O trilho da barra do topo (ProgressBar) na linha do curso; o preenchimento
+   no acento vem da própria barra (fillClassName). */
 .member-classroom[data-members-theme] .member-classroom-head__progress {
   background: var(--ma-line);
-}
-
-.member-classroom[data-members-theme] .member-classroom-head__progress > span {
-  background: var(--ma-accent);
 }
 
 .member-classroom[data-members-theme] .member-sidebar-card--dark {
@@ -7367,6 +7362,19 @@ html:has(#member-lesson-player) {
 .member-classroom[data-members-theme] textarea::placeholder,
 .member-classroom[data-members-theme] input::placeholder {
   color: var(--ma-ink-muted);
+}
+
+/* O campo da casa dentro da sala segue o tema do CURSO, como a regra acima.
+   Com a plataforma escura, o fundo `!important` e a borda de foco do
+   [data-theme="dark"] .field-input venciam a sala: num curso claro, a caixa
+   de mensagem e a de avaliação ficavam no tom da plataforma. Só o fundo
+   precisa do `!important` (o do escuro também tem); a borda vence por peso. */
+.member-classroom[data-members-theme] .field-input,
+.member-classroom[data-members-theme] .field-input:focus,
+.member-classroom[data-members-theme] .field-input:focus-visible {
+  border-color: var(--ma-line);
+  background: var(--ma-surface) !important;
+  color: var(--ma-ink);
 }
 
 /* Sombra navy da casa, não um brilho vermelho: o vermelho fixo ficava sob o
@@ -8499,8 +8507,19 @@ button:hover > .dash-card,
     grid-template-columns: minmax(0, 1fr);
   }
 
+  /* As três ações do topo (Manage product, Preview, Save draft) quebravam em
+     duas linhas e empurravam o primeiro campo para baixo: uma linha só, três
+     colunas iguais, e o rótulo longo quebra dentro do próprio botão. */
   .course-builder-hero__actions {
-    justify-content: flex-start;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .course-builder-hero__actions > * {
+    gap: 0.375rem;
+    padding-inline: 0.5rem;
+    line-height: 1.2;
+    text-align: center;
   }
 
   /* No celular os cinco passos empilhados (~270px) empurravam o primeiro
@@ -8536,6 +8555,35 @@ button:hover > .dash-card,
   /* A linha de apoio de cada passo sai, o nome fica. */
   .course-builder-step__sub {
     display: none;
+  }
+}
+
+/* Fora do celular, quando as cinco etapas não cabem lado a lado (5 x 150px +
+   gaps = 782px; entre ~681 e ~1100px de tela, conforme a barra lateral), a
+   grade dava 4 etapas e 1 sozinha embaixo: vale a mesma faixa do celular.
+   Pela largura da própria faixa (container query no .course-builder-stepper),
+   não da tela. O bloco acima fica para navegador sem container query. */
+@container (width < 782px) {
+  .course-builder-steps {
+    display: flex;
+    overflow-x: auto;
+    margin-inline: -5px;
+    padding: 5px 5px 6px;
+    scroll-padding-inline: 48px;
+    scrollbar-width: none;
+  }
+
+  .course-builder-steps::-webkit-scrollbar {
+    display: none;
+  }
+
+  .course-builder-steps[data-more="true"] {
+    mask-image: linear-gradient(90deg, #000 calc(100% - 48px), transparent);
+  }
+
+  .course-builder-steps > .course-builder-step {
+    flex: 0 0 auto;
+    width: auto;
   }
 }
 
@@ -9303,18 +9351,9 @@ button:hover > .dash-card,
   color: #fff;
   font-variant-numeric: tabular-nums;
 }
+/* A barra da capa é a ProgressBar da casa; aqui só o trilho claro sobre a foto. */
 .members-hero__bar {
-  display: block;
-  height: 6px;
-  border-radius: 999px;
   background: rgba(255, 255, 255, 0.22);
-  overflow: hidden;
-}
-.members-hero__bar > span {
-  display: block;
-  height: 100%;
-  border-radius: 999px;
-  background: var(--ma-accent);
 }
 /* "Ver certificado" no hero, só a 100%: branco sobre o acento (AA nos dois
    temas, o mesmo par do botão de acento da sala). */
@@ -10510,9 +10549,13 @@ button:hover > .dash-card,
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  /* 1. Troca de etapa: o painel novo sobe 8px e acende; a saída é seca. */
+  /* 1. Troca de etapa: o painel novo sobe 8px e acende; a saída é seca. É a
+     entrada compartilhada: etapa do construtor e da criação de curso, troca
+     de aba da sala, lista de aulas, os dois tours de boas-vindas, o menu de
+     ajuda, a ajuda da tela, a gaveta do celular e o Advisor no celular.
+     Todas no tempo da casa (eram 200ms soltos). */
   .motion-panel-in {
-    animation: motion-panel-in 200ms var(--ease-standard) backwards;
+    animation: motion-panel-in var(--duration-base) var(--ease-standard) backwards;
   }
 
   /* 2. Escolher uma opção: o selo latão cresce de 0,6 para 1 (formato na tela

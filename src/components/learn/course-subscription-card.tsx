@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { CalendarClock, Repeat } from "lucide-react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { BusyLabel } from "@/components/ui/busy-label";
 import { InlineAlert } from "@/components/ui/inline-alert";
 import { LoadErrorAlert } from "@/components/ui/load-error-alert";
 import type { CourseSubscription } from "@/domain/course-subscription";
@@ -155,7 +156,7 @@ export function CourseSubscriptionCard({
               onClick={() => handleChange(true)}
               className="button-solid mt-4 w-full px-4 py-2.5 text-sm"
             >
-              {pending ? t(`${copy}.working`) : t(`${copy}.undo`)}
+              <BusyLabel busy={pending} idle={t(`${copy}.undo`)} busyText={t(`${copy}.working`)} />
             </button>
           ) : (
             <button
@@ -164,7 +165,7 @@ export function CourseSubscriptionCard({
               onClick={() => handleChange(false)}
               className="button-outline mt-4 w-full px-4 py-2.5 text-sm"
             >
-              {pending ? t(`${copy}.working`) : t(`${copy}.cancel`)}
+              <BusyLabel busy={pending} idle={t(`${copy}.cancel`)} busyText={t(`${copy}.working`)} />
             </button>
           )}
         </>

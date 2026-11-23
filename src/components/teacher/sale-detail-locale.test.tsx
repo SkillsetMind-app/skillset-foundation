@@ -165,6 +165,23 @@ describe("sale detail with real EN/ES dictionaries", () => {
     expect(screen.getByRole("alert")).toHaveTextContent("No pudimos cargar esta venta.");
   });
 
+  // F-11: a falha de leitura era um beco (so "Back to sales"); agora "Try
+  // again" assina a mesma leitura de novo. Venda que nao existe nao oferece.
+  it("load error offers Try again, which subscribes again and shows the sale", async () => {
+    mocks.subscribe.mockImplementationOnce((_id, _callback, onError) => { onError(new Error("down")); return () => {}; });
+    mount();
+    expect(screen.getByRole("alert")).toHaveTextContent("No pudimos cargar esta venta.");
+    fireEvent.click(screen.getByRole("button", { name: "Intentar de nuevo" }));
+    expect(mocks.subscribe).toHaveBeenCalledTimes(2);
+    expect(screen.getByRole("heading", { name: order.courseTitle })).toBeVisible();
+  });
+
+  it("a missing sale does not offer Try again", () => {
+    mocks.subscribe.mockImplementation((_id, callback) => { callback(null); return () => {}; });
+    mount();
+    expect(screen.queryByRole("button", { name: "Intentar de nuevo" })).toBeNull();
+  });
+
   it("keeps course id, slug and currency in a collapsed support block and the e-mails as text links", () => {
     mount();
     const details = screen.getByText("Detalles para soporte").closest("details")!;

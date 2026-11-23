@@ -10,6 +10,7 @@ import { useTranslation } from "@/components/i18n/i18n-provider";
 import { CommunityItemActions } from "@/components/learn/community-item-actions";
 import { CommunityPostDrawer } from "@/components/learn/community-post-drawer";
 import { BuilderSkeleton } from "@/components/teacher/builder-skeleton";
+import { BusyLabel, Button } from "@/components/ui";
 import { InlineAlert } from "@/components/ui/inline-alert";
 import {
   groupCommentsByPost,
@@ -63,6 +64,10 @@ export function TeacherCommunityInbox({ courseId }: { courseId: string }) {
   const [openPostId, setOpenPostId] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [now, setNow] = useState(() => Date.now());
+  // "Try again" assina de novo a leitura que falhou (curso ou posts); antes a
+  // unica saida era recarregar a pagina.
+  const [courseAttempt, setCourseAttempt] = useState(0);
+  const [postsAttempt, setPostsAttempt] = useState(0);
 
   useEffect(() => {
     return subscribeToTeacherCourse(
@@ -76,7 +81,7 @@ export function TeacherCommunityInbox({ courseId }: { courseId: string }) {
         setCourseReady(true);
       },
     );
-  }, [courseId]);
+  }, [courseId, courseAttempt]);
 
   useEffect(() => {
     if (!course) {
@@ -85,7 +90,13 @@ export function TeacherCommunityInbox({ courseId }: { courseId: string }) {
     return subscribeToCommunityPosts(course.id, setPosts, () => {
       setError("teacherCommunity.postsError");
     });
-  }, [course]);
+  }, [course, postsAttempt]);
+
+  const retryButton = (onRetry: () => void) => (
+    <Button variant="outline" className="justify-self-start" onClick={onRetry}>
+      {t("appErrors.retry")}
+    </Button>
+  );
 
   useEffect(() => {
     if (!course) {
@@ -123,10 +134,23 @@ export function TeacherCommunityInbox({ courseId }: { courseId: string }) {
 
   if (!course || !user) {
     return (
-      <section className="rounded-lg border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)]">
-        <p className="text-sm text-[var(--color-ink-soft)]">
-          {t(error || "teacherCommunity.notFound")}
-        </p>
+      <section className="grid gap-3 rounded-lg border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)]">
+        {/* Falha de leitura no vermelho da casa e com saida; curso que nao
+            existe continua a frase neutra. */}
+        {error === "teacherCommunity.courseError" ? (
+          <>
+            <InlineAlert tone="error">{t(error)}</InlineAlert>
+            {retryButton(() => {
+              setError("");
+              setCourseReady(false);
+              setCourseAttempt((current) => current + 1);
+            })}
+          </>
+        ) : (
+          <p className="text-sm text-[var(--color-ink-soft)]">
+            {t(error || "teacherCommunity.notFound")}
+          </p>
+        )}
       </section>
     );
   }
@@ -159,7 +183,15 @@ export function TeacherCommunityInbox({ courseId }: { courseId: string }) {
       </header>
 
       {error ? (
-        <InlineAlert tone="error">{t(error)}</InlineAlert>
+        <div className="grid gap-3">
+          <InlineAlert tone="error">{t(error)}</InlineAlert>
+          {error === "teacherCommunity.postsError"
+            ? retryButton(() => {
+                setError("");
+                setPostsAttempt((current) => current + 1);
+              })
+            : null}
+        </div>
       ) : null}
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_300px] lg:items-start">
@@ -395,7 +427,11 @@ function WaitingCard({
                 {t("teacherCommunity.cancel")}
               </button>
               <button type="submit" disabled={isSaving} className="button-solid min-h-11 px-4 text-sm">
-                {t(isSaving ? "teacherCommunity.posting" : "teacherCommunity.postAnswer")}
+                <BusyLabel
+                  busy={isSaving}
+                  idle={t("teacherCommunity.postAnswer")}
+                  busyText={t("teacherCommunity.posting")}
+                />
               </button>
             </div>
           </div>
@@ -494,7 +530,11 @@ function UpdateComposer({
             {t("teacherCommunity.cancel")}
           </button>
           <button type="submit" disabled={isSaving} className="button-solid min-h-11 px-4 text-sm">
-            {t(isSaving ? "teacherCommunity.posting" : "teacherCommunity.postUpdate")}
+            <BusyLabel
+              busy={isSaving}
+              idle={t("teacherCommunity.postUpdate")}
+              busyText={t("teacherCommunity.posting")}
+            />
           </button>
         </div>
       </div>

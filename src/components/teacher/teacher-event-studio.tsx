@@ -8,8 +8,9 @@ import { ArrowLeft, ArrowRight, CalendarDays, Plus, X } from "lucide-react";
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { ExportTableButton } from "@/components/shared/export-table-button";
+import { CardStackSkeleton } from "@/components/teacher/builder-skeleton";
 import { MetricCard } from "@/components/teacher/metric-card";
-import { ConfirmDialog, EmptyState, InlineAlert } from "@/components/ui";
+import { BusyLabel, ConfirmDialog, EmptyState, InlineAlert } from "@/components/ui";
 import {
   describeTimeZone,
   formatEventDateTime,
@@ -517,11 +518,11 @@ export function TeacherEventStudio() {
   const usPreview = formatEventTimeInZones(startsAt, locale, US_PREVIEW_TIME_ZONES);
   const descriptionOptional = Boolean(editingBase?.descriptionWasEmpty);
   const zoneLabel = computerZone ? describeTimeZone(computerZone, locale, now) : "";
-  const fieldClass =
-    "rounded-md border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]";
+  const fieldClass = "field-input";
   // Data e hora maiores que os outros campos: e o que a pessoa mais precisa ler.
-  const whenFieldClass =
-    "min-h-12 rounded-md border border-[var(--color-line)] bg-white px-4 py-3 text-base font-normal outline-none focus:border-[var(--color-primary-light)]";
+  // O campo da casa com 48px e 16px; o `!` vence o 14px do .field-input, que
+  // fica fora de camada.
+  const whenFieldClass = "field-input min-h-12 text-base!";
   const whenDescribedBy = ["event-zone-line", dateError ? "event-when-error" : ""].join(" ").trim();
 
   return (
@@ -632,13 +633,15 @@ export function TeacherEventStudio() {
 
             <form className="mt-5 grid gap-4" onSubmit={handleSubmit}>
               {formStep === 1 ? <>
+              <div className="grid gap-2">
               <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
                 {t(`${copy}.courseLabel`)}
                 <select
                   value={selectedCourse?.id ?? ""}
                   onChange={(event) => setCourseId(event.target.value)}
                   disabled={courses.length === 0 || isLoading || Boolean(editingEventId)}
-                  className="min-w-0 w-full rounded-md border border-[var(--color-line)] bg-[var(--color-surface)] px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:opacity-60"
+                  aria-describedby={editingEventId ? "event-course-locked" : undefined}
+                  className="field-input min-w-0 disabled:opacity-60"
                 >
                   {!selectedCourse ? (
                     <option value="" disabled>{t(`${copy}.${courses.length ? "courseUnavailableOption" : "courseEmptyOption"}`)}</option>
@@ -650,6 +653,14 @@ export function TeacherEventStudio() {
                   ))}
                 </select>
               </label>
+              {/* F-12: o curso trava ao editar e nada dizia por quê. Fora do
+                  <label> para não entrar no nome do campo. */}
+              {editingEventId ? (
+                <span id="event-course-locked" className="text-xs text-[var(--color-ink-muted)]">
+                  {t(`${copy}.courseLocked`)}
+                </span>
+              ) : null}
+              </div>
 
               <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
                 {t(`${copy}.typeLabel`)}
@@ -725,7 +736,7 @@ export function TeacherEventStudio() {
                   required
                   minLength={3}
                   placeholder={t(`${copy}.titlePlaceholder`)}
-                  className="rounded-md border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
+                  className={fieldClass}
                 />
               </label>
 
@@ -769,7 +780,7 @@ export function TeacherEventStudio() {
                   minLength={12}
                   rows={4}
                   placeholder={t(`${copy}.descriptionPlaceholder`)}
-                  className="resize-none rounded-md border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
+                  className={`${fieldClass} resize-none`}
                 />
               </label>
               </>}
@@ -783,16 +794,26 @@ export function TeacherEventStudio() {
                 <button
                   type="submit"
                   disabled={isSaving || isLoading || (!editingEventId && !selectedCourse)}
+                  // F-12: o motivo logo abaixo agora e lido junto com o botao.
+                  aria-describedby={!editingEventId && !selectedCourse && !isLoading ? "event-submit-reason" : undefined}
                   className="button-solid min-h-11 gap-2 px-4 py-2.5 text-sm"
                 >
-                  {isSaving
-                    ? t(`${copy}.saving`)
-                    : formStep === 1
-                      ? t(`${copy}.continue`)
-                      : editingEventId
-                        ? t(`${copy}.submitEdit`)
-                        : t(`${copy}.submitNew`)}
-                  {formStep === 1 ? <ArrowRight aria-hidden="true" size={16} /> : null}
+                  {/* Só o passo 2 grava (o 1 só avança), então o passo e a
+                      edição não mudam durante a espera. */}
+                  <BusyLabel
+                    busy={isSaving}
+                    idle={
+                      <>
+                        {formStep === 1
+                          ? t(`${copy}.continue`)
+                          : editingEventId
+                            ? t(`${copy}.submitEdit`)
+                            : t(`${copy}.submitNew`)}
+                        {formStep === 1 ? <ArrowRight aria-hidden="true" size={16} /> : null}
+                      </>
+                    }
+                    busyText={t(`${copy}.saving`)}
+                  />
                 </button>
                 {editingEventId ? (
                   <button
@@ -805,7 +826,7 @@ export function TeacherEventStudio() {
                   </button>
                 ) : null}
                 {!editingEventId && !selectedCourse && !isLoading ? (
-                  <p className="w-full text-xs text-[var(--color-ink-soft)]">
+                  <p id="event-submit-reason" className="w-full text-xs text-[var(--color-ink-soft)]">
                     {t(`${copy}.${courses.length ? "courseUnavailableOption" : "needCourse"}`)}
                   </p>
                 ) : null}
@@ -824,7 +845,7 @@ export function TeacherEventStudio() {
             id="events-filter"
             value={filter}
             onChange={(event) => setFilter(event.target.value as EventFilter)}
-            className="min-h-11 rounded-md border border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2 text-sm font-semibold text-[var(--color-ink)]"
+            className="field-input field-input--inline"
           >
             {FILTERS.map((option) => (
               <option key={option} value={option}>
@@ -842,7 +863,7 @@ export function TeacherEventStudio() {
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             placeholder={t(`${copy}.searchPlaceholder`)}
-            className="min-h-11 min-w-[12rem] flex-1 rounded-md border border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-ink)]"
+            className="field-input field-input--inline min-w-[12rem] flex-1"
           />
           {/* Sem a leitura das sessoes, zero linhas nao quer dizer "agenda vazia". */}
           <ExportTableButton
@@ -863,10 +884,9 @@ export function TeacherEventStudio() {
               {t("appErrors.retry")}
             </button>
           ) : null}
+          {/* Cartões de sessão no lugar da frase num cartão (T-07). */}
           {!eventsLoaded ? (
-            <p className="rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-7 text-[var(--color-ink-soft)]">
-              {t(`${copy}.loading`)}
-            </p>
+            <CardStackSkeleton label={t(`${copy}.loading`)} />
           ) : eventsFailed ? (
             // O erro ja esta anunciado no aviso do topo; aqui fica o caminho
             // de volta, no lugar onde a lista apareceria.
@@ -950,9 +970,11 @@ export function TeacherEventStudio() {
                       disabled={actioningEventId === event.id}
                       className="button-outline px-3.5 py-2 text-xs"
                     >
-                      {actioningEventId === event.id
-                        ? t(`${copy}.working`)
-                        : t(`${copy}.cancelSession`)}
+                      <BusyLabel
+                        busy={actioningEventId === event.id}
+                        idle={t(`${copy}.cancelSession`)}
+                        busyText={t(`${copy}.working`)}
+                      />
                     </button>
                   ) : null}
                   <button

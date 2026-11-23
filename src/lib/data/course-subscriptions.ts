@@ -44,7 +44,7 @@ export function subscribeToTeacherCourseSubscriptions(
   teacherId: string,
   callback: (subscriptions: CourseSubscription[]) => void,
   onError: (error: Error) => void,
-): () => void {
+): (() => void) & { reload: () => Promise<void> } {
   const supabase = getSupabaseBrowserClient();
   let loadVersion = 0;
   let stopped = false;
@@ -95,11 +95,16 @@ export function subscribeToTeacherCourseSubscriptions(
     )
     .subscribe();
 
-  return () => {
-    stopped = true;
-    loadVersion += 1;
-    void supabase.removeChannel(channel);
-  };
+  // `reload()` le de novo SEM mexer no canal (o "Try again" de Assinaturas):
+  // a versao mais nova e a unica que entrega, como numa mudanca do tempo real.
+  return Object.assign(
+    () => {
+      stopped = true;
+      loadVersion += 1;
+      void supabase.removeChannel(channel);
+    },
+    { reload: load },
+  );
 }
 
 /**

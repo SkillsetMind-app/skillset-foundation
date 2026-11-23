@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useId, useState } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
-import { Button, InlineAlert } from "@/components/ui";
+import { BusyLabel, Button, InlineAlert } from "@/components/ui";
 import { PaymentRequestError } from "@/lib/payments/client-fetch";
 import { openTeacherStripeDashboard } from "@/lib/payments/connect";
 
@@ -47,7 +47,7 @@ export function StripeDashboardButton() {
         icon={<ExternalLink aria-hidden="true" size={16} />}
         className="w-52 max-w-full justify-self-start whitespace-normal aria-disabled:cursor-wait"
       >
-        {t(busy ? "stripeDashboard.opening" : "stripeDashboard.open")}
+        <BusyLabel busy={busy} idle={t("stripeDashboard.open")} busyText={t("stripeDashboard.opening")} />
       </Button>
       {error ? (
         <div id={errorId}>

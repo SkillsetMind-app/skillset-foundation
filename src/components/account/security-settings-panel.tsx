@@ -14,6 +14,7 @@ import {
   isCaptchaEnabled,
 } from "@/components/auth/turnstile-widget";
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { BusyLabel } from "@/components/ui/busy-label";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { InlineAlert } from "@/components/ui/inline-alert";
@@ -251,14 +252,22 @@ export function SecuritySettingsPanel() {
                 onClick={handleSendVerification}
                 disabled={isBusy || captchaPending}
               >
-                {t(busy === "verificationSend" ? "accountSecurity.sending" : "accountSecurity.verification.send")}
+                <BusyLabel
+                  busy={busy === "verificationSend"}
+                  idle={t("accountSecurity.verification.send")}
+                  busyText={t("accountSecurity.sending")}
+                />
               </Button>
               <Button
                 variant="outline"
                 onClick={handleRefreshVerification}
                 disabled={isBusy}
               >
-                {t(busy === "verificationRefresh" ? "accountSecurity.checking" : "accountSecurity.verification.refresh")}
+                <BusyLabel
+                  busy={busy === "verificationRefresh"}
+                  idle={t("accountSecurity.verification.refresh")}
+                  busyText={t("accountSecurity.checking")}
+                />
               </Button>
             </div>
           ) : null}
@@ -296,7 +305,7 @@ export function SecuritySettingsPanel() {
               disabled={isBusy || !newEmail.trim()}
               aria-describedby={emailBlockedReason ? "security-email-blocked" : undefined}
             >
-              {t(busy === "email" ? "accountSecurity.sending" : "accountSecurity.email.send")}
+              <BusyLabel busy={busy === "email"} idle={t("accountSecurity.email.send")} busyText={t("accountSecurity.sending")} />
             </Button>
             {emailBlockedReason ? (
               <p id="security-email-blocked" className="-mt-1 text-xs leading-5 text-[var(--color-ink-soft)]">
@@ -371,7 +380,7 @@ export function SecuritySettingsPanel() {
               }
               aria-describedby={passwordBlockedReason ? "security-password-blocked" : undefined}
             >
-              {t(busy === "password" ? "accountSecurity.updating" : "accountSecurity.password.update")}
+              <BusyLabel busy={busy === "password"} idle={t("accountSecurity.password.update")} busyText={t("accountSecurity.updating")} />
             </Button>
             {passwordBlockedReason ? (
               <p id="security-password-blocked" className="-mt-1 text-xs leading-5 text-[var(--color-ink-soft)]">

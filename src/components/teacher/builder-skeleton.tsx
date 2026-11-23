@@ -13,10 +13,18 @@ const block = "bg-[var(--color-surface-strong)]";
  * aria-label (ignorado pelo leitor de tela) dentro de teacher-course-studio.
  */
 export function ProductRowsSkeleton({ label }: { label?: string }) {
+  // F-19: a linha inteira pulsava em surface-soft, sem cantos; agora é a linha
+  // de verdade (capa 16:9 + título e categoria) no osso da casa.
   const rows = (
-    <div aria-hidden="true" className="grid gap-0">
+    <div aria-hidden="true" className="grid animate-pulse gap-0">
       {[1, 2, 3].map((item) => (
-        <div key={item} className="h-24 animate-pulse border-b border-[var(--color-line)] bg-[var(--color-surface-soft)]" />
+        <div key={item} className="flex h-24 items-center gap-3 border-b border-[var(--color-line)] px-4">
+          <div className={`aspect-video w-24 shrink-0 rounded-md ${block}`} />
+          <div className="grid min-w-0 flex-1 gap-2">
+            <div className={`h-4 w-1/2 max-w-xs rounded-sm ${block}`} />
+            <div className={`h-3 w-1/3 max-w-40 rounded-sm ${block}`} />
+          </div>
+        </div>
       ))}
     </div>
   );
@@ -103,6 +111,41 @@ export function TableSkeleton({
           ))}
         </div>
       </div>
+    </div>
+  );
+}
+
+/**
+ * Uma pilha de cartões carregando (Mídia, Eventos): cartões
+ * no lugar e no contorno dos de verdade, com a miniatura quando a tela tem.
+ * Antes era uma frase cinza num cartão, e a lista entrava empurrando a página.
+ */
+export function CardStackSkeleton({
+  label,
+  cards = 3,
+  thumb = false,
+}: {
+  label: string;
+  cards?: number;
+  thumb?: boolean;
+}) {
+  return (
+    <div role="status" data-skeleton="cards" className="grid gap-3">
+      <span className="sr-only">{label}</span>
+      {Array.from({ length: cards }, (_, item) => (
+        <div
+          key={item}
+          aria-hidden="true"
+          className="flex animate-pulse gap-4 rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)] p-4"
+        >
+          {thumb ? <div className={`h-20 w-20 shrink-0 rounded-md ${block}`} /> : null}
+          <div className="grid min-w-0 flex-1 content-start gap-2">
+            <div className={`h-3 w-24 rounded-sm ${block}`} />
+            <div className={`h-5 w-2/3 max-w-sm rounded-md ${block}`} />
+            <div className={`h-4 w-1/2 max-w-xs rounded-sm ${block}`} />
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

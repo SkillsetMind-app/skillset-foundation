@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { I18nProvider } from "@/components/i18n/i18n-provider";
@@ -141,6 +141,28 @@ describe("MemberAreaSettingsPanel", () => {
     expect(mocks.saveMyMemberArea).toHaveBeenCalledWith(expect.objectContaining({ coverPath: "users/teacher-1/member-area/cover-2" }), "area-main");
   });
 
+  // B-05 + F-12: o rótulo da capa não vira "Uploading..."; o andamento é a
+  // nota de envio, e o Save apagado diz por quê. A falha sai no aviso da casa.
+  it("enviando a capa: rótulo fixo, nota de envio e o Save diz por que espera", async () => {
+    let finish!: (path: string) => void;
+    mocks.uploadMemberAreaCover.mockReturnValueOnce(new Promise<string>((resolve) => { finish = resolve; }))
+      .mockRejectedValueOnce(new Error("offline"));
+    renderPanel();
+    await screen.findByRole("list");
+    fireEvent.change(screen.getByLabelText("Upload cover"), { target: { files: [new File(["x"], "capa.png", { type: "image/png" })] } });
+    expect(await screen.findByText("Sending...")).toBeTruthy();
+    expect(screen.queryByText("Uploading...")).toBeNull();
+    const save = screen.getByRole("button", { name: "Save members area" });
+    expect(save).toBeDisabled();
+    expect(save).toHaveAccessibleDescription("Wait for the cover to finish uploading, then save.");
+    await act(async () => finish("users/teacher-1/member-area/cover-9"));
+    expect(screen.getByRole("button", { name: "Save members area" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Save members area" })).not.toHaveAccessibleDescription();
+
+    fireEvent.change(screen.getByLabelText("Replace cover"), { target: { files: [new File(["x"], "capa.png", { type: "image/png" })] } });
+    expect(await screen.findByRole("alert")).toHaveTextContent("We could not upload this image.");
+  });
+
   it("imagem fora do formato não sobe", async () => {
     renderPanel();
     await screen.findByRole("list");
@@ -148,6 +170,19 @@ describe("MemberAreaSettingsPanel", () => {
       target: { files: [new File(["x"], "capa.gif", { type: "image/gif" })] },
     });
     expect(await screen.findByText(/Use a JPG, PNG or WebP image under 5 MB/)).toBeTruthy();
+    expect(mocks.uploadMemberAreaCover).not.toHaveBeenCalled();
+  });
+
+  // B-05: a capa usa a casca única de imagem; accept e teto de 5 MB seguem daqui.
+  it("capa: mesmo accept e a imagem acima de 5 MB não sobe", async () => {
+    renderPanel();
+    await screen.findByRole("list");
+    const input = screen.getByLabelText("Upload cover");
+    expect(input).toHaveAttribute("accept", "image/jpeg,image/png,image/webp");
+    const big = new File(["x"], "capa.png", { type: "image/png" });
+    Object.defineProperty(big, "size", { value: 6 * 1024 * 1024 });
+    fireEvent.change(input, { target: { files: [big] } });
+    expect((await screen.findByText(/Use a JPG, PNG or WebP image under 5 MB/)).closest('[role="alert"]')).not.toBeNull();
     expect(mocks.uploadMemberAreaCover).not.toHaveBeenCalled();
   });
 

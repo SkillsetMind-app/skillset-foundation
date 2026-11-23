@@ -147,7 +147,10 @@ export function MemberAreaCommunityView({
     <MemberAreaShell brand={brand} theme={theme}>
       {/* O mesmo nó da moldura do erro: depois do "Try again" o foco fica aqui. */}
       <div ref={frameRef} tabIndex={-1} className="grid gap-4 px-4 md:px-0">
-        <Link href={areaPath} className="text-sm font-semibold text-[var(--ma-accent)] underline-offset-2 hover:underline">
+        {/* --ma-accent é o fundo dos botões (e a cor que o professor escolhe):
+            como texto dava 2,9:1 num curso escuro. Texto de destaque da área
+            é --ma-accent-ink, como o link do início da área. */}
+        <Link href={areaPath} className="text-sm font-semibold text-[var(--ma-accent-ink)] underline-offset-2 hover:underline">
           ← {t("learn.memberArea.communityBack")}
         </Link>
         <h1 className="display-title text-3xl text-[var(--ma-ink)]">{community.title}</h1>

@@ -123,6 +123,8 @@ describe("TeacherEventStudio", () => {
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));
     expect(agenda.reload).toHaveBeenCalledTimes(1);
     expect(screen.getByText("Loading scheduled sessions...")).toBeInTheDocument();
+    // A espera tem a forma dos cartoes de sessao, nao uma frase num cartao.
+    expect(screen.getByText("Loading scheduled sessions...").closest('[role="status"]')).toHaveAttribute("data-skeleton", "cards");
   });
 
   // Releitura que falha com a agenda na tela: as sessoes ficam, o aviso sobe e
@@ -183,6 +185,32 @@ describe("TeacherEventStudio", () => {
     const lesson = within(next).getByRole("link", { name: "Add a short welcome lesson" });
     expect(lesson).toHaveAttribute("href", "/teach/builder?courseId=event-product-1&tab=content&welcome=1");
     expect(lesson).toHaveClass("button-outline");
+  });
+
+  // F-04: o botao nao muda de largura ao gravar. "Saving..." continua escrito
+  // e vira o nome do botao; o "Schedule session" fica no lugar, escondido.
+  it("Schedule session vira Saving... na espera, sem perder o lugar do rotulo", async () => {
+    let finish!: (id: string) => void;
+    vi.mocked(createCourseEvent).mockReturnValueOnce(new Promise<string>((resolve) => { finish = resolve; }));
+    render(<TeacherEventStudio />);
+    fillWhen("2027-03-14", "15:30");
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    fireEvent.change(screen.getByLabelText("Session title"), { target: { value: "Live workshop" } });
+    fireEvent.change(screen.getByLabelText("External class link"), { target: { value: "https://meet.example.com/live" } });
+    fireEvent.change(screen.getByLabelText("Session description"), { target: { value: "Practical exercises together." } });
+
+    const submit = screen.getByRole("button", { name: "Schedule session" });
+    expect(screen.getByText("Saving...")).toHaveAttribute("aria-hidden", "true");
+    fireEvent.click(submit);
+
+    expect(await screen.findByRole("button", { name: "Saving..." })).toBe(submit);
+    expect(submit).toBeDisabled();
+    expect(screen.queryByRole("button", { name: "Schedule session" })).toBeNull();
+    expect(screen.getByText("Schedule session")).toHaveAttribute("aria-hidden", "true");
+    expect(screen.getByText("Saving...")).not.toHaveAttribute("aria-hidden");
+    expect(screen.getByText("Saving...").parentElement).toBe(screen.getByText("Schedule session").parentElement);
+
+    await act(async () => finish("event-1"));
   });
 
   it("produto que ja tem aula: o proximo passo e so preco e publicar", async () => {
@@ -248,6 +276,8 @@ describe("TeacherEventStudio", () => {
     const course = screen.getByRole("combobox", { name: "Course" });
     expect(course).toHaveValue("");
     expect(screen.getByRole("button", { name: "Continue" })).toBeDisabled();
+    // Desligado diz por que (F-12).
+    expect(screen.getByRole("button", { name: "Continue" })).toHaveAccessibleDescription("Choose an available course");
     fillWhen("2027-03-14", "15:30");
     const form = course.closest("form");
     if (!form) throw new Error("Event form not found");
@@ -315,6 +345,9 @@ describe("TeacherEventStudio", () => {
     render(<TeacherEventStudio />);
     fireEvent.click(screen.getByRole("button", { name: "Edit" }));
     expect(screen.getByRole("combobox", { name: "Course" })).toBeDisabled();
+    expect(screen.getByRole("combobox", { name: "Course" })).toHaveAccessibleDescription(
+      "The course of a scheduled session can't be changed.",
+    );
     fireEvent.click(screen.getByRole("button", { name: "Continue" }));
     expect(screen.getByLabelText("Session title")).toHaveValue("Existing session");
     fireEvent.click(screen.getByRole("button", { name: "Update session" }));
@@ -377,7 +410,7 @@ describe("TeacherEventStudio", () => {
     // Campos maiores, com o teclado certo de cada um.
     expect(screen.getByLabelText("Date")).toHaveAttribute("type", "date");
     expect(screen.getByLabelText("Time")).toHaveAttribute("type", "time");
-    expect(screen.getByLabelText("Date")).toHaveClass("min-h-12", "text-base");
+    expect(screen.getByLabelText("Date")).toHaveClass("field-input", "min-h-12", "text-base!");
     zone.mockRestore();
 
     fillWhen("2027-03-14", "15:30");

@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import InvitationPage from "@/app/invitations/[id]/page";
@@ -48,6 +48,24 @@ describe("PlatformInviteAcceptance", () => {
     render(<PlatformInviteAcceptance id={invitation.id} />);
     fireEvent.click(await screen.findByRole("button", { name: "Accept invitation" }));
     await waitFor(() => expect(mocks.assign).toHaveBeenCalledWith("/onboarding?path=teacher"));
+    expect(mocks.acceptPlatformInvite).toHaveBeenCalledTimes(1);
+  });
+  // F-04: esperando, o botão guarda a largura. Os dois rótulos moram na mesma
+  // célula e o que não vale fica fora do leitor: o nome é sempre o texto à vista.
+  it("keeps its width while accepting: same cell for both labels, the visible one names the button", async () => {
+    let finish!: (value: { next_path: string }) => void;
+    mocks.acceptPlatformInvite.mockReturnValue(new Promise(resolve => { finish = resolve; }));
+    render(<PlatformInviteAcceptance id={invitation.id} />);
+    const accept = await screen.findByRole("button", { name: "Accept invitation" });
+    expect(within(accept).getByText("Accepting...")).toHaveAttribute("aria-hidden", "true");
+    fireEvent.click(accept);
+    expect(accept).toHaveAccessibleName("Accepting...");
+    expect(accept).toBeDisabled();
+    const idle = within(accept).getByText("Accept invitation");
+    expect(idle).toHaveAttribute("aria-hidden", "true");
+    expect(idle.parentElement).toBe(within(accept).getByText("Accepting...").parentElement);
+    await act(async () => finish({ next_path: "/onboarding?path=teacher" }));
+    expect(mocks.assign).toHaveBeenCalledWith("/onboarding?path=teacher");
     expect(mocks.acceptPlatformInvite).toHaveBeenCalledTimes(1);
   });
   it("awaits route params and only reads the invitation on GET", async () => {

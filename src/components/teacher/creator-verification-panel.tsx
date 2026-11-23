@@ -12,6 +12,7 @@ import { StatusChip } from "@/components/shared/status-chip";
 import { CardPageSkeleton } from "@/components/teacher/builder-skeleton";
 import {
   buttonClasses,
+  BusyLabel,
   Button,
   Card,
   Field,
@@ -235,7 +236,10 @@ export function CreatorVerificationPanel() {
   };
 
   return (
-    <div className="mx-auto grid w-full max-w-3xl gap-6">
+    // T-01: o cabecalho ocupa a largura da pagina e alinha a esquerda com o das
+    // telas irmas; so os cartoes de baixo (o primeiro filho e o cabecalho)
+    // ficam na coluna de 768px. Antes o mx-auto centrava os dois juntos.
+    <div className="grid w-full gap-6 [&>:not(:first-child)]:max-w-3xl">
       {/* O cabecalho das telas irmas, fora do cartao: o titulo era um 24px em
           serifa dentro dele, com o rotulo generico "Teacher studio" em cima. O
           selo de status vai para o lado do titulo. */}
@@ -491,14 +495,21 @@ export function CreatorVerificationPanel() {
               <InlineAlert tone="error">{t(`${copy}.errors.${submitError}`)}</InlineAlert>
             ) : null}
             <div>
+              {/* Duas esperas (tirar o documento, enviar): a de dentro guarda
+                  as duas na mesma célula, e a de fora guarda o rótulo de
+                  repouso. O botão fica com a largura do maior dos quatro. */}
               <Button type="submit" disabled={submitting || cleaningDocument}>
-                {t(`${copy}.${cleaningDocument
-                  ? "removingDocument"
-                  : submitting
-                  ? "submitting"
-                  : status === "needs_changes"
-                    ? "resubmit"
-                    : "submit"}`)}
+                <BusyLabel
+                  busy={submitting || cleaningDocument}
+                  idle={t(`${copy}.${status === "needs_changes" ? "resubmit" : "submit"}`)}
+                  busyText={
+                    <BusyLabel
+                      busy={cleaningDocument}
+                      idle={t(`${copy}.submitting`)}
+                      busyText={t(`${copy}.removingDocument`)}
+                    />
+                  }
+                />
               </Button>
             </div>
           </form>

@@ -27,7 +27,6 @@ import {
   Sun,
   Ticket,
   Trash2,
-  UploadCloud,
   X,
 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -112,7 +111,7 @@ import {
 } from "@/lib/data/course-assets";
 import { compressImage, MAX_SOURCE_IMAGE_BYTES } from "@/lib/media/compress-image";
 import { ReadinessGroups } from "@/components/teacher/readiness-groups";
-import { UploadProgressNote } from "@/components/teacher/upload-progress-note";
+import { ImageUploadField } from "@/components/teacher/image-upload-field";
 import { Button, buttonClasses, EmptyState, InlineAlert, ProgressBar } from "@/components/ui";
 import { DrawnCheck, MilestoneSeal, useJustDone } from "@/components/ui/drawn-check";
 import { SpotArt } from "@/components/ui/spot-art";
@@ -1311,13 +1310,17 @@ export function CourseBuilderStudio() {
       minimumFractionDigits: amountMinor % 100 === 0 ? 0 : 2,
       maximumFractionDigits: 2,
     }).format(amountMinor / 100);
+  // Sem aula ainda o seletor fica apagado: a linha embaixo diz por quê (F-12).
+  const previewNeedsLesson = isEditable && allLessons.length === 0;
   const previewLessonField = (
-    <label className="mt-4 grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
+    <div className="mt-4 grid gap-2">
+    <label className="grid gap-2 text-sm font-semibold text-[var(--color-ink)]">
       {t("creatorEditor.builder.pricing.preview")}
       <select
         value={freePreviewLessonId}
-        onChange={(event) => setFreePreviewLessonId(event.target.value)}
+        onChange={(event) => chooseFreePreviewLesson(event.target.value)}
         disabled={!isEditable || allLessons.length === 0}
+        aria-describedby={previewNeedsLesson ? "builder-preview-needs-lesson" : undefined}
         className="rounded-md border border-[var(--color-field-border)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
       >
         <option value="">{t("creatorEditor.builder.pricing.noPreview")}</option>
@@ -1328,6 +1331,13 @@ export function CourseBuilderStudio() {
         ))}
       </select>
     </label>
+    {/* Fora do <label>: dentro, a frase entraria no nome do campo. */}
+    {previewNeedsLesson ? (
+      <p id="builder-preview-needs-lesson" className="text-xs text-[var(--color-ink-soft)]">
+        {t("creatorEditor.builder.pricing.previewNeedsLesson")}
+      </p>
+    ) : null}
+    </div>
   );
   const splitCountOptions = [...new Set([...splitPaymentCounts, Number(installmentsMax)])]
     .filter((count) => Number.isInteger(count) && count >= 1)
@@ -1571,6 +1581,30 @@ export function CourseBuilderStudio() {
     setSuccess(null);
   }
 
+  // A porta única para escolher a aula de amostra: página da aula, seletor da
+  // aba Pricing, menu da linha e caixa de aula nova. Só a página da aula
+  // sincronizava os vídeos; nas outras três a loja respondia "Video
+  // unavailable" para a amostra, e ao trocar de A para B os vídeos de A
+  // seguiam marcados como amostra (is_preview) e os de B não. "" = nenhuma.
+  function chooseFreePreviewLesson(next: string) {
+    if (next === freePreviewLessonId) {
+      return;
+    }
+    setFreePreviewLessonId(next);
+    if (!course) {
+      return;
+    }
+    // A flag do curso sozinha não abre o vídeo para quem ainda não
+    // comprou: a busca anônima filtra por is_preview no asset. Sem este
+    // passo, marcar a prévia depois do upload deixava a loja com
+    // "Video unavailable" e nenhum aviso no estúdio.
+    void syncLessonPreviewAssets(course.id, next).catch(() => {
+      // Falha aqui não pode derrubar o builder. Nada mais refaz esta
+      // sincronia (o publish não a chama): a amostra fica em "Video
+      // unavailable" até o professor escolhê-la de novo, e nada mais depende dela.
+    });
+  }
+
   function openLessonForm(moduleId: string) {
     // `lessonModuleId` era o select "Choose module"; agora quem responde por ele
     // e a linha do modulo, e `handleAddLesson` segue igual.
@@ -1627,7 +1661,8 @@ export function CourseBuilderStudio() {
       ),
     );
     if (lessonIsFreePreview) {
-      setFreePreviewLessonId(nextLessonId);
+      // A aula nova ainda não tem vídeo, mas a sincronia fecha o da anterior.
+      chooseFreePreviewLesson(nextLessonId);
     }
     setLessonTitle("");
     setLessonIsFreePreview(false);
@@ -2110,17 +2145,7 @@ export function CourseBuilderStudio() {
           setUploadingLesson(null);
         }}
         onAssetsChanged={() => refreshCourseAssets()}
-        onSetFreePreview={() => {
-          const next = freePreviewLessonId === lesson.id ? "" : lesson.id;
-          setFreePreviewLessonId(next);
-          // A flag do curso sozinha não abre o vídeo para quem ainda não
-          // comprou: a busca anônima filtra por is_preview no asset. Sem este
-          // passo, marcar a prévia depois do upload deixava a loja com
-          // "Video unavailable" e nenhum aviso no estúdio.
-          void syncLessonPreviewAssets(course.id, next).catch(() => {
-            // Falha aqui não pode derrubar o builder; o publish revalida.
-          });
-        }}
+        onSetFreePreview={() => chooseFreePreviewLesson(freePreviewLessonId === lesson.id ? "" : lesson.id)}
         onUpdateLesson={(patch) => updateLesson(lessonModule.id, lesson.id, patch)}
       />
     );
@@ -2318,7 +2343,7 @@ export function CourseBuilderStudio() {
                       aria-hidden="true"
                       size={13}
                       strokeWidth={2.2}
-                      className="animate-spin"
+                      className="motion-safe:animate-spin"
                     />
                     {t("creatorEditor.builder.curriculum.savingLesson")}
                   </span>
@@ -2362,9 +2387,7 @@ export function CourseBuilderStudio() {
                   <button
                     type="button"
                     onClick={() =>
-                      setFreePreviewLessonId(
-                        freePreviewLessonId === lesson.id ? "" : lesson.id,
-                      )
+                      chooseFreePreviewLesson(freePreviewLessonId === lesson.id ? "" : lesson.id)
                     }
                     disabled={!isEditable}
                     className={`min-h-11 rounded-md border px-3 py-2 text-xs font-semibold disabled:opacity-60 ${
@@ -3107,6 +3130,7 @@ export function CourseBuilderStudio() {
       size="lg"
       icon={<Send aria-hidden="true" size={16} strokeWidth={2} />}
       loading={isSubmitting}
+      busyLabel={t("creatorEditor.builder.publish.publishing")}
       onClick={() => {
         setErrorSlot("publish");
         void publishCourse();
@@ -3116,11 +3140,9 @@ export function CourseBuilderStudio() {
       aria-describedby={showPublishReason ? "builder-publish-reason" : undefined}
       className="w-full sm:w-auto"
     >
-      {isSubmitting
-        ? t("creatorEditor.builder.publish.publishing")
-        : needsActivation
-          ? t("creatorEditor.builder.publish.activateAndPublish")
-          : t("creatorEditor.builder.publish.submit")}
+      {needsActivation
+        ? t("creatorEditor.builder.publish.activateAndPublish")
+        : t("creatorEditor.builder.publish.submit")}
     </Button>
   );
 
@@ -3575,11 +3597,18 @@ export function CourseBuilderStudio() {
                   )
                 }
                 disabled={learningOutcomes.length >= MAX_LEARNING_OUTCOMES}
-                className="inline-flex min-h-11 w-fit items-center gap-1.5 rounded-md border border-[var(--color-line)] px-3 py-2 text-xs font-semibold text-[var(--color-primary)] transition-colors duration-[var(--duration-base)] ease-[var(--ease-standard)] hover:border-[var(--color-primary-light)] disabled:cursor-not-allowed disabled:opacity-50"
+                aria-describedby={learningOutcomes.length >= MAX_LEARNING_OUTCOMES ? "builder-outcomes-max" : undefined}
+                className="inline-flex min-h-11 w-fit items-center gap-1.5 rounded-md border border-[var(--color-line)] px-3 py-2 text-xs font-semibold text-[var(--color-primary)] transition-colors duration-[var(--duration-base)] ease-[var(--ease-standard)] enabled:hover:border-[var(--color-primary-light)] disabled:cursor-not-allowed disabled:opacity-60"
               >
                 <Plus aria-hidden="true" size={14} strokeWidth={2} />
                 {t("creatorEditor.builder.details.addOutcome")}
               </button>
+            ) : null}
+            {/* No teto o "Add" apaga: a frase diz por quê (F-12). */}
+            {isEditable && learningOutcomes.length >= MAX_LEARNING_OUTCOMES ? (
+              <p id="builder-outcomes-max" className="text-xs text-[var(--color-ink-soft)]">
+                {t("creatorEditor.builder.details.outcomesMax").replace("{max}", () => String(MAX_LEARNING_OUTCOMES))}
+              </p>
             ) : null}
           </div>
           <p className="rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
@@ -4674,6 +4703,12 @@ export function getAutosaveBlockedReason(input: {
   return null;
 }
 
+// Os dois chips de falha do salvar ("Not saving", "Save failed"): o fundo é o
+// token de erro, não o vermelho a 6% escrito à mão, que no tema escuro sumia
+// no cartão (F-07).
+const dangerChipClass =
+  "inline-flex items-center gap-1.5 rounded-chip border border-[rgba(178,34,52,0.22)] bg-[var(--color-danger-soft)] px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--color-danger-fg)]";
+
 function BuilderSaveStatus({
   state,
   blockedReason,
@@ -4692,7 +4727,7 @@ function BuilderSaveStatus({
     return (
       <span
         role="status"
-        className="inline-flex items-center gap-1.5 rounded-chip border border-[rgba(178,34,52,0.22)] bg-[rgba(178,34,52,0.06)] px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--color-danger-fg)]"
+        className={dangerChipClass}
       >
         <CloudOff aria-hidden="true" size={12} strokeWidth={2} />
         {t("creatorEditor.builder.save.blocked").replace("{reason}", () =>
@@ -4709,7 +4744,7 @@ function BuilderSaveStatus({
           aria-hidden="true"
           size={12}
           strokeWidth={2.2}
-          className="animate-spin"
+          className="motion-safe:animate-spin"
         />
         {t("creatorEditor.builder.save.saving")}
       </span>
@@ -4726,8 +4761,10 @@ function BuilderSaveStatus({
   }
 
   if (state === "error") {
+    // Anunciado como o "Not saving": antes a falha do salvar sozinho entrava
+    // no topo calada para o leitor de tela.
     return (
-      <span className="inline-flex items-center gap-1.5 rounded-chip border border-[rgba(178,34,52,0.22)] bg-[rgba(178,34,52,0.06)] px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--color-danger-fg)]">
+      <span role="status" className={dangerChipClass}>
         <CloudOff aria-hidden="true" size={12} strokeWidth={2} />
         {t("creatorEditor.builder.save.error")}
       </span>
@@ -4805,84 +4842,32 @@ function CourseCoverField({
   }
 
   return (
-    <section className="grid gap-3 rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
-            {t("courseMedia.assetKinds.course_cover")}
-          </p>
-          <p className="mt-1 max-w-xl text-xs leading-5 text-[var(--color-ink-soft)]">
-            {t("creatorEditor.builder.cover.help").replace("{limit}", () => formatCourseAssetSize(supabaseUploadLimitBytes))}
-          </p>
-        </div>
-        {course.coverImageUrl ? (
-          <span className="inline-flex items-center gap-1 rounded-chip bg-white px-3 py-1 text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--color-primary)]">
-            <CheckCircle2 size={12} aria-hidden /> {t("creatorEditor.members.coverSet")}
-          </span>
-        ) : null}
-      </div>
-
-      <div className="grid gap-3 sm:grid-cols-[200px_1fr] sm:items-start">
-        <div className="relative aspect-video overflow-hidden rounded-md border border-[var(--color-line)] bg-white">
-          {course.coverImageUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={course.coverImageUrl}
-              alt={t("creatorEditor.builder.cover.alt").replace("{title}", () => course.title || t("creatorEditor.builder.cover.course"))}
-              className="h-full w-full object-cover"
-            />
-          ) : (
-            <div className="flex h-full w-full flex-col items-center justify-center gap-1.5 text-[var(--color-ink-soft)]">
-              <ImageIcon size={22} aria-hidden />
-              <span className="text-[11px] font-semibold uppercase tracking-[0.12em]">
-                {t("creatorEditor.members.noCover")}
-              </span>
-            </div>
-          )}
-        </div>
-
-        <div className="grid content-start gap-2">
-          <label
-            className={`inline-flex w-fit items-center gap-2 rounded-md border border-dashed border-[var(--color-line)] bg-white px-4 py-3 text-sm font-semibold text-[var(--color-primary)] transition-colors duration-[var(--duration-base)] ease-[var(--ease-standard)] hover:border-[var(--color-primary-light)] focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[var(--color-primary)] ${
-              !isEditable || isUploading
-                ? "pointer-events-none opacity-50"
-                : "cursor-pointer"
-            }`}
-          >
-            <UploadCloud size={16} aria-hidden />
-            {/* Rotulo fixo: o estado do envio e so a nota logo abaixo (ela dizia
-                "Uploading 45%" embaixo de um botao "Uploading..."). */}
-            {course.coverImageUrl
-              ? t("creatorEditor.members.replaceCover")
-              : t("creatorEditor.members.uploadCover")}
-            <input
-              key={fileInputKey}
-              type="file"
-              accept={courseAssetAcceptTypes.course_cover}
-              disabled={!isEditable || isUploading}
-              onChange={handleFile}
-              className="sr-only"
-            />
-          </label>
-
-          {progress ? <UploadProgressNote progress={progress} /> : null}
-
-          {error ? (
-            <InlineAlert tone="error" className="px-3 py-2 text-xs">
-              {error.kind === "invalid-image"
-                ? t("creatorEditor.members.invalidImage").replace("{limit}", () => formatCourseAssetSize(supabaseUploadLimitBytes))
-                : getCourseAssetUploadErrorMessage(error.cause, supabaseUploadLimitBytes, t)}
-            </InlineAlert>
-          ) : null}
-
-          {!course.coverImageUrl && !error && !progress ? (
-            <p className="text-xs leading-5 text-[var(--color-ink-soft)]">
-              {t("creatorEditor.builder.cover.emptyHelp")}
-            </p>
-          ) : null}
-        </div>
-      </div>
-    </section>
+    <ImageUploadField
+      className="rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4"
+      title={t("courseMedia.assetKinds.course_cover")}
+      help={t("creatorEditor.builder.cover.help").replace("{limit}", () => formatCourseAssetSize(supabaseUploadLimitBytes))}
+      preview={{
+        src: course.coverImageUrl,
+        alt: t("creatorEditor.builder.cover.alt").replace("{title}", () => course.title || t("creatorEditor.builder.cover.course")),
+        emptyLabel: t("creatorEditor.members.noCover"),
+      }}
+      triggerLabel={course.coverImageUrl ? t("creatorEditor.members.replaceCover") : t("creatorEditor.members.uploadCover")}
+      input={{
+        resetKey: fileInputKey,
+        accept: courseAssetAcceptTypes.course_cover,
+        disabled: !isEditable || isUploading,
+        onChange: handleFile,
+      }}
+      progress={progress}
+      error={
+        error === null
+          ? undefined
+          : error.kind === "invalid-image"
+            ? t("creatorEditor.members.invalidImage").replace("{limit}", () => formatCourseAssetSize(supabaseUploadLimitBytes))
+            : getCourseAssetUploadErrorMessage(error.cause, supabaseUploadLimitBytes, t)
+      }
+      note={course.coverImageUrl ? undefined : t("creatorEditor.builder.cover.emptyHelp")}
+    />
   );
 }
 
@@ -5001,7 +4986,7 @@ function MembersAreaTab({
                   disabled={!isEditable}
                   aria-pressed={active}
                   onClick={() => onThemeChange(option.value)}
-                  className={`inline-flex min-h-11 items-center gap-1.5 rounded-sm px-3 py-2 text-sm font-semibold transition-colors duration-[var(--duration-base)] ease-[var(--ease-standard)] disabled:opacity-50 ${
+                  className={`inline-flex min-h-11 items-center gap-1.5 rounded-sm px-3 py-2 text-sm font-semibold transition-colors duration-[var(--duration-base)] ease-[var(--ease-standard)] disabled:opacity-60 ${
                     active
                       ? "bg-white text-[var(--color-primary)] shadow-[var(--shadow-soft)]"
                       : "text-[var(--color-ink-soft)] hover:text-[var(--color-ink)]"
@@ -5211,89 +5196,36 @@ function MembersCoverField({
   }
 
   return (
-    <section aria-label={title} className={moduleId ? "grid min-w-0 content-start gap-3" : "grid gap-3 rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4"}>
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
-            {title}
-          </p>
-          <p className="mt-1 max-w-xl text-xs leading-5 text-[var(--color-ink-soft)]">
-            {t(moduleId ? "creatorEditor.assets.presets.module" : "creatorEditor.members.coverHelp").replace("{limit}", () => formatCourseAssetSize(supabaseUploadLimitBytes))}
-          </p>
-        </div>
-        {coverUrl ? (
-          <span className="inline-flex items-center gap-1 rounded-chip bg-white px-3 py-1 text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--color-primary)]">
-            <CheckCircle2 size={12} aria-hidden /> {t("creatorEditor.members.coverSet")}
-          </span>
-        ) : null}
-      </div>
-
-      <div className={moduleId ? "grid min-w-0 gap-3" : "grid gap-3 sm:grid-cols-[200px_1fr] sm:items-start"}>
-        <div className={`relative overflow-hidden rounded-md border border-[var(--color-line)] bg-white ${moduleId ? "aspect-[2/3] w-32" : "aspect-video"}`}>
-          {coverUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element -- members cover is an arbitrary CourseAsset URL
-            <img
-              src={coverUrl}
-              alt={moduleId ? title : t("creatorEditor.members.coverAlt").replace("{courseTitle}", () => course.title || t("publicCourses.course"))}
-              className="h-full w-full object-cover"
-            />
-          ) : (
-            <div className="flex h-full w-full flex-col items-center justify-center gap-1.5 text-[var(--color-ink-soft)]">
-              <ImageIcon size={22} aria-hidden />
-              <span className="text-[11px] font-semibold uppercase tracking-[0.12em]">
-                {t("creatorEditor.members.noCover")}
-              </span>
-            </div>
-          )}
-        </div>
-
-        <div className="grid content-start gap-2">
-          <label
-            className={`inline-flex w-fit items-center gap-2 rounded-md border border-dashed border-[var(--color-line)] bg-white px-4 py-3 text-sm font-semibold text-[var(--color-primary)] transition-colors duration-[var(--duration-base)] ease-[var(--ease-standard)] hover:border-[var(--color-primary-light)] focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[var(--color-primary)] ${
-              !isEditable || isUploading
-                ? "pointer-events-none opacity-50"
-                : "cursor-pointer"
-            }`}
-          >
-            <UploadCloud size={16} aria-hidden />
-            {/* Rotulo fixo; o estado do envio e so a nota logo abaixo. */}
-            {coverUrl
-              ? t("creatorEditor.members.replaceCover")
-              : t("creatorEditor.members.uploadCover")}
-            <input
-              key={fileInputKey}
-              type="file"
-              accept={courseAssetAcceptTypes[kind]}
-              aria-label={moduleId ? t("courseMedia.assetKinds.module_cover") : undefined}
-              disabled={!isEditable || isUploading}
-              onChange={handleFile}
-              className="sr-only"
-            />
-          </label>
-
-          {coverUrl && onRemove && isEditable && !isUploading ? (
-            <button
-              type="button"
-              onClick={onRemove}
-              className="min-h-11 w-fit text-xs font-semibold text-[var(--color-danger-fg)] underline-offset-2 hover:underline"
-            >
-              {t("creatorEditor.members.removeCover")}
-            </button>
-          ) : null}
-
-          {progress ? <UploadProgressNote progress={progress} /> : null}
-
-          {error ? (
-            <InlineAlert tone="error" className="px-3 py-2 text-xs">
-              {error.kind === "too-large"
-                ? t("creatorEditor.members.coverTooLarge")
-                : error.kind === "invalid-image"
-                  ? t("creatorEditor.members.invalidImage").replace("{limit}", () => formatCourseAssetSize(supabaseUploadLimitBytes))
-                  : getCourseAssetUploadErrorMessage(error.cause, supabaseUploadLimitBytes, t)}
-            </InlineAlert>
-          ) : null}
-        </div>
-      </div>
-    </section>
+    <ImageUploadField
+      // Na página do módulo a capa mora numa coluna, sem moldura própria.
+      className={moduleId ? undefined : "rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4"}
+      title={title}
+      help={t(moduleId ? "creatorEditor.assets.presets.module" : "creatorEditor.members.coverHelp").replace("{limit}", () => formatCourseAssetSize(supabaseUploadLimitBytes))}
+      preview={{
+        src: coverUrl,
+        alt: moduleId ? title : t("creatorEditor.members.coverAlt").replace("{courseTitle}", () => course.title || t("publicCourses.course")),
+        portrait: Boolean(moduleId),
+        emptyLabel: t("creatorEditor.members.noCover"),
+      }}
+      triggerLabel={coverUrl ? t("creatorEditor.members.replaceCover") : t("creatorEditor.members.uploadCover")}
+      input={{
+        resetKey: fileInputKey,
+        accept: courseAssetAcceptTypes[kind],
+        "aria-label": moduleId ? t("courseMedia.assetKinds.module_cover") : undefined,
+        disabled: !isEditable || isUploading,
+        onChange: handleFile,
+      }}
+      remove={onRemove && isEditable ? { label: t("creatorEditor.members.removeCover"), onClick: onRemove } : undefined}
+      progress={progress}
+      error={
+        error === null
+          ? undefined
+          : error.kind === "too-large"
+            ? t("creatorEditor.members.coverTooLarge")
+            : error.kind === "invalid-image"
+              ? t("creatorEditor.members.invalidImage").replace("{limit}", () => formatCourseAssetSize(supabaseUploadLimitBytes))
+              : getCourseAssetUploadErrorMessage(error.cause, supabaseUploadLimitBytes, t)
+      }
+    />
   );
 }

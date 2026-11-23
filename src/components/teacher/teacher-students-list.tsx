@@ -1,16 +1,24 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { ExportTableButton } from "@/components/shared/export-table-button";
 import { StatusChip } from "@/components/shared/status-chip";
 import { TableSkeleton } from "@/components/teacher/builder-skeleton";
-import { EmptyState, InlineAlert } from "@/components/ui";
+import { Button, EmptyState, InlineAlert } from "@/components/ui";
 import { SpotArt } from "@/components/ui/spot-art";
 import { getMyCourseStudents, type CourseStudent } from "@/lib/data/enrollments";
 import { getMyCourseSummaries } from "@/lib/data/teacher-courses";
+
+// A leitura ja traz todas as matriculas; a tela mostra 50 por vez, como Vendas.
+const PAGE = 50;
+
+// Os mesmos recortes de acesso da lista por produto (course-student-roster).
+const statusFilters = ["all", "active", "completed", "refunded", "revoked", "expired"] as const;
+type StatusFilter = (typeof statusFilters)[number];
 
 type State =
   | { status: "loading" }
@@ -26,10 +34,27 @@ export function TeacherStudentsList() {
   const { t, locale } = useTranslation();
   const [state, setState] = useState<State>({ status: "loading" });
   const [search, setSearch] = useState("");
+  const [status, setStatus] = useState<StatusFilter>("all");
+  const [visibleCount, setVisibleCount] = useState(PAGE);
+  // Indice da primeira linha que o "Show N more" abriu: o foco vai para ela.
+  // Sem isso, o ultimo clique tirava o botao da tela e o foco caia no body.
+  const [revealedFrom, setRevealedFrom] = useState<number | null>(null);
+  const tbodyRef = useRef<HTMLTableSectionElement>(null);
   // "Try again" pede a mesma leitura de novo (antes a saida era recarregar a
   // pagina inteira).
   const [attempt, setAttempt] = useState(0);
   const uid = user?.uid ?? null;
+
+  useEffect(() => {
+    if (revealedFrom !== null) tbodyRef.current?.rows[revealedFrom]?.focus();
+  }, [revealedFrom]);
+
+  // Busca ou filtro novo recomeca nas primeiras 50: depois de abrir 300, ir e
+  // voltar no filtro desenhava as 300 de uma vez.
+  const resetWindow = () => {
+    setVisibleCount(PAGE);
+    setRevealedFrom(null);
+  };
 
   useEffect(() => {
     if (!uid) {
@@ -61,7 +86,8 @@ export function TeacherStudentsList() {
   }, [uid, attempt]);
 
   if (state.status === "loading") {
-    return <TableSkeleton label={t("teach.studentsPage.loading")} />;
+    // Busca + filtro de acesso + Export: a mesma fileira que vem depois.
+    return <TableSkeleton label={t("teach.studentsPage.loading")} controls={3} />;
   }
 
   if (state.status === "error") {
@@ -97,14 +123,27 @@ export function TeacherStudentsList() {
   const people = new Set(
     state.students.filter((student) => isActiveEnrollment(student.status)).map((student) => student.uid),
   ).size;
-  // Busca so no que ja veio (sem consulta nova): com 300 alunos, achar um
-  // nome era rolar 300 linhas.
+  // Busca e filtro so no que ja veio (sem consulta nova): com 300 alunos,
+  // achar um nome era rolar 300 linhas.
   const needle = search.trim().toLowerCase();
-  const visible = needle
-    ? state.students.filter((student) =>
-        `${student.displayName} ${student.email} ${student.courseTitle}`.toLowerCase().includes(needle),
-      )
-    : state.students;
+  const matches = state.students.filter(
+    (student) =>
+      (status === "all" || student.status === status) &&
+      (!needle ||
+        `${student.displayName} ${student.email} ${student.courseTitle}`.toLowerCase().includes(needle)),
+  );
+  const visible = matches.slice(0, visibleCount);
+  const hiddenCount = matches.length - visible.length;
+  // T-18: o Export leva o recorte inteiro da busca e do filtro, nao so as 50
+  // linhas abertas, com as colunas da lista por produto (mais o produto).
+  const exportRows = matches.map((student) => ({
+    name: student.displayName,
+    email: student.email,
+    product: student.courseTitle,
+    access: student.status,
+    progressPercent: student.progressPercent,
+    enrolledAt: student.enrolledAt,
+  }));
 
   return (
     <section className="rounded-lg border border-[var(--color-line)] bg-white p-5 shadow-[var(--shadow-soft)]">
@@ -121,10 +160,32 @@ export function TeacherStudentsList() {
           id="students-search"
           type="search"
           value={search}
-          onChange={(event) => setSearch(event.target.value)}
+          onChange={(event) => {
+            setSearch(event.target.value);
+            resetWindow();
+          }}
           placeholder={t("teach.studentsPage.searchPlaceholder")}
           className="field-input field-input--inline min-w-[12rem] flex-1 sm:max-w-72"
         />
+        <label htmlFor="students-status" className="sr-only">
+          {t("courseRoster.accessFilter")}
+        </label>
+        <select
+          id="students-status"
+          value={status}
+          onChange={(event) => {
+            setStatus(event.target.value as StatusFilter);
+            resetWindow();
+          }}
+          className="field-input field-input--inline"
+        >
+          {statusFilters.map((option) => (
+            <option key={option} value={option}>
+              {t(option === "all" ? "courseRoster.accessAll" : `courseRoster.${option}`)}
+            </option>
+          ))}
+        </select>
+        <ExportTableButton rows={exportRows} filename="students" />
       </div>
       {visible.length === 0 ? (
         <p role="status" className="mt-4 text-sm leading-6 text-[var(--color-ink-soft)]">
@@ -145,12 +206,16 @@ export function TeacherStudentsList() {
               </th>
             </tr>
           </thead>
-          <tbody>
-            {visible.map((student) => {
+          <tbody ref={tbodyRef}>
+            {visible.map((student, index) => {
               const name = student.displayName || t("courseRoster.unnamed");
               const course = encodeURIComponent(student.courseId);
               return (
-                <tr key={student.enrollmentId} className="border-b fine-rule last:border-b-0">
+                <tr
+                  key={student.enrollmentId}
+                  tabIndex={index === revealedFrom ? -1 : undefined}
+                  className="border-b fine-rule last:border-b-0"
+                >
                   <td className="py-3 pr-4">
                     {/* O nome abre o aluno na lista do produto. Antes eram um ou
                         dois botoes de 44px iguais em toda linha: uma parede na
@@ -190,6 +255,18 @@ export function TeacherStudentsList() {
         </table>
       </div>
       )}
+      {hiddenCount > 0 ? (
+        <Button
+          variant="outline"
+          className="mt-4"
+          onClick={() => {
+            setRevealedFrom(visible.length);
+            setVisibleCount((count) => count + PAGE);
+          }}
+        >
+          {t("teach.studentsPage.showMore").replace("{count}", () => String(Math.min(hiddenCount, PAGE)))}
+        </Button>
+      ) : null}
     </section>
   );
 }

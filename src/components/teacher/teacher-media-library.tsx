@@ -7,6 +7,7 @@ import { useAuth } from "@/components/auth/auth-provider";
 import { isVideoAssetKind, type CourseAsset, type CourseAssetKind } from "@/domain/course-asset";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { PlatformPageHeader } from "@/components/platform/platform-page-header";
+import { CardStackSkeleton } from "@/components/teacher/builder-skeleton";
 import { getCourseAssetKindLabel } from "@/lib/i18n/course-assets";
 import type { TeacherCourse } from "@/domain/teacher-course";
 import { subscribeToCourseAssets } from "@/lib/data/course-assets";
@@ -185,7 +186,7 @@ export function TeacherMediaLibrary() {
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder={t("teacherMedia.searchPlaceholder")}
-                className="rounded-md border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
+                className="field-input"
               />
             )}
           </Field>
@@ -196,7 +197,7 @@ export function TeacherMediaLibrary() {
                 {...a11y}
                 value={kindFilter}
                 onChange={(event) => setKindFilter(event.target.value as CourseAssetKind | "all")}
-                className="rounded-md border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
+                className="field-input"
               >
                 {assetKindFilters.map((kind) => (
                   <option key={kind} value={kind}>
@@ -213,7 +214,7 @@ export function TeacherMediaLibrary() {
                 {...a11y}
                 value={selectedCourseId}
                 onChange={(event) => setSelectedCourseId(event.target.value)}
-                className="rounded-md border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
+                className="field-input"
               >
                 {courses.map((course) => (
                   <option key={course.id} value={course.id}>
@@ -242,10 +243,10 @@ export function TeacherMediaLibrary() {
       ) : null}
 
       <div className="mt-6 grid gap-3">
+        {/* Cartões do arquivo (miniatura + nome) no lugar da frase num cartão,
+            que depois virava a lista inteira de uma vez. */}
         {isLoadingCourses ? (
-          <p className="rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
-            {t("teacherMedia.loading")}
-          </p>
+          <CardStackSkeleton label={t("teacherMedia.loading")} thumb />
         ) : courses.length === 0 ? (
           // Falha nao e "voce nao tem curso": o erro acima com "Try again" basta.
           coursesFailed ? null : <EmptyState
@@ -267,11 +268,7 @@ export function TeacherMediaLibrary() {
         ) : assetsFor !== selectedCourseId ? (
           // Os arquivos deste curso ainda nao chegaram (ou falharam: o erro
           // acima diz). Nada de "no files" antes de saber.
-          assetsFailed ? null : (
-            <p role="status" className="rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
-              {t("teacherMedia.loadingAssets")}
-            </p>
-          )
+          assetsFailed ? null : <CardStackSkeleton label={t("teacherMedia.loadingAssets")} thumb />
         ) : assets.length > 0 && filteredAssets.length === 0 ? (
           // Ha arquivos, so nenhum bate com a busca ou o tipo: nao e a
           // primeira vez ("Upload from the builder."), e "nenhum resultado"

@@ -9,6 +9,8 @@ import {
 } from "@/components/auth/turnstile-widget";
 import { usePageHeading } from "@/components/auth/page-heading";
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { SpinnerRing } from "@/components/shared/skillset-spinner";
+import { InlineAlert } from "@/components/ui/inline-alert";
 import { getAuthRoute, getLoadingRoute, getSafeReturnTo, type AuthPathIntent } from "@/lib/auth/routing";
 import {
   getAuthErrorMessage,
@@ -174,10 +176,8 @@ export function ConfirmEmailGate({
         role="status"
         className="flex items-center gap-2.5 rounded-md bg-[var(--color-surface-soft)] px-3.5 py-3 text-sm font-semibold leading-5 text-[var(--color-ink)]"
       >
-        <span
-          aria-hidden="true"
-          className="size-4 shrink-0 rounded-full border-2 border-[rgba(26,54,93,0.18)] border-t-[var(--color-primary)] motion-safe:animate-spin"
-        />
+        {/* O anel da casa, nos mesmos 16px de antes (o "sm" tem 20px). */}
+        <SpinnerRing size="sm" className="size-4! shrink-0" />
         {t("auth.signup.confirmWaiting")}
       </p>
 
@@ -209,9 +209,9 @@ export function ConfirmEmailGate({
 
       <ResendStatus sent={sent} cooldown={cooldown} message={t("auth.signup.confirmResent")} />
       {error ? (
-        <p role="alert" className="text-xs font-semibold text-[var(--color-danger-fg)]">
+        <InlineAlert tone="error">
           {getAuthErrorMessage(error.cause, t)}
-        </p>
+        </InlineAlert>
       ) : null}
 
       <p className="text-xs leading-5 text-[var(--color-ink-muted)]">
@@ -332,9 +332,9 @@ export function ExpiredConfirmationLink({
 
       <ResendStatus sent={sent} cooldown={cooldown} message={t("auth.signup.expiredSent")} />
       {error ? (
-        <p role="alert" className="text-sm font-semibold text-[var(--color-danger-fg)]">
+        <InlineAlert tone="error">
           {getAuthErrorMessage(error.cause, t)}
-        </p>
+        </InlineAlert>
       ) : null}
 
       <p className="text-sm leading-6 text-[var(--color-ink-muted)]">

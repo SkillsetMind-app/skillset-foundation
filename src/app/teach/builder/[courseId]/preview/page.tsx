@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
 import { ProtectedSurface } from "@/components/auth/protected-surface";
+import { ClassroomLoading } from "@/components/learn/classroom-loading";
 import { MemberAreaShell } from "@/components/learn/member-area-shell";
 import { CoursePreviewShell } from "@/components/teacher/course-preview-shell";
 import { isClassroomTab } from "@/domain/classroom-tabs";
@@ -33,15 +34,9 @@ export default async function TeacherBuilderPreviewPage({
           surface a student gets — dark members theme, their own mark, no
           platform sidebar or page heading wrapped around it. */}
       <MemberAreaShell brand={brand} theme={theme}>
-        <Suspense
-          fallback={
-            <section className="rounded-lg border border-[var(--ma-line)] bg-[var(--ma-surface)] p-6">
-              <p className="text-sm text-[var(--ma-ink-soft)]">
-                {t("creatorEditor.preview.serverLoading")}
-              </p>
-            </section>
-          }
-        >
+        {/* A mesma espera da prévia e da sala (ClassroomLoading): uma forma
+            só do clique até a sala aparecer. */}
+        <Suspense fallback={<ClassroomLoading label={t("learnWave2.courseLoading.title")} />}>
           <CoursePreviewShell courseId={courseId} tab={tab ?? "lesson"} whitelabel={Boolean(brand)} />
         </Suspense>
       </MemberAreaShell>

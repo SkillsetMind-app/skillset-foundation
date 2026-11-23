@@ -41,9 +41,11 @@ import {
   VideoWatermark,
 } from "@/components/learn/watermarked-video-player";
 import { ProtectedAssetPreview } from "@/components/shared/protected-asset-preview";
+import { BusyLabel } from "@/components/ui/busy-label";
 import { MilestoneSeal, useJustDone } from "@/components/ui/drawn-check";
 import { InlineAlert } from "@/components/ui/inline-alert";
 import { LoadErrorAlert } from "@/components/ui/load-error-alert";
+import { ProgressBar } from "@/components/ui/progress-bar";
 import type { CourseAsset } from "@/domain/course-asset";
 import {
   formatCourseAssetSize,
@@ -1416,16 +1418,15 @@ export function EnrolledCourseWorkspace({
               />
             ) : null}
           </div>
-          <span
+          {/* A barra da casa (ui/progress-bar), nas cores do curso: o trilho na
+              linha do curso vem do CSS da sala, o preenchimento no acento. Ela
+              desliza até a marca nova (transform), em vez de saltar. */}
+          <ProgressBar
+            value={progressPercent}
+            label={t("learn.paths.percentComplete").replace("{percent}", () => String(progressPercent))}
             className="member-classroom-head__progress"
-            role="progressbar"
-            aria-valuenow={progressPercent}
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-label={t("learn.paths.percentComplete").replace("{percent}", () => String(progressPercent))}
-          >
-            <span style={{ width: `${progressPercent}%` }} />
-          </span>
+            fillClassName="bg-[var(--ma-accent)]"
+          />
           <span className="member-classroom-head__percent inline-flex items-center gap-1">
             {progressPercent}%
             {/* O marco: a barra chegou ao fim (o mesmo selo do construtor). */}
@@ -1594,24 +1595,35 @@ export function EnrolledCourseWorkspace({
                 }
                 className="button-solid flex-1 px-4 py-2.5 text-sm sm:flex-none"
               >
-                {previewMode
-                  ? t("creatorEditor.preview.only")
-                  : selectedLessonUnlockState
-                      && !selectedLessonUnlockState.unlocked
-                    ? t("learn.classroom.lesson.locked")
-                    : activeLessonId === selectedLesson.id
-                      ? t("learn.classroom.workspace.saving")
-                      : completedLessonIds.includes(selectedLesson.id)
-                        ? nextInOrder
-                          ? nextOpensAt
-                            // "Next lesson · Unlocks Nov 24, 2026": a mesma frase
-                            // da playlist, dita de qual aula se trata.
-                            ? `${t("learn.classroom.nextLesson.title")} · ${t("learn.classroom.lesson.unlocks").replace("{date}", () => formatUnlockDate(nextOpensAt, locale))}`
-                            : t("learn.classroom.nextLesson.title")
-                          : t("learn.classroom.curriculum.completed")
-                        : nextInOrder && !nextOpensAt
-                          ? t("learn.classroom.workspace.completeAndNext")
-                          : t("learn.classroom.workspace.complete")}
+                {/* "Saving..." só vale fora do preview e com a aula aberta,
+                    como antes; os dois rótulos na mesma célula, o botão não
+                    muda de largura ao concluir. */}
+                <BusyLabel
+                  busy={
+                    !previewMode
+                    && !(selectedLessonUnlockState && !selectedLessonUnlockState.unlocked)
+                    && activeLessonId === selectedLesson.id
+                  }
+                  idle={
+                    previewMode
+                      ? t("creatorEditor.preview.only")
+                      : selectedLessonUnlockState
+                          && !selectedLessonUnlockState.unlocked
+                        ? t("learn.classroom.lesson.locked")
+                        : completedLessonIds.includes(selectedLesson.id)
+                          ? nextInOrder
+                            ? nextOpensAt
+                              // "Next lesson · Unlocks Nov 24, 2026": a mesma frase
+                              // da playlist, dita de qual aula se trata.
+                              ? `${t("learn.classroom.nextLesson.title")} · ${t("learn.classroom.lesson.unlocks").replace("{date}", () => formatUnlockDate(nextOpensAt, locale))}`
+                              : t("learn.classroom.nextLesson.title")
+                            : t("learn.classroom.curriculum.completed")
+                          : nextInOrder && !nextOpensAt
+                            ? t("learn.classroom.workspace.completeAndNext")
+                            : t("learn.classroom.workspace.complete")
+                  }
+                  busyText={t("learn.classroom.workspace.saving")}
+                />
               </button>
               )}
             </div>
@@ -2333,7 +2345,9 @@ function LessonContentPanel({
   );
 
   return (
-    <div className="member-lesson-panel">
+    // F-02: o painel diz que esta carregando enquanto o conteudo ou os anexos
+    // nao chegam; o anuncio e um so, o do palco (os comentarios nao repetem).
+    <div className="member-lesson-panel" aria-busy={!locked && (isLoadingContent || isLoadingAssets) ? true : undefined}>
       <div className="member-lesson-panel__head">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">

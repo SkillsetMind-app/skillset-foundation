@@ -7,6 +7,7 @@ import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { formatNotificationTime } from "@/components/account/notification-row";
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { BusyLabel } from "@/components/ui/busy-label";
 import { InlineAlert } from "@/components/ui/inline-alert";
 import { LoadErrorAlert } from "@/components/ui/load-error-alert";
 import { filterPosts, groupCommentsByPost } from "@/domain/community-feed";
@@ -215,7 +216,7 @@ function LessonCommentsPanel({
               rows={3}
               autoFocus
               placeholder={t("learn.classroom.lessonComments.prompt")}
-              className="resize-y rounded-md border border-[var(--color-line)] bg-white px-3 py-2.5 text-sm text-[var(--color-ink)]"
+              className="field-input resize-y"
             />
           </label>
           <div className="flex flex-wrap justify-end gap-2">
@@ -227,11 +228,11 @@ function LessonCommentsPanel({
               disabled={isSubmitting}
               className="button-solid min-h-11 px-4 text-sm"
             >
-              {t(
-                isSubmitting
-                  ? "learn.community.composer.posting"
-                  : "learn.classroom.lessonComments.publish",
-              )}
+              <BusyLabel
+                busy={isSubmitting}
+                idle={t("learn.classroom.lessonComments.publish")}
+                busyText={t("learn.community.composer.posting")}
+              />
             </button>
           </div>
         </form>
@@ -244,7 +245,7 @@ function LessonCommentsPanel({
           type="button"
           disabled={!canRead}
           onClick={() => setOpen(true)}
-          className="mt-3 flex min-h-11 w-full items-center rounded-md border border-[var(--color-line)] bg-white px-4 text-left text-sm text-[var(--color-ink-soft)] disabled:opacity-70"
+          className="mt-3 flex min-h-11 w-full items-center rounded-md border border-[var(--color-line)] bg-white px-4 text-left text-sm text-[var(--color-ink-soft)] disabled:opacity-60"
         >
           {t(canRead ? "learn.classroom.lessonComments.prompt" : "learn.community.gateHeading")}
         </button>
@@ -264,14 +265,11 @@ function LessonCommentsPanel({
 
       {canRead ? (
         <div className="mt-3 grid gap-2">
-          {/* Um aviso só: "carregando" enquanto o feed não chega, depois
-              "publicado" quando o próprio comentário entra. */}
+          {/* Só "publicado" quando o próprio comentário entra. O "carregando"
+              é um só, o do painel da aula (F-02): o palco e estes comentários
+              anunciavam ao mesmo tempo. */}
           <p role="status" className="sr-only">
-            {!feed.ready && !postsFailed
-              ? t("learn.classroom.lessonComments.loading")
-              : posted
-                ? t("learn.classroom.lessonComments.posted")
-                : ""}
+            {posted ? t("learn.classroom.lessonComments.posted") : ""}
           </p>
           {/* Com a leitura em erro, nem "carregando" nem o vazio: só o aviso. */}
           {!feed.ready || (postsFailed && lessonPosts.length === 0) ? (

@@ -79,17 +79,19 @@ export default async function ContactPage({
       title={t("publicPages.contact.reach_the_right_team_for_support")}
       description={
         <>
+          {/* Os dois links seguem a cor do parágrafo, como a página foi
+              aprovada: o navy que pediam nunca chegou à tela. */}
           {t("publicPages.contact.prefer_email_write_to")}{" "}
           <a
             href={`mailto:${SUPPORT_EMAIL}`}
-            className="font-semibold text-[var(--color-primary)] hover:underline"
+            className="font-semibold hover:underline"
           >
             {SUPPORT_EMAIL}
           </a>{" "}
           {t("publicPages.contact.and_we_ll_route_it_to")}{" "}
           <Link
             href="/support"
-            className="font-semibold text-[var(--color-primary)] hover:underline"
+            className="font-semibold hover:underline"
           >
             {t("publicPages.contact.open_a_tracked_ticket")}
           </Link>{" "}

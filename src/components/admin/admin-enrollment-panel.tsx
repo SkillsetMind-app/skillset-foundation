@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
-import { Button, ConfirmDialog, Field, InlineAlert } from "@/components/ui";
+import { BusyLabel, Button, ConfirmDialog, Field, InlineAlert } from "@/components/ui";
 import type { Enrollment } from "@/domain/enrollment";
 import type { TeacherCourse } from "@/domain/teacher-course";
 import type { UserProfile } from "@/domain/user-profile";
@@ -227,7 +227,7 @@ export function AdminEnrollmentPanel() {
         aria-describedby="ops-enrollment-create-hint"
         className="button-solid min-h-11 mt-6 px-4 py-2.5 text-sm"
       >
-        {t(`${copy}.${isSaving ? "creating" : "create"}`)}
+        <BusyLabel busy={isSaving} idle={t(`${copy}.create`)} busyText={t(`${copy}.creating`)} />
       </button>
       {/* Embaixo do botão: o que falta quando ele está cinza, ou para quem vai o
           acesso quando está pronto, para conferir antes de clicar. */}
@@ -284,7 +284,11 @@ export function AdminEnrollmentPanel() {
                     disabled={revokingId === enrollment.id}
                     className="min-h-11 px-3.5 py-2"
                   >
-                    {t(`${copy}.${revokingId === enrollment.id ? "revoking" : "revoke"}`)}
+                    <BusyLabel
+                      busy={revokingId === enrollment.id}
+                      idle={t(`${copy}.revoke`)}
+                      busyText={t(`${copy}.revoking`)}
+                    />
                   </Button>
                 </article>
               );

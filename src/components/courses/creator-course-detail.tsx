@@ -14,7 +14,9 @@ import { BunnyVideoPlayer } from "@/components/courses/bunny-video-player";
 import { renderCourseDetailSkeleton } from "@/components/courses/course-detail-skeleton";
 import { CourseModuleDisclosure } from "@/components/courses/course-module-disclosure";
 import { CourseUnlockModal } from "@/components/learn/course-unlock-modal";
+import { Button } from "@/components/ui/button";
 import { InlineAlert } from "@/components/ui/inline-alert";
+import { LoadErrorAlert } from "@/components/ui/load-error-alert";
 import {
   CourseInstructorCard,
   CourseReviewsSection,
@@ -112,6 +114,10 @@ const checkoutMessageKeys: Partial<Record<number, Record<string, string>>> = {
   },
 };
 
+// Quanto a página de compra espera a leitura da matrícula antes de oferecer o
+// botão de pagar a quem entrou (ela costuma responder em menos de 1 s).
+const ENROLLMENT_READ_TIMEOUT_MS = 4_000;
+
 function getCheckoutErrorKey(error: unknown): string {
   if (error instanceof PaymentRequestError) {
     if (error.status === 401 && error.code === "unauthenticated") {
@@ -202,7 +208,12 @@ export function CreatorCourseDetail({
   // Ref de callback: o cartão só nasce depois que o curso carrega.
   const [enrollCardInView, setEnrollCardInView] = useState<boolean | null>(null);
   const enrollCardObserver = useRef<IntersectionObserver | null>(null);
+  // O cartão também recebe o foco do "Try again" do preço (fica nos dois desfechos).
+  const enrollCardRef = useRef<HTMLElement | null>(null);
+  // A barra flutuante recebe o foco do "Try again" dela (fica nos dois desfechos).
+  const buyBarRef = useRef<HTMLDivElement>(null);
   const watchEnrollCard = useCallback((node: HTMLElement | null) => {
+    enrollCardRef.current = node;
     enrollCardObserver.current?.disconnect();
     enrollCardObserver.current = null;
     if (!node || checkoutOnly || typeof IntersectionObserver === "undefined") return;
@@ -232,18 +243,46 @@ export function CreatorCourseDetail({
   const viewerUid = user?.uid ?? null;
   const enrollmentCourseId = course?.id ?? null;
   const [viewerEnrollmentKey, setViewerEnrollmentKey] = useState<string | null>(null);
+  // A chave da leitura que já respondeu (com matrícula, sem, ou com falha). A
+  // página de compra também lê: quem volta do cadastro ou do "Sign in" pode já
+  // ter o curso, e ali via o botão de pagar em vez de "Continue learning".
+  const [enrollmentAnsweredKey, setEnrollmentAnsweredKey] = useState<string | null>(null);
   useEffect(() => {
-    if (checkoutOnly || !hasBackendConfig || !viewerUid || !enrollmentCourseId) {
+    if (!hasBackendConfig || !viewerUid || !enrollmentCourseId) {
       return;
     }
     const key = `${viewerUid}__${enrollmentCourseId}`;
-    return subscribeToEnrollment(
+    // Desligado, nada mais: a resposta atrasada de outra pessoa (ou de outro
+    // curso) não pode reescrever a chave de agora e travar o botão de novo.
+    let live = true;
+    // Leitura que não responde nem falha: passado o prazo, vale como falha (o
+    // botão de pagar volta; o servidor recusa quem já tem). A compra nunca
+    // fica presa num "Enroll" apagado até recarregar a página.
+    const timeout = window.setTimeout(() => {
+      if (live) setEnrollmentAnsweredKey(key);
+    }, ENROLLMENT_READ_TIMEOUT_MS);
+    const unsubscribe = subscribeToEnrollment(
       viewerUid,
       enrollmentCourseId,
-      (enrollment) => setViewerEnrollmentKey(enrollment && canOpenEnrollment(enrollment.status) ? key : null),
-      () => undefined,
+      (enrollment) => {
+        if (!live) return;
+        window.clearTimeout(timeout);
+        setViewerEnrollmentKey(enrollment && canOpenEnrollment(enrollment.status) ? key : null);
+        setEnrollmentAnsweredKey(key);
+      },
+      // Falhou: fica como era (o botão de pagar; o servidor recusa quem já tem).
+      () => {
+        if (!live) return;
+        window.clearTimeout(timeout);
+        setEnrollmentAnsweredKey(key);
+      },
     );
-  }, [checkoutOnly, hasBackendConfig, viewerUid, enrollmentCourseId]);
+    return () => {
+      live = false;
+      window.clearTimeout(timeout);
+      unsubscribe();
+    };
+  }, [hasBackendConfig, viewerUid, enrollmentCourseId]);
   const [offerLoadError, setOfferLoadError] = useState("");
   const [offerState, setOfferState] = useState<{
     courseId: string | null;
@@ -258,6 +297,9 @@ export function CreatorCourseDetail({
     content: LessonContent | null;
   }>({ key: null, content: null });
 
+  // "Try again" do erro de leitura: a assinatura não relê sozinha, então o
+  // número novo assina de novo. O aviso fica na tela até a resposta chegar.
+  const [courseReadAttempt, setCourseReadAttempt] = useState(0);
   useEffect(() => {
     if (!courseRef || !hasBackendConfig) {
       return;
@@ -267,6 +309,7 @@ export function CreatorCourseDetail({
       courseRef,
       (nextCourse) => {
         setCourse(nextCourse);
+        setError("");
         setIsLoading(false);
       },
       () => {
@@ -274,7 +317,7 @@ export function CreatorCourseDetail({
         setIsLoading(false);
       },
     );
-  }, [courseRef, hasBackendConfig]);
+  }, [courseRef, hasBackendConfig, courseReadAttempt]);
 
   // Resolved primary key — empty until the course row loads.
   const resolvedCourseId = course?.id ?? "";
@@ -311,6 +354,9 @@ export function CreatorCourseDetail({
     };
   }, [checkoutOnly, resolvedCourseId, hasBackendConfig, freePreviewLessonId]);
 
+  // "Try again" do preço: limpa o erro (o cartão volta à espera de sempre, sem
+  // preço nem botão de pagar) e lê as ofertas de novo.
+  const [offerReadAttempt, setOfferReadAttempt] = useState(0);
   useEffect(() => {
     if (!resolvedCourseId || !isCoursePubliclySellable(course?.status)) {
       return;
@@ -337,7 +383,12 @@ export function CreatorCourseDetail({
       });
 
     return () => controller.abort();
-  }, [course?.status, resolvedCourseId]);
+  }, [course?.status, resolvedCourseId, offerReadAttempt]);
+  // Um "Try again" só, o do aviso do cartão e o da barra flutuante.
+  function retryOfferRead() {
+    setOfferLoadError("");
+    setOfferReadAttempt((attempt) => attempt + 1);
+  }
 
   // Evento ao vivo: a data da sessao, no fuso de quem ensina. Fica guardada
   // com o id do curso, entao uma resposta velha nunca aparece em outro.
@@ -384,7 +435,7 @@ export function CreatorCourseDetail({
     );
   }
 
-  if (isLoading) {
+  if (isLoading && !error) {
     // Carregar não é erro: o esqueleto da página, sem título nem saída.
     // Chamado como função, e não como <CourseDetailSkeleton />: a árvore sai
     // com a mesma forma do retorno abaixo, e o `lead` (capa e h1 do servidor)
@@ -397,7 +448,23 @@ export function CreatorCourseDetail({
   }
 
   if (error) {
-    return <CourseDetailState title={t("publicCourses.unavailable")} detail={t(error)} nested={hideHeader} lead={lead} />;
+    // Rede ruim não é fim de caminho: o aviso com "Try again", que lê o curso de
+    // novo; nada de preço ou botão de pagar até a leitura dar certo.
+    return (
+      <CourseDetailState
+        title={t("publicCourses.unavailable")}
+        detail={t(error)}
+        nested={hideHeader}
+        lead={lead}
+        retry={{
+          busy: isLoading,
+          onRetry: () => {
+            setIsLoading(true);
+            setCourseReadAttempt((attempt) => attempt + 1);
+          },
+        }}
+      />
+    );
   }
 
   if (!course) {
@@ -440,6 +507,8 @@ export function CreatorCourseDetail({
   const pricingReady = offersLoaded && !offerLoadError;
   // O preço ainda está a caminho (não falhou): o cartão guarda o lugar dele.
   const pricePending = !pricingReady && !offerLoadError;
+  // A releitura pedida pelo "Try again" ainda corre: a barra mostra a espera.
+  const offerRetrying = offerReadAttempt > 0 && pricePending;
   const courseIsFree =
     resolvedPrice?.paymentType === "free" || resolvedPrice?.amountMinor === 0;
   const subscriptionInterval =
@@ -465,8 +534,14 @@ export function CreatorCourseDetail({
           subscriptionInterval ? ` / ${t(`publicCourses.${subscriptionInterval}`)}` : ""
         }`
       : t("publicCourses.pricingPending");
+  // Página de compra, com sessão: até a matrícula responder, o botão fica na
+  // espera do cartão (a mesma do preço a caminho), e não oferece pagar a quem
+  // talvez já tenha o curso. A página de venda segue como era.
+  const accessPending =
+    checkoutOnly && user != null && enrollmentAnsweredKey !== `${user.uid}__${course.id}`;
   const canCheckout =
     pricingReady
+    && !accessPending
     && checkoutEnabled
     && authStatus === "authenticated"
     && Boolean(user)
@@ -476,6 +551,7 @@ export function CreatorCourseDetail({
     pricingReady && Boolean(resolvedPrice) && (resolvedPrice?.amountMinor ?? 0) > 0;
   const canEnrollFree =
     pricingReady
+    && !accessPending
     && authStatus === "authenticated"
     && Boolean(user)
     && courseIsFree;
@@ -583,8 +659,8 @@ export function CreatorCourseDetail({
   if (requestedOfferCode) returnParams.set("offer", requestedOfferCode);
   if (requestedPriceId) returnParams.set("priceId", requestedPriceId);
   const returnQuery = returnParams.size ? `?${returnParams}` : "";
-  // Entrar (e a compra sem login) volta para ESTA pagina: quem ja tem o curso
-  // so ve "Continue learning" aqui, porque o checkout nao le a matricula.
+  // Entrar (e a compra sem login) volta para ESTA pagina. Quem ja tem o curso
+  // ve "Continue learning" nas duas: as duas leem a matricula.
   const returnTo = `${coursePath}${returnQuery}`;
   // Criar conta volta ao CHECKOUT, com a mesma oferta: conta nova nunca tem o
   // curso, e depois do e-mail e da entrevista o cartao de pagar (ou de entrar
@@ -602,7 +678,9 @@ export function CreatorCourseDetail({
   // fora de venda nos segundos antes do preço chegar.
   const cardActionLabel = authStatus !== "authenticated"
     ? enrollLabel
-    : canEnrollFree
+    : accessPending
+      ? t("publicCourses.enroll")
+      : canEnrollFree
       ? isEnrollingFree ? t("publicCourses.addingCourse") : t("publicCourses.enrollFree")
       : isCheckingOut
         ? t("publicCourses.openingCheckout")
@@ -1154,10 +1232,16 @@ export function CreatorCourseDetail({
           <InlineAlert tone="error" className="mt-5">{t(checkoutError)}</InlineAlert>
         ) : null}
 
-        {offerLoadError || (pricingReady && hasExplicitOffer && !resolvedPrice) ? (
-          <InlineAlert tone="error" className="mt-5">
-            {offerLoadError ? t(offerLoadError) : t("publicCourses.selectedOfferUnavailable")}
-          </InlineAlert>
+        {offerLoadError ? (
+          <LoadErrorAlert
+            className="mt-5"
+            focusRef={enrollCardRef}
+            onRetry={retryOfferRead}
+          >
+            {t(offerLoadError)}
+          </LoadErrorAlert>
+        ) : pricingReady && hasExplicitOffer && !resolvedPrice ? (
+          <InlineAlert tone="error" className="mt-5">{t("publicCourses.selectedOfferUnavailable")}</InlineAlert>
         ) : null}
 
         {guestCheckoutOn ? (
@@ -1224,7 +1308,7 @@ export function CreatorCourseDetail({
                 data-cta-focus
                 onClick={handleCheckout}
                 disabled={!canCheckout || isCheckingOut}
-                aria-busy={(checkoutEnabled && pricePending) || undefined}
+                aria-busy={accessPending || (checkoutEnabled && pricePending) || undefined}
                 className="button-solid mt-6 min-h-12 w-full px-5 py-3 text-base font-semibold"
               >
                 {cardActionLabel}
@@ -1234,7 +1318,9 @@ export function CreatorCourseDetail({
             {canCheckout && !subscriptionInterval ? (
               isCouponOpen ? (
                 <label className="mt-4 block">
-                  <span className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--color-ink-soft)]">{t("publicCourses.coupon")}</span>
+                  {/* O rótulo da casa (o do Field): 14px e em caixa normal. Era o
+                      último rótulo de 12px em maiúsculas do cartão de compra. */}
+                  <span className="text-sm font-semibold text-[var(--color-ink)]">{t("publicCourses.coupon")}</span>
                   <input
                     value={couponCode}
                     autoFocus
@@ -1374,7 +1460,7 @@ export function CreatorCourseDetail({
           : enrollCardInView ? "hidden" : "lg:inset-x-auto lg:right-6 lg:bottom-6 lg:w-[24rem] lg:px-0 lg:pb-0"
       }`}
     >
-      <div className="pointer-events-auto flex items-center gap-3 rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)]/95 px-4 py-3 shadow-[0_-6px_30px_rgba(15,39,68,0.18)] backdrop-blur supports-[backdrop-filter]:bg-[var(--color-surface)]/85">
+      <div ref={buyBarRef} tabIndex={-1} className="pointer-events-auto flex items-center gap-3 rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)]/95 px-4 py-3 shadow-[0_-6px_30px_rgba(15,39,68,0.18)] backdrop-blur supports-[backdrop-filter]:bg-[var(--color-surface)]/85">
         <div className="min-w-0 flex-1">
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">{t("publicCourses.priceEyebrow")}</p>
           <p className="display-title truncate text-xl leading-none text-[var(--color-primary)]">
@@ -1385,6 +1471,13 @@ export function CreatorCourseDetail({
                 <span aria-hidden="true" className="block h-5 w-20 animate-pulse rounded-md bg-[var(--color-surface-strong)]" />
                 <span className="sr-only">{priceLabel}</span>
               </>
+            ) : offerLoadError ? (
+              // Falhou: o traço do cartão, e não "Pricing unavailable" em
+              // letra de título.
+              <>
+                <span aria-hidden="true" className="text-[var(--color-ink-muted)]">—</span>
+                <span className="sr-only">{priceLabel}</span>
+              </>
             ) : priceLabel}
           </p>
         </div>
@@ -1393,6 +1486,25 @@ export function CreatorCourseDetail({
             href={classroomHref}
             className="button-solid inline-flex min-h-11 shrink-0 items-center px-3.5 py-2 text-xs"
           >{t("publicCourses.continueLearning")}</Link>
+        ) : offerLoadError || offerRetrying ? (
+          // Sem preço não há "Enroll": o mesmo "Try again" do aviso do
+          // cartão, que no celular fica no fim da página, depois do
+          // currículo. O foco vai antes para a barra, que fica nos dois
+          // desfechos (o botão trava na espera e vira "Enroll" se der certo).
+          // busyLabel: os dois rótulos ocupam a mesma célula, então o botão
+          // não cresce ao virar "Trying again..." e o preço ao lado não pula.
+          <Button
+            variant="outline"
+            loading={offerRetrying}
+            busyLabel={t("appErrors.retrying")}
+            onClick={() => {
+              buyBarRef.current?.focus();
+              retryOfferRead();
+            }}
+            className="shrink-0 px-3.5 py-2 text-xs"
+          >
+            {t("appErrors.retry")}
+          </Button>
         ) : (
           <Link
             href="#enroll-card"
@@ -1431,6 +1543,7 @@ function CourseDetailState({
   action,
   nested = false,
   lead = null,
+  retry,
 }: {
   title: string;
   detail: string;
@@ -1439,9 +1552,12 @@ function CourseDetailState({
   nested?: boolean;
   /** O cabeçalho do servidor (o único h1) segue no alto, acima do aviso. */
   lead?: ReactNode;
+  /** Erro de leitura: o aviso ganha "Try again", e a saída vira link discreto. */
+  retry?: { onRetry: () => void; busy: boolean };
 }) {
   const { t } = useTranslation();
   const hasRealCourses = useHasRealCourses();
+  const sectionRef = useRef<HTMLElement>(null);
   const resolvedAction = action ?? (hasRealCourses
     ? { label: t("publicCourses.openMarketplace"), href: "/courses" }
     : { label: t("publicPages.notFound.home"), href: "/" });
@@ -1451,19 +1567,35 @@ function CourseDetailState({
   return (
     <>
     {lead}
-    <section className="rounded-lg border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)]">
+    <section ref={sectionRef} tabIndex={retry ? -1 : undefined} className="rounded-lg border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)]">
       <Heading className="display-title text-4xl text-[var(--color-ink)]">
         {title}
       </Heading>
-      <p className="mt-4 max-w-2xl text-sm leading-7 text-[var(--color-ink-soft)]">
-        {detail}
-      </p>
-      <Link
-        href={resolvedAction.href}
-        className="button-solid mt-6 inline-flex px-5 py-2.5 text-sm"
-      >
-        {resolvedAction.label}
-      </Link>
+      {retry ? (
+        <>
+          <LoadErrorAlert className="mt-4 max-w-2xl" focusRef={sectionRef} onRetry={retry.onRetry} busy={retry.busy}>
+            {detail}
+          </LoadErrorAlert>
+          <Link
+            href={resolvedAction.href}
+            className="mt-3 inline-flex min-h-11 items-center text-sm font-semibold text-[var(--color-primary)]! underline-offset-4 hover:underline"
+          >
+            {resolvedAction.label}
+          </Link>
+        </>
+      ) : (
+        <>
+          <p className="mt-4 max-w-2xl text-sm leading-7 text-[var(--color-ink-soft)]">
+            {detail}
+          </p>
+          <Link
+            href={resolvedAction.href}
+            className="button-solid mt-6 inline-flex px-5 py-2.5 text-sm"
+          >
+            {resolvedAction.label}
+          </Link>
+        </>
+      )}
     </section>
     </>
   );

@@ -13,6 +13,7 @@ import {
   type TotpSecret,
   unenrollTotpFactor,
 } from "@/lib/auth/supabase-auth";
+import { BusyLabel } from "@/components/ui/busy-label";
 import { InlineAlert } from "@/components/ui/inline-alert";
 import { useModalFocus } from "@/lib/a11y/use-modal-focus";
 import { isPublicFeatureEnabled } from "@/lib/feature-flags";
@@ -287,7 +288,11 @@ export function TotpMfaSection({ emailVerified }: { emailVerified: boolean }) {
           disabled={busy}
           className="button-outline mt-4 px-3.5 py-2 text-xs"
         >
-          {t(busy && !setup ? "accountSecurity.mfa.preparing" : "accountSecurity.mfa.setup")}
+          <BusyLabel
+            busy={busy && !setup}
+            idle={t("accountSecurity.mfa.setup")}
+            busyText={t("accountSecurity.mfa.preparing")}
+          />
         </button>
       )}
 
@@ -300,7 +305,7 @@ export function TotpMfaSection({ emailVerified }: { emailVerified: boolean }) {
             role="dialog"
             aria-modal="true"
             aria-labelledby="totp-setup-title"
-            className="modal-panel modal-panel-scroll relative w-full max-w-md rounded-xl border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-strong)] outline-none"
+            className="dialog-panel modal-panel modal-panel-scroll relative p-6 outline-none"
           >
             {/* O X é o mesmo Cancelar do rodapé, e some enquanto ele trava
                 (conferindo o código). */}
@@ -405,7 +410,8 @@ export function TotpMfaSection({ emailVerified }: { emailVerified: boolean }) {
               }}
             >
               <label className="grid gap-1 text-sm">
-                <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--color-ink-soft)]">
+                {/* Rótulo da casa (14px, em frase); era 10px em caixa alta. */}
+                <span className="font-semibold text-[var(--color-ink)]">
                   {t("accountSecurity.mfa.code")}
                 </span>
                 <input
@@ -423,15 +429,15 @@ export function TotpMfaSection({ emailVerified }: { emailVerified: boolean }) {
               <button
                 type="submit"
                 disabled={busy || code.length < 6}
-                className="button-solid px-3.5 py-2.5 text-xs"
+                className="button-solid min-h-11 px-4 py-2.5 text-sm"
               >
-                {t(busy ? "accountSecurity.mfa.verifying" : "accountSecurity.mfa.enable")}
+                <BusyLabel busy={busy} idle={t("accountSecurity.mfa.enable")} busyText={t("accountSecurity.mfa.verifying")} />
               </button>
               <button
                 type="button"
                 onClick={closeSetup}
                 disabled={busy}
-                className="button-outline px-3.5 py-2.5 text-xs"
+                className="button-outline min-h-11 px-4 py-2.5 text-sm"
               >
                 {t("accountSecurity.mfa.cancel")}
               </button>

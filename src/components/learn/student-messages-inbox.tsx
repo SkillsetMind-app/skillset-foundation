@@ -8,6 +8,7 @@ import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useAuth } from "@/components/auth/auth-provider";
 import { formatNotificationTime } from "@/components/account/notification-row";
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { BusyLabel } from "@/components/ui/busy-label";
 import { EmptyState } from "@/components/ui/empty-state";
 import { InlineAlert } from "@/components/ui/inline-alert";
 import type { CourseMessage } from "@/domain/course-message";
@@ -255,7 +256,7 @@ export function StudentMessagesInbox() {
                   disabled={isSending}
                   maxLength={COURSE_MESSAGE_MAX_CHARS}
                   rows={3}
-                  className="min-h-20 rounded-md border border-[var(--color-line)] bg-white px-4 py-3 text-sm leading-6 text-[var(--color-ink)] outline-none transition focus:border-[var(--color-primary)]"
+                  className="field-input min-h-20"
                   placeholder={t("learnWave2.messages.placeholder")}
                 />
                 {notice ? (
@@ -269,7 +270,11 @@ export function StudentMessagesInbox() {
                   className="button-solid inline-flex min-h-11 w-fit items-center gap-2 px-4 py-2.5 text-sm"
                 >
                   <Send size={15} aria-hidden="true" />
-                  {isSending ? t("learnWave2.messages.sending") : t("learnWave2.messages.send")}
+                  <BusyLabel
+                    busy={isSending}
+                    idle={t("learnWave2.messages.send")}
+                    busyText={t("learnWave2.messages.sending")}
+                  />
                 </button>
               </form>
             </section>

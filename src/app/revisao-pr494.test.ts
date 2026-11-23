@@ -39,7 +39,8 @@ describe("C2: botoes sem .button-* mantem o piso de 44px (min-h-11)", () => {
     // feito à mão que sobrou ali é o do modelo da página, também com 44px.
     ["components/teacher/course-landing-editor.tsx", "inline-flex min-h-11 items-center gap-1.5 rounded-sm px-3 py-2"],
     ["components/teacher/course-landing-editor.tsx", "mt-3 min-h-11 justify-self-start"],
-    ["components/teacher/landing-image-field.tsx", "inline-flex min-h-11 w-fit items-center gap-2 rounded-md border"],
+    // Os botões do campo de imagem moram na casca única (B-05).
+    ["components/teacher/image-upload-field.tsx", "inline-flex min-h-11 w-fit items-center gap-2 rounded-md border"],
   ];
 
   it.each(sites)("%s tem min-h-11 em %s", (file, snippet) => {
@@ -47,7 +48,7 @@ describe("C2: botoes sem .button-* mantem o piso de 44px (min-h-11)", () => {
   });
 
   it("os dois botoes do campo de imagem tem min-h-11", () => {
-    const hits = read("components/teacher/landing-image-field.tsx").match(/min-h-11 w-fit/g);
+    const hits = read("components/teacher/image-upload-field.tsx").match(/min-h-11 w-fit/g);
     expect(hits).toHaveLength(2);
   });
 
@@ -60,10 +61,16 @@ describe("C3: latao fora de erro, aviso e exclusao", () => {
   const dangerText = "text-[var(--color-danger-fg)]";
   // Terceiro item: o que a tag precisa ter, quando não é a classe direta.
   const errorSites: [string, string, string?][] = [
-    ["components/teacher/activation-checkout-panel.tsx", 'role="alert" className="p-6 text-sm'],
-    ["components/account/embedded-checkout-panel.tsx", 'role="alert" className="p-6 text-sm'],
-    // Virou InlineAlert de erro, que pinta o texto em danger-fg (ui.test.tsx).
-    ["components/learn/community-leaderboard.tsx", '<InlineAlert tone="error" className="mt-3', 'tone="error"'],
+    // Virou InlineAlert de erro (F-07), que pinta o texto em danger-fg.
+    ["components/teacher/activation-checkout-panel.tsx", 'className="m-6"', 'tone="error"'],
+    // O erro do checkout embutido virou o InlineAlert de erro (F-07), dentro
+    // da mesma moldura p-6 (a linha abaixo confere a moldura).
+    ["components/account/embedded-checkout-panel.tsx", '<InlineAlert tone="error" title={t("activationCheckout.errorTitle")}', 'tone="error"'],
+    ["components/account/embedded-checkout-panel.tsx", '<div className="p-6 text-sm">', 'className="p-6 text-sm"'],
+    // Virou LoadErrorAlert (F-11: com "Try again"), que sempre desenha o
+    // InlineAlert de erro, conferido na linha seguinte.
+    ["components/learn/community-leaderboard.tsx", "<LoadErrorAlert", "<LoadErrorAlert"],
+    ["components/ui/load-error-alert.tsx", '<InlineAlert tone="error"', 'tone="error"'],
     ["components/certificates/certificate-verification-panel.tsx", '<h2 className="text-lg font-semibold'],
   ];
 
@@ -77,10 +84,13 @@ describe("C3: latao fora de erro, aviso e exclusao", () => {
     expect(src.slice(src.lastIndexOf("<span", i), i)).toContain(dangerText);
   });
 
-  it("confirmar exclusao do curso usa button-danger, nao button-accent", () => {
+  // I-04: apagar e retirar abrem a mesma janela de perigo (ConfirmActionDialog,
+  // vermelho cheio); os dois botões do cartão são o variant="danger".
+  it("confirmar exclusao do curso usa a janela de perigo, nao button-accent", () => {
     const src = read("components/admin/managed-course-panel.tsx");
     expect(src).not.toContain("button-accent");
-    expect(src.match(/button-danger/g)?.length).toBeGreaterThanOrEqual(2);
+    expect(src.match(/variant="danger"/g)?.length).toBe(2);
+    expect(src.match(/<ConfirmActionDialog/g)?.length).toBe(2);
   });
 
   it("remover credencial: hover em danger-fg, sem latao", () => {
@@ -113,7 +123,8 @@ describe("Plausivel 5: botao-texto com pelo menos 24px de area", () => {
     // Copiar, Cancelar do 2FA e "Request a refund" viraram botões do sistema
     // (.button-outline: 44px), acima do mínimo de 24px que este teste guarda.
     ["components/account/totp-mfa-section.tsx", "button-outline shrink-0 px-3 py-2 text-xs"],
-    ["components/account/totp-mfa-section.tsx", "button-outline px-3.5 py-2.5 text-xs"],
+    // O Cancelar do 2FA foi ao rodapé da casa, no tamanho dos outros (14px).
+    ["components/account/totp-mfa-section.tsx", "button-outline min-h-11 px-4 py-2.5 text-sm"],
     ["components/account/billing-tabs.tsx", "button-outline px-3 py-2 text-xs"],
     // O Pin saiu do cabecalho do cartao (PR #505) e mora nas acoes, com 44px.
     ["components/learn/community-item-actions.tsx", "min-h-11 rounded-md px-3 text-xs font-semibold"],

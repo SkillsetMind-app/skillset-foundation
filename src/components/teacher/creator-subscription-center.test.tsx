@@ -489,6 +489,56 @@ describe("troca de idioma sem novas leituras de assinaturas", () => {
     expect(screen.queryByText("Opaque fixture error: wording changed")).toBeNull();
   });
 
+  // Erro de leitura era beco: a frase e nenhum botão, e a frase ficava na tela
+  // mesmo depois que a leitura voltava (era o "último erro" guardado).
+  it("assinantes que falham: Try again lê de novo só eles, e o aviso some quando voltam", async () => {
+    let deliver: (next: CourseSubscription[]) => void = () => {};
+    const reload = vi.fn(async () => deliver(viewProps.subscriptions));
+    reads.subscriptions.mockImplementation((_uid, next, onError) => {
+      deliver = next;
+      onError(new Error("subscriptions failed"));
+      return Object.assign(() => {}, { reload });
+    });
+    await mountCenter();
+    expect(screen.getByRole("alert")).toHaveTextContent("We could not load your subscribers.");
+    expect(screen.queryByRole("tab")).toBeNull();
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    });
+    expect(reload).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.getAllByText("Maria Silva").length).toBeGreaterThan(0);
+  });
+
+  it("renovações que falham: o aviso com Try again fica em cima e some com a releitura", async () => {
+    let deliver: (next: Order[]) => void = () => {};
+    const reload = vi.fn(async () => deliver(viewProps.orders));
+    reads.orders.mockImplementation((_uid, next, onError) => {
+      deliver = next;
+      onError(new Error("orders failed"));
+      return Object.assign(() => {}, { reload });
+    });
+    await mountCenter();
+    expect(screen.getByRole("alert")).toHaveTextContent("Renewal order details are temporarily unavailable.");
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    });
+    expect(reload).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("alert")).toBeNull();
+    fireEvent.click(screen.getByRole("tab", { name: "Renewals" }));
+    expect(screen.getByText("Clinical Focus renewal · Jul 15, 2026")).toBeInTheDocument();
+  });
+
+  it("enquanto as renovações chegam, linhas no formato da renovação, não uma frase", () => {
+    mountView({ financialState: "loading" }, "en");
+    fireEvent.click(screen.getByRole("tab", { name: "Renewals" }));
+    const waiting = screen.getByRole("status");
+    expect(waiting).toHaveTextContent("Loading renewal history...");
+    expect(waiting.querySelectorAll("[aria-hidden=true]")).toHaveLength(3);
+  });
+
   it("traduz o carregamento sem reiniciar a conexão", async () => {
     reads.subscriptions.mockImplementation(() => reads.closeSubscriptions);
     reads.courses.mockImplementation(() => reads.closeCourses);

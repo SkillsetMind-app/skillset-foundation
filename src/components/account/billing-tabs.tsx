@@ -1,10 +1,11 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { startTransition, useEffect, useMemo, useRef, useState } from "react";
+import { startTransition, useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { RefreshCw, X } from "lucide-react";
 
 import { PlansPanel } from "@/components/account/plans-panel";
+import { BusyLabel } from "@/components/ui/busy-label";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { useAuth } from "@/components/auth/auth-provider";
 import { HorizontalTabs } from "@/components/shared/horizontal-tabs";
@@ -12,6 +13,7 @@ import { ShortId } from "@/components/shared/short-id";
 import { StatusChip } from "@/components/shared/status-chip";
 import { EmptyState } from "@/components/ui/empty-state";
 import { InlineAlert } from "@/components/ui/inline-alert";
+import { LoadErrorAlert } from "@/components/ui/load-error-alert";
 import { plans } from "@/data/plans";
 import type { Order } from "@/domain/order";
 import type { UserProfile } from "@/domain/user-profile";
@@ -76,6 +78,11 @@ export function BillingTabs() {
   >("loading");
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+  // "Try again" das compras (resumo e lista vêm desta leitura): assina de novo.
+  // A limpeza do efeito desfaz a assinatura anterior antes da nova.
+  const [ordersReadAttempt, setOrdersReadAttempt] = useState(0);
+  // Fica na tela nos dois desfechos e recebe o foco do "Try again".
+  const panelRef = useRef<HTMLDivElement>(null);
 
   // One real-time listener feeds the Overview and Purchases tabs, so the
   // subscription lives at the tab-shell level (it survives tab switches — only
@@ -100,7 +107,15 @@ export function BillingTabs() {
         setIsLoading(false);
       },
     );
-  }, [user]);
+  }, [user, ordersReadAttempt]);
+
+  // Volta à espera de sempre (o esqueleto), nunca a "No purchases yet" ou a
+  // valores zerados no lugar do erro, até a leitura nova responder.
+  function retryOrdersRead() {
+    setError("");
+    setIsLoading(true);
+    setOrdersReadAttempt((attempt) => attempt + 1);
+  }
 
   // Customer permite consultar historico; nao comprova uma assinatura.
   useEffect(() => {
@@ -149,7 +164,7 @@ export function BillingTabs() {
         onChange={handleTabChange}
         ariaLabel={t("accountBilling.sections")}
       />
-      <div className="mt-6">
+      <div ref={panelRef} tabIndex={-1} className="mt-6">
         {activeTab === "subscriptions" ? (
           <PlansPanel />
         ) : activeTab === "payment-methods" ? (
@@ -164,6 +179,8 @@ export function BillingTabs() {
             userId={user?.uid ?? null}
             isLoading={isLoading}
             error={error}
+            onRetry={retryOrdersRead}
+            retryFocusRef={panelRef}
             isSignedIn={isSignedIn}
             authResolving={authResolving}
           />
@@ -175,6 +192,8 @@ export function BillingTabs() {
             profileStatus={profileStatus}
             isLoading={isLoading}
             error={error}
+            onRetry={retryOrdersRead}
+            retryFocusRef={panelRef}
             isSignedIn={isSignedIn}
             authResolving={authResolving}
             showPlan={canTeach}
@@ -191,6 +210,9 @@ type OrderTabProps = {
   orders: Order[];
   isLoading: boolean;
   error: string;
+  /** "Try again" do erro: assina a leitura das compras de novo. */
+  onRetry: () => void;
+  retryFocusRef: RefObject<HTMLDivElement | null>;
   isSignedIn: boolean;
   authResolving: boolean;
 };
@@ -231,6 +253,8 @@ function OverviewTab({
   profileStatus,
   isLoading,
   error,
+  onRetry,
+  retryFocusRef,
   isSignedIn,
   authResolving,
   showPlan,
@@ -279,7 +303,7 @@ function OverviewTab({
   }
 
   if (error) {
-    return <BillingNotice tone="error">{t(error)}</BillingNotice>;
+    return <LoadErrorAlert onRetry={onRetry} focusRef={retryFocusRef}>{t(error)}</LoadErrorAlert>;
   }
 
   const { courseCount, refundCount, spentMinor, currency } =
@@ -488,6 +512,8 @@ function PurchasesTab({
   userId,
   isLoading,
   error,
+  onRetry,
+  retryFocusRef,
   isSignedIn,
   authResolving,
 }: OrderTabProps & { userId: string | null }) {
@@ -507,7 +533,7 @@ function PurchasesTab({
   }
 
   if (error) {
-    return <BillingNotice tone="error">{t(error)}</BillingNotice>;
+    return <LoadErrorAlert onRetry={onRetry} focusRef={retryFocusRef}>{t(error)}</LoadErrorAlert>;
   }
 
   // Empty state ONLY when the query genuinely returned zero rows — no
@@ -681,7 +707,7 @@ function RefundModal({
       onClick={busy ? undefined : onClose}
     >
       <div
-        className="modal-panel modal-panel-scroll relative w-full max-w-md rounded-xl border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-strong)]"
+        className="dialog-panel modal-panel modal-panel-scroll relative"
         onClick={(event) => event.stopPropagation()}
       >
         {/* O X faz o mesmo que o Cancelar (e o Concluído): some enquanto o
@@ -698,6 +724,7 @@ function RefundModal({
         )}
         {done ? (
           <>
+            <div className="p-6">
             <p className="pr-10 text-xs uppercase tracking-[0.22em] text-[var(--color-success-fg)]">
               {t("accountBilling.refundRequested")}
             </p>
@@ -707,7 +734,8 @@ function RefundModal({
             <p className="mt-3 text-sm leading-7 text-[var(--color-ink-soft)]">
               {t("accountBilling.refundFor")} <strong>{order.courseTitle}</strong> {t("accountBilling.refundSubmittedBody")}
             </p>
-            <div className="mt-6 flex justify-end">
+            </div>
+            <div className="dialog-footer">
               <button
                 type="button"
                 onClick={onClose}
@@ -719,6 +747,7 @@ function RefundModal({
           </>
         ) : (
           <>
+            <div className="p-6">
             <p className="pr-10 text-xs uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
               {t("accountBilling.refundRequest")}
             </p>
@@ -750,8 +779,11 @@ function RefundModal({
             {submitError ? (
               <InlineAlert tone="error" className="mt-4">{t(submitError)}</InlineAlert>
             ) : null}
+            </div>
 
-            <div className="mt-6 flex justify-end gap-3">
+            {/* O rodapé da casa: abaixo do sm empilha, o pedido em cima e o
+                Cancelar embaixo. */}
+            <div className="dialog-footer">
               <button
                 type="button"
                 onClick={onClose}
@@ -766,7 +798,7 @@ function RefundModal({
                 disabled={busy}
                 className="button-solid px-4 py-2 text-sm"
               >
-                {t(busy ? "accountBilling.submitting" : "accountBilling.submitRefund")}
+                <BusyLabel busy={busy} idle={t("accountBilling.submitRefund")} busyText={t("accountBilling.submitting")} />
               </button>
             </div>
           </>
@@ -792,19 +824,8 @@ function refundErrorKey(error: unknown): string {
   return `accountBilling.refundErrors.${error instanceof Error ? keys[error.message] ?? "unknown" : "unknown"}`;
 }
 
-function BillingNotice({
-  children,
-  tone = "muted",
-}: {
-  children: React.ReactNode;
-  tone?: "muted" | "error";
-}) {
-  if (tone === "error") {
-    return (
-      <InlineAlert tone="error">{children}</InlineAlert>
-    );
-  }
-
+// Os erros de leitura usam o LoadErrorAlert (com "Try again"); aqui só o aviso neutro.
+function BillingNotice({ children }: { children: React.ReactNode }) {
   return (
     <div className="rounded-lg border border-dashed border-[var(--color-line-strong)] bg-[var(--color-surface-soft)] p-6 text-sm text-[var(--color-ink-soft)]">
       {children}

@@ -142,8 +142,9 @@ function DomainCard({
         <StatusChip status={domain.status} label={t(`teach.customDomains.status.${domain.status}`)} className="max-w-full whitespace-normal!" />
       </div>
 
+      {/* F-07: era uma frase vermelha solta, sem ícone e sem anúncio. */}
       {domain.status === "error" && domain.error_reason ? (
-        <p className="text-sm text-[var(--color-danger-fg)]">{t(domainErrorKey(domain.error_reason, "setup"))}</p>
+        <InlineAlert tone="error">{t(domainErrorKey(domain.error_reason, "setup"))}</InlineAlert>
       ) : null}
 
       {action ? (
@@ -415,7 +416,7 @@ export function CustomDomainsPanel() {
                     onChange={(event) => setHostname(event.target.value)}
                     placeholder={t("teach.customDomains.hostnamePlaceholder")}
                     disabled={atQuota || adding}
-                    className="min-w-0 flex-1 rounded-md border border-[var(--color-line)] bg-white px-3 py-2.5 font-mono text-sm text-[var(--color-ink)] disabled:opacity-50"
+                    className="field-input field-input--inline min-w-0 flex-1 font-mono disabled:opacity-60"
                   />
                   <Button type="submit" disabled={atQuota || adding || !hostname.trim()}>
                     {adding ? <Loader2 className="h-4 w-4 animate-spin" /> : null}

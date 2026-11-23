@@ -355,11 +355,14 @@ export function AdvisorSidebar({ children }: { children?: ReactNode } = {}) {
         ref={floatRef}
         className={`floating-action floating-action--advisor flex flex-col items-end gap-3${header ? " floating-action--anchored" : ""}`}
       >
+      {/* Preso ao botao do topo, cai como os menus (motion-drop-in). No
+          celular, onde o botao flutua embaixo, abria seco: sobe 8px como a
+          gaveta (motion-panel-in). As duas so em no-preference. */}
       {open ? (
         <section
           role="dialog"
           aria-label={t("advisor.title")}
-          className={`advisor-panel flex w-[min(380px,calc(100vw-2.5rem))] flex-col overflow-hidden rounded-lg border border-[var(--color-line)] bg-white shadow-[0_18px_50px_rgba(15,31,58,0.22)]${header ? " motion-drop-in" : ""}`}
+          className={`advisor-panel flex w-[min(380px,calc(100vw-2.5rem))] flex-col overflow-hidden rounded-lg border border-[var(--color-line)] bg-white shadow-[0_18px_50px_rgba(15,31,58,0.22)] ${header ? "motion-drop-in" : "motion-panel-in"}`}
         >
           <header className="flex items-center justify-between gap-3 border-b border-[var(--color-line)] bg-[var(--color-surface-soft)] px-4 py-3">
             <span className="flex items-center gap-2 text-sm font-semibold text-[var(--color-primary)]">

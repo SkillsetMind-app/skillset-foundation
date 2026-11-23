@@ -1,7 +1,9 @@
 import { cleanup, render, screen } from "@testing-library/react";
+import { Loader2 } from "lucide-react";
 import { afterEach, describe, expect, it } from "vitest";
 
 import {
+  BusyLabel,
   Button,
   Card,
   EmptyState,
@@ -63,12 +65,137 @@ describe("Button", () => {
     expect(button).toBeDisabled();
     expect(button).toHaveAttribute("aria-busy", "true");
     expect(screen.queryByTestId("icone")).toBeNull();
-    expect(button.querySelector(".animate-spin")).not.toBeNull();
+    // O anel gira so sem "reduzir movimento"; com ele ligado, fica parado e a
+    // vista (nao some).
+    const ring = button.querySelector("svg")!;
+    expect(ring).toHaveClass("motion-safe:animate-spin");
+    expect(ring).not.toHaveClass("animate-spin");
+  });
+
+  it("sem busyLabel, a marcação é a de sempre (spinner ou ícone, depois o texto)", () => {
+    const ring = <Loader2 aria-hidden="true" size={16} strokeWidth={2.2} className="shrink-0 motion-safe:animate-spin" />;
+    const cases = [
+      { loading: false, reference: <svg data-testid="icone" /> },
+      { loading: true, reference: ring },
+    ];
+    for (const { loading, reference } of cases) {
+      const { container: current, unmount } = render(
+        <Button variant="accent" loading={loading} icon={<svg data-testid="icone" />}>
+          Publicar
+        </Button>,
+      );
+      const html = current.innerHTML;
+      unmount();
+      // A cópia literal do que o Button escrevia antes do busyLabel existir.
+      const { container: before, unmount: unmountBefore } = render(
+        <button
+          type="button"
+          className={buttonClasses({ variant: "accent" })}
+          disabled={loading}
+          aria-busy={loading || undefined}
+        >
+          {reference}
+          Publicar
+        </button>,
+      );
+      expect(html).toBe(before.innerHTML);
+      unmountBefore();
+    }
+  });
+
+  it("com busyLabel, os dois rótulos ocupam a mesma célula e o nome é o que está à vista", () => {
+    const { rerender } = render(
+      <Button loading={false} busyLabel="Salvando...">
+        Salvar
+      </Button>,
+    );
+
+    const button = screen.getByRole("button", { name: "Salvar" });
+    expect(button).toBeEnabled();
+    expect(button).not.toHaveAttribute("aria-busy");
+    // Os dois rótulos existem sempre, empilhados na mesma célula.
+    const idle = screen.getByText("Salvar");
+    const busy = screen.getByText("Salvando...");
+    expect(idle).toHaveClass("[grid-area:1/1]");
+    expect(busy).toHaveClass("[grid-area:1/1]");
+    expect(idle.parentElement).toBe(busy.parentElement);
+    expect(idle.parentElement).toHaveClass("inline-grid");
+    expect(busy).toHaveClass("invisible");
+    expect(busy).toHaveAttribute("aria-hidden", "true");
+    expect(idle).not.toHaveClass("invisible");
+    expect(idle).not.toHaveAttribute("aria-hidden");
+    // O lugar do spinner já está reservado em repouso (na face da espera).
+    const ring = busy.querySelector("svg")!;
+    expect(ring).toHaveClass("motion-safe:animate-spin");
+
+    rerender(
+      <Button loading busyLabel="Salvando...">
+        Salvar
+      </Button>,
+    );
+
+    const waiting = screen.getByRole("button", { name: "Salvando..." });
+    expect(waiting).toBe(button);
+    expect(waiting).toBeDisabled();
+    expect(waiting).toHaveAttribute("aria-busy", "true");
+    expect(screen.queryByRole("button", { name: "Salvar" })).toBeNull();
+    expect(idle).toHaveClass("invisible");
+    expect(idle).toHaveAttribute("aria-hidden", "true");
+    expect(busy).not.toHaveClass("invisible");
+    expect(busy).not.toHaveAttribute("aria-hidden");
+    // O mesmo spinner, no mesmo lugar: nada entra nem sai do botão.
+    expect(busy.querySelector("svg")).toBe(ring);
+  });
+
+  it("com busyLabel e ícone: o ícone fica na face de repouso e o spinner na da espera", () => {
+    render(
+      <Button loading busyLabel="Publicando..." icon={<svg data-testid="icone" />}>
+        Publicar
+      </Button>,
+    );
+
+    expect(screen.getByRole("button", { name: "Publicando..." })).toBeDisabled();
+    expect(screen.getByTestId("icone").parentElement).toHaveAttribute("aria-hidden", "true");
+    expect(screen.getByText("Publicando...").querySelector("svg")).toHaveClass("motion-safe:animate-spin");
   });
 
   it("expõe a mesma roupa em texto, para Link vestido de botão", () => {
     expect(buttonClasses({ variant: "outline", size: "sm" })).toContain("button-outline");
     expect(buttonClasses({ variant: "outline", size: "sm" })).toContain("text-xs");
+  });
+});
+
+describe("BusyLabel", () => {
+  it("guarda a largura do maior rótulo e troca só o que está à vista e o nome", () => {
+    const { rerender } = render(
+      <button type="button" className="button-solid">
+        <BusyLabel busy={false} idle="Enviar" busyText="Enviando..." />
+      </button>,
+    );
+
+    expect(screen.getByRole("button", { name: "Enviar" })).toBeInTheDocument();
+    const idle = screen.getByText("Enviar");
+    const busy = screen.getByText("Enviando...");
+    expect(idle.parentElement).toBe(busy.parentElement);
+    expect(idle.parentElement).toHaveClass("inline-grid");
+    expect(idle).toHaveClass("[grid-area:1/1]");
+    expect(busy).toHaveClass("[grid-area:1/1]", "invisible");
+    expect(busy).toHaveAttribute("aria-hidden", "true");
+    // Sem spinner: esses botões nunca tiveram um.
+    expect(busy.querySelector("svg")).toBeNull();
+
+    rerender(
+      <button type="button" className="button-solid">
+        <BusyLabel busy idle="Enviar" busyText="Enviando..." />
+      </button>,
+    );
+
+    expect(screen.getByRole("button", { name: "Enviando..." })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Enviar" })).toBeNull();
+    expect(idle).toHaveClass("invisible");
+    expect(idle).toHaveAttribute("aria-hidden", "true");
+    expect(busy).not.toHaveClass("invisible");
+    expect(busy).not.toHaveAttribute("aria-hidden");
   });
 });
 
@@ -215,6 +342,23 @@ describe("ProgressBar", () => {
 
     expect(screen.getByRole("progressbar", { name: "Acima" })).toHaveAttribute("aria-valuenow", "100");
     expect(screen.getByRole("progressbar", { name: "Abaixo" })).toHaveAttribute("aria-valuenow", "0");
+  });
+
+  // Cadastro e entrevista: o leitor de tela ouve o passo, não a porcentagem.
+  it("em passos, diz o passo de 1 ao total e a frase; o valor só desenha", () => {
+    render(<ProgressBar value={50} step={{ current: 1, total: 2 }} label="Step 1 of 2" />);
+
+    const bar = screen.getByRole("progressbar", { name: "Step 1 of 2" });
+    expect(bar).toHaveAttribute("aria-valuenow", "1");
+    expect(bar).toHaveAttribute("aria-valuemin", "1");
+    expect(bar).toHaveAttribute("aria-valuemax", "2");
+    expect(bar).toHaveAttribute("aria-valuetext", "Step 1 of 2");
+    expect((bar.firstElementChild as HTMLElement).style.transform).toBe("translateX(-50%)");
+  });
+
+  it("sem passos, não escreve valuetext", () => {
+    render(<ProgressBar value={40} label="Progress" />);
+    expect(screen.getByRole("progressbar", { name: "Progress" })).not.toHaveAttribute("aria-valuetext");
   });
 
   // Trilho pela variável de linha (o navy a 12% sumia no escuro) e movimento

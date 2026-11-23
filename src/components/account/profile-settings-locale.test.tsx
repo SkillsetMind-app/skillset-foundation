@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ProfileSettingsPanel } from "@/components/account/profile-settings-panel";
@@ -122,10 +122,19 @@ describe("profile settings locale", () => {
     expect(screen.getByPlaceholderText("e.g. Professor at University of S\u00e3o Paulo")).toHaveValue("  My English credential $&  ");
     expect(screen.getByRole("combobox")).toHaveValue("Pacific/Auckland");
     expect(screen.getByRole("button", { name: "Team training" })).toHaveAttribute("aria-pressed", "true");
+    // F-04: os dois rótulos moram na mesma célula, então o botão não muda de
+    // largura ao salvar; o nome é sempre o rótulo à vista.
+    const idleSave = screen.getByRole("button", { name: "Save profile" });
+    expect(within(idleSave).getByText("Saving...")).toHaveAttribute("aria-hidden", "true");
+    expect(within(idleSave).getByText("Save profile")).not.toHaveAttribute("aria-hidden");
     fireEvent.submit(container.querySelector("form")!);
     expect(screen.getByRole("button", { name: "Saving..." })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Saving..." })).toBe(idleSave);
+    expect(within(idleSave).getByText("Save profile")).toHaveAttribute("aria-hidden", "true");
+    expect(within(idleSave).getByText("Saving...")).not.toHaveAttribute("aria-hidden");
     changeLanguage();
     expect(screen.getByRole("button", { name: "Guardando..." })).toBeDisabled();
+    expect(screen.queryByRole("button", { name: "Guardar perfil" })).toBeNull();
     await act(async () => complete());
     expect(screen.getByText("Perfil actualizado.")).toBeInTheDocument();
     changeLanguage();

@@ -6,6 +6,7 @@ import { CircleCheck, Info } from "lucide-react";
 
 import { PaymentReturnCard } from "@/components/account/payment-return-card";
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { SpinnerRing } from "@/components/shared/skillset-spinner";
 import { buttonClasses } from "@/components/ui/button";
 import { PLAN_TRIAL_DAYS } from "@/data/plans";
 import { fetchPlanBillingState, type PlanSubscriptionView } from "@/lib/payments/billing";
@@ -96,7 +97,7 @@ export function BillingReturnStatus() {
       ) : gaveUp ? (
         <Info aria-hidden="true" size={20} />
       ) : (
-        <span className="size-5 rounded-full border-2 border-[var(--color-line)] border-t-[var(--color-accent-fg)] motion-safe:animate-spin" />
+        <SpinnerRing size="sm" />
       )}
       heading={heading}
       body={body}

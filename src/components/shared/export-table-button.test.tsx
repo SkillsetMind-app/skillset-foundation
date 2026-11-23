@@ -302,6 +302,8 @@ describe("menu de exportacao dentro da tela", () => {
     expect(screen.getByRole("button", { name: "Exportar" })).toHaveAccessibleDescription(
       "Todavía no hay nada para exportar en esta vista.",
     );
+    // T-15: o motivo se le na tela (no toque nao ha title), nao so no leitor.
+    expect(screen.getByText("Todavía no hay nada para exportar en esta vista.")).not.toHaveClass("sr-only");
     unmount();
     // Leitura que falhou chega com zero linhas: nao pode dizer "nada para exportar".
     const failed = render(<ExportTableButton rows={[]} disabled filename="fixture" />);

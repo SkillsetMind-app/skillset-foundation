@@ -34,6 +34,10 @@ type AccountMenuProps = {
   /** Sala com a marca do professor: sem portas para dentro da SkillsetMind
    *  ("Become a teacher", "Go to dashboard"). */
   branded?: boolean;
+  /** Dentro da plataforma a barra do topo ja tem o botao de trocar de lado:
+   *  o mesmo destino aqui era a mesma acao duas vezes, lado a lado. O site
+   *  publico nao passa nada e segue com a troca no menu. */
+  topBarSwitchHref?: string;
 };
 
 function useDismissableLayer(
@@ -74,7 +78,7 @@ function useDismissableLayer(
   }, [isOpen, onDismiss, ref, triggerRef]);
 }
 
-export function AccountMenu({ onSignOut, user, branded = false }: AccountMenuProps) {
+export function AccountMenu({ onSignOut, user, branded = false, topBarSwitchHref }: AccountMenuProps) {
   const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const [currentPlanId, setCurrentPlanId] = useState<PlanId>("free");
@@ -119,6 +123,7 @@ export function AccountMenu({ onSignOut, user, branded = false }: AccountMenuPro
   ];
   const otherWorkspaces = workspaces.filter(
     (workspace) =>
+      workspace.href !== topBarSwitchHref &&
       pathname !== workspace.href && !pathname.startsWith(`${workspace.href}/`),
   );
   // O admin procurava "ver como" aqui, ao lado da troca de espaco; ele mora na

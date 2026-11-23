@@ -84,7 +84,7 @@ export async function SiteFooter() {
                     <Link
                       key={`${column.titleKey}-${href}`}
                       href={href}
-                      className="flex min-h-11 items-center text-sm font-semibold text-[var(--color-ink-soft)] transition-colors hover:text-[var(--color-primary)] lg:block lg:min-h-0"
+                      className="flex min-h-11 items-center text-sm font-semibold text-[var(--color-ink)] transition-colors hover:text-[var(--color-primary)] lg:block lg:min-h-0"
                     >
                       {t(labelKey)}
                     </Link>

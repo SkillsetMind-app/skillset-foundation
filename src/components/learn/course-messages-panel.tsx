@@ -1,11 +1,13 @@
 "use client";
 
 import { Send } from "lucide-react";
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { BusyLabel } from "@/components/ui/busy-label";
 import { InlineAlert } from "@/components/ui/inline-alert";
+import { LoadErrorAlert } from "@/components/ui/load-error-alert";
 import type { CourseMessage } from "@/domain/course-message";
 import { COURSE_MESSAGE_MAX_CHARS } from "@/domain/course-message";
 import { formatNotificationTime } from "@/components/account/notification-row";
@@ -64,6 +66,11 @@ export function CourseMessagesPanel({
   // A dictionary key, never rendered text: the locale can change while the
   // notice is on screen.
   const [notice, setNotice] = useState("");
+  // A falha da leitura fica no lugar da conversa, com "Try again" (que assina
+  // de novo); o aviso de baixo é só do envio.
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [threadAttempt, setThreadAttempt] = useState(0);
+  const panelRef = useRef<HTMLElement>(null);
   const canSend = !previewMode && Boolean(user);
 
   useEffect(() => {
@@ -76,14 +83,15 @@ export function CourseMessagesPanel({
       user.uid,
       (rows) => {
         setMessages(rows);
+        setLoadFailed(false);
         setReady(true);
       },
       () => {
-        setNotice("learn.classroom.messages.loadError");
+        setLoadFailed(true);
         setReady(true);
       },
     );
-  }, [courseId, previewMode, user]);
+  }, [courseId, previewMode, user, threadAttempt]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -108,7 +116,7 @@ export function CourseMessagesPanel({
   }
 
   return (
-    <section className="member-resource-panel">
+    <section ref={panelRef} tabIndex={-1} className="member-resource-panel">
       <div>
         <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
           {t("learn.classroom.messages.title")}
@@ -136,6 +144,18 @@ export function CourseMessagesPanel({
             className="absolute left-0 top-2 block h-2 w-2/5 rounded-sm bg-[var(--ma-line,var(--color-surface-strong))] motion-safe:animate-pulse"
           />
         </div>
+      ) : loadFailed ? (
+        <LoadErrorAlert
+          className="mt-5"
+          focusRef={panelRef}
+          onRetry={() => {
+            setLoadFailed(false);
+            setReady(false);
+            setThreadAttempt((attempt) => attempt + 1);
+          }}
+        >
+          {t("learn.classroom.messages.loadError")}
+        </LoadErrorAlert>
       ) : messages.length > 0 ? (
         <ul className="mt-5 grid gap-3">
           {messages.map((message) => {
@@ -170,7 +190,7 @@ export function CourseMessagesPanel({
           maxLength={COURSE_MESSAGE_MAX_CHARS}
           rows={3}
           aria-label={t("learn.classroom.messages.bodyLabel")}
-          className="min-h-20 rounded-md border border-[var(--color-line)] bg-white px-4 py-3 text-sm leading-6 text-[var(--color-ink)] outline-none transition focus:border-[var(--color-primary)]"
+          className="field-input min-h-20"
           placeholder={t("learn.classroom.messages.placeholder")}
         />
 
@@ -190,7 +210,11 @@ export function CourseMessagesPanel({
           className="button-solid inline-flex w-fit items-center gap-2 px-4 py-2.5 text-sm"
         >
           <Send size={15} aria-hidden="true" />
-          {t(isSending ? "learn.classroom.messages.sending" : "learn.classroom.messages.send")}
+          <BusyLabel
+            busy={isSending}
+            idle={t("learn.classroom.messages.send")}
+            busyText={t("learn.classroom.messages.sending")}
+          />
         </button>
       </form>
     </section>

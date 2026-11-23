@@ -158,7 +158,7 @@ export function LearnCommunityHub() {
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder={t("learnWave2.communityHub.placeholder")}
-                className="rounded-md border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-normal outline-none focus:border-[var(--color-primary-light)]"
+                className="field-input"
               />
             </label>
           </div>

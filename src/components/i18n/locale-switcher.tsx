@@ -102,7 +102,7 @@ export function LocaleSwitcher({
             aria-hidden="true"
             size={12}
             strokeWidth={1.8}
-            className={`transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+            className={`transition-transform duration-[var(--duration-base)] ease-[var(--ease-standard)] ${open ? "rotate-180" : ""}`}
           />
         )}
       </button>

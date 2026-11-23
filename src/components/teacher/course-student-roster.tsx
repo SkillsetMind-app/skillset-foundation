@@ -12,7 +12,7 @@ import { PanelCard } from "@/components/teacher/course-commerce-panels";
 import { MetricCard } from "@/components/teacher/metric-card";
 import { CourseAccessPanel } from "@/components/teacher/course-access-panel";
 import { CourseShareLink } from "@/components/teacher/course-share-link";
-import { Button, EmptyState, InlineAlert } from "@/components/ui";
+import { BusyLabel, Button, EmptyState, InlineAlert } from "@/components/ui";
 import { SpotArt } from "@/components/ui/spot-art";
 import { isCourseStudentComplete } from "@/domain/course-overview";
 import { sendCourseMessage } from "@/lib/data/course-messages";
@@ -186,7 +186,7 @@ function MessageComposer({
           onClick={() => void handleSend()}
           disabled={sending || !body.trim()}
         >
-          {sending ? t("courseRoster.sending") : t("courseRoster.send")}
+          <BusyLabel busy={sending} idle={t("courseRoster.send")} busyText={t("courseRoster.sending")} />
         </Button>
         <Button variant="outline" size="sm" onClick={onClose}>
           {t("courseRoster.cancel")}
@@ -423,7 +423,9 @@ export function CourseStudentRosterView({
                     {student.email ? (
                       <a
                         href={`mailto:${student.email}`}
-                        className="text-xs text-[var(--color-ink-soft)] underline"
+                        // Navy, como sempre apareceu: o `underline` não vale num
+                        // link (text-decoration global) e a cor é o único sinal.
+                        className="text-xs text-[var(--color-primary)] underline"
                       >
                         {student.email}
                       </a>

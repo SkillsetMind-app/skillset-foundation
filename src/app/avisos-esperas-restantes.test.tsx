@@ -22,6 +22,20 @@ describe("F-07: as últimas caixas vermelhas à mão viraram o aviso da casa", (
     "components/auth/turnstile-widget.tsx",
     "components/certificates/certificate-verification-panel.tsx",
     "components/support/support-ticket-center.tsx",
+    // Ganhos: a caixa do topo e a frase vermelha do bloco da conta.
+    "components/teacher/teacher-wallet-panel.tsx",
+    // Frases vermelhas soltas que viraram o aviso da casa.
+    "components/teacher/activation-checkout-panel.tsx",
+    "components/teacher/custom-domains-panel.tsx",
+    // Os dois chips de falha do salvar do construtor e a capa da área de membros.
+    "components/teacher/course-builder-studio.tsx",
+    "components/teacher/member-area-settings-panel.tsx",
+    // O erro das capas e da imagem da página de venda mora na casca única.
+    "components/teacher/image-upload-field.tsx",
+    // Compra: sem conta, a página de obrigado e o erro do checkout embutido.
+    "components/courses/guest-checkout-form.tsx",
+    "components/courses/guest-access-link.tsx",
+    "components/account/embedded-checkout-panel.tsx",
   ])("%s usa o InlineAlert de erro", (file) => {
     const source = read(file);
     expect(source).not.toContain(handRedBox);
@@ -59,6 +73,28 @@ describe("F-09: barras de progresso", () => {
   it("o CSS morto da barra antiga do currículo saiu", () => {
     expect(read("app/globals.css")).not.toContain("member-curriculum-progress");
   });
+
+  // A barra do topo da sala, a da capa e a da nota de envio eram feitas à mão
+  // (a da nota em 8px navy): agora são a ProgressBar compartilhada.
+  it.each([
+    "components/learn/enrolled-course-workspace.tsx",
+    "components/learn/members-area-hero.tsx",
+    "components/teacher/upload-progress-note.tsx",
+    // Os pontinhos do cadastro e da entrevista (no caminho de cadastro).
+    "components/auth/signup-form.tsx",
+    "components/auth/onboarding-progress.tsx",
+  ])("%s usa a barra compartilhada", (file) => {
+    const source = read(file);
+    expect(source).toContain("<ProgressBar");
+    expect(source).not.toMatch(/style=\{\{ width: `\$\{/);
+  });
+
+  it("o CSS das barras feitas à mão saiu (preenchimento da sala, da capa e do cartão de módulo)", () => {
+    const css = read("app/globals.css");
+    expect(css).not.toContain(".member-classroom-head__progress > span");
+    expect(css).not.toContain(".members-hero__bar > span");
+    expect(css).not.toContain("member-module-card__bar");
+  });
 });
 
 describe("F-03 / I-3: esperas com forma, e as rotas que respondem na hora", () => {
@@ -74,6 +110,22 @@ describe("F-03 / I-3: esperas com forma, e as rotas que respondem na hora", () =
     expect(existsSync(join(process.cwd(), "src", file))).toBe(false);
   });
 
+  // Comunidade (duas frases seguidas), favoritos, materiais e ranking esperavam
+  // com uma frase solta: agora a forma do que vem, e a frase só para o leitor.
+  it.each([
+    ["components/learn/community-feed.tsx", "learn.community.loading"],
+    ["components/learn/community-feed.tsx", "learn.community.feedLoading"],
+    ["components/learn/learner-wishlist.tsx", "learnWave2.wishlistHub.loading"],
+    ["components/learn/course-materials-panel.tsx", "learn.classroom.resources.loading"],
+    ["components/learn/community-leaderboard.tsx", "learnWave2.leaderboard.loading"],
+  ])("%s espera com forma (%s só para o leitor de tela)", (file, key) => {
+    const source = read(file);
+    const sentence = source.indexOf(`t("${key}")`);
+    expect(sentence, key).toBeGreaterThan(-1);
+    // A frase mora num sr-only (direto, ou como `label` de um esqueleto da tela).
+    expect(source.slice(Math.max(0, sentence - 120), sentence)).toMatch(/sr-only|label=\{$/);
+  });
+
   it("a caixa de mensagens do aluno não espera em branco", () => {
     expect(read("app/learn/messages/page.tsx")).not.toContain("fallback={null}");
   });
@@ -84,6 +136,29 @@ describe("F-03 / I-3: esperas com forma, e as rotas que respondem na hora", () =
     expect(screen.queryByRole("heading")).toBeNull();
     expect(screen.queryByRole("button")).toBeNull();
   });
+});
+
+describe("I-2: um anel da casa, que para quem pediu menos movimento", () => {
+  it("o anel compartilhado tem trilho que aparece no tema escuro e gira só em no-preference", () => {
+    const source = read("components/shared/skillset-spinner.tsx");
+    // O navy a 12% fixo sumia no fundo escuro, na espera de toda página protegida.
+    expect(source).not.toContain("rgba(26,54,93,0.12)");
+    expect(source).toContain("border-[var(--color-line)] border-t-[var(--color-accent-fg)] motion-safe:animate-spin");
+  });
+
+  it("a volta do pagamento usa o anel da casa, sem cópia à mão", () => {
+    const source = read("components/account/billing-return-status.tsx");
+    expect(source).toContain('<SpinnerRing size="sm" />');
+    expect(source).not.toMatch(/rounded-full border-2[^"]*animate-spin/);
+  });
+
+  // Sem `motion-safe:` o anel girava mesmo com "reduzir movimento" ligado.
+  it.each(["components/ui/button.tsx", "components/shared/protected-asset-preview.tsx", "components/shared/skillset-spinner.tsx", "components/account/billing-return-status.tsx"])(
+    "%s não gira sem motion-safe",
+    (file) => {
+      expect(read(file)).not.toMatch(/(?<!motion-safe:)\banimate-spin/);
+    },
+  );
 });
 
 describe("F-19: um tom só nos blocos de espera", () => {
@@ -99,10 +174,31 @@ describe("F-19: um tom só nos blocos de espera", () => {
     "app/learn/messages/page.tsx",
     "components/learn/student-messages-inbox.tsx",
     "components/instructors/instructors-directory.tsx",
+    // O extrato de Ganhos, o bloco da conta e as renovações esperavam com uma frase.
+    "components/teacher/teacher-wallet-panel.tsx",
+    "components/teacher/creator-subscription-center.tsx",
   ])("%s pinta o osso em surface-strong", (file) => {
     const source = read(file);
     expect(source).not.toMatch(/animate-pulse[^"]*bg-\[var\(--color-surface-soft\)\]/);
     expect(source).not.toMatch(/animate-pulse[^"]*bg-white/);
     expect(source).toMatch(/animate-pulse[^"]*bg-\[var\(--color-surface-strong\)\]/);
+  });
+
+  // As linhas da lista de produtos pulsavam em surface-soft (F-19). Ali os
+  // blocos usam a constante `block`, por isso a prova é a constante.
+  it("components/teacher/builder-skeleton.tsx pinta o osso em surface-strong", () => {
+    const source = read("components/teacher/builder-skeleton.tsx");
+    expect(source).not.toMatch(/animate-pulse[^"]*bg-\[var\(--color-surface-soft\)\]/);
+    expect(source).toContain('const block = "bg-[var(--color-surface-strong)]";');
+  });
+});
+
+describe("F-03 / T-07: Vitrine, Mídia e Eventos esperam com a forma da tela", () => {
+  it.each([
+    ["components/teacher/storefront-settings-panel.tsx", 'data-skeleton="storefront"'],
+    ["components/teacher/teacher-media-library.tsx", "<CardStackSkeleton"],
+    ["components/teacher/teacher-event-studio.tsx", "<CardStackSkeleton"],
+  ])("%s não espera com uma frase num cartão", (file, skeleton) => {
+    expect(read(file)).toContain(skeleton);
   });
 });

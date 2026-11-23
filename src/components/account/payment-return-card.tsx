@@ -14,12 +14,16 @@ export function PaymentReturnCard({
   heading,
   body,
   actions,
+  headingLevel = 2,
 }: {
   icon: ReactNode;
   heading: string;
   body: string;
   actions: ReactNode;
+  /** Fora da casca da plataforma (sem titulo de pagina), a frase e o h1. */
+  headingLevel?: 1 | 2;
 }) {
+  const Heading = headingLevel === 1 ? "h1" : "h2";
   return (
     <Card padding="lg">
       {/* Uma regiao viva so, a mesma em todos os estados: o leitor de tela le
@@ -28,7 +32,7 @@ export function PaymentReturnCard({
         <span className="grid size-10 place-items-center rounded-full bg-[var(--color-surface-soft)] text-[var(--color-primary)]">
           {icon}
         </span>
-        <h2 className="mt-3 text-lg font-bold leading-[26px] text-[var(--color-ink)]">{heading}</h2>
+        <Heading className="mt-3 text-lg font-bold leading-[26px] text-[var(--color-ink)]">{heading}</Heading>
         <p className="mt-3 max-w-xl text-sm leading-6 text-[var(--color-ink-soft)]">{body}</p>
       </div>
       <div className="mt-4 flex flex-wrap gap-3">{actions}</div>

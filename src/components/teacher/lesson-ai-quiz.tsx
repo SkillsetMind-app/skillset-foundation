@@ -101,8 +101,13 @@ export function LessonAiQuiz({ courseId, lessonId, assetId }: { courseId: string
       <h4 id="lesson-ai-quiz-title" className="text-sm font-semibold">{t("creatorEditor.lesson.ai.quizTitle")}</h4>
       <p className="text-sm text-[var(--color-ink-soft)]">{t("creatorEditor.lesson.ai.quizHelp")}</p>
 
+      {/* A forma do que vem (o botão de gerar), não uma frase solta (F-03).
+          O aria-busy da seção já diz que está carregando. */}
       {quiz === undefined ? (
-        <p className="text-sm text-[var(--color-ink-soft)]">{t("creatorEditor.lesson.ai.loading")}</p>
+        <div className="animate-pulse">
+          <span className="sr-only">{t("creatorEditor.lesson.ai.loading")}</span>
+          <div aria-hidden="true" className="h-11 w-40 rounded-md bg-[var(--color-surface-strong)]" />
+        </div>
       ) : current ? (
         <>
           <p className="text-sm font-semibold">
@@ -162,6 +167,7 @@ export function LessonAiQuiz({ courseId, lessonId, assetId }: { courseId: string
             variant="outline"
             disabled={working}
             loading={busy === "generate"}
+            busyLabel={t("creatorEditor.lesson.ai.generatingQuiz")}
             onClick={() => {
               const generate = () => {
                 void run({ action: "generateQuiz" }, "generate", t("creatorEditor.lesson.ai.quizGenerated"));
@@ -177,9 +183,7 @@ export function LessonAiQuiz({ courseId, lessonId, assetId }: { courseId: string
               });
             }}
           >
-            {busy === "generate"
-              ? t("creatorEditor.lesson.ai.generatingQuiz")
-              : t(current ? "creatorEditor.lesson.ai.regenerateQuiz" : "creatorEditor.lesson.ai.generateQuiz")}
+            {t(current ? "creatorEditor.lesson.ai.regenerateQuiz" : "creatorEditor.lesson.ai.generateQuiz")}
           </Button>
           {current ? (
             <>

@@ -71,6 +71,11 @@ vi.mock("@/lib/data/payout-ledger", () => ({
   },
 }));
 
+// Os produtos do professor (o nome em cada linha do extrato) nao vem aqui.
+vi.mock("@/components/teacher/use-teacher-inbox-count", () => ({
+  loadTeacherInbox: () => Promise.resolve({ courses: [], questions: [], threads: 0 }),
+}));
+
 vi.mock("@/lib/data/creator-verification", () => ({
   fetchCreatorActivationBlocked: () => Promise.resolve(false),
 }));
@@ -89,10 +94,11 @@ vi.mock("@/components/teacher/teacher-connect-onboarding", () => ({
 
 afterEach(cleanup);
 
-// Os literais que a tela mostrava antes deste PR. Se algum voltar, a prova cai.
+// Os literais da tela em ingles (os de hoje e os que ja sairam). Se algum
+// aparecer com a tela em espanhol, a prova cai.
 const INGLES_ANTIGO = [
   "Payouts & tax",
-  "Your earnings, your payout setup.",
+  "Your earnings, your payout setup",
   "Payout schedule",
   "Stripe issues your tax forms",
   "Creator net estimate",
@@ -117,7 +123,7 @@ const INGLES_ANTIGO = [
   "Recent earnings record.",
   "Export after first payout",
   "Tax center",
-  "Order ord-1",
+  "Order #ORD-1",
   "Payment pay-1",
   "Recorded",
 ];
@@ -138,6 +144,19 @@ describe("carteira do professor em espanhol", () => {
     }
   });
 
+  // A lista acima so prova algo se a tela em ingles mostra esses textos hoje:
+  // o titulo e a linha do extrato mudaram neste pacote, e a lista mudou junto.
+  it("os literais da lista aparecem na tela em ingles", () => {
+    render(
+      <I18nProvider initialLocale="en">
+        <TeacherWalletPanel />
+      </I18nProvider>,
+    );
+
+    expect(screen.getByRole("heading", { level: 1, name: "Your earnings, your payout setup" })).toBeInTheDocument();
+    expect(screen.getByText("Order #ORD-1")).toBeInTheDocument();
+  });
+
   it("mostra o cabecalho, o saldo, o estado da Stripe e os tiles em espanhol", () => {
     render(
       <I18nProvider initialLocale="es">
@@ -146,12 +165,14 @@ describe("carteira do professor em espanhol", () => {
     );
 
     // Cabecalho e cartao do saldo.
-    // Um nome so para a pagina do dinheiro: "Ganancias", o mesmo da barra.
-    expect(screen.getByText("Ganancias", { selector: "p" })).toBeInTheDocument();
+    // O rotulo "Ganancias" em cima do titulo so repetia o nome da barra: saiu,
+    // como nas telas irmas. O h1 e so o titulo, sem ponto e sem o "?" dentro.
+    expect(screen.queryByText("Ganancias", { selector: "p" })).toBeNull();
     expect(screen.queryByText("Pagos e impuestos")).toBeNull();
     expect(
       screen.getByRole("heading", {
-        name: /Tus ganancias, tu configuración de pagos\./,
+        level: 1,
+        name: "Tus ganancias, tu configuración de pagos",
       }),
     ).toBeInTheDocument();
     expect(screen.getByText("Stripe recoge tus datos fiscales")).toBeInTheDocument();
@@ -250,9 +271,10 @@ describe("carteira do professor em espanhol", () => {
     // Sem conta Stripe conectada, "Abrir mi Stripe" so dava erro: nao aparece.
     expect(screen.queryByRole("button", { name: "Abrir mi Stripe" })).toBeNull();
 
-    // A linha do proprio movimento: pedido, pagamento e situacao.
-    expect(screen.getByText("Pedido ord-1")).toBeInTheDocument();
-    expect(screen.getByText("Pago pay-1")).toBeInTheDocument();
+    // A linha do proprio movimento: o codigo curto do pedido (sem o nome do
+    // produto, que aqui nao foi lido) e a situacao; o id do pagamento saiu.
+    expect(screen.getByText("Pedido #ORD-1")).toBeInTheDocument();
+    expect(screen.queryByText("Pago pay-1")).toBeNull();
     expect(screen.getByText("Registrado")).toBeInTheDocument();
     // Data e valor na lingua da tela: a data saia sempre em ingles e o neto
     // como "USD 42.38".

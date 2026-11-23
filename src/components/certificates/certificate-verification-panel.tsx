@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { BusyLabel } from "@/components/ui/busy-label";
 import { InlineAlert } from "@/components/ui/inline-alert";
 import { useHasRealCourses } from "@/components/site/real-courses";
 import { useSearchParams } from "next/navigation";
@@ -66,14 +67,18 @@ export function CertificateVerificationPanel() {
           onChange={(event) => setVerificationCode(event.target.value)}
           aria-label={t("learnWave2.verification.codeLabel")}
           placeholder="SK-..."
-          className="rounded-md border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-semibold uppercase tracking-[0.08em] text-[var(--color-ink)] outline-none focus:border-[var(--color-primary-light)]"
+          className="field-input uppercase tracking-[0.08em]"
         />
         <button
           type="submit"
           disabled={isChecking}
           className="button-solid px-4 py-2.5 text-sm"
         >
-          {isChecking ? t("learnWave2.verification.checking") : t("learnWave2.verification.verify")}
+          <BusyLabel
+            busy={isChecking}
+            idle={t("learnWave2.verification.verify")}
+            busyText={t("learnWave2.verification.checking")}
+          />
         </button>
       </form>
 

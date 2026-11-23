@@ -1,11 +1,13 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
 import { StatusChip } from "@/components/shared/status-chip";
+import { BusyLabel } from "@/components/ui/busy-label";
 import { InlineAlert } from "@/components/ui/inline-alert";
+import { LoadErrorAlert } from "@/components/ui/load-error-alert";
 import {
   supportTicketCategoryLabels,
   type SupportTicket,
@@ -29,8 +31,13 @@ export function SupportTicketCenter() {
   const [message, setMessage] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<"" | "loadError" | "validationError" | "createError" | "rateLimit">("");
+  const [error, setError] = useState<"" | "validationError" | "createError" | "rateLimit">("");
   const [success, setSuccess] = useState<"" | "created">("");
+  // A falha da LEITURA mora na lista, com "Try again" (que assina de novo), e
+  // não no formulário: lá ela sumia no próximo envio e a lista dizia "nenhum".
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [ticketsAttempt, setTicketsAttempt] = useState(0);
+  const ticketsRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     if (!user) {
@@ -41,14 +48,15 @@ export function SupportTicketCenter() {
       user.uid,
       (nextTickets) => {
         setTickets(nextTickets);
+        setLoadFailed(false);
         setIsLoading(false);
       },
       () => {
-        setError("loadError");
+        setLoadFailed(true);
         setIsLoading(false);
       },
     );
-  }, [user]);
+  }, [user, ticketsAttempt]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -149,18 +157,28 @@ export function SupportTicketCenter() {
             disabled={isSubmitting}
             className="button-solid px-4 py-2.5 text-sm sm:justify-self-start"
           >
-            {t(`${copy}.${isSubmitting ? "creating" : "create"}`)}
+            <BusyLabel busy={isSubmitting} idle={t(`${copy}.create`)} busyText={t(`${copy}.creating`)} />
           </button>
         </form>
       </section>
 
-      <section className="rounded-lg border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)]">
+      <section ref={ticketsRef} tabIndex={-1} className="rounded-lg border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)]">
         <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
           {t(`${copy}.yourTickets`)}
         </p>
         <div className="mt-6 grid gap-3">
           {isLoading ? (
             <p role="status" className="text-sm text-[var(--color-ink-soft)]">{t(`${copy}.loading`)}</p>
+          ) : loadFailed ? (
+            <LoadErrorAlert
+              focusRef={ticketsRef}
+              onRetry={() => {
+                setIsLoading(true);
+                setTicketsAttempt((attempt) => attempt + 1);
+              }}
+            >
+              {t(`${copy}.loadError`)}
+            </LoadErrorAlert>
           ) : tickets.length === 0 ? (
             <p className="rounded-lg border fine-rule bg-[var(--color-surface-soft)] p-4 text-sm leading-6 text-[var(--color-ink-soft)]">
               {t(`${copy}.empty`)}

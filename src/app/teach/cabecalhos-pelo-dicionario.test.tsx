@@ -52,7 +52,7 @@ vi.mock("@/components/teacher/teacher-wallet-panel", () => ({
   // da pagina. O mock precisa disso para que a prova do cabecalho unico seja
   // sobre a arvore real, e nao sobre um marcador inventado.
   TeacherWalletPanel: () =>
-    createElement("section", null, createElement("h1", null, "Tus ganancias, tu configuración de pagos.")),
+    createElement("section", null, createElement("h1", null, "Tus ganancias, tu configuración de pagos")),
 }));
 
 import AccountPaymentsPage from "../account/payments/page";
@@ -119,7 +119,7 @@ describe("pagamentos não repete o cabeçalho do painel", () => {
     // titulo da mesma tela), e a pagina nao fica sem cabecalho de nivel 1.
     const titulos = screen.getAllByRole("heading", { level: 1 });
     expect(titulos).toHaveLength(1);
-    expect(titulos[0]).toHaveTextContent("Tus ganancias, tu configuración de pagos.");
+    expect(titulos[0]).toHaveTextContent("Tus ganancias, tu configuración de pagos");
     // Nem o titulo fixo em ingles, nem o nome antigo da pagina.
     expect(screen.queryByText("Payouts & tax")).toBeNull();
     expect(screen.queryByText("Pagos e impuestos")).toBeNull();

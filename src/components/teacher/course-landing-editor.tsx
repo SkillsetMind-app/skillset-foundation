@@ -89,12 +89,10 @@ function suggestedBlocks(courseTitle: string, t: (key: string) => string): Cours
   });
 }
 
-// O campo fica dentro do label em caixa alta, negrito e espacado: sem o reset
-// de peso, caixa e espacamento, o texto digitado herdava esse estilo. O peso
-// vem do .field-input (a pele de todo campo da plataforma); caixa e
-// espacamento ficam aqui.
-const fieldClass = "field-input normal-case tracking-normal";
-const labelClass = "grid gap-1.5 text-xs font-bold uppercase tracking-[0.16em] text-[var(--color-ink-soft)]";
+// O rótulo da casa (o mesmo do <Field>: 14px, negrito, em frase). Era a
+// etiqueta de 12px em caixa alta, que só este editor usava nos campos.
+const fieldClass = "field-input";
+const labelClass = "grid gap-1.5 text-sm font-semibold text-[var(--color-ink)]";
 
 // Editor-only identity for a block. Position is not identity: an upload that
 // finishes after the sections moved must still land on the block that asked.
@@ -535,7 +533,7 @@ export function CourseLandingEditor({
     return (
       <PanelCard title={t("teacherLanding.title")}>
         <p className="mt-3 flex items-center gap-2 text-sm text-[var(--color-ink-soft)]">
-          <Loader2 className="h-4 w-4 animate-spin" />
+          <Loader2 aria-hidden="true" className="h-4 w-4 motion-safe:animate-spin" />
           {t("teacherLanding.loading")}
         </p>
       </PanelCard>
@@ -562,7 +560,7 @@ export function CourseLandingEditor({
                 disabled={locked}
                 aria-pressed={active}
                 onClick={() => setTemplate(option)}
-                className={`inline-flex min-h-11 items-center gap-1.5 rounded-sm px-3 py-2 text-sm font-semibold transition-colors duration-[var(--duration-base)] ease-[var(--ease-standard)] disabled:cursor-not-allowed disabled:opacity-50 ${
+                className={`inline-flex min-h-11 items-center gap-1.5 rounded-sm px-3 py-2 text-sm font-semibold transition-colors duration-[var(--duration-base)] ease-[var(--ease-standard)] disabled:cursor-not-allowed disabled:opacity-60 ${
                   active
                     ? "bg-[var(--color-surface)] text-[var(--color-primary)] shadow-[var(--shadow-soft)]"
                     : "text-[var(--color-ink-soft)] enabled:hover:bg-[var(--color-surface-strong)] enabled:hover:text-[var(--color-ink)]"
@@ -651,7 +649,7 @@ export function CourseLandingEditor({
             type="button"
             disabled={atLimit}
             onClick={() => setEntries((current) => [...current, withId(blankBlock(kind, t))])}
-            className="inline-flex items-center gap-1.5 rounded-md border border-[var(--color-line)] bg-white px-3 py-2 text-sm font-semibold text-[var(--color-ink)] disabled:opacity-40"
+            className="inline-flex items-center gap-1.5 rounded-md border border-[var(--color-line)] bg-white px-3 py-2 text-sm font-semibold text-[var(--color-ink)] disabled:cursor-not-allowed disabled:opacity-60"
           >
             <Plus className="h-3.5 w-3.5" />
             {t(`teacherLanding.blocks.${kind}`)}
@@ -677,8 +675,8 @@ export function CourseLandingEditor({
       <div className="mt-5 flex flex-wrap items-center gap-3">
         {/* O Button da casa (o mesmo de todo Save): era uma caixa navy feita
             à mão, sem o subir do hover nem a sombra dos outros. */}
-        <Button onClick={handleSave} loading={saving}>
-          {t(saving ? "teacherLanding.saving" : "teacherLanding.save")}
+        <Button onClick={handleSave} loading={saving} busyLabel={t("teacherLanding.saving")}>
+          {t("teacherLanding.save")}
         </Button>
         <SaveStatusLine
           saving={saving}

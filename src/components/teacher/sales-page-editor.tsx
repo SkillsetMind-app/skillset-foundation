@@ -5,6 +5,7 @@ import { useTranslation } from "@/components/i18n/i18n-provider";
 
 import { PanelCard } from "@/components/teacher/course-commerce-panels";
 import { SaveStatusLine } from "@/components/teacher/save-status-line";
+import { BusyLabel } from "@/components/ui/busy-label";
 import type { DripStrategy } from "@/domain/drip-policy";
 import { DEFAULT_PLATFORM_FEE_BPS } from "@/lib/payments/rules";
 import type { TeacherCourse } from "@/domain/teacher-course";
@@ -108,36 +109,36 @@ export function SalesPageEditor({
       description={t("teacherSalesCopy.description")}
     >
       <form className="mt-4 grid gap-4" onSubmit={handleSave}>
-        <label className="grid gap-1.5 text-sm">
-          <span className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-ink-muted)]">
+        <label className="grid gap-1.5 text-sm font-semibold text-[var(--color-ink)]">
+          <span>
             {t("teacherSalesCopy.productTitle")}
           </span>
           <input
-            className="rounded-md border border-[var(--color-line)] bg-white px-3.5 py-2.5 text-sm outline-none focus:border-[var(--color-primary-light)]"
+            className="field-input"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             maxLength={120}
             required
           />
         </label>
-        <label className="grid gap-1.5 text-sm">
-          <span className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-ink-muted)]">
+        <label className="grid gap-1.5 text-sm font-semibold text-[var(--color-ink)]">
+          <span>
             {t("teacherSalesCopy.summary")}
           </span>
           <textarea
-            className="min-h-[120px] rounded-md border border-[var(--color-line)] bg-white px-3.5 py-2.5 text-sm outline-none focus:border-[var(--color-primary-light)]"
+            className="field-input min-h-[120px]"
             value={summary}
             onChange={(e) => setSummary(e.target.value)}
             maxLength={2000}
             required
           />
         </label>
-        <label className="grid gap-1.5 text-sm">
-          <span className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-ink-muted)]">
+        <label className="grid gap-1.5 text-sm font-semibold text-[var(--color-ink)]">
+          <span>
             {t("teacherSalesCopy.outcomes")}
           </span>
           <textarea
-            className="min-h-[100px] rounded-md border border-[var(--color-line)] bg-white px-3.5 py-2.5 text-sm outline-none focus:border-[var(--color-primary-light)]"
+            className="field-input min-h-[100px]"
             value={outcomesText}
             onChange={(e) => setOutcomesText(e.target.value)}
             placeholder={t("teacherSalesCopy.outcomesPlaceholder")}
@@ -147,7 +148,7 @@ export function SalesPageEditor({
           {/* Contorno: na seção Page o único botão cheio é o "Save page" do
               editor de blocos logo abaixo. */}
           <button type="submit" className="button-outline px-4 py-2 text-xs" disabled={saving}>
-            {t(saving ? "teacherSalesCopy.saving" : "teacherSalesCopy.save")}
+            <BusyLabel busy={saving} idle={t("teacherSalesCopy.save")} busyText={t("teacherSalesCopy.saving")} />
           </button>
           <a
             href={`/courses/${encodeURIComponent(course.id)}`}

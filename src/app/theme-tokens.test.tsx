@@ -684,6 +684,29 @@ describe.each(COMBOS)("InlineAlert inside the classroom — %s", (_name, vars, c
   });
 });
 
+// O .field-input dentro da sala (mensagem, avaliação, comentário da aula):
+// com a plataforma escura, o fundo `!important` e a borda de foco do
+// [data-theme="dark"] .field-input venciam a regra de campo da sala, e num
+// curso claro a caixa saía no tom da plataforma. A regra própria da sala
+// devolve fundo, borda e foco ao tema do curso nas quatro misturas.
+describe.each(COMBOS)("campo da casa dentro da sala — %s", (_name, vars) => {
+  const field = ".member-classroom[data-members-theme] .field-input";
+
+  it("fundo, borda e foco do .field-input saem do tema do curso", () => {
+    expect(sheet).toMatch(
+      /\.member-classroom\[data-members-theme\] \.field-input,\s*\.member-classroom\[data-members-theme\] \.field-input:focus,\s*\.member-classroom\[data-members-theme\] \.field-input:focus-visible \{/,
+    );
+    const rule = block(`${field}:focus-visible`);
+    expect(rule).toContain("border-color: var(--ma-line);");
+    // O fundo do escuro da plataforma tem !important: o da sala precisa dele.
+    expect(rule).toContain("background: var(--ma-surface) !important;");
+    expect(rule).toContain("color: var(--ma-ink);");
+    // Vem depois das regras da plataforma, e o foco pesa mais que o do escuro.
+    expect(css.indexOf(`${field},`)).toBeGreaterThan(css.indexOf('[data-theme="dark"] .field-input:focus-visible {'));
+    expect(ratio("var(--ma-ink)", "var(--ma-surface)", vars, "--ma-bg")).toBeGreaterThanOrEqual(4.5);
+  });
+});
+
 // A comunidade da sala nas cores do CURSO, nas quatro misturas. Antes o feed
 // pintava "respondida", "ao vivo" e "Answer" num verde fixo (3.6:1 num curso
 // escuro), e o filtro ativo, a pílula "N new posts" e os avatares no navy da
@@ -737,6 +760,19 @@ describe.each(COMBOS)("faixa ao vivo da sala — %s", (_name, vars, courseTheme)
     expect(border!, "borda da faixa").toBeGreaterThanOrEqual(3);
     const soft = ratio("var(--ma-ink-soft)", "var(--color-success-soft)", merged, "--ma-bg");
     expect(soft!, "frase sem link na faixa").toBeGreaterThanOrEqual(4.5);
+  });
+});
+
+// Links de destaque da área de membros (o "← Back to the area" da comunidade,
+// o link do início da área): agora que a cor pedida num <a> chega à tela, eles
+// pedem --ma-accent-ink. O --ma-accent é fundo de botão: 2,9:1 num curso escuro.
+describe.each(COMBOS)("link de destaque da área de membros — %s", (_name, vars) => {
+  it("--ma-accent-ink lê 4.5:1 no fundo e na superfície do curso", () => {
+    for (const background of ["var(--ma-bg)", "var(--ma-surface)"]) {
+      const contrast = ratio("var(--ma-accent-ink)", background, vars, "--ma-bg");
+      expect(contrast, `${background} must resolve`).not.toBeNull();
+      expect(contrast!, background).toBeGreaterThanOrEqual(4.5);
+    }
   });
 });
 

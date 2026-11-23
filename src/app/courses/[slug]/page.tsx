@@ -20,10 +20,20 @@ import { getCourseRefAccess, getPublicCourseByRef, isMarketplaceOpen } from "@/l
 import { buildCourseJsonLd } from "@/lib/seo/course-jsonld";
 import { buildPageMetadata } from "@/lib/seo/page-metadata";
 
+// Não congela as amostras: o layout lê o cabeçalho (nonce) e a página lê o
+// cookie do idioma, então o build marca a rota como dinâmica (ƒ) e cada pedido
+// decide na hora se o endereço é de um curso real ou da amostra.
 export function generateStaticParams() {
   return getCourseSlugs().map((slug) => ({ slug }));
 }
 
+// O curso REAL vence a amostra. O endereço de um curso é o title_key (o título
+// virado slug), então um curso chamado "Effective Communication" mora em
+// /courses/effective-communication, o mesmo endereço de uma das seis amostras.
+// A amostra só aparece quando nenhum curso real responde por ele para quem
+// pede (publicado, ou rascunho que a sessão enxerga); falha de leitura
+// ("unknown") mantém a amostra. A consulta extra só acontece nos seis slugs
+// de amostra: os demais já consultavam o banco.
 export async function generateMetadata({
   params,
 }: {
@@ -31,7 +41,9 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { t } = await getServerTranslation();
   const { slug } = await params;
-  const course = getCourseBySlug(slug);
+  const published = await getPublicCourseByRef(slug);
+  const sample = published ? undefined : getCourseBySlug(slug);
+  const course = sample && (await getCourseRefAccess(slug)) !== "visible" ? sample : undefined;
 
   if (course) {
     // Amostra de demonstração: fica no ar (decisão do dono), mas mostra preço e
@@ -49,8 +61,6 @@ export async function generateMetadata({
   // a funcionar (migration 20260901120000). Antes disto, todo curso real caía no
   // literal "Course" com a mesma descrição e o mesmo logo — colar o link de
   // qualquer curso no WhatsApp produzia um card idêntico e sem identidade.
-  const published = await getPublicCourseByRef(slug);
-
   if (published) {
     return buildPageMetadata({
       title: published.title,
@@ -81,18 +91,19 @@ export default async function CourseDetailPage({
 }) {
   const { t, locale } = await getServerTranslation();
   const { slug } = await params;
-  const course = getCourseBySlug(slug);
+  // Mesma ordem do generateMetadata: o curso real primeiro, a amostra depois.
+  const published = await getPublicCourseByRef(slug);
+  const access = published ? "visible" : await getCourseRefAccess(slug);
+  const course = access === "visible" ? undefined : getCourseBySlug(slug);
 
   if (!course) {
-    const published = await getPublicCourseByRef(slug);
-
     // Curso não publicado, removido ou slug inválido respondia 200 com uma
     // página vazia: ruim para a qualidade da página de anúncio e para o
     // buscador. Aqui, ANTES de qualquer Suspense, vira 404 de verdade. O dono
     // (e o admin) continuam vendo o rascunho: a leitura usa a sessão do pedido
     // e a RLS decide. Falha de leitura ("unknown") não vira 404: um soluço do
     // banco não pode derrubar a página de um curso publicado.
-    if (!published && (await getCourseRefAccess(slug)) === "missing") {
+    if (access === "missing") {
       notFound();
     }
 
@@ -355,7 +366,9 @@ export default async function CourseDetailPage({
                 six-row <dl> alongside Category and Level — buyers had to
                 scan past four neutral rows to find what it costs. Now it
                 anchors the sidebar so the cost is the first thing you see. */}
-            <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">{t("publicCourses.access")}</p>
+            {/* "Price" em 12px, como no cartão do curso real: "Access" em 10px
+                não dizia que o número embaixo é o preço. */}
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--color-accent-fg)]">{t("publicCourses.priceEyebrow")}</p>
             <p className="display-title mt-1 text-4xl leading-none text-[var(--color-primary)]">
               {priceLabel}
             </p>
@@ -405,7 +418,7 @@ export default async function CourseDetailPage({
       <div className="pointer-events-none fixed inset-x-0 bottom-0 z-40 px-3 pb-3 lg:hidden">
         <div className="pointer-events-auto flex items-center gap-3 rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)]/95 px-4 py-3 shadow-[0_-6px_30px_rgba(15,39,68,0.18)] backdrop-blur supports-[backdrop-filter]:bg-[var(--color-surface)]/85">
           <div className="min-w-0 flex-1">
-            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">{t("publicCourses.access")}</p>
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">{t("publicCourses.priceEyebrow")}</p>
             <p className="display-title truncate text-xl leading-none text-[var(--color-primary)]">
               {priceLabel}
             </p>

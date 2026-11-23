@@ -526,6 +526,34 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     expect(screen.getByRole("alert")).toHaveTextContent("Añade un video, texto o archivo a cada lección antes de publicar.");
   });
 
+  // F-04: publicando, o botão diz "Publishing..." sem mudar de largura: o
+  // rótulo de repouso fica na mesma célula, invisível e fora do nome.
+  it("publishing keeps both labels in place and names the button by the visible one", async () => {
+    vi.mocked(subscribeToTeacherCourse).mockImplementationOnce((_id, emit) => {
+      emit({ ...mocks.course, paymentType: "free", priceAmountMinor: 0, modules: [{ id: "m1", title: "Start here", lessons: [{ id: "l1", title: "Welcome", description: "", type: "text", contentText: "Read this first." }] }] });
+      return Object.assign(() => {}, { reload: async () => {} });
+    });
+    let failPublish: (error: Error) => void = () => {};
+    vi.mocked(publishTeacherCourse).mockImplementationOnce(
+      () => new Promise((_resolve, reject) => { failPublish = reject; }),
+    );
+    renderBuilder("review");
+    await screen.findByRole("heading", { name: mocks.course.title });
+    const idle = screen.getByRole("button", { name: "Publish product" });
+    expect(within(idle).getByText("Publishing...")).toHaveAttribute("aria-hidden", "true");
+    fireEvent.click(idle);
+
+    const busy = await screen.findByRole("button", { name: "Publishing..." });
+    expect(busy).toBe(idle);
+    expect(busy).toBeDisabled();
+    expect(busy).toHaveAttribute("aria-busy", "true");
+    expect(within(busy).getByText("Publish product")).toHaveAttribute("aria-hidden", "true");
+    expect(screen.queryByRole("button", { name: "Publish product" })).toBeNull();
+
+    await act(async () => { failPublish(new Error("network")); });
+    expect(await screen.findByRole("button", { name: "Publish product" })).toBe(idle);
+  });
+
   // Os tipos novos tem recusas proprias no servidor: cada uma diz o que falta,
   // em vez do generico "try again".
   it.each([
@@ -639,6 +667,19 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     expect(screen.getByLabelText("Subir portada")).not.toBeDisabled();
     expect(uploadCourseAsset).toHaveBeenCalledOnce();
     expect(subscribeToTeacherCourse).toHaveBeenCalledOnce();
+  });
+
+  // B-05: a capa do curso usa a casca única; o accept e o teto seguem os dela.
+  it("keeps the course-cover accept and refuses a file over the upload limit before sending", async () => {
+    renderBuilder();
+    await screen.findByRole("heading", { name: mocks.course.title });
+    const input = screen.getByLabelText("Upload cover");
+    expect(input).toHaveAttribute("accept", "image/*");
+    const big = new File(["x"], "capa.png", { type: "image/png" });
+    Object.defineProperty(big, "size", { value: 600 * 1024 * 1024 });
+    fireEvent.change(input, { target: { files: [big] } });
+    expect(screen.getByText(/Use an image file under/).closest('[role="alert"]')).not.toBeNull();
+    expect(uploadCourseAsset).not.toHaveBeenCalled();
   });
 
   it("uses the current language when leaving a dirty draft and keeps new-tab preview exempt", async () => {
@@ -1090,6 +1131,7 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
       fireEvent.change(screen.getByRole("textbox", { name: new RegExp(`^${label}`) }), { target: { value } });
     }
     fireEvent.click(screen.getByRole("button", { name: "Dark" }));
+    expect(screen.getByLabelText("Upload cover")).toHaveAttribute("accept", "image/*");
     fireEvent.change(screen.getByLabelText("Upload cover"), { target: { files: [new File(["no"], "invalid.txt", { type: "text/plain" })] } });
     expect(screen.getByText(/Use an image file under/)).toBeInTheDocument();
     const subscriptions = vi.mocked(subscribeToTeacherCourse).mock.calls.length;
@@ -1154,10 +1196,11 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     await act(async () => fireEvent.change(screen.getByLabelText("Upload cover"), { target: { files: [new File(["image"], "cover.png", { type: "image/png" })] } }));
     act(() => emitAssets([{ id: "new-cover", courseId: "course-1", ownerId: "teacher-1", kind: "members_cover", fileName: "cover.png", contentType: "image/png", size: 5, storagePath: "fixture/cover.png", downloadUrl: "/fixture-cover.png", isPreview: false, lessonId: null }]));
     expect(screen.getByRole("img", { name: `${authorTitle} members cover` })).toHaveAttribute("src", "/fixture-cover.png");
-    expect(screen.getByText("Cover set")).toBeInTheDocument();
+    // Sem o selo "Cover set" (B-05): a prévia e o "Replace cover" dizem que há capa.
+    expect(screen.getByLabelText("Replace cover")).toHaveAttribute("type", "file");
     fireEvent.click(screen.getByRole("button", { name: "Switch language" }));
     expect(screen.getByRole("img", { name: `Portada del área de miembros de ${authorTitle}` })).toHaveAttribute("src", "/fixture-cover.png");
-    expect(screen.getByText("Portada añadida")).toBeInTheDocument();
+    expect(screen.getByLabelText("Cambiar portada")).toHaveAttribute("type", "file");
     fireEvent.click(screen.getByRole("button", { name: "Quitar portada" }));
     expect(screen.queryByRole("img", { name: `Portada del área de miembros de ${authorTitle}` })).not.toBeInTheDocument();
     expect(screen.getByText("Aún no hay portada")).toBeInTheDocument();
@@ -1413,6 +1456,33 @@ describe("o que falta para publicar: um numero so em todas as telas", () => {
     expect(await screen.findByText("5 of 7 checks · 71%")).toBeInTheDocument();
     expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "71");
   });
+
+  // B-15: sem a lista de arquivos o Manage dava outro número que o construtor
+  // (e a falha era engolida). Agora espera com "—%", e a falha tem "Try again".
+  it("Manage: sem a lista de arquivos, —% no lugar do numero e Try again", async () => {
+    const withLesson: TeacherCourse = {
+      ...mocks.course,
+      modules: [{ id: "m1", title: "Start here", lessons: [
+        { id: "l1", title: "Ready lesson", description: "", type: "text", contentText: "Read this first." },
+      ] }],
+      lessonCount: 1,
+    };
+    vi.mocked(subscribeToTeacherCourse).mockImplementationOnce((_id, onData) => {
+      onData(withLesson);
+      return Object.assign(() => {}, { reload: async () => {} });
+    });
+    vi.mocked(fetchCourseAssets).mockRejectedValueOnce(new Error("offline"));
+    render(<CourseManageHub courseId="course-1" />);
+
+    expect(await screen.findByText("Checking the content of your lessons... · —% ready")).toBeInTheDocument();
+    expect(await screen.findByText(/We could not check the content of your lessons/)).toBeInTheDocument();
+    expect(screen.queryByRole("progressbar")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(await screen.findByRole("progressbar")).toBeInTheDocument();
+    expect(screen.queryByText(/—%/)).toBeNull();
+    expect(screen.queryByText(/We could not check the content/)).toBeNull();
+  });
 });
 
 // Corte 1 da criacao simples: quem escolhe Gratis nao passa pela aba de preco
@@ -1505,6 +1575,20 @@ describe("aba de preco sem o que nao se aplica", () => {
     expect(screen.queryByText(/subscription|Payment model|Marketplace setup|billing interval/i)).not.toBeInTheDocument();
     expect(screen.getByRole("textbox", { name: "Price" })).toBeInTheDocument();
     expect(screen.getByRole("combobox", { name: "Free preview lesson" })).toBeInTheDocument();
+    // F-12: sem aula o seletor fica apagado e diz por quê.
+    expect(screen.getByRole("combobox", { name: "Free preview lesson" })).toBeDisabled();
+    expect(screen.getByRole("combobox", { name: "Free preview lesson" }))
+      .toHaveAccessibleDescription("Add a lesson in Curriculum first, then pick it here.");
+  });
+
+  // F-12: no teto de resultados o "Add" apagava calado.
+  it("resultados no teto: o Add apagado diz o limite", async () => {
+    renderBuilder("details");
+    await screen.findByRole("heading", { name: mocks.course.title, level: 1 });
+    const add = screen.getByRole("button", { name: "Add learning outcome" });
+    for (let index = 0; index < 8 && !(add as HTMLButtonElement).disabled; index += 1) fireEvent.click(add);
+    expect(add).toBeDisabled();
+    expect(add).toHaveAccessibleDescription("You can list up to 8 outcomes.");
   });
 
   it.each([

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 
 import type { CourseAsset, CourseAssetKind } from "@/domain/course-asset";
 import { useTranslation } from "@/components/i18n/i18n-provider";
-import { Button, ConfirmDialog, InlineAlert } from "@/components/ui";
+import { BusyLabel, Button, ConfirmDialog, InlineAlert } from "@/components/ui";
 import { getCourseAssetKindLabel } from "@/lib/i18n/course-assets";
 import {
   courseAssetAcceptTypes,
@@ -223,7 +223,9 @@ export function CourseAssetUploader({ course, isEditable, onModuleCoverUploaded,
           <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-accent-fg)]">
             {t("creatorEditor.assets.label")}
           </p>
-          <h3 className="display-title mt-3 text-3xl text-[var(--color-primary)]">
+          {/* Título de seção da casa, não display de 30px: a biblioteca é uma
+              ferramenta embaixo do construtor, não o assunto da página. */}
+          <h3 className="mt-2 text-lg font-semibold text-[var(--color-ink)]">
             {t("creatorEditor.assets.title")}
           </h3>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--color-ink-soft)]">
@@ -258,7 +260,7 @@ export function CourseAssetUploader({ course, isEditable, onModuleCoverUploaded,
                 setFileInputKey((current) => current + 1);
               }}
               disabled={!isEditable || isUploading}
-              className="min-h-11 rounded-md border border-[var(--color-line)] bg-white px-3 py-2 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
+              className="field-input field-input--inline disabled:cursor-not-allowed disabled:opacity-60"
             >
               {assetKinds.map((item) => (
                 <option key={item} value={item}>
@@ -275,7 +277,7 @@ export function CourseAssetUploader({ course, isEditable, onModuleCoverUploaded,
                 value={moduleId}
                 onChange={(event) => setModuleId(event.target.value)}
                 disabled={!isEditable || isUploading || allModules.length === 0}
-                className="min-h-11 rounded-md border border-[var(--color-line)] bg-white px-3 py-2 text-sm font-normal outline-none focus:border-[var(--color-primary-light)] disabled:bg-[var(--color-surface-soft)]"
+                className="field-input field-input--inline disabled:cursor-not-allowed disabled:opacity-60"
               >
                 <option value="">
                   {allModules.length === 0 ? t("creatorEditor.assets.addModules") : t("creatorEditor.assets.chooseModule")}
@@ -299,7 +301,7 @@ export function CourseAssetUploader({ course, isEditable, onModuleCoverUploaded,
               setSelectedFile(event.target.files?.[0] ?? null);
               setUploadProgress(null);
             }}
-            className="min-h-11 min-w-0 flex-1 basis-56 rounded-md border border-dashed border-[var(--color-line)] bg-[var(--color-surface-soft)] px-3 py-1.5 text-sm text-[var(--color-ink-soft)] file:mr-3 file:rounded-md file:border-0 file:bg-white file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-[var(--color-primary)] disabled:opacity-50"
+            className="min-h-11 min-w-0 flex-1 basis-56 rounded-md border border-dashed border-[var(--color-line)] bg-[var(--color-surface-soft)] px-3 py-1.5 text-sm text-[var(--color-ink-soft)] file:mr-3 file:rounded-md file:border-0 file:bg-white file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-[var(--color-primary)] disabled:opacity-60"
           />
         </div>
 
@@ -502,7 +504,11 @@ function AssetGroup({
                     disabled={deletingAssetId === asset.id}
                     className="button-danger px-3.5 py-2 text-xs"
                   >
-                    {deletingAssetId === asset.id ? t("creatorEditor.lesson.deleting") : t("creatorEditor.lesson.delete")}
+                    <BusyLabel
+                      busy={deletingAssetId === asset.id}
+                      idle={t("creatorEditor.lesson.delete")}
+                      busyText={t("creatorEditor.lesson.deleting")}
+                    />
                   </button>
                 </div>
               ) : null}

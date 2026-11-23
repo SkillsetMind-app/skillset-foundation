@@ -1,7 +1,8 @@
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { ConfirmEmailGate } from "@/components/auth/confirm-email-gate";
+import { ConfirmEmailGate, ExpiredConfirmationLink } from "@/components/auth/confirm-email-gate";
+import { getAuthErrorMessage } from "@/lib/auth/supabase-auth";
 
 /**
  * Quem confirma o e-mail em outra aba (o link abre ao lado) deixava a aba do
@@ -155,5 +156,60 @@ describe("ConfirmEmailGate resend countdown for screen readers", () => {
     expect(status).toHaveTextContent("auth.signup.confirmResendReady");
     expect(screen.getByRole("button", { name: "auth.signup.confirmResend" })).toBeEnabled();
     expect(mocks.resendSignupConfirmation).toHaveBeenCalledTimes(1);
+  });
+});
+
+// F-07: a falha do reenvio era uma frase vermelha solta; agora é o aviso da
+// casa (caixa e ícone), com a mesma frase e o mesmo anúncio, uma vez só.
+// I-2: a espera desenha o anel da casa, nos mesmos 16px.
+describe("ConfirmEmailGate: o aviso e o anel da casa", () => {
+  const offline = new Error("Failed to fetch");
+  const message = getAuthErrorMessage(offline, (key) => key);
+
+  it("a falha do reenvio aparece no aviso da casa, com role=alert e a mesma frase", async () => {
+    mocks.resendSignupConfirmation.mockRejectedValue(offline);
+    render(<ConfirmEmailGate email="learner@example.com" />);
+    expect(screen.queryByRole("alert")).toBeNull();
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "auth.signup.confirmResend" }));
+    });
+
+    const alerts = screen.getAllByRole("alert");
+    expect(alerts).toHaveLength(1);
+    expect(alerts[0]).toHaveTextContent(message);
+    expect(alerts[0]).toHaveAttribute("aria-live", "assertive");
+    expect(alerts[0].querySelector("svg[aria-hidden='true']")).not.toBeNull();
+  });
+
+  it("no link vencido, a falha do envio também vira o aviso da casa", async () => {
+    mocks.resendSignupConfirmation.mockRejectedValue(offline);
+    render(<ExpiredConfirmationLink onSignIn={vi.fn()} />);
+    fireEvent.change(screen.getByRole("textbox"), { target: { value: "learner@example.com" } });
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "auth.signup.expiredSend" }));
+    });
+
+    const alerts = screen.getAllByRole("alert");
+    expect(alerts).toHaveLength(1);
+    expect(alerts[0]).toHaveTextContent(message);
+    expect(alerts[0].querySelector("svg[aria-hidden='true']")).not.toBeNull();
+  });
+
+  it("a espera usa o anel da casa, escondido do leitor, com 16px e giro só com movimento", () => {
+    render(<ConfirmEmailGate email="learner@example.com" />);
+    const waiting = screen.getByText("auth.signup.confirmWaiting");
+    const ring = waiting.querySelector("span[aria-hidden='true']");
+    expect(ring).not.toBeNull();
+    expect(ring).toHaveClass(
+      "rounded-full",
+      "border-[var(--color-line)]",
+      "border-t-[var(--color-accent-fg)]",
+      "motion-safe:animate-spin",
+      "size-4!",
+      "shrink-0",
+    );
+    expect(waiting).toHaveAttribute("role", "status");
   });
 });

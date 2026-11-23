@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import type { ComponentType, ReactNode } from "react";
 
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { BusyLabel } from "@/components/ui/busy-label";
 import { InlineAlert } from "@/components/ui/inline-alert";
 import { moveFocusByKey } from "@/lib/a11y/menu-keys";
 import { useModalFocus } from "@/lib/a11y/use-modal-focus";
@@ -240,7 +241,7 @@ export function DeleteOrArchiveCourseDialog({
         role="dialog"
         aria-modal="true"
         aria-label={t("creatorPanel.products.delete.aria").replace("{title}", () => courseTitle)}
-        className="modal-panel modal-panel-scroll relative w-full max-w-md rounded-xl border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-strong)] outline-none"
+        className="dialog-panel modal-panel modal-panel-scroll relative outline-none"
       >
         {/* O X é o Cancelar: some enquanto apaga ou arquiva, quando o
             Cancelar também trava. */}
@@ -254,6 +255,7 @@ export function DeleteOrArchiveCourseDialog({
             <X aria-hidden="true" size={18} />
           </button>
         )}
+        <div className="p-6">
         <p className={`pr-10 text-xs font-bold uppercase tracking-[0.2em] ${known ? "text-[var(--color-danger-fg)]" : "text-[var(--color-ink-muted)]"}`}>
           {known ? t(`${prefix}.eyebrow`) : t("creatorPanel.products.removeEyebrow")}
         </p>
@@ -309,8 +311,12 @@ export function DeleteOrArchiveCourseDialog({
           </InlineAlert>
         ) : null}
         </div>
+        </div>
 
-        <div className="mt-6 flex flex-wrap justify-end gap-3">
+        {/* O rodapé da casa: filete em cima e, abaixo do sm, empilha com a
+            ação em cima e o Cancelar embaixo (antes ficavam lado a lado e
+            quebravam soltos). Do sm em diante pode quebrar, como antes. */}
+        <div className="dialog-footer flex-wrap">
           <button
             type="button"
             onClick={onCancel}
@@ -327,7 +333,11 @@ export function DeleteOrArchiveCourseDialog({
             // Antes da contagem, contorno neutro: nem um nem outro.
             className={`${!known ? "button-outline" : hasAudience ? "button-solid" : "button-danger button-danger-solid"} px-4 text-sm`}
           >
-            {!known && !failed ? t("creatorPanel.products.removeChecking") : busy ? t(`${prefix}.busy`) : t(`${prefix}.confirm`)}
+            <BusyLabel
+              busy={(known || failed) && busy}
+              idle={!known && !failed ? t("creatorPanel.products.removeChecking") : t(`${prefix}.confirm`)}
+              busyText={t(`${prefix}.busy`)}
+            />
           </button>
         </div>
       </div>

@@ -20,14 +20,30 @@ export function PlatformPageHeader({
   title,
   description,
   actions,
+  titleAside,
+  children,
   compact = false,
 }: {
   eyebrow?: string;
   title: string;
   description?: string;
   actions?: ReactNode;
+  /** Ao lado do h1, fora dele (o "?" da ajuda): dentro, o leitor de tela lia o
+   *  nome do botao como parte do titulo da pagina. */
+  titleAside?: ReactNode;
+  /** Abaixo da frase, na mesma coluna (um "Learn more" recolhido). */
+  children?: ReactNode;
   compact?: boolean;
 }) {
+  const heading = (
+    <h1
+      className={`display-title ${
+        eyebrow && !titleAside ? "mt-2" : ""
+      } max-w-4xl text-3xl leading-tight text-[var(--color-primary)]`}
+    >
+      {title}
+    </h1>
+  );
   return (
     <div
       className={`flex flex-wrap items-end justify-between gap-4 border-b border-[var(--color-line)] pb-5 ${
@@ -36,18 +52,18 @@ export function PlatformPageHeader({
     >
       <div className="min-w-0">
         {eyebrow ? <Eyebrow>{eyebrow}</Eyebrow> : null}
-        <h1
-          className={`display-title ${
-            eyebrow ? "mt-2" : ""
-          } max-w-4xl text-3xl leading-tight text-[var(--color-primary)]`}
-        >
-          {title}
-        </h1>
+        {titleAside ? (
+          <div className={`flex items-center gap-2 ${eyebrow ? "mt-2" : ""}`}>
+            {heading}
+            {titleAside}
+          </div>
+        ) : heading}
         {description ? (
           <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--color-ink-soft)]">
             {description}
           </p>
         ) : null}
+        {children}
       </div>
       {actions ? <div className="flex flex-wrap gap-2">{actions}</div> : null}
     </div>

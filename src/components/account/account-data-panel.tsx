@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { BusyLabel } from "@/components/ui/busy-label";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { InlineAlert } from "@/components/ui/inline-alert";
@@ -64,7 +65,7 @@ export function AccountDataPanel() {
           onClick={handleExport}
           disabled={isExporting || isDeleting}
         >
-          {t(isExporting ? "accountData.requesting" : "accountData.export")}
+          <BusyLabel busy={isExporting} idle={t("accountData.export")} busyText={t("accountData.requesting")} />
         </Button>
         {/* Antes o próprio botão virava "Confirm delete request" no mesmo
             lugar, e um clique duplo já pedia a exclusão. A pergunta agora é
@@ -75,7 +76,7 @@ export function AccountDataPanel() {
           onClick={() => setConfirmingDelete(true)}
           disabled={isExporting || isDeleting}
         >
-          {t(isDeleting ? "accountData.requesting" : "accountData.delete")}
+          <BusyLabel busy={isDeleting} idle={t("accountData.delete")} busyText={t("accountData.requesting")} />
         </Button>
       </div>
       <p className="mt-3 text-xs leading-5 text-[var(--color-ink-soft)]">

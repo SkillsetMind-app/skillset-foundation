@@ -8,6 +8,7 @@ import { MobileSidebarDrawer } from "@/components/platform/mobile-sidebar-drawer
 import { PlatformHeader } from "@/components/platform/platform-header";
 import { PlatformNav, resolveContext } from "@/components/platform/platform-nav";
 import { PlatformPageHeader } from "@/components/platform/platform-page-header";
+import { isFramedPlatformRoute } from "@/components/platform/platform-routes";
 import { SidebarToggle } from "@/components/platform/sidebar-toggle";
 import { StatusBanner } from "@/components/platform/status-banner";
 import { LogoWordmark } from "@/components/shared/logo-wordmark";
@@ -65,11 +66,9 @@ export function PlatformShell({
   // Pelo endereco, nao pelo papel: a largura ja vem certa no HTML do servidor,
   // sem esperar o login carregar (a coluna nao muda de largura na tela).
   const teachRoute = pathname === "/teach" || pathname.startsWith("/teach/");
-  // O construtor usa a largura toda, decidido pelo endereco tambem: pela
-  // classe do editor carregado, o esqueleto (e o erro, e a tela sem curso)
-  // saia na coluna de 1280px e a pagina pulava para a largura toda depois.
-  const builderRoute = pathname === "/teach/builder" || pathname.startsWith("/teach/builder/");
-  const teacherFrame = teachRoute && !builderRoute;
+  // Que telas ganham a coluna de 1280px: a regra mora em platform-routes.ts,
+  // que a espera da guarda de login também lê.
+  const framed = isFramedPlatformRoute(pathname);
 
   return (
     <ThemeProvider>
@@ -126,12 +125,12 @@ export function PlatformShell({
                   <div
                     className={[
                       compact ? "space-y-4" : "space-y-6",
-                      // Estudio: uma coluna de no maximo 1280px, centrada. Num
-                      // monitor de 1920px a lista de vendas tinha o titulo na
-                      // borda esquerda e o valor 1500px depois. So a partir de
-                      // 1440px: abaixo disso nenhuma tela fica mais estreita
-                      // que antes.
-                      teacherFrame ? "mx-auto w-full min-[1440px]:max-w-7xl" : "",
+                      // Estudio, conta e listas do aluno: uma coluna de no
+                      // maximo 1280px, centrada. Num monitor de 1920px a lista
+                      // de vendas tinha o titulo na borda esquerda e o valor
+                      // 1500px depois. So a partir de 1440px: abaixo disso
+                      // nenhuma tela fica mais estreita que antes.
+                      framed ? "mx-auto w-full min-[1440px]:max-w-7xl" : "",
                     ].join(" ")}
                   >
                     {/* O cabecalho novo e so do estudio. Sala do aluno, conta,

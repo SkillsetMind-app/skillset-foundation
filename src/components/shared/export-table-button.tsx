@@ -194,7 +194,12 @@ export function ExportTableButton({
   }
 
   return (
-    <div className={cn("relative", className)}>
+    // `contents`: o botão e o motivo entram direto na fileira de quem chama. O
+    // motivo vai para uma linha só dele, embaixo da fileira (basis-full,
+    // order-last): ao lado do botão, ele aparecia no meio da busca e fazia os
+    // filtros de Vendas e Relatórios quebrarem de linha. O menu é um portal
+    // com posição fixa: não precisa de caixa em volta.
+    <div className={cn("contents", className)}>
       <button
         ref={triggerRef}
         id={`${menuId}-trigger`}
@@ -206,15 +211,14 @@ export function ExportTableButton({
         aria-expanded={isMenuOpen}
         aria-controls={isMenuOpen ? menuId : undefined}
         aria-describedby={reason ? `${menuId}-reason` : undefined}
-        title={reason}
       >
         <Download aria-hidden="true" size={14} strokeWidth={1.9} />
         {t("platform.ops.exportButton.export")}
       </button>
-      {/* Desligado sem dizer por que: agora o leitor de tela ouve o motivo
-          (e o mouse ve no title). */}
+      {/* T-15: o motivo de estar desligado era só title e leitor de tela, e no
+          toque não aparecia. Agora é uma linha visível, ligada ao botão. */}
       {reason ? (
-        <span id={`${menuId}-reason`} className="sr-only">
+        <span id={`${menuId}-reason`} className="order-last basis-full text-xs leading-5 text-[var(--color-ink-soft)] sm:text-right">
           {reason}
         </span>
       ) : null}

@@ -35,13 +35,14 @@ describe.each(["en", "es"] as const)("Stripe dashboard button (%s)", (locale) =>
     fireEvent.click(button);
     expect(button).toHaveAttribute("aria-busy", "true");
     expect(button).toHaveAttribute("aria-disabled", "true");
-    expect(button).toHaveTextContent(copy(locale, "opening"));
+    // Os dois rótulos moram no botão (largura fixa); o nome é o que está à vista.
+    expect(button).toHaveAccessibleName(copy(locale, "opening"));
     expect(button).toHaveFocus();
     fireEvent.click(button);
     expect(mocks.open).toHaveBeenCalledTimes(1);
     await act(async () => finish());
     expect(button).toHaveAttribute("aria-busy", "false");
-    expect(button).toHaveTextContent(copy(locale, "open"));
+    expect(button).toHaveAccessibleName(copy(locale, "open"));
     expect(screen.queryByRole("alert")).toBeNull();
   });
 

@@ -1,11 +1,13 @@
 "use client";
 
 import { CheckCircle2, Star } from "lucide-react";
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 
 import { useAuth } from "@/components/auth/auth-provider";
 import { useTranslation } from "@/components/i18n/i18n-provider";
+import { BusyLabel } from "@/components/ui/busy-label";
 import { InlineAlert } from "@/components/ui/inline-alert";
+import { LoadErrorAlert } from "@/components/ui/load-error-alert";
 import type { CourseReview } from "@/domain/course-review";
 import {
   submitCourseReview,
@@ -61,6 +63,13 @@ export function CourseReviewPanel({
   const [saved, setSaved] = useState(false);
   // Chave do dicionário, nunca texto: o idioma pode trocar com o erro na tela.
   const [error, setError] = useState("");
+  // A falha da leitura tem "Try again" (assina de novo), acima do formulário:
+  // sem ela, as estrelas e o texto podem não ser a resenha já salva.
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [reviewAttempt, setReviewAttempt] = useState(0);
+  // O aviso fica, com o botão ocupado, até a releitura responder.
+  const [reviewRetrying, setReviewRetrying] = useState(false);
+  const panelRef = useRef<HTMLElement>(null);
   const progressMissing = requiresProgress && progressPercent < 50;
   const canReview = !previewMode && !progressMissing && Boolean(user);
 
@@ -74,16 +83,19 @@ export function CourseReviewPanel({
       user.uid,
       (review) => {
         setExistingReview(review);
+        setLoadFailed(false);
+        setReviewRetrying(false);
         if (review) {
           setRating(review.rating);
           setBody(review.body ?? "");
         }
       },
       () => {
-        setError("learn.classroom.review.loadError");
+        setLoadFailed(true);
+        setReviewRetrying(false);
       },
     );
-  }, [courseId, previewMode, user]);
+  }, [courseId, previewMode, user, reviewAttempt]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -107,7 +119,7 @@ export function CourseReviewPanel({
   }
 
   return (
-    <section className="member-review-panel">
+    <section ref={panelRef} tabIndex={-1} className="member-review-panel">
       <div>
         <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-accent-fg)]">
           {t("learn.classroom.review.title")}
@@ -119,6 +131,20 @@ export function CourseReviewPanel({
           {t("learn.classroom.review.description")}
         </p>
       </div>
+
+      {loadFailed ? (
+        <LoadErrorAlert
+          className="mt-5"
+          focusRef={panelRef}
+          busy={reviewRetrying}
+          onRetry={() => {
+            setReviewRetrying(true);
+            setReviewAttempt((attempt) => attempt + 1);
+          }}
+        >
+          {t("learn.classroom.review.loadError")}
+        </LoadErrorAlert>
+      ) : null}
 
       <form onSubmit={handleSubmit} className="mt-5 grid gap-4">
         <div className="flex flex-wrap gap-2" role="radiogroup" aria-label={t("learn.classroom.review.rating")}>
@@ -144,7 +170,7 @@ export function CourseReviewPanel({
           disabled={!canReview || isSaving}
           maxLength={1200}
           rows={4}
-          className="min-h-28 rounded-md border border-[var(--color-line)] bg-white px-4 py-3 text-sm leading-6 text-[var(--color-ink)] outline-none transition focus:border-[var(--color-primary)]"
+          className="field-input min-h-28"
           aria-label={t("learn.classroom.review.bodyLabel")}
           placeholder={t("learn.classroom.review.placeholder")}
         />
@@ -168,11 +194,11 @@ export function CourseReviewPanel({
             disabled={!canReview || isSaving}
             className="button-solid w-fit px-4 py-2.5 text-sm"
           >
-            {isSaving
-              ? t("learn.classroom.review.saving")
-              : existingReview
-                ? t("learn.classroom.review.update")
-                : t("learn.classroom.review.submit")}
+            <BusyLabel
+              busy={isSaving}
+              idle={existingReview ? t("learn.classroom.review.update") : t("learn.classroom.review.submit")}
+              busyText={t("learn.classroom.review.saving")}
+            />
           </button>
           <span role="status" className="inline-flex items-center gap-1.5 text-sm font-semibold text-[var(--color-success-fg)]">
             {saved ? (

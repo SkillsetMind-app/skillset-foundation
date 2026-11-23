@@ -5,7 +5,7 @@ import { Download } from "lucide-react";
 
 import { ConfirmActionDialog } from "@/components/admin/confirm-action-dialog";
 import { useTranslation } from "@/components/i18n/i18n-provider";
-import { Button, Field, InlineAlert } from "@/components/ui";
+import { BusyLabel, Button, Field, InlineAlert } from "@/components/ui";
 import type { CreatorVerificationCase } from "@/domain/creator-verification";
 import {
   reviewCreatorVerification,
@@ -41,7 +41,7 @@ function EvidenceDocument({ path }: { path: string }) {
         finally { setBusy(false); }
       }}>
       <Download size={16} aria-hidden="true" />
-      {t(`${copy}.${busy ? "openingDocument" : "document"}`)}
+      <BusyLabel busy={busy} idle={t(`${copy}.document`)} busyText={t(`${copy}.openingDocument`)} />
     </button>
     {failed ? <InlineAlert tone="error">{t(`${copy}.documentError`)}</InlineAlert> : null}
   </div>;
