@@ -3,7 +3,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import Home from "@/app/page";
 import { RealCoursesProvider } from "@/components/site/real-courses";
-import type { PublicCourseSummary } from "@/lib/data/server/public-course";
 
 vi.mock("@/components/auth/auth-provider", () => ({
   useAuth: () => ({
@@ -15,15 +14,17 @@ vi.mock("@/components/auth/auth-provider", () => ({
 }));
 
 // Vitrine aberta (12 cursos reais de 5 professores)? É o contrato de
-// isMarketplaceOpen. Começa fechada: é o estado de hoje. O curso do cartão
-// "See a real course" vem de getPublicCourseByRef (null = leitura falhou).
-const state = vi.hoisted(() => ({ open: false, course: null as PublicCourseSummary | null }));
+// isMarketplaceOpen. Começa fechada: é o estado de hoje. Título e capa do
+// cartão "See a real course" vêm de getShowcaseCourseCover (null = leitura
+// falhou ou passou do prazo; o prazo em si é testado em public-course.test).
+type ShowcaseCover = { title: string; coverImageUrl: string | null };
+const state = vi.hoisted(() => ({ open: false, course: null as ShowcaseCover | null }));
 const readCourse = vi.hoisted(() =>
-  vi.fn<(ref: string) => Promise<PublicCourseSummary | null>>(async () => state.course),
+  vi.fn<(id: string) => Promise<ShowcaseCover | null>>(async () => state.course),
 );
 vi.mock("@/lib/data/server/public-course", () => ({
   isMarketplaceOpen: async () => state.open,
-  getPublicCourseByRef: readCourse,
+  getShowcaseCourseCover: readCourse,
 }));
 vi.mock("next/headers", () => ({ cookies: async () => ({ get: () => undefined }) }));
 
@@ -47,17 +48,7 @@ beforeEach(() => {
 });
 
 const COVER = "https://example.supabase.co/storage/v1/object/public/covers/ei-mastery.jpg";
-const showcase: PublicCourseSummary = {
-  id: "1a280dc6-acce-4f1f-9e95-56df095131ae",
-  urlSlug: "emotional-intelligence-mastery",
-  title: "Emotional Intelligence Mastery",
-  summary: null,
-  category: null,
-  coverImageUrl: COVER,
-  lessonCount: 17,
-  productFormat: "course",
-  updatedAt: null,
-};
+const showcase: ShowcaseCover = { title: "Emotional Intelligence Mastery", coverImageUrl: COVER };
 afterEach(cleanup);
 
 // O layout raiz passa a mesma resposta ao cabeçalho pelo provedor.
@@ -124,37 +115,11 @@ describe("marketing home", () => {
     expect(within(card).getByText("Open the course")).toBeInTheDocument();
   });
 
-  // Banco lento: a home não espera a leitura do curso além de 1,5 s (o mesmo
-  // prazo da checagem da vitrine) e sai com o cartão de texto.
-  it("does not wait on a slow course read: after 1.5 s it renders the text-only card", async () => {
-    vi.useFakeTimers();
-    try {
-      readCourse.mockImplementationOnce(() => new Promise<PublicCourseSummary | null>(() => {}));
-      let settled = false;
-      const page = Home().then((element) => {
-        settled = true;
-        return element;
-      });
-      await vi.waitFor(() => expect(readCourse).toHaveBeenCalled());
-      await vi.advanceTimersByTimeAsync(1_000);
-      expect(settled).toBe(false);
-      await vi.advanceTimersByTimeAsync(500);
-      expect(settled).toBe(true);
-      render(<RealCoursesProvider value={false}>{await page}</RealCoursesProvider>);
-    } finally {
-      vi.useRealTimers();
-    }
-
-    const card = screen.getByRole("link", { name: /See a real course on SkillsetMind/ });
-    expect(within(card).queryByRole("img")).not.toBeInTheDocument();
-    expect(within(card).getByText("Open the course")).toBeInTheDocument();
-  });
-
-  // Sem capa, ou leitura que falhou: o cartão de texto de antes, sem quadro de
-  // imagem vazio.
+  // Sem capa, ou leitura que falhou ou passou do prazo (null): o cartão de
+  // texto de antes, sem quadro de imagem vazio.
   it.each([
     ["the course has no cover", { ...showcase, coverImageUrl: null }],
-    ["the read fails", null],
+    ["the read fails or times out", null],
   ])("keeps the text-only card when %s", async (_case, course) => {
     state.course = course;
     await renderHome();

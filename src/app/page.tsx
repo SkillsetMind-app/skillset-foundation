@@ -10,7 +10,7 @@ import { MarketingHero } from "@/components/site/marketing-hero";
 import { PromisePreviewBand } from "@/components/site/promise-preview-band";
 import { SiteFooter } from "@/components/site/site-footer";
 import { SiteNav } from "@/components/site/site-nav";
-import { getPublicCourseByRef, isMarketplaceOpen } from "@/lib/data/server/public-course";
+import { getShowcaseCourseCover, isMarketplaceOpen } from "@/lib/data/server/public-course";
 import { buildPageMetadata } from "@/lib/seo/page-metadata";
 import { getServerTranslation } from "@/lib/i18n/server";
 
@@ -29,24 +29,6 @@ export async function generateMetadata() {
 const SHOWCASE_COURSE_ID = "1a280dc6-acce-4f1f-9e95-56df095131ae";
 const SHOWCASE_COURSE_PATH = `/courses/${SHOWCASE_COURSE_ID}`;
 
-// A leitura do curso usa o cliente da sessão, que não tem prazo próprio: um
-// banco lento seguraria a home inteira. Mesmo prazo da checagem da vitrine
-// (1,5 s); passou dele, vale null e fica o cartão de texto. ponytail: a
-// leitura não é cancelada, só deixa de ser esperada.
-const SHOWCASE_READ_BUDGET_MS = 1_500;
-
-async function readShowcaseCourse() {
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  const budget = new Promise<null>((resolve) => {
-    timer = setTimeout(() => resolve(null), SHOWCASE_READ_BUDGET_MS);
-  });
-  try {
-    return await Promise.race([getPublicCourseByRef(SHOWCASE_COURSE_ID), budget]);
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
 export default async function Home() {
   // Vitrine fechada (menos de 12 cursos de 5 professores): a faixa "The
   // marketplace" dá lugar a um cartão que leva a UM curso real. O menu é o
@@ -54,9 +36,10 @@ export default async function Home() {
   const marketplaceOpen = await isMarketplaceOpen();
   const { t } = await getServerTranslation();
   // A capa de verdade do curso, a mesma da página dele: a home quase não tinha
-  // imagem. Leitura que falha ou passa do prazo, curso fora do ar ou sem capa:
-  // o cartão de texto de sempre, sem quadro vazio no lugar da foto.
-  const showcase = marketplaceOpen ? null : await readShowcaseCourse();
+  // imagem. Leitura anônima em cache de 5 min e prazo de 1,5 s (a mesma da
+  // checagem da vitrine). Leitura que falha ou passa do prazo, curso fora do
+  // ar ou sem capa: o cartão de texto de sempre, sem quadro vazio no lugar.
+  const showcase = marketplaceOpen ? null : await getShowcaseCourseCover(SHOWCASE_COURSE_ID);
   const cover = showcase?.coverImageUrl ? { src: showcase.coverImageUrl, alt: showcase.title } : null;
 
   const courseCopy = (
